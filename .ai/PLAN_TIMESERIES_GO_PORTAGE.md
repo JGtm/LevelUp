@@ -324,6 +324,49 @@ Bonus (pas dans `MatchRow` mais nécessaires) :
 
 ---
 
+## 5bis. Conformité architecture transversale (applicable à toutes les phases)
+
+Chaque phase doit respecter les principes architecturaux du projet avant d'être marquée complète. Cette section formalise les contrôles qui s'appliquent **en parallèle** des livrables de chaque phase.
+
+### Checklist multi-titre et capability-based design
+
+- [ ] **Pas de branchement sur `slug`** : tout code décisionnel qui varie par titre **doit** utiliser `HasCapability(ctx, titleSlug, CapabilityX)` ou `CapabilityMap.Has(titleSlug, CapabilityX)`, jamais `if titleSlug == "halo_infinite"`.
+- [ ] **Déclarations de capability** : si une phase ajoute une nouvelle métrique/champ (e.g., `headshot_kills`, `perfect_kills`, `team_mmr`), déclarer la capability correspondante dans `internal/games/capabilities.go` ou `CapabilityMap` et documenter dans `config/titles/halo_infinite/capabilities.toml`.
+- [ ] **Mappings TOML** : si un nouveau champ stats est exposé dans `MatchRow` ou dans les réponses, l'ajouter dans `config/titles/halo_infinite/mappings/fields.toml` avec son `FieldKey` canonique et sa source DB.
+- [ ] **Dégradation gracieuse** : tout code qui consomme une capability doit prévoir `ErrCapabilityNotSupported` et soit la retourner proprement (API), soit la gérer silencieusement (frontend `useFieldLabel` retourne `null`). **Pas de panic, pas d'erreur 500.**
+- [ ] **PathResolver obligatoire** : aucune ligne de code `filepath.Join(repoRoot, "data", ...)` ou construction de chemin titre-spécifique direct. Toujours utiliser `PathResolver.ResolveStatsDBPath(ctx, titleSlug)` ou équivalent.
+
+### Logging structuré
+
+- [ ] **Erreurs métier** : toute erreur non-triviale (calcul échoue, données manquantes) loggée via `slog.ErrorContext(ctx, "msg", "err", err)` avec clés standardisées : `"titleSlug"`, `"player"`, `"match_id"`, `"duration_ms"`, etc.
+- [ ] **Opérations significatives** : chargements DB, transformations pré-calcul, regroupements complexes → `slog.DebugContext` ou `slog.InfoContext` selon importance.
+- [ ] **Aucun `fmt.Println`, `log.Printf`, ou `printf` de debug** laissé en code.
+
+### Tests par couche — minima obligatoires
+
+| Couche | Minima | Exemple |
+|--------|--------|---------|
+| `analysis/*` | Unitaire pur (entrée `[]Match` ou dataframe, sortie calcul) | `TestBuildFormScoreSeries`, `TestBuildPerformanceTimeline` |
+| `service/*` | Unitaire avec mock `port.Repository` | `TestGetPageWithoutDataAdapter`, `TestBuildCumulTabAligned` |
+| `platform/duckdb/*` | Intégration avec DuckDB `:memory:` | `TestLoadTimeseriesMatchesWithAllFields` |
+| `api/handlers/*` | HTTP `httptest` + mock service | `TestHandlerTimeseriesV1OK`, `TestHandlerTimeseriesFilteredContext` |
+| Frontend | Hook+component vitest ou E2E Playwright | `it('renders form score', async () => ...)` |
+
+Règle simple : **si un calcul ou une décision de domaine a une logique**, elle a un test.
+
+### Pas de colonnes title-specific côté service
+
+- [ ] **Les services** (`internal/service/timeseries_service.go` et `internal/analysis/*`) ne doivent **jamais** interroger ou manipuler directement des colonnes nommées `halo_infinite_*` ou similaire. Tout passe par `TitleDataAdapter` qui dénormalise les données titre-spécifiques en types canoniques (`canonical.Match`, `canonical.PlayerStats`).
+- [ ] **Exception** : `internal/games/halo_infinite/adapter_*.go` peut (et doit) accéder aux colonnes brutes halo-specific ; c'est son rôle.
+
+### Parity & i18n (Phase 7 crítica)
+
+- [ ] **Parité numérique documentée** : chaque écart Go vs Python > 1e-3 noté dans `.ai/thought_log.md` avec justification.
+- [ ] **Clés i18n** : ~90 clés mapping vers FR/EN dans `apps/web/src/features/timeseries/i18n.ts`, aucune string hardcodée dans composants.
+- [ ] **Labels stats** : via `useFieldLabel()` / `useOutcomeLabel()` (patterns centralisés).
+
+---
+
 ## 5. Plan de portage par phases
 
 Le plan cible **une seule branche** (cf. CLAUDE.md § « Stratégie de branches Git ») avec plusieurs commits ordonnés. Branche suggérée : `feat/timeseries-parity-v7` depuis la branche actuelle `feat/multi-title-adapters-and-mappings` (ou depuis `main` une fois cette branche mergée).
@@ -356,7 +399,57 @@ Avant de lancer le portage, valider que les tables/colonnes nécessaires sont ef
 2. **Renommer la heatmap actuelle** : la documenter clairement comme `WL heatmap (jour × heure)` côté domain et UI, libérer le terme « intensity » pour la phase 5.
 3. Test régression : lancer `slice-3b-timeseries.spec.ts` et `apps/go-api/.../timeseries_service_test.go` après chaque modification.
 
+#### 0d. Capabilities et TOML pour multi-titre
+
+Avant d'ajouter des colonnes/champs à `TimeseriesMatchRow` ou aux réponses API, déclarer les capabilities et les mappings TOML correspondants. Cette phase formalise la fondation multi-titre pour les phases 1–8.
+
+1. **Déclarer les capabilities** dans `apps/go-api/internal/games/capabilities.go` (ou pattern CapabilityMap équivalent) :
+   - `CapabilityHeadshotKills` → source `match_participants.headshot_kills`
+   - `CapabilityMaxKillingSpree` → source `match_participants.max_killing_spree`
+   - `CapabilityPerfectKills` → source dérivée `medals_earned` (medal_id `1512363953`)
+   - `CapabilityShotsFired` / `CapabilityShotsHit` → source `match_participants.shots_*`
+   - `CapabilityFirstKillMilestone` / `CapabilityFirstDeathMilestone` → source `highlight_events`
+   - `CapabilityTeamMMR` / `CapabilityEnemyMMR` → source `match_participants`
+   - `CapabilitySkillRatingHistory` → source `match_skill_rank` (si présente)
+   - `CapabilityDamageDealtTaken` → source `match_participants`
+   - `CapabilityWLHeatmap` (WL win rate par jour × heure) → source agrégée existante
+   
+   Documenter la source DB, la condition de présence (e.g., « Halo Infinite uniquement »), et l'impact API.
+
+2. **Ajouter mappings TOML** dans `config/titles/halo_infinite/mappings/fields.toml` :
+   ```toml
+   [headshot_kills]
+   field_key = "HEADSHOT_KILLS"
+   display_label_fr = "Précision (tirs à la tête)"
+   display_label_en = "Headshot Accuracy"
+   source = "match_participants.headshot_kills"
+   type = "integer"
+   capability = "CapabilityHeadshotKills"
+   
+   # ... repeate pour chaque champ nouveau
+   ```
+
+3. **Frontend** : ajouter les `FieldKey` correspondants dans `canonical/fields.ts` (ou équivalent Web) et vérifier que `useFieldLabel(FieldKey.HEADSHOT_KILLS)` retourne la bonne valeur FR/EN.
+
+4. **Tests** : ajouter dans `timeseries_service_test.go` un test `TestCapabilityDeclaredForMatchRowFields` qui vérifie que chaque champ ajouté à `MatchRow` a une capability déclarée et un mappage TOML.
+
+5. **Documenter dans `.ai/thought_log.md`** les capabilities déclarées et leur raison (support pour futures versions Halo).
+
+**Done definition** :
+- [ ] Capabilities déclarées dans le code
+- [ ] TOML mappings synchronisés
+- [ ] Test CapabilityDeclaredForMatchRowFields passe
+- [ ] `.ai/thought_log.md` mise à jour
+
 ### Phase 1 — Onglet Résumé enrichi (1.5 jour)
+
+**Done definition** (à vérifier avant fermeture) :
+- [ ] Tests Go (`go test ./...`) passent, `go vet` clean
+- [ ] Tests frontend (vitest + `npm run typecheck`) passent
+- [ ] Entrée `.ai/thought_log.md` ajoutée (décision, résultat observé, prochaine étape)
+- [ ] Architecture conforme : pas de slug checks, capabilities déclarées, logging structuré
+
+**Livrable** : Onglet summary complet avec KPIs étendus, KDA dual-axis, Form Score, Outcomes, Streaks, Top Weapons.
 
 1. **KPIs** :
    - Étendre `buildTimeseriesSummaryTab` : ajouter durée totale (DHM), K/min, D/min, A/min, lifespan moyen mm:ss.
@@ -370,6 +463,14 @@ Avant de lancer le portage, valider que les tables/colonnes nécessaires sont ef
 
 ### Phase 2 — Onglet Cartes & Modes (1 jour)
 
+**Done definition** :
+- [ ] Tests Go passent, `go vet` clean
+- [ ] Tests frontend passent, TypeScript compile
+- [ ] `.ai/thought_log.md` mise à jour
+- [ ] Architecture conforme : mode/map parsing via `mode_category.go`, pas de slug magic
+
+**Livrable** : Nouvel onglet `cartes-modes` avec Map breakdown, Mode breakdown, Perf vs History.
+
 1. **Map breakdown** : `BuildMapBreakdown(matches, minMatches=1, maxCategories=12)` → `[]MapOutcomeRow{ map_name, wins, losses, ties, total }`. Composant `<MapBreakdownStackedBars>`.
 2. **Mode breakdown** : `BuildModeBreakdown(matches)` avec parsing `pair_name → category`. Composant identique paramétré.
 3. **Perf vs history** : `BuildPerfVsHistory(selection, history)` — comparaison side-by-side. Composant `<PerfVsHistoryChart>`.
@@ -377,6 +478,16 @@ Avant de lancer le portage, valider que les tables/colonnes nécessaires sont ef
 Nouveau onglet `cartes-modes` à insérer dans le composant `TimeseriesPage.tsx` après `summary`.
 
 ### Phase 3 — Onglet Progression complet (3 jours)
+
+**Done definition** :
+- [ ] Tous les tests Go passent (y compris `timeseries_service_test.go` pour chaque builder)
+- [ ] `go vet` clean, tests E2E passent
+- [ ] Frontend TypeScript compile, vitest pass
+- [ ] `.ai/thought_log.md` mise à jour avec décisions d'enrichissement MatchRow
+- [ ] Architecture conforme : pas de title-specific SQL dans service, capabilities déclarées pour chaque nouveau champ, logging structuré
+- [ ] Numeric parity vs Python pour Performance, Assists, Per-min, Lifespan, Damage (fixtures commencées)
+
+**Livrable** : `TimeseriesMatchRow` enrichi + onglet Progression complet (9 timelines + distributions).
 
 C'est la phase la plus dense. Découpage suggéré en 3 commits.
 
@@ -415,6 +526,15 @@ Ajouter ces sorties dans un nouvel onglet `domain.TimeseriesProgressionTab` et d
 
 ### Phase 4 — Skill Rank LUSR/CSR (~0.8 jour, réduit grâce à `analysis/skill_rating.go`)
 
+**Done definition** :
+- [ ] Tests Go passent, `go vet` clean
+- [ ] Frontend tests vitest passent, TypeScript compile
+- [ ] `.ai/thought_log.md` mise à jour avec tier zone palette
+- [ ] Architecture conforme : pas de hex couleur en dur (utiliser `resolveToken`), capability declaration
+- [ ] Skill rank numeric parity vs Python vérifiée sur dataset >= 50 matchs
+
+**Livrable** : Composant `<SkillRankChart>` avec IC bandes, zones tier, sélecteur LUSR/CSR.
+
 > **Code existant à réutiliser** : `apps/go-api/internal/analysis/skill_rating.go` (430 L) couvre déjà la résolution LUSR/CSR, le calcul de delta, le regroupement par playlist_group et la résolution tier. `service/career_service.go` charge déjà `match_skill_rank` pour la page Carrière (`buildLUSRSummary`). Cette phase consiste essentiellement à wrapper et à exposer ces calculs sur l'endpoint timeseries.
 
 1. **Repo** : étendre `StatsRepository` (ou réutiliser une méthode existante de `CareerRepository`) pour exposer `LoadSkillRankHistory(ctx, xuid, ratingType?)` retournant la timeline complète (pas juste le summary). Vérifier qu'une telle méthode n'existe pas déjà dans `apps/go-api/internal/platform/duckdb/`.
@@ -425,6 +545,16 @@ Ajouter ces sorties dans un nouvel onglet `domain.TimeseriesProgressionTab` et d
 Vérifier la palette des tier zones (Bronze/Silver/Gold/Platinum/Diamond/Onyx) — ne pas réintroduire de hex en dur (cf. CLAUDE.md règle 20). Étendre `apps/web/src/lib/accessibility/palettes/` avec une palette `tier-*` ou réutiliser celle existante.
 
 ### Phase 5 — Onglet Avancé restauré (1.5 jour)
+
+**Done definition** :
+- [ ] Tests Go passent, `go vet` clean
+- [ ] Tests E2E passent (heatmap rendue, segmented control fonctionne)
+- [ ] TypeScript compile, vitest pass
+- [ ] `.ai/thought_log.md` mise à jour avec décisions intensity heatmap / net score / WL heatmap
+- [ ] Architecture conforme : pas de colonnes title-specific, logging structuré, tests par couche
+- [ ] Numeric parity : cumul+IC, net score/heure, rolling win rate tous vérifiés vs Python
+
+**Livrable** : Onglet Avancé complet (intensity match, cumul+IC, net/heure, regression line, WL heatmap, top by week).
 
 1. **Intensity heatmap match × phases** :
    - Repo : `LoadKillTimingBuckets(ctx, xuid, matchIDs, nBuckets=10)` → pour chaque match, vecteur de 10 entiers (kills par bucket de durée).
@@ -451,6 +581,15 @@ Vérifier la palette des tier zones (Bronze/Silver/Gold/Platinum/Diamond/Onyx) �
 
 ### Phase 6 — Form Score (½ jour)
 
+**Done definition** :
+- [ ] Tests Go passent, `go vet` clean
+- [ ] Frontend tests pass, TypeScript compile
+- [ ] `.ai/thought_log.md` mise à jour avec rationale Form Score distinct EWMA
+- [ ] Architecture conforme : calcul pur dans `analysis/`, service orche, logging OK
+- [ ] Numeric parity Go vs Python vérifiée sur fixture (tolérance < 1e-3)
+
+**Livrable** : Form Score timeline + KPI card avec delta baseline, intégré à Phase 1 ou Phase 5.
+
 Déjà partiellement traité Phase 1.6 (KPI + chart côté Résumé). Vérifier que le calcul Python est bien reproduit :
 
 ```
@@ -462,6 +601,16 @@ delta = current_avg - baseline
 À tester sur un dataset Python pour s'assurer de la parité numérique.
 
 ### Phase 7 — Polish + Parité numérique vérifiée (1.5 jour)
+
+**Done definition** :
+- [ ] Tous les tests Go passent, `go test ./...` + `go vet ./...` clean
+- [ ] Tests frontend parity passent (fixture vs Go sur 50 + 500 matches, tolérance verificada)
+- [ ] `npm run typecheck` et `npm run lint` pass, E2E Playwright pass
+- [ ] `.ai/thought_log.md` mise à jour : EWMA align, fixtures loaded, i18n keys mapped, écarts > 1e-3 documentés
+- [ ] Architecture conforme : pas de couleurs hex en dur, capabilities OK, logging OK
+- [ ] i18n vérifiée : aucune clé `ts_*` brute dans le DOM
+
+**Livrable** : Page Timeseries **~95 % parité fonctionnelle + ~99 % parité numérique vérifiée + i18n FR/EN complet**.
 
 #### 7a. Polish UX
 
@@ -511,6 +660,14 @@ Test de validation : `apps/web/e2e/slice-3b-timeseries.spec.ts` étendu pour vé
 - Aucune string `ts_*` brute visible dans le DOM (i18n résolue).
 
 ### Phase 8 — Nettoyage final
+
+**Done definition** :
+- [ ] `go test ./...` pass, `go vet ./...` clean
+- [ ] Linter frontend pass
+- [ ] `.ai/thought_log.md` mise à jour : Phase 8 clôturage
+- [ ] Documentation mise à jour, plan archives cohérent
+
+**Livrable** : Codebase propre, no dead code, documentation à jour, plan clôturé.
 
 - Supprimer les `*_chart PlotlyFigurePayload` stubs (Phase 0 partielle).
 - Mettre à jour `.ai/project_map.md` avec les nouveaux modules.

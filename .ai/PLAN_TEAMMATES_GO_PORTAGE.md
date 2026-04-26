@@ -2,7 +2,8 @@
 
 > Plan de portage par phases, basé sur l'audit `docs/AUDIT_TEAMMATES_V7_COCKPIT.md`.
 > Branche source : `v7/cockpit` (Streamlit/Python, ~6 000 L sur 15 modules teammates_*).
-> Branche cible : `feat/multi-title-adapters-and-mappings` (Go + React + Plotly).
+> Branche cible : `feat/multi-title-adapters-and-mappings`.
+> Branche de travail : **`feat/squad-page-portage`** (à créer depuis la branche cible avant Phase 0).
 > Date : 2026-04-26.
 
 ## 0. Synthèse executive
@@ -22,9 +23,9 @@ La page Coéquipiers actuelle en Go représente environ **20-25 % de la richesse
 
 **3 vrais bloqueurs techniques** :
 
-1. **LOWESS Smoothing** (§3.6 Form Score) — pas en stdlib Go, ~2 j (impl from-scratch ou wrapper `gonum`).
-2. **Impact 8 roles + N joueurs** (§3.7) — l'algo Go actuel est limite a 4 roles et concu en mode bilateral 1v1 (`myXUID`/`friendXUID`). Doit etre generalise N joueurs et etendu (silent_hero, false_brother, top_killer, last_casualty, last_group_kill, first_group_death). **Le clutch actuel est aussi a corriger** (vraie fenetre temporelle au lieu d'une approximation par tiers de la liste). ~3 j.
-3. **Kill timing endpoint** (§3.9 + §4.5) — `LoadKillTimingForMatches` n'existe pas, bloque deux charts. ~0.5 j.
+1. **LOWESS Smoothing** (§3.6 audit / Form Score) — pas en stdlib Go, ~2 j (impl from-scratch ou wrapper `gonum`).
+2. **Impact 8 roles + N joueurs** (§3.7 audit) — l'algo Go actuel est limite a 4 roles et concu en mode bilateral 1v1 (`myXUID`/`friendXUID`). Doit etre generalise N joueurs et etendu (silent_hero, false_brother, top_killer, last_casualty, last_group_kill, first_group_death). **Le clutch actuel est aussi a corriger** (vraie fenetre temporelle au lieu d'une approximation par tiers de la liste). ~3 j.
+3. **Kill timing endpoint** (§3.9 + §4.5 audit) — `LoadKillTimingForMatches` n'existe pas, bloque deux charts. ~0.5 j.
 
 ---
 
@@ -36,17 +37,20 @@ La page Coéquipiers actuelle en Go représente environ **20-25 % de la richesse
 |---------|--------|------|
 | [internal/analysis/squad_score.go:21](../apps/go-api/internal/analysis/squad_score.go#L21) | OK | `ComputeSquadPerformanceScore` (base + 3 bonus + clamp + grade lettre). Quasi complet. |
 | [internal/analysis/squad_score.go:110](../apps/go-api/internal/analysis/squad_score.go#L110) | OK | `resolveSquadGrade(score) string`. |
-| [internal/analysis/performance_score.go](../apps/go-api/internal/analysis/performance_score.go) | OK | `ComputeSessionPerformanceScore` (test present). A confirmer si V2 + ajustement MMR present. |
+| [internal/analysis/performance_score.go](../apps/go-api/internal/analysis/performance_score.go) | OK | `ComputeSessionPerformanceScore` (test present). Ajustement MMR present (verifie : `EnemyMMR` consomme). |
 | [internal/analysis/squad_impact.go:18](../apps/go-api/internal/analysis/squad_impact.go#L18) | INCOMPLET | `ComputeImpactSummary` ne couvre que **4 roles** (FirstBlood, Clutch, LastKill, FirstDeath) en mode 1v1. Vs 8 roles attendus, multi-joueurs. Clutch approxime via "dernier tiers de la liste". |
 | [internal/analysis/highlight_event_parser.go](../apps/go-api/internal/analysis/highlight_event_parser.go) | OK | Parser highlight events utilisable pour impact etendu. |
-| [internal/platform/duckdb/squad_repo.go](../apps/go-api/internal/platform/duckdb/squad_repo.go) | OK partiel | `LoadSquadMatches` (Q30 — 18 colonnes riches), `LoadTeammateMatches` (Q31), `LoadImpactEvents` (Q32), `LoadTopTeammates` (Q29). |
+| [internal/platform/duckdb/squad_repo.go](../apps/go-api/internal/platform/duckdb/squad_repo.go) | OK partiel | `LoadTopTeammates`, `LookupXUIDByGamertag`, `LoadSquadMatches` (Q30 — 18 colonnes riches), `LoadTeammateMatches` (Q31), `LoadImpactEvents` (Q32). |
 | [internal/service/teammates_service.go](../apps/go-api/internal/service/teammates_service.go) | OK | `buildMatchSeries`, `computeKPIsFromSquadMatches`, `TeammatesPageResponse`. |
+| [internal/service/squad_service.go](../apps/go-api/internal/service/squad_service.go) | OK | Existant. **N'utilise pas `TitleDataAdapter`** — lit `port.SquadRepository` directement. |
 
 ### 1.2 Cote Go — manquants
 
 **Algos absents** (`internal/analysis/`) : `LOWESS`, `ComputeMatchIntensityProfiles`, `ComputeSquadCadenceProfiles`, `ComputeMapBreakdown`, `ComputeSquadRecords`, `ComputeParticipationProfile`, extension impact a 8 roles + N joueurs.
 
-**Methodes repository absentes** (`internal/platform/duckdb/squad_repo.go`) : `LoadKillTimingForMatches`, `LoadWeaponKillsAggregated`, `LoadGrenadeMeleeKills`, `LoadMedalsForMatchesByXUID`, `LoadPersonalScoreAwards`, `LoadFullPerformanceHistory`.
+**Methodes repository absentes** (`internal/platform/duckdb/squad_repo.go` + interface dans `internal/port/repository.go`) : `LoadKillTimingForMatches`, `LoadWeaponKillsAggregated`, `LoadGrenadeMeleeKills`, `LoadMedalsForMatchesByXUID`, `LoadPersonalScoreAwards`, `LoadFullPerformanceHistory`.
+
+**Handlers HTTP absents** (`internal/api/handlers/`) : aucun handler `squad_perf_score`, `squad_impact`, `squad_intensity`, `squad_cadence`, `squad_weapons`, `squad_medals`, `squad_form_score`, `squad_first_events`, `squad_map_breakdown`, `squad_kpi_stats`.
 
 ### 1.3 Cote frontend ([apps/web/src/features/squad/](../apps/web/src/features/squad/))
 
@@ -93,113 +97,299 @@ La page Coéquipiers actuelle en Go représente environ **20-25 % de la richesse
 
 ---
 
-## 3. Phases de portage
+## 3. Conventions techniques transverses (a respecter dans toutes les phases)
+
+### 3.1 Architecture Go — separation des couches
+
+| Couche | Localisation | Regle |
+|--------|--------------|-------|
+| Algorithme pur | `internal/analysis/` | Stateless. Entree = struct/slice. Sortie = struct. **Aucun acces DB, aucun import de `service` ou `port`.** Tests unitaires obligatoires. |
+| Type metier | `internal/domain/` | Squad reste **title-specific** (cf. decision §3.2). Nouveaux types (`MapBreakdownRow`, `KillTimingRow`, `SquadRecordSet`, `ImpactSummaryV2`, `IntensityProfile`, `CadenceProfile`, `WeaponStatsRow`, `SquadMedalRow`, `KPIStats`) vont dans `internal/domain/squad.go` (ou nouveau `internal/domain/teammates.go`). |
+| Type canonique | `internal/games/canonical/` | **Pas concerne** ici (squad = title-specific, voir §3.2). Si on capability-gate plus tard, ajouter `CapSquadSession` dans `games/adapter.go`. |
+| Orchestration | `internal/service/` | Compose repos + algos. Renvoie `*domain.XxxResponse`. **Aucun SQL inline.** Tests avec mock `port.SquadRepository`. |
+| Interface repository | `internal/port/repository.go` | Toute nouvelle methode DuckDB doit **d'abord** etre declaree ici, puis implementee dans `platform/duckdb/squad_repo.go`, puis stubbed dans `noopSquadRepo`, puis mockee dans les tests service. |
+| Implementation DuckDB | `internal/platform/duckdb/squad_repo.go` + `queries_squad.go` | Requetes SQL constantes nommees `Q34*`, `Q35*`, etc. Tests `:memory:` obligatoires pour chaque nouvelle methode. |
+| Handler HTTP | `internal/api/handlers/` | **Aucune logique metier.** Decode params, appelle service, encode JSON. Tests `httptest`. |
+
+### 3.2 Multi-titres — decision assumee pour Squad
+
+**Decision** : la page Squad reste **title-specific Halo Infinite** dans cette iteration. Les services `teammates_service.go` et `squad_service.go` continuent d'utiliser `port.SquadRepository` directement, sans passer par `games.TitleDataAdapter`. Justification :
+- Squad fait sens uniquement pour les titres avec notion d'equipe persistante + matchmaking (Halo Infinite). D'autres titres futurs (campagne solo, battle royale) n'auront pas de "coequipiers frequents".
+- L'algo d'impact (8 roles) depend de `highlight_events` Halo-specifique. Pas de mapping generique pertinent.
+- Generaliser via adapter ajouterait 5-7 j sans benefice immediat.
+
+**Implications** :
+- Pas d'ajout de capability `CapSquadSession` pour l'instant.
+- Pas de modification de `config/titles/halo_infinite/mappings/{fields,assets,outcomes}.toml` **sauf** si on introduit de nouveaux `FieldKey` exposes au frontend (voir §3.5).
+- Cote frontend, la page reste accessible uniquement quand `titleSlug == "halo_infinite"`. Capability gate cote React via `useFieldMappings()` (deja en place dans `SquadSynergiesPage.tsx`) — degradation gracieuse "feature unavailable" si mapping absent.
+
+**Si l'utilisateur change d'avis** : extraire dans une iteration ulterieure (ajouter `CapSquadSession`, deplacer types vers `canonical/`, creer `adapter_squad.go` par titre).
+
+### 3.3 Logging — conventions
+
+- Erreurs non-triviales : `slog.ErrorContext(ctx, "squad: load impact events failed", "err", err, "match_count", len(matchIDs))`.
+- Operations significatives : `slog.InfoContext(ctx, "squad: computing intensity profiles", "n_players", n, "n_matches", m, "duration_ms", elapsed)`.
+- Cles structurees standards : `"err"`, `"match_id"`, `"player"`, `"xuid"`, `"titleSlug"`, `"duration_ms"`, `"n_matches"`, `"n_players"`.
+- **Interdit** : `fmt.Println`, `log.Printf`, `log.Println` dans le nouveau code.
+- Loggers per-package via `slog.Default()` ou logger injecte (suivre le pattern existant dans `squad_service.go`).
+
+### 3.4 Tests — strategie par couche
+
+| Couche | Outil | Couverture attendue |
+|--------|-------|---------------------|
+| `internal/analysis/` | `testing` standard | 100 % des branches algo. Tests deterministes (fixtures inline). Cas limites : empty slice, single match, donnees corrompues. |
+| `internal/service/` | `testing` + mock `port.SquadRepository` | Wiring repo -> algo -> domain. Cas degradation : repo retourne erreur, repo retourne empty, methode non disponible (capability). |
+| `internal/api/handlers/` | `httptest` | Decodage params (query, path), codes HTTP, format JSON, gestion d'erreur (400 / 404 / 500). |
+| `internal/platform/duckdb/` | `:memory:` DuckDB avec schema seed | Une methode = un test. Verifier aussi la perf (LIMIT respecte, INDEX si besoin). |
+| Frontend | Vitest | Empty states (no_selection / invalid_selection / no_chart_data), formatters i18n, hooks de query. |
+
+**Tests de degradation obligatoires** :
+- `personal_score_awards` table absente -> radar §4.2 retourne empty profile, pas d'erreur 500.
+- `shared.match_kill_events` table absente -> §3.9 et §4.5 retournent empty, pas d'erreur 500.
+- `shared.match_weapon_kills` empty pour un match -> §4.7 affiche tableau vide proprement.
+
+### 3.5 Frontend — conventions
+
+- Aucune couleur hex `#RRGGBB` ni classe Tailwind couleur dans `apps/web/src/features/squad/`. Utiliser `tokenCssVar(token)`, `resolveToken(token)`, `getSeriesColors(n, tokens[])`.
+- i18n FR + EN obligatoire. Les nouvelles strings vont dans `apps/web/src/features/squad/i18n.ts` (`getSquadText(locale)`).
+- Libelles metier (KPI, metriques radar, scores) **toujours** via `useFieldMappings()` + `FieldKey`. Si un nouveau `FieldKey` est introduit (`form_score_smoothed`, `intensity_bucket_kills`, `radar_objective_score`, etc.) :
+  - Ajouter la constante dans `internal/games/canonical/fields.go`.
+  - Ajouter la section dans `config/titles/halo_infinite/mappings/fields.toml` (label FR + EN).
+  - Cote React, consommer via `useFieldLabel(FieldKey)`.
+- Toutes les nouvelles queries client dans `apps/web/src/lib/query/keys.ts` (cles serialisables, format `['squad', 'perf-score', xuids, matchIds]`).
+- Plotly figures via le wrapper `PlotlyChart` deja existant. Pas de `import Plot from 'react-plotly.js'` direct.
+- **Interdiction** d'editer `routeTree.gen.ts` (genere par TanStack Router file-based).
+
+### 3.6 Branche Git
+
+- **Une seule branche** : `feat/squad-page-portage` depuis `feat/multi-title-adapters-and-mappings`.
+- Phases = commits successifs, pas de sous-branches.
+- Format commit : `feat(squad): phase X — courte description` avec corps detaillant ce qui est ajoute.
+
+### 3.7 Dependances externes
+
+- **`gonum/stat`** : a evaluer pour Phase 0 LOWESS. Decision a prendre lors de Phase 0 (impl from-scratch ~1.5 j vs wrapper gonum ~0.5 j + nouvelle dep `go.mod`). Si gonum retenu, justifier dans le commit message + `thought_log`.
+- Aucune autre dependance externe prevue.
+
+### 3.8 Done definition par phase
+
+Une phase est consideree **DONE** quand :
+- [ ] Tous les criteres de la checklist phase sont coches.
+- [ ] `go test ./...` passe (depuis `apps/go-api/`).
+- [ ] `go vet ./...` sans warning.
+- [ ] `npm run typecheck` + `npm run lint` passent (depuis `apps/web/`).
+- [ ] Aucun `fmt.Println` ni hex color introduit.
+- [ ] Une entree `.ai/thought_log.md` est ajoutee (date, titre, decision, resultats, prochaine etape).
+- [ ] Commit pousse sur `feat/squad-page-portage`.
+
+---
+
+## 4. Phases de portage
+
+> Format de chaque phase : **Algos** (`internal/analysis/`) + **Domain** (`internal/domain/`) + **Port** (`internal/port/`) + **Repo** (`internal/platform/duckdb/`) + **Service** (`internal/service/`) + **Handler** (`internal/api/handlers/`) + **Frontend** (`apps/web/src/features/squad/`) + **Tests** + **i18n**.
 
 ### Phase 0 — Briques transverses (~7.5 j) — PREREQUIS
 
 A faire avant toute chart pour eviter de revenir sur les helpers N fois.
 
-#### 0.1 Algos manquants (`internal/analysis/`)
-- [ ] `ComputeMapBreakdown(matches) []MapBreakdownRow` — **0.5 j** — utilise par §3.1, §3.2, §3.3, §3.4.
-- [ ] `ComputeSquadRecords(series, metrics, dominantPair) SquadRecordSet` — **1 j** — utilise par §4.1, §4.3, §4.4.
-- [ ] `LOWESS(points, alpha)` — **2 j** — bloqueur isole pour §3.6 (impl from-scratch ou wrapper `gonum`).
-- [ ] `ComputeMatchIntensityProfiles(events, nBuckets=10)` — **0.5 j** — pour §4.5.
-- [ ] `ComputeSquadCadenceProfiles(events, phaseSeconds=60)` — **0.5 j** — pour §3.9.
-- [ ] `ComputeParticipationProfile(scores, options)` + `RADAR_THRESHOLDS_PER_MODE` — **1 j** — pour §4.2.
-- [ ] Confirmer / completer `ComputeSessionPerformanceScoreV2(matches, includeMMRAdjustment)` — **0.5 j** — pour §2.2.
-- [ ] Etendre `ComputeImpactSummary` a 8 roles + N joueurs — **2 j** — pour §3.7. **Inclut correction du clutch (vraie fenetre temporelle).**
+#### 0.1 Algos (`internal/analysis/`)
+- [ ] `ComputeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRow` — **0.5 j** — utilise par §3.1, §3.2, §3.3, §3.4. Test unitaire avec 3 cartes / outcomes mixtes.
+- [ ] `ComputeSquadRecords(series, metrics, dominantPair) domain.SquadRecordSet` — **1 j** — utilise par §4.1, §4.3, §4.4. Test avec `pm_records` fallback.
+- [ ] `LOWESS(points []Point, alpha float64) []Point` — **2 j** — bloqueur isole pour §3.6. **Decision a prendre** : impl from-scratch ou wrapper `gonum/stat`. Test : courbe de reference numpy/scipy comparee a tolerance 1e-3.
+- [ ] `ComputeMatchIntensityProfiles(events []KillTimingRow, nBuckets int) []domain.IntensityProfile` — **0.5 j** — pour §4.5. Test : repartition deterministe sur 10 buckets.
+- [ ] `ComputeSquadCadenceProfiles(events []KillTimingRow, phaseSeconds int) []domain.CadenceProfile` — **0.5 j** — pour §3.9.
+- [ ] `ComputeParticipationProfile(awards []PersonalScoreAward, opts ProfileOptions) []domain.RadarProfile` + constante `RADAR_THRESHOLDS_PER_MODE` — **1 j** — pour §4.2. Test : normalisation par famille de mode (Slayer / CTF / Strongholds / Oddball / Custom).
+- [ ] Etendre `ComputeImpactSummary` (renommer en `ComputeImpactSummaryV2`) a 8 roles + N joueurs — **2 j** — pour §3.7. **Inclut correction du clutch (vraie fenetre temporelle 30s finales).** Tests : un test par role + test multi-joueurs (3+).
 
-#### 0.2 Methodes repository (`internal/platform/duckdb/squad_repo.go`)
-- [ ] `LoadKillTimingForMatches(ctx, matchIDs) ([]KillTimingRow, error)` — **0.5 j** — bloque §3.9 + §4.5.
-- [ ] `LoadWeaponKillsAggregated(ctx, xuid, matchIDs)` — **0.5 j** — pour §4.7.
-- [ ] `LoadGrenadeMeleeKills(ctx, xuid, matchIDs)` — **0.2 j** — pour §4.7.
-- [ ] `LoadMedalsForMatchesByXUID(ctx, xuids, matchIDs) ([]MedalRow, error)` — **0.3 j** — pour §4.9.
-- [ ] `LoadPersonalScoreAwards(ctx, xuid, matchIDs)` — **0.3 j** — pour §4.2.
-- [ ] `LoadFullPerformanceHistory(ctx, xuid)` — **0.2 j** — pour §3.6 (seuil `DETAIL_THRESHOLD`).
+#### 0.2 Domain (`internal/domain/`)
+- [ ] Ajouter `MapBreakdownRow`, `KillTimingRow`, `IntensityProfile`, `CadenceProfile`, `RadarProfile`, `SquadRecordSet`, `ImpactSummaryV2`, `WeaponStatsRow`, `SquadMedalRow`, `KPIStats`, `PersonalScoreAward`, `FormScorePoint` dans `internal/domain/squad.go` (ou nouveau `teammates.go` si > 500 L).
+- [ ] Documenter chaque struct (godoc).
 
-#### 0.3 Composants UI manquants ([apps/web/src/](../apps/web/src/))
-- [ ] `SegmentedControl` — **0.3 j** (a confirmer dans shadcn — sinon coder).
-- [ ] `RecordOverlay` Plotly (motif `pattern_shape` hachure) — **0.5 j** — pour records overlays.
-- [ ] Panneau legende joueurs flottante (`position:fixed` + `IntersectionObserver`) — **0.5 j**.
-- [ ] `MedalsGallery` (grille de cartes match avec icones medailles) — **0.5 j**.
-- [ ] `WeaponsTable` generique (tri, slider min kills, colonnes par joueur) — **0.5 j**.
+#### 0.3 Port (`internal/port/repository.go`)
+- [ ] Etendre l'interface `SquadRepository` avec :
+  - `LoadKillTimingForMatches(ctx, matchIDs []string) ([]domain.KillTimingRow, error)`
+  - `LoadWeaponKillsAggregated(ctx, xuid string, matchIDs []string) ([]domain.WeaponKillRow, error)`
+  - `LoadGrenadeMeleeKills(ctx, xuid string, matchIDs []string) (domain.GrenadeMeleeAggregate, error)`
+  - `LoadMedalsForMatchesByXUID(ctx, xuids []string, matchIDs []string) ([]domain.SquadMedalRow, error)`
+  - `LoadPersonalScoreAwards(ctx, xuid string, matchIDs []string) ([]domain.PersonalScoreAward, error)`
+  - `LoadFullPerformanceHistory(ctx, xuid string) ([]domain.FormScorePoint, error)`
+- [ ] Stubber chaque methode dans `noopSquadRepo` (retourne empty + nil).
+- [ ] Mettre a jour les mocks dans `service/squad_service_test.go` et `service/teammates_extra_test.go` pour implementer les nouvelles methodes.
+
+#### 0.4 Repo (`internal/platform/duckdb/`)
+- [ ] Implementer les 6 methodes ci-dessus dans `squad_repo.go`. Requetes nommees `Q34KillTiming`, `Q35WeaponKillsAggregated`, `Q36GrenadeMeleeKills`, `Q37SquadMedals`, `Q38PersonalScoreAwards`, `Q39FullPerformanceHistory` dans `queries_squad.go`.
+- [ ] Tests `:memory:` pour chacune (1 fichier `squad_repo_phase0_test.go` avec 6 sous-tests). Verifier degradation gracieuse si table absente.
+
+#### 0.5 Composants UI manquants ([apps/web/src/](../apps/web/src/))
+- [ ] `SegmentedControl` — **0.3 j** — confirmer presence dans shadcn-ui local. Sinon, creer `apps/web/src/components/ui/segmented-control.tsx`.
+- [ ] `RecordOverlay` — **0.5 j** — helper qui prend une `PlotlyFigurePayload` et ajoute des traces fantomes hachurees (`pattern_shape`). Localisation : `apps/web/src/lib/plotly/record-overlay.ts`.
+- [ ] Panneau legende joueurs flottante — **0.5 j** — composant `apps/web/src/features/squad/components/SquadPlayerLegend.tsx`. Logique IntersectionObserver sur ancres `#llp-squad-start` / `#llp-medals-start`.
+- [ ] `MedalsGallery` — **0.5 j** — composant `apps/web/src/features/squad/components/MedalsGallery.tsx`. Grid de cartes match.
+- [ ] `WeaponsTable` — **0.5 j** — composant `apps/web/src/features/squad/components/WeaponsTable.tsx`. Colonnes dynamiques par joueur, slider min kills.
+
+#### 0.6 i18n
+- [ ] Ajouter cles transverses dans `apps/web/src/features/squad/i18n.ts` (FR + EN) : `squad.legend.show`, `squad.records.show`, `squad.weapons.minKills`, `squad.medals.viewMatch`, etc.
 
 ### Phase 1 — En-tetes structurants (~2.5 j) — PRIORITAIRE
 
-Ces blocs sont visibles immediatement en haut de la page, donc fort impact UX.
+#### §2.1 KPI personnels — **1.5 j**
+- **Algos** : confirmer / completer `ComputeKPIStats(matches, scope) domain.KPIStats` dans `internal/analysis/kpi.go`. Inclure `_trend(current, reference, higherIsBetter, threshold=0.08)`.
+- **Domain** : `KPIStats` (champs : `TotalMatches`, `TotalPlaySeconds`, `AvgMatchSeconds`, `KillsPerGame/Min`, `DeathsPerGame/Min`, `AssistsPerGame/Min`, `AvgAccuracy`, `AvgLifeSeconds`, `Wins`, `Losses`, `Ties`, `NoFinish`).
+- **Service** : `KPIService.GetKPIStats(ctx, xuid, scope)`. Charge `dff` (current) + `df` (alltime) via repo, calcule trends.
+- **Handler** : `GET /players/{slug}/kpi-stats?scope=current|alltime` -> 200 / 404 (player inconnu) / 400 (scope invalide).
+- **Frontend** : composant `apps/web/src/features/squad/components/KpiStrip.tsx` (8 cartes + barre W/L/T/DNF). Query key `['players', slug, 'kpi-stats', scope]`.
+- **Tests** : analysis (calculs deterministes), service (mock repo), handler (httptest), composant (vitest empty + happy + trend variations).
+- **i18n** : `kpi_selected_matches`, `kpi_total_duration`, `kpi_kills_per_match`, `kpi_deaths_per_match`, `kpi_assists_per_match`, `kpi_avg_accuracy`, `kpi_avg_lifespan`, `kpi_wins/losses/ties/no_finish`.
 
-- [ ] **§2.1 KPI personnels** — 8 cartes (matchs, duree totale, K/D/A par match, accuracy, vie moyenne, barre W/L/T/DNF) + fleches de tendance vs all-time (`_trend`, seuil 8 %). Endpoint `/players/{slug}/kpi-stats?scope=current|alltime`. Composant React `KpiStrip.tsx`. **1.5 j**
-- [ ] **§2.2 Score d'equipe + scores individuels** — Carte equipe (score 0-100 + grade lettre + detail bonus) + N cartes individuelles compactes (score + label qualitatif + badge ▲/▼). Endpoint `/squad/perf-score?xuids=...&matchIds=...`. Composant `SquadScoreHeader.tsx`. **1 j**
+#### §2.2 Score equipe + scores individuels — **1 j**
+- **Algos** : confirmer `ComputeSessionPerformanceScoreV2(matches, includeMMRAdjustment bool)` dans `performance_score.go` (verifier presence ajustement MMR). `ComputeSquadPerformanceScore` deja porte.
+- **Domain** : extension `SquadPerformanceScore` avec `Components{BaseAvg, TeamWinRate, MinKD, KillsStd}`.
+- **Service** : `SquadService.GetPerfScore(ctx, xuids []string, matchIDs []string)`.
+- **Handler** : `GET /squad/perf-score?xuids=...&matchIds=...`.
+- **Frontend** : composant `SquadScoreHeader.tsx` (1 carte equipe avec grade lettre + N cartes individuelles compactes avec badge ▲/▼).
+- **Tests** : algo (deja teste), service (mock repo, calcul collectif), handler (httptest), composant (badges, grades).
+- **i18n** : `squad_score_header`, `squad_score_bonus`, `squad_score_base_only`, `squad_grade_*`.
 
 ### Phase 2 — Synergies "carte" (~4 j)
 
-- [ ] **§3.1 Lollipop W/L par carte** — `buildLollipopMapChart.ts` (20 dernieres cartes, ordre chronologique). **1 j**
-- [ ] **§3.2 Bullet winrate session vs historique** — 3 barres empilees par carte. **1 j**
-- [ ] **§3.3 Perf vs historique par carte** — barres horizontales delta. **1 j**
-- [ ] **§3.4 Heatmap escouade joueur x carte** — refonte de `heatmapChart.ts` en 2D. **1 j**
+#### §3.1 Lollipop W/L par carte — **1 j**
+- **Service** : `SquadService.GetMapBreakdown(ctx, matchIDs []string)`.
+- **Handler** : `GET /squad/map-breakdown?matchIds=...`.
+- **Frontend** : `charts/lollipopMapChart.ts` (20 dernieres cartes, ordre chronologique).
+- **Tests** : service (mock), handler, chart (snapshot).
+
+#### §3.2 Bullet winrate session vs historique — **1 j**
+- **Service** : etendre `GetMapBreakdown` pour inclure `historical_breakdown` (ou nouveau `GetMapWinrateHistory`).
+- **Handler** : option query `?include_history=true` ou endpoint dedie `/squad/map-winrate-history`.
+- **Frontend** : `charts/bulletWinrateChart.ts`.
+
+#### §3.3 Perf vs historique par carte — **1 j**
+- **Service** : extension du meme endpoint avec delta `perf_session - perf_historique`.
+- **Frontend** : `charts/perfDeltaChart.ts`.
+
+#### §3.4 Heatmap escouade joueur x carte — **1 j**
+- **Frontend** : refonte `charts/heatmapChart.ts` en 2D (player axis Y, map axis X, cellule = perf_score). Donnees deja chargees via `TeammatesPageResponse.MapBreakdown`.
+- **Tests** : snapshot 2D.
 
 ### Phase 3 — Timeline + Form Score (~3 j)
 
-- [ ] **§3.5 Timeline performance multi-joueurs** — extension de `timelineChart.ts` : trace par joueur (couleur Okabe-Ito) + marker outcome (W/L/T). **1 j**
-- [ ] **§3.6 Form Score lisse (LOWESS)** — endpoint `/players/{gt}/form-score?matchIds=...` + chart line lisse. **2 j** (depend du LOWESS phase 0).
+#### §3.5 Timeline performance multi-joueurs — **1 j**
+- **Frontend** : extension de `charts/timelineChart.ts` : trace par joueur (couleur Okabe-Ito), marker outcome (W/L/T = symbol + color).
+- **Tests** : snapshot multi-joueurs.
+
+#### §3.6 Form Score lisse (LOWESS) — **2 j**
+- **Algos** : `LOWESS` deja en Phase 0.
+- **Service** : `SquadService.GetFormScoreHistory(ctx, xuid string, matchIDs []string)`. Charge full history via `LoadFullPerformanceHistory`, lisse via LOWESS.
+- **Handler** : `GET /players/{gt}/form-score?matchIds=...`.
+- **Frontend** : `charts/formScoreChart.ts` (line chart lisse).
+- **Tests** : algo (Phase 0), service (mock), handler.
 
 ### Phase 4 — Impact (~3 j)
 
-- [ ] **§3.7 Impact 8 roles** — heatmap roles x joueurs avec emojis + tableau ranking 8 colonnes avec gradient Okabe-Ito + popover legende + toggle viz heatmap/scatter. Endpoint `/squad/impact?xuids=...&matchIds=...`. Composants `ImpactHeatmap.tsx` + `ImpactRanking.tsx`. **3 j** (depend de l'extension a 8 roles phase 0).
+#### §3.7 Impact 8 roles — **3 j**
+- **Algos** : `ComputeImpactSummaryV2` deja en Phase 0.
+- **Service** : `SquadService.GetImpact(ctx, xuids []string, matchIDs []string)`.
+- **Handler** : `GET /squad/impact?xuids=...&matchIds=...`.
+- **Frontend** : composants `ImpactHeatmap.tsx` + `ImpactRanking.tsx`. Heatmap roles x joueurs avec emojis (⚡🎯💀🐌🪦🛡️🗡️💥), fond outcome (W/L/T), tableau ranking 8 colonnes avec gradient Okabe-Ito + popover legende + toggle viz heatmap/scatter.
+- **Tests** : service (mock 8 roles), handler, composants (empty / partial / full).
+- **i18n** : `tm_impact_*` (8 cles role + legende complete).
 
 ### Phase 5 — Tableau historique + First Events (~2 j)
 
-- [ ] **§3.8 Tableau historique escouade** — `SquadHistoryTable.tsx` (carte, mode, playlist, date locale, resultat, lien Waypoint). **1 j**
-- [ ] **§4.6 First Events** — endpoint `/squad/first-events?matchIds=...` + `buildFirstEventsChart.ts`. **1 j** (donnees deja chargeables via `LoadImpactEvents` filtre FirstBlood/FirstDeath).
+#### §3.8 Tableau historique escouade — **1 j**
+- **Service** : utilise `LoadSquadMatches` existant + formatters (date locale, mode normalise via `mode_label.go`, playlist).
+- **Handler** : reutilise endpoint existant ou ajoute `GET /squad/history?xuids=...&matchIds=...`.
+- **Frontend** : composant `SquadHistoryTable.tsx` (carte, mode, playlist, date locale, resultat, lien Waypoint).
+- **Tests** : composant (tri date desc, formatters).
+
+#### §4.6 First Events — **1 j**
+- **Service** : reutilise `LoadImpactEvents` filtre `event_type IN (FirstBlood, FirstDeath)`.
+- **Handler** : `GET /squad/first-events?matchIds=...`.
+- **Frontend** : `charts/firstEventsChart.ts`.
 
 ### Phase 6 — Cadence + Intensite (~3 j)
 
-- [ ] **§3.9 Cadence trio (kills/phase 60 s)** — endpoint `/squad/kill-timing` + `buildCadenceChart.ts` + note post-graphe. **1.5 j** (depend de `LoadKillTimingForMatches` phase 0).
-- [ ] **§4.5 Heatmap intensite (match x 10 buckets)** — endpoint `/squad/intensity` + `segmented_control` Tous/joueur1/joueur2 + heatmap. **1.5 j**.
+#### §3.9 Cadence trio — **1.5 j**
+- **Algos** : `ComputeSquadCadenceProfiles` deja en Phase 0.
+- **Repo** : `LoadKillTimingForMatches` deja en Phase 0.
+- **Service** : `SquadService.GetCadence(ctx, xuids []string, matchIDs []string)`.
+- **Handler** : `GET /squad/cadence?xuids=...&matchIds=...`.
+- **Frontend** : `charts/cadenceChart.ts` + note post-graphe `tm_note_cadence`.
+- **Tests** : algo, service, handler.
+
+#### §4.5 Heatmap intensite — **1.5 j**
+- **Algos** : `ComputeMatchIntensityProfiles` deja en Phase 0.
+- **Service** : `SquadService.GetIntensity(ctx, xuids []string, matchIDs []string)`.
+- **Handler** : `GET /squad/intensity?xuids=...&matchIds=...`.
+- **Frontend** : composant `SquadIntensityHeatmap.tsx` avec `SegmentedControl` (Tous / joueur1 / joueur2).
 
 ### Phase 7 — Charts trio (~5 j)
 
-- [ ] **§4.1 Stats par minute groupees** — `buildPerMinuteChart.ts` (3 barres par joueur, axe zero blanc, deaths inversees). **1 j**
-- [ ] **§4.3 6 charts performance trio dedies** — `buildTrioKillsDeaths.ts`, `buildTrioAssists.ts`, `buildTrioKDA.ts`, `buildTrioAccuracy.ts`, `buildTrioAvgLife.ts`, `buildTrioPerformance.ts`. Records overlays (depend phase 0). **3 j**
-- [ ] **§4.4 Killing Spree (max) + HS/PK enrichis** — `buildKillingSpreeChart.ts` + enrichissement `hsPkChart.ts` (records + smoothing 10). **1 j**
+#### §4.1 Stats par minute groupees — **1 j**
+- **Frontend** : `charts/perMinuteChart.ts` (3 barres par joueur, axe zero blanc, deaths inversees).
+
+#### §4.3 6 charts performance trio dedies — **3 j**
+- **Frontend** : 6 fichiers `charts/trio{KillsDeaths,Assists,KDA,Accuracy,AvgLife,Performance}Chart.ts`. Records overlays via `RecordOverlay` (Phase 0).
+- **Service** : exposer `SquadRecordSet` dans `TeammatesPageResponse` (toggle setting `show_records`).
+
+#### §4.4 Killing Spree + HS/PK enrichis — **1 j**
+- **Frontend** : `charts/killingSpreeChart.ts` + enrichissement `hsPkChart.ts` (records + smoothing 10).
 
 ### Phase 8 — Radar (~2 j)
 
-- [ ] **§4.2 Radar complementarite (6 axes normalises par mode)** — refonte de `SquadContributionsPage`. Endpoint enrichi avec `personal_score_awards`. Normalisation par famille de mode (`is_objective_mode_from_pair_name`). **2 j** (depend de `ComputeParticipationProfile` phase 0).
+#### §4.2 Radar complementarite — **2 j**
+- **Algos** : `ComputeParticipationProfile` deja en Phase 0.
+- **Repo** : `LoadPersonalScoreAwards` deja en Phase 0.
+- **Service** : `SquadService.GetRadarProfiles(ctx, xuids []string, matchIDs []string)`.
+- **Handler** : `GET /squad/radar?xuids=...&matchIds=...`.
+- **Frontend** : refonte de `SquadContributionsPage.tsx` : 6 axes Combat / Survie / Soutien / Score / Objectifs / Impact, normalisation par famille de mode.
+- **i18n + FieldKeys** : ajouter `radar.combat`, `radar.survie`, `radar.soutien`, `radar.score`, `radar.objectifs`, `radar.impact` dans `canonical/fields.go` + `fields.toml`.
 
 ### Phase 9 — Armes + Medailles (~4.5 j)
 
-- [ ] **§4.7 Tableau armes (top N)** — `WeaponsTable.tsx` avec slider min kills + reinjection grenade/melee capee par `remainder = api_total - film_kills`. **2 j**
-- [ ] **§4.8 Barplot armes top 12 grouped** — `buildWeaponsChart.ts` (derive de §4.7). **0.5 j**
-- [ ] **§4.9 Galerie medailles (top 20 matchs)** — endpoint `/squad/medals` + `MedalsGallery.tsx`. **2 j**
+#### §4.7 Tableau armes — **2 j**
+- **Repo** : `LoadWeaponKillsAggregated` + `LoadGrenadeMeleeKills` deja en Phase 0.
+- **Service** : `SquadService.GetWeapons(ctx, xuid string, matchIDs []string)` avec reinjection grenade/melee capee par `remainder = api_total - film_kills`.
+- **Handler** : `GET /squad/weapons?xuid=...&matchIds=...`.
+- **Frontend** : composant `WeaponsTable` (Phase 0) wire dans `SquadContributionsPage`.
+
+#### §4.8 Barplot armes top 12 grouped — **0.5 j**
+- **Frontend** : `charts/weaponsBarChart.ts` (derive de §4.7).
+
+#### §4.9 Galerie medailles — **2 j**
+- **Repo** : `LoadMedalsForMatchesByXUID` deja en Phase 0.
+- **Service** : `SquadService.GetMedals(ctx, xuids []string, matchIDs []string)` (top 20 matchs).
+- **Handler** : `GET /squad/medals?xuids=...&matchIds=...`.
+- **Frontend** : composant `MedalsGallery` (Phase 0) wire dans `SquadContributionsPage`.
 
 ---
 
-## 4. Endpoints Go a exposer (recapitulatif)
+## 5. Endpoints Go a exposer (recapitulatif)
 
-| Endpoint | Phase | Usage |
-|----------|-------|-------|
-| `GET /players/{slug}/kpi-stats?scope=current\|alltime` | 1 | §2.1 KPI personnels + reference tendance |
-| `GET /squad/perf-score?xuids=...&matchIds=...` | 1 | §2.2 scores individuels + collectif |
-| `GET /squad/map-breakdown?matchIds=...` | 2 | §3.1, §3.2, §3.3, §3.4 |
-| `GET /squad/map-winrate-history?matchIds=...` | 2 | §3.2 |
-| `GET /players/{gt}/form-score?matchIds=...` | 3 | §3.6 |
-| `GET /squad/impact?xuids=...&matchIds=...` | 4 | §3.7 (8 roles) |
-| `GET /squad/first-events?matchIds=...` | 5 | §4.6 |
-| `GET /squad/kill-timing?xuids=...&matchIds=...` | 6 | §3.9, §4.5 |
-| `GET /squad/intensity?xuids=...&matchIds=...` | 6 | §4.5 |
-| `GET /squad/weapons?xuid=...&matchIds=...` | 9 | §4.7, §4.8 |
-| `GET /squad/medals?xuids=...&matchIds=...` | 9 | §4.9 |
+| Endpoint | Phase | Handler | Service | Usage |
+|----------|-------|---------|---------|-------|
+| `GET /players/{slug}/kpi-stats?scope=current\|alltime` | 1 | `kpi_stats.go` | `KPIService.GetKPIStats` | §2.1 |
+| `GET /squad/perf-score?xuids=...&matchIds=...` | 1 | `squad_perf_score.go` | `SquadService.GetPerfScore` | §2.2 |
+| `GET /squad/map-breakdown?matchIds=...&include_history=...` | 2 | `squad_map_breakdown.go` | `SquadService.GetMapBreakdown` | §3.1, §3.2, §3.3, §3.4 |
+| `GET /players/{gt}/form-score?matchIds=...` | 3 | `form_score.go` | `SquadService.GetFormScoreHistory` | §3.6 |
+| `GET /squad/impact?xuids=...&matchIds=...` | 4 | `squad_impact.go` | `SquadService.GetImpact` | §3.7 (8 roles) |
+| `GET /squad/history?xuids=...&matchIds=...` | 5 | `squad_history.go` | reutilise existant | §3.8 |
+| `GET /squad/first-events?matchIds=...` | 5 | `squad_first_events.go` | `SquadService.GetFirstEvents` | §4.6 |
+| `GET /squad/cadence?xuids=...&matchIds=...` | 6 | `squad_cadence.go` | `SquadService.GetCadence` | §3.9 |
+| `GET /squad/intensity?xuids=...&matchIds=...` | 6 | `squad_intensity.go` | `SquadService.GetIntensity` | §4.5 |
+| `GET /squad/radar?xuids=...&matchIds=...` | 8 | `squad_radar.go` | `SquadService.GetRadarProfiles` | §4.2 |
+| `GET /squad/weapons?xuid=...&matchIds=...` | 9 | `squad_weapons.go` | `SquadService.GetWeapons` | §4.7, §4.8 |
+| `GET /squad/medals?xuids=...&matchIds=...` | 9 | `squad_medals.go` | `SquadService.GetMedals` | §4.9 |
 
-NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageResponse` existant pour reduire les round-trips (a decider au moment de l'implementation).
+NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageResponse` existant pour reduire les round-trips (a decider au moment de l'implementation, conserver des handlers individuels pour la testabilite).
 
 ---
 
-## 5. Estimation par phase
+## 6. Estimation par phase
 
 | Phase | Sections | Cout | Pre-requis |
 |-------|----------|-----:|------------|
-| Phase 0 — Briques transverses | helpers algos + repo + UI | 7.5 j | A faire en premier |
+| Phase 0 — Briques transverses | helpers algos + domain + port + repo + UI | 7.5 j | A faire en premier |
 | Phase 1 — En-tetes | §2.1, §2.2 | 2.5 j | Phase 0 (perf score v2) |
 | Phase 2 — Synergies "carte" | §3.1, §3.2, §3.3, §3.4 | 4 j | `ComputeMapBreakdown` |
 | Phase 3 — Timeline + Form Score | §3.5, §3.6 | 3 j | LOWESS |
@@ -211,31 +401,7 @@ NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageRespons
 | Phase 9 — Armes + Medailles | §4.7, §4.8, §4.9 | 4.5 j | Repo armes + medailles |
 | **Total** | 22 charts + briques | **~36 j** | |
 
-**MVP "good enough" ~22 j** : Phase 0 (sans LOWESS) + Phases 1, 2, 4 (en restant a 4 roles), 5, 7 (sans records overlays), 9 (medailles seulement). Ramene la fidelite visuelle a ~80 %.
-
----
-
-## 6. Conventions & contraintes
-
-### 6.1 Architecture
-- Respecter `arch-rules` : separation claire `internal/analysis/` (pure) vs `internal/service/` (orchestration) vs `internal/platform/duckdb/` (acces donnees).
-- Pas de logique metier dans `internal/api/handlers/`.
-- Tests Go obligatoires pour chaque algo de `internal/analysis/`.
-
-### 6.2 Frontend
-- Respecter `color-tokens` : aucune couleur hex dans `apps/web/src/features/squad/`. Utiliser `tokenCssVar`, `resolveToken`, `getSeriesColors`.
-- i18n FR/EN pour toutes les nouvelles strings (utiliser `getSquadText` ou etendre).
-- Field mappings via `useFieldMappings` pour les libelles metier (multi-titres).
-- Tous les `PlotlyChart` passent par le wrapper centralise.
-
-### 6.3 Tests
-- Couvrir chaque endpoint avec un test handler.
-- Snapshots Plotly figures pour eviter les regressions visuelles (si tooling dispo).
-- Tests React Testing Library pour les empty states (no_selection / invalid_selection / no_chart_data).
-
-### 6.4 Documentation
-- Mettre a jour `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` au fil de l'eau si on devie.
-- Entrees `.ai/thought_log.md` a chaque phase terminee.
+**MVP "good enough" ~22 j** : Phase 0 (sans LOWESS), Phases 1, 2, 4 (en restant a 4 roles), 5, 7 (sans records overlays), 9 (medailles seulement). Ramene la fidelite visuelle a ~80 %.
 
 ---
 
@@ -243,16 +409,16 @@ NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageRespons
 
 | Phase | Statut | Branche | PR | Note |
 |-------|--------|---------|----|----|
-| 0 — Briques transverses | A faire | — | — | |
-| 1 — En-tetes | A faire | — | — | |
-| 2 — Synergies carte | A faire | — | — | |
-| 3 — Timeline + Form Score | A faire | — | — | |
-| 4 — Impact | A faire | — | — | |
-| 5 — Tableau + First Events | A faire | — | — | |
-| 6 — Cadence + Intensite | A faire | — | — | |
-| 7 — Charts trio | A faire | — | — | |
-| 8 — Radar | A faire | — | — | |
-| 9 — Armes + Medailles | A faire | — | — | |
+| 0 — Briques transverses | A faire | feat/squad-page-portage | — | LOWESS impl/wrapper a trancher |
+| 1 — En-tetes | A faire | feat/squad-page-portage | — | |
+| 2 — Synergies carte | A faire | feat/squad-page-portage | — | |
+| 3 — Timeline + Form Score | A faire | feat/squad-page-portage | — | Depend Phase 0 LOWESS |
+| 4 — Impact | A faire | feat/squad-page-portage | — | Depend Phase 0 ImpactV2 |
+| 5 — Tableau + First Events | A faire | feat/squad-page-portage | — | |
+| 6 — Cadence + Intensite | A faire | feat/squad-page-portage | — | Depend Phase 0 KillTiming |
+| 7 — Charts trio | A faire | feat/squad-page-portage | — | Depend Phase 0 Records + UI |
+| 8 — Radar | A faire | feat/squad-page-portage | — | Depend Phase 0 ParticipationProfile |
+| 9 — Armes + Medailles | A faire | feat/squad-page-portage | — | |
 
 ---
 
@@ -260,5 +426,8 @@ NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageRespons
 
 - Audit complet : [docs/AUDIT_TEAMMATES_V7_COCKPIT.md](../docs/AUDIT_TEAMMATES_V7_COCKPIT.md)
 - Plan match view (modele de format) : [.ai/PLAN_MATCH_VIEW_GO_PORTAGE.md](PLAN_MATCH_VIEW_GO_PORTAGE.md)
+- Skill `arch-rules` : separation des couches Go.
+- Skill `frontend-patterns` : conventions React/TypeScript apps/web.
+- Skill `delivery-checklist` : grille go/no-go avant chaque commit/PR.
 - Source Python : branche `v7/cockpit`, modules `src/ui/pages/teammates*.py`, `src/data/services/teammates_service.py`, `src/analysis/{friends_impact,squad_records,match_intensity,_performance_form,_performance_squad,participation_radar}.py`, `src/visualization/{squad_*,teammates_*,match_intensity_heatmap,trio,_form_score}.py`.
-- Cible Go : `apps/go-api/internal/{analysis,service,platform/duckdb}/squad_*.go` + `apps/web/src/features/squad/`.
+- Cible Go : `apps/go-api/internal/{analysis,domain,port,service,api/handlers,platform/duckdb}/` + `apps/web/src/features/squad/`.

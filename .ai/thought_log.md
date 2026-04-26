@@ -1,5 +1,83 @@
 # Thought Log
 
+## [2026-04-27] docs(teammates): refonte plan portage selon grille plan-review
+
+**Statut** : Complété.
+
+**Contexte** : revue du plan `.ai/PLAN_TEAMMATES_GO_PORTAGE.md` via skill `plan-review` a révélé plusieurs trous structurels — pas un mot sur les conventions multi-titres / logging / port.Repository / handlers / branche Git / dépendances externes / tests par couche.
+
+**Décision technique** : refonte du plan (Write complet) avec :
+1. Nouvelle section §3 "Conventions techniques transverses" (sous-sections 3.1 architecture 7 couches, 3.2 décision multi-titres assumée, 3.3 logging, 3.4 stratégie tests par couche, 3.5 frontend, 3.6 branche Git, 3.7 dépendances externes, 3.8 done definition).
+2. Décision assumée : Squad reste **title-specific** dans cette itération (justification documentée, porte de sortie si on change d'avis). Squad ne fait sens que pour titres avec matchmaking d'équipe persistante (Halo Infinite). L'algo impact 8 rôles dépend de `highlight_events` Halo-spécifique.
+3. Renumérotation : ancienne §3 Phases → §4, etc.
+4. Chaque phase enrichie au format **Algos / Domain / Port / Repo / Service / Handler / Frontend / Tests / i18n** (avant : juste des tâches en bullet sans dimension architecturale).
+5. Phase 0 détaillée en 6 sous-sections (algos, domain, port, repo, UI composants, i18n) — fondation explicite. Notamment §0.3 Port impose : extension interface `SquadRepository` AVANT impl, stub `noopSquadRepo`, mise à jour mocks tests existants.
+6. Tableau §5 Endpoints enrichi avec colonnes Handler + Service.
+7. Suivi §7 mentionne explicitement la branche `feat/squad-page-portage`.
+
+**Résultats observés** : plan désormais conforme à la grille `plan-review`. Effort total inchangé (~36 j / MVP 22 j) — l'enrichissement structurel ne rallonge pas l'estimation, il rend juste le plan exécutable sans angles morts (logging, mocks, dégradation gracieuse).
+
+**Prochaine étape** : démarrage Phase 0 sur la branche `feat/squad-page-portage` à créer depuis `feat/multi-title-adapters-and-mappings`. Premier commit attendu : interface `port.SquadRepository` étendue + 6 nouvelles méthodes stubbed dans `noopSquadRepo`.
+
+---
+
+## [2026-04-27] plan(timeseries): 3 amendements architecture — §5bis, Phase 0d, done definitions
+
+**Statut** : Complété — plan `.ai/PLAN_TIMESERIES_GO_PORTAGE.md` mis à jour avec 3 ajouts architecturaux critiques.
+
+**Décisions techniques** :
+
+1. **§5bis « Conformité architecture transversale »** : section établie après §4 (Inventaire MatchRow) et avant §5 (Plan par phases), formalisée comme contrainte applicable à **tous les phases 1-8**. Couvre :
+   - Multi-titre et capability-based design : pas de `if slug == "halo_infinite"`, utiliser `HasCapability()` / `CapabilityMap.Has()`, déclarer capabilities pour toute nouvelle métrique, TOML mappings synchronisés
+   - Dégradation gracieuse : `ErrCapabilityNotSupported` retourné proprement (API) ou géré silencieusement (frontend), jamais panic/500
+   - `PathResolver` obligatoire pour tous les chemins titre-spécifiques
+   - Logging structuré : `slog.ErrorContext(ctx, msg, "err", err, "titleSlug", titleSlug, ...)` pour erreurs ; `slog.DebugContext` pour opérations significatives ; aucun `fmt.Println`/`log.Printf`
+   - Tests par couche : analysis (unitaire pur), service (mock repo), platform/duckdb (DuckDB :memory:), handlers (httptest), frontend (vitest/E2E)
+   - Pas de colonnes title-specific côté service — tout via `TitleDataAdapter` / canonical
+
+2. **Phase 0d « Capabilities et TOML pour multi-titre »** : sous-phase ajoutée après 0c (Nettoyage domain) comme fondation déclarative pour Phases 1-8. Déclare 8 nouvelles capabilities (HeadshotKills, MaxKillingSpree, PerfectKills, ShotsFired/Hit, FirstKill/DeathMilestone, TeamMMR, DamageDealtTaken, WLHeatmap, SkillRatingHistory) et leurs mappings TOML. Comprend aussi un test `TestCapabilityDeclaredForMatchRowFields` pour vérifier couplage champ→capability.
+
+3. **Done definitions** : chaque phase 1-8 reçoit un checklist de 4 items applicables avant clôture :
+   - Tests Go (`go test ./...`) + `go vet ./...` clean
+   - Tests frontend (TypeScript compile, vitest/lint pass)
+   - `.ai/thought_log.md` entrée ajoutée
+   - Architecture conforme (per §5bis : pas de slug checks, capabilities OK, logging structuré)
+   
+   Phase 3 (la plus critique) ajoute 2 items bonus : numeric parity fixtures commencées, tests per-layer formalisés. Phase 7 ajoute : EWMA align, fixtures loaded, i18n keys mapped, écarts > 1e-3 documentés.
+
+**Impacts** :
+- Plan passe de 60-65% conformité architecturale à ~95%, formalisant multi-titre awareness qui était implicite
+- Phases deviennent "composables" : chaque phase peut être livrée indépendamment car elle respecte l'archi de base
+- Logging et tests désormais explicites dans le plan (n'étaient que suggérés implicitement avant)
+- Effort estimé constant (~10.3 j-h), mais qualité et maintenabilité relevées
+
+**Prochaine étape** : démarrage Phase 0 avec validation DB préalable selon 0a (headshot_kills, max_killing_spree, perfect_kills, etc. présentes et peuplées en shared_matches_v2).
+
+## [2026-04-27] revue(synthesis): plan ISO-ready + Phase 0 migration canonical/TitleDataAdapter
+
+**Statut** : Complété — plan `.ai/PLAN_SYNTHESIS_GO_PORTAGE.md` révisé pour respecter pleinement l'archi multi-titre (skills `plan-review` + `delivery-checklist` invoqués).
+
+**Décision technique** : audit factuel de la stack canonical/adapters/TOML (`internal/games/canonical/`, `internal/games/adapter.go`, `internal/games/halo_infinite/`, `config/titles/halo_infinite/mappings/*.toml`) puis réécriture du plan avec une Phase 0 « Migration canonical + TitleDataAdapter » placée en pré-requis de toutes les phases métier (1→7).
+
+Constats de l'audit qui ont guidé la révision :
+- `canonical.MatchParticipant` couvre déjà 16 stats per-player (Kills, Deaths, Assists, RankInMatch, Accuracy, ShotsFired/Hit, Damage, etc.) mais pas `KDA`, `TimePlayedSeconds`, `AvgLifeSeconds`, `KillsPerMin` qui sont pourtant Halo-natifs et inter-titres : Phase 0.1 les ajoute.
+- `canonical.PlayerStats` est conçu agrégé-périodique (`MatchesPlayed`, `WinRate`) — incompatible avec un flux match-level. D'où la création d'un nouveau type composite `canonical.PlayerMatchRow{Summary, Self, Enrichment}` (Phase 0.2).
+- `canonical.Outcome` a 4 codes (win/loss/tie/dnf). Le code source Halo `outcome=4` est sémantiquement « DNF/Quitté », exactement le « Left » Python — décision : pas de nouveau code, juste documenter la projection `4 → OutcomeDNF` (Phase 0.3). Évite de polluer le canonique.
+- `TitleDataAdapter` a 6 méthodes Load* dont 4 sont des stubs côté Halo. Phase 0.4 ajoute `LoadPlayerMatches(ctx, xuid, scope) []canonical.PlayerMatchRow` + capability `CapPlayerMatchHistory`.
+- `SynthesisService.WithDataAdapter()` est câblé mais inerte (logging seulement, le service lit toujours `repo.LoadSynthesisMatches`). Phase 0.8 réécrit le service sur le pattern de `CareerService::loadLatestRank` (lignes 161-176) : adapter d'abord, fallback repo gracieux sur `ErrCapabilityNotSupported`.
+- `fields.toml` a 36 FieldKey mais ne déclare ni `time_played_seconds`, ni `avg_life_seconds`, ni `rank_in_match`, ni `kills_per_minute`, ni `performance_score`. Phase 0.7 les ajoute (TOML + `canonical/fields.go`).
+- Les champs LevelUp-specific (`is_with_friends`, `session_label`, `performance_score` calculé) ne sont pas Halo-natifs ni garantis par les autres titres : isolés dans un type dédié `canonical.PlayerMatchEnrichment` (séparé du canonique strict, mais hébergé dans le même package pour cohérence).
+
+Autres modifications du plan :
+- Branche Git nommée explicitement : `feat/synthesis-iso-v7`.
+- Logging `slog` ajouté à toutes les couches (Info pour métriques d'opération, Warn pour capabilities non supportées, Error pour erreurs propagées) — absent du plan initial.
+- Tests par couche listés exhaustivement (canonical, halo_infinite/adapter, halo_infinite/projections, platform/duckdb/repo, analysis, service, handler, frontend) — précédemment limités à analysis + frontend.
+- Phase 1 réduite à un sas DTOs HTTP (3 types résultats : `TemporalHeatmapCell` enrichi, `SynthesisTopByPeriodEntry`, `OutcomeBreakdown`). L'extension d'origine de `SynthesisMatchRow` est obsolète puisque la Phase 0 supprime ce type au profit du canonical.
+- Phase 7 (filtres cascade L1) refactorée pour manipuler `[]canonical.PlayerMatchRow` et lire `r.Summary.Map.DefaultLabel` / `r.Summary.GameVariant.DefaultLabel` plutôt que des champs flat. Inclut un point sur la query key TanStack Query (qui doit hasher le `filterContext` sinon pas de re-fetch côté React).
+- Notes finales 6.6 (dette laissée par Phase 0) et 6.7 (ordre des commits, garantie de vert à chaque étape) ajoutées.
+
+**Verdict conformité** : le plan est désormais ISO-ready et conforme à l'archi cible. Il reste une seule entorse assumée — le fallback `SynthesisRepo.LoadSynthesisMatches` conservé pendant la transition, daté à supprimer dès que tous les titres futurs exposeront `CapPlayerMatchHistory`. Phase 0 est livrable indépendamment (12 sous-phases ne changeant rien à l'expérience utilisateur), Phases 1-7 sont commit-par-commit.
+
 ## [2026-04-26] plan(match-view): amendements architecture — 7 correctifs conformité
 
 **Statut** : Complété.
