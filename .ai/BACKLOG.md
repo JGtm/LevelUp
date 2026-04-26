@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-04-22.
+> Mis à jour le 2026-04-26.
 
 ---
 
@@ -9,6 +9,59 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [Multi-titre] Couche canonique `weapon_family` cross-titres
+
+**Noté le** : 2026-04-26 | **Priorité** : Basse — bloqué par arrivée d'un second titre réel
+
+**Contexte** : Plan complet documenté dans `.ai/PLAN_WEAPON_FAMILY_CANONICAL.md` (référentiel `weapon_families` global + colonne `family_key` sur `weapon_labels` par-titre + TOML source-de-vérité). L'audit `.ai/AUDIT_WEAPONS_2026-04-25.md` a validé la faisabilité sur HI : 42 weapon_id seedés, 88 % mappables vers ~17 familles canoniques, ~32 familles totales prévues pour couvrir Halo CE→Infinite. Effort estimé : 2.5–3j en 3 phases (référentiel global + mapping HI + adapter/endpoint).
+
+**Ce qui doit être fait** :
+1. Phase 1 — créer `data/warehouse/canonical_metadata.duckdb` avec tables `weapon_families` + `weapon_family_translations` ; créer `config/canonical/weapon_families.toml` (~32 familles) ; script `tools/seed-weapon-families.go`.
+2. Phase 2 — `ALTER TABLE weapon_labels ADD COLUMN family_key VARCHAR` côté HI ; créer `config/titles/halo_infinite/mappings/weapon_families.toml` (~37 lignes) ; seeder via `tools/seed-weapon-families-mapping.go`.
+3. Phase 3 — étendre `TitleSemanticAdapter` avec `WeaponFamilies()` + `WeaponFamilyOf(weaponID)` ; handler `/api/v1/weapon-families` derrière flag `WEAPON_FAMILIES_API_ENABLED=false`.
+
+**Ajustements vs plan d'origine** (cf. AUDIT §7.1) :
+- compléter l'annexe §10 du plan avec 6 familles HI manquantes (`shock_rifle`, `stalker_rifle`, `heatwave`, `sentinel_beam`, `ravager`, `mutilator`) → passe de 26 à ~32 familles ;
+- expliciter `family_key = NULL` comme valide pour les sentinelles (Grenade/Melee/Vehicle) et easter-eggs ;
+- relever le seuil de couverture du test CI de 60 % à 85 % (HI réel à 88 %).
+
+**Conditions de déblocage** :
+1. ✅ Phase A multi-titres terminée (commit `aaccbe12`+) ;
+2. ❌ second titre réel (Halo 5, MCC, ODST…) validé en pipeline produit.
+
+**Documents liés** :
+- `.ai/PLAN_WEAPON_FAMILY_CANONICAL.md` (plan complet)
+- `.ai/AUDIT_WEAPONS_2026-04-25.md` (audit du référentiel HI)
+
+---
+
+### [Multi-titre/Phase D-bis] Migration des dicts i18n React vers `useFieldLabel`
+
+**Noté le** : 2026-04-26 | **Priorité** : Moyenne — débloqué (Phase A→F multi-titres livrées)
+
+**Contexte** : Audit `.ai/AUDIT_I18N_REACT_2026-04-25.md` (§5.1) liste 9 fichiers à migrer vers le hook `useFieldLabel(key)` créé en Phase D (commit `343de0f2`). La Phase D initiale n'a câblé que le hook + lint anti-hardcode + 18 fichiers React qui consomment `useFieldMappings` ; les **dicts FR/EN existants** (`kpi.i18n.ts`, `highlights.i18n.ts`, `compare/i18n.ts`, `spartanIdentity.i18n.ts`, `palmares/i18n.ts`) restent en place. Effort estimé : 5j (cf. AUDIT §5.4, marge +30 % vs estimation initiale 3–4j).
+
+**État actuel** (vérifié 2026-04-26) :
+- ✅ Ternaires inline `locale === 'en' ? 'X' : 'Y'` éradiqués des 4 composants ciblés (timeseries-scatter, timeseries-kda-bars, SquadContributionsPage, MatchViewPage)
+- ❌ ~16 occurrences de labels métier hardcodés (Kills/Deaths/Assists/Précision/Morts/Eliminations) restent dans 3 dicts (kpi.i18n.ts: 1, highlights.i18n.ts: 5, compare/i18n.ts: 10)
+
+**Ce qui doit être fait** (ordre AUDIT §5.1) :
+1. `features/home/kpi.i18n.ts` → remplacer `KPITextDict.labels.*` par `useFieldLabel(key)` ; conserver `units` et `pluralizers` côté React.
+2. `features/home/highlights.i18n.ts` → idem (séparer libellés FieldKey vs phrases hardcodées).
+3. `features/compare/i18n.ts` → idem (fichier petit, 127L).
+4. `features/home/spartanIdentity.i18n.ts` → migrer XP/rang vers TOML, conserver le reste.
+5. `features/palmares/i18n.ts` → tri citations métier vs UI.
+6. Activer la whitelist `*i18n*.ts` dans `tools/lint-no-hardcoded-fields.mjs` une fois la migration finie.
+7. Tests E2E + golden frontend FR/EN pour valider zéro régression.
+
+**Pré-requis** : `MULTI_TITLE_API_ENABLED=true` côté serveur pour que le hook reçoive les libellés (sinon fallback gracieux sur la key).
+
+**Documents liés** :
+- `.ai/AUDIT_I18N_REACT_2026-04-25.md` §5.1 (ordre de migration), §5.3 (lint AST), §5.4 (effort 5j)
+- `apps/web/src/lib/i18n/fieldMappings.ts` (hook `useFieldLabel` déjà disponible)
 
 ---
 
