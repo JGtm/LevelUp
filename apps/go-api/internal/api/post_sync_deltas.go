@@ -364,14 +364,14 @@ type playerRecord struct {
 }
 
 func loadPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string) (playerRecord, error) {
-	if pdb == nil || pdb.Player == nil {
+	if pdb == nil || pdb.SharedSocial == nil || pdb.XUID == "" {
 		return playerRecord{}, nil
 	}
 	var v sql.NullFloat64
 	var matchID sql.NullString
-	err := pdb.ReadDB().QueryRow(ctx,
-		`SELECT value, achieved_match_id FROM player_records WHERE metric = ?`,
-		metric,
+	err := pdb.SharedSocial.QueryRow(ctx,
+		`SELECT value, achieved_match_id FROM player_records WHERE xuid = ? AND metric = ?`,
+		pdb.XUID, metric,
 	).Scan(&v, &matchID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -387,20 +387,23 @@ func loadPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string) 
 }
 
 func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string, value float64, matchID string) error {
-	rwDB, err := duckdb.OpenReadWrite(pdb.Player.Path())
+	if pdb == nil || pdb.SharedSocial == nil || pdb.XUID == "" {
+		return fmt.Errorf("upsertPlayerRecord: shared_social or xuid missing")
+	}
+	rwDB, err := duckdb.OpenReadWrite(pdb.SharedSocial.Path())
 	if err != nil {
 		return fmt.Errorf("open rw: %w", err)
 	}
 	defer rwDB.Close()
 	_, err = rwDB.Exec(ctx, `
-		INSERT INTO player_records (metric, value, achieved_at, achieved_match_id, updated_at)
-		VALUES (?, ?, NOW(), ?, NOW())
-		ON CONFLICT (metric) DO UPDATE SET
+		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
+		VALUES (?, ?, ?, NOW(), ?, NOW())
+		ON CONFLICT (xuid, metric) DO UPDATE SET
 			value             = EXCLUDED.value,
 			achieved_at       = EXCLUDED.achieved_at,
 			achieved_match_id = EXCLUDED.achieved_match_id,
 			updated_at        = NOW()
-	`, metric, value, nullableMatchID(matchID))
+	`, pdb.XUID, metric, value, nullableMatchID(matchID))
 	return err
 }
 

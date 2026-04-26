@@ -5,6 +5,7 @@ package duckdb_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -13,11 +14,13 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// newNotifTestDB crée stats.duckdb temporaire avec les 2 tables notifications.
+// newNotifTestDB crée shared_social.duckdb temporaire avec les 3 tables
+// notifications (xuid PK). Reflète exactement la migration
+// `create_notifications_in_shared_social`.
 func newNotifTestDB(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "stats.duckdb")
+	dbPath := filepath.Join(dir, "shared_social.duckdb")
 
 	rw, err := duckdb.OpenReadWrite(dbPath)
 	if err != nil {
@@ -27,7 +30,8 @@ func newNotifTestDB(t *testing.T) string {
 
 	ddl := `
 		CREATE TABLE player_notifications (
-			id            BIGINT PRIMARY KEY,
+			xuid          VARCHAR NOT NULL,
+			id            BIGINT NOT NULL,
 			category      VARCHAR NOT NULL,
 			severity      VARCHAR NOT NULL DEFAULT 'info',
 			title_key     VARCHAR NOT NULL,
@@ -39,16 +43,28 @@ func newNotifTestDB(t *testing.T) string {
 			actor_name    VARCHAR,
 			source        VARCHAR NOT NULL,
 			created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			read_at       TIMESTAMP
+			read_at       TIMESTAMP,
+			PRIMARY KEY (xuid, id)
 		);
-		CREATE INDEX idx_pn_read_at      ON player_notifications(read_at);
-		CREATE INDEX idx_pn_created_desc ON player_notifications(created_at DESC);
-		CREATE INDEX idx_pn_category     ON player_notifications(category);
+		CREATE INDEX idx_pn_xuid_unread       ON player_notifications(xuid, read_at);
+		CREATE INDEX idx_pn_xuid_created_desc ON player_notifications(xuid, created_at DESC);
+		CREATE INDEX idx_pn_xuid_category     ON player_notifications(xuid, category);
 		CREATE TABLE notification_preferences (
-			category   VARCHAR PRIMARY KEY,
+			xuid       VARCHAR NOT NULL,
+			category   VARCHAR NOT NULL,
 			enabled    BOOLEAN NOT NULL DEFAULT TRUE,
 			delivery   VARCHAR NOT NULL DEFAULT 'both',
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (xuid, category)
+		);
+		CREATE TABLE player_records (
+			xuid              VARCHAR NOT NULL,
+			metric            VARCHAR NOT NULL,
+			value             DOUBLE NOT NULL,
+			achieved_at       TIMESTAMP,
+			achieved_match_id VARCHAR,
+			updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (xuid, metric)
 		);
 	`
 	for _, stmt := range splitStmts(ddl) {
@@ -88,6 +104,9 @@ func trimSpace(s string) string {
 	return s
 }
 
+// openNotifPlayerDB ouvre le shared_social.duckdb de test et construit un
+// PlayerDB minimal où SharedSocial pointe sur cette DB. Le repo lit/écrit
+// désormais sur SharedSocial et non plus Player, donc Player peut rester nil.
 func openNotifPlayerDB(t *testing.T, dbPath string) *duckdb.PlayerDB {
 	t.Helper()
 	db, err := duckdb.OpenReadWrite(dbPath)
@@ -96,9 +115,9 @@ func openNotifPlayerDB(t *testing.T, dbPath string) *duckdb.PlayerDB {
 	}
 	t.Cleanup(func() { db.Close() })
 	return &duckdb.PlayerDB{
-		Player:   db,
-		XUID:     "xuid-notif-test",
-		Gamertag: "NotifTestPlayer",
+		SharedSocial: db,
+		XUID:         "xuid-notif-test",
+		Gamertag:     "NotifTestPlayer",
 	}
 }
 
@@ -373,53 +392,32 @@ func TestNotificationsRepo_CapAndSweep(t *testing.T) {
 
 // ─── player_records (table d'records pour personal_record) ───────────────
 
-// newPlayerRecordsTestDB crée un stats.duckdb minimal avec player_records seul
-// (pour exercer loadPlayerRecord/upsertPlayerRecord en isolation).
-func newPlayerRecordsTestDB(t *testing.T) string {
-	t.Helper()
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "stats.duckdb")
-	rw, err := duckdb.OpenReadWrite(dbPath)
-	if err != nil {
-		t.Fatalf("OpenReadWrite: %v", err)
-	}
-	defer rw.Close()
-
-	if _, err := rw.Exec(context.Background(), `
-		CREATE TABLE player_records (
-			metric            VARCHAR PRIMARY KEY,
-			value             DOUBLE NOT NULL,
-			achieved_at       TIMESTAMP,
-			achieved_match_id VARCHAR,
-			updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`); err != nil {
-		t.Fatalf("CREATE TABLE player_records: %v", err)
-	}
-	return dbPath
-}
-
+// TestPlayerRecords_UpsertAndLoad : valide qu'on peut écrire/lire un record via
+// le shared_social.duckdb avec scoping xuid. Réutilise newNotifTestDB qui crée
+// la table avec PK (xuid, metric).
 func TestPlayerRecords_UpsertAndLoad(t *testing.T) {
-	dbPath := newPlayerRecordsTestDB(t)
+	dbPath := newNotifTestDB(t)
 	pdb := openNotifPlayerDB(t, dbPath)
 	ctx := context.Background()
 
-	// Init
-	rwDB, err := duckdb.OpenReadWrite(pdb.Player.Path())
+	// Insert via raw SQL pour bypasser le repo (focus sur le schéma shared_social)
+	rwDB, err := duckdb.OpenReadWrite(pdb.SharedSocial.Path())
 	if err != nil {
 		t.Fatalf("rwDB: %v", err)
 	}
 	if _, err := rwDB.Exec(ctx, `
-		INSERT INTO player_records (metric, value, achieved_match_id)
-		VALUES ('best_kda', 4.5, 'm1')`); err != nil {
+		INSERT INTO player_records (xuid, metric, value, achieved_match_id)
+		VALUES (?, 'best_kda', 4.5, 'm1')`, pdb.XUID); err != nil {
 		t.Fatalf("seed insert: %v", err)
 	}
 	rwDB.Close()
 
-	// Read via raw SQL pour vérifier round-trip
+	// Read via SharedSocial pour vérifier round-trip + scoping xuid
 	var v float64
 	var matchID string
-	err = pdb.ReadDB().QueryRow(ctx,
-		`SELECT value, achieved_match_id FROM player_records WHERE metric = 'best_kda'`,
+	err = pdb.SharedSocial.QueryRow(ctx,
+		`SELECT value, achieved_match_id FROM player_records WHERE xuid = ? AND metric = 'best_kda'`,
+		pdb.XUID,
 	).Scan(&v, &matchID)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
@@ -429,5 +427,14 @@ func TestPlayerRecords_UpsertAndLoad(t *testing.T) {
 	}
 	if matchID != "m1" {
 		t.Errorf("expected match m1, got %q", matchID)
+	}
+
+	// Sécurité : un autre xuid ne doit PAS voir ce record
+	var otherV sql.NullFloat64
+	_ = pdb.SharedSocial.QueryRow(ctx,
+		`SELECT value FROM player_records WHERE xuid = 'other-xuid' AND metric = 'best_kda'`,
+	).Scan(&otherV)
+	if otherV.Valid {
+		t.Errorf("xuid scoping leak: other-xuid sees value %v", otherV.Float64)
 	}
 }
