@@ -115,7 +115,60 @@ func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.M
 	}
 	modes := r.translateModeFilterOptions(ctx, modePairs)
 
-	return domain.MediaFilterOptions{Maps: maps, Modes: modes}, nil
+	playlistQuery, playlistArgs := buildQ37MediaPlaylistOptionsQuery(filters, queryCfg)
+	playlistPairs, err := r.loadMediaIDLabelPairs(ctx, playlistQuery, playlistArgs)
+	if err != nil {
+		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions playlists: %w", err)
+	}
+	playlists := r.translatePlaylistFilterOptions(ctx, playlistPairs)
+
+	return domain.MediaFilterOptions{Playlists: playlists, Maps: maps, Modes: modes}, nil
+}
+
+// translatePlaylistFilterOptions enrichit les libellés de playlists en FR via
+// asset_translations (asset_type='playlist') + dédup par playlist_id. Value =
+// playlist_id (stable) ; sinon fallback label brut.
+func (r *MediaRepo) translatePlaylistFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
+	if len(pairs) == 0 {
+		return []domain.LabelValue{}
+	}
+	idsSet := make(map[string]struct{})
+	for _, p := range pairs {
+		if p.id != "" {
+			idsSet[p.id] = struct{}{}
+		}
+	}
+	ids := make([]string, 0, len(idsSet))
+	for id := range idsSet {
+		ids = append(ids, id)
+	}
+	translations := r.loadAssetTranslationNames(ctx, "playlist", ids)
+
+	seenIDs := make(map[string]bool)
+	seenLabels := make(map[string]bool)
+	options := make([]domain.LabelValue, 0, len(pairs))
+	for _, p := range pairs {
+		labelFR := translations[p.id]
+		if labelFR == "" {
+			labelFR = p.label
+		}
+		value := p.id
+		if value == "" {
+			value = p.label
+			if seenLabels[value] {
+				continue
+			}
+			seenLabels[value] = true
+		} else {
+			if seenIDs[value] {
+				continue
+			}
+			seenIDs[value] = true
+		}
+		options = append(options, domain.LabelValue{Label: labelFR, Value: value})
+	}
+	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
+	return options
 }
 
 // CurrentPlayerSlug retourne le slug (== gamertag) du joueur dont on lit la galerie.

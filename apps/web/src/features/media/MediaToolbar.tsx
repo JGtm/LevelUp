@@ -8,15 +8,18 @@ interface MediaToolbarProps {
   kindFilter: string
   authorSlugs: string[]
   authors: MediaAuthor[]
+  playlistFilter: string
   mapFilter: string
   modeFilter: string
   groupBy: string
   sortKey: string
   likedOnly: boolean
+  playlistOptions: LabelValue[]
   mapOptions: LabelValue[]
   modeOptions: LabelValue[]
   onKindChange: (value: string) => void
   onAuthorSlugsChange: (slugs: string[]) => void
+  onPlaylistChange: (value: string) => void
   onMapChange: (value: string) => void
   onModeChange: (value: string) => void
   onSortChange: (value: string) => void
@@ -176,15 +179,18 @@ export function MediaToolbar({
   kindFilter,
   authorSlugs,
   authors,
+  playlistFilter,
   mapFilter,
   modeFilter,
   groupBy,
   sortKey,
   likedOnly,
+  playlistOptions,
   mapOptions,
   modeOptions,
   onKindChange,
   onAuthorSlugsChange,
+  onPlaylistChange,
   onMapChange,
   onModeChange,
   onSortChange,
@@ -209,6 +215,7 @@ export function MediaToolbar({
     { value: 'mode', label: text.toolbar.byMode },
     { value: 'session', label: text.toolbar.bySession },
   ]
+  const safePlaylistOptions = withSelectedOption(playlistOptions, playlistFilter)
   const safeMapOptions = withSelectedOption(mapOptions, mapFilter)
   const safeModeOptions = withSelectedOption(modeOptions, modeFilter)
 
@@ -235,6 +242,17 @@ export function MediaToolbar({
         selected={authorSlugs}
         onChange={onAuthorSlugsChange}
       />
+      <Select
+        aria-label={text.toolbar.playlistAriaLabel}
+        className={compactSelectClass}
+        value={playlistFilter}
+        onChange={(event) => onPlaylistChange(event.target.value)}
+      >
+        <option value="">{text.toolbar.allPlaylists}</option>
+        {safePlaylistOptions.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </Select>
       <Select
         aria-label={text.toolbar.mapAriaLabel}
         className={compactSelectClass}

@@ -14,27 +14,29 @@ import "time"
 // MediaPageRequest : corps de POST /pages/media.
 // Tous les champs sont optionnels.
 type MediaPageRequest struct {
-	Page          int               `json:"page"`                  // numéro de page legacy (défaut 1)
-	PageSize      int               `json:"page_size,omitempty"`   // taille de page legacy (défaut 24)
-	Pagination    PaginationRequest `json:"pagination,omitempty"`  // pagination moderne React
-	Kind          string            `json:"kind,omitempty"`        // filtre type legacy : "clip" | "screenshot"
-	KindFilter    string            `json:"kind_filter,omitempty"` // filtre type moderne
-	SectionFilter string            `json:"section_filter,omitempty"`
-	AuthorSlugs   []string          `json:"author_slugs,omitempty"` // si non vide : whitelist player_slug (prend le pas sur SectionFilter)
-	MapFilter     string            `json:"map_filter,omitempty"`
-	ModeFilter    string            `json:"mode_filter,omitempty"`
-	GroupBy       string            `json:"group_by,omitempty"`
-	Sort          string            `json:"sort,omitempty"`
-	LikedOnly     bool              `json:"liked_only,omitempty"`
+	Page           int               `json:"page"`                  // numéro de page legacy (défaut 1)
+	PageSize       int               `json:"page_size,omitempty"`   // taille de page legacy (défaut 24)
+	Pagination     PaginationRequest `json:"pagination,omitempty"`  // pagination moderne React
+	Kind           string            `json:"kind,omitempty"`        // filtre type legacy : "clip" | "screenshot"
+	KindFilter     string            `json:"kind_filter,omitempty"` // filtre type moderne
+	SectionFilter  string            `json:"section_filter,omitempty"`
+	AuthorSlugs    []string          `json:"author_slugs,omitempty"`    // si non vide : whitelist player_slug (prend le pas sur SectionFilter)
+	PlaylistFilter string            `json:"playlist_filter,omitempty"` // filtre par playlist_id (Partie rapide, Super Fiesta, Ranked…)
+	MapFilter      string            `json:"map_filter,omitempty"`
+	ModeFilter     string            `json:"mode_filter,omitempty"`
+	GroupBy        string            `json:"group_by,omitempty"`
+	Sort           string            `json:"sort,omitempty"`
+	LikedOnly      bool              `json:"liked_only,omitempty"`
 }
 
 // MediaFilters regroupe les paramètres de filtrage/tri pour le repository.
 type MediaFilters struct {
-	KindFilter    string   // "clip" | "screenshot" | "" (aucun)
-	SectionFilter string   // "" (toutes sources) | "mine" (player_slug courant) | "teammate" (autres)
-	AuthorSlugs   []string // whitelist explicite de player_slug (prend le pas sur SectionFilter si non vide)
-	MapFilter     string   // filtre ILIKE sur le libellé de carte exposé à l'UI
-	ModeFilter    string   // filtre ILIKE sur le mode normalisé exposé à l'UI
+	KindFilter     string   // "clip" | "screenshot" | "" (aucun)
+	SectionFilter  string   // "" (toutes sources) | "mine" (player_slug courant) | "teammate" (autres)
+	AuthorSlugs    []string // whitelist explicite de player_slug (prend le pas sur SectionFilter si non vide)
+	PlaylistFilter string   // filtre par playlist_id (UUID ou label brut) — match WHERE playlist_id = ? OR LOWER(label) = LOWER(?)
+	MapFilter      string   // filtre par map (map_id ou label canonique)
+	ModeFilter     string   // filtre par mode normalisé (FR ou EN canonique)
 	// ModeFilterCandidates : si non vide, le repo a expansé ModeFilter (FR) en
 	// liste de raw EN via mode_name_tr → le SQL utilise un OR sur chaque variant.
 	ModeFilterCandidates []string
@@ -149,8 +151,9 @@ type MediaItemsPage struct {
 
 // MediaFilterOptions représente les options de filtres dédiées à la galerie.
 type MediaFilterOptions struct {
-	Maps  []LabelValue `json:"maps"`
-	Modes []LabelValue `json:"modes"`
+	Playlists []LabelValue `json:"playlists"`
+	Maps      []LabelValue `json:"maps"`
+	Modes     []LabelValue `json:"modes"`
 }
 
 // MediaPageResponse est la réponse paginée de la galerie médias.

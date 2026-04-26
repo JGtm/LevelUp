@@ -464,9 +464,13 @@ const q37MediaMapLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_r
 const q37MediaModeLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), '^[^:]+:\s*', '', ''), ' on .+$', '', 'i'), '\s*-\s*Forge\b', '', 'i'), '\s*-\s*Ranked\b', '', 'i')), '')`
 
 type mediaWhereConfig struct {
-	includeMapFilter  bool
-	includeModeFilter bool
+	includeMapFilter      bool
+	includeModeFilter     bool
+	includePlaylistFilter bool
 }
+
+// q37MediaPlaylistLabelExpr renvoie le label playlist (FR si dispo, EN sinon).
+const q37MediaPlaylistLabelExpr = `NULLIF(TRIM(COALESCE(mr.playlist_name_fr, mr.playlist_name, '')), '')`
 
 // mediaKindEquivalents retourne les valeurs DB qui doivent matcher un filtre
 // de type donné, en couvrant à la fois la convention legacy ("clip"/"screenshot")
@@ -624,6 +628,11 @@ func buildQ37MediaWhereClause(
 	if f.LikedOnly {
 		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
 	}
+	if whereCfg.includePlaylistFilter && f.PlaylistFilter != "" {
+		// Match flexible : playlist_id (UUID stable, value du dropdown) OU label brut.
+		where = append(where, "(mr.playlist_id = ? OR LOWER("+q37MediaPlaylistLabelExpr+") = LOWER(?))")
+		args = append(args, f.PlaylistFilter, f.PlaylistFilter)
+	}
 	if whereCfg.includeMapFilter && f.MapFilter != "" {
 		// MapFilter peut être un map_id (cas standard, value du dropdown) OU un
 		// label brut (fallback pour médias sans map_id, ou requête manuelle).
@@ -665,8 +674,9 @@ func buildQ37MediaQuery(
 	queryCfg mediaQueryConfig,
 ) (string, []any) {
 	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
-		includeMapFilter:  true,
-		includeModeFilter: true,
+		includeMapFilter:      true,
+		includeModeFilter:     true,
+		includePlaylistFilter: true,
 	}, queryCfg)
 
 	orderBy := queryCfg.timeOrderExpr() + " DESC"
@@ -731,8 +741,9 @@ func BuildQ37MediaCountQuery(f domain.MediaFilters) (string, []any) {
 
 func buildQ37MediaCountQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
 	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
-		includeMapFilter:  true,
-		includeModeFilter: true,
+		includeMapFilter:      true,
+		includeModeFilter:     true,
+		includePlaylistFilter: true,
 	}, queryCfg)
 
 	// COUNT(DISTINCT mf.file_path) car le LEFT JOIN duplique les médias avec
@@ -751,9 +762,11 @@ func BuildQ37MediaMapOptionsQuery(f domain.MediaFilters) (string, []any) {
 }
 
 func buildQ37MediaMapOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
+	// Cartes restreintes par playlist + mode courants (pas par carte elle-même)
 	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
-		includeMapFilter:  false,
-		includeModeFilter: true,
+		includeMapFilter:      false,
+		includeModeFilter:     true,
+		includePlaylistFilter: true,
 	}, queryCfg)
 
 	// Retourne (map_id, label_raw) pour permettre l'enrichissement FR via asset_translations.
@@ -772,9 +785,11 @@ func BuildQ37MediaModeOptionsQuery(f domain.MediaFilters) (string, []any) {
 }
 
 func buildQ37MediaModeOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
+	// Modes restreints par playlist + carte courantes (pas par mode lui-même)
 	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
-		includeMapFilter:  true,
-		includeModeFilter: false,
+		includeMapFilter:      true,
+		includeModeFilter:     false,
+		includePlaylistFilter: true,
 	}, queryCfg)
 
 	// Retourne (pair_name_raw, label_normalisé) pour permettre normalisation
@@ -783,6 +798,29 @@ func buildQ37MediaModeOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryCon
 ` + queryCfg.fromClause() + `
 ` + whereClause + `
   AND ` + q37MediaModeLabelExpr + ` IS NOT NULL
+ORDER BY label ASC`
+
+	return q, args
+}
+
+// BuildQ37MediaPlaylistOptionsQuery retourne les playlists distinctes disponibles.
+func BuildQ37MediaPlaylistOptionsQuery(f domain.MediaFilters) (string, []any) {
+	return buildQ37MediaPlaylistOptionsQuery(f, mediaQueryConfig{})
+}
+
+func buildQ37MediaPlaylistOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
+	// Playlists restreintes par carte + mode courants (pas par playlist elle-même)
+	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
+		includeMapFilter:      true,
+		includeModeFilter:     true,
+		includePlaylistFilter: false,
+	}, queryCfg)
+
+	// Retourne (playlist_id, label_raw) pour Value=playlist_id stable + Label FR enrichi.
+	q := `SELECT DISTINCT COALESCE(mr.playlist_id, '') AS playlist_id, ` + q37MediaPlaylistLabelExpr + ` AS label
+` + queryCfg.fromClause() + `
+` + whereClause + `
+  AND ` + q37MediaPlaylistLabelExpr + ` IS NOT NULL
 ORDER BY label ASC`
 
 	return q, args
