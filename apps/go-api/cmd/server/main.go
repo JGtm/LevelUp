@@ -279,6 +279,10 @@ func main() {
 	var router http.Handler
 	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider)
 
+	// app_release : émission asynchrone d'une notification in-app par joueur si la
+	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
+	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
+
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
 		Handler:      router,
