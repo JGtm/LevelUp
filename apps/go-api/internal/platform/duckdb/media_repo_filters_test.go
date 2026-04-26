@@ -917,6 +917,140 @@ func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Bug critique : duplication de médias par LEFT JOIN sur media_match_associations
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Un média physique = un file_path. Si ce média est associé à plusieurs matchs
+// dans media_match_associations (ex: capture pendant une session de 3 matchs
+// proches dans le temps), le LEFT JOIN produit N lignes au lieu de 1.
+// Conséquences :
+//   - Le média apparaît N fois dans la grille (avec map/mode différents)
+//   - COUNT(*) renvoie N au lieu de 1 → pagination gonflée
+//   - Filtres map/mode incohérents (1 média peut matcher pour plusieurs maps)
+//   - Compteur lightbox X/Y mal calé
+
+func newTestPlayerDBMultiAssoc(t *testing.T) *PlayerDB {
+	t.Helper()
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+
+	seedSharedDBSchema(t, shared)
+	seedSharedDBSchema(t, social)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+
+	ctx := context.Background()
+	for _, q := range []string{
+		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_files`,
+		`DELETE FROM shared.match_registry`,
+	} {
+		if _, err := social.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe: %v", err)
+		}
+	}
+
+	// 3 matchs sur 3 maps différentes, proches temporellement (session)
+	matches := []struct{ id, ts, mapName string }{
+		{"match-aqua", "2025-01-10 14:00:00+00", "Aquarius"},
+		{"match-baz", "2025-01-10 14:30:00+00", "Bazaar"},
+		{"match-cat", "2025-01-10 15:00:00+00", "Catalyst"},
+	}
+	for _, m := range matches {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO shared.match_registry (match_id, start_time, map_name, pair_name, playlist_name, is_ranked)
+			VALUES (?, ?, ?, 'Slayer', 'Slayer', FALSE)`,
+			m.id, m.ts, m.mapName,
+		); err != nil {
+			t.Fatalf("insert match: %v", err)
+		}
+	}
+
+	// 1 SEUL média, mais 3 associations (delta_seconds différents)
+	if _, err := social.Exec(ctx,
+		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
+		VALUES ('med-multi', ?, '/the_capture.mp4', 'the_capture.mp4', 'video', '2025-01-10 14:35:00+00', FALSE)`,
+		mediaTestPlayerSlug,
+	); err != nil {
+		t.Fatalf("insert media: %v", err)
+	}
+
+	// Associations : Bazaar est le plus proche (delta=300s), Aquarius assez loin (delta=2100s),
+	// Catalyst aussi loin (delta=1500s)
+	assocs := []struct {
+		matchID string
+		delta   int
+	}{
+		{"match-aqua", 2100},
+		{"match-baz", 300},
+		{"match-cat", 1500},
+	}
+	for _, a := range assocs {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds) VALUES ('med-multi', ?, ?)`,
+			a.matchID, a.delta,
+		); err != nil {
+			t.Fatalf("insert assoc: %v", err)
+		}
+	}
+
+	return &PlayerDB{
+		Player: player, Shared: shared, SharedSocial: social, Metadata: meta,
+		XUID: mediaTestPlayerXUID, Gamertag: mediaTestPlayerSlug, TitleSlug: titlepkg.DefaultSlug,
+	}
+}
+
+// Sans filtre : 1 média physique = 1 ligne attendue, peu importe le nombre d'associations.
+func TestMediaFilters_MultiAssoc_OneMediaOneRow_NoFilter(t *testing.T) {
+	pdb := newTestPlayerDBMultiAssoc(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows %v, want EXACTEMENT 1 (1 média physique malgré 3 associations)", len(rows), pathsOf(rows))
+	}
+	// Le média devrait montrer Bazaar (association la plus proche temporellement)
+	if rows[0].MapName == nil || *rows[0].MapName != "Bazaar" {
+		t.Errorf("MapName = %v, want 'Bazaar' (association la plus proche, delta=300s)", rows[0].MapName)
+	}
+}
+
+// CountMediaFiles doit aussi compter 1, pas 3.
+func TestMediaFilters_MultiAssoc_CountOne(t *testing.T) {
+	pdb := newTestPlayerDBMultiAssoc(t)
+	repo := NewMediaRepo(pdb)
+	count, err := repo.CountMediaFiles(context.Background(), domain.MediaFilters{})
+	if err != nil {
+		t.Fatalf("CountMediaFiles: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("CountMediaFiles = %d, want 1 (pagination doit compter médias uniques)", count)
+	}
+}
+
+// Filtre map=Aquarius : doit ramener le média 1 fois (avec map=Aquarius affiché),
+// pas 3 fois ni 0 fois.
+func TestMediaFilters_MultiAssoc_FilterByMap_OneRow(t *testing.T) {
+	pdb := newTestPlayerDBMultiAssoc(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Aquarius"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("MapFilter=Aquarius: got %d rows, want 1", len(rows))
+	}
+	if rows[0].MapName == nil || *rows[0].MapName != "Aquarius" {
+		t.Errorf("MapName = %v, want Aquarius", rows[0].MapName)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQL generated (sanity check sur les requêtes assemblées)
 // ─────────────────────────────────────────────────────────────────────────────
 

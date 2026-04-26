@@ -192,8 +192,8 @@ func TestBuildQ37MediaQuery_Pagination(t *testing.T) {
 func TestBuildQ37MediaCountQuery_NoFilters(t *testing.T) {
 	q, args := BuildQ37MediaCountQuery(domain.MediaFilters{})
 
-	if !strings.Contains(q, "SELECT COUNT(*)") {
-		t.Error("expected COUNT(*)")
+	if !strings.Contains(q, "SELECT COUNT(DISTINCT mf.file_path)") {
+		t.Errorf("expected COUNT(DISTINCT mf.file_path) (dédup multi-assoc), got: %s", q)
 	}
 	if !strings.Contains(q, "mf.status = 'active'") {
 		t.Error("expected status = active filter")

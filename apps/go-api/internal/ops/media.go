@@ -231,18 +231,30 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 
 	// La capture doit se situer dans [start_time - buffer, end_time + buffer].
 	// start_time et end_time sont des TIMESTAMP naïfs en heure Paris — SET TimeZone les corrige.
+	//
+	// IMPORTANT : un média = UNE seule association. Si la capture tombe dans la
+	// fenêtre de plusieurs matchs (overlap, session avec matchs proches), on ne
+	// garde QUE le match le plus proche temporellement (delta_seconds minimum).
+	// Sans ce dédup, le JOIN produit N rows par média → galerie/pagination cassées.
 	q := fmt.Sprintf(`
 		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
-		SELECT
-			mf.id,
-			mr.match_id,
-			ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) AS delta_s
-		FROM media_files mf
-		JOIN shared_matches.match_registry mr
-			ON mf.capture_start_utc
-				BETWEEN (mr.start_time - INTERVAL '%d minutes')
-				    AND (mr.end_time   + INTERVAL '%d minutes')
-		WHERE mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
+		SELECT media_file_id, match_id, delta_s FROM (
+			SELECT
+				mf.id AS media_file_id,
+				mr.match_id,
+				ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) AS delta_s,
+				ROW_NUMBER() OVER (
+					PARTITION BY mf.id
+					ORDER BY ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) ASC, mr.match_id
+				) AS rn
+			FROM media_files mf
+			JOIN shared_matches.match_registry mr
+				ON mf.capture_start_utc
+					BETWEEN (mr.start_time - INTERVAL '%d minutes')
+					    AND (mr.end_time   + INTERVAL '%d minutes')
+			WHERE mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
+		) ranked
+		WHERE rn = 1
 	`, bufferMin, bufferMin)
 	res, err := db.Exec(q)
 	if err != nil {

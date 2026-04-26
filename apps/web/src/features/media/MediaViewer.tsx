@@ -192,6 +192,10 @@ interface MediaLightboxProps {
   likeDisabled?: boolean
   hasNextPage?: boolean
   onLoadNextPage?: () => void
+  /** Index global du 1er item de la page courante (0-indexed). Utilisé pour le compteur X/Y. */
+  globalIndexOffset?: number
+  /** Nombre total de médias toutes pages confondues. Si absent, fallback sur items.length. */
+  globalTotal?: number
 }
 
 const IMAGE_AUTOCHAIN_DELAY_MS = 7000
@@ -205,6 +209,8 @@ export function MediaLightbox({
   likeDisabled = false,
   hasNextPage = false,
   onLoadNextPage,
+  globalIndexOffset = 0,
+  globalTotal,
 }: MediaLightboxProps) {
   const [index, setIndex] = useState(startIndex)
   const [autoChain, setAutoChain] = useState(false)
@@ -277,7 +283,11 @@ export function MediaLightbox({
     return null
   }
 
-  const heading = formatLightboxHeading(item, index, items.length)
+  // Compteur X/Y : position GLOBALE (page courante × pageSize + index local) sur total global,
+  // pas l'index local sur la taille de page (sinon "5/24" trompeur quand il y a 47 médias).
+  const total = globalTotal ?? items.length
+  const globalIndex = globalIndexOffset + index
+  const heading = formatLightboxHeading(item, globalIndex, total)
   const autoChainLabel = autoChain ? 'Enchaînement actif' : 'Activer l\'enchaînement'
 
   return (

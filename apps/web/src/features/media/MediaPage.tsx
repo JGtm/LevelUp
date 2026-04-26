@@ -260,6 +260,8 @@ export function MediaPage() {
           likeDisabled={toggleMediaLike.isPending}
           hasNextPage={page < totalPages}
           onLoadNextPage={() => setPage((current) => current + 1)}
+          globalIndexOffset={(page - 1) * PAGE_SIZE}
+          globalTotal={pagination?.total ?? mediaItems.length}
         />
       )}
 
