@@ -55,7 +55,16 @@ SELECT
     pme.performance_score,
     COALESCE(pme.is_with_friends, FALSE)                         AS is_with_friends,
     COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
-    COALESCE(p1.perfect_kills, 0)                                AS perfect_kills
+    -- perfect_kills n'est pas une colonne de shared.match_participants ;
+    -- on l'agrège depuis shared.medals_earned (medal_name_id = 1512363953
+    -- "Perfect"), même approche que Q12MatchScoreboard.
+    COALESCE((
+        SELECT SUM(me.count)
+        FROM shared.medals_earned me
+        WHERE me.match_id = p1.match_id
+          AND me.xuid = p1.xuid
+          AND me.medal_name_id = 1512363953
+    ), 0)::INTEGER                                              AS perfect_kills
 FROM shared.match_participants p1
 JOIN shared.v_match_full r ON r.match_id = p1.match_id
 JOIN shared.match_participants p2
