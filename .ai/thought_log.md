@@ -1,5 +1,30 @@
 # Thought Log
 
+## [2026-04-26] fix(media): 4 bugs post-feature — auteurs vides, MIME, groupement, likers
+
+**Statut** : Complété
+
+**Contexte** : Après 7 commits de feature sur la page Media (Slice 8), l'utilisateur a signalé 4 régressions :
+1. Remettre "sans groupement" ne fonctionnait pas (flash blanc)
+2. Liste des auteurs vide dans le popover
+3. Vignettes sans titre/data sous certains médias (pas traité ici — items sans association match)
+4. Erreurs MIME sur `.mov`, `.webm`, `.mkv`, `.webp`
+
+**Décisions techniques** :
+- **Bug 1 — groupement** : `useMediaPage` n'avait pas de `placeholderData`. Quand la `queryKey` change (nouveau groupBy), React Query passe à `isLoading=true` → `null` → la grille disparaît. Fix : `placeholderData: (prev) => prev` conserve les items précédents pendant le fetch.
+- **Bug 2 — auteurs vides** : Un agent parallèle (prestige-phase4) avait commenté `WithAuthorsContext` et `r.Get("/media/authors", ...)` dans `server.go` avec des marqueurs `// FIXME(prestige-phase4)`. Fix : restauration complète de `WithAuthorsContext(reg.MediaPlayerCtx, loadPlayersWrapper)` et de la route.
+- **Bug 4 — MIME** : `http.ServeFile` sur Windows lit les MIME depuis le registre système. Les extensions `.mov`/`.webm`/`.mkv`/`.webp` ne sont pas toujours enregistrées. Fix : injection d'un `Content-Type` explicite avant `http.ServeFile` (qui respecte un header pré-positionné).
+- **Bonus — likers strippés** : `normalizeMediaItem` créait un objet sans `likers`/`total_likers`, les perdant lors de la normalisation. Fix : propagation conditionnelle des deux champs sur les `MediaItemRow`.
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/api/server.go` — restauration `WithAuthorsContext` + route `/media/authors`
+- `apps/go-api/internal/api/handlers/media.go` — MIME explicite dans `ServeMediaFile`
+- `apps/web/src/features/media/queries.ts` — `placeholderData`, `likers`/`total_likers` dans `normalizeMediaItem`
+
+**Conclusion / prochaine étape** : Les 4 bugs sont corrigés. Le bug 3 (vignettes sans données) est structurel : les items sans `match_id` n'ont pas de `map_name`/`mode_name` — l'endpoint `/media/reassociate` peut corriger ça côté données.
+
+
+
 ## [2026-04-26] chore(lint): nettoyage golangci-lint sur la branche feat/multi-title-adapters-and-mappings
 
 **Statut** : Complété — 144 warnings éliminés sur 152 (-95 %). Les 8 restants sont dans des fichiers WIP user (prestige + media) et seront traités par le user lors de la finalisation de ces features.

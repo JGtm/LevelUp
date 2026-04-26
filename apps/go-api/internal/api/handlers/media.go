@@ -511,6 +511,22 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if _, err := os.Stat(cleanAbsPath); err == nil {
+			if w.Header().Get("Content-Type") == "" {
+				switch strings.ToLower(filepath.Ext(cleanAbsPath)) {
+				case ".mp4":
+					w.Header().Set("Content-Type", "video/mp4")
+				case ".webm":
+					w.Header().Set("Content-Type", "video/webm")
+				case ".mov":
+					w.Header().Set("Content-Type", "video/quicktime")
+				case ".avi":
+					w.Header().Set("Content-Type", "video/x-msvideo")
+				case ".mkv":
+					w.Header().Set("Content-Type", "video/x-matroska")
+				case ".webp":
+					w.Header().Set("Content-Type", "image/webp")
+				}
+			}
 			http.ServeFile(w, r, cleanAbsPath)
 			return
 		}

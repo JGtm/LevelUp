@@ -88,6 +88,8 @@ function normalizeMediaItem(item: LegacyMediaItemRow | MediaItemRow): MediaItemR
     mode_name: item.mode_name ?? null,
     liked,
     like_count: item.like_count ?? (liked ? 1 : 0),
+    likers: 'likers' in item ? (item as MediaItemRow).likers : undefined,
+    total_likers: 'total_likers' in item ? (item as MediaItemRow).total_likers : undefined,
   }
 }
 
@@ -187,6 +189,7 @@ export function useMediaPage(
       ).then(normalizeMediaPageResponse),
     enabled: !!playerSlug,
     staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   })
 }
 
