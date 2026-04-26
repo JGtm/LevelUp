@@ -29,13 +29,20 @@ import (
 // hook de notification n'est émis (pratique pour les tests et le bootstrap initial).
 type NotificationsEmitterFactory func(ctx context.Context, slug string) (notifications.Emitter, error)
 
+// PostSyncDeltaHook est un hook closure-based pour la détection delta autour
+// d'une exécution de sync. L'appelant invoque le hook avant la sync ; il reçoit
+// une fonction "after" à invoquer en cas de succès. Le tout reste opaque côté
+// handler (les types PlayerSnapshot vivent dans internal/api/, pas ici).
+type PostSyncDeltaHook func(ctx context.Context, slug string) (after func(ctx context.Context))
+
 // SyncHandler gère les endpoints de synchronisation des données Halo.
 type SyncHandler struct {
 	cfg           *config.AppConfig
 	settingsStore *settings_platform.Store
 	jobStore      *jobs.Store
 	provider      auth_platform.TokenProvider
-	notifierFor   NotificationsEmitterFactory // optionnel : émission match_synced / sync_error
+	notifierFor   NotificationsEmitterFactory // optionnel
+	postSync      PostSyncDeltaHook           // optionnel : season_pass_level / objective_completed / challenge_completed
 }
 
 // NewSyncHandler crée un SyncHandler.
@@ -60,6 +67,13 @@ func NewSyncHandler(
 // hook est invoqué post-RunDelta (succès → match_synced, erreur → sync_error).
 func (h *SyncHandler) WithNotificationsEmitterFactory(f NotificationsEmitterFactory) *SyncHandler {
 	h.notifierFor = f
+	return h
+}
+
+// WithPostSyncDeltaHook branche le hook delta-detection (season_pass_level,
+// objective_completed, challenge_completed). Best-effort.
+func (h *SyncHandler) WithPostSyncDeltaHook(hook PostSyncDeltaHook) *SyncHandler {
+	h.postSync = hook
 	return h
 }
 
@@ -197,6 +211,10 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		bgCtx := context.Background()
+		var after func(ctx context.Context)
+		if h.postSync != nil {
+			after = h.postSync(bgCtx, req.PlayerSlug)
+		}
 		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
 		opts := domain.DefaultSyncOptions()
 		opts.MaxMatches = req.MaxMatches
@@ -213,6 +231,9 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 			result.DurationSeconds, result.Status())
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
 		h.emitMatchSynced(bgCtx, req.PlayerSlug, result.MatchesInserted)
+		if after != nil {
+			after(bgCtx)
+		}
 	}()
 
 	writeJSON(w, http.StatusAccepted, &jobSnapshot)
@@ -267,6 +288,10 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		bgCtx := context.Background()
+		var after func(ctx context.Context)
+		if h.postSync != nil {
+			after = h.postSync(bgCtx, playerSlug)
+		}
 		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
 		opts := domain.DefaultSyncOptions()
 
@@ -282,6 +307,9 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 			result.DurationSeconds, result.Status())
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusSucceeded, &summary)
 		h.emitMatchSynced(bgCtx, playerSlug, result.MatchesInserted)
+		if after != nil {
+			after(bgCtx)
+		}
 	}()
 
 	writeJSON(w, http.StatusAccepted, &jobSnapshot2)

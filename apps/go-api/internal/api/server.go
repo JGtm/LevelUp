@@ -320,6 +320,8 @@ func NewRouter(
 		}
 		// Branche la factory d'émetteurs de notifications (match_synced / sync_error).
 		syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
+		// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
+		syncH = syncH.WithPostSyncDeltaHook(buildPostSyncDeltaHook(reg))
 		r.Post("/sync/initial", syncH.StartInitialSync)
 		r.Post("/sync/all", syncH.StartSyncAll)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
