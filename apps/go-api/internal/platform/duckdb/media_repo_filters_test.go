@@ -761,6 +761,162 @@ func TestMediaFilters_Variants_BaseDoesNotMatchAnnex(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Régression utilisateur : "filtre Altitude ramène Recharge/Absolution/Aquarius/Empyréen"
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Reproduit exactement le dataset rapporté par le user :
+//   - Recharge (22:28 le 21/01/26)
+//   - Absolution (00:51 le 30/12/25) — apparaît 2x
+//   - Aquarius (00:04 le 30/12/25)
+//   - Empyréen (00:13 le 30/12/25)
+//   - Altitude (date non précisée)
+// User filtrait sur "Altitude" et voyait les 6 retournés. Avec le code actuel
+// (commits 39c81d13 + cddc42d6), seule Altitude doit revenir.
+
+func TestMediaFilters_Regression_AltitudeFilter_OnlyAltitude(t *testing.T) {
+	pdb := newTestPlayerDBForUserScenario(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Altitude"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("MapFilter=Altitude: got %d rows %v, want EXACTEMENT 1 (/altitude.mp4)", len(rows), pathsOf(rows))
+	}
+	if rows[0].FilePath != "/altitude.mp4" {
+		t.Errorf("MapFilter=Altitude: got %s, want /altitude.mp4", rows[0].FilePath)
+	}
+	// Sanity : vérifier que le map_name retourné est bien Altitude (pas un autre)
+	if rows[0].MapName == nil || *rows[0].MapName != "Altitude" {
+		t.Errorf("MapName retourné = %v, want 'Altitude'", rows[0].MapName)
+	}
+}
+
+// Sans filtre map : on voit bien les 6 médias (sanity check du dataset).
+func TestMediaFilters_Regression_NoFilter_AllSixVisible(t *testing.T) {
+	pdb := newTestPlayerDBForUserScenario(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 6 {
+		t.Fatalf("no filter: got %d rows %v, want 6", len(rows), pathsOf(rows))
+	}
+}
+
+// Filtre "Recharge" : seul le média Recharge (1 sur 6).
+func TestMediaFilters_Regression_RechargeFilter_OnlyRecharge(t *testing.T) {
+	pdb := newTestPlayerDBForUserScenario(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Recharge"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 1 || rows[0].FilePath != "/recharge.mp4" {
+		t.Errorf("MapFilter=Recharge: got %v, want [/recharge.mp4]", pathsOf(rows))
+	}
+}
+
+// Filtre "Absolution" : 2 médias (le seul nom dupliqué dans le dataset user).
+func TestMediaFilters_Regression_AbsolutionFilter_TwoOccurrences(t *testing.T) {
+	pdb := newTestPlayerDBForUserScenario(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Absolution"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("MapFilter=Absolution: got %d rows %v, want 2 (les 2 absolutions)", len(rows), pathsOf(rows))
+	}
+	for _, r := range rows {
+		if r.MapName == nil || *r.MapName != "Absolution" {
+			t.Errorf("MapName retourné = %v, want 'Absolution'", r.MapName)
+		}
+	}
+}
+
+// Reproduction du dataset user : 5 maps distinctes, 6 médias (Absolution x2).
+func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
+	t.Helper()
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+
+	seedSharedDBSchema(t, shared)
+	seedSharedDBSchema(t, social)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+
+	ctx := context.Background()
+	for _, q := range []string{
+		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_files`,
+		`DELETE FROM shared.match_registry`,
+	} {
+		if _, err := social.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe: %v", err)
+		}
+	}
+
+	// 5 matchs sur 5 cartes différentes (Empyréen avec map_name_fr explicite)
+	matches := []struct{ id, ts, mapName, mapNameFR string }{
+		{"m-recharge", "2026-01-21 22:28:00+00", "Recharge", ""},
+		{"m-abs1", "2025-12-30 00:51:00+00", "Absolution", ""},
+		{"m-abs2", "2025-12-30 00:51:30+00", "Absolution", ""},
+		{"m-aqua", "2025-12-30 00:04:00+00", "Aquarius", ""},
+		{"m-emp", "2025-12-30 00:13:00+00", "Empyrean", "Empyréen"},
+		{"m-alt", "2025-12-29 12:00:00+00", "Altitude", ""},
+	}
+	for _, m := range matches {
+		var mapNameFRArg interface{}
+		if m.mapNameFR != "" {
+			mapNameFRArg = m.mapNameFR
+		}
+		if _, err := social.Exec(ctx,
+			`INSERT INTO shared.match_registry (match_id, start_time, map_name, map_name_fr, pair_name, playlist_name, is_ranked)
+			VALUES (?, ?, ?, ?, 'Slayer', 'Slayer', FALSE)`,
+			m.id, m.ts, m.mapName, mapNameFRArg,
+		); err != nil {
+			t.Fatalf("insert match %s: %v", m.id, err)
+		}
+	}
+
+	mediaSet := []struct{ id, path, matchID string }{
+		{"med-recharge", "/recharge.mp4", "m-recharge"},
+		{"med-abs1", "/absolution1.mp4", "m-abs1"},
+		{"med-abs2", "/absolution2.mp4", "m-abs2"},
+		{"med-aqua", "/aquarius.mp4", "m-aqua"},
+		{"med-emp", "/empyreen.mp4", "m-emp"},
+		{"med-alt", "/altitude.mp4", "m-alt"},
+	}
+	for _, m := range mediaSet {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			m.id, mediaTestPlayerSlug, m.path, m.path,
+		); err != nil {
+			t.Fatalf("insert media %s: %v", m.id, err)
+		}
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_match_associations (media_file_id, match_id) VALUES (?, ?)`,
+			m.id, m.matchID,
+		); err != nil {
+			t.Fatalf("insert assoc: %v", err)
+		}
+	}
+
+	return &PlayerDB{
+		Player: player, Shared: shared, SharedSocial: social, Metadata: meta,
+		XUID: mediaTestPlayerXUID, Gamertag: mediaTestPlayerSlug, TitleSlug: titlepkg.DefaultSlug,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQL generated (sanity check sur les requêtes assemblées)
 // ─────────────────────────────────────────────────────────────────────────────
 
