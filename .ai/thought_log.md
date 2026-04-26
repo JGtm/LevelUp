@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-04-26] fix(media): retour aux bases - 3 bugs structurels (LABEL/VALUE, mode prefix, Section)
+
+**Statut** : Complété — déployé en local, testé via curl direct sur le serveur Go en cours.
+
+**Contexte** : User pousse à "repartir sur les bases de ce qui constitue un media". Investigation directe sur le serveur démarré + reassociate de tous les players → 3 bugs structurels révélés au-delà du multi-assoc déjà fixé.
+
+**Bugs trouvés et fixés** :
+
+1. **LABEL display ≠ VALUE filter pour les maps** : le dropdown affichait "Altitude" (FR via asset_translations) mais sa VALUE était "High Ground" (raw EN du label SQL). Quand le user cliquait "Altitude", le frontend envoyait "High Ground" → SQL `LOWER(label) = LOWER('High Ground')` matchait selon le `mr.map_name_fr` ou `mr.map_name` de chaque row → résultats incohérents (rows avec map_name_fr=NULL matchaient, autres non).
+   - Fix : `translateMapFilterOptions` retourne `Value: p.id` (map_id UUID stable) au lieu de `p.label` (texte ambigu)
+   - Fix : `buildQ37MediaWhereClause` filtre `(mr.map_id = ? OR LOWER(label) = LOWER(?))` pour gérer aussi les médias sans map_id (fallback)
+
+2. **Préfixe catégorie non strippé dans pair_name** : les pair_name réels sont `Arena:Slayer`, `Community:Team Slayer`, `Super Fiesta:Slayer`. Le `q37MediaModeLabelExpr` ne strippait que ` on .+`, ` - Forge`, ` - Ranked` mais pas le préfixe `^[^:]+:`. Conséquence : `mode_filter="Slayer"` ou reverse-lookup "Assassin"→"Slayer" matchaient un label "Slayer" qui n'existait pas (label réel = "Arena:Slayer").
+   - Fix : ajout de `regexp_replace(..., '^[^:]+:\s*', '', '')` en première position dans `q37MediaModeLabelExpr`
+   - Résultat testé : `mode_filter="Assassin"` → 39 médias tous mode "Slayer" ✓
+
+3. **Section "mine" hardcodée** : `buildMediaItems` mettait `Section: "mine"` pour tous les médias indépendamment du `player_slug`. Sur le social feed (Chocoboflor sans captures voit 92 médias des autres players), tous étaient marqués "mine".
+   - Fix : ajout de `CurrentPlayerSlug() string` à `port.MediaRepository` (impl par MediaRepo qui retourne `r.pdb.Gamertag`, et noopMediaRepo qui retourne "")
+   - Fix : `buildMediaItems(rows, currentPlayerSlug)` calcule `section = "teammate"` si `*r.PlayerSlug != currentPlayerSlug`, sinon "mine"
+   - Résultat testé : médias de JGtm vus dans la galerie de Chocoboflor → `section: "teammate"` ✓
+
+**Procédure exécutée pendant la session** :
+1. `make build` du serveur Go (CGo MinGW ucrt64 pour DuckDB)
+2. Lancement en background sur port 8000
+3. Reassociate via `POST /media/reassociate` pour les 4 players :
+   - Chocoboflor : 66 → 60 assocs (6 doublons éliminés, confirme bug multi-assoc)
+   - JGtm/Madina/XxDaemon : 60 → 60 (déjà clean)
+4. Tests curl directs sur les filtres pour confirmer les fixes
+
+**Fichiers modifiés** :
+- `media_repo.go` — `translateMapFilterOptions` Value=map_id + dédup, `CurrentPlayerSlug()` méthode
+- `queries_home_citations.go` — WHERE map filter `(map_id=? OR label=?)`, `q37MediaModeLabelExpr` strip préfixe `^[^:]+:`
+- `service/media_service.go` — `buildMediaItems(rows, currentPlayerSlug)` calcule section, GetMediaPage passe le slug
+- `port/repository.go` — `CurrentPlayerSlug()` ajouté à interface + noopMediaRepo
+- `service/media_service_test.go` — mock ajouté `currentPlayerSlug` + méthode
+- `queries_media_test.go` — assertions mises à jour pour nouveaux args (map filter = 2 args : map_id + label)
+
+**Conclusion / prochaine étape** : Les filtres map et mode marchent maintenant. Section mine/teammate par item est correcte. Reste pour le user :
+- Refresh frontend (Ctrl+Shift+R) pour clear cache TanStack Query
+- Si la galerie de Chocoboflor doit montrer SES propres médias par défaut (pas le social feed), changer le frontend pour envoyer `section_filter="mine"` par défaut.
+
 ## [2026-04-26] fix(media): cause racine - 1 média associé à plusieurs matchs (multi-assoc)
 
 **Statut** : Complété

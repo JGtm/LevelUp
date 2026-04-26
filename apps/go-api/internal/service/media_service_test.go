@@ -16,20 +16,21 @@ import (
 // --- mock ---
 
 type mockMediaRepo struct {
-	files          []domain.MediaFileRow
-	filesErr       error
-	count          int
-	countErr       error
-	filterOptions  domain.MediaFilterOptions
-	filterOptsErr  error
-	setOK          bool
-	setErr         error
-	toggleErr      error
-	toggleCalled   bool
-	toggleLiked    bool
-	likersData     map[string]domain.MediaLikersInfo
-	likersErr      error
-	capturedFilter domain.MediaFilters
+	files             []domain.MediaFileRow
+	filesErr          error
+	count             int
+	countErr          error
+	filterOptions     domain.MediaFilterOptions
+	filterOptsErr     error
+	setOK             bool
+	setErr            error
+	toggleErr         error
+	toggleCalled      bool
+	toggleLiked       bool
+	likersData        map[string]domain.MediaLikersInfo
+	likersErr         error
+	capturedFilter    domain.MediaFilters
+	currentPlayerSlug string
 }
 
 func (m *mockMediaRepo) LoadMediaFiles(_ context.Context, f domain.MediaFilters, _, _ int) ([]domain.MediaFileRow, error) {
@@ -56,6 +57,8 @@ func (m *mockMediaRepo) ToggleSharedLike(_ context.Context, _, _, _ string, like
 func (m *mockMediaRepo) GetMediaLikers(_ context.Context, _ []string) (map[string]domain.MediaLikersInfo, error) {
 	return m.likersData, m.likersErr
 }
+
+func (m *mockMediaRepo) CurrentPlayerSlug() string { return m.currentPlayerSlug }
 
 // --- tests ---
 

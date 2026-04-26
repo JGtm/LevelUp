@@ -114,9 +114,9 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 	}
 	_, args := BuildQ37MediaQuery(f, 5, 10)
 
-	// Ordre attendu : kind (×2 équivalents), map, mode, limit, offset
-	if len(args) != 6 {
-		t.Fatalf("args len = %d, want 6", len(args))
+	// Ordre attendu : kind (×2 équivalents), map (×2 : map_id + label fallback), mode, limit, offset = 7
+	if len(args) != 7 {
+		t.Fatalf("args len = %d, want 7", len(args))
 	}
 	kindArgs := []any{args[0], args[1]}
 	wantKindSet := map[string]bool{"video": true, "clip": true}
@@ -126,15 +126,15 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 			t.Errorf("args[0:2] = %v, want set {video, clip}", kindArgs)
 		}
 	}
-	// map et mode sont en match exact (pas de %wrap)
-	if args[2] != "Recharge" {
-		t.Errorf("args[2] = %v, want exactly Recharge", args[2])
+	// map filter envoie 2 args : (map_id candidate, label canonique)
+	if args[2] != "Recharge" || args[3] != "Recharge" {
+		t.Errorf("args[2:4] = %v, %v, want Recharge/Recharge", args[2], args[3])
 	}
-	if args[3] != "CTF" {
-		t.Errorf("args[3] = %v, want exactly CTF", args[3])
+	if args[4] != "CTF" {
+		t.Errorf("args[4] = %v, want exactly CTF", args[4])
 	}
-	if args[4] != 5 || args[5] != 10 {
-		t.Errorf("args[4:] = %v, want [5 10]", args[4:])
+	if args[5] != 5 || args[6] != 10 {
+		t.Errorf("args[5:] = %v, want [5 10]", args[5:])
 	}
 }
 
@@ -245,9 +245,9 @@ func TestBuildQ37MediaCountQuery_MultipleFilters(t *testing.T) {
 	if !strings.Contains(q, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)") {
 		t.Error("expected exact map filter")
 	}
-	// 2 kind args (screenshot, image) + 1 map arg
-	if len(args) != 3 {
-		t.Fatalf("args len = %d, want 3", len(args))
+	// 2 kind args (screenshot, image) + 2 map args (map_id + label fallback) = 4
+	if len(args) != 4 {
+		t.Fatalf("args len = %d, want 4", len(args))
 	}
 }
 
@@ -301,8 +301,9 @@ func TestBuildQ37MediaModeOptionsQuery_UsesNormalizedModeLabels(t *testing.T) {
 	if !strings.Contains(q, "regexp_replace") {
 		t.Error("expected normalized mode expression in options query")
 	}
-	if len(args) != 1 {
-		t.Fatalf("args len = %d, want 1", len(args))
+	// 2 args : map_id candidate + label fallback (Recharge/Recharge)
+	if len(args) != 2 {
+		t.Fatalf("args len = %d, want 2 (map_id + label)", len(args))
 	}
 }
 

@@ -453,7 +453,15 @@ const q37MediaFromClause = q37LegacyMediaFromClause
 // (sinon "Forge: Argyle" deviendrait "Forge", "Recharge Annex" deviendrait "Recharge").
 const q37MediaMapLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.map_name_fr, mr.map_name, ''), '\s+v\d+$', '', 'i'), '\s*-\s*Forge.*$', '', 'i'), '\s*-\s*Ranked.*$', '', 'i')), '')`
 
-const q37MediaModeLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), ' on .+$', '', 'i'), '\s*-\s*Forge\b', '', 'i'), '\s*-\s*Ranked\b', '', 'i')), '')`
+// q37MediaModeLabelExpr normalise le pair_name pour grouper les variantes par
+// mode canonique. Strip dans cet ordre :
+//
+//  1. Préfixe catégorie ("Arena:", "Community:", "Super Fiesta:" ...) — sinon
+//     "Arena:Slayer" et "Super Fiesta:Slayer" restent distincts du canonique
+//     "Slayer" et le filtre mode ne matche jamais.
+//  2. " on Bazaar" (suffixe carte) — ex: "Slayer on Bazaar" -> "Slayer"
+//  3. " - Forge" / " - Ranked" — variantes de playlist
+const q37MediaModeLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), '^[^:]+:\s*', '', ''), ' on .+$', '', 'i'), '\s*-\s*Forge\b', '', 'i'), '\s*-\s*Ranked\b', '', 'i')), '')`
 
 type mediaWhereConfig struct {
 	includeMapFilter  bool
@@ -617,13 +625,12 @@ func buildQ37MediaWhereClause(
 		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
 	}
 	if whereCfg.includeMapFilter && f.MapFilter != "" {
-		// Match EXACT (case-insensitive) sur le nom canonique. q37MediaMapLabelExpr
-		// strippe déjà les suffixes (v3, - Forge, - Ranked) côté SQL ; on applique
-		// le même strip côté Go pour que filter="Recharge v3" matche bien le label
-		// canonique "Recharge". Le ILIKE %X% précédent matchait "Recharge Annex"
-		// pour "Recharge" — bug corrigé.
-		where = append(where, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)")
-		args = append(args, normalizeMediaMapName(f.MapFilter))
+		// MapFilter peut être un map_id (cas standard, value du dropdown) OU un
+		// label brut (fallback pour médias sans map_id, ou requête manuelle).
+		// On matche les deux pour rester compatible. Sans cette double tentative,
+		// "Altitude" FR ne matcherait jamais "High Ground" raw EN.
+		where = append(where, "(mr.map_id = ? OR LOWER("+q37MediaMapLabelExpr+") = LOWER(?))")
+		args = append(args, f.MapFilter, normalizeMediaMapName(f.MapFilter))
 	}
 	if whereCfg.includeModeFilter {
 		// Si ModeFilterCandidates est présent (FR → liste de raw EN via

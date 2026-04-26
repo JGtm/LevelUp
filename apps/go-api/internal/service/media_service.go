@@ -75,7 +75,7 @@ func (s *MediaService) GetMediaPage(
 	hasNext := offset+len(files) < total
 	availableFilters := s.resolveAvailableFilters(ctx, filters, files)
 
-	items := buildMediaItems(files)
+	items := buildMediaItems(files, s.repo.CurrentPlayerSlug())
 
 	// Enrichissement des likers depuis shared DB (best-effort)
 	paths := make([]string, len(items))
@@ -339,12 +339,18 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 	return result, nil
 }
 
-func buildMediaItems(rows []domain.MediaFileRow) []domain.MediaItem {
+func buildMediaItems(rows []domain.MediaFileRow, currentPlayerSlug string) []domain.MediaItem {
 	items := make([]domain.MediaItem, 0, len(rows))
 	for _, r := range rows {
 		basename := r.FileName
 		if basename == "" {
 			basename = filepath.Base(r.FilePath)
+		}
+		// Section = "mine" si le média appartient au joueur courant, sinon "teammate".
+		// Si player_slug absent (legacy), fallback "mine" (ancienne sémantique).
+		section := "mine"
+		if r.PlayerSlug != nil && currentPlayerSlug != "" && *r.PlayerSlug != currentPlayerSlug {
+			section = "teammate"
 		}
 		items = append(items, domain.MediaItem{
 			Basename:       basename,
@@ -357,7 +363,7 @@ func buildMediaItems(rows []domain.MediaFileRow) []domain.MediaItem {
 			MapName:        r.MapName,
 			ModeName:       r.ModeName,
 			OwnerGamertag:  r.PlayerSlug,
-			Section:        "mine",
+			Section:        section,
 			Liked:          r.Liked,
 			LikeCount:      boolToLikeCount(r.Liked),
 		})

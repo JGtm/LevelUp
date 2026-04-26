@@ -115,6 +115,14 @@ func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.M
 	return domain.MediaFilterOptions{Maps: maps, Modes: modes}, nil
 }
 
+// CurrentPlayerSlug retourne le slug (== gamertag) du joueur dont on lit la galerie.
+func (r *MediaRepo) CurrentPlayerSlug() string {
+	if r.pdb == nil {
+		return ""
+	}
+	return r.pdb.Gamertag
+}
+
 func (r *MediaRepo) queryConfig() mediaQueryConfig {
 	if r.pdb.SharedSocial != nil {
 		return mediaQueryConfig{playerSlug: r.pdb.Gamertag}
@@ -310,8 +318,10 @@ func (r *MediaRepo) loadMediaIDLabelPairs(ctx context.Context, query string, arg
 }
 
 // translateMapFilterOptions enrichit les libellés de cartes en FR via
-// asset_translations + dédup par libellé FR. Value reste le label SQL brut
-// (pour que le filtre ILIKE matche), Label devient le FR.
+// asset_translations + dédup par map_id. Value = map_id (stable, structurel)
+// pour permettre un filtrage non ambigu côté backend (sinon "Altitude" FR ne
+// matche pas "High Ground" raw EN dans match_registry, et le filtre devient
+// inutilisable). Label = FR enrichi pour l'affichage.
 func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
 	if len(pairs) == 0 {
 		return []domain.LabelValue{}
@@ -328,18 +338,32 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 	}
 	translations := r.loadAssetTranslationNames(ctx, "map", ids)
 
-	seen := make(map[string]bool)
+	// Dédup par map_id : si plusieurs raw labels mappent vers le même map_id
+	// (ex: "High Ground" et "Altitude" pour la même carte selon match_name_fr),
+	// on regroupe sous une seule entrée. Si map_id absent, fallback sur label.
+	seenIDs := make(map[string]bool)
+	seenLabels := make(map[string]bool)
 	options := make([]domain.LabelValue, 0, len(pairs))
 	for _, p := range pairs {
 		labelFR := translations[p.id]
 		if labelFR == "" {
 			labelFR = p.label
 		}
-		if seen[labelFR] {
-			continue
+		// Value = map_id si dispo (stable), sinon label (fallback médias sans match)
+		value := p.id
+		if value == "" {
+			value = p.label
+			if seenLabels[value] {
+				continue
+			}
+			seenLabels[value] = true
+		} else {
+			if seenIDs[value] {
+				continue
+			}
+			seenIDs[value] = true
 		}
-		seen[labelFR] = true
-		options = append(options, domain.LabelValue{Label: labelFR, Value: p.label})
+		options = append(options, domain.LabelValue{Label: labelFR, Value: value})
 	}
 	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
 	return options
