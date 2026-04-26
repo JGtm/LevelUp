@@ -104,6 +104,74 @@ heroic_target   = 1200.0
 legendary_target = 1600.0
 mythic_target   = 2200.0
 
+[[templates]]
+id              = "halo_infinite.daily.kdr_session"
+metric          = "FieldKDR"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Trade up"
+label_fr        = "Troc favorable"
+description_en  = "Keep deaths low and kills up over one session."
+description_fr  = "Garde un ratio kills/morts solide sur une session."
+normal_target   = 1.05
+heroic_target   = 1.30
+legendary_target = 1.55
+mythic_target   = 1.90
+
+[[templates]]
+id              = "halo_infinite.daily.melee_kills"
+metric          = "FieldMeleeKills"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Up close"
+label_fr        = "Au corps à corps"
+description_en  = "Land melee kills throughout the session."
+description_fr  = "Place des kills mêlée sur la session."
+normal_target   = 1.0
+heroic_target   = 3.0
+legendary_target = 5.0
+mythic_target   = 8.0
+
+[[templates]]
+id              = "halo_infinite.daily.grenade_kills"
+metric          = "FieldGrenadeKills"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Cooked perfectly"
+label_fr        = "Cuisson parfaite"
+description_en  = "Convert grenades into eliminations this session."
+description_fr  = "Convertis les grenades en éliminations cette session."
+normal_target   = 2.0
+heroic_target   = 4.0
+legendary_target = 6.0
+mythic_target   = 9.0
+
+[[templates]]
+id              = "halo_infinite.daily.killing_spree"
+metric          = "FieldMaxKillingSpree"
+window_type     = "session"
+window_value    = "1"
+cadence         = "daily"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "On a roll"
+label_fr        = "Sur ta lancée"
+description_en  = "Reach a high killing spree in one session."
+description_fr  = "Atteins une grosse série de kills sur une session."
+normal_target   = 4.0
+heroic_target   = 7.0
+legendary_target = 10.0
+mythic_target   = 15.0
+
 # ═════════════════════ HEBDOMADAIRES (cadence=weekly) ════════════════════════
 
 [[templates]]
@@ -191,6 +259,74 @@ heroic_target   = 1400.0
 legendary_target = 1600.0
 mythic_target   = 1800.0
 
+[[templates]]
+id              = "halo_infinite.weekly.headshots_3sessions"
+metric          = "FieldHeadshotKills"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Headhunter"
+label_fr        = "Chasseur de têtes"
+description_en  = "Maintain a high headshot rate across 3 sessions."
+description_fr  = "Tiens un taux de headshots élevé sur 3 sessions."
+normal_target   = 5.0
+heroic_target   = 9.0
+legendary_target = 14.0
+mythic_target   = 20.0
+
+[[templates]]
+id              = "halo_infinite.weekly.accuracy_3sessions"
+metric          = "FieldAccuracy"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Sharpshooter"
+label_fr        = "Tireur d'élite"
+description_en  = "Sustain high accuracy across 3 sessions."
+description_fr  = "Tiens une précision élevée sur 3 sessions."
+normal_target   = 0.45
+heroic_target   = 0.52
+legendary_target = 0.60
+mythic_target   = 0.68
+
+[[templates]]
+id              = "halo_infinite.weekly.power_weapons_3sessions"
+metric          = "FieldPowerWeaponKills"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Heavy hitter"
+label_fr        = "Frappeur lourd"
+description_en  = "Convert power weapons consistently over 3 sessions."
+description_fr  = "Convertis les armes lourdes sur 3 sessions."
+normal_target   = 4.0
+heroic_target   = 8.0
+legendary_target = 13.0
+mythic_target   = 20.0
+
+[[templates]]
+id              = "halo_infinite.weekly.score_per_session"
+metric          = "FieldPersonalScore"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Steady contributor"
+label_fr        = "Contributeur régulier"
+description_en  = "Hold a high personal score average over 3 sessions."
+description_fr  = "Garde une moyenne de score perso élevée sur 3 sessions."
+normal_target   = 900.0
+heroic_target   = 1200.0
+legendary_target = 1500.0
+mythic_target   = 2000.0
+
 # ═════════════════════ MENSUELS (cadence=monthly) ════════════════════════════
 
 [[templates]]
@@ -277,3 +413,71 @@ normal_target   = 30.0
 heroic_target   = 60.0
 legendary_target = 100.0
 mythic_target   = 150.0
+
+[[templates]]
+id              = "halo_infinite.monthly.overkills"
+metric          = "medal:Overkill"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "universal"
+label_en        = "Overkill collector"
+label_fr        = "Collectionneur d'Overkill"
+description_en  = "Earn Overkill medals throughout the month."
+description_fr  = "Obtiens des médailles Overkill ce mois."
+normal_target   = 5.0
+heroic_target   = 12.0
+legendary_target = 22.0
+mythic_target   = 35.0
+
+[[templates]]
+id              = "halo_infinite.monthly.boss_kills"
+metric          = "FieldBossesKilled"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "pve"
+label_en        = "Boss slayer"
+label_fr        = "Pourfendeur de boss"
+description_en  = "Take down bosses in Firefight this month."
+description_fr  = "Élimine des boss en Firefight ce mois."
+normal_target   = 5.0
+heroic_target   = 12.0
+legendary_target = 22.0
+mythic_target   = 38.0
+
+[[templates]]
+id              = "halo_infinite.monthly.matches_played"
+metric          = "matches_played"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "universal"
+label_en        = "Engagement"
+label_fr        = "Engagement"
+description_en  = "Stay engaged across the month."
+description_fr  = "Reste engagé ce mois."
+normal_target   = 20.0
+heroic_target   = 40.0
+legendary_target = 70.0
+mythic_target   = 120.0
+
+[[templates]]
+id              = "halo_infinite.monthly.killtrocity"
+metric          = "medal:Killtrocity"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "cumulative"
+mode_filter     = "universal"
+label_en        = "Killtrocity rare"
+label_fr        = "Killtrocity rare"
+description_en  = "Earn the rare Killtrocity medal this month."
+description_fr  = "Obtiens la rare médaille Killtrocity ce mois."
+normal_target   = 1.0
+heroic_target   = 3.0
+legendary_target = 6.0
+mythic_target   = 10.0

@@ -63,6 +63,15 @@ func (m *mockService) GetSquadChallenge(ctx context.Context, _ string) (SquadCha
 func (m *mockService) ListSquadChallenges(ctx context.Context, _ string) ([]SquadChallenge, error) {
 	return nil, nil
 }
+func (m *mockService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]Template, error) {
+	return nil, nil
+}
+func (m *mockService) EnablePilotMode(ctx context.Context, _, _ string) (PilotModeAttribution, error) {
+	return PilotModeAttribution{}, nil
+}
+func (m *mockService) DisablePilotMode(ctx context.Context, _, _ string) error {
+	return nil
+}
 
 func TestIsEnabled_Defaults(t *testing.T) {
 	t.Setenv(FeatureFlagEnv, "")

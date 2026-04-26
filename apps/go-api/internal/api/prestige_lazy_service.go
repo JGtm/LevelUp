@@ -217,6 +217,30 @@ func (l *LazyPrestigeService) ListSquadChallenges(ctx context.Context, squadID s
 	return svc.ListSquadChallenges(ctx, squadID)
 }
 
+func (l *LazyPrestigeService) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]prestige.Template, error) {
+	svc, err := l.resolveByUserID(ctx, requestedBy)
+	if err != nil {
+		return nil, err
+	}
+	return svc.RefreshSquadPool(ctx, squadID, titleSlug, requestedBy)
+}
+
+func (l *LazyPrestigeService) EnablePilotMode(ctx context.Context, userID, titleSlug string) (prestige.PilotModeAttribution, error) {
+	svc, err := l.resolveByUserID(ctx, userID)
+	if err != nil {
+		return prestige.PilotModeAttribution{}, err
+	}
+	return svc.EnablePilotMode(ctx, userID, titleSlug)
+}
+
+func (l *LazyPrestigeService) DisablePilotMode(ctx context.Context, userID, titleSlug string) error {
+	svc, err := l.resolveByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return svc.DisablePilotMode(ctx, userID, titleSlug)
+}
+
 // ─── Helper HTTP middleware ───
 
 // PlayerSlugFromQueryOrBody extrait player_slug d'une request HTTP via :

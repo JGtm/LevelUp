@@ -1,0 +1,189 @@
+/**
+ * StatsGlobales — bandeau de stats agrégées du parcours Prestige.
+ *
+ * Référence : Axe 8 du plan conceptuel (onglet Mon parcours, section "stats globales").
+ *
+ * Affiche :
+ *  - Nombre de défis complétés par palier (Normal/Heroic/Legendary/Mythic)
+ *  - Taux de complétion global (filtre auto/libre)
+ *  - Top 5 métriques travaillées
+ *
+ * Phase 5 minimale : version statique calculée client-side depuis la liste de
+ * défis complétés. Une vraie API d'agrégation viendra avec le calage post-alpha.
+ */
+import { useMemo, useState } from 'react'
+import type { Challenge, Tier, ChallengeMode } from '@/lib/prestige'
+import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
+
+interface StatsGlobalesProps {
+  /** Tous les défis du joueur (actifs + terminés). */
+  challenges: Challenge[]
+}
+
+type ModeFilter = 'all' | ChallengeMode
+
+const TIERS: Tier[] = ['normal', 'heroic', 'legendary', 'mythic']
+
+export function StatsGlobales({ challenges }: StatsGlobalesProps) {
+  const [modeFilter, setModeFilter] = useState<ModeFilter>('all')
+
+  const filtered = useMemo(
+    () => (modeFilter === 'all' ? challenges : challenges.filter((c) => c.mode === modeFilter)),
+    [challenges, modeFilter],
+  )
+
+  const stats = useMemo(() => computeStats(filtered), [filtered])
+
+  return (
+    <section className="space-y-3">
+      <header className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Stats globales
+        </h3>
+        <ModeFilterToggle value={modeFilter} onChange={setModeFilter} />
+      </header>
+
+      {/* Distribution par palier */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {TIERS.map((tier) => (
+          <TierCount
+            key={tier}
+            tier={tier}
+            completed={stats.completedByTier[tier] ?? 0}
+            created={stats.createdByTier[tier] ?? 0}
+          />
+        ))}
+      </div>
+
+      {/* Taux de complétion global */}
+      <div className="rounded-md border border-border bg-card p-3">
+        <p className="text-xs text-muted-foreground">Taux de complétion</p>
+        <p className="mt-0.5 text-xl font-semibold">
+          {stats.totalCreated === 0
+            ? '—'
+            : `${Math.round((stats.totalCompleted / stats.totalCreated) * 100)} %`}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {stats.totalCompleted} complétés / {stats.totalCreated} créés
+        </p>
+      </div>
+
+      {/* Top métriques */}
+      <div className="rounded-md border border-border bg-card p-3">
+        <p className="mb-2 text-xs text-muted-foreground">Top métriques travaillées</p>
+        {stats.topMetrics.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Aucune donnée pour ce filtre.</p>
+        ) : (
+          <ul className="space-y-1">
+            {stats.topMetrics.map(({ metric, count }) => (
+              <li key={metric} className="flex items-center justify-between text-sm">
+                <span className="font-medium">{metric}</span>
+                <span className="text-xs text-muted-foreground">{count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
+
+interface ModeFilterToggleProps {
+  value: ModeFilter
+  onChange: (v: ModeFilter) => void
+}
+
+function ModeFilterToggle({ value, onChange }: ModeFilterToggleProps) {
+  return (
+    <div className="flex items-center rounded-md border border-border bg-card p-0.5 text-xs">
+      {(['all', 'libre', 'pilote'] as const).map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={[
+            'rounded px-2 py-1 transition-colors',
+            value === opt
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          ].join(' ')}
+        >
+          {opt === 'all' ? 'Tous' : opt === 'libre' ? 'Libre' : 'Pilote'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function TierCount({
+  tier,
+  completed,
+  created,
+}: {
+  tier: Tier
+  completed: number
+  created: number
+}) {
+  const color = TIER_COLORS[tier]
+  return (
+    <div
+      className="rounded-md border bg-card p-3 text-center"
+      style={{ borderLeftColor: color, borderLeftWidth: 3 }}
+    >
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        {TIER_LABELS_FR[tier]}
+      </p>
+      <p className="mt-1 text-xl font-bold" style={{ color }}>
+        {completed}
+      </p>
+      <p className="text-[10px] text-muted-foreground">/ {created} créés</p>
+    </div>
+  )
+}
+
+interface ComputedStats {
+  totalCreated: number
+  totalCompleted: number
+  completedByTier: Record<Tier, number>
+  createdByTier: Record<Tier, number>
+  topMetrics: Array<{ metric: string; count: number }>
+}
+
+function computeStats(challenges: Challenge[]): ComputedStats {
+  const completedByTier: Record<Tier, number> = {
+    normal: 0, heroic: 0, legendary: 0, mythic: 0,
+  }
+  const createdByTier: Record<Tier, number> = {
+    normal: 0, heroic: 0, legendary: 0, mythic: 0,
+  }
+  const metricCount: Record<string, number> = {}
+  let totalCreated = 0
+  let totalCompleted = 0
+
+  for (const c of challenges) {
+    totalCreated++
+    if (c.tier) {
+      createdByTier[c.tier] = (createdByTier[c.tier] ?? 0) + 1
+    }
+    if (c.status === 'completed') {
+      totalCompleted++
+      if (c.tier) {
+        completedByTier[c.tier] = (completedByTier[c.tier] ?? 0) + 1
+      }
+    }
+    metricCount[c.metric] = (metricCount[c.metric] ?? 0) + 1
+  }
+
+  const topMetrics = Object.entries(metricCount)
+    .map(([metric, count]) => ({ metric, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+
+  return {
+    totalCreated,
+    totalCompleted,
+    completedByTier,
+    createdByTier,
+    topMetrics,
+  }
+}

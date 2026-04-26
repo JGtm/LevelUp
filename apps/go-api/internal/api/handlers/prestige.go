@@ -374,6 +374,92 @@ func (h *PrestigeHandler) JoinSquadChallenge(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ─────────── Mode pilote ───────────
+
+type pilotModeBody struct {
+	UserID    string `json:"user_id"`
+	TitleSlug string `json:"title_slug"`
+}
+
+// EnablePilotMode gère POST /pilot-mode/enable.
+//
+// Active le mode pilote pour un joueur : auto-attribue 1 quotidien + 1 hebdo
+// forcé + propose 3 hebdo au choix. Idempotent : si des défis pilote actifs
+// existent déjà sur ces cadences, ils sont conservés.
+func (h *PrestigeHandler) EnablePilotMode(w http.ResponseWriter, r *http.Request) {
+	var body pilotModeBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if body.UserID == "" || body.TitleSlug == "" {
+		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		return
+	}
+	out, err := h.svc.EnablePilotMode(r.Context(), body.UserID, body.TitleSlug)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// DisablePilotMode gère POST /pilot-mode/disable.
+//
+// Désactive le mode pilote. Les défis pilote en cours sont conservés (le
+// joueur peut les terminer), aucune nouvelle auto-attribution ne se fera.
+func (h *PrestigeHandler) DisablePilotMode(w http.ResponseWriter, r *http.Request) {
+	var body pilotModeBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if body.UserID == "" || body.TitleSlug == "" {
+		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		return
+	}
+	if err := h.svc.DisablePilotMode(r.Context(), body.UserID, body.TitleSlug); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ─────────── Pool collectif squad ───────────
+
+type refreshSquadPoolBody struct {
+	TitleSlug   string `json:"title_slug"`
+	RequestedBy string `json:"requested_by"`
+}
+
+// RefreshSquadPool gère POST /squads/{squad_id}/challenges/pool/refresh.
+//
+// Génère un pool de 6-9 templates thématiques pour l'escouade. Le membre
+// qui requête doit être dans l'escouade. Le pool est ensuite consommé par
+// les membres qui peuvent en proposer un défi à l'équipe.
+func (h *PrestigeHandler) RefreshSquadPool(w http.ResponseWriter, r *http.Request) {
+	squadID := chi.URLParam(r, "squad_id")
+	if squadID == "" {
+		writeError(w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		return
+	}
+	var body refreshSquadPoolBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if body.TitleSlug == "" {
+		writeError(w, http.StatusBadRequest, "missing_title_slug", "title_slug requis")
+		return
+	}
+	pool, err := h.svc.RefreshSquadPool(r.Context(), squadID, body.TitleSlug, body.RequestedBy)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"pool": pool, "count": len(pool)})
+}
+
 // ─────────── Helper d'erreurs ───────────
 
 // writeServiceError mappe les erreurs du service vers des codes HTTP.

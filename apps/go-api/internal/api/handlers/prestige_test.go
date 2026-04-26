@@ -101,6 +101,15 @@ func (m *mockPrestigeService) GetSquadChallenge(ctx context.Context, _ string) (
 func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, _ string) ([]prestige.SquadChallenge, error) {
 	return nil, nil
 }
+func (m *mockPrestigeService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]prestige.Template, error) {
+	return nil, nil
+}
+func (m *mockPrestigeService) EnablePilotMode(ctx context.Context, _, _ string) (prestige.PilotModeAttribution, error) {
+	return prestige.PilotModeAttribution{}, nil
+}
+func (m *mockPrestigeService) DisablePilotMode(ctx context.Context, _, _ string) error {
+	return nil
+}
 
 // ─────────── Helpers ───────────
 
