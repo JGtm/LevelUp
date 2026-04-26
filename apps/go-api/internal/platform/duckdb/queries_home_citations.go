@@ -589,23 +589,27 @@ func buildQ37MediaWhereClause(
 		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
 	}
 	if whereCfg.includeMapFilter && f.MapFilter != "" {
-		where = append(where, q37MediaMapLabelExpr+" ILIKE ?")
-		args = append(args, "%"+f.MapFilter+"%")
+		// Match EXACT (case-insensitive). Le ILIKE %X% utilisé avant matchait
+		// "Recharge Annex" pour "Recharge", "Catalyst Forge" pour "Catalyst", etc.
+		// La valeur frontend vient du même label SQL via available_filters → égalité OK.
+		where = append(where, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)")
+		args = append(args, f.MapFilter)
 	}
 	if whereCfg.includeModeFilter {
 		// Si ModeFilterCandidates est présent (FR → liste de raw EN via
-		// mode_name_tr), on construit un OR pour matcher chaque variant. Sinon
-		// fallback sur l'ancien ILIKE simple sur ModeFilter.
+		// mode_name_tr), on matche en EXACT sur chaque variant via IN. Sinon
+		// fallback sur l'égalité simple sur ModeFilter. Le substring ILIKE
+		// matchait "Team Slayer"/"Slayer Doubles" pour "Slayer" — bug.
 		if len(f.ModeFilterCandidates) > 0 {
-			parts := make([]string, len(f.ModeFilterCandidates))
+			placeholders := make([]string, len(f.ModeFilterCandidates))
 			for i, candidate := range f.ModeFilterCandidates {
-				parts[i] = q37MediaModeLabelExpr + " ILIKE ?"
-				args = append(args, "%"+candidate+"%")
+				placeholders[i] = "LOWER(?)"
+				args = append(args, candidate)
 			}
-			where = append(where, "("+strings.Join(parts, " OR ")+")")
+			where = append(where, "LOWER("+q37MediaModeLabelExpr+") IN ("+strings.Join(placeholders, ",")+")")
 		} else if f.ModeFilter != "" {
-			where = append(where, q37MediaModeLabelExpr+" ILIKE ?")
-			args = append(args, "%"+f.ModeFilter+"%")
+			where = append(where, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)")
+			args = append(args, f.ModeFilter)
 		}
 	}
 
