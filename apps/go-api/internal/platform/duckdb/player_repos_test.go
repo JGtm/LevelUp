@@ -222,6 +222,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			media_file_id VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
 			delta_seconds INTEGER,
+			is_manual BOOLEAN DEFAULT FALSE,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)`,
 	}
