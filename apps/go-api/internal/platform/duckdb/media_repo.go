@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -178,7 +179,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			COALESCE(r.map_name_fr, r.map_name) AS map_name,
 			COALESCE(r.pair_name_fr, r.pair_name) AS pair_name,
 			COALESCE(r.playlist_name_fr, r.playlist_name) AS playlist_name,
-			mp.kills, mp.deaths, mp.assists, mp.outcome,
+			mp.outcome,
 			ABS(DATEDIFF('second', ?, r.start_time)) AS delta_s
 		FROM shared.match_registry r
 		JOIN shared.match_participants mp
@@ -193,14 +194,15 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	}
 	defer rows.Close()
 
+	matchIDs := []string{}
 	for rows.Next() {
 		var c domain.MediaMatchCandidate
 		var mapName, pairName, playlistName sql.NullString
-		var kills, deaths, assists, outcome sql.NullInt64
+		var outcome sql.NullInt64
 		var deltaS sql.NullInt64
 		var startT, endT sql.NullTime
 		if err := rows.Scan(&c.MatchID, &startT, &endT, &mapName, &pairName, &playlistName,
-			&kills, &deaths, &assists, &outcome, &deltaS); err != nil {
+			&outcome, &deltaS); err != nil {
 			continue
 		}
 		if startT.Valid {
@@ -215,10 +217,15 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			s := strings.TrimSpace(mapName.String)
 			if s != "" {
 				c.MapName = &s
+				if url := analysis.MapStaticImagePath(s); url != "" {
+					c.MapImageURL = &url
+				}
 			}
 		}
 		if pairName.Valid {
-			s := strings.TrimSpace(pairName.String)
+			// Normaliser comme q37MediaModeLabelExpr : strip préfixe ("Arena:", "Community:" etc.)
+			// + suffixes (" on Bazaar", " - Forge", " - Ranked")
+			s := normalizeModeLabel(pairName.String)
 			if s != "" {
 				c.ModeName = &s
 			}
@@ -228,18 +235,6 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			if s != "" {
 				c.PlaylistName = &s
 			}
-		}
-		if kills.Valid {
-			n := int(kills.Int64)
-			c.Kills = &n
-		}
-		if deaths.Valid {
-			n := int(deaths.Int64)
-			c.Deaths = &n
-		}
-		if assists.Valid {
-			n := int(assists.Int64)
-			c.Assists = &n
 		}
 		if outcome.Valid {
 			n := int(outcome.Int64)
@@ -251,8 +246,93 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 		c.IsCurrent = currentMatchID.Valid && currentMatchID.String == c.MatchID
 		resp.Candidates = append(resp.Candidates, c)
+		matchIDs = append(matchIDs, c.MatchID)
 	}
+
+	// 2e query batch : lobby (max 12 joueurs par match — assez pour 4v4 + spectateurs)
+	if len(matchIDs) > 0 {
+		lobbies := r.loadMatchLobbies(ctx, matchIDs)
+		for i := range resp.Candidates {
+			resp.Candidates[i].Lobby = lobbies[resp.Candidates[i].MatchID]
+		}
+	}
+
 	return resp, nil
+}
+
+// loadMatchLobbies retourne le lobby (max 12 joueurs/match) pour un set de match_ids.
+// Marque is_self pour le joueur courant (xuid match).
+func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map[string][]domain.MediaMatchLobbyEntry {
+	if len(matchIDs) == 0 {
+		return nil
+	}
+	placeholders := make([]string, len(matchIDs))
+	args := make([]any, 0, len(matchIDs)+1)
+	args = append(args, r.pdb.XUID)
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	q := `
+		SELECT mp.match_id,
+			COALESCE(mp.gamertag, va.gamertag, mp.xuid) AS gamertag,
+			mp.team_id,
+			(mp.xuid = ?) AS is_self
+		FROM shared.match_participants mp
+		LEFT JOIN shared.xuid_aliases va ON va.xuid = mp.xuid
+		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)
+		ORDER BY mp.match_id, mp.team_id, mp.gamertag
+	`
+	rows, err := r.pdb.Player.Query(ctx, q, args...)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	out := make(map[string][]domain.MediaMatchLobbyEntry, len(matchIDs))
+	for rows.Next() {
+		var matchID string
+		var gamertag sql.NullString
+		var teamID sql.NullInt64
+		var isSelf bool
+		if err := rows.Scan(&matchID, &gamertag, &teamID, &isSelf); err != nil {
+			continue
+		}
+		if len(out[matchID]) >= 12 {
+			continue
+		}
+		name := "?"
+		if gamertag.Valid {
+			name = strings.TrimSpace(gamertag.String)
+			if name == "" {
+				name = "?"
+			}
+		}
+		entry := domain.MediaMatchLobbyEntry{Gamertag: name, IsSelf: isSelf}
+		if teamID.Valid {
+			t := int(teamID.Int64)
+			entry.TeamID = &t
+		}
+		out[matchID] = append(out[matchID], entry)
+	}
+	return out
+}
+
+// Strips appliqués pour normaliser un mode (pair_name) côté Go, en miroir
+// de q37MediaModeLabelExpr : préfixe catégorie + suffixes carte/Forge/Ranked.
+var (
+	modeLabelPrefixRe = regexp.MustCompile(`(?i)^[^:]+:\s*`)
+	modeLabelOnRe     = regexp.MustCompile(`(?i)\s+on\s+.+$`)
+	modeLabelForgeRe  = regexp.MustCompile(`(?i)\s*-\s*Forge\b.*$`)
+	modeLabelRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b.*$`)
+)
+
+func normalizeModeLabel(s string) string {
+	s = modeLabelPrefixRe.ReplaceAllString(s, "")
+	s = modeLabelOnRe.ReplaceAllString(s, "")
+	s = modeLabelForgeRe.ReplaceAllString(s, "")
+	s = modeLabelRankedRe.ReplaceAllString(s, "")
+	return strings.TrimSpace(s)
 }
 
 // SetMediaMatchAssociation force l'association d'un média à un match précis.

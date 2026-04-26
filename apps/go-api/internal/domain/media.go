@@ -227,22 +227,27 @@ type UploadResult struct {
 }
 
 // MediaMatchCandidate représente un match potentiel pour une réassociation manuelle.
-// Inclut les KPIs du joueur courant pour aider à reconnaître quel match correspond
-// au média (ex : "20 kills, victoire" vs "5 kills, défaite").
+// Inclut le résultat du joueur + le lobby pour aider à reconnaître le bon match.
 type MediaMatchCandidate struct {
 	MatchID      string     `json:"match_id"`
 	StartTime    *time.Time `json:"start_time,omitempty"`
 	EndTime      *time.Time `json:"end_time,omitempty"`
-	MapName      *string    `json:"map_name,omitempty"`
-	ModeName     *string    `json:"mode_name,omitempty"`
-	PlaylistName *string    `json:"playlist_name,omitempty"`
+	MapName      *string    `json:"map_name,omitempty"`      // FR si dispo
+	MapImageURL  *string    `json:"map_image_url,omitempty"` // /static/maps/X.png
+	ModeName     *string    `json:"mode_name,omitempty"`     // FR normalisé (préfixes/suffixes strippés)
+	PlaylistName *string    `json:"playlist_name,omitempty"` // FR
 	IsCurrent    bool       `json:"is_current"`              // true si ce match est l'association actuelle
 	DeltaSeconds *int       `json:"delta_seconds,omitempty"` // écart capture vs start_time
-	// KPIs du joueur sur ce match (best-effort, peut être nul si non disponible)
-	Kills   *int `json:"kills,omitempty"`
-	Deaths  *int `json:"deaths,omitempty"`
-	Assists *int `json:"assists,omitempty"`
-	Outcome *int `json:"outcome,omitempty"` // 2=victoire 3=défaite 1=égalité 4=DNF
+	Outcome      *int       `json:"outcome,omitempty"`       // 2=victoire 3=défaite 1=égalité 4=DNF
+	// Lobby : autres joueurs du match (max 8, équipes incluses)
+	Lobby []MediaMatchLobbyEntry `json:"lobby,omitempty"`
+}
+
+// MediaMatchLobbyEntry décrit un joueur du lobby d'un match candidat.
+type MediaMatchLobbyEntry struct {
+	Gamertag string `json:"gamertag"`
+	TeamID   *int   `json:"team_id,omitempty"`
+	IsSelf   bool   `json:"is_self"` // true si gamertag == player courant
 }
 
 // MediaMatchCandidatesResponse regroupe les matchs candidats pour un média.

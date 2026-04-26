@@ -1514,19 +1514,24 @@ export interface MediaAuthor {
   media_count: number
 }
 
+export interface MediaMatchLobbyEntry {
+  gamertag: string
+  team_id?: number | null
+  is_self: boolean
+}
+
 export interface MediaMatchCandidate {
   match_id: string
   start_time?: string | null
   end_time?: string | null
   map_name?: string | null
+  map_image_url?: string | null
   mode_name?: string | null
   playlist_name?: string | null
   is_current: boolean
   delta_seconds?: number | null
-  kills?: number | null
-  deaths?: number | null
-  assists?: number | null
   outcome?: number | null
+  lobby?: MediaMatchLobbyEntry[]
 }
 
 export interface MediaMatchCandidatesResponse {
