@@ -1,5 +1,48 @@
 # Thought Log
 
+## [2026-04-26] feat(notifications): cloture complete des gaps backend + frontend
+
+**Statut** : 100% du plan MVP livre. **11/11 categories instrumentees** avec hooks d'emission (vs 7/11 precedemment). Tous les gaps Settings/Page identifies dans l'audit honnete sont resolus. 2 commits supplementaires sous mon nom (`635ad5c9` backend gaps, `db3d11d7` frontend gaps).
+
+**Backend gaps comblees** :
+- **Migration** : nouvelle table `player_records` (metric, value, achieved_match_id, updated_at) pour la persistance des records. Commit migration `create_player_records` dans `steps_player_notifications.go`.
+- **PlayerSnapshot etendu** : ajout `KDRatio`, `Winrate`, `BestKDA`, `BestKDAMatchID`, `ChallengePathsCount`. Calcul via `shared.match_participants` (xuid scope) + `challenge_snapshots`.
+- **Hook personal_record** : compare BestKDA vs `player_records.best_kda` (epsilon 0.01), emit + persiste si battu, init silencieux au 1er passage.
+- **Hook threshold_crossed** : helper `thresholdCrossed(before, after, step)` ascendant uniquement (palier 0.05 sur KD, 5% sur Winrate). Severity `success`.
+- **Hook challenge_added** : delta sur `COUNT(DISTINCT challenge_path)` de `challenge_snapshots`.
+- **Hook objective_assigned** : delta sur `COUNT(*)` de `personal_score_awards` (doublon possible avec `objective_completed` accepte pour MVP).
+- **Multi-destinataires `media_added`** : `MediaRecipientResolver` lit `shared_social.media_match_associations.created_at >= since`, joint `shared.match_participants` pour les xuids des matchs concernes, remappe via `cfg.LoadPlayers()`, exclut l'uploader, dedupe, plafonne a 5. Fan-out emis en plus de la notif uploader retiree (l'uploader n'est plus notifie de son propre upload, il sait deja).
+- **Endpoint POST `/notifications/test`** : `PostTest` handler emet une notif `app_release` info severity. Cable au bouton Settings.
+
+**Frontend gaps comblees** :
+- **Section Abonnements per-player** dans `NotificationsSettingsTab.tsx` : 2 toggles `Suivre mes objectifs` (active/disable `objective_assigned` + `objective_completed` en bulk) et `Suivre les nouveaux medias` (active/disable `media_added`). Header indique `currentPlayer.gamertag`.
+- **Slider Retention** : range input 50-500 (defaut 200), persiste en `localStorage:levelup:notifications:retention`. Note : cap serveur reste a 500 (cap dur dans le repo DuckDB), le slider est purement UI client-side.
+- **Bouton "Envoyer une notification de test"** : appelle `useSendTestNotification` (POST `/notifications/test`), invalide la query liste apres succes, toast Sonner de confirmation.
+- **Bulk actions sur page dediee** : `selectedIds Set<number>` + checkbox par item dans Timeline, sticky bar (`bottom-4`) avec actions "Marquer N comme lus" + "Ignorer N" + "Deselectionner tout". Pluraisation via `{count}` dans i18n strings.
+- **Navigation clavier dropdown** : `ArrowUp` / `ArrowDown` cycle entre items `[role="menuitem"]` via `document.activeElement` + `items[idx].focus()`. Esc deja en place.
+
+**Decisions techniques (validees via questionnaire interactif)** :
+- `personal_record` : table dediee `player_records` (vs heuristique brute) — plus propre et requetable.
+- `threshold_crossed` : franchissement vers le **haut uniquement** (vs les deux directions) — evite le cote demoralisant des chutes.
+- `media_added` multi-destinataires : **exclut l'uploader** + notifie les autres (vs inclusion). L'uploader sait deja qu'il a uploade.
+
+**11 commits sous mon nom au total** (Co-Authored-By Claude Opus 4.7 (1M context)) :
+- `63faf98d` frontend foundations
+- `bd387be1` AppShell + NavL1
+- `151abd32` onglet Settings
+- `2aa18a0e` hook media_added v1
+- `4789f537` thought_log MVP
+- `6bab66de` tests handler + repo integration
+- `29e93105` hook app_release boot
+- `d1c515c2` hooks delta-detection v1 (3 categories)
+- `598b4314` thought_log MVP final
+- `635ad5c9` backend gaps (4 categories supp + fan-out + endpoint test)
+- `db3d11d7` frontend gaps (Subscriptions + Retention + Test button + bulk actions + arrow nav)
+
+**Verification** : `go build ./...` vert. `go test ./internal/notifications/... ./internal/api/handlers/... ./internal/platform/duckdb/...` = 34 tests verts. `npx tsc -b` aucune erreur introduite dans `features/notifications/`. UI fonctionnelle attendue a tester en E2E manuel (sync, upload, bouton test, bulk actions, arrow keys, slider retention).
+
+**Conclusion** : Plan complet livre, plus rien en TODO sauf phase 2 explicite (SSE temps reel + 3 categories nice-to-have referential_update / session_alert / teammate_returned).
+
 ## [2026-04-26] feat(notifications): toutes les phases livrees - API interne complete
 
 **Statut** : Toutes les phases du plan livrees. 7 catégories sur 11 totalement instrumentees (match_synced, sync_error, media_added, app_release, season_pass_level, objective_completed, challenge_completed). 4 reportees avec TODO documente in-code (personal_record, threshold_crossed, objective_assigned, challenge_added) — necessitent infrastructure additionnelle (table records, agreges KD/WR, signaux explicites Prestige). Tests : 12 service + 11 handler + 11 repo integration DuckDB = 34 verts.
