@@ -145,6 +145,11 @@ export function SquadSynergiesPage() {
           winRateAxis: t.charts.timelineWinRateAxis,
         })
       : null
+  // mapLabelOf : résout le `map_ui` brut backend vers le libellé localisé
+  // de assets.toml (kind = "map") du titre courant. Fallback sur l'ID brut
+  // pour les cartes pas (encore) mappées — graceful degradation.
+  const mapAssets = mappings?.assets?.['map']
+  const mapLabelOf = (mapId: string): string => mapAssets?.[mapId]?.label ?? mapId
   const heatmapChart =
     pageData?.map_breakdown && pageData.map_breakdown.length > 0
       ? buildHeatmapChart({
@@ -152,6 +157,7 @@ export function SquadSynergiesPage() {
           title: t.charts.heatmapTitle,
           winAxis: t.charts.heatmapWinAxis,
           matchesLabel: t.charts.heatmapMatchesLabel,
+          mapLabelOf,
         })
       : null
 

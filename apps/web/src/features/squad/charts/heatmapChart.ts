@@ -1,13 +1,11 @@
 /**
  * heatmapChart — Win rate par carte (heatmap horizontale).
  *
- * Multi-titres : titre et libellés d'axes passés en argument. Les noms de
- * cartes proviennent de MapBreakdownRow.map_ui (raw string côté backend).
- *
- * TODO(multi-title): une fois useAssetLabel('map', id) livré (PLAN_FINITION
- * Phase 3), le backend exposera un canonical map ID et le frontend résoudra
- * le label localisé via le mapping assets.toml. Aujourd'hui les libellés
- * de cartes sont des strings brutes EN-Halo qui resteront tels quels.
+ * Multi-titres : libellés UI (titre, axes, hovertemplate) ET noms de cartes
+ * passent par le caller. Les noms de cartes sont résolus via `mapLabelOf`
+ * qui consomme le mapping `assets.map` du titre courant — fallback sur l'ID
+ * brut si la carte n'est pas mappée (titre minimaliste, ou carte récente
+ * pas encore au TOML).
  */
 import type { MapBreakdownRow, PlotlyFigurePayload } from '@/lib/api/types'
 import { buildOrdinalColorscale } from '@/lib/accessibility'
@@ -17,6 +15,12 @@ interface HeatmapChartArgs {
   title: string
   winAxis: string
   matchesLabel: string
+  /**
+   * Résout l'ID brut d'une carte (cf. MapBreakdownRow.map_ui) vers son
+   * libellé localisé via assets.map du titre courant. Si la carte n'est
+   * pas mappée, doit retourner l'ID inchangé.
+   */
+  mapLabelOf: (mapId: string) => string
 }
 
 export function buildHeatmapChart({
@@ -24,6 +28,7 @@ export function buildHeatmapChart({
   title,
   winAxis,
   matchesLabel,
+  mapLabelOf,
 }: HeatmapChartArgs): PlotlyFigurePayload | null {
   if (rows.length === 0) return null
 
@@ -33,7 +38,7 @@ export function buildHeatmapChart({
   ])
 
   const sorted = [...rows].sort((a, b) => b.win_rate - a.win_rate)
-  const maps = sorted.map((r) => r.map_ui)
+  const maps = sorted.map((r) => mapLabelOf(r.map_ui))
   const winrates = sorted.map((r) => r.win_rate)
   const counts = sorted.map((r) => r.match_count)
   const customdata = counts.map((c, i) => [c, winrates[i]])
