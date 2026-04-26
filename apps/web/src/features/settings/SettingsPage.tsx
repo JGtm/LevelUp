@@ -14,6 +14,7 @@ import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i1
 import type { HintBullets } from '@/features/settings/i18n'
 import { WatcherSectionBody } from '@/features/settings/WatcherCard'
 import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
+import { NotificationsSettingsTab } from '@/features/notifications/NotificationsSettingsTab'
 import type { SettingsResponse } from '@/lib/api/types'
 
 function ToggleRow({ label, value, onChange, disabled }: { label: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
@@ -73,9 +74,10 @@ export function SettingsPage() {
       | 'lab'
       | 'users'
       | 'accessibility'
+      | 'notifications'
       | null) ?? 'general'
 
-  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility') {
+  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications') {
     navigate({ to: '/settings', search: { tab }, replace: true }).catch(() => {})
   }
 
@@ -134,9 +136,10 @@ export function SettingsPage() {
               { id: 'sync', label: t.tabSync },
               { id: 'analyse', label: t.tabAnalyse },
               { id: 'accessibility', label: t.tabAccessibility },
+              { id: 'notifications', label: locale === 'en' ? 'Notifications' : 'Notifications' },
               ...(canManageInstance ? [{ id: 'lab', label: t.tabLab }] : []),
               ...(isAdmin ? [{ id: 'users', label: t.tabUsers }] : []),
-            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility'; label: string }[]
+            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications'; label: string }[]
           ).map(({ id, label }) => (
             <button
               key={id}
@@ -169,6 +172,7 @@ export function SettingsPage() {
         {activeTab === 'lab' && <LabTab t={t} />}
         {activeTab === 'users' && <UsersTab merged={merged} handleChange={handleChange} t={t} />}
         {activeTab === 'accessibility' && <AccessibilityTab t={t} />}
+        {activeTab === 'notifications' && <NotificationsSettingsTab />}
       </div>
     </div>
   )
