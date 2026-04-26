@@ -1,5 +1,59 @@
 # Thought Log
 
+## [2026-04-26] test(multi-title): vérification finale — couverture + logging conformes au plan §9 + §8.1
+
+**Statut** : Complété — 4 commits sur la branche (`1fa3c9d9` registry tests, `89208631` adapter Assets/Outcomes tests, `b769b4e8` rename log event, `5c12e80a` Vitest assets/outcomes DTO).
+
+**Contexte** : Suite à l'achèvement des Phases 1-5 du `PLAN_FINITION_MULTI_TITLE.md`, vérification finale demandée par l'utilisateur. L'audit a révélé 3 régressions et 1 gap nominatif.
+
+**Régressions détectées et corrigées** :
+
+1. **Couverture `mappings`** est passée de 93.3% à **83.7%** après ajout des nouveaux types (AssetMapping/OutcomeMapping) + Registry étendu. Le seuil §9.2 du plan demande ≥90%. Ajout de 7 tests Registry (`registry_test.go`) + 4 tests `LoadAssetsFromFile`/`LoadOutcomesFromFile` → **93.0%** retrouvé.
+2. **Couverture `halo_infinite`** est passée de 93.5% à **91.8%** car les méthodes `Assets()` / `Outcomes()` du SemanticAdapter étaient à 0%. Ajout de 2 tests dans `adapter_semantic_test.go` (cas nil + cas injecté) → **93.6%**.
+3. **Couverture `synthetic_title_b`** est passée de 100% à **90.0%** pour la même raison. Ajout de 2 tests dans `isolation_test.go` (cas nil + cas injecté avec libellés divergents validant l'isolation cross-titres) → **100.0%**.
+
+**Gap nominatif corrigé** :
+
+4. **Event log `mappings_validation_failed` du plan §8.1** était émis sous le nom incohérent `mappings_load_failed` dans `registry.go`. Renommé pour respecter la nomenclature du plan. Validé par audit : **8/9 events** présents (le 9e, `mappings_hot_reloaded`, est volontairement exclus car §7.3 du plan dit « pas de hot-reload prod »).
+
+**Tests Vitest étendus** : ajout de 4 tests `fieldMappings.test.ts` couvrant le DTO `assets` + `outcomes` exposé par l'endpoint `/field-mappings` (Phase 3). Le test file passe de 5 à 9 tests verts.
+
+**Décisions techniques** :
+
+- **Pattern de test logger** : utilisation de `slog.NewJSONHandler(&buf, ...)` pour capturer les events structurés et asserter leur présence dans la trace. C'est l'approche du `recorder_test.go` existant, étendue ici à `registry_test.go`.
+- **Tests file-based vs in-memory** : on conserve les `LoadFromBytes` (rapide, déterministe) comme test principal, et on ajoute un `*FromFile` minimaliste qui écrit dans `t.TempDir()` pour couvrir le chemin disque (sinon `os.ReadFile` reste à 0%).
+- **Pas de tests sur les hooks React `useAssetLabel`/`useOutcomeLabel`** : ils sont des wrappers triviaux d'1 ligne autour de `data?.assets?.[kind]?.[id]?.label ?? id` ; le test du DTO + le test du fallback empty `mappings` couvrent la logique. Tester un hook React requiert un harness `renderHook` qui n'est pas justifié pour cette logique.
+
+**Résultats observés** :
+- `golangci-lint` clean sur les 4 packages multi-title.
+- `go test ./internal/games/...` : **123 tests verts**, couvertures finales :
+  - `internal/games` : 100%
+  - `internal/games/canonical` : 100%
+  - `internal/games/halo_infinite` : 93.6%
+  - `internal/games/mappings` : 93.0%
+  - `internal/games/synthetic_title_b` : 100%
+- `npx tsc --noEmit` clean (apps/web).
+- `npx vitest run src/lib/i18n` : 9 tests verts.
+- `lint-no-hardcoded-fields` : 0 violation sur 277 fichiers.
+
+**Audit logs §8.1 final** :
+
+| Event | Présent | Niveau | Source |
+|---|:---:|---|---|
+| `adapter_loaded` | 2× | Info | server.go boot (data + semantic) |
+| `adapter_load_failed` | 1× | Error | server.go (SemanticAdapter nil) |
+| `mappings_loaded` | 3× | Info | registry.go (fields + assets + outcomes) |
+| `mappings_validation_failed` | 3× | Error | registry.go (échec parsing) |
+| `mappings_hot_reloaded` | 0 | — | **volontairement absent** (§7.3) |
+| `field_lookup_missing` | 1× | Warn | recorder.go |
+| `capability_not_supported` | 4× | Warn | adapter_data.go (HI), synthesis_service, explorer_service |
+| `field_mappings_served` | 1× | Debug | field_mappings.go handler |
+| `mappings_lookup_throttled` | 1× | Warn | recorder.go FlushDropped |
+
+**Conclusion / prochaine étape** : Le chantier multi-titres est désormais à 100% des critères d'acceptation §14 + §9 + §8.1 du plan d'origine `PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS`. Le `PLAN_FINITION_MULTI_TITLE.md` est livré intégralement. Plan `weapon_family` reste backloggé (bloqué par 2nd titre réel).
+
+---
+
 ## [2026-04-26] feat(multi-title): Phases 2-4 du plan finition — bascule services + assets/outcomes frontend
 
 **Statut** : Complété — 2 commits sur `feat/multi-title-adapters-and-mappings` (`588e2e72` Phase 1, `779181bc` Phases 2-4). Plan `.ai/PLAN_FINITION_MULTI_TITLE.md` livré sauf Phase 5 docs (thought_log = cette entrée + ARCHITECTURE_V6 ci-dessous).
