@@ -27,7 +27,6 @@ export interface SquadText {
     placeholder: (count: number) => string
     dirty: string
     prompt: string
-    applied: (n: number) => string
     apply: string
   }
   session: {
@@ -99,7 +98,6 @@ const FR_TEXT: SquadText = {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
     dirty: 'Sélection modifiée — clique sur Appliquer pour mettre à jour les graphiques.',
     prompt: 'Sélectionne jusqu\'à 3 coéquipiers puis clique sur Appliquer.',
-    applied: (n) => `${n} coéquipier${n > 1 ? 's' : ''} analysé${n > 1 ? 's' : ''}.`,
     apply: 'Appliquer',
   },
   session: {
@@ -173,7 +171,6 @@ const EN_TEXT: SquadText = {
     placeholder: (count) => `Search among ${count} teammates…`,
     dirty: 'Selection changed — click Apply to refresh the charts.',
     prompt: 'Pick up to 3 teammates then click Apply.',
-    applied: (n) => `${n} teammate${n > 1 ? 's' : ''} analyzed.`,
     apply: 'Apply',
   },
   session: {
