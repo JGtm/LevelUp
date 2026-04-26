@@ -318,6 +318,8 @@ func NewRouter(
 		if prestigeBundle != nil {
 			syncH = syncH.WithPrestigeHook(prestigeBundle.RunPostSync)
 		}
+		// Branche la factory d'émetteurs de notifications (match_synced / sync_error).
+		syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
 		r.Post("/sync/initial", syncH.StartInitialSync)
 		r.Post("/sync/all", syncH.StartSyncAll)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)

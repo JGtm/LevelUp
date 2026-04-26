@@ -228,13 +228,27 @@ export function useToggleMediaLike(playerSlug: string) {
         queryKey: queryKeys.mediaBase(playerSlug),
       })
 
+      // Calculer le bon likeCount depuis l'item actuel (incrémenter/décrémenter)
+      const allData = queryClient.getQueriesData<MediaPageResponse>({
+        queryKey: queryKeys.mediaBase(playerSlug),
+      })
+      let currentLikeCount = 0
+      for (const [, data] of allData) {
+        const item = data?.items?.items?.find((i) => i.file_path === request.file_path)
+        if (item) {
+          currentLikeCount = item.like_count
+          break
+        }
+      }
+      const newLikeCount = request.liked ? currentLikeCount + 1 : Math.max(0, currentLikeCount - 1)
+
       queryClient.setQueriesData<MediaPageResponse>(
         { queryKey: queryKeys.mediaBase(playerSlug) },
         (current) => updateMediaLikeInResponse(
           current,
           request.file_path,
           request.liked,
-          request.liked ? 1 : 0,
+          newLikeCount,
         ),
       )
 
