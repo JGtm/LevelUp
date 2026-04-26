@@ -1,6 +1,8 @@
 package mappings
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -177,5 +179,38 @@ func TestOutcomeMappingSet_NilSafe(t *testing.T) {
 	}
 	if set.Keys() != nil {
 		t.Error("nil set Keys should return nil")
+	}
+}
+
+func TestLoadOutcomesFromFile_FileNotFound(t *testing.T) {
+	_, err := LoadOutcomesFromFile(filepath.Join(t.TempDir(), "absent.toml"))
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+	if !strings.Contains(err.Error(), "read") {
+		t.Errorf("error = %v, want read prefix", err)
+	}
+}
+
+func TestLoadOutcomesFromFile_RealFile(t *testing.T) {
+	tomlPath := filepath.Join(t.TempDir(), "outcomes.toml")
+	doc := []byte(`
+[meta]
+title_slug = "smoke"
+schema_version = 1
+
+[outcomes.win]
+labels = { en = "Win", fr = "Victoire" }
+color_token = "outcome.positive"
+`)
+	if err := os.WriteFile(tomlPath, doc, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	set, err := LoadOutcomesFromFile(tomlPath)
+	if err != nil {
+		t.Fatalf("LoadOutcomesFromFile: %v", err)
+	}
+	if set.TitleSlug() != "smoke" {
+		t.Errorf("TitleSlug = %q", set.TitleSlug())
 	}
 }

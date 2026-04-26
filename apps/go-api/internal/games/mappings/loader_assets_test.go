@@ -1,6 +1,8 @@
 package mappings
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -190,5 +192,38 @@ func TestAssetMappingSet_NilSafe(t *testing.T) {
 	}
 	if set.Kinds() != nil {
 		t.Error("nil set Kinds should return nil")
+	}
+}
+
+func TestLoadAssetsFromFile_FileNotFound(t *testing.T) {
+	_, err := LoadAssetsFromFile(filepath.Join(t.TempDir(), "absent.toml"))
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+	if !strings.Contains(err.Error(), "read") {
+		t.Errorf("error = %v, want read prefix", err)
+	}
+}
+
+func TestLoadAssetsFromFile_RealFile(t *testing.T) {
+	tomlPath := filepath.Join(t.TempDir(), "assets.toml")
+	doc := []byte(`
+[meta]
+title_slug = "smoke"
+schema_version = 1
+
+[assets.mode.ranked]
+labels = { en = "Ranked", fr = "Classé" }
+display_order = 10
+`)
+	if err := os.WriteFile(tomlPath, doc, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	set, err := LoadAssetsFromFile(tomlPath)
+	if err != nil {
+		t.Fatalf("LoadAssetsFromFile: %v", err)
+	}
+	if set.TitleSlug() != "smoke" {
+		t.Errorf("TitleSlug = %q", set.TitleSlug())
 	}
 }
