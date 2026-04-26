@@ -13,7 +13,7 @@
  * Route parente : /players/$playerSlug/squad
  * Routes enfants : /squad/synergies · /squad/contributions
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -22,7 +22,6 @@ import { useSettings } from '@/features/settings/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
-import { SquadSessionSelector } from './SquadSessionSelector'
 import { getSeriesColors } from '@/lib/accessibility'
 import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import { getSquadText } from './i18n'
@@ -221,10 +220,25 @@ export function SquadLayout() {
     }
   })
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
-  const [squadSession, setSquadSession] = useState<string | null>(null)
   const prefetchCompare = useComparePrefetch(playerSlug)
   const matchRoute = useMatchRoute()
   const { data: settings } = useSettings()
+
+  // ── Filtrage de session unifié via NavL2 ──────────────────────────────────
+  // Plus de SquadSessionSelector dédié : la session active vient du global
+  // filter store (alimenté par NavL2). On lookup la session pickée et, si
+  // c'est une session escouade, on dérive son label pour le backend
+  // (filterSynthesisBySession garde uniquement les matchs avec ce label).
+  const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
+  const setSessions = useGlobalFilterStore((s) => s.setSessions)
+  const allSessions = resolvedContext?.session_options?.all_sessions ?? []
+  const pickedSessionId = filterContext.sessions?.picked_sessions?.[0] ?? null
+  const pickedSession = pickedSessionId
+    ? allSessions.find((s) => s.session_id === pickedSessionId)
+    : null
+  // Si la session pickée n'est pas une session escouade, on n'envoie pas de
+  // filtre (sinon le backend renvoie zéro match — solo + filter squad = ø).
+  const pickedSquadSessionLabel = pickedSession?.is_squad ? pickedSession.label : null
 
   // Init depuis les amis par défaut dans les settings si localStorage vide
   useEffect(() => {
@@ -237,6 +251,31 @@ export function SquadLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.friend_gamertags])
 
+  // Default-to-latest : à l'arrivée sur la page, si aucune session n'est
+  // pickée globalement, on auto-sélectionne la session escouade la plus
+  // récente. Le user peut ensuite naviguer ← / ⚡ via NavL2 ou tout
+  // réinitialiser.
+  const defaultedRef = useRef(false)
+  useEffect(() => {
+    if (defaultedRef.current) return
+    if (pickedSessionId) {
+      defaultedRef.current = true
+      return
+    }
+    if (allSessions.length === 0) return
+    const latestSquad = allSessions.find((s) => s.is_squad)
+    if (!latestSquad) {
+      defaultedRef.current = true
+      return
+    }
+    setSessions({
+      ...(filterContext.sessions ?? {}),
+      picked_sessions: [latestSquad.session_id],
+    })
+    defaultedRef.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSessions.length, pickedSessionId])
+
   const isDirty =
     JSON.stringify([...selectedGts].sort()) !== JSON.stringify([...confirmedGts].sort())
 
@@ -248,7 +287,7 @@ export function SquadLayout() {
   const request: TeammatesQueryRequest = {
     filters: filterContext,
     selected_gamertags: confirmedGts.length > 0 ? confirmedGts : undefined,
-    picked_squad_session_label: squadSession,
+    picked_squad_session_label: pickedSquadSessionLabel,
   }
   const { data, isLoading, isError, error } = useTeammates(
     playerSlug,
@@ -309,29 +348,26 @@ export function SquadLayout() {
       value={{ selectedRows, confirmedGamertags: confirmedGts, pageData: data ?? null }}
     >
       <div className="flex flex-col gap-6 p-6">
-        {/* Sélecteur de session escouade */}
-        <SquadSessionSelector
-          sessionLabels={data.session_labels ?? { solo: [], squad: [] }}
-          squadSession={squadSession}
-          onSquadChange={setSquadSession}
-        />
-
-        {/* Sélecteur coéquipiers avec fuzzy search */}
+        {/* Coéquipiers — card compacte unique en haut de page.
+            Le filtrage de session est géré par NavL2 (toujours visible
+            avec navigation ← / ⚡), plus de sélecteur dédié inline. */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t.title.teammates}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <GamertagCombobox
-              selected={selectedGts}
-              onChange={setSelectedGts}
-              max={MAX_SELECTION}
-              frequentOptions={availableOptions}
-              colors={CHART_COLORS}
-              excludeGamertag={playerSlug}
-              placeholder={t.selection.placeholder(availableOptions.length)}
-            />
-            <div className="flex items-center justify-between gap-3 pt-1">
+          <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-4">
+            <span className="shrink-0 text-sm font-medium text-foreground">
+              {t.title.teammates}
+            </span>
+            <div className="min-w-0 flex-1">
+              <GamertagCombobox
+                selected={selectedGts}
+                onChange={setSelectedGts}
+                max={MAX_SELECTION}
+                frequentOptions={availableOptions}
+                colors={CHART_COLORS}
+                excludeGamertag={playerSlug}
+                placeholder={t.selection.placeholder(availableOptions.length)}
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
               <span className="text-xs text-muted-foreground">
                 {isDirty
                   ? t.selection.dirty
