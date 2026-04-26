@@ -179,6 +179,16 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		}
 	}
 	if teammateXUID == "" {
+		// Silent drop volontaire (le gamertag n'est pas dans LoadTopTeammates)
+		// mais on émet un warn pour rendre le cas observable. Cause racine
+		// historique du bug "Comparaison inactive même après sélection" :
+		// la combobox côté frontend autorise la saisie libre de gamertags
+		// absents du top, qui sont alors silencieusement ignorés ici.
+		slog.WarnContext(ctx, "teammates_gamertag_not_found",
+			"player_xuid", playerXUID,
+			"gamertag", gamertag,
+			"top_rows_count", len(topRows),
+		)
 		return nil, nil, nil
 	}
 
