@@ -97,4 +97,12 @@ export const queryKeys = {
   // Classement CSR (Sprint 54-E)
   leaderboard: (playerSlug: string, season?: string, playlist?: string) =>
     ['leaderboard', playerSlug, season ?? '', playlist ?? ''] as const,
+
+  // Notifications in-app (per-player)
+  notifications: (playerSlug: string, filter: object) =>
+    ['notifications', playerSlug, 'list', filter] as const,
+  notificationsUnreadCount: (playerSlug: string) =>
+    ['notifications', playerSlug, 'unread-count'] as const,
+  notificationsPreferences: (playerSlug: string) =>
+    ['notifications', playerSlug, 'preferences'] as const,
 } as const
