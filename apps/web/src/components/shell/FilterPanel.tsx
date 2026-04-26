@@ -72,6 +72,12 @@ function detectActivePreset(period: PeriodInput | undefined): PresetId {
   return 'custom'
 }
 
+/** Détecte un label qui est en fait un UUID brut non résolu côté backend. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+function isUUIDLabel(label: string): boolean {
+  return UUID_RE.test(label.trim())
+}
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function FilterPanel({ open, onClose }: FilterPanelProps) {
@@ -93,7 +99,22 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
 
-  const available = resolvedContext?.available_options
+  const rawAvailable = resolvedContext?.available_options
+  // Filtre les options dont le label est un UUID brut (cas backend où le
+  // lookup playlist/mode/map a échoué et où value=label=uuid). Pas
+  // affichable utilement à l'utilisateur — on les masque pour ne pas
+  // polluer le dropdown.
+  const available = useMemo(() => {
+    if (!rawAvailable) return undefined
+    const filterUUIDs = (opts: { label: string; value: string }[]) =>
+      opts.filter((o) => !isUUIDLabel(o.label))
+    return {
+      playlists: filterUUIDs(rawAvailable.playlists),
+      modes: filterUUIDs(rawAvailable.modes),
+      maps: filterUUIDs(rawAvailable.maps),
+      experience_types: filterUUIDs(rawAvailable.experience_types),
+    }
+  }, [rawAvailable])
   const sessionOptions = resolvedContext?.session_options?.all_sessions ?? []
   const cascade = filterContext.cascade ?? {}
   const period = filterContext.period
@@ -136,15 +157,29 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
     setCascade({ ...cascade, [key]: next })
   }
 
+  // Pendant la transition (open false → true) on garde overflow-hidden
+  // sinon le contenu déborde brièvement. Quand le panel est totalement
+  // ouvert (transitionend) on bascule en overflow-visible pour que les
+  // popovers (dropdowns multi-select cascade) puissent dépasser hors de
+  // la card.
+  const [transitionDone, setTransitionDone] = useState(open)
+  // Reset immédiat à la fermeture (pas besoin d'attendre une transition
+  // pour réactiver overflow-hidden).
+  if (!open && transitionDone) setTransitionDone(false)
+
   return (
     <section
       role="region"
       aria-label="Panneau de filtres"
       className={[
-        'overflow-hidden border-b border-border bg-background transition-[max-height,opacity] duration-200 ease-out',
+        'border-b border-border bg-background transition-[max-height,opacity] duration-200 ease-out',
         open ? 'max-h-[48rem] opacity-100' : 'max-h-0 opacity-0',
+        transitionDone ? 'overflow-visible' : 'overflow-hidden',
       ].join(' ')}
       aria-hidden={!open}
+      onTransitionEnd={() => {
+        if (open) setTransitionDone(true)
+      }}
     >
       <div className="grid grid-cols-1 gap-6 px-4 py-5 md:grid-cols-2 lg:grid-cols-3">
         {/* ── Mode d'analyse ────────────────────────────────────────────── */}

@@ -227,7 +227,11 @@ export function SquadLayout() {
   const t = getSquadText(locale)
   const storageKey = `squad-teammates-${playerSlug}`
 
-  const [selectedGts, setSelectedGts] = useState<string[]>(() => {
+  // Sélection unique persistée en localStorage. Pas de séparation
+  // selectedGts / confirmedGts : la requête se déclenche automatiquement
+  // à chaque changement (TanStack Query dédupe). Plus de friction "clic
+  // sur Appliquer pour voir le résultat".
+  const [selectedGts, setSelectedGtsRaw] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem(storageKey)
       return stored ? (JSON.parse(stored) as string[]) : []
@@ -235,14 +239,21 @@ export function SquadLayout() {
       return []
     }
   })
-  const [confirmedGts, setConfirmedGts] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey)
-      return stored ? (JSON.parse(stored) as string[]) : []
-    } catch {
-      return []
-    }
-  })
+  const setSelectedGts = (next: string[] | ((prev: string[]) => string[])) => {
+    setSelectedGtsRaw((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(value))
+      } catch {
+        // localStorage indisponible (mode privé strict) — ignorer.
+      }
+      return value
+    })
+  }
+  // Conservé en local pour le contexte (les pages enfants distinguent
+  // sélection vide / résultats vides). Aliasé sur selectedGts puisqu'on
+  // applique automatiquement.
+  const confirmedGts = selectedGts
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
   const prefetchCompare = useComparePrefetch(playerSlug)
   const matchRoute = useMatchRoute()
@@ -268,19 +279,9 @@ export function SquadLayout() {
     if (settings?.friend_gamertags?.length && selectedGts.length === 0) {
       const initial = settings.friend_gamertags.slice(0, MAX_SELECTION)
       setSelectedGts(initial)
-      setConfirmedGts(initial)
-      localStorage.setItem(storageKey, JSON.stringify(initial))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.friend_gamertags])
-
-  const isDirty =
-    JSON.stringify([...selectedGts].sort()) !== JSON.stringify([...confirmedGts].sort())
-
-  const handleConfirm = () => {
-    setConfirmedGts(selectedGts)
-    localStorage.setItem(storageKey, JSON.stringify(selectedGts))
-  }
 
   const request: TeammatesQueryRequest = {
     filters: filterContext,
@@ -326,8 +327,13 @@ export function SquadLayout() {
   const availableOptions = data.options ?? []
   const teammates = data.teammates ?? []
 
+  // Match case-insensitive : le backend peut retourner "madina97294" même
+  // si l'utilisateur a sélectionné "Madina97294" (ou inversement, selon
+  // ce que la combobox renvoie vs ce qui est en DB).
   const selectedRows = confirmedGts
-    .map((gt) => teammates.find((titem) => titem.gamertag === gt))
+    .map((gt) =>
+      teammates.find((titem) => titem.gamertag.toLowerCase() === gt.toLowerCase()),
+    )
     .filter(Boolean) as TeammateRow[]
 
   // Détection du cas "sélection invalide" — un gamertag confirmé n'a matché
@@ -370,20 +376,11 @@ export function SquadLayout() {
                 placeholder={t.selection.placeholder(availableOptions.length)}
               />
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-              {(isDirty || selectedGts.length === 0) && (
-                <span className="text-xs text-muted-foreground">
-                  {isDirty ? t.selection.dirty : t.selection.prompt}
-                </span>
-              )}
-              <button
-                onClick={handleConfirm}
-                disabled={selectedGts.length === 0 && confirmedGts.length === 0}
-                className="shrink-0 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {t.selection.apply}
-              </button>
-            </div>
+            {selectedGts.length === 0 && (
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {t.selection.prompt}
+              </span>
+            )}
           </CardContent>
         </Card>
 
