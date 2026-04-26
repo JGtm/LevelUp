@@ -196,6 +196,8 @@ interface MediaLightboxProps {
   globalIndexOffset?: number
   /** Nombre total de médias toutes pages confondues. Si absent, fallback sur items.length. */
   globalTotal?: number
+  /** Si fourni, active le bouton "Réassocier" qui ouvre MediaMatchPicker. */
+  onReassociate?: (item: MediaItemRow) => void
 }
 
 const IMAGE_AUTOCHAIN_DELAY_MS = 7000
@@ -211,6 +213,7 @@ export function MediaLightbox({
   onLoadNextPage,
   globalIndexOffset = 0,
   globalTotal,
+  onReassociate,
 }: MediaLightboxProps) {
   const [index, setIndex] = useState(startIndex)
   const [autoChain, setAutoChain] = useState(false)
@@ -295,14 +298,26 @@ export function MediaLightbox({
       <div className="relative mx-4 flex max-h-screen w-full max-w-5xl flex-col" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between bg-black/60 px-4 py-2 text-white">
           <span className="truncate text-sm opacity-80">{heading}</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-4 text-xl leading-none text-white/70 hover:text-white"
-            aria-label="Fermer"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-3">
+            {onReassociate && (
+              <button
+                type="button"
+                onClick={() => onReassociate(item)}
+                className="rounded border border-white/20 px-2 py-0.5 text-xs text-white/80 hover:border-white/50 hover:text-white"
+                title="Réassocier ce média à un autre match"
+              >
+                Réassocier
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xl leading-none text-white/70 hover:text-white"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="relative flex items-center justify-center overflow-hidden bg-black" style={{ maxHeight: '80vh' }}>

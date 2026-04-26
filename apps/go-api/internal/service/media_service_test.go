@@ -60,6 +60,14 @@ func (m *mockMediaRepo) GetMediaLikers(_ context.Context, _ []string) (map[strin
 
 func (m *mockMediaRepo) CurrentPlayerSlug() string { return m.currentPlayerSlug }
 
+func (m *mockMediaRepo) LoadMatchCandidatesForMedia(_ context.Context, _ string, _ int) (domain.MediaMatchCandidatesResponse, error) {
+	return domain.MediaMatchCandidatesResponse{}, nil
+}
+
+func (m *mockMediaRepo) SetMediaMatchAssociation(_ context.Context, _, _ string) (*string, *string, error) {
+	return nil, nil, nil
+}
+
 // --- tests ---
 
 func TestMediaService_GetMediaPage_OK(t *testing.T) {

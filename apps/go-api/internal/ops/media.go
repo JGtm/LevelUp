@@ -232,10 +232,14 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 	// La capture doit se situer dans [start_time - buffer, end_time + buffer].
 	// start_time et end_time sont des TIMESTAMP naïfs en heure Paris — SET TimeZone les corrige.
 	//
-	// IMPORTANT : un média = UNE seule association. Si la capture tombe dans la
-	// fenêtre de plusieurs matchs (overlap, session avec matchs proches), on ne
-	// garde QUE le match le plus proche temporellement (delta_seconds minimum).
-	// Sans ce dédup, le JOIN produit N rows par média → galerie/pagination cassées.
+	// IMPORTANT : un média = UNE seule association. Algorithme de scoring :
+	//  1. Préférer un match qui CONTIENT vraiment capture_start_utc (sans buffer)
+	//     — un capture pendant le match est plus probable que pendant le buffer
+	//     du match précédent/suivant
+	//  2. Sinon, distance au CENTRE du match (pas au début) — un replay enregistré
+	//     à la fin d'un match a un delta naturel de ~match_duration/2 par rapport
+	//     au début, ce qui peut le rendre plus proche du DÉBUT du match suivant
+	//     que du match courant si on trie par "delta vs start_time"
 	q := fmt.Sprintf(`
 		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
 		SELECT media_file_id, match_id, delta_s FROM (
@@ -245,7 +249,10 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 				ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) AS delta_s,
 				ROW_NUMBER() OVER (
 					PARTITION BY mf.id
-					ORDER BY ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) ASC, mr.match_id
+					ORDER BY
+						CASE WHEN mf.capture_start_utc BETWEEN mr.start_time AND mr.end_time THEN 0 ELSE 1 END,
+						ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time + (mr.end_time - mr.start_time) / 2)) ASC,
+						mr.match_id
 				) AS rn
 			FROM media_files mf
 			JOIN shared_matches.match_registry mr

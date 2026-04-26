@@ -1514,6 +1514,40 @@ export interface MediaAuthor {
   media_count: number
 }
 
+export interface MediaMatchCandidate {
+  match_id: string
+  start_time?: string | null
+  end_time?: string | null
+  map_name?: string | null
+  mode_name?: string | null
+  playlist_name?: string | null
+  is_current: boolean
+  delta_seconds?: number | null
+  kills?: number | null
+  deaths?: number | null
+  assists?: number | null
+  outcome?: number | null
+}
+
+export interface MediaMatchCandidatesResponse {
+  file_path: string
+  capture_utc?: string | null
+  window_minutes: number
+  candidates: MediaMatchCandidate[]
+}
+
+export interface MediaAssociateRequest {
+  file_path: string
+  match_id: string
+}
+
+export interface MediaAssociateResponse {
+  file_path: string
+  match_id: string
+  map_name?: string | null
+  mode_name?: string | null
+}
+
 export interface MediaAuthorsResponse {
   authors: MediaAuthor[]
 }

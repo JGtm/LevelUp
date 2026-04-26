@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -303,6 +304,57 @@ func (h *MediaHandler) PostReassociateMedia(w http.ResponseWriter, r *http.Reque
 	}
 
 	writeJSON(w, http.StatusOK, result)
+	BumpMediaFeedVersion()
+}
+
+// GetMediaMatchCandidates retourne les matchs candidats pour réassocier un média.
+// GET /api/v1/players/{player_slug}/media/match-candidates?file_path=...&window_minutes=15
+func (h *MediaHandler) GetMediaMatchCandidates(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+	filePath := r.URL.Query().Get("file_path")
+	if filePath == "" {
+		writeError(w, http.StatusBadRequest, "missing_file_path", "file_path query param requis")
+		return
+	}
+	window := 15
+	if w := r.URL.Query().Get("window_minutes"); w != "" {
+		if n, err := strconv.Atoi(w); err == nil && n > 0 {
+			window = n
+		}
+	}
+	resp, err := svc.GetMatchCandidates(r.Context(), filePath, window)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "candidates_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// PostMediaAssociate force l'association d'un média à un match précis.
+// POST /api/v1/players/{player_slug}/media/associate { file_path, match_id }
+func (h *MediaHandler) PostMediaAssociate(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+	var req domain.MediaAssociateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	resp, err := svc.AssociateMediaToMatch(r.Context(), req)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "associate_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
 	BumpMediaFeedVersion()
 }
 

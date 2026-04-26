@@ -3,7 +3,9 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -121,6 +123,183 @@ func (r *MediaRepo) CurrentPlayerSlug() string {
 		return ""
 	}
 	return r.pdb.Gamertag
+}
+
+// LoadMatchCandidatesForMedia retourne les matchs du joueur courant dans la
+// fenêtre temporelle [capture_start - window, capture_start + window].
+// Inclut les KPIs du joueur pour aider à reconnaître le bon match.
+// Si capture_start_utc est nul → fallback mtime, sinon liste vide.
+func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath string, windowMinutes int) (domain.MediaMatchCandidatesResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if windowMinutes <= 0 {
+		windowMinutes = 15
+	}
+
+	// Lire capture_start_utc + association actuelle du média.
+	// Match flexible : soit file_path exact (DB absolute), soit file_name
+	// (basename — pour quand le frontend envoie l'URL transformée et qu'on
+	// reçoit ".../foo.mp4" au lieu du chemin DB original).
+	basename := filepath.Base(filePath)
+	var captureUTC sql.NullTime
+	var currentMatchID sql.NullString
+	err := r.socialDB().QueryRow(ctx, `
+		SELECT
+			COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime) AS cap,
+			mma.match_id
+		FROM media_files mf
+		LEFT JOIN media_match_associations mma ON mma.media_file_id = mf.id
+		WHERE mf.file_path = ? OR mf.file_name = ?
+		LIMIT 1
+	`, filePath, basename).Scan(&captureUTC, &currentMatchID)
+	if err != nil {
+		return domain.MediaMatchCandidatesResponse{}, fmt.Errorf("LoadMatchCandidatesForMedia: lookup capture: %w", err)
+	}
+
+	resp := domain.MediaMatchCandidatesResponse{
+		FilePath:      filePath,
+		WindowMinutes: windowMinutes,
+		Candidates:    []domain.MediaMatchCandidate{},
+	}
+	if !captureUTC.Valid {
+		return resp, nil
+	}
+	cap := captureUTC.Time
+	resp.CaptureUTC = &cap
+
+	// Charger les matchs du joueur dans la fenêtre — JOIN sur match_participants
+	// pour les KPIs. start_time de match_registry est en UTC (TIMESTAMPTZ).
+	rows, err := r.pdb.Player.Query(ctx, fmt.Sprintf(`
+		SELECT
+			r.match_id,
+			r.start_time,
+			r.end_time,
+			COALESCE(r.map_name_fr, r.map_name) AS map_name,
+			COALESCE(r.pair_name_fr, r.pair_name) AS pair_name,
+			COALESCE(r.playlist_name_fr, r.playlist_name) AS playlist_name,
+			mp.kills, mp.deaths, mp.assists, mp.outcome,
+			ABS(DATEDIFF('second', ?, r.start_time)) AS delta_s
+		FROM shared.match_registry r
+		JOIN shared.match_participants mp
+			ON mp.match_id = r.match_id AND mp.xuid = ?
+		WHERE r.start_time BETWEEN (? - INTERVAL '%d minutes')
+		                       AND (? + INTERVAL '%d minutes')
+		ORDER BY ABS(DATEDIFF('second', ?, r.start_time)) ASC
+		LIMIT 50
+	`, windowMinutes, windowMinutes), cap, r.pdb.XUID, cap, cap, cap)
+	if err != nil {
+		return resp, fmt.Errorf("LoadMatchCandidatesForMedia: query: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c domain.MediaMatchCandidate
+		var mapName, pairName, playlistName sql.NullString
+		var kills, deaths, assists, outcome sql.NullInt64
+		var deltaS sql.NullInt64
+		var startT, endT sql.NullTime
+		if err := rows.Scan(&c.MatchID, &startT, &endT, &mapName, &pairName, &playlistName,
+			&kills, &deaths, &assists, &outcome, &deltaS); err != nil {
+			continue
+		}
+		if startT.Valid {
+			t := startT.Time
+			c.StartTime = &t
+		}
+		if endT.Valid {
+			t := endT.Time
+			c.EndTime = &t
+		}
+		if mapName.Valid {
+			s := strings.TrimSpace(mapName.String)
+			if s != "" {
+				c.MapName = &s
+			}
+		}
+		if pairName.Valid {
+			s := strings.TrimSpace(pairName.String)
+			if s != "" {
+				c.ModeName = &s
+			}
+		}
+		if playlistName.Valid {
+			s := strings.TrimSpace(playlistName.String)
+			if s != "" {
+				c.PlaylistName = &s
+			}
+		}
+		if kills.Valid {
+			n := int(kills.Int64)
+			c.Kills = &n
+		}
+		if deaths.Valid {
+			n := int(deaths.Int64)
+			c.Deaths = &n
+		}
+		if assists.Valid {
+			n := int(assists.Int64)
+			c.Assists = &n
+		}
+		if outcome.Valid {
+			n := int(outcome.Int64)
+			c.Outcome = &n
+		}
+		if deltaS.Valid {
+			n := int(deltaS.Int64)
+			c.DeltaSeconds = &n
+		}
+		c.IsCurrent = currentMatchID.Valid && currentMatchID.String == c.MatchID
+		resp.Candidates = append(resp.Candidates, c)
+	}
+	return resp, nil
+}
+
+// SetMediaMatchAssociation force l'association d'un média à un match précis.
+// Supprime l'association existante (si présente) et insère la nouvelle.
+// Retourne (mapName, modeName) pour permettre au handler d'enrichir la réponse.
+func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matchID string) (mapName, modeName *string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Récupérer l'id du média (match flexible : file_path exact OU basename)
+	basename := filepath.Base(filePath)
+	var mediaID string
+	if err := r.socialDB().QueryRow(ctx,
+		`SELECT id FROM media_files WHERE file_path = ? OR file_name = ? LIMIT 1`,
+		filePath, basename,
+	).Scan(&mediaID); err != nil {
+		return nil, nil, fmt.Errorf("SetMediaMatchAssociation: media not found: %w", err)
+	}
+
+	// DELETE + INSERT séquentiels. DuckDB est ACID single-writer sur fichier ;
+	// risque de race minimal pour une opération manuelle utilisateur.
+	if _, err := r.socialDB().Exec(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
+		return nil, nil, fmt.Errorf("delete old assoc: %w", err)
+	}
+	if _, err := r.socialDB().Exec(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds) VALUES (?, ?, 0)`, mediaID, matchID); err != nil {
+		return nil, nil, fmt.Errorf("insert new assoc: %w", err)
+	}
+
+	// Récupérer map/mode du nouveau match pour le retour
+	var mapN, pairN sql.NullString
+	_ = r.pdb.Player.QueryRow(ctx, `
+		SELECT COALESCE(r.map_name_fr, r.map_name), COALESCE(r.pair_name_fr, r.pair_name)
+		FROM shared.match_registry r WHERE r.match_id = ? LIMIT 1
+	`, matchID).Scan(&mapN, &pairN)
+	if mapN.Valid {
+		s := strings.TrimSpace(mapN.String)
+		if s != "" {
+			mapName = &s
+		}
+	}
+	if pairN.Valid {
+		s := strings.TrimSpace(pairN.String)
+		if s != "" {
+			modeName = &s
+		}
+	}
+	return mapName, modeName, nil
 }
 
 func (r *MediaRepo) queryConfig() mediaQueryConfig {

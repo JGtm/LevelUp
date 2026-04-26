@@ -110,6 +110,46 @@ func (s *MediaService) GetMediaPage(
 	}, nil
 }
 
+// GetMatchCandidates retourne les matchs candidats pour réassocier manuellement
+// un média. Si la fenêtre est <=0, défaut à 15 min. Maximum 180 min (3h).
+func (s *MediaService) GetMatchCandidates(ctx context.Context, filePath string, windowMinutes int) (*domain.MediaMatchCandidatesResponse, error) {
+	if filePath == "" {
+		return nil, domain.ErrBadRequest("file_path est requis")
+	}
+	if windowMinutes <= 0 {
+		windowMinutes = 15
+	}
+	if windowMinutes > 180 {
+		windowMinutes = 180
+	}
+	resp, err := s.repo.LoadMatchCandidatesForMedia(ctx, filePath, windowMinutes)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// AssociateMediaToMatch force l'association d'un média à un match précis,
+// remplaçant l'association existante (si présente).
+func (s *MediaService) AssociateMediaToMatch(ctx context.Context, req domain.MediaAssociateRequest) (*domain.MediaAssociateResponse, error) {
+	if req.FilePath == "" {
+		return nil, domain.ErrBadRequest("file_path est requis")
+	}
+	if req.MatchID == "" {
+		return nil, domain.ErrBadRequest("match_id est requis")
+	}
+	mapName, modeName, err := s.repo.SetMediaMatchAssociation(ctx, req.FilePath, req.MatchID)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.MediaAssociateResponse{
+		FilePath: req.FilePath,
+		MatchID:  req.MatchID,
+		MapName:  mapName,
+		ModeName: modeName,
+	}, nil
+}
+
 // SetMediaLike persiste l'état liked d'un média.
 func (s *MediaService) SetMediaLike(
 	ctx context.Context,

@@ -5,11 +5,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
+  MediaAssociateRequest,
+  MediaAssociateResponse,
   MediaAuthorsResponse,
   MediaAvailableFilters,
   MediaItemRow,
   MediaLikeRequest,
   MediaLikeResponse,
+  MediaMatchCandidatesResponse,
   MediaQueryRequest,
   MediaPageResponse,
   MediaUploadResponse,
@@ -299,6 +302,37 @@ export function useFeedVersion(playerSlug: string) {
     select: (data) => data.version,
     notifyOnChangeProps: ['data'],
     staleTime: 0,
+  })
+}
+
+/** Candidats de matchs pour réassocier un média (fenêtre ±windowMinutes). */
+export function useMediaMatchCandidates(
+  playerSlug: string,
+  filePath: string | null,
+  windowMinutes: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['media', 'match-candidates', playerSlug, filePath, windowMinutes],
+    queryFn: () =>
+      api.get<MediaMatchCandidatesResponse>(
+        `/players/${playerSlug}/media/match-candidates?file_path=${encodeURIComponent(filePath ?? '')}&window_minutes=${windowMinutes}`,
+      ),
+    enabled: enabled && !!playerSlug && !!filePath,
+    staleTime: 60_000,
+  })
+}
+
+/** Mutation pour forcer l'association d'un média à un match précis. */
+export function useAssociateMediaToMatch(playerSlug: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (req: MediaAssociateRequest) =>
+      api.post<MediaAssociateResponse>(`/players/${playerSlug}/media/associate`, req),
+    onSuccess: () => {
+      // Invalide tout le cache média : la map/mode du média a changé
+      queryClient.invalidateQueries({ queryKey: queryKeys.mediaBase(playerSlug) })
+    },
   })
 }
 

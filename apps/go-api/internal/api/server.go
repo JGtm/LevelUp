@@ -362,6 +362,8 @@ func NewRouter(
 			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)
 			r.Post("/media/reassociate", media.PostReassociateMedia)
+			r.Get("/media/match-candidates", media.GetMediaMatchCandidates)
+			r.Post("/media/associate", media.PostMediaAssociate)
 			r.Get("/media/authors", media.GetMediaAuthors)
 			r.Get("/media/files/*", media.ServeMediaFile)
 
