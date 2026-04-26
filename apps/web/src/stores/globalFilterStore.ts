@@ -1,21 +1,26 @@
 /**
  * Store global des filtres — source de vérité unique pour FilterContextInput.
  *
- * Synchronisation URL ↔ store :
- * - Les filtres sont encodés dans l'URL (query param `f`) pour permettre le
- *   partage de lien et la navigation arrière/avant.
- * - Au chargement de la page, le store est hydraté depuis l'URL.
- * - Chaque mutation du store met à jour l'URL silencieusement.
+ * Trois sources d'hydratation, par ordre de priorité :
+ *   1. URL `?f=…` (share-link explicite)              — gagne toujours
+ *   2. localStorage (persistence cross-session)       — fallback
+ *   3. DEFAULT_FILTER_CONTEXT                          — premier lancement
  *
- * Cycle de vie :
- *   URL → hydrateFromUrl() → store → useFiltersResolve() → resolved opts
- *         ↑
- *   mutation (setFilterMode, togglePlaylist...) → updateUrl()
+ * Sur fin de sync, si une nouvelle session est détectée (latest ≠
+ * lastKnownLatestSessionId), `autoSnapToLatestSession` bascule le filtre
+ * sur la dernière session — sauf si l'utilisateur a déjà fait un choix
+ * différent (auto-reset de `isAutoSnappingToLatest`).
+ *
+ * `filter_mode` est auto-dérivé : pas de toggle exposé. Une session pickée
+ * implique mode='sessions' + period vidée. Une période posée implique
+ * mode='period' + sessions vidées. La cascade reste orthogonale.
  *
  * Invariant : `gap_minutes` est toujours 120 (hérité du code Streamlit).
  */
 
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { log } from '@/features/filters/_logger'
 import type {
   CascadeInput,
   FilterContextInput,
@@ -63,16 +68,27 @@ interface GlobalFilterState {
   /** Hash stable du filterContext pour les query keys TanStack */
   filterContextHash: string
 
+  /** Dernier session_id "latest" connu — sert à détecter l'arrivée de nouvelles
+   *  sessions (lors d'une fin de sync ou d'un resolve). Persisté en localStorage. */
+  lastKnownLatestSessionId: string | null
+
+  /** Indique que la session courante a été auto-sélectionnée suite à une nouvelle
+   *  donnée détectée. Reset à false dès qu'un user interagit manuellement. */
+  isAutoSnappingToLatest: boolean
+
   // --- Mutations ---
-  setFilterMode: (mode: 'period' | 'sessions') => void
   setPeriod: (period: PeriodInput) => void
   setSessions: (sessions: SessionsInput) => void
   setCascade: (cascade: CascadeInput) => void
   setResolvedContext: (resolved: FilterContextResolved) => void
   resetFilters: () => void
 
-  /** Met à jour le store depuis l'URL (appelé au montage du composant). */
-  hydrateFromUrl: () => void
+  // --- Auto-snap on new data ---
+  setLastKnownLatestSessionId: (id: string | null) => void
+  setIsAutoSnappingToLatest: (snapping: boolean) => void
+  /** Bascule le filtre sur la session passée en paramètre (filter_mode='sessions',
+   *  sessions.picked_sessions=[id]). Si triggeredBySync=true, marque le snap auto. */
+  autoSnapToLatestSession: (latestSessionId: string, triggeredBySync: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +128,6 @@ function decodeFromUrl(): FilterContextInput | null {
     const encoded = url.searchParams.get(URL_PARAM)
     if (!encoded) return null
     const raw = JSON.parse(decodeURIComponent(atob(encoded)))
-    // Validation minimale
     if (raw.filter_mode !== 'period' && raw.filter_mode !== 'sessions') return null
     return raw as FilterContextInput
   } catch {
@@ -124,55 +139,127 @@ function decodeFromUrl(): FilterContextInput | null {
 // Store
 // ---------------------------------------------------------------------------
 
-export const useGlobalFilterStore = create<GlobalFilterState>((set, get) => ({
-  filterContext: DEFAULT_FILTER_CONTEXT,
-  resolvedContext: null,
-  filterContextHash: computeHash(DEFAULT_FILTER_CONTEXT),
-
-  setFilterMode: (mode) => {
-    const next = { ...get().filterContext, filter_mode: mode }
-    encodeToUrl(next)
-    set({ filterContext: next, filterContextHash: computeHash(next) })
-  },
-
-  setPeriod: (period) => {
-    const next = { ...get().filterContext, period }
-    encodeToUrl(next)
-    set({ filterContext: next, filterContextHash: computeHash(next) })
-  },
-
-  setSessions: (sessions) => {
-    const next = { ...get().filterContext, sessions }
-    encodeToUrl(next)
-    set({ filterContext: next, filterContextHash: computeHash(next) })
-  },
-
-  setCascade: (cascade) => {
-    const next = { ...get().filterContext, cascade }
-    encodeToUrl(next)
-    set({ filterContext: next, filterContextHash: computeHash(next) })
-  },
-
-  setResolvedContext: (resolved) => {
-    set({ resolvedContext: resolved })
-  },
-
-  resetFilters: () => {
-    const next = DEFAULT_FILTER_CONTEXT
-    encodeToUrl(next)
-    set({
-      filterContext: next,
+export const useGlobalFilterStore = create<GlobalFilterState>()(
+  persist(
+    (set, get) => ({
+      filterContext: DEFAULT_FILTER_CONTEXT,
       resolvedContext: null,
-      filterContextHash: computeHash(next),
-    })
-  },
+      filterContextHash: computeHash(DEFAULT_FILTER_CONTEXT),
+      lastKnownLatestSessionId: null,
+      isAutoSnappingToLatest: false,
 
-  hydrateFromUrl: () => {
-    const fromUrl = decodeFromUrl()
-    if (!fromUrl) return
-    set({
-      filterContext: fromUrl,
-      filterContextHash: computeHash(fromUrl),
-    })
-  },
-}))
+      setPeriod: (period) => {
+        // Auto-derive filter_mode et exclusivité Période ↔ Session.
+        // Si une période est posée → mode='period' + sessions vidées.
+        // Sinon → mode='sessions' (laisse les sessions intactes).
+        const isPeriodSet = !!(period?.start_date || period?.end_date)
+        const next: FilterContextInput = {
+          ...get().filterContext,
+          period,
+          filter_mode: isPeriodSet ? 'period' : 'sessions',
+          sessions: isPeriodSet ? DEFAULT_SESSIONS : get().filterContext.sessions,
+        }
+        encodeToUrl(next)
+        set({
+          filterContext: next,
+          filterContextHash: computeHash(next),
+          isAutoSnappingToLatest: false,
+        })
+      },
+
+      setSessions: (sessions) => {
+        // Auto-derive filter_mode + exclusivité.
+        // Une session pickée → mode='sessions' + period vidée.
+        // Sinon (toutes les sessions) → mode='period'.
+        const isSessionPicked = (sessions?.picked_sessions?.length ?? 0) > 0
+        const next: FilterContextInput = {
+          ...get().filterContext,
+          sessions,
+          filter_mode: isSessionPicked ? 'sessions' : 'period',
+          period: isSessionPicked ? DEFAULT_PERIOD : get().filterContext.period,
+        }
+        encodeToUrl(next)
+        set({
+          filterContext: next,
+          filterContextHash: computeHash(next),
+          isAutoSnappingToLatest: false,
+        })
+      },
+
+      setCascade: (cascade) => {
+        const next = { ...get().filterContext, cascade }
+        encodeToUrl(next)
+        set({ filterContext: next, filterContextHash: computeHash(next) })
+      },
+
+      setResolvedContext: (resolved) => {
+        set({ resolvedContext: resolved })
+      },
+
+      resetFilters: () => {
+        const next = DEFAULT_FILTER_CONTEXT
+        encodeToUrl(next)
+        set({
+          filterContext: next,
+          resolvedContext: null,
+          filterContextHash: computeHash(next),
+          isAutoSnappingToLatest: false,
+        })
+      },
+
+      setLastKnownLatestSessionId: (id) => set({ lastKnownLatestSessionId: id }),
+
+      setIsAutoSnappingToLatest: (snapping) => set({ isAutoSnappingToLatest: snapping }),
+
+      autoSnapToLatestSession: (latestSessionId, triggeredBySync) => {
+        const current = get().filterContext
+        const next: FilterContextInput = {
+          ...current,
+          filter_mode: 'sessions',
+          sessions: {
+            ...(current.sessions ?? DEFAULT_SESSIONS),
+            picked_sessions: [latestSessionId],
+          },
+          period: DEFAULT_PERIOD, // exclusivité avec Période
+        }
+        encodeToUrl(next)
+        set({
+          filterContext: next,
+          filterContextHash: computeHash(next),
+          lastKnownLatestSessionId: latestSessionId,
+          isAutoSnappingToLatest: triggeredBySync,
+        })
+        log.debug(
+          `auto_snap:fired session=${latestSessionId} trigger=${triggeredBySync ? 'sync' : 'manual'}`,
+        )
+      },
+    }),
+    {
+      // Persistence localStorage : seulement filterContext (les choix utilisateur)
+      // et lastKnownLatestSessionId (pour la détection cross-session de
+      // nouvelles sessions). resolvedContext est toujours re-fetch côté backend
+      // donc inutile à persister, et isAutoSnappingToLatest est éphémère.
+      name: 'levelup-filter-store-v1',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        filterContext: state.filterContext,
+        filterContextHash: state.filterContextHash,
+        lastKnownLatestSessionId: state.lastKnownLatestSessionId,
+      }),
+      // Priorité d'hydratation : URL `?f=…` > localStorage > défauts.
+      // Si l'URL contient un contexte explicite, il l'emporte sur la valeur
+      // localStorage (explicit > implicit, share-link friendly).
+      onRehydrateStorage: () => (state) => {
+        if (!state) return
+        const fromUrl = decodeFromUrl()
+        if (fromUrl) {
+          state.filterContext = fromUrl
+          state.filterContextHash = computeHash(fromUrl)
+          log.debug('hydrate:source=url')
+        } else {
+          log.debug('hydrate:source=localStorage')
+        }
+      },
+    },
+  ),
+)

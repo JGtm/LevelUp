@@ -544,6 +544,53 @@ export const handlers = [
   // Media
   http.post(p(`/players/${SLUG}/pages/media`), () => HttpResponse.json(mediaFixture)),
   http.get(p('/media/feed-version'), () => HttpResponse.json({ version: 1 })),
+  http.get(p(`/players/${SLUG}/media/authors`), () => HttpResponse.json({ items: [] })),
+
+  // Notifications
+  http.get(p(`/players/${SLUG}/notifications/unread-count`), () =>
+    HttpResponse.json({ count: 0, by_category: {} }),
+  ),
+
+  // Field mappings i18n (réutilisé par toutes les pages via useFieldMappings)
+  http.get(p('/titles/:slug/field-mappings'), ({ params, request }) => {
+    const url = new URL(request.url)
+    return HttpResponse.json({
+      title_slug: params.slug,
+      schema_version: 1,
+      locale: url.searchParams.get('locale') ?? 'fr',
+      fields: {},
+      assets: {},
+      outcomes: {},
+    })
+  }),
+
+  // Challenges (HomeChallengesList)
+  http.get(p('/challenges'), () =>
+    HttpResponse.json({
+      available: false,
+      total: null,
+      completed: null,
+      xp_available: null,
+      next_expiry: null,
+      items: [],
+      error_hint: null,
+    }),
+  ),
+
+  // Filters resolve (NavL2 / FilterOmnibar / SessionNavBar via useFiltersResolve)
+  http.post(p(`/players/${SLUG}/filters/resolve`), () =>
+    HttpResponse.json({
+      effective: {
+        filter_mode: 'period',
+        period: { start_date: null, end_date: null },
+        sessions: { picked_sessions: [], gap_minutes: 120 },
+        cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
+      },
+      available_options: { experience_types: [], playlists: [], modes: [], maps: [] },
+      session_options: { all_sessions: [], solo_labels: [], squad_labels: [] },
+      counts: { total_matches_before_filters: 0, total_matches_after_filters: 0 },
+    }),
+  ),
 ]
 
 // Ré-export de emptyKPIs pour usage éventuel dans les tests unitaires

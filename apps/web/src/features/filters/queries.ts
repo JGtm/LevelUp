@@ -2,7 +2,7 @@
  * queries.ts — Hook TanStack Query pour POST /filters/resolve.
  *
  * Le globalFilterStore définit un slot `resolvedContext` (sessions, options
- * cascade) que le FilterPanel et SquadLayout consomment. Sans ce hook,
+ * cascade) que FilterOmnibar / SessionNavBar / SquadLayout consomment. Sans ce hook,
  * resolvedContext reste null, donc :
  *  - le sélecteur de session affiche "Aucune session disponible"
  *  - les filtres cascade (Playlists, Modes, Cartes, Types) sont absents
@@ -41,10 +41,15 @@ export function useFiltersResolve(playerSlug: string) {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Synchronise la réponse dans le store dès qu'elle arrive ou change.
+  // Synchronise la réponse dans le store + track le latest session_id pour
+  // permettre la détection "nouvelles sessions arrivées" (auto-snap dans
+  // PlayerLayout sur fin de sync).
   useEffect(() => {
-    if (query.data) {
-      setResolvedContext(query.data)
+    if (!query.data) return
+    setResolvedContext(query.data)
+    const latestId = query.data.session_options?.all_sessions?.[0]?.session_id
+    if (latestId) {
+      useGlobalFilterStore.getState().setLastKnownLatestSessionId(latestId)
     }
   }, [query.data, setResolvedContext])
 
