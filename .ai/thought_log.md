@@ -96,9 +96,28 @@
 
 **Conclusion** : Refonte UX livrée + page rendue multi-titres compatible (graceful degradation testée sur mock minimaliste). Le bug "Comparaison inactive" est désormais diagnosticable côté frontend (state distinct) ET observable côté backend (warn slog dédupliqué).
 
-**Prochaines étapes** :
-- Phase 3 du PLAN_FINITION_MULTI_TITLE livrera `useAssetLabel('map', id)` → migrer la heatmap (TODO marqué dans `heatmapChart.ts`).
-- Suppression du champ `solo_reference` du DTO `TeammatesPageResponse` (frontend l'ignore déjà).
+**Prochaines étapes** : ✅ tout terminé dans la même session — voir entrée suivante.
+
+## [2026-04-26] feat(squad): finition multi-titres — solo_reference cleanup + heatmap localisée
+
+**Statut** : Complété — 2 commits (`5abee32e` cleanup solo_reference, `416d68ce` heatmap assets.map).
+
+**Contexte** : Suite à la livraison principale de la refonte UX Escouade, deux TODO restaient :
+1. Cleanup backend du champ `solo_reference` du DTO `TeammatesPageResponse` (frontend l'ignorait déjà).
+2. Migration de la heatmap des cartes vers `assets.map` du titre courant (au lieu de l'ID brut).
+
+**Décisions techniques** :
+
+- **Cleanup `solo_reference`** : suppression complète côté backend (champ DTO + appel `computeSoloReference` + fonction + 4 tests Go associés) et nettoyage côté frontend (`types.ts`, `generated.ts`, fixture `handlers.ts`). Aucune régression — la page Solo a son propre endpoint.
+- **Heatmap localisée** : ajout d'une section `[assets.map.*]` à `config/titles/halo_infinite/mappings/assets.toml` avec 11 entrées représentatives. La plupart des noms de cartes Halo restent identiques en EN/FR (politique Microsoft : noms propres conservés), mais l'entrée `Unknown → Inconnue` démontre que la voie multi-titres est opérationnelle. `buildHeatmapChart` accepte désormais un `mapLabelOf: (id) => string` que `SquadSynergiesPage` compose à partir de `mappings.assets?.map?.[id]?.label` avec fallback sur l'ID brut (graceful degradation pour les cartes pas encore mappées).
+
+**Résultats observés** :
+- Tests Go : `go test ./...` 100% passing (cleanup compris).
+- Tests Vitest : 10 fichiers, **66 tests** verts (au lieu de 65 — un test ajouté pour `mapLabelOf`).
+- Lint ESLint : 0 erreur, 0 warning sur les fichiers Squad + FilterPanel + NavL2.
+- TypeCheck `tsc --noEmit` : 0 erreur.
+
+**Conclusion** : Refonte Escouade définitivement bouclée. Frontière i18n stricte respectée partout (UI strings dans `i18n.ts`, FieldKeys via `fields.toml`, asset labels via `assets.toml` y compris pour les noms de cartes). Tout est multi-titres-ready avec graceful degradation testée.
 
 ## [2026-04-26] feat(i18n): Phase D-bis — migration dicts i18n React vers useFieldLabel
 
