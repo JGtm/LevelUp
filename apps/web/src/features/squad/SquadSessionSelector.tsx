@@ -1,16 +1,31 @@
 /**
- * SessionScopeSelector — deux selects (Solo / Escouade) avec navigation ← Précédente / Suivante →.
- * Changer l'un des deux resets l'autre à null.
+ * SquadSessionSelector — sélecteur de session escouade avec navigation
+ * ← Précédente / Suivante →.
+ *
+ * Page Escouade = sessions multijoueur avec coéquipiers uniquement. Le
+ * concept "Solo" est géré par une autre page dédiée — il a été retiré de
+ * cette UI (était présent dans la version SessionScopeSelector précédente).
+ *
  * Option "(toutes)" = null.
  */
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { SessionLabelsList } from '@/lib/api/types'
+import { getSquadText } from './i18n'
 
 interface Props {
   sessionLabels: SessionLabelsList
-  soloSession: string | null
   squadSession: string | null
-  onSoloChange: (value: string | null) => void
   onSquadChange: (value: string | null) => void
+}
+
+interface SessionSelectProps {
+  label: string
+  sessions: string[]
+  value: string | null
+  onChange: (v: string | null) => void
+  prevTitle: string
+  nextTitle: string
+  allLabel: string
 }
 
 function SessionSelect({
@@ -18,12 +33,10 @@ function SessionSelect({
   sessions,
   value,
   onChange,
-}: {
-  label: string
-  sessions: string[]
-  value: string | null
-  onChange: (v: string | null) => void
-}) {
+  prevTitle,
+  nextTitle,
+  allLabel,
+}: SessionSelectProps) {
   if (sessions.length === 0) return null
 
   const idx = value ? sessions.indexOf(value) : -1
@@ -40,12 +53,12 @@ function SessionSelect({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-medium text-muted-foreground w-14 shrink-0">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">{label}</span>
       <button
         onClick={handlePrev}
         disabled={!hasPrev}
         className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-muted"
-        title="Session précédente"
+        title={prevTitle}
       >
         ←
       </button>
@@ -54,7 +67,7 @@ function SessionSelect({
         onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
         className="text-sm border rounded px-2 py-1 bg-background max-w-[180px]"
       >
-        <option value="">(toutes)</option>
+        <option value="">{allLabel}</option>
         {sessions.map((s) => (
           <option key={s} value={s}>
             {s}
@@ -65,7 +78,7 @@ function SessionSelect({
         onClick={handleNext}
         disabled={idx === sessions.length - 1}
         className="px-2 py-1 text-xs border rounded disabled:opacity-30 hover:bg-muted"
-        title="Session suivante"
+        title={nextTitle}
       >
         →
       </button>
@@ -73,51 +86,36 @@ function SessionSelect({
   )
 }
 
-export function SessionScopeSelector({
+export function SquadSessionSelector({
   sessionLabels,
-  soloSession,
   squadSession,
-  onSoloChange,
   onSquadChange,
 }: Props) {
-  const hasAny = sessionLabels.solo.length > 0 || sessionLabels.squad.length > 0
-  if (!hasAny) return null
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getSquadText(locale)
 
-  const handleSoloChange = (v: string | null) => {
-    onSoloChange(v)
-    if (v !== null) onSquadChange(null)
-  }
-  const handleSquadChange = (v: string | null) => {
-    onSquadChange(v)
-    if (v !== null) onSoloChange(null)
-  }
+  if (sessionLabels.squad.length === 0) return null
 
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-muted/40 px-4 py-3">
       <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Session
+        {t.session.label}
       </span>
       <SessionSelect
-        label="Solo"
-        sessions={sessionLabels.solo}
-        value={soloSession}
-        onChange={handleSoloChange}
-      />
-      <SessionSelect
-        label="Escouade"
+        label={t.session.squad}
         sessions={sessionLabels.squad}
         value={squadSession}
-        onChange={handleSquadChange}
+        onChange={onSquadChange}
+        prevTitle={t.session.prev}
+        nextTitle={t.session.next}
+        allLabel={t.session.all}
       />
-      {(soloSession || squadSession) && (
+      {squadSession && (
         <button
-          onClick={() => {
-            onSoloChange(null)
-            onSquadChange(null)
-          }}
+          onClick={() => onSquadChange(null)}
           className="text-xs text-muted-foreground hover:text-foreground ml-auto"
         >
-          ✕ Réinitialiser
+          {t.session.reset}
         </button>
       )}
     </div>
