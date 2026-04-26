@@ -520,18 +520,37 @@ handler HTTP → service produit → games.Resolver
 
 ### Mappings TOML (versionnés Git)
 
+Trois fichiers TOML par titre sous `config/titles/{slug}/mappings/` :
+
 ```text
 config/
   titles/
     halo_infinite/
       mappings/
         fields.toml           # 43 FieldKey × labels EN/FR + format + group + display_order
+        assets.toml           # modes / challenge_tier / cadence / challenge_status / medal_tier / prestige_level
+        outcomes.toml         # win / loss / tie / dnf — labels + color_token (design system)
     synthetic_title_b/
       mappings/
         fields.toml           # corpus synthétique de tests
+        assets.toml           # libellés divergents pour les tests d'isolation cross-titres
+        outcomes.toml         # libellés divergents (Triomphe / Défaite / Match nul / Forfait)
 ```
 
-Chaque `fields.toml` porte un `[meta].schema_version` (cf. `tools/mappings/CHANGELOG.md`).
+`fields.toml` est obligatoire ; `assets.toml` et `outcomes.toml` sont optionnels (leur absence est silencieuse). Chaque TOML porte un `[meta].schema_version` (cf. `tools/mappings/CHANGELOG.md`).
+
+Le `Registry.LoadFromConfigDir()` charge les trois fichiers au boot par titre. Une erreur sur l'un émet `mappings_validation_failed` (Error) et agrège dans la slice d'erreurs retournée — mais un titre cassé n'invalide pas les autres.
+
+#### Décision : pas de hot-reload (ni dev ni prod)
+
+Le plan §7.3 réservait un mode `GAMES_HOT_RELOAD=true` pour le rechargement TOML live en dev. Nous **ne l'avons délibérément pas implémenté** (vérifié 2026-04-26) :
+
+- Prod : hot-reload interdit par §7.3 — la couche sémantique est un contrat versionné qui ne change que par PR + golden parity. Coût = un redéploiement par changement de libellé, acceptable pour les quelques dizaines de FieldKey.
+- Dev : une édition de TOML avec le setup actuel demande `Ctrl+C` + `air` à nouveau (~3-5s rebuild + boot). À notre fréquence d'édition (~1 édition de TOML par sprint hors onboarding nouveau titre), le gain (~5s/édition, zéro impact prod) ne justifie pas le coût (watcher fsnotify Windows-friendly + méthode `Registry.Reload()` + invalidation des ETag dans le handler `/field-mappings` + tests des conditions de course).
+
+Conséquence : l'event log `mappings_hot_reloaded` du plan §8.1 est volontairement absent (8/9 events émis, c'est le 9e). À revoir si :
+- un onboarding de second titre réel demande des itérations TOML intensives, ou
+- le volume de catalogue grossit (médailles, weapon families) et le tuning live de libellés devient utile.
 
 ### API HTTP (derrière `MULTI_TITLE_API_ENABLED=true`)
 
@@ -542,18 +561,36 @@ Chaque `fields.toml` porte un `[meta].schema_version` (cf. `tools/mappings/CHANG
   Retourne `not_supported_reason` pour les capabilities `not_exposed` au lieu
   d'une erreur silencieuse.
 
-### Hook frontend (Phase D)
+### Hooks frontend (Phase D + Phase finition)
 
 ```ts
-import { useFieldLabel } from '@/lib/i18n/fieldMappings'
-
-const label = useFieldLabel('kills') // → 'Éliminations' (FR) / 'Kills' (EN) / 'kills' (fallback)
+import {
+  useFieldLabel,    // FieldKey  → 'Éliminations' (kills FR) / 'Kills' (EN) / 'kills' (fallback)
+  useAssetLabel,    // (kind,id) → 'Classé' (mode.Ranked FR) / 'Ranked' (EN) / 'Ranked' (fallback id)
+  useOutcomeLabel,  // outcome key → 'Victoire' (win FR) / 'Win' (EN) / 'win' (fallback key)
+  useAssetMapping,  // DTO complet (label + color_token + icon + display_order)
+  useOutcomeMapping,
+} from '@/lib/i18n/fieldMappings'
 ```
 
-Le hook lit `currentTitleSlug` et `locale` depuis `appShellStore`, fetche les
-field mappings via TanStack Query (cache `staleTime: Infinity` — versionnés Git,
-pas de hot-reload prod), et retombe gracieusement sur la `key` si l'endpoint
-est absent (flag off, 404, etc.).
+Tous les hooks lisent `currentTitleSlug` et `locale` depuis `appShellStore`,
+partagent une seule query TanStack (`staleTime: Infinity` — versionnés Git, pas
+de hot-reload), et retombent gracieusement sur la `key`/`id` brute si
+l'endpoint est absent (flag off, 404, erreur réseau).
+
+Les composants consomment ces hooks au lieu de hardcoder. La frontière
+TOML vs i18n React (cf. plan §6.9) est tenue par `tools/lint-no-hardcoded-fields.mjs`,
+qui scanne 277 fichiers et rejette tout littéral correspondant à un libellé
+déclaré dans `fields.toml`, `assets.toml` ou `outcomes.toml` (whitelist pour
+les dictionnaires de fallback sous `features/*/fallback.i18n.ts`).
+
+Pages migrées au 2026-04-26 : Career (encounters), Home (KPI bar, liste de
+défis, identité spartan), Match View (scoreboard), Synthesis (top weeks),
+Compare (delta cards), Media (mode categories), Objectifs (challenge tiers,
+cadences, niveaux prestige), Communauté (tier du leaderboard), Session Detail
+(outcomes). Les dictionnaires `kpi.i18n.ts`, `highlights.i18n.ts`,
+`compare/i18n.ts` conservent leurs libellés FR/EN comme fallback pour
+`MULTI_TITLE_API_ENABLED=false`.
 
 ### Dégradation par capability
 
