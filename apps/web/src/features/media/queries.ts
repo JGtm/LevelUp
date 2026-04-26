@@ -148,6 +148,13 @@ function updateMediaLikeInResponse(
     return response
   }
 
+  // Garde-fou : queryKey ['media', slug] matche aussi mediaAuthors (forme {authors})
+  // et autres queries qui n'ont PAS la structure { items: { items: [] } }.
+  // Sans ce check, .items.items.map throw et casse la mutation entière.
+  if (!response.items || !Array.isArray((response.items as { items?: unknown }).items)) {
+    return response
+  }
+
   return {
     ...response,
     items: {
@@ -273,8 +280,13 @@ export function useToggleMediaLike(playerSlug: string) {
       )
     },
     onSettled: () => {
+      // refetchType: 'none' = marque stale SANS refetch immédiat.
+      // Le cover-flow ouvert ne voit pas son array items réordonné (qui ferait
+      // changer la vidéo affichée). Les autres vues (filtre liked_only, retour
+      // sur la galerie) refetcheront quand elles redeviendront actives.
       queryClient.invalidateQueries({
         queryKey: queryKeys.mediaBase(playerSlug),
+        refetchType: 'none',
       })
     },
   })

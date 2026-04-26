@@ -1,0 +1,361 @@
+/**
+ * Tests CoverFlowModal — vérifient que le lecteur reste stable sur l'item courant
+ * même quand l'array `items` change (mutations like, réassociation, refetch).
+ */
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { renderWithProviders } from '@/test/render-utils'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { CoverFlowModal } from './cover-flow-modal'
+import type { MediaItemRow } from '@/lib/api/types'
+
+function makeItem(overrides: Partial<MediaItemRow>): MediaItemRow {
+  return {
+    basename: 'clip.mp4',
+    file_path: '/media/clip.mp4',
+    kind: 'clip',
+    thumbnail_path: null,
+    match_id: 'match-1',
+    capture_end_utc: '2026-04-26T14:30:00Z',
+    match_start_time: null,
+    section: 'mine',
+    owner_gamertag: 'me',
+    map_name: 'Aquarius',
+    mode_name: 'Slayer',
+    liked: false,
+    like_count: 0,
+    likers: undefined,
+    total_likers: undefined,
+    ...overrides,
+  }
+}
+
+const ITEM_A = makeItem({ basename: 'A.mp4', file_path: '/media/A.mp4', map_name: 'MapA' })
+const ITEM_B = makeItem({ basename: 'B.mp4', file_path: '/media/B.mp4', map_name: 'MapB' })
+const ITEM_C = makeItem({ basename: 'C.mp4', file_path: '/media/C.mp4', map_name: 'MapC' })
+
+describe('CoverFlowModal — gestion erreur vidéo (MIME, codec, etc)', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  it('affiche un message d\'erreur si la vidéo échoue à se charger (MIME 4)', () => {
+    const { container } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    const video = container.querySelector('video')
+    expect(video).toBeInTheDocument()
+
+    // Simuler une erreur MIME (code 4 = MEDIA_ERR_SRC_NOT_SUPPORTED)
+    Object.defineProperty(video, 'error', {
+      value: { code: 4 },
+      configurable: true,
+    })
+    act(() => {
+      fireEvent.error(video!)
+    })
+
+    expect(screen.getByText(/Lecture impossible/)).toBeInTheDocument()
+    expect(screen.getByText(/Format vidéo non supporté/)).toBeInTheDocument()
+  })
+
+  it('affiche un message spécifique pour erreur de décodage (code 3)', () => {
+    const { container } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    const video = container.querySelector('video')!
+    Object.defineProperty(video, 'error', { value: { code: 3 }, configurable: true })
+    act(() => {
+      fireEvent.error(video)
+    })
+    expect(screen.getByText(/Erreur de décodage/)).toBeInTheDocument()
+  })
+
+  it('affiche le basename de la vidéo en erreur pour aider l\'utilisateur', () => {
+    const itemNamed = makeItem({ basename: 'broken-clip.mkv', file_path: '/x.mkv' })
+    const { container } = renderWithProviders(
+      <CoverFlowModal
+        items={[itemNamed]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    const video = container.querySelector('video')!
+    Object.defineProperty(video, 'error', { value: { code: 4 }, configurable: true })
+    act(() => {
+      fireEvent.error(video)
+    })
+    expect(screen.getByText('broken-clip.mkv')).toBeInTheDocument()
+  })
+})
+
+describe('CoverFlowModal — stabilité de l\'item courant', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  it('affiche l\'item au startIndex à l\'ouverture', () => {
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    // Le heading affiche map du current item (B)
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+  })
+
+  it('reste sur le même item quand les données du courant sont mises à jour (like)', () => {
+    const onToggleLike = vi.fn()
+    const { rerender } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={onToggleLike}
+      />,
+    )
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // Simuler la mutation: l'item B a maintenant liked=true (nouvel objet)
+    const ITEM_B_LIKED = { ...ITEM_B, liked: true, like_count: 1 }
+    rerender(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B_LIKED, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={onToggleLike}
+      />,
+    )
+    // Toujours sur B, pas sur A ou C
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+    expect(screen.queryByText(/MapA/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/MapC/)).not.toBeInTheDocument()
+  })
+
+  it('reste sur le même item si l\'array est réordonné (refetch après mutation)', () => {
+    const { rerender } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // Refetch retourne les items dans un ordre différent (B, C, A)
+    rerender(
+      <CoverFlowModal
+        items={[ITEM_B, ITEM_C, ITEM_A]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    // Doit toujours afficher B (qui est maintenant à l'index 0 dans le nouvel array)
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+  })
+
+  it('reste sur le même item si réassociation modifie map_name (mais pas file_path)', () => {
+    const { rerender } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // Réassociation : B a maintenant map_name='NewMap'
+    const ITEM_B_REASSOC = { ...ITEM_B, map_name: 'NewMap', match_id: 'match-99' }
+    rerender(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B_REASSOC, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    // Doit afficher la nouvelle map (NewMap) car c'est toujours l'item B (même file_path)
+    expect(screen.getByText(/NewMap/)).toBeInTheDocument()
+    expect(screen.queryByText(/MapA/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/MapC/)).not.toBeInTheDocument()
+  })
+
+  it('garde la dernière position connue si l\'item disparaît temporairement', () => {
+    const { rerender } = renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // Pendant un refetch, l'array peut être temporairement vide ou amputé.
+    // L'item B disparaît. Le composant doit gracefully gérer (pas de crash, pas de saut visuel brusque).
+    rerender(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    // Pas de crash, on affiche ce qu'on peut (l'item à la dernière position connue clampée)
+    // C'est l'item C (index 1 dans le nouvel array)
+    expect(screen.queryByText(/MapB/)).not.toBeInTheDocument()
+  })
+
+  it('change d\'item quand l\'utilisateur navigue avec les flèches (next)', () => {
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/MapA/)).toBeInTheDocument()
+
+    // Flèche droite → item suivant
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+  })
+
+  it('appelle onToggleLike avec l\'item courant quand on clique sur le bouton like', () => {
+    const onToggleLike = vi.fn()
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={onToggleLike}
+      />,
+    )
+
+    const likeButton = screen.getByRole('button', { name: /Liker|Retirer le like/ })
+    fireEvent.click(likeButton)
+
+    expect(onToggleLike).toHaveBeenCalledTimes(1)
+    expect(onToggleLike).toHaveBeenCalledWith(expect.objectContaining({ file_path: ITEM_B.file_path }))
+  })
+
+  it('séquence complète mutation like (3 rerenders consécutifs) : reste sur item B', () => {
+    const onToggleLike = vi.fn()
+    const baseProps = {
+      startIndex: 1,
+      onClose: vi.fn(),
+      onToggleLike,
+    }
+
+    // Render initial : items [A, B, C], on est sur B
+    const { rerender } = renderWithProviders(
+      <CoverFlowModal items={[ITEM_A, ITEM_B, ITEM_C]} {...baseProps} />,
+    )
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // RERENDER 1 — onMutate : item B est cloné avec liked=true
+    const B_OPTIMISTIC = { ...ITEM_B, liked: true, like_count: 1 }
+    rerender(<CoverFlowModal items={[ITEM_A, B_OPTIMISTIC, ITEM_C]} {...baseProps} />)
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // RERENDER 2 — onSuccess : item B avec données serveur (likers, total_likers)
+    const B_FROM_SERVER = { ...ITEM_B, liked: true, like_count: 1, likers: ['me'], total_likers: 1 }
+    rerender(<CoverFlowModal items={[ITEM_A, B_FROM_SERVER, ITEM_C]} {...baseProps} />)
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // RERENDER 3 — onSettled invalidate puis refetch : nouvel array complet
+    // (potentiellement réordonné, ou avec items "frais" du backend)
+    const A_FRESH = { ...ITEM_A }
+    const B_FRESH = { ...ITEM_B, liked: true, like_count: 1 }
+    const C_FRESH = { ...ITEM_C }
+    rerender(<CoverFlowModal items={[A_FRESH, B_FRESH, C_FRESH]} {...baseProps} />)
+
+    // CRUCIAL : après tout ce ballet, on doit toujours être sur B
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+    expect(screen.queryByText(/MapA · /)).not.toBeInTheDocument()
+    expect(screen.queryByText(/MapC · /)).not.toBeInTheDocument()
+  })
+
+  it('refetch réordonne items après like : reste sur B même si l\'index change', () => {
+    const baseProps = {
+      startIndex: 1,
+      onClose: vi.fn(),
+      onToggleLike: vi.fn(),
+    }
+    const { rerender } = renderWithProviders(
+      <CoverFlowModal items={[ITEM_A, ITEM_B, ITEM_C]} {...baseProps} />,
+    )
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // Refetch retourne items dans un ordre TOTALEMENT différent : [B, C, A]
+    // (B a été remonté car récemment liké, par exemple)
+    const B_REORDERED = { ...ITEM_B, liked: true, like_count: 1 }
+    rerender(
+      <CoverFlowModal items={[B_REORDERED, ITEM_C, ITEM_A]} {...baseProps} />,
+    )
+
+    // On doit toujours afficher B (qui est à index 0 maintenant)
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+  })
+
+  it('refetch retourne moins d\'items mais B est toujours dedans : reste sur B', () => {
+    const baseProps = {
+      startIndex: 1,
+      onClose: vi.fn(),
+      onToggleLike: vi.fn(),
+    }
+    const { rerender } = renderWithProviders(
+      <CoverFlowModal items={[ITEM_A, ITEM_B, ITEM_C]} {...baseProps} />,
+    )
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+
+    // Refetch enlève A (par exemple parce qu'il a été supprimé) : [B, C]
+    rerender(
+      <CoverFlowModal items={[ITEM_B, ITEM_C]} {...baseProps} />,
+    )
+
+    expect(screen.getByText(/MapB/)).toBeInTheDocument()
+  })
+
+  it('appelle onReassociate avec l\'item courant', () => {
+    const onReassociate = vi.fn()
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A, ITEM_B, ITEM_C]}
+        startIndex={1}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        onReassociate={onReassociate}
+      />,
+    )
+
+    const reassocButton = screen.getByRole('button', { name: /Réassocier/ })
+    fireEvent.click(reassocButton)
+
+    expect(onReassociate).toHaveBeenCalledTimes(1)
+    expect(onReassociate).toHaveBeenCalledWith(expect.objectContaining({ file_path: ITEM_B.file_path }))
+  })
+})

@@ -36,18 +36,76 @@ const WINDOW_RADIUS = 2
 const IMAGE_AUTOCHAIN_DELAY_MS = 7000
 
 function formatHeading(item: MediaItemRow, index: number, total: number) {
-  const dateStr = item.match_start_time || item.capture_end_utc
-    ? new Date((item.match_start_time ?? item.capture_end_utc)!).toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })
-    : null
+  // Format court HH:MM JJ/MM/AA (cohérent avec formatMediaDate des thumbnails).
+  const raw = item.capture_end_utc ?? item.match_start_time
+  let dateStr: string | null = null
+  if (raw) {
+    const d = new Date(raw)
+    if (!Number.isNaN(d.getTime())) {
+      const datePart = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+      const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      dateStr = `${timePart} ${datePart}`
+    }
+  }
   return [
     `${index + 1}/${total}`,
     item.map_name,
     dateStr,
   ].filter(Boolean).join(' · ')
+}
+
+interface ClipPlayerProps {
+  filePath: string
+  basename: string | null
+  isCenter: boolean
+  relPos: number
+  videoRef: (el: HTMLVideoElement | null) => void
+  onEnded: (() => void) | undefined
+}
+
+/**
+ * Wrapper <video> qui gère les erreurs de chargement (MIME non supporté,
+ * fichier inaccessible, codec absent). Affiche un message clair plutôt
+ * qu'un cadre noir vide.
+ */
+function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }: ClipPlayerProps) {
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => { setError(null) }, [filePath])
+
+  if (error) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center bg-black p-4 text-center text-white/80">
+        <svg className="mb-3 h-10 w-10 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <p className="text-sm font-medium">Lecture impossible</p>
+        <p className="mt-1 text-xs text-white/50">{error}</p>
+        {basename && <p className="mt-2 text-xs text-white/30">{basename}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <video
+      ref={videoRef}
+      src={filePath}
+      controls={isCenter}
+      muted={!isCenter}
+      preload={Math.abs(relPos) <= 1 ? 'auto' : 'metadata'}
+      onEnded={onEnded}
+      onError={(e) => {
+        const code = e.currentTarget.error?.code
+        const msg =
+          code === 4 ? 'Format vidéo non supporté par le navigateur'
+          : code === 3 ? 'Erreur de décodage de la vidéo'
+          : code === 2 ? 'Erreur réseau lors du chargement'
+          : 'Vidéo inaccessible'
+        setError(msg)
+      }}
+      className="h-full w-full bg-black"
+    />
+  )
 }
 
 export function CoverFlowModal({
@@ -74,11 +132,23 @@ export function CoverFlowModal({
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
   const autoChainTimerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Garde la dernière position valide pour éviter les sauts visuels si
+  // l'item disparaît temporairement (refetch entre 2 vues).
+  const lastValidIdxRef = useRef<number>(startIndex)
+
   // L'index courant est calculé dynamiquement depuis le file_path
   const committedIdx = useMemo(() => {
-    if (!currentFilePath) return startIndex
+    if (!currentFilePath) {
+      const fallback = Math.min(startIndex, Math.max(0, items.length - 1))
+      lastValidIdxRef.current = fallback
+      return fallback
+    }
     const idx = items.findIndex((item) => item.file_path === currentFilePath)
-    return idx >= 0 ? idx : startIndex
+    if (idx >= 0) {
+      lastValidIdxRef.current = idx
+      return idx
+    }
+    return Math.min(lastValidIdxRef.current, Math.max(0, items.length - 1))
   }, [items, currentFilePath, startIndex])
 
   // Quand startIndex change (nouvelle ouverture de lightbox), reset le file_path
@@ -133,7 +203,8 @@ export function CoverFlowModal({
       if (path === currentItem?.file_path) {
         vid.muted = false
         if (vid.paused) {
-          void vid.play().catch(() => undefined)
+          const p = vid.play()
+          if (p && typeof p.catch === 'function') p.catch(() => undefined)
         }
       } else {
         vid.muted = true
@@ -310,14 +381,13 @@ export function CoverFlowModal({
                   }
                 >
                   {item.kind === 'clip' ? (
-                    <video
-                      ref={setVideoRef(item.file_path)}
-                      src={item.file_path}
-                      controls={isCenter}
-                      muted={!isCenter}
-                      preload={Math.abs(relPos) <= 1 ? 'auto' : 'metadata'}
+                    <ClipPlayer
+                      filePath={item.file_path}
+                      basename={item.basename}
+                      isCenter={isCenter}
+                      relPos={relPos}
+                      videoRef={setVideoRef(item.file_path)}
                       onEnded={isCenter && autoChain && canAdvanceFurther ? handleVideoEnded : undefined}
-                      className="h-full w-full bg-black"
                     />
                   ) : (
                     <img

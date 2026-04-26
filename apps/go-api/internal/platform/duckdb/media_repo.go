@@ -540,12 +540,15 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 	defer cancel()
 
 	if liked {
+		// Note : `liked_at = CURRENT_TIMESTAMP` dans le ON CONFLICT casse le binder
+		// DuckDB qui interprète CURRENT_TIMESTAMP comme un nom de colonne.
+		// On utilise EXCLUDED.liked_at qui prend la valeur du VALUES (= CURRENT_TIMESTAMP).
 		_, err := r.socialDB().Exec(ctx, `
 			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
 			VALUES (?, ?, ?, CURRENT_TIMESTAMP)
 			ON CONFLICT (media_path, liker_slug) DO UPDATE SET
 				liker_gamertag = EXCLUDED.liker_gamertag,
-				liked_at = CURRENT_TIMESTAMP
+				liked_at = EXCLUDED.liked_at
 		`, mediaPath, likerSlug, likerGamertag)
 		return err
 	}

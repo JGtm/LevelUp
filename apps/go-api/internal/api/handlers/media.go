@@ -27,6 +27,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
@@ -216,6 +217,18 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 	// vers le chemin absolu de stockage tel que présent en DB.
 	req.FilePath = h.urlToFilePath(slug, req.FilePath)
 
+	// Auto-injecter le liker depuis la session si absent du body.
+	// Sans liker_slug, le service ne peuple pas media_likes (table partagée
+	// entre joueurs) → les badges "♥ Alice et Bob" ne s'affichent pas.
+	if req.LikerSlug == "" {
+		if sess := middleware.GetSession(r.Context()); sess != nil && sess.CurrentPlayerSlug != nil {
+			req.LikerSlug = *sess.CurrentPlayerSlug
+			if req.LikerGamertag == "" {
+				req.LikerGamertag = h.resolveLikerGamertag(r.Context(), *sess.CurrentPlayerSlug)
+			}
+		}
+	}
+
 	resp, err := svc.SetMediaLike(r.Context(), req)
 	if err != nil {
 		var apiErr *domain.APIError
@@ -235,6 +248,63 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, resp)
 	BumpMediaFeedVersion()
+
+	// Notification au owner si quelqu'un d'autre a liké son média.
+	if req.Liked && req.LikerSlug != "" {
+		h.emitMediaLiked(r.Context(), req.FilePath, req.LikerSlug, req.LikerGamertag)
+	}
+}
+
+// emitMediaLiked notifie le owner d'un média quand quelqu'un d'autre le like.
+// Le owner_slug est déduit du file_path (.../Captures/<slug>/file.ext).
+// Silent fail si notifierFor absent, liker == owner, ou owner indéterminable.
+func (h *MediaHandler) emitMediaLiked(ctx context.Context, filePath, likerSlug, likerGamertag string) {
+	if h.notifierFor == nil {
+		return
+	}
+	ownerSlug := ownerSlugFromFilePath(filePath)
+	if ownerSlug == "" || ownerSlug == likerSlug {
+		return
+	}
+	em, err := h.notifierFor(ctx, ownerSlug)
+	if err != nil || em == nil {
+		return
+	}
+	displayName := likerGamertag
+	if displayName == "" {
+		displayName = likerSlug
+	}
+	_ = em.Emit(ctx, notifications.EmitInput{
+		Category:    notifications.CategoryMediaLiked,
+		Severity:    notifications.SeverityInfo,
+		TitleKey:    "notif.media_liked.title",
+		BodyKey:     "notif.media_liked.body",
+		Params:      map[string]any{"actor_name": displayName},
+		TargetRoute: fmt.Sprintf("/players/%s/media", ownerSlug),
+		Actor:       &notifications.Actor{Name: displayName},
+		Source:      "media_handler",
+	})
+}
+
+// ownerSlugFromFilePath extrait le slug du joueur propriétaire depuis le chemin.
+// Conventions reconnues :
+//   - .../Captures/<slug>/file.ext         (capturesBase utilisateur, ex. Windows Captures)
+//   - .../players/<slug>/captures/file.ext (chemin interne data/)
+//
+// Retourne "" si la convention n'est pas détectée.
+func ownerSlugFromFilePath(filePath string) string {
+	clean := filepath.Clean(filePath)
+	parts := strings.Split(clean, string(filepath.Separator))
+	for i := 0; i < len(parts)-1; i++ {
+		if strings.EqualFold(parts[i], "Captures") && i+1 < len(parts)-1 {
+			return parts[i+1]
+		}
+		if parts[i] == "captures" && i > 0 && i+1 < len(parts) {
+			// .../<slug>/captures/file.ext → slug est avant
+			return parts[i-1]
+		}
+	}
+	return ""
 }
 
 // PostUploadMedia reçoit des fichiers via multipart/form-data, les sauvegarde
@@ -610,6 +680,20 @@ func (h *MediaHandler) urlToFilePath(slug, input string) string {
 	// Si on ne trouve pas le fichier, renvoyer l'input pour laisser le repo
 	// retourner un 404 explicite.
 	return input
+}
+
+// resolveLikerGamertag résout le gamertag affichable depuis le slug du joueur
+// connecté (pour le badge "♥ Alice et Bob"). Fallback sur le slug si la
+// résolution échoue.
+func (h *MediaHandler) resolveLikerGamertag(ctx context.Context, slug string) string {
+	if h.newPlayerCtx == nil {
+		return slug
+	}
+	_, gamertag, err := h.newPlayerCtx(ctx, slug)
+	if err != nil || gamertag == "" {
+		return slug
+	}
+	return gamertag
 }
 
 // transformMediaURLs transforme les chemins absolus des items en URLs servables.

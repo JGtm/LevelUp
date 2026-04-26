@@ -19,28 +19,38 @@ interface GifHoverThumbnailProps {
 export function GifHoverThumbnail({ src, isActive, alt = '', className }: GifHoverThumbnailProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [posterReady, setPosterReady] = useState(false)
+  const [posterFailed, setPosterFailed] = useState(false)
 
   useEffect(() => {
     setPosterReady(false)
+    setPosterFailed(false)
     const canvas = canvasRef.current
     if (!canvas) return
 
     const img = new Image()
-    img.crossOrigin = 'anonymous'
+    // Pas de crossOrigin : on ne lit pas les pixels (toDataURL/getImageData),
+    // donc inutile et casse le canvas si le serveur ne sert pas les headers CORS.
     let cancelled = false
 
     img.onload = () => {
       if (cancelled) return
       const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      canvas.width = img.naturalWidth || 1
-      canvas.height = img.naturalHeight || 1
-      ctx.drawImage(img, 0, 0)
-      setPosterReady(true)
+      if (!ctx) {
+        setPosterFailed(true)
+        return
+      }
+      try {
+        canvas.width = img.naturalWidth || 1
+        canvas.height = img.naturalHeight || 1
+        ctx.drawImage(img, 0, 0)
+        setPosterReady(true)
+      } catch {
+        setPosterFailed(true)
+      }
     }
     img.onerror = () => {
       if (cancelled) return
-      setPosterReady(false)
+      setPosterFailed(true)
     }
     img.src = src
 
@@ -57,9 +67,19 @@ export function GifHoverThumbnail({ src, isActive, alt = '', className }: GifHov
         ref={canvasRef}
         aria-hidden="true"
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${
-          isActive && posterReady ? 'opacity-0' : 'opacity-100'
+          posterReady && !isActive ? 'opacity-100' : 'opacity-0'
         }`}
       />
+      {/* Fallback img au repos si le canvas a échoué (CORS, image taintée, etc) */}
+      {posterFailed && !isActive && (
+        <img
+          src={src}
+          alt={alt}
+          aria-hidden={alt === '' ? true : undefined}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      )}
+      {/* Img animée au survol */}
       {isActive && (
         <img
           key="gif-active"
