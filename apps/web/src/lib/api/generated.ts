@@ -2203,7 +2203,6 @@ export interface components {
             options: components["schemas"]["TeammateOption"][];
             /** Teammates */
             teammates: components["schemas"]["TeammateRow"][];
-            solo_reference?: components["schemas"]["TeammateKPIs"] | null;
             /**
              * Total Matches
              * @default 0

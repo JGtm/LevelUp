@@ -1314,7 +1314,6 @@ export interface SquadMatchSeriesPoint {
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]
-  solo_reference: TeammateKPIs | null
   total_matches: number
   session_labels: SessionLabelsList
   timeseries?: SquadTimeseriesPoint[]

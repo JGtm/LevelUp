@@ -40,10 +40,13 @@ func (s *TeammatesService) GetPage(
 	// Options (liste des coéquipiers fréquents).
 	options := buildTeammateOptions(topRows)
 
-	// Solo matches pour la référence solo.
+	// LoadSynthesisMatches alimente sessionLabels (qu'on filtre derrière par
+	// session escouade ; le code session_labels.solo est conservé pour
+	// compat de DTO mais inutilisé par la page Escouade — la page Solo a
+	// son propre endpoint).
 	allMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
 	if err != nil {
-		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService solo: %w", err)
+		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService synthesis: %w", err)
 	}
 
 	// Extraire les session_labels disponibles (solo / escouade).
@@ -52,7 +55,6 @@ func (s *TeammatesService) GetPage(
 	// Filtrer les matchs selon les sessions sélectionnées.
 	filteredMatches := filterSynthesisBySession(allMatches, req.PickedSoloSession, req.PickedSquadSession)
 
-	soloRef := computeSoloReference(filteredMatches)
 	totalMatches := len(filteredMatches)
 
 	// Calculs détaillés pour les gamertags sélectionnés.
@@ -84,7 +86,6 @@ func (s *TeammatesService) GetPage(
 	return domain.TeammatesPageResponse{
 		Options:       options,
 		Teammates:     teammates,
-		SoloReference: soloRef,
 		TotalMatches:  totalMatches,
 		SessionLabels: sessionLabels,
 		Timeseries:    timeseries,
@@ -309,21 +310,6 @@ func computeKPIsFromSynthesisExcluding(
 		WinRate:      round2(float64(wins) / float64(n) * 100),
 		KillsPerGame: &kpg,
 	}
-}
-
-// computeSoloReference calcule les KPIs de référence solo (tous matchs seul).
-func computeSoloReference(matches []domain.SynthesisMatchRow) *domain.TeammateKPIs {
-	var solo []domain.SynthesisMatchRow
-	for _, m := range matches {
-		if !m.IsWithFriends {
-			solo = append(solo, m)
-		}
-	}
-	if len(solo) == 0 {
-		return nil
-	}
-	kpis := computeKPIsFromSynthesisExcluding(solo, nil)
-	return &kpis
 }
 
 func safeDiv(a, b float64) float64 {

@@ -80,10 +80,13 @@ type SessionLabelsList struct {
 }
 
 // TeammatesPageResponse est la réponse de POST /pages/teammates.
+//
+// Le champ historique `solo_reference` a été retiré : la page Solo a son
+// propre endpoint dédié, et la page Escouade ne compare plus contre une
+// baseline solo (cf. .ai/thought_log.md 2026-04-26 refonte UX Escouade).
 type TeammatesPageResponse struct {
 	Options       []TeammateOption  `json:"options"`
 	Teammates     []TeammateRow     `json:"teammates"`
-	SoloReference *TeammateKPIs     `json:"solo_reference"`
 	TotalMatches  int               `json:"total_matches"`
 	SessionLabels SessionLabelsList `json:"session_labels"`
 	// Sprint N : données graphiques par coéquipier sélectionné
