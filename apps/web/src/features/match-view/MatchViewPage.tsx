@@ -245,7 +245,7 @@ export function MatchViewPage() {
               )
             }}
           >
-            {header.is_excluded ? '↩ Réactiver' : '⊘ Ignorer'}
+            {header.is_excluded ? '↩ Réactiver' : 'Marquer comme non pertinent ⊘'}
           </Button>
         </div>
       </div>

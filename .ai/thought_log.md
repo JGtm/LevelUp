@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-04-26] plan(match-view): amendements architecture — 7 correctifs conformité
+
+**Statut** : Complété.
+
+**Décision technique** :
+Revue du plan `.ai/PLAN_MATCH_VIEW_GO_PORTAGE.md` via skill `plan-review`. Identification de 7 lacunes de conformité architecturale ; toutes appliquées en une passe.
+
+Amendements apportés :
+1. **§4.4 Interface `port.MatchViewRepository`** : règle "déclarer avant d'implémenter", 7 nouvelles méthodes par phase (C, G, I, J).
+2. **§5.5 Query keys + labels** : `useFieldLabel()` / `useOutcomeLabel()` obligatoires, aucune nouvelle query key nécessaire, 6 axes radar à enregistrer dans `fields.toml` (Phase J).
+3. **§5.6 Conformité multi-titres** : `TitleDataAdapter.Load*()` / `canonical.*` types obligatoires, table `HasCapability()` pour Radar/Media/Citations/Rang, TOML mappings par phase (B/C/J), `PathResolver` pour assets.
+4. **Tests requis par phase A→K** : spécifications de tests unitaires, repo `:memory:`, service mock et typecheck front ajoutées à chaque phase.
+5. **§8.2 Workaround #28 reformulé** : service retourne `games.ErrCapabilityNotSupported` (pas de nil, pas de 500) ; frontend affiche `<EmptyStateNotice>` + lien Explorer.
+6. **§9.5 Logging** : patterns `slog.InfoContext` / `slog.ErrorContext`, clés standard `"err" "match_id" "player" "titleSlug" "duration"`, interdiction `fmt.Println`.
+7. **§9.6 Modularité** : seuils 500L/80L/5-args rappelés, découpe préventive de `participation_profile.go` détaillée (5 sous-fonctions nommées).
+
+**Résultats observés** :
+- Plan passe désormais toutes les grilles de la skill `plan-review` (structure, archi Go, multi-titres, adapters, tests, logging, frontend, livraison).
+- Aucune modification du code — plan documentaire uniquement.
+
+**Prochaine étape** : démarrer la Phase A (câblage front des 12 viz READY) selon décision utilisateur.
+
 ## [2026-04-26] plan(portage): scoreboard + citations + impact compatible multi-titres
 
 **Statut** : Complété — plan formalisé.
