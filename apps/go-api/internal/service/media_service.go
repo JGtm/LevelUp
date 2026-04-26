@@ -52,14 +52,15 @@ func (s *MediaService) GetMediaPage(
 		kindFilter = req.Kind // compat. legacy
 	}
 	filters := domain.MediaFilters{
-		KindFilter:    kindFilter,
-		SectionFilter: req.SectionFilter,
-		AuthorSlugs:   req.AuthorSlugs,
-		MapFilter:     req.MapFilter,
-		ModeFilter:    req.ModeFilter,
-		LikedOnly:     req.LikedOnly,
-		Sort:          req.Sort,
-		GroupBy:       req.GroupBy,
+		KindFilter:     kindFilter,
+		SectionFilter:  req.SectionFilter,
+		AuthorSlugs:    req.AuthorSlugs,
+		PlaylistFilter: req.PlaylistFilter,
+		MapFilter:      req.MapFilter,
+		ModeFilter:     req.ModeFilter,
+		LikedOnly:      req.LikedOnly,
+		Sort:           req.Sort,
+		GroupBy:        req.GroupBy,
 	}
 
 	files, err := s.repo.LoadMediaFiles(ctx, filters, limit, offset)

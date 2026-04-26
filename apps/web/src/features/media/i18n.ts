@@ -20,6 +20,7 @@ export interface MediaText {
     filterLabel: string
     sortLabel: string
     kindAriaLabel: string
+    playlistAriaLabel: string
     mapAriaLabel: string
     modeAriaLabel: string
     sortAriaLabel: string
@@ -33,6 +34,7 @@ export interface MediaText {
     clips: string
     allAuthors: string
     mine: string
+    allPlaylists: string
     allMaps: string
     allModes: string
     dateDesc: string
@@ -67,6 +69,7 @@ const FR_TEXT: MediaText = {
     filterLabel: 'Filtres :',
     sortLabel: 'Tri :',
     kindAriaLabel: 'Type de média',
+    playlistAriaLabel: 'Playlist de la galerie',
     mapAriaLabel: 'Carte de la galerie',
     modeAriaLabel: 'Mode de la galerie',
     sortAriaLabel: 'Tri de la galerie',
@@ -80,6 +83,7 @@ const FR_TEXT: MediaText = {
     clips: 'Clips',
     allAuthors: 'Tous les auteurs',
     mine: 'Mes captures',
+    allPlaylists: 'Toutes playlists',
     allMaps: 'Toutes cartes',
     allModes: 'Tous modes',
     dateDesc: 'Date ↓',
@@ -114,6 +118,7 @@ const EN_TEXT: MediaText = {
     filterLabel: 'Filters:',
     sortLabel: 'Sort:',
     kindAriaLabel: 'Media type',
+    playlistAriaLabel: 'Media playlist',
     mapAriaLabel: 'Media map',
     modeAriaLabel: 'Media mode',
     sortAriaLabel: 'Media sorting',
@@ -127,6 +132,7 @@ const EN_TEXT: MediaText = {
     clips: 'Clips',
     allAuthors: 'All authors',
     mine: 'My captures',
+    allPlaylists: 'All playlists',
     allMaps: 'All maps',
     allModes: 'All modes',
     dateDesc: 'Date ↓',

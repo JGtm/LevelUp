@@ -1482,6 +1482,7 @@ export interface MediaItemRow {
 }
 
 export interface MediaAvailableFilters {
+  playlists: LabelValue[]
   maps: LabelValue[]
   modes: LabelValue[]
 }
@@ -1492,6 +1493,8 @@ export interface MediaQueryRequest {
   section_filter?: string | null
   /** Whitelist explicite de player_slug ; prend le pas sur section_filter si non vide. */
   author_slugs?: string[] | null
+  /** playlist_id (UUID) ou label brut. */
+  playlist_filter?: string | null
   map_filter?: string | null
   mode_filter?: string | null
   group_by?: string | null

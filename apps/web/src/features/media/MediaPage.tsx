@@ -161,6 +161,7 @@ export function MediaPage() {
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
   const [authorSlugs, setAuthorSlugs] = useState<string[]>([])
+  const [playlistFilter, setPlaylistFilter] = useState('')
   const [mapFilter, setMapFilter] = useState('')
   const [modeFilter, setModeFilter] = useState('')
   const [groupBy, setGroupBy] = useState('')
@@ -177,6 +178,7 @@ export function MediaPage() {
     section_filter: authorSlugs.length > 0 ? null : 'mine',
     kind_filter: kindFilter || null,
     author_slugs: authorSlugs.length > 0 ? authorSlugs : null,
+    playlist_filter: playlistFilter || null,
     map_filter: mapFilter || null,
     mode_filter: modeFilter || null,
     group_by: groupBy || null,
@@ -189,6 +191,7 @@ export function MediaPage() {
   const authors = authorsData?.authors ?? []
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const mediaItems: MediaItemRow[] = data?.items?.items ?? []
+  const playlistOptions = data?.available_filters.playlists ?? []
   const mapOptions = data?.available_filters.maps?.length
     ? data.available_filters.maps
     : buildFallbackOptions(mediaItems, 'map_name')
@@ -227,6 +230,11 @@ export function MediaPage() {
 
   function handleAuthorSlugsChange(slugs: string[]) {
     setAuthorSlugs(slugs)
+    setPage(1)
+  }
+
+  function handlePlaylistChange(value: string) {
+    setPlaylistFilter(value)
     setPage(1)
   }
 
@@ -289,15 +297,18 @@ export function MediaPage() {
           kindFilter={kindFilter}
           authorSlugs={authorSlugs}
           authors={authors}
+          playlistFilter={playlistFilter}
           mapFilter={mapFilter}
           modeFilter={modeFilter}
           groupBy={groupBy}
           sortKey={sortKey}
           likedOnly={likedOnly}
+          playlistOptions={playlistOptions}
           mapOptions={mapOptions}
           modeOptions={modeOptions}
           onKindChange={handleKindChange}
           onAuthorSlugsChange={handleAuthorSlugsChange}
+          onPlaylistChange={handlePlaylistChange}
           onMapChange={handleMapChange}
           onModeChange={handleModeChange}
           onSortChange={handleSortChange}
