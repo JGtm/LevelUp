@@ -297,27 +297,27 @@ export function MediaLightbox({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={onClose}>
       <div className="relative mx-4 flex max-h-screen w-full max-w-5xl flex-col" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between bg-black/60 px-4 py-2 text-white">
-          <span className="truncate text-sm opacity-80">{heading}</span>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             {onReassociate && (
               <button
                 type="button"
                 onClick={() => onReassociate(item)}
-                className="rounded border border-white/20 px-2 py-0.5 text-xs text-white/80 hover:border-white/50 hover:text-white"
+                className="shrink-0 rounded border border-white/20 px-2 py-0.5 text-xs text-white/80 hover:border-white/50 hover:text-white"
                 title="Réassocier ce média à un autre match"
               >
                 Réassocier
               </button>
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-xl leading-none text-white/70 hover:text-white"
-              aria-label="Fermer"
-            >
-              ✕
-            </button>
+            <span className="truncate text-sm opacity-80">{heading}</span>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xl leading-none text-white/70 hover:text-white"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="relative flex items-center justify-center overflow-hidden bg-black" style={{ maxHeight: '80vh' }}>

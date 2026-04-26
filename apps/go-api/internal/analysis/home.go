@@ -1053,6 +1053,11 @@ var mapPNGNames = map[string]struct{}{
 	"Streets - Ranked":         {},
 }
 
+// MapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
+// Le nom de la map est encodé pour les espaces et caractères spéciaux.
+// Public pour usage cross-package (ex: media match candidates).
+func MapStaticImagePath(mapName string) string { return mapStaticImagePath(mapName) }
+
 // mapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
 // Le nom de la map est encodé pour les espaces et caractères spéciaux.
 func mapStaticImagePath(mapName string) string {
