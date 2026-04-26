@@ -495,6 +495,129 @@ func TestMediaFilters_Count_RespectsFilters(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Exactitude des filtres map / mode : NE DOIT PAS matcher en substring
+// ─────────────────────────────────────────────────────────────────────────────
+
+// newTestPlayerDBMapModeOverlap monte un dataset où les noms de cartes/modes
+// se chevauchent (substring) pour exposer le bug ILIKE %X%.
+func newTestPlayerDBMapModeOverlap(t *testing.T) *PlayerDB {
+	t.Helper()
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+
+	seedSharedDBSchema(t, shared)
+	seedSharedDBSchema(t, social)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+
+	ctx := context.Background()
+	for _, q := range []string{
+		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_files`,
+		`DELETE FROM shared.match_registry`,
+	} {
+		if _, err := social.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe: %v", err)
+		}
+	}
+
+	// Cartes qui se chevauchent : "Recharge" et "Recharge Annex"
+	// Modes qui se chevauchent : "Slayer", "Team Slayer", "Slayer Doubles"
+	matches := []struct{ id, mapName, mode string }{
+		{"m1", "Recharge", "Slayer"},
+		{"m2", "Recharge Annex", "Slayer"},
+		{"m3", "Recharge", "Team Slayer"},
+		{"m4", "Live Fire", "Slayer Doubles"},
+	}
+	for _, m := range matches {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO shared.match_registry (match_id, start_time, map_name, pair_name, playlist_name, is_ranked)
+			VALUES (?, '2025-01-10 14:00:00+00', ?, ?, ?, FALSE)`,
+			m.id, m.mapName, m.mode, m.mode,
+		); err != nil {
+			t.Fatalf("insert match: %v", err)
+		}
+	}
+
+	// Un média par match
+	mediaSet := []struct{ id, path, matchID string }{
+		{"m-r1", "/recharge1.mp4", "m1"},
+		{"m-ra", "/recharge_annex.mp4", "m2"},
+		{"m-r2", "/recharge2.mp4", "m3"},
+		{"m-lf", "/livefire.mp4", "m4"},
+	}
+	for _, m := range mediaSet {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			m.id, mediaTestPlayerSlug, m.path, m.path,
+		); err != nil {
+			t.Fatalf("insert media: %v", err)
+		}
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_match_associations (media_file_id, match_id) VALUES (?, ?)`,
+			m.id, m.matchID,
+		); err != nil {
+			t.Fatalf("insert assoc: %v", err)
+		}
+	}
+
+	return &PlayerDB{
+		Player:       player,
+		Shared:       shared,
+		SharedSocial: social,
+		Metadata:     meta,
+		XUID:         mediaTestPlayerXUID,
+		Gamertag:     mediaTestPlayerSlug,
+		TitleSlug:    titlepkg.DefaultSlug,
+	}
+}
+
+func TestMediaFilters_MapFilter_ExactNotSubstring(t *testing.T) {
+	pdb := newTestPlayerDBMapModeOverlap(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Recharge"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	// On veut UNIQUEMENT "Recharge", pas "Recharge Annex".
+	// Match attendu : m1 (Recharge/Slayer) + m3 (Recharge/Team Slayer) = 2 médias.
+	wantPaths := map[string]bool{"/recharge1.mp4": true, "/recharge2.mp4": true}
+	if len(rows) != 2 {
+		t.Fatalf("MapFilter=Recharge: got %d rows %v, want 2 (recharge1, recharge2)", len(rows), pathsOf(rows))
+	}
+	for _, r := range rows {
+		if !wantPaths[r.FilePath] {
+			t.Errorf("MapFilter=Recharge: %s ne devrait pas matcher (got %v)", r.FilePath, pathsOf(rows))
+		}
+	}
+}
+
+func TestMediaFilters_ModeFilter_ExactNotSubstring(t *testing.T) {
+	pdb := newTestPlayerDBMapModeOverlap(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{ModeFilter: "Slayer"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	// On veut UNIQUEMENT "Slayer", pas "Team Slayer" ni "Slayer Doubles".
+	// Match attendu : m1 + m2 (Slayer) = 2 médias.
+	wantPaths := map[string]bool{"/recharge1.mp4": true, "/recharge_annex.mp4": true}
+	if len(rows) != 2 {
+		t.Fatalf("ModeFilter=Slayer: got %d rows %v, want 2 (recharge1, recharge_annex)", len(rows), pathsOf(rows))
+	}
+	for _, r := range rows {
+		if !wantPaths[r.FilePath] {
+			t.Errorf("ModeFilter=Slayer: %s ne devrait pas matcher (got %v)", r.FilePath, pathsOf(rows))
+		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQL generated (sanity check sur les requêtes assemblées)
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-04-26] fix(media): filtres carte/mode en match exact (substring → LOWER = LOWER)
+
+**Statut** : Complété
+
+**Contexte** : User signale "le filtre mode et carte marche pas du tout, ça renvoit des faux résultats". Ajout immédiat de 2 tests d'intégration avec dataset de cartes/modes qui se chevauchent (Recharge / Recharge Annex, Slayer / Team Slayer / Slayer Doubles) — tests rouge avant fix, verts après.
+
+**Cause racine** : `buildQ37MediaWhereClause` utilisait `q37MediaMapLabelExpr ILIKE '%X%'` (substring match) pour les filtres carte ET mode. Conséquence en prod :
+- Sélectionner "Recharge" matchait aussi "Recharge Annex"
+- Sélectionner "Slayer" matchait "Slayer", "Team Slayer", "Slayer Doubles", "Strongholds-Slayer", etc.
+- Sélectionner "Catalyst" matchait "Catalyst Forge"
+- Etc. — n'importe quel mode/carte dont le nom contenait celui sélectionné comme substring.
+
+**Décisions techniques** :
+- Passage à `LOWER(label) = LOWER(?)` pour map et mode simples — match exact case-insensitive (la value frontend vient du même label SQL via `available_filters` donc l'égalité est sûre).
+- Pour `ModeFilterCandidates` (FR → liste raw EN après reverse lookup mode_name_tr), passage de `OR ILIKE %X%` à `IN (LOWER(?), LOWER(?), ...)` pour garder le multi-match exact.
+- 2 nouveaux tests d'intégration avec dataset overlap exposent le bug (1 dataset dédié `newTestPlayerDBMapModeOverlap`).
+- 6 tests unitaires existants mis à jour (`TestBuildQ37MediaQuery_MapFilter`, `_ModeFilter`, `_AllFilters_ArgOrder`, `_ModeFilterCandidatesBuildsInClause`, `TestBuildQ37MediaCountQuery_MultipleFilters`, `_MediaMapOptionsQuery_IgnoresCurrentMapFilter`, `_MediaModeOptionsQuery_UsesNormalizedModeLabels`) qui asseraient sur l'ancien `ILIKE %X%`.
+
+**Fichiers modifiés** :
+- `queries_home_citations.go` — passage à match exact LOWER pour map + mode
+- `queries_media_test.go` — assertions mises à jour
+- `media_repo_filters_test.go` — 2 nouveaux tests + helper `newTestPlayerDBMapModeOverlap`
+
+**Résultats observés** :
+- Avant fix (test rouge) : "Recharge" → 3 médias au lieu de 2 (matche aussi Recharge Annex). "Slayer" → 4 au lieu de 2.
+- Après fix : exactement 2 médias dans chaque cas.
+- Suite complète média (intégration + unitaire) : tous verts.
+
+**Conclusion** : 3ème bug majeur découvert grâce aux tests d'intégration ajoutés en amont (après owner_gamertag manquant et kind filter cassé). Démontre l'utilité des tests qui peuplent une vraie DB plutôt que de juste asser sur la chaîne SQL.
+
 ## [2026-04-26] test+fix(media): tests intégration filtres/tri/groupement + bug kind filter
 
 **Statut** : Complété

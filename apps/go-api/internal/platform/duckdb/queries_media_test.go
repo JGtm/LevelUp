@@ -76,24 +76,24 @@ func TestBuildQ37MediaQuery_LikedOnly(t *testing.T) {
 func TestBuildQ37MediaQuery_MapFilter(t *testing.T) {
 	q, args := BuildQ37MediaQuery(domain.MediaFilters{MapFilter: "Fragmentation"}, 24, 0)
 
-	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
-		t.Error("expected normalized map label ILIKE clause")
+	// Match exact (case-insensitive) — pas de substring (sinon "Recharge Annex"
+	// matcherait "Recharge").
+	if !strings.Contains(q, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)") {
+		t.Errorf("expected exact match LOWER(map_label) = LOWER(?), got: %s", q)
 	}
-	// Vérifier que le % wrapping est appliqué
 	if len(args) < 1 {
 		t.Fatal("expected at least 1 filter arg")
 	}
-	mapArg, ok := args[0].(string)
-	if !ok || !strings.Contains(mapArg, "Fragmentation") {
-		t.Errorf("map arg = %v, want %%Fragmentation%%", args[0])
+	if args[0] != "Fragmentation" {
+		t.Errorf("map arg = %v, want exactly Fragmentation (no %% wrapping)", args[0])
 	}
 }
 
 func TestBuildQ37MediaQuery_ModeFilter(t *testing.T) {
 	q, args := BuildQ37MediaQuery(domain.MediaFilters{ModeFilter: "Slayer"}, 24, 0)
 
-	if !strings.Contains(q, q37MediaModeLabelExpr+" ILIKE ?") {
-		t.Error("expected normalized mode label ILIKE clause")
+	if !strings.Contains(q, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)") {
+		t.Errorf("expected exact match LOWER(mode_label) = LOWER(?), got: %s", q)
 	}
 	if !strings.Contains(q, "regexp_replace") {
 		t.Error("expected normalized mode expression in query")
@@ -101,9 +101,8 @@ func TestBuildQ37MediaQuery_ModeFilter(t *testing.T) {
 	if len(args) < 1 {
 		t.Fatal("expected at least 1 filter arg")
 	}
-	modeArg, ok := args[0].(string)
-	if !ok || !strings.Contains(modeArg, "Slayer") {
-		t.Errorf("mode arg = %v, want %%Slayer%%", args[0])
+	if args[0] != "Slayer" {
+		t.Errorf("mode arg = %v, want exactly Slayer (no %% wrapping)", args[0])
 	}
 }
 
@@ -127,14 +126,12 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 			t.Errorf("args[0:2] = %v, want set {video, clip}", kindArgs)
 		}
 	}
-	// map et mode doivent être wrappés avec %
-	mapArg, _ := args[2].(string)
-	modeArg, _ := args[3].(string)
-	if !strings.Contains(mapArg, "Recharge") {
-		t.Errorf("args[2] = %v, want %%Recharge%%", args[2])
+	// map et mode sont en match exact (pas de %wrap)
+	if args[2] != "Recharge" {
+		t.Errorf("args[2] = %v, want exactly Recharge", args[2])
 	}
-	if !strings.Contains(modeArg, "CTF") {
-		t.Errorf("args[3] = %v, want %%CTF%%", args[3])
+	if args[3] != "CTF" {
+		t.Errorf("args[3] = %v, want exactly CTF", args[3])
 	}
 	if args[4] != 5 || args[5] != 10 {
 		t.Errorf("args[4:] = %v, want [5 10]", args[4:])
@@ -245,8 +242,8 @@ func TestBuildQ37MediaCountQuery_MultipleFilters(t *testing.T) {
 	if !strings.Contains(q, "mf.kind IN (?,?)") {
 		t.Errorf("expected kind IN (?,?), got: %s", q)
 	}
-	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
-		t.Error("expected map filter")
+	if !strings.Contains(q, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)") {
+		t.Error("expected exact map filter")
 	}
 	// 2 kind args (screenshot, image) + 1 map arg
 	if len(args) != 3 {
@@ -271,10 +268,10 @@ func TestBuildQ37MediaMapOptionsQuery_IgnoresCurrentMapFilter(t *testing.T) {
 		ModeFilter: "Slayer",
 	})
 
-	if strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
+	if strings.Contains(q, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)") {
 		t.Error("expected current map filter to be ignored for map options")
 	}
-	if !strings.Contains(q, q37MediaModeLabelExpr+" ILIKE ?") {
+	if !strings.Contains(q, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)") {
 		t.Error("expected mode filter to stay applied for map options")
 	}
 	if !strings.Contains(q, "AS map_id, "+q37MediaMapLabelExpr+" AS label") {
@@ -292,10 +289,10 @@ func TestBuildQ37MediaModeOptionsQuery_UsesNormalizedModeLabels(t *testing.T) {
 		ModeFilter: "CTF",
 	})
 
-	if strings.Contains(q, q37MediaModeLabelExpr+" ILIKE ?") {
+	if strings.Contains(q, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)") {
 		t.Error("expected current mode filter to be ignored for mode options")
 	}
-	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
+	if !strings.Contains(q, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)") {
 		t.Error("expected map filter to stay applied for mode options")
 	}
 	if !strings.Contains(q, "AS pair_name_raw, "+q37MediaModeLabelExpr+" AS label") {
@@ -377,18 +374,19 @@ func TestBuildQ37MediaQuery_GroupByMapPrefixesOrderBy(t *testing.T) {
 	}
 }
 
-func TestBuildQ37MediaQuery_ModeFilterCandidatesBuildsOrClause(t *testing.T) {
+func TestBuildQ37MediaQuery_ModeFilterCandidatesBuildsInClause(t *testing.T) {
 	q, args := buildQ37MediaQuery(
 		domain.MediaFilters{ModeFilterCandidates: []string{"Slayer", "CTF"}},
 		24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"},
 	)
 
-	if !strings.Contains(q, " ILIKE ? OR ") {
-		t.Errorf("expected OR clause from ModeFilterCandidates, got: %s", q)
+	// Match exact (LOWER) sur chaque candidat via IN — pas de substring.
+	if !strings.Contains(q, "LOWER("+q37MediaModeLabelExpr+") IN (LOWER(?),LOWER(?))") {
+		t.Errorf("expected exact IN clause from ModeFilterCandidates, got: %s", q)
 	}
 	// args : 2 candidats + limit + offset
-	if len(args) != 4 || args[0] != "%Slayer%" || args[1] != "%CTF%" {
-		t.Fatalf("args = %v, want [%%Slayer%% %%CTF%% 24 0]", args)
+	if len(args) != 4 || args[0] != "Slayer" || args[1] != "CTF" {
+		t.Fatalf("args = %v, want [Slayer CTF 24 0]", args)
 	}
 }
 
