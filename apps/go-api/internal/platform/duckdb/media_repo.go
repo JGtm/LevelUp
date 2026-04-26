@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -38,7 +37,6 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	filters = r.expandModeFilter(ctx, filters)
 	q, args := buildQ37MediaQuery(filters, limit, offset, r.queryConfig())
 	rows, err := r.socialDB().Query(ctx, q, args...)
 	if err != nil {
@@ -98,7 +96,6 @@ func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFil
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	filters = r.expandModeFilter(ctx, filters)
 	q, args := buildQ37MediaCountQuery(filters, r.queryConfig())
 	var count int
 	err := r.socialDB().QueryRow(ctx, q, args...).Scan(&count)
@@ -117,7 +114,6 @@ func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.M
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	filters = r.expandModeFilter(ctx, filters)
 	queryCfg := r.queryConfig()
 
 	mapQuery, mapArgs := buildQ37MediaMapOptionsQuery(filters, queryCfg)
@@ -303,15 +299,13 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			}
 		}
 		if pairName.Valid {
-			// Normaliser comme q37MediaModeLabelExpr : strip préfixe ("Arena:", "Community:" etc.)
-			// + suffixes (" on Bazaar", " - Forge", " - Ranked"). Donne EN canonique
-			// (ex: "Slayer", "Team Slayer", "CTF") qu'on traduit ensuite via mode_name_tr.
-			s := normalizeModeLabel(pairName.String)
-			if s != "" {
-				c.ModeName = &s
-				if en := analysis.NormalizeModeLabel(s); en != "" {
-					modeEnSet[en] = struct{}{}
-				}
+			// Sous-mode EN canonique pour le picker (Slayer/CTF/KOTH/etc.) :
+			// l'utilisateur a besoin du DÉTAIL du mode pour distinguer entre 4
+			// matchs candidats — pas de la catégorie parente. cf. mode_label.go
+			// (NormalizeModeLabel) vs mode_category.go (InferModeCategoryFromPairName).
+			if en := analysis.NormalizeModeLabel(pairName.String); en != "" {
+				c.ModeName = &en
+				modeEnSet[en] = struct{}{}
 			}
 		}
 		if playlistName.Valid {
@@ -346,8 +340,9 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			if resp.Candidates[i].ModeName == nil {
 				continue
 			}
-			en := analysis.NormalizeModeLabel(*resp.Candidates[i].ModeName)
-			if fr, ok := translations[en]; ok && fr != "" {
+			// ModeName est déjà le sous-mode EN canonique (cf. boucle ci-dessus) →
+			// lookup direct, pas besoin de re-normaliser.
+			if fr, ok := translations[*resp.Candidates[i].ModeName]; ok && fr != "" {
 				resp.Candidates[i].ModeName = &fr
 			}
 		}
@@ -438,23 +433,6 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 		out[matchID] = append(out[matchID], entry)
 	}
 	return out
-}
-
-// Strips appliqués pour normaliser un mode (pair_name) côté Go, en miroir
-// de q37MediaModeLabelExpr : préfixe catégorie + suffixes carte/Forge/Ranked.
-var (
-	modeLabelPrefixRe = regexp.MustCompile(`(?i)^[^:]+:\s*`)
-	modeLabelOnRe     = regexp.MustCompile(`(?i)\s+on\s+.+$`)
-	modeLabelForgeRe  = regexp.MustCompile(`(?i)\s*-\s*Forge\b.*$`)
-	modeLabelRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b.*$`)
-)
-
-func normalizeModeLabel(s string) string {
-	s = modeLabelPrefixRe.ReplaceAllString(s, "")
-	s = modeLabelOnRe.ReplaceAllString(s, "")
-	s = modeLabelForgeRe.ReplaceAllString(s, "")
-	s = modeLabelRankedRe.ReplaceAllString(s, "")
-	return strings.TrimSpace(s)
 }
 
 // SetMediaMatchAssociation force l'association d'un média à un match précis.
@@ -780,56 +758,6 @@ func (r *MediaRepo) translateModeFilterOptions(_ context.Context, pairs []mediaF
 	}
 	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
 	return options
-}
-
-// expandModeFilter — historiquement convertissait un ModeFilter FR (sous-mode
-// type "Capture du drapeau") en candidates EN via mode_name_tr. Avec le passage
-// au filtre par CATÉGORIE custom (cf. analysis.ModeCategory*), le ModeFilter
-// est déjà au bon niveau (catégorie EN) et le WHERE le reverse-mappe directement
-// vers les préfixes pair_name. Cette fonction est conservée pour compat des
-// callers existants (LoadMediaFiles/CountMediaFiles) mais devient un no-op.
-func (r *MediaRepo) expandModeFilter(_ context.Context, filters domain.MediaFilters) domain.MediaFilters {
-	return filters
-}
-
-func (r *MediaRepo) expandModeFilterUnused(ctx context.Context, filters domain.MediaFilters) domain.MediaFilters {
-	if filters.ModeFilter == "" || len(filters.ModeFilterCandidates) > 0 {
-		return filters
-	}
-	if r.pdb == nil || r.pdb.Metadata == nil {
-		return filters
-	}
-	candidates := r.reverseModeNameLookup(ctx, filters.ModeFilter)
-	if len(candidates) > 0 {
-		filters.ModeFilterCandidates = candidates
-	}
-	return filters
-}
-
-// reverseModeNameLookup : étant donné un nom FR (ex: "Capture du drapeau"),
-// retourne la liste des mode_en présents dans mode_name_tr ayant ce libellé.
-// Best-effort : retourne nil sur erreur ou table absente.
-func (r *MediaRepo) reverseModeNameLookup(ctx context.Context, modeFR string) []string {
-	if r.pdb == nil || r.pdb.Metadata == nil || strings.TrimSpace(modeFR) == "" {
-		return nil
-	}
-	q := `SELECT DISTINCT mode_en FROM mode_name_tr WHERE lang = 'fr' AND name = ?`
-	rows, err := r.pdb.Metadata.Query(ctx, q, modeFR)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var en string
-		if err := rows.Scan(&en); err != nil {
-			continue
-		}
-		if en = strings.TrimSpace(en); en != "" {
-			out = append(out, en)
-		}
-	}
-	return out
 }
 
 // loadAssetTranslationNames lit les traductions FR depuis metadata.asset_translations.
