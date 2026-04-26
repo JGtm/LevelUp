@@ -428,8 +428,14 @@ func (n *noopHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, 
 // SquadRepository fournit les données pour la page Escouade.
 // Implémenté par platform/duckdb.SquadRepo.
 type SquadRepository interface {
-	// LoadTopTeammates charge les 10 coéquipiers les plus fréquents en escouade (Q29).
+	// LoadTopTeammates charge les coéquipiers les plus fréquents en escouade (Q29, top 50).
 	LoadTopTeammates(ctx context.Context, xuid string) ([]domain.TopTeammateRow, error)
+
+	// LookupXUIDByGamertag résout un gamertag (case-insensitive) vers son XUID
+	// via shared.xuid_aliases. Fallback pour les gamertags hors top 50 sélectionnés
+	// par le user (saisie libre dans la combobox). Retourne ("", false, nil) si
+	// le gamertag n'existe pas dans les aliases.
+	LookupXUIDByGamertag(ctx context.Context, gamertag string) (xuid string, found bool, err error)
 
 	// LoadSquadMatches charge les matchs communs avec un coéquipier spécifique (Q30).
 	LoadSquadMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.SquadMatchRow, error)
@@ -546,6 +552,9 @@ type noopSquadRepo struct{}
 
 func (n *noopSquadRepo) LoadTopTeammates(_ context.Context, _ string) ([]domain.TopTeammateRow, error) {
 	return nil, nil
+}
+func (n *noopSquadRepo) LookupXUIDByGamertag(_ context.Context, _ string) (string, bool, error) {
+	return "", false, nil
 }
 func (n *noopSquadRepo) LoadSquadMatches(_ context.Context, _, _ string) ([]domain.SquadMatchRow, error) {
 	return nil, nil

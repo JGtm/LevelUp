@@ -20,7 +20,7 @@ func NewSquadRepo(pdb *PlayerDB) *SquadRepo {
 	return &SquadRepo{pdb: pdb}
 }
 
-// LoadTopTeammates charge les 10 meilleurs coéquipiers du joueur (Q29).
+// LoadTopTeammates charge les meilleurs coéquipiers du joueur (Q29, top 50).
 func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain.TopTeammateRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -49,6 +49,43 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 		result = append(result, row)
 	}
 	return result, rows.Err()
+}
+
+// LookupXUIDByGamertag résout un gamertag (ILIKE, case-insensitive) vers son
+// XUID via shared.xuid_aliases. Sert de fallback pour les coéquipiers sélectionnés
+// qui sortent du top 50 LoadTopTeammates (saisie libre dans la combobox).
+//
+// Si plusieurs aliases correspondent au même gamertag (changement de pseudo
+// historique), on retourne le plus récent. Si aucun alias, retourne ("", false, nil).
+func (r *SquadRepo) LookupXUIDByGamertag(ctx context.Context, gamertag string) (string, bool, error) {
+	gamertag = strings.TrimSpace(gamertag)
+	if gamertag == "" {
+		return "", false, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// shared.xuid_aliases : (xuid, gamertag, last_seen_at)
+	const q = `
+SELECT xuid
+FROM shared.xuid_aliases
+WHERE gamertag ILIKE ?
+ORDER BY last_seen_at DESC NULLS LAST
+LIMIT 1`
+
+	rows, err := r.pdb.ReadDB().Query(ctx, q, gamertag)
+	if err != nil {
+		return "", false, fmt.Errorf("LookupXUIDByGamertag(%q): %w", gamertag, err)
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return "", false, rows.Err()
+	}
+	var xuid string
+	if err := rows.Scan(&xuid); err != nil {
+		return "", false, fmt.Errorf("LookupXUIDByGamertag scan: %w", err)
+	}
+	return xuid, xuid != "", nil
 }
 
 // LoadSquadMatches charge les matchs communs joueur+coéquipier (Q30).

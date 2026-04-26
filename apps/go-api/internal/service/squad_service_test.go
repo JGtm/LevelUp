@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,10 +25,23 @@ type mockSquadRepo struct {
 	heatmapErr  error
 	synthRows   []domain.SynthesisMatchRow
 	synthErr    error
+	// LookupXUIDByGamertag : lookup attendu (gamertag normalisé en lowercase → xuid).
+	// Si vide, retourne ("", false, nil) — comportement par défaut.
+	lookupAliases map[string]string
+	lookupErr     error
 }
 
 func (m *mockSquadRepo) LoadTopTeammates(_ context.Context, _ string) ([]domain.TopTeammateRow, error) {
 	return m.topRows, m.topErr
+}
+func (m *mockSquadRepo) LookupXUIDByGamertag(_ context.Context, gamertag string) (string, bool, error) {
+	if m.lookupErr != nil {
+		return "", false, m.lookupErr
+	}
+	if x, ok := m.lookupAliases[strings.ToLower(gamertag)]; ok {
+		return x, true, nil
+	}
+	return "", false, nil
 }
 func (m *mockSquadRepo) LoadSquadMatches(_ context.Context, _, _ string) ([]domain.SquadMatchRow, error) {
 	return m.squadRows, m.squadErr

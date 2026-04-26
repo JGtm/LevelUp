@@ -8,6 +8,7 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useEffect } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
+import { useFiltersResolve } from '@/features/filters/queries'
 
 export const Route = createFileRoute('/players/$playerSlug')({
   // Guard synchrone avant rendu — bloque les accès directs par URL
@@ -33,6 +34,11 @@ function PlayerLayout() {
     const player = availablePlayers.find((p) => p.player_slug === playerSlug)
     if (player) setCurrentPlayer(player)
   }, [playerSlug, availablePlayers, currentPlayer, setCurrentPlayer])
+
+  // Résolution du filterContext côté backend → alimente
+  // resolvedContext.session_options et resolvedContext.available_options
+  // dans le globalFilterStore, consommés par NavL2/FilterPanel/SquadLayout.
+  useFiltersResolve(playerSlug)
 
   return (
     <div className="flex flex-col">

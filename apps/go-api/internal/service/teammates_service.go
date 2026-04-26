@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -169,28 +170,43 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	topRows []domain.TopTeammateRow,
 	allMatches []domain.SynthesisMatchRow,
 ) (*domain.TeammateRow, []domain.SquadMatchRow, error) {
-	// Trouver le XUID du coéquipier.
+	// Étape 1 : chercher le gamertag dans le top 50 escouade — case-insensitive
+	// pour absorber les variations de casse entre la saisie user et la valeur en
+	// DB (Halo API renvoie tantôt "Madina97294" tantôt "madina97294").
 	var teammateXUID string
 	var encounterCount int
 	for _, r := range topRows {
-		if r.Gamertag == gamertag {
+		if strings.EqualFold(r.Gamertag, gamertag) {
 			teammateXUID = r.XUID
 			encounterCount = r.GamesTogether
 			break
 		}
 	}
+
+	// Étape 2 : fallback — résoudre via shared.xuid_aliases pour les gamertags
+	// hors top 50 (utilisateur qui a 50+ coéquipiers réguliers OU saisie libre
+	// dans la combobox). encounterCount reste 0 — recalculé depuis squadMatches
+	// plus bas si on charge effectivement les matchs.
 	if teammateXUID == "" {
-		// Silent drop volontaire (le gamertag n'est pas dans LoadTopTeammates)
-		// mais on émet un warn pour rendre le cas observable. Cause racine
-		// historique du bug "Comparaison inactive même après sélection" :
-		// la combobox côté frontend autorise la saisie libre de gamertags
-		// absents du top, qui sont alors silencieusement ignorés ici.
-		slog.WarnContext(ctx, "teammates_gamertag_not_found",
-			"player_xuid", playerXUID,
-			"gamertag", gamertag,
-			"top_rows_count", len(topRows),
-		)
-		return nil, nil, nil
+		resolved, found, err := s.repo.LookupXUIDByGamertag(ctx, gamertag)
+		if err != nil {
+			slog.WarnContext(ctx, "teammates_gamertag_lookup_failed",
+				"player_xuid", playerXUID,
+				"gamertag", gamertag,
+				"err", err.Error(),
+			)
+			return nil, nil, nil
+		}
+		if !found {
+			// Vraiment inconnu de tous les aliases — on log et on drop.
+			slog.WarnContext(ctx, "teammates_gamertag_not_found",
+				"player_xuid", playerXUID,
+				"gamertag", gamertag,
+				"top_rows_count", len(topRows),
+			)
+			return nil, nil, nil
+		}
+		teammateXUID = resolved
 	}
 
 	// Charger les matchs communs.
@@ -218,6 +234,12 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 			}
 		}
 		lastSeen = &t
+	}
+
+	// Si encounterCount n'a pas été renseigné par le top 50 (fallback alias-only),
+	// on le calcule depuis les matchs communs effectivement chargés.
+	if encounterCount == 0 {
+		encounterCount = len(squadMatches)
 	}
 
 	return &domain.TeammateRow{
