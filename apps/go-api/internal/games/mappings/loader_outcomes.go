@@ -11,8 +11,8 @@ import (
 
 // outcomesTOML est la projection brute du fichier outcomes.toml avant validation.
 type outcomesTOML struct {
-	Meta     metaSection                  `toml:"meta"`
-	Outcomes map[string]outcomeEntryTOML  `toml:"outcomes"`
+	Meta     metaSection                 `toml:"meta"`
+	Outcomes map[string]outcomeEntryTOML `toml:"outcomes"`
 }
 
 type outcomeEntryTOML struct {

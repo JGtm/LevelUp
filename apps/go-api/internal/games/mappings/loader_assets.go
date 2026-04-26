@@ -11,9 +11,9 @@ import (
 
 // assetsTOML est la projection brute du fichier assets.toml avant validation.
 type assetsTOML struct {
-	Meta   metaSection                                 `toml:"meta"`
-	Assets map[string]map[string]assetEntryTOML        `toml:"assets"` // kind → id → entry
-	_      struct{}                                    `toml:"-"`
+	Meta   metaSection                          `toml:"meta"`
+	Assets map[string]map[string]assetEntryTOML `toml:"assets"` // kind → id → entry
+	_      struct{}                             `toml:"-"`
 }
 
 type assetEntryTOML struct {
