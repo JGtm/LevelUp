@@ -1,12 +1,9 @@
 /**
  * heatmapChart.test.ts — Libellés en argument, plus aucune string FR
- * libre, et le commentaire TODO multi-title est conservé pour signaler
- * la migration future vers useAssetLabel('map', id).
+ * libre, et `mapLabelOf` résout les IDs bruts de cartes vers leur libellé
+ * localisé (assets.map du titre courant).
  */
-import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
+import { describe, it, expect, vi } from 'vitest'
 import { buildHeatmapChart } from './heatmapChart'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
@@ -15,11 +12,14 @@ const ROWS: MapBreakdownRow[] = [
   { map_ui: 'Live Fire', match_count: 6, win_rate: 50 },
 ]
 
+const identityMapLabel = (id: string) => id
+
 describe('buildHeatmapChart', () => {
   const labels = {
     title: 'H_TITLE',
     winAxis: 'H_AXIS',
     matchesLabel: 'H_MATCHES',
+    mapLabelOf: identityMapLabel,
   }
 
   it('retourne null pour rows vide', () => {
@@ -56,13 +56,22 @@ describe('buildHeatmapChart', () => {
     expect(json).not.toMatch(/Matchs:/)
   })
 
-  it('conserve le TODO multi-title pour la migration useAssetLabel', () => {
-    // Le TODO dans le source est load-bearing : il documente la dette de
-    // localisation des noms de cartes (raw string aujourd'hui, à migrer
-    // vers useAssetLabel('map', id) en Phase 3 du PLAN_FINITION).
-    const here = dirname(fileURLToPath(import.meta.url))
-    const src = readFileSync(resolve(here, 'heatmapChart.ts'), 'utf-8')
-    expect(src).toContain('TODO(multi-title)')
-    expect(src).toContain('useAssetLabel')
+  it('applique mapLabelOf pour chaque carte (axe x localisé)', () => {
+    const mapLabelOf = vi.fn((id: string) => `LOC_${id}`)
+    const fig = buildHeatmapChart({ rows: ROWS, ...labels, mapLabelOf })
+    const trace = fig!.data[0] as { x: string[] }
+    expect(trace.x).toEqual(['LOC_Aquarius', 'LOC_Live Fire'])
+    expect(mapLabelOf).toHaveBeenCalledWith('Aquarius')
+    expect(mapLabelOf).toHaveBeenCalledWith('Live Fire')
+  })
+
+  it('mapLabelOf qui retourne l\'ID brut équivaut à pas de localisation (fallback)', () => {
+    const fig = buildHeatmapChart({
+      rows: ROWS,
+      ...labels,
+      mapLabelOf: identityMapLabel,
+    })
+    const trace = fig!.data[0] as { x: string[] }
+    expect(trace.x).toEqual(['Aquarius', 'Live Fire'])
   })
 })

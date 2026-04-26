@@ -176,3 +176,67 @@ display_order = 30
 labels = { en = "Mythic", fr = "Mythique" }
 color_token = "medal.mythic"
 display_order = 40
+
+# =============================================================================
+# Cartes (kind = "map")
+#
+# Les ID utilisent le `MapUI` brut renvoyé par le backend (cf. SquadMatchRow.MapUI
+# dans domain/squad.go) qui est aujourd'hui le nom EN d'affichage de la carte.
+#
+# La plupart des noms de cartes Halo restent en anglais en FR (politique de
+# localisation Microsoft : noms propres conservés). On tient quand même cette
+# section à jour pour deux raisons :
+#   1. Démontrer la voie multi-titres : un autre titre pourra avoir des cartes
+#      à libellés divergents entre EN et FR, le pipeline est prêt.
+#   2. Permettre des FR personnalisés ponctuels (ex. cartes Firefight avec un
+#      sous-titre traduit).
+#
+# Les cartes absentes de cette table tombent en fallback sur l'ID brut côté
+# frontend (useAssetLabel('map', id) renvoie id si non mappé).
+# =============================================================================
+
+[assets.map.Aquarius]
+labels = { en = "Aquarius", fr = "Aquarius" }
+display_order = 10
+
+[assets.map.Bazaar]
+labels = { en = "Bazaar", fr = "Bazaar" }
+display_order = 20
+
+[assets.map.Catalyst]
+labels = { en = "Catalyst", fr = "Catalyst" }
+display_order = 30
+
+[assets.map."Live Fire"]
+labels = { en = "Live Fire", fr = "Live Fire" }
+display_order = 40
+
+[assets.map.Recharge]
+labels = { en = "Recharge", fr = "Recharge" }
+display_order = 50
+
+[assets.map.Streets]
+labels = { en = "Streets", fr = "Streets" }
+display_order = 60
+
+[assets.map.Empyrean]
+labels = { en = "Empyrean", fr = "Empyrean" }
+display_order = 70
+
+[assets.map.Solitude]
+labels = { en = "Solitude", fr = "Solitude" }
+display_order = 80
+
+[assets.map.Argyle]
+labels = { en = "Argyle", fr = "Argyle" }
+display_order = 90
+
+[assets.map.Forbidden]
+labels = { en = "Forbidden", fr = "Forbidden" }
+display_order = 100
+
+# Exemple multi-titres : libellé FR différent de EN — démontre que le pipeline
+# d'asset labels passe bien par TOML pour toute string title-bound.
+[assets.map.Unknown]
+labels = { en = "Unknown", fr = "Inconnue" }
+display_order = 999
