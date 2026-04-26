@@ -6,8 +6,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -15,11 +17,40 @@ import (
 type ExplorerService struct {
 	repo port.ExplorerRepository
 	xuid string
+	// dataAdapter (optionnel, Phase 2 plan finition multi-titres) :
+	// quand fourni, le service mesure la capability match.history pour
+	// loguer une éventuelle dégradation. La bascule fonctionnelle reste
+	// future car canonical.MatchSummary ne couvre pas encore le filtrage
+	// Explorer (joueur commun + plage temporelle).
+	dataAdapter games.TitleDataAdapter
 }
 
 // NewExplorerService crée un ExplorerService.
 func NewExplorerService(repo port.ExplorerRepository, xuid string) *ExplorerService {
 	return &ExplorerService{repo: repo, xuid: xuid}
+}
+
+// WithDataAdapter injecte un games.TitleDataAdapter optionnel (Phase 2 plan
+// finition multi-titres). Permet de logger le statut des capabilities et
+// d'amorcer la bascule vers la couche canonique.
+func (s *ExplorerService) WithDataAdapter(a games.TitleDataAdapter) *ExplorerService {
+	s.dataAdapter = a
+	return s
+}
+
+// logCapabilityIfMissing log un warning si la capability est absente du
+// DataAdapter injecté. No-op si pas de DataAdapter.
+func (s *ExplorerService) logCapabilityIfMissing(ctx context.Context, cap games.CapabilityKey, caller string) {
+	if s.dataAdapter == nil {
+		return
+	}
+	if !s.dataAdapter.Capabilities().Has(cap) {
+		slog.WarnContext(ctx, "capability_not_supported",
+			"title_slug", s.dataAdapter.TitleSlug(),
+			"capability", string(cap),
+			"caller", caller,
+		)
+	}
 }
 
 // GetCommonMatches retourne les matchs en commun avec un autre joueur.
@@ -29,6 +60,8 @@ func (s *ExplorerService) GetCommonMatches(
 	otherGamertag string,
 	limit int,
 ) (domain.ExplorerPlayerQueryResponse, error) {
+	s.logCapabilityIfMissing(ctx, games.CapMatchHistory, "explorer_service.GetCommonMatches")
+
 	otherXUID, err := s.repo.ResolveXUIDByGamertag(ctx, otherGamertag)
 	if err != nil {
 		return domain.ExplorerPlayerQueryResponse{},

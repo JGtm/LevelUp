@@ -35,12 +35,30 @@ export interface FieldMappingDTO {
   icon?: string
 }
 
+/** DTO d'un asset (mode, tier, cadence, statut). Plan finition multi-titres §3.1. */
+export interface AssetMappingDTO {
+  label: string
+  color_token?: string
+  icon?: string
+  display_order: number
+}
+
+/** DTO d'un outcome (win/loss/tie/dnf). */
+export interface OutcomeMappingDTO {
+  label: string
+  color_token: string
+}
+
 /** Réponse de l'endpoint /field-mappings. */
 export interface FieldMappingsResponse {
   title_slug: string
   schema_version: number
   locale: string
   fields: Record<string, FieldMappingDTO>
+  /** Indexé par kind (mode, challenge_tier, etc.) puis par id. Optionnel. */
+  assets?: Record<string, Record<string, AssetMappingDTO>>
+  /** Indexé par outcome key (win/loss/tie/dnf). Optionnel. */
+  outcomes?: Record<string, OutcomeMappingDTO>
 }
 
 /**
@@ -126,4 +144,50 @@ export function useFieldLabel(key: string): string {
 export function useFieldMapping(key: string): FieldMappingDTO | undefined {
   const { data } = useFieldMappings()
   return data?.fields[key]
+}
+
+/**
+ * Hook compact pour le libellé d'un asset (`mode`, `challenge_tier`, etc.).
+ *
+ * Comportement :
+ *   - mappings non chargés ou kind absent → retourne `id`
+ *   - id absent du kind → retourne `id`
+ *   - sinon → retourne le label localisé
+ */
+export function useAssetLabel(kind: string, id: string): string {
+  const { data } = useFieldMappings()
+  if (!data?.assets) return id
+  return data.assets[kind]?.[id]?.label ?? id
+}
+
+/**
+ * Hook pour récupérer le DTO complet d'un asset (label + color_token + icon).
+ * Utile pour appliquer un color_token via tokenCssVar dans les composants
+ * qui rendent un badge/tier coloré.
+ */
+export function useAssetMapping(kind: string, id: string): AssetMappingDTO | undefined {
+  const { data } = useFieldMappings()
+  return data?.assets?.[kind]?.[id]
+}
+
+/**
+ * Hook compact pour le libellé d'un outcome (`win`, `loss`, `tie`, `dnf`).
+ *
+ * Comportement :
+ *   - mappings non chargés ou outcomes absents → retourne `key`
+ *   - key absente → retourne `key`
+ *   - sinon → retourne le label localisé
+ */
+export function useOutcomeLabel(key: string): string {
+  const { data } = useFieldMappings()
+  if (!data?.outcomes) return key
+  return data.outcomes[key]?.label ?? key
+}
+
+/**
+ * Hook pour récupérer le DTO complet d'un outcome (label + color_token).
+ */
+export function useOutcomeMapping(key: string): OutcomeMappingDTO | undefined {
+  const { data } = useFieldMappings()
+  return data?.outcomes?.[key]
 }

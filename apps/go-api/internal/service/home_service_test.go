@@ -233,7 +233,7 @@ group         = "combat"
 	if ferr != nil {
 		t.Fatalf("load fields: %v", ferr)
 	}
-	semantic := halo_infinite.NewSemanticAdapter(fields, ranks)
+	semantic := halo_infinite.NewSemanticAdapter(fields, ranks, nil, nil)
 	svc := NewHomeService(repo).WithSemanticAdapter(semantic)
 
 	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")

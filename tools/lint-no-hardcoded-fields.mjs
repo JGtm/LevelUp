@@ -39,6 +39,14 @@ const TOML_PATH = join(
   REPO_ROOT,
   'config/titles/halo_infinite/mappings/fields.toml',
 )
+const ASSETS_TOML_PATH = join(
+  REPO_ROOT,
+  'config/titles/halo_infinite/mappings/assets.toml',
+)
+const OUTCOMES_TOML_PATH = join(
+  REPO_ROOT,
+  'config/titles/halo_infinite/mappings/outcomes.toml',
+)
 
 // ─── 1. Extraction des labels FR + EN depuis le TOML HI ──────────────────────
 
@@ -73,6 +81,8 @@ const WHITELIST_PATTERNS = [
   /\/test\/handlers\.ts$/,                  // fixtures MSW (mocks API, pas un libellé UI)
   /\/lib\/api\/types\.ts$/,                 // types TS purs (commentaires explicatifs)
   /\/features\/compare\/i18n\.ts$/,         // dict FR/EN local de compare
+  /\/lib\/prestige\.ts$/,                   // dict TIER_LABELS_FR — fallback canonique
+  /\/features\/palmares\/rarity\.ts$/,      // dict rarity Halo (asset Halo natif)
 ]
 
 function isWhitelisted(filePath) {
@@ -150,6 +160,16 @@ function escapeRegex(s) {
 
 // ─── 5. Main ─────────────────────────────────────────────────────────────────
 
+function readTOMLOrEmpty(path) {
+  try {
+    return readFileSync(path, 'utf8')
+  } catch {
+    // Le fichier est optionnel (assets.toml, outcomes.toml peuvent ne pas exister
+    // pour certains titres). Pas d'erreur fatale.
+    return ''
+  }
+}
+
 function main() {
   let tomlContent
   try {
@@ -163,6 +183,22 @@ function main() {
   if (labels.size === 0) {
     console.error(`aucun label extrait de ${TOML_PATH} — parser cassé ?`)
     process.exit(1)
+  }
+
+  // Phase 4.3 plan finition multi-titres : étendre le scan aux assets et outcomes.
+  // Un libellé d'asset (ex : "Héroïque") ou d'outcome (ex : "Victoire") hardcodé
+  // dans un composant React est tout aussi problématique qu'un libellé de FieldKey.
+  const assetsTOML = readTOMLOrEmpty(ASSETS_TOML_PATH)
+  if (assetsTOML) {
+    for (const lbl of extractLabelsFromTOML(assetsTOML)) {
+      labels.add(lbl)
+    }
+  }
+  const outcomesTOML = readTOMLOrEmpty(OUTCOMES_TOML_PATH)
+  if (outcomesTOML) {
+    for (const lbl of extractLabelsFromTOML(outcomesTOML)) {
+      labels.add(lbl)
+    }
   }
 
   console.log(`lint-no-hardcoded-fields: ${labels.size} labels FR+EN à vérifier.`)

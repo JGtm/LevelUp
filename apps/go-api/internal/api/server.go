@@ -314,6 +314,10 @@ func NewRouter(
 		// Sprint 17 : Jobs longs persistants + sync initiale
 		r.Get("/jobs/{job_id}", handlers.NewJobsHandler(jobStore).GetJob)
 		syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
+		// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
+		if prestigeBundle != nil {
+			syncH = syncH.WithPrestigeHook(prestigeBundle.RunPostSync)
+		}
 		r.Post("/sync/initial", syncH.StartInitialSync)
 		r.Post("/sync/all", syncH.StartSyncAll)
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
@@ -418,6 +422,10 @@ func NewRouter(
 			excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
 			r.Patch("/matches/{match_id}/exclusion", excl.SetExclusion)
 			r.Get("/match-exclusions", excl.ListExclusions)
+
+			// Système de notifications in-app (per-player).
+			notifH := handlers.NewNotificationsHandler(reg.Notifications)
+			notifH.Mount(r)
 
 			// Match favoris (shared_social.duckdb)
 			fav := handlers.NewMatchFavoriteHandler(reg.Social)

@@ -19,6 +19,8 @@ import {
   type Template,
   type WindowType,
 } from '@/lib/prestige'
+import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
 import { useCreateChallenge, useSuggestedTemplates } from '../hooks'
 
 type FormMode = 'hybride' | 'libre' | 'automatique'
@@ -37,6 +39,10 @@ export function CreateChallengeForm({
   onCancel,
 }: CreateChallengeFormProps) {
   const [mode, setMode] = useState<FormMode>('hybride')
+  // Phase 4 plan finition multi-titres : libellé "Libre" via cadence.free du TOML.
+  const libreLabelFromTOML = useAssetLabel('cadence', 'free')
+  const libreLabel =
+    libreLabelFromTOML !== 'free' ? libreLabelFromTOML : CADENCE_FREE_FALLBACK_FR
 
   return (
     <div className="space-y-4">
@@ -55,7 +61,7 @@ export function CreateChallengeForm({
 
       <div className="flex gap-1 rounded-md border border-border bg-card p-0.5">
         <ModeButton active={mode === 'hybride'} onClick={() => setMode('hybride')} label="Hybride" />
-        <ModeButton active={mode === 'libre'} onClick={() => setMode('libre')} label="Libre" />
+        <ModeButton active={mode === 'libre'} onClick={() => setMode('libre')} label={libreLabel} />
         <ModeButton active={mode === 'automatique'} onClick={() => setMode('automatique')} label="Automatique" />
       </div>
 
