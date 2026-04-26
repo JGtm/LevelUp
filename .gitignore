@@ -70,6 +70,9 @@ htmlcov/
 test_*.log
 test_results.txt
 skipped_tests.txt
+test-results/
+tests/e2e-results/
+**/test-results/
 
 # Scripts de diagnostic temporaires
 check_*.py
