@@ -38,13 +38,20 @@ import (
 
 // ModeCategoryAssassin et autres : valeurs canoniques retournées par
 // InferModeCategoryFromPairName. Stables — utilisées comme labels dans l'UI.
+//
+// DIVERGENCE PYTHON v7/cockpit : Super Fiesta et Husky Raid sont promus en
+// catégories distinctes (Python les regroupait sous "Fiesta"). Justification :
+// ce sont des playlists temporaires Halo Infinite identifiables par les joueurs
+// (rotations event), donc les masquer derrière "Fiesta" rend le filtre opaque.
 const (
-	ModeCategoryAssassin  = "Assassin"
-	ModeCategoryFiesta    = "Fiesta"
-	ModeCategoryBTB       = "BTB"
-	ModeCategoryRanked    = "Ranked"
-	ModeCategoryFirefight = "Firefight"
-	ModeCategoryOther     = "Other"
+	ModeCategoryAssassin    = "Assassin"
+	ModeCategoryFiesta      = "Fiesta"
+	ModeCategorySuperFiesta = "Super Fiesta"
+	ModeCategoryHuskyRaid   = "Husky Raid"
+	ModeCategoryBTB         = "BTB"
+	ModeCategoryRanked      = "Ranked"
+	ModeCategoryFirefight   = "Firefight"
+	ModeCategoryOther       = "Other"
 )
 
 // modePrefixToCategory mappe le préfixe (gauche du ":" dans pair_name, casse normalisée)
@@ -59,9 +66,9 @@ var modePrefixToCategory = map[string]string{
 	"Assault":          ModeCategoryAssassin,
 	"Community":        ModeCategoryAssassin,
 	"Fiesta":           ModeCategoryFiesta,
-	"Super Fiesta":     ModeCategoryFiesta,
-	"Husky Raid":       ModeCategoryFiesta,
-	"Super Husky Raid": ModeCategoryFiesta,
+	"Super Fiesta":     ModeCategorySuperFiesta, // promu (cf. divergence Python)
+	"Husky Raid":       ModeCategoryHuskyRaid,   // promu (cf. divergence Python)
+	"Super Husky Raid": ModeCategoryHuskyRaid,
 	"Castle Wars":      ModeCategoryFiesta,
 	"BTB":              ModeCategoryBTB,
 	"BTB Heavies":      ModeCategoryBTB,
