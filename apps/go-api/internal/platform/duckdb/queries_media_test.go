@@ -101,10 +101,10 @@ func TestBuildQ37MediaQuery_ModeFilter_FiestaCategory(t *testing.T) {
 	if !strings.Contains(q, "LOWER(mr.pair_name) = LOWER(?)") {
 		t.Errorf("expected pair_name = for parent-only modes (Husky Raid sans :), got: %s", q)
 	}
-	// 5 préfixes (Fiesta, Super Fiesta, Husky Raid, Super Husky Raid, Castle Wars) × 2 args
-	// (LIKE + =) + limit + offset = 12
-	if len(args) != 12 {
-		t.Fatalf("args len = %d, want 12 (5 préfixes × 2 + limit + offset)", len(args))
+	// Catégorie Fiesta = 2 préfixes restants après promotion (Fiesta, Castle Wars)
+	// × 2 args (LIKE + =) + limit + offset = 6
+	if len(args) != 6 {
+		t.Fatalf("args len = %d, want 6 (2 préfixes × 2 + limit + offset)", len(args))
 	}
 }
 

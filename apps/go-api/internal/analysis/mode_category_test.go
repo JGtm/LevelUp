@@ -13,16 +13,16 @@ func TestInferModeCategoryFromPairName(t *testing.T) {
 		{"Arena:CTF on Recharge", ModeCategoryAssassin},
 		{"Tactical:Slayer", ModeCategoryAssassin},
 		{"Community:Team Slayer on Solution", ModeCategoryAssassin},
-		{"Super Fiesta:Slayer on Catalyst - Forge", ModeCategoryFiesta},
+		{"Super Fiesta:Slayer on Catalyst - Forge", ModeCategorySuperFiesta},
 		{"Fiesta:Slayer", ModeCategoryFiesta},
-		{"Husky Raid:Slayer", ModeCategoryFiesta},
+		{"Husky Raid:Slayer", ModeCategoryHuskyRaid},
 		{"BTB:Slayer", ModeCategoryBTB},
 		{"BTB Heavies:CTF", ModeCategoryBTB},
 		{"Ranked:Slayer on Aquarius", ModeCategoryRanked},
 		{"Firefight:KOTH", ModeCategoryFirefight},
 		{"Gruntpocalypse:Slayer", ModeCategoryFirefight},
 		// Sans séparateur (mode parent qui est lui-même une catégorie)
-		{"Husky Raid", ModeCategoryFiesta},
+		{"Husky Raid", ModeCategoryHuskyRaid},
 		{"BTB", ModeCategoryBTB},
 		{"Castle Wars", ModeCategoryFiesta},
 		// Format inversé (préfixe à droite)
@@ -32,7 +32,7 @@ func TestInferModeCategoryFromPairName(t *testing.T) {
 		{"Custom:Slayer", ModeCategoryOther},
 		{"Slayer", ModeCategoryOther},
 		// Casse normalisation
-		{"super fiesta:slayer", ModeCategoryFiesta},
+		{"super fiesta:slayer", ModeCategorySuperFiesta},
 		{"BTB:slayer", ModeCategoryBTB},
 		// Empty
 		{"", ModeCategoryOther},
@@ -53,10 +53,9 @@ func TestPairNamePrefixesForCategory(t *testing.T) {
 		category string
 		want     map[string]bool
 	}{
-		{ModeCategoryFiesta, map[string]bool{
-			"Fiesta": true, "Super Fiesta": true,
-			"Husky Raid": true, "Super Husky Raid": true, "Castle Wars": true,
-		}},
+		{ModeCategoryFiesta, map[string]bool{"Fiesta": true, "Castle Wars": true}},
+		{ModeCategorySuperFiesta, map[string]bool{"Super Fiesta": true}},
+		{ModeCategoryHuskyRaid, map[string]bool{"Husky Raid": true, "Super Husky Raid": true}},
 		{ModeCategoryBTB, map[string]bool{"BTB": true, "BTB Heavies": true}},
 		{ModeCategoryRanked, map[string]bool{"Ranked": true}},
 		{ModeCategoryAssassin, map[string]bool{

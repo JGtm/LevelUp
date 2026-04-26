@@ -39,10 +39,12 @@ export interface MediaText {
     allModes: string
     /** Étiquette d'option "Toute la catégorie X" en tête d'un <optgroup>. */
     allInCategory: (categoryLabel: string) => string
-    /** Traductions FR/EN des 6 catégories custom (cf. analysis.ModeCategory* en Go). */
+    /** Traductions FR/EN des catégories custom (cf. analysis.ModeCategory* en Go). */
     modeCategories: {
       Assassin: string
       Fiesta: string
+      'Super Fiesta': string
+      'Husky Raid': string
       BTB: string
       Ranked: string
       Firefight: string
@@ -97,10 +99,12 @@ const FR_TEXT: MediaText = {
     allPlaylists: 'Toutes playlists',
     allMaps: 'Toutes cartes',
     allModes: 'Tous modes',
-    allInCategory: (cat) => `Toute la catégorie ${cat}`,
+    allInCategory: () => `Toutes catégories`,
     modeCategories: {
       Assassin: 'Assassin',
       Fiesta: 'Fiesta',
+      'Super Fiesta': 'Super Fiesta',
+      'Husky Raid': 'Husky Raid',
       BTB: 'Grande bataille en équipe',
       Ranked: 'Classé',
       Firefight: 'Baptême du feu',
@@ -159,6 +163,8 @@ const EN_TEXT: MediaText = {
     modeCategories: {
       Assassin: 'Slayer',
       Fiesta: 'Fiesta',
+      'Super Fiesta': 'Super Fiesta',
+      'Husky Raid': 'Husky Raid',
       BTB: 'Big Team Battle',
       Ranked: 'Ranked',
       Firefight: 'Firefight',
