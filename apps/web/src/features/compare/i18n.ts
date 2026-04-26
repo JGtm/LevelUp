@@ -131,14 +131,25 @@ const METRIC_TO_FIELD_KEY: Record<string, string> = {
   kda: 'kda',
   kdr: 'kdr',
   accuracy: 'accuracy',
+  matches: 'total_matches_played',
+}
+
+// Mapping des clés stats (résumé) → FieldKey. Phase D-bis.
+const STAT_TO_FIELD_KEY: Record<keyof CompareText['stats'], string> = {
+  matches: 'total_matches_played',
+  winRate: 'win_rate',
+  kda: 'kda',
+  kdr: 'kdr',
+  accuracy: 'accuracy',
+  killsPerGame: '',
+  currentCsr: '',
 }
 
 /**
  * Retourne le bloc CompareText pour une locale, avec override optionnel des
- * `metrics` par les FieldMappings backend (TOML versionnés Git, Phase D).
- *
- * Si fieldMappings est fourni, les clés mappées via METRIC_TO_FIELD_KEY sont
- * remplacées par leur libellé canonique. Les autres clés restent inchangées.
+ * `metrics` et du résumé `stats` par les FieldMappings backend (TOML versionnés
+ * Git, Phase D). Les clés sans FieldKey équivalent (killsPerGame, currentCsr)
+ * conservent leur libellé local.
  */
 export function getCompareText(
   locale?: string | null,
@@ -149,10 +160,16 @@ export function getCompareText(
   const merged: CompareText = {
     ...base,
     metrics: { ...base.metrics },
+    stats: { ...base.stats },
   }
   for (const [metricKey, fieldKey] of Object.entries(METRIC_TO_FIELD_KEY)) {
     const canonical = fieldMappings.fields[fieldKey]?.label
     if (canonical) merged.metrics[metricKey] = canonical
+  }
+  for (const [statKey, fieldKey] of Object.entries(STAT_TO_FIELD_KEY) as [keyof typeof STAT_TO_FIELD_KEY, string][]) {
+    if (!fieldKey) continue
+    const canonical = fieldMappings.fields[fieldKey]?.label
+    if (canonical) merged.stats[statKey] = canonical
   }
   return merged
 }

@@ -8,14 +8,11 @@
 export type KPILocale = 'fr' | 'en'
 
 interface KPITextDict {
+  // Phase D-bis : matches/kda/winRate/accuracy → useFieldLabel('total_matches_played'|'kda'|'win_rate'|'accuracy')
   labels: {
-    matches: string
-    kda: string
-    winRate: string
     totalTime: string
     favoritePlaylist: string
     offDef: string
-    accuracy: string
     favoriteWeapon: string
   }
   units: {
@@ -37,13 +34,9 @@ interface KPITextDict {
 
 const FR: KPITextDict = {
   labels: {
-    matches: 'Parties',
-    kda: 'FDA',
-    winRate: 'Taux de victoire',
     totalTime: 'Durée totale',
     favoritePlaylist: 'Playlist favorite',
     offDef: 'Rendement / Résist.',
-    accuracy: 'Précision',
     favoriteWeapon: 'Arme favorite',
   },
   units: {
@@ -59,13 +52,9 @@ const FR: KPITextDict = {
 
 const EN: KPITextDict = {
   labels: {
-    matches: 'Matches',
-    kda: 'KDA',
-    winRate: 'Win rate',
     totalTime: 'Total time',
     favoritePlaylist: 'Favorite playlist',
     offDef: 'Off. / Def.',
-    accuracy: 'Accuracy',
     favoriteWeapon: 'Fav. weapon',
   },
   units: {
