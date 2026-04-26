@@ -6,7 +6,7 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import * as useFieldMappingsModule from '@/lib/i18n/fieldMappings'
-import * as squadLayoutModule from './SquadLayout'
+import * as squadContextModule from './SquadContext'
 import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { SquadContributionsPage } from './SquadContributionsPage'
 
@@ -67,7 +67,7 @@ function mockSquadContext({
   selectedRows: TeammateRow[]
   confirmedGamertags: string[]
 }) {
-  vi.spyOn(squadLayoutModule, 'useSquadContext').mockReturnValue({
+  vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
     selectedRows,
     confirmedGamertags,
     pageData: null as unknown as TeammatesPageResponse,
