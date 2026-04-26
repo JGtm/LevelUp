@@ -28,7 +28,7 @@ LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE pme.is_with_friends = TRUE
 GROUP BY p2.xuid, vg.gamertag
 ORDER BY games_together DESC
-LIMIT 10`
+LIMIT 50`
 
 // Q30 : Squad — matchs communs entre le joueur et un coéquipier spécifique.
 // Paramètres : ?1 = xuid coéquipier (p2), ?2 = xuid joueur principal (p1).
