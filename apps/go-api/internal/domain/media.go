@@ -36,13 +36,10 @@ type MediaFilters struct {
 	AuthorSlugs    []string // whitelist explicite de player_slug (prend le pas sur SectionFilter si non vide)
 	PlaylistFilter string   // filtre par playlist_id (UUID ou label brut) — match WHERE playlist_id = ? OR LOWER(label) = LOWER(?)
 	MapFilter      string   // filtre par map (map_id ou label canonique)
-	ModeFilter     string   // filtre par mode normalisé (FR ou EN canonique)
-	// ModeFilterCandidates : si non vide, le repo a expansé ModeFilter (FR) en
-	// liste de raw EN via mode_name_tr → le SQL utilise un OR sur chaque variant.
-	ModeFilterCandidates []string
-	LikedOnly            bool   // restreindre aux médias likés
-	Sort                 string // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
-	GroupBy              string // "" | "owner" | "map" | "mode" | "session" | "liked"
+	ModeFilter     string   // filtre par CATÉGORIE custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other) — cf. analysis.InferModeCategoryFromPairName
+	LikedOnly      bool     // restreindre aux médias likés
+	Sort           string   // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
+	GroupBy        string   // "" | "owner" | "map" | "mode" | "session" | "liked"
 }
 
 // MediaAuthor décrit un auteur sélectionnable dans le filtre Auteurs.
