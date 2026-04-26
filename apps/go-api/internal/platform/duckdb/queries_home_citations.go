@@ -508,6 +508,22 @@ func normalizeMediaMapName(s string) string {
 	return strings.TrimSpace(s)
 }
 
+// mediaKindEquivalents retourne les valeurs DB qui doivent matcher un filtre
+// de type donné, en couvrant à la fois la convention legacy ("clip"/"screenshot")
+// et la nouvelle ("video"/"image"). Les médias indexés par les anciennes
+// versions ont l'une, les nouveaux uploads ont l'autre — sans cette translation
+// le filtre type ne retourne 0 résultat.
+func mediaKindEquivalents(kind string) []string {
+	switch kind {
+	case "clip", "video":
+		return []string{"clip", "video"}
+	case "screenshot", "image":
+		return []string{"screenshot", "image"}
+	default:
+		return []string{kind}
+	}
+}
+
 type mediaQueryConfig struct {
 	playerSlug string
 }

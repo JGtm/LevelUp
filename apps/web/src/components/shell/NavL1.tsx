@@ -146,6 +146,17 @@ const L1_SECTIONS: L1Section[] = [
     ],
   },
   {
+    key: 'career',
+    label: 'Carrière',
+    defaultPath: '/players/$playerSlug/career',
+    matchPathname: (p) => /\/players\/[^/]+\/(career|profile|palmares\/season-pass)/.test(p),
+    tabs: [
+      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
+      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career?tab=citations' },
+      { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/palmares/season-pass' },
+    ],
+  },
+  {
     key: 'squad',
     label: 'Escouade',
     defaultPath: '/players/$playerSlug/squad/synergies',
@@ -156,26 +167,13 @@ const L1_SECTIONS: L1Section[] = [
     ],
   },
   {
-    key: 'explorer',
-    label: 'Explorer',
-    defaultPath: '/players/$playerSlug/explorer',
-    matchPathname: (p) => /\/players\/[^/]+\/explorer/.test(p),
-  },
-  {
-    key: 'media',
-    label: 'Médias',
-    defaultPath: '/players/$playerSlug/media',
-    matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
-  },
-  {
-    key: 'career',
-    label: 'Carrière',
-    defaultPath: '/players/$playerSlug/career',
-    matchPathname: (p) => /\/players\/[^/]+\/(career|profile|palmares\/season-pass)/.test(p),
+    key: 'objectifs',
+    label: 'Objectifs',
+    defaultPath: '/players/$playerSlug/objectifs',
+    matchPathname: (p) => /\/players\/[^/]+\/objectifs/.test(p),
     tabs: [
-      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career?tab=citations' },
-      { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/palmares/season-pass' },
+      { key: 'challenges', label: 'Défis', path: '/players/$playerSlug/objectifs' },
+      { key: 'parcours', label: 'Mon parcours', path: '/players/$playerSlug/objectifs?tab=parcours' },
     ],
   },
   {
@@ -192,14 +190,16 @@ const L1_SECTIONS: L1Section[] = [
     ],
   },
   {
-    key: 'objectifs',
-    label: 'Objectifs',
-    defaultPath: '/players/$playerSlug/objectifs',
-    matchPathname: (p) => /\/players\/[^/]+\/objectifs/.test(p),
-    tabs: [
-      { key: 'challenges', label: 'Défis', path: '/players/$playerSlug/objectifs' },
-      { key: 'parcours', label: 'Mon parcours', path: '/players/$playerSlug/objectifs?tab=parcours' },
-    ],
+    key: 'media',
+    label: 'Médias',
+    defaultPath: '/players/$playerSlug/media',
+    matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
+  },
+  {
+    key: 'explorer',
+    label: 'Explorer',
+    defaultPath: '/players/$playerSlug/explorer',
+    matchPathname: (p) => /\/players\/[^/]+\/explorer/.test(p),
   },
 ]
 
@@ -372,6 +372,11 @@ function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
           role="menu"
           className="absolute right-0 top-full mt-1 z-50 min-w-[12rem] rounded-md border border-border bg-popover py-1 shadow-lg"
         >
+          <div className="flex items-center justify-between gap-4 px-3 py-1.5">
+            <span className="text-sm text-popover-foreground">Thème</span>
+            <ThemeToggle variant="menu" />
+          </div>
+          <div role="separator" className="my-1 h-px bg-border" />
           {tabs.map((item) => (
             <Link
               key={item.key}
@@ -494,8 +499,6 @@ export function NavL1() {
           </span>
         )
       )}
-
-      <ThemeToggle className="ml-2" />
 
       {/* ── Aide ────────────────────────────────────────────────────────── */}
       <div className="ml-1">
