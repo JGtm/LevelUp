@@ -13,7 +13,7 @@
  * Route parente : /players/$playerSlug/squad
  * Routes enfants : /squad/synergies · /squad/contributions
  */
-import { createContext, useContext, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -28,32 +28,10 @@ import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMa
 import { getSquadText } from './i18n'
 import { SQUAD_KPI_METRICS, type SquadMetric } from './metrics'
 import { log } from './_logger'
-import type {
-  TeammateRow,
-  TeammateKPIs,
-  TeammatesQueryRequest,
-  TeammatesPageResponse,
-} from '@/lib/api/types'
+import { SquadContext } from './SquadContext'
+import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest } from '@/lib/api/types'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
-
-// ─── Context ──────────────────────────────────────────────────────────────────
-
-interface SquadContextValue {
-  selectedRows: TeammateRow[]
-  confirmedGamertags: string[]
-  pageData: TeammatesPageResponse | null
-}
-
-const SquadContext = createContext<SquadContextValue>({
-  selectedRows: [],
-  confirmedGamertags: [],
-  pageData: null,
-})
-
-export function useSquadContext(): SquadContextValue {
-  return useContext(SquadContext)
-}
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 

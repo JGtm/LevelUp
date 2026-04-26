@@ -22,7 +22,6 @@ export const log = {
   warn(key: string, msg: string, ...args: unknown[]): void {
     if (_warned.has(key)) return
     _warned.add(key)
-    // eslint-disable-next-line no-console
     console.warn(`${PREFIX} ${msg}`, ...args)
   },
 
