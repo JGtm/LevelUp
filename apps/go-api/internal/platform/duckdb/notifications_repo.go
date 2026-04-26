@@ -1,7 +1,12 @@
 // Package duckdb — NotificationsRepo : persistance des notifications in-app.
 //
 // Implémente notifications.Repository (port défini dans internal/notifications/port.go).
-// Tables : player_notifications, notification_preferences (stats.duckdb, per-player).
+// Tables : player_notifications, notification_preferences, player_records.
+//
+// Stockage : `shared_social.duckdb` (multi-joueur), avec colonne `xuid` en
+// première position de la PK pour scoper toutes les opérations au joueur courant.
+// Permet le fan-out cross-joueur (ex: media_added qui notifie plusieurs joueurs)
+// sans avoir à gérer N connexions DB.
 package duckdb
 
 import (
@@ -14,14 +19,21 @@ import (
 	"levelup/go-api/internal/notifications"
 )
 
-// NotificationsRepo persiste les notifs et préférences d'un joueur dans stats.duckdb.
+// NotificationsRepo persiste les notifs et préférences d'un joueur.
+// Toutes les opérations sont scopées par xuid (lu depuis le PlayerDB).
 type NotificationsRepo struct {
-	pdb *PlayerDB
+	pdb  *PlayerDB
+	xuid string
 }
 
 // NewNotificationsRepo construit un NotificationsRepo depuis un PlayerDB.
+// Le xuid est extrait du PlayerDB (résolu par le pool au moment de l'ouverture).
 func NewNotificationsRepo(pdb *PlayerDB) *NotificationsRepo {
-	return &NotificationsRepo{pdb: pdb}
+	xuid := ""
+	if pdb != nil {
+		xuid = pdb.XUID
+	}
+	return &NotificationsRepo{pdb: pdb, xuid: xuid}
 }
 
 const (
@@ -29,20 +41,44 @@ const (
 	notifReadTimeout  = 15 * time.Second
 )
 
-// Insert persiste une notification déjà préparée par le service (ID, severity,
-// created_at, params encodés). Vérifie la pref de catégorie : si OFF, retourne
-// notifications.ErrCategoryDisabled (le service traduit en no-op).
+// sharedSocialPath retourne le chemin de la base shared_social pour ce repo.
+// Renvoie "" si la base n'est pas attachée (cas dégradé : aucune opération possible).
+func (r *NotificationsRepo) sharedSocialPath() string {
+	if r.pdb == nil || r.pdb.SharedSocial == nil {
+		return ""
+	}
+	return r.pdb.SharedSocial.Path()
+}
+
+// readDB retourne la connexion read-only sur shared_social pour ce repo.
+// Renvoie nil si la base n'est pas attachée (les méthodes qui en dépendent
+// court-circuitent gracieusement).
+func (r *NotificationsRepo) readDB() *DB {
+	if r.pdb == nil {
+		return nil
+	}
+	return r.pdb.SharedSocial
+}
+
+// errNoSocial est l'erreur retournée si la base shared_social n'est pas attachée.
+var errNoSocial = fmt.Errorf("notifications: shared_social DB not attached")
+
+// Insert persiste une notification. Vérifie la pref via xuid+catégorie.
+// Si OFF, retourne notifications.ErrCategoryDisabled (no-op pour le service).
 func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notification) error {
+	if r.sharedSocialPath() == "" {
+		return errNoSocial
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Insert: open rw: %w", err)
 	}
 	defer rwDB.Close()
 
-	enabled, err := isCategoryEnabledOn(ctx, rwDB, n.Category)
+	enabled, err := isCategoryEnabledOn(ctx, rwDB, r.xuid, n.Category)
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Insert: check pref: %w", err)
 	}
@@ -58,12 +94,12 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 
 	_, err = rwDB.Exec(ctx, `
 		INSERT INTO player_notifications
-			(id, category, severity, title_key, body_key, params,
+			(xuid, id, category, severity, title_key, body_key, params,
 			 target_route, target_search, actor_xuid, actor_name,
 			 source, created_at, read_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
 	`,
-		n.ID, string(n.Category), string(n.Severity), n.TitleKey,
+		r.xuid, n.ID, string(n.Category), string(n.Severity), n.TitleKey,
 		nullableString(n.BodyKey),
 		nullableJSON(n.Params),
 		nullableString(n.TargetRoute),
@@ -77,13 +113,16 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 	return nil
 }
 
-// List paginé. Tri DESC par created_at, cursor sur id (plus stable car snowflake).
+// List paginé scopé par xuid.
 func (r *NotificationsRepo) List(ctx context.Context, f notifications.ListFilter) (notifications.ListResult, error) {
+	if r.readDB() == nil {
+		return notifications.ListResult{Items: []notifications.Notification{}}, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifReadTimeout)
 	defer cancel()
 
-	q, args := buildListQuery(f)
-	rows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	q, args := buildListQuery(r.xuid, f)
+	rows, err := r.readDB().Query(ctx, q, args...)
 	if err != nil {
 		return notifications.ListResult{}, fmt.Errorf("NotificationsRepo.List: query: %w", err)
 	}
@@ -101,17 +140,20 @@ func (r *NotificationsRepo) List(ctx context.Context, f notifications.ListFilter
 	return res, nil
 }
 
-// UnreadCount retourne le total non-lu et la répartition par catégorie.
+// UnreadCount retourne le total non-lu et la répartition par catégorie pour ce joueur.
 func (r *NotificationsRepo) UnreadCount(ctx context.Context) (notifications.UnreadCount, error) {
+	if r.readDB() == nil {
+		return notifications.UnreadCount{ByCategory: map[string]int{}}, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifReadTimeout)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, `
+	rows, err := r.readDB().Query(ctx, `
 		SELECT category, COUNT(*) AS n
 		FROM player_notifications
-		WHERE read_at IS NULL
+		WHERE xuid = ? AND read_at IS NULL
 		GROUP BY category
-	`)
+	`, r.xuid)
 	if err != nil {
 		return notifications.UnreadCount{}, fmt.Errorf("NotificationsRepo.UnreadCount: %w", err)
 	}
@@ -130,21 +172,21 @@ func (r *NotificationsRepo) UnreadCount(ctx context.Context) (notifications.Unre
 	return out, rows.Err()
 }
 
-// MarkRead positionne read_at = NOW() pour tous les IDs fournis (idempotent).
+// MarkRead positionne read_at = NOW() pour tous les IDs fournis (idempotent), scope xuid.
 func (r *NotificationsRepo) MarkRead(ctx context.Context, ids []int64) (int, error) {
-	if len(ids) == 0 {
+	if len(ids) == 0 || r.sharedSocialPath() == "" {
 		return 0, nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkRead: open rw: %w", err)
 	}
 	defer rwDB.Close()
 
-	q, args := buildMarkReadQuery(ids)
+	q, args := buildMarkReadQuery(r.xuid, ids)
 	res, err := rwDB.Exec(ctx, q, args...)
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkRead: exec: %w", err)
@@ -153,18 +195,24 @@ func (r *NotificationsRepo) MarkRead(ctx context.Context, ids []int64) (int, err
 	return int(n), nil
 }
 
-// MarkUnread remet read_at = NULL.
+// MarkUnread remet read_at = NULL (scope xuid).
 func (r *NotificationsRepo) MarkUnread(ctx context.Context, id int64) error {
+	if r.sharedSocialPath() == "" {
+		return errNoSocial
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.MarkUnread: open rw: %w", err)
 	}
 	defer rwDB.Close()
 
-	res, err := rwDB.Exec(ctx, `UPDATE player_notifications SET read_at = NULL WHERE id = ?`, id)
+	res, err := rwDB.Exec(ctx,
+		`UPDATE player_notifications SET read_at = NULL WHERE xuid = ? AND id = ?`,
+		r.xuid, id,
+	)
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.MarkUnread: exec: %w", err)
 	}
@@ -174,12 +222,15 @@ func (r *NotificationsRepo) MarkUnread(ctx context.Context, id int64) error {
 	return nil
 }
 
-// MarkAllRead applique read_at sur toutes les non-lues, filtré par category si non vide.
+// MarkAllRead applique read_at sur toutes les non-lues du joueur, filtré par category si non vide.
 func (r *NotificationsRepo) MarkAllRead(ctx context.Context, category notifications.Category) (int, error) {
+	if r.sharedSocialPath() == "" {
+		return 0, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkAllRead: open rw: %w", err)
 	}
@@ -189,11 +240,12 @@ func (r *NotificationsRepo) MarkAllRead(ctx context.Context, category notificati
 	var res sql.Result
 	if category == "" {
 		res, err = rwDB.Exec(ctx,
-			`UPDATE player_notifications SET read_at = ? WHERE read_at IS NULL`, now)
+			`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL`,
+			now, r.xuid)
 	} else {
 		res, err = rwDB.Exec(ctx,
-			`UPDATE player_notifications SET read_at = ? WHERE read_at IS NULL AND category = ?`,
-			now, string(category))
+			`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND category = ?`,
+			now, r.xuid, string(category))
 	}
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkAllRead: exec: %w", err)
@@ -202,18 +254,24 @@ func (r *NotificationsRepo) MarkAllRead(ctx context.Context, category notificati
 	return int(n), nil
 }
 
-// Delete supprime une notif.
+// Delete supprime une notif (scope xuid).
 func (r *NotificationsRepo) Delete(ctx context.Context, id int64) error {
+	if r.sharedSocialPath() == "" {
+		return errNoSocial
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Delete: open rw: %w", err)
 	}
 	defer rwDB.Close()
 
-	res, err := rwDB.Exec(ctx, `DELETE FROM player_notifications WHERE id = ?`, id)
+	res, err := rwDB.Exec(ctx,
+		`DELETE FROM player_notifications WHERE xuid = ? AND id = ?`,
+		r.xuid, id,
+	)
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Delete: exec: %w", err)
 	}
@@ -223,15 +281,15 @@ func (r *NotificationsRepo) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// CapAndSweep purge les notifs au-delà du cap (best-effort, log si erreur).
+// CapAndSweep purge les notifs au-delà du cap (best-effort, log si erreur), scope xuid.
 func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
-	if max <= 0 {
+	if max <= 0 || r.sharedSocialPath() == "" {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		slog.Warn("NotificationsRepo.CapAndSweep: open rw", "err", err)
 		return nil
@@ -240,25 +298,31 @@ func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
 
 	_, err = rwDB.Exec(ctx, `
 		DELETE FROM player_notifications
-		WHERE id NOT IN (
+		WHERE xuid = ? AND id NOT IN (
 			SELECT id FROM player_notifications
+			WHERE xuid = ?
 			ORDER BY created_at DESC
 			LIMIT ?
 		)
-	`, max)
+	`, r.xuid, r.xuid, max)
 	if err != nil {
 		slog.Warn("NotificationsRepo.CapAndSweep: exec", "err", err)
 	}
 	return nil
 }
 
-// GetPreferences retourne l'état complet de notification_preferences.
+// GetPreferences retourne l'état complet de notification_preferences pour ce joueur.
 func (r *NotificationsRepo) GetPreferences(ctx context.Context) ([]notifications.Preference, error) {
+	if r.readDB() == nil {
+		return nil, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifReadTimeout)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx,
-		`SELECT category, enabled, delivery FROM notification_preferences ORDER BY category`)
+	rows, err := r.readDB().Query(ctx,
+		`SELECT category, enabled, delivery FROM notification_preferences WHERE xuid = ? ORDER BY category`,
+		r.xuid,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("NotificationsRepo.GetPreferences: %w", err)
 	}
@@ -278,15 +342,18 @@ func (r *NotificationsRepo) GetPreferences(ctx context.Context) ([]notifications
 	return out, rows.Err()
 }
 
-// UpsertPreferences applique les changements (insert ou update par catégorie).
+// UpsertPreferences applique les changements (insert ou update par xuid+catégorie).
 func (r *NotificationsRepo) UpsertPreferences(ctx context.Context, prefs []notifications.Preference) error {
 	if len(prefs) == 0 {
 		return nil
 	}
+	if r.sharedSocialPath() == "" {
+		return errNoSocial
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.UpsertPreferences: open rw: %w", err)
 	}
@@ -295,13 +362,13 @@ func (r *NotificationsRepo) UpsertPreferences(ctx context.Context, prefs []notif
 	now := time.Now().UTC()
 	for _, p := range prefs {
 		_, err := rwDB.Exec(ctx, `
-			INSERT INTO notification_preferences (category, enabled, delivery, updated_at)
-			VALUES (?, ?, ?, ?)
-			ON CONFLICT (category) DO UPDATE SET
+			INSERT INTO notification_preferences (xuid, category, enabled, delivery, updated_at)
+			VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT (xuid, category) DO UPDATE SET
 				enabled    = EXCLUDED.enabled,
 				delivery   = EXCLUDED.delivery,
 				updated_at = EXCLUDED.updated_at
-		`, string(p.Category), p.Enabled, string(p.Delivery), now)
+		`, r.xuid, string(p.Category), p.Enabled, string(p.Delivery), now)
 		if err != nil {
 			return fmt.Errorf("NotificationsRepo.UpsertPreferences (%s): %w", p.Category, err)
 		}
@@ -309,11 +376,14 @@ func (r *NotificationsRepo) UpsertPreferences(ctx context.Context, prefs []notif
 	return nil
 }
 
-// IsCategoryEnabled vérifie la pref. Si la catégorie n'a pas d'entrée, considère TRUE par défaut.
+// IsCategoryEnabled vérifie la pref. Default-on si pas d'entrée.
 func (r *NotificationsRepo) IsCategoryEnabled(ctx context.Context, c notifications.Category) (bool, error) {
+	if r.readDB() == nil {
+		return true, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, notifReadTimeout)
 	defer cancel()
-	return isCategoryEnabledOn(ctx, r.pdb.ReadDB(), c)
+	return isCategoryEnabledOn(ctx, r.readDB(), r.xuid, c)
 }
 
 // Compile-time check.

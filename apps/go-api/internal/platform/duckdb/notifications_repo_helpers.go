@@ -37,12 +37,12 @@ type dbExecutor interface {
 	QueryRow(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// isCategoryEnabledOn lit la pref pour une catégorie. Catégorie inconnue → true (default-on).
-func isCategoryEnabledOn(ctx context.Context, db dbExecutor, c notifications.Category) (bool, error) {
+// isCategoryEnabledOn lit la pref pour un xuid+catégorie. Default-on si pas d'entrée.
+func isCategoryEnabledOn(ctx context.Context, db dbExecutor, xuid string, c notifications.Category) (bool, error) {
 	var enabled sql.NullBool
 	err := db.QueryRow(ctx,
-		`SELECT enabled FROM notification_preferences WHERE category = ?`,
-		string(c),
+		`SELECT enabled FROM notification_preferences WHERE xuid = ? AND category = ?`,
+		xuid, string(c),
 	).Scan(&enabled)
 	switch err {
 	case nil:
@@ -54,13 +54,11 @@ func isCategoryEnabledOn(ctx context.Context, db dbExecutor, c notifications.Cat
 	}
 }
 
-// buildListQuery construit la requête List avec ses paramètres positionnels.
+// buildListQuery construit la requête List scopée par xuid avec ses paramètres positionnels.
 // Tri par created_at DESC, id DESC en tiebreaker (cursor stable).
-func buildListQuery(f notifications.ListFilter) (string, []any) {
-	var (
-		conds []string
-		args  []any
-	)
+func buildListQuery(xuid string, f notifications.ListFilter) (string, []any) {
+	conds := []string{"xuid = ?"}
+	args := []any{xuid}
 	if f.UnreadOnly {
 		conds = append(conds, "read_at IS NULL")
 	}
@@ -72,10 +70,7 @@ func buildListQuery(f notifications.ListFilter) (string, []any) {
 		conds = append(conds, "id < ?")
 		args = append(args, f.BeforeID)
 	}
-	where := ""
-	if len(conds) > 0 {
-		where = "WHERE " + strings.Join(conds, " AND ")
-	}
+	where := "WHERE " + strings.Join(conds, " AND ")
 	limit := f.Limit
 	if limit <= 0 {
 		limit = notifications.DefaultListLimit
@@ -92,11 +87,11 @@ func buildListQuery(f notifications.ListFilter) (string, []any) {
 	return q, args
 }
 
-// buildMarkReadQuery construit l'UPDATE pour MarkRead avec une clause IN dynamique.
-func buildMarkReadQuery(ids []int64) (string, []any) {
+// buildMarkReadQuery construit l'UPDATE pour MarkRead scopé par xuid + clause IN dynamique sur les ids.
+func buildMarkReadQuery(xuid string, ids []int64) (string, []any) {
 	placeholders := make([]string, len(ids))
-	args := make([]any, 0, len(ids)+1)
-	args = append(args, nowUTC())
+	args := make([]any, 0, len(ids)+2)
+	args = append(args, nowUTC(), xuid)
 	for i, id := range ids {
 		placeholders[i] = "?"
 		args = append(args, id)
@@ -104,7 +99,7 @@ func buildMarkReadQuery(ids []int64) (string, []any) {
 	q := fmt.Sprintf(`
 		UPDATE player_notifications
 		SET read_at = ?
-		WHERE read_at IS NULL AND id IN (%s)
+		WHERE xuid = ? AND read_at IS NULL AND id IN (%s)
 	`, strings.Join(placeholders, ","))
 	return q, args
 }

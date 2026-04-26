@@ -16,6 +16,7 @@ const (
 	CategoryAppRelease         Category = "app_release"
 	CategoryMatchSynced        Category = "match_synced"
 	CategoryMediaAdded         Category = "media_added"
+	CategoryMediaLiked         Category = "media_liked"
 	CategoryObjectiveAssigned  Category = "objective_assigned"
 	CategoryObjectiveCompleted Category = "objective_completed"
 	CategoryChallengeAdded     Category = "challenge_added"
@@ -30,6 +31,7 @@ const (
 func AllCategories() []Category {
 	return []Category{
 		CategoryAppRelease, CategoryMatchSynced, CategoryMediaAdded,
+		CategoryMediaLiked,
 		CategoryObjectiveAssigned, CategoryObjectiveCompleted,
 		CategoryChallengeAdded, CategoryChallengeCompleted,
 		CategorySeasonPassLevel, CategorySyncError,
