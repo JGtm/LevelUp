@@ -69,6 +69,10 @@ export interface NotificationsText {
   categoryLabel: Record<NotificationCategory, string>
   categoryDescription: Record<NotificationCategory, string>
 
+  // Mapping clé métrique (envoyée par le backend) → libellé localisé.
+  // Sert à éviter tout hardcode "KD"/"Winrate" dans les templates.
+  metricLabel: Record<string, string>
+
   // Templates de notif (rendus à partir de title_key/body_key + params)
   // Convention : "notif.<category>.title" / ".body"
   // Gardé sous forme de Record<string,string> pour permettre extension future
@@ -114,19 +118,19 @@ const FR: NotificationsText = {
 
   settingsTitle: 'Notifications',
   settingsDescription:
-    'Gère les notifications in-app, les toasts et les abonnements par catégorie.',
+    'Gère les notifications dans le panneau, les pop-ups et les abonnements par catégorie.',
   settingsMaster: 'Activer les notifications',
   settingsMasterDescription:
-    "Désactive complètement la cloche et les toasts. Les événements continuent d'être enregistrés en base.",
-  settingsToasts: 'Activer les toasts',
+    "Désactive complètement la cloche et les pop-ups. Les événements restent enregistrés en base.",
+  settingsToasts: 'Activer les pop-ups',
   settingsToastsDescription:
-    "Affiche les nouvelles notifications en pop-up à l'écran (en plus du dropdown).",
+    "Affiche les nouvelles notifications en pop-up à l'écran (en plus du panneau cloche).",
   settingsCategoriesTitle: 'Catégories',
   settingsCategoriesDescription:
     "Choisis pour chaque type d'événement comment tu veux être notifié.",
-  settingsDeliveryBoth: 'In-app + toast',
-  settingsDeliveryInApp: 'In-app seulement',
-  settingsDeliveryToast: 'Toast seulement',
+  settingsDeliveryBoth: 'Panneau + pop-up',
+  settingsDeliveryInApp: 'Panneau uniquement',
+  settingsDeliveryToast: 'Pop-up uniquement',
   settingsDeliveryOff: 'Désactivé',
   settingsSubscriptionsTitle: 'Abonnements',
   settingsSubscriptionsDescription:
@@ -144,7 +148,7 @@ const FR: NotificationsText = {
     objective_completed: 'Objectif complété',
     challenge_added: 'Nouveau défi',
     challenge_completed: 'Défi complété',
-    season_pass_level: 'Niveau Season Pass',
+    season_pass_level: 'Niveau de passe saisonnier',
     sync_error: 'Erreur de synchronisation',
     personal_record: 'Record personnel',
     threshold_crossed: 'Palier franchi',
@@ -152,40 +156,51 @@ const FR: NotificationsText = {
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
     match_synced: 'Tes nouveaux matchs ont été synchronisés.',
-    media_added: 'Une vidéo ou screenshot a été ajouté.',
+    media_added: "Une vidéo ou capture d'écran a été ajoutée.",
     objective_assigned: 'Un objectif a été créé automatiquement.',
     objective_completed: 'Tu as terminé un objectif.',
     challenge_added: 'Un nouveau défi est disponible.',
     challenge_completed: 'Tu as terminé un défi.',
-    season_pass_level: 'Tu as débloqué un nouveau niveau de Season Pass.',
-    sync_error: "La synchronisation a échoué — relance manuelle conseillée.",
+    season_pass_level: 'Tu as débloqué un nouveau niveau du passe saisonnier.',
+    sync_error: 'La synchronisation a échoué — relance manuelle conseillée.',
     personal_record: 'Tu as battu un record personnel.',
-    threshold_crossed: 'Un palier de KD ou winrate a été franchi.',
+    threshold_crossed: 'Un palier de ratio K/D ou de taux de victoire a été franchi.',
+  },
+
+  // metricLabel : mapping des clés métriques (envoyées par le backend dans
+  // params.metric_key) vers leur libellé localisé. Évite tout hardcode "KD",
+  // "Winrate" dans les templates ou le code Go.
+  metricLabel: {
+    kd_ratio: 'ratio K/D',
+    winrate: 'taux de victoire',
+    kda: 'KDA',
   },
 
   templates: {
     'notif.app_release.title': 'Nouvelle version : {version}',
-    'notif.app_release.body': 'Découvrez les nouveautés dans le changelog.',
+    'notif.app_release.body': 'Découvre les nouveautés dans le journal des modifications.',
     'notif.match_synced.title': '{count} match(s) synchronisé(s)',
     'notif.match_synced.body': 'Tes statistiques sont à jour.',
     'notif.media_added.title': 'Média ajouté par {actor_name}',
     'notif.media_added.body': '{count} fichier(s) associé(s) à un match.',
     'notif.objective_assigned.title': 'Nouvel objectif',
-    'notif.objective_assigned.body': '{name} — récompense {reward}.',
+    'notif.objective_assigned.body': '{count} nouvel(s) objectif(s) attribué(s).',
     'notif.objective_completed.title': 'Objectif complété',
-    'notif.objective_completed.body': '{name} — bravo !',
-    'notif.challenge_added.title': 'Nouveau défi disponible',
-    'notif.challenge_added.body': '{name}',
+    'notif.objective_completed.body': '{count} objectif(s) terminé(s) — bravo !',
+    'notif.challenge_added.title': 'Nouveau(x) défi(s) disponible(s)',
+    'notif.challenge_added.body': '{count} nouveau(x) défi(s).',
     'notif.challenge_completed.title': 'Défi complété',
-    'notif.challenge_completed.body': '{name} — récompense {reward}.',
+    'notif.challenge_completed.body': '{count} citation(s) gagnée(s).',
     'notif.season_pass_level.title': 'Niveau {level} atteint',
-    'notif.season_pass_level.body': 'Tu progresses sur le Season Pass.',
+    'notif.season_pass_level.body': 'Tu progresses sur le passe saisonnier.',
     'notif.sync_error.title': 'Erreur de synchronisation',
     'notif.sync_error.body': '{message}',
     'notif.personal_record.title': 'Record personnel',
-    'notif.personal_record.body': '{metric}: {value}',
+    'notif.personal_record.body': 'Nouveau record sur {metric_label} : {value}.',
     'notif.threshold_crossed.title': 'Palier franchi',
-    'notif.threshold_crossed.body': '{metric} {direction} : {value}',
+    'notif.threshold_crossed.body': 'Tu as franchi un palier de {metric_label} : {value}.',
+    'notif.test.title': 'Notification de test',
+    'notif.test.body': 'Le pipeline de notifications fonctionne correctement.',
   },
 
   relJustNow: 'à l’instant',
@@ -226,19 +241,19 @@ const EN: NotificationsText = {
 
   settingsTitle: 'Notifications',
   settingsDescription:
-    'Manage in-app notifications, toasts and per-category subscriptions.',
+    'Manage in-app notifications, pop-ups and per-category subscriptions.',
   settingsMaster: 'Enable notifications',
   settingsMasterDescription:
-    'Fully disables bell and toasts. Events still get persisted server-side.',
-  settingsToasts: 'Enable toasts',
+    'Fully disables bell and pop-ups. Events still get persisted server-side.',
+  settingsToasts: 'Enable pop-ups',
   settingsToastsDescription:
-    'Show new notifications as on-screen pop-ups (in addition to the dropdown).',
+    'Show new notifications as on-screen pop-ups (in addition to the bell panel).',
   settingsCategoriesTitle: 'Categories',
   settingsCategoriesDescription:
     'Pick how you want to be notified for each event type.',
-  settingsDeliveryBoth: 'In-app + toast',
-  settingsDeliveryInApp: 'In-app only',
-  settingsDeliveryToast: 'Toast only',
+  settingsDeliveryBoth: 'Bell panel + pop-up',
+  settingsDeliveryInApp: 'Bell panel only',
+  settingsDeliveryToast: 'Pop-up only',
   settingsDeliveryOff: 'Off',
   settingsSubscriptionsTitle: 'Subscriptions',
   settingsSubscriptionsDescription:
@@ -256,7 +271,7 @@ const EN: NotificationsText = {
     objective_completed: 'Objective completed',
     challenge_added: 'New challenge',
     challenge_completed: 'Challenge completed',
-    season_pass_level: 'Season Pass level',
+    season_pass_level: 'Season pass level',
     sync_error: 'Sync error',
     personal_record: 'Personal record',
     threshold_crossed: 'Threshold crossed',
@@ -269,10 +284,16 @@ const EN: NotificationsText = {
     objective_completed: 'You completed an objective.',
     challenge_added: 'A new challenge is available.',
     challenge_completed: 'You completed a challenge.',
-    season_pass_level: 'You reached a new Season Pass level.',
+    season_pass_level: 'You reached a new season pass level.',
     sync_error: 'The sync failed — manual retry recommended.',
     personal_record: 'You broke a personal record.',
-    threshold_crossed: 'A KD or winrate threshold was crossed.',
+    threshold_crossed: 'A K/D or winrate threshold was crossed.',
+  },
+
+  metricLabel: {
+    kd_ratio: 'K/D ratio',
+    winrate: 'winrate',
+    kda: 'KDA',
   },
 
   templates: {
@@ -283,21 +304,23 @@ const EN: NotificationsText = {
     'notif.media_added.title': 'Media added by {actor_name}',
     'notif.media_added.body': '{count} file(s) linked to a match.',
     'notif.objective_assigned.title': 'New objective',
-    'notif.objective_assigned.body': '{name} — reward {reward}.',
+    'notif.objective_assigned.body': '{count} new objective(s) assigned.',
     'notif.objective_completed.title': 'Objective completed',
-    'notif.objective_completed.body': '{name} — nice!',
-    'notif.challenge_added.title': 'New challenge available',
-    'notif.challenge_added.body': '{name}',
+    'notif.objective_completed.body': '{count} objective(s) completed — nice!',
+    'notif.challenge_added.title': 'New challenge(s) available',
+    'notif.challenge_added.body': '{count} new challenge(s).',
     'notif.challenge_completed.title': 'Challenge completed',
-    'notif.challenge_completed.body': '{name} — reward {reward}.',
+    'notif.challenge_completed.body': '{count} citation(s) earned.',
     'notif.season_pass_level.title': 'Level {level} reached',
-    'notif.season_pass_level.body': 'Your Season Pass progresses.',
+    'notif.season_pass_level.body': 'You progress on the season pass.',
     'notif.sync_error.title': 'Sync error',
     'notif.sync_error.body': '{message}',
     'notif.personal_record.title': 'Personal record',
-    'notif.personal_record.body': '{metric}: {value}',
+    'notif.personal_record.body': 'New record on {metric_label}: {value}.',
     'notif.threshold_crossed.title': 'Threshold crossed',
-    'notif.threshold_crossed.body': '{metric} {direction}: {value}',
+    'notif.threshold_crossed.body': 'You crossed a {metric_label} threshold: {value}.',
+    'notif.test.title': 'Test notification',
+    'notif.test.body': 'The notifications pipeline is working correctly.',
   },
 
   relJustNow: 'just now',

@@ -11,8 +11,11 @@ import { NavL1 } from './NavL1'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 export function AppShell() {
+  // Lie le thème Sonner au thème app pour que les toasts respectent dark/light.
+  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   return (
     <div className="flex h-screen flex-col gap-3 overflow-hidden bg-background text-foreground sm:gap-4">
       {/* Barre de navigation L1 (fixe en haut) */}
@@ -23,10 +26,12 @@ export function AppShell() {
       {/* Barre de progression — flottante, hors du flux, collée sous NavL1 */}
       <TopProgressBar />
 
-      {/* Toasts globaux (Sonner) — décalés sous la NavL1 (h-12 = 48px + 8px marge) */}
+      {/* Toasts globaux (Sonner) — décalés sous la NavL1 (h-12 = 48px + 8px marge).
+          theme={theme} synchronise les toasts avec le thème dark/light de l'app. */}
       <Toaster
         position="top-right"
         offset={56}
+        theme={theme}
         toastOptions={{
           classNames: {
             toast:
