@@ -1,0 +1,23 @@
+# config/titles/synthetic_title_b/mappings/outcomes.toml
+#
+# Corpus synthétique titre B : libellés divergents pour outcomes.
+
+[meta]
+title_slug     = "synthetic_title_b"
+schema_version = 1
+
+[outcomes.win]
+labels = { en = "Victory", fr = "Triomphe" }
+color_token = "outcome.positive"
+
+[outcomes.loss]
+labels = { en = "Defeat", fr = "Défaite" }
+color_token = "outcome.negative"
+
+[outcomes.tie]
+labels = { en = "Draw", fr = "Match nul" }
+color_token = "outcome.neutral"
+
+[outcomes.dnf]
+labels = { en = "Forfeit", fr = "Forfait" }
+color_token = "outcome.neutral"

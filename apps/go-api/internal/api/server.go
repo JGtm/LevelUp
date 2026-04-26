@@ -32,6 +32,7 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
 )
@@ -120,11 +121,15 @@ func NewRouter(
 		} else {
 			slog.Warn("rank_catalog_meta_db_open_failed", "err", err.Error())
 		}
-		if sem := halo_games.NewSemanticAdapter(hiFields, hiRanks); sem != nil {
+		hiAssets, _ := fieldMappingsRegistry.GetAssets(titlePkg.DefaultSlug)
+		hiOutcomes, _ := fieldMappingsRegistry.GetOutcomes(titlePkg.DefaultSlug)
+		if sem := halo_games.NewSemanticAdapter(hiFields, hiRanks, hiAssets, hiOutcomes); sem != nil {
 			titleResolver.RegisterSemantic(sem)
 			slog.Info("title_semantic_adapter_registered",
 				"title_slug", sem.TitleSlug(),
 				"schema_version", sem.SchemaVersion(),
+				"assets_loaded", hiAssets != nil,
+				"outcomes_loaded", hiOutcomes != nil,
 			)
 		}
 	}
@@ -151,6 +156,19 @@ func NewRouter(
 	// titleResolver est attaché pour que les services puissent résoudre les
 	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
 	reg := NewServiceRegistry(cfg, tokenProvider).WithTitleResolver(titleResolver)
+
+	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
+	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
+	// Si le flag PRESTIGE_ENABLED est désactivé, les routes ne sont pas montées et
+	// le sync hook est no-op — mais le boot du bundle reste utile pour valider la
+	// config au démarrage.
+	var prestigeBundle *PrestigeBundle
+	if pb, err := NewPrestigeBundle(cfg.RepoRoot, reg.resolve); err != nil {
+		slog.Warn("prestige_bundle_init_failed", "err", err.Error())
+	} else {
+		prestigeBundle = pb
+	}
+
 	var gamertagSvc port.GamertagSearchService
 	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
 		slog.Warn("shared DB unavailable for gamertag search", "err", err)
@@ -391,6 +409,36 @@ func NewRouter(
 			// Match favoris (shared_social.duckdb)
 			fav := handlers.NewMatchFavoriteHandler(reg.Social)
 			r.Patch("/matches/{match_id}/favorite", fav.PatchMatchFavorite)
+
+			// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
+			// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
+			if prestigeBundle != nil && prestige.IsEnabled() {
+				lazy := NewLazyPrestigeService(prestigeBundle, nil)
+				ph := handlers.NewPrestigeHandler(lazy)
+				// Défis
+				r.Post("/challenges", ph.CreateChallenge)
+				r.Get("/challenges", ph.ListActiveChallenges)
+				r.Get("/challenges/{id}", ph.GetChallenge)
+				r.Patch("/challenges/{id}", ph.UpdateChallenge)
+				r.Delete("/challenges/{id}", ph.AbandonChallenge)
+				r.Post("/challenges/{id}/suggest-next", ph.SuggestNext)
+				// Arcs
+				r.Post("/arcs", ph.CreateArc)
+				r.Get("/arcs", ph.ListArcs)
+				r.Get("/arcs/{id}", ph.GetArc)
+				// Prestige (PP + niveau)
+				r.Get("/prestige/me", ph.GetMyPrestige)
+				r.Get("/templates/suggest", ph.SuggestTemplates)
+				// Squad challenges
+				r.Post("/squads/{squad_id}/challenges", ph.CreateSquadChallenge)
+				r.Get("/squads/{squad_id}/challenges", ph.ListSquadChallenges)
+				r.Post("/squads/{squad_id}/challenges/pool/refresh", ph.RefreshSquadPool)
+				r.Post("/squad-challenges/{id}/join", ph.JoinSquadChallenge)
+				// Mode pilote
+				r.Post("/pilot-mode/enable", ph.EnablePilotMode)
+				r.Post("/pilot-mode/disable", ph.DisablePilotMode)
+				slog.Info("prestige_routes_mounted", "endpoints_count", 16)
+			}
 
 			// Sprint 54 : Compare joueur vs joueur
 			compare := handlers.NewCompareHandler(reg.Compare)

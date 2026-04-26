@@ -99,15 +99,22 @@ func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query can
 // titre synthétique. Il prouve que l'interface games.TitleSemanticAdapter ne
 // dépend d'aucun choix titre-spécifique.
 type SemanticAdapter struct {
-	fields *mappings.FieldMappingSet
+	fields   *mappings.FieldMappingSet
+	assets   *mappings.AssetMappingSet
+	outcomes *mappings.OutcomeMappingSet
 }
 
-// NewSemanticAdapter construit un SemanticAdapter à partir d'un set chargé.
-func NewSemanticAdapter(fields *mappings.FieldMappingSet) *SemanticAdapter {
+// NewSemanticAdapter construit un SemanticAdapter à partir des sets chargés.
+// assets et outcomes peuvent être nil — les surfaces produit dégradent.
+func NewSemanticAdapter(
+	fields *mappings.FieldMappingSet,
+	assets *mappings.AssetMappingSet,
+	outcomes *mappings.OutcomeMappingSet,
+) *SemanticAdapter {
 	if fields == nil {
 		return nil
 	}
-	return &SemanticAdapter{fields: fields}
+	return &SemanticAdapter{fields: fields, assets: assets, outcomes: outcomes}
 }
 
 func (a *SemanticAdapter) TitleSlug() string                 { return TitleSlug }
@@ -119,3 +126,9 @@ func (a *SemanticAdapter) Fields() *mappings.FieldMappingSet { return a.fields }
 func (a *SemanticAdapter) Ranks() *mappings.RankCatalog {
 	return mappings.NewRankCatalog(TitleSlug, nil)
 }
+
+// Assets retourne les assets sémantiques chargés (peut être nil).
+func (a *SemanticAdapter) Assets() *mappings.AssetMappingSet { return a.assets }
+
+// Outcomes retourne les outcomes sémantiques chargés (peut être nil).
+func (a *SemanticAdapter) Outcomes() *mappings.OutcomeMappingSet { return a.outcomes }

@@ -1,0 +1,54 @@
+# config/titles/synthetic_title_b/mappings/assets.toml
+#
+# Corpus synthétique titre B : libellés délibérément divergents de Halo Infinite
+# pour valider l'agnosticité des services et l'isolation cross-titres.
+
+[meta]
+title_slug     = "synthetic_title_b"
+schema_version = 1
+
+# Modes — vocabulaire alternatif (Frags, Brawl, etc.)
+[assets.mode.assassin]
+labels = { en = "Frags", fr = "Frags" }
+display_order = 10
+
+[assets.mode.fiesta]
+labels = { en = "Brawl", fr = "Mêlée" }
+display_order = 20
+
+[assets.mode.btb]
+labels = { en = "Massive Battle", fr = "Bataille massive" }
+display_order = 40
+
+[assets.mode.ranked]
+labels = { en = "Competitive", fr = "Compétitif" }
+display_order = 50
+
+[assets.mode.firefight]
+labels = { en = "Survival", fr = "Survie" }
+display_order = 60
+
+[assets.mode.other]
+labels = { en = "Misc", fr = "Divers" }
+display_order = 99
+
+# Tiers de défi — autre nomenclature
+[assets.challenge_tier.normal]
+labels = { en = "Standard", fr = "Standard" }
+color_token = "challenge.normal"
+display_order = 10
+
+[assets.challenge_tier.heroic]
+labels = { en = "Hard", fr = "Difficile" }
+color_token = "challenge.heroic"
+display_order = 20
+
+[assets.challenge_tier.legendary]
+labels = { en = "Epic", fr = "Épique" }
+color_token = "challenge.legendary"
+display_order = 30
+
+[assets.challenge_tier.mythic]
+labels = { en = "Insane", fr = "Démentiel" }
+color_token = "challenge.mythic"
+display_order = 40

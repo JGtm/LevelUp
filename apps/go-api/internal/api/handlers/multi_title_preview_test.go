@@ -71,12 +71,14 @@ type fakeSemantic struct {
 	set *mappings.FieldMappingSet
 }
 
-func (f *fakeSemantic) TitleSlug() string                 { return defaultMultiTitleSlug }
-func (f *fakeSemantic) SchemaVersion() int                { return f.set.SchemaVersion() }
-func (f *fakeSemantic) Fields() *mappings.FieldMappingSet { return f.set }
+func (f *fakeSemantic) TitleSlug() string                     { return defaultMultiTitleSlug }
+func (f *fakeSemantic) SchemaVersion() int                    { return f.set.SchemaVersion() }
+func (f *fakeSemantic) Fields() *mappings.FieldMappingSet     { return f.set }
 func (f *fakeSemantic) Ranks() *mappings.RankCatalog {
 	return mappings.NewRankCatalog(defaultMultiTitleSlug, nil)
 }
+func (f *fakeSemantic) Assets() *mappings.AssetMappingSet     { return nil }
+func (f *fakeSemantic) Outcomes() *mappings.OutcomeMappingSet { return nil }
 
 // fakeResolver utilisé dans les tests preview.
 type fakeResolver struct {
