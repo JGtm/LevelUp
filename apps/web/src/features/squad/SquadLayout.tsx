@@ -13,7 +13,7 @@
  * Route parente : /players/$playerSlug/squad
  * Routes enfants : /squad/synergies · /squad/contributions
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -230,7 +230,6 @@ export function SquadLayout() {
   // c'est une session escouade, on dérive son label pour le backend
   // (filterSynthesisBySession garde uniquement les matchs avec ce label).
   const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
-  const setSessions = useGlobalFilterStore((s) => s.setSessions)
   const allSessions = resolvedContext?.session_options?.all_sessions ?? []
   const pickedSessionId = filterContext.sessions?.picked_sessions?.[0] ?? null
   const pickedSession = pickedSessionId
@@ -250,31 +249,6 @@ export function SquadLayout() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.friend_gamertags])
-
-  // Default-to-latest : à l'arrivée sur la page, si aucune session n'est
-  // pickée globalement, on auto-sélectionne la session escouade la plus
-  // récente. Le user peut ensuite naviguer ← / ⚡ via NavL2 ou tout
-  // réinitialiser.
-  const defaultedRef = useRef(false)
-  useEffect(() => {
-    if (defaultedRef.current) return
-    if (pickedSessionId) {
-      defaultedRef.current = true
-      return
-    }
-    if (allSessions.length === 0) return
-    const latestSquad = allSessions.find((s) => s.is_squad)
-    if (!latestSquad) {
-      defaultedRef.current = true
-      return
-    }
-    setSessions({
-      ...(filterContext.sessions ?? {}),
-      picked_sessions: [latestSquad.session_id],
-    })
-    defaultedRef.current = true
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allSessions.length, pickedSessionId])
 
   const isDirty =
     JSON.stringify([...selectedGts].sort()) !== JSON.stringify([...confirmedGts].sort())
