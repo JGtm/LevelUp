@@ -21,6 +21,7 @@ import type {
 const DEFAULT_MEDIA_SORT = 'date_desc'
 
 const EMPTY_MEDIA_FILTERS: MediaAvailableFilters = {
+  playlists: [],
   maps: [],
   modes: [],
 }
@@ -123,6 +124,7 @@ function normalizeMediaPageResponse(response: MediaPageApiResponse): MediaPageRe
     total_teammates: response.total_teammates,
     total_unassigned: response.total_unassigned,
     available_filters: {
+      playlists: response.available_filters?.playlists ?? [],
       maps: response.available_filters?.maps ?? [],
       modes: response.available_filters?.modes ?? [],
     },
