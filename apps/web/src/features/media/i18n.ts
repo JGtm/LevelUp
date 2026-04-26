@@ -37,6 +37,17 @@ export interface MediaText {
     allPlaylists: string
     allMaps: string
     allModes: string
+    /** Étiquette d'option "Toute la catégorie X" en tête d'un <optgroup>. */
+    allInCategory: (categoryLabel: string) => string
+    /** Traductions FR/EN des 6 catégories custom (cf. analysis.ModeCategory* en Go). */
+    modeCategories: {
+      Assassin: string
+      Fiesta: string
+      BTB: string
+      Ranked: string
+      Firefight: string
+      Other: string
+    }
     dateDesc: string
     dateAsc: string
     mapAsc: string
@@ -86,6 +97,15 @@ const FR_TEXT: MediaText = {
     allPlaylists: 'Toutes playlists',
     allMaps: 'Toutes cartes',
     allModes: 'Tous modes',
+    allInCategory: (cat) => `Toute la catégorie ${cat}`,
+    modeCategories: {
+      Assassin: 'Assassin',
+      Fiesta: 'Fiesta',
+      BTB: 'Grande bataille en équipe',
+      Ranked: 'Classé',
+      Firefight: 'Baptême du feu',
+      Other: 'Autre',
+    },
     dateDesc: 'Date ↓',
     dateAsc: 'Date ↑',
     mapAsc: 'Carte A→Z',
@@ -135,6 +155,15 @@ const EN_TEXT: MediaText = {
     allPlaylists: 'All playlists',
     allMaps: 'All maps',
     allModes: 'All modes',
+    allInCategory: (cat) => `All ${cat}`,
+    modeCategories: {
+      Assassin: 'Slayer',
+      Fiesta: 'Fiesta',
+      BTB: 'Big Team Battle',
+      Ranked: 'Ranked',
+      Firefight: 'Firefight',
+      Other: 'Other',
+    },
     dateDesc: 'Date ↓',
     dateAsc: 'Date ↑',
     mapAsc: 'Map A→Z',

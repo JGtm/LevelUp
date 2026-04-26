@@ -372,6 +372,9 @@ export interface FilterContextInput {
 export interface LabelValue {
   label: string
   value: string
+  /** Optionnel : si présent, l'option est un enfant à grouper sous l'option racine
+   *  dont la value est <parent>. Utilisé pour les <optgroup> hiérarchiques. */
+  parent?: string
 }
 
 export interface AvailableOptions {

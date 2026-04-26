@@ -643,11 +643,15 @@ func buildQ37MediaWhereClause(
 		args = append(args, f.MapFilter, normalizeMediaMapName(f.MapFilter))
 	}
 	if whereCfg.includeModeFilter && f.ModeFilter != "" {
-		// ModeFilter = catégorie custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other),
-		// portée depuis Python `_PREFIX_RULES`. Reverse mapping → liste de préfixes
-		// EN → OR sur (pair_name LIKE 'Préfixe:%' OR pair_name = 'Préfixe').
+		// 2 formats acceptés :
+		//   "Assassin"        → catégorie entière (reverse-mapping vers préfixes pair_name)
+		//   "Assassin/Slayer" → catégorie + sous-mode normalisé (filtre granulaire)
+		//
+		// Pour le format avec sous-mode, on conserve le filtre catégorie ET on
+		// ajoute un AND sur le sous-mode normalisé (extrait via q37MediaModeLabelExpr).
 		// "Other" = NOT IN les préfixes connus.
-		prefixes := analysis.PairNamePrefixesForCategory(f.ModeFilter)
+		category, submode, hasSubmode := strings.Cut(f.ModeFilter, "/")
+		prefixes := analysis.PairNamePrefixesForCategory(category)
 		if len(prefixes) > 0 {
 			parts := make([]string, 0, len(prefixes)*2)
 			for _, p := range prefixes {
@@ -657,7 +661,7 @@ func buildQ37MediaWhereClause(
 				args = append(args, p)
 			}
 			where = append(where, "("+strings.Join(parts, " OR ")+")")
-		} else if f.ModeFilter == analysis.ModeCategoryOther {
+		} else if category == analysis.ModeCategoryOther {
 			knownParts := []string{}
 			for _, p := range analysis.AllKnownPairNamePrefixes() {
 				knownParts = append(knownParts, "LOWER(mr.pair_name) LIKE LOWER(?)")
@@ -668,6 +672,10 @@ func buildQ37MediaWhereClause(
 			if len(knownParts) > 0 {
 				where = append(where, "NOT ("+strings.Join(knownParts, " OR ")+")")
 			}
+		}
+		if hasSubmode && strings.TrimSpace(submode) != "" {
+			where = append(where, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)")
+			args = append(args, strings.TrimSpace(submode))
 		}
 	}
 

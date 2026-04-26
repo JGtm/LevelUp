@@ -174,6 +174,52 @@ function withSelectedOption(options: LabelValue[], selectedValue: string) {
   return [{ label: selectedValue, value: selectedValue }, ...options]
 }
 
+/**
+ * Rend les options du filtre Mode en groupes hiérarchiques HTML <optgroup> :
+ *   - Catégories racines (sans parent) : devient le label de l'<optgroup> (traduit FR via i18n)
+ *     + 1ère option dans le groupe = "Toute la catégorie X" (value = catégorie EN)
+ *   - Sous-modes (parent != "") : option dans l'<optgroup> de leur catégorie
+ *     (label déjà traduit FR par mode_name_tr backend, fallback EN brut)
+ *
+ * Les options orphelines (sans parent et sans groupe correspondant) sont rendues à plat.
+ */
+function renderModeOptions(options: LabelValue[], text: MediaText): React.ReactNode {
+  const categories: { value: string; children: LabelValue[] }[] = []
+  const orphans: LabelValue[] = []
+  for (const opt of options) {
+    if (!opt.parent) {
+      categories.push({ value: opt.value, children: [] })
+    }
+  }
+  const byCategory = new Map(categories.map((c) => [c.value, c]))
+  for (const opt of options) {
+    if (opt.parent) {
+      const cat = byCategory.get(opt.parent)
+      if (cat) cat.children.push(opt)
+      else orphans.push(opt)
+    }
+  }
+  return (
+    <>
+      {categories.map((cat) => {
+        const localizedCat =
+          text.toolbar.modeCategories[cat.value as keyof typeof text.toolbar.modeCategories] ?? cat.value
+        return (
+          <optgroup key={cat.value} label={localizedCat}>
+            <option value={cat.value}>{text.toolbar.allInCategory(localizedCat)}</option>
+            {cat.children.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </optgroup>
+        )
+      })}
+      {orphans.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </>
+  )
+}
+
 export function MediaToolbar({
   text,
   kindFilter,
@@ -274,9 +320,7 @@ export function MediaToolbar({
         onChange={(event) => onModeChange(event.target.value)}
       >
         <option value="">{text.toolbar.allModes}</option>
-        {safeModeOptions.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
+        {renderModeOptions(safeModeOptions, text)}
       </Select>
       <button
         type="button"

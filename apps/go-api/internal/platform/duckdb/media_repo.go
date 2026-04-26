@@ -730,33 +730,76 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 	return options
 }
 
-// translateModeFilterOptions retourne les CATÉGORIES custom distinctes
-// (Assassin/Fiesta/BTB/Ranked/Firefight/Other) inférées depuis les pair_name
-// présents dans les médias. Une catégorie n'apparaît que si au moins un média
-// la matche dans le dataset courant.
+// translateModeFilterOptions retourne une liste hiérarchique :
+//   - 1 entrée racine par catégorie présente : {Label: "Assassin", Value: "Assassin"}
+//     (label EN canonique → frontend traduit via i18n local)
+//   - N entrées sous-mode par catégorie : {Label: "Slayer" (ou trad FR via
+//     mode_name_tr si dispo), Value: "Assassin/Slayer", Parent: "Assassin"}
 //
-// Value = catégorie EN (= clé canonique dans analysis.ModeCategoryX) pour
-// que le frontend l'envoie tel quel au backend, qui reverse-mappe vers les
-// préfixes pair_name correspondants dans le WHERE.
-func (r *MediaRepo) translateModeFilterOptions(_ context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
+// Le format value "Catégorie/SousMode" permet au backend de filtrer finement :
+// le WHERE détecte le séparateur "/" et applique catégorie + sous-mode normalisé.
+func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
 	if len(pairs) == 0 {
 		return []domain.LabelValue{}
 	}
-	seen := make(map[string]bool)
-	options := make([]domain.LabelValue, 0, 6)
+
+	// 1) Grouper par catégorie + collecter les sous-modes EN distincts
+	type catBucket struct {
+		category string
+		subEN    map[string]struct{} // sous-modes EN canoniques (ex: "Slayer", "Team Slayer")
+	}
+	buckets := make(map[string]*catBucket)
+	subEnSet := make(map[string]struct{})
 	for _, p := range pairs {
-		// p.id contient le pair_name brut (cf. BuildQ37MediaModeOptionsQuery).
 		cat := analysis.InferModeCategoryFromPairName(p.id)
 		if cat == "" {
 			cat = analysis.ModeCategoryOther
 		}
-		if seen[cat] {
-			continue
+		if buckets[cat] == nil {
+			buckets[cat] = &catBucket{category: cat, subEN: make(map[string]struct{})}
 		}
-		seen[cat] = true
-		options = append(options, domain.LabelValue{Label: cat, Value: cat})
+		// Sous-mode EN canonique via NormalizeModeLabel ("Arena:Slayer on X" → "Slayer").
+		if sub := analysis.NormalizeModeLabel(p.id); sub != "" {
+			buckets[cat].subEN[sub] = struct{}{}
+			subEnSet[sub] = struct{}{}
+		}
 	}
-	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
+
+	// 2) Traduire les sous-modes EN → FR via mode_name_tr (best-effort)
+	subEnList := make([]string, 0, len(subEnSet))
+	for en := range subEnSet {
+		subEnList = append(subEnList, en)
+	}
+	subTranslations := r.loadModeNameTranslations(ctx, subEnList)
+
+	// 3) Construire la liste plate : header catégorie + sous-modes triés
+	categories := make([]string, 0, len(buckets))
+	for cat := range buckets {
+		categories = append(categories, cat)
+	}
+	sort.Strings(categories)
+
+	options := make([]domain.LabelValue, 0)
+	for _, cat := range categories {
+		b := buckets[cat]
+		// Header catégorie (label EN, le frontend traduit via i18n.ts)
+		options = append(options, domain.LabelValue{Label: cat, Value: cat})
+		// Sous-modes triés par label localisé
+		subs := make([]domain.LabelValue, 0, len(b.subEN))
+		for en := range b.subEN {
+			label := en
+			if fr, ok := subTranslations[en]; ok && fr != "" {
+				label = fr
+			}
+			subs = append(subs, domain.LabelValue{
+				Label:  label,
+				Value:  cat + "/" + en, // value canonique EN pour matcher côté WHERE
+				Parent: cat,
+			})
+		}
+		sort.Slice(subs, func(i, j int) bool { return subs[i].Label < subs[j].Label })
+		options = append(options, subs...)
+	}
 	return options
 }
 
