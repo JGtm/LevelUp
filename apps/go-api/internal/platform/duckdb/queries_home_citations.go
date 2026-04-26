@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -641,21 +642,32 @@ func buildQ37MediaWhereClause(
 		where = append(where, "(mr.map_id = ? OR LOWER("+q37MediaMapLabelExpr+") = LOWER(?))")
 		args = append(args, f.MapFilter, normalizeMediaMapName(f.MapFilter))
 	}
-	if whereCfg.includeModeFilter {
-		// Si ModeFilterCandidates est présent (FR → liste de raw EN via
-		// mode_name_tr), on matche en EXACT sur chaque variant via IN. Sinon
-		// fallback sur l'égalité simple sur ModeFilter. Le substring ILIKE
-		// matchait "Team Slayer"/"Slayer Doubles" pour "Slayer" — bug.
-		if len(f.ModeFilterCandidates) > 0 {
-			placeholders := make([]string, len(f.ModeFilterCandidates))
-			for i, candidate := range f.ModeFilterCandidates {
-				placeholders[i] = "LOWER(?)"
-				args = append(args, candidate)
+	if whereCfg.includeModeFilter && f.ModeFilter != "" {
+		// ModeFilter = catégorie custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other),
+		// portée depuis Python `_PREFIX_RULES`. Reverse mapping → liste de préfixes
+		// EN → OR sur (pair_name LIKE 'Préfixe:%' OR pair_name = 'Préfixe').
+		// "Other" = NOT IN les préfixes connus.
+		prefixes := analysis.PairNamePrefixesForCategory(f.ModeFilter)
+		if len(prefixes) > 0 {
+			parts := make([]string, 0, len(prefixes)*2)
+			for _, p := range prefixes {
+				parts = append(parts, "LOWER(mr.pair_name) LIKE LOWER(?)")
+				args = append(args, p+":%")
+				parts = append(parts, "LOWER(mr.pair_name) = LOWER(?)")
+				args = append(args, p)
 			}
-			where = append(where, "LOWER("+q37MediaModeLabelExpr+") IN ("+strings.Join(placeholders, ",")+")")
-		} else if f.ModeFilter != "" {
-			where = append(where, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)")
-			args = append(args, f.ModeFilter)
+			where = append(where, "("+strings.Join(parts, " OR ")+")")
+		} else if f.ModeFilter == analysis.ModeCategoryOther {
+			knownParts := []string{}
+			for _, p := range analysis.AllKnownPairNamePrefixes() {
+				knownParts = append(knownParts, "LOWER(mr.pair_name) LIKE LOWER(?)")
+				args = append(args, p+":%")
+				knownParts = append(knownParts, "LOWER(mr.pair_name) = LOWER(?)")
+				args = append(args, p)
+			}
+			if len(knownParts) > 0 {
+				where = append(where, "NOT ("+strings.Join(knownParts, " OR ")+")")
+			}
 		}
 	}
 
@@ -716,6 +728,7 @@ func buildQ37MediaQuery(
     COALESCE(mf.liked, FALSE) AS liked,
     ` + q37MediaMapLabelExpr + ` AS map_name,
     ` + q37MediaModeLabelExpr + ` AS mode_name,
+    COALESCE(mr.pair_name, '') AS pair_name_raw,
     mr.map_id,
     ` + playerSlugExpr + ` AS player_slug
 ` + queryCfg.fromClause() + `
