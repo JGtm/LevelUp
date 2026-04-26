@@ -310,6 +310,9 @@ func (r *ServiceRegistry) ExplorerCtx(ctx context.Context, slug string) (port.Ex
 		return nil, "", "", err
 	}
 	svc := service.NewExplorerService(duckdb.NewExplorerRepo(pdb, pdb.XUID), pdb.XUID)
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		svc = svc.WithDataAdapter(a)
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -531,6 +534,9 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		return nil, "", "", err
 	}
 	svc := service.NewSynthesisService(duckdb.NewSynthesisRepo(pdb))
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		svc = svc.WithDataAdapter(a)
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

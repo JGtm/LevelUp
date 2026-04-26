@@ -21,9 +21,12 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
-// FieldMappingsRegistry expose les FieldMappingSet chargés au boot.
+// FieldMappingsRegistry expose les FieldMappingSet/AssetMappingSet/
+// OutcomeMappingSet chargés au boot.
 type FieldMappingsRegistry interface {
 	Get(titleSlug string) (*mappings.FieldMappingSet, bool)
+	GetAssets(titleSlug string) (*mappings.AssetMappingSet, bool)
+	GetOutcomes(titleSlug string) (*mappings.OutcomeMappingSet, bool)
 }
 
 // FieldMappingsHandler gère GET /api/v1/titles/{slug}/field-mappings.
@@ -68,11 +71,25 @@ type fieldMappingDTO struct {
 	Icon         string `json:"icon,omitempty"`
 }
 
+type assetMappingDTO struct {
+	Label        string `json:"label"`
+	ColorToken   string `json:"color_token,omitempty"`
+	Icon         string `json:"icon,omitempty"`
+	DisplayOrder int    `json:"display_order"`
+}
+
+type outcomeMappingDTO struct {
+	Label      string `json:"label"`
+	ColorToken string `json:"color_token"`
+}
+
 type fieldMappingsResponse struct {
-	TitleSlug     string                     `json:"title_slug"`
-	SchemaVersion int                        `json:"schema_version"`
-	Locale        string                     `json:"locale"`
-	Fields        map[string]fieldMappingDTO `json:"fields"`
+	TitleSlug     string                                `json:"title_slug"`
+	SchemaVersion int                                   `json:"schema_version"`
+	Locale        string                                `json:"locale"`
+	Fields        map[string]fieldMappingDTO            `json:"fields"`
+	Assets        map[string]map[string]assetMappingDTO `json:"assets,omitempty"`
+	Outcomes      map[string]outcomeMappingDTO          `json:"outcomes,omitempty"`
 }
 
 // ServeHTTP gère la requête.
@@ -125,6 +142,38 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			Group:        m.Group,
 			Icon:         m.Icon,
 		}
+	}
+
+	// Phase 1 plan finition multi-titres : exposer les assets s'ils sont chargés.
+	if assets, ok := h.registry.GetAssets(slug); ok && assets != nil {
+		out := make(map[string]map[string]assetMappingDTO, len(assets.Kinds()))
+		for _, kind := range assets.Kinds() {
+			byID := make(map[string]assetMappingDTO)
+			for _, a := range assets.AllOfKind(kind) {
+				label, _ := a.Label(locale)
+				byID[a.ID] = assetMappingDTO{
+					Label:        label,
+					ColorToken:   a.ColorToken,
+					Icon:         a.Icon,
+					DisplayOrder: a.DisplayOrder,
+				}
+			}
+			out[kind] = byID
+		}
+		resp.Assets = out
+	}
+
+	// Phase 1 plan finition multi-titres : exposer les outcomes s'ils sont chargés.
+	if outcomes, ok := h.registry.GetOutcomes(slug); ok && outcomes != nil {
+		out := make(map[string]outcomeMappingDTO, len(outcomes.All()))
+		for _, o := range outcomes.All() {
+			label, _ := o.Label(locale)
+			out[o.Key] = outcomeMappingDTO{
+				Label:      label,
+				ColorToken: o.ColorToken,
+			}
+		}
+		resp.Outcomes = out
 	}
 
 	body, err := json.Marshal(resp)

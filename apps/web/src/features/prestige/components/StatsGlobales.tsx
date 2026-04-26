@@ -14,6 +14,8 @@
 import { useMemo, useState } from 'react'
 import type { Challenge, Tier, ChallengeMode } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
+import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
 
 interface StatsGlobalesProps {
   /** Tous les défis du joueur (actifs + terminés). */
@@ -94,6 +96,13 @@ interface ModeFilterToggleProps {
 }
 
 function ModeFilterToggle({ value, onChange }: ModeFilterToggleProps) {
+  // Phase 4 plan finition multi-titres : libellé "Libre" via cadence.free du TOML.
+  const libreLabel = useAssetLabel('cadence', 'free')
+  const labelOf = (opt: ModeFilter) => {
+    if (opt === 'all') return 'Tous'
+    if (opt === 'libre') return libreLabel !== 'free' ? libreLabel : CADENCE_FREE_FALLBACK_FR
+    return 'Pilote'
+  }
   return (
     <div className="flex items-center rounded-md border border-border bg-card p-0.5 text-xs">
       {(['all', 'libre', 'pilote'] as const).map((opt) => (
@@ -108,7 +117,7 @@ function ModeFilterToggle({ value, onChange }: ModeFilterToggleProps) {
               : 'text-muted-foreground hover:text-foreground',
           ].join(' ')}
         >
-          {opt === 'all' ? 'Tous' : opt === 'libre' ? 'Libre' : 'Pilote'}
+          {labelOf(opt)}
         </button>
       ))}
     </div>
@@ -125,13 +134,16 @@ function TierCount({
   created: number
 }) {
   const color = TIER_COLORS[tier]
+  // Phase 4 plan finition multi-titres : libellé du tier via TOML, fallback dict.
+  const tierLabelFromTOML = useAssetLabel('challenge_tier', tier)
+  const tierLabel = tierLabelFromTOML !== tier ? tierLabelFromTOML : TIER_LABELS_FR[tier]
   return (
     <div
       className="rounded-md border bg-card p-3 text-center"
       style={{ borderLeftColor: color, borderLeftWidth: 3 }}
     >
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {TIER_LABELS_FR[tier]}
+        {tierLabel}
       </p>
       <p className="mt-1 text-xl font-bold" style={{ color }}>
         {completed}

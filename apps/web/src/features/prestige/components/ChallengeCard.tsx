@@ -6,6 +6,7 @@
  */
 import type { Challenge } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
+import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 
 interface ChallengeCardProps {
   challenge: Challenge
@@ -17,6 +18,10 @@ interface ChallengeCardProps {
 export function ChallengeCard({ challenge, currentValue = 0, onClick }: ChallengeCardProps) {
   const tier = challenge.tier ?? 'normal'
   const tierColor = TIER_COLORS[tier]
+  // Phase 4.1 plan finition multi-titres : libellé du tier via le TOML backend.
+  // Fallback sur TIER_LABELS_FR si MULTI_TITLE_API_ENABLED=false.
+  const tierLabelFromTOML = useAssetLabel('challenge_tier', tier)
+  const tierLabel = tierLabelFromTOML !== tier ? tierLabelFromTOML : TIER_LABELS_FR[tier]
   const progress = challenge.target > 0
     ? Math.min(100, Math.round((currentValue / challenge.target) * 100))
     : 0
@@ -35,7 +40,7 @@ export function ChallengeCard({ challenge, currentValue = 0, onClick }: Challeng
           className="text-xs font-semibold uppercase tracking-wider"
           style={{ color: tierColor }}
         >
-          {TIER_LABELS_FR[tier]}
+          {tierLabel}
         </span>
         {challenge.mode === 'pilote' && (
           <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">

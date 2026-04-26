@@ -10,6 +10,7 @@
  */
 import type { Tier } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
+import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 
 export interface LeaderboardEntry {
   user_id: string
@@ -124,6 +125,11 @@ function PeriodToggle({
 
 function Row({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
   const tierColor = entry.last_tier ? TIER_COLORS[entry.last_tier] : undefined
+  // Phase 4 plan finition multi-titres : libellé du tier via TOML, fallback dict.
+  const tierLabelFromTOML = useAssetLabel('challenge_tier', entry.last_tier ?? '')
+  const tierLabel = entry.last_tier
+    ? (tierLabelFromTOML !== entry.last_tier ? tierLabelFromTOML : TIER_LABELS_FR[entry.last_tier])
+    : ''
   return (
     <tr className="border-b border-border last:border-0 hover:bg-accent/40">
       <td className="px-3 py-2 text-muted-foreground">{rank}</td>
@@ -135,7 +141,7 @@ function Row({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
               className="rounded-full px-1.5 py-0.5 text-[10px] uppercase"
               style={{ backgroundColor: `${tierColor}20`, color: tierColor }}
             >
-              {TIER_LABELS_FR[entry.last_tier]}
+              {tierLabel}
             </span>
           )}
         </div>

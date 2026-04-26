@@ -17,38 +17,41 @@ title_slug     = "halo_infinite"
 schema_version = 1
 
 # =============================================================================
-# Modes (regroupements UX, alignés sur analysis.ModeCategory*)
+# Modes (regroupements UX, alignés sur analysis.ModeCategory* en Go).
+# Les ID utilisent les valeurs canoniques exactes retournées par le backend
+# (ex : "Assassin", "Super Fiesta", "BTB") pour permettre une lookup directe
+# côté frontend via useAssetLabel('mode', cat.value).
 # =============================================================================
 
-[assets.mode.assassin]
+[assets.mode.Assassin]
 labels = { en = "Slayer", fr = "Slayer" }
 display_order = 10
 
-[assets.mode.fiesta]
+[assets.mode.Fiesta]
 labels = { en = "Fiesta", fr = "Fiesta" }
 display_order = 20
 
-[assets.mode.super_fiesta]
+[assets.mode."Super Fiesta"]
 labels = { en = "Super Fiesta", fr = "Super Fiesta" }
 display_order = 25
 
-[assets.mode.husky_raid]
+[assets.mode."Husky Raid"]
 labels = { en = "Husky Raid", fr = "Husky Raid" }
 display_order = 30
 
-[assets.mode.btb]
+[assets.mode.BTB]
 labels = { en = "Big Team Battle", fr = "Grande bataille en équipe" }
 display_order = 40
 
-[assets.mode.ranked]
+[assets.mode.Ranked]
 labels = { en = "Ranked", fr = "Classé" }
 display_order = 50
 
-[assets.mode.firefight]
+[assets.mode.Firefight]
 labels = { en = "Firefight", fr = "Baptême du feu" }
 display_order = 60
 
-[assets.mode.other]
+[assets.mode.Other]
 labels = { en = "Other", fr = "Autre" }
 display_order = 99
 
@@ -119,6 +122,35 @@ display_order = 40
 [assets.challenge_status.abandoned]
 labels = { en = "Abandoned", fr = "Abandonné" }
 display_order = 50
+
+# =============================================================================
+# Niveaux Prestige (lib/prestige.ts — names array, idx 0..5)
+# Ces labels couvrent la fonction levelName() de ObjectifsPage.tsx.
+# =============================================================================
+
+[assets.prestige_level."0"]
+labels = { en = "Recruit", fr = "Recrue" }
+display_order = 10
+
+[assets.prestige_level."1"]
+labels = { en = "Soldier", fr = "Soldat" }
+display_order = 20
+
+[assets.prestige_level."2"]
+labels = { en = "Veteran", fr = "Vétéran" }
+display_order = 30
+
+[assets.prestige_level."3"]
+labels = { en = "Specialist", fr = "Spécialiste" }
+display_order = 40
+
+[assets.prestige_level."4"]
+labels = { en = "Elite", fr = "Élite" }
+display_order = 50
+
+[assets.prestige_level."5"]
+labels = { en = "Legendary", fr = "Légendaire" }
+display_order = 60
 
 # =============================================================================
 # Tiers de médaille (regroupements UX, plan §6.7 — médailles individuelles

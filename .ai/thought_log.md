@@ -1,5 +1,26 @@
 # Thought Log
 
+## [2026-04-26] feat(notifications): API interne backend — surface complète
+
+**Statut** : En cours — surface API backend posée et compile, hooks d'émission et frontend à venir.
+
+**Contexte** : User demande un système de notifications in-app per-player, traité comme une "API interne découplée". 9 catégories au MVP (app_release, match_synced, media_added, objective_assigned/completed, challenge_added/completed, season_pass_level, sync_error, personal_record, threshold_crossed). Plan détaillé dans `C:\Users\Guillaume\.claude\plans\j-ai-chang-d-avis-et-dapper-conway.md`.
+
+**Décision technique** : Package autonome `internal/notifications/` (doc.go, types.go, id.go, port.go, emitter.go, service.go) ne dépendant que de la stdlib. Repository implementé dans `internal/platform/duckdb/notifications_repo.go` (+ helpers). Stockage 2 tables per-player dans `stats.duckdb` : `player_notifications` (snowflake-like ID = (unix_ms<<12) | seq, JS-safe) + `notification_preferences` (seed à TRUE pour toutes les catégories MVP). i18n par clés title_key/body_key + params (pas de FR/EN en dur côté serveur, conforme audit V7). Emitter interface réduite + NoopEmitter pour DI. Service cache `*notifications.Service` par xuid via `sync.Map` dans registry pour préserver la monotonicité ID. 8 endpoints REST sous `/api/v1/players/{slug}/notifications`. Cap rétention 500/joueur appliqué après chaque Emit (best-effort).
+
+**Fichiers créés** :
+- `apps/go-api/internal/migration/steps_player_notifications.go`
+- `apps/go-api/internal/notifications/{doc,types,id,port,emitter,service,service_test}.go`
+- `apps/go-api/internal/platform/duckdb/notifications_repo.go` + `notifications_repo_helpers.go`
+- `apps/go-api/internal/api/handlers/notifications.go`
+- `apps/go-api/internal/api/registry_notifications.go`
+
+**Fichiers modifiés** : `apps/go-api/internal/api/server.go` (montage de la route — non commité dans ce 1er commit car coexiste avec un hunk Prestige WIP non commité, sera embarqué avec les hooks plus tard).
+
+**Résultats observés** : `go build ./...` vert. `go test ./internal/notifications/...` ok (12 tests : Emit happy path, drop si catégorie OFF, traduction ErrCategoryDisabled, validation, taille params, IDGenerator monotone et reset par ms, NoopEmitter). Aucune dépendance ajoutée.
+
+**Conclusion / prochaine étape** : Hooks d'émission (sync engine, media handler, sync_error path, app_release au boot, post-sync deltas) puis frontend complet (Sonner, NotificationsBell + dropdown dans NavL1, page dédiée, onglet Settings, i18n FR/EN, a11y).
+
 ## [2026-04-25] test(prestige): couverture domain 64.6% → 87.0% + branchement final hook sync
 
 **Statut** : Complété.

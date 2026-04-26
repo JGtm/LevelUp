@@ -8,6 +8,7 @@
  */
 import type { Challenge } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
+import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 
 interface MomentCardProps {
   challenge: Challenge
@@ -31,6 +32,9 @@ export function MomentCard({
   const tier = challenge.tier ?? 'normal'
   const color = TIER_COLORS[tier]
   const isMythic = tier === 'mythic'
+  // Phase 4 plan finition multi-titres : libellé du tier via TOML, fallback dict.
+  const tierLabelFromTOML = useAssetLabel('challenge_tier', tier)
+  const tierLabel = tierLabelFromTOML !== tier ? tierLabelFromTOML : TIER_LABELS_FR[tier]
 
   const delta =
     baselineValue > 0
@@ -68,7 +72,7 @@ export function MomentCard({
           className="rounded-full px-2.5 py-0.5 text-xs font-bold uppercase"
           style={{ backgroundColor: `${color}20`, color }}
         >
-          ◆ {TIER_LABELS_FR[tier]}
+          ◆ {tierLabel}
         </span>
         <h2 className={['mt-2 font-semibold', compact ? 'text-base' : 'text-2xl'].join(' ')}>
           {label}

@@ -31,11 +31,23 @@ group         = "combat"
 `
 
 type stubRegistry struct {
-	set map[string]*mappings.FieldMappingSet
+	set      map[string]*mappings.FieldMappingSet
+	assets   map[string]*mappings.AssetMappingSet
+	outcomes map[string]*mappings.OutcomeMappingSet
 }
 
 func (s *stubRegistry) Get(slug string) (*mappings.FieldMappingSet, bool) {
 	v, ok := s.set[slug]
+	return v, ok
+}
+
+func (s *stubRegistry) GetAssets(slug string) (*mappings.AssetMappingSet, bool) {
+	v, ok := s.assets[slug]
+	return v, ok
+}
+
+func (s *stubRegistry) GetOutcomes(slug string) (*mappings.OutcomeMappingSet, bool) {
+	v, ok := s.outcomes[slug]
 	return v, ok
 }
 

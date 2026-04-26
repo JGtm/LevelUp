@@ -9,21 +9,36 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
 // SynthesisService orchestre les données de la page Synthèse.
 type SynthesisService struct {
 	repo port.SynthesisRepository
+	// dataAdapter (optionnel, Phase 2 plan finition multi-titres) :
+	// quand fourni, GetSynthesisPage mesure la capability match.history pour
+	// loguer une éventuelle dégradation. La bascule fonctionnelle reste future
+	// car canonical.PlayerStats ne couvre pas encore le domain SynthesisMatch.
+	dataAdapter games.TitleDataAdapter
 }
 
 // NewSynthesisService crée un SynthesisService avec le repository injecté.
 func NewSynthesisService(repo port.SynthesisRepository) *SynthesisService {
 	return &SynthesisService{repo: repo}
+}
+
+// WithDataAdapter injecte un games.TitleDataAdapter optionnel (Phase 2 plan
+// finition multi-titres). Permet de logger le statut des capabilities et
+// d'amorcer la bascule fonctionnelle vers la couche canonique.
+func (s *SynthesisService) WithDataAdapter(a games.TitleDataAdapter) *SynthesisService {
+	s.dataAdapter = a
+	return s
 }
 
 // GetSynthesisPage construit la réponse de la page Synthèse.
@@ -36,6 +51,21 @@ func (s *SynthesisService) GetSynthesisPage(
 	period := req.Period
 	if period == "" {
 		period = "all"
+	}
+
+	// Phase 2 plan finition multi-titres : log de la capability match.history
+	// quand un DataAdapter est injecté. Sert à mesurer la dégradation potentielle
+	// avant la bascule fonctionnelle (le Synthesis lit aujourd'hui depuis le repo
+	// legacy car canonical.PlayerStats ne couvre pas encore SynthesisMatch).
+	if s.dataAdapter != nil {
+		caps := s.dataAdapter.Capabilities()
+		if !caps.Has(games.CapMatchHistory) {
+			slog.WarnContext(ctx, "capability_not_supported",
+				"title_slug", s.dataAdapter.TitleSlug(),
+				"capability", string(games.CapMatchHistory),
+				"caller", "synthesis_service.GetSynthesisPage",
+			)
+		}
 	}
 
 	synthMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)

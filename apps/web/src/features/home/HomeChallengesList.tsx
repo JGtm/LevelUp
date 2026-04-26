@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { ChallengeItem } from '@/lib/api/types'
+import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { CADENCE_DAILY_FALLBACK_FR, CADENCE_WEEKLY_FALLBACK_FR } from './fallback.i18n'
 
 type ChallengeCadence = 'daily' | 'weekly' | 'capstone' | null
 type ChallengeCategory = 'daily' | 'weekly'
 type ChallengeSection = {
   kind: ChallengeCategory
-  label: string
+  /** Clé canonique de cadence (alignée sur assets.toml). Le label est résolu au render. */
+  cadenceKey: string
   items: ChallengeItem[]
 }
 
@@ -43,11 +46,10 @@ function deriveChallengeCadence(challengePath?: string | null): ChallengeCadence
   return null
 }
 
-function challengeCategoryLabel(category: ChallengeCategory): string {
-  if (category === 'daily') {
-    return 'Quotidien'
-  }
-  return 'Hebdo'
+// Catégorie de défi → clé de cadence dans assets.toml.
+// Le libellé est résolu au runtime par le composant via useAssetLabel('cadence', key).
+function cadenceKeyOf(category: ChallengeCategory): string {
+  return category === 'daily' ? 'daily' : 'weekly'
 }
 
 function challengeCategoryClasses(category: ChallengeCategory): string {
@@ -80,14 +82,14 @@ function buildChallengeSections(items: ChallengeItem[]): ChallengeSection[] {
   if (dailyItems.length > 0) {
     sections.push({
       kind: 'daily',
-      label: challengeCategoryLabel('daily'),
+      cadenceKey: cadenceKeyOf('daily'),
       items: dailyItems,
     })
   }
   if (weeklyItems.length > 0) {
     sections.push({
       kind: 'weekly',
-      label: challengeCategoryLabel('weekly'),
+      cadenceKey: cadenceKeyOf('weekly'),
       items: weeklyItems,
     })
   }
@@ -150,11 +152,24 @@ export function HomeChallengesList({ items }: { items: ChallengeItem[] }) {
   return (
     <div className="space-y-5">
       {sections.map((section) => (
-        <section key={section.kind} data-testid={`home-challenge-section-${section.kind}`} className="space-y-3">
-          <div className="space-y-2">
-            <p data-testid="home-challenge-section-title" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
-              {section.label}
-            </p>
+        <ChallengeSection key={section.kind} section={section} />
+      ))}
+    </div>
+  )
+}
+
+// ChallengeSection : sub-component pour pouvoir appeler useAssetLabel par section.
+function ChallengeSection({ section }: { section: ChallengeSection }) {
+  // Phase 4 plan finition multi-titres : libellé cadence via assets.toml.
+  const cadenceLabel = useAssetLabel('cadence', section.cadenceKey)
+  const fallback = section.cadenceKey === 'daily' ? CADENCE_DAILY_FALLBACK_FR : CADENCE_WEEKLY_FALLBACK_FR
+  const label = cadenceLabel !== section.cadenceKey ? cadenceLabel : fallback
+  return (
+    <section data-testid={`home-challenge-section-${section.kind}`} className="space-y-3">
+      <div className="space-y-2">
+        <p data-testid="home-challenge-section-title" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
+          {label}
+        </p>
             <div className={`h-px w-full rounded-full ${challengeSectionDividerClasses()}`} />
           </div>
 

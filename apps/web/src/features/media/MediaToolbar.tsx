@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LabelValue, MediaAuthor } from '@/lib/api/types'
 import { Select } from '@/components/ui/select'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { MediaText } from './i18n'
 
 interface MediaToolbarProps {
@@ -183,7 +184,11 @@ function withSelectedOption(options: LabelValue[], selectedValue: string) {
  *
  * Les options orphelines (sans parent et sans groupe correspondant) sont rendues à plat.
  */
-function renderModeOptions(options: LabelValue[], text: MediaText): React.ReactNode {
+function renderModeOptions(
+  options: LabelValue[],
+  text: MediaText,
+  resolveCategoryLabel: (value: string) => string,
+): React.ReactNode {
   const categories: { value: string; children: LabelValue[] }[] = []
   const orphans: LabelValue[] = []
   for (const opt of options) {
@@ -202,8 +207,7 @@ function renderModeOptions(options: LabelValue[], text: MediaText): React.ReactN
   return (
     <>
       {categories.map((cat) => {
-        const localizedCat =
-          text.toolbar.modeCategories[cat.value as keyof typeof text.toolbar.modeCategories] ?? cat.value
+        const localizedCat = resolveCategoryLabel(cat.value)
         return (
           <optgroup key={cat.value} label={localizedCat}>
             <option value={cat.value}>{text.toolbar.allInCategory(localizedCat)}</option>
@@ -265,6 +269,18 @@ export function MediaToolbar({
   const safeMapOptions = withSelectedOption(mapOptions, mapFilter)
   const safeModeOptions = withSelectedOption(modeOptions, modeFilter)
 
+  // Phase 3.3 plan finition multi-titres : résolution des labels de catégories
+  // de mode via useAssetLabel('mode', value). Fallback sur le dict React legacy
+  // pour préserver l'UX si le backend tourne sans MULTI_TITLE_API_ENABLED.
+  const { data: fieldMappings } = useFieldMappings()
+  const resolveCategoryLabel = (value: string): string => {
+    const fromTOML = fieldMappings?.assets?.mode?.[value]?.label
+    if (fromTOML) return fromTOML
+    return (
+      text.toolbar.modeCategories[value as keyof typeof text.toolbar.modeCategories] ?? value
+    )
+  }
+
   const compactSelectClass = 'h-8 w-auto px-2 pr-6 text-xs'
 
   return (
@@ -320,7 +336,7 @@ export function MediaToolbar({
         onChange={(event) => onModeChange(event.target.value)}
       >
         <option value="">{text.toolbar.allModes}</option>
-        {renderModeOptions(safeModeOptions, text)}
+        {renderModeOptions(safeModeOptions, text, resolveCategoryLabel)}
       </Select>
       <button
         type="button"

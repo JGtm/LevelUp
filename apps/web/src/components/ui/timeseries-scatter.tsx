@@ -98,10 +98,14 @@ export function TimeseriesScatter({ points, height = 320 }: TimeseriesScatterPro
       hovertemplate: `${cfg.xLabel} : %{x}<br>${cfg.yLabel} : %{y}<extra>${name}</extra>`,
     })
 
+    // Phase 4 plan finition multi-titres : noms de traces via outcomes.toml.
+    const winLabel = fieldMappings?.outcomes?.win?.label ?? 'win'
+    const lossLabel = fieldMappings?.outcomes?.loss?.label ?? 'loss'
+    const unknownLabel = fieldMappings?.fields['outcome_unknown']?.label ?? 'unknown'
     const traces: Plotly.Data[] = [
-      ...(wins.length > 0 ? [makeTrace(wins, 'Victoire', resolveToken('outcome-win'))] : []),
-      ...(losses.length > 0 ? [makeTrace(losses, 'Défaite', resolveToken('outcome-loss'))] : []),
-      ...(unknowns.length > 0 ? [makeTrace(unknowns, 'Inconnu', resolveToken('divergent-neutral'))] : []),
+      ...(wins.length > 0 ? [makeTrace(wins, winLabel, resolveToken('outcome-win'))] : []),
+      ...(losses.length > 0 ? [makeTrace(losses, lossLabel, resolveToken('outcome-loss'))] : []),
+      ...(unknowns.length > 0 ? [makeTrace(unknowns, unknownLabel, resolveToken('divergent-neutral'))] : []),
     ]
 
     const layout: Partial<Plotly.Layout> = {

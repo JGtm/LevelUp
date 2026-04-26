@@ -11,8 +11,10 @@ import { useState } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { Challenge, Arc, UserPrestige } from '@/lib/prestige'
+import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { ChallengeCard } from './components/ChallengeCard'
 import { CreateChallengeForm } from './components/CreateChallengeForm'
+import { PRESTIGE_LEVEL_NAMES_FALLBACK } from './fallback.i18n'
 import { useChallenges, useArcs, useMyPrestige, useAbandonChallenge } from './hooks'
 
 type TabKey = 'challenges' | 'parcours'
@@ -312,6 +314,14 @@ interface PrestigeBadgeProps {
 function PrestigeBadge({ prestige }: PrestigeBadgeProps) {
   const totalPP = prestige?.total_pp ?? 0
   const level = prestige?.current_level ?? 0
+  // Phase 4 plan finition multi-titres : libellé du niveau via assets.toml.
+  // Fallback EN si l'endpoint /field-mappings n'est pas chargé.
+  const levelKey = String(level)
+  const levelLabel = useAssetLabel('prestige_level', levelKey)
+  const displayLevelName =
+    levelLabel !== levelKey
+      ? levelLabel
+      : (PRESTIGE_LEVEL_NAMES_FALLBACK[level] ?? PRESTIGE_LEVEL_NAMES_FALLBACK[0])
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
@@ -320,7 +330,7 @@ function PrestigeBadge({ prestige }: PrestigeBadgeProps) {
           <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
             Niveau Prestige
           </h2>
-          <p className="text-2xl font-bold">{levelName(level)}</p>
+          <p className="text-2xl font-bold">{displayLevelName}</p>
         </div>
         <div className="text-right">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -333,7 +343,3 @@ function PrestigeBadge({ prestige }: PrestigeBadgeProps) {
   )
 }
 
-function levelName(idx: number): string {
-  const names = ['Recrue', 'Soldat', 'Vétéran', 'Spécialiste', 'Élite', 'Légendaire']
-  return names[idx] ?? names[0]
-}

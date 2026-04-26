@@ -16,6 +16,8 @@
 import { useState } from 'react'
 import { useMediaMatchCandidates, useAssociateMediaToMatch } from './queries'
 import type { MediaMatchCandidate } from '@/lib/api/types'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
 
 const WINDOW_OPTIONS = [15, 60, 180] as const
 
@@ -44,14 +46,28 @@ function formatDelta(deltaSeconds: number | null | undefined): string {
   return `±${m} min`
 }
 
-function outcomeLabel(outcome: number | null | undefined): { text: string; cls: string } {
+// outcomeKeyOf mappe le code outcome Halo (2 win, 3 loss, 1 tie, 4 dnf)
+// vers la clé canonique correspondante côté outcomes.toml.
+function outcomeKeyOf(outcome: number | null | undefined): string | null {
   switch (outcome) {
-    case 2: return { text: 'Victoire', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40' }
-    case 3: return { text: 'Défaite', cls: 'bg-rose-500/15 text-rose-400 border-rose-500/40' }
-    case 1: return { text: 'Égalité', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/40' }
-    case 4: return { text: 'DNF', cls: 'bg-muted text-muted-foreground border-border' }
-    default: return { text: '—', cls: 'bg-muted text-muted-foreground border-border' }
+    case 2:
+      return 'win'
+    case 3:
+      return 'loss'
+    case 1:
+      return 'tie'
+    case 4:
+      return 'dnf'
+    default:
+      return null
   }
+}
+
+const outcomeClassByCode: Record<number, string> = {
+  2: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
+  3: 'bg-rose-500/15 text-rose-400 border-rose-500/40',
+  1: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
+  4: 'bg-muted text-muted-foreground border-border',
 }
 
 function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
@@ -93,6 +109,18 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
   const [pendingMatchID, setPendingMatchID] = useState<string | null>(null)
   const { data, isLoading, isError } = useMediaMatchCandidates(playerSlug, filePath, windowMinutes)
   const associate = useAssociateMediaToMatch(playerSlug)
+  // Phase 4 plan finition multi-titres : libellés outcomes via TOML, fallback FR.
+  const { data: fieldMappings } = useFieldMappings()
+  const outcomeLabel = (outcome: number | null | undefined): { text: string; cls: string } => {
+    if (outcome == null || !(outcome in outcomeClassByCode)) {
+      return { text: '—', cls: 'bg-muted text-muted-foreground border-border' }
+    }
+    const cls = outcomeClassByCode[outcome]
+    const key = outcomeKeyOf(outcome)
+    const text =
+      (key && fieldMappings?.outcomes?.[key]?.label) ?? OUTCOME_LABELS_FALLBACK_FR[outcome] ?? '—'
+    return { text, cls }
+  }
 
   const candidates = data?.candidates ?? []
   const pending = candidates.find((c) => c.match_id === pendingMatchID) ?? null

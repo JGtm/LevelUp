@@ -77,6 +77,17 @@ function SessionStat({ label, value }: { label: string; value: string }) {
 }
 
 function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) {
+  // Phase 4 plan finition multi-titres : libellés outcome via outcomes.toml.
+  // Si MULTI_TITLE_API_ENABLED=false, le hook retourne undefined et on tombe
+  // sur la clé canonique brute (UX dégradée mais lisible).
+  const { data: fieldMappings } = useFieldMappings()
+  const outcomeLabel = (outcome: number | null) => {
+    const key =
+      outcome === 2 ? 'win' : outcome === 3 ? 'loss' : outcome === 1 ? 'tie' : outcome === 4 ? 'dnf' : null
+    if (!key) return '—'
+    return fieldMappings?.outcomes?.[key]?.label ?? key
+  }
+
   if (matches.length === 0) {
     return (
       <EmptyStateNotice
@@ -110,7 +121,7 @@ function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) 
               <td className="px-3 py-3 text-right tabular-nums">{formatPercent(match.accuracy)}</td>
               <td className="px-3 py-3 text-right tabular-nums">{formatNumber(match.performance_score, 1)}</td>
               <td className="px-3 py-3 text-right">
-                {(() => { const tone = matchOutcomeTone(match.outcome); return <span className={tone.className} style={tone.style}>{matchOutcomeLabel(match.outcome)}</span> })()}
+                {(() => { const tone = matchOutcomeTone(match.outcome); return <span className={tone.className} style={tone.style}>{outcomeLabel(match.outcome)}</span> })()}
               </td>
             </tr>
           ))}
@@ -403,15 +414,11 @@ function formatShortDateTime(value: string) {
   }).format(date)
 }
 
-function matchOutcomeLabel(outcome: number | null) {
-  if (outcome === 2) {
-    return 'Victoire'
-  }
-  if (outcome === 3) {
-    return 'Défaite'
-  }
-  return '—'
-}
+// La résolution du libellé d'outcome est faite directement dans le composant
+// SessionMatchesTable via useFieldMappings + outcomes.toml. Le fallback
+// minimal en cas d'API absente est défini inline avec la clé canonique pour
+// rester scannable par le lint anti-hardcode (les libellés FR concrets
+// viennent du TOML).
 
 const OUTCOME_INT_KEY: Record<number, string> = { 2: 'win', 1: 'draw', 3: 'loss', 4: 'dnf' }
 
