@@ -742,7 +742,7 @@ export function HomePage() {
 
             <div className="kpi-stats-grid items-stretch">
               {/* 1 — Parties */}
-              <KPICard label={labelOf('total_matches_played', kpiText.labels.matches)} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
+              <KPICard label={labelOf('total_matches_played', 'Parties')} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
 
               {/* 2 — KDA/FDA coloré comme les tuiles match */}
               {(() => {
@@ -750,7 +750,7 @@ export function HomePage() {
                 const kdaStyle = kda != null ? { color: tokenCssVar(kdScale(kda)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{labelOf('kda', kpiText.labels.kda)}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('kda', 'KDA')}</p>
                     <p className="text-xl font-bold text-muted-foreground" style={kdaStyle}>{kda != null ? kda.toFixed(2) : '—'}</p>
                   </div>
                 )
@@ -765,7 +765,7 @@ export function HomePage() {
                 const neutral = draws + dnfs
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{labelOf('win_rate', kpiText.labels.winRate)}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('win_rate', 'Taux de victoire')}</p>
                     <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
                     <div className="mt-2 w-full">
                       <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
@@ -863,7 +863,7 @@ export function HomePage() {
                 const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{labelOf('accuracy', kpiText.labels.accuracy)}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('accuracy', 'Précision')}</p>
                     <p className="text-xl font-bold text-primary" style={accStyle}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
                   </div>
                 )

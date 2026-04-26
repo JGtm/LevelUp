@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-26] feat(i18n): Phase D-bis — migration dicts i18n React vers useFieldLabel
+
+**Statut** : Complété — 1 commit sur `feat/multi-title-adapters-and-mappings`.
+
+**Décision technique principale** : Suppression des 4 labels FieldKey-backed (`matches`, `kda`, `winRate`, `accuracy`) de `kpi.i18n.ts` ; les call sites dans `HomePage.tsx` passent de `labelOf(key, kpiText.labels.X)` à `labelOf(key, 'Fallback FR')`. Extension de `compare/i18n.ts` : `METRIC_TO_FIELD_KEY` + nouveau `STAT_TO_FIELD_KEY` pour le bloc résumé `stats`, `getCompareText` override les deux sections. Décision de garder la whitelist `*.i18n.ts` dans le linter — ces fichiers sont les fallbacks offline légitimes, pas des violations.
+
+**Fichiers d'analyse** :
+- `highlights.i18n.ts` — déjà migré (SLIDE_TO_FIELD_KEY + resolveLabel + fieldMappings wired) ; aucune action requise.
+- `spartanIdentity.i18n.ts` — labels non-FieldKey (`'Meilleur CSR'` ≠ `'CSR'`, `'Rang carrière'` ≠ `'Rang actuel'`) ; aucune action requise.
+- `palmares/i18n.ts` — labels contextuels non-FieldKey (`'Win rate'` diffère de `'Win Rate'` en casse) ; aucune action requise.
+
+**Résultats observés** :
+- `npx tsc --noEmit` clean.
+- `lint-no-hardcoded-fields` : 0 violation sur 283 fichiers.
+- Tests : 10 fichiers en échec préexistant (K/D absent de HomePage, NavL1 nouvelles entrées, etc.) ; aucun nouveau échec introduit.
+
+**Conclusion** : Phase D-bis livrée. La whitelist `*.i18n.ts` reste permanente (couche offline fallback).
+
 ## [2026-04-26] test(multi-title): vérification finale — couverture + logging conformes au plan §9 + §8.1
 
 **Statut** : Complété — 4 commits sur la branche (`1fa3c9d9` registry tests, `89208631` adapter Assets/Outcomes tests, `b769b4e8` rename log event, `5c12e80a` Vitest assets/outcomes DTO).
