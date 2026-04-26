@@ -38,33 +38,6 @@
 
 ---
 
-### [Multi-titre/Phase D-bis] Migration des dicts i18n React vers `useFieldLabel`
-
-**Noté le** : 2026-04-26 | **Priorité** : Moyenne — débloqué (Phase A→F multi-titres livrées)
-
-**Contexte** : Audit `.ai/AUDIT_I18N_REACT_2026-04-25.md` (§5.1) liste 9 fichiers à migrer vers le hook `useFieldLabel(key)` créé en Phase D (commit `343de0f2`). La Phase D initiale n'a câblé que le hook + lint anti-hardcode + 18 fichiers React qui consomment `useFieldMappings` ; les **dicts FR/EN existants** (`kpi.i18n.ts`, `highlights.i18n.ts`, `compare/i18n.ts`, `spartanIdentity.i18n.ts`, `palmares/i18n.ts`) restent en place. Effort estimé : 5j (cf. AUDIT §5.4, marge +30 % vs estimation initiale 3–4j).
-
-**État actuel** (vérifié 2026-04-26) :
-- ✅ Ternaires inline `locale === 'en' ? 'X' : 'Y'` éradiqués des 4 composants ciblés (timeseries-scatter, timeseries-kda-bars, SquadContributionsPage, MatchViewPage)
-- ❌ ~16 occurrences de labels métier hardcodés (Kills/Deaths/Assists/Précision/Morts/Eliminations) restent dans 3 dicts (kpi.i18n.ts: 1, highlights.i18n.ts: 5, compare/i18n.ts: 10)
-
-**Ce qui doit être fait** (ordre AUDIT §5.1) :
-1. `features/home/kpi.i18n.ts` → remplacer `KPITextDict.labels.*` par `useFieldLabel(key)` ; conserver `units` et `pluralizers` côté React.
-2. `features/home/highlights.i18n.ts` → idem (séparer libellés FieldKey vs phrases hardcodées).
-3. `features/compare/i18n.ts` → idem (fichier petit, 127L).
-4. `features/home/spartanIdentity.i18n.ts` → migrer XP/rang vers TOML, conserver le reste.
-5. `features/palmares/i18n.ts` → tri citations métier vs UI.
-6. Activer la whitelist `*i18n*.ts` dans `tools/lint-no-hardcoded-fields.mjs` une fois la migration finie.
-7. Tests E2E + golden frontend FR/EN pour valider zéro régression.
-
-**Pré-requis** : `MULTI_TITLE_API_ENABLED=true` côté serveur pour que le hook reçoive les libellés (sinon fallback gracieux sur la key).
-
-**Documents liés** :
-- `.ai/AUDIT_I18N_REACT_2026-04-25.md` §5.1 (ordre de migration), §5.3 (lint AST), §5.4 (effort 5j)
-- `apps/web/src/lib/i18n/fieldMappings.ts` (hook `useFieldLabel` déjà disponible)
-
----
-
 ### [Multi-titre] Migration `static/` vers une arborescence title-scoped
 
 **Noté le** : 2026-04-22 | **Priorité** : Basse — ne bloque pas Halo Infinite seul
