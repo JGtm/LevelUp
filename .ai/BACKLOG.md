@@ -106,104 +106,305 @@ static/
 - [internal/analysis/citation_snippets.go:96](apps/go-api/internal/analysis/citation_snippets.go#L96) (commentaire format `image_path`)
 - [internal/assets/kinds.go:14](apps/go-api/internal/assets/kinds.go#L14) (commentaire `KindMapImage` mention `static/maps/`)
 
-#### G. Cas H5G / `commendations/{h5g,hi}/`
+#### G. Cas H5G / `commendations/{h5g,hi}/` — décision verrouillée
 
-`commendations/` utilise les slugs courts historiques `h5g` (Halo 5 Guardians) et `hi` (Halo Infinite), différents du slug canonique `halo_infinite`. Décision à prendre lors de l'onboarding H5G :
-- **Option 1** : conserver les slugs courts pour `commendations/` uniquement → écrire un mapping `slug→folder` dans `static_paths.go` (`{ "halo_infinite": "hi", "halo_5_guardians": "h5g" }`)
-- **Option 2** : renommer `h5g` → `halo_5_guardians` et `hi` → `halo_infinite`, puis UPDATE `citation_mappings.image_path` en bulk (PR séparée d'unification des slugs).
-
-Recommandation : **Option 2** au moment de l'onboarding H5G, pour éliminer la dette historique d'un coup.
+**Décision** : unifier vers les slugs canoniques longs (Option 2). Les raccourcis `h5g`/`hi` sont un reliquat à éliminer.
+- Renommer `static/commendations/h5g/` → `static/commendations/halo_5_guardians/`
+- Renommer `static/commendations/hi/` → `static/commendations/halo_infinite/`
+- UPDATE bulk de `metadata.duckdb.citation_mappings.image_path` :
+  ```sql
+  UPDATE citation_mappings
+  SET image_path = REPLACE(image_path, 'static/commendations/h5g/', 'static/commendations/halo_5_guardians/')
+  WHERE image_path LIKE 'static/commendations/h5g/%';
+  -- idem pour 'hi/' → 'halo_infinite/'
+  ```
+- Effectuer dans **PR 1** (même commit que la migration FS HI), pas de PR séparée — éviter un état intermédiaire incohérent.
 
 ---
 
-### Refactoring proposé : couche d'abstraction unifiée
+### Architecture modulaire proposée — séparation de couches stricte
 
-**Constat** : 5 sites Go + 2 sites React hardcodent le préfixe `/static/<kind>/`. Préalable utile à la migration — permet de la faire en deux temps (refactor sans changer les valeurs, puis migration FS sans toucher aux call sites).
+**Principe** : 4 couches avec responsabilités strictement séparées (SRP). Chaque couche ignore tout des couches au-dessus.
 
-**Nouveau module : `internal/assets/static_paths.go`**
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ Couche 4 — Caller (services produit, handlers, frontend)             │
+│   home.go, home_repo.go, citation_snippets.go, HomePage.tsx          │
+│   Connaît UNIQUEMENT l'identifiant métier (mapName, medalID, tier)   │
+│   Aucune connaissance de path, mountpoint, encodage, naming          │
+└──────────────────┬───────────────────────────────────────────────────┘
+                   ↓ adapter.MapImageURL("Aquarius")  → URL
+┌──────────────────────────────────────────────────────────────────────┐
+│ Couche 3 — TitleAssetURLAdapter (un par titre, derrière interface)   │
+│   internal/games/halo_infinite/adapter_asset_urls.go                 │
+│   Connaît : conventions HI, mapPNGNames, préfixe "120px-HINF-CSR_*", │
+│   encodage espaces map names, fallback sur UUID/empty                │
+│   Délègue la composition path à la couche 2                          │
+└──────────────────┬───────────────────────────────────────────────────┘
+                   ↓ static.URL(KindMap, "halo_infinite", encodedID, ext)
+┌──────────────────────────────────────────────────────────────────────┐
+│ Couche 2 — Static layout / URL composition (générique, sans titre)   │
+│   internal/assets/static/{kinds.go, layout.go, urls.go}              │
+│   Connaît : MountPoint, Folder per Kind, RelPath assembly            │
+│   Pas de connaissance titre, pas de naming convention                │
+│   Pure logique, zero I/O, tests table-driven triviaux                │
+└──────────────────┬───────────────────────────────────────────────────┘
+                   ↓ "/static/maps/halo_infinite/Aquarius.png"
+┌──────────────────────────────────────────────────────────────────────┐
+│ Couche 1 — FS serving (HTTP) — inchangé structurellement              │
+│   internal/api/server.go : http.FileServer générique                 │
+│   Sert l'arbo telle qu'elle est, ignore la sémantique                │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+#### Couche 2 — `internal/assets/static/` (nouveau package, ~80 LoC)
+
+Pure logique, zéro dépendance à un titre ou à une convention de naming.
 
 ```go
-package assets
+// internal/assets/static/kinds.go
+package static
 
-import "path"
-
-// StaticKind identifie un type d'asset servi par /static/.
-// Différent de Kind (qui couvre aussi les assets cachés via cache-aside).
-type StaticKind string
-
+type Kind string
 const (
-    StaticKindMap          StaticKind = "maps"
-    StaticKindMedal        StaticKind = "medals/icons"
-    StaticKindRank         StaticKind = "ranks"
-    StaticKindCommendation StaticKind = "commendations"
-    StaticKindWeapon       StaticKind = "weapons-assets"
+    KindMap          Kind = "map"
+    KindMedal        Kind = "medal"
+    KindCSRRank      Kind = "csr-rank"
+    KindWeapon       Kind = "weapon"
+    KindCommendation Kind = "commendation"
 )
 
-// StaticMountPoint est la racine HTTP des fichiers statiques.
-const StaticMountPoint = "/static"
+func (k Kind) Valid() bool { /* … */ }
 
-// StaticAssetPath construit l'URL relative d'un asset statique title-scopé.
-//   StaticAssetPath(StaticKindMap, "halo_infinite", "Aquarius", ".png")
-//     → "/static/maps/halo_infinite/Aquarius.png"
-//
-// Pour la transition avant migration FS : si titleID == "" → URL flat (legacy).
-// Une fois la migration faite, titleID devient obligatoire.
-func StaticAssetPath(k StaticKind, titleID, id, ext string) string {
-    if titleID == "" {
-        return path.Join(StaticMountPoint, string(k), id+ext)
+// internal/assets/static/layout.go
+const MountPoint = "/static"
+
+// Folder retourne le sous-dossier sous /static/ pour un Kind donné.
+// Centralise la convention historique (medals → "medals/icons", etc.).
+func Folder(k Kind) string {
+    switch k {
+    case KindMap:          return "maps"
+    case KindMedal:        return "medals/icons"
+    case KindCSRRank:      return "ranks"
+    case KindWeapon:       return "weapons-assets"
+    case KindCommendation: return "commendations"
     }
-    return path.Join(StaticMountPoint, string(k), titleID, id+ext)
+    return ""
+}
+
+// internal/assets/static/urls.go
+// URL compose l'URL absolue d'un asset statique title-scopé.
+// L'id doit être pré-encodé (path-safe). Le caller (couche 3) gère l'encodage
+// selon les règles propres au Kind (espaces pour maps, ID numérique pour médailles).
+// Retourne "" si k invalide ou titleSlug/id vide.
+func URL(k Kind, titleSlug, id, ext string) string {
+    if !k.Valid() || titleSlug == "" || id == "" { return "" }
+    return path.Join(MountPoint, Folder(k), titleSlug, id+ext)
+}
+
+// internal/assets/static/fs.go (pour le FileServer + migration tooling)
+// AbsRoot retourne le chemin absolu de la racine /static/ sur le filesystem.
+func AbsRoot(repoRoot string) string { return filepath.Join(repoRoot, "static") }
+
+// AbsKindRoot retourne le répertoire absolu d'un (kind, titleSlug).
+// Utilisé par migrate-static-maps + tests.
+func AbsKindRoot(repoRoot string, k Kind, titleSlug string) string {
+    return filepath.Join(AbsRoot(repoRoot), Folder(k), titleSlug)
 }
 ```
 
-**Côté React : `apps/web/src/lib/staticAssets.ts`**
+Tests : `static_test.go` table-driven (kind, slug, id, ext) → URL attendu, ~15 cas.
+
+#### Couche 3 — interface `TitleAssetURLAdapter` + impl HI
+
+**Ajout dans `internal/games/adapter.go`** :
+
+```go
+// TitleAssetURLAdapter expose la construction d'URLs d'assets statiques
+// title-spécifiques. Convertit un identifiant métier (mapName, medalID, tier)
+// en URL relative, en encapsulant les conventions de naming propres au titre.
+//
+// Implémente la couche 3 du plan static/ multi-titre. Les callers (home,
+// home_repo, citation_snippets, frontend) reçoivent cet adapter via le
+// Resolver et n'ont aucune connaissance du format path/encoding.
+type TitleAssetURLAdapter interface {
+    TitleSlug() string
+
+    MapImageURL(mapName string) string         // "" si invalide/UUID
+    MedalImageURL(medalID uint64) string
+    CSRRankImageURL(tier string, subTier int) string
+    CSRRankImageURLOnyx() string               // cas spécial (sans subTier)
+    WeaponImageURL(weaponName string) string
+    CommendationImageURL(relPath string) string  // pour citation_snippets
+}
+```
+
+**Extension du `Resolver`** :
+
+```go
+type Resolver interface {
+    Data(slug string) (TitleDataAdapter, error)
+    Semantic(slug string) (TitleSemanticAdapter, error)
+    AssetURL(slug string) (TitleAssetURLAdapter, error)  // ← nouveau
+    DefaultSlug() string
+}
+```
+
+**Impl HI : `internal/games/halo_infinite/adapter_asset_urls.go`** (nouveau)
+
+```go
+type AssetURLAdapter struct {
+    titleSlug string
+    mapPNGSet map[string]struct{} // ex-mapPNGNames de home.go (déplacé)
+}
+
+func NewAssetURLAdapter() *AssetURLAdapter {
+    return &AssetURLAdapter{
+        titleSlug: "halo_infinite",
+        mapPNGSet: defaultMapPNGSet, // chargé depuis ranks_loader ou TOML
+    }
+}
+
+func (a *AssetURLAdapter) TitleSlug() string { return a.titleSlug }
+
+func (a *AssetURLAdapter) MapImageURL(mapName string) string {
+    name := strings.TrimSpace(mapName)
+    if name == "" || isUUID(name) { return "" }
+    ext := ".jpg"
+    if _, ok := a.mapPNGSet[name]; ok { ext = ".png" }
+    return static.URL(static.KindMap, a.titleSlug, encodeMapName(name), ext)
+}
+
+func (a *AssetURLAdapter) MedalImageURL(medalID uint64) string {
+    return static.URL(static.KindMedal, a.titleSlug,
+        strconv.FormatUint(medalID, 10), ".png")
+}
+
+func (a *AssetURLAdapter) CSRRankImageURL(tier string, subTier int) string {
+    id := fmt.Sprintf("120px-HINF-CSR_%s%d", tier, subTier)
+    return static.URL(static.KindCSRRank, a.titleSlug, id, ".png")
+}
+
+func (a *AssetURLAdapter) CSRRankImageURLOnyx() string {
+    return static.URL(static.KindCSRRank, a.titleSlug, "120px-HINF-CSR_Onyx", ".png")
+}
+// + WeaponImageURL, CommendationImageURL …
+```
+
+#### Couche 4 — refactor des callers
+
+**`internal/analysis/home.go::buildMapImageURL`** :
+```go
+// Avant : connaît /static/maps/, mapPNGNames, encodage, fallback URL absolute
+// Après : ne connaît que l'adapter
+func buildMapImageURL(adapter games.TitleAssetURLAdapter, mapID, mapName, mapNameFR string) *string {
+    if u := adapter.MapImageURL(mapName);   u != "" { return &u }
+    if u := adapter.MapImageURL(mapNameFR); u != "" { return &u }
+    if mapID == "" { return nil }
+    url := fmt.Sprintf("/api/v1/assets/maps/%s/%s/image", adapter.TitleSlug(), mapID)
+    return &url
+}
+```
+
+**`internal/platform/duckdb/home_repo.go`** : injecter `assetURL games.TitleAssetURLAdapter` dans le constructeur du repo (ou via `MetadataRepo`). Les 3 sites de hardcodage URL deviennent :
+```go
+// L400  : path := r.assetURL.CSRRankImageURLOnyx()
+// L406  : path := r.assetURL.CSRRankImageURL(normalizedTier, normalizedSubTier)
+// L833  : ImageURL := r.assetURL.MedalImageURL(rr.medalID)
+```
+
+**`cmd/migrate-static-maps/main.go`** : utiliser `static.AbsKindRoot` pour scanner et `assetURL.MapImageURL(mapName)` pour générer les `local_path` à upserter.
+
+**Frontend : `apps/web/src/lib/staticAssets/`**
+
+Mêmes 4 couches côté React :
+
+```
+apps/web/src/lib/staticAssets/
+├── kinds.ts          → type Kind = 'map' | 'medal' | 'csr-rank' | …  (couche 2)
+├── layout.ts         → MOUNT_POINT, folderFor(kind), assetURL(...)   (couche 2)
+├── halo_infinite.ts  → mapPNGSet, mapImageURL(name), csrRankURL(...) (couche 3)
+└── useAssetURL.ts    → hook React qui retourne l'adapter du titre courant (couche 3 → 4)
+```
 
 ```ts
-export type StaticKind = 'maps' | 'medals/icons' | 'ranks' | 'weapons-assets' | 'commendations'
-
-export function staticAssetURL(kind: StaticKind, id: string, ext: string, titleSlug = ''): string {
-  if (!titleSlug) return `/static/${kind}/${id}${ext}`
-  return `/static/${kind}/${titleSlug}/${id}${ext}`
+// useAssetURL.ts
+export function useAssetURL(): TitleAssetURLAdapter {
+    const slug = useAppShellStore((s) => s.currentTitleSlug)
+    return useMemo(() => makeAssetURLAdapter(slug), [slug])
 }
+// Dans HomePage.tsx (avant: src="/static/ranks/Unranked.png")
+const assetURL = useAssetURL()
+<img src={assetURL.csrRankImageURL('Unranked', 0)} />
 ```
-
-**Bénéfices** :
-- 1 seule définition du contrat path (avec / sans titleID)
-- Migration FS = un seul flag `titleID` à passer à toutes les call sites
-- Tests unitaires triviaux pour le helper, pas besoin de tester chaque site
-- Découpe la dépendance : refactor (PR 0) **sans rien casser** → migration FS (PR 1) bascule un flag
 
 ---
 
-### Plan de mise en œuvre proposé
+### Bénéfices de l'architecture en couches
 
-#### PR 0 — refactor préparatoire (peut être mergé indépendamment, sans 2e titre)
+| Bénéfice | Détail |
+|---|---|
+| **SRP strict** | Chaque couche : une responsabilité, une raison de changer. |
+| **Title-agnostic généralisé** | Onboarding H5G = ajouter `internal/games/halo_5_guardians/adapter_asset_urls.go` qui implémente `TitleAssetURLAdapter`. Aucun caller modifié. |
+| **Testabilité par couche** | Couche 2 : table-driven sans I/O. Couche 3 : tests sur naming HI seulement. Couche 4 : mock du `TitleAssetURLAdapter`. |
+| **Migration FS découplée du refactor** | PRs 0+1+2 introduisent l'archi sans changer les valeurs (titleSlug = `"halo_infinite"`, FS flat). PR 3 active la title-scoping en ajustant la couche 2 + déplace les fichiers. |
+| **Bug `KindMapImage` override** | Disparaît : la couche 2 prend la place du `WithRootOverride` cassé. |
+| **Convergence avec `assets.Resolver` cache-aside** | À terme, `TitleAssetURLAdapter` peut basculer sur le resolver cache-aside (cf. `PLAN_ASSETS_ABSTRACTION.md`) en un changement local — couche 4 ne change pas. |
+| **Frontend symétrique** | Même découpage côté React, hook `useAssetURL()` masque la résolution titre courant. |
 
-1. Créer `internal/assets/static_paths.go` + tests (`Helper` + `StaticMountPoint` + `StaticAssetPath`)
-2. Créer `apps/web/src/lib/staticAssets.ts` + tests
-3. Remplacer A1, A2, A3, A4, A5 par `assets.StaticAssetPath(...)` (titleID = `"halo_infinite"` en dur pour l'instant)
-4. Remplacer D1, D2 par `staticAssetURL(...)` (titleSlug = depuis `useAppShellStore.currentTitleSlug`)
-5. Garder `StaticAssetPath(_, "", id, ext)` qui retourne le format flat tant que la FS n'est pas migrée → **aucun changement de valeur**, refactor pur
-6. Tests (Go + Vitest) doivent rester verts sans toucher aux fixtures
+---
 
-#### PR 1 — migration FS Halo Infinite (à faire quand H5G arrive ou avant)
+### Ordonnancement révisé (4+1 PRs)
 
-1. `git mv` :
-   - `static/maps/*.{png,jpg}` → `static/maps/halo_infinite/`
-   - `static/medals/icons/*.png` → `static/medals/icons/halo_infinite/`
-   - `static/ranks/*.png` → `static/ranks/halo_infinite/`
-   - `static/weapons-assets/*.png` → `static/weapons-assets/halo_infinite/`
-   - **Pas** `commendations/` (Option 1 : déjà OK ; Option 2 : renommer dans cette même PR)
-2. `StaticAssetPath` : passer le titleID effectif au lieu de `""` partout
-3. UPDATE `map_images_registry.local_path` (E1) — script `scripts/migrate_static_paths.sql` ou option `--migrate-fs` du binaire `migrate-static-maps`
-4. Mettre à jour les fixtures de test (D3, D4)
-5. Vérifier en navigateur : home page (carte mode/map, badge CSR), recent playlists, citations, médailles. Smoke test sur 5 matchs.
+#### PR 0 — couche 2 Go + frontend (générique, neutre)
 
-#### PR 2 — onboarding 2e titre (Halo 5 Guardians ?)
+- Créer `internal/assets/static/{kinds,layout,urls,fs}.go` + tests
+- Créer `apps/web/src/lib/staticAssets/{kinds,layout}.ts` + tests Vitest
+- Aucun caller modifié. Modules nus, prêts à l'emploi.
+- Verts : `go test ./internal/assets/static/` + `npx vitest run src/lib/staticAssets/`
 
-1. `static/maps/halo_5_guardians/`, `medals/icons/halo_5_guardians/`, etc.
-2. `db_profiles.json` : ajouter le nouveau titre
-3. Le code généralisé fonctionne par construction (PR 0 + PR 1 déjà mergées)
+#### PR 1 — couche 3 (interface + impls HI Go & TS)
+
+- Ajouter `TitleAssetURLAdapter` à `internal/games/adapter.go` + extension du `Resolver`
+- Créer `internal/games/halo_infinite/adapter_asset_urls.go` (déplacer `mapPNGNames` depuis `analysis/home.go`)
+- Créer `apps/web/src/lib/staticAssets/halo_infinite.ts` + `useAssetURL.ts`
+- Câbler dans `api/server.go` : `reg.RegisterAssetURL(halo_infinite.NewAssetURLAdapter())`
+- Tests : table-driven HI (mapName → URL, medalID → URL, tier → URL)
+
+#### PR 2 — couche 4 (callers refactor — neutre, valeurs inchangées)
+
+- `home.go::buildMapImageURL` : prend `TitleAssetURLAdapter` en argument
+- `home_repo.go` (3 sites) : injecter `assetURL` via `MetadataRepo` constructor
+- `migrate-static-maps/main.go` : utiliser `static.AbsKindRoot` + `assetURL.MapImageURL`
+- Frontend : 2 composants utilisent `useAssetURL()` au lieu de littéraux
+- Suppression de `mapStaticImagePath` + re-export public `MapStaticImagePath` (mort)
+- Suppression de l'override cassé `WithRootOverride(KindMapImage, ...)` dans `wire.go`
+- Aucune valeur ne change → fixtures de test inchangées
+- Tests existants doivent rester verts (smoke ~30 fixtures)
+
+#### PR 3 — migration FS Halo Infinite + commendations slugs longs
+
+- `git mv` :
+  - `static/maps/*.{png,jpg}` → `static/maps/halo_infinite/`
+  - `static/medals/icons/*.png` → `static/medals/icons/halo_infinite/`
+  - `static/ranks/*.png` → `static/ranks/halo_infinite/`
+  - `static/weapons-assets/*.png` → `static/weapons-assets/halo_infinite/`
+  - `static/commendations/h5g/` → `static/commendations/halo_5_guardians/`
+  - `static/commendations/hi/` → `static/commendations/halo_infinite/`
+- Activer `titleSlug != ""` dans la couche 2 (constante par défaut + assertion non-vide)
+- UPDATE bulk DuckDB :
+  - `map_images_registry.local_path` (E1)
+  - `citation_mappings.image_path` (E2 unifié sur slugs longs)
+- Mettre à jour les fixtures de test (D3, D4 dans audit + Go test files)
+- Smoke navigateur : home (carte mode/map, badge CSR), recent playlists, citations, médailles. 5 matchs.
+
+#### PR 4 — onboarding 2e titre (déclencheur)
+
+- `static/{maps,medals/icons,ranks,weapons-assets,commendations}/halo_5_guardians/`
+- `internal/games/halo_5_guardians/adapter_asset_urls.go` (impl `TitleAssetURLAdapter`)
+- `apps/web/src/lib/staticAssets/halo_5_guardians.ts`
+- `db_profiles.json` + registration dans `api/server.go`
+- Smoke tests de bascule de titre dans le UI
 
 ---
 
