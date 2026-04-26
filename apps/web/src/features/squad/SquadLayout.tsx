@@ -368,13 +368,11 @@ export function SquadLayout() {
               />
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                {isDirty
-                  ? t.selection.dirty
-                  : selectedGts.length === 0
-                    ? t.selection.prompt
-                    : t.selection.applied(confirmedGts.length)}
-              </span>
+              {(isDirty || selectedGts.length === 0) && (
+                <span className="text-xs text-muted-foreground">
+                  {isDirty ? t.selection.dirty : t.selection.prompt}
+                </span>
+              )}
               <button
                 onClick={handleConfirm}
                 disabled={selectedGts.length === 0 && confirmedGts.length === 0}
