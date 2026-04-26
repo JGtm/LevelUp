@@ -53,17 +53,22 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 				slog.WarnContext(ctx, "post_sync: emitter", "slug", slug, "err", err)
 				return
 			}
-			EmitPostSyncDeltas(ctx, emitter, slug, before, after)
+			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2)
 		}
 	}
 }
 
 // PlayerSnapshot capture l'état pertinent d'un joueur pour la détection delta.
 type PlayerSnapshot struct {
-	CurrentRank        int
-	CurrentRankName    string
-	PersonalAwardCount int
-	CitationsCount     int
+	CurrentRank         int
+	CurrentRankName     string
+	PersonalAwardCount  int
+	CitationsCount      int
+	ChallengePathsCount int     // nb challenge_path distinct connus (challenge_snapshots)
+	KDRatio             float64 // KD agrégé sur tous les matchs ingérés
+	Winrate             float64 // 0..1 — fraction de matchs gagnés (outcome=2)
+	BestKDA             float64 // record matériel (kills+assists)/max(deaths,1) sur 1 match
+	BestKDAMatchID      string  // match associé au record
 }
 
 // SnapshotPlayerState lit l'état courant nécessaire à la détection delta.
@@ -103,7 +108,7 @@ func SnapshotPlayerState(ctx context.Context, pdb *duckdb.PlayerDB) (*PlayerSnap
 		s.PersonalAwardCount = int(awardCount.Int64)
 	}
 
-	// Citations : count total (pour challenges_completed futur)
+	// Citations : count total (pour challenges_completed)
 	var citationsCount sql.NullInt64
 	if err := pdb.ReadDB().QueryRow(ctx,
 		`SELECT COUNT(*) FROM match_citations`,
@@ -114,17 +119,90 @@ func SnapshotPlayerState(ctx context.Context, pdb *duckdb.PlayerDB) (*PlayerSnap
 		s.CitationsCount = int(citationsCount.Int64)
 	}
 
+	// Challenge paths distincts (pour challenge_added)
+	var pathsCount sql.NullInt64
+	if err := pdb.ReadDB().QueryRow(ctx,
+		`SELECT COUNT(DISTINCT challenge_path) FROM challenge_snapshots`,
+	).Scan(&pathsCount); err != nil {
+		slog.DebugContext(ctx, "snapshot: challenge paths", "err", err)
+	}
+	if pathsCount.Valid {
+		s.ChallengePathsCount = int(pathsCount.Int64)
+	}
+
+	// KD agrégé + winrate via shared.match_participants (nécessite ATTACH actif)
+	if pdb.XUID != "" {
+		var kd, winrate sql.NullFloat64
+		err := pdb.ReadDB().QueryRow(ctx, `
+			SELECT
+				CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)        AS kd_ratio,
+				AVG(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END)            AS winrate
+			FROM shared.match_participants
+			WHERE xuid = ?`, pdb.XUID).Scan(&kd, &winrate)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			slog.DebugContext(ctx, "snapshot: kd/winrate", "err", err)
+		}
+		if kd.Valid {
+			s.KDRatio = kd.Float64
+		}
+		if winrate.Valid {
+			s.Winrate = winrate.Float64
+		}
+
+		// Best KDA matériel (single match)
+		var bestKDA sql.NullFloat64
+		var matchID sql.NullString
+		err = pdb.ReadDB().QueryRow(ctx, `
+			SELECT
+				CAST(kills + assists AS DOUBLE) / GREATEST(deaths, 1) AS kda,
+				match_id
+			FROM shared.match_participants
+			WHERE xuid = ?
+			ORDER BY kda DESC
+			LIMIT 1`, pdb.XUID).Scan(&bestKDA, &matchID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			slog.DebugContext(ctx, "snapshot: best_kda", "err", err)
+		}
+		if bestKDA.Valid {
+			s.BestKDA = bestKDA.Float64
+		}
+		if matchID.Valid {
+			s.BestKDAMatchID = matchID.String
+		}
+	}
+
 	return s, nil
+}
+
+// thresholdCrossed retourne true si une métrique est passée au-dessus d'un palier
+// (granularité step) entre deux snapshots, vers le haut uniquement.
+//
+// Exemple : before=0.99, after=1.04, step=0.05 → crosses 1.00 → true.
+//
+//	before=1.04, after=0.99, step=0.05 → descente → false.
+func thresholdCrossed(before, after, step float64) (crossed bool, level float64) {
+	if step <= 0 || after <= before {
+		return false, 0
+	}
+	beforeBucket := int(before / step)
+	afterBucket := int(after / step)
+	if afterBucket > beforeBucket {
+		return true, float64(afterBucket) * step
+	}
+	return false, 0
 }
 
 // EmitPostSyncDeltas compare 2 snapshots et émet les notifications applicables.
 //
 // Best-effort : toute erreur est loguée et n'interrompt pas le flux de sync.
+// `pdb` est passé pour persister les nouveaux records ; peut être nil
+// (dans ce cas personal_record est skippé).
 func EmitPostSyncDeltas(
 	ctx context.Context,
 	emitter notifications.Emitter,
 	slug string,
 	before, after *PlayerSnapshot,
+	pdb *duckdb.PlayerDB,
 ) {
 	if emitter == nil || before == nil || after == nil {
 		return
@@ -186,13 +264,167 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// TODO(post-sync v2):
-	// - personal_record : nécessite une table de records (premier KDA > seuil,
-	//   première victoire flawless, série de N victoires). Snapshot pourrait
-	//   inclure max_kda, max_streak, has_flawless.
-	// - threshold_crossed : KD/WR aggregés franchissant un palier (0.05 / 5%).
-	//   Snapshot inclurait current_kd et current_winrate.
-	// - objective_assigned : ne peut être détecté qu'avec un signal "auto-assigned"
-	//   du module Objectifs (pas dans personal_score_awards).
-	// - challenge_added : pareil, signal côté Prestige.
+	// challenge_added : nouveaux challenge_path apparus dans challenge_snapshots
+	if after.ChallengePathsCount > before.ChallengePathsCount {
+		delta := after.ChallengePathsCount - before.ChallengePathsCount
+		if err := emitter.Emit(ctx, notifications.EmitInput{
+			Category: notifications.CategoryChallengeAdded,
+			Severity: notifications.SeverityInfo,
+			TitleKey: "notif.challenge_added.title",
+			BodyKey:  "notif.challenge_added.body",
+			Params: map[string]any{
+				"count": delta,
+				"name":  fmt.Sprintf("%d nouveau(x) défi(s) disponible(s)", delta),
+			},
+			TargetRoute: fmt.Sprintf("/players/%s/defis", slug),
+			Source:      "post_sync",
+		}); err != nil {
+			slog.WarnContext(ctx, "post_sync: challenge_added", "err", err)
+		}
+	}
+
+	// objective_assigned : la table personal_score_awards ne distingue pas
+	// "assigned" vs "completed". Le delta seul détecte une nouvelle entrée
+	// (qui peut être déjà complétée). On émet quand même : l'utilisateur peut
+	// distinguer dans l'UI via les params (target = score atteint vs assigné).
+	// Doublon possible avec objective_completed sur le même match — accepté pour
+	// le MVP, à raffiner avec un signal explicite côté Prestige.
+	if after.PersonalAwardCount > before.PersonalAwardCount {
+		delta := after.PersonalAwardCount - before.PersonalAwardCount
+		if err := emitter.Emit(ctx, notifications.EmitInput{
+			Category: notifications.CategoryObjectiveAssigned,
+			Severity: notifications.SeverityInfo,
+			TitleKey: "notif.objective_assigned.title",
+			BodyKey:  "notif.objective_assigned.body",
+			Params: map[string]any{
+				"count":  delta,
+				"name":   fmt.Sprintf("%d nouvel(s) objectif(s) attribué(s)", delta),
+				"reward": "—",
+			},
+			TargetRoute: fmt.Sprintf("/players/%s/objectifs", slug),
+			Source:      "post_sync",
+		}); err != nil {
+			slog.WarnContext(ctx, "post_sync: objective_assigned", "err", err)
+		}
+	}
+
+	// threshold_crossed — KD ratio (palier 0.05)
+	if crossed, level := thresholdCrossed(before.KDRatio, after.KDRatio, 0.05); crossed {
+		_ = emitter.Emit(ctx, notifications.EmitInput{
+			Category: notifications.CategoryThresholdCrossed,
+			Severity: notifications.SeveritySuccess,
+			TitleKey: "notif.threshold_crossed.title",
+			BodyKey:  "notif.threshold_crossed.body",
+			Params: map[string]any{
+				"metric":    "KD",
+				"value":     fmt.Sprintf("%.2f", level),
+				"direction": "↑",
+			},
+			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+			Source:      "post_sync",
+		})
+	}
+
+	// threshold_crossed — Winrate (palier 0.05 = 5%)
+	if crossed, level := thresholdCrossed(before.Winrate, after.Winrate, 0.05); crossed {
+		_ = emitter.Emit(ctx, notifications.EmitInput{
+			Category: notifications.CategoryThresholdCrossed,
+			Severity: notifications.SeveritySuccess,
+			TitleKey: "notif.threshold_crossed.title",
+			BodyKey:  "notif.threshold_crossed.body",
+			Params: map[string]any{
+				"metric":    "Winrate",
+				"value":     fmt.Sprintf("%.0f%%", level*100),
+				"direction": "↑",
+			},
+			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+			Source:      "post_sync",
+		})
+	}
+
+	// personal_record : best_kda matériel battu
+	if pdb != nil && after.BestKDA > 0 {
+		oldRec, err := loadPlayerRecord(ctx, pdb, "best_kda")
+		if err != nil {
+			slog.DebugContext(ctx, "post_sync: load best_kda record", "err", err)
+		}
+		if oldRec.Loaded && after.BestKDA > oldRec.Value+0.01 {
+			// Record battu → emit + persist
+			_ = emitter.Emit(ctx, notifications.EmitInput{
+				Category: notifications.CategoryPersonalRecord,
+				Severity: notifications.SeveritySuccess,
+				TitleKey: "notif.personal_record.title",
+				BodyKey:  "notif.personal_record.body",
+				Params: map[string]any{
+					"metric":   "KDA",
+					"value":    fmt.Sprintf("%.2f", after.BestKDA),
+					"previous": fmt.Sprintf("%.2f", oldRec.Value),
+				},
+				TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+				Source:      "post_sync",
+			})
+		}
+		// Toujours persister la nouvelle valeur (init au premier passage,
+		// update si battue)
+		if !oldRec.Loaded || after.BestKDA > oldRec.Value+0.01 {
+			if err := upsertPlayerRecord(ctx, pdb, "best_kda", after.BestKDA, after.BestKDAMatchID); err != nil {
+				slog.WarnContext(ctx, "post_sync: persist best_kda", "err", err)
+			}
+		}
+	}
+}
+
+// playerRecord est l'état stocké d'un record dans player_records.
+type playerRecord struct {
+	Loaded        bool
+	Value         float64
+	AchievedMatch string
+}
+
+func loadPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string) (playerRecord, error) {
+	if pdb == nil || pdb.Player == nil {
+		return playerRecord{}, nil
+	}
+	var v sql.NullFloat64
+	var matchID sql.NullString
+	err := pdb.ReadDB().QueryRow(ctx,
+		`SELECT value, achieved_match_id FROM player_records WHERE metric = ?`,
+		metric,
+	).Scan(&v, &matchID)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return playerRecord{}, nil
+	case err != nil:
+		return playerRecord{}, err
+	}
+	return playerRecord{
+		Loaded:        v.Valid,
+		Value:         v.Float64,
+		AchievedMatch: matchID.String,
+	}, nil
+}
+
+func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string, value float64, matchID string) error {
+	rwDB, err := duckdb.OpenReadWrite(pdb.Player.Path())
+	if err != nil {
+		return fmt.Errorf("open rw: %w", err)
+	}
+	defer rwDB.Close()
+	_, err = rwDB.Exec(ctx, `
+		INSERT INTO player_records (metric, value, achieved_at, achieved_match_id, updated_at)
+		VALUES (?, ?, NOW(), ?, NOW())
+		ON CONFLICT (metric) DO UPDATE SET
+			value             = EXCLUDED.value,
+			achieved_at       = EXCLUDED.achieved_at,
+			achieved_match_id = EXCLUDED.achieved_match_id,
+			updated_at        = NOW()
+	`, metric, value, nullableMatchID(matchID))
+	return err
+}
+
+func nullableMatchID(id string) any {
+	if id == "" {
+		return nil
+	}
+	return id
 }

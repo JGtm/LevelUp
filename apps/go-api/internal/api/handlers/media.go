@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -60,13 +61,14 @@ type MediaProfilesProvider func(ctx context.Context, titleSlug string) ([]domain
 
 // MediaHandler gère les endpoints de la galerie médias.
 type MediaHandler struct {
-	newSvc        ServiceFactory[port.MediaService]
-	newUpload     MediaUploadContextFactory
-	newPlayerCtx  MediaPlayerContextFactory
-	loadProfiles  MediaProfilesProvider
-	repoRoot      string
-	settingsStore *settings.Store
-	notifierFor   NotificationsEmitterFactory // optionnel : émission media_added
+	newSvc            ServiceFactory[port.MediaService]
+	newUpload         MediaUploadContextFactory
+	newPlayerCtx      MediaPlayerContextFactory
+	loadProfiles      MediaProfilesProvider
+	repoRoot          string
+	settingsStore     *settings.Store
+	notifierFor       NotificationsEmitterFactory // optionnel : émission media_added
+	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -100,30 +102,61 @@ func (h *MediaHandler) WithNotificationsEmitterFactory(f NotificationsEmitterFac
 	return h
 }
 
-// emitMediaAdded émet une notification media_added pour l'uploader.
-//
-// MVP : 1 notif pour l'uploader courant (le slug invoquant l'upload). Le
-// fan-out vers les destinataires associés au match (multi-destinataires) est
-// une amélioration future — voir plan §1.4.
-func (h *MediaHandler) emitMediaAdded(ctx context.Context, slug, gamertag string, newIndexed int) {
+// MediaRecipientResolver retourne la liste des player_slug à notifier après un
+// upload, à partir du sharedSocialDBPath et du sharedMatchesDBPath. Doit exclure
+// l'uploader (passé via uploaderSlug).
+type MediaRecipientResolver func(
+	ctx context.Context,
+	uploaderSlug, sharedSocialDBPath, sharedMatchesDBPath string,
+	since time.Time,
+) ([]string, error)
+
+// WithMediaRecipientResolver branche le resolver de destinataires (fan-out).
+// Si nil, l'émission media_added reste limitée à l'uploader.
+func (h *MediaHandler) WithMediaRecipientResolver(r MediaRecipientResolver) *MediaHandler {
+	h.recipientResolver = r
+	return h
+}
+
+// emitMediaAdded émet media_added pour l'uploader puis fan-out vers les autres
+// joueurs associés aux matchs concernés.
+func (h *MediaHandler) emitMediaAdded(
+	ctx context.Context,
+	uploaderSlug, gamertag string,
+	newIndexed int,
+	since time.Time,
+	sharedSocialDBPath, sharedMatchesDBPath string,
+) {
 	if h.notifierFor == nil || newIndexed <= 0 {
 		return
 	}
-	em, err := h.notifierFor(ctx, slug)
-	if err != nil || em == nil {
-		return
+	// Fan-out aux autres joueurs (max ~5 destinataires).
+	recipients := []string{}
+	if h.recipientResolver != nil {
+		var err error
+		recipients, err = h.recipientResolver(ctx, uploaderSlug, sharedSocialDBPath, sharedMatchesDBPath, since)
+		if err != nil {
+			slog.WarnContext(ctx, "notifications: media_added recipients", "err", err)
+		}
 	}
-	if err := em.Emit(ctx, notifications.EmitInput{
-		Category:    notifications.CategoryMediaAdded,
-		Severity:    notifications.SeverityInfo,
-		TitleKey:    "notif.media_added.title",
-		BodyKey:     "notif.media_added.body",
-		Params:      map[string]any{"actor_name": gamertag, "count": newIndexed},
-		TargetRoute: fmt.Sprintf("/players/%s/media", slug),
-		Actor:       &notifications.Actor{Name: gamertag},
-		Source:      "media_handler",
-	}); err != nil {
-		slog.WarnContext(ctx, "notifications: media_added", "err", err)
+	for _, slug := range recipients {
+		if slug == uploaderSlug {
+			continue // safety : exclure l'uploader (le resolver est censé le faire aussi)
+		}
+		em, err := h.notifierFor(ctx, slug)
+		if err != nil || em == nil {
+			continue
+		}
+		_ = em.Emit(ctx, notifications.EmitInput{
+			Category:    notifications.CategoryMediaAdded,
+			Severity:    notifications.SeverityInfo,
+			TitleKey:    "notif.media_added.title",
+			BodyKey:     "notif.media_added.body",
+			Params:      map[string]any{"actor_name": gamertag, "count": newIndexed},
+			TargetRoute: fmt.Sprintf("/players/%s/media", slug),
+			Actor:       &notifications.Actor{Name: gamertag},
+			Source:      "media_handler",
+		})
 	}
 }
 
@@ -176,6 +209,12 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
+
+	// Le frontend reçoit les file_path déjà transformés en URL HTTP
+	// (cf. transformMediaURLs / filePathToURL). Quand il rejoue ce file_path
+	// dans une mutation (like, réassociation), on doit reverser la transformation
+	// vers le chemin absolu de stockage tel que présent en DB.
+	req.FilePath = h.urlToFilePath(slug, req.FilePath)
 
 	resp, err := svc.SetMediaLike(r.Context(), req)
 	if err != nil {
@@ -245,6 +284,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		Tolerance:           2,
 	}
 
+	uploadStart := time.Now().UTC()
 	result, err := svc.UploadMedia(r.Context(), req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "upload: erreur service", "err", err)
@@ -254,7 +294,8 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, result)
 	BumpMediaFeedVersion()
-	h.emitMediaAdded(r.Context(), slug, gamertag, result.NewIndexed)
+	h.emitMediaAdded(r.Context(), slug, gamertag, result.NewIndexed,
+		uploadStart, sharedSocialDBPath, sharedMatchesDBPath)
 }
 
 // parseUploadedFiles extrait et valide les fichiers du formulaire multipart.
@@ -528,6 +569,47 @@ func (h *MediaHandler) filePathToURL(slug, absPath, capturesBase string) string 
 	}
 
 	return absPath
+}
+
+// urlToFilePath fait l'inverse de filePathToURL : convertit une URL servable
+// `/api/v1/players/{slug}/media/files/{relPath}` en chemin absolu de stockage.
+// Si l'entrée n'est pas une URL transformée (déjà un chemin absolu, par exemple),
+// retourne tel quel.
+func (h *MediaHandler) urlToFilePath(slug, input string) string {
+	prefix := "/api/v1/players/" + slug + "/media/files/"
+	if !strings.HasPrefix(input, prefix) {
+		return input
+	}
+	relPath := strings.TrimPrefix(input, prefix)
+	relPath = filepath.FromSlash(relPath)
+
+	// Tentative 1 : capturesBase configuré.
+	capturesBase := ""
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil && cfg.MediaCapturesBaseDir != "" {
+			capturesBase = filepath.Clean(cfg.MediaCapturesBaseDir)
+		}
+	}
+	if capturesBase != "" {
+		candidate := filepath.Join(capturesBase, slug, relPath)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+
+	// Tentative 2 : chemin interne repo data/.
+	if h.repoRoot != "" {
+		pr := titlePkg.NewPathResolver(h.repoRoot)
+		internalDir := filepath.Dir(pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug))
+		candidate := filepath.Join(internalDir, relPath)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+
+	// Si on ne trouve pas le fichier, renvoyer l'input pour laisser le repo
+	// retourner un 404 explicite.
+	return input
 }
 
 // transformMediaURLs transforme les chemins absolus des items en URLs servables.

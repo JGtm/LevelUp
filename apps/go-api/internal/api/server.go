@@ -397,7 +397,8 @@ func NewRouter(
 				WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
 					return cfg.LoadPlayers(titleSlug)
 				}).
-				WithNotificationsEmitterFactory(reg.NotificationsEmitter)
+				WithNotificationsEmitterFactory(reg.NotificationsEmitter).
+				WithMediaRecipientResolver(reg.MediaRecipientResolver(cfg))
 			r.Post("/pages/media", media.GetMediaLibrary)
 			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)
