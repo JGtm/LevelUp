@@ -1,57 +1,82 @@
 /**
  * SquadSynergiesPage — onglet Synergies de l'Escouade.
- * Consomme le contexte SquadContext fourni par SquadLayout.
+ *
+ * Consomme le contexte SquadContext fourni par SquadLayout. Distingue 3
+ * états "vides" pour rendre le bug "Comparaison inactive même après
+ * sélection" diagnosticable :
+ *  - no_selection : aucun coéquipier confirmé.
+ *  - invalid_selection : confirmedGts > 0 mais teammates renvoyé vide
+ *    (gamertag pas dans LoadTopTeammates côté backend).
+ *  - no_chart_data : données présentes mais le chart Plotly retourne null.
+ *
+ * Multi-titres : les libellés métier (FieldKey) viennent de useFieldMappings ;
+ * les strings UI viennent de getSquadText. La liste des métriques affichées
+ * est filtrée sur les FieldKeys présents dans le titre courant (graceful
+ * degradation pour les titres minimalistes).
  */
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import type { TeammateRow, TeammateKPIs, PlotlyFigurePayload } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import type { TeammateRow, PlotlyFigurePayload } from '@/lib/api/types'
 import { useSquadContext } from './SquadLayout'
 import { buildHsPkChart } from './charts/hsPkChart'
 import { buildTimelineChart } from './charts/timelineChart'
 import { buildHeatmapChart } from './charts/heatmapChart'
-import { getSeriesColors, resolveToken } from '@/lib/accessibility'
+import { getSeriesColors } from '@/lib/accessibility'
 import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
-
-// ─── Helpers graphiques ───────────────────────────────────────────────────────
+import { getSquadText } from './i18n'
+import { SQUAD_SYNERGY_METRICS, type SquadMetric } from './metrics'
 
 const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
 
-function buildSynergiesChart(
-  rows: TeammateRow[],
-  soloRef: TeammateKPIs | null,
-  fieldMappings?: FieldMappingsResponse,
-): PlotlyFigurePayload {
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
-  const winRate = labelOf('win_rate', 'Taux de victoire')
-  const kdr = labelOf('kdr', 'K/D')
-  const kills = labelOf('kills', 'Kills')
-  const assists = labelOf('assists', 'Assists')
-  const metrics = [winRate, kdr, `${kills}/partie`, `${assists}/partie`]
-  const extract = (k: TeammateKPIs) => [
-    k.win_rate * 100,
-    k.kd_ratio ?? 0,
-    k.kills_per_game ?? 0,
-    k.assists_per_game ?? 0,
-  ]
+/**
+ * Compose le label affiché d'une métrique : libellé canonique du FieldKey
+ * (résolu via fieldMappings) + suffixe d'unité quand pertinent.
+ */
+function metricLabel(
+  m: SquadMetric,
+  mappings: FieldMappingsResponse | undefined,
+  perGameSuffix: string,
+): string {
+  const base = mappings?.fields[m.key]?.label ?? m.key
+  return m.format === 'per_game' ? `${base}${perGameSuffix}` : base
+}
+
+/**
+ * Filtre les métriques absentes du fields.toml du titre courant pour la
+ * dégradation gracieuse multi-titres.
+ */
+function availableMetrics(
+  metrics: readonly SquadMetric[],
+  mappings: FieldMappingsResponse | undefined,
+): SquadMetric[] {
+  if (!mappings) return [...metrics]
+  return metrics.filter((m) => !!mappings.fields[m.key])
+}
+
+interface BarChartArgs {
+  rows: TeammateRow[]
+  metrics: SquadMetric[]
+  labels: string[]
+  withGamertagLabel: (gt: string) => string
+}
+
+function buildSynergiesChart({
+  rows,
+  metrics,
+  labels,
+  withGamertagLabel,
+}: BarChartArgs): PlotlyFigurePayload | null {
+  if (rows.length === 0 || metrics.length === 0) return null
 
   const traces: PlotlyFigurePayload['data'] = rows.map((row, i) => ({
     type: 'bar',
-    name: `Avec ${row.gamertag}`,
-    x: metrics,
-    y: extract(row.with_kpis),
+    name: withGamertagLabel(row.gamertag),
+    x: labels,
+    y: metrics.map((m) => m.extract(row.with_kpis) ?? 0),
     marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
   }))
-
-  if (soloRef)
-    traces.push({
-      type: 'bar',
-      name: 'Référence solo',
-      x: metrics,
-      y: extract(soloRef),
-      marker: { color: resolveToken('divergent-neutral') },
-    })
 
   return {
     data: traces,
@@ -66,16 +91,30 @@ function buildSynergiesChart(
   }
 }
 
-// ─── Composant ────────────────────────────────────────────────────────────────
-
 export function SquadSynergiesPage() {
-  const { selectedRows, soloReference, pageData } = useSquadContext()
-  const { data: fieldMappings } = useFieldMappings()
+  const { selectedRows, confirmedGamertags, pageData } = useSquadContext()
+  const { data: mappings } = useFieldMappings()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getSquadText(locale)
 
+  const metrics = availableMetrics(SQUAD_SYNERGY_METRICS, mappings)
+  const labels = metrics.map((m) => metricLabel(m, mappings, t.units.perGame))
+
+  const hasSelection = confirmedGamertags.length > 0
+  const hasRows = selectedRows.length > 0
+
+  // Construction conditionnelle des graphes pour ne pas dépenser de cycles
+  // en cas de sélection vide / invalide.
   const chart =
-    selectedRows.length > 0 ? buildSynergiesChart(selectedRows, soloReference, fieldMappings) : null
-
-  const hsPkChart = selectedRows.length > 0 ? buildHsPkChart(selectedRows) : null
+    hasRows
+      ? buildSynergiesChart({
+          rows: selectedRows,
+          metrics,
+          labels,
+          withGamertagLabel: t.table.withTeammate,
+        })
+      : null
+  const hsPkChart = hasRows ? buildHsPkChart(selectedRows) : null
   const timelineChart =
     pageData?.timeseries && pageData.timeseries.length > 0
       ? buildTimelineChart(pageData.timeseries)
@@ -85,27 +124,40 @@ export function SquadSynergiesPage() {
       ? buildHeatmapChart(pageData.map_breakdown)
       : null
 
+  // ── Empty states 3-états ────────────────────────────────────────────────
+  let emptyContent: React.ReactNode = null
+  if (!hasSelection) {
+    emptyContent = (
+      <EmptyStateNotice
+        title={t.empty.noSelectionTitle}
+        description={t.empty.noSelectionDescription}
+      />
+    )
+  } else if (!hasRows) {
+    emptyContent = (
+      <EmptyStateNotice
+        title={t.empty.invalidSelectionTitle}
+        description={t.empty.invalidSelectionDescription}
+      />
+    )
+  } else if (!chart) {
+    emptyContent = (
+      <EmptyStateNotice
+        title={t.empty.noChartTitle}
+        description={t.empty.noChartDescription}
+      />
+    )
+  }
+
   return (
     <div className="space-y-4">
       <Card>
         <CardContent className="pt-4">
-          {selectedRows.length === 0 ? (
-            <EmptyStateNotice
-              title="Comparaison inactive"
-              description="Sélectionne au moins un coéquipier pour afficher les synergies."
-            />
-          ) : chart ? (
+          {emptyContent ?? (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Comparaison de tes stats <em>avec</em> chaque coéquipier vs ta référence solo.
-              </p>
-              <PlotlyChart figure={chart} />
+              <p className="text-sm text-muted-foreground">{t.synergies.description}</p>
+              <PlotlyChart figure={chart!} />
             </div>
-          ) : (
-            <EmptyStateNotice
-              title="Synergies indisponibles"
-              description="Le graphique de synergie n'a pas pu être construit avec les données actuelles."
-            />
           )}
         </CardContent>
       </Card>
