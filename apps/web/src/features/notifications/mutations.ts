@@ -22,7 +22,7 @@ interface MutationCtx {
 
 export function useMarkRead({ playerSlug }: MutationCtx) {
   const qc = useQueryClient()
-  return useMutation<MarkResult, Error, number[]>({
+  return useMutation<MarkResult, Error, number[], CacheSnapshot>({
     mutationFn: async (ids: number[]) =>
       api.post<MarkResult>(
         `/players/${playerSlug}/notifications/mark-read`,
@@ -40,7 +40,7 @@ export function useMarkRead({ playerSlug }: MutationCtx) {
 
 export function useMarkUnread({ playerSlug }: MutationCtx) {
   const qc = useQueryClient()
-  return useMutation<void, Error, number>({
+  return useMutation<void, Error, number, CacheSnapshot>({
     mutationFn: async (id: number) =>
       api.patch<void>(`/players/${playerSlug}/notifications/${id}/unread`),
     onMutate: async (id) => {

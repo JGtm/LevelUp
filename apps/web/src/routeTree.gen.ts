@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerSlug'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
 import { Route as PlayersPlayerSlugSquadRouteImport } from './routes/players/$playerSlug/squad'
+import { Route as PlayersPlayerSlugNotificationsRouteImport } from './routes/players/$playerSlug/notifications'
 import { Route as PlayersPlayerSlugMediaRouteImport } from './routes/players/$playerSlug/media'
 import { Route as PlayersPlayerSlugHomeRouteImport } from './routes/players/$playerSlug/home'
 import { Route as PlayersPlayerSlugCareerRouteImport } from './routes/players/$playerSlug/career'
@@ -102,6 +103,12 @@ const PlayersPlayerSlugSquadRoute = PlayersPlayerSlugSquadRouteImport.update({
   path: '/squad',
   getParentRoute: () => PlayersPlayerSlugRoute,
 } as any)
+const PlayersPlayerSlugNotificationsRoute =
+  PlayersPlayerSlugNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
 const PlayersPlayerSlugMediaRoute = PlayersPlayerSlugMediaRouteImport.update({
   id: '/media',
   path: '/media',
@@ -228,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
+  '/players/$playerSlug/notifications': typeof PlayersPlayerSlugNotificationsRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
+  '/players/$playerSlug/notifications': typeof PlayersPlayerSlugNotificationsRoute
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/players/$playerSlug/palmares/compare': typeof PlayersPlayerSlugPalmaresCompareRoute
@@ -294,6 +303,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
   '/players/$playerSlug/media': typeof PlayersPlayerSlugMediaRoute
+  '/players/$playerSlug/notifications': typeof PlayersPlayerSlugNotificationsRoute
   '/players/$playerSlug/squad': typeof PlayersPlayerSlugSquadRouteWithChildren
   '/players/$playerSlug/synthesis': typeof PlayersPlayerSlugSynthesisRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
     | '/players/$playerSlug/media'
+    | '/players/$playerSlug/notifications'
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
     | '/players/$playerSlug/matches/$matchId'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
     | '/players/$playerSlug/media'
+    | '/players/$playerSlug/notifications'
     | '/players/$playerSlug/synthesis'
     | '/players/$playerSlug/matches/$matchId'
     | '/players/$playerSlug/palmares/compare'
@@ -394,6 +406,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
     | '/players/$playerSlug/media'
+    | '/players/$playerSlug/notifications'
     | '/players/$playerSlug/squad'
     | '/players/$playerSlug/synthesis'
     | '/players/$playerSlug/matches/$matchId'
@@ -511,6 +524,13 @@ declare module '@tanstack/react-router' {
       path: '/squad'
       fullPath: '/players/$playerSlug/squad'
       preLoaderRoute: typeof PlayersPlayerSlugSquadRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
+    '/players/$playerSlug/notifications': {
+      id: '/players/$playerSlug/notifications'
+      path: '/notifications'
+      fullPath: '/players/$playerSlug/notifications'
+      preLoaderRoute: typeof PlayersPlayerSlugNotificationsRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
     '/players/$playerSlug/media': {
@@ -687,6 +707,7 @@ interface PlayersPlayerSlugRouteChildren {
   PlayersPlayerSlugCareerRoute: typeof PlayersPlayerSlugCareerRoute
   PlayersPlayerSlugHomeRoute: typeof PlayersPlayerSlugHomeRoute
   PlayersPlayerSlugMediaRoute: typeof PlayersPlayerSlugMediaRoute
+  PlayersPlayerSlugNotificationsRoute: typeof PlayersPlayerSlugNotificationsRoute
   PlayersPlayerSlugSquadRoute: typeof PlayersPlayerSlugSquadRouteWithChildren
   PlayersPlayerSlugSynthesisRoute: typeof PlayersPlayerSlugSynthesisRoute
   PlayersPlayerSlugMatchesMatchIdRoute: typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
@@ -707,6 +728,7 @@ const PlayersPlayerSlugRouteChildren: PlayersPlayerSlugRouteChildren = {
   PlayersPlayerSlugCareerRoute: PlayersPlayerSlugCareerRoute,
   PlayersPlayerSlugHomeRoute: PlayersPlayerSlugHomeRoute,
   PlayersPlayerSlugMediaRoute: PlayersPlayerSlugMediaRoute,
+  PlayersPlayerSlugNotificationsRoute: PlayersPlayerSlugNotificationsRoute,
   PlayersPlayerSlugSquadRoute: PlayersPlayerSlugSquadRouteWithChildren,
   PlayersPlayerSlugSynthesisRoute: PlayersPlayerSlugSynthesisRoute,
   PlayersPlayerSlugMatchesMatchIdRoute:
