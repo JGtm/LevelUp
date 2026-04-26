@@ -36,7 +36,23 @@ function resolveTemplate(
     // Fallback : retourne la clé brute (utile pour repérer les clés manquantes)
     return key
   }
-  return interpolate(template, params)
+  return interpolate(template, enrichParams(params, locale))
+}
+
+// enrichParams ajoute les paramètres dérivés (ex: metric_label depuis metric_key)
+// résolus via i18n. Permet aux templates d'utiliser {metric_label} sans que le
+// backend ait à connaître la locale.
+function enrichParams(
+  params: Record<string, unknown> | undefined,
+  locale: NotificationsLocale,
+): Record<string, unknown> | undefined {
+  if (!params) return params
+  const out = { ...params }
+  if (typeof params.metric_key === 'string' && out.metric_label == null) {
+    const t = getNotificationsText(locale)
+    out.metric_label = t.metricLabel[params.metric_key] ?? params.metric_key
+  }
+  return out
 }
 
 function interpolate(template: string, params?: Record<string, unknown>): string {

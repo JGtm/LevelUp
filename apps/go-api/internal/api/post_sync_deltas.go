@@ -226,18 +226,16 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// objective_completed (agrégé) : nouveaux awards
+	// objective_completed (agrégé) : nouveaux awards. Le frontend résout
+	// le libellé via templates i18n ; on ne passe que les paramètres machine.
 	if after.PersonalAwardCount > before.PersonalAwardCount {
 		delta := after.PersonalAwardCount - before.PersonalAwardCount
 		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryObjectiveCompleted,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.objective_completed.title",
-			BodyKey:  "notif.objective_completed.body",
-			Params: map[string]any{
-				"count": delta,
-				"name":  fmt.Sprintf("%d nouvel(s) objectif(s)", delta),
-			},
+			Category:    notifications.CategoryObjectiveCompleted,
+			Severity:    notifications.SeveritySuccess,
+			TitleKey:    "notif.objective_completed.title",
+			BodyKey:     "notif.objective_completed.body",
+			Params:      map[string]any{"count": delta},
 			TargetRoute: fmt.Sprintf("/players/%s/objectifs", slug),
 			Source:      "post_sync",
 		}); err != nil {
@@ -245,18 +243,16 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// challenge_completed (via citations diff) — émis seulement si delta>0
+	// challenge_completed (via citations diff) — émis seulement si delta>0.
+	// Le frontend résout le libellé via templates i18n.
 	if after.CitationsCount > before.CitationsCount {
 		delta := after.CitationsCount - before.CitationsCount
 		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryChallengeCompleted,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.challenge_completed.title",
-			BodyKey:  "notif.challenge_completed.body",
-			Params: map[string]any{
-				"count": delta,
-				"name":  fmt.Sprintf("%d nouvelle(s) citation(s)", delta),
-			},
+			Category:    notifications.CategoryChallengeCompleted,
+			Severity:    notifications.SeveritySuccess,
+			TitleKey:    "notif.challenge_completed.title",
+			BodyKey:     "notif.challenge_completed.body",
+			Params:      map[string]any{"count": delta},
 			TargetRoute: fmt.Sprintf("/players/%s/defis", slug),
 			Source:      "post_sync",
 		}); err != nil {
@@ -264,18 +260,15 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// challenge_added : nouveaux challenge_path apparus dans challenge_snapshots
+	// challenge_added : nouveaux challenge_path apparus dans challenge_snapshots.
 	if after.ChallengePathsCount > before.ChallengePathsCount {
 		delta := after.ChallengePathsCount - before.ChallengePathsCount
 		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryChallengeAdded,
-			Severity: notifications.SeverityInfo,
-			TitleKey: "notif.challenge_added.title",
-			BodyKey:  "notif.challenge_added.body",
-			Params: map[string]any{
-				"count": delta,
-				"name":  fmt.Sprintf("%d nouveau(x) défi(s) disponible(s)", delta),
-			},
+			Category:    notifications.CategoryChallengeAdded,
+			Severity:    notifications.SeverityInfo,
+			TitleKey:    "notif.challenge_added.title",
+			BodyKey:     "notif.challenge_added.body",
+			Params:      map[string]any{"count": delta},
 			TargetRoute: fmt.Sprintf("/players/%s/defis", slug),
 			Source:      "post_sync",
 		}); err != nil {
@@ -292,15 +285,11 @@ func EmitPostSyncDeltas(
 	if after.PersonalAwardCount > before.PersonalAwardCount {
 		delta := after.PersonalAwardCount - before.PersonalAwardCount
 		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryObjectiveAssigned,
-			Severity: notifications.SeverityInfo,
-			TitleKey: "notif.objective_assigned.title",
-			BodyKey:  "notif.objective_assigned.body",
-			Params: map[string]any{
-				"count":  delta,
-				"name":   fmt.Sprintf("%d nouvel(s) objectif(s) attribué(s)", delta),
-				"reward": "—",
-			},
+			Category:    notifications.CategoryObjectiveAssigned,
+			Severity:    notifications.SeverityInfo,
+			TitleKey:    "notif.objective_assigned.title",
+			BodyKey:     "notif.objective_assigned.body",
+			Params:      map[string]any{"count": delta},
 			TargetRoute: fmt.Sprintf("/players/%s/objectifs", slug),
 			Source:      "post_sync",
 		}); err != nil {
@@ -308,18 +297,15 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// threshold_crossed — KD ratio (palier 0.05)
+	// threshold_crossed — KD ratio (palier 0.05). On envoie metric_key (clé i18n)
+	// + value formaté ; le frontend résout metric_label via i18n.metricLabel.
 	if crossed, level := thresholdCrossed(before.KDRatio, after.KDRatio, 0.05); crossed {
 		_ = emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryThresholdCrossed,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.threshold_crossed.title",
-			BodyKey:  "notif.threshold_crossed.body",
-			Params: map[string]any{
-				"metric":    "KD",
-				"value":     fmt.Sprintf("%.2f", level),
-				"direction": "↑",
-			},
+			Category:    notifications.CategoryThresholdCrossed,
+			Severity:    notifications.SeveritySuccess,
+			TitleKey:    "notif.threshold_crossed.title",
+			BodyKey:     "notif.threshold_crossed.body",
+			Params:      map[string]any{"metric_key": "kd_ratio", "value": fmt.Sprintf("%.2f", level)},
 			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
 			Source:      "post_sync",
 		})
@@ -328,15 +314,11 @@ func EmitPostSyncDeltas(
 	// threshold_crossed — Winrate (palier 0.05 = 5%)
 	if crossed, level := thresholdCrossed(before.Winrate, after.Winrate, 0.05); crossed {
 		_ = emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryThresholdCrossed,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.threshold_crossed.title",
-			BodyKey:  "notif.threshold_crossed.body",
-			Params: map[string]any{
-				"metric":    "Winrate",
-				"value":     fmt.Sprintf("%.0f%%", level*100),
-				"direction": "↑",
-			},
+			Category:    notifications.CategoryThresholdCrossed,
+			Severity:    notifications.SeveritySuccess,
+			TitleKey:    "notif.threshold_crossed.title",
+			BodyKey:     "notif.threshold_crossed.body",
+			Params:      map[string]any{"metric_key": "winrate", "value": fmt.Sprintf("%.0f%%", level*100)},
 			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
 			Source:      "post_sync",
 		})
@@ -349,16 +331,16 @@ func EmitPostSyncDeltas(
 			slog.DebugContext(ctx, "post_sync: load best_kda record", "err", err)
 		}
 		if oldRec.Loaded && after.BestKDA > oldRec.Value+0.01 {
-			// Record battu → emit + persist
+			// Record battu → emit + persist. metric_key résolu côté frontend.
 			_ = emitter.Emit(ctx, notifications.EmitInput{
 				Category: notifications.CategoryPersonalRecord,
 				Severity: notifications.SeveritySuccess,
 				TitleKey: "notif.personal_record.title",
 				BodyKey:  "notif.personal_record.body",
 				Params: map[string]any{
-					"metric":   "KDA",
-					"value":    fmt.Sprintf("%.2f", after.BestKDA),
-					"previous": fmt.Sprintf("%.2f", oldRec.Value),
+					"metric_key": "kda",
+					"value":      fmt.Sprintf("%.2f", after.BestKDA),
+					"previous":   fmt.Sprintf("%.2f", oldRec.Value),
 				},
 				TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
 				Source:      "post_sync",
