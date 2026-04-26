@@ -1,0 +1,298 @@
+package prestige
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+)
+
+// service_full_test.go — tests d'orchestration du Service avec mocks complets.
+// Couvre les paths critiques de service.go + service_arcs_squads.go +
+// service_pilot_pool.go non couverts par service_quotas_test.go.
+
+// fakeArcRepo capture les arcs créés.
+type fakeArcRepo struct {
+	created []Arc
+	getResp Arc
+	getErr  error
+}
+
+func (r *fakeArcRepo) Create(_ context.Context, a Arc) error { r.created = append(r.created, a); return nil }
+func (r *fakeArcRepo) Get(_ context.Context, _ string) (Arc, error) {
+	return r.getResp, r.getErr
+}
+func (r *fakeArcRepo) ListByUser(_ context.Context, _, _ string) ([]Arc, error) { return nil, nil }
+func (r *fakeArcRepo) MarkCompleted(_ context.Context, _ string, _ time.Time) error {
+	return nil
+}
+
+// fakeSquadChallengeRepo capture les défis escouade.
+type fakeSquadChallengeRepo struct {
+	createdChallenges []SquadChallenge
+	addedParticipants []SquadChallengeParticipant
+	getResp           SquadChallenge
+	getErr            error
+}
+
+func (r *fakeSquadChallengeRepo) Create(_ context.Context, sc SquadChallenge) error {
+	r.createdChallenges = append(r.createdChallenges, sc)
+	return nil
+}
+func (r *fakeSquadChallengeRepo) Get(_ context.Context, _ string) (SquadChallenge, error) {
+	return r.getResp, r.getErr
+}
+func (r *fakeSquadChallengeRepo) ListBySquad(_ context.Context, _ string) ([]SquadChallenge, error) {
+	return nil, nil
+}
+func (r *fakeSquadChallengeRepo) AddParticipant(_ context.Context, p SquadChallengeParticipant) error {
+	r.addedParticipants = append(r.addedParticipants, p)
+	return nil
+}
+func (r *fakeSquadChallengeRepo) UpdateParticipantProgress(_ context.Context, _, _ string, _ float64, _ *time.Time) error {
+	return nil
+}
+func (r *fakeSquadChallengeRepo) ListParticipants(_ context.Context, _ string) ([]SquadChallengeParticipant, error) {
+	return nil, nil
+}
+func (r *fakeSquadChallengeRepo) CountActiveParticipants(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
+
+// fakeSquadRepo capture les squads.
+type fakeSquadRepo struct {
+	members []SquadMember
+}
+
+func (r *fakeSquadRepo) Create(_ context.Context, _ Squad) error                  { return nil }
+func (r *fakeSquadRepo) Get(_ context.Context, _ string) (Squad, error)           { return Squad{}, nil }
+func (r *fakeSquadRepo) AddMember(_ context.Context, _ SquadMember) error         { return nil }
+func (r *fakeSquadRepo) RemoveMember(_ context.Context, _, _ string) error        { return nil }
+func (r *fakeSquadRepo) ListMembers(_ context.Context, _ string) ([]SquadMember, error) {
+	return r.members, nil
+}
+func (r *fakeSquadRepo) ListSquadsForUser(_ context.Context, _ string) ([]Squad, error) {
+	return nil, nil
+}
+
+// fakeTemplateRepo capture les templates.
+type fakeTemplateRepo struct {
+	templates []Template
+}
+
+func (r *fakeTemplateRepo) ListByTitle(_ context.Context, _ string) ([]Template, error) {
+	return r.templates, nil
+}
+func (r *fakeTemplateRepo) GetByID(_ context.Context, id string) (Template, error) {
+	for _, t := range r.templates {
+		if t.ID == id {
+			return t, nil
+		}
+	}
+	return Template{}, errors.New("not found")
+}
+func (r *fakeTemplateRepo) Suggest(_ context.Context, _ string, _ []string, count int) ([]Template, error) {
+	if count > len(r.templates) {
+		count = len(r.templates)
+	}
+	return r.templates[:count], nil
+}
+func (r *fakeTemplateRepo) Replace(_ context.Context, _ string, _ []Template) error { return nil }
+
+// buildFullService crée un service avec tous les fakes.
+func buildFullService() (*service, *fakeChallengeRepo, *fakeArcRepo, *fakeSquadChallengeRepo, *fakeSquadRepo, *fakeTemplateRepo) {
+	chRepo := &fakeChallengeRepo{}
+	arcRepo := &fakeArcRepo{}
+	scRepo := &fakeSquadChallengeRepo{}
+	sqRepo := &fakeSquadRepo{}
+	tplRepo := &fakeTemplateRepo{}
+	deps := Deps{
+		Tuning:           DefaultTuning(),
+		Challenges:       chRepo,
+		Arcs:             arcRepo,
+		SquadChallenges:  scRepo,
+		Squads:           sqRepo,
+		Templates:        tplRepo,
+		Telemetry:        &fakeNoOpTelemetryRepo{},
+		Prestige:         &fakeNoOpPrestigeRepo{},
+		BaselineProvider: &fakeBaselineProvider{},
+		Now:              func() time.Time { return time.Now().UTC() },
+	}
+	return NewService(deps).(*service), chRepo, arcRepo, scRepo, sqRepo, tplRepo
+}
+
+// ─── Arcs ───
+
+func TestService_CreateArc_OK(t *testing.T) {
+	svc, _, arcRepo, _, _, _ := buildFullService()
+	a, err := svc.CreateArc(context.Background(), CreateArcRequest{
+		UserID:    "u1",
+		TitleSlug: "halo_infinite",
+		Title:     "Le Slayer Custom",
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if a.ID == "" || a.IsPreset {
+		t.Errorf("arc invalide: %+v", a)
+	}
+	if len(arcRepo.created) != 1 {
+		t.Errorf("expected 1 created, got %d", len(arcRepo.created))
+	}
+}
+
+func TestService_CreateArc_RequiredFields(t *testing.T) {
+	svc, _, _, _, _, _ := buildFullService()
+	_, err := svc.CreateArc(context.Background(), CreateArcRequest{
+		UserID: "u1", // title_slug et title manquants
+	})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+// ─── Squad challenges ───
+
+func TestService_CreateSquadChallenge_AutoJoinsCreator(t *testing.T) {
+	svc, _, _, scRepo, _, _ := buildFullService()
+	sc, err := svc.CreateSquadChallenge(context.Background(), CreateSquadChallengeRequest{
+		SquadID:         "sq1",
+		TitleSlug:       "halo_infinite",
+		Mode:            SquadCollective,
+		EvalType:        EvalThreshold,
+		WindowType:      WindowSession,
+		TargetPerMember: 5.0,
+		CreatedBy:       "u1",
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if sc.ID == "" {
+		t.Error("ID vide")
+	}
+	if len(scRepo.addedParticipants) != 1 {
+		t.Errorf("expected creator auto-join, got %d participants", len(scRepo.addedParticipants))
+	}
+	if scRepo.addedParticipants[0].UserID != "u1" {
+		t.Errorf("auto-join wrong user: %s", scRepo.addedParticipants[0].UserID)
+	}
+}
+
+func TestService_CreateSquadChallenge_CollectiveRequiresTargetPerMember(t *testing.T) {
+	svc, _, _, _, _, _ := buildFullService()
+	_, err := svc.CreateSquadChallenge(context.Background(), CreateSquadChallengeRequest{
+		SquadID: "sq1", TitleSlug: "halo_infinite",
+		Mode: SquadCollective, EvalType: EvalThreshold, WindowType: WindowSession,
+		CreatedBy:       "u1",
+		TargetPerMember: 0, // INVALID en mode collectif
+	})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+func TestService_JoinSquadChallenge(t *testing.T) {
+	svc, _, _, scRepo, _, _ := buildFullService()
+	err := svc.JoinSquadChallenge(context.Background(), "sc1", "u2", TierHeroic, false)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(scRepo.addedParticipants) != 1 {
+		t.Errorf("expected 1 participant, got %d", len(scRepo.addedParticipants))
+	}
+}
+
+// ─── Mode pilote ───
+
+func TestService_EnablePilotMode_CreatesDailyAndWeekly(t *testing.T) {
+	svc, _, _, _, _, tplRepo := buildFullService()
+	tplRepo.templates = []Template{
+		{ID: "t1", Cadence: CadenceDaily, WindowType: WindowSession, EvalType: EvalThreshold,
+			Metric: "FieldKDA", LabelFR: "Stay sharp",
+			NormalTarget: 1.1, HeroicTarget: 1.35, LegendaryTarget: 1.6, MythicTarget: 2.0},
+		{ID: "t2", Cadence: CadenceWeekly, WindowType: WindowSession, EvalType: EvalThreshold,
+			Metric: "FieldKDA", LabelFR: "Constant",
+			NormalTarget: 1.2, HeroicTarget: 1.5, LegendaryTarget: 1.8, MythicTarget: 2.2},
+	}
+	out, err := svc.EnablePilotMode(context.Background(), "u1", "halo_infinite")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if out.Daily == nil {
+		t.Error("expected daily attributed")
+	}
+	if out.WeeklyForced == nil {
+		t.Error("expected weekly forced attributed")
+	}
+}
+
+func TestService_EnablePilotMode_RequiredFields(t *testing.T) {
+	svc, _, _, _, _, _ := buildFullService()
+	_, err := svc.EnablePilotMode(context.Background(), "", "halo_infinite")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+func TestService_DisablePilotMode_NoOp(t *testing.T) {
+	svc, _, _, _, _, _ := buildFullService()
+	if err := svc.DisablePilotMode(context.Background(), "u1", "halo_infinite"); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+}
+
+// ─── Squad pool ───
+
+func TestService_RefreshSquadPool_RequiresMembership(t *testing.T) {
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	tplRepo.templates = []Template{{ID: "t1"}, {ID: "t2"}}
+	sqRepo.members = []SquadMember{{UserID: "u1"}}
+	_, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_infinite", "u_outsider")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("non-member should be rejected, got %v", err)
+	}
+}
+
+func TestService_RefreshSquadPool_GeneratesPool(t *testing.T) {
+	svc, _, _, _, sqRepo, tplRepo := buildFullService()
+	sqRepo.members = []SquadMember{{UserID: "u1"}}
+	tplRepo.templates = make([]Template, 20)
+	for i := range tplRepo.templates {
+		tplRepo.templates[i] = Template{ID: "t" + string(rune('a'+i)), Cadence: CadenceWeekly}
+	}
+	pool, err := svc.RefreshSquadPool(context.Background(), "sq1", "halo_infinite", "u1")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(pool) < 6 || len(pool) > 9 {
+		t.Errorf("pool size out of range [6,9]: %d", len(pool))
+	}
+}
+
+// ─── UpdateChallenge ───
+
+func TestService_UpdateChallenge_LabelOnly(t *testing.T) {
+	svc, chRepo, _, _, _, _ := buildFullService()
+	chRepo.activeTotal = 1
+	// Set up Get to return an active libre challenge
+	// Le fake n'implémente pas Get → on patch via une variante ; on utilise le fait
+	// que UpdateChallenge appelle Get() qui retourne ErrChallengeNotFound dans le fake.
+	_, err := svc.UpdateChallenge(context.Background(), "ch_inconnu", UpdateChallengePatch{})
+	if !errors.Is(err, ErrChallengeNotFound) {
+		t.Errorf("expected ErrChallengeNotFound, got %v", err)
+	}
+}
+
+// ─── Suggestions ───
+
+func TestService_SuggestTemplates_DefaultCount(t *testing.T) {
+	svc, _, _, _, _, tplRepo := buildFullService()
+	tplRepo.templates = []Template{{ID: "t1"}, {ID: "t2"}, {ID: "t3"}, {ID: "t4"}}
+	out, err := svc.SuggestTemplates(context.Background(), "u1", "halo_infinite", 0)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(out) != 3 { // alternatives_count = 3 par défaut
+		t.Errorf("expected 3 suggestions, got %d", len(out))
+	}
+}

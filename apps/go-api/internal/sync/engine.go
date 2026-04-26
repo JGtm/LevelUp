@@ -38,6 +38,7 @@ const (
 type SyncEngine struct {
 	gamertag       string
 	xuid           string
+	titleSlug      string
 	playerDBPath   string
 	sharedDBPath   string
 	metadataDBPath string
@@ -47,6 +48,10 @@ type SyncEngine struct {
 	provider auth.TokenProvider
 	// resolver est utilisé pour le pré-warming des images d'achievements (optionnel).
 	resolver assets.Resolver
+	// prestigeHook est appelé après ingestion (best-effort, no-op si nil).
+	// Reçoit (ctx, gamertag, titleSlug) — le hook se charge lui-même de
+	// la résolution Prestige et du feature flag.
+	prestigeHook func(ctx context.Context, gamertag, titleSlug string)
 }
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -65,12 +70,23 @@ func NewSyncEngine(
 	return &SyncEngine{
 		gamertag:       gamertag,
 		xuid:           xuid,
+		titleSlug:      titlePkg.DefaultSlug,
 		playerDBPath:   pr.PlayerDBPath(titlePkg.DefaultSlug, gamertag),
 		sharedDBPath:   pr.SharedDBPath(titlePkg.DefaultSlug),
 		metadataDBPath: pr.MetadataDBPath(titlePkg.DefaultSlug),
 		tokens:         tokens,
 		provider:       provider,
 	}
+}
+
+// WithPrestigeHook attache un hook post-sync (best-effort).
+//
+// Le hook reçoit (ctx, gamertag, titleSlug) après que match_participants
+// soit écrit. Il est responsable de gérer le feature flag et de ne jamais
+// propager d'erreur (le sync ne doit pas échouer à cause de Prestige).
+func (e *SyncEngine) WithPrestigeHook(hook func(ctx context.Context, gamertag, titleSlug string)) *SyncEngine {
+	e.prestigeHook = hook
+	return e
 }
 
 // WithResolver attache un Resolver pour le pré-warming des images d'achievements.
@@ -283,6 +299,14 @@ done:
 	// ─── sync_meta ──────────────────────────────────────────────────────────────
 	if err := SetSyncMeta(playerDB, "last_delta_sync", time.Now().UTC().Format(time.RFC3339)); err != nil {
 		result.AddWarning(fmt.Sprintf("SetSyncMeta: %v", err))
+	}
+
+	// ─── Hook Prestige (post-sync) ──────────────────────────────────────────────
+	// Best-effort : ré-évalue les défis Prestige actifs après ingestion.
+	// No-op si feature flag PRESTIGE_ENABLED off ou si le hook n'est pas câblé.
+	// Le hook ne propage jamais d'erreur pour ne pas casser le sync.
+	if e.prestigeHook != nil {
+		e.prestigeHook(ctx, e.gamertag, e.titleSlug)
 	}
 
 	result.FinishedAt = time.Now()

@@ -55,6 +55,23 @@ type Service interface {
 	JoinSquadChallenge(ctx context.Context, challengeID, userID string, chosenTier Tier, isPrivate bool) error
 	GetSquadChallenge(ctx context.Context, id string) (SquadChallenge, error)
 	ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error)
+	RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]Template, error)
+
+	// Mode pilote (auto-attribution)
+	EnablePilotMode(ctx context.Context, userID, titleSlug string) (PilotModeAttribution, error)
+	DisablePilotMode(ctx context.Context, userID, titleSlug string) error
+}
+
+// PilotModeAttribution est le résultat d'une activation du mode pilote.
+//
+// Référence : Axe 7 du plan conceptuel.
+//   - Daily       : 1 défi auto-attribué pour la journée
+//   - WeeklyForced: 1 défi forcé pour la semaine
+//   - WeeklyChoices: 3 défis proposés, le joueur en choisit au moins 1
+type PilotModeAttribution struct {
+	Daily          *Challenge   `json:"daily,omitempty"`
+	WeeklyForced   *Challenge   `json:"weekly_forced,omitempty"`
+	WeeklyChoices  []Template   `json:"weekly_choices"`
 }
 
 // CreateArcRequest est l'entrée pour créer un arc libre.

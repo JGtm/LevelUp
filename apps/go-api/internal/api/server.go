@@ -125,11 +125,20 @@ func NewRouter(
 		hiOutcomes, _ := fieldMappingsRegistry.GetOutcomes(titlePkg.DefaultSlug)
 		if sem := halo_games.NewSemanticAdapter(hiFields, hiRanks, hiAssets, hiOutcomes); sem != nil {
 			titleResolver.RegisterSemantic(sem)
-			slog.Info("title_semantic_adapter_registered",
+			// Plan multi-titres §8.1 : event adapter_loaded au boot du semantic adapter.
+			slog.Info("adapter_loaded",
 				"title_slug", sem.TitleSlug(),
+				"kind", "semantic",
 				"schema_version", sem.SchemaVersion(),
 				"assets_loaded", hiAssets != nil,
 				"outcomes_loaded", hiOutcomes != nil,
+				"ranks_count", hiRanks.Len(),
+			)
+		} else {
+			slog.Error("adapter_load_failed",
+				"title_slug", titlePkg.DefaultSlug,
+				"kind", "semantic",
+				"reason", "fields_mapping_set_nil",
 			)
 		}
 	}
@@ -137,9 +146,13 @@ func NewRouter(
 	// La capability career.progression sera "not_exposed" pour ce DataAdapter
 	// global ; les futurs handlers player-scoped instancieront leur propre
 	// DataAdapter avec le CareerRepo du joueur courant via un MiddleWare DI.
-	titleResolver.RegisterData(halo_games.NewDataAdapter(nil, slog.Default()))
-	slog.Info("title_data_adapter_registered_global",
+	hiData := halo_games.NewDataAdapter(nil, slog.Default())
+	titleResolver.RegisterData(hiData)
+	// Plan multi-titres §8.1 : event adapter_loaded au boot du data adapter.
+	slog.Info("adapter_loaded",
 		"title_slug", titlePkg.DefaultSlug,
+		"kind", "data",
+		"capabilities_count", len(hiData.Capabilities()),
 		"note", "player-scoped CareerSource sera injectée endpoint par endpoint",
 	)
 
