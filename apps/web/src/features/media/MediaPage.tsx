@@ -167,8 +167,12 @@ export function MediaPage() {
   const [likedOnly, setLikedOnly] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
 
+  // Par défaut on filtre sur les médias DU joueur courant. Le AuthorsMultiSelect
+  // permet d'élargir explicitement à d'autres auteurs (qui prend le pas sur
+  // section_filter via la logique backend).
   const request: MediaQueryRequest = {
     sort: sortKey,
+    section_filter: authorSlugs.length > 0 ? null : 'mine',
     kind_filter: kindFilter || null,
     author_slugs: authorSlugs.length > 0 ? authorSlugs : null,
     map_filter: mapFilter || null,
