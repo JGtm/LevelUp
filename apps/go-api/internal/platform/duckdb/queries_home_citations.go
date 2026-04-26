@@ -454,15 +454,21 @@ const q37MediaFromClause = q37LegacyMediaFromClause
 // (sinon "Forge: Argyle" deviendrait "Forge", "Recharge Annex" deviendrait "Recharge").
 const q37MediaMapLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.map_name_fr, mr.map_name, ''), '\s+v\d+$', '', 'i'), '\s*-\s*Forge.*$', '', 'i'), '\s*-\s*Ranked.*$', '', 'i')), '')`
 
-// q37MediaModeLabelExpr normalise le pair_name pour grouper les variantes par
-// mode canonique. Strip dans cet ordre :
+// q37MediaModeLabelExpr extrait le mode "parent" depuis pair_name :
 //
-//  1. Préfixe catégorie ("Arena:", "Community:", "Super Fiesta:" ...) — sinon
-//     "Arena:Slayer" et "Super Fiesta:Slayer" restent distincts du canonique
-//     "Slayer" et le filtre mode ne matche jamais.
-//  2. " on Bazaar" (suffixe carte) — ex: "Slayer on Bazaar" -> "Slayer"
-//  3. " - Forge" / " - Ranked" — variantes de playlist
-const q37MediaModeLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), '^[^:]+:\s*', '', ''), ' on .+$', '', 'i'), '\s*-\s*Forge\b', '', 'i'), '\s*-\s*Ranked\b', '', 'i')), '')`
+//   - Si le pair_name contient ":" : on garde UNIQUEMENT le préfixe avant
+//     ("Arena:Slayer on Bazaar" -> "Arena", "Super Fiesta:Slayer - Forge" -> "Super Fiesta",
+//     "Community:Team Slayer" -> "Community"). Les sous-modes (Slayer/CTF/KOTH)
+//     sont considérés comme des sous-genres de la grande catégorie de matchmaking.
+//   - Sinon : strip suffixes carte/Forge/Ranked et garde le label canonique
+//     (ex: "Husky Raid" -> "Husky Raid", "Slayer on Bazaar" -> "Slayer").
+const q37MediaModeLabelExpr = `NULLIF(TRIM(
+	CASE
+		WHEN POSITION(':' IN COALESCE(mr.pair_name_fr, mr.pair_name, '')) > 0
+		THEN regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), ':.*$', '', '')
+		ELSE regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), ' on .+$', '', 'i'), '\s*-\s*Forge\b.*$', '', 'i'), '\s*-\s*Ranked\b.*$', '', 'i')
+	END
+), '')`
 
 type mediaWhereConfig struct {
 	includeMapFilter      bool
