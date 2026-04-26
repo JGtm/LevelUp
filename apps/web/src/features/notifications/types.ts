@@ -12,6 +12,7 @@ export type NotificationCategory =
   | 'app_release'
   | 'match_synced'
   | 'media_added'
+  | 'media_liked'
   | 'objective_assigned'
   | 'objective_completed'
   | 'challenge_added'
@@ -25,6 +26,7 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
   'match_synced',
   'media_added',
+  'media_liked',
   'objective_assigned',
   'objective_completed',
   'challenge_added',

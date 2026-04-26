@@ -19,6 +19,7 @@ const ICONS: Record<NotificationCategory, React.ComponentType<{ className?: stri
   app_release: IconSparkles,
   match_synced: IconCheck,
   media_added: IconImage,
+  media_liked: IconHeart,
   objective_assigned: IconTarget,
   objective_completed: IconCheck,
   challenge_added: IconFlag,
@@ -80,6 +81,14 @@ function IconImage({ className }: { className?: string }) {
         d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l2.5-3.5 2 2.5L12 9l4 6z"
         clipRule="evenodd"
       />
+    ),
+  })
+}
+function IconHeart({ className }: { className?: string }) {
+  return svg({
+    className,
+    children: (
+      <path d="M10 18s-7-4.35-7-9.5A4.5 4.5 0 0110 4.5 4.5 4.5 0 0117 8.5C17 13.65 10 18 10 18z" />
     ),
   })
 }
