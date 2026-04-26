@@ -212,6 +212,12 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	// Charger les matchs communs.
 	squadMatches, err := s.repo.LoadSquadMatches(ctx, playerXUID, teammateXUID)
 	if err != nil {
+		// Erreur DB : on log avec contexte (le warn générique
+		// "teammates: erreur buildTeammateRow" du caller perd le détail
+		// du XUID résolu, on conserve donc une trace ciblée ici).
+		slog.ErrorContext(ctx, "teammates_load_squad_matches_failed",
+			"player_xuid", playerXUID, "teammate_xuid", teammateXUID,
+			"gamertag", gamertag, "err", err.Error())
 		return nil, nil, fmt.Errorf("buildTeammateRowWithMatches LoadSquadMatches: %w", err)
 	}
 
