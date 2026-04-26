@@ -2,6 +2,8 @@ import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 interface ThemeToggleProps {
   className?: string
+  /** 'sidebar' (défaut) — tokens sidebar. 'menu' — tokens neutres pour dropdown/popover. */
+  variant?: 'sidebar' | 'menu'
 }
 
 function MoonIcon() {
@@ -36,11 +38,25 @@ function SunIcon() {
   )
 }
 
-export function ThemeToggle({ className = '' }: ThemeToggleProps) {
+export function ThemeToggle({ className = '', variant = 'sidebar' }: ThemeToggleProps) {
   const theme = useSettingsDraftStore((state) => state.localUiPrefs.theme)
   const toggleTheme = useSettingsDraftStore((state) => state.toggleTheme)
   const isDark = theme === 'dark'
   const label = isDark ? 'Passer au thème clair' : 'Passer au thème sombre'
+
+  const trackClass =
+    variant === 'menu'
+      ? isDark
+        ? 'border-border bg-accent hover:bg-accent/80'
+        : 'border-border bg-muted hover:bg-muted/80'
+      : isDark
+        ? 'border-sidebar-border bg-sidebar-accent hover:bg-sidebar-accent/80'
+        : 'border-sidebar-border bg-sidebar-primary/20 hover:bg-sidebar-primary/25'
+
+  const thumbClass =
+    variant === 'menu'
+      ? 'bg-foreground/80 text-background shadow-md'
+      : 'bg-background text-sidebar-foreground shadow-sm'
 
   return (
     <button
@@ -51,15 +67,16 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
       title={label}
       onClick={toggleTheme}
       className={[
-        'flex h-7 w-12 shrink-0 items-center rounded-full border border-sidebar-border px-1 text-sidebar-foreground/70 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-        isDark ? 'bg-sidebar-accent hover:bg-sidebar-accent/80' : 'bg-sidebar-primary/20 hover:bg-sidebar-primary/25',
+        'flex h-7 w-12 shrink-0 items-center rounded-full border px-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+        trackClass,
         className,
       ].join(' ')}
     >
       <span className="sr-only">Thème</span>
       <span
         className={[
-          'flex h-5 w-5 items-center justify-center rounded-full bg-background text-sidebar-foreground shadow-sm transition-transform duration-200',
+          'flex h-5 w-5 items-center justify-center rounded-full transition-transform duration-200',
+          thumbClass,
           isDark ? 'translate-x-0' : 'translate-x-5',
         ].join(' ')}
       >
