@@ -8,6 +8,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -78,16 +79,28 @@ func (r *ServiceRegistry) MediaRecipientResolver(cfg *config.AppConfig) func(
 		}
 		matchIDs, err := loadRecentMediaMatchIDs(ctx, sharedSocialDBPath, since)
 		if err != nil {
+			slog.WarnContext(ctx, "media_recipients: load match associations",
+				"uploader", uploaderSlug, "since", since, "err", err)
 			return nil, fmt.Errorf("recent media associations: %w", err)
 		}
 		if len(matchIDs) == 0 {
+			slog.DebugContext(ctx, "media_recipients: no recent associations",
+				"uploader", uploaderSlug, "since", since)
 			return nil, nil
 		}
 		xuids, err := loadParticipantXUIDs(ctx, sharedMatchesDBPath, matchIDs)
 		if err != nil {
+			slog.WarnContext(ctx, "media_recipients: load participants",
+				"match_count", len(matchIDs), "err", err)
 			return nil, fmt.Errorf("participants xuids: %w", err)
 		}
-		return xuidsToSlugs(cfg, uploaderSlug, xuids, 5), nil
+		recipients := xuidsToSlugs(cfg, uploaderSlug, xuids, 5)
+		slog.InfoContext(ctx, "media_recipients: resolved",
+			"uploader", uploaderSlug,
+			"matches", len(matchIDs),
+			"xuids", len(xuids),
+			"recipients", len(recipients))
+		return recipients, nil
 	}
 }
 

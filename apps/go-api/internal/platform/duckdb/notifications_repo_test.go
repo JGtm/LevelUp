@@ -370,3 +370,64 @@ func TestNotificationsRepo_CapAndSweep(t *testing.T) {
 		t.Errorf("expected 3 items after cap=3, got %d", len(res.Items))
 	}
 }
+
+// ─── player_records (table d'records pour personal_record) ───────────────
+
+// newPlayerRecordsTestDB crée un stats.duckdb minimal avec player_records seul
+// (pour exercer loadPlayerRecord/upsertPlayerRecord en isolation).
+func newPlayerRecordsTestDB(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "stats.duckdb")
+	rw, err := duckdb.OpenReadWrite(dbPath)
+	if err != nil {
+		t.Fatalf("OpenReadWrite: %v", err)
+	}
+	defer rw.Close()
+
+	if _, err := rw.Exec(context.Background(), `
+		CREATE TABLE player_records (
+			metric            VARCHAR PRIMARY KEY,
+			value             DOUBLE NOT NULL,
+			achieved_at       TIMESTAMP,
+			achieved_match_id VARCHAR,
+			updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`); err != nil {
+		t.Fatalf("CREATE TABLE player_records: %v", err)
+	}
+	return dbPath
+}
+
+func TestPlayerRecords_UpsertAndLoad(t *testing.T) {
+	dbPath := newPlayerRecordsTestDB(t)
+	pdb := openNotifPlayerDB(t, dbPath)
+	ctx := context.Background()
+
+	// Init
+	rwDB, err := duckdb.OpenReadWrite(pdb.Player.Path())
+	if err != nil {
+		t.Fatalf("rwDB: %v", err)
+	}
+	if _, err := rwDB.Exec(ctx, `
+		INSERT INTO player_records (metric, value, achieved_match_id)
+		VALUES ('best_kda', 4.5, 'm1')`); err != nil {
+		t.Fatalf("seed insert: %v", err)
+	}
+	rwDB.Close()
+
+	// Read via raw SQL pour vérifier round-trip
+	var v float64
+	var matchID string
+	err = pdb.ReadDB().QueryRow(ctx,
+		`SELECT value, achieved_match_id FROM player_records WHERE metric = 'best_kda'`,
+	).Scan(&v, &matchID)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if v != 4.5 {
+		t.Errorf("expected 4.5, got %v", v)
+	}
+	if matchID != "m1" {
+		t.Errorf("expected match m1, got %q", matchID)
+	}
+}
