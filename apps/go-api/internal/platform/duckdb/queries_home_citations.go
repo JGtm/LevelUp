@@ -2,6 +2,7 @@
 package duckdb
 
 import (
+	"regexp"
 	"strings"
 
 	"levelup/go-api/internal/domain"
@@ -442,7 +443,15 @@ LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id`
 
 const q37MediaFromClause = q37LegacyMediaFromClause
 
-const q37MediaMapLabelExpr = `NULLIF(TRIM(COALESCE(mr.map_name_fr, mr.map_name, '')), '')`
+// q37MediaMapLabelExpr normalise le nom de carte pour grouper les variantes
+// (ex: "Recharge v3" → "Recharge"). Strip conservateur :
+//   - ` v\d+$`           : versions Forge ("Recharge v3" → "Recharge")
+//   - ` - Forge.*$`      : variante Forge avec dash ("Recharge - Forge" → "Recharge")
+//   - ` - Ranked.*$`     : variante Ranked avec dash
+//
+// On ne strip PAS les suffixes ambigus comme " Annex", " Beta", `:`, `-` génériques
+// (sinon "Forge: Argyle" deviendrait "Forge", "Recharge Annex" deviendrait "Recharge").
+const q37MediaMapLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.map_name_fr, mr.map_name, ''), '\s+v\d+$', '', 'i'), '\s*-\s*Forge.*$', '', 'i'), '\s*-\s*Ranked.*$', '', 'i')), '')`
 
 const q37MediaModeLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.pair_name_fr, mr.pair_name, ''), ' on .+$', '', 'i'), '\s*-\s*Forge\b', '', 'i'), '\s*-\s*Ranked\b', '', 'i')), '')`
 
@@ -465,6 +474,25 @@ func mediaKindEquivalents(kind string) []string {
 	default:
 		return []string{kind}
 	}
+}
+
+// Strips appliqués côté Go pour normaliser une valeur de filtre map.
+// Doit rester en miroir de q37MediaMapLabelExpr (sinon filtre "Recharge v3"
+// ne matcherait pas le label "Recharge" déjà normalisé côté SQL).
+var (
+	mediaMapForgeSuffixRe   = regexp.MustCompile(`(?i)\s*-\s*Forge.*$`)
+	mediaMapRankedSuffixRe  = regexp.MustCompile(`(?i)\s*-\s*Ranked.*$`)
+	mediaMapVersionSuffixRe = regexp.MustCompile(`(?i)\s+v\d+$`)
+)
+
+// normalizeMediaMapName strippe les suffixes de variante pour grouper
+// "Recharge v3" / "Recharge - Forge" / "Recharge" sous le même nom canonique.
+// Conservatif : ne touche pas " Annex", `:`, etc. (cf. q37MediaMapLabelExpr).
+func normalizeMediaMapName(s string) string {
+	s = mediaMapForgeSuffixRe.ReplaceAllString(s, "")
+	s = mediaMapRankedSuffixRe.ReplaceAllString(s, "")
+	s = mediaMapVersionSuffixRe.ReplaceAllString(s, "")
+	return strings.TrimSpace(s)
 }
 
 type mediaQueryConfig struct {
@@ -589,11 +617,13 @@ func buildQ37MediaWhereClause(
 		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
 	}
 	if whereCfg.includeMapFilter && f.MapFilter != "" {
-		// Match EXACT (case-insensitive). Le ILIKE %X% utilisé avant matchait
-		// "Recharge Annex" pour "Recharge", "Catalyst Forge" pour "Catalyst", etc.
-		// La valeur frontend vient du même label SQL via available_filters → égalité OK.
+		// Match EXACT (case-insensitive) sur le nom canonique. q37MediaMapLabelExpr
+		// strippe déjà les suffixes (v3, - Forge, - Ranked) côté SQL ; on applique
+		// le même strip côté Go pour que filter="Recharge v3" matche bien le label
+		// canonique "Recharge". Le ILIKE %X% précédent matchait "Recharge Annex"
+		// pour "Recharge" — bug corrigé.
 		where = append(where, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)")
-		args = append(args, f.MapFilter)
+		args = append(args, normalizeMediaMapName(f.MapFilter))
 	}
 	if whereCfg.includeModeFilter {
 		// Si ModeFilterCandidates est présent (FR → liste de raw EN via
