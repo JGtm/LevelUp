@@ -114,8 +114,9 @@ func derefStr(s *string) string {
 
 func buildSessionOptions(rows []domain.FilterMatchRow) domain.SessionOptions {
 	type aggEntry struct {
-		count   int
-		isSquad bool
+		count    int
+		isSquad  bool
+		latestAt time.Time // heure de début du match le plus récent de la session
 	}
 	agg := make(map[string]aggEntry)
 	sessionID := make(map[string]string) // label → session_id
@@ -130,6 +131,9 @@ func buildSessionOptions(rows []domain.FilterMatchRow) domain.SessionOptions {
 		if r.IsWithFriends {
 			e.isSquad = true
 		}
+		if r.StartTime != nil && r.StartTime.After(e.latestAt) {
+			e.latestAt = *r.StartTime
+		}
 		agg[lbl] = e
 		if sid := derefStr(r.SessionID); sid != "" {
 			sessionID[lbl] = sid
@@ -140,7 +144,12 @@ func buildSessionOptions(rows []domain.FilterMatchRow) domain.SessionOptions {
 	for lbl := range agg {
 		labels = append(labels, lbl)
 	}
-	sort.Sort(sort.Reverse(sort.StringSlice(labels)))
+	// Tri par date réelle décroissante (la plus récente en tête).
+	// L'ancien tri lexicographique sur les labels DD/MM/YYYY était faux
+	// dès qu'on comparait des jours identiques de mois différents.
+	sort.Slice(labels, func(i, j int) bool {
+		return agg[labels[i]].latestAt.After(agg[labels[j]].latestAt)
+	})
 
 	var all []domain.SessionOption //nolint:prealloc
 	var soloLabels, squadLabels []string
