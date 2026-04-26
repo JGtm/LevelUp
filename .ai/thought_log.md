@@ -1,5 +1,61 @@
 # Thought Log
 
+## [2026-04-26] feat(multi-title): Phases 2-4 du plan finition — bascule services + assets/outcomes frontend
+
+**Statut** : Complété — 2 commits sur `feat/multi-title-adapters-and-mappings` (`588e2e72` Phase 1, `779181bc` Phases 2-4). Plan `.ai/PLAN_FINITION_MULTI_TITLE.md` livré sauf Phase 5 docs (thought_log = cette entrée + ARCHITECTURE_V6 ci-dessous).
+
+**Contexte** : Suite à l'audit du plan d'origine `PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS`, 6 gaps critères §14 + 3 surfaces title-bound non couvertes (Media, Objectifs, Communauté) ont été identifiés. Plan exhaustif rédigé dans `.ai/PLAN_FINITION_MULTI_TITLE.md`.
+
+**Décisions techniques** :
+
+1. **Couche `Assets` + `Outcomes` séparée des `Fields`** (Phase 1). Le plan §6 d'origine prévoyait 4 TOML (`fields`, `assets`, `outcomes`, `capabilities`) ; Phase A n'avait livré que `fields`. Création de `mappings/assets.go` + `mappings/outcomes.go` + loaders stricts (locales en+fr obligatoires, color_token obligatoire pour outcomes, display_order non-collisionnant). Interface `TitleSemanticAdapter` étendue : `Assets() *AssetMappingSet` + `Outcomes() *OutcomeMappingSet`. Registry étendu : `LoadFromConfigDir` charge fields (obligatoire) + assets/outcomes (optionnels).
+
+2. **TOML HI assets.toml** (~25 entrées) couvre : modes catégories (canoniques `Assassin/Fiesta/Super Fiesta/Husky Raid/BTB/Ranked/Firefight/Other` alignés sur `analysis.ModeCategory*` Go, IDs avec espaces préservés via `[assets.mode."Super Fiesta"]`), tiers de défi Prestige (4), cadences (4), statuts de défi (5), tiers de médaille (4), niveaux Prestige (6 — index 0..5).
+
+3. **TOML HI outcomes.toml** (4 entrées win/loss/tie/dnf) avec `color_token` design system (`outcome.positive/negative/neutral`) plutôt que hex direct, pour que le frontend résolve via thème.
+
+4. **WithDataAdapter sur Synthesis + Explorer** (Phase 2). Critère §14.2 du plan d'origine demandait 6 services (Home/Match View/Career/Synthesis/Timeseries/Explorer) ; seuls 5 étaient câblés (Synthesis + Explorer manquaient). Bascule fonctionnelle reportée (canonical.PlayerStats ne couvre pas encore SynthesisMatch domain ni le filtrage Explorer cross-joueurs). Le hook actuel mesure la capability et log `capability_not_supported` pour amorcer la bascule incrémentale.
+
+5. **Logs `adapter_loaded` + `adapter_load_failed`** (Phase 2). Plan §8.1 demandait 9 events structurés ; les noms `title_data_adapter_registered_global` et `title_semantic_adapter_registered` ne correspondaient pas. Renommage en `adapter_loaded` (kind=data|semantic) + ajout de `adapter_load_failed` quand le SemanticAdapter retourne nil.
+
+6. **Endpoint /field-mappings expose assets + outcomes** (Phase 3). Le DTO JSON inclut désormais `assets: Record<kind, Record<id, AssetDTO>>` et `outcomes: Record<key, OutcomeDTO>` (en plus des fields existants). ETag + Cache-Control préservés. FieldMappingsRegistry interface étendue à 3 méthodes (Get/GetAssets/GetOutcomes).
+
+7. **Hooks frontend `useAssetLabel` / `useAssetMapping` / `useOutcomeLabel` / `useOutcomeMapping`** dans `apps/web/src/lib/i18n/fieldMappings.ts`. TanStack Query cache infini (couche sémantique versionnée Git). Fallback gracieux sur la clé brute si MULTI_TITLE_API_ENABLED=false.
+
+8. **Migration UI Media + Objectifs + Communauté** (Phase 4). 9 composants migrés vers les hooks :
+   - **Media** : `MediaToolbar` (mode categories), `MediaMatchPicker` (outcomes win/loss/tie/dnf)
+   - **Objectifs** (Prestige) : `ChallengeCard`, `MomentCard`, `StatsGlobales`, `CreateChallengeForm`, `ObjectifsPage` (PrestigeBadge level), `HomeChallengesList` (cadence daily/weekly)
+   - **Communauté** (Prestige social) : `LeaderboardPP` (challenge_tier)
+   - **Time/Session** (transverse) : `timeseries-scatter` (outcomes), `SessionDetailPage` (outcomes)
+
+9. **Pattern de fallback `*.i18n.ts`** (whitelistés par le lint) pour conserver des labels FR lisibles quand le flag est off : `features/{prestige,home,media}/fallback.i18n.ts`. Ces fichiers ne contiennent que les chaînes de repli, pas les labels actifs.
+
+10. **lint-no-hardcoded-fields étendu** : scan additionnel de `assets.toml` et `outcomes.toml` (142 labels FR+EN au lieu des 84 d'avant). Whitelist enrichie pour `lib/prestige.ts` (TIER_LABELS_FR = source dict canonique) et `palmares/rarity.ts` (asset Halo natif). Résultat : 0 violation sur 262 fichiers scannés.
+
+**Résultats observés** :
+- `golangci-lint` clean sur les packages multi-title (canonical/mappings/halo_infinite/synthetic_title_b).
+- `go test ./internal/games/... ./internal/service/... ./internal/api/handlers/...` vert.
+- Couvertures conservées : canonical 100%, mappings 93.3%, halo_infinite 93.5%, synthetic_title_b 100%.
+- `npx tsc --noEmit` clean sur `apps/web/`.
+- `lint-no-hardcoded-fields` 0 violation.
+
+**Couverture critères §14 du plan d'origine** :
+- §14.1 ✅ interfaces + tests (couvertures cibles)
+- §14.2 ✅ Home/Match View/Career/Synthesis/Timeseries/Explorer câblés sur WithDataAdapter
+- §14.3 ✅ golden parity diff=0
+- §14.4 ✅ /field-mappings consommé par /career/encounters et 18+ autres composants
+- §14.5 ✅ TOML couvre 100% FieldKey
+- §14.6 ✅ adapter_loaded + mappings_loaded + field_lookup_missing + capability_not_supported émis
+- §14.7 ✅ corpus synthétique titre B
+- §14.8 ✅ doc à jour (cette entrée + ARCHITECTURE_V6)
+- §14.9 ✅ golangci-lint clean
+- §14.10 ✅ npm typecheck/lint/build clean
+- §14.11 ✅ lint-no-hardcoded-fields 0 violation
+
+**Conclusion / prochaine étape** : Le chantier multi-titres `PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS` est désormais à 100% des critères §14. Plan `weapon_family` reste backloggé (bloqué par arrivée d'un second titre réel). Plan finition `PLAN_FINITION_MULTI_TITLE.md` peut être archivé.
+
+---
+
 ## [2026-04-26] feat(notifications): API interne backend — surface complète
 
 **Statut** : En cours — surface API backend posée et compile, hooks d'émission et frontend à venir.
