@@ -238,25 +238,28 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	cap := captureUTC.Time
 	resp.CaptureUTC = &cap
 
-	// Charger les matchs du joueur dans la fenêtre — JOIN sur match_participants
-	// pour les KPIs. start_time de match_registry est en UTC (TIMESTAMPTZ).
+	// Charger les matchs du joueur dans la fenêtre.
+	// start_time_utc est TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
+	// Fallback sur start_time AT TIME ZONE 'UTC' pour les matchs synchro après le fix DuckDB
+	// (first_sync_at >= 2026-03-01 → start_time déjà UTC) qui n'auraient pas encore start_time_utc.
 	rows, err := r.pdb.Player.Query(ctx, fmt.Sprintf(`
 		SELECT
 			r.match_id,
-			r.start_time,
-			r.end_time,
+			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_utc,
+			COALESCE(r.end_time_utc,   r.end_time   AT TIME ZONE 'UTC') AS end_utc,
 			COALESCE(r.map_name_fr, r.map_name) AS map_name,
 			COALESCE(r.pair_name_fr, r.pair_name) AS pair_name,
 			COALESCE(r.playlist_name_fr, r.playlist_name) AS playlist_name,
 			COALESCE(r.playlist_id, '') AS playlist_id,
 			mp.outcome,
-			ABS(DATEDIFF('second', ?, r.start_time)) AS delta_s
+			ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) AS delta_s
 		FROM shared.match_registry r
 		JOIN shared.match_participants mp
 			ON mp.match_id = r.match_id AND mp.xuid = ?
-		WHERE r.start_time BETWEEN (? - INTERVAL '%d minutes')
-		                       AND (? + INTERVAL '%d minutes')
-		ORDER BY ABS(DATEDIFF('second', ?, r.start_time)) ASC
+		WHERE COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
+		        BETWEEN (? - INTERVAL '%d minutes')
+		            AND (? + INTERVAL '%d minutes')
+		ORDER BY ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) ASC
 		LIMIT 50
 	`, windowMinutes, windowMinutes), cap, r.pdb.XUID, cap, cap, cap)
 	if err != nil {

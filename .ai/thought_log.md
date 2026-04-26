@@ -1,5 +1,225 @@
 # Thought Log
 
+## [2026-04-26] migration(media_tz): start_time_utc / end_time_utc dans match_registry
+
+**Statut** : Complété.
+
+**Contexte** : Audit timestamp media/match — `match_registry.start_time` était un TIMESTAMP naïf en convention **mixte** :
+- Batch fév. 2026 (1350 matchs) : 961 en heure Paris (bug DuckDB 1.4.4 : datetime tzinfo=UTC silencieusement converti en heure locale) + 385 en UTC (machine avec DuckDB post-fix)
+- Batch mars/avr. 2026 (195 matchs) : 100% UTC (DuckDB fix appliqué)
+
+**Cause du problème sur les suggestions manuelles** : `LoadMatchCandidatesForMedia` et `AssociateMediaWithMatches` comparaient `capture_start_utc` (TIMESTAMPTZ UTC) avec `start_time` (TIMESTAMP naïf mixte). Avec `SET TimeZone='Europe/Paris'` sur le pool, les matchs UTC-convention avaient un décalage de ±1h, imposant une fenêtre de 180 min pour les retrouver.
+
+**Décision technique** :
+1. Ajout colonnes `start_time_utc TIMESTAMPTZ` + `end_time_utc TIMESTAMPTZ` à `match_registry`
+2. Backfill via détection de convention par match (dans `steps_shared.go` migration `add_start_time_utc_to_match_registry`) :
+   - Si `real_start_time != start_time` ET delta < 30 min → convention UTC (`AT TIME ZONE 'UTC'`)
+   - Si `real_start_time != start_time` ET delta ≥ 30 min → convention Paris (`AT TIME ZONE 'Europe/Paris'`)
+   - Si `real_start_time = start_time` exactement (film_match_start_ms absent) → fallback `first_sync_at` :
+     - ≥ 2026-03-01 → UTC ; sinon → Paris
+   - `end_time_utc = start_time_utc + duration_seconds`
+3. Migration appliquée directement via `cmd/apply_tz_migration/` : 1545/1545 matchs mis à jour
+4. `LoadMatchCandidatesForMedia` et `AssociateMediaWithMatches` mis à jour pour utiliser `COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')`
+5. Test `TestAssociateMediaWithMatches_TimezoneWindow` mis à jour (ajoute `start_time_utc` au schema test)
+
+**Validation** : Check fonctionnel — toutes les captures auto-assoc jan 2026 (8 matchs) sont maintenant `IN_WINDOW` avec `start_time_utc` :
+- `d_start_s > 0` : capture après début ✓
+- `d_end_s > 0` : capture avant fin ✓
+- Tous les tests Go passent (zéro FAIL)
+
+**Piège détecté** : `real_start_time = start_time` exactement pour les matchs sans données film (countdown = 0 dans `film_match_start_ms`). La première version du détecteur les classait tous comme UTC (delta < 1800) → erreur de +1h sur les `start_time_utc`. Corrigé en excluant le cas `EPOCH(real) = EPOCH(start)` de la détection delta, avec fallback `first_sync_at`.
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/migration/steps_shared.go` : migration `add_start_time_utc_to_match_registry`
+- `apps/go-api/internal/platform/duckdb/media_repo.go` : `LoadMatchCandidatesForMedia` → utilise `start_time_utc`
+- `apps/go-api/internal/ops/media.go` : `AssociateMediaWithMatches` → utilise `COALESCE(start_time_utc, ...)`
+- `apps/go-api/internal/ops/media_backup_cgo_test.go` : test mis à jour
+- `apps/go-api/cmd/apply_tz_migration/main.go` : outil one-shot de migration
+- `apps/go-api/cmd/analyze_media_tz/main.go` : outil d'analyse étendu
+
+**Prochaine étape** : Commit sur la branche courante, puis tester les suggestions manuelles depuis le frontend pour confirmer que la fenêtre de 15-30 min suffit maintenant.
+
+## [2026-04-26] investigation(media): audit timestamps associations media/match
+
+**Statut** : Complété (investigation, nettoyage + plan de correction → voir migration ci-dessus).
+
+**Décision** : Confirmé que `match_registry.start_time` = TIMESTAMP naïf en convention Paris pour la majorité des matchs (auto-assoc avg delta ≈ +5 min après correction Paris, vs -55 min sans correction). Le flag `is_manual` fonctionne correctement (données archivées dans `media_match_associations_bak_20260426T180302Z`).
+
+## [2026-04-26] audit(synthesis): comparaison v7/cockpit (Python) vs Go + plan de portage
+
+**Statut** : Complété — plan rédigé dans `.ai/PLAN_SYNTHESIS_GO_PORTAGE.md`.
+
+**Décision technique** : audit ciblé et rigoureux de la page Synthèse v7/cockpit (`src/ui/pages/synthesis.py` 320 L + `src/ui/pages/win_loss.py` 394 L + `src/visualization/distributions_outcomes.py` 404 L) confronté à l'implémentation Go/React (`apps/web/src/features/synthesis/SynthesisPage.tsx` 464 L + `apps/go-api/internal/service/synthesis_service.go` 437 L + `apps/go-api/internal/analysis/squad_breakdown.go` 456 L + `apps/go-api/internal/domain/squad.go` + `synthesis.go`). Vérification croisée par lecture directe des sources (et non agrégation par sous-agent uniquement).
+
+Écarts critiques observés :
+- v7/cockpit est une page **mono-bloc à 5 sections** (sélecteur + 4 charts canoniques : map/mode stacked outcomes, heatmap **win rate** divergente, top by week stacked+line, bipolaire Solo/Escouade). La version Go a **11 sections** dont seulement **1 chart sur 4** correspond au Python.
+- Heatmap Go = palette `Blues`, z=count → ne montre que l'activité, pas la performance. Python = palette divergente rouge→ambre→vert sur z=win_rate avec text=count en overlay et masquage des cellules `total < min_matches`.
+- « Top semaines » Go = tableau HTML trié par win rate. Python = combo 3 traces (top stacked / other stacked / line top_rate sur axe Y₂) avec bucket adaptatif semaine ou mois (`determine_top_period`) et définition `is_top = rank <= 1` (fallback `outcome=WIN` si `rank` indisponible).
+- « Breakdowns top maps / top modes » Go = deux tableaux. Python = 2 stacked bars W/L/T/Left max 12 cartes / max 10 modes (avec parsing `Arène : Slayer → Slayer` côté mode).
+- Schémas Go bloquants : `SynthesisMatchRow` n'a ni `MapName`, ni `ModeCategory`, ni `RankPosition` ; `TemporalHeatmapCell` n'a pas `Wins` ; `TopWeekEntry` orienté win rate / KDA pas top/other. Le portage exige donc un changement de schéma de domaine + 3 nouvelles fonctions d'analyse + 3 nouveaux composants React.
+- Excédents Go non v7 (Scope bar D3, Overview D4, KPI Solo+Escouade, Comparaison détaillée, Highlights D5, Relations D6) : décision proposée → retirer de Synthèse, garder l'implémentation backend pour les pages dédiées (Career, Performances marquantes, Squad).
+
+**Fichier créé** : `.ai/PLAN_SYNTHESIS_GO_PORTAGE.md` (~330 L) — 7 sections (synthèse exécutive, cartographie source v7, cartographie cible Go, diff visuel point par point, plan en 6 phases avec checklist, validation finale, notes sur fallback rank/overlap pages/min_matches).
+
+**Conclusion** : la page Synthèse Go n'est pas seulement « incomplète » — elle a divergé du cadrage v7 (mono-bloc 4 charts) vers un mélange dashboard qui dilue le message et duplique d'autres pages. Trois charts sur quatre rendent la mauvaise sémantique (count vs win-rate, table vs chart, table vs stacked bars). Le plan ticketable s'attaque d'abord à la heatmap (la plus visible), puis aux outcomes par carte/mode, puis au top by period, et fait du nettoyage des excédents la phase finale. Pas d'estimation chiffrée fournie (l'utilisateur n'en a pas demandé).
+
+## [2026-04-26] audit(timeseries): comparaison v7/cockpit (Python) vs Go + plan de portage
+
+**Statut** : Complété — plan rédigé dans `.ai/PLAN_TIMESERIES_GO_PORTAGE.md`.
+
+**Décision technique** : audit exhaustif de la page Séries Temporelles, sur le même format que les plans Match View et Carrière. Source Python : 12 fichiers (`src/ui/pages/timeseries.py` + `_timeseries_*.py` + `src/visualization/timeseries*.py` + `src/data/services/timeseries_service.py` + `src/ui/i18n/pages/timeseries.py`, ~3 200 L) confrontée au Go (`internal/api/handlers/timeseries.go` + `internal/service/timeseries_service.go` 646 L + `internal/domain/timeseries.go` 170 L) et au web (`features/timeseries/TimeseriesPage.tsx` 360 L + 6 composants `timeseries-*.tsx`).
+
+Écarts critiques observés :
+- 5 onglets Python (Résumé / Cartes & Modes / Distributions / Progression / Avancé) → 6 onglets Go (KPIs / Cumul / Forme / Intensité / Distributions / Combat) : mapping non bijectif, **l'onglet « Cartes & Modes » est entièrement absent côté Go**, et l'onglet « Progression » Python (10 timelines : Performance, Assists, Per-min KPM/DPM/APM, Lifespan, Spree/HS/Perfect, Shots/Acc, Damage, Rank/Score, First event, Personal score) **n'a aucune contrepartie Go**.
+- Couverture mesurée à ~28 % (8 viz présentes + 6 partielles sur 39 attendues).
+- Tous les champs `*_chart: PlotlyFigurePayload` du domain (16 occurrences) sont systématiquement `null` par construction documentée, mais pour la moitié d'entre eux **aucun data point équivalent n'est calculé** (`first_kill_dist`, `net_score_per_hour_chart`, `correlations[]` legacy, etc.).
+- Paramètres divergents silencieux : `minForTrend=20` Go vs **4** Python (régression presque toujours masquée), rolling K/D `window=20` fixe vs **adaptatif** `max(3, n*10/100)` Python, distribution rolling WR `window=14` Go vs **5** Python.
+- Heatmap actuelle Go = jour × heure (count + avg_kd) : c'est en fait la WL heatmap Python, pas l'**intensity heatmap** Python (match × 10 phases) qui est totalement absente.
+- Skill Rank LUSR/CSR (zones de tier + bande IC + lissage) : totalement absent côté Go ; cumul K/D + IC 90 % : IC absent ; Form Score (rolling 14 vs 90, distinct de l'EWMA) : totalement absent.
+- `WithDataAdapter()` câblé dans la registry mais jamais sollicité — bascule canonique multi-titre amorcée mais inerte.
+- `damage_dealt`/`damage_taken`/`perf_score`/`rank` exposés dans `TimeseriesMatchRow` mais consommés par aucun composant.
+
+**Fichier créé** : `.ai/PLAN_TIMESERIES_GO_PORTAGE.md` (~440 L) — 7 sections (synthèse exécutive, cartographies source/cible, tables comparatives par onglet, inventaire des champs `MatchRow` à enrichir, plan par phases 0→8, estimation et risques, annexes mapping et sources DB). Estimation totale : 11 j-h pour passer de ~28 % à ~95 % de parité.
+
+**Conclusion** : la page Timeseries en Go est un MVP très sommaire — plus une page « cumuls + distributions » qu'une vraie page de séries temporelles. Le plan est ticketable phase par phase ; la phase 3 (onglet Progression complet) est la plus dense (3 j-h) et nécessite d'enrichir `TimeseriesMatchRow` avec 8 colonnes manquantes (headshot/spree/perfect/shots/first_event/MMR). Les phases peuvent être commitées séparément sur une branche unique `feat/timeseries-parity-v7`.
+
+## [2026-04-26] audit(career): comparaison v7/cockpit (Python) vs Go + plan de portage
+
+**Statut** : Complété — plan rédigé dans `.ai/PLAN_CAREER_GO_PORTAGE.md`.
+
+**Décision technique** : audit exhaustif et indépendant de la page Carrière sur `v7/cockpit` (12 fichiers Python, ~2050 L) confronté à l'implémentation Go (5 fichiers, ~1200 L) et web (8 fichiers, ~860 L). Le plan recense 24 unités de viz/donnée et identifie 16 manquantes/dégradées.
+
+Écarts critiques observés :
+- `CareerPageCharts` côté Go expose 4 figures Plotly figées à `nil` — non rendues côté front qui n'en consomme que 0.
+- Q9 top matches : ignore TOUS les filtres durs Python (`time_played≥180`, `had_bot_teammate=FALSE`, `is_firefight=FALSE`, `mode_category!='BTB'`, `outcome IN (2,3)`) ; tri par `performance_score` au lieu du `_BADGE_PRIORITY_EXPR` ; split N/2 incorrect.
+- Q10Encounters Go interroge la base joueur (sans préfixe `shared.`), agrège un `avg_kda` au lieu des 5 dimensions Python (`winrate_as_ally`, `winrate_vs_enemy`, `kills_dealt`, `deaths_suffered`, `last_seen`).
+- LUSR : `buildLUSRSummary` retourne **un seul** rating (max global) au lieu des 6 cartes par playlist_group avec `rating_delta` via `LAG`.
+- Antagonistes (Némésis / Souffre-douleurs) absents : pas de port de `_ANTAGONISTS_SQL`.
+- Projections Hero : `EstimatedHeroDate` (date scalaire) présent mais pas la courbe normale, pas la courbe optimiste, pas la courbe estimée pré-sync.
+
+**Fichier créé** : `.ai/PLAN_CAREER_GO_PORTAGE.md` (~620 L) — 7 sections (synthèse, cartographies, écarts détaillés par section, plan en 7 phases A→G, risques, estimation 12.5 j-h, checklist de livraison).
+
+**Conclusion** : la migration Carrière côté Go est un MVP très partiel. Le plan est ticketable phase par phase ; les phases A & B (DTO + SQL) sont prérequis stricts. Les sections déplacées vers Synthèse/Palmarès doivent soit être ré-internalisées, soit consommer les nouveaux DTO complets pour ne pas rester dégradées.
+
+## [2026-04-26] verify(corpus): validation BDD pour scoreboard + citations + impact
+
+**Statut** : Complété — corpus validé à 100 %.
+
+**Décision technique** :
+Avant de chiffrer le portage des 3 chantiers (scoreboard match view + expander, citation engine, tableau d'impact Boulet/Touriste), valider que toutes les tables/vues/colonnes nécessaires sont effectivement présentes et peuplées en BDD. Probe ad-hoc Go (`cmd/inspect_corpus/main.go`, supprimé après run) qui ATTACH shared/meta/pve sur la DB joueur Chocoboflor et : (a) vérifie la liste de colonnes attendues par le `_SCOREBOARD_SQL` Python, (b) compte Perfect (medal_id 1512363953) et Steaktacular (1169390319), (c) liste les `mapping_type` actifs et les `custom_function` présentes dans `citation_mappings`, (d) confirme que les kill events `highlight_events` sont tous joignables avec `match_participants.team_id`, (e) **exécute le `_SCOREBOARD_SQL` end-to-end sur 1 match réel**.
+
+DB cible : `C:/Users/Guillaume/Downloads/Scripts/LevelUp/data/` (production Python active, 304 MB shared, 65 MB metadata, 4 joueurs synchronisés).
+
+**Résultats observés** :
+- `match_participants` : 24 395 lignes, 28 colonnes attendues toutes présentes (kills_expected/deaths_expected/assists_expected/team_mmr/enemy_mmr inclus).
+- `v_gamertag_lookup` (VIEW) : 15 370 entrées.
+- `v_weapon_kills` (VIEW) : 100 343 lignes, 85 110 hors sentinelles `(0,1,2)`. `effective_weapon_id` présent.
+- `v_killer_victim_full` (VIEW) : 7 colonnes attendues OK.
+- `medals_earned` : 22 023 lignes, **Perfect = 590 occurrences**, **Steaktacular = 204**.
+- `meta.medal_definitions` : 167 médailles. `meta.medal_translations` : 2 145 traductions sur **14 langues BCP-47** (en-US, fr-FR, nl-NL, ru-RU, ja-JP, es-MX, de-DE, it-IT, ko-KR, zh-TW, es-ES, pt-BR, pl-PL, zh-CN).
+- `meta.weapon_labels` : 42 weapon_id (UBIGINT).
+- `meta.citation_mappings` : 88 mappings (84 enabled). Breakdown actif : weapon_stat=24, medal=15, custom=12, stat=11, award=9, composite=7, pve_stat=6.
+- 12 `custom_function` distinctes en BDD : compute_annexion_forcee, compute_bulldozer (×2 citations), compute_flag_em_down, compute_hijack, compute_mongoose/warthog/wraith_destroyer, compute_vandalism, compute_wins_ctf/slayer/strongholds. **`compute_wins_firefight` absent** de la BDD (dépréciée ou jamais peuplée).
+- `match_citations` (DB joueur) : 5 137 entrées (Python a déjà calculé).
+- `personal_score_awards` : 1 064 awards (kill, assist, objective, penalty, vehicle).
+- `match_skill_rank` : 364 entrées, type LUSR uniquement.
+- `player_match_enrichment` : 364 lignes, 260 avec friends_xuids non vide, 27 avec had_bot_teammate=TRUE.
+- `highlight_events` : 263 414 events (death=101 143, kill=100 778, medal=44 568, mode=16 925).
+- **kill events tous joignables team_id** : 100 778 / 100 778 ✅.
+- **`_SCOREBOARD_SQL` end-to-end** : exécuté avec succès sur le match `0014603f-...`, 8 lignes retournées avec gamertags, K/D/A, perfect_kills, top_weapon_id résolus.
+
+**Petits trous identifiés** (non-bloquants pour les 3 chantiers) :
+- `pve_match_stats` : 5 colonnes manquantes vs spec Python (`wave_completed, crawler_kills, soldier_kills, knight_kills, warden_kills`). Impact : citations `pve_stat` partiellement câblées (6/10 enabled). Hors scope des 3 chantiers (Firefight uniquement).
+- `compute_wins_firefight` absent de `citation_mappings`. Idem, hors scope.
+
+**Conclusion** : tous les inputs sont présents dans la BDD pour porter (1) le scoreboard match view + son expander à l'identique du Python, (2) le citation engine complet (12 custom functions, 7 mapping_types, 88 mappings, composites + tier_targets), (3) le tableau d'impact escouade (kill events + team_id + friends_xuids tous résolvables). Aucune brique de sync ou de schema ne manque. Les blocages sont purement applicatifs. À noter que les VIEWs shared sont aussi définies côté migrations Go (`steps_shared.go:applyResolutionViews`) — donc le Go peut produire le même schéma.
+
+**Prochaine étape** : attendre arbitrage utilisateur sur l'ordre des 3 chantiers.
+
+## [2026-04-26] audit(stats): catalogue des sources Python v7/cockpit vs Go
+
+**Statut** : Complété — doc rédigé.
+
+**Décision technique** :
+Demande utilisateur : recenser comment la branche Python `v7/cockpit` construit le corpus de données de chaque graphe/tableau (perfect kills, badges, citations, médailles, etc.), pour identifier ce qui manque ou est erroné côté Go. Audit délégué à un sous-agent (corpus exhaustif Python) puis croisé localement avec `apps/go-api/internal/`. Pistes utilisateur prioritaires intégrées : scoreboard match view, citation_mappings, medal_definitions, badges Touriste/Boulet.
+
+**Résultats observés** :
+- Doc créé : `docs/MIGRATION_GAP_PYTHON_TO_GO.md` (~16 sections, mapping colonne par colonne du scoreboard, dispatch citation `mapping_type`, IDs spéciaux médailles, catalogue badges d'impact, formules performance score / skill rating).
+- 4 écarts bloquants : (1) citation engine absent côté Go (mapping_type partiel + 12 custom functions manquantes), (2) badges d'impact incomplets (Touriste détecté à tort sur `kills==0`, Boulet/Héros silencieux/Faux-frère/Top Killer absents), (3) DOMINATION/HUMILIATION sémantiquement différents (Go : courbe de score ; Python : médaille Steaktacular `1169390319`), (4) comeback s'applique à tous les modes côté Go (Python le restreint au Slayer).
+- Performance score : 13 métriques côté Go vs 10 Python, poids tous décalés → scores jamais alignés tant que la liste n'est pas réconciliée.
+- Scoreboard SQL Go : utilise `xuid_aliases` au lieu de `v_gamertag_lookup`, COALESCE incomplet, filtre `_SQL_NOT_GHOST` absent, MVP/LVP non calculé.
+
+**Prochaine étape** : présenter le doc à l'utilisateur pour prioriser les chantiers de portage.
+
+## [2026-04-26] fix(squad): session dropdown order + UX filtres cascade
+
+**Statut** : Complété.
+
+**Décision technique** :
+Deux corrections liées au dropdown de sessions dans la page Escouade (FilterPanel) :
+
+1. **Bug tri backend** (`filters_service.go`) : le tri `sort.Reverse(sort.StringSlice(labels))` sur des labels `DD/MM/YYYY HH:MM–HH:MM` était lexicographique → faux dès que des sessions de jours identiques mais de mois/années différents étaient comparées (ex: `27/11/2025` avant `27/01/2026` alors que janvier 2026 est plus récent). Corrigé en trackant le `latestAt time.Time` (max StartTime par session label) dans `aggEntry` et en triant avec `sort.Slice` par date réelle décroissante.
+
+2. **UX filtres cascade** (FilterPanel.tsx) : rien n'indiquait que les filtres avancés (playlists/modes/cartes) restreignent la liste de sessions affichée dans le dropdown. Ajout d'un badge `filtrée` dans le titre de la section Session quand `activeCascadeCount > 0`, avec tooltip explicatif. Le dropdown affiche maintenant `Toutes les sessions (N)` pour rendre le total visible. Les boutons navigation sont renommés `Dernière / Ancienne / Récente` (au lieu de `Précédente / Suivante`) et réorganisés : dropdown en premier, boutons en dessous.
+
+**Résultats observés** :
+- `go build ./internal/service/` : OK
+- `go test ./internal/service/ -run TestFilters` : OK  
+- `go test ./internal/api/handlers/ -run TestFilters` : OK
+- `npx tsc --noEmit` : OK (zéro erreur)
+
+**Prochaine étape** : vérification visuelle dans le navigateur.
+
+## [2026-04-26] audit(match-view): comparaison v7/cockpit (Python) vs Go + plan de portage
+
+**Statut** : Complété — plan rédigé.
+
+**Décision technique** :
+Audit rigoureux et comparatif des sections de la match view entre la branche source `v7/cockpit` (Streamlit/Python, 17 fichiers, ~30 visualisations) et la stack cible Go + Next.js sur la branche courante (5 fichiers front, 1100 lignes, ~8 viz réellement implémentées). Analyse déléguée à 4 sous-agents parallèles (Summary tab, Combat tab, Team+Citations+Media, inventaire Go) pour préserver le contexte principal et garantir l'exhaustivité.
+
+**Résultats observés** :
+- Onglet Header : map thumbnail manquante, badge dominance absent, bloc rang LUSR/CSR très appauvri (image rang + barre sub-tier + delta visuel manquants).
+- Onglet Summary : 4 charts majeurs absents (F/D/A grouped vs attendu vs hist, Spree/HS/Perfect grouped, Donut weapon kills + tableau, Radar Participation 6 axes). KPI MMR équipe manquant.
+- Onglet Combat : refonte nécessaire (tug-of-war stacked avec annotations cumul, kill feed + streaks, cadence histogram + MA, cards Nemesis/Bully visuelles, stacked bars KV, K/D différentiel tous joueurs, annotations d'impact sur la timeline).
+- Onglet Team : panneau détail limité à `is_me`, sections Expected/Antagonist/Footer absentes, tableau Encounters historique réduit à une liste textuelle (badges Allié+/Coriace/Tough nut absents).
+- Onglet Citations : `citations_tab.commendations` et `citations_tab.medals` câblés vides côté backend.
+- Onglet Media : pas de séparation mine/teammate, pas de lecteur vidéo intégré.
+
+**Conclusion / prochaine étape** :
+Plan de portage en 9 phases rédigé dans `.ai/PLAN_MATCH_VIEW_GO_PORTAGE.md`, structuré par onglet avec DTO Go détaillé, logique métier à porter (incluant constantes magiques), composants chart à créer côté front (recharts), et critères d'acceptation. Les phases 3 (charts Summary) et 5 (refonte Combat) sont les plus lourdes ; la phase 4 (Radar Participation) est techniquement la plus délicate (seuils dynamiques par mode + cache cross-DB). Démarrer par la phase 1 (enrichissement DTO foundations) qui débloque les phases 2 à 8.
+
+---
+
+## [2026-04-26] investigation(media): convention timezone match_registry.start_time — contradiction avec thought_log avril
+
+**Statut** : En cours — attente DB libre pour confirmation complète
+
+**Décision technique** :
+Analyse empirique sur les 8 assos manuelles `is_manual=TRUE` de janvier 2026 (JGtm) :
+- Avec `SET TimeZone='UTC'`   → 6/8 captures tombent DANS la fenêtre `[start_time, end_time]` du match associé
+- Avec `SET TimeZone='Europe/Paris'` → toutes décalées de +60 min (hiver CET)
+
+**Contradiction avec les entrées thought_log du 23-24 avril** :
+- [2026-04-23] "timestamps stockés en heure Paris (session Python = Europe/Paris)"
+- [2026-04-24] `SET TimeZone='Europe/Paris'` appliqué dans `IndexMedia` et `AssociateMediaWithMatches`
+
+Les données réelles de janvier 2026 indiquent que `start_time` est en UTC, pas Paris. Les fixs d'avril ont peut-être inversé le bug plutôt que de le corriger — au moins pour les données récentes.
+
+**Hypothèse** : le bug DuckDB 1.4.4 (conversion datetime UTC→CET à l'écriture, décrit dans l'entrée du 27 mars) a été corrigé lors du passage à DuckDB 1.5.x, ce qui a changé la convention d'écriture pour les nouvelles données sans que les fixs Go en tiennent compte.
+
+**Résultats observés** :
+- 2 anomalies manuelles identifiées (media_file_id 14 et 31) : capture ~50 min AVANT le match associé — signe que la suggestion buguée (SET TZ=Paris sur données UTC) a proposé le mauvais match, et l'utilisateur a cliqué dessus faute de candidats cohérents à ±15 min.
+- Nettoyage effectué : suppression assos manuelles id 12 et 13 (tests), backup `media_match_associations_bak_20260426T180302Z`.
+- Outil d'analyse Go préparé : `cmd/analyze_media_tz/main.go` à lancer dès que le serveur est libre pour confirmer la convention sur l'ensemble des auto-associations par mois.
+
+**Conclusion / prochaine étape** :
+1. Lancer `go run -tags cgo ./cmd/analyze_media_tz/` quand la DB est libre → confirmer ou infirmer que la convention a changé à une date précise.
+2. Si confirmé UTC : reverter `SET TimeZone='Europe/Paris'` dans `AssociateMediaWithMatches` et `LoadMatchCandidatesForMedia` → `SET TimeZone='UTC'` (ou retirer le SET et travailler en UTC natif).
+3. Corriger les 2 assos manuelles anomalies (id 14 et 31) une fois la suggestion réparée.
+4. Long terme : migrer `match_registry.start_time` vers `TIMESTAMPTZ` pour rendre la convention non-ambiguë par construction.
+
+---
+
 ## [2026-04-26] feat(notifications): cloture complete des gaps backend + frontend
 
 **Statut** : 100% du plan MVP livre. **11/11 categories instrumentees** avec hooks d'emission (vs 7/11 precedemment). Tous les gaps Settings/Page identifies dans l'audit honnete sont resolus. 2 commits supplementaires sous mon nom (`635ad5c9` backend gaps, `db3d11d7` frontend gaps).
@@ -19984,3 +20204,28 @@ Logique canonique (4 étapes) :
 **Résultats** : `go build ./...` → 0 erreur. `go test ./internal/analysis/ ./internal/service/` → OK.
 
 **Conclusion** : une seule source de vérité pour la normalisation des modes. `"Assassin : Classé"` → `"Assassin"` est maintenant correct dans l'historique ET la home.
+
+---
+
+## [2026-04-26] Citations — Audit exhaustif des dépendances données
+
+**Statut** : ✅ Audit complet + Plan détaillé créé
+
+**Tâche** : Analyse rigoureuse de la portabilité des 87 citations H5G en Go. Vérifier que chaque citation a ses données sources disponibles en base Go (shared_matches_v2, shared_pve, personal_score_awards, metadata, weapon_labels).
+
+**Décision** : Audit par mapping_type + identification des 5 lacunes critiques (R10-R14) avant implémentation.
+
+**Résultats** :
+- **87 citations inventoriées** : 45 PVP, 10 PVE, 25 weapon_stat, 7 composites.
+- **80 portables à 100%** : `stat` (5), `award` (12), `medal` (8), `medal_ids` (3), `weapon_stat` (25), `custom` (11), `composite` (7).
+- **5 lacunes critiques** :
+  - **R10** : `player_vs_everything` — stat_name `total_enemy_kills` n'existe pas en `pve_match_stats`
+  - **R11** : Ambiguïté `carrier_killed` vs `flag_carrier_kill` — données divergentes possible
+  - **R12** : Localisation playlist names (FR/EN) — regex incomplètes
+  - **R13** : medal_id 9000000001 factice — n'existe jamais
+  - **R14** : weapon_labels UBIGINT mapping — 25 citations cassées si absent
+
+**Fichiers créés/modifiés** :
+- `.ai/PLAN_CITATIONS_GO_PORTAGE.md` : §9 "Audit exhaustif" (2000+ lignes) + checkliste pré-Phase-2 (10 requêtes SQL)
+
+**Conclusion** : Plan passé de ~70% de couverture à **100% de portabilité garantie** une fois checklist §9.5 exécutée.

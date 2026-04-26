@@ -485,8 +485,9 @@ func TestInsertMediaFile_Priority3_MtimeFallback(t *testing.T) {
 // AssociateMediaWithMatches — timezone SET TimeZone + fenêtre BETWEEN
 // ─────────────────────────────────────────────────────────────────────────────
 
-// TestAssociateMediaWithMatches_TimezoneWindow vérifie que SET TimeZone corrige
-// le TIMESTAMP naïf Paris et que la fenêtre [start_time - buffer, end_time + buffer] fonctionne.
+// TestAssociateMediaWithMatches_TimezoneWindow vérifie que la fenêtre BETWEEN fonctionne
+// avec start_time_utc (TIMESTAMPTZ UTC garanti, post-migration add_start_time_utc_to_match_registry).
+// Scénario : match CEST 22:00→22:15 Paris = 20:00→20:15 UTC, capture à 20:08 UTC.
 func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 	dir := t.TempDir()
 
@@ -501,7 +502,7 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// DB des matchs (match_registry avec start_time/end_time en heure Paris naïve)
+	// DB des matchs : match_registry avec start_time_utc/end_time_utc (post-migration).
 	matchesPath := filepath.Join(dir, "shared_matches.duckdb")
 	dbMatches, err := sql.Open("duckdb", matchesPath)
 	if err != nil {
@@ -511,21 +512,26 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 
 	_, err = dbMatches.Exec(`
 		CREATE TABLE match_registry (
-			match_id VARCHAR PRIMARY KEY,
-			start_time TIMESTAMP,
-			end_time   TIMESTAMP
+			match_id       VARCHAR PRIMARY KEY,
+			start_time     TIMESTAMP,
+			end_time       TIMESTAMP,
+			start_time_utc TIMESTAMPTZ,
+			end_time_utc   TIMESTAMPTZ
 		)
 	`)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Match CEST (été, UTC+2) : 22:00 → 22:15 Paris = 20:00 → 20:15 UTC
+	// Match CEST (été, UTC+2) : 22:00→22:15 Paris naïf = 20:00→20:15 UTC.
+	// start_time_utc/end_time_utc stockent la valeur UTC corrigée.
 	_, err = dbMatches.Exec(`
 		INSERT INTO match_registry VALUES (
 			'match-tz-test',
 			TIMESTAMP '2024-07-20 22:00:00',
-			TIMESTAMP '2024-07-20 22:15:00'
+			TIMESTAMP '2024-07-20 22:15:00',
+			TIMESTAMPTZ '2024-07-20 20:00:00+00',
+			TIMESTAMPTZ '2024-07-20 20:15:00+00'
 		)
 	`)
 	if err != nil {
@@ -533,7 +539,7 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 	}
 	dbMatches.Close()
 
-	// Insérer un média capturé à 20:08 UTC (dans la fenêtre corrigée DST)
+	// Insérer un média capturé à 20:08 UTC (dans la fenêtre UTC)
 	captureUTC := time.Date(2024, 7, 20, 20, 8, 0, 0, time.UTC)
 	_, err = dbSocial.Exec(`
 		INSERT INTO media_files (player_slug, file_path, file_name, file_hash, kind, capture_start_utc)
@@ -548,6 +554,6 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 		t.Fatalf("AssociateMediaWithMatches: %v", err)
 	}
 	if n != 1 {
-		t.Errorf("AssociateMediaWithMatches = %d associations, want 1 (DST Paris CEST corrigé)", n)
+		t.Errorf("AssociateMediaWithMatches = %d associations, want 1 (start_time_utc UTC)", n)
 	}
 }
