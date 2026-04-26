@@ -229,8 +229,9 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 	}
 	defer db.Exec(`DETACH shared_matches`) //nolint:errcheck
 
-	// La capture doit se situer dans [start_time - buffer, end_time + buffer].
-	// start_time et end_time sont des TIMESTAMP naïfs en heure Paris — SET TimeZone les corrige.
+	// La capture doit se situer dans [start_utc - buffer, end_utc + buffer].
+	// start_time_utc/end_time_utc sont TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
+	// Fallback sur AT TIME ZONE 'UTC' pour les rares matchs sans start_time_utc.
 	//
 	// IMPORTANT : un média = UNE seule association. Algorithme de scoring :
 	//  1. Préférer un match qui CONTIENT vraiment capture_start_utc (sans buffer)
@@ -246,19 +247,26 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 			SELECT
 				mf.id AS media_file_id,
 				mr.match_id,
-				ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time)) AS delta_s,
+				ABS(DATEDIFF('second', mf.capture_start_utc,
+					COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC'))) AS delta_s,
 				ROW_NUMBER() OVER (
 					PARTITION BY mf.id
 					ORDER BY
-						CASE WHEN mf.capture_start_utc BETWEEN mr.start_time AND mr.end_time THEN 0 ELSE 1 END,
-						ABS(DATEDIFF('second', mf.capture_start_utc, mr.start_time + (mr.end_time - mr.start_time) / 2)) ASC,
+						CASE WHEN mf.capture_start_utc
+							BETWEEN COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')
+							    AND COALESCE(mr.end_time_utc,   mr.end_time   AT TIME ZONE 'UTC')
+						THEN 0 ELSE 1 END,
+						ABS(DATEDIFF('second', mf.capture_start_utc,
+							COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')
+							+ (COALESCE(mr.end_time_utc, mr.end_time AT TIME ZONE 'UTC')
+							 - COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')) / 2)) ASC,
 						mr.match_id
 				) AS rn
 			FROM media_files mf
 			JOIN shared_matches.match_registry mr
 				ON mf.capture_start_utc
-					BETWEEN (mr.start_time - INTERVAL '%d minutes')
-					    AND (mr.end_time   + INTERVAL '%d minutes')
+					BETWEEN (COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') - INTERVAL '%d minutes')
+					    AND (COALESCE(mr.end_time_utc,   mr.end_time   AT TIME ZONE 'UTC') + INTERVAL '%d minutes')
 			WHERE mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
 		) ranked
 		WHERE rn = 1

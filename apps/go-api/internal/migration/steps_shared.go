@@ -422,6 +422,60 @@ func init() {
 		},
 	})
 
+	// Correction timezone : start_time/end_time étaient des TIMESTAMP naïfs en convention mixte
+	// (Paris pour batch fév. 2026, UTC pour matchs post-fix DuckDB 1.4.4).
+	// start_time_utc/end_time_utc sont TIMESTAMPTZ UTC garanti — supprime la dépendance au SET TimeZone
+	// dans les requêtes de suggestion et d'auto-association de médias.
+	Register(Migration{
+		Name:        "add_start_time_utc_to_match_registry",
+		TargetDB:    TargetShared,
+		Description: "Ajoute start_time_utc + end_time_utc (TIMESTAMPTZ) à match_registry ; backfill convention Paris/UTC via real_start_time",
+		ApplySchema: func(db *sql.DB) error {
+			if err := addColumnIfMissing(db, "match_registry", "start_time_utc", "TIMESTAMPTZ"); err != nil {
+				return err
+			}
+			return addColumnIfMissing(db, "match_registry", "end_time_utc", "TIMESTAMPTZ")
+		},
+		ApplyBackfill: func(db *sql.DB) error {
+			// Convention détectée par match via real_start_time (= start_time + countdown film).
+			// Trois cas :
+			//  A) real_start_time IS NOT NULL ET différent de start_time (countdown > 0) :
+			//     |delta| < 30 min → même convention (UTC) ; |delta| ≥ 30 min → conventions mixtes (Paris).
+			//  B) real_start_time IS NULL ou égal à start_time (film_match_start_ms absent/nul) :
+			//     on ne peut pas se fier au delta → utiliser first_sync_at.
+			//     first_sync_at ≥ 2026-03-01 → post-fix DuckDB = UTC ; sinon → Paris.
+			if _, err := db.Exec(`
+				UPDATE match_registry SET
+					start_time_utc = CASE
+						WHEN real_start_time IS NOT NULL
+						  AND EPOCH(real_start_time) != EPOCH(start_time)
+						  AND ABS(EPOCH(real_start_time) - EPOCH(start_time)) < 1800
+						  THEN start_time AT TIME ZONE 'UTC'
+						WHEN real_start_time IS NOT NULL
+						  AND EPOCH(real_start_time) != EPOCH(start_time)
+						  THEN start_time AT TIME ZONE 'Europe/Paris'
+						WHEN first_sync_at >= TIMESTAMP '2026-03-01'
+						  THEN start_time AT TIME ZONE 'UTC'
+						ELSE
+						  start_time AT TIME ZONE 'Europe/Paris'
+					END
+				WHERE start_time IS NOT NULL
+			`); err != nil {
+				return fmt.Errorf("backfill start_time_utc: %w", err)
+			}
+			if _, err := db.Exec(`
+				UPDATE match_registry SET
+					end_time_utc = start_time_utc + (duration_seconds * INTERVAL '1 second')
+				WHERE end_time_utc IS NULL
+				  AND start_time_utc IS NOT NULL
+				  AND duration_seconds IS NOT NULL
+			`); err != nil {
+				return fmt.Errorf("backfill end_time_utc: %w", err)
+			}
+			return nil
+		},
+	})
+
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.
