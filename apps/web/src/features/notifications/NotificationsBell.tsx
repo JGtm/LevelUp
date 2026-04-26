@@ -29,7 +29,7 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
   const { data: countData } = useUnreadCount(playerSlug, !!playerSlug)
   const unreadCount = countData?.count ?? 0
 
-  const { data: list, isLoading, isError } = useNotificationsList(
+  const { data: list, isLoading, isError, error } = useNotificationsList(
     playerSlug,
     { limit: DROPDOWN_LIMIT },
     { enabled: open && !!playerSlug, refetchInterval: open ? 60_000 : undefined },
@@ -125,6 +125,7 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
               older={older}
               isLoading={isLoading}
               isError={isError}
+              errorMessage={extractErrorMessage(error)}
               t={t}
               playerSlug={playerSlug}
               onMarkRead={(id) => markRead.mutate([id])}
@@ -138,6 +139,21 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
       )}
     </div>
   )
+}
+
+// extractErrorMessage récupère le message lisible d'une erreur API ou Error JS.
+function extractErrorMessage(err: unknown): string | undefined {
+  if (!err) return undefined
+  // ApiError (lib/api/client.ts) : { code, message, status, ... }
+  if (typeof err === 'object' && err !== null) {
+    const e = err as { message?: unknown; code?: unknown; status?: unknown }
+    const parts: string[] = []
+    if (typeof e.code === 'string') parts.push(e.code)
+    if (typeof e.message === 'string') parts.push(e.message)
+    if (typeof e.status === 'number') parts.push(`HTTP ${e.status}`)
+    if (parts.length > 0) return parts.join(' · ')
+  }
+  return String(err)
 }
 
 function BellHeader(props: {
@@ -167,6 +183,7 @@ function BellBody(props: {
   older: Notification[]
   isLoading: boolean
   isError: boolean
+  errorMessage?: string
   t: ReturnType<typeof getNotificationsText>
   playerSlug: string
   onMarkRead: (id: number) => void
@@ -174,14 +191,17 @@ function BellBody(props: {
   onDismiss: (id: number) => void
   onAfterClick: () => void
 }) {
-  const { items, unread, older, isLoading, isError, t } = props
+  const { items, unread, older, isLoading, isError, errorMessage, t } = props
   if (isLoading) {
     return <div className="px-3 py-6 text-center text-sm text-muted-foreground">…</div>
   }
   if (isError) {
     return (
       <div className="px-3 py-6 text-center text-sm text-destructive">
-        {t.dropdownErrorLoading}
+        <p>{t.dropdownErrorLoading}</p>
+        {errorMessage && (
+          <p className="mt-1 text-xs text-destructive/80 break-all">{errorMessage}</p>
+        )}
       </div>
     )
   }
