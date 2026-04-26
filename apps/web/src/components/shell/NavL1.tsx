@@ -14,6 +14,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { useJobStatus } from '@/features/setup/queries'
+import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 // ─── SyncStatusIndicator ───────────────────────────────────────────────────
 
 /**
@@ -499,6 +500,9 @@ export function NavL1() {
           </span>
         )
       )}
+
+      {/* ── Cloche notifications (per-player) ────────────────────────────── */}
+      {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
 
       {/* ── Aide ────────────────────────────────────────────────────────── */}
       <div className="ml-1">
