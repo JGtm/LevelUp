@@ -28,6 +28,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
@@ -65,6 +66,7 @@ type MediaHandler struct {
 	loadProfiles  MediaProfilesProvider
 	repoRoot      string
 	settingsStore *settings.Store
+	notifierFor   NotificationsEmitterFactory // optionnel : émission media_added
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -89,6 +91,40 @@ func (h *MediaHandler) WithAuthorsContext(playerCtx MediaPlayerContextFactory, l
 	h.newPlayerCtx = playerCtx
 	h.loadProfiles = loadProfiles
 	return h
+}
+
+// WithNotificationsEmitterFactory branche la factory d'émetteurs de notifications
+// pour publier media_added après un upload réussi.
+func (h *MediaHandler) WithNotificationsEmitterFactory(f NotificationsEmitterFactory) *MediaHandler {
+	h.notifierFor = f
+	return h
+}
+
+// emitMediaAdded émet une notification media_added pour l'uploader.
+//
+// MVP : 1 notif pour l'uploader courant (le slug invoquant l'upload). Le
+// fan-out vers les destinataires associés au match (multi-destinataires) est
+// une amélioration future — voir plan §1.4.
+func (h *MediaHandler) emitMediaAdded(ctx context.Context, slug, gamertag string, newIndexed int) {
+	if h.notifierFor == nil || newIndexed <= 0 {
+		return
+	}
+	em, err := h.notifierFor(ctx, slug)
+	if err != nil || em == nil {
+		return
+	}
+	if err := em.Emit(ctx, notifications.EmitInput{
+		Category:    notifications.CategoryMediaAdded,
+		Severity:    notifications.SeverityInfo,
+		TitleKey:    "notif.media_added.title",
+		BodyKey:     "notif.media_added.body",
+		Params:      map[string]any{"actor_name": gamertag, "count": newIndexed},
+		TargetRoute: fmt.Sprintf("/players/%s/media", slug),
+		Actor:       &notifications.Actor{Name: gamertag},
+		Source:      "media_handler",
+	}); err != nil {
+		slog.WarnContext(ctx, "notifications: media_added", "err", err)
+	}
 }
 
 // GetMediaLibrary retourne la page paginée de la galerie médias.
@@ -218,6 +254,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, result)
 	BumpMediaFeedVersion()
+	h.emitMediaAdded(r.Context(), slug, gamertag, result.NewIndexed)
 }
 
 // parseUploadedFiles extrait et valide les fichiers du formulaire multipart.
