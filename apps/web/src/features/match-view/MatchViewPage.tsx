@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, Link, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -166,11 +165,7 @@ export function MatchViewPage() {
   const labelOf = (key: string, fallback: string): string =>
     fieldMappings?.fields[key]?.label ?? fallback
 
-  if (isLoading) {
-    return (
-      <PageLoader label="Chargement du match…" />
-    )
-  }
+  if (isLoading) return null
 
   if (isError || !data) {
     return (

@@ -2,7 +2,6 @@
  * CitationsPage — commendations Halo 5 + médailles Halo Infinite.
  */
 import { useParams } from '@tanstack/react-router'
-import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -22,11 +21,7 @@ export function CitationsPage() {
     filterContextHash,
   )
 
-  if (isLoading) {
-    return (
-      <PageLoader label="Chargement des citations…" />
-    )
-  }
+  if (isLoading) return null
 
   if (isError) {
     return (

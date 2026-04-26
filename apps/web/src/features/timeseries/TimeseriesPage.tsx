@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -48,11 +47,7 @@ export function TimeseriesPage() {
     filterContext,
   )
 
-  if (isLoading) {
-    return (
-      <PageLoader label="Chargement des séries temporelles…" />
-    )
-  }
+  if (isLoading) return null
 
   if (isError) {
     return (

@@ -27,9 +27,9 @@ describe('SynthesisPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('affiche le spinner pendant le chargement', () => {
+  it('ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)', () => {
     const { container } = renderWithProviders(<SynthesisPage />)
-    expect(container.querySelector('.animate-spin')).toBeInTheDocument()
+    expect(container.firstChild).toBeNull()
   })
 
   it('affiche le titre Synthese après chargement', async () => {

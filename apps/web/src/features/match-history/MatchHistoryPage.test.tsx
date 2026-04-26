@@ -23,9 +23,9 @@ describe('MatchHistoryPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('affiche le spinner en phase de chargement', () => {
+  it('ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)', () => {
     renderWithProviders(<MatchHistoryPage />)
-    expect(screen.getByText(/Chargement/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Chargement de l'historique/i)).not.toBeInTheDocument()
   })
 
   it("affiche le titre 'Historique' une fois les données chargées", async () => {

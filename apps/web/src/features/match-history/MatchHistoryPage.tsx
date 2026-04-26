@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageLoader } from '@/components/ui/spinner'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { MatchHistoryTable } from './MatchHistoryTable'
 import { useMatchHistory, useMatchHistoryExport } from './queries'
@@ -61,7 +60,7 @@ export function MatchHistoryPage() {
         <PrivacyBanner warning={data?.privacy_warning} className="mb-4" />
 
         {isLoading ? (
-          <PageLoader label="Chargement de l'historique…" />
+          null
         ) : isError ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
             <p className="font-medium text-destructive">Impossible de charger l'historique.</p>

@@ -6,7 +6,6 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Spinner } from '@/components/ui/spinner'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings, useScanMedia, useRecalculateSessions, useStartBackfill } from '@/features/settings/queries'
@@ -108,13 +107,7 @@ export function SettingsPage() {
 
   const merged: Partial<SettingsResponse> = localSettings
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label={t.loading} />
-      </div>
-    )
-  }
+  if (isLoading) return null
 
   return (
     <div className="flex flex-col">

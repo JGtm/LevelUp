@@ -3,13 +3,12 @@
  */
 import Markdown from 'react-markdown'
 import { useChangelog } from './queries'
-import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 
 export function ChangelogPage() {
   const { data, isLoading, error } = useChangelog()
 
-  if (isLoading) return <PageLoader />
+  if (isLoading) return null
   if (error || !data) {
     return (
       <div className="p-6">
