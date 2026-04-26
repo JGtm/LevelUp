@@ -16,5 +16,10 @@ vi.mock('react-plotly.js', () => ({
 export const server = setupServer(...handlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }))
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  server.resetHandlers()
+  // Nettoyage localStorage entre tests pour éviter les fuites d'état des
+  // stores Zustand persistés (globalFilterStore notamment).
+  if (typeof localStorage !== 'undefined') localStorage.clear()
+})
 afterAll(() => server.close())

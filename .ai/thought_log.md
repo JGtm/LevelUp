@@ -1,5 +1,84 @@
 # Thought Log
 
+## [2026-04-26] plan(portage): scoreboard + citations + impact compatible multi-titres
+
+**Statut** : Complété — plan formalisé.
+
+**Décision technique** :
+Vérification que les 3 chantiers prioritaires (scoreboard + expander, citation engine, tableau d'impact Boulet/Touriste) respectent l'arch multi-titres (`internal/games/`, `TitleDataAdapter`, `CapabilityKey`, `canonical.*`). Audit des règles dans `arch-rules` skill + `delivery-checklist` skill. Constat : le plan initial était implicitement Halo-only ; il faut formaliser le passage par adapter + capability avant de coder.
+
+Ajustements apportés :
+1. **Étendre `canonical.MatchParticipant`** avec champs *pointer non-breaking : KDA, MeleeKills, GrenadeKills, PowerWeaponKills, AvgLifeSeconds, PerfectKills (0 si absent), TopWeapon, IsBot.
+2. **Ajouter `canonical.HighlightEvent`, `ImpactBadge`, `FriendsImpactSets`** pour les algos d'impact.
+3. **Nouvelles méthodes adapter** : `LoadMatchScoreboard`, `LoadHighlightEvents`, `LoadFriendsXUIDs`, `LoadCitationMappings`, `LoadCitationInputsBulk`, `LoadCitationTotals`, `WriteCitations`.
+4. **Nouvelle `CapabilityKey`** : `CapCitationsEngine`. Optionnellement `CapMatchScoreboardExtra` pour les colonnes secondaires (top weapon, perfect kills) — un titre sans support dégrade en scoreboard de base.
+5. **Algos purs `analysis/`** dépendent uniquement de `canonical.*` — aucun import `platform/duckdb` ni `games/halo_infinite`. Les 12 custom functions Halo (Bulldozer, Annexion forcée, etc.) vivent dans `games/halo_infinite/citations_custom.go` derrière l'interface `CitationCustomResolver`.
+6. **Découpage modules** : 8 fichiers neufs prévus, tous <500 L, fonctions <80 L (plan détaillé tableau par tableau).
+7. **Ordre révisé en 7 phases A→G** (12-16 j-h) : phases A/C/E sont du typage canonique seul (non-breaking, livrables petits), B/D/F/G sont les chantiers algorithmiques.
+8. **Critères go/no-go par PR** : `go test`, `go vet`, ≤80L/≤500L, 0 colonne title-specific dans service/analysis, `slog.*Context` avec clés standardisées, dégradation `synthetic_title_b` testée, i18n FR+EN, parité avec les 5 137 lignes `match_citations` Python en BDD prod.
+
+**Résultats observés** :
+- Doc enrichi avec une section §16bis (~250 L) « Plan de portage compatible multi-titres » dans `docs/MIGRATION_GAP_PYTHON_TO_GO.md`. TOC mise à jour.
+- `internal/games/canonical/match.go` déjà compatible : `MatchParticipant`, `MatchSkillSnapshot`, `CapabilityGap` existent. Extensions proposées non-breaking (champs *pointer).
+- `TitleDataAdapter` interface (apps/go-api/internal/games/adapter.go:75) : ajout de 7 méthodes Load* identifié.
+
+**Conclusion** : le plan d'origine (impact 2-3 j → scoreboard 3-5 j → citations 5-7 j) tient ; coût additionnel pour la conformité multi-titres : 1.5 j de typage canonique préalable (phases A, C, E). Total révisé : 12-16 j-h. Aucune refonte conceptuelle — uniquement passage discipliné par adapter + capability dès le départ. Architecture cible parité Python sans casser les autres titres (`synthetic_title_b` reste opérationnel en mode dégradé).
+
+**Prochaine étape** : attendre arbitrage utilisateur sur le déclenchement (phase A peut démarrer à tout moment, c'est un PR de typage isolé).
+
+## [2026-04-26] feat(filters): refonte UX complète — omnibar pills + sticky session nav + persistance + auto-snap
+
+**Statut** : Complété — 6/6 phases livrées, 26/26 tests stores PASS, type check clean, Go build OK.
+
+**Décision technique** :
+
+Refonte complète du système de filtres web suivant le plan `wild-fluttering-wadler.md` (6 phases). Objectif : éliminer la confusion du toggle exclusif Période/Session, rendre la navigation de session toujours visible (gros boutons sticky), ajouter persistance des filtres et auto-snap sur nouvelle session.
+
+**Changements par phase :**
+
+1. **Phase 0 — globalFilterStore** : ajout `lastKnownLatestSessionId`, `isAutoSnappingToLatest`, action `autoSnapToLatestSession(id, triggeredBySync)`. Auto-derive de `filter_mode` dans `setPeriod`/`setSessions` — Session ↔ Période deviennent mutuellement exclusifs automatiquement (plus besoin de toggle explicite).
+2. **Phase 1 — SessionNavBar** : nouveau composant `apps/web/src/components/shell/SessionNavBar.tsx` (sticky `top-0 z-30`, hauteur fixe `h-12`). Gros boutons `◀ Précédente / Suivante ▶ / ⚡ Dernière` quand session pickée ; en mode analyse, switch sur résumé "Période + N filtres + N matchs" sans changer de hauteur (zéro reflow). Monté dans PlayerLayout au-dessus de NavL2.
+3. **Phase 2 — FilterOmnibar** : nouveau composant `apps/web/src/components/shell/FilterOmnibar.tsx` avec 3 pills (Session, Période, Filtres) ouvrant des popovers focused. SessionPopover avec recherche. Popovers click-outside + Escape. NavL2 devient sticky `top-12` sous SessionNavBar.
+4. **Phase 3 — FilterPanel retiré** : suppression complète de `FilterPanel.tsx` (per règle CLAUDE.md anti "Dead code museum"). Mise à jour des commentaires obsolètes dans `queries.ts` et `$playerSlug.tsx`.
+5. **Phase 4 — Auto-snap sur fin de sync** : dans PlayerLayout, effet sur `activeSyncJobId` qui détecte transition `string → null`. Sur fin de sync : refetch immédiat de `useFiltersResolve` ; si nouvelle session détectée (≠ `lastKnownLatestSessionId`), `autoSnapToLatestSession(latestId, true)`. Tracking du latest session_id dans `useFiltersResolve`.
+6. **Phase 5 — Persistence localStorage** : middleware `persist` de Zustand sur `globalFilterStore`. Partialize sur `filterContext`, `filterContextHash`, `lastKnownLatestSessionId`. URL `?f=…` prioritaire sur localStorage via `onRehydrateStorage`. Cleanup automatique dans `setup.ts` pour éviter la fuite de state entre tests.
+7. **Phase 6 — Auto-derive filter_mode** : intégrée à Phase 0 (un seul fichier touché, cohérence).
+
+**Résultats observés** :
+- `npx tsc --noEmit` : zéro erreur
+- `npx vitest run src/stores/` : 26/26 PASS
+- 26 tests pré-existants en échec (sur 382 total) : non liés à mes changements (vérifié sur baseline)
+- `go build ./...` : OK
+- `go test ./internal/service/ -run TestFilters` : OK
+
+**Fichiers livrés** :
+- Créés : `apps/web/src/components/shell/SessionNavBar.tsx`, `apps/web/src/components/shell/FilterOmnibar.tsx`
+- Modifiés : `globalFilterStore.ts`, `globalFilterStore.test.ts`, `NavL2.tsx`, `$playerSlug.tsx`, `features/filters/queries.ts`, `test/setup.ts`
+- Supprimés : `apps/web/src/components/shell/FilterPanel.tsx`
+
+**Conclusion / prochaine étape** : Vérification visuelle dans le navigateur (sticky scroll, popovers, auto-snap après sync, persistance après refresh). Tests pré-existants en échec à investiguer dans une tâche séparée.
+
+## [2026-04-26] docs(teammates): audit v7/cockpit + plan de portage Go
+
+**Statut** : Complété.
+
+**Contexte** : la page Coéquipiers Go (`apps/web/src/features/squad/`) est largement appauvrie par rapport à la version Python `v7/cockpit` (ressenti utilisateur : "graphes qui n'ont rien à voir, il en manque plein, c'est sommaire et brut"). Besoin d'un état des lieux rigoureux pour piloter le portage.
+
+**Décision technique** :
+1. Audit exhaustif rédigé dans `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` (lecture directe de `git show v7/cockpit:src/ui/pages/teammates*.py` et services/analyses associés). Couvre 22 charts/sections + en-têtes (KPI personnels, score d'équipe + grade lettre + cartes ▲/▼).
+2. Vérification au code Go de l'état réel : `squad_score.go:21` (algo collectif quasi complet), `squad_impact.go:18` (limité à 4 rôles vs 8 attendus, en mode bilatéral 1v1, clutch approximé "dernier tiers de la liste"), pas de `LoadKillTimingForMatches` / `LoadWeaponKillsAggregated` / `LoadMedalsForMatchesByXUID` / `LoadPersonalScoreAwards`.
+3. Section §11 "Faisabilité" ajoutée à l'audit avec tableau récapitulatif + briques transverses + estimation par phase.
+4. Plan de portage créé dans `.ai/PLAN_TEAMMATES_GO_PORTAGE.md` (format aligné sur `PLAN_MATCH_VIEW_GO_PORTAGE.md`) — 10 phases, ~36j total, MVP ~22j.
+
+**Résultats observés** :
+- Couverture actuelle Go : ~20-25 % (5 charts partiellement portés vs ~22 attendus).
+- 3 vrais bloqueurs techniques identifiés : LOWESS (~2j), extension impact à 8 rôles + N joueurs (~3j), endpoint kill timing (~0.5j mais bloque 2 charts).
+- Aucun bloqueur de données : toutes les tables DuckDB nécessaires sont déjà attestées dans le code metadata/queries.
+
+**Écart résiduel hors-plan** : 10 éléments fins non couverts (système de sessions Python, Spartan hero cards des coéquipiers, top matches with friends, settings `show_records`, filtre `include_firefight`, `hints_visible()`, notes post-graphe `tm_note_*`, sentinelles légende flottante détaillées, ajustement MMR du score perf v2, toggle viz Impact heatmap/scatter). Une "Phase 10 — Iso fine" sera ajoutée au plan si l'utilisateur souhaite atteindre la parité stricte.
+
+**Prochaine étape** : décision utilisateur sur l'ajout de la Phase 10. Puis démarrage Phase 0 (briques transverses) sur une nouvelle branche `feat/squad-page-portage` depuis `feat/multi-title-adapters-and-mappings`.
+
 ## [2026-04-26] migration(media_tz): start_time_utc / end_time_utc dans match_registry
 
 **Statut** : Complété.
@@ -169,6 +248,28 @@ Deux corrections liées au dropdown de sessions dans la page Escouade (FilterPan
 - `npx tsc --noEmit` : OK (zéro erreur)
 
 **Prochaine étape** : vérification visuelle dans le navigateur.
+
+## [2026-04-26] plan(match-view): refonte du plan portage avec audit faisabilité + objectif ISO
+
+**Statut** : Complété — plan finalisé avec phases A→K et critères d'acceptation ISO.
+
+**Décision technique** :
+Utilisateur a explicité l'objectif : la match view Go doit être **quasi ISO** avec v7/cockpit. Refonte de `.ai/PLAN_MATCH_VIEW_GO_PORTAGE.md` :
+1. Ajout § 6 — audit de faisabilité classifiant les 35 viz en READY (12) / DATA-OK (14) / REPO-MISSING (3) / DATA-MISSING (2) / FRONT-ONLY (4). Audit délégué à un sous-agent qui a inspecté repositories Go, fonctions analysis et tables DuckDB accessibles.
+2. § 7 — remplacement du plan en 9 phases logiques par **11 phases A→K** ordonnées par effort/risque croissants. Phase A = câblage front pur (1-2j, gain immédiat) ; Phase J = Radar Participation (6-8j, le plus risqué).
+3. § 8 — documentation des 2 blockers : #16 Radar Participation (PSA jamais lue côté Go) + #28 Panneau détail joueur (archi mono-player-DB rend Local Performance/SkillRank des autres joueurs inaccessible). Workaround Phase I retenu pour #28 : dégrader gracieusement (sections shared OK pour tous joueurs, sections player-DB-only limitées à `is_me`).
+4. § 10 — critères d'acceptation reformulés autour de la conformité visuelle/fonctionnelle/technique ISO + non-objectifs explicites (les 9 fonctions de viz latentes du § 12 restent inactives par défaut).
+
+**Résultats observés** :
+- 33/35 viz (94%) faisables sur l'architecture actuelle, dont 12 sans aucun travail backend
+- Effort total estimé ~35-45 jours-homme backend + travail front en parallèle
+- 2 vrais blockers identifiés et plan d'attaque documenté
+- Architecture multi-player-DB identifiée comme chantier futur hors scope match view
+
+**Conclusion / prochaine étape** :
+Plan désormais actionnable, ordonné par valeur immédiate. Démarrer par Phase A (câblage des READY) qui révèle déjà la richesse visuelle attendue, puis Phase B/C pour livrer rapidement le Header complet et l'onglet Citations, puis itérer onglet par onglet selon l'ordre A→K. Réévaluation des fonctions latentes (§ 12) repoussée post-Phase K.
+
+---
 
 ## [2026-04-26] audit(match-view): comparaison v7/cockpit (Python) vs Go + plan de portage
 
