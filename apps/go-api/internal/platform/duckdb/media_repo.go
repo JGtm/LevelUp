@@ -435,6 +435,25 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 	return out
 }
 
+// Miroir Go de q37MediaModeLabelExpr : extraction du mode parent.
+//   - Si le label contient ":" → préfixe avant (Arena:Slayer → Arena)
+//   - Sinon → strip suffixes carte/Forge/Ranked
+var (
+	modeLabelOnRe     = regexp.MustCompile(`(?i)\s+on\s+.+$`)
+	modeLabelForgeRe  = regexp.MustCompile(`(?i)\s*-\s*Forge\b.*$`)
+	modeLabelRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b.*$`)
+)
+
+func normalizeModeLabel(s string) string {
+	if idx := strings.Index(s, ":"); idx >= 0 {
+		return strings.TrimSpace(s[:idx])
+	}
+	s = modeLabelOnRe.ReplaceAllString(s, "")
+	s = modeLabelForgeRe.ReplaceAllString(s, "")
+	s = modeLabelRankedRe.ReplaceAllString(s, "")
+	return strings.TrimSpace(s)
+}
+
 // SetMediaMatchAssociation force l'association d'un média à un match précis.
 // Supprime l'association existante (si présente) et insère la nouvelle.
 // Retourne (mapName, modeName) pour permettre au handler d'enrichir la réponse.
