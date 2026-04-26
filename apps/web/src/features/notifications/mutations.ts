@@ -88,6 +88,23 @@ export function useUpdatePreferences({ playerSlug }: MutationCtx) {
   })
 }
 
+/**
+ * Émet une notification de test côté serveur (POST /notifications/test).
+ * Permet de valider visuellement le pipeline UI (toast + dropdown) depuis le
+ * bouton "Envoyer une notification de test" du Settings tab.
+ */
+export function useSendTestNotification({ playerSlug }: MutationCtx) {
+  const qc = useQueryClient()
+  return useMutation<void, Error, void>({
+    mutationFn: async () =>
+      api.post<void>(`/players/${playerSlug}/notifications/test`),
+    onSettled: () => {
+      // Invalide la liste pour que la notif test apparaisse dans le dropdown.
+      qc.invalidateQueries({ queryKey: ['notifications', playerSlug] })
+    },
+  })
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────
 
 interface CacheSnapshot {

@@ -49,11 +49,28 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Esc pour fermer
+  // Clavier : Esc ferme, ArrowUp/Down navigue entre items
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        setOpen(false)
+        return
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+      if (!ref.current) return
+      const items = Array.from(
+        ref.current.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+      )
+      if (items.length === 0) return
+      const active = document.activeElement as HTMLElement | null
+      const idx = active ? items.indexOf(active) : -1
+      const nextIdx =
+        e.key === 'ArrowDown'
+          ? (idx + 1 + items.length) % items.length
+          : (idx - 1 + items.length) % items.length
+      e.preventDefault()
+      items[nextIdx]?.focus()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
