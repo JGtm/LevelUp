@@ -1,49 +1,67 @@
 /**
  * SquadContributionsPage — onglet Contributions de l'Escouade.
- * Consomme le contexte SquadContext fourni par SquadLayout.
+ *
+ * Consomme le contexte SquadContext fourni par SquadLayout. Affiche un
+ * radar normalisé du profil de chaque coéquipier sélectionné.
+ *
+ * Multi-titres : axes du radar dérivés de SQUAD_RADAR_METRICS (FieldKeys
+ * canoniques) + filtrage des keys absentes du fields.toml du titre courant.
+ * Strings UI via getSquadText.
+ *
+ * Distingue 3 empty kinds (no_selection / invalid_selection / no_chart_data)
+ * comme SquadSynergiesPage pour rendre les défauts diagnosticables.
  */
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import type { TeammateRow, TeammateKPIs, PlotlyFigurePayload } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import type { TeammateRow, PlotlyFigurePayload } from '@/lib/api/types'
 import { useSquadContext } from './SquadLayout'
-import { resolveToken, getSeriesColors } from '@/lib/accessibility'
+import { getSeriesColors } from '@/lib/accessibility'
 import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
-
-// ─── Helper graphique ─────────────────────────────────────────────────────────
+import { getSquadText } from './i18n'
+import { SQUAD_RADAR_METRICS, type SquadMetric } from './metrics'
 
 const SERIES_TOKENS = ['narrative-dominant', 'perf-tier-3', 'perf-tier-1'] as const
 
-function buildRadarChart(
-  rows: TeammateRow[],
-  soloRef: TeammateKPIs | null,
-  fieldMappings?: FieldMappingsResponse,
-): PlotlyFigurePayload {
-  // Phase D plan multi-titres : libellés axes du radar issus du backend TOML
-  // avec fallback sur les valeurs FR locales si l'endpoint est absent.
-  const winRate = fieldMappings?.fields['win_rate']?.label ?? 'Taux de victoire'
-  const kdr = fieldMappings?.fields['kdr']?.label ?? 'K/D'
-  const kills = fieldMappings?.fields['kills']?.label ?? 'Kills'
-  const assists = fieldMappings?.fields['assists']?.label ?? 'Assists'
-  const accuracy = fieldMappings?.fields['accuracy']?.label ?? 'Précision'
-  const axes = [winRate, kdr, `${kills}/partie`, `${assists}/partie`, accuracy]
-  const norm = (v: number | null, max: number) =>
-    v != null ? Math.min(100, (v / max) * 100) : 0
+function metricLabel(
+  m: SquadMetric,
+  mappings: FieldMappingsResponse | undefined,
+  perGameSuffix: string,
+): string {
+  const base = mappings?.fields[m.key]?.label ?? m.key
+  return m.format === 'per_game' ? `${base}${perGameSuffix}` : base
+}
 
-  const makeVals = (k: TeammateKPIs) => [
-    k.win_rate * 100,
-    norm(k.kd_ratio, 3),
-    norm(k.kills_per_game, 20),
-    norm(k.assists_per_game, 10),
-    norm(k.accuracy, 1) * 100,
-  ]
+function availableMetrics(
+  metrics: readonly SquadMetric[],
+  mappings: FieldMappingsResponse | undefined,
+): SquadMetric[] {
+  if (!mappings) return [...metrics]
+  return metrics.filter((m) => !!mappings.fields[m.key])
+}
+
+interface RadarArgs {
+  rows: TeammateRow[]
+  metrics: SquadMetric[]
+  axes: string[]
+  withGamertagLabel: (gt: string) => string
+}
+
+function buildRadarChart({
+  rows,
+  metrics,
+  axes,
+  withGamertagLabel,
+}: RadarArgs): PlotlyFigurePayload | null {
+  if (rows.length === 0 || metrics.length === 0) return null
 
   const colors = getSeriesColors(rows.length, [...SERIES_TOKENS])
   const traces: PlotlyFigurePayload['data'] = rows.map((row, i) => {
-    const vals = makeVals(row.with_kpis)
+    const vals = metrics.map((m) => m.extract(row.with_kpis) ?? 0)
     return {
       type: 'scatterpolar',
-      name: `Avec ${row.gamertag}`,
+      name: withGamertagLabel(row.gamertag),
       r: [...vals, vals[0]],
       theta: [...axes, axes[0]],
       fill: 'toself',
@@ -51,21 +69,6 @@ function buildRadarChart(
       line: { color: colors[i] },
     }
   })
-
-  if (soloRef) {
-    const vals = makeVals(soloRef)
-    const refColor = resolveToken('perf-tier-2')
-    traces.push({
-      type: 'scatterpolar',
-      name: 'Solo ref',
-      r: [...vals, vals[0]],
-      theta: [...axes, axes[0]],
-      fill: 'toself',
-      opacity: 0.4,
-      marker: { color: refColor },
-      line: { color: refColor, dash: 'dot' },
-    })
-  }
 
   return {
     data: traces,
@@ -80,35 +83,59 @@ function buildRadarChart(
   }
 }
 
-// ─── Composant ────────────────────────────────────────────────────────────────
-
 export function SquadContributionsPage() {
-  const { selectedRows, soloReference } = useSquadContext()
-  const { data: fieldMappings } = useFieldMappings()
+  const { selectedRows, confirmedGamertags } = useSquadContext()
+  const { data: mappings } = useFieldMappings()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getSquadText(locale)
 
-  const chart =
-    selectedRows.length > 0 ? buildRadarChart(selectedRows, soloReference, fieldMappings) : null
+  const metrics = availableMetrics(SQUAD_RADAR_METRICS, mappings)
+  const axes = metrics.map((m) => metricLabel(m, mappings, t.units.perGame))
+
+  const hasSelection = confirmedGamertags.length > 0
+  const hasRows = selectedRows.length > 0
+
+  const chart = hasRows
+    ? buildRadarChart({
+        rows: selectedRows,
+        metrics,
+        axes,
+        withGamertagLabel: t.table.withTeammate,
+      })
+    : null
+
+  let emptyContent: React.ReactNode = null
+  if (!hasSelection) {
+    emptyContent = (
+      <EmptyStateNotice
+        title={t.empty.noSelectionTitle}
+        description={t.empty.noSelectionDescription}
+      />
+    )
+  } else if (!hasRows) {
+    emptyContent = (
+      <EmptyStateNotice
+        title={t.empty.invalidSelectionTitle}
+        description={t.empty.invalidSelectionDescription}
+      />
+    )
+  } else if (!chart) {
+    emptyContent = (
+      <EmptyStateNotice
+        title={t.empty.noChartTitle}
+        description={t.empty.noChartDescription}
+      />
+    )
+  }
 
   return (
     <Card>
       <CardContent className="pt-4">
-        {selectedRows.length === 0 ? (
-          <EmptyStateNotice
-            title="Comparaison inactive"
-            description="Sélectionne au moins un coéquipier pour afficher les contributions."
-          />
-        ) : chart ? (
+        {emptyContent ?? (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Profil de contribution normalisé (violet) vs ta référence solo (cyan pointillé).
-            </p>
-            <PlotlyChart figure={chart} />
+            <p className="text-sm text-muted-foreground">{t.contributions.description}</p>
+            <PlotlyChart figure={chart!} />
           </div>
-        ) : (
-          <EmptyStateNotice
-            title="Contributions indisponibles"
-            description="Le radar de contribution n'a pas pu être calculé pour la sélection en cours."
-          />
         )}
       </CardContent>
     </Card>
