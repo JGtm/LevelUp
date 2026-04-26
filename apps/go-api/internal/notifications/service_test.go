@@ -13,6 +13,13 @@ type fakeRepo struct {
 	inserted     []*Notification
 	prefs        []Preference
 	insertErr    error
+
+	// Capture des derniers appels pour assertions
+	lastListLimit int
+	lastUnreadID  int64
+	lastAllCat    Category
+	lastDeleteID  int64
+	unread        UnreadCount
 }
 
 func newFakeRepo() *fakeRepo {
@@ -32,19 +39,27 @@ func (r *fakeRepo) Insert(_ context.Context, n *Notification) error {
 	return nil
 }
 
-func (r *fakeRepo) List(_ context.Context, _ ListFilter) (ListResult, error) {
+func (r *fakeRepo) List(_ context.Context, f ListFilter) (ListResult, error) {
+	r.lastListLimit = f.Limit
 	return ListResult{}, nil
 }
 func (r *fakeRepo) UnreadCount(_ context.Context) (UnreadCount, error) {
-	return UnreadCount{}, nil
+	return r.unread, nil
 }
 func (r *fakeRepo) MarkRead(_ context.Context, ids []int64) (int, error) { return len(ids), nil }
-func (r *fakeRepo) MarkUnread(_ context.Context, _ int64) error          { return nil }
-func (r *fakeRepo) MarkAllRead(_ context.Context, _ Category) (int, error) {
+func (r *fakeRepo) MarkUnread(_ context.Context, id int64) error {
+	r.lastUnreadID = id
+	return nil
+}
+func (r *fakeRepo) MarkAllRead(_ context.Context, c Category) (int, error) {
+	r.lastAllCat = c
 	return 0, nil
 }
-func (r *fakeRepo) Delete(_ context.Context, _ int64) error           { return nil }
-func (r *fakeRepo) CapAndSweep(_ context.Context, _ int) error        { return nil }
+func (r *fakeRepo) Delete(_ context.Context, id int64) error {
+	r.lastDeleteID = id
+	return nil
+}
+func (r *fakeRepo) CapAndSweep(_ context.Context, _ int) error { return nil }
 func (r *fakeRepo) GetPreferences(_ context.Context) ([]Preference, error) {
 	return r.prefs, nil
 }
@@ -233,5 +248,100 @@ func TestIDGenerator_NewMs_ResetsSeq(t *testing.T) {
 func TestNoopEmitter(t *testing.T) {
 	if err := (NoopEmitter{}).Emit(context.Background(), EmitInput{}); err != nil {
 		t.Errorf("NoopEmitter should never error, got: %v", err)
+	}
+}
+
+// ─── Tests des méthodes Service via fakeRepo ─────────────────────────────
+
+func TestServiceList_DefaultsLimit(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	// Limit <=0 doit être normalisée vers DefaultListLimit
+	_, err := svc.List(context.Background(), ListFilter{Limit: 0})
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+	if repo.lastListLimit != DefaultListLimit {
+		t.Errorf("expected limit=%d, got %d", DefaultListLimit, repo.lastListLimit)
+	}
+}
+
+func TestServiceList_LimitTooLarge_Capped(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	_, _ = svc.List(context.Background(), ListFilter{Limit: 999})
+	if repo.lastListLimit != DefaultListLimit {
+		t.Errorf("expected cap to default %d, got %d", DefaultListLimit, repo.lastListLimit)
+	}
+}
+
+func TestServiceList_RespectsValidLimit(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	_, _ = svc.List(context.Background(), ListFilter{Limit: 25})
+	if repo.lastListLimit != 25 {
+		t.Errorf("expected limit=25, got %d", repo.lastListLimit)
+	}
+}
+
+func TestServiceUnreadCount(t *testing.T) {
+	repo := newFakeRepo()
+	repo.unread = UnreadCount{Count: 7, ByCategory: map[string]int{"match_synced": 7}}
+	svc := NewService(repo)
+	got, err := svc.UnreadCount(context.Background())
+	if err != nil {
+		t.Fatalf("UnreadCount: %v", err)
+	}
+	if got.Count != 7 {
+		t.Errorf("expected count=7, got %d", got.Count)
+	}
+}
+
+func TestServiceMarkUnread_Delegates(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	if err := svc.MarkUnread(context.Background(), 42); err != nil {
+		t.Fatalf("MarkUnread: %v", err)
+	}
+	if repo.lastUnreadID != 42 {
+		t.Errorf("expected MarkUnread(42), got %d", repo.lastUnreadID)
+	}
+}
+
+func TestServiceMarkAllRead_PassesCategory(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	res, err := svc.MarkAllRead(context.Background(), CategoryMatchSynced)
+	if err != nil {
+		t.Fatalf("MarkAllRead: %v", err)
+	}
+	if repo.lastAllCat != CategoryMatchSynced {
+		t.Errorf("expected category=match_synced, got %q", repo.lastAllCat)
+	}
+	_ = res
+}
+
+func TestServiceDelete_Delegates(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	if err := svc.Delete(context.Background(), 99); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if repo.lastDeleteID != 99 {
+		t.Errorf("expected Delete(99), got %d", repo.lastDeleteID)
+	}
+}
+
+func TestServiceUpdatePreferences_RoundTrip(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	prefs := []Preference{{Category: CategoryMatchSynced, Enabled: false, Delivery: DeliveryOff}}
+	got, err := svc.UpdatePreferences(context.Background(), prefs)
+	if err != nil {
+		t.Fatalf("UpdatePreferences: %v", err)
+	}
+	if len(got) != 1 || got[0].Enabled {
+		t.Errorf("expected disabled pref, got %+v", got)
 	}
 }

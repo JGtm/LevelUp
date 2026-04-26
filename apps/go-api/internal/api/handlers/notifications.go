@@ -103,6 +103,7 @@ func (h *NotificationsHandler) MarkRead(w http.ResponseWriter, r *http.Request) 
 	}
 	res, err := svc.MarkRead(r.Context(), req.IDs)
 	if err != nil {
+		slog.WarnContext(r.Context(), "notifications: mark-read", "err", err)
 		writeError(w, http.StatusInternalServerError, "mark_read_error", err.Error())
 		return
 	}
@@ -127,6 +128,7 @@ func (h *NotificationsHandler) MarkAllRead(w http.ResponseWriter, r *http.Reques
 	}
 	res, err := svc.MarkAllRead(r.Context(), notifications.Category(req.Category))
 	if err != nil {
+		slog.WarnContext(r.Context(), "notifications: mark-all-read", "err", err)
 		writeError(w, http.StatusInternalServerError, "mark_all_read_error", err.Error())
 		return
 	}
@@ -149,6 +151,7 @@ func (h *NotificationsHandler) MarkUnread(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusNotFound, "not_found", "notification introuvable")
 			return
 		}
+		slog.WarnContext(r.Context(), "notifications: mark-unread", "id", id, "err", err)
 		writeError(w, http.StatusInternalServerError, "mark_unread_error", err.Error())
 		return
 	}
@@ -171,6 +174,7 @@ func (h *NotificationsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not_found", "notification introuvable")
 			return
 		}
+		slog.WarnContext(r.Context(), "notifications: delete", "id", id, "err", err)
 		writeError(w, http.StatusInternalServerError, "delete_error", err.Error())
 		return
 	}
@@ -185,6 +189,7 @@ func (h *NotificationsHandler) GetPreferences(w http.ResponseWriter, r *http.Req
 	}
 	prefs, err := svc.GetPreferences(r.Context())
 	if err != nil {
+		slog.WarnContext(r.Context(), "notifications: get-preferences", "err", err)
 		writeError(w, http.StatusInternalServerError, "prefs_error", err.Error())
 		return
 	}
@@ -209,6 +214,7 @@ func (h *NotificationsHandler) UpdatePreferences(w http.ResponseWriter, r *http.
 	}
 	updated, err := svc.UpdatePreferences(r.Context(), req.Items)
 	if err != nil {
+		slog.WarnContext(r.Context(), "notifications: update-preferences", "err", err)
 		writeError(w, http.StatusInternalServerError, "prefs_update_error", err.Error())
 		return
 	}
@@ -238,9 +244,11 @@ func (h *NotificationsHandler) PostTest(w http.ResponseWriter, r *http.Request) 
 		Source:      "test_button",
 	})
 	if err != nil {
+		slog.WarnContext(r.Context(), "notifications: test-emit", "slug", slug, "err", err)
 		writeError(w, http.StatusInternalServerError, "test_emit_error", err.Error())
 		return
 	}
+	slog.InfoContext(r.Context(), "notifications: test sent", "slug", slug)
 	w.WriteHeader(http.StatusNoContent)
 }
 

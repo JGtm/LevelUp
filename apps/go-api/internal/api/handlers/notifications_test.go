@@ -400,6 +400,43 @@ func TestNotificationsHandler_Preferences_Roundtrip(t *testing.T) {
 	}
 }
 
+func TestNotificationsHandler_PostTest_Emits(t *testing.T) {
+	repo := newFakeNotifRepo()
+	svc := notifications.NewService(repo)
+	r := newNotificationsRouter(makeFactory(svc, "p1"))
+
+	req := httptest.NewRequest(http.MethodPost, "/players/p1/notifications/test", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("PostTest expected 204, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if len(repo.items) != 1 {
+		t.Fatalf("expected 1 emitted notif, got %d", len(repo.items))
+	}
+	if repo.items[0].Category != notifications.CategoryAppRelease {
+		t.Errorf("expected category app_release, got %q", repo.items[0].Category)
+	}
+	if repo.items[0].Source != "test_button" {
+		t.Errorf("expected source=test_button, got %q", repo.items[0].Source)
+	}
+}
+
+func TestNotificationsHandler_PostTest_PlayerNotFound(t *testing.T) {
+	repo := newFakeNotifRepo()
+	svc := notifications.NewService(repo)
+	r := newNotificationsRouter(makeFactory(svc, "p1"))
+
+	req := httptest.NewRequest(http.MethodPost, "/players/unknown/notifications/test", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for unknown player, got %d", w.Code)
+	}
+}
+
 func TestNotificationsHandler_BadJSON(t *testing.T) {
 	repo := newFakeNotifRepo()
 	svc := notifications.NewService(repo)
