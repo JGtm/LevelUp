@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-04-26] feat(squad): refonte UX + multi-titres de la page Escouade
+
+**Statut** : Complété — 13 commits sur `feat/multi-title-adapters-and-mappings`, dont un merge `feat/squad-page-multititle-refactor` → `feat/multi-title-adapters-and-mappings`.
+
+**Contexte** : 7 problèmes signalés par l'utilisateur sur la page Escouade :
+1. Strings hardcodées dans tous les composants Squad
+2. Filtres en drawer latéral horrible (Stats + Escouade)
+3. Largeur du body hors gabarit app-wide (vs Home)
+4. Concept "Solo" parasite (page solo dédiée séparée)
+5. "Comparaison inactive" même après sélection (bug racine non observable)
+6. Wording de comparaison compétitive alors que la finalité est l'analyse de synergies
+7. Page non multi-titres : FieldKeys hardcodées, casserait sur synthetic_title_b
+
+**Décisions techniques principales** :
+
+- **Frontière i18n stricte** : `features/squad/i18n.ts` (FR/EN, UI uniquement) + `useFieldMappings` (FieldKey → fields.toml du titre). Plus aucun fallback FR hardcodé dans le JSX.
+- **Liste de métriques data-driven** : `features/squad/metrics.ts` déclare `SQUAD_KPI_METRICS`, `SQUAD_SYNERGY_METRICS`, `SQUAD_RADAR_METRICS`, `SQUAD_HSPK_METRICS`. Les composants filtrent les FieldKeys absents du titre courant (graceful degradation, validé par `multi-title.test.ts` avec mock minimaliste type synthetic_title_b).
+- **Chart builders sans strings libres** : `hsPkChart`, `timelineChart`, `heatmapChart` reçoivent leurs labels en argument (signature objet), permet la composition côté pages avec `useFieldMappings` + `getSquadText`. TODO multi-title sur heatmap pour migration vers `useAssetLabel('map', id)` quand Phase 3 du PLAN_FINITION livrera le hook.
+- **3 empty states** dans Synergies/Contributions (`no_selection` / `invalid_selection` / `no_chart_data`) au lieu d'un seul "Comparaison inactive". `invalid_selection` se déclenche quand `confirmedGts > 0` mais `data.teammates = 0` — couvre le bug racine.
+- **Backend log `teammates_gamertag_not_found`** dans `buildTeammateRowWithMatches` quand le gamertag confirmé n'est pas dans `LoadTopTeammates` — silent-drop devient observable côté ops.
+- **FilterDrawer → FilterPanel inline** : zéro drawer, panneau expandable sous NavL2 avec `max-height` + `opacity` transition, `aria-expanded` toggle. Touche aussi Stats (composant partagé via NavL2).
+- **Retrait Solo** : `SquadSessionSelector` (renommé) ne propose plus "Solo", `SquadLayout` n'expose plus `soloReference` dans son context, plus de trace "Référence solo" dans les graphes.
+- **Largeur body** : `p-6` ajouté au wrapper SquadLayout pour s'aligner sur HomePage (`px-6` + `pt-6`) et MatchHistoryPage (`p-6`).
+
+**Couverture tests** :
+- 10 fichiers Vitest, 65 tests verts : i18n parité FR/EN, metrics validity, _logger dédup, 3 chart builders, multi-title degradation, SquadSessionSelector, SynergiesPage 3-states, ContributionsPage 3-states.
+- 2 tests Go : capture slog `teammates_gamertag_not_found` (cas trouvé / cas connu).
+- Bug fix dérivé : `SQUAD_RADAR_METRICS.accuracy` faisait `norm() * 100` (= 4500 pour 0.45), corrigé en `norm()` seul. Bug existait dans l'ancien `SquadContributionsPage`, le test l'a révélé.
+
+**Résultats observés** :
+- `npx tsc --noEmit` clean.
+- `npx eslint` 0 erreur, 0 warning sur tous les fichiers Squad + FilterPanel + NavL2.
+- `npx vitest run src/features/squad/` : 10 fichiers, 65 tests verts.
+- `go test ./internal/service/` : OK.
+
+**Conclusion** : Refonte UX livrée + page rendue multi-titres compatible (graceful degradation testée sur mock minimaliste). Le bug "Comparaison inactive" est désormais diagnosticable côté frontend (state distinct) ET observable côté backend (warn slog dédupliqué).
+
+**Prochaines étapes** :
+- Phase 3 du PLAN_FINITION_MULTI_TITLE livrera `useAssetLabel('map', id)` → migrer la heatmap (TODO marqué dans `heatmapChart.ts`).
+- Suppression du champ `solo_reference` du DTO `TeammatesPageResponse` (frontend l'ignore déjà).
+
 ## [2026-04-26] feat(i18n): Phase D-bis — migration dicts i18n React vers useFieldLabel
 
 **Statut** : Complété — 1 commit sur `feat/multi-title-adapters-and-mappings`.
