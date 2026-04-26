@@ -1,12 +1,30 @@
 /**
  * heatmapChart — Win rate par carte (heatmap horizontale).
+ *
+ * Multi-titres : titre et libellés d'axes passés en argument. Les noms de
+ * cartes proviennent de MapBreakdownRow.map_ui (raw string côté backend).
+ *
+ * TODO(multi-title): une fois useAssetLabel('map', id) livré (PLAN_FINITION
+ * Phase 3), le backend exposera un canonical map ID et le frontend résoudra
+ * le label localisé via le mapping assets.toml. Aujourd'hui les libellés
+ * de cartes sont des strings brutes EN-Halo qui resteront tels quels.
  */
 import type { MapBreakdownRow, PlotlyFigurePayload } from '@/lib/api/types'
 import { buildOrdinalColorscale } from '@/lib/accessibility'
 
-export function buildHeatmapChart(
-  rows: MapBreakdownRow[],
-): PlotlyFigurePayload | null {
+interface HeatmapChartArgs {
+  rows: MapBreakdownRow[]
+  title: string
+  winAxis: string
+  matchesLabel: string
+}
+
+export function buildHeatmapChart({
+  rows,
+  title,
+  winAxis,
+  matchesLabel,
+}: HeatmapChartArgs): PlotlyFigurePayload | null {
   if (rows.length === 0) return null
 
   // Tokens dans l'ordre croissant : 0 % = tier-5 (mauvais), 100 % = tier-1 (excellent)
@@ -26,15 +44,15 @@ export function buildHeatmapChart(
         type: 'heatmap',
         z: [winrates],
         x: maps,
-        y: ['Win rate (%)'],
+        y: [winAxis],
         colorscale: colorscale as unknown as string,
         zmin: 0,
         zmax: 100,
         customdata: [customdata],
         hovertemplate:
-          '<b>%{x}</b><br>Win rate: %{z:.1f}%<br>Matchs: %{customdata[0]}<extra></extra>',
+          `<b>%{x}</b><br>${winAxis}: %{z:.1f}%<br>${matchesLabel}: %{customdata[0]}<extra></extra>`,
         showscale: true,
-        colorbar: { title: 'Win %', thickness: 14 },
+        colorbar: { title: winAxis, thickness: 14 },
       },
     ],
     layout: {
@@ -42,7 +60,7 @@ export function buildHeatmapChart(
       margin: { l: 80, r: 20, t: 30, b: 80 },
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
-      title: { text: 'Win rate par carte (escouade)', font: { size: 13 } },
+      title: { text: title, font: { size: 13 } },
       xaxis: { tickangle: -35 },
     },
   }

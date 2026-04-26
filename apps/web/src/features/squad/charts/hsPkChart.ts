@@ -1,24 +1,46 @@
 /**
  * hsPkChart — Headshot kills / Perfect kills par partie.
+ *
  * Un groupe de barres par coéquipier sélectionné, barmode overlay.
+ *
+ * Multi-titres : aucun libellé hardcodé. Les noms de traces et le titre
+ * sont passés en argument par le caller (qui les compose via
+ * useFieldLabel + getSquadText).
  */
 import type { TeammateRow, PlotlyFigurePayload } from '@/lib/api/types'
 import { getSeriesColors } from '@/lib/accessibility'
+import type { SquadMetric } from '../metrics'
 
 const SERIES_TOKENS = ['perf-tier-1', 'perf-tier-2', 'perf-tier-3'] as const
 
-export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null {
+interface HsPkChartArgs {
+  rows: TeammateRow[]
+  hsMetric: SquadMetric
+  pkMetric: SquadMetric
+  hsLabel: string
+  pkLabel: string
+  title: string
+}
+
+export function buildHsPkChart({
+  rows,
+  hsMetric,
+  pkMetric,
+  hsLabel,
+  pkLabel,
+  title,
+}: HsPkChartArgs): PlotlyFigurePayload | null {
   if (rows.length === 0) return null
 
   const labels = rows.map((r) => r.gamertag)
-  const hsValues = rows.map((r) => r.with_kpis.headshot_kills_per_game ?? 0)
-  const pkValues = rows.map((r) => r.with_kpis.perfect_kills_per_game ?? 0)
+  const hsValues = rows.map((r) => hsMetric.extract(r.with_kpis) ?? 0)
+  const pkValues = rows.map((r) => pkMetric.extract(r.with_kpis) ?? 0)
   const colors = getSeriesColors(rows.length, [...SERIES_TOKENS])
 
   const traces: PlotlyFigurePayload['data'] = [
     {
       type: 'bar',
-      name: 'Headshot kills/partie',
+      name: hsLabel,
       x: labels,
       y: hsValues,
       marker: {
@@ -28,7 +50,7 @@ export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null 
     },
     {
       type: 'bar',
-      name: 'Perfect kills/partie',
+      name: pkLabel,
       x: labels,
       y: pkValues,
       marker: {
@@ -36,9 +58,7 @@ export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null 
         opacity: 0.45,
         line: {
           color: colors,
-          width: rows.map((r) =>
-            (r.with_kpis.perfect_kills_per_game ?? 0) > 0 ? 2.5 : 0,
-          ),
+          width: pkValues.map((v) => (v > 0 ? 2.5 : 0)),
         },
       },
     },
@@ -53,7 +73,7 @@ export function buildHsPkChart(rows: TeammateRow[]): PlotlyFigurePayload | null 
       legend: { orientation: 'h', x: 0, y: -0.2 },
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
-      title: { text: 'Headshot & Perfect kills / partie', font: { size: 13 } },
+      title: { text: title, font: { size: 13 } },
     },
   }
 }

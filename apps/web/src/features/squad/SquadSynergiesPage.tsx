@@ -26,7 +26,7 @@ import { buildHeatmapChart } from './charts/heatmapChart'
 import { getSeriesColors } from '@/lib/accessibility'
 import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import { getSquadText } from './i18n'
-import { SQUAD_SYNERGY_METRICS, type SquadMetric } from './metrics'
+import { SQUAD_SYNERGY_METRICS, SQUAD_HSPK_METRICS, type SquadMetric } from './metrics'
 
 const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
 
@@ -114,14 +114,45 @@ export function SquadSynergiesPage() {
           withGamertagLabel: t.table.withTeammate,
         })
       : null
-  const hsPkChart = hasRows ? buildHsPkChart(selectedRows) : null
+  // HS/PK : libellés composés via fieldMappings + perGameSuffix.
+  // L'absence de l'un des FieldKeys (`headshot_kills`, `perfect_kills`)
+  // côté titre courant fait passer son label en fallback "key" — la trace
+  // reste affichée mais avec un libellé brut, signalant la dégradation.
+  const hsLabel =
+    (mappings?.fields[SQUAD_HSPK_METRICS.hs.key]?.label ?? SQUAD_HSPK_METRICS.hs.key) +
+    t.units.perGame
+  const pkLabel =
+    (mappings?.fields[SQUAD_HSPK_METRICS.pk.key]?.label ?? SQUAD_HSPK_METRICS.pk.key) +
+    t.units.perGame
+  const hsPkChart = hasRows
+    ? buildHsPkChart({
+        rows: selectedRows,
+        hsMetric: SQUAD_HSPK_METRICS.hs,
+        pkMetric: SQUAD_HSPK_METRICS.pk,
+        hsLabel,
+        pkLabel,
+        title: t.charts.hsPkTitle,
+      })
+    : null
   const timelineChart =
     pageData?.timeseries && pageData.timeseries.length > 0
-      ? buildTimelineChart(pageData.timeseries)
+      ? buildTimelineChart({
+          points: pageData.timeseries,
+          title: t.charts.timelineTitle,
+          perfName: t.charts.timelinePerfName,
+          winRateName: t.charts.timelineWinRateName,
+          perfAxis: t.charts.timelinePerfAxis,
+          winRateAxis: t.charts.timelineWinRateAxis,
+        })
       : null
   const heatmapChart =
     pageData?.map_breakdown && pageData.map_breakdown.length > 0
-      ? buildHeatmapChart(pageData.map_breakdown)
+      ? buildHeatmapChart({
+          rows: pageData.map_breakdown,
+          title: t.charts.heatmapTitle,
+          winAxis: t.charts.heatmapWinAxis,
+          matchesLabel: t.charts.heatmapMatchesLabel,
+        })
       : null
 
   // ── Empty states 3-états ────────────────────────────────────────────────
