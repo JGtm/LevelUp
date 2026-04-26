@@ -243,17 +243,6 @@ export function MediaToolbar({
         onChange={onAuthorSlugsChange}
       />
       <Select
-        aria-label={text.toolbar.playlistAriaLabel}
-        className={compactSelectClass}
-        value={playlistFilter}
-        onChange={(event) => onPlaylistChange(event.target.value)}
-      >
-        <option value="">{text.toolbar.allPlaylists}</option>
-        {safePlaylistOptions.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </Select>
-      <Select
         aria-label={text.toolbar.mapAriaLabel}
         className={compactSelectClass}
         value={mapFilter}
@@ -261,6 +250,20 @@ export function MediaToolbar({
       >
         <option value="">{text.toolbar.allMaps}</option>
         {safeMapOptions.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </Select>
+      <Select
+        aria-label={text.toolbar.playlistAriaLabel}
+        className={compactSelectClass}
+        value={playlistFilter}
+        onChange={(event) => onPlaylistChange(event.target.value)}
+      >
+        {/* "Toutes playlists" toujours présent + chaque playlist détectée
+            (même si une seule — pour montrer explicitement la playlist active
+            au lieu de masquer le filtre). */}
+        <option value="">{text.toolbar.allPlaylists}</option>
+        {safePlaylistOptions.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </Select>
