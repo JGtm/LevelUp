@@ -382,7 +382,7 @@ function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
             <Link
               key={item.key}
               to="/settings"
-              search={{ tab: item.tab as 'general' | 'sync' | 'analyse' | 'lab' | 'users' }}
+              search={{ tab: item.tab as 'general' | 'sync' | 'analyse' | 'accessibility' | 'notifications' | 'lab' | 'users' }}
               role="menuitem"
               onClick={() => setOpen(false)}
               className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
@@ -516,6 +516,8 @@ export function NavL1() {
           { key: 'general', label: 'Général', tab: 'general' },
           { key: 'sync', label: 'Synchronisation', tab: 'sync' },
           { key: 'analyse', label: 'Analyse', tab: 'analyse' },
+          { key: 'accessibility', label: 'Accessibilité', tab: 'accessibility' },
+          { key: 'notifications', label: 'Notifications', tab: 'notifications' },
           ...(canManageInstance ? [{ key: 'lab', label: 'Lab', tab: 'lab' }] : []),
           ...(isAdmin ? [{ key: 'users', label: 'Utilisateurs', tab: 'users' }] : []),
         ]}
