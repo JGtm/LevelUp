@@ -225,7 +225,5 @@ function ChallengeSection({ section }: { section: ChallengeSection }) {
             })}
           </div>
         </section>
-      ))}
-    </div>
   )
 }
