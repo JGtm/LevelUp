@@ -39,6 +39,23 @@ var notificationDefaultCategories = []struct {
 
 func init() {
 	Register(Migration{
+		Name:        "create_player_records",
+		TargetDB:    TargetPlayer,
+		Description: "Table player_records pour la détection personal_record (max KDA, série, flawless)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				CREATE TABLE IF NOT EXISTS player_records (
+					metric           VARCHAR PRIMARY KEY,
+					value            DOUBLE NOT NULL,
+					achieved_at      TIMESTAMP,
+					achieved_match_id VARCHAR,
+					updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+				);
+			`)
+		},
+	})
+
+	Register(Migration{
 		Name:        "create_notifications_tables",
 		TargetDB:    TargetPlayer,
 		Description: "Tables player_notifications + notification_preferences (système notifs in-app)",

@@ -42,6 +42,7 @@ func (h *NotificationsHandler) Mount(r chi.Router) {
 	r.Delete("/notifications/{id}", h.Delete)
 	r.Get("/notifications/preferences", h.GetPreferences)
 	r.Patch("/notifications/preferences", h.UpdatePreferences)
+	r.Post("/notifications/test", h.PostTest)
 }
 
 // List : GET /notifications?unread_only=&category=&limit=&before_id=
@@ -215,6 +216,32 @@ func (h *NotificationsHandler) UpdatePreferences(w http.ResponseWriter, r *http.
 		updated = []notifications.Preference{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": updated})
+}
+
+// PostTest : POST /notifications/test
+// Émet une notification de test (catégorie app_release, severity info) pour le
+// joueur courant. Utile pour valider le pipeline UI (toast + dropdown + a11y)
+// depuis le bouton "Envoyer une notification de test" du Settings tab.
+func (h *NotificationsHandler) PostTest(w http.ResponseWriter, r *http.Request) {
+	svc, ok := h.resolve(w, r)
+	if !ok {
+		return
+	}
+	slug := chi.URLParam(r, "player_slug")
+	err := svc.Emit(r.Context(), notifications.EmitInput{
+		Category:    notifications.CategoryAppRelease,
+		Severity:    notifications.SeverityInfo,
+		TitleKey:    "notif.test.title",
+		BodyKey:     "notif.test.body",
+		Params:      map[string]any{"slug": slug},
+		TargetRoute: "/help",
+		Source:      "test_button",
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "test_emit_error", err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // resolve récupère le service pour le slug courant ou écrit 404.
