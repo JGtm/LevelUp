@@ -180,7 +180,6 @@ const emptyKPIs = {
 const teammatesFixture = {
   options: [],
   teammates: [],
-  solo_reference: null,
   total_matches: 0,
 }
 

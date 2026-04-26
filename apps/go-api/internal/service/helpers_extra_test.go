@@ -70,34 +70,6 @@ func TestComputeKPIsFromSynthesisExcluding_WithExclusion(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// computeSoloReference
-// ---------------------------------------------------------------------------
-
-func TestComputeSoloReference_NoSolo(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
-		{MatchID: "m1", IsWithFriends: true},
-	}
-	ref := computeSoloReference(matches)
-	if ref != nil {
-		t.Error("expected nil when no solo matches")
-	}
-}
-
-func TestComputeSoloReference_WithSolo(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
-		{MatchID: "m1", IsWithFriends: false, Kills: 10, Deaths: 5, Outcome: 2},
-		{MatchID: "m2", IsWithFriends: true, Kills: 8, Deaths: 8, Outcome: 3},
-	}
-	ref := computeSoloReference(matches)
-	if ref == nil {
-		t.Fatal("expected non-nil reference")
-	}
-	if ref.MatchCount != 1 {
-		t.Errorf("expected 1 solo match, got %d", ref.MatchCount)
-	}
-}
-
-// ---------------------------------------------------------------------------
 // cmpNullFloat / cmpNullInt
 // ---------------------------------------------------------------------------
 

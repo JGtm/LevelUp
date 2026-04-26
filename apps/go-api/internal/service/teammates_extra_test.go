@@ -63,32 +63,6 @@ func TestComputeKPIsFromSynthesisExcluding_PartialFilter(t *testing.T) {
 	}
 }
 
-// ---------- computeSoloReference ----------
-
-func TestComputeSoloReference_NoSoloMatches(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
-		{MatchID: "m1", IsWithFriends: true, Kills: 10, Deaths: 5},
-	}
-	got := computeSoloReference(matches)
-	if got != nil {
-		t.Error("expected nil when no solo matches")
-	}
-}
-
-func TestComputeSoloReference_WithSoloFiltered(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
-		{MatchID: "m1", IsWithFriends: false, Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5},
-		{MatchID: "m2", IsWithFriends: true, Outcome: domain.OutcomeWin, Kills: 8, Deaths: 3},
-	}
-	got := computeSoloReference(matches)
-	if got == nil {
-		t.Fatal("expected non-nil")
-	}
-	if got.MatchCount != 1 {
-		t.Errorf("expected 1, got %d", got.MatchCount)
-	}
-}
-
 // ---------- safeDiv ----------
 
 func TestSafeDiv_NormalDiv(t *testing.T) {
