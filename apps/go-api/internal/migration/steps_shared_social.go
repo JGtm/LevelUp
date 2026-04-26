@@ -101,4 +101,18 @@ func init() {
 			`)
 		},
 	})
+
+	// Sprint 2026-04 : flag is_manual pour distinguer associations auto vs réassociées
+	// manuellement par l'utilisateur. Permet de préserver les corrections lors d'un
+	// reassociate global (DELETE WHERE NOT is_manual).
+	Register(Migration{
+		Name:        "add_is_manual_to_media_match_associations",
+		TargetDB:    TargetSharedSocial,
+		Description: "Ajoute is_manual BOOLEAN à media_match_associations pour tracer les réassociations manuelles",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE media_match_associations ADD COLUMN IF NOT EXISTS is_manual BOOLEAN DEFAULT FALSE;
+			`)
+		},
+	})
 }

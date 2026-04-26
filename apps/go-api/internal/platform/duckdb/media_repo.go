@@ -179,6 +179,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			COALESCE(r.map_name_fr, r.map_name) AS map_name,
 			COALESCE(r.pair_name_fr, r.pair_name) AS pair_name,
 			COALESCE(r.playlist_name_fr, r.playlist_name) AS playlist_name,
+			COALESCE(r.playlist_id, '') AS playlist_id,
 			mp.outcome,
 			ABS(DATEDIFF('second', ?, r.start_time)) AS delta_s
 		FROM shared.match_registry r
@@ -195,15 +196,22 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	defer rows.Close()
 
 	matchIDs := []string{}
+	modeEnSet := map[string]struct{}{}
+	playlistIDByMatch := map[string]string{}
+	playlistIDSet := map[string]struct{}{}
 	for rows.Next() {
 		var c domain.MediaMatchCandidate
-		var mapName, pairName, playlistName sql.NullString
+		var mapName, pairName, playlistName, playlistID sql.NullString
 		var outcome sql.NullInt64
 		var deltaS sql.NullInt64
 		var startT, endT sql.NullTime
 		if err := rows.Scan(&c.MatchID, &startT, &endT, &mapName, &pairName, &playlistName,
-			&outcome, &deltaS); err != nil {
+			&playlistID, &outcome, &deltaS); err != nil {
 			continue
+		}
+		if playlistID.Valid && playlistID.String != "" {
+			playlistIDByMatch[c.MatchID] = playlistID.String
+			playlistIDSet[playlistID.String] = struct{}{}
 		}
 		if startT.Valid {
 			t := startT.Time
@@ -224,10 +232,14 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 		if pairName.Valid {
 			// Normaliser comme q37MediaModeLabelExpr : strip préfixe ("Arena:", "Community:" etc.)
-			// + suffixes (" on Bazaar", " - Forge", " - Ranked")
+			// + suffixes (" on Bazaar", " - Forge", " - Ranked"). Donne EN canonique
+			// (ex: "Slayer", "Team Slayer", "CTF") qu'on traduit ensuite via mode_name_tr.
 			s := normalizeModeLabel(pairName.String)
 			if s != "" {
 				c.ModeName = &s
+				if en := analysis.NormalizeModeLabel(s); en != "" {
+					modeEnSet[en] = struct{}{}
+				}
 			}
 		}
 		if playlistName.Valid {
@@ -247,6 +259,44 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		c.IsCurrent = currentMatchID.Valid && currentMatchID.String == c.MatchID
 		resp.Candidates = append(resp.Candidates, c)
 		matchIDs = append(matchIDs, c.MatchID)
+	}
+
+	// Traduction FR des modes (ex: "Slayer" → "Assassin") via mode_name_tr.
+	// Si pair_name_fr était déjà rempli en DB, on le préserve quand même
+	// puisqu'on substitue uniquement si une traduction existe.
+	if len(modeEnSet) > 0 {
+		enList := make([]string, 0, len(modeEnSet))
+		for en := range modeEnSet {
+			enList = append(enList, en)
+		}
+		translations := r.loadModeNameTranslations(ctx, enList)
+		for i := range resp.Candidates {
+			if resp.Candidates[i].ModeName == nil {
+				continue
+			}
+			en := analysis.NormalizeModeLabel(*resp.Candidates[i].ModeName)
+			if fr, ok := translations[en]; ok && fr != "" {
+				resp.Candidates[i].ModeName = &fr
+			}
+		}
+	}
+
+	// Traduction FR des playlists via asset_translations (asset_type='playlist').
+	if len(playlistIDSet) > 0 {
+		ids := make([]string, 0, len(playlistIDSet))
+		for id := range playlistIDSet {
+			ids = append(ids, id)
+		}
+		playlistTr := r.loadAssetTranslationNames(ctx, "playlist", ids)
+		for i := range resp.Candidates {
+			pid := playlistIDByMatch[resp.Candidates[i].MatchID]
+			if pid == "" {
+				continue
+			}
+			if fr, ok := playlistTr[pid]; ok && fr != "" {
+				resp.Candidates[i].PlaylistName = &fr
+			}
+		}
 	}
 
 	// 2e query batch : lobby (max 12 joueurs par match — assez pour 4v4 + spectateurs)
@@ -354,10 +404,12 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 
 	// DELETE + INSERT séquentiels. DuckDB est ACID single-writer sur fichier ;
 	// risque de race minimal pour une opération manuelle utilisateur.
+	// is_manual = TRUE : marque la correction utilisateur pour qu'un reassociate
+	// global ultérieur ne l'écrase pas.
 	if _, err := r.socialDB().Exec(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
 		return nil, nil, fmt.Errorf("delete old assoc: %w", err)
 	}
-	if _, err := r.socialDB().Exec(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds) VALUES (?, ?, 0)`, mediaID, matchID); err != nil {
+	if _, err := r.socialDB().Exec(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`, mediaID, matchID); err != nil {
 		return nil, nil, fmt.Errorf("insert new assoc: %w", err)
 	}
 
