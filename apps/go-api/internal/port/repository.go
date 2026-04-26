@@ -312,6 +312,7 @@ func (n *noopMediaRepo) ToggleSharedLike(_ context.Context, _, _, _ string, _ bo
 func (n *noopMediaRepo) GetMediaLikers(_ context.Context, _ []string) (map[string]domain.MediaLikersInfo, error) {
 	return nil, nil
 }
+func (n *noopMediaRepo) CurrentPlayerSlug() string { return "" }
 
 // noopSessionsRepo — impl nulle pour le check de compilation uniquement.
 type noopSessionsRepo struct{}
@@ -497,6 +498,10 @@ type MediaRepository interface {
 
 	// GetMediaLikers retourne les likers (noms + total) pour une liste de media_path.
 	GetMediaLikers(ctx context.Context, mediaPaths []string) (map[string]domain.MediaLikersInfo, error)
+
+	// CurrentPlayerSlug retourne le slug du joueur dont on lit la galerie. Utilisé
+	// pour distinguer "mine" vs "teammate" dans la section affichée.
+	CurrentPlayerSlug() string
 }
 
 // SocialRepository gère les données sociales (favoris) dans shared_social.duckdb.
