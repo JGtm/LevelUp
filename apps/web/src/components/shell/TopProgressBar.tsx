@@ -116,7 +116,7 @@ export function TopProgressBar() {
   if (!visible && progress === 0) return null
 
   return (
-    <div aria-hidden className="pointer-events-none h-1 w-full shrink-0">
+    <div aria-hidden className="pointer-events-none fixed left-0 right-0 top-12 z-50 h-1">
       <div
         className="h-full bg-sidebar-primary shadow-[0_0_8px_color-mix(in_oklch,var(--sidebar-primary)_60%,transparent)]"
         style={{

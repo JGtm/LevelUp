@@ -13,11 +13,13 @@ import { ErrorBoundary } from './ErrorBoundary'
 export function AppShell() {
   return (
     <div className="flex h-screen flex-col gap-3 overflow-hidden bg-background text-foreground sm:gap-4">
-      {/* Barre de navigation L1 + barre de progression globale */}
+      {/* Barre de navigation L1 (fixe en haut) */}
       <div className="shrink-0">
         <NavL1 />
-        <TopProgressBar />
       </div>
+
+      {/* Barre de progression — flottante, hors du flux, collée sous NavL1 */}
+      <TopProgressBar />
 
       {/* Contenu principal scrollable — protégé contre les crashs de composants */}
       <ErrorBoundary>
