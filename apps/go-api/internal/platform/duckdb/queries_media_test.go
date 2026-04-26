@@ -89,20 +89,22 @@ func TestBuildQ37MediaQuery_MapFilter(t *testing.T) {
 	}
 }
 
-func TestBuildQ37MediaQuery_ModeFilter(t *testing.T) {
-	q, args := BuildQ37MediaQuery(domain.MediaFilters{ModeFilter: "Slayer"}, 24, 0)
+func TestBuildQ37MediaQuery_ModeFilter_FiestaCategory(t *testing.T) {
+	// ModeFilter = catégorie custom Fiesta → reverse mapping vers les préfixes
+	// pair_name (Fiesta, Super Fiesta, Husky Raid, Super Husky Raid, Castle Wars)
+	// → OR sur (LIKE 'X:%' OR = 'X') pour chaque préfixe.
+	q, args := BuildQ37MediaQuery(domain.MediaFilters{ModeFilter: "Fiesta"}, 24, 0)
 
-	if !strings.Contains(q, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)") {
-		t.Errorf("expected exact match LOWER(mode_label) = LOWER(?), got: %s", q)
+	if !strings.Contains(q, "LOWER(mr.pair_name) LIKE LOWER(?)") {
+		t.Errorf("expected pair_name LIKE for category reverse-mapping, got: %s", q)
 	}
-	if !strings.Contains(q, "regexp_replace") {
-		t.Error("expected normalized mode expression in query")
+	if !strings.Contains(q, "LOWER(mr.pair_name) = LOWER(?)") {
+		t.Errorf("expected pair_name = for parent-only modes (Husky Raid sans :), got: %s", q)
 	}
-	if len(args) < 1 {
-		t.Fatal("expected at least 1 filter arg")
-	}
-	if args[0] != "Slayer" {
-		t.Errorf("mode arg = %v, want exactly Slayer (no %% wrapping)", args[0])
+	// 5 préfixes (Fiesta, Super Fiesta, Husky Raid, Super Husky Raid, Castle Wars) × 2 args
+	// (LIKE + =) + limit + offset = 12
+	if len(args) != 12 {
+		t.Fatalf("args len = %d, want 12 (5 préfixes × 2 + limit + offset)", len(args))
 	}
 }
 
@@ -110,13 +112,13 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 	f := domain.MediaFilters{
 		KindFilter: "video",
 		MapFilter:  "Recharge",
-		ModeFilter: "CTF",
+		ModeFilter: "Ranked", // catégorie custom (1 préfixe : Ranked)
 	}
 	_, args := BuildQ37MediaQuery(f, 5, 10)
 
-	// Ordre attendu : kind (×2 équivalents), map (×2 : map_id + label fallback), mode, limit, offset = 7
-	if len(args) != 7 {
-		t.Fatalf("args len = %d, want 7", len(args))
+	// kind (×2) + map (×2 : map_id + label) + mode "Ranked" (1 préfixe × 2) + limit + offset = 8
+	if len(args) != 8 {
+		t.Fatalf("args len = %d, want 8", len(args))
 	}
 	kindArgs := []any{args[0], args[1]}
 	wantKindSet := map[string]bool{"video": true, "clip": true}
@@ -126,15 +128,15 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 			t.Errorf("args[0:2] = %v, want set {video, clip}", kindArgs)
 		}
 	}
-	// map filter envoie 2 args : (map_id candidate, label canonique)
 	if args[2] != "Recharge" || args[3] != "Recharge" {
 		t.Errorf("args[2:4] = %v, %v, want Recharge/Recharge", args[2], args[3])
 	}
-	if args[4] != "CTF" {
-		t.Errorf("args[4] = %v, want exactly CTF", args[4])
+	// args[4]=Ranked:%, args[5]=Ranked
+	if args[4] != "Ranked:%" || args[5] != "Ranked" {
+		t.Errorf("args[4:6] = %v, %v, want Ranked:%% / Ranked", args[4], args[5])
 	}
-	if args[5] != 5 || args[6] != 10 {
-		t.Errorf("args[5:] = %v, want [5 10]", args[5:])
+	if args[6] != 5 || args[7] != 10 {
+		t.Errorf("args[6:] = %v, want [5 10]", args[6:])
 	}
 }
 
@@ -265,21 +267,21 @@ func TestBuildQ37MediaMapOptionsQuery_IgnoresCurrentMapFilter(t *testing.T) {
 	q, args := BuildQ37MediaMapOptionsQuery(domain.MediaFilters{
 		KindFilter: "clip",
 		MapFilter:  "Aquarius",
-		ModeFilter: "Slayer",
+		ModeFilter: "Ranked", // catégorie custom
 	})
 
 	if strings.Contains(q, "LOWER("+q37MediaMapLabelExpr+") = LOWER(?)") {
 		t.Error("expected current map filter to be ignored for map options")
 	}
-	if !strings.Contains(q, "LOWER("+q37MediaModeLabelExpr+") = LOWER(?)") {
-		t.Error("expected mode filter to stay applied for map options")
+	if !strings.Contains(q, "LOWER(mr.pair_name) LIKE LOWER(?)") {
+		t.Error("expected mode filter (catégorie reverse-mapping) to stay applied for map options")
 	}
 	if !strings.Contains(q, "AS map_id, "+q37MediaMapLabelExpr+" AS label") {
 		t.Error("expected distinct (map_id, label) selection for FR enrichment")
 	}
-	// args : kind (×2 équivalents) + mode = 3
-	if len(args) != 3 {
-		t.Fatalf("args len = %d, want 3 (2 kind equivalents + 1 mode)", len(args))
+	// args : kind (×2) + mode "Ranked" (1 préfixe × 2 args) = 4
+	if len(args) != 4 {
+		t.Fatalf("args len = %d, want 4 (2 kind + 2 mode)", len(args))
 	}
 }
 
@@ -375,24 +377,13 @@ func TestBuildQ37MediaQuery_GroupByMapPrefixesOrderBy(t *testing.T) {
 	}
 }
 
-func TestBuildQ37MediaQuery_ModeFilterCandidatesBuildsInClause(t *testing.T) {
-	q, args := buildQ37MediaQuery(
-		domain.MediaFilters{ModeFilterCandidates: []string{"Slayer", "CTF"}},
-		24, 0, mediaQueryConfig{playerSlug: "HeroPlayer"},
-	)
-
-	// Match exact (LOWER) sur chaque candidat via IN — pas de substring.
-	if !strings.Contains(q, "LOWER("+q37MediaModeLabelExpr+") IN (LOWER(?),LOWER(?))") {
-		t.Errorf("expected exact IN clause from ModeFilterCandidates, got: %s", q)
-	}
-	// args : 2 candidats + limit + offset
-	if len(args) != 4 || args[0] != "Slayer" || args[1] != "CTF" {
-		t.Fatalf("args = %v, want [Slayer CTF 24 0]", args)
-	}
-}
+// ModeFilterCandidates a été retiré : le filtre est maintenant au niveau
+// catégorie custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other) qui se
+// reverse-mappe directement vers les préfixes pair_name dans le WHERE.
+// Cf. TestBuildQ37MediaQuery_ModeFilter_FiestaCategory pour la nouvelle forme.
 
 func TestBuildQ37MediaMapOptionsQuery_SharedSocialSchemaDefaultNoPlayerScope(t *testing.T) {
-	q, args := buildQ37MediaMapOptionsQuery(domain.MediaFilters{ModeFilter: "Slayer"}, mediaQueryConfig{playerSlug: "HeroPlayer"})
+	q, args := buildQ37MediaMapOptionsQuery(domain.MediaFilters{ModeFilter: "Ranked"}, mediaQueryConfig{playerSlug: "HeroPlayer"})
 
 	if !strings.Contains(q, "mf.id = mma.media_file_id") {
 		t.Errorf("expected shared_social join on media_file_id, got: %s", q)
@@ -400,8 +391,8 @@ func TestBuildQ37MediaMapOptionsQuery_SharedSocialSchemaDefaultNoPlayerScope(t *
 	if strings.Contains(q, "mf.player_slug") {
 		t.Errorf("default section filter should not constrain player_slug, got: %s", q)
 	}
-	// args : [mode_ilike] uniquement
-	if len(args) != 1 {
-		t.Fatalf("args len = %d, want 1 (mode filter)", len(args))
+	// args : "Ranked" catégorie (1 préfixe × 2 args : LIKE + =)
+	if len(args) != 2 {
+		t.Fatalf("args len = %d, want 2 (1 préfixe Ranked × 2)", len(args))
 	}
 }

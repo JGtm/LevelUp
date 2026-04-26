@@ -99,8 +99,11 @@ type MediaFileRow struct {
 	MatchStartTime *time.Time
 	Liked          bool
 	MapName        *string
-	ModeName       *string
+	ModeName       *string // catégorie custom inférée côté Go depuis PairNameRaw
 	MapID          *string
+	// PairNameRaw : valeur brute (EN) de match_registry.pair_name. Sert à inférer
+	// la mode_category custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other) côté Go.
+	PairNameRaw *string
 	// PlayerSlug identifie le propriétaire du média (schéma shared_social uniquement, nil en legacy).
 	// Dans ce projet playerSlug == gamertag.
 	PlayerSlug *string

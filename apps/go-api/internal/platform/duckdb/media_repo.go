@@ -60,6 +60,7 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 			&row.Liked,
 			&row.MapName,
 			&row.ModeName,
+			&row.PairNameRaw,
 			&row.MapID,
 			&row.PlayerSlug,
 		); err != nil {
@@ -71,7 +72,25 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 		return nil, err
 	}
 	r.enrichMediaMapTranslations(ctx, result)
+	r.enrichMediaModeCategories(result)
 	return result, nil
+}
+
+// enrichMediaModeCategories remplace ModeName par la catégorie custom inférée
+// depuis pair_name brut (Assassin/Fiesta/BTB/Ranked/Firefight/Other). Cf.
+// analysis.InferModeCategoryFromPairName pour la logique.
+func (r *MediaRepo) enrichMediaModeCategories(rows []domain.MediaFileRow) {
+	for i := range rows {
+		if rows[i].PairNameRaw == nil || strings.TrimSpace(*rows[i].PairNameRaw) == "" {
+			rows[i].ModeName = nil
+			continue
+		}
+		cat := analysis.InferModeCategoryFromPairName(*rows[i].PairNameRaw)
+		if cat != "" {
+			c := cat
+			rows[i].ModeName = &c
+		}
+	}
 }
 
 // CountMediaFiles retourne le nombre total de fichiers médias actifs selon les filtres.
@@ -733,59 +752,47 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 	return options
 }
 
-// translateModeFilterOptions normalise (analysis.NormalizeModeLabel) puis traduit
-// chaque mode en FR via mode_name_tr, et déduplique par libellé FR. Value reste
-// le label FR : le repo ré-expanse côté ModeFilter (FR → liste raw EN candidates)
-// avant la query (cf. expandModeFilter), pour que le ILIKE matche tous les variants.
-func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
+// translateModeFilterOptions retourne les CATÉGORIES custom distinctes
+// (Assassin/Fiesta/BTB/Ranked/Firefight/Other) inférées depuis les pair_name
+// présents dans les médias. Une catégorie n'apparaît que si au moins un média
+// la matche dans le dataset courant.
+//
+// Value = catégorie EN (= clé canonique dans analysis.ModeCategoryX) pour
+// que le frontend l'envoie tel quel au backend, qui reverse-mappe vers les
+// préfixes pair_name correspondants dans le WHERE.
+func (r *MediaRepo) translateModeFilterOptions(_ context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
 	if len(pairs) == 0 {
 		return []domain.LabelValue{}
 	}
-	enSet := make(map[string]struct{})
-	for _, p := range pairs {
-		// p.id contient le pair_name brut, p.label la version regex-normalisée
-		if en := analysis.NormalizeModeLabel(p.id); en != "" {
-			enSet[en] = struct{}{}
-		}
-		if en := analysis.NormalizeModeLabel(p.label); en != "" {
-			enSet[en] = struct{}{}
-		}
-	}
-	enList := make([]string, 0, len(enSet))
-	for en := range enSet {
-		enList = append(enList, en)
-	}
-	translations := r.loadModeNameTranslations(ctx, enList)
-
 	seen := make(map[string]bool)
-	options := make([]domain.LabelValue, 0, len(pairs))
+	options := make([]domain.LabelValue, 0, 6)
 	for _, p := range pairs {
-		labelFR := translations[analysis.NormalizeModeLabel(p.id)]
-		if labelFR == "" {
-			labelFR = translations[analysis.NormalizeModeLabel(p.label)]
+		// p.id contient le pair_name brut (cf. BuildQ37MediaModeOptionsQuery).
+		cat := analysis.InferModeCategoryFromPairName(p.id)
+		if cat == "" {
+			cat = analysis.ModeCategoryOther
 		}
-		if labelFR == "" {
-			labelFR = p.label
-		}
-		if seen[labelFR] {
+		if seen[cat] {
 			continue
 		}
-		seen[labelFR] = true
-		// Value = labelFR pour que le frontend envoie le FR au backend ; le repo
-		// ré-expanse via expandModeFilter() avant la SQL query.
-		options = append(options, domain.LabelValue{Label: labelFR, Value: labelFR})
+		seen[cat] = true
+		options = append(options, domain.LabelValue{Label: cat, Value: cat})
 	}
 	sort.Slice(options, func(i, j int) bool { return options[i].Label < options[j].Label })
 	return options
 }
 
-// expandModeFilter convertit un ModeFilter exprimé en FR (ex: "Capture du
-// drapeau") vers la liste de raw EN candidates (ex: ["Capture the Flag", "CTF",
-// …]) via reverse mode_name_tr lookup. Le SQL utilise alors un OR sur chaque
-// variant ILIKE pour matcher tous les médias quel que soit leur pair_name brut.
-// Si aucune correspondance trouvée, ModeFilter reste tel quel et le SQL fallback
-// sur l'ILIKE simple existant.
-func (r *MediaRepo) expandModeFilter(ctx context.Context, filters domain.MediaFilters) domain.MediaFilters {
+// expandModeFilter — historiquement convertissait un ModeFilter FR (sous-mode
+// type "Capture du drapeau") en candidates EN via mode_name_tr. Avec le passage
+// au filtre par CATÉGORIE custom (cf. analysis.ModeCategory*), le ModeFilter
+// est déjà au bon niveau (catégorie EN) et le WHERE le reverse-mappe directement
+// vers les préfixes pair_name. Cette fonction est conservée pour compat des
+// callers existants (LoadMediaFiles/CountMediaFiles) mais devient un no-op.
+func (r *MediaRepo) expandModeFilter(_ context.Context, filters domain.MediaFilters) domain.MediaFilters {
+	return filters
+}
+
+func (r *MediaRepo) expandModeFilterUnused(ctx context.Context, filters domain.MediaFilters) domain.MediaFilters {
 	if filters.ModeFilter == "" || len(filters.ModeFilterCandidates) > 0 {
 		return filters
 	}
