@@ -618,6 +618,149 @@ func TestMediaFilters_ModeFilter_ExactNotSubstring(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Comportement face aux variantes ("Recharge" vs "Recharge v3" vs "Recharge Annex")
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Ces tests documentent le comportement actuel : chaque label distinct = match
+// exact. Si on veut grouper "Recharge" et "Recharge v3" ensemble, il faut soit
+// filtrer par map_id (si stable entre variantes), soit normaliser les suffixes.
+
+func newTestPlayerDBVariants(t *testing.T) *PlayerDB {
+	t.Helper()
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+
+	seedSharedDBSchema(t, shared)
+	seedSharedDBSchema(t, social)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+
+	ctx := context.Background()
+	for _, q := range []string{
+		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_files`,
+		`DELETE FROM shared.match_registry`,
+	} {
+		if _, err := social.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe: %v", err)
+		}
+	}
+
+	// Cas réel Halo : variantes Forge avec map_id partagé OU différent.
+	matches := []struct{ id, mapID, mapName string }{
+		{"m1", "recharge", "Recharge"},             // base map
+		{"m2", "recharge", "Recharge v3"},          // hypothèse : même map_id (forge variant)
+		{"m3", "recharge_annex", "Recharge Annex"}, // map différente, map_id différent
+	}
+	for _, m := range matches {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO shared.match_registry (match_id, start_time, map_id, map_name, pair_name, playlist_name, is_ranked)
+			VALUES (?, '2025-01-10 14:00:00+00', ?, ?, 'Slayer', 'Slayer', FALSE)`,
+			m.id, m.mapID, m.mapName,
+		); err != nil {
+			t.Fatalf("insert match: %v", err)
+		}
+	}
+
+	mediaSet := []struct{ id, path, matchID string }{
+		{"m-base", "/recharge_base.mp4", "m1"},
+		{"m-v3", "/recharge_v3.mp4", "m2"},
+		{"m-annex", "/recharge_annex.mp4", "m3"},
+	}
+	for _, m := range mediaSet {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			m.id, mediaTestPlayerSlug, m.path, m.path,
+		); err != nil {
+			t.Fatalf("insert media: %v", err)
+		}
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_match_associations (media_file_id, match_id) VALUES (?, ?)`,
+			m.id, m.matchID,
+		); err != nil {
+			t.Fatalf("insert assoc: %v", err)
+		}
+	}
+
+	return &PlayerDB{
+		Player: player, Shared: shared, SharedSocial: social, Metadata: meta,
+		XUID: mediaTestPlayerXUID, Gamertag: mediaTestPlayerSlug, TitleSlug: titlepkg.DefaultSlug,
+	}
+}
+
+// Avec normalisation des suffixes (Option B), filtrer "Recharge" doit ramener
+// "Recharge" ET "Recharge v3" (suffixe version strippé) mais PAS "Recharge Annex"
+// (Annex n'est pas un suffixe de version).
+func TestMediaFilters_Variants_StripsVersionSuffix(t *testing.T) {
+	pdb := newTestPlayerDBVariants(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Recharge"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	// "Recharge" + "Recharge v3" (v\d+ strippé) = 2 médias
+	wantPaths := map[string]bool{"/recharge_base.mp4": true, "/recharge_v3.mp4": true}
+	if len(rows) != 2 {
+		t.Fatalf("MapFilter=Recharge: got %d %v, want 2 (base + v3)", len(rows), pathsOf(rows))
+	}
+	for _, r := range rows {
+		if !wantPaths[r.FilePath] {
+			t.Errorf("MapFilter=Recharge: %s ne devrait pas matcher", r.FilePath)
+		}
+	}
+}
+
+// Filtrer "Recharge v3" doit aussi grouper avec "Recharge" (les deux normalisent vers "Recharge").
+func TestMediaFilters_Variants_FilterByVariantAlsoGroups(t *testing.T) {
+	pdb := newTestPlayerDBVariants(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Recharge v3"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	// "Recharge v3" est normalisé en "Recharge" côté filtre ET côté label,
+	// donc on ramène les 2 médias avec le nom canonique.
+	if len(rows) != 2 {
+		t.Fatalf("MapFilter='Recharge v3': got %d %v, want 2 (groupés avec base)", len(rows), pathsOf(rows))
+	}
+}
+
+// "Recharge Annex" reste isolé : "Annex" n'est pas un suffixe de version.
+func TestMediaFilters_Variants_AnnexIsSeparate(t *testing.T) {
+	pdb := newTestPlayerDBVariants(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Recharge Annex"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	if len(rows) != 1 || rows[0].FilePath != "/recharge_annex.mp4" {
+		t.Errorf("MapFilter='Recharge Annex': got %v, want [/recharge_annex.mp4]", pathsOf(rows))
+	}
+}
+
+// Filtrer "Recharge" ne doit PAS matcher "Recharge Annex" (suffixe non strippé).
+func TestMediaFilters_Variants_BaseDoesNotMatchAnnex(t *testing.T) {
+	pdb := newTestPlayerDBVariants(t)
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(),
+		domain.MediaFilters{MapFilter: "Recharge"}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	for _, r := range rows {
+		if r.FilePath == "/recharge_annex.mp4" {
+			t.Errorf("MapFilter=Recharge ne doit PAS ramener Recharge Annex (got %v)", pathsOf(rows))
+		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQL generated (sanity check sur les requêtes assemblées)
 // ─────────────────────────────────────────────────────────────────────────────
 

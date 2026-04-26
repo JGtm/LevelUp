@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-04-26] feat(media): groupement variantes carte (Option B — strip suffixes)
+
+**Statut** : Complété
+
+**Contexte** : Après le fix du substring ILIKE, user demande "si j'ai une map 'Recharge v3', ça me la ressort ou pas ? les suffixes peuvent changer, c'est surtout qu'il faut que ça match le nom principal". Choix Option B (strip de suffixes) plutôt qu'Option A (filter par map_id, mais map_id souvent différents entre variantes Forge).
+
+**Décisions techniques** :
+- `q37MediaMapLabelExpr` enrichi de 3 `regexp_replace` SQL miroirs des stripes Go : `\sv\d+$`, `\s*-\s*Forge.*$`, `\s*-\s*Ranked.*$`. Conservatif — on NE strip PAS `:`, `-` génériques, " Annex", " Beta" (sinon "Forge: Argyle" → "Forge", "Recharge Annex" → "Recharge", incorrect).
+- Helper Go `normalizeMediaMapName(string)` qui applique les MÊMES regex côté Go pour normaliser la valeur du filtre avant comparaison SQL. Sinon filter="Recharge v3" ne matcherait pas le label SQL canonique "Recharge".
+- Le label SQL étant déjà normalisé, le dropdown affiche directement les noms canoniques (1 entrée "Recharge" pour toutes les variantes), sort/groupBy par carte regroupent aussi automatiquement.
+- 4 tests d'intégration ajoutés dans `media_repo_filters_test.go` :
+  - StripsVersionSuffix : "Recharge" ramène "Recharge" + "Recharge v3"
+  - FilterByVariantAlsoGroups : "Recharge v3" ramène les 2 (normalisation symétrique)
+  - AnnexIsSeparate : "Recharge Annex" reste isolé
+  - BaseDoesNotMatchAnnex : "Recharge" ne ramène PAS "Recharge Annex"
+
+**Fichiers modifiés** :
+- `queries_home_citations.go` — q37MediaMapLabelExpr avec regexp_replace + normalizeMediaMapName + import "regexp"
+- `media_repo_filters_test.go` — 4 tests variantes
+
+**Résultats observés** : Tous tests verts (intégration + unitaires). Cas couverts :
+- "Recharge", "Recharge v3", "Recharge - Forge", "Recharge - Ranked" → groupés sous "Recharge"
+- "Recharge Annex", "Recharge Bay" → restent distincts (suffixes non strippés)
+- "Forge: Argyle", "Live Fire", "Live Fire: Reimagined" → restent distincts (`:` non strippé)
+
+**Conclusion / prochaine étape** : User a aussi rapporté un bug visible où le filtre "Altitude" ramène Recharge/Absolution/Aquarius/Empyréen — ces maps n'ont AUCUN substring commun avec Altitude, donc soit le serveur Go n'a pas été rebuild après les commits précédents (`ef308d9c`/`0e4d36ab`/`39c81d13`), soit autre bug à investiguer via DevTools Network. À vérifier après rebuild.
+
 ## [2026-04-26] fix(media): filtres carte/mode en match exact (substring → LOWER = LOWER)
 
 **Statut** : Complété
