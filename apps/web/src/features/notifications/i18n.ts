@@ -166,7 +166,7 @@ const FR: NotificationsText = {
     season_pass_level: 'Tu as débloqué un nouveau niveau du passe saisonnier.',
     sync_error: 'La synchronisation a échoué — relance manuelle conseillée.',
     personal_record: 'Tu as battu un record personnel.',
-    threshold_crossed: 'Un palier de ratio K/D ou de taux de victoire a été franchi.',
+    threshold_crossed: 'Un palier de ratio FDA ou de taux de victoire a été franchi.',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
