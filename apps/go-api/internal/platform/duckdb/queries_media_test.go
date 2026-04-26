@@ -301,9 +301,9 @@ func TestBuildQ37MediaQuery_SharedSocialSchemaUsesPlayerScopedJoin(t *testing.T)
 	if strings.Contains(q, "mf.status = 'active'") {
 		t.Errorf("did not expect legacy status filter in shared_social query, got: %s", q)
 	}
-	// Default SectionFilter "" = "Tous auteurs" → pas de contrainte player_slug.
-	if strings.Contains(q, "mf.player_slug") {
-		t.Errorf("default section filter should not constrain player_slug, got: %s", q)
+	// Default SectionFilter "" = "Tous auteurs" → pas de contrainte WHERE sur player_slug.
+	if strings.Contains(q, "mf.player_slug =") || strings.Contains(q, "mf.player_slug <>") || strings.Contains(q, "mf.player_slug IN") {
+		t.Errorf("default section filter should not constrain player_slug in WHERE, got: %s", q)
 	}
 	if len(args) != 2 {
 		t.Fatalf("args len = %d, want 2 (limit, offset)", len(args))
