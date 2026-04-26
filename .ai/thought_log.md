@@ -1,5 +1,51 @@
 # Thought Log
 
+## [2026-04-26] feat(notifications): API interne in-app + frontend complet (slice MVP)
+
+**Statut** : MVP livré. Hooks d'émission `match_synced`, `sync_error`, `media_added` câblés. Frontend complet (cloche NavL1, dropdown, toasts Sonner, page dédiée, onglet Settings). 9 commits sous mon nom (Co-Authored-By Claude Opus 4.7) + bundling partiel dans des commits multi-titres durant les chevauchements multi-agents.
+
+**Contexte** : Création d'un système de notifications in-app per-player traité comme une "API interne découplée" (exigence utilisateur). 9 catégories MVP : `app_release`, `match_synced`, `media_added`, `objective_assigned/completed`, `challenge_added/completed`, `season_pass_level`, `sync_error`, `personal_record`, `threshold_crossed`. Plan complet dans `C:\Users\Guillaume\.claude\plans\j-ai-chang-d-avis-et-dapper-conway.md`.
+
+**Architecture backend** :
+- Package autonome `internal/notifications/` (doc.go, types.go, id.go, port.go, emitter.go, service.go, service_test.go) ne dépendant que de la stdlib. Service implements Emitter (Emit interface réduite pour les hooks).
+- Repository DuckDB dans `internal/platform/duckdb/notifications_repo.go` + helpers. 2 tables per-player dans `stats.duckdb` :
+  - `player_notifications` (id snowflake-like = unix_ms<<12 | seq, JS-safe, monotone pour cursor pagination)
+  - `notification_preferences` (seed migration : toutes catégories MVP `enabled=TRUE, delivery='both'`)
+- Migration `internal/migration/steps_player_notifications.go`.
+- 8 endpoints REST sous `/api/v1/players/{slug}/notifications` (handler `notifications.go`). Service caché par xuid via `sync.Map` dans `registry_notifications.go` pour préserver la monotonicité des IDs. Cap rétention 500/joueur appliqué post-Emit (best-effort).
+- Hooks d'émission : `sync_handler.go` (match_synced + sync_error post-RunDelta), `media.go` (media_added post-UploadMedia avec actor=uploader). Pattern : factory `NotificationsEmitterFactory(ctx, slug) → Emitter` injectée via `WithNotificationsEmitterFactory`.
+- i18n : zéro FR/EN dans la DB ou les payloads serveur — `title_key`/`body_key` + `params` résolus côté client (conforme audit V7).
+
+**Architecture frontend** (`apps/web/src/features/notifications/`) :
+- Stack : React + TanStack Router (file-based) + TanStack Query v5 + Zustand. Sonner pour les toasts (`^2.0.7`).
+- `types.ts` mirror du Go. `i18n.ts` avec `getNotificationsText(locale)` (FR/EN). `format.ts` interpolation `{name}` simple. `relativeTime.ts`. `navigation.ts` mapping catégorie→{to, search} avec fallback sur `target_route`/`target_search` du backend.
+- `queries.ts` : useNotificationsList (refetchInterval 30-60s configurable), useUnreadCount (30s polling pour badge), useNotificationPreferences (5min stale).
+- `mutations.ts` : markRead/markUnread/markAllRead/dismiss/updatePrefs avec mutations optimistes (snapshot+rollback+invalidate).
+- `NotificationsBell.tsx` réutilise le pattern SettingsSplitButton de NavL1 (ref+mousedown click-outside, Esc, ARIA role="menu"). Badge `bg-destructive` (token, pas de hex). Sections "Non lues" / "Plus récentes" / footer "Voir tout".
+- `NotificationItem.tsx` : ligne réutilisable (dropdown + page), hover actions, clic = mark-read optimiste + navigate(target).
+- `NotificationsPage.tsx` : timeline groupée par jour (Aujourd'hui/Hier/Cette semaine/Plus ancien), filtres catégorie+non-lues, pagination cursor.
+- `NotificationsSettingsTab.tsx` : master kill switch + toggle toasts (localStorage), liste des 11 catégories avec switch enabled + select delivery (persist backend per-player).
+- `toastBridge.tsx` (mounted in AppShell) : observe useNotificationsList(unread_only=true), diff sur ID max (useRef), envoie toast.info/success/warning/error Sonner avec action button "Voir".
+- `<Toaster />` Sonner dans AppShell.tsx (top-right, offset=56 sous NavL1). classNames bindées aux tokens design system.
+
+**Catégories décidées (validation utilisateur)** :
+- 6 demandées : app_release, match_synced, media_added, objective_assigned/completed, challenge_added/completed, season_pass_level.
+- 3 ajoutées (Recommandé) : sync_error (severity=error, persistant, action Relancer), personal_record, threshold_crossed (paliers KD/WR à 0.05 / 5%).
+- 3 nice-to-have reportées en phase 2 : referential_update, session_alert, teammate_returned.
+
+**Reporté en phase 2 / sprint dédié** :
+- app_release au boot (comparaison sync_meta.last_seen_app_version per-player).
+- Hooks post-sync delta-detection complexes (objective_*, challenge_*, season_pass_level, personal_record, threshold_crossed) — pipeline avant/après sync requis.
+- Tests intégration repo DuckDB (CGO setup) + tests handler.
+- Multi-destinataires sur media_added (1 notif par joueur associé au match).
+- SSE temps réel /notifications/stream (le polling 30/60s suffit pour le MVP).
+
+**Coordination multi-agents** : Session perturbée par checkout de branche concurrent (autre agent Claude Sonnet 4.6 sur `feat/squad-page-multititle-refactor`). Plusieurs commits ont été bundlés sous des messages multi-title pendant les chevauchements (`779181bc`, `ca9035bc`) avant que le merge `87896946` ne consolide tout. Ajout d'une mémoire `feedback_stay_on_active_branch.md` pour ne plus interpréter "reste sur cette branche" comme une référence figée au nom de branche du début de session.
+
+**Résultats observés** : `go build ./...` vert. `go test ./internal/notifications/...` ok (12 tests). Frontend : aucune erreur TS introduite dans mes fichiers. UI fonctionnelle attendue à tester en E2E manuel (sync delta → toast match_synced + dropdown ; upload média → toast media_added).
+
+**Conclusion / prochaine étape** : Boucle de feedback à observer en utilisation réelle. Implémenter les hooks delta-detection (objectifs, paliers, records) en sprint dédié quand le besoin se confirme. Si le pipeline de polling 30/60s pèse, basculer sur SSE.
+
 ## [2026-04-26] feat(squad): refonte UX + multi-titres de la page Escouade
 
 **Statut** : Complété — 13 commits sur `feat/multi-title-adapters-and-mappings`, dont un merge `feat/squad-page-multititle-refactor` → `feat/multi-title-adapters-and-mappings`.
