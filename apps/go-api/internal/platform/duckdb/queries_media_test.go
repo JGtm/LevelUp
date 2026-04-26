@@ -39,18 +39,25 @@ func TestBuildQ37MediaQuery_NoFilters(t *testing.T) {
 func TestBuildQ37MediaQuery_KindFilter(t *testing.T) {
 	q, args := BuildQ37MediaQuery(domain.MediaFilters{KindFilter: "screenshot"}, 10, 0)
 
-	if !strings.Contains(q, "mf.kind = ?") {
-		t.Error("expected kind = ? clause")
+	// Le filtre type doit accepter à la fois "screenshot" (legacy) et "image"
+	// (nouveau schéma) pour matcher les médias quelle que soit leur origine.
+	if !strings.Contains(q, "mf.kind IN (?,?)") {
+		t.Errorf("expected kind IN (?,?) clause for legacy+new compat, got: %s", q)
 	}
-	// args: kind, limit, offset
-	if len(args) != 3 {
-		t.Fatalf("args len = %d, want 3", len(args))
+	// args: 2 valeurs équivalentes (screenshot, image), limit, offset
+	if len(args) != 4 {
+		t.Fatalf("args len = %d, want 4", len(args))
 	}
-	if args[0] != "screenshot" {
-		t.Errorf("args[0] = %v, want screenshot", args[0])
+	got := []any{args[0], args[1]}
+	wantSet := map[string]bool{"screenshot": true, "image": true}
+	for _, v := range got {
+		s, ok := v.(string)
+		if !ok || !wantSet[s] {
+			t.Errorf("args[0:2] = %v, want set {screenshot, image}", got)
+		}
 	}
-	if args[1] != 10 || args[2] != 0 {
-		t.Errorf("args[1:] = %v, want [10 0]", args[1:])
+	if args[2] != 10 || args[3] != 0 {
+		t.Errorf("args[2:] = %v, want [10 0]", args[2:])
 	}
 }
 
@@ -108,24 +115,29 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 	}
 	_, args := BuildQ37MediaQuery(f, 5, 10)
 
-	// Ordre attendu : kind, map, mode, limit, offset
-	if len(args) != 5 {
-		t.Fatalf("args len = %d, want 5", len(args))
+	// Ordre attendu : kind (×2 équivalents), map, mode, limit, offset
+	if len(args) != 6 {
+		t.Fatalf("args len = %d, want 6", len(args))
 	}
-	if args[0] != "video" {
-		t.Errorf("args[0] = %v, want video", args[0])
+	kindArgs := []any{args[0], args[1]}
+	wantKindSet := map[string]bool{"video": true, "clip": true}
+	for _, v := range kindArgs {
+		s, _ := v.(string)
+		if !wantKindSet[s] {
+			t.Errorf("args[0:2] = %v, want set {video, clip}", kindArgs)
+		}
 	}
 	// map et mode doivent être wrappés avec %
-	mapArg, _ := args[1].(string)
-	modeArg, _ := args[2].(string)
+	mapArg, _ := args[2].(string)
+	modeArg, _ := args[3].(string)
 	if !strings.Contains(mapArg, "Recharge") {
-		t.Errorf("args[1] = %v, want %%Recharge%%", args[1])
+		t.Errorf("args[2] = %v, want %%Recharge%%", args[2])
 	}
 	if !strings.Contains(modeArg, "CTF") {
-		t.Errorf("args[2] = %v, want %%CTF%%", args[2])
+		t.Errorf("args[3] = %v, want %%CTF%%", args[3])
 	}
-	if args[3] != 5 || args[4] != 10 {
-		t.Errorf("args[3:] = %v, want [5 10]", args[3:])
+	if args[4] != 5 || args[5] != 10 {
+		t.Errorf("args[4:] = %v, want [5 10]", args[4:])
 	}
 }
 
@@ -197,11 +209,18 @@ func TestBuildQ37MediaCountQuery_NoFilters(t *testing.T) {
 func TestBuildQ37MediaCountQuery_KindFilter(t *testing.T) {
 	q, args := BuildQ37MediaCountQuery(domain.MediaFilters{KindFilter: "video"})
 
-	if !strings.Contains(q, "mf.kind = ?") {
-		t.Error("expected kind = ? clause")
+	if !strings.Contains(q, "mf.kind IN (?,?)") {
+		t.Errorf("expected kind IN (?,?) for legacy+new compat, got: %s", q)
 	}
-	if len(args) != 1 || args[0] != "video" {
-		t.Errorf("args = %v, want [video]", args)
+	if len(args) != 2 {
+		t.Fatalf("args len = %d, want 2 (video + clip equivalents)", len(args))
+	}
+	wantSet := map[string]bool{"video": true, "clip": true}
+	for _, v := range args {
+		s, _ := v.(string)
+		if !wantSet[s] {
+			t.Errorf("args = %v, want set {video, clip}", args)
+		}
 	}
 }
 
@@ -223,15 +242,15 @@ func TestBuildQ37MediaCountQuery_MultipleFilters(t *testing.T) {
 	}
 	q, args := BuildQ37MediaCountQuery(f)
 
-	if !strings.Contains(q, "mf.kind = ?") {
-		t.Error("expected kind filter")
+	if !strings.Contains(q, "mf.kind IN (?,?)") {
+		t.Errorf("expected kind IN (?,?), got: %s", q)
 	}
 	if !strings.Contains(q, q37MediaMapLabelExpr+" ILIKE ?") {
 		t.Error("expected map filter")
 	}
-	// kind arg + map arg
-	if len(args) != 2 {
-		t.Fatalf("args len = %d, want 2", len(args))
+	// 2 kind args (screenshot, image) + 1 map arg
+	if len(args) != 3 {
+		t.Fatalf("args len = %d, want 3", len(args))
 	}
 }
 
@@ -261,8 +280,9 @@ func TestBuildQ37MediaMapOptionsQuery_IgnoresCurrentMapFilter(t *testing.T) {
 	if !strings.Contains(q, "AS map_id, "+q37MediaMapLabelExpr+" AS label") {
 		t.Error("expected distinct (map_id, label) selection for FR enrichment")
 	}
-	if len(args) != 2 {
-		t.Fatalf("args len = %d, want 2", len(args))
+	// args : kind (×2 équivalents) + mode = 3
+	if len(args) != 3 {
+		t.Fatalf("args len = %d, want 3 (2 kind equivalents + 1 mode)", len(args))
 	}
 }
 

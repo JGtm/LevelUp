@@ -1,5 +1,33 @@
 # Thought Log
 
+## [2026-04-26] test+fix(media): tests intégration filtres/tri/groupement + bug kind filter
+
+**Statut** : Complété
+
+**Contexte** : Le user (à raison) signale que les tests existants ne valident QUE la chaîne SQL (`strings.Contains(q, "...")`), pas le résultat réel. Demande de vrais tests avec une DB peuplée pour vérifier l'ordre/filtrage attendu. Création de `media_repo_filters_test.go` (21 tests d'intégration) qui a immédiatement fait remonter 2 vrais bugs en plus du `owner_gamertag` du commit précédent.
+
+**Bugs trouvés via les nouveaux tests** :
+
+1. **Schéma test incomplet** : `seedSharedSocialSchema` créait `media_files` SANS les colonnes `mtime`, `indexed_at`, `status`. Or `timeOrderExpr()` référence `mf.mtime`/`mf.indexed_at`. Toutes les requêtes Q37 sur shared_social schéma cassent dès qu'il y a un ORDER BY. Ce bug n'avait jamais été détecté car les tests d'intégration ne tournent qu'avec `-tags=integration` (jamais en CI standard). Fix : ajouter `mtime`, `indexed_at`, `status` au seed pour matcher le vrai schéma de production (défini dans `ops/media.go:393-410`).
+
+2. **Filtre `kind` cassé en pratique** : Le frontend envoie `kind_filter: "screenshot"` ou `"clip"` (valeurs legacy historiques). Mais le schéma shared_social stocke `"image"`/`"video"` (cf. `ops/media.go:71-74`). Le SQL `WHERE mf.kind = ?` ne matche jamais → le filtre type retourne toujours 0 résultat. Fix : ajout de `mediaKindEquivalents("screenshot") -> ["screenshot", "image"]` et SQL `WHERE mf.kind IN (?,?)` pour accepter les deux conventions.
+
+**Décisions techniques** :
+- Nouveau fichier `media_repo_filters_test.go` (tag `integration`) avec 21 tests couvrant : 4 tris (date_desc default, date_asc, map_asc, mode_asc), 4 groupements (owner, map, mode, empty), 6 filtres (kind screenshot/clip, likedOnly, map, author single/multiple, section mine/teammate), 2 combos (groupBy+filtre), Count multi-cas, et 2 sanity checks SQL.
+- Helper `newTestPlayerDBForMediaScenario` : 3 matchs (Aquarius/Slayer, Bazaar/CTF, Catalyst/Slayer), 5 médias avec 3 owners (Alice, Bob, HeroPlayer), kinds video/image, 3 likes, 1 orphelin sans match. Wipe les rows par défaut de `seedSharedDBSchema`/`seedSharedSocialSchema` pour partir vierge.
+- `mediaKindEquivalents` placé juste après `mediaWhereConfig` pour proximité.
+- Tests unitaires existants `TestBuildQ37MediaQuery_KindFilter` / `_AllFilters_ArgOrder` / `_MediaCountQuery_KindFilter` / `_MultipleFilters` / `_MapOptionsQuery_IgnoresCurrentMapFilter` mis à jour : ils vérifiaient `mf.kind = ?` (1 arg) et doivent maintenant accepter `mf.kind IN (?,?)` (2 args équivalents).
+
+**Fichiers modifiés** :
+- `media_repo_filters_test.go` (NEW) — 21 tests d'intégration
+- `player_repos_test.go` — schéma `media_files` complet (mtime/indexed_at/status)
+- `queries_home_citations.go` — `mediaKindEquivalents()` + `mf.kind IN (?,?)`
+- `queries_media_test.go` — assertions mises à jour pour `IN (?,?)`
+
+**Résultats observés** : 21 nouveaux tests verts + 21 tests Q37 existants verts. Sans ces tests, les 2 bugs (kind filter cassé en prod, schéma test incomplet) seraient passés inaperçus. Les 12 tests d'intégration qui échouent ailleurs (`TestCareerRepo_GetLUSRHistory_WithData`, `TestHomeRepo_*`) sont des dettes pré-existantes (`playable_duration_seconds` manquant) sans rapport.
+
+**Conclusion / prochaine étape** : Le filtre type devrait maintenant fonctionner pour tous les médias (anciens "clip"/"screenshot" et nouveaux "video"/"image"). Le seed test corrigé permet de catch les futures régressions sur les requêtes Q37. Les tests d'intégration devraient être lancés en CI avec un job dédié `-tags=integration` pour détecter ce genre de bug en amont.
+
 ## [2026-04-26] fix(media): owner_gamertag manquant — groupement "par auteur" cassé
 
 **Statut** : Complété

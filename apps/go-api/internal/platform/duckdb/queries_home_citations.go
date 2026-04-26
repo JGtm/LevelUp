@@ -451,6 +451,22 @@ type mediaWhereConfig struct {
 	includeModeFilter bool
 }
 
+// mediaKindEquivalents retourne les valeurs DB qui doivent matcher un filtre
+// de type donné, en couvrant à la fois la convention legacy ("clip"/"screenshot")
+// et la nouvelle ("video"/"image"). Les médias indexés par les anciennes
+// versions ont l'une, les nouveaux uploads ont l'autre — sans cette translation
+// le filtre type ne retourne 0 résultat.
+func mediaKindEquivalents(kind string) []string {
+	switch kind {
+	case "clip", "video":
+		return []string{"clip", "video"}
+	case "screenshot", "image":
+		return []string{"screenshot", "image"}
+	default:
+		return []string{kind}
+	}
+}
+
 type mediaQueryConfig struct {
 	playerSlug string
 }
@@ -558,8 +574,16 @@ func buildQ37MediaWhereClause(
 	}
 
 	if f.KindFilter != "" {
-		where = append(where, "mf.kind = ?")
-		args = append(args, f.KindFilter)
+		// Compat schémas : legacy stocke "clip"/"screenshot", nouveau stocke "video"/"image".
+		// Le frontend envoie les valeurs legacy ("clip"/"screenshot") historiquement.
+		// On accepte les deux conventions pour matcher quelle que soit l'origine de la ligne.
+		equivalents := mediaKindEquivalents(f.KindFilter)
+		placeholders := make([]string, len(equivalents))
+		for i, eq := range equivalents {
+			placeholders[i] = "?"
+			args = append(args, eq)
+		}
+		where = append(where, "mf.kind IN ("+strings.Join(placeholders, ",")+")")
 	}
 	if f.LikedOnly {
 		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
