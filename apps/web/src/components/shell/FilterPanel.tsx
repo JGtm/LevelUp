@@ -117,14 +117,6 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
     setPeriod(presetPeriod(p.days) ?? {})
   }
 
-  function toggleCustom() {
-    setCustomMode(true)
-    // Si on entre en custom sans valeurs, on amorce avec les 30 derniers jours.
-    if (!period?.start_date && !period?.end_date) {
-      setPeriod(presetPeriod(30) ?? {})
-    }
-  }
-
   // ── Sessions : navigation séquentielle ──
   const currentSessionId = filterContext.sessions?.picked_sessions?.[0] ?? ''
   const currentSessionIdx = currentSessionId
@@ -191,7 +183,47 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Période
             </h3>
-            <div className="flex flex-wrap gap-2">
+            {/* Calendriers TOUJOURS visibles. Les presets en dessous sont des
+                raccourcis qui pré-remplissent les inputs. "Toutes" vide les
+                deux dates → pas de filtre période. */}
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Du
+                <input
+                  type="date"
+                  value={period?.start_date ?? ''}
+                  max={period?.end_date ?? undefined}
+                  onChange={(e) => {
+                    setCustomMode(true)
+                    setPeriod({
+                      ...(period ?? {}),
+                      start_date: e.target.value || null,
+                    })
+                  }}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Au
+                <input
+                  type="date"
+                  value={period?.end_date ?? ''}
+                  min={period?.start_date ?? undefined}
+                  onChange={(e) => {
+                    setCustomMode(true)
+                    setPeriod({
+                      ...(period ?? {}),
+                      end_date: e.target.value || null,
+                    })
+                  }}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </label>
+            </div>
+
+            {/* Raccourcis : appliquent un range pré-rempli. activePreset
+                surligne celui qui matche les dates courantes (à 1 jour près). */}
+            <div className="mt-3 flex flex-wrap gap-2">
               {PERIOD_PRESETS.map((p) => {
                 const isActive = activePreset === p.id
                 return (
@@ -210,54 +242,7 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
                   </button>
                 )
               })}
-              <button
-                type="button"
-                onClick={toggleCustom}
-                className={[
-                  'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                  activePreset === 'custom'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted text-foreground hover:bg-accent',
-                ].join(' ')}
-              >
-                Personnalisé
-              </button>
             </div>
-
-            {activePreset === 'custom' && (
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  Du
-                  <input
-                    type="date"
-                    value={period?.start_date ?? ''}
-                    max={period?.end_date ?? undefined}
-                    onChange={(e) =>
-                      setPeriod({
-                        ...(period ?? {}),
-                        start_date: e.target.value || null,
-                      })
-                    }
-                    className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  Au
-                  <input
-                    type="date"
-                    value={period?.end_date ?? ''}
-                    min={period?.start_date ?? undefined}
-                    onChange={(e) =>
-                      setPeriod({
-                        ...(period ?? {}),
-                        end_date: e.target.value || null,
-                      })
-                    }
-                    className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </label>
-              </div>
-            )}
           </section>
         )}
 
@@ -321,44 +306,40 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
           </section>
         )}
 
-        {/* ── Playlists ──────────────────────────────────────────────────── */}
-        {available && available.playlists.length > 0 && (
-          <CascadeSection
-            title="Playlists"
-            options={available.playlists}
-            selected={(cascade.playlists ?? []) as string[]}
-            onToggle={(v) => toggleCascadeValue('playlists', v)}
-          />
-        )}
+        {/* ── Filtres avancés (cascade) ───────────────────────────────────────
+            Repliés par défaut : éviter le mur de pastilles quand il y a 50+
+            playlists/cartes/modes. Chaque <details> contient un <summary>
+            avec un compteur des valeurs sélectionnées.
 
-        {/* ── Modes de jeu ───────────────────────────────────────────────── */}
-        {available && available.modes.length > 0 && (
-          <CascadeSection
-            title="Modes de jeu"
-            options={available.modes}
-            selected={(cascade.modes ?? []) as string[]}
-            onToggle={(v) => toggleCascadeValue('modes', v)}
-          />
-        )}
-
-        {/* ── Cartes ─────────────────────────────────────────────────────── */}
-        {available && available.maps.length > 0 && (
-          <CascadeSection
-            title="Cartes"
-            options={available.maps}
-            selected={(cascade.maps ?? []) as string[]}
-            onToggle={(v) => toggleCascadeValue('maps', v)}
-          />
-        )}
-
-        {/* ── Types d'expérience ─────────────────────────────────────────── */}
-        {available && available.experience_types.length > 0 && (
-          <CascadeSection
-            title="Type d'expérience"
-            options={available.experience_types}
-            selected={(cascade.experience_types ?? []) as string[]}
-            onToggle={(v) => toggleCascadeValue('experience_types', v)}
-          />
+            Couvre toute la grille (col-span max) pour que chaque accordéon
+            occupe la pleine largeur quand ouvert. */}
+        {available && (
+          <section className="md:col-span-2 lg:col-span-3">
+            <CascadeAccordion
+              title="Playlists"
+              options={available.playlists}
+              selected={(cascade.playlists ?? []) as string[]}
+              onToggle={(v) => toggleCascadeValue('playlists', v)}
+            />
+            <CascadeAccordion
+              title="Modes de jeu"
+              options={available.modes}
+              selected={(cascade.modes ?? []) as string[]}
+              onToggle={(v) => toggleCascadeValue('modes', v)}
+            />
+            <CascadeAccordion
+              title="Cartes"
+              options={available.maps}
+              selected={(cascade.maps ?? []) as string[]}
+              onToggle={(v) => toggleCascadeValue('maps', v)}
+            />
+            <CascadeAccordion
+              title="Type d'expérience"
+              options={available.experience_types}
+              selected={(cascade.experience_types ?? []) as string[]}
+              onToggle={(v) => toggleCascadeValue('experience_types', v)}
+            />
+          </section>
         )}
       </div>
 
@@ -382,22 +363,39 @@ export function FilterPanel({ open, onClose }: FilterPanelProps) {
   )
 }
 
-// ─── Sous-composant : section cascade ─────────────────────────────────────────
+// ─── Sous-composant : accordéon cascade ───────────────────────────────────────
+//
+// Repliable par défaut. Le <summary> affiche le titre + un badge compteur
+// quand des valeurs sont sélectionnées. Évite le mur de pastilles quand
+// il y a beaucoup d'options (50+ cartes p. ex.). Native <details> = pas
+// de JS d'état pour l'open/close.
 
-interface CascadeSectionProps {
+interface CascadeAccordionProps {
   title: string
   options: { label: string; value: string }[]
   selected: string[]
   onToggle: (value: string) => void
 }
 
-function CascadeSection({ title, options, selected, onToggle }: CascadeSectionProps) {
+function CascadeAccordion({ title, options, selected, onToggle }: CascadeAccordionProps) {
+  if (options.length === 0) return null
   return (
-    <section>
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </h3>
-      <div className="flex flex-wrap gap-2">
+    <details className="group border-b border-border/60 py-2 last:border-b-0">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground">
+        <span className="flex items-center gap-2">
+          <span className="inline-block transition-transform group-open:rotate-90" aria-hidden="true">
+            ▸
+          </span>
+          {title}
+          {selected.length > 0 && (
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">
+              {selected.length}
+            </span>
+          )}
+        </span>
+        <span className="text-[10px] text-muted-foreground/70">{options.length} options</span>
+      </summary>
+      <div className="mt-2 flex flex-wrap gap-2 pb-1">
         {options.map((opt) => {
           const active = selected.includes(opt.value)
           return (
@@ -417,6 +415,6 @@ function CascadeSection({ title, options, selected, onToggle }: CascadeSectionPr
           )
         })}
       </div>
-    </section>
+    </details>
   )
 }
