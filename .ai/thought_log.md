@@ -1,8 +1,21 @@
 # Thought Log
 
-## [2026-04-26] feat(notifications): API interne in-app + frontend complet (slice MVP)
+## [2026-04-26] feat(notifications): toutes les phases livrees - API interne complete
 
-**Statut** : MVP livré. Hooks d'émission `match_synced`, `sync_error`, `media_added` câblés. Frontend complet (cloche NavL1, dropdown, toasts Sonner, page dédiée, onglet Settings). 9 commits sous mon nom (Co-Authored-By Claude Opus 4.7) + bundling partiel dans des commits multi-titres durant les chevauchements multi-agents.
+**Statut** : Toutes les phases du plan livrees. 7 catégories sur 11 totalement instrumentees (match_synced, sync_error, media_added, app_release, season_pass_level, objective_completed, challenge_completed). 4 reportees avec TODO documente in-code (personal_record, threshold_crossed, objective_assigned, challenge_added) — necessitent infrastructure additionnelle (table records, agreges KD/WR, signaux explicites Prestige). Tests : 12 service + 11 handler + 11 repo integration DuckDB = 34 verts.
+
+**Commits sous mon nom** : `63faf98d` (frontend foundations), `bd387be1` (AppShell+NavL1), `151abd32` (Settings tab), `2aa18a0e` (media_added hook), `4789f537` (thought_log MVP), `6bab66de` (tests handler + repo), `29e93105` (app_release boot hook), `d1c515c2` (post-sync delta hooks). Backend slice 1 dans bundling `779181bc`. Page dediee + route + mutations dans `ca9035bc`.
+
+**Hooks d'émission câblés** :
+- `match_synced` (sync_handler post-RunDelta succès)
+- `sync_error` (sync_handler post-RunDelta erreur)
+- `media_added` (media handler post-UploadMedia)
+- `app_release` (boot, comparaison sync_meta.last_seen_app_version per-player, premier boot initialise sans notifier)
+- `season_pass_level` (post-sync delta : new_rank > old_rank)
+- `objective_completed` (post-sync delta : new personal_score_awards count)
+- `challenge_completed` (post-sync delta : new match_citations count)
+
+**Architecture delta-detection** : pattern closure `PostSyncDeltaHook(ctx, slug) → after func(ctx)`. Le handler appelle le hook AVANT engine.RunDelta (capture snapshot before), reçoit une closure `after` qui sera appelée APRÈS le succès du sync (capture snapshot after + diff + emit). Évite cycle d'imports (handlers/ → api/) en gardant le type PlayerSnapshot opaque côté handler.
 
 **Contexte** : Création d'un système de notifications in-app per-player traité comme une "API interne découplée" (exigence utilisateur). 9 catégories MVP : `app_release`, `match_synced`, `media_added`, `objective_assigned/completed`, `challenge_added/completed`, `season_pass_level`, `sync_error`, `personal_record`, `threshold_crossed`. Plan complet dans `C:\Users\Guillaume\.claude\plans\j-ai-chang-d-avis-et-dapper-conway.md`.
 
