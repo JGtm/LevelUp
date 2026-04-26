@@ -1,9 +1,14 @@
 /**
  * SquadLayout — layout partagé de la section Escouade.
  *
- * Gère la sélection des coéquipiers (via data.options), les KPI cards
- * et la navigation par onglets (Synergies / Contributions).
- * Expose les données sélectionnées via SquadContext pour les onglets enfants.
+ * Gère la sélection des coéquipiers (via data.options), les KPI cards et la
+ * navigation par onglets (Synergies / Contributions). Expose les données
+ * sélectionnées via SquadContext pour les onglets enfants.
+ *
+ * Multi-titres : tous les libellés métier passent par useFieldMappings
+ * (fields.toml du titre courant) ; les strings UI passent par getSquadText
+ * (FR/EN). La liste des KPIs (SQUAD_KPI_METRICS) dégrade gracefully quand
+ * un FieldKey est absent du titre courant.
  *
  * Route parente : /players/$playerSlug/squad
  * Routes enfants : /squad/synergies · /squad/contributions
@@ -11,14 +16,18 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
-import { SessionScopeSelector } from './SessionScopeSelector'
+import { SquadSessionSelector } from './SquadSessionSelector'
 import { getSeriesColors } from '@/lib/accessibility'
-import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
+import { getSquadText } from './i18n'
+import { SQUAD_KPI_METRICS, type SquadMetric } from './metrics'
+import { log } from './_logger'
 import type {
   TeammateRow,
   TeammateKPIs,
@@ -32,13 +41,13 @@ import { useComparePrefetch } from '@/features/compare/queries'
 
 interface SquadContextValue {
   selectedRows: TeammateRow[]
-  soloReference: TeammateKPIs | null
+  confirmedGamertags: string[]
   pageData: TeammatesPageResponse | null
 }
 
 const SquadContext = createContext<SquadContextValue>({
   selectedRows: [],
-  soloReference: null,
+  confirmedGamertags: [],
   pageData: null,
 })
 
@@ -46,25 +55,79 @@ export function useSquadContext(): SquadContextValue {
   return useContext(SquadContext)
 }
 
-// ─── Constante ────────────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const MAX_SELECTION = 3
 const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
+
+// ─── Helpers d'affichage ──────────────────────────────────────────────────────
+
+/**
+ * Filtre les métriques absentes du fields.toml du titre courant.
+ * Émet un warn dédupliqué pour signaler la dégradation gracieuse.
+ */
+function filterAvailableMetrics(
+  metrics: readonly SquadMetric[],
+  mappings: FieldMappingsResponse | undefined,
+  surface: string,
+): SquadMetric[] {
+  if (!mappings) return [...metrics]
+  const slug = mappings.title_slug
+  return metrics.filter((m) => {
+    const present = !!mappings.fields[m.key]
+    if (!present) {
+      log.warn(
+        `field_missing:${slug}:${m.key}:${surface}`,
+        `FieldKey "${m.key}" absent du fields.toml de ${slug} (surface=${surface}) — métrique masquée.`,
+      )
+    }
+    return present
+  })
+}
+
+/**
+ * Formate la valeur numérique selon le format de la métrique.
+ * Retourne `-` pour `null`.
+ */
+function formatMetricValue(value: number | null, format: SquadMetric['format']): string {
+  if (value == null) return '-'
+  switch (format) {
+    case 'integer':
+      return String(Math.round(value))
+    case 'percent':
+      return `${value.toFixed(1)}%`
+    case 'ratio':
+      return value.toFixed(2)
+    case 'per_game':
+      return value.toFixed(2)
+  }
+}
+
+/**
+ * Compose le label affiché pour une métrique : libellé canonique du
+ * FieldKey + suffixe d'unité quand pertinent (per_game).
+ */
+function composeMetricLabel(
+  metric: SquadMetric,
+  mappings: FieldMappingsResponse | undefined,
+  perGameSuffix: string,
+): string {
+  const baseLabel = mappings?.fields[metric.key]?.label ?? metric.key
+  if (metric.format === 'per_game') return `${baseLabel}${perGameSuffix}`
+  return baseLabel
+}
 
 // ─── KPI Block ────────────────────────────────────────────────────────────────
 
 interface KPICardProps {
   label: string
-  value: number | null
-  unit?: string
+  value: string
 }
-function KPICard({ label, value, unit = '' }: KPICardProps) {
-  const display =
-    value == null ? '-' : `${Number.isInteger(value) ? value : value.toFixed(2)}${unit}`
+function KPICard({ label, value }: KPICardProps) {
   return (
     <div className="flex flex-col gap-1 rounded-lg border p-3">
       <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
-      <span className="text-xl font-bold">{display}</span>
+      <span className="text-xl font-bold">{value}</span>
     </div>
   )
 }
@@ -73,20 +136,23 @@ interface KPIBlockProps {
   title: string
   kpis: TeammateKPIs
   color?: string
+  perGameSuffix: string
 }
-function KPIBlock({ title, kpis, color = 'text-muted-foreground' }: KPIBlockProps) {
-  const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
-  const kills = labelOf('kills', 'Kills')
+function KPIBlock({ title, kpis, color = 'text-muted-foreground', perGameSuffix }: KPIBlockProps) {
+  const { data: mappings } = useFieldMappings()
+  const metrics = filterAvailableMetrics(SQUAD_KPI_METRICS, mappings, 'kpi')
+  if (metrics.length === 0) return null
   return (
     <div>
       <h3 className={`text-sm font-medium mb-2 ${color}`}>{title}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KPICard label={labelOf('total_matches_played', 'Matchs')} value={kpis.match_count} />
-        <KPICard label={labelOf('win_rate', 'Taux de victoire')} value={kpis.win_rate * 100} unit="%" />
-        <KPICard label={labelOf('kdr', 'K/D')} value={kpis.kd_ratio} />
-        <KPICard label={`${kills} / match`} value={kpis.kills_per_game} />
+        {metrics.map((m) => (
+          <KPICard
+            key={m.key}
+            label={composeMetricLabel(m, mappings, perGameSuffix)}
+            value={formatMetricValue(m.extract(kpis), m.format)}
+          />
+        ))}
       </div>
     </div>
   )
@@ -100,6 +166,8 @@ interface TeammateRowItemProps {
   onSelect: () => void
   onCompare: (gamertag: string) => void
   onPrefetchCompare: (gamertag: string) => void
+  intlLocale: string
+  openCompareLabel: string
 }
 function TeammateRowItem({
   row,
@@ -107,6 +175,8 @@ function TeammateRowItem({
   onSelect,
   onCompare,
   onPrefetchCompare,
+  intlLocale,
+  openCompareLabel,
 }: TeammateRowItemProps) {
   const isSelected = selectionIndex >= 0
   const wr = (row.with_kpis.win_rate * 100).toFixed(0)
@@ -131,7 +201,7 @@ function TeammateRowItem({
       <td className="px-4 py-3 text-center">{wr}%</td>
       <td className="px-4 py-3 text-center">{kd}</td>
       <td className="px-4 py-3 text-center text-xs text-muted-foreground">
-        {row.last_seen_at ? new Date(row.last_seen_at).toLocaleDateString('fr-FR') : '-'}
+        {row.last_seen_at ? new Date(row.last_seen_at).toLocaleDateString(intlLocale) : '-'}
       </td>
       <td className="px-4 py-3 text-center">
         <button
@@ -142,7 +212,7 @@ function TeammateRowItem({
           onMouseEnter={() => onPrefetchCompare(row.gamertag)}
           className="text-xs text-primary hover:underline"
         >
-          Comparer
+          {openCompareLabel}
         </button>
       </td>
     </tr>
@@ -152,6 +222,8 @@ function TeammateRowItem({
 export function SquadLayout() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { filterContext, filterContextHash } = useGlobalFilterStore()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getSquadText(locale)
   const storageKey = `squad-teammates-${playerSlug}`
 
   const [selectedGts, setSelectedGts] = useState<string[]>(() => {
@@ -171,7 +243,6 @@ export function SquadLayout() {
     }
   })
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
-  const [soloSession, setSoloSession] = useState<string | null>(null)
   const [squadSession, setSquadSession] = useState<string | null>(null)
   const prefetchCompare = useComparePrefetch(playerSlug)
   const matchRoute = useMatchRoute()
@@ -185,7 +256,7 @@ export function SquadLayout() {
       setConfirmedGts(initial)
       localStorage.setItem(storageKey, JSON.stringify(initial))
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.friend_gamertags])
 
   const isDirty =
@@ -199,7 +270,6 @@ export function SquadLayout() {
   const request: TeammatesQueryRequest = {
     filters: filterContext,
     selected_gamertags: confirmedGts.length > 0 ? confirmedGts : undefined,
-    picked_solo_session_label: soloSession,
     picked_squad_session_label: squadSession,
   }
   const { data, isLoading, isError, error } = useTeammates(
@@ -219,26 +289,37 @@ export function SquadLayout() {
 
   if (isLoading) return null
   if (isError)
-    return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
+    return (
+      <div className="p-6 text-center text-destructive">{t.errors.loadError(String(error))}</div>
+    )
   if (!data) {
     return (
-      <div className="px-6">
+      <div className="p-6">
         <EmptyStateCard
-          title="Données d'escouade indisponibles"
-          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés."
+          title={t.empty.noDataTitle}
+          description={t.empty.noDataDescription}
         />
       </div>
     )
   }
 
-  // Utiliser data.options pour le multiselect (coéquipiers fréquents)
   const availableOptions = data.options ?? []
   const teammates = data.teammates ?? []
-  const solo_reference = data.solo_reference ?? null
 
   const selectedRows = confirmedGts
-    .map((gt) => teammates.find((t) => t.gamertag === gt))
+    .map((gt) => teammates.find((titem) => titem.gamertag === gt))
     .filter(Boolean) as TeammateRow[]
+
+  // Détection du cas "sélection invalide" — un gamertag confirmé n'a matché
+  // aucune ligne backend. Cf. teammates_service.go: buildTeammateRowWithMatches
+  // retourne nil quand le gamertag n'est pas trouvé dans LoadTopTeammates.
+  if (confirmedGts.length > 0 && selectedRows.length === 0) {
+    log.warn(
+      `invalid_selection:${playerSlug}`,
+      `Aucun gamertag confirmé n'a matché un teammate côté backend (player=${playerSlug}).`,
+      { confirmedGts },
+    )
+  }
 
   const synergiesRoute = '/players/$playerSlug/squad/synergies' as const
   const contributionsRoute = '/players/$playerSlug/squad/contributions' as const
@@ -246,21 +327,21 @@ export function SquadLayout() {
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
 
   return (
-    <SquadContext.Provider value={{ selectedRows, soloReference: solo_reference, pageData: data ?? null }}>
-      <div className="flex flex-col gap-6">
-        {/* Sélecteur de session (solo / escouade) */}
-        <SessionScopeSelector
+    <SquadContext.Provider
+      value={{ selectedRows, confirmedGamertags: confirmedGts, pageData: data ?? null }}
+    >
+      <div className="flex flex-col gap-6 p-6">
+        {/* Sélecteur de session escouade */}
+        <SquadSessionSelector
           sessionLabels={data.session_labels ?? { solo: [], squad: [] }}
-          soloSession={soloSession}
           squadSession={squadSession}
-          onSoloChange={setSoloSession}
           onSquadChange={setSquadSession}
         />
 
         {/* Sélecteur coéquipiers avec fuzzy search */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Coéquipiers comparés</CardTitle>
+            <CardTitle className="text-base">{t.title.teammates}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <GamertagCombobox
@@ -270,45 +351,43 @@ export function SquadLayout() {
               frequentOptions={availableOptions}
               colors={CHART_COLORS}
               excludeGamertag={playerSlug}
-              placeholder={`Rechercher parmi ${availableOptions.length} coéquipiers…`}
+              placeholder={t.selection.placeholder(availableOptions.length)}
             />
             <div className="flex items-center justify-between gap-3 pt-1">
               <span className="text-xs text-muted-foreground">
                 {isDirty
-                  ? 'Sélection modifiée — clique sur Appliquer pour mettre à jour les graphiques.'
+                  ? t.selection.dirty
                   : selectedGts.length === 0
-                    ? 'Sélectionne jusqu\'à 3 coéquipiers puis clique sur Appliquer.'
-                    : `${confirmedGts.length} coéquipier${confirmedGts.length > 1 ? 's' : ''} comparé${confirmedGts.length > 1 ? 's' : ''}.`}
+                    ? t.selection.prompt
+                    : t.selection.applied(confirmedGts.length)}
               </span>
               <button
                 onClick={handleConfirm}
                 disabled={selectedGts.length === 0 && confirmedGts.length === 0}
                 className="shrink-0 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Appliquer
+                {t.selection.apply}
               </button>
             </div>
           </CardContent>
         </Card>
 
-        {/* KPI block si coéquipier(s) sélectionné(s) */}
+        {/* KPI block si coéquipier(s) sélectionné(s) — plus de "Référence solo" */}
         {selectedRows.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Stats avec les coéquipiers sélectionnés</CardTitle>
+              <CardTitle>{t.title.statsWith}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               {selectedRows.map((row, i) => (
                 <KPIBlock
                   key={row.gamertag}
-                  title={`Avec ${row.gamertag}`}
+                  title={t.table.withTeammate(row.gamertag)}
                   kpis={row.with_kpis}
                   color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
+                  perGameSuffix={t.units.perGame}
                 />
               ))}
-              {solo_reference && (
-                <KPIBlock title="Référence solo" kpis={solo_reference} color="text-info" />
-              )}
             </CardContent>
           </Card>
         )}
@@ -325,7 +404,7 @@ export function SquadLayout() {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
             >
-              Synergies
+              {t.nav.synergies}
             </Link>
             <Link
               to="/players/$playerSlug/squad/contributions"
@@ -336,7 +415,7 @@ export function SquadLayout() {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
             >
-              Contributions
+              {t.nav.contributions}
             </Link>
           </nav>
         </div>
@@ -348,20 +427,20 @@ export function SquadLayout() {
         {teammates.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Tous les coéquipiers</CardTitle>
+              <CardTitle>{t.title.allTeammates}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-muted border-b">
                     <tr>
-                      <th className="px-4 py-3 text-left">Gamertag</th>
-                      <th className="px-4 py-3 text-center">Matchs</th>
-                      <th className="px-4 py-3 text-center">Victoires</th>
-                      <th className="px-4 py-3 text-center">Win%</th>
-                      <th className="px-4 py-3 text-center">K/D</th>
-                      <th className="px-4 py-3 text-center">Dernière rencontre</th>
-                      <th className="px-4 py-3 text-center">Actions</th>
+                      <th className="px-4 py-3 text-left">{t.table.gamertag}</th>
+                      <th className="px-4 py-3 text-center">{t.table.matches}</th>
+                      <th className="px-4 py-3 text-center">{t.table.wins}</th>
+                      <th className="px-4 py-3 text-center">{t.table.winPct}</th>
+                      <th className="px-4 py-3 text-center">{t.table.kd}</th>
+                      <th className="px-4 py-3 text-center">{t.table.lastSeen}</th>
+                      <th className="px-4 py-3 text-center">{t.table.actions}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -375,6 +454,8 @@ export function SquadLayout() {
                           onSelect={() => toggleSelect(row.gamertag)}
                           onCompare={(gt) => setCompareTarget(gt)}
                           onPrefetchCompare={prefetchCompare}
+                          intlLocale={t.intlLocale}
+                          openCompareLabel={t.table.openCompare}
                         />
                       )
                     })}

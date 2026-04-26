@@ -65,3 +65,73 @@ describe('FieldMappingsResponse fallback chains', () => {
     expect(empty.fields['kills']?.label).toBeUndefined()
   })
 })
+
+describe('FieldMappingsResponse — assets et outcomes (Phase 3 plan finition)', () => {
+  it('expose un asset par kind/id avec label localisé', () => {
+    const sample: FieldMappingsResponse = {
+      title_slug: 'halo_infinite',
+      schema_version: 1,
+      locale: 'fr',
+      fields: {},
+      assets: {
+        mode: {
+          Ranked: { label: 'Classé', display_order: 50 },
+          Firefight: {
+            label: 'Baptême du feu',
+            color_token: 'mode.firefight',
+            display_order: 60,
+          },
+        },
+        challenge_tier: {
+          heroic: {
+            label: 'Héroïque',
+            color_token: 'challenge.heroic',
+            display_order: 20,
+          },
+        },
+      },
+    }
+    expect(sample.assets?.mode?.Ranked?.label).toBe('Classé')
+    expect(sample.assets?.challenge_tier?.heroic?.color_token).toBe('challenge.heroic')
+  })
+
+  it('retourne undefined pour kind inconnu (caller fallback sur id)', () => {
+    const sample: FieldMappingsResponse = {
+      title_slug: 'halo_infinite',
+      schema_version: 1,
+      locale: 'fr',
+      fields: {},
+      assets: { mode: {} },
+    }
+    expect(sample.assets?.mode?.Ranked?.label).toBeUndefined()
+    expect(sample.assets?.unknown_kind?.foo?.label).toBeUndefined()
+  })
+
+  it('expose un outcome par key avec label + color_token', () => {
+    const sample: FieldMappingsResponse = {
+      title_slug: 'halo_infinite',
+      schema_version: 1,
+      locale: 'fr',
+      fields: {},
+      outcomes: {
+        win: { label: 'Victoire', color_token: 'outcome.positive' },
+        loss: { label: 'Défaite', color_token: 'outcome.negative' },
+        tie: { label: 'Égalité', color_token: 'outcome.neutral' },
+        dnf: { label: 'Abandon', color_token: 'outcome.neutral' },
+      },
+    }
+    expect(sample.outcomes?.win?.label).toBe('Victoire')
+    expect(sample.outcomes?.dnf?.color_token).toBe('outcome.neutral')
+  })
+
+  it('assets et outcomes optionnels — réponse sans eux ne casse pas', () => {
+    const sample: FieldMappingsResponse = {
+      title_slug: 'halo_infinite',
+      schema_version: 1,
+      locale: 'fr',
+      fields: {},
+    }
+    expect(sample.assets).toBeUndefined()
+    expect(sample.outcomes).toBeUndefined()
+  })
+})
