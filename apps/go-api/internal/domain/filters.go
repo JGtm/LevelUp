@@ -7,9 +7,16 @@ import (
 )
 
 // LabelValue est une paire label/value pour les options de sélection.
+//
+// Parent (optionnel) sert à grouper les options dans un dropdown hiérarchique
+// (HTML <optgroup>). Utilisé par le filtre Mode des médias où les sous-modes
+// (Slayer, CTF, Team Slayer…) sont regroupés sous leur catégorie parente
+// (Assassin, Fiesta, …). Si vide, l'option est un header de catégorie ou
+// hors hiérarchie.
 type LabelValue struct {
-	Label string `json:"label"`
-	Value string `json:"value"`
+	Label  string `json:"label"`
+	Value  string `json:"value"`
+	Parent string `json:"parent,omitempty"`
 }
 
 // FilterMatchRow représente une ligne minimale pour la résolution des filtres.
