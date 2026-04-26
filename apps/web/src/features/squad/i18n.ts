@@ -25,9 +25,7 @@ export interface SquadText {
   }
   selection: {
     placeholder: (count: number) => string
-    dirty: string
     prompt: string
-    apply: string
   }
   session: {
     label: string
@@ -96,9 +94,7 @@ const FR_TEXT: SquadText = {
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
-    dirty: 'Sélection modifiée — clique sur Appliquer pour mettre à jour les graphiques.',
-    prompt: 'Sélectionne jusqu\'à 3 coéquipiers puis clique sur Appliquer.',
-    apply: 'Appliquer',
+    prompt: 'Sélectionne jusqu\'à 3 coéquipiers pour analyser vos synergies.',
   },
   session: {
     label: 'Session',
@@ -169,9 +165,7 @@ const EN_TEXT: SquadText = {
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,
-    dirty: 'Selection changed — click Apply to refresh the charts.',
-    prompt: 'Pick up to 3 teammates then click Apply.',
-    apply: 'Apply',
+    prompt: 'Pick up to 3 teammates to analyze your synergies.',
   },
   session: {
     label: 'Session',
