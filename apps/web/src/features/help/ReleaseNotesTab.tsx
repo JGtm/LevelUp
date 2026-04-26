@@ -1,6 +1,5 @@
 import Markdown from 'react-markdown'
 import { Card, CardContent } from '@/components/ui/card'
-import { PageLoader } from '@/components/ui/spinner'
 import { type HelpLocale } from './i18n'
 import { useReleaseNotes } from './queries'
 
@@ -13,14 +12,7 @@ interface ReleaseNotesTabProps {
 export function ReleaseNotesTab({ locale, errorMessage, loadingMessage }: ReleaseNotesTabProps) {
   const { data, isLoading, error } = useReleaseNotes(locale)
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
-        <PageLoader />
-        <span className="text-sm">{loadingMessage}</span>
-      </div>
-    )
-  }
+  if (isLoading) return null
 
   if (error || !data) {
     return (

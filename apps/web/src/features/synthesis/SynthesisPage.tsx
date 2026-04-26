@@ -9,7 +9,6 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useSynthesisPage } from './queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { PageLoader } from '@/components/ui/spinner'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SynthesisHighlightsSection } from './SynthesisHighlightsSection'
@@ -295,7 +294,7 @@ export function SynthesisPage() {
   const request: SynthesisQueryRequest = { filters: filterContext, period }
   const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, period, request)
 
-  if (isLoading) return <PageLoader />
+  if (isLoading) return null
   if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
   if (!data) {
     return (

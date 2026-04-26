@@ -62,9 +62,9 @@ describe('SettingsPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('affiche le spinner en phase de chargement', () => {
+  it('ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)', () => {
     renderWithProviders(<SettingsPage />)
-    expect(screen.getByText(/Chargement des paramètres/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Chargement des paramètres/i)).not.toBeInTheDocument()
   })
 
   it("affiche le titre 'Paramètres' une fois les données chargées", async () => {

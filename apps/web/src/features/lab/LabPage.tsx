@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { PageLoader, Spinner } from '@/components/ui/spinner'
+import { Spinner } from '@/components/ui/spinner'
 import type {
   LabAssetSummary,
   LabContractsResponse,
@@ -410,11 +410,7 @@ function ResourcesPanel({
   selectedMedalID: number | null
   setSelectedMedalID: (value: number) => void
 }) {
-  if (isLoading) {
-    return (
-      <PageLoader label={text.resources.loading} />
-    )
-  }
+  if (isLoading) return null
 
   if (isError || !data) {
     return (

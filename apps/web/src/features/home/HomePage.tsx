@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
-import { Spinner } from '@/components/ui/spinner'
 import { MatchCard } from '@/components/ui/match-card'
 import { Carousel, CarouselItem } from '@/components/ui/carousel'
 import { HomeBattlePassPanel } from './HomeBattlePassPanel'
@@ -492,13 +491,7 @@ export function HomePage() {
     })
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[55vh] items-center justify-center px-6 py-10 sm:min-h-[60vh]">
-        <Spinner size="lg" label="Chargement de l'accueil…" />
-      </div>
-    )
-  }
+  if (isLoading) return null
 
   if (isError) {
     return (

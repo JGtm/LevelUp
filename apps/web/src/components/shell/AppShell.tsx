@@ -7,13 +7,17 @@
  */
 import { Outlet } from '@tanstack/react-router'
 import { NavL1 } from './NavL1'
+import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
 
 export function AppShell() {
   return (
     <div className="flex h-screen flex-col gap-3 overflow-hidden bg-background text-foreground sm:gap-4">
-      {/* Barre de navigation L1 — toujours visible */}
-      <NavL1 />
+      {/* Barre de navigation L1 + barre de progression globale */}
+      <div className="shrink-0">
+        <NavL1 />
+        <TopProgressBar />
+      </div>
 
       {/* Contenu principal scrollable — protégé contre les crashs de composants */}
       <ErrorBoundary>

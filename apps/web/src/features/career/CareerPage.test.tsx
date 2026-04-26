@@ -23,9 +23,9 @@ describe('CareerPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('affiche le spinner en phase de chargement', () => {
+  it('ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)', () => {
     renderWithProviders(<CareerPage />)
-    expect(screen.getByText(/Chargement de la carrière/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Chargement de la carrière/i)).not.toBeInTheDocument()
   })
 
   it("affiche le titre 'Carrière' une fois les données chargées", async () => {

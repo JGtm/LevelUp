@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PlotlyChart } from '@/components/ui/plotly-chart'
-import { PageLoader } from '@/components/ui/spinner'
 import { useCitationsPage } from '@/features/citations/queries'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -23,11 +22,7 @@ export function CareerCitationsTab() {
     'hub-all',
   )
 
-  if (isLoading) {
-    return (
-      <PageLoader label="Chargement des citations…" />
-    )
-  }
+  if (isLoading) return null
 
   if (isError) {
     return (

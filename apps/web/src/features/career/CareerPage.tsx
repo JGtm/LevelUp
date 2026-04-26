@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { PageLoader } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -28,11 +27,7 @@ export function CareerPage() {
     showAllTopMatches,
   )
 
-  if (isLoading) {
-    return (
-      <PageLoader label="Chargement de la carrière…" />
-    )
-  }
+  if (isLoading) return null
 
   if (isError) {
     return (

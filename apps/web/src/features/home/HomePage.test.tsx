@@ -28,9 +28,9 @@ describe('HomePage', () => {
     expect(container).toBeTruthy()
   })
 
-  it("affiche le spinner pendant le chargement", () => {
+  it("ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)", () => {
     renderWithProviders(<HomePage />)
-    expect(screen.getByText(/Chargement de l'accueil/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Chargement de l'accueil/i)).not.toBeInTheDocument()
   })
 
   it('affiche la section Performance globale après chargement', async () => {

@@ -64,7 +64,7 @@ function buildBaseResponse() {
 }
 
 describe("SessionDetailPage", () => {
-  it("affiche le spinner pendant le chargement initial", () => {
+  it("ne rend pas de loader plein écran pendant le chargement (TopProgressBar globale)", () => {
     server.use(
       http.post(
         "/api/v1/players/:playerSlug/pages/sessions/detail",
@@ -77,7 +77,7 @@ describe("SessionDetailPage", () => {
 
     renderWithProviders(<SessionDetailPage />);
 
-    expect(screen.getByText(/Chargement de la session/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Chargement de la session/i)).not.toBeInTheDocument();
   });
 
   it("affiche un état vide explicite quand aucune session n’est disponible", async () => {

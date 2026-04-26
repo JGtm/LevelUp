@@ -15,7 +15,6 @@ import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
-import { PageLoader } from '@/components/ui/spinner'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionScopeSelector } from './SessionScopeSelector'
 import { getSeriesColors } from '@/lib/accessibility'
@@ -218,10 +217,7 @@ export function SquadLayout() {
     })
   }
 
-  if (isLoading)
-    return (
-      <PageLoader />
-    )
+  if (isLoading) return null
   if (isError)
     return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
   if (!data) {

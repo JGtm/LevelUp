@@ -1,5 +1,25 @@
 # Thought Log
 
+## [2026-04-26] feat(web): TopProgressBar — remplacement des PageLoader par barre de progression globale
+
+**Statut** : Complété — tests 267/293 (26 échecs pré-existants, 0 régressions introduites).
+
+**Décision technique** : Barre hybride sous la NavL1 avec deux déclencheurs :
+1. Changement de `pathname` via `useRouterState` → apparition immédiate dès le clic
+2. Queries React Query en état `pending` uniquement (`useIsFetching({ predicate: q => q.state.status === 'pending' })`) → maintien tant que la page n'a pas de données ; fenêtre de grâce SETTLE_MS=150ms pour le tick entre pathname change et mount des queries
+
+**Fichiers créés** :
+- `apps/web/src/components/shell/TopProgressBar.tsx` — composant barre (12/12 tests ✓)
+- `apps/web/src/components/shell/TopProgressBar.test.tsx` — 12 tests
+
+**Fichiers modifiés** :
+- `AppShell.tsx` — import + rendu sous `<NavL1 />`
+- `spinner.tsx` — suppression de `PageLoader` et `PageSpinner`
+- 12 pages converties à `return null` pendant isLoading (+ suppression imports orphelins) : CareerCitationsTab, CareerPage, ChangelogPage, CitationsPage, ReleaseNotesTab, LabPage (PageLoader seul, Spinner section gardé), MatchHistoryPage, MatchViewPage, SquadLayout, SynthesisPage, TimeseriesPage, HomePage, SettingsPage
+- 6 fichiers test mis à jour : assertions `getByText(Chargement…)` → `queryByText(…).not.toBeInTheDocument()`
+
+**Résultats** : 267 passes (vs 264 avant), 26 échecs tous pré-existants (NavL1 stash, SessionDetail mock, timeouts MSW).
+
 ## [2026-04-26] fix(media): retour aux bases - 3 bugs structurels (LABEL/VALUE, mode prefix, Section)
 
 **Statut** : Complété — déployé en local, testé via curl direct sur le serveur Go en cours.
