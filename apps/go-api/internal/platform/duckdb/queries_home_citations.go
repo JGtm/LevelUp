@@ -681,6 +681,13 @@ func buildQ37MediaQuery(
 		playerSlugExpr = "mf.player_slug"
 	}
 
+	// CRITIQUE : un média physique = 1 ligne. Sans QUALIFY, le LEFT JOIN sur
+	// media_match_associations duplique le média si plusieurs matchs sont
+	// associés (cas réel : capture pendant une session de plusieurs matchs
+	// proches). On garde l'association la plus pertinente :
+	//   - en priorité une avec match (mr.start_time non null)
+	//   - parmi celles-là, la plus proche temporellement de capture_end_utc
+	//   - sinon stable tiebreak sur match_id
 	q := `SELECT
     mf.file_path,
     mf.file_name,
@@ -696,6 +703,13 @@ func buildQ37MediaQuery(
     ` + playerSlugExpr + ` AS player_slug
 ` + queryCfg.fromClause() + `
 ` + whereClause + `
+QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY mf.file_path
+    ORDER BY
+        CASE WHEN mr.start_time IS NULL THEN 1 ELSE 0 END,
+        ABS(EXTRACT(EPOCH FROM (mr.start_time - mf.capture_end_utc))) ASC NULLS LAST,
+        COALESCE(mma.match_id, '')
+) = 1
 ORDER BY ` + orderBy + `
 LIMIT ? OFFSET ?`
 
@@ -714,7 +728,10 @@ func buildQ37MediaCountQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (
 		includeModeFilter: true,
 	}, queryCfg)
 
-	q := `SELECT COUNT(*)
+	// COUNT(DISTINCT mf.file_path) car le LEFT JOIN duplique les médias avec
+	// plusieurs associations match. Sinon la pagination renvoie X*N pages au
+	// lieu de X (où N = nombre moyen d'associations par média).
+	q := `SELECT COUNT(DISTINCT mf.file_path)
 ` + queryCfg.fromClause() + `
 ` + whereClause
 

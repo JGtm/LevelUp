@@ -1,5 +1,53 @@
 # Thought Log
 
+## [2026-04-26] fix(media): cause racine - 1 média associé à plusieurs matchs (multi-assoc)
+
+**Statut** : Complété
+
+**Contexte** : User reporte 4 bugs simultanés : (1) cards avec maps différentes au lieu de la map filtrée, (2) filtres mode incohérents, (3) pagination chaotique avec compteurs étranges par page, (4) compteur lightbox X/Y absurde. Ils sont tous causés par une seule cause racine : **un média peut être associé à plusieurs matchs dans `media_match_associations`**, ce qui multiplie les lignes du LEFT JOIN.
+
+**Cause racine** : `AssociateMediaWithMatches` dans `ops/media.go:206-256` faisait un `INSERT OR IGNORE INTO media_match_associations SELECT ... FROM media_files mf JOIN match_registry mr ON mf.capture_start_utc BETWEEN ...`. Quand la capture tombait dans la fenêtre `[start-buffer, end+buffer]` de PLUSIEURS matchs (overlap, ou session avec matchs proches dans le temps), le JOIN produisait N lignes et toutes étaient insérées (la PK étant `(media_file_id, match_id)`, le `INSERT OR IGNORE` ne dédupliquait que les paires identiques).
+
+User formule le problème : "1 média doit être lié uniquement à une carte". Exact — un média = une capture = un seul match en cours.
+
+**Conséquences observées** :
+1. Galerie : un même média physique apparaît N fois avec des map_name différents (1 par match associé)
+2. Pagination : `COUNT(*)` sur le JOIN gonflé renvoie N×medias au lieu de medias uniques → pages avec compteurs incohérents
+3. Filtres : un média avec assocs Aquarius+Bazaar matche pour les 2 filtres
+4. Lightbox X/Y : `total = items.length` (page courante avec doublons) trompait le user
+
+**Décisions techniques** :
+
+1. **Fix INSERT (cause racine)** : ajout de `ROW_NUMBER() OVER (PARTITION BY mf.id ORDER BY ABS(delta_s) ASC, mr.match_id) AS rn` puis `WHERE rn = 1` dans la query d'indexation. Garde uniquement le match le plus proche temporellement par média. Empêche les futures multi-assocs.
+
+2. **Fix SELECT (défense en profondeur)** : `QUALIFY ROW_NUMBER() OVER (PARTITION BY mf.file_path ORDER BY ...) = 1` dans `buildQ37MediaQuery`. Même si la DB a déjà des doublons (médias indexés avec l'ancien code), le SELECT n'en montre qu'un. ORDER BY préfère row avec match (`mr.start_time IS NULL`), puis le plus proche temporellement.
+
+3. **Fix COUNT** : `COUNT(DISTINCT mf.file_path)` au lieu de `COUNT(*)` pour la pagination correcte.
+
+4. **Fix lightbox X/Y** : 2 nouvelles props `globalIndexOffset` (= `(page-1) × PAGE_SIZE`) et `globalTotal` (= `pagination.total`). Le compteur affiche maintenant la position globale sur le total global, pas l'index local sur la taille de page.
+
+5. **Migration des données existantes** : le user peut appeler `POST /api/v1/players/{slug}/media/reassociate` pour effacer toutes ses associations et les recréer proprement avec le nouveau code (1 par média max).
+
+**Fichiers modifiés** :
+- `ops/media.go` — ROW_NUMBER dans INSERT pour ne garder que le match le plus proche
+- `queries_home_citations.go` — QUALIFY dans SELECT + COUNT(DISTINCT) défense en profondeur
+- `media_repo_filters_test.go` — 3 tests multi-assoc (1 média avec 3 assocs → 1 ligne attendue, count=1, filtre map=X → 1 ligne)
+- `MediaViewer.tsx` — props `globalIndexOffset`/`globalTotal` + calcul corrigé
+- `MediaPage.tsx` — passe `(page-1) × PAGE_SIZE` et `pagination.total` au lightbox
+- `queries_media_test.go` — assertion COUNT(DISTINCT) au lieu de COUNT(*)
+
+**Résultats observés** :
+- Tests multi-assoc : avant fix → 3 lignes pour 1 média ; après fix → 1 ligne
+- Count avant fix : 3 ; après fix : 1
+- Tests régression Altitude (avec dataset user) : tous verts
+- Compilation Go OK, tests intégration tous verts
+
+**Conclusion / prochaine étape** : Pour résoudre le problème en prod chez le user, il faut :
+1. Rebuild + redémarrer le serveur Go
+2. Appeler le endpoint reassociate pour nettoyer les doublons existants
+3. Refresh frontend
+4. Le filtre Altitude devrait maintenant ramener exactement les médias Altitude, la pagination être cohérente, le compteur X/Y juste
+
 ## [2026-04-26] feat(media): groupement variantes carte (Option B — strip suffixes)
 
 **Statut** : Complété
