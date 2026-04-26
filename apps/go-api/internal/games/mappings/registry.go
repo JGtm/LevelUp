@@ -50,7 +50,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		fieldsPath := filepath.Join(mappingsDir, "fields.toml")
 		fset, err := LoadFieldsFromFile(fieldsPath)
 		if err != nil {
-			logger.Error("mappings_load_failed", "title_slug", slug, "path", fieldsPath, "err", err.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", fieldsPath, "err", err.Error())
 			errs = append(errs, fmt.Errorf("load fields %s: %w", slug, err))
 			continue
 		}
@@ -67,7 +67,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		// assets.toml — optionnel
 		assetsPath := filepath.Join(mappingsDir, "assets.toml")
 		if aset, loadErr := loadAssetsIfExists(assetsPath); loadErr != nil {
-			logger.Error("mappings_load_failed", "title_slug", slug, "path", assetsPath, "err", loadErr.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", assetsPath, "err", loadErr.Error())
 			errs = append(errs, fmt.Errorf("load assets %s: %w", slug, loadErr))
 		} else if aset != nil {
 			r.mu.Lock()
@@ -84,7 +84,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		// outcomes.toml — optionnel
 		outcomesPath := filepath.Join(mappingsDir, "outcomes.toml")
 		if oset, loadErr := loadOutcomesIfExists(outcomesPath); loadErr != nil {
-			logger.Error("mappings_load_failed", "title_slug", slug, "path", outcomesPath, "err", loadErr.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", outcomesPath, "err", loadErr.Error())
 			errs = append(errs, fmt.Errorf("load outcomes %s: %w", slug, loadErr))
 		} else if oset != nil {
 			r.mu.Lock()
