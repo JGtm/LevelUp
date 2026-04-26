@@ -223,3 +223,67 @@ func TestSyntheticTitleB_ResolverIsolation(t *testing.T) {
 		t.Errorf("resolver.Data(unknown) devrait retourner ErrTitleNotResolved")
 	}
 }
+
+func TestSyntheticTitleB_SemanticAssetsAndOutcomes(t *testing.T) {
+	// Vérifie que SemanticAdapter accepte assets/outcomes injectés et les expose.
+	bSet := mustLoadFields(t, TitleSlug)
+
+	assetsToml := []byte(`
+[meta]
+title_slug = "synthetic_title_b"
+schema_version = 1
+
+[assets.mode.ranked]
+labels = { en = "Competitive", fr = "Compétitif" }
+display_order = 10
+`)
+	assets, err := mappings.LoadAssetsFromBytes("synth_assets.toml", assetsToml)
+	if err != nil {
+		t.Fatalf("LoadAssetsFromBytes: %v", err)
+	}
+
+	outcomesToml := []byte(`
+[meta]
+title_slug = "synthetic_title_b"
+schema_version = 1
+
+[outcomes.win]
+labels = { en = "Victory", fr = "Triomphe" }
+color_token = "outcome.positive"
+`)
+	outcomes, err := mappings.LoadOutcomesFromBytes("synth_outcomes.toml", outcomesToml)
+	if err != nil {
+		t.Fatalf("LoadOutcomesFromBytes: %v", err)
+	}
+
+	a := NewSemanticAdapter(bSet, assets, outcomes)
+	if a.Assets() != assets {
+		t.Error("Assets() doit pointer sur le set injecté")
+	}
+	if a.Outcomes() != outcomes {
+		t.Error("Outcomes() doit pointer sur le set injecté")
+	}
+
+	// Libellés divergents préservés (titre B != HI).
+	if got, ok := a.Assets().Get("mode", "ranked"); ok {
+		if lbl, _ := got.Label("fr"); lbl != "Compétitif" {
+			t.Errorf("titre B mode.ranked fr = %q, want Compétitif", lbl)
+		}
+	}
+	if got, ok := a.Outcomes().Get("win"); ok {
+		if lbl, _ := got.Label("fr"); lbl != "Triomphe" {
+			t.Errorf("titre B outcome.win fr = %q, want Triomphe", lbl)
+		}
+	}
+}
+
+func TestSyntheticTitleB_SemanticAssetsNil(t *testing.T) {
+	bSet := mustLoadFields(t, TitleSlug)
+	a := NewSemanticAdapter(bSet, nil, nil)
+	if a.Assets() != nil {
+		t.Error("Assets() devrait être nil quand non injecté")
+	}
+	if a.Outcomes() != nil {
+		t.Error("Outcomes() devrait être nil quand non injecté")
+	}
+}
