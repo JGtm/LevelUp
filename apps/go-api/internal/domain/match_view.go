@@ -548,6 +548,26 @@ type EncounterRaw struct {
 	IsAlly        bool
 }
 
+// EncounterStatsRaw : stats riches par encounter chargees via Q23b
+// (chunk MV4.C'). Permet a narrative.ComputeEncounterBadges d'attribuer
+// les badges ally_plus + tough_enemy.
+//
+// L'agregation se fait sur l'historique commun entre le joueur courant
+// (myXUID) et tm.xuid. Le service compose ces stats avec les EncounterRaw
+// (CountTogether + IsAlly) pour produire les EncounterStats consommees par
+// narrative.ComputeEncounterBadges.
+type EncounterStatsRaw struct {
+	XUID           string
+	AllyCount      int
+	EnemyCount     int
+	WinsAsAlly     int
+	LossesAsAlly   int
+	WinsVsEnemy    int
+	LossesVsEnemy  int
+	KillsDealt     int
+	DeathsSuffered int
+}
+
 // MediaAssocRaw : données brutes de Q24 (media_files + media_match_associations).
 type MediaAssocRaw struct {
 	FileID        string

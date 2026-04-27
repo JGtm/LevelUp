@@ -13,7 +13,7 @@ func TestConvertEncounters_OrdinalBadgeAttributed(t *testing.T) {
 		{XUID: "x_p2", Gamertag: "PlayerTwo", CountTogether: 2, IsAlly: false},
 		{XUID: "x_p3", Gamertag: "PlayerThree", CountTogether: 1, IsAlly: true}, // 1 seul match = pas d'ordinal
 	}
-	rows := convertEncounters(raw)
+	rows := convertEncounters(raw, nil)
 	if len(rows) != 3 {
 		t.Fatalf("want 3 rows, got %d", len(rows))
 	}
@@ -50,7 +50,7 @@ func TestConvertEncounters_BadgesEmptyForFreshEncounter(t *testing.T) {
 	raw := []domain.EncounterRaw{
 		{XUID: "x_new", Gamertag: "NewPlayer", CountTogether: 0, IsAlly: true},
 	}
-	rows := convertEncounters(raw)
+	rows := convertEncounters(raw, nil)
 	if len(rows[0].Badges) != 0 {
 		t.Errorf("count_together=0 should yield no badges, got %+v", rows[0].Badges)
 	}
@@ -61,10 +61,124 @@ func TestConvertEncounters_TypedLabelKey(t *testing.T) {
 	raw := []domain.EncounterRaw{
 		{XUID: "x", Gamertag: "P", CountTogether: 3, IsAlly: true},
 	}
-	rows := convertEncounters(raw)
+	rows := convertEncounters(raw, nil)
 	for _, b := range rows[0].Badges {
 		if b.Kind == "ordinal" && b.LabelKey != "narrative.encounter.ordinal" {
 			t.Errorf("LabelKey want narrative.encounter.ordinal, got %s", b.LabelKey)
 		}
+	}
+}
+
+// TestConvertEncounters_AllyPlusBadge_FromRichStats : MV4.C' — vérifie que
+// le badge ally_plus est attribué quand winrate_as_ally > seuil + ally_count
+// >= MinEncountersForBadge.
+func TestConvertEncounters_AllyPlusBadge_FromRichStats(t *testing.T) {
+	t.Parallel()
+	raw := []domain.EncounterRaw{
+		{XUID: "x_great_ally", Gamertag: "GreatAlly", CountTogether: 10, IsAlly: true},
+	}
+	stats := []domain.EncounterStatsRaw{
+		{
+			XUID:          "x_great_ally",
+			AllyCount:     8,
+			WinsAsAlly:    7,
+			LossesAsAlly:  1, // winrate = 7/8 = 0.875 > 0.7 seuil
+			EnemyCount:    2,
+			WinsVsEnemy:   1,
+			LossesVsEnemy: 1,
+		},
+	}
+	rows := convertEncounters(raw, stats)
+	hasAllyPlus := false
+	for _, b := range rows[0].Badges {
+		if b.Kind == "ally_plus" {
+			hasAllyPlus = true
+		}
+	}
+	if !hasAllyPlus {
+		t.Errorf("ally_plus should be attributed when winrate_as_ally > 0.7, got %+v", rows[0].Badges)
+	}
+}
+
+// TestConvertEncounters_ToughEnemyBadge_FromRichStats : MV4.C' — vérifie que
+// le badge tough_enemy est attribué quand kd_against_me dépasse le seuil.
+func TestConvertEncounters_ToughEnemyBadge_FromRichStats(t *testing.T) {
+	t.Parallel()
+	raw := []domain.EncounterRaw{
+		{XUID: "x_nemesis", Gamertag: "Nemesis", CountTogether: 5, IsAlly: false},
+	}
+	stats := []domain.EncounterStatsRaw{
+		{
+			XUID:           "x_nemesis",
+			AllyCount:      0,
+			EnemyCount:     5,
+			KillsDealt:     2, // moi tue Nemesis 2 fois
+			DeathsSuffered: 8, // Nemesis tue moi 8 fois -> kd_against_me = 4 > 1.5 seuil
+		},
+	}
+	rows := convertEncounters(raw, stats)
+	hasToughEnemy := false
+	for _, b := range rows[0].Badges {
+		if b.Kind == "tough_enemy" {
+			hasToughEnemy = true
+		}
+	}
+	if !hasToughEnemy {
+		t.Errorf("tough_enemy should be attributed when kd_against_me > 1.5, got %+v", rows[0].Badges)
+	}
+}
+
+// TestConvertEncounters_NoAllyPlus_BelowThreshold : winrate sous le seuil.
+func TestConvertEncounters_NoAllyPlus_BelowThreshold(t *testing.T) {
+	t.Parallel()
+	raw := []domain.EncounterRaw{
+		{XUID: "x", Gamertag: "P", CountTogether: 5, IsAlly: true},
+	}
+	stats := []domain.EncounterStatsRaw{
+		{XUID: "x", AllyCount: 5, WinsAsAlly: 2, LossesAsAlly: 3}, // 0.4 < 0.7
+	}
+	rows := convertEncounters(raw, stats)
+	for _, b := range rows[0].Badges {
+		if b.Kind == "ally_plus" {
+			t.Errorf("ally_plus should NOT be attributed when winrate < 0.7, got %+v", b)
+		}
+	}
+}
+
+// TestConvertEncounters_DegradesGracefullyWhenStatsMissing : si stats manquant
+// pour un xuid, on retombe sur le badge ordinal seul.
+func TestConvertEncounters_DegradesGracefullyWhenStatsMissing(t *testing.T) {
+	t.Parallel()
+	raw := []domain.EncounterRaw{
+		{XUID: "x_with_stats", Gamertag: "WithStats", CountTogether: 3, IsAlly: true},
+		{XUID: "x_no_stats", Gamertag: "NoStats", CountTogether: 5, IsAlly: false},
+	}
+	// stats seulement pour x_with_stats
+	stats := []domain.EncounterStatsRaw{
+		{XUID: "x_with_stats", AllyCount: 2, WinsAsAlly: 2, LossesAsAlly: 0},
+	}
+	rows := convertEncounters(raw, stats)
+	if len(rows) != 2 {
+		t.Fatalf("want 2 rows, got %d", len(rows))
+	}
+	// x_no_stats should still have ordinal badge (count=5)
+	hasOrdinal := false
+	for _, b := range rows[1].Badges {
+		if b.Kind == "ordinal" {
+			hasOrdinal = true
+		}
+	}
+	if !hasOrdinal {
+		t.Errorf("x_no_stats should keep ordinal badge via fallback, got %+v", rows[1].Badges)
+	}
+}
+
+func TestEncounterWinrate_NilWhenEmpty(t *testing.T) {
+	t.Parallel()
+	if got := encounterWinrate(0, 0); got != nil {
+		t.Errorf("(0+0): want nil, got %v", got)
+	}
+	if got := encounterWinrate(3, 1); got == nil || *got != 0.75 {
+		t.Errorf("(3+1): want 0.75, got %v", got)
 	}
 }

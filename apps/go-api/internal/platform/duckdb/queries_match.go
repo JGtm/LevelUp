@@ -313,6 +313,86 @@ LEFT JOIN shared.match_participants hist
 GROUP BY tm.xuid, tm.gamertag, tm.team_id
 ORDER BY count_together DESC`
 
+// Q23bMatchEncounterStats : stats riches par encounter (chunk MV4.C').
+// Permet d'attribuer les badges narratifs ally_plus + tough_enemy via
+// narrative.ComputeEncounterBadges.
+//
+// Paramètres (8 placeholders, ordre strict) :
+//
+//	?1 = match_id (this_match)
+//	?2 = myXUID  (this_match exclude)
+//	?3 = match_id (my_team)
+//	?4 = myXUID  (my_team)
+//	?5 = myXUID  (my_history me)
+//	?6 = myXUID  (kv kills_dealt)
+//	?7 = myXUID  (kv deaths_suffered)
+//	?8 = myXUID  (kv join condition)
+const Q23bMatchEncounterStats = `
+WITH this_match AS (
+    SELECT p.xuid, p.team_id, COALESCE(xa.gamertag, p.xuid) AS gamertag
+    FROM shared.match_participants p
+    LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
+    WHERE p.match_id = ? AND p.xuid != ?
+),
+my_team AS (
+    SELECT team_id FROM shared.match_participants
+    WHERE match_id = ? AND xuid = ?
+    LIMIT 1
+),
+my_history AS (
+    SELECT match_id, team_id, outcome
+    FROM shared.match_participants
+    WHERE xuid = ?
+),
+encounter_history AS (
+    SELECT
+        tm.xuid,
+        h.match_id,
+        h.outcome AS me_outcome,
+        (h.team_id = hist.team_id) AS is_ally_in_hist
+    FROM this_match tm
+    JOIN my_history h ON 1=1
+    JOIN shared.match_participants hist
+        ON hist.match_id = h.match_id AND hist.xuid = tm.xuid
+),
+encounter_stats AS (
+    SELECT
+        eh.xuid,
+        COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist THEN eh.match_id END) AS ally_count,
+        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist THEN eh.match_id END) AS enemy_count,
+        COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND eh.me_outcome = 2 THEN eh.match_id END) AS wins_as_ally,
+        COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND eh.me_outcome = 3 THEN eh.match_id END) AS losses_as_ally,
+        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND eh.me_outcome = 2 THEN eh.match_id END) AS wins_vs_enemy,
+        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND eh.me_outcome = 3 THEN eh.match_id END) AS losses_vs_enemy
+    FROM encounter_history eh
+    GROUP BY eh.xuid
+),
+kv_stats AS (
+    SELECT
+        tm.xuid,
+        SUM(CASE WHEN kv.killer_xuid = ? AND kv.victim_xuid = tm.xuid THEN kv.kill_count ELSE 0 END) AS kills_dealt,
+        SUM(CASE WHEN kv.killer_xuid = tm.xuid AND kv.victim_xuid = ? THEN kv.kill_count ELSE 0 END) AS deaths_suffered
+    FROM this_match tm
+    LEFT JOIN shared.killer_victim_pairs kv
+        ON ((kv.killer_xuid = ? AND kv.victim_xuid = tm.xuid)
+            OR (kv.killer_xuid = tm.xuid AND kv.victim_xuid = ?))
+    GROUP BY tm.xuid
+)
+SELECT
+    tm.xuid,
+    COALESCE(es.ally_count, 0) AS ally_count,
+    COALESCE(es.enemy_count, 0) AS enemy_count,
+    COALESCE(es.wins_as_ally, 0) AS wins_as_ally,
+    COALESCE(es.losses_as_ally, 0) AS losses_as_ally,
+    COALESCE(es.wins_vs_enemy, 0) AS wins_vs_enemy,
+    COALESCE(es.losses_vs_enemy, 0) AS losses_vs_enemy,
+    COALESCE(kv.kills_dealt, 0) AS kills_dealt,
+    COALESCE(kv.deaths_suffered, 0) AS deaths_suffered
+FROM this_match tm
+LEFT JOIN encounter_stats es ON es.xuid = tm.xuid
+LEFT JOIN kv_stats kv ON kv.xuid = tm.xuid
+ORDER BY tm.xuid`
+
 // Q24 : Médias associés à un match pour un joueur (shared_social DB).
 // Paramètres : ?1 = match_id, ?2 = player_slug.
 const Q24MatchMedia = `

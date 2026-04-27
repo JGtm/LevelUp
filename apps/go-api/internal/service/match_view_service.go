@@ -177,15 +177,20 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		// depuis events (chunk MV2 legacy). Consommés par les builders narrative
 		// (cadence + impact 8 rôles).
 		canonicalEvents []canonical.HighlightEvent
-		weapons         []domain.WeaponKillRaw
-		kvPairs         []domain.KVPairRaw
-		skillRank       *domain.SkillRankRaw
-		encounters      []domain.EncounterRaw
-		media           []domain.MediaAssocRaw
-		expected        *domain.ExpectedStatsRaw
-		bulkMedals      []domain.BulkMedalRaw
-		bulkWeapons     []domain.BulkWeaponKillRaw
-		matchCitations  []domain.CitationMatchViewRow
+		// encounterStats : stats riches par encounter (chunk MV4.C') chargées
+		// via Q23b. Permet narrative.ComputeEncounterBadges (ally_plus +
+		// tough_enemy). Optionnel — degradation gracieuse vers badge ordinal
+		// seul si la repo retourne nil.
+		encounterStats []domain.EncounterStatsRaw
+		weapons        []domain.WeaponKillRaw
+		kvPairs        []domain.KVPairRaw
+		skillRank      *domain.SkillRankRaw
+		encounters     []domain.EncounterRaw
+		media          []domain.MediaAssocRaw
+		expected       *domain.ExpectedStatsRaw
+		bulkMedals     []domain.BulkMedalRaw
+		bulkWeapons    []domain.BulkWeaponKillRaw
+		matchCitations []domain.CitationMatchViewRow
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -289,6 +294,15 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		}
 		return nil
 	})
+	// MV4.C' : chargement parallele des stats encounter riches (Q23b).
+	g.Go(func() error {
+		var e error
+		encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: encounter_stats indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
 	g.Go(func() error {
 		var e error
 		// playerSlug = xuid (identifiant de stockage dans shared_social)
@@ -347,7 +361,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	rank := buildRankBlock(skillRank)
 	summary := buildSummaryTabFull(stats, medals, expected)
 	combat := buildCombatTabFull(matchID, weapons, events, canonicalEvents, kvPairs, scoreboard, s.xuid, durationMS)
-	team := buildTeamTabFull(scoreboard, kvPairs, encounters, bulkMedals, bulkWeapons, s.xuid)
+	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
 	// MV4.B' : radar 6 axes pour TOUS les xuids du scoreboard (pas juste le main).
@@ -864,6 +878,7 @@ func buildTeamTabFull(
 	scoreboard []domain.ScoreboardRaw,
 	kvPairs []domain.KVPairRaw,
 	encounters []domain.EncounterRaw,
+	encounterStats []domain.EncounterStatsRaw,
 	bulkMedals []domain.BulkMedalRaw,
 	bulkWeapons []domain.BulkWeaponKillRaw,
 	myXUID string,
@@ -970,22 +985,34 @@ func buildTeamTabFull(
 		Roster:     []domain.MatchRosterRow{},
 		Scoreboard: rows,
 		Nemesis:    nemesisList,
-		Encounters: convertEncounters(encounters),
+		Encounters: convertEncounters(encounters, encounterStats),
 	}
 }
 
-func convertEncounters(raw []domain.EncounterRaw) []domain.MatchEncounterRow {
+func convertEncounters(
+	raw []domain.EncounterRaw,
+	stats []domain.EncounterStatsRaw,
+) []domain.MatchEncounterRow {
 	if len(raw) == 0 {
 		return []domain.MatchEncounterRow{}
 	}
+	// Index stats par xuid pour O(1) lookup. Optionnel : si stats nil ou
+	// vide, on retombe sur le badge ordinal seul (chunk MV4.C legacy).
+	statsByXUID := make(map[string]domain.EncounterStatsRaw, len(stats))
+	for _, s := range stats {
+		statsByXUID[s.XUID] = s
+	}
+
 	result := make([]domain.MatchEncounterRow, 0, len(raw))
 	for _, e := range raw {
-		// Phase 1 méta-plan § 6.1.3 — chunk MV4.C : badges narratifs typés.
-		// Aujourd'hui seul le badge `ordinal` est attribuable à partir de
-		// EncounterRaw (count_together). Les badges ally_plus + tough_enemy
-		// nécessitent l'extension Q23 (winrate ally/enemy + kd_against_me)
-		// reportée à MV4.C'.
-		badges := buildEncounterBadgesFromRaw(e)
+		s, hasStats := statsByXUID[e.XUID]
+		var badges []domain.MatchEncounterBadge
+		if hasStats {
+			badges = buildEncounterBadgesFromStats(e, s)
+		} else {
+			// MV4.C fallback : seul le badge ordinal attribuable.
+			badges = buildEncounterBadgesFromRaw(e)
+		}
 		result = append(result, domain.MatchEncounterRow{
 			XUID:          e.XUID,
 			Gamertag:      e.Gamertag,
@@ -997,27 +1024,62 @@ func convertEncounters(raw []domain.EncounterRaw) []domain.MatchEncounterRow {
 	return result
 }
 
-// buildEncounterBadgesFromRaw : MV4.C — résolution narrative.ComputeEncounterBadges
-// avec un EncounterStats minimal (count_together comme ordinal). Les autres
-// stats (ally/enemy counts, winrate, kd) ne sont pas peuplées dans EncounterRaw
-// → tough_enemy et ally_plus ne peuvent pas être attribués ici.
-//
-// Le badge ordinal n'est attribué que si count_together >= 2 (aucun intérêt
-// pour 1 seul match commun = encounter d'aujourd'hui). Voir
-// narrative.ComputeEncounterBadges qui exige `ordinal > 0`.
+// buildEncounterBadgesFromRaw : fallback MV4.C — sans stats riches, seul le
+// badge ordinal est attribuable.
 func buildEncounterBadgesFromRaw(e domain.EncounterRaw) []domain.MatchEncounterBadge {
 	stats := narrative.EncounterStats{
 		XUID:            e.XUID,
 		Gamertag:        e.Gamertag,
 		TotalEncounters: e.CountTogether,
 	}
-	// Ordinal = count_together - 1 (les rencontres antérieures, pas la courante).
-	// Si count_together <= 1, ordinal = 0 et aucun badge ordinal n'est émis.
 	ordinal := e.CountTogether - 1
 	if ordinal < 0 {
 		ordinal = 0
 	}
-	raw := narrative.ComputeEncounterBadges(stats, ordinal)
+	return convertNarrativeBadges(narrative.ComputeEncounterBadges(stats, ordinal))
+}
+
+// buildEncounterBadgesFromStats : MV4.C' — utilise les stats riches Q23b
+// pour permettre à narrative.ComputeEncounterBadges d'attribuer ally_plus
+// et tough_enemy en plus d'ordinal.
+func buildEncounterBadgesFromStats(
+	e domain.EncounterRaw,
+	s domain.EncounterStatsRaw,
+) []domain.MatchEncounterBadge {
+	winrateAsAlly := encounterWinrate(s.WinsAsAlly, s.LossesAsAlly)
+	winrateVsEnemy := encounterWinrate(s.WinsVsEnemy, s.LossesVsEnemy)
+	stats := narrative.EncounterStats{
+		XUID:            e.XUID,
+		Gamertag:        e.Gamertag,
+		TotalEncounters: e.CountTogether,
+		AllyCount:       s.AllyCount,
+		EnemyCount:      s.EnemyCount,
+		WinrateAsAlly:   winrateAsAlly,
+		WinrateVsEnemy:  winrateVsEnemy,
+		KillsDealt:      s.KillsDealt,
+		DeathsSuffered:  s.DeathsSuffered,
+	}
+	ordinal := e.CountTogether - 1
+	if ordinal < 0 {
+		ordinal = 0
+	}
+	return convertNarrativeBadges(narrative.ComputeEncounterBadges(stats, ordinal))
+}
+
+// encounterWinrate : nil si W+L == 0 (pas assez de matchs pour calculer),
+// sinon ratio. narrative.ComputeEncounterBadges traite nil comme "pas
+// d'attribution ally_plus".
+func encounterWinrate(wins, losses int) *float64 {
+	total := wins + losses
+	if total == 0 {
+		return nil
+	}
+	rate := float64(wins) / float64(total)
+	return &rate
+}
+
+// convertNarrativeBadges : narrative.EncounterBadge -> domain.MatchEncounterBadge.
+func convertNarrativeBadges(raw []narrative.EncounterBadge) []domain.MatchEncounterBadge {
 	if len(raw) == 0 {
 		return nil
 	}

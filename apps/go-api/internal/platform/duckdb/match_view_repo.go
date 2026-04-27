@@ -464,6 +464,50 @@ func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID 
 	return results, rows.Err()
 }
 
+// GetMatchEncounterStats retourne les stats riches par encounter (Q23b,
+// chunk MV4.C'). Permet d'attribuer les badges narratifs ally_plus et
+// tough_enemy.
+//
+// Tolérance : si killer_victim_pairs ou xuid_aliases sont absents, retourne
+// les rows partielles. Si la table principale (match_participants) est
+// absente, retourne nil + warning.
+func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myXUID string) ([]domain.EncounterStatsRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.ReadDB().Query(ctx, Q23bMatchEncounterStats,
+		matchID, myXUID, // this_match
+		matchID, myXUID, // my_team
+		myXUID,         // my_history
+		myXUID, myXUID, // kv_stats CASE (kills_dealt, deaths_suffered)
+		myXUID, myXUID, // kv_stats JOIN ON
+	)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.EncounterStatsRaw
+	for rows.Next() {
+		var s domain.EncounterStatsRaw
+		if err := rows.Scan(
+			&s.XUID,
+			&s.AllyCount,
+			&s.EnemyCount,
+			&s.WinsAsAlly,
+			&s.LossesAsAlly,
+			&s.WinsVsEnemy,
+			&s.LossesVsEnemy,
+			&s.KillsDealt,
+			&s.DeathsSuffered,
+		); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats scan: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 // GetMatchMedia retourne les médias associés au match (Q24).
 // Utilise shared_social DB.
 func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID, playerSlug string) ([]domain.MediaAssocRaw, error) {
