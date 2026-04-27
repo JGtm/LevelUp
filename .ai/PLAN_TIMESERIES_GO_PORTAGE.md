@@ -25,6 +25,9 @@
 | Phase 4 — Onglet Progression (10 timelines) | À refactorer | `<TimeseriesLine>` ECharts ; `analysis/temporal.BucketByGranularity`. |
 | Phase 5 — Avancé (LUSR, intensity, K/D IC, net score) | À refactorer | LOWESS / IC restent spécifiques ; rendu via wrappers ECharts. |
 | Stubs `*_chart: PlotlyFigurePayload` (16 occurrences) | Obsolète | Supprimés en Phase 0 méta-plan (§ 6.0.1). |
+| §7.1 `first_events_rolling` — bloqué par absence de loader `highlight_events` | Débloqué via méta-plan | `LoadHighlightEvents` (§ 5.3.6) + `temporal.RollingMeanAdaptive` + `narrative.ComputeFirstEventsPerMatch`. Câblé en Phase 2 méta-plan. |
+| Intensity heatmap match × phases — bloqué pour la même raison | Débloqué via méta-plan | `LoadHighlightEvents` + `narrative.ComputeMatchIntensityProfiles` (10 buckets). Réutilise l'algo Squad porté en Phase 1. |
+| Cadence intra-match — bloqué pour la même raison | Débloqué via méta-plan | `LoadHighlightEvents` + bucket 60s + wrapper `<Cadence>` (réutilisé Squad/MatchView). |
 | Phase 7 — Parité numérique EWMA (`adjust=True` Python vs `adjust=False` Go) | À conserver | Spécifique numérique. |
 | Window adaptatif `max(3, n*10/100)` | À conserver | Spécifique. |
 | Phase 8 — Combat Yield (S56, ajout Go hors v7) | À conserver | Ajout spécifique Go. |
