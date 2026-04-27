@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-27] Phase 1 - Chunk S9b — Repos DuckDB weapons + medals
+
+**Statut** : Complété.
+
+**Décision technique** :
+Implémentation des deux repos DuckDB pour les ports introduits par le commit `f480a5f2` (chunk S9 du plan Phase 1 Squad V2) :
+- `WeaponKillsRepo` (`internal/platform/duckdb/weapon_kills_repo.go`) : `LoadWeaponKillsAggregated(ctx, slug, filters)` — agrège `shared.v_weapon_kills` (GROUP BY xuid + effective_weapon_id, exclusion sentinels 0/1/2 alignée sur Q16). Jointure metadata.weapon_labels en post-traitement Go (DB séparée — pas d'ATTACH ici). Filtre `IncludeGrenadeMelee` injecté via UNION ALL avec `shared.match_participants.grenade_kills` / `melee_kills` (colonnes agrégées) puisque les types canoniques `HighlightEventType` (cf. `canonical/enums.go`) ne contiennent ni `"grenade_kill"` ni `"melee_kill"` — ce ne sont pas des events filmés mais des compteurs participants. Sentinels `weapon_id=0` (grenade) et `weapon_id=1` (melee) avec flag `IsGrenadeMelee=true` ; ces IDs sont déjà exclus côté SELECT principal donc pas de collision possible.
+- `MedalsByXUIDRepo` (`internal/platform/duckdb/medals_by_xuid_repo.go`) : `LoadMedalsForMatchesByXUID(ctx, slug, filters)` — SELECT direct sur `shared.medals_earned` filtré par MatchIDs+XUIDs (les deux requis via `Validate()`). Colonne stockée `medal_name_id` (BIGINT, schéma actuel) exposée comme `MedalID` dans le port. Labels non résolus côté repo (le service utilisera `CitationsRepo.LoadMedalCitationMappings` pour cache + fusion).
+
+**Capability gating** : pour la Phase 1 pilote, vérification minimale via `information_schema.tables` (existence de `shared.weapon_kills`/`shared.v_weapon_kills` et `shared.medals_earned`). Si absent → `games.ErrCapabilityNotSupported`. La capability resolver basée sur `pdb.Resolver.Data(slug)` n'a pas été câblée car `PlayerDB` n'expose pas encore de `Resolver` ; ce sera fait au moment du wiring service principal (chunk S11).
+
+**Validation** : défense en profondeur côté repo — chaque méthode appelle `filters.Validate()` avant exécution SQL. SQL injection : tous les MatchIDs/XUIDs/Gamertag passent par placeholders `?` paramétrés ; seuls les sentinels weapon_id (constantes Go) sont injectés en littéral. Logging structuré via `slog.DebugContext`/`slog.ErrorContext` avec clés `slug`, `match_count`, `xuid_count`, `err`.
+
+**Tests** : 12 tests integration (build tag `integration`) répartis :
+- WeaponKillsRepo : 9 tests (3 validation + 1 capability + 5 querying : par Gamertag avec labels, par XUIDs multi-joueurs, MinKills filter, IncludeGrenadeMelee, no results).
+- MedalsByXUIDRepo : 9 tests (3 validation + 1 capability + 5 querying : filtres par match+xuid, multi-joueurs, Limit, no results, unknown XUID).
+
+Tous passent en local (`go test -tags=integration ./internal/platform/duckdb/...` → 12.8s OK). Pas de régression sur la suite complète (`go test ./...` → tous OK).
+
+**Conclusion** : repos prêts pour wiring chunk S11. Pas de modification des fichiers service squad_v2_*, pas de modification de `api/server.go` ni `api/registry.go` (par design).
+
+**Prochaine étape** : Chunk S11 — wiring du service principal (instancier les repos, brancher dans `SquadServiceV2`).
+
 ## [2026-04-27] plan(match-view): colonnes scoreboard Python source of truth + spec expander
 
 **Statut** : Complété.
