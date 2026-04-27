@@ -2,7 +2,13 @@
 // Source : apps/web/src/lib/i18n/manifests/timeseries.toml
 
 export const timeseriesManifest = {
+  "timeseries.combat.dr_reference": { fr: "p80 DR", en: "p80 DR" },
+  "timeseries.combat.dr_series": { fr: "Défensif (DR)", en: "Defensive (DR)" },
+  "timeseries.combat.empty_description": { fr: "Les métriques offensive_conversion et defensive_resistance n'ont pas encore été calculées. Lance un backfill pour les générer.", en: "offensive_conversion and defensive_resistance metrics have not been computed yet. Run a backfill to generate them." },
+  "timeseries.combat.empty_title": { fr: "Données combat indisponibles", en: "Combat data unavailable" },
   "timeseries.combat.loading": { fr: "Chargement…", en: "Loading…" },
+  "timeseries.combat.oc_reference": { fr: "p80 OC", en: "p80 OC" },
+  "timeseries.combat.oc_series": { fr: "Offensif (OC)", en: "Offensive (OC)" },
   "timeseries.combat.yield_title": { fr: "Rendement combat par match", en: "Combat yield per match" },
   "timeseries.cumul.kd_axis_y": { fr: "K/D", en: "K/D" },
   "timeseries.cumul.kd_reference": { fr: "K/D = 1", en: "K/D = 1" },
@@ -50,7 +56,14 @@ export const timeseriesManifest = {
   "timeseries.intensity.score_per_min_title": { fr: "Score par minute", en: "Score per minute" },
   "timeseries.summary.empty_description": { fr: "Aucune carte KPI n'a été calculée pour cette période.", en: "No KPI card computed for this period." },
   "timeseries.summary.empty_title": { fr: "KPIs indisponibles", en: "KPIs unavailable" },
+  "timeseries.summary.kda_deaths": { fr: "Morts", en: "Deaths" },
+  "timeseries.summary.kda_empty_description": { fr: "Aucun match disponible pour cette période.", en: "No match available for this period." },
+  "timeseries.summary.kda_empty_title": { fr: "Aucun match", en: "No match" },
+  "timeseries.summary.kda_kills": { fr: "Kills", en: "Kills" },
+  "timeseries.summary.kda_ratio": { fr: "K/D", en: "K/D" },
   "timeseries.summary.kda_timeline_title": { fr: "Timeline K/D par match", en: "K/D timeline per match" },
+  "timeseries.summary.kda_y_axis_left": { fr: "Kills / Morts", en: "Kills / Deaths" },
+  "timeseries.summary.kda_y_axis_right": { fr: "K/D", en: "K/D" },
   "timeseries.tabs.combat": { fr: "Combat", en: "Combat" },
   "timeseries.tabs.cumul": { fr: "Cumul", en: "Cumulative" },
   "timeseries.tabs.distributions": { fr: "Distributions", en: "Distributions" },
