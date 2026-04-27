@@ -22148,3 +22148,71 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - **Suppression complète des champs hex legacy** : conservés pour rétrocompat. La suppression viendra quand tous les consommateurs front auront migré vers les tokens.
 
 **Conclusion Phase 1 MatchView** : 3 chunks livrés (MV1 dominance, MV2 cadence + impact 8 rôles, MV3 cleanup hex + manifest). Backend MatchView aligné fondations narrative à **~50 %** (dominance ✅, cadence ✅, impact 8 rôles ✅, encounters ❌, radar ❌, kill feed loader unifié ❌). Frontend pas touché (refonte ECharts à venir). Phase 1 globale : Squad ✅ 100 %, MatchView 🟠 ~50 %.
+
+---
+
+## [2026-04-27] Phase 1 - Chunks MV4.A + MV4.B + MV4.C + Refonte React partielle
+
+**Statut** : Complété (4 chunks groupés).
+
+**Tâche** : Compléter MatchView pilote sur 3 axes backend manquants + introduire la refonte React via les wrappers ECharts (S10).
+
+**Branche** : `feat/foundations-axes-1-3-4`.
+
+### MV4.A — Loader unifié `LoadHighlightEvents` (commit `bc5ceba1`)
+- `MatchViewService.eventsRepo : port.HighlightEventsRepository` optionnel.
+- `WithHighlightEventsRepo(r)` + `WithTitleSlug(slug)` : injection.
+- Goroutine parallèle qui charge `[]canonical.HighlightEvent` via `LoadHighlightEvents` quand câblé. Dégradation gracieuse (canonicalEvents nil → fallback conversion legacy).
+- Builders narrative avec **2 variantes** : `BuildMatchCadenceChartFromCanonical` et `BuildMatchImpactRoles8FromCanonical` consomment directement `[]canonical.HighlightEvent`. Les variantes legacy `BuildMatchCadenceChart(...EventRaw...)` délèguent.
+- 3 tests Go ajoutés.
+
+### MV4.B — Radar 6 axes via narrative (commit `c421ae02`)
+- **Port** `port/personal_score_awards.go` : Filtres + repo interface (Validate strict MatchIDs+XUIDs requis).
+- **Repo DuckDB** `platform/duckdb/personal_score_awards_repo.go` : GROUP BY xuid+match_id+award_name + capability gating.
+- **Builder** `service/match_view_radar.go` : `haloAwardToAxis` (mapping inline ~40 awards Halo Infinite vers 6 axes), `BuildMatchRadar` (agrégation + résolution xuid→gamertag + appel `narrative.ComputeParticipationProfile`), `matchModeFamilyFromMeta` (best-effort sur pair_name).
+- **Wiring** : `WithAwardsRepo(r)` + g.Go() qui charge awards pour `s.xuid` + `matchID` (limitation : main player seulement, multi-xuids → MV4.B' pour ne pas sérialiser l'errgroup).
+- DTO : `MatchViewResponse.Radar []any`.
+- 7 tests Go + 3 tests port.
+
+### MV4.C — Encounters typés avec badge ordinal (commit `f3841aae`)
+- DTO `MatchEncounterRow.Badges []MatchEncounterBadge` + nouveau type `MatchEncounterBadge`.
+- `convertEncounters` appelle `buildEncounterBadgesFromRaw` qui construit `narrative.EncounterStats` minimal (count_together comme ordinal) et délègue à `narrative.ComputeEncounterBadges`.
+- **Compromis pragmatique** : seul le badge `ordinal` est attribuable depuis `EncounterRaw` (qui contient juste count_together + is_ally). Les badges `ally_plus` et `tough_enemy` nécessitent extension Q23 (winrate ally/enemy + kd_against_me) → reportés à MV4.C'.
+- 3 tests Go.
+
+### Refonte React partielle — `MatchNarrativeSection`
+- **Types TS étendus** dans `apps/web/src/lib/api/types.ts` : `dominance_badge`, `outcome_color_token`, `performance_color_token`, `impact_roles[]`, `cadence`, `MatchEncounterRow.badges[]`, `MatchViewResponse.radar?`. Nouveaux types `MatchViewImpactRole`, `MatchViewCadence`, `MatchViewRadarSeries`.
+- **Composant standalone** `MatchNarrativeSection.tsx` (~200L) qui consomme tous les nouveaux champs MV1-MV4 :
+  - `DominanceBadgePill` (chunk MV1) — pill avec couleur via `tokenCssVar(color_token)`.
+  - `ImpactRolesList` — chips colorées (chunk MV2).
+  - `BarStackedChart` (S10) sur la cadence (chunk MV2).
+  - `RadarChart` (S10) sur le profil radar (chunk MV4.B).
+- **Stratégie pragmatique** : composant **standalone** sans modifier `MatchViewPage.tsx` (~579L). Évite le big-bang. Sera intégré dans le shell V2 ultérieurement.
+- **i18n delegate au caller** via `resolveLabelKey(key)` + `resolveAxisLabel(axis)` — découplé du store.
+- 6 tests Vitest (nul si vide / pill dominance / liste impact / cadence chart / radar chart / combinaison).
+
+**Fichiers créés** :
+- `apps/go-api/internal/port/personal_score_awards.go` + `_test.go`
+- `apps/go-api/internal/platform/duckdb/personal_score_awards_repo.go`
+- `apps/go-api/internal/service/match_view_radar.go` + `_test.go`
+- `apps/go-api/internal/service/match_view_encounters_test.go`
+- `apps/web/src/features/match-view/MatchNarrativeSection.tsx` + `.test.tsx`
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/service/match_view_service.go` : injection eventsRepo + awardsRepo + goroutines + wiring BuildMatchRadar.
+- `apps/go-api/internal/service/match_view_narrative.go` : variantes FromCanonical.
+- `apps/go-api/internal/domain/match_view.go` : MatchEncounterRow.Badges, MatchEncounterBadge, MatchViewResponse.Radar.
+- `apps/web/src/lib/api/types.ts` : 5 nouveaux types + 3 fields ajoutés.
+
+**Résultats** :
+- 13 nouveaux tests Go (3 MV4.A + 7 MV4.B + 3 MV4.C) + 3 tests port. `go test ./...` propre.
+- 6 nouveaux tests Vitest.
+- gofmt clean, build OK.
+
+**Hors scope (différé)** :
+- **MV4.B'** : awards multi-xuids (extension au scoreboard complet, demande sérialisation errgroup).
+- **MV4.C'** : extension Q23 SQL pour `ally_count`/`enemy_count`/`winrate_as_ally`/`winrate_vs_enemy`/`kills_dealt`/`deaths_suffered`. Permettra `tough_enemy` + `ally_plus`.
+- **MV5 — refonte complète `MatchViewPage.tsx`** : ~579L Recharts → ECharts. La nouvelle section `MatchNarrativeSection` est livrée standalone et peut être insérée incrémentalement.
+- **Awards TOML mappings** (`config/titles/halo_infinite/mappings/awards.toml`) : remplacer `haloAwardToAxis` inline par TOML loader (Phase 2 ou 3).
+
+**Conclusion Phase 1 MatchView (mis à jour)** : passée à **~85 %** (dominance ✅, cadence ✅, impact 8 rôles ✅, radar ✅, encounters typés ordinal ✅, kill feed loader unifié ✅, hex cleanup ✅). Manquent : encounters complets (MV4.C') + refonte page (MV5). **Phase 1 globale : Squad ✅ 100 %, MatchView 🟠 ~85 %.**

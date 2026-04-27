@@ -1595,16 +1595,29 @@ export interface MatchViewHeader {
   start_time_label: string
   outcome_code: number | null
   outcome_label: string
+  /** Hex legacy. Préférer outcome_color_token (chunk MV3 cleanup). */
   outcome_color: string
+  /** Token sémantique outcome-{win,loss,draw,dnf} (Phase 1 MV3). */
+  outcome_color_token?: string
   score_label: string
+  /** Booléen legacy (true si un badge narratif s'applique). Préférer dominance_badge. */
   dominance_flag: boolean
+  /** Badge narratif typé (chunk MV1). Nul si aucun badge ne s'applique. */
+  dominance_badge?: {
+    flag: number
+    label_key: string
+    color_token: string
+  }
   had_bot_teammate: boolean
   map_ui: string
   map_id: string | null
   mode_ui: string
   playlist_label: string
   performance_display: string
+  /** Hex legacy. Préférer performance_color_token. */
   performance_color: string | null
+  /** Token sémantique perf-tier-1..5 (Phase 1 MV3). */
+  performance_color_token?: string
   is_excluded: boolean
   /** V7 : durée jouable réelle en secondes */
   playable_duration_seconds?: number | null
@@ -1718,9 +1731,46 @@ export interface MatchCombatTab {
   highlight_events: MatchHighlightEvent[]
   /** V7 */
   tug_of_war: MatchTugOfWarBin[]
+  /** Deprecated. Préférer impact_roles (8 rôles narratifs typés). */
   impact_badges: MatchImpactBadge[]
   kd_timeline: MatchKDTimelinePoint[]
   nemesis_duels: MatchNemesisRow[]
+  /** Phase 1 MV2 : 8 rôles narratifs typés via narrative.IdentifyImpactRoles. */
+  impact_roles?: MatchViewImpactRole[]
+  /** Phase 1 MV2 : cadence intra-match (ChartSeries<ChartPointStacked>). */
+  cadence?: MatchViewCadence | null
+}
+
+/** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
+export interface MatchViewImpactRole {
+  xuid: string
+  role_key: string
+  label_key: string
+  color_token: string
+  inverted?: boolean
+}
+
+/** MV2 : cadence chart (mirror domain.ChartSeries<ChartPointStacked>). */
+export interface MatchViewCadence {
+  key: string
+  label_key?: string
+  datapoints: Array<{
+    category: string
+    components: Record<string, number>
+  }>
+  meta?: Record<string, unknown>
+}
+
+/** MV4.B : série radar 6 axes par joueur. */
+export interface MatchViewRadarSeries {
+  xuid: string
+  gamertag?: string
+  axes: Array<{
+    Axis: string
+    Value: number
+    Raw: number
+  }>
+  mode_family?: string
 }
 
 export interface MatchScoreboardRow {
@@ -1782,6 +1832,13 @@ export interface MatchEncounterRow {
   gamertag: string
   count_together: number
   is_ally: boolean
+  /** Phase 1 MV4.C : badges narratifs typés (ordinal aujourd'hui ; ally_plus + tough_enemy à venir). */
+  badges?: Array<{
+    kind: string
+    label_key: string
+    color_token: string
+    detail?: Record<string, unknown>
+  }>
 }
 
 export interface MatchTeamTab {
@@ -1818,6 +1875,8 @@ export interface MatchViewResponse {
   team_tab: MatchTeamTab
   media_tab: MatchMediaTab
   citations_tab: MatchCitationsTab
+  /** Phase 1 MV4.B : radar 6 axes par joueur (vide si awards absents). */
+  radar?: MatchViewRadarSeries[]
   /** Sprint 54-B : avertissement privacy */
   privacy_warning?: MatchPrivacyWarning | null
 }
