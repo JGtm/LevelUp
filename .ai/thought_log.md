@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-27] feat(p2.d-citations): manifest TOML + migration Plotly → ECharts BarGroupedChart
+
+**Statut** : Complété.
+
+**Décision technique** :
+Phase 2 P2.D du méta-plan. Création du manifest `apps/web/src/lib/i18n/manifests/citations.toml` (21 clés FR + EN). Migration de la distribution chart de `<PlotlyChart figure={distribution_chart} />` vers `<BarGroupedChart>` ECharts consommant les données brutes `medals_summary` (top 15 médailles triées par count_total). Helper `buildDistributionSeries` extrait dans `apps/web/src/features/citations/distributionChart.ts` pour testabilité.
+
+**Architecture** :
+- `CitationsPage.tsx` : suppression de `PlotlyChart`, remplacement de toutes les strings hardcodées ("Distribution", "Commendations", "Total filtré"…) par `formatMessage(citationsManifest, key, locale)`.
+- `distributionChart.ts` : pur builder, prend `MedalSummary[]` + labels i18n, sort top N par `count_total`, mappe `count_filtered` / `count_total` sur les composants nommés via labels (clé i18n française = clé du component, sert aussi au lookup `componentColors`).
+- `BarGroupedChart` reçoit `componentColors: { [labelFiltered]: 'chart-series-1', [labelTotal]: 'chart-series-3' }` + `componentOrder` pour stabilité d'ordre.
+
+**Résultats** :
+- `vitest run distributionChart.test.ts` → 6/6 OK (tri, limite 15, mapping labels, série vide, i18n custom).
+- `npm run typecheck | grep citations` → 0 erreur sur le périmètre touché.
+- 21 clés générées dans `apps/web/src/lib/i18n/generated/citations.ts`.
+
+**Prochaine étape** : P2.E Timeseries — audit + manifest + migration des charts (first_events_rolling, intensity heatmap, cadence intra-match).
+
 ## [2026-04-27] feat(outcome-sequence-tape): composant bande narrative outcomes — S13
 
 **Statut** : Complété.
