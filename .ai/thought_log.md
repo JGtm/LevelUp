@@ -22284,3 +22284,49 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - ✅ Refonte React Recharts → ECharts (MV5)
 
 **Phase 1 globale : Squad ✅ 100 %, MatchView ✅ 100 %.** La Phase 1 méta-plan (12 j-h estimés) est désormais **livrée intégralement**. Prochaine étape : **Phase 2 — roll-out 9 pages** (Career, Synthesis, Citations, Timeseries + 3 live + 2 WIP) + composants UI partagés.
+
+---
+
+## [2026-04-27] Phase 2 - Chunk P2.A — Composants UI partagés (PeriodFilter)
+
+**Statut** : Complété (premier chunk Phase 2).
+
+**Tâche** : Démarrer Phase 2 méta-plan § 6.2 par les **composants UI partagés** (§ 6.2.4) qui débloquent les pages portage à venir (Career, Synthesis, Citations, Timeseries, Explorer).
+
+**Branche** : `feat/foundations-axes-1-3-4`.
+
+**Audit préalable** :
+- `<KPIStrip>` (`apps/web/src/components/layout/KPIStrip.tsx`) ✅ déjà livré (Phase 1 Squad S2). Généralisable, accepte 8 cartes avec trend ▲▼=. Pas de modification nécessaire.
+- `<NarrativeBadge>` (`apps/web/src/components/feedback/NarrativeBadge.tsx`) ✅ déjà livré (Phase 0 chunk 14). Couvre `DominanceBadge`, `EncounterBadge`, `ImpactRole`. Mode `inverted` pour rôles négatifs. Pas de modification nécessaire.
+- `<PeriodFilter>` ❌ à créer.
+
+**PeriodFilter livré** :
+- `apps/web/src/components/filters/PeriodFilter.tsx` (~95 L).
+- Type `Period = 'all' | '2y' | '1y' | '1m' | '1w'` mirror de `temporal.Period` Go (cf. `internal/analysis/temporal/period.go`).
+- Constante exportée `ALL_PERIODS: readonly Period[]` pour itération.
+- Segmented control accessible : `role="radiogroup"` + `aria-label` configurable (default "Filtre période") + chaque option `role="radio"` + `aria-checked`.
+- Prop `disabled` désactive l'interactivité pendant un fetch (évite les triggers multiples).
+- i18n délégué au caller via `labels: Record<Period, string>` — caller résout via `formatMessage(commonManifest, 'common.period.{key}', locale)`. Les 5 clés `common.period.*` existent déjà dans `common.toml` (Phase 0).
+- Aucune couleur hex, aucune string hardcodée non passée en prop. Conforme CLAUDE.md règle 20.
+
+**Tests** : 7 tests Vitest (rendu 5 périodes / aria-checked / onChange / disabled / role radiogroup / aria-label custom / className additionnelle). Tous verts.
+
+**Lint/typecheck** : 0 erreur, 0 warning sur fichier livré (avec un `eslint-disable-next-line react-refresh/only-export-components` ciblé sur `ALL_PERIODS` — pattern utilisé déjà sur les wrappers ECharts S10).
+
+**Réutilisation prévue Phase 2** :
+- **Career** : période d'historique XP / map breakdown.
+- **Synthesis** : période d'agrégation.
+- **Citations** : période de comptage médailles.
+- **Timeseries** : période de la timeline.
+- **Explorer** : filtre période sur les matchs.
+- **Palmares** : période du leaderboard.
+
+**Hors scope (chunks à venir)** :
+- **P2.B Career pilote** : adoption `LoadPlayerMatches`, `analysis/breakdown`, `analysis/narrative` (top matches + encounter badges Némésis/Souffre-douleurs). Migration ECharts `<Gauge>` rank/hero, `<TimeseriesLine>` XP history, `<Lollipop>` map W/L. Manifest `career.toml`. Effort ~2 j-h.
+- **P2.C Synthesis** : adoption fondations dans le nouveau plan en cours. Manifest `synthesis.toml`.
+- **P2.D Citations** : migration `MedalsDistributionChart` server-side → client (`<Histogram>` ECharts). Composite scope via `LoadPlayerMatches(playlistRegex)`.
+- **P2.E Timeseries** : phases 1-9 du plan child + débloquer `first_events_rolling`, intensity heatmap match × phases, cadence intra-match. ~2 j-h.
+- **P2.F Pages live** (Home/Media/Explorer) : adoption manifest i18n + `<CapabilityGap>` + `<PeriodFilter>` partagé.
+- **P2.G Pages WIP** (Palmares/Session) : branchement narrative + manifests.
+
+**Conclusion** : Phase 2 démarrée. Les 3 composants UI partagés sont désormais disponibles (2 préexistants + 1 nouveau). Phase 2 globale : 5 % livré (P2.A seul). Prochain chunk recommandé : **P2.B — Career pilote** (le plus impactant car consomme les 4 axes des fondations et migre 3 charts ECharts). Effort restant Phase 2 : ~10 j-h sur les ~12 estimés.
