@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-04-28] feat(p3.c-home-palmares): consolidation legacy i18n.ts → manifests TOML
+
+**Statut** : Complété.
+
+**Décision technique** :
+Phase 3 P3.C du méta-plan. Consolidation des derniers modules `i18n.ts` legacy vers les manifests TOML :
+- `home.toml` étendu (44 → 90 clés) pour absorber `kpi.i18n.ts` (4 labels + 5 unités + 2 pluriels), `spartanIdentity.i18n.ts` (7 labels + 4 empty panel) et `highlights.i18n.ts` (9 titres + 9 labels + 4 détails ICU paramétrés + section title/tooltip).
+- `palmares.toml` étendu (9 → 64 clés) couvrant intl_locale, page, tabs (avec `compare = Face-à-face`), relations (overview/sections/labels/empty), seasonPass (cards/challenges/tier/status enum 4 valeurs).
+
+Chaque module i18n.ts (`home/kpi.i18n.ts`, `home/spartanIdentity.i18n.ts`, `home/highlights.i18n.ts`, `palmares/i18n.ts`) a été réécrit comme **adapter mince** : signature publique préservée (`getKPIText`, `getSpartanIdentityText`, `getHighlightText` + `resolveTitle`/`resolveLabel`/`resolveDetail`/`resolveColSpan`, `getPalmaresText`), valeurs reconstituées via `formatMessage(homeManifest|palmaresManifest, key, locale, values)`. 0 modification dans les pages consommatrices (HomePage, PalmaresShell, PalmaresRelationsPage, SeasonPassPage).
+
+**Architecture** :
+- 4 mappings backend keys → manifest keys conservés inline dans `highlights.i18n.ts` (TITLE_KEY_MAP, LABEL_KEY_MAP, DETAIL_KEY_MAP, SLIDE_TO_FIELD_KEY) — c'est la frontière contractuelle backend/front, naturellement isolée du manifest TOML.
+- `COL_SPANS` (config layout pour la grille fine 20 cols) reste inline car ce n'est pas un libellé i18n.
+- Détails paramétrés `highlight.detail.win_streak` migré en ICU plural form `{count, plural, one {# victoire} other {# victoires}} d'affilée` — remplace l'ancienne lambda ternaire.
+- `home/fallback.i18n.ts` (2 constantes Halo cadence) conservé tel quel — domaine spécifique aligné sur `assets.toml` backend.
+
+**Résultats** :
+- `vitest run src/features/home/ src/features/palmares/` → 22/22 OK (HomePage + HomeRanking + HomeRecentPlaylists + PalmaresRelations + SeasonPass).
+- `npm run typecheck` filtré sur le périmètre touché → 0 erreur.
+- 99 nouvelles clés générées (home 44→90 = +46, palmares 9→64 = +55).
+
+**Reliquats Phase 3 i18n** : `match-view`/`squad`/`career`/`citations`/`synthesis`/`timeseries`/`session`/`media`/`explorer`/`home`/`palmares` désormais 100% manifest-backed (12 manifests, 644 clés). Seul `home/fallback.i18n.ts` (2 constantes, intentionnel) reste hors scope.
+
+**Prochaine étape** : P3.D — derniers wrappers ECharts (DonutChart pour outcomes session-compare, RadarChart utilisation, finish KdaBars + CombatYield différés).
+
 ## [2026-04-27] feat(p3.b-charts): wrappers ECharts HistogramChart + ScatterChart + migration distributions/corrélations
 
 **Statut** : Complété.

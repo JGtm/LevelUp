@@ -1,9 +1,12 @@
 /**
- * Traductions des libellés du bloc identité Spartan (hero card de la home).
+ * spartanIdentity.i18n.ts — adapter mince entre `home.toml` et le shape
+ * historique `SpartanIdentityTextDict` consommé par HomePage.tsx.
  *
- * Centralise les chaînes hardcodées du panneau de gauche (rang carrière, pics
- * CSR/LUSR, panneau vide quand aucun classement n'est disponible).
+ * Phase 3 P3.C : source de vérité = `lib/i18n/manifests/home.toml` section
+ * `home.spartan.*`.
  */
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
 export type SpartanIdentityLocale = 'fr' | 'en'
 
@@ -25,48 +28,38 @@ interface SpartanIdentityTextDict {
   }
 }
 
-const FR: SpartanIdentityTextDict = {
-  labels: {
-    careerRank: 'Rang carrière',
-    highestCsr: 'Meilleur CSR',
-    highestLusr: 'Meilleur LUSR',
-    currentProgress: 'Progression actuelle',
-    rankPrefix: 'Rang',
-    maxRank: 'Rang max',
-    progressTowardsRank: (name: string) => `Progression vers ${name}`,
-  },
-  emptyPanel: {
-    titleUnavailable: 'Classements indisponibles',
-    titleNone: 'Aucun classement disponible',
-    descriptionUnavailable: 'Les données compétitives de ce joueur sont partielles ou indisponibles.',
-    descriptionNone: 'Ce joueur n’a pas encore de classement CSR ni LUSR.',
-  },
-}
-
-const EN: SpartanIdentityTextDict = {
-  labels: {
-    careerRank: 'Career rank',
-    highestCsr: 'Highest CSR',
-    highestLusr: 'Highest LUSR',
-    currentProgress: 'Current progress',
-    rankPrefix: 'Rank',
-    maxRank: 'Max rank',
-    progressTowardsRank: (name: string) => `Progress towards ${name}`,
-  },
-  emptyPanel: {
-    titleUnavailable: 'Rankings unavailable',
-    titleNone: 'No rankings available',
-    descriptionUnavailable: 'This player’s competitive data is partial or unavailable.',
-    descriptionNone: 'This player has no CSR or LUSR rankings yet.',
-  },
-}
-
-const DICTS: Record<SpartanIdentityLocale, SpartanIdentityTextDict> = { fr: FR, en: EN }
-
-export function normalizeSpartanIdentityLocale(locale?: string | null): SpartanIdentityLocale {
+export function normalizeSpartanIdentityLocale(
+  locale?: string | null,
+): SpartanIdentityLocale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
+function t(
+  loc: SpartanIdentityLocale,
+  key: HomeManifestKey,
+  values?: Record<string, string | number>,
+): string {
+  return formatMessage(homeManifest, key, loc, values)
+}
+
 export function getSpartanIdentityText(locale?: string | null): SpartanIdentityTextDict {
-  return DICTS[normalizeSpartanIdentityLocale(locale)]
+  const loc = normalizeSpartanIdentityLocale(locale)
+  return {
+    labels: {
+      careerRank: t(loc, 'home.spartan.career_rank'),
+      highestCsr: t(loc, 'home.spartan.highest_csr'),
+      highestLusr: t(loc, 'home.spartan.highest_lusr'),
+      currentProgress: t(loc, 'home.spartan.current_progress'),
+      rankPrefix: t(loc, 'home.spartan.rank_prefix'),
+      maxRank: t(loc, 'home.spartan.max_rank'),
+      progressTowardsRank: (name: string) =>
+        t(loc, 'home.spartan.progress_towards_rank', { name }),
+    },
+    emptyPanel: {
+      titleUnavailable: t(loc, 'home.spartan.empty.title_unavailable'),
+      titleNone: t(loc, 'home.spartan.empty.title_none'),
+      descriptionUnavailable: t(loc, 'home.spartan.empty.description_unavailable'),
+      descriptionNone: t(loc, 'home.spartan.empty.description_none'),
+    },
+  }
 }
