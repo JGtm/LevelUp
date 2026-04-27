@@ -144,6 +144,13 @@ type MatchViewRepository interface {
 	// GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).
 	GetMatchEncounters(ctx context.Context, matchID, myXUID string) ([]domain.EncounterRaw, error)
 
+	// GetMatchEncounterStats retourne les stats riches par encounter (Q23b,
+	// chunk MV4.C'). Permet narrative.ComputeEncounterBadges (ally_plus +
+	// tough_enemy). Optionnel : implémentations qui ne supportent pas peuvent
+	// retourner (nil, nil) — le service dégrade gracieusement (badge ordinal
+	// seul attribué).
+	GetMatchEncounterStats(ctx context.Context, matchID, myXUID string) ([]domain.EncounterStatsRaw, error)
+
 	// GetMatchMedia retourne les médias associés au match (Q24).
 	GetMatchMedia(ctx context.Context, matchID, playerSlug string) ([]domain.MediaAssocRaw, error)
 
@@ -266,6 +273,9 @@ func (n *noopMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*dom
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) ([]domain.EncounterRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchEncounterStats(_ context.Context, _, _ string) ([]domain.EncounterStatsRaw, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchMedia(_ context.Context, _, _ string) ([]domain.MediaAssocRaw, error) {
