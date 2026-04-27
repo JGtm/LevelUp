@@ -22,12 +22,64 @@ import (
 )
 
 // outcomeColors : couleur hex par code d'outcome Halo Infinite.
+//
+// Deprecated: anti-pattern (CLAUDE.md règle 20 — aucun hex côté backend).
+// Conservé pour rétrocompat avec les consommateurs front V0 qui n'ont pas
+// encore migré vers tokenCssVar(). Utiliser outcomeColorToken pour les
+// nouveaux champs (Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup).
+//
 // (outcomeLabels est défini dans match_history_service.go)
 var outcomeColors = map[int]string{
 	1: "#8b5cf6", // Égalité
 	2: "#22c55e", // Victoire
 	3: "#ef4444", // Défaite
 	4: "#8b5cf6", // Non terminé
+}
+
+// outcomeColorToken retourne le token sémantique pour un code outcome.
+// Le front résout via tokenCssVar(token) (SemanticToken).
+//
+// Code -> token mapping :
+//
+//	1 (égalité)     -> "outcome-draw"
+//	2 (victoire)    -> "outcome-win"
+//	3 (défaite)     -> "outcome-loss"
+//	4 (non terminé) -> "outcome-dnf"
+//	autre/0         -> "" (pas de couleur sémantique applicable)
+func outcomeColorToken(code int) string {
+	switch code {
+	case 1:
+		return "outcome-draw"
+	case 2:
+		return "outcome-win"
+	case 3:
+		return "outcome-loss"
+	case 4:
+		return "outcome-dnf"
+	}
+	return ""
+}
+
+// perfColorToken retourne le token sémantique pour un score de performance.
+// 5 paliers ordinaux mappés sur perf-tier-1..5.
+//
+// Score >= 80 -> "perf-tier-1" (meilleur)
+// Score >= 60 -> "perf-tier-2"
+// Score >= 40 -> "perf-tier-3"
+// Score >= 20 -> "perf-tier-4"
+// Score <  20 -> "perf-tier-5" (pire)
+func perfColorToken(score float64) string {
+	switch {
+	case score >= 80:
+		return "perf-tier-1"
+	case score >= 60:
+		return "perf-tier-2"
+	case score >= 40:
+		return "perf-tier-3"
+	case score >= 20:
+		return "perf-tier-4"
+	}
+	return "perf-tier-5"
 }
 
 // MatchViewService assemble la réponse Match View.
@@ -305,6 +357,10 @@ func buildMatchHeader(
 		h.OutcomeCode = &code
 		h.OutcomeLabel = outcomeLabel(code)
 		h.OutcomeColor = outcomeColor(code)
+		// Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup hex codes.
+		// OutcomeColorToken est résolu côté front via tokenCssVar(),
+		// remplace progressivement OutcomeColor (hex legacy).
+		h.OutcomeColorToken = outcomeColorToken(code)
 		h.ScoreLabel = buildScoreLabel(scoreboard)
 	}
 
@@ -315,6 +371,8 @@ func buildMatchHeader(
 			h.PerfDisplay = display
 			color := perfColor(perf)
 			h.PerfColor = &color
+			// Token sémantique perf-tier-1..5 (cf. MV3 cleanup hex).
+			h.PerfColorToken = perfColorToken(perf)
 		}
 		h.IsExcluded = enrich.IsExcluded
 
@@ -408,10 +466,11 @@ func buildSummaryTabFull(stats *domain.PlayerMatchStatsRaw, medals []domain.Meda
 			score = int(math.Round(*stats.PersonalScore))
 		}
 		tab.PersonalResult = domain.MatchPersonalResult{
-			OutcomeLabel: outcomeLabel(stats.OutcomeCode),
-			OutcomeColor: outcomeColor(stats.OutcomeCode),
-			Score:        &score,
-			RankInTeam:   stats.RankInTeam,
+			OutcomeLabel:      outcomeLabel(stats.OutcomeCode),
+			OutcomeColor:      outcomeColor(stats.OutcomeCode),
+			OutcomeColorToken: outcomeColorToken(stats.OutcomeCode),
+			Score:             &score,
+			RankInTeam:        stats.RankInTeam,
 		}
 	}
 
