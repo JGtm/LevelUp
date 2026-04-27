@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-04-28] feat(p3.f+g): migration TimeseriesCombatYield + TimeseriesKdaBars Plotly → ECharts (FIN du Plotly)
+
+**Statut** : Complété — TimeseriesPage 100% Plotly-free.
+
+**Décision technique** :
+Phase 3 P3.F + P3.G fusionnés en 1 commit (chunks séquentiels mais petits). Création de 2 composants ECharts dédiés dans `features/timeseries/` :
+- `TimeseriesCombatYield.tsx` : 2 courbes (Offensive Conversion + Defensive Resistance) avec lignes de référence p80 (OC=0.83, DR=1.59) via `markLine` ECharts. Construit côté client depuis `MatchHistoryRow[]`.
+- `TimeseriesKdaBars.tsx` : barres K (haut, coloré par outcome) + barres D (bas négatives, fixe loss color) + ligne K/D ratio sur axe Y secondaire (right). Construit depuis `TimeseriesMatchRow[]`.
+
+Builders purs `buildCombatYieldOption` + `buildKdaBarsOption` exportés pour test unitaire (sans monter le React tree).
+
+**Architecture** :
+- Les 2 composants utilisent `<ChartCard>` directement avec un `buildOption` custom (au lieu de wrapper le manifest générique) car les options ECharts requises (markLine, dual yAxis, per-bar color from outcome) sont trop spécifiques pour les wrappers génériques existants.
+- `outcomeColor` réutilise `outcomeScale` + `resolveToken` (alignment avec OutcomeSequenceTape).
+- `useFieldMappings` consommé pour les labels canoniques `kills`/`deaths` (Phase D multi-titres).
+- 15 nouvelles clés i18n : 7 dans `timeseries.combat.*` + 7 dans `timeseries.summary.*` (kda_*) + (+1 ratio).
+
+**Cleanup Plotly** :
+- `apps/web/src/components/ui/combat-yield-timeseries.tsx` supprimé (~140L)
+- `apps/web/src/components/ui/timeseries-kda-bars.tsx` supprimé (~140L)
+- `import { CombatYieldTimeseries }` + `import { TimeseriesKdaBars }` (legacy paths) retirés de TimeseriesPage
+
+**Résultats** :
+- `vitest run src/features/timeseries/ src/components/charts/` → 111/111 OK (5 nouveaux + reste inchangé)
+- 6 tests `buildCombatYieldOption` (option vide, ordre séries, mapping points, markLine p80, legend, axes)
+- 9 tests `buildKdaBarsOption` (option vide, ordre 3 séries, deaths négatifs, yAxisIndex, dual yAxis, category x, stack kda, legend)
+- `npm run typecheck` filtré sur le périmètre touché → 0 erreur
+
+**TimeseriesPage est désormais 100% ECharts** (cumul, forme, intensité, distributions, corrélations, summary KDA, combat yield). Reste comme dette globale uniquement les composants Plotly hors-Timeseries (PlayerScoreCard radar, etc.) — ils sont en chemins moins critiques.
+
+**Prochaine étape** : Option B suite — cleanup `distribution_chart` Plotly côté Go (citations) : actuellement `*PlotlyFigurePayload` server-side, mais le front a migré en P2.D vers `<BarGroupedChart>` consommant `medals_summary` directement. Le champ `distribution_chart` Go est candidat à suppression. Puis Option C (Storybook).
+
 ## [2026-04-28] cleanup(p3.e-session-compare): retrait Plotly fields jamais populés + UI dead code
 
 **Statut** : Complété.

@@ -15,8 +15,8 @@ import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { useTimeseriesPage, useCombatYieldHistory } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
-import { CombatYieldTimeseries } from '@/components/ui/combat-yield-timeseries'
-import { TimeseriesKdaBars } from '@/components/ui/timeseries-kda-bars'
+import { TimeseriesKdaBars } from './TimeseriesKdaBars'
+import { TimeseriesCombatYield } from './TimeseriesCombatYield'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
 import { HistogramChart } from '@/components/charts/HistogramChart'
@@ -166,7 +166,18 @@ export function TimeseriesPage() {
                 <CardTitle className="text-sm">{t('timeseries.summary.kda_timeline_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
-                <TimeseriesKdaBars rows={data.match_rows ?? []} />
+                <TimeseriesKdaBars
+                  rows={data.match_rows ?? []}
+                  labels={{
+                    kills: t('timeseries.summary.kda_kills'),
+                    deaths: t('timeseries.summary.kda_deaths'),
+                    kdRatio: t('timeseries.summary.kda_ratio'),
+                    yAxisLeft: t('timeseries.summary.kda_y_axis_left'),
+                    yAxisRight: t('timeseries.summary.kda_y_axis_right'),
+                    emptyTitle: t('timeseries.summary.kda_empty_title'),
+                    emptyDescription: t('timeseries.summary.kda_empty_description'),
+                  }}
+                />
               </CardContent>
             </Card>
           </div>
@@ -445,7 +456,17 @@ export function TimeseriesPage() {
                     </span>
                   </div>
                 ) : (
-                  <CombatYieldTimeseries rows={combatData?.table.items ?? []} />
+                  <TimeseriesCombatYield
+                    rows={combatData?.table.items ?? []}
+                    labels={{
+                      ocSeries: t('timeseries.combat.oc_series'),
+                      drSeries: t('timeseries.combat.dr_series'),
+                      ocReference: t('timeseries.combat.oc_reference'),
+                      drReference: t('timeseries.combat.dr_reference'),
+                      emptyTitle: t('timeseries.combat.empty_title'),
+                      emptyDescription: t('timeseries.combat.empty_description'),
+                    }}
+                  />
                 )}
               </CardContent>
             </Card>
