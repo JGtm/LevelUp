@@ -20751,3 +20751,32 @@ Logique canonique (4 étapes) :
 - Cas couverts : 5 périodes + invalid/empty, 4 granularités + adaptive, ISO week dimanche, sortable, timezone preservation, rolling NaN bornes, types int/int64/float64.
 
 **Conclusion** : socle temporel disponible pour les chunks suivants. Next chunk : `analysis/breakdown/` (consomme `temporal` pour les agrégations W/L/T/DNF par dimension).
+
+---
+
+## [2026-04-27] Phase 0 - Chunk 2 — analysis/breakdown (agrégations W/L/T/DNF)
+
+**Statut** : ✅ Complété
+
+**Tâche** : Sous-package `internal/analysis/breakdown/` qui agrège les rows joueur par dimension (carte, mode, mode-catégorie, playlist) avec compteurs W/L/T/DNF, ratios, AvgPerformanceScore et helper de comparaison à l'historique. Chunk 2 de la Phase 0 du méta-plan.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation depuis chunk 1).
+
+**Décision technique** : type `Row` local au package (n'importe quoi de canonical.PlayerMatchRow ou domain legacy peut être projeté dessus). Utilise `canonical.Outcome` (string : win/loss/tie/dnf) comme enum pour rester sur la cible canonique sans réintroduire le code int legacy. Outcomes inconnus comptent dans Played mais pas dans les seaux W/L/T/DNF — rate calculé sur Played pour préserver la cardinalité réelle. Tri stable par WinRate desc puis ID asc partout (déterministe pour les snapshots).
+
+**Fichiers créés** :
+- `apps/go-api/internal/analysis/breakdown/counts.go` : `Row`, `Counts`, helpers internes `computeCounts` et `avgPerformanceScore`.
+- `apps/go-api/internal/analysis/breakdown/by_map.go` : `MapAggregate` + `ByMap`.
+- `apps/go-api/internal/analysis/breakdown/by_mode.go` : `ModeAggregate` + `ByMode` + `ByModeCategory` (factorisation interne `aggregateByModeKey`).
+- `apps/go-api/internal/analysis/breakdown/by_playlist.go` : `PlaylistAggregate` + `ByPlaylist`.
+- `apps/go-api/internal/analysis/breakdown/compare.go` : `MapDelta` + `CompareToHistorical` (carte absente de l'historique → delta = session.WinRate ; carte absente de la session ignorée).
+- 4 fichiers tests table-driven correspondants.
+
+**Résultats** :
+- `go test ./internal/analysis/breakdown/. -race` → 28 tests OK, 0 fail.
+- `go vet ./internal/analysis/...` → propre.
+- `go build ./...` → OK (aucune régression).
+- Couverture : **98.9 %** (cible méta-plan ≥ 90 %).
+- Cas couverts : empty/nil, single map all outcomes, all wins, all losses, ignore empty IDs, sort by winrate desc, tie-breaker alphabetic, label preservation (first non-empty wins), avg perf mixed/all-nil, unknown outcomes not counted but Played includes, mode catégorie agrège plusieurs sous-modes, compare improved/regressed/stable, perf delta nil quand un côté nil.
+
+**Conclusion** : agrégations transverses disponibles. Next chunk : `canonical.PlayerMatchRow` + `canonical.HighlightEvent` (types canoniques) ou alternativement `analysis/narrative` (badges dominance + encounter sans dépendance repo).
