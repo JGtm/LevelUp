@@ -21322,3 +21322,29 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - **Capability gating** : délégué au service appelant pour les repos per-PlayerDB ; le repo retourne juste les rows. À retravailler si on bascule en `port.PlayerMatchesRepository(slug, gamertag, filters)` plus tard.
 
 **Conclusion** : session terminée, état stable, point de reprise documenté. La branche `feat/foundations-axes-1-3-4` peut être push/mergée immédiatement ou laissée en local jusqu'à reprise.
+
+---
+
+## [2026-04-27] Phase 1 - Cadrage — PLAN_SQUAD_GO_PORTAGE.md rédigé
+
+**Statut** : ✅ Plan enfant Squad rédigé.
+
+**Tâche** : Premier acte de cadrage Phase 1 du méta-plan (cf. § 6.1.1) : rédiger le plan enfant Squad depuis `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` (~630L) en intégrant les fondations Phase 0.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation Phase 0 close).
+
+**Décisions techniques** :
+- **Périmètre 22 sections** mappées sur les fondations Phase 0 livrées : `LoadPlayerMatches`, `LoadHighlightEvents`, `narrative.IdentifyImpactRoles` (8 rôles), `narrative.ComputeParticipationProfile` (6 axes radar), `breakdown.ByMap`, `temporal.RollingMeanAdaptive`. La majorité du code algorithmique est déjà en place.
+- **9 phases d'implémentation** (P1-P9) regroupées en 11 chunks committables de 1-3h chacun. Total Squad estimé ~27h (cohérent avec ~25-30h pour Squad seul dans le budget Phase 1 méta-plan).
+- **9 wrappers ECharts spécialisés** à créer (réutilisés en Phase 1 MatchView et Phase 2 Career/Timeseries) : `<Lollipop>`, `<Bullet>`, `<BarStacked>`, `<BarGrouped>`, `<Heatmap2D>`, `<Radar>`, `<Cadence>`, `<TimeseriesLine>`, `<Donut>`. Tous étendent `<ChartCard>` (chunk 11).
+- **8 composants UI spécifiques** : `<KPIStrip>` (transverse), `<PlayerScoreCard>` (Squad+MatchView), `<ImpactRolesMatrix>`, `<ImpactRankingTable>`, `<MedalsGallery>`, `<WeaponsTable>`, `<FloatingLegend>` (IntersectionObserver), `<Donut>` weapons.
+- **3 helpers algo à ajouter en Phase 1** (gaps Phase 0) : `temporal.LowessSmooth` (~50L), `narrative.ComputeCadenceProfiles` (~80L), `narrative.ComputeMatchIntensityProfiles` (~80L).
+- **3 repos à ajouter en Phase 1** : `LoadWeaponKillsAggregated`, `LoadGrenadeMeleeKills`, `LoadMedalsForMatchesByXUID`.
+- **Intégration `PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md`** (plan UX existant) absorbée en Phase P1 : multi-sélect sessions + filtre coéquipiers amis uniquement.
+- **Pré-requis dominance_flag** : `engine.RunBackfillComebackBadges(ctx, false)` appelé une fois en seed CI pour les tests E2E.
+- **Capability gating** : tests sur titre synthétique sans `match.history` → page partielle avec sections flagguées via `CapabilityGap`, pas de 5xx.
+
+**Fichiers créés** :
+- `.ai/PLAN_SQUAD_GO_PORTAGE.md` (~530L) — 7 sections (synthèse, périmètre, état actuel, architecture cible, phases, done definition, risques, annexes).
+
+**Conclusion** : Phase 1 démarrable. Prochain chunk = **S1** (Service Squad refactor + handler + tests, ~3h). Le plan jumeau MatchView reste à réécrire complètement (déjà annoté niveau 1 en Phase 0, réécriture intégrale en Phase 1 prévue).
