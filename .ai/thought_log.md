@@ -21481,3 +21481,58 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - Composition `SquadSynergiesPage.tsx` réelle.
 
 **Conclusion** : backend Synergies + Form Score complet, 6 charts disponibles via API. Restent : wrappers ECharts frontend + Impact 8 rôles (S5) + Cadence/Intensité (S6) + Contributions (S7) + Radar (S8) + Armes/Médailles (S9).
+
+---
+
+## [2026-04-27] Phase 1 - Chunks S5+S6 — Impact 8 rôles + Cadence/Intensité
+
+**Statut** : Complété (chunks groupés)
+
+**Tâche** : Backend des onglets Impact + Cadence/Intensité de la page Squad V2 :
+- **S5** : Heatmap match × joueur des 8 rôles narratifs + ranking MVP/Boulet par rôle.
+- **S6** : Cadence agrégée des kills (bars empilées par phase de 60s) + Heatmap intensité match × bucket normalisé.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S1→S4).
+
+**Décisions techniques** :
+
+### S5 — Impact 8 rôles
+- **DTOs `domain/squad_v2.go`** : `ImpactRolesMatrix` (heatmap), `ImpactRolesMatchRow` (ligne match), `ImpactRoleCell` (cellule), `ImpactRanking` (colonne classement), `ImpactRankingEntry` (ligne ranking).
+- **`squad_service_v2_impact.go`** : 2 builders publics.
+  - `BuildImpactRolesMatrix` : appelle `narrative.IdentifyImpactRoles` (Phase 0), résout xuid→gamertag, peuple `RolesByPlayer` par match. Hydrate `MainOutcome` + `StartedAt` depuis `SquadSharedMatch`.
+  - `BuildImpactRanking` : 8 colonnes dans `allRolesOrder` (positifs first_blood/clutch_finisher/top_killer/silent_hero, négatifs last_casualty/last_group_kill/first_group_death/false_brother). Tri count desc + gamertag asc. Tous les xuid du squad initialisés à 0.
+- **`buildTeamOutcomes`** : résout xuid → Outcome depuis le premier `SharedMatch` où le joueur est présent (early-exit si tous résolus).
+
+### S6 — Cadence + Intensité
+- **`analysis/narrative/cadence.go`** : `ComputeCadenceProfiles(events, squad, phaseSeconds=60)`. Renvoie 1 profil par (xuid × match), buckets dimensionnés selon `matchEnd / phaseMS + 1`. Distribue les kills, filtre hors-squad et non-EventKill.
+- **`analysis/narrative/intensity.go`** : `ComputeMatchIntensityProfiles(events, nBuckets=10)` decoupe en N buckets normalisés (vs cadence à durée fixe). Compte tous les events (kill, death, medal, assist, finisher, clutch, first_*). Audit signale que `match_registry` fournit la durée canonique amont — proxy via timestamp max pour cette version.
+- **`NormalizeIntensityBuckets`** : helper [0..1] divisé par max global. Permet le rendu heatmap sans biais inter-bucket.
+- **`squad_service_v2_cadence_intensity.go`** : 2 builders publics.
+  - `BuildCadenceChart` : agrège les profiles cadence en `ChartPointStacked`. Components = map gamertag → kills sur la phase. Catégorie = `phase_NN` (zero-padded pour tri ECharts stable).
+  - `BuildIntensityHeatmap` : émet 1 `ChartPointHeatmap` par (matchID × bucket). Detail.raw conserve la valeur brute, Value = normalisée.
+
+### Manifest i18n
+- **`apps/web/src/lib/i18n/manifests/squad.toml`** étendu : section S5 (`squad.impact.*` 3 clés + `narrative.role.*` 8 clés), section S6 (`squad.synergies.cadence_*`, `squad.synergies.intensity_*`, `squad.synergies.intensity_axis_*` 6 clés). Total : 46 clés (+17 vs S3+S4).
+
+**Fichiers créés** :
+- `apps/go-api/internal/analysis/narrative/cadence.go` + `cadence_test.go`
+- `apps/go-api/internal/analysis/narrative/intensity.go` + `intensity_test.go`
+- `apps/go-api/internal/service/squad_service_v2_impact.go` + `squad_service_v2_impact_test.go`
+- `apps/go-api/internal/service/squad_service_v2_cadence_intensity.go` + `squad_service_v2_cadence_intensity_test.go`
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/domain/squad_v2.go` (DTOs Impact ajoutés)
+- `apps/web/src/lib/i18n/manifests/squad.toml` + generated regen
+
+**Résultats** :
+- 23 nouveaux tests Go (5 cadence + 7 intensity + 6 impact + 5 cadence/intensity service). Tous OK.
+- `go test ./...` propre (aucune régression S1→S4 ni Phase 0).
+- `gofmt -l` propre. Pré-existants `go vet` warnings dans `presence_test.go` non liés.
+- Pré-existants typecheck errors dans `appShellStore.test.ts` (BootstrapResponse) non liés à S5/S6.
+
+**Hors scope (chunks à venir)** :
+- Wrappers ECharts frontend `<Cadence>` (BarStacked horizontal), `<IntensityHeatmap>`, `<ImpactMatrix>` (heatmap + tooltip), `<ImpactRanking>` (8 colonnes triées).
+- Composition `SquadImpactPage.tsx` (S5 onglet) + intégration cadence/intensité dans `SquadSynergiesPage.tsx` (S6).
+- Chunks suivants : S7 Contributions, S8 Radar, S9 Armes/Médailles.
+
+**Conclusion** : backend Squad V2 Impact + Cadence/Intensité complet, 4 charts supplémentaires via API (8 charts total Squad V2 backend). Cumul Phase 1 : 6 chunks (S1, S1b, S2, S3+S4, S5+S6) sur 9-11. Prochaine étape : S7 Contributions (donut empilé attaque/défense/objectif) ou bascule frontend (wrappers ECharts).

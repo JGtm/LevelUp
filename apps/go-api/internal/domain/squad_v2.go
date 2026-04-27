@@ -118,3 +118,47 @@ type SquadSharedMatch struct {
 	Outcome   canonical.Outcome                   `json:"outcome"`
 	Players   map[string]canonical.PlayerMatchRow `json:"players"`
 }
+
+// ImpactRolesMatrix porte la heatmap roles 8 x N joueurs (cf. PLAN_SQUAD_GO_PORTAGE
+// Phase P5). Chaque cellule rassemble les roles attribues a un xuid sur un match.
+type ImpactRolesMatrix struct {
+	// MatchRows : 1 entree par match partage (ordre = ordre des SharedMatches).
+	MatchRows []ImpactRolesMatchRow `json:"match_rows"`
+	// SquadGamertags : ordre stable des colonnes (joueur principal + coequipiers,
+	// dans l'ordre d'arrivee sur la page).
+	SquadGamertags []string `json:"squad_gamertags"`
+}
+
+// ImpactRolesMatchRow est une ligne de la heatmap : un match avec les roles
+// par joueur du squad.
+type ImpactRolesMatchRow struct {
+	MatchID     string            `json:"match_id"`
+	StartedAt   time.Time         `json:"started_at_utc"`
+	MainOutcome canonical.Outcome `json:"main_outcome"`
+	// RolesByPlayer : gamertag -> liste des cles de roles attribues sur ce match.
+	// Vide si le joueur n'a recu aucun role sur ce match.
+	RolesByPlayer map[string][]ImpactRoleCell `json:"roles_by_player"`
+}
+
+// ImpactRoleCell decrit un role attribue (label key + token couleur, etc.).
+type ImpactRoleCell struct {
+	RoleKey    string `json:"role_key"`    // canonical.ImpactRole (first_blood, top_killer, ...)
+	LabelKey   string `json:"label_key"`   // i18n manifest key
+	ColorToken string `json:"color_token"` // CSS variable name
+	Inverted   bool   `json:"inverted"`    // true pour roles negatifs (couleur opposee)
+}
+
+// ImpactRanking represente une colonne du tableau MVP/Boulet (1 par role) :
+// classement des joueurs du squad par count desc sur ce role precis.
+type ImpactRanking struct {
+	RoleKey  string               `json:"role_key"`
+	LabelKey string               `json:"label_key"`
+	Inverted bool                 `json:"inverted"` // role negatif → gradient couleur inverse
+	Entries  []ImpactRankingEntry `json:"entries"`
+}
+
+// ImpactRankingEntry est une ligne du ranking pour un role : gamertag + count.
+type ImpactRankingEntry struct {
+	Gamertag string `json:"gamertag"`
+	Count    int    `json:"count"`
+}
