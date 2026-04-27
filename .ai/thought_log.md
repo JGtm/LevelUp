@@ -20957,3 +20957,45 @@ Logique canonique (4 étapes) :
 - `Q*LUSRHistory` ne filtre pas par `playlist_group` : nom de la query trompeur (LUSR alors qu'elle retourne aussi CSR). Renommer en `RatingHistory` plus tard ou ajouter le filtre selon décision produit.
 
 **Conclusion** : la suite intégration `platform/duckdb` est de nouveau un signal fiable pour la Phase 0. Tous les changements ne touchent que des tests + le seed schema (jamais le code de prod).
+
+---
+
+## [2026-04-27] Phase 0 - Chunk 7 — highlight_events_repo + cache (DuckDB)
+
+**Statut** : ✅ Complété
+
+**Tâche** : Implémentation DuckDB du loader unifié `LoadHighlightEvents` + cache, suivant le même pattern que chunk 6 (player_matches_repo). Débloque Squad (impact 8 rôles), MatchView (kill feed, cadence, dominance), Timeseries (first_events_rolling, intensity, cadence).
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunk 6 + fix dette).
+
+**Décisions techniques** :
+- **Repo per-PlayerDB** : `NewHighlightEventsRepo(*PlayerDB)`. Le shared DB est attaché via la connection player. Cohérent avec player_matches_repo.
+- **Mapping XUID → KillerXUID/VictimXUID/PlayerXUID** : la table `shared.highlight_events` n'a qu'une colonne `xuid` dont le sens dépend de `event_type`. Le repo applique la projection canonique :
+  - `kill, first_kill, finisher, clutch` → `KillerXUID`
+  - `death, first_death` → `VictimXUID`
+  - `medal, assist` → `PlayerXUID`
+  - Le champ legacy `XUID` reste rempli pour compat ascendante.
+- **Filtre `Since`** : `LEFT JOIN shared.match_registry r ON r.match_id = he.match_id` pour pouvoir filtrer par `r.start_time >= ?`. Pas de col `start_time` directement sur highlight_events.
+- **OrderBy whitelist fermée** (4 valeurs) avec `ErrUnknownHighlightEventsOrderBy`.
+- **Validate() rappelé en début de Load** : defense-in-depth contre les filtres "too broad" (cf. `ErrHighlightEventFiltersTooBroad` du chunk 4).
+- **Cache : duplication contrôlée du pattern `ttlCache` de player_matches** (`ttlCacheHE`, `CachedHighlightEventsRepo`). Si on ajoute un 3e cache, factoriser en `ttlCacheGeneric[V any]` sera la prochaine étape. Pour l'instant la duplication est triviale (~50 lignes) et plus simple que la migration générique du cache existant.
+
+**Fichiers créés** :
+- `apps/go-api/internal/platform/duckdb/highlight_events_repo.go` (~210L) : `HighlightEventsRepo` + buildQuery + scanner avec mapping XUID + helpers d'OrderBy whitelist.
+- `apps/go-api/internal/platform/duckdb/highlight_events_cache.go` (~210L) : `CachedHighlightEventsRepo` + `ttlCacheHE` + `highlightEventsCacheKey` + métriques.
+- `apps/go-api/internal/platform/duckdb/highlight_events_repo_test.go` (~250L, build tag `integration`) : 12 tests couvrant chaque filtre, mapping XUID par event_type, ordre, limite, validation.
+- `apps/go-api/internal/platform/duckdb/highlight_events_cache_test.go` (~210L) : 9 tests cache (mock loader, sans DB).
+
+**Résultats** :
+- Tests cache (sans tag) : OK + race detector clean.
+- Tests repo intégration : OK.
+- Couverture : 100 % sur la majorité des fonctions, ~85-87 % sur Load et scanHighlightEvent (chemins d'erreur), 0 % sur `evictOldestLocked` du cache HE (testé indirectement via le pattern FIFO de player_matches_cache_test, pas dupliqué ici).
+- `go build ./...` : OK, aucune régression.
+- `gofmt -d` : propre.
+- Suite intégration `platform/duckdb` complète : OK (0 fail).
+
+**Dette transverse acceptée** :
+- Renommage `Q8/Q24LUSRHistory` → `RatingHistory` (nom plus juste : retourne CSR + LUSR). À traiter plus tard, validé par user.
+- `TestMediaFilters_ModeFilter_ExactNotSubstring` skippé : décision métier sur la sémantique du filtre. À traiter plus tard, validé par user.
+
+**Conclusion** : tous les chunks de Phase 0 côté Go sont posés (analyse pure + canonical + ports + repos). Restent : axe sync (audit `dominance_flag`), axe observabilité (squelette expvar), axe whitelist `playlist_kind` côté handler, et tout le frontend (ECharts wrappers + manifests i18n + ESLint rule + `<CapabilityGap>`). Next chunk : à choisir entre **Phase 0 Frontend** (ChartCard + 2 wrappers de base + manifest framework) ou **Phase 0 Sync audit** (vérifier que `dominance_flag` est peuplé, sinon implémenter).
