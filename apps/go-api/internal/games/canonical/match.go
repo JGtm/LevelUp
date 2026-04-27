@@ -75,12 +75,84 @@ type MatchParticipant struct {
 	IsBot            *bool
 }
 
-// HighlightEvent est un événement horodaté issu de highlight_events (kill ou death).
-// Pour un event "kill", XUID = tueur ; pour "death", XUID = victime.
+// HighlightEvent est un événement horodaté issu de highlight_events.
+//
+// Étendu en Phase 0 méta-plan (loader unifié `port.HighlightEventsRepository`)
+// pour permettre une consommation unifiée par Squad (impact 8 rôles), MatchView
+// (kill feed, cadence, dominance), Timeseries (first events rolling, intensity,
+// cadence). Les nouveaux champs sont additifs : un consommateur de l'ancienne
+// API (EventType, TimeMS, XUID) reste valide.
 type HighlightEvent struct {
-	EventType string // "kill" | "death"
+	EventType string // valeurs canoniques : voir HighlightEventType (canonical/enums.go)
 	TimeMS    int64
-	XUID      string
+
+	// XUID est conservé pour compatibilité ascendante. Convention historique :
+	// pour un event "kill", XUID = tueur ; pour "death", XUID = victime.
+	//
+	// Deprecated: utiliser KillerXUID / VictimXUID / PlayerXUID selon le sens
+	// sémantique du EventType. Le champ sera retiré en v(N+2) après migration
+	// des consommateurs (cf. docs/adr/0005-canonical-player-match-row-evolution.md).
+	XUID string
+
+	// MatchID rattache l'event à un match précis. Permet de batcher la
+	// récupération des events sur N matchs sans perdre l'origine.
+	MatchID string
+
+	// KillerXUID est renseigné pour les events impliquant un tueur identifié
+	// (kill, finisher, first_kill, clutch). Nil sinon.
+	KillerXUID *string
+
+	// VictimXUID est renseigné pour les events impliquant une victime identifiée
+	// (kill, death, finisher, first_kill, first_death). Nil sinon.
+	VictimXUID *string
+
+	// PlayerXUID est renseigné pour les events centrés sur un joueur sans
+	// notion tueur/victime (medal, assist). Nil sinon.
+	PlayerXUID *string
+
+	// WeaponID identifie l'arme utilisée pour un event "kill" / "finisher" si
+	// l'information est disponible.
+	WeaponID *string
+
+	// Detail porte les payloads typés par EventType (ex. medal ID + tier
+	// pour event "medal", clutch context pour "clutch"). La structure exacte
+	// dépend du type ; les helpers de consommation (analysis/narrative)
+	// connaissent les clés attendues.
+	Detail map[string]any
+}
+
+// PlayerMatchRow est le contrat partagé par les services qui agrègent les
+// matchs d'un joueur (Squad, MatchView, Career, Synthesis, Citations, Timeseries).
+// Compose les 3 facets canoniques :
+//
+//   - Summary : metadata du match (map, mode, playlist, durée, outcome global).
+//   - Self : stats du joueur principal sur ce match.
+//   - Enrichment : metadata LevelUp-specific (session, performance, dominance,
+//     friends, MMR enemy).
+//
+// Politique d'évolution : additive uniquement. La suppression ou le renommage
+// d'un champ est un breaking change qui doit être documenté en commit message
+// + ADR + dépréciation préalable. Voir docs/adr/0005-canonical-player-match-row-evolution.md
+// (livré en Phase 4 méta-plan).
+type PlayerMatchRow struct {
+	Summary    MatchSummary
+	Self       MatchParticipant
+	Enrichment PlayerMatchEnrichment
+}
+
+// PlayerMatchEnrichment porte les metadata LevelUp-specific qui ne sont pas
+// dans le core canonical (sessions, performance score interne, dominance flag
+// calculé au sync, contexte friends, MMR enemy si head-to-head).
+type PlayerMatchEnrichment struct {
+	SessionID        *string
+	SessionLabel     *string
+	PerformanceScore *float64
+	DominanceFlag    DominanceFlag
+	HadBotTeammate   bool
+	IsWithFriends    bool
+	FriendsXUIDs     []string // sous-ensemble présent ce match (peut être nil)
+	TeamMMR          *float64
+	EnemyMMR         *float64 // si dispo (head-to-head, sinon nil)
 }
 
 // ImpactBadge est un badge d'impact calculé sur les événements d'un match.
