@@ -11,7 +11,9 @@ import (
 
 // Q26 : Home — matchs d un joueur avec KPIs pour le hero card.
 // Parametre : ?1 = xuid du joueur.
-// Pas de LIMIT : tous les matchs sont chargés (hero card, highlights, recent matches, sessions).
+// LIMIT 150 : couvre hero card, highlights, recent matches et summaries de sessions récentes.
+// Le total réel vient de Q26bCountPlayerMatches (requête séparée).
+// Les sessions complètes sont chargées indépendamment via Q27HomeSessions.
 const Q26HomeMatches = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
@@ -87,7 +89,8 @@ LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 LEFT JOIN match_skill_rank msr ON msr.match_id = mp.match_id
 LEFT JOIN perfect ON perfect.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY r.start_time DESC`
+ORDER BY r.start_time DESC
+LIMIT 150`
 
 // Q26h : Home — médailles par match pour un joueur, lots de match_id.
 // Paramètres : ?1 = xuid. Les match_id sont injectés dynamiquement via IN (%s).
@@ -142,67 +145,22 @@ const Q26bCountPlayerMatches = `
 SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
 
 // Q26c : Home -- identité record compacte depuis career_progression.
+// Un seul scan via ARG_MAX — remplace les 5 sous-requêtes corrélées de l'ancienne version.
 // Paramètre : aucun.
 const Q26cHomeSpartanIdentity = `
-WITH latest AS (
-	SELECT
-		cp.rank,
-		COALESCE(cp.current_xp, 0)        AS current_xp,
-		COALESCE(cp.xp_for_next_rank, 0) AS xp_for_next_rank,
-		COALESCE(cp.is_max_rank, FALSE)  AS is_max_rank,
-		NULLIF(TRIM(cp.rank_name), '')   AS rank_name,
-		NULLIF(TRIM(cp.rank_tier), '')   AS rank_tier
-	FROM career_progression cp
-	ORDER BY cp.recorded_at DESC
-	LIMIT 1
-),
-latest_adornment AS (
-	SELECT NULLIF(TRIM(cp.adornment_path), '') AS adornment_path
-	FROM career_progression cp
-	WHERE NULLIF(TRIM(cp.adornment_path), '') IS NOT NULL
-	ORDER BY cp.recorded_at DESC
-	LIMIT 1
-)
 SELECT
-	latest.rank,
-	latest.current_xp,
-	latest.xp_for_next_rank,
-	latest.is_max_rank,
-	(
-		SELECT NULLIF(TRIM(cp.spartan_id), '')
-		FROM career_progression cp
-		WHERE NULLIF(TRIM(cp.spartan_id), '') IS NOT NULL
-		ORDER BY cp.recorded_at DESC
-		LIMIT 1
-	) AS spartan_id,
-	latest.rank_name,
-	latest.rank_tier,
-	(
-		SELECT NULLIF(TRIM(cp.banner_image_url), '')
-		FROM career_progression cp
-		WHERE NULLIF(TRIM(cp.banner_image_url), '') IS NOT NULL
-		ORDER BY cp.recorded_at DESC
-		LIMIT 1
-	) AS banner_image_url,
-	(
-		SELECT NULLIF(TRIM(cp.emblem_image_url), '')
-		FROM career_progression cp
-		WHERE NULLIF(TRIM(cp.emblem_image_url), '') IS NOT NULL
-		ORDER BY cp.recorded_at DESC
-		LIMIT 1
-	) AS emblem_image_url,
-	(
-		SELECT NULLIF(TRIM(cp.backdrop_image_url), '')
-		FROM career_progression cp
-		WHERE NULLIF(TRIM(cp.backdrop_image_url), '') IS NOT NULL
-		ORDER BY cp.recorded_at DESC
-		LIMIT 1
-	) AS backdrop_image_url,
-	(
-		SELECT adornment_path
-		FROM latest_adornment
-	) AS adornment_path
-FROM latest`
+    ARG_MAX(rank,             recorded_at)                                                                  AS rank,
+    COALESCE(ARG_MAX(current_xp,      recorded_at), 0)                                                     AS current_xp,
+    COALESCE(ARG_MAX(xp_for_next_rank, recorded_at), 0)                                                    AS xp_for_next_rank,
+    COALESCE(ARG_MAX(is_max_rank,     recorded_at), FALSE)                                                  AS is_max_rank,
+    ARG_MAX(spartan_id,       recorded_at) FILTER (WHERE NULLIF(TRIM(spartan_id),       '') IS NOT NULL)    AS spartan_id,
+    NULLIF(TRIM(ARG_MAX(rank_name,    recorded_at)), '')                                                    AS rank_name,
+    NULLIF(TRIM(ARG_MAX(rank_tier,    recorded_at)), '')                                                    AS rank_tier,
+    ARG_MAX(banner_image_url,  recorded_at) FILTER (WHERE NULLIF(TRIM(banner_image_url),  '') IS NOT NULL)  AS banner_image_url,
+    ARG_MAX(emblem_image_url,  recorded_at) FILTER (WHERE NULLIF(TRIM(emblem_image_url),  '') IS NOT NULL)  AS emblem_image_url,
+    ARG_MAX(backdrop_image_url, recorded_at) FILTER (WHERE NULLIF(TRIM(backdrop_image_url),'') IS NOT NULL) AS backdrop_image_url,
+    ARG_MAX(adornment_path,   recorded_at) FILTER (WHERE NULLIF(TRIM(adornment_path),   '') IS NOT NULL)    AS adornment_path
+FROM career_progression`
 
 // Q26d : Home -- assets visuels du rang carrière courant depuis metadata.duckdb.
 //
@@ -349,11 +307,12 @@ LIMIT ?`
 // Requête sur pdb.Player (shared attaché). Label résolu ensuite via pdb.Metadata.
 const Q26kFavoriteWeapon = `
 SELECT
-    COALESCE(wk.reconciled_as, wk.weapon_id) AS weapon_id,
-    COUNT(*)                                  AS total_kills
-FROM shared.weapon_kills wk
+    wk.effective_weapon_id AS weapon_id,
+    COUNT(*)               AS total_kills
+FROM shared.v_weapon_kills wk
 WHERE wk.xuid = ?
-GROUP BY COALESCE(wk.reconciled_as, wk.weapon_id)
+  AND wk.effective_weapon_id NOT IN (0, 1, 2)
+GROUP BY wk.effective_weapon_id
 ORDER BY total_kills DESC
 LIMIT 1`
 
@@ -409,6 +368,59 @@ FROM citation_mappings
 WHERE mapping_type = 'medal'
   AND enabled IS NOT FALSE
   AND medal_id IS NOT NULL`
+
+// Q38 : Match view — top citations gagnées dans un match (match_citations + citation_mappings).
+// Paramètre : ?1 = match_id.
+// Retourne 3 colonnes : citation_name_norm, citation_name_display, value.
+// Requête sur pdb.Player (match_citations) + pdb.Metadata (citation_mappings).
+const Q38MatchViewCitations = `
+SELECT
+    mc.citation_name_norm,
+    COALESCE(cm.citation_name_display, mc.citation_name_norm) AS citation_name_display,
+    mc.value
+FROM match_citations mc
+LEFT JOIN citation_mappings cm
+    ON cm.citation_name_norm = mc.citation_name_norm
+   AND cm.enabled IS NOT FALSE
+WHERE mc.match_id = ?
+  AND mc.citation_name_norm IS NOT NULL
+  AND mc.value > 0
+ORDER BY mc.value DESC
+LIMIT 4`
+
+// Q40 : Moteur citations complet — tous les champs de citation_mappings.
+// Paramètre : aucun. Requête sur metadata.duckdb (passé comme DB racine dans le sync).
+// Retourne 11 colonnes pour le dispatch par mapping_type.
+const Q40CitationFullMappings = `
+SELECT
+    citation_name_norm,
+    citation_name_display,
+    COALESCE(mapping_type, 'medal') AS mapping_type,
+    COALESCE(category, 'misc')     AS category,
+    medal_id,
+    medal_ids,
+    stat_name,
+    award_name,
+    custom_function,
+    composite_children,
+    tier_targets
+FROM citation_mappings
+WHERE enabled IS NOT FALSE
+ORDER BY citation_name_norm`
+
+// Q39 : Moteur citations — mappings citation→medal depuis metadata.duckdb.
+// Paramètre : aucun. Requête sur pdb.Metadata.
+// Retourne 4 colonnes : citation_name_norm, citation_name_display, medal_id, mapping_type.
+const Q39CitationMedalMappings = `
+SELECT
+    citation_name_norm,
+    citation_name_display,
+    medal_id,
+    COALESCE(mapping_type, 'medal') AS mapping_type
+FROM citation_mappings
+WHERE enabled IS NOT FALSE
+  AND medal_id IS NOT NULL
+ORDER BY citation_name_norm`
 
 // Q37 : Médias — fichiers actifs paginés depuis media_files + associations + match_registry.
 // Remplacé par BuildQ37MediaQuery pour les filtres/tri dynamiques.

@@ -65,7 +65,7 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, page)
+	writeJSONCached(w, r, http.StatusOK, page)
 }
 
 // GetBattlePass retourne les informations Battle Pass (best-effort).

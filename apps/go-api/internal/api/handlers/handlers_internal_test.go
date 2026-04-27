@@ -2,10 +2,13 @@
 //
 // encode/decodeExportToken, formatOptFloat, optStr,
 // filterCitationsByCategory, filterCommendationsByCategory, fileExists,
-// resolveCapturesDir, deviceFlowStartResponse, deviceFlowStatusResponse.
+// resolveCapturesDir, deviceFlowStartResponse, deviceFlowStatusResponse,
+// writeJSONCached.
 package handlers
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -302,5 +305,68 @@ func TestDeviceFlowStatusResponse_Failed(t *testing.T) {
 	}
 	if resp.ErrorDetail == nil || *resp.ErrorDetail != "timeout" {
 		t.Errorf("ErrorDetail = %v", resp.ErrorDetail)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// writeJSONCached
+// ---------------------------------------------------------------------------
+
+func TestWriteJSONCached_Returns200AndETag(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/test", nil)
+
+	writeJSONCached(w, r, 200, map[string]string{"key": "value"})
+
+	if w.Code != 200 {
+		t.Errorf("status = %d, want 200", w.Code)
+	}
+	if w.Header().Get("ETag") == "" {
+		t.Error("expected non-empty ETag header")
+	}
+	if w.Header().Get("Content-Type") != "application/json" {
+		t.Errorf("Content-Type = %q", w.Header().Get("Content-Type"))
+	}
+}
+
+func TestWriteJSONCached_Returns304WhenETagMatches(t *testing.T) {
+	// Premier appel pour obtenir l'ETag.
+	w1 := httptest.NewRecorder()
+	r1 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	writeJSONCached(w1, r1, 200, map[string]string{"key": "value"})
+	etag := w1.Header().Get("ETag")
+	if etag == "" {
+		t.Fatal("no ETag from first call")
+	}
+
+	// Deuxième appel avec If-None-Match → doit retourner 304.
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	r2.Header.Set("If-None-Match", etag)
+	writeJSONCached(w2, r2, 200, map[string]string{"key": "value"})
+
+	if w2.Code != 304 {
+		t.Errorf("status = %d, want 304", w2.Code)
+	}
+	if w2.Body.Len() != 0 {
+		t.Errorf("body should be empty for 304, got %d bytes", w2.Body.Len())
+	}
+}
+
+func TestWriteJSONCached_DifferentPayload_Returns200(t *testing.T) {
+	// ETag obtenu pour payload A.
+	w1 := httptest.NewRecorder()
+	r1 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	writeJSONCached(w1, r1, 200, map[string]string{"key": "a"})
+	etagA := w1.Header().Get("ETag")
+
+	// Payload B avec ETag de A → doit retourner 200 (données changées).
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	r2.Header.Set("If-None-Match", etagA)
+	writeJSONCached(w2, r2, 200, map[string]string{"key": "b"})
+
+	if w2.Code != 200 {
+		t.Errorf("status = %d, want 200 (payload changed)", w2.Code)
 	}
 }

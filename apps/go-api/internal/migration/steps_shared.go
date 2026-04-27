@@ -476,6 +476,28 @@ func init() {
 		},
 	})
 
+	// Index ART sur les colonnes de filtrage les plus fréquentes.
+	// DuckDB utilise des ART indexes (Adaptive Radix Tree) depuis v0.10.
+	// Gain attendu sur les requêtes filtrées par xuid (Q26, Q26h) et match_id (joins).
+	Register(Migration{
+		Name:        "add_perf_indexes_shared",
+		TargetDB:    TargetShared,
+		Description: "Index ART sur match_participants(xuid), match_participants(match_id), medals_earned(xuid), medals_earned(match_id)",
+		ApplySchema: func(db *sql.DB) error {
+			for _, ddl := range []string{
+				"CREATE INDEX IF NOT EXISTS idx_mp_xuid     ON match_participants(xuid)",
+				"CREATE INDEX IF NOT EXISTS idx_mp_match_id ON match_participants(match_id)",
+				"CREATE INDEX IF NOT EXISTS idx_me_xuid     ON medals_earned(xuid)",
+				"CREATE INDEX IF NOT EXISTS idx_me_match_id ON medals_earned(match_id)",
+			} {
+				if err := createIndexSafe(db, ddl); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.

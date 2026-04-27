@@ -1,5 +1,300 @@
 # Thought Log
 
+## [2026-04-27] plan(match-view): colonnes scoreboard Python source of truth + spec expander
+
+**Statut** : Complété.
+
+**Décision technique** :
+Audit du code Python `match_view_scoreboard.py` v7/cockpit via `git show v7/cockpit:...`. Comparaison avec Go frontend (`MatchScoreboard.tsx`). Deux manques majeurs identifiés et corrigés dans le plan §5.8.
+
+**Colonnes manquantes dans Go** (source of truth = Python `_get_scoreboard_cols()`) :
+- `rank` (classement ordinal 1er/2e)
+- `score` (personal score)
+- `accuracy` (% calculé depuis shots_fired/shots_hit)
+- `top_weapon_label` (arme principale — en DTO mais pas affiché)
+
+**Inversions Python** : seulement `deaths` et `damage_taken` (pas `damage_per_kill` contrairement à ce qu'avait le plan Go).
+
+**MVP/LVP Python** : algorithme basé sur count de cellules best/worst (bots exclus, tie-breaker rank) — pas sur max kills seul comme Go le fait actuellement.
+
+**Expander/PlayerDetailPanel** : état `expandedXuid: string | null`, une row à la fois, auto-fermeture. 8 sections documentées : Statistiques + Armes + Médailles + Expected + Antagonist → tous joueurs (shared DB). Local + Citations → `is_me` uniquement (`<EmptyStateNotice>` + lien Explorer pour les autres). Batch loading documenté pour N+1 prevention.
+
+**Prochaine étape** : Phase A — câblage front des 12 viz READY.
+
+## [2026-04-27] plan(match-view): specs rendu charts + tableaux — §5.7 + §5.8
+
+**Statut** : Complété.
+
+**Décision technique** :
+Audit du code Python v7/cockpit (Plotly) + frontend Go (`MatchScoreboard.tsx`, `instances.ts`). Deux sections ajoutées au plan pour permettre l'implémentation sans relire Python :
+- §5.7 : specs recharts pour 9 charts (hauteurs exactes, formats axe X/Y "M:SS", tooltips, couleurs Okabe-Ito séries, états vides)
+- §5.8 : 18 colonnes scoreboard ordonnées (seuils couleur best/worst, inversés pour deaths/damage_taken), Encounters table (composant distinct career), thresholds badges, ordre sections PlayerDetailPanel
+
+**Résultats observés** :
+- Heights Python : S5=360px, S6=260px, S9=380px, C2=340px, C3+C4=420px, C5=320px, C9=380px, C8=dynamique 80+24N
+- KV matrix : margin-left 140px, yAxis reversed
+- Tug-of-war : 2 ResponsiveContainer synchronisés via xDomain state
+- Seuils encounters : WR ≥65%=vert / ≤35%=rouge (différent du career encounters)
+- `kdScale` [1.0, 0.0], `perfScale` [80,65,50,35], `skillDeltaScale` neutralBand [0,0]
+
+**Conclusion** : plan implémentable sans consultation du code Python source.
+
+**Prochaine étape** : démarrer Phase A (câblage front des 12 viz READY).
+
+## [2026-04-27] spec(timeseries): blueprint ECharts — 13 graphes + helpers
+
+**Statut** : Complété — `.ai/SPEC_ECHARTS_TIMESERIES.md` créé.
+
+**Décision technique** : specs existantes à ~60-65% (types + données connus, buildOption = 0%). Décision : blueprint avant code. 13 graphes couverts avec `buildOption` complet, tokens, axes, tooltips, visualMap, markArea. Conventions : `resolveToken()` (pas tokenCssVar), IC bands = 3-series-stack, trendlines calculées Go-side, visualMap piecewise unifié, tier zones via markArea. 10 champs Go manquants identifiés (Phases 1/3/4/5/7). Structure `components/charts/` (13 fichiers + ChartCard).
+
+**Prochaine étape** : Phase 0 méta-plan (ChartCard + _utils + echarts bundle) puis implémentation par phase.
+
+## [2026-04-27] docs(teammates): Phase 0bis specification visuelle + decision Plotly
+
+**Statut** : Complété.
+
+**Contexte** : la question "a-t-on les specs assez précises pour reproduire quasi-exact les graphes ?" a révélé que l'audit + plan listent bien les charts, mais sans les détails de rendu (formatters, palettes par série, tooltips, smoothing, mapping ECharts). Sans ces specs, chaque chart aboutirait à une approximation au lieu du quasi-exact.
+
+**Décisions techniques** :
+
+1. **Stack chart : Plotly conservé** (vs ECharts évoqué). Justification documentée dans `PLAN_TEAMMATES_GO_PORTAGE.md` §3.8 : Plotly est dominant dans tout le projet (career, citations, session-compare, timeseries, squad existant via `components/ui/plotly-chart.tsx`), `react-plotly.js` v2.6 + `plotly.js` v3.5 déjà en dépendance, ECharts pas installé. Bascule vers ECharts = migration de tout le projet sans bénéfice technique. Bonus : Python `v7/cockpit` utilise aussi Plotly, donc on peut extraire les options exactes via `fig.to_json()` -> portage quasi 1:1.
+
+2. **Phase 0bis "Spécification visuelle" ajoutée au plan** (~3j, en parallèle de Phase 0, doit être terminée avant Phase 1). Trois livrables documentés :
+   - `docs/SQUAD_VISUAL_SPEC.md` (1.5j) — 22 fiches squelettes prêtes à remplir avec screenshots Streamlit + JSON Plotly extrait + encoding/layout/tooltip/comportements pour chaque chart.
+   - `docs/SQUAD_DESIGN_TOKENS.md` (0.5j) — palette Okabe-Ito avec mapping joueur déterministe, couleurs outcome (`_OUTCOME_BG`), heatmap colorscales, score thresholds, motif records overlay, emojis impact (8 rôles), mapping CSS Python -> React.
+   - `docs/SQUAD_CHART_HELPERS.md` (1j) — spécifications de 11 helpers TS à implémenter dans `_helpers.ts` (formatters, attributePlayerColor, negativeColor, applyHaloPlotStyle, hideLegend, applyRecordsOverlay, etc.) + tests Vitest.
+
+3. **Total mis à jour** : 36j -> **39j** (MVP 22j -> **25j**) — l'enrichissement structurel + spec visuelle prévient les allers-retours qualité ("ce vert n'est pas le bon", "le tooltip est différent") qui coûteraient bien plus en cumulé.
+
+**Résultats observés** :
+- Plan + 3 docs spec créés. La structure est complète, ne manque que les screenshots + extraction JSON Plotly à produire en exécutant l'app Streamlit Python localement.
+- Le plan respecte maintenant la grille `plan-review` ET prévoit la fidélité visuelle quasi-exacte.
+- Les 3 docs sont auto-portants : un dev qui démarre Phase 0bis peut suivre le checklist de remplissage sans contexte additionnel.
+
+**Prochaine étape** : démarrage Phase 0 + Phase 0bis en parallèle sur la branche `feat/squad-page-portage`. Phase 0bis doit être complétée (screenshots + JSON Plotly + valeurs exactes) avant de toucher Phase 1.
+
+---
+
+## [2026-04-27] perf: invalidation cache post-sync câblée dans buildPostSyncDeltaHook
+
+**Statut** : Complété — build propre, `go test -race ./internal/api/... ./internal/service/...` 100 % vert.
+
+**Décision technique** : `buildPostSyncDeltaHook` dans `api/post_sync_deltas.go` enrichi pour invalider le `HomeMatchesCache` dès le début du callback `after`, avant toute logique de notifications. `xuid := pdb.XUID` capturé dans la closure externe (avant le sync) pour garantir sa disponibilité. `reg.homeMatchesCache.Invalidate(xuid)` + `slog.InfoContext` ajoutés en première ligne du callback. Résultat : après tout sync réussi, la prochaine requête `/pages/home` recharge depuis DuckDB et re-populate le cache avec les données fraîches.
+
+**Résultats** : compilation propre, race detector propre, tous les tests api + service passent.
+
+**Prochaine étape** : aucune — les 3 rounds de perf (SQL ARG_MAX, errgroup + ETag, cache TTL + invalidation) sont complets.
+
+---
+
+## [2026-04-27] perf: TTL cache + LIMIT SQL + indexes DuckDB shared — round 2 optimisations Home
+
+**Statut** : Complété — `go test -race ./internal/service/... ./internal/api/handlers/...` 100 % vert.
+
+**Décisions techniques** :
+
+1. **HomeMatchesCache (service/home_matches_cache.go)** — Cache TTL process-level (45s) par xuid pour `LoadHomeMatches` + `LoadHomeSessions`. Singleton dans `ServiceRegistry`, injecté dans les 3 call-sites (`HomeCtx`, `HomeCtxWithAuth`, `SeasonPassCtxWithAuth`). `fetchMatchesAndSessions()` extrait pour isoler la logique cache/miss. `Invalidate(xuid)` exposé pour être appelé après un sync futur. Tests : 8 cas (miss, hit, expiry, invalidate, isolation, overwrite, concurrent) + 3 tests intégration service.
+
+2. **LIMIT 150 sur Q26HomeMatches** — Réduit le scan à 150 matchs récents. Safe car : (a) hero/highlights/sessions UI se basent sur l'historique récent, (b) `CountPlayerMatches` reste une requête séparée pour le total exact, (c) `LoadHomeSessions` reste illimité via Q27.
+
+3. **Indexes ART shared DB (migration add_perf_indexes_shared)** — `CREATE INDEX IF NOT EXISTS` sur `match_participants(xuid)`, `match_participants(match_id)`, `medals_earned(xuid)`, `medals_earned(match_id)`. Migration idempotente ajoutée dans `steps_shared.go:init()`. Couverte par `TestRunForDB_Shared_IdempotentOnExistingDB` (integration tag).
+
+**Résultats** : race detector propre, 11 nouveaux tests verts, compilation propre.
+
+**Prochaine étape** : câbler `cache.Invalidate(xuid)` dans le handler de sync (après fin de sync réussie).
+
+## [2026-04-27] specs(synthesis): buildOption ECharts précis — méta-plan §3.2.4 + Synthesis §8
+
+**Statut** : Complété — méta-plan et plan Synthesis enrichis avec specs ECharts à la valeur près.
+
+**Décision technique** : suite à la revue (skills `plan-review` + `delivery-checklist` + `color-tokens` invoqués), le plan Synthesis avait sa sémantique métier OK ~95 % mais l'API ECharts cible n'était pas spécifiée. 4 livrables :
+
+1. **Méta-plan §3.2.4** (nouvelle sous-section) : `buildOption` ECharts détaillés pour `<BarStacked>` et `<Heatmap2D>` — les deux wrappers les plus consommés (Synthesis × 2, MatchView, Squad). Conventions communes posées : couleurs résolues hors `buildOption` via `tokens: Record<SemanticToken, string>`, libellés i18n résolus en amont, `animation: false` par défaut. Les snippets sont copy-paste-able.
+
+2. **Heatmap divergente — gestion `null`** : ECharts `visualMap.continuous` ne supporte pas `null` nativement. Pattern retenu : `outOfRange: { color: 'rgba(0,0,0,0)' }` rend les cellules `null` transparentes tout en conservant la grille 7×24 visible. Alternative (ne pas pousser les cellules vides dans `data`) écartée car laisse des trous visuels. Action requise : ajouter `heatmap-divergent-mid` à `apps/web/src/lib/accessibility/semantic-tokens.ts` (manque actuellement — n'a que `low` et `high`) en Phase 0 méta-plan.
+
+3. **Plan Synthesis §8.1** (nouvelle section) : combo top-by-period — décision **composition côté page** (pas de wrapper générique). `buildTopByPeriodOption.ts` dans `features/synthesis/charts/`. 3 séries hétérogènes (2 bars empilés + 1 line sur Y₂). Spec ECharts complète : `yAxis: [{}, {}]` avec `series[2].yAxisIndex: 1`, `splitLine: { show: false }` sur Y₂ pour éviter le double quadrillage, `lineStyle.color: tokens['warning']` pour la line `top_rate`. Critère de promotion catalogue : 3+ pages consommatrices.
+
+4. **Plan Synthesis §8.2** (nouvelle section) : bipolaire Solo/Escouade — décision **composition côté page**. `buildBipolarOption.ts`. Spec ECharts complète, équivalents Plotly identifiés : `add_vline(x=0)` → `series[].markLine.data: [{ xAxis: 0 }]`, `cliponaxis: false` → `label.position: 'left'/'right'` (texte hors barre), `barmode: overlay` → 2 séries `bar` indépendantes (pas de `stack`). Tokens `compare-a` (Solo) / `compare-b` (Squad). Hauteur dynamique passée en prop `<ChartCard height>`, pas dans `buildOption` (sinon Vitest snapshot pollué). Critère de promotion catalogue : 2+ pages consommatrices.
+
+5. **Tokens couleur** : audit de `apps/web/src/lib/accessibility/semantic-tokens.ts` — 4 outcomes (`outcome-win/loss/draw/dnf`), 2 compare (`compare-a/b`), 2 heatmap divergent (`low/high`). Le seul manquant pour les specs Synthesis est `heatmap-divergent-mid` (palette 3-stops red→amber→green). Ajout documenté en Phase 0 méta-plan avec hex précis (`#F59E0B` default, `#F0E442` Okabe-Ito). Mismatch nomenclature `Tie` Python ↔ `outcome-draw` token-side noté mais non bloquant (alignement déjà documenté dans le fichier source).
+
+**Verdict** : un dev frontend ECharts peut désormais attaquer les 4 charts Synthesis sans poser de question. Les snippets `buildOption` couvrent : structure, axes, légende, tooltip, séries, colorscale/visualMap, gestion des cas vides. Tests Vitest attendus listés pour chaque chart. Aucun tableau à reproduire (Synthèse v7 n'en a aucun ; le plan retire ceux du Go en Phase 6).
+
+**Prochaine étape** : exécution Phase 0 méta-plan (ajout token `heatmap-divergent-mid`, écriture `<ChartCard>` racine, écriture wrappers `<BarStacked>` et `<Heatmap2D>` selon les specs §3.2.4) puis Phase 0 plan Synthesis (migration `canonical.PlayerMatchRow`).
+
+## [2026-04-27] perf: Optimisations performance page Home — SQL ARG_MAX, errgroup parallelism, ETag cache
+
+**Statut** : Complété — `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/duckdb/...` 100 % vert.
+
+**Décisions techniques** :
+
+1. **Q26cHomeSpartanIdentity (queries_home_citations.go)** — Remplacement des 5 sous-requêtes corrélées sur `career_progression` par un seul `SELECT ARG_MAX(...) FILTER (WHERE ...)`. Chaque champ optionnel (`spartan_id`, `banner_image_url`, `emblem_image_url`, `backdrop_image_url`, `adornment_path`) utilise `FILTER (WHERE NULLIF(TRIM(field),'') IS NOT NULL)` pour reproduire la sémantique "dernière valeur non-nulle". Passe de 6 scans à 1.
+
+2. **GetHomePage parallèle (home_service.go)** — Extraction de `fetchHomePageData` avec `errgroup.WithContext` : 8 appels repo exécutés en parallèle (LoadHomeMatches, LoadSpartanIdentity, CountPlayerMatches, LoadHomeSessions, LoadRecentMedia, LoadRecentPlaylistRanks, LoadFavoriteWeapon, GetFavoriteMatchIDs). Erreurs non-critiques absorbées dans le goroutine (dégradation silencieuse). Enrichissement médailles+citations parallélisé par liste (`recentMatches` et `favoriteMatches` dans deux goroutines séparées pour éviter les races).
+
+3. **ETag + Cache-Control (handlers/helpers.go, server.go)** — Ajout de `writeJSONCached` (ETag SHA-256 tronqué, 304 Not Modified). Utilisé dans `GetHomePage`. Route `/pages/home` wrappée avec `middleware.CacheMaxAge(30)`. Routes `/battlepass` et `/challenges` explicitement marquées `middleware.NoStore` (données live).
+
+**Résultats** : tests 100 % verts, compilation propre.
+
+**Prochaine étape** : mesurer le gain en prod (latence /pages/home avant/après).
+
+## [2026-04-27] impl: Chantiers §1.6 + §8.4 + §6.3 MIGRATION_GAP — gamertag resolver, Q8 LAG, Q9 filtres, NORM_MY_TEAM_SCORE
+
+**Statut** : Complété — `go test ./...` 100 % vert.
+
+**Décisions techniques** :
+
+1. **§1.6 Q12 gamertag resolver** — `queries_match.go` : `LEFT JOIN shared.xuid_aliases xa` → `LEFT JOIN shared.v_gamertag_lookup vg`, COALESCE étendu à `COALESCE(vg.gamertag, p.gamertag, p.xuid)`. Port exact de la logique Python `_SCOREBOARD_SQL` avec fallback trois niveaux.
+
+2. **§8.4 Q8 LUSR LAG** — `queries_career.go` : ajout de `LAG(msr.rating_value) OVER (PARTITION BY msr.playlist_group ORDER BY r.start_time)` pour calculer `rating_delta` par playlist_group. `LUSRCheckpointDTO.RatingDelta *float64` ajouté. Scan career_repo étendu (5→6 colonnes).
+
+3. **§8.4 Q9 top matches** — `queries_career.go` : 3 filtres portés depuis Python : `COALESCE(pme.had_bot_teammate, FALSE) = FALSE`, `p.time_played_seconds >= 180`, `r.is_firefight = FALSE`. `dominance_flag` exposé dans la projection pour tri badge côté frontend. `TopMatchRawRow.DominanceFlag int` ajouté. Scan repo étendu (12→13 colonnes). Fixture test mise à jour avec `had_bot_teammate BOOLEAN DEFAULT FALSE`.
+
+4. **§6.3 NORM_MY_TEAM_SCORE** — `queries_squad.go` Q31 : ajout de `CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score` et inverse pour `enemy_team_score`. `TeammateMatchRow.MyTeamScore *int`, `.EnemyTeamScore *int` ajoutés au domaine. Scan squad_repo étendu (12→14 colonnes).
+
+**Résultats** : 0 test fail, compilation propre.
+
+---
+
+## [2026-04-27] impl: Chantiers §2 composite + §5 MVP/LVP multi-colonnes + §7 rolling_kd window — finition MIGRATION_GAP
+
+**Statut** : Complété — `go test $(go list ./... | grep -v integration)` 100 % vert.
+
+**Décisions techniques** :
+
+1. **§2 citations composite (citations_composite.go)** — Nouveau fichier `analysis/citations_composite.go`. `computeCompositeCitations` appelé en post-traitement dans `ComputeFullMatchCitations` après le dispatch principal. Valeur = nb d'enfants "masterisés" dans ce match (val >= max(tier_targets) si tiers présents, val > 0 sinon). Enfants résolus via index `childTiers map[string]*string`. 4 tests : tous les enfants matchent, un seul matche, aucun ne matche, pas de tier_targets.
+
+2. **§5 MVP/LVP multi-colonnes (scoreboard_extremes.go)** — Réécriture complète depuis la version kills-seuls. Port exact Python `match_view_scoreboard.py:_compute_mvp_lvp`. 11 colonnes : kills(+), deaths(inv), assists(+), kda(+), accuracy(+), personal_score(+), damage_dealt(+), damage_taken(inv), headshot_kills(+), max_killing_spree(+), perfect_kills(+). Bots exclus (`xuid HasPrefix "bid("`). Seuil minimum `mvpMinCells=2` cellules "best" (ou "worst"). NaN pour les pointeurs nil → ignore dans colMinMax. Guard `minV == maxV` → colonne ignorée. 4 tests : multi-colonnes happy path, bot exclu, trop peu de joueurs, cellules insuffisantes.
+
+3. **§7.1 rolling_kd window (timeseries_service.go)** — `const rollingWindow = 20` → `const rollingWindow = 5`. Port de `compute_rolling_kd_polars(window=5)` Python. Commentaire inline ajouté.
+
+**Résultats** : 0 test fail, compilation propre.
+
+---
+
+## [2026-04-27] impl: Chantiers §5 top_gun + §8.4 Q9 badge priority — derniers chantiers MIGRATION_GAP
+
+**Statut** : Complété — `go test ./...` 100 % vert.
+
+**Décisions techniques** :
+
+1. **§5 badge top_gun (match_impact.go)** — Ajout du 9e badge `top_gun` : premier joueur à atteindre `topGunKillThreshold=10` kills en ordre chronologique. Implémenté via `sortedByTime` (insertion sort sur copie locale) + balayage accumulation par XUID. 4 tests couvrant happy path, seuil exact, zéro kill, et ordre chrono avec events désordonnés.
+
+2. **§8.4 Q9 badge priority sort (queries_career.go)** — Q9 remplacé par UNION de deux sous-requêtes indépendantes :
+   - Best (WIN, outcome=2) : `CASE WHEN dominance_flag IN (5,3,1)` DESC puis `performance_score` DESC, LIMIT 10
+   - Worst (LOSS, outcome=3) : `CASE WHEN dominance_flag IN (4,2)` DESC puis `performance_score` ASC, LIMIT 10
+   - Colonne `_s` (1/2) pour ORDER BY final. Paramètre xuid passé deux fois.
+
+3. **splitTopRows outcome-based (career_service.go)** — Remplacement du split midpoint par split outcome=2 vs outcome≠2. Les LOSS arrivent de la DB dans l'ordre pires-en-premier (perf_score ASC), `reverseTopMatches` les inverse pour affichage "moins-pires en tête". Tests mis à jour avec des fixtures à outcome explicite.
+
+**Résultats** : 0 test fail, compilation propre, toute la suite non-integration verte.
+
+---
+
+## [2026-04-27] impl(secondary): Chantiers secondaires §3 + §11 + §12.7 du MIGRATION_GAP
+
+**Statut** : Complété — `go test ./...` 100 % vert.
+
+**Décisions techniques** :
+
+1. **§12.7 DOMINATION/HUMILIATION** — `sync/comeback.go` : nouveau backfill `BackfillDominanceFlags` avec la sémantique Python correcte. DOMINATION/HUMILIATION déclenchés par la médaille Steaktacular (ID 1169390319) depuis `medals_earned`, pas depuis la courbe de score. REMONTADA/DEBACLE/CONTRE-REMONTADA via `ComputeDominanceFlag` uniquement pour les modes Slayer (`game_variant_name LIKE '%slayer%'`). Constante `MedalSteaktacularID = 1169390319` ajoutée dans `analysis/comeback.go`.
+
+2. **§3 BCP-47 medals** — `resolveMedalLabels` mise à jour avec la chaîne complète : `medal_translations (fr-FR)` → `medal_definitions.name_fr` → `medal_translations (en-US)` → `medal_definitions.name_en`. Miroir exact de `resolve_medal_name()` Python. Utilise des LEFT JOINs dans une seule requête.
+
+3. **§11 Weapon fusion** — `Q16WeaponKills` et `Q26kFavoriteWeapon` migrés de `weapon_kills` vers `v_weapon_kills` + `effective_weapon_id`. Les sentinelles (0, 1, 2 = Grenade/Melee/Vehicle) filtrées partout pour cohérence avec le Python.
+
+**Prochaine étape** : §10 Performance Score (décision user : aligner Go sur Python ou documenter divergence).
+
+## [2026-04-27] impl(citations): Chantier 2 — moteur complet (6 mapping_types + 12 custom)
+
+**Statut** : Complété — `go test ./...` 100 % vert.
+
+**Contexte** : Chantier 2 de `docs/MIGRATION_GAP_PYTHON_TO_GO.md`. L'ancienne implémentation ne couvrait que `mapping_type='medal'`. Le moteur complet couvre tous les types + les 12 fonctions custom Python.
+
+**Décisions techniques** :
+
+1. **CitationFullMapping + CitationContext** (domain/citations.go) : deux nouveaux types agrègent les 11 colonnes de `citation_mappings` et le contexte match complet (medals, stats, awards, events, playlist, outcome, is_firefight).
+
+2. **Stats unifiées** : `CitationContext.Stats` est un `map[string]float64` unifié contenant les colonnes `match_participants` ET les weapon kills préfixés `"weapon_kills:<name_en>"`. Cela permet à `stat`, `pve_stat` et `weapon_stat` d'utiliser le même dispatch.
+
+3. **PVE graceful degradation** : `pve_stat` utilise aussi `Stats` — si la clé est absente (pas de SharedPVE dans PlayerDB), la valeur est 0 implicitement. Pas de branche spéciale.
+
+4. **Composite ignoré par-match** : les citations `composite` ne sont pas calculées par match (agrégation uniquement), skip silencieux dans `dispatchFull`.
+
+5. **12 fonctions custom** (citations_custom.go) : port fidèle de `src/analysis/citations/custom_rules.py`. `computeAnnexionForcee` utilise le walk d'events (streak mode/reset sur death joueur) avec fallback `awards["zone_captured"] / 3`.
+
+6. **Sync BackfillMatchCitations** (sync/citations.go) : refactorisé pour charger 5 sources (medals, stats, weapon_kills+labels, awards, highlight_events) et appeler `ComputeFullMatchCitations`. Les weapon kills sont résolus via `weapon_labels.name_en` → clé `"weapon_kills:<name_lower>"`.
+
+7. **Q40** (queries_home_citations.go) : requête complète sur tous les champs de `citation_mappings`.
+
+**Résultats** : 18 nouveaux tests passes (moteur full + custom functions), 0 régression.
+
+**Prochaine étape** : chantiers secondaires (§12 DOMINATION/HUMILIATION sémantique, §10 performance score, §3 medal translations BCP-47).
+
+
+
+## [2026-04-26] impl(match-view): badges d'impact + filtre ghost + extensions canonical
+
+**Statut** : Complété — suite `go test ./...` verte, 0 FAIL.
+
+**Chantier** : portage des badges d'impact Python (Touriste, Boulet, Héros silencieux…) + extensions architecturales multi-titres planifiées en §16bis de `docs/MIGRATION_GAP_PYTHON_TO_GO.md`.
+
+**Décisions techniques** :
+
+1. **Correction Touriste (bug critique)** : l'ancienne implémentation attribuait le badge Touriste au joueur avec `MyKills == 0`. Incorrect : le Touriste Python est le joueur ayant obtenu son **premier kill le plus tardivement** (parmi les joueurs ayant au moins 1 kill). Nouvelle algo : `slowestFirstKiller()` — groupe les events "kill" par `ActorXUID`, prend le `min(TimeMS)` par tueur, retourne le tueur avec le `max` de ces minimums. Badge non attribué si < 2 tueurs distincts.
+
+2. **Passage de `highlight_events` → `ImpactEvent`** : les anciens `ImpactEvent{KillerXUID, VictimXUID}` venaient des killer-victim pairs (Q20). La nouvelle approche utilise les `highlight_events` (Q21) : `event_type == "kill"` → `ActorXUID` = tueur ; `event_type == "death"` → `ActorXUID` = victime. Cela est fidèle à la source Python et permet de calculer les badges `last_casualty` et `first_group_death`.
+
+3. **8 badges implémentés** (vs 3 partiels + 1 bugué auparavant) :
+   - `first_blood` / `first_group_death` (events seuls)
+   - `clutch_finisher` : dernier kill d'un gagnant (events + outcome)
+   - `last_casualty` (Boulet) : dernière mort d'un perdant (events + outcome)
+   - `last_group_kill` (Touriste) : fix algorithme (events seuls)
+   - `top_killer` (Bourreau) : max kills (scoreboard seul)
+   - `silent_hero` (Héros silencieux) : victoire, max assists + min deaths hors top-killer
+   - `false_brother` (Faux-frère) : défaite, max deaths + min assists hors top-killer
+
+4. **Service câblé** : `buildCombatTabFull` reçoit maintenant `scoreboard []domain.ScoreboardRaw` en plus des events. `buildImpactInput` reconstruit `MatchImpactInput{Events, Participants}` à partir des deux sources. `domain.MatchImpactBadge` enrichi avec `PlayerXUID`.
+
+5. **Filtre ghost Q12** : ajout du filtre Python `_SQL_NOT_GHOST` sur `Q12MatchScoreboard` — exclut les joueurs enregistrés avec 0 kills/deaths/assists/score mais champs non-null (fantômes qui n'ont pas joué). Ordre corrigé en `team_id ASC NULLS LAST, rank ASC NULLS LAST`.
+
+6. **Phase A canonical + adapter** : `canonical.MatchParticipant` étendu (KDA, TimePlayed, MeleeKills, GrenadeKills, PowerWeaponKills, AvgLifeSeconds, PerfectKills, TopWeaponID, IsBot — tous pointeurs non-breaking). Types `canonical.HighlightEvent` et `canonical.ImpactBadge` créés. `TitleDataAdapter` étendu avec `LoadMatchScoreboard`, `LoadHighlightEvents`, `LoadFriendsXUIDs`. Capabilities `CapScoreboardExtra` et `CapCitationsEngine` ajoutées.
+
+7. **Stubs non-breaking** : toutes les implémentations concrètes de l'interface (HI, synthetic_title_b, fakeData handlers, stubData resolver_test) ont reçu les 3 nouvelles méthodes stubées `ErrCapabilityNotSupported`.
+
+**Résultats observés** : `go test ./...` — 0 FAIL, toute la suite verte (analysis, service, games, handlers, sync, golden).
+
+**Prochaine étape** : Phase F — moteur de citations complet (dispatch 7 mapping_types + 12 fonctions custom + composite + backfill + parity test vs 5 137 lignes Python).
+
+---
+
+## [2026-04-27] feat(match-view): chantier 1 (scoreboard étendu) + chantier 2 (moteur citations Go)
+
+**Statut** : Complété — `go build ./...` + `go test ./internal/service/... ./internal/sync/...` verts. Seul `TestIsSessionPotentiallyActive_Yesterday` échoue dans `internal/analysis` mais est pré-existant (présent dans HEAD avant ce chantier).
+
+**Périmètre** : portage Python → Go de deux fonctionnalités :
+
+**Chantier 1 — Scoreboard étendu (MVP/LVP, médailles bulk, armes bulk, expected stats)**
+
+1. **Q27/Q28** : deux nouvelles requêtes SQL bulk (`GetMatchBulkMedals`, `GetMatchBulkWeaponKills`) qui chargent les médailles et kills-par-arme de **tous les participants** d'un match en une seule requête.
+2. **`analysis/scoreboard_extremes.go`** : algo `ComputeMVPLVP` — passe unique sur `[]ScoreboardRaw`, retourne MVPXUID/LVPXUID (max/min kills, ≥2 joueurs requis).
+3. **Service câblé** : `buildTeamTabFull` reçoit `bulkMedals`, `bulkWeapons`, calcule les expected stats, MVP/LVP, et peuple `Medals`/`WeaponKills` par joueur dans `MatchScoreboardRow`.
+4. **Migration schema** : `match_citations` corrigée (base schema + migration step `fix_match_citations_schema`).
+
+**Chantier 2 — Moteur citations Go**
+
+1. **`analysis/citations_engine.go`** : `ComputeMatchCitations(medals, mappings)` — index medal_id→count, agrège par NameNorm (composite = somme), retourne `[]CitationMatchDelta` avec valeur > 0.
+2. **`platform/duckdb/citations_repo.go`** étendu : `LoadCitationMedalMappings` (Q39), `LoadMatchCitationsForView` (Q38), `WriteCitationsForMatch` (UPSERT idempotent).
+3. **`port.CitationsRepository`** étendu avec 3 nouvelles méthodes + noop stubs.
+4. **`sync/citations.go`** (nouveau) : `BackfillMatchCitations(ctx, metadataDB, sharedDB, playerDB, xuid, matchIDs)` — charge mappings, charge medals_earned par match, calcule deltas, écrit dans match_citations.
+5. **`MatchViewService` étendu** : `WithCitationsRepo` optionnel + goroutine de chargement + `buildCitationsTab` → peuple `CitationsTab.Commendations` + `CitationsTab.Medals`.
+6. **`registry.go`** : injection automatique de `CitationsRepo` dans `MatchView`.
+
+**Prochaine étape** : commit du chantier + review frontend CitationsTab.
+
+---
+
 ## [2026-04-27] docs(teammates): refonte plan portage selon grille plan-review
 
 **Statut** : Complété.

@@ -33,11 +33,16 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			slog.WarnContext(ctx, "post_sync: resolve before", "slug", slug, "err", err)
 			return nil
 		}
+		xuid := pdb.XUID // capturé pour l'invalidation — indépendant du resolve post-sync
 		before, err := SnapshotPlayerState(ctx, pdb)
 		if err != nil {
 			slog.WarnContext(ctx, "post_sync: snapshot before", "slug", slug, "err", err)
 		}
 		return func(ctx context.Context) {
+			// Invalider le cache home en premier — le sync a réussi, les données DB sont à jour.
+			reg.homeMatchesCache.Invalidate(xuid)
+			slog.InfoContext(ctx, "post_sync: home cache invalidé", "slug", slug, "xuid", xuid)
+
 			pdb2, err := reg.resolve(ctx, slug)
 			if err != nil {
 				slog.WarnContext(ctx, "post_sync: resolve after", "slug", slug, "err", err)

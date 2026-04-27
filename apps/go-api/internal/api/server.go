@@ -371,9 +371,9 @@ func NewRouter(
 
 			// Sprint 11 : Accueil/Home + Battle Pass + Challenges
 			home := handlers.NewHomeHandler(reg.HomeCtxWithAuth, settingsStore)
-			r.Get("/pages/home", home.GetHomePage)
-			r.Get("/battlepass", home.GetBattlePass)
-			r.Get("/challenges", home.GetChallenges)
+			r.With(middleware.CacheMaxAge(30)).Get("/pages/home", home.GetHomePage)
+			r.With(middleware.NoStore).Get("/battlepass", home.GetBattlePass)
+			r.With(middleware.NoStore).Get("/challenges", home.GetChallenges)
 
 			// Season Pass (palmares)
 			seasonPass := handlers.NewSeasonPassHandler(reg.SeasonPassCtxWithAuth)

@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -23,13 +25,15 @@ const (
 
 // HomeService orchestre les données de la page d'accueil.
 type HomeService struct {
-	repo       port.HomeRepository
-	cacheRepo  port.BattlePassCacheRepository
-	provider   *halo.HaloProvider
-	sink       *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
-	socialRepo port.SocialRepository
-	playerSlug string
-	semantic   games.TitleSemanticAdapter // nil → libellés rangs construits via fallbacks (RankName)
+	repo         port.HomeRepository
+	cacheRepo    port.BattlePassCacheRepository
+	provider     *halo.HaloProvider
+	sink         *duckdb.PersistSink // nil → pas de persistance (tests, joueurs sans auth)
+	socialRepo   port.SocialRepository
+	playerSlug   string
+	semantic     games.TitleSemanticAdapter // nil → libellés rangs construits via fallbacks (RankName)
+	matchesCache *HomeMatchesCache          // nil → pas de cache (tests, appels HomeCtx sans auth)
+	xuid         string                     // clé de cache ; vide si matchesCache est nil
 	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
 	// router LoadPlayerStats via la couche canonique. À ce jour, le service
 	// utilise le repo direct car canonical.PlayerStats ne couvre pas encore
@@ -92,85 +96,172 @@ func (s *HomeService) WithDataAdapter(a games.TitleDataAdapter) *HomeService {
 	return s
 }
 
+// WithMatchesCache active le cache TTL process-level pour LoadHomeMatches + LoadHomeSessions.
+// xuid est la clé de cache ; sans lui le cache ne peut pas fonctionner.
+func (s *HomeService) WithMatchesCache(cache *HomeMatchesCache, xuid string) *HomeService {
+	s.matchesCache = cache
+	s.xuid = xuid
+	return s
+}
+
 // SetSessionActive implémente port.SessionNotifier.
 // Conservé pour compatibilité avec le watcher — aucun effet sur le handler HTTP
 // qui appelle toujours le live directement.
 func (s *HomeService) SetSessionActive(_ bool) {
 }
 
-// GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
-// médias récents, résumés de sessions solo et escouade).
-func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
-	matches, err := s.repo.LoadHomeMatches(ctx)
-	if err != nil {
-		return nil, err
-	}
+// homePageData regroupe toutes les données brutes chargées en parallèle par fetchHomePageData.
+type homePageData struct {
+	matches        []domain.HomeMatchRow
+	spartanIdent   *domain.HomeSpartanIdentityRow
+	totalMatches   int
+	sessions       []domain.HomeSessionRow
+	media          []domain.HomeMediaRow
+	playlistRanks  []domain.HomePlaylistRank
+	favoriteIDs    map[string]bool
+	favWeaponName  string
+	favWeaponKills int
+}
 
-	spartanIdentity, err := s.repo.LoadSpartanIdentity(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "home: LoadSpartanIdentity failed", "err", err)
-		spartanIdentity = nil
-	}
-
-	totalMatches, err := s.repo.CountPlayerMatches(ctx)
-	if err != nil {
-		// Fallback sur len(matches) si la query échoue.
-		totalMatches = len(matches)
-	}
-
-	sessions, err := s.repo.LoadHomeSessions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	media, err := s.repo.LoadRecentMedia(ctx, 4)
-	if err != nil {
-		// Médias non critiques — on continue sans eux.
-		media = nil
-	}
-
-	playlistRanks, err := s.repo.LoadRecentPlaylistRanks(ctx, locale)
-	if err != nil {
-		slog.WarnContext(ctx, "home: LoadRecentPlaylistRanks failed", "err", err)
-		playlistRanks = nil
-	}
-	hasRankedHistory, hasUnrankedHistory := inferHomeSkillHistory(matches)
-
-	// Charger les favoris si le social repo est disponible (dégradation silencieuse sinon).
-	var favoriteIDs map[string]bool
-	if s.socialRepo != nil && s.playerSlug != "" {
-		if ids, err := s.socialRepo.GetFavoriteMatchIDs(ctx, s.playerSlug); err == nil {
-			favoriteIDs = ids
-		} else {
-			slog.WarnContext(ctx, "home: GetFavoriteMatchIDs failed", "err", err)
+// fetchMatchesAndSessions charge matches + sessions depuis le cache TTL ou le repo.
+// Retourne également un booléen indiquant si les données viennent du cache.
+func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
+	matches []domain.HomeMatchRow, sessions []domain.HomeSessionRow, fromCache bool, err error,
+) {
+	if s.matchesCache != nil && s.xuid != "" {
+		if m, sess, hit := s.matchesCache.Get(s.xuid); hit {
+			slog.DebugContext(ctx, "home_cache: hit", "xuid", s.xuid, "matches", len(m))
+			return m, sess, true, nil
 		}
 	}
 
-	hero := analysis.BuildHeroCard(matches, gamertag, totalMatches)
-
-	// Arme favorite — dégradation silencieuse si la table weapon_kills est absente.
-	if wName, wKills, wErr := s.repo.LoadFavoriteWeapon(ctx, locale); wErr == nil && wName != "" {
-		hero.KPIs.FavoriteWeaponName = wName
-		hero.KPIs.FavoriteWeaponKills = wKills
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var e error
+		matches, e = s.repo.LoadHomeMatches(gctx)
+		return e
+	})
+	g.Go(func() error {
+		var e error
+		sessions, e = s.repo.LoadHomeSessions(gctx)
+		return e
+	})
+	if err = g.Wait(); err != nil {
+		return nil, nil, false, err
 	}
 
-	highlights := analysis.BuildHighlights(matches)
-	recentMatches := analysis.BuildRecentMatchesWithFavoritesForLocale(matches, len(matches), favoriteIDs, locale)
-	favoriteMatches := buildFavoriteMatchList(matches, favoriteIDs, locale)
+	if s.matchesCache != nil && s.xuid != "" {
+		s.matchesCache.Set(s.xuid, matches, sessions)
+	}
+	slog.DebugContext(ctx, "home_cache: miss — données rechargées", "xuid", s.xuid, "matches", len(matches))
+	return matches, sessions, false, nil
+}
 
-	// Enrichissement médailles : batch sur tous les match_id récents + favoris.
-	enrichMatchesWithMedals(ctx, s.repo, recentMatches)
-	enrichMatchesWithMedals(ctx, s.repo, favoriteMatches)
+// fetchHomePageData charge toutes les données de la page d'accueil en parallèle.
+// Les erreurs non-critiques sont absorbées (dégradation silencieuse).
+func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (homePageData, error) {
+	var d homePageData
 
-	// Enrichissement citations : batch sur les mêmes lots.
-	enrichMatchesWithCitations(ctx, s.repo, recentMatches)
-	enrichMatchesWithCitations(ctx, s.repo, favoriteMatches)
+	// Groupe 1 : matches+sessions (cache TTL) en parallèle avec les autres appels légers.
+	var cacheHit bool
+	g, gctx := errgroup.WithContext(ctx)
 
-	recentMedia := analysis.BuildRecentMedia(media, 4)
-	soloSession := analysis.BuildSessionSummary(matches, sessions, false)
-	squadSession := analysis.BuildSessionSummary(matches, sessions, true)
-	soloSessions := analysis.BuildSessionSummaries(matches, sessions, false, 20)
-	squadSessions := analysis.BuildSessionSummaries(matches, sessions, true, 20)
+	g.Go(func() error {
+		var err error
+		d.matches, d.sessions, cacheHit, err = s.fetchMatchesAndSessions(gctx)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		d.spartanIdent, err = s.repo.LoadSpartanIdentity(gctx)
+		if err != nil {
+			slog.WarnContext(gctx, "home: LoadSpartanIdentity failed", "err", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		// Fallback sur len(matches) après le Wait si la query échoue (totalMatches reste 0).
+		d.totalMatches, _ = s.repo.CountPlayerMatches(gctx)
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		d.media, err = s.repo.LoadRecentMedia(gctx, 4)
+		if err != nil {
+			slog.WarnContext(gctx, "home: LoadRecentMedia failed", "err", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		d.playlistRanks, err = s.repo.LoadRecentPlaylistRanks(gctx, locale)
+		if err != nil {
+			slog.WarnContext(gctx, "home: LoadRecentPlaylistRanks failed", "err", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		if wName, wKills, err := s.repo.LoadFavoriteWeapon(gctx, locale); err == nil && wName != "" {
+			d.favWeaponName = wName
+			d.favWeaponKills = wKills
+		}
+		return nil
+	})
+	if s.socialRepo != nil && s.playerSlug != "" {
+		slug := s.playerSlug
+		g.Go(func() error {
+			if ids, err := s.socialRepo.GetFavoriteMatchIDs(gctx, slug); err == nil {
+				d.favoriteIDs = ids
+			} else {
+				slog.WarnContext(gctx, "home: GetFavoriteMatchIDs failed", "err", err)
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return homePageData{}, err
+	}
+	if d.totalMatches == 0 {
+		d.totalMatches = len(d.matches)
+	}
+	_ = cacheHit // exploitable pour des métriques futures
+	return d, nil
+}
+
+// GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
+// médias récents, résumés de sessions solo et escouade).
+func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
+	d, err := s.fetchHomePageData(ctx, locale)
+	if err != nil {
+		return nil, err
+	}
+
+	hasRankedHistory, hasUnrankedHistory := inferHomeSkillHistory(d.matches)
+
+	hero := analysis.BuildHeroCard(d.matches, gamertag, d.totalMatches)
+	if d.favWeaponName != "" {
+		hero.KPIs.FavoriteWeaponName = d.favWeaponName
+		hero.KPIs.FavoriteWeaponKills = d.favWeaponKills
+	}
+
+	highlights := analysis.BuildHighlights(d.matches)
+	recentMatches := analysis.BuildRecentMatchesWithFavoritesForLocale(d.matches, len(d.matches), d.favoriteIDs, locale)
+	favoriteMatches := buildFavoriteMatchList(d.matches, d.favoriteIDs, locale)
+
+	// Enrichissement médailles + citations par liste en parallèle.
+	enrichG, _ := errgroup.WithContext(ctx)
+	enrichG.Go(func() error {
+		enrichMatchesWithMedals(ctx, s.repo, recentMatches)
+		enrichMatchesWithCitations(ctx, s.repo, recentMatches)
+		return nil
+	})
+	enrichG.Go(func() error {
+		enrichMatchesWithMedals(ctx, s.repo, favoriteMatches)
+		enrichMatchesWithCitations(ctx, s.repo, favoriteMatches)
+		return nil
+	})
+	_ = enrichG.Wait()
 
 	var rankCatalog *mappings.RankCatalog
 	if s.semantic != nil {
@@ -179,18 +270,18 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 
 	return &domain.HomePageResponse{
 		Hero:                hero,
-		SpartanIdentity:     analysis.BuildSpartanIdentity(spartanIdentity, locale, rankCatalog),
+		SpartanIdentity:     analysis.BuildSpartanIdentity(d.spartanIdent, locale, rankCatalog),
 		Highlights:          highlights,
 		RecentMatches:       recentMatches,
 		FavoriteMatches:     favoriteMatches,
-		RecentMedia:         recentMedia,
-		SoloSession:         soloSession,
-		SquadSession:        squadSession,
-		SoloSessions:        soloSessions,
-		SquadSessions:       squadSessions,
+		RecentMedia:         analysis.BuildRecentMedia(d.media, 4),
+		SoloSession:         analysis.BuildSessionSummary(d.matches, d.sessions, false),
+		SquadSession:        analysis.BuildSessionSummary(d.matches, d.sessions, true),
+		SoloSessions:        analysis.BuildSessionSummaries(d.matches, d.sessions, false, 20),
+		SquadSessions:       analysis.BuildSessionSummaries(d.matches, d.sessions, true, 20),
 		HasRankedHistory:    hasRankedHistory,
 		HasUnrankedHistory:  hasUnrankedHistory,
-		RecentPlaylistRanks: playlistRanks,
+		RecentPlaylistRanks: d.playlistRanks,
 	}, nil
 }
 
