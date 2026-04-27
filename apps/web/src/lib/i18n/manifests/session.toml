@@ -253,6 +253,18 @@ en = "Distribution unavailable"
 fr = "Le comparatif n'a renvoyé aucun donut de résultats pour les sessions choisies."
 en = "Comparison returned no outcomes donut for the selected sessions."
 
+[session.compare.donut.wins]
+fr = "Victoires"
+en = "Wins"
+
+[session.compare.donut.losses]
+fr = "Défaites"
+en = "Losses"
+
+[session.compare.donut.other]
+fr = "Autres"
+en = "Other"
+
 [session.compare.radar_title]
 fr = "Radar de performance"
 en = "Performance radar"

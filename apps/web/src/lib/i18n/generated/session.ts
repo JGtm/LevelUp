@@ -2,6 +2,9 @@
 // Source : apps/web/src/lib/i18n/manifests/session.toml
 
 export const sessionManifest = {
+  "session.compare.donut.losses": { fr: "Défaites", en: "Losses" },
+  "session.compare.donut.other": { fr: "Autres", en: "Other" },
+  "session.compare.donut.wins": { fr: "Victoires", en: "Wins" },
   "session.compare.empty_description": { fr: "Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs.", en: "No exploitable response returned for this page. Check computed sessions and active filters." },
   "session.compare.empty_title": { fr: "Comparaison indisponible", en: "Comparison unavailable" },
   "session.compare.incomplete_description": { fr: "Sélectionne une session A et une session B pour afficher les graphiques et tableaux comparatifs.", en: "Select a session A and a session B to display comparison charts and tables." },

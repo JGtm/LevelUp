@@ -15,6 +15,7 @@ import type { SessionCompareEntry, SessionCompareMetricRow } from '@/lib/api/typ
 import { formatMessage } from '@/lib/i18n/format'
 import { sessionManifest, type SessionManifestKey } from '@/lib/i18n/generated/session'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { SessionOutcomesDonut } from './SessionOutcomesDonut'
 
 function useSessionT() {
   const locale = useAppShellStore((s) => s.locale)
@@ -212,8 +213,28 @@ export function SessionComparePage() {
                     <CardTitle className="text-base">{t('session.compare.outcomes_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4">
-                    {data.outcomes_chart ? (
-                      <PlotlyChart figure={data.outcomes_chart} />
+                    {data.session_a || data.session_b ? (
+                      <SessionOutcomesDonut
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          sessionA: t('session.compare.session_card_title', {
+                            side: 'A',
+                            suffix: data.session_a?.session_label
+                              ? ` — ${data.session_a.session_label}`
+                              : '',
+                          }),
+                          sessionB: t('session.compare.session_card_title', {
+                            side: 'B',
+                            suffix: data.session_b?.session_label
+                              ? ` — ${data.session_b.session_label}`
+                              : '',
+                          }),
+                          wins: t('session.compare.donut.wins'),
+                          losses: t('session.compare.donut.losses'),
+                          other: t('session.compare.donut.other'),
+                        }}
+                      />
                     ) : (
                       <EmptyStateNotice
                         title={t('session.compare.outcomes_empty_title')}
