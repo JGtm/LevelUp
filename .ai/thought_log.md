@@ -20999,3 +20999,57 @@ Logique canonique (4 étapes) :
 - `TestMediaFilters_ModeFilter_ExactNotSubstring` skippé : décision métier sur la sémantique du filtre. À traiter plus tard, validé par user.
 
 **Conclusion** : tous les chunks de Phase 0 côté Go sont posés (analyse pure + canonical + ports + repos). Restent : axe sync (audit `dominance_flag`), axe observabilité (squelette expvar), axe whitelist `playlist_kind` côté handler, et tout le frontend (ECharts wrappers + manifests i18n + ESLint rule + `<CapabilityGap>`). Next chunk : à choisir entre **Phase 0 Frontend** (ChartCard + 2 wrappers de base + manifest framework) ou **Phase 0 Sync audit** (vérifier que `dominance_flag` est peuplé, sinon implémenter).
+
+---
+
+## [2026-04-27] Phase 0 - Chunk 8 — Audit + branchement BackfillDominanceFlags
+
+**Statut** : ✅ Complété
+
+**Tâche** : Vérifier que le sync Go peut peupler `player_match_enrichment.dominance_flag`. Brancher si nécessaire. Risque bloquant Phase 1 : sans flag peuplé, Career top matches, MatchView header dominance, Synthesis top by week sont dégradés.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunk 7).
+
+**Audit — résultat** :
+- `analysis.ComputeDominanceFlag` : ✅ implémenté + testé (5 cas Domination/Humiliation/Remontada/Débâcle/ContreRem + bots exclus + close series no-badge).
+- `sync.BackfillDominanceFlags` (`internal/sync/comeback.go`) : ✅ implémenté avec ordre Python : 1) Steaktacular medal team match → DOMINATION/HUMILIATION, 2) sinon courbe de score depuis kill events (Slayer uniquement) → REMONTADA/DÉBÂCLE/CONTRE_REMONTADA.
+- `writeDominanceFlag` : `INSERT … ON CONFLICT DO UPDATE` → crée la row si absente, met à jour si présente.
+- **Bug critique trouvé** : `BackfillDominanceFlags` est **orpheline** — aucun caller dans le codebase Go. Les drapeaux `scope.ComebackBadges` et `scope.ForceComebackBadges` sont définis mais jamais consommés. `RunBackfill` actuel ne fait QUE de la détection (retourne match_ids), pas le dispatch.
+
+**Fix** : ajout de la méthode `SyncEngine.RunBackfillComebackBadges(ctx, forceAll)` dans `internal/sync/engine.go` qui :
+- Acquiert les leases player + shared (cohérent avec RunBackfill).
+- Sélectionne les match_ids à traiter via `selectMatchesForComebackBadges` :
+  - `forceAll=true` → tous les matchs du joueur dans `shared.match_participants`
+  - `forceAll=false` (défaut) → matchs sans flag (`dominance_flag` nul ou 0)
+- Appelle `BackfillDominanceFlags` avec la liste filtrée.
+- `slog.InfoContext` sur entrée + count traité ; retourne le count.
+
+**Décisions techniques** :
+- **Méthode séparée** plutôt que d'étendre `RunBackfill` (qui fait détection seule). Garde la responsabilité simple : `RunBackfill` = audit, `RunBackfillComebackBadges` = exécution.
+- **Pas de wiring CLI standard pour l'instant** : la méthode est appelable via Go (script d'amorçage, hook post-sync, test). Le wiring `levelup backfill --comeback-badges` reste TODO et dépend de l'achèvement plus large du pipeline backfill Go (orchestrateur qui consomme les `scope.X` flags). Out of scope Phase 0.
+- **Filtrage `dominance_flag IS NULL OR = 0`** : permet de re-traiter les matchs où la migration a inséré la colonne avec valeur par défaut 0 (cas réel à découvrir lors du déploiement).
+
+**Fichiers modifiés / créés** :
+- `apps/go-api/internal/sync/engine.go` : ajout `RunBackfillComebackBadges` + helpers `selectMatchesForComebackBadges`, `loadAllMatchIDsForPlayer`, `loadFlaggedMatchIDs` (~110 lignes).
+- `apps/go-api/internal/sync/comeback_test.go` (nouveau, ~210L) : 7 tests :
+  - `TestBackfillDominanceFlags_DominationFromMedalSteaktacular` (flag 1)
+  - `TestBackfillDominanceFlags_HumiliationFromEnemySteaktacular` (flag 2)
+  - `TestBackfillDominanceFlags_NonSlayerNoFlag` (flag 0)
+  - `TestBackfillDominanceFlags_PersistsToPlayerEnrichment` (création row si absente)
+  - `TestBackfillDominanceFlags_UpdatesExistingRow` (UPDATE si row existe avec flag=0)
+  - `TestBackfillDominanceFlags_BatchMultipleMatches` (3 matchs avec flags différents)
+  - `TestSelectMatchesForComebackBadges_ForceAllReturnsAll` + `_DefaultExcludesAlreadyFlagged`
+- Helper local `ensureDominanceFlagColumn` : ajoute la colonne via `ALTER TABLE … ADD COLUMN IF NOT EXISTS` car `EnsurePlayerSchema` n'inclut pas dominance_flag (la migration `add_dominance_flag_column` n'est pas exposée dans les helpers de tests sync).
+
+**Résultats** :
+- 7 tests OK + race detector clean.
+- `go test ./internal/sync/. ./internal/analysis/... ./internal/games/canonical/. ./internal/port/.` : OK, aucune régression.
+- `go build ./...` : OK.
+- `go vet ./internal/sync/.` : propre.
+- gofmt : propre.
+
+**Dette résiduelle (out of scope Phase 0)** :
+- Wiring CLI : `levelup backfill --comeback-badges` n'invoque pas encore `RunBackfillComebackBadges`. Le pipeline backfill Go (orchestrateur dispatching sur scope.X) est lui-même incomplet : il ne fait que la détection, pas l'exécution. Refonte large reportée.
+- Hook post-sync : à chaque match ingéré par `RunDelta/RunFull`, on pourrait calculer `dominance_flag` immédiatement (au lieu d'attendre un backfill explicite). À ajouter quand on attaque le pipeline sync principal.
+
+**Conclusion** : le risque bloquant Phase 1 est **levé** : la fonction de calcul est correcte, la méthode `RunBackfillComebackBadges` est en place pour la déclencher, les tests prouvent que le `dominance_flag` est correctement persisté en DB. Pour les tests pilotes Phase 1 (Squad/MatchView/Career), il suffira d'appeler `engine.RunBackfillComebackBadges(ctx, true)` une fois sur la DB de test pour peupler tous les flags.

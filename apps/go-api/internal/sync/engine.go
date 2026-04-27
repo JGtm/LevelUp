@@ -137,6 +137,138 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 	return FindMatchesMissingData(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, scope)
 }
 
+// RunBackfillComebackBadges calcule et persiste le dominance_flag pour les
+// matchs du joueur. Selectionne :
+//   - tous les matchs si forceAll=true
+//   - les matchs sans dominance_flag (ou flag=0) sinon
+//
+// Branche la fonction BackfillDominanceFlags (sync/comeback.go) au pipeline.
+// Retourne le nombre de match_ids traites (et l'erreur infra si lease/open
+// echoue).
+//
+// L'ingestion principale (RunDelta/RunFull) ne calcule PAS encore le flag a
+// chaque match : ce backfill explicite est la voie d'entree pour peupler les
+// dominance_flag (cf. PLAN_META_FOUNDATIONS_GO § 6.0.1, prerequis Phase 1
+// pilote Squad/MatchView/Career).
+func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll bool) (int, error) {
+	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillComebackBadges lease player: %w", err)
+	}
+	defer relPlayer()
+
+	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillComebackBadges lease shared: %w", err)
+	}
+	defer relShared()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillComebackBadges OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillComebackBadges OpenSharedDB: %w", err)
+	}
+	defer sharedHandle.Close()
+
+	matchIDs, err := selectMatchesForComebackBadges(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, forceAll)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillComebackBadges select: %w", err)
+	}
+	if len(matchIDs) == 0 {
+		slog.InfoContext(ctx, "comeback-badges: aucun match a traiter",
+			"player", e.gamertag, "force_all", forceAll)
+		return 0, nil
+	}
+
+	slog.InfoContext(ctx, "comeback-badges: backfill en cours",
+		"player", e.gamertag, "match_count", len(matchIDs), "force_all", forceAll)
+	if err := BackfillDominanceFlags(ctx, sharedHandle.SQLDb(), playerHandle.SQLDb(), e.xuid, matchIDs); err != nil {
+		return 0, fmt.Errorf("RunBackfillComebackBadges backfill: %w", err)
+	}
+	return len(matchIDs), nil
+}
+
+// selectMatchesForComebackBadges retourne les match_ids du joueur a traiter
+// pour le backfill dominance_flag.
+//
+// Si forceAll=true : tous les matchs du joueur dans shared.match_participants.
+// Sinon : uniquement les matchs ou player_match_enrichment.dominance_flag est
+// nul ou egal a 0 (cas par defaut "manquant").
+func selectMatchesForComebackBadges(
+	ctx context.Context,
+	playerDB, sharedDB *sql.DB,
+	xuid string,
+	forceAll bool,
+) ([]string, error) {
+	allIDs, err := loadAllMatchIDsForPlayer(ctx, sharedDB, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("load all match_ids: %w", err)
+	}
+	if forceAll {
+		return allIDs, nil
+	}
+	flagged, err := loadFlaggedMatchIDs(ctx, playerDB)
+	if err != nil {
+		return nil, fmt.Errorf("load flagged match_ids: %w", err)
+	}
+	flaggedSet := make(map[string]struct{}, len(flagged))
+	for _, id := range flagged {
+		flaggedSet[id] = struct{}{}
+	}
+	out := make([]string, 0, len(allIDs))
+	for _, id := range allIDs {
+		if _, ok := flaggedSet[id]; !ok {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+
+// loadAllMatchIDsForPlayer retourne tous les match_id du joueur (shared DB).
+func loadAllMatchIDsForPlayer(ctx context.Context, sharedDB *sql.DB, xuid string) ([]string, error) {
+	rows, err := sharedDB.QueryContext(ctx,
+		`SELECT match_id FROM match_participants WHERE xuid = ? ORDER BY match_id`, xuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// loadFlaggedMatchIDs retourne les match_id deja peuples avec un flag
+// non-nul et non-zero (player DB).
+func loadFlaggedMatchIDs(ctx context.Context, playerDB *sql.DB) ([]string, error) {
+	rows, err := playerDB.QueryContext(ctx,
+		`SELECT match_id FROM player_match_enrichment
+		 WHERE dominance_flag IS NOT NULL AND dominance_flag > 0`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
