@@ -21835,3 +21835,70 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - `TimelineMultiPlayer` skipe les rows sans `PerformanceScore` → si la DB de test n'a pas peuplé ce champ, la timeline sera vide même avec des matchs intersectés.
 
 **Conclusion** : backend Squad V2 **complet end-to-end** : du HTTP handler au DTO via 16 builders orchestrés. Le frontend a maintenant un endpoint stable à consommer (S10b prochaine étape). Phase 1 backend = 100 % livré (S1, S1b, S2, S3+S4, S5+S6, S7, S8+S9, S9b, S10, S11).
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S10b — Composition React + tableaux Squad V2
+
+**Statut** : Complété.
+
+**Tâche** : Côté frontend, consommer le payload S11 via une page de démonstration `SquadV2Page`. Définition des types TS miroir, hook TanStack Query, 3 composants tableau/galerie, et composition skeleton qui orchestre les 5 wrappers ECharts (S10) + les 3 nouveaux composants.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S11).
+
+**Décisions techniques** :
+
+### Types TS (`v2/types.ts`)
+- Miroir 1:1 du DTO Go `domain.SquadPageV2Response` + sous-structures (`SquadCharts`, `SquadTables`, `SquadHeader`).
+- Réutilise les types `ChartSeries<T>` / `ChartPointStacked` / `ChartPoint2D` / `ChartPointHeatmap` / `RadarSeriesPayload` exposés par les wrappers (S10) — pas de duplication.
+- `Outcome` typé `'win' | 'loss' | 'tie' | 'dnf'` (mirror canonical).
+- `players: Record<string, unknown>` pour `SquadSharedMatch` — le front n'a pas besoin du PlayerMatchRow complet ici, déclaré opaque.
+
+### Query hook (`v2/queries.ts`)
+- `useSquadV2({ playerSlug, teammates, period })` : encode les query params en CSV + period, queryKey stable, staleTime 5min (cohérent avec `useTeammates` legacy).
+- Pas de mutation : la page V2 est read-only côté config (la sélection des coéquipiers reste dans la layout V1 si on intègre plus tard).
+
+### Composants
+- **`HistoryTable`** (~110 L) : 1 ligne par match × N colonnes joueurs (K/D/A). Outcome coloré via `tokenCssVar('outcome-*')`. Joueur absent du match → cellule "-". Format durée mm:ss.
+- **`WeaponsTable`** (~95 L) : slider min kills cliché, marker grenade/melee, total desc. Filtre client-side — le backend renvoie tout, le slider est UX local.
+- **`MedalsGallery`** (~60 L) : 1 carte par match, médailles groupées par joueur dans l'ordre du squad. Compteur ×N affiché si count > 1.
+
+### Composition (`SquadV2Page.tsx`)
+- Squelette minimaliste : 4 sections (Synergies / Contributions / Radar / Tableaux). Pas d'onglets dans cette V0 — l'organisation finale (avec nav + filters + sticky legend) viendra dans une iteration ultérieure (intégration dans la layout principale).
+- Prop `labels: SquadV2PageLabels` : tous les libellés sont passés par le caller (qui résout l'i18n). Pas de couplage à un store i18n spécifique.
+- États loading / error / empty rendus avant tout chart.
+- Wrappers S10 réutilisés tels quels : `BarStackedChart`, `BarGroupedChart`, `TimeseriesLineChart`, `Heatmap2DChart`, `RadarChart`. Aucun nouveau wrapper créé.
+
+### Lint cleanup
+- 5 wrappers chart (S10) avaient des warnings `react-refresh/only-export-components` car ils exportent à la fois le composant React ET le `buildXxxOption` pur. Fix : `// eslint-disable-next-line` ciblé sur chaque export de fonction (nécessaire pour les tests qui cherchent à tester le builder pur). Justifié par le pattern `pure-builder + thin-React-wrapper`.
+- RadarChart : paramètre `_s` retiré (lint `no-unused-vars`) — remplacé par `() =>`.
+
+### Tests
+- 11 tests Vitest sur les 3 composants (rendu, formatage, états vides, slider interaction, ordre stable). Tous passent.
+- 64 tests Vitest cumulés sur `src/features/squad/v2/` + `src/components/charts/`.
+- Pas de test sur `SquadV2Page` lui-même (e2e nécessiterait un mock TanStack Query — différé Phase 2).
+
+**Fichiers créés** :
+- `apps/web/src/features/squad/v2/types.ts` (~165 L)
+- `apps/web/src/features/squad/v2/queries.ts` (~25 L)
+- `apps/web/src/features/squad/v2/SquadV2Page.tsx` (~165 L)
+- `apps/web/src/features/squad/v2/components/HistoryTable.tsx` + `.test.tsx`
+- `apps/web/src/features/squad/v2/components/WeaponsTable.tsx` + `.test.tsx`
+- `apps/web/src/features/squad/v2/components/MedalsGallery.tsx` + `.test.tsx`
+
+**Fichiers modifiés** (cleanup S10) :
+- 5 wrappers `apps/web/src/components/charts/*.tsx` : ajout `eslint-disable-next-line react-refresh/only-export-components` sur les `buildXxxOption`.
+- `apps/web/src/components/charts/RadarChart.tsx` : `_s` → `()`.
+
+**Résultats** :
+- 64 tests Vitest passent (charts + squad/v2).
+- 0 erreur typecheck sur mes fichiers.
+- 0 erreur/warning lint sur mes fichiers.
+
+**Hors scope (différé)** :
+- **Intégration dans la layout principale** : `SquadV2Page` est livrée comme composant standalone. L'intégration dans le shell (route, nav, filters, sticky legend) demande une coordination avec `SquadLayout` legacy — différée pour éviter le big-bang.
+- **`<FloatingLegend>`** : composant légende sticky avec `IntersectionObserver` (audit § 22). Pas livré dans S10b.
+- **i18n via manifest** : les labels sont passés par le caller. Plus tard, un caller dédié pourra utiliser `formatMessage('squad.v2.history.date')` etc.
+- **Records overlay** sur `<BarStackedChart>` (motif hachuré HS/PK) : nécessite une prop `recordsOverlay` sur le wrapper — différé.
+
+**Conclusion** : Phase 1 Squad V2 = **end-to-end opérationnel** sur les 22 sections de l'audit. Backend = 100 % livré (S1→S11). Frontend = composants opérationnels + page démo (`SquadV2Page` consomme le payload complet). Reste : intégration dans le shell + composition finale UX (différé Phase 2 pour éviter le big-bang).

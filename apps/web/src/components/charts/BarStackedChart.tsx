@@ -92,6 +92,7 @@ interface BuildOpts {
 /**
  * Pure builder — exporté pour tester l'option ECharts sans monter le React tree.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildBarStackedOption(
   series: ChartSeries<ChartPointStacked>[],
   opts: BuildOpts = {},
