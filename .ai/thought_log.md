@@ -20846,3 +20846,38 @@ Logique canonique (4 étapes) :
 - Aucune régression sur les chunks 1-3.
 
 **Conclusion** : contrats interfaces stables. Next chunk : `analysis/narrative` (badges dominance, encounter, participation, impact roles — pure analysis, pas de DB) ou directement chunk 6 (implémentation DuckDB des 2 repos avec cache singleflight + LRU). Préférence : `analysis/narrative` d'abord (encore pure, on évite de toucher DuckDB tant qu'on a du pur à livrer).
+
+---
+
+## [2026-04-27] Phase 0 - Chunk 5 — analysis/narrative (badges + impact roles + radar)
+
+**Statut** : ✅ Complété
+
+**Tâche** : Sous-package `internal/analysis/narrative/` qui résout tous les badges narratifs partagés par MatchView, Squad et Career : DominanceBadge (5 flags), EncounterBadge (AllyPlus + ToughEnemy + Ordinal), ParticipationProfile (radar 6 axes), IdentifyImpactRoles (8 rôles), FirstEvents helper. Pure analysis, 0 dépendance DB. Le plus gros chunk en logique métier de la Phase 0.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunk 4).
+
+**Décisions techniques** :
+- **DominanceBadge** : map flag → {LabelKey, ColorToken}. None et flags inconnus retournent nil. ColorTokens alignés sur les tokens narratifs prévus en méta-plan § 11.2.
+- **EncounterBadge** : 3 kinds (AllyPlus, ToughEnemy, Ordinal). Seuils centralisés (`AllyPlusWinrateThreshold = 0.7`, `ToughEnemyKDThreshold = 1.5`, `MinEncountersForBadge = 3`). Cas particulier ToughEnemy avec KillsDealt=0 : qualifie d'office si DeathsSuffered ≥ MinEncountersForBadge (le joueur ne le tue jamais → preuve robuste si sample ≥ 3).
+- **ParticipationProfile** : 6 axes (Combat/Survival/Support/Score/Objective/Impact), normalisation linéaire 0..100 capée à 100. Seuils par famille de mode (slayer/ctf/strongholds/oddball/custom) calibrés heuristiquement, à affiner Phase 1 pilote. Cas Slayer.Objective=0 → Value reste à 0 (axe neutre dans cette famille). Le mapping award_name → axis est volontairement laissé au consommateur (logique title-specific complexe à valider sur données réelles).
+- **IdentifyImpactRoles** : 8 rôles attribués par match. Architecture en helpers découpés (`collectMatchStats`, `findClutchFinisher`, `findTopKiller`, `findSilentHero`, `findFalseBrother`, etc.) pour respecter règle 80L par fonction. Clutch sur fenêtre temporelle réelle (`ClutchWindowMS = 30s` avant lastKill du match) et restriction à l'équipe gagnante. SilentHero/FalseBrother nécessitent ≥ 2 membres squad sur la même équipe (sinon "moyenne"/"pire" sans sens). Inverted=true sur les rôles négatifs (LastCasualty, FirstGroupDeath, FalseBrother) + LastGroupKill si l'équipe a perdu (baroud d'honneur).
+- **FirstEvents** : helper auxiliaire pour Timeseries first_events_rolling. Type local `firstEventsAcc` (résolution erreur de typage Go avec struct anonyme passé entre fonctions). Paramètre optionnel `matchIDs` qui force une row par match-id (placeholders pour matchs sans event).
+
+**Fichiers créés** :
+- `apps/go-api/internal/analysis/narrative/dominance.go` (~60L)
+- `apps/go-api/internal/analysis/narrative/encounter.go` (~120L)
+- `apps/go-api/internal/analysis/narrative/first_events.go` (~110L)
+- `apps/go-api/internal/analysis/narrative/participation.go` (~130L)
+- `apps/go-api/internal/analysis/narrative/impact_roles.go` (~310L avec 10 helpers découpés)
+- 5 fichiers de tests table-driven correspondants.
+
+**Résultats** :
+- `go test ./internal/analysis/narrative/. -race` → tous tests passent.
+- `go vet ./internal/analysis/narrative/.` → propre.
+- `go build ./...` → OK, aucune régression sur les chunks 1-4.
+- Couverture : **93.8 %** (cible méta-plan ≥ 90 %).
+- Cas couverts : 5 dominance flags + None + unknown, AllyPlus seuil 0.7 + below + nil winrate + too-few-matches, ToughEnemy KD>1.5 + below + KillsDealt=0 special case + too-few, FirstBlood, LastCasualty, FirstGroupDeath, LastGroupKill (winning + losing→Inverted), ClutchFinisher in/out window + winning team check, TopKiller, SilentHero needs 2+ winners, FalseBrother needs 2+ losers, multi-match sorted, empty matchID skipped, FirstEvents avec et sans matchIDs forcing.
+- gofmt-blocked sur le commit initial (alignement de struct), re-formaté.
+
+**Conclusion** : tous les helpers narratifs purs sont en place. Avec les chunks 1-5 livrés, on a tout l'arsenal d'algorithmes purs pour la Phase 0 (axe 1 helpers transverses + axe 3 contrat canonical + axe interfaces port). Next chunk : impl DuckDB des 2 repos (`platform/duckdb/player_matches_repo.go` + `highlight_events_repo.go` + caches singleflight+LRU).
