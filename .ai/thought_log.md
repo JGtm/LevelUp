@@ -20813,3 +20813,36 @@ Logique canonique (4 étapes) :
 **Erreur process** : tentative `git stash` pour vérifier l'état HEAD~1, ce qui viole la règle interdiction stash du projet. Annulé immédiatement via `git stash pop`. Pour vérifier l'état d'un commit antérieur, utiliser `git show <commit>:<file>` ou `git diff <commit> -- <path>` à la place.
 
 **Conclusion** : contrat canonique partagé en place. `PlayerMatchRow` consommable par les chunks suivants (port + repo). Next chunk : `analysis/narrative` (badges dominance, encounter, participation, impact roles — pure analysis, pas de dépendance repo).
+
+---
+
+## [2026-04-27] Phase 0 - Chunk 4 — port interfaces (PlayerMatches + HighlightEvents)
+
+**Statut** : ✅ Complété
+
+**Tâche** : Définir les interfaces `port.PlayerMatchesRepository` et `port.HighlightEventsRepository` consommées par les services et implémentées par `platform/duckdb` au chunk 6. Inclut les structs de filtres avec validation.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunk 3).
+
+**Décisions techniques** :
+- **`PlayerMatchFilters.PlaylistKind`** (alias court `*string`) au lieu de `PlaylistRegex` (ce qui aurait été un risque ReDoS / SQL injection si exposé). La résolution alias→regex se fait côté handler via une whitelist (cf. méta-plan § 5.3.5). Aligné avec ADR 0008 prévue.
+- **`HighlightEventFilters.Validate` rejet "too broad"** : si `MatchIDs` vide ET (`PlayerXUID nil` ou `Since nil`) → `ErrHighlightEventFiltersTooBroad`. Empêche les scans complets accidentels de `shared.highlight_events` (cf. méta-plan § 8 risques). Validation appelée par le service avant le repo + à re-valider côté repo en defense-in-depth.
+- **Flags optionnels en `*pointer`** (HadBotTeammate, IsFirefight, IsRanked, MinTimePlayedSeconds, Period, PlayerXUID, Since) pour distinguer "pas de filtre" (nil) de "filtre = false/0" (`&false`/`&0`).
+- **`InvalidatePlayer` et `InvalidateMatch`** dans les interfaces : appelés par le sync après mise à jour, pour invalider le cache LRU au chunk 6.
+- **2 sentinelles d'erreur** par interface : `ErrXxxFiltersInvalid` (générique) et `ErrHighlightEventFiltersTooBroad` (spécifique). Test `errors.Is` pour validation des chaînes d'erreurs.
+
+**Fichiers créés** :
+- `apps/go-api/internal/port/player_matches.go` : `PlayerMatchFilters` (12 champs) + `Validate()` + `PlayerMatchesRepository` interface (`LoadPlayerMatches`, `InvalidatePlayer`).
+- `apps/go-api/internal/port/highlight_events.go` : `HighlightEventFilters` (6 champs) + `Validate()` + `HighlightEventsRepository` interface (`LoadHighlightEvents`, `InvalidateMatch`). 2 sentinelles d'erreur.
+- `apps/go-api/internal/port/player_matches_test.go` : 7 tests (OK cases, negative limit, negative MinTime, unknown Period, unknown Outcome, nil Period valid).
+- `apps/go-api/internal/port/highlight_events_test.go` : 8 tests (OK cases, too-broad scenarios, negative limit, unknown EventType, empty slice vs nil).
+
+**Résultats** :
+- `go test ./internal/port/.` → tous tests passent.
+- Couverture des `Validate()` : **100 %** sur `player_matches.go:Validate` et `highlight_events.go:Validate`.
+- Couverture globale du package `port` : 17.8 % (basse car le package contient surtout des interfaces non testables directement — les autres méthodes seront couvertes par les tests d'implémentation `platform/duckdb`).
+- `go build ./...` → OK.
+- `gofmt -d` → propre (pas de re-format requis cette fois).
+- Aucune régression sur les chunks 1-3.
+
+**Conclusion** : contrats interfaces stables. Next chunk : `analysis/narrative` (badges dominance, encounter, participation, impact roles — pure analysis, pas de DB) ou directement chunk 6 (implémentation DuckDB des 2 repos avec cache singleflight + LRU). Préférence : `analysis/narrative` d'abord (encore pure, on évite de toucher DuckDB tant qu'on a du pur à livrer).
