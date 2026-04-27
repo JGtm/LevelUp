@@ -21397,3 +21397,37 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - Sections riches du DTO (KPIStrip, ScoreCards, charts synergies, impact, radar...) — chacune dans son chunk dédié S2-S11.
 
 **Conclusion** : socle service V2 en place. Prochain chunk = **S2 — KPIStrip + PlayerScoreCards + Header DTO** (~2h). Plan Squad reste sur la trajectoire 11 chunks / ~27h.
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S2 — Header Squad (KPIStrip + PlayerScoreCard) + KPIStats helper
+
+**Statut** : ✅ Complété (en parallèle d'un agent background sur chunk S1b)
+
+**Tâche** : Compléter `SquadPageV2Response.Header` (KPIs perso + score équipe + cartes individuelles ▲▼=) + livrer composants frontend transverses `<KPIStrip>` et `<PlayerScoreCard>` + démarrer le manifest squad.toml.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S1).
+
+**Décisions techniques** :
+- **`KPIStats` typé dans `domain/squad_v2.go`** réutilisable depuis MatchView/Career au fil des chunks Phase 1+. `analysis.ComputeKPIStats(rows)` : helper pur sur `[]canonical.PlayerMatchRow`. *PerMinute calculé sur TotalPlaySeconds (convention Python). Outcomes inconnus ignorés.
+- **`SquadHeader` rempli en 2 passes** : (1) SoloKPIs depuis rows complets du main, (2) PlayerCards + SquadScore depuis l'intersection (matchs partagés). Cohérent avec Python.
+- **`PlayerScoreCard.Score`** : moyenne `Enrichment.PerformanceScore` non nil + fallback formule linéaire `50 + 10*(KD-1)` clampée. Comparison ▲▼= avec seuil 5 points autour moyenne (calculé en 2e passe).
+- **`SquadScoreCard`** reproduit la logique legacy : base + 3 bonus (winrate>0.6 +5, minKD>1.0 +5, stddev kills <3 +3, clamp 0..100). Grade lettre S/A/B/C/D/F.
+- **`AllTimeKPIs` reste nil pour S2** : tendance ▲▼ vs all-time nécessitera un load supplémentaire, à brancher dans un chunk ultérieur.
+- **`<KPIStrip>` transverse** : 8 cartes max + slot custom + flag wide. Trend via CSS variable (`--narrative-trend-*`).
+- **`<PlayerScoreCard>`** : couleur via CSS variable selon label qualitatif. `isMainPlayer` pour highlight.
+- **Manifest squad.toml démarré** : 20 clés § header. Format ICU MessageFormat (pluralisation `matches_count`).
+
+**Fichiers créés / modifiés** :
+- Backend : `domain/squad_v2.go` (étendu), `analysis/kpi_stats.go` + tests, `service/squad_service_v2.go` (+200L) + tests étendus.
+- Frontend : `components/layout/KPIStrip.tsx` + tests, `features/squad/components/PlayerScoreCard.tsx` + tests, `features/squad/types.ts`, `lib/i18n/manifests/squad.toml`, `lib/i18n/generated/squad.ts` (régénéré).
+
+**Résultats** :
+- Tests Go : 12 nouveaux cas OK (5 KPIStats + 3 Header + régressions S1 préservées). Couverture squad_service_v2 ~95-100%.
+- Tests Vitest : 20 nouveaux cas OK (11 KPIStrip + 9 PlayerScoreCard). 0 régression Phase 0.
+- `go build ./...` OK. gofmt propre.
+- Aucun import plotly.js ni recharts dans les nouveaux composants.
+
+**Parallélisme avec agent background** : un agent général-purpose travaille en parallèle sur le **chunk S1b** (wiring handler HTTP `GET /api/v1/players/{slug}/pages/squad/v2` + adaptateur production `SquadV2LoaderAdapter`). Fichiers disjoints (registry, server, handlers/squad_v2, platform/duckdb/squad_v2_adapter, port/services pour ajout interface SquadV2Service). Commit séparé attendu.
+
+**Conclusion** : Header backend + 2 composants frontend + manifest header en place. Prochain chunk = **S3 — Synergies par carte** (lollipop, bullet, perf vs hist, heatmap player×map). Premier gros chunk de wrappers ECharts spécialisés.
