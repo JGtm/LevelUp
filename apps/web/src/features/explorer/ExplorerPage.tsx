@@ -1,5 +1,7 @@
 /**
  * ExplorerPage — page Explorer (recherche + filtres).
+ *
+ * Phase 2 P2.F : i18n via `explorerManifest` + `formatMessage`.
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
@@ -14,6 +16,9 @@ import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
 import type { ExplorerMatchFilters } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 type SearchMode = 'matches' | 'player'
 
@@ -22,6 +27,10 @@ export function ExplorerPage() {
   const navigate = useNavigate()
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(explorerManifest, key, locale, values)
+  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
 
   const [mode, setMode] = useState<SearchMode>('matches')
   const [targetGamertag, setTargetGamertag] = useState('')
@@ -73,14 +82,14 @@ export function ExplorerPage() {
             size="sm"
             onClick={() => setMode('matches')}
           >
-            Matchs
+            {t('explorer.mode.matches')}
           </Button>
           <Button
             variant={mode === 'player' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setMode('player')}
           >
-            Joueur
+            {t('explorer.mode.player')}
           </Button>
         </div>
 
@@ -93,8 +102,8 @@ export function ExplorerPage() {
               <Card>
                 <CardContent className="py-4">
                   <EmptyStateNotice
-                    title="Aucun joueur sélectionné"
-                    description="Recherche un gamertag pour afficher les matchs communs et le bilan face à ce joueur."
+                    title={t('explorer.player.no_selection_title')}
+                    description={t('explorer.player.no_selection_description')}
                   />
                 </CardContent>
               </Card>
@@ -102,7 +111,7 @@ export function ExplorerPage() {
 
             {targetGamertag && playerQuery.isLoading && (
               <div className="flex justify-center py-8">
-                <Spinner label="Recherche en cours…" />
+                <Spinner label={t('explorer.player.searching')} />
               </div>
             )}
 
@@ -110,8 +119,8 @@ export function ExplorerPage() {
               <Card>
                 <CardContent className="py-4">
                   <EmptyStateNotice
-                    title="Recherche indisponible"
-                    description="Le backend n'a pas pu renvoyer les informations de ce joueur. Réessaie avec un autre gamertag ou relance la requête."
+                    title={t('explorer.player.error_title')}
+                    description={t('explorer.player.error_description')}
                   />
                 </CardContent>
               </Card>
@@ -121,8 +130,8 @@ export function ExplorerPage() {
               <Card>
                 <CardContent className="py-4">
                   <EmptyStateNotice
-                    title="Aucun résultat joueur"
-                    description="La recherche n'a renvoyé aucune charge utile exploitable pour ce gamertag."
+                    title={t('explorer.player.empty_title')}
+                    description={t('explorer.player.empty_description')}
                   />
                 </CardContent>
               </Card>
@@ -133,35 +142,33 @@ export function ExplorerPage() {
                 <CardContent className="py-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-foreground">{playerQuery.data.target.gamertag || targetGamertag}</p>
-                    {/* C4.1 : CTA Comparer avec prefetch onMouseEnter */}
                     <Button
                       size="sm"
                       variant="outline"
                       onMouseEnter={() => prefetchCompare(playerQuery.data.target.gamertag || targetGamertag)}
                       onClick={() => setCompareOpen(true)}
                     >
-                      Face-à-face
+                      {t('explorer.player.head_to_head')}
                     </Button>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
-                      <p className="text-xs text-muted-foreground">Matchs ensemble</p>
+                      <p className="text-xs text-muted-foreground">{t('explorer.player.matches_together')}</p>
                       <p className="font-bold text-primary">{playerQuery.data.summary.matches_together}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Victoires</p>
+                      <p className="text-xs text-muted-foreground">{t('explorer.player.wins_together')}</p>
                       <p className="font-bold text-success">{playerQuery.data.summary.wins_together}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Défaites</p>
+                      <p className="text-xs text-muted-foreground">{t('explorer.player.losses_together')}</p>
                       <p className="font-bold text-destructive">{playerQuery.data.summary.losses_together}</p>
                     </div>
                   </div>
 
-                  {/* Matchs communs */}
                   <div className="mt-4">
                     <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Matchs communs récents
+                      {t('explorer.player.recent_common_matches')}
                     </p>
                     {playerQuery.data.common_matches.length > 0 ? (
                       <div className="space-y-1">
@@ -188,8 +195,8 @@ export function ExplorerPage() {
                       </div>
                     ) : (
                       <EmptyStateNotice
-                        title="Aucun match commun récent"
-                        description="Ce joueur n'a aucun match commun visible avec le scope actuel."
+                        title={t('explorer.player.no_common_matches_title')}
+                        description={t('explorer.player.no_common_matches_description')}
                       />
                     )}
                   </div>
@@ -207,7 +214,7 @@ export function ExplorerPage() {
               <CardContent className="py-3">
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Date</label>
+                    <label className="block text-xs text-muted-foreground mb-1">{t('explorer.filters.date')}</label>
                     <input
                       type="date"
                       value={dateFilter}
@@ -216,52 +223,52 @@ export function ExplorerPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Contexte</label>
+                    <label className="block text-xs text-muted-foreground mb-1">{t('explorer.filters.context')}</label>
                     <select
                       value={squadScope}
                       onChange={(e) => setSquadScope(e.target.value as '' | 'all' | 'solo' | 'squad')}
                       className="w-full rounded border border-input px-2 py-1 text-sm"
                     >
-                      <option value="">Tous</option>
-                      <option value="solo">Solo</option>
-                      <option value="squad">Escouade</option>
+                      <option value="">{t('explorer.filters.context_all')}</option>
+                      <option value="solo">{t('explorer.filters.context_solo')}</option>
+                      <option value="squad">{t('explorer.filters.context_squad')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Type d'expérience</label>
+                    <label className="block text-xs text-muted-foreground mb-1">{t('explorer.filters.experience_type')}</label>
                     <input
                       type="text"
-                      placeholder="PvP, PvE…"
+                      placeholder={t('explorer.filters.experience_placeholder')}
                       value={expType}
                       onChange={(e) => setExpType(e.target.value)}
                       className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Playlist</label>
+                    <label className="block text-xs text-muted-foreground mb-1">{t('explorer.filters.playlist')}</label>
                     <input
                       type="text"
-                      placeholder="Filtrer playlist…"
+                      placeholder={t('explorer.filters.playlist_placeholder')}
                       value={playlistFilter}
                       onChange={(e) => setPlaylistFilter(e.target.value)}
                       className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Mode</label>
+                    <label className="block text-xs text-muted-foreground mb-1">{t('explorer.filters.mode')}</label>
                     <input
                       type="text"
-                      placeholder="Filtrer mode…"
+                      placeholder={t('explorer.filters.mode_placeholder')}
                       value={modeFilter}
                       onChange={(e) => setModeFilter(e.target.value)}
                       className="w-full rounded border border-input px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Carte</label>
+                    <label className="block text-xs text-muted-foreground mb-1">{t('explorer.filters.map')}</label>
                     <input
                       type="text"
-                      placeholder="Filtrer carte…"
+                      placeholder={t('explorer.filters.map_placeholder')}
                       value={mapFilter}
                       onChange={(e) => setMapFilter(e.target.value)}
                       className="w-full rounded border border-input px-2 py-1 text-sm"
@@ -274,7 +281,7 @@ export function ExplorerPage() {
                       className="text-xs text-primary hover:underline"
                       onClick={() => { setDateFilter(''); setSquadScope(''); setExpType(''); setPlaylistFilter(''); setModeFilter(''); setMapFilter('') }}
                     >
-                      Réinitialiser les filtres
+                      {t('explorer.filters.reset')}
                     </button>
                   </div>
                 )}
@@ -285,29 +292,29 @@ export function ExplorerPage() {
             <div className="space-y-2">
             {matchesQuery.isLoading ? (
               <div className="flex justify-center py-16">
-                <Spinner label="Chargement des matchs…" />
+                <Spinner label={t('explorer.matches.loading')} />
               </div>
             ) : matchesQuery.isError ? (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
-                <p className="text-destructive">Impossible de charger les matchs.</p>
+                <p className="text-destructive">{t('explorer.matches.error')}</p>
                 <button onClick={() => matchesQuery.refetch()} className="mt-2 text-sm text-primary underline">
-                  Réessayer
+                  {t('explorer.matches.retry')}
                 </button>
               </div>
             ) : matchesQuery.data ? (
               <>
                 <p className="text-sm text-muted-foreground">
-                  {matchesQuery.data.summary?.total_matches?.toLocaleString('fr-FR') ?? '?'} matchs trouvés
+                  {t('explorer.matches.count_label', { n: matchesQuery.data.summary?.total_matches ?? 0 })}
                 </p>
                 <div className="overflow-x-auto rounded-lg border border-border bg-background">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted text-xs font-medium text-muted-foreground">
-                        <th className="px-4 py-2.5 text-left">Date</th>
-                        <th className="px-4 py-2.5 text-left">Carte / Mode</th>
-                        <th className="px-4 py-2.5 text-left">Résultat</th>
-                        <th className="px-4 py-2.5 text-left">Score</th>
-                        <th className="px-4 py-2.5 text-left">Type</th>
+                        <th className="px-4 py-2.5 text-left">{t('explorer.matches.col_date')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('explorer.matches.col_map_mode')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('explorer.matches.col_outcome')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('explorer.matches.col_score')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('explorer.matches.col_type')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -318,7 +325,7 @@ export function ExplorerPage() {
                           onClick={() => goToMatch(row.match_id)}
                         >
                           <td className="px-4 py-2 text-muted-foreground">
-                            {new Date(row.start_time).toLocaleDateString('fr-FR')}
+                            {new Date(row.start_time).toLocaleDateString(numberLocale)}
                           </td>
                           <td className="px-4 py-2">
                             <span className="font-medium text-foreground">{row.map_ui}</span>
@@ -341,7 +348,7 @@ export function ExplorerPage() {
                       {matchesQuery.data.table.items.length === 0 && (
                         <tr>
                           <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                            Aucun match trouvé.
+                            {t('explorer.matches.empty_row')}
                           </td>
                         </tr>
                       )}
@@ -353,8 +360,8 @@ export function ExplorerPage() {
               <Card>
                 <CardContent className="py-4">
                   <EmptyStateNotice
-                    title="Résultats indisponibles"
-                    description="La requête n'a renvoyé aucun tableau de matchs exploitable pour ce scope."
+                    title={t('explorer.matches.empty_title')}
+                    description={t('explorer.matches.empty_description')}
                   />
                 </CardContent>
               </Card>
@@ -364,7 +371,6 @@ export function ExplorerPage() {
         )}
       </div>
 
-      {/* C4.1 : CompareDrawer déclenché depuis la card résultats joueur */}
       <CompareDrawer
         playerSlug={playerSlug}
         open={compareOpen}

@@ -1,0 +1,183 @@
+# Explorer i18n manifest — strings de la page Explorer.
+#
+# Format ICU MessageFormat. Regenerer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Phase 2 meta-plan § 6.2.1 — chunk P2.F. Page Explorer (recherche +
+# filtres cascade matchs / face-a-face joueur).
+
+# ─── Tabs mode ─────────────────────────────────────────────────────────────
+
+[explorer.mode.matches]
+fr = "Matchs"
+en = "Matches"
+
+[explorer.mode.player]
+fr = "Joueur"
+en = "Player"
+
+# ─── Mode Joueur ───────────────────────────────────────────────────────────
+
+[explorer.player.no_selection_title]
+fr = "Aucun joueur sélectionné"
+en = "No player selected"
+
+[explorer.player.no_selection_description]
+fr = "Recherche un gamertag pour afficher les matchs communs et le bilan face à ce joueur."
+en = "Search a gamertag to view shared matches and head-to-head record."
+
+[explorer.player.searching]
+fr = "Recherche en cours…"
+en = "Searching…"
+
+[explorer.player.error_title]
+fr = "Recherche indisponible"
+en = "Search unavailable"
+
+[explorer.player.error_description]
+fr = "Le backend n'a pas pu renvoyer les informations de ce joueur. Réessaie avec un autre gamertag ou relance la requête."
+en = "Backend could not return information for this player. Try another gamertag or retry."
+
+[explorer.player.empty_title]
+fr = "Aucun résultat joueur"
+en = "No player result"
+
+[explorer.player.empty_description]
+fr = "La recherche n'a renvoyé aucune charge utile exploitable pour ce gamertag."
+en = "Search returned no exploitable payload for this gamertag."
+
+[explorer.player.head_to_head]
+fr = "Face-à-face"
+en = "Head-to-head"
+
+[explorer.player.matches_together]
+fr = "Matchs ensemble"
+en = "Matches together"
+
+[explorer.player.wins_together]
+fr = "Victoires"
+en = "Wins"
+
+[explorer.player.losses_together]
+fr = "Défaites"
+en = "Losses"
+
+[explorer.player.recent_common_matches]
+fr = "Matchs communs récents"
+en = "Recent shared matches"
+
+[explorer.player.no_common_matches_title]
+fr = "Aucun match commun récent"
+en = "No recent shared match"
+
+[explorer.player.no_common_matches_description]
+fr = "Ce joueur n'a aucun match commun visible avec le scope actuel."
+en = "This player has no visible shared match with the current scope."
+
+# ─── Mode Matchs - Filtres ─────────────────────────────────────────────────
+
+[explorer.filters.date]
+fr = "Date"
+en = "Date"
+
+[explorer.filters.context]
+fr = "Contexte"
+en = "Context"
+
+[explorer.filters.context_all]
+fr = "Tous"
+en = "All"
+
+[explorer.filters.context_solo]
+fr = "Solo"
+en = "Solo"
+
+[explorer.filters.context_squad]
+fr = "Escouade"
+en = "Squad"
+
+[explorer.filters.experience_type]
+fr = "Type d'expérience"
+en = "Experience type"
+
+[explorer.filters.experience_placeholder]
+fr = "PvP, PvE…"
+en = "PvP, PvE…"
+
+[explorer.filters.playlist]
+fr = "Playlist"
+en = "Playlist"
+
+[explorer.filters.playlist_placeholder]
+fr = "Filtrer playlist…"
+en = "Filter playlist…"
+
+[explorer.filters.mode]
+fr = "Mode"
+en = "Mode"
+
+[explorer.filters.mode_placeholder]
+fr = "Filtrer mode…"
+en = "Filter mode…"
+
+[explorer.filters.map]
+fr = "Carte"
+en = "Map"
+
+[explorer.filters.map_placeholder]
+fr = "Filtrer carte…"
+en = "Filter map…"
+
+[explorer.filters.reset]
+fr = "Réinitialiser les filtres"
+en = "Reset filters"
+
+# ─── Mode Matchs - Résultats ───────────────────────────────────────────────
+
+[explorer.matches.loading]
+fr = "Chargement des matchs…"
+en = "Loading matches…"
+
+[explorer.matches.error]
+fr = "Impossible de charger les matchs."
+en = "Failed to load matches."
+
+[explorer.matches.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[explorer.matches.count_label]
+fr = "{n, plural, one {# match trouvé} other {# matchs trouvés}}"
+en = "{n, plural, one {# match found} other {# matches found}}"
+
+[explorer.matches.col_date]
+fr = "Date"
+en = "Date"
+
+[explorer.matches.col_map_mode]
+fr = "Carte / Mode"
+en = "Map / Mode"
+
+[explorer.matches.col_outcome]
+fr = "Résultat"
+en = "Outcome"
+
+[explorer.matches.col_score]
+fr = "Score"
+en = "Score"
+
+[explorer.matches.col_type]
+fr = "Type"
+en = "Type"
+
+[explorer.matches.empty_row]
+fr = "Aucun match trouvé."
+en = "No match found."
+
+[explorer.matches.empty_title]
+fr = "Résultats indisponibles"
+en = "Results unavailable"
+
+[explorer.matches.empty_description]
+fr = "La requête n'a renvoyé aucun tableau de matchs exploitable pour ce scope."
+en = "Query returned no exploitable match table for this scope."

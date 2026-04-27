@@ -1,0 +1,198 @@
+# Home i18n manifest — strings de la page Accueil (Mission Control).
+#
+# Format ICU MessageFormat. Regenerer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Phase 2 meta-plan § 6.2.1 — chunk P2.F. Couvre les strings hardcodees
+# de HomePage.tsx qui ne sont PAS deja gerees par les modules
+# `kpi.i18n.ts`, `highlights.i18n.ts`, `spartanIdentity.i18n.ts`,
+# `fallback.i18n.ts`. Migration progressive : ces modules legacy seront
+# absorbes en Phase 3.
+
+# ─── États globaux page ────────────────────────────────────────────────────
+
+[home.empty.error_title]
+fr = "Accueil indisponible"
+en = "Home unavailable"
+
+[home.empty.error_description]
+fr = "La page d'accueil n'a pas pu être chargée pour ce joueur. Vérifie la session ou relance la requête."
+en = "Home page could not be loaded for this player. Check session or retry."
+
+[home.empty.no_data_title]
+fr = "Accueil vide"
+en = "Empty home"
+
+[home.empty.no_data_description]
+fr = "Aucune donnée d'accueil n'a été renvoyée pour ce joueur. Vérifie le bootstrap ou les données locales avant de continuer."
+en = "No home data returned for this player. Check bootstrap or local data before continuing."
+
+[home.errors.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[home.errors.reload]
+fr = "Relancer"
+en = "Reload"
+
+# ─── Section Identité Spartan ─────────────────────────────────────────────
+
+[home.identity.unavailable]
+fr = "Identité Spartan indisponible"
+en = "Spartan identity unavailable"
+
+# ─── Section Battle Pass + Défis ──────────────────────────────────────────
+
+[home.challenges.title]
+fr = "Défis actifs"
+en = "Active challenges"
+
+[home.challenges.completed_count]
+fr = "{n} / {total} complétés"
+en = "{n} / {total} completed"
+
+[home.challenges.loading]
+fr = "Chargement des défis…"
+en = "Loading challenges…"
+
+[home.challenges.empty_title]
+fr = "Aucun défi actif"
+en = "No active challenge"
+
+[home.challenges.empty_description]
+fr = "Tous les défis visibles sont terminés ou aucun défi détaillé n'est disponible pour le moment."
+en = "All visible challenges are complete or no detailed challenge is available right now."
+
+[home.challenges.xp_available]
+fr = "{xp} XP disponibles"
+en = "{xp} XP available"
+
+[home.challenges.unavailable_title]
+fr = "Défis indisponibles"
+en = "Challenges unavailable"
+
+[home.challenges.unavailable_error]
+fr = "Les défis actifs n'ont pas pu être chargés pour le moment."
+en = "Active challenges could not be loaded right now."
+
+[home.challenges.unavailable_no_data]
+fr = "Aucune donnée de défis n'est disponible pour le moment."
+en = "No challenge data is available right now."
+
+# ─── Section Sessions récentes ────────────────────────────────────────────
+
+[home.sessions.title]
+fr = "Sessions récentes"
+en = "Recent sessions"
+
+[home.sessions.solo]
+fr = "Solo"
+en = "Solo"
+
+[home.sessions.squad]
+fr = "Escouade"
+en = "Squad"
+
+[home.sessions.team_label]
+fr = "Équipe"
+en = "Team"
+
+[home.sessions.player_label]
+fr = "Perso"
+en = "Self"
+
+[home.sessions.kda_label]
+fr = "FDA"
+en = "K/D/A"
+
+[home.sessions.match_count]
+fr = "{n, plural, one {# partie} other {# parties}}"
+en = "{n, plural, one {# match} other {# matches}}"
+
+[home.sessions.wins_count]
+fr = "{n, plural, one {# Victoire} other {# Victoires}}"
+en = "{n, plural, one {# Win} other {# Wins}}"
+
+[home.sessions.losses_count]
+fr = "{n, plural, one {# Défaite} other {# Defeats}}"
+en = "{n, plural, one {# Defeat} other {# Defeats}}"
+
+[home.sessions.draws_count]
+fr = "{n, plural, one {# Égalité} other {# Égalités}}"
+en = "{n, plural, one {# Draw} other {# Draws}}"
+
+[home.sessions.dnfs_count]
+fr = "{n, plural, one {# Non terminé} other {# Non terminés}}"
+en = "{n, plural, one {# Not finished} other {# Not finished}}"
+
+[home.sessions.duration_prefix]
+fr = "Durée de la session"
+en = "Session duration"
+
+[home.sessions.dominant_tooltip]
+fr = "Playlist et mode les plus joués lors de cette session"
+en = "Most played playlist and mode in this session"
+
+[home.sessions.detail_aria]
+fr = "Voir le détail de la session {label}"
+en = "View session details for {label}"
+
+[home.sessions.newer_aria]
+fr = "Session plus récente"
+en = "More recent session"
+
+[home.sessions.older_aria]
+fr = "Session plus ancienne"
+en = "Older session"
+
+[home.sessions.empty_title]
+fr = "Aucune session récente disponible"
+en = "No recent session available"
+
+[home.sessions.empty_description]
+fr = "Aucune session solo ou escouade n'a été calculée pour le scope actuel."
+en = "No solo or squad session computed for the current scope."
+
+# ─── Section Highlights ───────────────────────────────────────────────────
+
+[home.highlights.empty_title]
+fr = "Aucun point saillant disponible"
+en = "No highlight available"
+
+[home.highlights.empty_description]
+fr = "Le backend n'a renvoyé aucun highlight exploitable pour cette période."
+en = "Backend returned no exploitable highlight for this period."
+
+# ─── Section Matchs récents/favoris ───────────────────────────────────────
+
+[home.matches.recent_title]
+fr = "Matchs récents"
+en = "Recent matches"
+
+[home.matches.favorites_title]
+fr = "Matchs favoris"
+en = "Favorite matches"
+
+[home.matches.tab_recent]
+fr = "Récents"
+en = "Recent"
+
+[home.matches.tab_favorites]
+fr = "Favoris"
+en = "Favorites"
+
+[home.matches.recent_empty_title]
+fr = "Aucun match récent disponible"
+en = "No recent match available"
+
+[home.matches.recent_empty_description]
+fr = "Les matchs récents apparaîtront ici après une synchronisation."
+en = "Recent matches will appear here after a sync."
+
+[home.matches.favorites_empty_title]
+fr = "Aucun match favori"
+en = "No favorite match"
+
+[home.matches.favorites_empty_description]
+fr = "Marquez vos meilleurs matchs avec l'icône étoile pour les retrouver ici."
+en = "Mark your best matches with the star icon to find them here."

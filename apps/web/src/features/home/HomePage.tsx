@@ -29,6 +29,8 @@ import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
 import { getHighlightText, resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
 import { getKPIText } from './kpi.i18n'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
 // Grille fine de 20 sous-unités sur lg+. On utilise arbitrary values Tailwind v4
 // pour autoriser un span > 12 (les classes col-span-N s'arrêtent à 12). Les classes
@@ -466,6 +468,8 @@ export function HomePage() {
   const locale = useAppShellStore((s) => s.locale)
   const userTimezone = useAppShellStore((s) => s.userTimezone)
   const { data: fieldMappings } = useFieldMappings()
+  const t = (key: HomeManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(homeManifest, key, locale, values)
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
   const {
     data: seasonPass,
@@ -499,9 +503,9 @@ export function HomePage() {
       <div className="flex min-h-[55vh] items-center justify-center px-6 py-10">
         <div className="mx-auto w-full max-w-lg">
           <EmptyStateCard
-            title="Accueil indisponible"
-            description="La page d'accueil n'a pas pu être chargée pour ce joueur. Vérifie la session ou relance la requête."
-            actionLabel="Réessayer"
+            title={t('home.empty.error_title')}
+            description={t('home.empty.error_description')}
+            actionLabel={t('home.errors.retry')}
             onAction={() => refetch()}
           />
         </div>
@@ -514,9 +518,9 @@ export function HomePage() {
       <div className="flex min-h-[55vh] items-center justify-center px-6 py-10">
         <div className="mx-auto w-full max-w-lg">
           <EmptyStateCard
-            title="Accueil vide"
-            description="Aucune donnée d'accueil n'a été renvoyée pour ce joueur. Vérifie le bootstrap ou les données locales avant de continuer."
-            actionLabel="Relancer"
+            title={t('home.empty.no_data_title')}
+            description={t('home.empty.no_data_description')}
+            actionLabel={t('home.errors.reload')}
             onAction={() => refetch()}
           />
         </div>
@@ -646,7 +650,7 @@ export function HomePage() {
                               {spartanIdentity.spartan_id}
                             </p>
                           ) : (
-                            <p className="mt-2 text-sm text-cyan-100/70">Identité Spartan indisponible</p>
+                            <p className="mt-2 text-sm text-cyan-100/70">{t('home.identity.unavailable')}</p>
                           )}
                         </div>
                       </div>
@@ -896,17 +900,18 @@ export function HomePage() {
 
           <Card data-testid="home-challenges-card" className="flex min-h-[14rem] self-start flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-              <CardTitle className="text-base">Défis actifs</CardTitle>
+              <CardTitle className="text-base">{t('home.challenges.title')}</CardTitle>
               {challengesCompletedLabel && (
                 <p data-testid="home-challenges-completed" className="shrink-0 text-sm text-foreground">
-                  <strong className="text-primary">{challengesCompleted}</strong> / {challengesTotal} complétés
+                  <strong className="text-primary">{challengesCompleted}</strong> / {challengesTotal}{' '}
+                  {locale === 'en' ? 'completed' : 'complétés'}
                 </p>
               )}
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">
               {isSeasonPassLoading && !seasonPass ? (
                 <div className="flex flex-1 items-center justify-center">
-                  <p className="text-sm text-muted-foreground">Chargement des défis…</p>
+                  <p className="text-sm text-muted-foreground">{t('home.challenges.loading')}</p>
                 </div>
               ) : challenges?.available ? (
                 <div className="space-y-3">
@@ -915,29 +920,33 @@ export function HomePage() {
                   ) : (
                     <div className="flex min-h-[8.5rem] items-center justify-center">
                       <EmptyStateNotice
-                        title="Aucun défi actif"
-                        description="Tous les défis visibles sont terminés ou aucun défi détaillé n'est disponible pour le moment."
+                        title={t('home.challenges.empty_title')}
+                        description={t('home.challenges.empty_description')}
                         className="w-full max-w-sm"
                       />
                     </div>
                   )}
                   {challenges.xp_available != null && challenges.xp_available > 0 && (
-                    <p className="text-xs text-muted-foreground">{challenges.xp_available.toLocaleString('fr-FR')} XP disponibles</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('home.challenges.xp_available', {
+                        xp: challenges.xp_available.toLocaleString(numberLocale),
+                      })}
+                    </p>
                   )}
                 </div>
               ) : seasonPassError ? (
                 <div className="flex flex-1 items-center justify-center">
                   <EmptyStateNotice
-                    title="Défis indisponibles"
-                    description="Les défis actifs n'ont pas pu être chargés pour le moment."
+                    title={t('home.challenges.unavailable_title')}
+                    description={t('home.challenges.unavailable_error')}
                     className="w-full max-w-sm"
                   />
                 </div>
               ) : (
                 <div className="flex flex-1 items-center justify-center">
                   <EmptyStateNotice
-                    title="Défis indisponibles"
-                    description="Aucune donnée de défis n'est disponible pour le moment."
+                    title={t('home.challenges.unavailable_title')}
+                    description={t('home.challenges.unavailable_no_data')}
                     className="w-full max-w-sm"
                   />
                 </div>
@@ -955,7 +964,7 @@ export function HomePage() {
           {/* Sessions récentes */}
           <Card>
             <CardHeader className="space-y-0 pb-3">
-              <CardTitle className="text-base">Sessions récentes</CardTitle>
+              <CardTitle className="text-base">{t('home.sessions.title')}</CardTitle>
             </CardHeader>
             <CardContent>
               {soloSessions.length > 0 || squadSessions.length > 0 ? (
@@ -983,8 +992,8 @@ export function HomePage() {
                 </div>
               ) : (
                 <EmptyStateNotice
-                  title="Aucune session récente disponible"
-                  description="Aucune session solo ou escouade n'a été calculée pour le scope actuel."
+                  title={t('home.sessions.empty_title')}
+                  description={t('home.sessions.empty_description')}
                 />
               )}
             </CardContent>
@@ -1019,8 +1028,8 @@ export function HomePage() {
               </div>
             ) : (
               <EmptyStateNotice
-                title="Aucun point saillant disponible"
-                description="Le backend n'a renvoyé aucun highlight exploitable pour cette période."
+                title={t('home.highlights.empty_title')}
+                description={t('home.highlights.empty_description')}
               />
             )}
           </CardContent>
@@ -1053,7 +1062,7 @@ export function HomePage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
-                {matchTab === 'recent' ? 'Matchs récents' : 'Matchs favoris'}
+                {matchTab === 'recent' ? t('home.matches.recent_title') : t('home.matches.favorites_title')}
               </CardTitle>
               <div className="flex items-center gap-1 border-b border-transparent">
                 <Button
@@ -1066,7 +1075,7 @@ export function HomePage() {
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Récents
+                  {t('home.matches.tab_recent')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -1078,7 +1087,7 @@ export function HomePage() {
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Favoris
+                  {t('home.matches.tab_favorites')}
                   {favoriteMatches.length > 0 && (
                     <span className="ml-1.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
                       {favoriteMatches.length}
@@ -1109,8 +1118,8 @@ export function HomePage() {
                 </Carousel>
               ) : (
                 <EmptyStateNotice
-                  title="Aucun match récent disponible"
-                  description="Les matchs récents apparaîtront ici après une synchronisation."
+                  title={t('home.matches.recent_empty_title')}
+                  description={t('home.matches.recent_empty_description')}
                 />
               )
             ) : (
@@ -1133,8 +1142,8 @@ export function HomePage() {
                 </Carousel>
               ) : (
                 <EmptyStateNotice
-                  title="Aucun match favori"
-                  description="Marquez vos meilleurs matchs avec l'icône étoile pour les retrouver ici."
+                  title={t('home.matches.favorites_empty_title')}
+                  description={t('home.matches.favorites_empty_description')}
                 />
               )
             )}
