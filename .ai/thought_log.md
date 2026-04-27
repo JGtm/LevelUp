@@ -1,5 +1,33 @@
 # Thought Log
 
+## [2026-04-27] feat(p2.g-session-palmares): manifests + migration i18n pages WIP
+
+**Statut** : Complété (Session detail+compare full ; Palmares scaffold + Phase 3).
+
+**Décision technique** :
+Phase 2 P2.G du méta-plan. Manifest `session.toml` (83 clés FR/EN) couvrant les 2 pages WIP `SessionDetailPage` (sélecteurs, summary cards, table matchs, compare metrics) et `SessionComparePage` (sélecteurs A/B, charts donut/radar/KD progression, tableaux maps/modes). Hook utilitaire `useSessionT()` collocalisé dans chaque page (locale via `useAppShellStore`) pour partager l'accès au manifest entre composants helper locaux. Migration complète des deux fichiers — strings de table headers, états empty/error, labels boutons.
+
+Manifest `palmares.toml` (9 clés FR/EN) créé en scaffold minimal : tabs + page header + états transverses. Migration complète reportée Phase 3 — `palmares/i18n.ts` (251 lignes, 4 onglets exhaustifs, status enum, sections seasonPass riches) déjà structuré et stable. Pas de duplication redondante côté code.
+
+**Architecture** :
+- `useSessionT()` exporté dans chaque page (pattern auto-suffisant, pas de prop drilling). Préféré à un hook centralisé pour éviter le couplage cross-feature.
+- Interpolation `{side}` + `{suffix}` dans `session.compare.session_card_title` permet un même template pour les variantes "Session A" / "Session B — Label".
+- Plotly `<PlotlyChart>` (donut/radar/KD progression) conservé dans SessionComparePage : migration ECharts différée (3 wrappers manquants : Donut, Radar avec 2 séries, ligne avec compare). Phase 3.
+
+**Résultats** :
+- `vitest run SessionDetailPage.test.tsx` → 5/5 OK (aucune régression).
+- `npm run typecheck | grep session-detail|session-compare` → 0 erreur.
+- 92 nouvelles clés générées (83 session + 9 palmares) dans `apps/web/src/lib/i18n/generated/`.
+
+**Récap Phase 2 P2.A → P2.G** :
+- 11 manifests TOML créés/maintenus (489 clés FR/EN totales)
+- 6 pages migrées Plotly→ECharts (Career charts, Citations distribution, Timeseries cumul/EWMA/score-min/heatmap, MV5)
+- 4 helpers extraits + testés vitest (PeriodFilter 7t, distributionChart 6t, seriesAdapters 9t, MV4)
+- Composants partagés : PeriodFilter, OutcomeSequenceTape (S13)
+- Pages avec i18n.ts legacy préservées (Media, Palmares, Home partiel) — migration Phase 3
+
+**Prochaine étape** : Phase 3 — consolidation i18n.ts → manifests TOML pour Media/Palmares + migration des charts résiduels Plotly (Donut/Radar/Histogram/Scatter/KdaBars/CombatYield) vers wrappers ECharts dédiés.
+
 ## [2026-04-27] feat(p2.f-home-explorer): manifests + migration i18n live pages
 
 **Statut** : Complété (Home minimal + Explorer full ; Media différé Phase 3).

@@ -1,0 +1,51 @@
+# Palmares i18n manifest — strings de la page Palmarès.
+#
+# Format ICU MessageFormat. Regenerer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Phase 2 meta-plan § 6.2.1 — chunk P2.G. Manifest scaffold pour la page
+# Palmarès. La couverture initiale est volontairement minimale : la page
+# possède déjà un module structuré `apps/web/src/features/palmares/i18n.ts`
+# (251 lignes, 4 onglets exhaustifs). Migration complete reportée Phase 3.
+
+# ─── Tabs (4 onglets) ──────────────────────────────────────────────────────
+
+[palmares.tabs.leaderboard]
+fr = "Classements"
+en = "Leaderboards"
+
+[palmares.tabs.relations]
+fr = "Relations"
+en = "Relations"
+
+[palmares.tabs.compare]
+fr = "Comparaison"
+en = "Comparison"
+
+[palmares.tabs.season_pass]
+fr = "Pass saisonnier"
+en = "Season pass"
+
+# ─── Page header ───────────────────────────────────────────────────────────
+
+[palmares.page.title]
+fr = "Palmarès"
+en = "Palmares"
+
+[palmares.page.subtitle]
+fr = "Classements, relations de jeu, passes saisonniers et comparaison joueur à joueur regroupés dans un même hub."
+en = "Leaderboards, gameplay relations, season passes and head-to-head comparison gathered in a single hub."
+
+# ─── États transverses ─────────────────────────────────────────────────────
+
+[palmares.errors.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[palmares.empty.unavailable_title]
+fr = "Palmarès indisponible"
+en = "Palmares unavailable"
+
+[palmares.empty.unavailable_description]
+fr = "Aucune réponse exploitable n'a été renvoyée pour cette page."
+en = "No exploitable response returned for this page."

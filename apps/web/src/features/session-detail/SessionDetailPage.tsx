@@ -15,6 +15,15 @@ import { outcomeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useSessionDetailPage } from './queries'
+import { formatMessage } from '@/lib/i18n/format'
+import { sessionManifest, type SessionManifestKey } from '@/lib/i18n/generated/session'
+import { useAppShellStore } from '@/stores/appShellStore'
+
+function useSessionT() {
+  const locale = useAppShellStore((s) => s.locale)
+  return (key: SessionManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(sessionManifest, key, locale, values)
+}
 
 function SessionSummaryCard({
   title,
@@ -29,6 +38,7 @@ function SessionSummaryCard({
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string, fallback: string): string =>
     fieldMappings?.fields[key]?.label ?? fallback
+  const t = useSessionT()
 
   if (!entry) {
     return (
@@ -38,8 +48,8 @@ function SessionSummaryCard({
         </CardHeader>
         <CardContent>
           <EmptyStateNotice
-            title="Session indisponible"
-            description="La session demandée n'a pas pu être reconstruite avec les filtres actuels."
+            title={t('session.detail.summary_unavailable_title')}
+            description={t('session.detail.summary_unavailable_description')}
           />
         </CardContent>
       </Card>
@@ -58,10 +68,10 @@ function SessionSummaryCard({
         </div>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SessionStat label="Matchs" value={entry.total_matches.toString()} />
-        <SessionStat label="Victoires / Défaites" value={`${entry.wins} / ${entry.losses}`} />
-        <SessionStat label={labelOf('kda', 'KDA')} value={formatNumber(entry.kda, 2)} />
-        <SessionStat label="Score perf." value={formatNumber(entry.performance_score, 1)} />
+        <SessionStat label={t('session.detail.stat_matches')} value={entry.total_matches.toString()} />
+        <SessionStat label={t('session.detail.stat_wins_losses')} value={`${entry.wins} / ${entry.losses}`} />
+        <SessionStat label={labelOf('kda', t('session.detail.stat_kda'))} value={formatNumber(entry.kda, 2)} />
+        <SessionStat label={t('session.detail.stat_perf_score')} value={formatNumber(entry.performance_score, 1)} />
       </CardContent>
     </Card>
   )
@@ -81,6 +91,7 @@ function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) 
   // Si MULTI_TITLE_API_ENABLED=false, le hook retourne undefined et on tombe
   // sur la clé canonique brute (UX dégradée mais lisible).
   const { data: fieldMappings } = useFieldMappings()
+  const t = useSessionT()
   const outcomeLabel = (outcome: number | null) => {
     const key =
       outcome === 2 ? 'win' : outcome === 3 ? 'loss' : outcome === 1 ? 'tie' : outcome === 4 ? 'dnf' : null
@@ -91,8 +102,8 @@ function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) 
   if (matches.length === 0) {
     return (
       <EmptyStateNotice
-        title="Aucun match dans cette session"
-        description="La session sélectionnée ne contient aucun match exploitable avec les filtres actuels."
+        title={t('session.detail.matches_empty_title')}
+        description={t('session.detail.matches_empty_description')}
       />
     )
   }
@@ -102,13 +113,13 @@ function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) 
       <table className="w-full min-w-[760px] text-sm">
         <thead>
           <tr className="border-b border-border text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            <th className="px-3 py-3 font-medium">Heure</th>
-            <th className="px-3 py-3 font-medium">Mode</th>
-            <th className="px-3 py-3 font-medium">Playlist</th>
-            <th className="px-3 py-3 text-right font-medium">K / D / A</th>
-            <th className="px-3 py-3 text-right font-medium">Précision</th>
-            <th className="px-3 py-3 text-right font-medium">Score perf.</th>
-            <th className="px-3 py-3 text-right font-medium">Résultat</th>
+            <th className="px-3 py-3 font-medium">{t('session.detail.col_time')}</th>
+            <th className="px-3 py-3 font-medium">{t('session.detail.col_mode')}</th>
+            <th className="px-3 py-3 font-medium">{t('session.detail.col_playlist')}</th>
+            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_kda')}</th>
+            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_accuracy')}</th>
+            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_perf_score')}</th>
+            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_outcome')}</th>
           </tr>
         </thead>
         <tbody>
@@ -132,6 +143,7 @@ function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) 
 }
 
 function SessionCompareMetrics({ metrics }: { metrics: SessionCompareMetricRow[] }) {
+  const t = useSessionT()
   const summaryKeys = ['kd_ratio', 'win_rate', 'kills_per_match', 'score']
   const summaryRows = summaryKeys
     .map((key) => metrics.find((row) => row.key === key))
@@ -158,10 +170,10 @@ function SessionCompareMetrics({ metrics }: { metrics: SessionCompareMetricRow[]
           <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                <th className="px-3 py-3 font-medium">Métrique</th>
-                <th className="px-3 py-3 text-right font-medium">Session active</th>
-                <th className="px-3 py-3 text-right font-medium">Session comparée</th>
-                <th className="px-3 py-3 text-right font-medium">Delta</th>
+                <th className="px-3 py-3 font-medium">{t('session.detail.compare_col_metric')}</th>
+                <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_session_active')}</th>
+                <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_session_compared')}</th>
+                <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_delta')}</th>
               </tr>
             </thead>
             <tbody>
@@ -178,8 +190,8 @@ function SessionCompareMetrics({ metrics }: { metrics: SessionCompareMetricRow[]
         </div>
       ) : (
         <EmptyStateNotice
-          title="Comparaison indisponible"
-          description="Aucune métrique comparative n'a été calculée pour cette paire de sessions."
+          title={t('session.detail.compare_metrics_empty_title')}
+          description={t('session.detail.compare_metrics_empty_description')}
         />
       )}
     </div>
@@ -191,6 +203,7 @@ export function SessionDetailPage() {
   const { session: initialSession } = useSearch({ strict: false }) as { session?: string }
   const filterContext = useGlobalFilterStore((state) => state.filterContext)
   const filterContextHash = useGlobalFilterStore((state) => state.filterContextHash)
+  const t = useSessionT()
 
   const [sessionLabel, setSessionLabel] = useState(initialSession ?? '')
   const [compareSessionLabel, setCompareSessionLabel] = useState('')
@@ -213,7 +226,7 @@ export function SessionDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label="Chargement de la session…" />
+        <Spinner size="lg" label={t('session.detail.loading')} />
       </div>
     )
   }
@@ -223,9 +236,9 @@ export function SessionDetailPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">Erreur lors du chargement de la session.</p>
+            <p className="font-medium text-destructive">{t('session.detail.load_error')}</p>
             <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-              Réessayer
+              {t('session.errors.retry')}
             </button>
           </CardContent>
         </Card>
@@ -237,9 +250,9 @@ export function SessionDetailPage() {
     return (
       <div className="p-6">
         <EmptyStateCard
-          title="Sessions indisponibles"
-          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
-          actionLabel="Réessayer"
+          title={t('session.detail.empty_title')}
+          description={t('session.detail.empty_description')}
+          actionLabel={t('session.errors.retry')}
           onAction={() => refetch()}
         />
       </div>
@@ -264,7 +277,7 @@ export function SessionDetailPage() {
                 setEnableCompare(true)
               }}
             >
-              Comparer à la session proche
+              {t('session.detail.suggested_compare_button')}
             </Button>
           </div>
         )}
@@ -272,11 +285,11 @@ export function SessionDetailPage() {
           <>
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Sélection</CardTitle>
+                <CardTitle className="text-base">{t('session.detail.selection_card')}</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Session active</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.detail.session_active')}</label>
                   <select
                     className="w-full rounded-md border border-border px-3 py-2 text-sm"
                     value={selectedSessionLabel}
@@ -291,13 +304,13 @@ export function SessionDetailPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Session comparée</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.detail.session_compared')}</label>
                   <select
                     className="w-full rounded-md border border-border px-3 py-2 text-sm"
                     value={selectedCompareSessionLabel}
                     onChange={(event) => setCompareSessionLabel(event.target.value)}
                   >
-                    <option value="">Sélection intelligente</option>
+                    <option value="">{t('session.detail.smart_selection')}</option>
                     {data.available_sessions
                       .filter((session) => session !== selectedSessionLabel)
                       .map((session) => (
@@ -313,7 +326,7 @@ export function SessionDetailPage() {
                     variant={enableCompare ? 'secondary' : 'default'}
                     onClick={() => setEnableCompare((value) => !value)}
                   >
-                    {enableCompare ? 'Masquer comparaison' : 'Activer comparaison'}
+                    {enableCompare ? t('session.detail.compare_hide') : t('session.detail.compare_show')}
                   </Button>
                 </div>
               </CardContent>
@@ -322,7 +335,7 @@ export function SessionDetailPage() {
             {data.suggested_compare ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Suggestion similaire</CardTitle>
+                  <CardTitle className="text-base">{t('session.detail.suggestion_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-1">
@@ -335,24 +348,24 @@ export function SessionDetailPage() {
             ) : null}
 
             <div className={enableCompare && data.compare_session ? 'grid gap-6 xl:grid-cols-2' : 'grid gap-6'}>
-              <SessionSummaryCard title="Session active" entry={data.current_session} tone="primary" />
+              <SessionSummaryCard title={t('session.detail.session_active')} entry={data.current_session} tone="primary" />
               {enableCompare && data.compare_session ? (
-                <SessionSummaryCard title="Session comparée" entry={data.compare_session} tone="compare" />
+                <SessionSummaryCard title={t('session.detail.session_compared')} entry={data.compare_session} tone="compare" />
               ) : null}
             </div>
 
             {enableCompare ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Lecture comparative</CardTitle>
+                  <CardTitle className="text-base">{t('session.detail.compare_view_title')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {data.compare_session ? (
                     <SessionCompareMetrics metrics={data.compare_metrics} />
                   ) : (
                     <EmptyStateNotice
-                      title="Aucune session de comparaison"
-                      description="Sélectionne une session de référence ou réactive la suggestion automatique."
+                      title={t('session.detail.no_compare_title')}
+                      description={t('session.detail.no_compare_description')}
                     />
                   )}
                 </CardContent>
@@ -361,7 +374,7 @@ export function SessionDetailPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Détail des matchs</CardTitle>
+                <CardTitle className="text-base">{t('session.detail.matches_card')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <SessionMatchesTable matches={data.matches} />
@@ -370,8 +383,8 @@ export function SessionDetailPage() {
           </>
         ) : (
           <EmptyStateCard
-            title="Aucune session disponible"
-            description="Aucune session n'a pu être reconstruite avec les filtres actuels."
+            title={t('session.detail.no_session_in_scope_title')}
+            description={t('session.detail.no_session_in_scope_description')}
           />
         )}
       </div>

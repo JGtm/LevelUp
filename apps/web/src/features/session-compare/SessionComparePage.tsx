@@ -12,6 +12,15 @@ import { useSessionComparePage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
 import type { SessionCompareEntry, SessionCompareMetricRow } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { sessionManifest, type SessionManifestKey } from '@/lib/i18n/generated/session'
+import { useAppShellStore } from '@/stores/appShellStore'
+
+function useSessionT() {
+  const locale = useAppShellStore((s) => s.locale)
+  return (key: SessionManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(sessionManifest, key, locale, values)
+}
 
 function SessionCard({
   label,
@@ -24,31 +33,32 @@ function SessionCard({
 }) {
   const color = side === 'A' ? 'text-compare-a' : 'text-compare-b'
   const bg = side === 'A' ? 'bg-compare-a/10 border-compare-a' : 'bg-compare-b/10 border-compare-b'
+  const t = useSessionT()
 
   return (
     <Card className={`border ${bg}`}>
       <CardHeader className="pb-2">
         <CardTitle className={`text-sm ${color}`}>
-          Session {side} {label && `— ${label}`}
+          {t('session.compare.session_card_title', { side, suffix: label ? ` — ${label}` : '' })}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1 text-xs text-foreground">
         {entry ? (
           <>
             <p>
-              <span className="font-medium">Matchs :</span> {entry.total_matches}
+              <span className="font-medium">{t('session.compare.label_matches')}</span> {entry.total_matches}
             </p>
             <p>
-              <span className="font-medium">Victoires :</span> {entry.wins} · Défaites : {entry.losses}
+              <span className="font-medium">{t('session.compare.label_wins')}</span> {entry.wins} · {t('session.compare.label_losses')} {entry.losses}
             </p>
             {entry.kda != null && (
               <p>
-                <span className="font-medium">KDA :</span> {entry.kda.toFixed(2)}
+                <span className="font-medium">{t('session.compare.label_kda')}</span> {entry.kda.toFixed(2)}
               </p>
             )}
             {entry.performance_score != null && (
               <p>
-                <span className="font-medium">Score perf. :</span>{' '}
+                <span className="font-medium">{t('session.compare.label_perf_score')}</span>{' '}
                 {entry.performance_score.toFixed(1)}
               </p>
             )}
@@ -59,7 +69,7 @@ function SessionCard({
             )}
           </>
         ) : (
-          <p className="text-muted-foreground italic">Non sélectionnée</p>
+          <p className="text-muted-foreground italic">{t('session.compare.not_selected')}</p>
         )}
       </CardContent>
     </Card>
@@ -94,6 +104,7 @@ export function SessionComparePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
+  const t = useSessionT()
 
   const [sessionA, setSessionA] = useState('')
   const [sessionB, setSessionB] = useState('')
@@ -113,7 +124,7 @@ export function SessionComparePage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label="Chargement de la comparaison…" />
+        <Spinner size="lg" label={t('session.compare.loading')} />
       </div>
     )
   }
@@ -123,9 +134,9 @@ export function SessionComparePage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">Erreur lors du chargement.</p>
+            <p className="font-medium text-destructive">{t('session.compare.load_error')}</p>
             <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-              Réessayer
+              {t('session.errors.retry')}
             </button>
           </CardContent>
         </Card>
@@ -137,9 +148,9 @@ export function SessionComparePage() {
     return (
       <div className="p-6">
         <EmptyStateCard
-          title="Comparaison indisponible"
-          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
-          actionLabel="Réessayer"
+          title={t('session.compare.empty_title')}
+          description={t('session.compare.empty_description')}
+          actionLabel={t('session.errors.retry')}
           onAction={() => refetch()}
         />
       </div>
@@ -157,13 +168,13 @@ export function SessionComparePage() {
             {/* Sélecteurs A / B */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Session A</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.compare.session_a_label')}</label>
                 <select
                   className="w-full rounded-md border border-border px-3 py-2 text-sm"
                   value={sessionA}
                   onChange={(e) => setSessionA(e.target.value)}
                 >
-                  <option value="">— Sélectionner —</option>
+                  <option value="">{t('session.compare.placeholder_select')}</option>
                   {data.available_sessions.map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -172,13 +183,13 @@ export function SessionComparePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Session B</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.compare.session_b_label')}</label>
                 <select
                   className="w-full rounded-md border border-border px-3 py-2 text-sm"
                   value={sessionB}
                   onChange={(e) => setSessionB(e.target.value)}
                 >
-                  <option value="">— Sélectionner —</option>
+                  <option value="">{t('session.compare.placeholder_select')}</option>
                   {data.available_sessions.map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -198,15 +209,15 @@ export function SessionComparePage() {
               <>
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Répartition des résultats</CardTitle>
+                    <CardTitle className="text-base">{t('session.compare.outcomes_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4">
                     {data.outcomes_chart ? (
                       <PlotlyChart figure={data.outcomes_chart} />
                     ) : (
                       <EmptyStateNotice
-                        title="Répartition indisponible"
-                        description="Le comparatif n'a renvoyé aucun donut de résultats pour les sessions choisies."
+                        title={t('session.compare.outcomes_empty_title')}
+                        description={t('session.compare.outcomes_empty_description')}
                       />
                     )}
                   </CardContent>
@@ -214,15 +225,15 @@ export function SessionComparePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Radar de performance</CardTitle>
+                    <CardTitle className="text-base">{t('session.compare.radar_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4">
                     {data.radar_chart ? (
                       <PlotlyChart figure={data.radar_chart} />
                     ) : (
                       <EmptyStateNotice
-                        title="Radar indisponible"
-                        description="Aucun radar de performance n'a été généré pour cette paire de sessions."
+                        title={t('session.compare.radar_empty_title')}
+                        description={t('session.compare.radar_empty_description')}
                       />
                     )}
                   </CardContent>
@@ -230,7 +241,7 @@ export function SessionComparePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Résumé des écarts</CardTitle>
+                    <CardTitle className="text-base">{t('session.compare.summary_title')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {data.metrics.length > 0 && data.session_a && data.session_b ? (
@@ -252,8 +263,8 @@ export function SessionComparePage() {
                       </div>
                     ) : (
                       <EmptyStateNotice
-                        title="Résumé indisponible"
-                        description="Aucune métrique résumée n'a été calculée pour les sessions sélectionnées."
+                        title={t('session.compare.summary_empty_title')}
+                        description={t('session.compare.summary_empty_description')}
                       />
                     )}
                   </CardContent>
@@ -261,17 +272,17 @@ export function SessionComparePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Métriques comparées</CardTitle>
+                    <CardTitle className="text-base">{t('session.compare.metrics_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4 overflow-x-auto">
                     {data.metrics.length > 0 ? (
                       <table className="w-full">
                         <thead>
                           <tr className="border-b text-left text-xs text-muted-foreground">
-                            <th className="py-2 pr-4">Métrique</th>
-                            <th className="py-2 pr-4 text-right text-compare-a">Session A</th>
-                            <th className="py-2 pr-4 text-right text-compare-b">Session B</th>
-                            <th className="py-2 text-right">Delta</th>
+                            <th className="py-2 pr-4">{t('session.compare.metric_col_metric')}</th>
+                            <th className="py-2 pr-4 text-right text-compare-a">{t('session.compare.metric_col_session_a')}</th>
+                            <th className="py-2 pr-4 text-right text-compare-b">{t('session.compare.metric_col_session_b')}</th>
+                            <th className="py-2 text-right">{t('session.compare.metric_col_delta')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -282,8 +293,8 @@ export function SessionComparePage() {
                       </table>
                     ) : (
                       <EmptyStateNotice
-                        title="Aucune métrique détaillée"
-                        description="Le tableau comparatif est vide pour les sessions choisies."
+                        title={t('session.compare.metrics_empty_title')}
+                        description={t('session.compare.metrics_empty_description')}
                       />
                     )}
                   </CardContent>
@@ -291,15 +302,15 @@ export function SessionComparePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Progression K/D</CardTitle>
+                    <CardTitle className="text-base">{t('session.compare.kd_progression_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4">
                     {data.kd_progression_chart ? (
                       <PlotlyChart figure={data.kd_progression_chart} />
                     ) : (
                       <EmptyStateNotice
-                        title="Progression indisponible"
-                        description="La progression K/D n'a pas pu être tracée pour ces sessions."
+                        title={t('session.compare.kd_progression_empty_title')}
+                        description={t('session.compare.kd_progression_empty_description')}
                       />
                     )}
                   </CardContent>
@@ -307,7 +318,7 @@ export function SessionComparePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Par carte</CardTitle>
+                    <CardTitle className="text-base">{t('session.compare.maps_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4 overflow-x-auto">
                     {data.maps_table.length > 0 ? (
@@ -333,8 +344,8 @@ export function SessionComparePage() {
                       </table>
                     ) : (
                       <EmptyStateNotice
-                        title="Aucune comparaison par carte"
-                        description="Aucune ligne par carte n'est disponible pour les sessions sélectionnées."
+                        title={t('session.compare.maps_empty_title')}
+                        description={t('session.compare.maps_empty_description')}
                       />
                     )}
                   </CardContent>
@@ -342,7 +353,7 @@ export function SessionComparePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Par mode de jeu</CardTitle>
+                    <CardTitle className="text-base">{t('session.compare.modes_title')}</CardTitle>
                   </CardHeader>
                   <CardContent className="pb-4 overflow-x-auto">
                     {data.modes_table.length > 0 ? (
@@ -368,8 +379,8 @@ export function SessionComparePage() {
                       </table>
                     ) : (
                       <EmptyStateNotice
-                        title="Aucune comparaison par mode"
-                        description="Le backend n'a renvoyé aucune ventilation par mode pour cette paire de sessions."
+                        title={t('session.compare.modes_empty_title')}
+                        description={t('session.compare.modes_empty_description')}
                       />
                     )}
                   </CardContent>
@@ -377,15 +388,15 @@ export function SessionComparePage() {
               </>
             ) : (
               <EmptyStateCard
-                title="Comparaison incomplète"
-                description="Sélectionne une session A et une session B pour afficher les graphiques et tableaux comparatifs."
+                title={t('session.compare.incomplete_title')}
+                description={t('session.compare.incomplete_description')}
               />
             )}
           </>
         ) : (
           <EmptyStateCard
-            title="Aucune session disponible"
-            description="Aucune session n'est disponible dans le scope courant. Vérifie le découpage de sessions ou élargis les filtres."
+            title={t('session.empty.no_sessions_title')}
+            description={t('session.empty.no_sessions_description')}
           />
         )}
       </div>
