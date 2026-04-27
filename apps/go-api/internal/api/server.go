@@ -383,6 +383,10 @@ func NewRouter(
 			squad := handlers.NewSquadHandler(reg.SquadCtx)
 			r.Get("/pages/squad", squad.GetSquadPage)
 
+			// Phase 1 chunk S1b : Squad V2 (multi-coéquipiers, fondations Phase 0)
+			squadV2 := handlers.NewSquadV2Handler(reg.SquadV2Ctx)
+			r.Get("/pages/squad/v2", squadV2.GetSquadPage)
+
 			// Sprint 55 D1 : SynthesisHandler extrait de SquadHandler (frontière produit)
 			synthesis := handlers.NewSynthesisHandler(reg.SynthesisCtx)
 			r.Post("/pages/synthesis", synthesis.GetSynthesisPage)

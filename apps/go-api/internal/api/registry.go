@@ -38,6 +38,7 @@ type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, er
 // Chaque méthode résout le joueur puis construit le service injecté.
 type ServiceRegistry struct {
 	resolve          PlayerResolver
+	resolveByGT      duckdb.TitlePlayerResolver // résolution (titleSlug, gamertag) → PlayerDB pour Squad V2
 	provider         auth.TokenProvider
 	assetResolver    assets.Resolver           // nil si le resolver n'est pas configuré (mode legacy)
 	timezone         string                    // IANA (ex: "Europe/Paris"), propagé aux services médias
@@ -54,9 +55,33 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 			titleSlug := ctxkeys.TitleSlug(ctx)
 			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
+		resolveByGT:      makeTitlePlayerResolver(cfg),
 		provider:         provider,
 		timezone:         cfg.UserTimezone,
 		homeMatchesCache: service.NewHomeMatchesCache(),
+	}
+}
+
+// makeTitlePlayerResolver construit la résolution (titleSlug, gamertag) →
+// PlayerDB en s'appuyant sur cfg.LoadPlayers (lookup db_profiles.json) puis
+// config.ResolvePlayer pour ouvrir/cacher la base via le pool global.
+//
+// Sert exclusivement à la page Squad V2, où les coéquipiers sont identifiés
+// par leur gamertag (et pas par leur slug URL). Si le gamertag n'est pas
+// référencé pour le titre demandé, retourne config.ErrPlayerNotFound — le
+// SquadV2LoaderAdapter traduit ensuite en games.ErrCapabilityNotSupported.
+func makeTitlePlayerResolver(cfg *config.AppConfig) duckdb.TitlePlayerResolver {
+	return func(ctx context.Context, titleSlug, gamertag string) (*duckdb.PlayerDB, error) {
+		players, err := cfg.LoadPlayers(titleSlug)
+		if err != nil {
+			return nil, fmt.Errorf("makeTitlePlayerResolver: load players for %q: %w", titleSlug, err)
+		}
+		for i := range players {
+			if strings.EqualFold(players[i].Gamertag, gamertag) {
+				return config.ResolvePlayer(ctx, cfg, players[i].PlayerSlug, titleSlug)
+			}
+		}
+		return nil, fmt.Errorf("%w: title=%q gamertag=%q", config.ErrPlayerNotFound, titleSlug, gamertag)
 	}
 }
 
@@ -480,6 +505,20 @@ func (r *ServiceRegistry) SquadCtx(ctx context.Context, slug string) (port.Squad
 		return nil, "", "", err
 	}
 	svc := service.NewSquadService(duckdb.NewSquadRepo(pdb))
+	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// SquadV2Ctx retourne un SquadV2Service + identifiants joueur. Le service
+// utilise un loader production qui résout (titleSlug, gamertag) → PlayerDB
+// via le pool global, ce qui permet de charger les matchs des coéquipiers
+// sans avoir leur player_slug — ils sont sélectionnés par gamertag dans l'UI.
+func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.SquadV2Service, string, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", "", err
+	}
+	loader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
+	svc := service.NewSquadServiceV2(loader)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
