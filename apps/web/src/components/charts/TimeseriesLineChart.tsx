@@ -41,8 +41,20 @@ export interface TimeseriesLineChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
-  /** Si true, X est traité comme un axe temporel (datetime). Default true. */
+  /**
+   * Si true, X est traité comme un axe temporel (datetime). Default true.
+   *
+   * Deprecated: utiliser xAxisType pour un contrôle plus fin.
+   */
   timeAxis?: boolean
+  /**
+   * Type d'axe X explicite. Si fourni, prend précédence sur timeAxis.
+   *
+   *  - 'time'     : datetime (ECharts type='time')
+   *  - 'category' : étiquettes discrètes
+   *  - 'value'    : numérique continu (secondes, scores, etc.)
+   */
+  xAxisType?: 'time' | 'category' | 'value'
   /** Si true, marker outcome utilise outcomeColor. Default true. */
   outcomeMarkers?: boolean
   /** Optionnel : nom d'une série côté front (override LabelKey backend). */
@@ -57,6 +69,7 @@ export function TimeseriesLineChart({
   emptyMessage,
   height,
   timeAxis = true,
+  xAxisType,
   outcomeMarkers = true,
   seriesNameResolver,
 }: TimeseriesLineChartProps) {
@@ -64,10 +77,11 @@ export function TimeseriesLineChart({
     (s: ChartSeries<ChartPoint2D>[]) =>
       buildTimeseriesLineOption(s, {
         timeAxis,
+        xAxisType,
         outcomeMarkers,
         seriesNameResolver,
       }),
-    [timeAxis, outcomeMarkers, seriesNameResolver],
+    [timeAxis, xAxisType, outcomeMarkers, seriesNameResolver],
   )
 
   return (
@@ -85,6 +99,7 @@ export function TimeseriesLineChart({
 
 interface BuildOpts {
   timeAxis?: boolean
+  xAxisType?: 'time' | 'category' | 'value'
   outcomeMarkers?: boolean
   seriesNameResolver?: (s: ChartSeries<ChartPoint2D>) => string
 }
@@ -94,10 +109,14 @@ export function buildTimeseriesLineOption(
   series: ChartSeries<ChartPoint2D>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { timeAxis = true, outcomeMarkers = true, seriesNameResolver } = opts
+  const { timeAxis = true, xAxisType, outcomeMarkers = true, seriesNameResolver } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
+
+  // xAxisType prend précédence sur timeAxis (legacy).
+  const resolvedAxisType: 'time' | 'category' | 'value' =
+    xAxisType ?? (timeAxis ? 'time' : 'category')
 
   const echartsSeries = series.map((s, idx) => {
     const color = seriesColor(idx)
@@ -106,7 +125,10 @@ export function buildTimeseriesLineOption(
       (s.meta && typeof s.meta.gamertag === 'string' ? s.meta.gamertag : s.key)
 
     const data = s.datapoints.map((dp) => {
-      const x = timeAxis && !(dp.x instanceof Date) ? new Date(dp.x as string) : dp.x
+      const x =
+        resolvedAxisType === 'time' && !(dp.x instanceof Date)
+          ? new Date(dp.x as string)
+          : dp.x
       const itemStyle =
         outcomeMarkers && dp.label
           ? { color: outcomeColor(dp.label) }
@@ -140,7 +162,7 @@ export function buildTimeseriesLineOption(
     legend: { ...legendBase, data: echartsSeries.map((s) => s.name) },
     xAxis: {
       ...axisBase,
-      type: timeAxis ? 'time' : 'category',
+      type: resolvedAxisType,
     },
     yAxis: { ...axisBase, type: 'value' },
     series: echartsSeries,

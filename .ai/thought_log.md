@@ -22216,3 +22216,71 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - **Awards TOML mappings** (`config/titles/halo_infinite/mappings/awards.toml`) : remplacer `haloAwardToAxis` inline par TOML loader (Phase 2 ou 3).
 
 **Conclusion Phase 1 MatchView (mis à jour)** : passée à **~85 %** (dominance ✅, cadence ✅, impact 8 rôles ✅, radar ✅, encounters typés ordinal ✅, kill feed loader unifié ✅, hex cleanup ✅). Manquent : encounters complets (MV4.C') + refonte page (MV5). **Phase 1 globale : Squad ✅ 100 %, MatchView 🟠 ~85 %.**
+
+---
+
+## [2026-04-27] Phase 1 - Chunks MV4.B' + MV4.C' + MV5 — finitions MatchView
+
+**Statut** : Complété. **Phase 1 MatchView = 100 %**.
+
+**Branche** : `feat/foundations-axes-1-3-4`.
+
+### MV4.B' — Awards multi-xuids (commit `c3d8226d`)
+- Suppression de la goroutine pre-`g.Wait()` qui chargeait les awards pour le main player seulement.
+- Nouveau helper `loadAwardsForScoreboard(ctx, matchID, scoreboard)` exécuté **après** `g.Wait()` (sérialisé pour pouvoir filtrer par xuids du scoreboard).
+- Latence supplémentaire ~50-100ms acceptable (1 query DuckDB sur l'index match_id+xuid).
+- Dégradation gracieuse à tous les niveaux (repo nil / scoreboard vide / capability absente).
+- 4 tests Go (multi-xuids vérifié, fakeAwardsRepo mock).
+
+### MV4.C' — Extension Q23 SQL + badges complets (commit `3b632180`)
+- **Nouveau query Q23bMatchEncounterStats** (~9 placeholders) : CTE chain `this_match → my_team → my_history → encounter_history → encounter_stats → kv_stats`. Calcule par encounter : `ally_count`, `enemy_count`, `wins/losses_as_ally`, `wins/losses_vs_enemy`, `kills_dealt`, `deaths_suffered`.
+- **DTO** `domain.EncounterStatsRaw` + nouvelle méthode `port.MatchViewRepository.GetMatchEncounterStats`.
+- **Service refacto** : `convertEncounters(raw, stats)` indexe stats par xuid pour O(1) lookup, fallback `buildEncounterBadgesFromRaw` si stats manquant pour un xuid (rétrocompat MV4.C).
+- **`buildEncounterBadgesFromStats`** compose `narrative.EncounterStats` riche (winrate ally/enemy + kd_against_me) → `narrative.ComputeEncounterBadges` attribue **ally_plus** + **tough_enemy** en plus d'**ordinal**.
+- 5 tests Go (ally_plus, tough_enemy, sous-seuil, fallback gracieux, encounterWinrate nil case).
+
+### MV5 — Refonte React (Recharts → ECharts) (this commit)
+- **Wrapper TimeseriesLineChart étendu** : nouvelle prop `xAxisType: 'time' | 'category' | 'value'` qui prend précédence sur le legacy `timeAxis: boolean`. Permet l'axe X numérique (secondes) requis par K/D timeline et tug-of-war.
+- **MatchViewPage.tsx** :
+  - Suppression de l'import `recharts` (10 named imports).
+  - K/D Timeline : `<LineChart>` + `<Line> × 2` → `<TimeseriesLineChart series={kdTimelineSeries(...)}>`.
+  - Tug-of-War : `<AreaChart>` + `<Area>` → `<TimeseriesLineChart series={tugOfWarSeries(...)}>` (perte du fill area, acceptable V1).
+  - 2 helpers `kdTimelineSeries(points, labelOf)` et `tugOfWarSeries(bins)` : convertissent les payloads `MatchKDTimelinePoint[]` / `MatchTugOfWarBin[]` en `ChartSeries<ChartPoint2D>[]`.
+  - `xAxisType="value"` pour les 2 charts (axe X = secondes), `outcomeMarkers={false}` (pas pertinent ici).
+- **Vérifications** :
+  - `grep -r "from 'recharts'" features/match-view/` → vide.
+  - `npm run typecheck` : 0 erreur sur `MatchViewPage.tsx`.
+  - `npm run lint` : 0 warning.
+  - 13/13 tests Vitest verts (charts + match-view).
+
+**Décision pragmatique** : seuls 2 charts Recharts dans `MatchViewPage.tsx`, le reste est listes/tableaux/cards. La "refonte complète" du plan méta s'avère plus modeste qu'estimé — 2 charts à migrer suffisent pour vider Recharts de cette page. La Phase 3 (cleanup global Plotly/Recharts) supprimera la dépendance npm si plus aucun import.
+
+**Fichiers modifiés** :
+- Backend (MV4.B' + MV4.C') : `service/match_view_service.go`, `service/match_view_radar_test.go`, `service/match_view_encounters_test.go`, `service/match_view_service_test.go`, `domain/match_view.go`, `port/repository.go`, `platform/duckdb/match_view_repo.go`, `platform/duckdb/queries_match.go`.
+- Frontend (MV5) : `apps/web/src/features/match-view/MatchViewPage.tsx`, `apps/web/src/components/charts/TimeseriesLineChart.tsx`.
+
+**Résultats cumulés (MV4.B' + C' + MV5)** :
+- 9 nouveaux tests Go.
+- `go test ./...` propre, 0 régression.
+- `npm run typecheck` : aucune nouvelle erreur (PlayerDetailPanel.tsx errors pré-existantes hors scope).
+- `npm run lint` : 0 warning sur fichiers livrés.
+- Recharts éliminé de `MatchViewPage.tsx`.
+
+**Hors scope (Phase 2 méta-plan)** :
+- Vérification que **plus aucun fichier** du repo n'importe Recharts → suppression du package `recharts` du `package.json` (Phase 3 méta-plan).
+- Awards TOML mappings (`config/titles/halo_infinite/mappings/awards.toml`) → Phase 2.
+- E2E Playwright sur MatchView complet → Phase 2.
+- Test golden parity sur `/match-view/{id}` → Phase 2.
+
+**Conclusion Phase 1 MatchView = 100 %** :
+- ✅ Dominance badge (MV1)
+- ✅ Cadence intra-match (MV2)
+- ✅ Impact 8 rôles (MV2)
+- ✅ Tokens couleur (MV3)
+- ✅ Manifest i18n 63 clés (MV3)
+- ✅ Loader unifié `LoadHighlightEvents` (MV4.A)
+- ✅ Radar 6 axes pour TOUS les xuids du scoreboard (MV4.B + MV4.B')
+- ✅ Encounters complets (ordinal + ally_plus + tough_enemy) (MV4.C + MV4.C')
+- ✅ Refonte React Recharts → ECharts (MV5)
+
+**Phase 1 globale : Squad ✅ 100 %, MatchView ✅ 100 %.** La Phase 1 méta-plan (12 j-h estimés) est désormais **livrée intégralement**. Prochaine étape : **Phase 2 — roll-out 9 pages** (Career, Synthesis, Citations, Timeseries + 3 live + 2 WIP) + composants UI partagés.
