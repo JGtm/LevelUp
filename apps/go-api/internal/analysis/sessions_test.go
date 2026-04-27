@@ -207,7 +207,8 @@ func TestIsSessionPotentiallyActive_SameDay(t *testing.T) {
 }
 
 func TestIsSessionPotentiallyActive_Yesterday(t *testing.T) {
-	lastMatch := time.Now().Add(-25 * time.Hour)
+	// -33h = toujours ≥ cutoff(8h) en arrière, quelle que soit l'heure d'exécution.
+	lastMatch := time.Now().Add(-33 * time.Hour)
 	if IsSessionPotentiallyActive(lastMatch, 8) {
 		t.Error("expected inactive session from yesterday")
 	}

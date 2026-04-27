@@ -95,6 +95,18 @@ func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query can
 	return nil, games.ErrCapabilityNotSupported
 }
 
+func (a *DataAdapter) LoadMatchScoreboard(_ context.Context, _ string) ([]canonical.MatchParticipant, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+func (a *DataAdapter) LoadHighlightEvents(_ context.Context, _ string) ([]canonical.HighlightEvent, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+func (a *DataAdapter) LoadFriendsXUIDs(_ context.Context, _ string) ([]string, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 // SemanticAdapter wrappe un FieldMappingSet chargé depuis fields.toml de ce
 // titre synthétique. Il prouve que l'interface games.TitleSemanticAdapter ne
 // dépend d'aucun choix titre-spécifique.

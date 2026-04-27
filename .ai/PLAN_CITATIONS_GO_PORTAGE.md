@@ -5,6 +5,31 @@
 > Branche cible : `feat/multi-title-adapters-and-mappings` (Go + React + recharts/Plotly).
 > Date d'audit : 2026-04-26.
 
+> **Note d'amendement — 2026-04-27** : ce plan est **partiellement supersedé** par
+> [`PLAN_META_FOUNDATIONS_GO.md`](./PLAN_META_FOUNDATIONS_GO.md). Avant toute
+> implémentation à partir de ce plan, consulter le méta-plan pour les fondations
+> communes : `LoadPlayerMatches(filters)` au lieu de SQL ad hoc pour le scope
+> `compute_wins_*`, stack chart **ECharts** (le `MedalsDistributionChart`
+> server-side Plotly migre côté client en `<Histogram>` ECharts), manifest i18n
+> centralisé. Réécriture complète prévue en **Phase 2** du méta-plan.
+
+### Statut des sections de ce plan vis-à-vis du méta-plan
+
+| Section / Phase | Statut | Action |
+|---|---|---|
+| Phase 0 — Audit / inventaire | À conserver | Contexte historique. |
+| Phase 1 — Port `CitationEngine` + 12 `custom_functions` + composites | À conserver | Spécifique Citations, non couvert par fondations. |
+| Phase 2 — Backfill `match_citations` (`compute_and_store_for_match`) | À conserver | Spécifique. |
+| Phase 2.x — `MedalsDistributionChart` server-side Plotly | Obsolète | Migration côté client en `<Histogram>` ECharts (méta-plan § 5.2). |
+| Phase 2.x — Incohérence shape API ↔ shape Frontend | À conserver (fix) | Bug à corriger ; alignement sur DTO consolidé. |
+| R03 — `compute_wins_*` regex localisée FR | À refactorer | Utiliser `LoadPlayerMatches(playlistRegex)` partagé (méta-plan § 5.3). |
+| R10 — `total_enemy_kills` PvE | À conserver | Spécifique PvE. |
+| R14 — `weapon_labels` UBIGINT | À conserver | Spécifique mapping armes. |
+| Phase 3 — Anneaux progression CSS / grille catégorisée | À conserver | UI spécifique citations. |
+| Backfill flag CLI `--citations` | À conserver | Spécifique. |
+
+---
+
 ## 0. Synthèse exécutive
 
 La page Citations en Python v7/cockpit est **deux pages combinées** dans un seul écran :

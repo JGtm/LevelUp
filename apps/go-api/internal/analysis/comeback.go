@@ -30,6 +30,11 @@ const (
 	DominanceFlagContreRemontada = 5
 )
 
+// MedalSteaktacularID est l'ID de la médaille Steaktacular (5+ kills de suite).
+// Déclenche DOMINATION (gagnée par mon équipe) ou HUMILIATION (gagnée par l'adversaire).
+// Miroir de MEDAL_STEAKTACULAR_ID = 1169390319 dans src/analysis/_medal_verdicts.py.
+const MedalSteaktacularID int64 = 1169390319
+
 // Constantes d'outcome complémentaires (OutcomeWin=2, OutcomeLoss=3 déjà déclarées dans performance_score.go).
 const (
 	OutcomeTie = 1

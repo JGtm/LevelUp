@@ -62,6 +62,32 @@ type MatchParticipant struct {
 	ShotsHit        *int
 	MaxKillingSpree *int
 	PersonalScore   *int
+
+	// Champs étendus scoreboard (null si non chargés par LoadMatchScoreboard)
+	KDA              *float64
+	TimePlayed       *int
+	MeleeKills       *int
+	GrenadeKills     *int
+	PowerWeaponKills *int
+	AvgLifeSeconds   *float64
+	PerfectKills     *int
+	TopWeaponID      *string // effective_weapon_id converti en string
+	IsBot            *bool
+}
+
+// HighlightEvent est un événement horodaté issu de highlight_events (kill ou death).
+// Pour un event "kill", XUID = tueur ; pour "death", XUID = victime.
+type HighlightEvent struct {
+	EventType string // "kill" | "death"
+	TimeMS    int64
+	XUID      string
+}
+
+// ImpactBadge est un badge d'impact calculé sur les événements d'un match.
+type ImpactBadge struct {
+	BadgeKey   string // identifiant technique : first_blood, clutch_finisher…
+	BadgeFR    string // libellé français affiché
+	PlayerXUID string
 }
 
 // TeamSnapshot est la vue légère d'une équipe d'un match.

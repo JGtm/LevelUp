@@ -66,6 +66,8 @@ type TeammateMatchRow struct {
 	TimePlayedSecs int
 	TeamMMR        float64
 	Accuracy       *float64
+	MyTeamScore    *int
+	EnemyTeamScore *int
 }
 
 // ImpactEventRow est une ligne brute chargée depuis Q32 (events highlight escouade).

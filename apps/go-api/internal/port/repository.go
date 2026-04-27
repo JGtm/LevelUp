@@ -149,6 +149,12 @@ type MatchViewRepository interface {
 
 	// GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).
 	GetMatchExpectedStats(ctx context.Context, matchID, xuid string) (*domain.ExpectedStatsRaw, error)
+
+	// GetMatchBulkMedals retourne les médailles de tous les joueurs du match (Q27).
+	GetMatchBulkMedals(ctx context.Context, matchID string) ([]domain.BulkMedalRaw, error)
+
+	// GetMatchBulkWeaponKills retourne les kills par arme de tous les joueurs (Q28).
+	GetMatchBulkWeaponKills(ctx context.Context, matchID string) ([]domain.BulkWeaponKillRaw, error)
 }
 
 // ExplorerRepository fournit les données pour l'explorer.
@@ -266,6 +272,12 @@ func (n *noopMatchViewRepo) GetMatchMedia(_ context.Context, _, _ string) ([]dom
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]domain.BulkMedalRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
 	return nil, nil
 }
 
@@ -478,6 +490,15 @@ type CitationsRepository interface {
 
 	// LoadMedalCitationMappings charge les mappings médaille→citation depuis metadata (Q36b).
 	LoadMedalCitationMappings(ctx context.Context) ([]domain.MedalCitationRow, error)
+
+	// LoadCitationMedalMappings charge les règles citation→medal_id pour le moteur (Q39).
+	LoadCitationMedalMappings(ctx context.Context) ([]domain.CitationMedalMapping, error)
+
+	// LoadMatchCitationsForView charge les top citations d'un match pour la vue détail (Q38).
+	LoadMatchCitationsForView(ctx context.Context, matchID string) ([]domain.CitationMatchViewRow, error)
+
+	// WriteCitationsForMatch écrit les deltas calculés dans match_citations.
+	WriteCitationsForMatch(ctx context.Context, matchID string, deltas []domain.CitationMatchDelta) error
 }
 
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
@@ -586,6 +607,15 @@ func (n *noopCitationsRepo) LoadMedalTotals(_ context.Context, _ string) ([]doma
 }
 func (n *noopCitationsRepo) LoadMedalCitationMappings(_ context.Context) ([]domain.MedalCitationRow, error) {
 	return nil, nil
+}
+func (n *noopCitationsRepo) LoadCitationMedalMappings(_ context.Context) ([]domain.CitationMedalMapping, error) {
+	return nil, nil
+}
+func (n *noopCitationsRepo) LoadMatchCitationsForView(_ context.Context, _ string) ([]domain.CitationMatchViewRow, error) {
+	return nil, nil
+}
+func (n *noopCitationsRepo) WriteCitationsForMatch(_ context.Context, _ string, _ []domain.CitationMatchDelta) error {
+	return nil
 }
 
 // noopMediaRepo — impl nulle pour le check de compilation uniquement.

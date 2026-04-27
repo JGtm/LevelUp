@@ -161,3 +161,253 @@ func TestGroupCommendationsByCategory_GroupAndTotal(t *testing.T) {
 		t.Errorf("total spree attendu 15, got %d", spreeTotal)
 	}
 }
+
+// =============================================================================
+// Tests ComputeFullMatchCitations — moteur complet
+// =============================================================================
+
+func makeMedalMapping(norm, mappingType string, medalID int64) domain.CitationFullMapping {
+	return domain.CitationFullMapping{
+		NameNorm:    norm,
+		NameDisplay: norm,
+		MappingType: mappingType,
+		MedalID:     &medalID,
+	}
+}
+
+func makeStatMapping(norm, stat string) domain.CitationFullMapping {
+	s := stat
+	return domain.CitationFullMapping{
+		NameNorm:    norm,
+		NameDisplay: norm,
+		MappingType: "stat",
+		StatName:    &s,
+	}
+}
+
+func makeAwardMapping(norm, award string) domain.CitationFullMapping {
+	a := award
+	return domain.CitationFullMapping{
+		NameNorm:    norm,
+		NameDisplay: norm,
+		MappingType: "award",
+		AwardName:   &a,
+	}
+}
+
+func makeCustomMapping(norm, fn string) domain.CitationFullMapping {
+	f := fn
+	return domain.CitationFullMapping{
+		NameNorm:       norm,
+		NameDisplay:    norm,
+		MappingType:    "custom",
+		CustomFunction: &f,
+	}
+}
+
+func TestComputeFullMatchCitations_MedalType(t *testing.T) {
+	mappings := []domain.CitationFullMapping{
+		makeMedalMapping("triple_kill", "medal", 1001),
+	}
+	ctx := domain.CitationContext{
+		Medals: map[int64]int{1001: 3},
+		Stats:  map[string]float64{},
+		Awards: map[string]int{},
+	}
+	deltas := ComputeFullMatchCitations(ctx, mappings)
+	if len(deltas) != 1 {
+		t.Fatalf("attendu 1 delta, got %d", len(deltas))
+	}
+	if deltas[0].Value != 3 {
+		t.Errorf("valeur attendue 3, got %d", deltas[0].Value)
+	}
+}
+
+func TestComputeFullMatchCitations_StatType(t *testing.T) {
+	mappings := []domain.CitationFullMapping{
+		makeStatMapping("kills_stat", "kills"),
+	}
+	ctx := domain.CitationContext{
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{"kills": 12.0},
+		Awards: map[string]int{},
+	}
+	deltas := ComputeFullMatchCitations(ctx, mappings)
+	if len(deltas) != 1 || deltas[0].Value != 12 {
+		t.Errorf("attendu 12, got %v", deltas)
+	}
+}
+
+func TestComputeFullMatchCitations_AwardType(t *testing.T) {
+	mappings := []domain.CitationFullMapping{
+		makeAwardMapping("hijack_cit", "hijacked_mongoose"),
+	}
+	ctx := domain.CitationContext{
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{},
+		Awards: map[string]int{"hijacked_mongoose": 2},
+	}
+	deltas := ComputeFullMatchCitations(ctx, mappings)
+	if len(deltas) != 1 || deltas[0].Value != 2 {
+		t.Errorf("attendu 2, got %v", deltas)
+	}
+}
+
+func TestComputeFullMatchCitations_CompositeSkipped(t *testing.T) {
+	mappings := []domain.CitationFullMapping{
+		{NameNorm: "composite_c", MappingType: "composite"},
+	}
+	ctx := domain.CitationContext{
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{},
+		Awards: map[string]int{},
+	}
+	deltas := ComputeFullMatchCitations(ctx, mappings)
+	if len(deltas) != 0 {
+		t.Errorf("composite doit être ignoré par-match, got %d deltas", len(deltas))
+	}
+}
+
+func TestComputeFullMatchCitations_ZeroValuesExcluded(t *testing.T) {
+	mappings := []domain.CitationFullMapping{
+		makeMedalMapping("orphan", "medal", 9999),
+	}
+	ctx := domain.CitationContext{
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{},
+		Awards: map[string]int{},
+	}
+	deltas := ComputeFullMatchCitations(ctx, mappings)
+	if len(deltas) != 0 {
+		t.Errorf("valeur 0 ne doit pas produire de delta, got %d", len(deltas))
+	}
+}
+
+// =============================================================================
+// Tests fonctions custom
+// =============================================================================
+
+func TestComputeBulldozer_OK(t *testing.T) {
+	ctx := domain.CitationContext{
+		Stats:    map[string]float64{"kda": 9.0},
+		Playlist: "arena slayer",
+		Awards:   map[string]int{},
+		Medals:   map[int64]int{},
+	}
+	if got := computeBulldozer(ctx); got != 1 {
+		t.Errorf("attendu 1, got %d", got)
+	}
+}
+
+func TestComputeBulldozer_LowKDA(t *testing.T) {
+	ctx := domain.CitationContext{
+		Stats:    map[string]float64{"kda": 7.9},
+		Playlist: "slayer",
+		Awards:   map[string]int{},
+		Medals:   map[int64]int{},
+	}
+	if got := computeBulldozer(ctx); got != 0 {
+		t.Errorf("KDA trop faible — attendu 0, got %d", got)
+	}
+}
+
+func TestComputeBulldozer_BTBExcluded(t *testing.T) {
+	ctx := domain.CitationContext{
+		Stats:    map[string]float64{"kda": 10.0},
+		Playlist: "btb slayer",
+		Awards:   map[string]int{},
+		Medals:   map[int64]int{},
+	}
+	if got := computeBulldozer(ctx); got != 0 {
+		t.Errorf("BTB doit être exclu — attendu 0, got %d", got)
+	}
+}
+
+func TestComputeWinsCTF_Win(t *testing.T) {
+	ctx := domain.CitationContext{
+		Outcome:  2,
+		Playlist: "ctf ranked",
+		Awards:   map[string]int{},
+		Medals:   map[int64]int{},
+		Stats:    map[string]float64{},
+	}
+	if got := computeWinsCTF(ctx); got != 1 {
+		t.Errorf("attendu 1, got %d", got)
+	}
+}
+
+func TestComputeWinsCTF_Loss(t *testing.T) {
+	ctx := domain.CitationContext{
+		Outcome:  3,
+		Playlist: "ctf",
+		Awards:   map[string]int{},
+		Medals:   map[int64]int{},
+		Stats:    map[string]float64{},
+	}
+	if got := computeWinsCTF(ctx); got != 0 {
+		t.Errorf("défaite — attendu 0, got %d", got)
+	}
+}
+
+func TestComputeAnnexionForcee_EventsWalk(t *testing.T) {
+	ctx := domain.CitationContext{
+		PlayerXUID: "xuid1",
+		Events: []domain.CitationEventRow{
+			{EventType: "mode", XUID: "", TimeMS: 1},
+			{EventType: "mode", XUID: "", TimeMS: 2},
+			{EventType: "mode", XUID: "", TimeMS: 3},       // streak=3 → +1
+			{EventType: "death", XUID: "xuid1", TimeMS: 4}, // reset
+			{EventType: "mode", XUID: "", TimeMS: 5},
+			{EventType: "mode", XUID: "", TimeMS: 6},
+			{EventType: "mode", XUID: "", TimeMS: 7}, // streak=3 → +1
+		},
+		Awards: map[string]int{},
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{},
+	}
+	if got := computeAnnexionForcee(ctx); got != 2 {
+		t.Errorf("attendu 2, got %d", got)
+	}
+}
+
+func TestComputeAnnexionForcee_FallbackAwards(t *testing.T) {
+	ctx := domain.CitationContext{
+		PlayerXUID: "xuid1",
+		Events:     nil, // pas d'events → fallback
+		Awards:     map[string]int{"zone_captured": 9},
+		Medals:     map[int64]int{},
+		Stats:      map[string]float64{},
+	}
+	if got := computeAnnexionForcee(ctx); got != 3 {
+		t.Errorf("attendu 3 (9/3), got %d", got)
+	}
+}
+
+func TestComputeHijack_PrefixAndContains(t *testing.T) {
+	ctx := domain.CitationContext{
+		Awards: map[string]int{
+			"hijacked_mongoose": 2,
+			"skyjack_pilot":     1,
+		},
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{},
+	}
+	// hijacked_ → 2, skyjack → 1
+	if got := computeHijack(ctx); got < 3 {
+		t.Errorf("attendu ≥3, got %d", got)
+	}
+}
+
+func TestComputeVandalism_DestroyedPrefix(t *testing.T) {
+	ctx := domain.CitationContext{
+		Awards: map[string]int{
+			"destroyed_ghost":  3,
+			"destroyed_wraith": 1,
+		},
+		Medals: map[int64]int{},
+		Stats:  map[string]float64{},
+	}
+	if got := computeVandalism(ctx); got == 0 {
+		t.Errorf("attendu > 0, got 0")
+	}
+}

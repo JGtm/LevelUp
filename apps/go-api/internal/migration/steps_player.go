@@ -58,10 +58,11 @@ func init() {
 					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
 				CREATE TABLE IF NOT EXISTS match_citations (
-					match_id VARCHAR NOT NULL,
-					citation VARCHAR NOT NULL,
-					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-					PRIMARY KEY (match_id, citation)
+					match_id           VARCHAR NOT NULL,
+					citation_name_norm VARCHAR NOT NULL,
+					value              INTEGER NOT NULL DEFAULT 1,
+					created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (match_id, citation_name_norm)
 				);
 				CREATE TABLE IF NOT EXISTS media_files (
 					id VARCHAR PRIMARY KEY,
@@ -456,6 +457,20 @@ func applyCareerProgressionIdentityAssets(db *sql.DB) error {
 		return err
 	}
 	return addColumnIfMissing(db, "career_progression", "backdrop_image_url", "VARCHAR")
+}
+
+func init() {
+	Register(Migration{
+		Name:        "fix_match_citations_schema",
+		TargetDB:    TargetPlayer,
+		Description: "Ajoute citation_name_norm et value sur match_citations (remplace ancien schéma citation/varchar)",
+		ApplySchema: func(db *sql.DB) error {
+			if err := addColumnIfMissing(db, "match_citations", "citation_name_norm", "VARCHAR"); err != nil {
+				return err
+			}
+			return addColumnIfMissing(db, "match_citations", "value", "INTEGER DEFAULT 1")
+		},
+	})
 }
 
 // applyFixMvSessionStats recrée mv_session_stats avec session_id VARCHAR.

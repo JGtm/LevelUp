@@ -138,7 +138,7 @@ func buildCumulTab(matches []domain.StatsMatchRow) domain.TimeseriesCumulTab {
 	rollingKD := make([]domain.CumulativePoint, 0, n)
 
 	totalKills, totalDeaths, cumulNetVal := 0, 0, 0
-	const rollingWindow = 20
+	const rollingWindow = 5 // port Python compute_rolling_kd_polars(window=5)
 
 	for i, m := range matches {
 		totalKills += m.Kills

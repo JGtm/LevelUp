@@ -32,6 +32,15 @@ func (s *stubData) LoadEncounters(_ context.Context, _ string) ([]canonical.Enco
 func (s *stubData) LoadTimeseries(_ context.Context, _ string, _ canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, nil
 }
+func (s *stubData) LoadMatchScoreboard(_ context.Context, _ string) ([]canonical.MatchParticipant, error) {
+	return nil, ErrCapabilityNotSupported
+}
+func (s *stubData) LoadHighlightEvents(_ context.Context, _ string) ([]canonical.HighlightEvent, error) {
+	return nil, ErrCapabilityNotSupported
+}
+func (s *stubData) LoadFriendsXUIDs(_ context.Context, _ string) ([]string, error) {
+	return nil, ErrCapabilityNotSupported
+}
 
 // stubSemantic implémente TitleSemanticAdapter pour les tests.
 type stubSemantic struct{ slug string }

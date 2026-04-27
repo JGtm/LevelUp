@@ -6,6 +6,30 @@
 > Date d'audit : 2026-04-26.
 > Plan jumeau : [PLAN_MATCH_VIEW_GO_PORTAGE.md](PLAN_MATCH_VIEW_GO_PORTAGE.md).
 
+> **Note d'amendement — 2026-04-27** : ce plan est **partiellement supersedé** par
+> [`PLAN_META_FOUNDATIONS_GO.md`](./PLAN_META_FOUNDATIONS_GO.md). Avant toute
+> implémentation à partir de ce plan, consulter le méta-plan pour les fondations
+> communes : `LoadPlayerMatches(filters)` au lieu de Q33b enrichi custom,
+> helpers `analysis/{temporal,breakdown}` au lieu de calculs ad hoc, stack chart
+> **ECharts** (Plotly.js retiré). Tous les stubs `*_chart: PlotlyFigurePayload`
+> sont supprimés en Phase 0 du méta-plan. Réécriture complète prévue en
+> **Phase 2** du méta-plan.
+
+### Statut des sections de ce plan vis-à-vis du méta-plan
+
+| Section / Phase | Statut | Action |
+|---|---|---|
+| Phase 1 — Onglet Résumé (5 KPI manquants) | À refactorer | `LoadPlayerMatches` + `analysis/breakdown` (méta-plan § 5.3). |
+| Phase 2 — Onglet Cartes & Modes (totalement absent en Go) | À refactorer | `analysis/breakdown.ByMap/ByMode` + `<Lollipop>` `<BarStacked>` ECharts. |
+| Phase 3 — Distributions (5 manquants) | À refactorer | `<Histogram>` ECharts. |
+| Phase 4 — Onglet Progression (10 timelines) | À refactorer | `<TimeseriesLine>` ECharts ; `analysis/temporal.BucketByGranularity`. |
+| Phase 5 — Avancé (LUSR, intensity, K/D IC, net score) | À refactorer | LOWESS / IC restent spécifiques ; rendu via wrappers ECharts. |
+| Stubs `*_chart: PlotlyFigurePayload` (16 occurrences) | Obsolète | Supprimés en Phase 0 méta-plan (§ 6.0.1). |
+| Phase 7 — Parité numérique EWMA (`adjust=True` Python vs `adjust=False` Go) | À conserver | Spécifique numérique. |
+| Window adaptatif `max(3, n*10/100)` | À conserver | Spécifique. |
+| Phase 8 — Combat Yield (S56, ajout Go hors v7) | À conserver | Ajout spécifique Go. |
+| `WithDataAdapter` câblé mais jamais appelé | Obsolète | Nettoyé via adoption `LoadPlayerMatches`. |
+
 ---
 
 ## 0. Synthèse exécutive
@@ -773,6 +797,8 @@ Les onglets Go actuels `cumul` / `form` / `intensity` peuvent être absorbés da
 ### 7.4 Références croisées dans le repo
 
 - Plan jumeau Match View : [PLAN_MATCH_VIEW_GO_PORTAGE.md](PLAN_MATCH_VIEW_GO_PORTAGE.md)
+- Plan méta fondations : [PLAN_META_FOUNDATIONS_GO.md](PLAN_META_FOUNDATIONS_GO.md)
+- **Spec ECharts graphes** : [SPEC_ECHARTS_TIMESERIES.md](SPEC_ECHARTS_TIMESERIES.md) — `buildOption` pour les 13 graphes, tokens, helpers partagés, champs Go manquants
 - Audit teammates : [docs/AUDIT_TEAMMATES_V7_COCKPIT.md](../docs/AUDIT_TEAMMATES_V7_COCKPIT.md)
 - Charts existants : [.ai/CHARTS_AND_TABLES.md](CHARTS_AND_TABLES.md)
 - Migration gaps : [docs/MIGRATION_GAP_PYTHON_TO_GO.md](../docs/MIGRATION_GAP_PYTHON_TO_GO.md)

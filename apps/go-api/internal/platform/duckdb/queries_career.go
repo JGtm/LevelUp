@@ -129,41 +129,99 @@ FROM career_progression cp
 ORDER BY cp.recorded_at ASC`
 
 // Q8 : Career — LUSR checkpoints (match_skill_rank).
-// Paramètre : ? = xuid (pour compatibilité avec la v5.3 qui filtre par joueur).
+// Paramètre : aucun (filtre global, une DB = un joueur).
+// rating_delta calculé par LAG par playlist_group pour retrouver la progression Python.
 const Q8LUSRHistory = `
 SELECT
     msr.match_id,
     msr.rating_value,
     msr.tier_label,
     msr.playlist_group,
-    r.start_time AS recorded_at
+    r.start_time AS recorded_at,
+    msr.rating_value - LAG(msr.rating_value) OVER (
+        PARTITION BY msr.playlist_group ORDER BY r.start_time
+    ) AS rating_delta
 FROM match_skill_rank msr
 LEFT JOIN shared.match_registry r ON msr.match_id = r.match_id
 ORDER BY r.start_time ASC`
 
-// Q9 : Career — top matches (meilleur performance_score).
-// Paramètre : ? = xuid.
+// Q9 : Career — top matches : 10 meilleurs (WIN) + 10 moins bons (LOSS).
+// Paramètres : ?1 = xuid (section WIN), ?2 = xuid (section LOSS).
+// Filtres Python portés : had_bot_teammate=FALSE, time_played>=180s, is_firefight=FALSE.
+// Tri badge priority : WIN → flags 5/3/1 (CONTRE_REMONTADA/REMONTADA/DOMINATION) DESC ;
+//
+//	LOSS → flags 4/2 (DEBANDADE/HUMILIATION) DESC.
+//
+// _s sert uniquement à séparer les sections (1=best, 2=worst) dans l'ORDER BY final.
 const Q9TopMatches = `
-SELECT
-    pme.match_id,
-    pme.performance_score,
-    r.start_time,
-    r.map_name,
-    r.pair_name,
-    r.playlist_name,
-    COALESCE(p.outcome, 0)   AS outcome,
-    COALESCE(p.kills, 0)     AS kills,
-    COALESCE(p.deaths, 0)    AS deaths,
-    p.kda,
-    p.team_mmr,
-    p.enemy_mmr
-FROM player_match_enrichment pme
-JOIN shared.match_registry r      ON pme.match_id = r.match_id
-LEFT JOIN shared.match_participants p
-    ON pme.match_id = p.match_id AND p.xuid = ?
-WHERE pme.performance_score IS NOT NULL
-ORDER BY pme.performance_score DESC
-LIMIT 20`
+SELECT match_id, performance_score, start_time, map_name, pair_name, playlist_name,
+       outcome, kills, deaths, kda, team_mmr, enemy_mmr, dominance_flag, _s
+FROM (
+    (
+        SELECT
+            pme.match_id,
+            pme.performance_score,
+            r.start_time,
+            r.map_name,
+            r.pair_name,
+            r.playlist_name,
+            COALESCE(p.outcome, 0)           AS outcome,
+            COALESCE(p.kills, 0)             AS kills,
+            COALESCE(p.deaths, 0)            AS deaths,
+            p.kda,
+            p.team_mmr,
+            p.enemy_mmr,
+            COALESCE(pme.dominance_flag, 0)  AS dominance_flag,
+            1                                AS _s
+        FROM player_match_enrichment pme
+        JOIN shared.match_registry r ON pme.match_id = r.match_id
+        LEFT JOIN shared.match_participants p
+            ON pme.match_id = p.match_id AND p.xuid = ?
+        WHERE pme.performance_score IS NOT NULL
+          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
+          AND COALESCE(p.time_played_seconds, 0) >= 180
+          AND COALESCE(r.is_firefight, FALSE) = FALSE
+          AND COALESCE(p.outcome, 0) = 2
+        ORDER BY
+            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (5, 3, 1)
+                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
+            pme.performance_score DESC
+        LIMIT 10
+    )
+    UNION ALL
+    (
+        SELECT
+            pme.match_id,
+            pme.performance_score,
+            r.start_time,
+            r.map_name,
+            r.pair_name,
+            r.playlist_name,
+            COALESCE(p.outcome, 0)           AS outcome,
+            COALESCE(p.kills, 0)             AS kills,
+            COALESCE(p.deaths, 0)            AS deaths,
+            p.kda,
+            p.team_mmr,
+            p.enemy_mmr,
+            COALESCE(pme.dominance_flag, 0)  AS dominance_flag,
+            2                                AS _s
+        FROM player_match_enrichment pme
+        JOIN shared.match_registry r ON pme.match_id = r.match_id
+        LEFT JOIN shared.match_participants p
+            ON pme.match_id = p.match_id AND p.xuid = ?
+        WHERE pme.performance_score IS NOT NULL
+          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
+          AND COALESCE(p.time_played_seconds, 0) >= 180
+          AND COALESCE(r.is_firefight, FALSE) = FALSE
+          AND COALESCE(p.outcome, 0) = 3
+        ORDER BY
+            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (4, 2)
+                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
+            pme.performance_score ASC
+        LIMIT 10
+    )
+)
+ORDER BY _s ASC`
 
 // Q22 : Sessions — chargement des matchs pour le calcul des sessions.
 // Parametre : ?1 = xuid du joueur.

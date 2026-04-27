@@ -146,9 +146,10 @@ type MatchTugOfWarBin struct {
 
 // MatchImpactBadge : badge d'impact calculé (premier sang, finisseur…).
 type MatchImpactBadge struct {
-	Key   string `json:"key"`
-	Label string `json:"label"`
-	Value string `json:"value,omitempty"`
+	Key        string `json:"key"`
+	Label      string `json:"label"`
+	PlayerXUID string `json:"player_xuid,omitempty"`
+	Value      string `json:"value,omitempty"`
 }
 
 // MatchKDTimelinePoint : point K/D sur la timeline du match.
@@ -172,12 +173,28 @@ type MatchCombatTab struct {
 // Onglet équipe
 // ---------------------------------------------------------------------------
 
+// PlayerMedalRow : médaille d'un joueur dans un match (expander scoreboard).
+type PlayerMedalRow struct {
+	MedalID int64  `json:"medal_id"`
+	Count   int    `json:"count"`
+	Label   string `json:"label,omitempty"`
+}
+
+// PlayerWeaponKillRow : kills par arme d'un joueur dans un match (expander scoreboard).
+type PlayerWeaponKillRow struct {
+	WeaponID int64  `json:"weapon_id"`
+	Kills    int    `json:"kills"`
+	Label    string `json:"label,omitempty"`
+}
+
 // MatchScoreboardRow : ligne du scoreboard.
 type MatchScoreboardRow struct {
 	XUID             string   `json:"xuid"`
 	Gamertag         string   `json:"gamertag"`
 	TeamSide         *string  `json:"team_side,omitempty"`
 	IsMe             bool     `json:"is_me"`
+	IsMVP            bool     `json:"is_mvp,omitempty"`
+	IsLVP            bool     `json:"is_lvp,omitempty"`
 	Rank             *int     `json:"rank,omitempty"`
 	Score            *int     `json:"score,omitempty"`
 	Kills            *int     `json:"kills,omitempty"`
@@ -204,6 +221,16 @@ type MatchScoreboardRow struct {
 	DefensiveResistance *float64 `json:"defensive_resistance,omitempty"`
 	DamagePerKill       *float64 `json:"damage_per_kill,omitempty"`
 	DamagePerDeath      *float64 `json:"damage_per_death,omitempty"`
+	// Expected vs actual (depuis match_participants)
+	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
+	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
+	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
+	KillsStdDev     *float64 `json:"kills_stddev,omitempty"`
+	DeathsStdDev    *float64 `json:"deaths_stddev,omitempty"`
+	AssistsStdDev   *float64 `json:"assists_stddev,omitempty"`
+	// Expander : données per-player chargées en bulk
+	Medals      []PlayerMedalRow      `json:"medals,omitempty"`
+	WeaponKills []PlayerWeaponKillRow `json:"weapon_kills,omitempty"`
 }
 
 // MatchNemesisRow : adversaire fréquent (kills reçus de lui).
@@ -338,6 +365,29 @@ type ScoreboardRaw struct {
 	PerfectKills     int
 	TopWeaponID      *int64
 	TopWeaponLabel   string
+	// Expected stats (kills_expected, deaths_expected, etc. depuis match_participants)
+	KillsExpected   *float64
+	DeathsExpected  *float64
+	AssistsExpected *float64
+	KillsStdDev     *float64
+	DeathsStdDev    *float64
+	AssistsStdDev   *float64
+}
+
+// BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
+type BulkMedalRaw struct {
+	XUID    string
+	MedalID int64
+	Count   int
+	Label   string
+}
+
+// BulkWeaponKillRaw : une ligne de Q28 (kills par arme de tous les joueurs du match).
+type BulkWeaponKillRaw struct {
+	XUID        string
+	WeaponID    int64
+	Kills       int
+	WeaponLabel string
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.

@@ -90,6 +90,71 @@ type CommendationsPageRequest struct {
 	Category string `json:"category,omitempty"` // filtre par catégorie (vide = toutes)
 }
 
+// ---------------------------------------------------------------------------
+// Types moteur citations (computation + stockage par match)
+// ---------------------------------------------------------------------------
+
+// CitationMedalMapping : une règle citation → medal_id pour le moteur de calcul.
+// Chargée depuis metadata.citation_mappings (Q39).
+type CitationMedalMapping struct {
+	NameNorm    string
+	NameDisplay string
+	MedalID     int64
+	MappingType string // medal | composite | pve
+}
+
+// CitationFullMapping contient tous les champs de citation_mappings pour le moteur complet.
+// Chargée depuis metadata.citation_mappings (Q40).
+type CitationFullMapping struct {
+	NameNorm          string
+	NameDisplay       string
+	MappingType       string // medal|stat|pve_stat|weapon_stat|award|custom|composite
+	Category          string
+	MedalID           *int64  // medal_id simple (type medal)
+	MedalIDs          *string // CSV de medal_ids (type medal multi)
+	StatName          *string // colonne match_participants ou "weapon_kills:<name>"
+	AwardName         *string // nom d'award (type award)
+	CustomFunction    *string // nom de fonction custom
+	CompositeChildren *string // JSON list des enfants (type composite)
+	TierTargets       *string // CSV de seuils de tiers
+}
+
+// CitationEventRow est une ligne depuis shared.highlight_events filtrée par match.
+type CitationEventRow struct {
+	EventType string
+	TimeMS    int64
+	XUID      string
+}
+
+// CitationContext regroupe toutes les données d'un match nécessaires au moteur complet.
+// Stats contient les colonnes match_participants ET "weapon_kills:<name>" pour weapon_stat.
+type CitationContext struct {
+	Stats       map[string]float64 // colonnes match_participants + "weapon_kills:<name>"
+	Medals      map[int64]int      // medal_id → count
+	Awards      map[string]int     // award_name → total
+	Events      []CitationEventRow // highlight_events du match (triés par time_ms)
+	PlayerXUID  string
+	Playlist    string // playlist_name normalisée minuscules
+	GameVariant string // game_variant_name normalisée minuscules
+	Outcome     int    // 1=TIE, 2=WIN, 3=LOSS, 4=DNF
+	IsFirefight bool
+}
+
+// CitationMatchDelta : valeur calculée d'une citation pour un match.
+// Stockée dans match_citations (citation_name_norm, value).
+type CitationMatchDelta struct {
+	NameNorm string
+	Value    int
+}
+
+// CitationMatchViewRow : ligne enrichie pour l'onglet Citations de la vue match.
+// Résultat de Q38 (match_citations + citation_mappings).
+type CitationMatchViewRow struct {
+	NameNorm    string
+	NameDisplay string
+	Value       int
+}
+
 // CommendationCategory regroupe les médailles par catégorie.
 type CommendationCategory struct {
 	Category string             `json:"category"`

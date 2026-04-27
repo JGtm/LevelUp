@@ -467,12 +467,14 @@ func buildLUSRSummary(history []domain.LUSRCheckpointDTO) domain.LUSRSummary {
 // ---------------------------------------------------------------------------
 
 func splitTopRows(rows []domain.TopMatchRawRow) (best, worst []domain.TopMatchRawRow) {
-	n := len(rows)
-	mid := n / 2
-	if mid > 10 {
-		mid = 10
+	for _, r := range rows {
+		if r.Outcome == 2 { // WIN
+			best = append(best, r)
+		} else {
+			worst = append(worst, r)
+		}
 	}
-	return rows[:mid], rows[mid:]
+	return
 }
 
 func reverseTopMatches(rows []domain.TopMatchRawRow) {

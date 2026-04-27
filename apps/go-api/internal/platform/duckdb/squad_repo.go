@@ -160,6 +160,8 @@ func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammat
 			&row.TimePlayedSecs,
 			&row.TeamMMR,
 			&row.Accuracy,
+			&row.MyTeamScore,
+			&row.EnemyTeamScore,
 		); err != nil {
 			return nil, fmt.Errorf("LoadTeammateMatches scan: %w", err)
 		}

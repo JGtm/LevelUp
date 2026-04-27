@@ -6,6 +6,31 @@
 > Date d'audit : 2026-04-26.
 > Co-document : `.ai/PLAN_MATCH_VIEW_GO_PORTAGE.md`, `docs/MIGRATION_GAP_PYTHON_TO_GO.md` § 8.
 
+> **Note d'amendement — 2026-04-27** : ce plan est **partiellement supersedé** par
+> [`PLAN_META_FOUNDATIONS_GO.md`](./PLAN_META_FOUNDATIONS_GO.md). Avant toute
+> implémentation à partir de ce plan, consulter le méta-plan pour les fondations
+> communes : `LoadPlayerMatches(filters)` au lieu de Q9/Q10/Q11 ad hoc, helpers
+> `analysis/{breakdown,narrative}` (encounter badges, dominance), stack chart
+> **ECharts** (recharts retiré), DTOs alignés sur `ChartSeries[T]`, manifest
+> i18n centralisé. Réécriture complète prévue en **Phase 2** du méta-plan.
+
+### Statut des sections de ce plan vis-à-vis du méta-plan
+
+| Section / Phase | Statut | Action |
+|---|---|---|
+| Phase A — Refondation `CareerPageResponse` | À refactorer | Aligner sur `ChartSeries[T]` (méta-plan § 5.2.1) ; supprimer les `Charts.X interface{}=nil`. |
+| Phase B — Q6 (rank+adornment) | À conserver | Lecture `meta.career_ranks` spécifique. |
+| Phase B — Q8 LUSR cards (LAG par playlist_group) | À conserver | Spécifique LUSR/CSR. |
+| Phase B — Q9 Top matches (filtres durs + tri badge) | À refactorer | `LoadPlayerMatches(filters: BTB, dur≥180, outcomeIn{2,3})` + tri narrative + `analysis/narrative.ResolveDominanceBadge`. |
+| Phase B — Q10 Top encountered | À refactorer | `LoadPlayerMatches` + agrégation in-memory ; badges via `analysis/narrative.ComputeEncounterBadges`. |
+| Phase B — Q11 Antagonists (Némésis / Souffre-douleurs) | À refactorer | Source partagée via `LoadPlayerMatches` ou repo dédié `v_killer_victim_full` ; badges narrative. |
+| Phase C — Logic XP curve / projections / Hero | À conserver | Spécifique Career (constantes `XP_HERO_TOTAL`, `WEEKLY_CHALLENGE_XP`). |
+| Phase D — Service refactor | À refactorer | Adopter `LoadPlayerMatches` + `analysis/temporal.Period`. |
+| Phase E — Frontend (recharts/Plotly mix) | À refactorer | Wrappers ECharts (`<Gauge>`, `<TimeseriesLine>`, `<Lollipop>`, `<Bullet>`). |
+| Phase F — Tests & golden parity | À refactorer | Aligner sur stratégie tests méta-plan § 3 (golden parity Go-only en `cmd/foundations_golden_parity`). |
+| Phase G — Cleanup & doc | À conserver | Spécifique Career. |
+| Friends file JSON obsolète | À refactorer | Utiliser `friends_xuids` agrégé via `LoadPlayerMatches`. |
+
 ---
 
 ## 0. Synthèse exécutive

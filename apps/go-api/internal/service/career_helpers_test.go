@@ -228,17 +228,32 @@ func TestBuildLUSRSummary_BestRating(t *testing.T) {
 
 func TestSplitTopRows_Even(t *testing.T) {
 	rows := make([]domain.TopMatchRawRow, 6)
+	for i := range rows {
+		if i < 3 {
+			rows[i].Outcome = 2 // WIN
+		} else {
+			rows[i].Outcome = 3 // LOSS
+		}
+	}
 	best, worst := splitTopRows(rows)
 	if len(best) != 3 || len(worst) != 3 {
 		t.Errorf("expected 3/3, got %d/%d", len(best), len(worst))
 	}
 }
 
-func TestSplitTopRows_OverLimit(t *testing.T) {
+func TestSplitTopRows_ByOutcome(t *testing.T) {
+	// 10 WIN + 20 LOSS → split par outcome
 	rows := make([]domain.TopMatchRawRow, 30)
+	for i := range rows {
+		if i < 10 {
+			rows[i].Outcome = 2 // WIN
+		} else {
+			rows[i].Outcome = 3 // LOSS
+		}
+	}
 	best, worst := splitTopRows(rows)
 	if len(best) != 10 {
-		t.Errorf("expected best capped at 10, got %d", len(best))
+		t.Errorf("expected best=10, got %d", len(best))
 	}
 	if len(worst) != 20 {
 		t.Errorf("expected worst=20, got %d", len(worst))

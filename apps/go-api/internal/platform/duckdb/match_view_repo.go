@@ -137,6 +137,12 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 			&s.PowerWeaponKills,
 			&s.PerfectKills,
 			&s.TopWeaponID,
+			&s.KillsExpected,
+			&s.DeathsExpected,
+			&s.AssistsExpected,
+			&s.KillsStdDev,
+			&s.DeathsStdDev,
+			&s.AssistsStdDev,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard scan: %w", err)
 		}
@@ -517,4 +523,74 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 		return nil, nil //nolint:nilerr
 	}
 	return &row, nil
+}
+
+// GetMatchBulkMedals retourne les médailles de tous les joueurs du match (Q27).
+func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) ([]domain.BulkMedalRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.ReadDB().Query(ctx, Q27BulkMedals, matchID)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var results []domain.BulkMedalRaw
+	var medalIDs []int64
+	for rows.Next() {
+		var m domain.BulkMedalRaw
+		if err := rows.Scan(&m.XUID, &m.MedalID, &m.Count); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkMedals scan: %w", err)
+		}
+		results = append(results, m)
+		medalIDs = append(medalIDs, m.MedalID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	labels := r.lookupMedalLabels(ctx, medalIDs)
+	for i := range results {
+		if label, ok := labels[results[i].MedalID]; ok {
+			results[i].Label = label
+		} else {
+			results[i].Label = strconv.FormatInt(results[i].MedalID, 10)
+		}
+	}
+	return results, nil
+}
+
+// GetMatchBulkWeaponKills retourne les kills par arme de tous les joueurs (Q28).
+func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID string) ([]domain.BulkWeaponKillRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.ReadDB().Query(ctx, Q28BulkWeaponKills, matchID)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var results []domain.BulkWeaponKillRaw
+	var weaponIDs []int64
+	for rows.Next() {
+		var w domain.BulkWeaponKillRaw
+		if err := rows.Scan(&w.XUID, &w.WeaponID, &w.Kills); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills scan: %w", err)
+		}
+		results = append(results, w)
+		weaponIDs = append(weaponIDs, w.WeaponID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	labels := r.lookupWeaponLabels(ctx, weaponIDs)
+	for i := range results {
+		if label, ok := labels[results[i].WeaponID]; ok {
+			results[i].WeaponLabel = label
+		}
+	}
+	return results, nil
 }

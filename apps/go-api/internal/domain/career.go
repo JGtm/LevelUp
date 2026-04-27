@@ -34,6 +34,7 @@ type TopMatchRawRow struct {
 	KDA              *float64
 	TeamMMR          *float64
 	EnemyMMR         *float64
+	DominanceFlag    int
 }
 
 // EncounterRawRow est le type de transfert brut pour les encounters.
@@ -97,6 +98,7 @@ type LUSRCheckpointDTO struct {
 	TierLabel     *string    `json:"tier_label"`
 	PlaylistGroup *string    `json:"playlist_group"`
 	RecordedAt    *time.Time `json:"recorded_at"`
+	RatingDelta   *float64   `json:"rating_delta,omitempty"`
 }
 
 // LUSRSummary résume le rating LUSR actuel.

@@ -127,3 +127,82 @@ func (r *CitationsRepo) LoadMedalCitationMappings(ctx context.Context) ([]domain
 	}
 	return result, rows.Err()
 }
+
+// LoadCitationMedalMappings charge les règles citation→medal_id pour le moteur de calcul (Q39).
+// Utilise pdb.Metadata.
+func (r *CitationsRepo) LoadCitationMedalMappings(ctx context.Context) ([]domain.CitationMedalMapping, error) {
+	if r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.Metadata.Query(ctx, Q39CitationMedalMappings)
+	if err != nil {
+		return nil, fmt.Errorf("LoadCitationMedalMappings: %w", err)
+	}
+	defer rows.Close()
+
+	var result []domain.CitationMedalMapping
+	for rows.Next() {
+		var m domain.CitationMedalMapping
+		if err := rows.Scan(&m.NameNorm, &m.NameDisplay, &m.MedalID, &m.MappingType); err != nil {
+			return nil, fmt.Errorf("LoadCitationMedalMappings scan: %w", err)
+		}
+		result = append(result, m)
+	}
+	return result, rows.Err()
+}
+
+// LoadMatchCitationsForView charge les top citations d'un match pour la vue détail (Q38).
+// Utilise pdb.Player (match_citations) + pdb.Metadata (citation_mappings via LEFT JOIN
+// — non disponible sans ATTACH). Si Metadata absent, retourne les lignes sans label enrichi.
+func (r *CitationsRepo) LoadMatchCitationsForView(ctx context.Context, matchID string) ([]domain.CitationMatchViewRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.ReadDB().Query(ctx, Q38MatchViewCitations, matchID)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var result []domain.CitationMatchViewRow
+	for rows.Next() {
+		var row domain.CitationMatchViewRow
+		if err := rows.Scan(&row.NameNorm, &row.NameDisplay, &row.Value); err != nil {
+			return nil, fmt.Errorf("LoadMatchCitationsForView scan: %w", err)
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
+// WriteCitationsForMatch écrit les deltas de citations calculés dans match_citations.
+// Utilise un UPSERT — si la ligne existe déjà, on n'écrase pas (idempotent).
+func (r *CitationsRepo) WriteCitationsForMatch(ctx context.Context, matchID string, deltas []domain.CitationMatchDelta) error {
+	if len(deltas) == 0 {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
+	if err != nil {
+		return fmt.Errorf("WriteCitationsForMatch: open rw: %w", err)
+	}
+	defer rwDB.Close()
+
+	for _, d := range deltas {
+		_, err := rwDB.Exec(ctx, `
+			INSERT INTO match_citations (match_id, citation_name_norm, value)
+			VALUES (?, ?, ?)
+			ON CONFLICT (match_id, citation_name_norm) DO NOTHING`,
+			matchID, d.NameNorm, d.Value,
+		)
+		if err != nil {
+			return fmt.Errorf("WriteCitationsForMatch insert %s: %w", d.NameNorm, err)
+		}
+	}
+	return nil
+}
