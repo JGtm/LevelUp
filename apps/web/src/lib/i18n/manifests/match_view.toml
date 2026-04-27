@@ -1,0 +1,85 @@
+# Match View i18n manifest — strings de la page Match View.
+#
+# Format ICU MessageFormat. Régénérer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Phase 1 méta-plan § 6.1.3 — pilote MatchView. Initialement focalisé sur les
+# clés narrative (dominance badges) consommées par le header. Les sections
+# Combat / Team / Citations / Media seront enrichies dans des chunks ultérieurs
+# (MV2/MV3) au fur et à mesure de la migration ECharts + LoadHighlightEvents.
+
+# ─── Header — badges dominance (5 narratifs) ────────────────────────────────
+
+[narrative.dominance.domination]
+fr = "Domination"
+en = "Domination"
+
+[narrative.dominance.humiliation]
+fr = "Humiliation"
+en = "Humiliation"
+
+[narrative.dominance.remontada]
+fr = "Remontada"
+en = "Comeback"
+
+[narrative.dominance.debandade]
+fr = "Débandade"
+en = "Collapse"
+
+[narrative.dominance.contre_remontada]
+fr = "Contre-remontada"
+en = "Counter-comeback"
+
+# ─── Header — labels de surface ─────────────────────────────────────────────
+
+[match_view.header.title]
+fr = "Détail du match"
+en = "Match detail"
+
+[match_view.header.outcome_label]
+fr = "Résultat"
+en = "Outcome"
+
+[match_view.header.performance_score_label]
+fr = "Score de performance"
+en = "Performance score"
+
+[match_view.header.duration_label]
+fr = "Durée"
+en = "Duration"
+
+[match_view.header.waypoint_link]
+fr = "Voir sur Halo Waypoint"
+en = "View on Halo Waypoint"
+
+# ─── Onglets ────────────────────────────────────────────────────────────────
+
+[match_view.tabs.summary]
+fr = "Résumé"
+en = "Summary"
+
+[match_view.tabs.combat]
+fr = "Combat"
+en = "Combat"
+
+[match_view.tabs.team]
+fr = "Équipe"
+en = "Team"
+
+[match_view.tabs.citations]
+fr = "Citations"
+en = "Citations"
+
+[match_view.tabs.media]
+fr = "Médias"
+en = "Media"
+
+# ─── États transverses ─────────────────────────────────────────────────────
+
+[match_view.empty.no_data]
+fr = "Aucune donnée disponible pour ce match"
+en = "No data available for this match"
+
+[match_view.error.load_failed]
+fr = "Impossible de charger le détail du match"
+en = "Failed to load match detail"

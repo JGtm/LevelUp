@@ -87,6 +87,7 @@ func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) 
 		&e.PerformanceScore,
 		&e.IsWithFriends,
 		&e.IsExcluded,
+		&e.DominanceFlag,
 	)
 	if err != nil {
 		// Pas d'enrichissement → retourner vide

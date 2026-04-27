@@ -22023,3 +22023,73 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - `outcomeLabel('win')` n'a pas de fallback FR/EN dans le composant (juste la clé brute). Aurait pu être migré vers `formatMessage` au lieu de la clé brute si fieldMappings absent.
 
 **Conclusion** : suite verte restaurée. Les tests reflètent maintenant le comportement réel des composants après migration Phase D-bis. La branche `feat/foundations-axes-1-3-4` est désormais prête pour le chunk suivant (MatchView pilote).
+
+---
+
+## [2026-04-27] Phase 1 - Chunk MV1 — MatchView pilote (DominanceBadge narrative + manifest)
+
+**Statut** : Complété (premier chunk MatchView, scope ciblé).
+
+**Tâche** : Démarrer la Phase 1 méta-plan § 6.1.3 (MatchView pilote) en branchant le **premier élément** du service sur les fondations narrative livrées en Phase 0. Scope volontairement réduit pour valider l'API narrative sur un cas extrême (header MatchView) avant d'attaquer les chantiers plus lourds (HighlightEvents kill feed/cadence/impact, refonte ECharts, Phase J awards). Manifest `match_view.toml` initial créé.
+
+**Branche** : `feat/foundations-axes-1-3-4`.
+
+**Découverte initiale (audit)** : le champ `domain.MatchViewHeader.DominanceFlag bool` était **dead** — jamais assigné dans `buildMatchHeader` ni lu depuis l'enrichment. Le frontend recevait toujours `false`. La feature dominance était cassée silencieusement sur MatchView. Un classique "champ DTO ajouté sans branchement service".
+
+**Décisions techniques** :
+
+### Branchement narrative.ResolveDominanceBadge
+- Nouveau champ `MatchEnrichmentRaw.DominanceFlag int` (mirror canonical 0..5).
+- `Q18MatchEnrichment` étendu : ajout `COALESCE(pme.dominance_flag, 0) AS dominance_flag` (la colonne est peuplée par `sync.BackfillDominanceFlags` via `engine.RunBackfillComebackBadges`, déjà livré en Phase 0 chunk 8).
+- `MatchViewRepo.GetMatchEnrichment` : nouveau Scan column.
+- `buildMatchHeader` : appel `narrative.ResolveDominanceBadge(canonical.DominanceFlag(enrich.DominanceFlag))`. Si nil (DominanceNone ou flag inconnu), pas de badge. Sinon, peuplement de `h.DominanceBadge` typé + `h.DominanceFlag = true` pour rétrocompat.
+
+### DTO élargi (rétrocompat ascendante)
+- Nouveau type `domain.MatchViewDominanceBadge` (Flag int + LabelKey + ColorToken). Mirror frontend du `narrative.DominanceBadge` Go.
+- `MatchViewHeader.DominanceFlag bool` : conservé (deprecated, marqué dans la doc) pour rétrocompat avec consommateurs front V0 qui n'attendent qu'un booléen.
+- `MatchViewHeader.DominanceBadge *MatchViewDominanceBadge` : nouveau champ optionnel exposé dans le JSON de réponse.
+- Décision UX : pas de breaking change frontend. Les consommateurs V1 lisent le bool, les nouveaux lisent le badge typé.
+
+### Manifest i18n match_view.toml initial
+- Création de `apps/web/src/lib/i18n/manifests/match_view.toml` avec **17 clés FR + EN** :
+  - 5 clés `narrative.dominance.*` (les 5 badges narratifs).
+  - 5 clés `match_view.header.*` (titre, outcome, performance, durée, lien Waypoint).
+  - 5 clés `match_view.tabs.*` (Résumé / Combat / Équipe / Citations / Médias).
+  - 2 clés `match_view.empty/error.*`.
+- Le manifest sera enrichi au fur et à mesure (~150 clés cible selon le plan méta) lors des chunks MV2/MV3.
+
+### Tests
+- `match_view_dominance_test.go` : 6 tests table-driven sur `buildMatchHeader` :
+  - 3 cas de badges valides (domination, humiliation, remontada) avec assertion sur LabelKey + ColorToken + Flag.
+  - 1 cas DominanceNone → pas de badge, bool legacy false.
+  - 1 cas flag inconnu → dégradation gracieuse (pas de badge).
+  - 1 cas enrich nil → pas de crash.
+
+**Fichiers créés** :
+- `apps/go-api/internal/service/match_view_dominance_test.go` (~95L, 6 tests)
+- `apps/web/src/lib/i18n/manifests/match_view.toml` (17 clés)
+- `apps/web/src/lib/i18n/generated/match_view.ts` (auto-gen)
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/platform/duckdb/queries_match.go` : Q18 étendu (+1 colonne).
+- `apps/go-api/internal/platform/duckdb/match_view_repo.go` : Scan étendu (+1 var).
+- `apps/go-api/internal/domain/match_view.go` : `MatchEnrichmentRaw.DominanceFlag` + `MatchViewHeader.DominanceBadge` + nouveau type `MatchViewDominanceBadge`.
+- `apps/go-api/internal/service/match_view_service.go` : import narrative + canonical, appel `narrative.ResolveDominanceBadge` dans `buildMatchHeader`.
+
+**Résultats** :
+- 6 nouveaux tests Go passent. `go test ./...` propre, 0 régression.
+- gofmt clean, build OK.
+- 539/539 tests Vitest toujours verts (la dette tests précédente est restée stable).
+
+**Hors scope (différé MV2/MV3)** :
+- **MV2 — câblage `LoadHighlightEvents`** : kill feed (`EventTypes:[kill,death,assist]`), cadence intra-match (bucket 60s), impact timeline (`narrative.IdentifyImpactRoles`). Demande des modifs port/repo + intégration dans le service errgroup.
+- **MV2 — radar 6 axes** : `narrative.ComputeParticipationProfile` + Phase J awards Go (`personal_score_awards`).
+- **MV2 — encounters typés** : aujourd'hui les `EncounterRaw` sont peuplés via repo direct ; les rebrancher sur `narrative.ComputeEncounterBadges` pour exposer LabelKey + ColorToken au front.
+- **MV3 — DTOs `ChartSeries[T]`** : suppression des stubs Plotly server-side dans le DTO MatchView (16 stubs `Charts.X interface{}=nil` à virer). Migration vers wrappers ECharts S10.
+- **MV3 — refonte `MatchViewPage.tsx`** : passage Recharts → ECharts (`<BarStacked>` dominance, `<Cadence>`, `<Heatmap2D>` impact, `<Radar>` participation, `<Donut>` weapons, `<Lollipop>` antagonists).
+- **MV3 — manifest match_view.toml** étendu à ~150 clés.
+
+**Limitation observée — dette à tracer** :
+- `outcomeColors` (lignes 24-29 du service) utilise encore des hex codes (`#22c55e`, `#ef4444`, etc.) — anti-pattern selon CLAUDE.md règle 20. À migrer vers `tokenCssVar('outcome-*')` côté front (le service ne devrait pas porter de couleur, juste un token sémantique). Reporté à MV3.
+
+**Conclusion** : la Phase 1 MatchView est **démarrée**. Le DominanceBadge narrative est désormais consommable par le front (LabelKey + ColorToken + 5 clés i18n). Le pattern d'intégration narrative validé sur un premier point d'entrée. Reste à étendre aux 5+ autres surfaces (kill feed, cadence, impact, radar, encounters, weapons, antagonists) dans les chunks MV2/MV3.

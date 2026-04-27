@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
@@ -315,6 +317,20 @@ func buildMatchHeader(
 			h.PerfColor = &color
 		}
 		h.IsExcluded = enrich.IsExcluded
+
+		// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné sur les fondations
+		// narrative. Résolution du badge typé via narrative.ResolveDominanceBadge.
+		// Le bool legacy `dominance_flag` reste exposé pour rétrocompat (true si
+		// un badge narratif s'applique).
+		flag := canonical.DominanceFlag(enrich.DominanceFlag)
+		if badge := narrative.ResolveDominanceBadge(flag); badge != nil {
+			h.DominanceFlag = true
+			h.DominanceBadge = &domain.MatchViewDominanceBadge{
+				Flag:       int(badge.Flag),
+				LabelKey:   badge.LabelKey,
+				ColorToken: badge.ColorToken,
+			}
+		}
 	}
 
 	return h
