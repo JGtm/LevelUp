@@ -20725,3 +20725,29 @@ Logique canonique (4 étapes) :
 - `.ai/PLAN_CITATIONS_GO_PORTAGE.md` : §9 "Audit exhaustif" (2000+ lignes) + checkliste pré-Phase-2 (10 requêtes SQL)
 
 **Conclusion** : Plan passé de ~70% de couverture à **100% de portabilité garantie** une fois checklist §9.5 exécutée.
+
+---
+
+## [2026-04-27] Phase 0 - Chunk 1 — analysis/temporal (helpers transverses)
+
+**Statut** : ✅ Complété
+
+**Tâche** : Premier chunk de la Phase 0 du méta-plan PLAN_META_FOUNDATIONS_GO. Créer le sous-package `internal/analysis/temporal/` avec les helpers de filtrage temporel et bucketing partagés par Synthesis, Timeseries, Career, MatchView, Squad.
+
+**Branche** : `feat/foundations-axes-1-3-4` (créée depuis `feat/multi-title-adapters-and-mappings`).
+
+**Décision technique** : sous-package dédié (pas du flat `package analysis` existant) pour éviter les conflits de noms (`Period`, `Bucket`, `Granularity`) et clarifier l'usage transverse. Numeric constraint local (pas d'import `golang.org/x/exp/constraints`). Granularité semaine = ISO 8601 lundi (origin) ; dimanche remappé à 7 pour calcul d'offset. RollingMean utilise `math.NaN()` quand fenêtre < minPoints (cohérent avec numpy/polars).
+
+**Fichiers créés** :
+- `apps/go-api/internal/analysis/temporal/period.go` : `Period` (5 constantes), `Period.IsValid()`, `Period.Since(now)`, `HasStartTime` interface, `FilterByPeriod[T]` générique.
+- `apps/go-api/internal/analysis/temporal/bucket.go` : `Granularity` (4 constantes), `ResolveAdaptive`, `Bucket[T]`, `BucketByGranularity[T]` générique avec ISO 8601 + label `2006-Wxx`.
+- `apps/go-api/internal/analysis/temporal/rolling.go` : `Numeric` constraint, `RollingMean[T]`, `RollingMeanAdaptive[T]` (`window = max(minWindow, n*pct/100)`).
+- 3 fichiers de tests table-driven correspondants.
+
+**Résultats** :
+- `go test ./internal/analysis/temporal/. -race` → 19 tests OK, 0 fail.
+- `go vet ./internal/analysis/temporal/.` → propre.
+- Couverture : **95.6%** (cible méta-plan ≥ 90%).
+- Cas couverts : 5 périodes + invalid/empty, 4 granularités + adaptive, ISO week dimanche, sortable, timezone preservation, rolling NaN bornes, types int/int64/float64.
+
+**Conclusion** : socle temporel disponible pour les chunks suivants. Next chunk : `analysis/breakdown/` (consomme `temporal` pour les agrégations W/L/T/DNF par dimension).
