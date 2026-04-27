@@ -33,9 +33,12 @@ describe('CareerHubPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it("affiche le titre 'Carrière' dans le header", () => {
+  it("expose un nav 'Onglets Carrière' aria-label", () => {
+    // Le titre "Carrière" en h1 a été retiré du composant (refacto post-84ae65ca,
+    // la NavL1 expose déjà le label de section). Le seul vestige Carrière est
+    // l'aria-label du nav qui reste pertinent pour l'accessibilité.
     renderWithProviders(<CareerHubPage />)
-    expect(screen.getByText('Carrière')).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Onglets Carrière' })).toBeInTheDocument()
   })
 
   it("affiche les onglets 'Progression' et 'Citations'", () => {
@@ -66,11 +69,16 @@ describe('CareerHubPage', () => {
     })
   })
 
-  it('le header persiste lors du changement de tab', () => {
+  it('le bandeau onglets persiste lors du changement de tab', () => {
+    // Le titre h1 "Carrière" ayant été retiré du composant (cf. test précédent),
+    // on vérifie que le bandeau tabs (Progression / Citations) reste rendu après
+    // changement de tab — c'est lui qui persiste comme repère contextuel.
     renderWithProviders(<CareerHubPage />)
-    expect(screen.getByText('Carrière')).toBeInTheDocument()
+    expect(screen.getByText('Progression')).toBeInTheDocument()
+    expect(screen.getByText('Citations')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Citations'))
-    expect(screen.getByText('Carrière')).toBeInTheDocument()
+    expect(screen.getByText('Progression')).toBeInTheDocument()
+    expect(screen.getByText('Citations')).toBeInTheDocument()
   })
 })
 

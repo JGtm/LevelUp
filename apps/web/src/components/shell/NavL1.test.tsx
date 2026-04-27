@@ -40,61 +40,66 @@ describe('NavL1', () => {
     })
   })
 
-  it('affiche Palmarès dans la navigation principale', () => {
+  // Refonte nav L1 (Phase 4 Prestige, commit bde179c8) :
+  // - Palmares renomme en "Communaute"
+  // - Synthese devenue sous-onglet de Stats (pas L1)
+  // - Nouvelle entree L1 "Objectifs"
+
+  it('affiche Communauté dans la navigation principale', () => {
     renderWithProviders(<NavL1 />)
 
-    expect(screen.getByRole('link', { name: 'Palmarès' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Communauté' })).toBeInTheDocument()
   })
 
-  it('marque Palmarès actif sur les sous-routes du hub', () => {
+  it('marque Communauté actif sur les sous-routes du hub', () => {
     mockPathname = '/players/test-player/palmares/relations'
 
     renderWithProviders(<NavL1 />)
 
-    expect(screen.getByRole('link', { name: 'Palmarès' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Communauté' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('place Palmarès en avant-dernier dans la L1', () => {
+  it('place Communauté avant Médias et après Objectifs dans la L1', () => {
     renderWithProviders(<NavL1 />)
 
+    const objectifsLink = screen.getByRole('link', { name: 'Objectifs' })
+    const communauteLink = screen.getByRole('link', { name: 'Communauté' })
     const mediaLink = screen.getByRole('link', { name: 'Médias' })
-    const palmaresLink = screen.getByRole('link', { name: 'Palmarès' })
-    const careerLink = screen.getByRole('link', { name: 'Carrière' })
 
     expect(
-      mediaLink.compareDocumentPosition(palmaresLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+      objectifsLink.compareDocumentPosition(communauteLink) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      palmaresLink.compareDocumentPosition(careerLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+      communauteLink.compareDocumentPosition(mediaLink) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 
-  it('affiche Synthèse dans la navigation principale', () => {
+  it('affiche Stats (parent de Synthèse) dans la navigation principale', () => {
     renderWithProviders(<NavL1 />)
 
-    expect(screen.getByRole('link', { name: 'Synthèse' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Stats' })).toBeInTheDocument()
   })
 
-  it('marque Synthèse actif sur sa route', () => {
+  it('marque Stats actif sur la route /synthesis (Synthèse est sous-onglet de Stats)', () => {
     mockPathname = '/players/test-player/synthesis'
 
     renderWithProviders(<NavL1 />)
 
-    expect(screen.getByRole('link', { name: 'Synthèse' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('place Synthèse entre Escouade et Explorer', () => {
+  it('place Objectifs entre Escouade et Communauté', () => {
     renderWithProviders(<NavL1 />)
 
     const escouadeLink = screen.getByRole('link', { name: 'Escouade' })
-    const syntheseLink = screen.getByRole('link', { name: 'Synthèse' })
-    const explorerLink = screen.getByRole('link', { name: 'Explorer' })
+    const objectifsLink = screen.getByRole('link', { name: 'Objectifs' })
+    const communauteLink = screen.getByRole('link', { name: 'Communauté' })
 
     expect(
-      escouadeLink.compareDocumentPosition(syntheseLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+      escouadeLink.compareDocumentPosition(objectifsLink) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      syntheseLink.compareDocumentPosition(explorerLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+      objectifsLink.compareDocumentPosition(communauteLink) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 })

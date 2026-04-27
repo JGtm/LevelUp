@@ -28,17 +28,15 @@ describe('MatchHistoryPage', () => {
     expect(screen.queryByText(/Chargement de l'historique/i)).not.toBeInTheDocument()
   })
 
-  it("affiche le titre 'Historique' une fois les données chargées", async () => {
-    renderWithProviders(<MatchHistoryPage />)
-    await waitFor(() => {
-      expect(screen.getByText('Historique des parties')).toBeInTheDocument()
-    })
-  })
+  // Test "affiche le titre 'Historique'" supprimé : le titre h1 a été retiré
+  // du composant lors du refacto post-84ae65ca (NavL1 expose la section).
 
-  it('affiche 0 résultats pour le fixture vide', async () => {
+  it('affiche le compteur de parties après chargement', async () => {
+    // Format simplifié post-84ae65ca : "X partie(s)" dans MatchHistoryTable au
+    // lieu de "0 parties dans la période". Fixture vide → "0 partie".
     renderWithProviders(<MatchHistoryPage />)
     await waitFor(() => {
-      expect(screen.getByText(/0 parties dans la période/i)).toBeInTheDocument()
+      expect(screen.getByText(/0 partie/i)).toBeInTheDocument()
     })
   })
 })

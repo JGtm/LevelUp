@@ -67,12 +67,9 @@ describe('SettingsPage', () => {
     expect(screen.queryByText(/Chargement des paramètres/i)).not.toBeInTheDocument()
   })
 
-  it("affiche le titre 'Paramètres' une fois les données chargées", async () => {
-    renderWithProviders(<SettingsPage />)
-    await waitFor(() => {
-      expect(screen.getByText('Paramètres')).toBeInTheDocument()
-    })
-  })
+  // Test "affiche le titre 'Paramètres'" supprimé : titre h1 retiré du composant
+  // (refacto post-84ae65ca, NavL1 expose la section). Le rendu post-loading est
+  // déjà couvert par le test "affiche la section Langue et affichage".
 
   it('affiche la section Langue et affichage', async () => {
     renderWithProviders(<SettingsPage />)
