@@ -74,6 +74,7 @@ export function LoginPage() {
                 </label>
                 <input
                   id="username"
+                  name="username"
                   type="text"
                   autoComplete="username"
                   required
@@ -89,6 +90,7 @@ export function LoginPage() {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   autoComplete="current-password"
                   required
