@@ -5,10 +5,17 @@ import { describe, it, expect } from 'vitest'
 import {
   cumulativePointsToSeries,
   heatmapCellsToSeries,
+  distributionBucketsToSeries,
+  correlationPointsToSeries,
   DOW_LABELS_FR,
   DOW_LABELS_EN,
 } from './seriesAdapters'
-import type { CumulativePoint, IntensityHeatmapPoint } from '@/lib/api/types'
+import type {
+  CorrelationDataPair,
+  CumulativePoint,
+  DistributionBucket,
+  IntensityHeatmapPoint,
+} from '@/lib/api/types'
 
 describe('cumulativePointsToSeries', () => {
   it('retourne 1 série mono-trace avec key/name', () => {
@@ -107,5 +114,81 @@ describe('heatmapCellsToSeries', () => {
       { key: 'k', name: 'n', dowLabels: DOW_LABELS_FR },
     )
     expect(series[0].datapoints[0].y).toBe('99')
+  })
+})
+
+describe('distributionBucketsToSeries', () => {
+  const buckets: DistributionBucket[] = [
+    { bin_start: 0, bin_end: 1, count: 5 },
+    { bin_start: 1, bin_end: 2, count: 12 },
+  ]
+
+  it('retourne une série mono-trace avec key/name', () => {
+    const series = distributionBucketsToSeries(buckets, { key: 'k', name: 'KD' })
+    expect(series).toHaveLength(1)
+    expect(series[0].key).toBe('k')
+    expect(series[0].meta).toEqual({ gamertag: 'KD' })
+  })
+
+  it('mappe bin_start/bin_end/count → binStart/binEnd/count', () => {
+    const dps = distributionBucketsToSeries(buckets, { key: 'k', name: 'n' })[0].datapoints
+    expect(dps).toEqual([
+      { binStart: 0, binEnd: 1, count: 5 },
+      { binStart: 1, binEnd: 2, count: 12 },
+    ])
+  })
+
+  it('retourne une série vide quand aucun bucket', () => {
+    const series = distributionBucketsToSeries([], { key: 'k', name: 'n' })
+    expect(series).toHaveLength(1)
+    expect(series[0].datapoints).toEqual([])
+  })
+})
+
+describe('correlationPointsToSeries', () => {
+  const labels = { win: 'Victoires', loss: 'Défaites', unknown: 'Inconnu' }
+  const points: CorrelationDataPair[] = [
+    { label: 'kills_vs_kd', x: 5, y: 1.5, outcome: 2 },
+    { label: 'kills_vs_kd', x: 3, y: 0.7, outcome: 3 },
+    { label: 'kills_vs_kd', x: 0, y: 0, outcome: null },
+    { label: 'other_pair', x: 9, y: 9, outcome: 2 },
+  ]
+
+  it('filtre par label actif', () => {
+    const series = correlationPointsToSeries(points, 'kills_vs_kd', labels)
+    const all = series.flatMap((s) => s.datapoints)
+    expect(all).toHaveLength(3)
+  })
+
+  it('découpe en 3 séries win/loss/unknown', () => {
+    const series = correlationPointsToSeries(points, 'kills_vs_kd', labels)
+    expect(series.map((s) => s.key)).toEqual(['outcome.win', 'outcome.loss', 'outcome.unknown'])
+    expect(series[0].datapoints).toEqual([{ x: 5, y: 1.5 }])
+    expect(series[1].datapoints).toEqual([{ x: 3, y: 0.7 }])
+    expect(series[2].datapoints).toEqual([{ x: 0, y: 0 }])
+  })
+
+  it('utilise les labels i18n pour meta.gamertag', () => {
+    const series = correlationPointsToSeries(points, 'kills_vs_kd', labels)
+    expect(series.map((s) => (s.meta as { gamertag: string }).gamertag)).toEqual([
+      'Victoires',
+      'Défaites',
+      'Inconnu',
+    ])
+  })
+
+  it('omet une série vide (pas de losses → 2 séries)', () => {
+    const winsOnly: CorrelationDataPair[] = [
+      { label: 'kills_vs_kd', x: 5, y: 1.5, outcome: 2 },
+      { label: 'kills_vs_kd', x: 8, y: 2.0, outcome: 2 },
+    ]
+    const series = correlationPointsToSeries(winsOnly, 'kills_vs_kd', labels)
+    expect(series).toHaveLength(1)
+    expect(series[0].key).toBe('outcome.win')
+  })
+
+  it('retourne [] si label inconnu', () => {
+    const series = correlationPointsToSeries(points, 'unknown_label', labels)
+    expect(series).toEqual([])
   })
 })
