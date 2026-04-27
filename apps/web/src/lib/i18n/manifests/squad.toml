@@ -183,6 +183,68 @@ en = "False brother"
 fr = "Top killer"
 en = "Top killer"
 
+# ─── S7 : Contributions ─────────────────────────────────────────────────────
+
+[squad.contrib.section_title]
+fr = "Contributions"
+en = "Contributions"
+
+[squad.contrib.per_minute_title]
+fr = "Stats par minute"
+en = "Per-minute stats"
+
+[squad.contrib.per_minute_kills]
+fr = "Frags / min"
+en = "Kills / min"
+
+[squad.contrib.per_minute_deaths]
+fr = "Morts / min"
+en = "Deaths / min"
+
+[squad.contrib.per_minute_assists]
+fr = "Assistances / min"
+en = "Assists / min"
+
+[squad.contrib.frags_deaths_title]
+fr = "Frags ↑ / Morts ↓"
+en = "Kills ↑ / Deaths ↓"
+
+[squad.contrib.killing_spree_title]
+fr = "Série de kills (max lissé)"
+en = "Killing spree (smoothed max)"
+
+[squad.contrib.hs_pk_title]
+fr = "Headshots + Power weapons"
+en = "Headshots + Power weapons"
+
+[squad.contrib.hs_pk_headshots]
+fr = "Headshots"
+en = "Headshots"
+
+[squad.contrib.hs_pk_power_weapons]
+fr = "Armes lourdes"
+en = "Power weapons"
+
+[squad.contrib.assists_title]
+fr = "Assistances par match"
+en = "Assists per match"
+
+[squad.contrib.kda_title]
+fr = "KDA par match"
+en = "KDA per match"
+
+[squad.contrib.accuracy_title]
+fr = "Précision par match"
+en = "Accuracy per match"
+
+[squad.contrib.avg_life_title]
+fr = "Vie moyenne par match"
+en = "Average lifespan per match"
+
+[squad.contrib.performance_title]
+fr = "Score de performance par match"
+en = "Performance score per match"
+
 # ─── S6 : Cadence + Intensité ───────────────────────────────────────────────
 
 [squad.synergies.cadence_title]
