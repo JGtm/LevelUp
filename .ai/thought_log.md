@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-27] feat(p2.f-home-explorer): manifests + migration i18n live pages
+
+**Statut** : Complété (Home minimal + Explorer full ; Media différé Phase 3).
+
+**Décision technique** :
+Phase 2 P2.F du méta-plan. Création de deux manifests (`home.toml` 44 clés, `explorer.toml` 42 clés) FR+EN. ExplorerPage.tsx : migration complète des strings hardcodées (mode tabs, filtres cascade, résultats matchs, mode joueur head-to-head) via `formatMessage(explorerManifest, key, locale)` + `numberLocale` pour formats date/nombre. HomePage.tsx : migration minimale ciblée (états error/empty page, sections Défis actifs / Sessions récentes / Highlights / Matchs récents-favoris, identité Spartan indisponible) en gardant intactes les modules legacy `kpi.i18n.ts`, `highlights.i18n.ts`, `spartanIdentity.i18n.ts`. MediaPage déjà couverte par `media/i18n.ts` structuré (toolbar, groupSection, sortKeys) — duplication évitée, migration vers manifest reportée Phase 3.
+
+**Architecture** :
+- Pas de helper extrait : i18n direct via `t()` capture-pattern dans le composant (pas de logique de transformation à tester séparément).
+- Plurals ICU pour `home.sessions.match_count|wins_count|losses_count|...` et `explorer.matches.count_label` (one/other).
+- Interpolation `{xp}` pour `home.challenges.xp_available` consommée avec `toLocaleString(numberLocale)` côté caller.
+
+**Résultats** :
+- `npm run typecheck | grep -E "HomePage|ExplorerPage"` → 0 erreur sur les fichiers touchés.
+- 86 nouvelles clés générées (44 home + 42 explorer) dans `apps/web/src/lib/i18n/generated/`.
+
+**Prochaine étape** : P2.G Palmares + Session WIP — manifests + couverture i18n pour les pages WIP.
+
 ## [2026-04-27] feat(p2.e-timeseries): manifest TOML + migration Plotly → ECharts (line + heatmap)
 
 **Statut** : Complété.
