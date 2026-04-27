@@ -21536,3 +21536,51 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - Chunks suivants : S7 Contributions, S8 Radar, S9 Armes/Médailles.
 
 **Conclusion** : backend Squad V2 Impact + Cadence/Intensité complet, 4 charts supplémentaires via API (8 charts total Squad V2 backend). Cumul Phase 1 : 6 chunks (S1, S1b, S2, S3+S4, S5+S6) sur 9-11. Prochaine étape : S7 Contributions (donut empilé attaque/défense/objectif) ou bascule frontend (wrappers ECharts).
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S7 — Contributions (per-min, frags/deaths, killing spree, HS/PK, 5 timeseries)
+
+**Statut** : Complété
+
+**Tâche** : Backend de l'onglet Contributions Squad V2 (sections 14, 16, 17, 18, 19 de l'audit) — 9 charts au total :
+- **Bars groupés / empilés** (4) : per-minute stats, frags/deaths combined, killing spree max (lissé), HS+PK stacked.
+- **Timeseries multi-joueurs** (5) : assists, KDA, accuracy, avg life, performance.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S5+S6).
+
+**Décisions techniques** :
+
+### S7.A — Bars (squad_service_v2_contributions.go)
+- **`BuildPerMinuteStats`** : 1 datapoint par joueur, components = `kills_per_min`/`deaths_per_min`/`assists_per_min`. Skipe les rows sans `DurationSeconds` (évite division par zéro). Wrapper attendu : `<BarGrouped>`.
+- **`BuildFragsDeathsCombined`** : 1 datapoint par joueur, components = `kills`/`deaths` (totaux agrégés). Wrapper attendu : `<BarGrouped>`.
+- **`BuildKillingSpreeMax`** : 1 trace par joueur, lissage via `temporal.RollingMeanAdaptive(values, minWindow=5, pct=10)` (paramètres équivalents au portage Python). Y = spree lissé chronologique. Skipe les rows sans `MaxKillingSpree`.
+- **`BuildHsPkStacked`** : 1 datapoint par joueur, components = `headshots`/`power_weapons` (totaux). Wrapper attendu : `<BarStacked>` (records overlay = future iteration).
+- **Helpers DRY** : `sortedGamertags`, `sortedByStartedAt`, `derefInt` factorisés.
+
+### S7.B — Timeseries trio (squad_service_v2_trio_charts.go)
+- **`buildTrioTimeseries`** : helper interne factorisant les 5 charts via `trioExtractor func(canonical.PlayerMatchRow) (float64, bool)`. Pattern : 1 trace par joueur, X=`StartedAtUTC`, Y=scalar, skip rows sans valeur.
+- 5 builders publics : `BuildAssistsChart`, `BuildKDAChart`, `BuildAccuracyChart`, `BuildAvgLifeChart`, `BuildPerformanceChart`.
+- Décision : DRY via closure sur extracteur plutôt que 5 fonctions copy/paste (140 lignes économisées + signature uniforme).
+
+### Manifest i18n
+- **`apps/web/src/lib/i18n/manifests/squad.toml`** étendu : section S7 (`squad.contrib.*` 15 clés). Total : 61 clés (+15 vs S5+S6).
+
+**Fichiers créés** :
+- `apps/go-api/internal/service/squad_service_v2_contributions.go` (~210L) + `_test.go`
+- `apps/go-api/internal/service/squad_service_v2_trio_charts.go` (~135L) + `_test.go`
+
+**Fichiers modifiés** :
+- `apps/web/src/lib/i18n/manifests/squad.toml` + generated regen
+
+**Résultats** :
+- 14 nouveaux tests Go (7 contributions + 7 trio). Tous OK + `go test ./...` propre, aucune régression.
+- Couverture S7 ~95-100 %.
+- gofmt clean.
+
+**Hors scope (chunks à venir)** :
+- Wrappers ECharts frontend `<BarGrouped>`, `<BarStacked>` avec prop `recordsOverlay`, `<TimeseriesLine>` (mutualisé déjà avec S4 timeline).
+- Composition `SquadContributionsPage.tsx` réelle.
+- Records overlay (motif hachuré ECharts via `itemStyle.decal`) sur HS/PK : reporté car nécessite une détection records par joueur (`SquadRecordSet` Phase 2).
+
+**Conclusion** : backend Contributions complet, 9 charts supplémentaires via API (17 charts total Squad V2 backend). Cumul Phase 1 : 7 chunks (S1, S1b, S2, S3+S4, S5+S6, S7) sur 9-11. Prochaines étapes : S8 Radar 6 axes (réutilise `narrative.ComputeParticipationProfile` Phase 0) puis S9 Tableau armes/médailles + repos `LoadWeaponKillsAggregated` / `LoadMedalsForMatchesByXUID`.
