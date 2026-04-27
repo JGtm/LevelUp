@@ -32,6 +32,7 @@ import { Route as PlayersPlayerSlugExplorerIndexRouteImport } from './routes/pla
 import { Route as PlayersPlayerSlugStatsTimeseriesRouteImport } from './routes/players/$playerSlug/stats/timeseries'
 import { Route as PlayersPlayerSlugStatsSessionsRouteImport } from './routes/players/$playerSlug/stats/sessions'
 import { Route as PlayersPlayerSlugStatsHistoryRouteImport } from './routes/players/$playerSlug/stats/history'
+import { Route as PlayersPlayerSlugSquadV2RouteImport } from './routes/players/$playerSlug/squad/v2'
 import { Route as PlayersPlayerSlugSquadSynergiesRouteImport } from './routes/players/$playerSlug/squad/synergies'
 import { Route as PlayersPlayerSlugSquadContributionsRouteImport } from './routes/players/$playerSlug/squad/contributions'
 import { Route as PlayersPlayerSlugProfileCitationsRouteImport } from './routes/players/$playerSlug/profile/citations'
@@ -166,6 +167,12 @@ const PlayersPlayerSlugStatsHistoryRoute =
     path: '/stats/history',
     getParentRoute: () => PlayersPlayerSlugRoute,
   } as any)
+const PlayersPlayerSlugSquadV2Route =
+  PlayersPlayerSlugSquadV2RouteImport.update({
+    id: '/v2',
+    path: '/v2',
+    getParentRoute: () => PlayersPlayerSlugSquadRoute,
+  } as any)
 const PlayersPlayerSlugSquadSynergiesRoute =
   PlayersPlayerSlugSquadSynergiesRouteImport.update({
     id: '/synergies',
@@ -246,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/profile/citations': typeof PlayersPlayerSlugProfileCitationsRoute
   '/players/$playerSlug/squad/contributions': typeof PlayersPlayerSlugSquadContributionsRoute
   '/players/$playerSlug/squad/synergies': typeof PlayersPlayerSlugSquadSynergiesRoute
+  '/players/$playerSlug/squad/v2': typeof PlayersPlayerSlugSquadV2Route
   '/players/$playerSlug/stats/history': typeof PlayersPlayerSlugStatsHistoryRoute
   '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
   '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
@@ -279,6 +287,7 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/profile/citations': typeof PlayersPlayerSlugProfileCitationsRoute
   '/players/$playerSlug/squad/contributions': typeof PlayersPlayerSlugSquadContributionsRoute
   '/players/$playerSlug/squad/synergies': typeof PlayersPlayerSlugSquadSynergiesRoute
+  '/players/$playerSlug/squad/v2': typeof PlayersPlayerSlugSquadV2Route
   '/players/$playerSlug/stats/history': typeof PlayersPlayerSlugStatsHistoryRoute
   '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
   '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
@@ -314,6 +323,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/profile/citations': typeof PlayersPlayerSlugProfileCitationsRoute
   '/players/$playerSlug/squad/contributions': typeof PlayersPlayerSlugSquadContributionsRoute
   '/players/$playerSlug/squad/synergies': typeof PlayersPlayerSlugSquadSynergiesRoute
+  '/players/$playerSlug/squad/v2': typeof PlayersPlayerSlugSquadV2Route
   '/players/$playerSlug/stats/history': typeof PlayersPlayerSlugStatsHistoryRoute
   '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
   '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/profile/citations'
     | '/players/$playerSlug/squad/contributions'
     | '/players/$playerSlug/squad/synergies'
+    | '/players/$playerSlug/squad/v2'
     | '/players/$playerSlug/stats/history'
     | '/players/$playerSlug/stats/sessions'
     | '/players/$playerSlug/stats/timeseries'
@@ -383,6 +394,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/profile/citations'
     | '/players/$playerSlug/squad/contributions'
     | '/players/$playerSlug/squad/synergies'
+    | '/players/$playerSlug/squad/v2'
     | '/players/$playerSlug/stats/history'
     | '/players/$playerSlug/stats/sessions'
     | '/players/$playerSlug/stats/timeseries'
@@ -417,6 +429,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/profile/citations'
     | '/players/$playerSlug/squad/contributions'
     | '/players/$playerSlug/squad/synergies'
+    | '/players/$playerSlug/squad/v2'
     | '/players/$playerSlug/stats/history'
     | '/players/$playerSlug/stats/sessions'
     | '/players/$playerSlug/stats/timeseries'
@@ -603,6 +616,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugStatsHistoryRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
+    '/players/$playerSlug/squad/v2': {
+      id: '/players/$playerSlug/squad/v2'
+      path: '/v2'
+      fullPath: '/players/$playerSlug/squad/v2'
+      preLoaderRoute: typeof PlayersPlayerSlugSquadV2RouteImport
+      parentRoute: typeof PlayersPlayerSlugSquadRoute
+    }
     '/players/$playerSlug/squad/synergies': {
       id: '/players/$playerSlug/squad/synergies'
       path: '/synergies'
@@ -672,6 +692,7 @@ declare module '@tanstack/react-router' {
 interface PlayersPlayerSlugSquadRouteChildren {
   PlayersPlayerSlugSquadContributionsRoute: typeof PlayersPlayerSlugSquadContributionsRoute
   PlayersPlayerSlugSquadSynergiesRoute: typeof PlayersPlayerSlugSquadSynergiesRoute
+  PlayersPlayerSlugSquadV2Route: typeof PlayersPlayerSlugSquadV2Route
   PlayersPlayerSlugSquadIndexRoute: typeof PlayersPlayerSlugSquadIndexRoute
 }
 
@@ -680,6 +701,7 @@ const PlayersPlayerSlugSquadRouteChildren: PlayersPlayerSlugSquadRouteChildren =
     PlayersPlayerSlugSquadContributionsRoute:
       PlayersPlayerSlugSquadContributionsRoute,
     PlayersPlayerSlugSquadSynergiesRoute: PlayersPlayerSlugSquadSynergiesRoute,
+    PlayersPlayerSlugSquadV2Route: PlayersPlayerSlugSquadV2Route,
     PlayersPlayerSlugSquadIndexRoute: PlayersPlayerSlugSquadIndexRoute,
   }
 

@@ -21902,3 +21902,68 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - **Records overlay** sur `<BarStackedChart>` (motif hachuré HS/PK) : nécessite une prop `recordsOverlay` sur le wrapper — différé.
 
 **Conclusion** : Phase 1 Squad V2 = **end-to-end opérationnel** sur les 22 sections de l'audit. Backend = 100 % livré (S1→S11). Frontend = composants opérationnels + page démo (`SquadV2Page` consomme le payload complet). Reste : intégration dans le shell + composition finale UX (différé Phase 2 pour éviter le big-bang).
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S12 — Intégration Squad V2 dans la layout (route + nav + i18n + FloatingLegend)
+
+**Statut** : Complété.
+
+**Tâche** : Phase 2 du portage Squad V2 (sauf records overlay qui reste reporté) :
+1. Route `/players/$playerSlug/squad/v2` ajoutée + 3ème onglet "Vue Squad V2" dans `SquadLayout`.
+2. `<FloatingLegend>` sticky avec `IntersectionObserver` optionnel.
+3. i18n via manifest : `SquadV2Page` consomme `squadManifest` + `formatMessage` au lieu de recevoir 30+ labels en prop.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S10b).
+
+**Décisions techniques** :
+
+### i18n via manifest (`squad.toml` étendu)
+- 12 nouvelles clés `squad.v2.*` (loading, error_prefix, empty, section_*, weapons.min_kills, legend.player_indicator, nav_tab) en FR+EN. Total **96 clés** (+12 vs S10b).
+- `SquadV2Page` expose désormais une signature minimaliste `{ playerSlug, teammates?, period? }` — les labels viennent du store `appShellStore.locale` + `squadManifest`. Plus de prop `labels: SquadV2PageLabels` (suppression d'un objet de 28 champs).
+- `useSquadV2Translator` : closure qui binde locale + manifest. Pattern `t(key, vars)` familier (cf. legacy `getSquadText`).
+- Les 3 composants tableau/galerie continuent à recevoir leurs labels en prop (pas de couplage manifest dans ces composants pour rester réutilisables ailleurs si besoin). C'est `SquadV2Page` qui résout puis transmet.
+
+### FloatingLegend (`v2/components/FloatingLegend.tsx`)
+- Sticky via Tailwind `sticky top-0 z-10` + backdrop-blur sur fond `card/90`.
+- 1 pastille couleur par joueur, ordre stable, couleurs `chart-series-1..8` cyclées modulo 8 via `tokenCssVar()` (aucune couleur hex directe).
+- `IntersectionObserver` optionnel : prop `endSentinelId` permet de masquer la légende quand le scroll dépasse une zone (pattern audit § 22). En jsdom (tests), `typeof IntersectionObserver === 'undefined'` → no-op (les tests ne testent que la présence du DOM).
+- Test sur cycle modulo 8 : 9e joueur retombe sur `chart-series-1`.
+
+### Route + intégration shell
+- `apps/web/src/routes/players/$playerSlug/squad/v2.tsx` : route file-based TanStack Router (auto-régénérée dans `routeTree.gen.ts` par le plugin Vite — pas d'édition manuelle).
+- `SquadV2RouteHost` : adapter qui lit `confirmedGamertags` depuis `SquadContext` (peuplé par `SquadLayout` via `GamertagCombobox`) et les passe en `teammates` à `SquadV2Page`. Période figée à `"all"` pour cette itération — un futur S13 pourra dériver de la session active.
+- `SquadLayout` étend `nav` avec une 3ème entrée `t.nav.v2` (FR "Vue Squad V2" / EN "Squad V2 view"). Le typage `SquadText.nav` étendu pour inclure `v2: string`.
+
+### Tests
+- 4 nouveaux tests Vitest sur `FloatingLegend` (rendu, ordre, couleurs, modulo 8).
+- 68 tests cumulés sur `src/features/squad/v2/` + `src/components/charts/` (charts S10 + S10b + S12).
+- 0 erreur typecheck, 0 erreur lint sur fichiers livrés.
+- Suite globale frontend : 26 tests pré-existants en échec dans des fichiers non-touchés (NavL1, CareerHubPage, HomePage, MatchHistoryPage) — attendent des nav links "Palmarès"/"Synthèse" hors scope S12.
+
+**Fichiers créés** :
+- `apps/web/src/features/squad/v2/SquadV2RouteHost.tsx` (~25 L)
+- `apps/web/src/features/squad/v2/components/FloatingLegend.tsx` (~85 L) + `.test.tsx`
+- `apps/web/src/routes/players/$playerSlug/squad/v2.tsx` (route file-based)
+
+**Fichiers modifiés** :
+- `apps/web/src/lib/i18n/manifests/squad.toml` (+12 clés `squad.v2.*`) + generated regen
+- `apps/web/src/features/squad/v2/SquadV2Page.tsx` : signature simplifiée, `formatMessage` partout, ajout `<FloatingLegend>` en tête de page
+- `apps/web/src/features/squad/i18n.ts` : `SquadText.nav.v2: string` ajouté FR + EN
+- `apps/web/src/features/squad/SquadLayout.tsx` : 3ème onglet `Link` vers `/squad/v2`
+- `apps/web/src/routeTree.gen.ts` : régénéré par le plugin TanStack Router
+
+**Done definition (delivery-checklist)** :
+- [x] Tests Vitest sur composants nouveaux : OK (4/4 FloatingLegend + 11/11 tableaux + 53/53 charts)
+- [x] Typecheck : 0 erreur sur fichiers nouveaux/modifiés
+- [x] Lint : 0 erreur/warning sur fichiers nouveaux/modifiés
+- [x] Aucune string hardcodée dans `features/squad/v2/` (tout via `formatMessage`)
+- [x] Aucune couleur hex dans nouveaux composants (tout via `tokenCssVar`)
+- [x] Pas d'édition manuelle de `routeTree.gen.ts`
+- [x] thought_log mis à jour
+- [x] Architecture respectée : composants isolés, types miroir backend, no business logic dans la layout
+
+**Hors scope (resté différé)** :
+- **Records overlay** sur `<BarStackedChart>` (motif hachuré ECharts via `itemStyle.decal`) — nécessite la détection records par joueur côté backend (`SquadRecordSet` Phase 2 ou 3).
+
+**Conclusion** : Phase 1 Squad V2 + Phase 2 = **100 % livrés** (12 chunks : S1, S1b, S2, S3+S4, S5+S6, S7, S8+S9, S9b, S10, S11, S10b, S12). La page V2 est désormais accessible via `/players/{slug}/squad/v2`, intégrée à la layout existante (sélection coéquipiers réutilisée), entièrement i18n via manifest, avec `FloatingLegend` sticky. Le seul hors scope restant est le records overlay (dépend d'une feature backend non livrée).
