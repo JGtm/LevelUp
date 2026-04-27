@@ -86,6 +86,7 @@ const WHITELIST_PATTERNS = [
   /\/lib\/i18n\/manifests\//,                // sources TOML i18n (whitelistees a la racine du linter mais le walker filtre .ts uniquement)
   /\/lib\/i18n\/generated\//,                // modules generes par scripts/build_i18n_manifests.mjs
   /\/lib\/i18n\/format\.tsx?$/,              // wrapper runtime ICU MessageFormat (fallback strings techniques uniquement)
+  /\/features\/lab\/ChartsShowcasePage\.tsx$/, // dev sandbox /lab/charts (doc visuelle, hors scope user-facing)
 ]
 
 function isWhitelisted(filePath) {

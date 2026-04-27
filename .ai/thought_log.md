@@ -1,5 +1,58 @@
 # Thought Log
 
+## [2026-04-28] feat(option-c): showcase ECharts /lab/charts (alternative légère à Storybook)
+
+**Statut** : Complété — Phase 3 Options A+B+C entièrement livrées.
+
+**Décision technique** :
+Plutôt qu'installer Storybook (50+MB de deps + config + maintenance), création d'une **page de showcase intégrée** dans le hub `/lab` du projet. Avantages :
+- 0 nouvelle dépendance ajoutée
+- Documentation visuelle vivante des 11 wrappers ECharts
+- Sandbox de régression visuelle manuelle accessible immédiatement
+- Référence d'usage pour les nouveaux écrans
+- Données de démo statiques (pas de backend requis)
+
+**Architecture** :
+- `apps/web/src/routes/lab/charts.tsx` : route file-based TanStack Router `/lab/charts`
+- `apps/web/src/features/lab/ChartsShowcasePage.tsx` : galerie des 11 wrappers avec sample data
+- Helper `<ShowcaseSection>` interne : Card + titre + description + slot enfant
+- Layout grid 2-colonnes responsive (`lg:grid-cols-2`)
+- Données de démo sample générées par `Array.from({length}, ...)` + `Math.sin/cos/random` pour des courbes plausibles
+
+**11 wrappers couverts** :
+- TimeseriesLineChart (multi-séries time)
+- BarStackedChart (outcomes par jour win/loss/tie)
+- BarGroupedChart (medals filtré vs total)
+- DonutChart (outcomes 3 slices)
+- Heatmap2DChart (intensité jour×heure)
+- HistogramChart (distribution K/D)
+- ScatterChart (corrélations win/loss)
+- RadarChart (2 joueurs 6 axes)
+- OutcomeSequenceTape (bande RLE)
+- TimeseriesCombatYield (OC + DR + markLine p80)
+- TimeseriesKdaBars (bars K/D + line K/D ratio)
+
+**Spécificité ESLint** :
+- `eslint-disable @levelup/no-hardcoded-strings` au niveau fichier — les libellés (noms de composants, descriptions) sont du contenu de dev sandbox, hors scope i18n utilisateur. Exemption justifiée par commentaire d'en-tête.
+
+**Résultats** :
+- `vitest run src/components/charts/ src/features/{timeseries,citations,career,session-detail,lab}/` → 142/142 OK
+- `npm run typecheck` filtré ChartsShowcase + routes/lab/charts → 0 erreur
+- `npx eslint ChartsShowcasePage.tsx` → 0 warning (post-disable)
+
+**Récap final Phase 3 (8 chunks A→D + E + F+G + Option B + Option C)** :
+- 12 manifests TOML totalisant 644+ clés FR/EN (toutes pages user-facing)
+- 4 modules `i18n.ts` legacy refactorés en adapters minces (kpi, spartanIdentity, highlights, palmares + media)
+- 11 wrappers ECharts dont 4 nouveaux Phase 3 (Histogram, Scatter, Donut + 2 dédiés CombatYield/KdaBars)
+- 6 wrappers Plotly retirés (~700L dette nettoyée)
+- 14 champs DTO Go orphelins + 14 TS supprimés
+- 2 Cards UI dead supprimées (radar SessionCompare + distribution_chart CareerCitations)
+- ChartsShowcasePage `/lab/charts` comme doc visuelle vivante
+
+**TimeseriesPage et SessionComparePage** : 100% ECharts, 0 import `react-plotly.js`. Reliquats Plotly dans le projet : Squad (heatmapChart, hsPkChart, timelineChart) — figures Plotly server-side encore générées Go-side, hors scope Phase 3.
+
+**Prochaine étape** : à l'utilisateur de définir.
+
 ## [2026-04-28] cleanup(option-b): retrait DTOs Plotly orphelins server-side (timeseries + citations)
 
 **Statut** : Complété — Option B du chantier Phase 3 terminée.
