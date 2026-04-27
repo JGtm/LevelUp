@@ -254,38 +254,9 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		})
 	}
 
-	// MV4.B : chargement parallèle des awards pour le radar 6 axes. Skippé si
-	// le repo n'est pas câblé (radar absent du payload final). Le scoreboard
-	// (chargé en parallèle) fournira la liste des xuids — ici on prend une
-	// approche pragmatique : on charge les awards pour `s.xuid` uniquement
-	// (le main player). Étendre à tous les xuids du scoreboard nécessiterait
-	// d'attendre le scoreboard avant de filtrer, ce qui sérialiserait
-	// l'errgroup. Compromis : radar centré sur le main, xuids supplémentaires
-	// reportés à une itération ultérieure (ou via un MV4.B' qui sérialise).
-	var rawAwards []port.PersonalScoreAwardRow
-	if s.awardsRepo != nil && s.xuid != "" {
-		g.Go(func() error {
-			filters := port.PersonalScoreAwardsFilters{
-				MatchIDs: []string{matchID},
-				XUIDs:    []string{s.xuid},
-			}
-			if e := filters.Validate(); e != nil {
-				slog.WarnContext(gctx, "match_view: PersonalScoreAwardsFilters invalides",
-					"match_id", matchID, "err", e)
-				return nil
-			}
-			rows, e := s.awardsRepo.LoadPersonalScoreAwards(gctx, s.titleSlug, filters)
-			if e != nil {
-				if !errors.Is(e, games.ErrCapabilityNotSupported) {
-					slog.WarnContext(gctx, "match_view: LoadPersonalScoreAwards echec",
-						"match_id", matchID, "err", e)
-				}
-				return nil
-			}
-			rawAwards = rows
-			return nil
-		})
-	}
+	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
+	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
+	// bas, après `g.Wait()`.
 	g.Go(func() error {
 		var e error
 		weapons, e = s.repo.GetMatchWeaponKills(gctx, s.xuid, matchID)
@@ -379,8 +350,10 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
-	// MV4.B : radar 6 axes. Mode family dérivée de la pair_name (best-effort).
-	// Les awards sont déjà filtrés sur le main xuid + matchID dans le goroutine.
+	// MV4.B' : radar 6 axes pour TOUS les xuids du scoreboard (pas juste le main).
+	// Charge les awards en série après le scoreboard. Latence supplémentaire
+	// acceptable (~50-100ms pour 1 query DuckDB sur l'index match_id+xuid).
+	rawAwards := s.loadAwardsForScoreboard(ctx, matchID, scoreboard)
 	var radar []any
 	if len(rawAwards) > 0 {
 		modeFamily := matchModeFamilyFromMeta(meta)
@@ -400,6 +373,46 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		CitationsTab: buildCitationsTab(matchCitations, medals),
 		Radar:        radar,
 	}, nil
+}
+
+// loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard
+// (chunk MV4.B'). Sérialisé après l'errgroup principal — la liste des xuids
+// dépend du scoreboard chargé en parallèle. Dégradation gracieuse :
+//
+//	awardsRepo nil       -> retourne nil
+//	scoreboard vide      -> retourne nil
+//	capability absente   -> retourne nil (silencieux)
+//	autre erreur         -> log warn + retourne nil
+func (s *MatchViewService) loadAwardsForScoreboard(
+	ctx context.Context,
+	matchID string,
+	scoreboard []domain.ScoreboardRaw,
+) []port.PersonalScoreAwardRow {
+	if s.awardsRepo == nil || len(scoreboard) == 0 {
+		return nil
+	}
+	xuids := extractMatchSquadXUIDs(scoreboard)
+	if len(xuids) == 0 {
+		return nil
+	}
+	filters := port.PersonalScoreAwardsFilters{
+		MatchIDs: []string{matchID},
+		XUIDs:    xuids,
+	}
+	if err := filters.Validate(); err != nil {
+		slog.WarnContext(ctx, "match_view: PersonalScoreAwardsFilters invalides",
+			"match_id", matchID, "err", err)
+		return nil
+	}
+	rows, err := s.awardsRepo.LoadPersonalScoreAwards(ctx, s.titleSlug, filters)
+	if err != nil {
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			slog.WarnContext(ctx, "match_view: LoadPersonalScoreAwards echec",
+				"match_id", matchID, "err", err)
+		}
+		return nil
+	}
+	return rows
 }
 
 // matchModeFamilyFromMeta résout la mode family pour le calcul des seuils

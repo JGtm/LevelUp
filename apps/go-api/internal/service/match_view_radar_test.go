@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -156,5 +158,93 @@ func TestMatchModeFamilyFromMeta_NilHandling(t *testing.T) {
 	}
 	if got := matchModeFamilyFromMeta(&domain.MatchMetaRaw{}); got != "" {
 		t.Errorf("nil pair: want empty, got %q", got)
+	}
+}
+
+// fakeAwardsRepo mock pour tester loadAwardsForScoreboard.
+type fakeAwardsRepo struct {
+	rows        []port.PersonalScoreAwardRow
+	err         error
+	lastFilters port.PersonalScoreAwardsFilters
+	lastTitle   string
+	callCount   int
+}
+
+func (f *fakeAwardsRepo) LoadPersonalScoreAwards(
+	_ context.Context,
+	slug string,
+	filters port.PersonalScoreAwardsFilters,
+) ([]port.PersonalScoreAwardRow, error) {
+	f.callCount++
+	f.lastTitle = slug
+	f.lastFilters = filters
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.rows, nil
+}
+
+func TestLoadAwardsForScoreboard_QueriesAllXUIDs(t *testing.T) {
+	t.Parallel()
+	repo := &fakeAwardsRepo{
+		rows: []port.PersonalScoreAwardRow{
+			{XUID: "x_p1", MatchID: "m1", AwardName: "kills", Total: 10},
+			{XUID: "x_p2", MatchID: "m1", AwardName: "assist", Total: 5},
+		},
+	}
+	svc := &MatchViewService{awardsRepo: repo, titleSlug: "halo_infinite"}
+	scoreboard := []domain.ScoreboardRaw{
+		{XUID: "x_p1"},
+		{XUID: "x_p2"},
+		{XUID: "x_p3"},
+	}
+	got := svc.loadAwardsForScoreboard(context.Background(), "m1", scoreboard)
+	if len(got) != 2 {
+		t.Errorf("rows want 2, got %d", len(got))
+	}
+	// Vérifie que les filters incluent TOUS les xuids du scoreboard
+	if len(repo.lastFilters.XUIDs) != 3 {
+		t.Errorf("filters.XUIDs want 3 (tous les xuids du scoreboard), got %d",
+			len(repo.lastFilters.XUIDs))
+	}
+	if repo.lastTitle != "halo_infinite" {
+		t.Errorf("titleSlug want halo_infinite, got %s", repo.lastTitle)
+	}
+}
+
+func TestLoadAwardsForScoreboard_NilRepoReturnsNil(t *testing.T) {
+	t.Parallel()
+	svc := &MatchViewService{awardsRepo: nil}
+	got := svc.loadAwardsForScoreboard(context.Background(), "m1", []domain.ScoreboardRaw{
+		{XUID: "x_p1"},
+	})
+	if got != nil {
+		t.Errorf("nil repo: want nil, got %v", got)
+	}
+}
+
+func TestLoadAwardsForScoreboard_EmptyScoreboardReturnsNil(t *testing.T) {
+	t.Parallel()
+	repo := &fakeAwardsRepo{}
+	svc := &MatchViewService{awardsRepo: repo}
+	got := svc.loadAwardsForScoreboard(context.Background(), "m1", nil)
+	if got != nil {
+		t.Errorf("empty scoreboard: want nil, got %v", got)
+	}
+	if repo.callCount != 0 {
+		t.Errorf("repo should not be called when scoreboard empty, got %d calls",
+			repo.callCount)
+	}
+}
+
+func TestLoadAwardsForScoreboard_CapabilityNotSupported_ReturnsNilSilently(t *testing.T) {
+	t.Parallel()
+	repo := &fakeAwardsRepo{err: games.ErrCapabilityNotSupported}
+	svc := &MatchViewService{awardsRepo: repo, titleSlug: "halo_infinite"}
+	got := svc.loadAwardsForScoreboard(context.Background(), "m1", []domain.ScoreboardRaw{
+		{XUID: "x_p1"},
+	})
+	if got != nil {
+		t.Errorf("capability not supported: want nil, got %v", got)
 	}
 }
