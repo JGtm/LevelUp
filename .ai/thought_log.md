@@ -21053,3 +21053,71 @@ Logique canonique (4 étapes) :
 - Hook post-sync : à chaque match ingéré par `RunDelta/RunFull`, on pourrait calculer `dominance_flag` immédiatement (au lieu d'attendre un backfill explicite). À ajouter quand on attaque le pipeline sync principal.
 
 **Conclusion** : le risque bloquant Phase 1 est **levé** : la fonction de calcul est correcte, la méthode `RunBackfillComebackBadges` est en place pour la déclencher, les tests prouvent que le `dominance_flag` est correctement persisté en DB. Pour les tests pilotes Phase 1 (Squad/MatchView/Career), il suffira d'appeler `engine.RunBackfillComebackBadges(ctx, true)` une fois sur la DB de test pour peupler tous les flags.
+
+---
+
+## [2026-04-27] Phase 0 - Chunks 9+10 — Observabilité expvar + whitelist playlist_kind handler
+
+**Statut** : ✅ Complété (deux chunks groupés en un commit)
+
+**Tâche** : Compléter le côté Go de la Phase 0 avec deux blocs courts mais transverses :
+- **Chunk 9** : squelette d'observabilité expvar (méta-plan § 4.7) — 4 catégories de métriques minimales sans Prometheus.
+- **Chunk 10** : whitelist `playlist_kind` côté handler (méta-plan § 5.3.5) — defense-in-depth contre ReDoS / SQL injection avant que la valeur n'atteigne le repo.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunk 8).
+
+### Chunk 9 — `internal/observability/expvar_metrics.go`
+
+**Décisions techniques** :
+- **Stdlib `expvar` uniquement** : pas de Prometheus / OpenTelemetry pour cette itération (méta-plan § 4.7). Endpoint `/debug/vars` natif via `expvar.Map` racine `"levelup"`.
+- **4 helpers** : `IncCounter(name)`, `AddInt(name, delta)`, `RecordDurationMS(name, ms)`, `LoadCounter`/`LoadDurationStats` pour lecture/test.
+- **Threadsafe** : `atomic.Int64` pour les compteurs, `atomic.Int64` × 3 pour count/sum/max des durées. CAS loop pour mettre à jour le max sans verrou.
+- **Pas d'histogramme** : count + sum + avg + max suffit pour cette itération. Les p95/p99 viendront avec Prometheus si besoin.
+- **`Reset()` réservé aux tests** (vidange totale).
+
+**Métriques exposées** (catégories prévues, à brancher par les services au fil de Phase 1+) :
+- `service_duration_ms_<service>` (durée par service)
+- `repo_query_duration_ms_<query>` (durée des requêtes)
+- `cache_hit_<cache>` / `cache_miss_<cache>` (compteurs hit/miss)
+- `error_count_<service>` (erreurs)
+
+**Tests** : 9 tests dont concurrence (1000 goroutines × IncCounter, 1000 × RecordDurationMS), valeurs négatives ignorées, Reset clears all. Couverture 81 %.
+
+### Chunk 10 — `internal/api/handlers/playlist_regex_whitelist.go`
+
+**Décisions techniques** :
+- **Whitelist fermée** de 4 alias : `ranked`, `social`, `btb`, `firefight`. Aucune regex libre. Synchronisée manuellement avec `duckdb.playlistKindClause` (test de cardinalité fixe).
+- **3 fonctions exportées** :
+  - `IsValidPlaylistKind(s)` : true si valide ; vide accepté (= "pas de filtre")
+  - `NormalisePlaylistKind(s)` : retourne la version canonique (lowercase, trimmed) ou ""
+  - `AllowedPlaylistKinds()` : liste triée pour OpenAPI / messages d'erreur
+- **Trim + lowercase** appliqués (souplesse user input).
+- **Defense-in-depth** : handler rejette → repo rejette aussi via `ErrUnknownPlaylistKind` (déjà en place chunk 6).
+
+**Tests** : 8 tests dont validation des 4 alias, case-insensitive, rejet d'**11 inputs malicieux** (ReDoS `(a+)+`, SQL injection `'; DROP TABLE`, null byte, newline injection, URL-encoded, XSS, traversal `../../`). Couverture 100 % sur les 3 fonctions.
+
+**Note d'évolution** : le test `TestPlaylistKindWhitelist_FixedCardinality` échoue à la compilation/runtime si la cardinalité change sans mise à jour de `duckdb.playlistKindClause`. Cycle d'import empêche un check statique cross-package — la garde de cardinalité est l'approche la plus simple.
+
+**Fichiers créés** :
+- `apps/go-api/internal/observability/expvar_metrics.go` (~150L)
+- `apps/go-api/internal/observability/expvar_metrics_test.go` (~120L)
+- `apps/go-api/internal/api/handlers/playlist_regex_whitelist.go` (~70L)
+- `apps/go-api/internal/api/handlers/playlist_regex_whitelist_test.go` (~140L)
+
+**Résultats** :
+- Tests cumul Phase 0 : OK + race detector clean.
+- Couverture observability : 81 %. Couverture handler whitelist : 100 % sur les 3 fonctions (le 0.6 % global du package handlers est dû au reste des handlers déjà écrits).
+- `go build ./...` : OK.
+- `go vet ./internal/observability/. ./internal/api/handlers/.` : propre.
+- gofmt : propre après auto-format.
+
+**Conclusion** : **côté Go de la Phase 0 complet**. Tous les axes serveur sont en place :
+- Helpers purs (temporal / breakdown / narrative)
+- Types canoniques (PlayerMatchRow / DominanceFlag / HighlightEvent étendu)
+- Ports interfaces (PlayerMatchesRepository / HighlightEventsRepository)
+- Repos DuckDB + caches TTL/FIFO + singleflight (player_matches + highlight_events)
+- Sync `dominance_flag` branché (RunBackfillComebackBadges)
+- Observabilité expvar minimale
+- Whitelist playlist_kind defense-in-depth
+
+Restent : **frontend Phase 0** (ChartCard ECharts + manifests i18n + ESLint rule + `<CapabilityGap>` 3 modes). Et la dette tracée à plus tard (renommage `LUSRHistory → RatingHistory`, sémantique `ModeFilter`, wiring CLI `--comeback-badges`).
