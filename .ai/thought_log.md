@@ -20881,3 +20881,41 @@ Logique canonique (4 étapes) :
 - gofmt-blocked sur le commit initial (alignement de struct), re-formaté.
 
 **Conclusion** : tous les helpers narratifs purs sont en place. Avec les chunks 1-5 livrés, on a tout l'arsenal d'algorithmes purs pour la Phase 0 (axe 1 helpers transverses + axe 3 contrat canonical + axe interfaces port). Next chunk : impl DuckDB des 2 repos (`platform/duckdb/player_matches_repo.go` + `highlight_events_repo.go` + caches singleflight+LRU).
+
+---
+
+## [2026-04-27] Phase 0 - Chunk 6 — player_matches_repo + cache (DuckDB)
+
+**Statut** : ✅ Complété
+
+**Tâche** : Implémentation DuckDB du loader unifié `LoadPlayerMatches` + couche cache TTL/FIFO + singleflight. Premier chunk d'infrastructure (sortie de l'analyse pure).
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunk 5).
+
+**Décisions techniques** :
+- **Repo per-player** : `NewPlayerMatchesRepo(*PlayerDB)` matche la convention existante (squad_repo, career_repo, etc.). L'adaptation à l'interface `port.PlayerMatchesRepository` (avec slug+gamertag) viendra dans un chunk d'orchestration ultérieur via `pool.GetOrOpen`.
+- **Capability gating** délégué au service appelant (cohérent avec les autres repos).
+- **Builder de query dynamique** avec WHERE clauses concaténées selon les filtres présents. Toutes les valeurs scalaires passent par placeholders `?` ; seuls les fragments structurels (IN-list, ORDER BY) sont assemblés en string. ORDER BY whitelist fermée (4 valeurs admises). PlaylistKind whitelist fermée (5 valeurs admises). Aucune interpolation de string non sûre.
+- **Sécurité** : conformité au design § 5.3.5 du méta-plan (pas de regex libre, alias court résolu via whitelist côté repo + erreur explicite `ErrUnknownPlaylistKind` / `ErrUnknownOrderBy`).
+- **Outcome conversion** : helpers `outcomeToInt` (1=tie, 2=win, 3=loss, 4=dnf) miroir du stockage DB legacy. Conversion en bidirectionnel pour scan + filter.
+- **Cache TTL + FIFO + singleflight** : LRU stricte non implémentée pour éviter dépendance externe ; TTL court (5 min) + capacité FIFO suffit pour notre profil d'usage. `singleflight.Group` (`golang.org/x/sync` déjà dispo) pour coalescer les appels concurrents. Clé de cache = SHA-256 hex sur JSON canonique (slices triés pour stabilité d'ordre). Tests assertent : hit/miss, TTL expiration, distinct keys, order-insensitive (slices triés), coalescence 30 goroutines → 1 inner call, errors not cached, FIFO eviction, Invalidate.
+- **Interface locale `playerMatchesLoader`** : permet le test du cache sans PlayerDB réel via mock loader. `*PlayerMatchesRepo` l'implémente naturellement.
+
+**Fichiers créés** :
+- `apps/go-api/internal/platform/duckdb/player_matches_repo.go` (~480L) : `PlayerMatchesRepo` + buildQuery + scanner + helpers d'outcome/asset/whitelist.
+- `apps/go-api/internal/platform/duckdb/player_matches_cache.go` (~250L) : `CachedPlayerMatchesRepo` + `ttlCache` + `filtersCacheKey` + métriques atomiques.
+- `apps/go-api/internal/platform/duckdb/player_matches_repo_test.go` (~370L, build tag `integration`) : 18 tests couvrant chaque filtre, ordre, limite, capability, validation.
+- `apps/go-api/internal/platform/duckdb/player_matches_cache_test.go` (~250L) : 11 tests cache (mock loader, sans DB).
+
+**Résultats** :
+- Tests cache (sans tag) : `go test -run TestCachedPlayerMatchesRepo|TestFiltersCacheKey|TestTTLCache -race` → tous OK.
+- Tests repo intégration : `go test -tags=integration -run TestPlayerMatchesRepo` → tous OK.
+- Couverture des fichiers ajoutés : ~95-100 % sur la majorité des fonctions (helpers d'erreur 50-67 %).
+- `go build ./...` → OK, aucune régression.
+- gofmt-blocked sur le commit initial (alignement struct), re-formaté.
+
+**Dette préexistante détectée (non bloquante pour ce chunk)** :
+- `Q*HomeMatches` référence `r.playable_duration_seconds` qui n'existe pas dans le schéma de test (`shared.match_registry` a seulement `duration_seconds`). 8+ tests `TestHomeRepo_*`, `TestMatchViewRepo_*`, `TestCareerRepo_GetLUSRHistory_*`, `TestStatsRepo_LoadLUSRHistory_*` échouent en intégration. Erreur préexistante, indépendante du chunk 6 (vérifiée). À traiter dans un commit séparé hors méta-plan.
+- Helper `nullStringPtr` déjà présent dans `season_pass_repo.go` — réutilisé sans dupliquer.
+
+**Conclusion** : `player_matches_repo` opérationnel pour les 6 services. Next chunk : `highlight_events_repo` + cache (suit le même pattern, ~2-3h estimé) ou bien attaque immédiate côté frontend (charts ECharts skeleton + manifests i18n).
