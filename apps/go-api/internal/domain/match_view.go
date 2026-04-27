@@ -26,8 +26,15 @@ type MatchViewHeader struct {
 	StartTimeLabel string     `json:"start_time_label"`
 	OutcomeCode    *int       `json:"outcome_code,omitempty"`
 	OutcomeLabel   string     `json:"outcome_label"`
-	OutcomeColor   string     `json:"outcome_color"`
-	ScoreLabel     string     `json:"score_label,omitempty"`
+	// OutcomeColor : valeur hex legacy. Deprecated (anti-pattern CLAUDE.md
+	// règle 20 — aucun hex côté backend). Utiliser OutcomeColorToken pour
+	// les nouveaux consommateurs front qui appellent tokenCssVar().
+	OutcomeColor string `json:"outcome_color"`
+	// OutcomeColorToken : token sémantique (SemanticToken : "outcome-win",
+	// "outcome-loss", "outcome-draw", "outcome-dnf"). Le front résout via
+	// tokenCssVar(token). Empty si outcome inconnu.
+	OutcomeColorToken string `json:"outcome_color_token,omitempty"`
+	ScoreLabel        string `json:"score_label,omitempty"`
 	// DominanceFlag : true si un badge narratif (domination/humiliation/etc.)
 	// s'applique à ce match. Maintenu pour compatibilité ascendante avec les
 	// consommateurs front V0 qui n'attendent qu'un booléen.
@@ -36,17 +43,21 @@ type MatchViewHeader struct {
 	// DominanceBadge : badge narratif typé (LabelKey + ColorToken) résolu via
 	// narrative.ResolveDominanceBadge. Nil si aucun badge ne s'applique.
 	// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné sur les fondations.
-	DominanceBadge          *MatchViewDominanceBadge `json:"dominance_badge,omitempty"`
-	HadBotTeammate          bool                     `json:"had_bot_teammate"`
-	MapUI                   string                   `json:"map_ui"`
-	MapID                   string                   `json:"map_id,omitempty"`
-	ModeUI                  string                   `json:"mode_ui"`
-	PlaylistLabel           string                   `json:"playlist_label"`
-	PerfDisplay             string                   `json:"performance_display"`
-	PerfColor               *string                  `json:"performance_color,omitempty"`
-	IsExcluded              bool                     `json:"is_excluded"`
-	PlayableDurationSeconds *int64                   `json:"playable_duration_seconds,omitempty"`
-	WaypointURL             string                   `json:"waypoint_url,omitempty"`
+	DominanceBadge *MatchViewDominanceBadge `json:"dominance_badge,omitempty"`
+	HadBotTeammate bool                     `json:"had_bot_teammate"`
+	MapUI          string                   `json:"map_ui"`
+	MapID          string                   `json:"map_id,omitempty"`
+	ModeUI         string                   `json:"mode_ui"`
+	PlaylistLabel  string                   `json:"playlist_label"`
+	PerfDisplay    string                   `json:"performance_display"`
+	// PerfColor : valeur hex legacy. Deprecated (cf. OutcomeColor).
+	PerfColor *string `json:"performance_color,omitempty"`
+	// PerfColorToken : token sémantique perf-tier-1..5 (1=meilleur, 5=pire).
+	// Empty si performance score absent.
+	PerfColorToken          string `json:"performance_color_token,omitempty"`
+	IsExcluded              bool   `json:"is_excluded"`
+	PlayableDurationSeconds *int64 `json:"playable_duration_seconds,omitempty"`
+	WaypointURL             string `json:"waypoint_url,omitempty"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.
@@ -93,9 +104,12 @@ type MatchSummaryKpis struct {
 // MatchPersonalResult : résultat personnel du joueur.
 type MatchPersonalResult struct {
 	OutcomeLabel string `json:"outcome_label"`
+	// OutcomeColor : hex legacy (deprecated, cf. MatchViewHeader.OutcomeColor).
 	OutcomeColor string `json:"outcome_color"`
-	Score        *int   `json:"score,omitempty"`
-	RankInTeam   *int   `json:"rank_in_team,omitempty"`
+	// OutcomeColorToken : token sémantique (cf. MatchViewHeader.OutcomeColorToken).
+	OutcomeColorToken string `json:"outcome_color_token,omitempty"`
+	Score             *int   `json:"score,omitempty"`
+	RankInTeam        *int   `json:"rank_in_team,omitempty"`
 }
 
 // MatchExpectedStats : comparaison réel vs attendu + moyennes historiques.

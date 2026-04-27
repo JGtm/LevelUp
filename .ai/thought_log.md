@@ -22111,3 +22111,40 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - `outcomeColors` (lignes 24-29 du service) utilise encore des hex codes (`#22c55e`, `#ef4444`, etc.) — anti-pattern selon CLAUDE.md règle 20. À migrer vers `tokenCssVar('outcome-*')` côté front (le service ne devrait pas porter de couleur, juste un token sémantique). Reporté à MV3.
 
 **Conclusion** : la Phase 1 MatchView est **démarrée**. Le DominanceBadge narrative est désormais consommable par le front (LabelKey + ColorToken + 5 clés i18n). Le pattern d'intégration narrative validé sur un premier point d'entrée. Reste à étendre aux 5+ autres surfaces (kill feed, cadence, impact, radar, encounters, weapons, antagonists) dans les chunks MV2/MV3.
+
+---
+
+## [2026-04-27] Phase 1 - Chunks MV2 + MV3 — MatchView : cadence + impact 8 rôles + cleanup hex
+
+**Statut** : Complété (deux chunks groupés).
+
+**Tâche** : Suite de MV1 — étendre l'intégration MatchView ↔ fondations narrative + nettoyer la dette hex côté backend.
+
+**Branche** : `feat/foundations-axes-1-3-4`.
+
+### MV2 — Cadence intra-match + Impact 8 rôles via narrative
+
+- `match_view_narrative.go` (~165L) : helpers + builders qui consomment les fondations narrative.
+- `convertEventsRawToCanonical` : helper EventRaw → canonical.HighlightEvent avec mapping correct du xuid selon le type d'event (kill→KillerXUID, death→VictimXUID, medal/assist→PlayerXUID).
+- `BuildMatchCadenceChart` : appelle `narrative.ComputeCadenceProfiles` (Phase 0 chunk 6) sur les events du match. 1 série par xuid du scoreboard, phase 60s. Output `*ChartSeries[ChartPointStacked]`.
+- `BuildMatchImpactRoles8` : appelle `narrative.IdentifyImpactRoles` (8 rôles narratifs) en parallèle de `analysis.ComputeMatchImpactFull` (4 rôles bilatéral legacy). Coexistence pour rétrocompat.
+- DTOs étendus : `MatchViewImpactRole` nouveau, `MatchCombatTab.{ImpactRoles,Cadence}` nouveaux champs. `MatchImpactBadge` marqué `Deprecated`.
+- `buildCombatTabFull(matchID, ...)` reçoit maintenant matchID. Backward-compat préservée (les champs legacy restent peuplés).
+
+### MV3 — Manifest étendu + cleanup hex codes
+
+- **Manifest `match_view.toml` : 17 → 63 clés (+46)** FR + EN. Sections ajoutées : outcome, summary, combat, team, citations, media, nav, skill.
+- **Helpers tokens** : `outcomeColorToken(code)` retourne `outcome-win/loss/draw/dnf` au lieu d'un hex. `perfColorToken(score)` retourne `perf-tier-1..5`.
+- **DTOs étendus** : `MatchViewHeader.OutcomeColorToken/PerfColorToken` + `MatchPersonalResult.OutcomeColorToken` (additifs).
+- **Stratégie additive (pas de breaking change)** : les champs hex legacy (`OutcomeColor`, `PerfColor`) restent exposés mais marqués Deprecated. Migration progressive front : nouveaux consommateurs lisent les tokens, anciens continuent avec les hex.
+
+**Tests** : 13 nouveaux tests Go (10 MV2 + 3 MV3). `go test ./...` propre, 0 régression. gofmt clean.
+
+**Hors scope (différé Phase 2 ou MV4 dédié)** :
+- **Encounters via `narrative.ComputeEncounterBadges`** : demande extension Q23 pour récupérer winrate/kills/deaths par adversaire (`EncounterRaw` trop limité aujourd'hui — juste count + is_ally).
+- **Radar 6 axes via `narrative.ComputeParticipationProfile`** : demande Phase J Go (lecture `personal_score_awards`). Repo `port.PersonalScoreAwardsRepository` à créer.
+- **Câblage `port.HighlightEventsRepository.LoadHighlightEvents`** : MV2 utilise encore `repo.GetMatchEvents` (Q21 legacy). Migration vers le port unifié Phase 0 reste pour MV4 — pour l'instant la conversion `EventRaw → canonical.HighlightEvent` se fait à la volée (~30L).
+- **Refonte `MatchViewPage.tsx` Recharts → ECharts** : ~579L à refondre. Demande sa propre session compte tenu du volume.
+- **Suppression complète des champs hex legacy** : conservés pour rétrocompat. La suppression viendra quand tous les consommateurs front auront migré vers les tokens.
+
+**Conclusion Phase 1 MatchView** : 3 chunks livrés (MV1 dominance, MV2 cadence + impact 8 rôles, MV3 cleanup hex + manifest). Backend MatchView aligné fondations narrative à **~50 %** (dominance ✅, cadence ✅, impact 8 rôles ✅, encounters ❌, radar ❌, kill feed loader unifié ❌). Frontend pas touché (refonte ECharts à venir). Phase 1 globale : Squad ✅ 100 %, MatchView 🟠 ~50 %.
