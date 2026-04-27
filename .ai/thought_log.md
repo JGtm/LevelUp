@@ -1,28 +1,5 @@
 # Thought Log
 
-## [2026-04-27] Phase 1 - Chunk S9b — Repos DuckDB weapons + medals
-
-**Statut** : Complété.
-
-**Décision technique** :
-Implémentation des deux repos DuckDB pour les ports introduits par le commit `f480a5f2` (chunk S9 du plan Phase 1 Squad V2) :
-- `WeaponKillsRepo` (`internal/platform/duckdb/weapon_kills_repo.go`) : `LoadWeaponKillsAggregated(ctx, slug, filters)` — agrège `shared.v_weapon_kills` (GROUP BY xuid + effective_weapon_id, exclusion sentinels 0/1/2 alignée sur Q16). Jointure metadata.weapon_labels en post-traitement Go (DB séparée — pas d'ATTACH ici). Filtre `IncludeGrenadeMelee` injecté via UNION ALL avec `shared.match_participants.grenade_kills` / `melee_kills` (colonnes agrégées) puisque les types canoniques `HighlightEventType` (cf. `canonical/enums.go`) ne contiennent ni `"grenade_kill"` ni `"melee_kill"` — ce ne sont pas des events filmés mais des compteurs participants. Sentinels `weapon_id=0` (grenade) et `weapon_id=1` (melee) avec flag `IsGrenadeMelee=true` ; ces IDs sont déjà exclus côté SELECT principal donc pas de collision possible.
-- `MedalsByXUIDRepo` (`internal/platform/duckdb/medals_by_xuid_repo.go`) : `LoadMedalsForMatchesByXUID(ctx, slug, filters)` — SELECT direct sur `shared.medals_earned` filtré par MatchIDs+XUIDs (les deux requis via `Validate()`). Colonne stockée `medal_name_id` (BIGINT, schéma actuel) exposée comme `MedalID` dans le port. Labels non résolus côté repo (le service utilisera `CitationsRepo.LoadMedalCitationMappings` pour cache + fusion).
-
-**Capability gating** : pour la Phase 1 pilote, vérification minimale via `information_schema.tables` (existence de `shared.weapon_kills`/`shared.v_weapon_kills` et `shared.medals_earned`). Si absent → `games.ErrCapabilityNotSupported`. La capability resolver basée sur `pdb.Resolver.Data(slug)` n'a pas été câblée car `PlayerDB` n'expose pas encore de `Resolver` ; ce sera fait au moment du wiring service principal (chunk S11).
-
-**Validation** : défense en profondeur côté repo — chaque méthode appelle `filters.Validate()` avant exécution SQL. SQL injection : tous les MatchIDs/XUIDs/Gamertag passent par placeholders `?` paramétrés ; seuls les sentinels weapon_id (constantes Go) sont injectés en littéral. Logging structuré via `slog.DebugContext`/`slog.ErrorContext` avec clés `slug`, `match_count`, `xuid_count`, `err`.
-
-**Tests** : 12 tests integration (build tag `integration`) répartis :
-- WeaponKillsRepo : 9 tests (3 validation + 1 capability + 5 querying : par Gamertag avec labels, par XUIDs multi-joueurs, MinKills filter, IncludeGrenadeMelee, no results).
-- MedalsByXUIDRepo : 9 tests (3 validation + 1 capability + 5 querying : filtres par match+xuid, multi-joueurs, Limit, no results, unknown XUID).
-
-Tous passent en local (`go test -tags=integration ./internal/platform/duckdb/...` → 12.8s OK). Pas de régression sur la suite complète (`go test ./...` → tous OK).
-
-**Conclusion** : repos prêts pour wiring chunk S11. Pas de modification des fichiers service squad_v2_*, pas de modification de `api/server.go` ni `api/registry.go` (par design).
-
-**Prochaine étape** : Chunk S11 — wiring du service principal (instancier les repos, brancher dans `SquadServiceV2`).
-
 ## [2026-04-27] plan(match-view): colonnes scoreboard Python source of truth + spec expander
 
 **Statut** : Complété.
@@ -21734,3 +21711,55 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - **Records overlay** sur HS/PK (motif hachuré ECharts via `itemStyle.decal`) — Phase 2 ou chunk dédié.
 
 **Conclusion** : 5 wrappers ECharts génériques opérationnels, testés, sans warning lint/typecheck. Le frontend a toutes les briques pour rendre les 17 charts Squad V2 backend. Restent : composition React (SquadXxxPage) + composants tableau/galerie + S11 wiring service principal. L'agent S9b finalise les repos DuckDB en parallèle.
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S9b — Repos DuckDB weapons + medals
+
+**Statut** : Complété (livré par agent en parallèle de S10).
+
+**Tâche** : Implémentation des deux repos DuckDB pour les ports introduits par le commit `f480a5f2` (chunk S9 du plan Phase 1 Squad V2).
+
+**Branche** : `feat/foundations-axes-1-3-4`.
+
+**Décisions techniques** :
+
+### WeaponKillsRepo (`internal/platform/duckdb/weapon_kills_repo.go`)
+- `LoadWeaponKillsAggregated(ctx, slug, filters)` : agrège `shared.weapon_kills` / `shared.v_weapon_kills` (GROUP BY `xuid` + `effective_weapon_id`, exclusion sentinels `(0,1,2)` alignée sur Q16WeaponKills existante).
+- **Labels armes** : jointure `metadata.weapon_labels` en post-traitement Go (la metadata DB est séparée — pas d'ATTACH dans le repo). Pattern emprunté à `match_view_repo.lookupWeaponLabels` (contournement driver UBIGINT).
+- **`IncludeGrenadeMelee=true`** : UNION ALL avec `shared.match_participants.grenade_kills` / `melee_kills` (colonnes agrégées) puisque les types canoniques `HighlightEventType` ne contiennent ni `"grenade_kill"` ni `"melee_kill"` (cf. `canonical/enums.go`). Sentinels `weapon_id=0` (grenade) / `weapon_id=1` (melee) avec flag `IsGrenadeMelee=true` ; ces IDs sont déjà exclus du SELECT principal donc pas de collision possible. Décision documentée dans le fichier source.
+
+### MedalsByXUIDRepo (`internal/platform/duckdb/medals_by_xuid_repo.go`)
+- `LoadMedalsForMatchesByXUID(ctx, slug, filters)` : SELECT direct sur `shared.medals_earned` filtré par MatchIDs + XUIDs (Validate strict côté port + repo).
+- Colonne `medal_name_id` (BIGINT) exposée comme `MedalID` dans `port.MedalRow`.
+- **Labels non résolus côté repo** : le service utilisera `CitationsRepo.LoadMedalCitationMappings` (déjà en place) pour cache + fusion. Évite jointure cross-DB qui nécessiterait ATTACH.
+
+### Capability gating
+- Vérification minimale via `information_schema.tables` (existence de `shared.weapon_kills`/`shared.v_weapon_kills` et `shared.medals_earned`).
+- Retourne `games.ErrCapabilityNotSupported` si table absente.
+- **Limitation** : capability resolver basée sur `pdb.Resolver.Data(slug)` non câblée car `PlayerDB` n'expose pas encore de `Resolver`. Le wiring formel viendra avec chunk S11.
+
+### Validation défense en profondeur
+- Chaque méthode repo appelle `filters.Validate()` avant exécution SQL (le service est censé valider en amont — re-vérification niveau repo).
+- SQL injection : tous les `MatchIDs`/`XUIDs`/`Gamertag` via placeholders `?` paramétrés. Seuls les sentinels weapon_id (constantes Go) injectés en littéral.
+- Logging structuré : `slog.DebugContext` / `slog.ErrorContext` avec clés `slug`, `match_count`, `xuid_count`, `err`.
+
+**Fichiers créés** :
+- `apps/go-api/internal/platform/duckdb/weapon_kills_repo.go` (~330 L) + `_test.go` (9 tests integration)
+- `apps/go-api/internal/platform/duckdb/medals_by_xuid_repo.go` (~145 L) + `_test.go` (9 tests integration)
+
+**Résultats** :
+- 18 tests integration (build tag `integration`) — tous passent.
+- Suite complète `go test ./...` propre, aucune régression.
+- `go vet -tags=integration` propre, gofmt clean.
+- Build `golangci-lint` passe sur les nouveaux fichiers (violations préexistantes du codebase hors scope).
+
+**Hors scope (déféré)** :
+- Wiring `SquadServiceV2` ↔ repos : chunk **S11** (service principal). Pas de modification de `api/server.go` ni `api/registry.go` ici par design (l'agent a respecté la consigne).
+- Câblage `Resolver` capability check : nécessite ajout d'un `Resolver` sur `PlayerDB` — chunk S11 ou S12.
+
+**Note opérationnelle** : un premier commit de l'agent s'est mêlé aux fichiers S10 que je venais de stager (problème de race condition entre agent background + commit principal). Résolu via `git reset --soft HEAD~1` + reconstruction des deux commits séparés. Historique propre : `d6381811` (S10 charts) puis `5e12a543` (S9b repos).
+
+**Conclusion** : Phase 1 Squad V2 backend ALGO-COMPLET. Les 2 repos DuckDB manquants livrés. Reste **S11 (wiring service principal)** + **composition React des SquadXxxPage** + **composants tableau/galerie** (`<HistoryTable>`, `<WeaponsTable>`, `<MedalsGallery>`, `<FloatingLegend>`).
+
+**Prochaine étape** : Chunk **S11** — wiring `SquadServiceV2.GetSquadPage` qui orchestre les 16 builders + injection des 2 nouveaux repos via DI.
