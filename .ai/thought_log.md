@@ -21431,3 +21431,53 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 **Parallélisme avec agent background** : un agent général-purpose travaille en parallèle sur le **chunk S1b** (wiring handler HTTP `GET /api/v1/players/{slug}/pages/squad/v2` + adaptateur production `SquadV2LoaderAdapter`). Fichiers disjoints (registry, server, handlers/squad_v2, platform/duckdb/squad_v2_adapter, port/services pour ajout interface SquadV2Service). Commit séparé attendu.
 
 **Conclusion** : Header backend + 2 composants frontend + manifest header en place. Prochain chunk = **S3 — Synergies par carte** (lollipop, bullet, perf vs hist, heatmap player×map). Premier gros chunk de wrappers ECharts spécialisés.
+
+---
+
+## [2026-04-27] Phase 1 - Chunks S3+S4 — Synergies par carte + Timeline + Form Score (LOWESS)
+
+**Statut** : ✅ Complété (chunks groupés)
+
+**Tâche** : Backend des onglets Synergies de la page Squad V2 :
+- **S3** : 4 charts par carte (lollipop W/L, bullet winrate vs historique, perf vs historique, heatmap 2D joueur×carte).
+- **S4** : Timeline performance multi-joueurs + Form Score lissé (LOWESS).
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S2 / S1b agent).
+
+**Décisions techniques** :
+
+### Domain types charts (méta-plan § 5.2.1)
+- **`domain/charts.go`** créé enfin (la Phase 0 prévoyait sa création mais l'avait reporté). 4 types génériques : `ChartSeries[T any]`, `ChartPoint2D` (X polymorphe), `ChartPointHeatmap`, `ChartPointStacked` (`Components map[string]float64`).
+- Vivent dans `domain/` (pas `canonical/`) car spécifiques au transport JSON Go→Front.
+
+### S3 — Synergies par carte
+- **`squad_service_v2_synergies.go`** : 4 builders purs sur `[]canonical.PlayerMatchRow`.
+- **`rowsToBreakdownInputs`** : pont vers `analysis/breakdown.Row` (réutilise les helpers Phase 0 sans dupliquer).
+- **`BuildMapBreakdownLollipop`** : top N par Played desc (cap 20), components win/loss/tie/dnf.
+- **`BuildBulletWinrate`** : 2 traces par carte (`session` vs `historical`). Map absente d'historical → pas de clé `historical`.
+- **`BuildPerfVsHistorical`** : utilise `breakdown.CompareToHistorical`. Skippe les cartes sans AvgPerformanceScore des deux côtés.
+- **`BuildHeatmapPlayerMap`** : 2D player × map avec valeur = AvgPerformanceScore. Top N maps depuis l'union des matchs joués.
+
+### S4 — Timeline + LOWESS
+- **`analysis/temporal/lowess.go`** (~110L) : implémentation LOWESS locale (pas de gonum). Tricube weighting + régression linéaire pondérée sur fenêtre. NaN préservés. `alpha` clampé [0..1], défaut 0.3.
+- **Validation algorithmique** : tests `LinearTrend` (préservation à tolérance 0.5) + `NoiseReduced` (variance lissée < variance originale).
+- **`BuildTimelineMultiPlayer`** : 1 série par joueur, X=StartedAtUTC, Y=perf, marker outcome dans Label. Tri chrono ASC.
+- **`BuildFormScore`** : LOWESS sur main player uniquement, alpha=0.3 par défaut.
+
+**Fichiers créés** :
+- `apps/go-api/internal/domain/charts.go`
+- `apps/go-api/internal/analysis/temporal/lowess.go` + tests
+- `apps/go-api/internal/service/squad_service_v2_synergies.go` + tests
+- `apps/go-api/internal/service/squad_service_v2_timeline.go` + tests
+- `apps/web/src/lib/i18n/manifests/squad.toml` (étendu, 29 clés total) + generated regen
+
+**Résultats** :
+- 23 nouveaux tests Go (7 LOWESS + 9 synergies + 7 timeline). Tous OK + race detector clean.
+- Couverture LOWESS / synergies / timeline ~95-100 %.
+- `go build ./...`, `go vet`, gofmt propres. 0 régression S1/S1b/S2/Phase 0.
+
+**Hors scope (chunks frontend dédiés à venir)** :
+- Wrappers ECharts spécialisés `<Lollipop>`, `<Bullet>`, `<BarStacked>`, `<Heatmap2D>`, `<TimeseriesLine>` : 1 chunk par wrapper avec tests Vitest snapshot d'option.
+- Composition `SquadSynergiesPage.tsx` réelle.
+
+**Conclusion** : backend Synergies + Form Score complet, 6 charts disponibles via API. Restent : wrappers ECharts frontend + Impact 8 rôles (S5) + Cadence/Intensité (S6) + Contributions (S7) + Radar (S8) + Armes/Médailles (S9).

@@ -22,6 +22,15 @@ export const squadManifest = {
   "squad.score.label_excellent": { fr: "Excellent", en: "Excellent" },
   "squad.score.label_good": { fr: "Bon", en: "Good" },
   "squad.score.label_poor": { fr: "Faible", en: "Poor" },
+  "squad.synergies.bullet_title": { fr: "Taux de victoire — session vs historique", en: "Win rate — session vs history" },
+  "squad.synergies.form_score_caption": { fr: "Performance lissée sur les {n, plural, one {dernier match} other {# derniers matchs}}", en: "Smoothed performance over the {n, plural, one {last match} other {last # matches}}" },
+  "squad.synergies.form_score_title": { fr: "Forme — lissage glissant", en: "Form — moving smoothing" },
+  "squad.synergies.heatmap_title": { fr: "Performance par joueur et carte", en: "Performance by player and map" },
+  "squad.synergies.lollipop_title": { fr: "Victoires/défaites par carte", en: "Wins/losses by map" },
+  "squad.synergies.perf_vs_historical_title": { fr: "Performance vs historique par carte", en: "Performance vs history by map" },
+  "squad.synergies.section_title": { fr: "Synergies", en: "Synergies" },
+  "squad.synergies.timeline_player": { fr: "{gamertag}", en: "{gamertag}" },
+  "squad.synergies.timeline_title": { fr: "Évolution de la performance", en: "Performance over time" },
 } as const
 
 export type SquadManifestKey = keyof typeof squadManifest
