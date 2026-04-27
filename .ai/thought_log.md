@@ -21763,3 +21763,75 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 **Conclusion** : Phase 1 Squad V2 backend ALGO-COMPLET. Les 2 repos DuckDB manquants livrés. Reste **S11 (wiring service principal)** + **composition React des SquadXxxPage** + **composants tableau/galerie** (`<HistoryTable>`, `<WeaponsTable>`, `<MedalsGallery>`, `<FloatingLegend>`).
 
 **Prochaine étape** : Chunk **S11** — wiring `SquadServiceV2.GetSquadPage` qui orchestre les 16 builders + injection des 2 nouveaux repos via DI.
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S11 — Wiring SquadServiceV2 + 16 builders + injection DI
+
+**Statut** : Complété.
+
+**Tâche** : Câbler `SquadServiceV2.GetSquadPage` pour qu'il orchestre les 16 builders livrés (S2-S9) et expose le payload complet via la response. Inclut l'extension du loader avec 3 nouvelles méthodes (events / weapons / medals), l'extension de `domain.SquadPageV2Response` avec `Charts` + `Tables`, et l'injection DI des nouveaux repos.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S10).
+
+**Décisions techniques** :
+
+### Loader élargi (`service.SquadV2Loader`)
+- 3 nouvelles méthodes : `LoadHighlightEvents`, `LoadWeaponKills`, `LoadMedals`. Chacune peut retourner `games.ErrCapabilityNotSupported` → le service dégrade gracieusement.
+- Le fake test stub `LoadHighlightEvents`/`LoadWeaponKills`/`LoadMedals` avec `ErrCapabilityNotSupported` par défaut (les tests existants ne cassent pas).
+- Pour les tests S11 end-to-end : nouveau `fakeSquadLoaderFull` qui retourne données réelles.
+
+### Adapter prod (`duckdb.SquadV2LoaderAdapter`)
+- Champ ajouté `defaultGamertag` : utilisé pour résoudre le `*PlayerDB` qui pointe vers les DBs `shared` (events / weapon_kills / medals_earned). Ces DBs sont **partagées entre tous les profils du titre** — n'importe quel profil ouvert suffit.
+- `SetDefaultGamertag(gt)` : exposé pour le wiring HTTP. Appelé par `registry.SquadV2Ctx` avec le `pdb.Gamertag` du main player de la session.
+- 3 méthodes ajoutées qui délèguent aux repos `HighlightEventsRepo`, `WeaponKillsRepo`, `MedalsByXUIDRepo` (chunks 6, S9b).
+- TODO Phase 2 documenté : `resolveAnyPlayerDB` est un workaround — un futur `Resolver` typé sur le titre permettra d'ouvrir une DB shared sans dépendre d'un gamertag.
+
+### Response `domain.SquadPageV2Response`
+- Ajout de 2 sous-structures :
+  - `Charts *SquadCharts` : 17 charts groupés par onglet (Synergies / Cadence-Intensité / Impact / Contributions / Radar). Champs typés `*ChartSeries[T]` ou `[]ChartSeries[T]` selon mono/multi-séries. Radar exposé en `[]any` (le payload `RadarChartSeries` vit côté `service/`, pas `domain/`, pour éviter une dépendance domain → narrative).
+  - `Tables *SquadTables` : `History` / `Weapons` / `Medals` exposés en `[]any` (les types concrets `HistoryTableRow` / `WeaponsTableRow` / `MedalsGalleryEntry` vivent côté `service/`). Décision pragmatique : les structs marshalent correctement via tags JSON, type-safety sacrifié au runtime mais la frontière TS définit ses propres types.
+- `nil` = section omise (capability absente / erreur). Section présente mais Datapoints vide = empty state.
+
+### Wiring `GetSquadPage`
+- Nouveau fichier `squad_service_v2_compose.go` (~145 L) avec `buildSquadCharts(input) *SquadCharts` et `buildSquadTables(input) *SquadTables`. Pattern input struct pour éviter explosion de paramètres (règle CLAUDE.md max 5 args).
+- Si `SharedMatches` vide → return early (pas de charts / tables).
+- Sinon :
+  1. Charge l'historique main (sans period filter) pour `BulletWinrate` / `PerfVsHistorical`.
+  2. Charge events / weapons / medals en parallèle (3 appels au loader).
+  3. Si capability absente → ajoute un `CapabilityGap` dans `resp.Capabilities`.
+  4. Appelle les 16 builders avec les inputs disponibles.
+- Builders dépendant des events (Cadence, Intensity, Impact) : skippés si `events == nil`.
+
+### Tests end-to-end (`squad_service_v2_compose_test.go`)
+- `TestGetSquadPage_FullComposition` : vérifie que tous les 17 charts + 3 tableaux sont présents quand toutes les sources sont fournies.
+- `TestGetSquadPage_NoEvents_OmitsCadenceImpact` : vérifie que Cadence / Impact sont nil sans events, mais Synergies / Contributions / Radar / History restent buildables.
+- `TestGetSquadPage_EmptyIntersection_NoChartsBuilt` : vérifie le early-return.
+
+**Fichiers créés** :
+- `apps/go-api/internal/service/squad_service_v2_compose.go` (~145 L)
+- `apps/go-api/internal/service/squad_service_v2_compose_test.go` (3 tests)
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/domain/squad_v2.go` : `SquadCharts` + `SquadTables` ajoutées à la response.
+- `apps/go-api/internal/service/squad_service_v2.go` : interface `SquadV2Loader` étendue (3 méthodes), `GetSquadPage` orchestre charts+tables+capabilities, helpers `loadSharedEvents` / `loadWeapons` / `loadMedals` / `loadHistoricalMain` + utilitaires `extractSquadXUIDs` / `matchIDsOf` / `xuidsOf`.
+- `apps/go-api/internal/service/squad_service_v2_test.go` : `fakeSquadLoader` étendu avec stubs des 3 nouvelles méthodes (`ErrCapabilityNotSupported` par défaut, tests existants intacts).
+- `apps/go-api/internal/platform/duckdb/squad_v2_adapter.go` : implémente les 3 nouvelles méthodes du loader, ajoute `defaultGamertag` + `SetDefaultGamertag`.
+- `apps/go-api/internal/api/registry.go` : `SquadV2Ctx` propage `pdb.Gamertag` au loader via `SetDefaultGamertag`.
+
+**Résultats** :
+- 3 nouveaux tests S11 end-to-end PASS.
+- Suite complète `go test ./...` propre, aucune régression sur les chunks précédents.
+- `go vet` clean, gofmt propre.
+
+**Hors scope (chunk S10b)** :
+- Composition React `SquadXxxPage` : utiliser les wrappers ECharts (S10) avec le payload complet de la response.
+- Composants tableau/galerie : `<HistoryTable>`, `<WeaponsTable>`, `<MedalsGallery>`, `<FloatingLegend>`.
+- Mise à jour `apps/web/src/features/squad/queries.ts` pour consommer le nouveau endpoint.
+
+**Limitations connues** :
+- `SquadV2LoaderAdapter.resolveAnyPlayerDB` dépend d'un `defaultGamertag` câblé par le wiring HTTP. Si l'API est appelée sans contexte session valide, les charts dépendants des sources `shared` sont omis (CapabilityGap). Workaround Phase 2 : ajouter un `Resolver` typé sur le titre.
+- L'axe `Objective` du Radar reste à 0 (pattern S8) — nécessite un repo `personal_score_awards` non câblé pour l'instant.
+- `TimelineMultiPlayer` skipe les rows sans `PerformanceScore` → si la DB de test n'a pas peuplé ce champ, la timeline sera vide même avec des matchs intersectés.
+
+**Conclusion** : backend Squad V2 **complet end-to-end** : du HTTP handler au DTO via 16 builders orchestrés. Le frontend a maintenant un endpoint stable à consommer (S10b prochaine étape). Phase 1 backend = 100 % livré (S1, S1b, S2, S3+S4, S5+S6, S7, S8+S9, S9b, S10, S11).

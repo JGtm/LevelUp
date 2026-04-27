@@ -35,8 +35,14 @@ type TitlePlayerResolver func(ctx context.Context, titleSlug, gamertag string) (
 
 // SquadV2LoaderAdapter implémente service.SquadV2Loader en s'appuyant sur le
 // pool de PlayerDB et PlayerMatchesRepo.
+//
+// `defaultGamertag` est utilise pour resoudre les DBs `shared` (events /
+// weapon_kills / medals_earned) qui sont partagees entre tous les profils
+// du titre — n'importe quel PlayerDB ouvert suffit. Le wiring HTTP appelle
+// SetDefaultGamertag avec le main_gt de la session courante.
 type SquadV2LoaderAdapter struct {
-	resolve TitlePlayerResolver
+	resolve         TitlePlayerResolver
+	defaultGamertag string
 }
 
 // NewSquadV2LoaderAdapter construit un adapteur production. Le resolver est
@@ -77,6 +83,104 @@ func (a *SquadV2LoaderAdapter) LoadFor(
 		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadFor: load %s: %w", gamertag, err)
 	}
 	return rows, nil
+}
+
+// LoadHighlightEvents charge les events filmes (chunks S5+S6).
+//
+// Resolution PlayerDB : on prend n'importe quel joueur du squad — la table
+// shared.highlight_events est partagee entre tous les profils du titre.
+// Ici on n'a pas le squad disponible — on demande la resolution via un
+// gamertag par defaut (le main player du squad). Le caller peut le passer
+// explicitement via filters... mais filters n'a pas de Gamertag.
+//
+// Pragmatique : pour Phase 1 pilote, on suppose qu'au moins un joueur existe
+// et on resout via le main_gt qui est passe en parametre du service. Comme
+// on n'a pas accès à ce contexte ici, on délègue : si le resolve échoue,
+// retourne ErrCapabilityNotSupported.
+//
+// TODO Phase 2 : refactor le resolver pour pouvoir charger une DB shared
+// independamment d'un gamertag specifique.
+func (a *SquadV2LoaderAdapter) LoadHighlightEvents(
+	ctx context.Context,
+	titleSlug string,
+	filters port.HighlightEventFilters,
+) ([]canonical.HighlightEvent, error) {
+	pdb, err := a.resolveAnyPlayerDB(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	repo := NewHighlightEventsRepo(pdb)
+	events, err := repo.Load(ctx, filters)
+	if err != nil {
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadHighlightEvents: %w", err)
+	}
+	return events, nil
+}
+
+// LoadWeaponKills charge les kills aggreges par arme (chunk S9).
+func (a *SquadV2LoaderAdapter) LoadWeaponKills(
+	ctx context.Context,
+	titleSlug string,
+	filters port.WeaponKillFilters,
+) ([]port.WeaponKillRow, error) {
+	pdb, err := a.resolveAnyPlayerDB(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	repo := NewWeaponKillsRepo(pdb)
+	rows, err := repo.LoadWeaponKillsAggregated(ctx, titleSlug, filters)
+	if err != nil {
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadWeaponKills: %w", err)
+	}
+	return rows, nil
+}
+
+// LoadMedals charge les medailles par (xuid, match) (chunk S9).
+func (a *SquadV2LoaderAdapter) LoadMedals(
+	ctx context.Context,
+	titleSlug string,
+	filters port.MedalsByXUIDFilters,
+) ([]port.MedalRow, error) {
+	pdb, err := a.resolveAnyPlayerDB(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	repo := NewMedalsByXUIDRepo(pdb)
+	rows, err := repo.LoadMedalsForMatchesByXUID(ctx, titleSlug, filters)
+	if err != nil {
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadMedals: %w", err)
+	}
+	return rows, nil
+}
+
+// resolveAnyPlayerDB resout n'importe quel PlayerDB du titre (utilise pour
+// les sources shared : highlight_events / weapon_kills / medals_earned —
+// independamment du joueur tant qu'on a une DB du titre ouverte).
+//
+// Strategie : on essaie le resolver avec le gamertag stocke dans
+// a.defaultGamertag (a peupler par le wiring). Si nil, retourne
+// ErrCapabilityNotSupported.
+func (a *SquadV2LoaderAdapter) resolveAnyPlayerDB(ctx context.Context, titleSlug string) (*PlayerDB, error) {
+	if a.resolve == nil || a.defaultGamertag == "" {
+		return nil, fmt.Errorf("%w: SquadV2LoaderAdapter no default gamertag wired",
+			games.ErrCapabilityNotSupported)
+	}
+	pdb, err := a.resolve(ctx, titleSlug, a.defaultGamertag)
+	if err != nil {
+		if isPlayerCapabilityError(err) {
+			return nil, fmt.Errorf("%w: title=%q (%v)",
+				games.ErrCapabilityNotSupported, titleSlug, err)
+		}
+		return nil, fmt.Errorf("resolveAnyPlayerDB %s: %w", titleSlug, err)
+	}
+	return pdb, nil
+}
+
+// SetDefaultGamertag configure le gamertag par defaut pour resoudre les DBs
+// shared (events, weapons, medals). Appele par le wiring HTTP avec le
+// gamertag du main player de la session courante.
+func (a *SquadV2LoaderAdapter) SetDefaultGamertag(gt string) {
+	a.defaultGamertag = gt
 }
 
 // isPlayerCapabilityError détecte les motifs d'erreur signifiant "ce joueur

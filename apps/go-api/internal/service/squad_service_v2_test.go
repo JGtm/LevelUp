@@ -39,6 +39,35 @@ func (f *fakeSquadLoader) LoadFor(
 	return f.rowsByGT[gamertag], nil
 }
 
+// LoadHighlightEvents stub — retourne nil + ErrCapabilityNotSupported par
+// defaut pour eviter les charts dependants (les tests existants ne les
+// testent pas).
+func (f *fakeSquadLoader) LoadHighlightEvents(
+	_ context.Context,
+	_ string,
+	_ port.HighlightEventFilters,
+) ([]canonical.HighlightEvent, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// LoadWeaponKills stub — meme pattern que LoadHighlightEvents.
+func (f *fakeSquadLoader) LoadWeaponKills(
+	_ context.Context,
+	_ string,
+	_ port.WeaponKillFilters,
+) ([]port.WeaponKillRow, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// LoadMedals stub — meme pattern que LoadHighlightEvents.
+func (f *fakeSquadLoader) LoadMedals(
+	_ context.Context,
+	_ string,
+	_ port.MedalsByXUIDFilters,
+) ([]port.MedalRow, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
 // row construit une PlayerMatchRow minimale avec match_id + start_time.
 func row(matchID string, startedAt time.Time, outcome canonical.Outcome) canonical.PlayerMatchRow {
 	return canonical.PlayerMatchRow{

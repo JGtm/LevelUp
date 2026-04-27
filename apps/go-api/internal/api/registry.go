@@ -518,6 +518,9 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 		return nil, "", "", err
 	}
 	loader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
+	// Le loader resout les DBs `shared` (events / weapons / medals) via le main
+	// player ; on lui propage le gamertag de la session courante (chunk S11).
+	loader.SetDefaultGamertag(pdb.Gamertag)
 	svc := service.NewSquadServiceV2(loader)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
