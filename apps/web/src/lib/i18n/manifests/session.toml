@@ -1,0 +1,350 @@
+# Session i18n manifest — strings des pages Session (detail + compare).
+#
+# Format ICU MessageFormat. Regenerer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Phase 2 meta-plan § 6.2.1 — chunk P2.G. Couvre :
+#   session.detail.*   SessionDetailPage (sélecteurs, summary cards, table)
+#   session.compare.*  SessionComparePage (sélecteurs A/B, charts, tableaux)
+
+# ─── États globaux ─────────────────────────────────────────────────────────
+
+[session.empty.no_sessions_title]
+fr = "Aucune session disponible"
+en = "No session available"
+
+[session.empty.no_sessions_description]
+fr = "Aucune session n'est disponible dans le scope courant. Vérifie le découpage de sessions ou élargis les filtres."
+en = "No session is available in the current scope. Check session bucketing or broaden filters."
+
+[session.errors.retry]
+fr = "Réessayer"
+en = "Retry"
+
+# ─── Détail (SessionDetailPage) ────────────────────────────────────────────
+
+[session.detail.loading]
+fr = "Chargement de la session…"
+en = "Loading session…"
+
+[session.detail.load_error]
+fr = "Erreur lors du chargement de la session."
+en = "Failed to load session."
+
+[session.detail.empty_title]
+fr = "Sessions indisponibles"
+en = "Sessions unavailable"
+
+[session.detail.empty_description]
+fr = "Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
+en = "No exploitable response returned for this page. Check computed sessions and active filters."
+
+[session.detail.no_session_in_scope_title]
+fr = "Aucune session disponible"
+en = "No session available"
+
+[session.detail.no_session_in_scope_description]
+fr = "Aucune session n'a pu être reconstruite avec les filtres actuels."
+en = "No session could be reconstructed with the current filters."
+
+[session.detail.suggested_compare_button]
+fr = "Comparer à la session proche"
+en = "Compare to nearby session"
+
+[session.detail.selection_card]
+fr = "Sélection"
+en = "Selection"
+
+[session.detail.session_active]
+fr = "Session active"
+en = "Active session"
+
+[session.detail.session_compared]
+fr = "Session comparée"
+en = "Compared session"
+
+[session.detail.smart_selection]
+fr = "Sélection intelligente"
+en = "Smart selection"
+
+[session.detail.compare_show]
+fr = "Activer comparaison"
+en = "Enable comparison"
+
+[session.detail.compare_hide]
+fr = "Masquer comparaison"
+en = "Hide comparison"
+
+[session.detail.suggestion_title]
+fr = "Suggestion similaire"
+en = "Similar suggestion"
+
+[session.detail.compare_view_title]
+fr = "Lecture comparative"
+en = "Comparative view"
+
+[session.detail.no_compare_title]
+fr = "Aucune session de comparaison"
+en = "No comparison session"
+
+[session.detail.no_compare_description]
+fr = "Sélectionne une session de référence ou réactive la suggestion automatique."
+en = "Select a reference session or re-enable the automatic suggestion."
+
+[session.detail.matches_card]
+fr = "Détail des matchs"
+en = "Match details"
+
+[session.detail.matches_empty_title]
+fr = "Aucun match dans cette session"
+en = "No match in this session"
+
+[session.detail.matches_empty_description]
+fr = "La session sélectionnée ne contient aucun match exploitable avec les filtres actuels."
+en = "Selected session contains no exploitable match with the current filters."
+
+[session.detail.summary_unavailable_title]
+fr = "Session indisponible"
+en = "Session unavailable"
+
+[session.detail.summary_unavailable_description]
+fr = "La session demandée n'a pas pu être reconstruite avec les filtres actuels."
+en = "Requested session could not be reconstructed with the current filters."
+
+# Stats du résumé
+[session.detail.stat_matches]
+fr = "Matchs"
+en = "Matches"
+
+[session.detail.stat_wins_losses]
+fr = "Victoires / Défaites"
+en = "Wins / Losses"
+
+[session.detail.stat_kda]
+fr = "KDA"
+en = "KDA"
+
+[session.detail.stat_perf_score]
+fr = "Score perf."
+en = "Perf. score"
+
+# Colonnes table matchs
+[session.detail.col_time]
+fr = "Heure"
+en = "Time"
+
+[session.detail.col_mode]
+fr = "Mode"
+en = "Mode"
+
+[session.detail.col_playlist]
+fr = "Playlist"
+en = "Playlist"
+
+[session.detail.col_kda]
+fr = "K / D / A"
+en = "K / D / A"
+
+[session.detail.col_accuracy]
+fr = "Précision"
+en = "Accuracy"
+
+[session.detail.col_perf_score]
+fr = "Score perf."
+en = "Perf. score"
+
+[session.detail.col_outcome]
+fr = "Résultat"
+en = "Outcome"
+
+# Compare metrics table
+[session.detail.compare_col_metric]
+fr = "Métrique"
+en = "Metric"
+
+[session.detail.compare_col_session_active]
+fr = "Session active"
+en = "Active session"
+
+[session.detail.compare_col_session_compared]
+fr = "Session comparée"
+en = "Compared session"
+
+[session.detail.compare_col_delta]
+fr = "Delta"
+en = "Delta"
+
+[session.detail.compare_metrics_empty_title]
+fr = "Comparaison indisponible"
+en = "Comparison unavailable"
+
+[session.detail.compare_metrics_empty_description]
+fr = "Aucune métrique comparative n'a été calculée pour cette paire de sessions."
+en = "No comparative metric was computed for this session pair."
+
+# ─── Comparaison A/B (SessionComparePage) ─────────────────────────────────
+
+[session.compare.loading]
+fr = "Chargement de la comparaison…"
+en = "Loading comparison…"
+
+[session.compare.load_error]
+fr = "Erreur lors du chargement."
+en = "Failed to load."
+
+[session.compare.empty_title]
+fr = "Comparaison indisponible"
+en = "Comparison unavailable"
+
+[session.compare.empty_description]
+fr = "Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
+en = "No exploitable response returned for this page. Check computed sessions and active filters."
+
+[session.compare.session_a_label]
+fr = "Session A"
+en = "Session A"
+
+[session.compare.session_b_label]
+fr = "Session B"
+en = "Session B"
+
+[session.compare.placeholder_select]
+fr = "— Sélectionner —"
+en = "— Select —"
+
+[session.compare.not_selected]
+fr = "Non sélectionnée"
+en = "Not selected"
+
+[session.compare.session_card_title]
+fr = "Session {side}{suffix}"
+en = "Session {side}{suffix}"
+
+[session.compare.label_matches]
+fr = "Matchs :"
+en = "Matches:"
+
+[session.compare.label_wins]
+fr = "Victoires :"
+en = "Wins:"
+
+[session.compare.label_losses]
+fr = "Défaites :"
+en = "Losses:"
+
+[session.compare.label_kda]
+fr = "KDA :"
+en = "KDA:"
+
+[session.compare.label_perf_score]
+fr = "Score perf. :"
+en = "Perf. score:"
+
+# Sections charts/tables compare
+[session.compare.outcomes_title]
+fr = "Répartition des résultats"
+en = "Outcomes distribution"
+
+[session.compare.outcomes_empty_title]
+fr = "Répartition indisponible"
+en = "Distribution unavailable"
+
+[session.compare.outcomes_empty_description]
+fr = "Le comparatif n'a renvoyé aucun donut de résultats pour les sessions choisies."
+en = "Comparison returned no outcomes donut for the selected sessions."
+
+[session.compare.radar_title]
+fr = "Radar de performance"
+en = "Performance radar"
+
+[session.compare.radar_empty_title]
+fr = "Radar indisponible"
+en = "Radar unavailable"
+
+[session.compare.radar_empty_description]
+fr = "Aucun radar de performance n'a été généré pour cette paire de sessions."
+en = "No performance radar generated for this session pair."
+
+[session.compare.summary_title]
+fr = "Résumé des écarts"
+en = "Gap summary"
+
+[session.compare.summary_empty_title]
+fr = "Résumé indisponible"
+en = "Summary unavailable"
+
+[session.compare.summary_empty_description]
+fr = "Aucune métrique résumée n'a été calculée pour les sessions sélectionnées."
+en = "No summary metric computed for the selected sessions."
+
+[session.compare.metrics_title]
+fr = "Métriques comparées"
+en = "Compared metrics"
+
+[session.compare.metrics_empty_title]
+fr = "Aucune métrique détaillée"
+en = "No detailed metric"
+
+[session.compare.metrics_empty_description]
+fr = "Le tableau comparatif est vide pour les sessions choisies."
+en = "Comparison table is empty for the selected sessions."
+
+[session.compare.kd_progression_title]
+fr = "Progression K/D"
+en = "K/D progression"
+
+[session.compare.kd_progression_empty_title]
+fr = "Progression indisponible"
+en = "Progression unavailable"
+
+[session.compare.kd_progression_empty_description]
+fr = "La progression K/D n'a pas pu être tracée pour ces sessions."
+en = "K/D progression could not be plotted for these sessions."
+
+[session.compare.maps_title]
+fr = "Par carte"
+en = "By map"
+
+[session.compare.maps_empty_title]
+fr = "Aucune comparaison par carte"
+en = "No comparison by map"
+
+[session.compare.maps_empty_description]
+fr = "Aucune ligne par carte n'est disponible pour les sessions sélectionnées."
+en = "No row by map available for the selected sessions."
+
+[session.compare.modes_title]
+fr = "Par mode de jeu"
+en = "By game mode"
+
+[session.compare.modes_empty_title]
+fr = "Aucune comparaison par mode"
+en = "No comparison by mode"
+
+[session.compare.modes_empty_description]
+fr = "Le backend n'a renvoyé aucune ventilation par mode pour cette paire de sessions."
+en = "Backend returned no breakdown by mode for this session pair."
+
+[session.compare.metric_col_metric]
+fr = "Métrique"
+en = "Metric"
+
+[session.compare.metric_col_session_a]
+fr = "Session A"
+en = "Session A"
+
+[session.compare.metric_col_session_b]
+fr = "Session B"
+en = "Session B"
+
+[session.compare.metric_col_delta]
+fr = "Delta"
+en = "Delta"
+
+[session.compare.incomplete_title]
+fr = "Comparaison incomplète"
+en = "Incomplete comparison"
+
+[session.compare.incomplete_description]
+fr = "Sélectionne une session A et une session B pour afficher les graphiques et tableaux comparatifs."
+en = "Select a session A and a session B to display comparison charts and tables."
