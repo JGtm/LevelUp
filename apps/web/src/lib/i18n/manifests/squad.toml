@@ -416,3 +416,9 @@ en = "Min. kills: {n, number}"
 [squad.v2.legend.player_indicator]
 fr = "Joueur : {gamertag}"
 en = "Player: {gamertag}"
+
+# ─── S13 : Séquence des outcomes ─────────────────────────────────────────────
+
+[squad.v2.section_outcome_sequence]
+fr = "Séquence des matchs"
+en = "Match sequence"

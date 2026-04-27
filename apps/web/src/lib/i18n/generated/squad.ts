@@ -89,6 +89,7 @@ export const squadManifest = {
   "squad.v2.section_contributions": { fr: "Contributions", en: "Contributions" },
   "squad.v2.section_history": { fr: "Historique des matchs", en: "Match history" },
   "squad.v2.section_medals": { fr: "Galerie de médailles", en: "Medals gallery" },
+  "squad.v2.section_outcome_sequence": { fr: "Séquence des matchs", en: "Match sequence" },
   "squad.v2.section_radar": { fr: "Profil de participation", en: "Participation profile" },
   "squad.v2.section_synergies": { fr: "Synergies", en: "Synergies" },
   "squad.v2.section_weapons": { fr: "Armes utilisées", en: "Weapons used" },

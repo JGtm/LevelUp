@@ -4,9 +4,23 @@
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
+import {
+  OutcomeSequenceTape,
+  type OutcomePoint,
+  type OutcomeValue,
+} from '@/components/charts/OutcomeSequenceTape'
 import { MatchHistoryTable } from './MatchHistoryTable'
 import { useMatchHistory, useMatchHistoryExport } from './queries'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+
+const OUTCOME_FROM_CODE: Record<number, OutcomeValue> = {
+  1: 'tie',
+  2: 'win',
+  3: 'loss',
+  4: 'dnf',
+}
+
 
 export function MatchHistoryPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -31,6 +45,7 @@ export function MatchHistoryPage() {
   )
 
   const exportMutation = useMatchHistoryExport(playerSlug)
+  const { data: fieldMappings } = useFieldMappings()
 
   function handleSort(field: string) {
     if (field === sortField) {
@@ -69,7 +84,29 @@ export function MatchHistoryPage() {
             </button>
           </div>
         ) : data ? (
-          <MatchHistoryTable
+          <>
+            {data.table.items.length > 0 && (
+              <div className="mb-4">
+                <OutcomeSequenceTape
+                  matches={[...data.table.items]
+                    .reverse()
+                    .filter((r) => r.outcome_code !== null)
+                    .map<OutcomePoint>((r) => ({
+                      matchId: r.match_id,
+                      outcome: OUTCOME_FROM_CODE[r.outcome_code!] ?? 'dnf',
+                      map: r.map_ui,
+                      mode: r.mode_ui,
+                    }))}
+                  labels={{
+                    win: fieldMappings?.outcomes?.['win']?.label ?? 'win',
+                    loss: fieldMappings?.outcomes?.['loss']?.label ?? 'loss',
+                    tie: fieldMappings?.outcomes?.['tie']?.label ?? 'tie',
+                    dnf: fieldMappings?.outcomes?.['dnf']?.label ?? 'dnf',
+                  }}
+                />
+              </div>
+            )}
+            <MatchHistoryTable
             rows={data.table.items}
             pagination={data.table.pagination}
             sortField={sortField}
@@ -82,6 +119,7 @@ export function MatchHistoryPage() {
             filterHash={filterContextHash}
             page={page}
           />
+          </>
         ) : null}
       </div>
     </div>

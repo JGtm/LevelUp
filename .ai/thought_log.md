@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-27] feat(outcome-sequence-tape): composant bande narrative outcomes — S13
+
+**Statut** : Complété.
+
+**Décision technique** :
+Nouveau composant ECharts custom series `OutcomeSequenceTape` (piste unique + brackets I-beam split haut/bas). Design validé via mockup HTML itératif (`.ai/mockups/outcome_sequence.html`). Aucune couleur hex : tout passe par `outcomeColor()` → `resolveToken()`.
+
+**Architecture** :
+- `apps/web/src/components/charts/OutcomeSequenceTape.tsx` — composant autonome avec RLE interne, lazy ReactECharts, props `{ matches, labels, loading, height }`.
+- Brackets wins/ties au-dessus de la bande, losses/dnf en-dessous (UX up=good/down=bad).
+- Wiring sur 3 pages : SquadV2Page (entre FloatingLegend et synergies), MatchHistoryPage (avant le tableau, 50 matchs inversés pour ordre chrono), HomePage (avant les tuiles MatchCard).
+- i18n clé `squad.v2.section_outcome_sequence` ajoutée dans squad.toml + squad.ts (généré).
+- Mapping outcome_code pour MatchHistoryPage (1=tie, 2=win, 3=loss, 4=dnf), outcome_tone pour HomePage (positive=win, negative=loss, neutral=tie).
+
+**Résultats** : 0 erreur TS introduite. Toutes les erreurs typecheck existantes sont pré-existantes.
+
+**Prochaine étape** : Intégration backend si `shared_matches` n'est pas encore exposé dans la réponse Go squad v2.
+
 ## [2026-04-27] plan(match-view): colonnes scoreboard Python source of truth + spec expander
 
 **Statut** : Complété.
