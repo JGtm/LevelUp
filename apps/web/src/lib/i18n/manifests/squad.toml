@@ -1,0 +1,96 @@
+# Squad i18n manifest — strings de la page Escouade V2.
+#
+# Format ICU MessageFormat. Régénérer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Sections couvertes (S2 = header, S3-S11 ajoutent les sections suivantes) :
+#   S2  squad.header.*
+#   S3  squad.synergies.*  (à venir)
+#   S5  squad.impact.*     (à venir)
+#   ...
+
+# ─── S2 : En-têtes ──────────────────────────────────────────────────────────
+
+[squad.header.solo_section_title]
+fr = "Mes stats sur cette session"
+en = "My session stats"
+
+[squad.header.squad_section_title]
+fr = "Score d'équipe"
+en = "Team score"
+
+[squad.header.squad_score_base]
+fr = "Base"
+en = "Base"
+
+[squad.header.squad_score_bonus]
+fr = "{base, number} (+{bonus, number})"
+en = "{base, number} (+{bonus, number})"
+
+[squad.header.squad_grade_label]
+fr = "Grade"
+en = "Grade"
+
+# ─── KPI cards (8) ──────────────────────────────────────────────────────────
+
+[squad.kpi.matches]
+fr = "Matchs sélectionnés"
+en = "Selected matches"
+
+[squad.kpi.matches_count]
+fr = "{n, plural, one {# match} other {# matchs}}"
+en = "{n, plural, one {# match} other {# matches}}"
+
+[squad.kpi.total_duration]
+fr = "Durée totale"
+en = "Total duration"
+
+[squad.kpi.kills_per_match]
+fr = "Frags par match"
+en = "Kills per match"
+
+[squad.kpi.kills_per_min_suffix]
+fr = "/min"
+en = "/min"
+
+[squad.kpi.deaths_per_match]
+fr = "Morts par match"
+en = "Deaths per match"
+
+[squad.kpi.assists_per_match]
+fr = "Assistances par match"
+en = "Assists per match"
+
+[squad.kpi.avg_accuracy]
+fr = "Précision moyenne"
+en = "Average accuracy"
+
+[squad.kpi.avg_lifespan]
+fr = "Vie moyenne"
+en = "Average lifespan"
+
+[squad.kpi.results_summary]
+fr = "Résultats"
+en = "Results"
+
+# ─── Score labels (qualitatif) ──────────────────────────────────────────────
+
+[squad.score.label_excellent]
+fr = "Excellent"
+en = "Excellent"
+
+[squad.score.label_good]
+fr = "Bon"
+en = "Good"
+
+[squad.score.label_average]
+fr = "Moyen"
+en = "Average"
+
+[squad.score.label_poor]
+fr = "Faible"
+en = "Poor"
+
+[squad.score.label_bad]
+fr = "Insuffisant"
+en = "Bad"

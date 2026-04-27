@@ -26,9 +26,81 @@ type SquadPageV2Response struct {
 	Period             string             `json:"period"`
 	SharedMatchesCount int                `json:"shared_matches_count"`
 	SharedMatches      []SquadSharedMatch `json:"shared_matches"`
+	// Header porte les KPIs personnels du joueur principal + score d'equipe +
+	// cartes individuelles (cf. PLAN_SQUAD_GO_PORTAGE § 1.1, P2). Nil si
+	// SharedMatches est vide ou si capability gap principal.
+	Header *SquadHeader `json:"header,omitempty"`
 	// Capabilities reprend canonical.CapabilityGap (CapabilityKey + ReasonCode +
 	// Severity + Message + Retryable) pour signaler les sections degradees.
 	Capabilities []canonical.CapabilityGap `json:"capabilities,omitempty"`
+}
+
+// SquadHeader regroupe les blocs en-tete de la page Squad (cf. audit § 2 :
+// "Bandeau Mes stats" + "Score d'equipe + scores individuels").
+type SquadHeader struct {
+	// SoloKPIs : stats personnelles du joueur principal sur le scope courant
+	// (apres filtres). 8 cartes affichees.
+	SoloKPIs *KPIStats `json:"solo_kpis,omitempty"`
+	// AllTimeKPIs : stats personnelles du joueur principal sur tout l'historique.
+	// Sert de reference pour les fleches de tendance (▲▼) sur SoloKPIs.
+	AllTimeKPIs *KPIStats `json:"all_time_kpis,omitempty"`
+	// SquadScore : score d'equipe (base + bonus + grade lettre).
+	SquadScore *SquadScoreCard `json:"squad_score,omitempty"`
+	// PlayerCards : 1 carte par joueur (main + coequipiers) avec score + ▲▼ vs avg.
+	PlayerCards []PlayerScoreCard `json:"player_cards,omitempty"`
+}
+
+// KPIStats agrege les indicateurs personnels affiches dans le bandeau header.
+type KPIStats struct {
+	MatchesCount     int     `json:"matches_count"`
+	TotalPlaySeconds int64   `json:"total_play_seconds"`
+	AvgMatchSeconds  float64 `json:"avg_match_seconds"`
+	KillsPerGame     float64 `json:"kills_per_game"`
+	KillsPerMinute   float64 `json:"kills_per_minute"`
+	DeathsPerGame    float64 `json:"deaths_per_game"`
+	DeathsPerMinute  float64 `json:"deaths_per_minute"`
+	AssistsPerGame   float64 `json:"assists_per_game"`
+	AssistsPerMinute float64 `json:"assists_per_minute"`
+	AvgAccuracy      float64 `json:"avg_accuracy"` // 0..100
+	AvgLifeSeconds   float64 `json:"avg_life_seconds"`
+	Outcomes         struct {
+		Wins   int `json:"wins"`
+		Losses int `json:"losses"`
+		Ties   int `json:"ties"`
+		DNF    int `json:"dnf"`
+	} `json:"outcomes"`
+}
+
+// SquadScoreCard est la carte "Score d'equipe" (base + bonus + grade).
+//
+// Calcul : base = moyenne des scores individuels, bonus +5 si winrate >60%,
+// bonus +5 si min(K/D) > 1.0, bonus +3 si stddev kills < 3. Grade = lettre
+// resolu via SCORE_THRESHOLDS (S+/A/B/C/D/F).
+type SquadScoreCard struct {
+	Score        float64 `json:"score"`          // 0..100, clamped
+	Grade        string  `json:"grade"`          // "S+", "A", "B", ...
+	BaseAvg      float64 `json:"base_avg"`       // avant bonus
+	BonusWinRate int     `json:"bonus_win_rate"` // 0 ou 5
+	BonusMinKD   int     `json:"bonus_min_kd"`   // 0 ou 5
+	BonusBalance int     `json:"bonus_balance"`  // 0 ou 3
+	TeamWinRate  float64 `json:"team_win_rate"`  // 0..1
+	MinKD        float64 `json:"min_kd"`
+	KillsStdDev  float64 `json:"kills_std_dev"`
+}
+
+// PlayerScoreCard est la carte d'un joueur (main + chaque coequipier).
+//
+// Comparison signale si le joueur tire l'equipe vers le haut ou vers le bas
+// par rapport a la moyenne squad : "above" (▲), "below" (▼) ou "near" (=).
+type PlayerScoreCard struct {
+	Gamertag   string  `json:"gamertag"`
+	Score      float64 `json:"score"`
+	Label      string  `json:"label"`      // excellent / good / average / poor / bad
+	Comparison string  `json:"comparison"` // above / below / near
+	KDRatio    float64 `json:"kd_ratio"`
+	WinRate    float64 `json:"win_rate"`
+	Accuracy   float64 `json:"accuracy"`
+	Kills      int     `json:"kills"`
 }
 
 // SquadSharedMatch représente un match commun entre tous les joueurs sélectionnés.

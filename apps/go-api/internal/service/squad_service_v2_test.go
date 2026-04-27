@@ -281,3 +281,140 @@ func TestSquadServiceV2_GetSquadPage_OrderDeterministicOnEqualTimes(t *testing.T
 			resp.SharedMatches[0].MatchID)
 	}
 }
+
+// rowWithStats construit une row avec stats (Kills/Deaths/Assists/Outcome/etc.)
+// pour tester le Header.
+func rowWithStats(matchID string, ts time.Time, outcome canonical.Outcome,
+	kills, deaths, assists, timePlayed int, accuracy float64,
+	performanceScore float64,
+) canonical.PlayerMatchRow {
+	k, d, a, tp := kills, deaths, assists, timePlayed
+	acc := accuracy
+	perf := performanceScore
+	return canonical.PlayerMatchRow{
+		Summary: canonical.MatchSummary{
+			MatchID:      matchID,
+			StartedAtUTC: ts,
+			Outcome:      outcome,
+		},
+		Self: canonical.MatchParticipant{
+			Outcome:    outcome,
+			Kills:      &k,
+			Deaths:     &d,
+			Assists:    &a,
+			TimePlayed: &tp,
+			Accuracy:   &acc,
+		},
+		Enrichment: canonical.PlayerMatchEnrichment{
+			PerformanceScore: &perf,
+		},
+	}
+}
+
+func TestSquadServiceV2_GetSquadPage_HeaderSoloKPIs(t *testing.T) {
+	t.Parallel()
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main": {
+				rowWithStats("m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 75),
+				rowWithStats("m2", t0.Add(time.Hour), canonical.OutcomeLoss, 5, 8, 1, 400, 45, 40),
+			},
+			"f1": {
+				rowWithStats("m1", t0, canonical.OutcomeWin, 8, 4, 3, 600, 48, 70),
+				rowWithStats("m2", t0.Add(time.Hour), canonical.OutcomeLoss, 6, 5, 2, 400, 52, 55),
+			},
+		},
+	}
+	svc := NewSquadServiceV2(loader)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
+		[]string{"f1"}, temporal.PeriodAll)
+	if err != nil {
+		t.Fatalf("GetSquadPage: %v", err)
+	}
+	if resp.Header == nil {
+		t.Fatal("Header should be filled when shared matches exist")
+	}
+	if resp.Header.SoloKPIs == nil {
+		t.Fatal("SoloKPIs should be filled")
+	}
+	// Main player : 2 matchs, 10+5=15 kills total, 1000s play
+	if resp.Header.SoloKPIs.MatchesCount != 2 {
+		t.Errorf("SoloKPIs MatchesCount want 2, got %d", resp.Header.SoloKPIs.MatchesCount)
+	}
+	if resp.Header.SoloKPIs.Outcomes.Wins != 1 || resp.Header.SoloKPIs.Outcomes.Losses != 1 {
+		t.Errorf("SoloKPIs outcomes: %+v", resp.Header.SoloKPIs.Outcomes)
+	}
+}
+
+func TestSquadServiceV2_GetSquadPage_HeaderPlayerCardsAndScore(t *testing.T) {
+	t.Parallel()
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main": {rowWithStats("m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80)},
+			"f1":   {rowWithStats("m1", t0, canonical.OutcomeWin, 8, 4, 3, 600, 48, 70)},
+			"f2":   {rowWithStats("m1", t0, canonical.OutcomeWin, 6, 6, 1, 600, 45, 60)},
+		},
+	}
+	svc := NewSquadServiceV2(loader)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
+		[]string{"f1", "f2"}, temporal.PeriodAll)
+	if err != nil {
+		t.Fatalf("GetSquadPage: %v", err)
+	}
+	if len(resp.Header.PlayerCards) != 3 {
+		t.Fatalf("want 3 player cards, got %d", len(resp.Header.PlayerCards))
+	}
+	// Cards triees par gamertag asc -> f1, f2, main (ordre alphabetique)
+	if resp.Header.PlayerCards[0].Gamertag != "f1" {
+		t.Errorf("first card gamertag: want f1, got %s", resp.Header.PlayerCards[0].Gamertag)
+	}
+	// Score equipe : moyenne 80+70+60=70, +5 winrate (1.0 > 0.6), peut +5 minKD
+	// (KD respectifs : 10/5=2.0, 8/4=2.0, 6/6=1.0 -> minKD=1.0 NON > 1.0, pas de bonus).
+	if resp.Header.SquadScore == nil {
+		t.Fatal("SquadScore should be filled")
+	}
+	if resp.Header.SquadScore.BaseAvg != 70 {
+		t.Errorf("BaseAvg want 70, got %v", resp.Header.SquadScore.BaseAvg)
+	}
+	if resp.Header.SquadScore.BonusWinRate != 5 {
+		t.Errorf("BonusWinRate want 5 (winrate=1.0), got %d", resp.Header.SquadScore.BonusWinRate)
+	}
+	// Comparison ▲▼ : main (80) > avg=70 -> above
+	for _, c := range resp.Header.PlayerCards {
+		if c.Gamertag == "main" && c.Comparison != "above" {
+			t.Errorf("main (80 vs 70) should be 'above', got %s", c.Comparison)
+		}
+		if c.Gamertag == "f2" && c.Comparison != "below" {
+			t.Errorf("f2 (60 vs 70) should be 'below', got %s", c.Comparison)
+		}
+	}
+}
+
+func TestSquadServiceV2_GetSquadPage_HeaderNilWhenNoShared(t *testing.T) {
+	t.Parallel()
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main": {rowWithStats("m1", time.Now(), canonical.OutcomeWin, 5, 2, 0, 300, 50, 60)},
+			"f1":   {rowWithStats("m2", time.Now(), canonical.OutcomeWin, 5, 2, 0, 300, 50, 60)},
+		},
+	}
+	svc := NewSquadServiceV2(loader)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
+		[]string{"f1"}, temporal.PeriodAll)
+	if err != nil {
+		t.Fatalf("GetSquadPage: %v", err)
+	}
+	// Pas de match commun -> SoloKPIs presents (rows main existent), mais
+	// PlayerCards et SquadScore restent vides (aucune row partagee).
+	if resp.Header.SoloKPIs == nil {
+		t.Error("SoloKPIs should still be filled (main has rows)")
+	}
+	if len(resp.Header.PlayerCards) != 0 {
+		t.Errorf("no shared matches -> no player cards, got %d", len(resp.Header.PlayerCards))
+	}
+	if resp.Header.SquadScore != nil {
+		t.Error("no shared matches -> no SquadScore")
+	}
+}
