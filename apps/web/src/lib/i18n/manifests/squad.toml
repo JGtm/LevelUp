@@ -270,3 +270,99 @@ en = "Match"
 [squad.synergies.intensity_axis_phase]
 fr = "Phase du match"
 en = "Match phase"
+
+# ─── S8 : Radar 6 axes ──────────────────────────────────────────────────────
+
+[squad.radar.section_title]
+fr = "Profil de participation"
+en = "Participation profile"
+
+[squad.radar.player]
+fr = "{gamertag}"
+en = "{gamertag}"
+
+[squad.radar.axis_combat]
+fr = "Combat"
+en = "Combat"
+
+[squad.radar.axis_survival]
+fr = "Survie"
+en = "Survival"
+
+[squad.radar.axis_support]
+fr = "Soutien"
+en = "Support"
+
+[squad.radar.axis_score]
+fr = "Score"
+en = "Score"
+
+[squad.radar.axis_objective]
+fr = "Objectif"
+en = "Objective"
+
+[squad.radar.axis_impact]
+fr = "Impact"
+en = "Impact"
+
+[squad.radar.objective_deferred_hint]
+fr = "Axe Objectif disponible quand les awards seront indexés"
+en = "Objective axis available once awards are indexed"
+
+# ─── S9 : Tableau historique + armes + médailles ────────────────────────────
+
+[squad.history.section_title]
+fr = "Historique des matchs"
+en = "Match history"
+
+[squad.history.col_date]
+fr = "Date"
+en = "Date"
+
+[squad.history.col_mode]
+fr = "Mode"
+en = "Mode"
+
+[squad.history.col_map]
+fr = "Carte"
+en = "Map"
+
+[squad.history.col_outcome]
+fr = "Résultat"
+en = "Outcome"
+
+[squad.history.col_duration]
+fr = "Durée"
+en = "Duration"
+
+[squad.history.col_kda]
+fr = "K/D/A"
+en = "K/D/A"
+
+[squad.weapons.section_title]
+fr = "Armes utilisées"
+en = "Weapons used"
+
+[squad.weapons.col_weapon]
+fr = "Arme"
+en = "Weapon"
+
+[squad.weapons.col_total]
+fr = "Total"
+en = "Total"
+
+[squad.weapons.min_kills_label]
+fr = "Min. kills : {n, number}"
+en = "Min. kills: {n, number}"
+
+[squad.weapons.grenade_melee_marker]
+fr = "Grenade / Mêlée"
+en = "Grenade / Melee"
+
+[squad.medals.section_title]
+fr = "Galerie de médailles"
+en = "Medals gallery"
+
+[squad.medals.empty_match]
+fr = "Aucune médaille filmée"
+en = "No medals recorded"
