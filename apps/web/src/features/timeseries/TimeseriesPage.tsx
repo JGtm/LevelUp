@@ -16,13 +16,12 @@ import { useTimeseriesPage, useCombatYieldHistory } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
 import { CombatYieldTimeseries } from '@/components/ui/combat-yield-timeseries'
-import { TimeseriesHistogram } from '@/components/ui/timeseries-histogram'
-import { TimeseriesScatter } from '@/components/ui/timeseries-scatter'
 import { TimeseriesKdaBars } from '@/components/ui/timeseries-kda-bars'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
+import { HistogramChart } from '@/components/charts/HistogramChart'
+import { TimeseriesCorrelationScatter } from './TimeseriesCorrelationScatter'
 import type { TimeseriesKpiCard } from '@/lib/api/types'
-import { resolveToken } from '@/lib/accessibility'
 import { formatMessage } from '@/lib/i18n/format'
 import {
   timeseriesManifest,
@@ -32,9 +31,11 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import {
   cumulativePointsToSeries,
   heatmapCellsToSeries,
+  distributionBucketsToSeries,
   DOW_LABELS_FR,
   DOW_LABELS_EN,
 } from './seriesAdapters'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions' | 'combat'
 
@@ -55,6 +56,16 @@ export function TimeseriesPage() {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: TimeseriesManifestKey) => formatMessage(timeseriesManifest, key, locale)
   const dowLabels = locale === 'en' ? DOW_LABELS_EN : DOW_LABELS_FR
+  const { data: fieldMappings } = useFieldMappings()
+  const outcomeLabels = {
+    win: fieldMappings?.outcomes?.win?.label ?? t('timeseries.distributions.outcome_win_fallback'),
+    loss:
+      fieldMappings?.outcomes?.loss?.label ??
+      t('timeseries.distributions.outcome_loss_fallback'),
+    unknown:
+      fieldMappings?.fields['outcome_unknown']?.label ??
+      t('timeseries.distributions.outcome_unknown_fallback'),
+  }
 
   const { data, isLoading, isError, refetch } = useTimeseriesPage(
     playerSlug,
@@ -323,10 +334,14 @@ export function TimeseriesPage() {
                   <CardTitle className="text-sm">{t('timeseries.distributions.kda_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
-                  <TimeseriesHistogram
-                    buckets={distributions_tab.kda_buckets ?? []}
-                    color={resolveToken('perf-tier-2')}
+                  <HistogramChart
+                    series={distributionBucketsToSeries(distributions_tab.kda_buckets ?? [], {
+                      key: 'timeseries.distributions.kda',
+                      name: t('timeseries.distributions.kda_axis_x'),
+                    })}
+                    colorToken="perf-tier-2"
                     xAxisLabel={t('timeseries.distributions.kda_axis_x')}
+                    height={280}
                   />
                 </CardContent>
               </Card>
@@ -335,10 +350,14 @@ export function TimeseriesPage() {
                   <CardTitle className="text-sm">{t('timeseries.distributions.kills_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
-                  <TimeseriesHistogram
-                    buckets={distributions_tab.kills_buckets ?? []}
-                    color={resolveToken('divergent-pos')}
+                  <HistogramChart
+                    series={distributionBucketsToSeries(distributions_tab.kills_buckets ?? [], {
+                      key: 'timeseries.distributions.kills',
+                      name: t('timeseries.distributions.kills_axis_x'),
+                    })}
+                    colorToken="divergent-pos"
                     xAxisLabel={t('timeseries.distributions.kills_axis_x')}
+                    height={280}
                   />
                 </CardContent>
               </Card>
@@ -347,10 +366,14 @@ export function TimeseriesPage() {
                   <CardTitle className="text-sm">{t('timeseries.distributions.accuracy_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
-                  <TimeseriesHistogram
-                    buckets={distributions_tab.accuracy_buckets ?? []}
-                    color={resolveToken('perf-tier-3')}
+                  <HistogramChart
+                    series={distributionBucketsToSeries(distributions_tab.accuracy_buckets ?? [], {
+                      key: 'timeseries.distributions.accuracy',
+                      name: t('timeseries.distributions.accuracy_axis_x'),
+                    })}
+                    colorToken="perf-tier-3"
                     xAxisLabel={t('timeseries.distributions.accuracy_axis_x')}
+                    height={280}
                   />
                 </CardContent>
               </Card>
@@ -359,10 +382,17 @@ export function TimeseriesPage() {
                   <CardTitle className="text-sm">{t('timeseries.distributions.score_per_min_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
-                  <TimeseriesHistogram
-                    buckets={distributions_tab.score_per_min_buckets ?? []}
-                    color={resolveToken('narrative-dominant')}
+                  <HistogramChart
+                    series={distributionBucketsToSeries(
+                      distributions_tab.score_per_min_buckets ?? [],
+                      {
+                        key: 'timeseries.distributions.score_per_min',
+                        name: t('timeseries.distributions.score_per_min_axis_x'),
+                      },
+                    )}
+                    colorToken="narrative-dominant"
                     xAxisLabel={t('timeseries.distributions.score_per_min_axis_x')}
+                    height={280}
                   />
                 </CardContent>
               </Card>
@@ -371,10 +401,17 @@ export function TimeseriesPage() {
                   <CardTitle className="text-sm">{t('timeseries.distributions.rolling_wr_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
-                  <TimeseriesHistogram
-                    buckets={distributions_tab.rolling_wr_buckets ?? []}
-                    color={resolveToken('divergent-neg')}
+                  <HistogramChart
+                    series={distributionBucketsToSeries(
+                      distributions_tab.rolling_wr_buckets ?? [],
+                      {
+                        key: 'timeseries.distributions.rolling_wr',
+                        name: t('timeseries.distributions.rolling_wr_axis_x'),
+                      },
+                    )}
+                    colorToken="divergent-neg"
                     xAxisLabel={t('timeseries.distributions.rolling_wr_axis_x')}
+                    height={280}
                   />
                 </CardContent>
               </Card>
@@ -384,7 +421,10 @@ export function TimeseriesPage() {
                 <CardTitle className="text-sm">{t('timeseries.distributions.correlations_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
-                <TimeseriesScatter points={distributions_tab.correlation_points ?? []} />
+                <TimeseriesCorrelationScatter
+                  points={distributions_tab.correlation_points ?? []}
+                  outcomeLabels={outcomeLabels}
+                />
               </CardContent>
             </Card>
           </div>

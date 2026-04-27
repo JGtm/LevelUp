@@ -194,6 +194,18 @@ en = "Win rate (%)"
 fr = "Corrélations"
 en = "Correlations"
 
+[timeseries.distributions.outcome_win_fallback]
+fr = "Victoire"
+en = "Win"
+
+[timeseries.distributions.outcome_loss_fallback]
+fr = "Défaite"
+en = "Loss"
+
+[timeseries.distributions.outcome_unknown_fallback]
+fr = "Inconnu"
+en = "Unknown"
+
 # ─── Onglet Combat ─────────────────────────────────────────────────────────
 
 [timeseries.combat.yield_title]

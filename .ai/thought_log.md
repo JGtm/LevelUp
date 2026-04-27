@@ -1,5 +1,34 @@
 # Thought Log
 
+## [2026-04-27] feat(p3.b-charts): wrappers ECharts HistogramChart + ScatterChart + migration distributions/corrélations
+
+**Statut** : Complété.
+
+**Décision technique** :
+Phase 3 P3.B du méta-plan. Création de deux nouveaux wrappers ECharts génériques dans `apps/web/src/components/charts/` :
+- `HistogramChart` consomme `ChartSeries<ChartPointHistogram>[]` (binStart/binEnd/count) → bar chart catégorique avec `colorToken: SemanticToken` et formatBin paramétrable.
+- `ScatterChart` consomme `ChartSeries<ChartPointScatter>[]` (multi-séries) → scatter ECharts avec `seriesColorTokens` map (key→token) et `seriesNameResolver`.
+
+Composant intermédiaire `TimeseriesCorrelationScatter` créé dans `features/timeseries/` : porte la logique de label-picker (kills_vs_kd, lifespan_vs_kills, etc.) et les noms d'axes résolus via `useFieldMappings` (canonique kills/deaths/accuracy/kda/kdr/team_mmr/enemy_mmr + fallbacks FR locaux pour `Durée de vie`).
+
+Adapters purs `distributionBucketsToSeries` (1 série mono-trace) et `correlationPointsToSeries` (3 séries win/loss/unknown filtrées par activeLabel) ajoutés dans `seriesAdapters.ts`.
+
+**Architecture** :
+- 2 wrappers ECharts nouveaux suivant le pattern existant (BarStackedChart / TimeseriesLineChart) : `buildXxxOption` pure exportée pour test, `<XxxChart>` React qui wrap dans `<ChartCard>`.
+- Couleurs : tokens sémantiques uniquement (`perf-tier-2`, `divergent-pos`, `outcome-win`, etc.), aucun hex.
+- TimeseriesPage : 5 histogrammes K/D/Kills/Précision/Score-min/WR + 1 corrélations migrés. `resolveToken()` direct supprimé du caller (déléguée au wrapper via `colorToken`).
+- Cleanup : suppression des 4 wrappers Plotly orphelins (`timeseries-histogram.tsx`, `timeseries-scatter.tsx`, `timeseries-heatmap.tsx`, `timeseries-line-chart.tsx`).
+
+**Résultats** :
+- `vitest run` builders + adapters → 34/34 OK (8 HistogramChart + 9 ScatterChart + 17 seriesAdapters).
+- `npm run typecheck` filtré sur le périmètre touché → 0 erreur.
+- `eslint` charts + timeseries → 0 warning.
+- 4 fichiers Plotly supprimés (~430L de dette Plotly retirée).
+
+**Reliquat Plotly TimeseriesPage** : `TimeseriesKdaBars` + `CombatYieldTimeseries` (2 wrappers `components/ui/`) — différés Phase 3 ultérieure (besoin d'un wrapper Bar avec marker outcome + d'un wrapper line avec compare 2 séries). Plotly persiste aussi dans SessionComparePage (donut/radar/KD progression) et autres composants ad hoc.
+
+**Prochaine étape** : poursuivre Phase 3 — consolidation `home/*.i18n.ts` (3 modules) + `palmares/i18n.ts` vers manifests TOML, puis derniers wrappers ECharts (Donut, Radar, BarKda, CombatYield).
+
 ## [2026-04-27] feat(p3.a-media): consolidation media/i18n.ts → manifest TOML
 
 **Statut** : Complété.
