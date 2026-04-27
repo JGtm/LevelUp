@@ -967,14 +967,57 @@ func convertEncounters(raw []domain.EncounterRaw) []domain.MatchEncounterRow {
 	}
 	result := make([]domain.MatchEncounterRow, 0, len(raw))
 	for _, e := range raw {
+		// Phase 1 méta-plan § 6.1.3 — chunk MV4.C : badges narratifs typés.
+		// Aujourd'hui seul le badge `ordinal` est attribuable à partir de
+		// EncounterRaw (count_together). Les badges ally_plus + tough_enemy
+		// nécessitent l'extension Q23 (winrate ally/enemy + kd_against_me)
+		// reportée à MV4.C'.
+		badges := buildEncounterBadgesFromRaw(e)
 		result = append(result, domain.MatchEncounterRow{
 			XUID:          e.XUID,
 			Gamertag:      e.Gamertag,
 			CountTogether: e.CountTogether,
 			IsAlly:        e.IsAlly,
+			Badges:        badges,
 		})
 	}
 	return result
+}
+
+// buildEncounterBadgesFromRaw : MV4.C — résolution narrative.ComputeEncounterBadges
+// avec un EncounterStats minimal (count_together comme ordinal). Les autres
+// stats (ally/enemy counts, winrate, kd) ne sont pas peuplées dans EncounterRaw
+// → tough_enemy et ally_plus ne peuvent pas être attribués ici.
+//
+// Le badge ordinal n'est attribué que si count_together >= 2 (aucun intérêt
+// pour 1 seul match commun = encounter d'aujourd'hui). Voir
+// narrative.ComputeEncounterBadges qui exige `ordinal > 0`.
+func buildEncounterBadgesFromRaw(e domain.EncounterRaw) []domain.MatchEncounterBadge {
+	stats := narrative.EncounterStats{
+		XUID:            e.XUID,
+		Gamertag:        e.Gamertag,
+		TotalEncounters: e.CountTogether,
+	}
+	// Ordinal = count_together - 1 (les rencontres antérieures, pas la courante).
+	// Si count_together <= 1, ordinal = 0 et aucun badge ordinal n'est émis.
+	ordinal := e.CountTogether - 1
+	if ordinal < 0 {
+		ordinal = 0
+	}
+	raw := narrative.ComputeEncounterBadges(stats, ordinal)
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]domain.MatchEncounterBadge, 0, len(raw))
+	for _, b := range raw {
+		out = append(out, domain.MatchEncounterBadge{
+			Kind:       string(b.Kind),
+			LabelKey:   b.LabelKey,
+			ColorToken: b.ColorToken,
+			Detail:     b.Detail,
+		})
+	}
+	return out
 }
 
 // buildMediaTab construit l'onglet médias.

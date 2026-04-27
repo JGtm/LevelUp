@@ -336,6 +336,23 @@ type MatchEncounterRow struct {
 	Gamertag      string `json:"gamertag"`
 	CountTogether int    `json:"count_together"`
 	IsAlly        bool   `json:"is_ally"`
+	// Badges narratifs typés (chunk MV4.C). Aujourd'hui : seulement le badge
+	// ordinal (count_together). Les badges ally_plus / tough_enemy nécessitent
+	// l'extension Q23 (winrate par ally/enemy + kills/deaths against me) qui
+	// est reportée à MV4.C'.
+	Badges []MatchEncounterBadge `json:"badges,omitempty"`
+}
+
+// MatchEncounterBadge : badge narratif typé pour un encounter.
+//
+// Mirror frontend du narrative.EncounterBadge Go (LabelKey + ColorToken).
+// Le détail (winrate, kd_against_me, ordinal value) est exposé dans Detail
+// pour permettre au front d'afficher des tooltips contextuels.
+type MatchEncounterBadge struct {
+	Kind       string         `json:"kind"`        // "ordinal" / "ally_plus" / "tough_enemy"
+	LabelKey   string         `json:"label_key"`   // clé i18n (ex. "narrative.encounter.ordinal")
+	ColorToken string         `json:"color_token"` // token sémantique
+	Detail     map[string]any `json:"detail,omitempty"`
 }
 
 // MatchTeamTab : contenu de l'onglet Équipe.
