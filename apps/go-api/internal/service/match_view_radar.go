@@ -1,0 +1,178 @@
+// Package service — match_view_radar.go : builder radar 6 axes pour MatchView
+// (chunk MV4.B).
+//
+// Consomme les awards (personal_score_awards) chargés via
+// port.PersonalScoreAwardsRepository et les agrège sur les 6 axes canoniques
+// via narrative.ComputeParticipationProfile.
+//
+// Mapping award_name -> ParticipationAxis : table inline pour Halo Infinite
+// (Phase 1 pilote). Les awards non-mappés sont ignorés. Les définitions
+// title-specific viendront d'un TOML mappings (config/titles/{slug}/mappings/
+// awards.toml) en Phase 2 ou 3.
+package service
+
+import (
+	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
+)
+
+// haloAwardToAxis mappe les award_name connus de Halo Infinite vers les 6
+// axes canoniques. Couverture initiale Phase 1 pilote (MV4.B).
+//
+// Audit Python (apps/api/app/services/match_view_service.py) : les awards
+// sont historiquement groupés par catégorie. Le portage Go reprend les
+// catégories classiques :
+//
+//	combat    : kills, double_kills, triple_kills, etc.
+//	survival  : avoided_kills, escapes
+//	support   : assists, ally_protections, revives
+//	score     : personal_score, scoring streaks
+//	objective : flag_caps, hill_captures, oddball_kills, neutralizations
+//	impact    : multi-kills, sprees, MVP-equivalents
+//
+// Awards non listés ici sont ignorés (Phase 1 — UX dégradée mais lisible).
+// Phase 2 : passer par config/titles/halo_infinite/mappings/awards.toml.
+var haloAwardToAxis = map[string]narrative.ParticipationAxis{
+	// Combat (kills divers)
+	"kills":         narrative.AxisCombat,
+	"double_kill":   narrative.AxisCombat,
+	"triple_kill":   narrative.AxisCombat,
+	"overkill":      narrative.AxisCombat,
+	"killtacular":   narrative.AxisCombat,
+	"killtrocity":   narrative.AxisCombat,
+	"killimanjaro":  narrative.AxisCombat,
+	"killtastrophe": narrative.AxisCombat,
+	"killpocalypse": narrative.AxisCombat,
+	"killionaire":   narrative.AxisCombat,
+	"power_kill":    narrative.AxisCombat,
+	"power_combo":   narrative.AxisCombat,
+	"perfect_kill":  narrative.AxisCombat,
+	"headshot":      narrative.AxisCombat,
+	"melee_kill":    narrative.AxisCombat,
+	"grenade_kill":  narrative.AxisCombat,
+	"sniper_kill":   narrative.AxisCombat,
+	"close_call":    narrative.AxisCombat,
+	"highest_kills": narrative.AxisCombat,
+
+	// Survival (évitement / longévité)
+	"avoided_kill":     narrative.AxisSurvival,
+	"escape":           narrative.AxisSurvival,
+	"survived":         narrative.AxisSurvival,
+	"longest_lifespan": narrative.AxisSurvival,
+	"avg_lifespan":     narrative.AxisSurvival,
+
+	// Support (aide aux alliés)
+	"assist":          narrative.AxisSupport,
+	"emp_assist":      narrative.AxisSupport,
+	"savior_kill":     narrative.AxisSupport,
+	"protection":      narrative.AxisSupport,
+	"protector":       narrative.AxisSupport,
+	"highest_assists": narrative.AxisSupport,
+	"team_player":     narrative.AxisSupport,
+
+	// Score (objectif personnel)
+	"personal_score": narrative.AxisScore,
+	"highest_score":  narrative.AxisScore,
+	"score_streak":   narrative.AxisScore,
+
+	// Objective (mode-specific)
+	"flag_capture":      narrative.AxisObjective,
+	"flag_kill":         narrative.AxisObjective,
+	"flag_return":       narrative.AxisObjective,
+	"hill_capture":      narrative.AxisObjective,
+	"hill_score":        narrative.AxisObjective,
+	"oddball_score":     narrative.AxisObjective,
+	"oddball_kill":      narrative.AxisObjective,
+	"neutralization":    narrative.AxisObjective,
+	"strongholds_score": narrative.AxisObjective,
+
+	// Impact (multi-kills hauts ou MVP-equivalents)
+	"killing_spree":  narrative.AxisImpact,
+	"killing_frenzy": narrative.AxisImpact,
+	"running_riot":   narrative.AxisImpact,
+	"rampage":        narrative.AxisImpact,
+	"untouchable":    narrative.AxisImpact,
+	"invincible":     narrative.AxisImpact,
+	"mvp":            narrative.AxisImpact,
+	"top_score":      narrative.AxisImpact,
+}
+
+// MatchViewRadarSeries est la série radar exposée dans le DTO MatchView.
+//
+// Mirror frontend du narrative.ParticipationScore agrégé. Le wrapper
+// `<RadarChart>` (S10) côté front consomme N séries (1 par joueur du match)
+// avec 6 axes alignés.
+type MatchViewRadarSeries struct {
+	XUID     string                         `json:"xuid"`
+	Gamertag string                         `json:"gamertag,omitempty"`
+	Axes     []narrative.ParticipationScore `json:"axes"`
+	// ModeFamily : famille de mode utilisée pour les seuils
+	// (slayer / ctf / strongholds / oddball / "" custom).
+	ModeFamily string `json:"mode_family,omitempty"`
+}
+
+// BuildMatchRadar construit les séries radar pour les joueurs du scoreboard
+// à partir des awards chargés via port.PersonalScoreAwardsRepository.
+//
+//	awards     : []PersonalScoreAwardRow déjà filtré sur le match courant.
+//	scoreboard : utilisé pour résoudre xuid -> gamertag dans le payload.
+//	modeFamily : "slayer" / "ctf" / "strongholds" / "oddball" / "".
+//
+// Retourne 1 série par xuid présent dans awards (l'ordre suit le scoreboard).
+// Joueurs sans aucun award : skippés (pas de bruit dans le radar).
+func BuildMatchRadar(
+	awards []port.PersonalScoreAwardRow,
+	scoreboard []domain.ScoreboardRaw,
+	modeFamily string,
+) []MatchViewRadarSeries {
+	if len(awards) == 0 {
+		return nil
+	}
+
+	// Aggréger awards par (xuid, axis).
+	byXUIDAxis := make(map[string]map[narrative.ParticipationAxis]float64)
+	for _, a := range awards {
+		axis, ok := haloAwardToAxis[a.AwardName]
+		if !ok {
+			continue
+		}
+		if byXUIDAxis[a.XUID] == nil {
+			byXUIDAxis[a.XUID] = make(map[narrative.ParticipationAxis]float64)
+		}
+		byXUIDAxis[a.XUID][axis] += float64(a.Total)
+	}
+	if len(byXUIDAxis) == 0 {
+		return nil
+	}
+
+	// Résoudre xuid -> gamertag via scoreboard pour stabilité d'affichage.
+	gtByXUID := make(map[string]string, len(scoreboard))
+	xuidOrder := make([]string, 0, len(scoreboard))
+	for _, row := range scoreboard {
+		if row.XUID == "" {
+			continue
+		}
+		if _, exists := gtByXUID[row.XUID]; !exists {
+			gtByXUID[row.XUID] = row.Gamertag
+			xuidOrder = append(xuidOrder, row.XUID)
+		}
+	}
+
+	thresholds := narrative.DefaultThresholds(modeFamily)
+	out := make([]MatchViewRadarSeries, 0, len(byXUIDAxis))
+	for _, xuid := range xuidOrder {
+		raw, ok := byXUIDAxis[xuid]
+		if !ok {
+			continue
+		}
+		axes := narrative.ComputeParticipationProfile(raw, thresholds)
+		out = append(out, MatchViewRadarSeries{
+			XUID:       xuid,
+			Gamertag:   gtByXUID[xuid],
+			Axes:       axes,
+			ModeFamily: modeFamily,
+		})
+	}
+	return out
+}
