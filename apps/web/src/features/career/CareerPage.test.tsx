@@ -28,12 +28,10 @@ describe('CareerPage', () => {
     expect(screen.queryByText(/Chargement de la carrière/i)).not.toBeInTheDocument()
   })
 
-  it("affiche le titre 'Carrière' une fois les données chargées", async () => {
-    renderWithProviders(<CareerPage />)
-    await waitFor(() => {
-      expect(screen.getByText('Carrière')).toBeInTheDocument()
-    })
-  })
+  // Test "affiche le titre 'Carrière'" supprimé (refacto post-84ae65ca) :
+  // - Le titre h1 a été retiré du composant (la NavL1 expose déjà la section).
+  // - Le rendu post-loading est déjà couvert par le test "affiche la section
+  //   de progression du rang" + "affiche des placeholders explicites".
 
   it('affiche la section de progression du rang', async () => {
     renderWithProviders(<CareerPage />)

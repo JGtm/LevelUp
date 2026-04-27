@@ -23,10 +23,9 @@ describe('ExplorerPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('affiche le titre Explorer', () => {
-    renderWithProviders(<ExplorerPage />)
-    expect(screen.getByText('Explorer')).toBeInTheDocument()
-  })
+  // Titre h1 "Explorer" retiré du composant lors du refacto post-84ae65ca
+  // (la NavL1 expose déjà le label de section). Le rendu de la page est validé
+  // par les tests onglets + messages "Aucun match trouvé" ci-dessous.
 
   it('affiche les onglets Matchs et Joueur', () => {
     renderWithProviders(<ExplorerPage />)

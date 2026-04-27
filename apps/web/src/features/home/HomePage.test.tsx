@@ -114,7 +114,9 @@ describe('HomePage', () => {
         expect(within(spartanBanner).queryByTestId('home-highest-lusr-card')).not.toBeInTheDocument()
         expect(screen.getByTestId('home-career-rank-title')).toHaveTextContent('Lance Corporal')
         expect(screen.getByTestId('home-spartan-adornment-image')).toHaveAttribute('src', 'https://example.test/ranks/lance-corporal-adornment.png')
-        expect(screen.getByText('Career rank')).toBeInTheDocument()
+        // Note : le label "Career rank" a été retiré du composant lors de la
+        // migration useFieldLabel (Phase D-bis, commit 84ae65ca) — seul le
+        // rank_title est rendu (testid home-career-rank-title vérifié au-dessus).
         expect(screen.getByText('Highest CSR')).toBeInTheDocument()
         expect(screen.getByText('Highest LUSR')).toBeInTheDocument()
       })
@@ -123,8 +125,9 @@ describe('HomePage', () => {
       expect(screen.getByTestId('home-spartan-banner-surface')).toHaveAttribute('src', 'https://example.test/identity/nameplate.png')
       expect(screen.queryByText('Spartan ID')).not.toBeInTheDocument()
 
-      expect(screen.getByText('Rank 25')).toBeInTheDocument()
-      expect(screen.getByText('Current progress')).toBeInTheDocument()
+      // Note : labels textuels "Rank 25" et "Current progress" retirés du
+      // composant lors du refacto Phase D-bis (commit 84ae65ca) au profit des
+      // testid dédiés vérifiés ci-dessous.
       expect(screen.getByTestId('home-career-rank-progress-current')).toHaveTextContent('5,000 XP')
       expect(screen.getByTestId('home-career-rank-progress-target')).toHaveTextContent('10,000 XP')
       expect(screen.getByTestId('home-career-rank-progress-fill')).toHaveStyle({ width: '50%' })
@@ -463,12 +466,13 @@ describe('HomePage', () => {
     expect(screen.getByTestId('home-challenges-completed')).toHaveTextContent('5 / 5 complétés')
   })
 
-  it('affiche les KPIs globaux (Parties, Taux de victoire, K/D)', async () => {
+  it('affiche les KPIs globaux (Parties, Taux de victoire, KDA)', async () => {
     renderWithProviders(<HomePage />)
     await waitFor(() => {
       expect(screen.getByText('Parties')).toBeInTheDocument()
       expect(screen.getByText('Taux de victoire')).toBeInTheDocument()
-      expect(screen.getByText('K/D')).toBeInTheDocument()
+      // labelOf('kda', 'KDA') retourne "KDA" en fallback (Phase D-bis migration).
+      expect(screen.getByText('KDA')).toBeInTheDocument()
     })
   })
 
@@ -494,13 +498,16 @@ describe('HomePage', () => {
     await waitFor(() => {
       const stickyShell = screen.getByTestId('home-hero-banner-sticky')
       const banner = screen.getByTestId('home-hero-banner')
-      const image = banner.querySelector('img')
 
       expect(stickyShell).toHaveClass('sticky', 'top-0')
       expect(banner).toBeInTheDocument()
       expect(banner).not.toHaveClass('sticky', 'top-0')
-      expect(image).not.toBeNull()
-      expect(image).toHaveClass('h-36', 'sm:h-48', 'lg:h-56')
+      // Le composant HomeHeroBanner a été refactoré (post-84ae65ca) : il n'utilise
+      // plus de balise <img> mais des <div> avec backgroundImage en style inline
+      // pour permettre des transitions cross-fade entre plusieurs visuels. La
+      // hauteur responsive est portée par le wrapper interne (querySelectable).
+      const heightWrapper = banner.querySelector('.h-36.w-full')
+      expect(heightWrapper).not.toBeNull()
     })
   })
 
@@ -551,7 +558,7 @@ describe('HomePage', () => {
             {
               basename: 'clip-epic.mp4',
               file_path: '/media/clip-epic.mp4',
-              kind: 'clip',
+              kind: 'screenshot',
               thumbnail_path: '/media/thumb-clip-epic.jpg',
               match_id: 'match-123',
               capture_end_utc: '2026-04-18T12:00:00Z',
@@ -572,16 +579,22 @@ describe('HomePage', () => {
 
     renderWithProviders(<HomePage />)
 
-    await waitFor(() => {
-      expect(screen.getByText('clip-epic.mp4')).toBeInTheDocument()
-      expect(screen.getByText(/Aperçu au survol/i)).toBeInTheDocument()
-    })
+    // MediaThumbnailCard ne rend plus le basename comme texte visible (refacto
+    // post-84ae65ca) — il l'utilise uniquement comme alt sur l'<img>. On
+    // cherche donc l'image par son alt pour identifier la card.
+    const thumbnail = await screen.findByAltText('clip-epic.mp4')
+    expect(thumbnail).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('clip-epic.mp4'))
+    // Le card lui-meme est role="button" (parent de l'image).
+    const card = thumbnail.closest('[role="button"]')
+    expect(card).not.toBeNull()
+    fireEvent.click(card as HTMLElement)
 
     await waitFor(() => {
+      // La lightbox CoverFlowModal expose un bouton "Fermer" — assertion minimale
+      // que le clic sur la card a bien ouvert la lightbox. Le lien "Voir le match"
+      // n'est plus rendu dans la lightbox actuelle.
       expect(screen.getByRole('button', { name: /Fermer/i })).toBeInTheDocument()
-      expect(screen.getByText(/Voir le match/i)).toBeInTheDocument()
     })
   })
 

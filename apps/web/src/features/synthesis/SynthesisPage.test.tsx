@@ -32,12 +32,9 @@ describe('SynthesisPage', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('affiche le titre Synthese après chargement', async () => {
-    renderWithProviders(<SynthesisPage />)
-    await waitFor(() => {
-      expect(screen.getByText('Synthèse')).toBeInTheDocument()
-    })
-  })
+  // Test "affiche le titre Synthèse" supprimé : titre h1 retiré du composant
+  // (refacto post-84ae65ca, NavL1 expose la section). Le rendu post-loading est
+  // déjà couvert par les tests scope-bar / Vue d'ensemble / Meilleurs matchs.
 
   it('affiche les selecteurs de période', async () => {
     renderWithProviders(<SynthesisPage />)

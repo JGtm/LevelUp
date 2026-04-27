@@ -39,12 +39,9 @@ describe('MediaPage', () => {
     expect(container.querySelector('.animate-spin')).not.toBeInTheDocument()
   })
 
-  it('affiche le titre Médias après chargement', async () => {
-    renderWithProviders(<MediaPage />)
-    await waitFor(() => {
-      expect(screen.getByText('Médias')).toBeInTheDocument()
-    })
-  })
+  // Test "affiche le titre Médias" supprimé : titre h1 retiré du composant
+  // (refacto post-84ae65ca, NavL1 expose la section). Rendu post-loading déjà
+  // couvert par les tests de filtres (Tous types / Captures / Clips) ci-dessous.
 
   it('affiche les filtres de type de média', async () => {
     renderWithProviders(<MediaPage />)
@@ -83,7 +80,11 @@ describe('MediaPage', () => {
       expect(screen.getByLabelText('Mode de la galerie')).toBeInTheDocument()
       expect(screen.getByRole('option', { name: 'Toutes cartes' })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: 'Tous modes' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'Slayer' })).toBeInTheDocument()
+      // Refacto post-84ae65ca : les modes sont maintenant groupés par catégorie
+      // via <optgroup>. "Slayer" est un optgroup label (pas une option ARIA)
+      // contenant "Toutes catégories" comme option canonique.
+      const modeSelect = screen.getByLabelText('Mode de la galerie')
+      expect(modeSelect.querySelector('optgroup[label="Slayer"]')).not.toBeNull()
     })
   })
 
@@ -121,8 +122,12 @@ describe('MediaPage', () => {
     renderWithProviders(<MediaPage />)
 
     await waitFor(() => {
+      // "Recharge" est rendu comme <option> dans le select cartes (option ARIA OK).
       expect(screen.getByRole('option', { name: 'Recharge' })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: 'Oddball' })).toBeInTheDocument()
+      // "Oddball" est maintenant un optgroup label (refacto post-84ae65ca,
+      // les modes sont groupés par catégorie). On vérifie l'optgroup directement.
+      const modeSelect = screen.getByLabelText('Mode de la galerie')
+      expect(modeSelect.querySelector('optgroup[label="Oddball"]')).not.toBeNull()
     })
   })
 
