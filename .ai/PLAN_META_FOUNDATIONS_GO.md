@@ -12,6 +12,29 @@
 
 ---
 
+## État d'avancement (2026-04-27)
+
+> **Phase 0 complète.** Branche `feat/foundations-axes-1-3-4`, 13 commits,
+> ~9300 lignes ajoutées, ~165 tests cumulés, suite intégration verte,
+> 0 régression. Branche prête à push/merger ou à laisser en attente.
+>
+> **Prochaine étape** : Phase 1 — pilotes Squad + MatchView. Commencer par
+> rédiger `.ai/PLAN_SQUAD_GO_PORTAGE.md` depuis l'audit Teammates, puis
+> amender complètement `PLAN_MATCH_VIEW_GO_PORTAGE.md` (déjà annoté niveau 1).
+>
+> Voir `.ai/thought_log.md` pour le récap consolidé de fin de session
+> (entrée `[2026-04-27] Fin de session — Phase 0 close, prête pour Phase 1`).
+
+| Phase | État | Effort réel / estimé |
+|---|---|---:|
+| Phase 0 — Fondations Go + frontend | ✅ Complète | ~1 session vs ~6 j-h estimés |
+| Phase 1 — Pilotes Squad + MatchView | À démarrer | ~12 j-h estimés |
+| Phase 2 — Roll-out (Career, Synthesis, Citations, Timeseries, pages live, WIP) | Bloqué par Phase 1 | ~12 j-h |
+| Phase 3 — Cleanup Plotly / Recharts | Bloqué par Phase 2 | ~3 j-h |
+| Phase 4 — Documentation et skills | Démarrable en parallèle Phase 3 | ~4 j-h |
+
+---
+
 ## Table des matières
 
 Le plan est structuré en **3 blocs de lecture** :

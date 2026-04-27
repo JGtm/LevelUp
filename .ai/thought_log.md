@@ -21238,3 +21238,87 @@ Prochaine étape : Phase 1 — pilotes Squad + MatchView. Après audit `dominanc
 - Whitelist playlist_kind defense-in-depth
 
 Restent : **frontend Phase 0** (ChartCard ECharts + manifests i18n + ESLint rule + `<CapabilityGap>` 3 modes). Et la dette tracée à plus tard (renommage `LUSRHistory → RatingHistory`, sémantique `ModeFilter`, wiring CLI `--comeback-badges`).
+
+---
+
+## [2026-04-27] Fin de session — Phase 0 close, prête pour Phase 1
+
+**Statut** : 🏁 Session terminée, Phase 0 méta-plan complète.
+
+**Branche** : `feat/foundations-axes-1-3-4` (depuis `feat/multi-title-adapters-and-mappings`).
+
+### Bilan livré
+
+| # | Commit | Sujet |
+|---|---|---|
+| 0 | `d66b420c` | Doc plan-meta : TOC + bannière transition + préfixe Référence sur §7-11 |
+| 1 | `722a5a43` | `analysis/temporal` (period + bucket + rolling) |
+| 2 | `f857d248` | `analysis/breakdown` (agrégations W/L/T/DNF) |
+| 3 | `686ca0da` | `canonical` types (PlayerMatchRow + DominanceFlag + HighlightEvent étendu) |
+| 4 | `2708b368` | `port` interfaces (PlayerMatchesRepository + HighlightEventsRepository) |
+| 5 | `e5c922f6` | `analysis/narrative` (badges + impact roles 8 + radar 6 axes) |
+| 6 | `73447bb2` | `player_matches_repo` + cache TTL/FIFO/singleflight |
+| 7 | `381d534a` | Fix dette tests intégration platform/duckdb (12 fails → 0) |
+| 8 | `1c14c5eb` | `highlight_events_repo` + cache |
+| 9 | `2db07fad` | Sync `dominance_flag` branché (RunBackfillComebackBadges) |
+| 10 | `8a1d8da4` | Observabilité expvar + whitelist playlist_kind handler |
+| 11 | `374b1fc3` | ChartCard ECharts + i18n manifest TOML + ICU MessageFormat |
+| 12 | `03ec0de2` | ESLint custom + CapabilityGap 3 modes + NarrativeBadge + gap_modes |
+
+**Total** : 13 commits, ~9300 lignes ajoutées, ~165 tests cumulés, suite intégration `platform/duckdb` 100 % verte (avant : 12 fails préexistants), 0 régression.
+
+### Prochaines étapes (Phase 1 — Pilotes Squad + MatchView)
+
+**Avant de coder, 2 actes de cadrage** (cf. méta-plan § 6.1) :
+
+1. **Rédiger `.ai/PLAN_SQUAD_GO_PORTAGE.md`** depuis `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` (~1-2h). L'audit fait ~630L, le plan enfant doit en sortir avec :
+   - Phasing par section (heatmap impact 8 rôles, radar 6 axes, lollipop W/L par carte, perf vs historique, cadence, intensité, médailles, weapons table…)
+   - Mapping vers les fondations Phase 0 (`LoadPlayerMatches`, `LoadHighlightEvents`, `analysis/narrative.IdentifyImpactRoles`, etc.)
+   - Done definition par phase
+2. **Réécrire `.ai/PLAN_MATCH_VIEW_GO_PORTAGE.md`** (déjà annoté niveau 1) avec API stabilisée des fondations.
+
+**Puis le pilote** :
+- Code des services Squad / MatchView consommant les fondations
+- Wrappers ECharts spécialisés (`<Heatmap2D>`, `<Radar>`, `<BarStacked>`, `<Cadence>`, `<Lollipop>`, `<Bullet>`, `<Donut>` — tous étendent `<ChartCard buildOption={...}>`)
+- Composants React Squad/MatchView refactorés
+- Manifests i18n `squad.toml` (~80 clés) + `match_view.toml` (~150 clés) + `narrative.toml`
+- Tests E2E Playwright `e2e/squad.spec.ts` + `e2e/match-view.spec.ts`
+- Test golden parity sur `cmd/foundations_golden_parity`
+
+**Risque bloquant levé** : `dominance_flag` sera peuplé via `engine.RunBackfillComebackBadges(ctx, true)` une fois sur la DB de test, avant les tests pilotes.
+
+### Reprise de session
+
+```bash
+# Sur la branche Phase 0 (locale, non poussée)
+git checkout feat/foundations-axes-1-3-4
+git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-and-mappings
+
+# Pour démarrer Phase 1 :
+# 1. Lire .ai/PLAN_META_FOUNDATIONS_GO.md § 6.1 (Phase 1 done definition)
+# 2. Lire docs/AUDIT_TEAMMATES_V7_COCKPIT.md
+# 3. Rédiger .ai/PLAN_SQUAD_GO_PORTAGE.md
+# 4. Démarrer le code pilote Squad
+
+# Vérification rapide que tout est encore vert :
+(cd apps/go-api && go test ./... -count=1 -race 2>&1 | grep -E "FAIL|ok\s" | tail -10)
+(cd apps/go-api && go test -tags=integration ./internal/platform/duckdb/. -count=1 2>&1 | tail -2)
+(cd apps/web && npx vitest run src/components/charts src/components/feedback src/lib/i18n src/lib/capability eslint-rules 2>&1 | tail -5)
+```
+
+### Dette tracée (à traiter plus tard, hors méta-plan)
+
+1. **Renommage `LUSRHistory → RatingHistory`** (Q8 + Q24) : nom trompeur, retourne CSR + LUSR. ~30 min.
+2. **Sémantique `ModeFilter`** (sous-mode vs `Catégorie/sous_mode`) : test `TestMediaFilters_ModeFilter_ExactNotSubstring` skippé en attente de décision UX. ~2h selon issue.
+3. **Wiring CLI `--comeback-badges`** : `RunBackfillComebackBadges` est appelable via Go mais pas via le CLI standard `levelup backfill` (le pipeline backfill Go fait uniquement détection, pas dispatch). Out of scope Phase 0.
+
+### Décisions structurantes prises (à archiver en ADR Phase 4)
+
+- **ECharts** comme stack chart unique (Plotly + Recharts à retirer en Phase 3).
+- **Manifest i18n TOML + ICU MessageFormat** ; build step `node scripts/build_i18n_manifests.mjs`.
+- **Pas de cohabitation v1/v2 DTO** : rupture franche assumée (méta-plan § 7.3).
+- **Cache TTL+FIFO+singleflight** plutôt que LRU stricte (évite dépendance externe).
+- **Whitelist `playlist_kind`** côté handler ET repo (defense-in-depth, pas de regex libre).
+- **Capability gating** : délégué au service appelant pour les repos per-PlayerDB ; le repo retourne juste les rows. À retravailler si on bascule en `port.PlayerMatchesRepository(slug, gamertag, filters)` plus tard.
+
+**Conclusion** : session terminée, état stable, point de reprise documenté. La branche `feat/foundations-axes-1-3-4` peut être push/mergée immédiatement ou laissée en local jusqu'à reprise.
