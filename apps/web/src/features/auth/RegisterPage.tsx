@@ -85,6 +85,7 @@ export function RegisterPage() {
                 </label>
                 <input
                   id="reg-username"
+                  name="username"
                   type="text"
                   autoComplete="username"
                   required
@@ -103,6 +104,7 @@ export function RegisterPage() {
                 </label>
                 <input
                   id="reg-password"
+                  name="password"
                   type="password"
                   autoComplete="new-password"
                   required
@@ -120,6 +122,7 @@ export function RegisterPage() {
                 </label>
                 <input
                   id="reg-confirm"
+                  name="confirm-password"
                   type="password"
                   autoComplete="new-password"
                   required
