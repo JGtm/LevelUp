@@ -1,5 +1,11 @@
 /**
- * TimeseriesPage — page Séries temporelles (5 onglets).
+ * TimeseriesPage — page Séries temporelles (6 onglets).
+ *
+ * Phase 2 P2.E : migration partielle Plotly → ECharts pour les charts qui ont
+ * un wrapper ECharts disponible (TimeseriesLineChart, Heatmap2DChart). Les
+ * histogrammes, scatters, KDA bars et combat-yield restent sur Plotly en
+ * attendant des wrappers ECharts dédiés (différé Phase 3). i18n via
+ * `timeseriesManifest` + `formatMessage`.
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
@@ -10,23 +16,35 @@ import { useTimeseriesPage, useCombatYieldHistory } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
 import { CombatYieldTimeseries } from '@/components/ui/combat-yield-timeseries'
-import { TimeseriesLineChart } from '@/components/ui/timeseries-line-chart'
 import { TimeseriesHistogram } from '@/components/ui/timeseries-histogram'
-import { TimeseriesHeatmap } from '@/components/ui/timeseries-heatmap'
 import { TimeseriesScatter } from '@/components/ui/timeseries-scatter'
 import { TimeseriesKdaBars } from '@/components/ui/timeseries-kda-bars'
+import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
+import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
 import type { TimeseriesKpiCard } from '@/lib/api/types'
 import { resolveToken } from '@/lib/accessibility'
+import { formatMessage } from '@/lib/i18n/format'
+import {
+  timeseriesManifest,
+  type TimeseriesManifestKey,
+} from '@/lib/i18n/generated/timeseries'
+import { useAppShellStore } from '@/stores/appShellStore'
+import {
+  cumulativePointsToSeries,
+  heatmapCellsToSeries,
+  DOW_LABELS_FR,
+  DOW_LABELS_EN,
+} from './seriesAdapters'
 
 type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions' | 'combat'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'summary', label: 'KPIs' },
-  { id: 'cumul', label: 'Cumul' },
-  { id: 'form', label: 'Forme' },
-  { id: 'intensity', label: 'Intensité' },
-  { id: 'distributions', label: 'Distributions' },
-  { id: 'combat', label: 'Combat' },
+const TAB_KEYS: { id: TabId; key: TimeseriesManifestKey }[] = [
+  { id: 'summary', key: 'timeseries.tabs.summary' },
+  { id: 'cumul', key: 'timeseries.tabs.cumul' },
+  { id: 'form', key: 'timeseries.tabs.form' },
+  { id: 'intensity', key: 'timeseries.tabs.intensity' },
+  { id: 'distributions', key: 'timeseries.tabs.distributions' },
+  { id: 'combat', key: 'timeseries.tabs.combat' },
 ]
 
 export function TimeseriesPage() {
@@ -34,6 +52,9 @@ export function TimeseriesPage() {
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
   const [activeTab, setActiveTab] = useState<TabId>('summary')
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: TimeseriesManifestKey) => formatMessage(timeseriesManifest, key, locale)
+  const dowLabels = locale === 'en' ? DOW_LABELS_EN : DOW_LABELS_FR
 
   const { data, isLoading, isError, refetch } = useTimeseriesPage(
     playerSlug,
@@ -54,9 +75,9 @@ export function TimeseriesPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">Erreur lors du chargement des séries.</p>
+            <p className="font-medium text-destructive">{t('timeseries.errors.load_failed')}</p>
             <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-              Réessayer
+              {t('timeseries.errors.retry')}
             </button>
           </CardContent>
         </Card>
@@ -68,9 +89,9 @@ export function TimeseriesPage() {
     return (
       <div className="p-6">
         <EmptyStateCard
-          title="Séries temporelles indisponibles"
-          description="Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API."
-          actionLabel="Réessayer"
+          title={t('timeseries.empty.page_title')}
+          description={t('timeseries.empty.page_description')}
+          actionLabel={t('timeseries.errors.retry')}
           onAction={() => refetch()}
         />
       </div>
@@ -83,7 +104,7 @@ export function TimeseriesPage() {
     <div className="flex flex-col">
       {/* Onglets */}
       <div className="flex gap-0 border-b bg-background px-6">
-        {TABS.map((tab) => (
+        {TAB_KEYS.map((tab) => (
           <Button
             key={tab.id}
             variant="ghost"
@@ -95,7 +116,7 @@ export function TimeseriesPage() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {tab.label}
+            {t(tab.key)}
           </Button>
         ))}
       </div>
@@ -125,13 +146,13 @@ export function TimeseriesPage() {
               </div>
             ) : (
               <EmptyStateNotice
-                title="KPIs indisponibles"
-                description="Aucune carte KPI n'a été calculée pour cette période."
+                title={t('timeseries.summary.empty_title')}
+                description={t('timeseries.summary.empty_description')}
               />
             )}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Timeline K/D par match</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.summary.kda_timeline_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesKdaBars rows={data.match_rows ?? []} />
@@ -140,44 +161,57 @@ export function TimeseriesPage() {
           </div>
         )}
 
-        {/* Cumul */}
+        {/* Cumul — ECharts */}
         {activeTab === 'cumul' && (
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">K/D cumulé</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.cumul.kd_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'K/D cumulé', points: cumul_tab.cumulative_kd ?? [], color: resolveToken('perf-tier-1') }]}
-                  yAxisLabel="K/D"
-                  referenceY={1}
-                  referenceLabel="K/D = 1"
+                  series={cumulativePointsToSeries(cumul_tab.cumulative_kd ?? [], {
+                    key: 'timeseries.cumul.kd',
+                    name: t('timeseries.cumul.kd_series_label'),
+                  })}
+                  xAxisType="time"
+                  outcomeMarkers={false}
+                  height={300}
+                  emptyMessage={t('timeseries.empty.no_data_description')}
                 />
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Score net cumulé</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.cumul.net_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'Kills – Morts cumulés', points: cumul_tab.cumulative_net ?? [], color: resolveToken('divergent-pos'), fill: 'tozeroy' }]}
-                  yAxisLabel="Net"
-                  referenceY={0}
+                  series={cumulativePointsToSeries(cumul_tab.cumulative_net ?? [], {
+                    key: 'timeseries.cumul.net',
+                    name: t('timeseries.cumul.net_series_label'),
+                  })}
+                  xAxisType="time"
+                  outcomeMarkers={false}
+                  height={300}
+                  emptyMessage={t('timeseries.empty.no_data_description')}
                 />
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">K/D glissant (20 matchs)</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.cumul.rolling_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'K/D glissant', points: cumul_tab.rolling_kd ?? [], color: resolveToken('perf-tier-3') }]}
-                  yAxisLabel="K/D"
-                  referenceY={1}
-                  referenceLabel="K/D = 1"
+                  series={cumulativePointsToSeries(cumul_tab.rolling_kd ?? [], {
+                    key: 'timeseries.cumul.rolling',
+                    name: t('timeseries.cumul.rolling_series_label'),
+                  })}
+                  xAxisType="time"
+                  outcomeMarkers={false}
+                  height={300}
+                  emptyMessage={t('timeseries.empty.no_data_description')}
                 />
               </CardContent>
             </Card>
@@ -190,71 +224,90 @@ export function TimeseriesPage() {
             {form_tab.regression_stats.has_enough_for_trend ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <DeltaCard
-                  label="Pente K/D"
+                  label={t('timeseries.form.kd_slope')}
                   value={form_tab.regression_stats.kd_slope?.toFixed(4) ?? '—'}
-                  unit="/match"
+                  unit={t('timeseries.form.per_match')}
                   delta={form_tab.regression_stats.kd_slope}
-                  warning={
-                    (form_tab.regression_stats.r_squared ?? 0) < 0.3
-                  }
-                  warningText="R² < 0.3 — tendance non significative"
+                  warning={(form_tab.regression_stats.r_squared ?? 0) < 0.3}
+                  warningText={t('timeseries.form.r_squared_warning')}
                 />
                 <DeltaCard
-                  label="Pente Win Rate"
-                  value={form_tab.regression_stats.winrate_slope != null
-                    ? `${(form_tab.regression_stats.winrate_slope * 100).toFixed(2)}%`
-                    : '—'}
-                  unit="/match"
+                  label={t('timeseries.form.winrate_slope')}
+                  value={
+                    form_tab.regression_stats.winrate_slope != null
+                      ? `${(form_tab.regression_stats.winrate_slope * 100).toFixed(2)}%`
+                      : '—'
+                  }
+                  unit={t('timeseries.form.per_match')}
                   delta={form_tab.regression_stats.winrate_slope}
                 />
                 <DeltaCard
-                  label="R²"
+                  label={t('timeseries.form.r_squared')}
                   value={form_tab.regression_stats.r_squared?.toFixed(3) ?? '—'}
                   warning={(form_tab.regression_stats.r_squared ?? 0) < 0.3}
-                  warningText="Tendance peu fiable"
+                  warningText={t('timeseries.form.r_squared_unreliable')}
                 />
               </div>
             ) : (
               <EmptyStateNotice
-                title="Tendance indisponible"
-                description="Il faut davantage de matchs pour calculer une régression interprétable sur cette période."
+                title={t('timeseries.form.empty_title')}
+                description={t('timeseries.form.empty_description')}
               />
             )}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">EWMA K/D (α = 0.20)</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.form.ewma_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'EWMA K/D', points: form_tab.ewma_kd_points ?? [], color: resolveToken('perf-tier-2') }]}
-                  yAxisLabel="K/D lissé"
-                  referenceY={1}
-                  referenceLabel="K/D = 1"
+                  series={cumulativePointsToSeries(form_tab.ewma_kd_points ?? [], {
+                    key: 'timeseries.form.ewma',
+                    name: t('timeseries.form.ewma_series_label'),
+                  })}
+                  xAxisType="time"
+                  outcomeMarkers={false}
+                  height={300}
+                  emptyMessage={t('timeseries.empty.no_data_description')}
                 />
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Intensité */}
+        {/* Intensité — Heatmap ECharts + line ECharts */}
         {activeTab === 'intensity' && (
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Heatmap d'intensité (jour × heure)</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.intensity.heatmap_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
-                <TimeseriesHeatmap data={intensity_tab.heatmap_data ?? []} colorBy="count" />
+                <Heatmap2DChart
+                  series={heatmapCellsToSeries(intensity_tab.heatmap_data ?? [], {
+                    key: 'timeseries.intensity.heatmap',
+                    name: t('timeseries.intensity.heatmap_title'),
+                    dowLabels,
+                  })}
+                  paletteMode="sequential"
+                  height={320}
+                  emptyMessage={t('timeseries.empty.no_data_description')}
+                />
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Score par minute</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.intensity.score_per_min_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesLineChart
-                  series={[{ name: 'Score/min', points: intensity_tab.score_per_min_data ?? [], color: resolveToken('perf-tier-3'), fill: 'tozeroy' }]}
-                  yAxisLabel="pts/min"
+                  series={cumulativePointsToSeries(intensity_tab.score_per_min_data ?? [], {
+                    key: 'timeseries.intensity.score_per_min',
+                    name: t('timeseries.intensity.score_per_min_series_label'),
+                  })}
+                  xAxisType="time"
+                  outcomeMarkers={false}
+                  height={300}
+                  emptyMessage={t('timeseries.empty.no_data_description')}
                 />
               </CardContent>
             </Card>
@@ -267,68 +320,68 @@ export function TimeseriesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Distribution K/D</CardTitle>
+                  <CardTitle className="text-sm">{t('timeseries.distributions.kda_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.kda_buckets ?? []}
                     color={resolveToken('perf-tier-2')}
-                    xAxisLabel="K/D"
+                    xAxisLabel={t('timeseries.distributions.kda_axis_x')}
                   />
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Distribution Kills</CardTitle>
+                  <CardTitle className="text-sm">{t('timeseries.distributions.kills_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.kills_buckets ?? []}
                     color={resolveToken('divergent-pos')}
-                    xAxisLabel="Kills / match"
+                    xAxisLabel={t('timeseries.distributions.kills_axis_x')}
                   />
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Distribution Précision</CardTitle>
+                  <CardTitle className="text-sm">{t('timeseries.distributions.accuracy_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.accuracy_buckets ?? []}
                     color={resolveToken('perf-tier-3')}
-                    xAxisLabel="Précision (%)"
+                    xAxisLabel={t('timeseries.distributions.accuracy_axis_x')}
                   />
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Distribution Score/min</CardTitle>
+                  <CardTitle className="text-sm">{t('timeseries.distributions.score_per_min_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.score_per_min_buckets ?? []}
                     color={resolveToken('narrative-dominant')}
-                    xAxisLabel="Score / min"
+                    xAxisLabel={t('timeseries.distributions.score_per_min_axis_x')}
                   />
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm">Distribution Win Rate glissant</CardTitle>
+                  <CardTitle className="text-sm">{t('timeseries.distributions.rolling_wr_title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pb-4">
                   <TimeseriesHistogram
                     buckets={distributions_tab.rolling_wr_buckets ?? []}
                     color={resolveToken('divergent-neg')}
-                    xAxisLabel="Win Rate (%)"
+                    xAxisLabel={t('timeseries.distributions.rolling_wr_axis_x')}
                   />
                 </CardContent>
               </Card>
             </div>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Corrélations</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.distributions.correlations_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 <TimeseriesScatter points={distributions_tab.correlation_points ?? []} />
@@ -337,16 +390,20 @@ export function TimeseriesPage() {
           </div>
         )}
 
-        {/* Combat — deux courbes OC + DR (S56) */}
+        {/* Combat */}
         {activeTab === 'combat' && (
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Rendement combat par match</CardTitle>
+                <CardTitle className="text-sm">{t('timeseries.combat.yield_title')}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
                 {combatLoading ? (
-                  <div className="flex justify-center py-8"><span className="text-muted-foreground text-sm">Chargement…</span></div>
+                  <div className="flex justify-center py-8">
+                    <span className="text-muted-foreground text-sm">
+                      {t('timeseries.combat.loading')}
+                    </span>
+                  </div>
                 ) : (
                   <CombatYieldTimeseries rows={combatData?.table.items ?? []} />
                 )}
