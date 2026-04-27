@@ -21584,3 +21584,71 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - Records overlay (motif hachuré ECharts via `itemStyle.decal`) sur HS/PK : reporté car nécessite une détection records par joueur (`SquadRecordSet` Phase 2).
 
 **Conclusion** : backend Contributions complet, 9 charts supplémentaires via API (17 charts total Squad V2 backend). Cumul Phase 1 : 7 chunks (S1, S1b, S2, S3+S4, S5+S6, S7) sur 9-11. Prochaines étapes : S8 Radar 6 axes (réutilise `narrative.ComputeParticipationProfile` Phase 0) puis S9 Tableau armes/médailles + repos `LoadWeaponKillsAggregated` / `LoadMedalsForMatchesByXUID`.
+
+---
+
+## [2026-04-27] Phase 1 - Chunks S8+S9 — Radar 6 axes + History/Weapons/Medals
+
+**Statut** : Complété (chunks groupés)
+
+**Tâche** : Backend des dernières surfaces de la page Squad V2 :
+- **S8** : Radar Participation 6 axes (1 trace par joueur, axes 0..100 normalisés via thresholds par famille de mode).
+- **S9** : Tableau historique des matchs partagés + Tableau armes (par joueur) + Galerie médailles (par match × joueur).
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S7).
+
+**Décisions techniques** :
+
+### S8 — Radar 6 axes (squad_service_v2_radar.go)
+- Réutilise `narrative.ComputeParticipationProfile` (Phase 0) + `narrative.DefaultThresholds(modeFamily)`.
+- **`RadarChartSeries`** : type spécifique au radar (1 par joueur, 6 axes alignés via `AllParticipationAxes()` ordre canonique).
+- **Stratégie d'agrégation Phase 1 pilote** (sans repo awards encore) :
+  - Combat = sum(kills) / N_matches
+  - Survival = avg(avg_life_seconds) sur rows valides
+  - Support = sum(assists) / N_matches
+  - Score = sum(personal_score) / N_matches
+  - Objective = 0 (deferred — nécessite `personal_score_awards` repo)
+  - Impact = avg(performance_score) sur rows valides
+- L'axe Objective est **explicitement à 0** + clé i18n `squad.radar.objective_deferred_hint` pour signaler à l'UX que ce n'est pas une valeur calculée mais un placeholder en attente d'awards.
+
+### S9.A — History table (squad_service_v2_history.go)
+- **`HistoryTableRow`** + **`HistoryPlayerCell`** : ligne par match, cellule K/D/A par joueur (gamertag).
+- **`BuildHistoryTable`** : indexe rowsByPlayer par (gt, match_id) pour O(1) lookup. Hydrate map/mode/playlist depuis le row du **main** (1er squad gamertag). Tri date desc stable.
+- Joueurs absents d'un match : pas de cellule (le front affiche "-" sur les colonnes manquantes — pattern intersection).
+
+### S9.B — Weapons aggregator (squad_service_v2_weapons_medals.go) + port
+- **Port `port/weapon_kills.go`** : `WeaponKillFilters` (validation `Validate()` rejette les scans complets via `ErrWeaponKillFiltersTooBroad`), `WeaponKillRow`, `WeaponKillsRepository` interface. `IncludeGrenadeMelee` flag pour réinjecter les kills filmés exclus de `weapon_kills`.
+- **`WeaponsTableRow`** : agrégation par (weapon_id × is_grenade_melee), kills par xuid, total. Tri total desc.
+- **`BuildWeaponsTable`** : agrégation pure, filtre `minKills`, remap xuid→gamertag optionnel.
+- DuckDB repo wiring : **deferred** au pattern S1→S1b (chunk parallèle). Le port + tests algo permettent de coder/tester sans bloquer.
+
+### S9.C — Medals gallery (squad_service_v2_weapons_medals.go) + port
+- **Port `port/medals_by_xuid.go`** : `MedalsByXUIDFilters` (Validate strict : MatchIDs ET XUIDs requis), `MedalRow`, `MedalsByXUIDRepository` interface.
+- **`MedalsGalleryEntry`** + **`MedalEntry`** : par match, médailles par joueur triées count desc (Headshot 3 > Killing Spree 1 → Headshot first).
+- **`BuildMedalsGallery`** : `matchOrder` paramétrable (le service amont peut imposer l'ordre chronologique de `SquadSharedMatch`), sinon tri alpha. Skipe les matchs sans médaille.
+
+### Manifest i18n
+- **`apps/web/src/lib/i18n/manifests/squad.toml`** étendu : section S8 (`squad.radar.*` 9 clés dont `objective_deferred_hint`), section S9 (`squad.history.*` 7 clés, `squad.weapons.*` 5 clés, `squad.medals.*` 2 clés). Total : 84 clés (+23 vs S7).
+
+**Fichiers créés** :
+- `apps/go-api/internal/service/squad_service_v2_radar.go` (~127L) + `_test.go`
+- `apps/go-api/internal/service/squad_service_v2_history.go` (~135L) + `_test.go`
+- `apps/go-api/internal/service/squad_service_v2_weapons_medals.go` (~230L) + `_test.go`
+- `apps/go-api/internal/port/weapon_kills.go` (+ `_test.go`)
+- `apps/go-api/internal/port/medals_by_xuid.go` (+ `_test.go`)
+
+**Fichiers modifiés** :
+- `apps/web/src/lib/i18n/manifests/squad.toml` + generated regen
+
+**Résultats** :
+- 31 nouveaux tests Go (6 radar + 5 history + 10 weapons/medals + 4 port weapons + 4 port medals + 2 quick-checks).
+- `go test ./...` propre (0 régression S1→S7), gofmt clean.
+- Algorithme weapons/medals testable sur input synthétique sans repo réel (deferred).
+
+**Hors scope (chunks à venir)** :
+- **S9b** (DuckDB repos) : implémentation `weapon_kills_repo.go` (consomme `shared.weapon_kills` + jointure metadata.weapon_labels) + `medals_repo.go` (consomme `shared.medals_earned`). Pattern S1→S1b — peut être parallélisé avec le frontend.
+- **S10 frontend** : wrappers `<Radar>`, `<HistoryTable>`, `<WeaponsTable>` (slider min kills), `<MedalsGallery>` (grille match-par-match avec icônes), `<FloatingLegend>` (joueurs sticky via IntersectionObserver).
+- **S11 wiring service principal** : `SquadServiceV2.GetSquadPage` doit appeler les 4 nouveaux builders + injecter les 2 nouveaux repos via DI.
+- **Awards repo (P10+ ou Phase 2)** : `personal_score_awards` aggregation → axe Objective du radar enfin calculé.
+
+**Conclusion** : backend Squad V2 **complet** côté algorithmes (toutes les sections audit 1-22 couvertes en algo). 17 charts + 3 tableaux + 1 galerie. Cumul Phase 1 : 8 chunks (S1, S1b, S2, S3+S4, S5+S6, S7, S8+S9) sur 11. Restent : S9b (DuckDB repos weapons/medals), S10 (wrappers ECharts frontend), S11 (composition page + wiring). Prochaine étape recommandée : S9b en parallèle d'un agent + démarrer S10 wrappers ECharts (tâche frontend importante).
