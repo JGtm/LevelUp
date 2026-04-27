@@ -37,12 +37,13 @@ type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, er
 // ServiceRegistry centralise la construction des services métier.
 // Chaque méthode résout le joueur puis construit le service injecté.
 type ServiceRegistry struct {
-	resolve       PlayerResolver
-	provider      auth.TokenProvider
-	assetResolver assets.Resolver // nil si le resolver n'est pas configuré (mode legacy)
-	timezone      string          // IANA (ex: "Europe/Paris"), propagé aux services médias
-	notifiers     sync.Map        // xuid → port.SessionNotifier (HomeService par joueur)
-	titleResolver games.Resolver  // nil → services tournent sans semantic adapter (libellés via fallbacks)
+	resolve          PlayerResolver
+	provider         auth.TokenProvider
+	assetResolver    assets.Resolver           // nil si le resolver n'est pas configuré (mode legacy)
+	timezone         string                    // IANA (ex: "Europe/Paris"), propagé aux services médias
+	notifiers        sync.Map                  // xuid → port.SessionNotifier (HomeService par joueur)
+	titleResolver    games.Resolver            // nil → services tournent sans semantic adapter (libellés via fallbacks)
+	homeMatchesCache *service.HomeMatchesCache // cache TTL process-level matches+sessions
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -53,8 +54,9 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 			titleSlug := ctxkeys.TitleSlug(ctx)
 			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
-		provider: provider,
-		timezone: cfg.UserTimezone,
+		provider:         provider,
+		timezone:         cfg.UserTimezone,
+		homeMatchesCache: service.NewHomeMatchesCache(),
 	}
 }
 
@@ -180,6 +182,7 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
+	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb))
 	return svc, nil
 }
 
@@ -325,7 +328,8 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
-		WithDataAdapter(r.dataAdapterForPDB(pdb))
+		WithDataAdapter(r.dataAdapterForPDB(pdb)).
+		WithMatchesCache(r.homeMatchesCache, pdb.XUID)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -348,7 +352,8 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithHaloProvider(haloProvider).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
-		WithDataAdapter(r.dataAdapterForPDB(pdb))
+		WithDataAdapter(r.dataAdapterForPDB(pdb)).
+		WithMatchesCache(r.homeMatchesCache, pdb.XUID)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
@@ -370,7 +375,8 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		WithCacheRepo(homeRepo).
 		WithHaloProvider(haloProvider).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
-		WithDataAdapter(r.dataAdapterForPDB(pdb))
+		WithDataAdapter(r.dataAdapterForPDB(pdb)).
+		WithMatchesCache(r.homeMatchesCache, pdb.XUID)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)

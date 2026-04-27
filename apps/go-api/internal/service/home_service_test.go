@@ -272,6 +272,132 @@ group         = "combat"
 	}
 }
 
+func TestHomeService_GetHomePage_SpartanIdentityErrorGraceful(t *testing.T) {
+	// LoadSpartanIdentity en erreur → réponse retournée quand même (dégradation silencieuse).
+	repo := &mockHomeRepo{
+		matches:     []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
+		sessions:    []domain.HomeSessionRow{},
+		identityErr: errors.New("career_progression table missing"),
+	}
+	svc := NewHomeService(repo)
+
+	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
+	if err != nil {
+		t.Fatalf("expected graceful degradation on identityErr, got: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if resp.SpartanIdentity != nil {
+		t.Error("expected nil SpartanIdentity when repo fails")
+	}
+}
+
+func TestHomeService_GetHomePage_CountMatchesFallback(t *testing.T) {
+	// CountPlayerMatches en erreur → fallback sur len(matches), pas d'erreur.
+	now := time.Now()
+	repo := &mockHomeRepo{
+		matches:  []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: now}},
+		sessions: []domain.HomeSessionRow{},
+		countErr: errors.New("count failed"),
+	}
+	svc := NewHomeService(repo)
+
+	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
+	if err != nil {
+		t.Fatalf("expected no error on countErr fallback, got: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if resp.Hero.KPIs.TotalMatches != 1 {
+		t.Errorf("TotalMatches = %d, want 1 (fallback to len(matches))", resp.Hero.KPIs.TotalMatches)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests cache TTL dans GetHomePage
+// ---------------------------------------------------------------------------
+
+// countingHomeRepo compte les appels à LoadHomeMatches et LoadHomeSessions.
+type countingHomeRepo struct {
+	mockHomeRepo
+	matchCalls   int
+	sessionCalls int
+}
+
+func (m *countingHomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error) {
+	m.matchCalls++
+	return m.mockHomeRepo.LoadHomeMatches(ctx)
+}
+func (m *countingHomeRepo) LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error) {
+	m.sessionCalls++
+	return m.mockHomeRepo.LoadHomeSessions(ctx)
+}
+
+func TestHomeService_GetHomePage_CacheHitSkipsDBCalls(t *testing.T) {
+	repo := &countingHomeRepo{
+		mockHomeRepo: mockHomeRepo{
+			matches:  []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
+			sessions: []domain.HomeSessionRow{},
+		},
+	}
+	cache := NewHomeMatchesCache()
+	svc := NewHomeService(repo).WithMatchesCache(cache, "xuid-test")
+
+	// Premier appel → miss → charge depuis DB.
+	if _, err := svc.GetHomePage(context.Background(), "GT", "fr"); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	if repo.matchCalls != 1 || repo.sessionCalls != 1 {
+		t.Errorf("premier appel: matchCalls=%d sessionCalls=%d, want 1+1", repo.matchCalls, repo.sessionCalls)
+	}
+
+	// Deuxième appel → hit → aucun accès DB pour matches+sessions.
+	if _, err := svc.GetHomePage(context.Background(), "GT", "fr"); err != nil {
+		t.Fatalf("second call: %v", err)
+	}
+	if repo.matchCalls != 1 || repo.sessionCalls != 1 {
+		t.Errorf("second appel (cache hit): matchCalls=%d sessionCalls=%d, want encore 1+1", repo.matchCalls, repo.sessionCalls)
+	}
+}
+
+func TestHomeService_GetHomePage_CacheMissAfterInvalidate(t *testing.T) {
+	repo := &countingHomeRepo{
+		mockHomeRepo: mockHomeRepo{
+			matches:  []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
+			sessions: []domain.HomeSessionRow{},
+		},
+	}
+	cache := NewHomeMatchesCache()
+	svc := NewHomeService(repo).WithMatchesCache(cache, "xuid-test")
+
+	if _, err := svc.GetHomePage(context.Background(), "GT", "fr"); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+
+	cache.Invalidate("xuid-test")
+
+	if _, err := svc.GetHomePage(context.Background(), "GT", "fr"); err != nil {
+		t.Fatalf("post-invalidate call: %v", err)
+	}
+	if repo.matchCalls != 2 {
+		t.Errorf("après invalidation: matchCalls=%d, want 2", repo.matchCalls)
+	}
+}
+
+func TestHomeService_GetHomePage_NoCacheNoPanic(t *testing.T) {
+	repo := &mockHomeRepo{
+		matches:  []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
+		sessions: []domain.HomeSessionRow{},
+	}
+	// Sans cache → comportement identique à avant.
+	svc := NewHomeService(repo)
+	if _, err := svc.GetHomePage(context.Background(), "GT", "fr"); err != nil {
+		t.Fatalf("unexpected error without cache: %v", err)
+	}
+}
+
 func TestHomeService_GetBattlePass(t *testing.T) {
 	repo := &mockHomeRepo{}
 	svc := NewHomeService(repo)
