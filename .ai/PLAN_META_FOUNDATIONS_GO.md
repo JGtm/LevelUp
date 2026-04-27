@@ -30,11 +30,13 @@ valide l'API des fondations sur les cas extrêmes).
 - i18n : **manifests TOML par domaine** + linter ESLint anti-strings hardcodées.
 - Helpers : **3 sous-packages** `analysis/breakdown`, `analysis/temporal`, `analysis/narrative`.
 
-**Effort total estimé** : ~40 j-h sur 5 phases (fondations, pilotes, roll-out,
+**Effort total estimé** : ~44 j-h sur 5 phases (fondations, pilotes, roll-out,
 cleanup, documentation et skills). Inclut les ajouts opérationnels :
 cache `LoadPlayerMatches`, whitelist regex, observabilité minimale,
 ICU MessageFormat, `<CapabilityGap>` 3 modes, politique d'évolution
-canonical, maintenance golden snapshots.
+canonical, maintenance golden snapshots, **loader unifié `HighlightEvents`
+qui débloque first_events_rolling, intensity heatmap et cadence sur
+Squad/MatchView/Timeseries**.
 
 **Stratégie de release** : pas de cohabitation v1/v2. Synchronisation backend ↔
 frontend par PR. Voir § 7.3.
@@ -1057,7 +1059,126 @@ var allowedPlaylistRegex = map[string]string{
 - Tests : `playlist_regex_whitelist_test.go` couvre injection ReDoS, alias
   inconnu (rejeté), case-insensitivity FR/EN.
 
-#### 3.3.3 Consommateurs
+#### 5.3.6 Loader unifié `HighlightEvents`
+
+**Problème** : `shared.highlight_events` est consommé par au moins 5 pages (Squad
+8 rôles d'impact, MatchView kill feed + cadence + dominance, Timeseries first
+kill/death rolling + intensity heatmap, Career first_blood badges potentiels,
+Synthesis). Aujourd'hui le code est éclaté : `Q32 LoadImpactEvents` dans
+`squad_repo.go` couvre Squad, mais Timeseries ne charge **rien** côté
+`highlight_events` et c'est ce qui bloque `first_events_rolling`. Cadence et
+intensité sont signalées « MANQUANT » dans l'audit Squad et Timeseries pour la
+même raison.
+
+**Solution** : un loader unifié `port.HighlightEventsRepository` aligné sur le
+pattern `LoadPlayerMatches`.
+
+```go
+// internal/games/canonical/events.go
+package canonical
+
+type HighlightEventType string
+
+const (
+    EventKill          HighlightEventType = "kill"
+    EventDeath         HighlightEventType = "death"
+    EventAssist        HighlightEventType = "assist"
+    EventMedal         HighlightEventType = "medal"
+    EventFinisher      HighlightEventType = "finisher"
+    EventClutch        HighlightEventType = "clutch"
+    EventFirstKill     HighlightEventType = "first_kill"
+    EventFirstDeath    HighlightEventType = "first_death"
+)
+
+type HighlightEvent struct {
+    MatchID     string
+    EventType   HighlightEventType
+    TimeMS      int64           // offset depuis début match
+    KillerXUID  *string         // nil si pas applicable
+    VictimXUID  *string
+    PlayerXUID  *string         // pour medal / finisher / clutch
+    WeaponID    *string
+    Detail      map[string]any  // payload typé selon EventType
+}
+```
+
+```go
+// internal/port/highlight_events.go
+package port
+
+type HighlightEventFilters struct {
+    MatchIDs   []string             // au moins un nécessaire (sinon trop coûteux)
+    PlayerXUID *string              // filtre côté killer ou victim selon usage
+    EventTypes []canonical.HighlightEventType
+    Since      *time.Time
+    Limit      int                  // 0 = pas de limite
+    OrderBy    string               // ex. "match_id, time_ms ASC"
+}
+
+type HighlightEventsRepository interface {
+    LoadHighlightEvents(
+        ctx context.Context,
+        slug string,
+        filters HighlightEventFilters,
+    ) ([]canonical.HighlightEvent, error)
+}
+```
+
+Implémentation dans `internal/platform/duckdb/highlight_events_repo.go` (~200L) :
+- Une seule requête SQL paramétrée sur `shared.highlight_events`.
+- Préfixe `shared.` partout.
+- Capability gating : `match.detail.events` ; retourne `games.ErrCapabilityNotSupported`
+  si le titre n'a pas d'events filmés (PvE pur, par ex.).
+- Couche cache `highlight_events_cache.go` identique à `LoadPlayerMatches`
+  (`singleflight.Group` par `(slug, hash(filters))` + LRU 5 min, 200 entrées).
+  Invalidation `InvalidateMatch(matchID)` exposée.
+
+**Refacto consécutive** : `LoadImpactEvents` (Q32) dans `squad_repo.go` est
+**supprimé** ; Squad consomme `LoadHighlightEvents(filters: {MatchIDs, EventTypes:[kill,death,...]})`.
+Cleanup en Phase 1 lors du portage Squad.
+
+**Helpers analysis associés** :
+
+```go
+// internal/analysis/temporal/rolling.go
+// Rolling mean adaptatif réutilisable (Timeseries first_events_rolling,
+// K/D rolling adaptatif, Form Score lissé, etc.)
+func RollingMean[T Numeric](
+    points []T,
+    window int,    // ex. 10
+    minPoints int, // ex. 3
+) []float64
+
+// Variante adaptative : window = max(minWindow, len(points) * pct / 100)
+func RollingMeanAdaptive[T Numeric](
+    points []T,
+    minWindow int,    // ex. 3
+    pct int,          // ex. 10 → window = 10 % de la série
+) []float64
+```
+
+```go
+// internal/analysis/narrative/first_events.go
+// Pour chaque match, retourne (firstKillMS, firstDeathMS) du joueur ciblé.
+type FirstEventsRow struct {
+    MatchID       string
+    StartTime     time.Time
+    FirstKillMS   *int64
+    FirstDeathMS  *int64
+}
+
+func ComputeFirstEventsPerMatch(
+    events []canonical.HighlightEvent,
+    playerXUID string,
+) []FirstEventsRow
+```
+
+**Tests** : `highlight_events_repo_test.go` (chaque filtre + capability gating),
+`highlight_events_cache_test.go` (hit/miss/coalescence), `rolling_test.go`
+(window 10, min 3, séries vides/courtes/normales, adaptatif), `first_events_test.go`
+(scénarios canoniques : aucun kill, kill seul, mort seule, les deux).
+
+#### 5.3.7 Consommateurs
 
 | Service | Avant | Après |
 |---|---|---|
@@ -1066,7 +1187,27 @@ var allowedPlaylistRegex = map[string]string{
 | `SynthesisService` | refonte en cours, nouveau plan | adopte directement |
 | `CareerService` | Q9 incomplet (pas de filtres durs) | `LoadPlayerMatches(filters: BTB, dur≥180, outcomeIn)` + tri narrative |
 | `TimeseriesService` | Q33b enrichi prévu | `LoadPlayerMatches(orderBy: start_time ASC, period)` |
-| `CitationsService` | scope `compute_wins_*` | `LoadPlayerMatches(playlistRegex)` |
+| `CitationsService` | scope `compute_wins_*` | `LoadPlayerMatches(playlistKind)` |
+
+#### 5.3.8 Consommateurs `LoadHighlightEvents`
+
+| Service | Avant | Après |
+|---|---|---|
+| `SquadService` (impact 8 rôles) | `Q32 LoadImpactEvents` ad hoc dans `squad_repo.go` | `LoadHighlightEvents(filters: {MatchIDs, EventTypes:[kill,death,assist,medal]})` + `analysis/narrative.IdentifyImpactRoles` |
+| `MatchViewService` (kill feed) | rien | `LoadHighlightEvents(filters: {MatchIDs:[id], EventTypes:[kill,death,assist]})` |
+| `MatchViewService` (cadence intra-match) | rien | `LoadHighlightEvents(filters: {MatchIDs:[id], EventTypes:[kill]})` + bucket 60s |
+| `MatchViewService` (dominance flag intermédiaire) | utilise déjà la sortie sync | inchangé (le flag est calculé au sync, pas en service) |
+| `TimeseriesService` (first kill / first death rolling) | **bloqué — pas de loader** | `LoadHighlightEvents(filters: {MatchIDs:players_match_ids, EventTypes:[first_kill,first_death], PlayerXUID:gt})` + `analysis/narrative.ComputeFirstEventsPerMatch` + `analysis/temporal.RollingMeanAdaptive` |
+| `TimeseriesService` (intensity heatmap match × phases) | **bloqué — pas de loader** | `LoadHighlightEvents` + bucketing 10 phases |
+| `TimeseriesService` (cadence) | **bloqué — pas de loader** | `LoadHighlightEvents` + bucket 60s |
+| `CareerService` (first_blood badges) | optionnel, non couvert | `LoadHighlightEvents(filters: {EventTypes:[first_kill,first_death]})` |
+| `SynthesisService` | aucun usage planifié | — |
+
+L'introduction de ce loader **débloque** 3 charts Timeseries listés MANQUANT dans
+le plan enfant Timeseries (first events rolling, intensity heatmap, cadence
+intra-match), 2 charts Squad (cadence trio, intensity match × phases listés
+MANQUANT dans `docs/AUDIT_TEAMMATES_V7_COCKPIT.md` § 3.9 et § 4.5), et 2 sections
+MatchView (kill feed, cadence).
 
 ### 3.4 Axe 4 — Manifest i18n centralisé
 
@@ -1235,6 +1376,17 @@ Branche : `feat/foundations-axes-1-3-4`.
 
 - [ ] Couche cache `internal/platform/duckdb/player_matches_cache.go` avec
       `singleflight.Group` + `expirable.LRU` (cf. § 5.3.4).
+- [ ] **Loader unifié `HighlightEvents`** (cf. § 5.3.6) :
+  - [ ] Étendre `internal/games/canonical/events.go` avec `HighlightEvent` + `HighlightEventType`.
+  - [ ] Définir `internal/port/highlight_events.go` (`HighlightEventFilters`, `HighlightEventsRepository`).
+  - [ ] Implémenter `internal/platform/duckdb/highlight_events_repo.go` (~200L) avec capability gating (`match.detail.events`).
+  - [ ] Couche cache `highlight_events_cache.go` (singleflight + LRU 5 min).
+  - [ ] Helper `internal/analysis/temporal/rolling.go` avec `RollingMean` et `RollingMeanAdaptive` (générique `Numeric`).
+  - [ ] Helper `internal/analysis/narrative/first_events.go` avec `ComputeFirstEventsPerMatch`.
+  - [ ] Tests `:memory:` du repo (chaque filtre : `MatchIDs`, `PlayerXUID`, `EventTypes`, `Since`, `Limit`, `OrderBy`, capability gating).
+  - [ ] Tests `highlight_events_cache_test.go` (hit/miss/coalescence 100 goroutines).
+  - [ ] Tests `rolling_test.go` (séries vide, courte, normale, paramètres adaptatifs).
+  - [ ] Tests `first_events_test.go` (4 scénarios : aucun, kill seul, mort seule, les deux).
 - [ ] Renommer `PlayerMatchFilters.PlaylistRegex` en `PlaylistKind` (alias court),
       ajouter whitelist côté handler (`internal/api/handlers/playlist_regex_whitelist.go`,
       cf. § 5.3.5).
@@ -1319,6 +1471,9 @@ une phase abstraite.
 - [ ] `service/squad_service.go` : badges via `analysis/narrative.IdentifyImpactRoles` (8 rôles).
 - [ ] `service/squad_service.go` : radar via `analysis/narrative.ComputeParticipationProfile`.
 - [ ] Étendre l'algo `internal/analysis/match_impact.go` actuel (4 rôles bilatéral) à 8 rôles N-joueurs avec fenêtre temporelle réelle (clutch 30 dernières secondes).
+- [ ] Migrer `IdentifyImpactRoles` vers le loader unifié : remplacer l'appel à `Q32 LoadImpactEvents` (squad_repo) par `LoadHighlightEvents(filters: {MatchIDs, EventTypes:[kill,death,assist,medal,clutch,finisher]})` ; supprimer `Q32` après migration.
+- [ ] Câbler `<Cadence>` Squad sur `LoadHighlightEvents(EventTypes:[kill])` + bucketing 60s.
+- [ ] Câbler la heatmap intensité Squad (match × 10 phases) sur `LoadHighlightEvents` + algo `ComputeMatchIntensityProfiles` (à porter dans `analysis/narrative` ou `analysis/temporal`).
 - [ ] DTOs squad alignés sur `ChartSeries[T]` (suppression de tout payload Plotly server-side).
 - [ ] `apps/web/src/features/squad/` : refonte de `SquadSynergiesPage.tsx` et `SquadContributionsPage.tsx`.
 - [ ] Wrappers ECharts spécialisés : `<Heatmap2D>`, `<Radar>`, `<BarStacked>`, `<BarGrouped>`, `<Lollipop>`, `<Bullet>`, `<Cadence>`, `<Donut>`.
@@ -1344,6 +1499,9 @@ une phase abstraite.
 - [ ] `service/match_view_service.go` : radar participation via `ComputeParticipationProfile`.
 - [ ] DTOs `MatchView*` alignés sur `ChartSeries[T]` (suppression des stubs Plotly).
 - [ ] Boucler MatchView Phase J (lecture `personal_score_awards` côté Go) si pas déjà fait — sinon le radar reste vide.
+- [ ] Câbler MatchView kill feed sur `LoadHighlightEvents(filters: {MatchIDs:[id], EventTypes:[kill,death,assist]})`.
+- [ ] Câbler MatchView cadence intra-match sur `LoadHighlightEvents` + bucket 60s.
+- [ ] Câbler MatchView impact timeline sur `LoadHighlightEvents` + `narrative.IdentifyImpactRoles` (réutilise l'algo Squad, pas de duplication).
 - [ ] `apps/web/src/features/match-view/MatchViewPage.tsx` : refonte de la composition charts.
 - [ ] Migration des charts Recharts → ECharts (`<BarStacked>` dominance, `<Cadence>`, `<Heatmap2D>` impact, `<Radar>` participation, `<Donut>` weapons, `<Lollipop>` antagonists).
 - [ ] `apps/web/src/lib/i18n/manifests/match_view.toml` rempli (~150 clés FR + EN).
@@ -1399,6 +1557,14 @@ Branche : `feat/foundations-rollout`.
   `analysis/temporal` (period+granularité), `analysis/breakdown` (map breakdown),
   wrappers ECharts (`<TimeseriesLine>`, `<Heatmap2D>` WL, `<Histogram>`, `<Scatter>`,
   `<BarStacked>` outcomes over time).
+- [ ] **Timeseries — débloquer `first_events_rolling`** : câbler le service sur
+  `LoadHighlightEvents(filters: {MatchIDs:player_match_ids, EventTypes:[first_kill,first_death], PlayerXUID:gt})`
+  + `narrative.ComputeFirstEventsPerMatch` + `temporal.RollingMeanAdaptive(window=10, minPoints=3)`.
+- [ ] **Timeseries — intensity heatmap match × phases** : câbler sur
+  `LoadHighlightEvents` + algo `ComputeMatchIntensityProfiles` (réutilise l'algo
+  Squad porté en Phase 1).
+- [ ] **Timeseries — cadence intra-match** : câbler sur `LoadHighlightEvents`
+  + bucket 60s (réutilise wrapper `<Cadence>` Squad).
 
 #### 6.2.2 Pages live
 
@@ -1682,6 +1848,8 @@ shapes Plotly server-side. Le bénéfice de la rupture franche est de pouvoir
 | Whitelist `playlist_kind` incomplète → joueurs Steam EN n'ont pas de match | Moyenne | Moyen | Tests E2E sur joueurs FR + EN ; alias multilingues dans la whitelist (`(?i)ranked|classé`). |
 | Évolution non-rétrocompatible de `canonical.PlayerMatchRow` casse 6 services | Faible | Haut | Test `TestNoBreakingChanges` en CI + politique additive (cf. § 5.3.1). |
 | Snapshots golden divergent en CI sans `--update` → CI bloquée | Moyenne | Faible | Doc claire `testdata/golden/README.md` + label GitHub auto. |
+| `LoadHighlightEvents` sans filtre `MatchIDs` → scan complet de `shared.highlight_events` | Moyenne | Haut | Validation côté repo : `MatchIDs` obligatoire (au moins 1) sauf si `PlayerXUID + Since` ; sinon retour `errors.New("highlight_events: filter too broad")`. Tests d'erreur en place. |
+| `Q32 LoadImpactEvents` (squad) supprimé sans avoir migré tous ses appelants | Faible | Moyen | Cleanup Q32 cochable seulement après migration Squad pilote validée (Phase 1 done definition). Grep sur `LoadImpactEvents` doit retourner 0 occurrence avant de supprimer. |
 | `personal_score_awards` jamais lu côté Go → radar 6 axes vide | Haute | Haut | Plan MatchView Phase J (1 semaine) doit être bouclé avant que la phase 1 MatchView ne câble le radar. À sécuriser en Phase 0. |
 | Manifest i18n explose (300+ clés) → maintenance lourde | Moyenne | Moyen | Découpe par domaine (un TOML par page), build step typé, revue ESLint. |
 | Bundle ECharts plus lourd que prévu si tree-shaking mal configuré | Faible | Moyen | Imports ciblés (`echarts/core`, `echarts/charts/*`), bundle analyzer en CI. |
@@ -1694,12 +1862,12 @@ shapes Plotly server-side. Le bénéfice de la rupture franche est de pouvoir
 
 | Phase | Effort | Branche | Bloque |
 |---|---:|---|---|
-| 0 — Fondations (incl. sync dominance, cache, ICU, observabilité, whitelist) | ~9 j-h | `feat/foundations-axes-1-3-4` | Phase 1 |
-| 1 — Pilotes Squad + MatchView | ~12 j-h | `feat/foundations-pilots-squad-matchview` | Phase 2 |
-| 2 — Roll-out | ~12 j-h | `feat/foundations-rollout` | Phase 3 |
+| 0 — Fondations (incl. sync dominance, cache, ICU, observabilité, whitelist, HighlightEvents loader) | ~11 j-h | `feat/foundations-axes-1-3-4` | Phase 1 |
+| 1 — Pilotes Squad + MatchView (incl. cadence, kill feed, intensity, refacto Q32) | ~13 j-h | `feat/foundations-pilots-squad-matchview` | Phase 2 |
+| 2 — Roll-out (incl. Timeseries first_events_rolling, intensity, cadence) | ~13 j-h | `feat/foundations-rollout` | Phase 3 |
 | 3 — Cleanup Plotly / Recharts | ~3 j-h | `feat/foundations-cleanup-plotly` | — |
-| 4 — Documentation et skills (9 ADR, guides, skills) | ~4 j-h | `feat/foundations-docs-skills` | — |
-| **Total** | **~40 j-h** | | |
+| 4 — Documentation et skills (10 ADR, guides, skills) | ~4 j-h | `feat/foundations-docs-skills` | — |
+| **Total** | **~44 j-h** | | |
 
 Calendrier indicatif (1 dev) : ~7-8 semaines de travail effectif. Phases 3 et 4
 parallélisables (un dev peut nettoyer Plotly pendant qu'un autre rédige la doc et
@@ -1803,6 +1971,18 @@ internal/platform/duckdb/player_matches_repo.go (nouveau, ~300L)
 internal/platform/duckdb/player_matches_repo_test.go
 internal/platform/duckdb/player_matches_cache.go (nouveau, ~120L)
 internal/platform/duckdb/player_matches_cache_test.go
+internal/games/canonical/events.go            (HighlightEvent, HighlightEventType)
+internal/port/highlight_events.go             (HighlightEventFilters, repo interface)
+internal/platform/duckdb/highlight_events_repo.go      (~200L)
+internal/platform/duckdb/highlight_events_repo_test.go
+internal/platform/duckdb/highlight_events_cache.go     (singleflight + LRU)
+internal/platform/duckdb/highlight_events_cache_test.go
+internal/analysis/temporal/rolling.go          (RollingMean, RollingMeanAdaptive)
+internal/analysis/temporal/rolling_test.go
+internal/analysis/narrative/first_events.go    (ComputeFirstEventsPerMatch)
+internal/analysis/narrative/first_events_test.go
+internal/analysis/narrative/intensity_profile.go  (ComputeMatchIntensityProfiles, 10 buckets)
+internal/analysis/narrative/intensity_profile_test.go
 internal/api/handlers/playlist_regex_whitelist.go
 internal/api/handlers/playlist_regex_whitelist_test.go
 internal/observability/expvar_metrics.go     (nouveau, ~80L)
@@ -1861,6 +2041,7 @@ docs/adr/0006-no-v1-v2-cohabitation.md                  rupture franche, sync ba
 docs/adr/0007-player-matches-cache-strategy.md          singleflight + LRU 5 min
 docs/adr/0008-playlist-regex-whitelist.md               whitelist côté handler, pas de regex libre
 docs/adr/0009-observability-expvar-baseline.md          expvar minimal, pas de Prometheus cette itération
+docs/adr/0010-highlight-events-unified-loader.md        loader unifié + cache, refacto Q32 squad_repo
 internal/analysis/temporal/README.md
 internal/analysis/breakdown/README.md
 internal/analysis/narrative/README.md
