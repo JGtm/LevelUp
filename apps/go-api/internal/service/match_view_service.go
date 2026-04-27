@@ -221,7 +221,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	header := buildMatchHeader(matchID, meta, stats, enrich, scoreboard)
 	rank := buildRankBlock(skillRank)
 	summary := buildSummaryTabFull(stats, medals, expected)
-	combat := buildCombatTabFull(weapons, events, kvPairs, scoreboard, s.xuid, durationMS)
+	combat := buildCombatTabFull(matchID, weapons, events, kvPairs, scoreboard, s.xuid, durationMS)
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
@@ -477,6 +477,7 @@ func buildCitationsTab(citations []domain.CitationMatchViewRow, medals []domain.
 // ---------------------------------------------------------------------------
 
 func buildCombatTabFull(
+	matchID string,
 	weapons []domain.WeaponKillRaw,
 	events []domain.EventRaw,
 	kvPairs []domain.KVPairRaw,
@@ -547,6 +548,11 @@ func buildCombatTabFull(
 		})
 	}
 
+	// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné fondations narrative.
+	// Cadence intra-match + 8 rôles narratifs en parallèle des badges legacy.
+	cadence := BuildMatchCadenceChart(events, scoreboard, matchID)
+	impactRoles := BuildMatchImpactRoles8(events, scoreboard, matchID)
+
 	return domain.MatchCombatTab{
 		WeaponKills:     wkList,
 		HighlightEvents: evtList,
@@ -554,6 +560,8 @@ func buildCombatTabFull(
 		ImpactBadges:    badgesDomain,
 		KDTimeline:      kdDomain,
 		NemesisDuels:    []domain.MatchNemesisRow{},
+		ImpactRoles:     impactRoles,
+		Cadence:         cadence,
 	}
 }
 
