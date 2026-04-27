@@ -6,6 +6,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -86,7 +87,16 @@ func perfColorToken(score float64) string {
 type MatchViewService struct {
 	repo          port.MatchViewRepository
 	citationsRepo port.CitationsRepository
-	xuid          string
+	// eventsRepo (optionnel, Phase 1 méta-plan § 6.1.3 — chunk MV4.A) :
+	// loader unifié des highlight_events qui remplace progressivement
+	// repo.GetMatchEvents. Quand non-nil, les builders narrative cadence/impact
+	// consomment directement des canonical.HighlightEvent (pas de conversion à
+	// la volée). Dégradation gracieuse si nil : on retombe sur GetMatchEvents.
+	eventsRepo port.HighlightEventsRepository
+	xuid       string
+	// titleSlug est nécessaire pour HighlightEventsRepository (capability check
+	// + selection de la DB shared). Injecté via WithTitleSlug.
+	titleSlug string
 	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
 	// router LoadMatchDetail via la couche canonique. À ce jour, le service
 	// utilise le repo direct car canonical.MatchDetail ne couvre pas encore
@@ -114,6 +124,25 @@ func (s *MatchViewService) WithCitationsRepo(r port.CitationsRepository) *MatchV
 	return s
 }
 
+// WithHighlightEventsRepo injecte le loader unifié des highlight_events
+// (Phase 0 méta-plan, chunk 7). Quand câblé, le service consomme directement
+// des canonical.HighlightEvent au lieu de convertir des EventRaw à la volée.
+//
+// Dégradation gracieuse : si nil, le service retombe sur repo.GetMatchEvents
+// (Q21 legacy) + conversion EventRaw → canonical.HighlightEvent (chunk MV2).
+func (s *MatchViewService) WithHighlightEventsRepo(r port.HighlightEventsRepository) *MatchViewService {
+	s.eventsRepo = r
+	return s
+}
+
+// WithTitleSlug configure le titre courant pour les calls qui en ont besoin
+// (HighlightEventsRepository, capability gating). Injecté par le wiring HTTP
+// avec ctxkeys.TitleSlug ou un fallback "halo_infinite".
+func (s *MatchViewService) WithTitleSlug(slug string) *MatchViewService {
+	s.titleSlug = slug
+	return s
+}
+
 // GetMatchView retourne la réponse complète pour un match.
 //
 //nolint:funlen,cyclop // 11 sections séquentielles d'enrichissement bloquant : meta + analyses + médias
@@ -126,20 +155,25 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 
 	// --- Appels parallèles via errgroup ---
 	var (
-		stats          *domain.PlayerMatchStatsRaw
-		enrich         *domain.MatchEnrichmentRaw
-		scoreboard     []domain.ScoreboardRaw
-		medals         []domain.MedalRaw
-		events         []domain.EventRaw
-		weapons        []domain.WeaponKillRaw
-		kvPairs        []domain.KVPairRaw
-		skillRank      *domain.SkillRankRaw
-		encounters     []domain.EncounterRaw
-		media          []domain.MediaAssocRaw
-		expected       *domain.ExpectedStatsRaw
-		bulkMedals     []domain.BulkMedalRaw
-		bulkWeapons    []domain.BulkWeaponKillRaw
-		matchCitations []domain.CitationMatchViewRow
+		stats      *domain.PlayerMatchStatsRaw
+		enrich     *domain.MatchEnrichmentRaw
+		scoreboard []domain.ScoreboardRaw
+		medals     []domain.MedalRaw
+		events     []domain.EventRaw
+		// canonicalEvents : chargés via port.HighlightEventsRepository si câblé
+		// (chunk MV4.A, loader unifié Phase 0). Sinon, conversion à la volée
+		// depuis events (chunk MV2 legacy). Consommés par les builders narrative
+		// (cadence + impact 8 rôles).
+		canonicalEvents []canonical.HighlightEvent
+		weapons         []domain.WeaponKillRaw
+		kvPairs         []domain.KVPairRaw
+		skillRank       *domain.SkillRankRaw
+		encounters      []domain.EncounterRaw
+		media           []domain.MediaAssocRaw
+		expected        *domain.ExpectedStatsRaw
+		bulkMedals      []domain.BulkMedalRaw
+		bulkWeapons     []domain.BulkWeaponKillRaw
+		matchCitations  []domain.CitationMatchViewRow
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -184,6 +218,29 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		}
 		return nil
 	})
+	// MV4.A : chargement parallèle des events via le loader unifié si câblé.
+	// Si l'eventsRepo n'est pas injecté, canonicalEvents reste nil et les
+	// builders narrative retomberont sur la conversion à la volée (chunk MV2).
+	if s.eventsRepo != nil {
+		g.Go(func() error {
+			filters := port.HighlightEventFilters{MatchIDs: []string{matchID}}
+			if e := filters.Validate(); e != nil {
+				slog.WarnContext(gctx, "match_view: HighlightEventFilters invalides",
+					"match_id", matchID, "err", e)
+				return nil
+			}
+			canonicalEv, e := s.eventsRepo.LoadHighlightEvents(gctx, s.titleSlug, filters)
+			if e != nil {
+				if !errors.Is(e, games.ErrCapabilityNotSupported) {
+					slog.WarnContext(gctx, "match_view: LoadHighlightEvents echec",
+						"match_id", matchID, "err", e)
+				}
+				return nil
+			}
+			canonicalEvents = canonicalEv
+			return nil
+		})
+	}
 	g.Go(func() error {
 		var e error
 		weapons, e = s.repo.GetMatchWeaponKills(gctx, s.xuid, matchID)
@@ -273,7 +330,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	header := buildMatchHeader(matchID, meta, stats, enrich, scoreboard)
 	rank := buildRankBlock(skillRank)
 	summary := buildSummaryTabFull(stats, medals, expected)
-	combat := buildCombatTabFull(matchID, weapons, events, kvPairs, scoreboard, s.xuid, durationMS)
+	combat := buildCombatTabFull(matchID, weapons, events, canonicalEvents, kvPairs, scoreboard, s.xuid, durationMS)
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
@@ -539,6 +596,7 @@ func buildCombatTabFull(
 	matchID string,
 	weapons []domain.WeaponKillRaw,
 	events []domain.EventRaw,
+	canonicalEvents []canonical.HighlightEvent,
 	kvPairs []domain.KVPairRaw,
 	scoreboard []domain.ScoreboardRaw,
 	myXUID string,
@@ -609,8 +667,18 @@ func buildCombatTabFull(
 
 	// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné fondations narrative.
 	// Cadence intra-match + 8 rôles narratifs en parallèle des badges legacy.
-	cadence := BuildMatchCadenceChart(events, scoreboard, matchID)
-	impactRoles := BuildMatchImpactRoles8(events, scoreboard, matchID)
+	//
+	// MV4.A : si canonicalEvents est peuplé (loader unifié actif), on l'utilise
+	// directement. Sinon fallback sur la conversion à la volée depuis EventRaw.
+	var cadence *domain.ChartSeries[domain.ChartPointStacked]
+	var impactRoles []domain.MatchViewImpactRole
+	if len(canonicalEvents) > 0 {
+		cadence = BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard)
+		impactRoles = BuildMatchImpactRoles8FromCanonical(canonicalEvents, scoreboard)
+	} else {
+		cadence = BuildMatchCadenceChart(events, scoreboard, matchID)
+		impactRoles = BuildMatchImpactRoles8(events, scoreboard, matchID)
+	}
 
 	return domain.MatchCombatTab{
 		WeaponKills:     wkList,

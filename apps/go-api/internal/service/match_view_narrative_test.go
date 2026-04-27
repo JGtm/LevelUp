@@ -216,3 +216,60 @@ func TestMatchPhaseCategoryLabel_ZeroPadded(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildMatchCadenceChartFromCanonical_NoConversion verifie que la variante
+// MV4.A consomme directement des canonical.HighlightEvent sans conversion.
+func TestBuildMatchCadenceChartFromCanonical_NoConversion(t *testing.T) {
+	t.Parallel()
+	x := "x_p1"
+	canonicalEvents := []canonical.HighlightEvent{
+		{
+			MatchID: "m1", EventType: string(canonical.EventKill),
+			TimeMS: 5_000, KillerXUID: &x,
+		},
+	}
+	scoreboard := []domain.ScoreboardRaw{scoreboardRow("x_p1", 2)}
+	chart := BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard)
+	if chart == nil {
+		t.Fatal("chart nil")
+	}
+	if chart.Datapoints[0].Components["x_p1"] != 1 {
+		t.Errorf("phase_00 x_p1 want 1, got %f", chart.Datapoints[0].Components["x_p1"])
+	}
+}
+
+// TestBuildMatchImpactRoles8FromCanonical_NoConversion verifie que la
+// variante MV4.A consomme directement des canonical.HighlightEvent.
+func TestBuildMatchImpactRoles8FromCanonical_NoConversion(t *testing.T) {
+	t.Parallel()
+	x1 := "x_p1"
+	canonicalEvents := []canonical.HighlightEvent{
+		{
+			MatchID: "m1", EventType: string(canonical.EventKill),
+			TimeMS: 1_000, KillerXUID: &x1,
+		},
+	}
+	scoreboard := []domain.ScoreboardRaw{
+		scoreboardRow("x_p1", 2),
+		scoreboardRow("x_p2", 3),
+	}
+	roles := BuildMatchImpactRoles8FromCanonical(canonicalEvents, scoreboard)
+	hasFirstBlood := false
+	for _, r := range roles {
+		if r.RoleKey == "first_blood" && r.XUID == "x_p1" {
+			hasFirstBlood = true
+		}
+	}
+	if !hasFirstBlood {
+		t.Errorf("first_blood not attributed to x_p1, got %+v", roles)
+	}
+}
+
+// TestBuildMatchCadenceChartFromCanonical_EmptyInputs verifie la
+// degradation gracieuse.
+func TestBuildMatchCadenceChartFromCanonical_EmptyInputs(t *testing.T) {
+	t.Parallel()
+	if got := BuildMatchCadenceChartFromCanonical(nil, nil); got != nil {
+		t.Errorf("nil inputs: want nil, got %v", got)
+	}
+}

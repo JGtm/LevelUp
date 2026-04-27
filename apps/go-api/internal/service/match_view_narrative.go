@@ -110,6 +110,10 @@ func extractTeamOutcomesFromScoreboard(scoreboard []domain.ScoreboardRaw) map[st
 // pour rendu via le wrapper `<BarStacked>` (S10) côté front.
 //
 // Si events est vide, retourne nil (pas de cadence à afficher).
+//
+// Variant principal pour les callers ayant des EventRaw (chunk MV2 legacy).
+// Pour les callers ayant déjà des canonical.HighlightEvent (chunk MV4.A
+// loader unifié), utiliser BuildMatchCadenceChartFromCanonical.
 func BuildMatchCadenceChart(
 	events []domain.EventRaw,
 	scoreboard []domain.ScoreboardRaw,
@@ -119,6 +123,18 @@ func BuildMatchCadenceChart(
 		return nil
 	}
 	canonicalEvents := convertEventsRawToCanonical(events, matchID)
+	return BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard)
+}
+
+// BuildMatchCadenceChartFromCanonical : variante consommant directement des
+// canonical.HighlightEvent (chunk MV4.A — loader unifié). Pas de conversion.
+func BuildMatchCadenceChartFromCanonical(
+	canonicalEvents []canonical.HighlightEvent,
+	scoreboard []domain.ScoreboardRaw,
+) *domain.ChartSeries[domain.ChartPointStacked] {
+	if len(canonicalEvents) == 0 || len(scoreboard) == 0 {
+		return nil
+	}
 	squadXUIDs := extractMatchSquadXUIDs(scoreboard)
 
 	profiles := narrative.ComputeCadenceProfiles(canonicalEvents, squadXUIDs, MatchCadencePhaseSeconds)
@@ -191,6 +207,10 @@ func matchPhaseCategoryLabel(idx int) string {
 //
 // Le squad ici est l'ensemble des xuids du scoreboard (vue MatchView = tous
 // les joueurs du match, pas seulement le squad utilisateur).
+//
+// Variant principal pour les callers ayant des EventRaw (chunk MV2 legacy).
+// Pour les callers ayant déjà des canonical.HighlightEvent, utiliser
+// BuildMatchImpactRoles8FromCanonical.
 func BuildMatchImpactRoles8(
 	events []domain.EventRaw,
 	scoreboard []domain.ScoreboardRaw,
@@ -200,6 +220,18 @@ func BuildMatchImpactRoles8(
 		return nil
 	}
 	canonicalEvents := convertEventsRawToCanonical(events, matchID)
+	return BuildMatchImpactRoles8FromCanonical(canonicalEvents, scoreboard)
+}
+
+// BuildMatchImpactRoles8FromCanonical : variante consommant directement des
+// canonical.HighlightEvent (chunk MV4.A — loader unifié).
+func BuildMatchImpactRoles8FromCanonical(
+	canonicalEvents []canonical.HighlightEvent,
+	scoreboard []domain.ScoreboardRaw,
+) []domain.MatchViewImpactRole {
+	if len(canonicalEvents) == 0 || len(scoreboard) == 0 {
+		return nil
+	}
 	teamOutcomes := extractTeamOutcomesFromScoreboard(scoreboard)
 	squadXUIDs := extractMatchSquadXUIDs(scoreboard)
 
