@@ -7,6 +7,7 @@ package port
 import (
 	"context"
 
+	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 )
 
@@ -111,6 +112,20 @@ type SessionPageService interface {
 type SquadService interface {
 	GetSquadPage(ctx context.Context, playerXUID, gamertag, teammateXUID string) (*domain.SquadPageResponse, error)
 	GetSynthesisPage(ctx context.Context, playerXUID string) (*domain.SynthesisPageResponse, error)
+}
+
+// SquadV2Service orchestre la page Squad V2 (multi-coéquipiers, fondations Phase 0).
+//
+// Vit en parallèle de SquadService (legacy mono-coéquipier) jusqu'à migration
+// complète des consommateurs frontend (cf. PLAN_SQUAD_GO_PORTAGE).
+type SquadV2Service interface {
+	GetSquadPage(
+		ctx context.Context,
+		titleSlug string,
+		mainGamertag string,
+		teammateGamertags []string,
+		period temporal.Period,
+	) (*domain.SquadPageV2Response, error)
 }
 
 // SynthesisService orchestre la page Synthèse (Sprint 55 D1 — autonome).
