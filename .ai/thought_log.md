@@ -22330,3 +22330,42 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - **P2.G Pages WIP** (Palmares/Session) : branchement narrative + manifests.
 
 **Conclusion** : Phase 2 démarrée. Les 3 composants UI partagés sont désormais disponibles (2 préexistants + 1 nouveau). Phase 2 globale : 5 % livré (P2.A seul). Prochain chunk recommandé : **P2.B — Career pilote** (le plus impactant car consomme les 4 axes des fondations et migre 3 charts ECharts). Effort restant Phase 2 : ~10 j-h sur les ~12 estimés.
+
+---
+
+## [2026-04-27] Phase 2 - Chunks P2.B + P2.C — Career pilote + Synthesis manifest
+
+**Statut** : Complété (deux chunks groupés).
+
+**Branche** : `feat/foundations-axes-1-3-4`.
+
+### P2.B — Career pilote (commit `dc0681c3`)
+
+- Manifest career.toml créé : 35 clés FR + EN.
+- Migration Plotly → ECharts dans `CareerChartsSection.tsx` :
+  - Suppression `react-plotly.js` + `CLEAN_CONFIG`.
+  - Refonte signature : `{ xpHistory, lusrCheckpoints, summary, heroProgress, labels }` (données brutes typées au lieu de `PlotlyFigurePayload` server-side).
+  - XP history → `<TimeseriesLineChart xAxisType="time">`.
+  - LUSR rating → `<TimeseriesLineChart>` avec 1 série par `playlist_group`.
+  - Rank/Hero progress → cartes simplifiées (pourcentage + détail) en attendant `<Gauge>` (Phase 3).
+- `CareerProgressionTab.tsx` : utilise `careerManifest` + `formatMessage` + locale store appShell.
+- `CareerPage.tsx` (legacy) : caller mis à jour.
+- 17/17 Vitest verts. 0 erreur typecheck/lint sur fichiers livrés.
+- Hors scope Phase 3 : suppression `react-plotly.js` du `package.json` (CareerCitationsTab utilise encore `<PlotlyChart>` pour `distribution_chart`).
+
+### P2.C — Synthesis manifest (this commit)
+
+Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebranchement nécessaire."* P2.C se limite donc au manifest i18n.
+
+- Manifest synthesis.toml créé : 25 clés FR + EN (sections, KPIs Vue d'ensemble, Highlights, Période, États, Scope bar avec pluralisation ICU `matches_count`).
+- Total manifests projet : **238 clés** (5 manifests : common 18 + match_view 63 + squad 97 + career 35 + synthesis 25).
+- Pas de modification de composant — les strings de `SynthesisPage.tsx` restent hardcodées pour cette session. La migration vers `formatMessage` sera faite quand utile (P2.C' optionnel).
+- Charts Plotly Synthesis (`bipolaireChart`, `heatmapChart`) restent en place — migration différée Phase 3.
+- 31/31 Vitest Synthesis toujours verts (aucune modification du composant).
+
+**Résultats cumulés P2.B + P2.C** :
+- 1 chart migré Plotly → ECharts (xp_history) + 1 chart neuf ECharts (LUSR rating).
+- 2 manifests i18n créés (60 nouvelles clés total).
+- 0 régression sur 48 tests Vitest Career + Synthesis.
+
+**Phase 2 globale** : ~25 % livré (P2.A + P2.B + P2.C). Reste : P2.D Citations (~1 j-h), P2.E Timeseries (~2 j-h), P2.F live Home/Media/Explorer (~2 j-h), P2.G WIP Palmares/Session (~1 j-h). Reste **~6-7 j-h** sur les 12 estimés.
