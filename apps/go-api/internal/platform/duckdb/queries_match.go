@@ -42,7 +42,7 @@ top_weapons AS (
 )
 SELECT
     p.xuid,
-    COALESCE(xa.gamertag, p.xuid)  AS gamertag,
+    COALESCE(vg.gamertag, p.gamertag, p.xuid)  AS gamertag,
     p.team_id,
     p.rank              AS rank_in_team,
     COALESCE(p.outcome, 0)         AS outcome,
@@ -66,13 +66,27 @@ SELECT
     p.melee_kills,
     p.power_weapon_kills,
     COALESCE(m.perfect_kills, 0)   AS perfect_kills,
-    w.top_weapon_id
+    w.top_weapon_id,
+    p.kills_expected,
+    p.deaths_expected,
+    p.assists_expected,
+    p.kills_stddev,
+    p.deaths_stddev,
+    p.assists_stddev
 FROM shared.match_participants p
-LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
 LEFT JOIN top_weapons w ON p.xuid = w.xuid
 WHERE p.match_id = ?
-ORDER BY p.team_id, p.rank NULLS LAST`
+  AND NOT (
+    COALESCE(p.kills, 0) = 0
+    AND COALESCE(p.deaths, 0) = 0
+    AND COALESCE(p.assists, 0) = 0
+    AND COALESCE(p.personal_score, 0) = 0
+    AND (p.kills IS NOT NULL OR p.deaths IS NOT NULL
+         OR p.assists IS NOT NULL OR p.personal_score IS NOT NULL)
+  )
+ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST`
 
 // Q13 : Match view — métadonnées du match.
 // Paramètre : ? = match_id.
@@ -124,13 +138,16 @@ ORDER BY he.time_ms ASC`
 // Q16 : Weapon kills d'un joueur pour un match.
 // Paramètres : ?1 = xuid, ?2 = match_id.
 // Les labels sont résolus ensuite via pdb.Metadata.
+// Utilise v_weapon_kills (effective_weapon_id = COALESCE(reconciled_as, weapon_id))
+// pour appliquer la fusion d'armes (M392→Bandit Evo, Fuel Rod→M41 SPNKr, etc.).
 const Q16WeaponKills = `
 SELECT
-    wk.weapon_id,
+    wk.effective_weapon_id AS weapon_id,
     COUNT(*) AS kills
-FROM shared.weapon_kills wk
+FROM shared.v_weapon_kills wk
 WHERE wk.xuid = ? AND wk.match_id = ?
-GROUP BY wk.weapon_id
+  AND wk.effective_weapon_id NOT IN (0, 1, 2)
+GROUP BY wk.effective_weapon_id
 ORDER BY kills DESC`
 
 // Q17 : Stats d'un joueur pour un match spécifique (match_participants).
@@ -310,6 +327,32 @@ JOIN media_match_associations mma ON mf.id = mma.media_file_id
 WHERE mma.match_id = ?
   AND mf.player_slug = ?
 ORDER BY mf.capture_end_utc ASC NULLS LAST`
+
+// Q27 : Médailles de tous les joueurs d'un match (bulk).
+// Paramètre : ? = match_id.
+// Retourne 3 colonnes : xuid, medal_name_id, count.
+const Q27BulkMedals = `
+SELECT
+    xuid,
+    medal_name_id,
+    SUM(count) AS count
+FROM shared.medals_earned
+WHERE match_id = ?
+GROUP BY xuid, medal_name_id
+ORDER BY xuid, count DESC`
+
+// Q28 : Kills par arme de tous les joueurs d'un match (bulk).
+// Paramètre : ? = match_id.
+// Retourne 3 colonnes : xuid, weapon_id, kills.
+const Q28BulkWeaponKills = `
+SELECT
+    xuid,
+    effective_weapon_id AS weapon_id,
+    COUNT(*) AS kills
+FROM shared.v_weapon_kills
+WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
+GROUP BY xuid, effective_weapon_id
+ORDER BY xuid, kills DESC`
 
 // Q26 : Stats attendues du joueur pour ce match (match_participants expected columns).
 // Paramètres : ?1 = match_id, ?2 = xuid.

@@ -42,6 +42,8 @@ const (
 	CapCareerProgression  CapabilityKey = "career.progression"
 	CapPveFirefight       CapabilityKey = "pve.firefight_stats"
 	CapTimeseries         CapabilityKey = "analytics.timeseries"
+	CapScoreboardExtra    CapabilityKey = "match.scoreboard.extra" // champs étendus du scoreboard
+	CapCitationsEngine    CapabilityKey = "citations.engine"       // moteur de citations
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.
@@ -82,6 +84,12 @@ type TitleDataAdapter interface {
 	LoadCareerSnapshot(ctx context.Context, xuid string, opts canonical.CareerOptions) (*canonical.CareerSnapshot, error)
 	LoadEncounters(ctx context.Context, xuid string) ([]canonical.EncounterRow, error)
 	LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error)
+
+	// Phase B+ : scoreboard étendu + événements + amis (CapScoreboardExtra).
+	// Retournent ErrCapabilityNotSupported si la capability est absente.
+	LoadMatchScoreboard(ctx context.Context, matchID string) ([]canonical.MatchParticipant, error)
+	LoadHighlightEvents(ctx context.Context, matchID string) ([]canonical.HighlightEvent, error)
+	LoadFriendsXUIDs(ctx context.Context, xuid string) ([]string, error)
 }
 
 // TitleSemanticAdapter expose les libellés et la présentation pour un titre.

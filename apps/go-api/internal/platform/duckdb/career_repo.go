@@ -80,6 +80,7 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 		var cp domain.LUSRCheckpointDTO
 		if err := rows.Scan(
 			&cp.MatchID, &cp.RatingValue, &cp.TierLabel, &cp.PlaylistGroup, &cp.RecordedAt,
+			&cp.RatingDelta,
 		); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan: %w", err)
 		}
@@ -93,7 +94,7 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q9TopMatches, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q9TopMatches, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetTopMatches: %w", err)
 	}
@@ -102,11 +103,12 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 	var results []domain.TopMatchRawRow
 	for rows.Next() {
 		var m domain.TopMatchRawRow
+		var _section int
 		if err := rows.Scan(
 			&m.MatchID, &m.PerformanceScore, &m.StartTime,
 			&m.MapName, &m.PairName, &m.PlaylistName,
 			&m.Outcome, &m.Kills, &m.Deaths, &m.KDA,
-			&m.TeamMMR, &m.EnemyMMR,
+			&m.TeamMMR, &m.EnemyMMR, &m.DominanceFlag, &_section,
 		); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan: %w", err)
 		}

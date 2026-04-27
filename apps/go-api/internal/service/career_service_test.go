@@ -109,11 +109,16 @@ func TestCareerService_GetTopMatches_OK(t *testing.T) {
 	now := time.Now()
 	rows := make([]domain.TopMatchRawRow, 20)
 	for i := range rows {
+		outcome := 2 // WIN pour les 10 premiers
+		if i >= 10 {
+			outcome = 3 // LOSS pour les 10 derniers
+		}
 		rows[i] = domain.TopMatchRawRow{
 			MatchID:          "m" + string(rune('A'+i)),
 			PerformanceScore: float64(100 - i),
 			Kills:            10 + i,
 			Deaths:           5,
+			Outcome:          outcome,
 			StartTime:        &now,
 		}
 	}

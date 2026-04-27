@@ -65,15 +65,24 @@ func (f *fakeData) LoadEncounters(_ context.Context, _ string) ([]canonical.Enco
 func (f *fakeData) LoadTimeseries(_ context.Context, _ string, _ canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
 	return nil, nil
 }
+func (f *fakeData) LoadMatchScoreboard(_ context.Context, _ string) ([]canonical.MatchParticipant, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeData) LoadHighlightEvents(_ context.Context, _ string) ([]canonical.HighlightEvent, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+func (f *fakeData) LoadFriendsXUIDs(_ context.Context, _ string) ([]string, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
 
 // fakeSemantic implémente games.TitleSemanticAdapter via un FieldMappingSet réel.
 type fakeSemantic struct {
 	set *mappings.FieldMappingSet
 }
 
-func (f *fakeSemantic) TitleSlug() string                     { return defaultMultiTitleSlug }
-func (f *fakeSemantic) SchemaVersion() int                    { return f.set.SchemaVersion() }
-func (f *fakeSemantic) Fields() *mappings.FieldMappingSet     { return f.set }
+func (f *fakeSemantic) TitleSlug() string                 { return defaultMultiTitleSlug }
+func (f *fakeSemantic) SchemaVersion() int                { return f.set.SchemaVersion() }
+func (f *fakeSemantic) Fields() *mappings.FieldMappingSet { return f.set }
 func (f *fakeSemantic) Ranks() *mappings.RankCatalog {
 	return mappings.NewRankCatalog(defaultMultiTitleSlug, nil)
 }

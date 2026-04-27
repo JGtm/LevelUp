@@ -33,6 +33,15 @@ func (m *mockCitationsRepo) LoadMedalTotals(_ context.Context, _ string) ([]doma
 func (m *mockCitationsRepo) LoadMedalCitationMappings(_ context.Context) ([]domain.MedalCitationRow, error) {
 	return m.medalMaps, m.medalMapErr
 }
+func (m *mockCitationsRepo) LoadCitationMedalMappings(_ context.Context) ([]domain.CitationMedalMapping, error) {
+	return nil, nil
+}
+func (m *mockCitationsRepo) LoadMatchCitationsForView(_ context.Context, _ string) ([]domain.CitationMatchViewRow, error) {
+	return nil, nil
+}
+func (m *mockCitationsRepo) WriteCitationsForMatch(_ context.Context, _ string, _ []domain.CitationMatchDelta) error {
+	return nil
+}
 
 // --- tests ---
 

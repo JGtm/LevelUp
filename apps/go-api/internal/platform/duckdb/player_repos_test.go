@@ -119,6 +119,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
 			session_id INTEGER, session_label VARCHAR,
 			dominance_flag TINYINT DEFAULT 0,
+			had_bot_teammate BOOLEAN DEFAULT FALSE,
 			is_with_friends BOOLEAN DEFAULT FALSE,
 			is_excluded BOOLEAN DEFAULT FALSE,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP)`,

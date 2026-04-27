@@ -171,6 +171,16 @@ La page Coéquipiers actuelle en Go représente environ **20-25 % de la richesse
 - **`gonum/stat`** : a evaluer pour Phase 0 LOWESS. Decision a prendre lors de Phase 0 (impl from-scratch ~1.5 j vs wrapper gonum ~0.5 j + nouvelle dep `go.mod`). Si gonum retenu, justifier dans le commit message + `thought_log`.
 - Aucune autre dependance externe prevue.
 
+### 3.8 Stack chart frontend — Plotly (decision assumee)
+
+**Decision** : on **reste sur Plotly** (`react-plotly.js` v2.6, `plotly.js` v3.5). Justification :
+- Stack dominante dans tout le projet : `components/ui/plotly-chart.tsx` consomme par career, citations, session-compare, timeseries, squad existant.
+- Charts existants `charts/{heatmap,timeline,hsPk}Chart.ts` deja en `PlotlyFigurePayload`.
+- Bascule vers ECharts = migration de tout le projet, sans benefice technique pour squad.
+- Plotly serialise tout en JSON, donc on peut **extraire les options exactes** des charts Python v7/cockpit (qui utilise aussi Plotly) -> portage quasi 1:1 facilite.
+
+**Recharts** est present dans `match-view/MatchViewPage.tsx` (heritage isole, hors scope squad).
+
 ### 3.8 Done definition par phase
 
 Une phase est consideree **DONE** quand :
@@ -187,6 +197,55 @@ Une phase est consideree **DONE** quand :
 ## 4. Phases de portage
 
 > Format de chaque phase : **Algos** (`internal/analysis/`) + **Domain** (`internal/domain/`) + **Port** (`internal/port/`) + **Repo** (`internal/platform/duckdb/`) + **Service** (`internal/service/`) + **Handler** (`internal/api/handlers/`) + **Frontend** (`apps/web/src/features/squad/`) + **Tests** + **i18n**.
+
+### Phase 0bis — Specification visuelle (~3 j) — PREREQUIS PARALLELE
+
+A faire **en parallele de Phase 0** (la spec visuelle ne bloque pas le dev backend Go). Doit etre **terminee avant Phase 1** sinon les charts seront approximatifs.
+
+**Livrables** (3 documents) :
+
+#### 0bis.1 [docs/SQUAD_VISUAL_SPEC.md](../docs/SQUAD_VISUAL_SPEC.md) — **1.5 j**
+Pour chacun des 22 charts/sections + tableaux, une fiche structuree :
+- Screenshot de reference depuis l'app Python `v7/cockpit` (lance Streamlit local, capture).
+- Type Plotly exact + composition si type compose (lollipop = `bar` + `scatter`, bullet = `bar` empilees, etc.).
+- Mapping data -> trace (`x`, `y`, `marker.color`, `text`, `customdata`).
+- Layout precis (`xaxis.type`, `yaxis.range`, `barmode`, `hovermode`).
+- Tooltip (`hovertemplate`) avec contenu exact.
+- Legende (position, orient, visibility).
+- Annotations (`shapes`, `annotations`).
+- Formatters (durees, nombres, pourcentages, KDA `.3f`).
+- Comportements interactifs (zoom, dataZoom, selectedpoints).
+- Empty state, loading, error states.
+
+**Methode** : pour les charts Python existants, extraire le JSON Plotly via `fig.to_json()` -> portable directement vers `PlotlyFigurePayload`. Pour les composants compose, decomposer en sous-traces.
+
+#### 0bis.2 [docs/SQUAD_DESIGN_TOKENS.md](../docs/SQUAD_DESIGN_TOKENS.md) — **0.5 j**
+- Palette joueurs Okabe-Ito (8 couleurs canoniques) + variantes claires/sombres pour deaths inversees (`_negative_color`).
+- Mapping deterministe joueur (par xuid hash) -> indice palette.
+- Couleurs outcome (W=`rgba(0,158,115,0.30)`, L=`rgba(213,94,0,0.30)`, T=`rgba(100,100,130,0.15)`) en tokens semantiques.
+- Heatmap colorscales : perf_score (perso 0-100), win_rate (0-100), intensity (0-1 normalise).
+- Records overlay : motif Plotly (`bar.marker.pattern.shape='/'`, `bar.marker.pattern.fgopacity=0.4`).
+- Emojis impact + fallback texte.
+- Mapping CSS classes Python (`os-perf-card`, `os-table`, `v7-context-toolbar-label`) vers composants React equivalents.
+
+#### 0bis.3 [docs/SQUAD_CHART_HELPERS.md](../docs/SQUAD_CHART_HELPERS.md) — **1 j**
+Specification des helpers TS a implementer dans `apps/web/src/features/squad/charts/_helpers.ts` (l'implementation effective est faite en debut de Phase 0) :
+- `formatDuration(seconds, format='auto'|'mm:ss'|'h:mm:ss'|'d:h:mm')`.
+- `formatNumber(n, options)`.
+- `formatKDA(value)` (toujours `.3f`).
+- `formatPercent(value, decimals)`.
+- `attributePlayerColor(xuid, palette)` (deterministe, hash xuid).
+- `applyHaloPlotStyle(option)` (equivalent `apply_halo_plot_style` de `theme.py`).
+- `applyRecordsOverlay(option, records)` (equivalent `add_record_overlays`).
+- `hideLegend(option)` (equivalent `_hide_legend`, masque legende et `update_traces.showlegend=false`).
+- `outcomeMarkerSymbol(outcome) -> 'circle'|'cross'|'diamond'`.
+- `outcomeBackgroundColor(outcome) -> tokenCssVar`.
+
+**Done definition Phase 0bis** :
+- [ ] `docs/SQUAD_VISUAL_SPEC.md` : 22 fiches remplies, 22 screenshots associes.
+- [ ] `docs/SQUAD_DESIGN_TOKENS.md` : palette + mappings + colorscales documentes.
+- [ ] `docs/SQUAD_CHART_HELPERS.md` : 10 signatures helpers + cas d'usage.
+- [ ] Decision `gonum/stat` vs LOWESS from-scratch tranchee dans `thought_log`.
 
 ### Phase 0 — Briques transverses (~7.5 j) — PREREQUIS
 
@@ -390,7 +449,8 @@ NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageRespons
 | Phase | Sections | Cout | Pre-requis |
 |-------|----------|-----:|------------|
 | Phase 0 — Briques transverses | helpers algos + domain + port + repo + UI | 7.5 j | A faire en premier |
-| Phase 1 — En-tetes | §2.1, §2.2 | 2.5 j | Phase 0 (perf score v2) |
+| **Phase 0bis — Specification visuelle** | SQUAD_VISUAL_SPEC + DESIGN_TOKENS + CHART_HELPERS | **3 j** | **En parallele Phase 0, terminee avant Phase 1** |
+| Phase 1 — En-tetes | §2.1, §2.2 | 2.5 j | Phase 0 (perf score v2) + **Phase 0bis** |
 | Phase 2 — Synergies "carte" | §3.1, §3.2, §3.3, §3.4 | 4 j | `ComputeMapBreakdown` |
 | Phase 3 — Timeline + Form Score | §3.5, §3.6 | 3 j | LOWESS |
 | Phase 4 — Impact | §3.7 | 3 j | Extension a 8 roles |
@@ -399,9 +459,9 @@ NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageRespons
 | Phase 7 — Charts trio | §4.1, §4.3, §4.4 | 5 j | `ComputeSquadRecords` + `RecordOverlay` |
 | Phase 8 — Radar | §4.2 | 2 j | `ComputeParticipationProfile` |
 | Phase 9 — Armes + Medailles | §4.7, §4.8, §4.9 | 4.5 j | Repo armes + medailles |
-| **Total** | 22 charts + briques | **~36 j** | |
+| **Total** | 22 charts + briques + spec | **~39 j** | |
 
-**MVP "good enough" ~22 j** : Phase 0 (sans LOWESS), Phases 1, 2, 4 (en restant a 4 roles), 5, 7 (sans records overlays), 9 (medailles seulement). Ramene la fidelite visuelle a ~80 %.
+**MVP "good enough" ~25 j** : Phase 0 (sans LOWESS) + Phase 0bis (allegee : juste DESIGN_TOKENS + CHART_HELPERS, pas le SPEC complet) + Phases 1, 2, 4 (en restant a 4 roles), 5, 7 (sans records overlays), 9 (medailles seulement). Ramene la fidelite visuelle a ~80 %.
 
 ---
 
@@ -410,7 +470,8 @@ NB : certains de ces endpoints peuvent etre fusionnes dans `TeammatesPageRespons
 | Phase | Statut | Branche | PR | Note |
 |-------|--------|---------|----|----|
 | 0 — Briques transverses | A faire | feat/squad-page-portage | — | LOWESS impl/wrapper a trancher |
-| 1 — En-tetes | A faire | feat/squad-page-portage | — | |
+| **0bis — Spec visuelle** | A faire | feat/squad-page-portage | — | Doit etre fini avant Phase 1 |
+| 1 — En-tetes | A faire | feat/squad-page-portage | — | Depend Phase 0bis |
 | 2 — Synergies carte | A faire | feat/squad-page-portage | — | |
 | 3 — Timeline + Form Score | A faire | feat/squad-page-portage | — | Depend Phase 0 LOWESS |
 | 4 — Impact | A faire | feat/squad-page-portage | — | Depend Phase 0 ImpactV2 |

@@ -842,20 +842,38 @@ type medalLabel struct {
 	description string
 }
 
-// resolveMedalLabels résout les noms FR des médailles depuis medal_definitions.
-// Les médailles sans entrée dans medal_definitions retournent label="".
+// resolveMedalLabels résout les labels de médailles avec la chaîne BCP-47 complète :
+//
+//	medal_translations (fr-FR) → medal_definitions.name_fr
+//	→ medal_translations (en-US) → medal_definitions.name_en
+//
+// Miroir de resolve_medal_name(id, lang) dans src/data/medal_definitions.py.
 func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64]medalLabel {
 	result := make(map[int64]medalLabel, len(medalIDs))
 	if len(medalIDs) == 0 || db == nil {
 		return result
 	}
 
+	// Chaîne BCP-47 : medal_translations (fr-FR, en-US) > medal_definitions (name_fr, name_en).
 	q, mArgs, ok := buildLookupQuery(
-		`SELECT medal_name_id,
-		        COALESCE(NULLIF(TRIM(name_fr),''), NULLIF(TRIM(name_en),'')),
-		        COALESCE(NULLIF(TRIM(description_fr),''), NULLIF(TRIM(description_en),''), '')
-		 FROM medal_definitions
-		 WHERE medal_name_id IN (%s)`,
+		`SELECT md.medal_name_id,
+		        COALESCE(
+		            NULLIF(TRIM(mt_fr.name),''),
+		            NULLIF(TRIM(md.name_fr),''),
+		            NULLIF(TRIM(mt_en.name),''),
+		            NULLIF(TRIM(md.name_en),'')
+		        ) AS label,
+		        COALESCE(
+		            NULLIF(TRIM(md.description_fr),''),
+		            NULLIF(TRIM(md.description_en),''),
+		            ''
+		        ) AS description
+		 FROM medal_definitions md
+		 LEFT JOIN medal_translations mt_fr
+		     ON mt_fr.medal_name_id = md.medal_name_id AND mt_fr.lang = 'fr-FR'
+		 LEFT JOIN medal_translations mt_en
+		     ON mt_en.medal_name_id = md.medal_name_id AND mt_en.lang = 'en-US'
+		 WHERE md.medal_name_id IN (%s)`,
 		medalIDs,
 	)
 	if !ok {

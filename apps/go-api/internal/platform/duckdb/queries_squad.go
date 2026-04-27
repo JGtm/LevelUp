@@ -90,7 +90,9 @@ SELECT
     p.kda                                                        AS ratio,
     COALESCE(p.time_played_seconds, 0)                           AS time_played_seconds,
     COALESCE(p.team_mmr, 0.0)                                    AS team_mmr,
-    p.accuracy
+    p.accuracy,
+    CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+    CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score
 FROM shared.match_participants p
 JOIN shared.v_match_full r ON r.match_id = p.match_id
 JOIN shared.match_participants p_main

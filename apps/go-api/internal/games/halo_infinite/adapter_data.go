@@ -66,6 +66,8 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 		games.CapCareerProgression:  capCareer(a.career),
 		games.CapPveFirefight:       games.CapSupported,
 		games.CapTimeseries:         games.CapNotExposed, // sortira en Phase C
+		games.CapScoreboardExtra:    games.CapNotExposed, // Phase B+
+		games.CapCitationsEngine:    games.CapNotExposed, // Phase F
 	}
 }
 
@@ -171,6 +173,21 @@ func projectEncounterRow(r domain.EncounterRawRow) canonical.EncounterRow {
 
 // LoadTimeseries n'est pas câblée en Phase B.
 func (a *DataAdapter) LoadTimeseries(ctx context.Context, xuid string, query canonical.TimeseriesQuery) (*canonical.MetricSeries, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// LoadMatchScoreboard n'est pas encore câblée (Phase B+).
+func (a *DataAdapter) LoadMatchScoreboard(ctx context.Context, matchID string) ([]canonical.MatchParticipant, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// LoadHighlightEvents n'est pas encore câblée (Phase B+).
+func (a *DataAdapter) LoadHighlightEvents(ctx context.Context, matchID string) ([]canonical.HighlightEvent, error) {
+	return nil, games.ErrCapabilityNotSupported
+}
+
+// LoadFriendsXUIDs n'est pas encore câblée (Phase B+).
+func (a *DataAdapter) LoadFriendsXUIDs(ctx context.Context, xuid string) ([]string, error) {
 	return nil, games.ErrCapabilityNotSupported
 }
 

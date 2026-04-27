@@ -69,6 +69,12 @@ func (m *mockMatchViewRepo) GetMatchMedia(_ context.Context, _, _ string) ([]dom
 func (m *mockMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
 	return nil, nil
 }
+func (m *mockMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]domain.BulkMedalRaw, error) {
+	return nil, nil
+}
+func (m *mockMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
+	return nil, nil
+}
 
 // --- tests ---
 

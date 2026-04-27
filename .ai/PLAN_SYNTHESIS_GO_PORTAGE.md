@@ -6,6 +6,28 @@
 > Date d'audit : 2026-04-26 (révisé 2026-04-27 : ajout Phase 0 migration canonical, alignement multi-titre).
 > Plans jumeaux : [PLAN_TIMESERIES_GO_PORTAGE.md](PLAN_TIMESERIES_GO_PORTAGE.md), [PLAN_MATCH_VIEW_GO_PORTAGE.md](PLAN_MATCH_VIEW_GO_PORTAGE.md), [PLAN_CAREER_GO_PORTAGE.md](PLAN_CAREER_GO_PORTAGE.md), [PLAN_CITATIONS_GO_PORTAGE.md](PLAN_CITATIONS_GO_PORTAGE.md).
 
+> **Note d'amendement — 2026-04-27** : ce plan est **partiellement supersedé** par
+> [`PLAN_META_FOUNDATIONS_GO.md`](./PLAN_META_FOUNDATIONS_GO.md). La **Phase 0
+> migration `canonical.PlayerMatchRow`** disparaît : le méta-plan formalise
+> directement ce contrat (méta-plan § 5.3) et les autres pages le consomment.
+> Les 4 charts canoniques (outcomes by map/mode, heatmap WR jour×heure, top by week,
+> bipolaire Solo/Escouade) passent par les wrappers ECharts du méta-plan. Le
+> nouveau plan Synthesis (en cours de rédaction côté équipe) doit être écrit
+> **directement sur les fondations**, sans amendement intermédiaire.
+
+### Statut des sections de ce plan vis-à-vis du méta-plan
+
+| Section / Phase | Statut | Action |
+|---|---|---|
+| Phase 0 — Migration `canonical.PlayerMatchRow` (12 sous-phases) | Obsolète (absorbée) | Le contrat est formalisé en Phase 0 méta-plan (§ 5.3). |
+| Phase ≥1 — Outcomes by map/mode (stacked bars W/L/T/Left) | À refactorer | `analysis/breakdown.ByMap/ByMode` + `<BarStacked>` ECharts (méta-plan § 5.2). |
+| Phase ≥1 — Heatmap WR jour×heure | À refactorer | `<Heatmap2D>` ECharts ; palette divergente via tokens narrative. |
+| Phase ≥1 — Top by week (stacked + line top_rate) | À refactorer | `analysis/temporal.BucketByGranularity(GranWeek)` + `<BarStacked>` + `<TimeseriesLine>`. |
+| Phase ≥1 — Bipolaire Solo/Escouade | À conserver | Spécifique Synthesis. |
+| Sections excédentaires Go (Scope, Overview, KPI cards, Highlights, Relations) | À décider | Décision côté nouveau plan : réduire vers les 4 charts canoniques ou conserver. |
+| `outcome=4 → OutcomeDNF` mapping | À conserver | Décision déjà tranchée. |
+| `is_with_friends` / `friends_xuids` | À refactorer | Utiliser `port.PlayerMatchFilters.ExcludeFriendsXUIDs`. |
+
 ---
 
 ## 0. Synthèse exécutive
@@ -820,3 +842,248 @@ Ordre de livraison recommandé (1 commit par sous-phase Phase 0, 1 commit par ph
 - P7 : filtres cascade L1.
 
 Cette progression garantit que **chaque commit reste vert** (`go test ./...` + `npm run typecheck`) et que la page reste fonctionnelle à tout moment, même partiellement migrée.
+
+---
+
+## 8. Spécifications ECharts — charts Synthesis-specific
+
+> Les wrappers génériques `<BarStacked>` (outcomes par carte/mode) et `<Heatmap2D>` (heatmap WR jour×heure) sont spécifiés **dans le méta-plan** (`PLAN_META_FOUNDATIONS_GO.md` §3.2.4) avec leur `buildOption` exact. Les deux charts ci-dessous sont **page-only** (pas de promotion au catalogue) — chacun est un fichier dédié dans `apps/web/src/features/synthesis/charts/`.
+
+### 8.1 Combo top-by-period (`buildTopByPeriodOption.ts`)
+
+**Décision** : composition côté page via `<ChartCard>` + `buildOption` custom. Pas de wrapper générique. Raison : un seul consommateur (Synthesis), 3 séries hétérogènes (2 bars empilés + 1 line sur Y secondaire) — le coût d'abstraction surpasserait le bénéfice tant qu'il n'y a pas de 2e usage.
+
+**Fichier** : `apps/web/src/features/synthesis/charts/buildTopByPeriodOption.ts`
+
+**Données attendues** (depuis `domain.SynthesisTopByPeriodEntry[]`) :
+```ts
+type TopByPeriodEntry = {
+  period_label: string   // "12/03" ou "2026-03"
+  period_key: string
+  bucket_kind: 'match' | 'day' | 'week' | 'month'
+  total: number
+  top_count: number
+  other_count: number
+  top_rate: number       // 0..100
+}
+```
+
+**Signature** :
+```ts
+function buildTopByPeriodOption(
+  entries: TopByPeriodEntry[],
+  ctx: {
+    tokens: Record<SemanticToken, string>
+    labels: {
+      topLegend: string      // "Top" ou "Wins" selon présence de rank — voir §6.1
+      otherLegend: string    // "Autres"
+      rateLegend: string     // "Taux Top (%)"
+      yLeft: string          // "Matchs"
+      yRight: string         // "Taux (%)"
+    }
+  },
+): echarts.EChartsCoreOption {
+  const periods = entries.map((e) => e.period_label)
+  return {
+    animation: false,
+    grid: { left: 56, right: 56, top: 56, bottom: 80, containLabel: true },
+    legend: { type: 'plain', orient: 'horizontal', top: 0, left: 'center', itemGap: 16 },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    xAxis: {
+      type: 'category',
+      data: periods,
+      axisLabel: { rotate: -45, interval: 0, hideOverlap: false },
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: ctx.labels.yLeft,
+        nameLocation: 'middle',
+        nameGap: 36,
+        minInterval: 1,
+      },
+      {
+        type: 'value',
+        name: ctx.labels.yRight,
+        nameLocation: 'middle',
+        nameGap: 40,
+        min: 0,
+        max: 100,
+        splitLine: { show: false },  // pas de double quadrillage avec yAxis[0]
+        axisLabel: { formatter: '{value}%' },
+      },
+    ],
+    series: [
+      {
+        type: 'bar',
+        stack: 'matches',
+        name: ctx.labels.topLegend,
+        data: entries.map((e) => e.top_count),
+        itemStyle: { color: ctx.tokens['outcome-win'] },
+        emphasis: { focus: 'series' },
+        barMaxWidth: 40,
+      },
+      {
+        type: 'bar',
+        stack: 'matches',
+        name: ctx.labels.otherLegend,
+        data: entries.map((e) => e.other_count),
+        itemStyle: { color: ctx.tokens['perf-tier-3'], opacity: 0.55 },
+        emphasis: { focus: 'series' },
+        barMaxWidth: 40,
+      },
+      {
+        type: 'line',
+        yAxisIndex: 1,
+        name: ctx.labels.rateLegend,
+        data: entries.map((e) => Math.round(e.top_rate * 10) / 10),
+        smooth: false,
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { color: ctx.tokens['warning'], width: 2 },
+        itemStyle: { color: ctx.tokens['warning'] },
+        z: 10,  // ligne au-dessus des bars
+      },
+    ],
+  }
+}
+```
+
+**Tokens** : `outcome-win` pour la barre « Top » (vert), `perf-tier-3` pour « Autres » (neutre, opacité réduite à 0.55), `warning` (ambre) pour la line `top_rate`.
+
+**Tests Vitest** : snapshot avec 4 entrées ; cas `total=0` partout (chart empty) ; cas `top_rate=100` (vérifier que la line touche le top du Y₂).
+
+**Adaptation `bucket_kind`** : le wrapper ne sait pas s'adapter — c'est le service Go qui choisit `match | day | week | month` via `determineTopPeriod`. Le label de l'axe X est juste passé via `xAxis.name` (à ajouter au `ctx.labels` si on veut afficher « Période : Semaine » par exemple).
+
+### 8.2 Bipolaire Solo/Escouade (`buildBipolarOption.ts`)
+
+**Décision** : composition côté page. Raison : le seul autre lieu théorique d'usage serait Career (compare contexte Solo/Squad), mais Career a déjà ses propres patterns (Bullet, Lollipop). Pas de promotion au catalogue tant qu'un 2e usage ne se présente pas.
+
+**Fichier** : `apps/web/src/features/synthesis/charts/buildBipolarOption.ts`
+
+**Données attendues** (depuis `domain.ComparisonMetricItem[]`) :
+```ts
+type ComparisonMetric = {
+  label: string         // "K/D", "Win Rate", "Précision", …
+  solo_value: number
+  squad_value: number
+  solo_text: string     // déjà formaté (ex: "2.15", "54.3 %")
+  squad_text: string
+}
+```
+
+**Signature** :
+```ts
+function buildBipolarOption(
+  metrics: ComparisonMetric[],
+  ctx: {
+    tokens: Record<SemanticToken, string>
+    labels: { solo: string; squad: string }
+  },
+): echarts.EChartsCoreOption {
+  // Conventions Python (synthesis.py:209-261) :
+  // - Ordre inversé pour que la 1ʳᵉ métrique soit en bas du chart
+  // - Normalisation : scale = max(solo, squad, 1) → x_solo = -solo/scale*100, x_squad = squad/scale*100
+  // - Range fixe [-120, +120] pour laisser de la marge au texte "outside"
+  const ordered = [...metrics].reverse()
+  const scales = ordered.map((m) => Math.max(m.solo_value, m.squad_value, 1))
+  const soloX = ordered.map((m, i) => -(m.solo_value / scales[i]) * 100)
+  const squadX = ordered.map((m, i) => (m.squad_value / scales[i]) * 100)
+  const labels = ordered.map((m) => m.label)
+  const soloTexts = ordered.map((m) => m.solo_text)
+  const squadTexts = ordered.map((m) => m.squad_text)
+  const height = Math.max(320, 70 * metrics.length)
+
+  return {
+    animation: false,
+    grid: { left: 110, right: 80, top: 40, bottom: 24, containLabel: true },
+    legend: {
+      type: 'plain', orient: 'horizontal', top: 0, left: 'center', itemGap: 24,
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: (p: any) => {
+        const idx = p.dataIndex as number
+        const text = p.seriesName === ctx.labels.solo ? soloTexts[idx] : squadTexts[idx]
+        return `<b>${p.seriesName}</b><br/>${labels[idx]} : ${text}`
+      },
+    },
+    xAxis: {
+      type: 'value',
+      min: -120,
+      max: 120,
+      show: false,             // pas de labels ni de quadrillage X (cf. spec Python)
+    },
+    yAxis: {
+      type: 'category',
+      data: labels,
+      axisTick: { show: false },
+      axisLine: { show: false },
+    },
+    series: [
+      {
+        type: 'bar',
+        name: ctx.labels.solo,
+        data: soloX,
+        itemStyle: { color: ctx.tokens['compare-a'] },
+        label: {
+          show: true,
+          position: 'left',                     // texte à gauche de la barre négative
+          formatter: (p: any) => soloTexts[p.dataIndex],
+          color: ctx.tokens['compare-a'],
+          fontSize: 12,
+          fontWeight: 600,
+        },
+        emphasis: { focus: 'self' },
+        barMaxWidth: 28,
+        markLine: {
+          symbol: 'none',
+          silent: true,
+          lineStyle: { color: ctx.tokens['perf-tier-3'], width: 1, type: 'solid' },
+          data: [{ xAxis: 0 }],                 // ligne verticale x=0 (équivalent Plotly add_vline)
+        },
+      },
+      {
+        type: 'bar',
+        name: ctx.labels.squad,
+        data: squadX,
+        itemStyle: { color: ctx.tokens['compare-b'] },
+        label: {
+          show: true,
+          position: 'right',                    // texte à droite de la barre positive
+          formatter: (p: any) => squadTexts[p.dataIndex],
+          color: ctx.tokens['compare-b'],
+          fontSize: 12,
+          fontWeight: 600,
+        },
+        emphasis: { focus: 'self' },
+        barMaxWidth: 28,
+      },
+    ],
+    // hauteur dynamique : Synthesis passe height à <ChartCard>
+    // (le buildOption ne porte pas la hauteur — c'est une prop séparée)
+  }
+}
+```
+
+**Hauteur dynamique** : `height = Math.max(320, 70 * metrics.length)` à passer en prop `<ChartCard height={...}>`, pas dans `buildOption`.
+
+**Tokens** : `compare-a` pour Solo (gauche, x négatifs), `compare-b` pour Escouade (droite, x positifs). Ligne médiane via `markLine.data: [{ xAxis: 0 }]` colorée en `perf-tier-3` (neutre slate).
+
+**Tests Vitest** : snapshot 6 métriques (cas nominal Synthesis) ; snapshot 1 métrique (vérifier `height = 320`) ; cas `solo_value=0` partout (vérifier que `scale=max(0, x, 1)=1` → pas de division par zéro).
+
+### 8.3 Couplage avec le payload backend
+
+Pour que ces deux builders fonctionnent sans glue code page-side, le `SynthesisService` (Phase 3 du plan) renvoie déjà :
+- `MatchesAtTopByPeriod []SynthesisTopByPeriodEntry` → directement consommable par `buildTopByPeriodOption`.
+- `ComparisonMetrics []ComparisonMetricItem` → directement consommable par `buildBipolarOption`.
+
+Le frontend n'a donc qu'à `resolveToken` les couleurs et passer le payload tel quel au builder. Aucune transformation intermédiaire.
+
+### 8.4 Action requise hors plan Synthesis
+
+Le token `heatmap-divergent-mid` est requis par `<Heatmap2D>` pour la palette divergente 3 stops (cf. méta-plan §3.2.4). À ajouter en Phase 0 du méta-plan, **avant** la Phase 4 frontend Synthesis :
+- `apps/web/src/lib/accessibility/semantic-tokens.ts:69` — ajouter `'heatmap-divergent-mid'` à l'enum `SemanticToken` et à `ALL_TOKENS`.
+- `apps/web/src/lib/accessibility/palettes/default.ts` — ajouter `'heatmap-divergent-mid': '#F59E0B'` (amber-500).
+- `apps/web/src/lib/accessibility/palettes/okabe-ito.ts` — ajouter `'heatmap-divergent-mid': '#F0E442'` (Yellow Okabe-Ito).
+- Tests `apps/web/src/lib/accessibility/__tests__/palettes.test.ts` — vérifier que toutes les palettes définissent ce token.

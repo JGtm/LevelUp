@@ -30,8 +30,9 @@ var outcomeColors = map[int]string{
 
 // MatchViewService assemble la réponse Match View.
 type MatchViewService struct {
-	repo port.MatchViewRepository
-	xuid string
+	repo          port.MatchViewRepository
+	citationsRepo port.CitationsRepository
+	xuid          string
 	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
 	// router LoadMatchDetail via la couche canonique. À ce jour, le service
 	// utilise le repo direct car canonical.MatchDetail ne couvre pas encore
@@ -52,6 +53,13 @@ func (s *MatchViewService) WithDataAdapter(a games.TitleDataAdapter) *MatchViewS
 	return s
 }
 
+// WithCitationsRepo injecte le CitationsRepository pour peupler l'onglet Citations.
+// Dégradation gracieuse si nil (onglet vide).
+func (s *MatchViewService) WithCitationsRepo(r port.CitationsRepository) *MatchViewService {
+	s.citationsRepo = r
+	return s
+}
+
 // GetMatchView retourne la réponse complète pour un match.
 //
 //nolint:funlen,cyclop // 11 sections séquentielles d'enrichissement bloquant : meta + analyses + médias
@@ -64,17 +72,20 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 
 	// --- Appels parallèles via errgroup ---
 	var (
-		stats      *domain.PlayerMatchStatsRaw
-		enrich     *domain.MatchEnrichmentRaw
-		scoreboard []domain.ScoreboardRaw
-		medals     []domain.MedalRaw
-		events     []domain.EventRaw
-		weapons    []domain.WeaponKillRaw
-		kvPairs    []domain.KVPairRaw
-		skillRank  *domain.SkillRankRaw
-		encounters []domain.EncounterRaw
-		media      []domain.MediaAssocRaw
-		expected   *domain.ExpectedStatsRaw
+		stats          *domain.PlayerMatchStatsRaw
+		enrich         *domain.MatchEnrichmentRaw
+		scoreboard     []domain.ScoreboardRaw
+		medals         []domain.MedalRaw
+		events         []domain.EventRaw
+		weapons        []domain.WeaponKillRaw
+		kvPairs        []domain.KVPairRaw
+		skillRank      *domain.SkillRankRaw
+		encounters     []domain.EncounterRaw
+		media          []domain.MediaAssocRaw
+		expected       *domain.ExpectedStatsRaw
+		bulkMedals     []domain.BulkMedalRaw
+		bulkWeapons    []domain.BulkWeaponKillRaw
+		matchCitations []domain.CitationMatchViewRow
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -168,6 +179,32 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		}
 		return nil
 	})
+	g.Go(func() error {
+		var e error
+		bulkMedals, e = s.repo.GetMatchBulkMedals(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: bulk_medals indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		bulkWeapons, e = s.repo.GetMatchBulkWeaponKills(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: bulk_weapons indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	if s.citationsRepo != nil {
+		g.Go(func() error {
+			var e error
+			matchCitations, e = s.citationsRepo.LoadMatchCitationsForView(gctx, matchID)
+			if e != nil {
+				slog.Warn("match_view: citations indisponibles", "match_id", matchID, "err", e)
+			}
+			return nil
+		})
+	}
 
 	if err := g.Wait(); err != nil {
 		return domain.MatchViewResponse{}, err
@@ -182,8 +219,8 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	header := buildMatchHeader(matchID, meta, stats, enrich, scoreboard)
 	rank := buildRankBlock(skillRank)
 	summary := buildSummaryTabFull(stats, medals, expected)
-	combat := buildCombatTabFull(weapons, events, kvPairs, s.xuid, durationMS)
-	team := buildTeamTabFull(scoreboard, kvPairs, encounters, s.xuid)
+	combat := buildCombatTabFull(weapons, events, kvPairs, scoreboard, s.xuid, durationMS)
+	team := buildTeamTabFull(scoreboard, kvPairs, encounters, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
 	return domain.MatchViewResponse{
@@ -193,7 +230,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		CombatTab:    combat,
 		TeamTab:      team,
 		MediaTab:     mediaTab,
-		CitationsTab: domain.MatchCitationsTab{Commendations: []domain.MatchCitation{}, Medals: []domain.MatchMedal{}},
+		CitationsTab: buildCitationsTab(matchCitations, medals),
 	}, nil
 }
 
@@ -402,6 +439,23 @@ func convertMedals(raw []domain.MedalRaw) []domain.MatchMedal {
 	return medals
 }
 
+// buildCitationsTab construit l'onglet Citations depuis les données chargées.
+func buildCitationsTab(citations []domain.CitationMatchViewRow, medals []domain.MedalRaw) domain.MatchCitationsTab {
+	commendations := make([]domain.MatchCitation, 0, len(citations))
+	for _, c := range citations {
+		val := float64(c.Value)
+		commendations = append(commendations, domain.MatchCitation{
+			Key:   c.NameNorm,
+			Label: c.NameDisplay,
+			Value: &val,
+		})
+	}
+	return domain.MatchCitationsTab{
+		Commendations: commendations,
+		Medals:        convertMedals(medals),
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Combat Tab
 // ---------------------------------------------------------------------------
@@ -410,6 +464,7 @@ func buildCombatTabFull(
 	weapons []domain.WeaponKillRaw,
 	events []domain.EventRaw,
 	kvPairs []domain.KVPairRaw,
+	scoreboard []domain.ScoreboardRaw,
 	myXUID string,
 	durationMS int64,
 ) domain.MatchCombatTab {
@@ -452,14 +507,15 @@ func buildCombatTabFull(
 		})
 	}
 
-	// Impact badges
-	impactInput := buildImpactInput(kvPairs, myXUID)
-	badges := analysis.ComputeSingleMatchImpact(impactInput)
-	badgesDomain := make([]domain.MatchImpactBadge, 0, len(badges))
-	for _, b := range badges {
+	// Impact badges : calculés pour tous les joueurs du match.
+	impactInput := buildImpactInput(events, scoreboard)
+	allBadges := analysis.ComputeMatchImpactFull(impactInput)
+	badgesDomain := make([]domain.MatchImpactBadge, 0, len(allBadges))
+	for _, b := range allBadges {
 		badgesDomain = append(badgesDomain, domain.MatchImpactBadge{
-			Key:   b.BadgeKey,
-			Label: b.BadgeFR,
+			Key:        b.BadgeKey,
+			Label:      b.BadgeFR,
+			PlayerXUID: b.PlayerXUID,
 		})
 	}
 
@@ -498,23 +554,39 @@ func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfW
 	return events
 }
 
-func buildImpactInput(kvPairs []domain.KVPairRaw, myXUID string) analysis.MatchImpactInput {
-	impactEvents := make([]analysis.ImpactEvent, 0, len(kvPairs))
-	myKills := 0
-	for _, kv := range kvPairs {
-		impactEvents = append(impactEvents, analysis.ImpactEvent{
-			TimeMS:     kv.TimeMS,
-			KillerXUID: kv.KillerXUID,
-			VictimXUID: kv.VictimXUID,
-		})
-		if kv.KillerXUID == myXUID {
-			myKills += kv.KillCount
+// buildImpactInput convertit les données brutes du match vers MatchImpactInput.
+// Les events highlight_events (kill/death + horodatage + acteur) alimentent les
+// badges event-based ; le scoreboard fournit les stats par joueur pour les
+// badges stat-based (top_killer, silent_hero, false_brother).
+func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRaw) analysis.MatchImpactInput {
+	impactEvents := make([]analysis.ImpactEvent, 0, len(events))
+	for _, ev := range events {
+		if ev.TimeMS == nil || ev.XUID == nil {
+			continue
 		}
+		et := ev.EventType
+		if et != "kill" && et != "death" {
+			continue
+		}
+		impactEvents = append(impactEvents, analysis.ImpactEvent{
+			TimeMS:    *ev.TimeMS,
+			EventType: et,
+			ActorXUID: *ev.XUID,
+		})
+	}
+	snaps := make([]analysis.ParticipantSnap, 0, len(scoreboard))
+	for _, p := range scoreboard {
+		snaps = append(snaps, analysis.ParticipantSnap{
+			XUID:    p.XUID,
+			Outcome: p.OutcomeCode,
+			Kills:   p.Kills,
+			Deaths:  p.Deaths,
+			Assists: p.Assists,
+		})
 	}
 	return analysis.MatchImpactInput{
-		KillEvents: impactEvents,
-		MyXUID:     myXUID,
-		MyKills:    myKills,
+		Events:       impactEvents,
+		Participants: snaps,
 	}
 }
 
@@ -547,8 +619,30 @@ func buildTeamTabFull(
 	scoreboard []domain.ScoreboardRaw,
 	kvPairs []domain.KVPairRaw,
 	encounters []domain.EncounterRaw,
+	bulkMedals []domain.BulkMedalRaw,
+	bulkWeapons []domain.BulkWeaponKillRaw,
 	myXUID string,
 ) domain.MatchTeamTab {
+	// Index bulk medals et weapons par XUID pour O(1).
+	medalsByXUID := make(map[string][]domain.PlayerMedalRow, len(scoreboard))
+	for _, m := range bulkMedals {
+		medalsByXUID[m.XUID] = append(medalsByXUID[m.XUID], domain.PlayerMedalRow{
+			MedalID: m.MedalID,
+			Count:   m.Count,
+			Label:   m.Label,
+		})
+	}
+	weaponsByXUID := make(map[string][]domain.PlayerWeaponKillRow, len(scoreboard))
+	for _, w := range bulkWeapons {
+		weaponsByXUID[w.XUID] = append(weaponsByXUID[w.XUID], domain.PlayerWeaponKillRow{
+			WeaponID: w.WeaponID,
+			Kills:    w.Kills,
+			Label:    w.WeaponLabel,
+		})
+	}
+
+	extremes := analysis.ComputeMVPLVP(scoreboard)
+
 	rows := make([]domain.MatchScoreboardRow, 0, len(scoreboard))
 	for _, s := range scoreboard {
 		// Combat Yield calculé pour ce joueur
@@ -571,6 +665,8 @@ func buildTeamTabFull(
 			XUID:                s.XUID,
 			Gamertag:            s.Gamertag,
 			IsMe:                s.XUID == myXUID,
+			IsMVP:               extremes.MVPXUID != "" && s.XUID == extremes.MVPXUID,
+			IsLVP:               extremes.LVPXUID != "" && s.XUID == extremes.LVPXUID,
 			Rank:                s.RankInTeam,
 			Kills:               &s.Kills,
 			Deaths:              &s.Deaths,
@@ -596,6 +692,14 @@ func buildTeamTabFull(
 			DefensiveResistance: dr,
 			DamagePerKill:       dpk,
 			DamagePerDeath:      dpd,
+			ExpectedKills:       s.KillsExpected,
+			ExpectedDeaths:      s.DeathsExpected,
+			ExpectedAssists:     s.AssistsExpected,
+			KillsStdDev:         s.KillsStdDev,
+			DeathsStdDev:        s.DeathsStdDev,
+			AssistsStdDev:       s.AssistsStdDev,
+			Medals:              medalsByXUID[s.XUID],
+			WeaponKills:         weaponsByXUID[s.XUID],
 		}
 		if s.TeamID != nil {
 			team := fmt.Sprintf("t%d", *s.TeamID)

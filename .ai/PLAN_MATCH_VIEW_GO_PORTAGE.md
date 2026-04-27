@@ -7,6 +7,32 @@
 >
 > **OBJECTIF FONDAMENTAL** : la page Go résultante doit être **quasi ISO** avec la version v7/cockpit. Chaque visualisation, KPI, badge, tooltip et interaction listés dans ce plan doit avoir son équivalent fonctionnel à la fin du portage. Toute simplification / dégradation doit être documentée et justifiée explicitement (cf. blockers § 5).
 
+> **Note d'amendement — 2026-04-27** : ce plan est **partiellement supersedé** par
+> [`PLAN_META_FOUNDATIONS_GO.md`](./PLAN_META_FOUNDATIONS_GO.md). Avant toute
+> implémentation à partir de ce plan, consulter le méta-plan pour les fondations
+> communes : helpers `analysis/{temporal,breakdown,narrative}`, type partagé
+> `canonical.PlayerMatchRow`, stack chart **ECharts** (Plotly et Recharts retirés),
+> manifest i18n centralisé. La pile chart cible n'est plus `recharts` mais ECharts.
+> Réécriture complète prévue en **Phase 1** du méta-plan (Squad + MatchView pilotes).
+
+### Statut des sections de ce plan vis-à-vis du méta-plan
+
+| Section / Phase | Statut | Action |
+|---|---|---|
+| Phase A — Header dominance + map thumbnail | À refactorer | Badge dominance via `analysis/narrative.ResolveDominanceBadge` ; map thumbnail via `TitleSemanticAdapter`. |
+| Phase B — KPIs MMR + scoreboard | À conserver | Spécifique Match View. |
+| Phase C — Tug-of-war + cadence | À refactorer | Wrappers `<BarStacked>` et `<Cadence>` ECharts (méta-plan § 5.2.2). |
+| Phase D — Radar Participation 6 axes | À refactorer | `analysis/narrative.ComputeParticipationProfile` + `<Radar>` ECharts. |
+| Phase E — Donut weapons + Spree HS | À refactorer | `<Donut>` + `<BarStacked>` ECharts. |
+| Phase F — Encounters + badges | À refactorer | `LoadPlayerMatches` + `analysis/narrative.ComputeEncounterBadges`. |
+| Phase G — Citations tab | À refactorer | Voir `PLAN_CITATIONS_GO_PORTAGE.md` (lui aussi amendé). |
+| Phase H — Kill feed + cadence + impact timeline | À refactorer | `<TimeseriesLine>` + `<Cadence>` ECharts ; impact via `analysis/narrative.IdentifyImpactRoles` (8 rôles). |
+| Phase I — Charts cleanup (stubs `PlotlyFigurePayload`) | Obsolète | Supersédé par méta-plan § 5.2.1 (`ChartSeries[T]`). |
+| Phase J — `personal_score_awards` lecture Go | À conserver | **Prérequis bloquant Phase 1 méta-plan** — à boucler en Phase 0. |
+| Phase K — Cleanup final | À conserver | Spécifique Match View. |
+
+---
+
 ## 0. Synthèse exécutive
 
 La match view actuelle en Go expose **5 onglets** alignés structurellement avec la version Python v7/cockpit, mais le contenu de chaque onglet est extrêmement appauvri : sur les **~30 visualisations distinctes** identifiées dans la version Python, la version Go n'en implémente correctement qu'**environ 8** (certaines sous forme dégradée). Plusieurs sections backend sont câblées en dur sur des listes vides (`citations_tab.commendations`, `citations_tab.medals`, `team_tab.roster`, `combat_tab.nemesis_duels`).
@@ -528,6 +554,158 @@ Si la capability est absente : retourner `ErrCapabilityNotSupported` (voir § 8.
 | J | `objectifs_norm`, `combat_norm`, `support_norm`, `score_norm`, `impact_norm`, `survie_norm` |
 
 **PathResolver** : tout chemin vers un asset (image map, image rang) doit passer par `PathResolver` — aucun `filepath.Join` direct sur `data/` ni URL construite en dur dans le service ou le repo.
+
+### 5.7 Spécifications de rendu par chart (recharts)
+
+> Audit direct du code Python v7/cockpit (Plotly). Mapping vers recharts équivalents.
+> Format temps commun : ms → `"M:SS"` = `Math.floor(ms/60000) + ":" + String(Math.floor((ms%60000)/1000)).padStart(2,"0")`.
+> Couleurs : toujours via `getSeriesColors(n)` ou `resolveToken(token)` — jamais de hex inline.
+
+| Chart | Hauteur | Axe X | Axe Y | État vide |
+|-------|--------:|-------|-------|-----------|
+| S5 F/D/A grouped | 360px | Labels texte K/D/A | entiers, min=0 | masquer si `!hasExpectedData` |
+| S6 Spree/HS/Perfect | 260px | Labels texte 3 catégories | entiers, min=0 | masquer si `!hasSpreeOrHs` |
+| S7 Donut weapon kills | 320px | — | — | `<EmptyStateNotice>` si `[]` |
+| S9 Radar Participation | 380px | 6 axes angulaires i18n | 0–1, ticks "25%"…"100%" | `<EmptyStateNotice label={t("mv_radar_no_psa")}>` si `!has_data` |
+| C2 KD cumulé + annotations | 340px | ms → M:SS, tick / 60s | entiers, min=0 | masquer si kills+deaths vides |
+| C3+C4 Tug-of-war + kill feed | 420px total (68%+32%) | secondes → M:SS, partagé | 0–100% (haut) / markers (bas) | `<EmptyStateNotice>` si `[]` |
+| C5 Cadence histogram | 320px | secondes → M:SS | kills entiers, min=0 | masquer si total kills < 3 |
+| C8 KV stacked horiz | `max(80, 80+24×n)` px | kill count | gamertag (categ.) | `<EmptyStateNotice>` si `[]` |
+| C9 KD diff. multi-joueurs | 380px | ms → M:SS | score KD (négatif possible) | masquer si `[]` |
+
+**Détails séries et tooltips** :
+
+**S5 F/D/A** — 3 `<Bar>` par catégorie, `barCategoryGap="20%"`. Réel : opacité 1. Attendu : opacité 0.6, SVG pattern hachuré `stroke-dasharray="/ 3"`. Hist (si `hist_match_count ≥ 10`) : opacité 0.35, SVG pattern pointillé. Tooltip : `"K : réel={v} / attendu={exp:.1f} / hist={hist:.1f}"`. Annotation fixe : badge amber en `position:absolute top-2 right-2` avec ratio `(K+A)/D`. Légende : `<Legend verticalAlign="bottom">`.
+
+**S6 Spree/HS/Perfect** — 2 `<Bar>` (réel / hist). Couleurs : `getSeriesColors(3)` = [violet, cyan, vert]. Hist conditionnel ≥ 10 matchs, pattern pointillé. Tooltip : `"Réel: {v} / Hist: {avg:.1f}"`.
+
+**S7 Donut** — `<PieChart>` + `<Pie innerRadius="35%" outerRadius="80%">`. Top 8 armes post-fusion. Couleurs : `getSeriesColors(8)`. Tableau adjacent : 2 colonnes (weapon_label, kill_count), tri décroissant. Tooltip : `"{label}: {count} kills ({pct:.1f}%)"`.
+
+**S9 Radar** — `<RadarChart>` fermé (valeurs + [valeurs[0]]). `<PolarRadiusAxis domain={[0,1]} tickCount={4} tickFormatter={v => v*100+"%"}>`. Fill `resolveToken("perf-tier-2")` opacité 0.25. Grille : `gridColor="rgba(255,255,255,0.12)"`. Tooltip : `"{axe}: {raw} → {pct:.0f}%"`.
+
+**C2 KD cumulé joueur** — Kills `#0072B2` (Okabe bleu) `strokeWidth=2.5`. Deaths `#D55E00` (Okabe vermillion) `strokeDasharray="5 3"`. `<ReferenceDot>` par badge impact, couleur `#E69F00`, label offset vertical `[-40,-90,-140]` si `|Δt| < 30000ms`. Tooltip : `"M:SS — Kills: {k} / Deaths: {d}"`.
+
+**C3+C4 Tug-of-war** — 2 `<ResponsiveContainer>` synchronisés via state `xDomain`. Panneau 1 : `<BarChart>` stackId `"tw"`, Mon équipe `rgba(0,114,178,0.85)`, Ennemi `rgba(213,94,0,0.85)`, `<ReferenceLine y={50} strokeDasharray="4 2">`. `<LabelList>` pour `cumul_my`/`cumul_enemy`. Panneau 2 : `<ScatterChart>` markers diamond 6px. Streaks : `<ReferenceArea>` avec annotation `"{gt} ×{n}"`.
+
+**C5 Cadence** — `<ComposedChart>`. Barres mon équipe `rgba(0,114,178,0.5)` bordure `#0072B2`. Barres ennemi `rgba(213,94,0,0.5)` bordure `#D55E00`. MA : `strokeWidth=3`, outline blanc 5px en fond (trace fantôme). `<ToggleGroup value={bucket}>` 15s/30s/60s (state local). `<ReferenceLine x={peakBin}>` + label pic. Tooltip : `"Bin M:SS — Mon équipe: {my} kills (MA: {ma:.1f}) / Ennemi: {enemy} kills"`.
+
+**C8 KV matrix** — `<BarChart layout="vertical" stackId="kv">`. `yAxis type="category"` trié par rank puis kills desc, `reversed={true}`. 1 `<Bar>` par victime unique, `getSeriesColors(n_victims)`. Margin left 140px. Légende verticale droite. Tooltip : `"{tueur} → {victime} : {count} kills"`.
+
+**C9 KD diff.** — 1 `<Line>` par joueur, `strokeWidth={isMe ? 4.5 : 2.8}`, `opacity={isMe ? 1 : 0.65}`. `<ReferenceLine y={0}>`. Début forcé à (0,0). Hover unifié : `"{gamertag}: {kd_score}"`. Ordre traces : joueur principal d'abord.
+
+### 5.8 Spécifications des tableaux (colonnes, couleurs, tri)
+
+> **Source de vérité colonnes** : `src/ui/pages/match_view_scoreboard.py` v7/cockpit (`_get_scoreboard_cols()`).
+> Source seuils Go : `instances.ts`.
+
+#### Scoreboard (21 colonnes = 19 Python + 2 ajouts Go)
+
+> **Colonnes inversées Python** : seulement `deaths` et `damage_taken` (pas `damage_per_kill`).
+> **MVP/LVP Python** : basé sur count de cellules best/worst, bots exclus — plus juste que max kills seul.
+
+| # | Champ | Label FR | Format | Inversé | Source |
+|---|-------|----------|--------|:---:|--------|
+| 1 | gamertag | Joueur | texte + badges | — | Python |
+| 2 | rank | Rang | entier (1, 2…) | — | Python |
+| 3 | score | Score | entier | — | Python |
+| 4 | kills | K | entier | non | Python |
+| 5 | deaths | D | entier | **oui** | Python |
+| 6 | assists | A | entier | non | Python |
+| 7 | kda | KDA | 2 déc. | non | Python |
+| 8 | top_weapon_label | Arme | texte (résolu) | — | Python |
+| 9 | max_killing_spree | Spree | entier | non | Python |
+| 10 | headshot_kills | HS | entier | non | Python |
+| 11 | perfect_kills | Perf | entier | non | Python |
+| 12 | shots_fired | Tirs | entier | non | Python |
+| 13 | shots_hit | Touchés | entier | non | Python |
+| 14 | accuracy | Précision | `"{v:.1f} %"` | non | Python (champ API direct) |
+| 15 | melee_kills | CàC | entier | non | Python |
+| 16 | power_weapon_kills | PW | entier | non | Python |
+| 17 | damage_dealt | Dmg+ | entier | non | Python |
+| 18 | damage_taken | Dmg- | entier | **oui** | Python |
+| 19 | avg_life_seconds | Vie moy | M:SS | — | Python |
+| 20 | offensive_conversion | Rendement | `"{v*100:.0f}%"` | non | **Ajout Go** |
+| 21 | defensive_resistance | Résistance | `"{v*100:.0f}%"` | non | **Ajout Go** |
+
+- **Highlight best/worst** : `bg-success/40 text-success font-semibold` (best) / `bg-destructive/40 text-destructive` (worst). Condition : `min ≠ max` et colonne non dans `{gamertag, rank, top_weapon_label}`.
+- **MVP** : count de cellules "best" le plus élevé (bots exclus), tie-breaker `rank`. **LVP** : count "worst" le plus élevé.
+- **Joueur courant** (`is_me`) : row `bg-info/10`.
+- **Tri** : aucun contrôle interactif — groupé par `team_side`, ordre backend.
+- **Expansion** : clic row → `<PlayerDetailPanel>` en `<tr><td colSpan={n+3}>`. Indicateur chevron ▸/▾. **Une seule row expandée** (state `expandedXuid: string | null`, toggle null/xuid).
+
+#### Encounters (match view — nouveau composant `<EncountersTable>`)
+
+Distinct du composant career encounters. Construit à partir des données `team_tab.encounters[]`.
+
+| # | Champ | Label FR | Label EN | Format | Couleur |
+|---|-------|----------|----------|--------|---------|
+| 1 | gamertag | Joueur | Player | texte | — |
+| 2 | total_encounters | Matchs | Matches | entier | — |
+| 3 | ally_count + enemy_count | Allié / Ennemi | Ally / Enemy | "{ally}A / {enemy}E" | — |
+| 4 | winrate_as_ally | WR allié | Win% (ally) | pct | `≥65%`=`text-success` / `≤35%`=`text-destructive` |
+| 5 | winrate_vs_enemy | WR vs ennemi | Win% (vs) | pct | `≥65%`=`text-success` / `≤35%`=`text-destructive` |
+| 6 | kills_dealt / deaths_suffered | K/D croisé | K/D | "{k}/{d}" | `k/d ≥ 1.5`=`text-success` / `k/d ≤ 0.67`=`text-destructive` |
+| 7 | badges | Badges | Badges | chips `<EncounterBadgeChip>` | voir thresholds |
+| 8 | last_seen | Dernière rencontre | Last seen | `toLocaleDateString('fr-FR')` | `text-muted-foreground text-xs` |
+
+- **Tri par défaut** : `total_encounters DESC`.
+- **Badge thresholds** :
+  - Allié+ : `winrate_as_ally ≥ 0.65 AND ally_count ≥ 2` → badge vert
+  - Coriace : `winrate_vs_enemy ≤ 0.35 AND enemy_count ≥ 3` → badge rouge
+  - Tough nut : `deaths_suffered ≥ 3 AND kills_dealt/deaths_suffered ≥ 2.0` → badge violet
+- **Pagination** : aucune — afficher toutes les rencontres du match.
+- **Popover légende** : `<Popover>` shadcn déclenchable depuis icône `ℹ`.
+
+#### Weapons table (inline avec donut S7)
+
+| Champ | Label FR | Format |
+|-------|----------|--------|
+| weapon_label | Arme | texte |
+| kill_count | Frags | entier |
+
+- 2 colonnes, tri décroissant par kill_count, pas de pagination.
+
+#### Détail joueur — `<PlayerDetailPanel>` (expander)
+
+**Architecture React** :
+```typescript
+// MatchScoreboard.tsx
+const [expandedXuid, setExpandedXuid] = useState<string | null>(null)
+// Click row → toggle : null si déjà ouvert, xuid sinon
+// Une seule row ouverte à la fois (auto-fermeture)
+// Données : monolithique — pas d'appel API séparé, tout dans MatchViewResponse
+```
+
+**Données dans le payload** : `team_tab.scoreboard[].detail_*` — chargé en batch côté Go :
+- `GetMatchWeaponKillsBatch(matchID, xuids[])` → 1 requête pour N joueurs
+- `GetMatchMedalsBatch(matchID, xuids[])` → 1 requête pour N joueurs
+- `GetMatchExpectedStatsBatch(matchID, xuids[])` → depuis `match_participants` déjà chargé
+- Antagonist : `KVPairsReparametrized(matchID, xuid)` par joueur (acceptable car petit volume)
+
+**Sections dans l'ordre, avec disponibilité** :
+
+| # | Section | Contenu | Tous joueurs ? |
+|---|---------|---------|:-:|
+| 1 | Statistiques | kills, deaths, assists, kda, damage_dealt, damage_taken, accuracy, shots_fired, shots_hit, avg_life_seconds, suicides, betrayals (grid 2-3 col) — accuracy = champ API direct | Oui (shared DB) |
+| 2 | Armes | top 5 weapons avec kill count (icône + label) | Oui (shared DB) |
+| 3 | Médailles | grille médailles avec ×count | Oui (shared DB) |
+| 4 | Expected K/D/A | `"K exp: {exp:.1f} → réel: {actual} (+{delta})"`, couleur `divergent-pos`/`neg` | Oui (shared DB) |
+| 5 | Antagonist | `<NemesisCard>` + `<BullyCard>` (KV pairs reparamétrés avec `myXUID=row.xuid`) | Oui (shared DB) |
+| 6 | Local (Performance + Rank) | Performance score + Skill rank + bot note | **`is_me` uniquement** → `<EmptyStateNotice>` + lien Explorer pour autres |
+| 7 | Citations | Anneaux progression (Phase C) | **`is_me` uniquement** → `<EmptyStateNotice>` pour autres |
+| 8 | Footer | badge "DB joueur" (vert) ou "Données partagées" (gris) + lien `?Explorer&gamertag=` | Toujours |
+
+**CSS insertion** :
+```tsx
+{isExpanded && (
+  <tr key={`${row.xuid}-detail`}>
+    <td colSpan={cols.length + 3} className="p-0">
+      <PlayerDetailPanel row={row} />
+    </td>
+  </tr>
+)}
+```
+Fond : `bg-[#151a1f]/80 border border-border rounded-b`.
 
 ---
 

@@ -1,0 +1,377 @@
+// Package sync — citations.go : backfill des citations calculées par match.
+//
+// Flow :
+//  1. Charger les règles complètes depuis metadata.citation_mappings (Q40)
+//  2. Pour chaque matchID :
+//     a. medals depuis shared.medals_earned
+//     b. stats depuis shared.match_participants (+ "weapon_kills:<name>" via weapon_labels)
+//     c. awards depuis player.personal_score_awards
+//     d. events depuis shared.highlight_events
+//  3. ComputeFullMatchCitations (analysis) → deltas
+//  4. Upsert dans player.match_citations (idempotent : DO NOTHING si déjà présent)
+package sync
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"strings"
+
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+)
+
+// BackfillMatchCitations calcule et persiste les citations pour une liste de matchs.
+//
+// metadataDB : connexion à metadata.duckdb (lecture citation_mappings, weapon_labels).
+// sharedDB   : connexion à shared_matches_v2.duckdb (medals, stats, events, weapon_kills).
+// playerDB   : connexion à stats.duckdb du joueur (awards en lecture, match_citations en écriture).
+// xuid       : identifiant Xbox du joueur.
+// matchIDs   : liste des match_id à traiter.
+func BackfillMatchCitations(
+	ctx context.Context,
+	metadataDB, sharedDB, playerDB *sql.DB,
+	xuid string,
+	matchIDs []string,
+) error {
+	mappings, err := loadFullCitationMappings(ctx, metadataDB)
+	if err != nil {
+		return fmt.Errorf("BackfillMatchCitations: mappings: %w", err)
+	}
+	if len(mappings) == 0 {
+		slog.Info("BackfillMatchCitations: aucun mapping — skip")
+		return nil
+	}
+
+	weaponNames, err := loadWeaponNames(ctx, metadataDB)
+	if err != nil {
+		slog.Warn("BackfillMatchCitations: weapon_names non chargés", "err", err)
+		weaponNames = map[uint64]string{}
+	}
+
+	for _, matchID := range matchIDs {
+		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, weaponNames, xuid, matchID)
+		if err != nil {
+			slog.Warn("BackfillMatchCitations: context", "match_id", matchID, "err", err)
+			continue
+		}
+		deltas := analysis.ComputeFullMatchCitations(citCtx, mappings)
+		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
+			slog.Warn("BackfillMatchCitations: write", "match_id", matchID, "err", err)
+		}
+	}
+	return nil
+}
+
+// buildCitationContext charge toutes les données du match pour le moteur.
+func buildCitationContext(
+	ctx context.Context,
+	sharedDB, playerDB *sql.DB,
+	weaponNames map[uint64]string,
+	xuid, matchID string,
+) (domain.CitationContext, error) {
+	medals, err := loadMedalsForMatch(ctx, sharedDB, matchID, xuid)
+	if err != nil {
+		return domain.CitationContext{}, fmt.Errorf("medals: %w", err)
+	}
+
+	stats, outcome, playlist, gameVariant, isFirefight, err :=
+		loadMatchStats(ctx, sharedDB, matchID, xuid)
+	if err != nil {
+		return domain.CitationContext{}, fmt.Errorf("stats: %w", err)
+	}
+
+	weaponKills, err := loadWeaponKills(ctx, sharedDB, weaponNames, matchID, xuid)
+	if err != nil {
+		slog.Warn("BackfillMatchCitations: weapon_kills", "match_id", matchID, "err", err)
+	}
+	for k, v := range weaponKills {
+		stats["weapon_kills:"+k] = float64(v)
+	}
+
+	awards, err := loadAwards(ctx, playerDB, matchID, xuid)
+	if err != nil {
+		slog.Warn("BackfillMatchCitations: awards", "match_id", matchID, "err", err)
+		awards = map[string]int{}
+	}
+
+	events, err := loadHighlightEvents(ctx, sharedDB, matchID)
+	if err != nil {
+		slog.Warn("BackfillMatchCitations: events", "match_id", matchID, "err", err)
+		events = nil
+	}
+
+	return domain.CitationContext{
+		Stats:       stats,
+		Medals:      medals,
+		Awards:      awards,
+		Events:      events,
+		PlayerXUID:  xuid,
+		Playlist:    strings.ToLower(playlist),
+		GameVariant: strings.ToLower(gameVariant),
+		Outcome:     outcome,
+		IsFirefight: isFirefight,
+	}, nil
+}
+
+// loadFullCitationMappings charge tous les champs de citation_mappings (Q40).
+func loadFullCitationMappings(ctx context.Context, db *sql.DB) ([]domain.CitationFullMapping, error) {
+	const q = `
+SELECT
+    citation_name_norm,
+    citation_name_display,
+    COALESCE(mapping_type, 'medal') AS mapping_type,
+    COALESCE(category, 'misc')     AS category,
+    medal_id,
+    medal_ids,
+    stat_name,
+    award_name,
+    custom_function,
+    composite_children,
+    tier_targets
+FROM citation_mappings
+WHERE enabled IS NOT FALSE
+ORDER BY citation_name_norm`
+
+	rows, err := db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []domain.CitationFullMapping
+	for rows.Next() {
+		var m domain.CitationFullMapping
+		if err := rows.Scan(
+			&m.NameNorm, &m.NameDisplay, &m.MappingType, &m.Category,
+			&m.MedalID, &m.MedalIDs, &m.StatName, &m.AwardName,
+			&m.CustomFunction, &m.CompositeChildren, &m.TierTargets,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, m)
+	}
+	return result, rows.Err()
+}
+
+// loadWeaponNames charge la table weapon_labels depuis metadata.duckdb.
+// Retourne weapon_id → name_en (canonique EN).
+func loadWeaponNames(ctx context.Context, db *sql.DB) (map[uint64]string, error) {
+	const q = `SELECT weapon_id, name_en FROM weapon_labels`
+	rows, err := db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[uint64]string)
+	for rows.Next() {
+		var id uint64
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		result[id] = name
+	}
+	return result, rows.Err()
+}
+
+// loadMedalsForMatch charge les médailles d'un joueur pour un match depuis shared.
+func loadMedalsForMatch(ctx context.Context, db *sql.DB, matchID, xuid string) (map[int64]int, error) {
+	const q = `
+SELECT medal_name_id, count
+FROM medals_earned
+WHERE match_id = ? AND xuid = ?`
+
+	rows, err := db.QueryContext(ctx, q, matchID, xuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	medals := make(map[int64]int)
+	for rows.Next() {
+		var id int64
+		var count int
+		if err := rows.Scan(&id, &count); err != nil {
+			return nil, err
+		}
+		medals[id] += count
+	}
+	return medals, rows.Err()
+}
+
+// loadMatchStats charge les stats numériques du joueur pour le match depuis shared.match_participants.
+// Retourne (stats map, outcome, playlist, game_variant, is_firefight, error).
+func loadMatchStats(
+	ctx context.Context,
+	db *sql.DB,
+	matchID, xuid string,
+) (map[string]float64, int, string, string, bool, error) {
+	const q = `
+SELECT
+    COALESCE(mp.kills, 0)            AS kills,
+    COALESCE(mp.deaths, 0)           AS deaths,
+    COALESCE(mp.assists, 0)          AS assists,
+    COALESCE(mp.kda, 0.0)            AS kda,
+    COALESCE(mp.score, 0)            AS score,
+    COALESCE(mp.damage_dealt, 0.0)   AS damage_dealt,
+    COALESCE(mp.damage_taken, 0.0)   AS damage_taken,
+    COALESCE(mp.accuracy, 0.0)       AS accuracy,
+    COALESCE(mp.headshot_kills, 0)   AS headshot_kills,
+    COALESCE(mp.melee_kills, 0)      AS melee_kills,
+    COALESCE(mp.power_weapon_kills, 0) AS power_weapon_kills,
+    COALESCE(mp.max_killing_spree, 0)  AS max_killing_spree,
+    COALESCE(mp.avg_life_seconds, 0.0) AS avg_life_seconds,
+    COALESCE(mp.outcome, 0)          AS outcome,
+    COALESCE(r.playlist_name, '')    AS playlist_name,
+    COALESCE(r.game_variant_name, '') AS game_variant_name,
+    COALESCE(r.is_firefight, FALSE)  AS is_firefight
+FROM match_participants mp
+JOIN match_registry r ON r.match_id = mp.match_id
+WHERE mp.match_id = ? AND mp.xuid = ?
+LIMIT 1`
+
+	row := db.QueryRowContext(ctx, q, matchID, xuid)
+
+	var (
+		kills, deaths, assists, score, headshotKills, meleeKills int
+		powerWeaponKills, maxKillingSpree                        int
+		kda, damagDealt, damageTaken, accuracy, avgLife          float64
+		outcome                                                  int
+		playlist, gameVariant                                    string
+		isFirefight                                              bool
+	)
+
+	if err := row.Scan(
+		&kills, &deaths, &assists, &kda, &score,
+		&damagDealt, &damageTaken, &accuracy, &headshotKills,
+		&meleeKills, &powerWeaponKills, &maxKillingSpree, &avgLife,
+		&outcome, &playlist, &gameVariant, &isFirefight,
+	); err != nil {
+		return nil, 0, "", "", false, err
+	}
+
+	stats := map[string]float64{
+		"kills":              float64(kills),
+		"deaths":             float64(deaths),
+		"assists":            float64(assists),
+		"kda":                kda,
+		"score":              float64(score),
+		"damage_dealt":       damagDealt,
+		"damage_taken":       damageTaken,
+		"accuracy":           accuracy,
+		"headshot_kills":     float64(headshotKills),
+		"melee_kills":        float64(meleeKills),
+		"power_weapon_kills": float64(powerWeaponKills),
+		"max_killing_spree":  float64(maxKillingSpree),
+		"avg_life_seconds":   avgLife,
+	}
+	return stats, outcome, playlist, gameVariant, isFirefight, nil
+}
+
+// loadWeaponKills charge les kills par arme (effective_weapon_id → canonical name_en) depuis shared.
+func loadWeaponKills(
+	ctx context.Context,
+	db *sql.DB,
+	weaponNames map[uint64]string,
+	matchID, xuid string,
+) (map[string]int, error) {
+	const q = `
+SELECT CAST(effective_weapon_id AS UBIGINT) AS wid, COUNT(*) AS kills
+FROM v_weapon_kills
+WHERE match_id = ? AND xuid = ?
+  AND effective_weapon_id NOT IN (0, 1, 2)
+GROUP BY effective_weapon_id`
+
+	rows, err := db.QueryContext(ctx, q, matchID, xuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]int)
+	for rows.Next() {
+		var wid uint64
+		var kills int
+		if err := rows.Scan(&wid, &kills); err != nil {
+			return nil, err
+		}
+		name, ok := weaponNames[wid]
+		if !ok {
+			continue
+		}
+		result[strings.ToLower(name)] += kills
+	}
+	return result, rows.Err()
+}
+
+// loadAwards charge les awards du joueur pour un match depuis player.personal_score_awards.
+func loadAwards(ctx context.Context, db *sql.DB, matchID, xuid string) (map[string]int, error) {
+	const q = `
+SELECT award_name, COALESCE(SUM(award_count), 0) AS total
+FROM personal_score_awards
+WHERE match_id = ? AND xuid = ?
+GROUP BY award_name`
+
+	rows, err := db.QueryContext(ctx, q, matchID, xuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	awards := make(map[string]int)
+	for rows.Next() {
+		var name string
+		var total int
+		if err := rows.Scan(&name, &total); err != nil {
+			return nil, err
+		}
+		awards[name] = total
+	}
+	return awards, rows.Err()
+}
+
+// loadHighlightEvents charge les events du match depuis shared.highlight_events.
+func loadHighlightEvents(ctx context.Context, db *sql.DB, matchID string) ([]domain.CitationEventRow, error) {
+	const q = `
+SELECT event_type, COALESCE(time_ms, 0) AS time_ms, COALESCE(xuid, '') AS xuid
+FROM highlight_events
+WHERE match_id = ?
+ORDER BY time_ms ASC`
+
+	rows, err := db.QueryContext(ctx, q, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []domain.CitationEventRow
+	for rows.Next() {
+		var e domain.CitationEventRow
+		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID); err != nil {
+			return nil, err
+		}
+		result = append(result, e)
+	}
+	return result, rows.Err()
+}
+
+// writeCitations écrit les deltas dans match_citations (idempotent).
+func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
+	if len(deltas) == 0 {
+		return nil
+	}
+	const q = `
+INSERT INTO match_citations (match_id, citation_name_norm, value)
+VALUES (?, ?, ?)
+ON CONFLICT (match_id, citation_name_norm) DO NOTHING`
+
+	for _, d := range deltas {
+		if _, err := db.ExecContext(ctx, q, matchID, d.NameNorm, d.Value); err != nil {
+			return fmt.Errorf("writeCitations %s/%s: %w", matchID, d.NameNorm, err)
+		}
+	}
+	return nil
+}
