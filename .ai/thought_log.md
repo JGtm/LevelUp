@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-04-28] cleanup(p3.e-session-compare): retrait Plotly fields jamais populés + UI dead code
+
+**Statut** : Complété.
+
+**Décision technique** :
+Phase 3 P3.E du méta-plan + démarrage anticipé Option B (cleanup DTOs serveur). Audit `session_compare_service.go` : les 3 champs `RadarChart`, `KDProgressionChart`, `OutcomesChart` du DTO `SessionCompareResponse` étaient déclarés depuis le sprint 33 mais **jamais assignés** côté Go. Le front recevait toujours `null` → toujours rendu l'`EmptyStateNotice` → code mort visible mais inutile.
+
+OutcomesChart avait déjà été remplacé en P3.D par `<SessionOutcomesDonut>` client-side (data dérivée de wins/losses/total_matches sur SessionCompareEntry). Le radar et la KD progression n'avaient jamais d'équivalent côté backend, donc rien à reconstituer client-side sans nouveau pipeline serveur.
+
+**Cleanup effectué** :
+- `apps/go-api/internal/domain/session_compare.go` : retrait des 3 champs `*PlotlyFigurePayload` (RadarChart, KDProgressionChart, OutcomesChart)
+- `apps/web/src/lib/api/types.ts` : retrait des 3 fields TS correspondants (radar_chart, kd_progression_chart, outcomes_chart)
+- `apps/web/src/features/session-compare/SessionComparePage.tsx` : suppression des 2 Cards mortes (Radar + KD progression) + `import { PlotlyChart }` orphan retiré
+- `apps/web/src/lib/i18n/manifests/session.toml` : suppression de 6 clés orphelines (`session.compare.radar_*` x3, `session.compare.kd_progression_*` x3) → 86 → 80 clés
+
+**Résultats** :
+- `go build ./...` + `go test ./...` → 100% OK
+- `npm run typecheck` filtré sur session-compare → 0 erreur
+- Frontend allégé : 2 Cards mortes retirées + 6 clés i18n orphelines + 1 import inutile
+
+**Impact** : SessionComparePage reste fonctionnel avec donut + summary metrics + tableaux maps/modes. Les 2 sections supprimées étaient toujours rendues comme empty states inutiles.
+
+**Prochaine étape** : P3.F (CombatYield) puis P3.G (KdaBars) pour finir Plotly TimeseriesPage, puis Option B citations + Option C Storybook.
+
 ## [2026-04-28] feat(p3.d-charts): DonutChart wrapper ECharts + migration outcomes session-compare
 
 **Statut** : Complété (donut migré ; radar + kd_progression différés faute de wrappers dédiés).

@@ -2096,9 +2096,6 @@ export interface SessionCompareResponse {
   session_b: SessionCompareEntry | null
   available_sessions: string[]
   metrics: SessionCompareMetricRow[]
-  radar_chart: PlotlyFigurePayload | null
-  kd_progression_chart: PlotlyFigurePayload | null
-  outcomes_chart: PlotlyFigurePayload | null
   maps_table: Record<string, unknown>[]
   modes_table: Record<string, unknown>[]
 }

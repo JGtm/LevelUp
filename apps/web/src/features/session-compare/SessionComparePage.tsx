@@ -7,7 +7,6 @@ import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useSessionComparePage } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
@@ -246,22 +245,6 @@ export function SessionComparePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">{t('session.compare.radar_title')}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-4">
-                    {data.radar_chart ? (
-                      <PlotlyChart figure={data.radar_chart} />
-                    ) : (
-                      <EmptyStateNotice
-                        title={t('session.compare.radar_empty_title')}
-                        description={t('session.compare.radar_empty_description')}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
                     <CardTitle className="text-base">{t('session.compare.summary_title')}</CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -316,22 +299,6 @@ export function SessionComparePage() {
                       <EmptyStateNotice
                         title={t('session.compare.metrics_empty_title')}
                         description={t('session.compare.metrics_empty_description')}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">{t('session.compare.kd_progression_title')}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-4">
-                    {data.kd_progression_chart ? (
-                      <PlotlyChart figure={data.kd_progression_chart} />
-                    ) : (
-                      <EmptyStateNotice
-                        title={t('session.compare.kd_progression_empty_title')}
-                        description={t('session.compare.kd_progression_empty_description')}
                       />
                     )}
                   </CardContent>

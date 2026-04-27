@@ -46,13 +46,10 @@ type SessionCompareMetricRow struct {
 
 // SessionCompareResponse est la réponse de POST /pages/session-compare.
 type SessionCompareResponse struct {
-	SessionA           *SessionCompareEntry      `json:"session_a"`
-	SessionB           *SessionCompareEntry      `json:"session_b"`
-	AvailableSessions  []string                  `json:"available_sessions"`
-	Metrics            []SessionCompareMetricRow `json:"metrics"`
-	RadarChart         *PlotlyFigurePayload      `json:"radar_chart"`
-	KDProgressionChart *PlotlyFigurePayload      `json:"kd_progression_chart"`
-	OutcomesChart      *PlotlyFigurePayload      `json:"outcomes_chart"`
-	MapsTable          []map[string]interface{}  `json:"maps_table"`
-	ModesTable         []map[string]interface{}  `json:"modes_table"`
+	SessionA          *SessionCompareEntry      `json:"session_a"`
+	SessionB          *SessionCompareEntry      `json:"session_b"`
+	AvailableSessions []string                  `json:"available_sessions"`
+	Metrics           []SessionCompareMetricRow `json:"metrics"`
+	MapsTable         []map[string]interface{}  `json:"maps_table"`
+	ModesTable        []map[string]interface{}  `json:"modes_table"`
 }
