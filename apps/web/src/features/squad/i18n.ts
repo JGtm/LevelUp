@@ -22,6 +22,7 @@ export interface SquadText {
   nav: {
     synergies: string
     contributions: string
+    v2: string
   }
   selection: {
     placeholder: (count: number) => string
@@ -91,6 +92,7 @@ const FR_TEXT: SquadText = {
   nav: {
     synergies: 'Synergies',
     contributions: 'Contributions',
+    v2: 'Vue Squad V2',
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
@@ -162,6 +164,7 @@ const EN_TEXT: SquadText = {
   nav: {
     synergies: 'Synergies',
     contributions: 'Contributions',
+    v2: 'Squad V2 view',
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,

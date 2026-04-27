@@ -366,3 +366,53 @@ en = "Medals gallery"
 [squad.medals.empty_match]
 fr = "Aucune médaille filmée"
 en = "No medals recorded"
+
+# ─── S12 : Page V2 (intégration finale) ─────────────────────────────────────
+
+[squad.v2.nav_tab]
+fr = "Vue Squad V2"
+en = "Squad V2 view"
+
+[squad.v2.loading]
+fr = "Chargement de l'escouade…"
+en = "Loading squad…"
+
+[squad.v2.error_prefix]
+fr = "Erreur :"
+en = "Error:"
+
+[squad.v2.empty]
+fr = "Aucun match partagé avec les coéquipiers sélectionnés"
+en = "No shared matches with selected teammates"
+
+[squad.v2.section_synergies]
+fr = "Synergies"
+en = "Synergies"
+
+[squad.v2.section_contributions]
+fr = "Contributions"
+en = "Contributions"
+
+[squad.v2.section_radar]
+fr = "Profil de participation"
+en = "Participation profile"
+
+[squad.v2.section_history]
+fr = "Historique des matchs"
+en = "Match history"
+
+[squad.v2.section_weapons]
+fr = "Armes utilisées"
+en = "Weapons used"
+
+[squad.v2.section_medals]
+fr = "Galerie de médailles"
+en = "Medals gallery"
+
+[squad.v2.weapons.min_kills]
+fr = "Min. frags : {n, number}"
+en = "Min. kills: {n, number}"
+
+[squad.v2.legend.player_indicator]
+fr = "Joueur : {gamertag}"
+en = "Player: {gamertag}"

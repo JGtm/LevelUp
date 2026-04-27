@@ -349,8 +349,10 @@ export function SquadLayout() {
 
   const synergiesRoute = '/players/$playerSlug/squad/synergies' as const
   const contributionsRoute = '/players/$playerSlug/squad/contributions' as const
+  const v2Route = '/players/$playerSlug/squad/v2' as const
   const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
+  const isV2 = !!matchRoute({ to: v2Route, fuzzy: true })
 
   return (
     <SquadContext.Provider
@@ -428,6 +430,17 @@ export function SquadLayout() {
                 }`}
             >
               {t.nav.contributions}
+            </Link>
+            <Link
+              to="/players/$playerSlug/squad/v2"
+              params={{ playerSlug }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors
+                ${isV2
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              {t.nav.v2}
             </Link>
           </nav>
         </div>
