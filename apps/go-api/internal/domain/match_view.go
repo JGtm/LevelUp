@@ -21,24 +21,32 @@ type MatchViewResponse struct {
 
 // MatchViewHeader : en-tête du match.
 type MatchViewHeader struct {
-	MatchID                 string     `json:"match_id"`
-	StartTime               *time.Time `json:"start_time,omitempty"`
-	StartTimeLabel          string     `json:"start_time_label"`
-	OutcomeCode             *int       `json:"outcome_code,omitempty"`
-	OutcomeLabel            string     `json:"outcome_label"`
-	OutcomeColor            string     `json:"outcome_color"`
-	ScoreLabel              string     `json:"score_label,omitempty"`
-	DominanceFlag           bool       `json:"dominance_flag"`
-	HadBotTeammate          bool       `json:"had_bot_teammate"`
-	MapUI                   string     `json:"map_ui"`
-	MapID                   string     `json:"map_id,omitempty"`
-	ModeUI                  string     `json:"mode_ui"`
-	PlaylistLabel           string     `json:"playlist_label"`
-	PerfDisplay             string     `json:"performance_display"`
-	PerfColor               *string    `json:"performance_color,omitempty"`
-	IsExcluded              bool       `json:"is_excluded"`
-	PlayableDurationSeconds *int64     `json:"playable_duration_seconds,omitempty"`
-	WaypointURL             string     `json:"waypoint_url,omitempty"`
+	MatchID        string     `json:"match_id"`
+	StartTime      *time.Time `json:"start_time,omitempty"`
+	StartTimeLabel string     `json:"start_time_label"`
+	OutcomeCode    *int       `json:"outcome_code,omitempty"`
+	OutcomeLabel   string     `json:"outcome_label"`
+	OutcomeColor   string     `json:"outcome_color"`
+	ScoreLabel     string     `json:"score_label,omitempty"`
+	// DominanceFlag : true si un badge narratif (domination/humiliation/etc.)
+	// s'applique à ce match. Maintenu pour compatibilité ascendante avec les
+	// consommateurs front V0 qui n'attendent qu'un booléen.
+	// Deprecated: utiliser DominanceBadge pour le rendu i18n + couleur token.
+	DominanceFlag bool `json:"dominance_flag"`
+	// DominanceBadge : badge narratif typé (LabelKey + ColorToken) résolu via
+	// narrative.ResolveDominanceBadge. Nil si aucun badge ne s'applique.
+	// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné sur les fondations.
+	DominanceBadge          *MatchViewDominanceBadge `json:"dominance_badge,omitempty"`
+	HadBotTeammate          bool                     `json:"had_bot_teammate"`
+	MapUI                   string                   `json:"map_ui"`
+	MapID                   string                   `json:"map_id,omitempty"`
+	ModeUI                  string                   `json:"mode_ui"`
+	PlaylistLabel           string                   `json:"playlist_label"`
+	PerfDisplay             string                   `json:"performance_display"`
+	PerfColor               *string                  `json:"performance_color,omitempty"`
+	IsExcluded              bool                     `json:"is_excluded"`
+	PlayableDurationSeconds *int64                   `json:"playable_duration_seconds,omitempty"`
+	WaypointURL             string                   `json:"waypoint_url,omitempty"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.
@@ -48,6 +56,19 @@ type MatchViewRank struct {
 	NumericVal *float64 `json:"numeric_value,omitempty"`
 	DeltaValue *float64 `json:"delta_value,omitempty"`
 	IconURL    string   `json:"icon_url,omitempty"`
+}
+
+// MatchViewDominanceBadge : badge narratif typé exposé dans le header.
+// Mirror frontend du narrative.DominanceBadge Go (LabelKey + ColorToken).
+type MatchViewDominanceBadge struct {
+	// Flag : valeur numérique de canonical.DominanceFlag (1..5 pour les 5
+	// badges narratifs ; 0 ou inconnu n'est pas exposé — le pointeur est nil).
+	Flag int `json:"flag"`
+	// LabelKey : clé i18n (ex. "narrative.dominance.domination").
+	LabelKey string `json:"label_key"`
+	// ColorToken : token sémantique pour résolution couleur côté front
+	// (ex. "narrative.dominance.win.strong"). Jamais un hex.
+	ColorToken string `json:"color_token"`
 }
 
 // ---------------------------------------------------------------------------
@@ -395,6 +416,10 @@ type MatchEnrichmentRaw struct {
 	PerformanceScore *float64
 	IsWithFriends    bool
 	IsExcluded       bool
+	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
+	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag).
+	// Peuplé par sync.BackfillDominanceFlags via engine.RunBackfillComebackBadges.
+	DominanceFlag int
 }
 
 // MedalRaw : données brutes de Q14.

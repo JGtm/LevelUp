@@ -182,7 +182,8 @@ const Q18MatchEnrichment = `
 SELECT
     pme.performance_score,
     COALESCE(pme.is_with_friends, FALSE) AS is_with_friends,
-    COALESCE(pme.is_excluded, FALSE)     AS is_excluded
+    COALESCE(pme.is_excluded, FALSE)     AS is_excluded,
+    COALESCE(pme.dominance_flag, 0)      AS dominance_flag
 FROM player_match_enrichment pme
 WHERE pme.match_id = ?`
 
