@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -93,6 +94,10 @@ type MatchViewService struct {
 	// consomment directement des canonical.HighlightEvent (pas de conversion à
 	// la volée). Dégradation gracieuse si nil : on retombe sur GetMatchEvents.
 	eventsRepo port.HighlightEventsRepository
+	// awardsRepo (optionnel, chunk MV4.B) : loader des personal_score_awards
+	// pour le radar 6 axes via narrative.ComputeParticipationProfile. Si nil,
+	// le radar reste vide (axes à 0).
+	awardsRepo port.PersonalScoreAwardsRepository
 	xuid       string
 	// titleSlug est nécessaire pour HighlightEventsRepository (capability check
 	// + selection de la DB shared). Injecté via WithTitleSlug.
@@ -140,6 +145,13 @@ func (s *MatchViewService) WithHighlightEventsRepo(r port.HighlightEventsReposit
 // avec ctxkeys.TitleSlug ou un fallback "halo_infinite".
 func (s *MatchViewService) WithTitleSlug(slug string) *MatchViewService {
 	s.titleSlug = slug
+	return s
+}
+
+// WithAwardsRepo injecte le loader personal_score_awards pour le radar
+// 6 axes (chunk MV4.B). Dégradation gracieuse si nil : radar à 0.
+func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) *MatchViewService {
+	s.awardsRepo = r
 	return s
 }
 
@@ -241,6 +253,39 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 			return nil
 		})
 	}
+
+	// MV4.B : chargement parallèle des awards pour le radar 6 axes. Skippé si
+	// le repo n'est pas câblé (radar absent du payload final). Le scoreboard
+	// (chargé en parallèle) fournira la liste des xuids — ici on prend une
+	// approche pragmatique : on charge les awards pour `s.xuid` uniquement
+	// (le main player). Étendre à tous les xuids du scoreboard nécessiterait
+	// d'attendre le scoreboard avant de filtrer, ce qui sérialiserait
+	// l'errgroup. Compromis : radar centré sur le main, xuids supplémentaires
+	// reportés à une itération ultérieure (ou via un MV4.B' qui sérialise).
+	var rawAwards []port.PersonalScoreAwardRow
+	if s.awardsRepo != nil && s.xuid != "" {
+		g.Go(func() error {
+			filters := port.PersonalScoreAwardsFilters{
+				MatchIDs: []string{matchID},
+				XUIDs:    []string{s.xuid},
+			}
+			if e := filters.Validate(); e != nil {
+				slog.WarnContext(gctx, "match_view: PersonalScoreAwardsFilters invalides",
+					"match_id", matchID, "err", e)
+				return nil
+			}
+			rows, e := s.awardsRepo.LoadPersonalScoreAwards(gctx, s.titleSlug, filters)
+			if e != nil {
+				if !errors.Is(e, games.ErrCapabilityNotSupported) {
+					slog.WarnContext(gctx, "match_view: LoadPersonalScoreAwards echec",
+						"match_id", matchID, "err", e)
+				}
+				return nil
+			}
+			rawAwards = rows
+			return nil
+		})
+	}
 	g.Go(func() error {
 		var e error
 		weapons, e = s.repo.GetMatchWeaponKills(gctx, s.xuid, matchID)
@@ -334,6 +379,17 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
+	// MV4.B : radar 6 axes. Mode family dérivée de la pair_name (best-effort).
+	// Les awards sont déjà filtrés sur le main xuid + matchID dans le goroutine.
+	var radar []any
+	if len(rawAwards) > 0 {
+		modeFamily := matchModeFamilyFromMeta(meta)
+		series := BuildMatchRadar(rawAwards, scoreboard, modeFamily)
+		for _, s := range series {
+			radar = append(radar, s)
+		}
+	}
+
 	return domain.MatchViewResponse{
 		Header:       header,
 		Rank:         rank,
@@ -342,7 +398,32 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		TeamTab:      team,
 		MediaTab:     mediaTab,
 		CitationsTab: buildCitationsTab(matchCitations, medals),
+		Radar:        radar,
 	}, nil
+}
+
+// matchModeFamilyFromMeta résout la mode family pour le calcul des seuils
+// radar (narrative.DefaultThresholds). Best-effort : on inspecte pair_name
+// pour identifier slayer / ctf / strongholds / oddball.
+//
+// Si la pair_name ne match aucun pattern connu, retourne "" (thresholds
+// custom neutres).
+func matchModeFamilyFromMeta(meta *domain.MatchMetaRaw) string {
+	if meta == nil || meta.PairName == nil {
+		return ""
+	}
+	name := strings.ToLower(*meta.PairName)
+	switch {
+	case strings.Contains(name, "slayer"):
+		return "slayer"
+	case strings.Contains(name, "ctf") || strings.Contains(name, "capture"):
+		return "ctf"
+	case strings.Contains(name, "stronghold"):
+		return "strongholds"
+	case strings.Contains(name, "oddball") || strings.Contains(name, "neutral"):
+		return "oddball"
+	}
+	return ""
 }
 
 // GetMatchNeighbors retourne les matchs adjacents pour la navigation prev/next.

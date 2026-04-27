@@ -15,6 +15,13 @@ type MatchViewResponse struct {
 	TeamTab      MatchTeamTab      `json:"team_tab"`
 	MediaTab     MatchMediaTab     `json:"media_tab"`
 	CitationsTab MatchCitationsTab `json:"citations_tab"`
+	// Radar (Phase 1 méta-plan § 6.1.3 — chunk MV4.B). Profil de participation
+	// 6 axes (Combat / Survival / Support / Score / Objective / Impact) calculé
+	// via narrative.ComputeParticipationProfile à partir des personal_score_awards.
+	// Vide si awards non disponibles (capability absente ou repo non câblé).
+	// Type `[]any` pour éviter une dépendance domain → service ;
+	// les éléments concrets sont des service.MatchViewRadarSeries.
+	Radar []any `json:"radar,omitempty"`
 	// Sprint 54 B : avertissement de privacy.
 	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
 }
