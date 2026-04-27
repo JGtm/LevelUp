@@ -21652,3 +21652,62 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - **Awards repo (P10+ ou Phase 2)** : `personal_score_awards` aggregation → axe Objective du radar enfin calculé.
 
 **Conclusion** : backend Squad V2 **complet** côté algorithmes (toutes les sections audit 1-22 couvertes en algo). 17 charts + 3 tableaux + 1 galerie. Cumul Phase 1 : 8 chunks (S1, S1b, S2, S3+S4, S5+S6, S7, S8+S9) sur 11. Restent : S9b (DuckDB repos weapons/medals), S10 (wrappers ECharts frontend), S11 (composition page + wiring). Prochaine étape recommandée : S9b en parallèle d'un agent + démarrer S10 wrappers ECharts (tâche frontend importante).
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S10 — Wrappers ECharts génériques (frontend)
+
+**Statut** : Complété (en parallèle d'un agent S9b en cours sur les repos DuckDB)
+
+**Tâche** : Création des 5 wrappers ECharts génériques nécessaires pour rendre tous les charts Squad V2 backend (S3-S8). Chaque wrapper consomme un type canonique côté front (mirror du domain.Go), expose un `buildOption` pur testable, et délègue l'orchestration à `<ChartCard>` (Phase 0).
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation S8+S9).
+
+**Décisions techniques** :
+
+### Architecture
+- **5 wrappers livrés** : `BarStackedChart`, `BarGroupedChart`, `TimeseriesLineChart`, `Heatmap2DChart`, `RadarChart`. Couvre 90% des cas Squad V2 (S3-S8).
+- **Lollipop = BarStacked horizontal** (orientation prop) → pas de wrapper séparé.
+- **Bullet = BarGrouped** avec components limitées à 2 (session, historical) → pas de wrapper séparé.
+- **Pure builder pattern** : chaque wrapper exporte `buildXxxOption(series, opts)` testable sans React tree.
+
+### Helpers communs (`_utils.ts`)
+- Constantes thème : `CHART_BG`, `GRID_COLOR`, `TEXT_COLOR`, `ZERO_LINE`.
+- Bases ECharts : `axisBase`, `tooltipBase`, `legendBase`.
+- Fonctions de couleur : `outcomeColor(outcome)` (win/loss/tie/dnf via tokens), `seriesColor(idx)` (cycle modulo 8 sur `chart-series-1..8`).
+- Helpers axe : `categoricalXAxis(categories)`, `tickInterval(n)` (cap visuel selon volume).
+- Helpers format : `formatDateShort(d)` (DD/MM FR), `formatNumber(v, decimals)`.
+- **Aucun hex direct** — tout passe par `resolveToken(token)` (règle CLAUDE.md couleurs).
+
+### Wrappers
+- **`BarStackedChart`** : consomme `ChartSeries<ChartPointStacked>` (1 série). Orientation vertical/horizontal. `componentColors` map pour palette stable (ex: `{win: 'outcome-win', loss: 'outcome-loss'}`). `componentOrder` pour stabilité.
+- **`BarGroupedChart`** : même payload que BarStacked mais sans `stack` ECharts (bars groupées côte à côte). Cas usage : per-min stats, frags/deaths.
+- **`TimeseriesLineChart`** : consomme `ChartSeries<ChartPoint2D>[]` (N séries). `timeAxis` (datetime) ou category. `outcomeMarkers` colore les markers selon `dp.label` (win/loss/tie/dnf). `seriesNameResolver` pour override du label de série.
+- **`Heatmap2DChart`** : extrait axes uniques depuis datapoints. Palette `sequential` (cold→hot) ou `divergent`. `valueRange` override min/max.
+- **`RadarChart`** : payload spécifique `RadarSeriesPayload` (mirror service.RadarChartSeries Go) — N joueurs, 6 axes alignés. `axisLabels` map pour i18n des indicateurs côté caller.
+
+### Tests
+- **6 fichiers test** (53 tests total côté charts) ciblant les `buildXxxOption` purs.
+- Mock `@/lib/accessibility` pour résolution tokens prédictible (`var(token)` pattern).
+- Couverture : couleurs, ordre des composants, états vides, fallbacks, options ECharts générées.
+
+**Fichiers créés** :
+- `apps/web/src/components/charts/_utils.ts` (~85 L) + `_utils.test.ts`
+- `apps/web/src/components/charts/BarStackedChart.tsx` (~135 L) + `.test.ts`
+- `apps/web/src/components/charts/BarGroupedChart.tsx` (~95 L) + `.test.ts`
+- `apps/web/src/components/charts/TimeseriesLineChart.tsx` (~115 L) + `.test.ts`
+- `apps/web/src/components/charts/Heatmap2DChart.tsx` (~125 L) + `.test.ts`
+- `apps/web/src/components/charts/RadarChart.tsx` (~115 L) + `.test.ts`
+
+**Résultats** :
+- 53 tests Vitest passent (existants ChartCard + 6 nouveaux fichiers).
+- `npm run typecheck` : 0 erreur sur `src/components/charts/` (pré-existants ailleurs unrelated).
+- `npm run lint -- src/components/charts/` : 0 warning sur les nouveaux fichiers.
+
+**Hors scope (chunks à venir)** :
+- **S11 wiring final** : `SquadServiceV2.GetSquadPage` doit appeler les 16 builders + injecter les 2 nouveaux repos S9b. La response handler doit exposer le payload structuré pour le front.
+- **S10b composition React** : composer `SquadSynergiesPage`, `SquadImpactPage`, `SquadContributionsPage` (réécrite), `SquadHistoryPage` en utilisant les wrappers.
+- **`<HistoryTable>`, `<WeaponsTable>`, `<MedalsGallery>`, `<FloatingLegend>`** : composants tableau / galerie / légende sticky (pas des wrappers ECharts) — restent à créer mais pas dans le périmètre S10 (chart wrappers).
+- **Records overlay** sur HS/PK (motif hachuré ECharts via `itemStyle.decal`) — Phase 2 ou chunk dédié.
+
+**Conclusion** : 5 wrappers ECharts génériques opérationnels, testés, sans warning lint/typecheck. Le frontend a toutes les briques pour rendre les 17 charts Squad V2 backend. Restent : composition React (SquadXxxPage) + composants tableau/galerie + S11 wiring service principal. L'agent S9b finalise les repos DuckDB en parallèle.

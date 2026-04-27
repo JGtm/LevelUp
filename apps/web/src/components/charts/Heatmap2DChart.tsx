@@ -1,0 +1,158 @@
+/**
+ * Heatmap2DChart — wrapper ECharts pour `ChartSeries<ChartPointHeatmap>`.
+ *
+ * Consomme :
+ *   - 1 série dont les datapoints sont `{ x, y, value, detail? }`.
+ *   - Axes X et Y sont des chaînes (déjà résolues côté service en labels
+ *     lisibles).
+ *
+ * Cas d'usage Squad V2 :
+ *   - S3 Heatmap player × map (perf score)
+ *   - S6 Intensity match × bucket
+ *   - S5 Impact heatmap match × player (potentiel future)
+ *
+ * Le `value` est mappé via `visualMap` ECharts en gradient cold→hot ou
+ * divergent low→high selon `paletteMode`.
+ */
+import { useCallback } from 'react'
+import type { EChartsCoreOption } from 'echarts/core'
+
+import { resolveToken } from '@/lib/accessibility'
+
+import { ChartCard, type ChartSeries } from './ChartCard'
+import { CHART_BG, axisBase, tooltipBase } from './_utils'
+
+export interface ChartPointHeatmap {
+  x: string
+  y: string
+  value: number
+  detail?: Record<string, unknown>
+}
+
+export type HeatmapPaletteMode = 'sequential' | 'divergent'
+
+export interface Heatmap2DChartProps {
+  title?: string
+  series: ChartSeries<ChartPointHeatmap>[]
+  loading?: boolean
+  error?: Error | null
+  emptyMessage?: string
+  height?: number
+  /** sequential (cold→hot) ou divergent (low→neutral→high). Default 'sequential'. */
+  paletteMode?: HeatmapPaletteMode
+  /** Min/max forcés du visualMap (default = auto-fit). */
+  valueRange?: [number, number]
+}
+
+export function Heatmap2DChart({
+  title,
+  series,
+  loading,
+  error,
+  emptyMessage,
+  height,
+  paletteMode = 'sequential',
+  valueRange,
+}: Heatmap2DChartProps) {
+  const buildOption = useCallback(
+    (s: ChartSeries<ChartPointHeatmap>[]) =>
+      buildHeatmap2DOption(s, { paletteMode, valueRange }),
+    [paletteMode, valueRange],
+  )
+
+  return (
+    <ChartCard
+      title={title}
+      series={series}
+      loading={loading}
+      error={error}
+      emptyMessage={emptyMessage}
+      height={height}
+      buildOption={buildOption}
+    />
+  )
+}
+
+interface BuildOpts {
+  paletteMode?: HeatmapPaletteMode
+  valueRange?: [number, number]
+}
+
+export function buildHeatmap2DOption(
+  series: ChartSeries<ChartPointHeatmap>[],
+  opts: BuildOpts = {},
+): EChartsCoreOption {
+  const { paletteMode = 'sequential', valueRange } = opts
+  if (series.length === 0) {
+    return { backgroundColor: CHART_BG }
+  }
+  const main = series[0]
+  const dps = main.datapoints
+
+  // Axes X / Y déduits des datapoints (preserve l'ordre d'apparition).
+  const xs: string[] = []
+  const ys: string[] = []
+  const xSet = new Set<string>()
+  const ySet = new Set<string>()
+  for (const d of dps) {
+    if (!xSet.has(d.x)) {
+      xSet.add(d.x)
+      xs.push(d.x)
+    }
+    if (!ySet.has(d.y)) {
+      ySet.add(d.y)
+      ys.push(d.y)
+    }
+  }
+
+  // ECharts heatmap data : [xIndex, yIndex, value]
+  const data = dps.map((d) => [xs.indexOf(d.x), ys.indexOf(d.y), d.value])
+
+  const minV = valueRange?.[0] ?? Math.min(...dps.map((d) => d.value))
+  const maxV = valueRange?.[1] ?? Math.max(...dps.map((d) => d.value))
+
+  const colors =
+    paletteMode === 'divergent'
+      ? [
+          resolveToken('heatmap-divergent-low'),
+          resolveToken('divergent-neutral'),
+          resolveToken('heatmap-divergent-high'),
+        ]
+      : [resolveToken('heatmap-cold'), resolveToken('heatmap-hot')]
+
+  return {
+    backgroundColor: CHART_BG,
+    grid: { top: 24, bottom: 80, left: 96, right: 24 },
+    tooltip: {
+      ...tooltipBase,
+      position: 'top',
+      formatter: (params: { data: [number, number, number] }) => {
+        const [xi, yi, v] = params.data
+        return `${ys[yi]} × ${xs[xi]}<br/>Valeur: <b>${v.toFixed(2)}</b>`
+      },
+    },
+    xAxis: { ...axisBase, type: 'category', data: xs, splitArea: { show: true } },
+    yAxis: { ...axisBase, type: 'category', data: ys, splitArea: { show: true } },
+    visualMap: {
+      min: minV,
+      max: maxV,
+      calculable: true,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 8,
+      inRange: { color: colors },
+      textStyle: { color: 'rgba(255,255,255,0.45)', fontSize: 10 },
+    },
+    series: [
+      {
+        name: main.key,
+        type: 'heatmap',
+        data,
+        label: { show: false },
+        emphasis: {
+          itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' },
+        },
+      },
+    ],
+  }
+}
