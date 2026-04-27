@@ -174,3 +174,7 @@ apps/go-api/bin/
 apps/go-api/*.exe
 data/auth/
 bin/
+make.sh
+dev.ps1
+make.ps1
+SETUP.md
