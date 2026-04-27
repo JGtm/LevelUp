@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-27] feat(p2.e-timeseries): manifest TOML + migration Plotly → ECharts (line + heatmap)
+
+**Statut** : Complété.
+
+**Décision technique** :
+Phase 2 P2.E du méta-plan. Création du manifest `apps/web/src/lib/i18n/manifests/timeseries.toml` (52 clés FR + EN couvrant les 6 onglets : KPIs, Cumul, Forme, Intensité, Distributions, Combat). Migration partielle Plotly → ECharts : remplacement de `<TimeseriesLineChart>` (composant Plotly de `components/ui/`) par le wrapper ECharts `components/charts/TimeseriesLineChart` sur les 5 charts de cumul/forme/intensité ; remplacement de `<TimeseriesHeatmap>` (Plotly) par `<Heatmap2DChart>` (ECharts). Histogramme + scatter + KDA bars + combat-yield restent sur Plotly en attendant des wrappers ECharts dédiés (différé Phase 3).
+
+**Architecture** :
+- `seriesAdapters.ts` : 2 adapters purs `cumulativePointsToSeries` (CumulativePoint[] → ChartSeries<ChartPoint2D>[]) et `heatmapCellsToSeries` (IntensityHeatmapPoint[] → ChartSeries<ChartPointHeatmap>[]) avec résolution `day_of_week` → labels FR/EN. avg_kd préservé dans `detail` pour tooltips futurs.
+- `TimeseriesPage.tsx` : passage à `formatMessage(timeseriesManifest, key, locale)` pour toutes les strings (tabs, titres charts, axes, empty/error states). Suppression des constantes hardcodées `TABS`. dowLabels résolus depuis le store locale.
+- Pre-existing TypeScript errors dans `combat-yield-timeseries.tsx` et `timeseries-heatmap.tsx` non touchés (pas dans le scope du chunk).
+
+**Résultats** :
+- `vitest run seriesAdapters.test.ts` → 9/9 OK (cumul mono-trace + ordre + vide ; heatmap FR/EN/hors plage + format hour + detail avg_kd).
+- `npm run typecheck | grep -E "TimeseriesPage|seriesAdapters"` → 0 erreur sur le périmètre touché.
+- 52 clés générées dans `apps/web/src/lib/i18n/generated/timeseries.ts`.
+
+**Prochaine étape** : P2.F (Home, Media, Explorer manifests) et P2.G (Palmares, Session WIP).
+
 ## [2026-04-27] feat(p2.d-citations): manifest TOML + migration Plotly → ECharts BarGroupedChart
 
 **Statut** : Complété.

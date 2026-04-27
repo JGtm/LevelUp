@@ -1,0 +1,231 @@
+# Timeseries i18n manifest — strings de la page Series temporelles.
+#
+# Format ICU MessageFormat. Regenerer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Phase 2 meta-plan § 6.2.1 — pilote Timeseries. Pilote 6 onglets :
+# KPIs, Cumul, Forme, Intensité, Distributions, Combat.
+
+# ─── Tabs ──────────────────────────────────────────────────────────────────
+
+[timeseries.tabs.summary]
+fr = "KPIs"
+en = "KPIs"
+
+[timeseries.tabs.cumul]
+fr = "Cumul"
+en = "Cumulative"
+
+[timeseries.tabs.form]
+fr = "Forme"
+en = "Form"
+
+[timeseries.tabs.intensity]
+fr = "Intensité"
+en = "Intensity"
+
+[timeseries.tabs.distributions]
+fr = "Distributions"
+en = "Distributions"
+
+[timeseries.tabs.combat]
+fr = "Combat"
+en = "Combat"
+
+# ─── Onglet KPIs ───────────────────────────────────────────────────────────
+
+[timeseries.summary.empty_title]
+fr = "KPIs indisponibles"
+en = "KPIs unavailable"
+
+[timeseries.summary.empty_description]
+fr = "Aucune carte KPI n'a été calculée pour cette période."
+en = "No KPI card computed for this period."
+
+[timeseries.summary.kda_timeline_title]
+fr = "Timeline K/D par match"
+en = "K/D timeline per match"
+
+# ─── Onglet Cumul ──────────────────────────────────────────────────────────
+
+[timeseries.cumul.kd_title]
+fr = "K/D cumulé"
+en = "Cumulative K/D"
+
+[timeseries.cumul.kd_series_label]
+fr = "K/D cumulé"
+en = "Cumulative K/D"
+
+[timeseries.cumul.net_title]
+fr = "Score net cumulé"
+en = "Cumulative net score"
+
+[timeseries.cumul.net_series_label]
+fr = "Kills – Morts cumulés"
+en = "Cumulative kills – deaths"
+
+[timeseries.cumul.rolling_title]
+fr = "K/D glissant (20 matchs)"
+en = "Rolling K/D (20 matches)"
+
+[timeseries.cumul.rolling_series_label]
+fr = "K/D glissant"
+en = "Rolling K/D"
+
+[timeseries.cumul.kd_axis_y]
+fr = "K/D"
+en = "K/D"
+
+[timeseries.cumul.kd_reference]
+fr = "K/D = 1"
+en = "K/D = 1"
+
+[timeseries.cumul.net_axis_y]
+fr = "Net"
+en = "Net"
+
+# ─── Onglet Forme ──────────────────────────────────────────────────────────
+
+[timeseries.form.empty_title]
+fr = "Tendance indisponible"
+en = "Trend unavailable"
+
+[timeseries.form.empty_description]
+fr = "Il faut davantage de matchs pour calculer une régression interprétable sur cette période."
+en = "More matches required to compute an interpretable regression for this period."
+
+[timeseries.form.kd_slope]
+fr = "Pente K/D"
+en = "K/D slope"
+
+[timeseries.form.winrate_slope]
+fr = "Pente Win Rate"
+en = "Win rate slope"
+
+[timeseries.form.r_squared]
+fr = "R²"
+en = "R²"
+
+[timeseries.form.r_squared_warning]
+fr = "R² < 0.3 — tendance non significative"
+en = "R² < 0.3 — non-significant trend"
+
+[timeseries.form.r_squared_unreliable]
+fr = "Tendance peu fiable"
+en = "Unreliable trend"
+
+[timeseries.form.ewma_title]
+fr = "EWMA K/D (α = 0.20)"
+en = "EWMA K/D (α = 0.20)"
+
+[timeseries.form.ewma_series_label]
+fr = "EWMA K/D"
+en = "EWMA K/D"
+
+[timeseries.form.ewma_axis_y]
+fr = "K/D lissé"
+en = "Smoothed K/D"
+
+[timeseries.form.per_match]
+fr = "/match"
+en = "/match"
+
+# ─── Onglet Intensité ──────────────────────────────────────────────────────
+
+[timeseries.intensity.heatmap_title]
+fr = "Heatmap d'intensité (jour × heure)"
+en = "Intensity heatmap (day × hour)"
+
+[timeseries.intensity.score_per_min_title]
+fr = "Score par minute"
+en = "Score per minute"
+
+[timeseries.intensity.score_per_min_series_label]
+fr = "Score/min"
+en = "Score/min"
+
+[timeseries.intensity.score_per_min_axis_y]
+fr = "pts/min"
+en = "pts/min"
+
+# ─── Onglet Distributions ─────────────────────────────────────────────────
+
+[timeseries.distributions.kda_title]
+fr = "Distribution K/D"
+en = "K/D distribution"
+
+[timeseries.distributions.kda_axis_x]
+fr = "K/D"
+en = "K/D"
+
+[timeseries.distributions.kills_title]
+fr = "Distribution Kills"
+en = "Kills distribution"
+
+[timeseries.distributions.kills_axis_x]
+fr = "Kills / match"
+en = "Kills / match"
+
+[timeseries.distributions.accuracy_title]
+fr = "Distribution Précision"
+en = "Accuracy distribution"
+
+[timeseries.distributions.accuracy_axis_x]
+fr = "Précision (%)"
+en = "Accuracy (%)"
+
+[timeseries.distributions.score_per_min_title]
+fr = "Distribution Score/min"
+en = "Score/min distribution"
+
+[timeseries.distributions.score_per_min_axis_x]
+fr = "Score / min"
+en = "Score / min"
+
+[timeseries.distributions.rolling_wr_title]
+fr = "Distribution Win Rate glissant"
+en = "Rolling win rate distribution"
+
+[timeseries.distributions.rolling_wr_axis_x]
+fr = "Win Rate (%)"
+en = "Win rate (%)"
+
+[timeseries.distributions.correlations_title]
+fr = "Corrélations"
+en = "Correlations"
+
+# ─── Onglet Combat ─────────────────────────────────────────────────────────
+
+[timeseries.combat.yield_title]
+fr = "Rendement combat par match"
+en = "Combat yield per match"
+
+[timeseries.combat.loading]
+fr = "Chargement…"
+en = "Loading…"
+
+# ─── États transverses ─────────────────────────────────────────────────────
+
+[timeseries.empty.no_data]
+fr = "Données insuffisantes"
+en = "Insufficient data"
+
+[timeseries.empty.no_data_description]
+fr = "Aucun point disponible pour cette période."
+en = "No point available for this period."
+
+[timeseries.empty.page_title]
+fr = "Séries temporelles indisponibles"
+en = "Timeseries unavailable"
+
+[timeseries.empty.page_description]
+fr = "Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API."
+en = "Backend returned no payload for this page. Check filters, local data or API request."
+
+[timeseries.errors.load_failed]
+fr = "Erreur lors du chargement des séries"
+en = "Failed to load timeseries"
+
+[timeseries.errors.retry]
+fr = "Réessayer"
+en = "Retry"
