@@ -25,6 +25,7 @@ import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { HomeSkillPeakSummary, SessionSummaryItem, HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
 import { getHighlightText, resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
 import { getKPIText } from './kpi.i18n'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
@@ -1024,6 +1025,28 @@ export function HomePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Séquence des outcomes — bande compacte avant les tuiles */}
+        {recentMatches.length > 0 && (
+          <OutcomeSequenceTape
+            matches={[...recentMatches].reverse().map((m) => ({
+              matchId: m.match_id,
+              outcome:
+                m.outcome_tone === 'positive'
+                  ? ('win' as const)
+                  : m.outcome_tone === 'negative'
+                    ? ('loss' as const)
+                    : ('tie' as const),
+              map: m.detail,
+            }))}
+            labels={{
+              win: fieldMappings?.outcomes?.['win']?.label ?? 'win',
+              loss: fieldMappings?.outcomes?.['loss']?.label ?? 'loss',
+              tie: fieldMappings?.outcomes?.['tie']?.label ?? 'tie',
+              dnf: fieldMappings?.outcomes?.['dnf']?.label ?? 'dnf',
+            }}
+          />
+        )}
 
         {/* Matchs récents / Favoris — 4 tuiles MatchCard */}
         <Card>

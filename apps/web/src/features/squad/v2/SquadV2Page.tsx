@@ -15,8 +15,10 @@ import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
 import { RadarChart } from '@/components/charts/RadarChart'
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
 import { FloatingLegend } from './components/FloatingLegend'
 import { HistoryTable } from './components/HistoryTable'
 import { WeaponsTable } from './components/WeaponsTable'
@@ -47,6 +49,7 @@ export function SquadV2Page({ playerSlug, teammates, period }: SquadV2PageProps)
   const t = useSquadV2Translator()
   const locale = useAppShellStore((s) => s.locale) ?? 'fr'
   const intlLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const { data: fieldMappings } = useFieldMappings()
 
   const { data, isLoading, error } = useSquadV2({ playerSlug, teammates, period })
 
@@ -79,6 +82,29 @@ export function SquadV2Page({ playerSlug, teammates, period }: SquadV2PageProps)
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="squad-v2-page">
       <FloatingLegend squadOrder={squadOrder} />
+
+      {/* Séquence des outcomes (S13) */}
+      {data.shared_matches.length > 0 && (
+        <section data-testid="squad-v2-outcome-sequence">
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t('squad.v2.section_outcome_sequence')}
+          </p>
+          <OutcomeSequenceTape
+            matches={data.shared_matches.map<OutcomePoint>((m) => ({
+              outcome: m.outcome,
+              matchId: m.match_id,
+              map: m.map?.default_label,
+              mode: m.mode?.default_label,
+            }))}
+            labels={{
+              win: fieldMappings?.outcomes?.['win']?.label ?? 'win',
+              loss: fieldMappings?.outcomes?.['loss']?.label ?? 'loss',
+              tie: fieldMappings?.outcomes?.['tie']?.label ?? 'tie',
+              dnf: fieldMappings?.outcomes?.['dnf']?.label ?? 'dnf',
+            }}
+          />
+        </section>
+      )}
 
       {/* Synergies */}
       {charts && (
