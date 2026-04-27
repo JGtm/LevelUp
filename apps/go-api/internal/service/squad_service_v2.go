@@ -29,20 +29,49 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// SquadV2Loader est l'interface minimale consommée par SquadServiceV2 pour
-// charger les matchs d'un joueur. Permet d'injecter un mock en test sans
-// dépendre de PlayerDB / pool concret.
+// SquadV2Loader est l'interface consommee par SquadServiceV2 pour charger
+// toutes les donnees necessaires a la page Squad V2 (matchs, events, kills
+// armes, medailles).
 //
-// L'implémentation production résout (slug, gamertag) -> PlayerDB via
-// pool.GetOrOpen + duckdb.NewPlayerMatchesRepo (adapter à fournir au handler
-// dans un chunk ultérieur).
+// Permet d'injecter un mock en test sans dependre de PlayerDB / pool concret.
+// L'implementation production resout (slug, gamertag) -> *PlayerDB via le
+// pool global puis delegue aux repos concrets.
+//
+// Capability gating : chaque methode peut retourner games.ErrCapabilityNotSupported
+// pour signaler que la source n'est pas disponible. Le service degrade gracieusement
+// en omettant la section concernee + ajoutant un CapabilityGap.
 type SquadV2Loader interface {
+	// LoadFor charge les matchs d'un joueur (chunk S1).
 	LoadFor(
 		ctx context.Context,
 		slug string,
 		gamertag string,
 		filters port.PlayerMatchFilters,
 	) ([]canonical.PlayerMatchRow, error)
+
+	// LoadHighlightEvents charge les events filmes pour les matchs partages
+	// (chunks S5+S6). Implementation prod : duckdb.HighlightEventsRepo.
+	LoadHighlightEvents(
+		ctx context.Context,
+		slug string,
+		filters port.HighlightEventFilters,
+	) ([]canonical.HighlightEvent, error)
+
+	// LoadWeaponKills charge les kills aggreges par arme (chunk S9).
+	// Implementation prod : duckdb.WeaponKillsRepo.
+	LoadWeaponKills(
+		ctx context.Context,
+		slug string,
+		filters port.WeaponKillFilters,
+	) ([]port.WeaponKillRow, error)
+
+	// LoadMedals charge les medailles par (xuid, match) (chunk S9).
+	// Implementation prod : duckdb.MedalsByXUIDRepo.
+	LoadMedals(
+		ctx context.Context,
+		slug string,
+		filters port.MedalsByXUIDFilters,
+	) ([]port.MedalRow, error)
 }
 
 // SquadServiceV2 orchestre la page Squad V2.
@@ -115,7 +144,234 @@ func (s *SquadServiceV2) GetSquadPage(
 	resp.SharedMatches = intersectByMatchID(perPlayer)
 	resp.SharedMatchesCount = len(resp.SharedMatches)
 	resp.Header = buildSquadHeader(mainGT, perPlayer, resp.SharedMatches)
+
+	// Si pas de matchs partages, retourner sans charger les sections lourdes.
+	if len(resp.SharedMatches) == 0 {
+		return resp, nil
+	}
+
+	// Composition des charts + tableaux. Charge les sources externes
+	// (events, weapons, medals) en parallele puis appelle les 16 builders.
+	rowsBySharedPlayer := projectSharedRows(resp.SharedMatches)
+	squadOrder := buildSquadOrder(mainGT, teammateGTs)
+	squadXUIDs := extractSquadXUIDs(squadOrder, perPlayer)
+
+	historicalMain, _ := s.loadHistoricalMain(ctx, slug, mainGT)
+	events, eventsCapGap := s.loadSharedEvents(ctx, slug, resp.SharedMatches, squadXUIDs)
+	weapons, weaponsCapGap := s.loadWeapons(ctx, slug, resp.SharedMatches, squadXUIDs)
+	medals, medalsCapGap := s.loadMedals(ctx, slug, resp.SharedMatches, squadXUIDs)
+
+	resp.Charts = buildSquadCharts(buildSquadChartsInput{
+		mainGT:         mainGT,
+		squadOrder:     squadOrder,
+		squadXUIDs:     squadXUIDs,
+		rowsByPlayer:   rowsBySharedPlayer,
+		mainHistorical: historicalMain,
+		events:         events,
+		sharedMatches:  resp.SharedMatches,
+	})
+	resp.Tables = buildSquadTables(buildSquadTablesInput{
+		sharedMatches: resp.SharedMatches,
+		rowsByPlayer:  rowsBySharedPlayer,
+		squadOrder:    squadOrder,
+		squadXUIDs:    squadXUIDs,
+		weapons:       weapons,
+		medals:        medals,
+	})
+
+	for _, gap := range []*canonical.CapabilityGap{eventsCapGap, weaponsCapGap, medalsCapGap} {
+		if gap != nil {
+			resp.Capabilities = append(resp.Capabilities, *gap)
+		}
+	}
 	return resp, nil
+}
+
+// buildSquadOrder construit l'ordre stable des gamertags du squad : main puis
+// coequipiers dans l'ordre d'arrivee.
+func buildSquadOrder(mainGT string, teammates []string) []string {
+	out := make([]string, 0, 1+len(teammates))
+	out = append(out, mainGT)
+	out = append(out, teammates...)
+	return out
+}
+
+// extractSquadXUIDs derive le mapping gamertag -> xuid en regardant la
+// premiere PlayerMatchRow disponible pour chaque joueur. Si un joueur n'a
+// aucun match (capability absente), il est omis.
+func extractSquadXUIDs(squadOrder []string, perPlayer map[string][]canonical.PlayerMatchRow) map[string]string {
+	out := make(map[string]string, len(squadOrder))
+	for _, gt := range squadOrder {
+		rows := perPlayer[gt]
+		if len(rows) == 0 {
+			continue
+		}
+		if xuid := rows[0].Self.Identity.XUID; xuid != "" {
+			out[gt] = xuid
+		}
+	}
+	return out
+}
+
+// loadHistoricalMain charge l'historique complet du joueur principal (sans
+// filtre period) pour les charts BulletWinrate / PerfVsHistorical (S3).
+// Capability absente -> retourne nil (les charts dependants seront omis).
+func (s *SquadServiceV2) loadHistoricalMain(ctx context.Context, slug, mainGT string) ([]canonical.PlayerMatchRow, error) {
+	rows, err := s.loader.LoadFor(ctx, slug, mainGT, port.PlayerMatchFilters{})
+	if err != nil {
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, nil
+		}
+		slog.WarnContext(ctx, "squad: loadHistoricalMain echec", "err", err, "player", mainGT)
+		return nil, nil
+	}
+	return rows, nil
+}
+
+// loadSharedEvents charge les events filmes des matchs partages (squad XUIDs).
+// Capability absente -> retourne nil + CapabilityGap pour signaler S5/S6 omis.
+func (s *SquadServiceV2) loadSharedEvents(
+	ctx context.Context,
+	slug string,
+	shared []domain.SquadSharedMatch,
+	squadXUIDs map[string]string,
+) ([]canonical.HighlightEvent, *canonical.CapabilityGap) {
+	if len(shared) == 0 || len(squadXUIDs) == 0 {
+		return nil, nil
+	}
+	matchIDs := matchIDsOf(shared)
+	xuids := xuidsOf(squadXUIDs)
+	// Pour valider les filtres : MatchIDs requis (pas besoin de PlayerXUID
+	// dans ce cas, le repo filtrera client-side via squadXUIDs).
+	filters := port.HighlightEventFilters{MatchIDs: matchIDs}
+	if err := filters.Validate(); err != nil {
+		slog.WarnContext(ctx, "squad: HighlightEventFilters invalides", "err", err)
+		return nil, nil
+	}
+	events, err := s.loader.LoadHighlightEvents(ctx, slug, filters)
+	if err != nil {
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, &canonical.CapabilityGap{
+				CapabilityKey: "match.detail.events",
+				ReasonCode:    "events_unsupported",
+				Severity:      "info",
+				Message:       "Events filmes non disponibles : Impact + Cadence + Intensite omis.",
+			}
+		}
+		slog.ErrorContext(ctx, "squad: LoadHighlightEvents echec", "err", err)
+		return nil, nil
+	}
+	// Filtrer client-side aux squad xuids (repo retourne tous events des matchs).
+	xuidSet := make(map[string]bool, len(xuids))
+	for _, x := range xuids {
+		xuidSet[x] = true
+	}
+	filtered := events[:0]
+	for _, ev := range events {
+		if isEventInSquad(ev, xuidSet) {
+			filtered = append(filtered, ev)
+		}
+	}
+	return filtered, nil
+}
+
+func isEventInSquad(ev canonical.HighlightEvent, xuidSet map[string]bool) bool {
+	if ev.KillerXUID != nil && xuidSet[*ev.KillerXUID] {
+		return true
+	}
+	if ev.VictimXUID != nil && xuidSet[*ev.VictimXUID] {
+		return true
+	}
+	if ev.PlayerXUID != nil && xuidSet[*ev.PlayerXUID] {
+		return true
+	}
+	return false
+}
+
+// loadWeapons charge les kills aggregees par arme pour les matchs partages.
+func (s *SquadServiceV2) loadWeapons(
+	ctx context.Context,
+	slug string,
+	shared []domain.SquadSharedMatch,
+	squadXUIDs map[string]string,
+) ([]port.WeaponKillRow, *canonical.CapabilityGap) {
+	if len(shared) == 0 || len(squadXUIDs) == 0 {
+		return nil, nil
+	}
+	filters := port.WeaponKillFilters{
+		MatchIDs:            matchIDsOf(shared),
+		XUIDs:               xuidsOf(squadXUIDs),
+		IncludeGrenadeMelee: true,
+	}
+	if err := filters.Validate(); err != nil {
+		slog.WarnContext(ctx, "squad: WeaponKillFilters invalides", "err", err)
+		return nil, nil
+	}
+	rows, err := s.loader.LoadWeaponKills(ctx, slug, filters)
+	if err != nil {
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, &canonical.CapabilityGap{
+				CapabilityKey: "match.detail.weapon_kills",
+				ReasonCode:    "weapon_kills_unsupported",
+				Severity:      "info",
+				Message:       "Kills par arme non disponibles : tableau armes omis.",
+			}
+		}
+		slog.ErrorContext(ctx, "squad: LoadWeaponKills echec", "err", err)
+		return nil, nil
+	}
+	return rows, nil
+}
+
+// loadMedals charge les medailles par (xuid, match) pour les matchs partages.
+func (s *SquadServiceV2) loadMedals(
+	ctx context.Context,
+	slug string,
+	shared []domain.SquadSharedMatch,
+	squadXUIDs map[string]string,
+) ([]port.MedalRow, *canonical.CapabilityGap) {
+	if len(shared) == 0 || len(squadXUIDs) == 0 {
+		return nil, nil
+	}
+	filters := port.MedalsByXUIDFilters{
+		MatchIDs: matchIDsOf(shared),
+		XUIDs:    xuidsOf(squadXUIDs),
+	}
+	if err := filters.Validate(); err != nil {
+		slog.WarnContext(ctx, "squad: MedalsByXUIDFilters invalides", "err", err)
+		return nil, nil
+	}
+	rows, err := s.loader.LoadMedals(ctx, slug, filters)
+	if err != nil {
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			return nil, &canonical.CapabilityGap{
+				CapabilityKey: "match.detail.medals",
+				ReasonCode:    "medals_unsupported",
+				Severity:      "info",
+				Message:       "Medailles non disponibles : galerie medailles omise.",
+			}
+		}
+		slog.ErrorContext(ctx, "squad: LoadMedals echec", "err", err)
+		return nil, nil
+	}
+	return rows, nil
+}
+
+func matchIDsOf(shared []domain.SquadSharedMatch) []string {
+	out := make([]string, 0, len(shared))
+	for _, sm := range shared {
+		out = append(out, sm.MatchID)
+	}
+	return out
+}
+
+func xuidsOf(squadXUIDs map[string]string) []string {
+	out := make([]string, 0, len(squadXUIDs))
+	for _, x := range squadXUIDs {
+		out = append(out, x)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // buildSquadHeader construit le SquadHeader (KPIs personnels + score equipe +

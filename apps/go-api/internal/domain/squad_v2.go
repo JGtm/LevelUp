@@ -13,26 +13,87 @@ import (
 
 // SquadPageV2Response est le DTO de la page Squad V2.
 //
-// Phase 1 chunk S1 : structure squelette avec uniquement l'intersection des
-// matchs partagés. Les sections riches (KPI, score d'équipe, charts synergies,
-// impact 8 rôles, radar, etc.) sont remplies par les chunks S2-S11.
+// Phase 1 chunks S1-S11 : structure complete avec en-tete + 17 charts +
+// 3 tableaux. Capabilities porte les CapabilityGap rencontrees (joueurs avec
+// capability match.history absente, sections impossibles a remplir) pour que
+// le frontend affiche un <CapabilityGap mode="placeholder|cta"> approprie.
 //
-// Capabilities porte les CapabilityGap rencontrées (joueurs avec capability
-// match.history absente, sections impossibles à remplir) pour que le frontend
-// affiche un <CapabilityGap mode="placeholder|cta"> approprié.
+// Les sections charts/tables sont nilables : un nil signifie "non charge"
+// (capability absente ou erreur) — le front affiche un <CapabilityGap>.
+// Une section presente mais vide (Datapoints=nil ou len=0) signifie "calcul
+// effectue mais aucune donnee a afficher" (front affiche un empty state).
 type SquadPageV2Response struct {
 	MainPlayer         string             `json:"main_player"`
 	Teammates          []string           `json:"teammates"`
 	Period             string             `json:"period"`
 	SharedMatchesCount int                `json:"shared_matches_count"`
 	SharedMatches      []SquadSharedMatch `json:"shared_matches"`
-	// Header porte les KPIs personnels du joueur principal + score d'equipe +
-	// cartes individuelles (cf. PLAN_SQUAD_GO_PORTAGE § 1.1, P2). Nil si
-	// SharedMatches est vide ou si capability gap principal.
+
+	// Header : KPIs personnels du joueur principal + score d'equipe + cartes
+	// individuelles (chunk S2). Nil si SharedMatches est vide ou si capability
+	// gap principal.
 	Header *SquadHeader `json:"header,omitempty"`
-	// Capabilities reprend canonical.CapabilityGap (CapabilityKey + ReasonCode +
-	// Severity + Message + Retryable) pour signaler les sections degradees.
+
+	// Charts : payloads des 17 charts Squad V2 regroupes par onglet/section.
+	Charts *SquadCharts `json:"charts,omitempty"`
+
+	// Tables : tableaux historique + armes + galerie medailles (chunk S9).
+	Tables *SquadTables `json:"tables,omitempty"`
+
+	// Capabilities reprend canonical.CapabilityGap pour signaler les sections
+	// degradees ou absentes (events non charges, weapons repo absent, etc.).
 	Capabilities []canonical.CapabilityGap `json:"capabilities,omitempty"`
+}
+
+// SquadCharts regroupe tous les payloads chart Squad V2 par onglet.
+type SquadCharts struct {
+	// Onglet Synergies (chunks S3+S4)
+	MapBreakdownLollipop *ChartSeries[ChartPointStacked] `json:"map_breakdown_lollipop,omitempty"`
+	BulletWinrate        *ChartSeries[ChartPointStacked] `json:"bullet_winrate,omitempty"`
+	PerfVsHistorical     *ChartSeries[ChartPoint2D]      `json:"perf_vs_historical,omitempty"`
+	HeatmapPlayerMap     *ChartSeries[ChartPointHeatmap] `json:"heatmap_player_map,omitempty"`
+	TimelineMultiPlayer  []ChartSeries[ChartPoint2D]     `json:"timeline_multi_player,omitempty"`
+	FormScore            *ChartSeries[ChartPoint2D]      `json:"form_score,omitempty"`
+
+	// Onglet Synergies suite (chunks S6 — Cadence + Intensite)
+	Cadence          *ChartSeries[ChartPointStacked] `json:"cadence,omitempty"`
+	IntensityHeatmap *ChartSeries[ChartPointHeatmap] `json:"intensity_heatmap,omitempty"`
+
+	// Onglet Impact (chunk S5) — payload custom (ImpactRolesMatrix + ranking).
+	ImpactMatrix  *ImpactRolesMatrix `json:"impact_matrix,omitempty"`
+	ImpactRanking []ImpactRanking    `json:"impact_ranking,omitempty"`
+
+	// Onglet Contributions (chunk S7)
+	PerMinuteStats        *ChartSeries[ChartPointStacked] `json:"per_minute_stats,omitempty"`
+	FragsDeathsCombined   *ChartSeries[ChartPointStacked] `json:"frags_deaths_combined,omitempty"`
+	HsPkStacked           *ChartSeries[ChartPointStacked] `json:"hs_pk_stacked,omitempty"`
+	KillingSpreeMax       []ChartSeries[ChartPoint2D]     `json:"killing_spree_max,omitempty"`
+	AssistsTimeseries     []ChartSeries[ChartPoint2D]     `json:"assists_timeseries,omitempty"`
+	KDATimeseries         []ChartSeries[ChartPoint2D]     `json:"kda_timeseries,omitempty"`
+	AccuracyTimeseries    []ChartSeries[ChartPoint2D]     `json:"accuracy_timeseries,omitempty"`
+	AvgLifeTimeseries     []ChartSeries[ChartPoint2D]     `json:"avg_life_timeseries,omitempty"`
+	PerformanceTimeseries []ChartSeries[ChartPoint2D]     `json:"performance_timeseries,omitempty"`
+
+	// Onglet Contributions suite (chunk S8 — Radar 6 axes).
+	// Type opaque (any) car le payload Radar est defini cote service
+	// (RadarChartSeries) — laisse le service amont serializer.
+	Radar []any `json:"radar,omitempty"`
+}
+
+// SquadTables regroupe les tableaux + galerie de la page Squad V2 (chunk S9).
+//
+// History : ligne par match partage, K/D/A par joueur (gamertag).
+// Weapons : agregation par arme x joueur, tri total desc.
+// Medals : 1 entree par match × joueur, medailles triees count desc.
+//
+// Les types concrets (HistoryTableRow, WeaponsTableRow, MedalsGalleryEntry)
+// sont definis cote service. Comme ces structs ne sont pas dans le package
+// domain (ils consomment port.WeaponKillRow et port.MedalRow), on expose
+// des `any` — le service amont serialize en JSON correctement.
+type SquadTables struct {
+	History []any `json:"history,omitempty"`
+	Weapons []any `json:"weapons,omitempty"`
+	Medals  []any `json:"medals,omitempty"`
 }
 
 // SquadHeader regroupe les blocs en-tete de la page Squad (cf. audit § 2 :
