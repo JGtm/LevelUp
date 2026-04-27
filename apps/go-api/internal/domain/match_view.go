@@ -166,11 +166,31 @@ type MatchTugOfWarBin struct {
 }
 
 // MatchImpactBadge : badge d'impact calculé (premier sang, finisseur…).
+//
+// Deprecated: utiliser MatchViewImpactRole pour les nouveaux consommateurs
+// (8 rôles narratifs typés via narrative.IdentifyImpactRoles, Phase 1
+// méta-plan § 6.1.3). Conservé pour rétrocompat avec analysis.ComputeMatchImpactFull
+// (4 rôles bilatéral legacy).
 type MatchImpactBadge struct {
 	Key        string `json:"key"`
 	Label      string `json:"label"`
 	PlayerXUID string `json:"player_xuid,omitempty"`
 	Value      string `json:"value,omitempty"`
+}
+
+// MatchViewImpactRole : rôle narratif attribué via narrative.IdentifyImpactRoles
+// (8 rôles : first_blood, clutch_finisher, last_casualty, last_group_kill,
+// first_group_death, silent_hero, false_brother, top_killer).
+//
+// Mirror frontend du narrative.RoleAssignment Go. Rendu via le wrapper
+// `<NarrativeBadge>` (Phase 0 méta-plan § 5.4) avec couleur résolue côté
+// front via tokenCssVar(ColorToken).
+type MatchViewImpactRole struct {
+	XUID       string `json:"xuid"`
+	RoleKey    string `json:"role_key"`
+	LabelKey   string `json:"label_key"`
+	ColorToken string `json:"color_token"`
+	Inverted   bool   `json:"inverted,omitempty"`
 }
 
 // MatchKDTimelinePoint : point K/D sur la timeline du match.
@@ -188,6 +208,18 @@ type MatchCombatTab struct {
 	ImpactBadges    []MatchImpactBadge     `json:"impact_badges"`
 	KDTimeline      []MatchKDTimelinePoint `json:"kd_timeline"`
 	NemesisDuels    []MatchNemesisRow      `json:"nemesis_duels"`
+
+	// ImpactRoles (Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné
+	// fondations narrative). 8 rôles narratifs typés via
+	// narrative.IdentifyImpactRoles, en parallèle des 4 ImpactBadges
+	// legacy. Vide si events ou scoreboard absents.
+	ImpactRoles []MatchViewImpactRole `json:"impact_roles,omitempty"`
+
+	// Cadence (Phase 1 méta-plan § 6.1.3). Cadence intra-match : kills
+	// par phase de 60s, 1 série par xuid du scoreboard.
+	// Format ChartPointStacked → wrapper `<BarStacked>` côté front.
+	// Nil si events absents.
+	Cadence *ChartSeries[ChartPointStacked] `json:"cadence,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
