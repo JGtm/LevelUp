@@ -23,8 +23,12 @@ func TestCareerRepo_GetLUSRHistory_WithData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetLUSRHistory: %v", err)
 	}
-	if len(history) != 1 {
-		t.Errorf("attendu 1, obtenu %d", len(history))
+	// Le seed insere 2 rows dans match_skill_rank (m1 CSR ranked, m2 LUSR social).
+	// Q8LUSRHistory ne filtre pas par playlist_group : retourne l'historique
+	// complet (CSR + LUSR), le filtrage etant la responsabilite du service
+	// qui projette les checkpoints en cards par playlist_group.
+	if len(history) != 2 {
+		t.Errorf("attendu 2 (CSR + LUSR), obtenu %d", len(history))
 	}
 }
 

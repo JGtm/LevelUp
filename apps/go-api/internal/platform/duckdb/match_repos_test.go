@@ -378,12 +378,16 @@ func TestMatchViewRepo_GetMatchMedals_WithMetadataLabels(t *testing.T) {
 func TestMatchViewRepo_GetMatchWeaponKills_WithMetadataLabels(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	_, err := pdb.Player.Exec(ctx,
-		`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id, kills) VALUES (?,?,?,?)`,
-		"m1", pTestXUID, uint64(42), 4,
-	)
-	if err != nil {
-		t.Fatal(err)
+	// Q16WeaponKills agrege via COUNT(*) sur shared.v_weapon_kills :
+	// chaque row de la table weapon_kills represente 1 kill effectif.
+	for i := 0; i < 4; i++ {
+		_, err := pdb.Player.Exec(ctx,
+			`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id) VALUES (?,?,?)`,
+			"m1", pTestXUID, uint64(42),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	repo := NewMatchViewRepo(pdb, pTestXUID)

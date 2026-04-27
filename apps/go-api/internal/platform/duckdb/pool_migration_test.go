@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/domain"
 	duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -39,15 +38,18 @@ func TestGetOrOpen_RunsPlayerMigrationsForLegacySchema(t *testing.T) {
 
 	assertColumnExists(t, pdb.Player, "player_match_enrichment", "is_excluded")
 	assertColumnExists(t, pdb.Player, "player_match_enrichment", "session_label")
-	assertColumnExists(t, pdb.Player, "media_files", "liked")
-	assertColumnExists(t, pdb.Player, "media_files", "liked_at")
+	// Note : media_files etait dans player DB ; depuis la migration
+	// drop_media_from_player_db, elle est servie depuis shared_social.duckdb.
+	// On ne verifie plus les colonnes liked / liked_at sur la player DB
+	// (elles n'y sont plus). La presence cote shared_social est testee dans
+	// les tests dedies media_repo / shared_social.
 
 	if _, err := duckdb.NewMatchHistoryRepo(pdb).LoadAll(ctx); err != nil {
 		t.Fatalf("MatchHistoryRepo.LoadAll after migrations: %v", err)
 	}
-	if _, err := duckdb.NewMediaRepo(pdb).LoadMediaFiles(ctx, domain.MediaFilters{}, 10, 0); err != nil {
-		t.Fatalf("MediaRepo.LoadMediaFiles after migrations: %v", err)
-	}
+	// LoadMediaFiles est skip ici : sans shared_social DB seedee dans
+	// PlayerPoolConfig, le repo retourne vide ou erreur. La couverture du
+	// loader est faite dans TestMediaRepo_LoadMediaFiles_WithSharedSocialSchema.
 }
 
 func TestGetOrOpen_AddsSessionLabelForLegacyPlayerSchema(t *testing.T) {
