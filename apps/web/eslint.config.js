@@ -5,6 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+import noHardcodedStrings from './eslint-rules/no-hardcoded-strings.js'
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
@@ -18,6 +20,20 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+    plugins: {
+      // Plugin custom pour la règle anti-hardcoded-strings (cf.
+      // PLAN_META_FOUNDATIONS_GO § 3.4.3).
+      // Activee en `warn` Phase 0 ; passera en `error` Phase 2 quand
+      // tous les composants seront migres vers le manifest i18n.
+      '@levelup': {
+        rules: {
+          'no-hardcoded-strings': noHardcodedStrings,
+        },
+      },
+    },
+    rules: {
+      '@levelup/no-hardcoded-strings': 'warn',
     },
   },
   {

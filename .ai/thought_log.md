@@ -21164,6 +21164,70 @@ Logique canonique (4 étapes) :
 
 ---
 
+## [2026-04-27] Phase 0 - Chunks 13+14 — ESLint custom + CapabilityGap + NarrativeBadge
+
+**Statut** : ✅ Complété (chunks groupés)
+
+**Tâche** : Clore le frontend Phase 0 avec :
+- **Chunk 13** : règle ESLint custom `@levelup/no-hardcoded-strings` (mode `warn` Phase 0, `error` Phase 2).
+- **Chunk 14** : composants UX `<CapabilityGap>` (3 modes hide/placeholder/cta) + `<NarrativeBadge>` (rendu unifié des badges narratifs) + table de mapping `gap_modes.ts`.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunks 11+12).
+
+### Chunk 13 — Règle ESLint `@levelup/no-hardcoded-strings`
+
+**Décisions techniques** :
+- **Heuristique double seuil** : JSXText flaggé si ≥ 3 mots OU ≥ 15 caractères (avec ≥ 4 lettres). Évite les faux positifs sur "OK", "X", chiffres purs, symboles.
+- **Whitelist d'attributs JSX** : 27 attributs techniques jamais flaggés (`className`, `data-testid`, `key`, `id`, `role`, `name`, `type`, `for`, `href`, `src`, etc.). Whitelist d'attributs porteurs de texte UI : 7 (`title`, `aria-label`, `placeholder`, `alt`, ...). Tout autre attribut est ignoré.
+- **Whitelist de fichiers** : tests, manifests i18n, modules générés, dicts `*.i18n.ts`, `lib/i18n/format.ts`. Rappelle la stratégie de migration progressive du linter `lint-no-hardcoded-fields` existant.
+- **Mode `warn` Phase 0** : pas d'`error` car ~13 violations préexistantes sur `HomePage.tsx` à elles seules (vérifié). Les composants seront migrés au fil de la Phase 1+ vers `formatMessage()`. Passage en `error` est prévu Phase 2 done definition (méta-plan § 6.2.6).
+- **Tests via RuleTester** : 14 cas (8 valides + 6 invalides). RuleTester appelle `describe`/`it` en interne donc `tester.run()` doit être au top-level (Vitest interdit suites imbriquées dans `it()`).
+
+**Activation dans `eslint.config.js`** : plugin local `@levelup` enregistré au flat config, règle `'@levelup/no-hardcoded-strings': 'warn'` appliquée à `**/*.{ts,tsx}`.
+
+### Chunk 14 — `<CapabilityGap>` + `<NarrativeBadge>` + `gap_modes.ts`
+
+**Décisions techniques** :
+- **`<CapabilityGap>` 3 modes** :
+  - `hide` retourne `null` → la section disparaît du DOM
+  - `placeholder` rend une carte (icône optionnelle + reasonLabel + hintLabel optionnel) avec `role="status" aria-live="polite"`
+  - `cta` étend `placeholder` avec un bouton/lien (interne ou externe avec `target=_blank rel="noopener noreferrer"`)
+  - **i18n-naïf** : reasonLabel / hintLabel / cta.label déjà résolus en amont par le consommateur. Le composant ignore la locale.
+- **`<NarrativeBadge>`** : applique la couleur via **CSS variable** (jamais de hex/Tailwind hardcodé, conforme CLAUDE.md §20). Mode `inverted` change les proportions de `color-mix()` pour signaler les rôles négatifs. Test compare les `backgroundColor` standard vs inverted (différents par construction).
+- **`gap_modes.ts`** : table `as const satisfies Record<string, CapabilityGapMode>` avec ~13 sections déjà mappées (Squad, MatchView, Career, Timeseries, Citations, Synthesis, Home). `resolveGapMode(key)` retourne `placeholder` par défaut pour clés inconnues (sécuritaire : évite qu'une section disparaisse silencieusement).
+
+**Fichiers créés** :
+- `apps/web/eslint-rules/no-hardcoded-strings.js` (~145L)
+- `apps/web/eslint-rules/no-hardcoded-strings.test.js` (~120L)
+- `apps/web/src/components/feedback/CapabilityGap.tsx` (~95L)
+- `apps/web/src/components/feedback/CapabilityGap.test.tsx` (~75L)
+- `apps/web/src/components/feedback/NarrativeBadge.tsx` (~85L)
+- `apps/web/src/components/feedback/NarrativeBadge.test.tsx` (~75L)
+- `apps/web/src/lib/capability/gap_modes.ts` (~70L)
+- `apps/web/src/lib/capability/gap_modes.test.ts` (~30L)
+
+**Modifs `eslint.config.js`** : enregistrement du plugin local `@levelup` + activation de la règle en `warn`.
+
+**Résultats** :
+- 35 tests Vitest OK (14 ESLint rule + 9 CapabilityGap + 8 NarrativeBadge + 4 gap_modes).
+- Lint sur `HomePage.tsx` détecte **13 violations préexistantes** en `warn` (test grandeur réelle réussi).
+- `tsc -b --noEmit` propre sur mes fichiers (erreurs préexistantes ailleurs : `appShellStore.test.ts`, `squad/charts/timelineChart.test.ts`).
+- Aucune régression sur les tests Vitest des chunks précédents.
+
+**Conclusion** : **Phase 0 frontend complet**. Tous les axes du méta-plan § 6.0 sont posés :
+- ECharts wrapper `<ChartCard>` ✓
+- Manifests i18n TOML + ICU MessageFormat + build step ✓
+- Règle ESLint custom (en `warn` Phase 0, `error` Phase 2) ✓
+- `<CapabilityGap>` 3 modes ✓
+- `<NarrativeBadge>` avec tokens couleur ✓
+- Table `gap_modes.ts` UX-revue ✓
+
+**Phase 0 entière COMPLÈTE** : côté Go (12 commits, ~7800 L) + frontend (3 commits, ~1100 L). Suite intégration verte, aucune régression, ~165 tests cumulés.
+
+Prochaine étape : Phase 1 — pilotes Squad + MatchView. Après audit `dominance_flag` (chunk 8), le risque bloquant est levé. Le plan enfant Squad (PLAN_SQUAD_GO_PORTAGE.md) est à rédiger en premier (cf. méta-plan § 6.1.1).
+
+---
+
 **Conclusion** : **côté Go de la Phase 0 complet**. Tous les axes serveur sont en place :
 - Helpers purs (temporal / breakdown / narrative)
 - Types canoniques (PlayerMatchRow / DominanceFlag / HighlightEvent étendu)
