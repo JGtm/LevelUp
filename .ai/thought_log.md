@@ -1,5 +1,40 @@
 # Thought Log
 
+## [2026-04-28] feat(p3.d-charts): DonutChart wrapper ECharts + migration outcomes session-compare
+
+**Statut** : Complété (donut migré ; radar + kd_progression différés faute de wrappers dédiés).
+
+**Décision technique** :
+Phase 3 P3.D du méta-plan. Création du wrapper ECharts générique `DonutChart` dans `components/charts/` consommant `ChartSeries<ChartPointDonut>[]` (mono-série, plusieurs slices) avec `sliceColors: Record<name, SemanticToken>` pour la coloration sémantique.
+
+Composant intermédiaire `SessionOutcomesDonut` créé dans `features/session-compare/` : génère 2 donuts côte-à-côte (Session A vs Session B) à partir de `wins` / `losses` / `total_matches - wins - losses` portés par `SessionCompareEntry`. Suppression du payload Plotly server-side `outcomes_chart` côté front (le DTO reste, sera nettoyé Phase 3+).
+
+3 nouvelles clés i18n : `session.compare.donut.{wins,losses,other}` FR/EN. Couleurs : `outcome-win` / `outcome-loss` / `divergent-neutral`.
+
+**Architecture** :
+- `buildDonutOption` builder pur exporté pour test, pattern aligné sur `BarStackedChart` / `HistogramChart` etc.
+- 2 donuts en grille 2-col plutôt qu'1 donut combiné (cleaner UX, 220px chacun).
+- `compare-a` / `compare-b` tokens utilisés pour les titres au-dessus de chaque donut.
+- innerRadius/outerRadius paramétrables (default 50%/75%, donut classique).
+
+**Résultats** :
+- `vitest run DonutChart.test.ts` → 9/9 OK (option vide + ordre slices + radius custom + legend + showPercent + colors).
+- `vitest run session-detail/` → 5/5 OK (aucune régression sur l'existant).
+- `npm run typecheck` filtré sur DonutChart/SessionOutcomesDonut/SessionComparePage → 0 erreur.
+
+**Reliquats Plotly différés (Phase 3+)** :
+- `data.radar_chart` SessionComparePage : besoin d'un wrapper `RadarChart` adapter pour 2 séries comparatives — Squad V2 a déjà `Radar` mais pour autre cas d'usage, à vérifier.
+- `data.kd_progression_chart` SessionComparePage : besoin d'un line chart compare 2 séries (proche `TimeseriesLineChart` mais avec axe X discret par match).
+- `TimeseriesKdaBars` + `CombatYieldTimeseries` (TimeseriesPage) : Bar avec marker outcome + Line compare.
+
+**Récap Phase 3 (4 chunks A→D)** :
+- 12 manifests TOML totalisant 644 clés FR/EN (tous les pages live + WIP couverts)
+- 4 modules legacy `i18n.ts` réécrits comme adapters minces (kpi, spartanIdentity, highlights, palmares + media)
+- 3 wrappers ECharts génériques nouveaux (HistogramChart, ScatterChart, DonutChart) + 4 wrappers Plotly orphelins supprimés (~430L dette)
+- TimeseriesPage entièrement migré (sauf KdaBars + CombatYield) + SessionCompare donut migré
+
+**Prochaine étape** : reliquats Plotly (radar + kd_progression + KdaBars + CombatYield) ou nouveaux chunks Phase 3 selon priorités utilisateur.
+
 ## [2026-04-28] feat(p3.c-home-palmares): consolidation legacy i18n.ts → manifests TOML
 
 **Statut** : Complété.
