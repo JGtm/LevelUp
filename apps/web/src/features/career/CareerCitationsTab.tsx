@@ -7,7 +7,6 @@ import { useParams } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { useCitationsPage } from '@/features/citations/queries'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -52,7 +51,7 @@ export function CareerCitationsTab() {
     )
   }
 
-  const { commendations, medals_summary, distribution_chart } = data
+  const { commendations, medals_summary } = data
 
   // Sprint 55 B5 — Résumé de maîtrise
   const completedCommendations = commendations.filter(c => (c.mastery_pct ?? 0) >= 100).length
@@ -91,18 +90,6 @@ export function CareerCitationsTab() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Distribution Plotly */}
-      {distribution_chart && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Distribution des citations</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <PlotlyChart figure={distribution_chart} />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Commendations */}
       <Card>

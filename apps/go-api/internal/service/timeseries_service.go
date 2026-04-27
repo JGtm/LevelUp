@@ -2,11 +2,10 @@
 //
 // Sprint 33 : adapte les données StatsService vers le contrat TimeseriesPageResponse.
 //
-// Décision architecturale Plotly : le Go envoie PlotlyFigurePayload = null pour
-// tous les charts. Le frontend React reconstruit les visualisations à partir
-// des data points fournis dans les onglets existants du StatsService (win_loss,
-// accuracy, objective, form, lusr). Cette approche évite la génération Plotly
-// server-side en Go tout en restant compatible avec le contrat TypeScript.
+// Architecture data-only : le Go ne génère pas de figures Plotly. Le frontend
+// React reconstruit les visualisations via les wrappers ECharts à partir des
+// data points bruts fournis dans les onglets (cumulative_kd, ewma_kd_points,
+// kda_buckets, correlation_points, heatmap_data, etc.).
 package service
 
 import (
@@ -379,7 +378,6 @@ func buildDistributionsTab(matches []domain.StatsMatchRow) domain.TimeseriesDist
 			ScorePerMinBuckets: []domain.DistributionBucket{},
 			RollingWRBuckets:   []domain.DistributionBucket{},
 			CorrelationPoints:  []domain.CorrelationDataPair{},
-			Correlations:       []domain.PlotlyFigurePayload{},
 		}
 	}
 
@@ -390,7 +388,6 @@ func buildDistributionsTab(matches []domain.StatsMatchRow) domain.TimeseriesDist
 		ScorePerMinBuckets: buildScorePerMinBuckets(matches),
 		RollingWRBuckets:   buildRollingWRBuckets(matches),
 		CorrelationPoints:  buildCorrelationPoints(matches),
-		Correlations:       []domain.PlotlyFigurePayload{},
 	}
 }
 

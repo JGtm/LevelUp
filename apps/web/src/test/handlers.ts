@@ -101,7 +101,6 @@ const citationsFixture = {
     unfiltered_total: 42,
     delta_count: -30,
   },
-  distribution_chart: null,
 }
 
 const emptyPagination = { total: 0, page: 1, page_size: 20, has_next: false, has_prev: false }

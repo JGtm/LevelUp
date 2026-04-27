@@ -1926,7 +1926,6 @@ export interface CitationsPageResponse {
   commendations: CommendationSummary[]
   medals_summary: MedalSummary[]
   deltas: CitationsDeltas
-  distribution_chart: PlotlyFigurePayload | null
 }
 
 // ---------------------------------------------------------------------------
@@ -1992,16 +1991,9 @@ export interface TimeseriesKpiCard {
 
 export interface TimeseriesSummaryTab {
   kpi_cards: TimeseriesKpiCard[]
-  win_rate_chart: PlotlyFigurePayload | null
-  score_chart: PlotlyFigurePayload | null
-  kda_dist_chart: PlotlyFigurePayload | null
 }
 
 export interface TimeseriesCumulTab {
-  cumul_net_chart: PlotlyFigurePayload | null
-  cumul_kd_chart: PlotlyFigurePayload | null
-  rolling_kd_chart: PlotlyFigurePayload | null
-  // Data points bruts pour les charts React client-side.
   cumulative_kd: CumulativePoint[]
   cumulative_net: CumulativePoint[]
   rolling_kd: CumulativePoint[]
@@ -2016,27 +2008,16 @@ export interface TimeseriesRegressionStats {
 }
 
 export interface TimeseriesFormTab {
-  ewma_kd_chart: PlotlyFigurePayload | null
-  regression_chart: PlotlyFigurePayload | null
-  net_score_per_hour_chart: PlotlyFigurePayload | null
   regression_stats: TimeseriesRegressionStats
-  // Data points bruts pour les charts React client-side.
   ewma_kd_points: CumulativePoint[]
 }
 
 export interface TimeseriesIntensityTab {
-  intensity_heatmap: PlotlyFigurePayload | null
-  score_per_minute_chart: PlotlyFigurePayload | null
-  // Data points bruts pour les charts React client-side.
   heatmap_data: IntensityHeatmapPoint[]
   score_per_min_data: CumulativePoint[]
 }
 
 export interface TimeseriesDistributionsTab {
-  kda_distribution: PlotlyFigurePayload | null
-  first_kill_dist: PlotlyFigurePayload | null
-  correlations: PlotlyFigurePayload[]
-  // Data points bruts pour les charts React client-side.
   kda_buckets: DistributionBucket[]
   kills_buckets: DistributionBucket[]
   accuracy_buckets: DistributionBucket[]
