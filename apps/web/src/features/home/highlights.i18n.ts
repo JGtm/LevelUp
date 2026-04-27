@@ -1,127 +1,96 @@
 /**
- * Traductions des libellés de la section « Faits marquants » (Home).
+ * highlights.i18n.ts — adapter mince entre `home.toml` et la résolution des
+ * clés `title_key` / `label_key` / `detail_key` envoyées par le backend dans
+ * `HighlightItem` / `HighlightSlide`.
  *
- * Les clés sont émises par le backend via les champs `title_key`, `label_key`,
- * `detail_key` de `HighlightItem` / `HighlightSlide`. Le front résout ici.
+ * Phase 3 P3.C : source de vérité = `lib/i18n/manifests/home.toml` sections
+ * `home.highlights.*`. Le mapping clé backend → clé manifest est défini ici
+ * (les clés backend `highlight.title.*` / `highlight.slide.*` sont mappées
+ * vers `home.highlights.title.*` / `home.highlights.label.*` etc.).
  *
- * Les détails localisables acceptent des paramètres via `detail_params`
- * (p.ex. `{count: 3}` pour le pluriel).
+ * Les détails paramétrés (win_streak, favorite_map, volume_*) utilisent ICU
+ * (pluriels + interpolation) pour reproduire les anciennes lambdas.
  */
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
 export type HighlightLocale = 'fr' | 'en'
 
 type Params = Record<string, string | number>
 
-interface DetailEntry {
-  (params: Params): string
-}
-
 interface HighlightTextDict {
-  titles: Record<string, string>
-  labels: Record<string, string>
-  details: Record<string, DetailEntry>
   section: {
     title: string
     tooltipIntro: string
   }
 }
 
-const FR: HighlightTextDict = {
-  titles: {
-    'highlight.title.perf_avg': 'Performance',
-    'highlight.title.skill_delta_lusr': 'LUSR',
-    'highlight.title.skill_delta_csr': 'CSR',
-    'highlight.title.best_underdog_win': 'Plus belle victoire',
-    'highlight.title.kda_peak': 'Pic FDA récent',
-    'highlight.title.mastery': 'Maîtrise',
-    'highlight.title.per_minute': 'Stats par min.',
-    'highlight.title.volume': 'Volume',
-    'highlight.title.serie': 'Séries',
-  },
-  labels: {
-    'highlight.slide.headshots': 'Tirs à la tête',
-    'highlight.slide.perfect_kills': 'Frags parfaits',
-    'highlight.slide.accuracy': 'Précision',
-    'highlight.slide.kills': 'Frags',
-    'highlight.slide.deaths': 'Morts',
-    'highlight.slide.assists': 'Assistances',
-    'highlight.slide.killing_spree_max': 'Folie meurtrière (max)',
-    'highlight.slide.win_streak': 'Victoires consécutives',
-    'highlight.slide.favorite_map': 'Carte fétiche',
-  },
-  details: {
-    'highlight.detail.win_streak': ({ count }) =>
-      `${count} ${Number(count) === 1 ? 'victoire' : 'victoires'} d'affilée`,
-    'highlight.detail.favorite_map': ({ wins, losses, wr }) =>
-      `${wins}V/${losses}D · ${wr}% victoires`,
-    'highlight.detail.volume_wr': ({ wr }) => `Taux de victoire ${wr}%`,
-    'highlight.detail.volume_kda_wr': ({ kda, wr }) => `FDA ${kda} · ${wr}% victoires`,
-  },
-  section: {
-    title: 'Faits marquants',
-    tooltipIntro:
-      'Chiffres calculés sur ta dernière session et jusqu’à 4 sessions récentes avec la même composition (solo/escouade) et la même playlist dominante.',
-  },
-}
-
-const EN: HighlightTextDict = {
-  titles: {
-    'highlight.title.perf_avg': 'Avg. performance',
-    'highlight.title.skill_delta_lusr': 'LUSR',
-    'highlight.title.skill_delta_csr': 'CSR',
-    'highlight.title.best_underdog_win': 'Best underdog win',
-    'highlight.title.kda_peak': 'Recent KDA peak',
-    'highlight.title.mastery': 'Mastery',
-    'highlight.title.per_minute': 'Per minute',
-    'highlight.title.volume': 'Volume',
-    'highlight.title.serie': 'Streak',
-  },
-  labels: {
-    'highlight.slide.headshots': 'Headshots',
-    'highlight.slide.perfect_kills': 'Perfect kills',
-    'highlight.slide.accuracy': 'Accuracy',
-    'highlight.slide.kills': 'Kills',
-    'highlight.slide.deaths': 'Deaths',
-    'highlight.slide.assists': 'Assists',
-    'highlight.slide.killing_spree_max': 'Killing spree (max)',
-    'highlight.slide.win_streak': 'Win streak',
-    'highlight.slide.favorite_map': 'Favorite map',
-  },
-  details: {
-    'highlight.detail.win_streak': ({ count }) =>
-      `${count} ${Number(count) === 1 ? 'win' : 'wins'} in a row`,
-    'highlight.detail.favorite_map': ({ wins, losses, wr }) =>
-      `${wins}W/${losses}L · ${wr}% win rate`,
-    'highlight.detail.volume_wr': ({ wr }) => `Win rate ${wr}%`,
-    'highlight.detail.volume_kda_wr': ({ kda, wr }) => `KDA ${kda} · ${wr}% win rate`,
-  },
-  section: {
-    title: 'Highlights',
-    tooltipIntro:
-      'Figures computed from your last session and up to 4 recent sessions with the same party (solo/squad) and dominant playlist.',
-  },
-}
-
-const DICTS: Record<HighlightLocale, HighlightTextDict> = { fr: FR, en: EN }
-
 export function normalizeHighlightLocale(locale?: string | null): HighlightLocale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-export function getHighlightText(locale?: string | null): HighlightTextDict {
-  return DICTS[normalizeHighlightLocale(locale)]
+function t(
+  loc: HighlightLocale,
+  key: HomeManifestKey,
+  values?: Record<string, string | number>,
+): string {
+  return formatMessage(homeManifest, key, loc, values)
 }
 
-/** Résout un titre. Fallback : la clé elle-même, pour repérer les manques. */
+export function getHighlightText(locale?: string | null): HighlightTextDict {
+  const loc = normalizeHighlightLocale(locale)
+  return {
+    section: {
+      title: t(loc, 'home.highlights.section_title'),
+      tooltipIntro: t(loc, 'home.highlights.section_tooltip'),
+    },
+  }
+}
+
+// ─── Mapping backend keys → manifest keys ─────────────────────────────────
+
+const TITLE_KEY_MAP: Record<string, HomeManifestKey> = {
+  'highlight.title.perf_avg': 'home.highlights.title.perf_avg',
+  'highlight.title.skill_delta_lusr': 'home.highlights.title.skill_delta_lusr',
+  'highlight.title.skill_delta_csr': 'home.highlights.title.skill_delta_csr',
+  'highlight.title.best_underdog_win': 'home.highlights.title.best_underdog_win',
+  'highlight.title.kda_peak': 'home.highlights.title.kda_peak',
+  'highlight.title.mastery': 'home.highlights.title.mastery',
+  'highlight.title.per_minute': 'home.highlights.title.per_minute',
+  'highlight.title.volume': 'home.highlights.title.volume',
+  'highlight.title.serie': 'home.highlights.title.serie',
+}
+
+const LABEL_KEY_MAP: Record<string, HomeManifestKey> = {
+  'highlight.slide.headshots': 'home.highlights.label.headshots',
+  'highlight.slide.perfect_kills': 'home.highlights.label.perfect_kills',
+  'highlight.slide.accuracy': 'home.highlights.label.accuracy',
+  'highlight.slide.kills': 'home.highlights.label.kills',
+  'highlight.slide.deaths': 'home.highlights.label.deaths',
+  'highlight.slide.assists': 'home.highlights.label.assists',
+  'highlight.slide.killing_spree_max': 'home.highlights.label.killing_spree_max',
+  'highlight.slide.win_streak': 'home.highlights.label.win_streak',
+  'highlight.slide.favorite_map': 'home.highlights.label.favorite_map',
+}
+
+const DETAIL_KEY_MAP: Record<string, HomeManifestKey> = {
+  'highlight.detail.win_streak': 'home.highlights.detail.win_streak',
+  'highlight.detail.favorite_map': 'home.highlights.detail.favorite_map',
+  'highlight.detail.volume_wr': 'home.highlights.detail.volume_wr',
+  'highlight.detail.volume_kda_wr': 'home.highlights.detail.volume_kda_wr',
+}
+
+/** Résout un titre. Fallback : la clé brute pour repérer les manques. */
 export function resolveTitle(locale: string | null | undefined, key: string | undefined): string {
   if (!key) return ''
-  return getHighlightText(locale).titles[key] ?? key
+  const mapped = TITLE_KEY_MAP[key]
+  if (!mapped) return key
+  return t(normalizeHighlightLocale(locale), mapped)
 }
 
 /**
- * Mapping des highlight.slide.* vers les FieldKey canoniques (Phase D plan
- * multi-titres). Une clé absente de cette table reste résolue uniquement par
- * le dict local (pas de FieldKey équivalent).
+ * Mapping highlight.slide.* → FieldKey canonique. Si le backend
+ * `useFieldMappings` fournit le label, il prime ; sinon fallback manifest.
  */
 const SLIDE_TO_FIELD_KEY: Record<string, string> = {
   'highlight.slide.headshots': 'headshot_kills',
@@ -131,13 +100,6 @@ const SLIDE_TO_FIELD_KEY: Record<string, string> = {
   'highlight.slide.assists': 'assists',
 }
 
-/**
- * Résout un label de slide.
- *
- * Si fieldMappings est fourni et que la clé highlight a un FieldKey canonique
- * équivalent, le libellé du backend TOML prime. Sinon fallback sur le dict
- * local (rétrocompatibilité quand l'endpoint /field-mappings est absent).
- */
 export function resolveLabel(
   locale: string | null | undefined,
   key: string | undefined,
@@ -148,13 +110,14 @@ export function resolveLabel(
   if (fieldKey && fieldMappings?.fields[fieldKey]) {
     return fieldMappings.fields[fieldKey].label
   }
-  return getHighlightText(locale).labels[key] ?? key
+  const mapped = LABEL_KEY_MAP[key]
+  if (!mapped) return key
+  return t(normalizeHighlightLocale(locale), mapped)
 }
 
 /**
- * Largeur (en sous-unités d'une grille fine de 20 colonnes) allouée à chaque tuile.
- * Total des spans = 20 (8 tuiles). Granularité fine pour permettre des ajustements
- * de ±1 sous-unité sans toucher aux autres tuiles.
+ * Largeur en sous-unités de la grille fine (20 cols) par tuile.
+ * Conservé inline car c'est de la config de layout, pas un libellé i18n.
  */
 const COL_SPANS: Record<string, number> = {
   'highlight.title.perf_avg': 2,
@@ -173,14 +136,13 @@ export function resolveColSpan(titleKey: string | undefined): number {
   return COL_SPANS[titleKey] ?? 1
 }
 
-/** Résout un détail paramétré. Retourne '' si aucune clé. */
 export function resolveDetail(
   locale: string | null | undefined,
   key: string | undefined,
   params?: Params,
 ): string {
   if (!key) return ''
-  const entry = getHighlightText(locale).details[key]
-  if (!entry) return key
-  return entry(params ?? {})
+  const mapped = DETAIL_KEY_MAP[key]
+  if (!mapped) return key
+  return t(normalizeHighlightLocale(locale), mapped, params)
 }

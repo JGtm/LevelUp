@@ -1,14 +1,19 @@
 /**
- * Traductions des libellés de la barre de stats KPI (hero card de la home).
+ * kpi.i18n.ts — adapter mince entre `home.toml` (manifest TOML) et le shape
+ * historique `KPITextDict` consommé par HomePage.tsx.
  *
- * Centralise les chaînes hardcodées qui étaient disséminées sous forme de
- * ternaires `locale === 'en' ? 'X' : 'Y'` dans HomePage.tsx.
+ * Phase 3 P3.C : la source de vérité est désormais
+ * `apps/web/src/lib/i18n/manifests/home.toml`. Les libellés FR/EN sont
+ * générés par `scripts/build_i18n_manifests.mjs` dans
+ * `lib/i18n/generated/home.ts`. Ce module reconstruit l'ancienne forme
+ * imbriquée pour minimiser la churn côté HomePage.
  */
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
 export type KPILocale = 'fr' | 'en'
 
 interface KPITextDict {
-  // Phase D-bis : matches/kda/winRate/accuracy → useFieldLabel('total_matches_played'|'kda'|'win_rate'|'accuracy')
   labels: {
     totalTime: string
     favoritePlaylist: string
@@ -16,64 +21,41 @@ interface KPITextDict {
     favoriteWeapon: string
   }
   units: {
-    /** Année (suffixe court : "5a" / "5y"). */
     year: string
-    /** Mois (suffixe court : "3m" / "3mo"). */
     month: string
-    /** Jour (suffixe court : "12j" / "12d"). */
     day: string
-    /** Heure (suffixe court : "8h" / "8h"). */
     hour: string
-    /** Minute (suffixe court : "45min" / "45min"). */
     minute: string
   }
-  /** Sous-titres pluralisés. */
   matches: (count: number) => string
   kills: (count: number) => string
 }
-
-const FR: KPITextDict = {
-  labels: {
-    totalTime: 'Durée totale',
-    favoritePlaylist: 'Playlist favorite',
-    offDef: 'Rendement / Résist.',
-    favoriteWeapon: 'Arme favorite',
-  },
-  units: {
-    year: 'a',
-    month: 'm',
-    day: 'j',
-    hour: 'h',
-    minute: 'min',
-  },
-  matches: () => 'parties',
-  kills: () => 'kills',
-}
-
-const EN: KPITextDict = {
-  labels: {
-    totalTime: 'Total time',
-    favoritePlaylist: 'Favorite playlist',
-    offDef: 'Off. / Def.',
-    favoriteWeapon: 'Fav. weapon',
-  },
-  units: {
-    year: 'y',
-    month: 'mo',
-    day: 'd',
-    hour: 'h',
-    minute: 'min',
-  },
-  matches: () => 'matches',
-  kills: () => 'kills',
-}
-
-const DICTS: Record<KPILocale, KPITextDict> = { fr: FR, en: EN }
 
 export function normalizeKPILocale(locale?: string | null): KPILocale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
+function t(loc: KPILocale, key: HomeManifestKey): string {
+  return formatMessage(homeManifest, key, loc)
+}
+
 export function getKPIText(locale?: string | null): KPITextDict {
-  return DICTS[normalizeKPILocale(locale)]
+  const loc = normalizeKPILocale(locale)
+  return {
+    labels: {
+      totalTime: t(loc, 'home.kpi.total_time'),
+      favoritePlaylist: t(loc, 'home.kpi.favorite_playlist'),
+      offDef: t(loc, 'home.kpi.off_def'),
+      favoriteWeapon: t(loc, 'home.kpi.favorite_weapon'),
+    },
+    units: {
+      year: t(loc, 'home.kpi.unit_year'),
+      month: t(loc, 'home.kpi.unit_month'),
+      day: t(loc, 'home.kpi.unit_day'),
+      hour: t(loc, 'home.kpi.unit_hour'),
+      minute: t(loc, 'home.kpi.unit_minute'),
+    },
+    matches: () => t(loc, 'home.kpi.matches_word'),
+    kills: () => t(loc, 'home.kpi.kills_word'),
+  }
 }

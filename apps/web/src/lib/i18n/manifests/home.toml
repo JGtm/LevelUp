@@ -196,3 +196,199 @@ en = "No favorite match"
 [home.matches.favorites_empty_description]
 fr = "Marquez vos meilleurs matchs avec l'icône étoile pour les retrouver ici."
 en = "Mark your best matches with the star icon to find them here."
+
+# ─── KPI hero card (anciennement kpi.i18n.ts) ─────────────────────────────
+
+[home.kpi.total_time]
+fr = "Durée totale"
+en = "Total time"
+
+[home.kpi.favorite_playlist]
+fr = "Playlist favorite"
+en = "Favorite playlist"
+
+[home.kpi.off_def]
+fr = "Rendement / Résist."
+en = "Off. / Def."
+
+[home.kpi.favorite_weapon]
+fr = "Arme favorite"
+en = "Fav. weapon"
+
+[home.kpi.unit_year]
+fr = "a"
+en = "y"
+
+[home.kpi.unit_month]
+fr = "m"
+en = "mo"
+
+[home.kpi.unit_day]
+fr = "j"
+en = "d"
+
+[home.kpi.unit_hour]
+fr = "h"
+en = "h"
+
+[home.kpi.unit_minute]
+fr = "min"
+en = "min"
+
+[home.kpi.matches_word]
+fr = "parties"
+en = "matches"
+
+[home.kpi.kills_word]
+fr = "kills"
+en = "kills"
+
+# ─── Identité Spartan (anciennement spartanIdentity.i18n.ts) ──────────────
+
+[home.spartan.career_rank]
+fr = "Rang carrière"
+en = "Career rank"
+
+[home.spartan.highest_csr]
+fr = "Meilleur CSR"
+en = "Highest CSR"
+
+[home.spartan.highest_lusr]
+fr = "Meilleur LUSR"
+en = "Highest LUSR"
+
+[home.spartan.current_progress]
+fr = "Progression actuelle"
+en = "Current progress"
+
+[home.spartan.rank_prefix]
+fr = "Rang"
+en = "Rank"
+
+[home.spartan.max_rank]
+fr = "Rang max"
+en = "Max rank"
+
+[home.spartan.progress_towards_rank]
+fr = "Progression vers {name}"
+en = "Progress towards {name}"
+
+[home.spartan.empty.title_unavailable]
+fr = "Classements indisponibles"
+en = "Rankings unavailable"
+
+[home.spartan.empty.title_none]
+fr = "Aucun classement disponible"
+en = "No rankings available"
+
+[home.spartan.empty.description_unavailable]
+fr = "Les données compétitives de ce joueur sont partielles ou indisponibles."
+en = "This player's competitive data is partial or unavailable."
+
+[home.spartan.empty.description_none]
+fr = "Ce joueur n'a pas encore de classement CSR ni LUSR."
+en = "This player has no CSR or LUSR rankings yet."
+
+# ─── Highlights — section header (anciennement highlights.i18n.ts) ────────
+
+[home.highlights.section_title]
+fr = "Faits marquants"
+en = "Highlights"
+
+[home.highlights.section_tooltip]
+fr = "Chiffres calculés sur ta dernière session et jusqu'à 4 sessions récentes avec la même composition (solo/escouade) et la même playlist dominante."
+en = "Figures computed from your last session and up to 4 recent sessions with the same party (solo/squad) and dominant playlist."
+
+# ─── Highlights — titres tuiles (backend keys highlight.title.*) ──────────
+
+[home.highlights.title.perf_avg]
+fr = "Performance"
+en = "Avg. performance"
+
+[home.highlights.title.skill_delta_lusr]
+fr = "LUSR"
+en = "LUSR"
+
+[home.highlights.title.skill_delta_csr]
+fr = "CSR"
+en = "CSR"
+
+[home.highlights.title.best_underdog_win]
+fr = "Plus belle victoire"
+en = "Best underdog win"
+
+[home.highlights.title.kda_peak]
+fr = "Pic FDA récent"
+en = "Recent KDA peak"
+
+[home.highlights.title.mastery]
+fr = "Maîtrise"
+en = "Mastery"
+
+[home.highlights.title.per_minute]
+fr = "Stats par min."
+en = "Per minute"
+
+[home.highlights.title.volume]
+fr = "Volume"
+en = "Volume"
+
+[home.highlights.title.serie]
+fr = "Séries"
+en = "Streak"
+
+# ─── Highlights — labels slides (backend keys highlight.slide.*) ──────────
+
+[home.highlights.label.headshots]
+fr = "Tirs à la tête"
+en = "Headshots"
+
+[home.highlights.label.perfect_kills]
+fr = "Frags parfaits"
+en = "Perfect kills"
+
+[home.highlights.label.accuracy]
+fr = "Précision"
+en = "Accuracy"
+
+[home.highlights.label.kills]
+fr = "Frags"
+en = "Kills"
+
+[home.highlights.label.deaths]
+fr = "Morts"
+en = "Deaths"
+
+[home.highlights.label.assists]
+fr = "Assistances"
+en = "Assists"
+
+[home.highlights.label.killing_spree_max]
+fr = "Folie meurtrière (max)"
+en = "Killing spree (max)"
+
+[home.highlights.label.win_streak]
+fr = "Victoires consécutives"
+en = "Win streak"
+
+[home.highlights.label.favorite_map]
+fr = "Carte fétiche"
+en = "Favorite map"
+
+# ─── Highlights — détails paramétrés (backend keys highlight.detail.*) ────
+
+[home.highlights.detail.win_streak]
+fr = "{count, plural, one {# victoire} other {# victoires}} d'affilée"
+en = "{count, plural, one {# win} other {# wins}} in a row"
+
+[home.highlights.detail.favorite_map]
+fr = "{wins}V/{losses}D · {wr}% victoires"
+en = "{wins}W/{losses}L · {wr}% win rate"
+
+[home.highlights.detail.volume_wr]
+fr = "Taux de victoire {wr}%"
+en = "Win rate {wr}%"
+
+[home.highlights.detail.volume_kda_wr]
+fr = "FDA {kda} · {wr}% victoires"
+en = "KDA {kda} · {wr}% win rate"
