@@ -89,6 +89,7 @@ interface BuildOpts {
   seriesNameResolver?: (s: ChartSeries<ChartPoint2D>) => string
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildTimeseriesLineOption(
   series: ChartSeries<ChartPoint2D>[],
   opts: BuildOpts = {},

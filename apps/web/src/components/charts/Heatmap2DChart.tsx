@@ -78,6 +78,7 @@ interface BuildOpts {
   valueRange?: [number, number]
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildHeatmap2DOption(
   series: ChartSeries<ChartPointHeatmap>[],
   opts: BuildOpts = {},

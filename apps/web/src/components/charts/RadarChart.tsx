@@ -73,7 +73,7 @@ export function RadarChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
-      buildOption={(_s) => buildOption(series)}
+      buildOption={() => buildOption(series)}
     />
   )
 }
@@ -83,6 +83,7 @@ interface BuildOpts {
   axisLabels?: Record<string, string>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildRadarOption(
   series: RadarSeriesPayload[],
   opts: BuildOpts = {},
