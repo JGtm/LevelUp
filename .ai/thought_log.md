@@ -21111,6 +21111,59 @@ Logique canonique (4 étapes) :
 - `go vet ./internal/observability/. ./internal/api/handlers/.` : propre.
 - gofmt : propre après auto-format.
 
+## [2026-04-27] Phase 0 - Chunks 11+12 — Frontend ChartCard ECharts + i18n manifest TOML
+
+**Statut** : ✅ Complété (chunks groupés)
+
+**Tâche** : Bootstraper le frontend Phase 0 :
+- **Chunk 11** : `<ChartCard>` ECharts (base wrapper avec 4 états + lazy load + types `ChartSeries<T>` miroir Go).
+- **Chunk 12** : framework manifest i18n TOML → TS typés + runtime ICU MessageFormat.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation chunks 9+10).
+
+### Chunk 11 — `apps/web/src/components/charts/ChartCard.tsx`
+
+**Décisions techniques** :
+- **Dépendances ajoutées** : `echarts@5.6.0` + `echarts-for-react@3.0.6` (`--legacy-peer-deps` requis à cause du conflit préexistant `openapi-typescript ↔ typescript@6`). ECharts est lazy-loadé via `React.lazy` pour ne pas alourdir le bundle initial (~600KB).
+- **4 états gérés** : `loading` (Spinner) / `error` (texte localisé + role="alert") / `empty` (message custom) / `data` (ReactECharts).
+- **Type `ChartSeries<T>`** : miroir TypeScript de `domain.ChartSeries[T]` côté Go (`key`, `labelKey?`, `colorToken?`, `datapoints[]`, `meta?`). Permet aux wrappers spécialisés à venir (TimeseriesLine, BarStacked, etc.) de prendre les payloads JSON tels quels du backend.
+- **`buildOption` injecté** : le ChartCard ne connaît rien des charts — toute la spécificité (axes, séries, tooltips) est dans la fonction `buildOption(series) => EChartsCoreOption` du wrapper. Mémoïsée via `useMemo` pour éviter les recalculs inutiles.
+- **Tests** : mock du module `echarts-for-react` (jsdom ne gère pas le canvas), 8 tests dont 4 états + titre + enfants + hauteur custom + `buildOption` non appelé en loading.
+
+### Chunk 12 — Manifest i18n + runtime ICU MessageFormat
+
+**Décisions techniques** :
+- **Format TOML** dans `apps/web/src/lib/i18n/manifests/<domain>.toml` (1 manifest exemple : `common.toml` avec 18 clés couvrant period, outcome, kpi, empty states).
+- **ICU MessageFormat** via `intl-messageformat@10` (~12KB gzipped) : pluralisation `{n, plural, one {...} other {...}}` testée en FR + EN, plus interpolation/select extensible.
+- **Build step Node.js** `apps/web/scripts/build_i18n_manifests.mjs` : parse les TOML via `@iarna/toml`, aplatit en map `<dotted_key, {fr, en}>`, génère un module TS `as const` typé dans `lib/i18n/generated/<domain>.ts`. Validations : toute clé doit avoir `fr` ET `en` non vides ; pas de locale supplémentaire ; les keys de section doivent être des leafs (échec sinon avec error explicite).
+- **Runtime `format.ts`** : `formatMessage(manifest, key, locale, vars?)` avec :
+  - Cache `Map<key, IntlMessageFormat>` pour éviter de re-compiler une string ICU à chaque rendu (test : 1000 appels pluralisation < 500ms).
+  - Court-circuit fast-path si message sans accolades et pas de `vars` (gain perf sur strings simples).
+  - Fallback gracieux : clé absente → retour de la clé (visible en UI = signal pour fix), erreur de format ICU → retour du message brut.
+- **Type `ManifestEntries`** : forme générique consommée par le runtime ; les modules générés (typés `as const`) bénéficient de l'autocomplétion stricte des clés.
+- **Tests** : 12 tests dont pluralisation FR/EN one+other, fast-path sans accolades, mémoïsation, fallback clé absente, locale partielle, intégrité `commonManifest` (toutes clés ont fr ET en non vides).
+
+**Fichiers créés** :
+- `apps/web/src/components/charts/ChartCard.tsx` (~140L)
+- `apps/web/src/components/charts/ChartCard.test.tsx` (~80L)
+- `apps/web/src/lib/i18n/manifests/common.toml` (18 clés)
+- `apps/web/scripts/build_i18n_manifests.mjs` (~110L)
+- `apps/web/src/lib/i18n/generated/common.ts` (auto-généré, commité)
+- `apps/web/src/lib/i18n/format.ts` (~100L)
+- `apps/web/src/lib/i18n/format.test.ts` (~110L)
+
+**Modifs `package.json`** : `echarts ^5.6.0`, `echarts-for-react ^3.0.6`, `intl-messageformat ^10.7.18` (deps), `@iarna/toml ^2.2.5` (devDep).
+
+**Résultats** :
+- 29 tests Vitest OK (8 ChartCard + 12 format + 9 commonManifest integrity).
+- `tsc -b --noEmit` propre sur mes fichiers (erreurs restantes : `appShellStore.test.ts` et `squad/charts/timelineChart.test.ts` préexistantes, indépendantes du chunk).
+- Build step manuel : `node scripts/build_i18n_manifests.mjs` → 18 clés générées sans erreur. Pas encore intégré au pipeline Vite (réservé au chunk d'intégration ultérieur — au moins le générateur est versionné Git et lancable manuellement).
+- Pas encore relié à un composant React consommateur (le `useT()` hook + `<I18nProvider>` viendront au chunk d'adoption Squad/MatchView pilote, Phase 1).
+
+**Conclusion** : socle frontend Phase 0 prêt. Les wrappers spécialisés (`<TimeseriesLine>`, `<BarStacked>`, `<Heatmap2D>`, `<Radar>`, etc.) consommeront `<ChartCard buildOption={...}>`. Les composants Phase 1 consommeront `formatMessage(commonManifest, 'common.outcome.win', locale)` pour leurs strings. Restent : règle ESLint `@levelup/no-hardcoded-strings` + `<CapabilityGap>` 3 modes pour clore Phase 0 frontend.
+
+---
+
 **Conclusion** : **côté Go de la Phase 0 complet**. Tous les axes serveur sont en place :
 - Helpers purs (temporal / breakdown / narrative)
 - Types canoniques (PlayerMatchRow / DominanceFlag / HighlightEvent étendu)
