@@ -23,6 +23,7 @@ func mappingStat(norm string, tiers *string) domain.CitationFullMapping {
 	m := domain.CitationFullMapping{
 		NameNorm:    norm,
 		MappingType: "stat",
+		StatName:    strPtr(norm),
 		TierTargets: tiers,
 	}
 	return m
