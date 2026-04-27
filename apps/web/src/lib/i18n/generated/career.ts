@@ -1,0 +1,42 @@
+// Auto-genere par scripts/build_i18n_manifests.mjs - NE PAS EDITER A LA MAIN.
+// Source : apps/web/src/lib/i18n/manifests/career.toml
+
+export const careerManifest = {
+  "career.charts.hero_progress": { fr: "Progression Héros", en: "Hero progress" },
+  "career.charts.lusr_rating_axis_y": { fr: "Rating", en: "Rating" },
+  "career.charts.lusr_rating_title": { fr: "Rating LUSR", en: "LUSR rating" },
+  "career.charts.placeholder_description": { fr: "La vue carrière n'a renvoyé aucune donnée exploitable pour cette section.", en: "The career view returned no exploitable data for this section." },
+  "career.charts.placeholder_unavailable": { fr: "Graphique indisponible", en: "Chart unavailable" },
+  "career.charts.rank_progress": { fr: "Progression du rang", en: "Rank progress" },
+  "career.charts.xp_history_axis_y": { fr: "XP cumulé", en: "Cumulative XP" },
+  "career.charts.xp_history_title": { fr: "Historique XP", en: "XP history" },
+  "career.citations.distribution_title": { fr: "Distribution des citations", en: "Citation distribution" },
+  "career.citations.section_total": { fr: "Citations totales", en: "Total citations" },
+  "career.citations.section_unique_types": { fr: "Types uniques", en: "Unique types" },
+  "career.empty.no_data": { fr: "Aucune donnée disponible", en: "No data available" },
+  "career.encounters.col_count": { fr: "Matchs", en: "Matches" },
+  "career.encounters.col_last_seen": { fr: "Dernier match", en: "Last seen" },
+  "career.encounters.col_opponent": { fr: "Adversaire", en: "Opponent" },
+  "career.encounters.col_winrate": { fr: "Taux de victoire", en: "Win rate" },
+  "career.encounters.section_title": { fr: "Rencontres fréquentes", en: "Frequent encounters" },
+  "career.errors.load_failed": { fr: "Erreur lors du chargement de la carrière", en: "Failed to load career data" },
+  "career.errors.retry": { fr: "Réessayer", en: "Retry" },
+  "career.summary.estimated_hero": { fr: "Rang Héros estimé", en: "Estimated Hero rank date" },
+  "career.summary.estimated_rank_cap": { fr: "Atteinte rang max estimée", en: "Estimated rank cap date" },
+  "career.summary.rank_label": { fr: "Rang", en: "Rank" },
+  "career.summary.xp_to_next": { fr: "Vers le prochain rang", en: "To next rank" },
+  "career.summary.xp_total": { fr: "XP total", en: "Total XP" },
+  "career.tabs.citations": { fr: "Citations", en: "Citations" },
+  "career.tabs.progression": { fr: "Progression", en: "Progression" },
+  "career.tabs.season_pass": { fr: "Pass saisonnier", en: "Season pass" },
+  "career.top_matches.col_kd": { fr: "K/D", en: "K/D" },
+  "career.top_matches.col_kda": { fr: "K/D/A", en: "K/D/A" },
+  "career.top_matches.col_match": { fr: "Match", en: "Match" },
+  "career.top_matches.col_outcome": { fr: "Résultat", en: "Outcome" },
+  "career.top_matches.empty_description": { fr: "Aucun match distinctif n'a été calculé pour cette page de carrière.", en: "No distinctive match was computed for this career page." },
+  "career.top_matches.empty_title": { fr: "Top matchs indisponibles", en: "Top matches unavailable" },
+  "career.top_matches.section_title": { fr: "Meilleurs matchs récents", en: "Recent best matches" },
+  "career.top_matches.see_all": { fr: "Voir tous les top matchs", en: "View all top matches" },
+} as const
+
+export type CareerManifestKey = keyof typeof careerManifest

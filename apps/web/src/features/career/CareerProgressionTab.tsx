@@ -12,16 +12,26 @@ import { Spinner } from '@/components/ui/spinner'
 import { CareerSummaryCard } from './CareerSummaryCard'
 import { CareerChartsSection } from './CareerChartsSection'
 import { useCareerPage } from './queries'
+import { formatMessage } from '@/lib/i18n/format'
+import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { LeaderboardBlock } from '@/features/leaderboard/LeaderboardBlock'
 import { useComparePrefetch } from '@/features/compare/queries'
 import { useState } from 'react'
+
+function isCareerLocale(loc: string | undefined): loc is 'fr' | 'en' {
+  return loc === 'fr' || loc === 'en'
+}
 
 export function CareerProgressionTab() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [compareOpen, setCompareOpen] = useState(false)
   const prefetchCompare = useComparePrefetch(playerSlug)
+  const rawLocale = useAppShellStore((s) => s.locale)
+  const locale = isCareerLocale(rawLocale) ? rawLocale : 'fr'
+  const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
 
   if (isLoading) {
     return (
@@ -74,8 +84,23 @@ export function CareerProgressionTab() {
         projections={data.projections}
       />
 
-      {/* Graphiques Plotly */}
-      <CareerChartsSection charts={data.charts} />
+      {/* Graphiques ECharts (Phase 2 P2.B — migrés de Plotly) */}
+      <CareerChartsSection
+        xpHistory={data.xp_history ?? []}
+        lusrCheckpoints={data.lusr?.checkpoints ?? []}
+        summary={data.summary}
+        heroProgress={data.hero_progress}
+        labels={{
+          rankProgressTitle: t('career.charts.rank_progress'),
+          heroProgressTitle: t('career.charts.hero_progress'),
+          xpHistoryTitle: t('career.charts.xp_history_title'),
+          xpHistoryAxisY: t('career.charts.xp_history_axis_y'),
+          lusrRatingTitle: t('career.charts.lusr_rating_title'),
+          lusrRatingAxisY: t('career.charts.lusr_rating_axis_y'),
+          placeholderUnavailable: t('career.charts.placeholder_unavailable'),
+          placeholderDescription: t('career.charts.placeholder_description'),
+        }}
+      />
 
       {/* Section LUSR */}
       <Card>
