@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-04-28] cleanup(option-b): retrait DTOs Plotly orphelins server-side (timeseries + citations)
+
+**Statut** : Complété — Option B du chantier Phase 3 terminée.
+
+**Décision technique** :
+Audit `apps/go-api/internal/domain/timeseries.go` : 14 champs `*PlotlyFigurePayload` déclarés depuis le sprint 33 mais jamais populés côté service Go (le commentaire d'en-tête le confirme : "Le frontend consomme PlotlyFigurePayload = null"). Le frontend a migré ces points vers les wrappers ECharts en P2.E + P3.B + P3.F+G : tous les data points bruts (CumulativePoint, DistributionBucket, IntensityHeatmapPoint, CorrelationDataPair, TimeseriesMatchRow) sont maintenant les seuls inputs des charts client-side.
+
+**Cleanup effectué** :
+- `domain/timeseries.go` : retrait du type `PlotlyFigurePayload` + suppression de 14 champs orphelins :
+  - `TimeseriesSummaryTab` : WinRateChart, ScoreChart, KDADistChart (3)
+  - `TimeseriesCumulTab` : CumulNetChart, CumulKDChart, RollingKDChart (3)
+  - `TimeseriesFormTab` : EWMAKDChart, RegressionChart, NetScorePerHourChart (3)
+  - `TimeseriesIntensityTab` : IntensityHeatmap, ScorePerMinuteChart (2)
+  - `TimeseriesDistributionsTab` : KDADistribution, FirstKillDist, Correlations (3)
+- `service/timeseries_service.go` : retrait des références `Correlations: []domain.PlotlyFigurePayload{}` (2 sites) + commentaire de tête réécrit pour refléter l'architecture data-only
+- `apps/web/src/lib/api/types.ts` : 14 champs TS correspondants retirés (`win_rate_chart`, `score_chart`, etc.) + champ `distribution_chart: PlotlyFigurePayload | null` retiré de `CitationsPageResponse`
+- `apps/web/src/features/career/CareerCitationsTab.tsx` : Card "Distribution Plotly" morte supprimée + `import { PlotlyChart }` orphan retiré
+- `apps/web/src/test/handlers.ts` : champ `distribution_chart: null` retiré du fixture mock
+
+**Architecture clarifiée** :
+- Le type `PlotlyFigurePayload` reste dans le **TS** pour Squad (heatmapChart, hsPkChart, timelineChart) qui produit encore des figures Plotly server-side (sub-set non concerné par cette Phase 3).
+- Le type **Go** `domain.PlotlyFigurePayload` est complètement retiré de l'usage interne. Reste uniquement référencé dans `internal/api/gen/types.gen.go` (auto-généré depuis `openapi.yaml` qui garde la définition pour le contrat API public + Squad).
+
+**Résultats** :
+- `go build ./...` + `go test ./...` → 100% OK (aucune régression)
+- `vitest run citations/ career/ timeseries/` → 55/55 OK
+- `npm run typecheck` filtré sur les fichiers touchés → 0 erreur
+
+**Volume nettoyé** : 14 champs Go + 14 champs TS + 1 champ citations TS + 1 Card UI morte + 1 import orphan + 1 champ mock + ~140L de commentaires obsolètes mis à jour.
+
+**Prochaine étape** : Option C — audit Storybook setup + stories pour les 11 wrappers ECharts (HistogramChart, ScatterChart, DonutChart, TimeseriesLineChart, BarStackedChart, BarGroupedChart, Heatmap2DChart, RadarChart, OutcomeSequenceTape, TimeseriesCombatYield, TimeseriesKdaBars).
+
 ## [2026-04-28] feat(p3.f+g): migration TimeseriesCombatYield + TimeseriesKdaBars Plotly → ECharts (FIN du Plotly)
 
 **Statut** : Complété — TimeseriesPage 100% Plotly-free.
