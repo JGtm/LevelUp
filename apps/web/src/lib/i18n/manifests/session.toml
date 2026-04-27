@@ -265,18 +265,6 @@ en = "Losses"
 fr = "Autres"
 en = "Other"
 
-[session.compare.radar_title]
-fr = "Radar de performance"
-en = "Performance radar"
-
-[session.compare.radar_empty_title]
-fr = "Radar indisponible"
-en = "Radar unavailable"
-
-[session.compare.radar_empty_description]
-fr = "Aucun radar de performance n'a été généré pour cette paire de sessions."
-en = "No performance radar generated for this session pair."
-
 [session.compare.summary_title]
 fr = "Résumé des écarts"
 en = "Gap summary"
@@ -300,18 +288,6 @@ en = "No detailed metric"
 [session.compare.metrics_empty_description]
 fr = "Le tableau comparatif est vide pour les sessions choisies."
 en = "Comparison table is empty for the selected sessions."
-
-[session.compare.kd_progression_title]
-fr = "Progression K/D"
-en = "K/D progression"
-
-[session.compare.kd_progression_empty_title]
-fr = "Progression indisponible"
-en = "Progression unavailable"
-
-[session.compare.kd_progression_empty_description]
-fr = "La progression K/D n'a pas pu être tracée pour ces sessions."
-en = "K/D progression could not be plotted for these sessions."
 
 [session.compare.maps_title]
 fr = "Par carte"
