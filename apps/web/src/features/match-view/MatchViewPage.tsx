@@ -7,10 +7,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  AreaChart, Area, LineChart, Line,
-  XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
-} from 'recharts'
+import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
+import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
+import type { ChartSeries } from '@/components/charts/ChartCard'
 import { useMatchView, useMatchNeighbors } from './queries'
 import { MatchScoreboard } from './MatchScoreboard'
 import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
@@ -151,6 +150,48 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'media', label: 'Médias' },
   { id: 'citations', label: 'Citations' },
 ]
+
+// Helpers de migration MV5 (Recharts -> wrapper TimeseriesLineChart ECharts).
+// Convertissent les payloads `kd_timeline` et `tug_of_war` en ChartSeries<ChartPoint2D>[].
+
+interface KDTimelinePoint {
+  time_seconds: number
+  kills: number
+  deaths: number
+}
+
+function kdTimelineSeries(
+  points: KDTimelinePoint[],
+  labelOf: (key: string, fallback: string) => string,
+): ChartSeries<ChartPoint2D>[] {
+  return [
+    {
+      key: 'match_view.combat.kd_timeline.kills',
+      meta: { gamertag: labelOf('kills', 'Kills') },
+      datapoints: points.map((p) => ({ x: p.time_seconds, y: p.kills })),
+    },
+    {
+      key: 'match_view.combat.kd_timeline.deaths',
+      meta: { gamertag: labelOf('deaths', 'Deaths') },
+      datapoints: points.map((p) => ({ x: p.time_seconds, y: p.deaths })),
+    },
+  ]
+}
+
+interface TugOfWarBin {
+  bin_start: number
+  net_kills: number
+}
+
+function tugOfWarSeries(bins: TugOfWarBin[]): ChartSeries<ChartPoint2D>[] {
+  return [
+    {
+      key: 'match_view.combat.tug_of_war.net_kills',
+      meta: { gamertag: 'Kills nets' },
+      datapoints: bins.map((b) => ({ x: b.bin_start, y: b.net_kills })),
+    },
+  ]
+}
 
 export function MatchViewPage() {
   const { playerSlug, matchId } = useParams({ strict: false }) as {
@@ -375,61 +416,34 @@ export function MatchViewPage() {
               </Card>
             )}
 
-            {/* K/D Timeline */}
+            {/* K/D Timeline (chunk MV5 — migration Recharts -> ECharts wrapper S10) */}
             {combat_tab.kd_timeline.length > 1 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Timeline K/D</p>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={combat_tab.kd_timeline} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis
-                        dataKey="time_seconds"
-                        tickFormatter={(v: number) => `${Math.floor(v / 60)}m`}
-                        tick={{ fontSize: 10 }}
-                        stroke="var(--muted-foreground)"
-                      />
-                      <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
-                      <Tooltip
-                        formatter={(v: number, name: string) => [v, name === 'kills' ? labelOf('kills', 'Kills') : labelOf('deaths', 'Deaths')]}
-                        labelFormatter={(v: number) => `${Math.floor(v / 60)}m${v % 60}s`}
-                      />
-                      <Line type="monotone" dataKey="kills" stroke="var(--success)" dot={false} strokeWidth={2} name="kills" />
-                      <Line type="monotone" dataKey="deaths" stroke="var(--destructive)" dot={false} strokeWidth={2} name="deaths" />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <TimeseriesLineChart
+                    title="Timeline K/D"
+                    height={200}
+                    xAxisType="value"
+                    timeAxis={false}
+                    outcomeMarkers={false}
+                    series={kdTimelineSeries(combat_tab.kd_timeline, labelOf)}
+                  />
                 </CardContent>
               </Card>
             )}
 
-            {/* Tug-of-War */}
+            {/* Tug-of-War (chunk MV5) */}
             {combat_tab.tug_of_war.length > 1 && (
               <Card>
                 <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Tir à la corde (kills nets)</p>
-                  <ResponsiveContainer width="100%" height={160}>
-                    <AreaChart data={combat_tab.tug_of_war} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis
-                        dataKey="bin_start"
-                        tickFormatter={(v: number) => `${Math.floor(v / 60)}m`}
-                        tick={{ fontSize: 10 }}
-                        stroke="var(--muted-foreground)"
-                      />
-                      <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
-                      <Tooltip
-                        formatter={(v: number) => [v, 'Kills nets']}
-                        labelFormatter={(v: number) => `${Math.floor(v / 60)}m${v % 60}s`}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="net_kills"
-                        stroke="var(--primary)"
-                        fill="var(--primary)"
-                        fillOpacity={0.2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <TimeseriesLineChart
+                    title="Tir à la corde (kills nets)"
+                    height={160}
+                    xAxisType="value"
+                    timeAxis={false}
+                    outcomeMarkers={false}
+                    series={tugOfWarSeries(combat_tab.tug_of_war)}
+                  />
                 </CardContent>
               </Card>
             )}
