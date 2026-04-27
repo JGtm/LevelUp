@@ -21348,3 +21348,52 @@ git log --oneline -13   # confirme 13 commits depuis feat/multi-title-adapters-a
 - `.ai/PLAN_SQUAD_GO_PORTAGE.md` (~530L) — 7 sections (synthèse, périmètre, état actuel, architecture cible, phases, done definition, risques, annexes).
 
 **Conclusion** : Phase 1 démarrable. Prochain chunk = **S1** (Service Squad refactor + handler + tests, ~3h). Le plan jumeau MatchView reste à réécrire complètement (déjà annoté niveau 1 en Phase 0, réécriture intégrale en Phase 1 prévue).
+
+---
+
+## [2026-04-27] Phase 1 - Chunk S1 — SquadServiceV2 + intersection matchs
+
+**Statut** : ✅ Complété
+
+**Tâche** : Premier chunk de code Phase 1 du méta-plan. Nouveau service Squad V2 sur les fondations Phase 0 : `LoadPlayerMatches` × N coéquipiers (1..3) en parallèle + intersection in-memory sur match_id + capability gating gracieux.
+
+**Branche** : `feat/foundations-axes-1-3-4` (continuation Phase 0 close).
+
+**Décisions techniques** :
+- **Approche additive** : `SquadServiceV2` créé en parallèle de `SquadService` legacy (qui ne supporte qu'1 seul coéquipier via XUID). Pas de breaking change sur l'API publique existante. Migration des consommateurs frontend prévue chunk S2+.
+- **`SquadV2Loader` interface locale** : accepte `(slug, gamertag, filters) -> []PlayerMatchRow`. Permet tests avec mock sans toucher au pool DuckDB. L'adaptateur production qui résout slug+gamertag → PlayerDB → `duckdb.PlayerMatchesRepo` viendra au moment du wiring handler.
+- **Chargement parallèle via `errgroup.WithContext`** : tous les joueurs chargés en concurrent (1+N), le test confirme exécution parallèle (3 × 50ms en seq → ~50ms en parallèle, vérifié <130ms).
+- **Capability gating en deux niveaux** :
+  - Coéquipier avec `games.ErrCapabilityNotSupported` → exclu de `perPlayer`, `CapabilityGap` ajouté dans la réponse, intersection se fait sur les autres joueurs uniquement.
+  - Joueur principal avec capability absente → page vide (`SharedMatches=nil`) + `CapabilityGap` signalé. Pas d'erreur 5xx.
+- **`MaxTeammates = 3`** : borne haute alignée avec la version Python (sélection 1..3). Erreur explicite si dépassement.
+- **Intersection deterministe** : `intersectByMatchID` choisit la map la plus petite comme base (optimisation), tri stable par `StartedAt DESC` puis `MatchID asc` en cas d'égalité (test dédié).
+- **`buildSharedMatch` hydrate les champs niveau-match** (Map, Mode, Outcome, StartedAt) depuis le premier joueur dans l'ordre alphabétique des gamertags. Reproductibilité : même row choisie même si appelée plusieurs fois.
+- **`canonical.CapabilityGap`** réutilisé (déjà défini dans `match.go`) plutôt que d'introduire un type local. Plus riche que prévu (`Severity`, `Retryable`, `ReasonCode`).
+
+**Fichiers créés** :
+- `apps/go-api/internal/domain/squad_v2.go` (~50L) : DTOs `SquadPageV2Response` + `SquadSharedMatch`.
+- `apps/go-api/internal/service/squad_service_v2.go` (~270L) : `SquadServiceV2` + `SquadV2Loader` + helpers `intersectByMatchID`, `matchIDsPresentInAll`, `buildSharedMatch`.
+- `apps/go-api/internal/service/squad_service_v2_test.go` (~280L) : 9 tests :
+  - `OneTeammateIntersection` (3 matchs main, 3 friend, 2 communs)
+  - `ThreeTeammates` (4 joueurs, intersection sur m1 uniquement)
+  - `NoIntersection` (aucun match commun)
+  - `TeammateCapabilityMissing` (friend1 sans capability → exclu, intersection main seul)
+  - `MainPlayerCapabilityMissing` (page vide + gap signalé, pas de 5xx)
+  - `RejectsInvalidInput` (mainGT vide, >3 teammates)
+  - `LoaderRunsInParallel` (3 × 50ms → <130ms vérifié)
+  - `LoaderError_NotCapability` (erreur disk full propagée)
+  - `OrderDeterministicOnEqualTimes` (fallback alphabétique sur MatchID)
+
+**Résultats** :
+- 9 tests OK + race detector clean.
+- Couverture sur `squad_service_v2.go` : 95-100 % (3.1 % global du package = autres handlers non touchés).
+- `go build ./...` : OK, aucune régression sur Phase 0.
+- gofmt propre après auto-format.
+
+**Hors scope chunk S1 (à venir dans chunks S2+)** :
+- Wiring handler `GET /api/v1/players/{slug}/pages/squad?teammates=...&period=...` (chunk dédié quand on aura le pattern de routes V2).
+- Adaptateur production `SquadV2Loader` qui résout slug+gamertag → PlayerDB → repo via `pool.GetOrOpen`. Triviale (~30L).
+- Sections riches du DTO (KPIStrip, ScoreCards, charts synergies, impact, radar...) — chacune dans son chunk dédié S2-S11.
+
+**Conclusion** : socle service V2 en place. Prochain chunk = **S2 — KPIStrip + PlayerScoreCards + Header DTO** (~2h). Plan Squad reste sur la trajectoire 11 chunks / ~27h.
