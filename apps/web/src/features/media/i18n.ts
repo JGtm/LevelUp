@@ -1,3 +1,16 @@
+/**
+ * media/i18n.ts — adapter mince entre `media.toml` (manifest TOML) et le
+ * shape historique `MediaText` consommé par MediaPage / MediaToolbar.
+ *
+ * Phase 3 P3.A : la source de vérité est désormais
+ * `apps/web/src/lib/i18n/manifests/media.toml`. Les libellés FR/EN sont
+ * générés par `scripts/build_i18n_manifests.mjs` dans
+ * `lib/i18n/generated/media.ts`. Ce module reconstruit l'ancienne forme
+ * imbriquée pour minimiser la churn côté consommateurs.
+ */
+import { formatMessage } from '@/lib/i18n/format'
+import { mediaManifest, type MediaManifestKey } from '@/lib/i18n/generated/media'
+
 export type MediaLocale = 'fr' | 'en'
 
 export interface MediaText {
@@ -37,9 +50,7 @@ export interface MediaText {
     allPlaylists: string
     allMaps: string
     allModes: string
-    /** Étiquette d'option "Toute la catégorie X" en tête d'un <optgroup>. */
     allInCategory: (categoryLabel: string) => string
-    /** Traductions FR/EN des catégories custom (cf. analysis.ModeCategory* en Go). */
     modeCategories: {
       Assassin: string
       Fiesta: string
@@ -62,135 +73,75 @@ export interface MediaText {
   }
 }
 
-const FR_TEXT: MediaText = {
-  title: 'Médias',
-  emptyState: 'Aucun média disponible pour ces filtres.',
-  errorPrefix: 'Erreur :',
-  previousPage: '← Précédent',
-  nextPage: 'Suivant →',
-  pageLabel: (page, totalPages) => `Page ${page} / ${totalPages}`,
-  groupSection: {
-    sessionOfPrefix: 'Session du',
-    likedSection: 'Aimés',
-    notLikedSection: 'Non aimés',
-    unknownOwner: 'Auteur inconnu',
-    unknownMap: 'Carte inconnue',
-    unknownMode: 'Mode inconnu',
-    unknownSession: 'Session inconnue',
-  },
-  toolbar: {
-    filterLabel: 'Filtres :',
-    sortLabel: 'Tri :',
-    kindAriaLabel: 'Type de média',
-    playlistAriaLabel: 'Playlist de la galerie',
-    mapAriaLabel: 'Carte de la galerie',
-    modeAriaLabel: 'Mode de la galerie',
-    sortAriaLabel: 'Tri de la galerie',
-    groupAriaLabel: 'Groupement de la galerie',
-    likedOnlyAriaLabel: 'Afficher seulement les médias aimés',
-    authorsAriaLabel: 'Filtrer par auteur',
-    allAuthorsToggle: 'Tous',
-    noAuthors: 'Aucun auteur disponible',
-    allTypes: 'Tous types',
-    screenshots: 'Captures',
-    clips: 'Clips',
-    allAuthors: 'Tous les auteurs',
-    mine: 'Mes captures',
-    allPlaylists: 'Toutes playlists',
-    allMaps: 'Toutes cartes',
-    allModes: 'Tous modes',
-    allInCategory: () => `Toutes catégories`,
-    modeCategories: {
-      Assassin: 'Assassin',
-      Fiesta: 'Fiesta',
-      'Super Fiesta': 'Super Fiesta',
-      'Husky Raid': 'Husky Raid',
-      BTB: 'Grande bataille en équipe',
-      Ranked: 'Classé',
-      Firefight: 'Baptême du feu',
-      Other: 'Autre',
-    },
-    dateDesc: 'Date ↓',
-    dateAsc: 'Date ↑',
-    mapAsc: 'Carte A→Z',
-    modeAsc: 'Mode A→Z',
-    noGrouping: 'Sans groupement',
-    byOwner: 'Par auteur',
-    byMap: 'Par carte',
-    byMode: 'Par mode',
-    bySession: 'Par session',
-  },
-}
-
-const EN_TEXT: MediaText = {
-  title: 'Media',
-  emptyState: 'No media available for the current filters.',
-  errorPrefix: 'Error:',
-  previousPage: '← Previous',
-  nextPage: 'Next →',
-  pageLabel: (page, totalPages) => `Page ${page} / ${totalPages}`,
-  groupSection: {
-    sessionOfPrefix: 'Session of',
-    likedSection: 'Liked',
-    notLikedSection: 'Not liked',
-    unknownOwner: 'Unknown author',
-    unknownMap: 'Unknown map',
-    unknownMode: 'Unknown mode',
-    unknownSession: 'Unknown session',
-  },
-  toolbar: {
-    filterLabel: 'Filters:',
-    sortLabel: 'Sort:',
-    kindAriaLabel: 'Media type',
-    playlistAriaLabel: 'Media playlist',
-    mapAriaLabel: 'Media map',
-    modeAriaLabel: 'Media mode',
-    sortAriaLabel: 'Media sorting',
-    groupAriaLabel: 'Media grouping',
-    likedOnlyAriaLabel: 'Show liked media only',
-    authorsAriaLabel: 'Filter by author',
-    allAuthorsToggle: 'All',
-    noAuthors: 'No authors available',
-    allTypes: 'All types',
-    screenshots: 'Screenshots',
-    clips: 'Clips',
-    allAuthors: 'All authors',
-    mine: 'My captures',
-    allPlaylists: 'All playlists',
-    allMaps: 'All maps',
-    allModes: 'All modes',
-    allInCategory: (cat) => `All ${cat}`,
-    modeCategories: {
-      Assassin: 'Slayer',
-      Fiesta: 'Fiesta',
-      'Super Fiesta': 'Super Fiesta',
-      'Husky Raid': 'Husky Raid',
-      BTB: 'Big Team Battle',
-      Ranked: 'Ranked',
-      Firefight: 'Firefight',
-      Other: 'Other',
-    },
-    dateDesc: 'Date ↓',
-    dateAsc: 'Date ↑',
-    mapAsc: 'Map A→Z',
-    modeAsc: 'Mode A→Z',
-    noGrouping: 'No grouping',
-    byOwner: 'By author',
-    byMap: 'By map',
-    byMode: 'By mode',
-    bySession: 'By session',
-  },
-}
-
-const TEXT: Record<MediaLocale, MediaText> = {
-  fr: FR_TEXT,
-  en: EN_TEXT,
-}
-
 export function normalizeMediaLocale(locale?: string | null): MediaLocale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
+function t(locale: MediaLocale, key: MediaManifestKey, values?: Record<string, string | number>): string {
+  return formatMessage(mediaManifest, key, locale, values)
+}
+
 export function getMediaText(locale?: string | null): MediaText {
-  return TEXT[normalizeMediaLocale(locale)]
+  const loc = normalizeMediaLocale(locale)
+  return {
+    title: t(loc, 'media.page.title'),
+    emptyState: t(loc, 'media.page.empty_state'),
+    errorPrefix: t(loc, 'media.page.error_prefix'),
+    previousPage: t(loc, 'media.pagination.previous'),
+    nextPage: t(loc, 'media.pagination.next'),
+    pageLabel: (page, totalPages) =>
+      t(loc, 'media.pagination.page_label', { page, totalPages }),
+    groupSection: {
+      sessionOfPrefix: t(loc, 'media.group.session_of_prefix'),
+      likedSection: t(loc, 'media.group.liked_section'),
+      notLikedSection: t(loc, 'media.group.not_liked_section'),
+      unknownOwner: t(loc, 'media.group.unknown_owner'),
+      unknownMap: t(loc, 'media.group.unknown_map'),
+      unknownMode: t(loc, 'media.group.unknown_mode'),
+      unknownSession: t(loc, 'media.group.unknown_session'),
+    },
+    toolbar: {
+      filterLabel: t(loc, 'media.toolbar.filter_label'),
+      sortLabel: t(loc, 'media.toolbar.sort_label'),
+      kindAriaLabel: t(loc, 'media.toolbar.kind_aria'),
+      playlistAriaLabel: t(loc, 'media.toolbar.playlist_aria'),
+      mapAriaLabel: t(loc, 'media.toolbar.map_aria'),
+      modeAriaLabel: t(loc, 'media.toolbar.mode_aria'),
+      sortAriaLabel: t(loc, 'media.toolbar.sort_aria'),
+      groupAriaLabel: t(loc, 'media.toolbar.group_aria'),
+      likedOnlyAriaLabel: t(loc, 'media.toolbar.liked_only_aria'),
+      authorsAriaLabel: t(loc, 'media.toolbar.authors_aria'),
+      allAuthorsToggle: t(loc, 'media.toolbar.all_authors_toggle'),
+      noAuthors: t(loc, 'media.toolbar.no_authors'),
+      allTypes: t(loc, 'media.toolbar.all_types'),
+      screenshots: t(loc, 'media.toolbar.screenshots'),
+      clips: t(loc, 'media.toolbar.clips'),
+      allAuthors: t(loc, 'media.toolbar.all_authors'),
+      mine: t(loc, 'media.toolbar.mine'),
+      allPlaylists: t(loc, 'media.toolbar.all_playlists'),
+      allMaps: t(loc, 'media.toolbar.all_maps'),
+      allModes: t(loc, 'media.toolbar.all_modes'),
+      allInCategory: (categoryLabel: string) =>
+        t(loc, 'media.toolbar.all_in_category', { category: categoryLabel }),
+      modeCategories: {
+        Assassin: t(loc, 'media.toolbar.mode_categories.assassin'),
+        Fiesta: t(loc, 'media.toolbar.mode_categories.fiesta'),
+        'Super Fiesta': t(loc, 'media.toolbar.mode_categories.super_fiesta'),
+        'Husky Raid': t(loc, 'media.toolbar.mode_categories.husky_raid'),
+        BTB: t(loc, 'media.toolbar.mode_categories.btb'),
+        Ranked: t(loc, 'media.toolbar.mode_categories.ranked'),
+        Firefight: t(loc, 'media.toolbar.mode_categories.firefight'),
+        Other: t(loc, 'media.toolbar.mode_categories.other'),
+      },
+      dateDesc: t(loc, 'media.toolbar.sort.date_desc'),
+      dateAsc: t(loc, 'media.toolbar.sort.date_asc'),
+      mapAsc: t(loc, 'media.toolbar.sort.map_asc'),
+      modeAsc: t(loc, 'media.toolbar.sort.mode_asc'),
+      noGrouping: t(loc, 'media.toolbar.group.no_grouping'),
+      byOwner: t(loc, 'media.toolbar.group.by_owner'),
+      byMap: t(loc, 'media.toolbar.group.by_map'),
+      byMode: t(loc, 'media.toolbar.group.by_mode'),
+      bySession: t(loc, 'media.toolbar.group.by_session'),
+    },
+  }
 }
