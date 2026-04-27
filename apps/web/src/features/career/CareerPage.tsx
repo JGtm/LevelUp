@@ -80,8 +80,23 @@ export function CareerPage() {
           projections={data.projections}
         />
 
-        {/* Graphiques Plotly */}
-        <CareerChartsSection charts={data.charts} />
+        {/* Graphiques ECharts (Phase 2 P2.B — migrés de Plotly) */}
+        <CareerChartsSection
+          xpHistory={data.xp_history ?? []}
+          lusrCheckpoints={data.lusr?.checkpoints ?? []}
+          summary={data.summary}
+          heroProgress={data.hero_progress}
+          labels={{
+            rankProgressTitle: 'Progression du rang',
+            heroProgressTitle: 'Progression Héros',
+            xpHistoryTitle: 'Historique XP',
+            xpHistoryAxisY: 'XP cumulé',
+            lusrRatingTitle: 'Rating LUSR',
+            lusrRatingAxisY: 'Rating',
+            placeholderUnavailable: 'Graphique indisponible',
+            placeholderDescription: 'Aucune donnée exploitable.',
+          }}
+        />
 
         {/* Section LUSR */}
         <Card>
