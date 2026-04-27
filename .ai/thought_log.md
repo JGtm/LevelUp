@@ -1,5 +1,26 @@
 # Thought Log
 
+## [2026-04-27] feat(p3.a-media): consolidation media/i18n.ts → manifest TOML
+
+**Statut** : Complété.
+
+**Décision technique** :
+Phase 3 P3.A du méta-plan. Création du manifest `apps/web/src/lib/i18n/manifests/media.toml` (51 clés FR/EN) couvrant la galerie Médias en intégralité (page, pagination, group sections, toolbar avec aria labels, filtres kind/sort/group, mode_categories custom Halo). Le fichier `media/i18n.ts` est conservé mais réécrit comme **adapter mince** : il reconstruit l'ancienne forme imbriquée `MediaText` à partir de `formatMessage(mediaManifest, ...)` pour minimiser la churn dans MediaPage / MediaToolbar / AuthorsMultiSelect.
+
+**Architecture** :
+- Source de vérité unique : `media.toml` versionné Git, généré → `lib/i18n/generated/media.ts`.
+- Helper `t(loc, key, values?)` interne pour interpolation ICU (`page_label`, `all_in_category`).
+- `MediaText` interface inchangée → 0 modification dans MediaPage.tsx (386L) et MediaToolbar.tsx (384L).
+- Function callable `pageLabel(page, totalPages)` et `allInCategory(category)` → consomment ICU `{page} / {totalPages}` et `{category}`.
+- modeCategories mapping (Halo custom : Assassin, Fiesta, BTB, Ranked, Firefight…) → 8 clés flat dans le TOML.
+
+**Résultats** :
+- `vitest run src/features/media/` → 24/24 OK (MediaPage + MediaViewer).
+- `npm run typecheck | grep media/i18n` → 0 erreur sur le périmètre touché.
+- Code consommateur 100% inchangé → migration zero-risk visible.
+
+**Prochaine étape** : P3.B — wrappers ECharts HistogramChart + ScatterChart pour migrer distributions + correlations de TimeseriesPage (5 histogrammes + 1 scatter restants en Plotly).
+
 ## [2026-04-27] feat(p2.g-session-palmares): manifests + migration i18n pages WIP
 
 **Statut** : Complété (Session detail+compare full ; Palmares scaffold + Phase 3).
