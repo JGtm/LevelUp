@@ -12,6 +12,36 @@
 
 ---
 
+## Table des matières
+
+Le plan est structuré en **3 blocs de lecture** :
+
+**Bloc A — Intro et critères**
+- § 0 — Synthèse exécutive
+- § 1 — Périmètre
+- § 2 — Critères de succès
+
+**Bloc B — Références transverses (s'appliquent à toutes les phases)**
+- § 3 — Stratégie de tests
+- § 4 — Stratégie de logging
+- § 5 — Architecture cible (axes 1 helpers, 2 charts, 3 canonical, 4 i18n)
+
+**Bloc C — Plan d'exécution**
+- § 6 — Phasing — **Phase 0** Fondations · **Phase 1** Pilotes Squad+MatchView · **Phase 2** Roll-out · **Phase 3** Cleanup Plotly · **Phase 4** Documentation et skills
+
+**Bloc D — Références d'exécution (consultées pendant les phases)**
+- § 7 — Impact détaillé sur les plans enfants (+ stratégie d'amendement + stratégie de release)
+- § 8 — Risques et mitigations
+- § 9 — Estimation totale et planning
+- § 10 — Done definition globale
+- § 11 — Annexes (helpers à factoriser, tokens couleur, fichiers nouveaux, ADR, coverage cibles)
+
+> **Important** : il n'y a **que 5 phases** (Phase 0 à Phase 4 dans la § 6). Les
+> sections § 7 à § 11 ne sont **pas** des phases supplémentaires — ce sont des
+> références transverses consultées pendant l'exécution.
+
+---
+
 ## 0. Synthèse exécutive
 
 Les 6 plans de portage convergent vers un même socle (canonical row, capability-aware,
@@ -1737,7 +1767,15 @@ Les skills Claude Code activés par les hooks doivent refléter les fondations.
 
 ---
 
-## 7. Impact détaillé sur les plans enfants
+> **FIN DU PHASING (Bloc C).** Les sections suivantes (§ 7 à § 11) sont des
+> **références transverses** : elles ne décrivent pas une Phase 5 ou suivante,
+> elles documentent l'impact, les risques, l'estimation, la done definition et
+> les annexes pour l'ensemble des 5 phases ci-dessus. Elles sont consultées
+> ponctuellement pendant l'exécution, pas lues séquentiellement.
+
+---
+
+## 7. Référence — Impact détaillé sur les plans enfants
 
 ### 7.1 Tableau d'impact
 
@@ -1836,7 +1874,7 @@ shapes Plotly server-side. Le bénéfice de la rupture franche est de pouvoir
 
 ---
 
-## 8. Risques et mitigations
+## 8. Référence — Risques et mitigations
 
 | Risque | Probabilité | Impact | Mitigation |
 |---|---|---|---|
@@ -1858,7 +1896,7 @@ shapes Plotly server-side. Le bénéfice de la rupture franche est de pouvoir
 
 ---
 
-## 9. Estimation totale et planning
+## 9. Référence — Estimation totale et planning
 
 | Phase | Effort | Branche | Bloque |
 |---|---:|---|---|
@@ -1875,7 +1913,7 @@ met à jour les skills).
 
 ---
 
-## 10. Done definition globale
+## 10. Référence — Done definition globale
 
 - [ ] Les 4 fondations livrées et utilisées (axes 1 helpers, 2 charts, 3 canonical, 4 i18n).
 - [ ] Les 6 pages de portage utilisent les fondations.
@@ -1904,7 +1942,7 @@ met à jour les skills).
 
 ---
 
-## 11. Annexes
+## 11. Référence — Annexes
 
 ### 11.1 Liste exhaustive des helpers à factoriser (post-audit des 6 plans)
 
