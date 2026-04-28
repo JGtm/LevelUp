@@ -119,6 +119,10 @@ func batchComputeEngagementScores(
 			historyByMode[modeCategory] = history
 		}
 
+		// highlight_events.time_ms est relatif au debut du match (0 a durationMS),
+		// pas un epoch UTC. On normalise donc les bornes a [0, duration] pour
+		// rester dans le meme repere que les events.
+		durationMS := m.EndTimeMS - m.StartTimeMS
 		input := temporal.EngagementScoreInput{
 			PlayerEvents:   playerEvents,
 			TeamEvents:     teamEvents,
@@ -126,8 +130,8 @@ func batchComputeEngagementScores(
 			NTeam:          m.NTeam,
 			NHumansLobby:   m.NHumansLobby,
 			XUID:           xuid,
-			MatchStartMS:   m.StartTimeMS,
-			MatchEndMS:     m.EndTimeMS,
+			MatchStartMS:   0,
+			MatchEndMS:     durationMS,
 			History:        history,
 			CoefTeamShare:  1.0, // cold start neutre
 			CoefLobbyShare: 1.0,
@@ -188,7 +192,7 @@ func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchR
 			COALESCE(EPOCH_MS(mr.start_time_utc), EPOCH_MS(mr.start_time)),
 			COALESCE(EPOCH_MS(mr.end_time_utc), EPOCH_MS(mr.end_time)),
 			COALESCE(mr.is_ranked, FALSE),
-			COALESCE(mr.is_pve, FALSE),
+			COALESCE(mr.is_firefight, FALSE),
 			COALESCE(mp.team_id, 0),
 			COALESCE(mp.personal_score, 0),
 			COALESCE(mp.kills, 0),
@@ -240,8 +244,8 @@ func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchR
 func loadTeamSizes(sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby int) {
 	const q = `
 		SELECT
-			SUM(CASE WHEN team_id = ? AND COALESCE(is_bot, FALSE) = FALSE THEN 1 ELSE 0 END),
-			SUM(CASE WHEN COALESCE(is_bot, FALSE) = FALSE THEN 1 ELSE 0 END)
+			SUM(CASE WHEN team_id = ? AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
+			SUM(CASE WHEN xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END)
 		FROM match_participants
 		WHERE match_id = ?
 	`
@@ -281,7 +285,7 @@ func loadTeamXUIDs(sharedDB *sql.DB, matchID string, teamID int, targetXUID stri
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
 		  AND team_id = ?
-		  AND COALESCE(is_bot, FALSE) = FALSE
+		  AND xuid NOT LIKE 'bid(%'
 		  AND xuid <> ?
 	`
 	rows, err := sharedDB.Query(q, matchID, teamID, targetXUID)

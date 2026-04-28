@@ -34,7 +34,7 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 			COALESCE(EPOCH_MS(mr.start_time_utc), EPOCH_MS(mr.start_time)),
 			COALESCE(EPOCH_MS(mr.end_time_utc), EPOCH_MS(mr.end_time)),
 			COALESCE(mr.is_ranked, FALSE),
-			COALESCE(mr.is_pve, FALSE),
+			COALESCE(mr.is_firefight, FALSE),
 			COALESCE(mp.team_id, 0),
 			COALESCE(mp.personal_score, 0),
 			COALESCE(mp.kills, 0),
@@ -62,11 +62,11 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		return nil, fmt.Errorf("LoadMatchEngagementContext: %w", err)
 	}
 
-	// Charger NTeam et NHumansLobby separement.
+	// Charger NTeam et NHumansLobby separement (bots = xuid LIKE 'bid(%').
 	const sizeQ = `
 		SELECT
-			SUM(CASE WHEN team_id = ? AND COALESCE(is_bot, FALSE) = FALSE THEN 1 ELSE 0 END),
-			SUM(CASE WHEN COALESCE(is_bot, FALSE) = FALSE THEN 1 ELSE 0 END)
+			SUM(CASE WHEN team_id = ? AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
+			SUM(CASE WHEN xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END)
 		FROM shared.match_participants WHERE match_id = ?
 	`
 	var nTeam, nLobby sql.NullInt64
@@ -127,7 +127,7 @@ func (r *EngagementScoreRepo) LoadTeamXUIDs(
 		SELECT xuid FROM shared.match_participants
 		WHERE match_id = ?
 		  AND team_id = ?
-		  AND COALESCE(is_bot, FALSE) = FALSE
+		  AND xuid NOT LIKE 'bid(%'
 		  AND xuid <> ?
 	`
 	rows, err := r.pdb.ReadDB().Query(ctx, q, matchID, teamID, targetXUID)
@@ -208,7 +208,7 @@ func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 		JOIN shared.match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
-		  AND COALESCE(mr.is_pve, FALSE) = FALSE
+		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
 		ORDER BY mr.start_time DESC
 		LIMIT ?
 	`

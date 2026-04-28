@@ -18,22 +18,22 @@ type EngagementScoreResult struct {
 	// EngagementScore est le percentile 0-100 du residu sur l'historique du
 	// joueur (200 derniers matchs sur la meme categorie de mode). Nil si
 	// insufficient_history.
-	EngagementScore *float64
+	EngagementScore *float64 `json:"engagement_score"`
 
 	// ResidualBrut est la valeur brute du residu (mean joueur - attendu) sur
 	// le match, en events/min. Conserve pour debug et pour alimenter
 	// l'historique futur (HistoricalEngagementBrut).
-	ResidualBrut float64
+	ResidualBrut float64 `json:"residual_brut"`
 
 	// EngagementCurve est la trace temporelle des paces sur le match, pour
 	// affichage Match View (Mock 10) ou Squad Page (Mock 15 v2). Nil si
 	// match trop court.
-	EngagementCurve []EngagementPoint
+	EngagementCurve []EngagementPoint `json:"engagement_curve"`
 
 	// MatchIntensity est la caracteristique objective du match
 	// (events/min/joueur du lobby). Independante du joueur cible. Stockee
 	// dans match_registry.match_intensity. 0 si non calculable.
-	MatchIntensity float64
+	MatchIntensity float64 `json:"match_intensity"`
 
 	// Confidence reflete la qualite du score :
 	//   - "full"      : >= 30 matchs d'historique, signal complet
@@ -41,12 +41,12 @@ type EngagementScoreResult struct {
 	//   - "insufficient_history" : < 10 matchs (score = nil)
 	//
 	// Les seuils sont calibres sur H5 (cf doc reflexion §10).
-	Confidence string
+	Confidence string `json:"confidence"`
 
 	// NHistoryMatches est le nombre de matchs utilises pour calculer le
 	// percentile. Permet a l'UI de communiquer le contexte (ex. "calcule sur
 	// 47 matchs").
-	NHistoryMatches int
+	NHistoryMatches int `json:"n_history_matches"`
 }
 
 // EngagementPoint est un echantillon temporel de la courbe d'engagement.
@@ -54,33 +54,33 @@ type EngagementScoreResult struct {
 // Echantillonne tous les SamplingSeconds (default 10s) sur la duree du match,
 // fenetre glissante de WindowSeconds (default 90s).
 type EngagementPoint struct {
-	TimeMS int64
+	TimeMS int64 `json:"time_ms"`
 
 	// PaceJoueur est le pace observe du joueur cible dans la fenetre.
-	PaceJoueur float64
+	PaceJoueur float64 `json:"pace_joueur"`
 
 	// PaceTeam est le pace de l'equipe alliee per_player dans la fenetre.
 	// = events_team_dans_window / N_team / (W/60s)
-	PaceTeam float64
+	PaceTeam float64 `json:"pace_team"`
 
 	// PaceAttendu est l'engagement que le joueur aurait du produire vu son
 	// style historique : coef_team_share * pace_team_per_player.
-	PaceAttendu float64
+	PaceAttendu float64 `json:"pace_attendu"`
 
 	// PaceLobby est le pace lobby per_player dans la fenetre. Utilise par la
 	// vue Squad Page (Mock 15 v2) comme reference externe. = events_lobby /
 	// N_humans_lobby / (W/60s).
-	PaceLobby float64
+	PaceLobby float64 `json:"pace_lobby"`
 
 	// PostDeathFlag est true si le point est dans une periode post-mort
 	// active (entre une mort et le prochain event d'engagement du joueur).
-	PostDeathFlag bool
+	PostDeathFlag bool `json:"post_death_flag"`
 
 	// IsPassiveDeath n'est positionne que sur les points qui correspondent
 	// exactement a un event "death" du joueur, ET dont la mort etait
 	// precedee par un creux > PassiveDeathThresholdMS (default 30s) sans
 	// event d'engagement. Indique un joueur "caught off-guard".
-	IsPassiveDeath bool
+	IsPassiveDeath bool `json:"is_passive_death"`
 }
 
 // HistoricalEngagementBrut est un point d'historique utilise pour la
@@ -88,9 +88,8 @@ type EngagementPoint struct {
 // la meme categorie de mode) sert de baseline pour calculer
 // EngagementScoreResult.EngagementScore.
 type HistoricalEngagementBrut struct {
-	MatchID string
-	// Brut est le ResidualBrut historique de ce match (mean joueur - attendu).
-	Brut float64
+	MatchID string  `json:"match_id"`
+	Brut    float64 `json:"brut"`
 }
 
 // EngagementCoefficient est une statistique personnelle exposee independamment
@@ -131,22 +130,22 @@ type SquadPlayerEngagement struct {
 }
 
 type EngagementCoefficient struct {
-	XUID         string
-	ModeCategory string
+	XUID         string `json:"xuid"`
+	ModeCategory string `json:"mode_category"`
 
 	// CoefTeamShare = mediane historique de (pace_joueur / pace_team_per_player).
 	// > 1 = leader intra-equipe. < 1 = support / passif. ~1 = fait sa part.
-	CoefTeamShare float64
+	CoefTeamShare float64 `json:"coef_team_share"`
 
 	// CoefLobbyShare = mediane historique de (pace_joueur / pace_lobby_per_player).
 	// Caracterise le style absolu (mixe style + skill + qualite des equipes
 	// habituelles). Comparable inter-joueurs (contrairement a CoefTeamShare).
-	CoefLobbyShare float64
+	CoefLobbyShare float64 `json:"coef_lobby_share"`
 
 	// NMatches est le nombre de matchs utilises pour calculer ces medianes.
-	NMatches int
+	NMatches int `json:"n_matches"`
 
 	// LastUpdated est l'heure du dernier recalcul. Permet le check de
 	// freshness (recalcul si > N jours d'inactivite).
-	LastUpdated time.Time
+	LastUpdated time.Time `json:"last_updated"`
 }
