@@ -84,6 +84,21 @@ type PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 // WithPrestigeHook branche un hook Prestige post-sync. Stub temporaire pour
 // satisfaire la référence de server.go en attendant la finalisation côté
 // agent Prestige. No-op si pas de hook configuré.
+// newEngineFor instancie un SyncEngine pré-câblé avec le loader friends
+// (settings.FriendGamertags), pour que le hook auto-recompute is_with_friends
+// post-sync delta soit toujours actif sur les syncs déclenchés par cet handler.
+func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTokens) *go_sync.SyncEngine {
+	loader := func() ([]string, error) {
+		s, err := h.settingsStore.Load()
+		if err != nil {
+			return nil, err
+		}
+		return s.FriendGamertags, nil
+	}
+	return go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider).
+		WithFriendsLoader(loader)
+}
+
 func (h *SyncHandler) WithPrestigeHook(_ PrestigeHook) *SyncHandler {
 	// TODO(prestige-agent): câbler l'invocation post-RunDelta.
 	return h
@@ -215,7 +230,7 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		if h.postSync != nil {
 			after = h.postSync(bgCtx, req.PlayerSlug)
 		}
-		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
+		engine := h.newEngineFor(gamertag, xuid, tokens)
 		opts := domain.DefaultSyncOptions()
 		opts.MaxMatches = req.MaxMatches
 
@@ -292,7 +307,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		if h.postSync != nil {
 			after = h.postSync(bgCtx, playerSlug)
 		}
-		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider)
+		engine := h.newEngineFor(gamertag, xuid, tokens)
 		opts := domain.DefaultSyncOptions()
 
 		result, err := engine.RunDelta(bgCtx, opts)
@@ -350,7 +365,7 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 				j.ProgressPct = &pct
 			})
 
-			engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, p.Gamertag, p.XUID, tokens, h.provider)
+			engine := h.newEngineFor(p.Gamertag, p.XUID, tokens)
 			opts := domain.DefaultSyncOptions()
 			if _, err := engine.RunDelta(context.Background(), opts); err != nil {
 				failed++

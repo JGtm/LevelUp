@@ -35,6 +35,10 @@ const (
 )
 
 // SyncEngine orchestre la synchronisation des données Halo d'un joueur.
+// FriendsLoader retourne la liste courante des amis configurés (typiquement
+// settings.FriendGamertags). Nil → feature désactivée (legacy / pas de wiring).
+type FriendsLoader func() ([]string, error)
+
 type SyncEngine struct {
 	gamertag       string
 	xuid           string
@@ -52,6 +56,11 @@ type SyncEngine struct {
 	// Reçoit (ctx, gamertag, titleSlug) — le hook se charge lui-même de
 	// la résolution Prestige et du feature flag.
 	prestigeHook func(ctx context.Context, gamertag, titleSlug string)
+	// friendsLoader résout settings.FriendGamertags à la demande pour le
+	// hook auto-recompute is_with_friends post-sync delta. Nil → feature off
+	// (les nouveaux matchs resteront is_with_friends=FALSE jusqu'au prochain
+	// recompute manuel via PATCH /settings ou CLI levelup recompute-friends).
+	friendsLoader FriendsLoader
 }
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -93,6 +102,19 @@ func (e *SyncEngine) WithPrestigeHook(hook func(ctx context.Context, gamertag, t
 // Retourne le même engine pour permettre le chaînage.
 func (e *SyncEngine) WithResolver(r assets.Resolver) *SyncEngine {
 	e.resolver = r
+	return e
+}
+
+// WithFriendsLoader attache un loader settings.FriendGamertags pour le hook
+// auto-recompute is_with_friends post-sync delta. Sans ce hook, les nouveaux
+// matchs sync restent is_with_friends=FALSE jusqu'au prochain recompute
+// manuel (PATCH /settings ou CLI levelup recompute-friends).
+//
+// Le hook est idempotent (garde WHERE FALSE dans friends_recompute.go) et
+// court-circuite si la liste est vide. Aucune erreur ne propage : un échec
+// n'arrête pas le sync (best-effort).
+func (e *SyncEngine) WithFriendsLoader(loader FriendsLoader) *SyncEngine {
+	e.friendsLoader = loader
 	return e
 }
 
@@ -705,6 +727,28 @@ func (e *SyncEngine) runPostSyncPipeline(
 
 	// 3. Career rank
 	r.CareerSynced = e.runCareerSync(ctx, playerDB, client)
+
+	// 3.5 Friends recompute is_with_friends (best-effort).
+	// Avant l'étape 4 (aggregates) pour éviter un double-refresh : on passe
+	// refreshAggregates=false, le refresh natif de l'engine couvre les UPDATEs.
+	// Skip silencieux si pas de loader (legacy) ou liste vide.
+	if e.friendsLoader != nil {
+		if friends, ferr := e.friendsLoader(); ferr != nil {
+			slog.WarnContext(ctx, "post-sync: friends loader échoué", "gamertag", e.gamertag, "err", ferr)
+		} else if len(friends) > 0 {
+			slog.DebugContext(ctx, "post-sync: friends recompute", "gamertag", e.gamertag, "friends_count", len(friends))
+			fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
+			if err != nil {
+				slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
+			} else if fres.MatchesPromoted > 0 {
+				r.MatchesPromotedFriends = fres.MatchesPromoted
+				slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
+					"gamertag", e.gamertag,
+					"promoted", fres.MatchesPromoted,
+				)
+			}
+		}
+	}
 
 	// 4. Aggregates (materialized views)
 	slog.DebugContext(ctx, "post-sync: refresh aggregates player", "gamertag", e.gamertag)

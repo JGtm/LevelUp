@@ -107,9 +107,10 @@ func (r *SyncResult) AddWarning(msg string) {
 
 // PostSyncResult agrège les compteurs du pipeline post-sync.
 type PostSyncResult struct {
-	PerfScoresComputed int
-	LUSRUpdated        int
-	CareerSynced       bool
-	ViewsRefreshed     int
-	AchievementsSynced bool
+	PerfScoresComputed     int
+	LUSRUpdated            int
+	CareerSynced           bool
+	ViewsRefreshed         int
+	AchievementsSynced     bool
+	MatchesPromotedFriends int64 // §7 hook auto-recompute is_with_friends post-sync
 }
