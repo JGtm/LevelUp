@@ -22,6 +22,7 @@ import { useSettings } from '@/features/settings/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
+import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { getSeriesColors } from '@/lib/accessibility'
 import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import { getSquadText } from './i18n'
@@ -259,20 +260,24 @@ export function SquadLayout() {
   const matchRoute = useMatchRoute()
   const { data: settings } = useSettings()
 
-  // ── Filtrage de session unifié via NavL2 ──────────────────────────────────
-  // Plus de SquadSessionSelector dédié : la session active vient du global
-  // filter store (alimenté par NavL2). On lookup la session pickée et, si
-  // c'est une session escouade, on dérive son label pour le backend
-  // (filterSynthesisBySession garde uniquement les matchs avec ce label).
-  const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
-  const allSessions = resolvedContext?.session_options?.all_sessions ?? []
-  const pickedSessionId = filterContext.sessions?.picked_sessions?.[0] ?? null
-  const pickedSession = pickedSessionId
-    ? allSessions.find((s) => s.session_id === pickedSessionId)
-    : null
-  // Si la session pickée n'est pas une session escouade, on n'envoie pas de
-  // filtre (sinon le backend renvoie zéro match — solo + filter squad = ø).
-  const pickedSquadSessionLabel = pickedSession?.is_squad ? pickedSession.label : null
+  // ── Filtre multi-sessions escouade persisté ──────────────────────────────
+  const sessionStorageKey = `squad-sessions-${playerSlug}`
+  const [pickedSquadSessionLabels, setPickedSquadSessionLabelsRaw] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(sessionStorageKey)
+      return stored ? (JSON.parse(stored) as string[]) : []
+    } catch {
+      return []
+    }
+  })
+  const applySessionLabels = (labels: string[]) => {
+    setPickedSquadSessionLabelsRaw(labels)
+    try {
+      localStorage.setItem(sessionStorageKey, JSON.stringify(labels))
+    } catch {
+      // localStorage indisponible — ignorer.
+    }
+  }
 
   // Init depuis les amis par défaut dans les settings si localStorage vide
   useEffect(() => {
@@ -286,13 +291,14 @@ export function SquadLayout() {
   const request: TeammatesQueryRequest = {
     filters: filterContext,
     selected_gamertags: confirmedGts.length > 0 ? confirmedGts : undefined,
-    picked_squad_session_label: pickedSquadSessionLabel,
+    picked_squad_session_labels: pickedSquadSessionLabels.length > 0 ? pickedSquadSessionLabels : undefined,
   }
   const { data, isLoading, isError, error } = useTeammates(
     playerSlug,
     request,
     filterContextHash,
     confirmedGts,
+    pickedSquadSessionLabels,
   )
 
   const toggleSelect = (gamertag: string) => {
@@ -359,9 +365,7 @@ export function SquadLayout() {
       value={{ selectedRows, confirmedGamertags: confirmedGts, pageData: data ?? null }}
     >
       <div className="flex flex-col gap-6 p-6">
-        {/* Coéquipiers — card compacte unique en haut de page.
-            Le filtrage de session est géré par NavL2 (toujours visible
-            avec navigation ← / ⚡), plus de sélecteur dédié inline. */}
+        {/* Coéquipiers — card compacte unique en haut de page. */}
         <Card>
           <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-4">
             <span className="shrink-0 text-sm font-medium text-foreground">
@@ -378,6 +382,14 @@ export function SquadLayout() {
                 placeholder={t.selection.placeholder(availableOptions.length)}
               />
             </div>
+            {(data.session_labels?.squad?.length ?? 0) > 0 && (
+              <SessionMultiSelect
+                sessions={data.session_labels!.squad}
+                selected={pickedSquadSessionLabels}
+                onChange={applySessionLabels}
+                locale={locale}
+              />
+            )}
             {selectedGts.length === 0 && (
               <span className="shrink-0 text-xs text-muted-foreground">
                 {t.selection.prompt}

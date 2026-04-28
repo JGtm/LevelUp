@@ -139,10 +139,11 @@ func TestComputeKPIsFromSquadMatches_ZeroHeadshots(t *testing.T) {
 func TestExtractSynthesisSessionLabels_SeparatesSoloSquad(t *testing.T) {
 	s1 := "session-solo-1"
 	s2 := "session-squad-1"
+	ts := time.Now()
 	matches := []domain.SynthesisMatchRow{
-		{MatchID: "m1", IsWithFriends: false, SessionLabel: &s1},
-		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s2},
-		{MatchID: "m3", IsWithFriends: false, SessionLabel: &s1}, // doublon → 1 seul
+		{MatchID: "m1", IsWithFriends: false, SessionLabel: &s1, StartTime: ts},
+		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s2, StartTime: ts},
+		{MatchID: "m3", IsWithFriends: false, SessionLabel: &s1, StartTime: ts}, // doublon → 1 seul
 	}
 	got := extractSynthesisSessionLabels(matches)
 	if len(got.Solo) != 1 {
@@ -151,16 +152,17 @@ func TestExtractSynthesisSessionLabels_SeparatesSoloSquad(t *testing.T) {
 	if len(got.Squad) != 1 {
 		t.Errorf("expected 1 squad session, got %d", len(got.Squad))
 	}
-	if got.Solo[0] != s1 {
-		t.Errorf("expected %s, got %s", s1, got.Solo[0])
+	if got.Solo[0].Label != s1 {
+		t.Errorf("expected label %s, got %s", s1, got.Solo[0].Label)
 	}
 }
 
 func TestExtractSynthesisSessionLabels_SkipsEmptyLabel(t *testing.T) {
 	empty := ""
+	ts := time.Now()
 	matches := []domain.SynthesisMatchRow{
-		{MatchID: "m1", IsWithFriends: false, SessionLabel: &empty},
-		{MatchID: "m2", IsWithFriends: false, SessionLabel: nil},
+		{MatchID: "m1", IsWithFriends: false, SessionLabel: &empty, StartTime: ts},
+		{MatchID: "m2", IsWithFriends: false, SessionLabel: nil, StartTime: ts},
 	}
 	got := extractSynthesisSessionLabels(matches)
 	if len(got.Solo) != 0 || len(got.Squad) != 0 {
@@ -168,9 +170,54 @@ func TestExtractSynthesisSessionLabels_SkipsEmptyLabel(t *testing.T) {
 	}
 }
 
+func TestExtractSynthesisSessionLabels_TimestampsMinMax(t *testing.T) {
+	label := "sess-a"
+	t1 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
+	t2 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	t3 := time.Date(2025, 1, 1, 14, 0, 0, 0, time.UTC)
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", IsWithFriends: true, SessionLabel: &label, StartTime: t2},
+		{MatchID: "m2", IsWithFriends: true, SessionLabel: &label, StartTime: t1},
+		{MatchID: "m3", IsWithFriends: true, SessionLabel: &label, StartTime: t3},
+	}
+	got := extractSynthesisSessionLabels(matches)
+	if len(got.Squad) != 1 {
+		t.Fatalf("expected 1 squad session, got %d", len(got.Squad))
+	}
+	e := got.Squad[0]
+	if !e.StartedAt.Equal(t1) {
+		t.Errorf("StartedAt: expected %v, got %v", t1, e.StartedAt)
+	}
+	if !e.EndedAt.Equal(t3) {
+		t.Errorf("EndedAt: expected %v, got %v", t3, e.EndedAt)
+	}
+}
+
+func TestExtractSynthesisSessionLabels_SortedByStartedAtDesc(t *testing.T) {
+	s1, s2, s3 := "sess-old", "sess-mid", "sess-new"
+	tOld := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	tMid := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	tNew := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", IsWithFriends: true, SessionLabel: &s1, StartTime: tOld},
+		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s3, StartTime: tNew},
+		{MatchID: "m3", IsWithFriends: true, SessionLabel: &s2, StartTime: tMid},
+	}
+	got := extractSynthesisSessionLabels(matches)
+	if len(got.Squad) != 3 {
+		t.Fatalf("expected 3 squad sessions, got %d", len(got.Squad))
+	}
+	if got.Squad[0].Label != s3 {
+		t.Errorf("expected newest first (%s), got %s", s3, got.Squad[0].Label)
+	}
+	if got.Squad[2].Label != s1 {
+		t.Errorf("expected oldest last (%s), got %s", s1, got.Squad[2].Label)
+	}
+}
+
 // ---------- filterSynthesisBySession ----------
 
-func TestFilterSynthesisBySession_NilFiltersReturnsAll(t *testing.T) {
+func TestFilterSynthesisBySession_EmptyFiltersReturnsAll(t *testing.T) {
 	s := "s1"
 	matches := []domain.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: false, SessionLabel: &s},
@@ -190,7 +237,7 @@ func TestFilterSynthesisBySession_SoloFilter(t *testing.T) {
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &squad},
 		{MatchID: "m3", IsWithFriends: false, SessionLabel: &squad},
 	}
-	got := filterSynthesisBySession(matches, &solo, nil)
+	got := filterSynthesisBySession(matches, []string{solo}, nil)
 	if len(got) != 1 || got[0].MatchID != "m1" {
 		t.Errorf("expected only m1, got %v", got)
 	}
@@ -204,9 +251,33 @@ func TestFilterSynthesisBySession_SquadFilter(t *testing.T) {
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &squad},
 		{MatchID: "m3", IsWithFriends: true, SessionLabel: &solo},
 	}
-	got := filterSynthesisBySession(matches, nil, &squad)
+	got := filterSynthesisBySession(matches, nil, []string{squad})
 	if len(got) != 1 || got[0].MatchID != "m2" {
 		t.Errorf("expected only m2, got %v", got)
+	}
+}
+
+func TestFilterSynthesisBySession_MultiSquadLabels(t *testing.T) {
+	s1 := "session-a"
+	s2 := "session-b"
+	s3 := "session-c"
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", IsWithFriends: true, SessionLabel: &s1},
+		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s2},
+		{MatchID: "m3", IsWithFriends: true, SessionLabel: &s3},
+		{MatchID: "m4", IsWithFriends: false, SessionLabel: &s1},
+	}
+	// Sélection de 2 sessions escouade sur 3 → union des matchs
+	got := filterSynthesisBySession(matches, nil, []string{s1, s2})
+	if len(got) != 2 {
+		t.Errorf("expected 2 matches (m1+m2), got %d: %v", len(got), got)
+	}
+	ids := map[string]bool{}
+	for _, m := range got {
+		ids[m.MatchID] = true
+	}
+	if !ids["m1"] || !ids["m2"] {
+		t.Errorf("expected m1 and m2, got %v", ids)
 	}
 }
 

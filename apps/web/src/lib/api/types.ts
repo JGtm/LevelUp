@@ -1265,13 +1265,19 @@ export interface TeammateRow {
 export interface TeammatesQueryRequest {
   selected_gamertags?: string[]
   filters?: FilterContextInput | null
-  picked_solo_session_label?: string | null
-  picked_squad_session_label?: string | null
+  picked_solo_session_labels?: string[]
+  picked_squad_session_labels?: string[]
+}
+
+export interface SessionLabelEntry {
+  label: string
+  started_at: string
+  ended_at: string
 }
 
 export interface SessionLabelsList {
-  solo: string[]
-  squad: string[]
+  solo: SessionLabelEntry[]
+  squad: SessionLabelEntry[]
 }
 
 export interface SquadTimeseriesPoint {

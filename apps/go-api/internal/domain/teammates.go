@@ -15,9 +15,9 @@ import "time"
 type TeammatesQueryRequest struct {
 	SelectedGamertags []string            `json:"selected_gamertags"`
 	Filters           *FilterContextInput `json:"filters,omitempty"`
-	// Filtres de session exclusifs : renseigner l'un ou l'autre, pas les deux.
-	PickedSoloSession  *string `json:"picked_solo_session_label,omitempty"`
-	PickedSquadSession *string `json:"picked_squad_session_label,omitempty"`
+	// Multi-sessions : l'union des labels sélectionnés est appliquée côté service.
+	PickedSoloSessions  []string `json:"picked_solo_session_labels,omitempty"`
+	PickedSquadSessions []string `json:"picked_squad_session_labels,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -73,10 +73,18 @@ type TeammateRow struct {
 	WithoutKPIs    *TeammateKPIs `json:"without_kpis,omitempty"`
 }
 
+// SessionLabelEntry est une session avec sa plage temporelle (pour le mini-filtre client).
+type SessionLabelEntry struct {
+	Label     string    `json:"label"`
+	StartedAt time.Time `json:"started_at"`
+	EndedAt   time.Time `json:"ended_at"`
+}
+
 // SessionLabelsList contient les sessions disponibles pour les deux scopes (solo/escouade).
+// Triées par StartedAt DESC côté service.
 type SessionLabelsList struct {
-	Solo  []string `json:"solo"`
-	Squad []string `json:"squad"`
+	Solo  []SessionLabelEntry `json:"solo"`
+	Squad []SessionLabelEntry `json:"squad"`
 }
 
 // TeammatesPageResponse est la réponse de POST /pages/teammates.

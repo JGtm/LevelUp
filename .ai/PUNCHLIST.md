@@ -59,8 +59,8 @@
 
 | St | Owner | Chunk | Effort | Ref |
 |----|-------|-------|--------|-----|
-| `[ ]` | OP | **Squad/Sessions overhaul** — cf. plan non-committé | lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) — **lis avant**, on n'a pas encore tranché le scope |
-| `[ ]` | OP | **Form score intra-match** — réflexion en cours | moyen | [.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md](REFLEXION_FORM_SCORE_INTRA_MATCH.md) — exploratoire |
+| `[~]` | OP | **Squad/Sessions overhaul** §1-3 faits (Go multi-sessions + SessionMultiSelect + SquadLayout). §4 Stats, §5 Tests, §6 Docs restent. | lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) — branche `feat/op-squad-sessions-multiselect` |
+| `[R]` | OP | **Form score intra-match** — réflexion en cours | moyen | [.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md](REFLEXION_FORM_SCORE_INTRA_MATCH.md) — exploratoire |
 | `[ ]` | OP | **Finition multi-titres** — labels/capabilities restants | moyen | [.ai/PLAN_FINITION_MULTI_TITLE.md](PLAN_FINITION_MULTI_TITLE.md) |
 
 ## Blocked / décisions à trancher (review queue — **pas en autonomie**)

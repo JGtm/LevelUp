@@ -1,5 +1,18 @@
 # Thought Log
 
+## [2026-04-28] feat(squad): Squad/Sessions overhaul §1+§2 — multi-sessions backend + SessionMultiSelect
+
+**Statut** : WIP (§3 SquadLayout intégré, §4 Stats + §5 Tests + §6 Docs restent).
+
+**Décision technique** :
+- **§1 — Go backend** : `PickedSquadSession *string` → `PickedSquadSessions []string` dans `TeammatesQueryRequest`. `SessionLabelsList` passe de `[]string` à `[]SessionLabelEntry{Label, StartedAt, EndedAt}` pour permettre le mini-filtre date côté UI. `extractSynthesisSessionLabels` calcule min/max `StartedAt`/`EndedAt` par session, trie par `StartedAt DESC` via `slices.SortFunc` + `cmp.Compare`. `filterSynthesisBySession` utilise `slices.Contains` (union semantics : match retenu si son label est dans **soit** la liste solo **soit** la liste squad). Tests ajoutés : timestamps min/max, ordre DESC, filtre multi-labels.
+- **§2 — Frontend** : `SessionLabelEntry` + `SessionLabelsList` ajoutés dans `types.ts`. `TeammatesQueryRequest` mis à jour (plural). `queryKeys.teammates` étendu avec `sessionLabels` 5e param pour invalider le cache quand les sessions changent. `SessionMultiSelect` : composant contrôlé avec pending state (validation différée), search fuzzy, mini date-range filter (filtre liste uniquement), toggle sélection tout/rien, persistance localStorage `squad-sessions-${playerSlug}`.
+- **§3 — SquadLayout** : ancienne logique NavL2 (lignes 262-275 : `resolvedContext`, `allSessions`, `pickedSessionId`, `pickedSession`, `pickedSquadSessionLabel`) supprimée. `pickedSquadSessionLabels: string[]` avec localStorage. `SessionMultiSelect` affiché conditionnellement (`data.session_labels?.squad?.length > 0`) dans la Card à côté de GamertagCombobox. `useTeammates` reçoit `pickedSquadSessionLabels` en 5e arg.
+
+**Résultats** : `npx tsc --noEmit` → 0 erreur.
+
+**Prochaine étape** : §4 intégration Stats page (si concernée), §5 tests Go + front, §6 mise à jour thought_log final + PUNCHLIST `[R]` + commit. — OP
+
 ## [2026-04-28] cleanup(plotly): résidus CareerPageCharts + colorscale orphelins
 
 **Statut** : Complété.

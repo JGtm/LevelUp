@@ -5,10 +5,12 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -54,7 +56,7 @@ func (s *TeammatesService) GetPage(
 	sessionLabels := extractSynthesisSessionLabels(allMatches)
 
 	// Filtrer les matchs selon les sessions sélectionnées.
-	filteredMatches := filterSynthesisBySession(allMatches, req.PickedSoloSession, req.PickedSquadSession)
+	filteredMatches := filterSynthesisBySession(allMatches, req.PickedSoloSessions, req.PickedSquadSessions)
 
 	totalMatches := len(filteredMatches)
 
@@ -95,41 +97,69 @@ func (s *TeammatesService) GetPage(
 	}, nil
 }
 
-// extractSynthesisSessionLabels collecte les sessions uniques en séparant solo / escouade.
+// extractSynthesisSessionLabels collecte les sessions uniques en séparant solo / escouade,
+// calcule les bornes temporelles de chaque session et trie par StartedAt DESC.
 func extractSynthesisSessionLabels(matches []domain.SynthesisMatchRow) domain.SessionLabelsList {
-	soloSet := map[string]struct{}{}
-	squadSet := map[string]struct{}{}
+	type bounds struct {
+		startedAt time.Time
+		endedAt   time.Time
+	}
+	soloMap  := map[string]*bounds{}
+	squadMap := map[string]*bounds{}
+
 	for _, m := range matches {
 		if m.SessionLabel == nil || *m.SessionLabel == "" {
 			continue
 		}
+		label := *m.SessionLabel
+		t := m.StartTime
+		var em map[string]*bounds
 		if m.IsWithFriends {
-			squadSet[*m.SessionLabel] = struct{}{}
+			em = squadMap
 		} else {
-			soloSet[*m.SessionLabel] = struct{}{}
+			em = soloMap
+		}
+		if b, ok := em[label]; ok {
+			if t.Before(b.startedAt) {
+				b.startedAt = t
+			}
+			if t.After(b.endedAt) {
+				b.endedAt = t
+			}
+		} else {
+			em[label] = &bounds{startedAt: t, endedAt: t}
 		}
 	}
-	solo := make([]string, 0, len(soloSet))
-	for k := range soloSet {
-		solo = append(solo, k)
+
+	toSlice := func(m map[string]*bounds) []domain.SessionLabelEntry {
+		out := make([]domain.SessionLabelEntry, 0, len(m))
+		for label, b := range m {
+			out = append(out, domain.SessionLabelEntry{
+				Label:     label,
+				StartedAt: b.startedAt,
+				EndedAt:   b.endedAt,
+			})
+		}
+		slices.SortFunc(out, func(a, b domain.SessionLabelEntry) int {
+			return cmp.Compare(b.StartedAt.Unix(), a.StartedAt.Unix())
+		})
+		return out
 	}
-	squad := make([]string, 0, len(squadSet))
-	for k := range squadSet {
-		squad = append(squad, k)
+
+	return domain.SessionLabelsList{
+		Solo:  toSlice(soloMap),
+		Squad: toSlice(squadMap),
 	}
-	return domain.SessionLabelsList{Solo: solo, Squad: squad}
 }
 
-// filterSynthesisBySession filtre les matchs selon la session sélectionnée (solo ou escouade).
-// Si les deux sont nil, tous les matchs sont retournés.
-// Si PickedSolo est renseigné, seuls les matchs de cette session solo sont gardés.
-// Si PickedSquad est renseigné, seuls les matchs de cette session escouade sont gardés.
+// filterSynthesisBySession filtre les matchs selon les sessions sélectionnées (union des labels).
+// Slices vides → tous les matchs retournés sans filtre.
 func filterSynthesisBySession(
 	matches []domain.SynthesisMatchRow,
-	pickedSolo *string,
-	pickedSquad *string,
+	pickedSolo []string,
+	pickedSquad []string,
 ) []domain.SynthesisMatchRow {
-	if pickedSolo == nil && pickedSquad == nil {
+	if len(pickedSolo) == 0 && len(pickedSquad) == 0 {
 		return matches
 	}
 	filtered := make([]domain.SynthesisMatchRow, 0, len(matches))
@@ -138,11 +168,11 @@ func filterSynthesisBySession(
 		if m.SessionLabel != nil {
 			label = *m.SessionLabel
 		}
-		if pickedSolo != nil && !m.IsWithFriends && label == *pickedSolo {
+		if len(pickedSolo) > 0 && !m.IsWithFriends && slices.Contains(pickedSolo, label) {
 			filtered = append(filtered, m)
 			continue
 		}
-		if pickedSquad != nil && m.IsWithFriends && label == *pickedSquad {
+		if len(pickedSquad) > 0 && m.IsWithFriends && slices.Contains(pickedSquad, label) {
 			filtered = append(filtered, m)
 		}
 	}
