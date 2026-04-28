@@ -524,6 +524,38 @@ export interface InitialSyncStartRequest {
 // Backfill (recalcul rétroactif)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Engagement (Phase 4 plan engagement)
+// ---------------------------------------------------------------------------
+
+export interface EngagementPointAPI {
+  TimeMS: number
+  PaceJoueur: number
+  PaceTeam: number
+  PaceAttendu: number
+  PaceLobby: number
+  PostDeathFlag: boolean
+  IsPassiveDeath: boolean
+}
+
+export interface EngagementScoreResultAPI {
+  EngagementScore: number | null
+  ResidualBrut: number
+  EngagementCurve: EngagementPointAPI[] | null
+  MatchIntensity: number
+  Confidence: 'full' | 'partial' | 'insufficient_history'
+  NHistoryMatches: number
+}
+
+export interface EngagementCoefficientAPI {
+  XUID: string
+  ModeCategory: string
+  CoefTeamShare: number
+  CoefLobbyShare: number
+  NMatches: number
+  LastUpdated: string
+}
+
 export interface BackfillStartRequest {
   player_slug: string
   medals?: boolean

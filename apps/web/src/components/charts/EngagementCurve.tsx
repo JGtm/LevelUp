@@ -19,7 +19,7 @@
  * Reutilise pour Match View intra-match (1 point = 10s, smooth=true) et pour
  * Session/Periode (1 point = 1 match, smooth=false avec markers visibles).
  */
-import { useMemo } from 'react'
+import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken } from '@/lib/accessibility'
@@ -68,7 +68,6 @@ export interface EngagementCurveProps {
 export function EngagementCurve(props: EngagementCurveProps) {
   const {
     title,
-    subtitle,
     points,
     xFormatter,
     granularity = 'intra',
@@ -76,24 +75,27 @@ export function EngagementCurve(props: EngagementCurveProps) {
     height = 280,
   } = props
 
-  const option = useMemo<EChartsCoreOption>(
-    () => buildEngagementOption(points, granularity, xFormatter),
+  const buildOption = useCallback(
+    (series: ChartSeries<EngagementPoint>[]): EChartsCoreOption => {
+      const pts = series[0]?.datapoints ?? points
+      return buildEngagementOption(pts, granularity, xFormatter)
+    },
     [points, granularity, xFormatter],
   )
 
-  // Series virtuelle pour ChartCard (qui exige une series typee).
+  // Series typee pour ChartCard (datapoints = nos points).
   const series: ChartSeries<EngagementPoint>[] = [
-    { id: 'engagement', name: title ?? 'Engagement', points },
+    { key: 'engagement', datapoints: points },
   ]
 
   return (
     <ChartCard
       title={title}
-      subtitle={subtitle}
       series={series}
-      state={state}
+      loading={state === 'loading'}
+      error={state === 'error' ? new Error('error') : undefined}
       height={height}
-      option={option}
+      buildOption={buildOption}
     />
   )
 }

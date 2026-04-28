@@ -11,6 +11,8 @@ import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { useMatchView, useMatchNeighbors } from './queries'
+import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
+
 import { MatchScoreboard } from './MatchScoreboard'
 import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
@@ -472,6 +474,11 @@ export function MatchViewPage() {
         {/* Onglet Équipe */}
         {activeTab === 'team' && (
           <div className="space-y-6">
+            <EngagementMatchSection
+              playerSlug={playerSlug}
+              matchId={matchId}
+              granularity="intra"
+            />
             <MatchScoreboard
               rows={team_tab.scoreboard}
               weaponKills={combat_tab.weapon_kills}
