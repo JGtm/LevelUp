@@ -7,14 +7,31 @@ package analysis
 import (
 	"fmt"
 	"math"
+	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
 )
+
+// staticTitleScoped reflète l'état du flag transitionnel STATIC_PATHS_TITLE_SCOPED
+// (cf. Phase 6 du plan finition multi-titres). Lu une fois au load du package.
+//
+// Quand false (default) : URLs émises au format flat /static/maps/X.png.
+// Quand true : URLs title-scopées /static/maps/halo_infinite/X.png.
+//
+// Le flip est synchronisé avec la migration FS atomique en Phase 6.5. Les helpers
+// de URL composition de ce fichier restent title-spécifiques (mapPNGNames est HI)
+// donc le slug "halo_infinite" est hardcodé localement — quand un 2e titre aura
+// des assets statiques, ces helpers seront promus à un adapter title-resolved.
+var staticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") == "true"
+
+const homeStaticTitleSlug = "halo_infinite"
 
 // ---------------------------------------------------------------------------
 // Constantes outcome (codes numériques Halo Infinite)
@@ -1060,6 +1077,13 @@ func MapStaticImagePath(mapName string) string { return mapStaticImagePath(mapNa
 
 // mapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
 // Le nom de la map est encodé pour les espaces et caractères spéciaux.
+//
+// Format de l'URL :
+//   - flag OFF (default Phase 6.1–6.4) : /static/maps/{encoded}{ext} (legacy flat)
+//   - flag ON (à partir de Phase 6.5)  : /static/maps/halo_infinite/{encoded}{ext}
+//
+// La composition path passe par internal/assets/static — ce package reste seule
+// source de vérité pour le format MountPoint + Folder.
 func mapStaticImagePath(mapName string) string {
 	mapName = strings.TrimSpace(mapName)
 	if mapName == "" || homeUUIDRe.MatchString(mapName) {
@@ -1078,7 +1102,10 @@ func mapStaticImagePath(mapName string) string {
 			encoded += string(c)
 		}
 	}
-	return "/static/maps/" + encoded + ext
+	if staticTitleScoped {
+		return static.URL(static.KindMap, homeStaticTitleSlug, encoded, ext)
+	}
+	return path.Join(static.MountPoint, static.Folder(static.KindMap), encoded+ext)
 }
 
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.

@@ -22,13 +22,18 @@ type AssetConfig struct {
 	HTTPClient *http.Client
 	// ReconcileInterval est la périodicité du ReconcileWorker (0 → désactivé).
 	ReconcileInterval time.Duration
-	// StaticMapDir est le répertoire des maps statiques (ex: "static/maps").
-	// Si non vide, le LocalFSStore cherche d'abord ici pour KindMapImage.
-	StaticMapDir string
 }
 
 // New crée et démarre un DefaultResolver avec la configuration fournie.
 // Le caller doit appeler Close(ctx) lors du graceful shutdown.
+//
+// Note Phase 6 plan finition multi-titres : l'ancien override
+// WithRootOverride(KindMapImage, StaticMapDir) a été retiré — il était
+// partiellement cassé (le path résolu via LocalFSStore.Path() ajoutait
+// {kind}/{titleID} sous le root override, ce qui ne correspondait pas à la
+// réalité FS). La résolution d'URL d'image map passe désormais exclusivement
+// par les helpers de internal/assets/static (couche 2 SRP) et l'adapter HI
+// (internal/games/halo_infinite/adapter_asset_urls.go, couche 3).
 func New(cfg AssetConfig) (*DefaultResolver, error) {
 	if cfg.CacheRootDir == "" {
 		return nil, fmt.Errorf("assets.New: CacheRootDir requis")
@@ -39,9 +44,6 @@ func New(cfg AssetConfig) (*DefaultResolver, error) {
 
 	// BinaryStore.
 	fs := NewLocalFSStore(cfg.CacheRootDir)
-	if cfg.StaticMapDir != "" {
-		fs = fs.WithRootOverride(KindMapImage, cfg.StaticMapDir)
-	}
 
 	// IndexStore.
 	idx := NewDuckDBIndexStore(cfg.MetaDBPath)

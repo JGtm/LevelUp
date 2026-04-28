@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
@@ -111,8 +113,15 @@ func run(dryRun bool, staticDir, titleID string) error {
 			continue
 		}
 
-		// Upsert dans map_images_registry
-		localPath := fmt.Sprintf("/static/maps/%s", filename)
+		// Upsert dans map_images_registry. Format respecte le flag
+		// STATIC_PATHS_TITLE_SCOPED (cf. Phase 6 plan finition multi-titres) :
+		// flat /static/maps/X.png ou title-scoped /static/maps/{titleID}/X.png.
+		var localPath string
+		if os.Getenv("STATIC_PATHS_TITLE_SCOPED") == "true" {
+			localPath = static.URL(static.KindMap, titleID, strings.TrimSuffix(filename, filepath.Ext(filename)), filepath.Ext(filename))
+		} else {
+			localPath = path.Join(static.MountPoint, static.Folder(static.KindMap), filename)
+		}
 
 		if dryRun {
 			slog.Info("would upsert",

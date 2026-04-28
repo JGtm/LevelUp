@@ -210,7 +210,6 @@ func NewRouter(
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
 		MetaDBPath:    titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
-		StaticMapDir:  filepath.Join(cfg.RepoRoot, "static", "maps"),
 		TokenProvider: reg.AnyPlayerTokens,
 	}
 	assetResolver, err := assets.New(assetCfg)

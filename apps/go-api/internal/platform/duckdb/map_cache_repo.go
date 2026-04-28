@@ -17,7 +17,7 @@ type MapImageEntry struct {
 	TitleID     string
 	MapID       string // asset_id de la map (UUID)
 	ImageURL    string // URL source Waypoint ou CDN
-	LocalPath   string // chemin local relatif (ex: /static/maps/Aquarius.png)
+	LocalPath   string // chemin local relatif (ex: /static/maps/Aquarius.png flat ou /static/maps/halo_infinite/Aquarius.png title-scoped — cf. Phase 6 plan finition multi-titres)
 	FetchedAt   time.Time
 	ContentHash string
 }
