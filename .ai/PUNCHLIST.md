@@ -75,7 +75,7 @@
 | `[R]` | GS | **Squad/Sessions §6** — Notifications `friend_added` + `friend_sync_completed`. §6.A backend Go ✅ + §6.B Discord ✅ (NotifyConfig + NotifyFriendAdded + NotifyFriendSyncCompleted + 7 tests purs + i18n FR/EN). §6.C Frontend ✅ (NotificationCategory étendu, i18n labels/descriptions/templates FR+EN, IconUser, ToggleRow Settings). | moyen | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md §6](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) |
 | `[x]` | GS | **Squad/Sessions §7** — Hook auto-recompute `is_with_friends` post-sync delta (engine `WithFriendsLoader` + `RecomputeIsWithFriendsCore` core helper sans leases + câblage SyncHandler + scheduler auto_sync + 3 tests purs). Comble le gap : avant ce hook, tout match nouvellement sync restait `is_with_friends=FALSE` jusqu'au PATCH /settings ou CLI manuel. | rapide | branche `feat/op-squad-friends-flow` (commit GS) |
 | `[R]` | OP | **Form score intra-match** — réflexion en cours | moyen | [.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md](REFLEXION_FORM_SCORE_INTRA_MATCH.md) — exploratoire |
-| `[ ]` | OP | **Finition multi-titres** — labels/capabilities restants | moyen | [.ai/PLAN_FINITION_MULTI_TITLE.md](PLAN_FINITION_MULTI_TITLE.md) |
+| `[x]` | GS | **Finition multi-titres** — Phases 1–5 livrées (audit terrain 2026-04-28) + Phase 6 static FS title-scoping bouclée bout en bout (branche `feat/multi-title-static-fs-rescope`, 6 commits f4a69679 → 758870a5). Migration FS de 328 fichiers + 180 rows DB UPDATE + 3e adapter `TitleAssetURLAdapter` + cleanup flag transitionnel. | moyen | [.ai/PLAN_FINITION_MULTI_TITLE.md](PLAN_FINITION_MULTI_TITLE.md) |
 
 ## Blocked / décisions à trancher (review queue — **pas en autonomie**)
 
