@@ -111,13 +111,13 @@ func TestCheckQuotas_PiloteRespectsTotalCap(t *testing.T) {
 
 func TestCheckQuotas_PiloteRespectsCadenceCap(t *testing.T) {
 	cases := []struct {
-		cadence  Cadence
-		count    int
+		cadence    Cadence
+		count      int
 		shouldFail bool
 	}{
-		{CadenceDaily, 3, true},   // = DailyMax
+		{CadenceDaily, 3, true}, // = DailyMax
 		{CadenceDaily, 2, false},
-		{CadenceWeekly, 5, true},  // = WeeklyMax
+		{CadenceWeekly, 5, true}, // = WeeklyMax
 		{CadenceWeekly, 4, false},
 		{CadenceMonthly, 2, true}, // = MonthlyMax
 		{CadenceMonthly, 1, false},
@@ -145,7 +145,7 @@ func TestCheckQuotas_FreeCadencePilote(t *testing.T) {
 	// CadenceFree avec mode pilote n'a pas de cap dédié (cadenceQuotaMax → 0)
 	// → seul le total cap s'applique.
 	repo := &fakeChallengeRepo{
-		activeTotal: 5,
+		activeTotal:     5,
 		activeByCadence: map[Cadence]int{CadenceFree: 100},
 	}
 	svc := buildServiceForQuotaTests(repo)

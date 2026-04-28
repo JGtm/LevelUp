@@ -18,7 +18,10 @@ type fakeArcRepo struct {
 	getErr  error
 }
 
-func (r *fakeArcRepo) Create(_ context.Context, a Arc) error { r.created = append(r.created, a); return nil }
+func (r *fakeArcRepo) Create(_ context.Context, a Arc) error {
+	r.created = append(r.created, a)
+	return nil
+}
 func (r *fakeArcRepo) Get(_ context.Context, _ string) (Arc, error) {
 	return r.getResp, r.getErr
 }
@@ -64,10 +67,10 @@ type fakeSquadRepo struct {
 	members []SquadMember
 }
 
-func (r *fakeSquadRepo) Create(_ context.Context, _ Squad) error                  { return nil }
-func (r *fakeSquadRepo) Get(_ context.Context, _ string) (Squad, error)           { return Squad{}, nil }
-func (r *fakeSquadRepo) AddMember(_ context.Context, _ SquadMember) error         { return nil }
-func (r *fakeSquadRepo) RemoveMember(_ context.Context, _, _ string) error        { return nil }
+func (r *fakeSquadRepo) Create(_ context.Context, _ Squad) error           { return nil }
+func (r *fakeSquadRepo) Get(_ context.Context, _ string) (Squad, error)    { return Squad{}, nil }
+func (r *fakeSquadRepo) AddMember(_ context.Context, _ SquadMember) error  { return nil }
+func (r *fakeSquadRepo) RemoveMember(_ context.Context, _, _ string) error { return nil }
 func (r *fakeSquadRepo) ListMembers(_ context.Context, _ string) ([]SquadMember, error) {
 	return r.members, nil
 }

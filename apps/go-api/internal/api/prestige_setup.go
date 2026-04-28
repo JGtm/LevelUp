@@ -26,21 +26,21 @@ import (
 // PrestigeBundle regroupe les ressources globales du module Prestige.
 //
 // Bases ouvertes :
-//  - sharedSocialDB : pool partagé sur shared_social.duckdb (events, user_prestige, squad)
-//  - metadataDB     : pool partagé sur metadata.duckdb (templates, preset_arcs)
+//   - sharedSocialDB : pool partagé sur shared_social.duckdb (events, user_prestige, squad)
+//   - metadataDB     : pool partagé sur metadata.duckdb (templates, preset_arcs)
 //
 // Le PlayerDB (par-joueur) est résolu à la demande via PlayerResolver.
 type PrestigeBundle struct {
-	tuning          prestige.Tuning
-	sharedSocialDB  *platform_duckdb.DB
-	metadataDB      *platform_duckdb.DB
-	socialRepo      *platform_duckdb.PrestigeSocialRepo
-	squadRepo       *platform_duckdb.PrestigeSquadRepo
-	squadChallRepo  *platform_duckdb.PrestigeSquadChallengeRepo
-	templateRepo    *platform_duckdb.PrestigeTemplateRepo
-	presetArcRepo   *platform_duckdb.PrestigePresetArcRepo
-	resolve         PlayerResolver
-	mu              sync.Mutex
+	tuning         prestige.Tuning
+	sharedSocialDB *platform_duckdb.DB
+	metadataDB     *platform_duckdb.DB
+	socialRepo     *platform_duckdb.PrestigeSocialRepo
+	squadRepo      *platform_duckdb.PrestigeSquadRepo
+	squadChallRepo *platform_duckdb.PrestigeSquadChallengeRepo
+	templateRepo   *platform_duckdb.PrestigeTemplateRepo
+	presetArcRepo  *platform_duckdb.PrestigePresetArcRepo
+	resolve        PlayerResolver
+	mu             sync.Mutex
 }
 
 // NewPrestigeBundle initialise le bundle au boot.
