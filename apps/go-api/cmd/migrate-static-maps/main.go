@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -113,15 +112,13 @@ func run(dryRun bool, staticDir, titleID string) error {
 			continue
 		}
 
-		// Upsert dans map_images_registry. Format respecte le flag
-		// STATIC_PATHS_TITLE_SCOPED (cf. Phase 6 plan finition multi-titres) :
-		// title-scoped /static/maps/{titleID}/X.png par défaut, flat si ENV à "false".
-		var localPath string
-		if os.Getenv("STATIC_PATHS_TITLE_SCOPED") == "false" {
-			localPath = path.Join(static.MountPoint, static.Folder(static.KindMap), filename)
-		} else {
-			localPath = static.URL(static.KindMap, titleID, strings.TrimSuffix(filename, filepath.Ext(filename)), filepath.Ext(filename))
-		}
+		// Upsert dans map_images_registry au format title-scoped
+		// /static/maps/{titleID}/X.png (post-Phase 6 finition multi-titres).
+		localPath := static.URL(
+			static.KindMap, titleID,
+			strings.TrimSuffix(filename, filepath.Ext(filename)),
+			filepath.Ext(filename),
+		)
 
 		if dryRun {
 			slog.Info("would upsert",

@@ -514,9 +514,10 @@ handler HTTP → service produit → games.Resolver
 |---------|------|
 | `internal/games/canonical/` | Enum `FieldKey` (43 clés), enums (`Outcome`, `MatchType`, `RatingType`, `Bucket`, `GroupBy`), scopes (`StatsScope`, `TimeseriesQuery`, `CareerOptions`), types match/career/timeseries — stables, agnostiques, consommés par les services |
 | `internal/games/mappings/` | Loader TOML strict (`go-toml/v2`), validation (locales, formats, collisions `display_order`, conversions d'unités), `FieldMappingSet`, registry |
-| `internal/games/halo_infinite/` | Implémentation HI : `DataAdapter` (wrap des repos existants), `SemanticAdapter` (wrap du `FieldMappingSet`) |
+| `internal/games/halo_infinite/` | Implémentation HI : `DataAdapter` (wrap des repos existants), `SemanticAdapter` (wrap du `FieldMappingSet`), `AssetURLAdapter` (compose les URLs `/static/...`) |
 | `internal/games/synthetic_title_b/` | Corpus synthétique de tests d'isolation cross-titres uniquement — jamais référencé par le code de production |
-| `internal/games/{adapter,resolver}.go` | Interfaces `TitleDataAdapter` + `TitleSemanticAdapter`, `StaticResolver` |
+| `internal/games/{adapter,resolver}.go` | Interfaces `TitleDataAdapter` + `TitleSemanticAdapter` + `TitleAssetURLAdapter`, `StaticResolver` |
+| `internal/assets/static/` | Composition pure d'URLs/paths pour `/static/{folder}/{titleSlug}/{id}{ext}` — sans connaissance titre, sans I/O, tests table-driven |
 
 ### Mappings TOML (versionnés Git)
 
