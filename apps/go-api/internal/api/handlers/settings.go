@@ -11,21 +11,24 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
 )
 
 // SettingsHandler gère les endpoints de configuration.
 type SettingsHandler struct {
-	cfg           *config.AppConfig
-	settingsStore *settings_platform.Store
-	jobStore      *jobs.Store
-	mediaIndexer  service.MediaIndexer
+	cfg                 *config.AppConfig
+	settingsStore       *settings_platform.Store
+	jobStore            *jobs.Store
+	mediaIndexer        service.MediaIndexer
+	friendsOrchestrator port.FriendsOrchestrator // nil = recompute désactivé (mode legacy)
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -47,6 +50,13 @@ func NewSettingsHandlerWithIndexer(
 		jobStore:      jobStore,
 		mediaIndexer:  indexer,
 	}
+}
+
+// WithFriendsOrchestrator branche un FriendsOrchestrator déclenché sur diff
+// friend_gamertags lors d'un PATCH /settings. §4 plan Squad/Sessions overhaul.
+func (h *SettingsHandler) WithFriendsOrchestrator(o port.FriendsOrchestrator) *SettingsHandler {
+	h.friendsOrchestrator = o
+	return h
 }
 
 // GetSettings retourne la configuration courante.
@@ -115,6 +125,9 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Snapshot friend_gamertags avant Apply pour détecter le diff post-save.
+	prevFriends := append([]string(nil), cfg.FriendGamertags...)
+
 	settings_platform.Apply(cfg, &req)
 
 	if err := h.settingsStore.Save(cfg); err != nil {
@@ -122,7 +135,40 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// §4 plan Squad/Sessions overhaul : si friend_gamertags a changé,
+	// déclencher async le recompute is_with_friends sur toutes les player DBs.
+	// Idempotent (la garde FALSE dans friends_recompute.go protège les retries).
+	if h.friendsOrchestrator != nil && friendGamertagsChanged(prevFriends, cfg.FriendGamertags) {
+		go func() {
+			ctx := context.Background()
+			if err := h.friendsOrchestrator.OnFriendsChanged(ctx); err != nil {
+				slog.ErrorContext(ctx, "friends recompute orchestration failed", "err", err)
+			}
+		}()
+	}
+
 	writeJSON(w, http.StatusOK, settings_platform.ToResponse(cfg))
+}
+
+// friendGamertagsChanged compare deux listes (set-equality, case-insensitive).
+func friendGamertagsChanged(prev, next []string) bool {
+	if len(prev) != len(next) {
+		return true
+	}
+	set := make(map[string]struct{}, len(prev))
+	for _, gt := range prev {
+		set[normalizeGamertag(gt)] = struct{}{}
+	}
+	for _, gt := range next {
+		if _, ok := set[normalizeGamertag(gt)]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeGamertag(gt string) string {
+	return strings.ToLower(strings.TrimSpace(gt))
 }
 
 // PostMediaResetIndex réinitialise l'index des médias (opération destructive).

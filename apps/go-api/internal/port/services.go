@@ -168,6 +168,16 @@ type ProfileService interface {
 	CreatePlayer(req domain.CreatePlayerProfileRequest) (playerKey string, warnings []string, err error)
 }
 
+// FriendsOrchestrator déclenche le recompute is_with_friends sur toutes les
+// player DBs configurées (multi-titres). §4 du plan Squad/Sessions overhaul.
+//
+// Implémenté par *service.FriendsOrchestratorService. Le résultat n'est pas
+// typé ici pour éviter une fuite de service vers port — les handlers le
+// consomment via le type concret quand ils ont besoin du détail.
+type FriendsOrchestrator interface {
+	OnFriendsChanged(ctx context.Context) error
+}
+
 // ─── Sprint 54 : Compare, Leaderboard ────────────────────────────────────────
 
 // CompareService construit la page Compare joueur vs joueur.

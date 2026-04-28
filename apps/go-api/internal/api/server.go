@@ -301,7 +301,17 @@ func NewRouter(
 		})
 
 		// Sprint 16 : Settings + Setup joueur
-		settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore)
+		// §4 plan Squad/Sessions : orchestrator recompute is_with_friends, déclenché
+		// async sur diff friend_gamertags lors d'un PATCH /settings.
+		friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, func() ([]string, error) {
+			s, err := settingsStore.Load()
+			if err != nil {
+				return nil, err
+			}
+			return s.FriendGamertags, nil
+		})
+		settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
+			WithFriendsOrchestrator(friendsOrchestrator)
 		r.Get("/settings", settingsHandler.GetSettings)
 		r.Patch("/settings", settingsHandler.PatchSettings)
 		r.Post("/settings/media/reset-index", settingsHandler.PostMediaResetIndex)
