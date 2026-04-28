@@ -132,6 +132,22 @@ export interface SettingsText {
   backfillForceConfirmCancel: string
   backfillWarningsHeader: string
 
+  // Backfill — toasts
+  backfillToastStarted: string
+  backfillToastStartFailed: string
+  backfillToastSucceeded: string
+  backfillToastSucceededWithWarnings: string
+  backfillToastFailed: string
+  backfillToastCancelled: string
+
+  // Sync manuelle — toasts
+  syncToastStarted: string
+  syncToastStartFailed: string
+  syncToastSucceeded: string
+  syncToastSucceededWithWarnings: string
+  syncToastFailed: string
+  syncToastCancelled: string
+
   // Onglet Analyse — Sessions
   analyseTitle: string
   sessionGroupingTitle: string
@@ -302,6 +318,20 @@ const FR_TEXT: SettingsText = {
   backfillForceConfirmOk: 'Forcer',
   backfillForceConfirmCancel: 'Annuler',
   backfillWarningsHeader: 'Avertissements',
+
+  backfillToastStarted: 'Recalcul rétroactif démarré',
+  backfillToastStartFailed: 'Impossible de démarrer le recalcul',
+  backfillToastSucceeded: 'Recalcul rétroactif terminé',
+  backfillToastSucceededWithWarnings: 'Recalcul terminé avec avertissements',
+  backfillToastFailed: 'Recalcul rétroactif échoué',
+  backfillToastCancelled: 'Recalcul rétroactif annulé',
+
+  syncToastStarted: 'Synchronisation démarrée',
+  syncToastStartFailed: 'Impossible de démarrer la synchronisation',
+  syncToastSucceeded: 'Synchronisation terminée',
+  syncToastSucceededWithWarnings: 'Synchronisation terminée avec avertissements',
+  syncToastFailed: 'Synchronisation échouée',
+  syncToastCancelled: 'Synchronisation annulée',
 
   // Onglet Analyse — Sessions
   analyseTitle: 'Paramètres d’analyse',
@@ -504,6 +534,20 @@ const EN_TEXT: SettingsText = {
   backfillForceConfirmOk: 'Force',
   backfillForceConfirmCancel: 'Cancel',
   backfillWarningsHeader: 'Warnings',
+
+  backfillToastStarted: 'Backfill started',
+  backfillToastStartFailed: 'Failed to start backfill',
+  backfillToastSucceeded: 'Backfill completed',
+  backfillToastSucceededWithWarnings: 'Backfill completed with warnings',
+  backfillToastFailed: 'Backfill failed',
+  backfillToastCancelled: 'Backfill cancelled',
+
+  syncToastStarted: 'Sync started',
+  syncToastStartFailed: 'Failed to start sync',
+  syncToastSucceeded: 'Sync completed',
+  syncToastSucceededWithWarnings: 'Sync completed with warnings',
+  syncToastFailed: 'Sync failed',
+  syncToastCancelled: 'Sync cancelled',
 
   // Analyse tab — Sessions
   analyseTitle: 'Analysis settings',
