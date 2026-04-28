@@ -110,15 +110,50 @@ type TitleSemanticAdapter interface {
 	Outcomes() *mappings.OutcomeMappingSet
 }
 
+// TitleAssetURLAdapter expose la composition d'URLs d'assets statiques
+// title-spécifiques.
+//
+// Phase 6 du plan de finition multi-titres : couche 3 (cf. SRP 4-couches du
+// BACKLOG static FS migration). Convertit un identifiant métier (mapName,
+// medalID, tier) en URL relative, en encapsulant les conventions de naming
+// propres au titre (encodage espaces map names, format CSR rank, etc.).
+//
+// Délègue la composition path à `internal/assets/static/` (couche 2 pure).
+// Les callers (home, home_repo, citation_snippets, frontend) reçoivent cet
+// adapter via le Resolver et n'ont aucune connaissance du format path/encoding.
+//
+// Les méthodes retournent "" quand l'identifiant est invalide (UUID, vide,
+// non reconnu) — les callers doivent dégrader gracieusement (cache-aside,
+// fallback nil, etc.).
+type TitleAssetURLAdapter interface {
+	TitleSlug() string
+
+	// MapImageURL retourne l'URL de l'image d'une map à partir de son nom métier.
+	// Retourne "" si mapName est vide, est un UUID ou n'est pas reconnu.
+	MapImageURL(mapName string) string
+
+	// MedalImageURL retourne l'URL de l'icône d'une médaille à partir de son ID numérique.
+	MedalImageURL(medalID uint64) string
+
+	// CSRRankImageURL retourne l'URL du badge d'un rang CSR (tier + sub-tier).
+	// Cas spécial : pour Onyx, utiliser CSRRankImageURLOnyx (pas de sub-tier).
+	CSRRankImageURL(tier string, subTier int) string
+
+	// CSRRankImageURLOnyx retourne l'URL du badge Onyx (sans sub-tier).
+	CSRRankImageURLOnyx() string
+}
+
 // Resolver injecte les adapters d'un titre courant aux services produit.
 //
 // Il est construit au boot du serveur et exposé via la DI. Un service produit
-// reçoit Resolver et appelle Data(slug) ou Semantic(slug) selon son besoin.
+// reçoit Resolver et appelle Data(slug), Semantic(slug) ou AssetURL(slug)
+// selon son besoin.
 //
 // Il n'a aucune connaissance des slugs supportés en dur : c'est le constructeur
 // (api/server.go) qui peuple le resolver via Register*().
 type Resolver interface {
 	Data(titleSlug string) (TitleDataAdapter, error)
 	Semantic(titleSlug string) (TitleSemanticAdapter, error)
+	AssetURL(titleSlug string) (TitleAssetURLAdapter, error)
 	DefaultSlug() string
 }

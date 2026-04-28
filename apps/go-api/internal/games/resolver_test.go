@@ -52,6 +52,15 @@ func (s *stubSemantic) Ranks() *mappings.RankCatalog          { return mappings.
 func (s *stubSemantic) Assets() *mappings.AssetMappingSet     { return nil }
 func (s *stubSemantic) Outcomes() *mappings.OutcomeMappingSet { return nil }
 
+// stubAssetURL implémente TitleAssetURLAdapter pour les tests resolver.
+type stubAssetURL struct{ slug string }
+
+func (s *stubAssetURL) TitleSlug() string                      { return s.slug }
+func (s *stubAssetURL) MapImageURL(_ string) string            { return "" }
+func (s *stubAssetURL) MedalImageURL(_ uint64) string          { return "" }
+func (s *stubAssetURL) CSRRankImageURL(_ string, _ int) string { return "" }
+func (s *stubAssetURL) CSRRankImageURLOnyx() string            { return "" }
+
 // hiSlug constante locale aux tests pour réutiliser le littéral du titre
 // par défaut sans déclencher goconst sur les multiples occurrences.
 const hiSlug = "halo_infinite"
@@ -73,6 +82,7 @@ func TestStaticResolver_RegisterAndResolve(t *testing.T) {
 	r := NewStaticResolver(hiSlug)
 	r.RegisterData(&stubData{slug: hiSlug})
 	r.RegisterSemantic(&stubSemantic{slug: hiSlug})
+	r.RegisterAssetURL(&stubAssetURL{slug: hiSlug})
 
 	d, err := r.Data(hiSlug)
 	if err != nil {
@@ -89,6 +99,14 @@ func TestStaticResolver_RegisterAndResolve(t *testing.T) {
 	if s.TitleSlug() != hiSlug {
 		t.Errorf("Semantic slug = %q", s.TitleSlug())
 	}
+
+	a, err := r.AssetURL(hiSlug)
+	if err != nil {
+		t.Fatalf("AssetURL err: %v", err)
+	}
+	if a.TitleSlug() != hiSlug {
+		t.Errorf("AssetURL slug = %q", a.TitleSlug())
+	}
 }
 
 func TestStaticResolver_Unknown(t *testing.T) {
@@ -100,6 +118,9 @@ func TestStaticResolver_Unknown(t *testing.T) {
 	if _, err := r.Semantic("unknown"); !errors.Is(err, ErrTitleNotResolved) {
 		t.Errorf("Semantic err = %v, want ErrTitleNotResolved", err)
 	}
+	if _, err := r.AssetURL("unknown"); !errors.Is(err, ErrTitleNotResolved) {
+		t.Errorf("AssetURL err = %v, want ErrTitleNotResolved", err)
+	}
 }
 
 func TestStaticResolver_Slugs_Union(t *testing.T) {
@@ -107,9 +128,10 @@ func TestStaticResolver_Slugs_Union(t *testing.T) {
 	r := NewStaticResolver(hiSlug)
 	r.RegisterData(&stubData{slug: hiSlug})
 	r.RegisterSemantic(&stubSemantic{slug: "test_title"})
+	r.RegisterAssetURL(&stubAssetURL{slug: "third_title"})
 	slugs := r.Slugs()
-	if len(slugs) != 2 {
-		t.Errorf("Slugs len = %d, want 2 (union)", len(slugs))
+	if len(slugs) != 3 {
+		t.Errorf("Slugs len = %d, want 3 (union)", len(slugs))
 	}
 }
 

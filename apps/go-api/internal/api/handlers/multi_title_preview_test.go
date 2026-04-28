@@ -93,6 +93,7 @@ func (f *fakeSemantic) Outcomes() *mappings.OutcomeMappingSet { return nil }
 type fakeResolver struct {
 	data     games.TitleDataAdapter
 	semantic games.TitleSemanticAdapter
+	assetURL games.TitleAssetURLAdapter
 	err      error
 }
 
@@ -107,6 +108,12 @@ func (f *fakeResolver) Semantic(slug string) (games.TitleSemanticAdapter, error)
 		return nil, f.err
 	}
 	return f.semantic, nil
+}
+func (f *fakeResolver) AssetURL(slug string) (games.TitleAssetURLAdapter, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.assetURL, nil
 }
 func (f *fakeResolver) DefaultSlug() string { return defaultMultiTitleSlug }
 
