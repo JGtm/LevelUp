@@ -121,6 +121,7 @@ export interface SettingsText {
   backfillLUSR: string
   backfillEvents: string
   backfillWeapons: string
+  backfillEngagementScores: string
   backfillPlayerLabel: string
   backfillForceLabel: string
   backfillRunButton: string
@@ -306,6 +307,7 @@ const FR_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillEvents: 'Événements',
   backfillWeapons: 'Armes',
+  backfillEngagementScores: "Score d'engagement",
   backfillPlayerLabel: 'Joueur',
   backfillForceLabel: 'Forcer le recalcul complet pour les options sélectionnées',
   backfillRunButton: 'Lancer le recalcul rétroactif',
@@ -522,6 +524,7 @@ const EN_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillEvents: 'Events',
   backfillWeapons: 'Weapons',
+  backfillEngagementScores: 'Engagement score',
   backfillPlayerLabel: 'Player',
   backfillForceLabel: 'Force full rescan for selected options',
   backfillRunButton: 'Run backfill',

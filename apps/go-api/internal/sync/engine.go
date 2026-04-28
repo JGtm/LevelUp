@@ -172,6 +172,41 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 // chaque match : ce backfill explicite est la voie d'entree pour peupler les
 // dominance_flag (cf. PLAN_META_FOUNDATIONS_GO § 6.0.1, prerequis Phase 1
 // pilote Squad/MatchView/Career).
+// RunBackfillEngagementScores calcule et persiste le score d'engagement pour
+// les matchs PvP du joueur (Phase 6 plan engagement). Si force=true, recalcule
+// les scores existants ; sinon ne calcule que les manquants.
+//
+// Skip silencieux si la migration Phase 2 n'a pas ete appliquee (gating
+// information_schema). Aucun appel API requis (calcul purement local depuis
+// highlight_events deja synces).
+func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool) (int, error) {
+	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillEngagementScores lease player: %w", err)
+	}
+	defer relPlayer()
+
+	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillEngagementScores lease shared: %w", err)
+	}
+	defer relShared()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillEngagementScores OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillEngagementScores OpenSharedDB: %w", err)
+	}
+	defer sharedHandle.Close()
+
+	return batchComputeEngagementScores(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, force)
+}
+
 func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll bool) (int, error) {
 	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
 	if err != nil {

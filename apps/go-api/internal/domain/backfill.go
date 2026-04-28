@@ -16,6 +16,7 @@ type BackfillStartRequest struct {
 	Aliases           bool `json:"aliases"`
 	Weapons           bool `json:"weapons"`
 	LUSR              bool `json:"lusr"`
+	EngagementScores  bool `json:"engagement_scores"` // Phase 6 plan engagement
 	AllData           bool `json:"all_data"`
 
 	// Options
