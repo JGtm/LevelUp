@@ -82,6 +82,15 @@ func (s *MatchHistoryService) GetPage(
 
 	// Filtrage (réutilise la logique pure du FiltersService)
 	filtered := filterMatchHistoryRows(rawRows, req.Filters)
+
+	// §5 plan Squad/Sessions : filtre multi-sessions solo (post-FilterContext).
+	// Garde uniquement les rows dont SessionLabel matche un label fourni.
+	// (les rows squad — IsWithFriends=TRUE — sont déjà filtrées par défaut par
+	// le filterContext si l'utilisateur a sélectionné un mode "solo".)
+	if len(req.PickedSoloSessionLabels) > 0 {
+		filtered = filterMatchHistoryRowsBySoloSessions(filtered, req.PickedSoloSessionLabels)
+	}
+
 	totalScoped := len(filtered)
 
 	// Calcul win_rate par carte sur l'histotique complet (avant filtre)
@@ -104,6 +113,11 @@ func (s *MatchHistoryService) GetPage(
 		}
 	}
 
+	// §5 plan Squad/Sessions : sessions dispo dérivées de l'ensemble brut
+	// (avant filtrage scope) pour permettre au front de proposer le picker
+	// solo/squad indépendamment du filtre période courant.
+	sessionLabels := buildMatchHistorySessionLabels(rawRows)
+
 	return domain.MatchHistoryPageResponse{
 		Summary: domain.MatchHistoryQuerySummary{
 			TotalMatchesScoped:     totalScoped,
@@ -118,7 +132,53 @@ func (s *MatchHistoryService) GetPage(
 		AvailableSortFields: availableSortFields,
 		AvailableColumns:    availableColumns,
 		ExportHint:          exportHint,
+		SessionLabels:       sessionLabels,
 	}, nil
+}
+
+// filterMatchHistoryRowsBySoloSessions garde les rows dont SessionLabel
+// figure dans labels et qui sont des sessions solo (IsWithFriends=FALSE).
+// Les rows sans label sont exclues. Comparaison case-sensitive (les labels
+// sont des identifiants normalisés côté ingestion).
+func filterMatchHistoryRowsBySoloSessions(
+	rows []domain.MatchHistoryRawRow,
+	labels []string,
+) []domain.MatchHistoryRawRow {
+	if len(labels) == 0 {
+		return rows
+	}
+	allowed := make(map[string]struct{}, len(labels))
+	for _, l := range labels {
+		allowed[l] = struct{}{}
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if r.IsWithFriends || r.SessionLabel == nil {
+			continue
+		}
+		if _, ok := allowed[*r.SessionLabel]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// buildMatchHistorySessionLabels convertit les MatchHistoryRawRow en
+// SessionLabelInput puis délègue à BuildSessionLabelsList. Skip les rows
+// sans StartTime (ne devrait jamais arriver en prod, mais protège).
+func buildMatchHistorySessionLabels(rows []domain.MatchHistoryRawRow) domain.SessionLabelsList {
+	inputs := make([]SessionLabelInput, 0, len(rows))
+	for _, r := range rows {
+		if r.SessionLabel == nil || *r.SessionLabel == "" || r.StartTime == nil {
+			continue
+		}
+		inputs = append(inputs, SessionLabelInput{
+			Label:         *r.SessionLabel,
+			StartTime:     *r.StartTime,
+			IsWithFriends: r.IsWithFriends,
+		})
+	}
+	return BuildSessionLabelsList(inputs)
 }
 
 // ExportCSV charge les matchs filtrés et retourne les lignes pour export CSV.

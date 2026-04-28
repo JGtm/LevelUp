@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
+import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import {
   OutcomeSequenceTape,
   type OutcomePoint,
@@ -13,6 +14,7 @@ import { MatchHistoryTable } from './MatchHistoryTable'
 import { useMatchHistory, useMatchHistoryExport } from './queries'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 const OUTCOME_FROM_CODE: Record<number, OutcomeValue> = {
   1: 'tie',
@@ -26,15 +28,36 @@ export function MatchHistoryPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
+  const locale = useAppShellStore((s) => s.locale)
 
   const [page, setPage] = useState(1)
   const [sortField, setSortField] = useState('start_time')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  // §5 plan Squad/Sessions : filtre multi-sessions solo persisté localStorage.
+  const sessionStorageKey = `stats-sessions-${playerSlug}`
+  const [pickedSoloSessionLabels, setPickedSoloSessionLabelsRaw] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(sessionStorageKey)
+      return stored ? (JSON.parse(stored) as string[]) : []
+    } catch {
+      return []
+    }
+  })
+  const applySoloSessionLabels = (labels: string[]) => {
+    setPickedSoloSessionLabelsRaw(labels)
+    try {
+      localStorage.setItem(sessionStorageKey, JSON.stringify(labels))
+    } catch {
+      // localStorage indisponible — ignorer.
+    }
+    setPage(1) // reset pagination quand le filtre change
+  }
 
   const request = {
     filters: filterContext,
     pagination: { page, page_size: 50 },
     include_export_hint: true,
+    picked_solo_session_labels: pickedSoloSessionLabels.length > 0 ? pickedSoloSessionLabels : undefined,
   }
 
   const { data, isLoading, isError, refetch } = useMatchHistory(
@@ -42,6 +65,7 @@ export function MatchHistoryPage() {
     request,
     filterContextHash,
     page,
+    pickedSoloSessionLabels,
   )
 
   const exportMutation = useMatchHistoryExport(playerSlug)
@@ -73,6 +97,18 @@ export function MatchHistoryPage() {
       <div className="p-6">
         {/* Sprint 54-B : avertissement privacy */}
         <PrivacyBanner warning={data?.privacy_warning} className="mb-4" />
+
+        {/* §5 plan Squad/Sessions : filtre multi-sessions solo */}
+        {(data?.session_labels?.solo?.length ?? 0) > 0 && (
+          <div className="mb-4">
+            <SessionMultiSelect
+              sessions={data!.session_labels.solo}
+              selected={pickedSoloSessionLabels}
+              onChange={applySoloSessionLabels}
+              locale={locale}
+            />
+          </div>
+        )}
 
         {isLoading ? (
           null
