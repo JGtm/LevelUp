@@ -1,10 +1,9 @@
 /**
- * heatmapChart.test.ts — Libellés en argument, plus aucune string FR
- * libre, et `mapLabelOf` résout les IDs bruts de cartes vers leur libellé
- * localisé (assets.map du titre courant).
+ * heatmapChart.test.ts — buildHeatmapSeries produit un ChartSeries<ChartPointHeatmap>
+ * correctement trié et sans libellé hardcodé.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { buildHeatmapChart } from './heatmapChart'
+import { buildHeatmapSeries } from './heatmapChart'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
 const ROWS: MapBreakdownRow[] = [
@@ -12,66 +11,60 @@ const ROWS: MapBreakdownRow[] = [
   { map_ui: 'Live Fire', match_count: 6, win_rate: 50 },
 ]
 
-const identityMapLabel = (id: string) => id
+const id = (s: string) => s
 
-describe('buildHeatmapChart', () => {
-  const labels = {
-    title: 'H_TITLE',
-    winAxis: 'H_AXIS',
-    matchesLabel: 'H_MATCHES',
-    mapLabelOf: identityMapLabel,
-  }
-
-  it('retourne null pour rows vide', () => {
-    expect(buildHeatmapChart({ rows: [], ...labels })).toBeNull()
+describe('buildHeatmapSeries', () => {
+  it('retourne [] pour rows vide', () => {
+    expect(
+      buildHeatmapSeries({ rows: [], winAxisLabel: 'WR', mapLabelOf: id }),
+    ).toEqual([])
   })
 
-  it('reporte les libellés fournis dans le layout et hovertemplate', () => {
-    const fig = buildHeatmapChart({ rows: ROWS, ...labels })
-    expect(fig!.layout.title).toEqual({ text: 'H_TITLE', font: { size: 13 } })
-    const trace = fig!.data[0] as {
-      y: string[]
-      hovertemplate: string
-      colorbar?: { title?: string }
-    }
-    expect(trace.y).toEqual(['H_AXIS'])
-    expect(trace.hovertemplate).toContain('H_AXIS')
-    expect(trace.hovertemplate).toContain('H_MATCHES')
-    expect(trace.colorbar?.title).toBe('H_AXIS')
+  it('retourne 1 série avec 1 datapoint par carte', () => {
+    const result = buildHeatmapSeries({ rows: ROWS, winAxisLabel: 'WR', mapLabelOf: id })
+    expect(result).toHaveLength(1)
+    expect(result[0].datapoints).toHaveLength(2)
   })
 
   it('trie les cartes par win_rate décroissant', () => {
-    const fig = buildHeatmapChart({ rows: ROWS, ...labels })
-    const trace = fig!.data[0] as { x: string[]; z: number[][] }
-    expect(trace.x).toEqual(['Aquarius', 'Live Fire'])
-    expect(trace.z[0]).toEqual([75, 50])
+    const result = buildHeatmapSeries({ rows: ROWS, winAxisLabel: 'WR', mapLabelOf: id })
+    const xs = result[0].datapoints.map((d) => d.x)
+    expect(xs).toEqual(['Aquarius', 'Live Fire'])
   })
 
-  it('aucun libellé hardcodé en français résiduel', () => {
-    const fig = buildHeatmapChart({ rows: ROWS, ...labels })
-    const json = JSON.stringify(fig)
-    expect(json).not.toMatch(/Win rate par carte/)
-    expect(json).not.toMatch(/Win %/)
-    expect(json).not.toMatch(/Win rate \(%\)/)
-    expect(json).not.toMatch(/Matchs:/)
+  it('utilise winAxisLabel comme y pour tous les datapoints', () => {
+    const result = buildHeatmapSeries({ rows: ROWS, winAxisLabel: 'H_AXIS', mapLabelOf: id })
+    for (const dp of result[0].datapoints) {
+      expect(dp.y).toBe('H_AXIS')
+    }
   })
 
-  it('applique mapLabelOf pour chaque carte (axe x localisé)', () => {
-    const mapLabelOf = vi.fn((id: string) => `LOC_${id}`)
-    const fig = buildHeatmapChart({ rows: ROWS, ...labels, mapLabelOf })
-    const trace = fig!.data[0] as { x: string[] }
-    expect(trace.x).toEqual(['LOC_Aquarius', 'LOC_Live Fire'])
+  it('mappe win_rate comme value', () => {
+    const result = buildHeatmapSeries({ rows: ROWS, winAxisLabel: 'WR', mapLabelOf: id })
+    expect(result[0].datapoints[0].value).toBe(75)
+    expect(result[0].datapoints[1].value).toBe(50)
+  })
+
+  it('applique mapLabelOf pour chaque carte (axe x)', () => {
+    const mapLabelOf = vi.fn((s: string) => `LOC_${s}`)
+    const result = buildHeatmapSeries({ rows: ROWS, winAxisLabel: 'WR', mapLabelOf })
+    const xs = result[0].datapoints.map((d) => d.x)
+    expect(xs).toEqual(['LOC_Aquarius', 'LOC_Live Fire'])
     expect(mapLabelOf).toHaveBeenCalledWith('Aquarius')
     expect(mapLabelOf).toHaveBeenCalledWith('Live Fire')
   })
 
-  it('mapLabelOf qui retourne l\'ID brut équivaut à pas de localisation (fallback)', () => {
-    const fig = buildHeatmapChart({
-      rows: ROWS,
-      ...labels,
-      mapLabelOf: identityMapLabel,
-    })
-    const trace = fig!.data[0] as { x: string[] }
-    expect(trace.x).toEqual(['Aquarius', 'Live Fire'])
+  it('mapLabelOf identité = fallback (ID brut inchangé)', () => {
+    const result = buildHeatmapSeries({ rows: ROWS, winAxisLabel: 'WR', mapLabelOf: id })
+    const xs = result[0].datapoints.map((d) => d.x)
+    expect(xs).toEqual(['Aquarius', 'Live Fire'])
+  })
+
+  it('aucun libellé hardcodé en français résiduel', () => {
+    const result = buildHeatmapSeries({ rows: ROWS, winAxisLabel: 'WR', mapLabelOf: id })
+    const json = JSON.stringify(result)
+    expect(json).not.toMatch(/Win rate par carte/)
+    expect(json).not.toMatch(/Win %/)
+    expect(json).not.toMatch(/Win rate \(%\)/)
   })
 })

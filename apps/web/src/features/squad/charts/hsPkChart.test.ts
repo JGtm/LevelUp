@@ -1,10 +1,9 @@
 /**
- * hsPkChart.test.ts — Vérifie que le builder ne crée plus de strings
- * libres : les libellés sont passés en argument et reportés tels quels
- * dans le payload Plotly.
+ * hsPkChart.test.ts — buildHsPkSeries produit un ChartSeries<ChartPointStacked>
+ * sans libellé hardcodé.
  */
 import { describe, it, expect } from 'vitest'
-import { buildHsPkChart } from './hsPkChart'
+import { buildHsPkSeries } from './hsPkChart'
 import { SQUAD_HSPK_METRICS } from '../metrics'
 import type { TeammateRow } from '@/lib/api/types'
 
@@ -27,49 +26,51 @@ const makeRow = (gamertag: string, hs: number, pk: number): TeammateRow => ({
   without_kpis: null,
 })
 
-describe('buildHsPkChart', () => {
+describe('buildHsPkSeries', () => {
   const args = {
     hsMetric: SQUAD_HSPK_METRICS.hs,
     pkMetric: SQUAD_HSPK_METRICS.pk,
     hsLabel: 'HS Label',
     pkLabel: 'PK Label',
-    title: 'TITRE_TEST',
   }
 
-  it('retourne null pour rows vide', () => {
-    expect(buildHsPkChart({ rows: [], ...args })).toBeNull()
+  it('retourne [] pour rows vide', () => {
+    expect(buildHsPkSeries({ rows: [], ...args })).toEqual([])
   })
 
-  it('reporte le titre et les noms de traces fournis', () => {
-    const fig = buildHsPkChart({
+  it('retourne 1 série avec 1 datapoint par gamertag', () => {
+    const result = buildHsPkSeries({
       rows: [makeRow('A', 3, 1), makeRow('B', 4, 0)],
       ...args,
     })
-    expect(fig).not.toBeNull()
-    expect(fig!.layout.title).toEqual({ text: 'TITRE_TEST', font: { size: 13 } })
-    const names = fig!.data.map((t) => (t as { name?: string }).name)
-    expect(names).toContain('HS Label')
-    expect(names).toContain('PK Label')
+    expect(result).toHaveLength(1)
+    expect(result[0].datapoints).toHaveLength(2)
+    expect(result[0].datapoints[0].category).toBe('A')
+    expect(result[0].datapoints[1].category).toBe('B')
   })
 
-  it('aucun libellé hardcodé en français résiduel', () => {
-    const fig = buildHsPkChart({
-      rows: [makeRow('A', 3, 1)],
-      ...args,
-    })
-    const json = JSON.stringify(fig)
-    expect(json).not.toMatch(/Headshot kills\/partie/)
-    expect(json).not.toMatch(/Perfect kills\/partie/)
+  it('utilise les labels passés comme clés de composants', () => {
+    const result = buildHsPkSeries({ rows: [makeRow('A', 3, 1)], ...args })
+    const dp = result[0].datapoints[0]
+    expect(dp.components).toHaveProperty('HS Label')
+    expect(dp.components).toHaveProperty('PK Label')
   })
 
   it('utilise les extracteurs SquadMetric pour les valeurs', () => {
-    const fig = buildHsPkChart({
+    const result = buildHsPkSeries({
       rows: [makeRow('A', 4, 2), makeRow('B', 0, 0)],
       ...args,
     })
-    const hsTrace = fig!.data.find((t) => (t as { name?: string }).name === 'HS Label')
-    const pkTrace = fig!.data.find((t) => (t as { name?: string }).name === 'PK Label')
-    expect((hsTrace as { y: number[] }).y).toEqual([4, 0])
-    expect((pkTrace as { y: number[] }).y).toEqual([2, 0])
+    expect(result[0].datapoints[0].components['HS Label']).toBe(4)
+    expect(result[0].datapoints[0].components['PK Label']).toBe(2)
+    expect(result[0].datapoints[1].components['HS Label']).toBe(0)
+    expect(result[0].datapoints[1].components['PK Label']).toBe(0)
+  })
+
+  it('aucun libellé hardcodé en français résiduel', () => {
+    const result = buildHsPkSeries({ rows: [makeRow('A', 3, 1)], ...args })
+    const json = JSON.stringify(result)
+    expect(json).not.toMatch(/Headshot kills\/partie/)
+    expect(json).not.toMatch(/Perfect kills\/partie/)
   })
 })

@@ -1,72 +1,37 @@
 /**
- * heatmapChart — Win rate par carte (heatmap horizontale).
+ * heatmapChart — Win rate par carte.
  *
- * Multi-titres : libellés UI (titre, axes, hovertemplate) ET noms de cartes
- * passent par le caller. Les noms de cartes sont résolus via `mapLabelOf`
- * qui consomme le mapping `assets.map` du titre courant — fallback sur l'ID
- * brut si la carte n'est pas mappée (titre minimaliste, ou carte récente
- * pas encore au TOML).
+ * Produit un ChartSeries<ChartPointHeatmap>[], consommé par Heatmap2DChart.
+ * Remplace l'ancien builder Plotly heatmap 1D.
+ *
+ * Multi-titres : winAxisLabel et noms de cartes (via mapLabelOf) passés
+ * en argument par le caller. Fallback sur l'ID brut si la carte n'est pas
+ * dans le mapping du titre courant.
  */
-import type { MapBreakdownRow, PlotlyFigurePayload } from '@/lib/api/types'
-import { buildOrdinalColorscale } from '@/lib/accessibility'
+import type { ChartSeries } from '@/components/charts/ChartCard'
+import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { MapBreakdownRow } from '@/lib/api/types'
 
-interface HeatmapChartArgs {
+export interface HeatmapSeriesArgs {
   rows: MapBreakdownRow[]
-  title: string
-  winAxis: string
-  matchesLabel: string
-  /**
-   * Résout l'ID brut d'une carte (cf. MapBreakdownRow.map_ui) vers son
-   * libellé localisé via assets.map du titre courant. Si la carte n'est
-   * pas mappée, doit retourner l'ID inchangé.
-   */
+  winAxisLabel: string
   mapLabelOf: (mapId: string) => string
 }
 
-export function buildHeatmapChart({
+export function buildHeatmapSeries({
   rows,
-  title,
-  winAxis,
-  matchesLabel,
+  winAxisLabel,
   mapLabelOf,
-}: HeatmapChartArgs): PlotlyFigurePayload | null {
-  if (rows.length === 0) return null
-
-  // Tokens dans l'ordre croissant : 0 % = tier-5 (mauvais), 100 % = tier-1 (excellent)
-  const colorscale = buildOrdinalColorscale([
-    'perf-tier-5', 'perf-tier-4', 'perf-tier-3', 'perf-tier-2', 'perf-tier-1',
-  ])
+}: HeatmapSeriesArgs): ChartSeries<ChartPointHeatmap>[] {
+  if (rows.length === 0) return []
 
   const sorted = [...rows].sort((a, b) => b.win_rate - a.win_rate)
-  const maps = sorted.map((r) => mapLabelOf(r.map_ui))
-  const winrates = sorted.map((r) => r.win_rate)
-  const counts = sorted.map((r) => r.match_count)
-  const customdata = counts.map((c, i) => [c, winrates[i]])
+  const datapoints: ChartPointHeatmap[] = sorted.map((r) => ({
+    x: mapLabelOf(r.map_ui),
+    y: winAxisLabel,
+    value: r.win_rate,
+    detail: { match_count: r.match_count },
+  }))
 
-  return {
-    data: [
-      {
-        type: 'heatmap',
-        z: [winrates],
-        x: maps,
-        y: [winAxis],
-        colorscale: colorscale as unknown as string,
-        zmin: 0,
-        zmax: 100,
-        customdata: [customdata],
-        hovertemplate:
-          `<b>%{x}</b><br>${winAxis}: %{z:.1f}%<br>${matchesLabel}: %{customdata[0]}<extra></extra>`,
-        showscale: true,
-        colorbar: { title: winAxis, thickness: 14 },
-      },
-    ],
-    layout: {
-      height: 160,
-      margin: { l: 80, r: 20, t: 30, b: 80 },
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      title: { text: title, font: { size: 13 } },
-      xaxis: { tickangle: -35 },
-    },
-  }
+  return [{ key: 'heatmap-map', datapoints }]
 }

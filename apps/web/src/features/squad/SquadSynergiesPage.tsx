@@ -2,38 +2,32 @@
  * SquadSynergiesPage — onglet Synergies de l'Escouade.
  *
  * Consomme le contexte SquadContext fourni par SquadLayout. Distingue 3
- * états "vides" pour rendre le bug "Comparaison inactive même après
- * sélection" diagnosticable :
+ * états "vides" diagnosticables :
  *  - no_selection : aucun coéquipier confirmé.
- *  - invalid_selection : confirmedGts > 0 mais teammates renvoyé vide
- *    (gamertag pas dans LoadTopTeammates côté backend).
- *  - no_chart_data : données présentes mais le chart Plotly retourne null.
+ *  - invalid_selection : confirmedGts > 0 mais selectedRows vide.
+ *  - no_chart_data : données présentes mais séries vides (métriques filtrées).
  *
- * Multi-titres : les libellés métier (FieldKey) viennent de useFieldMappings ;
- * les strings UI viennent de getSquadText. La liste des métriques affichées
- * est filtrée sur les FieldKeys présents dans le titre courant (graceful
- * degradation pour les titres minimalistes).
+ * Multi-titres : libellés métier via useFieldMappings, strings UI via
+ * getSquadText. Métriques filtrées sur FieldKeys présents dans le titre
+ * courant (graceful degradation).
  */
-import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useAppShellStore } from '@/stores/appShellStore'
-import type { TeammateRow, PlotlyFigurePayload } from '@/lib/api/types'
+import type { TeammateRow } from '@/lib/api/types'
 import { useSquadContext } from './SquadContext'
-import { buildHsPkChart } from './charts/hsPkChart'
-import { buildTimelineChart } from './charts/timelineChart'
-import { buildHeatmapChart } from './charts/heatmapChart'
-import { getSeriesColors } from '@/lib/accessibility'
+import { buildHsPkSeries } from './charts/hsPkChart'
+import { buildTimelineSeries } from './charts/timelineChart'
+import { buildHeatmapSeries } from './charts/heatmapChart'
 import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import { getSquadText } from './i18n'
 import { SQUAD_SYNERGY_METRICS, SQUAD_HSPK_METRICS, type SquadMetric } from './metrics'
+import { BarGroupedChart } from '@/components/charts/BarGroupedChart'
+import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
+import { Heatmap2DChart } from '@/components/charts/Heatmap2DChart'
+import type { ChartSeries } from '@/components/charts/ChartCard'
+import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
 
-const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
-
-/**
- * Compose le label affiché d'une métrique : libellé canonique du FieldKey
- * (résolu via fieldMappings) + suffixe d'unité quand pertinent.
- */
 function metricLabel(
   m: SquadMetric,
   mappings: FieldMappingsResponse | undefined,
@@ -43,10 +37,6 @@ function metricLabel(
   return m.format === 'per_game' ? `${base}${perGameSuffix}` : base
 }
 
-/**
- * Filtre les métriques absentes du fields.toml du titre courant pour la
- * dégradation gracieuse multi-titres.
- */
 function availableMetrics(
   metrics: readonly SquadMetric[],
   mappings: FieldMappingsResponse | undefined,
@@ -55,40 +45,22 @@ function availableMetrics(
   return metrics.filter((m) => !!mappings.fields[m.key])
 }
 
-interface BarChartArgs {
-  rows: TeammateRow[]
-  metrics: SquadMetric[]
-  labels: string[]
-  withGamertagLabel: (gt: string) => string
-}
+function buildSynergiesSeries(
+  rows: TeammateRow[],
+  metrics: SquadMetric[],
+  labels: string[],
+  withGamertagLabel: (gt: string) => string,
+): ChartSeries<ChartPointStacked>[] {
+  if (rows.length === 0 || metrics.length === 0) return []
 
-function buildSynergiesChart({
-  rows,
-  metrics,
-  labels,
-  withGamertagLabel,
-}: BarChartArgs): PlotlyFigurePayload | null {
-  if (rows.length === 0 || metrics.length === 0) return null
-
-  const traces: PlotlyFigurePayload['data'] = rows.map((row, i) => ({
-    type: 'bar',
-    name: withGamertagLabel(row.gamertag),
-    x: labels,
-    y: metrics.map((m) => m.extract(row.with_kpis) ?? 0),
-    marker: { color: CHART_COLORS[i % CHART_COLORS.length] },
+  const datapoints: ChartPointStacked[] = metrics.map((m, i) => ({
+    category: labels[i],
+    components: Object.fromEntries(
+      rows.map((row) => [withGamertagLabel(row.gamertag), m.extract(row.with_kpis) ?? 0]),
+    ),
   }))
 
-  return {
-    data: traces,
-    layout: {
-      barmode: 'group',
-      height: 320,
-      margin: { l: 40, r: 20, t: 20, b: 60 },
-      legend: { orientation: 'h', x: 0, y: -0.2 },
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      paper_bgcolor: 'rgba(0,0,0,0)',
-    },
-  }
+  return [{ key: 'synergies', datapoints }]
 }
 
 export function SquadSynergiesPage() {
@@ -103,65 +75,50 @@ export function SquadSynergiesPage() {
   const hasSelection = confirmedGamertags.length > 0
   const hasRows = selectedRows.length > 0
 
-  // Construction conditionnelle des graphes pour ne pas dépenser de cycles
-  // en cas de sélection vide / invalide.
-  const chart =
-    hasRows
-      ? buildSynergiesChart({
-          rows: selectedRows,
-          metrics,
-          labels,
-          withGamertagLabel: t.table.withTeammate,
-        })
-      : null
-  // HS/PK : libellés composés via fieldMappings + perGameSuffix.
-  // L'absence de l'un des FieldKeys (`headshot_kills`, `perfect_kills`)
-  // côté titre courant fait passer son label en fallback "key" — la trace
-  // reste affichée mais avec un libellé brut, signalant la dégradation.
+  const synergieSeries = buildSynergiesSeries(
+    hasRows ? selectedRows : [],
+    metrics,
+    labels,
+    t.table.withTeammate,
+  )
+
   const hsLabel =
     (mappings?.fields[SQUAD_HSPK_METRICS.hs.key]?.label ?? SQUAD_HSPK_METRICS.hs.key) +
     t.units.perGame
   const pkLabel =
     (mappings?.fields[SQUAD_HSPK_METRICS.pk.key]?.label ?? SQUAD_HSPK_METRICS.pk.key) +
     t.units.perGame
-  const hsPkChart = hasRows
-    ? buildHsPkChart({
+
+  const hsPkSeries = hasRows
+    ? buildHsPkSeries({
         rows: selectedRows,
         hsMetric: SQUAD_HSPK_METRICS.hs,
         pkMetric: SQUAD_HSPK_METRICS.pk,
         hsLabel,
         pkLabel,
-        title: t.charts.hsPkTitle,
       })
-    : null
-  const timelineChart =
+    : []
+
+  const timelineSeries =
     pageData?.timeseries && pageData.timeseries.length > 0
-      ? buildTimelineChart({
+      ? buildTimelineSeries({
           points: pageData.timeseries,
-          title: t.charts.timelineTitle,
           perfName: t.charts.timelinePerfName,
           winRateName: t.charts.timelineWinRateName,
-          perfAxis: t.charts.timelinePerfAxis,
-          winRateAxis: t.charts.timelineWinRateAxis,
         })
-      : null
-  // mapLabelOf : résout le `map_ui` brut backend vers le libellé localisé
-  // de assets.toml (kind = "map") du titre courant. Fallback sur l'ID brut
-  // pour les cartes pas (encore) mappées — graceful degradation.
+      : []
+
   const mapAssets = mappings?.assets?.['map']
   const mapLabelOf = (mapId: string): string => mapAssets?.[mapId]?.label ?? mapId
-  const heatmapChart =
+  const heatmapSeries =
     pageData?.map_breakdown && pageData.map_breakdown.length > 0
-      ? buildHeatmapChart({
+      ? buildHeatmapSeries({
           rows: pageData.map_breakdown,
-          title: t.charts.heatmapTitle,
-          winAxis: t.charts.heatmapWinAxis,
-          matchesLabel: t.charts.heatmapMatchesLabel,
+          winAxisLabel: t.charts.heatmapWinAxis,
           mapLabelOf,
         })
-      : null
+      : []
 
-  // ── Empty states 3-états ────────────────────────────────────────────────
   let emptyContent: React.ReactNode = null
   if (!hasSelection) {
     emptyContent = (
@@ -177,7 +134,7 @@ export function SquadSynergiesPage() {
         description={t.empty.invalidSelectionDescription}
       />
     )
-  } else if (!chart) {
+  } else if (synergieSeries.length === 0) {
     emptyContent = (
       <EmptyStateNotice
         title={t.empty.noChartTitle}
@@ -193,32 +150,48 @@ export function SquadSynergiesPage() {
           {emptyContent ?? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">{t.synergies.description}</p>
-              <PlotlyChart figure={chart!} />
+              <BarGroupedChart series={synergieSeries} height={320} />
             </div>
           )}
         </CardContent>
       </Card>
 
-      {hsPkChart && (
+      {hsPkSeries.length > 0 && (
         <Card>
           <CardContent className="pt-4">
-            <PlotlyChart figure={hsPkChart} />
+            <BarGroupedChart
+              title={t.charts.hsPkTitle}
+              series={hsPkSeries}
+              height={280}
+            />
           </CardContent>
         </Card>
       )}
 
-      {timelineChart && (
+      {timelineSeries.length > 0 && (
         <Card>
           <CardContent className="pt-4">
-            <PlotlyChart figure={timelineChart} />
+            <TimeseriesLineChart
+              title={t.charts.timelineTitle}
+              series={timelineSeries}
+              xAxisType="category"
+              outcomeMarkers={false}
+              seriesNameResolver={(s) => (s.meta?.name as string | undefined) ?? s.key}
+              height={300}
+            />
           </CardContent>
         </Card>
       )}
 
-      {heatmapChart && (
+      {heatmapSeries.length > 0 && (
         <Card>
           <CardContent className="pt-4">
-            <PlotlyChart figure={heatmapChart} />
+            <Heatmap2DChart
+              title={t.charts.heatmapTitle}
+              series={heatmapSeries}
+              height={160}
+              valueRange={[0, 100]}
+            />
           </CardContent>
         </Card>
       )}

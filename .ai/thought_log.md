@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-28] feat(squad-synergies): SquadSynergiesPage.tsx Plotly → ECharts — chunk P4.C
+
+**Statut** : Complété.
+
+**Décision technique** :
+Migration des 4 charts Plotly de `SquadSynergiesPage` + réécriture des 3 helpers dans `charts/` :
+
+- `charts/hsPkChart.ts` : `buildHsPkChart() → PlotlyFigurePayload` → `buildHsPkSeries() → ChartSeries<ChartPointStacked>[]`. Barres groupées par gamertag (HS et PK comme components). Consommé par `BarGroupedChart`.
+- `charts/timelineChart.ts` : `buildTimelineChart() → PlotlyFigurePayload` (dual-axis bar+line) → `buildTimelineSeries() → ChartSeries<ChartPoint2D>[]`. 2 séries perf/winrate (win_rate × 100 pour même échelle 0-100). Consommé par `TimeseriesLineChart` avec `xAxisType='category'`.
+- `charts/heatmapChart.ts` : `buildHeatmapChart() → PlotlyFigurePayload` (heatmap 1D) → `buildHeatmapSeries() → ChartSeries<ChartPointHeatmap>[]`. y = winAxisLabel (1 seule ligne), x = cartes triées win_rate desc. Consommé par `Heatmap2DChart`.
+- `SquadSynergiesPage.tsx` inline `buildSynergiesChart` → `buildSynergiesSeries()` → `BarGroupedChart` (categories = libellés de métriques, components = gamertag → valeur).
+
+Import `PlotlyChart`, `PlotlyFigurePayload`, `getSeriesColors`, `CHART_COLORS` retirés.
+Tests des 3 helpers réécrits pour la nouvelle API (pure TS, no DOM). `SquadSynergiesPage.test.tsx` migré de `vi.mock('plotly-chart')` vers mocks `BarGroupedChart`, `TimeseriesLineChart`, `Heatmap2DChart` avec `data-series` JSON.
+
+Note PUNCHLIST : "construisent du Plotly server-side" était inexact — les helpers sont purement frontend. L'API Go retournait déjà du plain data (SquadTimeseriesPoint, MapBreakdownRow), pas de Plotly payloads côté serveur. Pas de changement Go nécessaire.
+
+**Résultats** :
+- TypeScript typecheck : 0 erreur.
+- Failures vitest = `localStorage.clear` pré-existant en env portable (toutes les suites squad + features impactées de la même manière, non-régressif).
+
+**Prochaine étape** : P4.D — retrait `plotly-chart.tsx`, `react-plotly.js` de package.json, grep de vérification. — OP
+
 ## [2026-04-28] feat(synthesis): SynthesisPage.tsx Plotly → ECharts — chunk P4.A
 
 **Statut** : Complété.
