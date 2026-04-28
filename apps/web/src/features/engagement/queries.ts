@@ -8,7 +8,12 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
-import type { EngagementCoefficientAPI, EngagementScoreResultAPI } from '@/lib/api/types'
+import type {
+  EngagementCoefficientAPI,
+  EngagementMatchSummaryAPI,
+  EngagementScoreResultAPI,
+  SquadEngagementSessionAPI,
+} from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 
 export function useMatchEngagement(playerSlug: string, matchId: string) {
@@ -33,6 +38,41 @@ export function useEngagementProfile(playerSlug: string) {
       api.get<EngagementCoefficientAPI[]>(`/players/${playerSlug}/engagement_profile`),
     enabled: !!playerSlug,
     staleTime: 30 * 60 * 1000,
+    retry: false,
+  })
+}
+
+export function useEngagementTimeseries(playerSlug: string, limit: number = 50) {
+  return useQuery({
+    queryKey: queryKeys.engagementTimeseries(playerSlug, limit),
+    queryFn: () =>
+      api.get<EngagementMatchSummaryAPI[]>(
+        `/players/${playerSlug}/engagement/timeseries?limit=${limit}`,
+      ),
+    enabled: !!playerSlug,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
+}
+
+export function useSquadEngagementSession(
+  playerSlug: string,
+  matchIds: string[],
+  teammates: string[],
+) {
+  return useQuery({
+    queryKey: queryKeys.engagementSquadSession(playerSlug, matchIds, teammates),
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (matchIds.length > 0) params.set('match_ids', matchIds.join(','))
+      if (teammates.length > 0) params.set('teammates', teammates.join(','))
+      const qs = params.toString()
+      return api.get<SquadEngagementSessionAPI>(
+        `/players/${playerSlug}/pages/squad/v2/engagement${qs ? '?' + qs : ''}`,
+      )
+    },
+    enabled: !!playerSlug,
+    staleTime: 5 * 60 * 1000,
     retry: false,
   })
 }

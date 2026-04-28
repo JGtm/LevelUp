@@ -47,6 +47,10 @@ export const queryKeys = {
     ['engagement', 'match', playerSlug, matchId] as const,
   engagementProfile: (playerSlug: string) =>
     ['engagement', 'profile', playerSlug] as const,
+  engagementTimeseries: (playerSlug: string, limit: number) =>
+    ['engagement', 'timeseries', playerSlug, limit] as const,
+  engagementSquadSession: (playerSlug: string, matchIds: string[], teammates: string[]) =>
+    ['engagement', 'squad-session', playerSlug, matchIds.join(','), teammates.join(',')] as const,
 
   // Accueil / Home (Slice 5)
   home: (playerSlug: string) => ['home', playerSlug] as const,
