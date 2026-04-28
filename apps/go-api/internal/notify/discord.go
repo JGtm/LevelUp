@@ -69,6 +69,9 @@ type NotifyConfig struct {
 	NotifyBackfill bool
 	// NotifyNewMedia active les notifications de nouveaux médias.
 	NotifyNewMedia bool
+	// NotifyFriends active les notifications du flow ami (§6.B Squad/Sessions
+	// overhaul) : friend_added + friend_sync_completed.
+	NotifyFriends bool
 	// NotifyVersion active les notifications de nouvelle version.
 	// Opt-in explicite : requiert aussi l'env var LEVELUP_NOTIFY_VERSIONS=1.
 	NotifyVersion bool
@@ -110,6 +113,7 @@ func LoadNotifyConfig(settingsPath string) NotifyConfig {
 	cfg.NotifySync = boolValDefault(s, "discord_notify_sync", true)
 	cfg.NotifyBackfill = boolValDefault(s, "discord_notify_backfill", true)
 	cfg.NotifyNewMedia = boolValDefault(s, "discord_notify_new_media", true)
+	cfg.NotifyFriends = boolValDefault(s, "discord_notify_friends", true)
 	cfg.NotifyVersion = boolValDefault(s, "discord_notify_new_version", true)
 	return cfg
 }
@@ -238,6 +242,28 @@ var discordStrings = map[string]map[string]string{
 	"discord_media_desc_both": {
 		"fr": "Nouvellement indexés : {nv} vidéo(s) · {ni} capture(s)",
 		"en": "Newly indexed: {nv} video(s) · {ni} screenshot(s)",
+	},
+
+	// §6.B — Flow ami (Squad/Sessions overhaul)
+	"discord_friend_added_title": {
+		"fr": "👤 Nouvel ami ajouté",
+		"en": "👤 New friend added",
+	},
+	"discord_friend_added_desc": {
+		"fr": "{gamertag} a été ajouté à ta liste d'amis. Les sessions de jeu communes seront automatiquement reclassées en escouade.",
+		"en": "{gamertag} has been added to your friends list. Shared sessions will be automatically reclassified as squad.",
+	},
+	"discord_friend_sync_title": {
+		"fr": "🔄 Sessions amis mises à jour",
+		"en": "🔄 Friend sessions updated",
+	},
+	"discord_friend_sync_desc_one": {
+		"fr": "{promoted} match a été reclassé en escouade-amis pour {slug}.",
+		"en": "{promoted} match reclassified as squad-friends for {slug}.",
+	},
+	"discord_friend_sync_desc_many": {
+		"fr": "{promoted} matchs ont été reclassés en escouade-amis pour {slug}.",
+		"en": "{promoted} matches reclassified as squad-friends for {slug}.",
 	},
 }
 

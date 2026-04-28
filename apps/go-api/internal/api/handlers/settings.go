@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
@@ -187,8 +188,9 @@ func newFriendsAdded(prev, next []string) []string {
 	return added
 }
 
-// emitFriendsAdded émet une notification friend_added par nouveau gamertag.
-// La factory est résolue contre le slug courant — fallback warn log si KO.
+// emitFriendsAdded émet 1 notification friend_added (in-app) par nouveau
+// gamertag, et déclenche le webhook Discord si activé. §6.A + §6.B.
+// Best-effort sur les 2 canaux : warn log + continue, jamais bloquant.
 func (h *SettingsHandler) emitFriendsAdded(ctx context.Context, added []string) {
 	if h.notifierFor == nil {
 		return
@@ -198,6 +200,8 @@ func (h *SettingsHandler) emitFriendsAdded(ctx context.Context, added []string) 
 		slog.WarnContext(ctx, "notifications: friend_added emitter factory failed", "err", err)
 		return
 	}
+	// Charger NotifyConfig une fois pour la batch (évite N reads disk).
+	notifyCfg := notify.LoadNotifyConfig(h.cfg.AppSettingsPath)
 	for _, gt := range added {
 		if err := em.Emit(ctx, notifications.EmitInput{
 			Category: notifications.CategoryFriendAdded,
@@ -209,6 +213,8 @@ func (h *SettingsHandler) emitFriendsAdded(ctx context.Context, added []string) 
 		}); err != nil {
 			slog.WarnContext(ctx, "notifications: friend_added emit", "gamertag", gt, "err", err)
 		}
+		// §6.B Discord : webhook failsafe (no-op si webhook vide / NotifyFriends off).
+		go notify.NotifyFriendAdded(notifyCfg, gt)
 	}
 }
 

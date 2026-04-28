@@ -255,6 +255,71 @@ func min(a, b int) int {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// §6.B — Flow ami (Squad/Sessions overhaul)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// NotifyFriendAdded envoie une notification Discord quand un gamertag est
+// ajouté à friend_gamertags via PATCH /settings.
+//
+// Failsafe : panic récupéré, webhook vide / NotifyFriends off → no-op silencieux.
+func NotifyFriendAdded(cfg NotifyConfig, gamertag string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Discord:friend_added] panic récupéré pour %s: %v", gamertag, r)
+		}
+	}()
+
+	if cfg.WebhookURL == "" || !cfg.NotifyFriends {
+		return
+	}
+
+	embed := Embed{
+		Title:       T("discord_friend_added_title", cfg.Lang),
+		Description: T("discord_friend_added_desc", cfg.Lang, "gamertag", gamertag),
+		Color:       colorBlurple,
+		Footer:      &EmbedFooter{Text: T("discord_footer", cfg.Lang)},
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+	}
+	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
+		log.Printf("[Discord:friend_added] notification envoyée pour %s", gamertag)
+	}
+}
+
+// NotifyFriendSyncCompleted envoie une notification Discord quand un recompute
+// is_with_friends a promu au moins 1 match pour le slug joueur indiqué.
+//
+// `promoted` est passé tel quel dans les params i18n (ICU plural-aware côté
+// front, mais le template Discord switch FR/EN utilise simple/many).
+//
+// Failsafe : panic récupéré, webhook vide / NotifyFriends off / promoted ≤ 0 → no-op.
+func NotifyFriendSyncCompleted(cfg NotifyConfig, slug string, promoted int64) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Discord:friend_sync] panic récupéré pour %s: %v", slug, r)
+		}
+	}()
+
+	if cfg.WebhookURL == "" || !cfg.NotifyFriends || promoted <= 0 {
+		return
+	}
+
+	descKey := "discord_friend_sync_desc_many"
+	if promoted == 1 {
+		descKey = "discord_friend_sync_desc_one"
+	}
+	embed := Embed{
+		Title:       T("discord_friend_sync_title", cfg.Lang),
+		Description: T(descKey, cfg.Lang, "promoted", promoted, "slug", slug),
+		Color:       colorSuccess,
+		Footer:      &EmbedFooter{Text: T("discord_footer", cfg.Lang)},
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+	}
+	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
+		log.Printf("[Discord:friend_sync] notification envoyée pour %s (promoted=%d)", slug, promoted)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EnvWebhookURL — résolution depuis env var (pour les scripts CLI)
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -32,6 +32,7 @@ type AppSettings struct {
 	DiscordNotifyBackfill              bool     `json:"discord_notify_backfill"`
 	DiscordNotifyNewVersion            bool     `json:"discord_notify_new_version"`
 	DiscordNotifyNewMedia              bool     `json:"discord_notify_new_media"`
+	DiscordNotifyFriends               bool     `json:"discord_notify_friends"` // §6.B Squad/Sessions overhaul
 	SpnkrAutoSyncEnabled               bool     `json:"spnkr_auto_sync_enabled"`
 	SpnkrAutoSyncIntervalHours         int      `json:"spnkr_auto_sync_interval_hours"`
 	SpnkrAutoSyncIntervalMinutes       int      `json:"spnkr_auto_sync_interval_minutes"`
@@ -211,6 +212,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.DiscordNotifyNewMedia != nil {
 		cfg.DiscordNotifyNewMedia = *req.DiscordNotifyNewMedia
 	}
+	if req.DiscordNotifyFriends != nil {
+		cfg.DiscordNotifyFriends = *req.DiscordNotifyFriends
+	}
 	if req.SpnkrAutoSyncEnabled != nil {
 		cfg.SpnkrAutoSyncEnabled = *req.SpnkrAutoSyncEnabled
 	}
@@ -299,6 +303,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		DiscordNotifyBackfill:               cfg.DiscordNotifyBackfill,
 		DiscordNotifyNewVersion:             cfg.DiscordNotifyNewVersion,
 		DiscordNotifyNewMedia:               cfg.DiscordNotifyNewMedia,
+		DiscordNotifyFriends:                cfg.DiscordNotifyFriends,
 		SpnkrAutoSyncEnabled:                cfg.SpnkrAutoSyncEnabled,
 		SpnkrAutoSyncIntervalHours:          cfg.SpnkrAutoSyncIntervalHours,
 		SpnkrAutoSyncIntervalMinutes:        cfg.SpnkrAutoSyncIntervalMinutes,

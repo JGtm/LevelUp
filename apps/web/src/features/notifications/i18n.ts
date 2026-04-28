@@ -153,6 +153,8 @@ const FR: NotificationsText = {
     sync_error: 'Erreur de synchronisation',
     personal_record: 'Record personnel',
     threshold_crossed: 'Palier franchi',
+    friend_added: 'Ami ajouté',
+    friend_sync_completed: 'Sessions amis mises à jour',
   },
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
@@ -167,6 +169,8 @@ const FR: NotificationsText = {
     sync_error: 'La synchronisation a échoué — relance manuelle conseillée.',
     personal_record: 'Tu as battu un record personnel.',
     threshold_crossed: 'Un palier de ratio FDA ou de taux de victoire a été franchi.',
+    friend_added: 'Un gamertag a été ajouté à ta liste d\'amis.',
+    friend_sync_completed: 'Des matchs ont été reclassés en escouade après ajout d\'ami.',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
@@ -203,6 +207,10 @@ const FR: NotificationsText = {
     'notif.personal_record.body': 'Nouveau record sur {metric_label} : {value}.',
     'notif.threshold_crossed.title': 'Palier franchi',
     'notif.threshold_crossed.body': 'Tu as franchi un palier de {metric_label} : {value}.',
+    'notif.friend_added.title': '{gamertag} ajouté à tes amis',
+    'notif.friend_added.body': 'Les sessions communes seront reclassées en escouade en arrière-plan.',
+    'notif.friend_sync_completed.title': 'Sessions amis mises à jour',
+    'notif.friend_sync_completed.body': '{promoted} match(s) reclassé(s) en escouade-amis.',
     'notif.test.title': 'Notification de test',
     'notif.test.body': 'Le pipeline de notifications fonctionne correctement.',
   },
@@ -280,6 +288,8 @@ const EN: NotificationsText = {
     sync_error: 'Sync error',
     personal_record: 'Personal record',
     threshold_crossed: 'Threshold crossed',
+    friend_added: 'Friend added',
+    friend_sync_completed: 'Friend sessions updated',
   },
   categoryDescription: {
     app_release: 'A new LevelUp version is available.',
@@ -294,6 +304,8 @@ const EN: NotificationsText = {
     sync_error: 'The sync failed — manual retry recommended.',
     personal_record: 'You broke a personal record.',
     threshold_crossed: 'A K/D or winrate threshold was crossed.',
+    friend_added: 'A gamertag was added to your friends list.',
+    friend_sync_completed: 'Matches were reclassified as squad after a friend addition.',
   },
 
   metricLabel: {
@@ -327,6 +339,10 @@ const EN: NotificationsText = {
     'notif.personal_record.body': 'New record on {metric_label}: {value}.',
     'notif.threshold_crossed.title': 'Threshold crossed',
     'notif.threshold_crossed.body': 'You crossed a {metric_label} threshold: {value}.',
+    'notif.friend_added.title': '{gamertag} added to your friends',
+    'notif.friend_added.body': 'Shared sessions will be reclassified as squad in the background.',
+    'notif.friend_sync_completed.title': 'Friend sessions updated',
+    'notif.friend_sync_completed.body': '{promoted} match(es) reclassified as squad-friends.',
     'notif.test.title': 'Test notification',
     'notif.test.body': 'The notifications pipeline is working correctly.',
   },
