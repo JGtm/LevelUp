@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-04-28] feat(synthesis): SynthesisPage.tsx Plotly → ECharts — chunk P4.A
+
+**Statut** : Complété.
+
+**Décision technique** :
+Remplacement des 2 fonctions Plotly (`buildBipolaireChart`, `buildHeatmapChart`) par :
+- `buildBipolaireOption` : ECharts pur (horizontal butterfly bar chart, 2 séries Solo/Escouade négatives/positives, markLine x=0, labels inline par barre). Exportée pour test unitaire.
+- `Heatmap2DChart` wrapper : conversion `HeatmapCell[]` → `ChartSeries<ChartPointHeatmap>[]` avec grille complète 7×24 (tous les dow/hour, 0 inclus pour préserver les axes).
+
+Import `PlotlyChart` et `PlotlyFigurePayload` retirés de `SynthesisPage.tsx`.
+
+Test `SynthesisPage.test.tsx` : ajout de `vi.mock('@/components/charts/ChartCard')` et `vi.mock('@/components/charts/Heatmap2DChart')` — nécessaire en env portable (echarts-for-react absent de node_modules). Les fixtures fixture retournent `comparison_metrics=[]` et `heatmap_data=[]`, les charts ne sont pas rendus dans les tests.
+
+**Résultats** :
+- 0 erreur typecheck sur `SynthesisPage.tsx` (hors erreur `echarts/core` pré-existante à tous les wrappers)
+- Failures vitest = `localStorage.clear` (pré-existant env portable, confirmé avant/après par git stash)
+
+**Prochaine étape** : P4.B — SquadContributionsPage radar Plotly → ECharts. — OP
+
+## [2026-04-28] feat(squad-contributions): SquadContributionsPage.tsx radar Plotly → ECharts — chunk P4.B
+
+**Statut** : Complété.
+
+**Décision technique** :
+Remplacement de `buildRadarChart` (Plotly `scatterpolar`) par `buildRadarSeries` retournant `RadarSeriesPayload[]` pour le wrapper `RadarChart` ECharts.
+
+Mapping :
+- `TeammateRow[]` → `RadarSeriesPayload[]` avec `axes: [{axis: m.key, value: norm_0_100, raw: norm_0_100}]`
+- `axisLabels` : `Record<string, string>` depuis `metricLabel(m, mappings, perGameSuffix)` — multititre-aware
+- `meta.gamertag` = `withGamertagLabel(gt)` pour le label de légende
+
+Retiré : `PlotlyChart`, `PlotlyFigurePayload`, `getSeriesColors`, `SERIES_TOKENS`, `buildRadarChart`, `RadarArgs`.
+
+Test `SquadContributionsPage.test.tsx` : mock `@/components/charts/RadarChart` avec stub exposant `data-axes` et `data-series` pour les assertions multi-titres (retiré le mock PlotlyChart). Comportement équivalent, assertions portées sur les axes ECharts.
+
+**Résultats** :
+- 0 erreur typecheck sur `SquadContributionsPage.tsx`
+- Failures vitest = `localStorage.clear` pré-existant (confirmé pre/post stash — 4 tests échouaient déjà avant ces changements)
+
+**Prochaine étape** : P4.C — SquadSynergiesPage (5 charts + migration Go) → à évaluer scope GS. — OP
+
 ## [2026-04-28] feat(option-c): showcase ECharts /lab/charts (alternative légère à Storybook)
 
 **Statut** : Complété — Phase 3 Options A+B+C entièrement livrées.

@@ -2,21 +2,30 @@
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
-import { useState } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
+import type { EChartsCoreOption } from 'echarts/core'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useSynthesisPage } from './queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { PlotlyChart } from '@/components/ui/plotly-chart'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SynthesisHighlightsSection } from './SynthesisHighlightsSection'
 import { SynthesisRelationsPreview } from './SynthesisRelationsPreview'
+import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { resolveToken } from '@/lib/accessibility'
+import {
+  CHART_BG,
+  TEXT_COLOR,
+  ZERO_LINE,
+  axisBase,
+  legendBase,
+  tooltipBase,
+} from '@/components/charts/_utils'
 import type {
   ComparisonMetricItem,
-  HeatmapCell,
-  PlotlyFigurePayload,
   SynthesisBreakdowns,
   SynthesisKPIs,
   SynthesisOverview,
@@ -24,7 +33,6 @@ import type {
   SynthesisQueryRequest,
   TopWeekItem,
 } from '@/lib/api/types'
-import { resolveToken } from '@/lib/accessibility'
 
 const PERIOD_OPTIONS = [
   { value: 'all', label: 'Tout' },
@@ -39,75 +47,49 @@ const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 // ─── Graphique bipolaire Solo ← / → Escouade ─────────────────────────────────
 
-function buildBipolaireChart(metrics: ComparisonMetricItem[]): PlotlyFigurePayload {
-  const reversed = [...metrics].reverse()
-  const labels = reversed.map((m) => m.label)
-  const soloVals = reversed.map((m) => -Math.abs(m.solo_value))
-  const squadVals = reversed.map((m) => Math.abs(m.squad_value))
-  const soloTexts = reversed.map((m) => m.solo_text)
-  const squadTexts = reversed.map((m) => m.squad_text)
-  const height = Math.max(320, 70 * metrics.length)
-
+export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCoreOption {
+  if (metrics.length === 0) return { backgroundColor: CHART_BG }
+  const dps = [...metrics].reverse()
+  const labels = dps.map((m) => m.label)
+  const soloVals = dps.map((m) => -Math.abs(m.solo_value))
+  const squadVals = dps.map((m) => Math.abs(m.squad_value))
   return {
-    data: [
+    backgroundColor: CHART_BG,
+    grid: { top: 24, bottom: 40, left: 120, right: 80 },
+    tooltip: { ...tooltipBase, trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { ...legendBase, data: ['Solo', 'Escouade'] },
+    xAxis: { ...axisBase, type: 'value', axisLabel: { show: false }, splitLine: { show: false } },
+    yAxis: { ...axisBase, type: 'category', data: labels },
+    series: [
       {
-        type: 'bar', name: 'Solo', orientation: 'h',
-        x: soloVals, y: labels, text: soloTexts, textposition: 'outside',
-        marker: { color: resolveToken('perf-tier-2') },
-        hovertemplate: '<b>Solo</b>: %{text}<extra></extra>',
+        name: 'Solo',
+        type: 'bar',
+        data: soloVals,
+        itemStyle: { color: resolveToken('perf-tier-2') },
+        label: {
+          show: true, position: 'left',
+          color: TEXT_COLOR, fontSize: 10,
+          formatter: (p: { dataIndex: number }) => dps[p.dataIndex]?.solo_text ?? '',
+        },
+        markLine: {
+          symbol: 'none', silent: true,
+          lineStyle: { color: ZERO_LINE, width: 2 },
+          label: { show: false },
+          data: [{ xAxis: 0 }],
+        },
       },
       {
-        type: 'bar', name: 'Escouade', orientation: 'h',
-        x: squadVals, y: labels, text: squadTexts, textposition: 'outside',
-        marker: { color: resolveToken('divergent-pos') },
-        hovertemplate: '<b>Escouade</b>: %{text}<extra></extra>',
+        name: 'Escouade',
+        type: 'bar',
+        data: squadVals,
+        itemStyle: { color: resolveToken('divergent-pos') },
+        label: {
+          show: true, position: 'right',
+          color: TEXT_COLOR, fontSize: 10,
+          formatter: (p: { dataIndex: number }) => dps[p.dataIndex]?.squad_text ?? '',
+        },
       },
     ],
-    layout: {
-      height, barmode: 'overlay', bargap: 0.3,
-      margin: { l: 110, r: 80, t: 20, b: 40 },
-      xaxis: {
-        tickformat: '.2f', zeroline: true, zerolinewidth: 2,
-        zerolinecolor: 'rgba(100,116,139,0.8)', showticklabels: false, fixedrange: true,
-      },
-      yaxis: { automargin: true, fixedrange: true },
-      legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.08 },
-      plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)', font: { size: 12 },
-      shapes: [{
-        type: 'line', x0: 0, x1: 0, y0: -0.5, y1: labels.length - 0.5,
-        xref: 'x', yref: 'y', line: { color: 'rgba(100,116,139,0.8)', width: 2 },
-      }],
-    },
-  }
-}
-
-// ─── Heatmap temporelle ───────────────────────────────────────────────────────
-
-function buildHeatmapChart(cells: HeatmapCell[]): PlotlyFigurePayload {
-  // Construire une matrice 7 lignes (jours) × 24 colonnes (heures)
-  const matrix: number[][] = Array.from({ length: 7 }, () => new Array(24).fill(0))
-  for (const c of cells) {
-    if (c.dow >= 0 && c.dow < 7 && c.hour >= 0 && c.hour < 24) {
-      matrix[c.dow][c.hour] = c.count
-    }
-  }
-  return {
-    data: [{
-      type: 'heatmap',
-      z: matrix,
-      x: Array.from({ length: 24 }, (_, i) => `${i}h`),
-      y: DOW_LABELS,
-      colorscale: 'Blues',
-      showscale: true,
-      hovertemplate: '%{y} %{x} : %{z} matchs<extra></extra>',
-    }],
-    layout: {
-      height: 220,
-      margin: { l: 50, r: 20, t: 10, b: 40 },
-      xaxis: { title: 'Heure', fixedrange: true },
-      yaxis: { title: '', fixedrange: true },
-      plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)', font: { size: 11 },
-    },
   }
 }
 
@@ -294,6 +276,39 @@ export function SynthesisPage() {
   const request: SynthesisQueryRequest = { filters: filterContext, period }
   const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, period, request)
 
+  const comparisonMetrics = data?.comparison_metrics ?? []
+  const heatmapData = data?.heatmap_data ?? []
+  const topWeeks = data?.top_weeks ?? []
+
+  const bipolaireSeries = useMemo<ChartSeries<ComparisonMetricItem>[]>(
+    () => comparisonMetrics.length > 0
+      ? [{ key: 'bipolaire', datapoints: comparisonMetrics }]
+      : [],
+    [comparisonMetrics],
+  )
+  const bipolaireHeight = Math.max(320, 70 * comparisonMetrics.length)
+  const buildBipolaireOptCb = useCallback(
+    (s: ChartSeries<ComparisonMetricItem>[]) => buildBipolaireOption(s[0]?.datapoints ?? []),
+    [],
+  )
+
+  const heatmapSeries = useMemo<ChartSeries<ChartPointHeatmap>[]>(() => {
+    if (heatmapData.length === 0) return []
+    const countMap = new Map<string, number>()
+    for (const c of heatmapData) {
+      if (c.dow >= 0 && c.dow < 7 && c.hour >= 0 && c.hour < 24) {
+        countMap.set(`${c.dow}-${c.hour}`, c.count)
+      }
+    }
+    const datapoints: ChartPointHeatmap[] = []
+    for (let d = 0; d < 7; d++) {
+      for (let h = 0; h < 24; h++) {
+        datapoints.push({ x: `${h}h`, y: DOW_LABELS[d], value: countMap.get(`${d}-${h}`) ?? 0 })
+      }
+    }
+    return [{ key: 'activity', datapoints }]
+  }, [heatmapData])
+
   if (isLoading) return null
   if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
   if (!data) {
@@ -306,18 +321,6 @@ export function SynthesisPage() {
       </div>
     )
   }
-
-  const comparisonMetrics = data.comparison_metrics ?? []
-  const heatmapData = data.heatmap_data ?? []
-  const topWeeks = data.top_weeks ?? []
-
-  const bipolaireChart = comparisonMetrics.length > 0
-    ? buildBipolaireChart(comparisonMetrics)
-    : null
-
-  const heatmapChart = heatmapData.length > 0
-    ? buildHeatmapChart(heatmapData)
-    : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -354,7 +357,7 @@ export function SynthesisPage() {
       </div>
 
       {/* Graphique bipolaire */}
-      {bipolaireChart ? (
+      {bipolaireSeries.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>
@@ -362,7 +365,11 @@ export function SynthesisPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <PlotlyChart figure={bipolaireChart} />
+            <ChartCard
+              series={bipolaireSeries}
+              buildOption={buildBipolaireOptCb}
+              height={bipolaireHeight}
+            />
             <p className="mt-2 text-xs text-muted-foreground text-center">
               Solo : {data.solo_kpis.match_count} matchs · Escouade : {data.squad_kpis.match_count} matchs
             </p>
@@ -410,8 +417,8 @@ export function SynthesisPage() {
       <Card>
         <CardHeader><CardTitle>Activité par jour et heure</CardTitle></CardHeader>
         <CardContent>
-          {heatmapChart ? (
-            <PlotlyChart figure={heatmapChart} />
+          {heatmapSeries.length > 0 ? (
+            <Heatmap2DChart series={heatmapSeries} height={220} />
           ) : (
             <EmptyStateNotice
               title="Activité indisponible"
