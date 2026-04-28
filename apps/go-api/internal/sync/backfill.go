@@ -278,6 +278,16 @@ func findMatchesInSharedAll(
 		}
 	}
 
+	// Engagement scores — per-player (Phase 3 plan engagement)
+	if scope.EngagementScores {
+		if scope.ForceEngagementScores {
+			conditions = append(conditions, "1=1")
+		} else {
+			conditions = append(conditions,
+				playerDoneGuard(playerDB, "player_match_enrichment", "engagement_score"))
+		}
+	}
+
 	// Accuracy — per-player
 	if scope.Accuracy {
 		if scope.ForceAccuracy {

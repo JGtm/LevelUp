@@ -716,6 +716,16 @@ func (e *SyncEngine) runPostSyncPipeline(
 		slog.DebugContext(ctx, "post-sync: perf scores calculés", "gamertag", e.gamertag, "count", n)
 	}
 
+	// 1.5 Engagement scores (Phase 3 plan engagement) — best-effort,
+	// skip silencieux si migration Phase 2 non appliquee.
+	slog.DebugContext(ctx, "post-sync: calcul engagement scores", "gamertag", e.gamertag)
+	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
+		slog.WarnContext(ctx, "post-sync: engagement scores échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		r.EngagementScoresComputed = n
+		slog.DebugContext(ctx, "post-sync: engagement scores calculés", "gamertag", e.gamertag, "count", n)
+	}
+
 	// 2. LUSR (TrueSkill 2)
 	slog.DebugContext(ctx, "post-sync: calcul LUSR", "gamertag", e.gamertag)
 	if n, err := batchComputeLUSR(playerDB, sharedDB, e.xuid); err != nil {
