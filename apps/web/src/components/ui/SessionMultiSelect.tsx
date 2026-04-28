@@ -68,10 +68,10 @@ export function SessionMultiSelect({
   const [pending, setPending]   = useState<string[]>(selected)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Sync pending ← selected quand le panel est fermé ou que selected change.
-  useEffect(() => {
-    if (!isOpen) setPending(selected)
-  }, [selected, isOpen])
+  // `pending` est sync sur `selected` au moment de l'ouverture du panel
+  // (cf. `handleOpen` ci-dessous). Pas besoin de useEffect : sync manuelle
+  // dans l'event handler évite les cascading renders flaggés par
+  // react-hooks/set-state-in-effect (équivalent React Compiler).
 
   // Fermeture click-outside.
   useEffect(() => {

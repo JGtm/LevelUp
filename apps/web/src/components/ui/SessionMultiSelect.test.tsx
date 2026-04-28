@@ -182,7 +182,7 @@ describe('SessionMultiSelect — validation différée', () => {
   })
 
   it('réinitialise le pending sur la sélection active si on rouvre sans valider', () => {
-    const { onChange, openPanel } = setup(['Session Ranked A'])
+    const { openPanel } = setup(['Session Ranked A'])
     openPanel()
     // Décocher la session sélectionnée sans valider
     const checkbox = screen.getAllByRole('checkbox').find(
