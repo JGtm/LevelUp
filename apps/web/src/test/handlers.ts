@@ -179,6 +179,8 @@ const teammatesFixture = {
   options: [],
   teammates: [],
   total_matches: 0,
+  session_labels: { solo: [], squad: [] },
+  friends_count: 0,
 }
 
 const synthesisKPIs = {

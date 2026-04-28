@@ -169,7 +169,7 @@ func TestTeammatesService_GetPage_OK(t *testing.T) {
 			{XUID: "x2", Gamertag: "Ally2", GamesTogether: 10, WinsTogether: 4, WinRate: 0.4, AvgKDA: 0.8},
 		},
 	}
-	svc := NewTeammatesService(repo)
+	svc := NewTeammatesService(repo, nil)
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
 	if err != nil {
@@ -180,7 +180,7 @@ func TestTeammatesService_GetPage_OK(t *testing.T) {
 
 func TestTeammatesService_GetPage_Error(t *testing.T) {
 	repo := &mockSquadRepo{topErr: errors.New("fail")}
-	svc := NewTeammatesService(repo)
+	svc := NewTeammatesService(repo, nil)
 
 	_, err := svc.GetPage(context.Background(), "xuid", domain.TeammatesQueryRequest{})
 	if err == nil {

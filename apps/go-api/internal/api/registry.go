@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
@@ -45,6 +46,7 @@ type ServiceRegistry struct {
 	notifiers        sync.Map                  // xuid → port.SessionNotifier (HomeService par joueur)
 	titleResolver    games.Resolver            // nil → services tournent sans semantic adapter (libellés via fallbacks)
 	homeMatchesCache *service.HomeMatchesCache // cache TTL process-level matches+sessions
+	settingsStore    *settings_platform.Store  // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -98,6 +100,14 @@ func (r *ServiceRegistry) WithAssetResolver(resolver assets.Resolver) *ServiceRe
 // r.titleResolver.Semantic(slug).
 func (r *ServiceRegistry) WithTitleResolver(resolver games.Resolver) *ServiceRegistry {
 	r.titleResolver = resolver
+	return r
+}
+
+// WithSettingsStore attache un settings.Store au registry. Les services qui
+// dépendent de app_settings.json (TeammatesService.friendGamertags pour le
+// filtre amis-only du dropdown) le récupèrent via r.settingsStore.
+func (r *ServiceRegistry) WithSettingsStore(store *settings_platform.Store) *ServiceRegistry {
+	r.settingsStore = store
 	return r
 }
 
@@ -535,13 +545,34 @@ func (r *ServiceRegistry) MatchExclusion(ctx context.Context, slug string) (port
 }
 
 // TeammatesCtx retourne un TeammatesService + identifiants joueur.
+//
+// Le resolver friend_gamertags est branché sur r.settingsStore quand le
+// store est attaché (cf. WithSettingsStore). Sans store → comportement
+// legacy : top dropdown brut sans filtre amis.
 func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.TeammatesService, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, "", "", err
 	}
-	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb))
+	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver())
 	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// friendGamertagsResolver construit un resolver lisant app_settings.friend_gamertags
+// à chaque appel. Retourne nil si aucun settings store n'est attaché — le
+// service tourne alors en mode legacy.
+func (r *ServiceRegistry) friendGamertagsResolver() service.FriendGamertagsResolver {
+	if r.settingsStore == nil {
+		return nil
+	}
+	return func(ctx context.Context) []string {
+		s, err := r.settingsStore.Load()
+		if err != nil {
+			slog.WarnContext(ctx, "friend_gamertags_load_failed", "err", err)
+			return nil
+		}
+		return s.FriendGamertags
+	}
 }
 
 // ─── Sprint 54 : Compare + Leaderboard ───────────────────────────────────────
