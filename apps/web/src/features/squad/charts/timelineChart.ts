@@ -1,79 +1,39 @@
 /**
- * timelineChart — Perf / Winrate / MMR sur les matchs en escouade
- * (série temporelle).
+ * timelineChart — Perf / Win rate sur les matchs en escouade.
  *
- * Multi-titres : aucun libellé hardcodé. Tous les libellés (titre, traces,
- * axes) sont passés en argument par le caller.
+ * Produit 2 ChartSeries<ChartPoint2D> (perf + win rate normalisé 0-100),
+ * consommés par TimeseriesLineChart en mode catégorie. Remplace l'ancien
+ * builder Plotly dual-axes bar+line.
+ *
+ * Multi-titres : aucun libellé hardcodé. Noms de séries passés en argument.
  */
-import type { SquadTimeseriesPoint, PlotlyFigurePayload } from '@/lib/api/types'
-import { getPerfColor } from '@/lib/perf-color'
-import { resolveToken } from '@/lib/accessibility'
+import type { ChartSeries } from '@/components/charts/ChartCard'
+import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
+import type { SquadTimeseriesPoint } from '@/lib/api/types'
 
-interface TimelineChartArgs {
+export interface TimelineSeriesArgs {
   points: SquadTimeseriesPoint[]
-  title: string
   perfName: string
   winRateName: string
-  perfAxis: string
-  winRateAxis: string
 }
 
-export function buildTimelineChart({
+export function buildTimelineSeries({
   points,
-  title,
   perfName,
   winRateName,
-  perfAxis,
-  winRateAxis,
-}: TimelineChartArgs): PlotlyFigurePayload | null {
-  if (points.length === 0) return null
+}: TimelineSeriesArgs): ChartSeries<ChartPoint2D>[] {
+  if (points.length === 0) return []
 
-  const labels = points.map((p) => p.period_label)
-  const winrates = points.map((p) => p.win_rate)
-  const perfs = points.map((p) => p.avg_performance ?? 0)
-
-  const perfColors = perfs.map((v) => getPerfColor(v))
-
-  const traces: PlotlyFigurePayload['data'] = [
+  return [
     {
-      type: 'bar',
-      name: perfName,
-      x: labels,
-      y: perfs,
-      marker: { color: perfColors },
-      yaxis: 'y',
+      key: 'perf',
+      datapoints: points.map((p) => ({ x: p.period_label, y: p.avg_performance ?? 0 })),
+      meta: { name: perfName },
     },
     {
-      type: 'scatter',
-      mode: 'lines+markers',
-      name: winRateName,
-      x: labels,
-      y: winrates,
-      line: { color: resolveToken('divergent-pos'), width: 2 },
-      marker: { color: resolveToken('divergent-pos'), size: 6 },
-      yaxis: 'y2',
+      key: 'winrate',
+      datapoints: points.map((p) => ({ x: p.period_label, y: p.win_rate * 100 })),
+      meta: { name: winRateName },
     },
   ]
-
-  return {
-    data: traces,
-    layout: {
-      hovermode: 'x unified',
-      height: 300,
-      margin: { l: 45, r: 45, t: 30, b: 80 },
-      legend: { orientation: 'h', x: 0, y: -0.25 },
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      title: { text: title, font: { size: 13 } },
-      xaxis: { tickangle: -35 },
-      yaxis: { title: perfAxis, range: [0, 100] },
-      yaxis2: {
-        title: winRateAxis,
-        overlaying: 'y',
-        side: 'right',
-        range: [0, 100],
-        showgrid: false,
-      },
-    },
-  }
 }

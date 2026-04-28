@@ -1,9 +1,9 @@
 /**
- * timelineChart.test.ts — Le builder accepte les libellés en argument,
- * aucune string FR libre.
+ * timelineChart.test.ts — buildTimelineSeries produit 2 ChartSeries<ChartPoint2D>
+ * sans libellé hardcodé.
  */
 import { describe, it, expect } from 'vitest'
-import { buildTimelineChart } from './timelineChart'
+import { buildTimelineSeries } from './timelineChart'
 import type { SquadTimeseriesPoint } from '@/lib/api/types'
 
 const POINT = (period_label: string, win_rate: number): SquadTimeseriesPoint => ({
@@ -13,41 +13,62 @@ const POINT = (period_label: string, win_rate: number): SquadTimeseriesPoint => 
   match_count: 3,
 })
 
-describe('buildTimelineChart', () => {
-  const labels = {
-    title: 'T_TITLE',
-    perfName: 'T_PERF',
-    winRateName: 'T_WIN',
-    perfAxis: 'T_PERF_AXIS',
-    winRateAxis: 'T_WIN_AXIS',
-  }
-
-  it('retourne null pour points vide', () => {
-    expect(buildTimelineChart({ points: [], ...labels })).toBeNull()
+describe('buildTimelineSeries', () => {
+  it('retourne [] pour points vide', () => {
+    expect(
+      buildTimelineSeries({ points: [], perfName: 'P', winRateName: 'W' }),
+    ).toEqual([])
   })
 
-  it('reporte tous les libellés fournis dans le layout', () => {
-    const fig = buildTimelineChart({
-      points: [POINT('S1', 60), POINT('S2', 55)],
-      ...labels,
+  it('retourne 2 séries (perf + winrate)', () => {
+    const result = buildTimelineSeries({
+      points: [POINT('S1', 0.6), POINT('S2', 0.55)],
+      perfName: 'T_PERF',
+      winRateName: 'T_WIN',
     })
-    expect(fig!.layout.title).toEqual({ text: 'T_TITLE', font: { size: 13 } })
-    expect(fig!.layout.yaxis).toMatchObject({ title: 'T_PERF_AXIS' })
-    expect(fig!.layout.yaxis2).toMatchObject({ title: 'T_WIN_AXIS' })
-    const names = fig!.data.map((t) => (t as { name?: string }).name)
-    expect(names).toContain('T_PERF')
-    expect(names).toContain('T_WIN')
+    expect(result).toHaveLength(2)
+    expect(result[0].key).toBe('perf')
+    expect(result[1].key).toBe('winrate')
+  })
+
+  it('reporte le nom de série dans meta.name', () => {
+    const result = buildTimelineSeries({
+      points: [POINT('S1', 0.6)],
+      perfName: 'T_PERF',
+      winRateName: 'T_WIN',
+    })
+    expect(result[0].meta?.name).toBe('T_PERF')
+    expect(result[1].meta?.name).toBe('T_WIN')
+  })
+
+  it('mappe period_label → x et avg_performance → y pour perf', () => {
+    const result = buildTimelineSeries({
+      points: [POINT('S1', 0.6), POINT('S2', 0.55)],
+      perfName: 'P',
+      winRateName: 'W',
+    })
+    expect(result[0].datapoints[0]).toMatchObject({ x: 'S1', y: 65 })
+    expect(result[0].datapoints[1]).toMatchObject({ x: 'S2', y: 65 })
+  })
+
+  it('convertit win_rate × 100 pour winrate', () => {
+    const result = buildTimelineSeries({
+      points: [POINT('S1', 0.6)],
+      perfName: 'P',
+      winRateName: 'W',
+    })
+    expect(result[1].datapoints[0]).toMatchObject({ x: 'S1', y: 60 })
   })
 
   it('aucun libellé hardcodé en français résiduel', () => {
-    const fig = buildTimelineChart({
-      points: [POINT('S1', 60)],
-      ...labels,
+    const result = buildTimelineSeries({
+      points: [POINT('S1', 0.6)],
+      perfName: 'P',
+      winRateName: 'W',
     })
-    const json = JSON.stringify(fig)
+    const json = JSON.stringify(result)
     expect(json).not.toMatch(/Perf\. moy\./)
     expect(json).not.toMatch(/Win rate \(%\)/)
-    expect(json).not.toMatch(/Score perf\./)
     expect(json).not.toMatch(/Évolution des performances/)
   })
 })

@@ -11,9 +11,31 @@ import * as squadContextModule from './SquadContext'
 import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { SquadSynergiesPage } from './SquadSynergiesPage'
 
-vi.mock('@/components/ui/plotly-chart', () => ({
-  PlotlyChart: ({ figure }: { figure: unknown }) => (
-    <div data-testid="plotly-chart" data-fig={JSON.stringify(figure)} />
+// Mocks wrappers ECharts : echarts-for-react absent en env portable.
+// Le stub expose data-series pour les assertions de contenu.
+vi.mock('@/components/charts/BarGroupedChart', () => ({
+  BarGroupedChart: ({
+    series,
+    title,
+  }: {
+    series: unknown[]
+    title?: string
+  }) => (
+    <div
+      data-testid="chart-card"
+      data-series={JSON.stringify(series)}
+      data-title={title}
+    />
+  ),
+}))
+vi.mock('@/components/charts/TimeseriesLineChart', () => ({
+  TimeseriesLineChart: ({ series }: { series: unknown[] }) => (
+    <div data-testid="chart-card" data-series={JSON.stringify(series)} />
+  ),
+}))
+vi.mock('@/components/charts/Heatmap2DChart', () => ({
+  Heatmap2DChart: ({ series }: { series: unknown[] }) => (
+    <div data-testid="chart-card" data-series={JSON.stringify(series)} />
   ),
 }))
 
@@ -96,12 +118,12 @@ afterEach(() => {
 })
 
 describe('SquadSynergiesPage — empty states', () => {
-  it('no_selection : wording analyse, pas de Plotly', () => {
+  it('no_selection : wording analyse, pas de chart', () => {
     mockSquadContext({ selectedRows: [], confirmedGamertags: [] })
     mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.getByText(/Choisis 1 à 3 coéquipiers/)).toBeInTheDocument()
-    expect(screen.queryByTestId('plotly-chart')).toBeNull()
+    expect(screen.queryByTestId('chart-card')).toBeNull()
   })
 
   it('invalid_selection : message dédié', () => {
@@ -111,17 +133,17 @@ describe('SquadSynergiesPage — empty states', () => {
     expect(screen.getByText(/Aucune donnée commune/)).toBeInTheDocument()
   })
 
-  it('avec rows : rend le bar chart, plus de "Référence solo"', () => {
+  it('avec rows : rend le bar chart synergies, plus de "Référence solo"', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
     })
     mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadSynergiesPage />)
-    const charts = screen.getAllByTestId('plotly-chart')
-    // Au moins le bar chart synergies — les autres optionnels sont null.
+    const charts = screen.getAllByTestId('chart-card')
+    // Au moins le bar chart synergies + hsPk.
     expect(charts.length).toBeGreaterThanOrEqual(1)
-    const json = charts[0].getAttribute('data-fig')!
+    const json = charts[0].getAttribute('data-series')!
     expect(json).not.toMatch(/Référence solo/)
     expect(json).not.toMatch(/Solo ref/)
     expect(json).toContain('Avec A')
@@ -138,7 +160,7 @@ describe('SquadSynergiesPage — locale EN', () => {
     })
     mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadSynergiesPage />)
-    const json = screen.getAllByTestId('plotly-chart')[0].getAttribute('data-fig')!
+    const json = screen.getAllByTestId('chart-card')[0].getAttribute('data-series')!
     expect(json).toContain('With A')
     expect(json).toContain('/game')
     expect(json).not.toContain('Avec A')
@@ -147,7 +169,7 @@ describe('SquadSynergiesPage — locale EN', () => {
 })
 
 describe('SquadSynergiesPage — multi-titres', () => {
-  it('synthetic_title_b : ne crashe pas, axes filtrés', () => {
+  it('synthetic_title_b : ne crashe pas, axes filtrés sur kills uniquement', () => {
     const minimal: useFieldMappingsModule.FieldMappingsResponse = {
       title_slug: 'synthetic_title_b',
       schema_version: 1,
@@ -162,8 +184,7 @@ describe('SquadSynergiesPage — multi-titres', () => {
     })
     mockMappings(minimal)
     expect(() => renderWithProviders(<SquadSynergiesPage />)).not.toThrow()
-    const json = screen.getAllByTestId('plotly-chart')[0].getAttribute('data-fig')!
-    // Seul kills est dans le mapping, donc seul axe `Frags/partie` reste.
+    const json = screen.getAllByTestId('chart-card')[0].getAttribute('data-series')!
     expect(json).toContain('Frags')
     expect(json).not.toContain('Taux de victoire')
     expect(json).not.toContain('K/D')
