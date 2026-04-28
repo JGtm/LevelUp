@@ -484,6 +484,49 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 	return out, rows.Err()
 }
 
+// ListRecentPvPMatchIDs liste les match_ids PvP du joueur, ordre chronologique
+// croissant. Utilise par le service Timeseries (Mock 11).
+func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
+	ctx context.Context,
+	xuid string,
+	limit int,
+) ([]string, error) {
+	if xuid == "" || limit <= 0 {
+		return nil, errors.New("ListRecentPvPMatchIDs: xuid and limit > 0 required")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	q := `
+		SELECT mr.match_id
+		FROM shared.match_registry mr
+		JOIN shared.match_participants mp ON mr.match_id = mp.match_id
+		WHERE mp.xuid = ?
+		  AND mr.start_time IS NOT NULL
+		  AND COALESCE(mr.is_pve, FALSE) = FALSE
+		ORDER BY mr.start_time DESC
+		LIMIT ?
+	`
+	rows, err := r.pdb.ReadDB().Query(ctx, q, xuid, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ListRecentPvPMatchIDs: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]string, 0, limit)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			out = append(out, id)
+		}
+	}
+	// Inverser pour ordre chronologique croissant (oldest first).
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out, rows.Err()
+}
+
 // =============================================================================
 // Helpers de gating (information_schema)
 // =============================================================================

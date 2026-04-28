@@ -547,6 +547,31 @@ export interface EngagementScoreResultAPI {
   NHistoryMatches: number
 }
 
+export interface EngagementMatchSummaryAPI {
+  match_id: string
+  label: string
+  started_at: string
+  pace_joueur: number
+  pace_team: number
+  pace_attendu: number
+  pace_lobby: number
+  engagement_score: number | null
+}
+
+export interface SquadPlayerEngagementAPI {
+  xuid: string
+  gamertag: string
+  pace_observed: number[]
+}
+
+export interface SquadEngagementSessionAPI {
+  labels: string[]
+  lobby_per_player: number[]
+  team_expected: number[]
+  team_observed: number[]
+  players: SquadPlayerEngagementAPI[]
+}
+
 export interface EngagementCoefficientAPI {
   XUID: string
   ModeCategory: string

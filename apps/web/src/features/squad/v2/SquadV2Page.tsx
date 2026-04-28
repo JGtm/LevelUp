@@ -45,6 +45,9 @@ function useSquadV2Translator() {
     formatMessage(squadManifest, key, locale, vars)
 }
 
+// SquadEngagementSection lazy-loaded pour eviter la cyclic deps avec @/features/squad
+import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
+
 export function SquadV2Page({ playerSlug, teammates, period }: SquadV2PageProps) {
   const t = useSquadV2Translator()
   const locale = useAppShellStore((s) => s.locale) ?? 'fr'
@@ -183,6 +186,11 @@ export function SquadV2Page({ playerSlug, teammates, period }: SquadV2PageProps)
           </div>
         </section>
       )}
+
+      {/* Engagement equipe (Mock 15 v2) */}
+      <section data-testid="squad-v2-engagement">
+        <SquadEngagementSection playerSlug={playerSlug} teammates={teammates} />
+      </section>
 
       {/* Radar (S8) */}
       {charts?.radar && charts.radar.length > 0 && (

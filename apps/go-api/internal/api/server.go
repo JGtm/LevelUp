@@ -400,10 +400,12 @@ func NewRouter(
 			r.Get("/matches/{match_id}", mv.GetMatchView)
 			r.Get("/matches/{match_id}/neighbors", mv.GetMatchNeighbors)
 
-			// Phase 4 plan engagement : score + courbe par match + profil
+			// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
 			eng := handlers.NewEngagementHandler(reg.Engagement)
 			r.Get("/matches/{match_id}/engagement", eng.GetMatchEngagement)
 			r.Get("/engagement_profile", eng.GetEngagementProfile)
+			r.Get("/engagement/timeseries", eng.GetEngagementTimeseries)
+			r.Get("/pages/squad/v2/engagement", eng.GetSquadEngagementSession)
 
 			explorer := handlers.NewExplorerHandler(reg.ExplorerCtx, reg.MatchHistoryCtx)
 			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)

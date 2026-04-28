@@ -530,3 +530,183 @@ var ErrEngagementMatchNotFound = errors.New("engagement: match not found for thi
 // ErrEngagementPvENotSupported signale qu'on tente de calculer sur un match PvE
 // (non couvert v1, cf doc reflexion §3.4 perimetre).
 var ErrEngagementPvENotSupported = errors.New("engagement: PvE not supported in v1")
+
+// GetTimeseries retourne les N derniers matchs PvP du joueur avec leurs
+// paces calcules a la volee (Mock 11 sur Timeseries intensity tab).
+//
+// Reference plan : §6.6.3.
+func (s *PlayerEngagementService) GetTimeseries(
+	ctx context.Context,
+	limit int,
+) ([]domain.EngagementMatchSummary, error) {
+	if s.xuid == "" {
+		return nil, errors.New("PlayerEngagementService.GetTimeseries: xuid required")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+
+	matchIDs, err := s.loadRecentPvPMatchIDs(ctx, limit)
+	if err != nil {
+		if errors.Is(err, port.ErrEngagementUnavailable) {
+			return []domain.EngagementMatchSummary{}, nil
+		}
+		return nil, err
+	}
+
+	out := make([]domain.EngagementMatchSummary, 0, len(matchIDs))
+	for i, mid := range matchIDs {
+		summary, ok := s.computeMatchSummary(ctx, mid, i)
+		if ok {
+			out = append(out, summary)
+		}
+	}
+	return out, nil
+}
+
+// GetSquadSession charge la session squad (Mock 15 v2). Calcule pour chaque
+// match commun les means team-level + per-player paces.
+//
+// Reference plan : §6.6.1, §8.7.
+func (s *PlayerEngagementService) GetSquadSession(
+	ctx context.Context,
+	matchIDs []string,
+	teammates []domain.EngagementCoefficient,
+) (*domain.SquadEngagementSession, error) {
+	if len(matchIDs) == 0 {
+		return &domain.SquadEngagementSession{Labels: []string{}, Players: []domain.SquadPlayerEngagement{}}, nil
+	}
+
+	session := &domain.SquadEngagementSession{
+		Labels:         make([]string, 0, len(matchIDs)),
+		LobbyPerPlayer: make([]float64, 0, len(matchIDs)),
+		TeamExpected:   make([]float64, 0, len(matchIDs)),
+		TeamObserved:   make([]float64, 0, len(matchIDs)),
+		Players:        make([]domain.SquadPlayerEngagement, 0, len(teammates)),
+	}
+
+	// Initialiser les players avec slices de la bonne taille (rempli par index).
+	for _, t := range teammates {
+		session.Players = append(session.Players, domain.SquadPlayerEngagement{
+			XUID:         t.XUID,
+			Gamertag:     t.XUID, // gamertag a resoudre via metadata si dispo
+			PaceObserved: make([]float64, 0, len(matchIDs)),
+		})
+	}
+
+	for i, mid := range matchIDs {
+		summary, ok := s.computeMatchSummary(ctx, mid, i)
+		if !ok {
+			continue
+		}
+		session.Labels = append(session.Labels, summary.Label)
+		session.LobbyPerPlayer = append(session.LobbyPerPlayer, summary.PaceLobby)
+		session.TeamExpected = append(session.TeamExpected, summary.PaceAttendu)
+		session.TeamObserved = append(session.TeamObserved, summary.PaceTeam)
+		// Pour chaque coequipier, calculer son pace dans ce match.
+		for j := range session.Players {
+			pace := s.computePlayerPace(ctx, mid, session.Players[j].XUID)
+			session.Players[j].PaceObserved = append(session.Players[j].PaceObserved, pace)
+		}
+	}
+	return session, nil
+}
+
+// loadRecentPvPMatchIDs liste les match_ids PvP recents du joueur via
+// match_registry + match_participants.
+func (s *PlayerEngagementService) loadRecentPvPMatchIDs(
+	ctx context.Context,
+	limit int,
+) ([]string, error) {
+	type lister interface {
+		ListRecentPvPMatchIDs(ctx context.Context, xuid string, limit int) ([]string, error)
+	}
+	if l, ok := s.repo.(lister); ok {
+		return l.ListRecentPvPMatchIDs(ctx, s.xuid, limit)
+	}
+	// Fallback : repo n'expose pas la methode (mocks) — retourne vide.
+	return []string{}, nil
+}
+
+// computeMatchSummary recompute les means d'engagement pour un match donne.
+// Retourne false si le match n'est pas calculable (PvE, match court, etc.).
+func (s *PlayerEngagementService) computeMatchSummary(
+	ctx context.Context,
+	matchID string,
+	index int,
+) (domain.EngagementMatchSummary, bool) {
+	mctx, err := s.repo.LoadMatchEngagementContext(ctx, matchID, s.xuid)
+	if err != nil || mctx == nil || mctx.IsPvE {
+		return domain.EngagementMatchSummary{}, false
+	}
+	events, _ := s.repo.LoadEventsForMatch(ctx, matchID)
+	if len(events) == 0 {
+		return domain.EngagementMatchSummary{}, false
+	}
+	teamXUIDs, _ := s.repo.LoadTeamXUIDs(ctx, matchID, mctx.TargetTeamID, s.xuid)
+	playerEvents, teamEvents, lobbyEvents := splitMatchEvents(events, s.xuid, teamXUIDs)
+	modeCategory := normalizeMode(mctx.IsRanked)
+	coefTeam, coefLobby := s.loadCoefsSafe(ctx, modeCategory)
+
+	input := temporal.EngagementScoreInput{
+		PlayerEvents: playerEvents, TeamEvents: teamEvents, LobbyEvents: lobbyEvents,
+		NTeam: mctx.NTeam, NHumansLobby: mctx.NHumansLobby, XUID: s.xuid,
+		MatchStartMS: mctx.StartTimeMS, MatchEndMS: mctx.EndTimeMS,
+		CoefTeamShare: coefTeam, CoefLobbyShare: coefLobby,
+		PersonalScore: mctx.PersonalScore, Kills: mctx.Kills, Assists: mctx.Assists,
+		Mode: modeCategory, IsTeamMode: mctx.IsTeamMode,
+	}
+	result, err := temporal.ComputeEngagementScore(input)
+	if err != nil || len(result.EngagementCurve) == 0 {
+		return domain.EngagementMatchSummary{}, false
+	}
+	return domain.EngagementMatchSummary{
+		MatchID:         matchID,
+		Label:           fmt.Sprintf("M%d", index+1),
+		StartedAt:       time.UnixMilli(mctx.StartTimeMS),
+		PaceJoueur:      meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceJoueur }),
+		PaceTeam:        meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceTeam }),
+		PaceAttendu:     meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceAttendu }),
+		PaceLobby:       meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceLobby }),
+		EngagementScore: result.EngagementScore,
+	}, true
+}
+
+// computePlayerPace renvoie le pace mean d'un joueur (autre que self) sur un
+// match donne. Pour Mock 15 v2 squad overlay.
+func (s *PlayerEngagementService) computePlayerPace(
+	ctx context.Context,
+	matchID, xuid string,
+) float64 {
+	events, _ := s.repo.LoadEventsForMatch(ctx, matchID)
+	if len(events) == 0 {
+		return 0
+	}
+	mctx, _ := s.repo.LoadMatchEngagementContext(ctx, matchID, xuid)
+	if mctx == nil {
+		return 0
+	}
+	durationMin := float64(mctx.EndTimeMS-mctx.StartTimeMS) / 60_000.0
+	if durationMin <= 0 {
+		return 0
+	}
+	count := 0
+	for _, e := range events {
+		if e.XUID == xuid {
+			count++
+		}
+	}
+	return float64(count) / durationMin
+}
+
+// meanPace calcule la moyenne d'un champ extrait de la courbe.
+func meanPace(curve []domain.EngagementPoint, getter func(domain.EngagementPoint) float64) float64 {
+	if len(curve) == 0 {
+		return 0
+	}
+	var sum float64
+	for _, p := range curve {
+		sum += getter(p)
+	}
+	return sum / float64(len(curve))
+}

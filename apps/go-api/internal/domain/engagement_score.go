@@ -99,6 +99,37 @@ type HistoricalEngagementBrut struct {
 //
 // Mediane glissante sur les 200 derniers matchs. Recalcule periodiquement
 // (idealement incremental, cf. plan d'implementation §4.4).
+// EngagementMatchSummary est un point agrege pour Timeseries Mock 11
+// (1 point = 1 match). Pour chaque match du joueur sur la periode, on a
+// les means de la courbe (joueur, team, attendu, lobby).
+type EngagementMatchSummary struct {
+	MatchID         string    `json:"match_id"`
+	Label           string    `json:"label"` // "M1", "M2" ou date courte
+	StartedAt       time.Time `json:"started_at"`
+	PaceJoueur      float64   `json:"pace_joueur"`
+	PaceTeam        float64   `json:"pace_team"`
+	PaceAttendu     float64   `json:"pace_attendu"`
+	PaceLobby       float64   `json:"pace_lobby"`
+	EngagementScore *float64  `json:"engagement_score"`
+}
+
+// SquadEngagementSession est le payload pour la Squad Page Mock 15 v2.
+// Pour chaque match commun a la squad : 3 traces team-level + per-player paces.
+type SquadEngagementSession struct {
+	Labels         []string                `json:"labels"`
+	LobbyPerPlayer []float64               `json:"lobby_per_player"`
+	TeamExpected   []float64               `json:"team_expected"`
+	TeamObserved   []float64               `json:"team_observed"`
+	Players        []SquadPlayerEngagement `json:"players"`
+}
+
+// SquadPlayerEngagement = pace observe d'un membre du squad sur la session.
+type SquadPlayerEngagement struct {
+	XUID         string    `json:"xuid"`
+	Gamertag     string    `json:"gamertag"`
+	PaceObserved []float64 `json:"pace_observed"`
+}
+
 type EngagementCoefficient struct {
 	XUID         string
 	ModeCategory string

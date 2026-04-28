@@ -36,6 +36,7 @@ import {
   DOW_LABELS_EN,
 } from './seriesAdapters'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 
 type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions' | 'combat'
 
@@ -333,6 +334,7 @@ export function TimeseriesPage() {
                 />
               </CardContent>
             </Card>
+            <EngagementTimeseriesSection playerSlug={playerSlug} limit={30} />
           </div>
         )}
 
