@@ -1,5 +1,17 @@
 # Thought Log
 
+## [2026-04-28] cleanup(plotly): résidus CareerPageCharts + colorscale orphelins
+
+**Statut** : Complété.
+
+**Décision technique** :
+- **Résidu 1 — CareerPageCharts** : suppression du struct Go `CareerPageCharts` (4 champs `*interface{}` toujours nil depuis Sprint 6) + champ `Charts` dans `domain.CareerPageResponse` + `Charts: domain.CareerPageCharts{}` dans `career_service.go`. Côté contrat : schema `CareerCharts` + champ `charts` retirés de `openapi.yaml` (required array mis à jour), de `generated.ts` et de `types.ts`. Mock MSW `handlers.ts` mis à jour. `PlotlyFigurePayload` **conservé** dans `openapi.yaml` et `generated.ts` — encore référencé par `MatchCombatTab.charts[]`.
+- **Résidu 2 — colorscale orphelins** : `buildDivergentColorscale` et `buildOrdinalColorscale` supprimés de `plotlyColorscale.ts` (aucun appelant détecté post-Plotly). `getSeriesColors` conservé (utilisé par `SquadLayout.tsx`). Export `index.ts` mis à jour. Tests réduits à `getSeriesColors` uniquement.
+
+**Résultats** : go build (portable — CGo indisponible, erreur DuckDB attendue). `grep CareerPageCharts apps/go-api/internal` → 0 hit. `grep buildDivergentColorscale apps/web/src` → 0 hit.
+
+**Prochaine étape** : merge review GS — tous les chunks P4.A→D + résidus sont sur `feat/op-squad-synergies-echarts`. — OP
+
 ## [2026-04-28] cleanup(plotly): retrait plotly-chart.tsx + packages Plotly — chunk P4.D
 
 **Statut** : Complété.

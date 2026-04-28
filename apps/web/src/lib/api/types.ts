@@ -595,11 +595,6 @@ export interface MediaResetRequest {
 // Carrière (Slice 2)
 // ---------------------------------------------------------------------------
 
-export interface PlotlyFigurePayload {
-  data: Record<string, unknown>[]
-  layout: Record<string, unknown>
-}
-
 export interface CareerSummary {
   rank_number: number
   rank_label: string
@@ -625,13 +620,6 @@ export interface CareerProjections {
   xp_per_day_fallback: number
   estimated_hero_date: string | null
   estimated_rank_cap_date: string | null
-}
-
-export interface CareerCharts {
-  rank_progress_gauge: PlotlyFigurePayload | null
-  hero_progress_gauge: PlotlyFigurePayload | null
-  xp_history_figure: PlotlyFigurePayload | null
-  lusr_rating_figure: PlotlyFigurePayload | null
 }
 
 export interface CareerHistoryPoint {
@@ -684,7 +672,6 @@ export interface CareerPageResponse {
   summary: CareerSummary | null
   hero_progress: HeroProgress | null
   projections: CareerProjections | null
-  charts: CareerCharts
   xp_history: CareerHistoryPoint[]
   lusr: CareerLusrSection | null
   top_matches_preview: CareerTopMatch[]

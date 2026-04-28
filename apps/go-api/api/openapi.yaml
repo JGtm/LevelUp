@@ -1748,27 +1748,6 @@ components:
           format: date
           nullable: true
 
-    CareerCharts:
-      type: object
-      description: Graphes Plotly serialisés — peut contenir des null ciblés
-      properties:
-        rank_progress_gauge:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/PlotlyFigurePayload"
-        hero_progress_gauge:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/PlotlyFigurePayload"
-        xp_history_figure:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/PlotlyFigurePayload"
-        lusr_rating_figure:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/PlotlyFigurePayload"
-
     CareerHistoryPoint:
       type: object
       required: [recorded_at, rank, xp_total]
@@ -1888,7 +1867,7 @@ components:
 
     CareerPageResponse:
       type: object
-      required: [charts, xp_history, top_matches_preview, encounters_preview]
+      required: [xp_history, top_matches_preview, encounters_preview]
       properties:
         summary:
           nullable: true
@@ -1902,8 +1881,6 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/CareerProjections"
-        charts:
-          $ref: "#/components/schemas/CareerCharts"
         xp_history:
           type: array
           items:

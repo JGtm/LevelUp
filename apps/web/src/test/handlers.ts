@@ -67,7 +67,6 @@ const careerFixture = {
   },
   hero_progress: { xp_total_required: 100000, xp_remaining: 50000, percentage: 50, current_rank: 12 },
   projections: null,
-  charts: { rank_progress_gauge: null, hero_progress_gauge: null, xp_history_figure: null, lusr_rating_figure: null },
   xp_history: [],
   lusr: null,
   top_matches_preview: [],

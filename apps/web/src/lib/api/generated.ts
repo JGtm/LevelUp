@@ -788,16 +788,6 @@ export interface components {
             can_manage_instance: boolean;
         };
         /**
-         * CareerCharts
-         * @description Graphes Plotly serialisés.
-         */
-        CareerCharts: {
-            rank_progress_gauge?: components["schemas"]["PlotlyFigurePayload"] | null;
-            hero_progress_gauge?: components["schemas"]["PlotlyFigurePayload"] | null;
-            xp_history_figure?: components["schemas"]["PlotlyFigurePayload"] | null;
-            lusr_rating_figure?: components["schemas"]["PlotlyFigurePayload"] | null;
-        };
-        /**
          * CareerEncounter
          * @description Résumé des rencontres avec un adversaire.
          */
@@ -877,7 +867,6 @@ export interface components {
             summary: components["schemas"]["CareerSummary"] | null;
             hero_progress: components["schemas"]["HeroProgress"] | null;
             projections: components["schemas"]["CareerProjections"] | null;
-            charts: components["schemas"]["CareerCharts"];
             /** Xp History */
             xp_history: components["schemas"]["CareerHistoryPoint"][];
             lusr: components["schemas"]["CareerLusrSection"] | null;

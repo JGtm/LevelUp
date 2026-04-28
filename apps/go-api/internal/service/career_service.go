@@ -102,7 +102,6 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 		Summary:       summary,
 		HeroProgress:  hero,
 		Projections:   projs,
-		Charts:        domain.CareerPageCharts{},
 		XPHistory:     xpHistory,
 		LUSR:          lusr,
 		CurrentSeason: currentSeason,
