@@ -128,9 +128,10 @@ HTTP handler → product service → games.Resolver
 |---------|------|
 | `internal/games/canonical/` | `FieldKey` enum (43 keys), enums (`Outcome`, `MatchType`, `RatingType`, `Bucket`, `GroupBy`), scopes (`StatsScope`, `TimeseriesQuery`, `CareerOptions`), match/career/timeseries types — all stable, agnostic, used by services |
 | `internal/games/mappings/` | Strict TOML loader (`go-toml/v2`), validation (locales, formats, `display_order` collisions, unit conversions), `FieldMappingSet`, registry |
-| `internal/games/halo_infinite/` | HI implementation: `DataAdapter` (wraps existing repos), `SemanticAdapter` (wraps `FieldMappingSet`) |
+| `internal/games/halo_infinite/` | HI implementation: `DataAdapter` (wraps existing repos), `SemanticAdapter` (wraps `FieldMappingSet`), `AssetURLAdapter` (composes `/static/...` URLs) |
 | `internal/games/synthetic_title_b/` | Synthetic test corpus, isolated cross-title tests only — never referenced by production code |
-| `internal/games/{adapter,resolver}.go` | `TitleDataAdapter` + `TitleSemanticAdapter` interfaces, `StaticResolver` |
+| `internal/games/{adapter,resolver}.go` | `TitleDataAdapter` + `TitleSemanticAdapter` + `TitleAssetURLAdapter` interfaces, `StaticResolver` |
+| `internal/assets/static/` | Pure URL/path composition for `/static/{folder}/{titleSlug}/{id}{ext}` — no title knowledge, no I/O, table-driven tests |
 
 ### TOML mappings (versioned in Git)
 

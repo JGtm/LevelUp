@@ -7,8 +7,6 @@ package analysis
 import (
 	"fmt"
 	"math"
-	"os"
-	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -19,14 +17,10 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
-// staticTitleScoped reflète l'état du flag STATIC_PATHS_TITLE_SCOPED. Lu une
-// fois au load du package. Default depuis Phase 6.5 : ON. ENV à "false" pour
-// rollback d'urgence (mais nécessite aussi git revert sur la migration FS).
-//
-// Le flag sera retiré en Phase 6.6 (cleanup) — title-scoping deviendra le
-// seul comportement.
-var staticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") != "false"
-
+// homeStaticTitleSlug est le slug du titre dont relèvent les helpers d'URL
+// composition de ce fichier (mapPNGNames, conventions HI). Quand un 2e titre
+// aura des assets statiques, ces helpers seront promus à un adapter
+// title-resolved injecté.
 const homeStaticTitleSlug = "halo_infinite"
 
 // ---------------------------------------------------------------------------
@@ -1071,15 +1065,12 @@ var mapPNGNames = map[string]struct{}{
 // Public pour usage cross-package (ex: media match candidates).
 func MapStaticImagePath(mapName string) string { return mapStaticImagePath(mapName) }
 
-// mapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
-// Le nom de la map est encodé pour les espaces et caractères spéciaux.
+// mapStaticImagePath retourne l'URL relative de l'image de map servie par
+// /static/maps/halo_infinite/. Le nom de la map est encodé pour les espaces et
+// caractères spéciaux.
 //
-// Format de l'URL :
-//   - flag OFF (default Phase 6.1–6.4) : /static/maps/{encoded}{ext} (legacy flat)
-//   - flag ON (à partir de Phase 6.5)  : /static/maps/halo_infinite/{encoded}{ext}
-//
-// La composition path passe par internal/assets/static — ce package reste seule
-// source de vérité pour le format MountPoint + Folder.
+// Composition déléguée à internal/assets/static — ce package reste seule source
+// de vérité pour le format /static/{kind}/{titleSlug}/{id}{ext}.
 func mapStaticImagePath(mapName string) string {
 	mapName = strings.TrimSpace(mapName)
 	if mapName == "" || homeUUIDRe.MatchString(mapName) {
@@ -1098,10 +1089,7 @@ func mapStaticImagePath(mapName string) string {
 			encoded += string(c)
 		}
 	}
-	if staticTitleScoped {
-		return static.URL(static.KindMap, homeStaticTitleSlug, encoded, ext)
-	}
-	return path.Join(static.MountPoint, static.Folder(static.KindMap), encoded+ext)
+	return static.URL(static.KindMap, homeStaticTitleSlug, encoded, ext)
 }
 
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.

@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-04-28] feat(asset-drawer): Phase 0 + 1 — backend Asset Drawer (maps & armes)
+
+**Statut** : Complété
+
+**Décision technique** :
+Architecture en 4 couches conformes au pattern DI du projet. `canonical.AssetMeta` comme type de retour cross-titre. Capability `asset.images` gate tous les endpoints. `hasCapability` injecté dans le handler (pas de slug check direct). `ImageURL` pour les maps = URL déterministe `/api/v1/assets/maps/{titleID}/{id}/image` (pas de double lookup repo). ImageURL armes = `""` en V1 (gap B2 — pas de mapping `weapon_id`→fichier, placeholder SVG côté frontend).
+
+**Fichiers créés** :
+- `internal/games/canonical/assets.go` — type `AssetMeta` (ID, NameEN, NameFR, ImageURL)
+- `internal/platform/duckdb/metadata_repo_assets_list.go` — `ListMapsByTitle` (JOIN `map_images_registry` + `asset_translations`) + `ListWeaponsByTitle` (`weapon_labels`)
+- `internal/platform/duckdb/metadata_repo_assets_list_test.go` — 5 tests intégration `//go:build integration`
+- `internal/service/asset_service.go` — `AssetService` (enrichit image_url maps, weapons vide V1)
+- `internal/service/asset_service_test.go` — 5 tests unitaires avec mock repo
+- `internal/api/handlers/assets_metadata.go` — `AssetMetadataHandler` (ListMaps + ListWeapons, capability gate)
+- `internal/api/handlers/assets_metadata_test.go` — 6 tests httptest
+
+**Fichiers modifiés** :
+- `internal/domain/title/registry.go` — ajout `CapAssetImages = "asset.images"` + capability dans `halo_infinite`
+- `internal/port/repository.go` — ajout `AssetMetaRepository` + `noopAssetMetaRepo`
+- `internal/port/services.go` — ajout `AssetService`
+- `internal/api/server.go` — wiring best-effort (nil-guard si metadata.duckdb absent) + routes `/assets/{title_id}/maps` + `/assets/{title_id}/weapons`
+
+**Résultats** :
+- `go build ./...` — 0 erreur
+- `go vet` sur tous les packages modifiés — 0 warning
+- `go test ./internal/service/... ./internal/api/handlers/...` — PASS
+- `go test ./...` — 3 fails `platform/duckdb` pré-existants (BattlePass/SeasonPass, hors périmètre)
+
+**Prochaine étape** : Phase 2 — frontend Asset Drawer (panel slide-out, grille 2 colonnes, onglets Maps/Armes, recherche debouncée, query keys TanStack).
+
+— GS
+
 ## [2026-04-28] feat(settings): toasts start/fin pour backfill + sync manuelle
 
 **Statut** : Complété
@@ -15,6 +47,47 @@ Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déc
 - Typecheck : 0 erreur sur les fichiers modifiés.
 
 **Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
+
+## [2026-04-28] feat(static-fs-rescope): Phase 6.6 — cleanup flag + dead branches + docs
+
+**Statut** : Complété — chantier static FS title-scoping clos. Branche `feat/multi-title-static-fs-rescope` prête à merger.
+
+**Décision technique** :
+Title-scoping est désormais le seul comportement. Les flags transitionnels `STATIC_PATHS_TITLE_SCOPED` (Go) et `VITE_STATIC_PATHS_TITLE_SCOPED` (Vite) sont retirés du code. Rollback éventuel via `git revert` du commit Phase 6.5 (atomique FS + DB + code).
+
+**Cleanup Go** :
+- `internal/games/halo_infinite/adapter_asset_urls.go` : retiré `titleScoped` field, `EnvTitleScopedFlag`, `NewAssetURLAdapterWithFlag`. Adapter ~75 LoC (vs ~150 avant).
+- `internal/games/halo_infinite/adapter_asset_urls_test.go` : tests `_Flat` et `_FlagFromEnv` retirés. 7 fonctions title-scoped uniquement.
+- `internal/analysis/home.go` : `staticTitleScoped` + import `os`/`path` retirés. `mapStaticImagePath` simplifiée.
+- `internal/platform/duckdb/home_repo.go` : `homeStaticTitleScoped` + import `os` retirés. `homeCSRRankURL`/`homeMedalIconURL` simplifiées.
+- `cmd/migrate-static-maps/main.go` : branche conditionnelle retirée + import `path`. Toujours title-scoped.
+- `internal/api/server.go` : retrait `os.Getenv(halo_games.EnvTitleScopedFlag)` du log `adapter_loaded`.
+- `cmd/migrate-static-paths/` (jetable Phase 6.5) : **supprimé** via `git rm`.
+
+**Cleanup Frontend** :
+- `apps/web/src/lib/staticAssets.ts` : `const TITLE_SCOPED` + branche conditionnelle retirées. `staticAssetURL` 3 lignes effectives.
+
+**Docs** :
+- `docs/ARCHITECTURE_V6.md` (EN) + `docs/FR/ARCHITECTURE_V6.md` : ligne `halo_infinite/` mentionne `AssetURLAdapter`. Resolver mentionne 3e interface. Nouvelle ligne pour `internal/assets/static/`.
+
+**BACKLOG.md** : entrée `[Multi-titre] Migration static/` (502 lignes incluant audit + architecture 4-couches + PRs) **supprimée**. Nouvelle entrée 1-line dans `Récemment complété` (2026-04-28).
+
+**Tests** :
+- `go test ./internal/analysis/... ./internal/games/... ./internal/assets/...` PASS.
+- `npx vitest run` 28 tests staticAssets + HomePage PASS.
+- 3 fails platform/duckdb persistants = WIP utilisateur indépendant (`steps_engagement.go`).
+
+**Statut chantier complet (Phases 6.1 → 6.6)** :
+- 6.1 ✅ Couche 2 `internal/assets/static/` pure (35 tests) — commit `f4a69679`
+- 6.2 ✅ `TitleAssetURLAdapter` interface + impl HI — commit `6f8380a5`
+- 6.3 ✅ Bascule des 5 callers Go (A1–A5, C1, F) — commit `46f05b1e`
+- 6.4 ✅ Frontend `useAssetURL` + 2 sites HomePage — commit `db69a869`
+- 6.5 ✅ Big bang atomique (328 fichiers FS + 180 rows DB + flip + fixtures) — commit `a1d25325`
+- 6.6 ✅ Cleanup flag + script jetable + docs + BACKLOG cleanup — ce commit
+
+— GS
+
+---
 
 ## [2026-04-28] feat(static-fs-rescope): Phase 6.5 — big bang atomique (FS + DB + flip)
 
@@ -23452,4 +23525,43 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 - Integration repo (DuckDB `:memory:` avec schema applique) — necessite Phase 2 migration livree
 - Service unit (mock des 2 repos) — chunk distinct logique
 
-**Conclusion / prochaine etape** : Phase 1 complete (1.1 -> 1.6). Le service est wirable dans une DI mais pas encore dans server.go (pas de handler associe en Phase 1). Phase 2 suivante = migration DB additive (3 colonnes player_match_enrichment, 1 colonne shared.match_registry, 1 nouvelle table engagement_coefficients) + mappings TOML fields.toml. Effort estime restant : ~8 j-h.
+**Conclusion / prochaine etape** : Phase 1 complete (1.1 -> 1.6). Phase 2 suivante = migration DB additive. Effort estime restant : ~8 j-h.
+
+### [2026-04-28] — feat(engagement): Phase 2 + Phase 3 livrees et commitees
+
+**Statut** : Phases 2 + 3 livrees et commitees ; Phases 4-8 restantes
+
+**Commits** (sur branche feat/multi-title-static-fs-rescope par decision utilisateur) :
+- `68735f5e` feat(engagement): scaffold Phase 1 - types + algos + persistence
+- `df7d119d` feat(engagement): Phase 2 migration + Phase 3 sync/backfill
+
+**Phase 2 — Migration DB additive livree** :
+- `internal/migration/steps_engagement.go` (84L) : 3 migrations idempotentes
+  - 4 colonnes nullable + index sur player_match_enrichment (engagement_score, engagement_score_brut, engagement_score_confidence, mode_category)
+  - Nouvelle table engagement_coefficients (xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated)
+  - Colonne match_intensity DOUBLE sur shared.match_registry
+- Toutes idempotentes (ADD COLUMN IF NOT EXISTS / CREATE TABLE IF NOT EXISTS)
+
+**Phase 3 — Sync/Backfill livree** :
+- `internal/sync/engagement.go` (430L) : `batchComputeEngagementScores` orchestre load matchs PvP / events / team_xuids / partition / compute via temporal / persist
+- `internal/sync/scope.go` : flags `EngagementScores` + `ForceEngagementScores` integres aux 7 emplacements requis (allDataFields, applyForceImplications, HasAnyOption, NeedsLocalOnly, requestedTypeMap, RequestedTypes, struct)
+- `internal/sync/backfill_cli.go` : flags CLI `--engagement-scores` et `--force-engagement-scores`
+- `internal/sync/backfill.go` : detection via playerDoneGuard sur engagement_score
+- `internal/sync/engine.go` : wired dans runPostSyncPipeline etape 1.5 (entre perf scores et LUSR)
+- `internal/domain/sync.go` : PostSyncResult.EngagementScoresComputed
+- Skip silencieux si migration non appliquee (gating information_schema)
+- PvE filtre v1
+- Hot path : history par categorie chargee une fois et mise a jour en memoire (pas de N+1)
+
+**Conformite arch-rules** :
+- engagement.go (sync) reutilise temporal.ComputeEngagementScore (algo pur Phase 1.2) — 0 logique metier dans sync
+- Tous fichiers < 500L (max 430)
+- slog structure, multi-titres via canonical
+- 0 SQL inline dans services (le batch sync est dans le package sync, pas service)
+
+**Verifications** :
+- `go build ./...` : OK
+- `go vet` : 0 warning
+- Tests temporal 13/13 PASS, tests sync OK
+
+**Conclusion / prochaine etape** : Phases 1+2+3 livrees. Reste Phase 4 (API endpoints), Phase 5 (frontend), Phase 6 (settings page integration), Phase 7 (glossaire), Phase 8 (tests E2E). Effort estime restant : ~6 j-h. Le pipeline sync calcule maintenant le score automatiquement apres ingestion. Migration appliquee au prochain demarrage API (ensurePlayerDBMigrations). CLI dispo : `go run ./cmd/sync --player MonGT --engagement-scores [--force-engagement-scores]`.

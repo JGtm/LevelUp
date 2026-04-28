@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -17,10 +16,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 )
-
-// homeStaticTitleScoped reflète l'état du flag STATIC_PATHS_TITLE_SCOPED côté
-// repo home. Default depuis Phase 6.5 : ON. ENV à "false" pour rollback.
-var homeStaticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") != "false"
 
 const homeStaticTitleSlug = "halo_infinite"
 
@@ -415,23 +410,15 @@ func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int) *str
 	return &p
 }
 
-// homeCSRRankURL retourne l'URL d'un badge de rang CSR en respectant le flag
-// STATIC_PATHS_TITLE_SCOPED. Composition path déléguée à internal/assets/static.
+// homeCSRRankURL retourne l'URL d'un badge de rang CSR.
+// Composition path déléguée à internal/assets/static.
 func homeCSRRankURL(id string) string {
-	if homeStaticTitleScoped {
-		return static.URL(static.KindCSRRank, homeStaticTitleSlug, id, ".png")
-	}
-	return path.Join(static.MountPoint, static.Folder(static.KindCSRRank), id+".png")
+	return static.URL(static.KindCSRRank, homeStaticTitleSlug, id, ".png")
 }
 
 // homeMedalIconURL retourne l'URL d'une icône de médaille à partir de son ID.
-// Respecte le flag STATIC_PATHS_TITLE_SCOPED.
 func homeMedalIconURL(medalID int64) string {
-	id := strconv.FormatInt(medalID, 10)
-	if homeStaticTitleScoped {
-		return static.URL(static.KindMedal, homeStaticTitleSlug, id, ".png")
-	}
-	return path.Join(static.MountPoint, static.Folder(static.KindMedal), id+".png")
+	return static.URL(static.KindMedal, homeStaticTitleSlug, strconv.FormatInt(medalID, 10), ".png")
 }
 
 func normalizeHomeSkillPeakBadgeParts(tier string, tierLabel string, subTier int) (string, int) {

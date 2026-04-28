@@ -157,15 +157,12 @@ func NewRouter(
 	)
 
 	// Phase 6 finition multi-titres : 3e adapter — TitleAssetURLAdapter.
-	// Compose les URLs /static/... title-scopées (ou flat selon ENV
-	// STATIC_PATHS_TITLE_SCOPED — default OFF jusqu'à la migration FS atomique
-	// Phase 6.5).
+	// Compose les URLs /static/... title-scopées (post-Phase 6.5 migration FS).
 	hiAssetURL := halo_games.NewAssetURLAdapter()
 	titleResolver.RegisterAssetURL(hiAssetURL)
 	slog.Info("adapter_loaded",
 		"title_slug", hiAssetURL.TitleSlug(),
 		"kind", "asset_url",
-		"title_scoped", os.Getenv(halo_games.EnvTitleScopedFlag) == "true",
 	)
 
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
@@ -219,6 +216,22 @@ func NewRouter(
 	}
 	assetHandler := handlers.NewAssetHandler(assetResolver)
 	reg.WithAssetResolver(assetResolver)
+
+	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer (best-effort).
+	var assetMetaHandler *handlers.AssetMetadataHandler
+	if metaDB, err := platform_duckdb.OpenReadOnly(
+		titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
+	); err != nil {
+		slog.Warn("asset_metadata_db_unavailable", "err", err)
+	} else {
+		assetMetaHandler = handlers.NewAssetMetadataHandler(
+			service.NewAssetService(platform_duckdb.NewMetadataRepoFromDB(metaDB)),
+			func(slug string, cap titlePkg.Capability) bool {
+				d := titleRegistry.Get(slug)
+				return d != nil && d.HasCapability(cap)
+			},
+		)
+	}
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
@@ -362,6 +375,12 @@ func NewRouter(
 		r.Get("/assets/challenge-badge/{title_id}/{badge_id}", assetHandler.GetChallengeBadge)
 		r.Get("/assets/spartan/{image_type}/{title_id}/*", assetHandler.GetSpartanImage)
 
+		// Asset Drawer — listing metadata maps & armes (best-effort, désactivé si metaDB indisponible).
+		if assetMetaHandler != nil {
+			r.Get("/assets/{title_id}/maps", assetMetaHandler.ListMaps)
+			r.Get("/assets/{title_id}/weapons", assetMetaHandler.ListWeapons)
+		}
+
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
 			filters := handlers.NewFiltersHandler(reg.Filters)
@@ -379,6 +398,11 @@ func NewRouter(
 			mv := handlers.NewMatchViewHandler(reg.MatchView)
 			r.Get("/matches/{match_id}", mv.GetMatchView)
 			r.Get("/matches/{match_id}/neighbors", mv.GetMatchNeighbors)
+
+			// Phase 4 plan engagement : score + courbe par match + profil
+			eng := handlers.NewEngagementHandler(reg.Engagement)
+			r.Get("/matches/{match_id}/engagement", eng.GetMatchEngagement)
+			r.Get("/engagement_profile", eng.GetEngagementProfile)
 
 			explorer := handlers.NewExplorerHandler(reg.ExplorerCtx, reg.MatchHistoryCtx)
 			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)
