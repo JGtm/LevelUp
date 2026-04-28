@@ -55,6 +55,7 @@ export interface SettingsText {
   discordNotifySync: string
   discordNotifyBackfill: string
   discordNotifyNewMedia: string
+  discordNotifyFriends: string
   discordNoWebhook: string
 
   // Médias
@@ -227,6 +228,7 @@ const FR_TEXT: SettingsText = {
   discordNotifySync: 'Notifier à la synchronisation',
   discordNotifyBackfill: 'Notifier au backfill',
   discordNotifyNewMedia: 'Notifier pour les nouveaux médias',
+  discordNotifyFriends: 'Notifier pour les amis (ajout + sessions reclassées)',
   discordNoWebhook:
     "Les notifications Discord sont activées mais aucun webhook URL n'est configuré.",
 
@@ -426,6 +428,7 @@ const EN_TEXT: SettingsText = {
   discordNotifySync: 'Notify on sync',
   discordNotifyBackfill: 'Notify on backfill',
   discordNotifyNewMedia: 'Notify on new media',
+  discordNotifyFriends: 'Notify on friend events (add + reclassified sessions)',
   discordNoWebhook:
     'Discord notifications are enabled but no webhook URL is configured.',
 

@@ -1,5 +1,47 @@
 # Thought Log
 
+## [2026-04-28] feat(notifications): §6.B Discord + §6.C Frontend friend_added + friend_sync_completed
+
+**Statut** : §6 complet. PUNCHLIST `[R]` await review utilisateur.
+
+**Décision technique** :
+Pour §6.B (Discord), j'ai constaté que `notify.NotifyNewMedia` et `notify.NotifySync` ne sont **PAS appelés** dans le runtime app actuel — uniquement via `cmd_notify.go` CLI. Décision : ne pas reproduire ce pattern legacy. À la place, j'émets directement `notify.NotifyFriendAdded` / `notify.NotifyFriendSyncCompleted` depuis les sites où la notif in-app est déjà émise (handlers/settings.go + service/friends_orchestrator_service.go) via `go func()` non-bloquant. L'utilisateur peut désactiver via `discord_notify_friends` (default true). Cela crée un précédent **plus moderne** que le pattern existant : runtime auto-trigger plutôt que CLI manuel.
+
+**§6.B Wiring** :
+- `notify/discord.go` : champ `NotifyFriends bool` dans `NotifyConfig` + lecture `discord_notify_friends` dans `LoadNotifyConfig`. 6 nouvelles clés i18n FR/EN (`discord_friend_added_title|desc`, `discord_friend_sync_title|desc_one|desc_many`).
+- `notify/notifiers.go` : 2 fonctions failsafe `NotifyFriendAdded(cfg, gamertag)` + `NotifyFriendSyncCompleted(cfg, slug, promoted)`. Guards : webhook URL vide / NotifyFriends off / promoted ≤ 0 → no-op silencieux. `defer recover()` panic récupéré.
+- `platform/settings/store.go` + `domain/settings.go` : champ `DiscordNotifyFriends bool` ajouté + Apply + Response mapping.
+- `handlers/settings.go` + `service/friends_orchestrator_service.go` : appel `notify.NotifyFriend*` via `go func()` après l'émission in-app, charge `notify.LoadNotifyConfig(h.cfg.AppSettingsPath)` une fois pour la batch.
+
+**§6.C Frontend** :
+- `lib/api/types.ts` : `discord_notify_friends: boolean` dans `SettingsResponse` (UpdateSettingsRequest est dérivé via `Partial<Omit<>>`, automatiquement OK).
+- `features/notifications/types.ts` : `NotificationCategory` étendu (12 → 14) + `ALL_CATEGORIES` synchronisé.
+- `features/notifications/i18n.ts` : 4 nouvelles entrées par locale (`categoryLabel.friend_added|friend_sync_completed`, `categoryDescription.{idem}`, `templates.notif.friend_added.title|body`, `templates.notif.friend_sync_completed.title|body`) en FR + EN.
+- `features/notifications/icons.tsx` : ajout `IconUser` SVG inline + mapping `friend_added → IconUser`, `friend_sync_completed → IconCheck`.
+- `features/settings/SettingsPage.tsx` : nouveau `<ToggleRow label={t.discordNotifyFriends}>` dans la card Discord, disabled si `!discord_notifications_enabled` (cohérent avec les autres toggles Discord).
+- `features/settings/i18n.ts` : `discordNotifyFriends` dans le type + valeur FR + EN.
+- Fixtures : `test/handlers.ts` + `features/friends/AddFriendFlow.test.tsx` complétés avec `discord_notify_friends: false`.
+
+**Tests** :
+- `notify/friend_notifications_test.go` : 7 tests purs (no-op webhook empty, no-op friends off, no-op promoted=0, switch FR singular/plural, titres FR/EN). 100% passent.
+- Vitest : 660/660 OK (+15 tests cumulés depuis le début §6 avec les warmups divers).
+- typecheck delta : +0 erreur introduite par §6.B/§6.C (les 2 erreurs en plus du baseline parent sont préexistantes dans `useGamertagSuggestions.test.tsx` commité par OP, hors scope §6).
+
+**Architecture conforme aux règles** :
+- ✓ Failsafe Discord : panic récupéré + no-op silencieux (defer pattern existant)
+- ✓ Pas de dependency dure entre service et notify (config chargée à la demande, pas DI)
+- ✓ FR + EN maintenus en sync (catégorieLabel + categoryDescription + templates)
+- ✓ Webhook URL non exposé côté API (préservé via `discord_webhook_url_present` boolean)
+- ✓ Multi-titres respecté : `friend_sync_completed` émis par-joueur via cfg.LoadPlayers() existant
+
+**Récap §6 complet (3 chunks A→B→C)** :
+- §6.A Backend Go (commit `1da52fb8`) : 2 catégories + émetteurs + 11 tests purs + seed migration
+- §6.B Discord (ce commit) : NotifyConfig + 2 fonctions failsafe + 7 tests purs + i18n FR/EN
+- §6.C Frontend (ce commit) : NotificationCategory étendu + 4 i18n entries × 2 locales + IconUser + ToggleRow + fixtures
+- 18 tests purs cumulés + 660/660 vitest OK + go test ./... 100% OK
+
+**Prochaine étape** : Phase 4 méta sur nouvelle branche `feat/foundations-docs-skills` (4 chunks P4M.A→D : ADRs → guide → READMEs → skill+docs). Puis finition multi-titres.
+
 ## [2026-04-28] feat(notifications): §6.A backend friend_added + friend_sync_completed
 
 **Statut** : §6.A backend Go complet. §6.B Discord + §6.C Frontend en suivant.

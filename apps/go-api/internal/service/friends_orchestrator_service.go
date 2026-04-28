@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/sync"
 )
 
@@ -126,9 +127,9 @@ func (s *FriendsOrchestratorService) RecomputeAll(ctx context.Context) (FriendsO
 	return res, nil
 }
 
-// emitFriendSyncCompleted émet une notif `friend_sync_completed` pour le slug
-// joueur quand `promoted` matchs ont été reclassés `is_with_friends=TRUE`.
-// Best-effort : warn log en cas d'échec d'émetteur, jamais d'erreur propagée.
+// emitFriendSyncCompleted émet une notif `friend_sync_completed` (in-app) +
+// déclenche le webhook Discord si activé (§6.A + §6.B). Émis uniquement quand
+// `promoted > 0`. Best-effort : warn log + continue, jamais d'erreur propagée.
 func (s *FriendsOrchestratorService) emitFriendSyncCompleted(ctx context.Context, slug string, promoted int64) {
 	if s.notifierFor == nil {
 		return
@@ -144,11 +145,16 @@ func (s *FriendsOrchestratorService) emitFriendSyncCompleted(ctx context.Context
 		Severity: notifications.SeveritySuccess,
 		TitleKey: "notif.friend_sync_completed.title",
 		BodyKey:  "notif.friend_sync_completed.body",
-		Params:   map[string]any{"promoted": promoted},
+		Params:   map[string]any{"promoted": promoted, "slug": slug},
 		Source:   "friends_orchestrator",
 	}); err != nil {
 		slog.WarnContext(ctx, "notifications: friend_sync_completed emit",
 			"player_slug", slug, "err", err)
+	}
+	// §6.B Discord : webhook failsafe (no-op si webhook vide / NotifyFriends off).
+	if s.cfg != nil {
+		notifyCfg := notify.LoadNotifyConfig(s.cfg.AppSettingsPath)
+		go notify.NotifyFriendSyncCompleted(notifyCfg, slug, promoted)
 	}
 }
 

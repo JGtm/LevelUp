@@ -24,6 +24,7 @@ type SettingsResponse struct {
 	DiscordNotifyBackfill              bool     `json:"discord_notify_backfill"`
 	DiscordNotifyNewVersion            bool     `json:"discord_notify_new_version"`
 	DiscordNotifyNewMedia              bool     `json:"discord_notify_new_media"`
+	DiscordNotifyFriends               bool     `json:"discord_notify_friends"` // §6.B
 	SpnkrAutoSyncEnabled               bool     `json:"spnkr_auto_sync_enabled"`
 	SpnkrAutoSyncIntervalHours         int      `json:"spnkr_auto_sync_interval_hours"`
 	SpnkrAutoSyncIntervalMinutes       int      `json:"spnkr_auto_sync_interval_minutes"`
@@ -75,6 +76,7 @@ type UpdateSettingsRequest struct {
 	DiscordNotifyBackfill              *bool    `json:"discord_notify_backfill,omitempty"`
 	DiscordNotifyNewVersion            *bool    `json:"discord_notify_new_version,omitempty"`
 	DiscordNotifyNewMedia              *bool    `json:"discord_notify_new_media,omitempty"`
+	DiscordNotifyFriends               *bool    `json:"discord_notify_friends,omitempty"` // §6.B
 	SpnkrAutoSyncEnabled               *bool    `json:"spnkr_auto_sync_enabled,omitempty"`
 	SpnkrAutoSyncIntervalHours         *int     `json:"spnkr_auto_sync_interval_hours,omitempty"`
 	SpnkrAutoSyncIntervalMinutes       *int     `json:"spnkr_auto_sync_interval_minutes,omitempty"`

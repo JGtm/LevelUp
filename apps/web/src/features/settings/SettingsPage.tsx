@@ -240,6 +240,7 @@ function GeneralTab({ merged, handleChange, t }: TabProps) {
           <ToggleRow label={t.discordNotifySync} value={merged.discord_notify_sync ?? false} onChange={(v) => handleChange('discord_notify_sync', v)} disabled={!merged.discord_notifications_enabled} />
           <ToggleRow label={t.discordNotifyBackfill} value={merged.discord_notify_backfill ?? false} onChange={(v) => handleChange('discord_notify_backfill', v)} disabled={!merged.discord_notifications_enabled} />
           <ToggleRow label={t.discordNotifyNewMedia} value={merged.discord_notify_new_media ?? false} onChange={(v) => handleChange('discord_notify_new_media', v)} disabled={!merged.discord_notifications_enabled} />
+          <ToggleRow label={t.discordNotifyFriends} value={merged.discord_notify_friends ?? false} onChange={(v) => handleChange('discord_notify_friends', v)} disabled={!merged.discord_notifications_enabled} />
         </CardContent>
       </Card>
 

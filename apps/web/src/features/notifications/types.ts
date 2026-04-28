@@ -21,6 +21,8 @@ export type NotificationCategory =
   | 'sync_error'
   | 'personal_record'
   | 'threshold_crossed'
+  | 'friend_added'           // §6 Squad/Sessions overhaul
+  | 'friend_sync_completed'  // §6 Squad/Sessions overhaul
 
 export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
@@ -35,6 +37,8 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'sync_error',
   'personal_record',
   'threshold_crossed',
+  'friend_added',
+  'friend_sync_completed',
 ]
 
 export type NotificationSeverity = 'info' | 'success' | 'warn' | 'error'

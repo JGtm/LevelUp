@@ -28,6 +28,8 @@ const ICONS: Record<NotificationCategory, React.ComponentType<{ className?: stri
   sync_error: IconAlert,
   personal_record: IconTrophy,
   threshold_crossed: IconTrending,
+  friend_added: IconUser,           // §6 Squad/Sessions overhaul
+  friend_sync_completed: IconCheck, // §6 — récap silencieux
 }
 
 function svg(props: { className?: string; children: React.ReactNode }) {
@@ -141,6 +143,18 @@ function IconTrending({ className }: { className?: string }) {
     className,
     children: (
       <path d="M2.293 13.707a1 1 0 010-1.414L7 7.586l3 3 5.293-5.293a1 1 0 111.414 1.414L10.414 12.4l-3-3-4.707 4.707a1 1 0 01-1.414 0z" />
+    ),
+  })
+}
+function IconUser({ className }: { className?: string }) {
+  return svg({
+    className,
+    children: (
+      <path
+        fillRule="evenodd"
+        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+        clipRule="evenodd"
+      />
     ),
   })
 }
