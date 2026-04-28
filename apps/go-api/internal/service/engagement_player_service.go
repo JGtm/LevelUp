@@ -186,6 +186,9 @@ func (s *PlayerEngagementService) buildInputForMatch(
 	modeCategory := normalizeMode(mctx.IsRanked)
 	history, _ := s.loadHistorySafeByMode(ctx, modeCategory, matchID)
 	coefTeam, coefLobby := s.loadCoefsSafe(ctx, modeCategory)
+	// highlight_events.time_ms est relatif au debut du match (0 a durationMS),
+	// pas un epoch UTC. On normalise donc les bornes a [0, duration].
+	durationMS := mctx.EndTimeMS - mctx.StartTimeMS
 	return temporal.EngagementScoreInput{
 		PlayerEvents:   playerEvents,
 		TeamEvents:     teamEvents,
@@ -193,8 +196,8 @@ func (s *PlayerEngagementService) buildInputForMatch(
 		NTeam:          mctx.NTeam,
 		NHumansLobby:   mctx.NHumansLobby,
 		XUID:           s.xuid,
-		MatchStartMS:   mctx.StartTimeMS,
-		MatchEndMS:     mctx.EndTimeMS,
+		MatchStartMS:   0,
+		MatchEndMS:     durationMS,
 		History:        history,
 		CoefTeamShare:  coefTeam,
 		CoefLobbyShare: coefLobby,

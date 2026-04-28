@@ -1,5 +1,48 @@
 # Thought Log
 
+## [2026-04-29] engagement: backfill all-players + 4 bugs critiques + E2E Playwright
+
+**Statut** : Complete — backfill execute pour les 4 joueurs configures, validation H1/H3/H5 lancee, suite E2E Playwright 6/6 PASS.
+
+**A. Decouverte d'un manque de CLI general backfill** :
+Le backfill etait expose uniquement via HTTP `POST /backfill/start` (Phase 6) ou via `NewBackfillFlagSet` (parser interne, pas un binaire). Aucun moyen de lancer un backfill local en CLI sans demarrer l'API. Solution : ajout sous-commande `levelup backfill` ([cmd_backfill.go](apps/go-api/cmd/levelup/cmd_backfill.go)) calquee sur `sync-delta --all`. Initial scope : `--engagement-scores` ; extensible aux autres types de backfill.
+
+**B. 4 bugs critiques decouverts en lancant le backfill** :
+- **B1** `match_registry.is_pve` n'existe pas dans le schema shared. La colonne sense PvE est `is_firefight` (Halo Infinite). Corrige dans [engagement.go:191](apps/go-api/internal/sync/engagement.go#L191) et [engagement_score_repo_queries.go:37,211](apps/go-api/internal/platform/duckdb/engagement_score_repo_queries.go#L37). Symptome : `Binder Error: Table "mr" does not have a column named "is_pve"` sur les joueurs ayant la migration appliquee.
+- **B2** `match_participants.is_bot` n'existe pas non plus. La convention du projet est `xuid LIKE 'bid(%'` (cf. [scoreboard_extremes.go:88](apps/go-api/internal/analysis/scoreboard_extremes.go#L88)). 4 occurrences corrigees dans engagement.go et engagement_score_repo_queries.go. Symptome : silent — `loadTeamSizes` ignorait l'erreur, donnait NTeam=0 / NHumansLobby=0, mais le backfill rapportait `updated=0`.
+- **B3** `highlight_events.time_ms` est **relatif au debut du match** (de 0 a `duration_ms`), pas un epoch UTC. Or `MatchStartMS`/`EndMS` lus de `match_registry` etaient des epoch UTC absolus (~1.7e12). La fenetre glissante `[MatchStartMS-W ; MatchStartMS+W]` ne contenait jamais d'event → tous les paces=0 → tous les residus=0 → variance nulle → corr=0. Fix : passer `MatchStartMS=0` et `MatchEndMS=duration_ms` avant `ComputeEngagementScore`. Corrige dans [engagement.go batchComputeEngagementScores](apps/go-api/internal/sync/engagement.go) et [engagement_player_service.go buildInputForMatch](apps/go-api/internal/service/engagement_player_service.go). **Bug le plus subtil** : tests unitaires PASS car les fixtures utilisaient des temps coherents.
+- **B4** `domain.EngagementScoreResult` et `EngagementPoint` n'avaient pas de tags JSON → serialisation PascalCase au lieu de snake_case (le frontend attendait `engagement_curve`, pas `EngagementCurve`). Tags ajoutes dans [domain/engagement_score.go](apps/go-api/internal/domain/engagement_score.go).
+
+**C. Resultats backfill --all** :
+1563 matchs traites en ~5s (4 joueurs) :
+- Chocoboflor : 350/365 PvP matchs (96%)
+- JGtm : 717/743 (96%)
+- Madina97294 : 474/1057 (45% — beaucoup de matchs sans highlight_events)
+- XxDaemonGamerxX : 22/22 (100%)
+
+Distribution apres fix (engagement_score_brut) :
+- Chocoboflor avg=0.087 stddev=0.50 (joueur median)
+- JGtm avg=0.40 stddev=0.77
+- Madina97294 avg=1.03 stddev=0.97 (significativement au-dessus de ses coequipiers)
+- XxDaemonGamerxX avg=-0.05 stddev=0.05 (sample 22 trop petit)
+
+**D. Validation H1/H3/H5** (cf [.ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md §0](.ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md)) :
+- **H1** corr(engagement, performance) < 0.5 — **PASS sur 3/3** : Chocoboflor 0.393, JGtm 0.365, Madina97294 0.275. Les axes engagement et performance sont bien decorrelles ; l'engagement n'est pas redondant avec le PerformanceScore existant.
+- **H3** stabilite ratio mediane recente/ancienne < 1.3 — PASS pour JGtm (1.114), FAIL pour Chocoboflor (4.158) et Madina97294 (2.094). L'instabilite peut refleter une vraie progression du joueur (le residu median bouge sur 200 matchs etalees sur des mois) ; pas bloquant pour deploiement mais a surveiller.
+- **H5** insufficient history pour XxDaemonGamerxX (22 matchs).
+
+**E. Suite E2E Playwright** ([apps/web/e2e/engagement.spec.ts](apps/web/e2e/engagement.spec.ts)) — 6/6 PASS :
+- GET `/engagement/timeseries` (Mock 11) : 200 + items avec pace_*
+- GET `/matches/{id}/engagement` (Mock 10) : 200 + courbe non-vide
+- GET `/pages/squad/v2/engagement` (Mock 15 v2) : 200 + labels/expected/observed
+- GET `/engagement_profile` : 200 + array
+- Pas de 500 sur tous les endpoints
+- Signal non-trivial (pace_joueur ou pace_team > 0 quelque part) — preuve runtime que le bug B3 est bien corrige
+
+**Prochaine etape** : commit des 4 fixes + nouveau cmd_backfill + suite E2E. Ajouter un test unit dedie a B3 (time_ms relatif vs absolu) pour eviter regression. H3 instable a investiguer en suivi (peut-etre baseline glissante 50 vs 50 plutot que 100 vs 100).
+
+---
+
 ## [2026-04-29] review(strict): §6 closed + smoke check + 3 nits fixés
 
 **Statut** : Complété — clôture follow-up post-Phase 6 sur les 3 actions identifiées.
