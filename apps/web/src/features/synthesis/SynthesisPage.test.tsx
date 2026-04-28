@@ -5,6 +5,16 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import type { ComponentPropsWithoutRef } from 'react'
+
+// Mocks des wrappers ECharts : echarts-for-react absent en env portable.
+// Les fixtures de synthesis ont comparison_metrics=[] et heatmap_data=[]
+// donc les charts ne sont pas rendus — le mock évite juste l'erreur de résolution.
+vi.mock('@/components/charts/ChartCard', () => ({
+  ChartCard: () => <div data-testid="chart-card" />,
+}))
+vi.mock('@/components/charts/Heatmap2DChart', () => ({
+  Heatmap2DChart: () => <div data-testid="chart-card" />,
+}))
 import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { SynthesisPage } from './SynthesisPage'
