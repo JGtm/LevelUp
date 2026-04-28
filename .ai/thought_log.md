@@ -1,5 +1,36 @@
 # Thought Log
 
+## [2026-04-28] docs(plan-finition-multi-titre): recalibration après audit terrain + extension Phase 6 (static FS)
+
+**Statut** : Complété — Phase 1–5 marquées DONE, Phase 6 (static FS title-scoping) ouverte.
+
+**Décision technique** :
+Audit du repo révèle un décalage majeur entre le plan `PLAN_FINITION_MULTI_TITLE.md` (rédigé 2026-04-26) et l'état réel du code. Les Phases 1–5 sont **toutes livrées** :
+- Phase 1 : interface `TitleSemanticAdapter` étend `Assets()`+`Outcomes()`, mappings + loaders + tests, TOMLs HI + synthetic_title_b — `internal/games/adapter.go:104-111`, `mappings/{assets.go, outcomes.go, loader_assets.go, loader_outcomes.go}`.
+- Phase 2 : events `adapter_loaded`/`adapter_load_failed` émis au boot (`api/server.go:128-152`), `WithDataAdapter()` câblé sur Career + Synthesis + Explorer.
+- Phase 3 : `MediaToolbar.tsx:275-282` consomme `useFieldMappings` + `assets.mode.{value}.label` avec fallback `text.toolbar.modeCategories`.
+- Phase 4 : 4 composants Prestige (ChallengeCard, LeaderboardPP, MomentCard, StatsGlobales) consomment `useAssetLabel('challenge_tier', tier)` avec fallback `TIER_LABELS_FR`.
+- Phase 5 : `docs/ARCHITECTURE_V6.md` + `docs/FR/ARCHITECTURE_V6.md` documentent assets/outcomes/useAssetLabel.
+
+Écart vs plan : Phases 3+4 ont adopté un pattern **fallback défensif** (TOML primary → dict React legacy si MULTI_TITLE_API_ENABLED=false) au lieu de la suppression pure des dicts demandée. C'est plus robuste, aligné sur `fallback.i18n.ts`, et ne constitue pas du dead code.
+
+**Extension Phase 6** : addition au plan d'une Phase 6 (static FS title-scoping) reprenant l'audit `.ai/BACKLOG.md` 2026-04-26 — package `internal/assets/static/` + 3e adapter `TitleAssetURLAdapter` + flag transitionnel + git mv atomique + UPDATE DB. Branche dédiée `feat/multi-title-static-fs-rescope`. Effort 2j.
+
+**Fichiers touchés** :
+- `.ai/PLAN_FINITION_MULTI_TITLE.md` — section §0 Recalibration ajoutée, TL;DR mis à jour, Phase 6 ajoutée avec sous-phases 6.1–6.6 + critères §3 (15–17) + effort §4 (split par PR) + risques §5.
+- `.ai/thought_log.md` — cette entrée.
+
+**Résultats** :
+- `go build ./...` vert (smoke check).
+- Plan désormais aligné sur l'état réel du repo, plus de risque de fausse impression pour reviewer/agent futur.
+- Phase 6 = unique chantier restant, scoped et prêt à attaquer.
+
+**Prochaine étape** : créer branche `feat/multi-title-static-fs-rescope`, attaquer Phase 6.1 (package `internal/assets/static/` pur + tests table-driven), enchainer 6.2 → 6.6.
+
+— GS
+
+---
+
 ## [2026-04-28] feat(foundations-docs-skills): Phase 4 méta complète (ADRs + Guide FR/EN + READMEs + skill)
 
 **Statut** : Complété — Phase 4 du méta-plan livrée en 4 commits atomiques.
@@ -23098,3 +23129,42 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 - Risque adresse : "chart muet en match equilibre" (cas commun ~70 %) — l'auto-zoom rend les variations de 0.5-1 events/min lisibles et la hierarchie fait que le joueur pop toujours visuellement.
 
 **Conclusion / prochaine etape** : cadre theorique + visuel fige. Avant tout code, valider H1-H7 sur sample de 500 matchs d'un joueur reel. Si validation OK, implementation Go dans `apps/go-api/internal/analysis/temporal/form_score.go` avec inputs/outputs definis (cf §9 du doc). Si H2 echoue, evolution v2 vers baselines conditionnelles documentee §13. Livraison parallele d'un manifest i18n `apps/web/src/lib/i18n/manifests/forme.toml` et entree glossaire applicatif (cf §17 du doc).
+
+### [2026-04-28] — plan(forme): plan d'implementation FormScore — Plan livre
+
+**Statut** : Plan livre, implementation en attente de validation Phase 0
+
+**Decision technique principale** : produire un plan d'implementation complet structure en 14 sections, decoupe en 11 chunks livrables independamment, alignee sur arch-rules (couches analysis -> domain -> port -> service -> platform -> handlers), respect des regles multi-titres (PathResolver, TitleAdapter, capabilities), integration au pipeline de sync existant avec option force, et section dediee dans la page Settings.
+
+**Mock 15 v2 valide** comme vue principale Squad Page (analyse equipe + chips squad pour overlay 1 joueur a la fois). Mock 13/14 archives comme variantes "Comparaison inter-joueurs" (onglet secondaire optionnel v2).
+
+**Livrable** : `.ai/PLAN_FORME_IMPLEMENTATION.md` — plan detaille comprenant :
+- Phase 0 : validation hypotheses H1-H5 sur sample 500 matchs (bloquant — outil CLI Go dedie `cmd/forme-validate/`)
+- Phase 1 : couches algorithmiques pures (`analysis/temporal/form_score.go` + tests >= 90 %)
+- Phase 2 : persistence (migration additive `player_match_enrichment` + nouvelle table `engagement_coefficients`, mappings TOML, port + repo + service)
+- Phase 3 : integration sync/backfill avec `SyncFormScore` + flag `ForceFormScore`, recalcul incremental des coefficients
+- Phase 4 : API endpoints (Match View tab Forme, Squad Form Session, EngagementProfile)
+- Phase 5 : composants frontend (`FormScoreCurve`, `SquadFormView`, `PlayerChips` reutilisable, manifest i18n forme.toml FR+EN)
+- Phase 6 : section dediee Settings (recalcul + checkbox force, endpoint admin)
+- Phase 7 : glossaire applicatif via manifest TOML
+- Phase 8 : tests (Go test ./..., go vet, typecheck, lint, vitest), QA E2E manuels, doc
+
+**Regles arch-rules respectees dans le plan** :
+- Aucun acces DB en analysis/ (algos purs, 0 dependence externe)
+- Aucune SQL inline dans services (tout via repo)
+- Multi-titres : capabilities (`CapMatchmaking`), pas de slug-check, degradation gracieuse via `ErrCapabilityNotSupported`
+- Logging via `slog.{Debug,Info,Error}Context` avec cles standardisees
+- Modules < 500 lignes, fonctions < 80 lignes
+- i18n FR + EN obligatoire pour toute string UI
+- Couleurs via tokens (`tokenCssVar`, `resolveToken`), pas de hex
+- Manifest i18n `forme.toml` avec sections [trace_labels], [zones], [narratives], [chips], [glossary], [settings]
+- Couverture tests cibles : >= 90 % temporal, integration mock repo pour service, httptest pour handlers, vitest pour composants
+
+**Risques identifies** :
+- Performance : recalcul des coefs (200 matchs × N joueurs) — option C incremental privilegiee
+- Cold start : majorite des joueurs auront < 30 matchs initialement — UI doit gerer "insufficient_history"
+- Coherence sync : form_score doit etre apres `events_loaded=true`
+- Mode asymetrique : compensation via `events_objectif_estimes = (personal_score - 100*kills - 50*assists) / poids`
+- MatchStart imprecis : pas bloquant (residu unique absorbe le decalage)
+
+**Conclusion / prochaine etape** : plan pret pour execution. Etape suivante = Phase 0 (validation hypotheses sur donnees reelles) avant d'engager du code de production. Si validation echoue, retour en planification (revoir signaux ou modele de l'attendu). Si validation OK, demarrage Phase 1 sur branche `feat/forme-formscore`. Effort estime : ~10 j-h mid-stack experimente.
