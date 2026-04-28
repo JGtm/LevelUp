@@ -1,0 +1,62 @@
+/**
+ * SquadEngagementSection — adapter pour Mock 15 v2 sur Squad page.
+ *
+ * Charge via /players/{slug}/pages/squad/v2/engagement, prepare le payload
+ * pour SquadEngagementView.
+ */
+import { useMemo } from 'react'
+
+import {
+  SquadEngagementView,
+  type SquadEngagementSession as ViewSession,
+  type SquadPlayerEngagement as ViewPlayer,
+} from '@/features/squad/v2/SquadEngagementView'
+import { useSquadEngagementSession } from '@/features/engagement/queries'
+import type { SemanticToken } from '@/lib/accessibility'
+
+export interface SquadEngagementSectionProps {
+  playerSlug: string
+  matchIds?: string[]
+  teammates?: string[]
+}
+
+const COLOR_TOKENS: SemanticToken[] = [
+  'chart-series-3',
+  'chart-series-4',
+  'chart-series-5',
+  'chart-series-6',
+]
+
+export function SquadEngagementSection(props: SquadEngagementSectionProps) {
+  const { playerSlug, matchIds = [], teammates = [] } = props
+  const query = useSquadEngagementSession(playerSlug, matchIds, teammates)
+
+  const session: ViewSession = useMemo(() => {
+    if (!query.data) {
+      return { labels: [], lobbyPerPlayer: [], teamExpected: [], teamObserved: [], players: [] }
+    }
+    const players: ViewPlayer[] = query.data.players.map((p, i) => ({
+      xuid: p.xuid,
+      gamertag: p.gamertag,
+      paceObserved: p.pace_observed,
+      colorToken: COLOR_TOKENS[i % COLOR_TOKENS.length],
+    }))
+    return {
+      labels: query.data.labels,
+      lobbyPerPlayer: query.data.lobby_per_player,
+      teamExpected: query.data.team_expected,
+      teamObserved: query.data.team_observed,
+      players,
+    }
+  }, [query.data])
+
+  if (query.isError) return null
+  if (query.data && query.data.labels.length === 0) return null
+
+  return (
+    <SquadEngagementView
+      session={session}
+      state={query.isLoading ? 'loading' : query.isError ? 'error' : 'ready'}
+    />
+  )
+}

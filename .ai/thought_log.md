@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-04-29] review(strict): §6 closed + smoke check + 3 nits fixés
+
+**Statut** : Complété — clôture follow-up post-Phase 6 sur les 3 actions identifiées.
+
+**A. Review §6 Notifications strict-mode** (commits `1da52fb8` + `41788324`) :
+Application stricte de la grille `plan-review`. Verdict : `[R]` → `[x]` GS.
+- Architecture Go : couches respectées (types/notifiers/handlers/service), failsafe panic recover cohérent avec `NotifySync` + `NotifyNewMedia` existants.
+- Multi-titres : `slug` paramétré dans `NotifyFriendSyncCompleted(cfg, slug, promoted)`, pas de hardcoding titre dans templates Discord.
+- Tests : 11 sub-tests `TestNewFriendsAdded` (set diff case-insensitive, trim, casse next préservée, swap, from-empty, to-empty) + 7 tests `notify/friend_notifications_test.go` (no-op webhook empty, no-op friends off, no-op promoted=0, plural FR, titres FR/EN). `go test ./... + -race` PASS.
+- i18n : 6 clés Discord FR/EN (title/desc + singular/plural), `NotificationCategory` étendu 12→14, `ALL_CATEGORIES` synchronisé.
+- **Dette pré-existante détectée** (PAS un blocker §6) : `log.Printf` partout dans `notify/notifiers.go` (NotifySync, NotifyNewMedia, NotifyFriendAdded, NotifyFriendSyncCompleted) au lieu de `slog`. À traiter en follow-up sur le package complet, pas chunk-spécifique.
+
+**B. Smoke check browser** :
+Serveur Go lancé sur `http://127.0.0.1:8000`. Vérif chaîne complète DB → API → FS serving :
+- Boot logs : `adapter_loaded title_slug=halo_infinite kind=asset_url` ✓ (Phase 6.2)
+- API `/api/v1/players/JGtm/pages/home` HTTP 200 → toutes les URLs `/static/...` title-scopées (`/static/commendations/halo_5_guardians/...` + `/static/commendations/halo_infinite/...`), 0 résidu flat.
+- FS serving : `/static/maps/halo_infinite/Aquarius.png` HTTP 200, `/static/ranks/halo_infinite/Unranked.png` HTTP 200, `/static/maps/Aquarius.png` (flat) HTTP 404 ✓ (correctement absent).
+- DB cohérence (script inline) : 94 maps title-scopées + 65 commendations halo_5_guardians + 21 commendations halo_infinite, 0 stale flat path.
+
+**C. 3 nits fixés** :
+- **C1** `apps/web/src/features/squad/charts/timelineChart.test.ts:9` : fixture `POINT()` complétée avec `wins: Math.round(3 * win_rate)` + `avg_mmr: 1500` pour matcher le type `SquadTimeseriesPoint`. 6 tests pass + typecheck clean.
+- **C2** `apps/go-api/internal/sync/friends_recompute_test.go` : 2 tests ajoutés sur le wrapper `RecomputeIsWithFriends` (avec leases) :
+  - `TestRecomputeIsWithFriends_EmptyFriendsList_SkipsLeases` : early-return wrapper avant lease (paths volontairement invalides) ;
+  - `TestRecomputeIsWithFriends_NoXUIDResolved_GracefulNoop` : chaîne complète leases → DBs vides → Core → no-resolution gracieux + retry sans deadlock (preuve de release lease).
+- **C3** `apps/go-api/internal/service/session_labels_test.go` (nouveau, 10 tests) :
+  - 5 sur `BuildSessionLabelsList` : empty input, skip empty label, split solo/squad, min/max bounds par label, tri DESC ;
+  - 5 sur `filterMatchHistoryRowsBySoloSessions` : empty labels passthrough, keeps solo only (exclude squad + nil session + label hors allow-list), multiple labels, case-sensitive (les labels sont normalisés côté ingestion), preserve order.
+
+**Tests** :
+- `go test ./internal/sync/... ./internal/service/...` PASS — 3 nouveaux tests sync + 10 nouveaux tests service.
+- `npx vitest run timelineChart.test.ts` PASS — 6 tests + typecheck clean sur le fichier.
+- 3 fails persistants `platform/duckdb` = WIP user `steps_engagement.go` — pré-existant et hors périmètre.
+
+**PUNCHLIST mise à jour** : §6 `[R]` → `[x]` GS avec note review + dette pré-existante notée.
+
+**Reste actif** : seulement "Form score intra-match" (exploratoire) — exclu volontairement.
+
+— GS
+
+---
+
 ## [2026-04-28] feat(asset-drawer): Phase 2 + 3 — frontend Asset Drawer
 
 **Statut** : Complété
