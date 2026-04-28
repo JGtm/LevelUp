@@ -5,11 +5,14 @@
  * explicite avant de PATCH /settings (ajout à `friend_gamertags`). Le
  * recompute `is_with_friends` s'exécute automatiquement côté serveur (§4).
  *
- * Note MVP : la création de profil joueur (POST /setup/players) + sync
- * initial du nouveau coéquipier ne sont pas encore enchaînés ici. À ajouter
- * quand le flux d'authentification multi-joueurs sera tranché. Pour l'instant,
- * l'ami est juste ajouté à la liste — le recompute server-side se base sur
- * `xuid_aliases` (résout si le gamertag a déjà été croisé en match).
+ * Note MVP : la création de profil joueur (POST /setup/players via
+ * useCreatePlayer) + sync initial (POST /sync/initial via useStartInitialSync)
+ * ne sont pas enchaînés ici — l'infrastructure existe mais n'est pas câblée
+ * dans ce flow. Pour l'instant, l'ami est juste ajouté à la liste : le
+ * recompute server-side se base sur `xuid_aliases`, donc il résout uniquement
+ * si le gamertag a déjà été croisé en match. Cas non couvert : ami jamais
+ * croisé → présent dans la liste mais aucun match flaggé `is_with_friends`.
+ * Follow-up trivial : enchaîner les 3 hooks dans handleConfirm.
  */
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -57,6 +60,7 @@ function getTexts(locale: string): Texts {
  * Le recompute `is_with_friends` côté backend est déclenché automatiquement
  * sur diff (§4). Invalide les queries Squad pour rafraîchir le dropdown.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAddFriend(locale: string = 'fr') {
   const t = getTexts(locale)
   const { data: settings } = useSettings()
