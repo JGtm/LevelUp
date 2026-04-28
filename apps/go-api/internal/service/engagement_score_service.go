@@ -363,3 +363,167 @@ var staleThreshold = 30 * 24 * time.Hour
 func IsCoefficientStale(coef domain.EngagementCoefficient) bool {
 	return time.Since(coef.LastUpdated) > staleThreshold
 }
+
+// =============================================================================
+// PlayerEngagementService — service per-player pour les handlers Phase 4
+// =============================================================================
+
+// PlayerEngagementService est un wrapper avec xuid baked-in destine aux
+// handlers HTTP. Charge metadata + events + history + coefs via le repo, puis
+// appelle l'algo pur. Pas d'acces SQL direct, pas d'appel cross-service.
+type PlayerEngagementService struct {
+	repo port.EngagementScoreRepository
+	xuid string
+}
+
+// NewPlayerEngagementService cree un service per-player.
+func NewPlayerEngagementService(repo port.EngagementScoreRepository, xuid string) *PlayerEngagementService {
+	return &PlayerEngagementService{repo: repo, xuid: xuid}
+}
+
+// GetMatchEngagement charge le contexte du match, recompute la courbe et le
+// score (live), et retourne le resultat. Utilise par GET /matches/{id}/engagement.
+//
+// Erreurs :
+//   - port.ErrEngagementUnavailable : migration Phase 2 non appliquee
+//   - apiNotFound (sentinel locale) : match introuvable / joueur absent du match
+//   - autres : wrappees pour debug
+func (s *PlayerEngagementService) GetMatchEngagement(
+	ctx context.Context,
+	matchID string,
+) (*domain.EngagementScoreResult, error) {
+	mctx, err := s.repo.LoadMatchEngagementContext(ctx, matchID, s.xuid)
+	if err != nil {
+		return nil, fmt.Errorf("PlayerEngagementService: load match context: %w", err)
+	}
+	if mctx == nil {
+		return nil, ErrEngagementMatchNotFound
+	}
+	if mctx.IsPvE {
+		return nil, ErrEngagementPvENotSupported
+	}
+
+	events, err := s.repo.LoadEventsForMatch(ctx, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("PlayerEngagementService: load events: %w", err)
+	}
+
+	teamXUIDs, err := s.repo.LoadTeamXUIDs(ctx, matchID, mctx.TargetTeamID, s.xuid)
+	if err != nil {
+		return nil, fmt.Errorf("PlayerEngagementService: load team xuids: %w", err)
+	}
+
+	playerEvents, teamEvents, lobbyEvents := splitMatchEvents(events, s.xuid, teamXUIDs)
+
+	modeCategory := normalizeMode(mctx.IsRanked)
+	history, _ := s.loadHistorySafeByMode(ctx, modeCategory, matchID)
+	coefTeam, coefLobby := s.loadCoefsSafe(ctx, modeCategory)
+
+	input := temporal.EngagementScoreInput{
+		PlayerEvents:   playerEvents,
+		TeamEvents:     teamEvents,
+		LobbyEvents:    lobbyEvents,
+		NTeam:          mctx.NTeam,
+		NHumansLobby:   mctx.NHumansLobby,
+		XUID:           s.xuid,
+		MatchStartMS:   mctx.StartTimeMS,
+		MatchEndMS:     mctx.EndTimeMS,
+		History:        history,
+		CoefTeamShare:  coefTeam,
+		CoefLobbyShare: coefLobby,
+		PersonalScore:  mctx.PersonalScore,
+		Kills:          mctx.Kills,
+		Assists:        mctx.Assists,
+		Mode:           modeCategory,
+		IsTeamMode:     mctx.IsTeamMode,
+	}
+
+	result, err := temporal.ComputeEngagementScore(input)
+	if err != nil {
+		return nil, fmt.Errorf("PlayerEngagementService: compute: %w", err)
+	}
+	return &result, nil
+}
+
+// GetEngagementProfile retourne tous les coefficients du joueur.
+func (s *PlayerEngagementService) GetEngagementProfile(
+	ctx context.Context,
+) ([]domain.EngagementCoefficient, error) {
+	coefs, err := s.repo.LoadAllCoefficients(ctx, s.xuid)
+	if err != nil {
+		if errors.Is(err, port.ErrEngagementUnavailable) {
+			return []domain.EngagementCoefficient{}, nil
+		}
+		return nil, fmt.Errorf("PlayerEngagementService.GetEngagementProfile: %w", err)
+	}
+	return coefs, nil
+}
+
+// loadHistorySafeByMode wrappe LoadPlayerHistory en degradant gracieusement.
+func (s *PlayerEngagementService) loadHistorySafeByMode(
+	ctx context.Context,
+	modeCategory, excludeMatchID string,
+) ([]domain.HistoricalEngagementBrut, error) {
+	filter := port.EngagementHistoryFilter{
+		XUID:           s.xuid,
+		ModeCategory:   modeCategory,
+		Limit:          HistoryWindow,
+		ExcludeMatchID: excludeMatchID,
+	}
+	history, err := s.repo.LoadPlayerHistory(ctx, filter)
+	if err != nil {
+		if errors.Is(err, port.ErrEngagementUnavailable) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return history, nil
+}
+
+// loadCoefsSafe charge les coefs avec defaut neutre 1.0/1.0 en cold start.
+func (s *PlayerEngagementService) loadCoefsSafe(
+	ctx context.Context,
+	modeCategory string,
+) (coefTeam, coefLobby float64) {
+	coef, err := s.repo.LoadEngagementCoefficient(ctx, s.xuid, modeCategory)
+	if err != nil || coef == nil {
+		return 1.0, 1.0
+	}
+	return coef.CoefTeamShare, coef.CoefLobbyShare
+}
+
+// splitMatchEvents partitionne en player / team / lobby selon teamXUIDs explicites.
+func splitMatchEvents(
+	all []canonical.HighlightEvent,
+	targetXUID string,
+	teamXUIDs map[string]bool,
+) (player, team, lobby []canonical.HighlightEvent) {
+	player = make([]canonical.HighlightEvent, 0)
+	team = make([]canonical.HighlightEvent, 0)
+	lobby = all
+	for _, e := range all {
+		actor := e.XUID
+		switch {
+		case actor == targetXUID:
+			player = append(player, e)
+		case teamXUIDs[actor]:
+			team = append(team, e)
+		}
+	}
+	return player, team, lobby
+}
+
+// normalizeMode retourne PvP_ranked / PvP_unranked depuis is_ranked.
+func normalizeMode(isRanked bool) string {
+	if isRanked {
+		return "PvP_ranked"
+	}
+	return "PvP_unranked"
+}
+
+// ErrEngagementMatchNotFound signale un match inconnu pour le joueur cible.
+var ErrEngagementMatchNotFound = errors.New("engagement: match not found for this player")
+
+// ErrEngagementPvENotSupported signale qu'on tente de calculer sur un match PvE
+// (non couvert v1, cf doc reflexion §3.4 perimetre).
+var ErrEngagementPvENotSupported = errors.New("engagement: PvE not supported in v1")
