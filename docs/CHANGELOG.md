@@ -95,6 +95,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Discord notifications for new indexed media** — a new failsafe module `src/utils/_discord_media.py` sends a rich embed (with GIF/image thumbnail attached) to the Discord webhook whenever new media files are indexed. Anti-spam via a `discord_notified_at` column in `media_files` — each file is notified exactly once regardless of re-scans. New `discord_notify_new_media` toggle in Settings (independent of sync/backfill notifs). Thumbnail is sent as a `multipart/form-data` attachment (≤ 8 MB); graceful JSON fallback if the file exceeds the limit or is unreadable.
 
+- **Invitation-based authentication & registration** — new `/register` route backed by a dedicated `AuthRegisterPage` component; account creation requires a server-issued invitation code passed as a `?code=` query parameter. The Go API validates the code before writing the account (expired and already-used codes return explicit 400 errors). Route integrated in the React routing tree alongside `/login`; `AuthGuard` redirects unauthenticated visitors to the correct entry point based on context.
+
 ### Changed
 
 - **Migration loading** — migration steps are now loaded dynamically, so new step modules such as `add_challenge_metadata` and `add_challenge_snapshots` do not depend on a hand-maintained import list.

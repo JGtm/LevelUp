@@ -59,6 +59,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 **Rebuilt authentication**
 - **SISU/PoP provider** — new Xbox authentication with Proof-of-Possession for more stable sessions and fewer reconnects
 - **Local auth** — username/password mode for single-user / LAN deployments
+- **Invitation-based registration** — new `/register` page; account creation requires a server-issued invitation code (`?code=` query param); invalid or expired codes are rejected before the account is written
 
 **Xbox achievements & match events**
 - **Xbox achievements sync** — your Xbox achievements are pulled automatically from the Halo API on every sync
