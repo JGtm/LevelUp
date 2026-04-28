@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-28] feat(asset-drawer): Phase 2 + 3 — frontend Asset Drawer
+
+**Statut** : Complété
+
+**Décision technique** :
+Zustand persist (isOpen + activeTab uniquement, pas search). TanStack Query avec `staleTime: 5min` (listes statiques pendant la session). Drawer `position: fixed` right-0, slide-in `translateX` CSS pure 200ms. Non-modal : pas de backdrop. Tab déclencheur vertical sur bord droit (`writing-mode: vertical-rl`). ESC via `keydown` monté seulement quand `isOpen`. Mobile : `hidden sm:flex` — drawer et tab masqués < 640px. Couleurs exclusivement via classes Tailwind sémantiques — zéro hex direct.
+
+**Fichiers créés** :
+- `src/lib/i18n/manifests/asset_drawer.toml` + `generated/asset_drawer.ts` — 9 clés FR/EN
+- `src/features/asset-drawer/` — store, hooks, AssetCard, AssetSearch, AssetGrid, AssetDrawer, index
+
+**Fichiers modifiés** :
+- `src/lib/api/types.ts` — ajout `AssetMeta`
+- `src/lib/query/keys.ts` — ajout `assetMaps` + `assetWeapons`
+- `src/components/shell/AppShell.tsx` — `<AssetDrawer />` monté globalement
+
+**Résultats** :
+- Typecheck : 0 erreur dans les fichiers asset-drawer. Erreurs pré-existantes : 63 (était 68 avant — réduit car AssetMeta résolvait des imports orphelins existants).
+
+**Prochaine étape** : Test visuel + ajustements CSS une fois connecté au backend. Phases 0.5 si nécessaire.
+
+— GS
+
 ## [2026-04-28] feat(asset-drawer): Phase 0 + 1 — backend Asset Drawer (maps & armes)
 
 **Statut** : Complété
@@ -47,6 +70,43 @@ Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déc
 - Typecheck : 0 erreur sur les fichiers modifiés.
 
 **Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
+
+## [2026-04-28] review(punchlist): 8 entrées [R] auditées et closes
+
+**Statut** : Complété — review GS de 8 chunks OP en attente. Tous mergeables, 2 nits mineurs documentés.
+
+**Décision technique** :
+Audit systématique appliquant la grille `plan-review` (architecture, multi-titres, tests, logging, livraison) sur chaque chunk. Verdict consolidé `[R]` → `[x]` GS dans la PUNCHLIST.
+
+**Chunks revus** :
+
+| Chunk | Branche | Commit | Verdict |
+|---|---|---|---|
+| **P4.A Synthesis Plotly→ECharts** | `feat/op-synthesis-echarts` | `20563701` | ✅ Builder pur `buildBipolaireOption`, tests `vi.mock` |
+| **P4.B Squad Contributions Plotly→ECharts** | `feat/op-squad-contributions-echarts` | `edfd1342` | ✅ `availableMetrics` filtre multi-titres correct |
+| **P4.C Squad Synergies Plotly→ECharts** | `feat/op-squad-synergies-echarts` | `6b62ffab` | ✅ 19 tests pass. Nit : `timelineChart.test.ts:9` fixture incomplète (TS strict) |
+| **P4.D Plotly cleanup** | même branche P4.C | `16fb335e` + `483c593e` | ✅ 0 import actif, package.json clean |
+| **Squad/Sessions §1-2** | `feat/op-squad-sessions-multiselect` | `d2e2e42b` + `70a223bd` | ✅ 232 LoC + 19 tests, localStorage cohérent, fix storage Node v25 |
+| **Squad/Sessions §3 friends filter** | `feat/op-squad-friends-flow` | `575da592` + `30d86be9` + `e9a39112` | ✅ filtre sur donnée pas sur slug, 5 Go + 7 vitest |
+| **Squad/Sessions §4 recompute** | idem | `4f68d923` | ✅ Sémantique additive idempotente. Nit : pas de test direct sur wrapper `RecomputeIsWithFriends` (core testé via §7) |
+| **Squad/Sessions §5 stats solo** | idem | `3f122f1e` | ✅ helper extrait factorisé. Nit : pas de test dédié `BuildSessionLabelsList` |
+
+**Conformité plan-review** : tous les chunks respectent les couches Go (analysis/service/handler/repo), pattern multi-titres (slug paramètre, pas de `if slug ==`), `slog` structuré, tests par couche, frontend avec `useFieldLabel`/`useAssetLabel` quand applicable.
+
+**Nits identifiés (non-bloquants, follow-up trivial)** :
+1. `apps/web/src/features/squad/charts/timelineChart.test.ts:9` — fixture manque `wins` + `avg_mmr` du type `SquadTimeseriesPoint`.
+2. `apps/go-api/internal/sync/friends_recompute.go::RecomputeIsWithFriends` — wrapper avec leases sans test direct (core sans leases couvert par §7).
+3. `apps/go-api/internal/service/{session_labels.go, match_history_service.go}` — `BuildSessionLabelsList` + `filterMatchHistoryRowsBySoloSessions` non testés directement.
+
+**Self-review impossible — gardé `[R]`** :
+- **Squad/Sessions §6** notifications (commits `1da52fb8` + `41788324` livrés par GS) — laissé `[R]` pour audit ultérieur.
+- **Form score intra-match** — exploratoire, exclu par consigne user.
+
+**PUNCHLIST mise à jour** : 8 entrées `[R]` → `[x]` avec note de review + commit ref.
+
+— GS
+
+---
 
 ## [2026-04-28] feat(static-fs-rescope): Phase 6.6 — cleanup flag + dead branches + docs
 
