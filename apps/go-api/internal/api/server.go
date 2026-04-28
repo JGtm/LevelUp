@@ -156,6 +156,18 @@ func NewRouter(
 		"note", "player-scoped CareerSource sera injectée endpoint par endpoint",
 	)
 
+	// Phase 6 finition multi-titres : 3e adapter — TitleAssetURLAdapter.
+	// Compose les URLs /static/... title-scopées (ou flat selon ENV
+	// STATIC_PATHS_TITLE_SCOPED — default OFF jusqu'à la migration FS atomique
+	// Phase 6.5).
+	hiAssetURL := halo_games.NewAssetURLAdapter()
+	titleResolver.RegisterAssetURL(hiAssetURL)
+	slog.Info("adapter_loaded",
+		"title_slug", hiAssetURL.TitleSlug(),
+		"kind", "asset_url",
+		"title_scoped", os.Getenv(halo_games.EnvTitleScopedFlag) == "true",
+	)
+
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
 	r.Use(middleware.ContractValidate)
 

@@ -16,6 +16,46 @@ Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déc
 
 **Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
 
+## [2026-04-28] feat(static-fs-rescope): Phase 6.2 — TitleAssetURLAdapter interface + impl HI + flag
+
+**Statut** : Complété — couche 3 SRP (adapter title-spécifique) livrée, flag transitionnel OFF par défaut.
+
+**Décision technique** :
+3e adapter sur le pattern existant (Data/Semantic/AssetURL). Couche 3 du chantier static FS, encapsule les conventions de naming HI (encodage espaces map names en `%20`, format CSR rank `120px-HINF-CSR_{Tier}{SubTier}`, fallback UUID rejet) tout en déléguant la composition path à la couche 2 (`internal/assets/static/`).
+
+**Flag transitionnel `STATIC_PATHS_TITLE_SCOPED`** (ENV, default OFF) :
+- OFF : URLs flat compatibles existant (`/static/maps/Aquarius.png`).
+- ON : URLs title-scopées (`/static/maps/halo_infinite/Aquarius.png`).
+Lu **une seule fois** au boot via `os.Getenv` dans `NewAssetURLAdapter`. Méthode `NewAssetURLAdapterWithFlag(bool)` exposée pour les tests pour éviter `t.Setenv` partout.
+
+**Fichiers touchés** :
+- `internal/games/adapter.go` : nouvelle interface `TitleAssetURLAdapter` (4 méthodes : MapImageURL, MedalImageURL, CSRRankImageURL, CSRRankImageURLOnyx) + `Resolver.AssetURL(slug)` ajouté à l'interface.
+- `internal/games/resolver.go` : `StaticResolver.assetURL` map + `RegisterAssetURL()` setter + `AssetURL()` getter + `Slugs()` étendu à l'union 3 maps.
+- `internal/games/halo_infinite/adapter_asset_urls.go` (nouveau, ~150 LoC) : impl `AssetURLAdapter` avec flag transitionnel + `mapPNGNames` dict + UUID regex + `encodeSpaces` helper.
+- `internal/games/halo_infinite/adapter_asset_urls_test.go` (nouveau) : 6 tests, 24 sous-cas (flat + title-scoped × Map/Medal/CSR Rank/Onyx + flag from ENV + encodeSpaces).
+- `internal/games/synthetic_title_b/adapter.go` : stub `AssetURLAdapter` qui retourne "" partout (titre synthétique sans assets statiques).
+- `internal/games/resolver_test.go` : stub `stubAssetURL` + extension des 3 tests existants pour le 3e adapter.
+- `internal/api/handlers/multi_title_preview_test.go` : `fakeResolver` étendu avec champ `assetURL` + méthode `AssetURL()`.
+- `internal/api/server.go` : `hiAssetURL := halo_games.NewAssetURLAdapter()` + `titleResolver.RegisterAssetURL(hiAssetURL)` + log `adapter_loaded` kind=`asset_url` avec champ `title_scoped` reflétant l'état du flag.
+
+**Résultats** :
+- `go test ./...` PASS (yc multi_title_preview_test couvert) — aucune régression.
+- `go vet ./...` clean.
+- 0 caller Go modifié à ce stade (c'est Phase 6.3) : flag OFF + comportement runtime identique. Les callers continuent d'utiliser `mapStaticImagePath` interne à `home.go` jusqu'à la bascule.
+
+**Conformité plan-review** :
+- Architecture Go : interface dans `games/`, impl dans `games/{title}/`, pas de logique métier ailleurs ✓
+- Multi-titres : 2 impls (HI + ST_B stub), aucun branchement sur slug ✓
+- Tests : 24 sous-cas avec flag ON/OFF + ENV + edge cases UUID/whitespace ✓
+- Logging : event `adapter_loaded` kind=asset_url émis au boot avec `title_scoped` ✓
+- Livraison : phase indépendamment livrable, flag OFF garde le comportement runtime existant ✓
+
+**Prochaine étape** : Phase 6.3 — bascule des 5 callers Go (A1 home.go, A2/A3/A4 home_repo.go, A5 cmd/migrate-static-maps) pour qu'ils utilisent l'adapter via le Resolver. Les fixtures de test restent inchangées (flag OFF). Retrait de l'override cassé `wire.go::WithRootOverride(KindMapImage, ...)` (C1 du BACKLOG) dans la même phase.
+
+— GS
+
+---
+
 ## [2026-04-28] feat(static-fs-rescope): Phase 6.1 — package internal/assets/static/ pur
 
 **Statut** : Complété — couche 2 SRP du chantier static FS title-scoping livrée.

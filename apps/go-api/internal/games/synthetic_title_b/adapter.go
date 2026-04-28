@@ -144,3 +144,18 @@ func (a *SemanticAdapter) Assets() *mappings.AssetMappingSet { return a.assets }
 
 // Outcomes retourne les outcomes sémantiques chargés (peut être nil).
 func (a *SemanticAdapter) Outcomes() *mappings.OutcomeMappingSet { return a.outcomes }
+
+// AssetURLAdapter est un stub : ce titre synthétique n'a pas d'assets statiques
+// servis sous /static/. Toutes les méthodes retournent "" — les services
+// produit consommant cet adapter doivent dégrader gracieusement (cache-aside,
+// fallback nil).
+type AssetURLAdapter struct{}
+
+// NewAssetURLAdapter construit un AssetURLAdapter stub pour ce titre synthétique.
+func NewAssetURLAdapter() *AssetURLAdapter { return &AssetURLAdapter{} }
+
+func (a *AssetURLAdapter) TitleSlug() string                      { return TitleSlug }
+func (a *AssetURLAdapter) MapImageURL(_ string) string            { return "" }
+func (a *AssetURLAdapter) MedalImageURL(_ uint64) string          { return "" }
+func (a *AssetURLAdapter) CSRRankImageURL(_ string, _ int) string { return "" }
+func (a *AssetURLAdapter) CSRRankImageURLOnyx() string            { return "" }
