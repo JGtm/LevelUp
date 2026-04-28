@@ -70,9 +70,8 @@
 
 ## Blocked / décisions à trancher (review queue — **pas en autonomie**)
 
-- **Garder ou pas le composant `OutcomeSequenceTape` actuel ?** — design valide en interne mais pas confirmé en prod. À discuter à mon retour.
-- **Squad Synergies (P4.C) implique de la migration Go** : si OP arrive là, mieux vaut **commit WIP** et me laisser finir — c'est cross-stack et nécessite un audit du contrat API.
-- **Date de retour de GS à confirmer** quand on aura un planning précis.
+- ~~**`OutcomeSequenceTape` à garder ?**~~ ✅ **Validé en prod** (2026-04-28, GS retour) — composant gardé tel quel, mention prévue dans `components/charts/README.md` (chunk Phase 4 méta P4M.C).
+- ~~**Squad Synergies (P4.C) cross-stack**~~ ✅ **Livré par OP** dans la même branche.
 
 ## Conventions OP (lis ça une fois)
 
