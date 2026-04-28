@@ -6,15 +6,24 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"os"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 )
+
+// homeStaticTitleScoped reflète l'état du flag transitionnel
+// STATIC_PATHS_TITLE_SCOPED côté repo home. Cf. analysis/home.go pour la
+// description complète.
+var homeStaticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") == "true"
+
+const homeStaticTitleSlug = "halo_infinite"
 
 const homeIdentityAssetBasePath = "/api/v1/assets/spartan"
 
@@ -397,14 +406,33 @@ func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int) *str
 		return nil
 	}
 	if strings.EqualFold(normalizedTier, "Onyx") {
-		path := "/static/ranks/120px-HINF-CSR_Onyx.png"
-		return &path
+		p := homeCSRRankURL("120px-HINF-CSR_Onyx")
+		return &p
 	}
 	if normalizedSubTier < 1 || normalizedSubTier > 6 {
 		return nil
 	}
-	path := fmt.Sprintf("/static/ranks/120px-HINF-CSR_%s%d.png", normalizedTier, normalizedSubTier)
-	return &path
+	p := homeCSRRankURL(fmt.Sprintf("120px-HINF-CSR_%s%d", normalizedTier, normalizedSubTier))
+	return &p
+}
+
+// homeCSRRankURL retourne l'URL d'un badge de rang CSR en respectant le flag
+// STATIC_PATHS_TITLE_SCOPED. Composition path déléguée à internal/assets/static.
+func homeCSRRankURL(id string) string {
+	if homeStaticTitleScoped {
+		return static.URL(static.KindCSRRank, homeStaticTitleSlug, id, ".png")
+	}
+	return path.Join(static.MountPoint, static.Folder(static.KindCSRRank), id+".png")
+}
+
+// homeMedalIconURL retourne l'URL d'une icône de médaille à partir de son ID.
+// Respecte le flag STATIC_PATHS_TITLE_SCOPED.
+func homeMedalIconURL(medalID int64) string {
+	id := strconv.FormatInt(medalID, 10)
+	if homeStaticTitleScoped {
+		return static.URL(static.KindMedal, homeStaticTitleSlug, id, ".png")
+	}
+	return path.Join(static.MountPoint, static.Folder(static.KindMedal), id+".png")
 }
 
 func normalizeHomeSkillPeakBadgeParts(tier string, tierLabel string, subTier int) (string, int) {
@@ -830,7 +858,7 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 			Name:        meta.label,
 			Count:       rr.count,
 			Description: meta.description,
-			ImageURL:    fmt.Sprintf("/static/medals/icons/%d.png", rr.medalID),
+			ImageURL:    homeMedalIconURL(rr.medalID),
 		})
 	}
 	return result, nil

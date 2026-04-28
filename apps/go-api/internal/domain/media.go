@@ -236,7 +236,7 @@ type MediaMatchCandidate struct {
 	StartTime    *time.Time `json:"start_time,omitempty"`
 	EndTime      *time.Time `json:"end_time,omitempty"`
 	MapName      *string    `json:"map_name,omitempty"`      // FR si dispo
-	MapImageURL  *string    `json:"map_image_url,omitempty"` // /static/maps/X.png
+	MapImageURL  *string    `json:"map_image_url,omitempty"` // /static/maps/X.png (flat) ou /static/maps/{titleSlug}/X.png (title-scoped — Phase 6 finition multi-titres)
 	ModeName     *string    `json:"mode_name,omitempty"`     // FR normalisé (préfixes/suffixes strippés)
 	PlaylistName *string    `json:"playlist_name,omitempty"` // FR
 	IsCurrent    bool       `json:"is_current"`              // true si ce match est l'association actuelle

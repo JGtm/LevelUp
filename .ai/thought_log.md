@@ -16,6 +16,48 @@ Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déc
 
 **Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
 
+## [2026-04-28] feat(static-fs-rescope): Phase 6.3 — bascule callers Go (A1–A5, C1, F)
+
+**Statut** : Complété — couche 4 SRP (callers) bascule sur internal/assets/static + flag transitionnel. Couche 1 (FileServer http.FileServer) inchangée.
+
+**Décision technique** :
+Approche pragmatique avec flag package-level (lu une fois via `os.Getenv("STATIC_PATHS_TITLE_SCOPED")` au load) plutôt que threading d'adapter via paramètres sur les fonctions publiques. Justification :
+
+- Les fonctions `mapStaticImagePath`, `homeCSRRankURL`, `homeMedalIconURL` sont déjà title-spécifiques (mapPNGNames, format `120px-HINF-CSR_*`, conventions HI) — le slug `"halo_infinite"` hardcodé localement est cohérent avec ce niveau d'abstraction.
+- Threading d'adapter via paramètre sur `BuildRecentMatches*` aurait élargi l'API publique de `analysis/home.go` + 6 wrappers + tous tests sans bénéfice multi-titres réel tant que HI est seul titre avec assets statiques.
+- Quand un 2e titre arrivera avec assets statiques, ces helpers seront promus à `Resolver.AssetURL(slug)` injection — mais c'est un autre chantier.
+
+**Sites migrés** (audit BACKLOG 2026-04-26) :
+- **A1** `internal/analysis/home.go:1063` — `mapStaticImagePath` délègue à `static.URL` (flag ON) ou `path.Join(MountPoint, Folder, ...)` (flag OFF). Pas de changement de signature publique.
+- **A2/A3** `internal/platform/duckdb/home_repo.go:400-406` — extrait `homeCSRRankURL(id string)` qui respecte le flag.
+- **A4** `internal/platform/duckdb/home_repo.go:833` — `homeMedalIconURL(medalID int64)` qui respecte le flag.
+- **A5** `cmd/migrate-static-maps/main.go:115` — utilise `static.URL` (flag ON) ou `path.Join(MountPoint, Folder, filename)` (flag OFF). Le titleID est passé en flag CLI.
+- **C1** `internal/assets/wire.go:25-43` — retiré `WithRootOverride(KindMapImage, StaticMapDir)` et `StaticMapDir` du config struct. L'override était partiellement cassé (LocalFSStore.Path ajoutait `{kind}/{titleID}` sous le root override, ce qui ne correspondait pas à la réalité FS — le BACKLOG le documentait). Suppression aussi de `assetCfg.StaticMapDir` dans `internal/api/server.go:213`.
+- **F** Commentaires rafraîchis :
+  - `internal/domain/media.go:239` (commentaire JSON tag MapImageURL)
+  - `internal/platform/duckdb/map_cache_repo.go:20` (commentaire LocalPath)
+
+**Comportement runtime** : flag OFF par défaut → URLs émises identiques au format pré-Phase 6. Aucune régression possible tant que le flip n'est pas fait (Phase 6.5).
+
+**Résultats** :
+- `go build ./...` clean.
+- `go test ./...` PASS sur tous les packages (yc analysis, platform/duckdb, api, golden).
+- `go vet ./...` clean.
+- Couche 2 (`internal/assets/static/`) reste seule source de vérité pour MountPoint/Folder. Aucun caller Go n'écrit plus `"/static/..."` directement.
+
+**Conformité plan-review** :
+- Architecture Go : pas de DB/HTTP dans helpers de URL composition ✓
+- Multi-titres : flag déclenche le title-scoping uniformément ✓
+- Tests : suite complète vert, 0 régression ✓
+- Logging : pas de slog ajouté (helpers sont pure URL composition) ✓
+- Livraison : phase indépendamment livrable ; comportement runtime identique tant que flag OFF ✓
+
+**Prochaine étape** : Phase 6.4 — frontend `useAssetURL` hook + migration D1+D2 (HomePage + HomeRecentPlaylistsCard hardcoded `src="/static/ranks/Unranked.png"`). Pattern symétrique au backend : flag `VITE_STATIC_PATHS_TITLE_SCOPED`.
+
+— GS
+
+---
+
 ## [2026-04-28] feat(static-fs-rescope): Phase 6.2 — TitleAssetURLAdapter interface + impl HI + flag
 
 **Statut** : Complété — couche 3 SRP (adapter title-spécifique) livrée, flag transitionnel OFF par défaut.
@@ -23256,4 +23298,35 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 - Mode asymetrique : compensation via `events_objectif_estimes = (personal_score - 100*kills - 50*assists) / poids`
 - MatchStart imprecis : pas bloquant (residu unique absorbe le decalage)
 
-**Conclusion / prochaine etape** : plan pret pour execution. Etape suivante = Phase 0 (validation hypotheses sur donnees reelles) avant d'engager du code de production. Si validation echoue, retour en planification (revoir signaux ou modele de l'attendu). Si validation OK, demarrage Phase 1 sur branche `feat/forme-formscore`. Effort estime : ~10 j-h mid-stack experimente.
+**Conclusion / prochaine etape** : plan pret pour execution. Etape suivante = Phase 0 (validation hypotheses sur donnees reelles) avant d'engager du code de production. Si validation echoue, retour en planification (revoir signaux ou modele de l'attendu). Si validation OK, demarrage Phase 1 sur branche `feat/engagement` ou similaire. Effort estime : ~10 j-h mid-stack experimente.
+
+### [2026-04-28] — refactor(engagement): rename Forme -> Engagement + Phase 1 algos purs — En cours
+
+**Statut** : Phase 1.1 + 1.2 + 1.3 livrees ; Phase 1.4-1.6 en attente
+
+**Contexte** : utilisateur a valide le rename "Forme" -> "Engagement" comme nom canonique de la metrique. Travail effectue sur la branche courante `feat/multi-title-static-fs-rescope` (decision utilisateur : "Go pour l'implem sur cette branche stp").
+
+**Renames effectues** :
+- `.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md` -> `.ai/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md`
+- `.ai/PLAN_FORME_IMPLEMENTATION.md` -> `.ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md`
+- `.ai/mockups/forme/forme_visualizations.html` -> `.ai/mockups/engagement/engagement_visualizations.html`
+- Contenus mis a jour : 0 occurrence residuelle de Forme/forme/FormScore/form_score dans les 3 fichiers cibles. Les autres fichiers `.ai/` (plans/audits non lies) non touches.
+
+**Phase 1.1 — Domain types livre** :
+- `apps/go-api/internal/domain/engagement_score.go` (121 L)
+- Types : `EngagementScoreResult`, `EngagementPoint`, `HistoricalEngagementBrut`, `EngagementCoefficient`
+- Pure types, 0 dependance externe
+
+**Phase 1.2 — Algorithmes purs livres** :
+- `apps/go-api/internal/analysis/temporal/engagement_score.go` (392 L) — API publique `ComputeEngagementScore` + helpers (`EventsObjectifEstimes`, `computeMatchIntensity`, `computeResidualBrut`, `scoreFromHistory`, `percentileRank`, `annotateDeaths`)
+- `apps/go-api/internal/analysis/temporal/engagement_curve.go` (133 L) — `buildEngagementCurve`, helpers fenetre glissante
+- Conformite arch-rules : fonctions pures (0 import platform/port/service), imports limites a `domain` et `canonical`, tous fichiers < 500L, toutes fonctions < 80L, struct `buildCurveParams` pour respecter limite 5 params, errors sentinelles `errors.Is`-wrappables, multi-titres via `canonical.HighlightEvent`
+
+**Phase 1.3 — Tests unitaires livres** :
+- `apps/go-api/internal/analysis/temporal/engagement_score_test.go` (454 L)
+- 13 cas couvrant : boundaries invalides (4 sous-cas), match court, 0 events, 3 niveaux d'historique (insufficient/partial/full), joueur au-dessus/en-dessous de l'attendu, MatchIntensity, FFA fallback, EventsObjectifEstimes (5 sous-cas), passive death, active death
+- **13/13 PASS** sur `go test ./internal/analysis/temporal/ -run "Engagement|Objectif"` (0.197s)
+- `go vet` : 0 warning
+- `go build` : OK
+
+**Conclusion / prochaine etape** : Phase 1.1-1.3 valide. Phase 1.4 (port `port/engagement_score.go`) + Phase 1.5 (repository DuckDB) + Phase 1.6 (service orchestrateur) restent a livrer. Pas de commit effectue (en attente de directive utilisateur). Reste aussi Phase 2 (migration DB), Phase 3 (sync/backfill), Phase 4 (API), Phase 5 (frontend), Phase 6 (settings), Phase 7 (glossaire), Phase 8 (tests E2E).
