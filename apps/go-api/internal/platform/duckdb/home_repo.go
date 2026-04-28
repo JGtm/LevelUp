@@ -18,10 +18,9 @@ import (
 	titlepkg "levelup/go-api/internal/domain/title"
 )
 
-// homeStaticTitleScoped reflète l'état du flag transitionnel
-// STATIC_PATHS_TITLE_SCOPED côté repo home. Cf. analysis/home.go pour la
-// description complète.
-var homeStaticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") == "true"
+// homeStaticTitleScoped reflète l'état du flag STATIC_PATHS_TITLE_SCOPED côté
+// repo home. Default depuis Phase 6.5 : ON. ENV à "false" pour rollback.
+var homeStaticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") != "false"
 
 const homeStaticTitleSlug = "halo_infinite"
 

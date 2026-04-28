@@ -15,7 +15,8 @@
  * `STATIC_PATHS_TITLE_SCOPED`).
  */
 
-const TITLE_SCOPED = import.meta.env.VITE_STATIC_PATHS_TITLE_SCOPED === 'true'
+// Default depuis Phase 6.5 : title-scoped activé. Set ENV à "false" pour rollback.
+const TITLE_SCOPED = import.meta.env.VITE_STATIC_PATHS_TITLE_SCOPED !== 'false'
 
 const MOUNT_POINT = '/static'
 

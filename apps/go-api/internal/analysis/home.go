@@ -19,17 +19,13 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
-// staticTitleScoped reflète l'état du flag transitionnel STATIC_PATHS_TITLE_SCOPED
-// (cf. Phase 6 du plan finition multi-titres). Lu une fois au load du package.
+// staticTitleScoped reflète l'état du flag STATIC_PATHS_TITLE_SCOPED. Lu une
+// fois au load du package. Default depuis Phase 6.5 : ON. ENV à "false" pour
+// rollback d'urgence (mais nécessite aussi git revert sur la migration FS).
 //
-// Quand false (default) : URLs émises au format flat /static/maps/X.png.
-// Quand true : URLs title-scopées /static/maps/halo_infinite/X.png.
-//
-// Le flip est synchronisé avec la migration FS atomique en Phase 6.5. Les helpers
-// de URL composition de ce fichier restent title-spécifiques (mapPNGNames est HI)
-// donc le slug "halo_infinite" est hardcodé localement — quand un 2e titre aura
-// des assets statiques, ces helpers seront promus à un adapter title-resolved.
-var staticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") == "true"
+// Le flag sera retiré en Phase 6.6 (cleanup) — title-scoping deviendra le
+// seul comportement.
+var staticTitleScoped = os.Getenv("STATIC_PATHS_TITLE_SCOPED") != "false"
 
 const homeStaticTitleSlug = "halo_infinite"
 
