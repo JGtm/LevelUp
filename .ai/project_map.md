@@ -2,9 +2,11 @@
 
 > Ce fichier est la cartographie vivante du projet. L'agent IA doit le consulter et le mettre à jour.
 
-> 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md`
+> 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md` et `.ai/PUNCHLIST.md` (handover GS↔OP, sources de vérité courtes).
 
 > 🧭 **Chantier Go — corpus restructuré** : point d'entrée dans `.ai/go_migration_v2/README.md` ; le corpus historique détaillé reste dans `.ai/go_migration/`.
+
+> 📘 **Onboarding nouveau dev** : `docs/FOUNDATIONS_GUIDE.md` (EN) + `docs/FR/FOUNDATIONS_GUIDE.md` — guide consolidé sur les 4 fondations transverses (canonical types + adapters + i18n manifests + ECharts wrappers). 4 ADRs dans `docs/adr/000{1,2,3,4}.md`.
 
 ## ⚠️ Limitations Connues
 

@@ -30,6 +30,20 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 **Documentation architecture** : `docs/ARCHITECTURE_V6.md`
 **Plans archivés** : `.ai/archive/v5.0/` (plans, audits, rapports de migration)
 
+**Onboarding nouveau dev / nouvelle page** : `docs/FOUNDATIONS_GUIDE.md` (EN) + `docs/FR/FOUNDATIONS_GUIDE.md` — guide consolidé sur les 4 fondations transverses (canonical types + adapters + i18n manifests + ECharts wrappers).
+
+**Décisions architecturales (ADRs)** :
+- `docs/adr/0001-charts-stack-echarts.md` — pourquoi ECharts (vs Plotly/Recharts)
+- `docs/adr/0002-canonical-player-match-row.md` — pourquoi `canonical.*` cross-titres
+- `docs/adr/0003-i18n-manifest-and-linter.md` — pourquoi TOML manifests + lint custom
+- `docs/adr/0004-narrative-engine.md` — pourquoi 8 rôles + radar 6 axes
+
+**Skills agent** (à invoquer avant tout commit) : `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md`.
+
+**READMEs catalogues** :
+- `apps/go-api/internal/analysis/{temporal, breakdown, narrative}/README.md` — exports + exemples + consumers
+- `apps/web/src/components/charts/README.md` — catalogue des 11 wrappers ECharts
+
 ## Architecture des Données (v5)
 
 | Type | Stockage | Chemin |

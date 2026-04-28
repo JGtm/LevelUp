@@ -1,5 +1,49 @@
 # Thought Log
 
+## [2026-04-28] feat(foundations-docs-skills): Phase 4 méta complète (ADRs + Guide FR/EN + READMEs + skill)
+
+**Statut** : Complété — Phase 4 du méta-plan livrée en 4 commits atomiques.
+
+**Décision technique** :
+Phase 4 méta = documentation + skills, sans aucun changement de code applicatif. Branche dédiée `feat/foundations-docs-skills`. 4 chunks atomiques P4M.A→D, chacun commit isolé.
+
+**P4M.A — 4 ADRs** (`docs/adr/`) :
+- `0001-charts-stack-echarts.md` : ECharts (vs Plotly/Recharts), bundle gain, 11 wrappers, builders purs.
+- `0002-canonical-player-match-row.md` : canonical types pour cross-titres, FieldKey constants, ErrCapabilityNotSupported.
+- `0003-i18n-manifest-and-linter.md` : 12 manifests TOML + ESLint custom rule + lint multi-titres pre-commit, 489+ keys.
+- `0004-narrative-engine.md` : 8 rôles + radar 6 axes (Combat/Survie/Support/Score/Objectif/Impact).
+Format Status/Context/Decision/Consequences/Alternatives/References.
+
+**P4M.B — FOUNDATIONS_GUIDE** :
+- `docs/FOUNDATIONS_GUIDE.md` (EN) + `docs/FR/FOUNDATIONS_GUIDE.md` (FR sync strict).
+- Sections : motivation + architecture en couches + 4 fondations en détail + exemple end-to-end "Adversaires fréquents" + FAQ + refs.
+- 700+ lignes par locale.
+
+**P4M.C — 4 READMEs catalogues** :
+- `internal/analysis/temporal/README.md` : Bucket, Rolling, Lowess.
+- `internal/analysis/breakdown/README.md` : ByMap, ByMode, ByModeCategory, ByPlaylist, CompareToHistorical.
+- `internal/analysis/narrative/README.md` : 8 rôles + radar 6 axes + intensity + dominance + encounter + first events.
+- `apps/web/src/components/charts/README.md` : catalogue 11 wrappers ECharts.
+
+**P4M.D — Skill foundations-usage + meta-docs** :
+- `.claude/skills/foundations-usage/SKILL.md` : checklist nouvelle page (14 items Go + 9 frontend + 3 antipatterns + workflow 5-step).
+- `CLAUDE.md` : section Documentation architecture étendue avec liens FOUNDATIONS_GUIDE + ADRs + skills + READMEs.
+- `.ai/project_map.md` : pointer top-of-file vers les nouveaux docs.
+
+**Résultats** :
+- 4 commits atomiques sur `feat/foundations-docs-skills` : `21929869` → `30bb01b0` → `9acfe0ea` → ce commit.
+- 11 nouveaux fichiers de doc + 2 édités (CLAUDE.md + project_map.md).
+- ~2300 lignes de documentation totale.
+
+**Récap méta-plan PLAN_META_FOUNDATIONS_GO** :
+- Phase 0 (Fondations) : ✅
+- Phase 1 (Pilotes Squad+MatchView) : ✅
+- Phase 2 (Roll-out 9 pages) : ✅
+- Phase 3 (Cleanup Plotly) : ✅
+- **Phase 4 (Documentation + skills) : ✅** ← livré ce commit
+
+**Prochaine étape** : merge `feat/foundations-docs-skills` après revue, puis finition multi-titres.
+
 ## [2026-04-28] feat(notifications): §6.B Discord + §6.C Frontend friend_added + friend_sync_completed
 
 **Statut** : §6 complet. PUNCHLIST `[R]` await review utilisateur.

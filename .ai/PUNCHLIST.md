@@ -27,7 +27,16 @@
    Référence : `Tests 616 passed (78 files)` côté front au 2026-04-28.
 4. **Visualiser la stack ECharts** : démarre le front, va sur `/lab/charts` — tu vois les 11 wrappers en sandbox.
 5. **Conventions projet** : [CLAUDE.md](../CLAUDE.md) (couleurs tokens, i18n manifest, taille fonctions max 80L).
-6. **Skills agent** : [.claude/skills/arch-rules](../.claude/skills/arch-rules/SKILL.md) · [delivery-checklist](../.claude/skills/delivery-checklist/SKILL.md) · [plan-review](../.claude/skills/plan-review/SKILL.md). À invoquer avant tout commit.
+6. **Skills agent** : [.claude/skills/arch-rules](../.claude/skills/arch-rules/SKILL.md) · [delivery-checklist](../.claude/skills/delivery-checklist/SKILL.md) · [plan-review](../.claude/skills/plan-review/SKILL.md) · [foundations-usage](../.claude/skills/foundations-usage/SKILL.md). À invoquer avant tout commit.
+
+## Phase 4 méta — État (livré 2026-04-28)
+
+- `[x]` **P4M.A** ADRs — `docs/adr/000{1,2,3,4}.md` (ECharts, canonical, i18n manifest, narrative). Commit `21929869`.
+- `[x]` **P4M.B** FOUNDATIONS_GUIDE — EN + FR (`docs/FOUNDATIONS_GUIDE.md` + `docs/FR/`). Commit `30bb01b0`.
+- `[x]` **P4M.C** READMEs — `analysis/{temporal,breakdown,narrative}/README.md` + `components/charts/README.md`. Commit `9acfe0ea`.
+- `[x]` **P4M.D** Skill `foundations-usage` + CLAUDE.md + project_map.md. Ce commit.
+
+**Phase 4 méta complète.** Branche `feat/foundations-docs-skills` prête à merger après revue.
 
 ## Just shipped (8 derniers chunks Phase 3)
 
