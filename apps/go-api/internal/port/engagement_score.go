@@ -14,6 +14,7 @@ import (
 	"errors"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // ErrEngagementUnavailable signale que la fonctionnalite EngagementScore
@@ -104,6 +105,44 @@ type EngagementScoreRepository interface {
 	// (xuid, match_id). Utilise par le pipeline sync pour skip les matchs
 	// deja traites (sauf si force=true).
 	HasEngagementScore(ctx context.Context, xuid, matchID string) (bool, error)
+
+	// LoadMatchEngagementContext charge les metadonnees d'un match necessaires
+	// au calcul du score (start/end ms, mode flags, team_id, NTeam, NHumansLobby,
+	// kills/assists/personal_score du joueur).
+	//
+	// Retourne (nil, nil) si match introuvable. ErrEngagementUnavailable si
+	// les colonnes/tables requises sont absentes.
+	LoadMatchEngagementContext(ctx context.Context, matchID, xuid string) (*MatchEngagementContext, error)
+
+	// LoadEventsForMatch charge tous les events highlight_events d'un match.
+	// Liste vide (non nil) si aucun event.
+	LoadEventsForMatch(ctx context.Context, matchID string) ([]canonical.HighlightEvent, error)
+
+	// LoadTeamXUIDs retourne le set des XUIDs des coequipiers humains du
+	// joueur cible (joueur cible exclu).
+	LoadTeamXUIDs(ctx context.Context, matchID string, teamID int, targetXUID string) (map[string]bool, error)
+
+	// LoadAllCoefficients charge tous les coefficients du joueur (toutes
+	// categories de mode confondues). Pour endpoint engagement_profile.
+	LoadAllCoefficients(ctx context.Context, xuid string) ([]domain.EngagementCoefficient, error)
+}
+
+// MatchEngagementContext regroupe les metadonnees d'un match necessaires au
+// calcul du score d'engagement. Source : shared.match_registry +
+// shared.match_participants.
+type MatchEngagementContext struct {
+	MatchID       string
+	StartTimeMS   int64
+	EndTimeMS     int64
+	IsRanked      bool
+	IsPvE         bool
+	TargetTeamID  int
+	NTeam         int  // taille equipe alliee humains (joueur cible inclus)
+	NHumansLobby  int  // taille lobby humains
+	IsTeamMode    bool // false si NTeam == 1 (FFA-like)
+	PersonalScore int
+	Kills         int
+	Assists       int
 }
 
 // MatchEngagementParams regroupe les inputs pour calculer le score d'un match.

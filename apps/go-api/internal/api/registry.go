@@ -221,6 +221,17 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	return svc, nil
 }
 
+// Engagement retourne un PlayerEngagementService pour le joueur.
+// (Phase 4 plan engagement — endpoint /matches/{id}/engagement et /engagement_profile)
+func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (*service.PlayerEngagementService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	repo := duckdb.NewEngagementScoreRepo(pdb)
+	return service.NewPlayerEngagementService(repo, pdb.XUID), nil
+}
+
 // Media retourne un MediaService pour le joueur.
 func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaService, error) {
 	pdb, err := r.resolve(ctx, slug)

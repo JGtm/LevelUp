@@ -42,6 +42,12 @@ export const queryKeys = {
   matchView: (playerSlug: string, matchId: string) =>
     ['match-view', playerSlug, matchId] as const,
 
+  // Engagement (Phase 4 plan engagement)
+  engagementMatch: (playerSlug: string, matchId: string) =>
+    ['engagement', 'match', playerSlug, matchId] as const,
+  engagementProfile: (playerSlug: string) =>
+    ['engagement', 'profile', playerSlug] as const,
+
   // Accueil / Home (Slice 5)
   home: (playerSlug: string) => ['home', playerSlug] as const,
   battlepass: (playerSlug: string) => ['home', playerSlug, 'battlepass'] as const,
