@@ -14,10 +14,18 @@ import (
 // TitleSlug est le slug canonique d'Halo Infinite côté adapter.
 const TitleSlug = "halo_infinite"
 
-// EnvTitleScopedFlag est le nom de la variable d'environnement qui active
-// le title-scoping des chemins /static/. Default OFF — les URLs émises restent
-// au format flat (/static/maps/X.png) tant que la migration FS n'est pas
-// activée. Phase 6.5 du plan flippe ce flag en même temps que git mv + UPDATE DB.
+// EnvTitleScopedFlag est le nom de la variable d'environnement qui contrôle
+// le title-scoping des chemins /static/. Default depuis Phase 6.5 : ON —
+// les URLs émises sont au format /static/{folder}/{titleSlug}/X.png en
+// cohérence avec la migration FS atomique livrée dans le même commit.
+//
+// Pour rollback d'urgence, set ENV à "false" — les URLs reverteront au format
+// flat /static/{folder}/X.png (mais les fichiers ne sont plus à cet endroit
+// après la migration FS, donc rollback nécessite aussi un git revert FS ou
+// une recopie des fichiers).
+//
+// La branche flag sera retirée en Phase 6.6 (cleanup) — title-scoping
+// deviendra le seul comportement.
 const EnvTitleScopedFlag = "STATIC_PATHS_TITLE_SCOPED"
 
 // uuidRe matche un UUID v4 — utilisé pour rejeter les map names qui sont en
@@ -61,10 +69,11 @@ type AssetURLAdapter struct {
 }
 
 // NewAssetURLAdapter construit un AssetURLAdapter en lisant le flag depuis ENV.
+// Default depuis Phase 6.5 : title-scoped activé, sauf si ENV explicitly à "false".
 func NewAssetURLAdapter() *AssetURLAdapter {
 	return &AssetURLAdapter{
 		titleSlug:   TitleSlug,
-		titleScoped: os.Getenv(EnvTitleScopedFlag) == "true",
+		titleScoped: os.Getenv(EnvTitleScopedFlag) != "false",
 	}
 }
 

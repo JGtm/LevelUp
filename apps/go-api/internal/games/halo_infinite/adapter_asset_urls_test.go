@@ -119,6 +119,7 @@ func TestAssetURLAdapter_CSRRankImageURLOnyx(t *testing.T) {
 }
 
 func TestAssetURLAdapter_FlagFromEnv(t *testing.T) {
+	// Default depuis Phase 6.5 : title-scoped activé sauf ENV explicit "false".
 	t.Setenv(EnvTitleScopedFlag, "true")
 	a := NewAssetURLAdapter()
 	if !a.titleScoped {
@@ -128,13 +129,13 @@ func TestAssetURLAdapter_FlagFromEnv(t *testing.T) {
 	t.Setenv(EnvTitleScopedFlag, "false")
 	a2 := NewAssetURLAdapter()
 	if a2.titleScoped {
-		t.Errorf("titleScoped should be false when ENV=false")
+		t.Errorf("titleScoped should be false when ENV=false (rollback path)")
 	}
 
 	t.Setenv(EnvTitleScopedFlag, "")
 	a3 := NewAssetURLAdapter()
-	if a3.titleScoped {
-		t.Errorf("titleScoped should default to false when ENV unset")
+	if !a3.titleScoped {
+		t.Errorf("titleScoped should default to true when ENV unset (Phase 6.5+)")
 	}
 }
 

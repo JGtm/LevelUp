@@ -68,12 +68,12 @@ describe('HomePage', () => {
           highest_csr: {
             rating_value: 1525,
             tier_label: 'Gold 3',
-            badge_image_url: '/static/ranks/120px-HINF-CSR_Gold3.png',
+            badge_image_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Gold3.png',
           },
           highest_lusr: {
             rating_value: 1750,
             tier_label: 'Platinum V',
-            badge_image_url: '/static/ranks/120px-HINF-CSR_Platinum5.png',
+            badge_image_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Platinum5.png',
           },
           career_rank: {
             rank_number: 25,
@@ -106,10 +106,10 @@ describe('HomePage', () => {
         expect(screen.getByTestId('home-skill-peaks-panel')).toBeInTheDocument()
         expect(screen.getByTestId('home-highest-csr-value')).toHaveTextContent('1,525')
         expect(screen.getByTestId('home-highest-csr-tier')).toHaveTextContent('Gold 3')
-        expect(screen.getByTestId('home-highest-csr-badge')).toHaveAttribute('src', '/static/ranks/120px-HINF-CSR_Gold3.png')
+        expect(screen.getByTestId('home-highest-csr-badge')).toHaveAttribute('src', '/static/ranks/halo_infinite/120px-HINF-CSR_Gold3.png')
         expect(screen.getByTestId('home-highest-lusr-value')).toHaveTextContent('1,750')
         expect(screen.getByTestId('home-highest-lusr-tier')).toHaveTextContent('Platinum V')
-        expect(screen.getByTestId('home-highest-lusr-badge')).toHaveAttribute('src', '/static/ranks/120px-HINF-CSR_Platinum5.png')
+        expect(screen.getByTestId('home-highest-lusr-badge')).toHaveAttribute('src', '/static/ranks/halo_infinite/120px-HINF-CSR_Platinum5.png')
         expect(within(spartanBanner).queryByTestId('home-highest-csr-card')).not.toBeInTheDocument()
         expect(within(spartanBanner).queryByTestId('home-highest-lusr-card')).not.toBeInTheDocument()
         expect(screen.getByTestId('home-career-rank-title')).toHaveTextContent('Lance Corporal')

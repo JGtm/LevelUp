@@ -16,6 +16,42 @@ Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déc
 
 **Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
 
+## [2026-04-28] feat(static-fs-rescope): Phase 6.5 — big bang atomique (FS + DB + flip)
+
+**Statut** : Complété — migration FS + UPDATE DB + flip des 5 flags + fixtures, le tout dans un commit atomique.
+
+**FS migration** : 328 fichiers déplacés vers leurs sous-dossiers title-scopés (102 maps + 166 medals + 32 ranks + 28 weapons) + rename commendations h5g→halo_5_guardians + hi→halo_infinite (G — décision BACKLOG verrouillée).
+
+**DB UPDATE** (via `cmd/migrate-static-paths` jetable, supprimé en Phase 6.6) :
+- E1 : `map_images_registry.local_path` 94 rows updated
+- G : `citation_mappings.image_path` 86 rows updated (65 h5g + 21 hi)
+- Post-check : 0 stale flat path. Backup `metadata.duckdb.bak.phase6` créé avant.
+
+**5 flags flippés (default ON)** :
+- `internal/analysis/home.go::staticTitleScoped` : `os.Getenv(...) != "false"`
+- `internal/platform/duckdb/home_repo.go::homeStaticTitleScoped` : idem
+- `internal/games/halo_infinite/adapter_asset_urls.go::NewAssetURLAdapter` : idem
+- `cmd/migrate-static-maps/main.go` : default title-scoped
+- `apps/web/src/lib/staticAssets.ts::TITLE_SCOPED` : `!== 'false'`
+
+**Fixtures D3+D4** : `home_test.go`, `player_repos_test.go`, `HomePage.test.tsx` (4 sites), `staticAssets.test.ts` (13 cas réécrits), `adapter_asset_urls_test.go::TestAssetURLAdapter_FlagFromEnv`.
+
+**Tests** :
+- `go test ./...` PASS sur tous packages applicatifs (analysis, games, api, service, sync, golden).
+- `npx vitest run` 32 tests PASS (staticAssets + home).
+- 3 fails `platform/duckdb` = WIP utilisateur indépendant (`steps_engagement.go` migration non-commitée tente ALTER TABLE sur table absente du test setup) — pré-existant, hors périmètre Phase 6.
+
+**Rollback** :
+1. `git revert <commit>` (atomique code + fixtures + flag flip)
+2. `cp metadata.duckdb.bak.phase6 metadata.duckdb`
+3. `git restore static/` (recopie ancien arbo)
+
+**Prochaine étape** : Phase 6.6 — supprimer branches `if titleScoped` (mortes), supprimer `cmd/migrate-static-paths` (jetable), retirer flag ENV. Update `docs/ARCHITECTURE_V6.md` + retirer entrée BACKLOG.
+
+— GS
+
+---
+
 ## [2026-04-28] feat(static-fs-rescope): Phase 6.4 — frontend useAssetURL (D1+D2) + staticAssets.ts
 
 **Statut** : Complété — couche 2+3 SRP côté frontend livrées, 2 sites HomePage migrés, 13 tests vitest verts.

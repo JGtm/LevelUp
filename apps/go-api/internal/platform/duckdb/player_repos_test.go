@@ -538,7 +538,7 @@ func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	if identity.HighestCSR.TierLabel == nil || *identity.HighestCSR.TierLabel != "Gold 3" {
 		t.Fatalf("HighestCSR.TierLabel = %v, want Gold 3", identity.HighestCSR.TierLabel)
 	}
-	if identity.HighestCSR.BadgeImageURL == nil || *identity.HighestCSR.BadgeImageURL != "/static/ranks/120px-HINF-CSR_Gold3.png" {
+	if identity.HighestCSR.BadgeImageURL == nil || *identity.HighestCSR.BadgeImageURL != "/static/ranks/halo_infinite/120px-HINF-CSR_Gold3.png" {
 		t.Fatalf("HighestCSR.BadgeImageURL = %v, want Gold3 badge", identity.HighestCSR.BadgeImageURL)
 	}
 	if identity.HighestLUSR == nil {

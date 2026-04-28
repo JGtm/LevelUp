@@ -241,8 +241,8 @@ func TestBuildRecentMatches_UsesLocalStaticMapImageAndStripsExperiencePrefix(t *
 	if items[0].ModeUI == nil || *items[0].ModeUI != "Slayer" {
 		t.Fatalf("ModeUI: want Slayer, got %v", items[0].ModeUI)
 	}
-	if items[0].MapImageURL == nil || *items[0].MapImageURL != "/static/maps/Bazaar.png" {
-		t.Fatalf("MapImageURL: want /static/maps/Bazaar.png, got %v", items[0].MapImageURL)
+	if items[0].MapImageURL == nil || *items[0].MapImageURL != "/static/maps/halo_infinite/Bazaar.png" {
+		t.Fatalf("MapImageURL: want /static/maps/halo_infinite/Bazaar.png, got %v", items[0].MapImageURL)
 	}
 	if items[0].ScoreLabel == nil || *items[0].ScoreLabel != "3-1" {
 		t.Fatalf("ScoreLabel: want 3-1, got %v", items[0].ScoreLabel)
