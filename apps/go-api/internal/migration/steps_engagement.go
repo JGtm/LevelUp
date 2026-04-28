@@ -28,6 +28,7 @@ package migration
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 func init() {
@@ -37,13 +38,30 @@ func init() {
 		TargetDB:    TargetPlayer,
 		Description: "Ajoute engagement_score, engagement_score_brut, engagement_score_confidence et mode_category a player_match_enrichment (idempotent)",
 		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-				ALTER TABLE player_match_enrichment ADD COLUMN IF NOT EXISTS engagement_score DOUBLE;
-				ALTER TABLE player_match_enrichment ADD COLUMN IF NOT EXISTS engagement_score_brut DOUBLE;
-				ALTER TABLE player_match_enrichment ADD COLUMN IF NOT EXISTS engagement_score_confidence VARCHAR;
-				ALTER TABLE player_match_enrichment ADD COLUMN IF NOT EXISTS mode_category VARCHAR;
+			// Skip silencieusement si la table n'existe pas (cas des tests qui
+			// montent une player DB minimaliste sans player_match_enrichment).
+			// La table est creee par EnsurePlayerSchema lors du sync ; les tests
+			// concernes (battlepass, etc.) n'ont pas besoin de ces colonnes.
+			exists, err := tableExists(db, "player_match_enrichment")
+			if err != nil {
+				return fmt.Errorf("engagement migration: check table: %w", err)
+			}
+			if !exists {
+				return nil
+			}
+			for _, col := range []struct{ name, typ string }{
+				{"engagement_score", "DOUBLE"},
+				{"engagement_score_brut", "DOUBLE"},
+				{"engagement_score_confidence", "VARCHAR"},
+				{"mode_category", "VARCHAR"},
+			} {
+				if err := addColumnIfMissing(db, "player_match_enrichment", col.name, col.typ); err != nil {
+					return err
+				}
+			}
+			return createIndexSafe(db, `
 				CREATE INDEX IF NOT EXISTS idx_pme_engagement_history
-					ON player_match_enrichment(mode_category, engagement_score_brut);
+					ON player_match_enrichment(mode_category, engagement_score_brut)
 			`)
 		},
 	})
