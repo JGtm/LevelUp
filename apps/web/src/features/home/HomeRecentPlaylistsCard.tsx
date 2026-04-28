@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { HomePlaylistRank } from '@/lib/api/types'
+import { unrankedBadgeURL } from '@/lib/staticAssets'
 
 function RankBadge({ imageUrl, label }: { imageUrl: string; label: string }) {
   const [failed, setFailed] = useState(false)
@@ -74,7 +75,7 @@ export function HomeRecentPlaylistsCard({
                     />
                   ) : showPlacement ? (
                     <img
-                      src="/static/ranks/Unranked.png"
+                      src={unrankedBadgeURL()}
                       alt="En placement"
                       data-testid="home-rank-unranked-image"
                       className="h-12 w-12 object-contain opacity-70"

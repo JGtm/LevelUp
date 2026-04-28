@@ -16,6 +16,48 @@ Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déc
 
 **Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
 
+## [2026-04-28] feat(static-fs-rescope): Phase 6.4 — frontend useAssetURL (D1+D2) + staticAssets.ts
+
+**Statut** : Complété — couche 2+3 SRP côté frontend livrées, 2 sites HomePage migrés, 13 tests vitest verts.
+
+**Décision technique** :
+Symétrique au backend Go : un module `apps/web/src/lib/staticAssets.ts` centralise la composition d'URLs `/static/...` côté React, lu une fois au load via `import.meta.env.VITE_STATIC_PATHS_TITLE_SCOPED`. Les composants React n'écrivent plus jamais `/static/...` en dur dans des `src=`.
+
+**Fichier créé** : `apps/web/src/lib/staticAssets.ts` (~85 LoC)
+- Type `StaticKind = 'map' | 'medal' | 'csr-rank' | 'weapon' | 'commendation'` — symétrique au Go.
+- `FOLDER` map (csr-rank → "ranks", medal → "medals/icons", etc.) — symétrique à `static.Folder`.
+- `staticAssetURL(kind, id, ext, titleSlug?)` — composition générique avec flag.
+- `csrRankImageURL(tier, subTier, titleSlug?)` — helper spécifique avec cas Onyx.
+- `unrankedBadgeURL(titleSlug?)` — helper pour badge "Unranked".
+- `DEFAULT_TITLE_SLUG = 'halo_infinite'` — constante exportée pour usage explicit.
+
+**Tests** : `apps/web/src/lib/staticAssets.test.ts` — 13 tests vitest (5 staticAssetURL × kinds + edge case empty id, 6 csrRankImageURL × tiers + Onyx + edge cases, 2 unrankedBadgeURL). Tous valident le mode flat (default Vite).
+
+**Sites migrés** :
+- **D1** `apps/web/src/features/home/HomePage.tsx:415` — `src="/static/ranks/Unranked.png"` → `src={unrankedBadgeURL()}` + import.
+- **D2** `apps/web/src/features/home/HomeRecentPlaylistsCard.tsx:77` — idem.
+
+**Comportement runtime** : flag OFF par défaut (`VITE_STATIC_PATHS_TITLE_SCOPED` unset/non-"true") → URLs émises identiques (`/static/ranks/Unranked.png`). Aucune régression visuelle.
+
+**Résultats** :
+- `npx vitest run src/lib/staticAssets.test.ts` PASS (13/13).
+- `npx vitest run src/features/home/ src/lib/` PASS (100/100 — tests existants HomePage non régressés).
+- `npm run typecheck` : pré-existing errors dans `setup/`, `squad/charts/timelineChart.test`, `accessibility/_logger`, `replay.tsx`, `appShellStore.test` — **aucun nouveau** sur mes fichiers (HomePage, HomeRecentPlaylistsCard, staticAssets).
+
+**Conformité plan-review** :
+- Couleurs : pas de hex dans staticAssets.ts ✓
+- i18n : pas de strings UI dans staticAssets.ts (couche infra) ✓
+- Tests : table-driven 13 cas ✓
+- Pattern symétrie backend/frontend respecté ✓
+
+**Note D3 (fixtures HomePage.test.tsx)** : pas modifiées en Phase 6.4. Les fixtures `'/static/ranks/120px-HINF-CSR_Gold3.png'` restent valides tant que flag OFF. Elles seront mises à jour en Phase 6.5 dans le commit atomique du flip.
+
+**Prochaine étape** : Phase 6.5 — big bang atomique. git mv des sous-dossiers `static/{maps,medals/icons,ranks,weapons-assets}/*` vers `static/.../halo_infinite/`. UPDATE bulk de `metadata.duckdb.map_images_registry.local_path`. Renommage commendations h5g→halo_5_guardians + hi→halo_infinite. Flip flags Go (`STATIC_PATHS_TITLE_SCOPED=true` par défaut) + Vite (`VITE_STATIC_PATHS_TITLE_SCOPED=true`). Update fixtures D3+D4. Smoke check manuel.
+
+— GS
+
+---
+
 ## [2026-04-28] feat(static-fs-rescope): Phase 6.3 — bascule callers Go (A1–A5, C1, F)
 
 **Statut** : Complété — couche 4 SRP (callers) bascule sur internal/assets/static + flag transitionnel. Couche 1 (FileServer http.FileServer) inchangée.

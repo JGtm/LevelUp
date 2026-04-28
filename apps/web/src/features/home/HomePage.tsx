@@ -20,6 +20,7 @@ import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { unrankedBadgeURL } from '@/lib/staticAssets'
 import { getPerfColor } from '@/lib/perf-color'
 import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -412,7 +413,7 @@ function HomeSkillPeakCard({ label, peak, numberLocale, testIdPrefix, state, det
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 p-1.5">
           <img
             data-testid={`${testIdPrefix}-unranked`}
-            src="/static/ranks/Unranked.png"
+            src={unrankedBadgeURL()}
             alt="En placement"
             className="h-full w-full object-contain opacity-80"
             loading="lazy"
