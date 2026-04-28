@@ -1,6 +1,47 @@
 # Thought Log
 
-## [2026-04-28] feat(squad+stats): Squad/Sessions §3 UI + §4 CLI + §5 Stats solo
+## [2026-04-28] feat(squad): §7 hook auto-recompute is_with_friends post-sync delta
+
+**Statut** : Complété (gap critique identifié pendant la review fermé).
+
+**Décision technique** :
+Suite à la review GS de la branche `feat/op-squad-friends-flow`, audit révèle un gap pas couvert : aucun writer `is_with_friends = TRUE` dans le pipeline sync delta. Le sync écrit `player_match_enrichment` avec le default schema `is_with_friends = FALSE` et rien ne ré-évalue ensuite. Conséquence : tout nouveau match avec un ami reste flaggé FALSE jusqu'au prochain PATCH /settings ou `levelup recompute-friends` manuel.
+
+**Cleanup architectural** :
+- `friends_recompute.go` refacto : extraction de `RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB *sql.DB, playerXUID, friendGamertags, refreshAggregates bool)` qui prend des handles déjà ouverts. La variante publique `RecomputeIsWithFriends` (acquire leases + open) reste pour l'orchestrator + CLI ; le core est utilisé par l'engine post-sync sans deadlock sur les leases déjà détenues par l'engine.
+
+**Wiring engine** :
+- `sync.SyncEngine` reçoit un nouveau setter fluent `WithFriendsLoader(loader FriendsLoader)` (FriendsLoader = `func() ([]string, error)`), pattern miroir de `WithPrestigeHook` / `WithResolver`.
+- Dans `runPostSyncPipeline`, nouvelle étape **3.5** entre Career sync (3) et Aggregates refresh (4) : si `friendsLoader != nil` ET liste non-vide, appel `RecomputeIsWithFriendsCore(..., refreshAggregates=false)` — le `false` évite le double refresh puisque step 4 va le faire.
+- `domain.PostSyncResult` étendu avec `MatchesPromotedFriends int64` pour exposer le compte au caller.
+- Best-effort : aucune erreur du recompute n'arrête le sync (slog Warn + continue).
+
+**Câblage call sites** :
+- `sync_handler.go` (3 sites NewSyncEngine) : factorisé via helper privé `h.newEngineFor(gamertag, xuid, tokens)` qui produit un engine pré-câblé avec un loader closure-capturing `h.settingsStore.Load().FriendGamertags`. Couvre StartInitialSync, StartDeltaSync, StartSyncAll.
+- `scheduler/auto_sync.go` : type-assertion `runner.(*sync.SyncEngine)` après `s.EngineFactory(...)` pour câbler le loader sur les sync auto périodiques (le scheduler a déjà `s.settings`). Skip silencieux si la factory retourne un mock (tests).
+- Backfill handler + sync/trigger.go (mode dev) : non câblés (backfill ne crée pas de pme rows ; trigger est dev-only).
+
+**Tests** :
+- 3 tests purs ajoutés dans `friends_recompute_test.go` (sans tag integration, tournent partout) :
+  - `TestRecomputeIsWithFriendsCore_EmptyFriendsList` : early return gracieux sans toucher les DBs (passing nil DBs)
+  - `TestSyncEngine_WithFriendsLoader` : setter câble correctement + chaining fluent + loader appelable
+  - `TestSyncEngine_WithFriendsLoader_Nil` : setter avec nil → loader reste nil (skip silencieux côté hook)
+- Les chemins critiques (loadMatchesWithFriends + updateIsWithFriendsBatch) restent couverts par les tests integration sous tag `integration` (DuckDB :memory:).
+
+**Résultats** :
+- `go test ./... && go test -race ./internal/sync/... ./internal/service/... ./internal/api/...` → 100% OK (forced full re-run après go clean -testcache).
+- `vitest run` → 657/657 OK (657 tests, 82 fichiers — légère hausse car certains tests warm-up sur le 2e run).
+- `go build ./...` clean.
+
+**Décisions architecturales notables** :
+1. Refacto avec **2 entry points** (public `RecomputeIsWithFriends` avec leases, public `RecomputeIsWithFriendsCore` sans) plutôt qu'un flag booléen `acquireLeases`. Plus lisible : le call site sait clairement quelle variante appeler.
+2. Hook **avant** `refreshAggregates` (step 4) plutôt qu'après → économise 1 refresh natif ; le `refreshAggregates=false` passé au core délègue le refresh au step 4 existant.
+3. **Type assertion** dans le scheduler plutôt que d'élargir l'interface `DeltaRunner` (garde l'interface minimale ; les mocks de tests ne supportent pas le hook, c'est OK).
+4. **Pas de modification de la signature** `EngineFactory` ni de `NewSyncEngine` → backward-compat totale, le hook est opt-in via fluent setter.
+
+**Prochaine étape** : merge `feat/op-squad-friends-flow` → `feat/foundations-axes-1-3-4` après revue manuelle UI (vérifier qu'un sync delta avec ami connu déclenche bien l'événement de promotion). §6 notifications reste en backlog.
+
+
 
 **Statut** : §3, §4, §5 complets côté livraison. §6 (notifs) reste en backlog.
 
@@ -22852,3 +22893,43 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 - 0 régression sur 48 tests Vitest Career + Synthesis.
 
 **Phase 2 globale** : ~25 % livré (P2.A + P2.B + P2.C). Reste : P2.D Citations (~1 j-h), P2.E Timeseries (~2 j-h), P2.F live Home/Media/Explorer (~2 j-h), P2.G WIP Palmares/Session (~1 j-h). Reste **~6-7 j-h** sur les 12 estimés.
+
+### [2026-04-28] — reflexion(forme): cadre theorique FormScore intra-match — En cours
+
+**Statut** : En cours (theorique, pas d'implementation)
+
+**Decision technique principale** : refonte conceptuelle du concept "forme du joueur" apres 5 tentatives precedentes insatisfaisantes (LOWESS, EWMA KD, Form Score 14 vs 90, Performance Score relatif, Win Streak). Toutes mesuraient en realite du **skill** sur agregats post-match, pas de la forme.
+
+**Cadre retenu** :
+- **Distinction stricte skill vs forme** : skill = qualite des actions (PerfScore existant), forme = quantite/regularite/persistance d'engagement (a construire). Test de separation : `corr(FormScore, PerfScore) < 0.5`.
+- **Concept central** : la forme = ecart entre engagement observe et engagement attendu, ou attendu = `coef_team_share * pace_team_per_player(t)`. C'est un residu mean sur le match, normalise en percentile vs historique du joueur (200 matchs, meme categorie de mode).
+- **Normalisation par equipe alliee** (et non lobby) : annule l'effet steamroll subi/inflige. Justification chiffree dans Annexe C du doc.
+- **Score d'objectif comme events virtuels** : `(personal_score - 100*kills - 50*assists) / poids_unitaire_objectif` ajoute au compte d'events pour les modes asymetriques.
+- **Hierarchie courbe -> score** : 1 signal source (residu instantane), 4 echelles d'affichage (intra-match / match / session / timeseries long).
+- **Stockage hybride** : FormScore stocke dans `player_match_enrichment`, courbe live depuis `highlight_events`, coefficients stockes par categorie.
+- **EngagementCoefficients exposes** : `coef_team_share` (style intra-equipe) + `coef_lobby_share` (style absolu). Lecture combinee plus riche.
+- **MatchIntensity** : caracteristique objective du match (events/min/joueur lobby), exposee independamment.
+
+**Refonte vs version anterieure** :
+- Abandonne le composite a 5 sous-signaux (E1-E5) avec poids fixes arbitraires
+- Remplace par un residu unique percentile-normalise (cf Annexe B du doc)
+- Les 5 dimensions diagnostiques restent **visibles** dans la courbe (E2 = bandes post-mort, E3 = lissage, E4 = pente du gap, E5 = position du premier point)
+
+**Periometre confirme** :
+- PvE/Firefight exclus, bots filtres
+- Modes asymetriques inclus tels quels (objectif compense via events virtuels)
+- FFA/1v1 : fallback automatique sur lobby_share
+- Match court (<3 min) : FormScore = null
+- Lobby massivement quitte : limite acceptee v1
+
+**Hypotheses critiques a valider sur donnees reelles avant code** :
+- H1 : `corr(FormScore, PerfScore) < 0.5`
+- H2 : R² du modele `attendu = coef * team` >= 0.3 (sinon evolution v2 vers baselines conditionnelles par intensity bucket)
+- H3 : stabilite du `coef_team_share` (ratio max/min < 1.3 sur fenetres glissantes)
+- H6 : la repartition `coef_team_share` varie-t-elle avec match_intensity (justifierait v2)
+
+**Livrables de cette session** :
+- `.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md` : doc theorique consolide (16 sections + 3 annexes)
+- `.ai/mockups/forme/forme_visualizations.html` : 7 mockups distincts (Match View canonical / residu seul / hybride avec gap shading + annotations / carte synthese / Session option B / Session option A / Timeseries agrege par session)
+
+**Conclusion / prochaine etape** : cadre theorique fige. Avant tout code, valider H1-H7 sur sample de 500 matchs d'un joueur reel. Si validation OK, implementation Go dans `apps/go-api/internal/analysis/temporal/form_score.go` avec inputs/outputs definis (cf §9 du doc). Si H2 echoue, evolution v2 vers baselines conditionnelles documentee §13.

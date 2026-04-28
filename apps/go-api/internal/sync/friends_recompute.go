@@ -35,45 +35,70 @@ type FriendsRecomputeResult struct {
 //
 // friendGamertags : liste des amis (settings.friend_gamertags). Vide → no-op.
 // Les gamertags non résolus dans xuid_aliases sont logués Warn et ignorés.
+//
+// Cette variante acquiert ses propres leases + ouvre les DBs. Pour appel
+// inline depuis le sync engine (qui détient déjà les leases), utiliser
+// RecomputeIsWithFriendsCore.
 func RecomputeIsWithFriends(
 	ctx context.Context,
 	playerDBPath, sharedDBPath, playerXUID string,
 	friendGamertags []string,
 ) (FriendsRecomputeResult, error) {
-	start := time.Now()
-	res := FriendsRecomputeResult{XUID: playerXUID}
-
 	if len(friendGamertags) == 0 {
 		slog.InfoContext(ctx, "friends recompute skipped (no friends)", "player_xuid", playerXUID)
-		return res, nil
+		return FriendsRecomputeResult{XUID: playerXUID}, nil
 	}
 
 	relPlayer, err := AcquireLeaseCtx(ctx, playerDBPath)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriends lease player: %w", err)
+		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends lease player: %w", err)
 	}
 	defer relPlayer()
 
 	relShared, err := AcquireLeaseCtx(ctx, sharedDBPath)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriends lease shared: %w", err)
+		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends lease shared: %w", err)
 	}
 	defer relShared()
 
 	playerHandle, err := OpenPlayerDB(playerDBPath)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriends OpenPlayerDB: %w", err)
+		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
 	sharedHandle, err := OpenSharedDB(sharedDBPath)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriends OpenSharedDB: %w", err)
+		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends OpenSharedDB: %w", err)
 	}
 	defer sharedHandle.Close()
 
+	return RecomputeIsWithFriendsCore(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), playerXUID, friendGamertags, true)
+}
+
+// RecomputeIsWithFriendsCore exécute la logique recompute sur des handles
+// déjà ouverts (leases déjà acquises par l'appelant). Utilisé par l'engine
+// post-sync pour éviter le double-acquire de leases (deadlock).
+//
+// Si refreshAggregates=false, le caller est responsable de refresh les vues
+// après (typiquement quand l'engine refresh aggregates dans son propre step
+// post-sync, on évite le double refresh).
+func RecomputeIsWithFriendsCore(
+	ctx context.Context,
+	playerDB, sharedDB *sql.DB,
+	playerXUID string,
+	friendGamertags []string,
+	refreshAggregates bool,
+) (FriendsRecomputeResult, error) {
+	start := time.Now()
+	res := FriendsRecomputeResult{XUID: playerXUID}
+
+	if len(friendGamertags) == 0 {
+		return res, nil
+	}
+
 	// Résoudre les gamertags amis → XUIDs via xuid_aliases.
-	friendXUIDs := LookupFriendXUIDs(sharedHandle.SQLDb(), friendGamertags)
+	friendXUIDs := LookupFriendXUIDs(sharedDB, friendGamertags)
 	res.FriendXUIDsCount = len(friendXUIDs)
 	if len(friendXUIDs) == 0 {
 		slog.WarnContext(ctx, "friends recompute: no xuid resolved",
@@ -89,26 +114,24 @@ func RecomputeIsWithFriends(
 	}
 
 	// Charger les match_ids où au moins un ami a participé dans la même équipe que le joueur.
-	matchIDs, err := loadMatchesWithFriends(ctx, sharedHandle.SQLDb(), playerXUID, friendXUIDs)
+	matchIDs, err := loadMatchesWithFriends(ctx, sharedDB, playerXUID, friendXUIDs)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriends loadMatches: %w", err)
+		return res, fmt.Errorf("RecomputeIsWithFriendsCore loadMatches: %w", err)
 	}
 	if len(matchIDs) == 0 {
-		slog.InfoContext(ctx, "friends recompute: no matches with friends",
-			"player_xuid", playerXUID, "friend_xuids", len(friendXUIDs))
 		res.Duration = time.Since(start)
 		return res, nil
 	}
 
 	// UPDATE batché : SET is_with_friends = TRUE WHERE FALSE AND match_id IN (...).
-	rowsAffected, err := updateIsWithFriendsBatch(ctx, playerHandle.SQLDb(), matchIDs)
+	rowsAffected, err := updateIsWithFriendsBatch(ctx, playerDB, matchIDs)
 	if err != nil {
-		return res, fmt.Errorf("RecomputeIsWithFriends update: %w", err)
+		return res, fmt.Errorf("RecomputeIsWithFriendsCore update: %w", err)
 	}
 	res.MatchesPromoted = rowsAffected
 
-	if rowsAffected > 0 {
-		if _, err := RefreshAggregates(playerHandle.SQLDb()); err != nil {
+	if rowsAffected > 0 && refreshAggregates {
+		if _, err := RefreshAggregates(playerDB); err != nil {
 			slog.WarnContext(ctx, "friends recompute: refresh aggregates failed",
 				"player_xuid", playerXUID, "err", err)
 		} else {

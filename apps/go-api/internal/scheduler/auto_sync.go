@@ -257,6 +257,19 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 
 	slog.InfoContext(ctx, "auto_sync: démarrage sync delta", "gamertag", p.Gamertag)
 	runner := s.EngineFactory(s.cfg.RepoRoot, p.Gamertag, p.XUID, result.Tokens, s.provider)
+	// §7 Hook auto-recompute is_with_friends post-sync delta : si la factory
+	// produit un *sync.SyncEngine concret (cas prod), on l'enrichit avec un
+	// loader pointant sur s.settings.FriendGamertags. Les factories de test
+	// (mocks) ne supportent pas ce hook → skip silencieux.
+	if engine, ok := runner.(*sync.SyncEngine); ok && s.settings != nil {
+		engine.WithFriendsLoader(func() ([]string, error) {
+			cfg, lerr := s.settings.Load()
+			if lerr != nil {
+				return nil, lerr
+			}
+			return cfg.FriendGamertags, nil
+		})
+	}
 	syncResult, err := runner.RunDelta(ctx, domain.DefaultSyncOptions())
 	if err != nil {
 		slog.ErrorContext(ctx, "auto_sync: RunDelta échoué",
