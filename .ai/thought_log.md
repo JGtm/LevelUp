@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-28] cleanup(plotly): retrait plotly-chart.tsx + packages Plotly — chunk P4.D
+
+**Statut** : Complété.
+
+**Décision technique** :
+- `apps/web/src/components/ui/plotly-chart.tsx` : supprimé (zéro import actif dans src/ — confirmé grep + typecheck 0 erreur).
+- `apps/web/src/test/setup.ts` : retrait du `vi.mock('react-plotly.js', ...)` (mock désormais mort).
+- `apps/web/package.json` : retrait de `react-plotly.js`, `plotly.js`, `@types/react-plotly.js` des dependencies.
+
+**Résidus intentionnels (hors P4.D) à noter pour GS :**
+- `apps/web/src/lib/api/types.ts` : `PlotlyFigurePayload` + champs `rank_progress_gauge`, `hero_progress_gauge`, `xp_history_figure`, `lusr_rating_figure` dans `CareerPageResponse` — type encore dans le contrat API Go (generated.ts + MSW handlers). À retirer en même temps que la suppression côté Go.
+- `apps/web/src/lib/accessibility/plotlyColorscale.ts` : `buildOrdinalColorscale` et `buildDivergentColorscale` orphelines. `getSeriesColors` encore utilisé par `SquadLayout.tsx`. Renommer le fichier + supprimer les 2 fonctions mortes = tâche séparée.
+
+**Résultats** :
+- TypeScript typecheck : 0 erreur.
+- `grep -rn "import.*PlotlyChart|from.*plotly-chart|from.*react-plotly"` → 0 résultat dans apps/web/src.
+
+**Prochaine étape** : Sprint actif terminé (P4.A→D → [R]). Backlog disponible. — OP
+
 ## [2026-04-28] feat(squad-synergies): SquadSynergiesPage.tsx Plotly → ECharts — chunk P4.C
 
 **Statut** : Complété.
