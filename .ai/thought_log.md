@@ -22969,7 +22969,14 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 - H6 : la repartition `coef_team_share` varie-t-elle avec match_intensity (justifierait v2)
 
 **Livrables de cette session** :
-- `.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md` : doc theorique consolide (16 sections + 3 annexes)
-- `.ai/mockups/forme/forme_visualizations.html` : 7 mockups distincts (Match View canonical / residu seul / hybride avec gap shading + annotations / carte synthese / Session option B / Session option A / Timeseries agrege par session)
+- `.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md` : doc theorique consolide (17 sections + 3 annexes, recap des choix viz §8.5, exigences visuelles obligatoires §8.6)
+- `.ai/mockups/forme/forme_visualizations.html` : 11 mockups distincts couvrant toutes les echelles + variantes considerees
 
-**Conclusion / prochaine etape** : cadre theorique fige. Avant tout code, valider H1-H7 sur sample de 500 matchs d'un joueur reel. Si validation OK, implementation Go dans `apps/go-api/internal/analysis/temporal/form_score.go` avec inputs/outputs definis (cf §9 du doc). Si H2 echoue, evolution v2 vers baselines conditionnelles documentee §13.
+**Choix visuels valides (consolides en fin de session)** :
+- **Mock 10 retenu** pour Match View onglet equipe (3 traces equipe/attendu/joueur, auto-zoom Y, hierarchie visuelle marquee)
+- **Mock 11 retenu** pour Session/Periode (meme grammaire que Mock 10, granularite 1 point/match)
+- Coherence visuelle stricte entre Match View et Session : meme reflexe de lecture, juste un zoom temporel different
+- Exigences obligatoires §8.6 : (1) auto-zoom Y dynamique avec affichage du range, (2) hierarchie visuelle marquee (joueur 4px sature, attendu 1.5px pointille, equipe 1.5px effacee). Rejetes explicitement : gap shading, pastille FormScore in-chart.
+- Risque adresse : "chart muet en match equilibre" (cas commun ~70 %) — l'auto-zoom rend les variations de 0.5-1 events/min lisibles et la hierarchie fait que le joueur pop toujours visuellement.
+
+**Conclusion / prochaine etape** : cadre theorique + visuel fige. Avant tout code, valider H1-H7 sur sample de 500 matchs d'un joueur reel. Si validation OK, implementation Go dans `apps/go-api/internal/analysis/temporal/form_score.go` avec inputs/outputs definis (cf §9 du doc). Si H2 echoue, evolution v2 vers baselines conditionnelles documentee §13. Livraison parallele d'un manifest i18n `apps/web/src/lib/i18n/manifests/forme.toml` et entree glossaire applicatif (cf §17 du doc).
