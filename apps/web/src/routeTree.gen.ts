@@ -19,6 +19,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerSlug'
+import { Route as LabChartsRouteImport } from './routes/lab/charts'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
 import { Route as PlayersPlayerSlugSquadRouteImport } from './routes/players/$playerSlug/squad'
 import { Route as PlayersPlayerSlugNotificationsRouteImport } from './routes/players/$playerSlug/notifications'
@@ -92,6 +93,11 @@ const PlayersPlayerSlugRoute = PlayersPlayerSlugRouteImport.update({
   id: '/players/$playerSlug',
   path: '/players/$playerSlug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LabChartsRoute = LabChartsRouteImport.update({
+  id: '/charts',
+  path: '/charts',
+  getParentRoute: () => LabRoute,
 } as any)
 const PlayersPlayerSlugSynthesisRoute =
   PlayersPlayerSlugSynthesisRouteImport.update({
@@ -233,11 +239,12 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
-  '/lab': typeof LabRoute
+  '/lab': typeof LabRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/lab/charts': typeof LabChartsRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
@@ -268,11 +275,12 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
-  '/lab': typeof LabRoute
+  '/lab': typeof LabRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/lab/charts': typeof LabChartsRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
@@ -303,11 +311,12 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/changelog': typeof ChangelogRoute
   '/help': typeof HelpRoute
-  '/lab': typeof LabRoute
+  '/lab': typeof LabRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/lab/charts': typeof LabChartsRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/home': typeof PlayersPlayerSlugHomeRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/lab/charts'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/lab/charts'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/lab/charts'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/home'
@@ -445,7 +457,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ChangelogRoute: typeof ChangelogRoute
   HelpRoute: typeof HelpRoute
-  LabRoute: typeof LabRoute
+  LabRoute: typeof LabRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
@@ -524,6 +536,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/players/$playerSlug'
       preLoaderRoute: typeof PlayersPlayerSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/lab/charts': {
+      id: '/lab/charts'
+      path: '/charts'
+      fullPath: '/lab/charts'
+      preLoaderRoute: typeof LabChartsRouteImport
+      parentRoute: typeof LabRoute
     }
     '/players/$playerSlug/synthesis': {
       id: '/players/$playerSlug/synthesis'
@@ -689,6 +708,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface LabRouteChildren {
+  LabChartsRoute: typeof LabChartsRoute
+}
+
+const LabRouteChildren: LabRouteChildren = {
+  LabChartsRoute: LabChartsRoute,
+}
+
+const LabRouteWithChildren = LabRoute._addFileChildren(LabRouteChildren)
+
 interface PlayersPlayerSlugSquadRouteChildren {
   PlayersPlayerSlugSquadContributionsRoute: typeof PlayersPlayerSlugSquadContributionsRoute
   PlayersPlayerSlugSquadSynergiesRoute: typeof PlayersPlayerSlugSquadSynergiesRoute
@@ -780,7 +809,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ChangelogRoute: ChangelogRoute,
   HelpRoute: HelpRoute,
-  LabRoute: LabRoute,
+  LabRoute: LabRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
