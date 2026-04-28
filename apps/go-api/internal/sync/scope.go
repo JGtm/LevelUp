@@ -134,6 +134,13 @@ type SyncScope struct {
 	PlayableDuration      bool
 	ForcePlayableDuration bool
 
+	// ── EngagementScore — Phase 3 du plan engagement ───────────────────
+	// Calcule le score d'engagement (cf .ai/REFLEXION_ENGAGEMENT_SCORE_*)
+	// pour chaque match du joueur. Necessite que les highlight_events soient
+	// deja charges (Events=true ou backfill_completed bit MBitEvents).
+	EngagementScores      bool
+	ForceEngagementScores bool
+
 	// ── Méta-flag ───────────────────────────────────────────────────────
 	AllData bool
 }
@@ -188,6 +195,7 @@ var allDataFields = []func(*SyncScope){
 	func(s *SyncScope) { s.SkillRank = true },
 	func(s *SyncScope) { s.ComebackBadges = true },
 	func(s *SyncScope) { s.PlayableDuration = true },
+	func(s *SyncScope) { s.EngagementScores = true },
 }
 
 // Resolve applique les implications : AllData → champs, groupes → sous-champs,
@@ -314,6 +322,7 @@ func (s *SyncScope) applyForceImplications() {
 	imply(&s.ForceSkillRank, &s.SkillRank)
 	imply(&s.ForceComebackBadges, &s.ComebackBadges)
 	imply(&s.ForcePlayableDuration, &s.PlayableDuration)
+	imply(&s.ForceEngagementScores, &s.EngagementScores)
 }
 
 // NewScopeAll crée un scope avec AllData=true pré-résolu.
@@ -336,7 +345,7 @@ func (s *SyncScope) HasAnyOption() bool {
 		s.PowerWeaponKills, s.HeadshotKills, s.MaxSpree, s.KDARecalc,
 		s.TimePlayed, s.MMR, s.Expected, s.Combat, s.KillsDetail, s.CoreStats,
 		s.PVEStats, s.Weapons, s.LUSR, s.CSR, s.SkillRank,
-		s.ComebackBadges, s.PlayableDuration,
+		s.ComebackBadges, s.PlayableDuration, s.EngagementScores,
 	}
 	for _, f := range flags {
 		if f {
@@ -359,7 +368,7 @@ func (s *SyncScope) NeedsAPI() bool {
 // NeedsLocalOnly retourne true si des traitements locaux (sans API) sont demandés.
 func (s *SyncScope) NeedsLocalOnly() bool {
 	return s.KillerVictim || s.EndTime || s.Sessions || s.Citations ||
-		s.LUSR || s.SkillRank
+		s.LUSR || s.SkillRank || s.EngagementScores
 }
 
 // requestedTypeMap maps scope field → bitmask key for backfill_completed tracking.
@@ -385,6 +394,7 @@ var requestedTypeMap = map[string]string{
 	"Weapons":             "weapons",
 	"LUSR":                "lusr",
 	"CSR":                 "csr",
+	"EngagementScores":    "engagement_scores",
 }
 
 // RequestedTypes retourne la liste des noms de types demandés
@@ -411,6 +421,7 @@ func (s *SyncScope) RequestedTypes() []string {
 		"Weapons":             s.Weapons,
 		"LUSR":                s.LUSR,
 		"CSR":                 s.CSR,
+		"EngagementScores":    s.EngagementScores,
 	}
 	var result []string
 	for fieldName, typeKey := range requestedTypeMap {
