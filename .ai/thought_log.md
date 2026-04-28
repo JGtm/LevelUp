@@ -23372,3 +23372,48 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 - `go build` : OK
 
 **Conclusion / prochaine etape** : Phase 1.1-1.3 valide. Phase 1.4 (port `port/engagement_score.go`) + Phase 1.5 (repository DuckDB) + Phase 1.6 (service orchestrateur) restent a livrer. Pas de commit effectue (en attente de directive utilisateur). Reste aussi Phase 2 (migration DB), Phase 3 (sync/backfill), Phase 4 (API), Phase 5 (frontend), Phase 6 (settings), Phase 7 (glossaire), Phase 8 (tests E2E).
+
+### [2026-04-28] — feat(engagement): Phase 1.4 + 1.5 + 1.6 livrees — En cours
+
+**Statut** : Phases 1.4 / 1.5 / 1.6 livrees ; tests integration repo/service en attente
+
+**Phase 1.4 — Port interfaces livre** :
+- `apps/go-api/internal/port/engagement_score.go` (152 L)
+- `port.EngagementScoreRepository` : `LoadPlayerHistory`, `LoadEngagementCoefficient`, `SaveEngagementScore`, `SaveEngagementCoefficient`, `SaveMatchIntensity`, `LoadMatchIntensity`, `HasEngagementScore`
+- `port.EngagementScoreService` : `ComputeAndPersist`, `GetMatchEngagement`, `GetEngagementProfile`
+- Types : `EngagementHistoryFilter` (avec `Validate`), `MatchEngagementParams`
+- Sentinel : `ErrEngagementUnavailable` (degrade gracieuse pour migration Phase 2 non appliquee)
+
+**Phase 1.5 — Repository DuckDB livre** :
+- `apps/go-api/internal/platform/duckdb/engagement_score_repo.go` (399 L)
+- Implementation des 7 methodes du port avec gating defensif via `information_schema` (verifie colonnes/table avant query)
+- Retour `port.ErrEngagementUnavailable` quand schema absent (Phase 2 pas encore livree)
+- UPSERT pour coefficients (`ON CONFLICT DO UPDATE`)
+- `SaveMatchIntensity` retourne sentinelle volontairement (shared est attache READ_ONLY ; ecriture passe par sync engine en Phase 3)
+- Logging via `slog.{Debug,Error,Warn}Context`, timeouts contextuels (10-30s), erreurs wrappees
+
+**Phase 1.6 — Service orchestrateur livre** :
+- `apps/go-api/internal/service/engagement_score_service.go` (365 L)
+- Combine `port.HighlightEventsRepository` + `port.EngagementScoreRepository` + `temporal.ComputeEngagementScore`
+- 3 methodes publiques : `ComputeAndPersist` (skip si deja calcule sauf force), `GetMatchEngagement` (recompute live), `GetEngagementProfile` (itere categories PvP_ranked/unranked)
+- Defauts neutres en cold start : CoefTeamShare=1.0 / CoefLobbyShare=1.0 (= "fait sa part")
+- Helpers : `partitionEvents`, `eventActorXUID`, `titleSlugFromContext` (fallback halo_infinite)
+- Constante `HistoryWindow = 200` matchs (cf doc reflexion §6.2)
+- Helper public `IsCoefficientStale` (seuil 30 jours)
+- Conformite arch-rules : 0 acces SQL direct, pas d'appel cross-service, erreurs wrappees, slog structure
+
+**Verifications** :
+- `go build` : OK sur 5 packages (port, platform/duckdb, service, analysis/temporal, domain)
+- `go vet` : 0 warning
+- `go test -run "Engagement|Objectif"` : **13/13 PASS** (regression Phase 1.3)
+- Tailles : 152 + 399 + 365 = 916 L cumule, tous fichiers < 500 L individuellement
+
+**Limitations connues a traiter en Phase 3** :
+- `partitionEvents` ne distingue pas coequipiers/ennemis (manque parametre TeamXUIDs). Approximation acceptable en Phase 1.6, raffinee en Phase 3 quand sync fournit les TeamXUIDs.
+- `SaveMatchIntensity` non fonctionnel jusqu'a integration sync engine (Phase 3) qui dispose d'une connexion shared RW.
+
+**Tests non livres dans ce chunk** :
+- Integration repo (DuckDB `:memory:` avec schema applique) — necessite Phase 2 migration livree
+- Service unit (mock des 2 repos) — chunk distinct logique
+
+**Conclusion / prochaine etape** : Phase 1 complete (1.1 -> 1.6). Le service est wirable dans une DI mais pas encore dans server.go (pas de handler associe en Phase 1). Phase 2 suivante = migration DB additive (3 colonnes player_match_enrichment, 1 colonne shared.match_registry, 1 nouvelle table engagement_coefficients) + mappings TOML fields.toml. Effort estime restant : ~8 j-h.
