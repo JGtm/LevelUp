@@ -24,6 +24,8 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 - **Catalogue multi-langue des défis** — toutes les traductions titre/description exposées par le CMS sont stockées localement, normalisées en BCP-47, avec fallback `en-US` si la langue demandée n'est pas disponible.
 
+- **Page d'authentification et d'inscription par invitation** — nouvelle page `/register` : la création de compte est réservée aux personnes disposant d'un code d'invitation transmis par l'administrateur. Le code est validé par l'API avant toute création de compte ; un code expiré ou déjà utilisé affiche un message d'erreur explicite.
+
 ### Modifié
 
 - **Chargement des migrations** — les steps de migration sont maintenant chargés dynamiquement ; les nouveaux modules `add_challenge_metadata` et `add_challenge_snapshots` ne dépendent plus d'une liste d'imports maintenue à la main.
