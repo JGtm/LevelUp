@@ -42,6 +42,9 @@ var notificationDefaultCategories = []struct {
 	{"sync_error", true, "both"},
 	{"personal_record", true, "both"},
 	{"threshold_crossed", true, "both"},
+	// §6 Squad/Sessions overhaul : flow ami.
+	{"friend_added", true, "inapp"},          // notif sobre, pas de toast
+	{"friend_sync_completed", true, "inapp"}, // récap silencieux post-recompute
 }
 
 func init() {

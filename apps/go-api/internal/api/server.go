@@ -309,9 +309,10 @@ func NewRouter(
 				return nil, err
 			}
 			return s.FriendGamertags, nil
-		})
+		}).WithNotifier(reg.NotificationsEmitter)
 		settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
-			WithFriendsOrchestrator(friendsOrchestrator)
+			WithFriendsOrchestrator(friendsOrchestrator).
+			WithNotificationsEmitter(reg.NotificationsEmitter)
 		r.Get("/settings", settingsHandler.GetSettings)
 		r.Patch("/settings", settingsHandler.PatchSettings)
 		r.Post("/settings/media/reset-index", settingsHandler.PostMediaResetIndex)

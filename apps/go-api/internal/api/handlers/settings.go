@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
@@ -28,7 +29,8 @@ type SettingsHandler struct {
 	settingsStore       *settings_platform.Store
 	jobStore            *jobs.Store
 	mediaIndexer        service.MediaIndexer
-	friendsOrchestrator port.FriendsOrchestrator // nil = recompute désactivé (mode legacy)
+	friendsOrchestrator port.FriendsOrchestrator    // nil = recompute désactivé (mode legacy)
+	notifierFor         NotificationsEmitterFactory // nil = pas de notifs friend_added
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -56,6 +58,14 @@ func NewSettingsHandlerWithIndexer(
 // friend_gamertags lors d'un PATCH /settings. §4 plan Squad/Sessions overhaul.
 func (h *SettingsHandler) WithFriendsOrchestrator(o port.FriendsOrchestrator) *SettingsHandler {
 	h.friendsOrchestrator = o
+	return h
+}
+
+// WithNotificationsEmitter branche la factory d'émetteurs pour les notifications
+// friend_added (§6 plan Squad/Sessions overhaul). Sans wiring, le PATCH
+// fonctionne mais aucune notif n'est émise.
+func (h *SettingsHandler) WithNotificationsEmitter(f NotificationsEmitterFactory) *SettingsHandler {
+	h.notifierFor = f
 	return h
 }
 
@@ -147,7 +157,59 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 		}()
 	}
 
+	// §6 plan Squad/Sessions overhaul : notif friend_added pour chaque nouveau
+	// gamertag (set diff prev → next). Best-effort (warn log si l'émetteur
+	// échoue, mais la réponse PATCH reste OK).
+	if h.notifierFor != nil {
+		added := newFriendsAdded(prevFriends, cfg.FriendGamertags)
+		if len(added) > 0 {
+			h.emitFriendsAdded(r.Context(), added)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, settings_platform.ToResponse(cfg))
+}
+
+// newFriendsAdded retourne les gamertags présents dans next mais pas dans prev
+// (set diff case-insensitive + trim, cohérent avec friendGamertagsChanged).
+// Retourne les gamertags **dans la casse next** (préserve la saisie utilisateur).
+func newFriendsAdded(prev, next []string) []string {
+	prevSet := make(map[string]struct{}, len(prev))
+	for _, gt := range prev {
+		prevSet[normalizeGamertag(gt)] = struct{}{}
+	}
+	var added []string
+	for _, gt := range next {
+		if _, ok := prevSet[normalizeGamertag(gt)]; !ok {
+			added = append(added, gt)
+		}
+	}
+	return added
+}
+
+// emitFriendsAdded émet une notification friend_added par nouveau gamertag.
+// La factory est résolue contre le slug courant — fallback warn log si KO.
+func (h *SettingsHandler) emitFriendsAdded(ctx context.Context, added []string) {
+	if h.notifierFor == nil {
+		return
+	}
+	em, err := h.notifierFor(ctx, "")
+	if err != nil || em == nil {
+		slog.WarnContext(ctx, "notifications: friend_added emitter factory failed", "err", err)
+		return
+	}
+	for _, gt := range added {
+		if err := em.Emit(ctx, notifications.EmitInput{
+			Category: notifications.CategoryFriendAdded,
+			Severity: notifications.SeverityInfo,
+			TitleKey: "notif.friend_added.title",
+			BodyKey:  "notif.friend_added.body",
+			Params:   map[string]any{"gamertag": gt},
+			Source:   "settings_handler",
+		}); err != nil {
+			slog.WarnContext(ctx, "notifications: friend_added emit", "gamertag", gt, "err", err)
+		}
+	}
 }
 
 // friendGamertagsChanged compare deux listes (set-equality, case-insensitive).

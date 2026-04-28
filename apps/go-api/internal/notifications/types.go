@@ -25,6 +25,9 @@ const (
 	CategorySyncError          Category = "sync_error"
 	CategoryPersonalRecord     Category = "personal_record"
 	CategoryThresholdCrossed   Category = "threshold_crossed"
+	// §6 Squad/Sessions overhaul : flow ami.
+	CategoryFriendAdded         Category = "friend_added"
+	CategoryFriendSyncCompleted Category = "friend_sync_completed"
 )
 
 // AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).
@@ -36,6 +39,7 @@ func AllCategories() []Category {
 		CategoryChallengeAdded, CategoryChallengeCompleted,
 		CategorySeasonPassLevel, CategorySyncError,
 		CategoryPersonalRecord, CategoryThresholdCrossed,
+		CategoryFriendAdded, CategoryFriendSyncCompleted,
 	}
 }
 
