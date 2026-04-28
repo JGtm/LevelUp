@@ -1,5 +1,22 @@
 # Thought Log
 
+## [2026-04-28] feat(squad+stats): Squad/Sessions §3 UI + §4 CLI + §5 Stats solo
+
+**Statut** : §3, §4, §5 complets côté livraison. §6 (notifs) reste en backlog.
+
+**Décision technique** :
+- **§3 UI integration** : `GamertagCombobox` reçoit une prop optionnelle `onAddAsFriend`. Quand la saisie libre est active (gamertag absent du dropdown) ET la prop est fournie → un CTA secondaire "Ajouter X comme ami" s'affiche sous l'option "Ajouter X" classique. `SquadLayout` câble cette prop sur un state `addFriendGamertag`, qui monte la `AddFriendModal` quand non-null. Pas de couplage forcé : la combobox reste utilisable seule sans le CTA quand `onAddAsFriend` est absent.
+- **§4 CLI bootstrap** : `cmd/levelup/cmd_recompute_friends.go` ajoute la sous-commande `levelup recompute-friends [--dry-run]`. Mode dry-run liste les amis configurés + les player DBs sans toucher la DB. Mode normal délègue à `FriendsOrchestratorService.RecomputeAll`. La garde FALSE intra-recompute rend l'opération idempotente — relancer 2× est sûr.
+- **§5 Stats solo** : Helper partagé `service/session_labels.go::BuildSessionLabelsList(inputs)` extrait la logique min/max + tri DESC pour qu'elle soit réutilisable par `MatchHistoryService` (et future Stats services). `MatchHistoryPageResponse.SessionLabels` exposé + `MatchHistoryQueryRequest.PickedSoloSessionLabels` filtrant côté service (post FilterContext). Front `MatchHistoryPage` rend `SessionMultiSelect` quand `data.session_labels.solo.length > 0`, persiste sur `stats-sessions-${playerSlug}`, reset pagination quand le filtre change. Squad et Stats partagent maintenant la même UI session picker (composant + persistance localStorage par scope).
+
+**Choix volontaires** :
+- §5 ne ré-utilise PAS le global filter store (NavL2) pour le filtre session. Justification : le filtre solo-only est local à la page Stats/Historique, ne doit pas polluer les autres pages (Squad a son propre picker squad-only). LocalStorage scopé par playerSlug permet une persistance utilisateur sans collision.
+- §3 garde la "saisie libre" (ajoute comme coéquipier de stats) ET propose en parallèle "ajouter comme ami" → l'utilisateur conserve les deux flux : "consulter les stats avec X" (sans devenir ami) vs "ajouter X comme ami pour le voir dans les sessions futures".
+
+**Résultats** : 645/645 tests vitest verts (80 fichiers). 5 commits sur `feat/op-squad-friends-flow` (PUNCHLIST split + §3a backend + §4 backend + §3b frontend + §3 UI + §4 CLI + §5).
+
+**Prochaine étape** : §6 (notifications friend_added/friend_sync_completed in-app + Discord) reste en backlog. Push branch + review GS. — OP
+
 ## [2026-04-28] feat(squad): Squad/Sessions §3 friends filter + §4 recompute is_with_friends
 
 **Statut** : Complété (cœur). Reste UI intégration §3 et CLI bootstrap §4.
