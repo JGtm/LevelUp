@@ -1309,6 +1309,8 @@ export interface TeammatesPageResponse {
   teammates: TeammateRow[]
   total_matches: number
   session_labels: SessionLabelsList
+  /** Nombre total d'amis configurés (settings.friend_gamertags). Sert au label UI "parmi N amis". */
+  friends_count: number
   timeseries?: SquadTimeseriesPoint[]
   map_breakdown?: MapBreakdownRow[]
   match_series?: Record<string, SquadMatchSeriesPoint[]>

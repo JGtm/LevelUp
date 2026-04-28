@@ -168,7 +168,9 @@ func NewRouter(
 	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
 	// titleResolver est attaché pour que les services puissent résoudre les
 	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
-	reg := NewServiceRegistry(cfg, tokenProvider).WithTitleResolver(titleResolver)
+	reg := NewServiceRegistry(cfg, tokenProvider).
+		WithTitleResolver(titleResolver).
+		WithSettingsStore(settingsStore)
 
 	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
 	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.

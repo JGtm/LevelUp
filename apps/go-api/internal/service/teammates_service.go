@@ -19,14 +19,24 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// FriendGamertagsResolver retourne la liste courante des amis configurés
+// (app_settings.friend_gamertags). Appelé à chaque requête pour refléter les
+// PATCH settings sans redémarrage.
+type FriendGamertagsResolver func(ctx context.Context) []string
+
 // TeammatesService calcule les stats coéquipiers au format FastAPI.
 type TeammatesService struct {
-	repo port.SquadRepository
+	repo            port.SquadRepository
+	friendGamertags FriendGamertagsResolver
 }
 
 // NewTeammatesService crée un TeammatesService.
-func NewTeammatesService(repo port.SquadRepository) *TeammatesService {
-	return &TeammatesService{repo: repo}
+//
+// friendGamertags : optionnel. Si nil, le filtre amis-only est désactivé
+// (top retourné brut, ancien comportement). Quand fourni, le top dropdown
+// est restreint aux amis configurés.
+func NewTeammatesService(repo port.SquadRepository, friendGamertags FriendGamertagsResolver) *TeammatesService {
+	return &TeammatesService{repo: repo, friendGamertags: friendGamertags}
 }
 
 // GetPage retourne la page Teammates avec options, comparaisons et solo ref.
@@ -40,8 +50,20 @@ func (s *TeammatesService) GetPage(
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: %w", err)
 	}
 
-	// Options (liste des coéquipiers fréquents).
-	options := buildTeammateOptions(topRows)
+	// §3 plan Squad/Sessions : filtre top dropdown aux amis configurés
+	// (settings.friend_gamertags). Hors amis = exclus du dropdown mais
+	// toujours requêtables explicitement via SelectedGamertags + alias.
+	var friendGTs []string
+	if s.friendGamertags != nil {
+		friendGTs = s.friendGamertags(ctx)
+	}
+	dropdownRows := topRows
+	if friendGTs != nil {
+		dropdownRows = filterTopRowsToFriends(topRows, friendGTs)
+	}
+
+	// Options (liste des coéquipiers fréquents — limitée aux amis si configuré).
+	options := buildTeammateOptions(dropdownRows)
 
 	// LoadSynthesisMatches alimente sessionLabels (qu'on filtre derrière par
 	// session escouade ; le code session_labels.solo est conservé pour
@@ -91,10 +113,34 @@ func (s *TeammatesService) GetPage(
 		Teammates:     teammates,
 		TotalMatches:  totalMatches,
 		SessionLabels: sessionLabels,
+		FriendsCount:  len(friendGTs),
 		Timeseries:    timeseries,
 		MapBreakdown:  mapBreakdown,
 		MatchSeries:   matchSeries,
 	}, nil
+}
+
+// filterTopRowsToFriends garde uniquement les lignes dont le gamertag matche
+// (case-insensitive, trim) un ami de friendGamertags. Liste vide = aucune
+// ligne (le user doit ajouter des amis pour peupler le dropdown).
+func filterTopRowsToFriends(rows []domain.TopTeammateRow, friendGamertags []string) []domain.TopTeammateRow {
+	if len(friendGamertags) == 0 {
+		return nil
+	}
+	allowed := make(map[string]struct{}, len(friendGamertags))
+	for _, gt := range friendGamertags {
+		k := strings.ToLower(strings.TrimSpace(gt))
+		if k != "" {
+			allowed[k] = struct{}{}
+		}
+	}
+	out := make([]domain.TopTeammateRow, 0, len(rows))
+	for _, r := range rows {
+		if _, ok := allowed[strings.ToLower(r.Gamertag)]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // extractSynthesisSessionLabels collecte les sessions uniques en séparant solo / escouade,
