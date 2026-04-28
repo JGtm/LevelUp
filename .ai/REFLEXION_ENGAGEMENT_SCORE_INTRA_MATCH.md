@@ -1,33 +1,33 @@
-# Reflexion theorique — Indicateur de "forme du joueur" base sur les donnees in-match
+# Reflexion theorique — Indicateur de "engagement du joueur" base sur les donnees in-match
 
 > **Statut** : reflexion en cours — pas d'implementation. Cadre conceptuel a valider avant tout code.
 > **Date** : 2026-04-28 (revisions iteratives — refonte majeure : passage du composite a 5 sous-signaux vers un **residu unique** sur 3 courbes)
-> **Contexte** : 6e iteration sur le sujet "detection de forme". Les 5 precedentes (LOWESS, EWMA KD,
+> **Contexte** : 6e iteration sur le sujet "detection de engagement". Les 5 precedentes (LOWESS, EWMA KD,
 > Form Score 14 vs 90, Performance Score relatif, Win Streak) reposent toutes sur des **agregats
-> post-match** ET capturent en realite du **skill** plus que de la **forme**. Cette reflexion
+> post-match** ET capturent en realite du **skill** plus que de la **engagement**. Cette reflexion
 > repart d'une distinction stricte entre les deux axes, exploite les timestamps intra-match des
-> `highlight_events`, normalise par l'activite de l'equipe alliee, et **mesure la forme comme
+> `highlight_events`, normalise par l'activite de l'equipe alliee, et **mesure la engagement comme
 > l'ecart entre l'engagement observe et l'engagement attendu** (en fonction du contexte du match
 > et du style historique du joueur).
 
 ---
 
-## 1. Distinction fondamentale : skill vs forme
+## 1. Distinction fondamentale : skill vs engagement
 
 C'est le pivot du concept. Si on confond les deux, on construit un nieme proxy du Performance Score et le signal n'apporte rien.
 
 | Axe | Question repondue | Mesure | Existe deja ? |
 |---|---|---|---|
 | **Skill** | "A quel point sait-il jouer ?" | Qualite des actions (precision, kill/death efficiency, expected delta) | Oui — `analysis/performance_score.go` |
-| **Forme** | "Avec quelle energie joue-t-il ce match-ci ?" | Ecart entre engagement observe et engagement attendu | **A construire** |
+| **Engagement** | "Avec quelle energie joue-t-il ce match-ci ?" | Ecart entre engagement observe et engagement attendu | **A construire** |
 
-**Test de bonne separation** : un joueur peut etre dans 4 etats independants (skill x forme). Si la correlation entre FormScore et PerfScore depasse ~0.5 sur un large echantillon, la separation a echoue.
+**Test de bonne separation** : un joueur peut etre dans 4 etats independants (skill x engagement). Si la correlation entre EngagementScore et PerfScore depasse ~0.5 sur un large echantillon, la separation a echoue.
 
-**Implication critique** : la forme mesure la **quantite et la regularite de l'engagement**, pas la qualite des actions. Un joueur qui meurt 15 fois mais reste actif est plus "en forme" qu'un joueur qui meurt 3 fois en restant cache.
+**Implication critique** : la engagement mesure la **quantite et la regularite de l'engagement**, pas la qualite des actions. Un joueur qui meurt 15 fois mais reste actif est plus "en engagement" qu'un joueur qui meurt 3 fois en restant cache.
 
 ---
 
-## 2. Concept central : la forme comme **residu** de l'engagement attendu
+## 2. Concept central : la engagement comme **residu** de l'engagement attendu
 
 C'est le coeur du design refactor.
 
@@ -37,17 +37,17 @@ A chaque instant `t` du match, on peut calculer ce que le joueur **aurait du fai
 1. Le **contexte du match** : activite globale, position de son equipe vs ennemie
 2. Son **style historique** : sa part habituelle dans le travail collectif
 
-L'**engagement attendu** est cette prediction. La **forme** est l'ecart entre l'observe et l'attendu, integre sur le match.
+L'**engagement attendu** est cette prediction. La **engagement** est l'ecart entre l'observe et l'attendu, integre sur le match.
 
 ```
-forme(t)        = pace_joueur(t) - pace_attendu(t)
-FormScore_match = percentile(mean_t forme(t), distribution_historique_du_joueur)
+engagement(t)        = pace_joueur(t) - pace_attendu(t)
+EngagementScore_match = percentile(mean_t engagement(t), distribution_historique_du_joueur)
 ```
 
 Sortie : un seul nombre 0-100 par match, **directement lisible** :
-- 50 = ecart moyen comme d'habitude (forme normale pour ce joueur)
-- > 50 = ecart moyen plus positif que d'habitude (en forme)
-- < 50 = ecart moyen plus negatif que d'habitude (sous-forme)
+- 50 = ecart moyen comme d'habitude (engagement normale pour ce joueur)
+- > 50 = ecart moyen plus positif que d'habitude (en engagement)
+- < 50 = ecart moyen plus negatif que d'habitude (sous-engagement)
 
 ### 2.2 Calcul de l'engagement attendu (version MVP)
 
@@ -61,8 +61,8 @@ Exemple :
 - Joueur historiquement a `coef_team_share = 1.12` (prend 28 % du travail dans un 4v4 ou la fair share serait 25 %)
 - A `t = 5min`, son equipe alliee fait 12 events/min/joueur
 - Pace attendu : 1.12 × 12 = **13.4 events/min**
-- S'il fait 16 : au-dessus de l'attendu, en forme ce moment-la
-- S'il fait 9 : en-dessous, sous-forme ce moment-la
+- S'il fait 16 : au-dessus de l'attendu, en engagement ce moment-la
+- S'il fait 9 : en-dessous, sous-engagement ce moment-la
 
 La courbe attendue **suit dynamiquement la courbe equipe**, mais a son ratio personnel. Quand l'equipe est en feu, son attendu monte. Quand l'equipe subit, son attendu baisse. Le joueur n'est juge que sur son **ecart a ce qui etait raisonnable de lui dans ce contexte**.
 
@@ -90,7 +90,7 @@ Intra-match          3 courbes superposees                  "A cet instant, j'et
 (Match View)         (equipe / attendu / joueur)             au-dessus / en-dessous
                                                              de mon attendu"
 
-Match (carte)        1 nombre = percentile du residu mean   "Sur ce match, FormScore 62"
+Match (carte)        1 nombre = percentile du residu mean   "Sur ce match, EngagementScore 62"
 
 Session              Batons signes par match                Pattern warmup / plateau /
 (5-15 matchs)        hauteur = delta brut                   burnout immediatement
@@ -117,7 +117,7 @@ Semantique partout identique : **ecart a l'attendu**. Aucune rupture conceptuell
 | `assist` | PlayerXUID | Compte engagement |
 | `medal` | PlayerXUID | Compte engagement |
 
-Le calcul forme utilise :
+Le calcul engagement utilise :
 - Events du joueur cible
 - Events de ses coequipiers humains (pour `pace_team_per_player`)
 - Events du lobby entier (pour `coef_lobby_share` exposable independamment, cf §7.2)
@@ -130,10 +130,10 @@ Pour ne pas sous-estimer l'engagement dans les modes objectif (CTF, Strongholds,
 events_objectif_estimes = (personal_score - 100*kills - 50*assists) / poids_unitaire_objectif
 ```
 
-Avec `poids_unitaire_objectif` calibre par mode (~ 25 points par capture). Ces events virtuels sont **ajoutes au total brut** pour le calcul de `pace_joueur` et `pace_team` (sans timestamp, donc repartis uniformement sur la duree du match).
+Avec `poids_unitaire_objectif` calibre par mode (~ 25 points par capture). Ces events virtuels sont **ajoutes au total brut** pour le calcul de `pace_joueur` et `pace_team` (sans timestamp, donc repartis uniengagementment sur la duree du match).
 
 Limites :
-- C'est un agregat post-match (pas exploitable pour la courbe instantanee — repartition uniforme)
+- C'est un agregat post-match (pas exploitable pour la courbe instantanee — repartition uniengagement)
 - Mode-dependant (Slayer pur = ~0 points objectif, donc pas d'apport)
 
 ### 4.3 Donnees a ne **pas** utiliser
@@ -145,7 +145,7 @@ Limites :
 
 ### 4.4 Boundary du match (point en cours de calibration)
 
-Le module FormScore est **agnostique sur la methode de detection du match start/end**. Il prend `matchStartMS` et `matchEndMS` comme inputs. Toute amelioration future de la detection se propage sans modification du module.
+Le module EngagementScore est **agnostique sur la methode de detection du match start/end**. Il prend `matchStartMS` et `matchEndMS` comme inputs. Toute amelioration future de la detection se propage sans modification du module.
 
 ### 4.5 Perimetre et exclusions
 
@@ -162,7 +162,7 @@ Le module FormScore est **agnostique sur la methode de detection du match start/
 **Limites connues acceptees v1** :
 - **Lobby vide post-quitters** : cas rare, traite v2.
 - **Composition d'equipe variable au fil du match** (3v4 apres quitter) : recalcul dynamique de `N_team`. Marginal en pratique.
-- **Match court (< 3 min)** : trop peu d'events -> FormScore = null.
+- **Match court (< 3 min)** : trop peu d'events -> EngagementScore = null.
 
 ---
 
@@ -186,9 +186,9 @@ pace_attendu_joueur(t)  = coef_team_share * pace_team_per_player(t)
 
 | Configuration | Interpretation |
 |---|---|
-| Joueur **au-dessus de l'attendu** en continu | En forme — porte plus que d'habitude |
-| Joueur **a niveau de l'attendu** | Forme normale pour ce joueur dans ce contexte |
-| Joueur **sous l'attendu** en continu | Sous-forme — fait moins que ce que ses habitudes laissaient prevoir |
+| Joueur **au-dessus de l'attendu** en continu | En engagement — porte plus que d'habitude |
+| Joueur **a niveau de l'attendu** | Engagement normale pour ce joueur dans ce contexte |
+| Joueur **sous l'attendu** en continu | Sous-engagement — fait moins que ce que ses habitudes laissaient prevoir |
 | Joueur qui plonge sous l'attendu apres une mort | Mort qui le sort du jeu (signal de tilt visible) |
 | Joueur qui spike au-dessus en fin | Push final ou come-back |
 
@@ -206,20 +206,20 @@ Annotations superposees :
 
 ### 5.4 Pourquoi pas de trace lobby ni trace ennemie
 
-La dynamique lobby (tug of war, cadence globale, pression ennemie) est **deja couverte** ailleurs sur Match View. La courbe forme se concentre sur ce qui lui est unique : le rapport **joueur vs son attendu**. Pas de duplication.
+La dynamique lobby (tug of war, cadence globale, pression ennemie) est **deja couverte** ailleurs sur Match View. La courbe engagement se concentre sur ce qui lui est unique : le rapport **joueur vs son attendu**. Pas de duplication.
 
 ---
 
-## 6. Le residu unique — calcul du FormScore
+## 6. Le residu unique — calcul du EngagementScore
 
 ### 6.1 Formule
 
 ```
-FormScore_brut = mean_t (pace_joueur(t) - pace_attendu_joueur(t))     // residu moyen sur le match
-FormScore_0_100 = percentile(FormScore_brut, distribution_historique_du_joueur)
+EngagementScore_brut = mean_t (pace_joueur(t) - pace_attendu_joueur(t))     // residu moyen sur le match
+EngagementScore_0_100 = percentile(EngagementScore_brut, distribution_historique_du_joueur)
 ```
 
-`distribution_historique_du_joueur` = les FormScore_brut de ses 200 derniers matchs sur la meme categorie de mode.
+`distribution_historique_du_joueur` = les EngagementScore_brut de ses 200 derniers matchs sur la meme categorie de mode.
 
 50 = ecart moyen comme d'habitude. > 50 = au-dessus de son habituel. < 50 = en-dessous.
 
@@ -227,7 +227,7 @@ FormScore_0_100 = percentile(FormScore_brut, distribution_historique_du_joueur)
 
 **Recommandation** : fenetre adaptative `min(200, all_matches_same_category)` avec seuil minimum **30 matchs**.
 
-- < 30 matchs sur la categorie : FormScore non calcule, retourne `null` (cold start)
+- < 30 matchs sur la categorie : EngagementScore non calcule, retourne `null` (cold start)
 - 30-200 matchs : tous utilises pour la baseline
 - > 200 matchs : on plafonne aux 200 plus recents (le metagame derive)
 
@@ -251,7 +251,7 @@ Pas besoin de pastilles decomposees. La courbe raconte tout. Pour un narratif te
 
 ## 7. Les statistiques personnelles connexes (exposees independamment)
 
-Le calcul du FormScore produit en sous-produit deux statistiques personnelles utiles ailleurs.
+Le calcul du EngagementScore produit en sous-produit deux statistiques personnelles utiles ailleurs.
 
 ### 7.1 EngagementCoefficient — `coef_team_share`
 
@@ -292,7 +292,7 @@ match_intensity = pace_lobby_total_per_player_per_min sur la duree complete du m
 
 Caracteristique objective du match, independante du joueur. Permet :
 - Affichage Match View : badge "Intensite du match : 14.2 events/min — chaotique (P88 vs ton historique)"
-- Filtre Timeseries : "afficher seulement ma forme sur les matchs > P75 d'intensite"
+- Filtre Timeseries : "afficher seulement ma engagement sur les matchs > P75 d'intensite"
 - Coloration / dimensionnement des batons Timeseries selon intensite (raffinement viz)
 - Profil joueur (v2) : "ce joueur est plus engage dans les matchs intenses que calmes"
 
@@ -318,9 +318,9 @@ Variantes considerees mais non retenues :
 
 ### 8.2 Carte synthese (vignette match)
 
-Affichage compact d'un FormScore 0-100 + un mini-sparkline du residu :
+Affichage compact d'un EngagementScore 0-100 + un mini-sparkline du residu :
 - Pastille couleur (vert / orange / rouge selon zone P25-P75 personnelle)
-- Texte "FormScore 62 — au-dessus de votre habitude"
+- Texte "EngagementScore 62 — au-dessus de votre habitude"
 - Optionnel : sparkline 30 px de hauteur du residu
 
 Voir mockup `mock_4`.
@@ -342,13 +342,13 @@ Variantes considerees mais non retenues :
 - `mock_8` : version originale a Y fixe — remplace par Mock 11 pour les memes raisons que Mock 1 → Mock 10
 - `mock_5` : batons positifs colores (option B) — initialement leading, abandonnee pour preserver la consistance visuelle avec Match View
 - `mock_6` : batons signes centres sur zero (option A) — alternative diagnostic detaille
-- `mock_9` : 2-lignes (lignes continues + batons FormScore alignes) — variante densitee si besoin futur
+- `mock_9` : 2-lignes (lignes continues + batons EngagementScore alignes) — variante densitee si besoin futur
 
 ### 8.4 Timeseries long — batons agreges par session
 
-Pour 50-500 matchs. Voir mockup `mock_7`.
+Pour 50-500 matchs. **Decision en attente** — aucun mockup valide. Mock 7 (batons agreges par session, largeur variable proportionnelle au nb matchs) avait ete propose initialement mais jamais valide avec utilisateur. Voir mockup `mock_7` comme reference visuelle sans engagement.
 
-- 1 baton = 1 session, hauteur = mean FormScore de la session
+- 1 baton = 1 session, hauteur = mean EngagementScore de la session
 - Largeur du baton proportionnelle au nombre de matchs de la session
 - Coloration : vert > P75, orange P25-P75, rouge < P25
 - Bande P25-P75 personnelle fixe en arriere-plan
@@ -361,9 +361,10 @@ Optionnellement transposable au format Mock 8 (3 traces agregees par session) si
 |---|---|---|
 | **Match View** (intra-match, single-player) | **Mock 10** | 3 traces continues, 1 point = 10s, auto-zoom Y + hierarchie visuelle |
 | **Session / Periode** (single-player) | **Mock 11** | 3 traces discretes, 1 point = 1 match, auto-zoom Y + hierarchie visuelle |
-| **Session / Periode squad** (2-4 joueurs) | **Mock 12** | N traces de residus signes autour de 0, auto-zoom Y, comparaison parallele |
-| Carte synthese | Mock 4 | Vignette compacte avec FormScore + sparkline |
-| Timeseries long | Mock 7 | Batons agreges par session (largeur variable) |
+| **Squad Page principale** (analyse equipe) | **Mock 15 v2** (VALIDE) | 3 courbes team-level (lobby / attendu / observee) + chips squad pour overlay 1 joueur a la fois |
+| Squad — onglet "Comparaison" (optionnel v2) | Mock 13 ou 14 | Comparaison inter-joueurs en parallele si besoin |
+| Carte synthese | Mock 4 | Vignette compacte avec EngagementScore + sparkline |
+| Timeseries long | (decision en attente) | Aucun mockup valide — Mock 7 propose mais non valide |
 
 Cle de coherence : Mock 10 et Mock 11 partagent la meme grammaire visuelle (3 traces equipe / attendu / joueur, hierarchie visuelle identique, auto-zoom). L'utilisateur garde le meme reflexe de lecture entre les echelles intra-match et session, juste un zoom temporel different.
 
@@ -387,54 +388,86 @@ Ces deux exigences combinees permettent de rendre les variations subtiles de 0.5
 
 **Rejetes explicitement** (decisions actees) :
 - Pas de gap shading (remplissage colore entre joueur et attendu) — esthetique non retenue
-- Pas de pastille FormScore en coin de chart — non retenue
+- Pas de pastille EngagementScore en coin de chart — non retenue
 
-La pastille FormScore sera disponible dans la **carte synthese du match** (Mock 4) qui est un autre composant, pas dans le chart lui-meme.
+La pastille EngagementScore sera disponible dans la **carte synthese du match** (Mock 4) qui est un autre composant, pas dans le chart lui-meme.
 
-### 8.7 Extension squad — vue session/periode pour 2 a 4 joueurs (VALIDE)
+### 8.7 Extension squad — vue session/periode pour 2 a 4 joueurs (VALIDE — Mock 15 v2)
 
-**Mock 12 retenu** pour la vue **session/periode squad**. Rupture grammaticale assumee vs Mock 11 single-player parce que le besoin cognitif est different : ici on veut **comparer en parallele** les coequipiers, pas lire individuellement.
+Le besoin cognitif est different de Mock 10/11 single-player : ici on veut **comparer en parallele** les coequipiers, pas lire individuellement.
 
-Format :
-- 1 chart unique, axe Y centre sur 0 avec auto-zoom
-- N traces de **residus signes** : `joueur_i − attendu_i` par match, pour chaque membre du squad
-- Ligne 0 = "exactement a l'attendu personnel" (chaque joueur compare a son propre attendu, pas un attendu commun)
-- Joueur cible en bleu epais 4px (continuite avec Mock 10/11), coequipiers en couleurs distinctes 2.5px
-- Auto-zoom Y avec affichage du range dans le label
+**Principe central retenu** : utiliser des **residus signes** (`joueur_i − attendu_i` par match) plutot que des paces absolus. Les paces absolus mentent en comparaison inter-joueurs car un coef 1.3 a un attendu plus haut qu'un coef 0.8. Seuls les residus sont comparables entre joueurs (chacun mesure contre sa propre baseline).
 
-Pourquoi cette rupture est legitime :
-- Sur Mock 10/11, le besoin = "diagnostic de mon match/ma session" (pace absolu + attendu utiles)
-- Sur Mock 12, le besoin = "qui dans le squad porte/decroche" (comparaison parallele indispensable)
-- Les paces absolus mentent en comparaison inter-joueurs : un coef 1.3 a un attendu plus haut qu'un coef 0.8. Comparer leurs paces brut melange style et forme.
-- Seuls les **residus** sont comparables entre joueurs (chacun mesure contre sa propre baseline)
-
-Lecture cle :
-- **Synchronisation** : les N traces bougent ensemble vers le haut/bas → squad-flow ou burnout collectif
+**Lectures cles attendues** :
+- **Synchronisation** : les N traces bougent ensemble → squad-flow ou burnout collectif
 - **Divergence** : 1 trace en haut pendant que les autres baissent → solo-carry
 - **Incoherence** : traces dispersees autour de 0 → squad pas aligne ce match-la
 
-Variantes considerees mais non retenues :
+**Deux familles de besoin distinctes** :
+
+1. **Comparaison inter-joueurs** ("qui porte / qui decroche") -> Mock 13 ou 14
+2. **Analyse team-level avec drill par joueur on-demand** ("comment l'equipe a fait, et ou se situe un joueur") -> Mock 15 v2
+
+Les deux sont legitimes et peuvent coexister dans des onglets differents de la Squad Page.
+
+**Variantes mockees** :
+
+| Mock | Famille | Approche | Quand l'utiliser |
+|---|---|---|---|
+| `mock_12` | Comparaison | Minimal : 4 residus + ligne 0 | (archive — trop ascetique) |
+| `mock_13` | Comparaison | Mock 12 + bande P25-P75 + team_residual fantome | Espace ecran limite, comparaison enrichie |
+| `mock_14` | Comparaison | Two-row : Mock 11 du cible (top) + Mock 12 squad (bottom) | Onglet "Comparaison squad" avec hauteur disponible |
+| `mock_15` | **Analyse team + drill** | **3 courbes team-level + chips squad pour overlay 1 joueur a la fois** | **Squad Page principale &mdash; analyse au niveau equipe** |
+
+**Decision retenue par utilisateur** : Mock 15 v2 comme **vue principale Squad Page** (analyse equipe). Mock 13 ou 14 comme onglet secondaire si la comparaison inter-joueurs est utile.
+
+Mock 12 et Mock 15 v1 (drill-down 5 rows) sont explicitement abandonnes.
+
+**Mock 15 v2 specificite** :
+- **3 courbes team-level toujours visibles** :
+  - **Lobby** = `pace_lobby_per_player` (referentiel externe, trace pale dashed)
+  - **Attendu equipe** = `mean(coef_lobby_share_i pour i in squad) × pace_lobby_per_player` (ce que l'equipe aurait du faire vu le style historique de ses membres, trace dashed plus marquee)
+  - **Equipe observee** = `pace_team_per_player` (ce que l'equipe a fait, trace pleine plus epaisse)
+- **Chips squad sous le chart** : 1 chip par membre du squad (2 a 4). Click une chip = la courbe `pace_joueur_observe` du joueur s'ajoute en overlay sur le meme row, en couleur saturee. Click la chip active = retire la courbe. Click une autre chip = swap.
+- **Lecture par defaut** : "comment l'equipe a fait par rapport a son attendu et a la fair share lobby"
+- **Lecture overlay** : "ou se situe ce joueur par rapport a l'attendu equipe ?" -- pour une equipe equilibree, un joueur sous l'attendu equipe se dit "j'ai fait moins que ma part attendue"
+- **Pas de comparaison inter-joueurs ici** : 1 joueur visible a la fois. Pour comparer, l'utilisateur cycle les chips. Pour la comparaison parallele, c'est Mock 13/14.
+
+**Avantages Mock 15 v2** :
+- 1 seule row, compact (~280px)
+- Vue par defaut deja narrativement riche (3 courbes team) sans surcharger
+- Drill on-demand sans changer de page ni de chart
+- Chips reutilisables ailleurs (selecteur joueur generique)
+- Coherent avec le besoin "Squad Page = analyse de l'equipe" plutot que "Squad Page = comparaison entre joueurs"
+
+**Calcul du `team_residual`** (Mock 13 et v2 si ajoute a 14) :
+```
+team_residual(t) = pace_team_per_player(t) - mean(squad_attendus_per_player(t))
+```
+En production, inclut les coequipiers non-squad du match si applicable. Dans les mocks, simplifie en moyenne des residus du squad (proxy acceptable car a 4 squad members on a souvent l'equipe entiere).
+
+**Variantes considerees mais non retenues** :
 - **Small multiples** (4 mini Mock 11s empiles) : preserve la grammaire single-player mais lecture sequentielle au lieu de parallele → rate l'objectif de comparaison entre coequipiers
-- **Multi-trace single chart avec equipe + attendus + joueurs** : 9 lignes pour 4 joueurs → illisible
+- **Multi-trace single chart avec equipe + attendus + joueurs absolus** : 9 lignes pour 4 joueurs → illisible
 - **Heatmap session × joueur** : tres compact mais lecture categorielle (pas de magnitude) → en complement v2 si squad > 4 joueurs
 
-Reutilisation existante :
+**Reutilisation existante** :
 - `internal/service/squad_service_v2.go` charge deja les events par `MatchIDs` partages — meme dataset
 - Chaque joueur a son `coef_team_share` deja calcule individuellement (load batch des N coefs)
 - Le `pace_attendu_i` se calcule pour chaque joueur i avec son coef propre
 
-Pour la vue **Match View squad** (intra-match) : a designer ulterieurement, mais probablement small multiples (Mock 10 mini × N) parce qu'a l'echelle intra-match l'usage est plutot diagnostic individuel par joueur, pas comparatif. Donc grammaire Mock 10 preservee pertinente.
+**Vue Match View squad** (intra-match) : a designer ulterieurement, mais probablement small multiples (Mock 10 mini × N) parce qu'a l'echelle intra-match l'usage est plutot diagnostic individuel par joueur, pas comparatif. Donc grammaire Mock 10 preservee pertinente.
 
 ---
 
 ## 9. Architecture cible (haut niveau)
 
-Module a creer : `apps/go-api/internal/analysis/temporal/form_score.go`
+Module a creer : `apps/go-api/internal/analysis/temporal/engagement_score.go`
 
 ### 9.1 Inputs
 
 ```
-type FormScoreInput struct {
+type EngagementScoreInput struct {
     PlayerEvents    []canonical.HighlightEvent  // events filtres pour le xuid cible
     TeamEvents      []canonical.HighlightEvent  // events autres coequipiers humains (bots filtres)
     LobbyEvents     []canonical.HighlightEvent  // events lobby entier (humains)
@@ -445,22 +478,22 @@ type FormScoreInput struct {
     MatchEndMS      int64                       // boundary externe
     History         []HistoricalFormBrut        // residus bruts des 200 matchs precedents pour percentile
     CoefTeamShare   float64                     // coefficient personnel (categorie de mode)
-    CoefLobbyShare  float64                     // expose ailleurs, pas utilise dans calcul forme
+    CoefLobbyShare  float64                     // expose ailleurs, pas utilise dans calcul engagement
     PersonalScore   int                         // pour calcul events_objectif_estimes (cf 4.2)
     Mode            ModeCategory                // PvP_team / PvP_ffa / PvP_1v1
 }
 
 type HistoricalFormBrut struct {
     MatchID  string
-    Brut     float64  // FormScore_brut de ce match
+    Brut     float64  // EngagementScore_brut de ce match
 }
 ```
 
 ### 9.2 Outputs
 
 ```
-type FormScoreOutput struct {
-    FormScore        float64                  // 0-100 (percentile)
+type EngagementScoreOutput struct {
+    EngagementScore        float64                  // 0-100 (percentile)
     ResidualBrut     float64                  // valeur brute (mean joueur - attendu)
     EngagementCurve  []EngagementPoint        // les 3 traces pour Match View
     MatchIntensity   float64                  // events/min/joueur du lobby (caracteristique match)
@@ -489,7 +522,7 @@ type EngagementPoint struct {
 
 | Donnee | Strategie | Justif |
 |---|---|---|
-| FormScore 0-100 + ResidualBrut par match | **Stocke** dans `player_match_enrichment` | Calcul lourd (percentile sur 200 matchs), relu frequemment |
+| EngagementScore 0-100 + ResidualBrut par match | **Stocke** dans `player_match_enrichment` | Calcul lourd (percentile sur 200 matchs), relu frequemment |
 | Courbe intra-match (`EngagementCurve`) | **Live** depuis `highlight_events` | Leger (50-100 events), non re-utilise hors Match View |
 | `coef_team_share`, `coef_lobby_share` | **Stocke** par categorie | Mediane glissante 200 matchs, recalcule periodiquement |
 | `match_intensity` | **Stocke** au niveau match | Caracteristique permanente du match |
@@ -498,7 +531,7 @@ type EngagementPoint struct {
 
 ## 10. Hypotheses a valider avant implementation
 
-H1. **Le FormScore est-il decorrele du PerfScore ?** Sur 500 matchs, `corr(FormScore, PerfScore)` < 0.5. Si > 0.5, separation echouee.
+H1. **Le EngagementScore est-il decorrele du PerfScore ?** Sur 500 matchs, `corr(EngagementScore, PerfScore)` < 0.5. Si > 0.5, separation echouee.
 
 H2. **Le modele "attendu = coef × team" predit-il bien dans la pratique ?** Sur 100 matchs, calculer R² entre `pace_attendu` et `pace_joueur` reel. Si R² < 0.3, le modele MVP est trop simple — passer aux baselines conditionnelles par intensite (cf §13).
 
@@ -506,7 +539,7 @@ H3. **Le coefficient `coef_team_share` est-il stable dans le temps ?** Calculer 
 
 H4. **Cold start** : combien de joueurs ont < 30 matchs sur leur categorie principale ? Si majorite, abaisser seuil a 20.
 
-H5. **Test critique de la separation skill / forme** : sur des matchs ou le joueur a haute perf et bas engagement (ou inverse), le FormScore et PerfScore divergent-ils comme attendu ?
+H5. **Test critique de la separation skill / engagement** : sur des matchs ou le joueur a haute perf et bas engagement (ou inverse), le EngagementScore et PerfScore divergent-ils comme attendu ?
 
 H6. **Match intensity comme contexte** : est-ce que la repartition `coef_team_share` varie significativement selon match_intensity (P33 / P66 buckets) ? Si oui, justifie l'evolution v2 vers baselines conditionnelles.
 
@@ -522,12 +555,12 @@ H7. **Score d'objectif (cf 4.2)** : la formule de proxy events_objectif est-elle
 - **FFA / 1v1** : fallback automatique sur lobby_share.
 - **Lobby vide post-quitters** : cas rare, traite v2.
 - **Composition d'equipe variable** : recalcul dynamique `N_team`, marginal en pratique.
-- **Match court (< 3 min)** : FormScore = null.
+- **Match court (< 3 min)** : EngagementScore = null.
 - **Modele MVP `attendu = coef × team` est lineaire et statique** : si H2 montre R² insuffisant, evolution vers regression contextuelle (intensity, score gap, etc.) ou conditional baselines.
 - **Precision matchStart en cours de calibration** : la courbe est decalee si imprecise, mais le residu mean est robuste car `pace_joueur` et `pace_attendu` sont decales pareil.
 - **Stats per-minute API insuffisamment precises** : tous ratios recalcules depuis timestamps bruts.
 - **Morts passives non comptees comme sous-score numerique** : annotation visuelle uniquement.
-- **Score d'objectif sans timestamp** : reparti uniformement, ne contribue pas a la forme intra-match (seulement au compte total).
+- **Score d'objectif sans timestamp** : reparti uniengagementment, ne contribue pas a la engagement intra-match (seulement au compte total).
 
 ---
 
@@ -535,19 +568,19 @@ H7. **Score d'objectif (cf 4.2)** : la formule de proxy events_objectif est-elle
 
 Avant de committer du code, valider **conceptuellement** sur 7 cas :
 
-1. **Joueur en bonne forme connue** : 5 matchs ou ca tournait -> FormScore > 60 attendu.
-2. **Joueur en creux** : 5 matchs ou il n'y arrivait pas -> FormScore < 40 attendu.
+1. **Joueur en bonne engagement connue** : 5 matchs ou ca tournait -> EngagementScore > 60 attendu.
+2. **Joueur en creux** : 5 matchs ou il n'y arrivait pas -> EngagementScore < 40 attendu.
 3. **Joueur en session bruyante** : warmup puis burnout -> les batons doivent tracer le pattern.
-4. **Joueur skill mais atone** : PerfScore eleve, peu d'engagements -> FormScore < 50, PerfScore > 70.
-5. **Joueur moyen mais investi** : PerfScore moyen, beaucoup d'engagements -> FormScore > 60, PerfScore ~ 50.
-6. **Joueur sur equipe steamrollee** mais qui fait sa part interne : FormScore ~ 50 (normal pour son contexte).
-7. **Joueur sur equipe dominante mais passager** : FormScore < 50 (sous-engage par rapport a son attendu eleve).
+4. **Joueur skill mais atone** : PerfScore eleve, peu d'engagements -> EngagementScore < 50, PerfScore > 70.
+5. **Joueur moyen mais investi** : PerfScore moyen, beaucoup d'engagements -> EngagementScore > 60, PerfScore ~ 50.
+6. **Joueur sur equipe steamrollee** mais qui fait sa part interne : EngagementScore ~ 50 (normal pour son contexte).
+7. **Joueur sur equipe dominante mais passager** : EngagementScore < 50 (sous-engage par rapport a son attendu eleve).
 
 Tests unitaires obligatoires (au moment de coder) :
-- 0 events -> FormScore null
-- Match symetrique (events uniformes joueur ET equipe) avec joueur = attendu -> FormScore ~ 50
-- Joueur qui surperforme constamment l'attendu -> FormScore > 80
-- matchStartMS imprecise (decalage 5s) -> FormScore reste robuste (decalage absorbe par les deux paces)
+- 0 events -> EngagementScore null
+- Match symetrique (events uniengagements joueur ET equipe) avec joueur = attendu -> EngagementScore ~ 50
+- Joueur qui surperengagement constamment l'attendu -> EngagementScore > 80
+- matchStartMS imprecise (decalage 5s) -> EngagementScore reste robuste (decalage absorbe par les deux paces)
 - Mode FFA -> fallback sur lobby_share automatique
 - Equipe entiere a 0 events sauf le joueur -> ratio division par zero protege
 - `coef_team_share = 0` (joueur structurellement passif) -> attendu = 0 partout, residu = pace_joueur
@@ -591,21 +624,21 @@ A activer **uniquement si valide par H2/H6**.
 - `apps/go-api/internal/migration/steps_shared.go:118-126` — schema `highlight_events`
 - `apps/web/src/components/charts/TimeseriesLineChart.tsx` — composant graphe inter-match
 - `.ai/SPEC_ECHARTS_TIMESERIES.md` — blueprint buildOption ECharts
-- `.ai/mockups/forme/forme_visualizations.html` — 6+ mockups visuels
+- `.ai/mockups/engagement/engagement_visualizations.html` — 6+ mockups visuels
 
 ---
 
 ## 15. Hors scope volontaire
 
 - Implementation Go (theorie tant que H1-H7 non validees sur donnees reelles)
-- Comparaison inter-joueurs sur le FormScore (intra-personnel par construction)
+- Comparaison inter-joueurs sur le EngagementScore (intra-personnel par construction)
 - Coupe par playlist a l'interieur d'une categorie de mode
 - Prise en compte du teammate quality (ponderation par MMR coequipiers)
 - Detection automatique de tilt / fatigue (label categoriel)
 - Generation narratif texte automatique (v2 a partir des dimensions visuelles)
 - PvE / Firefight non couverts v1
 - Lobby massivement quitte non gere v1
-- Trace lobby/ennemie sur la courbe forme : deja couvert par tug of war + cadence existants
+- Trace lobby/ennemie sur la courbe engagement : deja couvert par tug of war + cadence existants
 
 ---
 
@@ -623,22 +656,23 @@ A activer **uniquement si valide par H2/H6**.
 
 Au moment de l'implementation, il faudra livrer en parallele les artefacts documentaires suivants :
 
-- **[ ] Glossaire applicatif** : ajouter une entree dediee au concept "FormScore" qui explique :
-  - La distinction skill (PerfScore) vs forme (FormScore) — pour eviter la confusion utilisateur
+- **[ ] Glossaire applicatif** : ajouter une entree dediee au concept "EngagementScore" qui explique :
+  - La distinction skill (PerfScore) vs engagement (EngagementScore) — pour eviter la confusion utilisateur
   - La formule du residu : "ecart entre engagement observe et engagement attendu, vu ton style historique"
   - La lecture des 3 courbes (equipe / attendu / joueur) sur Match View et Session
-  - L'interpretation des 3 zones (en forme > P75, normale P25-P75, sous-forme < P25)
+  - L'interpretation des 3 zones (en engagement > P75, normale P25-P75, sous-engagement < P25)
 - **[ ] Glossaire EngagementCoefficients** :
   - `coef_team_share` : "part historique du joueur dans le travail de ses equipes"
   - `coef_lobby_share` : "part historique du joueur dans l'action totale du lobby"
   - Lecture combinee des deux (cf §7.2 du present doc)
 - **[ ] Glossaire MatchIntensity** : caracteristique objective du match (events/min/joueur lobby), comparable inter-matchs
-- **[ ] Manifest i18n** : creer `apps/web/src/lib/i18n/manifests/forme.toml` avec :
+- **[ ] Manifest i18n** : creer `apps/web/src/lib/i18n/manifests/engagement.toml` avec :
   - Labels FR/EN des 3 traces (Equipe alliee / Attendu / Toi)
-  - Phrases narratives types (au-dessus de votre habitude, sous-forme, etc.)
+  - Phrases narratives types (au-dessus de votre habitude, sous-engagement, etc.)
   - Tooltips de chaque mockup
-- **[ ] Documentation hypotheses validation** : seuils de declenchement de FormScore (cold start a 30 matchs), conditions d'invalidation (match < 3 min, lobby majoritairement quitte), modes exclus (PvE, FFA fallback)
-- **[ ] Mockup file synchronise** : `.ai/mockups/forme/forme_visualizations.html` doit refleter **Mock 10** (Match View) et **Mock 11** (Session) comme choix valides finaux, avec exigences §8.6 (auto-zoom + hierarchie visuelle)
+- **[ ] Documentation hypotheses validation** : seuils de declenchement de EngagementScore (cold start a 30 matchs), conditions d'invalidation (match < 3 min, lobby majoritairement quitte), modes exclus (PvE, FFA fallback)
+- **[ ] Mockup file synchronise** : `.ai/mockups/engagement/engagement_visualizations.html` doit refleter **Mock 10** (Match View) + **Mock 11** (Session single-player) + **Mock 15 v2** (Squad Page) comme choix valides finaux, avec exigences §8.6 (auto-zoom + hierarchie visuelle)
+- **[ ] Plan d'implementation** : `.ai/PLAN_ENGAGEMENT_IMPLEMENTATION.md` — plan structure en 14 sections avec phases, decoupage en chunks livrables, tests par couche, regles arch-rules, integration sync/backfill avec option force, settings page
 
 ---
 
@@ -646,13 +680,13 @@ Au moment de l'implementation, il faudra livrer en parallele les artefacts docum
 
 | # | Approche | Statut | Pourquoi insatisfaisant |
 |---|---|---|---|
-| 1 | LOWESS sur perf_score (Squad V2) | Actif | Lisse du **skill**, pas de la forme |
+| 1 | LOWESS sur perf_score (Squad V2) | Actif | Lisse du **skill**, pas de la engagement |
 | 2 | EWMA KD (Timeseries) | Partiel | Signal de skill base sur KD post-match |
 | 3 | Form Score 14 vs 90 (Python) | Non porte Go | Bonne idee de delta court vs long, mais sur perf agrege = **skill** |
-| 4 | Performance Score relatif | Production | Definition du skill, pas un signal de forme |
-| 5 | Win Streak | Anecdotique | Plus long streak passe — ni skill ni forme actuels |
+| 4 | Performance Score relatif | Production | Definition du skill, pas un signal de engagement |
+| 5 | Win Streak | Anecdotique | Plus long streak passe — ni skill ni engagement actuels |
 
-**Le point aveugle commun** : aucun ne distingue conceptuellement skill et forme, aucun n'exploite le contexte d'equipe + style historique pour modeliser un attendu. Le FormScore actuel introduit explicitement ces deux ingredients.
+**Le point aveugle commun** : aucun ne distingue conceptuellement skill et engagement, aucun n'exploite le contexte d'equipe + style historique pour modeliser un attendu. Le EngagementScore actuel introduit explicitement ces deux ingredients.
 
 ---
 
@@ -676,7 +710,7 @@ Trade-off : un narratif texte automatique necessite de re-extraire les dimension
 
 ## Annexe C — Pourquoi la normalisation par equipe (et non lobby) est centrale
 
-Sans normalisation, le pace absolu d'un match pollue le signal forme :
+Sans normalisation, le pace absolu d'un match pollue le signal engagement :
 - Match Slayer 12 min equilibre : ~80 events lobby
 - Match Slayer 4 min steamroll : ~50 events concentres
 - Match Strongholds tactique : longues phases calmes
@@ -690,10 +724,10 @@ Avec normalisation **equipe** : on isole la **contribution individuelle au sein 
 
 Demonstration chiffree (4v4, 110 events lobby) :
 
-| Scenario | Equipe alliee | Equipe ennemie | Joueur cible | lobby_share | team_share | Lecture forme correcte |
+| Scenario | Equipe alliee | Equipe ennemie | Joueur cible | lobby_share | team_share | Lecture engagement correcte |
 |---|---|---|---|---|---|---|
 | Equipe ecrasee | 30 | 80 | 8 | 0.58 (bas) | **1.07** (normal) | Le joueur fait sa part malgre le steamroll |
 | Equilibre | 55 | 55 | 14 | 1.02 | 1.02 | Identique |
 | Equipe dominante, joueur passager | 80 | 30 | 25 | 1.82 (haut) | **1.25** (modere) | Le joueur beneficie du contexte mais ne porte pas |
 
-`team_share` est structurellement le bon denominateur pour la **forme individuelle**. `lobby_share` est plus utile comme metric de **profil/style** (dans EngagementCoefficient) car il capture l'effet equipe ET l'effet individuel ensemble.
+`team_share` est structurellement le bon denominateur pour la **engagement individuelle**. `lobby_share` est plus utile comme metric de **profil/style** (dans EngagementCoefficient) car il capture l'effet equipe ET l'effet individuel ensemble.
