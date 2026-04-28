@@ -231,6 +231,7 @@ func NewRouter(
 				return d != nil && d.HasCapability(cap)
 			},
 		)
+		slog.Info("asset_metadata_handler_ready", "title", titlePkg.DefaultSlug)
 	}
 
 	// Fichiers statiques (images maps, médailles, armes…)

@@ -34,6 +34,7 @@ const (
 	CapMedia       Capability = "media"
 	CapRanked      Capability = "ranked"
 	CapCareer      Capability = "career"
+	CapAssetImages Capability = "asset.images" // Asset Drawer — thumbnails maps & armes
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -87,7 +88,7 @@ func NewRegistry() *Registry {
 		Status:   StatusActive,
 		Capabilities: []Capability{
 			CapMatchmaking, CapFirefight, CapForge,
-			CapMedia, CapRanked, CapCareer,
+			CapMedia, CapRanked, CapCareer, CapAssetImages,
 		},
 		IsDefault:   true,
 		XboxTitleID: "1144039928",

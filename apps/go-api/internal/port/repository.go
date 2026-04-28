@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // BattlePassCacheRepository fournit les données Battle Pass et Challenges depuis le cache DB.
@@ -639,6 +640,30 @@ func (n *noopMediaRepo) CountMediaFiles(_ context.Context, _ domain.MediaFilters
 }
 func (n *noopMediaRepo) LoadMediaFilterOptions(_ context.Context, _ domain.MediaFilters) (domain.MediaFilterOptions, error) {
 	return domain.MediaFilterOptions{}, nil
+}
+
+// ─── Asset Drawer ────────────────────────────────────────────────────────────
+
+// AssetMetaRepository fournit les métadonnées d'assets pour l'Asset Drawer.
+// Implémenté par platform/duckdb.MetadataRepo.
+type AssetMetaRepository interface {
+	// ListMapsByTitle retourne les maps d'un titre filtrées par search (LIKE, vide = tout).
+	ListMapsByTitle(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
+
+	// ListWeaponsByTitle retourne les armes filtrées par search (LIKE, vide = tout).
+	// titleID est accepté pour l'interface mais weapon_labels n'est pas segmenté par titre en V1.
+	ListWeaponsByTitle(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
+}
+
+var _ AssetMetaRepository = (*noopAssetMetaRepo)(nil)
+
+type noopAssetMetaRepo struct{}
+
+func (n *noopAssetMetaRepo) ListMapsByTitle(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
+	return nil, nil
+}
+func (n *noopAssetMetaRepo) ListWeaponsByTitle(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {
+	return nil, nil
 }
 
 // ─── Sprint 54 : Metadata, Compare, Leaderboard ─────────────────────────────
