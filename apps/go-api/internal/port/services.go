@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // ---------------------------------------------------------------------------
@@ -176,6 +177,17 @@ type ProfileService interface {
 // consomment via le type concret quand ils ont besoin du détail.
 type FriendsOrchestrator interface {
 	OnFriendsChanged(ctx context.Context) error
+}
+
+// ─── Asset Drawer ────────────────────────────────────────────────────────────
+
+// AssetService construit les réponses de l'Asset Drawer (maps, armes).
+type AssetService interface {
+	// ListMaps retourne les maps d'un titre avec image_url, filtrées par search.
+	ListMaps(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
+
+	// ListWeapons retourne les armes d'un titre avec image_url, filtrées par search.
+	ListWeapons(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error)
 }
 
 // ─── Sprint 54 : Compare, Leaderboard ────────────────────────────────────────

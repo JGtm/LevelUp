@@ -11,6 +11,7 @@ import { NavL1 } from './NavL1'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
+import { AssetDrawer } from '@/features/asset-drawer'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 export function AppShell() {
@@ -44,6 +45,9 @@ export function AppShell() {
 
       {/* Bridge invisible : observe la query unread et déclenche les toasts */}
       <NotificationsToastBridge />
+
+      {/* Asset Drawer — panneau latéral fixe, toujours monté, état géré par le store */}
+      <AssetDrawer />
 
       {/* Contenu principal scrollable — protégé contre les crashs de composants */}
       <ErrorBoundary>

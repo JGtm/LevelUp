@@ -111,4 +111,8 @@ export const queryKeys = {
     ['notifications', playerSlug, 'unread-count'] as const,
   notificationsPreferences: (playerSlug: string) =>
     ['notifications', playerSlug, 'preferences'] as const,
+
+  // Asset Drawer (Phase 2)
+  assetMaps: (titleSlug: string, q: string) => ['assets', titleSlug, 'maps', q] as const,
+  assetWeapons: (titleSlug: string, q: string) => ['assets', titleSlug, 'weapons', q] as const,
 } as const
