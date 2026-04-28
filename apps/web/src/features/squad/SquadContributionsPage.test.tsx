@@ -1,5 +1,5 @@
 /**
- * SquadContributionsPage.test.tsx — 3 empty states + radar dégradé.
+ * SquadContributionsPage.test.tsx — 3 empty states + radar ECharts dégradé.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -10,10 +10,21 @@ import * as squadContextModule from './SquadContext'
 import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { SquadContributionsPage } from './SquadContributionsPage'
 
-// Mock PlotlyChart pour éviter le rendu graphique réel.
-vi.mock('@/components/ui/plotly-chart', () => ({
-  PlotlyChart: ({ figure }: { figure: unknown }) => (
-    <div data-testid="plotly-chart" data-fig={JSON.stringify(figure)} />
+// Mock RadarChart : echarts-for-react absent en env portable — évite l'erreur
+// de résolution Vite. Le stub expose data-series pour les assertions de contenu.
+vi.mock('@/components/charts/RadarChart', () => ({
+  RadarChart: ({
+    series,
+    axisLabels,
+  }: {
+    series: Array<{ key: string; axes: Array<{ axis: string }> }>
+    axisLabels?: Record<string, string>
+  }) => (
+    <div
+      data-testid="chart-card"
+      data-axes={JSON.stringify(axisLabels)}
+      data-series={JSON.stringify(series)}
+    />
   ),
 }))
 
@@ -85,7 +96,6 @@ function mockMappings(value: useFieldMappingsModule.FieldMappingsResponse | unde
     isFetching: false,
     isStale: false,
     refetch: vi.fn(),
-    // ... rest of useQuery return shape (test only needs `data`)
   } as unknown as ReturnType<typeof useFieldMappingsModule.useFieldMappings>)
 }
 
@@ -104,7 +114,7 @@ describe('SquadContributionsPage — empty states', () => {
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByText(/Analyse de synergies/)).toBeInTheDocument()
     expect(screen.getByText(/Choisis 1 à 3 coéquipiers/)).toBeInTheDocument()
-    expect(screen.queryByTestId('plotly-chart')).toBeNull()
+    expect(screen.queryByTestId('chart-card')).toBeNull()
   })
 
   it('invalid_selection : confirmedGts > 0 mais selectedRows vide', () => {
@@ -112,21 +122,22 @@ describe('SquadContributionsPage — empty states', () => {
     mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByText(/Aucune donnée commune/)).toBeInTheDocument()
-    expect(screen.queryByTestId('plotly-chart')).toBeNull()
+    expect(screen.queryByTestId('chart-card')).toBeNull()
   })
 
-  it('rows présents : rend le radar Plotly', () => {
+  it('rows présents : rend le radar ECharts', () => {
     mockSquadContext({
       selectedRows: [ROW('FriendA')],
       confirmedGamertags: ['FriendA'],
     })
     mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadContributionsPage />)
-    expect(screen.getByTestId('plotly-chart')).toBeInTheDocument()
-    // Plus de trace "Solo ref" hardcodée.
-    const figJson = screen.getByTestId('plotly-chart').getAttribute('data-fig')
-    expect(figJson).not.toMatch(/Solo ref/)
-    expect(figJson).not.toMatch(/Référence solo/)
+    expect(screen.getByTestId('chart-card')).toBeInTheDocument()
+    // Vérifie qu'il n'y a pas de résidu "Solo ref" dans les series.
+    const card = screen.getByTestId('chart-card')
+    const seriesJson = card.getAttribute('data-series') ?? ''
+    expect(seriesJson).not.toMatch(/Solo ref/)
+    expect(seriesJson).not.toMatch(/Référence solo/)
   })
 })
 
@@ -147,12 +158,11 @@ describe('SquadContributionsPage — multi-titres', () => {
     })
     mockMappings(minimal)
     expect(() => renderWithProviders(<SquadContributionsPage />)).not.toThrow()
-    expect(screen.getByTestId('plotly-chart')).toBeInTheDocument()
-    const figJson = screen.getByTestId('plotly-chart').getAttribute('data-fig')!
-    // Sur un titre minimaliste, kdr/win_rate/assists sont masqués → ne pas
-    // apparaître comme axes du radar.
-    expect(figJson).toContain('Frags')
-    expect(figJson).not.toMatch(/"theta":\["[^"]*K\/D/)
-    expect(figJson).not.toMatch(/"theta":\["[^"]*Taux de victoire/)
+    expect(screen.getByTestId('chart-card')).toBeInTheDocument()
+    // Sur un titre minimaliste, seuls kills et accuracy passent le filtre.
+    const axesJson = screen.getByTestId('chart-card').getAttribute('data-axes') ?? ''
+    expect(axesJson).toContain('Frags')
+    expect(axesJson).not.toContain('K/D')
+    expect(axesJson).not.toContain('Taux de victoire')
   })
 })
