@@ -18,9 +18,9 @@ import (
 // EnablePilotMode active le mode pilote pour un joueur sur un titre.
 //
 // Référence : Axe 7 du plan conceptuel. Génère :
-//  - 1 défi quotidien auto-attribué (cadence=daily, palier Heroic par défaut)
-//  - 1 défi hebdomadaire forcé (cadence=weekly)
-//  - 3 défis hebdomadaires proposés (le joueur en accepte au moins 1)
+//   - 1 défi quotidien auto-attribué (cadence=daily, palier Heroic par défaut)
+//   - 1 défi hebdomadaire forcé (cadence=weekly)
+//   - 3 défis hebdomadaires proposés (le joueur en accepte au moins 1)
 //
 // L'activation est idempotente : si le joueur a déjà des défis pilotes
 // actifs sur les cadences daily/weekly, ils sont conservés.

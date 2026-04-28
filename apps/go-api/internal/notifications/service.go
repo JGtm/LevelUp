@@ -28,7 +28,7 @@ var ErrNotFound = errors.New("notifications: not found")
 // Stateless (sauf l'IDGenerator) — peut être instancié à la demande
 // ou cacheé par xuid via la ServiceRegistry.
 type Service struct {
-	repo Repository
+	repo  Repository
 	idgen *IDGenerator
 }
 

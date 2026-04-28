@@ -69,9 +69,9 @@ type Service interface {
 //   - WeeklyForced: 1 défi forcé pour la semaine
 //   - WeeklyChoices: 3 défis proposés, le joueur en choisit au moins 1
 type PilotModeAttribution struct {
-	Daily          *Challenge   `json:"daily,omitempty"`
-	WeeklyForced   *Challenge   `json:"weekly_forced,omitempty"`
-	WeeklyChoices  []Template   `json:"weekly_choices"`
+	Daily         *Challenge `json:"daily,omitempty"`
+	WeeklyForced  *Challenge `json:"weekly_forced,omitempty"`
+	WeeklyChoices []Template `json:"weekly_choices"`
 }
 
 // CreateArcRequest est l'entrée pour créer un arc libre.
