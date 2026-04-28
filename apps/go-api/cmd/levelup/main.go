@@ -80,6 +80,8 @@ func main() {
 		exitErr = runSurfaceStatus(cfg, args)
 	case "sync-delta":
 		exitErr = runSyncDelta(cfg, args)
+	case "recompute-friends":
+		exitErr = runRecomputeFriends(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "add-title":
@@ -119,6 +121,7 @@ Commandes:
   gate-check      Verifier la checklist Gate Phase 4
   surface-status  Afficher le backend actif par surface (feature flags)
 	sync-delta      Lancer une sync delta pour un joueur ou pour tous les joueurs configures
+  recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   migrate         Migrer les donnees vers le namespace multi-titres
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
 

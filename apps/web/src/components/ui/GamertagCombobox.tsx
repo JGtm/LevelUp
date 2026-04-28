@@ -52,6 +52,13 @@ export interface GamertagComboboxProps {
   placeholder?: string
   /** Autoriser la saisie libre (gamertag hors listes) */
   allowFreeInput?: boolean
+  /**
+   * Optionnel — quand fourni, affiche un CTA secondaire "Ajouter X comme ami"
+   * sous l'option saisie libre. Utilisé par SquadLayout pour déclencher
+   * l'AddFriendModal sur saisie d'un gamertag hors top dropdown (§3 plan
+   * Squad/Sessions overhaul).
+   */
+  onAddAsFriend?: (gamertag: string) => void
 }
 
 // ─── Composant ──────────────────────────────────────────────────────────────────
@@ -65,6 +72,7 @@ export function GamertagCombobox({
   excludeGamertag,
   placeholder = 'Rechercher un gamertag…',
   allowFreeInput = true,
+  onAddAsFriend,
 }: GamertagComboboxProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -289,6 +297,24 @@ export function GamertagCombobox({
               <span className="text-muted-foreground">+</span>
               <span>
                 Ajouter <span className="font-medium">"{query.trim()}"</span>
+              </span>
+            </button>
+          )}
+
+          {/* CTA "Ajouter comme ami" — §3 plan Squad/Sessions */}
+          {canAddFree && onAddAsFriend && (
+            <button
+              type="button"
+              onClick={() => {
+                onAddAsFriend(query.trim())
+                setQuery('')
+                setIsOpen(false)
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent border-t border-border/50 text-primary"
+            >
+              <span>👥</span>
+              <span>
+                Ajouter <span className="font-medium">"{query.trim()}"</span> comme ami
               </span>
             </button>
           )}

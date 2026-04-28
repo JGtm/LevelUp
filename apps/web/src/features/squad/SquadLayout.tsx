@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
+import { AddFriendModal } from '@/features/friends/AddFriendFlow'
 import { getSeriesColors } from '@/lib/accessibility'
 import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import { getSquadText } from './i18n'
@@ -256,6 +257,9 @@ export function SquadLayout() {
   // applique automatiquement.
   const confirmedGts = selectedGts
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
+  // §3 plan Squad/Sessions : modale d'ajout d'ami déclenchée depuis la combobox
+  // quand l'utilisateur tape un gamertag absent du top dropdown.
+  const [addFriendGamertag, setAddFriendGamertag] = useState<string | null>(null)
   const prefetchCompare = useComparePrefetch(playerSlug)
   const matchRoute = useMatchRoute()
   const { data: settings } = useSettings()
@@ -380,6 +384,7 @@ export function SquadLayout() {
                 colors={CHART_COLORS}
                 excludeGamertag={playerSlug}
                 placeholder={t.selection.placeholder(availableOptions.length)}
+                onAddAsFriend={setAddFriendGamertag}
               />
             </div>
             {(data.session_labels?.squad?.length ?? 0) > 0 && (
@@ -508,6 +513,15 @@ export function SquadLayout() {
             playerSlug={playerSlug}
             open={!!compareTarget}
             onClose={() => setCompareTarget(null)}
+          />
+        )}
+
+        {addFriendGamertag && (
+          <AddFriendModal
+            gamertag={addFriendGamertag}
+            open={!!addFriendGamertag}
+            onClose={() => setAddFriendGamertag(null)}
+            locale={locale}
           />
         )}
       </div>
