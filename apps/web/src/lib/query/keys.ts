@@ -32,8 +32,8 @@ export const queryKeys = {
   careerEncounters: (playerSlug: string) => ['career', playerSlug, 'encounters'] as const,
 
   // Historique des parties (Slice 3)
-  matchHistory: (playerSlug: string, filterHash: string, page: number) =>
-    ['match-history', playerSlug, filterHash, page] as const,
+  matchHistory: (playerSlug: string, filterHash: string, page: number, soloSessions: string[] = []) =>
+    ['match-history', playerSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
 
   // Explorer (Slice 4)
   explorer: (playerSlug: string, filterHash: string) =>

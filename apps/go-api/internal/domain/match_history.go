@@ -96,6 +96,9 @@ type MatchHistoryQueryRequest struct {
 	// Columns permet au client de préciser les colonnes souhaitées dans la réponse.
 	// Nil/vide = toutes les colonnes disponibles (comportement par défaut).
 	Columns []string `json:"columns,omitempty"`
+	// §5 plan Squad/Sessions : filtre multi-sessions solo. Liste vide = pas
+	// de filtre. Filtré côté service (post-LoadAll, avant pagination).
+	PickedSoloSessionLabels []string `json:"picked_solo_session_labels,omitempty"`
 }
 
 // maxPageSize est la taille de page maximale acceptée.
@@ -128,6 +131,9 @@ type MatchHistoryPageResponse struct {
 	ExportHint          *ExportHint              `json:"export_hint"`
 	// Sprint 54 B : avertissement de privacy si le compte a des matchs privés.
 	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
+	// §5 plan Squad/Sessions : sessions disponibles (split solo/squad) pour
+	// alimenter SessionMultiSelect côté front. Triées StartedAt DESC.
+	SessionLabels SessionLabelsList `json:"session_labels"`
 }
 
 // ExportHint indique qu'un export CSV est disponible.

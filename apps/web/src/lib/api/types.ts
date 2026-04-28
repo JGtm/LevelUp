@@ -775,6 +775,8 @@ export interface MatchHistoryPageResponse {
   export_hint: ExportHint | null
   /** Sprint 54-B : avertissement privacy */
   privacy_warning?: MatchPrivacyWarning | null
+  /** §5 plan Squad/Sessions : sessions dispo (split solo/squad). */
+  session_labels: SessionLabelsList
 }
 
 export interface MatchHistoryQueryRequest {
@@ -782,6 +784,8 @@ export interface MatchHistoryQueryRequest {
   pagination?: PaginationRequest
   columns?: string[] | null
   include_export_hint?: boolean
+  /** §5 plan Squad/Sessions : filtre multi-sessions solo. */
+  picked_solo_session_labels?: string[]
 }
 
 export interface FileTokenResponse {

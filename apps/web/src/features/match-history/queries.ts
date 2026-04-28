@@ -16,9 +16,10 @@ export function useMatchHistory(
   request: MatchHistoryQueryRequest,
   filterHash: string,
   page: number,
+  soloSessionLabels: string[] = [],
 ) {
   return useQuery({
-    queryKey: queryKeys.matchHistory(playerSlug, filterHash, page),
+    queryKey: queryKeys.matchHistory(playerSlug, filterHash, page, soloSessionLabels),
     queryFn: () =>
       api.post<MatchHistoryPageResponse>(
         `/players/${playerSlug}/pages/match-history/query`,

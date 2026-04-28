@@ -6,8 +6,9 @@
 // FALSE dans friends_recompute.go protège les retries.
 //
 // Usage typique :
-//   levelup recompute-friends           # tous les joueurs configurés
-//   levelup recompute-friends --dry-run # affiche les amis résolus sans UPDATE
+//
+//	levelup recompute-friends           # tous les joueurs configurés
+//	levelup recompute-friends --dry-run # affiche les amis résolus sans UPDATE
 package main
 
 import (

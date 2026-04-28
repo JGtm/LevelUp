@@ -109,6 +109,7 @@ const matchHistoryFixture = {
   table: { items: [], pagination: emptyPagination, freshness: null },
   available_sort_fields: [],
   export_hint: null,
+  session_labels: { solo: [], squad: [] },
 }
 
 const homeFixture = {
