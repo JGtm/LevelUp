@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +13,7 @@ import { useSettings, useUpdateSettings, useScanMedia, useRecalculateSessions, u
 import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
 import type { HintBullets } from '@/features/settings/i18n'
+import { useJobToasts } from '@/features/settings/useJobToasts'
 import { WatcherSectionBody } from '@/features/settings/WatcherCard'
 import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
 import { NotificationsSettingsTab } from '@/features/notifications/NotificationsSettingsTab'
@@ -405,13 +407,48 @@ function BackfillCard({ t }: BackfillCardProps) {
     jobStatus?.status !== 'cancelled' &&
     jobStatus?.status !== 'interrupted'
 
+  // Reset activeJobId quand le job atteint un état terminal.
+  useEffect(() => {
+    if (
+      activeJobId &&
+      (jobStatus?.status === 'succeeded' ||
+        jobStatus?.status === 'failed' ||
+        jobStatus?.status === 'cancelled' ||
+        jobStatus?.status === 'interrupted')
+    ) {
+      setActiveJobId(null)
+    }
+  }, [jobStatus?.status, activeJobId])
+
+  useJobToasts(jobStatus, {
+    succeeded: t.backfillToastSucceeded,
+    succeededWithWarnings: t.backfillToastSucceededWithWarnings,
+    failed: t.backfillToastFailed,
+    cancelled: t.backfillToastCancelled,
+  })
+
   const anyChecked = Object.values(scope).some(Boolean)
   const canRun = anyChecked && !!selectedSlug && !running && !startBackfill.isPending
+
+  const selectedGamertag =
+    realPlayers.find((p) => p.player_slug === selectedSlug)?.gamertag ?? selectedSlug
 
   function runBackfill(force: boolean) {
     startBackfill.mutate(
       { player_slug: selectedSlug, ...scope, force_rescan: force },
-      { onSuccess: (job) => setActiveJobId(job.job_id) },
+      {
+        onSuccess: (job) => {
+          setActiveJobId(job.job_id)
+          toast.info(t.backfillToastStarted, {
+            description: `${selectedGamertag}${force ? ' — forcé' : ''}`,
+          })
+        },
+        onError: (err) => {
+          toast.error(t.backfillToastStartFailed, {
+            description: err instanceof Error ? err.message : undefined,
+          })
+        },
+      },
     )
   }
 
@@ -555,10 +592,25 @@ function SyncTab({ merged, handleChange, t }: TabProps) {
     }
   }, [jobStatus?.status, activeSyncJobId, setActiveSyncJobId])
 
+  useJobToasts(jobStatus, {
+    succeeded: t.syncToastSucceeded,
+    succeededWithWarnings: t.syncToastSucceededWithWarnings,
+    failed: t.syncToastFailed,
+    cancelled: t.syncToastCancelled,
+  })
+
   function handleSync() {
     if (syncRunning) return
     startSyncAll.mutate(undefined, {
-      onSuccess: (job) => setActiveSyncJobId(job.job_id),
+      onSuccess: (job) => {
+        setActiveSyncJobId(job.job_id)
+        toast.info(t.syncToastStarted)
+      },
+      onError: (err) => {
+        toast.error(t.syncToastStartFailed, {
+          description: err instanceof Error ? err.message : undefined,
+        })
+      },
     })
   }
 

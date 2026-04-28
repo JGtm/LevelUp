@@ -1,5 +1,21 @@
 # Thought Log
 
+## [2026-04-28] feat(settings): toasts start/fin pour backfill + sync manuelle
+
+**Statut** : Complété
+
+**Décision technique** :
+Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déclenche (activeJobId en state local), inutile de passer par notifications.Service côté Go. Hook `useJobToasts` factorisé pour BackfillCard et SyncTab.
+
+**Résultats** :
+- `apps/web/src/features/settings/useJobToasts.ts` — hook générique : détecte la transition vers état terminal via `useRef<JobStatus | null>`, émet `toast.success/warning/error` selon le cas (succeeded / succeeded+warnings / failed / cancelled/interrupted). Ne fire pas au montage si job déjà terminé.
+- `BackfillCard` : toast.info au start (avec gamertag + suffixe « forcé »), toast.error si la mutation échoue. Reset `activeJobId` à null sur état terminal (manquait avant).
+- `SyncTab` : toast.info au start, toast.error si échec. Idem via useJobToasts pour la fin.
+- i18n FR + EN : 12 nouvelles keys (6 backfill + 6 sync).
+- Typecheck : 0 erreur sur les fichiers modifiés.
+
+**Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
+
 ## [2026-04-28] docs(plan-finition-multi-titre): recalibration après audit terrain + extension Phase 6 (static FS)
 
 **Statut** : Complété — Phase 1–5 marquées DONE, Phase 6 (static FS title-scoping) ouverte.
