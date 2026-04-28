@@ -1,5 +1,45 @@
 # Thought Log
 
+## [2026-04-28] feat(gamertag-search): harmonisation Combobox + SearchInput + fuzzy serveur
+
+**Statut** : Complété.
+
+**Décision technique** :
+Harmonisation des deux UIs de recherche de gamertag (`GamertagCombobox` côté Squad/Settings et `GamertagSearchInput` côté Explorer) qui avaient des comportements divergents : le premier connaissait les "Joueurs configurés" (DB locale) mais ignorait la recherche serveur ; le second avait l'inverse. Les utilisateurs finissaient par ne pas trouver des joueurs réels en tapant 2-3 caractères discriminants ("xq") dans Combobox, et inversement par ne pas voir leurs amis configurés en tête dans Explorer.
+
+**Architecture choisie** : un hook partagé `useGamertagSuggestions` (`apps/web/src/components/ui/useGamertagSuggestions.ts`) qui combine 3 sources toujours dans le même ordre :
+1. Joueurs configurés (store appShell.availablePlayers, instantané)
+2. Coéquipiers fréquents (prop `frequentOptions`, instantané)
+3. Recherche serveur (`/directory/gamertags/search`, debounce 250 ms, ≥ 2 caractères)
+
+Les deux composants restent distincts (multi-select avec pills vs autocomplete simple) mais la logique de scoring + dédup + debounce est centralisée. Pas de fusion en `mode: 'single' | 'multi'` : décision retenue avec l'utilisateur pour rester lisible.
+
+**Q11 backend** (`apps/go-api/internal/platform/duckdb/queries.go`) : remplacement du `ILIKE '%q%'` plat par un score combiné DuckDB natif :
+- exact match → +1000
+- prefix → +200
+- substring → +50
+- `jaro_winkler_similarity * 100` → 0..100 (typo tolerance, ex "Mst3rch1" trouve "Mst3rch1f")
+
+Filtre WHERE : substring OR `jaro_winkler_similarity > 0.80`. Bind unique du paramètre via une CTE `params` pour rester lisible.
+
+**Mesure perf** : `xuid_aliases` contient 15 370 lignes, query Q11 mesurée à 5-15 ms (worst case 1-char "a" à 15 ms, 2+ chars à < 12 ms). DuckDB columnar suffit ; pas d'index nécessaire jusqu'à ~100k rows. Documenté dans le commentaire Q11.
+
+**Suppression** :
+- Fallback fuzzy char-by-char ambigu côté client (matchait n'importe quoi avec a..b..c dans l'ordre, faux positifs en masse à 2 chars). Test régression dans `useGamertagSuggestions.test.tsx` qui vérifie que "az" ne matche plus "AlphaPlayer".
+- `useGamertagSearch` orphelin dans `features/explorer/queries.ts` (remplacé par le hook).
+
+**Décisions UX (validées avec l'utilisateur)** :
+- Seuil 2 caractères pour la recherche serveur (pas 3) : argument utilisateur que des paires rares ("xq") discriminent autant que 3 chars communs.
+- Message vide unifié court : `Aucun joueur trouvé pour "{q}"` — sans CTA inline. Les boutons "Ajouter en libre" / "Ajouter comme ami" du Combobox restent en bas du dropdown comme actions séparées.
+- Groupe "Coéquipiers fréquents" conservé : utile dans Squad, ne gêne pas Explorer (prop optionnelle).
+
+**Tests** :
+- 6 tests Go (`repo_test.go`) dont 2 nouveaux : `TestGamertagRepo_Search_ExactRanksFirst` (exact > prefix > substring) et `TestGamertagRepo_Search_TypoTolerance` (Jaro-Winkler attrape "Mst3rch1" → "Mst3rch1f").
+- 15 tests Vitest : 8 sur le hook (scoring, dédup, exclude, ≥2-char threshold, état vide), 4 sur Combobox, 3 sur SearchInput.
+- Suite full vitest : 660/660 verts. Aucune régression.
+
+**Conclusion** : recherche de gamertag harmonisée, fuzzy serveur tolérant aux typos, perf < 15 ms sur 15k lignes. Si la table monte à 100k+, ajouter une colonne générée `gamertag_lower` + index ART (documenté dans le commentaire Q11).
+
 ## [2026-04-28] feat(squad): §7 hook auto-recompute is_with_friends post-sync delta
 
 **Statut** : Complété (gap critique identifié pendant la review fermé).

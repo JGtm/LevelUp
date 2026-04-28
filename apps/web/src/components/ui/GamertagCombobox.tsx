@@ -1,39 +1,17 @@
 /**
  * GamertagCombobox — sélecteur multi-gamertag avec fuzzy search.
  *
- * Affiche deux groupes priorisés :
- *  1. « Joueurs configurés » — profils dans available_players (db_profiles)
- *  2. « Coéquipiers fréquents » — options depuis l'API (encounter_count)
+ * Affiche trois groupes priorisés :
+ *  1. « Joueurs configurés »      — profils dans available_players (db_profiles)
+ *  2. « Coéquipiers fréquents »   — options depuis l'API (encounter_count)
+ *  3. « Autres joueurs »          — recherche serveur (xuid_aliases, fuzzy Jaro-Winkler)
  *
+ * Logique de suggestion centralisée dans useGamertagSuggestions.
  * Autorise aussi la saisie libre d'un gamertag absent des suggestions.
  */
-import { useRef, useState, useEffect, useCallback } from 'react'
-import { useAppShellStore } from '@/stores/appShellStore'
+import { useRef, useState, useEffect } from 'react'
 import type { TeammateOption } from '@/lib/api/types'
-
-// ─── Fuzzy scoring ─────────────────────────────────────────────────────────────
-
-function fuzzyScore(query: string, target: string): number {
-  const q = query.toLowerCase()
-  const t = target.toLowerCase()
-  if (t === q) return 4
-  if (t.startsWith(q)) return 3
-  if (t.includes(q)) return 2
-  // correspondance caractère par caractère (dans l'ordre)
-  let qi = 0
-  for (let i = 0; i < t.length && qi < q.length; i++) {
-    if (t[i] === q[qi]) qi++
-  }
-  return qi === q.length ? 1 : 0
-}
-
-// ─── Types internes ─────────────────────────────────────────────────────────────
-
-interface SuggestionItem {
-  gamertag: string
-  badge?: string
-  isConfigured: boolean
-}
+import { useGamertagSuggestions } from './useGamertagSuggestions'
 
 // ─── Props ──────────────────────────────────────────────────────────────────────
 
@@ -79,8 +57,6 @@ export function GamertagCombobox({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const availablePlayers = useAppShellStore((s) => s.availablePlayers)
-
   // ─── Fermeture click-outside ────────────────────────────────────────────────
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
@@ -92,57 +68,42 @@ export function GamertagCombobox({
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [])
 
-  // ─── Calcul des suggestions ─────────────────────────────────────────────────
+  // ─── Suggestions via hook partagé ───────────────────────────────────────────
 
   const isAtMax = max != null && selected.length >= max
+  const excludeGamertags = excludeGamertag ? [...selected, excludeGamertag] : selected
 
-  const suggestions = useCallback((): { configured: SuggestionItem[]; frequent: SuggestionItem[] } => {
-    const q = query.trim()
+  const { configured, frequent, remote, isRemoteLoading, hasAnyResult, remoteAttempted } =
+    useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
 
-    // Gamertags à exclure : sélectionnés + joueur courant
-    const excluded = new Set([...selected, ...(excludeGamertag ? [excludeGamertag] : [])])
-
-    // Groupe 1 : available_players (db_profiles)
-    const configuredGts = new Set(availablePlayers.map((p) => p.gamertag))
-    const configured: SuggestionItem[] = availablePlayers
-      .filter((p) => !excluded.has(p.gamertag))
-      .filter((p) => !q || fuzzyScore(q, p.gamertag) > 0)
-      .sort((a, b) => fuzzyScore(q, b.gamertag) - fuzzyScore(q, a.gamertag))
-      .map((p) => ({ gamertag: p.gamertag, isConfigured: true }))
-
-    // Groupe 2 : coéquipiers fréquents (non-dupliqués du groupe 1)
-    const frequent: SuggestionItem[] = frequentOptions
-      .filter((o) => !excluded.has(o.gamertag) && !configuredGts.has(o.gamertag))
-      .filter((o) => !q || fuzzyScore(q, o.gamertag) > 0)
-      .sort((a, b) => {
-        const scoreDiff = fuzzyScore(q, b.gamertag) - fuzzyScore(q, a.gamertag)
-        return scoreDiff !== 0 ? scoreDiff : (b.encounter_count ?? 0) - (a.encounter_count ?? 0)
-      })
-      .map((o) => ({
-        gamertag: o.gamertag,
-        badge: o.encounter_count ? `${o.encounter_count}×` : undefined,
-        isConfigured: false,
-      }))
-
-    return { configured, frequent }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, selected, availablePlayers, frequentOptions, excludeGamertag])
-
-  const { configured, frequent } = suggestions()
+  const trimmed = query.trim()
+  const allSuggestedGts = new Set([
+    ...configured.map((c) => c.gamertag),
+    ...frequent.map((f) => f.gamertag),
+    ...remote.map((r) => r.gamertag),
+  ])
 
   // L'option "ajouter en libre" n'apparaît que si :
   // - allowFreeInput actif
   // - query non-vide
   // - pas déjà sélectionné
   // - pas déjà dans les suggestions
-  const allSuggestedGts = new Set([...configured, ...frequent].map((s) => s.gamertag))
   const canAddFree =
     allowFreeInput &&
-    query.trim().length > 0 &&
-    !selected.includes(query.trim()) &&
-    !allSuggestedGts.has(query.trim())
+    trimmed.length > 0 &&
+    !selected.includes(trimmed) &&
+    !allSuggestedGts.has(trimmed)
 
-  const hasDropdownContent = configured.length > 0 || frequent.length > 0 || canAddFree
+  const showEmptyMessage =
+    trimmed.length > 0 && remoteAttempted && !isRemoteLoading && !hasAnyResult
+
+  const hasDropdownContent =
+    configured.length > 0 ||
+    frequent.length > 0 ||
+    remote.length > 0 ||
+    canAddFree ||
+    isRemoteLoading ||
+    showEmptyMessage
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -165,9 +126,10 @@ export function GamertagCombobox({
     }
     if (e.key === 'Enter') {
       e.preventDefault()
-      const first = configured[0]?.gamertag ?? frequent[0]?.gamertag
+      const first =
+        configured[0]?.gamertag ?? frequent[0]?.gamertag ?? remote[0]?.gamertag
       if (first) add(first)
-      else if (canAddFree) add(query.trim())
+      else if (canAddFree) add(trimmed)
       return
     }
     if (e.key === 'Backspace' && query === '' && selected.length > 0) {
@@ -259,7 +221,6 @@ export function GamertagCombobox({
                 <DropdownItem
                   key={item.gamertag}
                   gamertag={item.gamertag}
-                  badge={item.badge}
                   icon="⭐"
                   disabled={isAtMax}
                   onSelect={() => add(item.gamertag)}
@@ -278,7 +239,7 @@ export function GamertagCombobox({
                 <DropdownItem
                   key={item.gamertag}
                   gamertag={item.gamertag}
-                  badge={item.badge}
+                  badge={item.encounter_count ? `${item.encounter_count}×` : undefined}
                   disabled={isAtMax}
                   onSelect={() => add(item.gamertag)}
                 />
@@ -286,17 +247,47 @@ export function GamertagCombobox({
             </div>
           )}
 
+          {/* Groupe 3 : Autres joueurs (recherche serveur) */}
+          {remote.length > 0 && (
+            <div>
+              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+                Autres joueurs
+              </div>
+              {remote.map((item) => (
+                <DropdownItem
+                  key={item.gamertag}
+                  gamertag={item.gamertag}
+                  badge={item.exact_match ? 'Exact' : undefined}
+                  disabled={isAtMax}
+                  onSelect={() => add(item.gamertag)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Loading recherche serveur */}
+          {isRemoteLoading && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">Recherche…</div>
+          )}
+
+          {/* Message vide */}
+          {showEmptyMessage && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              Aucun joueur trouvé pour "{trimmed}"
+            </div>
+          )}
+
           {/* Option saisie libre */}
           {canAddFree && (
             <button
               type="button"
-              onClick={() => add(query.trim())}
+              onClick={() => add(trimmed)}
               disabled={isAtMax}
               className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent disabled:opacity-50 border-t border-border/50"
             >
               <span className="text-muted-foreground">+</span>
               <span>
-                Ajouter <span className="font-medium">"{query.trim()}"</span>
+                Ajouter <span className="font-medium">"{trimmed}"</span>
               </span>
             </button>
           )}
@@ -306,7 +297,7 @@ export function GamertagCombobox({
             <button
               type="button"
               onClick={() => {
-                onAddAsFriend(query.trim())
+                onAddAsFriend(trimmed)
                 setQuery('')
                 setIsOpen(false)
               }}
@@ -314,7 +305,7 @@ export function GamertagCombobox({
             >
               <span>👥</span>
               <span>
-                Ajouter <span className="font-medium">"{query.trim()}"</span> comme ami
+                Ajouter <span className="font-medium">"{trimmed}"</span> comme ami
               </span>
             </button>
           )}

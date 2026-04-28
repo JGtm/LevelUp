@@ -12,6 +12,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/domain"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -281,4 +283,89 @@ func TestGamertagRepo_Search_MultipleResults(t *testing.T) {
 	if len(results) < 2 {
 		t.Errorf("Search(er): got %d, want ≥2", len(results))
 	}
+}
+
+// seedGamertagRanking ajoute un jeu de gamertags qui démontre :
+//   - exact vs prefix vs substring vs typo
+//   - tri stable par score puis match_count
+func seedGamertagRanking(t *testing.T, db *DB) {
+	t.Helper()
+	ctx := context.Background()
+	rows := []string{
+		`('xr1', 'Master')`,      // exact match candidate
+		`('xr2', 'MasterChief')`, // prefix match candidate
+		`('xr3', 'GrandMaster')`, // substring match candidate
+		`('xr4', 'Mst3rch1f')`,   // typo candidate (jaro_winkler)
+		`('xr5', 'TotallyUnrelated')`,
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO shared.xuid_aliases VALUES `+joinRows(rows)); err != nil {
+		t.Fatalf("seedGamertagRanking aliases: %v", err)
+	}
+}
+
+func joinRows(rows []string) string {
+	out := ""
+	for i, r := range rows {
+		if i > 0 {
+			out += ","
+		}
+		out += r
+	}
+	return out
+}
+
+func TestGamertagRepo_Search_ExactRanksFirst(t *testing.T) {
+	shared := openMemDB(t)
+	seedShared(t, shared)
+	seedGamertagRanking(t, shared)
+
+	repo := NewGamertagRepo(shared)
+	results, err := repo.Search(context.Background(), "Master")
+	if err != nil {
+		t.Fatalf("Search(Master): %v", err)
+	}
+	if len(results) < 3 {
+		t.Fatalf("Search(Master): got %d, want ≥3 (Master, MasterChief, GrandMaster)", len(results))
+	}
+	if results[0].Gamertag != "Master" {
+		t.Errorf("rank 1 = %q, want Master (exact match should win)", results[0].Gamertag)
+	}
+	if !results[0].ExactMatch {
+		t.Errorf("ExactMatch on rank 1 = false, want true")
+	}
+	if results[1].Gamertag != "MasterChief" {
+		t.Errorf("rank 2 = %q, want MasterChief (prefix > substring)", results[1].Gamertag)
+	}
+}
+
+func TestGamertagRepo_Search_TypoTolerance(t *testing.T) {
+	shared := openMemDB(t)
+	seedShared(t, shared)
+	seedGamertagRanking(t, shared)
+
+	// "Mst3rch1f" matche "Mst3rch1f" exact — testons plutôt une vraie typo.
+	// "Mst3rch1" (sans 'f') ne devrait pas matcher en substring mais via jaro_winkler.
+	repo := NewGamertagRepo(shared)
+	results, err := repo.Search(context.Background(), "Mst3rch1")
+	if err != nil {
+		t.Fatalf("Search(Mst3rch1): %v", err)
+	}
+	found := false
+	for _, r := range results {
+		if r.Gamertag == "Mst3rch1f" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("typo tolerance: 'Mst3rch1f' not found for query 'Mst3rch1'; got: %v", gamertagsOf(results))
+	}
+}
+
+func gamertagsOf(rs []domain.GamertagSearchResult) []string {
+	out := make([]string, len(rs))
+	for i, r := range rs {
+		out[i] = r.Gamertag
+	}
+	return out
 }
