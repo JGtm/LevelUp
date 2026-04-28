@@ -110,20 +110,11 @@ type LUSRSummary struct {
 	Checkpoints          []LUSRCheckpointDTO `json:"checkpoints"`
 }
 
-// CareerPageCharts représente les figures Plotly (null — Sprint 6 phase B).
-type CareerPageCharts struct {
-	RankProgressGauge *interface{} `json:"rank_progress_gauge"`
-	HeroProgressGauge *interface{} `json:"hero_progress_gauge"`
-	XPHistoryFigure   *interface{} `json:"xp_history_figure"`
-	LUSRRatingFigure  *interface{} `json:"lusr_rating_figure"`
-}
-
 // CareerPageResponse est la réponse de GET /pages/career.
 type CareerPageResponse struct {
 	Summary       CareerRankSummary    `json:"summary"`
 	HeroProgress  HeroProgress         `json:"hero_progress"`
 	Projections   CareerProjections    `json:"projections"`
-	Charts        CareerPageCharts     `json:"charts"`
 	XPHistory     []XPHistoryPoint     `json:"xp_history"`
 	LUSR          LUSRSummary          `json:"lusr"`
 	CurrentSeason *CurrentSeasonResult `json:"current_season,omitempty"` // Sprint 54-A7

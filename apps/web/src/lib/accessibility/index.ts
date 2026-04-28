@@ -23,8 +23,8 @@ export { resolveToken } from './resolveToken'
 export { useColor, useScaleColor } from './useColor'
 export { useColorPaletteVersion } from './useColorPaletteVersion'
 
-// Helpers Plotly (usage : chart builders)
-export { buildDivergentColorscale, buildOrdinalColorscale, getSeriesColors } from './plotlyColorscale'
+// Helper série-colors (usage : chart builders ECharts)
+export { getSeriesColors } from './plotlyColorscale'
 
 // Palettes brutes (usage : ThemeProvider uniquement)
 export { defaultPalette } from './palettes/default'
