@@ -17,10 +17,10 @@
  * (a wirer en Phase 4.b — pour MVP la prop est typee mais la query peut etre
  * stub).
  */
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
-import { ChartCard } from '@/components/charts/ChartCard'
+import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, axisBase, legendBase, tooltipBase } from '@/components/charts/_utils'
 import { PlayerChips, type PlayerChipItem } from '@/components/PlayerChips'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
@@ -79,20 +79,26 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
     [session.players, selectedXUID],
   )
 
-  const option = useMemo<EChartsCoreOption>(
-    () => buildSquadEngagementOption(session, overlayPlayer),
+  const buildOption = useCallback(
+    (): EChartsCoreOption => buildSquadEngagementOption(session, overlayPlayer),
     [session, overlayPlayer],
+  )
+
+  // Series virtuelle non vide (sinon ChartCard affiche emptyMessage).
+  const dummySeries: ChartSeries<unknown>[] = useMemo(
+    () => (session.labels.length > 0 ? [{ key: 'engagement', datapoints: session.labels }] : []),
+    [session.labels],
   )
 
   return (
     <div>
       <ChartCard
         title="Engagement equipe"
-        subtitle="Lobby, attendu, equipe observee — clic chip pour overlay un joueur"
-        series={[]}
-        state={state}
+        series={dummySeries}
+        loading={state === 'loading'}
+        error={state === 'error' ? new Error('error') : undefined}
         height={height}
-        option={option}
+        buildOption={buildOption}
       />
       <div style={{ marginTop: '8px', marginLeft: '50px' }}>
         <PlayerChips
