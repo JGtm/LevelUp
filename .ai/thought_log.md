@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-28] feat(squad): Squad/Sessions §3 friends filter + §4 recompute is_with_friends
+
+**Statut** : Complété (cœur). Reste UI intégration §3 et CLI bootstrap §4.
+
+**Décision technique** :
+- **§3a Backend (filter dropdown)** : `TeammatesService` reçoit un `FriendGamertagsResolver` (closure lisant `settingsStore.Load().FriendGamertags`). Filtre `topRows` côté Go (case-insensitive + trim) plutôt qu'au niveau SQL → évite la complexité du `IN (?,?,...)` dynamique dans Q29 et garde la rétrocompat (mode legacy quand resolver=nil). `friends_count` ajouté à `TeammatesPageResponse` pour le label UI "parmi N amis". `ServiceRegistry.WithSettingsStore` câble le store. Tests purs `filterTopRowsToFriends` (5).
+- **§4 Backend (recompute additif)** : Pattern miroir `session_recalc.go`. `sync/friends_recompute.go::RecomputeIsWithFriends` acquiert leases player+shared, résout XUIDs amis via `xuid_aliases`, charge match_ids player+ami même équipe, batched UPDATE `SET is_with_friends=TRUE WHERE FALSE AND match_id IN (...)` (batch 500), refresh aggregates si rowsAffected>0. Sémantique additive intentionnelle (un ami retiré ne démote pas les anciens matchs squad — un match resté squad le reste). `service/friends_orchestrator_service.go` itère `cfg.LoadPlayers()` multi-titres + `config.PlayerDBPath` + `config.SharedDBPath`, agrège `{processed, failed, totalPromoted}`. Port `FriendsOrchestrator.OnFriendsChanged(ctx) error`. `aggregates.RefreshAggregates` exporté (wrapper public). `PatchSettings` détecte le diff `friend_gamertags` (set-equality case+trim) et déclenche async via goroutine. Tests purs `friendGamertagsChanged` (6).
+- **§3b Frontend** : `features/friends/AddFriendFlow.tsx` partagé Squad+Settings : `useAddFriend` hook (PATCH /settings → invalide queries `teammates`) + `AddFriendModal` confirmation dialog (titre dynamique gamertag, warning sync, locale fr/en, click-outside, déjà-ami detection). 7 tests vitest (titre, fermeture, soumission PATCH, déjà ami no-op).
+
+**Choix volontaires hors scope** :
+- Pas de POST /setup/players + sync initial dans le flux : le backend recompute s'appuie sur `xuid_aliases` (résout si l'ami a déjà été croisé en match). Création de profil dédié = follow-up quand le flow auth multi-joueurs sera tranché.
+- Pas d'intégration UI SquadLayout (CTA "Ajouter X comme ami" sur saisie hors top) : la modale est exposée prête à l'emploi mais le déclencheur GamertagCombobox reste à câbler.
+- Pas de CLI bootstrap (`cmd_recompute_friends`) : OnFriendsChanged déjà idempotent, le bootstrap initial peut se faire via un PATCH /settings vide qui re-saisit la liste.
+
+**Résultats** : 645/645 tests vitest verts (80 fichiers). Tests Go purs OK syntaxiquement (env CGo Windows portable bloque go test localement, à valider en CI).
+
+**Prochaine étape** : §5 page Stats solo + §6 notifications restent en backlog. UI intégration SquadLayout (CTA add-friend) + CLI bootstrap §4 = follow-ups distincts. — OP
+
 ## [2026-04-28] feat(squad): Squad/Sessions overhaul §1+§2 — multi-sessions backend + SessionMultiSelect
 
 **Statut** : WIP (§3 SquadLayout intégré, §4 Stats + §5 Tests + §6 Docs restent).
