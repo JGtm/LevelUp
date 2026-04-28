@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-04-28] feat(notifications): §6.A backend friend_added + friend_sync_completed
+
+**Statut** : §6.A backend Go complet. §6.B Discord + §6.C Frontend en suivant.
+
+**Décision technique** :
+2 nouvelles catégories MVP dans le système de notifications existant (12 → 14) : `friend_added` (info, in-app) + `friend_sync_completed` (success, in-app). Pas de toast pour ces 2 catégories : friend_added est sobre (l'utilisateur vient d'ajouter, il sait) et friend_sync_completed est un récap silencieux post-recompute (peut survenir au boot ou après PATCH /settings, pas bloquant).
+
+**Wiring** :
+- `notifications/types.go` : `CategoryFriendAdded` + `CategoryFriendSyncCompleted` ajoutés à l'enum + `AllCategories()`. Ces deux catégories ont aussi été ajoutées dans `migration/steps_player_notifications.go` (`notificationDefaultCategories` avec delivery `inapp`).
+- `handlers/settings.go` : nouveau setter `WithNotificationsEmitter(f)` + helper privé `newFriendsAdded(prev, next) []string` qui calcule le set diff case-insensitive + trim et préserve la casse `next` (côté UI on veut afficher la saisie utilisateur). Émetteur dans `PatchSettings` après save : 1 notif friend_added par nouveau gamertag.
+- `service/friends_orchestrator_service.go` : type `FriendsNotifierFactory` + setter fluent `WithNotifier(f)` + helper privé `emitFriendSyncCompleted(slug, promoted)`. Émis uniquement si `MatchesPromoted > 0` (sinon le recompute est un no-op et la notif n'apporte rien). Best-effort : warn log si l'émetteur échoue, jamais propagé.
+- `api/server.go` : câblage `reg.NotificationsEmitter` sur le SettingsHandler ET sur le FriendsOrchestratorService (chaining `.WithNotifier(reg.NotificationsEmitter)`).
+
+**Tests** :
+- `settings_friends_added_test.go` : 11 sub-tests sur `newFriendsAdded` couvrant ajout simple, ajouts multiples, retrait pur, set égal, ré-ordonnancement, case-insensitive, trim, casse-next préservée, swap, from-empty, to-empty.
+- L'émetteur lui-même n'a pas de test unitaire dédié (helper trivial : 1 boucle + 1 Emit). Sera couvert par les tests d'intégration handler quand on aura un PATCH /settings test bout en bout.
+
+**Architecture conforme aux règles** :
+- ✓ Catégories enum dans le package `notifications` (pas dans le service)
+- ✓ Service orchestrator reçoit l'emitter via DI (functional option), pas de dépendance dure
+- ✓ Logging slog avec clés standards `player_slug`, `gamertag`, `err`
+- ✓ Best-effort : aucune erreur d'émission ne propage (silent log + continue)
+- ✓ Multi-titres : `friend_sync_completed` émis par-joueur via `cfg.LoadPlayers()` itération existante (déjà multi-titres)
+
+**Résultats** :
+- `go build ./...` clean
+- `go test ./...` (forced full re-run après go clean -testcache) → 100% OK
+- `go test -race ./internal/notifications/... ./internal/service/... ./internal/api/handlers/...` → clean
+- `TestNewFriendsAdded` 11/11 OK
+
+**Prochaine étape** : §6.B Discord (settings field `DiscordNotifyFriends` + templates webhook dans `notify/discord.go`) puis §6.C Frontend (manifest `notif.friend_*` + checkbox UI settings).
+
 ## [2026-04-28] feat(gamertag-search): harmonisation Combobox + SearchInput + fuzzy serveur
 
 **Statut** : Complété.
