@@ -150,7 +150,7 @@ func extractSynthesisSessionLabels(matches []domain.SynthesisMatchRow) domain.Se
 		startedAt time.Time
 		endedAt   time.Time
 	}
-	soloMap  := map[string]*bounds{}
+	soloMap := map[string]*bounds{}
 	squadMap := map[string]*bounds{}
 
 	for _, m := range matches {

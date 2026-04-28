@@ -84,6 +84,13 @@ func refreshAggregates(playerDB *sql.DB) (int, error) { //nolint:unparam // erro
 	return count, nil
 }
 
+// RefreshAggregates est l'export public de refreshAggregates pour les
+// callers hors-package qui doivent rebuild mv_player_matches après un UPDATE
+// direct (cf. friends_recompute.go §4 plan Squad/Sessions).
+func RefreshAggregates(playerDB *sql.DB) (int, error) {
+	return refreshAggregates(playerDB)
+}
+
 // refreshSharedViews recrée les vues SQL dans la shared DB (idempotent).
 func refreshSharedViews(sharedDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
 	count := 0
