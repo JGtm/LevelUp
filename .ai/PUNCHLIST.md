@@ -59,7 +59,11 @@
 
 | St | Owner | Chunk | Effort | Ref |
 |----|-------|-------|--------|-----|
-| `[R]` | OP | **Squad/Sessions overhaul** §1-3 livrés (Go multi-sessions + SessionMultiSelect + SquadLayout + 19 tests). Plan §3-6 (Q29 friends, recompute, notifs) = backlog séparé. | lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) — branche `feat/op-squad-sessions-multiselect` |
+| `[R]` | OP | **Squad/Sessions §1-2** livrés (Go multi-sessions + SessionMultiSelect + SquadLayout + 19 tests). | lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) — branche `feat/op-squad-sessions-multiselect` |
+| `[ ]` | OP | **Squad/Sessions §3** — Q29 friends-only filter + add-friend modal (Squad + Settings). Front Modal + endpoint POST /friends/add. | lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md §3+§3bis](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) |
+| `[ ]` | OP | **Squad/Sessions §4** — recompute `is_with_friends` (sync/friends_recompute.go + service orchestrator + port + handler async + CLI bootstrap). Très lourd cross-stack. | très lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md §4](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) |
+| `[ ]` | OP | **Squad/Sessions §5** — Stats solo : symétrie SessionMultiSelect alimenté par `session_labels.solo`. Bloqué par §1 (DTO) déjà OK ; manque la page Stats côté front. | moyen | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md §5](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) |
+| `[ ]` | OP | **Squad/Sessions §6** — Notifications `friend_added` + `friend_sync_completed` (in-app + Discord). Dépend de §3+§4. | moyen | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md §6](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) |
 | `[R]` | OP | **Form score intra-match** — réflexion en cours | moyen | [.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md](REFLEXION_FORM_SCORE_INTRA_MATCH.md) — exploratoire |
 | `[ ]` | OP | **Finition multi-titres** — labels/capabilities restants | moyen | [.ai/PLAN_FINITION_MULTI_TITLE.md](PLAN_FINITION_MULTI_TITLE.md) |
 
