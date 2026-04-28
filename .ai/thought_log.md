@@ -11,7 +11,11 @@
 
 **Résultats** : `npx tsc --noEmit` → 0 erreur.
 
-**Prochaine étape** : §4 intégration Stats page (si concernée), §5 tests Go + front, §6 mise à jour thought_log final + PUNCHLIST `[R]` + commit. — OP
+**§4 (Stats page)** : aucune page Stats avec filtre session n'existe encore — N/A.
+**§5 (Tests)** : `SessionMultiSelect.test.tsx` — 19 tests (trigger label, ouverture/fermeture, fuzzy, filtre date, validation différée, toggle tout/rien). + Correction critique `setup.ts` : Node.js v25.9.0 expose un `globalThis.localStorage` natif sans `setItem`/`clear` → mock in-memory injecté avant jsdom/Zustand. Récupère 478/478 tests (23 fichiers pre-existing echarts/i18n imports).
+**§6 (Docs)** : entry thought_log + PUNCHLIST `[R]` + commit ci-dessous.
+
+**Prochaine étape** : review GS — §3-6 du PLAN_SQUAD_STATS_SESSIONS_OVERHAUL (Q29 friends filter, recompute is_with_friends, add-friend modal, notifications) restent à planifier. — OP
 
 ## [2026-04-28] cleanup(plotly): résidus CareerPageCharts + colorscale orphelins
 
