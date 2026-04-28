@@ -8,9 +8,11 @@ import type { SquadTimeseriesPoint } from '@/lib/api/types'
 
 const POINT = (period_label: string, win_rate: number): SquadTimeseriesPoint => ({
   period_label,
+  match_count: 3,
+  wins: Math.round(3 * win_rate),
   win_rate,
   avg_performance: 65,
-  match_count: 3,
+  avg_mmr: 1500,
 })
 
 describe('buildTimelineSeries', () => {
