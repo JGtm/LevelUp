@@ -16,6 +16,39 @@ Approche frontend-only — le backfill ne concerne que l'utilisateur qui le déc
 
 **Prochaine étape** : tests unitaires `useJobToasts.test.ts` si besoin de coverage formelle.
 
+## [2026-04-28] feat(static-fs-rescope): Phase 6.1 — package internal/assets/static/ pur
+
+**Statut** : Complété — couche 2 SRP du chantier static FS title-scoping livrée.
+
+**Décision technique** :
+Création du sous-package `internal/assets/static/` (4 fichiers, ~80 LoC) pur, sans dépendance titre. Sépare la composition d'URL/path (générique) de la connaissance des conventions title-spécifiques (encodage map names, fallback UUID — vivront en couche 3 dans `internal/games/halo_infinite/adapter_asset_urls.go` Phase 6.2).
+
+**Fichiers créés** :
+- `kinds.go` — enum `Kind` (KindMap, KindMedal, KindCSRRank, KindWeapon, KindCommendation) + `Kind.Valid()`.
+- `layout.go` — `MountPoint = "/static"` + `Folder(k Kind) string` (centralise medals→"medals/icons", weapons→"weapons-assets", etc.).
+- `urls.go` — `URL(k, titleSlug, id, ext) string` retourne `/static/{folder}/{titleSlug}/{id}{ext}` ou "" si invalide. Pas d'encodage spécifique (caller responsable).
+- `fs.go` — `AbsRoot(repoRoot)` + `AbsKindRoot(repoRoot, k, titleSlug)` pour FileServer + outillage migration.
+- `static_test.go` — table-driven : TestKindValid (8 cas), TestFolder (7), TestURL (12), TestAbsRoot (3), TestAbsKindRoot (5) = 35 assertions.
+
+**Résultats** :
+- `go test ./internal/assets/static/...` → PASS (35/35).
+- `go vet ./internal/assets/static/...` → clean.
+- `gofmt -l` → 0 fichier à reformatter.
+- 0 caller modifié à ce stade — couche 2 isolée, pas de régression possible.
+
+**Conformité plan-review** :
+- Architecture Go : pur, zéro DB/HTTP ✓
+- Multi-titres : `titleSlug` paramètre, jamais hardcodé ✓
+- Tests : table-driven exhaustif (cas valides + invalides + edge cases) ✓
+- Logging : pas de slog ici (logique pure, pas d'opération significative à logger) ✓
+- Livraison : package livrable indépendamment, prochaines phases dépendent de lui mais lui ne dépend de rien ✓
+
+**Prochaine étape** : Phase 6.2 — `TitleAssetURLAdapter` interface dans `internal/games/adapter.go` + impl HI dans `internal/games/halo_infinite/adapter_asset_urls.go` avec flag transitionnel `STATIC_PATHS_TITLE_SCOPED` (ENV, default OFF). Cette phase câble la couche 2 sans toucher les callers (Phase 6.3).
+
+— GS
+
+---
+
 ## [2026-04-28] docs(plan-finition-multi-titre): recalibration après audit terrain + extension Phase 6 (static FS)
 
 **Statut** : Complété — Phase 1–5 marquées DONE, Phase 6 (static FS title-scoping) ouverte.
