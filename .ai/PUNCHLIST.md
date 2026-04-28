@@ -59,7 +59,7 @@
 
 | St | Owner | Chunk | Effort | Ref |
 |----|-------|-------|--------|-----|
-| `[~]` | OP | **Squad/Sessions overhaul** §1-3 faits (Go multi-sessions + SessionMultiSelect + SquadLayout). §4 Stats, §5 Tests, §6 Docs restent. | lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) — branche `feat/op-squad-sessions-multiselect` |
+| `[R]` | OP | **Squad/Sessions overhaul** §1-3 livrés (Go multi-sessions + SessionMultiSelect + SquadLayout + 19 tests). Plan §3-6 (Q29 friends, recompute, notifs) = backlog séparé. | lourd | [.ai/PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md](PLAN_SQUAD_STATS_SESSIONS_OVERHAUL.md) — branche `feat/op-squad-sessions-multiselect` |
 | `[R]` | OP | **Form score intra-match** — réflexion en cours | moyen | [.ai/REFLEXION_FORM_SCORE_INTRA_MATCH.md](REFLEXION_FORM_SCORE_INTRA_MATCH.md) — exploratoire |
 | `[ ]` | OP | **Finition multi-titres** — labels/capabilities restants | moyen | [.ai/PLAN_FINITION_MULTI_TITLE.md](PLAN_FINITION_MULTI_TITLE.md) |
 
