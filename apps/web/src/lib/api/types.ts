@@ -534,6 +534,7 @@ export interface BackfillStartRequest {
   aliases?: boolean
   weapons?: boolean
   lusr?: boolean
+  engagement_scores?: boolean
   all_data?: boolean
   max_matches?: number
   dry_run?: boolean
@@ -2301,4 +2302,15 @@ export interface WatcherAuthStatus {
   error_code?: string
   gamertag?: string
   xuid?: string
+}
+
+// ---------------------------------------------------------------------------
+// Asset Drawer (Phase 2)
+// ---------------------------------------------------------------------------
+
+export interface AssetMeta {
+  id: string
+  name_en: string
+  name_fr: string
+  image_url: string
 }
