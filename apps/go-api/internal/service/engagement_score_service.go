@@ -449,6 +449,9 @@ func (s *PlayerEngagementService) GetMatchEngagement(
 func (s *PlayerEngagementService) GetEngagementProfile(
 	ctx context.Context,
 ) ([]domain.EngagementCoefficient, error) {
+	if s.xuid == "" {
+		return nil, errors.New("PlayerEngagementService.GetEngagementProfile: xuid required")
+	}
 	coefs, err := s.repo.LoadAllCoefficients(ctx, s.xuid)
 	if err != nil {
 		if errors.Is(err, port.ErrEngagementUnavailable) {

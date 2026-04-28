@@ -98,6 +98,33 @@ const FR_TEXT: HelpText = {
             example:
               "15 frags, 4 assistances, 6 morts → FDA = (15 + 4/3) / 6 ≈ 2,72\n20 frags, 0 assistance, 5 morts → FDA = 20 / 5 = 4,00\n0 frag, 0 assistance, 0 mort → FDA = 0 / 1 = 0 (plancher d'une mort)",
           },
+          {
+            term: "Score d'engagement",
+            definition:
+              "Mesure votre dynamisme dans un match : écart entre votre engagement observé et votre engagement attendu (vu votre style historique et le contexte d'équipe), normalisé en percentile vs votre propre historique. 50 = comme d'habitude. >50 = plus engagé. <50 = moins engagé.\n\nDistinct du Score de performance : le PerfScore mesure la qualité de vos actions, l'Engagement mesure leur quantité, leur régularité et votre état d'esprit. Les deux axes sont indépendants — un joueur peut être compétent mais atone (perf élevée, engagement bas) ou moyen mais investi à fond (perf normale, engagement haut).\n\nCalcul intra-match : pour chaque instant t (échantillonné toutes les 10s, fenêtre glissante 90s), on compare votre pace d'événements (kills, deaths, assists, médailles) au pace de votre équipe alliée multiplié par votre coefficient personnel. La moyenne des écarts sur le match donne le résidu brut, qui est ensuite normalisé en percentile vs vos 200 derniers matchs sur la même catégorie de mode.\n\nNiveaux de confiance : insufficient_history (<10 matchs, score nil), partial (10-29 matchs), full (≥30 matchs). PvE non couvert v1.",
+            formula:
+              "Pour chaque instant t :\n  pace_attendu(t) = coef_team_share × pace_team_per_player(t)\n  écart(t) = pace_joueur(t) − pace_attendu(t)\n\nRésidu brut du match = mean_t écart(t)\nScore final = percentile(résidu brut, distribution historique 200 matchs)\n\nFenêtre glissante : 90s, échantillonnage : 10s.\nFallback FFA/1v1 : pace_attendu calculé via lobby_share au lieu de team_share.\nMin match duration : 3 minutes (sinon score = null).",
+            example:
+              "Vous prenez habituellement 28% du travail dans vos équipes (coef_team_share = 1.12 dans un 4v4). Sur ce match, votre équipe alliée fait 12 events/min/joueur en moyenne. Votre pace attendu = 1.12 × 12 = 13.4 events/min. Si vous faites 16 events/min, vous êtes au-dessus de l'attendu de 2.6. Sur l'ensemble du match, écart moyen = +1.8. Vs votre historique (médiane résidus = 0), c'est meilleur que 78% de vos parties → Engagement Score = 78/100.",
+          },
+          {
+            term: "Coefficient d'engagement (team_share, lobby_share)",
+            definition:
+              "Caractérisent votre style de jeu sur la durée. Médianes glissantes sur vos 200 derniers matchs par catégorie de mode (PvP_ranked, PvP_unranked).\n\nCoef_team_share : votre part historique du travail de vos équipes. Comparable inter-joueurs (caractéristique personnelle pure indépendante du contexte). >1.0 = leader intra-équipe. <1.0 = profil support / passif.\n\nCoef_lobby_share : votre part historique de l'action totale du lobby. Mixe style + skill + qualité des équipes habituelles.\n\nLecture combinée :\n• team=1.3 / lobby=1.0 : leader d'équipes moyennes (vous portez)\n• team=1.0 / lobby=1.4 : passager d'équipes fortes (vous bénéficiez du contexte)\n• team=0.7 / lobby=1.1 : sous-engagé en équipe forte (l'équipe domine sans vous)",
+            formula:
+              "coef_team_share  = mediane(pace_joueur / pace_team_per_player) sur 200 matchs\ncoef_lobby_share = mediane(pace_joueur / pace_lobby_per_player) sur 200 matchs\n\nRecalculés périodiquement au sync. Stale au-delà de 30 jours d'inactivité.",
+            example:
+              "Sur vos 200 dernières parties PvP rankées, votre pace moyen est 1.18× le pace per-player de vos équipes (coef_team_share = 1.18). Vous prenez donc 29.5% du travail dans un 4v4 (au lieu de la fair share 25%). Sur la même période, vous faites 1.05× le pace per-player du lobby (coef_lobby_share = 1.05) → vous êtes légèrement plus actif que la moyenne du lobby, mais surtout fort dans votre équipe vs vos coéquipiers.",
+          },
+          {
+            term: 'Intensité du match',
+            definition:
+              "Caractéristique objective d'un match, indépendante du joueur : events/min/joueur du lobby sur la durée totale. Permet de classer les matchs entre eux (calme / standard / chaotique) et d'interpréter le score d'engagement dans son contexte.\n\nMatchs typiques :\n• Slayer 12 min équilibré : ~10-13 events/min/joueur\n• Slayer 4 min steamroll : ~8-12 (compressé)\n• Strongholds tactique : ~6-9 (longues phases calmes)\n• BTB chaotique : ~12-16",
+            formula:
+              'match_intensity = total_events_lobby / N_humains_lobby / durée_minutes\n\nStockée au niveau du match (1 valeur par match, ne change jamais après ingestion).',
+            example:
+              "Match Slayer 11:30, 8 humains au lobby, 95 events highlight (kills + deaths + assists + medals). Intensité = 95 / 8 / 11.5 = 1.03 events/min/joueur côté lobby per_player.\n\nUn match avec 14 events/min/joueur correspond à un cas chaotique (P88 vs votre historique). Un match à 6 events/min/joueur est à l'inverse calme/tactique.",
+          },
         ],
       },
       {
