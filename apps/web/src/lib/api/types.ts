@@ -1460,6 +1460,9 @@ export interface SynthesisOverview {
   avg_deaths?: number | null
   win_rate: number
   avg_perf_score?: number | null
+  // P2.5 (revue 2026-04-29 ADR 0006) : K/D agrege canonique sum/sum (analysis.KDR)
+  // distinct du recompute front faux (sum/sum != avg(K/D)). Voir B3.
+  total_kdr?: number | null
   best_kills_match?: number | null
   best_kda_match?: number | null
   longest_win_streak?: number
@@ -2028,6 +2031,10 @@ export interface TimeseriesMatchRow {
   kills: number
   deaths: number
   assists: number
+  // P2.5 (revue 2026-04-29 ADR 0006) : KDA (sync) + KDRatio canonique calcule
+  // par analysis.KDR(). Permet de supprimer le recompute K/D cote front (B3).
+  kda?: number | null
+  kd_ratio?: number | null
   accuracy: number | null
   outcome: number | null
   personal_score: number | null

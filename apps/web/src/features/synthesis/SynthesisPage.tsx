@@ -136,7 +136,13 @@ function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string, fallback: string): string =>
     fieldMappings?.fields[key]?.label ?? fallback
-  const kd = overview.total_deaths > 0
+  // P4.4 (revue 2026-04-29 B3) : utilise overview.total_kdr expose par l'API
+  // (P2.5) au lieu de sum/sum cote front (mathematiquement faux car
+  // sum(K)/sum(D) != avg(K/D)). Fallback sur l'ancien recompute si total_kdr
+  // manquant (vieux DTO).
+  const kd = overview.total_kdr != null
+    ? overview.total_kdr.toFixed(2)
+    : overview.total_deaths > 0
     ? (overview.total_kills / overview.total_deaths).toFixed(2)
     : String(overview.total_kills)
   return (
