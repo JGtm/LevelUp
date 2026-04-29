@@ -5,6 +5,7 @@
  * outcome global. Le tri est fait côté backend (date desc).
  */
 import { tokenCssVar } from '@/lib/accessibility'
+import { formatDate, formatDurationMMSS } from '@/lib/formatters'
 
 import type { HistoryTableRow, Outcome } from '../types'
 
@@ -25,16 +26,14 @@ export interface HistoryTableProps {
   }
 }
 
-function formatDate(iso: string, locale: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: '2-digit' })
-}
-
-function formatDuration(seconds?: number): string {
-  if (!seconds) return '-'
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+// formatDate et formatDurationMMSS importés depuis @/lib/formatters
+// (revue 2026-04-29 P2.6bis — centralisation helpers).
+// Le format date local utilise day/month/year 2-digit ; passer ce format
+// explicite au helper canonique.
+const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  month: '2-digit',
+  year: '2-digit',
 }
 
 function outcomeColorVar(o: Outcome): string {
@@ -74,10 +73,10 @@ export function HistoryTable({ rows, squadOrder, locale, labels }: HistoryTableP
         <tbody className="divide-y">
           {rows.map((row) => (
             <tr key={row.match_id}>
-              <td className="px-3 py-2">{formatDate(row.started_at_utc, locale)}</td>
+              <td className="px-3 py-2">{formatDate(row.started_at_utc, locale, HISTORY_DATE_OPTS)}</td>
               <td className="px-3 py-2">{row.mode_label ?? '-'}</td>
               <td className="px-3 py-2">{row.map_label ?? '-'}</td>
-              <td className="px-3 py-2 text-center">{formatDuration(row.duration_seconds)}</td>
+              <td className="px-3 py-2 text-center">{formatDurationMMSS(row.duration_seconds)}</td>
               <td
                 className="px-3 py-2 text-center font-medium"
                 style={{ color: outcomeColorVar(row.main_outcome) }}

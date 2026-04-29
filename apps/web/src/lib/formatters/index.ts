@@ -1,0 +1,15 @@
+/**
+ * Barrel export des helpers de formatage canoniques (revue 2026-04-29 P2.6 + P2.6bis).
+ *
+ * Usage :
+ *   import { formatPercent, formatDate, formatNumber, formatDurationMMSS } from '@/lib/formatters'
+ *
+ * Convention : tous les helpers acceptent `null | undefined` et renvoient un
+ * fallback "—" (ou "-" pour les durées) configurable. Pas de coercition
+ * silencieuse (`Number.isNaN` + null check explicites).
+ */
+
+export { formatPercent, formatPercentValue } from './percent'
+export { formatDate, formatDateShort, formatDateTime, type Locale } from './date'
+export { formatNumber, formatNumberFixed, formatRatio, formatKDA } from './number'
+export { formatDurationMMSS, formatDurationHMS } from './duration'
