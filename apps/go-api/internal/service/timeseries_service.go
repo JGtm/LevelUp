@@ -65,29 +65,20 @@ func (s *TimeseriesService) GetPage(
 	ctx context.Context,
 	req domain.TimeseriesQueryRequest,
 ) (domain.TimeseriesPageResponse, error) {
-	// P4.1 (ADR 0011) : si playerMatchesRepo injecté, charger canonical et
-	// convertir. TODO P4.3 : retirer la conversion quand analyses timeseries
-	// migrées canonical.
-	var allMatches []domain.StatsMatchRow
-	var err error
-	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
-		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
-			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-		)
-		if e != nil {
-			slog.ErrorContext(ctx, "timeseries: chargement canonical", "error", e)
-			return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService canonical: %w", e)
-		}
-		slog.DebugContext(ctx, "timeseries: loaded canonical",
-			"rows", len(canonicalRows), "title_slug", s.titleSlug)
-		allMatches = analysis.StatsMatchRowsFromCanonical(canonicalRows)
-	} else {
-		allMatches, err = s.statsRepo.LoadStatsMatches(ctx)
-		if err != nil {
-			slog.ErrorContext(ctx, "timeseries: chargement matches", "error", err)
-			return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: %w", err)
-		}
+	// P4.3 finale (ADR 0011) : path canonical exclusif.
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
+	if err != nil {
+		slog.ErrorContext(ctx, "timeseries: chargement canonical", "error", err)
+		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: %w", err)
+	}
+	slog.DebugContext(ctx, "timeseries: loaded canonical",
+		"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	allMatches := analysis.StatsMatchRowsFromCanonical(canonicalRows)
 
 	matches := filterStatsMatchRows(allMatches, req.Filters)
 	slog.DebugContext(ctx, "timeseries: matches chargés",

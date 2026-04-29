@@ -148,7 +148,7 @@ func TestBuildCompareMetrics_TwoSessions(t *testing.T) {
 
 func TestSessionCompareService_Compare_AutoSelectsLatestSessions(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionCompareService(nil, repo)
+	svc := NewSessionCompareService(nil, repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 
 	resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{})
 	if err != nil {
@@ -168,7 +168,7 @@ func TestSessionCompareService_Compare_AutoSelectsLatestSessions(t *testing.T) {
 
 func TestSessionCompareService_Compare_WithFilterAndSingleSession(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionCompareService(nil, repo)
+	svc := NewSessionCompareService(nil, repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 	start := time.Date(2026, 4, 21, 19, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 4, 21, 21, 0, 0, 0, time.UTC)
 

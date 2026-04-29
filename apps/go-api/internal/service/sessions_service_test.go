@@ -143,7 +143,7 @@ func TestSessionCompareService_Compare_OK(t *testing.T) {
 			{MatchID: "m4", StartTime: now, Kills: 15, Deaths: 2},
 		},
 	}
-	svc := NewSessionCompareService(sessRepo, statsRepo)
+	svc := NewSessionCompareService(sessRepo, statsRepo).WithPlayerMatchesRepo(newStatsMockFromRows(statsRepo.matches, nil), "halo_infinite", "Test")
 
 	resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{
 		SessionA: &sessA,
@@ -158,7 +158,7 @@ func TestSessionCompareService_Compare_OK(t *testing.T) {
 func TestSessionCompareService_Compare_SessionsError(t *testing.T) {
 	sessRepo := &mockSessionCompareSessionsRepo{}
 	statsRepo := &mockSessionCompareStatsRepo{matchErr: errors.New("fail")}
-	svc := NewSessionCompareService(sessRepo, statsRepo)
+	svc := NewSessionCompareService(sessRepo, statsRepo).WithPlayerMatchesRepo(newStatsMockFromRows(nil, errors.New("fail")), "halo_infinite", "Test")
 
 	_, err := svc.Compare(context.Background(), domain.SessionCompareRequest{})
 	if err == nil {

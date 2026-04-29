@@ -64,27 +64,22 @@ func (s *StatsService) GetPage(
 	ctx context.Context,
 	req domain.StatsQueryRequest,
 ) (domain.StatsPageResponse, error) {
-	// P4.1 (ADR 0011) : si playerMatchesRepo injecté, charger canonical et
-	// convertir. TODO P4.3 : retirer la conversion quand analyses stats
-	// migrées canonical.
-	var matches []domain.StatsMatchRow
-	var err error
-	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
-		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
-			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-		)
-		if e != nil {
-			return domain.StatsPageResponse{}, fmt.Errorf("StatsService.GetPage canonical: %w", e)
-		}
-		slog.DebugContext(ctx, "stats: loaded canonical",
-			"rows", len(canonicalRows), "title_slug", s.titleSlug)
-		matches = analysis.StatsMatchRowsFromCanonical(canonicalRows)
-	} else {
-		matches, err = s.statsRepo.LoadStatsMatches(ctx)
-		if err != nil {
-			return domain.StatsPageResponse{}, fmt.Errorf("StatsService.GetPage load: %w", err)
-		}
+	// P4.3 finale (ADR 0011) : path canonical exclusif. playerMatchesRepo +
+	// titleSlug + gamertag REQUIS (wirés en DI universellement). Le converter
+	// StatsMatchRowsFromCanonical (analysis/) encapsule la conversion vers
+	// les analyses build*Tab legacy en attendant leur port full canonical.
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		return domain.StatsPageResponse{}, fmt.Errorf("StatsService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
+	if err != nil {
+		return domain.StatsPageResponse{}, fmt.Errorf("StatsService.GetPage: %w", err)
+	}
+	slog.DebugContext(ctx, "stats: loaded canonical",
+		"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	matches := analysis.StatsMatchRowsFromCanonical(canonicalRows)
 
 	bucketInfo := computeBucketInfoFromMatches(matches)
 	resp := domain.StatsPageResponse{

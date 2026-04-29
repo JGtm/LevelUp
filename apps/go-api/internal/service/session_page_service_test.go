@@ -21,7 +21,7 @@ func TestSessionPageService_GetPage_DefaultLatestSession(t *testing.T) {
 			makeSessionPageMatch("m6", now.Add(-10*time.Minute), "2026-04-21 19h30", true, "Ranked Arena", "Oddball", 13, 5, 6, 64.8, 70.0),
 		},
 	}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{})
 	if err != nil {
@@ -49,7 +49,7 @@ func TestSessionPageService_GetPage_DefaultLatestSession(t *testing.T) {
 
 func TestSessionPageService_GetPage_EnableCompareUsesSuggestion(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{EnableCompare: true})
 	if err != nil {
@@ -70,7 +70,7 @@ func TestSessionPageService_GetPage_EnableCompareUsesSuggestion(t *testing.T) {
 
 func TestSessionPageService_GetPage_ManualCompareLabelWins(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 	manual := "2026-04-21 14h"
 
 	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{
@@ -87,7 +87,7 @@ func TestSessionPageService_GetPage_ManualCompareLabelWins(t *testing.T) {
 
 func TestSessionPageService_GetPage_AppliesPeriodFilter(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 	start := time.Date(2026, 4, 21, 17, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 4, 21, 21, 0, 0, 0, time.UTC)
 
@@ -113,7 +113,7 @@ func TestSessionPageService_GetPage_AppliesPeriodFilter(t *testing.T) {
 
 func TestSessionPageService_GetPage_NoSessionsAfterFiltering(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 	start := time.Date(2026, 4, 22, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 4, 22, 1, 0, 0, 0, time.UTC)
 
@@ -142,7 +142,7 @@ func TestSessionPageService_GetPage_NoSessionsAfterFiltering(t *testing.T) {
 
 func TestSessionPageService_GetPage_UnknownCurrentSessionReturnsEmptyState(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 	unknown := "2026-04-21 23h"
 
 	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{SessionLabel: &unknown})
@@ -162,7 +162,7 @@ func TestSessionPageService_GetPage_UnknownCurrentSessionReturnsEmptyState(t *te
 
 func TestSessionPageService_GetPage_MissingManualCompareDisablesComparison(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 	missing := "2026-04-20 22h"
 
 	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{
@@ -185,7 +185,7 @@ func TestSessionPageService_GetPage_MissingManualCompareDisablesComparison(t *te
 
 func TestSessionPageService_GetPage_SingleSessionHasNoSuggestion(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()[:2]}
-	svc := NewSessionPageService(repo)
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{})
 	if err != nil {
