@@ -19,6 +19,8 @@
 package analysis
 
 import (
+	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"time"
@@ -392,20 +394,244 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 	return BuildHighlights(HomeMatchRowsFromCanonical(rows))
 }
 
-// BuildRecentMatchesWithFavoritesFromCanonical est la variante canonical-aware
-// de BuildRecentMatchesWithFavoritesForLocale.
-// TODO P4.3 finale : porter les conversions de mode/map/outcome label à
-// canonical (consommer Summary.Map.Labels et Summary.Playlist.Labels
-// directement plutôt que via HomeMatchRow.MapNameFR/PlaylistNameFR).
+// BuildRecentMatchesWithFavoritesFromCanonical : full canonical (P4.3 finale).
+//
+// Lit Map/Playlist/GameVariant labels via Summary.AssetReference.Labels.
+// PairName (composite Halo-only) substitué par GameVariant FR/Default.
+// SkillTierLabel/SkillRankImageURL : laissés vides (TODO ADR 0011 — câblage
+// TitleSemanticAdapter / TitleAssetURLAdapter au boot du service).
 func BuildRecentMatchesWithFavoritesFromCanonical(
 	rows []canonical.PlayerMatchRow,
 	limit int,
 	favoriteIDs map[string]bool,
 	locale string,
 ) []domain.RecentMatchItem {
-	return BuildRecentMatchesWithFavoritesForLocale(
-		HomeMatchRowsFromCanonical(rows), limit, favoriteIDs, locale,
-	)
+	if len(rows) == 0 {
+		return nil
+	}
+	locale = normalizeHomeLocale(locale)
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	items := make([]domain.RecentMatchItem, 0, len(rows))
+	for _, r := range rows {
+		if r.Summary.MatchID == "" {
+			continue
+		}
+		// Outcome canonical → int Halo pour les helpers existants.
+		outcome := canonicalOutcomeToInt(r.Self.Outcome)
+		label := outcomeLabelForLocale(outcome, locale)
+		tone := outcomeTone(outcome)
+
+		// Ratio (KDR) computed.
+		var ratioPtr *float64
+		ratioStr := "-"
+		if r.Self.Deaths != nil && *r.Self.Deaths > 0 && r.Self.Kills != nil {
+			v := float64(*r.Self.Kills) / float64(*r.Self.Deaths)
+			ratioPtr = &v
+			ratioStr = fmt.Sprintf("%.2f", v)
+		}
+		accStr := "-"
+		if r.Self.Accuracy != nil {
+			accStr = fmt.Sprintf("%.0f%%", *r.Self.Accuracy)
+		}
+		t := r.Summary.StartedAtUTC
+
+		mapName, mapNameFR := assetLabels(r.Summary.Map)
+		variantName, variantNameFR := assetLabels(r.Summary.GameVariant)
+		playlistName, playlistNameFR := assetLabels(r.Summary.Playlist)
+
+		mapUI := labelForLocale(locale, mapNameFR, mapName)
+		// PairName composite Halo-only → proxy GameVariant.
+		modeUI := normalizeHomeModeLabel(labelForLocale(locale, variantNameFR, variantName), mapNameFR, mapName)
+		var playlistUI *string
+		if playlistName != "" || playlistNameFR != "" {
+			playlist := labelForLocale(locale, playlistNameFR, playlistName)
+			playlistUI = &playlist
+		}
+
+		// Score label : reconstruit depuis Summary.Teams.
+		scoreLabel := buildScoreLabelCanonical(r)
+		narrativeBadges := buildHomeNarrativeBadges(int(r.Enrichment.DominanceFlag))
+
+		kills := derefIntZero(r.Self.Kills)
+		deaths := derefIntZero(r.Self.Deaths)
+		assists := derefIntZero(r.Self.Assists)
+
+		var perfScoreRel *int
+		if r.Enrichment.PerformanceScore != nil {
+			v := int(math.Round(*r.Enrichment.PerformanceScore))
+			perfScoreRel = &v
+		}
+
+		// SkillSnapshot : data fields uniquement (label / URL = TODO).
+		var skillRatingVal *int
+		var skillRatingType *string
+		var skillRatingDelta *float64
+		var skillPlaylistGroup *string
+		var skillProgressPct *float64
+		var skillPointsInTier *int
+		if ss := r.Enrichment.SkillSnapshot; ss != nil {
+			if ss.RatingValue != nil {
+				v := int(math.Round(*ss.RatingValue))
+				skillRatingVal = &v
+				typ := string(ss.RatingType)
+				skillRatingType = &typ
+				const tierSize = 50.0
+				pts := math.Mod(*ss.RatingValue, tierSize)
+				if pts < 0 {
+					pts += tierSize
+				}
+				pct := pts / tierSize * 100.0
+				skillProgressPct = &pct
+				p := int(math.Round(pts))
+				skillPointsInTier = &p
+			}
+			skillRatingDelta = ss.Delta
+			if ss.PlaylistGroup != nil && *ss.PlaylistGroup != "" {
+				skillPlaylistGroup = ss.PlaylistGroup
+			}
+		}
+
+		// Combat yield depuis canonical (DamageDealt/DamageTaken int → float64).
+		var offConv, defRes *float64
+		var dmgDealtPtr, dmgTakenPtr *float64
+		if r.Self.DamageDealt != nil {
+			v := float64(*r.Self.DamageDealt)
+			dmgDealtPtr = &v
+		}
+		if r.Self.DamageTaken != nil {
+			v := float64(*r.Self.DamageTaken)
+			dmgTakenPtr = &v
+		}
+		dd := float64PtrVal(dmgDealtPtr)
+		dt := float64PtrVal(dmgTakenPtr)
+		if dd > 0 || dt > 0 {
+			cy := ComputeCombatYield(kills, assists, dd, dt, deaths)
+			if dd > 0 {
+				offConv = &cy.OffensiveConversion
+			}
+			if dt > 0 && deaths > 0 {
+				defRes = &cy.DefensiveResistance
+			}
+		}
+
+		isFav := favoriteIDs[r.Summary.MatchID]
+
+		isWithFriends := r.Enrichment.IsWithFriends
+		iwf := &isWithFriends
+
+		var mapID string
+		if r.Summary.Map != nil {
+			mapID = r.Summary.Map.ID
+		}
+		mapImageURL := buildMapImageURL("halo_infinite", mapID, mapName, mapNameFR)
+		_ = ratioStr // kept for parity with legacy detail format
+
+		items = append(items, domain.RecentMatchItem{
+			MatchID:                  r.Summary.MatchID,
+			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
+			Detail:                   fmt.Sprintf("%s · KD %s · %s", modeUI, ratioStr, accStr),
+			StartedAt:                &t,
+			OutcomeLabel:             label,
+			OutcomeTone:              tone,
+			ScoreLabel:               scoreLabel,
+			NarrativeBadges:          narrativeBadges,
+			IsFavorite:               isFav,
+			MapUI:                    &mapUI,
+			ModeUI:                   &modeUI,
+			PlaylistUI:               playlistUI,
+			MapImageURL:              mapImageURL,
+			Kills:                    &kills,
+			Deaths:                   &deaths,
+			Assists:                  &assists,
+			PerformanceScoreRelative: perfScoreRel,
+			OffensiveConversion:      offConv,
+			DefensiveResistance:      defRes,
+			DamageDealt:              dmgDealtPtr,
+			DamageTaken:              dmgTakenPtr,
+			SkillRatingValue:         skillRatingVal,
+			SkillRatingType:          skillRatingType,
+			SkillTierLabel:           nil, // TODO P4.3 finale: TitleSemanticAdapter
+			SkillRatingDelta:         skillRatingDelta,
+			SkillPlaylistGroup:       skillPlaylistGroup,
+			SkillRankImageURL:        nil, // TODO P4.3 finale: TitleAssetURLAdapter
+			SkillProgressPct:         skillProgressPct,
+			SkillPointsInTier:        skillPointsInTier,
+			KDA:                      r.Self.KDA,
+			DurationSecs:             r.Self.TimePlayed,
+			Accuracy:                 r.Self.Accuracy,
+			AvgLifeSecs:              r.Self.AvgLifeSeconds,
+			TeamMMR:                  r.Enrichment.TeamMMR,
+			EnemyMMR:                 r.Enrichment.EnemyMMR,
+			DeltaMMR:                 mmrDelta(r.Enrichment.TeamMMR, r.Enrichment.EnemyMMR),
+			IsWithFriends:            iwf,
+			RankInTeam:               r.Self.RankInMatch,
+			HeadshotKills:            intPtrIfPos(derefIntZero(r.Self.HeadshotKills)),
+			PerfectKills:             intPtrIfPos(derefIntZero(r.Self.PerfectKills)),
+		})
+		_ = ratioPtr
+	}
+	return items
+}
+
+// canonicalOutcomeToInt convertit canonical.Outcome → int Halo.
+func canonicalOutcomeToInt(o canonical.Outcome) int {
+	switch o {
+	case canonical.OutcomeWin:
+		return domain.OutcomeWin
+	case canonical.OutcomeLoss:
+		return domain.OutcomeLoss
+	case canonical.OutcomeTie:
+		return domain.OutcomeDraw
+	case canonical.OutcomeDNF:
+		return domain.OutcomeDNF
+	}
+	return 0
+}
+
+// assetLabels extrait (en/fr) d'une AssetReference canonical (nil-safe).
+func assetLabels(ref *canonical.AssetReference) (en, fr string) {
+	if ref == nil {
+		return "", ""
+	}
+	en = ref.DefaultLabel
+	if v, ok := ref.Labels["en"]; ok && v != "" {
+		en = v
+	}
+	if v, ok := ref.Labels["fr"]; ok && v != "" {
+		fr = v
+	}
+	return en, fr
+}
+
+// buildScoreLabelCanonical : reconstruit le score "X-Y" depuis Summary.Teams
+// + Self.TeamID (équivalent canonical de buildHomeScoreLabel).
+func buildScoreLabelCanonical(r canonical.PlayerMatchRow) *string {
+	var score0, score1 int
+	var found0, found1 bool
+	for _, t := range r.Summary.Teams {
+		if t.Score == nil {
+			continue
+		}
+		switch t.TeamID {
+		case 0:
+			score0 = *t.Score
+			found0 = true
+		case 1:
+			score1 = *t.Score
+			found1 = true
+		}
+	}
+	if !found0 || !found1 || score0 < 0 || score1 < 0 {
+		return nil
+	}
+	leftScore, rightScore := score0, score1
+	if r.Self.TeamID != nil && *r.Self.TeamID == 1 {
+		leftScore, rightScore = score1, score0
+	}
+	label := fmt.Sprintf("%d-%d", leftScore, rightScore)
+	return &label
 }
 
 // BuildSessionSummaryFromCanonical : full canonical (P4.3 finale).
