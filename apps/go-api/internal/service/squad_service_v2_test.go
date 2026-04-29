@@ -106,7 +106,7 @@ func TestSquadServiceV2_GetSquadPage_OneTeammateIntersection(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.Period1Y)
+		[]string{"friend1"}, temporal.Period1Y, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestSquadServiceV2_GetSquadPage_ThreeTeammates(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2", "f3"}, temporal.PeriodAll)
+		[]string{"f1", "f2", "f3"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestSquadServiceV2_GetSquadPage_NoIntersection(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.PeriodAll)
+		[]string{"friend1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestSquadServiceV2_GetSquadPage_TeammateCapabilityMissing(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.PeriodAll)
+		[]string{"friend1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage should not error on teammate capability missing: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestSquadServiceV2_GetSquadPage_MainPlayerCapabilityMissing(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.PeriodAll)
+		[]string{"friend1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("expected nil error (gap signaled, not panic): %v", err)
 	}
@@ -237,11 +237,11 @@ func TestSquadServiceV2_GetSquadPage_RejectsInvalidInput(t *testing.T) {
 	svc := NewSquadServiceV2(&fakeSquadLoader{})
 
 	if _, err := svc.GetSquadPage(context.Background(), "halo_infinite", "",
-		nil, temporal.PeriodAll); err == nil {
+		nil, temporal.PeriodAll, nil, nil); err == nil {
 		t.Error("empty mainGT should error")
 	}
 	if _, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2", "f3", "f4"}, temporal.PeriodAll); err == nil {
+		[]string{"f1", "f2", "f3", "f4"}, temporal.PeriodAll, nil, nil); err == nil {
 		t.Error(">3 teammates should error")
 	}
 }
@@ -260,7 +260,7 @@ func TestSquadServiceV2_GetSquadPage_LoaderRunsInParallel(t *testing.T) {
 	svc := NewSquadServiceV2(loader)
 	start := time.Now()
 	if _, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2"}, temporal.PeriodAll); err != nil {
+		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil); err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
 	// 3 joueurs × 50ms en sequentiel = 150ms. En parallele : ~50ms.
@@ -283,7 +283,7 @@ func TestSquadServiceV2_GetSquadPage_LoaderError_NotCapability(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	_, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil)
 	if err == nil {
 		t.Error("non-capability errors should propagate, got nil")
 	}
@@ -301,7 +301,7 @@ func TestSquadServiceV2_GetSquadPage_OrderDeterministicOnEqualTimes(t *testing.T
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -357,7 +357,7 @@ func TestSquadServiceV2_GetSquadPage_HeaderSoloKPIs(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -388,7 +388,7 @@ func TestSquadServiceV2_GetSquadPage_HeaderPlayerCardsAndScore(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2"}, temporal.PeriodAll)
+		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -431,7 +431,7 @@ func TestSquadServiceV2_GetSquadPage_HeaderNilWhenNoShared(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}

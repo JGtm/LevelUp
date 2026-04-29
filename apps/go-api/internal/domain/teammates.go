@@ -73,11 +73,14 @@ type TeammateRow struct {
 	WithoutKPIs    *TeammateKPIs `json:"without_kpis,omitempty"`
 }
 
-// SessionLabelEntry est une session avec sa plage temporelle (pour le mini-filtre client).
+// SessionLabelEntry est une session avec sa plage temporelle et ses métadonnées
+// d'expérience/playlist pour le filtre de navigation client.
 type SessionLabelEntry struct {
-	Label     string    `json:"label"`
-	StartedAt time.Time `json:"started_at"`
-	EndedAt   time.Time `json:"ended_at"`
+	Label       string    `json:"label"`
+	StartedAt   time.Time `json:"started_at"`
+	EndedAt     time.Time `json:"ended_at"`
+	Experiences []string  `json:"experiences,omitempty"`
+	Playlists   []string  `json:"playlists,omitempty"`
 }
 
 // SessionLabelsList contient les sessions disponibles pour les deux scopes (solo/escouade).

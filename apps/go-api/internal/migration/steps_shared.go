@@ -499,6 +499,18 @@ func init() {
 		},
 	})
 
+	// Recrée mv_player_matches avec les colonnes i18n manquantes (pair_name,
+	// map_name_fr, pair_name_fr, playlist_name_fr). Les migrations précédentes
+	// add_mv_player_matches_fr_cols et add_mv_player_matches_view avaient été
+	// appliquées avant add_match_registry_i18n_columns, donc les colonnes _fr
+	// étaient absentes de la vue — causant des labels anglais dans les filtres.
+	Register(Migration{
+		Name:        "fix_mv_player_matches_i18n_cols",
+		TargetDB:    TargetShared,
+		Description: "Recrée mv_player_matches avec pair_name, map_name_fr, pair_name_fr, playlist_name_fr",
+		ApplySchema: applyMvPlayerMatchesView,
+	})
+
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.
@@ -667,8 +679,12 @@ func applyMvPlayerMatchesView(db *sql.DB) error {
 			mr.end_time,
 			mr.playlist_id,
 			mr.playlist_name,
+			mr.playlist_name_fr,
 			mr.map_id,
 			mr.map_name,
+			mr.map_name_fr,
+			mr.pair_name,
+			mr.pair_name_fr,
 			mr.game_variant_id,
 			mr.game_variant_name,
 			mr.mode_category,

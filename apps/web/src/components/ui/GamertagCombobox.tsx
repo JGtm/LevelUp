@@ -37,6 +37,12 @@ export interface GamertagComboboxProps {
    * Squad/Sessions overhaul).
    */
   onAddAsFriend?: (gamertag: string) => void
+  /**
+   * Mode compact — supprime le conteneur bordé pour un usage inline dans une
+   * barre de filtres. Les pills sélectionnées et le champ de saisie flottent
+   * directement dans le flux sans padding/border externes.
+   */
+  compact?: boolean
 }
 
 // ─── Composant ──────────────────────────────────────────────────────────────────
@@ -51,6 +57,7 @@ export function GamertagCombobox({
   placeholder = 'Rechercher un gamertag…',
   allowFreeInput = true,
   onAddAsFriend,
+  compact = false,
 }: GamertagComboboxProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -143,7 +150,10 @@ export function GamertagCombobox({
     <div ref={containerRef} className="relative">
       {/* Zone input + pills */}
       <div
-        className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 cursor-text focus-within:ring-1 focus-within:ring-ring"
+        className={compact
+          ? 'flex flex-wrap items-center gap-1.5'
+          : 'flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 cursor-text focus-within:ring-1 focus-within:ring-ring'
+        }
         onClick={() => { inputRef.current?.focus(); setIsOpen(true) }}
       >
         {selected.map((gt, idx) => {
@@ -198,10 +208,10 @@ export function GamertagCombobox({
           onKeyDown={handleKeyDown}
           placeholder={selected.length === 0 ? placeholder : ''}
           disabled={isAtMax}
-          className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className={`flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${compact ? 'min-w-[80px]' : 'min-w-[120px]'}`}
         />
 
-        {max != null && (
+        {max != null && !compact && (
           <span className="ml-auto shrink-0 text-xs text-muted-foreground">
             {selected.length}/{max}
           </span>

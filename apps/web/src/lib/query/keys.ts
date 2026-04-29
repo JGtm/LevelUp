@@ -63,6 +63,8 @@ export const queryKeys = {
   // Escouade / Teammates (Slice 6)
   teammates: (playerSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = []) =>
     ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(',')] as const,
+  squadV2: (playerSlug: string, teammates: string[], period: string, experienceTypes: string[], playlists: string[]) =>
+    ['squad-v2', playerSlug, [...teammates].sort().join(','), period, [...experienceTypes].sort().join(','), [...playlists].sort().join(',')] as const,
 
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, scopeHash: string) =>

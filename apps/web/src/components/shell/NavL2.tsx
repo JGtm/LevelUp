@@ -41,6 +41,8 @@ export function NavL2() {
 
   const section = detectSection(pathname)
   if (!section) return null
+  // La section squad gère sa propre barre de filtres complète dans SquadLayout.
+  if (section === 'squad') return null
 
   function resolvePath(tpl: string): string {
     return tpl.replace('$playerSlug', playerSlug)

@@ -215,6 +215,79 @@ func TestExtractSynthesisSessionLabels_SortedByStartedAtDesc(t *testing.T) {
 	}
 }
 
+// ---------- extractSynthesisSessionLabels — expériences & playlists ----------
+
+func TestExtractSynthesisSessionLabels_AggregatesExperiences(t *testing.T) {
+	label := "sess-mixed"
+	ts := time.Now()
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: true, IsFirefight: false, PlaylistName: "Ranked Arena"},
+		{MatchID: "m2", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: false, IsFirefight: false, PlaylistName: "Quick Play"},
+		{MatchID: "m3", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: false, IsFirefight: true, PlaylistName: "Firefight"},
+	}
+	got := extractSynthesisSessionLabels(matches)
+	if len(got.Squad) != 1 {
+		t.Fatalf("expected 1 squad session, got %d", len(got.Squad))
+	}
+	e := got.Squad[0]
+	if len(e.Experiences) != 3 {
+		t.Errorf("expected 3 experiences, got %v", e.Experiences)
+	}
+	if len(e.Playlists) != 3 {
+		t.Errorf("expected 3 playlists, got %v", e.Playlists)
+	}
+}
+
+func TestExtractSynthesisSessionLabels_PureRankedSession(t *testing.T) {
+	label := "sess-ranked"
+	ts := time.Now()
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: true, IsFirefight: false, PlaylistName: "Ranked Arena"},
+		{MatchID: "m2", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: true, IsFirefight: false, PlaylistName: "Ranked Arena"},
+	}
+	got := extractSynthesisSessionLabels(matches)
+	e := got.Squad[0]
+	if len(e.Experiences) != 1 || e.Experiences[0] != "PVP classé" {
+		t.Errorf("expected [PVP classé], got %v", e.Experiences)
+	}
+}
+
+// ---------- filterSynthesisByCascade ----------
+
+func TestFilterSynthesisByCascade_NoFiltersReturnsAll(t *testing.T) {
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", IsRanked: true},
+		{MatchID: "m2", IsRanked: false},
+	}
+	got := filterSynthesisByCascade(matches, domain.CascadeFilter{})
+	if len(got) != 2 {
+		t.Errorf("expected 2, got %d", len(got))
+	}
+}
+
+func TestFilterSynthesisByCascade_ExperienceFilter(t *testing.T) {
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", IsRanked: true, IsFirefight: false},
+		{MatchID: "m2", IsRanked: false, IsFirefight: false},
+		{MatchID: "m3", IsRanked: false, IsFirefight: true},
+	}
+	got := filterSynthesisByCascade(matches, domain.CascadeFilter{ExperienceTypes: []string{"PVP classé"}})
+	if len(got) != 1 || got[0].MatchID != "m1" {
+		t.Errorf("expected only m1 (ranked), got %v", got)
+	}
+}
+
+func TestFilterSynthesisByCascade_PlaylistFilter(t *testing.T) {
+	matches := []domain.SynthesisMatchRow{
+		{MatchID: "m1", PlaylistName: "Ranked Arena"},
+		{MatchID: "m2", PlaylistName: "Quick Play"},
+	}
+	got := filterSynthesisByCascade(matches, domain.CascadeFilter{Playlists: []string{"Ranked Arena"}})
+	if len(got) != 1 || got[0].MatchID != "m1" {
+		t.Errorf("expected only m1, got %v", got)
+	}
+}
+
 // ---------- filterSynthesisBySession ----------
 
 func TestFilterSynthesisBySession_EmptyFiltersReturnsAll(t *testing.T) {

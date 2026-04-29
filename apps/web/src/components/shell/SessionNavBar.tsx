@@ -39,8 +39,8 @@ export function SessionNavBar() {
   const setSessions = useGlobalFilterStore((s) => s.setSessions)
   const isAutoSnapping = useGlobalFilterStore((s) => s.isAutoSnappingToLatest)
 
-  // Hidden hors Stats/Escouade — pas de hauteur réservée non plus
-  if (!section) return null
+  // Hidden hors Stats — la section squad gère sa propre barre dans SquadLayout
+  if (!section || section === 'squad') return null
 
   const allSessions = resolvedContext?.session_options?.all_sessions ?? []
   const pickedId = filterContext.sessions?.picked_sessions?.[0] ?? null
@@ -139,7 +139,7 @@ export function SessionNavBar() {
               title="Session la plus récente"
               aria-label="Aller à la dernière session"
             >
-              ⚡ Dernière
+              Dernière
             </button>
           </div>
 

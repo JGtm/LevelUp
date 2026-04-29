@@ -126,6 +126,8 @@ type SquadV2Service interface {
 		mainGamertag string,
 		teammateGamertags []string,
 		period temporal.Period,
+		experienceTypes []string,
+		playlists []string,
 	) (*domain.SquadPageV2Response, error)
 }
 

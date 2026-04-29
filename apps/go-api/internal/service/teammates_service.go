@@ -80,6 +80,11 @@ func (s *TeammatesService) GetPage(
 	// Filtrer les matchs selon les sessions sélectionnées.
 	filteredMatches := filterSynthesisBySession(allMatches, req.PickedSoloSessions, req.PickedSquadSessions)
 
+	// Appliquer les filtres cascade (experience_types, playlists) si présents.
+	if req.Filters != nil {
+		filteredMatches = filterSynthesisByCascade(filteredMatches, req.Filters.Cascade)
+	}
+
 	totalMatches := len(filteredMatches)
 
 	// Calculs détaillés pour les gamertags sélectionnés.
@@ -144,14 +149,16 @@ func filterTopRowsToFriends(rows []domain.TopTeammateRow, friendGamertags []stri
 }
 
 // extractSynthesisSessionLabels collecte les sessions uniques en séparant solo / escouade,
-// calcule les bornes temporelles de chaque session et trie par StartedAt DESC.
+// calcule les bornes temporelles, agrège les expériences et playlists présentes, et trie par StartedAt DESC.
 func extractSynthesisSessionLabels(matches []domain.SynthesisMatchRow) domain.SessionLabelsList {
-	type bounds struct {
-		startedAt time.Time
-		endedAt   time.Time
+	type meta struct {
+		startedAt   time.Time
+		endedAt     time.Time
+		experiences map[string]struct{}
+		playlists   map[string]struct{}
 	}
-	soloMap := map[string]*bounds{}
-	squadMap := map[string]*bounds{}
+	soloMap := map[string]*meta{}
+	squadMap := map[string]*meta{}
 
 	for _, m := range matches {
 		if m.SessionLabel == nil || *m.SessionLabel == "" {
@@ -159,31 +166,53 @@ func extractSynthesisSessionLabels(matches []domain.SynthesisMatchRow) domain.Se
 		}
 		label := *m.SessionLabel
 		t := m.StartTime
-		var em map[string]*bounds
+		var em map[string]*meta
 		if m.IsWithFriends {
 			em = squadMap
 		} else {
 			em = soloMap
 		}
-		if b, ok := em[label]; ok {
-			if t.Before(b.startedAt) {
-				b.startedAt = t
+		entry, ok := em[label]
+		if !ok {
+			entry = &meta{
+				startedAt:   t,
+				endedAt:     t,
+				experiences: map[string]struct{}{},
+				playlists:   map[string]struct{}{},
 			}
-			if t.After(b.endedAt) {
-				b.endedAt = t
-			}
-		} else {
-			em[label] = &bounds{startedAt: t, endedAt: t}
+			em[label] = entry
+		}
+		if t.Before(entry.startedAt) {
+			entry.startedAt = t
+		}
+		if t.After(entry.endedAt) {
+			entry.endedAt = t
+		}
+		entry.experiences[synthesisExperienceLabel(m)] = struct{}{}
+		if m.PlaylistName != "" {
+			entry.playlists[m.PlaylistName] = struct{}{}
 		}
 	}
 
-	toSlice := func(m map[string]*bounds) []domain.SessionLabelEntry {
+	toSlice := func(m map[string]*meta) []domain.SessionLabelEntry {
 		out := make([]domain.SessionLabelEntry, 0, len(m))
-		for label, b := range m {
+		for label, entry := range m {
+			exps := make([]string, 0, len(entry.experiences))
+			for e := range entry.experiences {
+				exps = append(exps, e)
+			}
+			slices.Sort(exps)
+			pls := make([]string, 0, len(entry.playlists))
+			for p := range entry.playlists {
+				pls = append(pls, p)
+			}
+			slices.Sort(pls)
 			out = append(out, domain.SessionLabelEntry{
-				Label:     label,
-				StartedAt: b.startedAt,
-				EndedAt:   b.endedAt,
+				Label:       label,
+				StartedAt:   entry.startedAt,
+				EndedAt:     entry.endedAt,
+				Experiences: exps,
+				Playlists:   pls,
 			})
 		}
 		slices.SortFunc(out, func(a, b domain.SessionLabelEntry) int {
@@ -196,6 +225,47 @@ func extractSynthesisSessionLabels(matches []domain.SynthesisMatchRow) domain.Se
 		Solo:  toSlice(soloMap),
 		Squad: toSlice(squadMap),
 	}
+}
+
+// synthesisExperienceLabel dérive le label d'expérience d'un match (miroir de filters_service.go).
+func synthesisExperienceLabel(m domain.SynthesisMatchRow) string {
+	if m.IsFirefight {
+		return "PVE"
+	}
+	if m.IsRanked {
+		return "PVP classé"
+	}
+	return "PVP non classé"
+}
+
+// filterSynthesisByCascade applique les filtres experience_types et playlists sur les matchs.
+func filterSynthesisByCascade(matches []domain.SynthesisMatchRow, c domain.CascadeFilter) []domain.SynthesisMatchRow {
+	if len(c.ExperienceTypes) == 0 && len(c.Playlists) == 0 {
+		return matches
+	}
+	expSet := make(map[string]struct{}, len(c.ExperienceTypes))
+	for _, e := range c.ExperienceTypes {
+		expSet[e] = struct{}{}
+	}
+	plSet := make(map[string]struct{}, len(c.Playlists))
+	for _, p := range c.Playlists {
+		plSet[p] = struct{}{}
+	}
+	out := matches[:0:0]
+	for _, m := range matches {
+		if len(expSet) > 0 {
+			if _, ok := expSet[synthesisExperienceLabel(m)]; !ok {
+				continue
+			}
+		}
+		if len(plSet) > 0 {
+			if _, ok := plSet[m.PlaylistName]; !ok {
+				continue
+			}
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 // filterSynthesisBySession filtre les matchs selon les sessions sélectionnées (union des labels).

@@ -28,10 +28,12 @@ type mockSquadV2Service struct {
 	err  error
 
 	// Capture des appels pour assertions
-	calledTitleSlug string
-	calledMainGT    string
-	calledTeammates []string
-	calledPeriod    temporal.Period
+	calledTitleSlug       string
+	calledMainGT          string
+	calledTeammates       []string
+	calledPeriod          temporal.Period
+	calledExperienceTypes []string
+	calledPlaylists       []string
 }
 
 func (m *mockSquadV2Service) GetSquadPage(
@@ -40,11 +42,15 @@ func (m *mockSquadV2Service) GetSquadPage(
 	mainGT string,
 	teammates []string,
 	period temporal.Period,
+	experienceTypes []string,
+	playlists []string,
 ) (*domain.SquadPageV2Response, error) {
 	m.calledTitleSlug = titleSlug
 	m.calledMainGT = mainGT
 	m.calledTeammates = teammates
 	m.calledPeriod = period
+	m.calledExperienceTypes = experienceTypes
+	m.calledPlaylists = playlists
 	return m.resp, m.err
 }
 
@@ -242,6 +248,29 @@ func TestSquadV2Handler_GetSquadPage_TrimsTeammates(t *testing.T) {
 	}
 	if got, want := svc.calledTeammates, []string{"Bob", "Carol"}; !equalStringSlice(got, want) {
 		t.Errorf("teammates=%v, want %v", got, want)
+	}
+}
+
+func TestSquadV2Handler_GetSquadPage_CascadeFilters(t *testing.T) {
+	t.Parallel()
+
+	svc := &mockSquadV2Service{resp: &domain.SquadPageV2Response{}}
+	r := newSquadV2Router(makeSquadV2Factory(svc))
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/test-player/pages/squad/v2?experience_types=PVP+class%C3%A9%2CPVE&playlists=Ranked+Arena", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	wantExp := []string{"PVP classé", "PVE"}
+	if !equalStringSlice(svc.calledExperienceTypes, wantExp) {
+		t.Errorf("experienceTypes=%v, want %v", svc.calledExperienceTypes, wantExp)
+	}
+	if !equalStringSlice(svc.calledPlaylists, []string{"Ranked Arena"}) {
+		t.Errorf("playlists=%v, want [Ranked Arena]", svc.calledPlaylists)
 	}
 }
 
