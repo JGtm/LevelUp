@@ -1,5 +1,30 @@
 # Thought Log
 
+## [2026-04-29] static/medals — suppression niveau icons/ legacy
+
+**Statut** : Complété.
+
+**Décision technique** : Le dossier `static/medals/icons/{titleSlug}/` avait un niveau `icons/` de trop par rapport aux autres kinds (`maps/{title}/`, `ranks/{title}/`, `weapons-assets/{title}/`). Ce résidu de l'architecture pré-v6 (il y avait des JSON à la racine de `medals/`) a été éliminé : `git mv static/medals/icons/halo_infinite → static/medals/halo_infinite` (166 fichiers), `Folder(KindMedal)` = `"medals"`, symétrique dans `staticAssets.ts`.
+
+**Résultats observés** :
+- `go test ./internal/assets/... ./internal/games/... ./internal/platform/duckdb/... ./internal/service/...` — 9 packages OK
+- `vitest run staticAssets.test.ts + squad/` — 108 tests OK, 16 fichiers
+- Zéro référence `medals/icons` résiduelle dans le code de production
+
+**Conclusion / prochaine étape** : Structure `static/` uniformisée : tous les kinds suivent `{kind}/{titleSlug}/` sans sous-dossier intermédiaire. Les warnings `go vet` dans `presence_test.go` sont pre-existants (commit `81a95ed2`), hors scope.
+
+## [2026-04-29] SquadSynergiesPage — nettoyage base saine
+
+**Statut** : Complété.
+
+**Décision technique** : Suppression de tous les graphes (BarGroupedChart synergies, BarGroupedChart HS/PK, TimeseriesLineChart, Heatmap2DChart) et de tous les imports associés (builders, metrics, field mappings). Seuls les 2 empty states (no_selection, invalid_selection) et la structure vide sont conservés.
+
+**Résultats** : 3 tests passent (empty states + rendu sans erreur avec données). Page réduite de 200L à 49L.
+
+**Complément** : Suppression de la section "Tous les équipiers" (table coéquipiers) du SquadLayout, ainsi que `TeammateRowItem`, `toggleSelect`, `prefetchCompare` et l'import `useComparePrefetch` devenus orphelins.
+
+**Prochaine étape** : Ajouter les nouvelles représentations sur cette base propre.
+
 ## [2026-04-29] P8.4 finition optionnelle — HomePage 735L → 433L (5/5 god pages <500L)
 
 **Statut** : Complété. Plan revue 2026-04-29 désormais 100% livré (y compris items optionnels).

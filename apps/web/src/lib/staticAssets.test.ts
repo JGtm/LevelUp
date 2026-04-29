@@ -11,7 +11,7 @@ describe('staticAssetURL (default title-scoped)', () => {
   })
 
   it('compose URL pour medal numeric', () => {
-    expect(staticAssetURL('medal', '12345', '.png')).toBe('/static/medals/icons/halo_infinite/12345.png')
+    expect(staticAssetURL('medal', '12345', '.png')).toBe('/static/medals/halo_infinite/12345.png')
   })
 
   it('compose URL pour csr-rank', () => {

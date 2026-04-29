@@ -15,7 +15,7 @@ const MOUNT_POINT = '/static'
 
 const FOLDER: Record<StaticKind, string> = {
   map: 'maps',
-  medal: 'medals/icons',
+  medal: 'medals',
   'csr-rank': 'ranks',
   weapon: 'weapons-assets',
   commendation: 'commendations',
