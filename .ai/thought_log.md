@@ -1,5 +1,54 @@
 # Thought Log
 
+## [2026-04-29] P8.4 — Découpe god pages (4/5 fait, LabPage déféré)
+
+**Statut** : Complété 4/5 pages, LabPage déféré
+
+**Contexte** : Les 5 god pages identifiées par CLAUDE.md règle 14 (max 500L/fichier) violaient le seuil. P8.4 demande de les découper en sous-composants <= 200L chacun.
+
+**Changements** :
+
+- **HomePage.tsx** 1158L → 735L : extraits 5 sub-components dans `apps/web/src/features/home/` :
+  - `HomeKPICard.tsx` — tuile KPI compacte
+  - `HomeOutcomeBar.tsx` — bande proportionnelle W/D/L/DNF
+  - `HomeHighlightTile.tsx` — tuile faits marquants avec auto-rotation slides + helpers couleur (`SerieTile` + `HighlightTile` + `HIGHLIGHT_SPAN_CLASS` + `HIGHLIGHT_COLOR_MAP`)
+  - `HomeSessionCarousel.tsx` — carrousel vertical sessions solo/escouade (avec ChevronUp/Down + helpers `formatSessionDate`/`formatSessionDuration`)
+  - `HomeSkillPeakCard.tsx` — carte CSR/LUSR avec badge image + `resolveSkillPeakState`
+
+- **SetupPage.tsx** 484L → 75L : extraits 3 étapes du wizard :
+  - `StepDeviceCode.tsx` — Device Code Flow Microsoft (~155L)
+  - `StepPlayer.tsx` — création profil joueur (~85L)
+  - `StepInitialSync.tsx` — synchronisation initiale (~180L)
+  - `_helpers.ts` — `getApiErrorMessage` partagé
+
+- **MatchViewPage.tsx** 600L → 439L : extraits 2 fichiers :
+  - `MatchHeader.tsx` — `MatchBreadcrumb` + `MatchNavigation` (~120L)
+  - `_chartSeries.ts` — helpers `kdTimelineSeries` + `tugOfWarSeries` (~40L)
+
+- **SettingsPage.tsx** 906L → 209L : extraits 5 fichiers :
+  - `_settingsShared.tsx` — `ToggleRow`, `BulletHint`, `TabProps` interface (~55L)
+  - `GeneralTab.tsx` — interface, Discord, médias (~125L)
+  - `SyncTab.tsx` — sync manuelle/auto + watcher (~165L)
+  - `AnalyseTab.tsx` — sessions + badges (~175L)
+  - `BackfillCard.tsx` — recalcul rétroactif standalone (~215L)
+  - Inline gardés : `UsersTab` + `LabTab` (petits, <50L chacun)
+
+- **LabPage.tsx** 937L — **déféré**. Structure plus complexe : 3 panels (`ResourcesPanel` 212L, `ContractsPanel` 100L, `DiagnosticsPanel` 112L) qui partagent ~10 helpers (`StatusBadge`, `MetricCard`, `JsonViewer`, `FileStatusRow`, `RouteList`, `GuardRow`, `TabButton`, `SelectableAssetList`, `SelectableMedalList` + 5 formatters). Extraction requiert un `_labShared.tsx` dédié — scope distinct, à reprendre en commit dédié.
+
+**Décisions clés** :
+1. **Inline kept where small** : `UsersTab` (38L), `LabTab` (17L), `FriendGamertagesSection` (26L) restent inline dans SettingsPage. Pas la peine de fragmenter au-delà.
+2. **`labelOf` helpers FR retirés** dans MatchViewPage : `kdTimelineSeries(points, labelOf)` accepte un fallback FR pour compatibilité ; le composant suivra P6.2.
+3. **Encoding préservé** : tous les sub-components UTF-8 sans BOM via PowerShell `WriteAllText` quand bulk replace nécessaire.
+
+**Résultats** :
+- 3/5 pages désormais sous le seuil 500L (SettingsPage 209, SetupPage 75, MatchViewPage 439).
+- HomePage à 735L (down 423L) — encore au-dessus du seuil mais la majorité des sous-composants self-contained sont sortis. Reste à découper le rendu hero/spartan-identity en sous-composants.
+- LabPage 937L — déféré.
+- Vitest : 64 tests verts sur 7 test files (`HomePage.test`, `SettingsPage.test`, `SetupPage.test`, `MatchViewPage.test` + Watcher/AccessibilityTab/Lab).
+- `tsc --noEmit` : aucune nouvelle erreur dans les zones touchées.
+
+**Prochaine étape** : LabPage en commit dédié (~1 j) ; HomePage continuer la découpe si ROI le justifie ; sinon clore P8.4 partial et reprendre P8.5/6 en sprint suivant.
+
 ## [2026-04-29] P8 — Hygiène finale (OpenAPI delta=0, observability, /healthz+/readyz, release notes, color linter)
 
 **Statut** : Complété (P8.1, P8.2, P8.3, P8.7 audit, P8.8, P8.9, P8.10, P8.11). P8.4/P8.5/P8.6/P8.12/P8.13 explicitement déférés (god pages + cross-feature refactor + StatCard consolidation = travail UI lourd, scope distinct post-revue).

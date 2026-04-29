@@ -1,149 +1,30 @@
 /**
  * MatchViewPage — détail d'un match (5 onglets).
+ *
+ * P8.4 (revue 2026-04-29) : MatchBreadcrumb + MatchNavigation extraits dans
+ * MatchHeader.tsx ; helpers ChartSeries dans _chartSeries.ts. Ce fichier ne
+ * porte plus que l'orchestrateur d'onglets.
  */
-import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter, Link, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { useParams } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
-import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
-import type { ChartSeries } from '@/components/charts/ChartCard'
-import { useMatchView, useMatchNeighbors } from './queries'
+import { useMatchView } from './queries'
 import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
 
 import { MatchScoreboard } from './MatchScoreboard'
 import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
+import { MatchBreadcrumb, MatchNavigation } from './MatchHeader'
+import { kdTimelineSeries, tugOfWarSeries } from './_chartSeries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
-// ─── Breadcrumb ───────────────────────────────────────────────────────────────
-
-interface MatchBreadcrumbProps {
-  playerSlug: string
-  matchLabel: string
-}
-
-function MatchBreadcrumb({ playerSlug, matchLabel }: MatchBreadcrumbProps) {
-  const router = useRouter()
-
-  function handleBack() {
-    const canGoBack = router.history.length > 1
-    if (canGoBack) {
-      router.history.back()
-    } else {
-      void router.navigate({
-        to: '/players/$playerSlug/explorer',
-        params: { playerSlug },
-      })
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-6 pt-4 pb-2 text-sm text-muted-foreground">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="flex items-center gap-1 hover:text-foreground transition-colors"
-        aria-label="Retour"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="h-4 w-4"
-          aria-hidden="true"
-        >
-          <path
-            fillRule="evenodd"
-            d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Retour
-      </button>
-      <span aria-hidden="true">·</span>
-      <Link
-        to="/players/$playerSlug/home"
-        params={{ playerSlug }}
-        className="hover:text-foreground transition-colors truncate max-w-[12rem]"
-      >
-        {playerSlug}
-      </Link>
-      <span aria-hidden="true">›</span>
-      <span className="text-foreground truncate">{matchLabel}</span>
-    </div>
-  )
-}
-
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
-
-// ─── Navigation prev/next ──────────────────────────────────────────────────
-
-interface MatchNavigationProps {
-  playerSlug: string
-  matchId: string
-}
-
-function MatchNavigation({ playerSlug, matchId }: MatchNavigationProps) {
-  const navigate = useNavigate()
-  const { data: neighbors } = useMatchNeighbors(playerSlug, matchId)
-
-  const goTo = useCallback(
-    (targetMatchId: string | null | undefined) => {
-      if (!targetMatchId) return
-      void navigate({
-        to: '/players/$playerSlug/matches/$matchId',
-        params: { playerSlug, matchId: targetMatchId },
-      })
-    },
-    [navigate, playerSlug],
-  )
-
-  // Raccourcis clavier ← / →
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === 'ArrowLeft') goTo(neighbors?.previous_match_id)
-      if (e.key === 'ArrowRight') goTo(neighbors?.next_match_id)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [goTo, neighbors])
-
-  if (!neighbors) return null
-
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={!neighbors.previous_match_id}
-        onClick={() => goTo(neighbors.previous_match_id)}
-        title="Match précédent (←)"
-        aria-label="Match précédent"
-      >
-        ◀
-      </Button>
-      <span className="text-xs text-muted-foreground tabular-nums">
-        {neighbors.current_index + 1} / {neighbors.total_matches}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={!neighbors.next_match_id}
-        onClick={() => goTo(neighbors.next_match_id)}
-        title="Match suivant (→)"
-        aria-label="Match suivant"
-      >
-        ▶
-      </Button>
-    </div>
-  )
-}
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'summary', label: 'Résumé' },
@@ -152,48 +33,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'media', label: 'Médias' },
   { id: 'citations', label: 'Citations' },
 ]
-
-// Helpers de migration MV5 (Recharts -> wrapper TimeseriesLineChart ECharts).
-// Convertissent les payloads `kd_timeline` et `tug_of_war` en ChartSeries<ChartPoint2D>[].
-
-interface KDTimelinePoint {
-  time_seconds: number
-  kills: number
-  deaths: number
-}
-
-function kdTimelineSeries(
-  points: KDTimelinePoint[],
-  labelOf: (key: string, fallback: string) => string,
-): ChartSeries<ChartPoint2D>[] {
-  return [
-    {
-      key: 'match_view.combat.kd_timeline.kills',
-      meta: { gamertag: labelOf('kills') },
-      datapoints: points.map((p) => ({ x: p.time_seconds, y: p.kills })),
-    },
-    {
-      key: 'match_view.combat.kd_timeline.deaths',
-      meta: { gamertag: labelOf('deaths') },
-      datapoints: points.map((p) => ({ x: p.time_seconds, y: p.deaths })),
-    },
-  ]
-}
-
-interface TugOfWarBin {
-  bin_start: number
-  net_kills: number
-}
-
-function tugOfWarSeries(bins: TugOfWarBin[]): ChartSeries<ChartPoint2D>[] {
-  return [
-    {
-      key: 'match_view.combat.tug_of_war.net_kills',
-      meta: { gamertag: 'Kills nets' },
-      datapoints: bins.map((b) => ({ x: b.bin_start, y: b.net_kills })),
-    },
-  ]
-}
 
 export function MatchViewPage() {
   const { playerSlug, matchId } = useParams({ strict: false }) as {

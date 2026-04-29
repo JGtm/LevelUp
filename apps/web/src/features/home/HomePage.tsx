@@ -1,7 +1,11 @@
 /**
  * HomePage — Accueil Mission Control (Slice 5).
+ *
+ * P8.4 (revue 2026-04-29) : sub-components extraits dans des fichiers dédiés
+ * (HomeKPICard, HomeOutcomeBar, HomeHighlightTile, HomeSessionCarousel,
+ * HomeSkillPeakCard) — réduit ce fichier de ~440L.
  */
-import { useState, useRef, useEffect, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,453 +19,26 @@ import { HomeHeroBanner } from './HomeHeroBanner'
 import { HomeChallengesList } from './HomeChallengesList'
 import { HomeRecentPlaylistsCard } from './HomeRecentPlaylistsCard'
 import { RecentMediaRail } from './RecentMediaRail'
+import { HomeKPICard } from './HomeKPICard'
+import { HomeOutcomeBar } from './HomeOutcomeBar'
+import { HomeHighlightTile } from './HomeHighlightTile'
+import { HomeSessionCarousel } from './HomeSessionCarousel'
+import { HomeSkillPeakCard, resolveSkillPeakState } from './HomeSkillPeakCard'
 import { ChallengesCarousel } from '@/features/prestige/components/ChallengesCarousel'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { unrankedBadgeURL } from '@/lib/staticAssets'
-import { getPerfColor } from '@/lib/perf-color'
 import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
-import type { HomeSkillPeakSummary, SessionSummaryItem, HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
-import { getHighlightText, resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
+import { getHighlightText } from './highlights.i18n'
 import { getKPIText } from './kpi.i18n'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
-// Grille fine de 20 sous-unités sur lg+. On utilise arbitrary values Tailwind v4
-// pour autoriser un span > 12 (les classes col-span-N s'arrêtent à 12). Les classes
-// sont littérales (JIT) et conditionnées par le breakpoint lg.
-const HIGHLIGHT_SPAN_CLASS: Record<number, string> = {
-  1: 'lg:[grid-column:span_1/span_1]',
-  2: 'lg:[grid-column:span_2/span_2]',
-  3: 'lg:[grid-column:span_3/span_3]',
-  4: 'lg:[grid-column:span_4/span_4]',
-  5: 'lg:[grid-column:span_5/span_5]',
-}
-
-function KPICard({ label, value, compact = false }: { label: string; value: string | number; compact?: boolean }) {
-  return (
-    <div className={`flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted py-3 text-center ${compact ? 'px-2' : 'px-4'}`}>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-xl font-bold text-primary">{value}</p>
-    </div>
-  )
-}
-
-const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
-  positive:        tokenCssVar('divergent-pos'),
-  warning:         tokenCssVar('perf-tier-2'),
-  negative:        tokenCssVar('divergent-neg'),
-  neutral:         tokenCssVar('perf-tier-3'),
-  'perf-excellent': tokenCssVar('perf-tier-1'),
-  'perf-good':     tokenCssVar('perf-tier-2'),
-  'perf-ok':       tokenCssVar('perf-tier-3'),
-  'perf-low':      tokenCssVar('perf-tier-4'),
-  'perf-bad':      tokenCssVar('perf-tier-5'),
-}
-
-function highlightColorStyle(color?: HighlightValueColor): CSSProperties | undefined {
-  if (!color) return undefined
-  const cssVar = HIGHLIGHT_COLOR_MAP[color]
-  return cssVar ? { color: cssVar } : undefined
-}
-
-function SerieTile({ title, slides, locale, className }: { title: string; slides: HighlightSlide[]; locale: string | null | undefined; className?: string }) {
-  const [idx, setIdx] = useState(0)
-  const [fading, setFading] = useState(false)
-  const { data: fieldMappings } = useFieldMappings()
-  useEffect(() => {
-    if (slides.length <= 1) return
-    const iv = window.setInterval(() => {
-      setFading(true)
-      window.setTimeout(() => {
-        setIdx((i) => (i + 1) % slides.length)
-        setFading(false)
-      }, 250)
-    }, 4000)
-    return () => window.clearInterval(iv)
-  }, [slides.length])
-  const s = slides[idx]
-  const slideLabel = s.label_key ? resolveLabel(locale, s.label_key, fieldMappings) : (s.label ?? '')
-  const slideDetail = s.detail_key
-    ? resolveDetail(locale, s.detail_key, s.detail_params)
-    : (s.detail ?? '')
-  return (
-    <div className={`rounded-md border border-border p-3 ${className ?? ''}`}>
-      <p className="text-xs font-medium text-muted-foreground leading-tight">{title}</p>
-      <div
-        className={`transition-opacity duration-200 ${fading ? 'opacity-0' : 'opacity-100'}`}
-        aria-live="polite"
-      >
-        <p className="text-base font-bold" style={highlightColorStyle(s.value_color)}>{s.value}</p>
-        <p className="text-[11px] text-muted-foreground/80 leading-tight">{slideLabel}</p>
-        {slideDetail ? <p className="text-xs text-muted-foreground">{slideDetail}</p> : null}
-      </div>
-      {slides.length > 1 ? (
-        <div className="mt-1 flex gap-1" aria-hidden="true">
-          {slides.map((_, i) => (
-            <span key={i} className={`h-1 w-4 rounded-full ${i === idx ? 'bg-primary' : 'bg-border'}`} />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function HighlightTile({ h, locale }: { h: HighlightItem; locale: string | null | undefined }) {
-  const title = h.title_key ? resolveTitle(locale, h.title_key) : (h.title ?? '')
-  const spanClass = HIGHLIGHT_SPAN_CLASS[resolveColSpan(h.title_key)] ?? ''
-  if (h.slides && h.slides.length > 0) {
-    return <SerieTile title={title} slides={h.slides} locale={locale} className={spanClass} />
-  }
-  const detail = h.detail_key
-    ? resolveDetail(locale, h.detail_key, h.detail_params)
-    : (h.detail ?? '')
-  return (
-    <div className={`rounded-md border border-border p-3 ${spanClass}`}>
-      <p className="text-xs font-medium text-muted-foreground">{title}</p>
-      <p className="text-base font-bold" style={highlightColorStyle(h.value_color)}>{h.value}</p>
-      {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
-    </div>
-  )
-}
-
-function ChevronUpIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m18 15-6-6-6 6" />
-    </svg>
-  )
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  )
-}
-
-// Barre d'outcomes 4 segments proportionnels.
-interface OutcomeBarProps { wins: number; draws: number; losses: number; dnfs: number }
-function OutcomeBar({ wins, draws, losses, dnfs }: OutcomeBarProps) {
-  const total = wins + draws + losses + dnfs
-  if (total === 0) return null
-  const pct = (n: number) => `${(n / total) * 100}%`
-  return (
-    <div className="flex h-1.5 w-full overflow-hidden rounded-full gap-px">
-      {wins   > 0 && <div style={{ width: pct(wins),   backgroundColor: tokenCssVar('outcome-win') }} />}
-      {draws  > 0 && <div style={{ width: pct(draws),  backgroundColor: tokenCssVar('outcome-draw') }} />}
-      {dnfs   > 0 && <div style={{ width: pct(dnfs),   backgroundColor: tokenCssVar('outcome-dnf') }} />}
-      {losses > 0 && <div style={{ width: pct(losses), backgroundColor: tokenCssVar('outcome-loss') }} />}
-    </div>
-  )
-}
-
-function formatSessionDate(startedAt: string | null): string {
-  if (!startedAt) return ''
-  const d = new Date(startedAt)
-  return (
-    d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) +
-    ' à ' +
-    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  )
-}
-
-function formatSessionDuration(startedAt: string | null, endedAt: string | null): string {
-  if (!startedAt || !endedAt) return ''
-  const diffMs = new Date(endedAt).getTime() - new Date(startedAt).getTime()
-  if (diffMs <= 0) return ''
-  const totalMin = Math.round(diffMs / 60000)
-  const h = Math.floor(totalMin / 60)
-  const m = totalMin % 60
-  if (h === 0) return `${m}min`
-  return `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}`
-}
-
-interface SessionCarouselCardProps {
-  sessions: SessionSummaryItem[]
-  idx: number
-  onIdxChange: (idx: number) => void
-  variant: 'solo' | 'squad'
-  playerSlug: string
-  onNavigate: (sessionLabel: string) => void
-}
-
-function SessionCarouselCard({ sessions, idx, onIdxChange, variant, onNavigate }: SessionCarouselCardProps) {
-  const [displayIdx, setDisplayIdx] = useState(idx)
-  const [isAnimating, setIsAnimating] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const cleanupRef = useRef<(() => void) | null>(null)
-
-  // Nettoyage si le composant est démonté en cours d'animation
-  useEffect(() => () => { cleanupRef.current?.() }, [])
-
-  const handleChange = (newIdx: number) => {
-    if (isAnimating) return
-    const el = contentRef.current
-    if (!el) {
-      setDisplayIdx(newIdx)
-      onIdxChange(newIdx)
-      return
-    }
-
-    const dir = newIdx < displayIdx ? 'up' : 'down'
-    if (cleanupRef.current) cleanupRef.current()
-    setIsAnimating(true)
-
-    const exitY = dir === 'up' ? '-10px' : '10px'
-    el.style.transition = 'transform 0.1s ease-in, opacity 0.1s ease-in'
-    el.style.transform = `translateY(${exitY})`
-    el.style.opacity = '0'
-
-    const t1 = setTimeout(() => {
-      setDisplayIdx(newIdx)
-      onIdxChange(newIdx)
-      const entryY = dir === 'up' ? '10px' : '-10px'
-      el.style.transition = 'none'
-      el.style.transform = `translateY(${entryY})`
-      el.style.opacity = '0'
-
-      const rafId = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          el.style.transition = 'transform 0.15s ease-out, opacity 0.12s ease-out'
-          el.style.transform = 'translateY(0)'
-          el.style.opacity = '1'
-          const t2 = setTimeout(() => setIsAnimating(false), 160)
-          cleanupRef.current = () => clearTimeout(t2)
-        })
-      })
-      cleanupRef.current = () => cancelAnimationFrame(rafId)
-    }, 110)
-
-    cleanupRef.current = () => clearTimeout(t1)
-  }
-
-  const session = sessions[displayIdx]
-  const total = sessions.length
-  const variantLabel = variant === 'solo' ? 'Solo' : 'Escouade'
-  const cardClass = variant === 'solo' ? 'rounded-md bg-muted p-3' : 'rounded-md bg-primary/10 p-3'
-  const chevronBottomCls = 'flex w-full cursor-pointer items-center justify-center py-2 text-muted-foreground/40 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:text-foreground disabled:cursor-not-allowed disabled:opacity-20'
-
-  return (
-    <div className="flex flex-col">
-      {/* Ligne supérieure : label variant (absolu à gauche) + chevron haut centré */}
-      <div className="relative mb-1 flex w-full items-center justify-center">
-        <span className="absolute left-0 text-xs font-semibold text-muted-foreground">{variantLabel}</span>
-        <button
-          type="button"
-          disabled={displayIdx === 0 || isAnimating}
-          onClick={() => handleChange(displayIdx - 1)}
-          className={chevronBottomCls}
-          aria-label="Session plus récente"
-        >
-          <ChevronUpIcon />
-        </button>
-      </div>
-
-      {/* Contenu animé */}
-      <div ref={contentRef}>
-        {session ? (
-          <button
-            type="button"
-            className={`${cardClass} w-full cursor-pointer text-left hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-            onClick={() => onNavigate(session.session_label)}
-            aria-label={`Voir le détail de la session ${session.session_label}`}
-          >
-            {/* Scores de performance */}
-            <div className="mb-2 flex items-baseline gap-3">
-              {session.avg_team_performance != null && (
-                <>
-                  <span
-                    className="text-2xl font-black leading-none"
-                    style={{ color: getPerfColor(session.avg_team_performance) }}
-                  >
-                    {Math.round(session.avg_team_performance)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">Équipe</span>
-                </>
-              )}
-              {session.avg_player_performance != null && (
-                <>
-                  <span
-                    className="text-2xl font-black leading-none"
-                    style={{ color: getPerfColor(session.avg_player_performance) }}
-                  >
-                    {Math.round(session.avg_player_performance)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">Perso</span>
-                </>
-              )}
-            </div>
-
-            {/* Barre d'outcomes */}
-            <OutcomeBar
-              wins={session.wins}
-              draws={session.draws}
-              losses={session.losses}
-              dnfs={session.dnfs}
-            />
-
-            {/* Décompte des outcomes avec nombre de parties */}
-            <p className="mt-1.5 flex flex-wrap gap-x-2 text-xs">
-              <span className="font-medium text-foreground">{session.match_count} partie{session.match_count > 1 ? 's' : ''}</span>
-              {session.wins > 0 && (
-                <span style={{ color: tokenCssVar('outcome-win') }}>{session.wins} Victoire{session.wins > 1 ? 's' : ''}</span>
-              )}
-              {session.losses > 0 && (
-                <span style={{ color: tokenCssVar('outcome-loss') }}>{session.losses} Défaite{session.losses > 1 ? 's' : ''}</span>
-              )}
-              {session.draws > 0 && (
-                <span style={{ color: tokenCssVar('outcome-draw') }}>{session.draws} Égalité{session.draws > 1 ? 's' : ''}</span>
-              )}
-              {session.dnfs > 0 && (
-                <span style={{ color: tokenCssVar('outcome-dnf') }}>{session.dnfs} Non terminé{session.dnfs > 1 ? 's' : ''}</span>
-              )}
-            </p>
-
-            {/* FDA moyen + playlist dominante + mode dominant */}
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {session.avg_kda != null && (
-                <span>
-                  FDA{' '}
-                  <span style={{ color: tokenCssVar(kdScale(session.avg_kda)) }}>
-                    {session.avg_kda.toFixed(2)}
-                  </span>
-                </span>
-              )}
-              {(session.avg_kda != null && (session.dominant_playlist || session.dominant_mode)) && ' · '}
-              {session.dominant_playlist && (
-                <span className="font-bold text-white">{session.dominant_playlist}</span>
-              )}
-              {session.dominant_playlist && session.dominant_mode && ' · '}
-              {session.dominant_mode && (
-                <span className="font-bold text-white">{session.dominant_mode}</span>
-              )}
-              {(session.dominant_playlist || session.dominant_mode) && (
-                <span className="ml-1 inline-flex">
-                  <InfoTooltip
-                    content="Playlist et mode les plus joués lors de cette session"
-                    iconClass="w-3 h-3"
-                  />
-                </span>
-              )}
-            </p>
-
-            {/* Date de début + durée */}
-            {session.started_at && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {formatSessionDate(session.started_at)}
-                {session.ended_at
-                  ? ` · Durée de la session : ${formatSessionDuration(session.started_at, session.ended_at)}`
-                  : null}
-              </p>
-            )}
-          </button>
-        ) : null}
-      </div>
-
-      {/* Chevron bas */}
-      <button
-        type="button"
-        disabled={displayIdx >= total - 1 || isAnimating}
-        onClick={() => handleChange(displayIdx + 1)}
-        className={chevronBottomCls}
-        aria-label="Session plus ancienne"
-      >
-        <ChevronDownIcon />
-      </button>
-    </div>
-  )
-}
-
-interface HomeSkillPeakCardProps {
-  label: string
-  peak: HomeSkillPeakSummary | null
-  numberLocale: string
-  testIdPrefix: string
-  state: 'value' | 'placement' | 'neutral' | 'absent'
-  detail: string
-}
-
-function HomeSkillPeakCard({ label, peak, numberLocale, testIdPrefix, state, detail }: HomeSkillPeakCardProps) {
-  const isPlacement = state === 'placement'
-  const hasValue = Boolean(peak)
-
-  return (
-    <div
-      data-testid={`${testIdPrefix}-card`}
-      className={`flex h-full min-w-[11rem] items-center gap-3 rounded-2xl border px-4 py-3 shadow-[0_12px_30px_rgba(8,15,28,0.24)] backdrop-blur-sm ${hasValue ? 'border-cyan-100/12 bg-slate-950/35' : 'border-white/10 bg-slate-950/22'}`}
-    >
-      {peak?.badge_image_url ? (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 p-1.5">
-          <img
-            data-testid={`${testIdPrefix}-badge`}
-            src={peak.badge_image_url}
-            alt={label}
-            className="h-full w-full object-contain"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-      ) : isPlacement ? (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 p-1.5">
-          <img
-            data-testid={`${testIdPrefix}-unranked`}
-            src={unrankedBadgeURL()}
-            alt="En placement"
-            className="h-full w-full object-contain opacity-80"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-      ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100/75">
-          {label.replace(/[^A-Z]/gi, '').slice(0, 4) || 'MMR'}
-        </div>
-      )}
-
-      <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-100/68">{label}</p>
-        <p data-testid={`${testIdPrefix}-value`} className="mt-1 text-xl font-semibold text-white sm:text-2xl">
-          {peak ? peak.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
-        </p>
-        {(peak?.tier_label || detail) && (
-          <p
-            data-testid={peak?.tier_label ? `${testIdPrefix}-tier` : `${testIdPrefix}-detail`}
-            className="truncate text-xs text-cyan-100/78"
-          >
-            {peak?.tier_label ?? detail}
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function resolveSkillPeakState(
-  peak: HomeSkillPeakSummary | null,
-  hasHistory: boolean,
-  mode: 'ranked' | 'unranked',
-): Pick<HomeSkillPeakCardProps, 'state' | 'detail'> {
-  if (peak) {
-    return { state: 'value', detail: '' }
-  }
-  if (hasHistory) {
-    return mode === 'ranked'
-      ? { state: 'placement', detail: 'En placement' }
-      : { state: 'neutral', detail: 'Sans classement' }
-  }
-  return {
-    state: 'absent',
-    detail: mode === 'ranked' ? 'Aucune partie classée' : 'Aucune partie non classée',
-  }
-}
 
 export function HomePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -748,7 +325,7 @@ export function HomePage() {
 
             <div className="kpi-stats-grid items-stretch">
               {/* 1 — Parties */}
-              <KPICard label={labelOf('total_matches_played')} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
+              <HomeKPICard label={labelOf('total_matches_played')} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
 
               {/* 2 — KDA/FDA coloré comme les tuiles match */}
               {(() => {
@@ -774,7 +351,7 @@ export function HomePage() {
                     <p className="text-xs text-muted-foreground">{labelOf('win_rate')}</p>
                     <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
                     <div className="mt-2 w-full">
-                      <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
+                      <HomeOutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
                     </div>
                     <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
                       <span style={{ color: tokenCssVar('outcome-win') }}>{wins}</span>
@@ -818,7 +395,7 @@ export function HomePage() {
                     formatted = h === 0 ? `${m}${kpiText.units.minute}` : `${h}${kpiText.units.hour}${m > 0 ? String(m).padStart(2, '0') : ''}`
                   }
                 }
-                return <KPICard label={kpiText.labels.totalTime} value={formatted} />
+                return <HomeKPICard label={kpiText.labels.totalTime} value={formatted} />
               })()}
 
               {/* 5 — Playlist favorite */}
@@ -971,7 +548,7 @@ export function HomePage() {
               {soloSessions.length > 0 || squadSessions.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {soloSessions.length > 0 && (
-                    <SessionCarouselCard
+                    <HomeSessionCarousel
                       sessions={soloSessions}
                       idx={soloIdx}
                       onIdxChange={setSoloIdx}
@@ -981,7 +558,7 @@ export function HomePage() {
                     />
                   )}
                   {squadSessions.length > 0 && (
-                    <SessionCarouselCard
+                    <HomeSessionCarousel
                       sessions={squadSessions}
                       idx={squadIdx}
                       onIdxChange={setSquadIdx}
@@ -1024,7 +601,7 @@ export function HomePage() {
             {highlights.length > 0 ? (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(20,minmax(0,1fr))]">
                 {highlights.map((h, i) => (
-                  <HighlightTile key={i} h={h} locale={locale} />
+                  <HomeHighlightTile key={i} h={h} locale={locale} />
                 ))}
               </div>
             ) : (

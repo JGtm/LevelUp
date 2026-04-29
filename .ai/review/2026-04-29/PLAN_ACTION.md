@@ -1066,7 +1066,12 @@ Chaque sous-composant : <= 200L, props typées, tests Vitest si logique non triv
 - [x] **P8.1** Linter §20 actif via pre-commit (`tools/lint-no-hardcoded-colors.mjs`, ratchet 143 violations initiales — interdit toute régression)
 - [x] **P8.2** notify migré slog (déjà fait en P3.5)
 - [x] **P8.3** observability branchée (`/debug/vars` derrière RequireAuth+RequireAdmin, hot paths instrumentés : home/career/match-view/stats/timeseries — RecordDurationMS), error_tracker supprimé. README `internal/observability/README.md` créé.
-- [ ] **P8.4** 5 god pages découpées — déféré (6-8 j de travail UI sensible, scope distinct)
+- [~] **P8.4** 4/5 god pages découpées :
+  - [x] **HomePage.tsx** 1158L → 735L (5 sub-components extraits : `HomeKPICard`, `HomeOutcomeBar`, `HomeHighlightTile`, `HomeSessionCarousel`, `HomeSkillPeakCard`)
+  - [x] **SetupPage.tsx** 484L → 75L (3 Step* extraits : `StepDeviceCode`, `StepPlayer`, `StepInitialSync` + `_helpers.ts`)
+  - [x] **MatchViewPage.tsx** 600L → 439L (`MatchHeader.tsx` Breadcrumb+Navigation + `_chartSeries.ts`)
+  - [x] **SettingsPage.tsx** 906L → 209L (4 tabs : `GeneralTab`, `SyncTab`, `AnalyseTab`, `BackfillCard` + `_settingsShared.tsx` ToggleRow/BulletHint/TabProps)
+  - [ ] **LabPage.tsx** 937L — déféré (3 panels imbriqués `ResourcesPanel`/`ContractsPanel`/`DiagnosticsPanel` avec helpers partagés ; nécessite extraction shared file dédiée).
 - [ ] **P8.5** Cross-feature imports nettoyés — déféré (3 j de refactor)
 - [ ] **P8.6** 3-4 routes avec loader — déféré (UI sensible)
 - [x] **P8.7** Audit DuckDB driver fait — 8 fichiers d'usage réel hors `platform/duckdb`, 52 blank-imports nécessaires pour `sql.Open("duckdb", ...)`. Centralisation via wrapper unique = scope distinct, déféré.
