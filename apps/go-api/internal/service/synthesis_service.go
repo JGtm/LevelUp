@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
 
@@ -23,9 +24,21 @@ type SynthesisService struct {
 	repo port.SynthesisRepository
 	// dataAdapter (optionnel, Phase 2 plan finition multi-titres) :
 	// quand fourni, GetSynthesisPage mesure la capability match.history pour
-	// loguer une éventuelle dégradation. La bascule fonctionnelle reste future
-	// car canonical.PlayerStats ne couvre pas encore le domain SynthesisMatch.
+	// loguer une éventuelle dégradation.
 	dataAdapter games.TitleDataAdapter
+	// playerMatchesRepo (P4.1, ADR 0011) : nouvelle source canonical-aware.
+	// Quand fournie, GetSynthesisPage charge `[]canonical.PlayerMatchRow` depuis
+	// le loader unifié et convertit vers SynthesisMatchRow via
+	// synthesisMatchRowFromCanonical. Migration progressive : tant que les
+	// fonctions d'analyse (ComputeSynthesisTopWeeks, ComputeTemporalHeatmap,
+	// buildSynthesisOverview, buildHighlightsPreview) consomment encore
+	// `[]domain.SynthesisMatchRow`, on convertit. P4.3 supprimera la conversion
+	// quand toutes les analyses seront migrées vers canonical.
+	playerMatchesRepo port.PlayerMatchesRepository
+	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
+	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
+	titleSlug string
+	gamertag  string
 }
 
 // NewSynthesisService crée un SynthesisService avec le repository injecté.
@@ -38,6 +51,19 @@ func NewSynthesisService(repo port.SynthesisRepository) *SynthesisService {
 // d'amorcer la bascule fonctionnelle vers la couche canonique.
 func (s *SynthesisService) WithDataAdapter(a games.TitleDataAdapter) *SynthesisService {
 	s.dataAdapter = a
+	return s
+}
+
+// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware.
+// Quand fourni avec titleSlug+gamertag, GetSynthesisPage charge depuis le
+// loader unifié et convertit vers SynthesisMatchRow.
+func (s *SynthesisService) WithPlayerMatchesRepo(
+	repo port.PlayerMatchesRepository,
+	titleSlug, gamertag string,
+) *SynthesisService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
 	return s
 }
 
@@ -68,9 +94,27 @@ func (s *SynthesisService) GetSynthesisPage(
 		}
 	}
 
-	synthMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
-	if err != nil {
-		return nil, err
+	// P4.1 (ADR 0011) : si playerMatchesRepo est injecté, on emprunte le
+	// chemin canonical et on convertit vers SynthesisMatchRow pour les analyses
+	// non-encore-migrées. TODO P4.3 : retirer la conversion quand toutes les
+	// fonctions d'analyse de synthesis seront migrées vers canonical.
+	var synthMatches []domain.SynthesisMatchRow
+	var err error
+	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
+		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
+			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+		)
+		if e != nil {
+			return nil, e
+		}
+		slog.DebugContext(ctx, "synthesis: loaded canonical",
+			"rows", len(canonicalRows), "title_slug", s.titleSlug)
+		synthMatches = synthesisMatchRowsFromCanonical(canonicalRows)
+	} else {
+		synthMatches, err = s.repo.LoadSynthesisMatches(ctx, playerXUID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// D2 : filtrer par période
@@ -438,4 +482,66 @@ func sortModeEntries(s []domain.SynthesisModeEntry) {
 			}
 		}
 	}
+}
+
+// =============================================================================
+// P4.1 (ADR 0011) : converter canonical → SynthesisMatchRow
+// =============================================================================
+
+// synthesisMatchRowFromCanonical convertit une ligne canonical vers le format
+// SynthesisMatchRow consommé par les fonctions d'analyse legacy.
+//
+// TODO P4.3 : retirer cette conversion quand toutes les fonctions d'analyse
+// de synthesis seront migrées vers canonical (`Compute*FromCanonical`).
+// Ce converter est explicitement transitionnel.
+func synthesisMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.SynthesisMatchRow {
+	out := domain.SynthesisMatchRow{
+		MatchID:          r.Summary.MatchID,
+		StartTime:        r.Summary.StartedAtUTC,
+		IsWithFriends:    r.Enrichment.IsWithFriends,
+		KDA:              r.Self.KDA,
+		Accuracy:         r.Self.Accuracy,
+		PerformanceScore: r.Enrichment.PerformanceScore,
+		SessionLabel:     r.Enrichment.SessionLabel,
+		TimePlayedSecs:   r.Self.TimePlayed,
+	}
+	if r.Self.Kills != nil {
+		out.Kills = *r.Self.Kills
+	}
+	if r.Self.Deaths != nil {
+		out.Deaths = *r.Self.Deaths
+	}
+	// Mapping Outcome string canonical → int domain (codes Halo).
+	switch r.Self.Outcome {
+	case canonical.OutcomeWin:
+		out.Outcome = domain.OutcomeWin
+	case canonical.OutcomeLoss:
+		out.Outcome = domain.OutcomeLoss
+	case canonical.OutcomeTie:
+		out.Outcome = domain.OutcomeDraw
+	case canonical.OutcomeDNF:
+		out.Outcome = domain.OutcomeDNF
+	}
+	if r.Summary.IsRanked != nil {
+		out.IsRanked = *r.Summary.IsRanked
+	}
+	if r.Summary.IsPvE != nil {
+		out.IsFirefight = *r.Summary.IsPvE
+	}
+	if r.Summary.Playlist != nil {
+		out.PlaylistName = r.Summary.Playlist.DefaultLabel
+	}
+	return out
+}
+
+// synthesisMatchRowsFromCanonical convertit un slice de canonical.PlayerMatchRow
+// en []domain.SynthesisMatchRow. Voir synthesisMatchRowFromCanonical.
+//
+// TODO P4.3 : à retirer quand l'analyse synthesis sera 100% canonical.
+func synthesisMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.SynthesisMatchRow {
+	out := make([]domain.SynthesisMatchRow, len(rows))
+	for i, r := range rows {
+		out[i] = synthesisMatchRowFromCanonical(r)
+	}
+	return out
 }
