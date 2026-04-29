@@ -1,5 +1,33 @@
 # Thought Log
 
+## [2026-04-29] P1 ADRs + investigations — clôture (sur branche chore/cleanup-and-ux-fixes)
+
+**Statut** : Complétée — 6 ADRs durables actés (0005-0010), CLAUDE.md mis à jour, décision T7 documentée dans ADR 0009.
+
+**Contexte** : la rédaction des 6 ADRs avait été faite en amont (commit `a7b54a90 docs(review)`) lors de la consolidation des livrables de revue. P1 ici se résume à propager les références ADR dans `CLAUDE.md` et acter les décisions dans le thought_log — pas d'investigation supplémentaire requise (déjà faite pendant la revue : T7 multi-user, formats canoniques, FS-isolation DB).
+
+**ADRs livrés** (`docs/adr/`) :
+- 0005 prestige phased activation (A3=A — staging → prod, date d'expiration Q3 2026)
+- 0006 canonical indicators & units (KDA, KDR, WinRate, Accuracy, PerfTier 80-65-50-35, unité 0..1)
+- 0007 canonical big-bang migration (A1=B — 15-16 services en 1 PR feature branch, pilote Home)
+- 0008 DB schema multi-title (A2=A modifié — isolation par chemin FS, `xuid_aliases` global)
+- 0009 expvar monitoring multi-user (T7 décidé — brancher observability + supprimer error_tracker)
+- 0010 timeseries binning server-side (sera finalisé en P7.1 sub-PR D)
+
+**CLAUDE.md** : section "Décisions architecturales (ADRs)" étendue de 4 à 10 entrées.
+
+**Décision T7 actée** (contexte multi-user produit) :
+- `internal/observability/expvar_metrics.go` → brancher en P8.3 (5-10 hot paths services + 3-5 queries DuckDB + cache hit ratio + error count, monté sur `/debug/vars` derrière auth admin)
+- `internal/api/middleware/error_tracker.go` → supprimer en P8.3 (alerting Discord 500 « pas souhaité » d'après commentaire en code)
+
+**Commits P1** :
+- ADRs déjà inclus dans `a7b54a90 docs(review)` (P0 prep work)
+- CLAUDE.md mis à jour : commit suivant
+
+**Prochaine étape** : P2 (indicateurs canoniques + Outcome enum + helpers SQL/front, 5-7 j) — démarrage attendu sur `chore/cleanup-and-ux-fixes` selon décision user, ou rebase vers `feat/multi-title-static-fs-rescope` puis nouvelle branche `refactor/canonical-indicators`.
+
+---
+
 ## [2026-04-29] P0 cleanup-and-ux-fixes complète — 7 commits, 4 sub-phases livrées
 
 **Statut** : Complétée — branche `chore/cleanup-and-ux-fixes` issue de `feat/multi-title-static-fs-rescope`. P0 du PLAN_ACTION.md livré en intégralité.
