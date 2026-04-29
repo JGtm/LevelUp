@@ -20,6 +20,19 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// customDispatcher est le hook par lequel les règles citations Halo-only
+// (ou autre titre) s'enregistrent. P5.4 : évite un import cycle
+// analysis → halo_infinite → platform/duckdb → analysis. Le package
+// halo_infinite enregistre sa fonction via init() au chargement.
+var customDispatcher func(fnName string, ctx domain.CitationContext) int
+
+// RegisterCustomDispatcher est appelée par le package title-spécifique
+// (halo_infinite) pour fournir l'implémentation des règles custom citations.
+// Doit être appelée avant ComputeFullMatchCitations (typiquement via init()).
+func RegisterCustomDispatcher(fn func(string, domain.CitationContext) int) {
+	customDispatcher = fn
+}
+
 // ComputeFullMatchCitations calcule les deltas de citations avec le moteur complet.
 // Gère tous les mapping_types dont composite (post-traitement).
 // ctx  : données du match (medals, stats, awards, events, playlist, …).
@@ -69,7 +82,12 @@ func dispatchFull(m domain.CitationFullMapping, ctx domain.CitationContext) int 
 		if m.CustomFunction == nil {
 			return 0
 		}
-		return dispatchCustom(*m.CustomFunction, ctx)
+		// P5.4 : custom dispatcher fourni par le titre via
+		// RegisterCustomDispatcher (évite import cycle).
+		if customDispatcher == nil {
+			return 0
+		}
+		return customDispatcher(*m.CustomFunction, ctx)
 	}
 	return 0
 }

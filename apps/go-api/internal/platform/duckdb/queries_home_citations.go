@@ -1,19 +1,19 @@
-// Package duckdb — queries_home_citations.go : requêtes page Home, citations et médias.
+// Package duckdb â€” queries_home_citations.go : requÃªtes page Home, citations et mÃ©dias.
 package duckdb
 
 import (
 	"regexp"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite"
 )
 
-// Q26 : Home — matchs d un joueur avec KPIs pour le hero card.
+// Q26 : Home â€” matchs d un joueur avec KPIs pour le hero card.
 // Parametre : ?1 = xuid du joueur.
-// LIMIT 150 : couvre hero card, highlights, recent matches et summaries de sessions récentes.
-// Le total réel vient de Q26bCountPlayerMatches (requête séparée).
-// Les sessions complètes sont chargées indépendamment via Q27HomeSessions.
+// LIMIT 150 : couvre hero card, highlights, recent matches et summaries de sessions rÃ©centes.
+// Le total rÃ©el vient de Q26bCountPlayerMatches (requÃªte sÃ©parÃ©e).
+// Les sessions complÃ¨tes sont chargÃ©es indÃ©pendamment via Q27HomeSessions.
 const Q26HomeMatches = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
@@ -92,9 +92,9 @@ WHERE mp.xuid = ?
 ORDER BY r.start_time DESC
 LIMIT 150`
 
-// Q26h : Home — médailles par match pour un joueur, lots de match_id.
-// Paramètres : ?1 = xuid. Les match_id sont injectés dynamiquement via IN (%s).
-// Requête sur pdb.Player (shared attaché) ; labels résolus ensuite via metadata.
+// Q26h : Home â€” mÃ©dailles par match pour un joueur, lots de match_id.
+// ParamÃ¨tres : ?1 = xuid. Les match_id sont injectÃ©s dynamiquement via IN (%s).
+// RequÃªte sur pdb.Player (shared attachÃ©) ; labels rÃ©solus ensuite via metadata.
 const Q26hMatchMedalsTemplate = `
 SELECT
     me.match_id,
@@ -105,9 +105,9 @@ WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`
 
-// Q26i : Home — citations progressées par match, avec cumul global au moment du match.
-// Les match_id sont injectés dynamiquement via IN (%s).
-// Requête sur pdb.Player uniquement (match_citations est dans stats.duckdb).
+// Q26i : Home â€” citations progressÃ©es par match, avec cumul global au moment du match.
+// Les match_id sont injectÃ©s dynamiquement via IN (%s).
+// RequÃªte sur pdb.Player uniquement (match_citations est dans stats.duckdb).
 const Q26iMatchCitationsTemplate = `
 SELECT
     mc.match_id,
@@ -124,8 +124,8 @@ WHERE mc.match_id IN (%s)
   AND mc.value > 0
 ORDER BY mc.match_id, mc.value DESC`
 
-// Q26j : Home — métadonnées citations depuis metadata.duckdb pour un ensemble de norms.
-// Les citation_name_norm sont injectés dynamiquement via IN (%s).
+// Q26j : Home â€” mÃ©tadonnÃ©es citations depuis metadata.duckdb pour un ensemble de norms.
+// Les citation_name_norm sont injectÃ©s dynamiquement via IN (%s).
 // GROUP BY car une citation peut avoir plusieurs medal_id rows.
 const Q26jCitationMappingsForNormsTemplate = `
 SELECT
@@ -144,9 +144,9 @@ GROUP BY citation_name_norm, citation_name_display, image_path, tier_targets`
 const Q26bCountPlayerMatches = `
 SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
 
-// Q26c : Home -- identité record compacte depuis career_progression.
-// Un seul scan via ARG_MAX — remplace les 5 sous-requêtes corrélées de l'ancienne version.
-// Paramètre : aucun.
+// Q26c : Home -- identitÃ© record compacte depuis career_progression.
+// Un seul scan via ARG_MAX â€” remplace les 5 sous-requÃªtes corrÃ©lÃ©es de l'ancienne version.
+// ParamÃ¨tre : aucun.
 const Q26cHomeSpartanIdentity = `
 SELECT
     ARG_MAX(rank,             recorded_at)                                                                  AS rank,
@@ -162,13 +162,13 @@ SELECT
     ARG_MAX(adornment_path,   recorded_at) FILTER (WHERE NULLIF(TRIM(adornment_path),   '') IS NOT NULL)    AS adornment_path
 FROM career_progression`
 
-// Q26d : Home -- assets visuels du rang carrière courant depuis metadata.duckdb.
+// Q26d : Home -- assets visuels du rang carriÃ¨re courant depuis metadata.duckdb.
 //
-// Les libellés (title FR/EN, next_rank_title) ne sont PAS lus ici : ils
-// proviennent du TitleSemanticAdapter (career_rank_translations) côté service.
+// Les libellÃ©s (title FR/EN, next_rank_title) ne sont PAS lus ici : ils
+// proviennent du TitleSemanticAdapter (career_rank_translations) cÃ´tÃ© service.
 // Le repo storage reste exclusivement responsable des paths d'assets.
 //
-// Paramètre : ?1 = rank_id.
+// ParamÃ¨tre : ?1 = rank_id.
 const Q26dHomeCareerRankMeta = `
 SELECT
 	COALESCE(
@@ -181,7 +181,7 @@ WHERE rank_id = ?
 LIMIT 1`
 
 // Q26e : Home -- meilleur rating historique par type (CSR ou LUSR).
-// Paramètre : ?1 = rating_type.
+// ParamÃ¨tre : ?1 = rating_type.
 const Q26eHomeSkillPeakByType = `
 SELECT
 	msr.rating_value,
@@ -211,11 +211,11 @@ ORDER BY
 	msr.match_id DESC
 LIMIT 1`
 
-// Q26g : Home — 3 dernières playlists distinctes jouées avec leur dernier rang compétitif.
-// Paramètre : ?1 = xuid du joueur.
+// Q26g : Home â€” 3 derniÃ¨res playlists distinctes jouÃ©es avec leur dernier rang compÃ©titif.
+// ParamÃ¨tre : ?1 = xuid du joueur.
 // Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr, sub_tier, tier_label).
-// playlist_name_fr est résolu en Go depuis asset_translations (même source que les tuiles de matchs).
-// rating_* sont NULL pour les playlists sans rang calculé.
+// playlist_name_fr est rÃ©solu en Go depuis asset_translations (mÃªme source que les tuiles de matchs).
+// rating_* sont NULL pour les playlists sans rang calculÃ©.
 const Q26gHomePlaylistRanks = `
 WITH recent_playlists AS (
 	SELECT
@@ -273,9 +273,9 @@ FROM recent_playlists rp
 LEFT JOIN last_skill ls ON ls.playlist_id = rp.playlist_id AND ls.rn = 1
 ORDER BY rp.last_played DESC`
 
-// Q27 : Home — sessions depuis player_match_enrichment.
+// Q27 : Home â€” sessions depuis player_match_enrichment.
 // Pas de parametre (les donnees sont dans la DB joueur).
-// Retourne les matchs avec un label de session pour le resumé solo/escouade.
+// Retourne les matchs avec un label de session pour le resumÃ© solo/escouade.
 const Q27HomeSessions = `
 SELECT
     pme.match_id,
@@ -288,9 +288,9 @@ LEFT JOIN shared.match_registry r ON r.match_id = pme.match_id
 WHERE pme.session_label IS NOT NULL
 ORDER BY r.start_time DESC`
 
-// Q28 : Home — medias recents depuis media_files + media_match_associations.
+// Q28 : Home â€” medias recents depuis media_files + media_match_associations.
 // Parametre : ?1 = LIMIT (nombre de medias).
-// Retourne uniquement les medias actifs, triés par date de modification desc.
+// Retourne uniquement les medias actifs, triÃ©s par date de modification desc.
 const Q28RecentMedia = `
 SELECT
     mf.file_name,
@@ -302,9 +302,9 @@ WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ?`
 
-// Q26k : Home — arme favorite (kills totaux) du joueur toutes armes confondues.
-// Paramètre : ?1 = xuid.
-// Requête sur pdb.Player (shared attaché). Label résolu ensuite via pdb.Metadata.
+// Q26k : Home â€” arme favorite (kills totaux) du joueur toutes armes confondues.
+// ParamÃ¨tre : ?1 = xuid.
+// RequÃªte sur pdb.Player (shared attachÃ©). Label rÃ©solu ensuite via pdb.Metadata.
 const Q26kFavoriteWeapon = `
 SELECT
     wk.effective_weapon_id AS weapon_id,
@@ -317,11 +317,11 @@ ORDER BY total_kills DESC
 LIMIT 1`
 
 // =============================================================================
-// Sprint 13 — Citations + Médias
+// Sprint 13 â€” Citations + MÃ©dias
 // =============================================================================
 
-// Q34 : Citations — mappings de citation depuis metadata.duckdb.
-// Paramètre : aucun. Requête sur pdb.Metadata (pas pdb.Player).
+// Q34 : Citations â€” mappings de citation depuis metadata.duckdb.
+// ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata (pas pdb.Player).
 const Q34CitationMappings = `
 SELECT
     citation_name_norm,
@@ -335,8 +335,8 @@ FROM citation_mappings
 WHERE enabled IS NOT FALSE
 ORDER BY category, citation_name_display`
 
-// Q35 : Citations — totaux agrégés depuis match_citations (player stats.duckdb).
-// Paramètre : aucun.
+// Q35 : Citations â€” totaux agrÃ©gÃ©s depuis match_citations (player stats.duckdb).
+// ParamÃ¨tre : aucun.
 const Q35CitationTotals = `
 SELECT
     citation_name_norm,
@@ -345,8 +345,8 @@ FROM match_citations
 GROUP BY citation_name_norm
 ORDER BY total DESC`
 
-// Q36a : Commendations — total de médailles gagnées par medal_id (xuid du joueur).
-// Paramètre : ?1 = xuid du joueur. Requête sur pdb.Player (shared attaché).
+// Q36a : Commendations â€” total de mÃ©dailles gagnÃ©es par medal_id (xuid du joueur).
+// ParamÃ¨tre : ?1 = xuid du joueur. RequÃªte sur pdb.Player (shared attachÃ©).
 const Q36aMedalTotals = `
 SELECT
     medal_id,
@@ -356,8 +356,8 @@ WHERE xuid = ?
 GROUP BY medal_id
 ORDER BY total_count DESC`
 
-// Q36b : Commendations — mappings médaille→citation depuis metadata.duckdb.
-// Paramètre : aucun. Requête sur pdb.Metadata.
+// Q36b : Commendations â€” mappings mÃ©dailleâ†’citation depuis metadata.duckdb.
+// ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata.
 const Q36bMedalCitationMappings = `
 SELECT
     medal_id,
@@ -369,10 +369,10 @@ WHERE mapping_type = 'medal'
   AND enabled IS NOT FALSE
   AND medal_id IS NOT NULL`
 
-// Q38 : Match view — top citations gagnées dans un match (match_citations + citation_mappings).
-// Paramètre : ?1 = match_id.
+// Q38 : Match view â€” top citations gagnÃ©es dans un match (match_citations + citation_mappings).
+// ParamÃ¨tre : ?1 = match_id.
 // Retourne 3 colonnes : citation_name_norm, citation_name_display, value.
-// Requête sur pdb.Player (match_citations) + pdb.Metadata (citation_mappings).
+// RequÃªte sur pdb.Player (match_citations) + pdb.Metadata (citation_mappings).
 const Q38MatchViewCitations = `
 SELECT
     mc.citation_name_norm,
@@ -388,8 +388,8 @@ WHERE mc.match_id = ?
 ORDER BY mc.value DESC
 LIMIT 4`
 
-// Q40 : Moteur citations complet — tous les champs de citation_mappings.
-// Paramètre : aucun. Requête sur metadata.duckdb (passé comme DB racine dans le sync).
+// Q40 : Moteur citations complet â€” tous les champs de citation_mappings.
+// ParamÃ¨tre : aucun. RequÃªte sur metadata.duckdb (passÃ© comme DB racine dans le sync).
 // Retourne 11 colonnes pour le dispatch par mapping_type.
 const Q40CitationFullMappings = `
 SELECT
@@ -408,8 +408,8 @@ FROM citation_mappings
 WHERE enabled IS NOT FALSE
 ORDER BY citation_name_norm`
 
-// Q39 : Moteur citations — mappings citation→medal depuis metadata.duckdb.
-// Paramètre : aucun. Requête sur pdb.Metadata.
+// Q39 : Moteur citations â€” mappings citationâ†’medal depuis metadata.duckdb.
+// ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata.
 // Retourne 4 colonnes : citation_name_norm, citation_name_display, medal_id, mapping_type.
 const Q39CitationMedalMappings = `
 SELECT
@@ -422,9 +422,9 @@ WHERE enabled IS NOT FALSE
   AND medal_id IS NOT NULL
 ORDER BY citation_name_norm`
 
-// Q37 : Médias — fichiers actifs paginés depuis media_files + associations + match_registry.
-// Remplacé par BuildQ37MediaQuery pour les filtres/tri dynamiques.
-// Conservé pour compatibilité éventuelle.
+// Q37 : MÃ©dias â€” fichiers actifs paginÃ©s depuis media_files + associations + match_registry.
+// RemplacÃ© par BuildQ37MediaQuery pour les filtres/tri dynamiques.
+// ConservÃ© pour compatibilitÃ© Ã©ventuelle.
 const Q37MediaFiles = `
 SELECT
     mf.file_path,
@@ -443,7 +443,7 @@ WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ? OFFSET ?`
 
-// Q37Count : Médias — nombre total de fichiers actifs.
+// Q37Count : MÃ©dias â€” nombre total de fichiers actifs.
 const Q37MediaCount = `SELECT COUNT(*) FROM media_files WHERE status = 'active'`
 
 const q37LegacyMediaFromClause = `FROM media_files mf
@@ -457,21 +457,21 @@ LEFT JOIN shared.match_registry mr ON mma.match_id = mr.match_id`
 const q37MediaFromClause = q37LegacyMediaFromClause
 
 // q37MediaMapLabelExpr normalise le nom de carte pour grouper les variantes
-// (ex: "Recharge v3" → "Recharge"). Strip conservateur :
-//   - ` v\d+$`           : versions Forge ("Recharge v3" → "Recharge")
-//   - ` - Forge.*$`      : variante Forge avec dash ("Recharge - Forge" → "Recharge")
+// (ex: "Recharge v3" â†’ "Recharge"). Strip conservateur :
+//   - ` v\d+$`           : versions Forge ("Recharge v3" â†’ "Recharge")
+//   - ` - Forge.*$`      : variante Forge avec dash ("Recharge - Forge" â†’ "Recharge")
 //   - ` - Ranked.*$`     : variante Ranked avec dash
 //
-// On ne strip PAS les suffixes ambigus comme " Annex", " Beta", `:`, `-` génériques
+// On ne strip PAS les suffixes ambigus comme " Annex", " Beta", `:`, `-` gÃ©nÃ©riques
 // (sinon "Forge: Argyle" deviendrait "Forge", "Recharge Annex" deviendrait "Recharge").
 const q37MediaMapLabelExpr = `NULLIF(TRIM(regexp_replace(regexp_replace(regexp_replace(COALESCE(mr.map_name_fr, mr.map_name, ''), '\s+v\d+$', '', 'i'), '\s*-\s*Forge.*$', '', 'i'), '\s*-\s*Ranked.*$', '', 'i')), '')`
 
 // q37MediaModeLabelExpr extrait le mode "parent" depuis pair_name :
 //
-//   - Si le pair_name contient ":" : on garde UNIQUEMENT le préfixe avant
+//   - Si le pair_name contient ":" : on garde UNIQUEMENT le prÃ©fixe avant
 //     ("Arena:Slayer on Bazaar" -> "Arena", "Super Fiesta:Slayer - Forge" -> "Super Fiesta",
 //     "Community:Team Slayer" -> "Community"). Les sous-modes (Slayer/CTF/KOTH)
-//     sont considérés comme des sous-genres de la grande catégorie de matchmaking.
+//     sont considÃ©rÃ©s comme des sous-genres de la grande catÃ©gorie de matchmaking.
 //   - Sinon : strip suffixes carte/Forge/Ranked et garde le label canonique
 //     (ex: "Husky Raid" -> "Husky Raid", "Slayer on Bazaar" -> "Slayer").
 const q37MediaModeLabelExpr = `NULLIF(TRIM(
@@ -492,10 +492,10 @@ type mediaWhereConfig struct {
 const q37MediaPlaylistLabelExpr = `NULLIF(TRIM(COALESCE(mr.playlist_name_fr, mr.playlist_name, '')), '')`
 
 // mediaKindEquivalents retourne les valeurs DB qui doivent matcher un filtre
-// de type donné, en couvrant à la fois la convention legacy ("clip"/"screenshot")
-// et la nouvelle ("video"/"image"). Les médias indexés par les anciennes
-// versions ont l'une, les nouveaux uploads ont l'autre — sans cette translation
-// le filtre type ne retourne 0 résultat.
+// de type donnÃ©, en couvrant Ã  la fois la convention legacy ("clip"/"screenshot")
+// et la nouvelle ("video"/"image"). Les mÃ©dias indexÃ©s par les anciennes
+// versions ont l'une, les nouveaux uploads ont l'autre â€” sans cette translation
+// le filtre type ne retourne 0 rÃ©sultat.
 func mediaKindEquivalents(kind string) []string {
 	switch kind {
 	case "clip", "video":
@@ -507,9 +507,9 @@ func mediaKindEquivalents(kind string) []string {
 	}
 }
 
-// Strips appliqués côté Go pour normaliser une valeur de filtre map.
+// Strips appliquÃ©s cÃ´tÃ© Go pour normaliser une valeur de filtre map.
 // Doit rester en miroir de q37MediaMapLabelExpr (sinon filtre "Recharge v3"
-// ne matcherait pas le label "Recharge" déjà normalisé côté SQL).
+// ne matcherait pas le label "Recharge" dÃ©jÃ  normalisÃ© cÃ´tÃ© SQL).
 var (
 	mediaMapForgeSuffixRe   = regexp.MustCompile(`(?i)\s*-\s*Forge.*$`)
 	mediaMapRankedSuffixRe  = regexp.MustCompile(`(?i)\s*-\s*Ranked.*$`)
@@ -517,7 +517,7 @@ var (
 )
 
 // normalizeMediaMapName strippe les suffixes de variante pour grouper
-// "Recharge v3" / "Recharge - Forge" / "Recharge" sous le même nom canonique.
+// "Recharge v3" / "Recharge - Forge" / "Recharge" sous le mÃªme nom canonique.
 // Conservatif : ne touche pas " Annex", `:`, etc. (cf. q37MediaMapLabelExpr).
 func normalizeMediaMapName(s string) string {
 	s = mediaMapForgeSuffixRe.ReplaceAllString(s, "")
@@ -543,12 +543,12 @@ func (cfg mediaQueryConfig) fromClause() string {
 
 // baseWhereClause renvoie les contraintes de base + le filtre de section (ownership).
 //
-//	"" (vide)   → sources visibles : mine + teammate (pas de contrainte player_slug)
-//	"mine"      → uniquement player_slug courant
-//	"teammate"  → uniquement les autres (player_slug != courant)
+//	"" (vide)   â†’ sources visibles : mine + teammate (pas de contrainte player_slug)
+//	"mine"      â†’ uniquement player_slug courant
+//	"teammate"  â†’ uniquement les autres (player_slug != courant)
 //
-// En schéma legacy (pas de player_slug), seul "mine" et "" donnent des résultats ;
-// "teammate" force WHERE FALSE pour cohérence (rien à montrer).
+// En schÃ©ma legacy (pas de player_slug), seul "mine" et "" donnent des rÃ©sultats ;
+// "teammate" force WHERE FALSE pour cohÃ©rence (rien Ã  montrer).
 func (cfg mediaQueryConfig) baseWhereClause(sectionFilter string) ([]string, []any) {
 	if !cfg.useSharedSocialSchema() {
 		switch sectionFilter {
@@ -564,7 +564,7 @@ func (cfg mediaQueryConfig) baseWhereClause(sectionFilter string) ([]string, []a
 	case "teammate":
 		return []string{"mf.player_slug <> ?"}, []any{cfg.playerSlug}
 	default:
-		// Tous auteurs — pas de contrainte sur player_slug
+		// Tous auteurs â€” pas de contrainte sur player_slug
 		return nil, nil
 	}
 }
@@ -583,9 +583,9 @@ func (cfg mediaQueryConfig) timeOrderExpr() string {
 	return "COALESCE(mf.capture_end_utc, mf.mtime)"
 }
 
-// groupOrderExpr retourne l'expression de tri primaire pour grouper les médias.
-// Le tri secondaire (date / map / mode) reste appliqué après. Retourne ("", "")
-// si le groupement est inconnu ou ne s'applique pas au schéma courant.
+// groupOrderExpr retourne l'expression de tri primaire pour grouper les mÃ©dias.
+// Le tri secondaire (date / map / mode) reste appliquÃ© aprÃ¨s. Retourne ("", "")
+// si le groupement est inconnu ou ne s'applique pas au schÃ©ma courant.
 func (cfg mediaQueryConfig) groupOrderExpr(groupBy string) (expr, direction string) {
 	switch groupBy {
 	case "owner":
@@ -598,9 +598,9 @@ func (cfg mediaQueryConfig) groupOrderExpr(groupBy string) (expr, direction stri
 	case "mode":
 		return "COALESCE(" + q37MediaModeLabelExpr + ", '~zzz')", "ASC"
 	case "session":
-		// Le groupement par session est calculé côté frontend (proximité temporelle) ;
+		// Le groupement par session est calculÃ© cÃ´tÃ© frontend (proximitÃ© temporelle) ;
 		// pour le ORDER BY backend, on s'aligne juste sur la date pour que les sessions
-		// apparaissent contiguës. Pas de troncature SQL — la heuristique côté UI fait
+		// apparaissent contiguÃ«s. Pas de troncature SQL â€” la heuristique cÃ´tÃ© UI fait
 		// foi.
 		return cfg.timeOrderExpr(), "DESC"
 	case "liked":
@@ -633,7 +633,7 @@ func buildQ37MediaWhereClause(
 	}
 
 	if f.KindFilter != "" {
-		// Compat schémas : legacy stocke "clip"/"screenshot", nouveau stocke "video"/"image".
+		// Compat schÃ©mas : legacy stocke "clip"/"screenshot", nouveau stocke "video"/"image".
 		// Le frontend envoie les valeurs legacy ("clip"/"screenshot") historiquement.
 		// On accepte les deux conventions pour matcher quelle que soit l'origine de la ligne.
 		equivalents := mediaKindEquivalents(f.KindFilter)
@@ -653,23 +653,23 @@ func buildQ37MediaWhereClause(
 		args = append(args, f.PlaylistFilter, f.PlaylistFilter)
 	}
 	if whereCfg.includeMapFilter && f.MapFilter != "" {
-		// MapFilter peut être un map_id (cas standard, value du dropdown) OU un
-		// label brut (fallback pour médias sans map_id, ou requête manuelle).
+		// MapFilter peut Ãªtre un map_id (cas standard, value du dropdown) OU un
+		// label brut (fallback pour mÃ©dias sans map_id, ou requÃªte manuelle).
 		// On matche les deux pour rester compatible. Sans cette double tentative,
 		// "Altitude" FR ne matcherait jamais "High Ground" raw EN.
 		where = append(where, "(mr.map_id = ? OR LOWER("+q37MediaMapLabelExpr+") = LOWER(?))")
 		args = append(args, f.MapFilter, normalizeMediaMapName(f.MapFilter))
 	}
 	if whereCfg.includeModeFilter && f.ModeFilter != "" {
-		// 2 formats acceptés :
-		//   "Assassin"        → catégorie entière (reverse-mapping vers préfixes pair_name)
-		//   "Assassin/Slayer" → catégorie + sous-mode normalisé (filtre granulaire)
+		// 2 formats acceptÃ©s :
+		//   "Assassin"        â†’ catÃ©gorie entiÃ¨re (reverse-mapping vers prÃ©fixes pair_name)
+		//   "Assassin/Slayer" â†’ catÃ©gorie + sous-mode normalisÃ© (filtre granulaire)
 		//
-		// Pour le format avec sous-mode, on conserve le filtre catégorie ET on
-		// ajoute un AND sur le sous-mode normalisé (extrait via q37MediaModeLabelExpr).
-		// "Other" = NOT IN les préfixes connus.
+		// Pour le format avec sous-mode, on conserve le filtre catÃ©gorie ET on
+		// ajoute un AND sur le sous-mode normalisÃ© (extrait via q37MediaModeLabelExpr).
+		// "Other" = NOT IN les prÃ©fixes connus.
 		category, submode, hasSubmode := strings.Cut(f.ModeFilter, "/")
-		prefixes := analysis.PairNamePrefixesForCategory(category)
+		prefixes := halo_infinite.PairNamePrefixesForCategory(category)
 		if len(prefixes) > 0 {
 			parts := make([]string, 0, len(prefixes)*2)
 			for _, p := range prefixes {
@@ -679,9 +679,9 @@ func buildQ37MediaWhereClause(
 				args = append(args, p)
 			}
 			where = append(where, "("+strings.Join(parts, " OR ")+")")
-		} else if category == analysis.ModeCategoryOther {
+		} else if category == halo_infinite.ModeCategoryOther {
 			knownParts := []string{}
-			for _, p := range analysis.AllKnownPairNamePrefixes() {
+			for _, p := range halo_infinite.AllKnownPairNamePrefixes() {
 				knownParts = append(knownParts, "LOWER(mr.pair_name) LIKE LOWER(?)")
 				args = append(args, p+":%")
 				knownParts = append(knownParts, "LOWER(mr.pair_name) = LOWER(?)")
@@ -700,8 +700,8 @@ func buildQ37MediaWhereClause(
 	return "WHERE " + strings.Join(where, " AND "), args
 }
 
-// BuildQ37MediaQuery construit dynamiquement la query médias avec filtres et tri.
-// Retourne la query SQL et les args à passer (dans l'ordre : filtres..., limit, offset).
+// BuildQ37MediaQuery construit dynamiquement la query mÃ©dias avec filtres et tri.
+// Retourne la query SQL et les args Ã  passer (dans l'ordre : filtres..., limit, offset).
 func BuildQ37MediaQuery(f domain.MediaFilters, limit, offset int) (string, []any) {
 	return buildQ37MediaQuery(f, limit, offset, mediaQueryConfig{})
 }
@@ -736,12 +736,12 @@ func buildQ37MediaQuery(
 		playerSlugExpr = "mf.player_slug"
 	}
 
-	// CRITIQUE : un média physique = 1 ligne. Sans QUALIFY, le LEFT JOIN sur
-	// media_match_associations duplique le média si plusieurs matchs sont
-	// associés (cas réel : capture pendant une session de plusieurs matchs
+	// CRITIQUE : un mÃ©dia physique = 1 ligne. Sans QUALIFY, le LEFT JOIN sur
+	// media_match_associations duplique le mÃ©dia si plusieurs matchs sont
+	// associÃ©s (cas rÃ©el : capture pendant une session de plusieurs matchs
 	// proches). On garde l'association la plus pertinente :
-	//   - en priorité une avec match (mr.start_time non null)
-	//   - parmi celles-là, la plus proche temporellement de capture_end_utc
+	//   - en prioritÃ© une avec match (mr.start_time non null)
+	//   - parmi celles-lÃ , la plus proche temporellement de capture_end_utc
 	//   - sinon stable tiebreak sur match_id
 	q := `SELECT
     mf.file_path,
@@ -785,9 +785,9 @@ func buildQ37MediaCountQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (
 		includePlaylistFilter: true,
 	}, queryCfg)
 
-	// COUNT(DISTINCT mf.file_path) car le LEFT JOIN duplique les médias avec
+	// COUNT(DISTINCT mf.file_path) car le LEFT JOIN duplique les mÃ©dias avec
 	// plusieurs associations match. Sinon la pagination renvoie X*N pages au
-	// lieu de X (où N = nombre moyen d'associations par média).
+	// lieu de X (oÃ¹ N = nombre moyen d'associations par mÃ©dia).
 	q := `SELECT COUNT(DISTINCT mf.file_path)
 ` + queryCfg.fromClause() + `
 ` + whereClause
@@ -801,7 +801,7 @@ func BuildQ37MediaMapOptionsQuery(f domain.MediaFilters) (string, []any) {
 }
 
 func buildQ37MediaMapOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
-	// Cartes restreintes par playlist + mode courants (pas par carte elle-même)
+	// Cartes restreintes par playlist + mode courants (pas par carte elle-mÃªme)
 	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
 		includeMapFilter:      false,
 		includeModeFilter:     true,
@@ -818,21 +818,21 @@ ORDER BY label ASC`
 	return q, args
 }
 
-// BuildQ37MediaModeOptionsQuery retourne les modes normalisés distincts disponibles.
+// BuildQ37MediaModeOptionsQuery retourne les modes normalisÃ©s distincts disponibles.
 func BuildQ37MediaModeOptionsQuery(f domain.MediaFilters) (string, []any) {
 	return buildQ37MediaModeOptionsQuery(f, mediaQueryConfig{})
 }
 
 func buildQ37MediaModeOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
-	// Modes restreints par playlist + carte courantes (pas par mode lui-même)
+	// Modes restreints par playlist + carte courantes (pas par mode lui-mÃªme)
 	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
 		includeMapFilter:      true,
 		includeModeFilter:     false,
 		includePlaylistFilter: true,
 	}, queryCfg)
 
-	// Retourne (pair_name_raw, label_normalisé) pour permettre normalisation
-	// canonique (NormalizeModeLabel) puis lookup FR (mode_name_tr) côté Go.
+	// Retourne (pair_name_raw, label_normalisÃ©) pour permettre normalisation
+	// canonique (NormalizeModeLabel) puis lookup FR (mode_name_tr) cÃ´tÃ© Go.
 	q := `SELECT DISTINCT COALESCE(mr.pair_name, '') AS pair_name_raw, ` + q37MediaModeLabelExpr + ` AS label
 ` + queryCfg.fromClause() + `
 ` + whereClause + `
@@ -848,7 +848,7 @@ func BuildQ37MediaPlaylistOptionsQuery(f domain.MediaFilters) (string, []any) {
 }
 
 func buildQ37MediaPlaylistOptionsQuery(f domain.MediaFilters, queryCfg mediaQueryConfig) (string, []any) {
-	// Playlists restreintes par carte + mode courants (pas par playlist elle-même)
+	// Playlists restreintes par carte + mode courants (pas par playlist elle-mÃªme)
 	whereClause, args := buildQ37MediaWhereClause(f, mediaWhereConfig{
 		includeMapFilter:      true,
 		includeModeFilter:     true,
