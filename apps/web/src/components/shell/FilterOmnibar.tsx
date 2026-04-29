@@ -592,6 +592,13 @@ export function FiltresPill({
             </p>
           )}
           <CheckboxGroup
+            title="Type d'expérience"
+            options={available.experience_types}
+            selected={(cascade.experience_types ?? []) as string[]}
+            onToggle={(v) => toggleValue('experience_types', v)}
+            zombies={zombies.experience_types}
+          />
+          <CheckboxGroup
             title="Playlists"
             options={available.playlists}
             selected={(cascade.playlists ?? []) as string[]}
@@ -611,13 +618,6 @@ export function FiltresPill({
             selected={(cascade.maps ?? []) as string[]}
             onToggle={(v) => toggleValue('maps', v)}
             zombies={zombies.maps}
-          />
-          <CheckboxGroup
-            title="Type d'expérience"
-            options={available.experience_types}
-            selected={(cascade.experience_types ?? []) as string[]}
-            onToggle={(v) => toggleValue('experience_types', v)}
-            zombies={zombies.experience_types}
           />
         </div>
       )}

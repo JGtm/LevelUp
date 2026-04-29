@@ -23,6 +23,7 @@ import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
+import { useFiltersPreview } from '@/features/filters/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
@@ -277,7 +278,11 @@ export function SquadLayout() {
   }
 
   const totalAfter = resolvedContext?.counts?.total_matches_after_filters ?? null
-  const rawAvailable = resolvedContext?.available_options
+
+  // Preview live : résout le pending state dès que l'utilisateur change un filtre,
+  // sans attendre le clic Analyser. Fallback sur le resolvedContext commité.
+  const { data: previewResolve } = useFiltersPreview(playerSlug, pending)
+  const rawAvailable = previewResolve?.available_options ?? resolvedContext?.available_options
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
