@@ -37,15 +37,17 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		// Fallback : XUID hardcodé pour la fixture Chocoboflor
 		xuidBytes = "2535469190789936"
 	}
+	pr := title.NewPathResolver(cfg.RepoRoot)
 	pcfg := duckdb.PlayerPoolConfig{
-		Gamertag:           "DemoPlayer",
-		XUID:               xuidBytes,
-		TitleSlug:          titleSlug,
-		PlayerDBPath:       filepath.Join(dir, "stats.duckdb"),
-		SharedDBPath:       filepath.Join(dir, "shared_matches_v2.duckdb"),
-		MetaDBPath:         filepath.Join(dir, "metadata.duckdb"),
-		SharedSocialDBPath: title.NewPathResolver(cfg.RepoRoot).SharedSocialDBPath(titleSlug),
-		UserTimezone:       cfg.UserTimezone,
+		Gamertag:                "DemoPlayer",
+		XUID:                    xuidBytes,
+		TitleSlug:               titleSlug,
+		PlayerDBPath:            filepath.Join(dir, "stats.duckdb"),
+		SharedDBPath:            filepath.Join(dir, "shared_matches_v2.duckdb"),
+		MetaDBPath:              filepath.Join(dir, "metadata.duckdb"),
+		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
+		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
+		UserTimezone:            cfg.UserTimezone,
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
@@ -77,14 +79,15 @@ func resolveRealPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) duckdb.PlayerPoolConfig {
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	return duckdb.PlayerPoolConfig{
-		Gamertag:           p.Gamertag,
-		XUID:               p.XUID,
-		TitleSlug:          titleSlug,
-		PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
-		SharedDBPath:       pr.SharedDBPath(titleSlug),
-		MetaDBPath:         pr.MetadataDBPath(titleSlug),
-		SharedSocialDBPath: pr.SharedSocialDBPath(titleSlug),
-		UserTimezone:       cfg.UserTimezone,
+		Gamertag:                p.Gamertag,
+		XUID:                    p.XUID,
+		TitleSlug:               titleSlug,
+		PlayerDBPath:            pr.PlayerDBPath(titleSlug, p.Gamertag),
+		SharedDBPath:            pr.SharedDBPath(titleSlug),
+		MetaDBPath:              pr.MetadataDBPath(titleSlug),
+		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
+		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
+		UserTimezone:            cfg.UserTimezone,
 	}
 }
 

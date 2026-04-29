@@ -45,6 +45,7 @@ type SyncEngine struct {
 	titleSlug      string
 	playerDBPath   string
 	sharedDBPath   string
+	globalDBPath   string // P5.3 : data/global/xbox_aliases.duckdb (mapping xuid→gamertag global)
 	metadataDBPath string
 	tokens         *domain.HaloTokens
 	// provider est utilisé pour résoudre l'access_token Xbox Live (achievements).
@@ -82,6 +83,7 @@ func NewSyncEngine(
 		titleSlug:      titlePkg.DefaultSlug,
 		playerDBPath:   pr.PlayerDBPath(titlePkg.DefaultSlug, gamertag),
 		sharedDBPath:   pr.SharedDBPath(titlePkg.DefaultSlug),
+		globalDBPath:   pr.GlobalXuidAliasesDBPath(),
 		metadataDBPath: pr.MetadataDBPath(titlePkg.DefaultSlug),
 		tokens:         tokens,
 		provider:       provider,
@@ -384,6 +386,16 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 	defer sharedHandle.Close()
 	sharedDB := sharedHandle.SQLDb()
+
+	// P5.3 : DB globale xbox_aliases (mapping xuid→gamertag global Microsoft).
+	globalDB, globalCleanup, err := openGlobalDB(e.globalDBPath)
+	if err != nil {
+		slog.WarnContext(ctx, "sync: ouverture global DB échouée — alias upsert désactivé",
+			"db", e.globalDBPath, "err", err)
+		globalDB = nil
+	} else {
+		defer globalCleanup()
+	}
 	slog.DebugContext(ctx, "sync: DBs ouvertes", "gamertag", e.gamertag)
 
 	// ─── Match IDs déjà connus (player DB) ───────────────────────────────────
@@ -444,7 +456,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			}
 			allKnown = false
 
-			if err := e.processMatch(ctx, client, sharedDB, playerDB, &result, entry.MatchID, opts); err != nil {
+			if err := e.processMatch(ctx, client, sharedDB, playerDB, globalDB, &result, entry.MatchID, opts); err != nil {
 				slog.WarnContext(ctx, "sync: processMatch échoué",
 					"gamertag", e.gamertag, "match_id", entry.MatchID, "err", err,
 				)
@@ -538,7 +550,7 @@ func (e *SyncEngine) runConditionalPostSync(
 func (e *SyncEngine) processMatch(
 	ctx context.Context,
 	client HaloClient,
-	sharedDB, playerDB *sql.DB,
+	sharedDB, playerDB, globalDB *sql.DB,
 	result *domain.SyncResult,
 	matchID string,
 	opts domain.SyncOptions,
@@ -583,7 +595,10 @@ func (e *SyncEngine) processMatch(
 		aliased := 0
 		for _, p := range participants {
 			if p.Gamertag != nil && *p.Gamertag != "" {
-				_ = UpsertXUIDAlias(sharedDB, p.XUID, *p.Gamertag)
+				// P5.3 : écriture dans la DB globale xbox_aliases.duckdb.
+				if globalDB != nil {
+					_ = UpsertXUIDAlias(globalDB, p.XUID, *p.Gamertag)
+				}
 				aliased++
 			}
 		}
@@ -609,7 +624,7 @@ func (e *SyncEngine) processMatch(
 
 	// ─── highlight_events + killer_victim_pairs ──────────────────────────────────────
 	if opts.WithHighlightEvents {
-		if err := processHighlightEvents(ctx, client, sharedDB, matchID, result); err != nil {
+		if err := processHighlightEvents(ctx, client, sharedDB, globalDB, matchID, result); err != nil {
 			// Non-bloquant : on logge et on continue (pas de return).
 			slog.WarnContext(ctx, "processMatch: highlight_events non chargés",
 				"gamertag", e.gamertag, "match_id", matchID, "err", err,
@@ -641,7 +656,7 @@ func (e *SyncEngine) processMatch(
 func processHighlightEvents(
 	ctx context.Context,
 	client HaloClient,
-	sharedDB *sql.DB,
+	sharedDB, globalDB *sql.DB,
 	matchID string,
 	result *domain.SyncResult,
 ) error {
@@ -673,11 +688,14 @@ func processHighlightEvents(
 	}
 
 	// Upsert les gamertags extraits depuis le film (source la plus fiable).
+	// P5.3 : ecriture dans la DB globale xbox_aliases.
 	aliasCount := 0
-	for _, ev := range events {
-		if ev.XUID != 0 && ev.Gamertag != "" {
-			if uErr := UpsertXUIDAlias(sharedDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag); uErr == nil {
-				aliasCount++
+	if globalDB != nil {
+		for _, ev := range events {
+			if ev.XUID != 0 && ev.Gamertag != "" {
+				if uErr := UpsertXUIDAlias(globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag); uErr == nil {
+					aliasCount++
+				}
 			}
 		}
 	}

@@ -58,7 +58,7 @@ func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string
 
 // ResolveXUIDByGamertag résout un gamertag en xuid via xuid_aliases (ILIKE).
 func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error) {
-	const q = `SELECT xuid FROM shared.xuid_aliases WHERE gamertag ILIKE ? LIMIT 1`
+	const q = `SELECT xuid FROM global.xuid_aliases WHERE gamertag ILIKE ? LIMIT 1`
 	row := r.pdb.ReadDB().QueryRow(ctx, q, gamertag)
 	var xuid string
 	if err := row.Scan(&xuid); err != nil {
