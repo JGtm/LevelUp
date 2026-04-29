@@ -21,6 +21,12 @@ import (
 type SessionCompareService struct {
 	sessionsRepo port.SessionsRepository
 	statsRepo    port.StatsRepository
+	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
+	// TODO P4.3 : retirer le converter quand les analyses session_compare
+	// (extractSessionLabels, buildCompareEntry, etc.) consommeront canonical.
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
+	gamertag          string
 }
 
 // NewSessionCompareService crée un SessionCompareService.
@@ -34,15 +40,37 @@ func NewSessionCompareService(
 	}
 }
 
+// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware.
+func (s *SessionCompareService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *SessionCompareService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
+	return s
+}
+
 // Compare exécute la comparaison entre deux sessions.
 func (s *SessionCompareService) Compare(
 	ctx context.Context,
 	req domain.SessionCompareRequest,
 ) (domain.SessionCompareResponse, error) {
 	// 1. Charger les matchs stats (avec session_label).
-	matches, err := s.statsRepo.LoadStatsMatches(ctx)
-	if err != nil {
-		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare load: %w", err)
+	// P4.1 (ADR 0011) : si playerMatchesRepo injecté, charger canonical et
+	// convertir via le converter partagé statsMatchRowsFromCanonical.
+	var matches []domain.StatsMatchRow
+	var err error
+	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
+		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
+			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+		)
+		if e != nil {
+			return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare canonical: %w", e)
+		}
+		matches = statsMatchRowsFromCanonical(canonicalRows)
+	} else {
+		matches, err = s.statsRepo.LoadStatsMatches(ctx)
+		if err != nil {
+			return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare load: %w", err)
+		}
 	}
 	matches = filterStatsMatchRows(matches, req.Filters)
 
