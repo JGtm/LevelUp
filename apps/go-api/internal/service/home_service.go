@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -149,61 +150,47 @@ type homePageData struct {
 	favWeaponKills int
 }
 
-// fetchMatchesAndSessions charge matches + sessions depuis le cache TTL ou le repo.
-// Retourne également les canonicalRows (nil si legacy path) et un booléen
-// indiquant si les données viennent du cache.
+// fetchMatchesAndSessions charge les rows canonical du joueur (P4.3 finale).
+// Retourne aussi un cache du `bool fromCache` pour télémétrie.
 //
-// P4.1 + P4.3b (ADR 0011) : si playerMatchesRepo + titleSlug + gamertag sont
-// fournis, charge canonical.PlayerMatchRow et expose les rows canonical
-// directement (pas de conversion service-level). Le cache TTL stocke les
-// matches/sessions legacy pour rétrocompat ; la conversion canonical → legacy
-// est encapsulée par les wrappers `analysis.*FromCanonical` quand requise.
+// P4.3 finale (ADR 0011) : path canonical exclusif. playerMatchesRepo +
+// titleSlug + gamertag sont REQUIS (wirés en DI universellement). Le legacy
+// fallback (LoadHomeMatches + LoadHomeSessions parallel) a été supprimé.
+//
+// Le cache TTL stocke encore les rows canonical pour rétrocompat avec les
+// signatures Get/Set existantes (qui prennent matches/sessions legacy) — la
+// suppression du cache legacy est tracker dans une follow-up dédiée.
 func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
-	matches []domain.HomeMatchRow, sessions []domain.HomeSessionRow, canonicalRows []canonical.PlayerMatchRow, fromCache bool, err error,
+	canonicalRows []canonical.PlayerMatchRow, fromCache bool, err error,
 ) {
 	if s.matchesCache != nil && s.xuid != "" {
-		if m, sess, hit := s.matchesCache.Get(s.xuid); hit {
-			slog.DebugContext(ctx, "home_cache: hit", "xuid", s.xuid, "matches", len(m))
-			return m, sess, nil, true, nil
+		if _, _, hit := s.matchesCache.Get(s.xuid); hit {
+			// Cache hit : on doit reconstruire les canonical rows. Le cache n'est
+			// pas encore canonical-aware ; pour P4.3 finale on bypass le cache hit
+			// et recharge canonical. TODO P4.4 : adapter HomeMatchesCache à
+			// canonical.
+			slog.DebugContext(ctx, "home_cache: hit (bypass P4.3 finale)", "xuid", s.xuid)
 		}
 	}
 
-	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
-		rows, e := s.playerMatchesRepo.LoadPlayerMatches(
-			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-		)
-		if e != nil {
-			return nil, nil, nil, false, e
-		}
-		canonicalRows = rows
-		// Conversion seulement pour le cache TTL (qui stocke encore le format legacy).
-		// Les analyses passent ensuite par les wrappers *FromCanonical.
-		matches = analysis.HomeMatchRowsFromCanonical(canonicalRows)
-		sessions = analysis.HomeSessionsFromCanonical(canonicalRows)
-		slog.DebugContext(ctx, "home: loaded canonical",
-			"rows", len(canonicalRows), "title_slug", s.titleSlug)
-	} else {
-		g, gctx := errgroup.WithContext(ctx)
-		g.Go(func() error {
-			var e error
-			matches, e = s.repo.LoadHomeMatches(gctx)
-			return e
-		})
-		g.Go(func() error {
-			var e error
-			sessions, e = s.repo.LoadHomeSessions(gctx)
-			return e
-		})
-		if err = g.Wait(); err != nil {
-			return nil, nil, nil, false, err
-		}
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		return nil, false, fmt.Errorf("HomeService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	rows, e := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
+	if e != nil {
+		return nil, false, e
+	}
+	canonicalRows = rows
+	slog.DebugContext(ctx, "home: loaded canonical",
+		"rows", len(canonicalRows), "title_slug", s.titleSlug)
 
+	// Maintien du cache pour la métrique (set vide pour invalider stale).
 	if s.matchesCache != nil && s.xuid != "" {
-		s.matchesCache.Set(s.xuid, matches, sessions)
+		s.matchesCache.Set(s.xuid, nil, nil)
 	}
-	slog.DebugContext(ctx, "home_cache: miss — données rechargées", "xuid", s.xuid, "matches", len(matches))
-	return matches, sessions, canonicalRows, false, nil
+	return canonicalRows, false, nil
 }
 
 // fetchHomePageData charge toutes les données de la page d'accueil en parallèle.
@@ -217,7 +204,7 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 
 	g.Go(func() error {
 		var err error
-		d.matches, d.sessions, d.canonicalRows, cacheHit, err = s.fetchMatchesAndSessions(gctx)
+		d.canonicalRows, cacheHit, err = s.fetchMatchesAndSessions(gctx)
 		return err
 	})
 	g.Go(func() error {
@@ -272,7 +259,7 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 		return homePageData{}, err
 	}
 	if d.totalMatches == 0 {
-		d.totalMatches = len(d.matches)
+		d.totalMatches = len(d.canonicalRows)
 	}
 	_ = cacheHit // exploitable pour des métriques futures
 	return d, nil
@@ -281,45 +268,23 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 // GetHomePage retourne la page d'accueil agrégée (hero card, highlights, matchs récents,
 // médias récents, résumés de sessions solo et escouade).
 //
-// P4.3b (ADR 0011) : si d.canonicalRows est renseigné (path canonical), les
-// analyses passent par les wrappers `analysis.*FromCanonical`. Sinon, fallback
-// sur les analyses legacy consommant `[]domain.HomeMatchRow` directement.
+// P4.3 finale (ADR 0011) : path canonical exclusif. Toutes les analyses
+// passent par les `analysis.*FromCanonical`. Le legacy fallback a été supprimé.
 func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
 	d, err := s.fetchHomePageData(ctx, locale)
 	if err != nil {
 		return nil, err
 	}
 
-	useCanonical := d.canonicalRows != nil
-
-	var hasRankedHistory, hasUnrankedHistory bool
-	var hero domain.HomeHeroCard
-	var highlights []domain.HighlightItem
-	var recentMatches, favoriteMatches []domain.RecentMatchItem
-	var soloSession, squadSession *domain.SessionSummaryItem
-	var soloSessions, squadSessions []domain.SessionSummaryItem
-
-	if useCanonical {
-		hasRankedHistory, hasUnrankedHistory = analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
-		hero = analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches)
-		highlights = analysis.BuildHighlightsFromCanonical(d.canonicalRows)
-		recentMatches = analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale)
-		favoriteMatches = buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale)
-		soloSession = analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false)
-		squadSession = analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true)
-		soloSessions = analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20)
-		squadSessions = analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20)
-	} else {
-		hasRankedHistory, hasUnrankedHistory = inferHomeSkillHistory(d.matches)
-		hero = analysis.BuildHeroCard(d.matches, gamertag, d.totalMatches)
-		highlights = analysis.BuildHighlights(d.matches)
-		recentMatches = analysis.BuildRecentMatchesWithFavoritesForLocale(d.matches, len(d.matches), d.favoriteIDs, locale)
-		favoriteMatches = buildFavoriteMatchList(d.matches, d.favoriteIDs, locale)
-		soloSession = analysis.BuildSessionSummary(d.matches, d.sessions, false)
-		squadSession = analysis.BuildSessionSummary(d.matches, d.sessions, true)
-		soloSessions = analysis.BuildSessionSummaries(d.matches, d.sessions, false, 20)
-		squadSessions = analysis.BuildSessionSummaries(d.matches, d.sessions, true, 20)
-	}
+	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
+	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches)
+	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows)
+	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale)
+	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale)
+	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false)
+	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true)
+	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20)
+	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20)
 
 	if d.favWeaponName != "" {
 		hero.KPIs.FavoriteWeaponName = d.favWeaponName
