@@ -30,6 +30,14 @@ type TimeseriesService struct {
 	// la totalité du payload (5 onglets : win_loss/accuracy/objective/form/
 	// lusr). Le hook est en place pour permettre une bascule incrémentale.
 	dataAdapter games.TitleDataAdapter
+	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
+	// Quand fourni avec titleSlug + gamertag, GetPage charge canonical et
+	// convertit via statsMatchRowFromCanonical (partagé avec stats_service).
+	// TODO P4.3 : retirer le converter quand les analyses timeseries
+	// (buildCumulTab, computeRegressionStats, etc.) consommeront canonical.
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
+	gamertag          string
 }
 
 // NewTimeseriesService crée un TimeseriesService.
@@ -44,15 +52,41 @@ func (s *TimeseriesService) WithDataAdapter(a games.TitleDataAdapter) *Timeserie
 	return s
 }
 
+// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware.
+func (s *TimeseriesService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *TimeseriesService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
+	return s
+}
+
 // GetPage construit la réponse complète avec 5 onglets.
 func (s *TimeseriesService) GetPage(
 	ctx context.Context,
 	req domain.TimeseriesQueryRequest,
 ) (domain.TimeseriesPageResponse, error) {
-	allMatches, err := s.statsRepo.LoadStatsMatches(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "timeseries: chargement matches", "error", err)
-		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: %w", err)
+	// P4.1 (ADR 0011) : si playerMatchesRepo injecté, charger canonical et
+	// convertir. TODO P4.3 : retirer la conversion quand analyses timeseries
+	// migrées canonical.
+	var allMatches []domain.StatsMatchRow
+	var err error
+	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
+		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
+			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+		)
+		if e != nil {
+			slog.ErrorContext(ctx, "timeseries: chargement canonical", "error", e)
+			return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService canonical: %w", e)
+		}
+		slog.DebugContext(ctx, "timeseries: loaded canonical",
+			"rows", len(canonicalRows), "title_slug", s.titleSlug)
+		allMatches = statsMatchRowsFromCanonical(canonicalRows)
+	} else {
+		allMatches, err = s.statsRepo.LoadStatsMatches(ctx)
+		if err != nil {
+			slog.ErrorContext(ctx, "timeseries: chargement matches", "error", err)
+			return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: %w", err)
+		}
 	}
 
 	matches := filterStatsMatchRows(allMatches, req.Filters)
