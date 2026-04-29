@@ -2,7 +2,8 @@
 // Source : apps/web/src/lib/i18n/manifests/asset_drawer.toml
 
 export const assetDrawerManifest = {
-  "asset_drawer.tab.maps": { fr: "Maps", en: "Maps" },
+  "asset_drawer.mini_tab": { fr: "Référentiel", en: "Reference" },
+  "asset_drawer.tab.maps": { fr: "Cartes", en: "Maps" },
   "asset_drawer.tab.weapons": { fr: "Armes", en: "Weapons" },
   "asset_drawer.search.placeholder": { fr: "Rechercher…", en: "Search…" },
   "asset_drawer.empty.maps": { fr: "Aucune map trouvée.", en: "No map found." },
