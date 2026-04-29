@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
 )
 
 var errSynthTest = errors.New("synthesis repo error")
@@ -35,6 +37,62 @@ func (m *mockSynthesisRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([
 
 func (m *mockSynthesisRepo) LoadEncounters(_ context.Context, _ string) ([]domain.EncounterRawRow, error) {
 	return m.encounterRows, m.encounterErr
+}
+
+// --- mock PlayerMatchesRepository pour tests P4.3 finale ---
+//
+// Convertit []SynthesisMatchRow en []canonical.PlayerMatchRow pour exercer
+// le path canonical (le seul path en service après P4.3 finale).
+type mockSynthesisPlayerMatches struct {
+	rows []domain.SynthesisMatchRow
+	err  error
+}
+
+func (m *mockSynthesisPlayerMatches) LoadPlayerMatches(_ context.Context, _ string, _ string, _ port.PlayerMatchFilters) ([]canonical.PlayerMatchRow, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	out := make([]canonical.PlayerMatchRow, len(m.rows))
+	for i, r := range m.rows {
+		k, d := r.Kills, r.Deaths
+		var outcome canonical.Outcome
+		switch r.Outcome {
+		case domain.OutcomeWin:
+			outcome = canonical.OutcomeWin
+		case domain.OutcomeLoss:
+			outcome = canonical.OutcomeLoss
+		case domain.OutcomeDraw:
+			outcome = canonical.OutcomeTie
+		case domain.OutcomeDNF:
+			outcome = canonical.OutcomeDNF
+		}
+		out[i] = canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{
+				MatchID:      r.MatchID,
+				StartedAtUTC: r.StartTime,
+				Outcome:      outcome,
+			},
+			Self: canonical.MatchParticipant{
+				Kills: &k, Deaths: &d, KDA: r.KDA, Outcome: outcome,
+				Accuracy: r.Accuracy, TimePlayed: r.TimePlayedSecs,
+			},
+			Enrichment: canonical.PlayerMatchEnrichment{
+				IsWithFriends:    r.IsWithFriends,
+				PerformanceScore: r.PerformanceScore,
+				SessionLabel:     r.SessionLabel,
+			},
+		}
+	}
+	return out, nil
+}
+
+func (m *mockSynthesisPlayerMatches) InvalidatePlayer(_, _ string) {}
+
+// withSynthMock attache le mock canonical au service pour exercer le path
+// canonical (seul path actif après P4.3 finale).
+func withSynthMock(svc *SynthesisService, rows []domain.SynthesisMatchRow, err error) *SynthesisService {
+	pm := &mockSynthesisPlayerMatches{rows: rows, err: err}
+	return svc.WithPlayerMatchesRepo(pm, "halo_infinite", "TestPlayer")
 }
 
 // --- helpers ---
@@ -226,7 +284,7 @@ func TestGetSynthesisPage_Success(t *testing.T) {
 		encounterRows: []domain.EncounterRawRow{},
 	}
 
-	svc := NewSynthesisService(repo)
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 	resp, err := svc.GetSynthesisPage(context.Background(), "xuid-test", domain.SynthesisRequest{Period: "all"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -244,7 +302,7 @@ func TestGetSynthesisPage_Success(t *testing.T) {
 
 func TestGetSynthesisPage_DefaultPeriodAll(t *testing.T) {
 	repo := &mockSynthesisRepo{synthRows: []domain.SynthesisMatchRow{}}
-	svc := NewSynthesisService(repo)
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 
 	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{})
 	if err != nil {
@@ -257,7 +315,7 @@ func TestGetSynthesisPage_DefaultPeriodAll(t *testing.T) {
 
 func TestGetSynthesisPage_RepoError(t *testing.T) {
 	repo := &mockSynthesisRepo{synthErr: errSynthTest}
-	svc := NewSynthesisService(repo)
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 
 	_, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{})
 	if err == nil {
@@ -276,7 +334,7 @@ func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
 			{MatchID: "old", StartTime: time.Now().UTC().Add(-30 * 24 * time.Hour), Outcome: 3, Kills: 3},
 		},
 	}
-	svc := NewSynthesisService(repo)
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 
 	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "1w"})
 	if err != nil {
@@ -304,7 +362,7 @@ func TestGetSynthesisPage_Overview_MatchesScope(t *testing.T) {
 			{MatchID: "m3", StartTime: time.Now().UTC().Add(-2 * time.Hour), Outcome: 2, Kills: 8, Deaths: 2, KDA: &kda},
 		},
 	}
-	svc := NewSynthesisService(repo)
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 
 	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
 	if err != nil {
@@ -329,7 +387,7 @@ func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {
 			{MatchID: "scoped-2", StartTime: time.Now().UTC().Add(-3 * time.Hour), Outcome: 2, Kills: 7, Deaths: 2, KDA: &kda},
 		},
 	}
-	svc := NewSynthesisService(repo)
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 
 	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
 	if err != nil {
@@ -361,7 +419,7 @@ func TestGetSynthesisPage_Rivalries_FromEncounters(t *testing.T) {
 			{XUID: "e2", Gamertag: "Bob", MatchCount: 3, AsTeammate: 0, AsEnemy: 3, AvgKDA: &avk},
 		},
 	}
-	svc := NewSynthesisService(repo)
+	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 
 	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
 	if err != nil {
