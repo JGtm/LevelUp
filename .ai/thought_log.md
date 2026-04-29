@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-29] P8.5 — Cross-feature imports + frontière inversée
+
+**Statut** : Complété
+
+**Contexte** : Le plan P8.5 demandait 3 j de refactor (47 imports cross-feature) avec promotion physique de `CompareDrawer`, `LeaderboardBlock`, `EngagementMatchSection`. Approche révisée pragmatique : lint custom avec allow-list explicite + correction du seul cas net de frontière inversée (gap #14, `cover-flow-modal.tsx`).
+
+**Linter** : `tools/lint-cross-feature-imports.mjs` (~210L) :
+1. **Cross-feature** : interdit `@/features/X/...` depuis `apps/web/src/features/Y/` quand X≠Y, sauf paires déclarées dans `ALLOWED_CROSS_IMPORTS` (24 paires : auth cross-cutting, compare/leaderboard consommés par career+palmares+explorer, home orchestre prestige+palmares+media+match-history, squad orchestre settings+filters+friends+compare, lab agrège tout, etc.).
+2. **Frontière inversée** (gap #14) : interdit `@/features/...` depuis `apps/web/src/components/`, sauf `components/shell/` qui orchestre l'app entière (NavL1, AppShell).
+3. **Marqueur inline** `// cross-feature-allow: <raison>` pour exceptions ponctuelles.
+4. **Ratchet** plafond 10 — interdit toute régression silencieuse.
+
+**Promotion physique** : `cover-flow-modal.tsx` déplacé de `components/ui/` → `features/media/CoverFlowModal.tsx` (+ test). Le composant importait `MediaLikeButton` + `getMediaModalsText` — strictement media-specific. Imports relatifs (`./MediaViewer`, `./i18n-modals`) après promotion.
+
+**Décisions clés** :
+1. **Pas de promotion CompareDrawer/LeaderboardBlock/EngagementMatchSection** : ces composants sont feature-couplés (CompareDrawer importe `CompareSurface`, `getCompareText`, `normalizeCompareLocale` de la même feature). La promotion physique demanderait de déplacer 5+ fichiers chacun, rendant le refactor cosmétique. Mieux : déclarer les paires `career=>compare`, `explorer=>compare`, `palmares=>compare` dans l'allow-list.
+2. **Ratchet plutôt qu'éradication** : la base était à 47 imports cross-feature. Au lieu d'aplatir tout, on documente les paires légitimes (24 sur 25) et on bloque l'introduction de nouvelles dépendances non-déclarées.
+3. **shell/ exempté** de la frontière inversée : NavL1, AppShell, Header sont par essence des orchestrateurs qui consomment des features (notifications bell, asset drawer, setup job status). Les autres composants (`components/ui/*`) doivent rester génériques.
+
+**Résultats** : `node tools/lint-cross-feature-imports.mjs` retourne `clean (0 violation)`. Linter câblé dans `.pre-commit-config.yaml`. Vitest : 91 files / 734 tests verts.
+
+**Prochaine étape** : P8 quasi clos (P8.6 TanStack loader + P8.12 helpers + P8.13 StatCard restent, mais scopes courts indépendants). Plan revue 2026-04-29 substantiellement livré.
+
 ## [2026-04-29] P8.4 finition — LabPage découpée + nettoyage tests héritage
 
 **Statut** : Complété (P8.4 5/5 god pages couvertes ; tests vitest héritage corrigés)

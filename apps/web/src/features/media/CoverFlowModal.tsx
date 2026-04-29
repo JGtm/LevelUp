@@ -1,10 +1,18 @@
+/**
+ * CoverFlowModal — modale plein écran avec carrousel coverflow pour les médias.
+ *
+ * P8.5 (revue 2026-04-29 gap #14) : promu de `components/ui/` vers
+ * `features/media/` car le composant est strictement media-specific
+ * (importait MediaLikeButton + getMediaModalsText). La frontière inversée
+ * `components/ → features/` est désormais respectée.
+ */
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MediaItemRow } from '@/lib/api/types'
-import { MediaLikeButton } from '@/features/media/MediaViewer'
-import { getMediaModalsText } from '@/features/media/i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { MediaLikeButton } from './MediaViewer'
+import { getMediaModalsText } from './i18n-modals'
 
 interface CoverFlowModalProps {
   items: MediaItemRow[]
