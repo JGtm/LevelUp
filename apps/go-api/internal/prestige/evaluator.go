@@ -1,6 +1,10 @@
 package prestige
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/analysis"
+)
 
 // evaluator.go — évaluation d'un défi à partir de données fraîches.
 //
@@ -163,7 +167,8 @@ func computeAverage(matches []MatchSample, metric string) float64 {
 				wins++
 			}
 		}
-		return float64(wins) / float64(len(matches)) * 100.0
+		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		return analysis.WinRate(wins, len(matches)) * 100.0
 	}
 	var sum float64
 	for _, m := range matches {

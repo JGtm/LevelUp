@@ -99,7 +99,8 @@ func buildTimeseriesSummaryTab(matches []domain.StatsMatchRow) domain.Timeseries
 		}
 	}
 
-	winRate := float64(wins) / float64(n) * 100
+	// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+	winRate := analysis.WinRate(wins, n) * 100
 	kd := 0.0
 	if totalDeaths > 0 {
 		kd = float64(totalKills) / float64(totalDeaths)
@@ -621,7 +622,8 @@ func buildRollingWRBuckets(matches []domain.StatsMatchRow) []domain.Distribution
 			}
 		}
 		total := i - start + 1
-		wr := float64(wins) / float64(total) * 100
+		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		wr := analysis.WinRate(wins, total) * 100
 		idx := int(wr / binWidth)
 		if idx >= len(counts) {
 			idx = len(counts) - 1

@@ -189,7 +189,8 @@ func extractScoreInputs(
 		kills = append(kills, float64(r.Kills))
 	}
 	if total > 0 {
-		winRates = append(winRates, float64(wins)/float64(total)*100)
+		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		winRates = append(winRates, analysis.WinRate(wins, total)*100)
 	}
 	if nKDA > 0 {
 		kdas = append(kdas, myKDASum/float64(nKDA))

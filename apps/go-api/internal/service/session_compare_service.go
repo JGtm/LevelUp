@@ -326,7 +326,8 @@ func winRate(matches []domain.StatsMatchRow) float64 {
 			wins++
 		}
 	}
-	return float64(wins) / float64(len(matches)) * 100
+	// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+	return analysis.WinRate(wins, len(matches)) * 100
 }
 
 func avgKD(matches []domain.StatsMatchRow) float64 {

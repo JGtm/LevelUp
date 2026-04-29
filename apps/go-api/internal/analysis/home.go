@@ -751,7 +751,8 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 				wins++
 			}
 		}
-		wr := int(math.Round(float64(wins) / float64(len(window)) * 100))
+		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		wr := int(math.Round(WinRate(wins, len(window)) * 100))
 		params := map[string]any{"wr": wr}
 		detailKey := "highlight.detail.volume_wr"
 		if kdaN > 0 {

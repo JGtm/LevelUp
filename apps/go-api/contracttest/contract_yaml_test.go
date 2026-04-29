@@ -172,7 +172,8 @@ func TestContractPathsCoverage(t *testing.T) {
 		{"/setup/players", "post", "création joueur"},
 		{"/sync/initial", "post", "sync initiale"},
 		{"/players/{player_slug}/matches/{match_id}/exclusion", "patch", "match exclusion PATCH"},
-		{"/players/{player_slug}/match-exclusions", "get", "match exclusions GET"},
+		// /players/{player_slug}/match-exclusions GET supprimé en revue
+		// 2026-04-29 P0.2 Q6 (orphelin côté front, vue admin jamais implémentée).
 	}
 
 	for _, mp := range mandatoryPaths {
