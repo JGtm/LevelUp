@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
 
@@ -27,6 +28,12 @@ type StatsService struct {
 	statsRepo port.StatsRepository
 	metaRepo  port.MetadataRepository // optionnel — Sprint 54-A7
 	titleSlug string                  // titre courant, ex: "halo_infinite"
+	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
+	// Quand fourni avec gamertag, GetPage charge canonical et convertit via
+	// statsMatchRowFromCanonical. TODO P4.3 : retirer le converter quand les
+	// fonctions buildWinLossTab/buildAccuracyTab/etc. seront migrées canonical.
+	playerMatchesRepo port.PlayerMatchesRepository
+	gamertag          string
 }
 
 // NewStatsService crée un StatsService.
@@ -46,14 +53,38 @@ func (s *StatsService) WithTitleSlug(slug string) *StatsService {
 	return s
 }
 
+// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware.
+func (s *StatsService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, gamertag string) *StatsService {
+	s.playerMatchesRepo = repo
+	s.gamertag = gamertag
+	return s
+}
+
 // GetPage charge les données et construit la réponse de la page stats.
 func (s *StatsService) GetPage(
 	ctx context.Context,
 	req domain.StatsQueryRequest,
 ) (domain.StatsPageResponse, error) {
-	matches, err := s.statsRepo.LoadStatsMatches(ctx)
-	if err != nil {
-		return domain.StatsPageResponse{}, fmt.Errorf("StatsService.GetPage load: %w", err)
+	// P4.1 (ADR 0011) : si playerMatchesRepo injecté, charger canonical et
+	// convertir. TODO P4.3 : retirer la conversion quand analyses stats
+	// migrées canonical.
+	var matches []domain.StatsMatchRow
+	var err error
+	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
+		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
+			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+		)
+		if e != nil {
+			return domain.StatsPageResponse{}, fmt.Errorf("StatsService.GetPage canonical: %w", e)
+		}
+		slog.DebugContext(ctx, "stats: loaded canonical",
+			"rows", len(canonicalRows), "title_slug", s.titleSlug)
+		matches = statsMatchRowsFromCanonical(canonicalRows)
+	} else {
+		matches, err = s.statsRepo.LoadStatsMatches(ctx)
+		if err != nil {
+			return domain.StatsPageResponse{}, fmt.Errorf("StatsService.GetPage load: %w", err)
+		}
 	}
 
 	bucketInfo := computeBucketInfoFromMatches(matches)
@@ -364,4 +395,86 @@ func (s *StatsService) resolveCurrentSeason(ctx context.Context) *domain.Current
 		return syntheticSeasonResult()
 	}
 	return &domain.CurrentSeasonResult{Season: season}
+}
+
+// =============================================================================
+// P4.1 (ADR 0011) : converter canonical → StatsMatchRow
+// =============================================================================
+
+// statsMatchRowFromCanonical convertit canonical.PlayerMatchRow vers le format
+// StatsMatchRow consommé par les fonctions d'analyse legacy.
+//
+// TODO P4.3 : retirer cette conversion quand toutes les analyses stats seront
+// migrées canonical. Converter explicitement transitionnel.
+func statsMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.StatsMatchRow {
+	out := domain.StatsMatchRow{
+		MatchID:           r.Summary.MatchID,
+		StartTime:         r.Summary.StartedAtUTC,
+		KDA:               r.Self.KDA,
+		Accuracy:          r.Self.Accuracy,
+		PerfScoreComputed: r.Enrichment.PerformanceScore,
+		SessionID:         r.Enrichment.SessionID,
+		SessionLabel:      r.Enrichment.SessionLabel,
+		TimePlayedSeconds: r.Self.TimePlayed,
+		TeamMMR:           r.Enrichment.TeamMMR,
+		EnemyMMR:          r.Enrichment.EnemyMMR,
+		PersonalScore:     r.Self.PersonalScore,
+		Rank:              r.Self.RankInMatch,
+		TeamID:            r.Self.TeamID,
+	}
+	if r.Self.Kills != nil {
+		out.Kills = *r.Self.Kills
+	}
+	if r.Self.Deaths != nil {
+		out.Deaths = *r.Self.Deaths
+	}
+	if r.Self.Assists != nil {
+		out.Assists = *r.Self.Assists
+	}
+	if r.Self.DamageDealt != nil {
+		v := float64(*r.Self.DamageDealt)
+		out.DamageDealt = &v
+	}
+	if r.Self.DamageTaken != nil {
+		v := float64(*r.Self.DamageTaken)
+		out.DamageTaken = &v
+	}
+	// Mapping Outcome canonical → int Halo
+	switch r.Self.Outcome {
+	case canonical.OutcomeWin:
+		o := domain.OutcomeWin
+		out.Outcome = &o
+	case canonical.OutcomeLoss:
+		o := domain.OutcomeLoss
+		out.Outcome = &o
+	case canonical.OutcomeTie:
+		o := domain.OutcomeDraw
+		out.Outcome = &o
+	case canonical.OutcomeDNF:
+		o := domain.OutcomeDNF
+		out.Outcome = &o
+	}
+	if r.Summary.IsRanked != nil {
+		out.IsRanked = *r.Summary.IsRanked
+	}
+	if r.Summary.Playlist != nil {
+		out.PlaylistName = r.Summary.Playlist.DefaultLabel
+	}
+	if r.Enrichment.SkillSnapshot != nil {
+		out.KillsExpected = r.Enrichment.SkillSnapshot.KillsExpected
+		out.DeathsExpected = r.Enrichment.SkillSnapshot.DeathsExpected
+	}
+	// PairName : composite Halo-only — laisser vide après migration (P4.3).
+	// MedalExploitScore/OffensiveConversion/DefensiveResistance : calculs dérivés
+	// LevelUp non couverts par canonical (cf. P4_GAP_ANALYSIS.md), restent nil.
+	return out
+}
+
+// statsMatchRowsFromCanonical : version slice. TODO P4.3.
+func statsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.StatsMatchRow {
+	out := make([]domain.StatsMatchRow, len(rows))
+	for i, r := range rows {
+		out[i] = statsMatchRowFromCanonical(r)
+	}
+	return out
 }
