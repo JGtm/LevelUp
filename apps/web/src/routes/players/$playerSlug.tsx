@@ -14,13 +14,37 @@ import { useFiltersResolve } from '@/features/filters/queries'
 import { log as filtersLog } from '@/features/filters/_logger'
 
 export const Route = createFileRoute('/players/$playerSlug')({
-  // Guard synchrone avant rendu — bloque les accès directs par URL
-  beforeLoad: () => {
-    const { isBootstrapped, setupRequired, authMode, currentUsername } = useAppShellStore.getState()
+  // Guard synchrone avant rendu — bloque les accès directs par URL.
+  //
+  // Redirige automatiquement vers le joueur courant si l'URL pointe vers un
+  // slug inexistant (ex: URL héritée d'un mode démo, ou tampon navigateur après
+  // suppression d'un profil joueur). Sans ce guard, le frontend boucle sur
+  // l'erreur API "joueur introuvable" sans recovery automatique.
+  beforeLoad: ({ params }) => {
+    const {
+      isBootstrapped,
+      setupRequired,
+      authMode,
+      currentUsername,
+      availablePlayers,
+      currentPlayer,
+    } = useAppShellStore.getState()
     if (!isBootstrapped) return // Bootstrap pas encore terminé — __root gère l'écran de chargement
     if (setupRequired) throw redirect({ to: '/setup' })
     // Rediriger vers login uniquement en mode password sans utilisateur connecté
     if (authMode === 'password' && !currentUsername) throw redirect({ to: '/login' })
+
+    // Slug inexistant → rediriger vers le joueur courant ou le premier disponible.
+    if (availablePlayers.length > 0) {
+      const slugExists = availablePlayers.some((p) => p.player_slug === params.playerSlug)
+      if (!slugExists) {
+        const fallbackSlug = currentPlayer?.player_slug ?? availablePlayers[0].player_slug
+        throw redirect({
+          to: '/players/$playerSlug/home',
+          params: { playerSlug: fallbackSlug },
+        })
+      }
+    }
   },
   component: PlayerLayout,
 })
