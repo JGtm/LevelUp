@@ -519,9 +519,15 @@ func buildCorrelationPoints(matches []domain.StatsMatchRow) []domain.Correlation
 // ---------------------------------------------------------------------------
 
 // buildMatchRows convertit StatsMatchRow en TimeseriesMatchRow (1 ligne = 1 match).
+//
+// KDA et KDRatio sont calcules par P2.5 (revue 2026-04-29 ADR 0006) — debloque
+// la suppression du recompute K/D cote front (TimeseriesKdaBars.tsx:78, B3).
 func buildMatchRows(matches []domain.StatsMatchRow) []domain.TimeseriesMatchRow {
 	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
 	for i, m := range matches {
+		// KDR canonique calcule a partir des compteurs (analysis.KDR).
+		// Distinct du KDA pre-calcule cote sync (m.KDA inclut les assists).
+		kdr := analysis.KDR(m.Kills, m.Deaths)
 		rows = append(rows, domain.TimeseriesMatchRow{
 			MatchID:           m.MatchID,
 			Index:             i,
@@ -529,6 +535,8 @@ func buildMatchRows(matches []domain.StatsMatchRow) []domain.TimeseriesMatchRow 
 			Kills:             m.Kills,
 			Deaths:            m.Deaths,
 			Assists:           m.Assists,
+			KDA:               m.KDA,
+			KDRatio:           &kdr,
 			Accuracy:          m.Accuracy,
 			Outcome:           m.Outcome,
 			PersonalScore:     m.PersonalScore,

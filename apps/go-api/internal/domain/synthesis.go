@@ -56,6 +56,13 @@ type SynthesisOverview struct {
 	WinRate      float64  `json:"win_rate"`
 	AvgPerfScore *float64 `json:"avg_perf_score,omitempty"`
 
+	// TotalKDR exposé par P2.5 (revue 2026-04-29 ADR 0006).
+	// Calcul canonique : sum(kills) / max(1, sum(deaths)) — distinct du
+	// recompute front cassé qui faisait sum/sum (mathématiquement faux car
+	// `sum(K)/sum(D)` ≠ `avg(K/D)`). Débloque la suppression du recompute
+	// SynthesisPage.tsx:139-141 (B3).
+	TotalKDR *float64 `json:"total_kdr,omitempty"`
+
 	// Records / pics
 	BestKillsMatch   *int     `json:"best_kills_match,omitempty"`
 	BestKDAMatch     *float64 `json:"best_kda_match,omitempty"`

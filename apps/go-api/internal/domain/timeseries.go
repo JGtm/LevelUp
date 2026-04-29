@@ -108,21 +108,26 @@ type CorrelationDataPair struct {
 // Fourni dans TimeseriesPageResponse.MatchRows pour permettre au frontend de
 // construire les graphes K/D/A, assists, dégâts, perf score, etc.
 type TimeseriesMatchRow struct {
-	MatchID           string    `json:"match_id"`
-	Index             int       `json:"index"`
-	StartTime         time.Time `json:"start_time"`
-	Kills             int       `json:"kills"`
-	Deaths            int       `json:"deaths"`
-	Assists           int       `json:"assists"`
-	Accuracy          *float64  `json:"accuracy"`
-	Outcome           *int      `json:"outcome"`
-	PersonalScore     *int      `json:"personal_score"`
-	DamageDealt       *float64  `json:"damage_dealt"`
-	DamageTaken       *float64  `json:"damage_taken"`
-	PerfScore         *float64  `json:"perf_score"`
-	Rank              *int      `json:"rank"`
-	PlaylistName      string    `json:"playlist_name"`
-	TimePlayedSeconds *int      `json:"time_played_seconds"`
+	MatchID   string    `json:"match_id"`
+	Index     int       `json:"index"`
+	StartTime time.Time `json:"start_time"`
+	Kills     int       `json:"kills"`
+	Deaths    int       `json:"deaths"`
+	Assists   int       `json:"assists"`
+	// KDA et KDRatio exposés par P2.5 (revue 2026-04-29 ADR 0006).
+	// Ils débloquent la suppression du recompute K/D côté front
+	// (TimeseriesKdaBars.tsx:78 — voir B3).
+	KDA               *float64 `json:"kda,omitempty"`
+	KDRatio           *float64 `json:"kd_ratio,omitempty"`
+	Accuracy          *float64 `json:"accuracy"`
+	Outcome           *int     `json:"outcome"`
+	PersonalScore     *int     `json:"personal_score"`
+	DamageDealt       *float64 `json:"damage_dealt"`
+	DamageTaken       *float64 `json:"damage_taken"`
+	PerfScore         *float64 `json:"perf_score"`
+	Rank              *int     `json:"rank"`
+	PlaylistName      string   `json:"playlist_name"`
+	TimePlayedSeconds *int     `json:"time_played_seconds"`
 }
 
 // ---------------------------------------------------------------------------

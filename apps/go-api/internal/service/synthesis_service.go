@@ -215,6 +215,10 @@ func buildSynthesisOverview(rows []domain.SynthesisMatchRow, soloKPIs domain.Syn
 		avgDeaths := float64(totalDeaths) / float64(n)
 		ov.AvgKills = &avgKills
 		ov.AvgDeaths = &avgDeaths
+		// TotalKDR canonique (P2.5, ADR 0006) — debloque suppression du
+		// recompute SynthesisPage.tsx:139-141 (B3, sum/sum mathematiquement faux).
+		totalKDR := analysis.KDR(totalKills, totalDeaths)
+		ov.TotalKDR = &totalKDR
 	}
 	if soloKPIs.PerformanceScore != nil {
 		ov.AvgPerfScore = soloKPIs.PerformanceScore
