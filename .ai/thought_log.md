@@ -1,5 +1,61 @@
 # Thought Log
 
+## [2026-04-29] P5 livre (P5.1 + P5.2 + P5.4 + P5.5) - reste P5.3 deploiement
+
+**Statut** : 4 sous-phases sur 5 livrees. P5.3 (refactor consommateurs) defere car necessite la migration script reellement executee + DI wiring de la global DB.
+
+**P5.1 PathResolver** (commit `32912ffe`) : `paths.GlobalXuidAliasesDBPath()` retournant `data/global/xbox_aliases.duckdb`. Aucun parametre titre par construction (xuid global Microsoft).
+
+**P5.2 Migration script** (commit `f1d57cfd`) : `cmd/migrate-xuid-aliases-global/main.go` ~260 lignes. Flags --repo-root, --dry-run, --drop-local. Test dry-run sur repo reel OK (15370 rows). Logging structure complet.
+
+**P5.4 Halo-only adapters extraction** (commit `32912ffe`) :
+- mode_category.go + citations_custom.go deplaces de internal/analysis vers internal/games/halo_infinite.
+- Hook `analysis.RegisterCustomDispatcher(DispatchCustom)` dans halo_infinite/citations_custom.go init() pour briser le cycle d'import.
+- ranks_loader.go deplace vers platform/duckdb (cycle duckdb -> halo_infinite -> duckdb casse).
+- Gap #9 : home_repo.go HINF-CSR_ hardcode delegue a halo_infinite.AssetURLAdapter.
+- ADR **0012** (0011 deja pris par canonical/semantic separation P4).
+
+**P5.5 Docs** : ADR 0012 cree, skill db-schema mis a jour, PLAN_ACTION P5 coche.
+
+**P5.3 (defere)** : refactor des consommateurs (compare_repo, explorer_repo, gamertag_repo, match_view_repo, media_repo) vers `SELECT FROM global.xuid_aliases` au lieu de `SELECT FROM shared.xuid_aliases`. Necessite migration script execute + DI wiring de la DB globale.
+
+**Build/tests** : EXIT=0 sur tous packages.
+
+---
+
+## [2026-04-29] Fix — filtres cascade Squad V2 inopérants (label FR vs EN)
+
+**Statut** : Complété
+
+**Probleme** : Les filtres Playlists et Types d'experience ne mettaient pas a jour les graphes Squad V2. `filterRowsByCascade` comparait `Playlist.DefaultLabel` (anglais, ex "Quick Play") contre les valeurs envoyees par le frontend (label FR issu de `filtersResolve` = "Partie rapide") — jamais de match, toutes les rows filtrées.
+
+**Decision technique** : Ajout de `playlistLabelForFilter()` qui préfère `Labels["fr"]` (= `COALESCE(playlist_name_fr, playlist_name)`, même source que `filtersResolve`) sur `DefaultLabel` (anglais pur). Quand `playlist_name_fr` est absent, COALESCE retourne le nom anglais → `Labels["fr"]` = anglais = correspondance conservée.
+
+**Fichiers modifies** :
+- `internal/service/squad_service_v2.go` — `filterRowsByCascade` utilise `playlistLabelForFilter()` ; ajout du helper
+- `internal/service/squad_service_v2_test.go` — 6 tests unitaires `TestFilterRowsByCascade_*` + helpers `rowWithPlaylist`, `rowWithExperience`, `matchIDs`
+- `apps/web/src/features/squad/v2/queries.test.ts` — 6 tests URL building (`playlists`, `experience_types` encodés en CSV)
+
+**Résultats** : 6 tests Go + 6 tests TS passent. Régressions frontend : 0 (9 echecs `SessionNavBar` pre-existants hors scope).
+
+**Prochaine étape** : Modes/cartes du filtre cascade ne sont pas transmis au service Squad V2 (silently ignored). A documenter ou masquer dans l'UI Squad.
+
+## [2026-04-29] Bugfix — résolution noms de bots + filtrage fuzzy search
+
+**Statut** : Complété
+
+**Probleme** : Les bots apparaissaient sous la forme brute `bid(3.0)` au lieu de "343 Bot 3" parce que (1) `extractXUID` ne gérait pas le format `bid(...)` → bots ignorés au sync Go, (2) `UpsertXUIDAlias` ne résolvait pas le nom d'affichage, (3) données historiques avec `gamertag = 'bid(X.0)'`.
+
+**Decision technique** : Résolution au niveau du sync (UpsertXUIDAlias applique BotDisplayName) + migration rétroactive `fix_bot_gamertags` pour l'existant. Filtrage bots dans Q11/Q29 pour exclure des recherches/suggestions.
+
+**Fichiers modifies** :
+- `internal/analysis/identity.go` — `BotDisplayName("bid(3.0)") → "343 Bot 3"`
+- `internal/sync/transforms_helpers.go` — `extractXUID` gère `bid(X.0)` + normalise paren manquante
+- `internal/sync/writes.go` — `UpsertXUIDAlias` applique `BotDisplayName` pour tout xuid bot
+- `internal/migration/steps_shared.go` — migration `fix_bot_gamertags`
+- `internal/platform/duckdb/queries_squad.go` Q29 + `queries.go` Q11 — filtre `bid(%`
+- Tests : `identity_test.go` + `transforms_test.go`
+
 ## [2026-04-29] P4.3 finale 100% TERMINEE - types domain.MatchRow SUPPRIMES
 
 **Statut** : P4.3 vraiment cloture. `domain.{Home,Stats,Synthesis}MatchRow` + `domain.HomeSessionRow` n'existent plus dans le package `domain`.
