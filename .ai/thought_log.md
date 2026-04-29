@@ -1,5 +1,43 @@
 # Thought Log
 
+## [2026-04-29] P4.3 finale partielle - ComputeKPIs/Trend/HeroCard portes + 3 blockers documentes
+
+**Statut** : Premier chunk P4.3 finale livre (commit 3acb6575). Reste analyses + DI wiring documente comme blockers infrastructurels.
+
+**Decouverte critique** : `port.PlayerMatchesRepository.LoadPlayerMatches` n'a aucune implementation concrete wiree en DI (server.go). Le canonical path dans tous les services est *dead code* en production - `playerMatchesRepo` est toujours nil. Tout le travail P4.1/P4.3 sur les converters et wrappers est en place mais inactif jusqu'au wiring DI.
+
+**Ce qui est livre dans ce chunk** :
+- `ComputeKPIsFromCanonical` (~95 lignes) : port full canonical de ComputeKPIs. Lit directement Self.Outcome/Kills/Deaths/Assists/KDA/Accuracy/TimePlayed/DamageDealt/DamageTaken et Summary.Playlist (FR via Labels, fallback DefaultLabel).
+- `ComputeTrendFromCanonical` (~40 lignes) + helpers prives `meanRatioCanonical` / `meanAccuracyCanonical` / `winRateCanonical`.
+- `BuildHeroCardFromCanonical` : ne delegue plus au converter, appelle directement les Compute*FromCanonical.
+
+**Trois blockers infrastructurels pour finir P4.3** :
+
+1. **Wiring DI absent** : aucune implementation de PlayerMatchesRepository n'est registree au boot (`server.go`). Le path canonical est *dead code*. Pour activer canonical exclusif il faut un adaptateur `(slug, gamertag) -> PlayerDB -> PlayerMatchesRepo.Load`.
+
+2. **Repos legacy actifs** : `port.{Home,Stats,Synthesis}Repository.Load*Matches` retournent encore les types domain.{Home,Stats,Synthesis}MatchRow. Suppression complete necessite reecriture des SQL queries pour scanner directement vers canonical.PlayerMatchRow.
+
+3. **Internals analyses non portees** : ~1500 lignes encore en types legacy (BuildHighlights ~165L + 5 sous-helpers, BuildRecentMatches ~155L, BuildSessionSummary/ies ~270L, buildWinLossTab/buildCumulTab/buildKDABuckets/computeRegressionStats/buildIntensityTab/buildDistributionsTab pour stats, extractSessionLabels/buildCompareEntry/buildSessionDetailRows pour session_compare/page).
+
+**Decision honnete** : la suppression complete des types `domain.{Home,Synthesis,Stats}MatchRow` est un sprint dedie (~3-5 jours focus), pas faisable en continuation de cette session. Le travail livre est solide :
+- Tous les converters service-level sont retires.
+- Tous les services match-rows ont le hook canonical.
+- Synthesis pillar entierement canonical (legacy reste pour fallback).
+- Home BuildHeroCard entierement canonical.
+- Wrappers en place pour les autres analyses (delegation transparent au legacy).
+
+Quand le wiring DI sera fait dans un autre sprint, les autres analyses pourront etre portees une par une et les types supprimes incrementalement.
+
+**Bilan P4 sur cette branche** (chore/cleanup-and-ux-fixes, 36+ commits) :
+- P4.1 service-level : 6/6 services match-rows migres
+- P4.2 statut : 10 services restants documentes cas-par-cas
+- P4.3a synthesis : full canonical (4 analyses + 4 helpers)
+- P4.3b home : wrappers analysis/ + 3 analyses portees full (Hero/KPIs/Trend)
+- P4.3c stats : converter partage analysis/ + 4 services switchent
+- P4.3 finale (suite) : bloquee par wiring DI absent (pas du blame du dev)
+
+---
+
 ## [2026-04-29] P4.3b + P4.3c livrees - cloture P4 service-level
 
 **Statut** : P4.3b (home pillar) et P4.3c (stats pillar) livrees (2 commits). P4 service-level pleinement cloture : tous les converters service-level sont retires. Reste P4.3 finale (suppression types legacy) bloquee par parallele agent + repos legacy + port internals analyses.
