@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [Go-API Phase 14] - 2026-04-29
+
+### Added (Go API)
+
+- **Prestige module — Objectives, Arcs & Squad Challenges** — two migrations: `create_prestige_player_schema` (player `stats.duckdb`) adds tables `arc`, `challenge`, `moment_card`, `prestige_telemetry`, `baseline_state`; `create_prestige_shared_social_schema` (`shared_social.duckdb`) adds `prestige_events`, `user_prestige`, `squad`, `squad_member`, `squad_challenge`, `squad_challenge_participant`. Squad challenges support two modes — **collective** (shared target, each member's contribution counted individually) and **competitive** (members race on the same metric). Repos: `PrestigeMetadataRepo`, `PrestigePlayerRepo`, `PrestigeSocialRepo`, `PrestigeBaselineProvider` in `platform/duckdb`. Lazy service wiring via `prestige_lazy_service.go` + `prestige_setup.go`. REST endpoints: `GET/POST /prestige/challenges`, `PATCH /prestige/challenges/{id}`, `POST /prestige/challenges/{id}/abandon`, `GET /prestige/arcs`, `POST /prestige/arcs`, `GET /prestige/profile`, `GET /prestige/social/leaderboard`.
+
+- **In-app notifications** — migration `steps_player_notifications.go` adds `notifications` table per player `stats.duckdb`. `NotificationsRepo` + helpers in `platform/duckdb`. Handler (`notifications.go`) exposes 9 endpoints: `GET /notifications`, `GET /notifications/unread-count`, `POST /notifications/mark-read`, `POST /notifications/mark-all-read`, `PATCH /notifications/{id}/unread`, `DELETE /notifications/{id}`, `GET /notifications/preferences`, `PATCH /notifications/preferences`, `POST /notifications/test`. Boot wiring via `notifications_boot.go`; routes registered in `registry_notifications.go`.
+
+### Added (React / TypeScript)
+
+- **Objectives page** (`/players/$playerSlug/objectifs`) — two tabs: **Challenges** (active list + `CreateChallengeForm` + guided-mode toggle) and **My Journey** (arc retrospective + Prestige progress). Hooks: `useChallenges`, `useArcs`, `useMyPrestige`, `useAbandonChallenge`. Components: `ChallengeCard`, `CreateChallengeForm`. `lib/prestige.ts` defines contracts: `Challenge`, `Arc`, `UserPrestige`, `Tier`, `Cadence`, `EvalType`, `WindowType`, `ChallengeMode`; `TIER_COLORS` and `TIER_LABELS_FR`.
+
+- **PP Leaderboard page** (`/players/$playerSlug/palmares/prestige`) — community PP ranking across squad and relations; period selector (week / month / all); raw/bonus/total PP breakdown; tier badges. Component: `LeaderboardPP`.
+
+- **Notification center** — `NotificationsBell` in nav bar with unread-count badge, 60 s auto-refresh. Page `/players/$playerSlug/notifications`: cursor-paginated list, category + unread-only filters, day-grouped timeline, multi-select bulk actions (mark read/unread, dismiss, mark all read). Mutations: `useDismiss`, `useMarkAllRead`, `useMarkRead`, `useMarkUnread`. `NotificationsSettingsTab` in Settings.
+
+---
+
 ## [Go-API Phase 13] - 2026-05-01 — Sprint 54
 
 ### Added (Go API)

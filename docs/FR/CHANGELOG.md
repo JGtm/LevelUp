@@ -6,6 +6,18 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [7.0.1] - 2026-04-29
+
+### Ajouté
+
+- **Module Objectifs** — nouveau centre de défis accessible depuis la barre de navigation (`/objectifs`). Page en deux onglets :
+  - **Défis** — créez des défis individuels ou d'escouade sur n'importe quelle métrique Halo (kills, KDA, précision, dégâts…) avec une fenêtre temporelle, un palier (Normal / Heroic / Legendary / Mythic) et un mode d'évaluation (seuil ou cumulatif). Les défis d'escouade fonctionnent en mode **collectif** (objectif commun partagé entre membres) ou **compétitif** (les membres se classent entre eux sur la même métrique). Toggle « Défis pilotés » pour des suggestions auto-calibrées sur votre historique.
+  - **Mon parcours** — rétrospective de vos arcs narratifs (séquences d'objectifs thématiques) et progression Prestige globale.
+
+- **Système Prestige** — points Prestige (PP) gagnés en complétant des objectifs. Quatre paliers : Normal (gris), Heroic (bleu), Legendary (violet), Mythic (or). Nouveau sous-onglet **Communauté** dans Palmarès : leaderboard PP comparant votre score à ceux de votre escouade et de vos relations, dérivé automatiquement des données partagées.
+
+- **Centre de notifications in-app** — cloche dans la barre de navigation avec badge de non-lus. Page `/notifications` : liste paginée filtrable par catégorie ou « non lus uniquement », groupée par jour, avec sélection multiple et actions groupées (marquer lu, supprimer). Rafraîchissement automatique toutes les 60 secondes. Préférences par joueur configurables depuis les Paramètres.
+
 ## [7.0.0] - 2026-04-12
 
 ### Ajouté

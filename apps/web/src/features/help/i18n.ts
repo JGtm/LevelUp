@@ -220,6 +220,25 @@ const FR_TEXT: HelpText = {
         ],
       },
       {
+        title: 'Progression & Gamification',
+        entries: [
+          {
+            term: 'Objectifs',
+            definition:
+              "Système de défis propre à LevelUp, distinct des défis Mission Control de Halo. Chaque objectif cible une métrique Halo (kills, KDA, précision, dégâts…) sur une fenêtre temporelle définie — quotidienne, hebdomadaire, mensuelle ou libre.\n\nLes objectifs sont organisés en **arcs** : des séquences thématiques qui structurent un parcours progressif. Un arc regroupe plusieurs objectifs liés (par exemple, « améliorer la précision sur 30 jours » puis « maintenir un KDA ≥ 3 la semaine suivante »).\n\nDeux modes d'évaluation :\n• **Seuil (threshold)** — atteindre la cible en une seule partie (ex. « 20 kills dans un match »).\n• **Cumulatif** — accumuler sur toute la période (ex. « 500 kills en un mois »).\n\nDeux modes de création :\n• **Libre** — vous choisissez la métrique, la cible et la fenêtre vous-même.\n• **Piloté** — LevelUp suggère un objectif calibré sur votre historique.\n\nLes objectifs peuvent être **individuels** (gérés dans votre profil joueur) ou **d'escouade** (partagés entre les membres). Les défis d'escouade proposent deux dynamiques :\n• **Collectif** — chaque membre contribue à un objectif commun (ex. « 1 000 kills au total cette semaine »).\n• **Compétitif** — les membres s'affrontent sur la même métrique et se classent entre eux.\n\nChaque objectif complété récompense des **Prestige Points (PP)** selon son palier (Normal, Heroic, Legendary, Mythic).",
+            example:
+              "Vous créez un objectif libre : « 3 000 dégâts par partie en moyenne sur les 10 prochaines parties », mode cumulatif, palier Heroic. Une fois atteint, vous gagnez les PP associés et l'objectif passe au statut Complété dans votre parcours.",
+          },
+          {
+            term: 'Prestige',
+            definition:
+              "Système de progression propre à LevelUp, indépendant du rang Halo officiel. Chaque objectif complété rapporte des **Prestige Points (PP)** dont le montant dépend du palier de l'objectif.\n\nLes PP s'accumulent dans votre profil et déterminent votre palier Prestige :\n• **Normal** (gris) — premiers objectifs\n• **Heroic** (bleu) — engagement régulier\n• **Legendary** (violet) — maîtrise avancée\n• **Mythic** (or) — niveau d'élite\n\nLe **Leaderboard PP** (sous-onglet Communauté dans Palmarès) compare vos PP à ceux des joueurs de votre escouade et de vos relations — dérivé automatiquement des données partagées, sans gestion d'amis manuelle.\n\nAccès : barre de navigation → Objectifs pour les défis et le parcours ; Palmarès → Communauté pour le classement.",
+            example:
+              "Vous avez complété 12 objectifs Heroic et 3 Legendary. Vos PP totaux vous placent deuxième dans le leaderboard de votre escouade, avec le badge Legendary affiché sur votre profil.",
+          },
+        ],
+      },
+      {
         title: 'Navigation et organisation',
         entries: [
           {
@@ -417,6 +436,25 @@ const EN_TEXT: HelpText = {
             definition: 'LevelUp uses several data freshness levels depending on the page.',
             example:
               'Live (every page open): Home, Last Match.\nQuery cache 5–10 min: Stats, Palmares, Squad.\nManual sync: triggered from the Sync button in Settings.\nAuto background: media is re-indexed after every sync.',
+          },
+        ],
+      },
+      {
+        title: 'Progression & Gamification',
+        entries: [
+          {
+            term: 'Objectives',
+            definition:
+              "LevelUp's challenge system, separate from Halo's Mission Control challenges. Each objective targets a Halo metric (kills, KDA, accuracy, damage…) over a defined time window — daily, weekly, monthly, or free.\n\nObjectives are organised into **arcs**: thematic sequences that structure a progressive journey. An arc groups several related objectives (e.g. \"improve accuracy over 30 days\" followed by \"sustain KDA ≥ 3 the following week\").\n\nTwo evaluation modes:\n• **Threshold** — reach the target in a single match (e.g. \"20 kills in one match\").\n• **Cumulative** — accumulate across the full window (e.g. \"500 kills in a month\").\n\nTwo creation modes:\n• **Free** — you choose the metric, target, and window yourself.\n• **Guided** — LevelUp suggests an objective calibrated to your history.\n\nObjectives can be **individual** (stored in your player profile) or **squad-level** (shared across squad members). Squad challenges offer two dynamics:\n• **Collective** — every member contributes toward a shared target (e.g. \"1 000 kills combined this week\").\n• **Competitive** — members race on the same metric and rank against each other.\n\nEach completed objective awards **Prestige Points (PP)** based on its tier (Normal, Heroic, Legendary, Mythic).",
+            example:
+              'You create a free objective: "Average 3 000 damage per match over the next 10 matches", cumulative mode, Heroic tier. Once reached, you earn the PP and the objective moves to Completed in your journey.',
+          },
+          {
+            term: 'Prestige',
+            definition:
+              "LevelUp's own progression layer, independent of the official Halo rank. Each completed objective awards **Prestige Points (PP)** that scale with the objective's tier.\n\nPP accumulate in your profile and determine your Prestige tier:\n• **Normal** (grey) — first objectives\n• **Heroic** (blue) — consistent engagement\n• **Legendary** (purple) — advanced mastery\n• **Mythic** (gold) — elite level\n\nThe **PP Leaderboard** (Community sub-tab in Palmares) compares your PP against players in your squad and relations — derived automatically from shared match data, no manual friend management.\n\nAccess: navigation bar → Objectives for challenges and journey; Palmares → Community for the leaderboard.",
+            example:
+              'You completed 12 Heroic and 3 Legendary objectives. Your total PP rank you second in your squad leaderboard, with a "Legendary" badge on your profile.',
           },
         ],
       },
