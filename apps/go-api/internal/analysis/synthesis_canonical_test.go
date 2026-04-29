@@ -170,3 +170,102 @@ func derefFloat(p *float64) any {
 	}
 	return *p
 }
+
+// =============================================================================
+// P4.3 (ADR 0011) : tests parité TopWeeks / Breakdown / TemporalHeatmap
+// =============================================================================
+
+// fixtureMixedSynthesisDataset crée un dataset varié pour stresser les agrégations
+// (plusieurs semaines, mix Win/Loss, KDA et Kills variables).
+func fixtureMixedSynthesisDataset() ([]domain.SynthesisMatchRow, []canonical.PlayerMatchRow) {
+	base := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+	specs := []struct {
+		dayOffset, kills, deaths int
+		kda                      float64
+		outcome                  int
+		canonicalOutcome         canonical.Outcome
+		isWithFriends            bool
+		hasKDA                   bool
+	}{
+		{0, 15, 5, 3.0, domain.OutcomeWin, canonical.OutcomeWin, true, true},
+		{0, 8, 12, 0.83, domain.OutcomeLoss, canonical.OutcomeLoss, true, true},
+		{1, 20, 3, 7.0, domain.OutcomeWin, canonical.OutcomeWin, true, true},
+		{2, 10, 10, 1.5, domain.OutcomeWin, canonical.OutcomeWin, false, true},
+		{8, 12, 8, 1.75, domain.OutcomeLoss, canonical.OutcomeLoss, true, true},
+		{9, 5, 15, 0.5, domain.OutcomeLoss, canonical.OutcomeLoss, true, false},
+	}
+	domainRows := make([]domain.SynthesisMatchRow, len(specs))
+	canonicalRows := make([]canonical.PlayerMatchRow, len(specs))
+	for i, s := range specs {
+		st := base.AddDate(0, 0, s.dayOffset).Add(time.Duration(i) * time.Hour)
+		var kdaPtr *float64
+		if s.hasKDA {
+			v := s.kda
+			kdaPtr = &v
+		}
+		domainRows[i] = domain.SynthesisMatchRow{
+			MatchID:       fmtMatchID(i),
+			StartTime:     st,
+			Kills:         s.kills,
+			Deaths:        s.deaths,
+			KDA:           kdaPtr,
+			Outcome:       s.outcome,
+			IsWithFriends: s.isWithFriends,
+		}
+		k, d := s.kills, s.deaths
+		canonicalRows[i] = canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{MatchID: fmtMatchID(i), StartedAtUTC: st},
+			Self: canonical.MatchParticipant{
+				Kills:   &k,
+				Deaths:  &d,
+				KDA:     kdaPtr,
+				Outcome: s.canonicalOutcome,
+			},
+			Enrichment: canonical.PlayerMatchEnrichment{IsWithFriends: s.isWithFriends},
+		}
+	}
+	return domainRows, canonicalRows
+}
+
+func fmtMatchID(i int) string {
+	return "m-" + string(rune('0'+i))
+}
+
+func TestComputeSynthesisTopWeeksFromCanonical_ParityWithDomain(t *testing.T) {
+	domainRows, canonicalRows := fixtureMixedSynthesisDataset()
+	want := ComputeSynthesisTopWeeks(domainRows)
+	got := ComputeSynthesisTopWeeksFromCanonical(canonicalRows)
+	if len(want) != len(got) {
+		t.Fatalf("len: domain=%d, canonical=%d", len(want), len(got))
+	}
+	for i := range want {
+		if want[i] != got[i] {
+			t.Errorf("entry %d: domain=%+v, canonical=%+v", i, want[i], got[i])
+		}
+	}
+}
+
+func TestComputeSynthesisBreakdownFromCanonical_ParityWithDomain(t *testing.T) {
+	domainRows, canonicalRows := fixtureMixedSynthesisDataset()
+	for _, isSquad := range []bool{true, false} {
+		want := ComputeSynthesisBreakdown(domainRows, isSquad)
+		got := ComputeSynthesisBreakdownFromCanonical(canonicalRows, isSquad)
+		if want != got {
+			t.Errorf("isSquad=%v: domain=%+v, canonical=%+v", isSquad, want, got)
+		}
+	}
+}
+
+func TestComputeTemporalHeatmapFromCanonical_ParityWithDomain(t *testing.T) {
+	domainRows, canonicalRows := fixtureMixedSynthesisDataset()
+	want := ComputeTemporalHeatmap(domainRows)
+	got := ComputeTemporalHeatmapFromCanonical(canonicalRows)
+	if len(want) != len(got) {
+		t.Fatalf("len: domain=%d, canonical=%d", len(want), len(got))
+	}
+	for i := range want {
+		if want[i] != got[i] {
+			t.Errorf("cell %d: domain=%+v, canonical=%+v", i, want[i], got[i])
+		}
+	}
+}

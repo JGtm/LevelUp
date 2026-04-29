@@ -26,14 +26,11 @@ type SynthesisService struct {
 	// quand fourni, GetSynthesisPage mesure la capability match.history pour
 	// loguer une éventuelle dégradation.
 	dataAdapter games.TitleDataAdapter
-	// playerMatchesRepo (P4.1, ADR 0011) : nouvelle source canonical-aware.
-	// Quand fournie, GetSynthesisPage charge `[]canonical.PlayerMatchRow` depuis
-	// le loader unifié et convertit vers SynthesisMatchRow via
-	// synthesisMatchRowFromCanonical. Migration progressive : tant que les
-	// fonctions d'analyse (ComputeSynthesisTopWeeks, ComputeTemporalHeatmap,
-	// buildSynthesisOverview, buildHighlightsPreview) consomment encore
-	// `[]domain.SynthesisMatchRow`, on convertit. P4.3 supprimera la conversion
-	// quand toutes les analyses seront migrées vers canonical.
+	// playerMatchesRepo (P4.1+P4.3, ADR 0011) : source canonical-aware. Quand
+	// fournie avec titleSlug+gamertag, GetSynthesisPage charge directement
+	// `[]canonical.PlayerMatchRow` et appelle les analyses *FromCanonical sans
+	// converter. Le path legacy (s.repo.LoadSynthesisMatches) reste pour
+	// rétrocompatibilité tant que la DI cabling n'est pas mise à jour partout.
 	playerMatchesRepo port.PlayerMatchesRepository
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
@@ -54,9 +51,9 @@ func (s *SynthesisService) WithDataAdapter(a games.TitleDataAdapter) *SynthesisS
 	return s
 }
 
-// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware.
+// WithPlayerMatchesRepo (P4.1+P4.3, ADR 0011) injecte le loader canonical-aware.
 // Quand fourni avec titleSlug+gamertag, GetSynthesisPage charge depuis le
-// loader unifié et convertit vers SynthesisMatchRow.
+// loader unifié et appelle les analyses *FromCanonical (pas de converter).
 func (s *SynthesisService) WithPlayerMatchesRepo(
 	repo port.PlayerMatchesRepository,
 	titleSlug, gamertag string,
@@ -94,12 +91,17 @@ func (s *SynthesisService) GetSynthesisPage(
 		}
 	}
 
-	// P4.1 (ADR 0011) : si playerMatchesRepo est injecté, on emprunte le
-	// chemin canonical et on convertit vers SynthesisMatchRow pour les analyses
-	// non-encore-migrées. TODO P4.3 : retirer la conversion quand toutes les
-	// fonctions d'analyse de synthesis seront migrées vers canonical.
-	var synthMatches []domain.SynthesisMatchRow
-	var err error
+	// P4.3 (ADR 0011) : chemin canonical pur quand playerMatchesRepo est
+	// injecté. Plus de converter — toutes les analyses synthesis ont leur
+	// variante *FromCanonical. Le path legacy (s.repo.LoadSynthesisMatches)
+	// reste pour la rétrocompatibilité tant que la DI n'est pas câblée.
+	var (
+		filtered       []domain.SynthesisMatchRow
+		filteredCanon  []canonical.PlayerMatchRow
+		filtersApplied []string
+		filtersIgnored []string
+		useCanonical   bool
+	)
 	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
 		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
 			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -109,27 +111,41 @@ func (s *SynthesisService) GetSynthesisPage(
 		}
 		slog.DebugContext(ctx, "synthesis: loaded canonical",
 			"rows", len(canonicalRows), "title_slug", s.titleSlug)
-		synthMatches = synthesisMatchRowsFromCanonical(canonicalRows)
+		filteredCanon, filtersApplied, filtersIgnored = filterSynthesisByPeriodCanonical(canonicalRows, period, req.Filters)
+		useCanonical = true
 	} else {
-		synthMatches, err = s.repo.LoadSynthesisMatches(ctx, playerXUID)
+		synthMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
 		if err != nil {
 			return nil, err
 		}
+		// D2 : filtrer par période (legacy path)
+		filtered, filtersApplied, filtersIgnored = filterSynthesisByPeriod(synthMatches, period, req.Filters)
 	}
 
-	// D2 : filtrer par période
-	filtered, filtersApplied, filtersIgnored := filterSynthesisByPeriod(synthMatches, period, req.Filters)
-
-	soloKPIs := analysis.ComputeSynthesisKPIs(filtered, false)
-	squadKPIs := analysis.ComputeSynthesisKPIs(filtered, true)
+	var soloKPIs, squadKPIs domain.SynthesisKPIs
+	var topWeeks []domain.TopWeekEntry
+	var heatmap []domain.TemporalHeatmapCell
+	var overview domain.SynthesisOverview
+	var highlights domain.SynthesisHighlightsPreview
+	var matchCount int
+	if useCanonical {
+		soloKPIs = analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false)
+		squadKPIs = analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true)
+		topWeeks = analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
+		heatmap = analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
+		overview = buildSynthesisOverviewCanonical(filteredCanon, soloKPIs)
+		highlights = buildHighlightsPreviewCanonical(filteredCanon)
+		matchCount = len(filteredCanon)
+	} else {
+		soloKPIs = analysis.ComputeSynthesisKPIs(filtered, false)
+		squadKPIs = analysis.ComputeSynthesisKPIs(filtered, true)
+		topWeeks = analysis.ComputeSynthesisTopWeeks(filtered)
+		heatmap = analysis.ComputeTemporalHeatmap(filtered)
+		overview = buildSynthesisOverview(filtered, soloKPIs)
+		highlights = buildHighlightsPreview(filtered)
+		matchCount = len(filtered)
+	}
 	comparison := analysis.ComputeComparisonMetrics(soloKPIs, squadKPIs)
-	topWeeks := analysis.ComputeSynthesisTopWeeks(filtered)
-	heatmap := analysis.ComputeTemporalHeatmap(filtered)
-
-	overview := buildSynthesisOverview(filtered, soloKPIs)
-
-	// D5 : highlights depuis les matchs filtrés (pas de requête DB supplémentaire)
-	highlights := buildHighlightsPreview(filtered)
 
 	// D6 : rivalries — encounters depuis shared (requête séparée)
 	encounters, _ := s.repo.LoadEncounters(ctx, playerXUID) // erreur non fatale
@@ -141,10 +157,10 @@ func (s *SynthesisService) GetSynthesisPage(
 
 	scope := domain.SynthesisScope{
 		Period:         period,
-		MatchCount:     len(filtered),
+		MatchCount:     matchCount,
 		FiltersApplied: filtersApplied,
 		FiltersIgnored: filtersIgnored,
-		Description:    buildScopeDescription(period, len(filtered)),
+		Description:    buildScopeDescription(period, matchCount),
 		ComputedAt:     time.Now().UTC(),
 	}
 
@@ -485,63 +501,225 @@ func sortModeEntries(s []domain.SynthesisModeEntry) {
 }
 
 // =============================================================================
-// P4.1 (ADR 0011) : converter canonical → SynthesisMatchRow
+// P4.3 (ADR 0011) : helpers canonical (le converter SynthesisMatchRow est retiré)
 // =============================================================================
 
-// synthesisMatchRowFromCanonical convertit une ligne canonical vers le format
-// SynthesisMatchRow consommé par les fonctions d'analyse legacy.
-//
-// TODO P4.3 : retirer cette conversion quand toutes les fonctions d'analyse
-// de synthesis seront migrées vers canonical (`Compute*FromCanonical`).
-// Ce converter est explicitement transitionnel.
-func synthesisMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.SynthesisMatchRow {
-	out := domain.SynthesisMatchRow{
-		MatchID:          r.Summary.MatchID,
-		StartTime:        r.Summary.StartedAtUTC,
-		IsWithFriends:    r.Enrichment.IsWithFriends,
-		KDA:              r.Self.KDA,
-		Accuracy:         r.Self.Accuracy,
-		PerformanceScore: r.Enrichment.PerformanceScore,
-		SessionLabel:     r.Enrichment.SessionLabel,
-		TimePlayedSecs:   r.Self.TimePlayed,
+// filterSynthesisByPeriodCanonical est la variante canonical de
+// filterSynthesisByPeriod. Logique strictement identique.
+func filterSynthesisByPeriodCanonical(
+	rows []canonical.PlayerMatchRow,
+	period string,
+	_ domain.FilterContextInput,
+) ([]canonical.PlayerMatchRow, []string, []string) {
+	applied := []string{}
+	ignored := []string{}
+
+	var cutoff *time.Time
+	now := time.Now().UTC()
+
+	switch period {
+	case "1w":
+		t := now.AddDate(0, 0, -7)
+		cutoff = &t
+		applied = append(applied, fmt.Sprintf("période=%s", period))
+	case "1m":
+		t := now.AddDate(0, -1, 0)
+		cutoff = &t
+		applied = append(applied, fmt.Sprintf("période=%s", period))
+	case "1y":
+		t := now.AddDate(-1, 0, 0)
+		cutoff = &t
+		applied = append(applied, fmt.Sprintf("période=%s", period))
+	case "2y":
+		t := now.AddDate(-2, 0, 0)
+		cutoff = &t
+		applied = append(applied, fmt.Sprintf("période=%s", period))
+	default:
+		// "all" — pas de filtre temporel
 	}
-	if r.Self.Kills != nil {
-		out.Kills = *r.Self.Kills
+
+	if cutoff == nil {
+		return rows, applied, ignored
 	}
-	if r.Self.Deaths != nil {
-		out.Deaths = *r.Self.Deaths
+
+	filtered := make([]canonical.PlayerMatchRow, 0, len(rows))
+	for _, r := range rows {
+		if !r.Summary.StartedAtUTC.Before(*cutoff) {
+			filtered = append(filtered, r)
+		}
 	}
-	// Mapping Outcome string canonical → int domain (codes Halo).
-	switch r.Self.Outcome {
-	case canonical.OutcomeWin:
-		out.Outcome = domain.OutcomeWin
-	case canonical.OutcomeLoss:
-		out.Outcome = domain.OutcomeLoss
-	case canonical.OutcomeTie:
-		out.Outcome = domain.OutcomeDraw
-	case canonical.OutcomeDNF:
-		out.Outcome = domain.OutcomeDNF
-	}
-	if r.Summary.IsRanked != nil {
-		out.IsRanked = *r.Summary.IsRanked
-	}
-	if r.Summary.IsPvE != nil {
-		out.IsFirefight = *r.Summary.IsPvE
-	}
-	if r.Summary.Playlist != nil {
-		out.PlaylistName = r.Summary.Playlist.DefaultLabel
-	}
-	return out
+	return filtered, applied, ignored
 }
 
-// synthesisMatchRowsFromCanonical convertit un slice de canonical.PlayerMatchRow
-// en []domain.SynthesisMatchRow. Voir synthesisMatchRowFromCanonical.
-//
-// TODO P4.3 : à retirer quand l'analyse synthesis sera 100% canonical.
-func synthesisMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.SynthesisMatchRow {
-	out := make([]domain.SynthesisMatchRow, len(rows))
-	for i, r := range rows {
-		out[i] = synthesisMatchRowFromCanonical(r)
+// buildSynthesisOverviewCanonical est la variante canonical de
+// buildSynthesisOverview. Lit Self.Kills/Deaths/Outcome/KDA depuis
+// canonical au lieu de SynthesisMatchRow.{Kills,Deaths,Outcome,KDA}.
+func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs domain.SynthesisKPIs) domain.SynthesisOverview {
+	var totalKills, totalDeaths, totalWins, totalLosses int
+	var bestKills int
+	var bestKDA float64
+	var winStreak, maxStreak int
+
+	for _, r := range rows {
+		k := 0
+		if r.Self.Kills != nil {
+			k = *r.Self.Kills
+		}
+		d := 0
+		if r.Self.Deaths != nil {
+			d = *r.Self.Deaths
+		}
+		totalKills += k
+		totalDeaths += d
+		if r.Self.Outcome == canonical.OutcomeWin {
+			totalWins++
+			winStreak++
+			if winStreak > maxStreak {
+				maxStreak = winStreak
+			}
+		} else {
+			totalLosses++
+			winStreak = 0
+		}
+		if k > bestKills {
+			bestKills = k
+		}
+		if r.Self.KDA != nil && *r.Self.KDA > bestKDA {
+			bestKDA = *r.Self.KDA
+		}
 	}
-	return out
+
+	n := len(rows)
+	ov := domain.SynthesisOverview{
+		TotalMatches:     n,
+		TotalWins:        totalWins,
+		TotalLosses:      totalLosses,
+		TotalKills:       totalKills,
+		TotalDeaths:      totalDeaths,
+		WinRate:          soloKPIs.WinRate,
+		LongestWinStreak: maxStreak,
+	}
+	if soloKPIs.KDRatio != nil {
+		ov.AvgKDA = soloKPIs.KDRatio
+	}
+	if n > 0 {
+		avgKills := float64(totalKills) / float64(n)
+		avgDeaths := float64(totalDeaths) / float64(n)
+		ov.AvgKills = &avgKills
+		ov.AvgDeaths = &avgDeaths
+		totalKDR := analysis.KDR(totalKills, totalDeaths)
+		ov.TotalKDR = &totalKDR
+	}
+	if soloKPIs.PerformanceScore != nil {
+		ov.AvgPerfScore = soloKPIs.PerformanceScore
+	}
+	if bestKills > 0 {
+		ov.BestKillsMatch = &bestKills
+	}
+	if bestKDA > 0 {
+		ov.BestKDAMatch = &bestKDA
+	}
+	return ov
+}
+
+// buildHighlightsPreviewCanonical est la variante canonical de
+// buildHighlightsPreview. Top/pire matchs sur les mêmes critères
+// (kills DESC, KDA DESC, deaths DESC).
+func buildHighlightsPreviewCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisHighlightsPreview {
+	if len(rows) == 0 {
+		return domain.SynthesisHighlightsPreview{}
+	}
+	toHighlight := func(r canonical.PlayerMatchRow) domain.SynthesisMatchHighlight {
+		k, d := 0, 0
+		if r.Self.Kills != nil {
+			k = *r.Self.Kills
+		}
+		if r.Self.Deaths != nil {
+			d = *r.Self.Deaths
+		}
+		// Outcome canonical → int Halo pour le DTO inchangé.
+		var outcome int
+		switch r.Self.Outcome {
+		case canonical.OutcomeWin:
+			outcome = domain.OutcomeWin
+		case canonical.OutcomeLoss:
+			outcome = domain.OutcomeLoss
+		case canonical.OutcomeTie:
+			outcome = domain.OutcomeDraw
+		case canonical.OutcomeDNF:
+			outcome = domain.OutcomeDNF
+		}
+		return domain.SynthesisMatchHighlight{
+			MatchID:   r.Summary.MatchID,
+			Kills:     k,
+			Deaths:    d,
+			KDA:       r.Self.KDA,
+			Outcome:   outcome,
+			PerfScore: r.Enrichment.PerformanceScore,
+		}
+	}
+
+	topByKills := topNByFuncCanonical(rows, highlightTopN, func(a, b canonical.PlayerMatchRow) bool {
+		ak, bk := 0, 0
+		if a.Self.Kills != nil {
+			ak = *a.Self.Kills
+		}
+		if b.Self.Kills != nil {
+			bk = *b.Self.Kills
+		}
+		return ak > bk
+	})
+	topByKDA := topNByFuncCanonical(rows, highlightTopN, func(a, b canonical.PlayerMatchRow) bool {
+		av := 0.0
+		if a.Self.KDA != nil {
+			av = *a.Self.KDA
+		}
+		bv := 0.0
+		if b.Self.KDA != nil {
+			bv = *b.Self.KDA
+		}
+		return av > bv
+	})
+	worstByDeaths := topNByFuncCanonical(rows, highlightTopN, func(a, b canonical.PlayerMatchRow) bool {
+		ad, bd := 0, 0
+		if a.Self.Deaths != nil {
+			ad = *a.Self.Deaths
+		}
+		if b.Self.Deaths != nil {
+			bd = *b.Self.Deaths
+		}
+		return ad > bd
+	})
+
+	toSlice := func(src []canonical.PlayerMatchRow) []domain.SynthesisMatchHighlight {
+		out := make([]domain.SynthesisMatchHighlight, len(src))
+		for i, r := range src {
+			out[i] = toHighlight(r)
+		}
+		return out
+	}
+	return domain.SynthesisHighlightsPreview{
+		TopByKills:    toSlice(topByKills),
+		TopByKDA:      toSlice(topByKDA),
+		WorstByDeaths: toSlice(worstByDeaths),
+	}
+}
+
+// topNByFuncCanonical est la variante canonical de topNByFunc.
+func topNByFuncCanonical(rows []canonical.PlayerMatchRow, n int, less func(a, b canonical.PlayerMatchRow) bool) []canonical.PlayerMatchRow {
+	cp := make([]canonical.PlayerMatchRow, len(rows))
+	copy(cp, rows)
+	for i := 0; i < n && i < len(cp); i++ {
+		minIdx := i
+		for j := i + 1; j < len(cp); j++ {
+			if less(cp[j], cp[minIdx]) {
+				minIdx = j
+			}
+		}
+		cp[i], cp[minIdx] = cp[minIdx], cp[i]
+	}
+	if n > len(cp) {
+		n = len(cp)
+	}
+	return cp[:n]
 }
