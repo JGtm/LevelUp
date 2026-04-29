@@ -13,6 +13,8 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -72,9 +74,10 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 	deaths := row.Deaths
 	assists := row.Assists
 
+	// KDA canonique (ADR 0006) — fallback si row.KDA absent (valeur 0).
 	kda := row.KDA
 	if kda == 0 {
-		kda = (kills + assists) / math.Max(1, deaths)
+		kda = analysis.KDA(int(kills), int(assists), int(deaths))
 	}
 
 	m := &matchMetrics{

@@ -176,7 +176,8 @@ func computeNormalizedMetrics(row domain.StatsMatchRow) normalizedMetrics {
 	dur := resolveDuration(row)
 	mins := dur / 60.0
 
-	kda := float64(row.Kills+row.Assists) / math.Max(1.0, float64(row.Deaths))
+	// KDA canonique (ADR 0006) — fallback si row.KDA absent.
+	kda := KDA(row.Kills, row.Assists, row.Deaths)
 	if row.KDA != nil {
 		kda = *row.KDA
 	}
@@ -370,20 +371,20 @@ func computeKDAFallback(row domain.StatsMatchRow, allMatches []domain.StatsMatch
 		v := 50.0
 		return &v
 	}
+	// KDA canonique (ADR 0006) — fallback si row.KDA absent.
 	kdas := make([]float64, 0, len(allMatches))
 	for _, m := range allMatches {
 		if m.KDA != nil {
 			kdas = append(kdas, *m.KDA)
 		} else {
-			d := math.Max(1.0, float64(m.Deaths))
-			kdas = append(kdas, float64(m.Kills+m.Assists)/d)
+			kdas = append(kdas, KDA(m.Kills, m.Assists, m.Deaths))
 		}
 	}
 	var currentKDA float64
 	if row.KDA != nil {
 		currentKDA = *row.KDA
 	} else {
-		currentKDA = float64(row.Kills+row.Assists) / math.Max(1.0, float64(row.Deaths))
+		currentKDA = KDA(row.Kills, row.Assists, row.Deaths)
 	}
 	sorted := make([]float64, len(kdas))
 	copy(sorted, kdas)
