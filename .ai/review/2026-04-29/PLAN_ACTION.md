@@ -1079,8 +1079,8 @@ Chaque sous-composant : <= 200L, props typées, tests Vitest si logique non triv
 - [x] **P8.9** Charts legacy marqués `// Deprecated` — `domain/chart/base.go` + `antagonists.go` (utiliser `domain.ChartSeries[T]`)
 - [x] **P8.10** Release notes service extrait — `service.ReleaseNotesService` + `port.GitProvider` + `platform/git`. `handlers/help.go` mince, `grep "exec.Command"` retourne 0.
 - [x] **P8.11** /healthz + /readyz endpoints opérationnels — handlers séparés (Liveness sans I/O DB ; Readiness vérifie DuckDB), 3 tests contrat.
-- [ ] **P8.12** Helpers front mutualisés résiduel — déféré (dépend P2.6bis)
-- [ ] **P8.13** `KPICard`/`MetricCard`/`StatCard` consolidés — déféré (dépend P8.5)
+- [x] **P8.12** Helpers front mutualisés résiduel — palmares migré vers `@/lib/formatters` (`formatPercent`, `formatKDA`, `formatDate`). 3 helpers locaux supprimés. Helpers spécifiques (lab i18n-aware, session-detail legacy 0..100, home UX-specific format `XhMM`/`Xmin`) conservés avec justification documentée dans le code.
+- [x] **P8.13** `KPICard`/`MetricCard`/`StatCard` consolidés — `components/cards/StatCard.tsx` créé avec 3 variants (`default`, `kpi`, `metric`) + 7 tests. Migrations : `home/HomeKPICard` wrapper léger sur variant=kpi ; `lab/_labShared::MetricCard` wrapper sur variant=metric ; `synthesis/SynthesisPage::StatCell` wrapper sur variant=default. Logique consolidée dans 1 composant (~75L) au lieu de 3 implémentations dispersées.
 - [x] **Frontière inversée `components/ → features/`** — lint actif (P8.5)
 - [x] Politique transverse appliquée (logs slog avec request_id, observability hot paths, capabilities middleware)
 - [x] Entrée thought_log finale

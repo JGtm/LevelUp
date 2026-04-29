@@ -1,8 +1,11 @@
 /**
- * HomeKPICard — tuile KPI compacte (label + valeur).
+ * HomeKPICard — wrapper léger autour de StatCard variant="kpi".
  *
- * P8.4 (revue 2026-04-29) : extrait de HomePage.tsx pour réduire la god page.
+ * P8.13 (revue 2026-04-29) : la logique a été consolidée dans
+ * `components/cards/StatCard.tsx` ; ce wrapper conserve le nom historique
+ * pour ne pas casser les imports existants côté HomePage.
  */
+import { StatCard } from '@/components/cards/StatCard'
 
 interface HomeKPICardProps {
   label: string
@@ -11,14 +14,5 @@ interface HomeKPICardProps {
 }
 
 export function HomeKPICard({ label, value, compact = false }: HomeKPICardProps) {
-  return (
-    <div
-      className={`flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted py-3 text-center ${
-        compact ? 'px-2' : 'px-4'
-      }`}
-    >
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-xl font-bold text-primary">{value}</p>
-    </div>
-  )
+  return <StatCard label={label} value={value} variant="kpi" compact={compact} />
 }

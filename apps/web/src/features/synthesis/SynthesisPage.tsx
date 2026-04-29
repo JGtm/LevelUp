@@ -7,6 +7,7 @@ import { useParams } from '@tanstack/react-router'
 import type { EChartsCoreOption } from 'echarts/core'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useFieldMappings, useFieldLabel } from '@/lib/i18n/fieldMappings'
+import { StatCard } from '@/components/cards/StatCard'
 import { useSynthesisPage } from './queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -144,13 +145,10 @@ function ScopeBar({ scope }: ScopeBarProps) {
 
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
 
+// P8.13 (revue 2026-04-29) : StatCell consolidé dans `components/cards/StatCard`
+// (variant 'default'). Wrapper conservé pour la rétrocompat des call sites.
 function StatCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border p-3">
-      <span className="text-xs text-muted-foreground block">{label}</span>
-      <span className="text-xl font-bold">{value}</span>
-    </div>
-  )
+  return <StatCard label={label} value={value} />
 }
 
 interface SynthesisOverviewSectionProps { overview: SynthesisOverview }

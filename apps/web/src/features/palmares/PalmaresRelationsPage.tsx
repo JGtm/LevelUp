@@ -6,6 +6,9 @@ import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { RelationInsight } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+// P8.12 (revue 2026-04-29) : helpers canoniques (formatPercent/formatKDA/formatDate)
+// au lieu d'helpers ad-hoc locaux. Cf. apps/web/src/lib/formatters/.
+import { formatPercent, formatKDA, formatDate } from '@/lib/formatters'
 
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PalmaresShell } from './PalmaresShell'
@@ -22,21 +25,6 @@ function OverviewCard({ label, value }: { label: string; value: string }) {
       </CardContent>
     </Card>
   )
-}
-
-function formatPercent(value: number | null | undefined, locale: string) {
-  if (value == null) return '—'
-  return `${(value * 100).toLocaleString(locale, { maximumFractionDigits: 0 })} %`
-}
-
-function formatKDA(value: number | null | undefined, locale: string) {
-  if (value == null) return '—'
-  return value.toLocaleString(locale, { maximumFractionDigits: 2 })
-}
-
-function formatDate(value: string | null | undefined, locale: string) {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(value))
 }
 
 function RelationRow({
@@ -57,11 +45,11 @@ function RelationRow({
   let metricLine = `${labels.lastSeen} ${formatDate(entry.last_seen_at, locale)}`
 
   if (variant === 'allies' || variant === 'synergy') {
-    contextLine = `${teammateLine} · ${labels.winRate} ${formatPercent(entry.teammate_win_rate, locale)}`
+    contextLine = `${teammateLine} · ${labels.winRate} ${formatPercent(entry.teammate_win_rate, 0)}`
     metricLine = `${labels.avgKDA} ${formatKDA(entry.avg_kda_with, locale)} · ${labels.lastSeen} ${formatDate(entry.last_seen_at, locale)}`
   }
   if (variant === 'nemesis' || variant === 'victim') {
-    contextLine = `${enemyLine} · ${labels.winRate} ${formatPercent(entry.enemy_win_rate, locale)}`
+    contextLine = `${enemyLine} · ${labels.winRate} ${formatPercent(entry.enemy_win_rate, 0)}`
     metricLine = `${labels.avgKDA} ${formatKDA(entry.avg_kda_against, locale)} · ${labels.lastSeen} ${formatDate(entry.last_seen_at, locale)}`
   }
 

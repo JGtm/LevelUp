@@ -96,6 +96,9 @@ export function StatusBadge({ status, text }: { status: string; text: LabText })
   return <Badge variant={getStatusVariant(status)}>{translateStatus(status, text)}</Badge>
 }
 
+// P8.13 (revue 2026-04-29) : wrapper léger autour de StatCard variant='metric'.
+// Conserve le nom MetricCard pour la rétrocompat des imports lab/.
+import { StatCard } from '@/components/cards/StatCard'
 export function MetricCard({
   label,
   value,
@@ -105,15 +108,7 @@ export function MetricCard({
   value: string
   hint?: string
 }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-        <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
-        {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
-      </CardContent>
-    </Card>
-  )
+  return <StatCard label={label} value={value} hint={hint} variant="metric" />
 }
 
 export function JsonViewer({
