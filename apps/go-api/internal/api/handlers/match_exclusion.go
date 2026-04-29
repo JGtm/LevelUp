@@ -1,9 +1,12 @@
 // Package handlers — match_exclusion.go : gestion des matchs non pertinents.
 //
-// Endpoints :
+// Endpoint :
 //
 //	PATCH /api/v1/players/{player_slug}/matches/{match_id}/exclusion
-//	GET   /api/v1/players/{player_slug}/match-exclusions
+//
+// NOTE : GET /match-exclusions a été supprimé en revue 2026-04-29 P0.2 Q6
+// (orphelin côté front). À réintroduire si une vue admin de listing devient
+// nécessaire.
 package handlers
 
 import (
@@ -62,32 +65,4 @@ func (h *MatchExclusionHandler) SetExclusion(w http.ResponseWriter, r *http.Requ
 		"excluded", req.Excluded,
 	)
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// ListExclusions retourne les matchs marqués non pertinents.
-// GET /api/v1/players/{player_slug}/match-exclusions
-// Réponse: 200 [{"match_id": "...", "start_time": "...", ...}]
-func (h *MatchExclusionHandler) ListExclusions(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "player_slug")
-
-	svc, err := h.newSvc(r.Context(), slug)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
-		return
-	}
-
-	matches, err := svc.ListExcluded(r.Context())
-	if err != nil {
-		slog.WarnContext(r.Context(), "match exclusion list: db error",
-			"player_slug", slug,
-			"err", err,
-		)
-		writeError(w, http.StatusInternalServerError, "list_exclusions_error", err.Error())
-		return
-	}
-
-	if matches == nil {
-		matches = []domain.ExcludedMatch{}
-	}
-	writeJSON(w, http.StatusOK, matches)
 }

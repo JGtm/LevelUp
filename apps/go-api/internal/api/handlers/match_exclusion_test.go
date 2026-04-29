@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -38,7 +37,6 @@ func newMatchExclusionRouter(factory handlers.ServiceFactory[port.MatchExclusion
 	h := handlers.NewMatchExclusionHandler(factory)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Patch("/matches/{match_id}/exclusion", h.SetExclusion)
-		r.Get("/match-exclusions", h.ListExclusions)
 	})
 	return r
 }
@@ -102,61 +100,5 @@ func TestMatchExclusionHandler_Set_PlayerNotFound(t *testing.T) {
 	}
 }
 
-func TestMatchExclusionHandler_List_OK(t *testing.T) {
-	ts := time.Date(2024, 3, 15, 20, 0, 0, 0, time.UTC)
-	mock := &mockMatchExclusionService{
-		listed: []domain.ExcludedMatch{
-			{MatchID: "match-abc", StartTime: ts, MapName: "Bazaar", ModeName: "Slayer"},
-		},
-	}
-	factory := func(_ context.Context, slug string) (port.MatchExclusionService, error) {
-		if slug != testPlayerSlug {
-			return nil, errors.New("player_not_found")
-		}
-		return mock, nil
-	}
-	r := newMatchExclusionRouter(factory)
-
-	req := httptest.NewRequest(http.MethodGet, "/players/test-player/match-exclusions", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp []domain.ExcludedMatch
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode error: %v", err)
-	}
-	if len(resp) != 1 || resp[0].MatchID != "match-abc" {
-		t.Fatalf("unexpected response: %+v", resp)
-	}
-}
-
-func TestMatchExclusionHandler_List_Empty(t *testing.T) {
-	mock := &mockMatchExclusionService{listed: nil}
-	factory := func(_ context.Context, slug string) (port.MatchExclusionService, error) {
-		if slug != testPlayerSlug {
-			return nil, errors.New("player_not_found")
-		}
-		return mock, nil
-	}
-	r := newMatchExclusionRouter(factory)
-
-	req := httptest.NewRequest(http.MethodGet, "/players/test-player/match-exclusions", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var resp []domain.ExcludedMatch
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode error: %v", err)
-	}
-	if len(resp) != 0 {
-		t.Fatalf("expected empty array, got %+v", resp)
-	}
-}
+// TestMatchExclusionHandler_List_* supprimés en revue 2026-04-29 P0.2 Q6
+// (endpoint GET /match-exclusions retiré, voir match_exclusion.go).

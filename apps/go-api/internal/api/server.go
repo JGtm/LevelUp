@@ -250,39 +250,21 @@ func NewRouter(
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
 
-		// Phase A+C multi-titres : exposition des field mappings TOML +
-		// preview du pipeline canonique. Tout derrière MULTI_TITLE_API_ENABLED.
+		// Phase A multi-titres : exposition des field mappings TOML.
+		// Derrière MULTI_TITLE_API_ENABLED.
+		//
+		// NOTE : les endpoints preview/career et preview/career-multi-title
+		// (proof-of-concept Phase C) ont été supprimés en revue 2026-04-29 P0.2
+		// Q6 — orphelins côté front même flag activé. À réintroduire en endpoint
+		// admin/debug si besoin de re-valider le pipeline canonique.
 		if handlers.MultiTitleAPIEnabled() {
 			fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
 			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
-
-			previewHandler := handlers.NewMultiTitlePreviewHandler(titleResolver, slog.Default())
-			r.Get("/titles/{slug}/preview/career", previewHandler.GetCareerPreview)
-
-			// Endpoint preview player-scoped : utilise un DataAdapter HI
-			// instancié par requête avec le CareerRepo du joueur courant.
-			// Capability career.progression réellement supportée ici.
-			//
-			// Adaptation : titleResolver.Semantic est synchrone (slug→adapter), alors
-			// que SemanticAdapterFactory accepte un context. La closure ignore le
-			// context — la résolution est in-memory, pas de risque d'annulation.
-			semanticFactory := func(_ context.Context, slug string) (games.TitleSemanticAdapter, error) {
-				return titleResolver.Semantic(slug)
-			}
-			playerPreviewHandler := handlers.NewMultiTitlePlayerPreviewHandler(
-				reg.TitleDataAdapter,
-				semanticFactory,
-				titlePkg.DefaultSlug,
-				slog.Default(),
-			)
-			r.Get("/players/{player_slug}/preview/career-multi-title", playerPreviewHandler.GetCareerPreview)
 
 			slog.Info("multi_title_api_enabled",
 				"slugs", fieldMappingsRegistry.Slugs(),
 				"endpoints", []string{
 					"/api/v1/titles/{slug}/field-mappings",
-					"/api/v1/titles/{slug}/preview/career",
-					"/api/v1/players/{player_slug}/preview/career-multi-title",
 				},
 			)
 		}
@@ -457,7 +439,8 @@ func NewRouter(
 			r.Post("/pages/media", media.GetMediaLibrary)
 			r.Patch("/media/likes", media.PatchMediaLike)
 			r.Post("/media/upload", media.PostUploadMedia)
-			r.Post("/media/reassociate", media.PostReassociateMedia)
+			// /media/reassociate supprimé en revue 2026-04-29 P0.2 Q6 (doublon non utilisé,
+			// le front consomme /media/associate seulement).
 			r.Get("/media/match-candidates", media.GetMediaMatchCandidates)
 			r.Post("/media/associate", media.PostMediaAssociate)
 			r.Get("/media/authors", media.GetMediaAuthors)
@@ -480,9 +463,10 @@ func NewRouter(
 			r.Post("/pages/session-compare", sc.Compare)
 
 			// Exclusion manuelle de matchs non pertinents
+			// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6
+			// (orphelin côté front, vue admin jamais implémentée).
 			excl := handlers.NewMatchExclusionHandler(reg.MatchExclusion)
 			r.Patch("/matches/{match_id}/exclusion", excl.SetExclusion)
-			r.Get("/match-exclusions", excl.ListExclusions)
 
 			// Système de notifications in-app (per-player).
 			notifH := handlers.NewNotificationsHandler(reg.Notifications)
