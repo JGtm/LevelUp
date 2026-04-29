@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-04-29] Filtres expérience/playlist — câblage cascade squad + refonte FilterOmnibar
+
+**Statut** : Complété
+
+**Décision technique principale** : Option C — les filtres expérience/playlist du `FilterOmnibar` global sont maintenant effectivement câblés sur le service squad (auparavant ils existaient visuellement mais ne faisaient rien sur cette page). La `FilterOmnibar` adopte un modèle "pending state + bouton Analyser" pour éviter les re-fetches multiples lors de la configuration.
+
+**Changements livrés** :
+- Go `domain/squad.go` : `SynthesisMatchRow` enrichi (`IsRanked`, `IsFirefight`, `PlaylistName`)
+- Go `domain/teammates.go` : `SessionLabelEntry` enrichi (`Experiences []string`, `Playlists []string`)
+- Go `platform/duckdb/queries_squad.go` : Q33b ramène `is_ranked`, `is_firefight`, `playlist_name`
+- Go `platform/duckdb/squad_repo.go` : scanner mis à jour
+- Go `service/teammates_service.go` : `extractSynthesisSessionLabels` agrège exp/playlists ; `filterSynthesisByCascade` applique les filtres cascade ; `GetPage` consomme `req.Filters.Cascade`
+- Go tests : 5 nouveaux cas (`AggregatesExperiences`, `PureRankedSession`, `FilterByCascade_*`)
+- TS `stores/globalFilterStore.ts` : action `setFilterContext` (commit atomique)
+- TS `FilterOmnibar.tsx` : nouvel ordre Filtres | sep | Période | Sessions + "Toutes les périodes" + séparateur + pending state + bouton Analyser
+- TS tests `FilterOmnibar.test.tsx` : mis à jour pour le modèle pending + Analyser
+
+**Résultats observés** : `go build ./internal/...` propre, 12 tests Go passent, 14 tests TS passent, `tsc --noEmit` propre.
+
+**Prochaine étape** : dette documentée — les filtres cascade (modes, maps) sur la page squad ne sont pas encore câblés (hors scope). À planifier séparément.
+
+---
+
 ## [2026-04-29] P2 indicateurs canoniques — clôture partielle (P2.1-P2.6 livrés sur chore/cleanup-and-ux-fixes)
 
 **Statut** : Complétée pour P2.1, P2.2, P2.3, P2.4, P2.4bis, P2.5, P2.6. Reste P2.6bis (helpers front mutualisés formatDate/Number/Duration + useLocalStorageState audit).
