@@ -23,6 +23,7 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -387,11 +388,504 @@ func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string
 	return domain.HomeHeroCard{PlayerName: gamertag, KPIs: kpis, Trend: trend}
 }
 
-// BuildHighlightsFromCanonical est la variante canonical-aware de BuildHighlights.
-// TODO P4.3 finale : porter les helpers (selectHighlightWindow,
-// buildMaitriseHighlight, etc.) à canonical pour retirer la conversion.
+// BuildHighlightsFromCanonical : full canonical (P4.3 finale).
+// 8 highlights (perf moyenne, delta rang, best underdog win, KDA peak,
+// Maîtrise tile, Per-minute tile, Volume, Série tile).
 func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.HighlightItem {
-	return BuildHighlights(HomeMatchRowsFromCanonical(rows))
+	if len(rows) == 0 {
+		return nil
+	}
+	window := selectHighlightWindowCanonical(rows)
+	if len(window) == 0 {
+		return nil
+	}
+
+	var highlights []domain.HighlightItem
+
+	// Highlight 1 : Performance moyenne.
+	{
+		var sum float64
+		var n int
+		for _, r := range window {
+			if r.Enrichment.PerformanceScore != nil {
+				sum += *r.Enrichment.PerformanceScore
+				n++
+			}
+		}
+		if n > 0 {
+			avg := sum / float64(n)
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   "highlight.title.perf_avg",
+				Value:      fmt.Sprintf("%.0f", avg),
+				ValueColor: highlightPerfColor(avg),
+			})
+		}
+	}
+
+	// Highlight 2 : Delta rang.
+	{
+		var deltaSum float64
+		var n int
+		csr, lusr := 0, 0
+		for _, r := range window {
+			if r.Enrichment.SkillSnapshot == nil {
+				continue
+			}
+			if r.Enrichment.SkillSnapshot.Delta != nil {
+				deltaSum += *r.Enrichment.SkillSnapshot.Delta
+				n++
+			}
+			switch strings.ToUpper(string(r.Enrichment.SkillSnapshot.RatingType)) {
+			case "CSR":
+				csr++
+			case "LUSR":
+				lusr++
+			}
+		}
+		if n > 0 {
+			titleKey := "highlight.title.skill_delta_lusr"
+			if csr > lusr {
+				titleKey = "highlight.title.skill_delta_csr"
+			}
+			sign := ""
+			if deltaSum > 0 {
+				sign = "+"
+			}
+			color := homeColorNeutral
+			if deltaSum > 0 {
+				color = homeColorPositive
+			} else if deltaSum < 0 {
+				color = homeColorNegative
+			}
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   titleKey,
+				Value:      fmt.Sprintf("%s%.0fpts", sign, deltaSum),
+				ValueColor: color,
+			})
+		}
+	}
+
+	// Highlight 3 : Plus belle victoire (MMR underdog).
+	{
+		best := bestMMRUnderdogWinCanonical(window)
+		if best != nil {
+			delta := *best.Enrichment.TeamMMR - *best.Enrichment.EnemyMMR
+			sign := ""
+			if delta > 0 {
+				sign = "+"
+			}
+			const mmrNeutralThreshold = 25.0
+			color := homeColorNeutral
+			if delta > mmrNeutralThreshold {
+				color = homeColorPositive
+			} else if delta < -mmrNeutralThreshold {
+				color = homeColorNegative
+			}
+			mapEN, mapFR := assetLabels(best.Summary.Map)
+			variantEN, variantFR := assetLabels(best.Summary.GameVariant)
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   "highlight.title.best_underdog_win",
+				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+				ValueColor: color,
+			})
+		}
+	}
+
+	// Highlight 4 : Pic FDA récent.
+	{
+		best := bestKDAMatchCanonical(window)
+		if best != nil && best.Self.KDA != nil {
+			mapEN, mapFR := assetLabels(best.Summary.Map)
+			variantEN, variantFR := assetLabels(best.Summary.GameVariant)
+			highlights = append(highlights, domain.HighlightItem{
+				TitleKey:   "highlight.title.kda_peak",
+				Value:      fmt.Sprintf("%.2f", *best.Self.KDA),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+				ValueColor: highlightKDAColor(*best.Self.KDA),
+			})
+		}
+	}
+
+	// Highlight 5 : Maîtrise.
+	if maitrise := buildMaitriseHighlightCanonical(window); maitrise != nil {
+		highlights = append(highlights, *maitrise)
+	}
+
+	// Highlight 6 : Per-minute.
+	if perMin := buildPerMinuteHighlightCanonical(window); perMin != nil {
+		highlights = append(highlights, *perMin)
+	}
+
+	// Highlight 7 : Volume.
+	{
+		var kdaSum float64
+		var kdaN, wins int
+		for _, r := range window {
+			if r.Self.KDA != nil {
+				kdaSum += *r.Self.KDA
+				kdaN++
+			}
+			if r.Self.Outcome == canonical.OutcomeWin {
+				wins++
+			}
+		}
+		wr := int(math.Round(WinRate(wins, len(window)) * 100))
+		params := map[string]any{"wr": wr}
+		detailKey := "highlight.detail.volume_wr"
+		if kdaN > 0 {
+			detailKey = "highlight.detail.volume_kda_wr"
+			params["kda"] = fmt.Sprintf("%.2f", kdaSum/float64(kdaN))
+		}
+		highlights = append(highlights, domain.HighlightItem{
+			TitleKey:     "highlight.title.volume",
+			Value:        fmt.Sprintf("%d", len(window)),
+			DetailKey:    detailKey,
+			DetailParams: params,
+		})
+	}
+
+	// Highlight 8 : Série.
+	if serie := buildSerieHighlightCanonical(window); serie != nil {
+		highlights = append(highlights, *serie)
+	}
+
+	return highlights
+}
+
+// selectHighlightWindowCanonical : sélection des matchs pour la fenêtre
+// (dernière session + 4 similaires : même IsWithFriends + même playlistGroup).
+func selectHighlightWindowCanonical(rows []canonical.PlayerMatchRow) []canonical.PlayerMatchRow {
+	if len(rows) == 0 {
+		return nil
+	}
+	type sessionEntry struct {
+		label         string
+		isWithFriends bool
+		playlistGroup string
+		indices       []int
+	}
+	sessionOrder := []string{}
+	sessionMap := map[string]*sessionEntry{}
+
+	for i, r := range rows {
+		if r.Enrichment.SessionLabel == nil {
+			continue
+		}
+		lbl := *r.Enrichment.SessionLabel
+		if _, exists := sessionMap[lbl]; !exists {
+			sessionMap[lbl] = &sessionEntry{
+				label:         lbl,
+				isWithFriends: r.Enrichment.IsWithFriends,
+			}
+			sessionOrder = append(sessionOrder, lbl)
+		}
+		sessionMap[lbl].indices = append(sessionMap[lbl].indices, i)
+	}
+
+	if len(sessionOrder) == 0 {
+		// Fallback : 50 premiers.
+		if len(rows) > 50 {
+			return rows[:50]
+		}
+		return rows
+	}
+
+	// Playlist dominante par session.
+	for _, lbl := range sessionOrder {
+		entry := sessionMap[lbl]
+		freq := map[string]int{}
+		for _, idx := range entry.indices {
+			ss := rows[idx].Enrichment.SkillSnapshot
+			if ss != nil && ss.PlaylistGroup != nil && *ss.PlaylistGroup != "" {
+				freq[*ss.PlaylistGroup]++
+			}
+		}
+		best, bestCount := "", 0
+		for pg, cnt := range freq {
+			if cnt > bestCount {
+				bestCount = cnt
+				best = pg
+			}
+		}
+		entry.playlistGroup = best
+	}
+
+	ref := sessionMap[sessionOrder[0]]
+	collected := []string{}
+	for _, lbl := range sessionOrder {
+		e := sessionMap[lbl]
+		if e.isWithFriends == ref.isWithFriends && e.playlistGroup == ref.playlistGroup {
+			collected = append(collected, lbl)
+			if len(collected) >= 5 {
+				break
+			}
+		}
+	}
+	labelSet := map[string]bool{}
+	for _, lbl := range collected {
+		labelSet[lbl] = true
+	}
+	var window []canonical.PlayerMatchRow
+	for _, r := range rows {
+		if r.Enrichment.SessionLabel != nil && labelSet[*r.Enrichment.SessionLabel] {
+			window = append(window, r)
+		}
+	}
+	return window
+}
+
+// bestKDAMatchCanonical : retourne le row avec le KDA le plus élevé.
+func bestKDAMatchCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMatchRow {
+	var best *canonical.PlayerMatchRow
+	for i := range rows {
+		if rows[i].Self.KDA == nil {
+			continue
+		}
+		if best == nil || *rows[i].Self.KDA > *best.Self.KDA {
+			best = &rows[i]
+		}
+	}
+	return best
+}
+
+// bestMMRUnderdogWinCanonical : retourne la victoire avec le plus grand
+// désavantage MMR (enemy_mmr - team_mmr maximal).
+func bestMMRUnderdogWinCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMatchRow {
+	var best *canonical.PlayerMatchRow
+	bestDelta := 0.0
+	for i := range rows {
+		r := &rows[i]
+		if r.Self.Outcome != canonical.OutcomeWin || r.Enrichment.TeamMMR == nil || r.Enrichment.EnemyMMR == nil {
+			continue
+		}
+		delta := *r.Enrichment.EnemyMMR - *r.Enrichment.TeamMMR
+		if best == nil || delta > bestDelta {
+			bestDelta = delta
+			best = r
+		}
+	}
+	return best
+}
+
+// buildMaitriseHighlightCanonical : tuile Maîtrise (3 slides : HS sum,
+// perfect kills sum, accuracy avg).
+func buildMaitriseHighlightCanonical(window []canonical.PlayerMatchRow) *domain.HighlightItem {
+	var slides []domain.HighlightSlide
+
+	var hsSum, perfSum int
+	for _, r := range window {
+		hsSum += derefIntZero(r.Self.HeadshotKills)
+		perfSum += derefIntZero(r.Self.PerfectKills)
+	}
+	hsColor := homeColorNeutral
+	if hsSum > 0 {
+		hsColor = homeColorPositive
+	}
+	slides = append(slides, domain.HighlightSlide{
+		LabelKey: "highlight.slide.headshots", Value: fmt.Sprintf("%d", hsSum), ValueColor: hsColor,
+	})
+	perfColor := homeColorNeutral
+	if perfSum > 0 {
+		perfColor = homeColorPositive
+	}
+	slides = append(slides, domain.HighlightSlide{
+		LabelKey: "highlight.slide.perfect_kills", Value: fmt.Sprintf("%d", perfSum), ValueColor: perfColor,
+	})
+	var accSum float64
+	var accN int
+	for _, r := range window {
+		if r.Self.Accuracy != nil {
+			accSum += *r.Self.Accuracy
+			accN++
+		}
+	}
+	if accN > 0 {
+		avg := accSum / float64(accN)
+		color := homeColorNegative
+		if avg > 55 {
+			color = homeColorPositive
+		} else if avg >= 40 {
+			color = "warning"
+		}
+		slides = append(slides, domain.HighlightSlide{
+			LabelKey: "highlight.slide.accuracy", Value: fmt.Sprintf("%.0f%%", avg), ValueColor: color,
+		})
+	}
+	if len(slides) == 0 {
+		return nil
+	}
+	first := slides[0]
+	return &domain.HighlightItem{
+		TitleKey: "highlight.title.mastery", Value: first.Value, Detail: first.Detail,
+		ValueColor: first.ValueColor, Slides: slides,
+	}
+}
+
+// buildPerMinuteHighlightCanonical : tuile Per-minute.
+func buildPerMinuteHighlightCanonical(window []canonical.PlayerMatchRow) *domain.HighlightItem {
+	var totalSecs float64
+	var kills, deaths, assists, n int
+	for _, r := range window {
+		if r.Self.TimePlayed == nil || *r.Self.TimePlayed <= 0 {
+			continue
+		}
+		totalSecs += float64(*r.Self.TimePlayed)
+		kills += derefIntZero(r.Self.Kills)
+		deaths += derefIntZero(r.Self.Deaths)
+		assists += derefIntZero(r.Self.Assists)
+		n++
+	}
+	if n == 0 || totalSecs <= 0 {
+		return nil
+	}
+	minutes := totalSecs / 60.0
+	slides := []domain.HighlightSlide{
+		{LabelKey: "highlight.slide.kills", Value: fmt.Sprintf("%.2f", float64(kills)/minutes), ValueColor: homeColorNeutral},
+		{LabelKey: "highlight.slide.deaths", Value: fmt.Sprintf("%.2f", float64(deaths)/minutes), ValueColor: homeColorNeutral},
+		{LabelKey: "highlight.slide.assists", Value: fmt.Sprintf("%.2f", float64(assists)/minutes), ValueColor: homeColorNeutral},
+	}
+	first := slides[0]
+	return &domain.HighlightItem{
+		TitleKey: "highlight.title.per_minute", Value: first.Value, Detail: first.Detail,
+		ValueColor: first.ValueColor, Slides: slides,
+	}
+}
+
+// buildSerieHighlightCanonical : tuile Série.
+func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow) *domain.HighlightItem {
+	var slides []domain.HighlightSlide
+	if s := sliceBestKillingSpreeCanonical(window); s != nil {
+		slides = append(slides, *s)
+	}
+	if s := sliceBestWinStreakCanonical(window); s != nil {
+		slides = append(slides, *s)
+	}
+	if s := sliceFavoriteMapCanonical(window); s != nil {
+		slides = append(slides, *s)
+	}
+	if len(slides) == 0 {
+		return nil
+	}
+	first := slides[0]
+	return &domain.HighlightItem{
+		TitleKey: "highlight.title.serie", Value: first.Value, Detail: first.Detail,
+		ValueColor: first.ValueColor, Slides: slides,
+	}
+}
+
+func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow) *domain.HighlightSlide {
+	var best *canonical.PlayerMatchRow
+	bestVal := 0
+	for i := range window {
+		r := &window[i]
+		if r.Self.MaxKillingSpree == nil || *r.Self.MaxKillingSpree <= 0 {
+			continue
+		}
+		if best == nil || *r.Self.MaxKillingSpree > bestVal {
+			bestVal = *r.Self.MaxKillingSpree
+			best = r
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	mapEN, mapFR := assetLabels(best.Summary.Map)
+	variantEN, variantFR := assetLabels(best.Summary.GameVariant)
+	return &domain.HighlightSlide{
+		LabelKey:   "highlight.slide.killing_spree_max",
+		Value:      fmt.Sprintf("%d", bestVal),
+		Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+		ValueColor: homeColorPositive,
+	}
+}
+
+func sliceBestWinStreakCanonical(window []canonical.PlayerMatchRow) *domain.HighlightSlide {
+	if len(window) == 0 {
+		return nil
+	}
+	best, cur := 0, 0
+	for i := len(window) - 1; i >= 0; i-- {
+		if window[i].Self.Outcome == canonical.OutcomeWin {
+			cur++
+			if cur > best {
+				best = cur
+			}
+		} else {
+			cur = 0
+		}
+	}
+	if best == 0 {
+		return nil
+	}
+	color := homeColorNeutral
+	if best >= 3 {
+		color = homeColorPositive
+	}
+	return &domain.HighlightSlide{
+		LabelKey:     "highlight.slide.win_streak",
+		Value:        fmt.Sprintf("%d", best),
+		DetailKey:    "highlight.detail.win_streak",
+		DetailParams: map[string]any{"count": best},
+		ValueColor:   color,
+	}
+}
+
+func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow) *domain.HighlightSlide {
+	type stat struct {
+		name   string
+		nameFR string
+		plays  int
+		wins   int
+	}
+	byMap := map[string]*stat{}
+	for _, r := range window {
+		if r.Summary.Map == nil || r.Summary.Map.ID == "" {
+			continue
+		}
+		mapEN, mapFR := assetLabels(r.Summary.Map)
+		s, ok := byMap[r.Summary.Map.ID]
+		if !ok {
+			s = &stat{name: mapEN, nameFR: mapFR}
+			byMap[r.Summary.Map.ID] = s
+		}
+		s.plays++
+		if r.Self.Outcome == canonical.OutcomeWin {
+			s.wins++
+		}
+	}
+	var best *stat
+	bestWR := -1.0
+	for _, s := range byMap {
+		if s.plays < 2 {
+			continue
+		}
+		wr := float64(s.wins) / float64(s.plays)
+		if wr > bestWR || (wr == bestWR && best != nil && s.plays > best.plays) {
+			bestWR = wr
+			best = s
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	color := homeColorNeutral
+	if bestWR >= 0.6 {
+		color = homeColorPositive
+	} else if bestWR < 0.4 {
+		color = homeColorNegative
+	}
+	return &domain.HighlightSlide{
+		LabelKey:  "highlight.slide.favorite_map",
+		Value:     labelFR(best.nameFR, best.name),
+		DetailKey: "highlight.detail.favorite_map",
+		DetailParams: map[string]any{
+			"wins":   best.wins,
+			"losses": best.plays - best.wins,
+			"wr":     int(bestWR*100 + 0.5),
+		},
+		ValueColor: color,
+	}
 }
 
 // BuildRecentMatchesWithFavoritesFromCanonical : full canonical (P4.3 finale).
