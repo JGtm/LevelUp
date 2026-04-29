@@ -369,10 +369,11 @@ func computeKPIsFromSquadMatches(matches []domain.SquadMatchRow) domain.Teammate
 		acc = &v
 	}
 	return domain.TeammateKPIs{
-		MatchCount:           n,
-		Wins:                 wins,
-		KDRatio:              &kd,
-		WinRate:              round2(float64(wins) / float64(n) * 100),
+		MatchCount: n,
+		Wins:       wins,
+		KDRatio:    &kd,
+		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		WinRate:              round2(analysis.WinRate(wins, n) * 100),
 		Accuracy:             acc,
 		KillsPerGame:         &kpg,
 		AssistsPerGame:       &apg,
@@ -408,10 +409,11 @@ func computeKPIsFromSynthesisExcluding(
 	kd := safeDiv(float64(totalKills), float64(totalDeaths))
 	kpg := float64(totalKills) / float64(n)
 	return domain.TeammateKPIs{
-		MatchCount:   n,
-		Wins:         wins,
-		KDRatio:      &kd,
-		WinRate:      round2(float64(wins) / float64(n) * 100),
+		MatchCount: n,
+		Wins:       wins,
+		KDRatio:    &kd,
+		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		WinRate:      round2(analysis.WinRate(wins, n) * 100),
 		KillsPerGame: &kpg,
 	}
 }

@@ -41,7 +41,9 @@ func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownSta
 
 	var wr float64
 	if totalWL > 0 {
-		wr = math.Round(float64(wins)/float64(totalWL)*1000) / 10
+		// TODO P4 ADR 0006 : convertir vers WinRate canonique (0..1) + format front.
+		// Conserve l'unité 0..100.0 historique avec arrondi 1 décimale.
+		wr = math.Round(WinRate(wins, totalWL)*1000) / 10
 	}
 	var avgKDA float64
 	if nKDA > 0 {
