@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-04-29] P4.1 cloturee — 6 services migres canonical (incl. home pilote)
+
+**Statut** : P4.1 service-level migration complete (6 commits livres sur `chore/cleanup-and-ux-fixes`).
+
+**Contexte** : Demande utilisateur "Vas y fini P4.1 alors" apres le batch des 4 services stats-rows. Dernier service a migrer : home_service.go (le plus complexe, 445 lignes, 9 sources de donnees heterogenes).
+
+**Migration home pilote** :
+
+1. **Pattern reproduit** : champs optionnels `playerMatchesRepo` + `titleSlug` + `gamertag`, methode `WithPlayerMatchesRepo(repo, titleSlug, gamertag)`, branchement dans `fetchMatchesAndSessions` selon les 3 fournis.
+
+2. **Deux converters** : `homeMatchRowFromCanonical` (matches) et `homeSessionsFromCanonical` (sessions derivees du meme canonical row, SessionID parse string→int via strconv).
+
+3. **Cache TTL preserve** : le cache `HomeMatchesCache` continue de fonctionner dans les deux modes (cle xuid, stocke types domain.* finaux). Bypass cache identique avant et apres migration.
+
+4. **ADR 0011 applique strictement** :
+   - Donnees brutes (kills/deaths/MMR/Outcome/scores equipes/SkillSnapshot data fields) : depuis canonical.
+   - Labels FR map/playlist/game_variant : via `AssetReference.Labels["fr"]` avec fallback `DefaultLabel`.
+   - **SkillTierLabel** : LAISSE VIDE — TODO P4.3 cable `TitleSemanticAdapter` CSR-tier-aware.
+   - **SkillRankImageURL** : LAISSE VIDE — TODO P4.3 cable `TitleAssetURLAdapter.CSRRankImageURL`.
+   - **PairID/PairName/PairNameFR** : composite Halo-only laisse vide (P4.3).
+
+5. **Outcome canonical → int Halo** : reuse du switch (`OutcomeWin=2`, `OutcomeLoss=3`, `OutcomeTie=domain.OutcomeDraw=1`, `OutcomeDNF=4`).
+
+**Bilan P4.1 service-level** : 6/6 services match-rows migres :
+
+| Service | Commit | Converter |
+|---|---|---|
+| synthesis | `7a3be782` | `synthesisMatchRowFromCanonical` |
+| stats | `d1fad4d1` | `statsMatchRowFromCanonical` |
+| timeseries | `8a607dc7` | reuse `statsMatchRowsFromCanonical` |
+| session_compare | `1179d8c6` | reuse `statsMatchRowsFromCanonical` |
+| session_page | `a7da75c7` | reuse `statsMatchRowsFromCanonical` |
+| home | `c0ac2638` | `homeMatchRowFromCanonical` + `homeSessionsFromCanonical` |
+
+**Reste P4.2/P4.3** :
+- P4.2 services restants categorises non-applicables au pattern stats-rows : compare (aggregated), career/match_view (deja canonical via dataAdapter), engagement/citations/leaderboard/season_pass/media (shapes differentes), squad/teammates (parallele agent).
+- P4.3 : retirer les converters quand les analyses (BuildHeroCard/buildCumulTab/etc.) consommeront canonical directement, et supprimer les types legacy `domain.{Home,Synthesis,Stats}MatchRow`.
+- Cabler `WithPlayerMatchesRepo` dans `server.go` au moment du release switchover (la DI actuelle preserve le path legacy).
+
+---
+
 ## [2026-04-29] P4.1 batch migration canonical — 4 services + plan annoté
 
 **Statut** : Complété (4 commits livrés sur `chore/cleanup-and-ux-fixes`).

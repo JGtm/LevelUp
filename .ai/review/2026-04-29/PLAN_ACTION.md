@@ -33,9 +33,9 @@ Branche `chore/cleanup-and-ux-fixes` — 47+ commits, P0→P8 partiels livrés.
 - **P4.1 timeseries** : `WithPlayerMatchesRepo(repo, titleSlug, gamertag)` câblé. Réutilise `statsMatchRowsFromCanonical` (même package). Converter sera retiré quand `buildCumulTab`/`computeRegressionStats`/`buildKDABuckets`/`buildIntensityTab`/`buildDistributionsTab` consommeront canonical.
 - **P4.1 session_compare** : `WithPlayerMatchesRepo` câblé, fallback statsRepo préservé. Converter retiré quand `extractSessionLabels`/`filterBySession`/`buildCompareEntry`/`buildCompareMetrics` migrées canonical.
 - **P4.1 session_page** : `WithPlayerMatchesRepo` câblé. Converter retiré quand `buildSessionDetailRows`/`buildSessionCompareSuggestion`/etc. migrées canonical.
+- **P4.1 home pilote** : `WithPlayerMatchesRepo(repo, titleSlug, gamertag)` câblé. Converters `homeMatchRowFromCanonical` + `homeSessionsFromCanonical` mappent canonical → `domain.HomeMatchRow` / `domain.HomeSessionRow`. Cache TTL préservé (clé xuid). **Limitations explicites P4.3** : SkillTierLabel laissé vide (TODO TitleSemanticAdapter CSR-tier-aware), SkillRankImageURL laissé vide (TODO TitleAssetURLAdapter.CSRRankImageURL câblé sur service), PairID/PairName/PairNameFR composite Halo-only laissés vides.
 
 ### Sub-phases TODO [À FAIRE]
-- **P4.1 home pilote** : extensions canonical livrées, adapters semantic+assetURL câblés en DI (server.go), refactor home_service.go en attente (pattern reproductible depuis synthesis + stats + timeseries + session_compare + session_page)
 - **P4.2** services restants à évaluer cas-par-cas :
   - Compare (aggregated `NormalizedPlayerStats`, pas de match-rows — pas le même pattern, à voir avec `canonical.PlayerStats`)
   - Career (déjà canonical via `dataAdapter.LoadCareerSnapshot`/`LoadEncounters` — Phase C+ multi-titres)
