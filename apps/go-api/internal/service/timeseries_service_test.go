@@ -375,13 +375,14 @@ func TestBuildCorrelationPoints_AllTypes(t *testing.T) {
 	if len(points) == 0 {
 		t.Fatal("expected non-empty correlation points")
 	}
-	labels := make(map[string]bool)
+	// P7.1 : Label composite remplacé par MetricXKey + MetricYKey.
+	pairs := make(map[string]bool)
 	for _, p := range points {
-		labels[p.Label] = true
+		pairs[p.MetricXKey+"_vs_"+p.MetricYKey] = true
 	}
-	for _, want := range []string{"kills_vs_kd", "kills_vs_deaths", "lifespan_vs_kills"} {
-		if !labels[want] {
-			t.Errorf("missing label %q", want)
+	for _, want := range []string{"kills_vs_kd_ratio", "kills_vs_deaths", "lifespan_vs_kills"} {
+		if !pairs[want] {
+			t.Errorf("missing pair %q", want)
 		}
 	}
 }

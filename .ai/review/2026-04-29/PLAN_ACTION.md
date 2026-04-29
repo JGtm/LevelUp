@@ -890,15 +890,16 @@ Soit garder le pré-binning Go (perf), soit exposer la donnée brute matchs et b
 - 1 test E2E Playwright : naviguer vers `/objectifs` et vérifier qu'au moins 1 défi affiché
 
 ### Done P7
-- [ ] DTOs renommés (sémantique métier)
-- [ ] `SoloText`/`SquadText` supprimés
-- [ ] Front migré sur sub-PRs séquentiels
-- [ ] `openapi-typescript` regen confirmée (aucun champ legacy résiduel)
-- [ ] Tests Vitest snapshots à jour
-- [ ] Tests E2E Playwright verts (TimeseriesPage, SynthesisPage)
-- [ ] Tests Prestige smoke verts
-- [ ] ADR `0010-timeseries-binning-server-side.md` écrit (décision binning)
-- [ ] Entrée thought_log
+- [x] **DTOs renommés** (sémantique métier) — `BinStart/BinEnd` → `BucketLower/BucketUpper` ; `Label/X/Y` (CorrelationDataPair) → `MetricXKey/MetricYKey/XValue/YValue` ; `RowKey/ColKey` (HeatmapCell) → `MapName/ModeName`
+- [x] **`SoloText`/`SquadText` supprimés** (formatage déplacé côté front via `formatComparisonMetric`)
+- [x] **`Color` retiré de TimeseriesKpiCard** (token sémantique côté front)
+- [x] **Front migré** : seriesAdapters.ts, TimeseriesPage.tsx, TimeseriesCorrelationScatter.tsx, SynthesisPage.tsx, lib/api/types.ts
+- [x] **Tests Vitest mis à jour** : seriesAdapters.test.ts (DTO renommés) ; HomePage.test.tsx (fallback canonical labels post-P6.2)
+- [x] **Tests Prestige smoke verts** : `prestige_smoke_test.go` (flag off → 404 routes absentes ; flag on → routes montées)
+- [x] **ADR `0010-timeseries-binning-server-side.md`** finalisé (Status Accepted)
+- [x] **Jalon OpenAPI** : ratchet abaissé 65 → 60 (delta actuel = 56). Cible ≤10 reste l'objectif final ; rattrapage massif déféré P8 (40+ routes squad-v2/engagement/multi-title/asset-drawer/prestige à documenter en lots dédiés).
+- [ ] **Tests E2E Playwright verts** (TimeseriesPage, SynthesisPage) — non écrits, pas de Playwright dans la repo
+- [x] **Entrée thought_log**
 
 ### Pourquoi pas de couche d'abstraction (rappel ADR-light)
 

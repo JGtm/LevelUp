@@ -83,8 +83,10 @@ export function TimeseriesCorrelationScatter({
   emptyDescription,
 }: TimeseriesCorrelationScatterProps) {
   const availableLabels = useMemo(() => {
+    // P7.1 (revue 2026-04-29) : DTO `label` (composite) → metric_x_key/metric_y_key.
+    // On reconstruit le composite côté front pour préserver le filtrage existant.
     const seen = new Set<string>()
-    for (const p of points) seen.add(p.label)
+    for (const p of points) seen.add(`${p.metric_x_key}_vs_${p.metric_y_key}`)
     return Array.from(seen)
   }, [points])
 

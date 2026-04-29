@@ -450,9 +450,9 @@ func buildKDABuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionB
 			end = maxBin + binWidth
 		}
 		buckets = append(buckets, domain.DistributionBucket{
-			BinStart: math.Round(start*100) / 100,
-			BinEnd:   math.Round(end*100) / 100,
-			Count:    c,
+			BucketLower: math.Round(start*100) / 100,
+			BucketUpper: math.Round(end*100) / 100,
+			Count:       c,
 		})
 	}
 	return buckets
@@ -486,9 +486,9 @@ func buildKillsBuckets(matches []legacymatch.StatsMatchRow) []domain.Distributio
 		start := float64(i) * binWidth
 		end := start + binWidth
 		buckets = append(buckets, domain.DistributionBucket{
-			BinStart: start,
-			BinEnd:   end,
-			Count:    c,
+			BucketLower: start,
+			BucketUpper: end,
+			Count:       c,
 		})
 	}
 	return buckets
@@ -508,32 +508,34 @@ func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.Correl
 			lifespan = float64(*m.TimePlayedSeconds) / float64(m.Deaths+1)
 		}
 
-		// kills_vs_kd
+		// P7.1 (revue 2026-04-29) : Label composite ("kills_vs_kd") séparé en
+		// MetricXKey/MetricYKey ; X/Y → XValue/YValue.
 		points = append(points, domain.CorrelationDataPair{
-			Label: "kills_vs_kd", X: float64(m.Kills), Y: math.Round(kd*100) / 100, Outcome: m.Outcome,
+			MetricXKey: "kills", MetricYKey: "kd_ratio",
+			XValue: float64(m.Kills), YValue: math.Round(kd*100) / 100, Outcome: m.Outcome,
 		})
-		// lifespan_vs_kills
 		points = append(points, domain.CorrelationDataPair{
-			Label: "lifespan_vs_kills", X: math.Round(lifespan*10) / 10, Y: float64(m.Kills), Outcome: m.Outcome,
+			MetricXKey: "lifespan", MetricYKey: "kills",
+			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Kills), Outcome: m.Outcome,
 		})
-		// accuracy_vs_kda
 		if m.Accuracy != nil && m.KDA != nil {
 			points = append(points, domain.CorrelationDataPair{
-				Label: "accuracy_vs_kda", X: math.Round(*m.Accuracy*1000) / 10, Y: math.Round(*m.KDA*100) / 100, Outcome: m.Outcome,
+				MetricXKey: "accuracy", MetricYKey: "kda",
+				XValue: math.Round(*m.Accuracy*1000) / 10, YValue: math.Round(*m.KDA*100) / 100, Outcome: m.Outcome,
 			})
 		}
-		// lifespan_vs_deaths
 		points = append(points, domain.CorrelationDataPair{
-			Label: "lifespan_vs_deaths", X: math.Round(lifespan*10) / 10, Y: float64(m.Deaths), Outcome: m.Outcome,
+			MetricXKey: "lifespan", MetricYKey: "deaths",
+			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Deaths), Outcome: m.Outcome,
 		})
-		// kills_vs_deaths
 		points = append(points, domain.CorrelationDataPair{
-			Label: "kills_vs_deaths", X: float64(m.Kills), Y: float64(m.Deaths), Outcome: m.Outcome,
+			MetricXKey: "kills", MetricYKey: "deaths",
+			XValue: float64(m.Kills), YValue: float64(m.Deaths), Outcome: m.Outcome,
 		})
-		// mmr_team_vs_enemy (si disponible)
 		if m.TeamMMR != nil && m.EnemyMMR != nil {
 			points = append(points, domain.CorrelationDataPair{
-				Label: "mmr_team_vs_enemy", X: math.Round(*m.TeamMMR*100) / 100, Y: math.Round(*m.EnemyMMR*100) / 100, Outcome: m.Outcome,
+				MetricXKey: "mmr_team", MetricYKey: "mmr_enemy",
+				XValue: math.Round(*m.TeamMMR*100) / 100, YValue: math.Round(*m.EnemyMMR*100) / 100, Outcome: m.Outcome,
 			})
 		}
 	}
@@ -605,7 +607,7 @@ func buildAccuracyBuckets(matches []legacymatch.StatsMatchRow) []domain.Distribu
 		}
 		start := float64(i) * binWidth
 		buckets = append(buckets, domain.DistributionBucket{
-			BinStart: start, BinEnd: start + binWidth, Count: c,
+			BucketLower: start, BucketUpper: start + binWidth, Count: c,
 		})
 	}
 	return buckets
@@ -629,10 +631,10 @@ func buildScorePerMinBuckets(matches []legacymatch.StatsMatchRow) []domain.Distr
 	for idx, c := range counts {
 		start := float64(idx) * binWidth
 		buckets = append(buckets, domain.DistributionBucket{
-			BinStart: start, BinEnd: start + binWidth, Count: c,
+			BucketLower: start, BucketUpper: start + binWidth, Count: c,
 		})
 	}
-	sort.Slice(buckets, func(i, j int) bool { return buckets[i].BinStart < buckets[j].BinStart })
+	sort.Slice(buckets, func(i, j int) bool { return buckets[i].BucketLower < buckets[j].BucketLower })
 	return buckets
 }
 
@@ -672,7 +674,7 @@ func buildRollingWRBuckets(matches []legacymatch.StatsMatchRow) []domain.Distrib
 		}
 		start := float64(i) * binWidth
 		buckets = append(buckets, domain.DistributionBucket{
-			BinStart: start, BinEnd: start + binWidth, Count: c,
+			BucketLower: start, BucketUpper: start + binWidth, Count: c,
 		})
 	}
 	return buckets

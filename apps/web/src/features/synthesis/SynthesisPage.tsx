@@ -6,7 +6,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import type { EChartsCoreOption } from 'echarts/core'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
-import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { useFieldMappings, useFieldLabel } from '@/lib/i18n/fieldMappings'
 import { useSynthesisPage } from './queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -45,6 +45,24 @@ type Period = typeof PERIOD_OPTIONS[number]['value']
 
 const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
+/**
+ * P7.1 (revue 2026-04-29) — formatage côté front d'une valeur de
+ * ComparisonMetricItem (DTO sans solo_text/squad_text). Le format dépend de
+ * la clé canonique (cf. fields.toml). Les valeurs brutes sont des `number`.
+ */
+function formatComparisonMetric(metricKey: string | undefined, value: number | undefined): string {
+  if (value == null) return ''
+  switch (metricKey) {
+    case 'win_rate':
+    case 'accuracy':
+      return `${(value * 100).toFixed(1)}%`
+    case 'performance_score':
+      return value.toFixed(0)
+    default:
+      return value.toFixed(2)
+  }
+}
+
 // ─── Graphique bipolaire Solo ← / → Escouade ─────────────────────────────────
 
 export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCoreOption {
@@ -69,7 +87,10 @@ export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCo
         label: {
           show: true, position: 'left',
           color: TEXT_COLOR, fontSize: 10,
-          formatter: (p: { dataIndex: number }) => dps[p.dataIndex]?.solo_text ?? '',
+          // P7.1 (revue 2026-04-29) : formatage côté front à partir des
+          // valeurs brutes (solo_text/squad_text retirés du DTO).
+          formatter: (p: { dataIndex: number }) =>
+            formatComparisonMetric(dps[p.dataIndex]?.label, dps[p.dataIndex]?.solo_value),
         },
         markLine: {
           symbol: 'none', silent: true,
@@ -86,7 +107,8 @@ export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCo
         label: {
           show: true, position: 'right',
           color: TEXT_COLOR, fontSize: 10,
-          formatter: (p: { dataIndex: number }) => dps[p.dataIndex]?.squad_text ?? '',
+          formatter: (p: { dataIndex: number }) =>
+            formatComparisonMetric(dps[p.dataIndex]?.label, dps[p.dataIndex]?.squad_value),
         },
       },
     ],
@@ -169,11 +191,18 @@ function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
 
 interface MetricRowProps { item: ComparisonMetricItem }
 function MetricRow({ item }: MetricRowProps) {
+  // P7.1 : item.label est une clé canonique (win_rate, kd_ratio…),
+  // résolue en libellé via useFieldLabel (TOML fields.toml).
+  const displayLabel = useFieldLabel(item.label)
   return (
     <tr className="border-b last:border-0">
-      <td className="px-4 py-3 text-sm font-medium text-foreground">{item.label}</td>
-      <td className="px-4 py-3 text-center text-sm text-info">{item.solo_text}</td>
-      <td className="px-4 py-3 text-center text-sm text-success">{item.squad_text}</td>
+      <td className="px-4 py-3 text-sm font-medium text-foreground">{displayLabel}</td>
+      <td className="px-4 py-3 text-center text-sm text-info">
+        {formatComparisonMetric(item.label, item.solo_value)}
+      </td>
+      <td className="px-4 py-3 text-center text-sm text-success">
+        {formatComparisonMetric(item.label, item.squad_value)}
+      </td>
     </tr>
   )
 }

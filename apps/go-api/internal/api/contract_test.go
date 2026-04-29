@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 
@@ -227,9 +228,24 @@ func TestContractRoutesDocumented(t *testing.T) {
 	}
 
 	// Plafond actuel — a decrocher progressivement selon les jalons P4/P6/P8.8.
-	const undocumentedThreshold = 65
+	//
+	// P7 (revue 2026-04-29) : abaissement progressif du plafond de 65 → 60.
+	// Le jalon plan post-P6 ≤ 10 reste l'objectif final mais nécessite un
+	// effort de documentation OpenAPI massif (40+ routes squad-v2,
+	// engagement, multi-title, asset-drawer, prestige). On serre d'abord
+	// le ratchet pour interdire toute régression silencieuse, puis on
+	// fera le rattrapage en lots dédiés en P8.
+	//
+	// Suivi des jalons :
+	//   - Baseline revue : 57 routes chi non documentees
+	//   - Apres P4 big-bang canonical : <= 30 (services migres documentent leurs DTOs)
+	//   - Apres P6 (capabilities + flags ON) : <= 10
+	//   - En P8.8 (cloture OpenAPI) : 0
+	const undocumentedThreshold = 60
 
 	if len(undocumented) > undocumentedThreshold {
+		// Tri des routes pour un diagnostic stable.
+		sort.Strings(undocumented)
 		t.Errorf(
 			"P3.3 — %d routes chi non documentees dans openapi.yaml (plafond %d).\n"+
 				"Routes manquantes :\n  %s\n\n"+
