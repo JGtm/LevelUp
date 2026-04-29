@@ -44,8 +44,8 @@ func TestAssetURLAdapter_MedalImageURL(t *testing.T) {
 		medalID uint64
 		want    string
 	}{
-		{"numeric", 12345, "/static/medals/icons/halo_infinite/12345.png"},
-		{"zero", 0, "/static/medals/icons/halo_infinite/0.png"},
+		{"numeric", 12345, "/static/medals/halo_infinite/12345.png"},
+		{"zero", 0, "/static/medals/halo_infinite/0.png"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

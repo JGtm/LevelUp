@@ -32,7 +32,7 @@ func TestFolder(t *testing.T) {
 		want string
 	}{
 		{KindMap, "maps"},
-		{KindMedal, "medals/icons"},
+		{KindMedal, "medals"},
 		{KindCSRRank, "ranks"},
 		{KindWeapon, "weapons-assets"},
 		{KindCommendation, "commendations"},
@@ -57,7 +57,7 @@ func TestURL(t *testing.T) {
 	}{
 		{"map png", KindMap, "halo_infinite", "Aquarius", ".png", "/static/maps/halo_infinite/Aquarius.png"},
 		{"map jpg", KindMap, "halo_infinite", "Bazaar", ".jpg", "/static/maps/halo_infinite/Bazaar.jpg"},
-		{"medal numeric id", KindMedal, "halo_infinite", "12345", ".png", "/static/medals/icons/halo_infinite/12345.png"},
+		{"medal numeric id", KindMedal, "halo_infinite", "12345", ".png", "/static/medals/halo_infinite/12345.png"},
 		{"csr rank", KindCSRRank, "halo_infinite", "120px-HINF-CSR_Onyx", ".png", "/static/ranks/halo_infinite/120px-HINF-CSR_Onyx.png"},
 		{"weapon", KindWeapon, "halo_infinite", "br75", ".png", "/static/weapons-assets/halo_infinite/br75.png"},
 		{"commendation", KindCommendation, "halo_5_guardians", "achilles", ".png", "/static/commendations/halo_5_guardians/achilles.png"},
@@ -103,7 +103,7 @@ func TestAbsKindRoot(t *testing.T) {
 		want      string
 	}{
 		{"valid map HI", "/repo", KindMap, "halo_infinite", filepath.Join("/repo", "static", "maps", "halo_infinite")},
-		{"valid medal", "/repo", KindMedal, "halo_infinite", filepath.Join("/repo", "static", "medals/icons", "halo_infinite")},
+		{"valid medal", "/repo", KindMedal, "halo_infinite", filepath.Join("/repo", "static", "medals", "halo_infinite")},
 		{"empty repoRoot still composes", "", KindCSRRank, "halo_infinite", filepath.Join("", "static", "ranks", "halo_infinite")},
 		{"invalid kind → empty", "/repo", Kind("unknown"), "halo_infinite", ""},
 		{"empty slug → empty", "/repo", KindMap, "", ""},
