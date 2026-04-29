@@ -1,5 +1,41 @@
 # Thought Log
 
+## [2026-04-29] P3 résiduel — slog notify + régression engagement + Clock + tests halo (sur chore/cleanup-and-ux-fixes)
+
+**Statut** : P3.2 et P3.5 livrés complets. P3.6 et P3.7 livrés partiels (chunks principaux). Reste 4 port extractions (P3.7) + 5 fichiers platform/halo (P3.6) — substantiels, à traiter en phase dédiée.
+
+**5 commits livrés sur cette tranche** :
+- `d0211dc6 refactor(p3.5)` : 29 sites `log.Printf` migrés vers `slog.{Debug,Info,Warn,Error}Context` dans `internal/notify/{discord,version,notifiers}.go`. Pattern uniforme avec clés structurées `op` / `err` / `gamertag` / `slug` / `count` / `status`.
+- `0027dd47 test(p3.2)` : 4 tests régression engagement B1-B4 (source-grep + JSON roundtrip). Catch reintroduction des patterns cassés (is_pve, is_bot, MatchEndMS=epoch, JSON PascalCase).
+- `14e8f790 test(p3.6)` : 6 tests `player_token_cache` (cache process-level pur — pas de HTTP). Couvre TTL, isolation par xuid, override, concurrence read/write.
+- `3325b437 feat(p3.7)` : nouveau package `internal/clock/` (Clock interface + System + Fake) + refactor `IsSessionPotentiallyActive` en wrapper sur `IsSessionPotentiallyActiveAt(now, ...)` testable. 5 cas table-driven déterministes (auparavant flaky car dépendaient de `time.Now()` réel).
+
+**Métriques** :
+- Tests Go ajoutés : 4 (B1-B4) + 6 (token cache) + 3 (Clock) + 5 (sessions) + 2 (sessions auxiliaires précédents) = 20+ tests
+- Sites `log.Printf` restant dans `internal/` : 0 (notify était le seul package qui en avait — confirmé par grep)
+
+**P3 final — récap 8 sub-phases** :
+- P3.1 ✓ annotation ratchet (commit 91151229)
+- P3.2 ✓ engagement régression B1-B4 (4 tests)
+- P3.3 ✓ TestContractRoutesDocumented plafond 65 (commit fd08784d)
+- P3.4 ✓ smoke tests Prestige flag ON/OFF (commit 91151229)
+- P3.5 ✓ slog notify migration 29 sites
+- P3.6 ⚠ partiel : player_token_cache (1/6 fichiers). Reste medal_provider (refactor URL needed), season_provider, discovery_client, compare_provider, challenges_details
+- P3.7 ⚠ partiel : Clock + sessions (1 site sur ~5). Reste port.HomePersistSink, port.MediaIndexRepository, port.MediaUploadRepository, port.RanksLoader
+- P3.8 ✓ Vitest coverage CI (commit 380e0b14)
+
+**Reste estimé P3** (~3-4 j) :
+- P3.6 (~1 j) : refactor `medal_provider.go` à utiliser `p.gameCMSBaseURL` + tests httptest pour 5 fichiers
+- P3.7 (~2-3 j) : extraction 4 ports + refactor des 4 services consommateurs
+
+Ces sub-phases résiduelles peuvent être traitées en phase dédiée ou pendant P4 big-bang canonical (ce qui touchera de toute façon `home_service.go`, `media_service.go`, et les services d'analysis).
+
+**Bilan branche** `chore/cleanup-and-ux-fixes` : 32+ commits depuis main. Prête au merge sur `feat/multi-title-static-fs-rescope`.
+
+**Prochaine étape** : merge P0+P1+P2+P3 (tout livré sur cette branche), puis P4 (canonical big-bang) qui inclura naturellement les chunks P3.7 résiduels (port extractions sur les services migrés).
+
+---
+
 ## [2026-04-29] P2.6bis + P3 partiel — formatters front + tests fondations (sur chore/cleanup-and-ux-fixes)
 
 **Statut** : P2.6bis livré complet. P3 livré partiel (P3.1, P3.3, P3.4, P3.8). Reste P3.2, P3.5, P3.6, P3.7.
