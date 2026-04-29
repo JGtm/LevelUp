@@ -1067,7 +1067,7 @@ Chaque sous-composant : <= 200L, props typées, tests Vitest si logique non triv
 - [x] **P8.2** notify migré slog (déjà fait en P3.5)
 - [x] **P8.3** observability branchée (`/debug/vars` derrière RequireAuth+RequireAdmin, hot paths instrumentés : home/career/match-view/stats/timeseries — RecordDurationMS), error_tracker supprimé. README `internal/observability/README.md` créé.
 - [~] **P8.4** 4/5 god pages découpées :
-  - [x] **HomePage.tsx** 1158L → 735L (5 sub-components extraits : `HomeKPICard`, `HomeOutcomeBar`, `HomeHighlightTile`, `HomeSessionCarousel`, `HomeSkillPeakCard`)
+  - [x] **HomePage.tsx** 1158L → 433L (7 sub-components extraits : `HomeKPICard`, `HomeOutcomeBar`, `HomeHighlightTile`, `HomeSessionCarousel`, `HomeSkillPeakCard`, `HomeSpartanIdentityBanner`, `HomeHeroKPIGrid`)
   - [x] **SetupPage.tsx** 484L → 75L (3 Step* extraits : `StepDeviceCode`, `StepPlayer`, `StepInitialSync` + `_helpers.ts`)
   - [x] **MatchViewPage.tsx** 600L → 439L (`MatchHeader.tsx` Breadcrumb+Navigation + `_chartSeries.ts`)
   - [x] **SettingsPage.tsx** 906L → 209L (4 tabs : `GeneralTab`, `SyncTab`, `AnalyseTab`, `BackfillCard` + `_settingsShared.tsx` ToggleRow/BulletHint/TabProps)
