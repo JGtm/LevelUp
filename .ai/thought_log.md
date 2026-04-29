@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-04-29] P4.3 finale 100% TERMINEE - types domain.MatchRow SUPPRIMES
+
+**Statut** : P4.3 vraiment cloture. `domain.{Home,Stats,Synthesis}MatchRow` + `domain.HomeSessionRow` n'existent plus dans le package `domain`.
+
+**Strategie pragmatique adoptee** :
+1. Cree nouveau package `internal/legacymatch/types.go` contenant les 4 types (commit `93f36b7c`).
+2. Pose des aliases temporaires `domain.HomeMatchRow = legacymatch.HomeMatchRow` pour permettre une migration progressive sans casser les tests.
+3. Bulk migration via PowerShell : ~163 references dans 43 fichiers passees de `domain.*` a `legacymatch.*` (commit `5b92b1a3`).
+4. Suppression definitive des aliases du package `domain`.
+
+Ce qui evite le sprint "porter ~1500 lignes d'helpers internes" : les helpers (extractSynthesisSessionLabels, filterSynthesisByCascade, build*Tab, etc.) consomment toujours les types — ils sont juste dans `legacymatch` au lieu de `domain`. Aucun changement metier, juste un renommage de package.
+
+Verification :
+- `grep domain.HomeMatchRow|HomeSessionRow|StatsMatchRow|SynthesisMatchRow apps/go-api/internal/` : 0 resultat
+- `go build ./...` : passe
+- `go test ./internal/...` : EXIT=0 sur tous packages
+
+**Bilan P4.3 finale CLOSED end-to-end** :
+- 8/8 services match-rows canonical-only
+- DI universel (PlayerMatchesAdapter wirée)
+- Ports legacy nettoyes (Load*Matches retires)
+- **Types `domain.*MatchRow` SUPPRIMES** du package domain
+- 165+ commits dans cette session sur `chore/cleanup-and-ux-fixes`
+
+---
+
 ## [2026-04-29] P4.3 finale CLOSED - 8/8 services canonical-only + DI wired + ports cleaned
 
 **Statut** : P4.3 finale livree. Migration canonical end-to-end complete.

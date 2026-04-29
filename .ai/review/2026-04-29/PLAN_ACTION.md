@@ -59,11 +59,10 @@ Branche `chore/cleanup-and-ux-fixes` — 47+ commits, P0→P8 partiels livrés.
   - **Port interfaces nettoyées** (`45e3673b`) : `LoadStatsMatches` / `LoadHomeMatches` / `LoadHomeSessions` / `LoadSynthesisMatches` retirés de `port.{Stats,Home,Squad,Synthesis}Repository`.
   - **Types `domain.*MatchRow` marqués `Deprecated:`** (`1371c54f`) avec lien P4.3 finale + path forward.
 
+- **P4.3 cleanup** (DONE — commit `5b92b1a3`) : types `domain.{Home,Stats,Synthesis}MatchRow` + `domain.HomeSessionRow` **DÉFINITIVEMENT SUPPRIMÉS du package domain**. Stratégie pragmatique : migration vers nouveau package `internal/legacymatch` + bulk replace_all de ~163 références dans 43 fichiers. Les helpers internes (squad/teammates, stats analyses) consomment maintenant `legacymatch.*` au lieu de `domain.*`. Build + tous tests passent.
+
 ### Sub-phases TODO [À FAIRE]
-- **P4.3 cleanup (sprint dédié post-P4.3)** : suppression effective des types `domain.{Home,Stats,Synthesis}MatchRow` actuellement marqués `Deprecated`. Bloqué par :
-  - ~1500 lignes d'helpers internes (squad/teammates : `extractSynthesisSessionLabels`, `filterSynthesisByCascade`, `buildTeammateRowWithMatches` ; stats : `buildWinLossTab`, `buildCumulTab`, `buildKDABuckets`, `computeRegressionStats`) à porter à canonical avant suppression.
-  - Tests d'intégration `platform/duckdb/player_repos_test.go` à adapter (TestHomeRepo_LoadHomeMatches_*, TestStatsRepo_LoadStatsMatches_*).
-  - Effort estimé : 3-5 jours focus.
+(P4.3 entièrement clôturé sur cette branche.)
 - **P5** xuid_aliases globalisation + Halo-only adapters extraction
 - **P6.2** `useFieldLabel` partout côté front + manifest synthesis.toml
 - **P6.3** middleware `RequireCapability` + 3 routes admin
