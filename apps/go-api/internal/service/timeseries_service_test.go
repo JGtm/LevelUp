@@ -205,7 +205,8 @@ func TestNewTimeseriesService(t *testing.T) {
 }
 
 func TestTimeseriesService_GetPage_Empty(t *testing.T) {
-	svc := NewTimeseriesService(&mockTimeseriesRepo{})
+	svc := NewTimeseriesService(&mockTimeseriesRepo{}).
+		WithPlayerMatchesRepo(newStatsMockFromRows(nil, nil), "halo_infinite", "Test")
 	resp, err := svc.GetPage(context.Background(), domain.TimeseriesQueryRequest{})
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +217,8 @@ func TestTimeseriesService_GetPage_Empty(t *testing.T) {
 }
 
 func TestTimeseriesService_GetPage_Error(t *testing.T) {
-	svc := NewTimeseriesService(&mockTimeseriesRepo{err: errors.New("fail")})
+	svc := NewTimeseriesService(&mockTimeseriesRepo{}).
+		WithPlayerMatchesRepo(newStatsMockFromRows(nil, errors.New("fail")), "halo_infinite", "Test")
 	_, err := svc.GetPage(context.Background(), domain.TimeseriesQueryRequest{})
 	if err == nil {
 		t.Error("expected error")
@@ -232,7 +234,8 @@ func TestTimeseriesService_GetPage_WithData(t *testing.T) {
 	matches := []domain.StatsMatchRow{
 		{Kills: 10, Deaths: 5, Assists: 3, Outcome: &win, TimePlayedSeconds: &dur, Accuracy: &acc, PersonalScore: &ps, KDA: &kda},
 	}
-	svc := NewTimeseriesService(&mockTimeseriesRepo{matches: matches})
+	svc := NewTimeseriesService(&mockTimeseriesRepo{matches: matches}).
+		WithPlayerMatchesRepo(newStatsMockFromRows(matches, nil), "halo_infinite", "Test")
 	resp, err := svc.GetPage(context.Background(), domain.TimeseriesQueryRequest{})
 	if err != nil {
 		t.Fatal(err)

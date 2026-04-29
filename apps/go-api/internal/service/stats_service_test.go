@@ -42,7 +42,8 @@ func TestStatsService_GetPage_WinLoss(t *testing.T) {
 			{MatchID: "m3", StartTime: now, Outcome: &win, Kills: 20, Deaths: 8, Assists: 5, Accuracy: float64Ptr(0.6)},
 		},
 	}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "win_loss"})
 	if err != nil {
@@ -63,7 +64,8 @@ func TestStatsService_GetPage_Accuracy(t *testing.T) {
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3, Accuracy: float64Ptr(0.6), TimePlayedSeconds: intPtr(600)},
 		},
 	}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "accuracy"})
 	if err != nil {
@@ -81,7 +83,8 @@ func TestStatsService_GetPage_Objective(t *testing.T) {
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3, PersonalScore: intPtr(500)},
 		},
 	}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "objective"})
 	if err != nil {
@@ -99,7 +102,8 @@ func TestStatsService_GetPage_Form(t *testing.T) {
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3, PerfScoreComputed: float64Ptr(1.2)},
 		},
 	}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "form"})
 	if err != nil {
@@ -120,7 +124,8 @@ func TestStatsService_GetPage_LUSR(t *testing.T) {
 			{MatchID: "m1", RatingValue: 25.0, RatingDeviation: 8.0},
 		},
 	}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "lusr"})
 	if err != nil {
@@ -133,7 +138,8 @@ func TestStatsService_GetPage_LUSR(t *testing.T) {
 
 func TestStatsService_GetPage_Empty(t *testing.T) {
 	repo := &mockStatsRepoForStats{matches: []domain.StatsMatchRow{}}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "win_loss"})
 	if err != nil {
@@ -149,7 +155,8 @@ func TestStatsService_GetPage_Empty(t *testing.T) {
 
 func TestStatsService_GetPage_Error(t *testing.T) {
 	repo := &mockStatsRepoForStats{matchErr: errors.New("fail")}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(nil, errors.New("canonical fail")), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	_, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{})
 	if err == nil {
@@ -168,7 +175,8 @@ func TestStatsService_GetPage_All(t *testing.T) {
 			{MatchID: "m1", RatingValue: 25.0, RatingDeviation: 8.0},
 		},
 	}
-	svc := NewStatsService(repo)
+	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
+	svc.titleSlug = "halo_infinite"
 
 	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "all"})
 	if err != nil {

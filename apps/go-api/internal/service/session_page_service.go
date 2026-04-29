@@ -47,24 +47,17 @@ func (s *SessionPageService) GetPage(
 		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage validate: %w", err)
 	}
 
-	// P4.1 (ADR 0011) : si playerMatchesRepo injecté, charger canonical et
-	// convertir via le converter partagé statsMatchRowsFromCanonical.
-	var rows []domain.StatsMatchRow
-	var err error
-	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
-		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
-			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-		)
-		if e != nil {
-			return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage canonical: %w", e)
-		}
-		rows = analysis.StatsMatchRowsFromCanonical(canonicalRows)
-	} else {
-		rows, err = s.statsRepo.LoadStatsMatches(ctx)
-		if err != nil {
-			return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage load: %w", err)
-		}
+	// P4.3 finale (ADR 0011) : path canonical exclusif.
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
+	if err != nil {
+		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage: %w", err)
+	}
+	rows := analysis.StatsMatchRowsFromCanonical(canonicalRows)
 
 	filtered := filterStatsMatchRows(rows, req.Filters)
 	labels := extractSessionLabels(filtered)
