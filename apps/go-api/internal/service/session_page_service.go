@@ -15,11 +15,26 @@ import (
 // SessionPageService construit la page de détail d'une session.
 type SessionPageService struct {
 	statsRepo port.StatsRepository
+	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
+	// TODO P4.3 : retirer le converter quand les analyses session_page
+	// (extractSessionLabels, buildCompareEntry, buildSessionDetailRows, etc.)
+	// consommeront canonical.
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
+	gamertag          string
 }
 
 // NewSessionPageService crée un SessionPageService.
 func NewSessionPageService(statsRepo port.StatsRepository) *SessionPageService {
 	return &SessionPageService{statsRepo: statsRepo}
+}
+
+// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware.
+func (s *SessionPageService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *SessionPageService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
+	return s
 }
 
 // GetPage retourne la page détail d'une session avec suggestion de comparaison.
@@ -31,9 +46,23 @@ func (s *SessionPageService) GetPage(
 		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage validate: %w", err)
 	}
 
-	rows, err := s.statsRepo.LoadStatsMatches(ctx)
-	if err != nil {
-		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage load: %w", err)
+	// P4.1 (ADR 0011) : si playerMatchesRepo injecté, charger canonical et
+	// convertir via le converter partagé statsMatchRowsFromCanonical.
+	var rows []domain.StatsMatchRow
+	var err error
+	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
+		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
+			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+		)
+		if e != nil {
+			return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage canonical: %w", e)
+		}
+		rows = statsMatchRowsFromCanonical(canonicalRows)
+	} else {
+		rows, err = s.statsRepo.LoadStatsMatches(ctx)
+		if err != nil {
+			return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage load: %w", err)
+		}
 	}
 
 	filtered := filterStatsMatchRows(rows, req.Filters)
