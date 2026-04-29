@@ -26,10 +26,18 @@ var (
 // Helpers privés — extraction JSON
 // ──────────────────────────────────────────────────────────────────────────────
 
-// extractXUID extrait le XUID numérique depuis "xuid(1234567890)".
+// extractXUID extrait le XUID depuis un PlayerId Halo Infinite.
+// Humains : "xuid(1234567890)" → "1234567890"
+// Bots    : "bid(3.0)" → "bid(3.0)" / "bid(3.0" (API sans paren) → "bid(3.0)"
 func extractXUID(playerID string) string {
 	if m := xuidRE.FindStringSubmatch(playerID); len(m) == 2 {
 		return m[1]
+	}
+	if strings.HasPrefix(playerID, "bid(") {
+		if !strings.HasSuffix(playerID, ")") {
+			return playerID + ")"
+		}
+		return playerID
 	}
 	return ""
 }

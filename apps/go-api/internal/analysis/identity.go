@@ -8,11 +8,17 @@
 // Pour le filtrage SQL, utiliser `analysis.SQLIsBot` (cf. sql_fragments.go).
 package analysis
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 // botXUIDPrefix est le préfixe d'identifiant utilisé par Halo Infinite pour
 // les bots de matchmaking. Documenté empiriquement (cf. xuid_aliases en DB).
 const botXUIDPrefix = "bid("
+
+// botDisplayRE extrait le numéro entier depuis un xuid bot ("bid(3.0)" → "3").
+var botDisplayRE = regexp.MustCompile(`^bid\((\d+)`)
 
 // IsBot retourne true si l'identifiant xuid correspond à un bot de match
 // (préfixe `bid(`). Convention propre au sync Halo Infinite mais
@@ -20,4 +26,13 @@ const botXUIDPrefix = "bid("
 // agrègent doivent exclure les bots).
 func IsBot(xuid string) bool {
 	return strings.HasPrefix(xuid, botXUIDPrefix)
+}
+
+// BotDisplayName retourne le nom d'affichage lisible d'un bot depuis son xuid.
+// "bid(3.0)" → "343 Bot 3". Retourne le xuid tel quel si le format est inconnu.
+func BotDisplayName(xuid string) string {
+	if m := botDisplayRE.FindStringSubmatch(xuid); len(m) == 2 {
+		return "343 Bot " + m[1]
+	}
+	return xuid
 }

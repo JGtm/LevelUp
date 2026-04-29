@@ -127,9 +127,14 @@ func InsertMedals(db *sql.DB, rows []MedalRow) error {
 
 // UpsertXUIDAlias met à jour xuid_aliases avec le gamertag le plus récent.
 // Portage de _upsert_xuid_alias() (Python _shared_writes.py).
+// Pour les bots, le nom d'affichage est toujours résolu via BotDisplayName
+// ("bid(3.0)" → "343 Bot 3") indépendamment du gamertag brut de l'API.
 func UpsertXUIDAlias(db *sql.DB, xuid, gamertag string) error {
 	if xuid == "" || gamertag == "" {
 		return nil
+	}
+	if analysis.IsBot(xuid) {
+		gamertag = analysis.BotDisplayName(xuid)
 	}
 	now := time.Now().UTC()
 	_, err := db.Exec(`

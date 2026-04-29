@@ -27,3 +27,26 @@ func TestIsBot(t *testing.T) {
 		})
 	}
 }
+
+func TestBotDisplayName(t *testing.T) {
+	cases := []struct {
+		xuid string
+		want string
+	}{
+		{"bid(3.0)", "343 Bot 3"},
+		{"bid(18.0)", "343 Bot 18"},
+		{"bid(35.0)", "343 Bot 35"},
+		{"bid(0.0)", "343 Bot 0"},
+		{"bid(3.0", "343 Bot 3"},                   // paren manquante (API bug)
+		{"bid(WallE-1)", "bid(WallE-1)"},           // pas de numéro → retourne le xuid brut
+		{"12345678901234567", "12345678901234567"}, // humain → inchangé
+	}
+	for _, tc := range cases {
+		t.Run(tc.xuid, func(t *testing.T) {
+			got := BotDisplayName(tc.xuid)
+			if got != tc.want {
+				t.Errorf("BotDisplayName(%q) = %q, want %q", tc.xuid, got, tc.want)
+			}
+		})
+	}
+}
