@@ -256,6 +256,7 @@ type SynthesisPageRequest struct {
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.
 // Sprint 43 : enrichi avec accuracy, time_played, performance_score pour les KPIs bipolaires.
 // Sprint N : ajout SessionLabel pour les filtres de session.
+// Sprint N+1 : ajout IsRanked, IsFirefight, PlaylistName pour le câblage cascade.
 type SynthesisMatchRow struct {
 	MatchID          string
 	StartTime        time.Time
@@ -268,4 +269,7 @@ type SynthesisMatchRow struct {
 	TimePlayedSecs   *int
 	PerformanceScore *float64
 	SessionLabel     *string
+	IsRanked         bool
+	IsFirefight      bool
+	PlaylistName     string
 }

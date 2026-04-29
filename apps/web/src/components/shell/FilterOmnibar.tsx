@@ -1,24 +1,21 @@
 /**
  * FilterOmnibar — bandeau de filtres en pills (h-9) avec popovers ciblés.
  *
- * Remplace l'ancien FilterPanel expandable. Chaque dimension de filtre
- * (Session, Période, Filtres avancés) est une pill cliquable qui ouvre
- * un popover focused. Un seul popover ouvert à la fois.
- *
  * Ordre d'affichage :
- *   [Session ▾]  [Période ▾]  [Filtres ▾]  ── [N matchs]  [↺ Réinitialiser]
+ *   [Filtres ▾]  |  [Toutes les périodes ▾]  [Toutes les sessions ▾]  [Analyser]
+ *   ← données →      ←————————— scope temporel —————————→
  *
- * Session ↔ Période sont mutuellement exclusifs (auto-derive dans le store) :
- * sélectionner une session vide la période et inversement. La cascade
- * (playlists/modes/cartes/types) est toujours orthogonale.
+ * Les changements sont "pending" : les pills opèrent sur un état local.
+ * Le bouton "Analyser" commit l'état local vers le store (un seul re-fetch).
+ * Les changements externes (auto-snap, reset) resynchronisent l'état local.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
-import type { CascadeInput, PeriodInput, SessionsInput } from '@/lib/api/types'
+import { useGlobalFilterStore, DEFAULT_GAP_MINUTES } from '@/stores/globalFilterStore'
+import type { CascadeInput, FilterContextInput, PeriodInput, SessionsInput } from '@/lib/api/types'
 
 // ─── Helpers période (réutilisés depuis l'ancien FilterPanel) ────────────────
 
-const PERIOD_PRESETS = [
+export const PERIOD_PRESETS = [
   { id: '7d', label: '7 jours', days: 7 },
   { id: '30d', label: '30 jours', days: 30 },
   { id: '90d', label: '90 jours', days: 90 },
@@ -27,14 +24,14 @@ const PERIOD_PRESETS = [
 
 type PresetId = (typeof PERIOD_PRESETS)[number]['id'] | 'custom'
 
-function isoDate(d: Date): string {
+export function isoDate(d: Date): string {
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
 }
 
-function presetPeriod(days: number): PeriodInput | null {
+export function presetPeriod(days: number): PeriodInput | null {
   if (days <= 0) return null
   const end = new Date()
   const start = new Date()
@@ -42,7 +39,7 @@ function presetPeriod(days: number): PeriodInput | null {
   return { start_date: isoDate(start), end_date: isoDate(end) }
 }
 
-function detectActivePreset(period: PeriodInput | undefined): PresetId {
+export function detectActivePreset(period: PeriodInput | undefined): PresetId {
   if (!period) return 'all'
   if (!period.start_date && !period.end_date) return 'all'
   for (const p of PERIOD_PRESETS) {
@@ -65,7 +62,7 @@ function isUUIDLabel(label: string): boolean {
 
 // ─── Hook : popover ouvert/fermé avec click-outside + Escape ─────────────────
 
-function useDismissable(open: boolean, onClose: () => void) {
+export function useDismissable(open: boolean, onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -89,13 +86,28 @@ function useDismissable(open: boolean, onClose: () => void) {
 
 type ActivePopover = 'session' | 'periode' | 'filtres' | null
 
+export const DEFAULT_CASCADE: CascadeInput = { experience_types: [], playlists: [], modes: [], maps: [] }
+export const DEFAULT_SESSIONS: SessionsInput = { picked_sessions: [], gap_minutes: DEFAULT_GAP_MINUTES }
+export const DEFAULT_PERIOD: PeriodInput = { start_date: null, end_date: null }
+
 export function FilterOmnibar() {
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
+  const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
   const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
-  const setPeriod = useGlobalFilterStore((s) => s.setPeriod)
-  const setSessions = useGlobalFilterStore((s) => s.setSessions)
-  const setCascade = useGlobalFilterStore((s) => s.setCascade)
+  const setFilterContext = useGlobalFilterStore((s) => s.setFilterContext)
   const resetFilters = useGlobalFilterStore((s) => s.resetFilters)
+
+  // État local (pending) — commité vers le store uniquement sur "Analyser".
+  const [pending, setPending] = useState<FilterContextInput>(() => filterContext)
+
+  // Sync depuis le store quand un changement externe arrive (auto-snap, reset).
+  const lastSyncedHash = useRef(filterContextHash)
+  useEffect(() => {
+    if (filterContextHash !== lastSyncedHash.current) {
+      lastSyncedHash.current = filterContextHash
+      setPending(filterContext)
+    }
+  }, [filterContextHash, filterContext])
 
   const [active, setActive] = useState<ActivePopover>(null)
   const togglePopover = (which: ActivePopover) =>
@@ -103,21 +115,21 @@ export function FilterOmnibar() {
   const closeAll = () => setActive(null)
 
   const allSessions = resolvedContext?.session_options?.all_sessions ?? []
-  const cascade = (filterContext.cascade ?? {}) as CascadeInput
-  const period = filterContext.period
-  const pickedId = filterContext.sessions?.picked_sessions?.[0] ?? null
-  const currentSession = pickedId
-    ? allSessions.find((s) => s.session_id === pickedId)
+  const pendingCascade = (pending.cascade ?? DEFAULT_CASCADE) as CascadeInput
+  const pendingPeriod = pending.period
+  const pendingPickedId = pending.sessions?.picked_sessions?.[0] ?? null
+  const pendingSession = pendingPickedId
+    ? allSessions.find((s) => s.session_id === pendingPickedId)
     : null
 
-  // Comptes pour les pills
+  const isDirty = filterContextHash !== computePendingHash(pending)
+
   const cascadeCount = (['playlists', 'modes', 'maps', 'experience_types'] as const)
-    .reduce((n, k) => n + ((cascade[k] as string[] | undefined)?.length ?? 0), 0)
-  const hasPeriod = !!(period?.start_date || period?.end_date)
-  const hasActiveFilters = !!pickedId || hasPeriod || cascadeCount > 0
+    .reduce((n, k) => n + ((pendingCascade[k] as string[] | undefined)?.length ?? 0), 0)
+  const hasPeriod = !!(pendingPeriod?.start_date || pendingPeriod?.end_date)
+  const hasActiveFilters = !!pendingPickedId || hasPeriod || cascadeCount > 0
   const totalAfter = resolvedContext?.counts?.total_matches_after_filters ?? null
 
-  // Available options (cascade) — masque les UUID bruts non résolus
   const rawAvailable = resolvedContext?.available_options
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
@@ -131,47 +143,73 @@ export function FilterOmnibar() {
     }
   }, [rawAvailable])
 
+  function setPendingPeriod(p: PeriodInput) {
+    const isPeriodSet = !!(p?.start_date || p?.end_date)
+    setPending((prev) => ({
+      ...prev,
+      period: p,
+      filter_mode: isPeriodSet ? 'period' : 'sessions',
+      sessions: isPeriodSet ? DEFAULT_SESSIONS : prev.sessions,
+    }))
+  }
+
+  function setPendingSession(id: string | null) {
+    setPending((prev) => ({
+      ...prev,
+      sessions: { ...(prev.sessions ?? DEFAULT_SESSIONS), picked_sessions: id ? [id] : [] },
+      filter_mode: id ? 'sessions' : 'period',
+      period: id ? DEFAULT_PERIOD : prev.period,
+    }))
+    closeAll()
+  }
+
+  function setPendingCascade(c: CascadeInput) {
+    setPending((prev) => ({ ...prev, cascade: c }))
+  }
+
+  function handleAnalyser() {
+    setFilterContext(pending)
+    lastSyncedHash.current = computePendingHash(pending)
+  }
+
   return (
     <div
       className="flex h-9 items-center gap-2 overflow-visible px-4"
       role="toolbar"
       aria-label="Filtres"
     >
-      {allSessions.length > 0 && (
-        <SessionPill
-          open={active === 'session'}
-          onToggle={() => togglePopover('session')}
-          onClose={closeAll}
-          currentLabel={currentSession?.label ?? null}
-          allSessions={allSessions}
-          pickedId={pickedId}
-          onPick={(id: string | null) => {
-            setSessions({
-              ...(filterContext.sessions ?? {}),
-              picked_sessions: id ? [id] : [],
-            } as SessionsInput)
-            closeAll()
-          }}
-        />
-      )}
-
-      <PeriodePill
-        open={active === 'periode'}
-        onToggle={() => togglePopover('periode')}
-        onClose={closeAll}
-        period={period}
-        onSetPeriod={(p) => setPeriod(p)}
-      />
-
       {available && (
         <FiltresPill
           open={active === 'filtres'}
           onToggle={() => togglePopover('filtres')}
           onClose={closeAll}
           available={available}
-          cascade={cascade}
+          cascade={pendingCascade}
           cascadeCount={cascadeCount}
-          onSetCascade={(c) => setCascade(c)}
+          onSetCascade={setPendingCascade}
+        />
+      )}
+
+      {/* Séparateur données / scope temporel */}
+      <div className="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden />
+
+      <PeriodePill
+        open={active === 'periode'}
+        onToggle={() => togglePopover('periode')}
+        onClose={closeAll}
+        period={pendingPeriod}
+        onSetPeriod={setPendingPeriod}
+      />
+
+      {allSessions.length > 0 && (
+        <SessionPill
+          open={active === 'session'}
+          onToggle={() => togglePopover('session')}
+          onClose={closeAll}
+          currentLabel={pendingSession?.label ?? null}
+          allSessions={allSessions}
+          pickedId={pendingPickedId}
+          onPick={setPendingSession}
         />
       )}
 
@@ -187,10 +225,25 @@ export function FilterOmnibar() {
         </span>
       )}
 
+      <button
+        type="button"
+        onClick={handleAnalyser}
+        className={[
+          'shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors',
+          isDirty
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'border border-input bg-background text-muted-foreground hover:bg-muted',
+        ].join(' ')}
+      >
+        Analyser
+      </button>
+
       {hasActiveFilters && (
         <button
           type="button"
-          onClick={resetFilters}
+          onClick={() => {
+            resetFilters()
+          }}
           className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
           title="Réinitialiser tous les filtres"
         >
@@ -201,7 +254,15 @@ export function FilterOmnibar() {
   )
 }
 
-// ─── Pill : Session ──────────────────────────────────────────────────────────
+export function computePendingHash(ctx: FilterContextInput): string {
+  try {
+    return btoa(JSON.stringify(ctx)).slice(0, 32)
+  } catch {
+    return 'default'
+  }
+}
+
+// ─── Pill : Session (private, uniquement dans FilterOmnibar) ─────────────────
 
 interface SessionPillProps {
   open: boolean
@@ -318,7 +379,7 @@ function SessionPill({
 
 // ─── Pill : Période ──────────────────────────────────────────────────────────
 
-interface PeriodePillProps {
+export interface PeriodePillProps {
   open: boolean
   onToggle: () => void
   onClose: () => void
@@ -326,12 +387,12 @@ interface PeriodePillProps {
   onSetPeriod: (p: PeriodInput) => void
 }
 
-function PeriodePill({ open, onToggle, onClose, period, onSetPeriod }: PeriodePillProps) {
+export function PeriodePill({ open, onToggle, onClose, period, onSetPeriod }: PeriodePillProps) {
   const ref = useDismissable(open, onClose)
   const detected = detectActivePreset(period)
   const hasPeriod = !!(period?.start_date || period?.end_date)
 
-  let triggerLabel = 'Période'
+  let triggerLabel = 'Toutes les périodes'
   if (hasPeriod) {
     const preset = PERIOD_PRESETS.find((p) => p.id === detected)
     triggerLabel = preset && preset.id !== 'all' ? `Période : ${preset.label}` : 'Période : personnalisée'
@@ -430,7 +491,7 @@ function PeriodePill({ open, onToggle, onClose, period, onSetPeriod }: PeriodePi
 
 // ─── Pill : Filtres avancés (cascade) ────────────────────────────────────────
 
-interface FiltresPillProps {
+export interface FiltresPillProps {
   open: boolean
   onToggle: () => void
   onClose: () => void
@@ -445,7 +506,7 @@ interface FiltresPillProps {
   onSetCascade: (c: CascadeInput) => void
 }
 
-function FiltresPill({
+export function FiltresPill({
   open,
   onToggle,
   onClose,

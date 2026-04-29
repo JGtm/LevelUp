@@ -47,6 +47,8 @@ export interface SessionMultiSelectProps {
   onChange: (labels: string[]) => void
   locale: string
   placeholder?: string
+  /** Surcharge la classe CSS du bouton déclencheur (ex: taille dans une barre compacte). */
+  triggerClassName?: string
 }
 
 // ─── Composant ───────────────────────────────────────────────────────────────
@@ -57,6 +59,7 @@ export function SessionMultiSelect({
   onChange,
   locale,
   placeholder,
+  triggerClassName,
 }: SessionMultiSelectProps) {
   const t = getTexts(locale)
   const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
@@ -129,7 +132,7 @@ export function SessionMultiSelect({
       <button
         type="button"
         onClick={handleOpen}
-        className="flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent whitespace-nowrap"
+        className={triggerClassName ?? 'flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent whitespace-nowrap'}
       >
         <span>{summaryLabel}</span>
         <span className="text-muted-foreground text-xs">▾</span>

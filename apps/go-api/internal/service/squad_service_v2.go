@@ -105,6 +105,8 @@ func (s *SquadServiceV2) GetSquadPage(
 	mainGT string,
 	teammateGTs []string,
 	period temporal.Period,
+	experienceTypes []string,
+	playlists []string,
 ) (*domain.SquadPageV2Response, error) {
 	if mainGT == "" {
 		return nil, errors.New("SquadServiceV2.GetSquadPage: mainGT requis")
@@ -125,6 +127,14 @@ func (s *SquadServiceV2) GetSquadPage(
 	perPlayer, capGaps, err := s.loadAllPlayers(ctx, slug, mainGT, teammateGTs, filters)
 	if err != nil {
 		return nil, err
+	}
+
+	// Appliquer le filtre cascade (experience_types, playlists) sur les rows de chaque joueur
+	// avant l'intersection : seuls les matchs satisfaisant les deux critères sont conservés.
+	if len(experienceTypes) > 0 || len(playlists) > 0 {
+		for gt, rows := range perPlayer {
+			perPlayer[gt] = filterRowsByCascade(rows, experienceTypes, playlists)
+		}
 	}
 
 	resp := &domain.SquadPageV2Response{
@@ -649,6 +659,50 @@ func squadGrade(score float64) string {
 		return "D"
 	}
 	return "F"
+}
+
+// canonicalRowExperienceLabel dérive le label d'expérience d'une PlayerMatchRow.
+// Miroir de synthesisExperienceLabel dans teammates_service.go.
+func canonicalRowExperienceLabel(r canonical.PlayerMatchRow) string {
+	if r.Summary.IsPvE != nil && *r.Summary.IsPvE {
+		return "PVE"
+	}
+	if r.Summary.IsRanked != nil && *r.Summary.IsRanked {
+		return "PVP classé"
+	}
+	return "PVP non classé"
+}
+
+// filterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
+// experience_types et playlists. Slices vides = pas de filtre sur ce critère.
+func filterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes []string, playlists []string) []canonical.PlayerMatchRow {
+	expSet := make(map[string]struct{}, len(expTypes))
+	for _, e := range expTypes {
+		expSet[e] = struct{}{}
+	}
+	plSet := make(map[string]struct{}, len(playlists))
+	for _, p := range playlists {
+		plSet[p] = struct{}{}
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if len(expSet) > 0 {
+			if _, ok := expSet[canonicalRowExperienceLabel(r)]; !ok {
+				continue
+			}
+		}
+		if len(plSet) > 0 {
+			pl := ""
+			if r.Summary.Playlist != nil {
+				pl = r.Summary.Playlist.DefaultLabel
+			}
+			if _, ok := plSet[pl]; !ok {
+				continue
+			}
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // loadAllPlayers charge les matchs du joueur principal + des coéquipiers en

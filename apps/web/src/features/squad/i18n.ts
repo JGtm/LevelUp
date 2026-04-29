@@ -28,6 +28,13 @@ export interface SquadText {
     placeholder: (count: number) => string
     prompt: string
   }
+  filter: {
+    experience: string
+    playlist: string
+    allExperiences: string
+    allPlaylists: string
+    analyse: string
+  }
   session: {
     label: string
     squad: string
@@ -97,6 +104,13 @@ const FR_TEXT: SquadText = {
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
     prompt: 'Sélectionne jusqu\'à 3 coéquipiers pour analyser vos synergies.',
+  },
+  filter: {
+    experience: 'Expérience',
+    playlist: 'Playlist',
+    allExperiences: 'Toutes les expériences',
+    allPlaylists: 'Toutes les playlists',
+    analyse: 'Analyser',
   },
   session: {
     label: 'Session',
@@ -169,6 +183,13 @@ const EN_TEXT: SquadText = {
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,
     prompt: 'Pick up to 3 teammates to analyze your synergies.',
+  },
+  filter: {
+    experience: 'Experience',
+    playlist: 'Playlist',
+    allExperiences: 'All experiences',
+    allPlaylists: 'All playlists',
+    analyse: 'Analyse',
   },
   session: {
     label: 'Session',

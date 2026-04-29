@@ -41,8 +41,10 @@ func NewSquadV2Handler(newSvc ContextFactory[port.SquadV2Service]) *SquadV2Handl
 // GetSquadPage traite GET /api/v1/players/{player_slug}/pages/squad/v2.
 //
 // Query params :
-//   - teammates : CSV de gamertags (max 3, optionnel)
-//   - period    : "all" | "2y" | "1y" | "1m" | "1w" (défaut "all")
+//   - teammates        : CSV de gamertags (max 3, optionnel)
+//   - period           : "all" | "2y" | "1y" | "1m" | "1w" (défaut "all")
+//   - experience_types : CSV de types d'expérience (ex: "PVP classé,PVE")
+//   - playlists        : CSV de noms de playlist (ex: "Ranked Arena")
 //
 // Statuts :
 //   - 200 : payload valide
@@ -68,6 +70,9 @@ func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	experienceTypes := parseCSVFilter(r.URL.Query().Get("experience_types"))
+	playlists := parseCSVFilter(r.URL.Query().Get("playlists"))
+
 	titleSlug := titleSlugFromContext(r)
 
 	slog.InfoContext(r.Context(), "squad_v2: lecture page",
@@ -75,9 +80,11 @@ func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 		"title_slug", titleSlug,
 		"teammates_count", len(teammates),
 		"period", string(period),
+		"experience_types", experienceTypes,
+		"playlists", playlists,
 	)
 
-	resp, err := svc.GetSquadPage(r.Context(), titleSlug, gamertag, teammates, period)
+	resp, err := svc.GetSquadPage(r.Context(), titleSlug, gamertag, teammates, period, experienceTypes, playlists)
 	if err != nil {
 		if errors.Is(err, games.ErrCapabilityNotSupported) {
 			slog.WarnContext(r.Context(), "squad_v2: capability match.history absente",
@@ -128,6 +135,26 @@ func parseSquadV2Period(raw string) (temporal.Period, error) {
 		return "", fmt.Errorf("période %q inconnue (admises : all, 2y, 1y, 1m, 1w)", raw)
 	}
 	return p, nil
+}
+
+// parseCSVFilter découpe un paramètre CSV en slice de strings non-vides.
+// Retourne nil si le paramètre est absent ou entièrement vide.
+func parseCSVFilter(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if v := strings.TrimSpace(p); v != "" {
+			out = append(out, v)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // titleSlugFromContext lit le titre courant depuis le contexte (middleware

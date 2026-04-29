@@ -98,7 +98,7 @@ func TestGetSquadPage_FullComposition(t *testing.T) {
 	}
 
 	svc := NewSquadServiceV2(loader)
-	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main", []string{"f1"}, temporal.PeriodAll)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main", []string{"f1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestGetSquadPage_NoEvents_OmitsCadenceImpact(t *testing.T) {
 	}
 
 	svc := NewSquadServiceV2(loader)
-	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main", nil, temporal.PeriodAll)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main", nil, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestGetSquadPage_EmptyIntersection_NoChartsBuilt(t *testing.T) {
 	}
 
 	svc := NewSquadServiceV2(loader)
-	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main", []string{"f1"}, temporal.PeriodAll)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main", []string{"f1"}, temporal.PeriodAll, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}

@@ -1,13 +1,13 @@
 /**
- * Tests FilterOmnibar — bandeau de pills (Session / Période / Filtres) avec popovers.
+ * Tests FilterOmnibar — bandeau de pills (Filtres | sep | Période | Session | Analyser).
  *
  * Couvre :
  *  - Rendu des 3 pills (Session affichée seulement si sessions disponibles)
  *  - Click pill ouvre/ferme le popover
- *  - Sélection session déclenche setSessions
- *  - Sélection période déclenche setPeriod + auto-derive
- *  - Toggle cascade déclenche setCascade
- *  - Compteur cascade actif sur la pill Filtres
+ *  - Sélection session + "Analyser" déclenche setFilterContext
+ *  - Sélection période + "Analyser" déclenche setFilterContext + auto-derive
+ *  - Toggle cascade + "Analyser" déclenche setFilterContext
+ *  - Compteur cascade actif sur la pill Filtres (état pending)
  *  - Bouton Réinitialiser visible quand filtres actifs
  *  - Compteur global de matchs depuis resolvedContext.counts
  *  - Escape ferme tous les popovers
@@ -23,14 +23,6 @@ import {
 import type { FilterContextResolved } from '@/lib/api/types'
 
 import { FilterOmnibar } from './FilterOmnibar'
-
-vi.mock('@tanstack/react-router', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
-  return {
-    ...actual,
-    useRouterState: () => ({ location: { pathname: '/players/test/squad' } }),
-  }
-})
 
 function buildResolved(): FilterContextResolved {
   return {
@@ -59,11 +51,11 @@ describe('FilterOmnibar', () => {
     useGlobalFilterStore.getState().setResolvedContext(buildResolved())
   })
 
-  it('affiche les 3 pills (Session / Période / Filtres)', () => {
+  it('affiche les 3 pills (Filtres / Période / Session)', () => {
     renderWithProviders(<FilterOmnibar />)
-    expect(screen.getByRole('button', { name: /toutes les sessions/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^période/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^filtres/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /toutes les périodes/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /toutes les sessions/i })).toBeInTheDocument()
   })
 
   it('pill Session masquée s\'il n\'y a aucune session', () => {
@@ -82,10 +74,14 @@ describe('FilterOmnibar', () => {
     expect(screen.getByText('15/03/2026 18:00')).toBeInTheDocument()
   })
 
-  it('sélection d\'une session déclenche setSessions + auto-derive', () => {
+  it('sélection d\'une session + Analyser déclenche setFilterContext + auto-derive', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /toutes les sessions/i }))
     fireEvent.click(screen.getByText('15/03/2026 18:00'))
+    // Pending uniquement — store pas encore mis à jour
+    expect(useGlobalFilterStore.getState().filterContext.sessions!.picked_sessions).toEqual([])
+    // Commit via Analyser
+    fireEvent.click(screen.getByRole('button', { name: /analyser/i }))
     const ctx = useGlobalFilterStore.getState().filterContext
     expect(ctx.sessions!.picked_sessions).toEqual(['s2'])
     expect(ctx.filter_mode).toBe('sessions')
@@ -102,25 +98,28 @@ describe('FilterOmnibar', () => {
 
   it('click sur pill Période ouvre le popover avec presets', () => {
     renderWithProviders(<FilterOmnibar />)
-    fireEvent.click(screen.getByRole('button', { name: /^période/i }))
+    fireEvent.click(screen.getByRole('button', { name: /toutes les périodes/i }))
     expect(screen.getByText('7 jours')).toBeInTheDocument()
     expect(screen.getByText('30 jours')).toBeInTheDocument()
     expect(screen.getByText('90 jours')).toBeInTheDocument()
     expect(screen.getByText('Toutes')).toBeInTheDocument()
   })
 
-  it('preset Période 30 jours pose une période et auto-derive mode=period', () => {
+  it('preset Période 30 jours + Analyser pose une période et auto-derive mode=period', () => {
     useGlobalFilterStore.getState().setSessions({
       picked_sessions: ['s1'],
       gap_minutes: DEFAULT_GAP_MINUTES,
     })
     renderWithProviders(<FilterOmnibar />)
-    fireEvent.click(screen.getByRole('button', { name: /^période/i }))
+    fireEvent.click(screen.getByRole('button', { name: /période/i }))
     fireEvent.click(screen.getByText('30 jours'))
+    // Pending uniquement — store pas encore mis à jour
+    expect(useGlobalFilterStore.getState().filterContext.sessions!.picked_sessions).toEqual(['s1'])
+    // Commit via Analyser
+    fireEvent.click(screen.getByRole('button', { name: /analyser/i }))
     const ctx = useGlobalFilterStore.getState().filterContext
     expect(ctx.period!.start_date).not.toBeNull()
     expect(ctx.filter_mode).toBe('period')
-    // Exclusivité : sessions vidées
     expect(ctx.sessions!.picked_sessions).toEqual([])
   })
 
@@ -133,10 +132,14 @@ describe('FilterOmnibar', () => {
     expect(screen.getByText(/Type d'expérience/i)).toBeInTheDocument()
   })
 
-  it('toggle cascade déclenche setCascade', () => {
+  it('toggle cascade + Analyser déclenche setFilterContext', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /^filtres/i }))
     fireEvent.click(screen.getByLabelText('Slayer'))
+    // Pending uniquement — store pas encore mis à jour
+    expect(useGlobalFilterStore.getState().filterContext.cascade!.modes).not.toContain('Slayer')
+    // Commit via Analyser
+    fireEvent.click(screen.getByRole('button', { name: /analyser/i }))
     expect(useGlobalFilterStore.getState().filterContext.cascade!.modes).toContain('Slayer')
   })
 

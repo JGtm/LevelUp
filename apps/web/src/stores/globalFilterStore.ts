@@ -80,6 +80,8 @@ interface GlobalFilterState {
   setPeriod: (period: PeriodInput) => void
   setSessions: (sessions: SessionsInput) => void
   setCascade: (cascade: CascadeInput) => void
+  /** Commit atomique d'un FilterContextInput complet (utilisé par le bouton Analyser). */
+  setFilterContext: (ctx: FilterContextInput) => void
   setResolvedContext: (resolved: FilterContextResolved) => void
   resetFilters: () => void
 
@@ -190,6 +192,15 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
         const next = { ...get().filterContext, cascade }
         encodeToUrl(next)
         set({ filterContext: next, filterContextHash: computeHash(next) })
+      },
+
+      setFilterContext: (ctx) => {
+        encodeToUrl(ctx)
+        set({
+          filterContext: ctx,
+          filterContextHash: computeHash(ctx),
+          isAutoSnappingToLatest: false,
+        })
       },
 
       setResolvedContext: (resolved) => {

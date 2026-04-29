@@ -19,7 +19,6 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
-import { FloatingLegend } from './components/FloatingLegend'
 import { HistoryTable } from './components/HistoryTable'
 import { WeaponsTable } from './components/WeaponsTable'
 import { MedalsGallery } from './components/MedalsGallery'
@@ -30,6 +29,8 @@ export interface SquadV2PageProps {
   playerSlug: string
   teammates?: string[]
   period?: SquadPeriod
+  experienceTypes?: string[]
+  playlists?: string[]
 }
 
 type SquadLocale = 'fr' | 'en'
@@ -48,13 +49,13 @@ function useSquadV2Translator() {
 // SquadEngagementSection lazy-loaded pour eviter la cyclic deps avec @/features/squad
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 
-export function SquadV2Page({ playerSlug, teammates, period }: SquadV2PageProps) {
+export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, playlists }: SquadV2PageProps) {
   const t = useSquadV2Translator()
   const locale = useAppShellStore((s) => s.locale) ?? 'fr'
   const intlLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const { data: fieldMappings } = useFieldMappings()
 
-  const { data, isLoading, error } = useSquadV2({ playerSlug, teammates, period })
+  const { data, isLoading, error } = useSquadV2({ playerSlug, teammates, period, experienceTypes, playlists })
 
   if (isLoading) {
     return (
@@ -84,8 +85,6 @@ export function SquadV2Page({ playerSlug, teammates, period }: SquadV2PageProps)
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="squad-v2-page">
-      <FloatingLegend squadOrder={squadOrder} />
-
       {/* Séquence des outcomes (S13) */}
       {data.shared_matches.length > 0 && (
         <section data-testid="squad-v2-outcome-sequence">

@@ -1336,6 +1336,8 @@ export interface SessionLabelEntry {
   label: string
   started_at: string
   ended_at: string
+  experiences?: string[]
+  playlists?: string[]
 }
 
 export interface SessionLabelsList {
