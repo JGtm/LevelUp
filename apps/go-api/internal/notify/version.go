@@ -8,9 +8,10 @@ package notify
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -32,11 +33,15 @@ const maxDiscordBody = 1900 // Discord limite les embeds à 2048 chars
 //  7. Opt-in prod : la variable d'environnement LEVELUP_NOTIFY_VERSIONS=1
 //     est nécessaire pour envoyer (évite le spam en dev/staging).
 func NotifyNewVersion(cfg NotifyConfig, currentVersion string) bool {
+	// NotifyNewVersion est appele depuis le boot — pas de ctx propage. On
+	// utilise context.Background() comme fallback canonique (revue 2026-04-29
+	// P3.5 — migration log.Printf -> slog).
+	ctx := context.Background()
 	if !cfg.NotifyVersion {
 		return false
 	}
 	if os.Getenv("LEVELUP_NOTIFY_VERSIONS") != "1" {
-		log.Printf("[Discord:version] LEVELUP_NOTIFY_VERSIONS != 1, skip")
+		slog.DebugContext(ctx, "discord_version_skip_flag_off", "op", "version", "reason", "LEVELUP_NOTIFY_VERSIONS != 1")
 		return false
 	}
 	if cfg.WebhookURL == "" {
@@ -48,20 +53,20 @@ func NotifyNewVersion(cfg NotifyConfig, currentVersion string) bool {
 
 	// 2. Premier démarrage : initialiser sans notifier
 	if lastNotified == "" {
-		log.Printf("[Discord:version] Premier démarrage, initialisation last_notified=%s (pas de notif)", currentVersion)
+		slog.InfoContext(ctx, "discord_version_initialized", "op", "version", "current_version", currentVersion)
 		_ = writeLastNotifiedVersion(cfg.SettingsPath, currentVersion)
 		return false
 	}
 
 	// 3. Déjà notifié pour cette version exacte
 	if lastNotified == currentVersion {
-		log.Printf("[Discord:version] version %s déjà notifiée, skip", currentVersion)
+		slog.DebugContext(ctx, "discord_version_skip_already_notified", "op", "version", "current_version", currentVersion)
 		return false
 	}
 
 	// 4. Changement patch seul : skip
 	if !isMajorMinorChange(lastNotified, currentVersion) {
-		log.Printf("[Discord:version] %s → %s : patch seul, pas de notif", lastNotified, currentVersion)
+		slog.DebugContext(ctx, "discord_version_skip_patch_only", "op", "version", "from", lastNotified, "to", currentVersion)
 		// On met quand même à jour pour éviter une accumulation de patches
 		_ = writeLastNotifiedVersion(cfg.SettingsPath, currentVersion)
 		return false
@@ -73,15 +78,15 @@ func NotifyNewVersion(cfg NotifyConfig, currentVersion string) bool {
 
 	ok := SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}})
 	if !ok {
-		log.Printf("[Discord:version] envoi échoué — last_notified_version non mise à jour")
+		slog.WarnContext(ctx, "discord_version_send_failed", "op", "version", "current_version", currentVersion)
 		return false
 	}
 
 	// 6. N'écrire QUE si l'envoi a réussi
 	if err := writeLastNotifiedVersion(cfg.SettingsPath, currentVersion); err != nil {
-		log.Printf("[Discord:version] impossible de persister last_notified_version: %v", err)
+		slog.ErrorContext(ctx, "discord_version_persist_failed", "op", "version", "err", err, "current_version", currentVersion)
 	}
-	log.Printf("[Discord:version] notif v%s envoyée avec succès", currentVersion)
+	slog.InfoContext(ctx, "discord_version_sent", "op", "version", "current_version", currentVersion)
 	return true
 }
 

@@ -5,9 +5,10 @@
 package notify
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -31,9 +32,10 @@ func NotifySync(
 	success bool,
 	skipIdle bool,
 ) {
+	ctx := context.Background()
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[Discord:sync] panic récupéré: %v", r)
+			slog.ErrorContext(ctx, "discord_sync_panic", "op", op, "recover", fmt.Sprintf("%v", r))
 		}
 	}()
 
@@ -41,33 +43,33 @@ func NotifySync(
 		return
 	}
 	if strings.HasPrefix(op, "backfill") && !cfg.NotifyBackfill {
-		log.Printf("[Discord:sync] notif backfill désactivée")
+		slog.DebugContext(ctx, "discord_sync_skip_disabled", "op", op, "reason", "NotifyBackfill=false")
 		return
 	}
 	if !strings.HasPrefix(op, "backfill") && !cfg.NotifySync {
-		log.Printf("[Discord:sync] notif sync désactivée")
+		slog.DebugContext(ctx, "discord_sync_skip_disabled", "op", op, "reason", "NotifySync=false")
 		return
 	}
 	if len(players) == 0 {
-		log.Printf("[Discord:sync] aucun joueur à notifier, skip")
+		slog.DebugContext(ctx, "discord_sync_skip_no_players", "op", op)
 		return
 	}
 
 	// Mode skipIdle : embed allégé si tous les joueurs sont à jour
 	if skipIdle && allIdle(players) {
-		log.Printf("[Discord:sync] tous les joueurs à jour, embed allégé")
+		slog.DebugContext(ctx, "discord_sync_idle", "op", op, "players", len(players))
 		embed := BuildSyncEmbed(op, startedAt, finishedAt, players, success, cfg.Lang)
 		if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
-			log.Printf("[Discord:sync] notification 'déjà à jour' envoyée")
+			slog.InfoContext(ctx, "discord_sync_idle_sent", "op", op)
 		}
 		return
 	}
 
 	embed := BuildSyncEmbed(op, startedAt, finishedAt, players, success, cfg.Lang)
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
-		log.Printf("[Discord:sync] notification envoyée avec succès")
+		slog.InfoContext(ctx, "discord_sync_sent", "op", op, "players", len(players))
 	} else {
-		log.Printf("[Discord:sync] notification non reçue par Discord")
+		slog.WarnContext(ctx, "discord_sync_not_received", "op", op)
 	}
 }
 
@@ -82,9 +84,10 @@ func NotifySync(
 // notifiés. Après envoi réussi, discord_notified_at est mis à jour dans la DB.
 // dbPath est le chemin vers shared_social.duckdb (fallback : stats.duckdb du joueur).
 func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
+	ctx := context.Background()
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[Discord:media] panic récupéré pour %s: %v", gamertag, r)
+			slog.ErrorContext(ctx, "discord_media_panic", "op", "media", "gamertag", gamertag, "recover", fmt.Sprintf("%v", r))
 		}
 	}()
 
@@ -94,7 +97,7 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 
 	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
-		log.Printf("[Discord:media] connexion DB échouée pour %s: %v", gamertag, err)
+		slog.WarnContext(ctx, "discord_media_db_open_failed", "op", "media", "gamertag", gamertag, "err", err)
 		return
 	}
 	defer db.Close()
@@ -104,11 +107,11 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 		return
 	}
 
-	log.Printf("[Discord:media] %d nouveau(x) média(s) pour %s", len(rows), gamertag)
+	slog.InfoContext(ctx, "discord_media_new", "op", "media", "gamertag", gamertag, "count", len(rows))
 
 	embed := buildMediaEmbed(rows, gamertag, cfg.Lang)
 	if !SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
-		log.Printf("[Discord:media] envoi échoué pour %s", gamertag)
+		slog.WarnContext(ctx, "discord_media_send_failed", "op", "media", "gamertag", gamertag)
 		return
 	}
 
@@ -117,7 +120,7 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 		paths[i] = r.FilePath
 	}
 	if err := markMediaNotified(db, paths); err != nil {
-		log.Printf("[Discord:media] impossible de marquer les médias notifiés: %v", err)
+		slog.ErrorContext(ctx, "discord_media_mark_failed", "op", "media", "gamertag", gamertag, "err", err)
 	}
 }
 
@@ -263,9 +266,10 @@ func min(a, b int) int {
 //
 // Failsafe : panic récupéré, webhook vide / NotifyFriends off → no-op silencieux.
 func NotifyFriendAdded(cfg NotifyConfig, gamertag string) {
+	ctx := context.Background()
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[Discord:friend_added] panic récupéré pour %s: %v", gamertag, r)
+			slog.ErrorContext(ctx, "discord_friend_added_panic", "op", "friend_added", "gamertag", gamertag, "recover", fmt.Sprintf("%v", r))
 		}
 	}()
 
@@ -281,7 +285,7 @@ func NotifyFriendAdded(cfg NotifyConfig, gamertag string) {
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
-		log.Printf("[Discord:friend_added] notification envoyée pour %s", gamertag)
+		slog.InfoContext(ctx, "discord_friend_added_sent", "op", "friend_added", "gamertag", gamertag)
 	}
 }
 
@@ -293,9 +297,10 @@ func NotifyFriendAdded(cfg NotifyConfig, gamertag string) {
 //
 // Failsafe : panic récupéré, webhook vide / NotifyFriends off / promoted ≤ 0 → no-op.
 func NotifyFriendSyncCompleted(cfg NotifyConfig, slug string, promoted int64) {
+	ctx := context.Background()
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[Discord:friend_sync] panic récupéré pour %s: %v", slug, r)
+			slog.ErrorContext(ctx, "discord_friend_sync_panic", "op", "friend_sync", "slug", slug, "recover", fmt.Sprintf("%v", r))
 		}
 	}()
 
@@ -315,7 +320,7 @@ func NotifyFriendSyncCompleted(cfg NotifyConfig, slug string, promoted int64) {
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
-		log.Printf("[Discord:friend_sync] notification envoyée pour %s (promoted=%d)", slug, promoted)
+		slog.InfoContext(ctx, "discord_friend_sync_sent", "op", "friend_sync", "slug", slug, "promoted", promoted)
 	}
 }
 
