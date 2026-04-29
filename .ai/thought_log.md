@@ -1,5 +1,34 @@
 # Thought Log
 
+## [2026-04-29] P0 cleanup-and-ux-fixes complète — 7 commits, 4 sub-phases livrées
+
+**Statut** : Complétée — branche `chore/cleanup-and-ux-fixes` issue de `feat/multi-title-static-fs-rescope`. P0 du PLAN_ACTION.md livré en intégralité.
+
+**Sub-phases livrées** :
+- **P0.1 Hygiène repo** (2 commits) : `git rm --cached` 6 binaires/coverage trackés (~88 MB), `apps/tmp/` ajouté `.gitignore`, Dockerfile aligné Go 1.24→1.26, `npm uninstall recharts`, suppression `__root.tsx` orphelin + path corrompu `apps/go-api/apps/`.
+- **P0.2 Bugs UX visibles** (3 commits) :
+  - **B1** : 3 routes fantômes notifications (`/help/changelog`, `/defis`, `/sync`) alignées sur routes existantes (`/changelog`, `/objectifs?tab=challenges`, `/settings`). Backend `post_sync_deltas.go` utilise `TargetSearch` pour propager `tab=challenges`.
+  - **B4** : `SettingsPage.tsx:67` `useState`-as-ref → `useRef` proper (5 sites mis à jour, fuite timers corrigée).
+  - **B5** : `engagement.spec.ts` rendu configurable via `E2E_API_URL`/`E2E_PLAYER_SLUG` + `E2E_DEMO_MODE` skip.
+  - **Q6** : suppression 4 endpoints API orphelins (`preview/career`, `preview/career-multi-title`, `GET /match-exclusions`, `POST /media/reassociate`) — 4 fichiers handler/test entièrement supprimés (~1100 lignes net), OpenAPI spec à jour, smoke test orphelin retiré.
+- **P0.3 Tests régression B1** (1 commit) : Go (`TestEmitPostSyncDeltas_AllTargetRoutesValid` + `TestEmitPostSyncDeltas_NoFantomRoutes`) + Vitest (`navigation.test.ts` 6 tests). Whitelists Go et TS commentées comme "à synchroniser avec routeTree.gen.ts" pour éviter dérive future.
+- **P0.4 Audit `.env.local.example`** (1 commit) : 10 ENV vars Go ajoutées (`LEVELUP_API_PORT_OR_DEFAULT`, `LEVELUP_LOG_JSON`, `LEVELUP_LOG_LEVEL`, `LEVELUP_AUTH_DIR`, `LEVELUP_CLIENT_ID`, `LEVELUP_DISCORD_WEBHOOK_URL`, `LEVELUP_NOTIFY_VERSIONS`, `LEVELUP_CONTRACT_VALIDATE`, `STEAM_API_KEY`, et correction sémantique `DISCORD_WEBHOOK_URL`). Suppression orpheline `TAILSCALE_FUNNEL_URL` (script Python supprimé).
+
+**Tests** : `go test ./internal/api/...` PASS après tous les changements ; `npm test` Vitest navigation.test.ts 6/6 PASS.
+
+**Hooks pre-commit** : `gofmt` corrigé une fois (alignement struct dans `post_sync_deltas.go`), `end-of-file-fixer` corrigé une fois (`match_exclusion.go`). Aucun bypass.
+
+**Décisions design en cours d'exécution** :
+- B1 corrigé en alignant l'émetteur backend + le mapping front (option par défaut documentée gap-précision a) — pas de création de routes fantômes en réponse.
+- Q6 endpoints `preview/career` retirés malgré leur statut Phase C "POC" : commentaires ajoutés dans `server.go` pour la réintroduction admin/debug si besoin futur.
+- `error_tracker.go` non touché par P0 (sa suppression sera faite en P8.3 selon ADR 0009).
+
+**Commits** : f4d33081 → 4a703886 (9 commits sur la branche). 88 MB libérés, 6 bugs visibles fixés, 4 endpoints orphelins supprimés, 10 ENV vars documentées, 8 tests régression nominatifs ajoutés.
+
+**Prochaine étape** : P1 (ADRs + investigations, 2-3 j) — les 5 ADRs P1 sont déjà écrits (P1.1-P1.5) côté livraison revue, donc P1 sera essentiellement merge + audit final + démarrage P2.
+
+---
+
 ## [2026-04-29] revue de code — finalisation : INDEX, 6 ADRs, plan amendé, 2 passes vérification
 
 **Statut** : Complété — revue de code 2026-04-29 figée, démarrage P0 en cours.
