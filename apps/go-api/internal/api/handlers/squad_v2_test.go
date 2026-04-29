@@ -34,6 +34,8 @@ type mockSquadV2Service struct {
 	calledPeriod          temporal.Period
 	calledExperienceTypes []string
 	calledPlaylists       []string
+	calledMaps            []string
+	calledModes           []string
 }
 
 func (m *mockSquadV2Service) GetSquadPage(
@@ -44,6 +46,8 @@ func (m *mockSquadV2Service) GetSquadPage(
 	period temporal.Period,
 	experienceTypes []string,
 	playlists []string,
+	maps []string,
+	modes []string,
 ) (*domain.SquadPageV2Response, error) {
 	m.calledTitleSlug = titleSlug
 	m.calledMainGT = mainGT
@@ -51,6 +55,8 @@ func (m *mockSquadV2Service) GetSquadPage(
 	m.calledPeriod = period
 	m.calledExperienceTypes = experienceTypes
 	m.calledPlaylists = playlists
+	m.calledMaps = maps
+	m.calledModes = modes
 	return m.resp, m.err
 }
 
@@ -258,7 +264,7 @@ func TestSquadV2Handler_GetSquadPage_CascadeFilters(t *testing.T) {
 	r := newSquadV2Router(makeSquadV2Factory(svc))
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/players/test-player/pages/squad/v2?experience_types=PVP+class%C3%A9%2CPVE&playlists=Ranked+Arena", nil)
+		"/players/test-player/pages/squad/v2?experience_types=PVP+class%C3%A9%2CPVE&playlists=Ranked+Arena&maps=D%C3%A9charge%2CBazar&modes=Assassin%2CCTF", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -271,6 +277,38 @@ func TestSquadV2Handler_GetSquadPage_CascadeFilters(t *testing.T) {
 	}
 	if !equalStringSlice(svc.calledPlaylists, []string{"Ranked Arena"}) {
 		t.Errorf("playlists=%v, want [Ranked Arena]", svc.calledPlaylists)
+	}
+	wantMaps := []string{"Décharge", "Bazar"}
+	if !equalStringSlice(svc.calledMaps, wantMaps) {
+		t.Errorf("maps=%v, want %v", svc.calledMaps, wantMaps)
+	}
+	wantModes := []string{"Assassin", "CTF"}
+	if !equalStringSlice(svc.calledModes, wantModes) {
+		t.Errorf("modes=%v, want %v", svc.calledModes, wantModes)
+	}
+}
+
+func TestSquadV2Handler_GetSquadPage_ModesFilter(t *testing.T) {
+	t.Parallel()
+
+	svc := &mockSquadV2Service{resp: &domain.SquadPageV2Response{}}
+	r := newSquadV2Router(makeSquadV2Factory(svc))
+
+	// Vérifier que modes seul (sans les autres filtres) est bien transmis.
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/test-player/pages/squad/v2?modes=Slayer", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if !equalStringSlice(svc.calledModes, []string{"Slayer"}) {
+		t.Errorf("modes=%v, want [Slayer]", svc.calledModes)
+	}
+	if len(svc.calledMaps) != 0 || len(svc.calledPlaylists) != 0 {
+		t.Errorf("autres filtres ne doivent pas être pollués: maps=%v playlists=%v",
+			svc.calledMaps, svc.calledPlaylists)
 	}
 }
 

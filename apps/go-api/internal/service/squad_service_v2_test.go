@@ -106,7 +106,7 @@ func TestSquadServiceV2_GetSquadPage_OneTeammateIntersection(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.Period1Y, nil, nil)
+		[]string{"friend1"}, temporal.Period1Y, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestSquadServiceV2_GetSquadPage_ThreeTeammates(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2", "f3"}, temporal.PeriodAll, nil, nil)
+		[]string{"f1", "f2", "f3"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestSquadServiceV2_GetSquadPage_NoIntersection(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.PeriodAll, nil, nil)
+		[]string{"friend1"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestSquadServiceV2_GetSquadPage_TeammateCapabilityMissing(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.PeriodAll, nil, nil)
+		[]string{"friend1"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage should not error on teammate capability missing: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestSquadServiceV2_GetSquadPage_MainPlayerCapabilityMissing(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"friend1"}, temporal.PeriodAll, nil, nil)
+		[]string{"friend1"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("expected nil error (gap signaled, not panic): %v", err)
 	}
@@ -237,11 +237,11 @@ func TestSquadServiceV2_GetSquadPage_RejectsInvalidInput(t *testing.T) {
 	svc := NewSquadServiceV2(&fakeSquadLoader{})
 
 	if _, err := svc.GetSquadPage(context.Background(), "halo_infinite", "",
-		nil, temporal.PeriodAll, nil, nil); err == nil {
+		nil, temporal.PeriodAll, nil, nil, nil, nil); err == nil {
 		t.Error("empty mainGT should error")
 	}
 	if _, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2", "f3", "f4"}, temporal.PeriodAll, nil, nil); err == nil {
+		[]string{"f1", "f2", "f3", "f4"}, temporal.PeriodAll, nil, nil, nil, nil); err == nil {
 		t.Error(">3 teammates should error")
 	}
 }
@@ -260,7 +260,7 @@ func TestSquadServiceV2_GetSquadPage_LoaderRunsInParallel(t *testing.T) {
 	svc := NewSquadServiceV2(loader)
 	start := time.Now()
 	if _, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil); err != nil {
+		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil, nil, nil); err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
 	// 3 joueurs × 50ms en sequentiel = 150ms. En parallele : ~50ms.
@@ -283,7 +283,7 @@ func TestSquadServiceV2_GetSquadPage_LoaderError_NotCapability(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	_, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll, nil, nil)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err == nil {
 		t.Error("non-capability errors should propagate, got nil")
 	}
@@ -301,7 +301,7 @@ func TestSquadServiceV2_GetSquadPage_OrderDeterministicOnEqualTimes(t *testing.T
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll, nil, nil)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -357,7 +357,7 @@ func TestSquadServiceV2_GetSquadPage_HeaderSoloKPIs(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll, nil, nil)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -388,7 +388,7 @@ func TestSquadServiceV2_GetSquadPage_HeaderPlayerCardsAndScore(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil)
+		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -431,7 +431,7 @@ func TestSquadServiceV2_GetSquadPage_HeaderNilWhenNoShared(t *testing.T) {
 	}
 	svc := NewSquadServiceV2(loader)
 	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
-		[]string{"f1"}, temporal.PeriodAll, nil, nil)
+		[]string{"f1"}, temporal.PeriodAll, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
@@ -445,5 +445,252 @@ func TestSquadServiceV2_GetSquadPage_HeaderNilWhenNoShared(t *testing.T) {
 	}
 	if resp.Header.SquadScore != nil {
 		t.Error("no shared matches -> no SquadScore")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests filterRowsByCascade + playlistLabelForFilter
+// ---------------------------------------------------------------------------
+
+// rowWithPlaylist construit une row dont Summary.Playlist est peuplé avec les
+// labels EN et FR (miroir de assetReference() dans player_matches_repo.go).
+func rowWithPlaylist(matchID, playlistEN, playlistFR string) canonical.PlayerMatchRow {
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	r := row(matchID, t0, canonical.OutcomeWin)
+	r.Summary.Playlist = &canonical.AssetReference{
+		Kind:         "playlist",
+		ID:           "pl-" + matchID,
+		DefaultLabel: playlistEN,
+		Labels:       map[string]string{"en": playlistEN, "fr": playlistFR},
+	}
+	return r
+}
+
+// rowWithExperience construit une row avec les flags IsRanked / IsPvE positionnés.
+func rowWithExperience(matchID string, isRanked, isPvE bool) canonical.PlayerMatchRow {
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	r := row(matchID, t0, canonical.OutcomeWin)
+	r.Summary.IsRanked = &isRanked
+	r.Summary.IsPvE = &isPvE
+	return r
+}
+
+func TestFilterRowsByCascade_PlaylistFRLabel(t *testing.T) {
+	t.Parallel()
+	// filtersResolve retourne COALESCE(playlist_name_fr, playlist_name) = label FR.
+	// filterRowsByCascade doit utiliser Labels["fr"] pour que la comparaison aboutisse.
+	rows := []canonical.PlayerMatchRow{
+		rowWithPlaylist("m1", "Quick Play", "Partie rapide"),
+		rowWithPlaylist("m2", "Ranked Arena", "Arène classée"),
+		rowWithPlaylist("m3", "Quick Play", "Partie rapide"),
+	}
+
+	got := filterRowsByCascade(rows, nil, []string{"Partie rapide"}, nil, nil)
+	if len(got) != 2 {
+		t.Fatalf("want 2 rows for 'Partie rapide', got %d", len(got))
+	}
+	for _, r := range got {
+		if r.Summary.MatchID == "m2" {
+			t.Error("m2 (Arène classée) should have been filtered out")
+		}
+	}
+}
+
+func TestFilterRowsByCascade_PlaylistENFallback(t *testing.T) {
+	t.Parallel()
+	// Quand playlist_name_fr est absent, COALESCE retourne l'anglais. Le label FR
+	// stocké dans Labels["fr"] = label anglais = ce que filtersResolve envoie.
+	rows := []canonical.PlayerMatchRow{
+		rowWithPlaylist("m1", "Social Slayer", "Social Slayer"), // pas de traduction FR
+		rowWithPlaylist("m2", "Big Team Battle", "Big Team Battle"),
+	}
+
+	got := filterRowsByCascade(rows, nil, []string{"Social Slayer"}, nil, nil)
+	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
+		t.Errorf("want only m1, got %v", matchIDs(got))
+	}
+}
+
+func TestFilterRowsByCascade_NilPlaylistExcluded(t *testing.T) {
+	t.Parallel()
+	// Une row sans Playlist est exclue quand un filtre playlist est actif.
+	rows := []canonical.PlayerMatchRow{
+		rowWithPlaylist("m1", "Quick Play", "Partie rapide"),
+		row("m2", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), canonical.OutcomeWin), // Playlist nil
+	}
+
+	got := filterRowsByCascade(rows, nil, []string{"Partie rapide"}, nil, nil)
+	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
+		t.Errorf("want only m1, got %v", matchIDs(got))
+	}
+}
+
+func TestFilterRowsByCascade_ExperienceFilter(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		rowWithExperience("pvp-nc", false, false), // PVP non classé
+		rowWithExperience("pvp-c", true, false),   // PVP classé
+		rowWithExperience("pve", false, true),     // PVE
+	}
+
+	got := filterRowsByCascade(rows, []string{"PVP non classé"}, nil, nil, nil)
+	if len(got) != 1 || got[0].Summary.MatchID != "pvp-nc" {
+		t.Errorf("want only pvp-nc, got %v", matchIDs(got))
+	}
+
+	got2 := filterRowsByCascade(rows, []string{"PVE", "PVP classé"}, nil, nil, nil)
+	if len(got2) != 2 {
+		t.Errorf("want 2 rows (PVE+ranked), got %d", len(got2))
+	}
+}
+
+func TestFilterRowsByCascade_CombinedFilters(t *testing.T) {
+	t.Parallel()
+	// Seule une row satisfaisant à la fois experience_type ET playlist passe.
+	rows := []canonical.PlayerMatchRow{
+		func() canonical.PlayerMatchRow {
+			r := rowWithPlaylist("m1", "Ranked Arena", "Arène classée")
+			ranked := true
+			r.Summary.IsRanked = &ranked
+			return r
+		}(),
+		func() canonical.PlayerMatchRow {
+			r := rowWithPlaylist("m2", "Quick Play", "Partie rapide")
+			isRanked := false
+			r.Summary.IsRanked = &isRanked
+			return r
+		}(),
+		func() canonical.PlayerMatchRow {
+			r := rowWithPlaylist("m3", "Ranked Arena", "Arène classée")
+			isRanked := false
+			r.Summary.IsRanked = &isRanked
+			return r
+		}(),
+	}
+
+	got := filterRowsByCascade(rows, []string{"PVP classé"}, []string{"Arène classée"}, nil, nil)
+	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
+		t.Errorf("only m1 is ranked + Arène classée, got %v", matchIDs(got))
+	}
+}
+
+func TestFilterRowsByCascade_EmptyFilters(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		rowWithPlaylist("m1", "Quick Play", "Partie rapide"),
+		rowWithPlaylist("m2", "Ranked Arena", "Arène classée"),
+	}
+
+	got := filterRowsByCascade(rows, nil, nil, nil, nil)
+	if len(got) != 2 {
+		t.Errorf("no filter = all rows pass, got %d", len(got))
+	}
+}
+
+func TestFilterRowsByCascade_MapFilter(t *testing.T) {
+	t.Parallel()
+	// Filtre par label FR de carte (COALESCE(map_name_fr, map_name)).
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	makeRowWithMap := func(id, mapEN, mapFR string) canonical.PlayerMatchRow {
+		r := row(id, t0, canonical.OutcomeWin)
+		r.Summary.Map = &canonical.AssetReference{
+			Kind:         "map",
+			ID:           "map-" + id,
+			DefaultLabel: mapEN,
+			Labels:       map[string]string{"en": mapEN, "fr": mapFR},
+		}
+		return r
+	}
+	rows := []canonical.PlayerMatchRow{
+		makeRowWithMap("m1", "Recharge", "Décharge"),
+		makeRowWithMap("m2", "Bazaar", "Bazar"),
+		makeRowWithMap("m3", "Recharge", "Décharge"),
+	}
+
+	got := filterRowsByCascade(rows, nil, nil, []string{"Décharge"}, nil)
+	if len(got) != 2 {
+		t.Fatalf("want 2 rows for 'Décharge', got %d", len(got))
+	}
+	for _, r := range got {
+		if r.Summary.MatchID == "m2" {
+			t.Error("m2 (Bazar) should have been filtered out")
+		}
+	}
+}
+
+// matchIDs extrait les MatchID d'une slice pour affichage dans les erreurs.
+func matchIDs(rows []canonical.PlayerMatchRow) []string {
+	ids := make([]string, len(rows))
+	for i, r := range rows {
+		ids[i] = r.Summary.MatchID
+	}
+	return ids
+}
+
+// ---------------------------------------------------------------------------
+// Tests filterRowsByCascade — filtre modes (PairMode)
+// ---------------------------------------------------------------------------
+
+// rowWithMode construit une row dont Summary.PairMode est peuplé avec les
+// labels EN et FR, miroir de assetReference() dans player_matches_repo.go.
+func rowWithMode(matchID, modeEN, modeFR string) canonical.PlayerMatchRow {
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	r := row(matchID, t0, canonical.OutcomeWin)
+	r.Summary.PairMode = &canonical.AssetReference{
+		Kind:         "pair_mode",
+		ID:           "mode-" + matchID,
+		DefaultLabel: modeEN,
+		Labels:       map[string]string{"en": modeEN, "fr": modeFR},
+	}
+	return r
+}
+
+func TestFilterRowsByCascade_ModeFRLabel(t *testing.T) {
+	t.Parallel()
+	// filtersResolve retourne COALESCE(pair_name_fr, pair_name) = label FR.
+	// filterRowsByCascade doit utiliser Labels["fr"] pour que la comparaison aboutisse.
+	rows := []canonical.PlayerMatchRow{
+		rowWithMode("m1", "Slayer", "Slayer"),
+		rowWithMode("m2", "Capture the Flag", "Capture the Flag"),
+		rowWithMode("m3", "Slayer", "Slayer"),
+	}
+
+	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 rows for mode 'Slayer', got %d", len(got))
+	}
+	for _, r := range got {
+		if r.Summary.MatchID == "m2" {
+			t.Error("m2 (Capture the Flag) should have been filtered out")
+		}
+	}
+}
+
+func TestFilterRowsByCascade_ModeENFallback(t *testing.T) {
+	t.Parallel()
+	// Quand pair_name_fr est absent, COALESCE retourne l'anglais. Le label FR
+	// stocké dans Labels["fr"] = label anglais = ce que filtersResolve envoie.
+	rows := []canonical.PlayerMatchRow{
+		rowWithMode("m1", "Extraction", "Extraction"),
+		rowWithMode("m2", "Oddball", "Oddball"),
+	}
+
+	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Extraction"})
+	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
+		t.Errorf("want only m1, got %v", matchIDs(got))
+	}
+}
+
+func TestFilterRowsByCascade_NilModeExcluded(t *testing.T) {
+	t.Parallel()
+	// Une row sans PairMode est exclue quand un filtre modes est actif.
+	rows := []canonical.PlayerMatchRow{
+		rowWithMode("m1", "Slayer", "Slayer"),
+		row("m2", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), canonical.OutcomeWin), // PairMode nil
+	}
+
+	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"})
+	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
+		t.Errorf("want only m1 (m2 has nil PairMode), got %v", matchIDs(got))
 	}
 }

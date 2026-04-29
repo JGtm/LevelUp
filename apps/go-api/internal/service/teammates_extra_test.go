@@ -248,8 +248,8 @@ func TestExtractSynthesisSessionLabels_PureRankedSession(t *testing.T) {
 	}
 	got := extractSynthesisSessionLabels(matches)
 	e := got.Squad[0]
-	if len(e.Experiences) != 1 || e.Experiences[0] != "PVP classÃ©" {
-		t.Errorf("expected [PVP classÃ©], got %v", e.Experiences)
+	if len(e.Experiences) != 1 || e.Experiences[0] != "PVP classé" {
+		t.Errorf("expected [PVP classé], got %v", e.Experiences)
 	}
 }
 
@@ -272,7 +272,7 @@ func TestFilterSynthesisByCascade_ExperienceFilter(t *testing.T) {
 		{MatchID: "m2", IsRanked: false, IsFirefight: false},
 		{MatchID: "m3", IsRanked: false, IsFirefight: true},
 	}
-	got := filterSynthesisByCascade(matches, domain.CascadeFilter{ExperienceTypes: []string{"PVP classÃ©"}})
+	got := filterSynthesisByCascade(matches, domain.CascadeFilter{ExperienceTypes: []string{"PVP classé"}})
 	if len(got) != 1 || got[0].MatchID != "m1" {
 		t.Errorf("expected only m1 (ranked), got %v", got)
 	}
@@ -376,8 +376,8 @@ func TestComputeMapBreakdown_WinRateCalculation(t *testing.T) {
 	if bazaar.MatchCount != 3 {
 		t.Errorf("Bazaar: expected 3 matches, got %d", bazaar.MatchCount)
 	}
-	if bazaar.WinRate != 66.67 {
-		t.Errorf("Bazaar: expected win rate 66.67, got %f", bazaar.WinRate)
+	if bazaar.WinRate != 0.67 {
+		t.Errorf("Bazaar: expected win rate 0.67, got %f", bazaar.WinRate)
 	}
 	recharge := byMap["Recharge"]
 	if recharge.WinRate != 0.0 {

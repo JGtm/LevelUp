@@ -440,3 +440,56 @@ func TestPlayerMatchesRepo_Load_InvalidFiltersRejected(t *testing.T) {
 		t.Fatal("expected error for negative Limit")
 	}
 }
+
+// TestPlayerMatchesRepo_Load_PairModeHydrated vérifie que PairMode est peuplé
+// depuis pair_name (EN) et pair_name_fr (COALESCE), aligné avec filtersResolve.
+func TestPlayerMatchesRepo_Load_PairModeHydrated(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	resetPlayerMatchesTables(t, pdb)
+	ctx := context.Background()
+
+	// Insérer une row avec pair_name_fr distinct de pair_name.
+	_, err := pdb.Player.Exec(ctx, `INSERT INTO shared.match_registry
+		(match_id, start_time, map_id, map_name, pair_name, pair_name_fr,
+		 playlist_name, duration_seconds)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"pm_test", "2026-01-01T00:00:00Z", "bazaar", "Bazaar",
+		"Slayer", "Assassin", "Quick Play", 600)
+	if err != nil {
+		t.Fatalf("insert match_registry: %v", err)
+	}
+	_, err = pdb.Player.Exec(ctx, `INSERT INTO shared.match_participants
+		(match_id, xuid, gamertag, outcome, team_id)
+		VALUES (?, ?, ?, ?, ?)`,
+		"pm_test", pTestXUID, pTestGamertag, 2, 0)
+	if err != nil {
+		t.Fatalf("insert match_participants: %v", err)
+	}
+	_, err = pdb.Player.Exec(ctx, `INSERT INTO player_match_enrichment
+		(match_id) VALUES (?)`, "pm_test")
+	if err != nil {
+		t.Fatalf("insert player_match_enrichment: %v", err)
+	}
+
+	repo := NewPlayerMatchesRepo(pdb)
+	rows, loadErr := repo.Load(ctx, port.PlayerMatchFilters{})
+	if loadErr != nil {
+		t.Fatalf("Load: %v", loadErr)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("want 1 row, got %d", len(rows))
+	}
+	pm := rows[0].Summary.PairMode
+	if pm == nil {
+		t.Fatal("PairMode should be non-nil when pair_name is set")
+	}
+	if pm.DefaultLabel != "Slayer" {
+		t.Errorf("PairMode.DefaultLabel want %q, got %q", "Slayer", pm.DefaultLabel)
+	}
+	if got := pm.Labels["fr"]; got != "Assassin" {
+		t.Errorf("PairMode.Labels[fr] want %q (pair_name_fr), got %q", "Assassin", got)
+	}
+	if got := pm.Labels["en"]; got != "Slayer" {
+		t.Errorf("PairMode.Labels[en] want %q (pair_name), got %q", "Slayer", got)
+	}
+}

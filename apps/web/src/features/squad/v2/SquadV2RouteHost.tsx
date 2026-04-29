@@ -6,7 +6,7 @@
  * GamertagCombobox) et les passe à `<SquadV2Page>` comme `teammates`. Garde
  * SquadV2Page découplé du store / context pour rester testable seul.
  *
- * Cascade (experienceTypes/playlists) et période sont lus depuis le global
+ * Cascade (experienceTypes/playlists/modes) et période sont lus depuis le global
  * filter store (filterContext commité par le bouton Analyser de SquadLayout).
  */
 import { useParams } from '@tanstack/react-router'
@@ -37,6 +37,8 @@ export function SquadV2RouteHost() {
   const period = presetToSquadPeriod(detectActivePreset(filterContext.period))
   const experienceTypes = filterContext.cascade?.experience_types ?? []
   const playlists = filterContext.cascade?.playlists ?? []
+  const maps = filterContext.cascade?.maps ?? []
+  const modes = filterContext.cascade?.modes ?? []
 
   return (
     <SquadV2Page
@@ -45,6 +47,8 @@ export function SquadV2RouteHost() {
       period={period}
       experienceTypes={experienceTypes}
       playlists={playlists}
+      maps={maps}
+      modes={modes}
     />
   )
 }

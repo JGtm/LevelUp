@@ -128,6 +128,8 @@ type SquadV2Service interface {
 		period temporal.Period,
 		experienceTypes []string,
 		playlists []string,
+		maps []string,
+		modes []string,
 	) (*domain.SquadPageV2Response, error)
 }
 

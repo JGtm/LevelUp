@@ -1,7 +1,7 @@
-// Package service â€” TeammatesService : endpoint POST /pages/teammates (contrat FastAPI).
+// Package service Ã¢â‚¬â€ TeammatesService : endpoint POST /pages/teammates (contrat FastAPI).
 //
-// Sprint 33 : adapte les donnÃ©es SquadRepository vers le contrat TeammatesPageResponse.
-// RÃ©utilise les mÃªmes queries Q29-Q31 que SquadService mais expose le format FastAPI.
+// Sprint 33 : adapte les donnÃƒÂ©es SquadRepository vers le contrat TeammatesPageResponse.
+// RÃƒÂ©utilise les mÃƒÂªmes queries Q29-Q31 que SquadService mais expose le format FastAPI.
 package service
 
 import (
@@ -20,27 +20,27 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// FriendGamertagsResolver retourne la liste courante des amis configurÃ©s
-// (app_settings.friend_gamertags). AppelÃ© Ã  chaque requÃªte pour reflÃ©ter les
-// PATCH settings sans redÃ©marrage.
+// FriendGamertagsResolver retourne la liste courante des amis configurÃƒÂ©s
+// (app_settings.friend_gamertags). AppelÃƒÂ© ÃƒÂ  chaque requÃƒÂªte pour reflÃƒÂ©ter les
+// PATCH settings sans redÃƒÂ©marrage.
 type FriendGamertagsResolver func(ctx context.Context) []string
 
-// TeammatesService calcule les stats coÃ©quipiers au format FastAPI.
+// TeammatesService calcule les stats coÃƒÂ©quipiers au format FastAPI.
 type TeammatesService struct {
 	repo            port.SquadRepository
 	friendGamertags FriendGamertagsResolver
-	// playerMatchesRepo (P4.3 finale) : loader canonical-only. CÃ¢blÃ© en DI
+	// playerMatchesRepo (P4.3 finale) : loader canonical-only. CÃƒÂ¢blÃƒÂ© en DI
 	// universellement via registry.go (ServiceRegistry.playerMatchesAdapterFor).
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
 }
 
-// NewTeammatesService crÃ©e un TeammatesService.
+// NewTeammatesService crÃƒÂ©e un TeammatesService.
 //
-// friendGamertags : optionnel. Si nil, le filtre amis-only est dÃ©sactivÃ©
-// (top retournÃ© brut, ancien comportement). Quand fourni, le top dropdown
-// est restreint aux amis configurÃ©s.
+// friendGamertags : optionnel. Si nil, le filtre amis-only est dÃƒÂ©sactivÃƒÂ©
+// (top retournÃƒÂ© brut, ancien comportement). Quand fourni, le top dropdown
+// est restreint aux amis configurÃƒÂ©s.
 func NewTeammatesService(repo port.SquadRepository, friendGamertags FriendGamertagsResolver) *TeammatesService {
 	return &TeammatesService{repo: repo, friendGamertags: friendGamertags}
 }
@@ -64,9 +64,9 @@ func (s *TeammatesService) GetPage(
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: %w", err)
 	}
 
-	// Â§3 plan Squad/Sessions : filtre top dropdown aux amis configurÃ©s
+	// Ã‚Â§3 plan Squad/Sessions : filtre top dropdown aux amis configurÃƒÂ©s
 	// (settings.friend_gamertags). Hors amis = exclus du dropdown mais
-	// toujours requÃªtables explicitement via SelectedGamertags + alias.
+	// toujours requÃƒÂªtables explicitement via SelectedGamertags + alias.
 	var friendGTs []string
 	if s.friendGamertags != nil {
 		friendGTs = s.friendGamertags(ctx)
@@ -76,14 +76,14 @@ func (s *TeammatesService) GetPage(
 		dropdownRows = filterTopRowsToFriends(topRows, friendGTs)
 	}
 
-	// Options (liste des coÃ©quipiers frÃ©quents â€” limitÃ©e aux amis si configurÃ©).
+	// Options (liste des coÃƒÂ©quipiers frÃƒÂ©quents Ã¢â‚¬â€ limitÃƒÂ©e aux amis si configurÃƒÂ©).
 	options := buildTeammateOptions(dropdownRows)
 
 	// P4.3 finale (ADR 0011) : load canonical via PlayerMatchesRepo, convert
 	// vers SynthesisMatchRow pour les helpers internes (extractSynthesisSessionLabels,
 	// filterSynthesisByCascade, etc.).
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
+		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: PlayerMatchesRepo non cÃƒÂ¢blÃƒÂ© (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -96,17 +96,17 @@ func (s *TeammatesService) GetPage(
 	// Extraire les session_labels disponibles (solo / escouade).
 	sessionLabels := extractSynthesisSessionLabels(allMatches)
 
-	// Filtrer les matchs selon les sessions sÃ©lectionnÃ©es.
+	// Filtrer les matchs selon les sessions sÃƒÂ©lectionnÃƒÂ©es.
 	filteredMatches := filterSynthesisBySession(allMatches, req.PickedSoloSessions, req.PickedSquadSessions)
 
-	// Appliquer les filtres cascade (experience_types, playlists) si prÃ©sents.
+	// Appliquer les filtres cascade (experience_types, playlists) si prÃƒÂ©sents.
 	if req.Filters != nil {
 		filteredMatches = filterSynthesisByCascade(filteredMatches, req.Filters.Cascade)
 	}
 
 	totalMatches := len(filteredMatches)
 
-	// Calculs dÃ©taillÃ©s pour les gamertags sÃ©lectionnÃ©s.
+	// Calculs dÃƒÂ©taillÃƒÂ©s pour les gamertags sÃƒÂ©lectionnÃƒÂ©s.
 	teammates := make([]domain.TeammateRow, 0, len(req.SelectedGamertags))
 	var allSquadRows []domain.SquadMatchRow
 	matchSeries := map[string][]domain.SquadMatchSeriesPoint{}
@@ -167,8 +167,8 @@ func filterTopRowsToFriends(rows []domain.TopTeammateRow, friendGamertags []stri
 	return out
 }
 
-// extractSynthesisSessionLabels collecte les sessions uniques en sÃ©parant solo / escouade,
-// calcule les bornes temporelles, agrÃ¨ge les expÃ©riences et playlists prÃ©sentes, et trie par StartedAt DESC.
+// extractSynthesisSessionLabels collecte les sessions uniques en sÃƒÂ©parant solo / escouade,
+// calcule les bornes temporelles, agrÃƒÂ¨ge les expÃƒÂ©riences et playlists prÃƒÂ©sentes, et trie par StartedAt DESC.
 func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) domain.SessionLabelsList {
 	type meta struct {
 		startedAt   time.Time
@@ -246,15 +246,15 @@ func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) doma
 	}
 }
 
-// synthesisExperienceLabel dÃ©rive le label d'expÃ©rience d'un match (miroir de filters_service.go).
+// synthesisExperienceLabel dÃƒÂ©rive le label d'expÃƒÂ©rience d'un match (miroir de filters_service.go).
 func synthesisExperienceLabel(m legacymatch.SynthesisMatchRow) string {
 	if m.IsFirefight {
 		return "PVE"
 	}
 	if m.IsRanked {
-		return "PVP classÃ©"
+		return "PVP classé"
 	}
-	return "PVP non classÃ©"
+	return "PVP non classé"
 }
 
 // filterSynthesisByCascade applique les filtres experience_types et playlists sur les matchs.
@@ -287,8 +287,8 @@ func filterSynthesisByCascade(matches []legacymatch.SynthesisMatchRow, c domain.
 	return out
 }
 
-// filterSynthesisBySession filtre les matchs selon les sessions sÃ©lectionnÃ©es (union des labels).
-// Slices vides â†’ tous les matchs retournÃ©s sans filtre.
+// filterSynthesisBySession filtre les matchs selon les sessions sÃƒÂ©lectionnÃƒÂ©es (union des labels).
+// Slices vides Ã¢â€ â€™ tous les matchs retournÃƒÂ©s sans filtre.
 func filterSynthesisBySession(
 	matches []legacymatch.SynthesisMatchRow,
 	pickedSolo []string,
@@ -328,16 +328,16 @@ func buildTeammateOptions(rows []domain.TopTeammateRow) []domain.TeammateOption 
 	return opts
 }
 
-// buildTeammateRowWithMatches construit les KPIs avec/sans pour un coÃ©quipier et retourne aussi les matches escouade.
+// buildTeammateRowWithMatches construit les KPIs avec/sans pour un coÃƒÂ©quipier et retourne aussi les matches escouade.
 func (s *TeammatesService) buildTeammateRowWithMatches(
 	ctx context.Context,
 	playerXUID, gamertag string,
 	topRows []domain.TopTeammateRow,
 	allMatches []legacymatch.SynthesisMatchRow,
 ) (*domain.TeammateRow, []domain.SquadMatchRow, error) {
-	// Ã‰tape 1 : chercher le gamertag dans le top 50 escouade â€” case-insensitive
+	// Ãƒâ€°tape 1 : chercher le gamertag dans le top 50 escouade Ã¢â‚¬â€ case-insensitive
 	// pour absorber les variations de casse entre la saisie user et la valeur en
-	// DB (Halo API renvoie tantÃ´t "Madina97294" tantÃ´t "madina97294").
+	// DB (Halo API renvoie tantÃƒÂ´t "Madina97294" tantÃƒÂ´t "madina97294").
 	var teammateXUID string
 	var encounterCount int
 	for _, r := range topRows {
@@ -348,9 +348,9 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		}
 	}
 
-	// Ã‰tape 2 : fallback â€” rÃ©soudre via shared.xuid_aliases pour les gamertags
-	// hors top 50 (utilisateur qui a 50+ coÃ©quipiers rÃ©guliers OU saisie libre
-	// dans la combobox). encounterCount reste 0 â€” recalculÃ© depuis squadMatches
+	// Ãƒâ€°tape 2 : fallback Ã¢â‚¬â€ rÃƒÂ©soudre via global.xuid_aliases pour les gamertags
+	// hors top 50 (utilisateur qui a 50+ coÃƒÂ©quipiers rÃƒÂ©guliers OU saisie libre
+	// dans la combobox). encounterCount reste 0 Ã¢â‚¬â€ recalculÃƒÂ© depuis squadMatches
 	// plus bas si on charge effectivement les matchs.
 	if teammateXUID == "" {
 		resolved, found, err := s.repo.LookupXUIDByGamertag(ctx, gamertag)
@@ -363,7 +363,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 			return nil, nil, nil
 		}
 		if !found {
-			// Vraiment inconnu de tous les aliases â€” on log et on drop.
+			// Vraiment inconnu de tous les aliases Ã¢â‚¬â€ on log et on drop.
 			slog.WarnContext(ctx, "teammates_gamertag_not_found",
 				"player_xuid", playerXUID,
 				"gamertag", gamertag,
@@ -377,9 +377,9 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	// Charger les matchs communs.
 	squadMatches, err := s.repo.LoadSquadMatches(ctx, playerXUID, teammateXUID)
 	if err != nil {
-		// Erreur DB : on log avec contexte (le warn gÃ©nÃ©rique
-		// "teammates: erreur buildTeammateRow" du caller perd le dÃ©tail
-		// du XUID rÃ©solu, on conserve donc une trace ciblÃ©e ici).
+		// Erreur DB : on log avec contexte (le warn gÃƒÂ©nÃƒÂ©rique
+		// "teammates: erreur buildTeammateRow" du caller perd le dÃƒÂ©tail
+		// du XUID rÃƒÂ©solu, on conserve donc une trace ciblÃƒÂ©e ici).
 		slog.ErrorContext(ctx, "teammates_load_squad_matches_failed",
 			"player_xuid", playerXUID, "teammate_xuid", teammateXUID,
 			"gamertag", gamertag, "err", err.Error())
@@ -407,8 +407,8 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		lastSeen = &t
 	}
 
-	// Si encounterCount n'a pas Ã©tÃ© renseignÃ© par le top 50 (fallback alias-only),
-	// on le calcule depuis les matchs communs effectivement chargÃ©s.
+	// Si encounterCount n'a pas ÃƒÂ©tÃƒÂ© renseignÃƒÂ© par le top 50 (fallback alias-only),
+	// on le calcule depuis les matchs communs effectivement chargÃƒÂ©s.
 	if encounterCount == 0 {
 		encounterCount = len(squadMatches)
 	}
@@ -458,11 +458,10 @@ func computeKPIsFromSquadMatches(matches []domain.SquadMatchRow) domain.Teammate
 		acc = &v
 	}
 	return domain.TeammateKPIs{
-		MatchCount: n,
-		Wins:       wins,
-		KDRatio:    &kd,
-		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
-		WinRate:              round2(analysis.WinRate(wins, n) * 100),
+		MatchCount:           n,
+		Wins:                 wins,
+		KDRatio:              &kd,
+		WinRate:              analysis.WinRate(wins, n),
 		Accuracy:             acc,
 		KillsPerGame:         &kpg,
 		AssistsPerGame:       &apg,
@@ -498,11 +497,10 @@ func computeKPIsFromSynthesisExcluding(
 	kd := safeDiv(float64(totalKills), float64(totalDeaths))
 	kpg := float64(totalKills) / float64(n)
 	return domain.TeammateKPIs{
-		MatchCount: n,
-		Wins:       wins,
-		KDRatio:    &kd,
-		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
-		WinRate:      round2(analysis.WinRate(wins, n) * 100),
+		MatchCount:   n,
+		Wins:         wins,
+		KDRatio:      &kd,
+		WinRate:      analysis.WinRate(wins, n),
 		KillsPerGame: &kpg,
 	}
 }
@@ -518,7 +516,7 @@ func round2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
-// computeMapBreakdown agrÃ¨ge les stats par carte depuis les matchs escouade.
+// computeMapBreakdown agrÃƒÂ¨ge les stats par carte depuis les matchs escouade.
 func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRow {
 	type stats struct{ count, wins int }
 	m := map[string]*stats{}
@@ -540,13 +538,13 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 		result = append(result, domain.MapBreakdownRow{
 			MapUI:      mapUI,
 			MatchCount: s.count,
-			WinRate:    round2(float64(s.wins) / float64(s.count) * 100),
+			WinRate:    round2(float64(s.wins) / float64(s.count)),
 		})
 	}
 	return result
 }
 
-// buildMatchSeries construit la sÃ©rie temporelle des matchs pour un coÃ©quipier.
+// buildMatchSeries construit la sÃƒÂ©rie temporelle des matchs pour un coÃƒÂ©quipier.
 func buildMatchSeries(matches []domain.SquadMatchRow) []domain.SquadMatchSeriesPoint {
 	series := make([]domain.SquadMatchSeriesPoint, 0, len(matches))
 	for _, m := range matches {

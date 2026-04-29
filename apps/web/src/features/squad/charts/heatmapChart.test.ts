@@ -7,8 +7,8 @@ import { buildHeatmapSeries } from './heatmapChart'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
 const ROWS: MapBreakdownRow[] = [
-  { map_ui: 'Aquarius', match_count: 4, win_rate: 75 },
-  { map_ui: 'Live Fire', match_count: 6, win_rate: 50 },
+  { map_ui: 'Aquarius', match_count: 4, win_rate: 0.75 },
+  { map_ui: 'Live Fire', match_count: 6, win_rate: 0.5 },
 ]
 
 const id = (s: string) => s

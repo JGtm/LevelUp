@@ -22,9 +22,13 @@ type MatchSummary struct {
 	Playlist        *AssetReference
 	Map             *AssetReference
 	GameVariant     *AssetReference
-	IsRanked        *bool
-	IsPvE           *bool
-	Outcome         Outcome
+	// PairMode est la catégorie humaine du mode (ex: "Slayer", "CTF") extraite
+	// de pair_name / pair_name_fr. Distinct de GameVariant (variante technique
+	// avec préfixe titre, ex: "HaloMultiplayer:Slayer"). Nil si non disponible.
+	PairMode *AssetReference
+	IsRanked *bool
+	IsPvE    *bool
+	Outcome  Outcome
 	// Teams est le snapshot léger des scores d'équipes pour l'affichage en
 	// liste / hero card (ADR 0011, P4.1). MatchDetail expose la même info
 	// avec ParticipantsXUIDs en plus ; ici on garde une version sans les
