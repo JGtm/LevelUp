@@ -10,16 +10,20 @@
  *   3. GET /pages/squad/v2/engagement    (Mock 15 v2 Squad page)
  *   4. GET /engagement_profile           (Settings + Squad overlay)
  *
- * Joueur cible : JGtm (717 engagement_scores calcules — le plus complet apres
- * le backfill --all). Si la convention du projet veut demo-player a l'avenir,
- * pointer le slug PLAYER_SLUG ci-dessous vers demo-player.
+ * Configuration (revue 2026-04-29 B5) :
+ *   - E2E_API_URL : URL de l'API (defaut http://localhost:8000/api/v1)
+ *   - E2E_PLAYER_SLUG : joueur cible avec donnees engagement (defaut JGtm)
+ *   - E2E_DEMO_MODE=1 : skip ces tests (mode demo n'a pas les fixtures)
  */
 import { test, expect } from '@playwright/test'
 
-const API = 'http://localhost:8000/api/v1'
-const PLAYER_SLUG = 'JGtm'
+const API = process.env.E2E_API_URL ?? 'http://localhost:8000/api/v1'
+const PLAYER_SLUG = process.env.E2E_PLAYER_SLUG ?? 'JGtm'
+const SKIP_DEMO = process.env.E2E_DEMO_MODE === '1'
 
 test.describe('Engagement - Phase 4 endpoints', () => {
+  test.skip(SKIP_DEMO, 'Mode demo : fixtures engagement absentes (revue B5)')
+
   test('GET /engagement/timeseries renvoie 200 avec items pace_*', async ({
     request,
   }) => {

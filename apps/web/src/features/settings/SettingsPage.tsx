@@ -1,7 +1,7 @@
 /**
  * SettingsPage — page des paramètres utilisateur avec onglets.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
@@ -64,7 +64,10 @@ export function SettingsPage() {
 
   const [localSettings, setLocalSettings] = useState<Partial<SettingsResponse>>({})
   const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
-  const saveTimerRef = useState<ReturnType<typeof setTimeout> | null>(null)
+  // Référence stable au timer de reset du saveStatus.
+  // Bug corrigé (revue 2026-04-29 B4) : auparavant useState produisait un nouveau tuple
+  // à chaque render et perdait le timer → leak (les setTimeout ne se nettoyaient pas).
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const routerState = useRouterState()
   const navigate = useNavigate()
@@ -89,7 +92,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     return () => {
-      if (saveTimerRef[0]) clearTimeout(saveTimerRef[0])
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [])
 
@@ -98,13 +101,13 @@ export function SettingsPage() {
     mutation.mutate({ [field]: value } as Partial<SettingsResponse>, {
       onSuccess: () => {
         setSaveStatus('saved')
-        if (saveTimerRef[0]) clearTimeout(saveTimerRef[0])
-        saveTimerRef[0] = setTimeout(() => setSaveStatus(null), 2000)
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = setTimeout(() => setSaveStatus(null), 2000)
       },
       onError: () => {
         setSaveStatus('error')
-        if (saveTimerRef[0]) clearTimeout(saveTimerRef[0])
-        saveTimerRef[0] = setTimeout(() => setSaveStatus(null), 4000)
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = setTimeout(() => setSaveStatus(null), 4000)
       },
     })
   }
