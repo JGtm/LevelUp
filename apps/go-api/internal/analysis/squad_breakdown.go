@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // =============================================================================
@@ -358,6 +359,90 @@ func ComputeSynthesisKPIs(rows []domain.SynthesisMatchRow, isSquad bool) domain.
 	kpis.Wins = wins
 	if totalWL > 0 {
 		kpis.WinRate = math.Round(float64(wins)/float64(totalWL)*1000) / 1000
+	}
+	if nKDA > 0 {
+		v := math.Round(sumKDA/float64(nKDA)*100) / 100
+		kpis.KDRatio = &v
+	}
+	if nAcc > 0 {
+		v := math.Round(sumAcc/float64(nAcc)*1000) / 1000
+		kpis.Accuracy = &v
+	}
+	if nPerf > 0 {
+		v := math.Round(sumPerf / float64(nPerf))
+		kpis.PerformanceScore = &v
+	}
+	if nTime > 0 {
+		avgLife := math.Round(sumTimePlayed/float64(nTime)*10) / 10
+		kpis.AvgLifeSeconds = &avgLife
+		totalMinutes := sumTimePlayed / 60.0
+		if totalMinutes > 0 {
+			kpm := math.Round(sumKills/totalMinutes*100) / 100
+			kpis.KillsPerMin = &kpm
+		}
+	}
+	return kpis
+}
+
+// ComputeSynthesisKPIsFromCanonical est la variante canonical-aware de
+// ComputeSynthesisKPIs (P4 pilote synthesis, ADR 0011). Consomme directement
+// `[]canonical.PlayerMatchRow` sans intermédiaire `domain.SynthesisMatchRow`.
+//
+// Comportement strictement équivalent à ComputeSynthesisKPIs ; la seule
+// différence est la source des champs (Self.Kills, Self.KDA, Self.Outcome
+// au lieu de SynthesisMatchRow.{Kills,KDA,Outcome}).
+//
+// Migration progressive : ComputeSynthesisKPIs reste pour les autres callers
+// (Squad, Teammates) qui n'ont pas encore migré. Sera supprimé en P4.3 quand
+// tous les callers seront sur canonical.
+func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad bool) domain.SynthesisKPIs {
+	var kpis domain.SynthesisKPIs
+	var totalWL, wins int
+	var sumKDA, sumAcc, sumPerf float64
+	var nKDA, nAcc, nPerf int
+	var sumKills, sumTimePlayed float64
+	var nTime int
+
+	for _, r := range rows {
+		if r.Enrichment.IsWithFriends != isSquad {
+			continue
+		}
+		kpis.MatchCount++
+		if r.Self.Outcome == canonical.OutcomeWin || r.Self.Outcome == canonical.OutcomeLoss {
+			totalWL++
+			if r.Self.Outcome == canonical.OutcomeWin {
+				wins++
+			}
+		}
+		if r.Self.KDA != nil {
+			sumKDA += *r.Self.KDA
+			nKDA++
+		}
+		if r.Self.Accuracy != nil {
+			sumAcc += *r.Self.Accuracy
+			nAcc++
+		}
+		if r.Enrichment.PerformanceScore != nil {
+			sumPerf += *r.Enrichment.PerformanceScore
+			nPerf++
+		}
+		if r.Self.Kills != nil {
+			sumKills += float64(*r.Self.Kills)
+		}
+		if r.Self.TimePlayed != nil && *r.Self.TimePlayed > 0 {
+			sumTimePlayed += float64(*r.Self.TimePlayed)
+			nTime++
+		}
+	}
+
+	if kpis.MatchCount == 0 {
+		return kpis
+	}
+	kpis.Wins = wins
+	if totalWL > 0 {
+		// Note: WinRate canonique 0..1 (ADR 0006). math.Round/1000 préserve la
+		// même précision que ComputeSynthesisKPIs (3 décimales).
+		kpis.WinRate = math.Round(WinRate(wins, totalWL)*1000) / 1000
 	}
 	if nKDA > 0 {
 		v := math.Round(sumKDA/float64(nKDA)*100) / 100
