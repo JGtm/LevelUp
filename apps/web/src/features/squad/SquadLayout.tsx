@@ -356,7 +356,7 @@ export function SquadLayout() {
       value={{ selectedRows, confirmedGamertags: confirmedGts, pageData: data ?? null }}
     >
       {/* ─── Barre de filtres unifiée (sticky top-12, remplace NavL2/FilterOmnibar) ─── */}
-      <div className="sticky top-12 z-30 border-b border-border" style={{ background: 'var(--background)' }}>
+      <div className="sticky top-0 z-30 border-b border-border" style={{ background: 'var(--background)' }}>
         <div className="flex min-h-10 items-center gap-1.5 overflow-visible px-4 py-1.5">
 
           {/* Joueur actif — pill colorée fixe, non supprimable */}
@@ -385,17 +385,15 @@ export function SquadLayout() {
           <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
 
           {/* Filtres cascade (playlists / modes / cartes / expérience) */}
-          {available && (
-            <FiltresPill
-              open={activePopover === 'filtres'}
-              onToggle={() => togglePopover('filtres')}
-              onClose={closeAll}
-              available={available}
-              cascade={pendingCascade}
-              cascadeCount={cascadeCount}
-              onSetCascade={setPendingCascade}
-            />
-          )}
+          <FiltresPill
+            open={activePopover === 'filtres'}
+            onToggle={() => togglePopover('filtres')}
+            onClose={closeAll}
+            available={available ?? { playlists: [], modes: [], maps: [], experience_types: [] }}
+            cascade={pendingCascade}
+            cascadeCount={cascadeCount}
+            onSetCascade={setPendingCascade}
+          />
 
           {/* Période */}
           <PeriodePill
