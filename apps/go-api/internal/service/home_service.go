@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -11,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
@@ -40,6 +42,16 @@ type HomeService struct {
 	// la totalité du payload home KPIs (favorite_playlist, avg_kda, etc.).
 	// Le hook est en place pour permettre une bascule incrémentale.
 	dataAdapter games.TitleDataAdapter
+	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
+	// Quand fourni avec titleSlug + gamertag, fetchMatchesAndSessions charge
+	// canonical et convertit via homeMatchRowFromCanonical / homeSessionsFromCanonical.
+	// SkillTierLabel et SkillRankImageURL sont laissés vides côté converter
+	// (TODO P4.3 : enrichir via TitleSemanticAdapter.Ranks() et
+	// TitleAssetURLAdapter.CSRRankImageURL une fois les adapters CSR câblés
+	// dans le service).
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
+	gamertag          string
 }
 
 // NewHomeService crée un HomeService avec le repository et le provider Halo.
@@ -96,6 +108,16 @@ func (s *HomeService) WithDataAdapter(a games.TitleDataAdapter) *HomeService {
 	return s
 }
 
+// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware
+// + titleSlug + gamertag. Quand les 3 sont fournis, fetchMatchesAndSessions
+// charge canonical et convertit. Sinon fallback repo legacy.
+func (s *HomeService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *HomeService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
+	return s
+}
+
 // WithMatchesCache active le cache TTL process-level pour LoadHomeMatches + LoadHomeSessions.
 // xuid est la clé de cache ; sans lui le cache ne peut pas fonctionner.
 func (s *HomeService) WithMatchesCache(cache *HomeMatchesCache, xuid string) *HomeService {
@@ -125,6 +147,12 @@ type homePageData struct {
 
 // fetchMatchesAndSessions charge matches + sessions depuis le cache TTL ou le repo.
 // Retourne également un booléen indiquant si les données viennent du cache.
+//
+// P4.1 (ADR 0011) : si playerMatchesRepo + titleSlug + gamertag sont fournis,
+// charge canonical.PlayerMatchRow et dérive les deux listes via les
+// converters home*FromCanonical. Sinon fallback repo direct (LoadHomeMatches
+// + LoadHomeSessions en parallèle). Le cache TTL fonctionne dans les deux
+// cas — il est indexé par xuid et stocke les types domain.* finaux.
 func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 	matches []domain.HomeMatchRow, sessions []domain.HomeSessionRow, fromCache bool, err error,
 ) {
@@ -135,19 +163,32 @@ func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 		}
 	}
 
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		var e error
-		matches, e = s.repo.LoadHomeMatches(gctx)
-		return e
-	})
-	g.Go(func() error {
-		var e error
-		sessions, e = s.repo.LoadHomeSessions(gctx)
-		return e
-	})
-	if err = g.Wait(); err != nil {
-		return nil, nil, false, err
+	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
+		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
+			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+		)
+		if e != nil {
+			return nil, nil, false, e
+		}
+		matches = homeMatchRowsFromCanonical(canonicalRows)
+		sessions = homeSessionsFromCanonical(canonicalRows)
+		slog.DebugContext(ctx, "home: loaded canonical",
+			"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	} else {
+		g, gctx := errgroup.WithContext(ctx)
+		g.Go(func() error {
+			var e error
+			matches, e = s.repo.LoadHomeMatches(gctx)
+			return e
+		})
+		g.Go(func() error {
+			var e error
+			sessions, e = s.repo.LoadHomeSessions(gctx)
+			return e
+		})
+		if err = g.Wait(); err != nil {
+			return nil, nil, false, err
+		}
 	}
 
 	if s.matchesCache != nil && s.xuid != "" {
@@ -442,4 +483,186 @@ func cacheChallengesAreRenderable(resp *domain.ChallengesResponse) bool {
 		return false
 	}
 	return true
+}
+
+// =============================================================================
+// P4.1 (ADR 0011) : converters canonical → home types
+// =============================================================================
+
+// homeMatchRowFromCanonical convertit une canonical.PlayerMatchRow vers le format
+// domain.HomeMatchRow consommé par les fonctions analysis.Build* (HeroCard,
+// Highlights, RecentMatches, SessionSummary).
+//
+// Mapping selon ADR 0011 :
+//   - Données brutes (kills, deaths, MMR, …) : depuis canonical.
+//   - Libellés map/playlist/game_variant FR : depuis AssetReference.Labels["fr"]
+//     avec fallback DefaultLabel (le canonical les transporte déjà localisés
+//     pour les locales chargées).
+//   - SkillTierLabel et SkillRankImageURL : LAISSÉS VIDES — TODO P4.3 :
+//     enrichir via TitleSemanticAdapter.Ranks() (label) et
+//     TitleAssetURLAdapter.CSRRankImageURL (URL) une fois ces adapters câblés
+//     en CSR-tier-aware sur le service.
+//   - PairID/PairName/PairNameFR : composite Halo-only — laissés vides (P4.3).
+//
+// TODO P4.3 : retirer cette conversion quand BuildHeroCard/BuildHighlights/etc.
+// consommeront canonical directement.
+func homeMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.HomeMatchRow {
+	out := domain.HomeMatchRow{
+		MatchID:          r.Summary.MatchID,
+		StartTime:        r.Summary.StartedAtUTC,
+		SessionLabel:     r.Enrichment.SessionLabel,
+		IsWithFriends:    r.Enrichment.IsWithFriends,
+		Kills:            homeDerefInt(r.Self.Kills),
+		Deaths:           homeDerefInt(r.Self.Deaths),
+		Assists:          homeDerefInt(r.Self.Assists),
+		KDA:              r.Self.KDA,
+		Accuracy:         r.Self.Accuracy,
+		AvgLifeSeconds:   r.Self.AvgLifeSeconds,
+		TimePlayedSecs:   r.Self.TimePlayed,
+		TeamMMR:          r.Enrichment.TeamMMR,
+		EnemyMMR:         r.Enrichment.EnemyMMR,
+		PerformanceScore: r.Enrichment.PerformanceScore,
+		HeadshotKills:    homeDerefInt(r.Self.HeadshotKills),
+		PerfectKills:     homeDerefInt(r.Self.PerfectKills),
+		MaxKillingSpree:  r.Self.MaxKillingSpree,
+		DominanceFlag:    int(r.Enrichment.DominanceFlag),
+	}
+	if r.Self.TeamID != nil {
+		out.TeamID = *r.Self.TeamID
+	}
+	if r.Self.RankInMatch != nil {
+		v := *r.Self.RankInMatch
+		out.RankInTeam = &v
+	}
+	// Damage : canonical *int → home *float64
+	if r.Self.DamageDealt != nil {
+		v := float64(*r.Self.DamageDealt)
+		out.DamageDealt = &v
+	}
+	if r.Self.DamageTaken != nil {
+		v := float64(*r.Self.DamageTaken)
+		out.DamageTaken = &v
+	}
+	// Map / Playlist / GameVariant : depuis AssetReference si présent.
+	if r.Summary.Map != nil {
+		out.MapID = r.Summary.Map.ID
+		out.MapName = r.Summary.Map.DefaultLabel
+		if v, ok := r.Summary.Map.Labels["fr"]; ok && v != "" {
+			out.MapNameFR = v
+		} else {
+			out.MapNameFR = r.Summary.Map.DefaultLabel
+		}
+	}
+	if r.Summary.Playlist != nil {
+		out.PlaylistID = r.Summary.Playlist.ID
+		out.PlaylistName = r.Summary.Playlist.DefaultLabel
+		if v, ok := r.Summary.Playlist.Labels["fr"]; ok && v != "" {
+			out.PlaylistNameFR = v
+		} else {
+			out.PlaylistNameFR = r.Summary.Playlist.DefaultLabel
+		}
+	}
+	if r.Summary.GameVariant != nil {
+		out.GameVariantID = r.Summary.GameVariant.ID
+		out.GameVariantName = r.Summary.GameVariant.DefaultLabel
+		if v, ok := r.Summary.GameVariant.Labels["fr"]; ok && v != "" {
+			out.GameVariantNameFR = v
+		} else {
+			out.GameVariantNameFR = r.Summary.GameVariant.DefaultLabel
+		}
+	}
+	// IsRanked / IsFirefight : depuis Summary.
+	if r.Summary.IsRanked != nil {
+		out.IsRanked = *r.Summary.IsRanked
+	}
+	if r.Summary.IsPvE != nil {
+		out.IsFirefight = *r.Summary.IsPvE
+	}
+	// Outcome : canonical → int Halo (1=Tie, 2=Win, 3=Loss, 4=DNF).
+	switch r.Self.Outcome {
+	case canonical.OutcomeWin:
+		out.Outcome = domain.OutcomeWin
+	case canonical.OutcomeLoss:
+		out.Outcome = domain.OutcomeLoss
+	case canonical.OutcomeTie:
+		out.Outcome = domain.OutcomeDraw
+	case canonical.OutcomeDNF:
+		out.Outcome = domain.OutcomeDNF
+	}
+	// Team scores : depuis Summary.Teams.
+	for _, t := range r.Summary.Teams {
+		if t.Score == nil {
+			continue
+		}
+		switch t.TeamID {
+		case 0:
+			out.Team0Score = *t.Score
+		case 1:
+			out.Team1Score = *t.Score
+		}
+	}
+	// SkillSnapshot : data fields uniquement. Tier label + image URL = TODO P4.3.
+	if r.Enrichment.SkillSnapshot != nil {
+		out.SkillRatingValue = r.Enrichment.SkillSnapshot.RatingValue
+		out.SkillRatingType = string(r.Enrichment.SkillSnapshot.RatingType)
+		out.SkillTier = r.Enrichment.SkillSnapshot.TierCode
+		if r.Enrichment.SkillSnapshot.SubTier != nil {
+			out.SkillSubTier = *r.Enrichment.SkillSnapshot.SubTier
+		}
+		out.SkillRatingDelta = r.Enrichment.SkillSnapshot.Delta
+		out.SkillPlaylistGroup = r.Enrichment.SkillSnapshot.PlaylistGroup
+		// SkillTierLabel : TODO P4.3 — TitleSemanticAdapter pour CSR/LUSR tier.
+		// SkillRankImageURL : TODO P4.3 — TitleAssetURLAdapter.CSRRankImageURL.
+	}
+	// Ratio : KDR canonique calculé (analysis.KDR), distinct de KDA.
+	if r.Self.Deaths != nil && *r.Self.Deaths > 0 && r.Self.Kills != nil {
+		v := float64(*r.Self.Kills) / float64(*r.Self.Deaths)
+		out.Ratio = &v
+	}
+	return out
+}
+
+// homeMatchRowsFromCanonical : version slice. TODO P4.3.
+func homeMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.HomeMatchRow {
+	out := make([]domain.HomeMatchRow, len(rows))
+	for i, r := range rows {
+		out[i] = homeMatchRowFromCanonical(r)
+	}
+	return out
+}
+
+// homeSessionsFromCanonical dérive la liste HomeSessionRow depuis les rows
+// canonical (1 entrée par match avec Enrichment.SessionID/SessionLabel).
+//
+// Conversion SessionID : canonical *string → home *int via strconv. Si parse
+// échoue, SessionID reste nil (le sync legacy garantit des IDs numériques).
+//
+// TODO P4.3 : retirer ce converter quand domain.HomeSessionRow sera supprimé
+// au profit de canonical.PlayerMatchEnrichment direct.
+func homeSessionsFromCanonical(rows []canonical.PlayerMatchRow) []domain.HomeSessionRow {
+	out := make([]domain.HomeSessionRow, 0, len(rows))
+	for _, r := range rows {
+		entry := domain.HomeSessionRow{
+			MatchID:       r.Summary.MatchID,
+			SessionLabel:  r.Enrichment.SessionLabel,
+			IsWithFriends: r.Enrichment.IsWithFriends,
+		}
+		if r.Enrichment.SessionID != nil {
+			if id, err := strconv.Atoi(*r.Enrichment.SessionID); err == nil {
+				entry.SessionID = &id
+			}
+		}
+		t := r.Summary.StartedAtUTC
+		entry.StartTime = &t
+		out = append(out, entry)
+	}
+	return out
+}
+
+// homeDerefInt retourne *p ou 0 si p est nil. Utilitaire converter local.
+func homeDerefInt(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
