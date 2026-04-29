@@ -30,8 +30,21 @@ func ResolvePlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) 
 }
 
 // resolveDemoPlayer ouvre le joueur de démo depuis DemoFixturesDir.
+//
+// En cas de fixture absente (path inexistant), retourne une erreur explicite
+// pointant vers la cause racine et l'action corrective — au lieu d'un message
+// IO Error opaque côté client (cf. revue 2026-04-29 — process API démarré en
+// LEVELUP_DEMO_MODE=true sans fixture installée).
 func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*duckdb.PlayerDB, error) {
 	dir := cfg.DemoFixturesDir
+	statsPath := filepath.Join(dir, "stats.duckdb")
+	if _, err := os.Stat(statsPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf(
+			"resolveDemoPlayer: fixture démo manquante (%s). "+
+				"Désactiver LEVELUP_DEMO_MODE ou installer la fixture dans LEVELUP_DEMO_FIXTURES_DIR (défaut : tests/fixtures/ref_player/)",
+			statsPath,
+		)
+	}
 	xuidBytes, err := readXUIDFile(filepath.Join(dir, "xuid.txt"))
 	if err != nil {
 		// Fallback : XUID hardcodé pour la fixture Chocoboflor
@@ -42,7 +55,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		Gamertag:                "DemoPlayer",
 		XUID:                    xuidBytes,
 		TitleSlug:               titleSlug,
-		PlayerDBPath:            filepath.Join(dir, "stats.duckdb"),
+		PlayerDBPath:            statsPath,
 		SharedDBPath:            filepath.Join(dir, "shared_matches_v2.duckdb"),
 		MetaDBPath:              filepath.Join(dir, "metadata.duckdb"),
 		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
