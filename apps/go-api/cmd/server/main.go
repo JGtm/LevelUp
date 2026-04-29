@@ -166,6 +166,21 @@ func main() {
 				}
 			}
 		}
+
+		// Validation au boot — warn si la fixture player démo est absente.
+		// Sans ce warning, l'erreur n'apparaît qu'à la première requête joueur
+		// avec un message IO Error opaque ("cannot open file..."), et le
+		// frontend affiche "DemoPlayer" comme un fantôme avec erreurs en cascade.
+		// Fix après incident 2026-04-29 — process API laissé tournant en demo
+		// mode sans fixture installée.
+		demoStats := filepath.Join(cfg.DemoFixturesDir, "stats.duckdb")
+		if _, err := os.Stat(demoStats); os.IsNotExist(err) {
+			slog.Warn(
+				"demo_mode: fixture joueur absente — les requêtes /pages/* échoueront avec un IO Error",
+				"path", demoStats,
+				"hint", "désactiver LEVELUP_DEMO_MODE ou installer la fixture dans LEVELUP_DEMO_FIXTURES_DIR",
+			)
+		}
 	}
 
 	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
