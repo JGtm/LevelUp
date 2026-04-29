@@ -1,5 +1,69 @@
 # Thought Log
 
+## [2026-04-29] P4.2 statut + P4.3a synthesis pillar canonical complet
+
+**Statut** : P4.2 documente, P4.3a synthesis pillar livre (1 commit). Reste P4.3b/c (Home/Stats) en sprints dedies.
+
+**P4.2 - statut definitif des services restants** :
+
+| Service | Statut | Justification |
+|---|---|---|
+| Compare | N/A | NormalizedPlayerStats deja multi-titre (TitleSlug + Extended map). Pas de match-rows. |
+| Career | DONE | Deja canonical via dataAdapter.LoadCareerSnapshot/LoadEncounters (Phase C+). |
+| MatchView | HOOKS_READY | WithDataAdapter + WithHighlightEventsRepo cables. canonical.MatchDetail a etendre = scope substantiel hors P4.1. |
+| Engagement / Citations / Leaderboard / SeasonPass / Media | N/A | Shapes differentes (events, coefs, totals, tracks, files). Pas de pattern match-rows. |
+| Squad / Teammates | DEFER | Travail parallele en cours. Migration repoussee jusqu'a stabilisation. |
+
+**P4.3a synthesis pillar canonical complet** :
+
+1. **3 analyses migrees** (analysis/squad_breakdown.go) :
+   - `ComputeSynthesisTopWeeksFromCanonical` (agregation par semaine)
+   - `ComputeSynthesisBreakdownFromCanonical` (filtre IsWithFriends solo/squad)
+   - `ComputeTemporalHeatmapFromCanonical` (heatmap jour x heure)
+   - + `ComputeSynthesisKPIsFromCanonical` (livre P4 preparation, commit bb769321)
+
+2. **Service refactor (synthesis_service.go)** :
+   - Branchement explicite `useCanonical` : si playerMatchesRepo + titleSlug + gamertag fournis, charge canonical et appelle directement les *FromCanonical.
+   - Helpers canonical ajoutes : `filterSynthesisByPeriodCanonical`, `buildSynthesisOverviewCanonical`, `buildHighlightsPreviewCanonical`, `topNByFuncCanonical`.
+   - Converters `synthesisMatchRowFromCanonical` / `synthesisMatchRowsFromCanonical` **RETIRES** (60 lignes en moins).
+   - Fallback legacy preserve (s.repo.LoadSynthesisMatches) tant que la DI cabling n'est pas mise a jour partout.
+
+3. **Tests parite (analysis/synthesis_canonical_test.go)** :
+   - 3 nouveaux tests parite stricte avec versions legacy.
+   - Fixture commune fixtureMixedSynthesisDataset (6 matchs, 2 semaines, mix Win/Loss, KDA et IsWithFriends varies).
+   - Assertions bit-identiques (entry == entry, cell == cell).
+
+**Reste P4.3** :
+- **P4.3b home pillar** : ~10 analyses (BuildHeroCard, BuildHighlights, BuildRecentMatches, BuildSessionSummary, etc.). Sprint dedie.
+- **P4.3c stats pillar** : ~15 analyses (buildWinLossTab, buildCumulTab, buildKDABuckets, etc.) partagees entre stats/timeseries/session_compare/session_page. Sprint dedie.
+- **P4.3 finale** : suppression types legacy domain.{Home,Synthesis,Stats}MatchRow + retrait Load*Matches repos legacy au profit de LoadPlayerMatches unifie. Bloque par parallele squad/teammates.
+
+**Commit** : `6022b3c5` feat(p4.3a): synthesis pillar pleinement canonical (converter retire)
+
+---
+
+## [2026-04-29] Squad V2 — cascade filters + barre de filtres unifiée
+
+**Statut** : Complété (branche `feat/multi-title-static-fs-rescope`).
+
+**Contexte** : Deux problèmes distincts résolus dans la même session :
+1. Les filtres `experienceTypes` / `playlists` n'avaient aucun effet côté Go (handler ne les parsait pas, service ne les appliquait pas).
+2. Régression UX : sélection d'une période faisait disparaître les pills filtres/experience/playlist (`if (isLoading) return null` avant la barre sticky).
+
+**Décisions techniques** :
+
+1. **Extension interface Go** : `port.SquadV2Service.GetSquadPage` + 2 params `experienceTypes []string, playlists []string`. Helper `parseCSVFilter` dans le handler. Post-load `filterRowsByCascade` avec helper `canonicalRowExperienceLabel` (PvE / ranked / PvP non classé).
+
+2. **Barre unifiée SquadLayout** : NavL2 retourne `null` sur `/squad` (aucune double barre). Exports ajoutés dans `FilterOmnibar` (`FiltresPill`, `PeriodePill`, `DEFAULT_*`, `computePendingHash`). SquadLayout implémente sa propre barre sticky `top-12` avec : chip joueur actif (non supprimable, dot `compare-a`) · GamertagCombobox (3 max) · FiltresPill · PeriodePill · SessionMultiSelect · compteur matchs · bouton Analyser · bouton Réinitialiser.
+
+3. **Fix loading** : le `if (isLoading) return null` ne protège plus la barre (seul le contenu central affiche le spinner), ce qui évite que les pills disparaissent pendant une refetch.
+
+**Résultats** : `go test ./internal/...` OK, `npm run typecheck` sans nouvelles erreurs dans les fichiers modifiés. Token `compare-a` utilisé pour la couleur du chip joueur actif (seul token sémantique adapté disponible).
+
+**Prochaine étape** : Câbler `experienceTypes` et `playlists` depuis le store vers l'URL query dans `apps/web/src/features/squad/v2/queries.ts` + `SquadV2RouteHost.tsx`.
+
+
+
 ## [2026-04-29] P4.1 cloturee — 6 services migres canonical (incl. home pilote)
 
 **Statut** : P4.1 service-level migration complete (6 commits livres sur `chore/cleanup-and-ux-fixes`).

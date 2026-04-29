@@ -35,14 +35,19 @@ Branche `chore/cleanup-and-ux-fixes` — 47+ commits, P0→P8 partiels livrés.
 - **P4.1 session_page** : `WithPlayerMatchesRepo` câblé. Converter retiré quand `buildSessionDetailRows`/`buildSessionCompareSuggestion`/etc. migrées canonical.
 - **P4.1 home pilote** : `WithPlayerMatchesRepo(repo, titleSlug, gamertag)` câblé. Converters `homeMatchRowFromCanonical` + `homeSessionsFromCanonical` mappent canonical → `domain.HomeMatchRow` / `domain.HomeSessionRow`. Cache TTL préservé (clé xuid). **Limitations explicites P4.3** : SkillTierLabel laissé vide (TODO TitleSemanticAdapter CSR-tier-aware), SkillRankImageURL laissé vide (TODO TitleAssetURLAdapter.CSRRankImageURL câblé sur service), PairID/PairName/PairNameFR composite Halo-only laissés vides.
 
+### Sub-phases livrées (suite) [DONE]
+- **P4.2** statut définitif des services restants (revue 2026-04-29 P4.2) :
+  - **Compare** : N/A — `NormalizedPlayerStats` est déjà multi-titre (champ `TitleSlug` + map `Extended` pour stats title-specific). Pas de pattern match-rows. Aucune migration canonical service-level requise.
+  - **Career** : DONE — déjà canonical via `dataAdapter.LoadCareerSnapshot`/`LoadEncounters` (Phase C+ multi-titres). Hooks en place, dégradation gracieuse sur `ErrCapabilityNotSupported`. Aucun travail P4.1 supplémentaire.
+  - **MatchView** : HOOKS_READY — `WithDataAdapter` (LoadMatchDetail) + `WithHighlightEventsRepo` (LoadHighlightEvents canonical) câblés ; `canonical.MatchDetail` à étendre pour couvrir le payload complet (4 onglets + header). Migration full canonical reportée à effort dédié (extension canonical.MatchDetail = scope substantiel, hors P4.1 service-level).
+  - **Engagement / Citations / Leaderboard / SeasonPass / Media** : N/A — shapes différentes (events, coefficients, totals, tracks, files). Pas de pattern match-rows applicable. Aucune migration canonical service-level requise.
+  - **Squad / Teammates** : DEFER — travail parallèle en cours (autre agent sur même branche). Migration P4.1 service-level repoussée jusqu'à stabilisation pour éviter conflit. Pattern reproductible depuis synthesis/stats/home quand prêt.
+- **P4.3a synthesis pillar** : DONE — `ComputeSynthesisKPIsFromCanonical` + `ComputeSynthesisTopWeeksFromCanonical` + `ComputeSynthesisBreakdownFromCanonical` + `ComputeTemporalHeatmapFromCanonical` livrées. `synthesis_service.go` consomme canonical directement (filterSynthesisByPeriodCanonical / buildSynthesisOverviewCanonical / buildHighlightsPreviewCanonical / topNByFuncCanonical). Converter `synthesisMatchRow*FromCanonical` **RETIRÉ** (60 lignes en moins). Tests parité bit-identiques (TopWeeks/Breakdown/TemporalHeatmap) verrouillés.
+
 ### Sub-phases TODO [À FAIRE]
-- **P4.2** services restants à évaluer cas-par-cas :
-  - Compare (aggregated `NormalizedPlayerStats`, pas de match-rows — pas le même pattern, à voir avec `canonical.PlayerStats`)
-  - Career (déjà canonical via `dataAdapter.LoadCareerSnapshot`/`LoadEncounters` — Phase C+ multi-titres)
-  - MatchView (déjà partiellement canonical via `LoadHighlightEvents` — `canonical.MatchDetail` à étendre)
-  - Engagement / Citations / Leaderboard / SeasonPass / Media (shapes différentes, pas de match rows)
-  - Squad / Teammates (en cours sur autre branche/agent — éviter conflit)
-- **P4.3** suppression types legacy `domain.{Home,Synthesis,Stats}MatchRow`
+- **P4.3b home pillar** : migration des analyses `BuildHeroCard`/`BuildHighlights`/`BuildRecentMatches`/`BuildSessionSummary`/etc. vers canonical (~10 fonctions). Suppression `domain.HomeMatchRow` une fois parallèle squad/teammates stabilisé. Effort substantiel — sprint dédié.
+- **P4.3c stats pillar** : migration des analyses `buildWinLossTab`/`buildAccuracyTab`/`buildCumulTab`/`computeRegressionStats`/`buildKDABuckets`/`buildIntensityTab`/`buildDistributionsTab`/`extractSessionLabels`/`buildCompareEntry`/`buildSessionDetailRows` vers canonical (~15 fonctions, partagées entre stats/timeseries/session_compare/session_page). Suppression `domain.StatsMatchRow`. Effort substantiel — sprint dédié.
+- **P4.3 finale** : suppression `domain.{Home,Synthesis,Stats}MatchRow` + retrait des converters + repos `Load*Matches` legacy → `LoadPlayerMatches` unifié.
 - **P5** xuid_aliases globalisation + Halo-only adapters extraction
 - **P6.2** `useFieldLabel` partout côté front + manifest synthesis.toml
 - **P6.3** middleware `RequireCapability` + 3 routes admin
