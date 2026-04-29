@@ -75,7 +75,10 @@ export function TimeseriesKdaBars({
           x: r.start_time,
           kills: r.kills,
           deaths: r.deaths,
-          kdRatio: r.deaths > 0 ? r.kills / r.deaths : r.kills,
+          // P4.4 (revue 2026-04-29 B3) : utilise r.kd_ratio expose par
+          // l'API (P2.5) au lieu de recalculer kills/deaths cote front.
+          // Fallback sur le recompute si kd_ratio manquant (vieux DTO).
+          kdRatio: r.kd_ratio ?? (r.deaths > 0 ? r.kills / r.deaths : r.kills),
           outcome: r.outcome,
         })),
       },
