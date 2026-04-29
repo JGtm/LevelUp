@@ -349,6 +349,22 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "fix_bot_gamertags",
+		TargetDB:    TargetShared,
+		Description: "Résout les gamertags de bots bid(X.0) → '343 Bot X' dans xuid_aliases",
+		ApplySchema: func(db *sql.DB) error {
+			_, err := db.Exec(`
+				UPDATE xuid_aliases
+				SET gamertag   = '343 Bot ' || regexp_extract(xuid, 'bid\((\d+)', 1),
+				    updated_at = current_timestamp
+				WHERE xuid LIKE 'bid(%'
+				  AND gamertag LIKE 'bid(%'
+			`)
+			return err
+		},
+	})
+
+	Register(Migration{
 		Name:        "fix_events_loaded_inconsistency",
 		TargetDB:    TargetShared,
 		Description: "Remet events_loaded=FALSE pour matchs sans highlight_events",

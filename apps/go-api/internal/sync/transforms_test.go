@@ -42,6 +42,24 @@ func TestExtractXUID_Invalid(t *testing.T) {
 	}
 }
 
+func TestExtractXUID_Bots(t *testing.T) {
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"bid(3.0)", "bid(3.0)"},
+		{"bid(18.0)", "bid(18.0)"},
+		{"bid(3.0", "bid(3.0)"},   // paren manquante → normalisée
+		{"bid(35.0", "bid(35.0)"}, // paren manquante → normalisée
+	}
+	for _, c := range cases {
+		got := extractXUID(c.input)
+		if got != c.want {
+			t.Errorf("extractXUID(%q) = %q, want %q", c.input, got, c.want)
+		}
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // parsePTDuration
 // ─────────────────────────────────────────────────────────────────────────────
