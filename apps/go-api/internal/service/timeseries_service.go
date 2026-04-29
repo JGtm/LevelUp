@@ -80,7 +80,7 @@ func (s *TimeseriesService) GetPage(
 		}
 		slog.DebugContext(ctx, "timeseries: loaded canonical",
 			"rows", len(canonicalRows), "title_slug", s.titleSlug)
-		allMatches = statsMatchRowsFromCanonical(canonicalRows)
+		allMatches = analysis.StatsMatchRowsFromCanonical(canonicalRows)
 	} else {
 		allMatches, err = s.statsRepo.LoadStatsMatches(ctx)
 		if err != nil {
