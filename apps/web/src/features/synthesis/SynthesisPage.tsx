@@ -134,8 +134,8 @@ function StatCell({ label, value }: { label: string; value: string }) {
 interface SynthesisOverviewSectionProps { overview: SynthesisOverview }
 function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
   // P4.4 (revue 2026-04-29 B3) : utilise overview.total_kdr expose par l'API
   // (P2.5) au lieu de sum/sum cote front (mathematiquement faux car
   // sum(K)/sum(D) != avg(K/D)). Fallback sur l'ancien recompute si total_kdr
@@ -152,9 +152,9 @@ function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCell label="Victoires" value={String(overview.total_wins)} />
           <StatCell label="Défaites" value={String(overview.total_losses)} />
-          <StatCell label={labelOf('kills', 'Kills')} value={String(overview.total_kills)} />
+          <StatCell label={labelOf('kills')} value={String(overview.total_kills)} />
           <StatCell label="K/D moyen" value={kd} />
-          <StatCell label={labelOf('win_rate', 'Win Rate')} value={`${(overview.win_rate * 100).toFixed(1)}%`} />
+          <StatCell label={labelOf('win_rate')} value={`${(overview.win_rate * 100).toFixed(1)}%`} />
           {overview.best_kills_match != null && (
             <StatCell label="Meilleur match" value={`${overview.best_kills_match}K`} />
           )}

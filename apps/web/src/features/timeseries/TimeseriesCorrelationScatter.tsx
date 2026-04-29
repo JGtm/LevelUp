@@ -36,15 +36,15 @@ interface LabelConfig {
 function buildLabelConfigs(
   fieldMappings?: { fields: Record<string, { label: string }> },
 ): Record<string, LabelConfig> {
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
-  const kills = labelOf('kills', 'Kills')
-  const deaths = labelOf('deaths', 'Morts')
-  const accuracy = labelOf('accuracy', 'Précision')
-  const kda = labelOf('kda', 'KDA')
-  const kdr = labelOf('kdr', 'K/D')
-  const teamMMR = labelOf('team_mmr', 'MMR équipe')
-  const enemyMMR = labelOf('enemy_mmr', 'MMR adversaires')
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
+  const kills = labelOf('kills')
+  const deaths = labelOf('deaths')
+  const accuracy = labelOf('accuracy')
+  const kda = labelOf('kda')
+  const kdr = labelOf('kdr')
+  const teamMMR = labelOf('team_mmr')
+  const enemyMMR = labelOf('enemy_mmr')
   return {
     kills_vs_kd: { xLabel: kills, yLabel: kdr, title: `${kills} → ${kdr}` },
     lifespan_vs_kills: {

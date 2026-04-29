@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-04-29] P6 — Activation flags + capabilities middleware + request_id
+
+**Statut** : Complété (tous les sous-éléments P6.1 à P6.5)
+
+**Contexte** : Phase post-P5. La couche multi-titres est en place (registry, adapters, mappings TOML, DB globale xbox_aliases) mais reste largement dormante en prod : flag `MULTI_TITLE_API_ENABLED` OFF par défaut, `useFieldLabel` rarement utilisé côté front, capabilities déclarées sans gating runtime, request_id non propagé dans les logs slog.
+
+**Changements** :
+
+- **P6.1** — Vérifié que `MULTI_TITLE_API_ENABLED=true` et `PRESTIGE_ENABLED=true` sont déjà actifs dans `.github/workflows/ci.yml` (jobs go-build et go-coverage). `.env.local.example` documente les flags. Aucune action supplémentaire requise.
+
+- **P6.2** — Nettoyé 10 fichiers `features/*` qui maintenaient un `labelOf(key, fallback)` avec strings FR hardcodés en double des TOML : home, career, match-history, match-view (Scoreboard, StatCards, ViewPage, PlayerDetailPanel), session-detail, synthesis, timeseries. Migration : `labelOf(key)` retourne maintenant la key comme ultimate fallback (la propre méthode `useFieldLabel`). Régexp PowerShell pour le bulk replace. Aucune erreur TS introduite.
+
+- **P6.3** — Créé `internal/api/middleware/require_capability.go` + tests (4 cas : titre supportant, titre B sans Forge, titre inconnu, fallback halo_infinite). Réponse 503 + body machine-readable `{code, capability, title_slug, message, retryable:false}`. Câblé sur les sous-arbres `/players/{slug}/pages/career/*` (CapCareer) et `/players/{slug}/pages/media + /media/*` (CapMedia) via `r.Group + r.Use`.
+
+- **P6.4** — Créé `internal/observability/context_handler.go` : wrapper slog.Handler qui lit `ctxkeys.RequestID(ctx)` et l'attache automatiquement à chaque record. Branché dans `cmd/server/main.go` (envelope du JSONHandler/TextHandler). 4 tests unitaires (présence/absence du request_id, propagation Enabled, WithAttrs).
+
+- **P6.5** — Branché les 3 composants Prestige orphelins (`MomentCard`, `ArcSummary`, `StatsGlobales`) dans `ObjectifsPage::ParcoursTab`. ArcSummary remplace la liste plate des arcs (avec progression `completedSteps/totalSteps`). StatsGlobales en bandeau de stats agrégées (distribution par tier, complétion). MomentCard en grille pour les défis terminés (sortés par `completed_at` desc).
+
+**Résultats** : `go build ./... && go test ./...` tout vert (incl. nouveaux tests `TestRequireCapability_*`, `TestContextHandler_*`). `npx tsc --noEmit` côté front : aucune nouvelle erreur dans les zones touchées (les erreurs préexistantes — useJobToasts, WatcherCard, BootstrapResponse — sont héritées).
+
+**Décisions clés** :
+1. **`labelOf` non supprimé** : gardé comme helper local mais sans fallback FR — c'est plus naturel que d'appeler `useFieldLabel` N fois dans la même fonction de rendu (et reste compatible avec les patterns existants de `buildCols(fieldMappings)` qui passent les mappings en paramètre, pas en hook).
+2. **MomentCard avec achievedValue=target temporaire** : l'API challenges n'expose pas encore les `achieved_value`/`match_count` côté backend. À enrichir post-P6 si nécessaire.
+3. **Capabilities gardées partielles** : seules `CapCareer` et `CapMedia` ont des routes actuellement. `CapFirefight`, `CapForge`, `CapMatchmaking`, `CapRanked` sont déclarées dans le registry mais sans routes dédiées — pas de gating à câbler tant qu'aucune route n'existe. Pas supprimées car elles servent de marqueurs métier (un futur titre B sans Forge n'aura pas cette capability).
+
+**Prochaine étape** : P7 — DTOs Timeseries/Synthesis renommage sémantique + Prestige hardening (tests smoke flag ON sur les ~21 routes Prestige).
+
 ## [2026-04-29] P5.3 — Câblage des consommateurs vers la DB globale `xbox_aliases.duckdb`
 
 **Statut** : Complété
@@ -36,6 +63,24 @@
 - Tests mis à jour : `teammates_extra_test.go` (66.67 → 0.67), `heatmapChart.test.ts` (fixture 0..1)
 
 **Résultats** : Tous les tests passent. `SquadLayout.tsx` et `metrics.ts` (déjà `* 100`) deviennent corrects sans modification.
+
+## [2026-04-29] Feature — filtres cascade Squad V2 : modes implémentés (Option B PairMode)
+
+**Statut** : Complété
+
+**Problème** : Modes silencieusement ignorés. `filtersResolve` retournait `pair_name_fr` ("Slayer"), mais le service ne chargeait que `game_variant_name` ("HaloMultiplayer:Slayer") — comparaison impossible.
+
+**Solution (Option B)** : Ajouter `PairMode *AssetReference` à `canonical.MatchSummary`, peuplé depuis `pair_name`/`pair_name_fr` (COALESCE déjà en SQL). `filterRowsByCascade` utilise `assetLabelForFilter(r.Summary.PairMode)` — même logique que maps/playlists.
+
+**Changements clés** :
+- `canonical/match.go` : champ `PairMode *AssetReference`
+- `player_matches_repo.go` : 3 colonnes SQL + scan + projection `PairMode`
+- `squad_service_v2.go` : `filterRowsByCascade` 5ème param `modes`, `buildSharedMatch` utilise `PairMode` avec fallback `GameVariant`
+- `port/services.go` : `SquadV2Service.GetSquadPage` + `modes []string`
+- Handler + frontend (4 fichiers) câblés
+- Tests : 3 nouveaux tests unitaires modes + 1 test intégration PairMode hydration
+
+**Résultats** : `go test ./...` 100% vert. TypeScript sans erreurs dans les fichiers squad modifiés.
 
 ## [2026-04-29] Fix — filtres cascade Squad V2 : cartes ajoutées, modes documentés
 

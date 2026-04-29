@@ -559,8 +559,8 @@ export function HomePage() {
   // Phase D multi-titres : résout les libellés métier via le backend TOML.
   // Fallback gracieux sur les libellés locaux de kpi.i18n.ts si l'endpoint
   // est absent (flag MULTI_TITLE_API_ENABLED off ou 404).
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
   const spartanText = getSpartanIdentityText(locale)
   const labels = spartanText.labels
   const hasPrivacyWarning = !!data.privacy_warning?.level && data.privacy_warning.level !== 'none'
@@ -748,7 +748,7 @@ export function HomePage() {
 
             <div className="kpi-stats-grid items-stretch">
               {/* 1 — Parties */}
-              <KPICard label={labelOf('total_matches_played', 'Parties')} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
+              <KPICard label={labelOf('total_matches_played')} value={hero.kpis.total_matches.toLocaleString(numberLocale)} compact />
 
               {/* 2 — KDA/FDA coloré comme les tuiles match */}
               {(() => {
@@ -756,7 +756,7 @@ export function HomePage() {
                 const kdaStyle = kda != null ? { color: tokenCssVar(kdScale(kda)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{labelOf('kda', 'KDA')}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('kda')}</p>
                     <p className="text-xl font-bold text-muted-foreground" style={kdaStyle}>{kda != null ? kda.toFixed(2) : '—'}</p>
                   </div>
                 )
@@ -771,7 +771,7 @@ export function HomePage() {
                 const neutral = draws + dnfs
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{labelOf('win_rate', 'Taux de victoire')}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('win_rate')}</p>
                     <p className="text-xl font-bold text-primary">{`${(hero.kpis.win_rate * 100).toFixed(0)}%`}</p>
                     <div className="mt-2 w-full">
                       <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
@@ -869,7 +869,7 @@ export function HomePage() {
                 const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
                 return (
                   <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-2 py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{labelOf('accuracy', 'Précision')}</p>
+                    <p className="text-xs text-muted-foreground">{labelOf('accuracy')}</p>
                     <p className="text-xl font-bold text-primary" style={accStyle}>{acc != null ? `${acc.toFixed(0)}%` : '—'}</p>
                   </div>
                 )

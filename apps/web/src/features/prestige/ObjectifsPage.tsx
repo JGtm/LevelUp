@@ -14,6 +14,9 @@ import type { Challenge, Arc, UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { ChallengeCard } from './components/ChallengeCard'
 import { CreateChallengeForm } from './components/CreateChallengeForm'
+import { ArcSummary } from './components/ArcSummary'
+import { MomentCard } from './components/MomentCard'
+import { StatsGlobales } from './components/StatsGlobales'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from './fallback.i18n'
 import { useChallenges, useArcs, useMyPrestige, useAbandonChallenge } from './hooks'
 
@@ -253,6 +256,7 @@ function ChallengeCardWithActions({
 function ParcoursTab({ userId, titleSlug }: TabProps) {
   const { data: prestigeData, isError: prestigeErr } = useMyPrestige(userId, titleSlug)
   const { data: arcsData } = useArcs(userId, titleSlug)
+  const { data: challengesData } = useChallenges(userId, titleSlug)
 
   if (prestigeErr) {
     return (
@@ -264,10 +268,29 @@ function ParcoursTab({ userId, titleSlug }: TabProps) {
 
   const prestige: UserPrestige | undefined = prestigeData
   const arcs: Arc[] = arcsData?.arcs ?? []
+  const challenges: Challenge[] = challengesData?.challenges ?? []
+  const completed = challenges.filter((c) => c.status === 'completed' && c.completed_at)
+  // Trier les complétés par date desc (plus récents d'abord) pour l'historique.
+  const completedSorted = [...completed].sort((a, b) =>
+    (b.completed_at ?? '').localeCompare(a.completed_at ?? ''),
+  )
+
+  // P6.5 : steps complétés par arc (compte des challenges status=completed dans l'arc).
+  const stepsByArc = new Map<string, { completed: number; total: number }>()
+  for (const c of challenges) {
+    if (!c.arc_id) continue
+    const cur = stepsByArc.get(c.arc_id) ?? { completed: 0, total: 0 }
+    cur.total += 1
+    if (c.status === 'completed') cur.completed += 1
+    stepsByArc.set(c.arc_id, cur)
+  }
 
   return (
     <div className="space-y-6">
       <PrestigeBadge prestige={prestige} />
+
+      {/* P6.5 : composant StatsGlobales branché. */}
+      <StatsGlobales challenges={challenges} />
 
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -279,17 +302,19 @@ function ParcoursTab({ userId, titleSlug }: TabProps) {
           </div>
         ) : (
           <ul className="space-y-2">
-            {arcs.map((a) => (
-              <li
-                key={a.id}
-                className="rounded-lg border border-border bg-card p-3"
-              >
-                <h3 className="font-medium">{a.title}</h3>
-                {a.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">{a.description}</p>
-                )}
-              </li>
-            ))}
+            {arcs.map((a) => {
+              const steps = stepsByArc.get(a.id) ?? { completed: 0, total: 0 }
+              return (
+                <li key={a.id}>
+                  {/* P6.5 : composant ArcSummary branché. */}
+                  <ArcSummary
+                    arc={a}
+                    completedSteps={steps.completed}
+                    totalSteps={steps.total}
+                  />
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
@@ -298,10 +323,26 @@ function ParcoursTab({ userId, titleSlug }: TabProps) {
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
           Historique
         </h2>
-        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          Les moment cards et l'historique apparaîtront ici à la validation
-          de tes premiers défis.
-        </div>
+        {completedSorted.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Les moment cards apparaîtront ici à la validation de tes premiers défis.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {completedSorted.map((c) => (
+              // P6.5 : composant MomentCard branché.
+              // achievedValue / matchCount viendront du backend dans une phase
+              // ultérieure (champs non encore exposés par l'API challenges).
+              <MomentCard
+                key={c.id}
+                challenge={c}
+                achievedValue={c.target}
+                matchCount={0}
+                compact
+              />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )
@@ -342,4 +383,3 @@ function PrestigeBadge({ prestige }: PrestigeBadgeProps) {
     </div>
   )
 }
-

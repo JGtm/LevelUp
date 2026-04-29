@@ -71,26 +71,26 @@ interface ExpectedCardsSectionProps {
 export function ExpectedCardsSection({ kpis, expectedStats }: ExpectedCardsSectionProps) {
   const { has_expected_data, expected_kills, expected_deaths, expected_assists } = expectedStats
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
   return (
     <div className="grid grid-cols-3 gap-3">
       <StatExpectedCard
-        label={labelOf('kills', 'Kills')}
+        label={labelOf('kills')}
         actual={kpis.kills}
         expected={expected_kills}
         lowerIsBetter={false}
         hasData={has_expected_data}
       />
       <StatExpectedCard
-        label={labelOf('deaths', 'Deaths')}
+        label={labelOf('deaths')}
         actual={kpis.deaths}
         expected={expected_deaths}
         lowerIsBetter={true}
         hasData={has_expected_data}
       />
       <StatExpectedCard
-        label={labelOf('assists', 'Assists')}
+        label={labelOf('assists')}
         actual={kpis.assists}
         expected={expected_assists}
         lowerIsBetter={false}

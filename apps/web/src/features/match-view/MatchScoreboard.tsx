@@ -25,22 +25,22 @@ interface ColDef {
  * suivra automatiquement.
  */
 function buildCols(fieldMappings?: FieldMappingsResponse): ColDef[] {
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
   return [
-    { key: 'kills', label: labelOf('kills', 'K'), inverted: false },
-    { key: 'deaths', label: labelOf('deaths', 'D'), inverted: true },
-    { key: 'assists', label: labelOf('assists', 'A'), inverted: false },
-    { key: 'headshot_kills', label: labelOf('headshot_kills', 'HS'), inverted: false },
-    { key: 'max_killing_spree', label: labelOf('max_killing_spree', 'Spree'), inverted: false },
+    { key: 'kills', label: labelOf('kills'), inverted: false },
+    { key: 'deaths', label: labelOf('deaths'), inverted: true },
+    { key: 'assists', label: labelOf('assists'), inverted: false },
+    { key: 'headshot_kills', label: labelOf('headshot_kills'), inverted: false },
+    { key: 'max_killing_spree', label: labelOf('max_killing_spree'), inverted: false },
     { key: 'perfect_kills', label: 'Perf', inverted: false },
-    { key: 'power_weapon_kills', label: labelOf('power_weapon_kills', 'PW'), inverted: false },
-    { key: 'melee_kills', label: labelOf('melee_kills', 'CàC'), inverted: false },
-    { key: 'shots_fired', label: labelOf('shots_fired', 'Tirs'), inverted: false },
-    { key: 'shots_hit', label: labelOf('shots_hit', 'Touchés'), inverted: false },
-    { key: 'kda', label: labelOf('kda', 'KDA'), inverted: false, fmt: (v) => v.toFixed(2) },
-    { key: 'damage_dealt', label: labelOf('damage_dealt', 'Dmg+'), inverted: false, fmt: (v) => v.toFixed(0) },
-    { key: 'damage_taken', label: labelOf('damage_taken', 'Dmg-'), inverted: true, fmt: (v) => v.toFixed(0) },
+    { key: 'power_weapon_kills', label: labelOf('power_weapon_kills'), inverted: false },
+    { key: 'melee_kills', label: labelOf('melee_kills'), inverted: false },
+    { key: 'shots_fired', label: labelOf('shots_fired'), inverted: false },
+    { key: 'shots_hit', label: labelOf('shots_hit'), inverted: false },
+    { key: 'kda', label: labelOf('kda'), inverted: false, fmt: (v) => v.toFixed(2) },
+    { key: 'damage_dealt', label: labelOf('damage_dealt'), inverted: false, fmt: (v) => v.toFixed(0) },
+    { key: 'damage_taken', label: labelOf('damage_taken'), inverted: true, fmt: (v) => v.toFixed(0) },
     { key: 'offensive_conversion', label: 'Off.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
     { key: 'defensive_resistance', label: 'Déf.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
     { key: 'damage_per_kill', label: 'Dmg/K', inverted: true, fmt: (v) => v.toFixed(0) },
