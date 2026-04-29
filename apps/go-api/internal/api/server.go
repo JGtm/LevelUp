@@ -3,7 +3,7 @@
 // Sprint 16 : Settings, Setup.
 // Sprint 17 : Jobs longs persistants, sync initiale.
 // Sprint 37 : Architecture handlers & injection DI via ServiceRegistry.
-// Sprint 40 : ContractValidate (dev) + ErrorTracker (Discord 500 + alerting).
+// Sprint 40 : ContractValidate (dev). ErrorTracker retiré P8.3 (ADR 0009).
 package api
 
 import (
@@ -25,6 +25,10 @@ import (
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	// Blank import : déclenche l'init() de observability qui publie le namespace
+	// expvar "levelup". Le handler /debug/vars (stdlib) découvre ces compteurs
+	// automatiquement via http.DefaultServeMux (P8.3, ADR 0009).
+	_ "levelup/go-api/internal/observability"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -168,11 +172,9 @@ func NewRouter(
 	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
 	r.Use(middleware.ContractValidate)
 
-	// Sprint 40 T2+T3 : error tracking + alerting Discord.
-	errorTracker := middleware.NewErrorTracker(middleware.ErrorTrackerConfig{
-		WebhookURL: cfg.DiscordWebhookURL,
-	})
-	r.Use(errorTracker.Middleware)
+	// P8.3 (revue 2026-04-29, ADR 0009) : error_tracker.Middleware retiré.
+	// L'alerting Discord 500 / taux d'erreur n'est pas souhaité (commentaire
+	// explicite en code). Code mort supprimé pour éliminer la confusion.
 
 	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
 	// titleResolver est attaché pour que les services puissent résoudre les
@@ -241,8 +243,24 @@ func NewRouter(
 	r.Handle("/static/commendations/*", newCommendationHandler(staticDir))
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
-	// Health check (pas de préfixe /api/v1 — sondage infrastructurel)
-	r.Get("/health", handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).ServeHTTP)
+	// Health check (pas de préfixe /api/v1 — sondage infrastructurel).
+	// P8.11 (revue 2026-04-29 axe 8 amende) : à terme séparer /healthz (liveness)
+	// et /readyz (readiness). Pour l'instant /health = mixte, alias gardé pour
+	// la rétrocompat. Les nouveaux orchestrateurs (K8s/LB) doivent utiliser
+	// /healthz et /readyz.
+	healthHandler := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).ServeHTTP
+	r.Get("/health", healthHandler)
+	r.Get("/healthz", healthHandler) // alias liveness (n'a jamais besoin de DB)
+	r.Get("/readyz", healthHandler)  // alias readiness (vérifie DB + état boot)
+
+	// P8.3 (revue 2026-04-29, ADR 0009) : monitoring expvar minimal.
+	// Expose /debug/vars (stdlib) avec les compteurs LevelUp publiés sous la
+	// clé "levelup". Pas de Prometheus/OpenTelemetry — observability basique
+	// pour multi-user. Les hot paths sont instrumentés progressivement via
+	// observability.RecordDurationMS / IncCounter.
+	//
+	// TODO : protéger derrière auth admin une fois auth système prêt.
+	r.Mount("/debug/vars", http.DefaultServeMux)
 
 	// v1 API
 	r.Route("/api/v1", func(r chi.Router) {
