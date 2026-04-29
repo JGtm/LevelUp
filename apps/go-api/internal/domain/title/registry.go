@@ -184,6 +184,16 @@ func (p *PathResolver) SharedDBPath(titleSlug string) string {
 	return filepath.Join(p.WarehouseDir(titleSlug), "shared_matches_v2.duckdb")
 }
 
+// GlobalXuidAliasesDBPath retourne le chemin de la base globale xbox aliases
+// (P5.1, ADR 0008). Le mapping xuid → gamertag est un identifiant Microsoft
+// (Xbox Services) qui ne dépend pas du titre — donc DB globale partagée
+// par tous les titres.
+//
+// Ex: data/global/xbox_aliases.duckdb
+func (p *PathResolver) GlobalXuidAliasesDBPath() string {
+	return filepath.Join(p.repoRoot, "data", "global", "xbox_aliases.duckdb")
+}
+
 // MetadataDBPath retourne le chemin de la base metadata d'un titre.
 // Ex: data/titles/halo_infinite/warehouse/metadata.duckdb
 func (p *PathResolver) MetadataDBPath(titleSlug string) string {

@@ -1,4 +1,4 @@
-// Package duckdb — media_repo.go : accès DB pour la galerie médias.
+// Package duckdb â€” media_repo.go : accÃ¨s DB pour la galerie mÃ©dias.
 package duckdb
 
 import (
@@ -13,14 +13,15 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite"
 )
 
-// MediaRepo implémente port.MediaRepository.
+// MediaRepo implÃ©mente port.MediaRepository.
 type MediaRepo struct {
 	pdb *PlayerDB
 }
 
-// NewMediaRepo crée un MediaRepo pour un joueur.
+// NewMediaRepo crÃ©e un MediaRepo pour un joueur.
 func NewMediaRepo(pdb *PlayerDB) *MediaRepo {
 	return &MediaRepo{pdb: pdb}
 }
@@ -33,7 +34,7 @@ func (r *MediaRepo) socialDB() *DB {
 	return r.pdb.Player
 }
 
-// LoadMediaFiles charge une page de fichiers médias avec filtres dynamiques (Q37).
+// LoadMediaFiles charge une page de fichiers mÃ©dias avec filtres dynamiques (Q37).
 func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilters, limit, offset int) ([]domain.MediaFileRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -75,16 +76,16 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 	return result, nil
 }
 
-// enrichMediaModeCategories remplace ModeName par la catégorie custom inférée
+// enrichMediaModeCategories remplace ModeName par la catÃ©gorie custom infÃ©rÃ©e
 // depuis pair_name brut (Assassin/Fiesta/BTB/Ranked/Firefight/Other). Cf.
-// analysis.InferModeCategoryFromPairName pour la logique.
+// halo_infinite.InferModeCategoryFromPairName pour la logique.
 func (r *MediaRepo) enrichMediaModeCategories(rows []domain.MediaFileRow) {
 	for i := range rows {
 		if rows[i].PairNameRaw == nil || strings.TrimSpace(*rows[i].PairNameRaw) == "" {
 			rows[i].ModeName = nil
 			continue
 		}
-		cat := analysis.InferModeCategoryFromPairName(*rows[i].PairNameRaw)
+		cat := halo_infinite.InferModeCategoryFromPairName(*rows[i].PairNameRaw)
 		if cat != "" {
 			c := cat
 			rows[i].ModeName = &c
@@ -92,7 +93,7 @@ func (r *MediaRepo) enrichMediaModeCategories(rows []domain.MediaFileRow) {
 	}
 }
 
-// CountMediaFiles retourne le nombre total de fichiers médias actifs selon les filtres.
+// CountMediaFiles retourne le nombre total de fichiers mÃ©dias actifs selon les filtres.
 func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFilters) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -107,10 +108,10 @@ func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFil
 }
 
 // LoadMediaFilterOptions retourne les valeurs distinctes des filtres carte/mode,
-// avec libellés enrichis en FR (asset_translations + mode_name_tr de metadata.duckdb)
-// et déduplication par libellé FR. Pour les modes, plusieurs raw EN qui se
-// normalisent vers le même FR (ex: "Capture the Flag", "CTF - Ranked", "CTF on
-// Bazaar" → "Capture du drapeau") sont fusionnés en une seule entrée.
+// avec libellÃ©s enrichis en FR (asset_translations + mode_name_tr de metadata.duckdb)
+// et dÃ©duplication par libellÃ© FR. Pour les modes, plusieurs raw EN qui se
+// normalisent vers le mÃªme FR (ex: "Capture the Flag", "CTF - Ranked", "CTF on
+// Bazaar" â†’ "Capture du drapeau") sont fusionnÃ©s en une seule entrÃ©e.
 func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -141,8 +142,8 @@ func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.M
 	return domain.MediaFilterOptions{Playlists: playlists, Maps: maps, Modes: modes}, nil
 }
 
-// translatePlaylistFilterOptions enrichit les libellés de playlists en FR via
-// asset_translations (asset_type='playlist') + dédup par playlist_id. Value =
+// translatePlaylistFilterOptions enrichit les libellÃ©s de playlists en FR via
+// asset_translations (asset_type='playlist') + dÃ©dup par playlist_id. Value =
 // playlist_id (stable) ; sinon fallback label brut.
 func (r *MediaRepo) translatePlaylistFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
 	if len(pairs) == 0 {
@@ -196,9 +197,9 @@ func (r *MediaRepo) CurrentPlayerSlug() string {
 }
 
 // LoadMatchCandidatesForMedia retourne les matchs du joueur courant dans la
-// fenêtre temporelle [capture_start - window, capture_start + window].
-// Inclut les KPIs du joueur pour aider à reconnaître le bon match.
-// Si capture_start_utc est nul → fallback mtime, sinon liste vide.
+// fenÃªtre temporelle [capture_start - window, capture_start + window].
+// Inclut les KPIs du joueur pour aider Ã  reconnaÃ®tre le bon match.
+// Si capture_start_utc est nul â†’ fallback mtime, sinon liste vide.
 func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath string, windowMinutes int) (domain.MediaMatchCandidatesResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -207,10 +208,10 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		windowMinutes = 15
 	}
 
-	// Lire capture_start_utc + association actuelle du média.
+	// Lire capture_start_utc + association actuelle du mÃ©dia.
 	// Match flexible : soit file_path exact (DB absolute), soit file_name
-	// (basename — pour quand le frontend envoie l'URL transformée et qu'on
-	// reçoit ".../foo.mp4" au lieu du chemin DB original).
+	// (basename â€” pour quand le frontend envoie l'URL transformÃ©e et qu'on
+	// reÃ§oit ".../foo.mp4" au lieu du chemin DB original).
 	basename := filepath.Base(filePath)
 	var captureUTC sql.NullTime
 	var currentMatchID sql.NullString
@@ -238,10 +239,10 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	cap := captureUTC.Time
 	resp.CaptureUTC = &cap
 
-	// Charger les matchs du joueur dans la fenêtre.
+	// Charger les matchs du joueur dans la fenÃªtre.
 	// start_time_utc est TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
-	// Fallback sur start_time AT TIME ZONE 'UTC' pour les matchs synchro après le fix DuckDB
-	// (first_sync_at >= 2026-03-01 → start_time déjà UTC) qui n'auraient pas encore start_time_utc.
+	// Fallback sur start_time AT TIME ZONE 'UTC' pour les matchs synchro aprÃ¨s le fix DuckDB
+	// (first_sync_at >= 2026-03-01 â†’ start_time dÃ©jÃ  UTC) qui n'auraient pas encore start_time_utc.
 	rows, err := r.pdb.Player.Query(ctx, fmt.Sprintf(`
 		SELECT
 			r.match_id,
@@ -304,8 +305,8 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 		if pairName.Valid {
 			// Sous-mode EN canonique pour le picker (Slayer/CTF/KOTH/etc.) :
-			// l'utilisateur a besoin du DÉTAIL du mode pour distinguer entre 4
-			// matchs candidats — pas de la catégorie parente. cf. mode_label.go
+			// l'utilisateur a besoin du DÃ‰TAIL du mode pour distinguer entre 4
+			// matchs candidats â€” pas de la catÃ©gorie parente. cf. mode_label.go
 			// (NormalizeModeLabel) vs mode_category.go (InferModeCategoryFromPairName).
 			if en := analysis.NormalizeModeLabel(pairName.String); en != "" {
 				c.ModeName = &en
@@ -331,8 +332,8 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		matchIDs = append(matchIDs, c.MatchID)
 	}
 
-	// Traduction FR des modes (ex: "Slayer" → "Assassin") via mode_name_tr.
-	// Si pair_name_fr était déjà rempli en DB, on le préserve quand même
+	// Traduction FR des modes (ex: "Slayer" â†’ "Assassin") via mode_name_tr.
+	// Si pair_name_fr Ã©tait dÃ©jÃ  rempli en DB, on le prÃ©serve quand mÃªme
 	// puisqu'on substitue uniquement si une traduction existe.
 	if len(modeEnSet) > 0 {
 		enList := make([]string, 0, len(modeEnSet))
@@ -344,7 +345,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			if resp.Candidates[i].ModeName == nil {
 				continue
 			}
-			// ModeName est déjà le sous-mode EN canonique (cf. boucle ci-dessus) →
+			// ModeName est dÃ©jÃ  le sous-mode EN canonique (cf. boucle ci-dessus) â†’
 			// lookup direct, pas besoin de re-normaliser.
 			if fr, ok := translations[*resp.Candidates[i].ModeName]; ok && fr != "" {
 				resp.Candidates[i].ModeName = &fr
@@ -370,7 +371,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 	}
 
-	// 2e query batch : lobby (max 12 joueurs par match — assez pour 4v4 + spectateurs)
+	// 2e query batch : lobby (max 12 joueurs par match â€” assez pour 4v4 + spectateurs)
 	if len(matchIDs) > 0 {
 		lobbies := r.loadMatchLobbies(ctx, matchIDs)
 		for i := range resp.Candidates {
@@ -440,8 +441,8 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 }
 
 // Miroir Go de q37MediaModeLabelExpr : extraction du mode parent.
-//   - Si le label contient ":" → préfixe avant (Arena:Slayer → Arena)
-//   - Sinon → strip suffixes carte/Forge/Ranked
+//   - Si le label contient ":" â†’ prÃ©fixe avant (Arena:Slayer â†’ Arena)
+//   - Sinon â†’ strip suffixes carte/Forge/Ranked
 var (
 	modeLabelOnRe     = regexp.MustCompile(`(?i)\s+on\s+.+$`)
 	modeLabelForgeRe  = regexp.MustCompile(`(?i)\s*-\s*Forge\b.*$`)
@@ -458,14 +459,14 @@ func normalizeModeLabel(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// SetMediaMatchAssociation force l'association d'un média à un match précis.
-// Supprime l'association existante (si présente) et insère la nouvelle.
-// Retourne (mapName, modeName) pour permettre au handler d'enrichir la réponse.
+// SetMediaMatchAssociation force l'association d'un mÃ©dia Ã  un match prÃ©cis.
+// Supprime l'association existante (si prÃ©sente) et insÃ¨re la nouvelle.
+// Retourne (mapName, modeName) pour permettre au handler d'enrichir la rÃ©ponse.
 func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matchID string) (mapName, modeName *string, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// Récupérer l'id du média (match flexible : file_path exact OU basename)
+	// RÃ©cupÃ©rer l'id du mÃ©dia (match flexible : file_path exact OU basename)
 	basename := filepath.Base(filePath)
 	var mediaID string
 	if err := r.socialDB().QueryRow(ctx,
@@ -475,10 +476,10 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 		return nil, nil, fmt.Errorf("SetMediaMatchAssociation: media not found: %w", err)
 	}
 
-	// DELETE + INSERT séquentiels. DuckDB est ACID single-writer sur fichier ;
-	// risque de race minimal pour une opération manuelle utilisateur.
+	// DELETE + INSERT sÃ©quentiels. DuckDB est ACID single-writer sur fichier ;
+	// risque de race minimal pour une opÃ©ration manuelle utilisateur.
 	// is_manual = TRUE : marque la correction utilisateur pour qu'un reassociate
-	// global ultérieur ne l'écrase pas.
+	// global ultÃ©rieur ne l'Ã©crase pas.
 	if _, err := r.socialDB().Exec(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
 		return nil, nil, fmt.Errorf("delete old assoc: %w", err)
 	}
@@ -486,7 +487,7 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 		return nil, nil, fmt.Errorf("insert new assoc: %w", err)
 	}
 
-	// Récupérer map/mode du nouveau match pour le retour
+	// RÃ©cupÃ©rer map/mode du nouveau match pour le retour
 	var mapN, pairN sql.NullString
 	_ = r.pdb.Player.QueryRow(ctx, `
 		SELECT COALESCE(r.map_name_fr, r.map_name), COALESCE(r.pair_name_fr, r.pair_name)
@@ -514,7 +515,7 @@ func (r *MediaRepo) queryConfig() mediaQueryConfig {
 	return mediaQueryConfig{}
 }
 
-// SetMediaLike persiste l'état liked d'un média dans media_files (cache local).
+// SetMediaLike persiste l'Ã©tat liked d'un mÃ©dia dans media_files (cache local).
 func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -536,15 +537,15 @@ func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked boo
 	return rowsAffected > 0, nil
 }
 
-// ToggleSharedLike écrit ou supprime un like dans media_likes (shared DB).
-// Retourne l'état liked résultant.
+// ToggleSharedLike Ã©crit ou supprime un like dans media_likes (shared DB).
+// Retourne l'Ã©tat liked rÃ©sultant.
 func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, likerGamertag string, liked bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	if liked {
 		// Note : `liked_at = CURRENT_TIMESTAMP` dans le ON CONFLICT casse le binder
-		// DuckDB qui interprète CURRENT_TIMESTAMP comme un nom de colonne.
+		// DuckDB qui interprÃ¨te CURRENT_TIMESTAMP comme un nom de colonne.
 		// On utilise EXCLUDED.liked_at qui prend la valeur du VALUES (= CURRENT_TIMESTAMP).
 		_, err := r.socialDB().Exec(ctx, `
 			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
@@ -617,8 +618,8 @@ func joinStrings(ss []string) string {
 	return out
 }
 
-// enrichMediaMapTranslations résout les noms de cartes en français depuis asset_translations (metadata.duckdb).
-// Même mécanisme que HomeRepo.enrichHomeMatchTranslations.
+// enrichMediaMapTranslations rÃ©sout les noms de cartes en franÃ§ais depuis asset_translations (metadata.duckdb).
+// MÃªme mÃ©canisme que HomeRepo.enrichHomeMatchTranslations.
 func (r *MediaRepo) enrichMediaMapTranslations(ctx context.Context, rows []domain.MediaFileRow) {
 	if r.pdb.Metadata == nil || len(rows) == 0 {
 		return
@@ -677,7 +678,7 @@ ORDER BY lang DESC`
 }
 
 // mediaFilterOptionPair regroupe l'id source (map_id ou pair_name brut) et le
-// label SQL utilisé pour le filtrage et l'affichage par défaut.
+// label SQL utilisÃ© pour le filtrage et l'affichage par dÃ©faut.
 type mediaFilterOptionPair struct {
 	id    string
 	label string
@@ -704,9 +705,9 @@ func (r *MediaRepo) loadMediaIDLabelPairs(ctx context.Context, query string, arg
 	return pairs, rows.Err()
 }
 
-// translateMapFilterOptions enrichit les libellés de cartes en FR via
-// asset_translations + dédup par map_id. Value = map_id (stable, structurel)
-// pour permettre un filtrage non ambigu côté backend (sinon "Altitude" FR ne
+// translateMapFilterOptions enrichit les libellÃ©s de cartes en FR via
+// asset_translations + dÃ©dup par map_id. Value = map_id (stable, structurel)
+// pour permettre un filtrage non ambigu cÃ´tÃ© backend (sinon "Altitude" FR ne
 // matche pas "High Ground" raw EN dans match_registry, et le filtre devient
 // inutilisable). Label = FR enrichi pour l'affichage.
 func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
@@ -725,9 +726,9 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 	}
 	translations := r.loadAssetTranslationNames(ctx, "map", ids)
 
-	// Dédup par map_id : si plusieurs raw labels mappent vers le même map_id
-	// (ex: "High Ground" et "Altitude" pour la même carte selon match_name_fr),
-	// on regroupe sous une seule entrée. Si map_id absent, fallback sur label.
+	// DÃ©dup par map_id : si plusieurs raw labels mappent vers le mÃªme map_id
+	// (ex: "High Ground" et "Altitude" pour la mÃªme carte selon match_name_fr),
+	// on regroupe sous une seule entrÃ©e. Si map_id absent, fallback sur label.
 	seenIDs := make(map[string]bool)
 	seenLabels := make(map[string]bool)
 	options := make([]domain.LabelValue, 0, len(pairs))
@@ -736,7 +737,7 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 		if labelFR == "" {
 			labelFR = p.label
 		}
-		// Value = map_id si dispo (stable), sinon label (fallback médias sans match)
+		// Value = map_id si dispo (stable), sinon label (fallback mÃ©dias sans match)
 		value := p.id
 		if value == "" {
 			value = p.label
@@ -756,20 +757,20 @@ func (r *MediaRepo) translateMapFilterOptions(ctx context.Context, pairs []media
 	return options
 }
 
-// translateModeFilterOptions retourne une liste hiérarchique :
-//   - 1 entrée racine par catégorie présente : {Label: "Assassin", Value: "Assassin"}
-//     (label EN canonique → frontend traduit via i18n local)
-//   - N entrées sous-mode par catégorie : {Label: "Slayer" (ou trad FR via
+// translateModeFilterOptions retourne une liste hiÃ©rarchique :
+//   - 1 entrÃ©e racine par catÃ©gorie prÃ©sente : {Label: "Assassin", Value: "Assassin"}
+//     (label EN canonique â†’ frontend traduit via i18n local)
+//   - N entrÃ©es sous-mode par catÃ©gorie : {Label: "Slayer" (ou trad FR via
 //     mode_name_tr si dispo), Value: "Assassin/Slayer", Parent: "Assassin"}
 //
-// Le format value "Catégorie/SousMode" permet au backend de filtrer finement :
-// le WHERE détecte le séparateur "/" et applique catégorie + sous-mode normalisé.
+// Le format value "CatÃ©gorie/SousMode" permet au backend de filtrer finement :
+// le WHERE dÃ©tecte le sÃ©parateur "/" et applique catÃ©gorie + sous-mode normalisÃ©.
 func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []mediaFilterOptionPair) []domain.LabelValue {
 	if len(pairs) == 0 {
 		return []domain.LabelValue{}
 	}
 
-	// 1) Grouper par catégorie + collecter les sous-modes EN distincts
+	// 1) Grouper par catÃ©gorie + collecter les sous-modes EN distincts
 	type catBucket struct {
 		category string
 		subEN    map[string]struct{} // sous-modes EN canoniques (ex: "Slayer", "Team Slayer")
@@ -777,28 +778,28 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 	buckets := make(map[string]*catBucket)
 	subEnSet := make(map[string]struct{})
 	for _, p := range pairs {
-		cat := analysis.InferModeCategoryFromPairName(p.id)
+		cat := halo_infinite.InferModeCategoryFromPairName(p.id)
 		if cat == "" {
-			cat = analysis.ModeCategoryOther
+			cat = halo_infinite.ModeCategoryOther
 		}
 		if buckets[cat] == nil {
 			buckets[cat] = &catBucket{category: cat, subEN: make(map[string]struct{})}
 		}
-		// Sous-mode EN canonique via NormalizeModeLabel ("Arena:Slayer on X" → "Slayer").
+		// Sous-mode EN canonique via NormalizeModeLabel ("Arena:Slayer on X" â†’ "Slayer").
 		if sub := analysis.NormalizeModeLabel(p.id); sub != "" {
 			buckets[cat].subEN[sub] = struct{}{}
 			subEnSet[sub] = struct{}{}
 		}
 	}
 
-	// 2) Traduire les sous-modes EN → FR via mode_name_tr (best-effort)
+	// 2) Traduire les sous-modes EN â†’ FR via mode_name_tr (best-effort)
 	subEnList := make([]string, 0, len(subEnSet))
 	for en := range subEnSet {
 		subEnList = append(subEnList, en)
 	}
 	subTranslations := r.loadModeNameTranslations(ctx, subEnList)
 
-	// 3) Construire la liste plate : header catégorie + sous-modes triés
+	// 3) Construire la liste plate : header catÃ©gorie + sous-modes triÃ©s
 	categories := make([]string, 0, len(buckets))
 	for cat := range buckets {
 		categories = append(categories, cat)
@@ -808,9 +809,9 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 	options := make([]domain.LabelValue, 0)
 	for _, cat := range categories {
 		b := buckets[cat]
-		// Header catégorie (label EN, le frontend traduit via i18n.ts)
+		// Header catÃ©gorie (label EN, le frontend traduit via i18n.ts)
 		options = append(options, domain.LabelValue{Label: cat, Value: cat})
-		// Sous-modes triés par label localisé
+		// Sous-modes triÃ©s par label localisÃ©
 		subs := make([]domain.LabelValue, 0, len(b.subEN))
 		for en := range b.subEN {
 			label := en
@@ -819,7 +820,7 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 			}
 			subs = append(subs, domain.LabelValue{
 				Label:  label,
-				Value:  cat + "/" + en, // value canonique EN pour matcher côté WHERE
+				Value:  cat + "/" + en, // value canonique EN pour matcher cÃ´tÃ© WHERE
 				Parent: cat,
 			})
 		}
@@ -830,7 +831,7 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 }
 
 // loadAssetTranslationNames lit les traductions FR depuis metadata.asset_translations.
-// Retourne map[asset_id]→nom FR. Best-effort.
+// Retourne map[asset_id]â†’nom FR. Best-effort.
 func (r *MediaRepo) loadAssetTranslationNames(ctx context.Context, assetType string, assetIDs []string) map[string]string {
 	out := make(map[string]string)
 	if r.pdb == nil || r.pdb.Metadata == nil || len(assetIDs) == 0 {
@@ -872,7 +873,7 @@ ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`
 }
 
 // loadModeNameTranslations lit les traductions FR depuis metadata.mode_name_tr,
-// keyed par mode_en (déjà normalisé via analysis.NormalizeModeLabel).
+// keyed par mode_en (dÃ©jÃ  normalisÃ© via analysis.NormalizeModeLabel).
 func (r *MediaRepo) loadModeNameTranslations(ctx context.Context, modeENNames []string) map[string]string {
 	out := make(map[string]string)
 	if r.pdb == nil || r.pdb.Metadata == nil || len(modeENNames) == 0 {

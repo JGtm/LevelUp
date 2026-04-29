@@ -97,6 +97,17 @@ func TestPathResolver_SharedDBPath(t *testing.T) {
 	}
 }
 
+func TestPathResolver_GlobalXuidAliasesDBPath(t *testing.T) {
+	r := NewRegistry()
+	pr := NewPathResolver("/repo", r)
+	got := pr.GlobalXuidAliasesDBPath()
+	want := filepath.Join("/repo", "data", "global", "xbox_aliases.duckdb")
+	if got != want {
+		t.Errorf("GlobalXuidAliasesDBPath: got %q, want %q", got, want)
+	}
+	// La méthode ne prend aucun paramètre titre par construction (xuid global Microsoft).
+}
+
 func TestPathResolver_MetadataDBPath(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)

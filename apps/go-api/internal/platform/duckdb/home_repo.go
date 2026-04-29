@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -409,22 +410,31 @@ func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titl
 	if normalizedTier == "" {
 		return nil
 	}
-	var id string
+	// P5.4 (gap #9, ADR 0012) : déléguer à halo_infinite.AssetURLAdapter pour
+	// le format `120px-HINF-CSR_*` (Halo-only). Évite la duplication du format.
+	adapter := halo_infinite.NewAssetURLAdapter()
+	var rawURL string
 	if strings.EqualFold(normalizedTier, "Onyx") {
-		id = "120px-HINF-CSR_Onyx"
+		rawURL = adapter.CSRRankImageURLOnyx()
 	} else {
 		if normalizedSubTier < 1 || normalizedSubTier > 6 {
 			return nil
 		}
-		id = fmt.Sprintf("120px-HINF-CSR_%s%d", normalizedTier, normalizedSubTier)
+		rawURL = adapter.CSRRankImageURL(normalizedTier, normalizedSubTier)
 	}
-	var p string
-	if titleSlug != "" {
-		p = static.URL(static.KindCSRRank, titleSlug, id, ".png")
-	} else {
-		p = path.Join(static.MountPoint, static.Folder(static.KindCSRRank), id+".png")
+	if rawURL == "" {
+		return nil
 	}
-	return &p
+	// Quand titleSlug != adapter.TitleSlug() (LUSR cross-titre), recomposer
+	// le path sans slug. L'adapter renvoie /static/ranks/<slug>/<id>.png.
+	if titleSlug == "" {
+		// Strip /static/ranks/halo_infinite/ → /static/ranks/
+		prefix := static.MountPoint + "/" + static.Folder(static.KindCSRRank) + "/" + adapter.TitleSlug() + "/"
+		if strings.HasPrefix(rawURL, prefix) {
+			rawURL = path.Join(static.MountPoint, static.Folder(static.KindCSRRank), strings.TrimPrefix(rawURL, prefix))
+		}
+	}
+	return &rawURL
 }
 
 // homeMedalIconURL retourne l'URL d'une icÃ´ne de mÃ©daille Ã  partir de son ID.

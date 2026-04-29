@@ -113,7 +113,7 @@ func NewRouter(
 		var hiRanks *mappings.RankCatalog
 		hiMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
 		if metaDB, err := platform_duckdb.OpenReadWriteShared(hiMetaPath); err == nil {
-			if catalog, err := halo_games.LoadRankCatalog(context.Background(), metaDB); err == nil {
+			if catalog, err := platform_duckdb.LoadRankCatalog(context.Background(), metaDB); err == nil {
 				hiRanks = catalog
 				slog.Info("rank_catalog_loaded", "title_slug", titlePkg.DefaultSlug, "ranks", catalog.Len())
 			} else {
