@@ -72,6 +72,13 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Relations / Leaderboard** — new Hall of Fame pages: crossed players, per-player stats, career micro-leaderboard
 - **Compare drawer** — redesigned session/player comparison UI
 
+**Objectives & Prestige**
+- **Objectives** — individual and squad challenge system: set personal goals or create squad challenges (collective or competitive) on any Halo metric with configurable windows, tiers, and narrative arcs; earn Prestige Points (PP) on completion; two evaluation modes (threshold / cumulative) and two creation modes (free / guided)
+- **Prestige leaderboard** — PP ranking in Palmares comparing your score against your squad and relations; four tiers: Normal / Heroic / Legendary / Mythic
+
+**In-app notifications**
+- **Notification center** — per-player feed with unread badge in the nav bar, category filters, day-grouped timeline, bulk actions, and 60-second live refresh; preferences configurable per player in Settings
+
 **Automated sync & real-time presence**
 - **100 % automatic sync** — no more manual `python scripts/sync.py`: the app syncs your matches on its own, continuously in the background, as soon as a new game is played
 - **Immediate end-of-match trigger** — as soon as a player finishes a match, the watcher fetches the stats without waiting for the next tick
@@ -146,6 +153,8 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Career KPI cards** — 8 cards at a glance: matches played, total time, frags, deaths, assists, accuracy, time alive, W/L/T/DNF bar — each color-coded against your all-time average
 - **Commendations** — monitor your Halo commendations with medal grids and per-medal distributions
 - **XP progression** — XP curve with multi-player comparison overlay
+- **Objectives** — create individual or squad challenges (collective or competitive) on any Halo metric with configurable windows, tiers (Normal / Heroic / Legendary / Mythic), and narrative arcs; earn Prestige Points (PP) on completion
+- **Prestige** — PP leaderboard in Palmares ranking you against your squad and relations; four tiers with color-coded badges
 
 ### Analyze your matches
 - **Explorer** — browse all your matches with cascade filters (map, mode, playlist, outcome, date, session), partial match ID search, and encounter badges
@@ -169,6 +178,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Auto-indexing** — clips re-scanned automatically every few hours and after each sync
 
 ### Notifications & Setup
+- **In-app notification center** — per-player feed with unread badge, category filters, day-grouped timeline, and bulk actions; 60-second live refresh; preferences per player
 - **Discord alerts** — configurable notifications after sync and after backfill, independently
 - **One-click setup** — Xbox Device Code login (`xbox.com/activate`) with automatic player provisioning; no Azure account required
 

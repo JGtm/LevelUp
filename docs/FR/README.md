@@ -72,6 +72,13 @@ Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** ave
 - **Relations / Leaderboard** — nouvelles pages palmarès : joueurs croisés, stats par joueur, micro-leaderboard de carrière
 - **Compare drawer** — UI de comparaison session/joueur redessinée
 
+**Objectifs & Prestige**
+- **Objectifs** — système de défis individuels et d'escouade : fixez des objectifs personnels ou créez des défis d'escouade (collectifs ou compétitifs) sur n'importe quelle métrique Halo avec des fenêtres temporelles, des paliers et des arcs narratifs ; gagnez des Prestige Points (PP) à la complétion ; deux modes d'évaluation (seuil / cumulatif) et deux modes de création (libre / piloté)
+- **Leaderboard Prestige** — classement PP dans Palmarès comparant votre score à ceux de votre escouade et de vos relations ; quatre paliers : Normal / Heroic / Legendary / Mythic
+
+**Centre de notifications in-app**
+- **Centre de notifications** — fil par joueur avec badge non-lus dans la barre de navigation, filtres par catégorie, timeline groupée par jour, actions groupées et rafraîchissement live toutes les 60 secondes ; préférences configurables par joueur dans les Paramètres
+
 **Synchronisation automatique & présence temps réel**
 - **Sync 100 % automatique** — finis les `python scripts/sync.py` à lancer à la main : l'app synchronise vos matchs toute seule en arrière-plan, en continu, dès qu'une nouvelle partie est jouée
 - **Déclenchement immédiat fin de partie** — dès qu'un joueur termine un match, le watcher récupère les stats sans attendre le prochain tick
@@ -146,6 +153,8 @@ Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** ave
 - **Cartes KPI de carrière** — 8 cartes en un coup d'œil : matchs joués, temps total, frags, morts, assists, précision, temps en vie, barre V/D/É/DNF — chacune colorée en fonction de votre moyenne all-time
 - **Citations** — suivez vos citations Halo avec grilles de médailles et distributions par médaille
 - **Progression XP** — courbe d'XP avec overlay de comparaison multi-joueurs
+- **Objectifs** — créez des défis individuels ou d'escouade (collectifs ou compétitifs) sur n'importe quelle métrique Halo avec des fenêtres configurables, des paliers (Normal / Heroic / Legendary / Mythic) et des arcs narratifs ; gagnez des Prestige Points (PP) à la complétion
+- **Prestige** — leaderboard PP dans Palmarès vous classant parmi votre escouade et vos relations ; quatre paliers avec badges colorés
 
 ### Analysez vos matchs
 - **Explorer** — parcourez tous vos matchs avec filtres en cascade (carte, mode, playlist, résultat, date, session), recherche partielle par ID de match et badges de rencontre
@@ -169,6 +178,7 @@ Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** ave
 - **Auto-indexation** — clips re-scannés automatiquement toutes les quelques heures et après chaque sync
 
 ### Notifications & Configuration
+- **Centre de notifications in-app** — fil par joueur avec badge non-lus, filtres par catégorie, timeline groupée par jour et actions groupées ; rafraîchissement live toutes les 60 secondes ; préférences par joueur
 - **Alertes Discord** — notifications configurables après sync et après backfill, indépendamment
 - **Setup en un clic** — connexion Xbox Device Code (`xbox.com/activate`) avec provisionnement joueur automatique ; pas de compte Azure requis
 
