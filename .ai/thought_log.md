@@ -1,5 +1,39 @@
 # Thought Log
 
+## [2026-04-29] P7 — DTOs Timeseries/Synthesis renommés + Prestige smoke + Jalon OpenAPI
+
+**Statut** : Complété (P7.1 sub-PR A→D, P7.2, jalon OpenAPI partiel)
+
+**Contexte** : DTOs `Timeseries*` et `Synthesis*` portaient des noms ECharts (`BinStart/BinEnd`, `RowKey/ColKey`, `Label/X/Y`) et du formatage transporté (`SoloText/SquadText`, `Color`) — couplage présentation/transport identifié par l'audit axe 1 (BLOQUANT 5). Décision actée 2026-04-29 : pas de couche d'abstraction transitoire (scope petit, 1 client front contrôlé, openapi-typescript regen automatique).
+
+**Changements P7.1** :
+- **`domain/timeseries.go`** :
+  - `TimeseriesKpiCard` : champ `Color` retiré (résolu côté front via tokens)
+  - `DistributionBucket` : `BinStart/BinEnd` → `BucketLower/BucketUpper` (générique, métrique implicite via tab parent)
+  - `CorrelationDataPair` : `Label, X, Y, Outcome` → `MetricXKey, MetricYKey, XValue, YValue, Outcome` (composite ECharts décomposé en 2 clés sémantiques + 2 valeurs)
+- **`domain/squad.go`** :
+  - `HeatmapCell` : `RowKey/ColKey` → `MapName/ModeName` (la heatmap synthèse est map×mode)
+  - `ComparisonMetricItem` : `SoloText/SquadText` retirés (formatage front via `formatComparisonMetric`)
+- **Producers Go migrés** : `service/timeseries_service.go` (6 sites CorrelationDataPair + 5 sites DistributionBucket) ; `analysis/squad_breakdown.go` (HeatmapCell + ComparisonMetricItem). Test `timeseries_service_test.go` mis à jour.
+- **Consumers front migrés** : `lib/api/types.ts` (4 interfaces) ; `seriesAdapters.ts` (binStart/binEnd → bucket_lower/upper, label → metric_x/y_key) ; `TimeseriesCorrelationScatter.tsx` (composite reconstruit côté UI pour préserver le filtrage activeLabel) ; `TimeseriesPage.tsx` (style color retiré) ; `SynthesisPage.tsx` (helper `formatComparisonMetric` ajouté).
+- Tests Vitest `seriesAdapters.test.ts` mis à jour ; `HomePage.test.tsx` mis à jour pour le fallback canonical labels post-P6.2 (TOML absent en test → la key brute est affichée).
+
+**P7.2 Prestige smoke** : déjà en place (`prestige_smoke_test.go` créé en P3.4). Vérifie flag off → 404 routes absentes ; flag on → routes montées avec body JSON. Tests verts.
+
+**Jalon OpenAPI** : ratchet abaissé 65 → 60 (delta actuel = 56). Cible plan ≤10 reste l'objectif final, mais nécessite un rattrapage de 40+ routes (squad-v2, engagement, multi-title preview, asset-drawer, prestige) — déféré P8 en lots dédiés. Le ratchet plus serré interdit la régression silencieuse.
+
+**ADR 0010** : Status Proposed → Accepted. Documente le choix du pré-binning serveur (perf transit JSON, pas de besoin re-binning dynamique) et le couplage assumé. Exemples mis à jour (`BucketLower/BucketUpper` au lieu de `KdaBinLower`).
+
+**Résultats** : `go build ./... && go test ./...` tout vert (incl. nouveaux tests). `npx tsc --noEmit` aucune nouvelle erreur. Vitest: HomePage + seriesAdapters verts ; SessionNavBar tests cassés mais hors scope P7 (cause = travail antérieur non commité dans le worktree, à diagnostiquer séparément).
+
+**Décisions clés** :
+1. **DistributionBucket générique** : pas de variante `KdaBucket`/`KillsBucket` séparée. La métrique est portée par le tab parent (`kda_buckets`, `kills_buckets`…). Une seule structure → moins de duplication, encore typée par le contexte du tab.
+2. **MetricXKey/MetricYKey vs Label** : décomposition séparée plutôt qu'enum composite. Permet à un futur titre B avec d'autres métriques de scatter plot (ex: `headshots_vs_perfect`) de réutiliser le même DTO.
+3. **Pas de Playwright** : le repo n'a pas de stack E2E Playwright en place. Les tests Vitest + go test couvrent les contrats DTO ; les régressions visuelles seraient à attraper par la prochaine étape qualité.
+4. **OpenAPI rattrapage déféré** : passer de 56 → 10 routes documentées = 46 routes à écrire en YAML, scope distinct du P7 DTO rename. Mieux dédier un commit unique « OpenAPI catch-up » que mélanger.
+
+**Prochaine étape** : P8 — couverture coverage_baseline + cleanup OpenAPI + P3.5 slog notify migration + cleanup divers (cf. PLAN_ACTION P8).
+
 ## [2026-04-29] P6 — Activation flags + capabilities middleware + request_id
 
 **Statut** : Complété (tous les sous-éléments P6.1 à P6.5)

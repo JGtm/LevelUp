@@ -118,9 +118,10 @@ describe('heatmapCellsToSeries', () => {
 })
 
 describe('distributionBucketsToSeries', () => {
+  // P7.1 (revue 2026-04-29) : DTO renommé bin_start/bin_end → bucket_lower/bucket_upper.
   const buckets: DistributionBucket[] = [
-    { bin_start: 0, bin_end: 1, count: 5 },
-    { bin_start: 1, bin_end: 2, count: 12 },
+    { bucket_lower: 0, bucket_upper: 1, count: 5 },
+    { bucket_lower: 1, bucket_upper: 2, count: 12 },
   ]
 
   it('retourne une série mono-trace avec key/name', () => {
@@ -130,7 +131,7 @@ describe('distributionBucketsToSeries', () => {
     expect(series[0].meta).toEqual({ gamertag: 'KD' })
   })
 
-  it('mappe bin_start/bin_end/count → binStart/binEnd/count', () => {
+  it('mappe bucket_lower/bucket_upper/count → binStart/binEnd/count (chart legacy)', () => {
     const dps = distributionBucketsToSeries(buckets, { key: 'k', name: 'n' })[0].datapoints
     expect(dps).toEqual([
       { binStart: 0, binEnd: 1, count: 5 },
@@ -147,11 +148,14 @@ describe('distributionBucketsToSeries', () => {
 
 describe('correlationPointsToSeries', () => {
   const labels = { win: 'Victoires', loss: 'Défaites', unknown: 'Inconnu' }
+  // P7.1 (revue 2026-04-29) : DTO renommé `label` (composite "kills_vs_kd")
+  // → metric_x_key/metric_y_key séparés, et x/y → x_value/y_value.
+  // Le caller assemble le composite "metric_x_vs_metric_y" pour filtrer.
   const points: CorrelationDataPair[] = [
-    { label: 'kills_vs_kd', x: 5, y: 1.5, outcome: 2 },
-    { label: 'kills_vs_kd', x: 3, y: 0.7, outcome: 3 },
-    { label: 'kills_vs_kd', x: 0, y: 0, outcome: null },
-    { label: 'other_pair', x: 9, y: 9, outcome: 2 },
+    { metric_x_key: 'kills', metric_y_key: 'kd', x_value: 5, y_value: 1.5, outcome: 2 },
+    { metric_x_key: 'kills', metric_y_key: 'kd', x_value: 3, y_value: 0.7, outcome: 3 },
+    { metric_x_key: 'kills', metric_y_key: 'kd', x_value: 0, y_value: 0, outcome: null },
+    { metric_x_key: 'other', metric_y_key: 'pair', x_value: 9, y_value: 9, outcome: 2 },
   ]
 
   it('filtre par label actif', () => {
@@ -179,8 +183,8 @@ describe('correlationPointsToSeries', () => {
 
   it('omet une série vide (pas de losses → 2 séries)', () => {
     const winsOnly: CorrelationDataPair[] = [
-      { label: 'kills_vs_kd', x: 5, y: 1.5, outcome: 2 },
-      { label: 'kills_vs_kd', x: 8, y: 2.0, outcome: 2 },
+      { metric_x_key: 'kills', metric_y_key: 'kd', x_value: 5, y_value: 1.5, outcome: 2 },
+      { metric_x_key: 'kills', metric_y_key: 'kd', x_value: 8, y_value: 2.0, outcome: 2 },
     ]
     const series = correlationPointsToSeries(winsOnly, 'kills_vs_kd', labels)
     expect(series).toHaveLength(1)

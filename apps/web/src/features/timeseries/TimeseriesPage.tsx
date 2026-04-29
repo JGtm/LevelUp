@@ -143,10 +143,9 @@ export function TimeseriesPage() {
                   <Card key={card.key}>
                     <CardContent className="py-3 text-center">
                       <p className="text-xs text-muted-foreground">{card.label}</p>
-                      <p
-                        className="text-xl font-bold"
-                        style={{ color: card.color ?? undefined }}
-                      >
+                      {/* P7.1 (revue 2026-04-29) : champ Color retiré du DTO,
+                          le ton est résolu côté front (token sémantique). */}
+                      <p className="text-xl font-bold">
                         {card.value}
                       </p>
                       {card.delta && (

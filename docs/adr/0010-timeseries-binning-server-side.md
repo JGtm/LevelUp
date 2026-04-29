@@ -1,6 +1,6 @@
 # ADR 0010 — Timeseries binning : serveur (Go) plutôt que client (front)
 
-**Status** — Proposed (2026-04-29). Sera finalisé en P7.1 sub-PR D du `PLAN_ACTION.md`.
+**Status** — Accepted (2026-04-29, finalisé en P7.1 sub-PR D du `PLAN_ACTION.md`).
 
 **Deciders** — Guillaume (GS).
 
@@ -27,7 +27,7 @@ Raisons :
 2. **Charge front** : binner côté front sur 5000+ matchs à chaque re-render serait inutilement coûteux en CPU client.
 3. **Cas d'usage actuel** : aucun besoin de re-binning dynamique côté UI. Les bins sont fixes par feature (ex: histogramme KDA = bins de largeur 0.5 entre 0 et 5+).
 
-Les DTOs portent désormais des noms métier (`KdaBinLower`, `KdaBinUpper` au lieu de `BinStart`/`BinEnd`), ce qui décorelle le contrat API du chart consommateur (cf. ADR 0006 + amendement axe 1).
+Les DTOs portent désormais des noms métier (`BucketLower`, `BucketUpper` au lieu de `BinStart`/`BinEnd` ECharts), ce qui décorelle le contrat API du chart consommateur (cf. ADR 0006 + amendement axe 1). Le bucket reste générique (utilisable pour KDA, kills, accuracy, score-per-min, rolling-WR), avec la métrique implicite portée par le tab parent (`kda_buckets`, `kills_buckets`…) plutôt que par le DTO lui-même.
 
 ## Couplage assumé documenté
 

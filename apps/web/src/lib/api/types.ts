@@ -1400,8 +1400,6 @@ export interface ComparisonMetricItem {
   label: string
   solo_value: number
   squad_value: number
-  solo_text: string
-  squad_text: string
 }
 
 export interface SynthesisQueryRequest {
@@ -2004,16 +2002,17 @@ export interface CumulativePoint {
 
 /** Bucket d'un histogramme de distribution. */
 export interface DistributionBucket {
-  bin_start: number
-  bin_end: number
+  bucket_lower: number
+  bucket_upper: number
   count: number
 }
 
 /** Paire (x, y) pour un scatter plot de corrélation. */
 export interface CorrelationDataPair {
-  label: string
-  x: number
-  y: number
+  metric_x_key: string
+  metric_y_key: string
+  x_value: number
+  y_value: number
   outcome: number | null
 }
 
@@ -2053,7 +2052,6 @@ export interface TimeseriesKpiCard {
   label: string
   value: string
   delta: string | null
-  color: string | null
 }
 
 export interface TimeseriesSummaryTab {

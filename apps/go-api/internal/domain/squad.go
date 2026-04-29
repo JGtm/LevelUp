@@ -182,11 +182,15 @@ type SquadPageResponse struct {
 // ---------------------------------------------------------------------------
 
 // HeatmapCell est une cellule de la heatmap carte × mode de jeu.
+//
+// P7.1 (revue 2026-04-29) : champs renommés `RowKey/ColKey` (axes ECharts)
+// → `MapName/ModeName` (sémantique métier — la heatmap est toujours
+// map × mode pour la synthèse Squad).
 type HeatmapCell struct {
-	RowKey string  `json:"row_key"`
-	ColKey string  `json:"col_key"`
-	Value  float64 `json:"value"`
-	Count  int     `json:"count"`
+	MapName  string  `json:"map_name"`
+	ModeName string  `json:"mode_name"`
+	Value    float64 `json:"value"`
+	Count    int     `json:"count"`
 }
 
 // TopWeekEntry est une semaine performante dans l'historique du joueur.
@@ -212,12 +216,16 @@ type SynthesisKPIs struct {
 }
 
 // ComparisonMetricItem est une métrique bipolaire solo / escouade.
+//
+// P7.1 (revue 2026-04-29) : champs `SoloText/SquadText` retirés — le
+// formatage (pourcentage, décimales, suffixes) est résolu côté front via
+// les helpers `formatPercent`/`formatNumber` à partir des valeurs brutes.
+// Réduit le couplage formatage/transport et permet aux clients front de
+// formater selon la locale active.
 type ComparisonMetricItem struct {
 	Label      string  `json:"label"`
 	SoloValue  float64 `json:"solo_value"`
 	SquadValue float64 `json:"squad_value"`
-	SoloText   string  `json:"solo_text"`
-	SquadText  string  `json:"squad_text"`
 }
 
 // TemporalHeatmapCell est une cellule de la heatmap jour × heure (Sprint 43).

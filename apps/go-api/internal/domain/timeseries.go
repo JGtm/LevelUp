@@ -28,12 +28,15 @@ type TimeseriesQueryRequest struct {
 // ---------------------------------------------------------------------------
 
 // TimeseriesKpiCard est une carte KPI dans l'onglet résumé.
+//
+// P7.1 (revue 2026-04-29) : champ `Color` retiré — le ton/couleur est résolu
+// côté front via tokens sémantiques (`tokenCssVar` + delta sign), pas
+// transporté dans le DTO. Réduit le couplage présentation/transport.
 type TimeseriesKpiCard struct {
 	Key   string  `json:"key"`
 	Label string  `json:"label"`
 	Value string  `json:"value"`
 	Delta *string `json:"delta"`
-	Color *string `json:"color"`
 }
 
 // TimeseriesSummaryTab est l'onglet Résumé.
@@ -88,20 +91,32 @@ type TimeseriesDistributionsTab struct {
 }
 
 // DistributionBucket est un bucket pour un histogramme de distribution.
+//
+// P7.1 (revue 2026-04-29) : champs renommés `BinStart/BinEnd` (terme ECharts)
+// → `BucketLower/BucketUpper` (sémantique métier). Le bucket représente une
+// tranche [BucketLower, BucketUpper) d'une métrique (KDA, kills, accuracy…) ;
+// les noms ECharts ne portaient pas cette intention.
 type DistributionBucket struct {
-	BinStart float64 `json:"bin_start"`
-	BinEnd   float64 `json:"bin_end"`
-	Count    int     `json:"count"`
+	BucketLower float64 `json:"bucket_lower"`
+	BucketUpper float64 `json:"bucket_upper"`
+	Count       int     `json:"count"`
 }
 
 // CorrelationDataPair est une paire (x, y) pour un scatter plot de corrélation.
-// Label exemples : "kills_vs_kd", "lifespan_vs_kills", "accuracy_vs_kda",
-// "lifespan_vs_deaths", "kills_vs_deaths", "mmr_team_vs_enemy".
+//
+// P7.1 (revue 2026-04-29) : champs renommés vers une sémantique métier.
+// `Label` (composite ECharts "kills_vs_kd") → couple `MetricXKey/MetricYKey`
+// (clés canoniques séparées) ; `X/Y` (axes ECharts) → `XValue/YValue` (valeurs
+// pour ces deux métriques).
+//
+// Exemples MetricXKey/MetricYKey : ("kills","kd_ratio"), ("lifespan","kills"),
+// ("accuracy","kda"), ("kills","deaths"), ("mmr_team","mmr_enemy").
 type CorrelationDataPair struct {
-	Label   string  `json:"label"`
-	X       float64 `json:"x"`
-	Y       float64 `json:"y"`
-	Outcome *int    `json:"outcome"` // nil si inconnu ; 2=victoire, 3=défaite, 1=égalité
+	MetricXKey string  `json:"metric_x_key"`
+	MetricYKey string  `json:"metric_y_key"`
+	XValue     float64 `json:"x_value"`
+	YValue     float64 `json:"y_value"`
+	Outcome    *int    `json:"outcome"` // nil si inconnu ; 2=victoire, 3=défaite, 1=égalité
 }
 
 // TimeseriesMatchRow est une ligne de données par match pour les charts timeline.

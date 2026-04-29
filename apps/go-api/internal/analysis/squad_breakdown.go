@@ -78,10 +78,10 @@ func ComputeSynthesisHeatmap(rows []domain.SynthesisHeatmapRow) []domain.Heatmap
 			value = math.Round(float64(r.Wins)/float64(r.MatchCount)*1000) / 10
 		}
 		cells = append(cells, domain.HeatmapCell{
-			RowKey: r.MapName,
-			ColKey: r.ModeName,
-			Value:  value,
-			Count:  r.MatchCount,
+			MapName:  r.MapName,
+			ModeName: r.ModeName,
+			Value:    value,
+			Count:    r.MatchCount,
 		})
 	}
 	return cells
@@ -640,25 +640,24 @@ func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []doma
 func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.ComparisonMetricItem {
 	items := make([]domain.ComparisonMetricItem, 0, 5)
 
+	// P7.1 (revue 2026-04-29) : SoloText/SquadText retirés ; Label porte
+	// désormais une clé canonique (cf. fields.toml) que le front résout via
+	// useFieldLabel + format via switch sur la clé canonique. Évite la
+	// dépendance au libellé FR pour le formatage.
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "Win Rate", SoloValue: solo.WinRate, SquadValue: squad.WinRate,
-		SoloText: fmtPct(solo.WinRate), SquadText: fmtPct(squad.WinRate),
+		Label: "win_rate", SoloValue: solo.WinRate, SquadValue: squad.WinRate,
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "K/D", SoloValue: deref(solo.KDRatio), SquadValue: deref(squad.KDRatio),
-		SoloText: fmtFloat2(solo.KDRatio), SquadText: fmtFloat2(squad.KDRatio),
+		Label: "kd_ratio", SoloValue: deref(solo.KDRatio), SquadValue: deref(squad.KDRatio),
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "PrÃ©cision", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
-		SoloText: fmtPct(deref(solo.Accuracy)), SquadText: fmtPct(deref(squad.Accuracy)),
+		Label: "accuracy", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "Kills/min", SoloValue: deref(solo.KillsPerMin), SquadValue: deref(squad.KillsPerMin),
-		SoloText: fmtFloat2(solo.KillsPerMin), SquadText: fmtFloat2(squad.KillsPerMin),
+		Label: "kills_per_min", SoloValue: deref(solo.KillsPerMin), SquadValue: deref(squad.KillsPerMin),
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "Perf. Score", SoloValue: deref(solo.PerformanceScore), SquadValue: deref(squad.PerformanceScore),
-		SoloText: fmtFloat0(solo.PerformanceScore), SquadText: fmtFloat0(squad.PerformanceScore),
+		Label: "performance_score", SoloValue: deref(solo.PerformanceScore), SquadValue: deref(squad.PerformanceScore),
 	})
 	return items
 }

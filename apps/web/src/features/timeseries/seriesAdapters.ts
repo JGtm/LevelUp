@@ -72,8 +72,9 @@ export function distributionBucketsToSeries(
       key: options.key,
       meta: { gamertag: options.name },
       datapoints: buckets.map((b) => ({
-        binStart: b.bin_start,
-        binEnd: b.bin_end,
+        // P7.1 (revue 2026-04-29) : DTO renommé bin_start/bin_end → bucket_lower/bucket_upper.
+        binStart: b.bucket_lower,
+        binEnd: b.bucket_upper,
         count: b.count,
       })),
     },
@@ -100,7 +101,12 @@ export function correlationPointsToSeries(
   activeLabel: string,
   outcomeLabels: ScatterOutcomeLabels,
 ): ChartSeries<ChartPointScatter>[] {
-  const filtered = points.filter((p) => p.label === activeLabel)
+  // P7.1 (revue 2026-04-29) : DTO renommé `label` (composite "X_vs_Y") →
+  // metric_x_key/metric_y_key séparés, et x/y → x_value/y_value. activeLabel
+  // reste un identifiant composite côté UI ; on le re-construit pour filtrer.
+  const filtered = points.filter(
+    (p) => `${p.metric_x_key}_vs_${p.metric_y_key}` === activeLabel,
+  )
   const wins = filtered.filter((p) => p.outcome === OUTCOME_WIN)
   const losses = filtered.filter((p) => p.outcome === OUTCOME_LOSS)
   const unknowns = filtered.filter(
@@ -111,21 +117,21 @@ export function correlationPointsToSeries(
     series.push({
       key: 'outcome.win',
       meta: { gamertag: outcomeLabels.win },
-      datapoints: wins.map((p) => ({ x: p.x, y: p.y })),
+      datapoints: wins.map((p) => ({ x: p.x_value, y: p.y_value })),
     })
   }
   if (losses.length > 0) {
     series.push({
       key: 'outcome.loss',
       meta: { gamertag: outcomeLabels.loss },
-      datapoints: losses.map((p) => ({ x: p.x, y: p.y })),
+      datapoints: losses.map((p) => ({ x: p.x_value, y: p.y_value })),
     })
   }
   if (unknowns.length > 0) {
     series.push({
       key: 'outcome.unknown',
       meta: { gamertag: outcomeLabels.unknown },
-      datapoints: unknowns.map((p) => ({ x: p.x, y: p.y })),
+      datapoints: unknowns.map((p) => ({ x: p.x_value, y: p.y_value })),
     })
   }
   return series

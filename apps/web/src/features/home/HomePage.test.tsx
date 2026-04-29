@@ -34,9 +34,12 @@ describe('HomePage', () => {
   })
 
   it('affiche la section Performance globale après chargement', async () => {
+    // P6.2 (revue 2026-04-29) : "Taux de victoire" vient maintenant de
+    // fields.toml (clé canonique `win_rate`) ; en test sans TOML chargé,
+    // labelOf retourne la key directement.
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText(/Taux de victoire/i)).toBeInTheDocument()
+      expect(screen.getByText('win_rate')).toBeInTheDocument()
     })
   })
 
@@ -466,13 +469,16 @@ describe('HomePage', () => {
     expect(screen.getByTestId('home-challenges-completed')).toHaveTextContent('5 / 5 complétés')
   })
 
-  it('affiche les KPIs globaux (Parties, Taux de victoire, KDA)', async () => {
+  it('affiche les KPIs globaux (clés canoniques fallback quand TOML absent)', async () => {
+    // P6.2 (revue 2026-04-29) : labelOf(key) retourne la key canonique en
+    // fallback quand le TOML mappings n'est pas chargé (cas de test sans
+    // useFieldMappings en succès). Les libellés FR ("Parties", "Taux de
+    // victoire") viennent maintenant exclusivement de fields.toml.
     renderWithProviders(<HomePage />)
     await waitFor(() => {
-      expect(screen.getByText('Parties')).toBeInTheDocument()
-      expect(screen.getByText('Taux de victoire')).toBeInTheDocument()
-      // labelOf('kda', 'KDA') retourne "KDA" en fallback (Phase D-bis migration).
-      expect(screen.getByText('KDA')).toBeInTheDocument()
+      expect(screen.getByText('total_matches_played')).toBeInTheDocument()
+      expect(screen.getByText('win_rate')).toBeInTheDocument()
+      expect(screen.getByText('kda')).toBeInTheDocument()
     })
   })
 
