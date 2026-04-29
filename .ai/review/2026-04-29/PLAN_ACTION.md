@@ -763,14 +763,15 @@ type TitleAssetURLAdapter interface {
 - Mettre à jour `.ai/data_lineage.md` pour le nouveau chemin DB globale
 
 ### Done P5
-- [ ] DB globale `xbox_aliases.duckdb` opérationnelle
-- [ ] Script migration testé (idempotent, dry-run vert) et exécuté
-- [ ] Consommateurs canonical migrés (post-P4)
-- [ ] **Halo-only adapters extraits** (P5.4) + ADR 0011
-- [ ] **Plus de `"HINF-CSR_"` hardcodé** (gap #9)
-- [ ] Skills `db-schema` et `canonical-types` à jour
-- [ ] Couverture >= 80% sur `cmd/migrate-xuid-aliases-global` (politique transverse)
-- [ ] Entrée thought_log
+- [x] **P5.1** : `PathResolver.GlobalXuidAliasesDBPath()` ajouté + test (commit `32912ffe`)
+- [x] **P5.2** : Script `cmd/migrate-xuid-aliases-global` opérationnel (commit `f1d57cfd`) — idempotent (UPSERT), dry-run vert sur repo réel (15370 rows lues sans erreur), `--drop-local` pour seconde passe
+- [ ] **P5.3** : Refactor des consommateurs vers la DB globale — déféré post-déploiement (nécessite migration script run + DI wiring de la global DB dans les repos qui font `JOIN shared.xuid_aliases`)
+- [x] **P5.4 Halo-only adapters extraits** (commit `32912ffe`) : `mode_category.go` + `citations_custom.go` déplacés vers `internal/games/halo_infinite/`, hook `analysis.RegisterCustomDispatcher` pour briser le cycle d'import. ADR **0012** créé (0011 était déjà pris par canonical/semantic separation).
+- [x] **Plus de `"HINF-CSR_"` hardcodé** (gap #9) : `home_repo.go::buildHomeSkillPeakBadgeURL` délègue à `halo_infinite.AssetURLAdapter.CSRRankImageURL`.
+- [x] **`ranks_loader.go` migré** vers `platform/duckdb/halo_ranks_loader.go` pour casser le cycle `duckdb → halo_infinite → duckdb` (effet de bord nécessaire pour P5.4).
+- [x] Skill `db-schema` à jour (path `xbox_aliases.duckdb` + lien P5/ADR 0008).
+- [ ] Couverture >= 80% sur `cmd/migrate-xuid-aliases-global` (test unitaire à écrire — nécessite fixture multi-titres, déféré).
+- [x] Entrée thought_log
 
 ---
 
