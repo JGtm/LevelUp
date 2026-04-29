@@ -6,8 +6,12 @@
 #   2. Lancer `node apps/web/scripts/build_i18n_manifests.mjs` pour
 #      régénérer le module TS dans lib/i18n/generated/
 
+[asset_drawer.mini_tab]
+fr = "Référentiel"
+en = "Reference"
+
 [asset_drawer.tab.maps]
-fr = "Maps"
+fr = "Cartes"
 en = "Maps"
 
 [asset_drawer.tab.weapons]

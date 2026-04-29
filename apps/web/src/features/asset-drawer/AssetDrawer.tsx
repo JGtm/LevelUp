@@ -41,10 +41,10 @@ export function AssetDrawer() {
         onClick={toggle}
         aria-label={t(isOpen ? 'asset_drawer.toggle.close' : 'asset_drawer.toggle.open')}
         aria-expanded={isOpen}
-        className="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 translate-x-0 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover px-1.5 py-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground sm:flex"
+        className="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 translate-x-0 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover px-1.5 py-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground sm:flex"
         style={{ writingMode: 'vertical-rl' }}
       >
-        {activeTab === 'maps' ? t('asset_drawer.tab.maps') : t('asset_drawer.tab.weapons')}
+        {t('asset_drawer.mini_tab')}
       </button>
 
       {/* Panneau drawer */}
@@ -52,8 +52,8 @@ export function AssetDrawer() {
         role="complementary"
         aria-label={t('asset_drawer.toggle.open')}
         aria-hidden={!isOpen}
-        className="fixed right-0 top-0 z-50 hidden h-full w-[360px] flex-col border-l border-border bg-popover shadow-xl transition-transform duration-200 ease-out sm:flex"
-        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
+        className="fixed right-0 top-1/2 z-50 hidden h-[min(600px,80vh)] w-[290px] flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl transition-transform duration-200 ease-out sm:flex"
+        style={{ transform: isOpen ? 'translateX(0) translateY(-50%)' : 'translateX(100%) translateY(-50%)' }}
       >
         {/* Header : onglets + bouton fermer */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
