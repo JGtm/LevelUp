@@ -91,60 +91,29 @@ func (s *SynthesisService) GetSynthesisPage(
 		}
 	}
 
-	// P4.3 (ADR 0011) : chemin canonical pur quand playerMatchesRepo est
-	// injecté. Plus de converter — toutes les analyses synthesis ont leur
-	// variante *FromCanonical. Le path legacy (s.repo.LoadSynthesisMatches)
-	// reste pour la rétrocompatibilité tant que la DI n'est pas câblée.
-	var (
-		filtered       []domain.SynthesisMatchRow
-		filteredCanon  []canonical.PlayerMatchRow
-		filtersApplied []string
-		filtersIgnored []string
-		useCanonical   bool
+	// P4.3 finale (ADR 0011) : path canonical exclusif. Le legacy fallback
+	// path a été supprimé — playerMatchesRepo + titleSlug + gamertag sont
+	// désormais REQUIS (wirés universellement en DI via registry.go).
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
+	}
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
-	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" {
-		canonicalRows, e := s.playerMatchesRepo.LoadPlayerMatches(
-			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-		)
-		if e != nil {
-			return nil, e
-		}
-		slog.DebugContext(ctx, "synthesis: loaded canonical",
-			"rows", len(canonicalRows), "title_slug", s.titleSlug)
-		filteredCanon, filtersApplied, filtersIgnored = filterSynthesisByPeriodCanonical(canonicalRows, period, req.Filters)
-		useCanonical = true
-	} else {
-		synthMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
-		if err != nil {
-			return nil, err
-		}
-		// D2 : filtrer par période (legacy path)
-		filtered, filtersApplied, filtersIgnored = filterSynthesisByPeriod(synthMatches, period, req.Filters)
+	if err != nil {
+		return nil, fmt.Errorf("SynthesisService load: %w", err)
 	}
+	slog.DebugContext(ctx, "synthesis: loaded canonical",
+		"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	filteredCanon, filtersApplied, filtersIgnored := filterSynthesisByPeriodCanonical(canonicalRows, period, req.Filters)
 
-	var soloKPIs, squadKPIs domain.SynthesisKPIs
-	var topWeeks []domain.TopWeekEntry
-	var heatmap []domain.TemporalHeatmapCell
-	var overview domain.SynthesisOverview
-	var highlights domain.SynthesisHighlightsPreview
-	var matchCount int
-	if useCanonical {
-		soloKPIs = analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false)
-		squadKPIs = analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true)
-		topWeeks = analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
-		heatmap = analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
-		overview = buildSynthesisOverviewCanonical(filteredCanon, soloKPIs)
-		highlights = buildHighlightsPreviewCanonical(filteredCanon)
-		matchCount = len(filteredCanon)
-	} else {
-		soloKPIs = analysis.ComputeSynthesisKPIs(filtered, false)
-		squadKPIs = analysis.ComputeSynthesisKPIs(filtered, true)
-		topWeeks = analysis.ComputeSynthesisTopWeeks(filtered)
-		heatmap = analysis.ComputeTemporalHeatmap(filtered)
-		overview = buildSynthesisOverview(filtered, soloKPIs)
-		highlights = buildHighlightsPreview(filtered)
-		matchCount = len(filtered)
-	}
+	soloKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false)
+	squadKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true)
+	topWeeks := analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
+	heatmap := analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
+	overview := buildSynthesisOverviewCanonical(filteredCanon, soloKPIs)
+	highlights := buildHighlightsPreviewCanonical(filteredCanon)
+	matchCount := len(filteredCanon)
 	comparison := analysis.ComputeComparisonMetrics(soloKPIs, squadKPIs)
 
 	// D6 : rivalries — encounters depuis shared (requête séparée)
