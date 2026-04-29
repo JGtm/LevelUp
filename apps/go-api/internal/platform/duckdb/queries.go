@@ -49,8 +49,9 @@ matched AS (
       + CAST(jaro_winkler_similarity(lower(xa.gamertag), p.q) * 100 AS INTEGER) AS score
     FROM shared.xuid_aliases xa
     CROSS JOIN params p
-    WHERE lower(xa.gamertag) LIKE '%' || p.q || '%'
-       OR jaro_winkler_similarity(lower(xa.gamertag), p.q) > 0.80
+    WHERE xa.xuid NOT LIKE 'bid(%'
+      AND (   lower(xa.gamertag) LIKE '%' || p.q || '%'
+           OR jaro_winkler_similarity(lower(xa.gamertag), p.q) > 0.80)
 )
 SELECT
     m.gamertag,

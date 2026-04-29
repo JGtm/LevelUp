@@ -26,6 +26,7 @@ JOIN shared.match_participants p2
     AND p2.xuid    != ?
 LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE pme.is_with_friends = TRUE
+  AND p2.xuid NOT LIKE 'bid(%'
 GROUP BY p2.xuid, vg.gamertag
 ORDER BY games_together DESC
 LIMIT 50`
