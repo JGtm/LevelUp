@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-04-29] P4 préparation rigoureuse — Option A (canonical/semantic separation)
+
+**Statut** : Fondations P4 livrées (ADR 0011 + gap analysis + canonical extensions + pilote analyse synthesis). Migration service-level reste à faire en sessions dédiées.
+
+**Contexte** : confronté au blocker `home_service.go:36-42` (canonical.PlayerStats ne couvre pas le payload home), arbitrage entre Option A (extension canonical d'abord, structurellement correct) et Option B (pilote sur service plus simple, court terme dégradé). Choix : **Option A rigoureuse**.
+
+**4 commits livrés sur cette tranche** :
+
+- `c431cdeb docs(adr)` : **ADR 0011** — séparation canonical (data brute) / TitleSemanticAdapter (i18n) / TitleAssetURLAdapter (URLs). Acte la frontière architecturale qui débloque P4. Hypothèse : très peu d'extensions canonical réellement nécessaires.
+
+- `bb769321 feat(p4)` : **canonical extensions minimales + gap analysis** :
+  - `MatchSummary.Teams []TeamSnapshot` (déjà sur MatchDetail, manque sur Summary)
+  - `PlayerMatchEnrichment.SkillSnapshot *SkillSnapshot` (nouveau type) avec RatingType, RatingValue, TierCode, SubTier, Delta, PlaylistGroup, KillsExpected/DeathsExpected
+  - `P4_GAP_ANALYSIS.md` 150L : tableau exhaustif HomeMatchRow (50 champs), SynthesisMatchRow (100% couvert), StatsMatchRow (1 ajout via SkillSnapshot)
+
+- `14e9f25a feat(p4)` : **ComputeSynthesisKPIsFromCanonical** (variante canonical-aware de ComputeSynthesisKPIs). Tests de parité : 3/3 PASS. Garantit que le canonical produit des KPIs bit-identiques au legacy, base pour migration progressive.
+
+**Décisions design clés (cf. ADR 0011)** :
+- Les libellés localisés (`SkillTierLabel = "Diamant 3"`, `MapNameFR`) restent dans `TitleSemanticAdapter.Ranks/Assets/Outcomes` — **PAS dans canonical**.
+- Les URLs d'assets (`SkillRankImageURL`, `MapImageURL`) restent dans `TitleAssetURLAdapter` — **PAS dans canonical**.
+- Le canonical reste minimal data-only.
+- Service produit combine les 3 adapters pour produire le DTO final inchangé.
+- La majorité des « champs manquants » de HomeMatchRow va en semantic / assetURL, pas canonical (hypothèse confirmée par gap analysis).
+
+**Effort P4 révisé** (gap analysis confirme) :
+- Extensions canonical : **0.5-1 j** (vs craint 2-3 sem)
+- P4.1 pilote home : **5-7 j** (gap home titleSlug + cablage assets adapter)
+- P4.2 12+ services restants : **10-14 j** (Synthesis/Stats/Compare/Timeseries triviaux ; MatchView/SquadV2 partiels ; Media indépendants)
+- P4.3 cleanup : **0.5-1 j**
+- **Total P4 réaliste : 2-3 sem temps plein**
+
+**Reste (sessions dédiées)** :
+- Refactor `synthesis_service.go` pour injecter `port.PlayerMatchesRepository` et utiliser `ComputeSynthesisKPIsFromCanonical` (1-2 j)
+- Pilote home avec les 2 extensions canonical + cablage TitleAssetURLAdapter (5-7 j)
+- 11 services restants par sub-PRs (10-14 j)
+- Suppression types legacy `domain.{Home,Synthesis,Stats}MatchRow` après migration totale
+
+**Bilan branche** `chore/cleanup-and-ux-fixes` : 41 commits depuis main. Foundation P4 solide, prête pour merge + reprise en sessions dédiées.
+
+---
+
 ## [2026-04-29] P3 résiduel — slog notify + régression engagement + Clock + tests halo (sur chore/cleanup-and-ux-fixes)
 
 **Statut** : P3.2 et P3.5 livrés complets. P3.6 et P3.7 livrés partiels (chunks principaux). Reste 4 port extractions (P3.7) + 5 fichiers platform/halo (P3.6) — substantiels, à traiter en phase dédiée.
