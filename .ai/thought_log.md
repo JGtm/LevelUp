@@ -1,5 +1,34 @@
 # Thought Log
 
+## [2026-04-29] P8.4 finition optionnelle — HomePage 735L → 433L (5/5 god pages <500L)
+
+**Statut** : Complété. Plan revue 2026-04-29 désormais 100% livré (y compris items optionnels).
+
+**Contexte** : Suite des 3 derniers items P8 (loaders + helpers + StatCard). HomePage restait à 735L après P8.4 — au-dessus du seuil 500L. Découpe finition pour passer sous le seuil.
+
+**Changements** :
+
+- **`HomeSpartanIdentityBanner.tsx`** (~190L) : extrait du bloc bannière hero (banner image + emblem + gamertag + Spartan ID + rang carrière) + panneau skill peaks adjacent. Le composant gère son propre i18n via `getSpartanIdentityText(locale)` + `useAppShellStore` ; reçoit les données primitives en props (spartanIdentity, playerName, highest CSR/LUSR, hasRanked/UnrankedHistory, hasPrivacyWarning, identityUnavailableLabel).
+
+- **`HomeHeroKPIGrid.tsx`** (~155L) : extrait de la grille 8 tuiles KPI (Parties, KDA, Win Rate + outcomes, Durée totale, Playlist favorite, Off/Def, Précision, Arme favorite). Helper `formatPlaytime` extrait pour gérer les unités (years/months/days/hours/min). Reçoit `kpis: HeroKPIs`, `labelOf`, `numberLocale`, `kpiText` en props.
+
+- **`HomePage.tsx`** : suppression de ~300L de JSX inline + suppression des state derivations devenues inutilisées (`hasAnySkillHistory`, `csrState`, `lusrState`, `careerRank`, `careerAdornmentUrl`, `identityMonogram`, `spartanText`, `labels`, `emptySkillPanelTitle`, `emptySkillPanelDescription`) — tous gérés désormais à l'intérieur de `HomeSpartanIdentityBanner`. Imports nettoyés (`CompositeProgressBar`, `HomeSkillPeakCard`/`resolveSkillPeakState`, `HomeKPICard`/`HomeOutcomeBar`, `kdScale`/`accuracyScale`, `tokenCssVar`, `getSpartanIdentityText`).
+
+**Résultats** :
+- HomePage.tsx 735L → **433L** (-302L extraits dans 2 sous-composants).
+- 5/5 god pages désormais sous 500L :
+  - HomePage 433L ✓
+  - SettingsPage 209L ✓
+  - SetupPage 75L ✓
+  - MatchViewPage 439L ✓
+  - LabPage 155L ✓
+- Vitest : 92 files / 741 tests verts.
+- `tsc --noEmit` : aucune erreur.
+
+**Décision clé** : `HomeSpartanIdentityBanner` gère son propre i18n (`getSpartanIdentityText` + `useAppShellStore`) plutôt que de prendre `labels`/`spartanText`/`numberLocale` en props. Réduit la surface d'API et permet au composant d'être autonome. Le seul i18n externe (`t('home.identity.unavailable')`) est passé en string via la prop `identityUnavailableLabel` parce que le manifest home utilise une mécanique custom (`formatMessage` + `homeManifest`) qui appartient à HomePage.
+
+**Plan revue 2026-04-29 entièrement livré, optionnels inclus**.
+
 ## [2026-04-29] P8.6 + P8.12 + P8.13 — Loaders TanStack + helpers + StatCard consolidation
 
 **Statut** : Complété. Plan revue 2026-04-29 désormais entièrement livré.
