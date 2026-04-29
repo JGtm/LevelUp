@@ -100,8 +100,12 @@ type StatsMatchRow struct {
 	DeathsExpected      *float64
 	Rank                *int
 	IsRanked            bool
+	IsFirefight         bool
 	PlaylistName        string
 	PairName            string
+	PairNameFR          string
+	MapName             string
+	MapNameFR           string
 	TeamID              *int
 	PerfScoreComputed   *float64
 	SessionID           *string

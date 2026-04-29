@@ -12,8 +12,12 @@ func filterStatsMatchRows(rows []legacymatch.StatsMatchRow, f domain.FilterConte
 		filterRows[i] = domain.FilterMatchRow{
 			MatchID:      r.MatchID,
 			StartTime:    &r.StartTime,
-			PlaylistName: &r.PlaylistName,
+			MapName:      &r.MapName,
+			MapNameFR:    &r.MapNameFR,
 			PairName:     &r.PairName,
+			PairNameFR:   &r.PairNameFR,
+			PlaylistName: &r.PlaylistName,
+			IsFirefight:  r.IsFirefight,
 			IsRanked:     r.IsRanked,
 			SessionID:    r.SessionID,
 			SessionLabel: r.SessionLabel,
