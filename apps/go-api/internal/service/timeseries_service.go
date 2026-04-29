@@ -14,11 +14,13 @@ import (
 	"log/slog"
 	"math"
 	"sort"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -66,6 +68,9 @@ func (s *TimeseriesService) GetPage(
 	ctx context.Context,
 	req domain.TimeseriesQueryRequest,
 ) (domain.TimeseriesPageResponse, error) {
+	defer func(start time.Time) {
+		observability.RecordDurationMS("timeseries_get_page", time.Since(start).Milliseconds())
+	}(time.Now())
 	// P4.3 finale (ADR 0011) : path canonical exclusif.
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
 		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")

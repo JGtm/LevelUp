@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -77,6 +78,10 @@ func (s *CareerService) WithDataAdapter(a games.TitleDataAdapter) *CareerService
 // quand le service a un dataAdapter ; sinon fallback repo direct. Parité de
 // payload garantie par projectionLatestRankFromCanonical.
 func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageResponse, error) {
+	// P8.3 (revue 2026-04-29) : observabilité service_duration_ms.
+	defer func(start time.Time) {
+		observability.RecordDurationMS("career_get_page", time.Since(start).Milliseconds())
+	}(time.Now())
 	rank, err := s.loadLatestRank(ctx)
 	if err != nil {
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)

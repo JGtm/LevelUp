@@ -4,6 +4,12 @@
 // Le frontend consume ces types et assemble les graphiques côté client.
 //
 // Port Go des types de src/visualization/ et domain/chart/ Python.
+//
+// Deprecated: P8.9 (revue 2026-04-29) — les nouvelles features doivent utiliser
+// `domain.ChartSeries[T]` (cf. `internal/domain/charts.go`, ADR 0001). Les
+// types `chart.*` (DataPoint, AntagonistEntry, etc.) sont conservés pour les
+// pages Explorer existantes ; migration des consommateurs prévue en backlog
+// post-P8.
 package chart
 
 import "time"

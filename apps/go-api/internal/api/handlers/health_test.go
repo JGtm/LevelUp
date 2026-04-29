@@ -107,3 +107,80 @@ func TestHealthHandler_NoVersion(t *testing.T) {
 		t.Errorf("expected empty app_version, got %v", v)
 	}
 }
+
+// ─── P8.11 (revue 2026-04-29) — /healthz et /readyz séparés ────────────────
+
+func TestLiveness_AlwaysOK_NoDBQuery(t *testing.T) {
+	// Liveness doit retourner 200 même si la DB est en panne.
+	repo := &mockBootstrapRepo{matchErr: errors.New("connection refused")}
+	h := handlers.NewHealthHandler(repo)
+	r := chi.NewRouter()
+	r.Get("/healthz", h.Liveness)
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp["status"] != "alive" {
+		t.Errorf("expected status=alive, got %v", resp["status"])
+	}
+}
+
+func TestReadiness_OK_WhenDBHealthy(t *testing.T) {
+	repo := &mockBootstrapRepo{matchCount: 1500, dbVersion: "v1.4.4"}
+	h := handlers.NewHealthHandler(repo)
+	r := chi.NewRouter()
+	r.Get("/readyz", h.Readiness)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["status"] != "ready" {
+		t.Errorf("expected status=ready, got %v", resp["status"])
+	}
+	checks, ok := resp["checks"].(map[string]any)
+	if !ok {
+		t.Fatal("checks field manquant ou mauvais type")
+	}
+	if checks["duckdb"] != "ok" {
+		t.Errorf("expected checks.duckdb=ok, got %v", checks["duckdb"])
+	}
+}
+
+func TestReadiness_503_WhenDBDown(t *testing.T) {
+	repo := &mockBootstrapRepo{matchErr: errors.New("connection refused")}
+	h := handlers.NewHealthHandler(repo)
+	r := chi.NewRouter()
+	r.Get("/readyz", h.Readiness)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", w.Code)
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["status"] != "not_ready" {
+		t.Errorf("expected status=not_ready, got %v", resp["status"])
+	}
+	checks, _ := resp["checks"].(map[string]any)
+	dbCheck, _ := checks["duckdb"].(string)
+	if dbCheck == "" || dbCheck == "ok" {
+		t.Errorf("expected checks.duckdb=err message, got %q", dbCheck)
+	}
+}

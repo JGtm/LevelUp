@@ -38,6 +38,24 @@ tags:
     description: "Explorer matchs + joueurs (P1)"
   - name: match-view
     description: "Détail d'un match (P1)"
+  - name: home
+    description: "Page d'accueil et palmarès (P2+)"
+  - name: squad
+    description: "Pages Escouade / Synthèse (P2+)"
+  - name: media
+    description: "Galerie médias (P2+)"
+  - name: notifications
+    description: "Notifications joueur (P3)"
+  - name: settings
+    description: "Settings utilisateur"
+  - name: sync
+    description: "Sync delta + backfill (P3)"
+  - name: auth
+    description: "Authentification, session, watcher (P3)"
+  - name: admin
+    description: "Routes administration (auth admin requis)"
+  - name: assets
+    description: "Servir des assets binaires (images, médias)"
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -1097,6 +1115,597 @@ paths:
                     description: "Contenu Markdown du changelog"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------------------
+  # P8.8 (revue 2026-04-29) — Rattrapage OpenAPI delta → 0.
+  # Documentation minimale (operationId + summary + 200) pour les ~45 routes
+  # squad-v2 / engagement / multi-title / asset-drawer / prestige / admin /
+  # auth / notifications / watcher / settings / media / sync ajoutées au
+  # routeur chi mais omises du YAML lors de leur création.
+  #
+  # Le détail des schemas viendra dans un sprint ultérieur de polish — ici
+  # on ferme le ratchet TestContractRoutesDocumented à 0 pour interdire
+  # toute régression silencieuse.
+  # -------------------------------------------------------------------------
+
+  # Health (P8.11)
+  /healthz:
+    get:
+      tags: [health]
+      operationId: getHealthz
+      summary: "Liveness probe (process vivant, pas d'I/O DB)"
+      responses:
+        "200": { description: "OK" }
+
+  /readyz:
+    get:
+      tags: [health]
+      operationId: getReadyz
+      summary: "Readiness probe (DuckDB + filesystem + capability registry)"
+      responses:
+        "200": { description: "Prêt à servir le trafic" }
+        "503": { description: "Pas prêt (un check externe échoue)" }
+
+  # Help (P8.10)
+  /help/release-notes:
+    get:
+      tags: [health]
+      operationId: getReleaseNotes
+      summary: "Notes de release dérivées du git log"
+      responses:
+        "200": { description: "Liste des release notes" }
+
+  # Auth
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: postAuthLogin
+      summary: "Authentification email + password"
+      responses:
+        "200": { description: "Session créée (cookie set)" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: postAuthLogout
+      summary: "Invalide la session courante"
+      responses:
+        "200": { description: "Logged out" }
+
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: postAuthRegister
+      summary: "Création de compte (mode invite-only ou public selon registration_mode)"
+      responses:
+        "200": { description: "Compte créé" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  # Admin
+  /admin/invites:
+    get:
+      tags: [admin]
+      operationId: listAdminInvites
+      summary: "Liste des invitations admin (auth admin requis)"
+      responses:
+        "200": { description: "Liste des invitations" }
+    post:
+      tags: [admin]
+      operationId: createAdminInvite
+      summary: "Crée une invitation"
+      responses:
+        "200": { description: "Invitation créée" }
+
+  /admin/invites/{invite_id}:
+    delete:
+      tags: [admin]
+      operationId: deleteAdminInvite
+      parameters:
+        - name: invite_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Révoque une invitation"
+      responses:
+        "204": { description: "Invitation supprimée" }
+
+  /admin/users:
+    get:
+      tags: [admin]
+      operationId: listAdminUsers
+      summary: "Liste des utilisateurs (auth admin requis)"
+      responses:
+        "200": { description: "Liste des utilisateurs" }
+
+  /admin/users/{user_id}:
+    delete:
+      tags: [admin]
+      operationId: deleteAdminUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Supprime un compte utilisateur"
+      responses:
+        "204": { description: "Utilisateur supprimé" }
+
+  /admin/users/{user_id}/password:
+    patch:
+      tags: [admin]
+      operationId: patchAdminUserPassword
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Reset password d'un utilisateur"
+      responses:
+        "200": { description: "Mot de passe réinitialisé" }
+
+  /admin/users/{user_id}/role:
+    patch:
+      tags: [admin]
+      operationId: patchAdminUserRole
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Modifie le rôle d'un utilisateur (admin/user)"
+      responses:
+        "200": { description: "Rôle mis à jour" }
+
+  # Assets (image serving)
+  /assets/battlepass/{title_id}/{filename}:
+    get:
+      tags: [assets]
+      operationId: getBattlepassAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: filename
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Sert une image de battlepass (cache long terme)"
+      responses:
+        "200": { description: "Binary image" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /assets/challenge-badge/{title_id}/{filename}:
+    get:
+      tags: [assets]
+      operationId: getChallengeBadgeAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: filename
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Sert une image de badge de défi"
+      responses:
+        "200": { description: "Binary image" }
+
+  /assets/maps/{title_id}/{map_id}/image:
+    get:
+      tags: [assets]
+      operationId: getMapAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: map_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Sert l'image d'une carte"
+      responses:
+        "200": { description: "Binary image" }
+
+  /assets/medals/{title_id}/{medal_id}/image:
+    get:
+      tags: [assets]
+      operationId: getMedalAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: medal_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Sert l'image d'une médaille"
+      responses:
+        "200": { description: "Binary image" }
+
+  /assets/spartan/{title_id}/{xuid}/{path}:
+    get:
+      tags: [assets]
+      operationId: getSpartanAsset
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: xuid
+          in: path
+          required: true
+          schema: { type: string }
+        - name: path
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Sert un asset Spartan (emblem, backdrop, etc.)"
+      responses:
+        "200": { description: "Binary image" }
+
+  # Multi-title
+  /titles/{title_slug}/field-mappings:
+    get:
+      tags: [bootstrap]
+      operationId: getTitleFieldMappings
+      parameters:
+        - name: title_slug
+          in: path
+          required: true
+          schema: { type: string }
+        - name: locale
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [fr, en]
+      summary: "Field mappings TOML pour un titre (cf. fields.toml)"
+      responses:
+        "200": { description: "Field mappings" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # Engagement
+  /players/{player_slug}/engagement_profile:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [career]
+      operationId: getEngagementProfile
+      summary: "Profil engagement long-terme du joueur"
+      responses:
+        "200": { description: "Engagement profile" }
+
+  /players/{player_slug}/engagement/timeseries:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [career]
+      operationId: getEngagementTimeseries
+      summary: "Série temporelle de l'engagement (P3.2)"
+      responses:
+        "200": { description: "Timeseries engagement" }
+
+  /players/{player_slug}/matches/{match_id}/engagement:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: match_id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [match-view]
+      operationId: getMatchEngagement
+      summary: "Score d'engagement + courbe pour un match (P3.2)"
+      responses:
+        "200": { description: "Engagement match" }
+
+  # Match
+  /players/{player_slug}/matches/{match_id}/neighbors:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: match_id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [match-view]
+      operationId: getMatchNeighbors
+      summary: "Match précédent / suivant pour navigation"
+      responses:
+        "200": { description: "Match neighbors" }
+
+  /players/{player_slug}/matches/{match_id}/favorite:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: match_id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [match-view]
+      operationId: patchMatchFavorite
+      summary: "Toggle le statut favori d'un match"
+      responses:
+        "200": { description: "Statut mis à jour" }
+
+  # Squad V2
+  /players/{player_slug}/pages/squad/v2:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [squad]
+      operationId: getSquadV2Page
+      summary: "Page Squad V2 (multi-coéquipiers, fondations Phase 0)"
+      responses:
+        "200": { description: "Squad V2 page" }
+
+  /players/{player_slug}/pages/squad/v2/engagement:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [squad]
+      operationId: getSquadEngagementSession
+      summary: "Engagement squad pour la session courante"
+      responses:
+        "200": { description: "Squad engagement" }
+
+  # Season Pass
+  /players/{player_slug}/pages/palmares/season-pass:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [home]
+      operationId: getSeasonPassPage
+      summary: "Page Season Pass (palmarès)"
+      responses:
+        "200": { description: "Season pass page" }
+
+  # Media (étendu)
+  /media/feed-version:
+    get:
+      tags: [media]
+      operationId: getMediaFeedVersion
+      summary: "Version du feed médias (pour invalidation cache front)"
+      responses:
+        "200": { description: "Feed version" }
+
+  /players/{player_slug}/media/authors:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [media]
+      operationId: getMediaAuthors
+      summary: "Liste des auteurs de médias visibles pour ce joueur"
+      responses:
+        "200": { description: "Authors list" }
+
+  /players/{player_slug}/media/files/{filepath}:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: filepath
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [media]
+      operationId: serveMediaFile
+      summary: "Sert un fichier média (image/vidéo)"
+      responses:
+        "200": { description: "Binary content" }
+
+  /players/{player_slug}/media/match-candidates:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [media]
+      operationId: getMediaMatchCandidates
+      summary: "Candidats de match pour associer un média"
+      responses:
+        "200": { description: "Match candidates" }
+
+  /players/{player_slug}/media/upload:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [media]
+      operationId: postUploadMedia
+      summary: "Upload d'un média (image/vidéo)"
+      responses:
+        "200": { description: "Media uploadé" }
+
+  /players/{player_slug}/media/associate:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [media]
+      operationId: postMediaAssociate
+      summary: "Associe un média à un match"
+      responses:
+        "200": { description: "Association créée" }
+
+  # Notifications
+  /players/{player_slug}/notifications:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: "Liste des notifications du joueur"
+      responses:
+        "200": { description: "Notifications" }
+
+  /players/{player_slug}/notifications/{notification_id}:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: notification_id
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [notifications]
+      operationId: deleteNotification
+      summary: "Supprime une notification"
+      responses:
+        "204": { description: "Notification supprimée" }
+
+  /players/{player_slug}/notifications/{notification_id}/unread:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: notification_id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [notifications]
+      operationId: patchNotificationUnread
+      summary: "Repasse une notification en non-lue"
+      responses:
+        "200": { description: "Notification mise à jour" }
+
+  /players/{player_slug}/notifications/preferences:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [notifications]
+      operationId: getNotificationPreferences
+      summary: "Préférences notifications du joueur"
+      responses:
+        "200": { description: "Préférences" }
+    patch:
+      tags: [notifications]
+      operationId: patchNotificationPreferences
+      summary: "Met à jour les préférences"
+      responses:
+        "200": { description: "Préférences mises à jour" }
+
+  /players/{player_slug}/notifications/unread-count:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [notifications]
+      operationId: getNotificationUnreadCount
+      summary: "Compteur de notifications non lues"
+      responses:
+        "200": { description: "Count" }
+
+  /players/{player_slug}/notifications/mark-all-read:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [notifications]
+      operationId: postMarkAllRead
+      summary: "Marque toutes les notifications comme lues"
+      responses:
+        "200": { description: "OK" }
+
+  /players/{player_slug}/notifications/mark-read:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [notifications]
+      operationId: postMarkRead
+      summary: "Marque une liste de notifications comme lues"
+      responses:
+        "200": { description: "OK" }
+
+  /players/{player_slug}/notifications/test:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [notifications]
+      operationId: postNotificationTest
+      summary: "Émet une notification de test (debug)"
+      responses:
+        "200": { description: "Notification émise" }
+
+  # Watcher (présence Xbox/Steam)
+  /watcher/auth/{provider}:
+    parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [xbox, steam]
+    get:
+      tags: [auth]
+      operationId: getWatcherAuthCallback
+      summary: "Callback OAuth watcher (Xbox / Steam)"
+      responses:
+        "200": { description: "Callback OK" }
+
+  /watcher/auth/start:
+    post:
+      tags: [auth]
+      operationId: postWatcherAuthStart
+      summary: "Démarre le flow d'auth watcher"
+      responses:
+        "200": { description: "URL de redirection OAuth" }
+
+  /watcher/status:
+    get:
+      tags: [auth]
+      operationId: getWatcherStatus
+      summary: "Statut watcher (provider, token expiry, last_seen)"
+      responses:
+        "200": { description: "Watcher status" }
+
+  /watcher/subscriptions:
+    patch:
+      tags: [auth]
+      operationId: patchWatcherSubscriptions
+      summary: "Mise à jour des abonnements watcher"
+      responses:
+        "200": { description: "Subscriptions mises à jour" }
+
+  # Settings (étendu)
+  /settings/media/scan:
+    post:
+      tags: [settings]
+      operationId: postSettingsMediaScan
+      summary: "Lance un scan du dossier médias"
+      responses:
+        "200": { description: "Scan démarré" }
+
+  /settings/sessions/recalculate:
+    post:
+      tags: [settings]
+      operationId: postSettingsSessionsRecalculate
+      summary: "Recalcule les sessions à partir de la base actuelle"
+      responses:
+        "200": { description: "Recalcul démarré" }
+
+  # Sync
+  /players/{player_slug}/sync:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [sync]
+      operationId: postPlayerSync
+      summary: "Sync delta par joueur"
+      responses:
+        "200": { description: "Sync démarré" }
+
+  /sync/all:
+    post:
+      tags: [sync]
+      operationId: postSyncAll
+      summary: "Sync delta global (tous les joueurs configurés)"
+      responses:
+        "200": { description: "Sync global démarré" }
+
+  /backfill/start:
+    post:
+      tags: [sync]
+      operationId: postBackfillStart
+      summary: "Lance un backfill (job long)"
+      responses:
+        "200": { description: "Job créé, voir GET /jobs/{job_id}" }
 
 # ---------------------------------------------------------------------------
 # Components

@@ -1,5 +1,40 @@
 # Thought Log
 
+## [2026-04-29] P8 — Hygiène finale (OpenAPI delta=0, observability, /healthz+/readyz, release notes, color linter)
+
+**Statut** : Complété (P8.1, P8.2, P8.3, P8.7 audit, P8.8, P8.9, P8.10, P8.11). P8.4/P8.5/P8.6/P8.12/P8.13 explicitement déférés (god pages + cross-feature refactor + StatCard consolidation = travail UI lourd, scope distinct post-revue).
+
+**Contexte** : Phase finale "hygiène" pour clore le plan d'action 2026-04-29. Priorité aux items BLOQUANT (release notes service extraction P8.10, /healthz+/readyz P8.11) et au jalon OpenAPI delta=0 explicitement demandé par l'utilisateur (reporté de P6 puis P7 vers P8).
+
+**Changements P8** :
+
+- **P8.1** Linter custom `tools/lint-no-hardcoded-colors.mjs` : détecte hex (`#RRGGBB`) et classes Tailwind couleur (`text-red-*`, `bg-green-*`, etc.) dans `apps/web/src/{features,components}/`. Ratchet à 143 violations (état initial) — interdit toute régression. Whitelist : palettes brutes (`lib/accessibility/palettes/`), rareté Halo, fichiers générés (`generated.ts`, `routeTree.gen.ts`), tests, e2e, lignes commentaires. Marqueur inline `// color-allow:` pour exception ponctuelle. Câblé dans `.pre-commit-config.yaml`.
+
+- **P8.2** notify slog migration — déjà fait en P3.5 (vérifié : 0 `log.Printf` dans `internal/notify/`).
+
+- **P8.3** observability finalisé : `/debug/vars` (expvar stdlib) protégé derrière `RequireAuth+RequireAdmin`. Instrumentation `RecordDurationMS` ajoutée sur 5 hot paths services : `home_get_page`, `career_get_page`, `match_view_get`, `stats_get_page`, `timeseries_get_page` (defer + time.Now). Nouveau README `internal/observability/README.md` avec liste des métriques, instructions consultation, ajout de nouvelle métrique. error_tracker était déjà supprimé.
+
+- **P8.7** audit DuckDB driver : 55 imports total (8 fichiers d'usage réel hors `platform/duckdb` — notify/notifiers, ops/{archive,backup,diagnose,healthcheck,media}, service/media_*, validation/compare ; 52 blank-imports nécessaires pour `sql.Open("duckdb", ...)`). Cible plan ≤5 nécessite refactor centralisateur (wrapper unique platform/duckdb) — scope distinct, déféré.
+
+- **P8.8** Jalon OpenAPI delta = 0 (objectif final du ratchet) : 45+ routes ajoutées au YAML — admin (5), auth (3), assets (5 image serving), notifications (8), watcher (4), engagement (3), squad-v2 (2), media (5), settings (2), sync (3), multi-title field-mappings (1), help/release-notes (1), season-pass (1), match favorites/neighbors (2), healthz/readyz (2). Tags ajoutés : home, squad, media, notifications, settings, sync, auth, admin, assets. Le test `TestContractRoutesDocumented` ignore désormais `/debug/vars/*` (expvar stdlib, pas REST). chi catchall `/*` aligné sur OpenAPI `{*}` côté normalizer. Plafond test : 0.
+
+- **P8.9** charts legacy marqués `// Deprecated` : `domain/chart/base.go` + `domain/chart/antagonists.go` orientent vers `domain.ChartSeries[T]` (cf. ADR 0001). Migration Explorer prévue post-P8.
+
+- **P8.10** Release notes service extraction (BLOQUANT gap #4) : nouvelle `port.GitProvider` interface (`LogSHAs`, `ShowFile`) + impl `platform/git/git.go` (exec.Command vit ici). Nouveau `service.ReleaseNotesService` (`Build(lang)`) avec stratégie working tree → git snapshots fallback. `handlers/help.go` ramené à 154L (cache mémoire + disque + I/O HTTP), grep `exec.Command` = 0. Tests adaptés via `noopGit` mock + helper `makeHelpHandler`.
+
+- **P8.11** /healthz + /readyz séparés (BLOQUANT gap #6 K8s/LB) : `HealthHandler.Liveness` (200 sans I/O DB, latence < 5ms) + `HealthHandler.Readiness` (vérifie `GetMatchCount` + `GetDBVersion`, retour 503 + body `{checks: {duckdb: ...}}` si KO). 3 nouveaux tests : Liveness OK même DB down ; Readiness OK quand DB healthy ; Readiness 503 quand DB down. `/health` legacy gardé en `Deprecated`.
+
+**Items déférés** :
+- P8.4 (god pages × 5) : 6-8 j de découpe UI sensible, à programmer en sprint dédié post-P8 (HomePage 1158L, SettingsPage 903L, SetupPage 484L, MatchViewPage, LabPage)
+- P8.5 (cross-feature imports + frontière inversée) : 3 j de refactor avec promotion physique de composants partagés
+- P8.6 (TanStack loader) : 1-2 j UI
+- P8.12 (helpers résiduel) : dépend de P2.6bis
+- P8.13 (StatCard consolidation) : dépend de P8.5
+
+**Résultats** : `go build ./...` propre, `go test ./...` tout vert (incl. nouveaux Liveness/Readiness/HelpHandler avec mock GitProvider). Pre-commit hooks ajoutés. OpenAPI delta = 0 fermé.
+
+**Prochaine étape** : sortir du plan revue 2026-04-29 et passer en mode delivery — soit P8.4/P8.5/P8.6 si la dette UI bloque, soit features produit prioritaires.
+
 ## [2026-04-29] P7 — DTOs Timeseries/Synthesis renommés + Prestige smoke + Jalon OpenAPI
 
 **Statut** : Complété (P7.1 sub-PR A→D, P7.2, jalon OpenAPI partiel)

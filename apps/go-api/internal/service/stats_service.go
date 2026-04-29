@@ -15,11 +15,13 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -65,6 +67,9 @@ func (s *StatsService) GetPage(
 	ctx context.Context,
 	req domain.StatsQueryRequest,
 ) (domain.StatsPageResponse, error) {
+	defer func(start time.Time) {
+		observability.RecordDurationMS("stats_get_page", time.Since(start).Milliseconds())
+	}(time.Now())
 	// P4.3 finale (ADR 0011) : path canonical exclusif. playerMatchesRepo +
 	// titleSlug + gamertag REQUIS (wirÃ©s en DI universellement). Le converter
 	// StatsMatchRowsFromCanonical (analysis/) encapsule la conversion vers

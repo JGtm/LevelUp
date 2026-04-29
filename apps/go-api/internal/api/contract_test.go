@@ -87,6 +87,12 @@ func chiRoutes(h http.Handler) map[string]bool {
 
 	walkFn := func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		normalizedRoute := paramRe.ReplaceAllString(route, "{*}")
+		// P8.8 (revue 2026-04-29) : chi catchall trailing `*` aligné sur la
+		// notation OpenAPI `{*}` (OpenAPI 3.x ne supporte pas les catchalls
+		// nativement, on aligne donc côté test).
+		if strings.HasSuffix(normalizedRoute, "/*") {
+			normalizedRoute = strings.TrimSuffix(normalizedRoute, "/*") + "/{*}"
+		}
 		result[strings.ToUpper(method)+" "+normalizedRoute] = true
 		return nil
 	}
@@ -112,6 +118,11 @@ func TestContractRoutesRegistered(t *testing.T) {
 
 	// Construire le routeur en mode démo (sans DuckDB)
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
+	// P8.8 (revue 2026-04-29) : flags ON pour exposer les routes
+	// conditionnelles (multi-title field-mappings, prestige challenges/arcs/...)
+	// que l'OpenAPI documente désormais.
+	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
+	t.Setenv("PRESTIGE_ENABLED", "true")
 	router := buildTestRouter(t)
 	chiRouteSet := chiRoutes(router)
 
@@ -217,6 +228,14 @@ func TestContractRoutesDocumented(t *testing.T) {
 		if strings.HasPrefix(path, "/static") {
 			continue
 		}
+		// P8.8 (revue 2026-04-29) : /debug/vars est l'expvar handler stdlib
+		// (observability/admin-only). Pas un endpoint REST métier — ignoré
+		// du contrat OpenAPI. Le routeur chi enregistre 5 méthodes (DELETE,
+		// GET, PATCH, POST, PUT) sur le même path comme artefact du
+		// HandleFunc générique d'expvar.
+		if strings.HasPrefix(path, "/debug/vars") {
+			continue
+		}
 
 		// Tester avec et sans le prefixe /api/v1 (les paths OpenAPI sont
 		// relatifs au server, qui est /api/v1).
@@ -241,7 +260,7 @@ func TestContractRoutesDocumented(t *testing.T) {
 	//   - Apres P4 big-bang canonical : <= 30 (services migres documentent leurs DTOs)
 	//   - Apres P6 (capabilities + flags ON) : <= 10
 	//   - En P8.8 (cloture OpenAPI) : 0
-	const undocumentedThreshold = 60
+	const undocumentedThreshold = 0
 
 	if len(undocumented) > undocumentedThreshold {
 		// Tri des routes pour un diagnostic stable.
