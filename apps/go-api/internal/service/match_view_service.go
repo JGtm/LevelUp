@@ -1074,7 +1074,7 @@ func encounterWinrate(wins, losses int) *float64 {
 	if total == 0 {
 		return nil
 	}
-	rate := float64(wins) / float64(total)
+	rate := analysis.WinRate(wins, total)
 	return &rate
 }
 

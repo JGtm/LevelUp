@@ -497,7 +497,7 @@ func computeOneCard(gt string, rows []canonical.PlayerMatchRow) domain.PlayerSco
 		card.KDRatio = float64(totalKills) // pas de mort = K/D = nombre de kills
 	}
 	if wins+losses > 0 {
-		card.WinRate = float64(wins) / float64(wins+losses)
+		card.WinRate = analysis.WinRate(wins, wins+losses)
 	}
 	if accSamples > 0 {
 		card.Accuracy = accSum / float64(accSamples)

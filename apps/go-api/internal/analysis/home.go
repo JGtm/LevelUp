@@ -213,7 +213,7 @@ func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPI
 
 	total := len(matches)
 	kpis := domain.HeroKPIs{
-		WinRate:           float64(wins) / float64(total),
+		WinRate:           WinRate(wins, total),
 		TotalMatches:      totalMatches,
 		Wins:              wins,
 		Draws:             draws,
@@ -1670,7 +1670,7 @@ func winRate(matches []domain.HomeMatchRow) float64 {
 			wins++
 		}
 	}
-	return float64(wins) / float64(len(matches))
+	return WinRate(wins, len(matches))
 }
 
 func bestRatioMatch(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
