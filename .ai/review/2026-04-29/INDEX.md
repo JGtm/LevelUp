@@ -10,6 +10,46 @@ Date : 2026-04-29 | Branche : feat/multi-title-static-fs-rescope
 - Axe 11 (a posteriori) : 2 BLOQUANT, 3 DETTE, 1 AMÉLIORATION (6 constats)
 - **Total revue** : **38 BLOQUANT, 59 DETTE, 32 AMÉLIORATION** (129 constats au total)
 
+## État de livraison 2026-04-29 (branche chore/cleanup-and-ux-fixes — 32 commits)
+
+| Phase | Statut | Commits | Notes |
+|---|---|---|---|
+| **P0** Hygiène + bugs UX + audit env | LIVRÉE | 11 commits | 88 MB libérés, 6 bugs UX fixés, 4 endpoints orphelins supprimés, 10 ENV vars documentées |
+| **P1** ADRs + investigations | LIVRÉE | 1 commit | 6 ADRs (0005-0010) + CLAUDE.md étendu |
+| **P2** Indicateurs canoniques + Outcome enum + helpers | LIVRÉE | 8 commits | `analysis/{indicators,identity,sql_fragments}.go` + DTOs étendus + `formatPercent` front + formatters mutualisés |
+| **P3** Tests fondations + couverture honnête | PARTIELLE (6/8) | 12 commits | P3.1/P3.3/P3.4/P3.5/P3.8 livrés ; P3.2 régression engagement livré ; P3.6 partiel (1/6 fichiers halo) ; P3.7 partiel (Clock seul, 4 port extractions à faire en P4) |
+| **P4** Big-bang canonical migration | EN COURS | (cf. branche `refactor/canonical-migration-bigbang` à venir) | 15-16 services à migrer |
+| **P5-P8** | À FAIRE | — | — |
+
+### Constats de la revue résolus (cette branche)
+
+#### BLOQUANT résolus
+- B1 (axe 4 amend.) : 3 routes fantômes notifications alignées
+- B4 (axe 4) : SettingsPage `useState`-as-ref → `useRef` (leak timers)
+- Q6 (axes 2/9) : 4 endpoints API orphelins supprimés (~1100 L net)
+- Axe 7 BLOQUANT couverture mensongère : ratchet annoté (P3.1)
+- Axe 7 BLOQUANT régression invisible engagement : 4 tests B1-B4 (P3.2)
+- Axe 8 BLOQUANT `internal/notify` `log.Printf` : 29 sites migrés vers slog (P3.5)
+- Axe 11 BLOQUANT 2 audit `.env.local.example` : 10 ENV vars + 1 orpheline supprimée (P0.4)
+
+#### DETTE résolues
+- Outcome DNF ajouté (axe 6)
+- IsBot factorisé (axe 6 + helper SQL fragments)
+- Formatters front mutualisés `lib/formatters/{percent,date,number,duration}.ts` (axe 6 amend. DETTE 12)
+- Smoke tests flags ON pour PRESTIGE_ENABLED (axe 11)
+- Vitest coverage activé en CI (axe 7 amend. test VI)
+- Test contrat OpenAPI ↔ chi (axe 7 amend. test III, plafond 65)
+- Clock interface + sessions testable (gap test IV / IsSessionPotentiallyActive)
+
+#### Constats reportés à phases ultérieures
+- P4 : 13 services produit non-canonical, 5+ Outcome==2 magic numbers, recomputes K/D front
+- P3.6 résiduel : tests platform/halo (5 fichiers, ~1 j)
+- P3.7 résiduel : 4 port extractions (P4 absorbera naturellement)
+- P5 : xuid_aliases globalisation, Halo-only adapters extraction
+- P6 : `MULTI_TITLE_API_ENABLED` activation CI + capabilities middleware + request_id
+- P7 : DTOs Timeseries/Synthesis renommage (sub-PRs séquentiels)
+- P8 : observability brancher + error_tracker supprimer + linter §20 + cross-feature imports + healthz/readyz + audit DuckDB driver dispersion + OpenAPI cloture + KPICard consolidation
+
 ## Vue par sévérité
 
 ### BLOQUANT (38)
