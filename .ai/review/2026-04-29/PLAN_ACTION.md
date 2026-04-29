@@ -46,11 +46,14 @@ Branche `chore/cleanup-and-ux-fixes` — 47+ commits, P0→P8 partiels livrés.
 - **P4.3b home pillar** : DONE (encapsulation pragmatique) — wrappers `BuildHeroCardFromCanonical` / `BuildHighlightsFromCanonical` / `BuildRecentMatchesWithFavoritesFromCanonical` / `BuildSessionSummaryFromCanonical` / `BuildSessionSummariesFromCanonical` / `InferHomeSkillHistoryFromCanonical` ajoutés dans `analysis/home_canonical.go`. Converter `HomeMatchRow*FromCanonical` / `HomeSessionsFromCanonical` PUBLIC dans `analysis/`, **RETIRÉ de `home_service.go`** (~180 lignes en moins). `home_service.go.GetHomePage` branche sur `useCanonical` → wrappers, fallback legacy préservé. Tests roundtrip + parité InferHomeSkillHistory verrouillés. Note : les internals (ComputeKPIs, BuildHighlights, etc.) restent en `domain.HomeMatchRow` — port full canonical = P4.3 finale.
 - **P4.3c stats pillar** : DONE (converter partagé) — `StatsMatchRowFromCanonical` + `StatsMatchRowsFromCanonical` PUBLICS dans `analysis/stats_canonical.go`, partagés par les 4 services (stats, timeseries, session_compare, session_page). Converter local `statsMatchRow*FromCanonical` **RETIRÉ de `stats_service.go`**. Les 3 autres services qui le réutilisaient pointent maintenant vers `analysis.StatsMatchRowsFromCanonical`. Tests roundtrip fields + table-test des 4 outcomes verrouillés.
 
+- **P4.3 finale** (partielle) : home pillar — `ComputeKPIs` / `ComputeTrend` / `BuildHeroCard` portés full canonical (commit `3acb6575`). Le path canonical de `BuildHeroCard` ne passe plus par le converter intermédiaire. Reste analyses non portées (`BuildHighlights` ~165L + 5 sous-helpers, `BuildRecentMatches` ~155L, `BuildSessionSummary`/`BuildSessionSummaries` ~270L) — ces wrappers délèguent encore au legacy via converter encapsulé.
+
 ### Sub-phases TODO [À FAIRE]
-- **P4.3 finale** : suppression `domain.{Home,Synthesis,Stats}MatchRow` + retrait des `Load*Matches` repos legacy au profit de `LoadPlayerMatches` unifié. Bloqué par :
-  - `port.{Home,Stats,Synthesis}Repository.Load*Matches` qui retournent encore les types legacy.
-  - Parallèle agent squad/teammates qui consomme encore les types legacy (à coordonner).
-  - Internals analyses (BuildHeroCard, ComputeKPIs, BuildHighlights pour home ; build*Tab/build*Buckets pour stats) à porter à canonical avant suppression complète des types — sprint dédié, ~2000 lignes au total.
+- **P4.3 finale (suite)** : trois blockers infrastructurels qui rendent la suppression complète des types `domain.{Home,Synthesis,Stats}MatchRow` non triviale dans cette branche :
+  1. Aucune implémentation concrète de `port.PlayerMatchesRepository` n'est wirée en DI (`server.go`). Le canonical path actuel est *dead code* en production — `playerMatchesRepo` est toujours nil. Pour rendre canonical exclusif il faut implémenter un adaptateur `(slug, gamertag) → PlayerDB → PlayerMatchesRepo.Load`.
+  2. Repos legacy (`port.{Home,Stats,Synthesis}Repository.Load*Matches`) actifs en production retournent encore les types legacy. Suppression nécessite réécriture des SQL queries pour scanner directement vers canonical.
+  3. ~1500 lignes d'analyses internes (`BuildHighlights`, `BuildRecentMatches`, `BuildSession*`, `buildWinLossTab`, `buildCumulTab`, `buildKDABuckets`, `computeRegressionStats`, etc.) consomment encore les types legacy via wrappers transparents. Port complet = sprint dédié (~3-5 jours focus).
+  Cette phase est bloquée tant que (1) n'est pas fait — sans wiring DI, supprimer les types legacy casse le seul path en production.
 - **P5** xuid_aliases globalisation + Halo-only adapters extraction
 - **P6.2** `useFieldLabel` partout côté front + manifest synthesis.toml
 - **P6.3** middleware `RequireCapability` + 3 routes admin
