@@ -311,10 +311,10 @@ type SessionsRepository interface {
 
 // StatsRepository fournit les données pour les séries temporelles et le perf score.
 // Implémenté par platform/duckdb.StatsRepo.
+//
+// P4.3 finale : LoadStatsMatches a été retiré (les services chargent canonical
+// via PlayerMatchesRepository).
 type StatsRepository interface {
-	// LoadStatsMatches retourne tous les matchs du joueur avec les métriques analytiques (Q23).
-	LoadStatsMatches(ctx context.Context) ([]domain.StatsMatchRow, error)
-
 	// LoadLUSRHistory retourne le rating LUSR par match depuis match_skill_rank (Q24).
 	LoadLUSRHistory(ctx context.Context) ([]domain.LUSRMatchRating, error)
 
@@ -353,9 +353,6 @@ func (n *noopSessionsRepo) LoadSessionMatches(_ context.Context) ([]domain.Sessi
 // noopStatsRepo — impl nulle pour le check de compilation uniquement.
 type noopStatsRepo struct{}
 
-func (n *noopStatsRepo) LoadStatsMatches(_ context.Context) ([]domain.StatsMatchRow, error) {
-	return nil, nil
-}
 func (n *noopStatsRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
 	return nil, nil
 }
@@ -377,18 +374,16 @@ type ConfigProvider interface {
 
 // HomeRepository fournit les données pour la page d'accueil Mission Control.
 // Implémenté par platform/duckdb.HomeRepo.
+//
+// P4.3 finale : LoadHomeMatches/LoadHomeSessions ont été retirés (le service
+// charge canonical via PlayerMatchesRepository et dérive les sessions depuis
+// les enrichments).
 type HomeRepository interface {
-	// LoadHomeMatches charge tous les matchs du joueur avec les KPIs (Q26).
-	LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error)
-
 	// LoadSpartanIdentity charge l'identité record compacte (Spartan ID + rang carrière).
 	LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error)
 
 	// CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
 	CountPlayerMatches(ctx context.Context) (int, error)
-
-	// LoadHomeSessions charge les sessions depuis player_match_enrichment (Q27).
-	LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error)
 
 	// LoadRecentMedia charge les médias récents du joueur (Q28).
 	// Si la table media_files n'existe pas, retourne (nil, nil) sans erreur.
@@ -417,17 +412,11 @@ var _ HomeRepository = (*noopHomeRepo)(nil)
 // noopHomeRepo — impl nulle pour le check de compilation uniquement.
 type noopHomeRepo struct{}
 
-func (n *noopHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
-	return nil, nil
-}
 func (n *noopHomeRepo) LoadSpartanIdentity(_ context.Context) (*domain.HomeSpartanIdentityRow, error) {
 	return nil, nil
 }
 func (n *noopHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {
 	return 0, nil
-}
-func (n *noopHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSessionRow, error) {
-	return nil, nil
 }
 func (n *noopHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
 	return nil, nil
@@ -472,15 +461,15 @@ type SquadRepository interface {
 	// LoadSynthesisHeatmap charge les données heatmap carte × mode (Q33).
 	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
 
-	// LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
-	LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error)
+	// P4.3 finale : LoadSynthesisMatches retiré (squad/teammates chargent
+	// canonical via PlayerMatchesRepository).
 }
 
 // SynthesisRepository fournit les données pour la page Synthèse (Sprint 55 D1).
 // Sous-ensemble de SquadRepository — isolé pour l'injection ciblée.
+//
+// P4.3 finale : LoadSynthesisMatches retiré.
 type SynthesisRepository interface {
-	// LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
-	LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error)
 	// LoadEncounters charge les encounters du joueur (Q_encounters).
 	LoadEncounters(ctx context.Context, xuid string) ([]domain.EncounterRawRow, error)
 	// LoadSynthesisHeatmap charge la heatmap carte×mode (Q33).
@@ -598,9 +587,6 @@ func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
-	return nil, nil
-}
-func (n *noopSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]domain.SynthesisMatchRow, error) {
 	return nil, nil
 }
 
