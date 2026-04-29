@@ -1,5 +1,64 @@
 # Thought Log
 
+## [2026-04-29] P4.1 batch migration canonical — 4 services + plan annoté
+
+**Statut** : Complété (4 commits livrés sur `chore/cleanup-and-ux-fixes`).
+
+**Contexte** : Demande utilisateur explicite "vas y continue, essaye de terminer P4 en une passe" après P4.1 synthesis pilote. Enchaînement de migrations canonical pour les services consommant `domain.StatsMatchRow`.
+
+**Décisions techniques** :
+
+1. **Pattern reproductible** : pour chaque service consommant `port.StatsRepository.LoadStatsMatches`, ajouter 3 champs optionnels (`playerMatchesRepo port.PlayerMatchesRepository`, `titleSlug string`, `gamertag string`) + méthode `WithPlayerMatchesRepo(repo, titleSlug, gamertag)`. Dans la méthode principale (`GetPage`/`Compare`), brancher sur canonical quand les 3 sont fournis, sinon fallback legacy.
+
+2. **Converter partagé** : `statsMatchRowFromCanonical` / `statsMatchRowsFromCanonical` définis une seule fois dans `stats_service.go` (`internal/service/`), réutilisés par timeseries, session_compare, session_page (même package Go). Pas de duplication.
+
+3. **Préservation rétrocompat** : tous les sites d'appel existants en DI continuent de fonctionner via le path legacy (statsRepo direct). La bascule canonical s'active site-par-site quand `WithPlayerMatchesRepo` est câblé en DI.
+
+4. **TODO P4.3 explicites** : chaque converter a un commentaire `// TODO P4.3` listant les analyses à migrer (`buildCumulTab`, `extractSessionLabels`, `buildSessionDetailRows`, etc.) avant de pouvoir le retirer.
+
+**Commits livrés** :
+- `d1fad4d1` feat(p4.1): stats_service consomme canonical via converter transitionnel
+- `8a607dc7` feat(p4.1): timeseries_service consomme canonical via converter partagé
+- `1179d8c6` feat(p4.1): session_compare_service consomme canonical via converter partagé
+- `a7da75c7` feat(p4.1): session_page_service consomme canonical via converter partagé
+
+**Services restants P4.1** :
+- **home pilote** : extensions canonical livrées, adapters semantic+assetURL câblés en DI, refactor home_service.go en attente (pattern reproductible).
+- **Compare** : `NormalizedPlayerStats` aggregated, shape différente — à évaluer avec `canonical.PlayerStats`.
+- **Career, MatchView** : déjà partiellement canonical via `dataAdapter` (Phase C+).
+- **Engagement, Citations, Leaderboard, SeasonPass, Media** : shapes différentes (pas de match rows), pas concernés par ce pattern.
+- **Squad, Teammates** : travail parallèle en cours (autre agent), évité pour ne pas générer de conflit.
+
+**Build/tests** : à chaque commit, `go build ./...` et `go test ./internal/service` passent. Le break parallèle sur `squad_service_v2_test.go` (signature `GetSquadPage` 5→7 args) est non-lié à ces migrations.
+
+**Plan d'action mis à jour** : `.ai/review/2026-04-29/PLAN_ACTION.md` STATUT GLOBAL : 5 services P4.1 marqués PARTIAL (synthesis + stats + timeseries + session_compare + session_page). P4.1 home + P4.2 cas-par-cas listés en TODO.
+
+---
+
+## [2026-04-29] Escouade — filtres Expérience/Playlist + barre sticky + pending Analyser (feat/multi-title-static-fs-rescope)
+
+**Statut** : Phase 1 (backend + FilterOmnibar pending state) et Phase 2 (UX barre sticky) livrées complètes.
+
+**Contexte** : Demande utilisateur d'ajouter les filtres expérience et playlist à la page escouade, qui existaient dans l'UI globale (FilterOmnibar) mais n'avaient aucun effet sur le service backend squad.
+
+**Décisions techniques clés** :
+
+1. **Option C (global cascade)** : les filtres `experience_types` / `playlists` du cascade global sont maintenant consommés par `TeammatesService.GetPage` via `filterSynthesisByCascade`. Le backend squad filtre ses `SynthesisMatchRow` par expérience et playlist.
+
+2. **SynthesisMatchRow enrichi** : 3 nouveaux champs (`IsRanked bool`, `IsFirefight bool`, `PlaylistName string`) scannés depuis Q33b DuckDB, utilisés pour agréger les `experiences/playlists` par session dans `extractSynthesisSessionLabels`.
+
+3. **Pending state FilterOmnibar** : les pills opèrent sur un état local — un seul commit atomique sur "Analyser". `SessionPill` masquée automatiquement sur les routes `/squad` (les sessions sont gérées localement dans la barre squad).
+
+4. **Barre sticky SquadLayout** : `sticky top-[85px] z-10` (sous SessionNavBar h-12 + NavL2 h-9). Structure : `[Coéquipiers ▾ min-w-[13rem]] | [Expérience ▾] [Playlist ▾] [Sessions ▾···] [Analyser]`. Les pills Expérience/Playlist cascadent pour filtrer la liste de sessions dans SessionMultiSelect (navigation) ET mettent à jour `filterContext.cascade` au commit.
+
+5. **SessionLabelEntry enrichi** côté TypeScript (`experiences?: string[]`, `playlists?: string[]`) — miroir du type Go.
+
+**Tests** : 90 fichiers / 726 tests frontend — 0 régression. TypeScript compile sans erreur.
+
+**Reste** : les données `experiences` / `playlists` dans `SessionLabelEntry` seront populées une fois que le backend retournera ces champs depuis `extractSynthesisSessionLabels` (déjà implémenté côté Go dans `teammates_service.go`).
+
+---
+
 ## [2026-04-29] P4 préparation rigoureuse — Option A (canonical/semantic separation)
 
 **Statut** : Fondations P4 livrées (ADR 0011 + gap analysis + canonical extensions + pilote analyse synthesis). Migration service-level reste à faire en sessions dédiées.

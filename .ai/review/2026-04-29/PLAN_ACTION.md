@@ -29,10 +29,19 @@ Branche `chore/cleanup-and-ux-fixes` — 47+ commits, P0→P8 partiels livrés.
 - **P3.6** : 1/6 fichiers `platform/halo` testé (player_token_cache). Reste medal_provider, season_provider, discovery_client, compare_provider, challenges_details
 - **P3.7** : Clock interface + sessions testable. Reste 4 port extractions (HomePersistSink, MediaIndexRepository, MediaUploadRepository, RanksLoader)
 - **P4.1** synthesis service-level : `WithPlayerMatchesRepo` câblé, converter transitionnel `synthesisMatchRowFromCanonical` (TODO P4.3). Le SERVICE consomme canonical ; les analyses internes consomment encore legacy via converter. Reste à migrer les analyses (`ComputeSynthesisTopWeeks`, `ComputeTemporalHeatmap`, `buildSynthesisOverview`, `buildHighlightsPreview`) vers canonical pour retirer le converter.
+- **P4.1 stats** : `WithPlayerMatchesRepo` câblé, converter transitionnel `statsMatchRowFromCanonical` (TODO P4.3). Pattern identique à synthesis, mapping enrichi (Outcome canonical→Halo, SkillSnapshot KillsExpected/DeathsExpected, Playlist.DefaultLabel). PairName laissé vide (composite Halo-only). Reste à migrer `buildWinLossTab`/`buildAccuracyTab`/etc. vers canonical pour retirer le converter.
+- **P4.1 timeseries** : `WithPlayerMatchesRepo(repo, titleSlug, gamertag)` câblé. Réutilise `statsMatchRowsFromCanonical` (même package). Converter sera retiré quand `buildCumulTab`/`computeRegressionStats`/`buildKDABuckets`/`buildIntensityTab`/`buildDistributionsTab` consommeront canonical.
+- **P4.1 session_compare** : `WithPlayerMatchesRepo` câblé, fallback statsRepo préservé. Converter retiré quand `extractSessionLabels`/`filterBySession`/`buildCompareEntry`/`buildCompareMetrics` migrées canonical.
+- **P4.1 session_page** : `WithPlayerMatchesRepo` câblé. Converter retiré quand `buildSessionDetailRows`/`buildSessionCompareSuggestion`/etc. migrées canonical.
 
 ### Sub-phases TODO [À FAIRE]
-- **P4.1 home pilote** : extensions canonical livrées, refactor home_service en attente (pattern reproductible depuis synthesis)
-- **P4.2** 13 autres services restants (Stats, Compare, Timeseries, Career, MatchView, etc.)
+- **P4.1 home pilote** : extensions canonical livrées, adapters semantic+assetURL câblés en DI (server.go), refactor home_service.go en attente (pattern reproductible depuis synthesis + stats + timeseries + session_compare + session_page)
+- **P4.2** services restants à évaluer cas-par-cas :
+  - Compare (aggregated `NormalizedPlayerStats`, pas de match-rows — pas le même pattern, à voir avec `canonical.PlayerStats`)
+  - Career (déjà canonical via `dataAdapter.LoadCareerSnapshot`/`LoadEncounters` — Phase C+ multi-titres)
+  - MatchView (déjà partiellement canonical via `LoadHighlightEvents` — `canonical.MatchDetail` à étendre)
+  - Engagement / Citations / Leaderboard / SeasonPass / Media (shapes différentes, pas de match rows)
+  - Squad / Teammates (en cours sur autre branche/agent — éviter conflit)
 - **P4.3** suppression types legacy `domain.{Home,Synthesis,Stats}MatchRow`
 - **P5** xuid_aliases globalisation + Halo-only adapters extraction
 - **P6.2** `useFieldLabel` partout côté front + manifest synthesis.toml
