@@ -35,7 +35,9 @@ import (
 //   - SkillSnapshot KillsExpected / DeathsExpected : depuis SkillSnapshot.
 //   - Outcome canonical â†’ int Halo (Win=2, Loss=3, Tie=1, DNF=4).
 //   - PlaylistName : depuis Summary.Playlist.DefaultLabel.
-//   - PairName : composite Halo-only laissÃ© vide (P4.3 finale).
+//   - PairName / PairNameFR : depuis Summary.PairMode (pair_name / pair_name_fr).
+//   - MapName / MapNameFR : depuis Summary.Map.
+//   - IsFirefight : depuis Summary.IsPvE.
 //   - MedalExploitScore / OffensiveConversion / DefensiveResistance : dÃ©rivÃ©s
 //     LevelUp non couverts par canonical (cf. P4_GAP_ANALYSIS.md), restent nil.
 func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMatchRow {
@@ -88,8 +90,23 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 	if r.Summary.IsRanked != nil {
 		out.IsRanked = *r.Summary.IsRanked
 	}
+	if r.Summary.IsPvE != nil {
+		out.IsFirefight = *r.Summary.IsPvE
+	}
 	if r.Summary.Playlist != nil {
 		out.PlaylistName = r.Summary.Playlist.DefaultLabel
+	}
+	if r.Summary.Map != nil {
+		out.MapName = r.Summary.Map.DefaultLabel
+		if fr, ok := r.Summary.Map.Labels["fr"]; ok {
+			out.MapNameFR = fr
+		}
+	}
+	if r.Summary.PairMode != nil {
+		out.PairName = r.Summary.PairMode.DefaultLabel
+		if fr, ok := r.Summary.PairMode.Labels["fr"]; ok {
+			out.PairNameFR = fr
+		}
 	}
 	if r.Enrichment.SkillSnapshot != nil {
 		out.KillsExpected = r.Enrichment.SkillSnapshot.KillsExpected
