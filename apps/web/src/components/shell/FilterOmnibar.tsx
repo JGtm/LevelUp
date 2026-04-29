@@ -525,6 +525,23 @@ export function FiltresPill({
     onSetCascade({ ...cascade, [key]: next })
   }
 
+  // Valeurs sélectionnées absentes des options disponibles = incompatibles avec les filtres actifs
+  const availSets = useMemo(() => ({
+    playlists: new Set(available.playlists.map((o) => o.value)),
+    modes: new Set(available.modes.map((o) => o.value)),
+    maps: new Set(available.maps.map((o) => o.value)),
+    experience_types: new Set(available.experience_types.map((o) => o.value)),
+  }), [available])
+
+  const zombies = useMemo(() => ({
+    playlists: ((cascade.playlists ?? []) as string[]).filter((v) => !availSets.playlists.has(v)),
+    modes: ((cascade.modes ?? []) as string[]).filter((v) => !availSets.modes.has(v)),
+    maps: ((cascade.maps ?? []) as string[]).filter((v) => !availSets.maps.has(v)),
+    experience_types: ((cascade.experience_types ?? []) as string[]).filter((v) => !availSets.experience_types.has(v)),
+  }), [cascade, availSets])
+
+  const incompatibleCount = zombies.playlists.length + zombies.modes.length + zombies.maps.length + zombies.experience_types.length
+
   return (
     <div ref={ref} className="relative shrink-0">
       <button
@@ -534,15 +551,30 @@ export function FiltresPill({
         aria-expanded={open}
         className={[
           'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-          cascadeCount > 0
-            ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20'
-            : 'border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
+          incompatibleCount > 0
+            ? 'border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20'
+            : cascadeCount > 0
+              ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20'
+              : 'border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
         ].join(' ')}
       >
         <span>Filtres</span>
         {cascadeCount > 0 && (
-          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+          <span className={[
+            'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+            incompatibleCount > 0
+              ? 'bg-destructive text-destructive-foreground'
+              : 'bg-primary text-primary-foreground',
+          ].join(' ')}>
             {cascadeCount}
+          </span>
+        )}
+        {incompatibleCount > 0 && (
+          <span
+            title={`${incompatibleCount} filtre${incompatibleCount > 1 ? 's' : ''} incompatible${incompatibleCount > 1 ? 's' : ''} — ouvrez pour corriger`}
+            aria-label="Filtres incompatibles"
+          >
+            ⚠
           </span>
         )}
         <span className="text-[10px] opacity-60">▾</span>
@@ -554,29 +586,38 @@ export function FiltresPill({
           aria-label="Filtres avancés"
           className="absolute left-0 top-full z-40 mt-1 grid w-[28rem] grid-cols-2 gap-3 rounded-md border border-border bg-background p-3 shadow-lg"
         >
+          {incompatibleCount > 0 && (
+            <p className="col-span-2 rounded border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
+              {incompatibleCount} filtre{incompatibleCount > 1 ? 's' : ''} incompatible{incompatibleCount > 1 ? 's' : ''} avec la sélection actuelle. Désélectionnez-les ou réinitialisez.
+            </p>
+          )}
           <CheckboxGroup
             title="Playlists"
             options={available.playlists}
             selected={(cascade.playlists ?? []) as string[]}
             onToggle={(v) => toggleValue('playlists', v)}
+            zombies={zombies.playlists}
           />
           <CheckboxGroup
             title="Modes"
             options={available.modes}
             selected={(cascade.modes ?? []) as string[]}
             onToggle={(v) => toggleValue('modes', v)}
+            zombies={zombies.modes}
           />
           <CheckboxGroup
             title="Cartes"
             options={available.maps}
             selected={(cascade.maps ?? []) as string[]}
             onToggle={(v) => toggleValue('maps', v)}
+            zombies={zombies.maps}
           />
           <CheckboxGroup
             title="Type d'expérience"
             options={available.experience_types}
             selected={(cascade.experience_types ?? []) as string[]}
             onToggle={(v) => toggleValue('experience_types', v)}
+            zombies={zombies.experience_types}
           />
         </div>
       )}
@@ -591,10 +632,11 @@ interface CheckboxGroupProps {
   options: { label: string; value: string }[]
   selected: string[]
   onToggle: (value: string) => void
+  zombies?: string[]
 }
 
-function CheckboxGroup({ title, options, selected, onToggle }: CheckboxGroupProps) {
-  if (options.length === 0) return null
+function CheckboxGroup({ title, options, selected, onToggle, zombies = [] }: CheckboxGroupProps) {
+  if (options.length === 0 && zombies.length === 0) return null
   return (
     <div className="flex flex-col">
       <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -621,6 +663,22 @@ function CheckboxGroup({ title, options, selected, onToggle }: CheckboxGroupProp
             </label>
           )
         })}
+        {zombies.map((value) => (
+          <label
+            key={`zombie-${value}`}
+            title="Incompatible avec les filtres actifs — cliquez pour désélectionner"
+            className="flex cursor-pointer items-center gap-2 px-2 py-1 text-xs text-destructive/70 line-through transition-colors hover:bg-destructive/10"
+          >
+            <input
+              type="checkbox"
+              checked
+              onChange={() => onToggle(value)}
+              className="h-3 w-3 cursor-pointer rounded border-destructive/50 opacity-60 focus:ring-1 focus:ring-ring"
+            />
+            <span className="flex-1 truncate">{value}</span>
+            <span className="shrink-0 text-[10px] font-medium text-destructive">✕</span>
+          </label>
+        ))}
       </div>
     </div>
   )

@@ -12,7 +12,7 @@
  *  - Compteur global de matchs depuis resolvedContext.counts
  *  - Escape ferme tous les popovers
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import {
