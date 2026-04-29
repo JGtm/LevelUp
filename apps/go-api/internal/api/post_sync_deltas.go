@@ -253,13 +253,14 @@ func EmitPostSyncDeltas(
 	if after.CitationsCount > before.CitationsCount {
 		delta := after.CitationsCount - before.CitationsCount
 		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:    notifications.CategoryChallengeCompleted,
-			Severity:    notifications.SeveritySuccess,
-			TitleKey:    "notif.challenge_completed.title",
-			BodyKey:     "notif.challenge_completed.body",
-			Params:      map[string]any{"count": delta},
-			TargetRoute: fmt.Sprintf("/players/%s/defis", slug),
-			Source:      "post_sync",
+			Category:     notifications.CategoryChallengeCompleted,
+			Severity:     notifications.SeveritySuccess,
+			TitleKey:     "notif.challenge_completed.title",
+			BodyKey:      "notif.challenge_completed.body",
+			Params:       map[string]any{"count": delta},
+			TargetRoute:  fmt.Sprintf("/players/%s/objectifs", slug),
+			TargetSearch: map[string]any{"tab": "challenges"},
+			Source:       "post_sync",
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: challenge_completed", "err", err)
 		}
@@ -269,13 +270,14 @@ func EmitPostSyncDeltas(
 	if after.ChallengePathsCount > before.ChallengePathsCount {
 		delta := after.ChallengePathsCount - before.ChallengePathsCount
 		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:    notifications.CategoryChallengeAdded,
-			Severity:    notifications.SeverityInfo,
-			TitleKey:    "notif.challenge_added.title",
-			BodyKey:     "notif.challenge_added.body",
-			Params:      map[string]any{"count": delta},
-			TargetRoute: fmt.Sprintf("/players/%s/defis", slug),
-			Source:      "post_sync",
+			Category:     notifications.CategoryChallengeAdded,
+			Severity:     notifications.SeverityInfo,
+			TitleKey:     "notif.challenge_added.title",
+			BodyKey:      "notif.challenge_added.body",
+			Params:       map[string]any{"count": delta},
+			TargetRoute:  fmt.Sprintf("/players/%s/objectifs", slug),
+			TargetSearch: map[string]any{"tab": "challenges"},
+			Source:       "post_sync",
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: challenge_added", "err", err)
 		}
