@@ -1,5 +1,56 @@
 # Thought Log
 
+## [2026-04-29] P8.6 + P8.12 + P8.13 — Loaders TanStack + helpers + StatCard consolidation
+
+**Statut** : Complété. Plan revue 2026-04-29 désormais entièrement livré.
+
+**Contexte** : Les 3 derniers items du plan revue. Approche pragmatique pour chacun.
+
+**P8.12 helpers résiduel** :
+- `palmares/PalmaresRelationsPage.tsx` : 3 helpers ad-hoc (`formatPercent`, `formatKDA`, `formatDate`) supprimés au profit des canoniques de `@/lib/formatters`. Signature `formatPercent(value, locale)` adaptée en `formatPercent(value, 0)` (decimals=0 pour préserver le rendu sans décimale).
+- Helpers conservés avec justification :
+  - `session-detail::formatPercent` : value déjà en 0..100 (legacy API, TODO P4 ADR 0006)
+  - `lab/_labShared::formatDate` etc. : signatures i18n-aware spécifiques avec `LabText` fallback
+  - `home/HomeSessionCarousel::formatSessionDate` : format custom `"5 avr. à 14:30"` UX-specific
+  - `media/*` : composition heading avec `map_name`, etc. (media-specific)
+  - `notifications/relativeTime::formatRelative` : déjà dans son module dédié
+
+**P8.13 StatCard consolidation** :
+- Nouveau composant `components/cards/StatCard.tsx` avec 3 variants (~75L) :
+  - `default` : div bordé simple (synthesis StatCell)
+  - `kpi` : centré sur fond muted, valeur en `text-primary` (home KPI)
+  - `metric` : shadcn Card avec uppercase tracking + 2xl value + hint optionnel (lab MetricCard)
+- 7 tests vitest (label/value/variants/compact/hint/numeric).
+- Migrations en wrappers légers pour préserver les call sites existants :
+  - `home/HomeKPICard` : `<StatCard variant="kpi" />` (4 lignes)
+  - `lab/_labShared::MetricCard` : `<StatCard variant="metric" />` (10 lignes)
+  - `synthesis/SynthesisPage::StatCell` : `<StatCard />` (3 lignes)
+- Conserver le composant dans `components/cards/` (pas dans `features/*`) — respecte la frontière P8.5.
+
+**P8.6 TanStack route loaders** :
+- `queryClient` extrait dans `app/queryClient.ts` (singleton réutilisable hors React).
+- `app/router/index.ts` : injecte `context: { queryClient }` dans `createRouter` + déclare `RouterContext` interface.
+- 3 routes prioritaires reçoivent un `loader` qui appelle `context.queryClient.prefetchQuery` :
+  - `/players/$playerSlug/home` : prefetch home page
+  - `/players/$playerSlug/career` : prefetch career page
+  - `/players/$playerSlug/matches/$matchId` : prefetch match view + neighbors (parallèle)
+- Les composants restent inchangés — `useQuery` dans le composant fait un cache-hit grâce au prefetch.
+- Pas de Suspense boundary explicite ajouté (les composants ont déjà des `if (isLoading) return null` qui restent valides en fallback).
+
+**Décisions clés** :
+1. **Wrappers légers au lieu de remplacement direct** : les call sites des 3 cards consolidées restent inchangés (HomeKPICard, MetricCard, StatCell). La migration est invisible aux consommateurs — seule la logique est centralisée.
+2. **Loader = warmup, pas source de vérité** : les loaders font `prefetchQuery` sans retourner de données. La query React reste le contrat (composants utilisent `useQuery`). Pas de breaking change si on retire le loader.
+3. **Pas de migration helpers session-detail / home / media / lab** : ces helpers ont des signatures spécifiques (i18n-aware avec text fallback, format compact UX, value déjà transformée). Migrer = perdre la sémantique ; mieux les laisser locaux.
+
+**Résultats** : 
+- Vitest : 92 files / 741 tests verts (734 + 7 nouveaux StatCard).
+- `tsc --noEmit` : aucune nouvelle erreur dans les zones touchées.
+- `go test ./...` tout vert.
+
+**Plan revue 2026-04-29 entièrement livré** : P0-P8 done sauf items explicitement déférés (HomePage finition rendu hero/spartan, optionnel ; P3.5 slog notify hors notify package — 3 cas isolés cmd/analyze_media_tz, négligeables).
+
+**Prochaine étape** : sortir du plan revue et reprendre le delivery normal.
+
 ## [2026-04-29] P8.5 — Cross-feature imports + frontière inversée
 
 **Statut** : Complété
