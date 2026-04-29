@@ -167,8 +167,19 @@ func MergeSessionLabels(assignments []domain.SessionAssignment, groups []domain.
 }
 
 // IsSessionPotentiallyActive indique si la session est peut-etre encore active.
+//
+// Wrapper compat — utilise time.Now() en interne. Pour les tests deterministes,
+// utiliser IsSessionPotentiallyActiveAt avec un clock.Fake (revue 2026-04-29
+// P3.7 — gap test manquant IV).
 func IsSessionPotentiallyActive(lastMatchTime time.Time, cutoffHour int) bool {
-	now := time.Now().In(lastMatchTime.Location())
+	return IsSessionPotentiallyActiveAt(time.Now(), lastMatchTime, cutoffHour)
+}
+
+// IsSessionPotentiallyActiveAt est la version testable avec horloge injectee.
+// Permet de tester deterministe le cas "lastMatch hier avant cutoffHour" qui
+// dependait auparavant de l'heure courante reelle (flaky).
+func IsSessionPotentiallyActiveAt(now, lastMatchTime time.Time, cutoffHour int) bool {
+	now = now.In(lastMatchTime.Location())
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	yesterday := today.AddDate(0, 0, -1)
 	lmtDay := time.Date(lastMatchTime.Year(), lastMatchTime.Month(), lastMatchTime.Day(), 0, 0, 0, 0, lastMatchTime.Location())
