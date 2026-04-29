@@ -1,5 +1,64 @@
 # Thought Log
 
+## [2026-04-29] P4.3b + P4.3c livrees - cloture P4 service-level
+
+**Statut** : P4.3b (home pillar) et P4.3c (stats pillar) livrees (2 commits). P4 service-level pleinement cloture : tous les converters service-level sont retires. Reste P4.3 finale (suppression types legacy) bloquee par parallele agent + repos legacy + port internals analyses.
+
+**Strategie pragmatique adoptee** : wrappers `*FromCanonical` dans le package `analysis/`. Chaque wrapper convertit canonical -> legacy puis delegue a la version legacy de l'analyse. Effet :
+- Le converter est **encapsule dans le package analysis** (pas duplique dans chaque service).
+- Les services consomment uniquement les wrappers, plus de logique de conversion en service-level.
+- La logique metier reste UNE source de verite cote legacy (pas de duplication, pas de risque de drift).
+- Le port full canonical des internals (~2000 lignes total) reste P4.3 finale, assume comme sprint dedie.
+
+**P4.3b home pillar** (commit `a413c2c4`) :
+
+1. Nouveau fichier `analysis/home_canonical.go` :
+   - `HomeMatchRowFromCanonical` / `HomeMatchRowsFromCanonical` : converter public partage.
+   - `HomeSessionsFromCanonical` : sessions derivees des memes rows canonical (SessionID string -> int via strconv).
+   - `BuildHeroCardFromCanonical`, `BuildHighlightsFromCanonical`, `BuildRecentMatchesWithFavoritesFromCanonical`, `BuildSessionSummaryFromCanonical`, `BuildSessionSummariesFromCanonical` : wrappers qui delegent a la version legacy.
+   - `InferHomeSkillHistoryFromCanonical` : port pur canonical de inferHomeSkillHistory (exclusion PvE).
+
+2. Service refactor (home_service.go) :
+   - homePageData enrichi avec `canonicalRows []canonical.PlayerMatchRow`.
+   - `fetchMatchesAndSessions` retourne `canonicalRows` (nil = legacy path).
+   - `GetHomePage` branche sur `useCanonical` : si canonicalRows != nil, appelle les *FromCanonical analyses ; sinon fallback legacy.
+   - Converters home*FromCanonical RETIRES de home_service.go (~180 lignes en moins).
+   - `buildFavoriteMatchListCanonical` local helper qui delegue au wrapper.
+
+3. Tests parite (analysis/home_canonical_test.go) :
+   - TestHomeMatchRowFromCanonical_RoundtripFields (K/D/A, Outcome, flags, Ratio).
+   - TestInferHomeSkillHistoryFromCanonical_ParityWithLocal (exclusion PvE).
+
+**P4.3c stats pillar** (commit `37550533`) :
+
+1. Nouveau fichier `analysis/stats_canonical.go` :
+   - `StatsMatchRowFromCanonical` / `StatsMatchRowsFromCanonical` : converter public partage par les 4 services consommateurs (stats, timeseries, session_compare, session_page).
+
+2. Service refactor (4 services) :
+   - stats_service.go : converter local statsMatchRow*FromCanonical RETIRE, appelle `analysis.StatsMatchRowsFromCanonical`. Import canonical retire.
+   - timeseries_service.go : appelle `analysis.StatsMatchRowsFromCanonical`.
+   - session_compare_service.go : idem.
+   - session_page_service.go : idem (+ import analysis ajoute).
+
+3. Tests parite (analysis/stats_canonical_test.go) :
+   - TestStatsMatchRowFromCanonical_RoundtripFields (K/D/A, KDA, Outcome, IsRanked, PlaylistName, KillsExpected, DamageDealt).
+   - TestStatsMatchRowFromCanonical_Outcomes (table-test des 4 outcomes Win/Loss/Tie/DNF).
+
+**Bilan P4 complet sur cette branche** :
+- P4.1 service-level : 6/6 services match-rows migres (synthesis, stats, timeseries, session_compare, session_page, home).
+- P4.2 statut : 10 services restants documentes cas-par-cas (Compare/Career/MatchView N/A ou hooks ready, Engagement/Citations/Leaderboard/SeasonPass/Media N/A, Squad/Teammates DEFER).
+- P4.3a synthesis : converters retires, internals fully ported a canonical (4 analyses).
+- P4.3b home : wrappers analysis/, converter retire de home_service.
+- P4.3c stats : converter partage analysis/, retire de stats_service.
+
+**Reste P4.3 finale** (sprint dedie, hors cette branche) :
+- Suppression `domain.{Home,Synthesis,Stats}MatchRow`.
+- Retrait `Load*Matches` repos legacy au profit de `LoadPlayerMatches` unifie.
+- Port full canonical des internals analyses (~2000 lignes : ComputeKPIs, BuildHighlights, build*Tab, build*Buckets, etc.).
+- Bloque par : (a) repos legacy actifs, (b) parallele agent squad/teammates qui consomme encore les types legacy.
+
+---
+
 ## [2026-04-29] P4.2 statut + P4.3a synthesis pillar canonical complet
 
 **Statut** : P4.2 documente, P4.3a synthesis pillar livre (1 commit). Reste P4.3b/c (Home/Stats) en sprints dedies.
