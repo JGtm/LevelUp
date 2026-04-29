@@ -170,6 +170,144 @@ func TestEmitPostSyncDeltas_PersonalRecord_SkippedWithoutPDB(t *testing.T) {
 	}
 }
 
+// ─── B1 : test régression routes notifications (revue 2026-04-29) ──────
+//
+// Avant le fix B1, EmitPostSyncDeltas émettait des TargetRoute pointant vers
+// 3 routes inexistantes côté front : /defis, /help/changelog, /sync.
+// Ce test vérifie que toutes les TargetRoute émises matchent un préfixe de
+// la whitelist des routes valides documentées dans routeTree.gen.ts.
+//
+// Si une nouvelle route fantôme réapparaît, ce test échouera avec un message
+// nominatif. Test de non-régression au sens politique transverse.
+
+// validRoutePrefixes : whitelist des préfixes de routes acceptés en TargetRoute.
+// À synchroniser avec apps/web/src/routeTree.gen.ts si la nav front évolue.
+var validRoutePrefixes = []string{
+	"/changelog",
+	"/settings",
+	"/players/", // /players/{slug}/* — vérification fine ci-dessous
+}
+
+// validPlayerSubpaths : sous-chemins acceptés sous /players/{slug}/.
+var validPlayerSubpaths = []string{
+	"/synthesis",
+	"/objectifs",
+	"/objectifs/index",
+	"/palmares",
+	"/palmares/season-pass",
+	"/palmares/prestige",
+	"/palmares/relations",
+	"/palmares/compare",
+	"/career",
+	"/match",
+	"/matches",
+	"/media",
+	"/stats",
+	"/stats/history",
+	"/stats/query",
+	"/sessions",
+	"/squad",
+	"/squad/v2",
+	"/timeseries",
+	"/teammates",
+	"/compare",
+}
+
+// targetRouteIsValid retourne true si route correspond a un prefixe valide
+// (whitelist) ou a /players/{*}/<sous-chemin valide>.
+func targetRouteIsValid(route string) bool {
+	if route == "" {
+		return true // pas de TargetRoute = pas de risque
+	}
+	if route == "/changelog" || route == "/settings" {
+		return true
+	}
+	// /players/{slug}/<sous-chemin>
+	const prefix = "/players/"
+	if len(route) <= len(prefix) || route[:len(prefix)] != prefix {
+		return false
+	}
+	rest := route[len(prefix):]
+	// Skip the slug segment.
+	slash := -1
+	for i, c := range rest {
+		if c == '/' {
+			slash = i
+			break
+		}
+	}
+	if slash < 0 {
+		// /players/{slug} sans sous-chemin — accepté mais inutile en notification
+		return true
+	}
+	subPath := rest[slash:]
+	for _, valid := range validPlayerSubpaths {
+		if subPath == valid {
+			return true
+		}
+	}
+	return false
+}
+
+// TestEmitPostSyncDeltas_AllTargetRoutesValid verifie que toutes les
+// TargetRoute emises pour un large delta correspondent a des routes valides.
+func TestEmitPostSyncDeltas_AllTargetRoutesValid(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{
+		CurrentRank:         5,
+		PersonalAwardCount:  10,
+		CitationsCount:      3,
+		ChallengePathsCount: 2,
+		KDRatio:             1.0,
+		Winrate:             0.50,
+		BestKDA:             3.0,
+	}
+	after := &PlayerSnapshot{
+		CurrentRank:         6,    // → season_pass_level
+		PersonalAwardCount:  15,   // → objective_completed/assigned
+		CitationsCount:      5,    // → challenge_completed
+		ChallengePathsCount: 4,    // → challenge_added
+		KDRatio:             1.20, // → threshold_crossed (KD)
+		Winrate:             0.60, // → threshold_crossed (winrate)
+		BestKDA:             5.5,  // → personal_record (best_kda)
+	}
+	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil)
+
+	if len(em.emitted) == 0 {
+		t.Fatalf("expected at least one emit for the wide delta")
+	}
+
+	for _, in := range em.emitted {
+		if !targetRouteIsValid(in.TargetRoute) {
+			t.Errorf("category=%s emits invalid TargetRoute=%q (route fantome ?)",
+				in.Category, in.TargetRoute)
+		}
+	}
+}
+
+// TestEmitPostSyncDeltas_NoFantomRoutes verifie nominativement que les 3
+// routes fantomes du bug B1 ne sont plus utilisees.
+func TestEmitPostSyncDeltas_NoFantomRoutes(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{CitationsCount: 0, ChallengePathsCount: 0}
+	after := &PlayerSnapshot{CitationsCount: 5, ChallengePathsCount: 4}
+	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil)
+
+	fantomRoutes := []string{
+		"/players/test-player/defis",
+		"/help/changelog",
+		"/players/test-player/sync",
+	}
+	for _, in := range em.emitted {
+		for _, fantom := range fantomRoutes {
+			if in.TargetRoute == fantom {
+				t.Errorf("regression B1 : TargetRoute fantome %q reapparue (category=%s)",
+					fantom, in.Category)
+			}
+		}
+	}
+}
+
 // ─── helpers de test ────────────────────────────────────────────────────
 
 func hasCategory(items []notifications.EmitInput, c notifications.Category) bool {
