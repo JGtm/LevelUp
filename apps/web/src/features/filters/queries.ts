@@ -12,7 +12,7 @@
  * l'endpoint et on dispatche la réponse via setResolvedContext.
  */
 import { useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -54,4 +54,23 @@ export function useFiltersResolve(playerSlug: string) {
   }, [query.data, setResolvedContext])
 
   return query
+}
+
+/**
+ * Résout un FilterContextInput arbitraire (état pending) sans écrire dans le store.
+ * Utilisé pour le feedback immédiat sur les incompatibilités de filtres dans le
+ * dropdown, avant que l'utilisateur clique sur Analyser.
+ */
+export function useFiltersPreview(playerSlug: string, input: FilterContextInput) {
+  const hash = (() => {
+    try { return btoa(JSON.stringify(input)).slice(0, 32) } catch { return 'default' }
+  })()
+  return useQuery<FilterContextResolved>({
+    queryKey: queryKeys.filtersPreview(playerSlug, hash),
+    queryFn: () =>
+      api.post<FilterContextResolved>(`/players/${playerSlug}/filters/resolve`, input),
+    enabled: !!playerSlug,
+    staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
+  })
 }

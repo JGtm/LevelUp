@@ -25,6 +25,8 @@ export const queryKeys = {
   player: (playerSlug: string) => ['player', playerSlug] as const,
   filtersResolve: (playerSlug: string, filterHash: string) =>
     ['filters-resolve', playerSlug, filterHash] as const,
+  filtersPreview: (playerSlug: string, filterHash: string) =>
+    ['filters-preview', playerSlug, filterHash] as const,
 
   // Carrière (Slice 2)
   career: (playerSlug: string) => ['career', playerSlug] as const,
