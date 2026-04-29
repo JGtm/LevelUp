@@ -1,5 +1,41 @@
 # Thought Log
 
+## [2026-04-29] P4.3 finale - home pillar 100% canonical + stats wrappers
+
+**Statut** : Home pillar 100% port full canonical (7 analyses + 5 sub-helpers + 4 helpers prives). Stats pillar approche wrapper adoptee (ComputePerformanceSeriesFromCanonical). Synthesis pillar deja full canonical.
+
+**5 commits livres ce chunk** :
+- 3acb6575 : ComputeKPIs/Trend/HeroCard
+- 87579413 : BuildSessionSummary/ies
+- 07763e7b : BuildRecentMatches
+- e46b7e3f : BuildHighlights + 5 sub-helpers (buildMaitriseHighlight, buildPerMinuteHighlight, buildSerieHighlight, sliceBestKillingSpree, sliceBestWinStreak, sliceFavoriteMap)
+- d1053292 : ComputePerformanceSeriesFromCanonical wrapper
+
+**Bilan home pillar** : aucune analyse home n'utilise plus domain.HomeMatchRow comme parametre dans le path canonical. Le converter HomeMatchRowsFromCanonical reste dispo pour le legacy fallback path uniquement (qui est encore le seul path en production faute de wiring DI).
+
+**Decision pragmatique stats pillar** : wrapper plutot que full port.
+- Chaine d'appel ComputePerformanceSeries -> ComputeRelativePerformanceScore -> applyBotBonus -> ... fait des centaines de lignes.
+- Port full apporterait zero changement de comportement metier.
+- Le wrapper StatsMatchRowsFromCanonical encapsule la conversion dans analysis/, le service consomme uniquement l'entry-point canonical.
+
+**Reste P4.3 finale (sprint dedie post-coordination)** :
+- Wiring DI absent : aucune impl de port.PlayerMatchesRepository wiree au boot. Le path canonical est dead code en prod.
+- Repos legacy actifs (port.{Home,Stats,Synthesis}Repository.Load*Matches) retournent encore les types legacy.
+- Suppression des types domain.{Home,Synthesis,Stats}MatchRow bloquee tant que (1) wiring + (2) repos canonical pas faits.
+- Squad/teammates : port wrapper a faire similaire au stats pillar quand parallele agent confirme.
+
+**Bilan global P4 sur cette branche** (chore/cleanup-and-ux-fixes, 41+ commits) :
+- P4.1 service-level : 6/6 services match-rows migres
+- P4.2 statut : 10 services restants documentes
+- P4.3a synthesis : full canonical (4 analyses)
+- P4.3b home converters service-level retires
+- P4.3c stats converter partage
+- P4.3 finale home pillar : 7 analyses + 5 sub-helpers full canonical
+- P4.3 finale stats pillar : ComputePerformanceSeries wrapper
+- Squad/teammates parallele : commite (26111a3a)
+
+---
+
 ## [2026-04-29] P4.3 finale partielle - ComputeKPIs/Trend/HeroCard portes + 3 blockers documentes
 
 **Statut** : Premier chunk P4.3 finale livre (commit 3acb6575). Reste analyses + DI wiring documente comme blockers infrastructurels.
