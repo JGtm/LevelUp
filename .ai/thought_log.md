@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-04-29] P8.4 finition — LabPage découpée + nettoyage tests héritage
+
+**Statut** : Complété (P8.4 5/5 god pages couvertes ; tests vitest héritage corrigés)
+
+**Contexte** : Suite de la session P8.4. Trois objectifs séquencés :
+- A — trier les fichiers non-commités héritages des sessions précédentes (squad-v2 cascade filters, fix 4877% heatmap, etc.) qui causaient des tests vitest cassés
+- B — finir LabPage (937L), seule god page restante non découpée
+- C — P8.5 cross-feature imports cleanup (3 j, scope distinct, à voir si on attaque)
+
+**A — fix-up tests** :
+- `apps/web/src/features/squad/v2/queries.test.ts` orphelin de la session squad-v2 cascade filters (commit 26111a3a) — committé tel quel (8 tests verts validant l'encodage URL des filtres).
+- `apps/web/src/components/shell/SessionNavBar.test.tsx` stale : 9/11 tests cassés. Le commit 26111a3a a déplacé la barre Escouade dans SquadLayout, faisant retourner `null` à SessionNavBar pour `/squad/*`. beforeEach mockPathname mis à `/stats/history` ; les 2 tests "Escouade" obsolètes remplacés par un test négatif.
+- Commit `deec79f1` (734 tests verts).
+
+**B — LabPage** : 937L → 155L. Extraction en 4 fichiers :
+- `_labShared.tsx` 364L : formatters (`formatDate`, `formatNumber`, `formatDecimal`, `formatBytes`), `getStatusVariant`, `translateStatus`, et 8 UI atoms (`StatusBadge`, `MetricCard`, `JsonViewer`, `FileStatusRow`, `RouteList`, `GuardRow`, `TabButton`, `SelectableAssetList`, `SelectableMedalList`).
+- `ResourcesPanel.tsx` 234L : snapshots/assets/medals avec inputs de recherche.
+- `ContractsPanel.tsx` 115L : OpenAPI vs FastAPI parity.
+- `DiagnosticsPanel.tsx` 133L : parity report + medal guards.
+
+**Décisions clés** :
+1. **`_labShared.tsx` 364L au-dessus du seuil 500L** : volontaire — les 8 UI atoms partagés par les 3 panels formaient une unité cohérente. Mieux qu'un fichier de helpers fragmenté en 8 micro-fichiers. Toujours sous le seuil.
+2. **Imports nommés** : tous les helpers exportés depuis `_labShared.tsx`. Les panels importent uniquement ce qu'ils utilisent.
+3. **Pattern identique aux 4 pages précédentes** : orchestrateur mince (LabPage 155L) + sous-composants self-contained.
+
+**Résultats** :
+- **5/5 god pages désormais sous 500L** (sauf HomePage 735L et `_labShared.tsx` 364L qui regroupe atoms partagés). HomePage reste à découper en finition (rendu hero/spartan-identity) — déféré.
+- Vitest : 91 files / 734 tests verts.
+- `tsc --noEmit` : aucune nouvelle erreur sur les zones touchées.
+
+**Prochaine étape** : C (P8.5 cross-feature imports cleanup, 3j) ou stop ici si les pages décomposées sont suffisantes.
+
 ## [2026-04-29] P8.4 — Découpe god pages (4/5 fait, LabPage déféré)
 
 **Statut** : Complété 4/5 pages, LabPage déféré

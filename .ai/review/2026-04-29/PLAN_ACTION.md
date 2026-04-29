@@ -1071,7 +1071,7 @@ Chaque sous-composant : <= 200L, props typées, tests Vitest si logique non triv
   - [x] **SetupPage.tsx** 484L → 75L (3 Step* extraits : `StepDeviceCode`, `StepPlayer`, `StepInitialSync` + `_helpers.ts`)
   - [x] **MatchViewPage.tsx** 600L → 439L (`MatchHeader.tsx` Breadcrumb+Navigation + `_chartSeries.ts`)
   - [x] **SettingsPage.tsx** 906L → 209L (4 tabs : `GeneralTab`, `SyncTab`, `AnalyseTab`, `BackfillCard` + `_settingsShared.tsx` ToggleRow/BulletHint/TabProps)
-  - [ ] **LabPage.tsx** 937L — déféré (3 panels imbriqués `ResourcesPanel`/`ContractsPanel`/`DiagnosticsPanel` avec helpers partagés ; nécessite extraction shared file dédiée).
+  - [x] **LabPage.tsx** 937L → 155L (`_labShared.tsx` 364L avec formatters + 8 UI atoms ; `ResourcesPanel.tsx` 234L ; `ContractsPanel.tsx` 115L ; `DiagnosticsPanel.tsx` 133L). Tous les fichiers <500L sauf shared (qui regroupe les helpers communs aux 3 panels).
 - [ ] **P8.5** Cross-feature imports nettoyés — déféré (3 j de refactor)
 - [ ] **P8.6** 3-4 routes avec loader — déféré (UI sensible)
 - [x] **P8.7** Audit DuckDB driver fait — 8 fichiers d'usage réel hors `platform/duckdb`, 52 blank-imports nécessaires pour `sql.Open("duckdb", ...)`. Centralisation via wrapper unique = scope distinct, déféré.
