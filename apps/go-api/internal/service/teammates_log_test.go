@@ -32,7 +32,7 @@ func TestTeammatesService_GamertagNotFound_EmitsLog(t *testing.T) {
 			{XUID: "x1", Gamertag: "KnownAlly", GamesTogether: 5},
 		},
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	logs := withCapturedLogs(t, func() {
 		req := domain.TeammatesQueryRequest{
@@ -68,7 +68,7 @@ func TestTeammatesService_KnownGamertag_NoSilentDropLog(t *testing.T) {
 		// squadRows vide → row construite avec 0 matches mais pas de drop
 		squadRows: nil,
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	logs := withCapturedLogs(t, func() {
 		req := domain.TeammatesQueryRequest{
@@ -97,7 +97,7 @@ func TestTeammatesService_CaseInsensitiveTopMatch(t *testing.T) {
 			{MatchID: "m1", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5},
 		},
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid",
 		domain.TeammatesQueryRequest{SelectedGamertags: []string{"Madina97294"}},
@@ -140,7 +140,7 @@ func TestTeammatesService_AliasFallback_BuildsRowFromOutOfTopGamertag(t *testing
 			{MatchID: "m3", Outcome: domain.OutcomeLoss, Kills: 5, Deaths: 9},
 		},
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	logs := withCapturedLogs(t, func() {
 		resp, err := svc.GetPage(context.Background(), "player-xuid",
@@ -185,7 +185,7 @@ func TestTeammatesService_AliasFallback_StillNotFound(t *testing.T) {
 		topRows:       []domain.TopTeammateRow{},
 		lookupAliases: map[string]string{}, // alias inconnu
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	logs := withCapturedLogs(t, func() {
 		resp, err := svc.GetPage(context.Background(), "player-xuid",

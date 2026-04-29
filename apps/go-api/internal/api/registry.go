@@ -542,7 +542,8 @@ func (r *ServiceRegistry) SquadCtx(ctx context.Context, slug string) (port.Squad
 	if err != nil {
 		return nil, "", "", err
 	}
-	svc := service.NewSquadService(duckdb.NewSquadRepo(pdb))
+	svc := service.NewSquadService(duckdb.NewSquadRepo(pdb)).
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -582,7 +583,8 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	if err != nil {
 		return nil, "", "", err
 	}
-	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver())
+	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

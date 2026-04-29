@@ -454,7 +454,7 @@ func TestTeammatesService_GetPage_WithSelectedGamertag(t *testing.T) {
 			{MatchID: "m2", MapUI: "Bazaar", Outcome: domain.OutcomeLoss, Kills: 6, Deaths: 8, Assists: 1, HeadshotKills: 1, PerfectKills: 0, StartTime: time.Now(), TeamMMR: 1350.0},
 		},
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{
 		SelectedGamertags: []string{"Ally1"},
@@ -494,7 +494,7 @@ func TestTeammatesService_GetPage_UnknownGamertag_Skipped(t *testing.T) {
 			{XUID: "xuid-ally1", Gamertag: "Ally1", GamesTogether: 5},
 		},
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{
 		SelectedGamertags: []string{"Unknown"},

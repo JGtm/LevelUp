@@ -67,7 +67,7 @@ func TestSquadService_GetSquadPage_NoTeammate(t *testing.T) {
 			{XUID: "x1", Gamertag: "Ally", GamesTogether: 20, WinsTogether: 12, WinRate: 0.6},
 		},
 	}
-	svc := NewSquadService(repo)
+	svc := NewSquadService(repo).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetSquadPage(context.Background(), "player-xuid", "PlayerGT", "")
 	if err != nil {
@@ -94,7 +94,7 @@ func TestSquadService_GetSquadPage_WithTeammate(t *testing.T) {
 			{MatchID: "m1", StartTime: now, Kills: 8, Deaths: 6, Assists: 2, Outcome: 2, TimePlayedSecs: 600},
 		},
 	}
-	svc := NewSquadService(repo)
+	svc := NewSquadService(repo).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetSquadPage(context.Background(), "player-xuid", "PlayerGT", "tm1")
 	if err != nil {
@@ -107,7 +107,7 @@ func TestSquadService_GetSquadPage_WithTeammate(t *testing.T) {
 
 func TestSquadService_GetSquadPage_TopError(t *testing.T) {
 	repo := &mockSquadRepo{topErr: errors.New("fail")}
-	svc := NewSquadService(repo)
+	svc := NewSquadService(repo).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	_, err := svc.GetSquadPage(context.Background(), "x", "gt", "")
 	if err == nil {
@@ -120,7 +120,7 @@ func TestSquadService_GetSquadPage_SquadMatchesError(t *testing.T) {
 		topRows:  []domain.TopTeammateRow{{XUID: "tm1", Gamertag: "Ally"}},
 		squadErr: errors.New("fail"),
 	}
-	svc := NewSquadService(repo)
+	svc := NewSquadService(repo).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	_, err := svc.GetSquadPage(context.Background(), "x", "gt", "tm1")
 	if err == nil {
@@ -136,7 +136,7 @@ func TestSquadService_GetSynthesisPage_OK(t *testing.T) {
 			{MatchID: "m2", StartTime: now, Outcome: 3, Kills: 5, Deaths: 10, IsWithFriends: false},
 		},
 	}
-	svc := NewSquadService(repo)
+	svc := NewSquadService(repo).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetSynthesisPage(context.Background(), "player-xuid")
 	if err != nil {
@@ -152,7 +152,7 @@ func TestSquadService_GetSynthesisPage_OK(t *testing.T) {
 
 func TestSquadService_GetSynthesisPage_Error(t *testing.T) {
 	repo := &mockSquadRepo{synthErr: errors.New("fail")}
-	svc := NewSquadService(repo)
+	svc := NewSquadService(repo).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	_, err := svc.GetSynthesisPage(context.Background(), "xuid")
 	if err == nil {
@@ -169,7 +169,7 @@ func TestTeammatesService_GetPage_OK(t *testing.T) {
 			{XUID: "x2", Gamertag: "Ally2", GamesTogether: 10, WinsTogether: 4, WinRate: 0.4, AvgKDA: 0.8},
 		},
 	}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
 	if err != nil {
@@ -180,7 +180,7 @@ func TestTeammatesService_GetPage_OK(t *testing.T) {
 
 func TestTeammatesService_GetPage_Error(t *testing.T) {
 	repo := &mockSquadRepo{topErr: errors.New("fail")}
-	svc := NewTeammatesService(repo, nil)
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	_, err := svc.GetPage(context.Background(), "xuid", domain.TeammatesQueryRequest{})
 	if err == nil {

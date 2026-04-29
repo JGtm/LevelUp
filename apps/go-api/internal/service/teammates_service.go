@@ -28,6 +28,11 @@ type FriendGamertagsResolver func(ctx context.Context) []string
 type TeammatesService struct {
 	repo            port.SquadRepository
 	friendGamertags FriendGamertagsResolver
+	// playerMatchesRepo (P4.3 finale) : loader canonical-only. Câblé en DI
+	// universellement via registry.go (ServiceRegistry.playerMatchesAdapterFor).
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
+	gamertag          string
 }
 
 // NewTeammatesService crée un TeammatesService.
@@ -37,6 +42,14 @@ type TeammatesService struct {
 // est restreint aux amis configurés.
 func NewTeammatesService(repo port.SquadRepository, friendGamertags FriendGamertagsResolver) *TeammatesService {
 	return &TeammatesService{repo: repo, friendGamertags: friendGamertags}
+}
+
+// WithPlayerMatchesRepo (P4.3 finale, ADR 0011) injecte le loader canonical-aware.
+func (s *TeammatesService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *TeammatesService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
+	return s
 }
 
 // GetPage retourne la page Teammates avec options, comparaisons et solo ref.
@@ -65,14 +78,19 @@ func (s *TeammatesService) GetPage(
 	// Options (liste des coéquipiers fréquents — limitée aux amis si configuré).
 	options := buildTeammateOptions(dropdownRows)
 
-	// LoadSynthesisMatches alimente sessionLabels (qu'on filtre derrière par
-	// session escouade ; le code session_labels.solo est conservé pour
-	// compat de DTO mais inutilisé par la page Escouade — la page Solo a
-	// son propre endpoint).
-	allMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
+	// P4.3 finale (ADR 0011) : load canonical via PlayerMatchesRepo, convert
+	// vers SynthesisMatchRow pour les helpers internes (extractSynthesisSessionLabels,
+	// filterSynthesisByCascade, etc.).
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
+	}
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
 	if err != nil {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService synthesis: %w", err)
 	}
+	allMatches := analysis.SynthesisMatchRowsFromCanonical(canonicalRows)
 
 	// Extraire les session_labels disponibles (solo / escouade).
 	sessionLabels := extractSynthesisSessionLabels(allMatches)
