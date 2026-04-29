@@ -181,6 +181,9 @@ SELECT
     COALESCE(r.playlist_name_fr, r.playlist_name, '') AS playlist_name_fr,
     COALESCE(r.game_variant_id, '')                   AS variant_id,
     COALESCE(r.game_variant_name, '')                 AS variant_name,
+    COALESCE(r.pair_id, '')                           AS pair_id,
+    COALESCE(r.pair_name, '')                         AS pair_name,
+    COALESCE(r.pair_name_fr, r.pair_name, '')         AS pair_name_fr,
     COALESCE(r.is_ranked, FALSE)                      AS is_ranked,
     COALESCE(r.is_firefight, FALSE)                   AS is_firefight,
     COALESCE(p.team_id, 0)                            AS team_id,
@@ -212,6 +215,7 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		matchID, mapID, mapName, mapNameFR                 string
 		playlistID, playlistName, playlistNameFR           string
 		variantID, variantName                             string
+		pairID, pairName, pairNameFR                       string
 		startTime                                          time.Time
 		durationSeconds, teamID, outcomeCode               int
 		kills, deaths, assists, headshotKills              int
@@ -228,6 +232,7 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		&mapID, &mapName, &mapNameFR,
 		&playlistID, &playlistName, &playlistNameFR,
 		&variantID, &variantName,
+		&pairID, &pairName, &pairNameFR,
 		&isRanked, &isFirefight,
 		&teamID, &outcomeCode,
 		&kills, &deaths, &assists,
@@ -250,6 +255,9 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		playlistNameFR:    playlistNameFR,
 		variantID:         variantID,
 		variantName:       variantName,
+		pairID:            pairID,
+		pairName:          pairName,
+		pairNameFR:        pairNameFR,
 		isRanked:          isRanked,
 		isFirefight:       isFirefight,
 		teamID:            teamID,
@@ -280,6 +288,7 @@ type playerMatchScanResult struct {
 	matchID, mapID, mapName, mapNameFR       string
 	playlistID, playlistName, playlistNameFR string
 	variantID, variantName, xuid, gamertag   string
+	pairID, pairName, pairNameFR             string
 	startTime                                time.Time
 	durationSeconds, teamID, outcomeCode     int
 	kills, deaths, assists, headshotKills    int
@@ -309,6 +318,7 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			Playlist:        assetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
 			Map:             assetReference("map", s.mapID, s.mapName, s.mapNameFR),
 			GameVariant:     assetReference("game_variant", s.variantID, s.variantName, ""),
+			PairMode:        assetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
 			IsRanked:        &s.isRanked,
 			IsPvE:           &s.isFirefight,
 			Outcome:         outcomeFromInt(s.outcomeCode),

@@ -107,6 +107,8 @@ func (s *SquadServiceV2) GetSquadPage(
 	period temporal.Period,
 	experienceTypes []string,
 	playlists []string,
+	maps []string,
+	modes []string,
 ) (*domain.SquadPageV2Response, error) {
 	if mainGT == "" {
 		return nil, errors.New("SquadServiceV2.GetSquadPage: mainGT requis")
@@ -129,11 +131,12 @@ func (s *SquadServiceV2) GetSquadPage(
 		return nil, err
 	}
 
-	// Appliquer le filtre cascade (experience_types, playlists) sur les rows de chaque joueur
-	// avant l'intersection : seuls les matchs satisfaisant les deux critères sont conservés.
-	if len(experienceTypes) > 0 || len(playlists) > 0 {
+	// Appliquer le filtre cascade (experience_types, playlists, maps, modes) sur les rows de
+	// chaque joueur avant l'intersection : seuls les matchs satisfaisant tous les critères
+	// sont conservés.
+	if len(experienceTypes) > 0 || len(playlists) > 0 || len(maps) > 0 || len(modes) > 0 {
 		for gt, rows := range perPlayer {
-			perPlayer[gt] = filterRowsByCascade(rows, experienceTypes, playlists)
+			perPlayer[gt] = filterRowsByCascade(rows, experienceTypes, playlists, maps, modes)
 		}
 	}
 
@@ -674,8 +677,11 @@ func canonicalRowExperienceLabel(r canonical.PlayerMatchRow) string {
 }
 
 // filterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
-// experience_types et playlists. Slices vides = pas de filtre sur ce critère.
-func filterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes []string, playlists []string) []canonical.PlayerMatchRow {
+// experience_types, playlists, maps et modes. Slices vides = pas de filtre sur ce critère.
+//
+// Modes : comparaison sur PairMode (pair_name_fr COALESCE pair_name) — même source
+// que filtersResolve. Fallback sur DefaultLabel (EN) si Labels["fr"] absent.
+func filterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, maps, modes []string) []canonical.PlayerMatchRow {
 	expSet := make(map[string]struct{}, len(expTypes))
 	for _, e := range expTypes {
 		expSet[e] = struct{}{}
@@ -683,6 +689,14 @@ func filterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes []string, pla
 	plSet := make(map[string]struct{}, len(playlists))
 	for _, p := range playlists {
 		plSet[p] = struct{}{}
+	}
+	mapSet := make(map[string]struct{}, len(maps))
+	for _, m := range maps {
+		mapSet[m] = struct{}{}
+	}
+	modeSet := make(map[string]struct{}, len(modes))
+	for _, m := range modes {
+		modeSet[m] = struct{}{}
 	}
 	out := rows[:0:0]
 	for _, r := range rows {
@@ -692,17 +706,36 @@ func filterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes []string, pla
 			}
 		}
 		if len(plSet) > 0 {
-			pl := ""
-			if r.Summary.Playlist != nil {
-				pl = r.Summary.Playlist.DefaultLabel
+			if _, ok := plSet[assetLabelForFilter(r.Summary.Playlist)]; !ok {
+				continue
 			}
-			if _, ok := plSet[pl]; !ok {
+		}
+		if len(mapSet) > 0 {
+			if _, ok := mapSet[assetLabelForFilter(r.Summary.Map)]; !ok {
+				continue
+			}
+		}
+		if len(modeSet) > 0 {
+			if _, ok := modeSet[assetLabelForFilter(r.Summary.PairMode)]; !ok {
 				continue
 			}
 		}
 		out = append(out, r)
 	}
 	return out
+}
+
+// assetLabelForFilter retourne le label d'un AssetReference utilisé comme clé de filtre.
+// Préfère Labels["fr"] (COALESCE(name_fr, name) — même source que filtersResolve)
+// sur DefaultLabel (anglais pur) pour alignement avec les valeurs du frontend.
+func assetLabelForFilter(ref *canonical.AssetReference) string {
+	if ref == nil {
+		return ""
+	}
+	if fr, ok := ref.Labels["fr"]; ok && fr != "" {
+		return fr
+	}
+	return ref.DefaultLabel
 }
 
 // loadAllPlayers charge les matchs du joueur principal + des coéquipiers en
@@ -845,7 +878,10 @@ func buildSharedMatch(matchID string, indexed map[string]map[string]canonical.Pl
 		if sm.StartedAt.IsZero() {
 			sm.StartedAt = row.Summary.StartedAtUTC
 			sm.Map = row.Summary.Map
-			sm.Mode = row.Summary.GameVariant
+			sm.Mode = row.Summary.PairMode
+			if sm.Mode == nil {
+				sm.Mode = row.Summary.GameVariant
+			}
 			sm.Playlist = row.Summary.Playlist
 			sm.Outcome = row.Summary.Outcome
 		}

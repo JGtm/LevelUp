@@ -7,6 +7,9 @@
 //
 // Vit en parallèle de l'endpoint legacy /pages/squad jusqu'à migration complète
 // du frontend (cf. PLAN_SQUAD_GO_PORTAGE).
+//
+// Filtres cascade supportés : experience_types, playlists, maps, modes
+// (label FR COALESCE(name_fr, name) via PairMode/AssetReference).
 package handlers
 
 import (
@@ -44,7 +47,8 @@ func NewSquadV2Handler(newSvc ContextFactory[port.SquadV2Service]) *SquadV2Handl
 //   - teammates        : CSV de gamertags (max 3, optionnel)
 //   - period           : "all" | "2y" | "1y" | "1m" | "1w" (défaut "all")
 //   - experience_types : CSV de types d'expérience (ex: "PVP classé,PVE")
-//   - playlists        : CSV de noms de playlist (ex: "Ranked Arena")
+//   - playlists        : CSV de noms de playlist FR (ex: "Partie rapide")
+//   - maps             : CSV de noms de carte FR (ex: "Décharge")
 //
 // Statuts :
 //   - 200 : payload valide
@@ -72,6 +76,8 @@ func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 
 	experienceTypes := parseCSVFilter(r.URL.Query().Get("experience_types"))
 	playlists := parseCSVFilter(r.URL.Query().Get("playlists"))
+	maps := parseCSVFilter(r.URL.Query().Get("maps"))
+	modes := parseCSVFilter(r.URL.Query().Get("modes"))
 
 	titleSlug := titleSlugFromContext(r)
 
@@ -82,9 +88,11 @@ func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 		"period", string(period),
 		"experience_types", experienceTypes,
 		"playlists", playlists,
+		"maps", maps,
+		"modes", modes,
 	)
 
-	resp, err := svc.GetSquadPage(r.Context(), titleSlug, gamertag, teammates, period, experienceTypes, playlists)
+	resp, err := svc.GetSquadPage(r.Context(), titleSlug, gamertag, teammates, period, experienceTypes, playlists, maps, modes)
 	if err != nil {
 		if errors.Is(err, games.ErrCapabilityNotSupported) {
 			slog.WarnContext(r.Context(), "squad_v2: capability match.history absente",

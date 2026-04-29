@@ -29,7 +29,7 @@ export function buildHeatmapSeries({
   const datapoints: ChartPointHeatmap[] = sorted.map((r) => ({
     x: mapLabelOf(r.map_ui),
     y: winAxisLabel,
-    value: r.win_rate,
+    value: r.win_rate * 100,
     detail: { match_count: r.match_count },
   }))
 

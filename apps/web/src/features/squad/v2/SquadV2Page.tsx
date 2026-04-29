@@ -31,6 +31,8 @@ export interface SquadV2PageProps {
   period?: SquadPeriod
   experienceTypes?: string[]
   playlists?: string[]
+  maps?: string[]
+  modes?: string[]
 }
 
 type SquadLocale = 'fr' | 'en'
@@ -49,13 +51,13 @@ function useSquadV2Translator() {
 // SquadEngagementSection lazy-loaded pour eviter la cyclic deps avec @/features/squad
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 
-export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, playlists }: SquadV2PageProps) {
+export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, playlists, maps, modes }: SquadV2PageProps) {
   const t = useSquadV2Translator()
   const locale = useAppShellStore((s) => s.locale) ?? 'fr'
   const intlLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const { data: fieldMappings } = useFieldMappings()
 
-  const { data, isLoading, error } = useSquadV2({ playerSlug, teammates, period, experienceTypes, playlists })
+  const { data, isLoading, error } = useSquadV2({ playerSlug, teammates, period, experienceTypes, playlists, maps, modes })
 
   if (isLoading) {
     return (
