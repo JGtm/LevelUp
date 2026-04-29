@@ -1,9 +1,9 @@
-// Package service — stats_canonical_mock_test.go : mock partagé
+// Package service â€” stats_canonical_mock_test.go : mock partagÃ©
 // PlayerMatchesRepository pour tests Stats / Timeseries / SessionCompare /
 // SessionPage. P4.3 finale.
 //
-// Convertit []domain.StatsMatchRow vers []canonical.PlayerMatchRow pour
-// exercer le path canonical (le seul actif après suppression du legacy
+// Convertit []legacymatch.StatsMatchRow vers []canonical.PlayerMatchRow pour
+// exercer le path canonical (le seul actif aprÃ¨s suppression du legacy
 // fallback).
 package service
 
@@ -12,11 +12,12 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
 type mockStatsPlayerMatches struct {
-	rows []domain.StatsMatchRow
+	rows []legacymatch.StatsMatchRow
 	err  error
 }
 
@@ -90,9 +91,9 @@ func (m *mockStatsPlayerMatches) LoadPlayerMatches(_ context.Context, _ string, 
 
 func (m *mockStatsPlayerMatches) InvalidatePlayer(_, _ string) {}
 
-// newStatsMockFromRows construit un mock PlayerMatchesRepository à partir
-// de rows StatsMatchRow legacy. Helper partagé entre les 4 services.
-func newStatsMockFromRows(rows []domain.StatsMatchRow, err error) *mockStatsPlayerMatches {
+// newStatsMockFromRows construit un mock PlayerMatchesRepository Ã  partir
+// de rows StatsMatchRow legacy. Helper partagÃ© entre les 4 services.
+func newStatsMockFromRows(rows []legacymatch.StatsMatchRow, err error) *mockStatsPlayerMatches {
 	return &mockStatsPlayerMatches{rows: rows, err: err}
 }
 
@@ -100,7 +101,7 @@ func newStatsMockFromRows(rows []domain.StatsMatchRow, err error) *mockStatsPlay
 // []SynthesisMatchRow vers []canonical.PlayerMatchRow. Pour squad/teammates
 // services qui consomment SynthesisMatchRow.
 type mockSynthPlayerMatches struct {
-	rows []domain.SynthesisMatchRow
+	rows []legacymatch.SynthesisMatchRow
 	err  error
 }
 
@@ -150,6 +151,6 @@ func (m *mockSynthPlayerMatches) LoadPlayerMatches(_ context.Context, _, _ strin
 func (m *mockSynthPlayerMatches) InvalidatePlayer(_, _ string) {}
 
 // newSynthMockFromRows construit un mock canonical pour squad/teammates.
-func newSynthMockFromRows(rows []domain.SynthesisMatchRow, err error) *mockSynthPlayerMatches {
+func newSynthMockFromRows(rows []legacymatch.SynthesisMatchRow, err error) *mockSynthPlayerMatches {
 	return &mockSynthPlayerMatches{rows: rows, err: err}
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func TestComputeSynthesisTopWeeks_Empty(t *testing.T) {
@@ -17,9 +18,9 @@ func TestComputeSynthesisTopWeeks_Empty(t *testing.T) {
 func TestComputeSynthesisTopWeeks_Single(t *testing.T) {
 	kda := 2.5
 	base := time.Date(2024, 6, 10, 14, 0, 0, 0, time.UTC) // Monday
-	var rows []domain.SynthesisMatchRow
+	var rows []legacymatch.SynthesisMatchRow
 	for i := 0; i < 3; i++ { // minimum 3 matches per week
-		rows = append(rows, domain.SynthesisMatchRow{
+		rows = append(rows, legacymatch.SynthesisMatchRow{
 			MatchID:   "m" + string(rune('1'+i)),
 			StartTime: base.Add(time.Duration(i) * time.Hour),
 			Outcome:   domain.OutcomeWin,
@@ -39,11 +40,11 @@ func TestComputeSynthesisTopWeeks_Single(t *testing.T) {
 
 func TestComputeSynthesisTopWeeks_MultipleWeeks(t *testing.T) {
 	kda := 3.0
-	rows := make([]domain.SynthesisMatchRow, 0, 20)
+	rows := make([]legacymatch.SynthesisMatchRow, 0, 20)
 	// Week 1: 10 matches with wins
 	base := time.Date(2024, 6, 10, 14, 0, 0, 0, time.UTC) // Monday
 	for i := 0; i < 10; i++ {
-		rows = append(rows, domain.SynthesisMatchRow{
+		rows = append(rows, legacymatch.SynthesisMatchRow{
 			MatchID:   "w1-" + string(rune('a'+i)),
 			StartTime: base.Add(time.Duration(i) * time.Hour),
 			Outcome:   domain.OutcomeWin,
@@ -55,7 +56,7 @@ func TestComputeSynthesisTopWeeks_MultipleWeeks(t *testing.T) {
 	// Week 2: 3 matches
 	base2 := base.AddDate(0, 0, 7)
 	for i := 0; i < 3; i++ {
-		rows = append(rows, domain.SynthesisMatchRow{
+		rows = append(rows, legacymatch.SynthesisMatchRow{
 			MatchID:   "w2-" + string(rune('a'+i)),
 			StartTime: base2.Add(time.Duration(i) * time.Hour),
 			Outcome:   domain.OutcomeLoss,
@@ -72,9 +73,9 @@ func TestComputeSynthesisTopWeeks_MultipleWeeks(t *testing.T) {
 
 func TestComputeSynthesisTopWeeks_NoKDA(t *testing.T) {
 	base := time.Date(2024, 6, 10, 14, 0, 0, 0, time.UTC)
-	var rows []domain.SynthesisMatchRow
+	var rows []legacymatch.SynthesisMatchRow
 	for i := 0; i < 3; i++ {
-		rows = append(rows, domain.SynthesisMatchRow{
+		rows = append(rows, legacymatch.SynthesisMatchRow{
 			MatchID:   "m" + string(rune('a'+i)),
 			StartTime: base.Add(time.Duration(i) * time.Hour),
 			Outcome:   domain.OutcomeWin,

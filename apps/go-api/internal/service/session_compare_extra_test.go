@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func TestExtractSessionLabels_Empty(t *testing.T) {
@@ -15,7 +15,7 @@ func TestExtractSessionLabels_Empty(t *testing.T) {
 
 func TestExtractSessionLabels_Dedup(t *testing.T) {
 	lbl := "2025-01-15"
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{SessionLabel: &lbl},
 		{SessionLabel: &lbl},
 	}
@@ -27,7 +27,7 @@ func TestExtractSessionLabels_Dedup(t *testing.T) {
 
 func TestExtractSessionLabels_Sorted(t *testing.T) {
 	l1, l2 := "2025-02-01", "2025-01-01"
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{SessionLabel: &l1},
 		{SessionLabel: &l2},
 	}
@@ -39,7 +39,7 @@ func TestExtractSessionLabels_Sorted(t *testing.T) {
 
 func TestExtractSessionLabels_NilSkipped(t *testing.T) {
 	lbl := "S1"
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{SessionLabel: nil},
 		{SessionLabel: &lbl},
 	}

@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // --- mock (reuse interface from last_match_service_test.go) ---
 
 type mockStatsRepoForStats struct {
-	matches  []domain.StatsMatchRow
+	matches  []legacymatch.StatsMatchRow
 	matchErr error
 	lusr     []domain.LUSRMatchRating
 	lusrErr  error
@@ -20,7 +21,7 @@ type mockStatsRepoForStats struct {
 	partErr  error
 }
 
-func (m *mockStatsRepoForStats) LoadStatsMatches(_ context.Context) ([]domain.StatsMatchRow, error) {
+func (m *mockStatsRepoForStats) LoadStatsMatches(_ context.Context) ([]legacymatch.StatsMatchRow, error) {
 	return m.matches, m.matchErr
 }
 func (m *mockStatsRepoForStats) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
@@ -36,7 +37,7 @@ func TestStatsService_GetPage_WinLoss(t *testing.T) {
 	now := time.Now()
 	win, loss := 2, 3
 	repo := &mockStatsRepoForStats{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now.Add(-2 * time.Hour), Outcome: &win, Kills: 15, Deaths: 5, Assists: 3, Accuracy: float64Ptr(0.6)},
 			{MatchID: "m2", StartTime: now.Add(-1 * time.Hour), Outcome: &loss, Kills: 5, Deaths: 10, Assists: 1, Accuracy: float64Ptr(0.375)},
 			{MatchID: "m3", StartTime: now, Outcome: &win, Kills: 20, Deaths: 8, Assists: 5, Accuracy: float64Ptr(0.6)},
@@ -60,7 +61,7 @@ func TestStatsService_GetPage_WinLoss(t *testing.T) {
 func TestStatsService_GetPage_Accuracy(t *testing.T) {
 	now := time.Now()
 	repo := &mockStatsRepoForStats{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3, Accuracy: float64Ptr(0.6), TimePlayedSeconds: intPtr(600)},
 		},
 	}
@@ -79,7 +80,7 @@ func TestStatsService_GetPage_Accuracy(t *testing.T) {
 func TestStatsService_GetPage_Objective(t *testing.T) {
 	now := time.Now()
 	repo := &mockStatsRepoForStats{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3, PersonalScore: intPtr(500)},
 		},
 	}
@@ -98,7 +99,7 @@ func TestStatsService_GetPage_Objective(t *testing.T) {
 func TestStatsService_GetPage_Form(t *testing.T) {
 	now := time.Now()
 	repo := &mockStatsRepoForStats{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3, PerfScoreComputed: float64Ptr(1.2)},
 		},
 	}
@@ -117,7 +118,7 @@ func TestStatsService_GetPage_Form(t *testing.T) {
 func TestStatsService_GetPage_LUSR(t *testing.T) {
 	now := time.Now()
 	repo := &mockStatsRepoForStats{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3},
 		},
 		lusr: []domain.LUSRMatchRating{
@@ -137,7 +138,7 @@ func TestStatsService_GetPage_LUSR(t *testing.T) {
 }
 
 func TestStatsService_GetPage_Empty(t *testing.T) {
-	repo := &mockStatsRepoForStats{matches: []domain.StatsMatchRow{}}
+	repo := &mockStatsRepoForStats{matches: []legacymatch.StatsMatchRow{}}
 	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
 	svc.titleSlug = "halo_infinite"
 
@@ -168,7 +169,7 @@ func TestStatsService_GetPage_All(t *testing.T) {
 	now := time.Now()
 	win := 2
 	repo := &mockStatsRepoForStats{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now, Outcome: &win, Kills: 10, Deaths: 3, Accuracy: float64Ptr(0.5), PersonalScore: intPtr(500), PerfScoreComputed: float64Ptr(1.1), TimePlayedSeconds: intPtr(600)},
 		},
 		lusr: []domain.LUSRMatchRating{

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // --- mock ---
@@ -106,7 +107,7 @@ func (m *mockSessionCompareSessionsRepo) LoadSessionMatches(_ context.Context) (
 }
 
 type mockSessionCompareStatsRepo struct {
-	matches      []domain.StatsMatchRow
+	matches      []legacymatch.StatsMatchRow
 	matchErr     error
 	lusr         []domain.LUSRMatchRating
 	lusrErr      error
@@ -114,7 +115,7 @@ type mockSessionCompareStatsRepo struct {
 	partErr      error
 }
 
-func (m *mockSessionCompareStatsRepo) LoadStatsMatches(_ context.Context) ([]domain.StatsMatchRow, error) {
+func (m *mockSessionCompareStatsRepo) LoadStatsMatches(_ context.Context) ([]legacymatch.StatsMatchRow, error) {
 	return m.matches, m.matchErr
 }
 func (m *mockSessionCompareStatsRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
@@ -136,7 +137,7 @@ func TestSessionCompareService_Compare_OK(t *testing.T) {
 		},
 	}
 	statsRepo := &mockSessionCompareStatsRepo{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			{MatchID: "m1", StartTime: now.Add(-3 * time.Hour), Kills: 10, Deaths: 5},
 			{MatchID: "m2", StartTime: now.Add(-2 * time.Hour), Kills: 8, Deaths: 6},
 			{MatchID: "m3", StartTime: now.Add(-30 * time.Minute), Kills: 12, Deaths: 3},
@@ -214,7 +215,7 @@ func TestFilterBySession_Empty(t *testing.T) {
 }
 
 func TestFilterBySession_EmptyLabel(t *testing.T) {
-	result := filterBySession([]domain.StatsMatchRow{{Kills: 10}}, "")
+	result := filterBySession([]legacymatch.StatsMatchRow{{Kills: 10}}, "")
 	if result != nil {
 		t.Error("expected nil for empty label")
 	}
@@ -223,7 +224,7 @@ func TestFilterBySession_EmptyLabel(t *testing.T) {
 func TestFilterBySession_Filters(t *testing.T) {
 	s1 := "S1"
 	s2 := "S2"
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, SessionLabel: &s1},
 		{Kills: 20, SessionLabel: &s2},
 		{Kills: 30, SessionLabel: &s1},
@@ -243,7 +244,7 @@ func TestWinRate_Empty(t *testing.T) {
 func TestWinRate_WithMatches(t *testing.T) {
 	win := 2
 	loss := 3
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Outcome: &win},
 		{Outcome: &loss},
 		{Outcome: &win},
@@ -261,7 +262,7 @@ func TestAvgKD_Empty(t *testing.T) {
 }
 
 func TestAvgKD_ZeroDeaths(t *testing.T) {
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 0},
 	}
 	if avgKD(matches) != 10 {
@@ -310,7 +311,7 @@ func TestBuildCompareEntry_Empty(t *testing.T) {
 }
 
 func TestBuildCompareEntry_EmptyLabel(t *testing.T) {
-	result := buildCompareEntry([]domain.StatsMatchRow{{Kills: 10}}, "")
+	result := buildCompareEntry([]legacymatch.StatsMatchRow{{Kills: 10}}, "")
 	if result != nil {
 		t.Error("expected nil for empty label")
 	}
@@ -319,7 +320,7 @@ func TestBuildCompareEntry_EmptyLabel(t *testing.T) {
 func TestBuildCompareEntry_WithData(t *testing.T) {
 	win := 2
 	now := time.Now()
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, Outcome: &win, StartTime: now},
 		{Kills: 8, Deaths: 3, Outcome: &win, StartTime: now.Add(time.Hour)},
 	}
@@ -338,11 +339,11 @@ func TestBuildCompareEntry_WithData(t *testing.T) {
 func TestBuildCompareMetrics(t *testing.T) {
 	win := 2
 	loss := 3
-	a := []domain.StatsMatchRow{
+	a := []legacymatch.StatsMatchRow{
 		{Kills: 15, Deaths: 5, Outcome: &win},
 		{Kills: 10, Deaths: 5, Outcome: &win},
 	}
-	b := []domain.StatsMatchRow{
+	b := []legacymatch.StatsMatchRow{
 		{Kills: 5, Deaths: 10, Outcome: &loss},
 		{Kills: 8, Deaths: 8, Outcome: &loss},
 	}

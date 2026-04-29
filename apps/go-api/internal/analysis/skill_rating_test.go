@@ -1,4 +1,4 @@
-// Package analysis — skill_rating_test.go : tests pour le moteur de rating LUSR.
+// Package analysis â€” skill_rating_test.go : tests pour le moteur de rating LUSR.
 package analysis
 
 import (
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func TestComputeSkillRatingsBatch_Empty(t *testing.T) {
@@ -18,7 +19,7 @@ func TestComputeSkillRatingsBatch_Empty(t *testing.T) {
 func TestComputeSkillRatingsBatch_SingleMatch(t *testing.T) {
 	win := 2
 	kda := 3.0
-	rows := []domain.StatsMatchRow{
+	rows := []legacymatch.StatsMatchRow{
 		{
 			MatchID:   "m1",
 			StartTime: time.Now(),
@@ -45,7 +46,7 @@ func TestComputeSkillRatingsBatch_WinIncreasesRating(t *testing.T) {
 	win := 2
 	loss := 3
 	kda := 2.0
-	rows := []domain.StatsMatchRow{
+	rows := []legacymatch.StatsMatchRow{
 		{MatchID: "m1", StartTime: time.Now().Add(-2 * time.Hour), Outcome: &win, Kills: 15, Deaths: 5, Assists: 5, KDA: &kda},
 		{MatchID: "m2", StartTime: time.Now().Add(-1 * time.Hour), Outcome: &loss, Kills: 5, Deaths: 15, Assists: 2, KDA: &kda},
 	}
@@ -71,7 +72,7 @@ func TestNewPlayerState(t *testing.T) {
 
 func TestApplyInactivityDecay(t *testing.T) {
 	sigma := 5.0
-	decayed := applyInactivityDecay(sigma, 30) // 30 jours d'inactivité
+	decayed := applyInactivityDecay(sigma, 30) // 30 jours d'inactivitÃ©
 	if decayed <= sigma {
 		t.Error("expected sigma to increase with inactivity decay")
 	}
@@ -103,7 +104,7 @@ func TestSigmoidRatio(t *testing.T) {
 	if result2 < 0.49 || result2 > 0.51 {
 		t.Errorf("expected ~0.5 for sigmoidRatio(1,1), got %f", result2)
 	}
-	// sigmoidRatio(0, 0) → denom < 1e-9, retourne 0.5
+	// sigmoidRatio(0, 0) â†’ denom < 1e-9, retourne 0.5
 	result3 := sigmoidRatio(0, 0)
 	if result3 != 0.5 {
 		t.Errorf("expected 0.5 for sigmoidRatio(0,0), got %f", result3)
@@ -125,7 +126,7 @@ func TestIndexParticipants(t *testing.T) {
 	}
 }
 
-// ─── trueskillUpdate ────────────────────────────────────────────────────────
+// â”€â”€â”€ trueskillUpdate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestTrueskillUpdate_WinIncreasesRating(t *testing.T) {
 	newMu, newSigma := trueskillUpdate(1500, 350, 1500, 350, 1.0, 1.0)
@@ -144,7 +145,7 @@ func TestTrueskillUpdate_LossDecreasesRating(t *testing.T) {
 	}
 }
 
-// ─── drawMarginFromProbability ──────────────────────────────────────────────
+// â”€â”€â”€ drawMarginFromProbability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestDrawMarginFromProbability_Positive(t *testing.T) {
 	margin := drawMarginFromProbability(0.06, betaTS)
@@ -153,7 +154,7 @@ func TestDrawMarginFromProbability_Positive(t *testing.T) {
 	}
 }
 
-// ─── wWin ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ wWin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestWWin_PositiveT(t *testing.T) {
 	w := wWin(2.0, 0.5)
@@ -162,7 +163,7 @@ func TestWWin_PositiveT(t *testing.T) {
 	}
 }
 
-// ─── sigmoidRatio ───────────────────────────────────────────────────────────
+// â”€â”€â”€ sigmoidRatio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestSigmoidRatio_ZeroDenom(t *testing.T) {
 	s := sigmoidRatio(5, 0)
@@ -178,7 +179,7 @@ func TestSigmoidRatio_Normal(t *testing.T) {
 	}
 }
 
-// ─── resolvePlaylistGroup ───────────────────────────────────────────────────
+// â”€â”€â”€ resolvePlaylistGroup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestResolvePlaylistGroup_Ranked(t *testing.T) {
 	g := resolvePlaylistGroup("Ranked Arena", "somePair")
@@ -194,7 +195,7 @@ func TestResolvePlaylistGroup_Default(t *testing.T) {
 	}
 }
 
-// ─── getOrCreateState ───────────────────────────────────────────────────────
+// â”€â”€â”€ getOrCreateState â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestGetOrCreateState_New(t *testing.T) {
 	states := make(map[string]*playerState)
@@ -217,7 +218,7 @@ func TestGetOrCreateState_Existing(t *testing.T) {
 	}
 }
 
-// ─── normPDF / normInvCDF / rationalApprox ──────────────────────────────────
+// â”€â”€â”€ normPDF / normInvCDF / rationalApprox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestNormPDF_Zero(t *testing.T) {
 	v := normPDF(0)
@@ -249,7 +250,7 @@ func TestRationalApprox(t *testing.T) {
 	}
 }
 
-// ─── splitParticipants ──────────────────────────────────────────────────────
+// â”€â”€â”€ splitParticipants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestSplitParticipants(t *testing.T) {
 	t1, t2 := 1, 2

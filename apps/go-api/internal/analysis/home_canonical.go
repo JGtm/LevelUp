@@ -1,21 +1,21 @@
-// Package analysis — home_canonical.go : entry-points canonical-aware pour la
+// Package analysis â€” home_canonical.go : entry-points canonical-aware pour la
 // page Home (P4.3b, ADR 0011).
 //
-// **Stratégie pragmatique** : chaque `*FromCanonical` convertit canonical →
-// `domain.HomeMatchRow` puis délègue à la version legacy. Ainsi :
+// **StratÃ©gie pragmatique** : chaque `*FromCanonical` convertit canonical â†’
+// `legacymatch.HomeMatchRow` puis dÃ©lÃ¨gue Ã  la version legacy. Ainsi :
 //
 //   - Le converter `HomeMatchRowFromCanonical` vit DANS le package analysis
-//     (encapsulé) et n'est plus visible côté `service/home_service.go`.
+//     (encapsulÃ©) et n'est plus visible cÃ´tÃ© `service/home_service.go`.
 //   - Le service consomme uniquement `analysis.BuildHeroCardFromCanonical(...)`,
-//     plus de conversion à son niveau.
-//   - La logique métier (ComputeKPIs, BuildHighlights, etc.) reste UNE source
-//     de vérité côté legacy. Pas de duplication, pas de risque de drift.
+//     plus de conversion Ã  son niveau.
+//   - La logique mÃ©tier (ComputeKPIs, BuildHighlights, etc.) reste UNE source
+//     de vÃ©ritÃ© cÃ´tÃ© legacy. Pas de duplication, pas de risque de drift.
 //
 // **TODO P4.3 finale** : porter les internals (ComputeKPIs, BuildHighlights,
-// etc.) à canonical et retirer ces wrappers + les types legacy
-// `domain.HomeMatchRow` / `domain.HomeSessionRow`. Bloqué tant que le repo
+// etc.) Ã  canonical et retirer ces wrappers + les types legacy
+// `legacymatch.HomeMatchRow` / `legacymatch.HomeSessionRow`. BloquÃ© tant que le repo
 // `port.HomeRepository.LoadHomeMatches` retourne du legacy + tant que des
-// callers parallèles (squad/teammates) consomment encore des types legacy.
+// callers parallÃ¨les (squad/teammates) consomment encore des types legacy.
 package analysis
 
 import (
@@ -28,24 +28,25 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // =============================================================================
-// Converters canonical → legacy (encapsulés)
+// Converters canonical â†’ legacy (encapsulÃ©s)
 // =============================================================================
 
-// HomeMatchRowFromCanonical convertit canonical.PlayerMatchRow → HomeMatchRow.
+// HomeMatchRowFromCanonical convertit canonical.PlayerMatchRow â†’ HomeMatchRow.
 //
 // Mapping selon ADR 0011 :
-//   - Données brutes (kills/deaths/MMR/Outcome/scores équipes/SkillSnapshot
+//   - DonnÃ©es brutes (kills/deaths/MMR/Outcome/scores Ã©quipes/SkillSnapshot
 //     data fields) : depuis canonical.
 //   - Labels FR map/playlist/game_variant : via AssetReference.Labels["fr"]
 //     avec fallback DefaultLabel.
-//   - SkillTierLabel / SkillRankImageURL / PairName : laissés vides
-//     (TitleSemanticAdapter / TitleAssetURLAdapter / composite Halo-only —
+//   - SkillTierLabel / SkillRankImageURL / PairName : laissÃ©s vides
+//     (TitleSemanticAdapter / TitleAssetURLAdapter / composite Halo-only â€”
 //     enrichissement P4.3 finale).
-func HomeMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.HomeMatchRow {
-	out := domain.HomeMatchRow{
+func HomeMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.HomeMatchRow {
+	out := legacymatch.HomeMatchRow{
 		MatchID:          r.Summary.MatchID,
 		StartTime:        r.Summary.StartedAtUTC,
 		SessionLabel:     r.Enrichment.SessionLabel,
@@ -152,20 +153,20 @@ func HomeMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.HomeMatchRow {
 }
 
 // HomeMatchRowsFromCanonical : version slice.
-func HomeMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.HomeMatchRow {
-	out := make([]domain.HomeMatchRow, len(rows))
+func HomeMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.HomeMatchRow {
+	out := make([]legacymatch.HomeMatchRow, len(rows))
 	for i, r := range rows {
 		out[i] = HomeMatchRowFromCanonical(r)
 	}
 	return out
 }
 
-// HomeSessionsFromCanonical dérive []HomeSessionRow depuis canonical.
-// SessionID : canonical *string → home *int via strconv.
-func HomeSessionsFromCanonical(rows []canonical.PlayerMatchRow) []domain.HomeSessionRow {
-	out := make([]domain.HomeSessionRow, 0, len(rows))
+// HomeSessionsFromCanonical dÃ©rive []HomeSessionRow depuis canonical.
+// SessionID : canonical *string â†’ home *int via strconv.
+func HomeSessionsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.HomeSessionRow {
+	out := make([]legacymatch.HomeSessionRow, 0, len(rows))
 	for _, r := range rows {
-		entry := domain.HomeSessionRow{
+		entry := legacymatch.HomeSessionRow{
 			MatchID:       r.Summary.MatchID,
 			SessionLabel:  r.Enrichment.SessionLabel,
 			IsWithFriends: r.Enrichment.IsWithFriends,
@@ -191,7 +192,7 @@ func derefIntZero(p *int) int {
 }
 
 // =============================================================================
-// Entry-points canonical-aware (P4.3b → P4.3 finale)
+// Entry-points canonical-aware (P4.3b â†’ P4.3 finale)
 // =============================================================================
 
 // ComputeKPIsFromCanonical est la variante canonical-aware de ComputeKPIs
@@ -381,7 +382,7 @@ func winRateCanonical(rows []canonical.PlayerMatchRow) float64 {
 	return float64(wins) / float64(total)
 }
 
-// BuildHeroCardFromCanonical : entièrement canonical (P4.3 finale).
+// BuildHeroCardFromCanonical : entiÃ¨rement canonical (P4.3 finale).
 func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string, totalMatches int) domain.HomeHeroCard {
 	kpis := ComputeKPIsFromCanonical(rows, totalMatches)
 	trend := ComputeTrendFromCanonical(rows, 5)
@@ -390,7 +391,7 @@ func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string
 
 // BuildHighlightsFromCanonical : full canonical (P4.3 finale).
 // 8 highlights (perf moyenne, delta rang, best underdog win, KDA peak,
-// Maîtrise tile, Per-minute tile, Volume, Série tile).
+// MaÃ®trise tile, Per-minute tile, Volume, SÃ©rie tile).
 func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.HighlightItem {
 	if len(rows) == 0 {
 		return nil
@@ -486,13 +487,13 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.best_underdog_win",
 				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
-				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+				Detail:     fmt.Sprintf("%s Â· %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
 				ValueColor: color,
 			})
 		}
 	}
 
-	// Highlight 4 : Pic FDA récent.
+	// Highlight 4 : Pic FDA rÃ©cent.
 	{
 		best := bestKDAMatchCanonical(window)
 		if best != nil && best.Self.KDA != nil {
@@ -501,13 +502,13 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.kda_peak",
 				Value:      fmt.Sprintf("%.2f", *best.Self.KDA),
-				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+				Detail:     fmt.Sprintf("%s Â· %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
 				ValueColor: highlightKDAColor(*best.Self.KDA),
 			})
 		}
 	}
 
-	// Highlight 5 : Maîtrise.
+	// Highlight 5 : MaÃ®trise.
 	if maitrise := buildMaitriseHighlightCanonical(window); maitrise != nil {
 		highlights = append(highlights, *maitrise)
 	}
@@ -545,7 +546,7 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 		})
 	}
 
-	// Highlight 8 : Série.
+	// Highlight 8 : SÃ©rie.
 	if serie := buildSerieHighlightCanonical(window); serie != nil {
 		highlights = append(highlights, *serie)
 	}
@@ -553,8 +554,8 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 	return highlights
 }
 
-// selectHighlightWindowCanonical : sélection des matchs pour la fenêtre
-// (dernière session + 4 similaires : même IsWithFriends + même playlistGroup).
+// selectHighlightWindowCanonical : sÃ©lection des matchs pour la fenÃªtre
+// (derniÃ¨re session + 4 similaires : mÃªme IsWithFriends + mÃªme playlistGroup).
 func selectHighlightWindowCanonical(rows []canonical.PlayerMatchRow) []canonical.PlayerMatchRow {
 	if len(rows) == 0 {
 		return nil
@@ -635,7 +636,7 @@ func selectHighlightWindowCanonical(rows []canonical.PlayerMatchRow) []canonical
 	return window
 }
 
-// bestKDAMatchCanonical : retourne le row avec le KDA le plus élevé.
+// bestKDAMatchCanonical : retourne le row avec le KDA le plus Ã©levÃ©.
 func bestKDAMatchCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMatchRow {
 	var best *canonical.PlayerMatchRow
 	for i := range rows {
@@ -650,7 +651,7 @@ func bestKDAMatchCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMat
 }
 
 // bestMMRUnderdogWinCanonical : retourne la victoire avec le plus grand
-// désavantage MMR (enemy_mmr - team_mmr maximal).
+// dÃ©savantage MMR (enemy_mmr - team_mmr maximal).
 func bestMMRUnderdogWinCanonical(rows []canonical.PlayerMatchRow) *canonical.PlayerMatchRow {
 	var best *canonical.PlayerMatchRow
 	bestDelta := 0.0
@@ -668,7 +669,7 @@ func bestMMRUnderdogWinCanonical(rows []canonical.PlayerMatchRow) *canonical.Pla
 	return best
 }
 
-// buildMaitriseHighlightCanonical : tuile Maîtrise (3 slides : HS sum,
+// buildMaitriseHighlightCanonical : tuile MaÃ®trise (3 slides : HS sum,
 // perfect kills sum, accuracy avg).
 func buildMaitriseHighlightCanonical(window []canonical.PlayerMatchRow) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
@@ -752,7 +753,7 @@ func buildPerMinuteHighlightCanonical(window []canonical.PlayerMatchRow) *domain
 	}
 }
 
-// buildSerieHighlightCanonical : tuile Série.
+// buildSerieHighlightCanonical : tuile SÃ©rie.
 func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
 	if s := sliceBestKillingSpreeCanonical(window); s != nil {
@@ -795,7 +796,7 @@ func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow) *domain.H
 	return &domain.HighlightSlide{
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
-		Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+		Detail:     fmt.Sprintf("%s Â· %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
 		ValueColor: homeColorPositive,
 	}
 }
@@ -891,8 +892,8 @@ func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow) *domain.Highli
 // BuildRecentMatchesWithFavoritesFromCanonical : full canonical (P4.3 finale).
 //
 // Lit Map/Playlist/GameVariant labels via Summary.AssetReference.Labels.
-// PairName (composite Halo-only) substitué par GameVariant FR/Default.
-// SkillTierLabel/SkillRankImageURL : laissés vides (TODO ADR 0011 — câblage
+// PairName (composite Halo-only) substituÃ© par GameVariant FR/Default.
+// SkillTierLabel/SkillRankImageURL : laissÃ©s vides (TODO ADR 0011 â€” cÃ¢blage
 // TitleSemanticAdapter / TitleAssetURLAdapter au boot du service).
 func BuildRecentMatchesWithFavoritesFromCanonical(
 	rows []canonical.PlayerMatchRow,
@@ -912,7 +913,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		if r.Summary.MatchID == "" {
 			continue
 		}
-		// Outcome canonical → int Halo pour les helpers existants.
+		// Outcome canonical â†’ int Halo pour les helpers existants.
 		outcome := canonicalOutcomeToInt(r.Self.Outcome)
 		label := outcomeLabelForLocale(outcome, locale)
 		tone := outcomeTone(outcome)
@@ -936,7 +937,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		playlistName, playlistNameFR := assetLabels(r.Summary.Playlist)
 
 		mapUI := labelForLocale(locale, mapNameFR, mapName)
-		// PairName composite Halo-only → proxy GameVariant.
+		// PairName composite Halo-only â†’ proxy GameVariant.
 		modeUI := normalizeHomeModeLabel(labelForLocale(locale, variantNameFR, variantName), mapNameFR, mapName)
 		var playlistUI *string
 		if playlistName != "" || playlistNameFR != "" {
@@ -987,7 +988,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			}
 		}
 
-		// Combat yield depuis canonical (DamageDealt/DamageTaken int → float64).
+		// Combat yield depuis canonical (DamageDealt/DamageTaken int â†’ float64).
 		var offConv, defRes *float64
 		var dmgDealtPtr, dmgTakenPtr *float64
 		if r.Self.DamageDealt != nil {
@@ -1024,8 +1025,8 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  r.Summary.MatchID,
-			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
-			Detail:                   fmt.Sprintf("%s · KD %s · %s", modeUI, ratioStr, accStr),
+			Title:                    fmt.Sprintf("%s Â· %s", label, mapUI),
+			Detail:                   fmt.Sprintf("%s Â· KD %s Â· %s", modeUI, ratioStr, accStr),
 			StartedAt:                &t,
 			OutcomeLabel:             label,
 			OutcomeTone:              tone,
@@ -1069,7 +1070,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 	return items
 }
 
-// canonicalOutcomeToInt convertit canonical.Outcome → int Halo.
+// canonicalOutcomeToInt convertit canonical.Outcome â†’ int Halo.
 func canonicalOutcomeToInt(o canonical.Outcome) int {
 	switch o {
 	case canonical.OutcomeWin:
@@ -1100,7 +1101,7 @@ func assetLabels(ref *canonical.AssetReference) (en, fr string) {
 }
 
 // buildScoreLabelCanonical : reconstruit le score "X-Y" depuis Summary.Teams
-// + Self.TeamID (équivalent canonical de buildHomeScoreLabel).
+// + Self.TeamID (Ã©quivalent canonical de buildHomeScoreLabel).
 func buildScoreLabelCanonical(r canonical.PlayerMatchRow) *string {
 	var score0, score1 int
 	var found0, found1 bool
@@ -1129,8 +1130,8 @@ func buildScoreLabelCanonical(r canonical.PlayerMatchRow) *string {
 }
 
 // BuildSessionSummaryFromCanonical : full canonical (P4.3 finale).
-// Filtre par IsWithFriends (squadMode), trouve la session la plus récente
-// par StartedAtUTC, agrège ses matchs en KPIs.
+// Filtre par IsWithFriends (squadMode), trouve la session la plus rÃ©cente
+// par StartedAtUTC, agrÃ¨ge ses matchs en KPIs.
 func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool) *domain.SessionSummaryItem {
 	if len(rows) == 0 {
 		return nil
@@ -1147,7 +1148,7 @@ func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode
 		return nil
 	}
 
-	// Trouver le label de la session la plus récente (par StartedAtUTC DESC).
+	// Trouver le label de la session la plus rÃ©cente (par StartedAtUTC DESC).
 	latestLabel := latestSessionLabelCanonical(filtered)
 	if latestLabel == "" {
 		return nil
@@ -1177,7 +1178,7 @@ func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode
 	return item
 }
 
-// latestSessionLabelCanonical : trouve le label de la session la plus récente.
+// latestSessionLabelCanonical : trouve le label de la session la plus rÃ©cente.
 func latestSessionLabelCanonical(rows []canonical.PlayerMatchRow) string {
 	sorted := make([]canonical.PlayerMatchRow, len(rows))
 	copy(sorted, rows)
@@ -1205,10 +1206,10 @@ func earliestStartTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 }
 
 // BuildSessionSummariesFromCanonical : full canonical (P4.3 finale).
-// Liste des N dernières sessions solo ou squad avec KPIs agrégés.
+// Liste des N derniÃ¨res sessions solo ou squad avec KPIs agrÃ©gÃ©s.
 //
-// Note ADR 0011 : domain.HomeMatchRow.PairNameFR (composite Halo-only)
-// n'a pas d'équivalent canonical. dominantMode est dérivé de
+// Note ADR 0011 : legacymatch.HomeMatchRow.PairNameFR (composite Halo-only)
+// n'a pas d'Ã©quivalent canonical. dominantMode est dÃ©rivÃ© de
 // Summary.GameVariant.Labels["fr"] || DefaultLabel comme proxy.
 func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, limit int) []domain.SessionSummaryItem {
 	if len(rows) == 0 {
@@ -1226,7 +1227,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 		return nil
 	}
 
-	// Labels distincts triés par StartedAtUTC DESC.
+	// Labels distincts triÃ©s par StartedAtUTC DESC.
 	labels := distinctSessionLabelsCanonical(filtered)
 
 	resultCap := len(labels)
@@ -1279,7 +1280,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 			}
 		}
 
-		// Performance équipe : uniquement en mode escouade.
+		// Performance Ã©quipe : uniquement en mode escouade.
 		var avgTeamPerf *float64
 		if squadMode {
 			var scores []*float64
@@ -1326,7 +1327,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 			}
 		}
 
-		// Mode dominant : GameVariant FR le plus joué (proxy pour PairNameFR).
+		// Mode dominant : GameVariant FR le plus jouÃ© (proxy pour PairNameFR).
 		var dominantMode *string
 		{
 			freq := make(map[string]int)
@@ -1411,7 +1412,7 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 	return result
 }
 
-// distinctSessionLabelsCanonical : labels distincts triés par StartedAtUTC DESC.
+// distinctSessionLabelsCanonical : labels distincts triÃ©s par StartedAtUTC DESC.
 func distinctSessionLabelsCanonical(rows []canonical.PlayerMatchRow) []string {
 	labelTimes := make(map[string]time.Time)
 	for _, r := range rows {
@@ -1434,7 +1435,7 @@ func distinctSessionLabelsCanonical(rows []canonical.PlayerMatchRow) []string {
 	return labels
 }
 
-// latestEndTimeCanonical : end time estimé du dernier match (start + duration).
+// latestEndTimeCanonical : end time estimÃ© du dernier match (start + duration).
 func latestEndTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 	var latest *canonical.PlayerMatchRow
 	for i := range rows {
@@ -1454,7 +1455,7 @@ func latestEndTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 }
 
 // InferHomeSkillHistoryFromCanonical est la variante canonical-aware de l'helper
-// privé inferHomeSkillHistory du service home. Retourne (hasRanked, hasUnranked).
+// privÃ© inferHomeSkillHistory du service home. Retourne (hasRanked, hasUnranked).
 // PvE matchs sont exclus (Summary.IsPvE).
 func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, bool) {
 	hasRanked := false

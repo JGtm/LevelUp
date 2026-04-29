@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // ---------- computeKPIsFromSquadMatches ----------
@@ -41,7 +42,7 @@ func TestComputeKPIsFromSquadMatches_WithAccuracy(t *testing.T) {
 // ---------- computeKPIsFromSynthesisExcluding ----------
 
 func TestComputeKPIsFromSynthesisExcluding_AllOut(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5},
 	}
 	exclude := map[string]bool{"m1": true}
@@ -52,7 +53,7 @@ func TestComputeKPIsFromSynthesisExcluding_AllOut(t *testing.T) {
 }
 
 func TestComputeKPIsFromSynthesisExcluding_PartialFilter(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5},
 		{MatchID: "m2", Outcome: domain.OutcomeLoss, Kills: 3, Deaths: 7},
 	}
@@ -101,7 +102,7 @@ func TestBuildTeammateOptions(t *testing.T) {
 	}
 }
 
-// ---------- computeKPIsFromSquadMatches — HeadshotKills / PerfectKills ----------
+// ---------- computeKPIsFromSquadMatches â€” HeadshotKills / PerfectKills ----------
 
 func TestComputeKPIsFromSquadMatches_HeadshotAndPerfectKills(t *testing.T) {
 	acc := 0.6
@@ -140,10 +141,10 @@ func TestExtractSynthesisSessionLabels_SeparatesSoloSquad(t *testing.T) {
 	s1 := "session-solo-1"
 	s2 := "session-squad-1"
 	ts := time.Now()
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: false, SessionLabel: &s1, StartTime: ts},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s2, StartTime: ts},
-		{MatchID: "m3", IsWithFriends: false, SessionLabel: &s1, StartTime: ts}, // doublon → 1 seul
+		{MatchID: "m3", IsWithFriends: false, SessionLabel: &s1, StartTime: ts}, // doublon â†’ 1 seul
 	}
 	got := extractSynthesisSessionLabels(matches)
 	if len(got.Solo) != 1 {
@@ -160,7 +161,7 @@ func TestExtractSynthesisSessionLabels_SeparatesSoloSquad(t *testing.T) {
 func TestExtractSynthesisSessionLabels_SkipsEmptyLabel(t *testing.T) {
 	empty := ""
 	ts := time.Now()
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: false, SessionLabel: &empty, StartTime: ts},
 		{MatchID: "m2", IsWithFriends: false, SessionLabel: nil, StartTime: ts},
 	}
@@ -175,7 +176,7 @@ func TestExtractSynthesisSessionLabels_TimestampsMinMax(t *testing.T) {
 	t1 := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	t3 := time.Date(2025, 1, 1, 14, 0, 0, 0, time.UTC)
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: true, SessionLabel: &label, StartTime: t2},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &label, StartTime: t1},
 		{MatchID: "m3", IsWithFriends: true, SessionLabel: &label, StartTime: t3},
@@ -198,7 +199,7 @@ func TestExtractSynthesisSessionLabels_SortedByStartedAtDesc(t *testing.T) {
 	tOld := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	tMid := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 	tNew := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: true, SessionLabel: &s1, StartTime: tOld},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s3, StartTime: tNew},
 		{MatchID: "m3", IsWithFriends: true, SessionLabel: &s2, StartTime: tMid},
@@ -215,12 +216,12 @@ func TestExtractSynthesisSessionLabels_SortedByStartedAtDesc(t *testing.T) {
 	}
 }
 
-// ---------- extractSynthesisSessionLabels — expériences & playlists ----------
+// ---------- extractSynthesisSessionLabels â€” expÃ©riences & playlists ----------
 
 func TestExtractSynthesisSessionLabels_AggregatesExperiences(t *testing.T) {
 	label := "sess-mixed"
 	ts := time.Now()
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: true, IsFirefight: false, PlaylistName: "Ranked Arena"},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: false, IsFirefight: false, PlaylistName: "Quick Play"},
 		{MatchID: "m3", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: false, IsFirefight: true, PlaylistName: "Firefight"},
@@ -241,21 +242,21 @@ func TestExtractSynthesisSessionLabels_AggregatesExperiences(t *testing.T) {
 func TestExtractSynthesisSessionLabels_PureRankedSession(t *testing.T) {
 	label := "sess-ranked"
 	ts := time.Now()
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: true, IsFirefight: false, PlaylistName: "Ranked Arena"},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &label, StartTime: ts, IsRanked: true, IsFirefight: false, PlaylistName: "Ranked Arena"},
 	}
 	got := extractSynthesisSessionLabels(matches)
 	e := got.Squad[0]
-	if len(e.Experiences) != 1 || e.Experiences[0] != "PVP classé" {
-		t.Errorf("expected [PVP classé], got %v", e.Experiences)
+	if len(e.Experiences) != 1 || e.Experiences[0] != "PVP classÃ©" {
+		t.Errorf("expected [PVP classÃ©], got %v", e.Experiences)
 	}
 }
 
 // ---------- filterSynthesisByCascade ----------
 
 func TestFilterSynthesisByCascade_NoFiltersReturnsAll(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsRanked: true},
 		{MatchID: "m2", IsRanked: false},
 	}
@@ -266,19 +267,19 @@ func TestFilterSynthesisByCascade_NoFiltersReturnsAll(t *testing.T) {
 }
 
 func TestFilterSynthesisByCascade_ExperienceFilter(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsRanked: true, IsFirefight: false},
 		{MatchID: "m2", IsRanked: false, IsFirefight: false},
 		{MatchID: "m3", IsRanked: false, IsFirefight: true},
 	}
-	got := filterSynthesisByCascade(matches, domain.CascadeFilter{ExperienceTypes: []string{"PVP classé"}})
+	got := filterSynthesisByCascade(matches, domain.CascadeFilter{ExperienceTypes: []string{"PVP classÃ©"}})
 	if len(got) != 1 || got[0].MatchID != "m1" {
 		t.Errorf("expected only m1 (ranked), got %v", got)
 	}
 }
 
 func TestFilterSynthesisByCascade_PlaylistFilter(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", PlaylistName: "Ranked Arena"},
 		{MatchID: "m2", PlaylistName: "Quick Play"},
 	}
@@ -292,7 +293,7 @@ func TestFilterSynthesisByCascade_PlaylistFilter(t *testing.T) {
 
 func TestFilterSynthesisBySession_EmptyFiltersReturnsAll(t *testing.T) {
 	s := "s1"
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: false, SessionLabel: &s},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s},
 	}
@@ -305,7 +306,7 @@ func TestFilterSynthesisBySession_EmptyFiltersReturnsAll(t *testing.T) {
 func TestFilterSynthesisBySession_SoloFilter(t *testing.T) {
 	solo := "session-solo"
 	squad := "session-squad"
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: false, SessionLabel: &solo},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &squad},
 		{MatchID: "m3", IsWithFriends: false, SessionLabel: &squad},
@@ -319,7 +320,7 @@ func TestFilterSynthesisBySession_SoloFilter(t *testing.T) {
 func TestFilterSynthesisBySession_SquadFilter(t *testing.T) {
 	solo := "session-solo"
 	squad := "session-squad"
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: false, SessionLabel: &solo},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &squad},
 		{MatchID: "m3", IsWithFriends: true, SessionLabel: &solo},
@@ -334,13 +335,13 @@ func TestFilterSynthesisBySession_MultiSquadLabels(t *testing.T) {
 	s1 := "session-a"
 	s2 := "session-b"
 	s3 := "session-c"
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", IsWithFriends: true, SessionLabel: &s1},
 		{MatchID: "m2", IsWithFriends: true, SessionLabel: &s2},
 		{MatchID: "m3", IsWithFriends: true, SessionLabel: &s3},
 		{MatchID: "m4", IsWithFriends: false, SessionLabel: &s1},
 	}
-	// Sélection de 2 sessions escouade sur 3 → union des matchs
+	// SÃ©lection de 2 sessions escouade sur 3 â†’ union des matchs
 	got := filterSynthesisBySession(matches, nil, []string{s1, s2})
 	if len(got) != 2 {
 		t.Errorf("expected 2 matches (m1+m2), got %d: %v", len(got), got)
@@ -475,11 +476,11 @@ func TestTeammatesService_GetPage_WithSelectedGamertag(t *testing.T) {
 	if tm.WithKPIs.PerfectKillsPerGame == nil || *tm.WithKPIs.PerfectKillsPerGame != 0.5 {
 		t.Errorf("expected perfect_kills_per_game=0.5, got %v", tm.WithKPIs.PerfectKillsPerGame)
 	}
-	// MapBreakdown doit être calculé
+	// MapBreakdown doit Ãªtre calculÃ©
 	if len(resp.MapBreakdown) == 0 {
 		t.Error("expected non-empty MapBreakdown")
 	}
-	// MatchSeries doit contenir l'entrée pour Ally1
+	// MatchSeries doit contenir l'entrÃ©e pour Ally1
 	if _, ok := resp.MatchSeries["Ally1"]; !ok {
 		t.Error("expected MatchSeries entry for Ally1")
 	}
@@ -502,7 +503,7 @@ func TestTeammatesService_GetPage_UnknownGamertag_Skipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Unknown gamertag non présent dans topRows → skippé
+	// Unknown gamertag non prÃ©sent dans topRows â†’ skippÃ©
 	if len(resp.Teammates) != 0 {
 		t.Errorf("expected 0 teammates, got %d", len(resp.Teammates))
 	}

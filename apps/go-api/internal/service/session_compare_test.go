@@ -7,12 +7,13 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func ptr(s string) *string { return &s }
 
-func makeMatch(label string, kills, deaths int, outcome *int) domain.StatsMatchRow {
-	return domain.StatsMatchRow{
+func makeMatch(label string, kills, deaths int, outcome *int) legacymatch.StatsMatchRow {
+	return legacymatch.StatsMatchRow{
 		SessionLabel: &label,
 		Kills:        kills,
 		Deaths:       deaths,
@@ -22,7 +23,7 @@ func makeMatch(label string, kills, deaths int, outcome *int) domain.StatsMatchR
 }
 
 func TestExtractSessionLabels(t *testing.T) {
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		makeMatch("S1", 10, 5, nil),
 		makeMatch("S2", 8, 6, nil),
 		makeMatch("S1", 12, 4, nil),
@@ -67,7 +68,7 @@ func TestSecondLastOrNil(t *testing.T) {
 }
 
 func TestFilterBySession(t *testing.T) {
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		makeMatch("S1", 10, 5, nil),
 		makeMatch("S2", 8, 6, nil),
 		makeMatch("S1", 12, 4, nil),
@@ -95,7 +96,7 @@ func TestBuildCompareEntry_Nil(t *testing.T) {
 func TestBuildCompareEntry_WithMatches(t *testing.T) {
 	win := analysis.OutcomeWin
 	loss := analysis.OutcomeLoss
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		makeMatch("S1", 15, 5, &win),
 		makeMatch("S1", 10, 8, &loss),
 		makeMatch("S1", 20, 3, &win),
@@ -115,7 +116,7 @@ func TestBuildCompareEntry_WithMatches(t *testing.T) {
 func TestWinRate(t *testing.T) {
 	win := analysis.OutcomeWin
 	loss := analysis.OutcomeLoss
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		makeMatch("S1", 10, 5, &win),
 		makeMatch("S1", 8, 6, &loss),
 	}
@@ -126,7 +127,7 @@ func TestWinRate(t *testing.T) {
 }
 
 func TestAvgKD(t *testing.T) {
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		makeMatch("S1", 10, 5, nil),
 		makeMatch("S1", 20, 10, nil),
 	}
@@ -138,8 +139,8 @@ func TestAvgKD(t *testing.T) {
 
 func TestBuildCompareMetrics_TwoSessions(t *testing.T) {
 	win := analysis.OutcomeWin
-	a := []domain.StatsMatchRow{makeMatch("S1", 15, 5, &win)}
-	b := []domain.StatsMatchRow{makeMatch("S2", 10, 10, nil)}
+	a := []legacymatch.StatsMatchRow{makeMatch("S1", 15, 5, &win)}
+	b := []legacymatch.StatsMatchRow{makeMatch("S2", 10, 10, nil)}
 	metrics := buildCompareMetrics(a, b)
 	if len(metrics) < 4 {
 		t.Fatalf("expected >=4 metrics, got %d", len(metrics))
@@ -197,13 +198,13 @@ func TestSessionCompareService_Compare_WithFilterAndSingleSession(t *testing.T) 
 
 func TestEffectiveKDA(t *testing.T) {
 	precomputed := 1.75
-	if got := effectiveKDA(domain.StatsMatchRow{KDA: &precomputed}); got == nil || *got != precomputed {
+	if got := effectiveKDA(legacymatch.StatsMatchRow{KDA: &precomputed}); got == nil || *got != precomputed {
 		t.Fatalf("expected precomputed KDA, got %#v", got)
 	}
-	if got := effectiveKDA(domain.StatsMatchRow{Kills: 9, Deaths: 0}); got == nil || *got != 9 {
+	if got := effectiveKDA(legacymatch.StatsMatchRow{Kills: 9, Deaths: 0}); got == nil || *got != 9 {
 		t.Fatalf("expected kills fallback, got %#v", got)
 	}
-	if got := effectiveKDA(domain.StatsMatchRow{Kills: 9, Deaths: 4}); got == nil || *got != 2.25 {
+	if got := effectiveKDA(legacymatch.StatsMatchRow{Kills: 9, Deaths: 4}); got == nil || *got != 2.25 {
 		t.Fatalf("expected computed fallback, got %#v", got)
 	}
 }
@@ -211,13 +212,13 @@ func TestEffectiveKDA(t *testing.T) {
 func TestClassifySessionCategory(t *testing.T) {
 	tests := []struct {
 		name  string
-		match domain.StatsMatchRow
+		match legacymatch.StatsMatchRow
 		want  string
 	}{
-		{name: "firefight", match: domain.StatsMatchRow{PlaylistName: "Firefight Normal"}, want: "Firefight"},
-		{name: "ranked", match: domain.StatsMatchRow{IsRanked: true, PlaylistName: "Arena"}, want: "Ranked"},
-		{name: "btb", match: domain.StatsMatchRow{PlaylistName: "Big Team Battle"}, want: "BTB"},
-		{name: "arena", match: domain.StatsMatchRow{PlaylistName: "Quick Play"}, want: "Arena"},
+		{name: "firefight", match: legacymatch.StatsMatchRow{PlaylistName: "Firefight Normal"}, want: "Firefight"},
+		{name: "ranked", match: legacymatch.StatsMatchRow{IsRanked: true, PlaylistName: "Arena"}, want: "Ranked"},
+		{name: "btb", match: legacymatch.StatsMatchRow{PlaylistName: "Big Team Battle"}, want: "BTB"},
+		{name: "arena", match: legacymatch.StatsMatchRow{PlaylistName: "Quick Play"}, want: "Arena"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

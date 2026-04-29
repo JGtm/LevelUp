@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func TestRound1(t *testing.T) {
@@ -39,7 +40,7 @@ func TestMeanRatio_Empty(t *testing.T) {
 
 func TestMeanRatio_WithValues(t *testing.T) {
 	r1, r2 := 2.0, 4.0
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		{Ratio: &r1},
 		{Ratio: &r2},
 		{Ratio: nil},
@@ -63,7 +64,7 @@ func TestWinRate_Home_Empty(t *testing.T) {
 }
 
 func TestWinRate_Home_WithMatches(t *testing.T) {
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		{Outcome: homeOutcomeWin},
 		{Outcome: homeOutcomeLoss},
 		{Outcome: homeOutcomeWin},
@@ -81,7 +82,7 @@ func TestBestRatioMatch_Empty(t *testing.T) {
 }
 
 func TestBestRatioMatch_AllNil(t *testing.T) {
-	matches := []domain.HomeMatchRow{{Ratio: nil}, {Ratio: nil}}
+	matches := []legacymatch.HomeMatchRow{{Ratio: nil}, {Ratio: nil}}
 	if bestRatioMatch(matches) != nil {
 		t.Error("expected nil")
 	}
@@ -89,7 +90,7 @@ func TestBestRatioMatch_AllNil(t *testing.T) {
 
 func TestBestRatioMatch_FindsBest(t *testing.T) {
 	r1, r2, r3 := 1.5, 3.0, 2.0
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		{MatchID: "m1", Ratio: &r1},
 		{MatchID: "m2", Ratio: &r2},
 		{MatchID: "m3", Ratio: &r3},
@@ -137,7 +138,7 @@ func TestLatestSessionLabel_WithSessions(t *testing.T) {
 	t2 := time.Now()
 	s1 := "Session 1"
 	s2 := "Session 2"
-	sessions := []domain.HomeSessionRow{
+	sessions := []legacymatch.HomeSessionRow{
 		{SessionLabel: &s1, StartTime: &t1},
 		{SessionLabel: &s2, StartTime: &t2},
 	}
@@ -157,7 +158,7 @@ func TestEarliestStartTime_FindsEarliest(t *testing.T) {
 	t1 := time.Date(2024, 3, 1, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2024, 3, 1, 8, 0, 0, 0, time.UTC)
 	t3 := time.Date(2024, 3, 1, 12, 0, 0, 0, time.UTC)
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		{StartTime: t1},
 		{StartTime: t2},
 		{StartTime: t3},
@@ -204,7 +205,7 @@ func TestBuildRecentMedia_SkipsEmpty(t *testing.T) {
 func TestComputeKPIs_Full(t *testing.T) {
 	r1, r2 := 2.0, 3.0
 	a1, a2 := 0.4, 0.6
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		{Outcome: homeOutcomeWin, Ratio: &r1, Accuracy: &a1},
 		{Outcome: homeOutcomeLoss, Ratio: &r2, Accuracy: &a2},
 	}
@@ -225,7 +226,7 @@ func TestComputeKPIs_Full(t *testing.T) {
 
 func TestBuildHeroCard(t *testing.T) {
 	r := 2.0
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		{Outcome: homeOutcomeWin, Ratio: &r, StartTime: time.Now()},
 	}
 	card := BuildHeroCard(matches, "TestPlayer", len(matches))

@@ -1,9 +1,9 @@
-// Package service — TimeseriesService : endpoint POST /pages/timeseries (contrat FastAPI).
+// Package service â€” TimeseriesService : endpoint POST /pages/timeseries (contrat FastAPI).
 //
-// Sprint 33 : adapte les données StatsService vers le contrat TimeseriesPageResponse.
+// Sprint 33 : adapte les donnÃ©es StatsService vers le contrat TimeseriesPageResponse.
 //
-// Architecture data-only : le Go ne génère pas de figures Plotly. Le frontend
-// React reconstruit les visualisations via les wrappers ECharts à partir des
+// Architecture data-only : le Go ne gÃ©nÃ¨re pas de figures Plotly. Le frontend
+// React reconstruit les visualisations via les wrappers ECharts Ã  partir des
 // data points bruts fournis dans les onglets (cumulative_kd, ewma_kd_points,
 // kda_buckets, correlation_points, heatmap_data, etc.).
 package service
@@ -18,21 +18,22 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
-// TimeseriesService construit la réponse timeseries au format FastAPI.
+// TimeseriesService construit la rÃ©ponse timeseries au format FastAPI.
 type TimeseriesService struct {
 	statsRepo port.StatsRepository
 	// dataAdapter (optionnel, Phase C+ multi-titres) : point d'extension pour
-	// router LoadTimeseries via la couche canonique. À ce jour, le service
+	// router LoadTimeseries via la couche canonique. Ã€ ce jour, le service
 	// utilise le repo direct car canonical.MetricSeries ne couvre pas encore
-	// la totalité du payload (5 onglets : win_loss/accuracy/objective/form/
-	// lusr). Le hook est en place pour permettre une bascule incrémentale.
+	// la totalitÃ© du payload (5 onglets : win_loss/accuracy/objective/form/
+	// lusr). Le hook est en place pour permettre une bascule incrÃ©mentale.
 	dataAdapter games.TitleDataAdapter
 	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
 	// Quand fourni avec titleSlug + gamertag, GetPage charge canonical et
-	// convertit via statsMatchRowFromCanonical (partagé avec stats_service).
+	// convertit via statsMatchRowFromCanonical (partagÃ© avec stats_service).
 	// TODO P4.3 : retirer le converter quand les analyses timeseries
 	// (buildCumulTab, computeRegressionStats, etc.) consommeront canonical.
 	playerMatchesRepo port.PlayerMatchesRepository
@@ -40,13 +41,13 @@ type TimeseriesService struct {
 	gamertag          string
 }
 
-// NewTimeseriesService crée un TimeseriesService.
+// NewTimeseriesService crÃ©e un TimeseriesService.
 func NewTimeseriesService(repo port.StatsRepository) *TimeseriesService {
 	return &TimeseriesService{statsRepo: repo}
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
-// future bascule LoadTimeseries. Dégradation gracieuse si nil.
+// future bascule LoadTimeseries. DÃ©gradation gracieuse si nil.
 func (s *TimeseriesService) WithDataAdapter(a games.TitleDataAdapter) *TimeseriesService {
 	s.dataAdapter = a
 	return s
@@ -60,14 +61,14 @@ func (s *TimeseriesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposit
 	return s
 }
 
-// GetPage construit la réponse complète avec 5 onglets.
+// GetPage construit la rÃ©ponse complÃ¨te avec 5 onglets.
 func (s *TimeseriesService) GetPage(
 	ctx context.Context,
 	req domain.TimeseriesQueryRequest,
 ) (domain.TimeseriesPageResponse, error) {
 	// P4.3 finale (ADR 0011) : path canonical exclusif.
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
+		return domain.TimeseriesPageResponse{}, fmt.Errorf("TimeseriesService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -81,7 +82,7 @@ func (s *TimeseriesService) GetPage(
 	allMatches := analysis.StatsMatchRowsFromCanonical(canonicalRows)
 
 	matches := filterStatsMatchRows(allMatches, req.Filters)
-	slog.DebugContext(ctx, "timeseries: matches chargés",
+	slog.DebugContext(ctx, "timeseries: matches chargÃ©s",
 		"total", len(allMatches),
 		"apres_filtres", len(matches),
 	)
@@ -103,7 +104,7 @@ func (s *TimeseriesService) GetPage(
 // Onglet Summary
 // ---------------------------------------------------------------------------
 
-func buildTimeseriesSummaryTab(matches []domain.StatsMatchRow) domain.TimeseriesSummaryTab {
+func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesSummaryTab {
 	cards := make([]domain.TimeseriesKpiCard, 0, 6)
 	n := len(matches)
 	if n == 0 {
@@ -141,7 +142,7 @@ func buildTimeseriesSummaryTab(matches []domain.StatsMatchRow) domain.Timeseries
 	if accN > 0 {
 		avgAcc := accSum / float64(accN) * 100
 		cards = append(cards, domain.TimeseriesKpiCard{
-			Key: "accuracy", Label: "Précision", Value: fmt.Sprintf("%.1f%%", avgAcc),
+			Key: "accuracy", Label: "PrÃ©cision", Value: fmt.Sprintf("%.1f%%", avgAcc),
 		})
 	}
 
@@ -152,7 +153,7 @@ func buildTimeseriesSummaryTab(matches []domain.StatsMatchRow) domain.Timeseries
 // Onglet Cumul
 // ---------------------------------------------------------------------------
 
-func buildCumulTab(matches []domain.StatsMatchRow) domain.TimeseriesCumulTab {
+func buildCumulTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesCumulTab {
 	n := len(matches)
 	if n == 0 {
 		return domain.TimeseriesCumulTab{}
@@ -183,7 +184,7 @@ func buildCumulTab(matches []domain.StatsMatchRow) domain.TimeseriesCumulTab {
 			Index: i, StartTime: m.StartTime, Value: float64(cumulNetVal),
 		})
 
-		// Rolling K/D sur fenêtre glissante.
+		// Rolling K/D sur fenÃªtre glissante.
 		start := i - rollingWindow + 1
 		if start < 0 {
 			start = 0
@@ -213,11 +214,11 @@ func buildCumulTab(matches []domain.StatsMatchRow) domain.TimeseriesCumulTab {
 // Onglet Form
 // ---------------------------------------------------------------------------
 
-func buildTimeseriesFormTab(matches []domain.StatsMatchRow) domain.TimeseriesFormTab {
+func buildTimeseriesFormTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesFormTab {
 	regStats := computeRegressionStats(matches)
 
 	// EWMA K/D (exponentially weighted moving average).
-	// alpha = 0.20 — aligné sur Python plot_ewma_kd (alpha=0.20).
+	// alpha = 0.20 â€” aligneÌ sur Python plot_ewma_kd (alpha=0.20).
 	const alpha = 0.20
 	ewmaPoints := make([]domain.CumulativePoint, 0, len(matches))
 	var ewma float64
@@ -243,8 +244,8 @@ func buildTimeseriesFormTab(matches []domain.StatsMatchRow) domain.TimeseriesFor
 	}
 }
 
-// computeRegressionStats calcule les statistiques de régression.
-func computeRegressionStats(matches []domain.StatsMatchRow) domain.TimeseriesRegressionStats {
+// computeRegressionStats calcule les statistiques de rÃ©gression.
+func computeRegressionStats(matches []legacymatch.StatsMatchRow) domain.TimeseriesRegressionStats {
 	const minForTrend = 20
 
 	n := len(matches)
@@ -252,7 +253,7 @@ func computeRegressionStats(matches []domain.StatsMatchRow) domain.TimeseriesReg
 		return domain.TimeseriesRegressionStats{HasEnoughForTrend: false}
 	}
 
-	// Régression linéaire simple sur le K/D.
+	// RÃ©gression linÃ©aire simple sur le K/D.
 	sumX, sumY, sumXY, sumX2 := 0.0, 0.0, 0.0, 0.0
 	count := 0
 	for i, m := range matches {
@@ -281,7 +282,7 @@ func computeRegressionStats(matches []domain.StatsMatchRow) domain.TimeseriesReg
 	slope := (fn*sumXY - sumX*sumY) / denom
 	meanY := sumY / fn
 
-	// R² approximation.
+	// RÂ² approximation.
 	ssTot, ssRes := 0.0, 0.0
 	intercept := (sumY - slope*sumX) / fn
 	for i, m := range matches {
@@ -324,11 +325,11 @@ func computeRegressionStats(matches []domain.StatsMatchRow) domain.TimeseriesReg
 }
 
 // ---------------------------------------------------------------------------
-// Onglet Intensité (Sprint 42)
+// Onglet IntensitÃ© (Sprint 42)
 // ---------------------------------------------------------------------------
 
-// buildIntensityTab construit la heatmap jour×heure et le score/min.
-func buildIntensityTab(matches []domain.StatsMatchRow) domain.TimeseriesIntensityTab {
+// buildIntensityTab construit la heatmap jourÃ—heure et le score/min.
+func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesIntensityTab {
 	if len(matches) == 0 {
 		return domain.TimeseriesIntensityTab{
 			HeatmapData:     []domain.IntensityHeatmapPoint{},
@@ -336,7 +337,7 @@ func buildIntensityTab(matches []domain.StatsMatchRow) domain.TimeseriesIntensit
 		}
 	}
 
-	// Heatmap jour × heure.
+	// Heatmap jour Ã— heure.
 	type cell struct {
 		kills, deaths, count int
 	}
@@ -346,7 +347,7 @@ func buildIntensityTab(matches []domain.StatsMatchRow) domain.TimeseriesIntensit
 
 	for i, m := range matches {
 		day := int(m.StartTime.Weekday())
-		// Convertir Sunday=0 → Monday=0..Sunday=6
+		// Convertir Sunday=0 â†’ Monday=0..Sunday=6
 		day = (day + 6) % 7
 		hour := m.StartTime.Hour()
 		key := [2]int{day, hour}
@@ -394,8 +395,8 @@ func buildIntensityTab(matches []domain.StatsMatchRow) domain.TimeseriesIntensit
 // Onglet Distributions (Sprint 42)
 // ---------------------------------------------------------------------------
 
-// buildDistributionsTab construit les histogrammes KDA/kills et les corrélations.
-func buildDistributionsTab(matches []domain.StatsMatchRow) domain.TimeseriesDistributionsTab {
+// buildDistributionsTab construit les histogrammes KDA/kills et les corrÃ©lations.
+func buildDistributionsTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesDistributionsTab {
 	if len(matches) == 0 {
 		return domain.TimeseriesDistributionsTab{
 			KDABuckets:         []domain.DistributionBucket{},
@@ -417,8 +418,8 @@ func buildDistributionsTab(matches []domain.StatsMatchRow) domain.TimeseriesDist
 	}
 }
 
-// buildKDABuckets crée des buckets pour la distribution K/D.
-func buildKDABuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+// buildKDABuckets crÃ©e des buckets pour la distribution K/D.
+func buildKDABuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const (
 		binWidth = 0.25
 		maxBin   = 5.0
@@ -457,8 +458,8 @@ func buildKDABuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket
 	return buckets
 }
 
-// buildKillsBuckets crée des buckets pour la distribution des kills par match.
-func buildKillsBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+// buildKillsBuckets crÃ©e des buckets pour la distribution des kills par match.
+func buildKillsBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const binWidth = 5.0
 	maxKills := 0
 	for _, m := range matches {
@@ -493,15 +494,15 @@ func buildKillsBuckets(matches []domain.StatsMatchRow) []domain.DistributionBuck
 	return buckets
 }
 
-// buildCorrelationPoints construit les paires de corrélation pour 5 types de scatter.
-func buildCorrelationPoints(matches []domain.StatsMatchRow) []domain.CorrelationDataPair {
+// buildCorrelationPoints construit les paires de corrÃ©lation pour 5 types de scatter.
+func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.CorrelationDataPair {
 	points := make([]domain.CorrelationDataPair, 0, len(matches)*5)
 	for _, m := range matches {
 		kd := 0.0
 		if m.Deaths > 0 {
 			kd = float64(m.Kills) / float64(m.Deaths)
 		}
-		// Durée de vie approchée : time_played / (deaths+1)
+		// DurÃ©e de vie approchÃ©e : time_played / (deaths+1)
 		lifespan := 0.0
 		if m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
 			lifespan = float64(*m.TimePlayedSeconds) / float64(m.Deaths+1)
@@ -545,9 +546,9 @@ func buildCorrelationPoints(matches []domain.StatsMatchRow) []domain.Correlation
 
 // buildMatchRows convertit StatsMatchRow en TimeseriesMatchRow (1 ligne = 1 match).
 //
-// KDA et KDRatio sont calcules par P2.5 (revue 2026-04-29 ADR 0006) — debloque
+// KDA et KDRatio sont calcules par P2.5 (revue 2026-04-29 ADR 0006) â€” debloque
 // la suppression du recompute K/D cote front (TimeseriesKdaBars.tsx:78, B3).
-func buildMatchRows(matches []domain.StatsMatchRow) []domain.TimeseriesMatchRow {
+func buildMatchRows(matches []legacymatch.StatsMatchRow) []domain.TimeseriesMatchRow {
 	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
 	for i, m := range matches {
 		// KDR canonique calcule a partir des compteurs (analysis.KDR).
@@ -577,13 +578,13 @@ func buildMatchRows(matches []domain.StatsMatchRow) []domain.TimeseriesMatchRow 
 }
 
 // ---------------------------------------------------------------------------
-// Histogrammes supplémentaires (Précision, Score/min, Win Rate glissant)
+// Histogrammes supplÃ©mentaires (PrÃ©cision, Score/min, Win Rate glissant)
 // ---------------------------------------------------------------------------
 
-// buildAccuracyBuckets crée des buckets de 5 % pour la distribution de précision.
-func buildAccuracyBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
-	const binWidth = 5.0      // 5 % par bin (valeurs [0, 1] → converties en %)
-	counts := make([]int, 21) // bins 0-5, 5-10, …, 95-100, 100+
+// buildAccuracyBuckets crÃ©e des buckets de 5 % pour la distribution de prÃ©cision.
+func buildAccuracyBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
+	const binWidth = 5.0      // 5 % par bin (valeurs [0, 1] â†’ converties en %)
+	counts := make([]int, 21) // bins 0-5, 5-10, â€¦, 95-100, 100+
 
 	for _, m := range matches {
 		if m.Accuracy == nil {
@@ -610,8 +611,8 @@ func buildAccuracyBuckets(matches []domain.StatsMatchRow) []domain.DistributionB
 	return buckets
 }
 
-// buildScorePerMinBuckets crée des buckets de 10 pts/min pour la distribution score/min.
-func buildScorePerMinBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+// buildScorePerMinBuckets crÃ©e des buckets de 10 pts/min pour la distribution score/min.
+func buildScorePerMinBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const binWidth = 10.0
 	counts := make(map[int]int)
 
@@ -635,13 +636,13 @@ func buildScorePerMinBuckets(matches []domain.StatsMatchRow) []domain.Distributi
 	return buckets
 }
 
-// buildRollingWRBuckets crée des buckets de 5 % pour la distribution du win-rate glissant (fenêtre 14).
-func buildRollingWRBuckets(matches []domain.StatsMatchRow) []domain.DistributionBucket {
+// buildRollingWRBuckets crÃ©e des buckets de 5 % pour la distribution du win-rate glissant (fenÃªtre 14).
+func buildRollingWRBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
 	const (
 		window   = 14
 		binWidth = 5.0
 	)
-	counts := make([]int, 21) // bins 0-5, 5-10, …, 95-100
+	counts := make([]int, 21) // bins 0-5, 5-10, â€¦, 95-100
 
 	for i := range matches {
 		start := i - window + 1

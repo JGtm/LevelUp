@@ -1,10 +1,10 @@
-// Package analysis — home_canonical_test.go : tests parité entre les wrappers
+// Package analysis â€” home_canonical_test.go : tests paritÃ© entre les wrappers
 // `*FromCanonical` et leurs versions legacy (P4.3b, ADR 0011).
 //
-// La conversion canonical → HomeMatchRow est encapsulée dans le wrapper. Les
-// tests vérifient que appeler le wrapper sur des canonical rows produit le
-// même résultat que appeler la version legacy directement sur les
-// HomeMatchRow équivalents.
+// La conversion canonical â†’ HomeMatchRow est encapsulÃ©e dans le wrapper. Les
+// tests vÃ©rifient que appeler le wrapper sur des canonical rows produit le
+// mÃªme rÃ©sultat que appeler la version legacy directement sur les
+// HomeMatchRow Ã©quivalents.
 package analysis
 
 import (
@@ -13,10 +13,11 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 )
 
-// fixturePairForHome construit la même donnée match dans les 2 formats.
-func fixturePairForHome(matchID string, kills, deaths, assists int, outcome int, isRanked, isWithFriends bool) (domain.HomeMatchRow, canonical.PlayerMatchRow) {
+// fixturePairForHome construit la mÃªme donnÃ©e match dans les 2 formats.
+func fixturePairForHome(matchID string, kills, deaths, assists int, outcome int, isRanked, isWithFriends bool) (legacymatch.HomeMatchRow, canonical.PlayerMatchRow) {
 	startTime := time.Date(2026, 4, 29, 14, 0, 0, 0, time.UTC)
 	kda := float64(kills+assists) / float64(maxInt(deaths, 1))
 	accuracy := 0.42
@@ -34,7 +35,7 @@ func fixturePairForHome(matchID string, kills, deaths, assists int, outcome int,
 		canonicalOutcome = canonical.OutcomeDNF
 	}
 
-	domainRow := domain.HomeMatchRow{
+	domainRow := legacymatch.HomeMatchRow{
 		MatchID:          matchID,
 		StartTime:        startTime,
 		Outcome:          outcome,
@@ -83,8 +84,8 @@ func maxInt(a, b int) int {
 	return b
 }
 
-// TestHomeMatchRowFromCanonical_RoundtripFields garantit que les champs clés
-// (kills/deaths/outcome/ratio/KDA) survivent à la conversion canonical → HomeMatchRow.
+// TestHomeMatchRowFromCanonical_RoundtripFields garantit que les champs clÃ©s
+// (kills/deaths/outcome/ratio/KDA) survivent Ã  la conversion canonical â†’ HomeMatchRow.
 func TestHomeMatchRowFromCanonical_RoundtripFields(t *testing.T) {
 	_, canonicalRow := fixturePairForHome("m-1", 15, 6, 3, domain.OutcomeWin, true, true)
 	out := HomeMatchRowFromCanonical(canonicalRow)
@@ -106,21 +107,21 @@ func TestHomeMatchRowFromCanonical_RoundtripFields(t *testing.T) {
 	}
 }
 
-// TestInferHomeSkillHistoryFromCanonical_ParityWithLocal vérifie que la
-// version canonical produit le même résultat que la version locale legacy.
+// TestInferHomeSkillHistoryFromCanonical_ParityWithLocal vÃ©rifie que la
+// version canonical produit le mÃªme rÃ©sultat que la version locale legacy.
 func TestInferHomeSkillHistoryFromCanonical_ParityWithLocal(t *testing.T) {
 	dataset := []struct {
 		isRanked, isPvE, isWithFriends bool
 	}{
 		{true, false, true},
 		{false, false, false},
-		{false, true, false}, // PvE doit être exclu
+		{false, true, false}, // PvE doit Ãªtre exclu
 		{true, false, false},
 	}
-	domainRows := make([]domain.HomeMatchRow, 0, len(dataset))
+	domainRows := make([]legacymatch.HomeMatchRow, 0, len(dataset))
 	canonicalRows := make([]canonical.PlayerMatchRow, 0, len(dataset))
 	for i, d := range dataset {
-		dr := domain.HomeMatchRow{
+		dr := legacymatch.HomeMatchRow{
 			MatchID:     "m-" + string(rune('0'+i)),
 			IsRanked:    d.isRanked,
 			IsFirefight: d.isPvE,

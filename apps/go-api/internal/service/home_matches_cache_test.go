@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func TestHomeMatchesCache_MissOnEmpty(t *testing.T) {
@@ -17,8 +17,8 @@ func TestHomeMatchesCache_MissOnEmpty(t *testing.T) {
 
 func TestHomeMatchesCache_HitAfterSet(t *testing.T) {
 	c := NewHomeMatchesCache()
-	matches := []domain.HomeMatchRow{{MatchID: "m1"}, {MatchID: "m2"}}
-	sessions := []domain.HomeSessionRow{{MatchID: "m1"}}
+	matches := []legacymatch.HomeMatchRow{{MatchID: "m1"}, {MatchID: "m2"}}
+	sessions := []legacymatch.HomeSessionRow{{MatchID: "m1"}}
 
 	c.Set("xuid-1", matches, sessions)
 
@@ -36,9 +36,9 @@ func TestHomeMatchesCache_HitAfterSet(t *testing.T) {
 
 func TestHomeMatchesCache_MissAfterExpiry(t *testing.T) {
 	c := NewHomeMatchesCache()
-	c.Set("xuid-1", []domain.HomeMatchRow{{MatchID: "m1"}}, nil)
+	c.Set("xuid-1", []legacymatch.HomeMatchRow{{MatchID: "m1"}}, nil)
 
-	// Forcer l'expiration directement sur l'entrée.
+	// Forcer l'expiration directement sur l'entrÃ©e.
 	c.mu.Lock()
 	c.entries["xuid-1"].expiresAt = time.Now().Add(-1 * time.Second)
 	c.mu.Unlock()
@@ -51,7 +51,7 @@ func TestHomeMatchesCache_MissAfterExpiry(t *testing.T) {
 
 func TestHomeMatchesCache_MissAfterInvalidate(t *testing.T) {
 	c := NewHomeMatchesCache()
-	c.Set("xuid-1", []domain.HomeMatchRow{{MatchID: "m1"}}, nil)
+	c.Set("xuid-1", []legacymatch.HomeMatchRow{{MatchID: "m1"}}, nil)
 	c.Invalidate("xuid-1")
 
 	_, _, hit := c.Get("xuid-1")
@@ -67,8 +67,8 @@ func TestHomeMatchesCache_InvalidateUnknownKeyNoPanic(t *testing.T) {
 
 func TestHomeMatchesCache_IsolatedPerXUID(t *testing.T) {
 	c := NewHomeMatchesCache()
-	c.Set("xuid-1", []domain.HomeMatchRow{{MatchID: "m1"}}, nil)
-	c.Set("xuid-2", []domain.HomeMatchRow{{MatchID: "m2"}, {MatchID: "m3"}}, nil)
+	c.Set("xuid-1", []legacymatch.HomeMatchRow{{MatchID: "m1"}}, nil)
+	c.Set("xuid-2", []legacymatch.HomeMatchRow{{MatchID: "m2"}, {MatchID: "m3"}}, nil)
 
 	m1, _, _ := c.Get("xuid-1")
 	m2, _, _ := c.Get("xuid-2")
@@ -83,8 +83,8 @@ func TestHomeMatchesCache_IsolatedPerXUID(t *testing.T) {
 
 func TestHomeMatchesCache_OverwriteUpdatesEntry(t *testing.T) {
 	c := NewHomeMatchesCache()
-	c.Set("xuid-1", []domain.HomeMatchRow{{MatchID: "old"}}, nil)
-	c.Set("xuid-1", []domain.HomeMatchRow{{MatchID: "new1"}, {MatchID: "new2"}}, nil)
+	c.Set("xuid-1", []legacymatch.HomeMatchRow{{MatchID: "old"}}, nil)
+	c.Set("xuid-1", []legacymatch.HomeMatchRow{{MatchID: "new1"}, {MatchID: "new2"}}, nil)
 
 	got, _, hit := c.Get("xuid-1")
 	if !hit {
@@ -101,7 +101,7 @@ func TestHomeMatchesCache_ConcurrentReadWrite(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 100; i++ {
-			c.Set("xuid-1", []domain.HomeMatchRow{{MatchID: "m"}}, nil)
+			c.Set("xuid-1", []legacymatch.HomeMatchRow{{MatchID: "m"}}, nil)
 		}
 		close(done)
 	}()

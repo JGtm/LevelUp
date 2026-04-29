@@ -7,11 +7,7 @@
 //	GET /api/v1/players/{slug}/pages/synthesis       → SynthesisPageResponse
 package domain
 
-import (
-	"time"
-
-	"levelup/go-api/internal/legacymatch"
-)
+import "time"
 
 // ---------------------------------------------------------------------------
 // Lignes brutes DuckDB — Squad
@@ -257,6 +253,4 @@ type SynthesisPageRequest struct {
 // Lignes brutes DuckDB — Synthèse (simplified)
 // ---------------------------------------------------------------------------
 
-// SynthesisMatchRow déplacé vers `internal/legacymatch`. P4.3 finale cleanup.
-// Deprecated: utiliser `legacymatch.SynthesisMatchRow`.
-type SynthesisMatchRow = legacymatch.SynthesisMatchRow
+// SynthesisMatchRow déplacé vers `internal/legacymatch` (P4.3 finale cleanup).

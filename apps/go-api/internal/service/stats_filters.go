@@ -1,9 +1,12 @@
 package service
 
-import "levelup/go-api/internal/domain"
+import (
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
+)
 
 // filterStatsMatchRows applique les filtres de contexte sur les StatsMatchRow.
-func filterStatsMatchRows(rows []domain.StatsMatchRow, f domain.FilterContextInput) []domain.StatsMatchRow {
+func filterStatsMatchRows(rows []legacymatch.StatsMatchRow, f domain.FilterContextInput) []legacymatch.StatsMatchRow {
 	filterRows := make([]domain.FilterMatchRow, len(rows))
 	for i, r := range rows {
 		filterRows[i] = domain.FilterMatchRow{
@@ -23,7 +26,7 @@ func filterStatsMatchRows(rows []domain.StatsMatchRow, f domain.FilterContextInp
 		keepIDs[row.MatchID] = struct{}{}
 	}
 
-	out := make([]domain.StatsMatchRow, 0, len(filtered))
+	out := make([]legacymatch.StatsMatchRow, 0, len(filtered))
 	for _, row := range rows {
 		if _, ok := keepIDs[row.MatchID]; ok {
 			out = append(out, row)

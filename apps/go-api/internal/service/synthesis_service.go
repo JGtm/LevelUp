@@ -1,9 +1,9 @@
-// Package service — synthesis_service.go : orchestration de la page Synthèse.
+// Package service â€” synthesis_service.go : orchestration de la page SynthÃ¨se.
 //
-// Sprint 55 D1 : extrait de squad_service.go — SynthesisService devient autonome,
-// implémente port.SynthesisService.
+// Sprint 55 D1 : extrait de squad_service.go â€” SynthesisService devient autonome,
+// implÃ©mente port.SynthesisService.
 //
-// Sprint 55 D2 : period et filters du SynthesisRequest sont réellement appliqués.
+// Sprint 55 D2 : period et filters du SynthesisRequest sont rÃ©ellement appliquÃ©s.
 package service
 
 import (
@@ -16,29 +16,30 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
-// SynthesisService orchestre les données de la page Synthèse.
+// SynthesisService orchestre les donnÃ©es de la page SynthÃ¨se.
 type SynthesisService struct {
 	repo port.SynthesisRepository
 	// dataAdapter (optionnel, Phase 2 plan finition multi-titres) :
 	// quand fourni, GetSynthesisPage mesure la capability match.history pour
-	// loguer une éventuelle dégradation.
+	// loguer une Ã©ventuelle dÃ©gradation.
 	dataAdapter games.TitleDataAdapter
 	// playerMatchesRepo (P4.1+P4.3, ADR 0011) : source canonical-aware. Quand
 	// fournie avec titleSlug+gamertag, GetSynthesisPage charge directement
 	// `[]canonical.PlayerMatchRow` et appelle les analyses *FromCanonical sans
 	// converter. Le path legacy (s.repo.LoadSynthesisMatches) reste pour
-	// rétrocompatibilité tant que la DI cabling n'est pas mise à jour partout.
+	// rÃ©trocompatibilitÃ© tant que la DI cabling n'est pas mise Ã  jour partout.
 	playerMatchesRepo port.PlayerMatchesRepository
-	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
+	// titleSlug est nÃ©cessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug string
 	gamertag  string
 }
 
-// NewSynthesisService crée un SynthesisService avec le repository injecté.
+// NewSynthesisService crÃ©e un SynthesisService avec le repository injectÃ©.
 func NewSynthesisService(repo port.SynthesisRepository) *SynthesisService {
 	return &SynthesisService{repo: repo}
 }
@@ -53,7 +54,7 @@ func (s *SynthesisService) WithDataAdapter(a games.TitleDataAdapter) *SynthesisS
 
 // WithPlayerMatchesRepo (P4.1+P4.3, ADR 0011) injecte le loader canonical-aware.
 // Quand fourni avec titleSlug+gamertag, GetSynthesisPage charge depuis le
-// loader unifié et appelle les analyses *FromCanonical (pas de converter).
+// loader unifiÃ© et appelle les analyses *FromCanonical (pas de converter).
 func (s *SynthesisService) WithPlayerMatchesRepo(
 	repo port.PlayerMatchesRepository,
 	titleSlug, gamertag string,
@@ -64,7 +65,7 @@ func (s *SynthesisService) WithPlayerMatchesRepo(
 	return s
 }
 
-// GetSynthesisPage construit la réponse de la page Synthèse.
+// GetSynthesisPage construit la rÃ©ponse de la page SynthÃ¨se.
 // Sprint 55 D2 : applique period et filters depuis le SynthesisRequest.
 func (s *SynthesisService) GetSynthesisPage(
 	ctx context.Context,
@@ -77,7 +78,7 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 
 	// Phase 2 plan finition multi-titres : log de la capability match.history
-	// quand un DataAdapter est injecté. Sert à mesurer la dégradation potentielle
+	// quand un DataAdapter est injectÃ©. Sert Ã  mesurer la dÃ©gradation potentielle
 	// avant la bascule fonctionnelle (le Synthesis lit aujourd'hui depuis le repo
 	// legacy car canonical.PlayerStats ne couvre pas encore SynthesisMatch).
 	if s.dataAdapter != nil {
@@ -92,10 +93,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 
 	// P4.3 finale (ADR 0011) : path canonical exclusif. Le legacy fallback
-	// path a été supprimé — playerMatchesRepo + titleSlug + gamertag sont
-	// désormais REQUIS (wirés universellement en DI via registry.go).
+	// path a Ã©tÃ© supprimÃ© â€” playerMatchesRepo + titleSlug + gamertag sont
+	// dÃ©sormais REQUIS (wirÃ©s universellement en DI via registry.go).
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
+		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -116,11 +117,11 @@ func (s *SynthesisService) GetSynthesisPage(
 	matchCount := len(filteredCanon)
 	comparison := analysis.ComputeComparisonMetrics(soloKPIs, squadKPIs)
 
-	// D6 : rivalries — encounters depuis shared (requête séparée)
+	// D6 : rivalries â€” encounters depuis shared (requÃªte sÃ©parÃ©e)
 	encounters, _ := s.repo.LoadEncounters(ctx, playerXUID) // erreur non fatale
 	rivalries := buildRivalriesPreview(encounters)
 
-	// D7 : breakdowns map/mode depuis la heatmap (requête séparée)
+	// D7 : breakdowns map/mode depuis la heatmap (requÃªte sÃ©parÃ©e)
 	heatmapRows, _ := s.repo.LoadSynthesisHeatmap(ctx, playerXUID) // erreur non fatale
 	breakdowns := buildBreakdowns(heatmapRows)
 
@@ -151,13 +152,13 @@ func (s *SynthesisService) GetSynthesisPage(
 // Helpers internes
 // =============================================================================
 
-// filterSynthesisByPeriod filtre les matchs Synthèse selon la période demandée.
-// Retourne les matchs filtrés, les filtres appliqués et ceux ignorés.
+// filterSynthesisByPeriod filtre les matchs SynthÃ¨se selon la pÃ©riode demandÃ©e.
+// Retourne les matchs filtrÃ©s, les filtres appliquÃ©s et ceux ignorÃ©s.
 func filterSynthesisByPeriod(
-	rows []domain.SynthesisMatchRow,
+	rows []legacymatch.SynthesisMatchRow,
 	period string,
-	_ domain.FilterContextInput, // filtres avancés — à implémenter après backfill de map/mode
-) ([]domain.SynthesisMatchRow, []string, []string) {
+	_ domain.FilterContextInput, // filtres avancÃ©s â€” Ã  implÃ©menter aprÃ¨s backfill de map/mode
+) ([]legacymatch.SynthesisMatchRow, []string, []string) {
 	applied := []string{}
 	ignored := []string{}
 
@@ -168,28 +169,28 @@ func filterSynthesisByPeriod(
 	case "1w":
 		t := now.AddDate(0, 0, -7)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	case "1m":
 		t := now.AddDate(0, -1, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	case "1y":
 		t := now.AddDate(-1, 0, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	case "2y":
 		t := now.AddDate(-2, 0, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	default:
-		// "all" — pas de filtre temporel
+		// "all" â€” pas de filtre temporel
 	}
 
 	if cutoff == nil {
 		return rows, applied, ignored
 	}
 
-	filtered := make([]domain.SynthesisMatchRow, 0, len(rows))
+	filtered := make([]legacymatch.SynthesisMatchRow, 0, len(rows))
 	for _, r := range rows {
 		if !r.StartTime.Before(*cutoff) {
 			filtered = append(filtered, r)
@@ -198,8 +199,8 @@ func filterSynthesisByPeriod(
 	return filtered, applied, ignored
 }
 
-// buildSynthesisOverview calcule les cumuls, moyennes et pics depuis les matchs filtrés.
-func buildSynthesisOverview(rows []domain.SynthesisMatchRow, soloKPIs domain.SynthesisKPIs) domain.SynthesisOverview {
+// buildSynthesisOverview calcule les cumuls, moyennes et pics depuis les matchs filtrÃ©s.
+func buildSynthesisOverview(rows []legacymatch.SynthesisMatchRow, soloKPIs domain.SynthesisKPIs) domain.SynthesisOverview {
 	var totalKills, totalDeaths, totalWins, totalLosses int
 	var bestKills int
 	var bestKDA float64
@@ -244,7 +245,7 @@ func buildSynthesisOverview(rows []domain.SynthesisMatchRow, soloKPIs domain.Syn
 		avgDeaths := float64(totalDeaths) / float64(n)
 		ov.AvgKills = &avgKills
 		ov.AvgDeaths = &avgDeaths
-		// TotalKDR canonique (P2.5, ADR 0006) — debloque suppression du
+		// TotalKDR canonique (P2.5, ADR 0006) â€” debloque suppression du
 		// recompute SynthesisPage.tsx:139-141 (B3, sum/sum mathematiquement faux).
 		totalKDR := analysis.KDR(totalKills, totalDeaths)
 		ov.TotalKDR = &totalKDR
@@ -267,13 +268,13 @@ func buildScopeDescription(period string, matchCount int) string {
 		"1w":  "7 derniers jours",
 		"1m":  "30 derniers jours",
 		"1y":  "12 derniers mois",
-		"2y":  "2 dernières années",
+		"2y":  "2 derniÃ¨res annÃ©es",
 	}
 	label, ok := labels[period]
 	if !ok {
 		label = period
 	}
-	return fmt.Sprintf("%d matchs — %s", matchCount, label)
+	return fmt.Sprintf("%d matchs â€” %s", matchCount, label)
 }
 
 // =============================================================================
@@ -282,13 +283,13 @@ func buildScopeDescription(period string, matchCount int) string {
 
 const highlightTopN = 5
 
-// buildHighlightsPreview construit les top/pire matchs depuis les matchs filtrés.
-// Tri en place sur des copies — pas de mutation des slices partagés.
-func buildHighlightsPreview(rows []domain.SynthesisMatchRow) domain.SynthesisHighlightsPreview {
+// buildHighlightsPreview construit les top/pire matchs depuis les matchs filtrÃ©s.
+// Tri en place sur des copies â€” pas de mutation des slices partagÃ©s.
+func buildHighlightsPreview(rows []legacymatch.SynthesisMatchRow) domain.SynthesisHighlightsPreview {
 	if len(rows) == 0 {
 		return domain.SynthesisHighlightsPreview{}
 	}
-	toHighlight := func(r domain.SynthesisMatchRow) domain.SynthesisMatchHighlight {
+	toHighlight := func(r legacymatch.SynthesisMatchRow) domain.SynthesisMatchHighlight {
 		return domain.SynthesisMatchHighlight{
 			MatchID:   r.MatchID,
 			Kills:     r.Kills,
@@ -299,10 +300,10 @@ func buildHighlightsPreview(rows []domain.SynthesisMatchRow) domain.SynthesisHig
 		}
 	}
 
-	topByKills := topNByFunc(rows, highlightTopN, func(a, b domain.SynthesisMatchRow) bool {
+	topByKills := topNByFunc(rows, highlightTopN, func(a, b legacymatch.SynthesisMatchRow) bool {
 		return a.Kills > b.Kills
 	})
-	topByKDA := topNByFunc(rows, highlightTopN, func(a, b domain.SynthesisMatchRow) bool {
+	topByKDA := topNByFunc(rows, highlightTopN, func(a, b legacymatch.SynthesisMatchRow) bool {
 		av := 0.0
 		if a.KDA != nil {
 			av = *a.KDA
@@ -313,11 +314,11 @@ func buildHighlightsPreview(rows []domain.SynthesisMatchRow) domain.SynthesisHig
 		}
 		return av > bv
 	})
-	worstByDeaths := topNByFunc(rows, highlightTopN, func(a, b domain.SynthesisMatchRow) bool {
+	worstByDeaths := topNByFunc(rows, highlightTopN, func(a, b legacymatch.SynthesisMatchRow) bool {
 		return a.Deaths > b.Deaths
 	})
 
-	toSlice := func(src []domain.SynthesisMatchRow) []domain.SynthesisMatchHighlight {
+	toSlice := func(src []legacymatch.SynthesisMatchRow) []domain.SynthesisMatchHighlight {
 		out := make([]domain.SynthesisMatchHighlight, len(src))
 		for i, r := range src {
 			out[i] = toHighlight(r)
@@ -331,11 +332,11 @@ func buildHighlightsPreview(rows []domain.SynthesisMatchRow) domain.SynthesisHig
 	}
 }
 
-// topNByFunc retourne les N premiers éléments selon la fonction de comparaison less(a,b).
-func topNByFunc(rows []domain.SynthesisMatchRow, n int, less func(a, b domain.SynthesisMatchRow) bool) []domain.SynthesisMatchRow {
-	cp := make([]domain.SynthesisMatchRow, len(rows))
+// topNByFunc retourne les N premiers Ã©lÃ©ments selon la fonction de comparaison less(a,b).
+func topNByFunc(rows []legacymatch.SynthesisMatchRow, n int, less func(a, b legacymatch.SynthesisMatchRow) bool) []legacymatch.SynthesisMatchRow {
+	cp := make([]legacymatch.SynthesisMatchRow, len(rows))
 	copy(cp, rows)
-	// tri partiel : sélectionner les N premiers
+	// tri partiel : sÃ©lectionner les N premiers
 	for i := 0; i < n && i < len(cp); i++ {
 		minIdx := i
 		for j := i + 1; j < len(cp); j++ {
@@ -351,7 +352,7 @@ func topNByFunc(rows []domain.SynthesisMatchRow, n int, less func(a, b domain.Sy
 	return cp[:n]
 }
 
-// buildRivalriesPreview construit les previews encounters depuis les données brutes.
+// buildRivalriesPreview construit les previews encounters depuis les donnÃ©es brutes.
 func buildRivalriesPreview(rows []domain.EncounterRawRow) domain.SynthesisRivalriesPreview {
 	if len(rows) == 0 {
 		return domain.SynthesisRivalriesPreview{}
@@ -391,14 +392,14 @@ func buildRivalriesPreview(rows []domain.EncounterRawRow) domain.SynthesisRivalr
 	}
 }
 
-// buildBreakdowns agrège les données heatmap en breakdowns carte et mode.
+// buildBreakdowns agrÃ¨ge les donnÃ©es heatmap en breakdowns carte et mode.
 func buildBreakdowns(rows []domain.SynthesisHeatmapRow) domain.SynthesisBreakdowns {
 	if len(rows) == 0 {
 		return domain.SynthesisBreakdowns{}
 	}
 
-	mapAgg := map[string][2]int{}  // map_name → [match_count, wins]
-	modeAgg := map[string][2]int{} // mode_name → [match_count, wins]
+	mapAgg := map[string][2]int{}  // map_name â†’ [match_count, wins]
+	modeAgg := map[string][2]int{} // mode_name â†’ [match_count, wins]
 	for _, r := range rows {
 		m := mapAgg[r.MapName]
 		m[0] += r.MatchCount
@@ -437,7 +438,7 @@ func buildBreakdowns(rows []domain.SynthesisHeatmapRow) domain.SynthesisBreakdow
 			WinRate:    wr,
 		})
 	}
-	// tri par MatchCount desc (sélection partielle des top 10)
+	// tri par MatchCount desc (sÃ©lection partielle des top 10)
 	sortMapEntries(mapEntries)
 	sortModeEntries(modeEntries)
 	if len(mapEntries) > 10 {
@@ -470,7 +471,7 @@ func sortModeEntries(s []domain.SynthesisModeEntry) {
 }
 
 // =============================================================================
-// P4.3 (ADR 0011) : helpers canonical (le converter SynthesisMatchRow est retiré)
+// P4.3 (ADR 0011) : helpers canonical (le converter SynthesisMatchRow est retirÃ©)
 // =============================================================================
 
 // filterSynthesisByPeriodCanonical est la variante canonical de
@@ -490,21 +491,21 @@ func filterSynthesisByPeriodCanonical(
 	case "1w":
 		t := now.AddDate(0, 0, -7)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	case "1m":
 		t := now.AddDate(0, -1, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	case "1y":
 		t := now.AddDate(-1, 0, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	case "2y":
 		t := now.AddDate(-2, 0, 0)
 		cutoff = &t
-		applied = append(applied, fmt.Sprintf("période=%s", period))
+		applied = append(applied, fmt.Sprintf("pÃ©riode=%s", period))
 	default:
-		// "all" — pas de filtre temporel
+		// "all" â€” pas de filtre temporel
 	}
 
 	if cutoff == nil {
@@ -592,7 +593,7 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 }
 
 // buildHighlightsPreviewCanonical est la variante canonical de
-// buildHighlightsPreview. Top/pire matchs sur les mêmes critères
+// buildHighlightsPreview. Top/pire matchs sur les mÃªmes critÃ¨res
 // (kills DESC, KDA DESC, deaths DESC).
 func buildHighlightsPreviewCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisHighlightsPreview {
 	if len(rows) == 0 {
@@ -606,7 +607,7 @@ func buildHighlightsPreviewCanonical(rows []canonical.PlayerMatchRow) domain.Syn
 		if r.Self.Deaths != nil {
 			d = *r.Self.Deaths
 		}
-		// Outcome canonical → int Halo pour le DTO inchangé.
+		// Outcome canonical â†’ int Halo pour le DTO inchangÃ©.
 		var outcome int
 		switch r.Self.Outcome {
 		case canonical.OutcomeWin:

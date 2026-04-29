@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 const (
@@ -36,7 +37,7 @@ var compositeWeights = map[string]float64{
 	"medal_exploit":        0.04,
 	"offensive_conversion": 0.16,
 	"defensive_resistance": 0.06,
-	// Σ = 1.02 → renormalisé automatiquement dans computeCompositeScore
+	// Î£ = 1.02 â†’ renormalisÃ© automatiquement dans computeCompositeScore
 }
 
 var winFactors = map[int]float64{
@@ -76,14 +77,14 @@ func newPlayerState() *playerState {
 // ComputeSkillRatingsBatch calcule les ratings LUSR pour tous les matchs d'un joueur.
 // Port de compute_skill_ratings_batch (skill_rating.py).
 func ComputeSkillRatingsBatch(
-	rows []domain.StatsMatchRow,
+	rows []legacymatch.StatsMatchRow,
 	participants []domain.ParticipantRow,
 ) []domain.LUSRMatchRating {
 	if len(rows) == 0 {
 		return nil
 	}
 
-	sorted := make([]domain.StatsMatchRow, len(rows))
+	sorted := make([]legacymatch.StatsMatchRow, len(rows))
 	copy(sorted, rows)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].StartTime.Before(sorted[j].StartTime)
@@ -158,7 +159,7 @@ func ComputeSkillRatingsBatch(
 }
 
 // trueskillUpdate met a jour mu/sigma apres un match.
-func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) { //nolint:unparam // muOpp réservé pour TrueSkill 2 complet
+func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) { //nolint:unparam // muOpp rÃ©servÃ© pour TrueSkill 2 complet
 	deltaMu := kElo * (actualScore - 0.5) * weightFactor
 	newMu := math.Max(minSigma, mu+deltaMu)
 
@@ -202,7 +203,7 @@ func vWin(t, eps float64) float64 {
 
 // computeCompositeScore calcule le score composite [0,1] pour un match.
 func computeCompositeScore( //nolint:unparam
-	row domain.StatsMatchRow,
+	row legacymatch.StatsMatchRow,
 	avgAcc float64,
 	teammateAvgKE, enemyAvgKE float64, //nolint:unparam
 	avgDamageEff float64,
@@ -338,7 +339,7 @@ func splitParticipants(
 func computeEnemyStrength(
 	enemies []domain.ParticipantRow,
 	avgKE, playerMu float64,
-) (muOpp, sigmaOpp float64) { //nolint:unparam // sigmaOpp actuellement fixe à defaultOpponentSigma, extensible
+) (muOpp, sigmaOpp float64) { //nolint:unparam // sigmaOpp actuellement fixe Ã  defaultOpponentSigma, extensible
 	if len(enemies) == 0 {
 		return playerMu, defaultOpponentSigma
 	}

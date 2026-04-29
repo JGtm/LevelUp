@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // ---------- computeRegressionStats ----------
 
 func TestComputeRegressionStats_NotEnough(t *testing.T) {
-	matches := make([]domain.StatsMatchRow, 10) // < 20
+	matches := make([]legacymatch.StatsMatchRow, 10) // < 20
 	result := computeRegressionStats(matches)
 	if result.HasEnoughForTrend {
 		t.Error("expected HasEnoughForTrend=false for <20 matches")
@@ -18,9 +18,9 @@ func TestComputeRegressionStats_NotEnough(t *testing.T) {
 }
 
 func TestComputeRegressionStats_Improving(t *testing.T) {
-	matches := make([]domain.StatsMatchRow, 30)
+	matches := make([]legacymatch.StatsMatchRow, 30)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{
+		matches[i] = legacymatch.StatsMatchRow{
 			MatchID:   "m",
 			StartTime: time.Now(),
 			Kills:     i + 1, // increasing kills
@@ -40,9 +40,9 @@ func TestComputeRegressionStats_Improving(t *testing.T) {
 }
 
 func TestComputeRegressionStats_Stable(t *testing.T) {
-	matches := make([]domain.StatsMatchRow, 25)
+	matches := make([]legacymatch.StatsMatchRow, 25)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{
+		matches[i] = legacymatch.StatsMatchRow{
 			MatchID:   "m",
 			StartTime: time.Now(),
 			Kills:     10,
@@ -59,9 +59,9 @@ func TestComputeRegressionStats_Stable(t *testing.T) {
 }
 
 func TestComputeRegressionStats_Declining(t *testing.T) {
-	matches := make([]domain.StatsMatchRow, 30)
+	matches := make([]legacymatch.StatsMatchRow, 30)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{
+		matches[i] = legacymatch.StatsMatchRow{
 			MatchID:   "m",
 			StartTime: time.Now(),
 			Kills:     30 - i, // decreasing kills
@@ -75,9 +75,9 @@ func TestComputeRegressionStats_Declining(t *testing.T) {
 }
 
 func TestComputeRegressionStats_AllZeroDeaths(t *testing.T) {
-	matches := make([]domain.StatsMatchRow, 25)
+	matches := make([]legacymatch.StatsMatchRow, 25)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{
+		matches[i] = legacymatch.StatsMatchRow{
 			MatchID:   "m",
 			StartTime: time.Now(),
 			Kills:     10,

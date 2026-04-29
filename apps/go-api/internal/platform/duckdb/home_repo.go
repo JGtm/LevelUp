@@ -1,4 +1,4 @@
-// Package duckdb — home_repo.go : accès DB pour la page d'accueil Mission Control.
+// Package duckdb â€” home_repo.go : accÃ¨s DB pour la page d'accueil Mission Control.
 package duckdb
 
 import (
@@ -15,33 +15,34 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/legacymatch"
 )
 
 const homeStaticTitleSlug = "halo_infinite"
 
 const homeIdentityAssetBasePath = "/api/v1/assets/spartan"
 
-// HomeRepo fournit les données de la page d'accueil depuis DuckDB.
+// HomeRepo fournit les donnÃ©es de la page d'accueil depuis DuckDB.
 type HomeRepo struct {
 	pdb *PlayerDB
 }
 
-// NewHomeRepo crée un HomeRepo pour un joueur.
+// NewHomeRepo crÃ©e un HomeRepo pour un joueur.
 func NewHomeRepo(pdb *PlayerDB) *HomeRepo {
 	return &HomeRepo{pdb: pdb}
 }
 
 // LoadHomeMatches charge tous les matchs du joueur (Q26).
-func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error) {
+func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatchRow, error) {
 	rows, err := r.pdb.ReadDB().Query(ctx, Q26HomeMatches, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var result []domain.HomeMatchRow
+	var result []legacymatch.HomeMatchRow
 	for rows.Next() {
-		var row domain.HomeMatchRow
+		var row legacymatch.HomeMatchRow
 		if err := rows.Scan(
 			&row.MatchID,
 			&row.StartTime,
@@ -112,9 +113,9 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 }
 
 // LoadSpartanIdentity charge le bloc record compact depuis career_progression et metadata.
-// Dégrade silencieusement si la carrière n'est pas synchronisée pour le joueur.
+// DÃ©grade silencieusement si la carriÃ¨re n'est pas synchronisÃ©e pour le joueur.
 //
-//nolint:gocyclo // série de checks Valid sur 7 NullString + appels async (skill_peak_csr/lusr/identity)
+//nolint:gocyclo // sÃ©rie de checks Valid sur 7 NullString + appels async (skill_peak_csr/lusr/identity)
 func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error) {
 	var row domain.HomeSpartanIdentityRow
 	var spartanID sql.NullString
@@ -179,10 +180,10 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	return &row, nil
 }
 
-// enrichSpartanIdentity hydrate les paths d'assets visuels du rang carrière
-// (image rang + adornment) depuis metadata.duckdb. Les libellés (rang courant,
-// rang suivant) sont résolus en aval par le service via le SemanticAdapter
-// (cf. mappings.RankCatalog) — ils ne passent plus par le repo storage.
+// enrichSpartanIdentity hydrate les paths d'assets visuels du rang carriÃ¨re
+// (image rang + adornment) depuis metadata.duckdb. Les libellÃ©s (rang courant,
+// rang suivant) sont rÃ©solus en aval par le service via le SemanticAdapter
+// (cf. mappings.RankCatalog) â€” ils ne passent plus par le repo storage.
 func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSpartanIdentityRow) {
 	if row == nil || row.RankNumber <= 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return
@@ -232,9 +233,9 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 	return peak
 }
 
-// LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes jouées avec leur
-// dernier rang compétitif connu (Q26g). Retourne (nil, nil) si aucune donnée.
-// Le nom de playlist est résolu depuis asset_translations (metadata) puis adapté à la locale.
+// LoadRecentPlaylistRanks retourne les 3 derniÃ¨res playlists distinctes jouÃ©es avec leur
+// dernier rang compÃ©titif connu (Q26g). Retourne (nil, nil) si aucune donnÃ©e.
+// Le nom de playlist est rÃ©solu depuis asset_translations (metadata) puis adaptÃ© Ã  la locale.
 func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) ([]domain.HomePlaylistRank, error) {
 	if r == nil || r.pdb == nil || r.pdb.Player == nil {
 		return nil, nil
@@ -299,7 +300,7 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 		return nil, err
 	}
 
-	// Enrichissement FR depuis asset_translations (même source que les tuiles de matchs).
+	// Enrichissement FR depuis asset_translations (mÃªme source que les tuiles de matchs).
 	playlistIDs := make([]string, 0, len(raws))
 	for _, raw := range raws {
 		if raw.playlistID != "" {
@@ -317,8 +318,8 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 	return result, nil
 }
 
-// resolvePlaylistNameForLocale retourne le nom de playlist adapté à la locale.
-// Pour "en*" → préfère l'anglais ; sinon → préfère le français.
+// resolvePlaylistNameForLocale retourne le nom de playlist adaptÃ© Ã  la locale.
+// Pour "en*" â†’ prÃ©fÃ¨re l'anglais ; sinon â†’ prÃ©fÃ¨re le franÃ§ais.
 func resolvePlaylistNameForLocale(locale, fr, en string) string {
 	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en") {
 		if strings.TrimSpace(en) != "" {
@@ -402,7 +403,7 @@ func optionalNullInt16Value(value sql.NullInt16) int {
 
 // buildHomeSkillPeakBadgeURL construit l'URL du badge de rang.
 // titleSlug : slug de titre (ex "halo_infinite") pour les ratings game-specific (CSR).
-// Passer "" pour les ratings cross-titre (LUSR) — l'URL n'inclut pas de slug.
+// Passer "" pour les ratings cross-titre (LUSR) â€” l'URL n'inclut pas de slug.
 func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titleSlug string) *string {
 	normalizedTier, normalizedSubTier := normalizeHomeSkillPeakBadgeParts(tier, tierLabel, subTier)
 	if normalizedTier == "" {
@@ -426,7 +427,7 @@ func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titl
 	return &p
 }
 
-// homeMedalIconURL retourne l'URL d'une icône de médaille à partir de son ID.
+// homeMedalIconURL retourne l'URL d'une icÃ´ne de mÃ©daille Ã  partir de son ID.
 func homeMedalIconURL(medalID int64) string {
 	return static.URL(static.KindMedal, homeStaticTitleSlug, strconv.FormatInt(medalID, 10), ".png")
 }
@@ -491,8 +492,8 @@ func parseHomeSkillPeakSubTier(value string) int {
 	}
 }
 
-//nolint:gocyclo // 4 enrichments séquentiels (map/pair/playlist/variant) avec multiples Valid checks
-func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []domain.HomeMatchRow) {
+//nolint:gocyclo // 4 enrichments sÃ©quentiels (map/pair/playlist/variant) avec multiples Valid checks
+func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []legacymatch.HomeMatchRow) {
 	if len(matches) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return
 	}
@@ -528,7 +529,7 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []do
 				matches[i].MapNameFR = name
 			}
 		}
-		// Priorité 1 : mode_name_tr appliqué sur tous les matchs (pair_name_fr peut contenir une valeur EN non traduite)
+		// PrioritÃ© 1 : mode_name_tr appliquÃ© sur tous les matchs (pair_name_fr peut contenir une valeur EN non traduite)
 		modeEN := analysis.NormalizeModeLabel(matches[i].PairName)
 		modeFR := modeNamesFR[modeEN]
 		// Si PairName est un UUID (non normalisable), tenter via le nom dans asset_translations
@@ -540,7 +541,7 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []do
 		if modeFR != "" {
 			matches[i].PairNameFR = modeFR
 		} else if needsHomeAssetTranslation(matches[i].PairNameFR, matches[i].PairName) {
-			// Priorité 2 : asset_translations (nom complet de paire, fallback)
+			// PrioritÃ© 2 : asset_translations (nom complet de paire, fallback)
 			if name := strings.TrimSpace(pairNames[matches[i].PairID]); name != "" {
 				matches[i].PairNameFR = name
 			}
@@ -558,7 +559,7 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []do
 	}
 }
 
-func collectMissingHomeAssetIDs(matches []domain.HomeMatchRow, assetType string) []string {
+func collectMissingHomeAssetIDs(matches []legacymatch.HomeMatchRow, assetType string) []string {
 	ids := make(map[string]struct{})
 	for _, match := range matches {
 		var assetID string
@@ -649,7 +650,7 @@ func (r *HomeRepo) loadHomeAssetTranslationNames(ctx context.Context, assetType 
 	return translations, nil
 }
 
-// loadHomeModeNameTranslations résout les noms FR des modes depuis mode_name_tr.
+// loadHomeModeNameTranslations rÃ©sout les noms FR des modes depuis mode_name_tr.
 // modeENNames est la liste de noms EN extraits de pair_name via NormalizeModeLabel.
 func (r *HomeRepo) loadHomeModeNameTranslations(ctx context.Context, modeENNames []string) (map[string]string, error) {
 	if len(modeENNames) == 0 {
@@ -711,16 +712,16 @@ func (r *HomeRepo) CountPlayerMatches(ctx context.Context) (int, error) {
 }
 
 // LoadHomeSessions charge les sessions avec label depuis player_match_enrichment (Q27).
-func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error) {
+func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSessionRow, error) {
 	rows, err := r.pdb.ReadDB().Query(ctx, Q27HomeSessions)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var result []domain.HomeSessionRow
+	var result []legacymatch.HomeSessionRow
 	for rows.Next() {
-		var row domain.HomeSessionRow
+		var row legacymatch.HomeSessionRow
 		if err := rows.Scan(
 			&row.MatchID,
 			&row.SessionID,
@@ -735,12 +736,12 @@ func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRo
 	return result, rows.Err()
 }
 
-// LoadRecentMedia charge les médias récents du joueur (Q28).
+// LoadRecentMedia charge les mÃ©dias rÃ©cents du joueur (Q28).
 // Retourne une liste vide si la table media_files n'existe pas.
 func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error) {
 	rows, err := r.pdb.ReadDB().Query(ctx, Q28RecentMedia, limit)
 	if err != nil {
-		// La table media_files peut ne pas exister — dégradation silencieuse.
+		// La table media_files peut ne pas exister â€” dÃ©gradation silencieuse.
 		if isTableNotFoundErr(err) {
 			return nil, nil
 		}
@@ -767,20 +768,20 @@ func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.Hom
 	return result, rows.Err()
 }
 
-// LoadFavoriteWeapon retourne le nom localisé et le nombre de kills de l'arme la plus utilisée
+// LoadFavoriteWeapon retourne le nom localisÃ© et le nombre de kills de l'arme la plus utilisÃ©e
 // par le joueur sur l'ensemble de ses matchs (Q26k).
-// Dégradation silencieuse : retourne ("", 0, nil) si la table weapon_kills est vide ou absente.
+// DÃ©gradation silencieuse : retourne ("", 0, nil) si la table weapon_kills est vide ou absente.
 func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error) {
 	var weaponID uint64
 	var totalKills int
 	err := r.pdb.ReadDB().QueryRow(ctx, Q26kFavoriteWeapon, r.pdb.XUID).Scan(&weaponID, &totalKills)
 	if err != nil {
-		return "", 0, nil //nolint:nilerr // dégradation silencieuse
+		return "", 0, nil //nolint:nilerr // dÃ©gradation silencieuse
 	}
 
-	// Résolution du label depuis metadata.
+	// RÃ©solution du label depuis metadata.
 	// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
-	// weapon_id est une valeur interne (pas user input) → littéral décimal sûr.
+	// weapon_id est une valeur interne (pas user input) â†’ littÃ©ral dÃ©cimal sÃ»r.
 	nameCol := "COALESCE(name_fr, name_en, '')"
 	if locale == "en" {
 		nameCol = "COALESCE(name_en, name_fr, '')"
@@ -798,9 +799,9 @@ func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (strin
 	return weaponName, totalKills, nil
 }
 
-// LoadMatchMedals charge les médailles d'un joueur pour un lot de matchs (Q26h).
-// Retourne un map match_id → []domain.RecentMatchMedal, trié par count DESC.
-// Labels résolus via medal_definitions (name_fr) en priorité, citation_mappings en fallback.
+// LoadMatchMedals charge les mÃ©dailles d'un joueur pour un lot de matchs (Q26h).
+// Retourne un map match_id â†’ []domain.RecentMatchMedal, triÃ© par count DESC.
+// Labels rÃ©solus via medal_definitions (name_fr) en prioritÃ©, citation_mappings en fallback.
 func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[string][]domain.RecentMatchMedal, error) {
 	result := make(map[string][]domain.RecentMatchMedal)
 	if len(matchIDs) == 0 {
@@ -818,7 +819,7 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 
 	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
 	if err != nil {
-		return result, nil // dégradation silencieuse
+		return result, nil // dÃ©gradation silencieuse
 	}
 	defer rows.Close()
 
@@ -860,16 +861,16 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 	return result, nil
 }
 
-// medalLabel contient le nom localisé et la description d'une médaille.
+// medalLabel contient le nom localisÃ© et la description d'une mÃ©daille.
 type medalLabel struct {
 	label       string
 	description string
 }
 
-// resolveMedalLabels résout les labels de médailles avec la chaîne BCP-47 complète :
+// resolveMedalLabels rÃ©sout les labels de mÃ©dailles avec la chaÃ®ne BCP-47 complÃ¨te :
 //
-//	medal_translations (fr-FR) → medal_definitions.name_fr
-//	→ medal_translations (en-US) → medal_definitions.name_en
+//	medal_translations (fr-FR) â†’ medal_definitions.name_fr
+//	â†’ medal_translations (en-US) â†’ medal_definitions.name_en
 //
 // Miroir de resolve_medal_name(id, lang) dans src/data/medal_definitions.py.
 func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64]medalLabel {
@@ -878,7 +879,7 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64
 		return result
 	}
 
-	// Chaîne BCP-47 : medal_translations (fr-FR, en-US) > medal_definitions (name_fr, name_en).
+	// ChaÃ®ne BCP-47 : medal_translations (fr-FR, en-US) > medal_definitions (name_fr, name_en).
 	q, mArgs, ok := buildLookupQuery(
 		`SELECT md.medal_name_id,
 		        COALESCE(
@@ -918,15 +919,15 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64
 	return result
 }
 
-// LoadMatchCitations charge les citations progressées pour un lot de matchs (Q26i + Q26j).
-// Retourne un map match_id → []domain.HomeMatchCitationRaw, dégradation silencieuse.
+// LoadMatchCitations charge les citations progressÃ©es pour un lot de matchs (Q26i + Q26j).
+// Retourne un map match_id â†’ []domain.HomeMatchCitationRaw, dÃ©gradation silencieuse.
 func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCitationRaw, error) {
 	result := make(map[string][]domain.HomeMatchCitationRaw)
 	if len(matchIDs) == 0 || r.pdb == nil || r.pdb.Player == nil {
 		return result, nil
 	}
 
-	// Étape 1 : charger les deltas + cumulatifs depuis match_citations (player DB).
+	// Ã‰tape 1 : charger les deltas + cumulatifs depuis match_citations (player DB).
 	placeholders := make([]string, len(matchIDs))
 	args := make([]interface{}, len(matchIDs))
 	for i, id := range matchIDs {
@@ -940,7 +941,7 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 		if isTableNotFoundErr(err) {
 			return result, nil
 		}
-		return result, nil // dégradation silencieuse
+		return result, nil // dÃ©gradation silencieuse
 	}
 	defer rows.Close()
 
@@ -967,14 +968,14 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 		return result, nil
 	}
 
-	// Étape 2 : charger les métadonnées (display, image_path, tier_targets) depuis metadata.
+	// Ã‰tape 2 : charger les mÃ©tadonnÃ©es (display, image_path, tier_targets) depuis metadata.
 	norms := make([]string, 0, len(normsSeen))
 	for n := range normsSeen {
 		norms = append(norms, n)
 	}
 	metaMap := r.loadCitationMappingMeta(ctx, norms)
 
-	// Étape 3 : merger.
+	// Ã‰tape 3 : merger.
 	for matchID, cits := range rawByMatch {
 		for _, c := range cits {
 			meta := metaMap[c.norm]
@@ -1040,7 +1041,7 @@ func safeStringValue(s *string) string {
 	return *s
 }
 
-// isTableNotFoundErr détecte les erreurs "table not found" DuckDB.
+// isTableNotFoundErr dÃ©tecte les erreurs "table not found" DuckDB.
 func isTableNotFoundErr(err error) bool {
 	if err == nil {
 		return false
@@ -1055,8 +1056,8 @@ func isTableNotFoundErr(err error) bool {
 // BattlePassCacheRepository implementation
 // ---------------------------------------------------------------------------
 
-// LoadCachedBattlePass retourne les données BP depuis battlepass_snapshots si une
-// entrée récente du joueur existe dans la fenêtre ttl.
+// LoadCachedBattlePass retourne les donnÃ©es BP depuis battlepass_snapshots si une
+// entrÃ©e rÃ©cente du joueur existe dans la fenÃªtre ttl.
 func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) (*domain.BattlePassResponse, bool, error) {
 	secs := int64(ttl.Seconds())
 	query := fmt.Sprintf(`
@@ -1090,18 +1091,18 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 	return resp, true, nil
 }
 
-// challengeSnapshotRow est une ligne agrégée pour la reconstruction ChallengesResponse.
+// challengeSnapshotRow est une ligne agrÃ©gÃ©e pour la reconstruction ChallengesResponse.
 type challengeSnapshotRow struct {
 	status    string
 	xpReward  int
 	expiresAt sql.NullTime
 }
 
-// LoadCachedChallenges retourne un résumé des snapshots récents depuis challenge_snapshots
-// (la snapshot la plus récente par challenge_path dans la fenêtre ttl).
+// LoadCachedChallenges retourne un rÃ©sumÃ© des snapshots rÃ©cents depuis challenge_snapshots
+// (la snapshot la plus rÃ©cente par challenge_path dans la fenÃªtre ttl).
 func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) (*domain.ChallengesResponse, bool, error) {
 	secs := int64(ttl.Seconds())
-	// Sélectionne la snapshot la plus récente par challenge_path dans la fenêtre TTL.
+	// SÃ©lectionne la snapshot la plus rÃ©cente par challenge_path dans la fenÃªtre TTL.
 	query := fmt.Sprintf(`
 		SELECT status, xp_reward, expires_at
 		FROM (
