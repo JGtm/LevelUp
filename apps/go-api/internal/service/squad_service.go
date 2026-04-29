@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -12,11 +13,23 @@ import (
 // SquadService orchestre les données des pages Escouade et Synthèse.
 type SquadService struct {
 	repo port.SquadRepository
+	// playerMatchesRepo (P4.3 finale) : loader canonical-only.
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
+	gamertag          string
 }
 
 // NewSquadService crée un SquadService avec le repository injecté.
 func NewSquadService(repo port.SquadRepository) *SquadService {
 	return &SquadService{repo: repo}
+}
+
+// WithPlayerMatchesRepo (P4.3 finale, ADR 0011) injecte le loader canonical-aware.
+func (s *SquadService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *SquadService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
+	return s
 }
 
 // GetSquadPage construit la réponse de la page Escouade.
@@ -92,11 +105,17 @@ func (s *SquadService) GetSynthesisPage(
 	ctx context.Context,
 	playerXUID string,
 ) (*domain.SynthesisPageResponse, error) {
-	// Chargement des matchs pour les top semaines, KPIs et bipolaire.
-	synthMatches, err := s.repo.LoadSynthesisMatches(ctx, playerXUID)
+	// P4.3 finale : load canonical via PlayerMatchesRepo.
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		return nil, fmt.Errorf("SquadService.GetSynthesisPage: PlayerMatchesRepo non câblé (P4.3 finale)")
+	}
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
 	if err != nil {
 		return nil, err
 	}
+	synthMatches := analysis.SynthesisMatchRowsFromCanonical(canonicalRows)
 
 	soloKPIs := analysis.ComputeSynthesisKPIs(synthMatches, false)
 	squadKPIs := analysis.ComputeSynthesisKPIs(synthMatches, true)

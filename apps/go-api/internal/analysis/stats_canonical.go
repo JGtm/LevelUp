@@ -127,3 +127,60 @@ func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.Stats
 func ComputePerformanceSeriesFromCanonical(rows []canonical.PlayerMatchRow) []*float64 {
 	return ComputePerformanceSeries(StatsMatchRowsFromCanonical(rows))
 }
+
+// =============================================================================
+// Converter canonical → SynthesisMatchRow (P4.3 finale, partagé squad/teammates)
+// =============================================================================
+
+// SynthesisMatchRowFromCanonical convertit canonical.PlayerMatchRow vers
+// domain.SynthesisMatchRow consommé par les helpers internes des services
+// squad / teammates. Permet à ces services de migrer canonical-only sans
+// réécrire ~300 lignes d'internals (extractSynthesisSessionLabels,
+// filterSynthesisByCascade, buildTeammateRow, etc.).
+func SynthesisMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.SynthesisMatchRow {
+	out := domain.SynthesisMatchRow{
+		MatchID:          r.Summary.MatchID,
+		StartTime:        r.Summary.StartedAtUTC,
+		IsWithFriends:    r.Enrichment.IsWithFriends,
+		KDA:              r.Self.KDA,
+		Accuracy:         r.Self.Accuracy,
+		PerformanceScore: r.Enrichment.PerformanceScore,
+		SessionLabel:     r.Enrichment.SessionLabel,
+		TimePlayedSecs:   r.Self.TimePlayed,
+	}
+	if r.Self.Kills != nil {
+		out.Kills = *r.Self.Kills
+	}
+	if r.Self.Deaths != nil {
+		out.Deaths = *r.Self.Deaths
+	}
+	switch r.Self.Outcome {
+	case canonical.OutcomeWin:
+		out.Outcome = domain.OutcomeWin
+	case canonical.OutcomeLoss:
+		out.Outcome = domain.OutcomeLoss
+	case canonical.OutcomeTie:
+		out.Outcome = domain.OutcomeDraw
+	case canonical.OutcomeDNF:
+		out.Outcome = domain.OutcomeDNF
+	}
+	if r.Summary.IsRanked != nil {
+		out.IsRanked = *r.Summary.IsRanked
+	}
+	if r.Summary.IsPvE != nil {
+		out.IsFirefight = *r.Summary.IsPvE
+	}
+	if r.Summary.Playlist != nil {
+		out.PlaylistName = r.Summary.Playlist.DefaultLabel
+	}
+	return out
+}
+
+// SynthesisMatchRowsFromCanonical : version slice partagée par teammates/squad.
+func SynthesisMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.SynthesisMatchRow {
+	out := make([]domain.SynthesisMatchRow, len(rows))
+	for i, r := range rows {
+		out[i] = SynthesisMatchRowFromCanonical(r)
+	}
+	return out
+}
