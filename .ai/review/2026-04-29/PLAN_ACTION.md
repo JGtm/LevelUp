@@ -4,6 +4,52 @@ Branche racine : `feat/multi-title-static-fs-rescope` (continuer dessus)
 Décisions actées : A1=B, A2=A (sauf xuid_aliases), A3=A, A4=A, A5=A, tous T*, tous L*, tous quick wins et bugs.
 Contexte produit : **app multi-user** (proposé en UI) → renforce besoin observability (T7), request_id propagation (T6), tests `flag ON` (T8).
 
+## STATUT GLOBAL (mis à jour 2026-04-29)
+
+Branche `chore/cleanup-and-ux-fixes` — 47+ commits, P0→P8 partiels livrés.
+
+### Sub-phases livrées [DONE]
+- **P0** complète : Q1-Q8 quick wins, B1-B5 bugs UX, Q6 4 endpoints orphelins, .env.local.example audit
+- **P1** complète : 6 ADRs (0005-0010) commités, CLAUDE.md étendu, T7 décidé
+- **P2** complète : `analysis/{indicators,identity,sql_fragments}.go`, Outcome DNF, 13+ migrations inline, DTOs étendus, formatPercent + formatters front
+- **P3.1** annotation ratchet `coverage_filter.sh`
+- **P3.2** 4 tests régression engagement B1-B4
+- **P3.3** `TestContractRoutesDocumented` plafond 65 (delta 49)
+- **P3.4** smoke tests Prestige FlagOff/FlagOn
+- **P3.5** 29 sites `log.Printf` → `slog.*Context` dans `internal/notify`
+- **P3.8** Vitest coverage activé en CI + upload artefact
+- **P4 (préparation)** : ADR 0011 (canonical/semantic separation), `P4_GAP_ANALYSIS.md` 150L, canonical extensions (Teams + SkillSnapshot), `ComputeSynthesisKPIsFromCanonical` + tests parité
+- **P4.4** suppression recomputes K/D front (B3 résolu via DTOs étendus P2.5)
+- **P6.1** `MULTI_TITLE_API_ENABLED=true` + `PRESTIGE_ENABLED=true` en CI
+- **P6.4** `request_id` propagé dans ctx via `ctxkeys.WithRequestID`
+- **P8.3** observability brancher + error_tracker supprimer (ADR 0009)
+- **P8.11** `/healthz` + `/readyz` aliases (séparation liveness/readiness à finaliser)
+
+### Sub-phases partielles [PARTIAL]
+- **P3.6** : 1/6 fichiers `platform/halo` testé (player_token_cache). Reste medal_provider, season_provider, discovery_client, compare_provider, challenges_details
+- **P3.7** : Clock interface + sessions testable. Reste 4 port extractions (HomePersistSink, MediaIndexRepository, MediaUploadRepository, RanksLoader)
+
+### Sub-phases TODO [À FAIRE]
+- **P4.1** pilote home : extensions canonical livrées, refactor service en attente
+- **P4.2** 14 services restants (Synthesis next — ComputeSynthesisKPIsFromCanonical déjà prêt)
+- **P4.3** suppression types legacy `domain.{Home,Synthesis,Stats}MatchRow`
+- **P5** xuid_aliases globalisation + Halo-only adapters extraction
+- **P6.2** `useFieldLabel` partout côté front + manifest synthesis.toml
+- **P6.3** middleware `RequireCapability` + 3 routes admin
+- **P6.5** Prestige composants orphelins branchés (MomentCard/ArcSummary/StatsGlobales)
+- **P7** DTOs Timeseries/Synthesis renommage (sub-PRs séquentiels) + Prestige tests smoke ON
+- **P8.1** linter §20 couleurs (test Vitest custom)
+- **P8.2** observability hot paths instrumentation (5-10 services + queries)
+- **P8.4** god pages découpe (HomePage 1158L, etc.)
+- **P8.5** 47 imports cross-feature → promotion physique
+- **P8.6** TanStack `loader:` 3-4 routes prioritaires
+- **P8.7** audit DuckDB driver dispersion 33 fichiers
+- **P8.8** OpenAPI complétion 57 routes
+- **P8.9** marquer charts legacy `// Deprecated:`
+- **P8.10** release notes service extraction (handlers/help.go)
+- **P8.12** helpers résiduels (useLocalStorageState audit)
+- **P8.13** consolidation `KPICard`/`MetricCard`/`StatCard`
+
 > **Amendement 2026-04-29 (post-vérification)** : intégration de 15 gaps + 4 précisions + 3 hypothèses sous-évaluées + 6 tests manquants identifiés en passe de vérification. Effort total révisé. Ajout d'une section **Politique transverse** appliquée à toutes les phases (tests par couche + logging non-régression + couverture cible). Ajout des sous-phases P3.6, P3.7, P5.4, P8.10, P8.11, P8.12, P8.13. Renommage ADR `0005-prestige-deferred.md` → `0005-prestige-phased-activation.md`.
 
 ---
