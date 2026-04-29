@@ -1,0 +1,130 @@
+// Package legacymatch contient les types de match transitionnels utilisés par
+// les helpers d'analyse et les repos legacy. P4.3 finale (ADR 0011).
+//
+// Ces types ont été déplacés depuis `internal/domain` pour libérer le package
+// domain de ses artefacts transitionnels. Ils restent utilisés par :
+//   - Analyses legacy (BuildHeroCard, ComputeKPIs, build*Tab, etc.) qui sont
+//     du code mort en path canonical actif mais consomment encore ces types.
+//   - Helpers internes squad/teammates (extractSynthesisSessionLabels,
+//     filterSynthesisByCascade, etc.) qui reçoivent des rows converties depuis
+//     canonical via `analysis.{Stats,Synthesis,Home}MatchRowsFromCanonical`.
+//   - Repos legacy (`platform/duckdb/{home,stats,squad,synthesis}_repo.go`)
+//     qui exposent encore Load*Matches comme public API non-port pour les
+//     tests d'intégration.
+//
+// Sprint cleanup post-P4.3 : ces types seront supprimés quand les helpers
+// seront portés full canonical et les analyses legacy retirées.
+package legacymatch
+
+import "time"
+
+// HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
+type HomeMatchRow struct {
+	MatchID            string
+	StartTime          time.Time
+	MapID              string
+	MapName            string
+	MapNameFR          string
+	PairID             string
+	PairName           string
+	PairNameFR         string
+	GameVariantID      string
+	GameVariantName    string
+	GameVariantNameFR  string
+	PlaylistID         string
+	PlaylistName       string
+	PlaylistNameFR     string
+	IsFirefight        bool
+	IsRanked           bool
+	SessionLabel       *string
+	IsWithFriends      bool
+	Outcome            int
+	TeamID             int
+	Team0Score         int
+	Team1Score         int
+	DominanceFlag      int
+	Kills              int
+	Deaths             int
+	Assists            int
+	KDA                *float64
+	Ratio              *float64
+	Accuracy           *float64
+	AvgLifeSeconds     *float64
+	TimePlayedSecs     *int
+	DamageDealt        *float64
+	DamageTaken        *float64
+	TeamMMR            *float64
+	EnemyMMR           *float64
+	PerformanceScore   *float64
+	SkillRatingValue   *float64
+	SkillRatingType    string
+	SkillTier          *string
+	SkillSubTier       int
+	SkillTierLabel     *string
+	SkillRatingDelta   *float64
+	SkillPlaylistGroup *string
+	SkillRankImageURL  *string
+	RankInTeam         *int
+	HeadshotKills      int
+	PerfectKills       int
+	MaxKillingSpree    *int
+}
+
+// HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
+type HomeSessionRow struct {
+	MatchID       string
+	SessionID     *int
+	SessionLabel  *string
+	IsWithFriends bool
+	StartTime     *time.Time
+}
+
+// StatsMatchRow est le type de transfert entre platform/duckdb et les services de stats.
+// Contient toutes les métriques nécessaires au calcul du performance score (Q23).
+type StatsMatchRow struct {
+	MatchID             string
+	StartTime           time.Time
+	Outcome             *int
+	Kills               int
+	Deaths              int
+	Assists             int
+	KDA                 *float64
+	Accuracy            *float64
+	PersonalScore       *int
+	DamageDealt         *float64
+	DamageTaken         *float64
+	TimePlayedSeconds   *int
+	TeamMMR             *float64
+	EnemyMMR            *float64
+	KillsExpected       *float64
+	DeathsExpected      *float64
+	Rank                *int
+	IsRanked            bool
+	PlaylistName        string
+	PairName            string
+	TeamID              *int
+	PerfScoreComputed   *float64
+	SessionID           *string
+	SessionLabel        *string
+	MedalExploitScore   *float64
+	OffensiveConversion *float64
+	DefensiveResistance *float64
+}
+
+// SynthesisMatchRow est une ligne brute chargée depuis Q33b.
+type SynthesisMatchRow struct {
+	MatchID          string
+	StartTime        time.Time
+	Outcome          int
+	Kills            int
+	Deaths           int
+	KDA              *float64
+	IsWithFriends    bool
+	Accuracy         *float64
+	TimePlayedSecs   *int
+	PerformanceScore *float64
+	SessionLabel     *string
+	IsRanked         bool
+	IsFirefight      bool
+	PlaylistName     string
+}

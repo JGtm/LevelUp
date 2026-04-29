@@ -5,80 +5,27 @@
 // directement par leurs propres endpoints (best-effort, nécessite auth Sprint 15).
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/legacymatch"
+)
 
 // ---------------------------------------------------------------------------
 // Lignes brutes DuckDB
 // ---------------------------------------------------------------------------
 
-// HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
-//
-// Deprecated: P4.3 finale (ADR 0011). Type transitionnel — les services et
-// analyses ont migré vers `canonical.PlayerMatchRow`. Ce type reste utilisé
-// par les analyses legacy `analysis.BuildHeroCard`, `analysis.BuildHighlights`,
-// `analysis.BuildSessionSummary`, etc. — qui sont du code mort suite à la
-// migration canonical-only des services. Sera supprimé quand ces analyses
-// legacy + leurs tests seront retirés (sprint dédié, hors P4.3 finale).
-type HomeMatchRow struct {
-	MatchID            string
-	StartTime          time.Time
-	MapID              string
-	MapName            string
-	MapNameFR          string
-	PairID             string
-	PairName           string
-	PairNameFR         string
-	GameVariantID      string
-	GameVariantName    string
-	GameVariantNameFR  string
-	PlaylistID         string
-	PlaylistName       string
-	PlaylistNameFR     string
-	IsFirefight        bool
-	IsRanked           bool
-	SessionLabel       *string
-	IsWithFriends      bool
-	Outcome            int
-	TeamID             int
-	Team0Score         int
-	Team1Score         int
-	DominanceFlag      int
-	Kills              int
-	Deaths             int
-	Assists            int
-	KDA                *float64
-	Ratio              *float64
-	Accuracy           *float64
-	AvgLifeSeconds     *float64
-	TimePlayedSecs     *int
-	DamageDealt        *float64
-	DamageTaken        *float64
-	TeamMMR            *float64
-	EnemyMMR           *float64
-	PerformanceScore   *float64
-	SkillRatingValue   *float64
-	SkillRatingType    string
-	SkillTier          *string
-	SkillSubTier       int
-	SkillTierLabel     *string
-	SkillRatingDelta   *float64
-	SkillPlaylistGroup *string
-	SkillRankImageURL  *string
-	RankInTeam         *int
-	HeadshotKills      int
-	PerfectKills       int
-	MaxKillingSpree    *int
-}
+// HomeMatchRow / HomeSessionRow ont été déplacés vers `internal/legacymatch`
+// pour libérer le package `domain` de ses artefacts transitionnels.
+// P4.3 finale cleanup. Aliases conservés pour la rétrocompat le temps de
+// migrer les références — Sera supprimé quand les ~163 sites de référence
+// auront migré vers `legacymatch.HomeMatchRow` / `legacymatch.HomeSessionRow`.
 
-// HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
-// Deprecated: P4.3 finale — voir HomeMatchRow.
-type HomeSessionRow struct {
-	MatchID       string
-	SessionID     *int
-	SessionLabel  *string
-	IsWithFriends bool
-	StartTime     *time.Time
-}
+// Deprecated: utiliser `legacymatch.HomeMatchRow`.
+type HomeMatchRow = legacymatch.HomeMatchRow
+
+// Deprecated: utiliser `legacymatch.HomeSessionRow`.
+type HomeSessionRow = legacymatch.HomeSessionRow
 
 // HomeMediaRow est une ligne brute chargée depuis Q28 (médias récents).
 type HomeMediaRow struct {
