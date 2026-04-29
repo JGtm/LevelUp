@@ -1,5 +1,38 @@
 # Thought Log
 
+## [2026-04-29] P2 indicateurs canoniques — clôture partielle (P2.1-P2.6 livrés sur chore/cleanup-and-ux-fixes)
+
+**Statut** : Complétée pour P2.1, P2.2, P2.3, P2.4, P2.4bis, P2.5, P2.6. Reste P2.6bis (helpers front mutualisés formatDate/Number/Duration + useLocalStorageState audit).
+
+**6 commits livrés** :
+- `96e4a326 feat(p2)` : helpers Go canoniques `analysis/{indicators,identity,sql_fragments}.go` (KDA, KDR, WinRate, Accuracy, KillsPerGame, DeathsPerGame, PerfTier 5 paliers, IsBot, SQL fragments) + `domain.OutcomeDNF=4` + tests table-driven
+- `a635d887 refactor(p2.3 batch 1)` : KDA inline (3 sites) + 4 WinRate 0..1 migrés vers helpers
+- `f6d20f79 refactor(p2.3 batch 2)` : 9 WinRate 0..100 migrés vers helpers + marker `// TODO P4 ADR 0006` + fix contracttest match-exclusions
+- `0b153434 feat(p2.5)` : DTOs étendus — `TimeseriesMatchRow.{KDA,KDRatio}` + `SynthesisOverview.TotalKDR` (calcul canonique sum/sum)
+- `2f7c918c feat(p2.6)` : helper front `apps/web/src/lib/formatters/percent.ts` (formatPercent + formatPercentValue) + 7 tests Vitest
+
+**Décisions design appliquées** :
+- KDA helper (`KDA(k, a, d int)`) avec floor sur deaths à 1 (ADR 0006). 3 inlines `(K+A)/max(1,D)` migrés.
+- WinRate helper retourne **toujours 0..1**. Sites qui exposent 0..100 conservés avec `* 100` + marker `// TODO P4 ADR 0006` pour la suppression en P4 big-bang. Pas de breaking change API en P2.
+- PerfTier seuils canoniques `[80, 65, 50, 35]` (5 paliers) — type `Tier` + méthode `Token()` retournant `"perf-tier-N"`. Aligné avec `perfScale` côté front (testé Vitest).
+- IsBot factorisé dans `analysis/identity.go` (préfixe `bid(`). 8+ duplications SQL convertibles via `analysis.SQLIsBot` constant (P2.4bis).
+- SQL fragments `SQLIsBot/SQLIsNotBot/SQLIsWin/SQLWinRateExpr/SQLKDRExpr` constants (pas de fonctions) pour audit grep facile.
+- DTOs étendus avec champs `omitempty` — backward compatible. Recomputes front (B3 SynthesisPage:139, TimeseriesKdaBars:78) restent à supprimer en P4.4 ou en quick fix front-only.
+- formatPercent : 1 décimale par défaut, fallback `—` configurable, pas de clamp (responsabilité métier en amont).
+
+**Tests verts** : `./internal/...` (analysis, sync, service, prestige, contracttest, domain, api) + `apps/web/.../percent.test.ts`. `go build ./...` clean.
+
+**Reste P2.6bis** (audit helpers front existants) :
+- 9 helpers `formatDate/Number/Duration` ad-hoc dans features (axe 6 amendé)
+- hook `useLocalStorageState` ad-hoc à mutualiser
+- 3+ implémentations `KPICard`/`MetricCard`/`StatCard` (sera P8.13 selon plan amendé)
+
+**Bilan branche** `chore/cleanup-and-ux-fixes` : 18 commits (P0+P1+P2 partiels). Prête au merge sur `feat/multi-title-static-fs-rescope` à tout moment.
+
+**Prochaine étape** : P2.6bis (audit helpers front) ou P3 (tests fondations + couverture honnête + tests platform/halo). P3 estimé 5-6 j.
+
+---
+
 ## [2026-04-29] P1 ADRs + investigations — clôture (sur branche chore/cleanup-and-ux-fixes)
 
 **Statut** : Complétée — 6 ADRs durables actés (0005-0010), CLAUDE.md mis à jour, décision T7 documentée dans ADR 0009.
