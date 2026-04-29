@@ -86,6 +86,13 @@ jobs:
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"
+          # P6.1 (revue 2026-04-29) : flag MULTI_TITLE_API_ENABLED active en CI
+          # pour exercer les chemins multi-titres (sinon le code derriere le flag
+          # reste non couvert).
+          MULTI_TITLE_API_ENABLED: "true"
+          # P3.4 : flag PRESTIGE_ENABLED active en CI pour exercer les ~21 routes
+          # Prestige (smoke tests + route registration).
+          PRESTIGE_ENABLED: "true"
 
   go-lint:
     name: Go Lint (golangci-lint)
@@ -147,6 +154,10 @@ jobs:
         env:
           CGO_ENABLED: "1"
           LEVELUP_DEMO_MODE: "true"
+          # P6.1 / P3.4 (revue 2026-04-29) : flags actives en CI pour couvrir
+          # les chemins multi-titres + Prestige.
+          MULTI_TITLE_API_ENABLED: "true"
+          PRESTIGE_ENABLED: "true"
 
       # S45 T3 : filtrer internal/api/gen/ et cmd/msal-poc/ du profil
       - name: Filtrer exclusions (gen/ + msal-poc/)
