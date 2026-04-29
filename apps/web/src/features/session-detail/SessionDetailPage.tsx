@@ -13,6 +13,7 @@ import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 
 import { outcomeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
+import { formatNumberFixed } from '@/lib/formatters'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useSessionDetailPage } from './queries'
 import { formatMessage } from '@/lib/i18n/format'
@@ -392,13 +393,14 @@ export function SessionDetailPage() {
   )
 }
 
-function formatNumber(value: number | null, digits: number) {
-  if (value == null) {
-    return '—'
-  }
-  return value.toFixed(digits)
-}
+// formatNumber : remplacé par lib/formatters/number.formatNumberFixed
+// (revue 2026-04-29 P2.6bis). Wrapper local conservé pour les call-sites
+// existants — bascule directe vers formatNumberFixed à terme.
+const formatNumber = formatNumberFixed
 
+// formatPercent : helper LOCAL (la value reçue est déjà en 0..100).
+// TODO P4 ADR 0006 : quand l'API passera en 0..1, basculer vers
+// `formatPercent` canonique de @/lib/formatters (qui fait *100 + " %").
 function formatPercent(value: number | null) {
   if (value == null) {
     return '—'
