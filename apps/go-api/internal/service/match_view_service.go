@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
@@ -159,6 +160,9 @@ func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) 
 //
 //nolint:funlen,cyclop // 11 sections séquentielles d'enrichissement bloquant : meta + analyses + médias
 func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error) {
+	defer func(start time.Time) {
+		observability.RecordDurationMS("match_view_get", time.Since(start).Milliseconds())
+	}(time.Now())
 	// --- Appels séquentiels bloquants (meta est nécessaire pour la suite) ---
 	meta, err := s.repo.GetMatchMeta(ctx, matchID)
 	if err != nil {

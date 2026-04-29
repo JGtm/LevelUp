@@ -5,6 +5,10 @@
 //   - plot_antagonist_duels   → DuelChartData
 //   - plot_match_impact_timeline → ImpactTimelineData
 //   - plot_team_dominance     → DominanceChartData
+//
+// Deprecated: P8.9 (revue 2026-04-29) — utiliser `domain.ChartSeries[T]`
+// pour les nouvelles features. Migration des consommateurs Explorer prévue
+// en backlog post-P8.
 package chart
 
 // ---------------------------------------------------------------------------

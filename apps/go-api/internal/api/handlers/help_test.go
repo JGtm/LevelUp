@@ -12,7 +12,23 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/service"
 )
+
+// noopGit implémente port.GitProvider en retournant des résultats vides.
+// Utilisé par les tests qui veulent s'appuyer uniquement sur le README disque.
+type noopGit struct{}
+
+func (noopGit) LogSHAs(_, _ string) ([]string, error)   { return nil, nil }
+func (noopGit) ShowFile(_, _, _ string) (string, error) { return "", nil }
+
+// makeHelpHandler instancie un HelpHandler avec le service release notes
+// configuré pour ne pas appeler git (P8.10) — fallback disque uniquement.
+func makeHelpHandler(t *testing.T, dir string) *handlers.HelpHandler {
+	t.Helper()
+	builder := service.NewReleaseNotesService(dir, noopGit{})
+	return handlers.NewHelpHandler(builder, filepath.Join(dir, "data", "cache"))
+}
 
 // setupHelpRepo crée un repo git minimal dans un répertoire temporaire
 // avec un README.md contenant les sections What's new spécifiées.
@@ -68,7 +84,7 @@ const sampleReadmeFR = `# LevelUp
 
 func TestHelpHandler_EN_ReturnsWhatsNew(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, sampleReadmeFR)
-	h := handlers.NewHelpHandler(dir)
+	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
 	r.Get("/help/release-notes", h.GetReleaseNotes)
 
@@ -97,7 +113,7 @@ func TestHelpHandler_EN_ReturnsWhatsNew(t *testing.T) {
 
 func TestHelpHandler_FR_ReturnsWhatsNew(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, sampleReadmeFR)
-	h := handlers.NewHelpHandler(dir)
+	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
 	r.Get("/help/release-notes", h.GetReleaseNotes)
 
@@ -118,7 +134,7 @@ func TestHelpHandler_FR_ReturnsWhatsNew(t *testing.T) {
 
 func TestHelpHandler_DefaultLangFR(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, sampleReadmeFR)
-	h := handlers.NewHelpHandler(dir)
+	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
 	r.Get("/help/release-notes", h.GetReleaseNotes)
 
@@ -139,7 +155,7 @@ func TestHelpHandler_DefaultLangFR(t *testing.T) {
 
 func TestHelpHandler_MissingReadme_Returns500(t *testing.T) {
 	dir := t.TempDir() // Pas de README.md
-	h := handlers.NewHelpHandler(dir)
+	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
 	r.Get("/help/release-notes", h.GetReleaseNotes)
 
@@ -154,7 +170,7 @@ func TestHelpHandler_MissingReadme_Returns500(t *testing.T) {
 
 func TestHelpHandler_CacheHit(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, "")
-	h := handlers.NewHelpHandler(dir)
+	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
 	r.Get("/help/release-notes", h.GetReleaseNotes)
 
@@ -190,7 +206,7 @@ func TestHelpHandler_VersionOrder(t *testing.T) {
 ## Features
 `
 	dir := setupHelpRepo(t, readme, "")
-	h := handlers.NewHelpHandler(dir)
+	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
 	r.Get("/help/release-notes", h.GetReleaseNotes)
 
@@ -216,7 +232,7 @@ func TestHelpHandler_VersionOrder(t *testing.T) {
 func TestHelpHandler_DiskCacheSurvivesRestart(t *testing.T) {
 	dir := setupHelpRepo(t, sampleReadmeEN, "")
 	// Premier handler — construit le cache et l'écrit sur disque.
-	h1 := handlers.NewHelpHandler(dir)
+	h1 := makeHelpHandler(t, dir)
 	r1 := chi.NewRouter()
 	r1.Get("/help/release-notes", h1.GetReleaseNotes)
 	w1 := httptest.NewRecorder()
@@ -229,7 +245,7 @@ func TestHelpHandler_DiskCacheSurvivesRestart(t *testing.T) {
 	original := resp1["content"]
 
 	// Deuxième handler (simule un redémarrage) — mémoire vide, doit utiliser le disque.
-	h2 := handlers.NewHelpHandler(dir)
+	h2 := makeHelpHandler(t, dir)
 	r2 := chi.NewRouter()
 	r2.Get("/help/release-notes", h2.GetReleaseNotes)
 	w2 := httptest.NewRecorder()

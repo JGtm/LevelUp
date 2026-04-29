@@ -31,6 +31,7 @@ import (
 	_ "levelup/go-api/internal/observability"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	gitcli "levelup/go-api/internal/platform/git"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -244,14 +245,16 @@ func NewRouter(
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel).
-	// P8.11 (revue 2026-04-29 axe 8 amende) : à terme séparer /healthz (liveness)
-	// et /readyz (readiness). Pour l'instant /health = mixte, alias gardé pour
-	// la rétrocompat. Les nouveaux orchestrateurs (K8s/LB) doivent utiliser
-	// /healthz et /readyz.
-	healthHandler := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).ServeHTTP
-	r.Get("/health", healthHandler)
-	r.Get("/healthz", healthHandler) // alias liveness (n'a jamais besoin de DB)
-	r.Get("/readyz", healthHandler)  // alias readiness (vérifie DB + état boot)
+	//
+	// P8.11 (revue 2026-04-29 axe 8 amende) : sémantique séparée
+	// liveness vs readiness pour orchestrateurs K8s/LB multi-user.
+	//   - /health   : Deprecated, mixte (200 si DB OK), gardé en rétrocompat.
+	//   - /healthz  : liveness — process vivant, 0 I/O DB, latence < 5ms.
+	//   - /readyz   : readiness — vérifie DuckDB + fs, retourne 503 si un check KO.
+	healthH := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion)
+	r.Get("/health", healthH.ServeHTTP)
+	r.Get("/healthz", healthH.Liveness)
+	r.Get("/readyz", healthH.Readiness)
 
 	// P8.3 (revue 2026-04-29, ADR 0009) : monitoring expvar minimal.
 	// Expose /debug/vars (stdlib) avec les compteurs LevelUp publiés sous la
@@ -259,8 +262,13 @@ func NewRouter(
 	// pour multi-user. Les hot paths sont instrumentés progressivement via
 	// observability.RecordDurationMS / IncCounter.
 	//
-	// TODO : protéger derrière auth admin une fois auth système prêt.
-	r.Mount("/debug/vars", http.DefaultServeMux)
+	// P8.3 finalisé : protégé derrière RequireAuth + RequireAdmin (transparent
+	// en mode démo / auth=none, refus 403 sinon).
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		r.Mount("/debug/vars", http.DefaultServeMux)
+	})
 
 	// v1 API
 	r.Route("/api/v1", func(r chi.Router) {
@@ -291,8 +299,11 @@ func NewRouter(
 		changelog := handlers.NewChangelogHandler(cfg.RepoRoot)
 		r.Get("/changelog", changelog.GetChangelog)
 
-		// Aide : notes de version extraites du README (EN/FR)
-		help := handlers.NewHelpHandler(cfg.RepoRoot)
+		// Aide : notes de version extraites du README (EN/FR).
+		// P8.10 : la logique git + parsing markdown vit dans
+		// service.ReleaseNotesService ; le handler ne fait que cache + I/O HTTP.
+		releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot, gitcli.NewCLI())
+		help := handlers.NewHelpHandler(releaseBuilder, filepath.Join(cfg.RepoRoot, "data", "cache"))
 		r.Get("/help/release-notes", help.GetReleaseNotes)
 
 		// Sprint 14 : contexte de session

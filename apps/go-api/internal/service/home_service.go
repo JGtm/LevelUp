@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 
@@ -272,6 +273,9 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 // P4.3 finale (ADR 0011) : path canonical exclusif. Toutes les analyses
 // passent par les `analysis.*FromCanonical`. Le legacy fallback a Ã©tÃ© supprimÃ©.
 func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error) {
+	defer func(start time.Time) {
+		observability.RecordDurationMS("home_get_page", time.Since(start).Milliseconds())
+	}(time.Now())
 	d, err := s.fetchHomePageData(ctx, locale)
 	if err != nil {
 		return nil, err

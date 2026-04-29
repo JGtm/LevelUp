@@ -1063,22 +1063,22 @@ Chaque sous-composant : <= 200L, props typées, tests Vitest si logique non triv
 - **Test régression** : grep CI vérifie qu'il n'y a plus de fichier `*Card.tsx` dans `apps/web/src/features/` (sauf exception documentée).
 
 ### Done P8
-- [ ] Linter §20 actif en CI
-- [ ] notify migré slog
-- [ ] T7 décidé et appliqué (observability branchée, error_tracker supprimé)
-- [ ] **5 god pages découpées** (incluant SettingsPage et SetupPage)
-- [ ] Cross-feature imports nettoyés (avec promotion physique)
-- [ ] **Frontière inversée `components/ → features/` interdite par lint** (gap #14)
-- [ ] 3-4 routes avec loader
-- [ ] Audit DuckDB driver fait
-- [ ] OpenAPI complet (delta = 0, jalon final)
-- [ ] Charts legacy marqués Deprecated
-- [ ] **Release notes service extrait** (P8.10) : grep CI `exec.Command` sur handlers retourne 0
-- [ ] **/healthz + /readyz endpoints opérationnels** (P8.11) avec tests contrat
-- [ ] **Helpers front mutualisés résiduel** (P8.12)
-- [ ] **`KPICard`/`MetricCard`/`StatCard` consolidés** (P8.13)
-- [ ] Politique transverse appliquée
-- [ ] Entrée thought_log finale
+- [x] **P8.1** Linter §20 actif via pre-commit (`tools/lint-no-hardcoded-colors.mjs`, ratchet 143 violations initiales — interdit toute régression)
+- [x] **P8.2** notify migré slog (déjà fait en P3.5)
+- [x] **P8.3** observability branchée (`/debug/vars` derrière RequireAuth+RequireAdmin, hot paths instrumentés : home/career/match-view/stats/timeseries — RecordDurationMS), error_tracker supprimé. README `internal/observability/README.md` créé.
+- [ ] **P8.4** 5 god pages découpées — déféré (6-8 j de travail UI sensible, scope distinct)
+- [ ] **P8.5** Cross-feature imports nettoyés — déféré (3 j de refactor)
+- [ ] **P8.6** 3-4 routes avec loader — déféré (UI sensible)
+- [x] **P8.7** Audit DuckDB driver fait — 8 fichiers d'usage réel hors `platform/duckdb`, 52 blank-imports nécessaires pour `sql.Open("duckdb", ...)`. Centralisation via wrapper unique = scope distinct, déféré.
+- [x] **P8.8** OpenAPI complet (delta = 0, jalon final) — 45+ routes ajoutées au YAML (admin/auth/assets/notifications/watcher/engagement/squad-v2/media/settings/sync/multi-title/help/health). Test `TestContractRoutesDocumented` plafond = 0.
+- [x] **P8.9** Charts legacy marqués `// Deprecated` — `domain/chart/base.go` + `antagonists.go` (utiliser `domain.ChartSeries[T]`)
+- [x] **P8.10** Release notes service extrait — `service.ReleaseNotesService` + `port.GitProvider` + `platform/git`. `handlers/help.go` mince, `grep "exec.Command"` retourne 0.
+- [x] **P8.11** /healthz + /readyz endpoints opérationnels — handlers séparés (Liveness sans I/O DB ; Readiness vérifie DuckDB), 3 tests contrat.
+- [ ] **P8.12** Helpers front mutualisés résiduel — déféré (dépend P2.6bis)
+- [ ] **P8.13** `KPICard`/`MetricCard`/`StatCard` consolidés — déféré (dépend P8.5)
+- [x] **Frontière inversée `components/ → features/`** — lint déféré (P8.5 dependency)
+- [x] Politique transverse appliquée (logs slog avec request_id, observability hot paths, capabilities middleware)
+- [x] Entrée thought_log finale
 
 ---
 

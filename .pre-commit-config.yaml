@@ -54,6 +54,16 @@ repos:
         files: ^(apps/web/src/.*\.(ts|tsx)|config/titles/halo_infinite/mappings/fields\.toml|tools/lint-no-hardcoded-fields\.mjs)$
         pass_filenames: false
 
+      # P8.1 (revue 2026-04-29 axe 5) : interdit les hex/Tailwind couleur
+      # hardcodés dans `apps/web/src/{features,components}/`. Ratchet à
+      # 143 violations (état initial) — tout dépassement échoue le build.
+      - id: lint-no-hardcoded-colors
+        name: Lint couleurs (no-hardcoded-colors)
+        entry: node tools/lint-no-hardcoded-colors.mjs
+        language: system
+        files: ^(apps/web/src/.*\.(ts|tsx|js|jsx)|tools/lint-no-hardcoded-colors\.mjs)$
+        pass_filenames: false
+
   # Hooks génériques de pre-commit
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
