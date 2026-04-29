@@ -1,5 +1,127 @@
 # Thought Log
 
+## [2026-04-29] revue de code — finalisation : INDEX, 6 ADRs, plan amendé, 2 passes vérification
+
+**Statut** : Complété — revue de code 2026-04-29 figée, démarrage P0 en cours.
+
+**Livrables produits** (tous dans `.ai/review/2026-04-29/` sauf ADRs) :
+- `INDEX.md` consolidé : 129 constats (38 BLOQUANT + 59 DETTE + 32 AMÉLIORATION) + 6 patterns transverses + cross-référence plan
+- `PLAN_ACTION.md` amendé : 1071+ lignes, 9 phases P0-P8, ~50-65 j-h estimé (12-13 sem temps plein)
+- 6 ADRs dans `docs/adr/` : `0005-prestige-phased-activation`, `0006-canonical-indicators-and-units`, `0007-canonical-bigbang-migration`, `0008-db-schema-multi-title-and-xuid-global`, `0009-expvar-monitoring-multi-user`, `0010-timeseries-binning-server-side`
+- 2 passes de vérification : 1ère identifie 15 gaps + 4 précisions + 3 hypothèses + 6 tests manquants ; 2nde valide 0 BLOQUANT résiduel après amendement
+
+**Pattern systémique majeur identifié** : « scaffolding then forget » — recoupé sur 5 axes (2, 4, 8, 9, 11), pattern signature du repo. Module Prestige + `useFieldLabel` + `internal/observability` + `error_tracker` désactivé + tokens heatmap-divergent morts + 3 routes fantômes notifications + 4 endpoints API orphelins.
+
+**Politique transverse introduite** dans le plan (référencée par chaque phase) : tests par couche (analysis pur, service mock port, handlers httptest, platform :memory:, Vitest+RTL+Playwright), tests de non-régression nominatifs par type de refactor, logging slog.*Context obligatoire avec request_id, couverture cible par phase. Done definition globale non négociable.
+
+**Décisions design clés actées** (pendant amendements) :
+- A1=B Big bang canonical migration (15-16 services en 1 PR sur branche dédiée)
+- A2=A Pas de title_id colonne sur tables transverses (FS-isolation suffit) sauf `xuid_aliases` global (ADR 0008)
+- A3=A Activation phasée Prestige (staging puis prod, ADR 0005)
+- A4=A `MULTI_TITLE_API_ENABLED=true` en CI
+- A5=A Renommage DTOs Timeseries/Synthesis sans couche d'abstraction (regen openapi-typescript fait office)
+- T7 observability brancher (multi-user) + error_tracker supprimer (ADR 0009)
+- PerfTier seuils canoniques `[80, 65, 50, 35]` (5 paliers, source = `perfScale` front testé)
+
+**3 corrections résiduelles appliquées** post-2nde vérification :
+- P3.7 effort 1.5j → 2-2.5j
+- P5.2 et P7.1 ajout mentions explicites `slog.*Context`
+- P8.13 explicitement après P8.5 (raison : éviter double effort sur composants déplacés par P8.5)
+
+**Prochaine étape** : démarrage P0 (hygiène + bugs UX visibles + audit `.env.local.example` complet, 1-2 j) sur branche `chore/cleanup-and-ux-fixes` issue de `feat/multi-title-static-fs-rescope`.
+
+---
+
+## [2026-04-29] revue projet — 10 axes + axe 11 (feature flags) + amendements post-vérification
+
+**Statut** : Complété — revue 10-axes terminée, vérification finale ajoutée, 4 axes amendés, 1 axe créé a posteriori.
+
+**Rapports produits** dans `.ai/review/2026-04-29/` :
+- `axe-1-agnosticisme.md` à `axe-10-deps.md` (10 axes initiaux)
+- `verification-finale-scaffolding.md` (passe ciblée déclenchée par découverte d'une route stub manquée par la revue : `/replay` 2D)
+- `axe-11-feature-flags.md` (nouveau axe a posteriori)
+
+**Pattern systémique majeur identifié** : « scaffolding then forget » — fondations introduites mais jamais branchées. Recensé sur ~12 instances dans 6 axes, dont :
+- Module Prestige complet (~30 fichiers Go + 8 composants TS) — **trou structurel non couvert par les 10 axes initiaux**, traité en axe 11
+- `useFieldLabel` 0 usage prod (axe 4)
+- `MULTI_TITLE_API_ENABLED` OFF par défaut (axe 2)
+- `internal/observability` mort + middleware `error_tracker` désactivé (axe 8)
+- Route `/replay` 2D stub (signalée par user → trigger de la passe vérification)
+- 3 routes fantômes notifications `/defis`, `/sync`, `/help/changelog` (axe 4 amendé)
+- 4 endpoints API orphelins (axe 9 amendé)
+- 6 capabilities Halo non gatées (axe 2 amendé)
+
+**Amendements appliqués** :
+- Axe 2 : +6 capabilities mortes, +2 endpoints preview/career orphelins
+- Axe 4 : +`__root.tsx` orphelin, +3 composants Prestige sans importateur, +3 routes fantômes notifications
+- Axe 8 : +`post_sync_deltas.go` émet vers routes 404 (observability output cassée)
+- Axe 9 : +endpoints API orphelins, +caps mortes, +`__root.tsx` promu en constat
+
+**Recoupement avec travail parallèle 2026-04-29** : pendant la passe de vérification, l'activation de `PRESTIGE_ENABLED` (entrée thought_log précédente) a documenté le flag dans `.env.local.example`, **rendant partiellement obsolète** le BLOQUANT 1 axe 11 (sous-titre « non documenté »). Doc axe 11 mise à jour pour refléter l'état réel : flag documenté côté env, mais dette structurelle restante (pas d'ADR de bascule, pas de tests « flag ON », 3 composants orphelins).
+
+**Décisions produit prises pendant la revue** :
+- Aucun recompute KDA/KDR/K/D justifié, valeur API fait foi partout. Convention canonique d'unité 0..1 côté API, formatage front via helper `formatPercent(ratio, decimals)`.
+- Marqueurs de sévérité texte `[BLOQUANT]/[DETTE]/[AMÉLIORATION]` (pas d'emojis).
+
+**Suivi recommandé prioritaire** :
+- ADR `0005-prestige-deferred.md` — décider activation ou archivage du module Prestige
+- ADR formule + unité canonique des indicateurs (KDA, KDR, WinRate, Accuracy) + helper `internal/analysis/indicators.go`
+- Hygiène git immédiate (1h) : `git rm --cached` 5 binaires/coverage trackés (~88 MB)
+- Audit `.env.local.example` : ajouter les 10+ ENV vars `LEVELUP_*` / `STEAM_API_KEY` toujours non documentées
+- Fix les 3 routes fantômes notifications (bug fonctionnel, 404 sur clic)
+
+---
+
+## [2026-04-29] activation PRESTIGE_ENABLED
+
+**Statut** : Complété
+
+**Décision technique** : Ajout de `PRESTIGE_ENABLED=true` dans `.env.local` (instance locale). Le flag est lu à chaque appel `prestige.IsEnabled()` sans cache — pas de redémarrage requis si modifié à chaud. `.env.local.example` documenté avec commentaire explicatif.
+
+**Résultats observés** : Routes Prestige montées au prochain démarrage du Go API ; sync hook post-ingestion actif ; frontend ne verra plus de 404 sur les endpoints prestige.
+
+**Prochaine étape** : Redémarrer le Go API pour que le bundle Prestige s'initialise (`tuning.toml` + templates + preset arcs Halo).
+
+## [2026-04-29] documentation Objectifs / Prestige / Notifications
+
+**Statut** : Complété
+
+**Décision technique** : Ajout des trois features dans les 5 fichiers de documentation concernés, en respectant la distinction d'audience (CHANGELOG = technique, README = utilisateur final, glossaire = explication conceptuelle).
+
+**Résultats observés** :
+- `apps/web/src/features/help/i18n.ts` — nouvelle section « Progression & Gamification » avec entrées Objectifs + Prestige en FR et EN. Objectifs : mention des défis individuels ET d'escouade (collectif/compétitif).
+- `docs/CHANGELOG.md` — Phase 14 (2026-04-29) avec détail technique Go API + React/TS pour les 3 modules. Tables squad_challenge / squad_challenge_participant documentées.
+- `docs/FR/CHANGELOG.md` — version [7.0.1] orientée utilisateur pour les 3 features. Défis d'escouade collectif/compétitif mentionnés.
+- `README.md` (EN) — section « Objectives & Prestige » + « In-app notifications » dans What's new v7.0 ; items Objectives + Prestige dans Features > Track your career ; notification center dans Notifications & Setup. Toutes les occurrences "personal" → "individual and squad".
+- `docs/FR/README.md` — idem en français.
+- Notifications non ajoutées au glossaire (conformément à la demande).
+
+**Prochaine étape** : Aucune — tâche ponctuelle de documentation.
+
+## [2026-04-29] revue projet axe 1 — agnosticisme données/charts (rapport + amendements)
+
+**Statut** : En cours — axe 1 livré et amendé, axes 2-10 à faire.
+
+**Rapport produit** : [.ai/review/2026-04-29/axe-1-agnosticisme.md](.ai/review/2026-04-29/axe-1-agnosticisme.md)
+
+**Verdict initial** (sous-agent) : 5 BLOQUANT, 4 DETTE, 2 AMÉLIORATION. Couche basse charts saine (`ChartSeries[T]` + 11 wrappers, ~15 fichiers ECharts), mais contrat non appliqué uniformément aux services produit (Home/Synthesis/Career/MatchView/SessionCompare exposent des DTOs pré-shape).
+
+**Amendements après vérification des usages** :
+- BLOQUANT KDA reclassé : KDA n'est jamais recomputé côté front (vérifié sur `match-card.tsx:363`, `SynthesisHighlightsSection.tsx:18`). Les 2 sites front pris pour des recomputes KDA sont en fait des K/D (KDR), à supprimer également.
+- BLOQUANT Win Rate étendu à `accuracy` (même divergence 0..1 vs 0..100) + précision décimale à harmoniser.
+- DETTE « Recompute K/D côté front » fusionnée dans le BLOQUANT KDA/KDR.
+
+**Décisions produit actées** :
+- Aucun recompute KDA, KDR ou K/D ne doit subsister côté front : la valeur API fait foi partout. Pour `TimeseriesMatchRow` qui n'expose ni `kda` ni `kd_ratio`, fixer le DTO (pas garder le recompute). Pour `SynthesisPage.tsx:139-141` qui calcule `total_kills/total_deaths` sur totaux (mathématiquement faux), utiliser `kpis.global_ratio` ou exposer `total_kdr`.
+- Convention canonique d'unité : **0..1** côté API (ratio), formatage `*100` + arrondi décimal **uniquement à l'affichage** front via helper `formatPercent(ratio, decimals)`.
+- Précision : 1 décimale par défaut, 2 pour ratios sub-unitaires (KDA, KDR), 0 pour compteurs.
+
+**Suivi** :
+- Follow-up différé (priorité B) : ADR « formule + unité canonique » + helper `internal/analysis/indicators.go` (KDA, KDR, WinRate, Accuracy).
+- Prochaine étape : revue axe 2 (multi-titres) — va creuser `canonical.PlayerMatchRow` non propagé hors Squad V2.
+
+---
+
 ## [2026-04-29] engagement: backfill all-players + 4 bugs critiques + E2E Playwright
 
 **Statut** : Complete — backfill execute pour les 4 joueurs configures, validation H1/H3/H5 lancee, suite E2E Playwright 6/6 PASS.
@@ -23709,3 +23831,21 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 - Tests temporal 13/13 PASS, tests sync OK
 
 **Conclusion / prochaine etape** : Phases 1+2+3 livrees. Reste Phase 4 (API endpoints), Phase 5 (frontend), Phase 6 (settings page integration), Phase 7 (glossaire), Phase 8 (tests E2E). Effort estime restant : ~6 j-h. Le pipeline sync calcule maintenant le score automatiquement apres ingestion. Migration appliquee au prochain demarrage API (ensurePlayerDBMigrations). CLI dispo : `go run ./cmd/sync --player MonGT --engagement-scores [--force-engagement-scores]`.
+
+## [2026-04-29] fix(tests): correction 9 tests integration/cgo en echec
+
+**Statut** : Complete — commit e0bdc723, 0 FAIL sur suite complete (`go test -tags "integration cgo" ./...`).
+
+**Bugs corriges** :
+
+1. `TestRunForDB_Metadata_NoDuplicateRows` : requete `COUNT(DISTINCT name) WHERE LIKE 'add_%' OR 'drop_%'` ratait `create_prestige_metadata_schema` (ajout recente). Fix : supprimer le filtre WHERE.
+
+2. `TestRunForDB_Shared_*` (x3) : `steps_engagement.go` enregistre `add_match_intensity_to_match_registry` alphabetiquement AVANT `steps_shared.go`. En DB vierge, `match_registry` n'existe pas encore quand ce ALTER TABLE s'execute. Fix double : (a) guard `tableExists` dans `steps_engagement.go`, (b) `match_intensity DOUBLE` ajoutee au `CREATE TABLE match_registry` de base dans `steps_shared.go`.
+
+3. `TestRunForDB_Player_CoreTablesExist` : `media_files` encore dans la liste des tables attendues mais droppee par migration `drop_media_from_player_db` (migration vers shared_social). Fix : retire de la liste.
+
+4. `TestHomeRepo_LoadSpartanIdentity_WithData` : rescope multi-titre (`feat/multi-title-static-fs-rescope`) avait integre `homeStaticTitleSlug` dans toutes les URLs CSR. LUSR est cross-titre (pas Halo-specific) → URL sans slug attendue. Fix : `buildHomeSkillPeakBadgeURL` accepte `titleSlug string` ; `loadHomeSkillPeak` passe `""` pour LUSR, `homeStaticTitleSlug` pour CSR.
+
+5. `TestEngagementRepo_*` (x3) : `TestOpenReadWrite_TimezoneInvalid` discardait `*DB` (`_, err := ...`) sans `defer db.Close()`. La connexion restait dans le cache `"rw::memory:"` et polluait les tests engagement suivants (colonne `engagement_score` deja presente). Fix : capture la DB + `defer db.Close()`.
+
+**Resultat** : `go test -tags "integration cgo" ./...` — 44 packages OK, 0 FAIL.
