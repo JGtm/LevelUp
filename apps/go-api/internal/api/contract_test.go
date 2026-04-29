@@ -158,6 +158,93 @@ func TestContractRoutesRegistered(t *testing.T) {
 // ---------------------------------------------------------------------------
 // TestContractContentTypeJSON (R1 / P0-3)
 // ---------------------------------------------------------------------------
+// TestContractRoutesDocumented (R2 / P3.3)
+// ---------------------------------------------------------------------------
+// Verification miroir de TestContractRoutesRegistered : chaque route chi doit
+// etre documentee dans openapi.yaml. Plafonne le delta a une valeur sentinelle
+// qui doit decroitre selon les jalons du PLAN_ACTION.md (revue 2026-04-29) :
+//
+//   - Au depart (revue) : 57 routes chi non documentees (engagement, squad-v2,
+//     multi-title, asset-drawer, etc.). Plafond actuel = 65 (marge de 8 pour
+//     les flags ON qui exposent des routes additionnelles).
+//   - Apres P4 big-bang canonical : <= 30 (les services migres documentent
+//     leurs DTOs canoniques).
+//   - Apres P6 (capabilities + flags ON) : <= 10.
+//   - En P8.8 (cloture OpenAPI) : 0.
+//
+// Le test ne FORCE pas la documentation immediate — il empeche que le delta
+// grandisse en silence.
+func TestContractRoutesDocumented(t *testing.T) {
+	doc := loadOpenAPI(t)
+	t.Setenv("LEVELUP_DEMO_MODE", "true")
+	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
+	t.Setenv("PRESTIGE_ENABLED", "true")
+	router := buildTestRouter(t)
+	chiRouteSet := chiRoutes(router)
+
+	// Construire le set des paths documentes (ignorer la methode pour ce check
+	// — la couverture method-level est faite par TestContractRoutesRegistered
+	// dans le sens inverse).
+	openAPIPaths := make(map[string]bool, len(doc.Paths))
+	for path := range doc.Paths {
+		openAPIPaths[normalizePath(path)] = true
+	}
+
+	// Routes chi a ignorer : helpers Go natifs (CONNECT, TRACE, OPTIONS pour
+	// /static/*) qui ne sont pas du contrat metier.
+	ignoreMethods := map[string]bool{
+		"CONNECT": true,
+		"TRACE":   true,
+		"OPTIONS": true,
+		"HEAD":    true,
+	}
+
+	var undocumented []string
+	for chiKey := range chiRouteSet {
+		// chiKey est de la forme "METHOD /api/v1/path/{*}" ou "METHOD /path/{*}".
+		parts := strings.SplitN(chiKey, " ", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		method := parts[0]
+		path := parts[1]
+
+		if ignoreMethods[method] {
+			continue
+		}
+		// Ignorer les routes static/assets non-API.
+		if strings.HasPrefix(path, "/static") {
+			continue
+		}
+
+		// Tester avec et sans le prefixe /api/v1 (les paths OpenAPI sont
+		// relatifs au server, qui est /api/v1).
+		pathStripped := strings.TrimPrefix(path, "/api/v1")
+		if openAPIPaths[path] || openAPIPaths[pathStripped] {
+			continue
+		}
+		undocumented = append(undocumented, chiKey)
+	}
+
+	// Plafond actuel — a decrocher progressivement selon les jalons P4/P6/P8.8.
+	const undocumentedThreshold = 65
+
+	if len(undocumented) > undocumentedThreshold {
+		t.Errorf(
+			"P3.3 — %d routes chi non documentees dans openapi.yaml (plafond %d).\n"+
+				"Routes manquantes :\n  %s\n\n"+
+				"Jalons (PLAN_ACTION.md) :\n"+
+				"  - apres P4 (canonical) : <= 30\n"+
+				"  - apres P6 (capabilities) : <= 10\n"+
+				"  - en P8.8 (cloture OpenAPI) : 0\n",
+			len(undocumented), undocumentedThreshold,
+			strings.Join(undocumented, "\n  "),
+		)
+	}
+	t.Logf("P3.3 — %d routes chi non documentees (plafond %d)", len(undocumented), undocumentedThreshold)
+}
+
+// ---------------------------------------------------------------------------
 // Vérifie que chaque handler déclaré retourne Content-Type: application/json
 // pour les requêtes en mode démo, pas text/plain.
 //
