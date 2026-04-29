@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // ---------------------------------------------------------------------------
@@ -21,7 +22,7 @@ func TestBuildCumulTab_Empty(t *testing.T) {
 }
 
 func TestBuildCumulTab_SingleMatch(t *testing.T) {
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, StartTime: time.Now()},
 	}
 	tab := buildCumulTab(matches)
@@ -37,10 +38,10 @@ func TestBuildCumulTab_SingleMatch(t *testing.T) {
 }
 
 func TestBuildCumulTab_RollingKD(t *testing.T) {
-	matches := make([]domain.StatsMatchRow, 25)
+	matches := make([]legacymatch.StatsMatchRow, 25)
 	now := time.Now()
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{
+		matches[i] = legacymatch.StatsMatchRow{
 			Kills:     10,
 			Deaths:    5,
 			StartTime: now.Add(time.Duration(i) * time.Hour),
@@ -50,7 +51,7 @@ func TestBuildCumulTab_RollingKD(t *testing.T) {
 	if len(tab.RollingKD) != 25 {
 		t.Fatalf("expected 25 rolling KD points, got %d", len(tab.RollingKD))
 	}
-	// All same stats → rolling KD should be 2.0 throughout.
+	// All same stats â†’ rolling KD should be 2.0 throughout.
 	if tab.RollingKD[24].Value != 2.0 {
 		t.Errorf("expected rolling KD 2.0, got %v", tab.RollingKD[24].Value)
 	}
@@ -61,7 +62,7 @@ func TestBuildCumulTab_RollingKD(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildTimeseriesFormTab_EWMA(t *testing.T) {
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, StartTime: time.Now()},
 		{Kills: 20, Deaths: 10, StartTime: time.Now().Add(time.Hour)},
 		{Kills: 5, Deaths: 10, StartTime: time.Now().Add(2 * time.Hour)},
@@ -90,7 +91,7 @@ func TestBuildIntensityTab_Empty(t *testing.T) {
 func TestBuildIntensityTab_SingleMatch(t *testing.T) {
 	dur := 300
 	score := 1000
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{
 			Kills:             10,
 			Deaths:            5,
@@ -134,7 +135,7 @@ func TestBuildDistributionsTab_Empty(t *testing.T) {
 }
 
 func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, StartTime: time.Now()}, // KD = 2.0
 		{Kills: 5, Deaths: 5, StartTime: time.Now()},  // KD = 1.0
 		{Kills: 15, Deaths: 5, StartTime: time.Now()}, // KD = 3.0
@@ -144,11 +145,11 @@ func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
 	if len(tab.KDABuckets) == 0 {
 		t.Fatal("expected non-empty KDABuckets")
 	}
-	// buildCorrelationPoints génère 4 points par match (kills_vs_kd, lifespan_vs_kills,
-	// lifespan_vs_deaths, kills_vs_deaths) — accuracy_vs_kda et mmr_team_vs_enemy sont
+	// buildCorrelationPoints gÃ©nÃ¨re 4 points par match (kills_vs_kd, lifespan_vs_kills,
+	// lifespan_vs_deaths, kills_vs_deaths) â€” accuracy_vs_kda et mmr_team_vs_enemy sont
 	// exclus car Accuracy/KDA/MMR sont nil dans ce fixture.
 	if len(tab.CorrelationPoints) != 16 {
-		t.Errorf("expected 4 matches × 4 types = 16 correlation points, got %d", len(tab.CorrelationPoints))
+		t.Errorf("expected 4 matches Ã— 4 types = 16 correlation points, got %d", len(tab.CorrelationPoints))
 	}
 }
 
@@ -183,11 +184,11 @@ func TestFanoutResult_NoErrors(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 type mockTimeseriesRepo struct {
-	matches []domain.StatsMatchRow
+	matches []legacymatch.StatsMatchRow
 	err     error
 }
 
-func (m *mockTimeseriesRepo) LoadStatsMatches(_ context.Context) ([]domain.StatsMatchRow, error) {
+func (m *mockTimeseriesRepo) LoadStatsMatches(_ context.Context) ([]legacymatch.StatsMatchRow, error) {
 	return m.matches, m.err
 }
 func (m *mockTimeseriesRepo) LoadLUSRHistory(_ context.Context) ([]domain.LUSRMatchRating, error) {
@@ -231,7 +232,7 @@ func TestTimeseriesService_GetPage_WithData(t *testing.T) {
 	acc := 0.5
 	ps := 1500
 	kda := 2.0
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, Assists: 3, Outcome: &win, TimePlayedSeconds: &dur, Accuracy: &acc, PersonalScore: &ps, KDA: &kda},
 	}
 	svc := NewTimeseriesService(&mockTimeseriesRepo{matches: matches}).
@@ -259,7 +260,7 @@ func TestBuildTimeseriesSummaryTab_Empty(t *testing.T) {
 func TestBuildTimeseriesSummaryTab_WithMatches(t *testing.T) {
 	win := 2
 	dur := 600
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, Outcome: &win, TimePlayedSeconds: &dur},
 		{Kills: 15, Deaths: 3, Outcome: &win, TimePlayedSeconds: &dur},
 	}
@@ -279,7 +280,7 @@ func TestBuildMatchRows_Basic(t *testing.T) {
 	score := 1200
 	dur := 600
 	now := time.Now()
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{
 			MatchID:           "abc123",
 			StartTime:         now,
@@ -326,7 +327,7 @@ func TestBuildAccuracyBuckets_Empty(t *testing.T) {
 func TestBuildAccuracyBuckets_Basic(t *testing.T) {
 	acc30 := 0.30
 	acc60 := 0.60
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{Accuracy: &acc30},
 		{Accuracy: &acc30},
 		{Accuracy: &acc60},
@@ -347,7 +348,7 @@ func TestBuildAccuracyBuckets_Basic(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// buildCorrelationPoints (types étendus)
+// buildCorrelationPoints (types Ã©tendus)
 // ---------------------------------------------------------------------------
 
 func TestBuildCorrelationPoints_AllTypes(t *testing.T) {
@@ -357,7 +358,7 @@ func TestBuildCorrelationPoints_AllTypes(t *testing.T) {
 	kda := 2.5
 	mmrTeam := 1500.0
 	mmrEnemy := 1600.0
-	matches := []domain.StatsMatchRow{
+	matches := []legacymatch.StatsMatchRow{
 		{
 			Kills:             10,
 			Deaths:            5,
@@ -398,7 +399,7 @@ func TestFilterStatsMatchRows_Empty(t *testing.T) {
 
 func TestFilterStatsMatchRows_NoFilter(t *testing.T) {
 	now := time.Now()
-	rows := []domain.StatsMatchRow{
+	rows := []legacymatch.StatsMatchRow{
 		{MatchID: "m1", StartTime: now, PlaylistName: "Arena"},
 		{MatchID: "m2", StartTime: now, PlaylistName: "BTB"},
 	}
@@ -413,10 +414,10 @@ func TestFilterStatsMatchRows_NoFilter(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestComputeRegressionStats_TooFewMatches(t *testing.T) {
-	// Moins de 20 matchs → HasEnoughForTrend = false
-	matches := make([]domain.StatsMatchRow, 10)
+	// Moins de 20 matchs â†’ HasEnoughForTrend = false
+	matches := make([]legacymatch.StatsMatchRow, 10)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{Kills: 5, Deaths: 5}
+		matches[i] = legacymatch.StatsMatchRow{Kills: 5, Deaths: 5}
 	}
 	stats := computeRegressionStats(matches)
 	if stats.HasEnoughForTrend {
@@ -428,10 +429,10 @@ func TestComputeRegressionStats_TooFewMatches(t *testing.T) {
 }
 
 func TestComputeRegressionStats_ImprovingTrend(t *testing.T) {
-	// 25 matchs avec K/D croissant → trend="improving"
-	matches := make([]domain.StatsMatchRow, 25)
+	// 25 matchs avec K/D croissant â†’ trend="improving"
+	matches := make([]legacymatch.StatsMatchRow, 25)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{
+		matches[i] = legacymatch.StatsMatchRow{
 			Kills:  i + 1,
 			Deaths: 5,
 		}
@@ -453,10 +454,10 @@ func TestComputeRegressionStats_ImprovingTrend(t *testing.T) {
 }
 
 func TestComputeRegressionStats_DecliningTrend(t *testing.T) {
-	// 25 matchs avec K/D décroissant → trend="declining"
-	matches := make([]domain.StatsMatchRow, 25)
+	// 25 matchs avec K/D dÃ©croissant â†’ trend="declining"
+	matches := make([]legacymatch.StatsMatchRow, 25)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{
+		matches[i] = legacymatch.StatsMatchRow{
 			Kills:  25 - i,
 			Deaths: 5,
 		}
@@ -475,10 +476,10 @@ func TestComputeRegressionStats_DecliningTrend(t *testing.T) {
 }
 
 func TestComputeRegressionStats_StableTrend(t *testing.T) {
-	// 25 matchs identiques → trend="stable"
-	matches := make([]domain.StatsMatchRow, 25)
+	// 25 matchs identiques â†’ trend="stable"
+	matches := make([]legacymatch.StatsMatchRow, 25)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{Kills: 10, Deaths: 5}
+		matches[i] = legacymatch.StatsMatchRow{Kills: 10, Deaths: 5}
 	}
 	stats := computeRegressionStats(matches)
 	if !stats.HasEnoughForTrend {
@@ -494,15 +495,15 @@ func TestComputeRegressionStats_StableTrend(t *testing.T) {
 }
 
 func TestComputeRegressionStats_RSquaredBounded(t *testing.T) {
-	// R² doit être dans [0, 1]
-	matches := make([]domain.StatsMatchRow, 30)
+	// RÂ² doit Ãªtre dans [0, 1]
+	matches := make([]legacymatch.StatsMatchRow, 30)
 	for i := range matches {
-		matches[i] = domain.StatsMatchRow{Kills: i%7 + 1, Deaths: 3}
+		matches[i] = legacymatch.StatsMatchRow{Kills: i%7 + 1, Deaths: 3}
 	}
 	stats := computeRegressionStats(matches)
 	if stats.RSquared != nil {
 		if *stats.RSquared < 0 || *stats.RSquared > 1 {
-			t.Errorf("R² hors [0,1]: %v", *stats.RSquared)
+			t.Errorf("RÂ² hors [0,1]: %v", *stats.RSquared)
 		}
 	}
 }

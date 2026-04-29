@@ -1,4 +1,4 @@
-// Package service — SessionPageService : page détail de session avec suggestion de comparaison.
+// Package service â€” SessionPageService : page dÃ©tail de session avec suggestion de comparaison.
 package service
 
 import (
@@ -10,10 +10,11 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
-// SessionPageService construit la page de détail d'une session.
+// SessionPageService construit la page de dÃ©tail d'une session.
 type SessionPageService struct {
 	statsRepo port.StatsRepository
 	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
@@ -25,7 +26,7 @@ type SessionPageService struct {
 	gamertag          string
 }
 
-// NewSessionPageService crée un SessionPageService.
+// NewSessionPageService crÃ©e un SessionPageService.
 func NewSessionPageService(statsRepo port.StatsRepository) *SessionPageService {
 	return &SessionPageService{statsRepo: statsRepo}
 }
@@ -38,7 +39,7 @@ func (s *SessionPageService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposi
 	return s
 }
 
-// GetPage retourne la page détail d'une session avec suggestion de comparaison.
+// GetPage retourne la page dÃ©tail d'une session avec suggestion de comparaison.
 func (s *SessionPageService) GetPage(
 	ctx context.Context,
 	req domain.SessionPageRequest,
@@ -49,7 +50,7 @@ func (s *SessionPageService) GetPage(
 
 	// P4.3 finale (ADR 0011) : path canonical exclusif.
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
+		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -136,7 +137,7 @@ type sessionCandidate struct {
 func buildSessionCompareSuggestion(
 	labels []string,
 	currentLabel string,
-	rows []domain.StatsMatchRow,
+	rows []legacymatch.StatsMatchRow,
 ) (*domain.SessionCompareSuggestion, int) {
 	currentIndex := indexOfSessionLabel(labels, currentLabel)
 	if currentIndex == -1 {
@@ -183,7 +184,7 @@ func buildSessionCompareSuggestion(
 }
 
 func buildSessionDetailRows(
-	rows []domain.StatsMatchRow,
+	rows []legacymatch.StatsMatchRow,
 	dominantCategory *string,
 ) []domain.SessionDetailMatchRow {
 	out := make([]domain.SessionDetailMatchRow, 0, len(rows))
@@ -211,7 +212,7 @@ func buildSessionDetailRows(
 	return out
 }
 
-func makeSessionCandidate(label string, rows []domain.StatsMatchRow, index int) sessionCandidate {
+func makeSessionCandidate(label string, rows []legacymatch.StatsMatchRow, index int) sessionCandidate {
 	return sessionCandidate{
 		Label:    label,
 		Category: dominantSessionCategory(rows),
@@ -252,25 +253,25 @@ func scoreSessionCandidate(current, candidate sessionCandidate) int {
 func buildSuggestionReason(current, candidate sessionCandidate) string {
 	parts := make([]string, 0, 3)
 	if current.Category == candidate.Category {
-		parts = append(parts, fmt.Sprintf("même catégorie %s", strings.ToLower(candidate.Category)))
+		parts = append(parts, fmt.Sprintf("mÃªme catÃ©gorie %s", strings.ToLower(candidate.Category)))
 	}
 	if current.IsRanked == candidate.IsRanked {
 		if candidate.IsRanked {
-			parts = append(parts, "même statut classé")
+			parts = append(parts, "mÃªme statut classÃ©")
 		} else {
-			parts = append(parts, "même statut social")
+			parts = append(parts, "mÃªme statut social")
 		}
 	}
 	diff := absInt(current.Count - candidate.Count)
 	if diff == 0 {
-		parts = append(parts, "même volume")
+		parts = append(parts, "mÃªme volume")
 	} else {
-		parts = append(parts, fmt.Sprintf("écart de %d match(s)", diff))
+		parts = append(parts, fmt.Sprintf("Ã©cart de %d match(s)", diff))
 	}
 	if len(parts) == 0 {
 		return "session chronologiquement proche"
 	}
-	return strings.Join(parts, " · ")
+	return strings.Join(parts, " Â· ")
 }
 
 func resolveRequestedCompareLabel(

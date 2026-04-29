@@ -165,10 +165,5 @@ type SynthesisBreakdowns struct {
 }
 
 // ---------------------------------------------------------------------------
-// Lignes brutes DuckDB — Synthèse (reprises depuis squad.go pour autonomie)
-// ---------------------------------------------------------------------------
-
-// SynthesisMatchRowV2 est la ligne brute enrichie chargée lors du calcul Synthèse.
-// Identique à SynthesisMatchRow pour la compatibilité, mais dans son propre package.
-// Note : SynthesisMatchRow reste dans squad.go pour ne pas casser les queries existantes.
-type SynthesisMatchRowV2 = SynthesisMatchRow
+// Lignes brutes DuckDB — Synthèse déplacées vers `internal/legacymatch`
+// (P4.3 finale cleanup).

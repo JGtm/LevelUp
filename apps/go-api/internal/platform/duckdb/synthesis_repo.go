@@ -1,7 +1,7 @@
-// Package duckdb — synthesis_repo.go : implémentation DuckDB du SynthesisRepository.
+// Package duckdb â€” synthesis_repo.go : implÃ©mentation DuckDB du SynthesisRepository.
 //
 // Sprint 55 D1 : extrait de SquadRepo + CareerRepo pour port.SynthesisRepository.
-// Combine les données de synthèse (matchs, heatmap) depuis SquadRepo
+// Combine les donnÃ©es de synthÃ¨se (matchs, heatmap) depuis SquadRepo
 // et les encounters depuis CareerRepo.
 package duckdb
 
@@ -11,33 +11,34 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
-// SynthesisRepo implémente port.SynthesisRepository.
+// SynthesisRepo implÃ©mente port.SynthesisRepository.
 // Wraps SquadRepo (LoadSynthesisMatches, LoadSynthesisHeatmap) +
-// la requête encounters directement.
+// la requÃªte encounters directement.
 type SynthesisRepo struct {
 	pdb      *PlayerDB
 	squadRef *SquadRepo
 }
 
-// NewSynthesisRepo crée un SynthesisRepo depuis un PlayerDB.
+// NewSynthesisRepo crÃ©e un SynthesisRepo depuis un PlayerDB.
 func NewSynthesisRepo(pdb *PlayerDB) *SynthesisRepo {
 	return &SynthesisRepo{pdb: pdb, squadRef: NewSquadRepo(pdb)}
 }
 
-// LoadSynthesisMatches délègue à SquadRepo.
-func (r *SynthesisRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error) {
+// LoadSynthesisMatches dÃ©lÃ¨gue Ã  SquadRepo.
+func (r *SynthesisRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]legacymatch.SynthesisMatchRow, error) {
 	return r.squadRef.LoadSynthesisMatches(ctx, xuid)
 }
 
-// LoadSynthesisHeatmap délègue à SquadRepo.
+// LoadSynthesisHeatmap dÃ©lÃ¨gue Ã  SquadRepo.
 func (r *SynthesisRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
 	return r.squadRef.LoadSynthesisHeatmap(ctx, xuid)
 }
 
 // LoadEncounters charge les encounters du joueur (Q_encounters).
-// Réutilise la requête Q10Encounters de CareerRepo avec le xuid fourni.
+// RÃ©utilise la requÃªte Q10Encounters de CareerRepo avec le xuid fourni.
 func (r *SynthesisRepo) LoadEncounters(ctx context.Context, xuid string) ([]domain.EncounterRawRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

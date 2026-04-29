@@ -1,4 +1,4 @@
-// Package analysis — squad_breakdown.go : breakdown solo/escouade + synthèse + top weeks.
+// Package analysis â€” squad_breakdown.go : breakdown solo/escouade + synthÃ¨se + top weeks.
 package analysis
 
 import (
@@ -9,14 +9,15 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // =============================================================================
 // Breakdown solo vs escouade
 // =============================================================================
 
-// ComputeSquadBreakdown calcule les stats agrégées pour un mode (solo ou escouade).
-// rows doit déjà être filtré (is_with_friends=true ou false).
+// ComputeSquadBreakdown calcule les stats agrÃ©gÃ©es pour un mode (solo ou escouade).
+// rows doit dÃ©jÃ  Ãªtre filtrÃ© (is_with_friends=true ou false).
 func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownStats {
 	if len(rows) == 0 {
 		return domain.SquadBreakdownStats{}
@@ -43,7 +44,7 @@ func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownSta
 	var wr float64
 	if totalWL > 0 {
 		// TODO P4 ADR 0006 : convertir vers WinRate canonique (0..1) + format front.
-		// Conserve l'unité 0..100.0 historique avec arrondi 1 décimale.
+		// Conserve l'unitÃ© 0..100.0 historique avec arrondi 1 dÃ©cimale.
 		wr = math.Round(WinRate(wins, totalWL)*1000) / 10
 	}
 	var avgKDA float64
@@ -64,11 +65,11 @@ func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownSta
 }
 
 // =============================================================================
-// Synthèse — Heatmap + Top Weeks
+// SynthÃ¨se â€” Heatmap + Top Weeks
 // =============================================================================
 
 // ComputeSynthesisHeatmap convertit les lignes DuckDB en cellules de heatmap.
-// Calcule le win rate (%) pour chaque combinaison carte × mode.
+// Calcule le win rate (%) pour chaque combinaison carte Ã— mode.
 func ComputeSynthesisHeatmap(rows []domain.SynthesisHeatmapRow) []domain.HeatmapCell {
 	cells := make([]domain.HeatmapCell, 0, len(rows))
 	for _, r := range rows {
@@ -87,7 +88,7 @@ func ComputeSynthesisHeatmap(rows []domain.SynthesisHeatmapRow) []domain.Heatmap
 }
 
 // ComputeTopWeeks calcule les 5 meilleures semaines depuis les lignes squad.
-// Une semaine valide a ≥ 3 matchs. Tri par win_rate décroissant.
+// Une semaine valide a â‰¥ 3 matchs. Tri par win_rate dÃ©croissant.
 func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 	if len(rows) == 0 {
 		return nil
@@ -131,7 +132,7 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 		agg.count++
 	}
 
-	// Filtrer semaines ≥ 3 matchs.
+	// Filtrer semaines â‰¥ 3 matchs.
 	type weekScore struct {
 		entry domain.TopWeekEntry
 		wr    float64
@@ -179,8 +180,8 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 }
 
 // ComputeSynthesisTopWeeks calcule les 5 meilleures semaines depuis les lignes SynthesisMatchRow.
-// Même logique que ComputeTopWeeks mais depuis un dataset allégé (LoadSynthesisMatches).
-func ComputeSynthesisTopWeeks(rows []domain.SynthesisMatchRow) []domain.TopWeekEntry {
+// MÃªme logique que ComputeTopWeeks mais depuis un dataset allÃ©gÃ© (LoadSynthesisMatches).
+func ComputeSynthesisTopWeeks(rows []legacymatch.SynthesisMatchRow) []domain.TopWeekEntry {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -269,8 +270,8 @@ func ComputeSynthesisTopWeeks(rows []domain.SynthesisMatchRow) []domain.TopWeekE
 }
 
 // ComputeSynthesisBreakdown calcule les stats de breakdown solo ou squad.
-// isSquad=true → matchs avec amis (is_with_friends=true), false → matchs solo.
-func ComputeSynthesisBreakdown(rows []domain.SynthesisMatchRow, isSquad bool) domain.SquadBreakdownStats {
+// isSquad=true â†’ matchs avec amis (is_with_friends=true), false â†’ matchs solo.
+func ComputeSynthesisBreakdown(rows []legacymatch.SynthesisMatchRow, isSquad bool) domain.SquadBreakdownStats {
 	var matchCount, wins, total int
 	var sumKills, sumKDA float64
 	var nKDA int
@@ -311,11 +312,11 @@ func ComputeSynthesisBreakdown(rows []domain.SynthesisMatchRow, isSquad bool) do
 }
 
 // =============================================================================
-// Sprint 43 — Bipolaire enrichie
+// Sprint 43 â€” Bipolaire enrichie
 // =============================================================================
 
-// ComputeSynthesisKPIs calcule les KPIs détaillés pour un sous-ensemble solo ou squad.
-func ComputeSynthesisKPIs(rows []domain.SynthesisMatchRow, isSquad bool) domain.SynthesisKPIs {
+// ComputeSynthesisKPIs calcule les KPIs dÃ©taillÃ©s pour un sous-ensemble solo ou squad.
+func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) domain.SynthesisKPIs {
 	var kpis domain.SynthesisKPIs
 	var totalWL, wins int
 	var sumKDA, sumAcc, sumPerf float64
@@ -386,14 +387,14 @@ func ComputeSynthesisKPIs(rows []domain.SynthesisMatchRow, isSquad bool) domain.
 
 // ComputeSynthesisKPIsFromCanonical est la variante canonical-aware de
 // ComputeSynthesisKPIs (P4 pilote synthesis, ADR 0011). Consomme directement
-// `[]canonical.PlayerMatchRow` sans intermédiaire `domain.SynthesisMatchRow`.
+// `[]canonical.PlayerMatchRow` sans intermÃ©diaire `legacymatch.SynthesisMatchRow`.
 //
-// Comportement strictement équivalent à ComputeSynthesisKPIs ; la seule
-// différence est la source des champs (Self.Kills, Self.KDA, Self.Outcome
+// Comportement strictement Ã©quivalent Ã  ComputeSynthesisKPIs ; la seule
+// diffÃ©rence est la source des champs (Self.Kills, Self.KDA, Self.Outcome
 // au lieu de SynthesisMatchRow.{Kills,KDA,Outcome}).
 //
 // Migration progressive : ComputeSynthesisKPIs reste pour les autres callers
-// (Squad, Teammates) qui n'ont pas encore migré. Sera supprimé en P4.3 quand
+// (Squad, Teammates) qui n'ont pas encore migrÃ©. Sera supprimÃ© en P4.3 quand
 // tous les callers seront sur canonical.
 func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad bool) domain.SynthesisKPIs {
 	var kpis domain.SynthesisKPIs
@@ -440,8 +441,8 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 	}
 	kpis.Wins = wins
 	if totalWL > 0 {
-		// Note: WinRate canonique 0..1 (ADR 0006). math.Round/1000 préserve la
-		// même précision que ComputeSynthesisKPIs (3 décimales).
+		// Note: WinRate canonique 0..1 (ADR 0006). math.Round/1000 prÃ©serve la
+		// mÃªme prÃ©cision que ComputeSynthesisKPIs (3 dÃ©cimales).
 		kpis.WinRate = math.Round(WinRate(wins, totalWL)*1000) / 1000
 	}
 	if nKDA > 0 {
@@ -613,7 +614,7 @@ func ComputeSynthesisBreakdownFromCanonical(rows []canonical.PlayerMatchRow, isS
 }
 
 // ComputeTemporalHeatmapFromCanonical est la variante canonical-aware de
-// ComputeTemporalHeatmap. Pas de logique métier — seulement l'extraction
+// ComputeTemporalHeatmap. Pas de logique mÃ©tier â€” seulement l'extraction
 // du jour/heure depuis Summary.StartedAtUTC.
 func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []domain.TemporalHeatmapCell {
 	counts := [7][24]int{}
@@ -635,7 +636,7 @@ func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []doma
 	return cells
 }
 
-// ComputeComparisonMetrics construit les métriques bipolaires solo/escouade.
+// ComputeComparisonMetrics construit les mÃ©triques bipolaires solo/escouade.
 func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.ComparisonMetricItem {
 	items := make([]domain.ComparisonMetricItem, 0, 5)
 
@@ -648,7 +649,7 @@ func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.Compari
 		SoloText: fmtFloat2(solo.KDRatio), SquadText: fmtFloat2(squad.KDRatio),
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "Précision", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
+		Label: "PrÃ©cision", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
 		SoloText: fmtPct(deref(solo.Accuracy)), SquadText: fmtPct(deref(squad.Accuracy)),
 	})
 	items = append(items, domain.ComparisonMetricItem{
@@ -662,12 +663,12 @@ func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.Compari
 	return items
 }
 
-// ComputeTemporalHeatmap construit la heatmap jour × heure depuis les matchs.
-func ComputeTemporalHeatmap(rows []domain.SynthesisMatchRow) []domain.TemporalHeatmapCell {
+// ComputeTemporalHeatmap construit la heatmap jour Ã— heure depuis les matchs.
+func ComputeTemporalHeatmap(rows []legacymatch.SynthesisMatchRow) []domain.TemporalHeatmapCell {
 	counts := [7][24]int{}
 	for _, r := range rows {
-		// Go Weekday: Sunday=0, Monday=1 … Saturday=6
-		// Frontend: lundi=0 … dimanche=6
+		// Go Weekday: Sunday=0, Monday=1 â€¦ Saturday=6
+		// Frontend: lundi=0 â€¦ dimanche=6
 		goDow := int(r.StartTime.Weekday())
 		dow := (goDow + 6) % 7 // convertir: lundi=0
 		hour := r.StartTime.Hour()

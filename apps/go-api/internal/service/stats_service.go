@@ -1,10 +1,10 @@
-// Package service — StatsService : calcul des 5 onglets de stats/séries temporelles.
+// Package service â€” StatsService : calcul des 5 onglets de stats/sÃ©ries temporelles.
 //
 // Port Go de src/data/services/timeseries_service.py.
 //
 // Onglets disponibles :
-//   - win_loss   : Victoires/Défaites, K/D cumulatif
-//   - accuracy   : Précision, Personal Score/min
+//   - win_loss   : Victoires/DÃ©faites, K/D cumulatif
+//   - accuracy   : PrÃ©cision, Personal Score/min
 //   - objective  : Personal Score total, Assists
 //   - form       : Performance Score relatif (v5-relative)
 //   - lusr       : LUSR (LevelUp Skill Rating / TrueSkill-inspired)
@@ -19,28 +19,29 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
-// StatsService calcule et retourne les séries analytiques pour un joueur.
+// StatsService calcule et retourne les sÃ©ries analytiques pour un joueur.
 type StatsService struct {
 	statsRepo port.StatsRepository
-	metaRepo  port.MetadataRepository // optionnel — Sprint 54-A7
+	metaRepo  port.MetadataRepository // optionnel â€” Sprint 54-A7
 	titleSlug string                  // titre courant, ex: "halo_infinite"
 	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
 	// Quand fourni avec gamertag, GetPage charge canonical et convertit via
 	// statsMatchRowFromCanonical. TODO P4.3 : retirer le converter quand les
-	// fonctions buildWinLossTab/buildAccuracyTab/etc. seront migrées canonical.
+	// fonctions buildWinLossTab/buildAccuracyTab/etc. seront migrÃ©es canonical.
 	playerMatchesRepo port.PlayerMatchesRepository
 	gamertag          string
 }
 
-// NewStatsService crée un StatsService.
+// NewStatsService crÃ©e un StatsService.
 func NewStatsService(repo port.StatsRepository) *StatsService {
 	return &StatsService{statsRepo: repo}
 }
 
-// WithMetadataRepo injecte le repository de métadonnées (saisons).
+// WithMetadataRepo injecte le repository de mÃ©tadonnÃ©es (saisons).
 func (s *StatsService) WithMetadataRepo(r port.MetadataRepository) *StatsService {
 	s.metaRepo = r
 	return s
@@ -59,17 +60,17 @@ func (s *StatsService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, 
 	return s
 }
 
-// GetPage charge les données et construit la réponse de la page stats.
+// GetPage charge les donnÃ©es et construit la rÃ©ponse de la page stats.
 func (s *StatsService) GetPage(
 	ctx context.Context,
 	req domain.StatsQueryRequest,
 ) (domain.StatsPageResponse, error) {
 	// P4.3 finale (ADR 0011) : path canonical exclusif. playerMatchesRepo +
-	// titleSlug + gamertag REQUIS (wirés en DI universellement). Le converter
+	// titleSlug + gamertag REQUIS (wirÃ©s en DI universellement). Le converter
 	// StatsMatchRowsFromCanonical (analysis/) encapsule la conversion vers
 	// les analyses build*Tab legacy en attendant leur port full canonical.
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.StatsPageResponse{}, fmt.Errorf("StatsService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
+		return domain.StatsPageResponse{}, fmt.Errorf("StatsService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -126,15 +127,15 @@ func (s *StatsService) GetPage(
 		resp.LUSR = &lu
 	}
 
-	// Sprint 54-A7 : saison courante (non-bloquant, fallback synthétique si absent).
+	// Sprint 54-A7 : saison courante (non-bloquant, fallback synthÃ©tique si absent).
 	resp.CurrentSeason = s.resolveCurrentSeason(ctx)
 
 	return resp, nil
 }
 
-// ─── Onglet Win/Loss ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Onglet Win/Loss â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-func buildWinLossTab(matches []domain.StatsMatchRow) domain.WinLossTabResponse {
+func buildWinLossTab(matches []legacymatch.StatsMatchRow) domain.WinLossTabResponse {
 	points := make([]domain.WinLossPoint, 0, len(matches))
 	wins := 0
 	cumulKD := 0.0
@@ -178,7 +179,7 @@ func buildWinLossTab(matches []domain.StatsMatchRow) domain.WinLossTabResponse {
 			Value:     float64(cumulNet),
 		})
 
-		// Rolling win rate (fenêtre glissante).
+		// Rolling win rate (fenÃªtre glissante).
 		recentOutcomes = append(recentOutcomes, outcome)
 		if len(recentOutcomes) > rollingWindow {
 			recentOutcomes = recentOutcomes[1:]
@@ -208,9 +209,9 @@ func buildWinLossTab(matches []domain.StatsMatchRow) domain.WinLossTabResponse {
 	}
 }
 
-// ─── Onglet Précision ────────────────────────────────────────────────────────
+// â”€â”€â”€ Onglet PrÃ©cision â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-func buildAccuracyTab(matches []domain.StatsMatchRow) domain.AccuracyTabResponse {
+func buildAccuracyTab(matches []legacymatch.StatsMatchRow) domain.AccuracyTabResponse {
 	points := make([]domain.AccuracyPoint, 0)
 	scorePerMin := make([]float64, 0)
 	sum := 0.0
@@ -244,9 +245,9 @@ func buildAccuracyTab(matches []domain.StatsMatchRow) domain.AccuracyTabResponse
 	}
 }
 
-// ─── Onglet Objectif ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Onglet Objectif â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-func buildObjectiveTab(matches []domain.StatsMatchRow) domain.ObjectiveTabResponse {
+func buildObjectiveTab(matches []legacymatch.StatsMatchRow) domain.ObjectiveTabResponse {
 	points := make([]domain.ObjectivePoint, 0, len(matches))
 	totalScore := 0
 	totalAssists := 0
@@ -278,9 +279,9 @@ func buildObjectiveTab(matches []domain.StatsMatchRow) domain.ObjectiveTabRespon
 	}
 }
 
-// ─── Onglet Forme (Performance Score) ────────────────────────────────────────
+// â”€â”€â”€ Onglet Forme (Performance Score) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-func buildFormTab(matches []domain.StatsMatchRow) domain.FormTabResponse {
+func buildFormTab(matches []legacymatch.StatsMatchRow) domain.FormTabResponse {
 	rawScores := analysis.ComputePerformanceSeries(matches)
 	points := make([]domain.PerformancePoint, len(matches))
 
@@ -315,11 +316,11 @@ func buildFormTab(matches []domain.StatsMatchRow) domain.FormTabResponse {
 	}
 }
 
-// ─── Onglet LUSR ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Onglet LUSR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func (s *StatsService) buildLUSRTab(
 	ctx context.Context,
-	matches []domain.StatsMatchRow,
+	matches []legacymatch.StatsMatchRow,
 ) (domain.LUSRTabResponse, error) {
 	// Charger les participants pour l'estimation de la force adverse.
 	participants, err := s.statsRepo.LoadMatchParticipants(ctx)
@@ -351,10 +352,10 @@ func (s *StatsService) buildLUSRTab(
 	}, nil
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // computeBucketInfoFromMatches calcule le BucketInfo depuis la plage de matchs.
-func computeBucketInfoFromMatches(matches []domain.StatsMatchRow) domain.BucketInfo {
+func computeBucketInfoFromMatches(matches []legacymatch.StatsMatchRow) domain.BucketInfo {
 	if len(matches) == 0 {
 		return analysis.GetBucketInfo(0)
 	}
@@ -372,9 +373,9 @@ func computeBucketInfoFromMatches(matches []domain.StatsMatchRow) domain.BucketI
 	return analysis.GetBucketInfo(days)
 }
 
-// ── Sprint 54-A7/A8 : résolution saison courante ──────────────────────────────
+// â”€â”€ Sprint 54-A7/A8 : rÃ©solution saison courante â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// resolveCurrentSeason retourne la saison courante ou un fallback synthétique.
+// resolveCurrentSeason retourne la saison courante ou un fallback synthÃ©tique.
 func (s *StatsService) resolveCurrentSeason(ctx context.Context) *domain.CurrentSeasonResult {
 	if s.metaRepo == nil {
 		return syntheticSeasonResult()
@@ -392,8 +393,8 @@ func (s *StatsService) resolveCurrentSeason(ctx context.Context) *domain.Current
 }
 
 // =============================================================================
-// P4.3c (ADR 0011) : le converter canonical → StatsMatchRow a été déplacé
-// dans `analysis/stats_canonical.go` (encapsulé) et est partagé par les
+// P4.3c (ADR 0011) : le converter canonical â†’ StatsMatchRow a Ã©tÃ© dÃ©placÃ©
+// dans `analysis/stats_canonical.go` (encapsulÃ©) et est partagÃ© par les
 // 4 services (stats, timeseries, session_compare, session_page).
 // Le service ne porte plus de logique de conversion.
 // =============================================================================

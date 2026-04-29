@@ -3,17 +3,9 @@
 // Port Go de src/data/services/timeseries_service.py et src/analysis/performance_config.py.
 package domain
 
-import (
-	"time"
+import "time"
 
-	"levelup/go-api/internal/legacymatch"
-)
-
-// ─── Entrées brutes ──────────────────────────────────────────────────────────
-
-// StatsMatchRow déplacé vers `internal/legacymatch`. P4.3 finale cleanup.
-// Deprecated: utiliser `legacymatch.StatsMatchRow`.
-type StatsMatchRow = legacymatch.StatsMatchRow
+// StatsMatchRow déplacé vers `internal/legacymatch` (P4.3 finale cleanup).
 
 // LUSRMatchRating est le type de transfert pour un checkpoint LUSR.
 type LUSRMatchRating struct {

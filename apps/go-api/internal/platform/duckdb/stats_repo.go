@@ -1,4 +1,4 @@
-// Package duckdb — StatsRepo : chargement des métriques pour le performance score et le LUSR.
+// Package duckdb â€” StatsRepo : chargement des mÃ©triques pour le performance score et le LUSR.
 package duckdb
 
 import (
@@ -7,22 +7,23 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
-// StatsRepo charge les données analytics (Q23-Q25) depuis le PlayerDB.
+// StatsRepo charge les donnÃ©es analytics (Q23-Q25) depuis le PlayerDB.
 type StatsRepo struct {
 	pdb *PlayerDB
 }
 
-// NewStatsRepo crée un StatsRepo depuis un PlayerDB.
+// NewStatsRepo crÃ©e un StatsRepo depuis un PlayerDB.
 func NewStatsRepo(pdb *PlayerDB) *StatsRepo {
 	return &StatsRepo{pdb: pdb}
 }
 
-// LoadStatsMatches charge tous les matchs avec leurs métriques analytiques (Q23).
-// Paramètre : xuid du joueur.
+// LoadStatsMatches charge tous les matchs avec leurs mÃ©triques analytiques (Q23).
+// ParamÃ¨tre : xuid du joueur.
 // Ordre de retour : start_time ASC.
-func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]domain.StatsMatchRow, error) {
+func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
@@ -32,9 +33,9 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]domain.StatsMatchRo
 	}
 	defer rows.Close()
 
-	var results []domain.StatsMatchRow
+	var results []legacymatch.StatsMatchRow
 	for rows.Next() {
-		var m domain.StatsMatchRow
+		var m legacymatch.StatsMatchRow
 		if err := rows.Scan(
 			&m.MatchID,
 			&m.StartTime,
@@ -104,7 +105,7 @@ func (r *StatsRepo) LoadLUSRHistory(ctx context.Context) ([]domain.LUSRMatchRati
 }
 
 // LoadMatchParticipants charge tous les participants des matchs du joueur (Q25).
-// Utilisé pour l'estimation enemy strength dans le calcul LUSR.
+// UtilisÃ© pour l'estimation enemy strength dans le calcul LUSR.
 func (r *StatsRepo) LoadMatchParticipants(ctx context.Context) ([]domain.ParticipantRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()

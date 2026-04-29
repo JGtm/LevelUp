@@ -1,44 +1,45 @@
-// Package analysis — stats_canonical.go : entry-points canonical-aware partagés
-// par les services consommant `domain.StatsMatchRow` (Stats, Timeseries,
+// Package analysis â€” stats_canonical.go : entry-points canonical-aware partagÃ©s
+// par les services consommant `legacymatch.StatsMatchRow` (Stats, Timeseries,
 // SessionCompare, SessionPage). P4.3c, ADR 0011.
 //
-// **Stratégie pragmatique** : un converter unique `StatsMatchRowFromCanonical`
-// expose la conversion canonical → legacy. Les services consomment ce
+// **StratÃ©gie pragmatique** : un converter unique `StatsMatchRowFromCanonical`
+// expose la conversion canonical â†’ legacy. Les services consomment ce
 // converter via leurs branches `useCanonical`. Cela retire la duplication du
-// converter qui vivait précédemment dans `service/stats_service.go`.
+// converter qui vivait prÃ©cÃ©demment dans `service/stats_service.go`.
 //
 // **TODO P4.3 finale** : porter les analyses (buildWinLossTab, buildCumulTab,
 // buildKDABuckets, computeRegressionStats, extractSessionLabels,
-// buildCompareEntry, buildSessionDetailRows, etc.) à canonical et retirer ces
-// converters + le type legacy `domain.StatsMatchRow`. Bloqué tant que :
+// buildCompareEntry, buildSessionDetailRows, etc.) Ã  canonical et retirer ces
+// converters + le type legacy `legacymatch.StatsMatchRow`. BloquÃ© tant que :
 //   - `port.StatsRepository.LoadStatsMatches` retourne du legacy
 //   - Des analyses tierces (parallel agent squad/teammates) consomment encore
-//     `domain.StatsMatchRow`.
+//     `legacymatch.StatsMatchRow`.
 package analysis
 
 import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // =============================================================================
-// Converter canonical → StatsMatchRow (public, partagé)
+// Converter canonical â†’ StatsMatchRow (public, partagÃ©)
 // =============================================================================
 
 // StatsMatchRowFromCanonical convertit canonical.PlayerMatchRow vers le
-// format domain.StatsMatchRow consommé par les fonctions d'analyse legacy
+// format legacymatch.StatsMatchRow consommÃ© par les fonctions d'analyse legacy
 // (buildWinLossTab, buildCumulTab, buildKDABuckets, etc.).
 //
 // Mapping selon ADR 0011 :
 //   - K/D/A et perfs : depuis Self.
 //   - SkillSnapshot KillsExpected / DeathsExpected : depuis SkillSnapshot.
-//   - Outcome canonical → int Halo (Win=2, Loss=3, Tie=1, DNF=4).
+//   - Outcome canonical â†’ int Halo (Win=2, Loss=3, Tie=1, DNF=4).
 //   - PlaylistName : depuis Summary.Playlist.DefaultLabel.
-//   - PairName : composite Halo-only laissé vide (P4.3 finale).
-//   - MedalExploitScore / OffensiveConversion / DefensiveResistance : dérivés
+//   - PairName : composite Halo-only laissÃ© vide (P4.3 finale).
+//   - MedalExploitScore / OffensiveConversion / DefensiveResistance : dÃ©rivÃ©s
 //     LevelUp non couverts par canonical (cf. P4_GAP_ANALYSIS.md), restent nil.
-func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.StatsMatchRow {
-	out := domain.StatsMatchRow{
+func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMatchRow {
+	out := legacymatch.StatsMatchRow{
 		MatchID:           r.Summary.MatchID,
 		StartTime:         r.Summary.StartedAtUTC,
 		KDA:               r.Self.KDA,
@@ -97,10 +98,10 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.StatsMatchRow
 	return out
 }
 
-// StatsMatchRowsFromCanonical : version slice partagée par les 4 services
+// StatsMatchRowsFromCanonical : version slice partagÃ©e par les 4 services
 // consommant StatsMatchRow.
-func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.StatsMatchRow {
-	out := make([]domain.StatsMatchRow, len(rows))
+func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.StatsMatchRow {
+	out := make([]legacymatch.StatsMatchRow, len(rows))
 	for i, r := range rows {
 		out[i] = StatsMatchRowFromCanonical(r)
 	}
@@ -108,19 +109,19 @@ func StatsMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.Stats
 }
 
 // =============================================================================
-// Entry-points canonical pour analyses stats partagées (P4.3 finale)
+// Entry-points canonical pour analyses stats partagÃ©es (P4.3 finale)
 // =============================================================================
 //
-// Stratégie : chaque *FromCanonical convertit en []StatsMatchRow via
-// StatsMatchRowsFromCanonical puis délègue à la fonction legacy. La logique
-// métier (ComputePerformanceSeries, ComputeSkillRatingsBatch, etc.) reste
-// UNE source de vérité côté legacy.
+// StratÃ©gie : chaque *FromCanonical convertit en []StatsMatchRow via
+// StatsMatchRowsFromCanonical puis dÃ©lÃ¨gue Ã  la fonction legacy. La logique
+// mÃ©tier (ComputePerformanceSeries, ComputeSkillRatingsBatch, etc.) reste
+// UNE source de vÃ©ritÃ© cÃ´tÃ© legacy.
 //
-// **Justification pragmatique** : la chaîne d'appel ComputePerformanceSeries →
-// ComputeRelativePerformanceScore → applyBotBonus → ... fait plusieurs
-// centaines de lignes. Un port full canonical apporterait 0 valeur métier
-// (zéro changement de comportement) tout en doublant la maintenance. Les
-// converters encapsulés ici permettent de retirer la conversion service-level.
+// **Justification pragmatique** : la chaÃ®ne d'appel ComputePerformanceSeries â†’
+// ComputeRelativePerformanceScore â†’ applyBotBonus â†’ ... fait plusieurs
+// centaines de lignes. Un port full canonical apporterait 0 valeur mÃ©tier
+// (zÃ©ro changement de comportement) tout en doublant la maintenance. Les
+// converters encapsulÃ©s ici permettent de retirer la conversion service-level.
 
 // ComputePerformanceSeriesFromCanonical : entry-point canonical pour
 // ComputePerformanceSeries.
@@ -129,16 +130,16 @@ func ComputePerformanceSeriesFromCanonical(rows []canonical.PlayerMatchRow) []*f
 }
 
 // =============================================================================
-// Converter canonical → SynthesisMatchRow (P4.3 finale, partagé squad/teammates)
+// Converter canonical â†’ SynthesisMatchRow (P4.3 finale, partagÃ© squad/teammates)
 // =============================================================================
 
 // SynthesisMatchRowFromCanonical convertit canonical.PlayerMatchRow vers
-// domain.SynthesisMatchRow consommé par les helpers internes des services
-// squad / teammates. Permet à ces services de migrer canonical-only sans
-// réécrire ~300 lignes d'internals (extractSynthesisSessionLabels,
+// legacymatch.SynthesisMatchRow consommÃ© par les helpers internes des services
+// squad / teammates. Permet Ã  ces services de migrer canonical-only sans
+// rÃ©Ã©crire ~300 lignes d'internals (extractSynthesisSessionLabels,
 // filterSynthesisByCascade, buildTeammateRow, etc.).
-func SynthesisMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.SynthesisMatchRow {
-	out := domain.SynthesisMatchRow{
+func SynthesisMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.SynthesisMatchRow {
+	out := legacymatch.SynthesisMatchRow{
 		MatchID:          r.Summary.MatchID,
 		StartTime:        r.Summary.StartedAtUTC,
 		IsWithFriends:    r.Enrichment.IsWithFriends,
@@ -176,9 +177,9 @@ func SynthesisMatchRowFromCanonical(r canonical.PlayerMatchRow) domain.Synthesis
 	return out
 }
 
-// SynthesisMatchRowsFromCanonical : version slice partagée par teammates/squad.
-func SynthesisMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []domain.SynthesisMatchRow {
-	out := make([]domain.SynthesisMatchRow, len(rows))
+// SynthesisMatchRowsFromCanonical : version slice partagÃ©e par teammates/squad.
+func SynthesisMatchRowsFromCanonical(rows []canonical.PlayerMatchRow) []legacymatch.SynthesisMatchRow {
+	out := make([]legacymatch.SynthesisMatchRow, len(rows))
 	for i, r := range rows {
 		out[i] = SynthesisMatchRowFromCanonical(r)
 	}

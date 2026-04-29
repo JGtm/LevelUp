@@ -1,7 +1,7 @@
-// Package analysis — home.go : algorithmes purs pour la page d'accueil Mission Control.
+// Package analysis â€” home.go : algorithmes purs pour la page d'accueil Mission Control.
 //
-// Fonctions stateless : entrée = slices de domain rows, sortie = blocs JSON.
-// Aucun accès DB, aucun import Streamlit.
+// Fonctions stateless : entrÃ©e = slices de domain rows, sortie = blocs JSON.
+// Aucun accÃ¨s DB, aucun import Streamlit.
 package analysis
 
 import (
@@ -15,16 +15,17 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/legacymatch"
 )
 
-// homeStaticTitleSlug est le slug du titre dont relèvent les helpers d'URL
+// homeStaticTitleSlug est le slug du titre dont relÃ¨vent les helpers d'URL
 // composition de ce fichier (mapPNGNames, conventions HI). Quand un 2e titre
-// aura des assets statiques, ces helpers seront promus à un adapter
-// title-resolved injecté.
+// aura des assets statiques, ces helpers seront promus Ã  un adapter
+// title-resolved injectÃ©.
 const homeStaticTitleSlug = "halo_infinite"
 
 // ---------------------------------------------------------------------------
-// Constantes outcome (codes numériques Halo Infinite)
+// Constantes outcome (codes numÃ©riques Halo Infinite)
 // ---------------------------------------------------------------------------
 
 const (
@@ -39,7 +40,7 @@ const (
 	homeDominanceCounterRemontada = 5
 )
 
-// Codes couleur sémantiques utilisés dans les blocs JSON du Home (highlights).
+// Codes couleur sÃ©mantiques utilisÃ©s dans les blocs JSON du Home (highlights).
 const (
 	homeColorPositive = "positive"
 	homeColorNeutral  = "neutral"
@@ -48,8 +49,8 @@ const (
 
 var homeOutcomeLabels = map[int]string{
 	homeOutcomeWin:  "Victoire",
-	homeOutcomeLoss: "Défaite",
-	homeOutcomeTie:  "Égalité",
+	homeOutcomeLoss: "DÃ©faite",
+	homeOutcomeTie:  "Ã‰galitÃ©",
 	homeOutcomeDNF:  "Abandon",
 }
 
@@ -107,7 +108,7 @@ func outcomeLabelForLocale(outcome int, locale string) string {
 	return "Match"
 }
 
-func buildHomeScoreLabel(match domain.HomeMatchRow) *string {
+func buildHomeScoreLabel(match legacymatch.HomeMatchRow) *string {
 	if match.Team0Score < 0 || match.Team1Score < 0 {
 		return nil
 	}
@@ -141,18 +142,18 @@ func buildHomeNarrativeBadges(dominanceFlag int) []string {
 }
 
 // normalizeHomeModeLabel est un alias interne vers NormalizeModeLabel.
-// Conservé pour ne pas casser les appelants internes au package.
+// ConservÃ© pour ne pas casser les appelants internes au package.
 func normalizeHomeModeLabel(raw string, mapLabels ...string) string {
 	return NormalizeModeLabel(raw, mapLabels...)
 }
 
 // ---------------------------------------------------------------------------
-// ComputeKPIs — KPIs globaux
+// ComputeKPIs â€” KPIs globaux
 // ---------------------------------------------------------------------------
 
-// ComputeKPIs calcule les KPIs globaux depuis les matchs chargés.
-// totalMatches est le nombre réel de matchs du joueur (pas limité par le LIMIT SQL).
-func ComputeKPIs(matches []domain.HomeMatchRow, totalMatches int) domain.HeroKPIs {
+// ComputeKPIs calcule les KPIs globaux depuis les matchs chargÃ©s.
+// totalMatches est le nombre rÃ©el de matchs du joueur (pas limitÃ© par le LIMIT SQL).
+func ComputeKPIs(matches []legacymatch.HomeMatchRow, totalMatches int) domain.HeroKPIs {
 	if len(matches) == 0 {
 		return domain.HeroKPIs{}
 	}
@@ -260,16 +261,16 @@ func dominantKey(counts map[string]int) (string, int) {
 }
 
 // ---------------------------------------------------------------------------
-// ComputeTrend — fenêtre glissante
+// ComputeTrend â€” fenÃªtre glissante
 // ---------------------------------------------------------------------------
 
 // ComputeTrend calcule la tendance entre les [0:window] et [window:2*window] derniers matchs.
-// Retourne nil si pas assez de données.
-func ComputeTrend(matches []domain.HomeMatchRow, window int) *domain.HeroTrend {
+// Retourne nil si pas assez de donnÃ©es.
+func ComputeTrend(matches []legacymatch.HomeMatchRow, window int) *domain.HeroTrend {
 	if len(matches) < window+1 {
 		return nil
 	}
-	// matches est déjà trié DESC (les plus récents en premier, venant de Q26).
+	// matches est dÃ©jÃ  triÃ© DESC (les plus rÃ©cents en premier, venant de Q26).
 	recent := matches[:window]
 	prev := matches[window : window+window]
 	if len(prev) == 0 {
@@ -299,12 +300,12 @@ func ComputeTrend(matches []domain.HomeMatchRow, window int) *domain.HeroTrend {
 }
 
 // ---------------------------------------------------------------------------
-// BuildHeroCard — assemblage hero card
+// BuildHeroCard â€” assemblage hero card
 // ---------------------------------------------------------------------------
 
 // BuildHeroCard construit le hero card pour un joueur.
-// totalMatches est le nombre réel de matchs (sans LIMIT SQL).
-func BuildHeroCard(matches []domain.HomeMatchRow, gamertag string, totalMatches int) domain.HomeHeroCard {
+// totalMatches est le nombre rÃ©el de matchs (sans LIMIT SQL).
+func BuildHeroCard(matches []legacymatch.HomeMatchRow, gamertag string, totalMatches int) domain.HomeHeroCard {
 	kpis := ComputeKPIs(matches, totalMatches)
 	trend := ComputeTrend(matches, 5)
 	return domain.HomeHeroCard{PlayerName: gamertag, KPIs: kpis, Trend: trend}
@@ -312,9 +313,9 @@ func BuildHeroCard(matches []domain.HomeMatchRow, gamertag string, totalMatches 
 
 // BuildSpartanIdentity construit le bloc identitaire compact de la home.
 //
-// ranks (peut être nil) est consulté pour résoudre RankTitle + NextRankTitle dans
-// la locale demandée. Si nil ou si l'entrée est absente du catalog, fallback sur
-// raw.RankName (libellé pré-construit côté player DB) puis sur "Rank N".
+// ranks (peut Ãªtre nil) est consultÃ© pour rÃ©soudre RankTitle + NextRankTitle dans
+// la locale demandÃ©e. Si nil ou si l'entrÃ©e est absente du catalog, fallback sur
+// raw.RankName (libellÃ© prÃ©-construit cÃ´tÃ© player DB) puis sur "Rank N".
 func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string, ranks *mappings.RankCatalog) *domain.HomeSpartanIdentity {
 	if raw == nil {
 		return nil
@@ -367,10 +368,10 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 
 	loc := normalizeHomeLocale(locale)
 
-	// Priorité : RankCatalog (metadata.duckdb / GameCMS) > RankName (libellé
-	// pré-build côté player DB) > RankTier > "Rang N". Le fallback player-DB
-	// couvre les cas où le SemanticAdapter n'est pas injecté dans le HomeService
-	// (tests, mode dégradé).
+	// PrioritÃ© : RankCatalog (metadata.duckdb / GameCMS) > RankName (libellÃ©
+	// prÃ©-build cÃ´tÃ© player DB) > RankTier > "Rang N". Le fallback player-DB
+	// couvre les cas oÃ¹ le SemanticAdapter n'est pas injectÃ© dans le HomeService
+	// (tests, mode dÃ©gradÃ©).
 	title := lookupRankLabel(ranks, raw.RankNumber, loc)
 	if title == "" {
 		title = strings.TrimSpace(optionalStringValue(raw.RankName))
@@ -407,8 +408,8 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 	}
 }
 
-// lookupRankLabel retourne le libellé localisé du rang via le catalog, ou ""
-// si ranks est nil ou si l'entrée est absente.
+// lookupRankLabel retourne le libellÃ© localisÃ© du rang via le catalog, ou ""
+// si ranks est nil ou si l'entrÃ©e est absente.
 func lookupRankLabel(ranks *mappings.RankCatalog, rankID int, locale string) string {
 	if ranks == nil {
 		return ""
@@ -453,16 +454,16 @@ func optionalStringValue(value *string) string {
 }
 
 // ---------------------------------------------------------------------------
-// selectHighlightWindow — fenêtre de sessions similaires
+// selectHighlightWindow â€” fenÃªtre de sessions similaires
 // ---------------------------------------------------------------------------
 
-// selectHighlightWindow sélectionne les matchs de la dernière session et des
-// 4 sessions les plus récentes ayant la même composition (IsWithFriends) et
-// la même playlist dominante (SkillPlaylistGroup).
+// selectHighlightWindow sÃ©lectionne les matchs de la derniÃ¨re session et des
+// 4 sessions les plus rÃ©centes ayant la mÃªme composition (IsWithFriends) et
+// la mÃªme playlist dominante (SkillPlaylistGroup).
 // Fallback : si moins de 5 sessions similaires existent, toutes les sessions
-// disponibles sont retournées. Les matchs sans SessionLabel ne font pas partie
-// de la fenêtre calculée.
-func selectHighlightWindow(matches []domain.HomeMatchRow) []domain.HomeMatchRow {
+// disponibles sont retournÃ©es. Les matchs sans SessionLabel ne font pas partie
+// de la fenÃªtre calculÃ©e.
+func selectHighlightWindow(matches []legacymatch.HomeMatchRow) []legacymatch.HomeMatchRow {
 	if len(matches) == 0 {
 		return nil
 	}
@@ -519,10 +520,10 @@ func selectHighlightWindow(matches []domain.HomeMatchRow) []domain.HomeMatchRow 
 		entry.playlistGroup = best
 	}
 
-	// Session de référence = la plus récente (sessionOrder[0]).
+	// Session de rÃ©fÃ©rence = la plus rÃ©cente (sessionOrder[0]).
 	ref := sessionMap[sessionOrder[0]]
 
-	// Collecter jusqu'à 5 sessions similaires (même composition + même playlist).
+	// Collecter jusqu'Ã  5 sessions similaires (mÃªme composition + mÃªme playlist).
 	collected := []string{}
 	for _, lbl := range sessionOrder {
 		e := sessionMap[lbl]
@@ -539,7 +540,7 @@ func selectHighlightWindow(matches []domain.HomeMatchRow) []domain.HomeMatchRow 
 		labelSet[lbl] = true
 	}
 
-	var window []domain.HomeMatchRow
+	var window []legacymatch.HomeMatchRow
 	for _, m := range matches {
 		if m.SessionLabel != nil && labelSet[*m.SessionLabel] {
 			window = append(window, m)
@@ -549,11 +550,11 @@ func selectHighlightWindow(matches []domain.HomeMatchRow) []domain.HomeMatchRow 
 }
 
 // ---------------------------------------------------------------------------
-// BuildHighlights — faits marquants
+// BuildHighlights â€” faits marquants
 // ---------------------------------------------------------------------------
 
 // highlightPerfColor retourne le niveau de couleur d'un score de performance.
-// Les seuils sont identiques à ceux de perf-color.ts côté frontend.
+// Les seuils sont identiques Ã  ceux de perf-color.ts cÃ´tÃ© frontend.
 func highlightPerfColor(perf float64) string {
 	switch {
 	case perf >= 80:
@@ -569,7 +570,7 @@ func highlightPerfColor(perf float64) string {
 	}
 }
 
-// highlightKDAColor retourne la couleur sémantique d'un FDA/KDA.
+// highlightKDAColor retourne la couleur sÃ©mantique d'un FDA/KDA.
 func highlightKDAColor(kda float64) string {
 	switch {
 	case kda > 1:
@@ -581,9 +582,9 @@ func highlightKDAColor(kda float64) string {
 	}
 }
 
-// bestKDAMatch retourne le match avec le KDA le plus élevé dans la slice.
-func bestKDAMatch(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
-	var best *domain.HomeMatchRow
+// bestKDAMatch retourne le match avec le KDA le plus Ã©levÃ© dans la slice.
+func bestKDAMatch(matches []legacymatch.HomeMatchRow) *legacymatch.HomeMatchRow {
+	var best *legacymatch.HomeMatchRow
 	for i := range matches {
 		if matches[i].KDA == nil {
 			continue
@@ -595,10 +596,10 @@ func bestKDAMatch(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
 	return best
 }
 
-// bestMMRUnderdogWin retourne le match victoire où le joueur avait le plus grand
-// désavantage MMR (enemy_mmr - team_mmr maximal).
-func bestMMRUnderdogWin(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
-	var best *domain.HomeMatchRow
+// bestMMRUnderdogWin retourne le match victoire oÃ¹ le joueur avait le plus grand
+// dÃ©savantage MMR (enemy_mmr - team_mmr maximal).
+func bestMMRUnderdogWin(matches []legacymatch.HomeMatchRow) *legacymatch.HomeMatchRow {
+	var best *legacymatch.HomeMatchRow
 	bestDelta := 0.0
 	for i := range matches {
 		m := &matches[i]
@@ -614,9 +615,9 @@ func bestMMRUnderdogWin(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
 	return best
 }
 
-// BuildHighlights construit les faits marquants depuis les matchs récents.
-// La fenêtre est déterminée par selectHighlightWindow (dernière session + 4 similaires).
-func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
+// BuildHighlights construit les faits marquants depuis les matchs rÃ©cents.
+// La fenÃªtre est dÃ©terminÃ©e par selectHighlightWindow (derniÃ¨re session + 4 similaires).
+func BuildHighlights(matches []legacymatch.HomeMatchRow) []domain.HighlightItem {
 	if len(matches) == 0 {
 		return nil
 	}
@@ -688,17 +689,17 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 		}
 	}
 
-	// Highlight 3 : Plus belle victoire (plus grand désavantage MMR surmonté).
+	// Highlight 3 : Plus belle victoire (plus grand dÃ©savantage MMR surmontÃ©).
 	{
 		best := bestMMRUnderdogWin(window)
 		if best != nil {
-			// delta négatif = désavantage pour le joueur (team_mmr < enemy_mmr)
+			// delta nÃ©gatif = dÃ©savantage pour le joueur (team_mmr < enemy_mmr)
 			delta := *best.TeamMMR - *best.EnemyMMR
 			sign := ""
 			if delta > 0 {
 				sign = "+"
 			}
-			// Couleur : négatif = rouge (désavantage), ≈ 0 = bleu (équilibré), positif = vert (avantage).
+			// Couleur : nÃ©gatif = rouge (dÃ©savantage), â‰ˆ 0 = bleu (Ã©quilibrÃ©), positif = vert (avantage).
 			const mmrNeutralThreshold = 25.0
 			color := homeColorNeutral
 			if delta > mmrNeutralThreshold {
@@ -709,36 +710,36 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.best_underdog_win",
 				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
-				Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+				Detail:     fmt.Sprintf("%s Â· %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
 				ValueColor: color,
 			})
 		}
 	}
 
-	// Highlight 4 : Pic FDA récent (meilleur KDA sur toutes les sessions sélectionnées).
+	// Highlight 4 : Pic FDA rÃ©cent (meilleur KDA sur toutes les sessions sÃ©lectionnÃ©es).
 	{
 		best := bestKDAMatch(window)
 		if best != nil && best.KDA != nil {
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.kda_peak",
 				Value:      fmt.Sprintf("%.2f", *best.KDA),
-				Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+				Detail:     fmt.Sprintf("%s Â· %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
 				ValueColor: highlightKDAColor(*best.KDA),
 			})
 		}
 	}
 
-	// Highlight 5 : Maîtrise — tuile à défilement (tirs à la tête · frags parfaits · précision moyenne).
+	// Highlight 5 : MaÃ®trise â€” tuile Ã  dÃ©filement (tirs Ã  la tÃªte Â· frags parfaits Â· prÃ©cision moyenne).
 	if maitrise := buildMaitriseHighlight(window); maitrise != nil {
 		highlights = append(highlights, *maitrise)
 	}
 
-	// Highlight 6 : Stats par min. — tuile à défilement (frags · morts · assistances par minute).
+	// Highlight 6 : Stats par min. â€” tuile Ã  dÃ©filement (frags Â· morts Â· assistances par minute).
 	if perMin := buildPerMinuteHighlight(window); perMin != nil {
 		highlights = append(highlights, *perMin)
 	}
 
-	// Highlight 7 : Volume — nombre de parties et contexte FDA moyen / taux de victoire.
+	// Highlight 7 : Volume â€” nombre de parties et contexte FDA moyen / taux de victoire.
 	{
 		var kdaSum float64
 		var kdaN, wins int
@@ -767,7 +768,7 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 		})
 	}
 
-	// Highlight 8 : Série — tuile à défilement (folie meurtrière max · victoires consécutives · carte fétiche).
+	// Highlight 8 : SÃ©rie â€” tuile Ã  dÃ©filement (folie meurtriÃ¨re max Â· victoires consÃ©cutives Â· carte fÃ©tiche).
 	if serie := buildSerieHighlight(window); serie != nil {
 		highlights = append(highlights, *serie)
 	}
@@ -775,16 +776,16 @@ func BuildHighlights(matches []domain.HomeMatchRow) []domain.HighlightItem {
 	return highlights
 }
 
-// buildMaitriseHighlight assemble la tuile « Maîtrise » (3 slides à défilement) :
-//  1. Tirs à la tête (somme) sur la fenêtre
+// buildMaitriseHighlight assemble la tuile Â« MaÃ®trise Â» (3 slides Ã  dÃ©filement) :
+//  1. Tirs Ã  la tÃªte (somme) sur la fenÃªtre
 //  2. Frags parfaits (somme)
-//  3. Précision moyenne (moyenne arithmétique des matchs renseignés)
+//  3. PrÃ©cision moyenne (moyenne arithmÃ©tique des matchs renseignÃ©s)
 //
 // Retourne nil si aucun slide exploitable.
-func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem {
+func buildMaitriseHighlight(window []legacymatch.HomeMatchRow) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
 
-	// Slide 1 : Tirs à la tête (somme).
+	// Slide 1 : Tirs Ã  la tÃªte (somme).
 	var hsSum, perfSum int
 	for _, m := range window {
 		hsSum += m.HeadshotKills
@@ -811,7 +812,7 @@ func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem 
 		ValueColor: perfColor,
 	})
 
-	// Slide 3 : Précision moyenne.
+	// Slide 3 : PrÃ©cision moyenne.
 	var accSum float64
 	var accN int
 	for _, m := range window {
@@ -822,7 +823,7 @@ func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem 
 	}
 	if accN > 0 {
 		avg := accSum / float64(accN)
-		// Seuils alignés sur Performance globale (HomePage.tsx) : > 55 vert, ≥ 40 ambre, sinon rouge.
+		// Seuils alignÃ©s sur Performance globale (HomePage.tsx) : > 55 vert, â‰¥ 40 ambre, sinon rouge.
 		color := homeColorNegative
 		if avg > 55 {
 			color = homeColorPositive
@@ -849,13 +850,13 @@ func buildMaitriseHighlight(window []domain.HomeMatchRow) *domain.HighlightItem 
 	}
 }
 
-// buildPerMinuteHighlight assemble la tuile « Stats par min. » (3 slides à défilement) :
-//  1. Frags / min (kills cumulés / minutes jouées cumulées)
+// buildPerMinuteHighlight assemble la tuile Â« Stats par min. Â» (3 slides Ã  dÃ©filement) :
+//  1. Frags / min (kills cumulÃ©s / minutes jouÃ©es cumulÃ©es)
 //  2. Morts / min
 //  3. Assistances / min
 //
-// Seuls les matchs avec time_played_seconds > 0 sont comptés. Retourne nil si aucun match exploitable.
-func buildPerMinuteHighlight(window []domain.HomeMatchRow) *domain.HighlightItem {
+// Seuls les matchs avec time_played_seconds > 0 sont comptÃ©s. Retourne nil si aucun match exploitable.
+func buildPerMinuteHighlight(window []legacymatch.HomeMatchRow) *domain.HighlightItem {
 	var totalSecs float64
 	var kills, deaths, assists, n int
 	for _, m := range window {
@@ -887,24 +888,24 @@ func buildPerMinuteHighlight(window []domain.HomeMatchRow) *domain.HighlightItem
 	}
 }
 
-// buildSerieHighlight assemble la tuile « Série » (3 slides à défilement) :
-//  1. Folie meurtrière (max) sur la fenêtre
-//  2. Victoires consécutives (plus longue séquence)
-//  3. Carte fétiche (meilleur taux de victoire, min 2 parties)
+// buildSerieHighlight assemble la tuile Â« SÃ©rie Â» (3 slides Ã  dÃ©filement) :
+//  1. Folie meurtriÃ¨re (max) sur la fenÃªtre
+//  2. Victoires consÃ©cutives (plus longue sÃ©quence)
+//  3. Carte fÃ©tiche (meilleur taux de victoire, min 2 parties)
 //
-// Retourne nil si aucun slide n'a pu être calculé.
-func buildSerieHighlight(window []domain.HomeMatchRow) *domain.HighlightItem {
+// Retourne nil si aucun slide n'a pu Ãªtre calculÃ©.
+func buildSerieHighlight(window []legacymatch.HomeMatchRow) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
 
-	// Slide 1 : Folie meurtrière max.
+	// Slide 1 : Folie meurtriÃ¨re max.
 	if s := sliceBestKillingSpree(window); s != nil {
 		slides = append(slides, *s)
 	}
-	// Slide 2 : Plus longue série de victoires.
+	// Slide 2 : Plus longue sÃ©rie de victoires.
 	if s := sliceBestWinStreak(window); s != nil {
 		slides = append(slides, *s)
 	}
-	// Slide 3 : Carte fétiche.
+	// Slide 3 : Carte fÃ©tiche.
 	if s := sliceFavoriteMap(window); s != nil {
 		slides = append(slides, *s)
 	}
@@ -922,8 +923,8 @@ func buildSerieHighlight(window []domain.HomeMatchRow) *domain.HighlightItem {
 	}
 }
 
-func sliceBestKillingSpree(window []domain.HomeMatchRow) *domain.HighlightSlide {
-	var best *domain.HomeMatchRow
+func sliceBestKillingSpree(window []legacymatch.HomeMatchRow) *domain.HighlightSlide {
+	var best *legacymatch.HomeMatchRow
 	bestVal := 0
 	for i := range window {
 		m := &window[i]
@@ -941,16 +942,16 @@ func sliceBestKillingSpree(window []domain.HomeMatchRow) *domain.HighlightSlide 
 	return &domain.HighlightSlide{
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
-		Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+		Detail:     fmt.Sprintf("%s Â· %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
 		ValueColor: homeColorPositive,
 	}
 }
 
-func sliceBestWinStreak(window []domain.HomeMatchRow) *domain.HighlightSlide {
+func sliceBestWinStreak(window []legacymatch.HomeMatchRow) *domain.HighlightSlide {
 	if len(window) == 0 {
 		return nil
 	}
-	// window est triée start_time DESC : on parcourt en inverse pour ordre chronologique.
+	// window est triÃ©e start_time DESC : on parcourt en inverse pour ordre chronologique.
 	best, cur := 0, 0
 	for i := len(window) - 1; i >= 0; i-- {
 		if window[i].Outcome == homeOutcomeWin {
@@ -978,7 +979,7 @@ func sliceBestWinStreak(window []domain.HomeMatchRow) *domain.HighlightSlide {
 	}
 }
 
-func sliceFavoriteMap(window []domain.HomeMatchRow) *domain.HighlightSlide {
+func sliceFavoriteMap(window []legacymatch.HomeMatchRow) *domain.HighlightSlide {
 	type stat struct {
 		name   string
 		nameFR string
@@ -1007,7 +1008,7 @@ func sliceFavoriteMap(window []domain.HomeMatchRow) *domain.HighlightSlide {
 			continue
 		}
 		wr := float64(s.wins) / float64(s.plays)
-		// Départage : WR, puis nombre de parties (plus = plus fiable).
+		// DÃ©partage : WR, puis nombre de parties (plus = plus fiable).
 		if wr > bestWR || (wr == bestWR && best != nil && s.plays > best.plays) {
 			bestWR = wr
 			best = s
@@ -1036,11 +1037,11 @@ func sliceFavoriteMap(window []domain.HomeMatchRow) *domain.HighlightSlide {
 }
 
 // ---------------------------------------------------------------------------
-// BuildRecentMatches — timeline récente
+// BuildRecentMatches â€” timeline rÃ©cente
 // ---------------------------------------------------------------------------
 
 // mapPNGNames contient les noms de maps (EN) dont l'image locale est au format PNG.
-// Tous les autres noms utilisent le format JPEG par défaut.
+// Tous les autres noms utilisent le format JPEG par dÃ©faut.
 var mapPNGNames = map[string]struct{}{
 	"Aquarius":                 {},
 	"Aquarius - Ranked":        {},
@@ -1062,16 +1063,16 @@ var mapPNGNames = map[string]struct{}{
 }
 
 // MapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
-// Le nom de la map est encodé pour les espaces et caractères spéciaux.
+// Le nom de la map est encodÃ© pour les espaces et caractÃ¨res spÃ©ciaux.
 // Public pour usage cross-package (ex: media match candidates).
 func MapStaticImagePath(mapName string) string { return mapStaticImagePath(mapName) }
 
 // mapStaticImagePath retourne l'URL relative de l'image de map servie par
-// /static/maps/halo_infinite/. Le nom de la map est encodé pour les espaces et
-// caractères spéciaux.
+// /static/maps/halo_infinite/. Le nom de la map est encodÃ© pour les espaces et
+// caractÃ¨res spÃ©ciaux.
 //
-// Composition déléguée à internal/assets/static — ce package reste seule source
-// de vérité pour le format /static/{kind}/{titleSlug}/{id}{ext}.
+// Composition dÃ©lÃ©guÃ©e Ã  internal/assets/static â€” ce package reste seule source
+// de vÃ©ritÃ© pour le format /static/{kind}/{titleSlug}/{id}{ext}.
 func mapStaticImagePath(mapName string) string {
 	mapName = strings.TrimSpace(mapName)
 	if mapName == "" || homeUUIDRe.MatchString(mapName) {
@@ -1081,7 +1082,7 @@ func mapStaticImagePath(mapName string) string {
 	if _, ok := mapPNGNames[mapName]; ok {
 		ext = ".png"
 	}
-	// Encoder les espaces manuellement — net/url.PathEscape encode aussi "/" ce qu'on ne veut pas.
+	// Encoder les espaces manuellement â€” net/url.PathEscape encode aussi "/" ce qu'on ne veut pas.
 	encoded := ""
 	for _, c := range mapName {
 		if c == ' ' {
@@ -1094,24 +1095,24 @@ func mapStaticImagePath(mapName string) string {
 }
 
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.
-func BuildRecentMatches(matches []domain.HomeMatchRow, limit int) []domain.RecentMatchItem {
+func BuildRecentMatches(matches []legacymatch.HomeMatchRow, limit int) []domain.RecentMatchItem {
 	return BuildRecentMatchesForLocale(matches, limit, "fr")
 }
 
-// BuildRecentMatchesForLocale construit la liste des derniers matchs pour la locale demandée.
-func BuildRecentMatchesForLocale(matches []domain.HomeMatchRow, limit int, locale string) []domain.RecentMatchItem {
+// BuildRecentMatchesForLocale construit la liste des derniers matchs pour la locale demandÃ©e.
+func BuildRecentMatchesForLocale(matches []legacymatch.HomeMatchRow, limit int, locale string) []domain.RecentMatchItem {
 	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, nil, locale)
 }
 
 // BuildRecentMatchesWithFavorites construit la liste des derniers matchs avec le flag favori.
 // favoriteIDs est un set de match_id favoris (nil = social repo indisponible).
-func BuildRecentMatchesWithFavorites(matches []domain.HomeMatchRow, limit int, favoriteIDs map[string]bool) []domain.RecentMatchItem {
+func BuildRecentMatchesWithFavorites(matches []legacymatch.HomeMatchRow, limit int, favoriteIDs map[string]bool) []domain.RecentMatchItem {
 	return BuildRecentMatchesWithFavoritesForLocale(matches, limit, favoriteIDs, "fr")
 }
 
 // BuildRecentMatchesWithFavoritesForLocale construit la liste des derniers matchs avec le flag favori
 // en choisissant les labels selon la langue active de l'interface.
-func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, limit int, favoriteIDs map[string]bool, locale string) []domain.RecentMatchItem {
+func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow, limit int, favoriteIDs map[string]bool, locale string) []domain.RecentMatchItem {
 	if len(matches) == 0 {
 		return nil
 	}
@@ -1175,7 +1176,7 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 			skillPlaylistGroup = m.SkillPlaylistGroup
 		}
 
-		// Progression dans le tier : approximation sur une fenêtre de 50 pts.
+		// Progression dans le tier : approximation sur une fenÃªtre de 50 pts.
 		var skillProgressPct *float64
 		var skillPointsInTier *int
 		if m.SkillRatingValue != nil {
@@ -1205,7 +1206,7 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 
 		isFav := favoriteIDs[m.MatchID]
 
-		// Précision brute (de HomeMatchRow, déjà en %).
+		// PrÃ©cision brute (de HomeMatchRow, dÃ©jÃ  en %).
 		var accuracy *float64
 		if m.Accuracy != nil {
 			accuracy = m.Accuracy
@@ -1215,13 +1216,13 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 		isWithFriends := m.IsWithFriends
 		iwf := &isWithFriends
 
-		// Préférer l'asset local /static/maps pour les maps connues ; fallback cache-aside sinon.
+		// PrÃ©fÃ©rer l'asset local /static/maps pour les maps connues ; fallback cache-aside sinon.
 		mapImageURL := buildMapImageURL("halo_infinite", m.MapID, m.MapName, m.MapNameFR)
 
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  m.MatchID,
-			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
-			Detail:                   fmt.Sprintf("%s · KD %s · %s", modeUI, ratioStr, accStr),
+			Title:                    fmt.Sprintf("%s Â· %s", label, mapUI),
+			Detail:                   fmt.Sprintf("%s Â· KD %s Â· %s", modeUI, ratioStr, accStr),
 			StartedAt:                &t,
 			OutcomeLabel:             label,
 			OutcomeTone:              tone,
@@ -1265,7 +1266,7 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []domain.HomeMatchRow, lim
 }
 
 // buildMapImageURL construit l'URL d'image d'une map.
-// Priorité au fichier statique local quand le nom de map est connu ; fallback sur le cache-aside UUID sinon.
+// PrioritÃ© au fichier statique local quand le nom de map est connu ; fallback sur le cache-aside UUID sinon.
 func buildMapImageURL(titleID, mapID, mapName, mapNameFR string) *string {
 	if localPath := mapStaticImagePath(mapName); localPath != "" {
 		return &localPath
@@ -1289,7 +1290,7 @@ func mmrDelta(team, enemy *float64) *float64 {
 	return &v
 }
 
-// float64PtrVal retourne la valeur pointée ou 0 si nil.
+// float64PtrVal retourne la valeur pointÃ©e ou 0 si nil.
 func float64PtrVal(p *float64) float64 {
 	if p == nil {
 		return 0
@@ -1298,14 +1299,14 @@ func float64PtrVal(p *float64) float64 {
 }
 
 // ---------------------------------------------------------------------------
-// BuildSessionSummaries / BuildSessionSummary — résumés de sessions
+// BuildSessionSummaries / BuildSessionSummary â€” rÃ©sumÃ©s de sessions
 // ---------------------------------------------------------------------------
 
-// BuildSessionSummaries construit la liste des N dernières sessions (solo ou escouade),
-// triées de la plus récente à la plus ancienne.
+// BuildSessionSummaries construit la liste des N derniÃ¨res sessions (solo ou escouade),
+// triÃ©es de la plus rÃ©cente Ã  la plus ancienne.
 func BuildSessionSummaries(
-	matches []domain.HomeMatchRow,
-	sessions []domain.HomeSessionRow,
+	matches []legacymatch.HomeMatchRow,
+	sessions []legacymatch.HomeSessionRow,
 	squadMode bool,
 	limit int,
 ) []domain.SessionSummaryItem {
@@ -1314,7 +1315,7 @@ func BuildSessionSummaries(
 	}
 
 	// Filtrer par mode.
-	var filtered []domain.HomeSessionRow
+	var filtered []legacymatch.HomeSessionRow
 	for _, s := range sessions {
 		if s.IsWithFriends == squadMode && s.SessionLabel != nil {
 			filtered = append(filtered, s)
@@ -1324,10 +1325,10 @@ func BuildSessionSummaries(
 		return nil
 	}
 
-	// Collecter les labels distincts triés par date décroissante.
+	// Collecter les labels distincts triÃ©s par date dÃ©croissante.
 	labels := distinctSessionLabels(filtered)
 
-	// Construire le résumé pour chaque label, jusqu'à la limite.
+	// Construire le rÃ©sumÃ© pour chaque label, jusqu'Ã  la limite.
 	resultCap := len(labels)
 	if limit > 0 && limit < resultCap {
 		resultCap = limit
@@ -1345,7 +1346,7 @@ func BuildSessionSummaries(
 			}
 		}
 		// Filtrer les matchs.
-		var sessionMatches []domain.HomeMatchRow
+		var sessionMatches []legacymatch.HomeMatchRow
 		for _, m := range matches {
 			if matchIDSet[m.MatchID] {
 				sessionMatches = append(sessionMatches, m)
@@ -1387,7 +1388,7 @@ func BuildSessionSummaries(
 			}
 		}
 
-		// Performance équipe : uniquement en mode escouade.
+		// Performance Ã©quipe : uniquement en mode escouade.
 		var avgTeamPerf *float64
 		if squadMode {
 			var scores []*float64
@@ -1429,7 +1430,7 @@ func BuildSessionSummaries(
 			}
 		}
 
-		// Mode dominant : pair (map+mode) le plus joué sur la session (nom FR).
+		// Mode dominant : pair (map+mode) le plus jouÃ© sur la session (nom FR).
 		var dominantMode *string
 		{
 			freq := make(map[string]int)
@@ -1451,7 +1452,7 @@ func BuildSessionSummaries(
 			}
 		}
 
-		// Playlist dominante : playlist FR la plus jouée sur la session.
+		// Playlist dominante : playlist FR la plus jouÃ©e sur la session.
 		var dominantPlaylist *string
 		{
 			freq := make(map[string]int)
@@ -1504,8 +1505,8 @@ func BuildSessionSummaries(
 	return result
 }
 
-// distinctSessionLabels retourne les labels distincts triés par start_time DESC.
-func distinctSessionLabels(sessions []domain.HomeSessionRow) []string {
+// distinctSessionLabels retourne les labels distincts triÃ©s par start_time DESC.
+func distinctSessionLabels(sessions []legacymatch.HomeSessionRow) []string {
 	// Calculer le start_time max par label.
 	labelTimes := make(map[string]time.Time)
 	for _, s := range sessions {
@@ -1533,10 +1534,10 @@ func distinctSessionLabels(sessions []domain.HomeSessionRow) []string {
 	return labels
 }
 
-// BuildSessionSummary construit le résumé de la dernière session solo ou escouade.
+// BuildSessionSummary construit le rÃ©sumÃ© de la derniÃ¨re session solo ou escouade.
 func BuildSessionSummary(
-	matches []domain.HomeMatchRow,
-	sessions []domain.HomeSessionRow,
+	matches []legacymatch.HomeMatchRow,
+	sessions []legacymatch.HomeSessionRow,
 	squadMode bool,
 ) *domain.SessionSummaryItem {
 	if len(sessions) == 0 || len(matches) == 0 {
@@ -1544,7 +1545,7 @@ func BuildSessionSummary(
 	}
 
 	// Filtrer les sessions par mode.
-	var filtered []domain.HomeSessionRow
+	var filtered []legacymatch.HomeSessionRow
 	for _, s := range sessions {
 		if s.IsWithFriends == squadMode && s.SessionLabel != nil {
 			filtered = append(filtered, s)
@@ -1554,7 +1555,7 @@ func BuildSessionSummary(
 		return nil
 	}
 
-	// Trouver le label de la session la plus récente.
+	// Trouver le label de la session la plus rÃ©cente.
 	latestLabel := latestSessionLabel(filtered)
 	if latestLabel == "" {
 		return nil
@@ -1572,7 +1573,7 @@ func BuildSessionSummary(
 	}
 
 	// Filtrer les matchs de la session.
-	var sessionMatches []domain.HomeMatchRow
+	var sessionMatches []legacymatch.HomeMatchRow
 	for _, m := range matches {
 		if matchIDSet[m.MatchID] {
 			sessionMatches = append(sessionMatches, m)
@@ -1597,10 +1598,10 @@ func BuildSessionSummary(
 }
 
 // ---------------------------------------------------------------------------
-// BuildRecentMedia — médias récents
+// BuildRecentMedia â€” mÃ©dias rÃ©cents
 // ---------------------------------------------------------------------------
 
-// BuildRecentMedia transforme les lignes DuckDB en items de médias récents.
+// BuildRecentMedia transforme les lignes DuckDB en items de mÃ©dias rÃ©cents.
 func BuildRecentMedia(media []domain.HomeMediaRow, limit int) []domain.RecentMediaItem {
 	if len(media) == 0 {
 		return nil
@@ -1631,7 +1632,7 @@ func round2(v float64) float64 { return math.Round(v*100) / 100 }
 func round3(v float64) float64 { return math.Round(v*1000) / 1000 }
 func round4(v float64) float64 { return math.Round(v*10000) / 10000 }
 
-func meanRatio(matches []domain.HomeMatchRow) *float64 {
+func meanRatio(matches []legacymatch.HomeMatchRow) *float64 {
 	var sum, count float64
 	for _, m := range matches {
 		if m.Ratio != nil {
@@ -1646,7 +1647,7 @@ func meanRatio(matches []domain.HomeMatchRow) *float64 {
 	return &v
 }
 
-func meanAccuracy(matches []domain.HomeMatchRow) *float64 {
+func meanAccuracy(matches []legacymatch.HomeMatchRow) *float64 {
 	var sum, count float64
 	for _, m := range matches {
 		if m.Accuracy != nil {
@@ -1661,7 +1662,7 @@ func meanAccuracy(matches []domain.HomeMatchRow) *float64 {
 	return &v
 }
 
-func winRate(matches []domain.HomeMatchRow) float64 {
+func winRate(matches []legacymatch.HomeMatchRow) float64 {
 	if len(matches) == 0 {
 		return 0
 	}
@@ -1674,8 +1675,8 @@ func winRate(matches []domain.HomeMatchRow) float64 {
 	return WinRate(wins, len(matches))
 }
 
-func bestRatioMatch(matches []domain.HomeMatchRow) *domain.HomeMatchRow {
-	var best *domain.HomeMatchRow
+func bestRatioMatch(matches []legacymatch.HomeMatchRow) *legacymatch.HomeMatchRow {
+	var best *legacymatch.HomeMatchRow
 	for i := range matches {
 		if matches[i].Ratio == nil {
 			continue
@@ -1701,9 +1702,9 @@ func outcomeTone(code int) string {
 	return "dnf"
 }
 
-func latestSessionLabel(sessions []domain.HomeSessionRow) string {
+func latestSessionLabel(sessions []legacymatch.HomeSessionRow) string {
 	// Trier par start_time DESC, prendre le premier session_label.
-	sorted := make([]domain.HomeSessionRow, len(sessions))
+	sorted := make([]legacymatch.HomeSessionRow, len(sessions))
 	copy(sorted, sessions)
 	sort.Slice(sorted, func(i, j int) bool {
 		if sorted[i].StartTime == nil {
@@ -1722,7 +1723,7 @@ func latestSessionLabel(sessions []domain.HomeSessionRow) string {
 	return ""
 }
 
-func earliestStartTime(matches []domain.HomeMatchRow) *time.Time {
+func earliestStartTime(matches []legacymatch.HomeMatchRow) *time.Time {
 	var earliest *time.Time
 	for i := range matches {
 		t := matches[i].StartTime
@@ -1741,9 +1742,9 @@ func intPtrIfPos(v int) *int {
 	return nil
 }
 
-// latestEndTime retourne l'heure de fin estimée du dernier match de la session.
-func latestEndTime(matches []domain.HomeMatchRow) *time.Time {
-	var latest *domain.HomeMatchRow
+// latestEndTime retourne l'heure de fin estimÃ©e du dernier match de la session.
+func latestEndTime(matches []legacymatch.HomeMatchRow) *time.Time {
+	var latest *legacymatch.HomeMatchRow
 	for i := range matches {
 		if latest == nil || matches[i].StartTime.After(latest.StartTime) {
 			latest = &matches[i]

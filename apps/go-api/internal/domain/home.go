@@ -5,27 +5,11 @@
 // directement par leurs propres endpoints (best-effort, nécessite auth Sprint 15).
 package domain
 
-import (
-	"time"
-
-	"levelup/go-api/internal/legacymatch"
-)
-
-// ---------------------------------------------------------------------------
-// Lignes brutes DuckDB
-// ---------------------------------------------------------------------------
+import "time"
 
 // HomeMatchRow / HomeSessionRow ont été déplacés vers `internal/legacymatch`
-// pour libérer le package `domain` de ses artefacts transitionnels.
-// P4.3 finale cleanup. Aliases conservés pour la rétrocompat le temps de
-// migrer les références — Sera supprimé quand les ~163 sites de référence
-// auront migré vers `legacymatch.HomeMatchRow` / `legacymatch.HomeSessionRow`.
-
-// Deprecated: utiliser `legacymatch.HomeMatchRow`.
-type HomeMatchRow = legacymatch.HomeMatchRow
-
-// Deprecated: utiliser `legacymatch.HomeSessionRow`.
-type HomeSessionRow = legacymatch.HomeSessionRow
+// (P4.3 finale cleanup) — toutes les références ont migré, plus d'alias dans
+// domain.
 
 // HomeMediaRow est une ligne brute chargée depuis Q28 (médias récents).
 type HomeMediaRow struct {

@@ -10,16 +10,17 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
 // --- mock PlayerMatchesRepository pour tests P4.3 finale ---
 //
 // Convertit les matches/sessions du mockHomeRepo en canonical.PlayerMatchRow
-// pour exercer le path canonical (le seul path après P4.3 finale).
+// pour exercer le path canonical (le seul path aprÃ¨s P4.3 finale).
 type mockHomePlayerMatches struct {
-	matches  []domain.HomeMatchRow
-	sessions []domain.HomeSessionRow
+	matches  []legacymatch.HomeMatchRow
+	sessions []legacymatch.HomeSessionRow
 	err      error
 }
 
@@ -28,7 +29,7 @@ func (m *mockHomePlayerMatches) LoadPlayerMatches(_ context.Context, _, _ string
 		return nil, m.err
 	}
 	out := make([]canonical.PlayerMatchRow, len(m.matches))
-	sessByID := map[string]*domain.HomeSessionRow{}
+	sessByID := map[string]*legacymatch.HomeSessionRow{}
 	for i := range m.sessions {
 		s := &m.sessions[i]
 		sessByID[s.MatchID] = s
@@ -68,8 +69,8 @@ func (m *mockHomePlayerMatches) LoadPlayerMatches(_ context.Context, _, _ string
 		if mm.PlaylistName != "" {
 			playlistRef.Labels["en"] = mm.PlaylistName
 		}
-		// PairName composite Halo-only → projeté sur GameVariant pour
-		// préserver la compat des tests legacy qui peuplaient PairName/FR.
+		// PairName composite Halo-only â†’ projetÃ© sur GameVariant pour
+		// prÃ©server la compat des tests legacy qui peuplaient PairName/FR.
 		var variantRef *canonical.AssetReference
 		if mm.PairName != "" || mm.PairNameFR != "" {
 			variantRef = &canonical.AssetReference{Kind: "game_variant", DefaultLabel: mm.PairName, Labels: map[string]string{}}
@@ -118,13 +119,13 @@ func withHomeMock(svc *HomeService, repo *mockHomeRepo) *HomeService {
 // --- mock ---
 
 type mockHomeRepo struct {
-	matches                []domain.HomeMatchRow
+	matches                []legacymatch.HomeMatchRow
 	matchErr               error
 	identity               *domain.HomeSpartanIdentityRow
 	identityErr            error
 	matchCount             int
 	countErr               error
-	sessions               []domain.HomeSessionRow
+	sessions               []legacymatch.HomeSessionRow
 	sessionErr             error
 	media                  []domain.HomeMediaRow
 	mediaErr               error
@@ -132,7 +133,7 @@ type mockHomeRepo struct {
 	recentPlaylistRanksErr error
 }
 
-func (m *mockHomeRepo) LoadHomeMatches(_ context.Context) ([]domain.HomeMatchRow, error) {
+func (m *mockHomeRepo) LoadHomeMatches(_ context.Context) ([]legacymatch.HomeMatchRow, error) {
 	return m.matches, m.matchErr
 }
 func (m *mockHomeRepo) LoadSpartanIdentity(_ context.Context) (*domain.HomeSpartanIdentityRow, error) {
@@ -144,7 +145,7 @@ func (m *mockHomeRepo) CountPlayerMatches(_ context.Context) (int, error) {
 	}
 	return len(m.matches), m.countErr
 }
-func (m *mockHomeRepo) LoadHomeSessions(_ context.Context) ([]domain.HomeSessionRow, error) {
+func (m *mockHomeRepo) LoadHomeSessions(_ context.Context) ([]legacymatch.HomeSessionRow, error) {
 	return m.sessions, m.sessionErr
 }
 func (m *mockHomeRepo) LoadRecentMedia(_ context.Context, _ int) ([]domain.HomeMediaRow, error) {
@@ -171,11 +172,11 @@ func (m *mockHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, 
 func TestHomeService_GetHomePage_OK(t *testing.T) {
 	now := time.Now()
 	repo := &mockHomeRepo{
-		matches: []domain.HomeMatchRow{
+		matches: []legacymatch.HomeMatchRow{
 			{MatchID: "m1", StartTime: now, MapName: "Aquarius", PairName: "Slayer", Outcome: 2, Kills: 10, Deaths: 5, Assists: 3, IsRanked: true},
 			{MatchID: "m2", StartTime: now.Add(-1 * time.Hour), MapName: "Streets", PairName: "CTF", Outcome: 3, Kills: 5, Deaths: 10, Assists: 1, IsRanked: false},
 		},
-		sessions: []domain.HomeSessionRow{
+		sessions: []legacymatch.HomeSessionRow{
 			{MatchID: "m1", SessionLabel: strPtr("Session 1"), StartTime: &now},
 		},
 		media: []domain.HomeMediaRow{
@@ -201,8 +202,8 @@ func TestHomeService_GetHomePage_OK(t *testing.T) {
 
 func TestHomeService_GetHomePage_Empty(t *testing.T) {
 	repo := &mockHomeRepo{
-		matches:  []domain.HomeMatchRow{},
-		sessions: []domain.HomeSessionRow{},
+		matches:  []legacymatch.HomeMatchRow{},
+		sessions: []legacymatch.HomeSessionRow{},
 		media:    []domain.HomeMediaRow{},
 	}
 	svc := withHomeMock(NewHomeService(repo), repo)
@@ -227,14 +228,14 @@ func TestHomeService_GetHomePage_MatchesError(t *testing.T) {
 }
 
 func TestHomeService_GetHomePage_SessionsError(t *testing.T) {
-	t.Skip("P4.3 finale : sessions sont dérivées des canonical rows (plus de LoadHomeSessions séparé)")
+	t.Skip("P4.3 finale : sessions sont dÃ©rivÃ©es des canonical rows (plus de LoadHomeSessions sÃ©parÃ©)")
 }
 
 func TestHomeService_GetHomePage_MediaGraceful(t *testing.T) {
 	now := time.Now()
 	repo := &mockHomeRepo{
-		matches:  []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, Kills: 10, Deaths: 5, StartTime: now}},
-		sessions: []domain.HomeSessionRow{},
+		matches:  []legacymatch.HomeMatchRow{{MatchID: "m1", Outcome: 2, Kills: 10, Deaths: 5, StartTime: now}},
+		sessions: []legacymatch.HomeSessionRow{},
 		mediaErr: errors.New("media unavailable"),
 	}
 	svc := withHomeMock(NewHomeService(repo), repo)
@@ -251,13 +252,13 @@ func TestHomeService_GetHomePage_MediaGraceful(t *testing.T) {
 func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 	now := time.Now()
 	repo := &mockHomeRepo{
-		matches: []domain.HomeMatchRow{{
+		matches: []legacymatch.HomeMatchRow{{
 			MatchID:        "m1",
 			StartTime:      now,
 			MapName:        "Bazaar",
 			MapNameFR:      "Bazaar",
 			PairName:       "Team Slayer on Bazaar",
-			PairNameFR:     "Slayer en équipe sur Bazaar",
+			PairNameFR:     "Slayer en Ã©quipe sur Bazaar",
 			PlaylistName:   "Quick Play",
 			PlaylistNameFR: "Partie rapide",
 			Outcome:        2,
@@ -269,8 +270,8 @@ func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected FR error: %v", err)
 	}
-	if got := *respFR.RecentMatches[0].ModeUI; got != "Slayer en équipe" {
-		t.Fatalf("FR ModeUI = %q, want %q", got, "Slayer en équipe")
+	if got := *respFR.RecentMatches[0].ModeUI; got != "Slayer en Ã©quipe" {
+		t.Fatalf("FR ModeUI = %q, want %q", got, "Slayer en Ã©quipe")
 	}
 	if got := *respFR.RecentMatches[0].PlaylistUI; got != "Partie rapide" {
 		t.Fatalf("FR PlaylistUI = %q, want %q", got, "Partie rapide")
@@ -318,7 +319,7 @@ title_slug     = "halo_infinite"
 schema_version = 1
 
 [fields.kills]
-labels        = { en = "Kills", fr = "Éliminations" }
+labels        = { en = "Kills", fr = "Ã‰liminations" }
 storage_unit  = "count"
 display_unit  = "count"
 format        = "integer"
@@ -368,10 +369,10 @@ group         = "combat"
 }
 
 func TestHomeService_GetHomePage_SpartanIdentityErrorGraceful(t *testing.T) {
-	// LoadSpartanIdentity en erreur → réponse retournée quand même (dégradation silencieuse).
+	// LoadSpartanIdentity en erreur â†’ rÃ©ponse retournÃ©e quand mÃªme (dÃ©gradation silencieuse).
 	repo := &mockHomeRepo{
-		matches:     []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
-		sessions:    []domain.HomeSessionRow{},
+		matches:     []legacymatch.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
+		sessions:    []legacymatch.HomeSessionRow{},
 		identityErr: errors.New("career_progression table missing"),
 	}
 	svc := withHomeMock(NewHomeService(repo), repo)
@@ -389,11 +390,11 @@ func TestHomeService_GetHomePage_SpartanIdentityErrorGraceful(t *testing.T) {
 }
 
 func TestHomeService_GetHomePage_CountMatchesFallback(t *testing.T) {
-	// CountPlayerMatches en erreur → fallback sur len(matches), pas d'erreur.
+	// CountPlayerMatches en erreur â†’ fallback sur len(matches), pas d'erreur.
 	now := time.Now()
 	repo := &mockHomeRepo{
-		matches:  []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: now}},
-		sessions: []domain.HomeSessionRow{},
+		matches:  []legacymatch.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: now}},
+		sessions: []legacymatch.HomeSessionRow{},
 		countErr: errors.New("count failed"),
 	}
 	svc := withHomeMock(NewHomeService(repo), repo)
@@ -414,36 +415,36 @@ func TestHomeService_GetHomePage_CountMatchesFallback(t *testing.T) {
 // Tests cache TTL dans GetHomePage
 // ---------------------------------------------------------------------------
 
-// countingHomeRepo compte les appels à LoadHomeMatches et LoadHomeSessions.
+// countingHomeRepo compte les appels Ã  LoadHomeMatches et LoadHomeSessions.
 type countingHomeRepo struct {
 	mockHomeRepo
 	matchCalls   int
 	sessionCalls int
 }
 
-func (m *countingHomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, error) {
+func (m *countingHomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatchRow, error) {
 	m.matchCalls++
 	return m.mockHomeRepo.LoadHomeMatches(ctx)
 }
-func (m *countingHomeRepo) LoadHomeSessions(ctx context.Context) ([]domain.HomeSessionRow, error) {
+func (m *countingHomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSessionRow, error) {
 	m.sessionCalls++
 	return m.mockHomeRepo.LoadHomeSessions(ctx)
 }
 
 func TestHomeService_GetHomePage_CacheHitSkipsDBCalls(t *testing.T) {
-	t.Skip("P4.3 finale : HomeMatchesCache bypassé en mode canonical (TODO P4.4 cache canonical-aware)")
+	t.Skip("P4.3 finale : HomeMatchesCache bypassÃ© en mode canonical (TODO P4.4 cache canonical-aware)")
 }
 
 func TestHomeService_GetHomePage_CacheMissAfterInvalidate(t *testing.T) {
-	t.Skip("P4.3 finale : HomeMatchesCache bypassé en mode canonical (TODO P4.4 cache canonical-aware)")
+	t.Skip("P4.3 finale : HomeMatchesCache bypassÃ© en mode canonical (TODO P4.4 cache canonical-aware)")
 }
 
 func TestHomeService_GetHomePage_NoCacheNoPanic(t *testing.T) {
 	repo := &mockHomeRepo{
-		matches:  []domain.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
-		sessions: []domain.HomeSessionRow{},
+		matches:  []legacymatch.HomeMatchRow{{MatchID: "m1", Outcome: 2, StartTime: time.Now()}},
+		sessions: []legacymatch.HomeSessionRow{},
 	}
-	// Sans cache → comportement identique à avant.
+	// Sans cache â†’ comportement identique Ã  avant.
 	svc := withHomeMock(NewHomeService(repo), repo)
 	if _, err := svc.GetHomePage(context.Background(), "GT", "fr"); err != nil {
 		t.Fatalf("unexpected error without cache: %v", err)
@@ -473,7 +474,7 @@ func TestHomeService_GetChallenges(t *testing.T) {
 // Tests cache-first (Phase A)
 // ---------------------------------------------------------------------------
 
-// mockBattlePassCacheRepo implémente port.BattlePassCacheRepository pour les tests.
+// mockBattlePassCacheRepo implÃ©mente port.BattlePassCacheRepository pour les tests.
 type mockBattlePassCacheRepo struct {
 	bpResp  *domain.BattlePassResponse
 	bpHit   bool
@@ -495,8 +496,8 @@ func (m *mockBattlePassCacheRepo) LoadCachedChallenges(_ context.Context, _ time
 	return m.chResp, m.chHit, m.chErr
 }
 
-// stubProviderHit est un provider nul qui panique si appelé (vérifie que le cache a pris le dessus).
-// (utilise la valeur par défaut de HaloProvider qui retourne available=false)
+// stubProviderHit est un provider nul qui panique si appelÃ© (vÃ©rifie que le cache a pris le dessus).
+// (utilise la valeur par dÃ©faut de HaloProvider qui retourne available=false)
 
 func TestHomeService_GetBattlePass_CacheHit(t *testing.T) {
 	rank := 42
@@ -540,7 +541,7 @@ func TestHomeService_GetBattlePass_CacheMiss(t *testing.T) {
 	// Le provider live retourne available=false (pas de tokens)
 	resp := svc.GetBattlePass(context.Background())
 
-	// Cache miss → live provider appelé → available=false (pas de tokens)
+	// Cache miss â†’ live provider appelÃ© â†’ available=false (pas de tokens)
 	if resp.FromCache {
 		t.Error("expected FromCache=false on cache miss")
 	}
@@ -562,7 +563,7 @@ func TestHomeService_GetChallenges_CacheHit(t *testing.T) {
 			XPAvailable: &xp,
 			Items: []domain.ChallengeItem{{
 				ChallengePath:   "Challenges/Tracking/test-1",
-				Title:           "Défi test",
+				Title:           "DÃ©fi test",
 				ProgressCurrent: &current,
 				ProgressTarget:  &target,
 			}},
@@ -626,7 +627,7 @@ func TestHomeService_GetChallenges_CacheMiss(t *testing.T) {
 }
 
 func TestHomeService_GetBattlePass_NoCacheRepo(t *testing.T) {
-	// Sans WithCacheRepo → live direct, pas de panique
+	// Sans WithCacheRepo â†’ live direct, pas de panique
 	svc := NewHomeService(&mockHomeRepo{})
 	resp := svc.GetBattlePass(context.Background())
 	if resp.FromCache {
@@ -647,41 +648,41 @@ func TestHomeService_DefaultTTL_Is1Hour(t *testing.T) {
 
 func TestGetBattlePass_CallsLive_Always(t *testing.T) {
 	// Sans tokens dans le contexte, le live retourne Available=false.
-	// Le cache repo ne doit être consulté qu'en fallback, pas en premier.
-	// On vérifie que le cache est consulté APRÈS le live (en fallback),
-	// en configurant un cache repo avec hit=true et en vérifiant le résultat final.
+	// Le cache repo ne doit Ãªtre consultÃ© qu'en fallback, pas en premier.
+	// On vÃ©rifie que le cache est consultÃ© APRÃˆS le live (en fallback),
+	// en configurant un cache repo avec hit=true et en vÃ©rifiant le rÃ©sultat final.
 	track := "path/to/track"
 	cached := &domain.BattlePassResponse{Available: true, RewardTrack: &track}
 	cacheRepo := &mockBattlePassCacheRepo{bpResp: cached, bpHit: true}
 	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
-	// Live sans tokens → Available=false → fallback cache → Available=true
+	// Live sans tokens â†’ Available=false â†’ fallback cache â†’ Available=true
 	resp := svc.GetBattlePass(context.Background())
 	if !resp.Available {
 		t.Error("fallback cache attendu quand live indisponible")
 	}
 	if cacheRepo.bpCalls != 1 {
-		t.Errorf("cache consulté en fallback exactement une fois, bpCalls=%d", cacheRepo.bpCalls)
+		t.Errorf("cache consultÃ© en fallback exactement une fois, bpCalls=%d", cacheRepo.bpCalls)
 	}
 }
 
 func TestGetBattlePass_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
-	// Quand le live retourne Available=false, le cache DB doit être retourné.
+	// Quand le live retourne Available=false, le cache DB doit Ãªtre retournÃ©.
 	track := "path/to/track"
 	cached := &domain.BattlePassResponse{Available: true, RewardTrack: &track}
 	cacheRepo := &mockBattlePassCacheRepo{bpResp: cached, bpHit: true}
 	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
-	// provider par défaut : pas de tokens → Available=false
+	// provider par dÃ©faut : pas de tokens â†’ Available=false
 	resp := svc.GetBattlePass(context.Background())
 	if !resp.Available {
 		t.Error("fallback cache attendu quand live indisponible")
 	}
 	if cacheRepo.bpCalls != 1 {
-		t.Errorf("cache repo doit être consulté en fallback, bpCalls=%d", cacheRepo.bpCalls)
+		t.Errorf("cache repo doit Ãªtre consultÃ© en fallback, bpCalls=%d", cacheRepo.bpCalls)
 	}
 }
 
 func TestGetChallenges_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
-	// ChallengesResponse avec items → cacheChallengesAreRenderable retourne true.
+	// ChallengesResponse avec items â†’ cacheChallengesAreRenderable retourne true.
 	cached := &domain.ChallengesResponse{Available: true, Items: []domain.ChallengeItem{{}}}
 	cacheRepo := &mockBattlePassCacheRepo{chResp: cached, chHit: true}
 	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
@@ -708,5 +709,5 @@ func TestHomeService_ConcurrentSetSessionActive(t *testing.T) {
 			svc.SetSessionActive(i%2 == 0)
 		}(i)
 	}
-	// Pas d'assertion sur la valeur — on vérifie l'absence de race (-race flag)
+	// Pas d'assertion sur la valeur â€” on vÃ©rifie l'absence de race (-race flag)
 }

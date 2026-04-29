@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // --- mock ---
@@ -23,10 +24,10 @@ type mockSquadRepo struct {
 	impactErr   error
 	heatmapRows []domain.SynthesisHeatmapRow
 	heatmapErr  error
-	synthRows   []domain.SynthesisMatchRow
+	synthRows   []legacymatch.SynthesisMatchRow
 	synthErr    error
-	// LookupXUIDByGamertag : lookup attendu (gamertag normalisé en lowercase → xuid).
-	// Si vide, retourne ("", false, nil) — comportement par défaut.
+	// LookupXUIDByGamertag : lookup attendu (gamertag normalisÃ© en lowercase â†’ xuid).
+	// Si vide, retourne ("", false, nil) â€” comportement par dÃ©faut.
 	lookupAliases map[string]string
 	lookupErr     error
 }
@@ -55,7 +56,7 @@ func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 func (m *mockSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
 	return m.heatmapRows, m.heatmapErr
 }
-func (m *mockSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]domain.SynthesisMatchRow, error) {
+func (m *mockSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
 	return m.synthRows, m.synthErr
 }
 
@@ -131,7 +132,7 @@ func TestSquadService_GetSquadPage_SquadMatchesError(t *testing.T) {
 func TestSquadService_GetSynthesisPage_OK(t *testing.T) {
 	now := time.Now()
 	repo := &mockSquadRepo{
-		synthRows: []domain.SynthesisMatchRow{
+		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "m1", StartTime: now, Outcome: 2, Kills: 10, Deaths: 5, IsWithFriends: true},
 			{MatchID: "m2", StartTime: now, Outcome: 3, Kills: 5, Deaths: 10, IsWithFriends: false},
 		},

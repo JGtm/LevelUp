@@ -1,4 +1,4 @@
-// Package service — synthesis_service_test.go : tests pour SynthesisService.
+// Package service â€” synthesis_service_test.go : tests pour SynthesisService.
 // Sprint 55 D9.
 package service
 
@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
@@ -19,7 +20,7 @@ var errSynthTest = errors.New("synthesis repo error")
 // --- mock SynthesisRepository ---
 
 type mockSynthesisRepo struct {
-	synthRows     []domain.SynthesisMatchRow
+	synthRows     []legacymatch.SynthesisMatchRow
 	synthErr      error
 	heatmapRows   []domain.SynthesisHeatmapRow
 	heatmapErr    error
@@ -27,7 +28,7 @@ type mockSynthesisRepo struct {
 	encounterErr  error
 }
 
-func (m *mockSynthesisRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]domain.SynthesisMatchRow, error) {
+func (m *mockSynthesisRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
 	return m.synthRows, m.synthErr
 }
 
@@ -42,9 +43,9 @@ func (m *mockSynthesisRepo) LoadEncounters(_ context.Context, _ string) ([]domai
 // --- mock PlayerMatchesRepository pour tests P4.3 finale ---
 //
 // Convertit []SynthesisMatchRow en []canonical.PlayerMatchRow pour exercer
-// le path canonical (le seul path en service après P4.3 finale).
+// le path canonical (le seul path en service aprÃ¨s P4.3 finale).
 type mockSynthesisPlayerMatches struct {
-	rows []domain.SynthesisMatchRow
+	rows []legacymatch.SynthesisMatchRow
 	err  error
 }
 
@@ -89,21 +90,21 @@ func (m *mockSynthesisPlayerMatches) LoadPlayerMatches(_ context.Context, _ stri
 func (m *mockSynthesisPlayerMatches) InvalidatePlayer(_, _ string) {}
 
 // withSynthMock attache le mock canonical au service pour exercer le path
-// canonical (seul path actif après P4.3 finale).
-func withSynthMock(svc *SynthesisService, rows []domain.SynthesisMatchRow, err error) *SynthesisService {
+// canonical (seul path actif aprÃ¨s P4.3 finale).
+func withSynthMock(svc *SynthesisService, rows []legacymatch.SynthesisMatchRow, err error) *SynthesisService {
 	pm := &mockSynthesisPlayerMatches{rows: rows, err: err}
 	return svc.WithPlayerMatchesRepo(pm, "halo_infinite", "TestPlayer")
 }
 
 // --- helpers ---
 
-func makeSynthRows(n int) []domain.SynthesisMatchRow {
-	rows := make([]domain.SynthesisMatchRow, n)
+func makeSynthRows(n int) []legacymatch.SynthesisMatchRow {
+	rows := make([]legacymatch.SynthesisMatchRow, n)
 	for i := range rows {
 		kills := 10 - i%10
 		deaths := 3 + i%5
 		kda := float64(kills) / float64(deaths+1)
-		rows[i] = domain.SynthesisMatchRow{
+		rows[i] = legacymatch.SynthesisMatchRow{
 			MatchID:   fmt.Sprintf("match-%d", i),
 			StartTime: time.Now().UTC().Add(-time.Duration(i) * time.Hour),
 			Outcome:   2 + i%2, // alternance WIN/LOSS
@@ -132,7 +133,7 @@ func TestFilterSynthesisByPeriod_All(t *testing.T) {
 }
 
 func TestFilterSynthesisByPeriod_1w(t *testing.T) {
-	rows := []domain.SynthesisMatchRow{
+	rows := []legacymatch.SynthesisMatchRow{
 		{MatchID: "recent", StartTime: time.Now().UTC().Add(-24 * time.Hour), Outcome: 2, Kills: 5},
 		{MatchID: "old", StartTime: time.Now().UTC().Add(-30 * 24 * time.Hour), Outcome: 3, Kills: 3},
 	}
@@ -166,7 +167,7 @@ func TestBuildHighlightsPreview_Empty(t *testing.T) {
 }
 
 func TestBuildHighlightsPreview_TopByKills(t *testing.T) {
-	rows := []domain.SynthesisMatchRow{
+	rows := []legacymatch.SynthesisMatchRow{
 		{MatchID: "a", Kills: 5},
 		{MatchID: "b", Kills: 12},
 		{MatchID: "c", Kills: 8},
@@ -181,7 +182,7 @@ func TestBuildHighlightsPreview_TopByKills(t *testing.T) {
 }
 
 func TestBuildHighlightsPreview_WorstByDeaths(t *testing.T) {
-	rows := []domain.SynthesisMatchRow{
+	rows := []legacymatch.SynthesisMatchRow{
 		{MatchID: "a", Deaths: 2},
 		{MatchID: "b", Deaths: 15},
 		{MatchID: "c", Deaths: 7},
@@ -274,7 +275,7 @@ func TestBuildBreakdowns_Aggregates(t *testing.T) {
 func TestGetSynthesisPage_Success(t *testing.T) {
 	kda := 2.0
 	repo := &mockSynthesisRepo{
-		synthRows: []domain.SynthesisMatchRow{
+		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "m1", StartTime: time.Now().UTC(), Outcome: 2, Kills: 10, Deaths: 3, KDA: &kda},
 			{MatchID: "m2", StartTime: time.Now().UTC().Add(-time.Hour), Outcome: 3, Kills: 4, Deaths: 8, KDA: &kda},
 		},
@@ -301,7 +302,7 @@ func TestGetSynthesisPage_Success(t *testing.T) {
 }
 
 func TestGetSynthesisPage_DefaultPeriodAll(t *testing.T) {
-	repo := &mockSynthesisRepo{synthRows: []domain.SynthesisMatchRow{}}
+	repo := &mockSynthesisRepo{synthRows: []legacymatch.SynthesisMatchRow{}}
 	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
 
 	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{})
@@ -323,13 +324,13 @@ func TestGetSynthesisPage_RepoError(t *testing.T) {
 	}
 }
 
-// --- D9 : scope réellement appliqué ---
+// --- D9 : scope rÃ©ellement appliquÃ© ---
 
-// TestGetSynthesisPage_ScopeApplied_Period vérifie que GetSynthesisPage filtre
-// les matchs selon la période demandée et que scope.MatchCount le reflète.
+// TestGetSynthesisPage_ScopeApplied_Period vÃ©rifie que GetSynthesisPage filtre
+// les matchs selon la pÃ©riode demandÃ©e et que scope.MatchCount le reflÃ¨te.
 func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
 	repo := &mockSynthesisRepo{
-		synthRows: []domain.SynthesisMatchRow{
+		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "recent", StartTime: time.Now().UTC().Add(-24 * time.Hour), Outcome: 2, Kills: 5},
 			{MatchID: "old", StartTime: time.Now().UTC().Add(-30 * 24 * time.Hour), Outcome: 3, Kills: 3},
 		},
@@ -351,12 +352,12 @@ func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Overview_MatchesScope vérifie que overview.TotalMatches
-// correspond exactement au nombre de matchs dans le scope (après filtrage).
+// TestGetSynthesisPage_Overview_MatchesScope vÃ©rifie que overview.TotalMatches
+// correspond exactement au nombre de matchs dans le scope (aprÃ¨s filtrage).
 func TestGetSynthesisPage_Overview_MatchesScope(t *testing.T) {
 	kda := 1.5
 	repo := &mockSynthesisRepo{
-		synthRows: []domain.SynthesisMatchRow{
+		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "m1", StartTime: time.Now().UTC(), Outcome: 2, Kills: 6, Deaths: 3, KDA: &kda},
 			{MatchID: "m2", StartTime: time.Now().UTC().Add(-time.Hour), Outcome: 3, Kills: 2, Deaths: 5, KDA: &kda},
 			{MatchID: "m3", StartTime: time.Now().UTC().Add(-2 * time.Hour), Outcome: 2, Kills: 8, Deaths: 2, KDA: &kda},
@@ -377,12 +378,12 @@ func TestGetSynthesisPage_Overview_MatchesScope(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Highlights_WithinScope vérifie que les MatchIDs dans
-// highlights.TopByKills appartiennent aux matchs du scope filtré.
+// TestGetSynthesisPage_Highlights_WithinScope vÃ©rifie que les MatchIDs dans
+// highlights.TopByKills appartiennent aux matchs du scope filtrÃ©.
 func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {
 	kda := 2.0
 	repo := &mockSynthesisRepo{
-		synthRows: []domain.SynthesisMatchRow{
+		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "scoped-1", StartTime: time.Now().UTC().Add(-2 * time.Hour), Outcome: 2, Kills: 10, Deaths: 1, KDA: &kda},
 			{MatchID: "scoped-2", StartTime: time.Now().UTC().Add(-3 * time.Hour), Outcome: 2, Kills: 7, Deaths: 2, KDA: &kda},
 		},
@@ -408,12 +409,12 @@ func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Rivalries_FromEncounters vérifie que rivalries_preview
-// reflète les encounters retournés par le repository.
+// TestGetSynthesisPage_Rivalries_FromEncounters vÃ©rifie que rivalries_preview
+// reflÃ¨te les encounters retournÃ©s par le repository.
 func TestGetSynthesisPage_Rivalries_FromEncounters(t *testing.T) {
 	avk := 1.2
 	repo := &mockSynthesisRepo{
-		synthRows: []domain.SynthesisMatchRow{},
+		synthRows: []legacymatch.SynthesisMatchRow{},
 		encounterRows: []domain.EncounterRawRow{
 			{XUID: "e1", Gamertag: "Alice", MatchCount: 5, AsTeammate: 4, AsEnemy: 1, AvgKDA: &avk},
 			{XUID: "e2", Gamertag: "Bob", MatchCount: 3, AsTeammate: 0, AsEnemy: 3, AvgKDA: &avk},
@@ -428,11 +429,11 @@ func TestGetSynthesisPage_Rivalries_FromEncounters(t *testing.T) {
 	if resp.RivalriesPreview.Total != 2 {
 		t.Errorf("rivalries.Total = %d, want 2", resp.RivalriesPreview.Total)
 	}
-	// Alice (AsTeammate > AsEnemy) doit apparaître dans TopTeammates
+	// Alice (AsTeammate > AsEnemy) doit apparaÃ®tre dans TopTeammates
 	if len(resp.RivalriesPreview.TopTeammates) == 0 {
 		t.Error("expected Alice in TopTeammates (AsTeammate=4 > AsEnemy=1)")
 	}
-	// Bob (AsEnemy > AsTeammate) doit apparaître dans TopEnemies
+	// Bob (AsEnemy > AsTeammate) doit apparaÃ®tre dans TopEnemies
 	if len(resp.RivalriesPreview.TopEnemies) == 0 {
 		t.Error("expected Bob in TopEnemies (AsEnemy=3 > AsTeammate=0)")
 	}

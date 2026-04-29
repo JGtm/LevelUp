@@ -1,4 +1,4 @@
-// Package duckdb — squad_repo.go : accès DB pour la page Escouade et Synthèse.
+// Package duckdb â€” squad_repo.go : accÃ¨s DB pour la page Escouade et SynthÃ¨se.
 package duckdb
 
 import (
@@ -8,19 +8,20 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
-// SquadRepo implémente port.SquadRepository.
+// SquadRepo implÃ©mente port.SquadRepository.
 type SquadRepo struct {
 	pdb *PlayerDB
 }
 
-// NewSquadRepo crée un SquadRepo pour un joueur.
+// NewSquadRepo crÃ©e un SquadRepo pour un joueur.
 func NewSquadRepo(pdb *PlayerDB) *SquadRepo {
 	return &SquadRepo{pdb: pdb}
 }
 
-// LoadTopTeammates charge les meilleurs coéquipiers du joueur (Q29, top 50).
+// LoadTopTeammates charge les meilleurs coÃ©quipiers du joueur (Q29, top 50).
 func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain.TopTeammateRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -51,12 +52,12 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 	return result, rows.Err()
 }
 
-// LookupXUIDByGamertag résout un gamertag (ILIKE, case-insensitive) vers son
-// XUID via shared.xuid_aliases. Sert de fallback pour les coéquipiers sélectionnés
+// LookupXUIDByGamertag rÃ©sout un gamertag (ILIKE, case-insensitive) vers son
+// XUID via shared.xuid_aliases. Sert de fallback pour les coÃ©quipiers sÃ©lectionnÃ©s
 // qui sortent du top 50 LoadTopTeammates (saisie libre dans la combobox).
 //
-// Si plusieurs aliases correspondent au même gamertag (changement de pseudo
-// historique), on retourne le plus récent. Si aucun alias, retourne ("", false, nil).
+// Si plusieurs aliases correspondent au mÃªme gamertag (changement de pseudo
+// historique), on retourne le plus rÃ©cent. Si aucun alias, retourne ("", false, nil).
 func (r *SquadRepo) LookupXUIDByGamertag(ctx context.Context, gamertag string) (string, bool, error) {
 	gamertag = strings.TrimSpace(gamertag)
 	if gamertag == "" {
@@ -88,7 +89,7 @@ LIMIT 1`
 	return xuid, xuid != "", nil
 }
 
-// LoadSquadMatches charge les matchs communs joueur+coéquipier (Q30).
+// LoadSquadMatches charge les matchs communs joueur+coÃ©quipier (Q30).
 func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.SquadMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -133,7 +134,7 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 	return result, rows.Err()
 }
 
-// LoadTeammateMatches charge les stats du coéquipier sur les matchs communs (Q31).
+// LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
 func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.TeammateMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -170,8 +171,8 @@ func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammat
 	return result, rows.Err()
 }
 
-// LoadImpactEvents charge les événements highlight pour une liste de match_ids (Q32 dynamique).
-// matchIDs est la liste des identifiants — si vide, retourne nil directement.
+// LoadImpactEvents charge les Ã©vÃ©nements highlight pour une liste de match_ids (Q32 dynamique).
+// matchIDs est la liste des identifiants â€” si vide, retourne nil directement.
 func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error) {
 	if len(matchIDs) == 0 {
 		return nil, nil
@@ -211,7 +212,7 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	return result, rows.Err()
 }
 
-// LoadSynthesisHeatmap charge les données heatmap map×mode (Q33).
+// LoadSynthesisHeatmap charge les donnÃ©es heatmap mapÃ—mode (Q33).
 func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -239,7 +240,7 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 }
 
 // LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
-func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]domain.SynthesisMatchRow, error) {
+func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]legacymatch.SynthesisMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -249,9 +250,9 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]do
 	}
 	defer rows.Close()
 
-	var result []domain.SynthesisMatchRow
+	var result []legacymatch.SynthesisMatchRow
 	for rows.Next() {
-		var row domain.SynthesisMatchRow
+		var row legacymatch.SynthesisMatchRow
 		if err := rows.Scan(
 			&row.MatchID,
 			&row.StartTime,
@@ -276,4 +277,4 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]do
 }
 
 // Ensure SquadRepo implements port.SquadRepository at compile time.
-// (Vérification implicite via injection dans le service.)
+// (VÃ©rification implicite via injection dans le service.)

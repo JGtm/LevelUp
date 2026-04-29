@@ -7,12 +7,13 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 func TestSessionPageService_GetPage_DefaultLatestSession(t *testing.T) {
 	now := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
 	repo := &mockSessionPageStatsRepo{
-		matches: []domain.StatsMatchRow{
+		matches: []legacymatch.StatsMatchRow{
 			makeSessionPageMatch("m1", now.Add(-6*time.Hour), "2026-04-21 14h", false, "Quick Play", "Slayer", 10, 8, 2, 74.2, 54.1),
 			makeSessionPageMatch("m2", now.Add(-5*time.Hour), "2026-04-21 14h", false, "Quick Play", "Slayer", 12, 7, 3, 76.2, 58.1),
 			makeSessionPageMatch("m3", now.Add(-2*time.Hour), "2026-04-21 18h", false, "BTB Social", "CTF", 14, 9, 4, 68.5, 61.0),
@@ -201,7 +202,7 @@ func TestSessionPageService_GetPage_SingleSessionHasNoSuggestion(t *testing.T) {
 
 func TestBuildSessionCompareSuggestion_CategoryRankedReason(t *testing.T) {
 	labels := []string{"2026-04-21 18h", "2026-04-21 19h30"}
-	rows := []domain.StatsMatchRow{
+	rows := []legacymatch.StatsMatchRow{
 		makeSessionPageMatch("m1", time.Date(2026, 4, 21, 18, 0, 0, 0, time.UTC), "2026-04-21 18h", true, "Ranked Arena", "Oddball", 10, 8, 3, 60.0, 55.0),
 		makeSessionPageMatch("m2", time.Date(2026, 4, 21, 18, 20, 0, 0, time.UTC), "2026-04-21 18h", true, "Ranked Arena", "Slayer", 12, 9, 4, 62.0, 57.0),
 		makeSessionPageMatch("m3", time.Date(2026, 4, 21, 19, 30, 0, 0, time.UTC), "2026-04-21 19h30", true, "Ranked Arena", "Oddball", 13, 7, 5, 64.0, 63.0),
@@ -219,17 +220,17 @@ func TestBuildSessionCompareSuggestion_CategoryRankedReason(t *testing.T) {
 	if suggestion.Strategy != "category-ranked-close-volume" {
 		t.Fatalf("unexpected strategy: %s", suggestion.Strategy)
 	}
-	if suggestion.Reason != "même catégorie ranked · même statut classé · écart de 1 match(s)" {
+	if suggestion.Reason != "mÃªme catÃ©gorie ranked Â· mÃªme statut classÃ© Â· Ã©cart de 1 match(s)" {
 		t.Fatalf("unexpected reason: %s", suggestion.Reason)
 	}
 }
 
 type mockSessionPageStatsRepo struct {
-	matches []domain.StatsMatchRow
+	matches []legacymatch.StatsMatchRow
 	err     error
 }
 
-func (m *mockSessionPageStatsRepo) LoadStatsMatches(_ context.Context) ([]domain.StatsMatchRow, error) {
+func (m *mockSessionPageStatsRepo) LoadStatsMatches(_ context.Context) ([]legacymatch.StatsMatchRow, error) {
 	return m.matches, m.err
 }
 
@@ -241,9 +242,9 @@ func (m *mockSessionPageStatsRepo) LoadMatchParticipants(_ context.Context) ([]d
 	return nil, nil
 }
 
-func makeSessionPageDataset() []domain.StatsMatchRow {
+func makeSessionPageDataset() []legacymatch.StatsMatchRow {
 	now := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
-	return []domain.StatsMatchRow{
+	return []legacymatch.StatsMatchRow{
 		makeSessionPageMatch("m1", now.Add(-6*time.Hour), "2026-04-21 14h", false, "Quick Play", "Slayer", 10, 8, 2, 74.2, 54.1),
 		makeSessionPageMatch("m2", now.Add(-5*time.Hour), "2026-04-21 14h", false, "Quick Play", "Slayer", 12, 7, 3, 76.2, 58.1),
 		makeSessionPageMatch("m3", now.Add(-2*time.Hour), "2026-04-21 18h", false, "BTB Social", "CTF", 14, 9, 4, 68.5, 61.0),
@@ -265,10 +266,10 @@ func makeSessionPageMatch(
 	assists int,
 	accuracy float64,
 	perf float64,
-) domain.StatsMatchRow {
+) legacymatch.StatsMatchRow {
 	label := sessionLabel
 	win := analysis.OutcomeWin
-	return domain.StatsMatchRow{
+	return legacymatch.StatsMatchRow{
 		MatchID:           matchID,
 		StartTime:         start,
 		Outcome:           &win,

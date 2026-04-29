@@ -7,15 +7,16 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-func makeHomeMatch(matchID string, outcome int, ratio, accuracy *float64, isWithFriends bool) domain.HomeMatchRow { //nolint:unparam
+func makeHomeMatch(matchID string, outcome int, ratio, accuracy *float64, isWithFriends bool) legacymatch.HomeMatchRow { //nolint:unparam
 	t := time.Now()
-	return domain.HomeMatchRow{
+	return legacymatch.HomeMatchRow{
 		MatchID:       matchID,
 		StartTime:     t,
 		MapName:       "Recharge",
@@ -28,8 +29,8 @@ func makeHomeMatch(matchID string, outcome int, ratio, accuracy *float64, isWith
 	}
 }
 
-func homeMatchAt(matchID string, outcome int, ratio *float64, t time.Time) domain.HomeMatchRow {
-	return domain.HomeMatchRow{
+func homeMatchAt(matchID string, outcome int, ratio *float64, t time.Time) legacymatch.HomeMatchRow {
+	return legacymatch.HomeMatchRow{
 		MatchID:   matchID,
 		StartTime: t,
 		MapName:   "Bazaar",
@@ -54,7 +55,7 @@ func TestComputeKPIs_Empty(t *testing.T) {
 }
 
 func TestComputeKPIs_WithMatches(t *testing.T) {
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		makeHomeMatch("m1", 2, fp(2.0), fp(50.0), false), // win
 		makeHomeMatch("m2", 3, fp(0.5), fp(30.0), false), // loss
 		makeHomeMatch("m3", 2, fp(1.5), nil, false),      // win, no accuracy
@@ -94,7 +95,7 @@ func TestComputeKPIs_WithMatches(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestComputeTrend_NotEnoughMatches(t *testing.T) {
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		makeHomeMatch("m1", 2, fp(1.5), nil, false),
 	}
 	trend := analysis.ComputeTrend(matches, 5)
@@ -104,8 +105,8 @@ func TestComputeTrend_NotEnoughMatches(t *testing.T) {
 }
 
 func TestComputeTrend_WithData(t *testing.T) {
-	// 10 matchs : 5 récents (ratio=2.0), 5 précédents (ratio=1.0).
-	var matches []domain.HomeMatchRow
+	// 10 matchs : 5 rÃ©cents (ratio=2.0), 5 prÃ©cÃ©dents (ratio=1.0).
+	var matches []legacymatch.HomeMatchRow
 	for i := 0; i < 5; i++ {
 		matches = append(matches, makeHomeMatch("r"+string(rune('a'+i)), 2, fp(2.0), nil, false))
 	}
@@ -137,7 +138,7 @@ func TestBuildRecentMatches_Empty(t *testing.T) {
 }
 
 func TestBuildRecentMatches_Limit(t *testing.T) {
-	var matches []domain.HomeMatchRow
+	var matches []legacymatch.HomeMatchRow
 	for i := 0; i < 10; i++ {
 		matches = append(matches, makeHomeMatch("m"+string(rune('a'+i)), 2, fp(1.0), fp(55.0), false))
 	}
@@ -155,7 +156,7 @@ func TestBuildRecentMatches_Limit(t *testing.T) {
 
 func TestBuildRecentMatches_NormalizesModeLabel(t *testing.T) {
 	now := time.Now()
-	items := analysis.BuildRecentMatches([]domain.HomeMatchRow{{
+	items := analysis.BuildRecentMatches([]legacymatch.HomeMatchRow{{
 		MatchID:      "m1",
 		StartTime:    now,
 		MapName:      "Aquarius",
@@ -182,23 +183,23 @@ func TestBuildRecentMatches_NormalizesModeLabel(t *testing.T) {
 
 func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 	now := time.Now()
-	match := domain.HomeMatchRow{
+	match := legacymatch.HomeMatchRow{
 		MatchID:           "m-locale",
 		StartTime:         now,
 		MapName:           "Bazaar",
 		MapNameFR:         "Bazaar",
 		PairName:          "Team Slayer on Bazaar",
-		PairNameFR:        "Slayer en équipe sur Bazaar",
+		PairNameFR:        "Slayer en Ã©quipe sur Bazaar",
 		GameVariantName:   "Arena:Slayer",
-		GameVariantNameFR: "Assassin : Arène",
+		GameVariantNameFR: "Assassin : ArÃ¨ne",
 		PlaylistName:      "Quick Play",
 		PlaylistNameFR:    "Partie rapide",
 		Outcome:           2,
 	}
 
-	itemsFR := analysis.BuildRecentMatchesForLocale([]domain.HomeMatchRow{match}, 6, "fr")
-	if itemsFR[0].ModeUI == nil || *itemsFR[0].ModeUI != "Slayer en équipe" {
-		t.Fatalf("FR ModeUI: want Slayer en équipe, got %v", itemsFR[0].ModeUI)
+	itemsFR := analysis.BuildRecentMatchesForLocale([]legacymatch.HomeMatchRow{match}, 6, "fr")
+	if itemsFR[0].ModeUI == nil || *itemsFR[0].ModeUI != "Slayer en Ã©quipe" {
+		t.Fatalf("FR ModeUI: want Slayer en Ã©quipe, got %v", itemsFR[0].ModeUI)
 	}
 	if itemsFR[0].PlaylistUI == nil || *itemsFR[0].PlaylistUI != "Partie rapide" {
 		t.Fatalf("FR PlaylistUI: want Partie rapide, got %v", itemsFR[0].PlaylistUI)
@@ -207,7 +208,7 @@ func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 		t.Fatalf("FR OutcomeLabel: want Victoire, got %q", itemsFR[0].OutcomeLabel)
 	}
 
-	itemsEN := analysis.BuildRecentMatchesForLocale([]domain.HomeMatchRow{match}, 6, "en")
+	itemsEN := analysis.BuildRecentMatchesForLocale([]legacymatch.HomeMatchRow{match}, 6, "en")
 	if itemsEN[0].ModeUI == nil || *itemsEN[0].ModeUI != "Team Slayer" {
 		t.Fatalf("EN ModeUI: want Team Slayer, got %v", itemsEN[0].ModeUI)
 	}
@@ -221,7 +222,7 @@ func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 
 func TestBuildRecentMatches_UsesLocalStaticMapImageAndStripsExperiencePrefix(t *testing.T) {
 	now := time.Now()
-	items := analysis.BuildRecentMatches([]domain.HomeMatchRow{{
+	items := analysis.BuildRecentMatches([]legacymatch.HomeMatchRow{{
 		MatchID:       "m2",
 		StartTime:     now,
 		MapID:         "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702",
@@ -254,7 +255,7 @@ func TestBuildRecentMatches_UsesLocalStaticMapImageAndStripsExperiencePrefix(t *
 
 func TestBuildRecentMatches_MapsDominanceBadge(t *testing.T) {
 	now := time.Now()
-	items := analysis.BuildRecentMatches([]domain.HomeMatchRow{{
+	items := analysis.BuildRecentMatches([]legacymatch.HomeMatchRow{{
 		MatchID:       "m-domination",
 		StartTime:     now,
 		MapName:       "Recharge",
@@ -376,12 +377,12 @@ func TestBuildSessionSummaries_RetourneNSessionsTrieesDesc(t *testing.T) {
 	t3 := t1.Add(-2 * time.Hour)
 	l1, l2, l3 := "session-1", "session-2", "session-3"
 
-	sessions := []domain.HomeSessionRow{
+	sessions := []legacymatch.HomeSessionRow{
 		{MatchID: "m1", SessionLabel: &l1, IsWithFriends: false, StartTime: &t1},
 		{MatchID: "m2", SessionLabel: &l2, IsWithFriends: false, StartTime: &t2},
 		{MatchID: "m3", SessionLabel: &l3, IsWithFriends: false, StartTime: &t3},
 	}
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		homeMatchAt("m1", 2, fp(1.5), t1),
 		homeMatchAt("m2", 3, fp(0.8), t2),
 		homeMatchAt("m3", 2, fp(2.0), t3),
@@ -405,12 +406,12 @@ func TestBuildSessionSummaries_LimitRespectee(t *testing.T) {
 	t3 := t1.Add(-2 * time.Hour)
 	l1, l2, l3 := "session-1", "session-2", "session-3"
 
-	sessions := []domain.HomeSessionRow{
+	sessions := []legacymatch.HomeSessionRow{
 		{MatchID: "m1", SessionLabel: &l1, IsWithFriends: false, StartTime: &t1},
 		{MatchID: "m2", SessionLabel: &l2, IsWithFriends: false, StartTime: &t2},
 		{MatchID: "m3", SessionLabel: &l3, IsWithFriends: false, StartTime: &t3},
 	}
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		homeMatchAt("m1", 2, fp(1.5), t1),
 		homeMatchAt("m2", 3, fp(0.8), t2),
 		homeMatchAt("m3", 2, fp(2.0), t3),
@@ -427,11 +428,11 @@ func TestBuildSessionSummaries_FiltreEscouade(t *testing.T) {
 	soloLabel := "solo-session"
 	squadLabel := "squad-session"
 
-	sessions := []domain.HomeSessionRow{
+	sessions := []legacymatch.HomeSessionRow{
 		{MatchID: "m1", SessionLabel: &soloLabel, IsWithFriends: false, StartTime: &now},
 		{MatchID: "m2", SessionLabel: &squadLabel, IsWithFriends: true, StartTime: &now},
 	}
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		homeMatchAt("m1", 2, fp(1.0), now),
 		homeMatchAt("m2", 3, fp(0.5), now),
 	}
@@ -461,14 +462,14 @@ func TestBuildSessionSummaries_Vide(t *testing.T) {
 func TestBuildSessionSummary_Solo(t *testing.T) {
 	now := time.Now()
 	before := now.Add(-2 * time.Hour)
-	label := "12/04/2025 20:00–22:00 (3)"
+	label := "12/04/2025 20:00â€“22:00 (3)"
 
-	sessions := []domain.HomeSessionRow{
+	sessions := []legacymatch.HomeSessionRow{
 		{MatchID: "m1", SessionLabel: &label, IsWithFriends: false, StartTime: &now},
 		{MatchID: "m2", SessionLabel: &label, IsWithFriends: false, StartTime: &before},
 		{MatchID: "m3", SessionLabel: &label, IsWithFriends: false, StartTime: &before},
 	}
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		homeMatchAt("m1", 2, fp(2.0), now),
 		homeMatchAt("m2", 3, fp(0.5), before),
 		homeMatchAt("m3", 2, fp(1.5), before),
@@ -495,11 +496,11 @@ func TestBuildSessionSummary_SquadModeFiltering(t *testing.T) {
 	label := "solo-session"
 	labelSquad := "squad-session"
 
-	sessions := []domain.HomeSessionRow{
+	sessions := []legacymatch.HomeSessionRow{
 		{MatchID: "m1", SessionLabel: &label, IsWithFriends: false, StartTime: &now},
 		{MatchID: "m2", SessionLabel: &labelSquad, IsWithFriends: true, StartTime: &now},
 	}
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		homeMatchAt("m1", 2, fp(1.0), now),
 		homeMatchAt("m2", 3, fp(0.5), now),
 	}
@@ -522,18 +523,18 @@ func TestBuildSessionSummary_SquadModeFiltering(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// BuildHighlights — Série (slide tile)
+// BuildHighlights â€” SÃ©rie (slide tile)
 // ---------------------------------------------------------------------------
 
 func TestBuildHighlights_SerieTile(t *testing.T) {
-	// Fenêtre : 5 matchs avec un label de session, 2 maps, streak de 3 victoires,
-	// plus haute folie meurtrière = 7.
+	// FenÃªtre : 5 matchs avec un label de session, 2 maps, streak de 3 victoires,
+	// plus haute folie meurtriÃ¨re = 7.
 	now := time.Now()
 	label := "s1"
 	spree := func(v int) *int { return &v }
-	mk := func(id, mapID, mapName string, outcome int, killingSpree *int, offset time.Duration) domain.HomeMatchRow {
+	mk := func(id, mapID, mapName string, outcome int, killingSpree *int, offset time.Duration) legacymatch.HomeMatchRow {
 		lbl := label
-		return domain.HomeMatchRow{
+		return legacymatch.HomeMatchRow{
 			MatchID:         id,
 			StartTime:       now.Add(offset),
 			MapID:           mapID,
@@ -547,9 +548,9 @@ func TestBuildHighlights_SerieTile(t *testing.T) {
 		}
 	}
 	// Order disque (DESC) : m5=W(spree 7), m4=W, m3=W, m2=L, m1=W.
-	// Ordre chrono (ASC)  : m1=W, m2=L, m3=W, m4=W, m5=W → plus longue série = 3.
-	matches := []domain.HomeMatchRow{
-		mk("m5", "map-a", "Aquarius", 2, spree(7), 4*time.Minute), // plus récent
+	// Ordre chrono (ASC)  : m1=W, m2=L, m3=W, m4=W, m5=W â†’ plus longue sÃ©rie = 3.
+	matches := []legacymatch.HomeMatchRow{
+		mk("m5", "map-a", "Aquarius", 2, spree(7), 4*time.Minute), // plus rÃ©cent
 		mk("m4", "map-a", "Aquarius", 2, spree(4), 3*time.Minute),
 		mk("m3", "map-a", "Aquarius", 2, spree(5), 2*time.Minute),
 		mk("m2", "map-b", "Streets", 3, spree(3), 1*time.Minute),
@@ -566,16 +567,16 @@ func TestBuildHighlights_SerieTile(t *testing.T) {
 		}
 	}
 	if serie == nil {
-		t.Fatalf("want Série highlight, got titleKeys=%v", titleKeys(got))
+		t.Fatalf("want SÃ©rie highlight, got titleKeys=%v", titleKeys(got))
 	}
 	if len(serie.Slides) != 3 {
 		t.Fatalf("want 3 slides, got %d", len(serie.Slides))
 	}
-	// Slide 1 : Folie meurtrière max = 7.
+	// Slide 1 : Folie meurtriÃ¨re max = 7.
 	if serie.Slides[0].LabelKey != "highlight.slide.killing_spree_max" || serie.Slides[0].Value != "7" {
 		t.Errorf("slide 0 spree: got key=%q value=%q", serie.Slides[0].LabelKey, serie.Slides[0].Value)
 	}
-	// Slide 2 : Victoires consécutives = 3 (w,w,w en début chronologique).
+	// Slide 2 : Victoires consÃ©cutives = 3 (w,w,w en dÃ©but chronologique).
 	if serie.Slides[1].LabelKey != "highlight.slide.win_streak" || serie.Slides[1].Value != "3" {
 		t.Errorf("slide 1 streak: got key=%q value=%q", serie.Slides[1].LabelKey, serie.Slides[1].Value)
 	}
@@ -585,7 +586,7 @@ func TestBuildHighlights_SerieTile(t *testing.T) {
 	if count, _ := serie.Slides[1].DetailParams["count"].(int); count != 3 {
 		t.Errorf("slide 1 streak count param: want 3, got %v", serie.Slides[1].DetailParams["count"])
 	}
-	// Slide 3 : Carte fétiche = Aquarius (3V sur 3 parties = 100%, vs Streets 1V/2).
+	// Slide 3 : Carte fÃ©tiche = Aquarius (3V sur 3 parties = 100%, vs Streets 1V/2).
 	if serie.Slides[2].LabelKey != "highlight.slide.favorite_map" || serie.Slides[2].Value != "Aquarius" {
 		t.Errorf("slide 2 map: got key=%q value=%q", serie.Slides[2].LabelKey, serie.Slides[2].Value)
 	}
@@ -602,9 +603,9 @@ func TestBuildHighlights_MaitriseTile(t *testing.T) {
 	now := time.Now()
 	label := "s1"
 	acc := func(v float64) *float64 { return &v }
-	mk := func(id string, outcome, hs, perf int, a *float64, offset time.Duration) domain.HomeMatchRow {
+	mk := func(id string, outcome, hs, perf int, a *float64, offset time.Duration) legacymatch.HomeMatchRow {
 		lbl := label
-		return domain.HomeMatchRow{
+		return legacymatch.HomeMatchRow{
 			MatchID:       id,
 			StartTime:     now.Add(offset),
 			MapID:         "map-a",
@@ -619,8 +620,8 @@ func TestBuildHighlights_MaitriseTile(t *testing.T) {
 			Accuracy:      a,
 		}
 	}
-	// 3 matchs, précisions 60, 50, 40 → moyenne 50 → "warning" (≥ 40, ≤ 55).
-	matches := []domain.HomeMatchRow{
+	// 3 matchs, prÃ©cisions 60, 50, 40 â†’ moyenne 50 â†’ "warning" (â‰¥ 40, â‰¤ 55).
+	matches := []legacymatch.HomeMatchRow{
 		mk("m3", 2, 5, 1, acc(60), 2*time.Minute),
 		mk("m2", 2, 3, 0, acc(50), 1*time.Minute),
 		mk("m1", 3, 2, 0, acc(40), 0),
@@ -635,7 +636,7 @@ func TestBuildHighlights_MaitriseTile(t *testing.T) {
 		}
 	}
 	if m == nil {
-		t.Fatalf("want Maîtrise highlight, got titleKeys=%v", titleKeys(got))
+		t.Fatalf("want MaÃ®trise highlight, got titleKeys=%v", titleKeys(got))
 	}
 	if len(m.Slides) != 3 {
 		t.Fatalf("want 3 slides, got %d", len(m.Slides))
@@ -658,9 +659,9 @@ func TestBuildHighlights_PerMinuteTile(t *testing.T) {
 	now := time.Now()
 	label := "s1"
 	secs := func(v int) *int { return &v }
-	mk := func(id string, outcome, k, d, a int, tsecs *int, offset time.Duration) domain.HomeMatchRow {
+	mk := func(id string, outcome, k, d, a int, tsecs *int, offset time.Duration) legacymatch.HomeMatchRow {
 		lbl := label
-		return domain.HomeMatchRow{
+		return legacymatch.HomeMatchRow{
 			MatchID:        id,
 			StartTime:      now.Add(offset),
 			MapID:          "map-a",
@@ -676,8 +677,8 @@ func TestBuildHighlights_PerMinuteTile(t *testing.T) {
 			TimePlayedSecs: tsecs,
 		}
 	}
-	// 2 matchs : 30 kills / 10 morts / 20 assists sur 600s = 10 min → 3.00 / 1.00 / 2.00 par minute.
-	matches := []domain.HomeMatchRow{
+	// 2 matchs : 30 kills / 10 morts / 20 assists sur 600s = 10 min â†’ 3.00 / 1.00 / 2.00 par minute.
+	matches := []legacymatch.HomeMatchRow{
 		mk("m2", 2, 20, 5, 12, secs(360), 1*time.Minute),
 		mk("m1", 2, 10, 5, 8, secs(240), 0),
 	}

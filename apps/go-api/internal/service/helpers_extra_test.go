@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // ---------------------------------------------------------------------------
@@ -54,7 +55,7 @@ func TestComputeKPIsFromSynthesisExcluding_Empty(t *testing.T) {
 }
 
 func TestComputeKPIsFromSynthesisExcluding_WithExclusion(t *testing.T) {
-	matches := []domain.SynthesisMatchRow{
+	matches := []legacymatch.SynthesisMatchRow{
 		{MatchID: "m1", Kills: 10, Deaths: 5, Outcome: 2},
 		{MatchID: "m2", Kills: 8, Deaths: 8, Outcome: 3},
 		{MatchID: "m3", Kills: 12, Deaths: 4, Outcome: 2},

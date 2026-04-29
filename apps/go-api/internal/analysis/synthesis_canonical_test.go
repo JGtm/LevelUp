@@ -1,9 +1,9 @@
-// Package analysis — synthesis_canonical_test.go : tests parité entre
-// ComputeSynthesisKPIs (legacy domain.SynthesisMatchRow) et
+// Package analysis â€” synthesis_canonical_test.go : tests paritÃ© entre
+// ComputeSynthesisKPIs (legacy legacymatch.SynthesisMatchRow) et
 // ComputeSynthesisKPIsFromCanonical (P4, ADR 0011).
 //
-// Garde-fou : les 2 implémentations doivent produire des KPIs équivalents
-// pour le même match. Permet la migration progressive sans changement de
+// Garde-fou : les 2 implÃ©mentations doivent produire des KPIs Ã©quivalents
+// pour le mÃªme match. Permet la migration progressive sans changement de
 // comportement observable.
 package analysis
 
@@ -13,12 +13,13 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 )
 
-// intPtr/deref/float64Ptr déjà déclarés ailleurs dans le package — utilisés tels quels.
+// intPtr/deref/float64Ptr dÃ©jÃ  dÃ©clarÃ©s ailleurs dans le package â€” utilisÃ©s tels quels.
 
-// fixturePairForSynthesis construit la même donnée match dans les 2 formats.
-func fixturePairForSynthesis() (domain.SynthesisMatchRow, canonical.PlayerMatchRow) {
+// fixturePairForSynthesis construit la mÃªme donnÃ©e match dans les 2 formats.
+func fixturePairForSynthesis() (legacymatch.SynthesisMatchRow, canonical.PlayerMatchRow) {
 	startTime := time.Date(2026, 4, 29, 14, 0, 0, 0, time.UTC)
 	kda := 3.17
 	accuracy := 0.42
@@ -26,7 +27,7 @@ func fixturePairForSynthesis() (domain.SynthesisMatchRow, canonical.PlayerMatchR
 	timePlayed := 600
 	sessionLabel := "session-1"
 
-	domainRow := domain.SynthesisMatchRow{
+	domainRow := legacymatch.SynthesisMatchRow{
 		MatchID:          "m-1",
 		StartTime:        startTime,
 		Outcome:          domain.OutcomeWin,
@@ -77,14 +78,14 @@ func boolPtr(v bool) *bool { return &v }
 func TestComputeSynthesisKPIsFromCanonical_ParityWithDomain(t *testing.T) {
 	// Construit un dataset identique dans les 2 formats.
 	pairs := make([]struct {
-		d domain.SynthesisMatchRow
+		d legacymatch.SynthesisMatchRow
 		c canonical.PlayerMatchRow
 	}, 5)
 	for i := range pairs {
 		pairs[i].d, pairs[i].c = fixturePairForSynthesis()
 	}
 
-	domainRows := make([]domain.SynthesisMatchRow, len(pairs))
+	domainRows := make([]legacymatch.SynthesisMatchRow, len(pairs))
 	canonicalRows := make([]canonical.PlayerMatchRow, len(pairs))
 	for i, p := range pairs {
 		domainRows[i] = p.d
@@ -94,7 +95,7 @@ func TestComputeSynthesisKPIsFromCanonical_ParityWithDomain(t *testing.T) {
 	domainKPIs := ComputeSynthesisKPIs(domainRows, true)
 	canonicalKPIs := ComputeSynthesisKPIsFromCanonical(canonicalRows, true)
 
-	// Comparaison : les KPIs doivent être bit-identiques.
+	// Comparaison : les KPIs doivent Ãªtre bit-identiques.
 	if domainKPIs.MatchCount != canonicalKPIs.MatchCount {
 		t.Errorf("MatchCount: domain=%d, canonical=%d", domainKPIs.MatchCount, canonicalKPIs.MatchCount)
 	}
@@ -135,16 +136,16 @@ func TestComputeSynthesisKPIsFromCanonical_FilterIsSquad(t *testing.T) {
 	c2.Enrichment.IsWithFriends = false
 
 	canonicalRows := []canonical.PlayerMatchRow{c1, c2}
-	domainRows := []domain.SynthesisMatchRow{d1, d2}
+	domainRows := []legacymatch.SynthesisMatchRow{d1, d2}
 
-	// isSquad=true → seul c1 compte.
+	// isSquad=true â†’ seul c1 compte.
 	gotSquad := ComputeSynthesisKPIsFromCanonical(canonicalRows, true)
 	wantSquad := ComputeSynthesisKPIs(domainRows, true)
 	if gotSquad.MatchCount != wantSquad.MatchCount {
 		t.Errorf("isSquad=true: got %d matches, want %d", gotSquad.MatchCount, wantSquad.MatchCount)
 	}
 
-	// isSquad=false → seul c2 compte.
+	// isSquad=false â†’ seul c2 compte.
 	gotSolo := ComputeSynthesisKPIsFromCanonical(canonicalRows, false)
 	wantSolo := ComputeSynthesisKPIs(domainRows, false)
 	if gotSolo.MatchCount != wantSolo.MatchCount {
@@ -162,7 +163,7 @@ func floatPtrEqual(a, b *float64) bool {
 	return *a == *b
 }
 
-// derefFloat est une variante locale (le helper `deref` existe déjà dans
+// derefFloat est une variante locale (le helper `deref` existe dÃ©jÃ  dans
 // le package non-test pour des string pointers).
 func derefFloat(p *float64) any {
 	if p == nil {
@@ -172,12 +173,12 @@ func derefFloat(p *float64) any {
 }
 
 // =============================================================================
-// P4.3 (ADR 0011) : tests parité TopWeeks / Breakdown / TemporalHeatmap
+// P4.3 (ADR 0011) : tests paritÃ© TopWeeks / Breakdown / TemporalHeatmap
 // =============================================================================
 
-// fixtureMixedSynthesisDataset crée un dataset varié pour stresser les agrégations
+// fixtureMixedSynthesisDataset crÃ©e un dataset variÃ© pour stresser les agrÃ©gations
 // (plusieurs semaines, mix Win/Loss, KDA et Kills variables).
-func fixtureMixedSynthesisDataset() ([]domain.SynthesisMatchRow, []canonical.PlayerMatchRow) {
+func fixtureMixedSynthesisDataset() ([]legacymatch.SynthesisMatchRow, []canonical.PlayerMatchRow) {
 	base := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
 	specs := []struct {
 		dayOffset, kills, deaths int
@@ -194,7 +195,7 @@ func fixtureMixedSynthesisDataset() ([]domain.SynthesisMatchRow, []canonical.Pla
 		{8, 12, 8, 1.75, domain.OutcomeLoss, canonical.OutcomeLoss, true, true},
 		{9, 5, 15, 0.5, domain.OutcomeLoss, canonical.OutcomeLoss, true, false},
 	}
-	domainRows := make([]domain.SynthesisMatchRow, len(specs))
+	domainRows := make([]legacymatch.SynthesisMatchRow, len(specs))
 	canonicalRows := make([]canonical.PlayerMatchRow, len(specs))
 	for i, s := range specs {
 		st := base.AddDate(0, 0, s.dayOffset).Add(time.Duration(i) * time.Hour)
@@ -203,7 +204,7 @@ func fixtureMixedSynthesisDataset() ([]domain.SynthesisMatchRow, []canonical.Pla
 			v := s.kda
 			kdaPtr = &v
 		}
-		domainRows[i] = domain.SynthesisMatchRow{
+		domainRows[i] = legacymatch.SynthesisMatchRow{
 			MatchID:       fmtMatchID(i),
 			StartTime:     st,
 			Kills:         s.kills,

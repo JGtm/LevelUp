@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
 )
 
 // ---------- decodePositionFrame ----------
@@ -59,9 +59,9 @@ func TestDecodePositionFrame_ValidFrame_Boost(t *testing.T) {
 
 // ---------- ScanFirstMovements with data ----------
 
-// buildValidFrame construit une frame test ; baseType est paramétré pour l'extension future.
+// buildValidFrame construit une frame test ; baseType est paramÃ©trÃ© pour l'extension future.
 //
-//nolint:unparam // baseType est gardé pour clarifier l'intention de la frame
+//nolint:unparam // baseType est gardÃ© pour clarifier l'intention de la frame
 func buildValidFrame(baseType, playerIdx byte) []byte {
 	data := make([]byte, 20)
 	data[0] = frameMarkerB0
@@ -163,7 +163,7 @@ func TestEstimateFilmMatchStartMS_ZeroMinPlayers(t *testing.T) {
 	}
 }
 
-// ---------- computeNormalizedMetrics — uncovered branches ----------
+// ---------- computeNormalizedMetrics â€” uncovered branches ----------
 
 func TestComputeNormalizedMetrics_AllOptionalFields(t *testing.T) {
 	kda := 3.5
@@ -176,7 +176,7 @@ func TestComputeNormalizedMetrics_AllOptionalFields(t *testing.T) {
 	de := 5.0
 	tp := 600
 	acc := 0.45
-	row := domain.StatsMatchRow{
+	row := legacymatch.StatsMatchRow{
 		Kills:             10,
 		Deaths:            5,
 		Assists:           3,
@@ -217,7 +217,7 @@ func TestComputeNormalizedMetrics_AllOptionalFields(t *testing.T) {
 
 func TestComputeNormalizedMetrics_NoOptionalFields(t *testing.T) {
 	tp := 600
-	row := domain.StatsMatchRow{
+	row := legacymatch.StatsMatchRow{
 		Kills:             10,
 		Deaths:            5,
 		Assists:           3,
@@ -232,15 +232,15 @@ func TestComputeNormalizedMetrics_NoOptionalFields(t *testing.T) {
 	}
 }
 
-// ---------- BuildHighlights — more branch coverage ----------
+// ---------- BuildHighlights â€” more branch coverage ----------
 
 func TestBuildHighlights_WithRatioAndTrend(t *testing.T) {
 	r := 2.5
 	kda := 2.1
 	now := time.Now()
-	matches := make([]domain.HomeMatchRow, 12)
+	matches := make([]legacymatch.HomeMatchRow, 12)
 	for i := range matches {
-		matches[i] = domain.HomeMatchRow{
+		matches[i] = legacymatch.HomeMatchRow{
 			MatchID:   "m",
 			StartTime: now.Add(-time.Duration(i) * time.Hour),
 			MapName:   "Map",
@@ -260,13 +260,13 @@ func TestBuildHighlights_WithRatioAndTrend(t *testing.T) {
 
 func TestBuildHighlights_NegativeTrend(t *testing.T) {
 	now := time.Now()
-	matches := make([]domain.HomeMatchRow, 12)
+	matches := make([]legacymatch.HomeMatchRow, 12)
 	for i := range matches {
 		r := 0.5 // low ratio for recent
 		if i >= 5 {
 			r = 3.0 // high ratio for older
 		}
-		matches[i] = domain.HomeMatchRow{
+		matches[i] = legacymatch.HomeMatchRow{
 			MatchID:   "m",
 			StartTime: now.Add(-time.Duration(i) * time.Hour),
 			MapName:   "Map",
@@ -283,11 +283,11 @@ func TestBuildHighlights_NegativeTrend(t *testing.T) {
 	}
 }
 
-// ---------- meanAccuracy — with values ----------
+// ---------- meanAccuracy â€” with values ----------
 
 func TestMeanAccuracy_WithMultipleValues(t *testing.T) {
 	a1, a2, a3 := 0.4, 0.6, 0.8
-	matches := []domain.HomeMatchRow{
+	matches := []legacymatch.HomeMatchRow{
 		{MatchID: "m1", Accuracy: &a1},
 		{MatchID: "m2", Accuracy: &a2},
 		{MatchID: "m3"}, // nil
@@ -322,7 +322,7 @@ func TestAbs64_Zero(t *testing.T) {
 	}
 }
 
-// ---------- isTeammatesBreak — edge cases ----------
+// ---------- isTeammatesBreak â€” edge cases ----------
 
 func TestIsTeammatesBreak_BothNil(t *testing.T) {
 	if isTeammatesBreak(nil, nil, nil) {
@@ -346,8 +346,8 @@ func TestIsTeammatesBreak_FriendLeftSession(t *testing.T) {
 }
 
 func TestIsTeammatesBreak_SameFriendRemains(t *testing.T) {
-	// x1 (ami) reste dans les deux matchs, seul x2→x3 change (non-ami).
-	// Avec le mode "friends", le sous-ensemble d'amis {x1} est inchangé → pas de rupture.
+	// x1 (ami) reste dans les deux matchs, seul x2â†’x3 change (non-ami).
+	// Avec le mode "friends", le sous-ensemble d'amis {x1} est inchangÃ© â†’ pas de rupture.
 	a, b := "x1,x2", "x1,x3"
 	friends := map[string]struct{}{"x1": {}}
 	if isTeammatesBreak(&a, &b, friends) {
@@ -355,7 +355,7 @@ func TestIsTeammatesBreak_SameFriendRemains(t *testing.T) {
 	}
 }
 
-// ---------- prepareHistoryMetrics — uncovered branches ----------
+// ---------- prepareHistoryMetrics â€” uncovered branches ----------
 
 func TestPrepareHistoryMetrics_Empty(t *testing.T) {
 	cols := prepareHistoryMetrics(nil)
@@ -369,7 +369,7 @@ func TestPrepareHistoryMetrics_WithData(t *testing.T) {
 	dd := 500.0
 	ps := 1000
 	acc := 0.5
-	rows := []domain.StatsMatchRow{
+	rows := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, Assists: 3, TimePlayedSeconds: &tp, DamageDealt: &dd, PersonalScore: &ps, Accuracy: &acc},
 		{Kills: 8, Deaths: 4, Assists: 2, TimePlayedSeconds: &tp},
 	}
@@ -404,8 +404,8 @@ func TestAddRequired_KpmKey(t *testing.T) {
 
 func TestComputeKDAFallback_SingleMatch(t *testing.T) {
 	tp := 600
-	row := domain.StatsMatchRow{Kills: 10, Deaths: 5, Assists: 3, TimePlayedSeconds: &tp}
-	got := computeKDAFallback(row, []domain.StatsMatchRow{row})
+	row := legacymatch.StatsMatchRow{Kills: 10, Deaths: 5, Assists: 3, TimePlayedSeconds: &tp}
+	got := computeKDAFallback(row, []legacymatch.StatsMatchRow{row})
 	if got == nil || *got != 50.0 {
 		t.Errorf("expected 50.0 for single match, got %v", got)
 	}
@@ -414,7 +414,7 @@ func TestComputeKDAFallback_SingleMatch(t *testing.T) {
 func TestComputeKDAFallback_MultipleMatches(t *testing.T) {
 	tp := 600
 	kda1, kda2, kda3 := 1.5, 2.0, 3.0
-	rows := []domain.StatsMatchRow{
+	rows := []legacymatch.StatsMatchRow{
 		{Kills: 10, Deaths: 5, Assists: 3, TimePlayedSeconds: &tp, KDA: &kda1},
 		{Kills: 8, Deaths: 4, Assists: 2, TimePlayedSeconds: &tp, KDA: &kda2},
 		{Kills: 12, Deaths: 3, Assists: 5, TimePlayedSeconds: &tp, KDA: &kda3},
