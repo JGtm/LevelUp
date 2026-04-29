@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -104,7 +104,7 @@ func LoadNotifyConfig(settingsPath string) NotifyConfig {
 	}
 	if !strings.HasPrefix(url, "https://discord.com/api/webhooks/") {
 		if url != "" {
-			log.Printf("[Discord] URL webhook invalide (ignorée)")
+			slog.WarnContext(context.Background(), "discord_webhook_url_invalid", "op", "config_load")
 		}
 		url = ""
 	}
@@ -127,17 +127,18 @@ var httpClient = &http.Client{Timeout: 10 * time.Second}
 // SendWebhook envoie un payload JSON au webhook Discord.
 // Retourne true si Discord répond 200 ou 204.
 func SendWebhook(webhookURL string, payload WebhookPayload) bool {
+	ctx := context.Background()
 	if webhookURL == "" {
 		return false
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[Discord] marshal payload: %v", err)
+		slog.WarnContext(ctx, "discord_marshal_failed", "op", "send", "err", err)
 		return false
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, webhookURL, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(data))
 	if err != nil {
-		log.Printf("[Discord] build request: %v", err)
+		slog.WarnContext(ctx, "discord_build_request_failed", "op", "send", "err", err)
 		return false
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
@@ -145,13 +146,13 @@ func SendWebhook(webhookURL string, payload WebhookPayload) bool {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("[Discord] envoi échoué: %v", err)
+		slog.WarnContext(ctx, "discord_send_failed", "op", "send", "err", err)
 		return false
 	}
 	defer resp.Body.Close()
 	ok := resp.StatusCode == 200 || resp.StatusCode == 204
 	if !ok {
-		log.Printf("[Discord] réponse inattendue: HTTP %d", resp.StatusCode)
+		slog.WarnContext(ctx, "discord_unexpected_status", "op", "send", "status", resp.StatusCode)
 	}
 	return ok
 }
