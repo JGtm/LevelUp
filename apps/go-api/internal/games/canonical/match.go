@@ -25,6 +25,11 @@ type MatchSummary struct {
 	IsRanked        *bool
 	IsPvE           *bool
 	Outcome         Outcome
+	// Teams est le snapshot léger des scores d'équipes pour l'affichage en
+	// liste / hero card (ADR 0011, P4.1). MatchDetail expose la même info
+	// avec ParticipantsXUIDs en plus ; ici on garde une version sans les
+	// participants. Nil si non chargé / non team-based.
+	Teams []TeamSnapshot
 }
 
 // MatchDetail est l'objet canonique central d'un match côté services.
@@ -152,7 +157,28 @@ type PlayerMatchEnrichment struct {
 	IsWithFriends    bool
 	FriendsXUIDs     []string // sous-ensemble présent ce match (peut être nil)
 	TeamMMR          *float64
-	EnemyMMR         *float64 // si dispo (head-to-head, sinon nil)
+	EnemyMMR         *float64       // si dispo (head-to-head, sinon nil)
+	SkillSnapshot    *SkillSnapshot // ADR 0011, P4 — rating + tier + sub-tier + delta
+}
+
+// SkillSnapshot est la projection canonique du rating de skill pour un match.
+//
+// ADR 0011 (P4) : tout titre PvP compétitif expose un rating + tier code +
+// sub-tier + delta points. Les LIBELLÉS localisés (`SkillTierLabel = "Diamant 3"`)
+// restent dans `TitleSemanticAdapter.Ranks()`. L'image (`SkillRankImageURL`)
+// reste dans `TitleAssetURLAdapter.CSRRankImageURL`.
+//
+// Tous les champs sont optionnels (pointeurs) — un titre sans système de
+// tiers (ex: Halo MCC 1-50) peut ne renseigner que `RatingValue`.
+type SkillSnapshot struct {
+	RatingType     RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
+	RatingValue    *float64   // valeur brute du rating (CSR points, LUSR mu)
+	TierCode       *string    // code stable cross-titre (ex: "diamond", "onyx")
+	SubTier        *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
+	Delta          *float64   // points gagnés/perdus ce match (positif/négatif)
+	PlaylistGroup  *string    // groupe normalisé (ex: "ranked-arena")
+	KillsExpected  *float64   // depuis MatchSkillSnapshot — utilisé par Stats
+	DeathsExpected *float64   // idem
 }
 
 // ImpactBadge est un badge d'impact calculé sur les événements d'un match.
