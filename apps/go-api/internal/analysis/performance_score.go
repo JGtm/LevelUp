@@ -43,6 +43,10 @@ var relativeWeights = map[string]float64{
 }
 
 // Codes numériques des issues de match Halo Infinite.
+//
+// DEPRECATED : utiliser domain.OutcomeWin / domain.OutcomeLoss à la place.
+// Ces alias sont conservés pour ne pas casser les call-sites existants
+// (analysis/comeback.go, ...). Migration progressive en P4 (canonical big-bang).
 const (
 	OutcomeWin  = 2
 	OutcomeLoss = 3
