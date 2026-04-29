@@ -42,17 +42,22 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
       }
     case 'challenge_added':
     case 'challenge_completed':
+      // Les défis sont un onglet de la page Objectifs (pas de route /defis dédiée).
       return {
-        to: `/players/${playerSlug}/defis`,
-        search: notif.params?.id ? { selectedChallengeId: String(notif.params.id) } : undefined,
+        to: `/players/${playerSlug}/objectifs`,
+        search: {
+          tab: 'challenges',
+          ...(notif.params?.id ? { selectedChallengeId: String(notif.params.id) } : {}),
+        },
       }
     case 'season_pass_level':
       return { to: `/players/${playerSlug}/palmares/season-pass` }
     case 'app_release':
-      return { to: '/help/changelog' }
+      return { to: '/changelog' }
     case 'sync_error':
+      // Pas de route /sync dédiée — la gestion sync se fait dans Settings.
       return {
-        to: `/players/${playerSlug}/sync`,
+        to: '/settings',
         search: notif.params?.job_id ? { jobId: String(notif.params.job_id) } : undefined,
       }
     case 'personal_record':
