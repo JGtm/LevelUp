@@ -38,8 +38,20 @@ jobs:
       - name: Build (Vite)
         run: npm run build
 
-      - name: Run tests (Vitest)
-        run: npm run test --if-present -- --run
+      - name: Run tests (Vitest) + coverage
+        # P3.8 (revue 2026-04-29) : activation Vitest coverage en CI.
+        # Pas de ratchet pour l'instant (baseline a etablir une fois par main).
+        # Le rapport HTML est uploade en artefact pour debug.
+        run: npm run test:coverage --if-present
+
+      - name: Upload coverage report (Vitest)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage-html
+          path: apps/web/coverage/
+          if-no-files-found: warn
+          retention-days: 7
 
   go-build:
     name: Go Build + Test
