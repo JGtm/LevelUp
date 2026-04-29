@@ -419,42 +419,6 @@ func parseUploadedFiles(r *http.Request) ([]domain.UploadedFile, error) {
 	return out, nil
 }
 
-// PostReassociateMedia recrée toutes les associations médias↔matchs depuis zéro.
-// Crée d'abord un snapshot backup, puis supprime et re-calcule les associations
-// en utilisant la fenêtre complète [start_time, end_time] du match.
-// POST /api/v1/players/{player_slug}/media/reassociate
-func (h *MediaHandler) PostReassociateMedia(w http.ResponseWriter, r *http.Request) {
-	if h.newUpload == nil {
-		writeError(w, http.StatusNotImplemented, "upload_not_configured", "upload factory non configurée")
-		return
-	}
-
-	slug := chi.URLParam(r, "player_slug")
-	svc, gamertag, titleSlug, dbPath, sharedSocialDBPath, sharedMatchesDBPath, err := h.newUpload(r.Context(), slug)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
-		return
-	}
-
-	req := domain.ReassociateRequest{
-		DBPath:              dbPath,
-		SharedSocialDBPath:  sharedSocialDBPath,
-		SharedMatchesDBPath: sharedMatchesDBPath,
-		CapturesDir:         h.resolveCapturesDir(titleSlug, gamertag),
-		BufferMin:           2,
-	}
-
-	result, err := svc.ReassociateMedia(r.Context(), req)
-	if err != nil {
-		slog.ErrorContext(r.Context(), "reassociate: erreur service", "err", err)
-		writeError(w, http.StatusInternalServerError, "reassociate_error", err.Error())
-		return
-	}
-
-	writeJSON(w, http.StatusOK, result)
-	BumpMediaFeedVersion()
-}
-
 // GetMediaMatchCandidates retourne les matchs candidats pour réassocier un média.
 // GET /api/v1/players/{player_slug}/media/match-candidates?file_path=...&window_minutes=15
 func (h *MediaHandler) GetMediaMatchCandidates(w http.ResponseWriter, r *http.Request) {

@@ -497,40 +497,9 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /players/{player_slug}/match-exclusions:
-    get:
-      tags: [match-exclusion]
-      operationId: listMatchExclusions
-      summary: Lister les matchs marqués comme non pertinents
-      description: |
-        Retourne la liste des matchs exclus du joueur avec leurs métadonnées.
-      parameters:
-        - $ref: "#/components/parameters/PlayerSlug"
-      responses:
-        "200":
-          description: Liste des matchs exclus
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  required: [match_id, start_time, map_name, mode_name]
-                  properties:
-                    match_id:
-                      type: string
-                      format: uuid
-                    start_time:
-                      type: string
-                      format: date-time
-                    map_name:
-                      type: string
-                    mode_name:
-                      type: string
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
+  # NOTE : GET /players/{player_slug}/match-exclusions supprimé en revue
+  # 2026-04-29 P0.2 Q6 (orphelin côté front, vue admin jamais implémentée).
+  # PATCH /players/{player_slug}/matches/{match_id}/exclusion reste disponible.
 
   # -------------------------------------------------------------------------
   # Auth (Sprint 15) — ajoutés au contrat sprint 29

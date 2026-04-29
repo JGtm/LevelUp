@@ -2,7 +2,11 @@
 //
 // Construit le routeur en mode démo + flag activé, puis vérifie que :
 //   - flag off : GET /api/v1/titles/{slug}/field-mappings retourne 404 (route absente)
-//   - flag on : la route preview/career est bien enregistrée
+//   - flag on : la route /field-mappings est bien enregistrée
+//
+// NOTE : les routes /preview/career et /preview/career-multi-title ont été
+// supprimées en revue 2026-04-29 P0.2 Q6 (orphelines côté front). Le test
+// TestSmoke_PreviewCareer_FlagOn_NotFoundForUnloadedTitle a été retiré.
 //
 // Nécessite CGO=1 (transitivement via platform/duckdb).
 
@@ -11,7 +15,6 @@
 package api_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -106,25 +109,7 @@ func TestSmoke_FieldMappings_FlagOn_RouteRegistered(t *testing.T) {
 	}
 }
 
-func TestSmoke_PreviewCareer_FlagOn_NotFoundForUnloadedTitle(t *testing.T) {
-	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
-	t.Setenv("LEVELUP_DEMO_MODE", "true")
-
-	router := buildTestRouter(t)
-
-	// Sans TOML chargé, le resolver Semantic n'a rien → 404 attendu (ou 401
-	// selon middleware). On teste juste que la route est bien enregistrée.
-	req := httptest.NewRequest("GET", "/api/v1/titles/halo_infinite/preview/career?xuid=0xABC", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	if w.Code == http.StatusNotFound {
-		// Si la route n'est pas enregistrée du tout, on aurait un 404 sans body JSON.
-		// Sinon, on attend un 404 du handler (title_not_found / title_semantic_not_found).
-		var body map[string]any
-		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-			// 404 sans JSON → la route n'est pas enregistrée. Échec.
-			t.Errorf("flag on mais route /preview/career absente du routeur : body=%q", w.Body.String())
-		}
-	}
-}
+// TestSmoke_PreviewCareer_FlagOn_NotFoundForUnloadedTitle supprimé en revue
+// 2026-04-29 P0.2 Q6 — la route /preview/career a été retirée (orpheline côté
+// front). Le smoke test field-mappings ci-dessus suffit à valider que le flag
+// MULTI_TITLE_API_ENABLED ouvre/ferme correctement le sous-arbre de routes.
