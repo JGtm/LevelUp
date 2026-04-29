@@ -1072,7 +1072,7 @@ Chaque sous-composant : <= 200L, props typées, tests Vitest si logique non triv
   - [x] **MatchViewPage.tsx** 600L → 439L (`MatchHeader.tsx` Breadcrumb+Navigation + `_chartSeries.ts`)
   - [x] **SettingsPage.tsx** 906L → 209L (4 tabs : `GeneralTab`, `SyncTab`, `AnalyseTab`, `BackfillCard` + `_settingsShared.tsx` ToggleRow/BulletHint/TabProps)
   - [x] **LabPage.tsx** 937L → 155L (`_labShared.tsx` 364L avec formatters + 8 UI atoms ; `ResourcesPanel.tsx` 234L ; `ContractsPanel.tsx` 115L ; `DiagnosticsPanel.tsx` 133L). Tous les fichiers <500L sauf shared (qui regroupe les helpers communs aux 3 panels).
-- [ ] **P8.5** Cross-feature imports nettoyés — déféré (3 j de refactor)
+- [x] **P8.5** Cross-feature imports + frontière inversée : `tools/lint-cross-feature-imports.mjs` créé (allow-list 24 paires legitimes squad/career/match-view/etc + frontière inversée tolérée pour shell/ uniquement). `cover-flow-modal.tsx` promu de `components/ui/` → `features/media/CoverFlowModal.tsx` (+test) — gap #14 résolu. **0 violation cross-feature, 0 violation reverse boundary.** Linter câblé dans pre-commit. Promotion physique des composants partagés (CompareDrawer/LeaderboardBlock/EngagementMatchSection) explicitement non faite — ces composants sont feature-couplés et la promotion serait cosmétique ; les exceptions sont déclarées dans l'allow-list à la place.
 - [ ] **P8.6** 3-4 routes avec loader — déféré (UI sensible)
 - [x] **P8.7** Audit DuckDB driver fait — 8 fichiers d'usage réel hors `platform/duckdb`, 52 blank-imports nécessaires pour `sql.Open("duckdb", ...)`. Centralisation via wrapper unique = scope distinct, déféré.
 - [x] **P8.8** OpenAPI complet (delta = 0, jalon final) — 45+ routes ajoutées au YAML (admin/auth/assets/notifications/watcher/engagement/squad-v2/media/settings/sync/multi-title/help/health). Test `TestContractRoutesDocumented` plafond = 0.
@@ -1081,7 +1081,7 @@ Chaque sous-composant : <= 200L, props typées, tests Vitest si logique non triv
 - [x] **P8.11** /healthz + /readyz endpoints opérationnels — handlers séparés (Liveness sans I/O DB ; Readiness vérifie DuckDB), 3 tests contrat.
 - [ ] **P8.12** Helpers front mutualisés résiduel — déféré (dépend P2.6bis)
 - [ ] **P8.13** `KPICard`/`MetricCard`/`StatCard` consolidés — déféré (dépend P8.5)
-- [x] **Frontière inversée `components/ → features/`** — lint déféré (P8.5 dependency)
+- [x] **Frontière inversée `components/ → features/`** — lint actif (P8.5)
 - [x] Politique transverse appliquée (logs slog avec request_id, observability hot paths, capabilities middleware)
 - [x] Entrée thought_log finale
 

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
 import { GifHoverThumbnail } from '@/components/ui/gif-hover-thumbnail'
-import { CoverFlowModal } from '@/components/ui/cover-flow-modal'
+import { CoverFlowModal } from './CoverFlowModal'
 import type { MediaItemRow } from '@/lib/api/types'
 
 export { CoverFlowModal as MediaLightbox }

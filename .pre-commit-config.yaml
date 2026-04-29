@@ -64,6 +64,18 @@ repos:
         files: ^(apps/web/src/.*\.(ts|tsx|js|jsx)|tools/lint-no-hardcoded-colors\.mjs)$
         pass_filenames: false
 
+      # P8.5 (revue 2026-04-29 axe 4 + gap #14) : interdit les imports
+      # cross-feature non-déclarés (apps/web/src/features/X importe
+      # apps/web/src/features/Y) et la frontière inversée
+      # (apps/web/src/components/* importe apps/web/src/features/*,
+      # sauf shell/ qui orchestre l'app entière).
+      - id: lint-cross-feature-imports
+        name: Lint frontières (cross-feature + reverse boundary)
+        entry: node tools/lint-cross-feature-imports.mjs
+        language: system
+        files: ^(apps/web/src/.*\.(ts|tsx)|tools/lint-cross-feature-imports\.mjs)$
+        pass_filenames: false
+
   # Hooks génériques de pre-commit
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
