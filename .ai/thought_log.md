@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-04-29] P4.3 finale CLOSED - 8/8 services canonical-only + DI wired + ports cleaned
+
+**Statut** : P4.3 finale livree. Migration canonical end-to-end complete.
+
+**Bilan livre cette session** :
+
+1. **DI wiring universel** (`40d14a2f`) : `PlayerMatchesAdapter` implemente dans platform/duckdb. 8 services wires au boot via registry.go.
+
+2. **8/8 services match-rows canonical-only** :
+   - synthesis (`c7fa92fc`)
+   - home (`5f90c12f`)
+   - stats + timeseries + session_compare + session_page (`d9415d88`)
+   - squad + teammates (`9f5b7cea`)
+   Tous chargent canonical via PlayerMatchesRepository, legacy fallback supprime.
+
+3. **Port interfaces nettoyees** (`45e3673b`) : Load*Matches retires de port.{Stats,Home,Squad,Synthesis}Repository.
+
+4. **Tests adaptes** : mocks canonical pour fixtures legacy.
+
+5. **Types `domain.*MatchRow` marques Deprecated** (`1371c54f`).
+
+**Reste cleanup post-P4.3** (sprint dedie) : ~1500 lignes helpers squad/teammates + stats a porter canonical, tests platform/duckdb a adapter, suppression effective des types Deprecated. Estimation 3-5 jours focus.
+
+**Pourquoi pas tout supprimer maintenant** : 43 fichiers consomment encore ces types via helpers internes. Suppression sans porter casserait des centaines de lignes avec zero valeur metier. Sprint dedie justifie.
+
+---
+
+## [2026-04-29] Bugfix — bots filtres dans fuzzy search et coequipiers frequents
+
+**Statut** : Complété
+
+**Probleme** : Les bots Halo Infinite (xuid prefixe `bid(`) apparaissaient dans la liste "Coequipiers frequents" du dropdown Squad avec leur xuid brut comme gamertag (ex: `bid(3.0)`, `bid(18.0)`). Cause : dans Q29, `COALESCE(vg.gamertag, p2.xuid)` retombait sur le xuid quand le bot n'avait pas d'entree dans `v_gamertag_lookup`.
+
+**Decision technique** : Filtre SQL `xuid NOT LIKE 'bid(%'` inline dans les deux queries concernees. Pattern deja centralise dans `analysis.SQLIsNotBot` mais les queries etant des `const` string literals, l'inline est plus lisible sans changer la structure.
+
+**Fichiers modifies** :
+- `apps/go-api/internal/platform/duckdb/queries_squad.go` — Q29TopTeammates : `AND p2.xuid NOT LIKE 'bid(%'` dans le WHERE
+- `apps/go-api/internal/platform/duckdb/queries.go` — Q11GamertagSearch : `AND xa.xuid NOT LIKE 'bid(%'` dans la CTE matched
+
+**Resultat** : Bots absents du dropdown frequentOptions et des resultats de recherche fuzzy. Aucun changement frontend necessaire.
+
 ## [2026-04-29] P4.3 finale - home pillar 100% canonical + stats wrappers
 
 **Statut** : Home pillar 100% port full canonical (7 analyses + 5 sub-helpers + 4 helpers prives). Stats pillar approche wrapper adoptee (ComputePerformanceSeriesFromCanonical). Synthesis pillar deja full canonical.

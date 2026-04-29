@@ -52,14 +52,18 @@ Branche `chore/cleanup-and-ux-fixes` — 47+ commits, P0→P8 partiels livrés.
   - `BuildRecentMatchesWithFavoritesForLocale` + helpers `canonicalOutcomeToInt`/`assetLabels`/`buildScoreLabelCanonical` (commit `07763e7b`).
   - `BuildHighlights` + 5 sub-helpers `buildMaitriseHighlight`/`buildPerMinuteHighlight`/`buildSerieHighlight`/`sliceBestKillingSpree`/`sliceBestWinStreak`/`sliceFavoriteMap` (commit `e46b7e3f`).
   - Plus aucune analyse home n'utilise `domain.HomeMatchRow` comme paramètre dans le path canonical. Le converter `HomeMatchRowsFromCanonical` reste pour le legacy fallback uniquement.
-- **P4.3 finale stats pillar** (wrappers) : approche wrapper pragmatique adoptée. `ComputePerformanceSeriesFromCanonical` (commit `d1053292`) entry-point canonical qui convertit en `[]StatsMatchRow` puis délègue. Justification : la chaîne d'appel `ComputePerformanceSeries → ComputeRelativePerformanceScore → applyBotBonus → ...` fait plusieurs centaines de lignes ; port full apporterait zéro valeur métier. Les types restent utilisés en interne mais encapsulés dans `analysis/`.
+- **P4.3 finale stats pillar** (wrappers) : approche wrapper pragmatique adoptée. `ComputePerformanceSeriesFromCanonical` (commit `d1053292`) entry-point canonical qui convertit en `[]StatsMatchRow` puis délègue. Justification : la chaîne d'appel `ComputePerformanceSeries → ComputeRelativePerformanceScore → applyBotBonus → ...` fait plusieurs centaines de lignes ; port full apporterait zéro valeur métier.
+- **P4.3 finale DI wiring + canonical-only services** (commits `40d14a2f` → `1371c54f`) :
+  - **`PlayerMatchesAdapter` implémenté + wiré universellement** dans `registry.go` pour les 8 services match-rows. Le path canonical n'est plus *dead code* — c'est le path actif en production.
+  - **8/8 services migrés canonical-only** : synthesis (`c7fa92fc`), home (`5f90c12f`), stats + timeseries + session_compare + session_page (`d9415d88`), squad + teammates (`9f5b7cea`). Le legacy fallback path (`s.repo.Load*Matches`) est supprimé de tous ces services. `WithPlayerMatchesRepo` + `titleSlug` + `gamertag` sont REQUIS — fail-fast sinon.
+  - **Port interfaces nettoyées** (`45e3673b`) : `LoadStatsMatches` / `LoadHomeMatches` / `LoadHomeSessions` / `LoadSynthesisMatches` retirés de `port.{Stats,Home,Squad,Synthesis}Repository`.
+  - **Types `domain.*MatchRow` marqués `Deprecated:`** (`1371c54f`) avec lien P4.3 finale + path forward.
 
 ### Sub-phases TODO [À FAIRE]
-- **P4.3 finale (suite)** : trois blockers infrastructurels qui rendent la suppression complète des types `domain.{Home,Synthesis,Stats}MatchRow` non triviale dans cette branche :
-  1. Aucune implémentation concrète de `port.PlayerMatchesRepository` n'est wirée en DI (`server.go`). Le canonical path actuel est *dead code* en production — `playerMatchesRepo` est toujours nil. Pour rendre canonical exclusif il faut implémenter un adaptateur `(slug, gamertag) → PlayerDB → PlayerMatchesRepo.Load`.
-  2. Repos legacy (`port.{Home,Stats,Synthesis}Repository.Load*Matches`) actifs en production retournent encore les types legacy. Suppression nécessite réécriture des SQL queries pour scanner directement vers canonical.
-  3. ~1500 lignes d'analyses internes (`BuildHighlights`, `BuildRecentMatches`, `BuildSession*`, `buildWinLossTab`, `buildCumulTab`, `buildKDABuckets`, `computeRegressionStats`, etc.) consomment encore les types legacy via wrappers transparents. Port complet = sprint dédié (~3-5 jours focus).
-  Cette phase est bloquée tant que (1) n'est pas fait — sans wiring DI, supprimer les types legacy casse le seul path en production.
+- **P4.3 cleanup (sprint dédié post-P4.3)** : suppression effective des types `domain.{Home,Stats,Synthesis}MatchRow` actuellement marqués `Deprecated`. Bloqué par :
+  - ~1500 lignes d'helpers internes (squad/teammates : `extractSynthesisSessionLabels`, `filterSynthesisByCascade`, `buildTeammateRowWithMatches` ; stats : `buildWinLossTab`, `buildCumulTab`, `buildKDABuckets`, `computeRegressionStats`) à porter à canonical avant suppression.
+  - Tests d'intégration `platform/duckdb/player_repos_test.go` à adapter (TestHomeRepo_LoadHomeMatches_*, TestStatsRepo_LoadStatsMatches_*).
+  - Effort estimé : 3-5 jours focus.
 - **P5** xuid_aliases globalisation + Halo-only adapters extraction
 - **P6.2** `useFieldLabel` partout côté front + manifest synthesis.toml
 - **P6.3** middleware `RequireCapability` + 3 routes admin
