@@ -99,10 +99,10 @@ func TestRunForDB_Metadata_NoDuplicateRows(t *testing.T) {
 		t.Fatalf("RunForDB 2ème: %v", err)
 	}
 
-	// Vérifier pas de doublon sur name (PK)
+	// Vérifier pas de doublon sur name (PK) — toutes migrations confondues
 	var cnt int
 	if err := db.QueryRow(
-		"SELECT COUNT(DISTINCT name) FROM schema_migrations WHERE name LIKE 'add_%' OR name LIKE 'drop_%'",
+		"SELECT COUNT(DISTINCT name) FROM schema_migrations",
 	).Scan(&cnt); err != nil {
 		t.Fatalf("count distinct: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestRunForDB_Player_CoreTablesExist(t *testing.T) {
 		"match_citations",
 		"career_progression",
 		"sync_meta",
-		"media_files",
+		// media_files supprimée par drop_media_from_player_db (migrée vers shared_social)
 	}
 	for _, tbl := range tables {
 		if !assertTableExists(t, db, tbl) {

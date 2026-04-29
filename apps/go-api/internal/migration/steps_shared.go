@@ -46,7 +46,8 @@ func init() {
 					backfill_completed INTEGER DEFAULT 0,
 					film_match_start_ms INTEGER,
 					spnkr_version VARCHAR,
-					events_loaded BOOLEAN DEFAULT FALSE
+					events_loaded BOOLEAN DEFAULT FALSE,
+					match_intensity DOUBLE
 				);
 				CREATE TABLE IF NOT EXISTS match_participants (
 					match_id VARCHAR,
