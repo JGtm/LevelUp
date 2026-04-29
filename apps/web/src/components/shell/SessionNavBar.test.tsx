@@ -47,24 +47,27 @@ function buildResolved(sessions: SessionOption[] = fakeSessions): FilterContextR
 
 describe('SessionNavBar', () => {
   beforeEach(() => {
-    mockPathname = '/players/test-player/squad/synergies'
+    // Commit 26111a3a (cascade filters refactor) : la section Escouade gère
+    // sa propre barre dans SquadLayout, donc SessionNavBar ne s'affiche
+    // plus que sur les routes Stats. Tous les tests partagent ce path par
+    // défaut, sauf ceux qui testent explicitement le rendu hors Stats.
+    mockPathname = '/players/test-player/stats/history'
     useGlobalFilterStore.getState().resetFilters()
   })
 
-  it('ne rend rien hors Stats/Escouade', () => {
+  it('ne rend rien hors Stats', () => {
     mockPathname = '/players/test-player/home'
     const { container } = renderWithProviders(<SessionNavBar />)
     expect(container.firstChild).toBeNull()
   })
 
-  it('rend la barre sur la section Escouade', () => {
-    useGlobalFilterStore.getState().setResolvedContext(buildResolved())
-    renderWithProviders(<SessionNavBar />)
-    expect(screen.getByRole('navigation', { name: /session/i })).toBeInTheDocument()
+  it('ne rend rien sur la section Escouade (SquadLayout porte sa propre barre)', () => {
+    mockPathname = '/players/test-player/squad/synergies'
+    const { container } = renderWithProviders(<SessionNavBar />)
+    expect(container.firstChild).toBeNull()
   })
 
   it('rend la barre sur la section Stats', () => {
-    mockPathname = '/players/test-player/stats/history'
     useGlobalFilterStore.getState().setResolvedContext(buildResolved())
     renderWithProviders(<SessionNavBar />)
     expect(screen.getByRole('navigation', { name: /session/i })).toBeInTheDocument()
