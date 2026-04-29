@@ -7,7 +7,11 @@
 //	GET /api/v1/players/{slug}/pages/synthesis       → SynthesisPageResponse
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/legacymatch"
+)
 
 // ---------------------------------------------------------------------------
 // Lignes brutes DuckDB — Squad
@@ -253,31 +257,6 @@ type SynthesisPageRequest struct {
 // Lignes brutes DuckDB — Synthèse (simplified)
 // ---------------------------------------------------------------------------
 
-// SynthesisMatchRow est une ligne brute chargée depuis Q33b.
-// Sprint 43 : enrichi avec accuracy, time_played, performance_score pour les KPIs bipolaires.
-// Sprint N : ajout SessionLabel pour les filtres de session.
-// Sprint N+1 : ajout IsRanked, IsFirefight, PlaylistName pour le câblage cascade.
-//
-// Deprecated: P4.3 finale (ADR 0011). Type transitionnel — les services
-// (Synthesis, Squad, Teammates) chargent désormais `canonical.PlayerMatchRow`
-// via PlayerMatchesRepository et convertissent via
-// `analysis.SynthesisMatchRowsFromCanonical`. La conversion encapsule le pont
-// vers les helpers internes qui consomment encore ce type
-// (extractSynthesisSessionLabels, filterSynthesisByCascade, etc.). Sera
-// supprimé quand ces helpers seront portés full canonical (sprint dédié).
-type SynthesisMatchRow struct {
-	MatchID          string
-	StartTime        time.Time
-	Outcome          int
-	Kills            int
-	Deaths           int
-	KDA              *float64
-	IsWithFriends    bool
-	Accuracy         *float64
-	TimePlayedSecs   *int
-	PerformanceScore *float64
-	SessionLabel     *string
-	IsRanked         bool
-	IsFirefight      bool
-	PlaylistName     string
-}
+// SynthesisMatchRow déplacé vers `internal/legacymatch`. P4.3 finale cleanup.
+// Deprecated: utiliser `legacymatch.SynthesisMatchRow`.
+type SynthesisMatchRow = legacymatch.SynthesisMatchRow

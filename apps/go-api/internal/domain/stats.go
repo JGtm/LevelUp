@@ -3,48 +3,17 @@
 // Port Go de src/data/services/timeseries_service.py et src/analysis/performance_config.py.
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/legacymatch"
+)
 
 // ─── Entrées brutes ──────────────────────────────────────────────────────────
 
-// StatsMatchRow est le type de transfert entre platform/duckdb et les services de stats.
-// Contient toutes les métriques nécessaires au calcul du performance score (Q23).
-//
-// Deprecated: P4.3 finale (ADR 0011). Type transitionnel — les services
-// (Stats, Timeseries, SessionCompare, SessionPage) chargent désormais
-// `canonical.PlayerMatchRow` via PlayerMatchesRepository et convertissent via
-// `analysis.StatsMatchRowsFromCanonical`. La conversion encapsule le pont vers
-// les analyses build*Tab qui consomment encore ce type. Sera supprimé quand
-// les analyses build*Tab seront portées full canonical (sprint dédié).
-type StatsMatchRow struct {
-	MatchID             string
-	StartTime           time.Time
-	Outcome             *int
-	Kills               int
-	Deaths              int
-	Assists             int
-	KDA                 *float64
-	Accuracy            *float64
-	PersonalScore       *int
-	DamageDealt         *float64
-	DamageTaken         *float64
-	TimePlayedSeconds   *int
-	TeamMMR             *float64
-	EnemyMMR            *float64
-	KillsExpected       *float64
-	DeathsExpected      *float64
-	Rank                *int
-	IsRanked            bool
-	PlaylistName        string
-	PairName            string
-	TeamID              *int
-	PerfScoreComputed   *float64 // score stocké en DB (player_match_enrichment)
-	SessionID           *string
-	SessionLabel        *string
-	MedalExploitScore   *float64 // Σ(count × poids_difficulté) médailles heroic+
-	OffensiveConversion *float64 // 225×(kills+assists/3)/damage_dealt
-	DefensiveResistance *float64 // damage_taken/(225×deaths)
-}
+// StatsMatchRow déplacé vers `internal/legacymatch`. P4.3 finale cleanup.
+// Deprecated: utiliser `legacymatch.StatsMatchRow`.
+type StatsMatchRow = legacymatch.StatsMatchRow
 
 // LUSRMatchRating est le type de transfert pour un checkpoint LUSR.
 type LUSRMatchRating struct {
