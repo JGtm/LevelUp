@@ -13,6 +13,8 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"levelup/go-api/internal/migration"
@@ -22,14 +24,15 @@ import (
 
 // PlayerPoolConfig contient les chemins nécessaires pour ouvrir un PlayerDB.
 type PlayerPoolConfig struct {
-	Gamertag           string
-	XUID               string
-	TitleSlug          string // Sprint 44 : namespace titre (ex: "halo_infinite")
-	PlayerDBPath       string
-	SharedDBPath       string
-	MetaDBPath         string
-	SharedSocialDBPath string // shared_social.duckdb (médias, likes, favoris)
-	UserTimezone       string // timezone IANA pour la lecture des TIMESTAMP (ex: "Europe/Paris")
+	Gamertag                string
+	XUID                    string
+	TitleSlug               string // Sprint 44 : namespace titre (ex: "halo_infinite")
+	PlayerDBPath            string
+	SharedDBPath            string
+	MetaDBPath              string
+	SharedSocialDBPath      string // shared_social.duckdb (médias, likes, favoris)
+	GlobalXuidAliasesDBPath string // P5.3 : data/global/xbox_aliases.duckdb (mapping xuid→gamertag global Microsoft)
+	UserTimezone            string // timezone IANA pour la lecture des TIMESTAMP (ex: "Europe/Paris")
 }
 
 // PoolKey retourne la clé unique du pool pour ce joueur.
@@ -165,12 +168,27 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: attach shared on player db: %w", err)
 	}
 
+	// P5.3 : ATTACH global xbox_aliases (mapping xuid→gamertag global Microsoft).
+	// Non-bloquant : si la DB globale n'existe pas encore (avant migration), les
+	// requêtes qui font `JOIN global.xuid_aliases` retomberont sur NULL.
+	if cfg.GlobalXuidAliasesDBPath != "" {
+		if err := attachGlobalXuidAliases(ctx, playerDB, cfg.GlobalXuidAliasesDBPath); err != nil {
+			// Non bloquant — log déjà émis dans attachGlobalXuidAliases.
+			_ = err
+		}
+	}
+
 	// ATTACH shared_matches_v2 sur SharedSocial pour les JOIN match_registry dans Q37.
 	if socialDB != nil && cfg.SharedDBPath != "" {
 		if err := attachShared(ctx, socialDB, cfg.SharedDBPath); err != nil {
 			// Non bloquant : les colonnes map/mode seront NULL.
 			_ = err
 		}
+	}
+	// P5.3 : ATTACH global xbox_aliases sur SharedSocial aussi (media_repo fait
+	// `JOIN global.xuid_aliases` sur les likers de médias).
+	if socialDB != nil && cfg.GlobalXuidAliasesDBPath != "" {
+		_ = attachGlobalXuidAliases(ctx, socialDB, cfg.GlobalXuidAliasesDBPath)
 	}
 
 	return &PlayerDB{
@@ -215,6 +233,54 @@ func attachShared(ctx context.Context, db *DB, sharedPath string) error {
 		// Accessible malgré l'erreur d'ATTACH → déjà attachée, OK.
 	}
 	return nil
+}
+
+// attachGlobalXuidAliases attache la DB globale `xbox_aliases.duckdb` sous
+// l'alias `global` (P5.3). Tolère l'absence du fichier (avant migration) :
+// la table sera créée via init schema si nécessaire.
+func attachGlobalXuidAliases(ctx context.Context, db *DB, globalPath string) error {
+	if _, err := os.Stat(globalPath); err != nil {
+		// Fichier absent — créer une DB globale vide avec le schéma minimal.
+		// Idempotent : si une autre instance vient de la créer, ATTACH échouera
+		// proprement et on retombera sur le ping.
+		if err := initGlobalXuidAliasesSchema(globalPath); err != nil {
+			return fmt.Errorf("init global db: %w", err)
+		}
+	}
+	_, err := db.Exec(ctx,
+		fmt.Sprintf("ATTACH '%s' AS global", globalPath),
+	)
+	if err != nil {
+		// Vérifier accessibilité — déjà attachée, OK.
+		var count int
+		pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM global.xuid_aliases").Scan(&count)
+		if pingErr != nil {
+			return fmt.Errorf("attach global: %w (attach err: %v)", pingErr, err)
+		}
+	}
+	return nil
+}
+
+// initGlobalXuidAliasesSchema crée la DB globale et la table xuid_aliases si
+// absentes. Appelé par attachGlobalXuidAliases en pré-condition (avant la
+// première run du script de migration).
+func initGlobalXuidAliasesSchema(globalPath string) error {
+	if err := os.MkdirAll(filepath.Dir(globalPath), 0o755); err != nil {
+		return err
+	}
+	db, err := OpenReadWrite(globalPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.SQLDb().Exec(`
+		CREATE TABLE IF NOT EXISTS xuid_aliases (
+			xuid VARCHAR PRIMARY KEY,
+			gamertag VARCHAR NOT NULL,
+			last_seen TIMESTAMP NOT NULL DEFAULT now()
+		)
+	`)
+	return err
 }
 
 // XUID du joueur depuis sync_meta (fallback si cfg.XUID vide).

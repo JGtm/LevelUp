@@ -293,7 +293,7 @@ const Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id, COALESCE(xa.gamertag, p.xuid) AS gamertag
     FROM shared.match_participants p
-    LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
+    LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
     WHERE p.match_id = ? AND p.xuid != ?
 ),
 my_team AS (
@@ -331,7 +331,7 @@ const Q23bMatchEncounterStats = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id, COALESCE(xa.gamertag, p.xuid) AS gamertag
     FROM shared.match_participants p
-    LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
+    LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
     WHERE p.match_id = ? AND p.xuid != ?
 ),
 my_team AS (

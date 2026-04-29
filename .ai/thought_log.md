@@ -1,5 +1,56 @@
 # Thought Log
 
+## [2026-04-29] P5.3 — Câblage des consommateurs vers la DB globale `xbox_aliases.duckdb`
+
+**Statut** : Complété
+
+**Contexte** : P5.1 (PathResolver.GlobalXuidAliasesDBPath) et P5.2 (script de migration) déjà mergés. Reste à brancher les consommateurs : sync (ingestion) doit écrire dans la DB globale, et les requêtes (lecture) doivent y faire des JOINs. Anticipé pour faciliter la migration via copie de repo (pas besoin de réécrire les anciennes data).
+
+**Changements clés** :
+- `PlayerPoolConfig.GlobalXuidAliasesDBPath` ajouté ; `pool.go` ATTACH la DB globale comme schéma `global` (à côté de `shared`, `meta`, `shared_social`).
+- `config/player_resolver.go` (`resolveDemoPlayer` + `buildPoolConfig`) câble le path via `PathResolver.GlobalXuidAliasesDBPath()`.
+- `sync/engine.go` : `SyncEngine.globalDBPath` field, `processMatch`/`processHighlightEvents` reçoivent `globalDB *sql.DB`, `UpsertXUIDAlias` écrit dans globalDB. `run()` ouvre la DB globale via nouveau helper `openGlobalDB()` (schéma idempotent xuid_aliases).
+- ~9 fichiers migrés `shared.xuid_aliases` → `global.xuid_aliases` via PowerShell bulk replace.
+- `engine_e2e_test.go` : nouveau helper `newInMemoryGlobalDB(t)` ; `TestProcessMatch_FullPipeline` passe une vraie globalDB et asserte sur elle ; autres tests passent `nil` (skip xuid_aliases).
+- Encoding mojibake corrigé dans `teammates_service.go` et `teammates_extra_test.go` (« PVP classé »).
+
+**Résultats** : `go build ./...` propre, `go test ./...` tout vert (incl. `internal/sync`, `internal/platform/duckdb`, `internal/service`).
+
+**Décision** : exécuté maintenant (pas déféré post-déploiement comme initialement prévu) parce que l'utilisateur copie le repo pour migrer — le script `migrate-xuid-aliases-global` sera lancé avant le premier sync sur le nouvel environnement, donc la DB globale sera prête.
+
+**Prochaine étape** : phase P6 (capabilities middleware + activation flags multi-titres en CI).
+
+## [2026-04-29] Fix — taux de victoire 4877% dans l'escouade (double multiplication ADR 0006)
+
+**Statut** : Complété
+
+**Problème** : `TeammateKPIs.WinRate` et `MapBreakdownRow.WinRate` dans `teammates_service.go` envoyaient déjà un pourcentage (`* 100`), puis le frontend multipliait encore `* 100` dans `metrics.ts` et `SquadLayout.tsx` → valeurs absurdes (~4877%).
+
+**Cause racine** : 3 sites dans `teammates_service.go` violaient ADR 0006 (ratio 0..1 côté API). Marqués `TODO P4 ADR 0006` depuis longtemps.
+
+**Fix** :
+- `computeKPIsFromSquadMatches` (l.465) : `round2(analysis.WinRate(wins, n) * 100)` → `analysis.WinRate(wins, n)`
+- `computeKPIsFromSynthesisExcluding` (l.505) : idem
+- `computeMapBreakdown` (l.543) : `round2(... * 100)` → `round2(...)` (0..1)
+- `heatmapChart.ts` : `value: r.win_rate` → `value: r.win_rate * 100` (conversion au layer d'affichage)
+- Tests mis à jour : `teammates_extra_test.go` (66.67 → 0.67), `heatmapChart.test.ts` (fixture 0..1)
+
+**Résultats** : Tous les tests passent. `SquadLayout.tsx` et `metrics.ts` (déjà `* 100`) deviennent corrects sans modification.
+
+## [2026-04-29] Fix — filtres cascade Squad V2 : cartes ajoutées, modes documentés
+
+**Statut** : Complété (cartes) / Déféré (modes)
+
+**Problème** : Cartes et modes étaient silencieusement ignorés par le service Squad V2.
+
+**Cartes** : implémentées. `assetLabelForFilter()` (helper générique) remplace `playlistLabelForFilter()` — utilise `Labels["fr"]` pour maps ET playlists. Handler, service, port interface et frontend mis à jour.
+
+**Modes** : non implémentables sans refactoring — `canonical.PlayerMatchRow` ne charge que `game_variant_name` (ex. "HaloMultiplayer:Slayer"), pas `pair_name_fr` (ex. "Slayer") qu'utilise `filtersResolve`. Nécessite : modifier `playerMatchesBaseSelect` + `playerMatchScanResult` + nouveau champ `MatchSummary.PairMode`.
+
+**Fichiers modifiés** : `port/services.go`, `service/squad_service_v2.go`, `api/handlers/squad_v2.go`, tests handler + service + compose, `apps/web/src/features/squad/v2/queries.ts|SquadV2Page|SquadV2RouteHost`, `lib/query/keys.ts`.
+
+**Résultats** : 0 régression. Tests Go squad/filter/handler passent. 8 tests frontend passent.
+
 ## [2026-04-29] P5 livre (P5.1 + P5.2 + P5.4 + P5.5) - reste P5.3 deploiement
 
 **Statut** : 4 sous-phases sur 5 livrees. P5.3 (refactor consommateurs) defere car necessite la migration script reellement executee + DI wiring de la global DB.

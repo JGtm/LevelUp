@@ -401,7 +401,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 			mp.team_id,
 			(mp.xuid = ?) AS is_self
 		FROM shared.match_participants mp
-		LEFT JOIN shared.xuid_aliases va ON va.xuid = mp.xuid
+		LEFT JOIN global.xuid_aliases va ON va.xuid = mp.xuid
 		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)
 		ORDER BY mp.match_id, mp.team_id, mp.gamertag
 	`

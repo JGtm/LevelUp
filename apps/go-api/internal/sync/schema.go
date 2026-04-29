@@ -207,6 +207,38 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 }
 
 // OpenSharedDB ouvre shared_matches_v2.duckdb en lecture/écriture via le cache process-level.
+// openGlobalDB ouvre la DB globale xbox_aliases.duckdb (P5.3) en RW. Crée le
+// fichier + la table xuid_aliases si absents (idempotent).
+//
+// Retourne (*sql.DB, cleanup, error). Le cleanup ferme la connexion ; le
+// caller l'appelle via defer.
+func openGlobalDB(path string) (*sql.DB, func(), error) {
+	if path == "" {
+		return nil, nil, fmt.Errorf("openGlobalDB: empty path")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, nil, fmt.Errorf("openGlobalDB mkdir %s: %w", path, err)
+	}
+	handle, err := duckdbpkg.OpenReadWrite(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("openGlobalDB open %s: %w", path, err)
+	}
+	db := handle.SQLDb()
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS xuid_aliases (
+			xuid VARCHAR PRIMARY KEY,
+			gamertag VARCHAR NOT NULL,
+			last_seen TIMESTAMP NOT NULL DEFAULT now(),
+			source VARCHAR DEFAULT 'sync',
+			updated_at TIMESTAMP DEFAULT now()
+		)
+	`); err != nil {
+		handle.Close()
+		return nil, nil, fmt.Errorf("openGlobalDB schema: %w", err)
+	}
+	return db, func() { _ = handle.Close() }, nil
+}
+
 // Applique le schéma shared si absent.
 // Retourne un *duckdbpkg.DB ref-compté ; appeler .Close() quand terminé.
 func OpenSharedDB(path string) (*duckdbpkg.DB, error) {

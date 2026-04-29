@@ -43,7 +43,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			AVG(COALESCE(mp.accuracy, 0.0))                      AS accuracy,
 			AVG(COALESCE(mp.damage_dealt, 0.0))                  AS damage_per_game
 		FROM shared.match_participants mp
-		LEFT JOIN shared.xuid_aliases xa ON xa.xuid = mp.xuid
+		LEFT JOIN global.xuid_aliases xa ON xa.xuid = mp.xuid
 		WHERE mp.xuid = ?
 		GROUP BY mp.xuid, gamertag`
 
@@ -80,7 +80,7 @@ func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string,
 	defer cancel()
 
 	const q = `
-		SELECT xuid FROM shared.xuid_aliases
+		SELECT xuid FROM global.xuid_aliases
 		WHERE lower(gamertag) = lower(?)
 		LIMIT 1`
 

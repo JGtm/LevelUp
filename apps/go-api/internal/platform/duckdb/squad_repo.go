@@ -53,7 +53,7 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 }
 
 // LookupXUIDByGamertag rÃ©sout un gamertag (ILIKE, case-insensitive) vers son
-// XUID via shared.xuid_aliases. Sert de fallback pour les coÃ©quipiers sÃ©lectionnÃ©s
+// XUID via global.xuid_aliases. Sert de fallback pour les coÃ©quipiers sÃ©lectionnÃ©s
 // qui sortent du top 50 LoadTopTeammates (saisie libre dans la combobox).
 //
 // Si plusieurs aliases correspondent au mÃªme gamertag (changement de pseudo
@@ -66,10 +66,10 @@ func (r *SquadRepo) LookupXUIDByGamertag(ctx context.Context, gamertag string) (
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// shared.xuid_aliases : (xuid, gamertag, last_seen_at)
+	// global.xuid_aliases : (xuid, gamertag, last_seen_at)
 	const q = `
 SELECT xuid
-FROM shared.xuid_aliases
+FROM global.xuid_aliases
 WHERE gamertag ILIKE ?
 ORDER BY last_seen_at DESC NULLS LAST
 LIMIT 1`
