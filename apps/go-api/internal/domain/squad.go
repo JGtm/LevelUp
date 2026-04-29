@@ -257,6 +257,14 @@ type SynthesisPageRequest struct {
 // Sprint 43 : enrichi avec accuracy, time_played, performance_score pour les KPIs bipolaires.
 // Sprint N : ajout SessionLabel pour les filtres de session.
 // Sprint N+1 : ajout IsRanked, IsFirefight, PlaylistName pour le câblage cascade.
+//
+// Deprecated: P4.3 finale (ADR 0011). Type transitionnel — les services
+// (Synthesis, Squad, Teammates) chargent désormais `canonical.PlayerMatchRow`
+// via PlayerMatchesRepository et convertissent via
+// `analysis.SynthesisMatchRowsFromCanonical`. La conversion encapsule le pont
+// vers les helpers internes qui consomment encore ce type
+// (extractSynthesisSessionLabels, filterSynthesisByCascade, etc.). Sera
+// supprimé quand ces helpers seront portés full canonical (sprint dédié).
 type SynthesisMatchRow struct {
 	MatchID          string
 	StartTime        time.Time

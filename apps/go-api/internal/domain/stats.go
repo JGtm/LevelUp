@@ -9,6 +9,13 @@ import "time"
 
 // StatsMatchRow est le type de transfert entre platform/duckdb et les services de stats.
 // Contient toutes les métriques nécessaires au calcul du performance score (Q23).
+//
+// Deprecated: P4.3 finale (ADR 0011). Type transitionnel — les services
+// (Stats, Timeseries, SessionCompare, SessionPage) chargent désormais
+// `canonical.PlayerMatchRow` via PlayerMatchesRepository et convertissent via
+// `analysis.StatsMatchRowsFromCanonical`. La conversion encapsule le pont vers
+// les analyses build*Tab qui consomment encore ce type. Sera supprimé quand
+// les analyses build*Tab seront portées full canonical (sprint dédié).
 type StatsMatchRow struct {
 	MatchID             string
 	StartTime           time.Time

@@ -12,6 +12,13 @@ import "time"
 // ---------------------------------------------------------------------------
 
 // HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
+//
+// Deprecated: P4.3 finale (ADR 0011). Type transitionnel — les services et
+// analyses ont migré vers `canonical.PlayerMatchRow`. Ce type reste utilisé
+// par les analyses legacy `analysis.BuildHeroCard`, `analysis.BuildHighlights`,
+// `analysis.BuildSessionSummary`, etc. — qui sont du code mort suite à la
+// migration canonical-only des services. Sera supprimé quand ces analyses
+// legacy + leurs tests seront retirés (sprint dédié, hors P4.3 finale).
 type HomeMatchRow struct {
 	MatchID            string
 	StartTime          time.Time
@@ -64,6 +71,7 @@ type HomeMatchRow struct {
 }
 
 // HomeSessionRow est une ligne brute chargée depuis Q27 (sessions enrichment).
+// Deprecated: P4.3 finale — voir HomeMatchRow.
 type HomeSessionRow struct {
 	MatchID       string
 	SessionID     *int
