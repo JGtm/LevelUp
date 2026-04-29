@@ -1,5 +1,38 @@
 # Thought Log
 
+## [2026-04-29] P2.6bis + P3 partiel — formatters front + tests fondations (sur chore/cleanup-and-ux-fixes)
+
+**Statut** : P2.6bis livré complet. P3 livré partiel (P3.1, P3.3, P3.4, P3.8). Reste P3.2, P3.5, P3.6, P3.7.
+
+**4 commits livrés sur cette tranche** :
+- `4c977f8c feat(p2.6bis)` : `lib/formatters/{date,number,duration}.ts` + index barrel + 27 tests Vitest. Migrations exemplaires HistoryTable + SessionDetailPage.
+- `91151229 test(p3.1+p3.4)` : annotation ratchet `coverage_filter.sh` (CGO-mandatory vs DETTE-réinclusible) + smoke tests `prestige_smoke_test.go` (FlagOff/FlagOn).
+- `380e0b14 ci(p3.8)` : `test:coverage` activé en CI + upload artefact `web-coverage-html`.
+- `fd08784d test(p3.3)` : `TestContractRoutesDocumented` avec plafond 65 (delta actuel 49). Jalons documentés P4 ≤30, P6 ≤10, P8.8 = 0.
+
+**Métriques** :
+- Couverture front (mesurée locale) : 45.62% statements, 47.01% lines.
+- 49 routes chi non documentées dans OpenAPI (au-dessus = échec CI).
+- Couverture Go : 84.5% (ratchet inchangé — la dette des handlers/middleware/platform/halo est documentée pour réinclusion progressive en P3.6/P4/P3.7).
+
+**P3 restant** (estimé 5-6 j résiduel) :
+- **P3.2** (1.5 j) : tests régression engagement B1-B4 — fixtures epoch UTC réel pour MatchStartMS, sinon le test passe avec le bug en place.
+- **P3.5** (0.5 j) : préparation slog migration `internal/notify` (29 sites `log.Printf`). Mineur, reportable en P8.2.
+- **P3.6** (1-1.5 j) : tests `platform/halo` 6 sources (`medal_provider`, `season_provider`, `discovery_client`, etc.) avec httptest mock server.
+- **P3.7** (2-2.5 j) : extraction `port.{HomePersistSink, MediaIndexRepository, MediaUploadRepository, RanksLoader}` + `Clock` interface pour `analysis/sessions.go`.
+
+**Décisions design** :
+- P3.1 : pas de changement fonctionnel (préserve ratchet 84.5%). Annotation A/B pour audit.
+- P3.4 : smoke tests Prestige côté `internal/api/` (pas `contracttest/`) car nécessite `buildTestRouter(t)` interne.
+- P3.3 : test miroir avec PLAFOND décroissant (pas 0 immédiat) — empêche régression mais ne force pas le rattrapage avant P4/P6/P8.8.
+- P3.8 : pas de ratchet front pour l'instant (baseline à établir au prochain run main).
+
+**Bilan branche** `chore/cleanup-and-ux-fixes` : 24 commits depuis main (P0+P1+P2+P3 partiels). Prête au merge sur `feat/multi-title-static-fs-rescope`.
+
+**Prochaine étape** : reste de P3 (P3.2/P3.6/P3.7 lourds, ~5 j) ou démarrage P4 (canonical big-bang) avec P3 partiel comme baseline.
+
+---
+
 ## [2026-04-29] Filtres expérience/playlist — câblage cascade squad + refonte FilterOmnibar
 
 **Statut** : Complété
