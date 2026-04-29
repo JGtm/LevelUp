@@ -65,7 +65,7 @@ func (s *SessionCompareService) Compare(
 		if e != nil {
 			return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare canonical: %w", e)
 		}
-		matches = statsMatchRowsFromCanonical(canonicalRows)
+		matches = analysis.StatsMatchRowsFromCanonical(canonicalRows)
 	} else {
 		matches, err = s.statsRepo.LoadStatsMatches(ctx)
 		if err != nil {

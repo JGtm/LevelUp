@@ -8,6 +8,7 @@ import (
 	"math"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -57,7 +58,7 @@ func (s *SessionPageService) GetPage(
 		if e != nil {
 			return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage canonical: %w", e)
 		}
-		rows = statsMatchRowsFromCanonical(canonicalRows)
+		rows = analysis.StatsMatchRowsFromCanonical(canonicalRows)
 	} else {
 		rows, err = s.statsRepo.LoadStatsMatches(ctx)
 		if err != nil {
