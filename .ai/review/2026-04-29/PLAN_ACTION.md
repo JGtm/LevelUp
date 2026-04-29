@@ -820,14 +820,14 @@ type TitleAssetURLAdapter interface {
 - Pas d'activation prod tant que tests smoke pas verts (cf. P3.4)
 
 ### Done P6
-- [ ] Flag MULTI_TITLE_API_ENABLED=true en CI
-- [ ] useFieldLabel partout
-- [ ] Middleware RequireCapability actif
-- [ ] request_id partout dans logs (incluant assertions P3.2 activées)
-- [ ] Prestige composants branchés
-- [ ] **Jalon OpenAPI** : delta <= 10 (test manquant III)
-- [ ] Politique transverse appliquée (logs slog avec request_id)
-- [ ] Entrée thought_log
+- [x] **P6.1** Flag MULTI_TITLE_API_ENABLED=true en CI (déjà actif dans `.github/workflows/ci.yml` lignes 92, 159 — vérifié)
+- [x] **P6.2** useFieldLabel partout — 10 fichiers `features/*` migrés (labelOf(key) sans fallback FR hardcodé)
+- [x] **P6.3** Middleware RequireCapability actif — `internal/api/middleware/require_capability.go` + tests, câblé sur career/* (CapCareer) + media/* (CapMedia)
+- [x] **P6.4** request_id partout dans logs — `internal/observability/context_handler.go` (slog.Handler wrapper) câblé dans `cmd/server/main.go`
+- [x] **P6.5** Prestige composants branchés — MomentCard, ArcSummary, StatsGlobales dans ObjectifsPage::ParcoursTab
+- [ ] **Jalon OpenAPI** : delta <= 10 (test manquant III) — déféré P7
+- [x] Politique transverse appliquée (logs slog avec request_id)
+- [x] Entrée thought_log
 
 ---
 

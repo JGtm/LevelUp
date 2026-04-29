@@ -37,8 +37,8 @@ function SessionSummaryCard({
 }) {
   const toneClass = tone === 'primary' ? 'border-primary/20 bg-primary/5' : 'border-compare-b bg-compare-b/10'
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
   const t = useSessionT()
 
   if (!entry) {
@@ -71,7 +71,7 @@ function SessionSummaryCard({
       <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SessionStat label={t('session.detail.stat_matches')} value={entry.total_matches.toString()} />
         <SessionStat label={t('session.detail.stat_wins_losses')} value={`${entry.wins} / ${entry.losses}`} />
-        <SessionStat label={labelOf('kda', t('session.detail.stat_kda'))} value={formatNumber(entry.kda, 2)} />
+        <SessionStat label={labelOf('kda')} value={formatNumber(entry.kda, 2)} />
         <SessionStat label={t('session.detail.stat_perf_score')} value={formatNumber(entry.performance_score, 1)} />
       </CardContent>
     </Card>

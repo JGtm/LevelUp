@@ -169,12 +169,12 @@ function kdTimelineSeries(
   return [
     {
       key: 'match_view.combat.kd_timeline.kills',
-      meta: { gamertag: labelOf('kills', 'Kills') },
+      meta: { gamertag: labelOf('kills') },
       datapoints: points.map((p) => ({ x: p.time_seconds, y: p.kills })),
     },
     {
       key: 'match_view.combat.kd_timeline.deaths',
-      meta: { gamertag: labelOf('deaths', 'Deaths') },
+      meta: { gamertag: labelOf('deaths') },
       datapoints: points.map((p) => ({ x: p.time_seconds, y: p.deaths })),
     },
   ]
@@ -205,8 +205,8 @@ export function MatchViewPage() {
   const queryClient = useQueryClient()
   const excludeMutation = useSetMatchExclusion(playerSlug)
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
 
   if (isLoading) return null
 
@@ -319,11 +319,11 @@ export function MatchViewPage() {
             {/* KPI grid principale */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
               {[
-                { label: labelOf('kills', 'Kills'), value: summary_tab.kpis.kills },
-                { label: labelOf('deaths', 'Deaths'), value: summary_tab.kpis.deaths },
-                { label: labelOf('assists', 'Assists'), value: summary_tab.kpis.assists },
-                { label: labelOf('kda', 'KDA'), value: summary_tab.kpis.kda?.toFixed(2) },
-                { label: labelOf('damage_dealt', 'Damage'), value: summary_tab.kpis.damage_dealt?.toFixed(0) },
+                { label: labelOf('kills'), value: summary_tab.kpis.kills },
+                { label: labelOf('deaths'), value: summary_tab.kpis.deaths },
+                { label: labelOf('assists'), value: summary_tab.kpis.assists },
+                { label: labelOf('kda'), value: summary_tab.kpis.kda?.toFixed(2) },
+                { label: labelOf('damage_dealt'), value: summary_tab.kpis.damage_dealt?.toFixed(0) },
                 { label: 'Vie moy.', value: summary_tab.kpis.average_life },
               ].map((kpi) => (
                 <Card key={kpi.label}>

@@ -390,10 +390,14 @@ func NewRouter(
 			mh := handlers.NewMatchHistoryHandler(reg.MatchHistoryCtx)
 			r.Post("/pages/match-history/query", mh.Query)
 
+			// P6.3 : guard de capability — career routes nécessitent CapCareer.
 			career := handlers.NewCareerHandler(reg.Career)
-			r.Get("/pages/career", career.GetCareer)
-			r.Get("/pages/career/top-matches", career.GetTopMatches)
-			r.Get("/pages/career/encounters", career.GetEncounters)
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapCareer))
+				r.Get("/pages/career", career.GetCareer)
+				r.Get("/pages/career/top-matches", career.GetTopMatches)
+				r.Get("/pages/career/encounters", career.GetEncounters)
+			})
 
 			// Sprint 8 : Match View + Explorer
 			mv := handlers.NewMatchViewHandler(reg.MatchView)
@@ -447,6 +451,7 @@ func NewRouter(
 			r.Post("/pages/citations", citations.GetCitations)
 			r.Post("/pages/commendations", citations.GetCommendations)
 
+			// P6.3 : guard de capability — media routes nécessitent CapMedia.
 			media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 				WithSettingsStore(settingsStore).
 				WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
@@ -454,15 +459,18 @@ func NewRouter(
 				}).
 				WithNotificationsEmitterFactory(reg.NotificationsEmitter).
 				WithMediaRecipientResolver(reg.MediaRecipientResolver(cfg))
-			r.Post("/pages/media", media.GetMediaLibrary)
-			r.Patch("/media/likes", media.PatchMediaLike)
-			r.Post("/media/upload", media.PostUploadMedia)
-			// /media/reassociate supprimé en revue 2026-04-29 P0.2 Q6 (doublon non utilisé,
-			// le front consomme /media/associate seulement).
-			r.Get("/media/match-candidates", media.GetMediaMatchCandidates)
-			r.Post("/media/associate", media.PostMediaAssociate)
-			r.Get("/media/authors", media.GetMediaAuthors)
-			r.Get("/media/files/*", media.ServeMediaFile)
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapMedia))
+				r.Post("/pages/media", media.GetMediaLibrary)
+				r.Patch("/media/likes", media.PatchMediaLike)
+				r.Post("/media/upload", media.PostUploadMedia)
+				// /media/reassociate supprimé en revue 2026-04-29 P0.2 Q6 (doublon non utilisé,
+				// le front consomme /media/associate seulement).
+				r.Get("/media/match-candidates", media.GetMediaMatchCandidates)
+				r.Post("/media/associate", media.PostMediaAssociate)
+				r.Get("/media/authors", media.GetMediaAuthors)
+				r.Get("/media/files/*", media.ServeMediaFile)
+			})
 
 			// Sprint 32 : Explorer matches-query + Match History export
 			r.Post("/pages/explorer/matches-query", explorer.QueryMatches)

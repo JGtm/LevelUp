@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -120,6 +121,10 @@ func main() {
 	} else {
 		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
 	}
+	// P6.4 : envelopper avec ContextHandler pour attacher automatiquement
+	// request_id (depuis ctxkeys) à chaque slog.*Context(...) émis par les
+	// services. Sans ça, debug prod cassé en multi-user.
+	logHandler = observability.NewContextHandler(logHandler)
 	slog.SetDefault(slog.New(logHandler))
 
 	// --- 2. Configuration ---

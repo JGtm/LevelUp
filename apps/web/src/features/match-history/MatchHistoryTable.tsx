@@ -78,13 +78,13 @@ export function MatchHistoryTable({
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const excludeMutation = useSetMatchExclusion(playerSlug)
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
 
   const columns = [
     { key: 'start_time', label: 'Date' },
     { key: 'map_mode', label: 'Carte / Mode', sortable: false },
-    { key: 'outcome_label', label: labelOf('outcome', 'Résultat'), sortable: false },
+    { key: 'outcome_label', label: labelOf('outcome'), sortable: false },
     { key: 'score_label', label: 'Score', sortable: false },
     { key: 'performance_score_relative', label: 'Perf.' },
     { key: 'delta_mmr', label: 'ΔMMR' },

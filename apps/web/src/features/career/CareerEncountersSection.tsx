@@ -36,16 +36,16 @@ function EncounterTable({ items }: { items: CareerEncounter[] }) {
   // Phase D plan multi-titres : libellés métier issus du backend TOML avec
   // fallback gracieux sur les valeurs FR locales si MULTI_TITLE_API_ENABLED off.
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string, fallback: string): string =>
-    fieldMappings?.fields[key]?.label ?? fallback
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-xs font-medium text-muted-foreground">
             <th className="pb-2 text-left">Joueur</th>
-            <th className="pb-2 text-right">{labelOf('total_matches_played', 'Matchs')}</th>
-            <th className="pb-2 text-right">{labelOf('win_rate', 'Win%')}</th>
+            <th className="pb-2 text-right">{labelOf('total_matches_played')}</th>
+            <th className="pb-2 text-right">{labelOf('win_rate')}</th>
             <th className="pb-2 text-right">Victoires</th>
             <th className="pb-2 text-right">Défaites</th>
             <th className="pb-2 text-right">Dernière rencontre</th>
