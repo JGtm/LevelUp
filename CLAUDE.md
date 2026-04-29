@@ -37,6 +37,12 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0002-canonical-player-match-row.md` — pourquoi `canonical.*` cross-titres
 - `docs/adr/0003-i18n-manifest-and-linter.md` — pourquoi TOML manifests + lint custom
 - `docs/adr/0004-narrative-engine.md` — pourquoi 8 rôles + radar 6 axes
+- `docs/adr/0005-prestige-phased-activation.md` — activation phasée Prestige (staging → prod, expire Q3 2026)
+- `docs/adr/0006-canonical-indicators-and-units.md` — formules KDA/KDR/WinRate/Accuracy/PerfTier + unité 0..1 côté API
+- `docs/adr/0007-canonical-bigbang-migration.md` — pourquoi big-bang (15-16 services en 1 PR feature branch)
+- `docs/adr/0008-db-schema-multi-title-and-xuid-global.md` — isolation par chemin FS (pas `title_id` colonne) + xuid_aliases globalisé
+- `docs/adr/0009-expvar-monitoring-multi-user.md` — pourquoi expvar stdlib (pas Prometheus) en multi-user
+- `docs/adr/0010-timeseries-binning-server-side.md` — pourquoi binning Go (pas front)
 
 **Skills agent** (à invoquer avant tout commit) : `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md`.
 
