@@ -100,7 +100,7 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]domain.HomeMatchRow, 
 		if row.SkillTierLabel != nil {
 			tierLabel = *row.SkillTierLabel
 		}
-		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier)
+		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier, homeStaticTitleSlug)
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -223,7 +223,12 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 	if tierLabel.Valid {
 		peak.TierLabel = stringPtr(tierLabel.String)
 	}
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(optionalNullStringValue(tier), optionalNullStringValue(tierLabel), optionalNullInt16Value(subTier))
+	// LUSR est un rating cross-titre (LevelUp) : pas de slug de titre dans l'URL.
+	titleSlug := homeStaticTitleSlug
+	if strings.EqualFold(ratingType, "LUSR") {
+		titleSlug = ""
+	}
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(optionalNullStringValue(tier), optionalNullStringValue(tierLabel), optionalNullInt16Value(subTier), titleSlug)
 	return peak
 }
 
@@ -281,6 +286,7 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 				optionalNullStringValue(tier),
 				optionalNullStringValue(tierLabel),
 				optionalNullInt16Value(subTier),
+				homeStaticTitleSlug,
 			)
 		}
 		raws = append(raws, rawItem{
@@ -394,26 +400,30 @@ func optionalNullInt16Value(value sql.NullInt16) int {
 	return int(value.Int16)
 }
 
-func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int) *string {
+// buildHomeSkillPeakBadgeURL construit l'URL du badge de rang.
+// titleSlug : slug de titre (ex "halo_infinite") pour les ratings game-specific (CSR).
+// Passer "" pour les ratings cross-titre (LUSR) — l'URL n'inclut pas de slug.
+func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titleSlug string) *string {
 	normalizedTier, normalizedSubTier := normalizeHomeSkillPeakBadgeParts(tier, tierLabel, subTier)
 	if normalizedTier == "" {
 		return nil
 	}
+	var id string
 	if strings.EqualFold(normalizedTier, "Onyx") {
-		p := homeCSRRankURL("120px-HINF-CSR_Onyx")
-		return &p
+		id = "120px-HINF-CSR_Onyx"
+	} else {
+		if normalizedSubTier < 1 || normalizedSubTier > 6 {
+			return nil
+		}
+		id = fmt.Sprintf("120px-HINF-CSR_%s%d", normalizedTier, normalizedSubTier)
 	}
-	if normalizedSubTier < 1 || normalizedSubTier > 6 {
-		return nil
+	var p string
+	if titleSlug != "" {
+		p = static.URL(static.KindCSRRank, titleSlug, id, ".png")
+	} else {
+		p = path.Join(static.MountPoint, static.Folder(static.KindCSRRank), id+".png")
 	}
-	p := homeCSRRankURL(fmt.Sprintf("120px-HINF-CSR_%s%d", normalizedTier, normalizedSubTier))
 	return &p
-}
-
-// homeCSRRankURL retourne l'URL d'un badge de rang CSR.
-// Composition path déléguée à internal/assets/static.
-func homeCSRRankURL(id string) string {
-	return static.URL(static.KindCSRRank, homeStaticTitleSlug, id, ".png")
 }
 
 // homeMedalIconURL retourne l'URL d'une icône de médaille à partir de son ID.

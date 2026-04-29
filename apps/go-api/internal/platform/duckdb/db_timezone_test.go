@@ -51,10 +51,11 @@ func TestOpenReadWrite_TimezoneUTC(t *testing.T) {
 // TestOpenReadWrite_TimezoneInvalid vérifie qu'une timezone invalide est ignorée
 // (sanitizeTimezone la rejette → connexion ouverte sans SET TimeZone).
 func TestOpenReadWrite_TimezoneInvalid(t *testing.T) {
-	_, err := ddb.OpenReadWrite(":memory:", "'; DROP TABLE x; --")
+	db, err := ddb.OpenReadWrite(":memory:", "'; DROP TABLE x; --")
 	if err != nil {
 		t.Fatalf("OpenReadWrite timezone invalide ne doit pas échouer: %v", err)
 	}
+	defer db.Close()
 	// La DB s'ouvre mais sans timezone configurée — pas de panique.
 }
 

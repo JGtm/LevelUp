@@ -94,6 +94,18 @@ func init() {
 		TargetDB:    TargetShared,
 		Description: "Ajoute match_intensity (DOUBLE) a shared.match_registry (events/min/joueur du lobby, caracteristique permanente du match)",
 		ApplySchema: func(db *sql.DB) error {
+			// create_base_shared_schema inclut deja match_intensity depuis v5.5 ;
+			// ce ALTER est conserve pour les bases existantes anterieures.
+			// Guard necessaire car steps_engagement.go s'enregistre avant steps_shared.go
+			// (ordre alphabetique des init()), donc match_registry peut ne pas exister
+			// en DB vierge au moment ou cette migration est evaluee.
+			exists, err := tableExists(db, "match_registry")
+			if err != nil {
+				return fmt.Errorf("add_match_intensity: check table: %w", err)
+			}
+			if !exists {
+				return nil
+			}
 			return execScript(db, `
 				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS match_intensity DOUBLE;
 			`)
