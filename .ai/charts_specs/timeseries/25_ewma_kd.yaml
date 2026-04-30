@@ -1,0 +1,131 @@
+# =============================================================================
+# EWMA K/D — moyenne mobile exponentielle pondérée
+# =============================================================================
+# Ligne EWMA (Exponentially Weighted Moving Average) du K/D : amélioration
+# visible dès 3 matchs (poids fort sur les récents). Optionnel : droite de
+# régression linéaire affichée si R² >= 0.3 (sinon "tendance non significative").
+# Hline référence y=1.0. Markers V/D optionnels via _add_outcome_markers.
+# Y range adaptatif via iqr_yrange (allow_negative=False).
+# =============================================================================
+
+id: "timeseries.25"
+title: "EWMA K/D — moyenne mobile exponentielle"
+page: timeseries
+section: "Onglet Avancé — EWMA"
+display_order_in_tab: 5
+source_function: "src/visualization/_perf_progression.py::plot_ewma_kd"
+source_helpers:
+  - "src/visualization/_perf_progression.py::_add_ewma_traces"
+  - "src/visualization/_perf_progression.py::_add_outcome_markers"
+  - "src/visualization/_perf_progression.py::iqr_yrange"
+  - "src/analysis/performance_kd.py::compute_ewma_kd_polars"
+  - "src/analysis/performance_kd.py::compute_linear_regression_kd"
+fragment: false
+chart_kind: line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_ewma_kd_polars(df) + compute_linear_regression_kd(df) si pertinent"
+  input_dataframe:
+    required_fields:
+      ewma_df: [start_time, kd, ewma_kd]
+      regression_data: "dict — {slope, intercept, r_squared, is_significant, trend, kd_relative_change, wr_relative_change}"
+  call_args:
+    outcome_values: "list[int|None]"
+    opts: "PlotOptions(lang, height_px)"
+
+  constants:
+    ewma_alpha: "à confirmer (probablement 0.2 ou 0.3 — poids exponentiel)"
+    r2_threshold: 0.3                                            # en dessous : 'tendance non significative'
+    baseline_y: 1.0
+    height_default: 380
+    iqr_allow_negative: false
+
+# === TRACES ===
+traces:
+  - id: kd_per_match
+    type: scatter
+    mode: markers
+    marker: { size: 4, opacity: 0.5 }
+    name: "K/D par match"
+  - id: ewma
+    type: scatter
+    mode: lines
+    line_width: 3
+    color: "PERFORMANCE_COLORS.cumulative"
+    name: "EWMA K/D"
+  - id: regression_line
+    type: scatter
+    mode: lines
+    line_dash: dash
+    line_color: "vary selon trend (up=green, down=red, flat=neutral)"
+    optional: true                                               # ssi r_squared >= 0.3
+  - id: outcome_markers
+    type: "scatter or shapes"
+    optional: true
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  hovermode: "x unified"
+  legend: { orientation: h, yanchor: bottom, y: 1.02, xanchor: center, x: 0.5 }
+  yaxis:
+    title_i18n: "{{viz_t.axis_kd_ratio}}"
+    range: "iqr_yrange(y_kd + y_ewma, allow_negative=False)"
+  xaxis:
+    title: "Match"
+  shapes:
+    - id: hline_kd_ref
+      type: line
+      y_field: 1.0
+      line: { dash: dash, color: "PERFORMANCE_COLORS.baseline" }
+      annotation: { text_i18n: "{{viz_t.label_kd_ref}}", position: right }
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "ewma_df non vide"
+  empty_state:
+    type: "annotation in figure"
+    triggered_by: ["ewma_df.is_empty() → empty_no_data"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  followed_by:
+    - "_render_note(t('ts_note_ewma'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - empty_no_data
+    - axis_kd_ratio
+    - label_kd_ref
+  t: ["ts_note_ewma"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "EWMA plutôt que rolling mean simple"
+      why: |
+        EWMA donne plus de poids aux MATCHS RÉCENTS (poids exponentiel). Si le joueur s'améliore,
+        l'EWMA monte rapidement (3-4 matchs) alors qu'un rolling mean classique mettrait 10+
+        matchs pour refléter le changement. Mieux pour visualiser une 'remontada' ou une chute.
+
+    - decision: "Régression linéaire affichée seulement si R² >= 0.3"
+      why: |
+        Une régression sur des données très bruitées (R²<0.3) tracerait une ligne TROMPEUSE qui
+        suggère une tendance là où il n'y en a pas. Le seuil 0.3 (compromis empirique) garantit
+        que la ligne représente vraiment le signal. Si R²<0.3, indication "tendance non
+        significative" affichée à la place dans plot_regression_trend (chart 26).
+
+    - decision: "iqr_yrange pour Y range"
+      why: |
+        Si un seul match anomalique a un K/D=10 (oneshot all team), l'axe Y serait étiré et la
+        courbe principale serait écrasée. iqr_yrange utilise les Q1/Q3 du K/D pour définir une
+        plage robuste qui exclut les outliers extrêmes du calcul de range.

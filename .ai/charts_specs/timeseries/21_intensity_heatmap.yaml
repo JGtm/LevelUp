@@ -1,0 +1,100 @@
+# =============================================================================
+# Match intensity heatmap (joueur principal seul)
+# =============================================================================
+# Identique à teammates.15 SAUF :
+#   - Pas de toggle joueur (segmented_control absent)
+#   - Filtre xuid systématique au xuid courant
+#   - Optionnel filtrage par outcome via _apply_outcome_filter
+#   - Profil ré-ordonné par date via _reorder_profile_by_date
+# Réutilise plot_match_intensity_heatmap (même viz que teammates).
+# =============================================================================
+
+id: "timeseries.21"
+title: "Match intensity heatmap (self only)"
+page: timeseries
+section: "Onglet Avancé — Intensité"
+display_order_in_tab: 1
+source_function: "src/ui/pages/_timeseries_intensity.py::render_intensity_heatmap"
+source_helpers:
+  - "src/visualization/match_intensity_heatmap.py::plot_match_intensity_heatmap"
+  - "src/ui/pages/_timeseries_intensity.py::_compute_player_profile"
+  - "src/ui/pages/_timeseries_intensity.py::_reorder_profile_by_date"
+  - "src/ui/pages/_timeseries_intensity.py::_apply_outcome_filter"
+fragment: false
+chart_kind: heatmap
+
+# === COUCHE DONNÉES ===
+data:
+  reuses:
+    of: "teammates.15"
+    differences: |
+      - Pas de toggle joueur via segmented_control (mode 'self only').
+      - Filtre xuid SYSTÉMATIQUE au xuid principal courant.
+      - Filtrage outcome optionnel (toggle outcome via st.radio peut filtrer V/D/T).
+      - _reorder_profile_by_date pour avoir l'ordre chronologique strict.
+
+  upstream_service: "_compute_player_profile(events_df, xuid=xuid_self, match_ids_ordered)"
+  input_dataframe:
+    required_fields:
+      dff: [match_id, start_time, outcome]
+      events_df: [match_id, time_ms, xuid]                      # via cache
+  call_args:
+    db_path: str
+    xuid: str
+    lang: "fr | en"
+
+  constants:
+    n_buckets: 10                                               # 10 phases normalisées
+    colorscale: "cyan→jaune→ambre→orange→rouge (5 stops, cf. teammates.15)"
+
+# === TRACES ===
+traces: []                                                       # cf. teammates.15 (heatmap matchs × 10 phases)
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 480                                                    # ~12 matchs × 28 + 120
+    note: "côté Python : max(380, n_matches * 28 + 120)"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(match_ids) >= 3 AND db_path AND xuid"
+  empty_state:
+    type: "return silencieux"
+    triggered_by:
+      - "db_path None ou xuid None → return"
+      - "events_df vide → return"
+      - "profile None → t('ts_intensity_no_data')"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_match_intensity'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - axis_cadence_kills
+    - axis_intensity_phase
+    - axis_intensity_match
+  t:
+    - ts_match_intensity
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Pas de toggle joueur (vs teammates.15)"
+      why: |
+        Page timeseries = analyse SOLO. Pas d'escouade. Le toggle 'Tous / Joueur X' n'a pas de
+        sens — on filtre toujours sur le xuid principal. Section plus simple côté UX.
+
+    - decision: "_reorder_profile_by_date (ordre chronologique)"
+      why: |
+        Sur la page timeseries, l'utilisateur navigue dans l'historique avec des filtres
+        temporels (sessions, périodes). Avoir les matchs RANGÉS chronologiquement (oldest first)
+        est plus intuitif que par 'highlight_events.match_id' default.

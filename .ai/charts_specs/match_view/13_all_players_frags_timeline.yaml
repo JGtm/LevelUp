@@ -1,0 +1,170 @@
+# =============================================================================
+# Timeline frags différentiel (K-D cumulé) de TOUS les joueurs
+# =============================================================================
+# 1 trace go.Scatter par joueur du match. Y = K - D différentiel cumulé
+# (chaque kill +1, chaque mort -1) → courbes peuvent descendre sous 0.
+# Le joueur principal a une ligne MISE EN AVANT (épaisseur, opacité).
+# Hline horizontale à y=0 (ligne de référence).
+# =============================================================================
+
+id: "match_view.13"
+title: "Frags différentiel cumulé — tous les joueurs"
+page: match_view
+section: "Onglet Combat — Timeline tous joueurs"
+source_function: "src/ui/pages/match_view_players_timeline.py::render_kd_timeline_section"
+source_helpers:
+  - "src/visualization/match_impact_timeline.py::plot_all_players_frags_timeline"
+  - "src/visualization/antagonist_charts.py::PLAYER_COLORS"
+  - "src/config.py::get_bot_name"
+fragment: false
+chart_kind: line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_highlight_events_fn(...) + load_match_gamertags_fn(...)"
+  input_dataframe:
+    required_fields:
+      highlight_events: "list[dict] (kill/death events avec time_ms, xuid, gamertag)"
+      me_xuid: "string"
+      gt_map: "dict {xuid → gamertag} optionnel"
+      player_color_map: "dict {xuid → hex} optionnel pour cohérence inter-charts"
+  call_args:
+    height: 380
+    lang: "fr"
+  filters_applied: []
+  timezone: "match_clock"
+
+  transformations:
+    - description: "Filtrage events kill/death avec time_ms et xuid renseignés"
+      polars: |
+        events = [(t, etype, xu, gt) for e in he
+                  if e.event_type in ('kill', 'death')
+                  and e.time_ms is not None and e.xuid]
+        events.sort(key=lambda x: x[0])
+
+    - description: "Cumul du différentiel K-D par joueur au fil du temps"
+      polars: |
+        player_kd = {}  # xuid → score courant
+        player_series = {}  # xuid → list[(time_ms, kd_cumulé)]
+        for t_ms, etype, xu, gt in events:
+            player_kd[xu] = player_kd.get(xu, 0) + (1 if etype == 'kill' else -1)
+            player_series[xu].append((t_ms, player_kd[xu]))
+
+    - description: "Résolution noms d'affichage (cascade gt_map → bot name → event gt → xuid raccourci)"
+      polars: |
+        # _resolve_gt(xu) :
+        #   1. gt_map[xu] si valide (pas '?', pas digit)
+        #   2. get_bot_name(xu) si xuid commence par 'bid('
+        #   3. player_gt[xu] (event gt) si valide
+        #   4. fallback: xu[:8] + '…'
+
+    - description: "Tri des joueurs pour assignation des couleurs"
+      polars: |
+        # Joueur principal en premier, puis par nombre total d'events DESC
+        sorted_xuids = [me_xuid] + sorted(others, key=lambda x: -len(player_series[x]))
+
+# === TRACES ===
+# 1 trace par joueur (généralement 8-16 traces selon le mode)
+traces:
+  - id: "player_traces_template"                              # template — N instances générées
+    chart_role: primary
+    detail: |
+      Pour chaque joueur (jusqu'à ~16) :
+        - Couleur depuis PLAYER_COLORS palette si player_color_map non fourni
+        - Mode lines+markers
+        - Width: épaisse pour me_xuid (ex 3px), fine pour autres (ex 1.5-2px)
+        - Opacity : 1.0 pour me_xuid, 0.65 pour autres
+        - Name : gamertag résolu
+        - Hover : "{name}: {y} (à {time_ms_formatted})"
+    width_main: 3
+    width_others: 1.5
+    opacity_main: 1.0
+    opacity_others: 0.65
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+    expression: null
+    branches: []
+  margin: {l: 60, r: 30, t: 30, b: 60}
+  hovermode: "x unified"
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+    detail: "Avec ~16 joueurs la légende prend de la place — cf. add_hline ci-dessous"
+
+  xaxis:
+    type: "linear"
+    title: "{{viz_t.axis_match_time}}"
+    tick_labels_format: "mm:ss"
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.trace_kda}}"                                # K - D différentiel
+    rangemode: "auto"                                            # peut être négatif
+
+  shapes:
+    - type: line
+      kind: hline
+      y: 0                                                       # ligne de parité
+      line_dash: "dot"
+      line_color: "rgba(255, 255, 255, 0.35)"
+      line_width: 1
+      detail: "fig.add_hline(y=0) — ligne de référence visible pour identifier qui est positif/négatif"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    table highlight_events exists
+    AND len(he) > 0
+    AND len(events) > 0
+    AND len(player_series) > 0
+  empty_state:
+    type: none                                                   # return early sans rendre rien
+    triggered_by:
+      - "table highlight_events absente"
+      - "he None ou vide"
+      - "no kill/death events"
+      - "fig None"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('mv_kills_over_time'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - axis_match_time
+    - trace_kda
+  t:
+    - mv_kills_over_time
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Trace polymorphique : 1 entrée YAML qui décrit le pattern N traces"
+      why: |
+        Comme career.03 (autres joueurs), ce chart génère N traces dynamiques selon les joueurs
+        présents (jusqu'à 16). Le YAML décrit le pattern via `player_traces_template` plutôt que
+        de dupliquer 16 entrées. Le converter doit boucler sur N joueurs mock.
+
+    - decision: "Joueur principal mis en avant via épaisseur + opacité"
+      why: |
+        Visuellement, on doit identifier rapidement la ligne du joueur courant parmi 16 courbes.
+        Width 3px + opacity 1.0 vs 1.5px/0.65 pour les autres. À reproduire en ECharts via
+        `series[me_index].lineStyle.width: 3` et `series[i].lineStyle.opacity: 0.65`.
+
+    - decision: "Ligne y=0 horizontale comme référence visuelle"
+      why: |
+        Le diff K-D peut être négatif (joueur avec plus de morts que de kills). La ligne horizontale
+        à y=0 sépare clairement les joueurs positifs (au-dessus) des négatifs (en-dessous).
+        markLine ECharts equivalent. Couleur très discrète (alpha 0.35) pour ne pas masquer
+        les courbes.

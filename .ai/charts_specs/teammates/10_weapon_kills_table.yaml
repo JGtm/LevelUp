@@ -1,0 +1,114 @@
+# =============================================================================
+# Tableau kills par arme (single player — typiquement le joueur principal)
+# =============================================================================
+# Variante mono-joueur de teammates.09 — tableau HTML simple à 2 colonnes
+# (Arme, Frags) agrégé sur les match_ids de l'escouade. Réutilise les
+# helpers _resolve_weapon_name + _append_grenade_melee.
+# =============================================================================
+
+id: "teammates.10"
+title: "Tableau kills par arme (joueur)"
+page: teammates
+section: "Onglet Contributions — Armes"
+source_function: "src/ui/pages/teammates_weapons.py::render_weapon_kills_table"
+source_helpers:
+  - "src/ui/pages/teammates_weapons.py::_resolve_weapon_name"
+  - "src/ui/pages/teammates_weapons.py::_append_grenade_melee"
+  - "src/data/repositories::DuckDBRepository.load_weapon_kills_aggregated"
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "DuckDBRepository.load_weapon_kills_aggregated(xuid, match_ids) + _append_grenade_melee"
+  input_dataframe:
+    required_columns: [weapon_id, total_kills]
+  call_args:
+    title: "string | null  (default: t('section_weapon_stats'))"
+  filters_applied: []
+
+  transformations:
+    - description: "Lecture agrégée + enrichissement grenade/melee"
+      polars: |
+        df = repo.load_weapon_kills_aggregated(xuid, match_ids)
+        df = _append_grenade_melee(conn, xuid, match_ids, df)  # ajoute lignes synthetics si totaux > 0
+
+    - description: "Résolution des noms d'arme"
+      polars: |
+        df = df.with_columns(
+          pl.col('weapon_id').map_elements(
+            lambda wid: _resolve_weapon_name(wid, lang),
+            return_dtype=pl.Utf8,
+          ).alias('weapon_name')
+        )
+
+    - description: "Tri par total_kills DESC"
+      polars: "df.sort('total_kills', descending=True)"
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes:
+    wrapper: "os-table-wrap"
+    table: "os-table os-scoreboard"
+    header_cell: "os-sb-th"
+    row: "os-sb-row"
+    cell: "os-sb-td"
+
+  caption:
+    text: "{{title or t('section_weapon_stats')}}"
+    enabled: true                                             # /!\ caption optionnelle (paramètre title)
+
+  columns:
+    - id: weapon
+      header: "{{t.col_weapon}}"                              # ou similaire
+      source_field: weapon_name
+      formatter: "raw"
+    - id: kills
+      header: "{{t.col_frags}}"
+      source_field: total_kills
+      formatter: "{value:d}"
+      style: "text-align: right; font-weight: 600"
+
+  legend:
+    enabled: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "match_ids non vide AND df non vide"
+  empty_state:
+    type: none
+    triggered_by:
+      - "match_ids vide → return early sans rien afficher"
+      - "load_weapon_kills_aggregated exception → return"
+      - "df vide après enrichissement → return"
+  config: null
+  width_mode: stretch
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - section_weapon_stats
+    - col_grenade_kills
+    - col_melee
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Variante MONO-JOUEUR vs teammates.09 multi-joueurs"
+      why: |
+        teammates.10 est utilisé pour afficher les armes du joueur PRINCIPAL UNIQUEMENT
+        (sur les matchs partagés avec l'escouade), tandis que teammates.09 compare TOUS
+        les joueurs sur le même chart. Les 2 partagent les mêmes helpers (resolve_weapon_name,
+        _append_grenade_melee) mais diffèrent en présentation (table vs bar horizontal multi).
+
+    - decision: "Caption optionnelle (paramètre title)"
+      why: |
+        L'appelant peut passer un titre custom (ex: "Mes armes sur ces matchs") ou laisser
+        le défaut (t('section_weapon_stats')). À porter via prop optional `title?: string`.

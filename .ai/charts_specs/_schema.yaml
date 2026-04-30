@@ -1,0 +1,290 @@
+# Schéma de référence pour un fichier YAML de spec chart.
+# Vise la reproduction fidèle en backend (Go API) + frontend (ECharts).
+#
+# Usage : copier dans `<page>/NN_xxx.yaml`, remplir, supprimer les sections non applicables.
+# Champs `# REQUIRED` obligatoires ; `# OPTIONAL` à omettre si non applicable.
+# Le thème commun (template, bg, font, hoverlabel, axes grid) vit dans `_theme_default.yaml`
+# et est hérité automatiquement — n'écrire que les **overrides** dans ce fichier.
+
+# === IDENTIFICATION ===
+id: "synthesis.NN"                                   # REQUIRED — id unique <page>.<num>
+title: "Titre lisible du chart"                      # REQUIRED
+page: synthesis                                       # REQUIRED
+section: "Solo vs Escouade"                          # OPTIONAL — sous-section dans la page
+source_function: "src/ui/pages/foo.py::plot_xxx"     # REQUIRED — path::function (sur origin/v7/cockpit)
+source_helpers:                                       # OPTIONAL — fonctions appelées par la fonction principale
+  - "src/visualization/_distributions_outcomes_helpers.py::add_outcome_traces"
+  - "src/visualization/_distributions_outcomes_helpers.py::build_outcome_pivot"
+fragment: true                                        # OPTIONAL — true si décoré @fragment_if_available
+chart_kind: "stacked_bar | grouped_bar | bar_diverging | line | scatter | heatmap | gauge | indicator | radar | pie | sunburst | bullet | lollipop | table_html"  # REQUIRED
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server                                # REQUIRED — server | client | hybrid
+                                                      # qui fait l'agrégation : Go API (server) ou JS/ECharts (client)
+  upstream_service: "OutcomesService.get_outcomes"   # OPTIONAL — service Python amont si existe (équivalent Go à venir)
+  input_dataframe:                                   # REQUIRED — colonnes attendues en entrée
+    required_columns: [start_time, outcome, kills, deaths]
+    optional_columns: [is_with_friends, performance_score]
+    polars_dtype_hints:
+      start_time: "Datetime[us, UTC]"
+      outcome: "Int64"
+  call_args:                                          # REQUIRED — args effectifs dans le code appelant
+    min_matches: 1
+    max_categories: 12
+    sort_by: "total"
+  call_args_semantics:                                # OPTIONAL — explicite la sémantique (utile si non triviale)
+    min_matches: "exclut les groupes avec count < min_matches après pivot"
+    sort_by: "total | wins | losses | win_rate | name"
+  filters_applied: [date_range, period_selector]     # REQUIRED — filtres en amont qui affectent le DF
+  transformations:                                    # OPTIONAL — pré-calculs Polars/SQL en amont
+    - description: "Extraction du mode après ' : '"
+      polars: "pl.col('mode').map_elements(lambda s: s.split(' : ', 1)[1] if ' : ' in s else s)"
+      sql_equivalent: "CASE WHEN mode LIKE '% : %' THEN split_part(mode, ' : ', 2) ELSE mode END"
+  bucket_logic:                                       # OPTIONAL — pour graphes temporels
+    rule: "auto"
+    thresholds:                                       # cf. SESSION_CONFIG dans src/config.py
+      "days < 1": "match_index"
+      "days <= 14": "hour"
+      "days <= 60": "day"
+      "days <= 365": "week"
+      "days > 365": "month"
+  timezone: "UTC"                                     # OPTIONAL — UTC | local | "Europe/Paris" | "from_user_settings"
+                                                      # ⚠️ critique pour heatmap (day_of_week, hour) et bucketing
+
+# === TRACES (= séries Plotly = series ECharts) ===
+traces:                                               # REQUIRED — ordre = ordre de stacking/d'affichage
+  - id: "wins"                                        # OPTIONAL — id stable pour références internes
+    name: "{{viz_t.trace_wins}}"                     # nom légende — clé i18n ou literal
+    type: go.Bar                                      # REQUIRED — go.Bar | go.Scatter | go.Heatmap | etc.
+    chart_role: primary                               # OPTIONAL — primary | secondary | overlay | reference
+    color: "{{palette.green}}"                        # REQUIRED — token de _theme_default.yaml ou hex literal
+    color_token: "HALO_COLORS.green"                 # OPTIONAL — token Python d'origine
+    direction: positive                               # OPTIONAL — positive | negative (pour bars signées)
+    orientation: v                                    # OPTIONAL — h | v (default v)
+    opacity: 0.85                                     # OPTIONAL
+    width: 0.42                                       # OPTIONAL — barwidth Plotly
+    clip: true                                        # OPTIONAL — equivalent cliponaxis (default true)
+    secondary_y: false                                # OPTIONAL — true si make_subplots(secondary_y) ou yaxis="y2"
+    fill: "tozeroy"                                   # OPTIONAL — pour Scatter (ruban CI)
+    line:                                             # OPTIONAL — pour Scatter
+      width: 2
+      dash: "solid"                                   # solid | dot | dash | dashdot
+      shape: "linear"                                 # linear | spline | hv | vh
+    marker:                                           # OPTIONAL
+      size: 6
+      symbol: "circle"
+    mode: "lines+markers"                             # OPTIONAL — pour Scatter
+
+    # --- DATA TRANSFORM ---
+    # Quand la valeur tracée diffère de la valeur affichée (cas du duel chart).
+    data_transform:                                   # OPTIONAL
+      x_expression: "-(value / max(solo, squad, 1.0)) * 100"
+      y_expression: null
+      explanation: "X normalisé en % par paire. La vraie valeur est dans `text` ci-dessous."
+
+    # --- CUSTOMDATA ---
+    # Données auxiliaires consommées par hovertemplate ou label.
+    customdata:                                       # OPTIONAL
+      fields: [win_rate]                              # liste de noms (correspondance avec input columns ou calculs)
+      schema:
+        win_rate: "float (0.0–1.0)"
+
+    # --- HOVER ---
+    hovertemplate: "%{x}<br>{{label}}: %{y}<br>{{rate_label}}: %{customdata:.1%}<extra></extra>"  # REQUIRED si custom
+    hover_format_tokens:                              # OPTIONAL — tokens i18n résolus dans le template
+      label: "{{viz_t.trace_wins}}"
+      rate_label: "{{viz_t.hover_win_rate}}"
+
+    # --- LABEL TEXT ---
+    text_data:                                        # OPTIONAL — text affiché sur la trace
+      source: "values"                                # values | customdata.<field> | static
+      template: "{value:d}"                           # format si non literal
+      empty_when: "value == 0"                        # condition de masquage (texte vide)
+      position: "inside"                              # inside | outside | auto | top | left | right
+      font_size: null
+
+    # --- VISIBILITÉ CONDITIONNELLE ---
+    show_when: "sum(values) > 0"                      # OPTIONAL — Python expr ; trace omise sinon
+    # Cas d'usage : trace `ties` n'est ajoutée que si pivot["ties"].sum() > 0
+
+# === HEATMAP-SPECIFIC ===
+# Section dédiée aux heatmaps (chart_kind == "heatmap").
+heatmap:                                              # OPTIONAL — uniquement si heatmap
+  z_field: "win_rate"
+  x_field: "hour"
+  y_field: "day_of_week"
+  z_range: [0.0, 1.0]                                 # zmin, zmax
+  colorscale:                                         # REQUIRED pour heatmap
+    type: linear                                      # linear | discrete
+    stops:
+      - {value: 0.0, color: "{{palette.red}}"}
+      - {value: 0.5, color: "{{palette.amber}}"}
+      - {value: 1.0, color: "{{palette.green}}"}
+  nan_treatment: "mask"                               # mask | interpolate | zero
+                                                      # mask = cellules avec count < min_matches → null/transparent
+  cell_label:
+    source: "count"                                   # text matrix overlay
+    empty_when: "count == 0"
+  colorbar:
+    title: "{{viz_t.hover_win_rate}}"
+    tickformat: ".0%"
+    visible: true
+
+# === LAYOUT ===
+# N'écrire que les overrides du _theme_default.yaml.
+layout:                                               # REQUIRED
+  inherits: _theme_default                            # signale l'héritage explicite (informatif)
+  height:                                             # REQUIRED — peut être literal ou expression
+    value: 360                                        # px par défaut
+    expression: null                                  # ex: "max(320, 70 * len(metrics))"
+    branches:                                         # OPTIONAL — pour if-else
+      - {when: "len(categories) > 10", height: 520}
+      - {else: true, height: 360}
+  margin: {l: 40, r: 20, t: 30, b: 100}              # override du margin_default
+  barmode: "stack"                                    # OPTIONAL — relative | stack | group | overlay
+  bargap: 0.15                                        # OPTIONAL
+  hovermode: "x unified"                              # OPTIONAL
+  showlegend: true                                    # OPTIONAL
+  legend:                                             # OPTIONAL — sinon hérite legend_horizontal_bottom du thème
+    inherits: legend_horizontal_bottom
+
+  xaxis:                                              # n'écrire que les overrides (sinon hérite axes_default)
+    type: "category"                                  # date | category | linear | log
+    title: ""                                         # vide explicite ou clé i18n
+    tickformat: null                                  # ex: "%d/%m"
+    tickangle: 45
+    range: null                                       # auto si null, [min,max] sinon
+    autorange: null                                   # null | "reversed" (= inverse:true en ECharts)
+    automargin: false                                 # OPTIONAL — Plotly auto-ajuste la marge selon le contenu
+                                                      # ECharts equivalent : grid.containLabel: true
+    showticklabels: true
+    side: "bottom"
+
+  yaxis:
+    title: "{{viz_t.trace_matches}}"
+    tickformat: null
+    range: null
+    autorange: null
+    automargin: false                                 # OPTIONAL — utile quand textposition="outside" ou labels longs
+
+  yaxis2:                                             # OPTIONAL — secondary_y
+    title: "{{viz_t.axis_rate_pct}}"
+    overlaying: "y"
+    side: "right"
+    range: [0, 100]
+    showgrid: false
+    tickformat: null
+
+  shapes:                                             # OPTIONAL — vlines, hlines, rectangles
+    - type: line
+      kind: vline                                     # vline | hline | rect
+      x: 0                                            # ou y pour hline
+      line_width: 1
+      line_color: "{{palette.slate}}"
+      opacity: 0.8
+      annotation: null
+
+  annotations:                                        # OPTIONAL — étiquettes positionnées (max doré, etc.)
+    - text: "{value}"
+      x_ref: "x"
+      y_ref: "y"
+      x_expression: "argmax(values)"
+      y_expression: "max(values)"
+      font: {color: "{{special_colors.gold_max_marker}}"}
+      showarrow: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:                                              # REQUIRED
+  shown_when: "len(df) >= 1 and 'outcome' in df.columns"     # REQUIRED — Python expr lisible
+  hidden_when: null                                   # OPTIONAL — Python expr
+  empty_state:                                        # OPTIONAL
+    type: "st.info"                                   # st.info | st.warning | st.empty | none
+    message: "{{t.insufficient_data_chart}}"
+  config: PLOTLY_STATIC_CONFIG                       # REQUIRED — PLOTLY_CLEAN_CONFIG | PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"                               # REQUIRED — stretch | content
+  filters_widgets: [synthesis_period]                # OPTIONAL — clés st.session_state qui filtrent le DF
+                                                      # (cf. controls: ci-dessous pour la spec détaillée)
+  fragment_isolation: true                            # OPTIONAL — true si dans un @fragment_if_available
+  preceded_by:                                        # OPTIONAL — éléments UI juste avant le chart
+    - "st.divider()"
+    - "st.subheader(t('wl_results_by_map_mode'))"
+    - "st.caption(t('wl_heatmap_caption', tz=get_tz_name()))"
+
+# === CONTROLS (widgets qui pilotent le chart) ===
+# Décrit les commandes (selectbox, toggle, slider, segmented_control, radio, multiselect, date_range)
+# placées au-dessus, en dessous ou à côté d'un chart, et qui modifient :
+# - le **dataset** (filtrage, swap de source, période)
+# - les **axes** (échelle, métrique, dimension catégorielle)
+# - les **traces** (visibilité, couleur, normalisation)
+#
+# La portée (`scope`) précise si le control affecte un seul chart, une section, ou toute la page.
+# Les controls de portée `page` sont aussi documentés une seule fois dans `_index.md` —
+# ne les redéclarer ici que si nécessaire pour expliciter l'effet exact sur ce chart.
+controls:                                             # OPTIONAL — liste vide si aucun
+  - id: "synthesis_period"                            # clé st.session_state
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"                       # selectbox | radio | toggle | segmented_control | slider | multiselect | date_range | number_input
+    position: "above_page"                            # above_page | above_chart | below_chart | sidebar | inline
+    scope: "page"                                     # page | section | chart
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"        # template clé i18n
+      default: "all"
+    effect: "filter_dataset"                          # filter_dataset | swap_dataset | change_axis | change_metric | change_grouping | change_normalization | toggle_trace_visibility
+    effect_detail: |
+      Soustrait _PERIOD_OFFSETS[value] jours à now(UTC) et filtre `start_time >=`.
+      Offsets : {2y: 730, 1y: 365, 1m: 30, 1w: 7}. "all" = pas de filtre.
+    api_param_mapping:                                # OPTIONAL — comment le control mappe vers l'API Go
+      query_param: "period"
+      values_passthrough: true                        # ou table de mapping si valeurs différentes
+    requires_refetch: false                           # true si l'API doit être re-appelée, false si re-compute client
+    affects_charts: ["synthesis.01", "synthesis.02", "synthesis.03", "synthesis.04", "synthesis.05"]
+
+  # Exemple d'un control chart-level qui change l'axe :
+  - id: "outcomes_sort_by"
+    label: "Trier par"
+    widget: "selectbox"
+    position: "above_chart"
+    scope: "chart"
+    options:
+      values: ["total", "wins", "losses", "win_rate", "name"]
+      default: "total"
+    effect: "change_grouping"
+    effect_detail: "Réordonne les catégories sur l'axe Y selon la métrique choisie"
+    requires_refetch: false
+    affects_charts: ["synthesis.01"]
+
+  # Exemple d'un toggle qui swap métrique :
+  - id: "stats_per_minute_toggle"
+    label: "Par minute"
+    widget: "toggle"
+    position: "above_chart"
+    scope: "chart"
+    options: {default: false}
+    effect: "change_metric"
+    effect_detail: "Si true, divise kills/deaths par time_played_minutes ; sinon valeurs absolues"
+    requires_refetch: false
+    affects_charts: ["timeseries.01"]
+
+# === I18N ===
+i18n_keys:                                            # REQUIRED — clés viz_t/t utilisées
+  viz_t: [trace_wins, trace_losses, trace_ties, trace_unfinished, hover_win_rate, trace_matches]
+  t: [wl_results_by_map_mode, insufficient_data_chart]
+
+# === INTERACTIVITÉ ===
+interactivity:                                        # OPTIONAL
+  click_target: null                                  # ex: "page=match_view&match_id={point.customdata[0]}"
+  drilldown_chain: []
+  session_state_writes: []                            # ex: ["selected_map"]
+
+# === FINGERPRINT (rempli par script) ===
+fingerprint:
+  source_commit: null                                 # SHA de origin/v7/cockpit utilisé
+  generated_at: null                                  # ISO8601
+  generator_version: "extract_chart_spec.py@v0"
+  sample_dataset: "fixtures/synthesis_jgtm.parquet"
+  fig_dict_path: "_generated/synthesis/NN_xxx.json"  # chemin vers fig.to_dict() brut
+  ast_extracted_fields: []                            # liste des champs renseignés par AST
+  runtime_extracted_fields: []                        # liste des champs renseignés par runtime
+  manual_fields: []                                   # liste des champs renseignés à la main

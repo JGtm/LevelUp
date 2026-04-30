@@ -1,0 +1,45 @@
+# =============================================================================
+# Win/Loss page · Section 4 · Top matches by week
+# =============================================================================
+# Wrapper réutilisant synthesis.04 / timeseries.28.
+# =============================================================================
+
+id: "win_loss.04"
+title: "Top matches by week"
+page: win_loss
+section: "Section 4 (linéaire)"
+display_order_in_page: 4
+source_function: "src/ui/pages/win_loss.py::_render_top_by_week"
+chart_kind: grouped_bar
+
+data:
+  reuses:
+    of: ["synthesis.04", "timeseries.28"]
+    differences: |
+      Même fonction. rank_col détecté dynamiquement ('rank' si présent dans dff,
+      sinon 'outcome'). top_n_ranks=1.
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 400 }
+
+display:
+  shown_when: "'start_time' ∈ dff.columns"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_top_by_week'))"
+    - "if hints_visible(): st.caption(t('wl_top_by_week_caption'))"
+
+i18n_keys:
+  viz_t: []
+  t: ["wl_top_by_week", "wl_top_by_week_caption", "missing_time_data", "insufficient_data_chart"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]

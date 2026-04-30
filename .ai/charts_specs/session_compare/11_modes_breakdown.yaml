@@ -1,0 +1,111 @@
+# =============================================================================
+# Modes breakdown — barres horizontales A vs B par mode
+# =============================================================================
+# 2 traces bars HORIZONTALES (orientation='h') :
+#   - Session A (rouge) : count parties par mode
+#   - Session B (bleu) : count parties par mode
+# Modes triés alphabétiquement union(A, B). Légende EN HAUT (y=1.05). Hauteur
+# DYNAMIQUE = max(180, len(modes) * 48). Hovertemplate "{{mode}}: {{count}} partie(s)".
+# =============================================================================
+
+id: "session_compare.11"
+title: "Modes breakdown — comparatif modes joués A vs B"
+page: session_compare
+section: "Section 11 (linéaire)"
+display_order_in_page: 11
+source_function: "src/ui/pages/_session_compare_extra.py::render_modes_breakdown"
+source_helpers:
+  - "src/ui/pages/_session_compare_extra.py::_extract_mode"
+  - "src/ui/pages/_session_compare_extra.py::_parse_pair_name"
+fragment: false
+chart_kind: grouped_bar                                         # horizontal
+
+data:
+  computed_by: server
+  upstream_service: "Comptage par mode pour chaque session"
+  input_dataframe:
+    required_fields: { df_session_a, df_session_b: [mode_ui|pair_name] }
+  call_args: {}
+
+  constants:
+    palette: { session_a: "#E74C3C", session_b: "#3498DB" }
+    bar_orientation: h
+    barmode: group
+    height_per_mode: 48
+    height_min: 180
+
+  transformations:
+    - description: "_extract_mode(row) : prend pair_fr OR mode_ui OR pair_name (fallback)"
+      polars: 'm = _extract_mode(row)  # ex "Slayer", "CTF", ...'
+    - description: "Tri alphabétique de l'union des modes"
+      polars: "all_modes = sorted(set(counts_a) | set(counts_b))"
+
+# === TRACES ===
+traces:
+  - id: session_a_modes
+    type: bar
+    orientation: h
+    color: "#E74C3C"
+    y_field: all_modes                                          # categories
+    x_field: "[counts_a.get(m, 0) for m in all_modes]"
+    name: "Session A"
+    hovertemplate: "%{y}: %{x} partie(s)<extra>Session A</extra>"
+  - id: session_b_modes
+    type: bar
+    orientation: h
+    color: "#3498DB"
+    y_field: all_modes
+    x_field: "[counts_b.get(m, 0) for m in all_modes]"
+    name: "Session B"
+    hovertemplate: "%{y}: %{x} partie(s)<extra>Session B</extra>"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: null
+    expression: "max(180, len(all_modes) * 48)"
+  margin: { l: 130, r: 20, t: 40, b: 40 }
+  barmode: group
+  legend: { orientation: h, y: 1.05, x: 0.5, xanchor: center, yanchor: bottom }
+  xaxis:
+    title_i18n: "{{t.sc_match_count}}"
+    dtick: 1
+  yaxis:
+    type: category
+
+display:
+  shown_when: "all_modes non vide AND (mode_ui OR pair_name) ∈ df"
+  empty_state:
+    type: "section masquée"
+    triggered_by: ["all_modes vide → return silencieux"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown(t('sc_modes_breakdown'))"
+
+i18n_keys:
+  viz_t: []
+  t: ["sc_modes_breakdown", "sc_match_count"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Légende en HAUT (y=1.05) plutôt qu'en bas"
+      why: |
+        Les barres horizontales prennent toute la largeur — légende en bas écraserait le
+        graphique. y=1.05 + yanchor='bottom' la place juste au-dessus. Override standard
+        pour bar charts horizontaux dans l'app.
+
+    - decision: "Hauteur dynamique 48 px par mode"
+      why: |
+        2-3 modes : 200px suffisant. 10 modes : 480px. Évite que les bars deviennent
+        écrasées (illisibles) ou inutilement étirées (peu de modes).
+
+    - decision: "_extract_mode avec cascade pair_fr → mode_ui → pair_name"
+      why: |
+        Plusieurs sources possibles selon le contexte (data v5 vs v6, FR vs EN). Cascade
+        garantit qu'on trouve TOUJOURS un nom de mode si au moins une source est dispo.

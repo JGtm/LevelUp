@@ -1,0 +1,193 @@
+# =============================================================================
+# Encounters du match (tableau adversaires non-amis)
+# =============================================================================
+# Tableau HTML des joueurs du match (hors amis) avec leur historique de
+# rencontres avec le joueur courant. Si aucun historique : affichage minimal
+# avec "1ère rencontre" (total_encounters=0). Légende popover avec badges.
+# =============================================================================
+
+id: "match_view.14"
+title: "Historique des rencontres (joueurs du match)"
+page: match_view
+section: "Onglet Team — Encounters"
+source_function: "src/ui/pages/match_view_encounters.py::render_encounter_section"
+source_helpers:
+  - "src/ui/pages/match_view_encounters.py::_build_encounter_rows"
+  - "src/ui/pages/match_view_encounters.py::_build_encounter_table_html"
+  - "src/ui/pages/match_view_encounters.py::badge_html"
+  - "src/ui/pages/match_view_encounters.py::build_badge_legend_html"
+  - "src/ui/pages/match_view_encounters.py::wr_cell_html"
+  - "src/ui/pages/match_view_encounters.py::kd_cell_html"
+  - "src/ui/pages/match_view_encounters.py::role_cell_html"
+  - "src/ui/pages/match_view_encounters.py::ordinal_badge_html"
+  - "src/ui/pages/match_view_encounters_logic.py::compute_encounter_badges"
+  - "src/ui/pages/match_view_encounters_logic.py::filter_encounter_xuids"
+  - "src/ui/pages/match_view_encounters_logic.py::build_friends_set"
+  - "src/data/repositories/duckdb_repo.py::DuckDBRepository.load_friends_xuids_csv"
+  - "src/data/repositories/...load_encounter_stats"
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_match_scoreboard + load_friends_xuids_csv + load_encounter_stats"
+  input_dataframe:
+    required_columns:
+      - xuid, gamertag                                        # depuis scoreboard
+      - team_id
+      - total_encounters
+      - ally_count, enemy_count                                # peut être 0 pour 1ère rencontre
+      - winrate_as_ally, winrate_vs_enemy                      # peut être null
+      - kills_dealt, deaths_suffered                           # cumulés sur tous les matchs croisés
+      - last_seen
+  call_args:
+    match_id: required
+    self_xuid: required
+    db_path: required
+  filters_applied: [exclude_friends]                           # /!\ filtre friends côté SQL/repo
+  timezone: user_local
+
+  transformations:
+    - description: "Chargement du scoreboard du match (tous les joueurs)"
+      polars: "players = repo.load_match_scoreboard(match_id)"
+
+    - description: "Construction du set d'amis à exclure"
+      polars: |
+        friends_csv = repo.load_friends_xuids_csv(match_id)
+        friends_set = build_friends_set(self_xuid, friends_csv)
+
+    - description: "Filtrage : ne garder que les joueurs non-amis"
+      polars: "target_xuids = filter_encounter_xuids(players, self_xuid, friends_set)"
+
+    - description: "Chargement des stats d'encounters historiques"
+      polars: |
+        df = load_encounter_stats(
+          self_xuid, target_xuids, db_path,
+          match_start_time=match_start_time,
+          current_match_id=match_id,  # exclu de l'historique pour éviter le double-comptage
+        )
+
+    - description: "Fallback si pas d'historique : afficher 'Première rencontre'"
+      polars: |
+        if df.is_empty():
+            records = [{xuid, gamertag, total_encounters: 0} for xuid in target_xuids]
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes:
+    wrapper: "os-table-wrap os-sb-wrap"
+    table: "os-table os-scoreboard"
+    header_team: "os-sb-team"
+    header_cell: "os-sb-th"
+    row: "os-sb-row"
+    cell: "os-sb-td"
+
+  caption:
+    text: "(libellé du subheader Encounters côté caller)"
+    colspan: 7
+
+  columns:
+    # Identique à career.07 (le composant est partagé via badge_html, wr_cell_html, etc.)
+    - id: player
+      header: "{{t.col_player}}"
+      formatter: "gamertag_link + ordinal_badge_html(total) + badges via compute_encounter_badges"
+
+    - id: role
+      header: "{{t.col_role}}"
+      formatter: "role_cell_html(side) — pill verte allié / rouge ennemi"
+
+    - id: encounters
+      header: "{{t.col_encounters}}"
+      formatter: "f'{total} (A:{ally_count} | E:{enemy_count})'"
+
+    - id: wr_ally
+      header: "{{t.col_wr_ally}}"
+      formatter: "wr_cell_html(winrate_as_ally, ally_count)"
+
+    - id: wr_enemy
+      header: "{{t.col_wr_enemy}}"
+      formatter: "wr_cell_html(winrate_vs_enemy, enemy_count)"
+
+    - id: kd_cross
+      header: "{{t.col_kd_cross}}"
+      formatter: "kd_cell_html(kills_dealt, deaths_suffered)"
+
+    - id: last_seen
+      header: "{{t.col_last_seen}}"
+      formatter: "_relative_date(last_seen) — 'il y a Xj' ou date"
+      style: "color: #aaa; font-size: 0.85em"
+
+  degraded_row:
+    enabled: true
+    condition: "total_encounters == 0"
+    template: |
+      <tr><td>{gamertag_link} {ordinal_badge(1)}</td>
+          <td>{role_cell}</td>
+          <td colspan="5" style="color:#666;font-style:italic;">1ère rencontre</td></tr>
+
+  legend:
+    enabled: true
+    builder: "build_badge_legend_html()"
+    placement: "popover_below_table"
+    label_per_lang: {fr: "ℹ️ Légende", en: "ℹ️ Legend"}
+    extra_caption: "{{t.mv_encounter_legend}}"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    match_id and self_xuid
+    AND len(players) > 0
+    AND len(target_xuids) > 0
+    AND (df not empty OR fallback records non vide)
+  empty_state:
+    type: none                                                 # return early sans rendre
+    triggered_by:
+      - "match_id ou self_xuid manquant"
+      - "load_match_scoreboard exception ou vide"
+      - "filter_encounter_xuids retourne [] (uniquement amis dans le match)"
+      - "fallback records vide aussi"
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "(la section est appelée juste après render_match_scoreboard dans _render_team_tab)"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - col_player
+    - col_role
+    - col_encounters
+    - col_wr_ally
+    - col_wr_enemy
+    - col_kd_cross
+    - col_last_seen
+    - mv_encounter_legend
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Helpers HTML partagés avec career.07 (encounters carrière)"
+      why: |
+        Les helpers `badge_html`, `wr_cell_html`, `kd_cell_html`, `role_cell_html`,
+        `ordinal_badge_html`, `compute_encounter_badges` sont les MÊMES que career.07.
+        Côté Go/React : un seul composant <EncountersTable> partagé entre les deux pages.
+
+    - decision: "Filtrage des amis côté SQL (load_friends_xuids_csv)"
+      why: |
+        `friends_set` est résolu via une CSV stockée dans la DB (probablement profile config).
+        Côté Go : équivalent via une table `player_friends` ou un endpoint dédié.
+        Le filtre est appliqué AVANT load_encounter_stats pour réduire le coût.
+
+    - decision: "Fallback 'Première rencontre' si aucun historique"
+      why: |
+        Pour un match contre des inconnus jamais croisés avant, df est vide. Plutôt que
+        de ne rien afficher, on affiche une ligne par joueur avec total_encounters=0
+        et message italique. UX utile car indique que les joueurs ont été correctement
+        identifiés (filtre amis OK) mais n'ont juste pas d'historique.

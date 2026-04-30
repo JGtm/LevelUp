@@ -1,0 +1,140 @@
+# =============================================================================
+# Winrate & Performance vs Historique — 2 charts en cascade (bullet + grouped_bar)
+# =============================================================================
+# Section qui rend 2 charts l'un après l'autre :
+#   1. plot_map_winrate_bullet         (bullet chart)        — cf. teammates.02
+#   2. plot_map_perf_vs_history        (barres groupées)     — cf. teammates.13
+#
+# Réutilise les MÊMES fonctions Plotly que la page Teammates, mais en mode
+# joueur principal seul (pas d'escouade). Données upstream identiques :
+# bd_current = compute_map_breakdown(dff, df_history=base) et
+# bd_history = compute_map_breakdown(base).
+# =============================================================================
+
+id: "timeseries.08"
+title: "Winrate & Performance vs Historique — 2 sub-charts"
+page: timeseries
+section: "Onglet Cartes & Modes — Vs historique"
+display_order_in_tab: 2
+source_function: "src/ui/pages/win_loss.py::_render_winrate_perf_vs_history"
+source_helpers:
+  - "src/visualization/_maps_outcome_bullet.py::plot_map_winrate_bullet"
+  - "src/visualization/_maps_outcome_history.py::plot_map_perf_vs_history"
+  - "src/analysis::compute_map_breakdown"
+fragment: true                                                  # @fragment_if_available
+chart_kind: composite_block                                     # famille avec 2 sub-charts
+
+# === COUCHE DONNÉES ===
+data:
+  reuses:
+    of: ["teammates.02", "teammates.13"]
+    differences: |
+      - 1 SEULE série (joueur principal) au lieu de la session escouade.
+      - Pas de mention "Escouade" dans les labels — les charts servent à comparer
+        la SÉLECTION COURANTE (filtres globaux) vs l'HISTORIQUE COMPLET (base_df).
+      - Cohérence map_ui entre dff et base via fallback map_name_fr→map_ui en fr.
+
+  upstream_service: |
+    bd_current = compute_map_breakdown(dff, df_history=base)
+    bd_history = compute_map_breakdown(base)
+  input_dataframe:
+    required_fields:
+      dff: [match_id, map_name | map_ui, performance_score, outcome, start_time]
+      base: [idem dff mais sans filtres]
+  call_args:
+    head_limit: 20                                              # view = bd_current.head(20).reverse()
+    map_order: "list[str] — chronologique session si dispo"
+
+  transformations:
+    - description: "Fix map_ui sur base_df (FR)"
+      polars: |
+        if 'map_ui' not in base.columns and 'map_name_fr' in base.columns and lang == 'fr':
+            base = base.with_columns(
+                pl.coalesce([pl.col('map_name_fr'), pl.col('map_name')]).alias('map_ui')
+            )
+      detail: |
+        Sans cela l'inner join sur map_name dans _prepare_bullet_joined_data échoue pour les
+        4 cartes dont le nom FR diffère du nom EN : Cliffhanger, Fortress, Nemesis, The Pit.
+
+    - description: "Calcul des breakdowns courant + historique"
+      polars: |
+        bd_current = compute_map_breakdown(dff, df_history=base)
+        bd_history = compute_map_breakdown(base)
+
+    - description: "Tri chronologique des cartes (oldest first)"
+      polars: |
+        map_order = (dff.sort('start_time')
+                        .unique(subset=['map_ui'], keep='first', maintain_order=True)
+                        ['map_ui'].to_list())
+
+    - description: "view = bd_current top 20 réversé (pour orientation horizontale)"
+      polars: 'view = bd_current.head(20).reverse()'
+
+# === TRACES ===
+traces: []                                                       # composite — cf. teammates.02 et teammates.13
+
+layout:
+  inherits: _theme_default
+  height: { value: 500 }
+
+# === SUB-CHARTS ===
+sub_charts:
+  - id: bullet
+    chart_ref: teammates.02
+    title_i18n: "{{t.wl_map_bullet_title}}"
+    plot_function: plot_map_winrate_bullet
+    args: { view, bd_history, lang, map_order }
+    config: PLOTLY_STATIC_CONFIG
+    preceded_by:
+      - "st.divider()"
+      - "st.markdown(`##### {t.wl_map_bullet_title}`)"
+      - "if hints_visible(): st.caption(t.wl_map_bullet_caption)"
+
+  - id: perf_vs_history
+    chart_ref: teammates.13
+    title_i18n: "{{t.wl_perf_vs_history_title}}"
+    plot_function: plot_map_perf_vs_history
+    args: { view, bd_history, lang, map_order }
+    config: PLOTLY_STATIC_CONFIG
+    preceded_by:
+      - "st.markdown(`##### {t.wl_perf_vs_history_title}`)"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "bd_current et bd_history non vides après compute_map_breakdown"
+  empty_state:
+    type: "return silencieux"
+    triggered_by:
+      - "bd_current vide → return"
+      - "bd_history vide → return"
+      - "1 sub-chart None → safe_chart_render absorbe (pas d'affichage)"
+  config: "(par sub-chart)"
+  width_mode: stretch
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - wl_map_bullet_title
+    - wl_map_bullet_caption
+    - wl_perf_vs_history_title
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Réutilisation 100% des YAML teammates.02 (bullet) et teammates.13 (perf_vs_hist)"
+      why: |
+        Les fonctions Plotly sont strictement les mêmes. La page timeseries appelle simplement
+        en mode 1 joueur (au lieu de l'escouade pour teammates). Pas de duplication de specs —
+        juste un YAML "wrapper" qui décrit la composition timeseries-specific.
+
+    - decision: "Fix map_ui sur base_df en français"
+      why: |
+        Le DataFrame BRUT base_df n'a pas la colonne map_ui (créée dans dff par _add_derived_columns).
+        L'inner join sur map_name dans plot_map_winrate_bullet échouerait pour 4 cartes où map_name
+        (anglais) ≠ map_ui (français). Le wrapper applique le fix avant d'appeler les charts.

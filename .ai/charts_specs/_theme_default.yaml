@@ -1,0 +1,90 @@
+# Thème Halo par défaut — appliqué à toutes les charts via apply_halo_plot_style
+# (src/visualization/theme.py).
+#
+# Les fichiers YAML par chart héritent de ces valeurs et n'écrivent que les overrides.
+# Un champ marqué `inherit: theme_default` dans un YAML chart signifie "ne pas répéter".
+
+template: plotly_dark
+
+# Couleurs de fond (Waypoint Halo).
+# Source : THEME_COLORS.bg_plot_rgba(1.0) dans src/config.py
+bgcolor:
+  paper: "rgba(29, 35, 40, 1.0)"
+  plot: "rgba(29, 35, 40, 1.0)"
+
+font:
+  color: "rgba(245, 248, 255, 0.92)"     # THEME_COLORS.text_primary (src/config.py)
+  size: 13
+
+hoverlabel:
+  bgcolor: "rgba(29, 35, 40, 0.96)"
+  bordercolor: "rgba(255, 255, 255, 0.12)"   # THEME_COLORS.border
+
+# Axes par défaut (xaxis et yaxis identiques).
+axes_default:
+  showgrid: true
+  gridcolor: "rgba(255, 255, 255, 0.07)"
+  zeroline: false
+  showline: true
+  linecolor: "rgba(255, 255, 255, 0.12)"     # THEME_COLORS.border
+
+# Légende horizontale en bas (helper get_legend_horizontal_bottom).
+legend_horizontal_bottom:
+  orientation: h
+  yanchor: top
+  y: -0.22
+  xanchor: left
+  x: 0
+
+# Légende horizontale en haut (helper get_legend_horizontal_top).
+legend_horizontal_top:
+  orientation: h
+  yanchor: bottom
+  y: 1.02
+  xanchor: left
+  x: 0
+
+# Marges par défaut (PLOT_CONFIG, src/config.py).
+# La plupart des charts overridoient ces valeurs.
+margin_default:
+  l: 40
+  r: 20
+  t: 30
+  b: 40
+
+# Hauteurs canoniques (PLOT_CONFIG).
+heights:
+  default: 360
+  tall: 520
+  compact: 280
+  indicator: 160
+
+# Palette HALO_COLORS résolue (extrait essentiel pour traduction côté Go/ECharts).
+# Source : src/config.py::HaloColors. Liste exhaustive à compléter au besoin.
+palette:
+  cyan: "#33D6FF"      # kills, sélections principales
+  red: "#FF4B4B"       # deaths, défaites
+  green: "#00DC82"     # victoires, performance positive
+  amber: "#FFB703"     # spree, avertissement, ties
+  violet: "#8B5CF6"    # assists, neutre, DNF
+  slate: "#374151"     # gris-bleu pour éléments secondaires
+  okabe_ito:           # palette accessibilité daltonisme (Okabe-Ito)
+    blue: "#0072B2"
+    vermillion: "#D55E00"
+    orange: "#E69F00"
+    bluish_green: "#009E73"
+    sky_blue: "#56B4E9"
+    pink: "#CC79A7"
+
+# Valeurs spéciales utilisées dans le code Halo.
+special_colors:
+  gold_max_marker: "#FFD700"   # annotation max sur ratios/perf
+
+# Configs Plotly côté frontend (src/ui/streamlit_modern.py).
+plotly_configs:
+  PLOTLY_CLEAN_CONFIG:
+    displayModeBar: false
+    staticPlot: false
+  PLOTLY_STATIC_CONFIG:
+    displayModeBar: false
+    staticPlot: true

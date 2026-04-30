@@ -1,0 +1,128 @@
+# =============================================================================
+# Bar comparison — A/B groupées, kd_ratio sur Y1, win_rate sur Y2 (%)
+# =============================================================================
+# Bars groupées avec MIXTURE Y1/Y2 :
+#   - Métriques Y1 (left_metrics) : F/D, autres ratios par match → axe gauche
+#   - Métrique Y2 (right_metric) : Win rate (%) → axe droit
+# 4 traces principales : 2 par axe (A vs B). Optionnellement 2 traces hist
+# (moyenne historique, en pointillés). barmode=group, hovertemplate spécifique
+# par axe.
+# =============================================================================
+
+id: "session_compare.08"
+title: "Bar comparison — A/B sur 2 axes Y (kd ratio Y1 + win rate Y2)"
+page: session_compare
+section: "Section 8 (linéaire, en colonnes avec 07)"
+display_order_in_page: 8
+source_function: "src/ui/pages/session_compare_charts.py::render_comparison_bar_chart"
+source_helpers:
+  - "src/ui/pages/session_compare_charts.py::_prepare_bar_metrics"
+  - "src/ui/pages/session_compare_charts.py::_add_bar_comparison_traces"
+  - "src/ui/pages/session_compare_charts.py::_add_historical_traces"
+  - "src/ui/pages/session_compare_charts.py::_build_bar_chart_figure"
+fragment: true
+chart_kind: grouped_bar                                         # avec Y2 secondary
+
+data:
+  computed_by: server
+  upstream_service: "_prepare_bar_metrics(perf_a, perf_b, hist_avg) → dict {a_left, b_left, a_wr, b_wr, hist?}"
+  input_dataframe:
+    required_fields: { perf_a, perf_b: [kd_ratio, win_rate, ...], hist_avg: [optional] }
+  call_args: {}
+
+  constants:
+    barmode: group
+    palette:
+      session_a:  "#E74C3C"
+      session_b:  "#3498DB"
+      historical: "#9B59B6"
+    height: 350
+
+# === TRACES ===
+traces:
+  - id: a_left
+    type: bar
+    y_axis: y1
+    color: "#E74C3C"
+    legendgroup: "A"
+    name: "Session A"
+    hovertemplate: "%{x} (A): %{y:.2f}<extra></extra>"
+  - id: b_left
+    type: bar
+    y_axis: y1
+    color: "#3498DB"
+    legendgroup: "B"
+    name: "Session B"
+    hovertemplate: "%{x} (B): %{y:.2f}<extra></extra>"
+  - id: a_wr
+    type: bar
+    y_axis: y2                                                  # secondary (win rate %)
+    color: "#E74C3C"
+    legendgroup: "A"
+    showlegend: false                                           # already shown via a_left
+    hovertemplate: "%{x} (A): %{y:.1f}%<extra></extra>"
+  - id: b_wr
+    type: bar
+    y_axis: y2
+    color: "#3498DB"
+    legendgroup: "B"
+    showlegend: false
+    hovertemplate: "%{x} (B): %{y:.1f}%<extra></extra>"
+  - id: hist_left
+    type: bar
+    y_axis: y1
+    color: "#9B59B6"
+    optional: true                                              # ssi hist_avg fourni
+    pattern: { shape: "/" }                                     # hachuré pour hist
+    name_i18n: "{{t.sc_hist_avg_trace}}"
+  - id: hist_wr
+    type: bar
+    y_axis: y2
+    color: "#9B59B6"
+    optional: true
+    pattern: { shape: "/" }
+    showlegend: false
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height: { value: 350 }
+  barmode: group
+  yaxis:
+    title_i18n: "{{t.sc_per_match_ratio}}"
+    rangemode: tozero
+  yaxis_secondary:
+    title_i18n: "{{t.sc_radar_win}}"
+    rangemode: tozero
+
+display:
+  shown_when: "perf_a et perf_b non None"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+
+i18n_keys:
+  viz_t: []
+  t:
+    - sc_per_match_ratio, sc_radar_win
+    - sc_hist_avg_trace
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Win rate sur Y2 (axe droit) avec ticksuffix='%'"
+      why: |
+        F/D ~0.5-2.0, win rate ~0-100%. Échelles incompatibles → secondary_y obligatoire.
+        ECharts : `yAxisIndex: 1` sur les traces Y2.
+
+    - decision: "legendgroup partagé entre Y1 et Y2 par session"
+      why: |
+        Cliquer sur 'Session A' dans la légende cache LES 2 traces (Y1 + Y2). UX cohérente
+        avec session_compare.07 (radar). showlegend=false sur Y2 pour éviter doublon.
+
+    - decision: "Pattern '/' (hachuré) pour les traces hist"
+      why: |
+        Les traces moyenne historique ont la MÊME couleur violette mais sont distinguées
+        des sessions actives par un motif. Convention de l'app pour 'données de référence'.

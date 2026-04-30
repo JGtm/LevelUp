@@ -1,0 +1,312 @@
+# =============================================================================
+# Onglet Impact (taquinerie) — tableau matriciel "qui a porté l'escouade"
+# =============================================================================
+# Tableau HTML "scoreboard" (classes os-scoreboard / os-impact-table) construit
+# par _render_impact_ranking_html. Une seule grande table fusionnée :
+#
+#   colonnes :
+#     - Joueur (gauche, gamertag)
+#     - 1 colonne par match (header = numéro 1..N, fond coloré selon outcome
+#       du joueur principal — vert si win, rouge si loss, gris si tie/dnf)
+#     - 8 colonnes d'agrégat (1 par event_type, header = emoji)
+#     - Score (somme pondérée, signé, +/-)
+#     - Badge ("🏆 Champion", "🍌 Maillon faible", "📉 Passager clandestin", "")
+#
+#   lignes :
+#     - 1 par joueur de l'escouade (moi + amis sélectionnés), triées par score
+#       décroissant. Cellule match×joueur = emojis des events ce match
+#       (empilés 2 par ligne avec <br/>). Cellules agrégat = compte (— si 0)
+#       avec coloration best/worst (os-sb-td--best / os-sb-td--worst) selon
+#       extremum de la colonne et inversion pour les events "négatifs".
+#
+# AUCUN BARRE DE PROGRESSION, AUCUN PANEL CARD. C'est un tableau dense.
+# =============================================================================
+
+id: "teammates.07"
+title: "Impact des coéquipiers (tableau scoreboard)"
+page: teammates
+section: "Onglet Impact"
+source_function: "src/ui/pages/teammates_impact.py::render_impact_taquinerie"
+source_helpers:
+  - "src/ui/pages/teammates_impact.py::_render_impact_from_events"
+  - "src/ui/pages/teammates_impact.py::_render_impact_ranking_html"
+  - "src/ui/pages/teammates_impact.py::_pivot_matrix_cells"
+  - "src/ui/pages/teammates_impact.py::_player_agg_counts"
+  - "src/ui/pages/teammates_impact.py::_impact_extremes_from_agg"
+  - "src/ui/pages/teammates_impact.py::_impact_td_class"
+  - "src/ui/pages/teammates_impact.py::_load_highlight_events"
+  - "src/ui/pages/teammates_impact.py::_load_match_outcomes"
+  - "src/ui/pages/teammates_impact.py::_load_match_participants"
+  - "src/analysis/friends_impact.py::get_all_impact_events"
+  - "src/analysis/friends_impact.py::build_impact_matrix"
+  - "src/analysis/friends_impact.py::identify_silent_hero_multi"
+  - "src/analysis/friends_impact.py::identify_false_brother_multi"
+  - "src/analysis/friends_impact.py::identify_top_killer_multi"
+fragment: false
+chart_kind: composite_block
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: |
+    _load_highlight_events + _load_match_outcomes + _load_match_participants
+    → get_all_impact_events (calcule first_bloods/clutch/last_casualty/...)
+    → identify_silent_hero_multi / false_brother / top_killer (badges stats-only)
+    → build_impact_matrix (DataFrame matrix joueur × match avec events liste)
+    → _render_impact_ranking_html (HTML)
+  input_dataframe:
+    required_fields:
+      events_df:
+        - match_id          # str
+        - xuid              # str
+        - gamertag          # str
+        - event_type        # str (first_blood, clutch_finisher, last_casualty, ...)
+        - time_ms           # int
+      matches_df:
+        - match_id
+        - outcome           # int (2=WIN, 3=LOSS, 1=TIE, 4=DNF)
+      participants_df:
+        - match_id
+        - xuid
+        - gamertag
+        - kills
+        - assists
+        - deaths
+  call_args: {}
+  filters_applied: []
+
+  constants:
+    event_to_emoji:
+      first_blood:        "⚡"
+      clutch_finisher:    "🎯"
+      last_casualty:      "💀"
+      last_group_kill:    "🐌"
+      first_group_death:  "🪦"
+      silent_hero:        "🛡️"
+      false_brother:      "🗡️"
+      top_killer:         "💥"
+    impact_inverted:                                          # high count = bad
+      - last_casualty
+      - last_group_kill
+      - first_group_death
+      - false_brother
+    score_weights:                                            # src/analysis/_impact_types.py
+      SCORE_CLUTCH_FINISHER:    2
+      SCORE_FIRST_BLOOD:        2
+      SCORE_LAST_CASUALTY:     -2
+      SCORE_SILENT_HERO:        1.5
+      SCORE_FALSE_BROTHER:     -1.5
+      SCORE_LAST_GROUP_KILL:   -1
+      SCORE_FIRST_GROUP_DEATH: -1
+      SCORE_TOP_KILLER:         1.0
+    outcome_bg:
+      win:   "rgba(0,158,115,0.30)"                           # outcome=2
+      loss:  "rgba(213,94,0,0.30)"                            # outcome=3
+      tie:   "rgba(100,100,130,0.15)"                         # outcome=1 ou 4
+    badges_by_rank:
+      first:                  "🏆 Champion"
+      last_negative_score:    "🍌 Maillon faible"
+      last_positive_score:    "📉 Passager clandestin"
+      middle:                 ""
+
+  transformations:
+    - description: "Calcul des 5 events 'kill-based' à partir des highlight_events"
+      polars: |
+        first_bloods, clutch_finishers, last_casualties, last_group_kills,
+        first_group_deaths, scores = get_all_impact_events(events_df, matches_df,
+                                                           friend_xuids=all_friend_xuids)
+      detail: |
+        get_all_impact_events agrège par match les events filmés et calcule les scores
+        pondérés (cf. constants.score_weights).
+
+    - description: "Calcul des 3 badges 'stats-only' depuis match_participants"
+      polars: |
+        silent_heroes  = identify_silent_hero_multi(participants_df, matches_df, all_friend_xuids)
+        false_brothers = identify_false_brother_multi(participants_df, matches_df, all_friend_xuids)
+        top_killers    = identify_top_killer_multi(participants_df, all_friend_xuids)
+        # Ajout au score global avec les pondérations correspondantes
+        for ev in silent_heroes.values():  scores[ev.gamertag] += SCORE_SILENT_HERO
+        for ev in false_brothers.values(): scores[ev.gamertag] += SCORE_FALSE_BROTHER
+        for ev in top_killers.values():    scores[ev.gamertag] += SCORE_TOP_KILLER
+      detail: |
+        Ces 3 badges ne sont pas des events "filmés" — ils sont calculés sur les stats
+        kills/assists/deaths du match. Score = +1.5 / -1.5 / +1.0.
+
+    - description: "Construction de la matrice DataFrame joueur × match avec liste d'events"
+      polars: |
+        impact_matrix = build_impact_matrix(
+            ImpactEventSets(first_bloods, clutch_finishers, last_casualties,
+                            last_group_kills, first_group_deaths,
+                            silent_heroes, false_brothers, top_killers),
+            match_ids=sorted_match_ids,
+            gamertags=gamertags,
+            match_outcomes=match_outcomes,
+        )
+      detail: |
+        Schéma : (gamertag, match_id, events:list[{event:str,...}], outcome).
+        Une ligne fictive gamertag="Résultat" porte les outcomes de match.
+
+    - description: "Filtrage des match_ids : on ne garde que ceux où ≥1 event a eu lieu"
+      polars: |
+        impact_match_set = (
+          set(first_bloods | clutch_finishers | last_casualties | last_group_kills
+              | first_group_deaths | silent_heroes | false_brothers | top_killers)
+        )
+        sorted_match_ids = [m for m in match_ids if m in impact_match_set]
+
+    - description: "Calcul des extrémums par colonne agrégat (≥2 valeurs distinctes non nulles)"
+      polars: |
+        # _impact_extremes_from_agg : retourne {key: (min, max)} pour chaque event_type
+        # qui a au moins 2 joueurs avec count>0 et min!=max. Sert à colorer best/worst.
+        extremes = _impact_extremes_from_agg(all_agg)
+        # idem pour la colonne "score"
+
+    - description: "Tri des joueurs par score décroissant et attribution des badges"
+      polars: |
+        sorted_players = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        # rank=1 → Champion ; rank=N et last_score<0 → Maillon faible ; rank=N → Passager clandestin
+
+# === COMPOSITE BLOCK (TABLE HTML SPÉCIFIQUE) ===
+composite_block:
+  layout:
+    type: "scoreboard_matrix_html"
+    css_classes_root: "os-table-wrap os-sb-wrap"
+    css_classes_table: "os-table os-scoreboard os-impact-table"
+    title_th: "{{t.tm_impact_ranking}}"
+
+  columns:
+    - id: player
+      header_html: "{{t.tmi_col_player}}"
+      align: left
+      sticky: true                                            # gauche, large
+    - id: match_columns
+      template_per_match: true
+      header_html: "{i+1}"                                    # 1..N (i=index dans sorted_match_ids)
+      cell_html: "<emojis du joueur ce match, empilés 2 par ligne avec <br/>>"
+      th_style: |
+        width:34px;
+        background: outcome_bg[match_outcome] (#vert/#rouge/#gris)
+      td_style: "text-align:center"
+      align: center
+    - id: agg_columns
+      template_per_event: true
+      events: ["first_blood", "clutch_finisher", "last_casualty", "last_group_kill",
+               "first_group_death", "silent_hero", "false_brother", "top_killer"]
+      header_html: "{event_to_emoji[event]}"
+      cell_html: "{count} ou — si 0"
+      td_extra_class: "_impact_td_class(event, val, extremes)"  # os-sb-td--best ou os-sb-td--worst
+    - id: score
+      header_html: "{{t.tmi_col_score}}"
+      cell_html: "+{score:g} si score>0 else {score:g}"
+      td_extra_class: "_impact_td_class('score', score, extremes)"
+    - id: badge
+      header_html: "{{t.tmi_badge}}"
+      cell_html: "🏆 Champion / 🍌 Maillon faible / 📉 Passager clandestin / ''"
+
+  rows:
+    template: "1 ligne par joueur, triées par score décroissant"
+    extra_classes:
+      mvp:  "os-sb-row--mvp"                                  # rank=1
+      lvp:  "os-sb-row--lvp"                                  # rank=N et last_score<0
+
+  cell_emoji_pivot: |
+    Cell match×player = emojis des events filmés concaténés, mais wrap par 2 :
+      [⚡, 🎯, 💀] → "⚡🎯<br/>💀"
+    Implémenté par _pivot_matrix_cells.
+
+  badges_logic: |
+    if rank == 1:                            "🏆 Champion"
+    elif rank == n and last_score < 0:       "🍌 Maillon faible"
+    elif rank == n:                          "📉 Passager clandestin"
+    else:                                    ""
+
+  preceded_by:
+    - "Sentinelle DOM #llp-impact-end (st.markdown unsafe_allow_html=True)"
+    - "Si hints_visible() → st.caption(t('tm_impact_caption'))"
+  followed_by:
+    - "st.popover('ℹ️ Légende' / 'ℹ️ Legend') → st.markdown(t('tm_impact_legend'))"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    friend_xuids non vide
+    AND match_ids non vide
+    AND shared_alias résolu
+    AND events_df non None et non vide
+    AND scores non vide après calculs
+  empty_state:
+    type: "st.info | st.warning"
+    triggered_by:
+      - "friend_xuids vide → tm_impact_select_two"
+      - "match_ids vide → tm_impact_no_matches"
+      - "shared_db absent → tmi_no_shared_db"
+      - "events_df None → tmi_no_events"
+      - "events_df vide → tm_impact_no_events_matches"
+      - "scores vide après agrégation → tm_impact_no_events_players"
+  config: null
+  width_mode: stretch
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tm_impact_ranking
+    - tmi_col_player
+    - tmi_col_score
+    - tmi_badge
+    - tm_impact_caption
+    - tm_impact_legend
+    - tm_impact_select_two
+    - tm_impact_no_matches
+    - tmi_no_shared_db
+    - tmi_no_events
+    - tm_impact_no_events_matches
+    - tm_impact_no_events_players
+    - error_chart
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"                                   # origin/v7/cockpit
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Tableau matriciel HTML pur (pas un chart Plotly, pas un panel ranking)"
+      why: |
+        Le rendu Streamlit utilise st.markdown(table_html, unsafe_allow_html=True) avec
+        une grande table HTML construite à la main. Classes CSS partagées avec d'autres
+        scoreboards (os-scoreboard, os-sb-row--mvp/lvp, os-sb-td--best/worst). Côté React :
+        composant <ImpactScoreboard /> avec les mêmes classes (et donc le même thème CSS).
+
+    - decision: "Coloration des cellules agrégat best/worst inversée pour 4 events 'négatifs'"
+      why: |
+        Pour first_blood/clutch/silent_hero/top_killer : count élevé = best (vert).
+        Pour last_casualty/last_group_kill/first_group_death/false_brother : count élevé =
+        worst (rouge). Logique encodée dans _IMPACT_INVERTED ; à reproduire fidèlement.
+
+    - decision: "Filtrage : seuls les match_ids avec ≥1 event sont colonnes"
+      why: |
+        On ne montre PAS tous les matchs partagés en colonnes — seulement ceux qui ont
+        produit au moins un event impact (any joueur). Sinon la table serait noyée de
+        colonnes vides. Implémenté via impact_match_set.
+
+    - decision: "Header des colonnes match coloré selon l'outcome du JOUEUR PRINCIPAL"
+      why: |
+        Le fond vert/rouge/gris du header de chaque colonne match indique le résultat
+        VU PAR LE JOUEUR PRINCIPAL (xuid courant), pas un consensus escouade. Permet
+        de relier visuellement les events à la victoire/défaite. Outcomes : 2=WIN,
+        3=LOSS, 1=TIE, 4=DNF.
+
+    - decision: "Trois badges stats-only en plus des 5 events filmés"
+      why: |
+        silent_hero / false_brother / top_killer ne viennent PAS de highlight_events
+        mais des stats kills/assists/deaths cumulées du match (identify_*_multi).
+        Donc même si events_df est minimaliste, ces 3 colonnes peuvent quand même
+        avoir des valeurs. Score pondérations : +1.5 / -1.5 / +1.0.
+
+    - decision: "Sentinelle DOM #llp-impact-end injectée AVANT le contenu"
+      why: |
+        Marqueur invisible utilisé par le JS observer du panel légende (teammates.01)
+        pour cacher la légende dès que l'utilisateur arrive sur cette section.
+        Côté React : useRef + IntersectionObserver pour piloter la visibilité du panel.

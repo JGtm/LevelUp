@@ -1,0 +1,108 @@
+# =============================================================================
+# Assists timeseries — bars violet + smoothing rolling 10
+# =============================================================================
+# Bars (1 par match) couleur violet (HALO_COLORS.violet) avec opacity standard.
+# Smoothing line green (rolling mean window=10) PAR-DESSUS.
+# Hover unifié avec customdata multi-champs : kills/deaths/assists/accuracy/
+# ratio/map/playlist/match_id (tous combinés dans un même hover).
+# X = numéro de match catégoriel ou date selon dispo.
+# =============================================================================
+
+id: "timeseries.13"
+title: "Assists timeseries — bars + smoothing rolling 10"
+page: timeseries
+section: "Onglet Progression — Assists"
+display_order_in_tab: 3
+source_function: "src/visualization/timeseries.py::plot_assists_timeseries"
+source_helpers:
+  - "src/visualization/_timeseries_helpers.py::_rolling_mean"
+  - "src/visualization/_timeseries_helpers.py::downsample_for_plot"
+fragment: false
+chart_kind: line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "downsample_for_plot(ensure_polars(df)).sort('start_time')"
+  input_dataframe:
+    required_fields:
+      df: [start_time, kills, deaths, assists, accuracy, ratio, match_id, map_ui|map_name, playlist_ui|playlist_name]
+  call_args: { lang: "fr | en" }
+
+  constants:
+    bar_color: "#ab47bc"                                        # violet
+    smooth_color: "#00e676"                                     # green
+    smoothing_window: 10
+    bar_opacity: 0.85
+
+# === TRACES ===
+traces:
+  - id: assists_bars
+    type: bar
+    color: "#ab47bc"
+    opacity: 0.85
+    name_i18n: "{{viz_t.trace_assists}}"
+    hovertemplate_i18n: "{{viz_t.hover_assists_combined}}"
+    customdata: "[kills, deaths, assists, accuracy, ratio, map, playlist, match_id]"
+
+  - id: smoothed
+    type: scatter
+    mode: lines
+    color: "#00e676"
+    name_i18n: "{{viz_t.trace_avg_smoothed}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  margin: { l: 40, r: 20, t: 60, b: 90 }
+  hovermode: "x unified"
+  legend: "horizontal_bottom"
+  yaxis:
+    title_i18n: "{{viz_t.axis_assists}}"
+    rangemode: tozero
+  xaxis:
+    type: category
+    title_i18n: "{{viz_t.axis_match_number}}"
+    tickangle: 0
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df non vide"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_assists'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_assists
+    - trace_avg_smoothed
+    - hover_assists_combined
+    - hover_avg_smoothed
+    - axis_assists
+    - axis_match_number
+  t: ["ts_assists"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "customdata multi-champs (8 colonnes) pour hover combiné"
+      why: |
+        Le hover affiche TOUTES les stats utiles du match (K/D/A/accuracy/ratio/map/playlist/id)
+        plutôt que juste la valeur d'assists. Permet à l'utilisateur de comprendre LE CONTEXTE
+        d'un match avec beaucoup ou peu d'assists. ECharts : `data[i].customdata` array
+        + formatter qui les concatène.
+
+    - decision: "downsample_for_plot pour les longues séries"
+      why: |
+        Si le joueur a 5000+ matchs filtrés, Plotly devient lent. downsample_for_plot agrège ou
+        échantillonne intelligemment pour rester sous un seuil (~1000 points). À porter côté
+        client/serveur selon perf.

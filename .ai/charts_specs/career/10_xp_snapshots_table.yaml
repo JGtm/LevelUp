@@ -1,0 +1,102 @@
+# =============================================================================
+# Career page · XP snapshots table — 10 derniers snapshots dans expander
+# =============================================================================
+# st.expander (replié par défaut, expanded=False) affichant les 10 dernières
+# lignes du tableau career_progression. Pas un chart Plotly — texte structuré
+# via st.text avec format :
+#   "{date}  |  Rang N: {rank_label_fr}  |  XP: {xp_total:,}"
+# =============================================================================
+
+id: "career.10"
+title: "XP snapshots table — 10 derniers rangs/dates dans expander"
+page: career
+section: "Section 1 (sub-section de _render_xp_history)"
+display_order_in_page: 4
+source_function: "src/ui/pages/career.py::_render_xp_snapshots_table"
+source_helpers:
+  - "src/data/rank_metadata::get_meta_rank_info"
+  - "src/data/rank_metadata::format_career_rank_label_fr"
+fragment: false
+chart_kind: table_html
+
+data:
+  computed_by: server
+  upstream_service: "history list[dict] depuis career_progression DB"
+  input_dataframe:
+    required_fields:
+      history:
+        - rank                                                  # int
+        - rank_tier                                             # str (Bronze, Silver, Gold, ...)
+        - rank_name                                             # str
+        - recorded_at                                           # ISO datetime
+        - xp_total                                              # int
+  call_args: {}
+  filters_applied:
+    - "history[-10:] reversed (10 plus récents en premier)"
+
+# === TABLE ===
+table_html:
+  layout: "st.expander(replié par défaut)"
+  expander_label_i18n: "{{t.career_rank_history_title}}"
+  expanded: false
+
+  rows_template:
+    iterator: "for snap in reversed(history[-10:])"
+    cardinality: "max 10"
+    cell_format:
+      date: "snap.recorded_at[:19]"                             # truncate à YYYY-MM-DDTHH:MM:SS
+      rank_label: "format_career_rank_label_fr(tier, title) ou get_meta_rank_info(rank).full_label_fr"
+      xp_total: "{xp_total:,}"                                  # avec séparateurs
+    line_format: "{date}  |  Rang {rank}: {rank_label}  |  XP: {xp_total:,}"
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 200 }
+
+display:
+  shown_when: "history non vide"
+  empty_state:
+    type: "expander vide"
+    triggered_by: ["history vide"]
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "(intégré dans _render_xp_history après le chart timeline)"
+
+i18n_keys:
+  viz_t: []
+  t:
+    - career_rank_history_title
+    - career_rank_n                                              # paramétré n=rank
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "st.expander REPLIÉ par défaut"
+      why: |
+        Information détaillée mais secondaire — l'utilisateur veut d'abord voir le chart
+        timeline (career.03). Le table snapshots est en fallback pour ceux qui veulent les
+        valeurs exactes. expanded=False économise de l'espace vertical sur la page.
+
+    - decision: "Limite à 10 snapshots récents (reversed)"
+      why: |
+        Les snapshots career_progression peuvent être nombreux (1 par jour). Limiter à 10
+        garde la table lisible sans scroll excessif. Reversed pour voir le PLUS RÉCENT en
+        premier (lecture naturelle).
+
+    - decision: "Pas un chart Plotly — texte structuré (st.text)"
+      why: |
+        Tableau simple à 4 colonnes (date, rang #, label, xp) — un chart serait sur-engineered.
+        Côté React : composant `<XPSnapshotsTable />` avec accordéon repliable.
+
+    - decision: "Cascade label : get_meta_rank_info > format_career_rank_label_fr"
+      why: |
+        get_meta_rank_info renvoie le label complet 'Bronze 1' / 'Diamond 5' / etc. avec
+        le titre français. Si non disponible (rank inconnu ou data legacy), fallback sur
+        format_career_rank_label_fr qui construit depuis tier+title.

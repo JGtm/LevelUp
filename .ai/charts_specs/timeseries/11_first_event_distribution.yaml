@@ -1,0 +1,118 @@
+# =============================================================================
+# Premier événement — distribution superposée (kills vs deaths)
+# =============================================================================
+# 2 histogrammes superposés (overlay) :
+#   - first_kills (vert, opacity=0.7) — temps en secondes du 1er kill par match
+#   - first_deaths (rouge, opacity=0.6) — temps de la 1ère mort
+# nbinsx=20. 2 vlines (dashed) pour les moyennes vert/rouge avec annotations.
+# Conversion ms → s (timestamps stockés en ms dans highlight_events).
+# =============================================================================
+
+id: "timeseries.11"
+title: "Premier événement — distribution kills/deaths superposée"
+page: timeseries
+section: "Onglet Progression — Premier événement"
+display_order_in_tab: 1
+source_function: "src/visualization/_distributions_advanced.py::plot_first_event_distribution"
+source_helpers:
+  - "src/ui/pages/timeseries.py::_render_first_event_section"
+fragment: false
+chart_kind: histogram
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_render_first_event_section charge first_kills/first_deaths via DuckDB"
+  input_dataframe:
+    required_fields:
+      first_kills: "dict[match_id, time_ms]"
+      first_deaths: "dict[match_id, time_ms]"
+  call_args: { lang: "fr | en" }
+
+  constants:
+    nbinsx: 20
+    kills_color: "#00e676"                                      # green
+    kills_opacity: 0.7
+    deaths_color: "#e53935"                                     # red
+    deaths_opacity: 0.6
+    avg_line_dash: dash
+
+  transformations:
+    - description: "Conversion ms → s + filtrage None et 0"
+      polars: |
+        kills_sec = [t / 1000 for t in first_kills.values() if t is not None and t > 0]
+        deaths_sec = [t / 1000 for t in first_deaths.values() if t is not None and t > 0]
+
+# === TRACES ===
+traces:
+  - id: hist_first_kills
+    type: histogram
+    nbinsx: 20
+    color: "#00e676"
+    opacity: 0.7
+    name_i18n: "{{viz_t.trace_first_kill}}"
+    hovertemplate_i18n: "{{viz_t.hover_first_event}}"
+
+  - id: hist_first_deaths
+    type: histogram
+    nbinsx: 20
+    color: "#e53935"
+    opacity: 0.6
+    name_i18n: "{{viz_t.trace_first_death}}"
+    hovertemplate_i18n: "{{viz_t.hover_first_event}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  shapes:
+    - id: vline_avg_kill
+      type: line
+      x_field: "mean(kills_sec)"
+      line: { dash: dash, color: "#00e676" }
+      annotation: { text_i18n: "{{viz_t.annot_avg_kill}}", position: top }
+    - id: vline_avg_death
+      type: line
+      x_field: "mean(deaths_sec)"
+      line: { dash: dash, color: "#e53935" }
+      annotation: { text_i18n: "{{viz_t.annot_avg_death}}", position: top }
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "kills_sec OR deaths_sec non vide"
+  empty_state:
+    type: "figure axes uniquement"
+    triggered_by: ["both empty → fig sans traces"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_first_event'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_first_kill, trace_first_death
+    - hover_first_event
+    - annot_avg_kill, annot_avg_death
+  t: ["ts_first_event"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "2 histogrammes SUPERPOSÉS (overlay) avec opacity"
+      why: |
+        Permet de comparer visuellement la distribution du 1er kill vs 1ère mort sur le MÊME axe X.
+        Si la distribution kills est globalement à GAUCHE de celle des deaths, le joueur est
+        agressif (frag avant mort). Inverse = défensif. Opacity 0.7/0.6 pour voir l'overlap.
+        Plotly utilise barmode default 'overlay' implicite pour Histogram.
+
+    - decision: "Filtrage des time_ms <= 0"
+      why: |
+        Anomalie data : certains matchs ont des first_kill/first_death à 0 (= début du match
+        avant spawn). Filtré pour ne pas polluer la moyenne et le bin 0-15s.

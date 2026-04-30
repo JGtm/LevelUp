@@ -1,0 +1,324 @@
+# =============================================================================
+# Timeline LUSR / CSR
+# =============================================================================
+# Évolution du rating (LUSR ou CSR) dans le temps avec :
+# - Zones colorées de tier en arrière-plan (hrect par tier Bronze→Onyx)
+# - Bande de confiance (± rating_deviation) en remplissage cyan transparent
+# - Courbe principale lines+markers (cyan si LUSR, gold si CSR)
+# - Tendance lissée (rolling mean window 20 ou max(3, len/5)) en violet dashdot
+# =============================================================================
+
+id: "career.04"
+title: "Évolution LUSR / CSR"
+page: career
+section: "LUSR / CSR"
+source_function: "src/visualization/_timeseries_progression.py::plot_lusr_timeseries"
+source_helpers:
+  - "src/visualization/_timeseries_progression.py::_add_tier_background"
+  - "src/visualization/_timeseries_progression.py::_add_confidence_band"
+  - "src/visualization/_timeseries_progression.py::_add_main_rating_trace"
+  - "src/visualization/_timeseries_helpers.py::_rolling_mean"
+  - "src/visualization/_timeseries_helpers.py::prepare_time_axis"
+  - "src/visualization/_timeseries_helpers.py::apply_chrono_xaxis"
+  - "src/ui/pages/career_lusr.py::_render_lusr_rating_chart"   # appelant
+fragment: false
+chart_kind: line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null
+  input_dataframe:
+    required_columns: [rating_value, start_time]
+    optional_columns: [rating_deviation, tier_label, rating_type, playlist_group]
+    polars_dtype_hints:
+      rating_value: "Float64"
+      rating_deviation: "Float64"
+      start_time: "Datetime[us]"
+      rating_type: "String"        # "LUSR" ou "CSR"
+      playlist_group: "String"     # ranked, arena, btb, tactical, social, fun
+      tier_label: "String"         # Bronze/Silver/Gold/Platinum/Diamond/Onyx ou tier CSR
+  call_args:
+    show_confidence: true
+    show_smooth: true
+    playlist_group: null                                      # filtré dynamiquement par selectbox
+    lang: "fr"
+  filters_applied: [lusr_period, lusr_group_select]
+  timezone: "user_local"
+
+  transformations:
+    - description: "Filtrage par période (segmented control en amont)"
+      polars: |
+        # Dans _render_lusr_rating_chart (career_lusr.py:140) :
+        if period in ("2y", "1y", "1m", "1w"):
+            since = now(UTC) - days(period_offsets[period])
+            df = df.filter(pl.col("start_time") >= since)
+      sql_duckdb: |
+        WHERE start_time >= ?  -- since = now() - INTERVAL '<period>'
+
+    - description: "Truncate de granularité par période (downsampling)"
+      polars: |
+        # PERIOD_GRANULARITY: 1w → null (no trunc), 1m → 1d, 1y/2y/all → 1w
+        if trunc:
+            df = df.with_columns(start_time.dt.truncate(trunc).alias("_bucket")) \
+                   .sort("start_time", descending=True) \
+                   .unique(subset=["_bucket", "playlist_group"], keep="first") \
+                   .drop("_bucket").sort("start_time")
+      sql_duckdb: |
+        -- Garder la dernière ligne par bucket (date_trunc) × playlist_group :
+        SELECT DISTINCT ON (date_trunc('week', start_time), playlist_group) *
+        FROM source ORDER BY start_time DESC;
+      detail: |
+        Granularité auto selon période :
+          1w → pas de trunc (toutes les lignes)
+          1m → 1d (1 point par jour)
+          1y, 2y, all → 1w (1 point par semaine)
+
+    - description: "Filtrage par playlist_group (selectbox local au chart)"
+      polars: |
+        if playlist_group is not None:
+            df = df.filter(pl.col("playlist_group") == playlist_group)
+      sql_duckdb: "AND playlist_group = ?  -- ou pas de filtre si 'all'"
+
+    - description: "Calcul des bornes Y (y_min, y_max)"
+      polars: |
+        y_min = max(0, min(rating_values) - 100)
+        y_max = max(max(rating_values) + 200, 2200)  # plancher 2200 pour visibilité
+      sql_duckdb: "-- Côté Go : calculé en post-process après lecture des données"
+
+    - description: "Détermination du type de rating dominant (LUSR vs CSR)"
+      polars: |
+        has_lusr = "LUSR" in df["rating_type"].unique()
+        has_csr = "CSR" in df["rating_type"].unique()
+        # Couleur principale = cyan si LUSR, gold si CSR ; nom = "LUSR" / "CSR" / "LUSR / CSR" (mix)
+
+# === TRACES ===
+traces:
+  # 1. Bande de confiance (± rating_deviation) — 2 traces empilées (upper invisible + lower fill='tonexty')
+  - id: "confidence_upper"
+    name: "{{viz_t.trace_confidence}}"
+    type: go.Scatter
+    chart_role: reference
+    color: null                                               # invisible (line.width=0)
+    mode: "lines"
+    line: {width: 0}
+    show_when: "show_confidence and 'rating_deviation' in df.columns"
+
+  - id: "confidence_lower"
+    name: "{{viz_t.trace_confidence}}"                        # même nom (mais showlegend=false)
+    type: go.Scatter
+    chart_role: reference
+    color: null
+    mode: "lines"
+    line: {width: 0}
+    fill: "tonexty"                                           # remplit l'aire entre lower et upper
+    fillcolor: "rgba(0,183,235,0.12)"                         # cyan très transparent
+    showlegend: false
+    show_when: "show_confidence and 'rating_deviation' in df.columns"
+
+  # 2. Courbe principale (lines+markers, cyan ou gold selon LUSR/CSR)
+  - id: "main_rating"
+    name: "LUSR | CSR | LUSR / CSR"                           # déterminé dynamiquement (cf. transformation)
+    type: go.Scatter
+    chart_role: primary
+    color_expression: |
+      has_lusr → COLORS.cyan ("#00B7EB")
+      has_csr (only) → COLORS.gold ("#FFD700")
+    mode: "lines+markers"
+    line: {width: 2.2}                                        # PLOT_CONFIG.line_width
+    marker: {size: 5}
+    customdata:
+      fields: [tier_label, start_time_formatted]
+    hovertemplate: "Rating=%{y:.0f}<br>Rang=%{customdata[0]}<br>Date=%{customdata[1]}<extra></extra>"
+    show_when: "always"
+
+  # 3. Tendance lissée (rolling mean window adaptative)
+  - id: "trend_smooth"
+    name: "{{viz_t.trace_trend}}"
+    type: go.Scatter
+    chart_role: secondary
+    color: "{{palette.violet}}"                               # COLORS.violet
+    mode: "lines"
+    line: {width: 2.2, dash: "dashdot"}
+    hover_format_tokens:
+      hover_template: "{{viz_t.hover_trend_smooth}}"
+    show_when: "show_smooth and len(df) >= 5"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360                                                # PLOT_CONFIG.default_height
+    expression: null
+    branches: []
+  margin: {l: 40, r: 20, t: 60, b: 140}                       # /!\ b=140 important pour légende basse + chrono x ticks
+  hovermode: "x unified"
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+    overrides: {y: -0.45}                                     # /!\ légende plus basse que défaut (-0.22)
+
+  xaxis:
+    type: "category"                                          # géré par apply_chrono_xaxis
+    title: null
+    detail: "apply_chrono_xaxis(fig, x_idx, labels, step, lang) — formatage chronologique adaptatif"
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.trace_lusr_axis}}"
+    range: "[y_min, y_max]"                                   # calculé dynamiquement (cf. transformation)
+    autorange: null
+    automargin: false
+
+  shapes:                                                     # Zones de tier en arrière-plan (hrect)
+    - type: rect
+      kind: rect                                              # add_hrect Plotly
+      detail: |
+        Une rect par tier dans SKILL_TIERS (Bronze, Silver, Gold, Platinum, Diamond, Onyx).
+        y0 = max(tier.min_rating, y_min)
+        y1 = min(tier.max_rating, y_max)
+        fillcolor = _TIER_ALPHAS[tier.name] (alpha 0.08-0.12 selon tier)
+        annotation_text = tier.name_fr (top right)
+      tier_alphas:                                            # constantes du module
+        Bronze: "rgba(205,127,50,0.08)"
+        Silver: "rgba(192,192,192,0.08)"
+        Gold: "rgba(255,215,0,0.10)"
+        Platinum: "rgba(0,206,209,0.08)"
+        Diamond: "rgba(185,242,255,0.10)"
+        Onyx: "rgba(28,28,28,0.12)"
+
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "history_all is not None AND len(available_groups) > 0"
+  hidden_when: null
+  empty_state:
+    type: none                                                # retour silencieux dans le caller
+    message: null
+    triggered_by:
+      - "history_all (LUSR snapshot history) vide → return early sans rendu"
+      - "available_groups vide après filtre → return early"
+  config: PLOTLY_CLEAN_CONFIG                                 # interactif (zoom + hover sur série)
+  width_mode: "stretch"
+  filters_widgets: [lusr_period, lusr_group_select]
+  fragment_isolation: false
+  preceded_by:
+    - "st.subheader(f'🏅 {LUSR_TITLE} — {LUSR_SUBTITLE}')"
+    - "(cards LUSR rendues avant — _render_lusr_rank_cards, cf. _index.md)"
+    - "st.markdown(f'#### {t(\"career_lusr_rating_evolution\")}')"
+    - "st.segmented_control (lusr_period)"
+    - "st.selectbox (lusr_group_select)"
+    - "st.subheader(chart_title)  # 'LUSR / CSR — {selected_label}'"
+
+# === CONTROLS ===
+controls:
+  - id: "lusr_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_chart"
+    scope: "section"                                          # affecte uniquement la section LUSR
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Filtre start_time >= now - days(period) ; déclenche un re-truncate de granularité"
+    api_param_mapping:
+      query_param: "period"
+      values_passthrough: true
+    requires_refetch: false                                   # peut être re-mappé client si tout est chargé
+    affects_charts: ["career.04"]
+
+  - id: "lusr_group_select"
+    label: "{{t.career_lusr_group_select}}"
+    widget: "selectbox"
+    position: "above_chart"
+    scope: "chart"
+    options:
+      values: ["__all__", "ranked", "arena", "btb", "tactical", "social", "fun"]
+      labels_per_value:
+        __all__: "{{t.career_lusr_all_groups}}"
+        ranked:  "🏆 Ranked"
+        arena:   "⚔️ Arena"
+        btb:     "💥 BTB"
+        tactical: "🎯 Tactical"
+        social:  "🎮 Social"
+        fun:     "🎉 Fun"
+      default: "__all__"
+    effect: "filter_dataset"
+    effect_detail: "Filtre playlist_group ; '__all__' = pas de filtre"
+    api_param_mapping:
+      query_param: "playlist_group"
+      values_passthrough: true                                # __all__ → null côté API
+    requires_refetch: false
+    affects_charts: ["career.04"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_confidence                                        # "Confiance" / "Confidence"
+    - trace_trend                                             # "Tendance" / "Trend"
+    - trace_lusr_axis                                         # "Rating LUSR/CSR" / "LUSR/CSR Rating"
+    - hover_trend_smooth
+  t:
+    - career_lusr_rating_evolution
+    - career_lusr_group_select
+    - career_lusr_all_groups
+    - career_lusr_no_rating
+    - encounters_period_label
+    - encounters_period_all
+    - encounters_period_2y
+    - encounters_period_1y
+    - encounters_period_1m
+    - encounters_period_1w
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+  legend_toggle: true
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Bande de confiance = 2 traces (upper + lower) avec fill='tonexty'"
+      why: |
+        Pattern Plotly classique pour faire un ruban : trace 1 (upper bound) invisible,
+        trace 2 (lower bound) avec fill='tonexty' qui remplit l'espace jusqu'à la précédente.
+        En ECharts, plus simple : `series` de type `line` avec `areaStyle` + bornes haute/basse
+        encodées comme deux séries distinctes. Alternative : ECharts `markArea` ou un seul
+        type `custom` qui dessine le ruban. À tester pour fidélité.
+
+    - decision: "Couleur principale dynamique LUSR (cyan) vs CSR (gold)"
+      why: |
+        Le code détecte la présence de LUSR ou CSR dans `rating_type` et choisit la couleur
+        en conséquence. Si les deux coexistent, nom = "LUSR / CSR" mais couleur cyan (LUSR
+        prioritaire). Côté Go API, à renvoyer un champ `rating_type_dominant: 'LUSR'|'CSR'|'mixed'`
+        et la couleur résolue, pour éviter de transporter la logique côté client.
+
+    - decision: "Granularité auto via PERIOD_GRANULARITY"
+      why: |
+        Map fixe période → trunc : 1w (pas de trunc), 1m → 1d, 1y/2y/all → 1w.
+        Évite que la timeline soit illisible (50+ semaines de matchs ranked → on garde 1 point/sem).
+        À porter côté Go avec date_trunc DuckDB. Documenté dans data.transformations.
+
+    - decision: "Layout `legend.y: -0.45` au lieu du -0.22 du thème"
+      why: |
+        Légende plus basse que la légende standard pour faire de la place à `apply_chrono_xaxis`
+        qui ajoute potentiellement deux niveaux de ticks (jour + mois). Sans cet override la
+        légende chevauche les ticks. Attention : `inherits: legend_horizontal_bottom` puis
+        `overrides: {y: -0.45}` dans le YAML pour expliciter.
+
+    - decision: "Chart_kind: line malgré la présence de zones (hrect) et bande de confiance"
+      why: |
+        Le chart_kind représente la dominante visuelle (la courbe LUSR). Les hrect et la
+        confidence band sont des décorations. Côté ECharts : `series.type: 'line'` avec
+        `markArea` (équiv hrect) + areaStyle pour la bande. Pas besoin d'un nouveau chart_kind
+        dédié — line couvre.

@@ -1,0 +1,83 @@
+# =============================================================================
+# Score cards — Performance score Session A / B
+# =============================================================================
+# 2 cards côte à côte via st.columns(2). Chaque card affiche :
+#   - Label "Session A/B"
+#   - Score numérique (0-100) avec couleur palier (get_score_color)
+#   - Label palier (get_score_label : Excellent/Solide/Correct/Mauvais/Pourri)
+#   - Badge "Better" si is_better=True
+# =============================================================================
+
+id: "session_compare.02"
+title: "Score cards — Performance score Session A / B"
+page: session_compare
+section: "Section 2 (linéaire)"
+display_order_in_page: 2
+source_function: "src/ui/pages/session_compare.py::_render_score_cards"
+source_helpers:
+  - "src/ui/components/performance.py::render_performance_score_card"
+  - "src/ui/components/performance.py::compute_session_performance_score_v2_ui"
+  - "src/ui/components/performance.py::get_score_color"
+  - "src/ui/components/performance.py::get_score_class"
+  - "src/ui/components/performance.py::get_score_label"
+fragment: false
+chart_kind: kpi_row
+
+data:
+  computed_by: server
+  upstream_service: "compute_session_performance_score_v2_ui(perf_a / perf_b)"
+  input_dataframe:
+    required_fields:
+      perf_a, perf_b: [score, kd_ratio, win_rate, accuracy, kills, deaths, assists, matches]
+  call_args: {}
+  constants:
+    score_thresholds: { excellent: 75, good: 60, average: 45, below_average: 30 }
+    palette:
+      excellent: "#00e676"
+      good: "#41d6ff"
+      average: "#ffb300"
+      below_average: "#FF8C00"
+      poor: "#e53935"
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 140 }
+
+kpi_row:
+  cardinality: 2
+  cells:
+    - id: card_session_a
+      label: "Session A"
+      score_field: "perf_a.score"
+      color_field: "get_score_color(perf_a.score)"
+      label_palier: "get_score_label(perf_a.score, lang)"
+      is_better_field: "is_a_better"
+    - id: card_session_b
+      label: "Session B"
+      score_field: "perf_b.score"
+      color_field: "get_score_color(perf_b.score)"
+      label_palier: "get_score_label(perf_b.score, lang)"
+      is_better_field: "is_b_better"
+
+display:
+  shown_when: "perf_a et perf_b non None"
+  config: null
+  width_mode: stretch
+
+i18n_keys:
+  viz_t: []
+  t: ["perf_label_excellent", "perf_label_good", "perf_label_average", "perf_label_below"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Badge 'Better' calculé côté caller (is_better=score_a > score_b)"
+      why: |
+        Détermination de la meilleure session basée sur le score composite (kd*50 + wr + acc/2
+        ou similaire). Le badge visuel donne un feedback immédiat à l'utilisateur sur 'laquelle
+        de mes 2 sessions était la meilleure ?'.

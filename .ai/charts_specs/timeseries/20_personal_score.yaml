@@ -1,0 +1,100 @@
+# =============================================================================
+# Personal score — bars amber par match + smoothing line violet rolling 10
+# =============================================================================
+# 1 trace bar amber (1 par match) + 1 trace line violet (rolling mean window=10)
+# par-dessus. Section CONDITIONNELLE : ne s'affiche que si 'personal_score' est
+# présent dans dff.columns. Sinon return silencieux.
+# =============================================================================
+
+id: "timeseries.20"
+title: "Personal score — bars + smoothing rolling 10"
+page: timeseries
+section: "Onglet Progression — Score personnel"
+display_order_in_tab: 10
+source_function: "src/ui/pages/win_loss.py::_render_personal_score_section"
+source_helpers:
+  - "src/visualization/timeseries_combat.py::plot_metric_bars_by_match"
+fragment: false
+chart_kind: line                                                # bar+line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  input_dataframe:
+    required_fields:
+      dff: [start_time, personal_score]
+  call_args:
+    metric_col: personal_score
+    bar_color: "#ffb300"                                        # amber
+    smooth_color: "#ab47bc"                                     # violet
+    smooth_window: 10
+  filters_applied: ["filtres globaux + 'personal_score' in dff.columns conditionnel (return silencieux sinon)"]
+
+  constants: {}
+
+# === TRACES ===
+traces:
+  - id: personal_score_bars
+    type: bar
+    color: "#ffb300"
+    opacity: 0.85
+    name_i18n: "{{t.wl_personal_score_y_axis}}"
+
+  - id: smoothed
+    type: scatter
+    mode: lines
+    color: "#ab47bc"
+    line_width: 2
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  yaxis:
+    title_i18n: "{{t.wl_personal_score_y_axis}}"
+    rangemode: tozero
+  hovermode: "x unified"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "'personal_score' ∈ dff.columns"
+  empty_state:
+    type: "st.info"
+    triggered_by:
+      - "fig_ps None → t('insufficient_data_chart')"
+      - "personal_score absent → return silencieux (section masquée)"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_personal_score'))"
+    - "if hints_visible(): st.caption(t('wl_personal_score_caption'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - wl_personal_score, wl_personal_score_caption
+    - wl_personal_score_y_axis, wl_personal_score_hover
+    - insufficient_data_chart
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Section ENTIÈREMENT masquée si personal_score absent"
+      why: |
+        personal_score n'existe que pour les matchs synchronisés depuis l'API ranked compétitif
+        ou avec un calcul stat avancé. Pour les matchs casual classiques, la colonne est null
+        partout — afficher un graph vide n'aurait aucun sens. La section disparaît silencieusement.
+
+    - decision: "Réutilisation de plot_metric_bars_by_match (générique)"
+      why: |
+        plot_metric_bars_by_match prend metric_col + couleurs en arguments — réutilisable pour
+        n'importe quelle métrique numérique par match. Côté React : composant <MetricBarsChart />
+        paramétrable.

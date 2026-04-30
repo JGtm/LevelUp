@@ -1,0 +1,58 @@
+# =============================================================================
+# Win/Loss page · Section 7 · Winrate & Performance vs Historique
+# =============================================================================
+# Wrapper réutilisant timeseries.08 (qui réutilise teammates.02 bullet + 13 perf).
+# 2 sub-charts en cascade : bullet winrate + barres groupées perf vs hist.
+# =============================================================================
+
+id: "win_loss.07"
+title: "Winrate & Performance vs Historique — 2 sub-charts"
+page: win_loss
+section: "Section 7 (linéaire) — sub-charts cascade"
+display_order_in_page: 7
+source_function: "src/ui/pages/win_loss.py::_render_winrate_perf_vs_history"
+fragment: true                                                  # @fragment_if_available
+chart_kind: composite_block
+
+data:
+  reuses:
+    of: ["timeseries.08", "teammates.02", "teammates.13"]
+    differences: |
+      Identique à timeseries.08 — même wrapper qui appelle plot_map_winrate_bullet
+      + plot_map_perf_vs_history. Fix map_ui sur base appliqué pareillement.
+
+traces: []
+layout:
+  inherits: _theme_default
+  height: { value: 500 }
+
+sub_charts:
+  - id: bullet
+    chart_ref: teammates.02
+    title_i18n: "{{t.wl_map_bullet_title}}"
+    plot_function: plot_map_winrate_bullet
+    config: PLOTLY_STATIC_CONFIG
+  - id: perf_vs_history
+    chart_ref: teammates.13
+    title_i18n: "{{t.wl_perf_vs_history_title}}"
+    plot_function: plot_map_perf_vs_history
+    config: PLOTLY_STATIC_CONFIG
+
+display:
+  shown_when: "bd_current et bd_history non vides après compute_map_breakdown"
+  config: "(par sub-chart)"
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.markdown(`##### {t.wl_map_bullet_title}`) puis le bullet chart"
+    - "st.markdown(`##### {t.wl_perf_vs_history_title}`) puis le perf chart"
+
+i18n_keys:
+  viz_t: []
+  t: ["wl_map_bullet_title", "wl_map_bullet_caption", "wl_perf_vs_history_title"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]

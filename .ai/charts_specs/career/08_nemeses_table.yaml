@@ -1,0 +1,222 @@
+# =============================================================================
+# Tableau HTML — Top 10 némésis (joueurs qui te tuent le plus)
+# =============================================================================
+# Variante de career.07 mais sur la table killer/victim (`killer_victim_pairs`).
+# 6 colonnes : #, Joueur, "Tué par" (main), "Tué" (sec), Net, Matchs.
+# Affiché dans la colonne GAUCHE d'un st.columns(2) avec career.09 (victims).
+# =============================================================================
+
+id: "career.08"
+title: "Top 10 némésis"
+page: career
+section: "Rencontres"
+source_function: "src/ui/pages/career_encounters_html.py::build_antagonist_table_html"
+source_helpers:
+  - "src/ui/pages/career_encounters_data.py::_load_top_nemeses"
+  - "src/data/repositories/_career_encounters_repo.py::EncounterCareerMixin.load_antagonists"
+  - "src/ui/pages/match_table_html.py::gamertag_link"
+  - "src/ui/pages/career_encounters_html.py::_kd_style"
+  - "src/ui/pages/career_encounters_render.py::render_encounters_section"  # appelant
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_load_top_nemeses(xuid, db_path, limit=10, exclude_xuids=friends, since)"
+  input_dataframe:
+    required_columns:
+      - opponent_xuid
+      - opponent_gamertag
+      - times_killed                                          # tu as tué l'adversaire
+      - times_killed_by                                       # adversaire t'a tué
+      - net_kills                                             # = times_killed - times_killed_by
+      - matches_against
+  call_args:
+    mode: "nemesis"                                           # /!\ DIFFÉRENT de victims (mode='victim')
+    limit: 10
+    exclude_xuids: "friends_set"
+    since: "= encounters_period"
+  call_args_semantics:
+    mode: |
+      'nemesis' → tri par times_killed_by DESC (les joueurs qui t'ont tué le plus)
+      'victim'  → tri par times_killed DESC (les joueurs que tu as tué le plus)
+  filters_applied: [encounters_period]
+  timezone: "user_local"
+
+  transformations:
+    - description: "Lecture via load_antagonists(mode='nemesis')"
+      sql_duckdb: |
+        -- Pseudo-SQL (à confirmer dans le repo) :
+        WITH agg AS (
+          SELECT
+            CASE WHEN k.killer_xuid = ? THEN k.victim_xuid
+                 ELSE k.killer_xuid END AS opponent_xuid,
+            SUM(CASE WHEN k.killer_xuid = ? THEN k.kill_count ELSE 0 END) AS times_killed,
+            SUM(CASE WHEN k.victim_xuid = ? THEN k.kill_count ELSE 0 END) AS times_killed_by,
+            COUNT(DISTINCT k.match_id) AS matches_against
+          FROM shared.v_killer_victim_full k
+          WHERE (k.killer_xuid = ? OR k.victim_xuid = ?)
+            AND <since filter>
+          GROUP BY 1
+        )
+        SELECT
+          a.opponent_xuid,
+          COALESCE(vg.gamertag, '') AS opponent_gamertag,
+          a.times_killed,
+          a.times_killed_by,
+          (a.times_killed - a.times_killed_by) AS net_kills,
+          a.matches_against
+        FROM agg a
+        LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = a.opponent_xuid
+        WHERE a.opponent_xuid NOT IN (<exclude_xuids friends>)
+        ORDER BY a.times_killed_by DESC                       -- /!\ DIFFÉRENT pour victims (ORDER BY times_killed)
+        LIMIT 10;
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes:
+    wrapper: "os-table-wrap os-sb-wrap"
+    table: "os-table os-scoreboard"
+    header_team: "os-sb-team"
+    header_cell: "os-sb-th"
+    row: "os-sb-row"
+    cell: "os-sb-td"
+  inline_styles:
+    table: "min-width: 0; width: 100%"
+
+  caption:
+    text: "{{t.career_nemesis_header}}"
+    colspan: 6
+
+  columns:
+    - id: rank
+      header: "#"
+      source_field: index                                     # 1-based row index
+      formatter: "i (entier)"
+      style: "text-align: left"
+
+    - id: player
+      header: "{{t.col_player}}"
+      source_field: opponent_gamertag
+      formatter: "gamertag_link(opp_gt) — <a> vers Explorer avec filter player"
+      style: "text-align: left"
+
+    - id: main_metric                                         # /!\ DIFFÉRENT selon mode
+      header: "{{t.col_times_killed_by}}"                     # "Tué par X fois" — pour mode='nemesis'
+      source_field: times_killed_by                           # main_val = times_killed_by
+      formatter: "{value}"
+      style: "text-align: center; font-weight: 700"
+
+    - id: sec_metric
+      header: "{{t.col_times_killed}}"                        # "Tué X fois"
+      source_field: times_killed                              # sec_val = times_killed
+      formatter: "{value}"
+      style: "text-align: center"
+
+    - id: net
+      header: "{{t.col_net_kills}}"
+      source_field: net_kills
+      formatter: "f'{net_sign}{net}' — '+' si positif sinon vide"
+      conditional_style:
+        rule: "_kd_style(times_killed, times_killed_by)"
+        details: |
+          if killed_by == 0:
+              return "color:#33ffbf;font-weight:700;" if killed > 0 else ""
+          ratio = killed / killed_by
+          if ratio >= 1.5:  return "color:#33ffbf;font-weight:700;"
+          if ratio <= 0.5:  return "color:#ff9e6b;font-weight:700;"
+          return ""
+      style: "text-align: center"
+
+    - id: matches_against
+      header: "{{t.col_matches_against}}"
+      source_field: matches_against
+      formatter: "{value}"
+      style: "text-align: center; color: #aaa"
+
+  legend:
+    enabled: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "nemeses is not None AND len(nemeses) > 0"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.career_antagonists_no_data}}"
+    triggered_by:
+      - "load_antagonists(mode='nemesis') retourne []"
+      - "ET load_antagonists(mode='victim') retourne aussi [] (l'empty_state global s'affiche)"
+      - "OU nemeses=[] mais victims non vide (empty_state local dans col_nem)"
+  config: null
+  width_mode: "stretch"
+  filters_widgets: [encounters_period]
+  fragment_isolation: false
+  layout_position:
+    container: "st.columns(2)"
+    column_index: 0                                           # GAUCHE
+    column_label: "{{t.career_nemesis_header}}"
+  preceded_by:
+    - "(rendu juste après career.07 dans render_encounters_section)"
+
+# === CONTROLS ===
+controls:
+  - id: "encounters_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_section"
+    scope: "section"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Idem career.07 — filtre `since` partagé entre 07/08/09"
+    api_param_mapping:
+      query_param: "since"
+      values_format: "ISO 8601 date"
+    requires_refetch: true
+    affects_charts: ["career.07", "career.08", "career.09"]
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - career_nemesis_header
+    - career_antagonists_no_data
+    - col_player
+    - col_times_killed_by
+    - col_times_killed
+    - col_net_kills
+    - col_matches_against
+    - encounters_period_label
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: "page=Explorer&gamertag={opponent_gamertag}"
+  drilldown_chain: ["explorer_player_filter"]
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Mode 'nemesis' implique colonnes main/sec inversées vs 'victim'"
+      why: |
+        `build_antagonist_table_html` utilise `mode` pour décider :
+          - mode='nemesis': main = times_killed_by (entête "Tué par"), sec = times_killed
+          - mode='victim': main = times_killed (entête "Tué"), sec = times_killed_by
+        Le tri SQL aussi diffère (ORDER BY times_killed_by DESC vs times_killed DESC).
+        Documenté dans `columns.main_metric` et `columns.sec_metric` avec headers paramétrés.
+
+    - decision: "_kd_style spécifique aux antagonistes (différent du _kd_color du top matches)"
+      why: |
+        Seuils différents : ici on regarde le RATIO net (kills/killed_by) avec seuils 1.5 et 0.5,
+        pour mettre en valeur les joueurs où le delta est extrême. Pour les top matches c'était
+        sur le K/D du joueur (1.5/0.67). Couleurs aussi différentes (#33ffbf vs #3DFFB5,
+        #ff9e6b vs #FF4D6D). Subtilités à respecter pour fidélité.

@@ -1,0 +1,130 @@
+# =============================================================================
+# Participation trend — 6 axes profil participation A vs B (bars horizontales)
+# =============================================================================
+# REMPLACE l'ancien radar superposé/opaque par une visualisation lisible :
+# 6 axes en lignes (objectifs, combat, support, score, impact, survie) avec
+# Session A et B en COLONNES groupées. Valeurs en % (range [0, 110]).
+# Hovertemplate : "{{axe}}: {{valeur}}%". 2 traces (1 par session) en bars
+# horizontales groupées.
+#
+# Section CONDITIONNELLE :
+#   - Nécessite repo.has_personal_score_awards()
+#   - profiles list non vide après _load_participation_profiles
+# =============================================================================
+
+id: "session_compare.13"
+title: "Participation trend — 6 axes A vs B (bars horizontales, ex-radar)"
+page: session_compare
+section: "Section 13 (linéaire, conditionnelle)"
+display_order_in_page: 13
+source_function: "src/ui/pages/session_compare_charts.py::render_participation_trend_section"
+source_helpers:
+  - "src/ui/pages/_session_compare_viz.py::_build_participation_bar_chart"
+  - "src/ui/pages/session_compare_charts.py::_load_participation_profiles"
+  - "src/data/repositories::DuckDBRepository.has_personal_score_awards"
+fragment: false
+chart_kind: grouped_bar
+
+data:
+  computed_by: server
+  upstream_service: "_load_participation_profiles(repo, match_ids_a, match_ids_b, df_a, df_b, db_path) → list[dict]"
+  input_dataframe:
+    required_fields:
+      df_session_a, df_session_b: [match_id]
+      profiles:
+        - name                                                  # 'Session A' / 'Session B'
+        - color                                                 # SESSION_COLORS
+        - "{axis}_norm"                                         # objectifs_norm, combat_norm, etc. (0-1)
+  call_args: {}
+
+  constants:
+    axes: ["objectifs", "combat", "support", "score", "impact", "survie"]
+    axis_labels_i18n:
+      - radar_objectives, radar_combat, radar_support
+      - col_score, radar_impact, radar_survival
+    palette: { session_a: "#E74C3C", session_b: "#3498DB" }
+    bar_orientation: h
+    barmode: group
+    range_x: [0, 110]                                           # marge à 110 pour laisser respirer 100%
+    height: 300
+
+# === TRACES ===
+traces: []                                                       # template — voir trace_specs ci-dessous
+
+trace_specs:
+  template_per_session: true
+  cardinality: 2
+  spec:
+    type: bar
+    orientation: h
+    name: "{{profile.name}}"
+    color: "{{profile.color}}"
+    y_field: axis_labels                                        # 6 catégories
+    x_field: "values = [(profile[ax_norm] or 0) * 100 for ax in axes]"
+    hovertemplate: "%{y}: %{x:.0f}%<extra>%{fullData.name}</extra>"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height: { value: 300 }
+  margin: { l: 90, r: 20, t: 10, b: 55 }
+  barmode: group
+  legend: { orientation: h, y: -0.18, x: 0.5, xanchor: center }
+  xaxis:
+    title: "%"
+    range: [0, 110]
+  yaxis:
+    type: category
+
+display:
+  shown_when: |
+    repo.has_personal_score_awards()
+    AND match_ids_a OR match_ids_b non vide
+    AND profiles non vide après _load_participation_profiles
+  empty_state:
+    type: "section masquée"
+    triggered_by:
+      - "personal_score_awards absent → return"
+      - "match_ids vides → return"
+      - "profiles vide → return"
+      - "Exception → catch silent (line 504)"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown('---')"
+    - "st.markdown(t('sc_participation_profile'))"
+    - "if hints_visible(): st.caption(t('sc_participation_comparison'))"
+
+i18n_keys:
+  viz_t: []
+  t:
+    - sc_participation_profile, sc_participation_comparison
+    - radar_objectives, radar_combat, radar_support
+    - radar_impact, radar_survival
+    - col_score
+    - insufficient_data_chart
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Bars horizontales groupées plutôt que radar superposé"
+      why: |
+        Le radar Plotly avec 2 sessions superposées devient illisible dès que les valeurs
+        sont proches (couleurs qui se mélangent). La conversion en bars horizontales (6 axes
+        = 6 lignes) sépare visuellement A et B sans perte d'information. Décision
+        documentée dans le docstring : 'Remplace le radar superposé/opaque par une
+        représentation plus lisible'.
+
+    - decision: "range x = [0, 110] (10% de marge)"
+      why: |
+        Sans marge, les barres à 100% touchent le bord droit du chart et leurs labels
+        peuvent être tronqués. 10% de buffer.
+
+    - decision: "Section masquée si personal_score_awards absent"
+      why: |
+        Le profil de participation (objectifs, support, impact, ...) requiert les awards
+        de l'API PersonalScores qui ne sont pas toujours synchronisés. Masquage propre
+        plutôt qu'un chart vide.

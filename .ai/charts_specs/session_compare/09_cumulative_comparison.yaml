@@ -1,0 +1,125 @@
+# =============================================================================
+# Cumulative comparison — net score cumulé Session A vs B + hline 0
+# =============================================================================
+# 2 lignes (1 par session) montrant l'évolution du NET SCORE (kills - deaths)
+# CUMULÉ match par match. Hline horizontale à y=0 (équilibre) avec annotation
+# 'sc_balance' à droite. Optionnellement : 2 traces de RANK (csr/lusr) sur Y2
+# si rank_a/rank_b fournis.
+# Hovermode='x unified' (toutes les valeurs au même x).
+# =============================================================================
+
+id: "session_compare.09"
+title: "Cumulative comparison — net score cumulé Session A vs B"
+page: session_compare
+section: "Section 9 (linéaire)"
+display_order_in_page: 9
+source_function: "src/ui/pages/session_compare.py::_render_cumulative_section"
+source_helpers:
+  - "src/visualization/_perf_session.py::plot_cumulative_comparison"
+  - "src/visualization/_perf_session.py::_add_session_trace"
+  - "src/visualization/_perf_session.py::_add_rank_trace"
+fragment: false
+chart_kind: line
+
+data:
+  computed_by: server
+  upstream_service: "compute net_score cumul (cumsum kills - deaths) sur chaque session triée chronologiquement"
+  input_dataframe:
+    required_fields: { df_session_a, df_session_b: [start_time, kills, deaths] }
+  call_args:
+    label_a, label_b: "labels affichés sessionA / sessionB"
+    rank_a, rank_b: "list[float|None] — rang LUSR/CSR par match, optionnel"
+    rank_label: "CSR | LUSR"
+    perf_a, perf_b: "list[float|None] — perf_score par match, optionnel pour customdata hover"
+
+  constants:
+    palette:
+      session_a:  "PERFORMANCE_COLORS.neutral"                  # gris-neutre
+      session_b:  "PERFORMANCE_COLORS.kd_line"                  # accent
+    hline_y: 0
+    hline_color: "rgba(255,255,255,0.75)"
+    hline_width: 2
+
+# === TRACES ===
+traces:
+  - id: session_a_cumul
+    type: scatter
+    mode: lines+markers
+    color: "PERFORMANCE_COLORS.neutral"
+    name: "{{label_a}}"
+  - id: session_b_cumul
+    type: scatter
+    mode: lines+markers
+    color: "PERFORMANCE_COLORS.kd_line"
+    name: "{{label_b}}"
+  - id: rank_a
+    type: scatter
+    mode: lines
+    y_axis: y2
+    optional: true                                              # ssi rank_a fourni
+    color: "PERFORMANCE_COLORS.neutral"
+    line_dash: dot
+  - id: rank_b
+    type: scatter
+    mode: lines
+    y_axis: y2
+    optional: true
+    color: "PERFORMANCE_COLORS.kd_line"
+    line_dash: dot
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380                                                  # opts.height_px par défaut
+  hovermode: "x unified"
+  legend: { orientation: h, yanchor: top, y: -0.18, xanchor: center, x: 0.5 }
+  yaxis:
+    title_i18n: "{{viz_t.axis_cumul_net_score}}"
+  yaxis_secondary:
+    title: "{{rank_label}}"                                     # 'CSR' ou 'LUSR'
+    rangemode: tozero
+    optional: true                                              # ssi has_rank
+  xaxis:
+    title_i18n: "{{viz_t.axis_match_number}}"
+  shapes:
+    - id: hline_balance
+      type: line
+      y_field: 0
+      line: { width: 2, color: "rgba(255,255,255,0.75)" }
+      annotation:
+        text_i18n: "{{viz_t.label_balance}}"
+        position: right
+
+display:
+  shown_when: "df_session_a OR df_session_b non vide"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "(rendu via _render_cumulative_section)"
+
+i18n_keys:
+  viz_t:
+    - axis_match_number
+    - axis_cumul_net_score
+    - label_balance
+  t: []
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Hline y=0 'équilibre' avec annotation"
+      why: |
+        Le net score cumul peut être positif (plus de kills que de deaths) ou négatif. La
+        hline 'sc_balance' marque le seuil de neutralité. Si la courbe descend sous y=0,
+        l'utilisateur sait qu'il a accumulé un déficit kills/deaths. Cohérent avec
+        timeseries.24 (cumulative_kd avec hline=1.0).
+
+    - decision: "Y2 rank optionnel (LUSR/CSR)"
+      why: |
+        Pour les playlists ranked, on peut superposer l'évolution du rang sur Y2 (rank=1
+        → top, autorange n'est PAS reversed ici car c'est CSR/LUSR rating numerique pas un
+        classement). Permet de voir 'gain de score cumul = gain de rating ?'.

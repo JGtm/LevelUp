@@ -1,0 +1,127 @@
+# =============================================================================
+# Radar comparison chart — F/D · Win% · Accuracy (3 axes) avec hist optional
+# =============================================================================
+# Scatterpolar fermé (toself fill). 2 traces obligatoires (Session A rouge,
+# Session B bleu). 1 trace optionnelle moyenne historique (violet, dashed).
+# 3 axes :
+#   - F/D (kd_ratio normalisé : kd * 50, max 100 — donc F/M 2.0 → 100)
+#   - Win % (déjà 0-100)
+#   - Accuracy (déjà 0-100, fallback 50 si null)
+# Range radial fixe [0, 100].
+# Badge ⚠️ sur le label hist si session_count < 3 (tendance non significative).
+# =============================================================================
+
+id: "session_compare.07"
+title: "Radar comparison — F/D, Win %, Accuracy (3 axes)"
+page: session_compare
+section: "Section 7 (linéaire, en colonnes avec 08)"
+display_order_in_page: 7
+source_function: "src/ui/pages/session_compare_charts.py::render_comparison_radar_chart"
+source_helpers:
+  - "src/ui/pages/session_compare_charts.py::_add_radar_trace"
+fragment: true                                                  # @fragment_if_available
+chart_kind: radar
+
+data:
+  computed_by: server
+  upstream_service: "perf_a / perf_b dicts + hist_avg dict optionnel"
+  input_dataframe:
+    required_fields: { perf_a, perf_b: [kd_ratio, win_rate, accuracy], hist_avg: [...même fields..., session_count] }
+  call_args: {}
+
+  constants:
+    radial_range: [0, 100]
+    kd_normalize: "kd * 50, capped 100"                         # F/M 2.0 → 100
+    accuracy_fallback: 50                                       # si null
+    palette:
+      session_a:        "#E74C3C"
+      session_a_fill:   "rgba(231, 76, 60, 0.3)"
+      session_b:        "#3498DB"
+      session_b_fill:   "rgba(52, 152, 219, 0.3)"
+      historical:       "#9B59B6"
+      historical_fill:  "rgba(155, 89, 182, 0.2)"
+    hist_warn_threshold: 3                                      # ⚠️ si session_count < 3
+
+  transformations:
+    - description: "Normalisation des 3 axes pour le radar (0-100)"
+      polars: |
+        kd_norm = min(100, (kd or 0) * 50)
+        wr_norm = wr or 0
+        acc_norm = acc if acc is not None else 50
+
+# === TRACES ===
+traces:
+  - id: hist_avg
+    type: scatterpolar
+    optional: true                                              # ssi hist_avg fourni AND session_count >= 1
+    fill: toself
+    line: { color: "#9B59B6", dash: dot }
+    fillcolor: "rgba(155, 89, 182, 0.2)"
+    name_template: "{{t.sc_hist_avg_trace}} (n={n}{warn_suffix})"
+  - id: session_a
+    type: scatterpolar
+    fill: toself
+    line: { color: "#E74C3C" }
+    fillcolor: "rgba(231, 76, 60, 0.3)"
+    name: "Session A"
+  - id: session_b
+    type: scatterpolar
+    fill: toself
+    line: { color: "#3498DB" }
+    fillcolor: "rgba(52, 152, 219, 0.3)"
+    name: "Session B"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height: { value: 400 }
+  polar:
+    radialaxis: { visible: true, range: [0, 100] }
+    bgcolor: "rgba(0,0,0,0)"
+  showlegend: true
+
+display:
+  shown_when: "perf_a et perf_b non None (les 3 fields normalisables)"
+  empty_state:
+    type: "st.info"
+    triggered_by: ["fig None → t('insufficient_data_chart')"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+
+i18n_keys:
+  viz_t: []
+  t:
+    - sc_radar_kd, sc_radar_win
+    - col_accuracy
+    - sc_hist_avg_trace
+    - insufficient_data_chart
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Normalisation kd × 50 (F/M 2.0 = 100)"
+      why: |
+        Les 3 axes doivent être SUR LA MÊME ÉCHELLE [0, 100] pour un radar lisible. F/M
+        typique 0.8-2.0 → on multiplie par 50 pour étaler sur la plage. Cap à 100 pour
+        les sessions extrêmes (F/M > 2). Convention de l'app.
+
+    - decision: "Trace historique en POINTILLÉS"
+      why: |
+        Distingue visuellement la moyenne historique (référence neutre) des sessions
+        actives (lignes solides). dash='dot' + couleur violet (vs rouge/bleu) accentue
+        la différence sémantique.
+
+    - decision: "Badge ⚠️ si session_count < 3"
+      why: |
+        La 'moyenne historique' calculée sur < 3 sessions similaires est statistiquement
+        peu robuste. Le badge avertit l'utilisateur que la trace de référence est à
+        prendre avec précaution. Cohérent avec timeseries.25 (R² < 0.3 = non significatif).
+
+    - decision: "Radar fermé via duplication du 1er point"
+      why: |
+        Plotly Scatterpolar nécessite r[0] dupliqué à la fin pour fermer le polygone.
+        _add_radar_trace gère via `r=values + [values[0]]`. Côté ECharts : radar series
+        ferme automatiquement.

@@ -1,0 +1,108 @@
+# =============================================================================
+# Damage dealt vs taken — bars groupées + 2 lines smoothing
+# =============================================================================
+# 2 séries via _add_damage_traces (1 par sens) :
+#   - damage_dealt (cyan, opacity 0.80) bars + smoothing line solide
+#   - damage_taken (red, opacity 0.65) bars + smoothing line POINTILLÉE (dot)
+# Convention : les "infligés" sont mis en avant (solide), les "subis" en
+# pointillé (visualement secondaire = "dégâts à minimiser").
+# =============================================================================
+
+id: "timeseries.18"
+title: "Damage dealt vs taken — bars + smoothing"
+page: timeseries
+section: "Onglet Progression — Dégâts"
+display_order_in_tab: 8
+source_function: "src/visualization/timeseries_combat.py::plot_damage_dealt_taken"
+source_helpers:
+  - "src/visualization/timeseries_combat.py::_add_damage_traces"
+fragment: false
+chart_kind: line                                                # bars+lines
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "downsample + sort('start_time')"
+  input_dataframe:
+    required_fields:
+      df: [start_time, damage_dealt, damage_taken]
+  call_args: { lang: "fr | en" }
+  filters_applied: ["filtres globaux + 'damage_dealt' in dff.columns conditionnel"]
+
+  constants:
+    dealt_color: "#41d6ff"                                      # cyan
+    dealt_opacity: 0.80
+    taken_color: "#e53935"                                      # red
+    taken_opacity: 0.65
+    line_dash_dealt: solid                                      # default
+    line_dash_taken: dot                                        # /!\ pointillé pour les dégâts subis
+
+# === TRACES ===
+traces:
+  - id: dmg_dealt_bars
+    type: bar
+    color: "#41d6ff"
+    opacity: 0.80
+    name_i18n: "{{viz_t.trace_dmg_dealt}}"
+  - id: dmg_dealt_smooth
+    type: scatter
+    mode: lines
+    color: "#41d6ff"
+    name_i18n: "{{viz_t.trace_dmg_dealt_avg}}"
+  - id: dmg_taken_bars
+    type: bar
+    color: "#e53935"
+    opacity: 0.65
+    name_i18n: "{{viz_t.trace_dmg_taken}}"
+  - id: dmg_taken_smooth
+    type: scatter
+    mode: lines
+    color: "#e53935"
+    line_dash: dot                                              # POINTILLÉ
+    name_i18n: "{{viz_t.trace_dmg_taken_avg}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380                                                  # PLOT_CONFIG.default_height
+  margin: { l: 40, r: 20, t: 40, b: 90 }
+  hovermode: "x unified"
+  legend: "horizontal_bottom"
+  barmode: group
+  bargap: 0.15
+  bargroupgap: 0.06
+  yaxis:
+    title_i18n: "{{viz_t.axis_damage}}"
+    rangemode: tozero
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "'damage_dealt' ∈ dff.columns"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_damage'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_dmg_dealt, trace_dmg_taken
+    - trace_dmg_dealt_avg, trace_dmg_taken_avg
+    - hover_dmg_dealt, hover_dmg_taken
+    - axis_damage
+  t: ["ts_damage"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Smoothing line DEALT solide vs TAKEN pointillée"
+      why: |
+        Convention visuelle : ce qu'on VEUT (dégâts infligés) est mis en avant (line solide) ;
+        ce qu'on SUBIT (dégâts pris) est en pointillé (visuellement secondaire). La couleur
+        rouge des dégâts subis renforce le message.

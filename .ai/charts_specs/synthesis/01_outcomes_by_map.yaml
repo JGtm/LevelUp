@@ -1,0 +1,344 @@
+# =============================================================================
+# Résultats par carte — barres empilées verticales (W/L/T/DNF)
+# =============================================================================
+# Affiché dans la colonne GAUCHE de la section "Résultats par carte et mode".
+# Chaque carte est une catégorie sur l'axe X (rotation 45°), les barres
+# empilent les 4 outcomes (Wins=vert, Losses=rouge, Ties=ambre, DNF=violet).
+# Trace `wins` porte un customdata = win_rate, affiché dans le hover.
+# =============================================================================
+
+id: "synthesis.01"
+title: "Résultats par carte"
+page: synthesis
+section: "Résultats par carte et mode"
+source_function: "src/visualization/distributions_outcomes.py::plot_stacked_outcomes_by_category"
+source_helpers:
+  - "src/visualization/_distributions_outcomes_helpers.py::build_outcome_pivot"
+  - "src/visualization/_distributions_outcomes_helpers.py::add_outcome_traces"
+  - "src/visualization/_distributions_outcomes_helpers.py::_add_sparse_bar_trace"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+  - "src/visualization/theme.py::get_legend_horizontal_bottom"
+  - "src/ui/pages/win_loss.py::_render_map_mode_breakdown"   # appelant
+fragment: true                                       # @fragment_if_available sur _render_map_mode_breakdown
+chart_kind: "stacked_bar"
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null                             # à créer côté Go
+  input_dataframe:
+    required_columns: [match_id, outcome]
+    map_column_resolution:                           # win_loss.py:96 — fallback explicite
+      preferred: "map_ui"
+      fallback: "map_name"
+    polars_dtype_hints:
+      match_id: "String"
+      outcome: "Int64"
+      map_ui: "String"
+      map_name: "String"
+  call_args:
+    category_col: "map_ui or map_name"
+    min_matches: 1
+    sort_by: "total"                                 # tri sur le total de matches descendant
+    max_categories: 12                               # top 12 cartes
+  call_args_semantics:
+    min_matches: "exclut les cartes avec total < min_matches après pivot"
+    sort_by: "total | wins | losses | win_rate | name (cf. build_outcome_pivot)"
+    max_categories: "ne garde que les N premières après tri (head N)"
+  filters_applied: [date_range, period_selector]
+
+  transformations:
+    - description: "Drop des lignes sans catégorie ou sans outcome"
+      polars: 'd = ensure_polars(df).drop_nulls(subset=[category_col, "outcome"])'
+      sql_duckdb: |
+        WHERE map_name IS NOT NULL AND outcome IS NOT NULL
+
+    - description: "Pivot des outcomes par catégorie (count)"
+      polars: |
+        pivot = (d.group_by(category_col, "outcome")
+                  .agg(pl.col("match_id").count().alias("count"))
+                  .pivot(on="outcome", index=category_col, values="count")
+                  .fill_null(0))
+      sql_duckdb: |
+        SELECT
+          map_name AS category,
+          COUNT(*) FILTER (WHERE outcome = 2) AS wins,    -- OUTCOME_CODES.WIN = 2
+          COUNT(*) FILTER (WHERE outcome = 3) AS losses,  -- OUTCOME_CODES.LOSS = 3
+          COUNT(*) FILTER (WHERE outcome = 1) AS ties,    -- OUTCOME_CODES.TIE = 1
+          COUNT(*) FILTER (WHERE outcome = 4) AS left,    -- OUTCOME_CODES.NO_FINISH = 4
+          COUNT(*)                              AS total
+        FROM match_participants
+        WHERE xuid = ? AND start_time >= ?
+          AND map_name IS NOT NULL AND outcome IS NOT NULL
+        GROUP BY map_name;
+
+    - description: "Renommage des colonnes outcome (codes → labels stables)"
+      polars: |
+        outcome_map = {2:"wins", 3:"losses", 1:"ties", 4:"left"}
+        # Renommer les colonnes du pivot, ajouter colonnes manquantes à 0
+      sql_duckdb: "-- déjà fait via les FILTER ci-dessus avec aliases stables"
+
+    - description: "Ajout des colonnes total et win_rate"
+      polars: |
+        pivot = pivot.with_columns(
+          (wins + losses + ties + left).alias("total"),
+        ).with_columns(
+          (wins.cast(Float64) / total).fill_null(0.0).alias("win_rate"),
+        )
+      sql_duckdb: |
+        -- À ajouter dans le SELECT principal :
+        wins * 1.0 / NULLIF(total, 0) AS win_rate
+
+    - description: "Filtrage min_matches puis tri puis top N"
+      polars: |
+        pivot = pivot.filter(pl.col("total") >= min_matches)
+        if sort_by == "win_rate": pivot.sort("win_rate", descending=True)
+        elif sort_by == "name":   pivot.sort(category_col)
+        else:                      pivot.sort("total", descending=True)  # default
+        return pivot.head(max_categories)
+      sql_duckdb: |
+        -- Wrapper du SELECT principal :
+        SELECT * FROM (...) WHERE total >= ?  -- min_matches
+        ORDER BY total DESC                   -- ou wins/losses/win_rate/category selon sort_by
+        LIMIT ?;                              -- max_categories
+
+    - description: "Si pivot vide après filtres → retourner None (caller affiche st.info)"
+      polars: "if pivot.is_empty(): return None"
+      sql_duckdb: "-- Côté Go : si SELECT renvoie 0 lignes, l'API renvoie un état vide"
+
+# === TRACES ===
+# Ordre = ordre d'empilement Plotly (premier ajouté en bas, dernier en haut).
+# IMPORTANT : les traces ties et left sont CONDITIONNELLES (sum > 0 sur la colonne).
+traces:
+  - id: "wins"
+    name: "{{viz_t.trace_wins}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.green}}"
+    color_token: "HALO_COLORS.green"
+    orientation: v                                   # catégorie sur X, count sur Y
+    opacity: 0.85
+    customdata:
+      fields: [win_rate]
+      schema:
+        win_rate: "float (0.0–1.0)"
+    text_data:
+      source: "values"                               # text=pivot["wins"].to_list()
+      template: "{value:d}"
+      empty_when: null                               # texte 0 NON masqué pour wins (différent de _add_sparse_bar_trace)
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_wins}}: %{y}<br>{{viz_t.hover_win_rate}}: %{customdata:.1%}<extra></extra>"
+    show_when: "always"
+
+  - id: "losses"
+    name: "{{viz_t.trace_losses}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.red}}"
+    color_token: "HALO_COLORS.red"
+    orientation: v
+    opacity: 0.75
+    text_data:
+      source: "values"
+      template: "{value:d}"
+      empty_when: null
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_losses}}: %{y}<extra></extra>"
+    show_when: "always"
+
+  - id: "ties"
+    name: "{{viz_t.trace_ties}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.amber}}"
+    color_token: "HALO_COLORS.amber"
+    orientation: v
+    opacity: 0.70
+    text_data:
+      source: "values"
+      template: "{value:d}"
+      empty_when: "value == 0"                       # _add_sparse_bar_trace masque les 0
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_ties}}: %{y}<extra></extra>"
+    show_when: "sum(values) > 0"                     # _add_sparse_bar_trace : trace omise si sum <= 0
+
+  - id: "left"
+    name: "{{viz_t.trace_unfinished}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.violet}}"
+    color_token: "HALO_COLORS.violet"
+    orientation: v
+    opacity: 0.60
+    text_data:
+      source: "values"
+      template: "{value:d}"
+      empty_when: "value == 0"
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_unfinished}}: %{y}<extra></extra>"
+    show_when: "sum(values) > 0"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: null
+    expression: null
+    branches:
+      - {when: "pivot.height > 10", height: 520}    # PLOT_CONFIG.tall_height
+      - {else: true, height: 360}                    # PLOT_CONFIG.default_height
+    explanation: "Si plus de 10 catégories à afficher → hauteur élargie pour lisibilité"
+  margin: {l: 40, r: 20, t: 30, b: 100}             # b=100 important pour les labels rotation 45°
+  barmode: "stack"
+  bargap: 0.15
+  hovermode: null
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom               # {orientation:h, yanchor:top, y:-0.22, xanchor:left, x:0}
+
+  # Override layout supplémentaire appliqué par win_loss.py:108-117
+  legend_override:                                   # /!\ override APRÈS plot_stacked_outcomes_by_category par le caller
+    orientation: h
+    yanchor: bottom
+    y: 1.02                                          # passe la légende EN HAUT (override du legend_horizontal_bottom du thème)
+    xanchor: right
+    x: 1
+  margin_override: {l: 40, r: 20, t: 30, b: 80}     # b passe de 100 à 80 (override par le caller)
+
+  xaxis:
+    type: "category"
+    title: ""                                        # update_xaxes(title_text="")
+    tickformat: null
+    tickangle: 45
+    range: null
+    autorange: null
+    automargin: false
+    showticklabels: true
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.trace_matches}}"                 # update_yaxes(title_text=viz_t("trace_matches"))
+    range: null
+    autorange: null
+    automargin: false
+
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    'map_ui' in dff.columns OR 'map_name' in dff.columns
+    AND 'outcome' in dff.columns
+    AND not dff.is_empty()
+    AND plot_stacked_outcomes_by_category(...) is not None
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.insufficient_data_chart}}"
+    triggered_by:
+      - "ni map_ui ni map_name dans les colonnes"
+      - "outcome absent des colonnes"
+      - "df vide après drop_nulls"
+      - "build_outcome_pivot retourne None (toutes catégories filtrées par min_matches)"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: [synthesis_period]
+  fragment_isolation: true
+  layout_position:                                   # ce chart vit dans la colonne gauche d'un st.columns(2)
+    container: "st.columns(2)"
+    column_index: 0
+    column_label: "{{t.wl_by_map}}"                  # ##### titre de colonne
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_results_by_map_mode'))"
+    - "st.markdown(f'##### {t(\"wl_by_map\")}')"
+
+# === CONTROLS ===
+controls:
+  - id: "synthesis_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_page"
+    scope: "page"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Filtre dff en amont sur start_time. Affecte tous les charts."
+    api_param_mapping:
+      query_param: "period"
+      values_passthrough: true
+    requires_refetch: false
+    affects_charts: ["synthesis.01", "synthesis.02", "synthesis.03", "synthesis.04", "synthesis.05"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_wins
+    - trace_losses
+    - trace_ties
+    - trace_unfinished
+    - hover_win_rate
+    - trace_matches
+  t:
+    - wl_results_by_map_mode
+    - wl_by_map
+    - insufficient_data_chart
+    - encounters_period_label
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  sample_dataset: null
+  fig_dict_path: null
+  ast_extracted_fields: []
+  runtime_extracted_fields: []
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Documentation des deux étages d'override de layout (fonction + caller)"
+      why: |
+        plot_stacked_outcomes_by_category applique son propre `update_layout` (legend bottom,
+        margin b:100), MAIS _render_map_mode_breakdown applique ENSUITE un second update_layout
+        (legend top right, margin b:80). Le rendu final correspond à la deuxième passe.
+        Documenter les deux permet au portage Go de comprendre pourquoi le YAML "final" diffère
+        de ce qu'écrit la fonction de plot. Champ `legend_override` et `margin_override` séparés.
+
+    - decision: "OUTCOME_CODES inlinés dans les SQL"
+      why: |
+        Plutôt que de référencer un enum partagé, j'ai inliné les codes (1=TIE, 2=WIN, 3=LOSS,
+        4=NO_FINISH) avec commentaire dans la requête SQL pour qu'elle soit lisible isolément.
+        Le code Go partagera un enum `Outcome` (cf. internal/domain/refdata.go déjà existant
+        d'après les noms de fichiers vus dans apps/go-api).
+
+    - decision: "Hauteur conditionnelle via `branches`"
+      why: |
+        `tall_height(520) if pivot.height > 10 else default_height(360)` est une if-else
+        sur le RÉSULTAT du pivot, pas sur les inputs. Côté Go API, l'agrégation produit N lignes ;
+        cette information doit remonter au frontend qui choisit la hauteur. Alternative :
+        l'API peut renvoyer un champ `recommended_height` calculé. À discuter lors de l'API design.
+
+    - decision: "`trace.show_when: \"sum(values) > 0\"` pour ties/left, `\"always\"` pour wins/losses"
+      why: |
+        Le helper Python `_add_sparse_bar_trace` n'ajoute la trace QUE si la somme est positive.
+        En ECharts, équivalent : ne pas pousser la `series` dans `option.series[]` si la condition
+        n'est pas remplie. Documenter `show_when` est nécessaire car en Plotly la trace existe
+        toujours en code mais peut être skipée — sans cette doc, le portage Go pourrait
+        envoyer 4 séries même quand 2 suffisent (légende avec entrées vides).
+
+    - decision: "`text_data.empty_when: \"value == 0\"` pour ties/left, null pour wins/losses"
+      why: |
+        Asymétrie volontaire dans le helper : sur wins/losses, le texte 0 est affiché tel quel
+        (mais peu probable car ces traces ne sont visibles que si elles ont des données) ;
+        sur ties/left, le texte des cellules à 0 est masqué pour ne pas polluer l'affichage
+        des cartes où il n'y a eu ni égalité ni abandon.

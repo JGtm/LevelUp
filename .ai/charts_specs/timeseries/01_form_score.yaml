@@ -1,0 +1,99 @@
+# =============================================================================
+# Form score — évolution session vs historique (joueur principal)
+# =============================================================================
+# Même fonction Plotly que teammates.05 (`plot_form_score_history`) mais contexte
+# différent : joueur principal seul (pas d'escouade), positionné en TÊTE de page
+# (avant K/D/A). La session courante est mise en avant via shape colorée
+# (verte si current >= baseline, rouge sinon).
+# =============================================================================
+
+id: "timeseries.01"
+title: "Form score — évolution session vs historique"
+page: timeseries
+section: "Onglet Résumé K/D/A — Form score"
+display_order_in_tab: 2                                        # après render_kpis_section
+source_function: "src/ui/pages/_timeseries_form.py::render_form_score_section"
+source_helpers:
+  - "src/visualization/_form_score.py::plot_form_score_history"
+  - "src/ui/pages/_timeseries_form.py::_current_form_value"
+  - "src/ui/pages/_timeseries_form.py::_baseline_form_value"
+  - "src/ui/pages/_timeseries_form.py::_load_bucket_series"
+  - "src/ui/pages/_timeseries_form.py::_prepare_form_display"
+fragment: false
+chart_kind: line                                               # avec areaStyle (fill positif/négatif)
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_load_bucket_series(db_path, xuid) → DataFrame buckets historiques + form_score"
+  input_dataframe:
+    required_fields:
+      df_full:
+        - match_id, start_time, performance_score
+      bucket_series_df:
+        - bucket_label, form_score, n_matches
+  call_args: {}
+  filters_applied: ["highlight_ids = match_ids de la session/sélection courante"]
+
+  reuses:
+    of: "teammates.05"
+    differences: |
+      - Pas d'escouade (1 seule courbe : moi).
+      - Affichage en TÊTE de page Résumé (avant K/D/A timeseries).
+      - Highlight de la session courante via shape rect colorée (vert/rouge selon delta).
+
+  transformations:
+    - description: "Calcul du form score actuel et baseline"
+      polars: |
+        current = _current_form_value(history_df, highlight_ids)   # moyenne perf_score session
+        baseline = _baseline_form_value(history_df, highlight_ids) # moyenne perf_score hors session
+
+# === TRACES ===
+traces: []                                                       # cf. teammates.05 — areaStyle positif/négatif
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  shapes:
+    - id: session_highlight
+      type: rect
+      x_field: "session_x_range"
+      fillcolor: "rgba(0,200,100,0.15) si current>=baseline sinon rgba(255,80,80,0.15)"
+      line_width: 0
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "history_df non vide"
+  empty_state:
+    type: "st.info"
+    triggered_by: ["history_df vide → ts_form_no_data"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_form_score_title'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: ["form_score", "axis_form"]
+  t: ["ts_form_score_title", "ts_form_no_data"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Réutilise plot_form_score_history (cf. teammates.05) — pas de duplication"
+      why: |
+        Côté React : composant <FormScoreChart /> partagé. Différence d'usage :
+        teammates.05 affiche série multi-joueurs ; timeseries.01 affiche série solo.
+        Même paramètre `highlight_ids` pour mettre en évidence la session courante.
+
+    - decision: "Position en tête de page (display_order=2 après KPIs)"
+      why: |
+        Le form score est l'indicateur "macro" — il répond à "comment je vais en ce moment ?"
+        avant de plonger dans les détails K/D/A. Place en haut pour donner le contexte global.

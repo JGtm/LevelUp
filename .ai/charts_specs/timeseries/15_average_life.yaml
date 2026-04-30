@@ -1,0 +1,100 @@
+# =============================================================================
+# Average life timeseries — bars green + smoothing rolling 10
+# =============================================================================
+# Bars (1 par match) couleur green pour la durée de vie moyenne en secondes.
+# Smoothing line cyan rolling 10 par-dessus.
+# Filtre nulls sur average_life_seconds. customdata avec deaths/time_played/match_id.
+# Hauteur SHORT_HEIGHT (~280px) — chart secondaire dans la cascade Progression.
+# =============================================================================
+
+id: "timeseries.15"
+title: "Average life timeseries — durée de vie moyenne par match"
+page: timeseries
+section: "Onglet Progression — Durée de vie"
+display_order_in_tab: 5
+source_function: "src/visualization/timeseries_combat.py::plot_average_life"
+source_helpers:
+  - "src/visualization/_timeseries_helpers.py::_rolling_mean"
+  - "src/visualization/_timeseries_helpers.py::prepare_time_axis"
+fragment: false
+chart_kind: line                                                # bars+line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "downsample + drop_nulls(['average_life_seconds']).sort('start_time')"
+  input_dataframe:
+    required_fields:
+      df:
+        - start_time, average_life_seconds
+        - deaths, time_played_seconds, match_id                 # customdata hover
+  call_args: { lang: "fr | en" }
+
+  constants:
+    bar_color: "#00e676"                                        # green
+    smooth_color: "#41d6ff"                                     # cyan
+    smoothing_window: 10
+    height: 280                                                 # PLOT_CONFIG.short_height
+
+# === TRACES ===
+traces:
+  - id: life_bars
+    type: bar
+    color: "#00e676"
+    opacity: 0.85
+    name_i18n: "{{viz_t.trace_lifespan}}"
+    hovertemplate_i18n: "{{viz_t.hover_lifespan}}"
+    customdata: "[deaths, time_played_seconds, match_id]"
+
+  - id: smoothed
+    type: scatter
+    mode: lines
+    color: "#41d6ff"
+    name_i18n: "{{viz_t.trace_avg_smoothed}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 280
+  margin: { l: 40, r: 20, t: 50, b: 90 }
+  hovermode: "x unified"
+  legend: "horizontal_bottom"
+  yaxis:
+    title_i18n: "{{viz_t.axis_seconds}}"
+    rangemode: tozero
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df non vide après drop_nulls(['average_life_seconds'])"
+  empty_state:
+    type: "st.info"
+    triggered_by: ["data vide → ts_no_data_lifespan ou similaire"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_lifespan'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_lifespan
+    - trace_avg_smoothed
+    - hover_lifespan
+    - hover_avg_smoothed_s
+    - axis_seconds
+  t: ["ts_lifespan"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Hauteur SHORT_HEIGHT (~280px)"
+      why: |
+        Chart secondaire dans la cascade Progression — pas la priorité visuelle de la page.
+        La métrique average_life est un INDICATEUR PARMI D'AUTRES, on lui donne moins d'espace
+        que performance_timeseries (12) qui mérite la pleine hauteur.

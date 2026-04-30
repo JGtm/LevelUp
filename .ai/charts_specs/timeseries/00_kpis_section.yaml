@@ -1,0 +1,197 @@
+# =============================================================================
+# KPI Section — 8 cards stylées avec trends vs all-time
+# =============================================================================
+# Section APPELÉE EN HAUT du tab Résumé Timeseries (et aussi en haut de la page
+# Teammates, après le subheader 'tm_my_stats_section'). Composé de 8 cards :
+#   1. Selected matches count + sub avg_match_duration HH:MM:SS
+#   2. Total play duration (DhMM:SS)
+#   3. Kills/match + sub kills/min + trend ▲/▼/━ vs all-time
+#   4. Deaths/match + sub deaths/min + trend INVERSÉ
+#   5. Assists/match + sub assists/min + trend
+#   6. Avg accuracy + trend
+#   7. Avg lifespan (MM:SS) + trend
+#   8. Results bar segmentée 4 couleurs (Wins vert / Losses rouge / Ties violet / DNF gris)
+#
+# Trend logic : `current / reference >= 1 + 0.08` → above (▲), <= 1 - 0.08 → below
+# (▼), entre les 2 → near (━), inversé pour deaths.
+# =============================================================================
+
+id: "timeseries.00"
+title: "KPI Section — 8 cards perf joueur (vs all-time)"
+page: timeseries
+section: "Header (avant tab Résumé) — partagé avec Teammates"
+display_order_in_tab: 1
+source_function: "src/app/kpis_render.py::render_kpis_section"
+source_helpers:
+  - "src/app/kpis_render.py::_build_kpi_cards"
+  - "src/app/kpis_render.py::_trend"
+  - "src/app/kpis.py::compute_kpi_stats"
+  - "src/app/kpis.py::KPIStats"
+  - "src/ui/components::render_combined_kpi_cards"
+  - "src/analysis/stats::format_mmss"
+  - "src/ui/formatting::format_duration_dhm"
+  - "src/ui/formatting::format_duration_hms"
+fragment: false
+chart_kind: kpi_row
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_kpi_stats(dff) → KPIStats + compute_kpi_stats(df_full) si len(df) > len(dff)"
+  input_dataframe:
+    required_fields:
+      dff: [match_id, kills, deaths, assists, accuracy, avg_life_seconds, time_played_seconds, outcome, start_time]
+      df_full: "DataFrame all-time (pour calcul trends — optionnel)"
+  call_args: {}
+  filters_applied: ["dff = filtres globaux ; df_full = aucune filtre (référence all-time)"]
+
+  constants:
+    trend_threshold: 0.08                                       # ±8% pour above/below
+    trend_states: ["above", "near", "below", "none"]
+    inverted_metrics: ["deaths_per_game"]                       # higher_is_better=False
+    palette:
+      wins: "#3DFF9A"
+      losses: "#FF5C5C"
+      ties: "#A855F7"
+      no_finish: "rgba(182,196,214,0.45)"
+
+  transformations:
+    - description: "Calcul KPIStats sur dff filtré"
+      polars: |
+        kpis = compute_kpi_stats(dff)
+        # KPIStats fields : total_matches, kills_per_game, deaths_per_game, assists_per_game,
+        #                   kills_per_minute, deaths_per_minute, assists_per_minute,
+        #                   avg_accuracy, avg_life_seconds, avg_match_seconds, total_play_seconds,
+        #                   wins, losses, ties, no_finish
+
+    - description: "Calcul KPIStats all-time si df_full > dff"
+      polars: |
+        if df_full is not None and len(df_full) > len(dff):
+            kpis_all = compute_kpi_stats(df_full)
+        else:
+            kpis_all = None
+
+    - description: "Calcul trend par métrique vs all-time (8% threshold)"
+      polars: |
+        # _trend(current, reference, higher_is_better, threshold=0.08)
+        # → 'above' si ratio >= 1.08
+        # → 'below' si ratio <= 0.92
+        # → 'near' sinon
+        # → 'none' si current/reference None ou reference==0
+
+# === KPI ROW ===
+kpi_row:
+  cardinality: 8
+  cells:
+    - id: matches_count
+      label_i18n: "{{t.kpi_selected_matches}}"
+      main_field: "total_matches"
+      sub_field: "{avg_match_seconds_hms}/match"
+      trend: none
+
+    - id: total_duration
+      label_i18n: "{{t.kpi_total_duration}}"
+      main_field: "total_play_seconds → format_duration_dhm"
+      trend: none
+
+    - id: kills_per_match
+      label_i18n: "{{t.kpi_kills_per_match}}"
+      main_field: "kills_per_game (.2f)"
+      sub_field: "kills_per_minute (.2f)/min"
+      trend: "tr(kills_per_game)"                               # higher_is_better=True
+
+    - id: deaths_per_match
+      label_i18n: "{{t.kpi_deaths_per_match}}"
+      main_field: "deaths_per_game (.2f)"
+      sub_field: "deaths_per_minute (.2f)/min"
+      trend: "tr(deaths_per_game, higher_is_better=False)"      # INVERSÉ
+
+    - id: assists_per_match
+      label_i18n: "{{t.kpi_assists_per_match}}"
+      main_field: "assists_per_game (.2f)"
+      sub_field: "assists_per_minute (.2f)/min"
+      trend: "tr(assists_per_game)"
+
+    - id: avg_accuracy
+      label_i18n: "{{t.kpi_avg_accuracy}}"
+      main_field: "avg_accuracy (.2f)%"
+      trend: "tr(avg_accuracy)"
+
+    - id: avg_lifespan
+      label_i18n: "{{t.kpi_avg_lifespan}}"
+      main_field: "avg_life_seconds → format_mmss"              # MM:SS
+      trend: "tr(avg_life_seconds)"
+
+    - id: results_bar
+      label_i18n: "{{t.mv_results}}"
+      wide: true                                                # occupe plus de largeur
+      bar:                                                      # 4 segments colorés
+        - { color: "#3DFF9A", value: "wins",      label: "{wins} {{t.kpi_wins}}" }
+        - { color: "#FF5C5C", value: "losses",    label: "{losses} {{t.kpi_losses}}" }
+        - { color: "#A855F7", value: "ties",      label: "{ties} {{t.kpi_ties}}" }
+        - { color: "rgba(182,196,214,0.45)", value: "no_finish", label: "{no_finish} {{t.kpi_no_finish}}" }
+      shown_when: "kpis.total_matches > 0"
+      trend: none
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 140 }
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "dff non vide"
+  empty_state:
+    type: "section silencieuse (kpis.total_matches=0 + bar masquée)"
+    triggered_by: ["dff vide → cards rendues avec '-' ou 0"]
+  config: null
+  width_mode: stretch
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - kpi_selected_matches, kpi_total_duration
+    - kpi_kills_per_match, kpi_deaths_per_match, kpi_assists_per_match
+    - kpi_avg_accuracy, kpi_avg_lifespan
+    - mv_results
+    - kpi_wins, kpi_losses, kpi_ties, kpi_no_finish
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Section partagée (timeseries.00 + teammates.00)"
+      why: |
+        `render_kpis_section` est appelée par teammates.py (line 235, après subheader
+        'tm_my_stats_section') et par timeseries.py (line 80, dans `_render_summary_tab`).
+        Côté React : composant <KPISection /> partagé avec props `dff` + `dff_all` pour
+        calcul des trends. Évite duplication de spec.
+
+    - decision: "Trend threshold 8% (configurable)"
+      why: |
+        ±8% est le seuil empirique pour 'above'/'below' significatif. En-dessous, le bruit
+        match-à-match domine et la flèche n'apporte pas d'info utile (→ 'near'). Si
+        kpis_all est None (premier match du joueur, df_full == dff), tous les trends sont 'none'.
+
+    - decision: "Inversion higher_is_better pour deaths_per_game"
+      why: |
+        Pour les morts, MOINS = better. Le trend ▲ doit apparaître quand deaths DIMINUE
+        vs all-time. Implémenté via `higher_is_better=False` dans `_trend()`.
+
+    - decision: "Results bar segmentée 4 couleurs (8e card 'wide')"
+      why: |
+        Plutôt que d'afficher 'X wins / Y losses' en texte, une barre proportionnelle 4 segments
+        donne le ratio en un coup d'œil. Les Ties et DNF apparaissent même à 0 (segment
+        invisible) pour cohérence visuelle. Card large (wide=true) pour donner de l'espace
+        à la barre.
+
+    - decision: "Format avg_lifespan en MM:SS (pas en secondes)"
+      why: |
+        format_mmss(seconds) retourne 'MM:SS' (ex '1:42' pour 102s). Plus lisible que '102s'
+        ou '1.7m'. Convention de l'app pour les durées courtes (<10 min).

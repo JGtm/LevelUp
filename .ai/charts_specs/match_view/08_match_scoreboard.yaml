@@ -1,0 +1,294 @@
+# =============================================================================
+# Scoreboard du match (1 tableau par équipe)
+# =============================================================================
+# 19 colonnes par tableau, 1 tableau par équipe (généralement 2 : alliée + ennemie).
+# Chaque ligne joueur peut être marquée :
+#   - --me     : ligne du joueur courant (highlight)
+#   - --mvp    : meilleur joueur de tous (calculé via _compute_mvp_lvp)
+#   - --lvp    : pire joueur de tous
+# Cellules avec couleur conditionnelle selon les EXTRÊMES par colonne (best=vert,
+# worst=rouge ; sauf colonnes inversées : deaths, damage_taken où c'est inversé).
+# Détails expandables par row (ligne supplémentaire avec stats étendues).
+# =============================================================================
+
+id: "match_view.08"
+title: "Scoreboard du match (par équipe)"
+page: match_view
+section: "Onglet Team — Scoreboard"
+source_function: "src/ui/pages/match_view_scoreboard.py::render_match_scoreboard"
+source_helpers:
+  - "src/ui/pages/match_view_scoreboard.py::_render_team_table"
+  - "src/ui/pages/match_view_scoreboard.py::_build_scoreboard_row_html"
+  - "src/ui/pages/match_view_scoreboard.py::_get_scoreboard_cols"
+  - "src/ui/pages/match_view_scoreboard.py::_compute_scoreboard_extremes"
+  - "src/ui/pages/match_view_scoreboard.py::_compute_mvp_lvp"
+  - "src/ui/pages/match_view_scoreboard.py::_resolve_scoreboard_gamertags"
+  - "src/ui/pages/match_view_scoreboard.py::_sb_numeric_value"
+  - "src/ui/pages/match_view_scoreboard.py::_sb_cell_class"
+  - "src/ui/pages/match_view_scoreboard.py::_fmt_scoreboard_cell"
+  - "src/ui/pages/match_view_scoreboard.py::TEAM_MAP"
+  - "src/ui/pages/match_view_scoreboard_detail.py::load_scoreboard_player_extra_data"
+  - "src/ui/pages/match_view_scoreboard_detail.py::render_scoreboard_player_detail_html"
+  - "src/ui/pages/match_view_scoreboard_detail.py::scoreboard_toggle_id"
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_match_scoreboard(db_path, match_id) + load_match_gamertags_fn"
+  input_dataframe:
+    required_columns:
+      - xuid
+      - gamertag
+      - team_id
+      - rank
+      - score
+      - kills, deaths, assists, kda
+      - top_weapon_id
+      - max_killing_spree
+      - headshot_kills, perfect_kills
+      - shots_fired, shots_hit, accuracy
+      - melee_kills, power_weapon_kills
+      - damage_dealt, damage_taken
+      - avg_life_seconds
+  call_args:
+    match_id: required
+    xuid: required (player principal pour highlight --me)
+  filters_applied: []
+  timezone: "user_local"
+
+  transformations:
+    - description: "Lecture des stats scoreboard pour tous les joueurs du match"
+      polars: |
+        players = load_match_scoreboard(db_path, match_id)
+        # → list[dict] avec 1 dict par joueur, 20 colonnes
+      sql_duckdb: |
+        SELECT xuid, gamertag, team_id, rank, score, kills, deaths, assists, kda,
+               top_weapon_id, max_killing_spree, headshot_kills, perfect_kills,
+               shots_fired, shots_hit, accuracy, melee_kills, power_weapon_kills,
+               damage_dealt, damage_taken, avg_life_seconds
+        FROM shared.match_participants
+        WHERE match_id = ?
+        ORDER BY team_id, score DESC;
+
+    - description: "Résolution des gamertags via load_match_gamertags_fn (cache)"
+      polars: |
+        gt_map = load_match_gamertags_fn(db_path, match_id, db_key)  # {xuid: gamertag}
+        _resolve_scoreboard_gamertags(players, gt_map)               # in-place update
+      sql_duckdb: "-- Côté Go : LEFT JOIN avec shared.xuid_aliases (vue v_gamertag_lookup)"
+
+    - description: "Identification de l'équipe du joueur principal"
+      polars: |
+        my_team_id = next((p.team_id for p in players if str(p.xuid) == me_xu), None)
+        # Détermine quelle équipe est --mine vs --enemy
+
+    - description: "Groupement par team_id (équipes connues + équipe 'unknown' si team_id=null)"
+      polars: |
+        teams = defaultdict(list)
+        unknown_team = []
+        for p in players:
+            (unknown_team if p.team_id is None else teams[p.team_id]).append(p)
+
+    - description: "Calcul des extrêmes (min/max) par colonne numérique"
+      polars: |
+        extremes = _compute_scoreboard_extremes(players)
+        # Skip _SB_SKIP_HIGHLIGHT = {"gamertag", "rank", "top_weapon_id"} (texte/ordinal)
+        # Pour chaque autre colonne : extremes[key] = (min, max) si min != max et len(vals) >= 2
+      sql_duckdb: "-- Calcul côté Go en post-process après lecture"
+
+    - description: "Calcul MVP / LVP global (tous joueurs confondus)"
+      polars: |
+        mvp_xuid, lvp_xuid = _compute_mvp_lvp(players, extremes)
+        # Pondération secrète des colonnes (à explorer dans _compute_mvp_lvp si besoin)
+      detail: "_compute_mvp_lvp est une fonction de scoring composite pondérée — non détaillée ici"
+
+# === TABLE-SPECIFIC ===
+table:
+  multi_table: true                                              # /!\ N tableaux dans CETTE spec (1 par équipe, généralement 2)
+  one_per_value_of: team_id                                      # rendre 1 tableau par team_id distinct
+  team_label_map: TEAM_MAP                                       # dict team_id → nom (Eagle, Cobra, Ghost, etc.)
+  team_label_fallback: "{{t.mv_team_n}}"                         # paramétré : n=team_id, si pas dans TEAM_MAP
+  unknown_team_label: "{{t.mv_team_unknown}}"                    # pour team_id=null
+
+  css_classes:
+    wrapper: "os-table-wrap os-sb-wrap"
+    table: "os-table os-scoreboard"
+    header_team_mine: "os-sb-team os-sb-team--mine"              # /!\ classe MODIFIÉE selon mine vs enemy
+    header_team_enemy: "os-sb-team os-sb-team--enemy"
+    header_cell: "os-sb-th"
+    header_subgroup: "os-sb-head"                                # tbody englobant les 2 rangées d'en-tête
+    row: "os-sb-row"
+    row_me_modifier: "os-sb-row--me"                             # classe additionnelle si player == joueur courant
+    row_mvp_modifier: "os-sb-row--mvp"                           # MVP global du match
+    row_lvp_modifier: "os-sb-row--lvp"                           # LVP global du match
+    cell: "os-sb-td"
+    cell_best: "os-sb-td--best"                                  # cellule avec valeur max pour cette col
+    cell_worst: "os-sb-td--worst"                                # cellule avec valeur min
+    detail_row: "os-sb-detail-row"
+    detail_cell: "os-sb-detail-cell"
+    body_player_group: "os-sb-player"                            # tbody groupe row + detail-row par joueur
+
+  caption_per_table:
+    text_template: "{{t.mv_team_label}}"                         # paramétré : name=team_label
+    colspan: 19                                                  # 19 colonnes
+    detail: "Caption avec classe os-sb-team--mine ou --enemy selon le contexte"
+
+  columns:                                                       # 19 colonnes (cf. _get_scoreboard_cols)
+    - {id: gamertag,           header: "{{t.col_player}}",                source_field: gamertag,           skip_highlight: true}
+    - {id: rank,               header: "{{t.col_rank}}",                  source_field: rank,               skip_highlight: true}
+    - {id: score,              header: "{{t.col_score}}",                 source_field: score}
+    - {id: kills,              header: "{{t.col_kills}}",                 source_field: kills}
+    - {id: deaths,             header: "{{t.col_deaths}}",                source_field: deaths,             inverted: true}
+    - {id: assists,            header: "{{t.col_assists_short}}",         source_field: assists}
+    - {id: kda,                header: "{{t.col_kda}}",                   source_field: kda}
+    - {id: top_weapon_id,      header: "{{t.col_weapon_of_destruction}}", source_field: top_weapon_id,      skip_highlight: true}
+    - {id: max_killing_spree,  header: "{{t.col_killing_spree}}",         source_field: max_killing_spree}
+    - {id: headshot_kills,     header: "{{t.col_headshots}}",             source_field: headshot_kills}
+    - {id: perfect_kills,      header: "{{t.col_perfect_kills}}",         source_field: perfect_kills}
+    - {id: shots_fired,        header: "{{t.col_shots_fired_short}}",     source_field: shots_fired}
+    - {id: shots_hit,          header: "{{t.col_shots_hit}}",             source_field: shots_hit}
+    - {id: accuracy,           header: "{{t.col_accuracy}}",              source_field: accuracy,           formatter: "percent — multiplié par 100 si <= 1.0"}
+    - {id: melee_kills,        header: "{{t.col_melee}}",                 source_field: melee_kills}
+    - {id: power_weapon_kills, header: "{{t.col_power_weapon}}",          source_field: power_weapon_kills}
+    - {id: damage_dealt,       header: "{{t.col_dmg_dealt}}",             source_field: damage_dealt}
+    - {id: damage_taken,       header: "{{t.col_dmg_taken}}",             source_field: damage_taken,       inverted: true}
+    - {id: avg_life_seconds,   header: "{{t.mv_scoreboard_avg_life}}",    source_field: avg_life_seconds,   formatter: "format_mmss (mm:ss)"}
+
+  highlighting_rules:
+    skip_highlight_columns: [gamertag, rank, top_weapon_id]        # texte/ordinal
+    inverted_columns: [deaths, damage_taken]                       # moins = mieux
+    cell_classes:
+      best: "os-sb-td--best"                                       # vert
+      worst: "os-sb-td--worst"                                     # rouge
+    rule: |
+      Pour chaque colonne non-skip :
+        - Si len(values_non_null) < 2 ou min == max : pas de highlight
+        - Pour chaque cellule :
+            - Si valeur == max ET non inversée → cell_best
+            - Si valeur == min ET inversée → cell_best (deaths/damage_taken : moins = mieux)
+            - Si valeur == min ET non inversée → cell_worst
+            - Si valeur == max ET inversée → cell_worst
+
+  expandable_detail:
+    enabled: true
+    toggle_id_function: "scoreboard_toggle_id(team_id, xuid, row_index)"
+    detail_loader: "load_scoreboard_player_extra_data(db_path, match_id, xuid, gamertag)"
+    detail_renderer: "render_scoreboard_player_detail_html(extra=extra)"
+    placement: "<tr class='os-sb-detail-row'><td colspan='19'>{detail_html}</td></tr>"
+    detail: "Chaque joueur a une 2e tr cachée par défaut, dévoilée au clic via toggle CSS"
+
+  legend:
+    enabled: false                                                 # pas de légende sous le tableau
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(players) > 0"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.mv_scoreboard_no_data}}"
+    triggered_by: ["load_match_scoreboard retourne []"]
+  config: null
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  preceded_by:
+    - "st.subheader(t('mv_scoreboard'))"
+    - "if hints_visible(): st.caption(t('mv_scoreboard_detail_click_hint'))"
+
+# === CONTROLS ===
+controls: []                                                       # pas de contrôle utilisateur direct (toggle expand est CSS)
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - mv_scoreboard
+    - mv_scoreboard_no_data
+    - mv_scoreboard_detail_click_hint
+    - mv_scoreboard_avg_life
+    - mv_team_label                                                # paramétré : name=team_label
+    - mv_team_n                                                    # fallback si team_id pas dans TEAM_MAP
+    - mv_team_unknown                                              # team_id null
+    - col_player
+    - col_rank
+    - col_score
+    - col_kills
+    - col_deaths
+    - col_assists_short
+    - col_kda
+    - col_weapon_of_destruction
+    - col_killing_spree
+    - col_headshots
+    - col_perfect_kills
+    - col_shots_fired_short
+    - col_shots_hit
+    - col_accuracy
+    - col_melee
+    - col_power_weapon
+    - col_dmg_dealt
+    - col_dmg_taken
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+  expand_collapse_per_row: true                                    # toggle détail joueur via CSS+id
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Multi-table avec 1 tableau par team_id"
+      why: |
+        Contrairement aux autres tables qui rendent 1 tableau, ce YAML décrit N tableaux
+        (1 par équipe, généralement 2). Le converter doit itérer sur les groupes par team_id
+        et générer N <table> séparées avec captions différentes (mine vs enemy). Champ
+        `multi_table: true` + `one_per_value_of: team_id` documente ce comportement.
+
+    - decision: "Caption colorée selon mine vs enemy (--mine cyan / --enemy rouge)"
+      why: |
+        Le code Python applique `os-sb-team--mine` ou `os-sb-team--enemy` selon `tid == my_team_id`.
+        L'équipe du joueur courant est mise en avant visuellement via une couleur cyan distinctive.
+        Côté React : prop `isOwnTeam: bool` sur le composant <ScoreboardTable> qui pilote la classe.
+
+    - decision: "Highlighting cell par EXTRÊMES de la colonne, avec inversion sur deaths/damage_taken"
+      why: |
+        Couleurs vert/rouge sur les cellules correspondant aux meilleures/pires valeurs DE LA COLONNE
+        (parmi tous les joueurs des 2 équipes — pas par équipe). Avec une logique d'inversion sur
+        2 colonnes (deaths, damage_taken) où moins est mieux. Pré-calculé côté Go API ou côté frontend ?
+        Recommandation : pré-calculer côté Go (renvoyer un champ `is_best`/`is_worst` par cell) car
+        ça évite de recalculer côté JS pour chaque chart_view.
+
+    - decision: "MVP / LVP global = surclasse les highlights par-cellule"
+      why: |
+        En plus des highlights par-cellule, la ROW entière du MVP du match (resp. LVP) reçoit
+        une classe spéciale `os-sb-row--mvp` (resp. `--lvp`). Ces rows peuvent CONTENIR des
+        cellules best/worst. La pondération exacte de _compute_mvp_lvp n'est pas explorée ici
+        — à porter avec son test de référence.
+
+    - decision: "Detail row expandable cachée par défaut (toggle CSS)"
+      why: |
+        Chaque joueur a une 2e <tr> avec ses stats étendues (top weapons, top victims, etc.),
+        cachée par défaut. Le toggle est en CSS pur via un id généré (`scoreboard_toggle_id`).
+        Côté React : utiliser useState par row + slot enfant, pas de toggle CSS qui dépend
+        de l'ID DOM.
+
+    - decision: "Accuracy doublé si <= 1.0"
+      why: |
+        Quirk de format : certaines sources stockent l'accuracy en ratio 0-1, d'autres en %
+        0-100. Le code normalise via `_sb_numeric_value` qui multiplie par 100 si v <= 1.0.
+        À porter exactement côté Go pour ne pas afficher 0.45 vs 45 selon le sync.
+
+    - decision: "Skip highlight sur 3 colonnes (gamertag, rank, top_weapon_id)"
+      why: |
+        Ces colonnes sont du texte (gamertag), un ordinal (rank dans le scoreboard, pas de notion
+        de best/worst au sens numérique) ou un ID (top_weapon_id, qu'on convertit en label).
+        Ne pas leur appliquer de couleur conditionnelle. Documenté dans
+        `highlighting_rules.skip_highlight_columns`.

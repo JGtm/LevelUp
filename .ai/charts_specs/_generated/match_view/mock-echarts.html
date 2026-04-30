@@ -1,0 +1,3876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock ECharts — match_view</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: rgb(20, 28, 33);
+      color: rgba(245, 248, 255, 0.92);
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 500;
+    }
+    header .info {
+      font-size: 13px;
+      color: rgba(182, 196, 214, 0.88);
+    }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 1100px) {
+      main {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .chart-card.full-width {
+        grid-column: 1 / -1;
+      }
+    }
+    .chart-card {
+      background: rgba(29, 35, 40, 1.0);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px 16px 8px;
+    }
+    .chart-card h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #33D6FF;
+    }
+    .chart-card .meta {
+      font-size: 11px;
+      color: rgba(182, 196, 214, 0.72);
+      margin-bottom: 12px;
+    }
+    .chart-card .meta code {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .chart-canvas {
+      width: 100%;
+    }
+    .chart-card--table .os-table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    table.os-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86em;
+      background: rgba(29, 35, 40, 0.96);
+    }
+    table.os-table th, table.os-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: left;
+      vertical-align: middle;
+    }
+    table.os-table th.os-sb-team {
+      background: rgba(51, 214, 255, 0.08);
+      color: #33D6FF;
+      font-weight: 600;
+      font-size: 0.95em;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(51, 214, 255, 0.2);
+    }
+    table.os-table th.os-sb-th {
+      color: rgba(182, 196, 214, 0.88);
+      font-size: 0.78em;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    table.os-table tr.os-sb-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    table.os-table td.os-sb-td {
+      color: rgba(245, 248, 255, 0.92);
+    }
+    .table-legend {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .kpi-tile {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 9px 15px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-tile-text {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.98);
+    }
+    .composite-block {
+      margin-top: 8px;
+      padding: 4px 0;
+    }
+    .composite-block .cb-cell img {
+      max-width: 100%;
+      border-radius: 6px;
+    }
+    footer {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: rgba(182, 196, 214, 0.72);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mock ECharts — Page match_view</h1>
+    <div class="info">
+      17 charts · Données mock synthétiques · ECharts 5.5.1<br>
+      Source : <code>origin/v7/cockpit</code> (Plotly Python) — généré le 2026-04-30T18:40:20.672Z
+    </div>
+  </header>
+  <main>
+    <section class="chart-card chart-card--composite">
+      <h2>match_view.01 — Header KPI tiles</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view.py::_render_kpi_cards</code>
+      </div>
+      <div class="kpi-row"><div class="kpi-tile"><div class="kpi-tile-text">lun. 15 avr. 2026 — 21:32</div></div><div class="kpi-tile">
+            <div style="font-family:'Segoe UI',sans-serif;font-size:38px;font-weight:700;line-height:1;color:#4CAF50">50 — 32</div>
+            <div style="display:block;margin-top:1px;padding:3px 10px;border-radius:4px;font-size:0.875em;font-weight:600;background:#2e7d32;color:#e8f5e9">DOMINATION</div>
+          </div><div class="kpi-tile"><div class="kpi-tile-text">Quickplay</div></div><div class="kpi-tile"><div class="kpi-tile-text">Slayer sur Aquarius</div></div></div>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>match_view.02 — Map thumbnail + Perf + Rank du match</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view.py::_render_map_and_rank</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 48.65%;padding:0 8px"><div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#1a3a52 0%,#2d5a7e 50%,#1a3a52 100%);border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.5);font-size:0.85em;">Map thumbnail (mock)</div></div><div class="cb-cell" style="flex:0 0 18.92%;padding:0 8px;display:flex;align-items:center;justify-content:center"><div style="font-size:48px;font-weight:700;color:#3DFFB5">78</div></div><div class="cb-cell" style="flex:0 0 32.43%;padding:0 8px"><div style="display:flex;align-items:center;gap:12px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">
+          <div style="width:64px;height:64px;background:radial-gradient(circle, #FFD700 0%, #c4a000 70%);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:0.85em">Onyx</div>
+          <div style="flex:1">
+            <div style="font-size:0.95em;font-weight:600">Onyx Diamond III</div>
+            <div style="font-size:0.78em;color:#888;margin-top:2px"><span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.92em;font-weight:600">LUSR</span> <span style="font-weight:700;font-size:1.1em">1842</span></div>
+            <div style="font-size:0.85em;color:#3DFFB5;margin-top:2px">▲ +24</div>
+          </div>
+        </div></div></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.03 — K/D/A : Réel vs Attendu vs Moyenne historique</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_charts.py::render_expected_vs_actual</code>
+      </div>
+      <div id="chart-2" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 50,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: 0
+  },
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    data: ["K", "D", "A"]
+  },
+  yAxis: {
+    type: "value",
+    name: "i18n:t.mvc_fda_title",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    min: 0
+  },
+  series: [
+    {
+      type: "bar",
+      name: "i18n:t.lbl_actual",
+      data: [
+        {
+          value: 18,
+          itemStyle: {
+            color: "#00DC82",
+            opacity: 0.9
+          }
+        },
+        {
+          value: 8,
+          itemStyle: {
+            color: "#FF4B4B",
+            opacity: 0.9
+          }
+        },
+        {
+          value: 5,
+          itemStyle: {
+            color: "#33D6FF",
+            opacity: 0.9
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "i18n:t.lbl_actual" + '): ' + params.value;
+}
+      }
+    },
+    {
+      type: "bar",
+      name: "i18n:t.lbl_expected",
+      data: [
+        {
+          value: 14,
+          itemStyle: {
+            color: "rgba(0, 255, 128, 0.6)",
+            opacity: 1,
+            borderWidth: 2,
+            borderColor: "{{palette.green}}",
+            decal: {
+              symbol: "rect",
+              symbolSize: 0.8,
+              dashArrayX: [1, 0],
+              dashArrayY: [4, 4],
+              rotation: -0.7853981633974483,
+              color: "rgba(255,255,255,0.35)"
+            }
+          }
+        },
+        {
+          value: 11,
+          itemStyle: {
+            color: "rgba(255, 80, 80, 0.6)",
+            opacity: 1,
+            borderWidth: 2,
+            borderColor: "{{palette.green}}",
+            decal: {
+              symbol: "rect",
+              symbolSize: 0.8,
+              dashArrayX: [1, 0],
+              dashArrayY: [4, 4],
+              rotation: -0.7853981633974483,
+              color: "rgba(255,255,255,0.35)"
+            }
+          }
+        },
+        {
+          value: 4,
+          itemStyle: {
+            color: "rgba(0, 200, 255, 0.6)",
+            opacity: 1,
+            borderWidth: 2,
+            borderColor: "{{palette.green}}",
+            decal: {
+              symbol: "rect",
+              symbolSize: 0.8,
+              dashArrayX: [1, 0],
+              dashArrayY: [4, 4],
+              rotation: -0.7853981633974483,
+              color: "rgba(255,255,255,0.35)"
+            }
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "i18n:t.lbl_expected" + '): ' + params.value;
+}
+      }
+    },
+    {
+      type: "bar",
+      name: "i18n:t.mvc_hist_avg",
+      data: [
+        {
+          value: 16,
+          itemStyle: {
+            color: "#00DC82",
+            opacity: 0.35,
+            decal: {
+              symbol: "circle",
+              symbolSize: 1,
+              dashArrayX: [4, 8],
+              dashArrayY: [4, 8],
+              color: "rgba(255,255,255,0.45)"
+            }
+          }
+        },
+        {
+          value: 9,
+          itemStyle: {
+            color: "#FF4B4B",
+            opacity: 0.35,
+            decal: {
+              symbol: "circle",
+              symbolSize: 1,
+              dashArrayX: [4, 8],
+              dashArrayY: [4, 8],
+              color: "rgba(255,255,255,0.45)"
+            }
+          }
+        },
+        {
+          value: 4.5,
+          itemStyle: {
+            color: "#33D6FF",
+            opacity: 0.35,
+            decal: {
+              symbol: "circle",
+              symbolSize: 1,
+              dashArrayX: [4, 8],
+              dashArrayY: [4, 8],
+              color: "rgba(255,255,255,0.45)"
+            }
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "i18n:t.mvc_hist_avg" + '): ' + params.value;
+}
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-2');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.04 — Spree + Headshots + Perfect Kills</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_charts.py::_render_spree_headshots</code>
+      </div>
+      <div id="chart-3" class="chart-canvas" style="height: 260px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: 0
+  },
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    data: ["Killing Spree", "Headshots", "Perfect Kills"]
+  },
+  yAxis: {
+    type: "value",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    min: 0
+  },
+  series: [
+    {
+      type: "bar",
+      name: "i18n:t.lbl_actual",
+      data: [
+        {
+          value: 9,
+          itemStyle: {
+            color: "#8B5CF6",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 6,
+          itemStyle: {
+            color: "#33D6FF",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#00DC82",
+            opacity: 0.85
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "i18n:t.lbl_actual" + '): ' + params.value;
+}
+      }
+    },
+    {
+      type: "bar",
+      name: "i18n:t.mvc_hist_avg",
+      data: [
+        {
+          value: 6.5,
+          itemStyle: {
+            color: "#8B5CF6",
+            opacity: 0.35,
+            decal: {
+              symbol: "circle",
+              symbolSize: 1,
+              dashArrayX: [4, 8],
+              dashArrayY: [4, 8],
+              color: "rgba(255,255,255,0.45)"
+            }
+          }
+        },
+        {
+          value: 4.2,
+          itemStyle: {
+            color: "#33D6FF",
+            opacity: 0.35,
+            decal: {
+              symbol: "circle",
+              symbolSize: 1,
+              dashArrayX: [4, 8],
+              dashArrayY: [4, 8],
+              color: "rgba(255,255,255,0.45)"
+            }
+          }
+        },
+        {
+          value: 1.1,
+          itemStyle: {
+            color: "#00DC82",
+            opacity: 0.35,
+            decal: {
+              symbol: "circle",
+              symbolSize: 1,
+              dashArrayX: [4, 8],
+              dashArrayY: [4, 8],
+              color: "rgba(255,255,255,0.45)"
+            }
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "i18n:t.mvc_hist_avg" + '): ' + params.value;
+}
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-3');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.05 — Pie kills par arme</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_weapon_kills.py::_render_weapon_pie</code>
+      </div>
+      <div id="chart-4" class="chart-canvas" style="height: 300px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 10,
+    right: 60,
+    top: 10,
+    bottom: 10,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "item",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    show: true,
+    orient: "vertical",
+    right: 0,
+    top: "middle",
+    textStyle: {
+      color: "#dce8ff",
+      fontSize: 11
+    },
+    type: "scroll"
+  },
+  series: [
+    {
+      type: "pie",
+      name: "weapon_kills",
+      radius: ["35%", "70%"],
+      center: ["40%", "50%"],
+      data: [
+        {
+          name: "MA40 AR",
+          value: 12,
+          itemStyle: {
+            color: "#29B6F6"
+          }
+        },
+        {
+          name: "BR75",
+          value: 8,
+          itemStyle: {
+            color: "#FF7043"
+          }
+        },
+        {
+          name: "Sidekick",
+          value: 6,
+          itemStyle: {
+            color: "#66BB6A"
+          }
+        },
+        {
+          name: "Plasma Carbine",
+          value: 4,
+          itemStyle: {
+            color: "#FFA726"
+          }
+        },
+        {
+          name: "Bulldog",
+          value: 3,
+          itemStyle: {
+            color: "#AB47BC"
+          }
+        }
+      ],
+      label: {
+        show: true,
+        position: "inside",
+        color: "#fff",
+        fontWeight: "bold",
+        formatter: function anonymous(p
+) {
+return Math.round(p.percent) + "%";
+}
+      },
+      labelLine: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.name + '<br>' + p.value + ' frags (' + Math.round(p.percent) + '%)';
+}
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-4');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>match_view.06 — Tableau Kills par arme</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_weapon_kills.py::_render_weapon_table</code>
+      </div>
+      
+      <div class="os-table-wrap">
+        <table class="os-table os-scoreboard" style="min-width: 0; width: 100%">
+          <thead><tr><th class="null" colspan="2"></th></tr><tr><th class="os-sb-th">i18n:t.mv_weapon_kills_col_weapon</th><th class="os-sb-th" style="text-align: right; font-weight: 600">i18n:t.mv_weapon_kills_col_frags</th></tr></thead>
+          <tbody><tr class="os-sb-row"><td class="os-sb-td">MA40 AR</td><td class="os-sb-td" style="text-align: right; font-weight: 600">12</td></tr><tr class="os-sb-row"><td class="os-sb-td">BR75</td><td class="os-sb-td" style="text-align: right; font-weight: 600">8</td></tr><tr class="os-sb-row"><td class="os-sb-td">Sidekick</td><td class="os-sb-td" style="text-align: right; font-weight: 600">6</td></tr><tr class="os-sb-row"><td class="os-sb-td">Plasma Carbine</td><td class="os-sb-td" style="text-align: right; font-weight: 600">4</td></tr><tr class="os-sb-row"><td class="os-sb-td">Bulldog</td><td class="os-sb-td" style="text-align: right; font-weight: 600">3</td></tr><tr class="os-sb-row"><td class="os-sb-td">Mêlée</td><td class="os-sb-td" style="text-align: right; font-weight: 600">2</td></tr><tr class="os-sb-row"><td class="os-sb-td">Grenades</td><td class="os-sb-td" style="text-align: right; font-weight: 600">1</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.07 — Profil de participation au match</h2>
+      <div class="meta">
+        <code>src/ui/components/_radar_participation.py::create_participation_profile_radar</code>
+      </div>
+      <div id="chart-6" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: undefined,
+  tooltip: {
+    trigger: "item",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  series: [
+    {
+      type: "radar",
+      data: [
+        {
+          name: "i18n:t.mvc_this_match",
+          value: [0.72, 0.85, 0.45, 0.68, 0.55, 0.62],
+          areaStyle: {
+            color: "rgba(99, 110, 250, 0.5)"
+          },
+          lineStyle: {
+            color: "#636EFA",
+            width: 2
+          },
+          itemStyle: {
+            color: "#636EFA"
+          },
+          symbolSize: 4
+        }
+      ],
+      tooltip: {
+        formatter: function anonymous(params
+) {
+
+    var rawValues = ["1,420 pts","2,100 pts","880 pts","4,400 pts","12.5 pts/min","62% de chances de survie"];
+    var axisNames = ["i18n:t.radar_objectives","i18n:t.radar_combat","i18n:t.radar_support","i18n:t.col_score","i18n:t.radar_impact","i18n:t.radar_survival"];
+    var lines = ['<b>' + params.name + '</b>'];
+    if (Array.isArray(params.value)) {
+      params.value.forEach(function(v, i) {
+        lines.push(axisNames[i] + ': ' + (rawValues[i] || (Math.round(v * 100) + '%')));
+      });
+    }
+    return lines.join('<br>');
+    
+}
+      }
+    }
+  ],
+  radar: {
+    indicator: [
+      {
+        name: "i18n:t.radar_objectives",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_combat",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_support",
+        max: 1
+      },
+      {
+        name: "i18n:t.col_score",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_impact",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_survival",
+        max: 1
+      }
+    ],
+    center: ["50%", "52%"],
+    radius: "68%",
+    splitNumber: 4,
+    shape: "polygon",
+    axisName: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 12
+    },
+    splitArea: {
+      areaStyle: {
+        color: ["transparent"]
+      }
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.12)"
+      }
+    },
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.12)"
+      }
+    },
+    axisLabel: {
+      show: true,
+      color: "rgba(255, 255, 255, 0.85)",
+      fontSize: 10,
+      fontWeight: "bold",
+      formatter: function anonymous(value
+) {
+return Math.round(value * 100) + "%";
+}
+    }
+  },
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-6');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>match_view.08 — Scoreboard du match (par équipe)</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_scoreboard.py::render_match_scoreboard</code>
+      </div>
+      
+      <div class="os-table-wrap os-sb-wrap">
+        <table class="os-table os-scoreboard">
+          <thead><tr><th class="undefined" colspan="19"></th></tr><tr><th class="os-sb-th">Joueur</th><th class="os-sb-th">i18n:t.col_rank</th><th class="os-sb-th">i18n:t.col_score</th><th class="os-sb-th">i18n:t.col_kills</th><th class="os-sb-th">i18n:t.col_deaths</th><th class="os-sb-th">i18n:t.col_assists_short</th><th class="os-sb-th">i18n:t.col_kda</th><th class="os-sb-th">i18n:t.col_weapon_of_destruction</th><th class="os-sb-th">i18n:t.col_killing_spree</th><th class="os-sb-th">i18n:t.col_headshots</th><th class="os-sb-th">i18n:t.col_perfect_kills</th><th class="os-sb-th">i18n:t.col_shots_fired_short</th><th class="os-sb-th">i18n:t.col_shots_hit</th><th class="os-sb-th">i18n:t.col_accuracy</th><th class="os-sb-th">i18n:t.col_melee</th><th class="os-sb-th">i18n:t.col_power_weapon</th><th class="os-sb-th">i18n:t.col_dmg_dealt</th><th class="os-sb-th">i18n:t.col_dmg_taken</th><th class="os-sb-th">i18n:t.mv_scoreboard_avg_life</th></tr></thead>
+          <tbody><tr class="os-sb-row"><td class="os-sb-td"><a href='#' style='color:#33d6ff;font-weight:600'>Player_1958</a></td><td class="os-sb-td">15</td><td class="os-sb-td" style="font-weight: 700">1850</td><td class="os-sb-td">18</td><td class="os-sb-td">11</td><td class="os-sb-td">4</td><td class="os-sb-td">1.64</td><td class="os-sb-td">BR75</td><td class="os-sb-td">7</td><td class="os-sb-td">3</td><td class="os-sb-td">1</td><td class="os-sb-td">180</td><td class="os-sb-td">54</td><td class="os-sb-td">30%</td><td class="os-sb-td">2</td><td class="os-sb-td">4</td><td class="os-sb-td">8500</td><td class="os-sb-td">6300</td><td class="os-sb-td">2:15</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='#' style='color:#33d6ff;font-weight:600'>Player_3020</a></td><td class="os-sb-td">15</td><td class="os-sb-td" style="font-weight: 700">1720</td><td class="os-sb-td">14</td><td class="os-sb-td">12</td><td class="os-sb-td">6</td><td class="os-sb-td">1.17</td><td class="os-sb-td">BR75</td><td class="os-sb-td">7</td><td class="os-sb-td">3</td><td class="os-sb-td">1</td><td class="os-sb-td">180</td><td class="os-sb-td">54</td><td class="os-sb-td">30%</td><td class="os-sb-td">2</td><td class="os-sb-td">4</td><td class="os-sb-td">8500</td><td class="os-sb-td">6300</td><td class="os-sb-td">2:15</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='#' style='color:#33d6ff;font-weight:600'>Player_9762</a></td><td class="os-sb-td">15</td><td class="os-sb-td" style="font-weight: 700">1480</td><td class="os-sb-td">11</td><td class="os-sb-td">13</td><td class="os-sb-td">3</td><td class="os-sb-td">0.85</td><td class="os-sb-td">BR75</td><td class="os-sb-td">7</td><td class="os-sb-td">3</td><td class="os-sb-td">1</td><td class="os-sb-td">180</td><td class="os-sb-td">54</td><td class="os-sb-td">30%</td><td class="os-sb-td">2</td><td class="os-sb-td">4</td><td class="os-sb-td">8500</td><td class="os-sb-td">6300</td><td class="os-sb-td">2:15</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='#' style='color:#33d6ff;font-weight:600'>Player_6045</a></td><td class="os-sb-td">15</td><td class="os-sb-td" style="font-weight: 700">1100</td><td class="os-sb-td">8</td><td class="os-sb-td">15</td><td class="os-sb-td">2</td><td class="os-sb-td">0.53</td><td class="os-sb-td">BR75</td><td class="os-sb-td">7</td><td class="os-sb-td">3</td><td class="os-sb-td">1</td><td class="os-sb-td">180</td><td class="os-sb-td">54</td><td class="os-sb-td">30%</td><td class="os-sb-td">2</td><td class="os-sb-td">4</td><td class="os-sb-td">8500</td><td class="os-sb-td">6300</td><td class="os-sb-td">2:15</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.09 — Kill/Death cumulés du match</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_players.py::render_match_impact_section</code>
+      </div>
+      <div id="chart-8" class="chart-canvas" style="height: 340px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 60,
+    right: 30,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: 0
+  },
+  xAxis: {
+    type: "value",
+    name: "i18n:viz_t.axis_match_time",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    min: 0,
+    max: 600000,
+    axisLabel: {
+      formatter: function anonymous(val
+) {
+var m = Math.floor(val / 60000); var s = Math.floor((val % 60000) / 1000); return m + ':' + (s < 10 ? '0' + s : s);
+}
+    }
+  },
+  yAxis: {
+    type: "value",
+    name: "i18n:viz_t.axis_count",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "i18n:viz_t.trace_kills",
+      data: [
+        [53304, 1],
+        [85921, 2],
+        [136927, 3],
+        [169005, 4],
+        [225840, 5],
+        [242803, 6],
+        [290891, 7],
+        [357829, 8],
+        [376620, 9],
+        [417112, 10],
+        [465437, 11],
+        [503638, 12],
+        [543819, 13],
+        [604994, 14]
+      ],
+      itemStyle: {
+        color: "#0072B2"
+      },
+      lineStyle: {
+        color: "#0072B2",
+        width: 2.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 5,
+      showSymbol: true,
+      smooth: false,
+      markPoint: {
+        silent: true,
+        data: [
+          {
+            coord: [53304, 1],
+            symbol: "circle",
+            symbolSize: 9,
+            itemStyle: {
+              color: "#3DFFB5",
+              borderColor: "#fff",
+              borderWidth: 1.5
+            },
+            label: {
+              show: false
+            }
+          },
+          {
+            coord: [53304, 4.5],
+            symbol: "roundRect",
+            symbolSize: [120, 32],
+            itemStyle: {
+              color: "rgba(61, 255, 181, 0.92)",
+              borderColor: "#3DFFB5",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "🩸 First Blood\nJGtm",
+              color: "#0a0e14",
+              fontSize: 10,
+              fontWeight: "bold",
+              align: "center",
+              verticalAlign: "middle",
+              lineHeight: 13
+            }
+          },
+          {
+            coord: [570000, 13],
+            symbol: "circle",
+            symbolSize: 9,
+            itemStyle: {
+              color: "#3DFFB5",
+              borderColor: "#fff",
+              borderWidth: 1.5
+            },
+            label: {
+              show: false
+            }
+          },
+          {
+            coord: [570000, 19.5],
+            symbol: "roundRect",
+            symbolSize: [120, 32],
+            itemStyle: {
+              color: "rgba(61, 255, 181, 0.92)",
+              borderColor: "#3DFFB5",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "🎯 Top Gun\nJGtm",
+              color: "#0a0e14",
+              fontSize: 10,
+              fontWeight: "bold",
+              align: "center",
+              verticalAlign: "middle",
+              lineHeight: 13
+            }
+          },
+          {
+            coord: [468000, 11],
+            symbol: "circle",
+            symbolSize: 9,
+            itemStyle: {
+              color: "#3DFFB5",
+              borderColor: "#fff",
+              borderWidth: 1.5
+            },
+            label: {
+              show: false
+            }
+          },
+          {
+            coord: [468000, 14.5],
+            symbol: "roundRect",
+            symbolSize: [120, 32],
+            itemStyle: {
+              color: "rgba(61, 255, 181, 0.92)",
+              borderColor: "#3DFFB5",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "⚡ Clutch Finisher\nJGtm",
+              color: "#0a0e14",
+              fontSize: 10,
+              fontWeight: "bold",
+              align: "center",
+              verticalAlign: "middle",
+              lineHeight: 13
+            }
+          },
+          {
+            coord: [492000, 11],
+            symbol: "circle",
+            symbolSize: 9,
+            itemStyle: {
+              color: "#3DFFB5",
+              borderColor: "#fff",
+              borderWidth: 1.5
+            },
+            label: {
+              show: false
+            }
+          },
+          {
+            coord: [492000, 20.5],
+            symbol: "roundRect",
+            symbolSize: [120, 32],
+            itemStyle: {
+              color: "rgba(61, 255, 181, 0.92)",
+              borderColor: "#3DFFB5",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "🔥 Multi Kill\nJGtm",
+              color: "#0a0e14",
+              fontSize: 10,
+              fontWeight: "bold",
+              align: "center",
+              verticalAlign: "middle",
+              lineHeight: 13
+            }
+          }
+        ]
+      },
+      markLine: {
+        silent: true,
+        symbol: ["none", "none"],
+        label: {
+          show: false
+        },
+        data: [
+          [
+            {
+              coord: [53304, 1],
+              lineStyle: {
+                color: "#3DFFB5",
+                width: 1.5,
+                type: "solid",
+                opacity: 0.9
+              }
+            },
+            {
+              coord: [53304, 4.5]
+            }
+          ],
+          [
+            {
+              coord: [570000, 13],
+              lineStyle: {
+                color: "#3DFFB5",
+                width: 1.5,
+                type: "solid",
+                opacity: 0.9
+              }
+            },
+            {
+              coord: [570000, 19.5]
+            }
+          ],
+          [
+            {
+              coord: [468000, 11],
+              lineStyle: {
+                color: "#3DFFB5",
+                width: 1.5,
+                type: "solid",
+                opacity: 0.9
+              }
+            },
+            {
+              coord: [468000, 14.5]
+            }
+          ],
+          [
+            {
+              coord: [492000, 11],
+              lineStyle: {
+                color: "#3DFFB5",
+                width: 1.5,
+                type: "solid",
+                opacity: 0.9
+              }
+            },
+            {
+              coord: [492000, 20.5]
+            }
+          ]
+        ]
+      }
+    },
+    {
+      type: "line",
+      name: "i18n:viz_t.trace_deaths",
+      data: [
+        [75769, 1],
+        [124176, 2],
+        [205739, 3],
+        [252461, 4],
+        [321724, 5],
+        [399063, 6],
+        [456467, 7],
+        [529984, 8],
+        [597610, 9]
+      ],
+      itemStyle: {
+        color: "#D55E00"
+      },
+      lineStyle: {
+        color: "#D55E00",
+        width: 2.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 5,
+      showSymbol: true,
+      smooth: false,
+      markPoint: {
+        silent: true,
+        data: [
+          {
+            coord: [75769, 1],
+            symbol: "circle",
+            symbolSize: 9,
+            itemStyle: {
+              color: "#E69F00",
+              borderColor: "#fff",
+              borderWidth: 1.5
+            },
+            label: {
+              show: false
+            }
+          },
+          {
+            coord: [75769, 7.5],
+            symbol: "roundRect",
+            symbolSize: [120, 32],
+            itemStyle: {
+              color: "rgba(255, 183, 3, 0.92)",
+              borderColor: "#E69F00",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "🧳 Touriste\nBotPlayer42",
+              color: "#0a0e14",
+              fontSize: 10,
+              fontWeight: "bold",
+              align: "center",
+              verticalAlign: "middle",
+              lineHeight: 13
+            }
+          },
+          {
+            coord: [480000, 7],
+            symbol: "circle",
+            symbolSize: 9,
+            itemStyle: {
+              color: "#E69F00",
+              borderColor: "#fff",
+              borderWidth: 1.5
+            },
+            label: {
+              show: false
+            }
+          },
+          {
+            coord: [480000, 13.5],
+            symbol: "roundRect",
+            symbolSize: [120, 32],
+            itemStyle: {
+              color: "rgba(255, 183, 3, 0.92)",
+              borderColor: "#E69F00",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "💀 Premier mort équipe\nBotPlayer99",
+              color: "#0a0e14",
+              fontSize: 10,
+              fontWeight: "bold",
+              align: "center",
+              verticalAlign: "middle",
+              lineHeight: 13
+            }
+          },
+          {
+            coord: [552000, 8],
+            symbol: "circle",
+            symbolSize: 9,
+            itemStyle: {
+              color: "#3DFFB5",
+              borderColor: "#fff",
+              borderWidth: 1.5
+            },
+            label: {
+              show: false
+            }
+          },
+          {
+            coord: [552000, 11.5],
+            symbol: "roundRect",
+            symbolSize: [120, 32],
+            itemStyle: {
+              color: "rgba(61, 255, 181, 0.92)",
+              borderColor: "#3DFFB5",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "🪦 Last Casualty\nJGtm",
+              color: "#0a0e14",
+              fontSize: 10,
+              fontWeight: "bold",
+              align: "center",
+              verticalAlign: "middle",
+              lineHeight: 13
+            }
+          }
+        ]
+      },
+      markLine: {
+        silent: true,
+        symbol: ["none", "none"],
+        label: {
+          show: false
+        },
+        data: [
+          [
+            {
+              coord: [75769, 1],
+              lineStyle: {
+                color: "#E69F00",
+                width: 1.5,
+                type: "solid",
+                opacity: 0.9
+              }
+            },
+            {
+              coord: [75769, 7.5]
+            }
+          ],
+          [
+            {
+              coord: [480000, 7],
+              lineStyle: {
+                color: "#E69F00",
+                width: 1.5,
+                type: "solid",
+                opacity: 0.9
+              }
+            },
+            {
+              coord: [480000, 13.5]
+            }
+          ],
+          [
+            {
+              coord: [552000, 8],
+              lineStyle: {
+                color: "#3DFFB5",
+                width: 1.5,
+                type: "solid",
+                opacity: 0.9
+              }
+            },
+            {
+              coord: [552000, 11.5]
+            }
+          ]
+        ]
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-8');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.10 — Tug-of-war dominance + kill feed</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_players_timeline.py::render_team_dominance_section</code>
+      </div>
+      <div id="chart-9" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: [
+    {
+      left: 14,
+      right: 14,
+      top: 30,
+      height: "70%",
+      containLabel: false
+    },
+    {
+      left: 14,
+      right: 14,
+      top: "83%",
+      height: "12%",
+      containLabel: false
+    }
+  ],
+  tooltip: {
+    trigger: "item",
+    backgroundColor: "rgba(15, 20, 35, 0.95)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    textStyle: {
+      color: "#F5F8FF",
+      fontSize: 11
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    top: 4,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 11
+    },
+    data: ["Mon équipe", "Adversaires"]
+  },
+  xAxis: [
+    {
+      gridIndex: 0,
+      type: "category",
+      data: [
+        "0:15",
+        "0:45",
+        "1:15",
+        "1:45",
+        "2:15",
+        "2:45",
+        "3:15",
+        "3:45",
+        "4:15",
+        "4:45",
+        "5:15",
+        "5:45",
+        "6:15",
+        "6:45",
+        "7:15",
+        "7:45",
+        "8:15",
+        "8:45",
+        "9:15",
+        "9:45"
+      ],
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: "rgba(255, 255, 255, 0.25)"
+        }
+      },
+      axisTick: {
+        show: true,
+        alignWithLabel: true,
+        length: 4
+      },
+      axisLabel: {
+        rotate: 0,
+        fontSize: 9,
+        color: "rgba(245, 248, 255, 0.85)",
+        interval: 1,
+        margin: 6
+      },
+      splitLine: {
+        show: false
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "category",
+      data: [
+        "0:15",
+        "0:45",
+        "1:15",
+        "1:45",
+        "2:15",
+        "2:45",
+        "3:15",
+        "3:45",
+        "4:15",
+        "4:45",
+        "5:15",
+        "5:45",
+        "6:15",
+        "6:45",
+        "7:15",
+        "7:45",
+        "8:15",
+        "8:45",
+        "9:15",
+        "9:45"
+      ],
+      show: false,
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
+      },
+      axisLabel: {
+        show: false
+      },
+      splitLine: {
+        show: false
+      }
+    }
+  ],
+  yAxis: [
+    {
+      gridIndex: 0,
+      type: "value",
+      min: -12,
+      max: 175,
+      show: false,
+      splitLine: {
+        show: false
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "value",
+      min: -2,
+      max: 2,
+      show: false,
+      splitLine: {
+        show: false
+      }
+    }
+  ],
+  series: [
+    {
+      type: "bar",
+      stack: "total",
+      name: "Mon équipe",
+      data: [
+        50,
+        67,
+        67,
+        75,
+        83,
+        83,
+        83,
+        100,
+        100,
+        80,
+        83,
+        83,
+        67,
+        67,
+        67,
+        43,
+        50,
+        0,
+        25,
+        17
+      ],
+      itemStyle: {
+        color: "rgba(0, 114, 178, 0.80)"
+      },
+      barCategoryGap: "0%",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.name + '<br>Mon équipe : ' + p.value + '%';
+}
+      },
+      markPoint: {
+        silent: true,
+        data: [
+          {
+            coord: [0, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "2",
+              color: "#0072B2",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [0, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "2",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [1, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "4",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [1, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "3",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [2, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "8",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [2, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "5",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [3, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "11",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [3, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "6",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [4, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "16",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [4, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "7",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [5, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "21",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [5, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "8",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [6, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "26",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [6, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "9",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [7, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "27",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [7, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "9",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [8, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "28",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [8, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "9",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [9, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "32",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [9, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "10",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [10, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "37",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [10, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "11",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [11, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "42",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [11, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "12",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [12, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "46",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [12, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "14",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [13, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "50",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [13, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "16",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [14, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "52",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [14, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "17",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [15, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "55",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [15, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "21",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [16, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "56",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [16, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "22",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [17, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "56",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [17, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "23",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [18, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "58",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [18, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "29",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [19, 110],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0, 158, 115, 0.18)",
+              borderColor: "#009E73",
+              borderWidth: 1.5
+            },
+            label: {
+              show: true,
+              formatter: "59",
+              color: "#009E73",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          },
+          {
+            coord: [19, -7],
+            symbol: "rect",
+            symbolSize: [22, 14],
+            itemStyle: {
+              color: "rgba(0,0,0,0)",
+              borderColor: "rgba(0,0,0,0)",
+              borderWidth: 0
+            },
+            label: {
+              show: true,
+              formatter: "34",
+              color: "#D55E00",
+              fontSize: 10,
+              fontWeight: "bold"
+            }
+          }
+        ]
+      },
+      markLine: {
+        silent: true,
+        symbol: "none",
+        data: [
+          {
+            yAxis: 50,
+            lineStyle: {
+              color: "rgba(255, 255, 255, 0.35)",
+              type: "dotted",
+              width: 1
+            },
+            label: {
+              show: false
+            }
+          }
+        ]
+      }
+    },
+    {
+      type: "bar",
+      stack: "total",
+      name: "Adversaires",
+      data: [
+        50,
+        33,
+        33,
+        25,
+        17,
+        17,
+        17,
+        0,
+        0,
+        20,
+        17,
+        17,
+        33,
+        33,
+        33,
+        57,
+        50,
+        100,
+        75,
+        83
+      ],
+      itemStyle: {
+        color: "rgba(213, 94, 0, 0.80)"
+      },
+      barCategoryGap: "0%",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.name + '<br>Adversaires : ' + p.value + '%';
+}
+      }
+    },
+    {
+      type: "line",
+      name: "Lane alliée",
+      data: [
+        [0, 143],
+        [1, 143],
+        [2, 143],
+        [3, 143],
+        [4, 143],
+        [5, 143],
+        [6, 143],
+        [7, 143],
+        [8, 143],
+        [9, 143],
+        [10, 143],
+        [11, 143],
+        [12, 143],
+        [13, 143],
+        [14, 143],
+        [15, 143],
+        [16, 143],
+        [17, 143],
+        [18, 143],
+        [19, 143]
+      ],
+      lineStyle: {
+        color: "rgba(0, 114, 178, 0.45)",
+        width: 1.5,
+        type: "solid"
+      },
+      showSymbol: false,
+      silent: true,
+      tooltip: {
+        show: false
+      },
+      legendHoverLink: false,
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      z: 2
+    },
+    {
+      type: "scatter",
+      name: "Mes kills",
+      data: [
+        {
+          value: [0.2, 143],
+          _tip: "Allié — kill à 0:15"
+        },
+        {
+          value: [0.8, 143],
+          _tip: "Allié — kill à 0:15"
+        },
+        {
+          value: [1.2, 143],
+          _tip: "Allié — kill à 0:45"
+        },
+        {
+          value: [1.8, 143],
+          _tip: "Allié — kill à 0:45"
+        },
+        {
+          value: [2.2, 143],
+          _tip: "Allié — kill à 1:15"
+        },
+        {
+          value: [2.4, 143],
+          _tip: "Allié — kill à 1:15"
+        },
+        {
+          value: [2.6, 143],
+          _tip: "Allié — kill à 1:15"
+        },
+        {
+          value: [2.8, 143],
+          _tip: "Allié — kill à 1:15"
+        },
+        {
+          value: [3.2, 143],
+          _tip: "Allié — kill à 1:45"
+        },
+        {
+          value: [3.5, 143],
+          _tip: "Allié — kill à 1:45"
+        },
+        {
+          value: [3.8, 143],
+          _tip: "Allié — kill à 1:45"
+        },
+        {
+          value: [4.2, 143],
+          _tip: "Allié — kill à 2:15"
+        },
+        {
+          value: [4.35, 143],
+          _tip: "Allié — kill à 2:15"
+        },
+        {
+          value: [4.5, 143],
+          _tip: "Allié — kill à 2:15"
+        },
+        {
+          value: [4.65, 143],
+          _tip: "Allié — kill à 2:15"
+        },
+        {
+          value: [4.8, 143],
+          _tip: "Allié — kill à 2:15"
+        },
+        {
+          value: [5.2, 143],
+          _tip: "Allié — kill à 2:45"
+        },
+        {
+          value: [5.35, 143],
+          _tip: "Allié — kill à 2:45"
+        },
+        {
+          value: [5.5, 143],
+          _tip: "Allié — kill à 2:45"
+        },
+        {
+          value: [5.65, 143],
+          _tip: "Allié — kill à 2:45"
+        },
+        {
+          value: [5.8, 143],
+          _tip: "Allié — kill à 2:45"
+        },
+        {
+          value: [6.2, 143],
+          _tip: "Allié — kill à 3:15"
+        },
+        {
+          value: [6.35, 143],
+          _tip: "Allié — kill à 3:15"
+        },
+        {
+          value: [6.5, 143],
+          _tip: "Allié — kill à 3:15"
+        },
+        {
+          value: [6.65, 143],
+          _tip: "Allié — kill à 3:15"
+        },
+        {
+          value: [6.8, 143],
+          _tip: "Allié — kill à 3:15"
+        },
+        {
+          value: [7.5, 143],
+          _tip: "Allié — kill à 3:45"
+        },
+        {
+          value: [8.5, 143],
+          _tip: "Allié — kill à 4:15"
+        },
+        {
+          value: [9.2, 143],
+          _tip: "Allié — kill à 4:45"
+        },
+        {
+          value: [9.4, 143],
+          _tip: "Allié — kill à 4:45"
+        },
+        {
+          value: [9.6, 143],
+          _tip: "Allié — kill à 4:45"
+        },
+        {
+          value: [9.8, 143],
+          _tip: "Allié — kill à 4:45"
+        },
+        {
+          value: [10.2, 143],
+          _tip: "Allié — kill à 5:15"
+        },
+        {
+          value: [10.35, 143],
+          _tip: "Allié — kill à 5:15"
+        },
+        {
+          value: [10.5, 143],
+          _tip: "Allié — kill à 5:15"
+        },
+        {
+          value: [10.65, 143],
+          _tip: "Allié — kill à 5:15"
+        },
+        {
+          value: [10.8, 143],
+          _tip: "Allié — kill à 5:15"
+        },
+        {
+          value: [11.2, 143],
+          _tip: "Allié — kill à 5:45"
+        },
+        {
+          value: [11.35, 143],
+          _tip: "Allié — kill à 5:45"
+        },
+        {
+          value: [11.5, 143],
+          _tip: "Allié — kill à 5:45"
+        },
+        {
+          value: [11.65, 143],
+          _tip: "Allié — kill à 5:45"
+        },
+        {
+          value: [11.8, 143],
+          _tip: "Allié — kill à 5:45"
+        },
+        {
+          value: [12.2, 143],
+          _tip: "Allié — kill à 6:15"
+        },
+        {
+          value: [12.4, 143],
+          _tip: "Allié — kill à 6:15"
+        },
+        {
+          value: [12.6, 143],
+          _tip: "Allié — kill à 6:15"
+        },
+        {
+          value: [12.8, 143],
+          _tip: "Allié — kill à 6:15"
+        },
+        {
+          value: [13.2, 143],
+          _tip: "Allié — kill à 6:45"
+        },
+        {
+          value: [13.4, 143],
+          _tip: "Allié — kill à 6:45"
+        },
+        {
+          value: [13.6, 143],
+          _tip: "Allié — kill à 6:45"
+        },
+        {
+          value: [13.8, 143],
+          _tip: "Allié — kill à 6:45"
+        },
+        {
+          value: [14.2, 143],
+          _tip: "Allié — kill à 7:15"
+        },
+        {
+          value: [14.8, 143],
+          _tip: "Allié — kill à 7:15"
+        },
+        {
+          value: [15.2, 143],
+          _tip: "Allié — kill à 7:45"
+        },
+        {
+          value: [15.5, 143],
+          _tip: "Allié — kill à 7:45"
+        },
+        {
+          value: [15.8, 143],
+          _tip: "Allié — kill à 7:45"
+        },
+        {
+          value: [16.5, 143],
+          _tip: "Allié — kill à 8:15"
+        },
+        {
+          value: [18.2, 143],
+          _tip: "Allié — kill à 9:15"
+        },
+        {
+          value: [18.8, 143],
+          _tip: "Allié — kill à 9:15"
+        },
+        {
+          value: [19.5, 143],
+          _tip: "Allié — kill à 9:45"
+        }
+      ],
+      symbol: "circle",
+      symbolSize: 7,
+      itemStyle: {
+        color: "#0072B2",
+        opacity: 0.7
+      },
+      legendHoverLink: false,
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.data._tip || '';
+}
+      },
+      z: 3
+    },
+    {
+      type: "line",
+      name: "Streak JGtm",
+      data: [
+        {
+          value: [4, 143],
+          _tip: "<b>JGtm</b> — Killing Spree ×4 (2:15)"
+        },
+        {
+          value: [5, 143],
+          _tip: "<b>JGtm</b> — Killing Spree ×4 (2:45)"
+        }
+      ],
+      lineStyle: {
+        color: "#0072B2",
+        width: 2.5
+      },
+      itemStyle: {
+        color: "#0072B2",
+        borderColor: "rgba(255,255,255,0.6)",
+        borderWidth: 1.5
+      },
+      symbol: "circle",
+      symbolSize: 12,
+      showSymbol: true,
+      smooth: false,
+      legendHoverLink: false,
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.data._tip || '';
+}
+      },
+      z: 5
+    },
+    {
+      type: "line",
+      name: "Streak NeoSpartan_42",
+      data: [
+        {
+          value: [12, 143],
+          _tip: "<b>NeoSpartan_42</b> — Killing Spree ×3 (6:15)"
+        },
+        {
+          value: [13, 143],
+          _tip: "<b>NeoSpartan_42</b> — Killing Spree ×3 (6:45)"
+        }
+      ],
+      lineStyle: {
+        color: "#0072B2",
+        width: 2.5
+      },
+      itemStyle: {
+        color: "#0072B2",
+        borderColor: "rgba(255,255,255,0.6)",
+        borderWidth: 1.5
+      },
+      symbol: "circle",
+      symbolSize: 12,
+      showSymbol: true,
+      smooth: false,
+      legendHoverLink: false,
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.data._tip || '';
+}
+      },
+      z: 5
+    },
+    {
+      type: "line",
+      name: "Lane ennemie",
+      data: [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [3, 0],
+        [4, 0],
+        [5, 0],
+        [6, 0],
+        [7, 0],
+        [8, 0],
+        [9, 0],
+        [10, 0],
+        [11, 0],
+        [12, 0],
+        [13, 0],
+        [14, 0],
+        [15, 0],
+        [16, 0],
+        [17, 0],
+        [18, 0],
+        [19, 0]
+      ],
+      lineStyle: {
+        color: "rgba(213, 94, 0, 0.45)",
+        width: 1.5,
+        type: "solid"
+      },
+      showSymbol: false,
+      silent: true,
+      tooltip: {
+        show: false
+      },
+      legendHoverLink: false,
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      z: 2
+    },
+    {
+      type: "scatter",
+      name: "Kills ennemis",
+      data: [
+        {
+          value: [0.2, 0],
+          _tip: "Ennemi — kill à 0:15"
+        },
+        {
+          value: [0.8, 0],
+          _tip: "Ennemi — kill à 0:15"
+        },
+        {
+          value: [1.5, 0],
+          _tip: "Ennemi — kill à 0:45"
+        },
+        {
+          value: [2.2, 0],
+          _tip: "Ennemi — kill à 1:15"
+        },
+        {
+          value: [2.8, 0],
+          _tip: "Ennemi — kill à 1:15"
+        },
+        {
+          value: [3.5, 0],
+          _tip: "Ennemi — kill à 1:45"
+        },
+        {
+          value: [4.5, 0],
+          _tip: "Ennemi — kill à 2:15"
+        },
+        {
+          value: [5.5, 0],
+          _tip: "Ennemi — kill à 2:45"
+        },
+        {
+          value: [6.5, 0],
+          _tip: "Ennemi — kill à 3:15"
+        },
+        {
+          value: [9.5, 0],
+          _tip: "Ennemi — kill à 4:45"
+        },
+        {
+          value: [10.5, 0],
+          _tip: "Ennemi — kill à 5:15"
+        },
+        {
+          value: [11.5, 0],
+          _tip: "Ennemi — kill à 5:45"
+        },
+        {
+          value: [12.2, 0],
+          _tip: "Ennemi — kill à 6:15"
+        },
+        {
+          value: [12.8, 0],
+          _tip: "Ennemi — kill à 6:15"
+        },
+        {
+          value: [13.2, 0],
+          _tip: "Ennemi — kill à 6:45"
+        },
+        {
+          value: [13.8, 0],
+          _tip: "Ennemi — kill à 6:45"
+        },
+        {
+          value: [14.5, 0],
+          _tip: "Ennemi — kill à 7:15"
+        },
+        {
+          value: [15.2, 0],
+          _tip: "Ennemi — kill à 7:45"
+        },
+        {
+          value: [15.4, 0],
+          _tip: "Ennemi — kill à 7:45"
+        },
+        {
+          value: [15.6, 0],
+          _tip: "Ennemi — kill à 7:45"
+        },
+        {
+          value: [15.8, 0],
+          _tip: "Ennemi — kill à 7:45"
+        },
+        {
+          value: [16.5, 0],
+          _tip: "Ennemi — kill à 8:15"
+        },
+        {
+          value: [17.5, 0],
+          _tip: "Ennemi — kill à 8:45"
+        },
+        {
+          value: [18.2, 0],
+          _tip: "Ennemi — kill à 9:15"
+        },
+        {
+          value: [18.32, 0],
+          _tip: "Ennemi — kill à 9:15"
+        },
+        {
+          value: [18.44, 0],
+          _tip: "Ennemi — kill à 9:15"
+        },
+        {
+          value: [18.56, 0],
+          _tip: "Ennemi — kill à 9:15"
+        },
+        {
+          value: [18.68, 0],
+          _tip: "Ennemi — kill à 9:15"
+        },
+        {
+          value: [18.8, 0],
+          _tip: "Ennemi — kill à 9:15"
+        },
+        {
+          value: [19.2, 0],
+          _tip: "Ennemi — kill à 9:45"
+        },
+        {
+          value: [19.35, 0],
+          _tip: "Ennemi — kill à 9:45"
+        },
+        {
+          value: [19.5, 0],
+          _tip: "Ennemi — kill à 9:45"
+        },
+        {
+          value: [19.65, 0],
+          _tip: "Ennemi — kill à 9:45"
+        },
+        {
+          value: [19.8, 0],
+          _tip: "Ennemi — kill à 9:45"
+        }
+      ],
+      symbol: "circle",
+      symbolSize: 7,
+      itemStyle: {
+        color: "#D55E00",
+        opacity: 0.7
+      },
+      legendHoverLink: false,
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.data._tip || '';
+}
+      },
+      z: 3
+    },
+    {
+      type: "line",
+      name: "Streak XxShadowxX",
+      data: [
+        {
+          value: [7, 0],
+          _tip: "<b>XxShadowxX</b> — Killing Spree ×5 (3:45)"
+        },
+        {
+          value: [8, 0],
+          _tip: "<b>XxShadowxX</b> — Killing Spree ×5 (4:15)"
+        }
+      ],
+      lineStyle: {
+        color: "#D55E00",
+        width: 2.5
+      },
+      itemStyle: {
+        color: "#D55E00",
+        borderColor: "rgba(255,255,255,0.6)",
+        borderWidth: 1.5
+      },
+      symbol: "circle",
+      symbolSize: 12,
+      showSymbol: true,
+      smooth: false,
+      legendHoverLink: false,
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.data._tip || '';
+}
+      },
+      z: 5
+    },
+    {
+      type: "line",
+      name: "Streak BlazingFury",
+      data: [
+        {
+          value: [15, 0],
+          _tip: "<b>BlazingFury</b> — Killing Spree ×3 (7:45)"
+        },
+        {
+          value: [16, 0],
+          _tip: "<b>BlazingFury</b> — Killing Spree ×3 (8:15)"
+        }
+      ],
+      lineStyle: {
+        color: "#D55E00",
+        width: 2.5
+      },
+      itemStyle: {
+        color: "#D55E00",
+        borderColor: "rgba(255,255,255,0.6)",
+        borderWidth: 1.5
+      },
+      symbol: "circle",
+      symbolSize: 12,
+      showSymbol: true,
+      smooth: false,
+      legendHoverLink: false,
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.data._tip || '';
+}
+      },
+      z: 5
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-9');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.11 — Cadence kills par tranche de temps</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_players_timeline.py::render_match_cadence_section</code>
+      </div>
+      <div id="chart-10" class="chart-canvas" style="height: 320px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 50,
+    bottom: 80,
+    containLabel: true
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "0:07",
+      "0:22",
+      "0:37",
+      "0:52",
+      "1:07",
+      "1:22",
+      "1:37",
+      "1:52",
+      "2:07",
+      "2:22",
+      "2:37",
+      "2:52",
+      "3:07",
+      "3:22",
+      "3:37",
+      "3:52",
+      "4:07",
+      "4:22",
+      "4:37",
+      "4:52",
+      "5:07",
+      "5:22",
+      "5:37",
+      "5:52",
+      "6:07",
+      "6:22",
+      "6:37",
+      "6:52",
+      "7:07",
+      "7:22"
+    ],
+    name: "Temps",
+    nameTextStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    },
+    axisLabel: {
+      rotate: -45,
+      fontSize: 9,
+      color: "rgba(245, 248, 255, 0.85)"
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  yAxis: {
+    type: "value",
+    name: "Kills",
+    nameTextStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    },
+    min: 0,
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "bar",
+      stack: "total",
+      name: "Mon équipe",
+      data: [
+        1,
+        2,
+        2,
+        3,
+        2,
+        3,
+        2,
+        4,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        3,
+        4,
+        4,
+        4,
+        3,
+        3,
+        4,
+        3,
+        3,
+        2,
+        2,
+        1,
+        2
+      ],
+      itemStyle: {
+        color: "rgba(0, 114, 178, 0.80)",
+        borderColor: "#0072B2",
+        borderWidth: 1
+      },
+      markPoint: {
+        silent: true,
+        symbolSize: 1,
+        label: {
+          show: true,
+          formatter: "PIC",
+          position: "top",
+          color: "#E69F00",
+          fontSize: 10,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          padding: [2, 4]
+        },
+        data: [
+          {
+            coord: [11, 8]
+          }
+        ]
+      }
+    },
+    {
+      type: "bar",
+      stack: "total",
+      name: "Adversaires",
+      data: [
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4,
+        3,
+        4,
+        3,
+        4,
+        3,
+        3,
+        3,
+        3,
+        4,
+        3,
+        3,
+        3,
+        2,
+        2,
+        3,
+        2,
+        2,
+        2,
+        2,
+        1
+      ],
+      itemStyle: {
+        color: "rgba(213, 94, 0, 0.80)",
+        borderColor: "#D55E00",
+        borderWidth: 1
+      }
+    },
+    {
+      type: "line",
+      name: "MA Mon équipe",
+      data: [
+        null,
+        null,
+        1.7,
+        2.3,
+        2.3,
+        2.7,
+        2.3,
+        3,
+        3,
+        3.3,
+        3,
+        3.3,
+        3.7,
+        4,
+        4,
+        4,
+        4,
+        3.7,
+        3.7,
+        3.7,
+        4,
+        3.7,
+        3.3,
+        3.3,
+        3.3,
+        3.3,
+        2.7,
+        2.3,
+        1.7,
+        1.7
+      ],
+      lineStyle: {
+        color: "rgba(0, 114, 178, 0.85)",
+        width: 3
+      },
+      itemStyle: {
+        color: "rgba(0, 114, 178, 0.85)"
+      },
+      symbol: "none",
+      smooth: true
+    },
+    {
+      type: "line",
+      name: "MA Adversaires",
+      data: [
+        null,
+        null,
+        1.7,
+        2,
+        2,
+        2,
+        2,
+        2.3,
+        2.7,
+        3.3,
+        3.3,
+        3.7,
+        3.3,
+        3.7,
+        3.3,
+        3.3,
+        3,
+        3,
+        3.3,
+        3.3,
+        3.3,
+        3,
+        2.7,
+        2.3,
+        2.3,
+        2.3,
+        2.3,
+        2,
+        2,
+        1.7
+      ],
+      lineStyle: {
+        color: "rgba(213, 94, 0, 0.85)",
+        width: 3
+      },
+      itemStyle: {
+        color: "rgba(213, 94, 0, 0.85)"
+      },
+      symbol: "none",
+      smooth: true
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-10');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>match_view.12 — Nemesis et Souffre-douleur du match</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_players_nemesis.py::render_nemesis_section</code>
+      </div>
+      <div class="kpi-row"><div class="kpi-tile"><div class="kpi-tile-text">lun. 15 avr. 2026 — 21:32</div></div><div class="kpi-tile">
+            <div style="font-family:'Segoe UI',sans-serif;font-size:38px;font-weight:700;line-height:1;color:#4CAF50">50 — 32</div>
+            <div style="display:block;margin-top:1px;padding:3px 10px;border-radius:4px;font-size:0.875em;font-weight:600;background:#2e7d32;color:#e8f5e9">DOMINATION</div>
+          </div></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>match_view.13 — Frags différentiel cumulé — tous les joueurs</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_players_timeline.py::render_kd_timeline_section</code>
+      </div>
+      <div id="chart-12" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 60,
+    right: 30,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: 0
+  },
+  xAxis: {
+    type: "value",
+    name: "i18n:viz_t.axis_match_time",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    min: 0,
+    max: 600000,
+    axisLabel: {
+      formatter: function anonymous(val
+) {
+var m = Math.floor(val / 60000); var s = Math.floor((val % 60000) / 1000); return m + ':' + (s < 10 ? '0' + s : s);
+}
+    }
+  },
+  yAxis: {
+    type: "value",
+    name: "i18n:viz_t.trace_kda",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "JGtm",
+      data: [
+        [0, 0],
+        [20000, 0],
+        [40000, -1],
+        [60000, -2],
+        [80000, -3],
+        [100000, -4],
+        [120000, -4],
+        [140000, -3],
+        [160000, -2],
+        [180000, -3],
+        [200000, -4],
+        [220000, -4],
+        [240000, -3],
+        [260000, -2],
+        [280000, -1],
+        [300000, -1],
+        [320000, 0],
+        [340000, 0],
+        [360000, 1],
+        [380000, 2],
+        [400000, 3],
+        [420000, 2],
+        [440000, 3],
+        [460000, 3],
+        [480000, 4],
+        [500000, 5],
+        [520000, 6],
+        [540000, 7],
+        [560000, 6],
+        [580000, 6],
+        [600000, 7]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 3,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      opacity: 1,
+      smooth: false,
+      markLine: {
+        silent: true,
+        symbol: "none",
+        data: [
+          {
+            yAxis: 0,
+            lineStyle: {
+              color: "rgba(255, 255, 255, 0.35)",
+              width: 1,
+              type: "dotted",
+              opacity: 1
+            },
+            label: {
+              show: false,
+              formatter: "",
+              position: "insideStartTop",
+              color: "rgba(255, 215, 0, 0.5)",
+              fontSize: 10
+            },
+            symbol: "none"
+          }
+        ]
+      }
+    },
+    {
+      type: "line",
+      name: "NeoSpartan_42",
+      data: [
+        [0, 0],
+        [20000, 0],
+        [40000, 1],
+        [60000, 1],
+        [80000, 0],
+        [100000, 1],
+        [120000, 1],
+        [140000, 0],
+        [160000, -1],
+        [180000, 0],
+        [200000, 0],
+        [220000, -1],
+        [240000, -1],
+        [260000, 0],
+        [280000, 1],
+        [300000, 1],
+        [320000, 2],
+        [340000, 2],
+        [360000, 1],
+        [380000, 2],
+        [400000, 1],
+        [420000, 0],
+        [440000, -1],
+        [460000, 0],
+        [480000, 1],
+        [500000, 0],
+        [520000, 1],
+        [540000, 2],
+        [560000, 2],
+        [580000, 2],
+        [600000, 3]
+      ],
+      itemStyle: {
+        color: "#EF5350"
+      },
+      lineStyle: {
+        color: "#EF5350",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: false,
+      opacity: 0.65,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "BlazingFury",
+      data: [
+        [0, 0],
+        [20000, 0],
+        [40000, 0],
+        [60000, 1],
+        [80000, 2],
+        [100000, 3],
+        [120000, 3],
+        [140000, 4],
+        [160000, 5],
+        [180000, 6],
+        [200000, 7],
+        [220000, 6],
+        [240000, 7],
+        [260000, 8],
+        [280000, 7],
+        [300000, 8],
+        [320000, 9],
+        [340000, 9],
+        [360000, 8],
+        [380000, 9],
+        [400000, 10],
+        [420000, 11],
+        [440000, 10],
+        [460000, 9],
+        [480000, 10],
+        [500000, 9],
+        [520000, 9],
+        [540000, 8],
+        [560000, 7],
+        [580000, 8],
+        [600000, 8]
+      ],
+      itemStyle: {
+        color: "#29B6F6"
+      },
+      lineStyle: {
+        color: "#29B6F6",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: false,
+      opacity: 0.65,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "ShadowKnight",
+      data: [
+        [0, 1],
+        [20000, 2],
+        [40000, 3],
+        [60000, 2],
+        [80000, 3],
+        [100000, 4],
+        [120000, 3],
+        [140000, 3],
+        [160000, 3],
+        [180000, 4],
+        [200000, 3],
+        [220000, 3],
+        [240000, 2],
+        [260000, 1],
+        [280000, 1],
+        [300000, 2],
+        [320000, 1],
+        [340000, 1],
+        [360000, 2],
+        [380000, 2],
+        [400000, 2],
+        [420000, 1],
+        [440000, 2],
+        [460000, 2],
+        [480000, 2],
+        [500000, 2],
+        [520000, 1],
+        [540000, 2],
+        [560000, 1],
+        [580000, 1],
+        [600000, 2]
+      ],
+      itemStyle: {
+        color: "#FFCA28"
+      },
+      lineStyle: {
+        color: "#FFCA28",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: false,
+      opacity: 0.65,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "GlitchHunter",
+      data: [
+        [0, 1],
+        [20000, 1],
+        [40000, 1],
+        [60000, 0],
+        [80000, 1],
+        [100000, 0],
+        [120000, -1],
+        [140000, -2],
+        [160000, -3],
+        [180000, -4],
+        [200000, -5],
+        [220000, -5],
+        [240000, -4],
+        [260000, -4],
+        [280000, -3],
+        [300000, -4],
+        [320000, -4],
+        [340000, -3],
+        [360000, -4],
+        [380000, -4],
+        [400000, -5],
+        [420000, -5],
+        [440000, -6],
+        [460000, -5],
+        [480000, -6],
+        [500000, -5],
+        [520000, -4],
+        [540000, -5],
+        [560000, -4],
+        [580000, -5],
+        [600000, -4]
+      ],
+      itemStyle: {
+        color: "#26C6DA"
+      },
+      lineStyle: {
+        color: "#26C6DA",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: false,
+      opacity: 0.65,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "VortexMaster",
+      data: [
+        [0, 0],
+        [20000, -1],
+        [40000, -2],
+        [60000, -2],
+        [80000, -1],
+        [100000, -2],
+        [120000, -3],
+        [140000, -4],
+        [160000, -5],
+        [180000, -5],
+        [200000, -4],
+        [220000, -3],
+        [240000, -4],
+        [260000, -4],
+        [280000, -3],
+        [300000, -3],
+        [320000, -2],
+        [340000, -1],
+        [360000, -2],
+        [380000, -3],
+        [400000, -3],
+        [420000, -3],
+        [440000, -2],
+        [460000, -2],
+        [480000, -2],
+        [500000, -2],
+        [520000, -2],
+        [540000, -2],
+        [560000, -3],
+        [580000, -4],
+        [600000, -3]
+      ],
+      itemStyle: {
+        color: "#FF7043"
+      },
+      lineStyle: {
+        color: "#FF7043",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: false,
+      opacity: 0.65,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "NightHawk",
+      data: [
+        [0, -1],
+        [20000, 0],
+        [40000, 1],
+        [60000, 1],
+        [80000, 2],
+        [100000, 1],
+        [120000, 2],
+        [140000, 3],
+        [160000, 2],
+        [180000, 3],
+        [200000, 4],
+        [220000, 4],
+        [240000, 5],
+        [260000, 4],
+        [280000, 4],
+        [300000, 3],
+        [320000, 4],
+        [340000, 4],
+        [360000, 5],
+        [380000, 6],
+        [400000, 7],
+        [420000, 7],
+        [440000, 8],
+        [460000, 7],
+        [480000, 7],
+        [500000, 8],
+        [520000, 9],
+        [540000, 9],
+        [560000, 9],
+        [580000, 9],
+        [600000, 9]
+      ],
+      itemStyle: {
+        color: "#AB47BC"
+      },
+      lineStyle: {
+        color: "#AB47BC",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: false,
+      opacity: 0.65,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "CrimsonRage",
+      data: [
+        [0, -1],
+        [20000, 0],
+        [40000, 0],
+        [60000, 1],
+        [80000, 0],
+        [100000, 0],
+        [120000, 1],
+        [140000, 2],
+        [160000, 1],
+        [180000, 2],
+        [200000, 1],
+        [220000, 2],
+        [240000, 1],
+        [260000, 1],
+        [280000, 2],
+        [300000, 2],
+        [320000, 2],
+        [340000, 2],
+        [360000, 2],
+        [380000, 1],
+        [400000, 1],
+        [420000, 1],
+        [440000, 0],
+        [460000, 1],
+        [480000, 0],
+        [500000, 1],
+        [520000, 0],
+        [540000, 0],
+        [560000, 1],
+        [580000, 1],
+        [600000, 0]
+      ],
+      itemStyle: {
+        color: "#66BB6A"
+      },
+      lineStyle: {
+        color: "#66BB6A",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: false,
+      opacity: 0.65,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-12');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>match_view.14 — Historique des rencontres (joueurs du match)</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_encounters.py::render_encounter_section</code>
+      </div>
+      
+      <div class="os-table-wrap os-sb-wrap">
+        <table class="os-table os-scoreboard">
+          <thead><tr><th class="os-sb-team" colspan="7">(libellé du subheader Encounters côté caller)</th></tr><tr><th class="os-sb-th">Joueur</th><th class="os-sb-th">Rôle</th><th class="os-sb-th">Rencontres</th><th class="os-sb-th">WR allié</th><th class="os-sb-th">WR ennemi</th><th class="os-sb-th">K/D croisé</th><th class="os-sb-th" style="color: #aaa; font-size: 0.85em">Vu pour la dernière fois</th></tr></thead>
+          <tbody><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=XxShadowKnightxX' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>XxShadowKnightxX</a> <span style='color:#888;font-size:0.85em'>(14e)</span></td><td class="os-sb-td"><span style='background:#5d2828;color:#f5b7b7;padding:2px 8px;border-radius:10px;font-size:0.75em'>ennemi</span></td><td class="os-sb-td">14 <span style='color:#888;font-size:0.8em;'>(A:5 | E:9)</span></td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">60%</td><td class="os-sb-td">44%</td><td class="os-sb-td">23/19</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 2j</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=BlazingFury' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>BlazingFury</a> <span style='color:#888;font-size:0.85em'>(11e)</span></td><td class="os-sb-td"><span style='background:#1b5e20;color:#a5d6a7;padding:2px 8px;border-radius:10px;font-size:0.75em'>allié</span></td><td class="os-sb-td">11 <span style='color:#888;font-size:0.8em;'>(A:8 | E:3)</span></td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">75%</td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">67%</td><td class="os-sb-td">12/8</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 5j</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=NeoSpartan_42' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>NeoSpartan_42</a> <span style='color:#888;font-size:0.85em'>(9e)</span></td><td class="os-sb-td"><span style='background:#5d2828;color:#f5b7b7;padding:2px 8px;border-radius:10px;font-size:0.75em'>ennemi</span></td><td class="os-sb-td">9 <span style='color:#888;font-size:0.8em;'>(A:2 | E:7)</span></td><td class="os-sb-td">50%</td><td class="os-sb-td" style="color:#FF9E6B;font-weight:700">29%</td><td class="os-sb-td">8/22</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">hier</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=GlitchHunter' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>GlitchHunter</a> <span style='color:#888;font-size:0.85em'>(7e)</span></td><td class="os-sb-td"><span style='background:#1b5e20;color:#a5d6a7;padding:2px 8px;border-radius:10px;font-size:0.75em'>allié</span></td><td class="os-sb-td">7 <span style='color:#888;font-size:0.8em;'>(A:4 | E:3)</span></td><td class="os-sb-td">50%</td><td class="os-sb-td" style="color:#FF9E6B;font-weight:700">33%</td><td class="os-sb-td">11/9</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 3j</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=NoScope_King' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>NoScope_King</a> <span style='color:#888;font-size:0.85em'>(5e)</span></td><td class="os-sb-td"><span style='background:#5d2828;color:#f5b7b7;padding:2px 8px;border-radius:10px;font-size:0.75em'>ennemi</span></td><td class="os-sb-td">5 <span style='color:#888;font-size:0.8em;'>(A:1 | E:4)</span></td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">100%</td><td class="os-sb-td">50%</td><td class="os-sb-td">7/15</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 1sem</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>match_view.15 — Citations progressées dans ce match</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_citations.py::render_match_citations_section</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;width:100%;padding:8px;justify-items:center"><div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px">
+        <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#41d6ff 0deg 222deg, rgba(255,255,255,0.06) 222deg 360deg);display:flex;align-items:center;justify-content:center">
+          <div style="width:56px;height:56px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#41d6ff;font-size:0.7em;font-weight:700">MAR</div>
+        </div>
+        <div style="font-size:0.78em;font-weight:600;text-align:center">Marksman</div>
+        <div style="font-size:0.72em;color:#bbb;font-weight:500">Or</div>
+        <div style="font-size:0.72em;color:#888">1234/2000 <span style="color:#4CAF50;font-weight:700">+18</span></div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px">
+        <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#41d6ff 0deg 204deg, rgba(255,255,255,0.06) 204deg 360deg);display:flex;align-items:center;justify-content:center">
+          <div style="width:56px;height:56px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#41d6ff;font-size:0.7em;font-weight:700">SHA</div>
+        </div>
+        <div style="font-size:0.78em;font-weight:600;text-align:center">Sharpshooter</div>
+        <div style="font-size:0.72em;color:#bbb;font-weight:500">Argent</div>
+        <div style="font-size:0.72em;color:#888">567/1000 <span style="color:#4CAF50;font-weight:700">+22</span></div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px">
+        <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#d6b35a 0deg 360deg, rgba(255,255,255,0.06) 360deg 360deg);display:flex;align-items:center;justify-content:center">
+          <div style="width:56px;height:56px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#d6b35a;font-size:0.7em;font-weight:700">DEM</div>
+        </div>
+        <div style="font-size:0.78em;font-weight:600;text-align:center">Demolitionist</div>
+        <div style="font-size:0.72em;color:#d6b35a;font-weight:700">Maître</div>
+        <div style="font-size:0.72em;color:#888">5012/5000 <span style="color:#4CAF50;font-weight:700">+14</span></div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px">
+        <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#41d6ff 0deg 104deg, rgba(255,255,255,0.06) 104deg 360deg);display:flex;align-items:center;justify-content:center">
+          <div style="width:56px;height:56px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#41d6ff;font-size:0.7em;font-weight:700">TAC</div>
+        </div>
+        <div style="font-size:0.78em;font-weight:600;text-align:center">Tactician</div>
+        <div style="font-size:0.72em;color:#bbb;font-weight:500">Bronze</div>
+        <div style="font-size:0.72em;color:#888">145/500 <span style="color:#4CAF50;font-weight:700">+8</span></div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px">
+        <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#41d6ff 0deg 258deg, rgba(255,255,255,0.06) 258deg 360deg);display:flex;align-items:center;justify-content:center">
+          <div style="width:56px;height:56px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#41d6ff;font-size:0.7em;font-weight:700">SPA</div>
+        </div>
+        <div style="font-size:0.78em;font-weight:600;text-align:center">Spartan</div>
+        <div style="font-size:0.72em;color:#bbb;font-weight:500">Or</div>
+        <div style="font-size:0.72em;color:#888">1789/2500 <span style="color:#4CAF50;font-weight:700">+35</span></div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px">
+        <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#41d6ff 0deg 203deg, rgba(255,255,255,0.06) 203deg 360deg);display:flex;align-items:center;justify-content:center">
+          <div style="width:56px;height:56px;border-radius:50%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#41d6ff;font-size:0.7em;font-weight:700">VIG</div>
+        </div>
+        <div style="font-size:0.78em;font-weight:600;text-align:center">Vigilant</div>
+        <div style="font-size:0.72em;color:#bbb;font-weight:500">Argent</div>
+        <div style="font-size:0.72em;color:#888">678/1200 <span style="color:#4CAF50;font-weight:700">+11</span></div>
+      </div></div></div></div>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>match_view.16 — Médailles obtenues dans ce match</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_citations.py::render_medals_tab</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:100%;padding:8px;justify-items:center"><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(200,70%,55%) 0%,hsl(200,60%,30%) 70%);border:2px solid hsl(200,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">KS</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×4</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Killing Spree</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(280,70%,55%) 0%,hsl(280,60%,30%) 70%);border:2px solid hsl(280,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">DK</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×7</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Double Kill</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(320,70%,55%) 0%,hsl(320,60%,30%) 70%);border:2px solid hsl(320,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">TK</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×3</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Triple Kill</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(45,70%,55%) 0%,hsl(45,60%,30%) 70%);border:2px solid hsl(45,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">H</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×12</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Headshot</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(50,70%,55%) 0%,hsl(50,60%,30%) 70%);border:2px solid hsl(50,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">P</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×1</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Perfection</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(150,70%,55%) 0%,hsl(150,60%,30%) 70%);border:2px solid hsl(150,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">SK</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×5</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Sniper Kill</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(0,70%,55%) 0%,hsl(0,60%,30%) 70%);border:2px solid hsl(0,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">MK</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×2</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Melee Kill</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(180,70%,55%) 0%,hsl(180,60%,30%) 70%);border:2px solid hsl(180,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">QD</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×6</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Quick Draw</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(30,70%,55%) 0%,hsl(30,60%,30%) 70%);border:2px solid hsl(30,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">A</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×1</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Achilles</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(270,70%,55%) 0%,hsl(270,60%,30%) 70%);border:2px solid hsl(270,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">FtG</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×2</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">From the Grave</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(90,70%,55%) 0%,hsl(90,60%,30%) 70%);border:2px solid hsl(90,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">P</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×3</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Pancake</div>
+    </div><div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px">
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,hsl(110,70%,55%) 0%,hsl(110,60%,30%) 70%);border:2px solid hsl(110,80%,45%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">S</div>
+      <div style="font-size:0.78em;font-weight:700;color:#fff">×4</div>
+      <div style="font-size:0.7em;color:#aaa;text-align:center;max-width:72px;line-height:1.1">Splatter</div>
+    </div></div></div></div>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>match_view.17 — Médias du match (captures + vidéos)</h2>
+      <div class="meta">
+        <code>src/ui/pages/match_view_helpers.py::render_media_section</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 50.00%;padding:0 8px;display:flex;align-items:center;justify-content:center"><div style="font-size:48px;font-weight:700;color:#fff">—</div></div><div class="cb-cell" style="flex:0 0 50.00%;padding:0 8px;display:flex;align-items:center;justify-content:center"><div style="font-size:48px;font-weight:700;color:#fff">—</div></div></div>
+    </section>
+  </main>
+  <footer>
+    <strong>But</strong> : valider visuellement que les YAML de spec graphique
+    (<code>.ai/charts_specs/match_view/*.yaml</code>) reproduisent fidèlement
+    les charts Plotly d'origine. Comparer chaque chart ci-dessus avec son équivalent
+    Streamlit/Plotly en lançant l'app Python (si dispo) ou en regardant un screenshot.
+  </footer>
+</body>
+</html>

@@ -1,0 +1,209 @@
+# =============================================================================
+# Teammates page · Section 1 · Squad Session Header (team card + N joueurs)
+# =============================================================================
+# Header de la section Squad. Calcule un score escouade et affiche :
+#   - 1 card "team" : grade A/B/C/D/F + score moyen escouade + détail bonus
+#                     (si score > base_avg, affiche le delta squad_score_bonus)
+#   - N cards "joueurs individuels" : 1 par membre escouade, avec score perso
+#                                     + badge ▲ (vert) / ▼ (rouge) si meilleur/pire
+#                                     que la moyenne escouade
+#
+# Le squad score est calculé par compute_squad_performance_score qui peut ajouter
+# des BONUS au score moyen (ex: synergie quand tous les joueurs sont au-dessus
+# de leur baseline historique).
+# =============================================================================
+
+id: "teammates.01"
+title: "Squad session header — Team card + N joueurs avec is_better"
+page: teammates
+section: "Section 1 (header de Squad — après KPI)"
+display_order_in_page: 2
+source_function: "src/ui/components/performance.py::render_squad_session_header"
+source_helpers:
+  - "src/ui/pages/teammates.py::_render_squad_header_if_needed"
+  - "src/ui/pages/teammates.py::_get_squad_header_df"
+  - "src/ui/pages/teammates.py::_load_teammate_stats_from_own_db"
+  - "src/ui/components/performance.py::_render_compact_team_card"
+  - "src/ui/components/performance.py::render_performance_score_card"
+  - "src/ui/components/performance.py::compute_session_performance_score_v2_ui"
+  - "src/ui/components/performance.py::get_score_color"
+  - "src/ui/components/performance.py::get_score_class"
+  - "src/ui/components/performance.py::get_score_label"
+  - "src/analysis/_performance_squad.py::compute_squad_performance_score"
+fragment: false
+chart_kind: kpi_row
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: |
+    1. _get_squad_header_df(df, dff, picked_session_labels, base_s_ui)
+       → DataFrame du joueur principal sur le scope SESSION (pas global)
+    2. _load_teammate_stats_from_own_db(friend_name, match_ids, db_path)
+       → DataFrame de chaque ami sur les match_ids communs
+    3. compute_session_performance_score_v2_ui(df) par joueur → perf dict
+    4. compute_squad_performance_score([perfs]) → squad_result avec grade + bonus
+  input_dataframe:
+    required_fields:
+      players_data:
+        - name                                                  # gamertag
+        - df_session                                            # DataFrame matchs sur le scope
+  call_args:
+    lang: "fr | en"
+  filters_applied:
+    - "Section MASQUÉE si len(dff) < 2 (return early dans _render_squad_header_if_needed)"
+
+  constants:
+    score_thresholds: { excellent: 75, good: 60, average: 45, below_average: 30 }
+    palette:
+      excellent: "#00e676"
+      good: "#41d6ff"
+      average: "#ffb300"
+      below_average: "#FF8C00"
+      poor: "#e53935"
+    badges:
+      better: "▲"                                               # vert (text-positive)
+      worse: "▼"                                                # rouge (text-negative)
+    grades: ["A", "B", "C", "D", "F"]                           # via compute_squad_performance_score
+
+  transformations:
+    - description: "Calcul score perso par joueur (compute_session_performance_score_v2_ui)"
+      polars: |
+        perf_list = [
+            (name, compute_session_performance_score_v2_ui(ensure_polars(df)))
+            for name, df in players_data
+        ]
+        # perf : {score, kd_ratio, win_rate, accuracy, kills, deaths, assists, matches, components}
+
+    - description: "Calcul score escouade global (compute_squad_performance_score)"
+      polars: |
+        squad_result = compute_squad_performance_score([p for _, p in perf_list])
+        # squad_result : {score, grade, components: {base_avg, bonus}, ...}
+        avg_score = squad_result['score']
+        grade = squad_result.get('grade', 'N/A')
+        # base_avg = moyenne des perf individuelles
+        # score = base_avg + bonus (si synergie détectée)
+
+    - description: "Détermination is_better par joueur"
+      polars: |
+        is_better = (player_score > avg_score) if (avg_score and player_score) else None
+
+    - description: "Calcul bonus pour la team card (différence score - base_avg)"
+      polars: |
+        bonus = round(score - base_avg) if (score and base_avg) else 0
+        # bonus > 0 → affiche 'Score base 65 + 8 bonus' via squad_score_bonus
+        # bonus = 0 → affiche 'Score 65' via squad_score_base_only
+
+# === KPI ROW ===
+kpi_row:
+  cardinality: "1 + N (team + joueurs)"
+  layout: "st.columns(N+1) — team en col 0, joueurs en col 1..N"
+
+  cells:
+    - id: team_card
+      label_i18n: "{{t.squad_score_header}}"
+      compact: true
+      score_field: "squad_result.score"
+      score_color: "get_score_color(squad_result.score)"
+      grade_field: "squad_result.grade"                         # A/B/C/D/F en gros
+      detail:
+        type: "bonus_or_base"
+        when_bonus_positive: "{{t.squad_score_bonus}} (base + bonus)"
+        when_bonus_zero: "{{t.squad_score_base_only}} (base only)"
+
+    - id: player_cards
+      template_per_player: true
+      cardinality: "N (1 par membre escouade)"
+      compact: true
+      score_field: "perf.score"
+      score_color: "get_score_color(perf.score)"
+      label_field: "{player_name}"
+      score_label_palier: "get_score_label(perf.score, lang)"
+      is_better_field: "perf.score > avg_score"
+      badge:
+        when_better: "▲ vert (text-positive)"
+        when_worse: "▼ rouge (text-negative)"
+        when_none: ""                                            # pas de comparaison possible
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 180 }                                         # cards compactes
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    len(dff) >= 2
+    AND perf_list non vide après filter (df not None par joueur)
+  empty_state:
+    type: "section masquée"
+    triggered_by:
+      - "len(dff) < 2 → return early"
+      - "perf_list vide → return"
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "(rendu via _render_squad_header_if_needed AVANT _render_teammate_views)"
+    - "st.subheader(t('tm_squad_section'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tm_squad_section
+    - squad_score_header
+    - squad_score_bonus                                          # paramétré base + bonus
+    - squad_score_base_only                                      # paramétré base only
+    - perf_matches_count
+    - perf_label_excellent, perf_label_good, perf_label_average, perf_label_below
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "ANCIEN YAML 01 (`render_teammate_cards`) RÉÉCRIT"
+      why: |
+        Audit 2026-04-30 : le YAML 01 documentait `render_teammate_cards` (cards Spartan +
+        legend panel) mais cette fonction est DEAD CODE (jamais appelée par render_teammates_page).
+        La VRAIE fonction du squad header est `render_squad_session_header` qui affiche le team
+        card + N individual cards. Réécriture nécessaire pour fidélité documentation/code.
+
+    - decision: "Team card en col 0 (avant les joueurs)"
+      why: |
+        Lecture naturelle gauche-droite : le résumé escouade en premier, puis le détail par joueur.
+        Indique le grade global (A/B/C/D/F) en gros pour donner immédiatement l'info principale
+        ('mon escouade joue bien ou pas ?') avant d'analyser les contributions individuelles.
+
+    - decision: "Badge ▲/▼ par joueur si is_better calculable"
+      why: |
+        Permet de voir d'un coup d'œil 'qui tire l'escouade vers le haut/bas'. is_better=None
+        si avg_score ou player_score sont None — pas de badge dans ce cas (cohérence).
+
+    - decision: "Bonus de synergie dans la team card"
+      why: |
+        compute_squad_performance_score peut ajouter un BONUS au score moyen quand tous les
+        joueurs sont au-dessus de leur baseline historique (synergie). Affiche 'Score base 65 + 8'
+        pour expliciter ce gain. Si bonus = 0, affiche juste 'Score 65' (squad_score_base_only).
+
+    - decision: "Section masquée si len(dff) < 2"
+      why: |
+        Une session de 0 ou 1 match n'a pas assez de données pour calculer un score perf
+        significatif. Masquage propre via _render_squad_header_if_needed (return early).
+
+    - decision: "compact=true sur toutes les cards"
+      why: |
+        L'API render_performance_score_card supporte compact=True (pas de matches_count
+        en sub) — utilisé ici car le sub serait redondant (l'utilisateur sait combien de
+        matchs il a sélectionné via le filtre global). Économie d'espace vertical.
+
+    - decision: "Note : LEGEND panel séparé"
+      why: |
+        Le panel légende flottant `render_player_legend_panel` (qui était documenté dans
+        l'ancien YAML 01) est appelé DEPUIS render_multi_teammate_view (ligne 84) — pas dans
+        ce header. Il est documenté implicitement dans les YAMLs des charts qu'il accompagne
+        (notamment ceux qui utilisent les couleurs joueurs). À documenter séparément si nécessaire.

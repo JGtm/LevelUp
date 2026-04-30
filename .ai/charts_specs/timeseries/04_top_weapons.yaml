@@ -1,0 +1,130 @@
+# =============================================================================
+# Top weapons by kills — barres horizontales joueur principal
+# =============================================================================
+# Top 10 armes (top_n par défaut) classées par total_kills DESC, affichées
+# en barres horizontales (orientation='h'). Texte affiché à droite de chaque
+# barre (textposition='outside') = nombre de kills. Tooltip = customdata
+# avec headshot_rate + accuracy de l'arme. Couleur = HALO_COLORS.cyan.
+# Hauteur DYNAMIQUE = max(default, 30 * len(names) + 80).
+# =============================================================================
+
+id: "timeseries.04"
+title: "Top weapons by kills"
+page: timeseries
+section: "Onglet Résumé K/D/A — Armes"
+display_order_in_tab: 5
+source_function: "src/ui/pages/_timeseries_weapons.py::render_weapon_kills_chart"
+source_helpers:
+  - "src/visualization/distributions.py::plot_top_weapons"
+  - "src/ui/pages/_timeseries_weapons.py::_load_grenade_melee_totals"
+fragment: false
+chart_kind: grouped_bar                                        # 1 trace, horizontal
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_top_weapons_for_player(db_path, xuid) → list[dict] avec weapon_name, total_kills, headshot_rate, accuracy"
+  input_dataframe:
+    required_fields:
+      weapons_data:
+        - weapon_name
+        - total_kills
+        - headshot_rate                                        # 0-1
+        - accuracy                                             # 0-1
+  call_args:
+    top_n: 10                                                  # limite par défaut
+  filters_applied: ["filtres globaux + grenade/melee fusionnés via _load_grenade_melee_totals"]
+
+  constants:
+    bar_color: "#41d6ff"                                       # cyan
+    bar_opacity: 0.85
+    text_position: outside
+    height_per_bar: 30
+    height_padding: 80
+
+  transformations:
+    - description: "Tri DESC par total_kills + slice top_n"
+      polars: 'data = sorted(weapons_data, key=lambda x: x.get("total_kills", 0), reverse=True)[:10]'
+    - description: "Inversion order pour affichage Plotly horizontal (top en haut)"
+      polars: 'names = [w["weapon_name"] for w in data][::-1]; kills = [...][::-1]'
+    - description: "Fusion grenade + melee via _load_grenade_melee_totals (avant l'appel plot)"
+      polars: |
+        # _load_grenade_melee_totals additionne les kills "grenade" et "melee" déjà présents
+        # dans weapons_data (au cas où il y a plusieurs sous-types) en 1 seule entrée chacun.
+
+# === TRACES ===
+traces:
+  - id: kills_bars
+    type: bar
+    orientation: h
+    x_field: kills
+    y_field: weapon_names
+    color: "#41d6ff"
+    opacity: 0.85
+    text_field: "viz_t.text_kills_count formatted with k=kills"
+    text_position: outside
+    customdata: "[hs_rates, accuracies]"
+    hovertemplate_i18n: "{{viz_t.hover_weapons}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: null
+    expression: "max(380, 30 * len(names) + 80)"
+  margin: { l: 120, r: 60, t: 30, b: 40 }
+  xaxis:
+    title_i18n: "{{viz_t.axis_kills}}"
+  yaxis:
+    title: ""
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "weapons_data non vide"
+  empty_state:
+    type: "figure vide"
+    triggered_by: ["weapons_data vide → fig sans traces"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "(rendu via render_weapon_kills_chart sans subheader spécifique)"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_kills
+    - text_kills_count
+    - hover_weapons
+    - axis_kills
+  t: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Barres horizontales (orientation='h'), pas verticales"
+      why: |
+        Les noms d'armes Halo sont LONGS ('Mangler', 'Skewer', 'Ravager', ...) et difficiles à lire
+        en label vertical (rotation -45°). Horizontal permet d'afficher le nom en pleine largeur
+        sans rotation. Convention de l'industrie pour les "top N" classements.
+
+    - decision: "Hauteur dynamique 30 px par arme"
+      why: |
+        10 armes → ~380 px (matches default_height). Si top_n est augmenté à 15-20, la hauteur grandit
+        proportionnellement pour garder une lisibilité égale. Côté ECharts : `__height` calculé
+        et appliqué via `__meta.height` (cf. teammates.09 pattern).
+
+    - decision: "Inversion [::-1] de l'ordre"
+      why: |
+        Plotly affiche les barres horizontales avec y croissant vers le haut (origine en bas).
+        Pour avoir le top1 EN HAUT (lecture gauche-haut comme un classement), on inverse l'ordre.
+
+    - decision: "Fusion grenade/melee dans _load_grenade_melee_totals AVANT plot"
+      why: |
+        Les armes "grenade" et "melee" peuvent apparaître plusieurs fois dans la DB (sous-types
+        Plasma/Frag/Spike grenade, Mêlée/Brute slap, etc.). On les fusionne en 2 entrées canoniques
+        pour éviter de polluer le top10 avec 5 lignes de grenades qui auraient totalisé top1.

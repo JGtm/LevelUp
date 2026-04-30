@@ -1,0 +1,113 @@
+# =============================================================================
+# Net score per hour — courbe rolling adaptative avec zones ± positif/négatif
+# =============================================================================
+# 4 traces :
+#   1. Zone positive : fill='tozeroy' verte (rgba 0,158,115,0.25) sur les valeurs
+#      rolling positives. Pas de ligne, juste l'aire.
+#   2. Zone négative : fill='tozeroy' rouge (rgba 213,94,0,0.25) sur valeurs
+#      rolling négatives.
+#   3. Markers RAW : net score brut par match (markers, opacity 0.35)
+#   4. Line ROLLING : moyenne mobile adaptative (lines+markers, color cumulative)
+# =============================================================================
+
+id: "timeseries.23"
+title: "Net score per hour — rolling adaptatif avec zones ±"
+page: timeseries
+section: "Onglet Avancé — Net score/heure"
+display_order_in_tab: 3
+source_function: "src/visualization/_perf_progression.py::plot_net_score_per_hour"
+source_helpers:
+  - "src/visualization/_perf_progression.py::_add_nph_traces"
+fragment: false
+chart_kind: line                                                # line + areas
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_net_score_per_hour(dff) ou similaire — calcule x/y_raw/y_rolling"
+  input_dataframe:
+    required_fields:
+      df: [start_time, kills, deaths, time_played_seconds]
+  call_args: { lang: "fr | en" }
+
+  constants:
+    positive_color: "rgba(0,158,115,0.25)"                      # Okabe-Ito green transparent
+    negative_color: "rgba(213,94,0,0.25)"                       # Okabe-Ito vermillon transparent
+    raw_marker_color: "PERFORMANCE_COLORS.neutral"
+    raw_marker_opacity: 0.35
+    rolling_color: "PERFORMANCE_COLORS.cumulative"
+    rolling_width: 3
+
+# === TRACES ===
+traces:
+  - id: zone_positive
+    type: scatter
+    fill: tozeroy
+    fillcolor: "rgba(0,158,115,0.25)"
+    line: { color: "rgba(0,0,0,0)" }                            # invisible
+    showlegend: false
+    hoverinfo: skip
+    y_field: "y_pos = max(0, y_rolling)"
+  - id: zone_negative
+    type: scatter
+    fill: tozeroy
+    fillcolor: "rgba(213,94,0,0.25)"
+    line: { color: "rgba(0,0,0,0)" }
+    showlegend: false
+    hoverinfo: skip
+    y_field: "y_neg = min(0, y_rolling)"
+  - id: raw_markers
+    type: scatter
+    mode: markers
+    marker: { size: 5, opacity: 0.35 }
+    name_i18n: "{{viz_t.trace_nph_raw}}"
+  - id: rolling_line
+    type: scatter
+    mode: lines+markers
+    line: { width: 3 }
+    marker: { size: 6 }
+    name_i18n: "{{viz_t.trace_nph_rolling}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  hovermode: "x unified"
+  legend: "horizontal_top_right"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "fig_nph not None"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  followed_by:
+    - "_render_note(t('ts_note_nph'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_nph_positive, trace_nph_negative
+    - trace_nph_raw, trace_nph_rolling
+    - hover_nph_raw
+  t: ["ts_note_nph"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Zones ± séparées (vert positif / rouge négatif)"
+      why: |
+        Le net score peut être positif ou négatif (kills - deaths par heure). Les 2 zones colorées
+        donnent un message immédiat : périodes 'profitables' (vert) vs 'à perte' (rouge). Les
+        valeurs rolling sont SPLITTÉES en 2 séries y_pos/y_neg pour ne colorier QUE la partie
+        de la courbe au-dessus/en-dessous de zéro.
+
+    - decision: "Markers raw transparents (opacity 0.35)"
+      why: |
+        Les valeurs RAW match-à-match sont très bruitées. Affichage en markers transparents pour
+        donner une idée de la dispersion sans masquer la courbe rolling principale.

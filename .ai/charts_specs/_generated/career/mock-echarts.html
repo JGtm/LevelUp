@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock ECharts — career</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: rgb(20, 28, 33);
+      color: rgba(245, 248, 255, 0.92);
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 500;
+    }
+    header .info {
+      font-size: 13px;
+      color: rgba(182, 196, 214, 0.88);
+    }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 1100px) {
+      main {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .chart-card.full-width {
+        grid-column: 1 / -1;
+      }
+    }
+    .chart-card {
+      background: rgba(29, 35, 40, 1.0);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px 16px 8px;
+    }
+    .chart-card h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #33D6FF;
+    }
+    .chart-card .meta {
+      font-size: 11px;
+      color: rgba(182, 196, 214, 0.72);
+      margin-bottom: 12px;
+    }
+    .chart-card .meta code {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .chart-canvas {
+      width: 100%;
+    }
+    .chart-card--table .os-table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    table.os-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86em;
+      background: rgba(29, 35, 40, 0.96);
+    }
+    table.os-table th, table.os-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: left;
+      vertical-align: middle;
+    }
+    table.os-table th.os-sb-team {
+      background: rgba(51, 214, 255, 0.08);
+      color: #33D6FF;
+      font-weight: 600;
+      font-size: 0.95em;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(51, 214, 255, 0.2);
+    }
+    table.os-table th.os-sb-th {
+      color: rgba(182, 196, 214, 0.88);
+      font-size: 0.78em;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    table.os-table tr.os-sb-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    table.os-table td.os-sb-td {
+      color: rgba(245, 248, 255, 0.92);
+    }
+    .table-legend {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .kpi-tile {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 9px 15px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-tile-text {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.98);
+    }
+    .composite-block {
+      margin-top: 8px;
+      padding: 4px 0;
+    }
+    .composite-block .cb-cell img {
+      max-width: 100%;
+      border-radius: 6px;
+    }
+    footer {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: rgba(182, 196, 214, 0.72);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mock ECharts — Page career</h1>
+    <div class="info">
+      11 charts · Données mock synthétiques · ECharts 5.5.1<br>
+      Source : <code>origin/v7/cockpit</code> (Plotly Python) — généré le 2026-04-30T20:46:01.415Z
+    </div>
+  </header>
+  <main>
+    <section class="chart-card">
+      <h2>career.01 — Progression vers le prochain rang</h2>
+      <div class="meta">
+        <code>src/ui/components/career_progress_circle.py::create_career_progress_gauge</code>
+      </div>
+      <div id="chart-0" class="chart-canvas" style="height: 280px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: undefined,
+  tooltip: {
+    formatter: function anonymous(params
+) {
+return "Capitaine III" + '<br>' + "125,400 / 226,000 XP" + '<br>' + Math.round(params.value) + '%';
+}
+  },
+  legend: false,
+  series: [
+    {
+      type: "gauge",
+      min: 0,
+      max: 100,
+      startAngle: 215,
+      endAngle: -35,
+      radius: "90%",
+      center: ["50%", "60%"],
+      data: [
+        {
+          value: 55,
+          name: ""
+        }
+      ],
+      axisLine: {
+        lineStyle: {
+          width: 18,
+          color: [
+            [0.25, "rgba(255, 102, 102, 0.25)"],
+            [0.5, "rgba(255, 170, 0, 0.25)"],
+            [0.75, "rgba(51, 214, 255, 0.25)"],
+            [1, "rgba(0, 255, 136, 0.25)"]
+          ]
+        }
+      },
+      progress: {
+        show: true,
+        width: 18,
+        roundCap: false,
+        itemStyle: {
+          color: "#33d6ff"
+        }
+      },
+      pointer: {
+        show: true,
+        length: "60%",
+        width: 4,
+        itemStyle: {
+          color: "#ffffff"
+        }
+      },
+      axisTick: {
+        show: false
+      },
+      splitLine: {
+        show: true,
+        distance: 0,
+        length: 6,
+        lineStyle: {
+          color: "rgba(102,102,102,0.5)",
+          width: 1
+        }
+      },
+      axisLabel: {
+        show: true,
+        distance: 22,
+        color: "#666",
+        fontSize: 10,
+        formatter: function anonymous(value
+) {
+return Math.round(value).toString();
+}
+      },
+      title: {
+        show: true,
+        offsetCenter: [0, "-32%"],
+        color: "#ffffff",
+        fontSize: 14,
+        fontWeight: "bold"
+      },
+      detail: {
+        show: true,
+        offsetCenter: [0, "24%"],
+        color: "#ffffff",
+        fontSize: 30,
+        fontWeight: "bold",
+        formatter: function anonymous(value
+) {
+return Math.round(value) + "%";
+}
+      }
+    }
+  ],
+  title: {
+    text: "Capitaine III",
+    subtext: "125,400 / 226,000 XP",
+    left: "center",
+    top: "85%",
+    textStyle: {
+      color: "#ffffff",
+      fontSize: 14
+    },
+    subtextStyle: {
+      color: "#aaa",
+      fontSize: 11
+    }
+  },
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "#ffffff",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-0');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>career.02 — Progression vers le rang Héros</h2>
+      <div class="meta">
+        <code>src/ui/components/career_progress_circle.py::create_hero_progress_gauge</code>
+      </div>
+      <div id="chart-1" class="chart-canvas" style="height: 280px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: undefined,
+  tooltip: {
+    formatter: function anonymous(params
+) {
+return "Progression vers Héros" + '<br>' + "1,156,420 / 9,319,350 XP" + '<br>' + Math.round(params.value) + '%';
+}
+  },
+  legend: false,
+  series: [
+    {
+      type: "gauge",
+      min: 0,
+      max: 100,
+      startAngle: 215,
+      endAngle: -35,
+      radius: "90%",
+      center: ["50%", "60%"],
+      data: [
+        {
+          value: 12.4,
+          name: ""
+        }
+      ],
+      axisLine: {
+        lineStyle: {
+          width: 18,
+          color: [
+            [0.25, "rgba(255, 102, 102, 0.25)"],
+            [0.5, "rgba(255, 170, 0, 0.25)"],
+            [0.75, "rgba(51, 214, 255, 0.25)"],
+            [1, "rgba(0, 255, 136, 0.25)"]
+          ]
+        }
+      },
+      progress: {
+        show: true,
+        width: 18,
+        roundCap: false,
+        itemStyle: {
+          color: "#ff6666"
+        }
+      },
+      pointer: {
+        show: true,
+        length: "60%",
+        width: 4,
+        itemStyle: {
+          color: "#ffffff"
+        }
+      },
+      axisTick: {
+        show: false
+      },
+      splitLine: {
+        show: true,
+        distance: 0,
+        length: 6,
+        lineStyle: {
+          color: "rgba(102,102,102,0.5)",
+          width: 1
+        }
+      },
+      axisLabel: {
+        show: true,
+        distance: 22,
+        color: "#666",
+        fontSize: 10,
+        formatter: function anonymous(value
+) {
+return Math.round(value).toString();
+}
+      },
+      title: {
+        show: true,
+        offsetCenter: [0, "-32%"],
+        color: "#ffffff",
+        fontSize: 14,
+        fontWeight: "bold"
+      },
+      detail: {
+        show: true,
+        offsetCenter: [0, "24%"],
+        color: "#ffffff",
+        fontSize: 30,
+        fontWeight: "bold",
+        formatter: function anonymous(value
+) {
+return Math.round(value) + "%";
+}
+      }
+    }
+  ],
+  title: {
+    text: "Progression vers Héros",
+    subtext: "1,156,420 / 9,319,350 XP",
+    left: "center",
+    top: "85%",
+    textStyle: {
+      color: "#ffffff",
+      fontSize: 14
+    },
+    subtextStyle: {
+      color: "#aaa",
+      fontSize: 11
+    }
+  },
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "#ffffff",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-1');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>career.03 — Historique XP</h2>
+      <div class="meta">
+        <code>src/ui/pages/career_charts.py::_create_xp_history_chart</code>
+      </div>
+      <div id="chart-2" class="chart-canvas" style="height: 400px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 60,
+    right: 20,
+    top: 40,
+    bottom: 80,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: "center",
+    selected: {
+      "i18n:t.career_projection_hero": false,
+      "i18n:t.career_projection_optimistic": false,
+      "XP JGtm": false,
+      "XP estimé JGtm": false,
+      "Projection JGtm": false,
+      "Projection optimiste JGtm": false,
+      "XP NeoSpartan_42": false,
+      "XP estimé NeoSpartan_42": false,
+      "Projection NeoSpartan_42": false,
+      "Projection optimiste NeoSpartan_42": false,
+      "XP BlazingFury": false,
+      "XP estimé BlazingFury": false,
+      "Projection BlazingFury": false,
+      "Projection optimiste BlazingFury": false
+    }
+  },
+  xAxis: {
+    type: "time",
+    name: "i18n:t.col_date",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    type: "value",
+    name: "i18n:t.career_xp_total",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "i18n:t.career_xp_total",
+      data: [
+        ["2024-09-15", 3541356],
+        ["2024-10-16", 3756674],
+        ["2024-11-17", 4038830],
+        ["2024-12-18", 4289556],
+        ["2025-01-18", 4512537],
+        ["2025-02-18", 4759690],
+        ["2025-03-22", 5045964],
+        ["2025-04-22", 5292426],
+        ["2025-05-23", 5536841],
+        ["2025-06-24", 5777966],
+        ["2025-07-25", 6042201],
+        ["2025-08-25", 6283204],
+        ["2025-09-25", 6542289],
+        ["2025-10-27", 6794770],
+        ["2025-11-27", 7039611],
+        ["2025-12-28", 7270736],
+        ["2026-01-28", 7516599],
+        ["2026-03-01", 7771941],
+        ["2026-04-01", 8031375]
+      ],
+      itemStyle: {
+        color: "rgba(51, 214, 255, 1)"
+      },
+      lineStyle: {
+        color: "rgba(51, 214, 255, 1)",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: true,
+      smooth: false,
+      markLine: {
+        silent: true,
+        symbol: "none",
+        data: [
+          {
+            yAxis: 9319350,
+            lineStyle: {
+              color: "rgba(255, 215, 0, 0.3)",
+              width: 1,
+              type: "dotted",
+              opacity: 1
+            },
+            label: {
+              show: true,
+              formatter: "i18n:t.career_hero_threshold",
+              position: "insideStartTop",
+              color: "rgba(255, 215, 0, 0.5)",
+              fontSize: 10
+            },
+            symbol: "none"
+          }
+        ]
+      }
+    },
+    {
+      type: "line",
+      name: "i18n:t.career_xp_estimated",
+      data: [
+        ["2023-06-20", 0],
+        ["2023-07-08", 53302],
+        ["2023-07-26", 131246],
+        ["2023-08-13", 222333],
+        ["2023-08-31", 323165],
+        ["2023-09-19", 431924],
+        ["2023-10-07", 547448],
+        ["2023-10-25", 668919],
+        ["2023-11-12", 795725],
+        ["2023-11-30", 927388],
+        ["2023-12-18", 1063521],
+        ["2024-01-05", 1203806],
+        ["2024-01-23", 1347974],
+        ["2024-02-11", 1495796],
+        ["2024-02-29", 1647072],
+        ["2024-03-18", 1801626],
+        ["2024-04-05", 1959305],
+        ["2024-04-23", 2119970],
+        ["2024-05-11", 2283496],
+        ["2024-05-29", 2449772],
+        ["2024-06-16", 2618696],
+        ["2024-07-05", 2790173],
+        ["2024-07-23", 2964118],
+        ["2024-08-10", 3140452],
+        ["2024-08-28", 3319102],
+        ["2024-09-15", 3500000]
+      ],
+      itemStyle: {
+        color: "#CE93D8"
+      },
+      lineStyle: {
+        color: "#CE93D8",
+        width: 2,
+        type: "dotted"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "i18n:t.career_projection_hero",
+      data: [
+        ["2026-04-01", 8000000],
+        ["2026-04-30", 8087956.666666667],
+        ["2026-05-30", 8175913.333333333],
+        ["2026-06-28", 8263870],
+        ["2026-07-27", 8351826.666666667],
+        ["2026-08-26", 8439783.333333334],
+        ["2026-09-24", 8527740],
+        ["2026-10-23", 8615696.666666666],
+        ["2026-11-22", 8703653.333333334],
+        ["2026-12-21", 8791610],
+        ["2027-01-19", 8879566.666666666],
+        ["2027-02-18", 8967523.333333334],
+        ["2027-03-19", 9055480],
+        ["2027-04-17", 9143436.666666666],
+        ["2027-05-16", 9231393.333333334],
+        ["2027-06-15", 9319350]
+      ],
+      itemStyle: {
+        color: "#FFA726"
+      },
+      lineStyle: {
+        color: "#FFA726",
+        width: 2,
+        type: "dashed"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "i18n:t.career_projection_optimistic",
+      data: [
+        ["2026-04-01", 8000000],
+        ["2026-04-27", 8188478.571428572],
+        ["2026-05-23", 8376957.142857143],
+        ["2026-06-17", 8565435.714285715],
+        ["2026-07-13", 8753914.285714285],
+        ["2026-08-08", 8942392.857142858],
+        ["2026-09-03", 9130871.42857143],
+        ["2026-09-29", 9319350]
+      ],
+      itemStyle: {
+        color: "#66BB6A"
+      },
+      lineStyle: {
+        color: "#66BB6A",
+        width: 2,
+        type: "dashed"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "XP JGtm",
+      data: [
+        ["2024-09-15", 5276117],
+        ["2024-10-16", 5490288],
+        ["2024-11-17", 5774374],
+        ["2024-12-18", 6027391],
+        ["2025-01-18", 6259747],
+        ["2025-02-18", 6500666],
+        ["2025-03-22", 6733559],
+        ["2025-04-22", 6991310],
+        ["2025-05-23", 7234301],
+        ["2025-06-24", 7523230],
+        ["2025-07-25", 7751465],
+        ["2025-08-25", 8008052],
+        ["2025-09-25", 8240589],
+        ["2025-10-27", 8514786],
+        ["2025-11-27", 8740344],
+        ["2025-12-28", 9012132],
+        ["2026-01-28", 9272666],
+        ["2026-03-01", 9497431],
+        ["2026-04-01", 9761664]
+      ],
+      itemStyle: {
+        color: "#EF5350"
+      },
+      lineStyle: {
+        color: "#EF5350",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 5,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "XP estimé JGtm",
+      data: [
+        ["2023-06-20", 0],
+        ["2023-07-08", 79672],
+        ["2023-07-26", 196175],
+        ["2023-08-13", 332325],
+        ["2023-08-31", 483040],
+        ["2023-09-19", 645604],
+        ["2023-10-07", 818279],
+        ["2023-10-25", 999844],
+        ["2023-11-12", 1189384],
+        ["2023-11-30", 1386182],
+        ["2023-12-18", 1589663],
+        ["2024-01-05", 1799349],
+        ["2024-01-23", 2014840],
+        ["2024-02-11", 2235792],
+        ["2024-02-29", 2461906],
+        ["2024-03-18", 2692921],
+        ["2024-04-05", 2928606],
+        ["2024-04-23", 3168754],
+        ["2024-05-11", 3413180],
+        ["2024-05-29", 3661716],
+        ["2024-06-16", 3914208],
+        ["2024-07-05", 4170518],
+        ["2024-07-23", 4430517],
+        ["2024-08-10", 4694087],
+        ["2024-08-28", 4961118],
+        ["2024-09-15", 5231509]
+      ],
+      itemStyle: {
+        color: "#EF5350"
+      },
+      lineStyle: {
+        color: "#EF5350",
+        width: 1.5,
+        type: "dotted"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "Projection JGtm",
+      data: [],
+      itemStyle: {
+        color: "#EF5350"
+      },
+      lineStyle: {
+        color: "#EF5350",
+        width: 1.5,
+        type: "dashed"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "Projection optimiste JGtm",
+      data: [],
+      itemStyle: {
+        color: "#EF5350"
+      },
+      lineStyle: {
+        color: "#EF5350",
+        width: 1.5,
+        type: "dashed"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "XP NeoSpartan_42",
+      data: [
+        ["2024-09-15", 2681952],
+        ["2024-10-16", 2929173],
+        ["2024-11-17", 3189707],
+        ["2024-12-18", 3445289],
+        ["2025-01-18", 3708901],
+        ["2025-02-18", 3956255],
+        ["2025-03-22", 4162889],
+        ["2025-04-22", 4452356],
+        ["2025-05-23", 4697207],
+        ["2025-06-24", 4959678],
+        ["2025-07-25", 5194655],
+        ["2025-08-25", 5446649],
+        ["2025-09-25", 5710576],
+        ["2025-10-27", 5938642],
+        ["2025-11-27", 6174537],
+        ["2025-12-28", 6431432],
+        ["2026-01-28", 6709206],
+        ["2026-03-01", 6940664],
+        ["2026-04-01", 7171750]
+      ],
+      itemStyle: {
+        color: "#29B6F6"
+      },
+      lineStyle: {
+        color: "#29B6F6",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 5,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "XP estimé NeoSpartan_42",
+      data: [
+        ["2023-06-20", 0],
+        ["2023-07-08", 40524],
+        ["2023-07-26", 99781],
+        ["2023-08-13", 169031],
+        ["2023-08-31", 245690],
+        ["2023-09-19", 328375],
+        ["2023-10-07", 416203],
+        ["2023-10-25", 508553],
+        ["2023-11-12", 604959],
+        ["2023-11-30", 705057],
+        ["2023-12-18", 808553],
+        ["2024-01-05", 915207],
+        ["2024-01-23", 1024812],
+        ["2024-02-11", 1137195],
+        ["2024-02-29", 1252204],
+        ["2024-03-18", 1369706],
+        ["2024-04-05", 1489583],
+        ["2024-04-23", 1611730],
+        ["2024-05-11", 1736053],
+        ["2024-05-29", 1862466],
+        ["2024-06-16", 1990892],
+        ["2024-07-05", 2121260],
+        ["2024-07-23", 2253503],
+        ["2024-08-10", 2387563],
+        ["2024-08-28", 2523384],
+        ["2024-09-15", 2660913]
+      ],
+      itemStyle: {
+        color: "#29B6F6"
+      },
+      lineStyle: {
+        color: "#29B6F6",
+        width: 1.5,
+        type: "dotted"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "Projection NeoSpartan_42",
+      data: [
+        ["2026-04-01", 7171750],
+        ["2026-05-01", 7261233.333333333],
+        ["2026-05-31", 7350716.666666667],
+        ["2026-06-29", 7440200],
+        ["2026-07-29", 7529683.333333333],
+        ["2026-08-28", 7619166.666666667],
+        ["2026-09-27", 7708650],
+        ["2026-10-27", 7798133.333333333],
+        ["2026-11-26", 7887616.666666667],
+        ["2026-12-25", 7977100],
+        ["2027-01-24", 8066583.333333333],
+        ["2027-02-23", 8156066.666666667],
+        ["2027-03-25", 8245550],
+        ["2027-04-24", 8335033.333333333],
+        ["2027-05-24", 8424516.666666666],
+        ["2027-06-22", 8514000],
+        ["2027-07-22", 8603483.333333334],
+        ["2027-08-21", 8692966.666666666],
+        ["2027-09-20", 8782450],
+        ["2027-10-20", 8871933.333333334],
+        ["2027-11-19", 8961416.666666666],
+        ["2027-12-18", 9050900],
+        ["2028-01-17", 9140383.333333334],
+        ["2028-02-16", 9229866.666666666],
+        ["2028-03-17", 9319350]
+      ],
+      itemStyle: {
+        color: "#29B6F6"
+      },
+      lineStyle: {
+        color: "#29B6F6",
+        width: 1.5,
+        type: "dashed"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "Projection optimiste NeoSpartan_42",
+      data: [
+        ["2026-04-01", 7171750],
+        ["2026-04-30", 7386510],
+        ["2026-05-30", 7601270],
+        ["2026-06-28", 7816030],
+        ["2026-07-28", 8030790],
+        ["2026-08-26", 8245550],
+        ["2026-09-25", 8460310],
+        ["2026-10-24", 8675070],
+        ["2026-11-22", 8889830],
+        ["2026-12-22", 9104590],
+        ["2027-01-20", 9319350]
+      ],
+      itemStyle: {
+        color: "#29B6F6"
+      },
+      lineStyle: {
+        color: "#29B6F6",
+        width: 1.5,
+        type: "dashed"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "XP BlazingFury",
+      data: [
+        ["2024-09-15", 2173110],
+        ["2024-10-16", 2434749],
+        ["2024-11-17", 2690052],
+        ["2024-12-18", 2922967],
+        ["2025-01-18", 3169332],
+        ["2025-02-18", 3413630],
+        ["2025-03-22", 3696461],
+        ["2025-04-22", 3918617],
+        ["2025-05-23", 4203369],
+        ["2025-06-24", 4425786],
+        ["2025-07-25", 4695425],
+        ["2025-08-25", 4910501],
+        ["2025-09-25", 5170907],
+        ["2025-10-27", 5406292],
+        ["2025-11-27", 5668555],
+        ["2025-12-28", 5947856],
+        ["2026-01-28", 6154144],
+        ["2026-03-01", 6428226],
+        ["2026-04-01", 6672834]
+      ],
+      itemStyle: {
+        color: "#FFCA28"
+      },
+      lineStyle: {
+        color: "#FFCA28",
+        width: 1.5,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 5,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "XP estimé BlazingFury",
+      data: [
+        ["2023-06-20", 0],
+        ["2023-07-08", 32805],
+        ["2023-07-26", 80774],
+        ["2023-08-13", 136834],
+        ["2023-08-31", 198890],
+        ["2023-09-19", 265825],
+        ["2023-10-07", 336924],
+        ["2023-10-25", 411683],
+        ["2023-11-12", 489725],
+        ["2023-11-30", 570756],
+        ["2023-12-18", 654538],
+        ["2024-01-05", 740876],
+        ["2024-01-23", 829604],
+        ["2024-02-11", 920580],
+        ["2024-02-29", 1013681],
+        ["2024-03-18", 1108801],
+        ["2024-04-05", 1205844],
+        ["2024-04-23", 1304724],
+        ["2024-05-11", 1405366],
+        ["2024-05-29", 1507699],
+        ["2024-06-16", 1611662],
+        ["2024-07-05", 1717197],
+        ["2024-07-23", 1824251],
+        ["2024-08-10", 1932775],
+        ["2024-08-28", 2042724],
+        ["2024-09-15", 2154056]
+      ],
+      itemStyle: {
+        color: "#FFCA28"
+      },
+      lineStyle: {
+        color: "#FFCA28",
+        width: 1.5,
+        type: "dotted"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "Projection BlazingFury",
+      data: [
+        ["2026-04-01", 6672834],
+        ["2026-04-30", 6761051.2],
+        ["2026-05-30", 6849268.4],
+        ["2026-06-28", 6937485.6],
+        ["2026-07-28", 7025702.8],
+        ["2026-08-26", 7113920],
+        ["2026-09-24", 7202137.2],
+        ["2026-10-24", 7290354.4],
+        ["2026-11-22", 7378571.6],
+        ["2026-12-22", 7466788.8],
+        ["2027-01-20", 7555006],
+        ["2027-02-18", 7643223.2],
+        ["2027-03-20", 7731440.4],
+        ["2027-04-18", 7819657.6],
+        ["2027-05-18", 7907874.8],
+        ["2027-06-16", 7996092],
+        ["2027-07-15", 8084309.2],
+        ["2027-08-14", 8172526.4],
+        ["2027-09-12", 8260743.6],
+        ["2027-10-12", 8348960.8],
+        ["2027-11-10", 8437178],
+        ["2027-12-10", 8525395.2],
+        ["2028-01-08", 8613612.4],
+        ["2028-02-06", 8701829.6],
+        ["2028-03-07", 8790046.8],
+        ["2028-04-05", 8878264],
+        ["2028-05-05", 8966481.2],
+        ["2028-06-03", 9054698.4],
+        ["2028-07-02", 9142915.6],
+        ["2028-08-01", 9231132.8],
+        ["2028-08-30", 9319350]
+      ],
+      itemStyle: {
+        color: "#FFCA28"
+      },
+      lineStyle: {
+        color: "#FFCA28",
+        width: 1.5,
+        type: "dashed"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "Projection optimiste BlazingFury",
+      data: [
+        ["2026-04-01", 6672834],
+        ["2026-04-29", 6876412.153846154],
+        ["2026-05-27", 7079990.307692308],
+        ["2026-06-24", 7283568.461538462],
+        ["2026-07-22", 7487146.615384616],
+        ["2026-08-18", 7690724.769230769],
+        ["2026-09-15", 7894302.923076923],
+        ["2026-10-13", 8097881.076923077],
+        ["2026-11-10", 8301459.230769231],
+        ["2026-12-08", 8505037.384615384],
+        ["2027-01-05", 8708615.538461538],
+        ["2027-02-02", 8912193.692307692],
+        ["2027-03-02", 9115771.846153846],
+        ["2027-03-30", 9319350]
+      ],
+      itemStyle: {
+        color: "#FFCA28"
+      },
+      lineStyle: {
+        color: "#FFCA28",
+        width: 1.5,
+        type: "dashed"
+      },
+      symbol: "none",
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-2');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>career.04 — Évolution LUSR / CSR</h2>
+      <div class="meta">
+        <code>src/visualization/_timeseries_progression.py::plot_lusr_timeseries</code>
+      </div>
+      <div id="chart-3" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 60,
+    bottom: 140,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: 0
+  },
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    data: [
+      "2025-08-01",
+      "2025-08-08",
+      "2025-08-15",
+      "2025-08-22",
+      "2025-08-29",
+      "2025-09-05",
+      "2025-09-12",
+      "2025-09-19",
+      "2025-09-26",
+      "2025-10-03",
+      "2025-10-10",
+      "2025-10-17",
+      "2025-10-24",
+      "2025-10-31",
+      "2025-11-07",
+      "2025-11-14",
+      "2025-11-21",
+      "2025-11-28",
+      "2025-12-05",
+      "2025-12-12",
+      "2025-12-19",
+      "2025-12-26",
+      "2026-01-02",
+      "2026-01-09",
+      "2026-01-16",
+      "2026-01-23",
+      "2026-01-30",
+      "2026-02-06",
+      "2026-02-13",
+      "2026-02-20"
+    ]
+  },
+  yAxis: {
+    type: "value",
+    name: "i18n:viz_t.trace_lusr_axis",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "i18n:viz_t.trace_confidence",
+      data: [
+        ["2025-08-01", 1393],
+        ["2025-08-08", 1408],
+        ["2025-08-15", 1410],
+        ["2025-08-22", 1439],
+        ["2025-08-29", 1445],
+        ["2025-09-05", 1422],
+        ["2025-09-12", 1421],
+        ["2025-09-19", 1433],
+        ["2025-09-26", 1445],
+        ["2025-10-03", 1429],
+        ["2025-10-10", 1425],
+        ["2025-10-17", 1439],
+        ["2025-10-24", 1413],
+        ["2025-10-31", 1421],
+        ["2025-11-07", 1436],
+        ["2025-11-14", 1448],
+        ["2025-11-21", 1467],
+        ["2025-11-28", 1492],
+        ["2025-12-05", 1516],
+        ["2025-12-12", 1510],
+        ["2025-12-19", 1500],
+        ["2025-12-26", 1493],
+        ["2026-01-02", 1493],
+        ["2026-01-09", 1483],
+        ["2026-01-16", 1454],
+        ["2026-01-23", 1468],
+        ["2026-01-30", 1490],
+        ["2026-02-06", 1461],
+        ["2026-02-13", 1467],
+        ["2026-02-20", 1445]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 0,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      markArea: {
+        silent: true,
+        data: [
+          [
+            {
+              yAxis: 0,
+              itemStyle: {
+                color: "rgba(205,127,50,0.08)"
+              }
+            },
+            {
+              yAxis: 800
+            }
+          ],
+          [
+            {
+              yAxis: 800,
+              itemStyle: {
+                color: "rgba(192,192,192,0.08)"
+              }
+            },
+            {
+              yAxis: 1200
+            }
+          ],
+          [
+            {
+              yAxis: 1200,
+              itemStyle: {
+                color: "rgba(255,215,0,0.10)"
+              }
+            },
+            {
+              yAxis: 1600
+            }
+          ],
+          [
+            {
+              yAxis: 1600,
+              itemStyle: {
+                color: "rgba(0,206,209,0.08)"
+              }
+            },
+            {
+              yAxis: 2000
+            }
+          ],
+          [
+            {
+              yAxis: 2000,
+              itemStyle: {
+                color: "rgba(185,242,255,0.10)"
+              }
+            },
+            {
+              yAxis: 2200
+            }
+          ]
+        ]
+      }
+    },
+    {
+      type: "line",
+      name: "i18n:viz_t.trace_confidence",
+      data: [
+        ["2025-08-01", 1396],
+        ["2025-08-08", 1388],
+        ["2025-08-15", 1370],
+        ["2025-08-22", 1351],
+        ["2025-08-29", 1361],
+        ["2025-09-05", 1363],
+        ["2025-09-12", 1365],
+        ["2025-09-19", 1367],
+        ["2025-09-26", 1389],
+        ["2025-10-03", 1360],
+        ["2025-10-10", 1381],
+        ["2025-10-17", 1381],
+        ["2025-10-24", 1363],
+        ["2025-10-31", 1354],
+        ["2025-11-07", 1354],
+        ["2025-11-14", 1335],
+        ["2025-11-21", 1315],
+        ["2025-11-28", 1315],
+        ["2025-12-05", 1286],
+        ["2025-12-12", 1311],
+        ["2025-12-19", 1327],
+        ["2025-12-26", 1299],
+        ["2026-01-02", 1297],
+        ["2026-01-09", 1273],
+        ["2026-01-16", 1292],
+        ["2026-01-23", 1265],
+        ["2026-01-30", 1243],
+        ["2026-02-06", 1227],
+        ["2026-02-13", 1239],
+        ["2026-02-20", 1225]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 0,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(0,183,235,0.12)",
+        opacity: 1
+      }
+    },
+    {
+      type: "line",
+      name: "LUSR | CSR | LUSR / CSR",
+      data: [
+        ["2025-08-01", 1390],
+        ["2025-08-08", 1372],
+        ["2025-08-15", 1359],
+        ["2025-08-22", 1351],
+        ["2025-08-29", 1336],
+        ["2025-09-05", 1337],
+        ["2025-09-12", 1318],
+        ["2025-09-19", 1301],
+        ["2025-09-26", 1274],
+        ["2025-10-03", 1294],
+        ["2025-10-10", 1294],
+        ["2025-10-17", 1279],
+        ["2025-10-24", 1265],
+        ["2025-10-31", 1258],
+        ["2025-11-07", 1249],
+        ["2025-11-14", 1249],
+        ["2025-11-21", 1234],
+        ["2025-11-28", 1216],
+        ["2025-12-05", 1231],
+        ["2025-12-12", 1243],
+        ["2025-12-19", 1214],
+        ["2025-12-26", 1230],
+        ["2026-01-02", 1221],
+        ["2026-01-09", 1214],
+        ["2026-01-16", 1215],
+        ["2026-01-23", 1244],
+        ["2026-01-30", 1249],
+        ["2026-02-06", 1275],
+        ["2026-02-13", 1273],
+        ["2026-02-20", 1284]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2.2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 5,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "i18n:viz_t.trace_trend",
+      data: [
+        ["2025-08-01", 1425],
+        ["2025-08-08", 1434],
+        ["2025-08-15", 1420],
+        ["2025-08-22", 1417],
+        ["2025-08-29", 1412],
+        ["2025-09-05", 1419],
+        ["2025-09-12", 1441],
+        ["2025-09-19", 1465],
+        ["2025-09-26", 1460],
+        ["2025-10-03", 1467],
+        ["2025-10-10", 1478],
+        ["2025-10-17", 1487],
+        ["2025-10-24", 1495],
+        ["2025-10-31", 1511],
+        ["2025-11-07", 1511],
+        ["2025-11-14", 1512],
+        ["2025-11-21", 1523],
+        ["2025-11-28", 1515],
+        ["2025-12-05", 1506],
+        ["2025-12-12", 1531],
+        ["2025-12-19", 1549],
+        ["2025-12-26", 1570],
+        ["2026-01-02", 1569],
+        ["2026-01-09", 1591],
+        ["2026-01-16", 1565],
+        ["2026-01-23", 1558],
+        ["2026-01-30", 1565],
+        ["2026-02-06", 1549],
+        ["2026-02-13", 1524],
+        ["2026-02-20", 1542]
+      ],
+      itemStyle: {
+        color: "#8B5CF6"
+      },
+      lineStyle: {
+        color: "#8B5CF6",
+        width: 2.2,
+        type: "dashed"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-3');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>career.05 — Top 10 meilleurs matchs</h2>
+      <div class="meta">
+        <code>src/ui/pages/career_top_matches_render.py::_build_top_table_html</code>
+      </div>
+      
+      <div class="os-table-wrap os-table-wrap--map-hover">
+        <table class="os-table os-scoreboard" style="width:100%">
+          <thead><tr><th class="os-sb-team" colspan="9">Top 10 meilleurs matchs</th></tr><tr><th class="os-sb-th" style="font-family: monospace; font-size: 0.75em; color: var(--accent, #33d6ff)">Match</th><th class="os-sb-th" style="white-space: nowrap">Date</th><th class="os-sb-th">Mode</th><th class="os-sb-th">Carte</th><th class="os-sb-th" style="font-weight: 600">Score</th><th class="os-sb-th">K/D/A</th><th class="os-sb-th">K/D</th><th class="os-sb-th">Durée</th><th class="os-sb-th"></th></tr></thead>
+          <tbody><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&match_id=a1b2c3d4' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>a1b2c3d4…</a></td><td class="os-sb-td" style="white-space: nowrap">15/04/2026 21:32</td><td class="os-sb-td">Slayer</td><td class="os-sb-td">Aquarius</td><td class="os-sb-td" style="font-weight: 600">50 — 32</td><td class="os-sb-td">24/8/3</td><td class="os-sb-td" style="color: #3DFFB5; font-weight: 700;">3.00</td><td class="os-sb-td">11:42</td><td class="os-sb-td"><span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#2e7d32;color:#e8f5e9">DOMINATION</span></td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&match_id=b2c3d4e5' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>b2c3d4e5…</a></td><td class="os-sb-td" style="white-space: nowrap">12/04/2026 19:18</td><td class="os-sb-td">CTF</td><td class="os-sb-td">Behemoth</td><td class="os-sb-td" style="font-weight: 600">5 — 2</td><td class="os-sb-td">18/12/7</td><td class="os-sb-td" style="color: #3DFFB5; font-weight: 700;">1.50</td><td class="os-sb-td">14:15</td><td class="os-sb-td"><span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#1565c0;color:#e3f2fd">REMONTADA</span></td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&match_id=c3d4e5f6' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>c3d4e5f6…</a></td><td class="os-sb-td" style="white-space: nowrap">08/04/2026 22:41</td><td class="os-sb-td">Strongholds</td><td class="os-sb-td">Recharge</td><td class="os-sb-td" style="font-weight: 600">250 — 180</td><td class="os-sb-td">21/9/4</td><td class="os-sb-td" style="color: #3DFFB5; font-weight: 700;">2.33</td><td class="os-sb-td">13:08</td><td class="os-sb-td"></td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&match_id=d4e5f6a7' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>d4e5f6a7…</a></td><td class="os-sb-td" style="white-space: nowrap">03/04/2026 20:55</td><td class="os-sb-td">Slayer</td><td class="os-sb-td">Streets</td><td class="os-sb-td" style="font-weight: 600">50 — 41</td><td class="os-sb-td">19/14/2</td><td class="os-sb-td">1.36</td><td class="os-sb-td">9:32</td><td class="os-sb-td"></td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&match_id=e5f6a7b8' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>e5f6a7b8…</a></td><td class="os-sb-td" style="white-space: nowrap">28/03/2026 18:22</td><td class="os-sb-td">Oddball</td><td class="os-sb-td">Catalyst</td><td class="os-sb-td" style="font-weight: 600">100 — 78</td><td class="os-sb-td">15/11/9</td><td class="os-sb-td">1.36</td><td class="os-sb-td">12:48</td><td class="os-sb-td"></td></tr></tbody>
+        </table>
+      </div>
+      <div class="table-legend"><div style="font-size:0.78em;opacity:0.72;margin-top:4px;line-height:1.8;">
+      <span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#2e7d32;color:#e8f5e9">DOMINATION</span> Victoire écrasante (≥30 pts d'écart)<br>
+      <span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#1565c0;color:#e3f2fd">REMONTADA</span> Victoire après être mené tard<br>
+      <span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#00695c;color:#e0f2f1">CONTRE-REMONTADA</span> Empêcher l'adversaire de remonter
+    </div></div>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>career.06 — Top 10 pires matchs</h2>
+      <div class="meta">
+        <code>src/ui/pages/career_top_matches_render.py::_build_top_table_html</code>
+      </div>
+      
+      <div class="undefined">
+        <table class="undefined">
+          <thead><tr><th class="undefined" colspan="6">Top 10 pires matchs</th></tr><tr><th class="undefined">Match</th><th class="undefined">Date</th><th class="undefined">Mode</th><th class="undefined">Carte</th><th class="undefined" style="font-weight: 600">Score</th><th class="undefined">K/D/A</th><th class="undefined">K/D</th><th class="undefined">Durée</th><th class="undefined"></th></tr></thead>
+          <tbody><tr class="undefined"><td class="undefined"><a href='/?page=Explorer&match_id=f6a7b8c9' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>f6a7b8c9…</a></td><td class="undefined" style="white-space: nowrap">14/04/2026 22:12</td><td class="undefined">Slayer</td><td class="undefined">Argyle</td><td class="undefined" style="font-weight: 600">50 — 18</td><td class="undefined">6/22/3</td><td class="undefined" style="color: #FF4D6D; font-weight: 700;">0.27</td><td class="undefined">8:42</td><td class="undefined"><span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#6a1b9a;color:#f3e5f5">HUMILIATION</span></td></tr><tr class="undefined"><td class="undefined"><a href='/?page=Explorer&match_id=a7b8c9d0' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>a7b8c9d0…</a></td><td class="undefined" style="white-space: nowrap">10/04/2026 20:33</td><td class="undefined">CTF</td><td class="undefined">Live Fire</td><td class="undefined" style="font-weight: 600">1 — 5</td><td class="undefined">8/19/4</td><td class="undefined" style="color: #FF4D6D; font-weight: 700;">0.42</td><td class="undefined">11:55</td><td class="undefined"><span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#bf360c;color:#fbe9e7">DÉBÂCLE</span></td></tr><tr class="undefined"><td class="undefined"><a href='/?page=Explorer&match_id=b8c9d0e1' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>b8c9d0e1…</a></td><td class="undefined" style="white-space: nowrap">05/04/2026 21:08</td><td class="undefined">Strongholds</td><td class="undefined">Aquarius</td><td class="undefined" style="font-weight: 600">120 — 250</td><td class="undefined">11/18/2</td><td class="undefined" style="color: #FF4D6D; font-weight: 700;">0.61</td><td class="undefined">10:28</td><td class="undefined"></td></tr><tr class="undefined"><td class="undefined"><a href='/?page=Explorer&match_id=c9d0e1f2' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>c9d0e1f2…</a></td><td class="undefined" style="white-space: nowrap">01/04/2026 19:44</td><td class="undefined">Slayer</td><td class="undefined">Behemoth</td><td class="undefined" style="font-weight: 600">32 — 50</td><td class="undefined">14/22/5</td><td class="undefined" style="color: #FF4D6D; font-weight: 700;">0.64</td><td class="undefined">12:01</td><td class="undefined"></td></tr><tr class="undefined"><td class="undefined"><a href='/?page=Explorer&match_id=d0e1f2a3' target='_self' style='font-family:monospace;font-size:0.75em;color:#33d6ff;text-decoration:none;'>d0e1f2a3…</a></td><td class="undefined" style="white-space: nowrap">25/03/2026 18:55</td><td class="undefined">Oddball</td><td class="undefined">Streets</td><td class="undefined" style="font-weight: 600">78 — 100</td><td class="undefined">13/19/3</td><td class="undefined">0.68</td><td class="undefined">11:14</td><td class="undefined"></td></tr></tbody>
+        </table>
+      </div>
+      <div class="table-legend"><div style="font-size:0.78em;opacity:0.72;margin-top:4px;line-height:1.8;">
+      <span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#6a1b9a;color:#f3e5f5">HUMILIATION</span> Défaite écrasante (≥30 pts d'écart)<br>
+      <span style="padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:600;background:#bf360c;color:#fbe9e7">DÉBÂCLE</span> Défaite avec abandon
+    </div></div>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>career.07 — Top 10 joueurs croisés</h2>
+      <div class="meta">
+        <code>src/ui/pages/career_encounters_html.py::build_encounters_table_html</code>
+      </div>
+      
+      <div class="os-table-wrap os-sb-wrap">
+        <table class="os-table os-scoreboard">
+          <thead><tr><th class="os-sb-team" colspan="7">{{title}}</th></tr><tr><th class="os-sb-th">Joueur</th><th class="os-sb-th">Rôle</th><th class="os-sb-th">Rencontres</th><th class="os-sb-th">WR allié</th><th class="os-sb-th">WR ennemi</th><th class="os-sb-th">K/D croisé</th><th class="os-sb-th" style="color: #aaa; font-size: 0.85em">Vu pour la dernière fois</th></tr></thead>
+          <tbody><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=XxShadowKnightxX' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>XxShadowKnightxX</a> <span style='color:#888;font-size:0.85em'>(14e)</span></td><td class="os-sb-td"><span style='background:#5d2828;color:#f5b7b7;padding:2px 8px;border-radius:10px;font-size:0.75em'>ennemi</span></td><td class="os-sb-td">14 <span style='color:#888;font-size:0.8em;'>(A:5 | E:9)</span></td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">60%</td><td class="os-sb-td">44%</td><td class="os-sb-td">23/19</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 2j</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=BlazingFury' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>BlazingFury</a> <span style='color:#888;font-size:0.85em'>(11e)</span></td><td class="os-sb-td"><span style='background:#1b5e20;color:#a5d6a7;padding:2px 8px;border-radius:10px;font-size:0.75em'>allié</span></td><td class="os-sb-td">11 <span style='color:#888;font-size:0.8em;'>(A:8 | E:3)</span></td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">75%</td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">67%</td><td class="os-sb-td">12/8</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 5j</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=NeoSpartan_42' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>NeoSpartan_42</a> <span style='color:#888;font-size:0.85em'>(9e)</span></td><td class="os-sb-td"><span style='background:#5d2828;color:#f5b7b7;padding:2px 8px;border-radius:10px;font-size:0.75em'>ennemi</span></td><td class="os-sb-td">9 <span style='color:#888;font-size:0.8em;'>(A:2 | E:7)</span></td><td class="os-sb-td">50%</td><td class="os-sb-td" style="color:#FF9E6B;font-weight:700">29%</td><td class="os-sb-td">8/22</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">hier</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=GlitchHunter' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>GlitchHunter</a> <span style='color:#888;font-size:0.85em'>(7e)</span></td><td class="os-sb-td"><span style='background:#1b5e20;color:#a5d6a7;padding:2px 8px;border-radius:10px;font-size:0.75em'>allié</span></td><td class="os-sb-td">7 <span style='color:#888;font-size:0.8em;'>(A:4 | E:3)</span></td><td class="os-sb-td">50%</td><td class="os-sb-td" style="color:#FF9E6B;font-weight:700">33%</td><td class="os-sb-td">11/9</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 3j</td></tr><tr class="os-sb-row"><td class="os-sb-td"><a href='/?page=Explorer&gamertag=NoScope_King' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>NoScope_King</a> <span style='color:#888;font-size:0.85em'>(5e)</span></td><td class="os-sb-td"><span style='background:#5d2828;color:#f5b7b7;padding:2px 8px;border-radius:10px;font-size:0.75em'>ennemi</span></td><td class="os-sb-td">5 <span style='color:#888;font-size:0.8em;'>(A:1 | E:4)</span></td><td class="os-sb-td" style="color:#3DFFB5;font-weight:700">100%</td><td class="os-sb-td">50%</td><td class="os-sb-td">7/15</td><td class="os-sb-td" style="color: #aaa; font-size: 0.85em">il y a 1sem</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>career.08 — Top 10 némésis</h2>
+      <div class="meta">
+        <code>src/ui/pages/career_encounters_html.py::build_antagonist_table_html</code>
+      </div>
+      
+      <div class="os-table-wrap os-sb-wrap">
+        <table class="os-table os-scoreboard" style="min-width: 0; width: 100%">
+          <thead><tr><th class="os-sb-team" colspan="6">Top 10 némésis</th></tr><tr><th class="os-sb-th" style="text-align: left">#</th><th class="os-sb-th" style="text-align: left">Joueur</th><th class="os-sb-th" style="text-align: center; font-weight: 700">Tué par</th><th class="os-sb-th" style="text-align: center">Tué</th><th class="os-sb-th" style="text-align: center">Net</th><th class="os-sb-th" style="text-align: center; color: #aaa">Matchs</th></tr></thead>
+          <tbody><tr class="os-sb-row"><td class="os-sb-td" style="text-align: left">1</td><td class="os-sb-td" style="text-align: left"><a href='/?page=Explorer&gamertag=XxShadowKnightxX' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>XxShadowKnightxX</a></td><td class="os-sb-td" style="text-align: center; font-weight: 700">28</td><td class="os-sb-td" style="text-align: center">14</td><td class="os-sb-td" style="text-align: center; color:#ff9e6b;font-weight:700;">-14</td><td class="os-sb-td" style="text-align: center; color: #aaa">9</td></tr><tr class="os-sb-row"><td class="os-sb-td" style="text-align: left">2</td><td class="os-sb-td" style="text-align: left"><a href='/?page=Explorer&gamertag=BlazingFury_007' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>BlazingFury_007</a></td><td class="os-sb-td" style="text-align: center; font-weight: 700">22</td><td class="os-sb-td" style="text-align: center">16</td><td class="os-sb-td" style="text-align: center; ">-6</td><td class="os-sb-td" style="text-align: center; color: #aaa">7</td></tr><tr class="os-sb-row"><td class="os-sb-td" style="text-align: left">3</td><td class="os-sb-td" style="text-align: left"><a href='/?page=Explorer&gamertag=NeoSpartan_42' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>NeoSpartan_42</a></td><td class="os-sb-td" style="text-align: center; font-weight: 700">19</td><td class="os-sb-td" style="text-align: center">12</td><td class="os-sb-td" style="text-align: center; ">-7</td><td class="os-sb-td" style="text-align: center; color: #aaa">8</td></tr><tr class="os-sb-row"><td class="os-sb-td" style="text-align: left">4</td><td class="os-sb-td" style="text-align: left"><a href='/?page=Explorer&gamertag=GlitchHunter' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>GlitchHunter</a></td><td class="os-sb-td" style="text-align: center; font-weight: 700">17</td><td class="os-sb-td" style="text-align: center">9</td><td class="os-sb-td" style="text-align: center; ">-8</td><td class="os-sb-td" style="text-align: center; color: #aaa">6</td></tr><tr class="os-sb-row"><td class="os-sb-td" style="text-align: left">5</td><td class="os-sb-td" style="text-align: left"><a href='/?page=Explorer&gamertag=NoScope_King' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>NoScope_King</a></td><td class="os-sb-td" style="text-align: center; font-weight: 700">15</td><td class="os-sb-td" style="text-align: center">13</td><td class="os-sb-td" style="text-align: center; ">-2</td><td class="os-sb-td" style="text-align: center; color: #aaa">5</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>career.09 — Top 10 souffre-douleurs</h2>
+      <div class="meta">
+        <code>src/ui/pages/career_encounters_html.py::build_antagonist_table_html</code>
+      </div>
+      
+      <div class="undefined">
+        <table class="undefined">
+          <thead><tr><th class="undefined" colspan="6">Top 10 souffre-douleurs</th></tr><tr><th class="undefined" style="text-align: left">#</th><th class="undefined" style="text-align: left">Joueur</th><th class="undefined" style="text-align: center; font-weight: 700">Tué</th><th class="undefined" style="text-align: center">Tué par</th><th class="undefined" style="text-align: center">Net</th><th class="undefined" style="text-align: center; color: #aaa">Matchs</th></tr></thead>
+          <tbody><tr class="undefined"><td class="undefined" style="text-align: left">1</td><td class="undefined" style="text-align: left"><a href='/?page=Explorer&gamertag=EasyTarget_99' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>EasyTarget_99</a></td><td class="undefined" style="text-align: center; font-weight: 700">32</td><td class="undefined" style="text-align: center">8</td><td class="undefined" style="text-align: center; color:#33ffbf;font-weight:700;">+24</td><td class="undefined" style="text-align: center; color: #aaa">11</td></tr><tr class="undefined"><td class="undefined" style="text-align: left">2</td><td class="undefined" style="text-align: left"><a href='/?page=Explorer&gamertag=NewbieGamer' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>NewbieGamer</a></td><td class="undefined" style="text-align: center; font-weight: 700">28</td><td class="undefined" style="text-align: center">11</td><td class="undefined" style="text-align: center; color:#33ffbf;font-weight:700;">+17</td><td class="undefined" style="text-align: center; color: #aaa">9</td></tr><tr class="undefined"><td class="undefined" style="text-align: left">3</td><td class="undefined" style="text-align: left"><a href='/?page=Explorer&gamertag=JustLooking' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>JustLooking</a></td><td class="undefined" style="text-align: center; font-weight: 700">24</td><td class="undefined" style="text-align: center">14</td><td class="undefined" style="text-align: center; color:#33ffbf;font-weight:700;">+10</td><td class="undefined" style="text-align: center; color: #aaa">8</td></tr><tr class="undefined"><td class="undefined" style="text-align: left">4</td><td class="undefined" style="text-align: left"><a href='/?page=Explorer&gamertag=SlowReflexes' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>SlowReflexes</a></td><td class="undefined" style="text-align: center; font-weight: 700">21</td><td class="undefined" style="text-align: center">13</td><td class="undefined" style="text-align: center; color:#33ffbf;font-weight:700;">+8</td><td class="undefined" style="text-align: center; color: #aaa">7</td></tr><tr class="undefined"><td class="undefined" style="text-align: left">5</td><td class="undefined" style="text-align: left"><a href='/?page=Explorer&gamertag=ChillPlayer42' target='_self' style='color:#33d6ff;text-decoration:none;font-weight:600'>ChillPlayer42</a></td><td class="undefined" style="text-align: center; font-weight: 700">19</td><td class="undefined" style="text-align: center">12</td><td class="undefined" style="text-align: center; color:#33ffbf;font-weight:700;">+7</td><td class="undefined" style="text-align: center; color: #aaa">6</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>career.10 — XP snapshots table — 10 derniers rangs/dates dans expander</h2>
+      <div class="meta">
+        <code>src/ui/pages/career.py::_render_xp_snapshots_table</code>
+      </div>
+      
+      <div class="os-table-wrap">
+        <table class="os-table">
+          <thead><tr><th class="os-sb-team" colspan="1">XP snapshots table — 10 derniers rangs/dates dans expander</th></tr><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>career.11 — LUSR rank cards — grille N playlists avec rating + delta</h2>
+      <div class="meta">
+        <code>src/ui/pages/career_lusr.py::_render_lusr_rank_cards</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;width:100%"><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:200px">
+        <div style="font-size:0.85em;color:#A0A0A0;font-weight:500">🏆 Ranked</div>
+        <svg viewBox="0 0 90 90" width="90" height="90">
+      <defs><linearGradient id="g1842" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="hsl(116.83636363636364, 80%, 65%)" />
+        <stop offset="100%" stop-color="hsl(56.836363636363636, 80%, 35%)" />
+      </linearGradient></defs>
+      <polygon points="45,10 60,30 90,30 65,55 75,80 45,65 15,80 25,55 0,30 30,30" fill="url(#g1842)" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <text x="45" y="55" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">18</text>
+    </svg>
+        <div style="font-size:0.92em;font-weight:600;color:#fff">Onyx Diamond III</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#FFD700;color:#000;padding:1px 6px;border-radius:8px;font-size:0.78em;font-weight:700">CSR</span>
+          <span style="font-weight:700;font-size:1.1em;color:#fff">1842</span>
+        </div>
+        <div style="color:#00C853;font-size:0.85em;margin-top:2px">▲ +24</div>
+      </div><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:200px">
+        <div style="font-size:0.85em;color:#A0A0A0;font-weight:500">⚔️ Slayer</div>
+        <svg viewBox="0 0 90 90" width="90" height="90">
+      <defs><linearGradient id="g1456" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="hsl(95.78181818181818, 80%, 65%)" />
+        <stop offset="100%" stop-color="hsl(35.78181818181818, 80%, 35%)" />
+      </linearGradient></defs>
+      <polygon points="45,10 60,30 90,30 65,55 75,80 45,65 15,80 25,55 0,30 30,30" fill="url(#g1456)" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <text x="45" y="55" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">14</text>
+    </svg>
+        <div style="font-size:0.92em;font-weight:600;color:#fff">Platinum I</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.78em;font-weight:700">LUSR</span>
+          <span style="font-weight:700;font-size:1.1em;color:#fff">1456</span>
+        </div>
+        <div style="color:#FF5252;font-size:0.85em;margin-top:2px">▼ -12</div>
+      </div><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:200px">
+        <div style="font-size:0.85em;color:#A0A0A0;font-weight:500">🎯 Big Team Battle</div>
+        <svg viewBox="0 0 90 90" width="90" height="90">
+      <defs><linearGradient id="g1283" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="hsl(86.34545454545454, 80%, 65%)" />
+        <stop offset="100%" stop-color="hsl(26.345454545454544, 80%, 35%)" />
+      </linearGradient></defs>
+      <polygon points="45,10 60,30 90,30 65,55 75,80 45,65 15,80 25,55 0,30 30,30" fill="url(#g1283)" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <text x="45" y="55" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">12</text>
+    </svg>
+        <div style="font-size:0.92em;font-weight:600;color:#fff">Gold V</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.78em;font-weight:700">LUSR</span>
+          <span style="font-weight:700;font-size:1.1em;color:#fff">1283</span>
+        </div>
+        <div style="color:#00C853;font-size:0.85em;margin-top:2px">▲ +8</div>
+      </div><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:200px">
+        <div style="font-size:0.85em;color:#A0A0A0;font-weight:500">⚡ Quickplay</div>
+        <svg viewBox="0 0 90 90" width="90" height="90">
+      <defs><linearGradient id="g1612" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="hsl(104.29090909090908, 80%, 65%)" />
+        <stop offset="100%" stop-color="hsl(44.29090909090909, 80%, 35%)" />
+      </linearGradient></defs>
+      <polygon points="45,10 60,30 90,30 65,55 75,80 45,65 15,80 25,55 0,30 30,30" fill="url(#g1612)" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <text x="45" y="55" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">16</text>
+    </svg>
+        <div style="font-size:0.92em;font-weight:600;color:#fff">Platinum III</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.78em;font-weight:700">LUSR</span>
+          <span style="font-weight:700;font-size:1.1em;color:#fff">1612</span>
+        </div>
+        <div style="color:#888888;font-size:0.85em;margin-top:2px">= 0</div>
+      </div><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:200px">
+        <div style="font-size:0.85em;color:#A0A0A0;font-weight:500">🚩 Objectifs</div>
+        <svg viewBox="0 0 90 90" width="90" height="90">
+      <defs><linearGradient id="g1198" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="hsl(81.70909090909092, 80%, 65%)" />
+        <stop offset="100%" stop-color="hsl(21.70909090909091, 80%, 35%)" />
+      </linearGradient></defs>
+      <polygon points="45,10 60,30 90,30 65,55 75,80 45,65 15,80 25,55 0,30 30,30" fill="url(#g1198)" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <text x="45" y="55" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">11</text>
+    </svg>
+        <div style="font-size:0.92em;font-weight:600;color:#fff">Gold II</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.78em;font-weight:700">LUSR</span>
+          <span style="font-weight:700;font-size:1.1em;color:#fff">1198</span>
+        </div>
+        <div style="color:#00C853;font-size:0.85em;margin-top:2px">▲ +18</div>
+      </div><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:200px">
+        <div style="font-size:0.85em;color:#A0A0A0;font-weight:500">🎮 Mixed</div>
+        <svg viewBox="0 0 90 90" width="90" height="90">
+      <defs><linearGradient id="g987" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="hsl(70.2, 80%, 65%)" />
+        <stop offset="100%" stop-color="hsl(10.200000000000001, 80%, 35%)" />
+      </linearGradient></defs>
+      <polygon points="45,10 60,30 90,30 65,55 75,80 45,65 15,80 25,55 0,30 30,30" fill="url(#g987)" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <text x="45" y="55" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">9</text>
+    </svg>
+        <div style="font-size:0.92em;font-weight:600;color:#fff">Silver IV</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.78em;font-weight:700">LUSR</span>
+          <span style="font-weight:700;font-size:1.1em;color:#fff">987</span>
+        </div>
+        <div style="color:#FF5252;font-size:0.85em;margin-top:2px">▼ -5</div>
+      </div></div></div></div>
+    </section>
+  </main>
+  <footer>
+    <strong>But</strong> : valider visuellement que les YAML de spec graphique
+    (<code>.ai/charts_specs/career/*.yaml</code>) reproduisent fidèlement
+    les charts Plotly d'origine. Comparer chaque chart ci-dessus avec son équivalent
+    Streamlit/Plotly en lançant l'app Python (si dispo) ou en regardant un screenshot.
+  </footer>
+</body>
+</html>

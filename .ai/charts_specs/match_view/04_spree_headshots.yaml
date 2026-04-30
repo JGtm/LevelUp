@@ -1,0 +1,259 @@
+# =============================================================================
+# Spree + Headshots + Perfect Kills (3 bars groupées)
+# =============================================================================
+# Section "Folie meurtrière" affichée à droite de #03 (expected_vs_actual) dans
+# st.columns(2). 3 catégories sur X (Spree, Headshots, Perfect Kills) avec :
+#   - Trace 1 : "Réel" (3 valeurs du match courant), opacité 0.85
+#   - Trace 2 : "Moyenne historique" (avec pattern dotté), opacité 0.35,
+#               affichée seulement si match_count >= 10
+# =============================================================================
+
+id: "match_view.04"
+title: "Spree + Headshots + Perfect Kills"
+page: match_view
+section: "Onglet Summary — Folie meurtrière"
+source_function: "src/ui/pages/match_view_charts.py::_render_spree_headshots"
+source_helpers:
+  - "src/ui/pages/match_view_charts.py::render_expected_vs_actual (caller)"
+  - "src/ui/pages/match_view_charts.py::_safe_numeric"
+  - "src/ui/pages/match_view_logic.py::extract_mode_category"
+  - "src/ui/pages/match_view_logic.py::compute_mode_category_averages"
+  - "src/ui/pages/match_view_logic.py::build_mapping"
+  - "src/data/repositories/duckdb_repo.py::DuckDBRepository.count_perfect_kills_by_match"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+  - "src/visualization/theme.py::get_legend_horizontal_bottom"
+fragment: false
+chart_kind: grouped_bar
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null
+  input_dataframe:
+    required_fields:
+      row:
+        max_killing_spree: "int (du match courant)"
+        headshot_kills: "int (du match courant)"
+        match_id: "string"
+        pair_name: "string  (utilisé pour mode_category)"
+      df_full: "polars DataFrame (historique du joueur, optionnel)"
+  call_args:
+    db_path: "string  (pour count_perfect_kills_by_match)"
+    xuid: "string"
+  filters_applied: []
+
+  transformations:
+    - description: "Lecture des stats du match courant (spree, headshots)"
+      polars: |
+        spree_v = float(row.max_killing_spree)
+        headshots_v = float(row.headshot_kills)
+      sql_duckdb: "-- Déjà dans row depuis match_stats / match_participants"
+
+    - description: "Comptage des Perfect Kills via la table medals_earned"
+      polars: |
+        repo = DuckDBRepository(db_path, xuid)
+        counts = repo.count_perfect_kills_by_match([match_id])
+        perfect_current = counts.get(match_id, 0)
+      sql_duckdb: |
+        SELECT COUNT(*) FROM shared.medals_earned
+        WHERE match_id = ? AND xuid = ?
+          AND medal_id = <id de la médaille "Perfect Kill">;
+      detail: "Médaille Perfect = un frag où l'adversaire est tué AVEC PRÉCISION (headshot + crâne plein/full damage)"
+
+    - description: "Détermination de mode_category (slayer / objective / btb / ...)"
+      polars: |
+        mode_category = extract_mode_category(row.pair_name)
+        # extract_mode_category mappe pair_name → catégorie pour comparaison historique
+      sql_duckdb: "-- Côté Go : table de mapping ou switch sur pair_name"
+
+    - description: "Calcul de la moyenne historique sur df_full filtré par mode_category"
+      polars: |
+        if df_full is not None and len(df_full) >= 10:
+            hist_avgs_full = compute_mode_category_averages(df_full, mode_category)
+            hist_avgs.avg_max_killing_spree = hist_avgs_full.avg_max_killing_spree
+            hist_avgs.avg_headshot_kills = hist_avgs_full.avg_headshot_kills
+            hist_avgs.match_count = hist_avgs_full.match_count
+      sql_duckdb: |
+        SELECT
+          AVG(max_killing_spree) AS avg_max_killing_spree,
+          AVG(headshot_kills)    AS avg_headshot_kills,
+          COUNT(*)                AS match_count
+        FROM match_stats
+        WHERE xuid = ?
+          AND extract_mode_category(pair_name) = ?  -- function ou CASE
+        ;
+
+    - description: "Calcul de la moyenne historique des Perfect Kills (filtre supplémentaire)"
+      polars: |
+        if df_full is not None and hist_avgs.match_count >= 10:
+            cat_map = build_mapping(df_full.pair_name, extract_mode_category)
+            filtered = df_full.filter(extract_mode_category(pair_name) == mode_category)
+            if len(filtered) >= 10:
+                match_ids = filtered.match_id.to_list()
+                perfect_counts = repo.count_perfect_kills_by_match(match_ids)
+                total = sum(perfect_counts.get(mid, 0) for mid in match_ids)
+                hist_avgs.avg_perfect_kills = total / len(match_ids)
+      sql_duckdb: |
+        -- Plus complexe — nécessite jointure entre match_stats et medals_earned
+        SELECT AVG(perfect_count) AS avg_perfect_kills
+        FROM (
+          SELECT m.match_id,
+                 (SELECT COUNT(*) FROM shared.medals_earned me
+                  WHERE me.match_id = m.match_id AND me.xuid = ?
+                    AND medal_id = <perfect_kill_id>) AS perfect_count
+          FROM match_stats m
+          WHERE m.xuid = ?
+            AND extract_mode_category(m.pair_name) = ?
+        ) t;
+
+# === TRACES ===
+# 2 traces, 3 catégories sur X (axe partagé)
+traces:
+  # Trace 1 : Réel (toujours affichée si has_spree_or_hs OR (db_path AND xuid))
+  - id: "actual"
+    name: "{{t.lbl_actual}}"
+    type: go.Bar
+    chart_role: primary
+    color: null                                                # /!\ couleur par catégorie (per-bar coloring)
+    color_per_bar:                                             # Plotly accepte marker_color comme list[str] → 1 couleur par bar
+      - "{{palette.violet}}"                                   # Spree (HALO_COLORS.violet)
+      - "{{palette.cyan}}"                                     # Headshots (HALO_COLORS.cyan)
+      - "{{palette.green}}"                                    # Perfect Kills (HALO_COLORS.green)
+    opacity: 0.85
+    hovertemplate: "%{x} ({{t.lbl_actual}}): %{y:.0f}<extra></extra>"
+    show_when: "always (si has_spree_or_hs OR db_path+xuid)"
+
+  # Trace 2 : Moyenne historique (conditionnel — match_count >= 10)
+  - id: "history_avg"
+    name: "{{t.mvc_hist_avg}}"                                # paramétré : category, n
+    type: go.Bar
+    chart_role: secondary
+    color: null
+    color_per_bar:                                             # mêmes couleurs que actual mais pattern dotté
+      - "{{palette.violet}}"
+      - "{{palette.cyan}}"
+      - "{{palette.green}}"
+    opacity: 0.35                                              # /!\ plus transparent que actual
+    pattern:
+      shape: "."                                               # dotted pattern
+      fgcolor: "rgba(255, 255, 255, 0.75)"
+      solidity: 0.10
+    hovertemplate: "%{x} ({{t.mvc_hist_avg}}): %{y:.1f}<extra></extra>"
+    show_when: "hist_avgs.match_count >= 10"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 260                                                # /!\ height fixe via apply_halo_plot_style(fig, height=260)
+    expression: null
+    branches: []
+  margin: {l: 40, r: 20, t: 30, b: 60}
+  barmode: "group"                                             # /!\ groupées (pas stacked)
+  bargap: null
+  hovermode: null
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  xaxis:
+    type: "category"
+    title: null
+    showticklabels: true                                       # 3 catégories : Spree / Headshots / Perfect Kills
+
+  yaxis:
+    type: "linear"
+    title: null
+    rangemode: "tozero"                                        # axe Y commence à 0
+    automargin: false
+
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "has_spree_or_hs OR (db_path AND xuid)"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.insufficient_data_chart}}"
+    triggered_by:
+      - "Ni spree_v ni headshots_v ni db_path → fonction return early"
+      - "render_chart_or_info détecte fig vide"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  layout_position:
+    container: "st.columns(2)"                                # caller fait st.columns(2) avec expected_vs_actual à gauche
+    column_index: 1                                           # /!\ DROITE de #03
+  preceded_by:
+    - "st.subheader(t('ts_spree'))"                           # /!\ subheader 'Folie meurtrière'
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - lbl_actual                                               # "Réel" / "Actual"
+    - mvc_hist_avg                                             # paramétré : "Moyenne {category} ({n} matchs)"
+    - tm_killing_spree                                         # "Folie meurtrière"
+    - tm_headshots                                             # "Tirs à la tête"
+    - tm_perfect_kills                                         # "Frags parfaits"
+    - ts_spree                                                 # subheader "Folie meurtrière"
+    - insufficient_data_chart
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Per-bar coloring sur 1 trace (3 couleurs distinctes)"
+      why: |
+        Plotly accepte `marker_color: list[str]` pour donner UNE couleur DIFFÉRENTE par bar
+        au sein de la MÊME trace. Donc "Spree" est violet, "Headshots" cyan, "Perfect" vert,
+        TOUTES sous le même nom de trace "Réel". ECharts equivalent : `data[i].itemStyle.color`
+        par item, pas series-level color. Le YAML modélise via `color_per_bar: [...]`.
+
+    - decision: "Pattern dotté sur la trace historique (au lieu d'une couleur différente)"
+      why: |
+        Visuellement, les bars "Moyenne historique" partagent les MÊMES couleurs (violet/cyan/vert)
+        que les bars "Réel" mais avec un PATTERN dotté + opacité 0.35. Cela permet de comparer
+        directement la valeur du match courant à sa moyenne historique pour la même catégorie.
+        ECharts : pas de pattern natif comme Plotly mais on peut utiliser `decal` (depuis ECharts 5.4+)
+        ou simuler via opacité + bordure.
+
+    - decision: "Trace 'history_avg' conditionnée à match_count >= 10"
+      why: |
+        Pas assez de matchs historiques (< 10) → moyenne pas significative → on n'affiche que
+        la trace 'Réel'. Côté Go API : renvoyer `null` ou ne pas inclure la trace dans la réponse
+        si match_count < 10. Côté frontend : check sur le shape de la réponse.
+
+    - decision: "rangemode: tozero sur Y"
+      why: |
+        Force l'axe Y à commencer à 0, même si toutes les valeurs sont > 5. Cohérence visuelle
+        avec un chart de 'count' (pas de zoom artificiel sur des écarts mineurs). À porter via
+        `yAxis.min: 0` côté ECharts.
+
+    - decision: "PLOTLY_STATIC_CONFIG (chart figé)"
+      why: |
+        Pas de hover interactif riche, pas de zoom utile sur 3 catégories. STATIC = pas de modeBar.
+        Cohérent avec le voisinage du chart expected_vs_actual qui est aussi STATIC.
+
+    - decision: "Logique d'enrichissement Perfect Kills via medals_earned"
+      why: |
+        Le code Python compte les Perfect Kills via DuckDBRepository.count_perfect_kills_by_match
+        (qui requête shared.medals_earned). Les autres stats (spree, headshots) sont dans match_stats
+        directement. Cette dualité est documentée pour qu'un dev Go ne cherche pas Perfect Kills
+        dans match_stats où il N'EST PAS — il faut un join avec medals_earned.

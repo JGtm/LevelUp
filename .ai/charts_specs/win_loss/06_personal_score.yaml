@@ -1,0 +1,53 @@
+# =============================================================================
+# Win/Loss page · Section 6 · Personal score
+# =============================================================================
+# Wrapper réutilisant timeseries.20 (bars amber + smoothing rolling 10).
+# Section CONDITIONNELLE : ne s'affiche que si 'personal_score' ∈ dff.columns.
+# =============================================================================
+
+id: "win_loss.06"
+title: "Personal score — bars + smoothing rolling 10"
+page: win_loss
+section: "Section 6 (linéaire, conditionnelle)"
+display_order_in_page: 6
+source_function: "src/ui/pages/win_loss.py::_render_personal_score_section"
+chart_kind: line                                                 # bar+line
+
+data:
+  reuses:
+    of: "timeseries.20"
+    differences: |
+      Aucune — même fonction plot_metric_bars_by_match (metric_col=personal_score).
+      Section masquée silencieusement si personal_score absent (return early).
+
+traces: []                                                       # cf. timeseries.20
+
+layout:
+  inherits: _theme_default
+  height: { value: 380 }
+
+display:
+  shown_when: "'personal_score' ∈ dff.columns"
+  empty_state:
+    type: "return silencieux"
+    triggered_by: ["personal_score absent → section masquée"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_personal_score'))"
+    - "if hints_visible(): st.caption(t('wl_personal_score_caption'))"
+
+i18n_keys:
+  viz_t: []
+  t:
+    - wl_personal_score
+    - wl_personal_score_caption
+    - wl_personal_score_y_axis
+    - wl_personal_score_hover
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]

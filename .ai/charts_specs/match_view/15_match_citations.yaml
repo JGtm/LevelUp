@@ -1,0 +1,168 @@
+# =============================================================================
+# Citations qui ont progressé dans ce match
+# =============================================================================
+# Grille centrée de 1 à 8 colonnes (selon le nombre d'items) affichant les
+# citations qui ont gagné des points dans ce match. Chaque tile contient :
+#   - Anneau de progression CSS (ring--master en doré si maître, sinon cyan)
+#   - Image data-URI base64 de la citation
+#   - Nom citation
+#   - Niveau (Bronze/Silver/Gold/Master)
+#   - Compteur "{current}/{tier_target}" + delta vert "+N"
+# Les citations dont on était DÉJÀ maître AVANT ce match sont EXCLUES.
+# =============================================================================
+
+id: "match_view.15"
+title: "Citations progressées dans ce match"
+page: match_view
+section: "Onglet Citations & Médailles — Citations"
+source_function: "src/ui/pages/match_view_citations.py::render_match_citations_section"
+source_helpers:
+  - "src/analysis/citations/engine.py::CitationEngine.aggregate_for_display"
+  - "src/data/citation_definitions.py::load_citation_definitions"
+  - "src/ui/commendations.py::_compute_mastery_display"
+  - "src/ui/commendations.py::_img_data_uri"
+  - "src/ui/commendations.py::_img_src"
+  - "src/ui/commendations.py::_parse_tier_targets"
+fragment: false
+chart_kind: composite_block
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "CitationEngine.aggregate_for_display(match_ids=[match_id])"
+  input_dataframe:
+    required_fields:
+      citations_db: "list[dict] (toutes les définitions de citations)"
+      delta_map: "dict {citation_norm → int (delta du match)}"
+      full_map: "dict {citation_norm → int (compteur cumulé all-time)}"
+  call_args: {}
+  filters_applied: []
+
+  transformations:
+    - description: "Chargement des définitions de citations + calcul des deltas du match"
+      polars: |
+        engine = CitationEngine(db_path, xuid)
+        delta_map = engine.aggregate_for_display(match_ids=[match_id])
+        full_map = engine.aggregate_for_display(match_ids=None)  # all-time
+      sql_duckdb: |
+        -- Les requêtes exactes sont dans CitationEngine — non explorées ici en détail.
+        -- En substance : SELECT citation_norm, SUM(delta) FROM citation_progress
+        -- WHERE match_id = ? GROUP BY citation_norm.
+
+    - description: "Filtrage : ne garder que les citations actives (delta > 0)"
+      polars: "active_norms = {norm for norm, val in delta_map.items() if val > 0}"
+
+    - description: "Exclusion des citations DÉJÀ maître AVANT ce match (anti-bruit)"
+      polars: |
+        for cit in citations_db:
+            if cit.norm in active_norms:
+                tiers = _parse_tier_targets(cit.tier_targets)
+                _, _, is_master, _ = _compute_mastery_display(current_full, tiers)
+                if is_master:
+                    count_before = current_full - delta
+                    _, _, was_master_before, _ = _compute_mastery_display(count_before, tiers)
+                    if was_master_before:
+                        continue  # /!\ Skip
+                items.append(...)
+
+    - description: "Calcul du level/counter/progress_ratio par citation via _compute_mastery_display"
+      polars: |
+        # Returns : (level_label, counter_label, is_master, progress_ratio)
+        # Ex : ("Or", "1234 / 2000", False, 0.617)
+
+# === COMPOSITE BLOCK ===
+composite_block:
+  layout_grid:
+    type: "centered_grid_1_to_8"
+    description: |
+      Le nombre de colonnes = min(len(items), 8).
+      Si < 8 items : padding symétrique :
+        _pad = max(1, (8 - n_cols) // 2)
+        all_cols = st.columns([_pad] + [1]*n_cols + [_pad])
+      → Grille centrée avec padding sur les côtés.
+    cols_max: 8
+
+  tile_template:
+    css_classes:
+      ring_normal: "os-citation-ring"
+      ring_master: "os-citation-ring os-citation-ring--master"
+      name: "os-citation-name"
+      level_normal: "os-citation-level"
+      level_master: "os-citation-level os-citation-level--master"
+      counter: "os-citation-counter"
+      missing: "os-medal-missing"
+      top_gap: "os-citation-top-gap"
+
+    ring_colors:
+      master: "#d6b35a"                                           # doré
+      normal: "#41d6ff"                                           # cyan
+
+    structure: |
+      <div class="os-citation-top-gap"></div>
+      <div class="<ring_class>" title="<desc>" style="--p:<progress>;--ring-color:<color>;--img:url('<data_uri>')"></div>
+      <div class="os-citation-name" title="<desc>"><name></div>
+      <div class="<level_class>"><level_label></div>
+      <div class="os-citation-counter">
+        <counter_label> [<span style="color:#4CAF50;font-weight:bold;">+<delta></span> si delta > 0]
+      </div>
+
+    image_format: "data URI base64 (PNG inline) avec mtime pour cache busting"
+    fallback_no_image: "<div class='os-medal-missing' title='...'>?</div>"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    citations_db non vide
+    AND delta_map valide (engine.aggregate_for_display réussi)
+    AND len(active_norms) > 0
+    AND len(items) > 0  (après exclusion des déjà-maître)
+  empty_state:
+    type: "st.info | st.caption"
+    triggered_by:
+      - "citations_db vide → st.caption(mv_citations_unavailable)"
+      - "engine exception → st.caption(mv_citations_no_data)"
+      - "active_norms vide → st.info(citations_no_progress)"
+      - "items vide après filtrage → st.info(citations_no_progress)"
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "(la section est appelée dans _render_citations_tab)"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - mv_citations_unavailable
+    - mv_citations_no_data
+    - citations_no_progress
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Anneau CSS (--p / --ring-color / --img) pour la progression"
+      why: |
+        Plutôt qu'un chart Plotly, l'UI utilise un cercle conique CSS avec variables custom :
+          --p : ratio 0-1 de progression
+          --ring-color : couleur de l'anneau (cyan ou doré)
+          --img : data URI de l'image de citation au centre
+        À reproduire en React via un composant <CitationRing percent={p} master={bool} icon={url}/>
+        avec un SVG ou un conic-gradient CSS. La classe --master change la couleur en doré.
+
+    - decision: "Exclusion des 'déjà maître avant ce match'"
+      why: |
+        Si on était DÉJÀ au niveau maître AVANT ce match et qu'on a juste continué d'accumuler,
+        ne PAS l'afficher (sinon liste polluée). Si en revanche ce match nous a fait atteindre
+        le niveau maître pour la première fois → on l'affiche (cas spécial). Logique non triviale
+        à porter exactement côté Go.
+
+    - decision: "Padding symétrique pour la grille de moins de 8 items"
+      why: |
+        Pour centrer visuellement une grille de 3 items, on ajoute 2 colonnes vides (padding) à
+        gauche et 3 à droite (selon le calcul `(8-n)//2`). Astuce Streamlit pour centrer.
+        Côté React/CSS : utiliser `display: grid; place-content: center` avec
+        `grid-template-columns: repeat(N, 1fr)` plus simple.

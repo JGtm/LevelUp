@@ -1,0 +1,370 @@
+# =============================================================================
+# Solo vs Escouade — duel bidirectionnel
+# =============================================================================
+# Visuel auto-suffisant qui compare 6 métriques entre matchs solo et matchs en
+# escouade. Les barres horizontales partent de l'axe vertical X=0 :
+#   - Solo (cyan) à gauche (valeurs négatives normalisées en %)
+#   - Squad (vert) à droite (valeurs positives normalisées en %)
+# La barre représente un % de la valeur max de la paire (échelle locale par
+# métrique). Le label `text` affiche la VRAIE valeur formatée (ex "1.42",
+# "62.3%", "187s").
+# =============================================================================
+
+id: "synthesis.05"
+title: "Duel Solo vs Escouade"
+page: synthesis
+section: "Solo vs Escouade"
+source_function: "src/ui/pages/synthesis.py::_build_duel_chart"
+source_helpers:
+  - "src/ui/pages/synthesis.py::_build_comparison_metrics"
+  - "src/ui/pages/synthesis.py::_compute_group_stats"
+  - "src/ui/pages/synthesis.py::_mean_or_none"
+  - "src/ui/pages/synthesis.py::_kills_per_min_or_none"
+  - "src/ui/pages/synthesis.py::_append_metric"
+  - "src/ui/pages/synthesis.py::_render_solo_squad_compare"  # appelant
+fragment: true                                       # @fragment_if_available sur _render_solo_squad_compare
+chart_kind: "bar_diverging"
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server                                # Go API doit calculer les 6 métriques pré-formatées
+  upstream_service: null                             # à créer côté Go (équivalent de _build_comparison_metrics)
+  input_dataframe:
+    required_columns: [is_with_friends, kills, deaths, outcome]
+    optional_columns: [accuracy, time_played_seconds, performance_score, avg_life_seconds]
+    polars_dtype_hints:
+      is_with_friends: "Boolean"
+      kills: "Int64"
+      deaths: "Int64"
+      outcome: "Int64"
+      accuracy: "Float64"
+      time_played_seconds: "Float64"
+      performance_score: "Float64"
+      avg_life_seconds: "Float64"
+  call_args: {}                                      # _build_duel_chart(metrics) — pas d'arg de tuning
+  call_args_semantics: {}
+  filters_applied: [date_range, period_selector, is_with_friends_split]
+
+  transformations:
+    - description: "Split du dataframe en Solo vs Squad selon is_with_friends"
+      polars: |
+        solo_df = dff.filter(pl.col("is_with_friends") == pl.lit(False))
+        squad_df = dff.filter(pl.col("is_with_friends") == pl.lit(True))
+      sql_duckdb: |
+        -- Côté Go : exécuter deux SELECT ou une seule requête avec GROUP BY is_with_friends
+        SELECT *, is_with_friends FROM match_participants
+        WHERE xuid = ? AND start_time >= ?  -- filtre période en amont
+          AND is_with_friends IS NOT NULL;  -- exclure les matchs où le flag n'a pas été calculé
+      precondition: "is_with_friends doit exister (sinon attaché par _attach_is_with_friends via load_is_with_friends qui lit player_match_enrichment)"
+
+    - description: "Calcul de 6 métriques agrégées par groupe via _compute_group_stats / _mean_or_none / _kills_per_min_or_none"
+      formulas:
+        kd: "sum(kills) / sum(deaths) si deaths>0 else float(sum(kills))"
+        win_rate_pct: "(count(outcome==WIN) / count) * 100, arrondi 1 décimale"
+        performance: "mean(performance_score) si non null, arrondi 1 décimale"
+        accuracy: "mean(accuracy) si non null"
+        kpm: "sum(kills) / (sum(time_played_seconds) / 60) si time_played > 0"
+        avg_life: "mean(avg_life_seconds) si non null"
+      sql_duckdb: |
+        -- Une seule requête agrège les 6 métriques par groupe Solo/Squad
+        SELECT
+          is_with_friends,
+          CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)                                AS kd_raw,
+          CASE WHEN SUM(deaths) = 0 THEN CAST(SUM(kills) AS DOUBLE) ELSE NULL END            AS kd_fallback,
+          ROUND(SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1)          AS win_rate_pct,
+          AVG(accuracy)                                                                       AS accuracy_mean,
+          CASE WHEN SUM(time_played_seconds) > 0
+               THEN CAST(SUM(kills) AS DOUBLE) / (SUM(time_played_seconds) / 60.0)
+               ELSE NULL END                                                                  AS kpm,
+          AVG(avg_life_seconds)                                                                AS avg_life,
+          ROUND(AVG(performance_score), 1)                                                     AS performance
+        FROM match_participants
+        WHERE xuid = ? AND start_time >= ? AND is_with_friends IS NOT NULL
+        GROUP BY is_with_friends;
+        -- Note : `outcome = 2` correspond à OUTCOME_CODES.WIN (cf. src/config.py).
+        -- Le COALESCE(kd_raw, kd_fallback) donne la valeur K/D finale.
+
+    - description: "Filtrage des métriques où solo_value OU squad_value est null"
+      polars: "_append_metric ne push que si les deux valeurs sont présentes (sinon la métrique est OMISE de la liste)"
+      sql_duckdb: |
+        -- Côté Go : après la requête d'agrégation, ne conserver une métrique
+        -- que si elle a une valeur non-NULL pour les deux groupes.
+        -- Exemple en pseudo-Go :
+        --   if solo.kpm.Valid && squad.kpm.Valid { metrics = append(metrics, ...) }
+
+    - description: "Inversion de l'ordre des métriques avant tracé"
+      polars: "ordered = list(reversed(metrics))"
+      sql_duckdb: "-- Pure ordering côté client : reverse(metrics_list)"
+      detail: |
+        L'ordre construit par _build_comparison_metrics est [K/D, Win Rate, Accuracy, KPM, AvgLife, Performance].
+        Le `reversed` inverse → [Performance, AvgLife, KPM, Accuracy, Win Rate, K/D] de haut en bas sur l'axe Y.
+
+    - description: "Calcul de l'échelle locale par métrique"
+      polars: "scale[i] = max(solo_value[i], squad_value[i], 1.0)"
+      sql_duckdb: "-- Calcul côté client après réception des valeurs (pas de SQL pertinent)"
+      detail: "Plancher à 1.0 pour éviter une division par 0 sur des métriques où les deux côtés sont à 0"
+
+    - description: "Normalisation des valeurs tracées en pourcentage relatif"
+      polars: |
+        solo_x[i]  = -(solo_value[i]  / scale[i]) * 100
+        squad_x[i] =  (squad_value[i] / scale[i]) * 100
+      sql_duckdb: "-- Calcul côté client (frontend ECharts) — pas de SQL"
+      detail: "Les valeurs tracées sur X sont en %, pas la vraie valeur. La vraie valeur est dans `text` (cf. traces[*].text_data)."
+
+  metrics_definition:                                # liste des métriques candidates dans l'ordre d'évaluation
+    - label_source: "literal"
+      label: "K/D"
+      formatter: "{value:.2f}"
+    - label_source: "i18n_t"
+      key: "col_win_rate"
+      formatter: "{value:.1f}%"
+    - label_source: "i18n_t"
+      key: "col_accuracy"
+      formatter: "{value:.1f}%"
+    - label_source: "i18n_t"
+      key: "col_kpm"
+      formatter: "{value:.2f}"
+    - label_source: "i18n_t"
+      key: "col_avg_life"
+      formatter: "{value:.0f}s"
+    - label_source: "i18n_t"
+      key: "sc_performance_score"
+      formatter: "{value:.1f}"
+
+# === TRACES ===
+traces:
+  - id: "solo"
+    name: "{{t.syn_solo}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.cyan}}"
+    color_token: "HALO_COLORS.cyan"
+    orientation: h
+    clip: false                                      # cliponaxis=False — texte outside ne doit pas être tronqué
+    data_transform:
+      x_expression: "-(solo_value / max(solo_value, squad_value, 1.0)) * 100"
+      y_expression: null
+      explanation: |
+        Valeur tracée sur X = -% relatif (négatif pour positionner à gauche de x=0).
+        La vraie valeur reste dans text_data (solo_text).
+    text_data:
+      source: "metric.solo_text"                     # texte pré-formaté (ex "1.42", "62.3%", "187s")
+      template: null                                 # déjà formaté par _build_comparison_metrics
+      empty_when: null
+      position: "outside"
+    hovertemplate: "{{t.syn_solo}}<br>%{y}: %{text}<extra></extra>"
+    hover_format_tokens:
+      label: "{{t.syn_solo}}"
+
+  - id: "squad"
+    name: "{{t.syn_squad}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.green}}"
+    color_token: "HALO_COLORS.green"
+    orientation: h
+    clip: false
+    data_transform:
+      x_expression: "(squad_value / max(solo_value, squad_value, 1.0)) * 100"
+      y_expression: null
+    text_data:
+      source: "metric.squad_text"
+      template: null
+      empty_when: null
+      position: "outside"
+    hovertemplate: "{{t.syn_squad}}<br>%{y}: %{text}<extra></extra>"
+    hover_format_tokens:
+      label: "{{t.syn_squad}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default                           # template plotly_dark, paper/plot bg, font, hoverlabel via apply_halo_plot_style
+  height:
+    value: null
+    expression: "max(320, 70 * len(metrics))"
+    branches: []
+    explanation: "320 px minimum ; 70 px par métrique au-delà. Avec 6 métriques → 420 px."
+  margin: {l: 24, r: 24, t: 16, b: 16}
+  barmode: "overlay"                                 # les deux séries se superposent ; pas de chevauchement réel car solo_x négatif et squad_x positif
+  bargap: null
+  hovermode: null
+  showlegend: true
+  legend:                                            # override : légende EN HAUT centrée (pas le legend_horizontal_top du thème qui est xanchor:left)
+    orientation: h
+    yanchor: bottom
+    y: 1.02
+    xanchor: center
+    x: 0.5
+
+  xaxis:
+    type: "linear"
+    title: null
+    range: [-120, 120]                               # range fixe, indépendant des données
+    autorange: null
+    automargin: false
+    showgrid: false                                  # override des axes_default du thème
+    showticklabels: false
+    zeroline: false                                  # override (le thème a aussi false par défaut)
+    side: null
+
+  yaxis:
+    type: "category"
+    title: null
+    range: null
+    autorange: null
+    automargin: true                                 # critique : labels métriques peuvent être longs ("Score de performance")
+    showticklabels: true
+
+  shapes:
+    - type: line
+      kind: vline
+      x: 0
+      line_width: 1
+      line_color: "{{palette.slate}}"
+      opacity: 0.8
+      annotation: null
+      explanation: "Axe central de séparation Solo/Squad — fig.add_vline(x=0)"
+
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    'is_with_friends' in dff.columns
+    AND not dff.is_empty()
+    AND not solo_df.is_empty()
+    AND not squad_df.is_empty()
+    AND len(metrics) > 0
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.syn_no_data}}"
+    triggered_by:                                    # détail des conditions empty_state (pour Go)
+      - "is_with_friends absent du dataframe"
+      - "dff vide"
+      - "is_with_friends entièrement null"
+      - "solo_df ou squad_df vide après split"
+      - "metrics list vide après _build_comparison_metrics (aucune paire complète)"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: [synthesis_period]                # le sélecteur de période page-level filtre dff en amont
+  fragment_isolation: true
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('syn_solo_squad_title'))"
+    - "if hints_visible(): st.caption(t('syn_solo_squad_caption'))"
+    - "st.caption(t('syn_sample_split', solo=solo_df.height, squad=squad_df.height))"
+
+# === CONTROLS ===
+controls:
+  - id: "synthesis_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_page"
+    scope: "page"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Filtre dff en amont sur start_time >= now - days(period). Affecte tous les charts de la page."
+    api_param_mapping:
+      query_param: "period"
+      values_passthrough: true
+    requires_refetch: false                          # Go API peut soit re-fetcher avec ?period=X, soit re-mapper côté client. À décider lors de l'implémentation Go.
+    affects_charts: ["synthesis.01", "synthesis.02", "synthesis.03", "synthesis.04", "synthesis.05"]
+
+# === I18N ===
+i18n_keys:
+  viz_t: []                                          # ce chart n'utilise pas viz_t (visualization)
+  t:
+    - syn_solo
+    - syn_squad
+    - syn_solo_squad_title
+    - syn_solo_squad_caption                         # affiché conditionnellement (hints_visible)
+    - syn_no_data
+    - syn_sample_split                               # paramétré : solo=N, squad=M
+    - col_win_rate
+    - col_accuracy
+    - col_kpm
+    - col_avg_life
+    - sc_performance_score
+    - encounters_period_label
+    - encounters_period_all
+    - encounters_period_2y
+    - encounters_period_1y
+    - encounters_period_1m
+    - encounters_period_1w
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null                                 # config PLOTLY_STATIC_CONFIG → chart non interactif (pas de zoom/pan/hover)
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"   # origin/v7/cockpit @ 2026-04-30
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  sample_dataset: null                               # phase runtime non exécutée (pas de Python local)
+  fig_dict_path: null
+  ast_extracted_fields: []                           # extracteur AST non implémenté
+  runtime_extracted_fields: []                       # phase runtime différée
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "YAML rédigé manuellement par Claude (lecture source via `git show origin/v7/cockpit:src/ui/pages/synthesis.py`)"
+      why: |
+        Aucun environnement Python disponible localement (droits limités, pas de python ni de .venv).
+        L'extracteur AST Python ne peut pas être exécuté ici. Le YAML manuel est plus fiable que
+        le pseudo-AST sur 5 charts ; un extracteur sera écrit plus tard pour les ~80 visuels.
+
+    - decision: "Phase runtime `fig.to_dict()` non exécutée"
+      why: |
+        Plotly Python est requis pour appeler la fonction et capturer les valeurs dynamiques
+        (hovertemplates résolus, customdata sérialisés, layouts auto-calculés).
+        Différée jusqu'à la disponibilité d'un env Python (CI GitHub Actions ou autre poste).
+        Impact : les valeurs `expression` du YAML (ex. `height: max(320, 70*len(metrics))`)
+        ne sont pas confrontées à un calcul réel. Pour ce chart précis, les expressions sont
+        triviales et lisibles, donc le risque est faible.
+
+    - decision: "Inversion `reversed(metrics)` documentée comme transformation de données"
+      why: |
+        Le code Python l'applique au moment de tracer (`ordered = list(reversed(metrics))`),
+        mais sémantiquement c'est un **ordre d'affichage** qui doit se retrouver dans l'option
+        ECharts via le tableau `yAxis.data` ordonné. Documenter en transformation explicite
+        évite que le portage Go/JS oublie l'inversion (Performance en haut, K/D en bas).
+
+    - decision: "`metrics_definition` ajouté hors du `_schema.yaml` standard"
+      why: |
+        Ce chart est un **comparatif** : il a une dimension supplémentaire (la liste des métriques
+        candidates avec leur formatter). Cette structure n'a pas de sens pour les autres charts
+        (heatmap, bars, etc.). Plutôt que de l'imposer dans le schéma global, on l'autorise comme
+        extension par-spec quand un chart a une logique de "menu de métriques".
+
+    - decision: "`data.computed_by: server`"
+      why: |
+        L'agrégation des 6 métriques nécessite des SUM/AVG sur tous les matchs filtrés —
+        tâche naturelle pour DuckDB côté Go API (cf. SQL ci-dessus). Le client (ECharts)
+        ne reçoit que la liste finale des métriques avec valeurs+textes pré-formatés et fait
+        uniquement la normalisation locale (scale per-pair).
+
+    - decision: "`barmode: overlay` Plotly → `barGap: '-100%'` ECharts"
+      why: |
+        Plotly `barmode: overlay` superpose deux séries au même point catégoriel.
+        ECharts par défaut groupe les séries (les met côte à côte) sur une même catégorie,
+        ce qui résulte en deux mini-barres au lieu d'UNE ligne avec Solo négatif et Squad
+        positif partageant le même y. Le mapping correct est `barGap: '-100%'` sur chaque
+        série bar (négatif = recouvrement complet). Sans cette traduction, les KPI Solo et
+        Squad apparaissent sur des lignes distinctes — cassure visuelle majeure du concept "duel".
+        Bug détecté lors de la première validation visuelle du HTML mock le 2026-04-30, fixé.
+
+    - decision: "`requires_refetch: false` pour le sélecteur de période"
+      why: |
+        Stratégie ouverte côté Go. Deux options possibles à trancher lors de l'implémentation :
+        (a) Appel API paramétré `?period=2y` à chaque changement → cohérent avec le filtrage SQL.
+        (b) Charger une fois "all" puis filtrer côté client par `start_time`. Plus rapide mais
+            charge inutilement les données loin dans le temps si l'utilisateur reste sur "1w".
+        Choix recommandé : (a) pour les charts agrégés (count nul si pas de matchs sur la
+        période), mais à valider lors du design API.

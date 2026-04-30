@@ -1,0 +1,4213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock ECharts — teammates</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: rgb(20, 28, 33);
+      color: rgba(245, 248, 255, 0.92);
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 500;
+    }
+    header .info {
+      font-size: 13px;
+      color: rgba(182, 196, 214, 0.88);
+    }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 1100px) {
+      main {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .chart-card.full-width {
+        grid-column: 1 / -1;
+      }
+    }
+    .chart-card {
+      background: rgba(29, 35, 40, 1.0);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px 16px 8px;
+    }
+    .chart-card h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #33D6FF;
+    }
+    .chart-card .meta {
+      font-size: 11px;
+      color: rgba(182, 196, 214, 0.72);
+      margin-bottom: 12px;
+    }
+    .chart-card .meta code {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .chart-canvas {
+      width: 100%;
+    }
+    .chart-card--table .os-table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    table.os-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86em;
+      background: rgba(29, 35, 40, 0.96);
+    }
+    table.os-table th, table.os-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: left;
+      vertical-align: middle;
+    }
+    table.os-table th.os-sb-team {
+      background: rgba(51, 214, 255, 0.08);
+      color: #33D6FF;
+      font-weight: 600;
+      font-size: 0.95em;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(51, 214, 255, 0.2);
+    }
+    table.os-table th.os-sb-th {
+      color: rgba(182, 196, 214, 0.88);
+      font-size: 0.78em;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    table.os-table tr.os-sb-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    table.os-table td.os-sb-td {
+      color: rgba(245, 248, 255, 0.92);
+    }
+    .table-legend {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .kpi-tile {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 9px 15px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-tile-text {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.98);
+    }
+    .composite-block {
+      margin-top: 8px;
+      padding: 4px 0;
+    }
+    .composite-block .cb-cell img {
+      max-width: 100%;
+      border-radius: 6px;
+    }
+    footer {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: rgba(182, 196, 214, 0.72);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mock ECharts — Page teammates</h1>
+    <div class="info">
+      18 charts · Données mock synthétiques · ECharts 5.5.1<br>
+      Source : <code>origin/v7/cockpit</code> (Plotly Python) — généré le 2026-04-30T20:46:00.123Z
+    </div>
+  </header>
+  <main>
+    <section class="chart-card chart-card--composite">
+      <h2>teammates.00 — KPI Section — Mes stats sur le scope (vs all-time)</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates.py::render_teammates_page (line 235)</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><div style="display:flex;flex-wrap:wrap;gap:10px;width:100%"><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Matchs</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">24</span>
+        
+      </div>
+      <div style="font-size:0.72em;color:#888">08:42/match</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Durée totale</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">3h 28min</span>
+        
+      </div>
+      
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Kills/match</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">14.20</span>
+        <span style="color:#00C853;font-size:0.85em">▲</span>
+      </div>
+      <div style="font-size:0.72em;color:#888">1.63/min</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Morts/match</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">9.80</span>
+        <span style="color:#00C853;font-size:0.85em">▲</span>
+      </div>
+      <div style="font-size:0.72em;color:#888">1.13/min</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Assists/match</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">5.50</span>
+        <span style="color:#888888;font-size:0.85em">━</span>
+      </div>
+      <div style="font-size:0.72em;color:#888">0.63/min</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Précision</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">52.34%</span>
+        <span style="color:#888888;font-size:0.85em">━</span>
+      </div>
+      
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Vie moy.</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">1:18</span>
+        <span style="color:#FF5252;font-size:0.85em">▼</span>
+      </div>
+      
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;flex:2;min-width:280px">
+    <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Résultats</div>
+    <div style="display:flex;height:32px;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <div style="flex:14;background:#3DFF9A;display:flex;align-items:center;justify-content:center;color:#000;font-weight:600;font-size:0.78em" title="14 V">14</div>
+      <div style="flex:9;background:#FF5C5C;display:flex;align-items:center;justify-content:center;color:#000;font-weight:600;font-size:0.78em" title="9 D">9</div>
+      <div style="flex:1;background:#A855F7;display:flex;align-items:center;justify-content:center;color:#000;font-weight:600;font-size:0.78em" title="1 E">1</div>
+      
+    </div>
+    <div style="font-size:0.72em;color:#888;display:flex;gap:10px">
+      <span><span style="color:#3DFF9A">●</span> 14 V</span>
+      <span><span style="color:#FF5C5C">●</span> 9 D</span>
+      <span><span style="color:#A855F7">●</span> 1 E</span>
+    </div>
+  </div></div></div></div>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>teammates.01 — Squad session header — Team card + N joueurs avec is_better</h2>
+      <div class="meta">
+        <code>src/ui/components/performance.py::render_squad_session_header</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><div style="display:flex;flex-wrap:wrap;gap:10px;width:100%"><div style="background:rgba(0,183,235,0.08);border:2px solid #00B7EB;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:160px">
+    <div style="font-size:0.8em;color:#A0A0A0;font-weight:500">Score escouade</div>
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font-size:2em;font-weight:700;color:#41d6ff">68</span>
+      <span style="font-size:1.6em;font-weight:700;color:#41d6ff;letter-spacing:0.05em">B</span>
+    </div>
+    <div style="font-size:0.75em;color:#888">Score base 64 <span style="color:#00C853">+4 bonus</span></div>
+  </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+        <div style="font-size:0.8em;color:#A0A0A0;font-weight:500">JGtm</div>
+        <div style="display:flex;align-items:baseline">
+          <span style="font-size:1.6em;font-weight:700;color:#00e676">78</span>
+          <span style="color:#00C853;font-size:1em;margin-left:8px">▲</span>
+        </div>
+        <div style="font-size:0.75em;color:#00e676">Excellent</div>
+      </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+        <div style="font-size:0.8em;color:#A0A0A0;font-weight:500">NeoSpartan_42</div>
+        <div style="display:flex;align-items:baseline">
+          <span style="font-size:1.6em;font-weight:700;color:#41d6ff">65</span>
+          <span style="color:#FF5252;font-size:1em;margin-left:8px">▼</span>
+        </div>
+        <div style="font-size:0.75em;color:#41d6ff">Solide</div>
+      </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+        <div style="font-size:0.8em;color:#A0A0A0;font-weight:500">BlazingFury</div>
+        <div style="display:flex;align-items:baseline">
+          <span style="font-size:1.6em;font-weight:700;color:#41d6ff">71</span>
+          <span style="color:#00C853;font-size:1em;margin-left:8px">▲</span>
+        </div>
+        <div style="font-size:0.75em;color:#41d6ff">Solide</div>
+      </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+        <div style="font-size:0.8em;color:#A0A0A0;font-weight:500">ShadowKnight</div>
+        <div style="display:flex;align-items:baseline">
+          <span style="font-size:1.6em;font-weight:700;color:#ffb300">58</span>
+          <span style="color:#FF5252;font-size:1em;margin-left:8px">▼</span>
+        </div>
+        <div style="font-size:0.75em;color:#ffb300">Correct</div>
+      </div></div></div></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.02 — Winrate session vs historique — bullet chart</h2>
+      <div class="meta">
+        <code>src/visualization/_maps_outcome_bullet.py::plot_map_winrate_bullet</code>
+      </div>
+      <div id="chart-2" class="chart-canvas" style="height: 520px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 100,
+    right: 30,
+    top: 30,
+    bottom: 70,
+    containLabel: true
+  },
+  tooltip: {
+    trigger: "item"
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 10
+    }
+  },
+  xAxis: {
+    type: "value",
+    min: -0.05,
+    max: 1.1,
+    axisLabel: {
+      formatter: function anonymous(val
+) {
+return Math.round(val * 100) + '%';
+}
+    },
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: ["Aquarius", "Behemoth", "Streets", "Recharge", "Live Fire", "Catalyst", "Argyle", "Bazaar"],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 11
+    },
+    inverse: true
+  },
+  series: [
+    {
+      type: "bar",
+      name: "Historique",
+      data: [
+        {
+          value: 0.58,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 0.62,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 0.58,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 0.65,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 0.5,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 0.55,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 0.4,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 0.7,
+          itemStyle: {
+            color: "#CC79A7",
+            opacity: 0.85
+          }
+        }
+      ],
+      barCategoryGap: "20%",
+      barGap: "-100%",
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.name + '<br>Historique: ' + (p.value * 100).toFixed(1) + '%';
+}
+      },
+      z: 1,
+      markLine: {
+        silent: true,
+        symbol: "none",
+        label: {
+          show: false
+        },
+        data: [
+          {
+            xAxis: 0.5,
+            lineStyle: {
+              color: "rgba(180, 180, 180, 0.6)",
+              type: "dotted",
+              width: 1.5
+            }
+          }
+        ]
+      }
+    },
+    {
+      type: "bar",
+      name: "Session actuelle",
+      data: [
+        {
+          value: 0.72,
+          itemStyle: {
+            color: "#3DFFB5"
+          }
+        },
+        {
+          value: 0.45,
+          itemStyle: {
+            color: "#FF4D6D"
+          }
+        },
+        {
+          value: 0.55,
+          itemStyle: {
+            color: "#FFBF00"
+          }
+        },
+        {
+          value: 0.8,
+          itemStyle: {
+            color: "#3DFFB5"
+          }
+        },
+        {
+          value: 0.42,
+          itemStyle: {
+            color: "#FF4D6D"
+          }
+        },
+        {
+          value: 0.6,
+          itemStyle: {
+            color: "#FFBF00"
+          }
+        },
+        {
+          value: 0,
+          itemStyle: {
+            color: "#FF4D6D"
+          }
+        },
+        {
+          value: 0.75,
+          itemStyle: {
+            color: "#3DFFB5"
+          }
+        }
+      ],
+      barCategoryGap: "20%",
+      barGap: "-100%",
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.name + '<br>Session: ' + (p.value * 100).toFixed(1) + '%';
+}
+      },
+      z: 2
+    },
+    {
+      type: "scatter",
+      name: "0% (toutes défaites)",
+      data: [
+        [0, "Argyle"]
+      ],
+      symbol: "rect",
+      symbolSize: [3, 18],
+      itemStyle: {
+        color: "#FF4D6D"
+      },
+      legendHoverLink: false,
+      tooltip: {
+        formatter: function anonymous(p
+) {
+return p.value[1] + '<br>Session=0%';
+}
+      },
+      z: 3
+    },
+    {
+      type: "bar",
+      name: "Session > hist. (+5%)",
+      data: [],
+      itemStyle: {
+        color: "#3DFFB5"
+      },
+      legendHoverLink: false,
+      silent: true,
+      tooltip: {
+        show: false
+      }
+    },
+    {
+      type: "bar",
+      name: "Session ≈ hist. (±5%)",
+      data: [],
+      itemStyle: {
+        color: "#FFBF00"
+      },
+      legendHoverLink: false,
+      silent: true,
+      tooltip: {
+        show: false
+      }
+    },
+    {
+      type: "bar",
+      name: "Session < hist. (-5%)",
+      data: [],
+      itemStyle: {
+        color: "#FF4D6D"
+      },
+      legendHoverLink: false,
+      silent: true,
+      tooltip: {
+        show: false
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-2');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.03 — Performance par joueur × carte (top 15)</h2>
+      <div class="meta">
+        <code>src/visualization/_heatmap_squad.py::plot_squad_map_heatmap</code>
+      </div>
+      <div id="chart-3" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 80,
+    right: 90,
+    top: 30,
+    bottom: 100,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "item"
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    data: [
+      "Aquarius",
+      "Behemoth",
+      "Streets",
+      "Recharge",
+      "Live Fire",
+      "Catalyst",
+      "Argyle",
+      "Bazaar",
+      "Solitude",
+      "Empyrean",
+      "Forbidden",
+      "Oasis",
+      "Origin",
+      "Banished",
+      "Chasm"
+    ],
+    axisLabel: {
+      rotate: -35,
+      fontSize: 9,
+      color: "rgba(245, 248, 255, 0.85)"
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: ["JGtm", "NeoSpartan_42", "BlazingFury", "ShadowKnight"],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 11
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  visualMap: {
+    type: "piecewise",
+    pieces: [
+      {
+        gte: 0,
+        lt: 30,
+        color: "#FF4444",
+        label: "Faible"
+      },
+      {
+        gte: 30,
+        lt: 50,
+        color: "#FF8C00",
+        label: "Sous-moyenne"
+      },
+      {
+        gte: 50,
+        lt: 65,
+        color: "#FFBF00",
+        label: "Moyenne"
+      },
+      {
+        gte: 65,
+        lt: 80,
+        color: "#00B7EB",
+        label: "Bonne"
+      },
+      {
+        gte: 80,
+        lte: 100,
+        color: "#50C878",
+        label: "Excellente"
+      }
+    ],
+    show: true,
+    orient: "vertical",
+    right: 5,
+    top: "center",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 10
+    }
+  },
+  series: [
+    {
+      type: "heatmap",
+      data: [
+        {
+          value: [0, 0, 56],
+          _player: "JGtm",
+          _map: "Aquarius"
+        },
+        {
+          value: [1, 0, null],
+          _player: "JGtm",
+          _map: "Behemoth"
+        },
+        {
+          value: [2, 0, 75],
+          _player: "JGtm",
+          _map: "Streets"
+        },
+        {
+          value: [3, 0, 63],
+          _player: "JGtm",
+          _map: "Recharge"
+        },
+        {
+          value: [4, 0, 73],
+          _player: "JGtm",
+          _map: "Live Fire"
+        },
+        {
+          value: [5, 0, 56],
+          _player: "JGtm",
+          _map: "Catalyst"
+        },
+        {
+          value: [6, 0, 79],
+          _player: "JGtm",
+          _map: "Argyle"
+        },
+        {
+          value: [7, 0, 68],
+          _player: "JGtm",
+          _map: "Bazaar"
+        },
+        {
+          value: [8, 0, 73],
+          _player: "JGtm",
+          _map: "Solitude"
+        },
+        {
+          value: [9, 0, 67],
+          _player: "JGtm",
+          _map: "Empyrean"
+        },
+        {
+          value: [10, 0, 66],
+          _player: "JGtm",
+          _map: "Forbidden"
+        },
+        {
+          value: [11, 0, 77],
+          _player: "JGtm",
+          _map: "Oasis"
+        },
+        {
+          value: [12, 0, 53],
+          _player: "JGtm",
+          _map: "Origin"
+        },
+        {
+          value: [13, 0, 62],
+          _player: "JGtm",
+          _map: "Banished"
+        },
+        {
+          value: [14, 0, 77],
+          _player: "JGtm",
+          _map: "Chasm"
+        },
+        {
+          value: [0, 1, 47],
+          _player: "NeoSpartan_42",
+          _map: "Aquarius"
+        },
+        {
+          value: [1, 1, 46],
+          _player: "NeoSpartan_42",
+          _map: "Behemoth"
+        },
+        {
+          value: [2, 1, 32],
+          _player: "NeoSpartan_42",
+          _map: "Streets"
+        },
+        {
+          value: [3, 1, 54],
+          _player: "NeoSpartan_42",
+          _map: "Recharge"
+        },
+        {
+          value: [4, 1, 47],
+          _player: "NeoSpartan_42",
+          _map: "Live Fire"
+        },
+        {
+          value: [5, 1, 53],
+          _player: "NeoSpartan_42",
+          _map: "Catalyst"
+        },
+        {
+          value: [6, 1, 49],
+          _player: "NeoSpartan_42",
+          _map: "Argyle"
+        },
+        {
+          value: [7, 1, 46],
+          _player: "NeoSpartan_42",
+          _map: "Bazaar"
+        },
+        {
+          value: [8, 1, 35],
+          _player: "NeoSpartan_42",
+          _map: "Solitude"
+        },
+        {
+          value: [9, 1, 41],
+          _player: "NeoSpartan_42",
+          _map: "Empyrean"
+        },
+        {
+          value: [10, 1, null],
+          _player: "NeoSpartan_42",
+          _map: "Forbidden"
+        },
+        {
+          value: [11, 1, 32],
+          _player: "NeoSpartan_42",
+          _map: "Oasis"
+        },
+        {
+          value: [12, 1, null],
+          _player: "NeoSpartan_42",
+          _map: "Origin"
+        },
+        {
+          value: [13, 1, 34],
+          _player: "NeoSpartan_42",
+          _map: "Banished"
+        },
+        {
+          value: [14, 1, 55],
+          _player: "NeoSpartan_42",
+          _map: "Chasm"
+        },
+        {
+          value: [0, 2, null],
+          _player: "BlazingFury",
+          _map: "Aquarius"
+        },
+        {
+          value: [1, 2, 59],
+          _player: "BlazingFury",
+          _map: "Behemoth"
+        },
+        {
+          value: [2, 2, 67],
+          _player: "BlazingFury",
+          _map: "Streets"
+        },
+        {
+          value: [3, 2, 67],
+          _player: "BlazingFury",
+          _map: "Recharge"
+        },
+        {
+          value: [4, 2, 56],
+          _player: "BlazingFury",
+          _map: "Live Fire"
+        },
+        {
+          value: [5, 2, 68],
+          _player: "BlazingFury",
+          _map: "Catalyst"
+        },
+        {
+          value: [6, 2, 45],
+          _player: "BlazingFury",
+          _map: "Argyle"
+        },
+        {
+          value: [7, 2, 52],
+          _player: "BlazingFury",
+          _map: "Bazaar"
+        },
+        {
+          value: [8, 2, null],
+          _player: "BlazingFury",
+          _map: "Solitude"
+        },
+        {
+          value: [9, 2, 60],
+          _player: "BlazingFury",
+          _map: "Empyrean"
+        },
+        {
+          value: [10, 2, 63],
+          _player: "BlazingFury",
+          _map: "Forbidden"
+        },
+        {
+          value: [11, 2, 62],
+          _player: "BlazingFury",
+          _map: "Oasis"
+        },
+        {
+          value: [12, 2, 66],
+          _player: "BlazingFury",
+          _map: "Origin"
+        },
+        {
+          value: [13, 2, 58],
+          _player: "BlazingFury",
+          _map: "Banished"
+        },
+        {
+          value: [14, 2, 54],
+          _player: "BlazingFury",
+          _map: "Chasm"
+        },
+        {
+          value: [0, 3, 51],
+          _player: "ShadowKnight",
+          _map: "Aquarius"
+        },
+        {
+          value: [1, 3, 39],
+          _player: "ShadowKnight",
+          _map: "Behemoth"
+        },
+        {
+          value: [2, 3, 41],
+          _player: "ShadowKnight",
+          _map: "Streets"
+        },
+        {
+          value: [3, 3, 42],
+          _player: "ShadowKnight",
+          _map: "Recharge"
+        },
+        {
+          value: [4, 3, 47],
+          _player: "ShadowKnight",
+          _map: "Live Fire"
+        },
+        {
+          value: [5, 3, 45],
+          _player: "ShadowKnight",
+          _map: "Catalyst"
+        },
+        {
+          value: [6, 3, 51],
+          _player: "ShadowKnight",
+          _map: "Argyle"
+        },
+        {
+          value: [7, 3, 38],
+          _player: "ShadowKnight",
+          _map: "Bazaar"
+        },
+        {
+          value: [8, 3, 34],
+          _player: "ShadowKnight",
+          _map: "Solitude"
+        },
+        {
+          value: [9, 3, 31],
+          _player: "ShadowKnight",
+          _map: "Empyrean"
+        },
+        {
+          value: [10, 3, 42],
+          _player: "ShadowKnight",
+          _map: "Forbidden"
+        },
+        {
+          value: [11, 3, null],
+          _player: "ShadowKnight",
+          _map: "Oasis"
+        },
+        {
+          value: [12, 3, null],
+          _player: "ShadowKnight",
+          _map: "Origin"
+        },
+        {
+          value: [13, 3, 39],
+          _player: "ShadowKnight",
+          _map: "Banished"
+        },
+        {
+          value: [14, 3, 51],
+          _player: "ShadowKnight",
+          _map: "Chasm"
+        }
+      ],
+      label: {
+        show: false
+      },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 6
+        }
+      },
+      tooltip: {
+        formatter: function anonymous(p
+) {
+if (p.value[2] === null) return p.data._player + ' — ' + p.data._map + '<br>(non joué)';
+           return p.data._player + ' — ' + p.data._map + '<br>Perf=' + p.value[2].toFixed(1);
+}
+      }
+    }
+  ],
+  __height: 340,
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-3');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.04 — Performance d&#39;escouade par session</h2>
+      <div class="meta">
+        <code>src/visualization/_squad_timeline.py::plot_squad_performance_timeline</code>
+      </div>
+      <div id="chart-4" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 60,
+    top: 60,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: 0
+  },
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    data: ["Sess 1", "Sess 2", "Sess 3", "Sess 4", "Sess 5", "Sess 6", "Sess 7", "Sess 8"]
+  },
+  yAxis: [
+    {
+      type: "value",
+      name: "i18n:viz_t.axis_squad_perf",
+      splitLine: {
+        show: true,
+        lineStyle: {
+          color: "rgba(255, 255, 255, 0.07)"
+        }
+      }
+    },
+    {
+      type: "value",
+      name: "i18n:viz_t.axis_team_mmr",
+      position: "right",
+      splitLine: {
+        show: false
+      },
+      min: undefined,
+      max: undefined
+    }
+  ],
+  series: [
+    {
+      type: "bar",
+      name: "i18n:viz_t.trace_squad_perf",
+      data: [
+        {
+          value: ["Sess 1", 49],
+          itemStyle: {
+            color: "#FF8C00"
+          }
+        },
+        {
+          value: ["Sess 2", 66],
+          itemStyle: {
+            color: "#00B7EB"
+          }
+        },
+        {
+          value: ["Sess 3", 64],
+          itemStyle: {
+            color: "#FFBF00"
+          }
+        },
+        {
+          value: ["Sess 4", 82],
+          itemStyle: {
+            color: "#50C878"
+          }
+        },
+        {
+          value: ["Sess 5", 81],
+          itemStyle: {
+            color: "#50C878"
+          }
+        },
+        {
+          value: ["Sess 6", 79],
+          itemStyle: {
+            color: "#00B7EB"
+          }
+        },
+        {
+          value: ["Sess 7", 61],
+          itemStyle: {
+            color: "#FFBF00"
+          }
+        },
+        {
+          value: ["Sess 8", 68],
+          itemStyle: {
+            color: "#00B7EB"
+          }
+        }
+      ],
+      itemStyle: {
+        color: "#33D6FF",
+        opacity: 0.85
+      }
+    },
+    {
+      type: "line",
+      name: "i18n:viz_t.trace_winrate",
+      data: [
+        ["Sess 1", 47],
+        ["Sess 2", 47],
+        ["Sess 3", 58],
+        ["Sess 4", 67],
+        ["Sess 5", 68],
+        ["Sess 6", 62],
+        ["Sess 7", 57],
+        ["Sess 8", 47]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "i18n:viz_t.trace_team_mmr",
+      data: [
+        ["Sess 1", 1478],
+        ["Sess 2", 1502],
+        ["Sess 3", 1592],
+        ["Sess 4", 1623],
+        ["Sess 5", 1636],
+        ["Sess 6", 1614],
+        ["Sess 7", 1608],
+        ["Sess 8", 1543]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "dotted"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: true,
+      smooth: false,
+      yAxisIndex: 1
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-4');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.05 — Score de forme — évolution</h2>
+      <div class="meta">
+        <code>src/visualization/_form_score.py::plot_form_score_history</code>
+      </div>
+      <div id="chart-5" class="chart-canvas" style="height: 280px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 50,
+    right: 20,
+    top: 60,
+    bottom: 10,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 5,
+    left: "center"
+  },
+  xAxis: {
+    type: "time",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    type: "value",
+    name: "i18n:viz_t.axis_form_score",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "fill_positive",
+      data: [
+        ["2026-03-01", 0.91],
+        ["2026-03-03", 0.77],
+        ["2026-03-05", 0.55],
+        ["2026-03-07", 1.5],
+        ["2026-03-09", 1.61],
+        ["2026-03-11", 1.93],
+        ["2026-03-13", 1.76],
+        ["2026-03-15", 1.41],
+        ["2026-03-17", 1.53],
+        ["2026-03-19", 1.89],
+        ["2026-03-21", 2.45],
+        ["2026-03-23", 3.43],
+        ["2026-03-25", 3.52],
+        ["2026-03-27", 3.24],
+        ["2026-03-29", 3.92],
+        ["2026-03-30", 3.57],
+        ["2026-04-01", 3.48],
+        ["2026-04-03", 3.08],
+        ["2026-04-05", 3.25],
+        ["2026-04-07", 2.91],
+        ["2026-04-09", 3.41],
+        ["2026-04-11", 3.45],
+        ["2026-04-13", 3.28],
+        ["2026-04-15", 3.67],
+        ["2026-04-17", 4.03]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 0,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(0, 220, 130, 0.15)",
+        opacity: 1
+      },
+      markLine: {
+        silent: true,
+        symbol: "none",
+        data: [
+          {
+            yAxis: 0,
+            lineStyle: {
+              color: "rgba(255, 255, 255, 0.4)",
+              width: 1.5,
+              type: "dotted",
+              opacity: 1
+            },
+            label: {
+              show: true,
+              formatter: "i18n:viz_t.label_balance",
+              position: "insideStartTop",
+              color: "rgba(255, 215, 0, 0.5)",
+              fontSize: 10
+            },
+            symbol: "none"
+          }
+        ]
+      }
+    },
+    {
+      type: "line",
+      name: "fill_negative",
+      data: [
+        ["2026-03-01", 0.1],
+        ["2026-03-03", 0.46],
+        ["2026-03-05", 0.87],
+        ["2026-03-07", 1.14],
+        ["2026-03-09", 0.33],
+        ["2026-03-11", 0.08],
+        ["2026-03-13", -0.14],
+        ["2026-03-15", -0.67],
+        ["2026-03-17", -0.82],
+        ["2026-03-19", -1.51],
+        ["2026-03-21", -2.15],
+        ["2026-03-23", -1.87],
+        ["2026-03-25", -1.77],
+        ["2026-03-27", -1.61],
+        ["2026-03-29", -2.33],
+        ["2026-03-30", -2.3],
+        ["2026-04-01", -3.29],
+        ["2026-04-03", -4.13],
+        ["2026-04-05", -4.48],
+        ["2026-04-07", -4.54],
+        ["2026-04-09", -5],
+        ["2026-04-11", -5],
+        ["2026-04-13", -5],
+        ["2026-04-15", -4.58],
+        ["2026-04-17", -5]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 0,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(255, 75, 75, 0.15)",
+        opacity: 1
+      }
+    },
+    {
+      type: "line",
+      name: "{{name}} (per-player)",
+      data: [
+        ["2026-03-01", -0.32],
+        ["2026-03-03", -0.32],
+        ["2026-03-05", -0.53],
+        ["2026-03-07", -1.41],
+        ["2026-03-09", -1.47],
+        ["2026-03-11", -1.72],
+        ["2026-03-13", -2.18],
+        ["2026-03-15", -1.96],
+        ["2026-03-17", -1.86],
+        ["2026-03-19", -2.13],
+        ["2026-03-21", -2.06],
+        ["2026-03-23", -1.78],
+        ["2026-03-25", -1.63],
+        ["2026-03-27", -1.46],
+        ["2026-03-29", -1.23],
+        ["2026-03-30", -1.66],
+        ["2026-04-01", -2.15],
+        ["2026-04-03", -2.08],
+        ["2026-04-05", -3.1],
+        ["2026-04-07", -3.83],
+        ["2026-04-09", -4.39],
+        ["2026-04-11", -4.55],
+        ["2026-04-13", -4.78],
+        ["2026-04-15", -4.94],
+        ["2026-04-17", -5]
+      ],
+      itemStyle: {
+        color: "{{colors_by_name[name]}}"
+      },
+      lineStyle: {
+        color: "{{colors_by_name[name]}}",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: true,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-5');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.06 — Radar synergie escouade (6 axes)</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_synergy.py::render_trio_synergy_radar</code>
+      </div>
+      <div id="chart-6" class="chart-canvas" style="height: 400px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: undefined,
+  tooltip: {
+    trigger: "item",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    show: true,
+    bottom: 0,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  series: [
+    {
+      type: "radar",
+      data: [
+        {
+          name: "Profil",
+          value: [0.72, 0.85, 0.45, 0.68, 0.55, 0.62],
+          areaStyle: {
+            color: "rgba(99, 110, 250, 0.5)"
+          },
+          lineStyle: {
+            color: "#636EFA",
+            width: 2
+          },
+          itemStyle: {
+            color: "#636EFA"
+          },
+          symbolSize: 4
+        }
+      ],
+      tooltip: {
+        formatter: function anonymous(params
+) {
+
+    var rawValues = ["1,420 pts","2,100 pts","880 pts","4,400 pts","12.5 pts/min","62% de chances de survie"];
+    var axisNames = ["i18n:t.radar_objectives","i18n:t.radar_combat","i18n:t.radar_support","i18n:t.col_score","i18n:t.radar_impact","i18n:t.radar_survival"];
+    var lines = ['<b>' + params.name + '</b>'];
+    if (Array.isArray(params.value)) {
+      params.value.forEach(function(v, i) {
+        lines.push(axisNames[i] + ': ' + (rawValues[i] || (Math.round(v * 100) + '%')));
+      });
+    }
+    return lines.join('<br>');
+    
+}
+      }
+    }
+  ],
+  radar: {
+    indicator: [
+      {
+        name: "i18n:t.radar_objectives",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_combat",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_support",
+        max: 1
+      },
+      {
+        name: "i18n:t.col_score",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_impact",
+        max: 1
+      },
+      {
+        name: "i18n:t.radar_survival",
+        max: 1
+      }
+    ],
+    center: ["50%", "52%"],
+    radius: "68%",
+    splitNumber: 4,
+    shape: "polygon",
+    axisName: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 12
+    },
+    splitArea: {
+      areaStyle: {
+        color: ["transparent"]
+      }
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.12)"
+      }
+    },
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.12)"
+      }
+    },
+    axisLabel: {
+      show: true,
+      color: "rgba(255, 255, 255, 0.85)",
+      fontSize: 10,
+      fontWeight: "bold",
+      formatter: function anonymous(value
+) {
+return Math.round(value * 100) + "%";
+}
+    }
+  },
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-6');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>teammates.07 — Impact des coéquipiers (tableau scoreboard)</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_impact.py::render_impact_taquinerie</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><style>
+    .os-impact-table{border-collapse:collapse;width:100%;font-size:0.85em;color:#e8eef9;font-family:'Segoe UI',sans-serif}
+    .os-impact-table .os-sb-team{padding:8px 10px;background:rgba(33,118,255,0.18);text-align:left;font-weight:700;letter-spacing:0.02em;border-bottom:1px solid rgba(255,255,255,0.08)}
+    .os-impact-table .os-sb-th{padding:6px 8px;background:rgba(255,255,255,0.04);font-weight:600;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);color:#cdd6e6}
+    .os-impact-table .os-sb-td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;color:#e8eef9}
+    .os-impact-table .os-sb-td--best{background:rgba(0,158,115,0.22);color:#9be8c8;font-weight:700}
+    .os-impact-table .os-sb-td--worst{background:rgba(213,94,0,0.22);color:#ffb98a;font-weight:700}
+    .os-impact-table .os-sb-row--mvp td{background:rgba(255,215,0,0.10)}
+    .os-impact-table .os-sb-row--lvp td{background:rgba(213,94,0,0.10)}
+  </style><div style="overflow-x:auto;width:100%">
+    <table class="os-impact-table"><tbody><tr><th class="os-sb-team" colspan="17">Classement Impact — Quel est l'effet de chacun ?</th></tr><tr>
+    <th class="os-sb-th" style="text-align:left">Joueur</th>
+    <th class="os-sb-th" style="width:34px;background:rgba(0,158,115,0.30)">1</th><th class="os-sb-th" style="width:34px;background:rgba(213,94,0,0.30)">2</th><th class="os-sb-th" style="width:34px;background:rgba(0,158,115,0.30)">3</th><th class="os-sb-th" style="width:34px;background:rgba(213,94,0,0.30)">4</th><th class="os-sb-th" style="width:34px;background:rgba(100,100,130,0.15)">5</th><th class="os-sb-th" style="width:34px;background:rgba(0,158,115,0.30)">6</th><th class="os-sb-th">⚡</th><th class="os-sb-th">🎯</th><th class="os-sb-th">💀</th><th class="os-sb-th">🐌</th><th class="os-sb-th">🪦</th><th class="os-sb-th">🛡️</th><th class="os-sb-th">🗡️</th><th class="os-sb-th">💥</th>
+    <th class="os-sb-th">Score</th>
+    <th class="os-sb-th">Badge</th>
+  </tr></tbody><tbody><tr class="os-sb-player os-sb-row--mvp">
+        <td class="os-sb-td" style="text-align:left;font-weight:600">JGtm</td>
+        <td class="os-sb-td">⚡💥</td><td class="os-sb-td">🎯</td><td class="os-sb-td">⚡</td><td class="os-sb-td"></td><td class="os-sb-td">🛡️</td><td class="os-sb-td"></td><td class="os-sb-td os-sb-td--best">2</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td><td class="os-sb-td">—</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td>
+        <td class="os-sb-td os-sb-td--best">+8.5</td>
+        <td class="os-sb-td">🏆 Champion</td>
+      </tr></tbody><tbody><tr class="os-sb-player">
+        <td class="os-sb-td" style="text-align:left;font-weight:600">NeoSpartan_42</td>
+        <td class="os-sb-td">🛡️</td><td class="os-sb-td"></td><td class="os-sb-td"></td><td class="os-sb-td">⚡💥</td><td class="os-sb-td"></td><td class="os-sb-td">🐌</td><td class="os-sb-td os-sb-td--worst">1</td><td class="os-sb-td">—</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td>
+        <td class="os-sb-td">+3.5</td>
+        <td class="os-sb-td"></td>
+      </tr></tbody><tbody><tr class="os-sb-player">
+        <td class="os-sb-td" style="text-align:left;font-weight:600">BlazingFury</td>
+        <td class="os-sb-td"></td><td class="os-sb-td">💀</td><td class="os-sb-td">🎯</td><td class="os-sb-td"></td><td class="os-sb-td"></td><td class="os-sb-td">🪦</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td><td class="os-sb-td">—</td><td class="os-sb-td">—</td>
+        <td class="os-sb-td">0</td>
+        <td class="os-sb-td"></td>
+      </tr></tbody><tbody><tr class="os-sb-player os-sb-row--lvp">
+        <td class="os-sb-td" style="text-align:left;font-weight:600">ShadowKnight</td>
+        <td class="os-sb-td"></td><td class="os-sb-td"></td><td class="os-sb-td"></td><td class="os-sb-td">💀🗡️</td><td class="os-sb-td">🐌</td><td class="os-sb-td"></td><td class="os-sb-td">—</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td><td class="os-sb-td">—</td><td class="os-sb-td">1</td><td class="os-sb-td">—</td>
+        <td class="os-sb-td os-sb-td--worst">-4.5</td>
+        <td class="os-sb-td">🍌 Maillon faible</td>
+      </tr></tbody></table>
+  </div></div></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.08 — Comparaison multi-joueurs (killing spree + HS/PK)</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_charts.py::render_metric_bar_charts</code>
+      </div>
+      <div id="chart-8" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 40,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    data: [
+      "#1",
+      "#2",
+      "#3",
+      "#4",
+      "#5",
+      "#6",
+      "#7",
+      "#8",
+      "#9",
+      "#10",
+      "#11",
+      "#12"
+    ]
+  },
+  yAxis: {
+    type: "value",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "bar",
+      name: "JGtm",
+      data: [
+        ["#1", 3],
+        ["#2", 5],
+        ["#3", 8],
+        ["#4", 7],
+        ["#5", 5],
+        ["#6", 6],
+        ["#7", 4],
+        ["#8", 4],
+        ["#9", 5],
+        ["#10", 8],
+        ["#11", 5],
+        ["#12", 7]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      }
+    },
+    {
+      type: "bar",
+      name: "NeoSpartan_42",
+      data: [
+        ["#1", 2],
+        ["#2", 3],
+        ["#3", 7],
+        ["#4", 6],
+        ["#5", 4],
+        ["#6", 2],
+        ["#7", 5],
+        ["#8", 5],
+        ["#9", 5],
+        ["#10", 4],
+        ["#11", 5],
+        ["#12", 6]
+      ],
+      itemStyle: {
+        color: "#EF5350"
+      }
+    },
+    {
+      type: "bar",
+      name: "BlazingFury",
+      data: [
+        ["#1", 5],
+        ["#2", 4],
+        ["#3", 3],
+        ["#4", 6],
+        ["#5", 4],
+        ["#6", 2],
+        ["#7", 3],
+        ["#8", 5],
+        ["#9", 3],
+        ["#10", 5],
+        ["#11", 1],
+        ["#12", 1]
+      ],
+      itemStyle: {
+        color: "#FFCA28"
+      }
+    },
+    {
+      type: "bar",
+      name: "ShadowKnight",
+      data: [
+        ["#1", 7],
+        ["#2", 2],
+        ["#3", 6],
+        ["#4", 2],
+        ["#5", 3],
+        ["#6", 5],
+        ["#7", 6],
+        ["#8", 7],
+        ["#9", 5],
+        ["#10", 4],
+        ["#11", 3],
+        ["#12", 3]
+      ],
+      itemStyle: {
+        color: "#26C6DA"
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-8');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.09 — Kills par arme — comparatif multi-joueurs</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_weapons.py::render_weapon_kills_bar_chart</code>
+      </div>
+      <div id="chart-9" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 100,
+    right: 80,
+    top: 50,
+    bottom: 30,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "item"
+  },
+  legend: false,
+  xAxis: {
+    type: "value",
+    show: false,
+    splitLine: {
+      show: false
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: [
+      "Plasma Pistol",
+      "Sniper Rifle",
+      "Hydra",
+      "Skewer",
+      "Stalker Rifle",
+      "Bandit",
+      "Pulse Carbine",
+      "Sidekick",
+      "BR75",
+      "Commando",
+      "AR (MA40)",
+      "Mêlée"
+    ],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 10
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  series: [
+    {
+      type: "bar",
+      name: "JGtm",
+      data: [
+        {
+          value: 4,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 8,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 4,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 9,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 9,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 6,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 4,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 16,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 20,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 13,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 18,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        },
+        {
+          value: 20,
+          itemStyle: {
+            color: "#33D6FF"
+          }
+        }
+      ],
+      orientation: "horizontal",
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      label: {
+        show: true,
+        position: "right",
+        formatter: function anonymous(p
+) {
+return p.value > 0 ? String(p.value) : "";
+},
+        color: "#fff",
+        fontSize: 10,
+        fontWeight: "bold"
+      },
+      barCategoryGap: "35%",
+      barGap: "8%",
+      markArea: {
+        silent: true,
+        data: [
+          [
+            {
+              yAxis: -0.5,
+              itemStyle: {
+                color: "rgba(255, 255, 255, 0.04)"
+              }
+            },
+            {
+              yAxis: 0.5
+            }
+          ],
+          [
+            {
+              yAxis: 1.5,
+              itemStyle: {
+                color: "rgba(255, 255, 255, 0.04)"
+              }
+            },
+            {
+              yAxis: 2.5
+            }
+          ],
+          [
+            {
+              yAxis: 3.5,
+              itemStyle: {
+                color: "rgba(255, 255, 255, 0.04)"
+              }
+            },
+            {
+              yAxis: 4.5
+            }
+          ],
+          [
+            {
+              yAxis: 5.5,
+              itemStyle: {
+                color: "rgba(255, 255, 255, 0.04)"
+              }
+            },
+            {
+              yAxis: 6.5
+            }
+          ],
+          [
+            {
+              yAxis: 7.5,
+              itemStyle: {
+                color: "rgba(255, 255, 255, 0.04)"
+              }
+            },
+            {
+              yAxis: 8.5
+            }
+          ],
+          [
+            {
+              yAxis: 9.5,
+              itemStyle: {
+                color: "rgba(255, 255, 255, 0.04)"
+              }
+            },
+            {
+              yAxis: 10.5
+            }
+          ]
+        ]
+      }
+    },
+    {
+      type: "bar",
+      name: "NeoSpartan_42",
+      data: [
+        {
+          value: 1,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 0,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 1,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 0,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 3,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 1,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 13,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 14,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 11,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 17,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        },
+        {
+          value: 11,
+          itemStyle: {
+            color: "#EF5350"
+          }
+        }
+      ],
+      orientation: "horizontal",
+      itemStyle: {
+        color: "#EF5350"
+      },
+      label: {
+        show: true,
+        position: "right",
+        formatter: function anonymous(p
+) {
+return p.value > 0 ? String(p.value) : "";
+},
+        color: "#fff",
+        fontSize: 10,
+        fontWeight: "bold"
+      },
+      barCategoryGap: "35%",
+      barGap: "8%"
+    },
+    {
+      type: "bar",
+      name: "BlazingFury",
+      data: [
+        {
+          value: 1,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 5,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 0,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 3,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 10,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 9,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 15,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 18,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        },
+        {
+          value: 13,
+          itemStyle: {
+            color: "#FFCA28"
+          }
+        }
+      ],
+      orientation: "horizontal",
+      itemStyle: {
+        color: "#FFCA28"
+      },
+      label: {
+        show: true,
+        position: "right",
+        formatter: function anonymous(p
+) {
+return p.value > 0 ? String(p.value) : "";
+},
+        color: "#fff",
+        fontSize: 10,
+        fontWeight: "bold"
+      },
+      barCategoryGap: "35%",
+      barGap: "8%"
+    },
+    {
+      type: "bar",
+      name: "ShadowKnight",
+      data: [
+        {
+          value: 5,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 1,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 1,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 5,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 3,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 3,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 19,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 16,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 15,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 13,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        },
+        {
+          value: 12,
+          itemStyle: {
+            color: "#26C6DA"
+          }
+        }
+      ],
+      orientation: "horizontal",
+      itemStyle: {
+        color: "#26C6DA"
+      },
+      label: {
+        show: true,
+        position: "right",
+        formatter: function anonymous(p
+) {
+return p.value > 0 ? String(p.value) : "";
+},
+        color: "#fff",
+        fontSize: 10,
+        fontWeight: "bold"
+      },
+      barCategoryGap: "35%",
+      barGap: "8%"
+    }
+  ],
+  title: {
+    text: "Kills par arme — escouade",
+    left: "center",
+    top: 5,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 456,
+  backgroundColor: "transparent"
+};
+          const dom = document.getElementById('chart-9');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>teammates.10 — Tableau kills par arme (joueur)</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_weapons.py::render_weapon_kills_table</code>
+      </div>
+      
+      <div class="os-table-wrap">
+        <table class="os-table os-scoreboard">
+          <thead><tr><th class="undefined" colspan="2">{{title or t(&#39;section_weapon_stats&#39;)}}</th></tr><tr><th class="os-sb-th">i18n:t.col_weapon</th><th class="os-sb-th" style="text-align: right; font-weight: 600">i18n:t.col_frags</th></tr></thead>
+          <tbody><tr class="os-sb-row"><td class="os-sb-td">MA40 AR</td><td class="os-sb-td" style="text-align: right; font-weight: 600">12</td></tr><tr class="os-sb-row"><td class="os-sb-td">BR75</td><td class="os-sb-td" style="text-align: right; font-weight: 600">8</td></tr><tr class="os-sb-row"><td class="os-sb-td">Sidekick</td><td class="os-sb-td" style="text-align: right; font-weight: 600">6</td></tr><tr class="os-sb-row"><td class="os-sb-td">Plasma Carbine</td><td class="os-sb-td" style="text-align: right; font-weight: 600">4</td></tr><tr class="os-sb-row"><td class="os-sb-td">Bulldog</td><td class="os-sb-td" style="text-align: right; font-weight: 600">3</td></tr><tr class="os-sb-row"><td class="os-sb-td">Mêlée</td><td class="os-sb-td" style="text-align: right; font-weight: 600">2</td></tr><tr class="os-sb-row"><td class="os-sb-td">Grenades</td><td class="os-sb-td" style="text-align: right; font-weight: 600">1</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>teammates.11 — Historique des matchs avec coéquipiers (250 derniers)</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_helpers.py::render_friends_history_table</code>
+      </div>
+      
+      <div class="os-table-wrap os-table-wrap--map-hover">
+        <table class="os-table">
+          <thead><tr><th class="undefined" colspan="12"></th></tr><tr><th class="th">i18n:t.tmh_col_match</th><th class="th">i18n:t.tmh_waypoint</th><th class="th">i18n:t.tmh_col_date</th><th class="th">i18n:t.tmh_col_map</th><th class="th">i18n:t.tmh_col_playlist</th><th class="th">i18n:t.tmh_col_mode</th><th class="th">i18n:t.tmh_col_result</th><th class="th">i18n:t.col_win_rate_hist</th><th class="th">i18n:t.tmh_col_score</th><th class="th">i18n:t.tmh_col_team_mmr</th><th class="th">i18n:t.tmh_col_enemy_mmr</th><th class="th">i18n:t.tmh_col_delta_mmr</th></tr></thead>
+          <tbody><tr class="tr"><td class="td"><a href="#" style="color:#33d6ff;font-family:monospace;font-size:0.75em">a1b2c3d4…</a></td><td class="td"><a href="#" style="color:#aaa;font-size:0.75em">HW</a></td><td class="td" style="white-space: nowrap; font-size: 0.85em">15/04/2026 21:32</td><td class="td">Aquarius</td><td class="td" style="font-size: 0.85em">Ranked Arena</td><td class="td">Slayer</td><td class="td" style="color: #3DFFB5; font-weight: 700">V</td><td class="td" style="color: #aaa; font-size: 0.85em">62%</td><td class="td" style="font-weight: 600">50–32</td><td class="td" style="font-size: 0.85em">1480.5</td><td class="td" style="font-size: 0.85em">1462.1</td><td class="td" style="color: #3DFFB5; font-weight: 600">+18.4</td></tr><tr class="tr"><td class="td"><a href="#" style="color:#33d6ff;font-family:monospace;font-size:0.75em">a1b2c3d4…</a></td><td class="td"><a href="#" style="color:#aaa;font-size:0.75em">HW</a></td><td class="td" style="white-space: nowrap; font-size: 0.85em">14/04/2026 19:48</td><td class="td">Behemoth</td><td class="td" style="font-size: 0.85em">Quickplay</td><td class="td">CTF</td><td class="td" style="color: #FF4D6D; font-weight: 700">D</td><td class="td" style="color: #aaa; font-size: 0.85em">45%</td><td class="td" style="font-weight: 600">2–5</td><td class="td" style="font-size: 0.85em">1502.3</td><td class="td" style="font-size: 0.85em">1530.8</td><td class="td" style="color: #FF4D6D; font-weight: 600">-28.5</td></tr><tr class="tr"><td class="td"><a href="#" style="color:#33d6ff;font-family:monospace;font-size:0.75em">a1b2c3d4…</a></td><td class="td"><a href="#" style="color:#aaa;font-size:0.75em">HW</a></td><td class="td" style="white-space: nowrap; font-size: 0.85em">12/04/2026 22:05</td><td class="td">Streets</td><td class="td" style="font-size: 0.85em">Big Team Battle</td><td class="td">BTB Slayer</td><td class="td" style="color: #3DFFB5; font-weight: 700">V</td><td class="td" style="color: #aaa; font-size: 0.85em">55%</td><td class="td" style="font-weight: 600">127–98</td><td class="td" style="font-size: 0.85em">1455.8</td><td class="td" style="font-size: 0.85em">1438.4</td><td class="td" style="color: #3DFFB5; font-weight: 600">+17.4</td></tr><tr class="tr"><td class="td"><a href="#" style="color:#33d6ff;font-family:monospace;font-size:0.75em">a1b2c3d4…</a></td><td class="td"><a href="#" style="color:#aaa;font-size:0.75em">HW</a></td><td class="td" style="white-space: nowrap; font-size: 0.85em">11/04/2026 20:14</td><td class="td">Recharge</td><td class="td" style="font-size: 0.85em">Ranked Arena</td><td class="td">Strongholds</td><td class="td" style="color: #3DFFB5; font-weight: 700">V</td><td class="td" style="color: #aaa; font-size: 0.85em">71%</td><td class="td" style="font-weight: 600">250–215</td><td class="td" style="font-size: 0.85em">1521.2</td><td class="td" style="font-size: 0.85em">1510.5</td><td class="td" style="color: #3DFFB5; font-weight: 600">+10.7</td></tr><tr class="tr"><td class="td"><a href="#" style="color:#33d6ff;font-family:monospace;font-size:0.75em">a1b2c3d4…</a></td><td class="td"><a href="#" style="color:#aaa;font-size:0.75em">HW</a></td><td class="td" style="white-space: nowrap; font-size: 0.85em">08/04/2026 19:30</td><td class="td">Live Fire</td><td class="td" style="font-size: 0.85em">Quickplay</td><td class="td">KOTH</td><td class="td" style="color: #FF4D6D; font-weight: 700">D</td><td class="td" style="color: #aaa; font-size: 0.85em">38%</td><td class="td" style="font-weight: 600">32–50</td><td class="td" style="font-size: 0.85em">1478.6</td><td class="td" style="font-size: 0.85em">1525.3</td><td class="td" style="color: #FF4D6D; font-weight: 600">-46.7</td></tr><tr class="tr"><td class="td"><a href="#" style="color:#33d6ff;font-family:monospace;font-size:0.75em">a1b2c3d4…</a></td><td class="td"><a href="#" style="color:#aaa;font-size:0.75em">HW</a></td><td class="td" style="white-space: nowrap; font-size: 0.85em">05/04/2026 21:55</td><td class="td">Catalyst</td><td class="td" style="font-size: 0.85em">Tactical Slayer</td><td class="td">Tactical Slayer</td><td class="td" style="color: #888; font-weight: 700">–</td><td class="td" style="color: #aaa; font-size: 0.85em">52%</td><td class="td" style="font-weight: 600">50–48</td><td class="td" style="font-size: 0.85em">1495.1</td><td class="td" style="font-size: 0.85em">1490.6</td><td class="td" style="color: #3DFFB5; font-weight: 600">+4.5</td></tr></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>teammates.12 — Médailles de l&#39;escouade</h2>
+      <div class="meta">
+        <code>src/ui/pages/_teammates_trio_helpers.py::_render_trio_medals</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%"><div style="background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden">
+      <div style="padding:8px 12px;background:rgba(255,255,255,0.05);font-weight:700;font-size:0.9em;border-bottom:1px solid rgba(255,255,255,0.06)">▼ JGtm</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px"><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(60,70%,55%) 0%,hsl(60,60%,30%) 70%);border:2px solid hsl(60,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M1</div>
+        <div style="font-size:0.7em;color:#888">×9</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(90,70%,55%) 0%,hsl(90,60%,30%) 70%);border:2px solid hsl(90,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M2</div>
+        <div style="font-size:0.7em;color:#888">×12</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(120,70%,55%) 0%,hsl(120,60%,30%) 70%);border:2px solid hsl(120,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M3</div>
+        <div style="font-size:0.7em;color:#888">×15</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(150,70%,55%) 0%,hsl(150,60%,30%) 70%);border:2px solid hsl(150,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M4</div>
+        <div style="font-size:0.7em;color:#888">×18</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(180,70%,55%) 0%,hsl(180,60%,30%) 70%);border:2px solid hsl(180,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M5</div>
+        <div style="font-size:0.7em;color:#888">×3</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(210,70%,55%) 0%,hsl(210,60%,30%) 70%);border:2px solid hsl(210,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M6</div>
+        <div style="font-size:0.7em;color:#888">×6</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(240,70%,55%) 0%,hsl(240,60%,30%) 70%);border:2px solid hsl(240,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M7</div>
+        <div style="font-size:0.7em;color:#888">×9</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(270,70%,55%) 0%,hsl(270,60%,30%) 70%);border:2px solid hsl(270,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M8</div>
+        <div style="font-size:0.7em;color:#888">×12</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(300,70%,55%) 0%,hsl(300,60%,30%) 70%);border:2px solid hsl(300,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M9</div>
+        <div style="font-size:0.7em;color:#888">×15</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(330,70%,55%) 0%,hsl(330,60%,30%) 70%);border:2px solid hsl(330,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M10</div>
+        <div style="font-size:0.7em;color:#888">×18</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(0,70%,55%) 0%,hsl(0,60%,30%) 70%);border:2px solid hsl(0,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M11</div>
+        <div style="font-size:0.7em;color:#888">×3</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(30,70%,55%) 0%,hsl(30,60%,30%) 70%);border:2px solid hsl(30,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M12</div>
+        <div style="font-size:0.7em;color:#888">×6</div>
+      </div></div>
+    </div><div style="background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden">
+      <div style="padding:8px 12px;background:rgba(255,255,255,0.05);font-weight:700;font-size:0.9em;border-bottom:1px solid rgba(255,255,255,0.06)">▼ NeoSpartan_42</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px"><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(120,70%,55%) 0%,hsl(120,60%,30%) 70%);border:2px solid hsl(120,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M1</div>
+        <div style="font-size:0.7em;color:#888">×16</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(150,70%,55%) 0%,hsl(150,60%,30%) 70%);border:2px solid hsl(150,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M2</div>
+        <div style="font-size:0.7em;color:#888">×19</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(180,70%,55%) 0%,hsl(180,60%,30%) 70%);border:2px solid hsl(180,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M3</div>
+        <div style="font-size:0.7em;color:#888">×4</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(210,70%,55%) 0%,hsl(210,60%,30%) 70%);border:2px solid hsl(210,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M4</div>
+        <div style="font-size:0.7em;color:#888">×7</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(240,70%,55%) 0%,hsl(240,60%,30%) 70%);border:2px solid hsl(240,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M5</div>
+        <div style="font-size:0.7em;color:#888">×10</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(270,70%,55%) 0%,hsl(270,60%,30%) 70%);border:2px solid hsl(270,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M6</div>
+        <div style="font-size:0.7em;color:#888">×13</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(300,70%,55%) 0%,hsl(300,60%,30%) 70%);border:2px solid hsl(300,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M7</div>
+        <div style="font-size:0.7em;color:#888">×16</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(330,70%,55%) 0%,hsl(330,60%,30%) 70%);border:2px solid hsl(330,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M8</div>
+        <div style="font-size:0.7em;color:#888">×19</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(0,70%,55%) 0%,hsl(0,60%,30%) 70%);border:2px solid hsl(0,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M9</div>
+        <div style="font-size:0.7em;color:#888">×4</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(30,70%,55%) 0%,hsl(30,60%,30%) 70%);border:2px solid hsl(30,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M10</div>
+        <div style="font-size:0.7em;color:#888">×7</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(60,70%,55%) 0%,hsl(60,60%,30%) 70%);border:2px solid hsl(60,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M11</div>
+        <div style="font-size:0.7em;color:#888">×10</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(90,70%,55%) 0%,hsl(90,60%,30%) 70%);border:2px solid hsl(90,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M12</div>
+        <div style="font-size:0.7em;color:#888">×13</div>
+      </div></div>
+    </div><div style="background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden">
+      <div style="padding:8px 12px;background:rgba(255,255,255,0.05);font-weight:700;font-size:0.9em;border-bottom:1px solid rgba(255,255,255,0.06)">▼ BlazingFury</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px"><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(180,70%,55%) 0%,hsl(180,60%,30%) 70%);border:2px solid hsl(180,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M1</div>
+        <div style="font-size:0.7em;color:#888">×5</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(210,70%,55%) 0%,hsl(210,60%,30%) 70%);border:2px solid hsl(210,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M2</div>
+        <div style="font-size:0.7em;color:#888">×8</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(240,70%,55%) 0%,hsl(240,60%,30%) 70%);border:2px solid hsl(240,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M3</div>
+        <div style="font-size:0.7em;color:#888">×11</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(270,70%,55%) 0%,hsl(270,60%,30%) 70%);border:2px solid hsl(270,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M4</div>
+        <div style="font-size:0.7em;color:#888">×14</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(300,70%,55%) 0%,hsl(300,60%,30%) 70%);border:2px solid hsl(300,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M5</div>
+        <div style="font-size:0.7em;color:#888">×17</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(330,70%,55%) 0%,hsl(330,60%,30%) 70%);border:2px solid hsl(330,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M6</div>
+        <div style="font-size:0.7em;color:#888">×2</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(0,70%,55%) 0%,hsl(0,60%,30%) 70%);border:2px solid hsl(0,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M7</div>
+        <div style="font-size:0.7em;color:#888">×5</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(30,70%,55%) 0%,hsl(30,60%,30%) 70%);border:2px solid hsl(30,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M8</div>
+        <div style="font-size:0.7em;color:#888">×8</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(60,70%,55%) 0%,hsl(60,60%,30%) 70%);border:2px solid hsl(60,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M9</div>
+        <div style="font-size:0.7em;color:#888">×11</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(90,70%,55%) 0%,hsl(90,60%,30%) 70%);border:2px solid hsl(90,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M10</div>
+        <div style="font-size:0.7em;color:#888">×14</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(120,70%,55%) 0%,hsl(120,60%,30%) 70%);border:2px solid hsl(120,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M11</div>
+        <div style="font-size:0.7em;color:#888">×17</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(150,70%,55%) 0%,hsl(150,60%,30%) 70%);border:2px solid hsl(150,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M12</div>
+        <div style="font-size:0.7em;color:#888">×2</div>
+      </div></div>
+    </div><div style="background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden">
+      <div style="padding:8px 12px;background:rgba(255,255,255,0.05);font-weight:700;font-size:0.9em;border-bottom:1px solid rgba(255,255,255,0.06)">▼ ShadowKnight</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:8px"><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(240,70%,55%) 0%,hsl(240,60%,30%) 70%);border:2px solid hsl(240,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M1</div>
+        <div style="font-size:0.7em;color:#888">×12</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(270,70%,55%) 0%,hsl(270,60%,30%) 70%);border:2px solid hsl(270,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M2</div>
+        <div style="font-size:0.7em;color:#888">×15</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(300,70%,55%) 0%,hsl(300,60%,30%) 70%);border:2px solid hsl(300,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M3</div>
+        <div style="font-size:0.7em;color:#888">×18</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(330,70%,55%) 0%,hsl(330,60%,30%) 70%);border:2px solid hsl(330,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M4</div>
+        <div style="font-size:0.7em;color:#888">×3</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(0,70%,55%) 0%,hsl(0,60%,30%) 70%);border:2px solid hsl(0,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M5</div>
+        <div style="font-size:0.7em;color:#888">×6</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(30,70%,55%) 0%,hsl(30,60%,30%) 70%);border:2px solid hsl(30,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M6</div>
+        <div style="font-size:0.7em;color:#888">×9</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(60,70%,55%) 0%,hsl(60,60%,30%) 70%);border:2px solid hsl(60,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M7</div>
+        <div style="font-size:0.7em;color:#888">×12</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(90,70%,55%) 0%,hsl(90,60%,30%) 70%);border:2px solid hsl(90,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M8</div>
+        <div style="font-size:0.7em;color:#888">×15</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(120,70%,55%) 0%,hsl(120,60%,30%) 70%);border:2px solid hsl(120,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M9</div>
+        <div style="font-size:0.7em;color:#888">×18</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(150,70%,55%) 0%,hsl(150,60%,30%) 70%);border:2px solid hsl(150,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M10</div>
+        <div style="font-size:0.7em;color:#888">×3</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(180,70%,55%) 0%,hsl(180,60%,30%) 70%);border:2px solid hsl(180,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M11</div>
+        <div style="font-size:0.7em;color:#888">×6</div>
+      </div><div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px">
+        <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,hsl(210,70%,55%) 0%,hsl(210,60%,30%) 70%);border:2px solid hsl(210,80%,40%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.7em;font-weight:700">M12</div>
+        <div style="font-size:0.7em;color:#888">×9</div>
+      </div></div>
+    </div></div></div></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.13 — Performance par carte — Session vs Historique</h2>
+      <div class="meta">
+        <code>src/visualization/_maps_outcome_history.py::plot_map_perf_vs_history</code>
+      </div>
+      <div id="chart-13" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 110,
+    right: 30,
+    top: 50,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: {
+    orient: "horizontal",
+    bottom: 10,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.85)"
+    },
+    data: ["Historique", "Session actuelle"]
+  },
+  tooltip: {
+    trigger: "item",
+    backgroundColor: "rgba(20, 30, 50, 0.92)",
+    borderColor: "rgba(120, 160, 220, 0.4)",
+    textStyle: {
+      color: "#fff",
+      fontSize: 12
+    },
+    formatter: function anonymous(p
+) {
+return p.name + "<br>" + p.seriesName + " = " + p.value.toFixed(1) + " (N=" + (p.data.customN || 0) + ")";
+}
+  },
+  xAxis: {
+    type: "value",
+    min: 0,
+    max: 100,
+    axisLine: {
+      lineStyle: {
+        color: "rgba(245, 248, 255, 0.6)"
+      }
+    },
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)"
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245, 248, 255, 0.08)"
+      }
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: [
+      "Aquarius",
+      "Recharge",
+      "Live Fire",
+      "Streets",
+      "Bazaar",
+      "Behemoth",
+      "Catalyst",
+      "Argyle",
+      "Solitude",
+      "Empyrean",
+      "Forbidden",
+      "Cliffhanger"
+    ],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 11
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  series: [
+    {
+      name: "Historique",
+      type: "bar",
+      data: [
+        {
+          value: 70,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 42
+        },
+        {
+          value: 62,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 38
+        },
+        {
+          value: 58,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 51
+        },
+        {
+          value: 50,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 28
+        },
+        {
+          value: 45,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 60
+        },
+        {
+          value: 42,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 35
+        },
+        {
+          value: 35,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 18
+        },
+        {
+          value: 60,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 44
+        },
+        {
+          value: 65,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 33
+        },
+        {
+          value: 55,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 25
+        },
+        {
+          value: 48,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 55
+        },
+        {
+          value: 52,
+          itemStyle: {
+            color: "rgba(120,120,120,0.45)"
+          },
+          customN: 31
+        }
+      ],
+      barGap: 0,
+      barCategoryGap: "30%",
+      markLine: {
+        symbol: "none",
+        lineStyle: {
+          type: "dotted",
+          color: "rgba(180,180,180,0.6)",
+          width: 1
+        },
+        data: [
+          {
+            xAxis: 0
+          }
+        ],
+        label: {
+          show: false
+        }
+      }
+    },
+    {
+      name: "Session actuelle",
+      type: "bar",
+      data: [
+        {
+          value: 82,
+          itemStyle: {
+            color: "#00e676",
+            opacity: 0.85
+          },
+          customN: 4
+        },
+        {
+          value: 71,
+          itemStyle: {
+            color: "#00b7eb",
+            opacity: 0.85
+          },
+          customN: 3
+        },
+        {
+          value: 64,
+          itemStyle: {
+            color: "#00b7eb",
+            opacity: 0.85
+          },
+          customN: 5
+        },
+        {
+          value: 55,
+          itemStyle: {
+            color: "#ffb300",
+            opacity: 0.85
+          },
+          customN: 2
+        },
+        {
+          value: 48,
+          itemStyle: {
+            color: "#ffb300",
+            opacity: 0.85
+          },
+          customN: 6
+        },
+        {
+          value: 38,
+          itemStyle: {
+            color: "#FF8C00",
+            opacity: 0.85
+          },
+          customN: 3
+        },
+        {
+          value: 25,
+          itemStyle: {
+            color: "#e53935",
+            opacity: 0.85
+          },
+          customN: 1
+        },
+        {
+          value: 67,
+          itemStyle: {
+            color: "#00b7eb",
+            opacity: 0.85
+          },
+          customN: 4
+        },
+        {
+          value: 73,
+          itemStyle: {
+            color: "#00b7eb",
+            opacity: 0.85
+          },
+          customN: 3
+        },
+        {
+          value: 58,
+          itemStyle: {
+            color: "#ffb300",
+            opacity: 0.85
+          },
+          customN: 2
+        },
+        {
+          value: 41,
+          itemStyle: {
+            color: "#FF8C00",
+            opacity: 0.85
+          },
+          customN: 5
+        },
+        {
+          value: 50,
+          itemStyle: {
+            color: "#ffb300",
+            opacity: 0.85
+          },
+          customN: 3
+        }
+      ],
+      barGap: 0,
+      barCategoryGap: "30%"
+    }
+  ],
+  title: {
+    text: "Performance par carte — Session vs Historique",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 484
+};
+          const dom = document.getElementById('chart-13');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.14 — Stats par minute — Frags / Morts / Assists</h2>
+      <div class="meta">
+        <code>src/ui/pages/_teammates_trio_helpers.py::_render_per_minute_stats</code>
+      </div>
+      <div id="chart-14" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 30,
+    top: 50,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: function anonymous(p
+) {
+return p.seriesName + " — " + p.name + " : " + Math.abs(p.value).toFixed(2);
+}
+  },
+  xAxis: {
+    type: "category",
+    data: ["Frags/min", "Morts/min", "Assists/min"],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 11
+    }
+  },
+  yAxis: {
+    type: "value",
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.75)",
+        width: 2
+      }
+    },
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      formatter: function anonymous(v
+) {
+return Math.abs(v).toFixed(1);
+}
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245, 248, 255, 0.08)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "JGtm",
+      type: "bar",
+      data: [
+        {
+          value: 1.42,
+          itemStyle: {
+            color: "#56B4E9"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "1.42"
+          }
+        },
+        {
+          value: -0.95,
+          itemStyle: {
+            color: "#ff6666"
+          },
+          label: {
+            show: true,
+            position: "bottom",
+            formatter: "0.95"
+          }
+        },
+        {
+          value: 1.18,
+          itemStyle: {
+            color: "#56B4E9"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "1.18"
+          }
+        }
+      ],
+      barCategoryGap: "40%",
+      barGap: "10%"
+    },
+    {
+      name: "NeoSpartan_42",
+      type: "bar",
+      data: [
+        {
+          value: 1.18,
+          itemStyle: {
+            color: "#E69F00"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "1.18"
+          }
+        },
+        {
+          value: -1.12,
+          itemStyle: {
+            color: "#e63333"
+          },
+          label: {
+            show: true,
+            position: "bottom",
+            formatter: "1.12"
+          }
+        },
+        {
+          value: 0.94,
+          itemStyle: {
+            color: "#E69F00"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "0.94"
+          }
+        }
+      ],
+      barCategoryGap: "40%",
+      barGap: "10%"
+    },
+    {
+      name: "BlazingFury",
+      type: "bar",
+      data: [
+        {
+          value: 0.98,
+          itemStyle: {
+            color: "#009E73"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "0.98"
+          }
+        },
+        {
+          value: -0.88,
+          itemStyle: {
+            color: "#b31c1c"
+          },
+          label: {
+            show: true,
+            position: "bottom",
+            formatter: "0.88"
+          }
+        },
+        {
+          value: 1.32,
+          itemStyle: {
+            color: "#009E73"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "1.32"
+          }
+        }
+      ],
+      barCategoryGap: "40%",
+      barGap: "10%"
+    },
+    {
+      name: "ShadowKnight",
+      type: "bar",
+      data: [
+        {
+          value: 0.74,
+          itemStyle: {
+            color: "#CC79A7"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "0.74"
+          }
+        },
+        {
+          value: -0.96,
+          itemStyle: {
+            color: "#7a1111"
+          },
+          label: {
+            show: true,
+            position: "bottom",
+            formatter: "0.96"
+          }
+        },
+        {
+          value: 0.62,
+          itemStyle: {
+            color: "#CC79A7"
+          },
+          label: {
+            show: true,
+            position: "top",
+            formatter: "0.62"
+          }
+        }
+      ],
+      barCategoryGap: "40%",
+      barGap: "10%"
+    }
+  ],
+  title: {
+    text: "Stats par minute — Frags / Morts / Assists",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 360
+};
+          const dom = document.getElementById('chart-14');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.15 — Heatmap d&#39;intensité — kills par phase de match</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_intensity.py::render_squad_intensity_heatmap</code>
+      </div>
+      <div id="chart-15" class="chart-canvas" style="height: 480px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 160,
+    right: 80,
+    top: 60,
+    bottom: 60,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: function anonymous(p
+) {
+return "Phase " + p.value[0] + " (" + ["0-10%","10-20%","20-30%","30-40%","40-50%","50-60%","60-70%","70-80%","80-90%","90-100%"][p.value[0]] + ")<br>" + ["Aquarius — 28 avr.","Recharge — 28 avr.","Live Fire — 27 avr.","Streets — 27 avr.","Bazaar — 26 avr.","Behemoth — 26 avr.","Catalyst — 25 avr.","Argyle — 25 avr.","Solitude — 24 avr.","Empyrean — 24 avr.","Forbidden — 23 avr.","Cliffhanger — 23 avr."][p.value[1]] + "<br>Intensité : " + p.value[2].toFixed(2);
+}
+  },
+  xAxis: {
+    type: "category",
+    data: ["0-10%", "10-20%", "20-30%", "30-40%", "40-50%", "50-60%", "60-70%", "70-80%", "80-90%", "90-100%"],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 10
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: [
+      "Aquarius — 28 avr.",
+      "Recharge — 28 avr.",
+      "Live Fire — 27 avr.",
+      "Streets — 27 avr.",
+      "Bazaar — 26 avr.",
+      "Behemoth — 26 avr.",
+      "Catalyst — 25 avr.",
+      "Argyle — 25 avr.",
+      "Solitude — 24 avr.",
+      "Empyrean — 24 avr.",
+      "Forbidden — 23 avr.",
+      "Cliffhanger — 23 avr."
+    ],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 11
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  visualMap: {
+    min: 0,
+    max: 1,
+    calculable: false,
+    show: true,
+    orient: "vertical",
+    right: 10,
+    top: "middle",
+    inRange: {
+      color: ["#38C8C8", "#FFFF00", "#FFB300", "#FF5500", "#FF1A00"]
+    },
+    text: ["intense", "calme"],
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.85)"
+    }
+  },
+  series: [
+    {
+      name: "Intensité",
+      type: "heatmap",
+      data: [
+        [0, 0, 0.59],
+        [1, 0, 0.82],
+        [2, 0, 1],
+        [3, 0, 0.69],
+        [4, 0, 0.48],
+        [5, 0, 0.3],
+        [6, 0, 0.05],
+        [7, 0, 0],
+        [8, 0, 0],
+        [9, 0, 0],
+        [0, 1, 0],
+        [1, 1, 0.16],
+        [2, 1, 0.44],
+        [3, 1, 0.65],
+        [4, 1, 0.7],
+        [5, 1, 1],
+        [6, 1, 0.75],
+        [7, 1, 0.66],
+        [8, 1, 0.29],
+        [9, 1, 0.09],
+        [0, 2, 0],
+        [1, 2, 0],
+        [2, 2, 0.03],
+        [3, 2, 0.23],
+        [4, 2, 0.32],
+        [5, 2, 0.58],
+        [6, 2, 0.82],
+        [7, 2, 0.98],
+        [8, 2, 0.78],
+        [9, 2, 0.65],
+        [0, 3, 0.6],
+        [1, 3, 0.4],
+        [2, 3, 0.22],
+        [3, 3, 0.18],
+        [4, 3, 0.55],
+        [5, 3, 0.62],
+        [6, 3, 0.5],
+        [7, 3, 0.4],
+        [8, 3, 0.56],
+        [9, 3, 0.42],
+        [0, 4, 0.6],
+        [1, 4, 0.79],
+        [2, 4, 1],
+        [3, 4, 0.73],
+        [4, 4, 0.51],
+        [5, 4, 0.34],
+        [6, 4, 0.07],
+        [7, 4, 0],
+        [8, 4, 0],
+        [9, 4, 0],
+        [0, 5, 0],
+        [1, 5, 0.19],
+        [2, 5, 0.26],
+        [3, 5, 0.53],
+        [4, 5, 0.79],
+        [5, 5, 0.93],
+        [6, 5, 0.7],
+        [7, 5, 0.49],
+        [8, 5, 0.38],
+        [9, 5, 0.07],
+        [0, 6, 0],
+        [1, 6, 0],
+        [2, 6, 0],
+        [3, 6, 0.19],
+        [4, 6, 0.39],
+        [5, 6, 0.54],
+        [6, 6, 0.76],
+        [7, 6, 0.97],
+        [8, 6, 0.7],
+        [9, 6, 0.66],
+        [0, 7, 0.31],
+        [1, 7, 0.55],
+        [2, 7, 0.2],
+        [3, 7, 0.54],
+        [4, 7, 0.2],
+        [5, 7, 0.48],
+        [6, 7, 0.59],
+        [7, 7, 0.49],
+        [8, 7, 0.55],
+        [9, 7, 0.15],
+        [0, 8, 0.59],
+        [1, 8, 0.68],
+        [2, 8, 1],
+        [3, 8, 0.7],
+        [4, 8, 0.49],
+        [5, 8, 0.24],
+        [6, 8, 0],
+        [7, 8, 0],
+        [8, 8, 0],
+        [9, 8, 0],
+        [0, 9, 0],
+        [1, 9, 0.13],
+        [2, 9, 0.33],
+        [3, 9, 0.63],
+        [4, 9, 0.71],
+        [5, 9, 1],
+        [6, 9, 0.82],
+        [7, 9, 0.47],
+        [8, 9, 0.34],
+        [9, 9, 0.15],
+        [0, 10, 0],
+        [1, 10, 0],
+        [2, 10, 0.06],
+        [3, 10, 0.23],
+        [4, 10, 0.49],
+        [5, 10, 0.65],
+        [6, 10, 0.86],
+        [7, 10, 1],
+        [8, 10, 0.7],
+        [9, 10, 0.62],
+        [0, 11, 0.62],
+        [1, 11, 0.34],
+        [2, 11, 0.28],
+        [3, 11, 0.49],
+        [4, 11, 0.52],
+        [5, 11, 0.4],
+        [6, 11, 0.31],
+        [7, 11, 0.52],
+        [8, 11, 0.57],
+        [9, 11, 0.15]
+      ],
+      emphasis: {
+        itemStyle: {
+          borderColor: "#fff",
+          borderWidth: 1
+        }
+      }
+    }
+  ],
+  title: {
+    text: "Heatmap d'intensité — kills par phase de match",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 456
+};
+          const dom = document.getElementById('chart-15');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.16 — Charts de performance escouade — 6 sous-charts (KD + assists + KDA + accuracy + avg_life + performance)</h2>
+      <div class="meta">
+        <code>src/ui/pages/_teammates_trio_helpers.py::_render_trio_performance_charts</code>
+      </div>
+      <div id="chart-16" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 30,
+    top: 60,
+    bottom: 60,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10",
+      "m11",
+      "m12",
+      "m13",
+      "m14",
+      "m15",
+      "m16",
+      "m17",
+      "m18"
+    ],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 10
+    }
+  },
+  yAxis: {
+    type: "value",
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.75)",
+        width: 2
+      }
+    },
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      formatter: function anonymous(v
+) {
+return Math.abs(v);
+}
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245, 248, 255, 0.08)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "JGtm",
+      type: "bar",
+      stack: "stack_0",
+      data: [
+        9,
+        10,
+        11,
+        13,
+        12,
+        11,
+        8,
+        7,
+        5,
+        5,
+        5,
+        5,
+        6,
+        8,
+        11,
+        12,
+        11,
+        12
+      ],
+      itemStyle: {
+        color: "#56B4E9",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "JGtm (morts)",
+      type: "bar",
+      stack: "stack_0",
+      data: [
+        -11,
+        -9,
+        -8,
+        -7,
+        -6,
+        -6,
+        -5,
+        -4,
+        -4,
+        -4,
+        -5,
+        -7,
+        -8,
+        -9,
+        -10,
+        -9,
+        -10,
+        -9
+      ],
+      itemStyle: {
+        color: "#ff6666",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "JGtm (kills lissé)",
+      type: "line",
+      data: [
+        10.75,
+        11,
+        11,
+        10.57,
+        10.29,
+        9.57,
+        8.71,
+        7.57,
+        6.57,
+        5.86,
+        5.86,
+        6.43,
+        7.43,
+        8.29,
+        9.29,
+        10,
+        10.8,
+        11.5
+      ],
+      itemStyle: {
+        color: "#56B4E9"
+      },
+      lineStyle: {
+        color: "#56B4E9",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    },
+    {
+      name: "JGtm (morts lissé)",
+      type: "line",
+      data: [
+        -8.75,
+        -8.2,
+        -7.83,
+        -7.43,
+        -6.43,
+        -5.71,
+        -5.14,
+        -4.86,
+        -5,
+        -5.29,
+        -5.86,
+        -6.71,
+        -7.43,
+        -8.29,
+        -8.86,
+        -9.17,
+        -9.4,
+        -9.5
+      ],
+      itemStyle: {
+        color: "#ff6666"
+      },
+      lineStyle: {
+        color: "#ff6666",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    },
+    {
+      name: "NeoSpartan_42",
+      type: "bar",
+      stack: "stack_1",
+      data: [
+        11,
+        13,
+        12,
+        10,
+        8,
+        7,
+        4,
+        4,
+        4,
+        4,
+        8,
+        10,
+        10,
+        10,
+        13,
+        10,
+        11,
+        9
+      ],
+      itemStyle: {
+        color: "#E69F00",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "NeoSpartan_42 (morts)",
+      type: "bar",
+      stack: "stack_1",
+      data: [
+        -9,
+        -7,
+        -7,
+        -7,
+        -6,
+        -4,
+        -3,
+        -5,
+        -5,
+        -6,
+        -7,
+        -8,
+        -10,
+        -10,
+        -10,
+        -8,
+        -8,
+        -6
+      ],
+      itemStyle: {
+        color: "#e63333",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "NeoSpartan_42 (kills lissé)",
+      type: "line",
+      data: [
+        11.5,
+        10.8,
+        10.17,
+        9.29,
+        8.29,
+        7,
+        5.86,
+        5.57,
+        5.86,
+        6.29,
+        7.14,
+        8.43,
+        9.29,
+        10.29,
+        10.43,
+        10.5,
+        10.6,
+        10.75
+      ],
+      itemStyle: {
+        color: "#E69F00"
+      },
+      lineStyle: {
+        color: "#E69F00",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    },
+    {
+      name: "NeoSpartan_42 (morts lissé)",
+      type: "line",
+      data: [
+        -7.5,
+        -7.2,
+        -6.67,
+        -6.14,
+        -5.57,
+        -5.29,
+        -5.14,
+        -5.14,
+        -5.43,
+        -6.29,
+        -7.29,
+        -8,
+        -8.43,
+        -8.71,
+        -8.57,
+        -8.67,
+        -8.4,
+        -8
+      ],
+      itemStyle: {
+        color: "#e63333"
+      },
+      lineStyle: {
+        color: "#e63333",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    },
+    {
+      name: "BlazingFury",
+      type: "bar",
+      stack: "stack_2",
+      data: [
+        13,
+        11,
+        8,
+        7,
+        4,
+        5,
+        4,
+        5,
+        6,
+        8,
+        10,
+        12,
+        11,
+        11,
+        10,
+        7,
+        6,
+        4
+      ],
+      itemStyle: {
+        color: "#009E73",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "BlazingFury (morts)",
+      type: "bar",
+      stack: "stack_2",
+      data: [
+        -8,
+        -6,
+        -5,
+        -5,
+        -3,
+        -5,
+        -5,
+        -6,
+        -7,
+        -9,
+        -9,
+        -10,
+        -10,
+        -8,
+        -9,
+        -6,
+        -6,
+        -4
+      ],
+      itemStyle: {
+        color: "#b31c1c",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "BlazingFury (kills lissé)",
+      type: "line",
+      data: [
+        9.75,
+        8.6,
+        8,
+        7.43,
+        6.29,
+        5.57,
+        5.57,
+        6,
+        7.14,
+        8,
+        9,
+        9.71,
+        9.86,
+        9.57,
+        8.71,
+        8.17,
+        7.6,
+        6.75
+      ],
+      itemStyle: {
+        color: "#009E73"
+      },
+      lineStyle: {
+        color: "#009E73",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    },
+    {
+      name: "BlazingFury (morts lissé)",
+      type: "line",
+      data: [
+        -6,
+        -5.4,
+        -5.33,
+        -5.29,
+        -5,
+        -5.14,
+        -5.71,
+        -6.29,
+        -7.29,
+        -8,
+        -8.43,
+        -8.86,
+        -8.71,
+        -8.29,
+        -7.57,
+        -7.17,
+        -6.6,
+        -6.25
+      ],
+      itemStyle: {
+        color: "#b31c1c"
+      },
+      lineStyle: {
+        color: "#b31c1c",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    },
+    {
+      name: "ShadowKnight",
+      type: "bar",
+      stack: "stack_3",
+      data: [
+        10,
+        7,
+        6,
+        4,
+        3,
+        5,
+        7,
+        8,
+        9,
+        12,
+        11,
+        11,
+        11,
+        6,
+        5,
+        4,
+        4,
+        6
+      ],
+      itemStyle: {
+        color: "#CC79A7",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "ShadowKnight (morts)",
+      type: "bar",
+      stack: "stack_3",
+      data: [
+        -6,
+        -5,
+        -5,
+        -4,
+        -5,
+        -7,
+        -8,
+        -9,
+        -9,
+        -11,
+        -9,
+        -10,
+        -8,
+        -7,
+        -6,
+        -6,
+        -4,
+        -4
+      ],
+      itemStyle: {
+        color: "#7a1111",
+        opacity: 0.7
+      },
+      barCategoryGap: "10%"
+    },
+    {
+      name: "ShadowKnight (kills lissé)",
+      type: "line",
+      data: [
+        6.75,
+        6,
+        5.83,
+        6,
+        5.71,
+        6,
+        6.86,
+        7.86,
+        9,
+        9.86,
+        9.71,
+        9.29,
+        8.57,
+        7.43,
+        6.71,
+        6,
+        5,
+        4.75
+      ],
+      itemStyle: {
+        color: "#CC79A7"
+      },
+      lineStyle: {
+        color: "#CC79A7",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    },
+    {
+      name: "ShadowKnight (morts lissé)",
+      type: "line",
+      data: [
+        -5,
+        -5,
+        -5.33,
+        -5.71,
+        -6.14,
+        -6.71,
+        -7.57,
+        -8.29,
+        -9,
+        -9.14,
+        -9,
+        -8.57,
+        -8.14,
+        -7.14,
+        -6.43,
+        -5.83,
+        -5.4,
+        -5
+      ],
+      itemStyle: {
+        color: "#7a1111"
+      },
+      lineStyle: {
+        color: "#7a1111",
+        width: 2
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      smooth: true
+    }
+  ],
+  title: {
+    text: "Kills (haut) / Morts (bas) — escouade lissés (rolling 7)",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 420
+};
+          const dom = document.getElementById('chart-16');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>teammates.17 — Premier frag / première mort — butterfly chronologique</h2>
+      <div class="meta">
+        <code>src/ui/pages/teammates_charts.py::render_first_events_chart</code>
+      </div>
+      <div id="chart-17" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 30,
+    top: 60,
+    bottom: 80,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: function anonymous(p
+) {
+var v = Math.abs(p.value); var label = p.value >= 0 ? "1er frag" : "1ère mort"; return "<b>" + p.seriesName.replace(" (morts)", "") + "</b><br>" + p.name + "<br>" + label + " : " + v + " matchs";
+}
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "15s",
+      "30s",
+      "45s",
+      "1m00s",
+      "1m15s",
+      "1m30s",
+      "1m45s",
+      "2m00s",
+      "2m15s",
+      "2m30s",
+      "2m45s",
+      "3m00s"
+    ],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 10,
+      rotate: 0
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  yAxis: {
+    type: "value",
+    min: -6,
+    max: 6,
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.75)",
+        width: 2
+      }
+    },
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      formatter: function anonymous(v
+) {
+return Math.abs(v);
+}
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245, 248, 255, 0.08)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "JGtm",
+      type: "bar",
+      stack: undefined,
+      data: [
+        1,
+        3,
+        5,
+        4,
+        3,
+        2,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#56B4E9"
+      },
+      barGap: "0%",
+      markLine: {
+        symbol: "none",
+        silent: true,
+        lineStyle: {
+          type: "dotted",
+          color: "rgba(255,255,255,0.18)",
+          width: 1
+        },
+        data: [
+          {
+            xAxis: 0.5
+          },
+          {
+            xAxis: 1.5
+          },
+          {
+            xAxis: 2.5
+          },
+          {
+            xAxis: 3.5
+          },
+          {
+            xAxis: 4.5
+          },
+          {
+            xAxis: 5.5
+          },
+          {
+            xAxis: 6.5
+          },
+          {
+            xAxis: 7.5
+          },
+          {
+            xAxis: 8.5
+          },
+          {
+            xAxis: 9.5
+          },
+          {
+            xAxis: 10.5
+          }
+        ],
+        label: {
+          show: false
+        }
+      }
+    },
+    {
+      name: "JGtm (morts)",
+      type: "bar",
+      data: [
+        0,
+        0,
+        -1,
+        -2,
+        -3,
+        -4,
+        -4,
+        -2,
+        -1,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#56B4E9",
+        opacity: 0.85
+      },
+      barGap: "0%"
+    },
+    {
+      name: "NeoSpartan_42",
+      type: "bar",
+      stack: undefined,
+      data: [
+        0,
+        1,
+        3,
+        4,
+        5,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#E69F00"
+      },
+      barGap: "0%"
+    },
+    {
+      name: "NeoSpartan_42 (morts)",
+      type: "bar",
+      data: [
+        -1,
+        -1,
+        -2,
+        -3,
+        -4,
+        -3,
+        -2,
+        -1,
+        0,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#E69F00",
+        opacity: 0.85
+      },
+      barGap: "0%"
+    },
+    {
+      name: "BlazingFury",
+      type: "bar",
+      stack: undefined,
+      data: [
+        0,
+        0,
+        2,
+        3,
+        4,
+        5,
+        3,
+        2,
+        1,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#009E73"
+      },
+      barGap: "0%"
+    },
+    {
+      name: "BlazingFury (morts)",
+      type: "bar",
+      data: [
+        -1,
+        -2,
+        -3,
+        -3,
+        -2,
+        -2,
+        -1,
+        -1,
+        0,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#009E73",
+        opacity: 0.85
+      },
+      barGap: "0%"
+    },
+    {
+      name: "ShadowKnight",
+      type: "bar",
+      stack: undefined,
+      data: [
+        0,
+        0,
+        1,
+        2,
+        2,
+        3,
+        4,
+        3,
+        2,
+        1,
+        1,
+        0
+      ],
+      itemStyle: {
+        color: "#CC79A7"
+      },
+      barGap: "0%"
+    },
+    {
+      name: "ShadowKnight (morts)",
+      type: "bar",
+      data: [
+        0,
+        -1,
+        -2,
+        -4,
+        -3,
+        -2,
+        -2,
+        -1,
+        -1,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#CC79A7",
+        opacity: 0.85
+      },
+      barGap: "0%"
+    }
+  ],
+  title: {
+    text: "Premier frag (haut) / Première mort (bas) — par tranche de 15 s",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 440
+};
+          const dom = document.getElementById('chart-17');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+  </main>
+  <footer>
+    <strong>But</strong> : valider visuellement que les YAML de spec graphique
+    (<code>.ai/charts_specs/teammates/*.yaml</code>) reproduisent fidèlement
+    les charts Plotly d'origine. Comparer chaque chart ci-dessus avec son équivalent
+    Streamlit/Plotly en lançant l'app Python (si dispo) ou en regardant un screenshot.
+  </footer>
+</body>
+</html>

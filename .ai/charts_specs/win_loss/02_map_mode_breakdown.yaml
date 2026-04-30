@@ -1,0 +1,42 @@
+# =============================================================================
+# Win/Loss page · Section 2 · Map / Mode breakdown
+# =============================================================================
+# Wrapper réutilisant timeseries.07 (synthesis.01 + synthesis.02).
+# =============================================================================
+
+id: "win_loss.02"
+title: "Map / Mode breakdown — V/D/T par carte (top 12) + par mode"
+page: win_loss
+section: "Section 2 (linéaire)"
+display_order_in_page: 2
+source_function: "src/ui/pages/win_loss.py::_render_map_mode_breakdown"
+chart_kind: stacked_bar
+
+data:
+  reuses:
+    of: ["timeseries.07", "synthesis.01", "synthesis.02"]
+    differences: "Aucune — même fonction. min_matches=1, max_categories=12, sort_by='total'."
+
+traces: []                                                       # cf. timeseries.07
+
+layout:
+  inherits: _theme_default
+  height: { value: 460 }
+
+display:
+  shown_when: "(map_name OR mode_canon) ∈ dff.columns"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_results_by_map_mode'))"
+
+i18n_keys:
+  viz_t: []
+  t: ["wl_results_by_map_mode", "wl_by_map", "wl_by_mode", "insufficient_data_chart"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]

@@ -1,0 +1,188 @@
+# =============================================================================
+# Gauge progression vers le prochain rang
+# =============================================================================
+# Indicateur radial (Plotly Indicator gauge+number) montrant le pourcentage
+# de progression XP vers le rang suivant. 4 zones colorées en arrière-plan
+# (rouge/orange/cyan/vert), barre dynamique selon le pct, threshold blanc
+# à la valeur courante.
+# =============================================================================
+
+id: "career.01"
+title: "Progression vers le prochain rang"
+page: career
+section: "Rang actuel"
+source_function: "src/ui/components/career_progress_circle.py::create_career_progress_gauge"
+source_helpers:
+  - "src/ui/components/career_progress_circle.py::_build_progress_gauge"
+  - "src/ui/components/career_progress_circle.py::_progress_bar_color"
+  - "src/ui/pages/career.py::_render_rank_header"           # appelant
+fragment: false                                              # rendu inline dans render_career_page
+chart_kind: gauge
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null                                     # à créer côté Go
+  input_dataframe:
+    required_fields:                                         # pas un DataFrame mais des scalaires
+      current_xp: int
+      xp_for_next_rank: int
+      progress_pct: float
+      rank_name_fr: string
+      is_max_rank: bool
+  call_args:
+    height: 280                                              # PlotOptions.height_px default
+  filters_applied: []
+  transformations:
+    - description: "Détermination de la couleur de barre selon le pourcentage"
+      polars: |
+        if pct >= 75: bar_color = "#00ff88"  # vert
+        elif pct >= 50: bar_color = THEME_COLORS.accent  # cyan
+        elif pct >= 25: bar_color = "#ffaa00"  # orange
+        else: bar_color = "#ff6666"  # rouge
+      sql_duckdb: "-- Calcul côté client/serveur Go selon progress_pct"
+
+    - description: "Subtitle conditionnel rang max"
+      polars: |
+        if is_max_rank:
+          progress_pct = 100.0
+          subtitle = t("career_max_rank")
+        else:
+          subtitle = f"{current_xp:,} / {xp_for_next_rank:,} XP"
+      sql_duckdb: "-- Trivial, fait côté serveur Go"
+
+# === GAUGE-SPECIFIC ===
+gauge:
+  value_field: "progress_pct"                                # 0–100
+  axis_range: [0, 100]
+  dtick: 25                                                  # graduation tous les 25%
+  number:
+    suffix: "%"
+    font:
+      size: 36
+      color: "white"
+  title:
+    text: "{{rank_name_fr}}"                                 # nom du rang FR (ex: "Capitaine III")
+    subtitle: "{current_xp:,} / {xp_for_next:,} XP"          # OU "Rang Max" si is_max_rank
+    font:
+      size: 16
+      color: "white"
+    subtitle_font:
+      size: 12
+      color: "#aaa"
+  bar:
+    color_expression: |
+      pct >= 75 → "#00ff88"
+      pct >= 50 → "#33d6ff" (THEME_COLORS.accent)
+      pct >= 25 → "#ffaa00"
+      else      → "#ff6666"
+    thickness: 0.7
+  bgcolor: "rgba(50, 60, 70, 0.3)"
+  borderwidth: 0
+  steps:                                                     # zones colorées en arrière-plan
+    - {range: [0, 25],   color: "rgba(255, 102, 102, 0.08)"}
+    - {range: [25, 50],  color: "rgba(255, 170, 0, 0.08)"}
+    - {range: [50, 75],  color: "rgba(51, 214, 255, 0.08)"}
+    - {range: [75, 100], color: "rgba(0, 255, 136, 0.08)"}
+  threshold:                                                 # marqueur blanc à la valeur courante
+    color: "white"
+    width: 2
+    thickness: 0.8
+  axis_style:
+    tickwidth: 0
+    tickcolor: "rgba(0,0,0,0)"                               # invisible
+    tickfont: {size: 10, color: "#666"}
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 280                                               # PlotOptions.height_px par défaut
+    expression: null
+    branches: []
+  margin: {t: 80, b: 20, l: 30, r: 30}                       # /!\ overrides du margin_default — t:80 important pour titre+subtitle
+  bgcolor:
+    paper: "rgb(29, 35, 40)"                                 # _build_progress_gauge l.43-44
+    plot:  "rgb(29, 35, 40)"
+  font:
+    color: "white"                                           # surcharge du thème (text_primary 0.92 alpha)
+  showlegend: false
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "career_data is not None AND gauge_fig is not None"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.career_gauge_generate_error}}"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  layout_position:
+    container: "st.columns([1, 2, 2])"
+    column_index: 2                                          # 3e colonne (col_gauge)
+    column_label: null
+  preceded_by:
+    - "(KPI metrics col_info dans la 2e colonne)"
+
+# === CONTROLS ===
+controls: []                                                  # aucun contrôle local
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - career_metric_rank
+    - career_metric_xp_total
+    - career_metric_current_xp
+    - career_metric_next_rank_xp
+    - career_rank_max
+    - career_max_rank
+    - career_gauge_generate_error
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  sample_dataset: null
+  fig_dict_path: null
+  ast_extracted_fields: []
+  runtime_extracted_fields: []
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "`chart_kind: gauge` (nouveau) avec section dédiée `gauge:`"
+      why: |
+        Plotly Indicator gauge+number a une structure spécifique (axis, bar, steps, threshold)
+        qui ne se mappe pas naturellement sur les sections `traces[]` standard. Section dédiée
+        permet de capturer toutes les propriétés sans bricoler. Mapping ECharts : `series.type='gauge'`
+        avec `axisLine.lineStyle.color` (= steps), `progress.itemStyle.color` (= bar), `pointer`
+        (= threshold), `detail.formatter` (= number suffix), `title.show` (= title).
+
+    - decision: "`bar.color_expression` documenté comme pseudo-code"
+      why: |
+        La couleur de la barre dépend dynamiquement du % via `_progress_bar_color(pct)`.
+        Côté ECharts, à reconstruire en JS au moment du render avec une fonction qui mappe
+        pct → couleur, ou côté Go API en pré-calculant et en l'envoyant comme string.
+
+    - decision: "Override de `font.color: white` au lieu d'hériter `text_primary` du thème"
+      why: |
+        Le code Python force `font: {color: "white"}` (cf. _build_progress_gauge l.96), pas la
+        valeur `rgba(245,248,255,0.92)` du thème par défaut. Probablement pour maximiser le
+        contraste sur le gauge. Documenté pour ne pas l'aplatir lors du portage.
+
+    - decision: "4 zones de pourcentage avec opacité 0.08"
+      why: |
+        Les `steps` sont quasi-transparents (alpha 0.08) — ils ne sont qu'un soft hint visuel,
+        pas une coloration franche. Sur ECharts, ce sera `axisLine.lineStyle.color: [[0.25, '#ff666614'], ...]`
+        (alpha encodé en hex 0x14 ≈ 8%).

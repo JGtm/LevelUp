@@ -1,0 +1,176 @@
+# =============================================================================
+# K/D/A timeseries — barres Kills/Deaths + ligne Ratio (Y2)
+# =============================================================================
+# Bars groupées Kills (cyan) + Deaths (red) sur Y1 + line Ratio (green) sur Y2
+# secondary. offsetgroup et alignmentgroup pour aligner kills↔deaths au même x.
+# Annotation extreme : valeur MAX du ratio mise en avant en doré (FFD700) sur Y2.
+# X = numéros de match (#1, #2, ...) avec carte en sous-label si dispo.
+# Hovermode = x unified (toutes les valeurs au même x dans une seule infobulle).
+# =============================================================================
+
+id: "timeseries.02"
+title: "K/D/A timeseries — Kills, Deaths, Ratio"
+page: timeseries
+section: "Onglet Résumé K/D/A — KDA"
+display_order_in_tab: 3
+source_function: "src/visualization/timeseries.py::plot_timeseries"
+source_helpers:
+  - "src/visualization/timeseries.py::_add_kda_traces"
+  - "src/visualization/timeseries.py::_build_kda_customdata"
+  - "src/visualization/_extreme_annotations.py::add_extreme_annotations"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+  - "src/visualization/theme.py::get_legend_horizontal_bottom"
+fragment: false
+chart_kind: line                                               # mixed bars+line via secondary_y
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "ensure_polars(dff).sort('start_time')"
+  input_dataframe:
+    required_fields:
+      dff:
+        - start_time, kills, deaths, ratio
+        - map_ui | map_name                                    # pour tickvals carte
+  call_args: { lang: "fr | en" }
+  filters_applied: ["filtres globaux (sélection sidebar)"]
+
+  constants:
+    bar_width: 0.42
+    kills_color: "#41d6ff"                                     # HALO_COLORS.cyan
+    deaths_color: "#e53935"                                    # HALO_COLORS.red
+    ratio_color: "#00e676"                                     # HALO_COLORS.green (line)
+    bar_opacity: 0.85
+    bar_opacity_secondary: 0.7
+    extreme_max_color: "#FFD700"                               # doré pour annotation MAX ratio
+
+  transformations:
+    - description: "Tri chronologique + indices x_idx = list(range(len(d)))"
+      polars: "d = ensure_polars(dff).sort('start_time'); x_idx = list(range(len(d)))"
+    - description: "Tickvals tous les step matchs (step = max(1, len // 10))"
+      polars: "step = max(1, len(labels) // 10) if len(labels) > 1 else 1"
+    - description: "Labels X : '#1<br>map' si carte dispo, sinon date formatée"
+      polars: |
+        labels = [f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
+                  for i, mn in enumerate(d[map_col].fill_null('').to_list())]
+
+# === TRACES ===
+traces:
+  - id: kills
+    type: bar
+    y_axis: y1
+    color: "#41d6ff"                                           # cyan
+    opacity: 0.85
+    width: 0.42
+    alignmentgroup: kda_main
+    offsetgroup: kills
+    name_i18n: "{{viz_t.trace_kills}}"
+
+  - id: deaths
+    type: bar
+    y_axis: y1
+    color: "#e53935"                                           # red
+    opacity: 0.7
+    width: 0.42
+    alignmentgroup: kda_main
+    offsetgroup: deaths
+    name_i18n: "{{viz_t.trace_deaths}}"
+
+  - id: ratio
+    type: scatter
+    mode: lines
+    y_axis: y2                                                 # secondary
+    color: "#00e676"                                           # green
+    line_width: 2
+    name_i18n: "{{viz_t.trace_ratio}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 480                                                  # PLOT_CONFIG.tall_height
+  margin: { l: 40, r: 20, t: 80, b: 90 }
+  hovermode: "x unified"
+  barmode: group
+  bargap: 0.15
+  bargroupgap: 0.06
+  legend: "horizontal_bottom"
+
+  yaxis:
+    title_i18n: "{{viz_t.axis_kills_deaths}}"
+    rangemode: tozero
+  yaxis_secondary:
+    title_i18n: "{{viz_t.axis_ratio}}"
+
+  xaxis:
+    type: category
+    tickmode: array
+    tickangle: -45
+    title_i18n: "{{viz_t.axis_match_number}}"
+
+  annotations:
+    - id: max_ratio_annotation
+      type: extreme_max
+      target_metric: ratio
+      target_y_axis: y2
+      color: "#FFD700"                                          # doré
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df_pl non vide"
+  empty_state:
+    type: "annotation in figure"
+    triggered_by: ["df vide → empty_no_data viz_t"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "(rendu via _render_kda_section sans subheader spécifique pour KDA — incorporé dans tab Résumé)"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - empty_no_data
+    - trace_kills
+    - trace_deaths
+    - trace_ratio
+    - axis_kills_deaths
+    - axis_ratio
+    - axis_match_number
+  t: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Bars Kills/Deaths sur Y1, line Ratio sur Y2 (secondary)"
+      why: |
+        Échelles différentes : kills/deaths ~10-30 par match, ratio ~0.5-3.0. Sans 2 axes Y,
+        soit la ligne ratio serait écrasée (si Y1 dominant) soit les barres seraient illisibles.
+        secondary_y permet l'affichage simultané. Côté ECharts : `yAxisIndex: 1` sur la 3e série.
+
+    - decision: "alignmentgroup + offsetgroup pour aligner kills↔deaths au même x"
+      why: |
+        Les barres groupées de Plotly placent par défaut chaque série côte à côte avec un offset.
+        En forçant alignmentgroup='kda_main' + offsetgroup différent par série, on garde l'alignement
+        VISUEL des kills↔deaths du même match sur le même x. ECharts : barGap=0 + barCategoryGap=15%.
+
+    - decision: "Annotation MAX ratio en doré"
+      why: |
+        Met visuellement en avant le BEST match du joueur sur la fenêtre. Couleur or (#FFD700) pour
+        une lecture immédiate. Pas d'annotation MIN car le but pédagogique est positif (motivation).
+
+    - decision: "X-axis category avec '#N<br>carte'"
+      why: |
+        Le numéro de match est ce qui prime visuellement (lecture chronologique), la carte est en
+        sous-label pour le contexte sans encombrer. Tick step adaptatif (max(1, len//10)) pour
+        éviter chevauchement labels sur les longs historiques.
+
+    - decision: "hovermode='x unified' (Plotly)"
+      why: |
+        Affiche les 3 valeurs (kills/deaths/ratio) dans UNE SEULE infobulle au survol d'un x donné,
+        plutôt qu'une infobulle séparée par série. Plus rapide à lire.
+        ECharts équivalent : `tooltip.trigger='axis'` avec axisPointer.

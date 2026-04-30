@@ -1,0 +1,171 @@
+# =============================================================================
+# Radar synergie — moi + 1, 2 ou 3 coéquipiers (6 axes)
+# =============================================================================
+# Réutilise create_participation_profile_radar (même composant que match_view.07)
+# avec N profiles (2 à 4 selon nombre d'amis sélectionnés). Calculs basés sur
+# les match_ids PARTAGÉS entre tous les membres de l'escouade (intersection).
+# =============================================================================
+
+id: "teammates.06"
+title: "Radar synergie escouade (6 axes)"
+page: teammates
+section: "Onglet Contributions / Synergies"
+source_function: "src/ui/pages/teammates_synergy.py::render_trio_synergy_radar"
+source_helpers:
+  - "src/ui/pages/teammates_synergy.py::_compute_shared_match_ids"
+  - "src/ui/pages/teammates_synergy.py::_build_squad_player_list"
+  - "src/ui/pages/teammates_synergy.py::_compute_profiles_from_squad"
+  - "src/ui/pages/teammates_synergy.py::_render_radar_display"
+  - "src/ui/components/_radar_participation.py::create_participation_profile_radar"
+  - "src/visualization/participation_radar.py::compute_participation_profile"
+  - "src/visualization/participation_radar.py::get_radar_thresholds"
+fragment: false
+chart_kind: radar                                               # réutilise match_view.07
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_participation_profile par player avec match_ids partagés"
+  input_dataframe:
+    me_df: "pl.DataFrame matchs joueur principal"
+    f1_df: "pl.DataFrame matchs ami 1 (toujours requis)"
+    f2_df: "pl.DataFrame matchs ami 2 | None"
+    f3_df: "pl.DataFrame matchs ami 3 | None"
+    me_name, f1_name, f2_name, f3_name: "string"
+    colors_by_name: "dict {gamertag → hex}"
+    db_path: "string"
+  call_args: {}
+  filters_applied: []
+
+  transformations:
+    - description: "Calcul des match_ids partagés entre tous les membres présents"
+      polars: |
+        shared_match_ids = _compute_shared_match_ids(me_df, f1_df, f2_df, f3_df)
+        # Intersection des match_id de tous les DataFrames non None
+      sql_duckdb: |
+        SELECT match_id FROM match_participants WHERE xuid IN (?, ?, ?, ?)
+        GROUP BY match_id HAVING COUNT(DISTINCT xuid) = <N membres>;
+
+    - description: "Construction de la liste de squad_players (1 par membre)"
+      polars: |
+        players = _build_squad_player_list(me_name, me_df, f1_name, f1_df, f2_name, f2_df, f3_name, f3_df, base_dir, db_path, colors_by_name)
+        # Returns list[SquadPlayer] avec name, df_on_shared_matches, color, awards_loader
+
+    - description: "Calcul des 6 profils participation (1 par membre)"
+      polars: |
+        thresholds = get_radar_thresholds(db_path)
+        profiles = _compute_profiles_from_squad(players, shared_match_ids, thresholds)
+        # Returns list[dict] avec mêmes clés que match_view.07 (objectifs_norm, combat_norm, ...)
+
+    - description: "Rendu via _render_radar_display (helper partagé)"
+      polars: |
+        _render_radar_display(profiles, title=t('tms_trio_title'), show_fill=False, static_plot=False)
+      detail: |
+        show_fill=False : LIGNES sans remplissage (lisible avec 4 profils superposés).
+        static_plot=False : interactif (PLOTLY_CLEAN_CONFIG).
+
+# === RADAR-SPECIFIC ===
+radar:
+  axes:                                                          # 6 axes (identiques à match_view.07)
+    - {id: objectifs, label: "{{t.radar_objectives}}"}
+    - {id: combat,    label: "{{t.radar_combat}}"}
+    - {id: support,   label: "{{t.radar_support}}"}
+    - {id: score,     label: "{{t.col_score}}"}
+    - {id: impact,    label: "{{t.radar_impact}}"}
+    - {id: survival,  label: "{{t.radar_survival}}"}
+
+  radial_axis:
+    range: [0, 1.1]
+    show_ticklabels: true
+    tickvals: [0.25, 0.5, 0.75, 1.0]
+    ticktext: ["25%", "50%", "75%", "100%"]
+
+  fill:
+    show_fill: false                                             # /!\ LIGNES sans remplissage (multi-profils)
+    detail: "Avec 4 profils superposés, le remplissage rendrait illisible. Lignes seules suffisent."
+
+# === TRACES ===
+# 1 trace par membre de l'escouade (2 à 4 traces)
+traces:
+  - id: "squad_players_template"
+    chart_role: primary
+    detail: |
+      Pour chaque player ∈ {moi, f1, f2?, f3?} (selon nombre amis sélectionnés) :
+        - r = [obj_n, combat_n, support_n, score_n, impact_n, survie_n, obj_n] (closure)
+        - color = colors_by_name[name] (cohérent avec légende globale)
+        - line.width = 3
+        - mode = lines (pas markers)
+    customdata_fields: [obj_raw_fmt, combat_raw_fmt, ..., survie_pct_fmt]
+    hovertemplate: "%{theta}: %{customdata[0]}<extra>%{fullData.name}</extra>"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 400                                                   # default radar height
+  margin: {l: 60, r: 60, t: 50, b: 40}
+  showlegend: true                                                # /!\ TRUE car multi-profils
+  legend:
+    orientation: h
+    yanchor: top
+    y: -0.08
+    xanchor: center
+    x: 0.5
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "me_df not empty AND f1_df not empty AND len(shared_match_ids) > 0"
+  empty_state:
+    type: none
+    triggered_by:
+      - "me_df vide → return early"
+      - "shared_match_ids vide (aucun match commun) → return early"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "(rendu dans render_trio_view → _render_radar_display)"
+    - "st.subheader(t('tms_trio_title'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tms_trio_title
+    - radar_objectives
+    - radar_combat
+    - radar_support
+    - col_score
+    - radar_impact
+    - radar_survival
+    - radar_hover_survival_pct
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Réutilisation totale de create_participation_profile_radar (composant match_view.07)"
+      why: |
+        Le composant radar 6 axes est strictement le même côté Plotly. Seule différence :
+          - match_view.07 : 1 profil unique (le joueur courant pour CE match)
+          - teammates.06 : 2 à 4 profils (moi + amis sur les matchs PARTAGÉS)
+        Côté React : <ParticipationRadar profiles={[...]}> avec un array variable.
+        Le converter ECharts radar gère déjà les profils multiples via `series.data[]`.
+
+    - decision: "show_fill=False (lignes seules)"
+      why: |
+        Avec 4 profils superposés (moi + 3 amis), le remplissage opaque rendrait le chart
+        illisible (forme dominante masquerait les autres). Les lignes 3px suffisent à
+        distinguer les profils par couleur. Match_view.07 utilise show_fill=True car 1 seul
+        profil. À porter avec la prop `showFill: bool` côté React.
+
+    - decision: "match_ids PARTAGÉS (intersection) — pas l'union"
+      why: |
+        Pour comparer la performance des membres SUR LES MÊMES MATCHS (pour avoir une vraie
+        comparaison de synergie), on filtre aux matchs où TOUS les membres étaient présents.
+        Si ami f1 a joué 50 matchs avec moi et f2 30 matchs (dont 20 communs avec f1+moi),
+        on calcule les 6 axes sur ces 20 matchs uniquement. Évite le biais "f2 a une meilleure
+        survie en moyenne globalement, mais sur nos matchs communs c'était l'inverse".

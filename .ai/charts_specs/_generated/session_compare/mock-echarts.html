@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock ECharts — session_compare</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: rgb(20, 28, 33);
+      color: rgba(245, 248, 255, 0.92);
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 500;
+    }
+    header .info {
+      font-size: 13px;
+      color: rgba(182, 196, 214, 0.88);
+    }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 1100px) {
+      main {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .chart-card.full-width {
+        grid-column: 1 / -1;
+      }
+    }
+    .chart-card {
+      background: rgba(29, 35, 40, 1.0);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px 16px 8px;
+    }
+    .chart-card h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #33D6FF;
+    }
+    .chart-card .meta {
+      font-size: 11px;
+      color: rgba(182, 196, 214, 0.72);
+      margin-bottom: 12px;
+    }
+    .chart-card .meta code {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .chart-canvas {
+      width: 100%;
+    }
+    .chart-card--table .os-table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    table.os-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86em;
+      background: rgba(29, 35, 40, 0.96);
+    }
+    table.os-table th, table.os-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: left;
+      vertical-align: middle;
+    }
+    table.os-table th.os-sb-team {
+      background: rgba(51, 214, 255, 0.08);
+      color: #33D6FF;
+      font-weight: 600;
+      font-size: 0.95em;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(51, 214, 255, 0.2);
+    }
+    table.os-table th.os-sb-th {
+      color: rgba(182, 196, 214, 0.88);
+      font-size: 0.78em;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    table.os-table tr.os-sb-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    table.os-table td.os-sb-td {
+      color: rgba(245, 248, 255, 0.92);
+    }
+    .table-legend {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .kpi-tile {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 9px 15px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-tile-text {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.98);
+    }
+    .composite-block {
+      margin-top: 8px;
+      padding: 4px 0;
+    }
+    .composite-block .cb-cell img {
+      max-width: 100%;
+      border-radius: 6px;
+    }
+    footer {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: rgba(182, 196, 214, 0.72);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mock ECharts — Page session_compare</h1>
+    <div class="info">
+      14 charts · Données mock synthétiques · ECharts 5.5.1<br>
+      Source : <code>origin/v7/cockpit</code> (Plotly Python) — généré le 2026-04-30T20:14:27.232Z
+    </div>
+  </header>
+  <main>
+    <section class="chart-card chart-card--composite">
+      <h2>session_compare.01 — Temporal header — résumé date + nombre parties par session</h2>
+      <div class="meta">
+        <code>src/ui/pages/_session_compare_viz.py::render_session_temporal_header</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 50.00%;padding:0 8px"><div style="display:flex;align-items:center;gap:12px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">
+          <div style="width:64px;height:64px;background:radial-gradient(circle, #FFD700 0%, #c4a000 70%);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:0.85em">Onyx</div>
+          <div style="flex:1">
+            <div style="font-size:0.95em;font-weight:600">Onyx Diamond III</div>
+            <div style="font-size:0.78em;color:#888;margin-top:2px"><span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.92em;font-weight:600">LUSR</span> <span style="font-weight:700;font-size:1.1em">1842</span></div>
+            <div style="font-size:0.85em;color:#3DFFB5;margin-top:2px">▲ +24</div>
+          </div>
+        </div></div><div class="cb-cell" style="flex:0 0 50.00%;padding:0 8px"><div style="display:flex;align-items:center;gap:12px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">
+          <div style="width:64px;height:64px;background:radial-gradient(circle, #FFD700 0%, #c4a000 70%);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-size:0.85em">Onyx</div>
+          <div style="flex:1">
+            <div style="font-size:0.95em;font-weight:600">Onyx Diamond III</div>
+            <div style="font-size:0.78em;color:#888;margin-top:2px"><span style="background:#00B7EB;color:#000;padding:1px 6px;border-radius:8px;font-size:0.92em;font-weight:600">LUSR</span> <span style="font-weight:700;font-size:1.1em">1842</span></div>
+            <div style="font-size:0.85em;color:#3DFFB5;margin-top:2px">▲ +24</div>
+          </div>
+        </div></div></div>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>session_compare.02 — Score cards — Performance score Session A / B</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare.py::_render_score_cards</code>
+      </div>
+      <div class="kpi-row"></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>session_compare.03 — Outcomes distribution — 2 donuts W/L/T/DNF par session</h2>
+      <div class="meta">
+        <code>src/ui/pages/_session_compare_viz.py::render_outcomes_distribution</code>
+      </div>
+      <div id="chart-2" class="chart-canvas" style="height: 220px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: "{b}: {c} partie(s) ({d}%)"
+  },
+  title: [
+    {
+      text: "Session A",
+      left: "25%",
+      top: 8,
+      textAlign: "center",
+      textStyle: {
+        color: "#E74C3C",
+        fontSize: 13,
+        fontWeight: "bold"
+      }
+    },
+    {
+      text: "Session B",
+      left: "75%",
+      top: 8,
+      textAlign: "center",
+      textStyle: {
+        color: "#3498DB",
+        fontSize: 13,
+        fontWeight: "bold"
+      }
+    },
+    {
+      text: "6/11",
+      left: "25%",
+      top: "50%",
+      textAlign: "center",
+      textVerticalAlign: "middle",
+      textStyle: {
+        color: "#E0E0E0",
+        fontSize: 14,
+        fontWeight: "bold"
+      }
+    },
+    {
+      text: "5/11",
+      left: "75%",
+      top: "50%",
+      textAlign: "center",
+      textVerticalAlign: "middle",
+      textStyle: {
+        color: "#E0E0E0",
+        fontSize: 14,
+        fontWeight: "bold"
+      }
+    }
+  ],
+  series: [
+    {
+      type: "pie",
+      center: ["25%", "50%"],
+      radius: ["45%", "70%"],
+      data: [
+        {
+          name: "Wins",
+          value: 6,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          name: "Losses",
+          value: 4,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          name: "Ties",
+          value: 1,
+          itemStyle: {
+            color: "#ab47bc"
+          }
+        }
+      ],
+      label: {
+        color: "#E0E0E0",
+        formatter: "{b}: {d}%",
+        fontSize: 10
+      },
+      itemStyle: {
+        borderColor: "rgba(0,0,0,0.25)",
+        borderWidth: 1
+      }
+    },
+    {
+      type: "pie",
+      center: ["75%", "50%"],
+      radius: ["45%", "70%"],
+      data: [
+        {
+          name: "Wins",
+          value: 5,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          name: "Losses",
+          value: 6,
+          itemStyle: {
+            color: "#e53935"
+          }
+        }
+      ],
+      label: {
+        color: "#E0E0E0",
+        formatter: "{b}: {d}%",
+        fontSize: 10
+      },
+      itemStyle: {
+        borderColor: "rgba(0,0,0,0.25)",
+        borderWidth: 1
+      }
+    }
+  ],
+  __height: 280
+};
+          const dom = document.getElementById('chart-2');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>session_compare.04 — Match highlights — best / worst match par session (markdown)</h2>
+      <div class="meta">
+        <code>src/ui/pages/_session_compare_extra.py::render_match_highlights</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"></div>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>session_compare.05 — Detailed metrics rows — comparaison A/B HTML</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare.py::_render_detailed_metrics</code>
+      </div>
+      
+      <div class="os-table-wrap">
+        <table class="os-table">
+          <thead><tr><th class="os-sb-team" colspan="1">Detailed metrics rows — comparaison A/B HTML</th></tr><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>session_compare.06 — MMR comparison rows — Team / Enemy MMR par session</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare.py::_render_mmr_comparison</code>
+      </div>
+      
+      <div class="os-table-wrap">
+        <table class="os-table">
+          <thead><tr><th class="os-sb-team" colspan="1">MMR comparison rows — Team / Enemy MMR par session</th></tr><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card">
+      <h2>session_compare.07 — Radar comparison — F/D, Win %, Accuracy (3 axes)</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare_charts.py::render_comparison_radar_chart</code>
+      </div>
+      <div id="chart-6" class="chart-canvas" style="height: 400px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  tooltip: {
+    trigger: "item"
+  },
+  legend: {
+    bottom: 8,
+    textStyle: {
+      color: "#E0E0E0"
+    },
+    data: ["Moyenne historique (n=8)", "Session A", "Session B"]
+  },
+  radar: {
+    indicator: [
+      {
+        name: "F/D",
+        max: 100
+      },
+      {
+        name: "Win %",
+        max: 100
+      },
+      {
+        name: "Précision",
+        max: 100
+      }
+    ],
+    shape: "polygon",
+    splitNumber: 5,
+    center: ["50%", "52%"],
+    radius: "65%",
+    axisName: {
+      color: "#E0E0E0",
+      fontSize: 11
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.2)"
+      }
+    },
+    splitArea: {
+      areaStyle: {
+        color: ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.05)"]
+      }
+    },
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.3)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "radar",
+      data: [
+        {
+          name: "Moyenne historique (n=8)",
+          value: [55, 55, 50],
+          symbol: "none",
+          lineStyle: {
+            color: "#9B59B6",
+            type: "dotted",
+            width: 2
+          },
+          areaStyle: {
+            color: "rgba(155, 89, 182, 0.2)"
+          }
+        },
+        {
+          name: "Session A",
+          value: [70, 65, 55],
+          symbol: "circle",
+          symbolSize: 6,
+          lineStyle: {
+            color: "#E74C3C",
+            width: 2
+          },
+          areaStyle: {
+            color: "rgba(231, 76, 60, 0.3)"
+          }
+        },
+        {
+          name: "Session B",
+          value: [50, 50, 48],
+          symbol: "circle",
+          symbolSize: 6,
+          lineStyle: {
+            color: "#3498DB",
+            width: 2
+          },
+          areaStyle: {
+            color: "rgba(52, 152, 219, 0.3)"
+          }
+        }
+      ]
+    }
+  ],
+  __height: 400
+};
+          const dom = document.getElementById('chart-6');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>session_compare.08 — Bar comparison — A/B sur 2 axes Y (kd ratio Y1 + win rate Y2)</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare_charts.py::render_comparison_bar_chart</code>
+      </div>
+      <div id="chart-7" class="chart-canvas" style="height: 350px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "#E0E0E0",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 60,
+    top: 40,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: {
+    bottom: 10,
+    textStyle: {
+      color: "#E0E0E0"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: ["F/D ratio", "Précision", "Score/min", "Win rate"],
+    axisLabel: {
+      color: "#E0E0E0",
+      interval: 0
+    }
+  },
+  yAxis: [
+    {
+      type: "value",
+      name: "Ratio",
+      nameTextStyle: {
+        color: "#E0E0E0"
+      },
+      axisLabel: {
+        color: "#E0E0E0"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(255,255,255,0.08)"
+        }
+      }
+    },
+    {
+      type: "value",
+      name: "Win rate (%)",
+      max: 100,
+      nameTextStyle: {
+        color: "#E0E0E0"
+      },
+      axisLabel: {
+        color: "#E0E0E0",
+        formatter: "{value}%"
+      },
+      splitLine: {
+        show: false
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Session A",
+      type: "bar",
+      data: [1.55, 0.62, 1.18, null],
+      itemStyle: {
+        color: "#E74C3C"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Session B",
+      type: "bar",
+      data: [1.05, 0.51, 0.95, null],
+      itemStyle: {
+        color: "#3498DB"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Hist (n=8)",
+      type: "bar",
+      data: [1.2, 0.55, 1.05, null],
+      itemStyle: {
+        color: "#9B59B6",
+        decal: {
+          symbol: "rect",
+          color: "rgba(255,255,255,0.4)"
+        }
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Session A — Win rate",
+      type: "bar",
+      yAxisIndex: 1,
+      data: [null, null, null, 65],
+      itemStyle: {
+        color: "#E74C3C"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Session B — Win rate",
+      type: "bar",
+      yAxisIndex: 1,
+      data: [null, null, null, 50],
+      itemStyle: {
+        color: "#3498DB"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Hist — Win rate",
+      type: "bar",
+      yAxisIndex: 1,
+      data: [null, null, null, 55],
+      itemStyle: {
+        color: "#9B59B6",
+        decal: {
+          symbol: "rect",
+          color: "rgba(255,255,255,0.4)"
+        }
+      },
+      barCategoryGap: "30%"
+    }
+  ],
+  title: {
+    text: "Bar comparison — A/B (Y1) + Win rate (Y2) avec moyenne historique",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 360
+};
+          const dom = document.getElementById('chart-7');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>session_compare.09 — Cumulative comparison — net score cumulé Session A vs B</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare.py::_render_cumulative_section</code>
+      </div>
+      <div id="chart-8" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 30,
+    top: 40,
+    bottom: 80,
+    containLabel: false
+  },
+  legend: {
+    bottom: 10,
+    textStyle: {
+      color: "#E0E0E0"
+    }
+  },
+  tooltip: {
+    trigger: "axis"
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14"
+    ],
+    name: "Match",
+    nameLocation: "middle",
+    nameGap: 30,
+    nameTextStyle: {
+      color: "#E0E0E0"
+    },
+    axisLabel: {
+      color: "#E0E0E0"
+    }
+  },
+  yAxis: {
+    type: "value",
+    name: "Net score cumulé",
+    nameTextStyle: {
+      color: "#E0E0E0"
+    },
+    axisLabel: {
+      color: "#E0E0E0"
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.08)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "Session A",
+      type: "line",
+      data: [
+        3,
+        7,
+        4,
+        11,
+        9,
+        14,
+        17,
+        13,
+        18,
+        22,
+        20,
+        25,
+        28,
+        30
+      ],
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 6,
+      lineStyle: {
+        color: "#E74C3C",
+        width: 2
+      },
+      itemStyle: {
+        color: "#E74C3C"
+      },
+      markLine: {
+        symbol: "none",
+        silent: true,
+        data: [
+          {
+            yAxis: 0
+          }
+        ],
+        lineStyle: {
+          color: "rgba(255,255,255,0.75)",
+          width: 2
+        },
+        label: {
+          show: true,
+          formatter: "Équilibre",
+          position: "end",
+          color: "rgba(255,255,255,0.6)"
+        }
+      }
+    },
+    {
+      name: "Session B",
+      type: "line",
+      data: [
+        -2,
+        -4,
+        -1,
+        1,
+        -3,
+        -6,
+        -2,
+        0,
+        -2,
+        1,
+        -3,
+        -1,
+        2,
+        0
+      ],
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 6,
+      lineStyle: {
+        color: "#3498DB",
+        width: 2
+      },
+      itemStyle: {
+        color: "#3498DB"
+      }
+    }
+  ],
+  title: {
+    text: "Net score cumulé — Session A vs Session B",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 380
+};
+          const dom = document.getElementById('chart-8');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>session_compare.10 — K/D progression — F/D par match + précision Y2</h2>
+      <div class="meta">
+        <code>src/ui/pages/_session_compare_viz.py::render_kd_progression</code>
+      </div>
+      <div id="chart-9" class="chart-canvas" style="height: 310px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 60,
+    top: 30,
+    bottom: 80,
+    containLabel: false
+  },
+  legend: {
+    bottom: 10,
+    textStyle: {
+      color: "#E0E0E0"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "cross"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    name: "Match",
+    nameLocation: "middle",
+    nameGap: 30,
+    nameTextStyle: {
+      color: "#E0E0E0"
+    },
+    axisLabel: {
+      color: "#E0E0E0"
+    }
+  },
+  yAxis: [
+    {
+      type: "value",
+      name: "F/D",
+      nameTextStyle: {
+        color: "#E0E0E0"
+      },
+      axisLabel: {
+        color: "#E0E0E0"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(255,255,255,0.08)"
+        }
+      }
+    },
+    {
+      type: "value",
+      name: "Précision (%)",
+      min: 0,
+      max: 100,
+      nameTextStyle: {
+        color: "#E0E0E0"
+      },
+      axisLabel: {
+        color: "#E0E0E0",
+        formatter: "{value}%"
+      },
+      splitLine: {
+        show: false
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Session A — F/D",
+      type: "line",
+      data: [
+        1.4,
+        1.8,
+        1.2,
+        2.1,
+        1.5,
+        1.9,
+        1.3,
+        2.4,
+        1.7,
+        1.6,
+        2,
+        1.8
+      ],
+      lineStyle: {
+        color: "#E74C3C",
+        width: 2
+      },
+      itemStyle: {
+        color: "#E74C3C"
+      },
+      symbol: "circle",
+      symbolSize: 7,
+      markLine: {
+        symbol: "none",
+        silent: true,
+        data: [
+          {
+            yAxis: 1
+          }
+        ],
+        lineStyle: {
+          type: "dotted",
+          color: "rgba(255,255,255,0.25)"
+        },
+        label: {
+          show: true,
+          formatter: "1.0",
+          position: "end",
+          color: "rgba(255,255,255,0.4)"
+        }
+      }
+    },
+    {
+      name: "Session B — F/D",
+      type: "line",
+      data: [
+        0.9,
+        1.1,
+        0.8,
+        1.3,
+        1,
+        1.2,
+        0.7,
+        1.4,
+        1.1,
+        0.9,
+        1,
+        1.2
+      ],
+      lineStyle: {
+        color: "#3498DB",
+        width: 2
+      },
+      itemStyle: {
+        color: "#3498DB"
+      },
+      symbol: "circle",
+      symbolSize: 7
+    },
+    {
+      name: "Session A — Précision",
+      type: "line",
+      yAxisIndex: 1,
+      data: [
+        55,
+        62,
+        50,
+        68,
+        58,
+        65,
+        53,
+        70,
+        60,
+        57,
+        64,
+        62
+      ],
+      lineStyle: {
+        color: "#E74C3C",
+        width: 1.5,
+        type: "dashed"
+      },
+      itemStyle: {
+        color: "#E74C3C"
+      },
+      symbol: "emptyCircle",
+      symbolSize: 5,
+      opacity: 0.75
+    },
+    {
+      name: "Session B — Précision",
+      type: "line",
+      yAxisIndex: 1,
+      data: [
+        48,
+        52,
+        45,
+        55,
+        50,
+        53,
+        47,
+        56,
+        51,
+        49,
+        52,
+        54
+      ],
+      lineStyle: {
+        color: "#3498DB",
+        width: 1.5,
+        type: "dashed"
+      },
+      itemStyle: {
+        color: "#3498DB"
+      },
+      symbol: "emptyCircle",
+      symbolSize: 5,
+      opacity: 0.75
+    }
+  ],
+  title: {
+    text: "K/D progression A vs B + Précision (Y2 dashed)",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 360
+};
+          const dom = document.getElementById('chart-9');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>session_compare.11 — Modes breakdown — comparatif modes joués A vs B</h2>
+      <div class="meta">
+        <code>src/ui/pages/_session_compare_extra.py::render_modes_breakdown</code>
+      </div>
+      <div id="chart-10" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "#E0E0E0",
+    fontSize: 13
+  },
+  grid: {
+    left: 140,
+    right: 30,
+    top: 40,
+    bottom: 50,
+    containLabel: false
+  },
+  legend: {
+    top: 8,
+    right: 30,
+    textStyle: {
+      color: "#E0E0E0"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "value",
+    name: "Parties",
+    nameTextStyle: {
+      color: "#E0E0E0"
+    },
+    axisLabel: {
+      color: "#E0E0E0"
+    },
+    minInterval: 1,
+    splitLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.08)"
+      }
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: ["BTB", "CTF", "King of the Hill", "Land Grab", "Oddball", "Quickplay", "Slayer", "Strongholds"],
+    axisLabel: {
+      color: "#E0E0E0"
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  series: [
+    {
+      name: "Session A",
+      type: "bar",
+      data: [3, 0, 2, 1, 0, 5, 4, 0],
+      itemStyle: {
+        color: "#E74C3C"
+      },
+      barCategoryGap: "40%"
+    },
+    {
+      name: "Session B",
+      type: "bar",
+      data: [0, 3, 1, 0, 2, 4, 1, 1],
+      itemStyle: {
+        color: "#3498DB"
+      },
+      barCategoryGap: "40%"
+    }
+  ],
+  title: {
+    text: "Modes breakdown — comparatif modes joués",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 464
+};
+          const dom = document.getElementById('chart-10');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>session_compare.12 — Map table — comparatif parties + V/D/E par carte</h2>
+      <div class="meta">
+        <code>src/ui/pages/_session_compare_extra.py::render_map_table</code>
+      </div>
+      
+      <div class="os-table-wrap">
+        <table class="os-table">
+          <thead><tr><th class="os-sb-team" colspan="1">Map table — comparatif parties + V/D/E par carte</th></tr><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
+    </section>
+
+    <section class="chart-card">
+      <h2>session_compare.13 — Participation trend — 6 axes A vs B (bars horizontales, ex-radar)</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare_charts.py::render_participation_trend_section</code>
+      </div>
+      <div id="chart-12" class="chart-canvas" style="height: 300px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "#E0E0E0",
+    fontSize: 13
+  },
+  grid: {
+    left: 100,
+    right: 30,
+    top: 30,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: {
+    bottom: 10,
+    textStyle: {
+      color: "#E0E0E0"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "value",
+    max: 110,
+    name: "%",
+    nameLocation: "end",
+    nameTextStyle: {
+      color: "#E0E0E0"
+    },
+    axisLabel: {
+      color: "#E0E0E0"
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.1)"
+      }
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: ["Objectifs", "Combat", "Support", "Score", "Impact", "Survie"],
+    axisLabel: {
+      color: "#E0E0E0"
+    },
+    splitLine: {
+      show: false
+    }
+  },
+  series: [
+    {
+      name: "Session A",
+      type: "bar",
+      data: [55, 78, 42, 70, 65, 50],
+      itemStyle: {
+        color: "#E74C3C"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Session B",
+      type: "bar",
+      data: [48, 60, 65, 55, 50, 72],
+      itemStyle: {
+        color: "#3498DB"
+      },
+      barCategoryGap: "30%"
+    }
+  ],
+  title: {
+    text: "Participation trend — 6 axes A vs B (% normalisés)",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 320
+};
+          const dom = document.getElementById('chart-12');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--table">
+      <h2>session_compare.14 — Match history tables — 2 onglets Session A | B</h2>
+      <div class="meta">
+        <code>src/ui/pages/session_compare.py::_render_match_history_tabs</code>
+      </div>
+      
+      <div class="os-table-wrap">
+        <table class="os-table">
+          <thead><tr><th class="os-sb-team" colspan="1">Match history tables — 2 onglets Session A | B</th></tr><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
+    </section>
+  </main>
+  <footer>
+    <strong>But</strong> : valider visuellement que les YAML de spec graphique
+    (<code>.ai/charts_specs/session_compare/*.yaml</code>) reproduisent fidèlement
+    les charts Plotly d'origine. Comparer chaque chart ci-dessus avec son équivalent
+    Streamlit/Plotly en lançant l'app Python (si dispo) ou en regardant un screenshot.
+  </footer>
+</body>
+</html>

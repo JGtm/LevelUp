@@ -1,0 +1,74 @@
+# =============================================================================
+# Temporal header — date + nombre parties par session (HTML)
+# =============================================================================
+# 2 colonnes (st.columns(2)) avec markdown HTML inline. Couleur de la date selon
+# la session (rouge corail _COLOR_A / bleu vif _COLOR_B). Format : 'jeu. 12 avr.'
+# (via format_date_with_weekday) + nombre de parties.
+# =============================================================================
+
+id: "session_compare.01"
+title: "Temporal header — résumé date + nombre parties par session"
+page: session_compare
+section: "Section 1 (linéaire)"
+display_order_in_page: 1
+source_function: "src/ui/pages/_session_compare_viz.py::render_session_temporal_header"
+source_helpers:
+  - "src/ui/utils/dates::format_date_with_weekday"
+fragment: false
+chart_kind: composite_block
+
+data:
+  computed_by: server
+  upstream_service: "df_session.get_column('start_time').drop_nulls().sort()[0] → date 1ère partie"
+  input_dataframe:
+    required_fields: { df_session_a: [start_time], df_session_b: [start_time] }
+  call_args: {}
+  filters_applied: []
+  constants:
+    color_a: "#E74C3C"
+    color_b: "#3498DB"
+
+composite_block:
+  blocks:
+    - id: session_a_summary
+      type: raw_html
+      column_ratio: 1
+      payload_template: |
+        <span style="color:#E74C3C;font-weight:600">{date_a}</span>
+        &nbsp;·&nbsp;<b>{n_a} partie(s)</b>
+    - id: session_b_summary
+      type: raw_html
+      column_ratio: 1
+      payload_template: |
+        <span style="color:#3498DB;font-weight:600">{date_b}</span>
+        &nbsp;·&nbsp;<b>{n_b} partie(s)</b>
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 60 }
+
+display:
+  shown_when: "df_session_a OR df_session_b non vide AND start_time present"
+  empty_state:
+    type: "fallback '—'"
+    triggered_by: ["df vide ou start_time absent → '—'"]
+  config: null
+  width_mode: stretch
+
+i18n_keys:
+  viz_t: []
+  t: []
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "HTML inline plutôt qu'un chart"
+      why: |
+        Information textuelle compacte — un chart serait sur-engineered. st.markdown(...
+        unsafe_allow_html=True) suffit. Côté React : composant <SessionHeader> avec 2
+        cellules colorées.

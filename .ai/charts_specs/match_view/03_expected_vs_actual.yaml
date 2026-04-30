@@ -1,0 +1,279 @@
+# =============================================================================
+# Expected vs Actual — K/D/A
+# =============================================================================
+# Section combinée : 4 KPI cards en haut + chart 3-traces groupées en dessous.
+# Chart : barres K, D, A avec :
+#   - Réel (couleur pleine, opacité 0.90)
+#   - Attendu (couleur 0.6 alpha + bordure pleine + pattern hachuré '/' )
+#   - Moyenne historique par mode_category (couleur 0.35 alpha + pattern dotté '.')
+# Annotation ratio K/D/A en haut à droite (badge ambre).
+# Affiché à gauche de #04 (spree_headshots) dans st.columns(2).
+# =============================================================================
+
+id: "match_view.03"
+title: "K/D/A : Réel vs Attendu vs Moyenne historique"
+page: match_view
+section: "Onglet Summary — Comparaison vs attendu"
+source_function: "src/ui/pages/match_view_charts.py::render_expected_vs_actual"
+source_helpers:
+  - "src/ui/pages/match_view_charts.py::_ev_card"
+  - "src/ui/pages/match_view_charts.py::_safe_numeric"
+  - "src/ui/pages/match_view_helpers.py::os_card"
+  - "src/ui/pages/match_view_logic.py::extract_mode_category"
+  - "src/ui/pages/match_view_logic.py::compute_mode_category_averages"
+  - "src/ui/formatting.py::format_mmss"
+  - "src/visualization/theme.py::get_legend_horizontal_bottom"
+fragment: false
+chart_kind: grouped_bar
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null
+  input_dataframe:
+    required_fields:
+      row:
+        kills: int
+        deaths: int
+        assists: int
+        ratio: "float | null"
+        average_life_seconds: "float | null"
+        pair_name: "string  (pour mode_category)"
+      pm:
+        team_mmr: "float | null"
+        enemy_mmr: "float | null"
+        kills: "{actual, expected}"                            # dict avec valeurs réelles + attendues du modèle
+        deaths: "{actual, expected}"
+        assists: "{actual, expected}"
+      df_full: "polars DataFrame  (historique du joueur, optionnel — mais requis pour la trace 3)"
+  call_args: {}
+  filters_applied: []
+
+  transformations:
+    - description: "Lecture des KPI cards préliminaires (MMR, K/D vs expected, AvgLife)"
+      polars: |
+        # 4 KPI cards rendues AU-DESSUS du chart (st.columns([1.5, 1, 1, 1])) :
+        # 1. MMR équipe vs ennemi : "{team_mmr:.1f} vs {enemy_mmr:.1f} {dm:+.1f}" coloré selon dm
+        # 2. _ev_card("Kills vs attendus", perf_k, mode='normal')
+        # 3. _ev_card("Deaths vs attendus", perf_d, mode='inverse')
+        # 4. AvgLife (format_mmss)
+
+    - description: "Calcul du ratio K/D/A (annotation en haut à droite)"
+      polars: |
+        real_ratio_f = float(row.ratio) if row.ratio == row.ratio else None
+        if real_ratio_f is None:
+            denom = max(1.0, float(row.deaths or 0.0))
+            real_ratio_f = (float(row.kills or 0.0) + float(row.assists or 0.0)) / denom
+
+    - description: "Calcul de la moyenne historique par mode_category (trace 3)"
+      polars: |
+        mode_category = extract_mode_category(row.pair_name)
+        if df_full is not None and len(df_full) >= 10:
+            hist_avgs = compute_mode_category_averages(df_full, mode_category)
+            # → {avg_kills, avg_deaths, avg_assists, avg_ratio, match_count}
+      sql_duckdb: |
+        SELECT AVG(kills), AVG(deaths), AVG(assists), COUNT(*)
+        FROM match_stats
+        WHERE xuid = ? AND extract_mode_category(pair_name) = ?;
+
+# === TRACES ===
+# Plotly utilise make_subplots(specs=[[{"secondary_y": True}]]) — secondary_y existe mais
+# `update_yaxes(visible=False, secondary_y=True)` la masque. C'est juste un artefact technique
+# pour garder une option future, sans usage actuel.
+traces:
+  # Trace 1 : Réel (toujours affichée)
+  - id: "actual"
+    name: "{{t.lbl_actual}}"
+    type: go.Bar
+    chart_role: primary
+    color: null
+    color_per_bar:                                             # 1 couleur par catégorie K/D/A
+      - "{{palette.green}}"                                    # K
+      - "{{palette.red}}"                                      # D
+      - "{{palette.cyan}}"                                     # A
+    opacity: 0.90
+    hovertemplate: "%{x} ({{t.lbl_actual}}): %{y:.0f}<extra></extra>"
+    secondary_y: false
+    show_when: "always"
+
+  # Trace 2 : Attendu (conditionnel — sur n'importe quelle valeur expected non null)
+  - id: "expected"
+    name: "{{t.lbl_expected}}"
+    type: go.Bar
+    chart_role: secondary
+    color: null
+    color_per_bar:                                             # 0.6 alpha de la couleur réelle
+      - "rgba(0, 255, 128, 0.6)"                               # K
+      - "rgba(255, 80, 80, 0.6)"                               # D
+      - "rgba(0, 200, 255, 0.6)"                               # A
+    marker_line:                                               # bordure 2px pleine couleur
+      width: 2
+      color_per_bar:                                           # mêmes couleurs que actual (vives)
+        - "{{palette.green}}"
+        - "{{palette.red}}"
+        - "{{palette.cyan}}"
+    pattern:
+      shape: "/"                                               # /!\ hachuré diagonal
+      solidity: 0.4
+      fgcolor_per_bar:
+        - "{{palette.green}}"
+        - "{{palette.red}}"
+        - "{{palette.cyan}}"
+    hovertemplate: "%{x} ({{t.lbl_expected}}): %{y:.1f}<extra></extra>"
+    secondary_y: false
+    show_when: "any(v is not None for v in exp_vals)"          # has_expected
+
+  # Trace 3 : Moyenne historique (conditionnel — match_count >= 10)
+  - id: "history_avg"
+    name: "{{t.mvc_hist_avg}}"                                 # paramétré : category, n
+    type: go.Bar
+    chart_role: secondary
+    color: null
+    color_per_bar:                                             # mêmes couleurs que actual
+      - "{{palette.green}}"
+      - "{{palette.red}}"
+      - "{{palette.cyan}}"
+    opacity: 0.35
+    pattern:
+      shape: "."                                               # /!\ dotté
+      fgcolor: "rgba(255, 255, 255, 0.75)"
+      solidity: 0.10
+    hovertemplate: "%{x} ({{t.mvc_hist_avg}}): %{y:.1f}<extra></extra>"
+    secondary_y: false
+    show_when: "hist_avgs.match_count >= 10"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360
+    expression: null
+    branches: []
+  margin: {l: 40, r: 20, t: 50, b: 90}                         # /!\ t=50 pour l'annotation ratio K/D/A
+  barmode: "group"                                              # /!\ pas stacked
+  bargap: null
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  xaxis:
+    type: "category"
+    title: null
+    detail: "3 catégories : K (Kills), D (Deaths), A (Assists). Labels via t('mvc_lbl_k/d/a')"
+
+  yaxis:
+    type: "linear"
+    title: "{{t.mvc_fda_title}}"
+    rangemode: "tozero"
+
+  yaxis2:                                                       # /!\ secondary_y existe mais masquée
+    visible: false
+    overlaying: "y"
+
+  annotations:
+    # Annotation ratio K/D/A en haut à droite (badge ambre avec bordure)
+    - text_template: "{{t.mvc_fda_ratio}}: <b>{real_ratio_f:.2f}</b>"
+      x: 1.0
+      y: 1.05
+      x_ref: "paper"
+      y_ref: "paper"
+      showarrow: false
+      font:
+        size: 14
+        color: "{{palette.amber}}"
+      bgcolor: "rgba(0, 0, 0, 0.5)"
+      bordercolor: "{{palette.amber}}"
+      borderwidth: 1
+      borderpad: 4
+
+  shapes: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "always (4 KPI cards rendues même sans pm) — chart rendu si exp_fig calculable"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.insufficient_data_chart}}"
+    triggered_by:
+      - "render_chart_or_info détecte fig vide"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  layout_position:
+    container: "st.columns(2)"
+    column_index: 0                                              # /!\ GAUCHE de #04 spree_headshots
+  preceded_by:
+    - "(4 KPI cards rendues juste avant le chart : MMR, K vs expected, D vs expected, AvgLife)"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - lbl_actual
+    - lbl_expected
+    - mvc_hist_avg                                                # paramétré
+    - mvc_lbl_k
+    - mvc_lbl_d
+    - mvc_lbl_a
+    - mvc_fda_ratio
+    - mvc_fda_title
+    - mvc_mmr_team
+    - tm_kills
+    - tm_deaths
+    - col_avg_life_long
+    - insufficient_data_chart
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Section associée à 4 KPI cards documentées au-dessus du chart"
+      why: |
+        `render_expected_vs_actual` rend D'ABORD une rangée st.columns([1.5, 1, 1, 1]) avec 4 KPI
+        cards (MMR equip vs enemy avec delta coloré, K vs expected, D vs expected, AvgLife) PUIS
+        le chart 3-traces. Les 2 sont indissociables. Le YAML les documente comme "preceded_by"
+        sans les rendre dans le composant chart lui-même (le converter ne fait que le chart Plotly).
+
+    - decision: "Pattern hachuré '/' pour Attendu, dotté '.' pour Historique"
+      why: |
+        Distinguer visuellement 3 traces de même catégorie (K/D/A) sans surcharger en couleurs.
+        Solution Plotly : conserver les MÊMES couleurs pour chaque catégorie, varier l'opacité
+        (0.90/0.35) ET le pattern (none/hachuré/dotté). ECharts depuis 5.4 supporte `decal`
+        pour reproduire ces patterns ; sinon simuler avec des opacités + bordures.
+
+    - decision: "yaxis2 visible:false (secondary_y inutilisé)"
+      why: |
+        Le code Plotly utilise `make_subplots(specs=[[{secondary_y: True}]])` mais ne s'en sert
+        pas — `update_yaxes(visible=False, secondary_y=True)` masque l'axe Y2. C'est probablement
+        un legacy d'une version précédente où on superposait un autre chart. À simplifier côté Go :
+        un seul axe Y, pas de yAxisIndex secondaire.
+
+    - decision: "Annotation ratio K/D/A en paper-coordinates (x=1.0, y=1.05)"
+      why: |
+        L'annotation flotte en haut à droite (paper coords) avec un badge ambré pour résumer
+        le ratio. Pas un titre Plotly (qui serait en haut centré) mais une annotation positionnée.
+        ECharts equivalent : `graphic.elements` avec position absolue, ou `title.subtext` avec
+        positionnement custom. À reproduire fidèlement : badge avec bordure 1px, padding 4px,
+        bg semi-transparent noir.
+
+    - decision: "Per-bar coloring + per-bar pattern (3 couleurs × 3 catégories)"
+      why: |
+        Chaque CATÉGORIE (K/D/A) a UNE couleur fixe (vert/rouge/cyan). À l'INTÉRIEUR d'une
+        catégorie, on a 3 styles : actual (couleur pleine), expected (alpha 0.6 + bordure +
+        pattern /), historique (alpha 0.35 + pattern .). Ce double layer (couleur par catégorie
+        × pattern par trace) demande un mapping ECharts soigné via `data[i].itemStyle` per item.
