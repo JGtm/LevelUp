@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-04-30] docs(filters): retrait notif Discord du plan + statut doc-only
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Suppression de toutes les mentions de notification Discord dans le plan (3 occurrences en §4cinquies + Phase D + décision #11). Remplacé par log warning structuré (`event=unknown_prefix_candidate`, niveau WARN) + endpoint admin `GET /api/v1/titles/{slug}/catalog/unknown-prefixes` pour consultation humaine.
+- Pas de canal de notification externe (Discord, Slack, email) intégré dans ce plan. Si le besoin émerge plus tard, décision séparée.
+- Statut du chantier confirmé : **doc-only**. Pas d'ouverture de PR ni de phase d'implémentation à ce stade. Le plan reste sur la branche `docs/playlists-catalog-design` en l'état pour référence future.
+- Corollaire : pas d'agent à scheduler pour suivre l'évolution Halo (les hypothèses du plan tiendront tant qu'elles tiennent — révision à la main si réveil du chantier).
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : 3 mentions Discord retirées, remplacées par log + endpoint admin.
+- 0 autre fichier impacté (`.ai/I18N_REFERENCE.md` ne mentionnait pas Discord).
+
+**Conclusion** :
+Plan figé en doc-only. Les 13 décisions ouvertes sont toutes tranchées, le scope d'observabilité est volontairement minimal (log structuré seul), prêt à reposer dans `.ai/` jusqu'à réactivation.
+
 ## [2026-04-30] docs(i18n): création .ai/I18N_REFERENCE.md tracked + allègement skill
 
 **Statut** : Complété  
