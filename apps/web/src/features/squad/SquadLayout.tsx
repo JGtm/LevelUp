@@ -37,7 +37,7 @@ import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest } from '@/lib/api/types'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
-import { useComparePrefetch } from '@/features/compare/queries'
+
 import {
   FiltresPill,
   PeriodePill,
@@ -141,53 +141,6 @@ function KPIBlock({ title, kpis, color = 'text-muted-foreground', perGameSuffix 
   )
 }
 
-// ─── Ligne coéquipier ─────────────────────────────────────────────────────────
-
-interface TeammateRowItemProps {
-  row: TeammateRow
-  selectionIndex: number
-  onSelect: () => void
-  onCompare: (gamertag: string) => void
-  onPrefetchCompare: (gamertag: string) => void
-  intlLocale: string
-  openCompareLabel: string
-}
-function TeammateRowItem({
-  row, selectionIndex, onSelect, onCompare, onPrefetchCompare, intlLocale, openCompareLabel,
-}: TeammateRowItemProps) {
-  const isSelected = selectionIndex >= 0
-  const wr = (row.with_kpis.win_rate * 100).toFixed(0)
-  const kd = row.with_kpis.kd_ratio?.toFixed(2) ?? '-'
-  const dotColor = isSelected ? CHART_COLORS[selectionIndex % CHART_COLORS.length] : undefined
-  return (
-    <tr
-      onClick={onSelect}
-      className={`cursor-pointer transition-colors hover:bg-muted ${isSelected ? 'bg-primary/10' : ''}`}
-    >
-      <td className="px-4 py-3 font-medium flex items-center gap-2">
-        {dotColor && <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: dotColor }} />}
-        {row.gamertag}
-      </td>
-      <td className="px-4 py-3 text-center">{row.encounter_count}</td>
-      <td className="px-4 py-3 text-center">{row.with_kpis.wins}</td>
-      <td className="px-4 py-3 text-center">{wr}%</td>
-      <td className="px-4 py-3 text-center">{kd}</td>
-      <td className="px-4 py-3 text-center text-xs text-muted-foreground">
-        {row.last_seen_at ? new Date(row.last_seen_at).toLocaleDateString(intlLocale) : '-'}
-      </td>
-      <td className="px-4 py-3 text-center">
-        <button
-          onClick={(e) => { e.stopPropagation(); onCompare(row.gamertag) }}
-          onMouseEnter={() => onPrefetchCompare(row.gamertag)}
-          className="text-xs text-primary hover:underline"
-        >
-          {openCompareLabel}
-        </button>
-      </td>
-    </tr>
-  )
-}
-
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function SquadLayout() {
@@ -220,7 +173,7 @@ export function SquadLayout() {
   const confirmedGts = selectedGts
   const [compareTarget, setCompareTarget] = useState<string | null>(null)
   const [addFriendGamertag, setAddFriendGamertag] = useState<string | null>(null)
-  const prefetchCompare = useComparePrefetch(playerSlug)
+
   const matchRoute = useMatchRoute()
   const { data: settings } = useSettings()
 
@@ -277,11 +230,13 @@ export function SquadLayout() {
     lastSyncedHash.current = computePendingHash(pending)
   }
 
-  const totalAfter = resolvedContext?.counts?.total_matches_after_filters ?? null
-
   // Preview live : résout le pending state dès que l'utilisateur change un filtre,
   // sans attendre le clic Analyser. Fallback sur le resolvedContext commité.
   const { data: previewResolve } = useFiltersPreview(playerSlug, pending)
+
+  // Compteur dynamique : préférer les counts du preview (mis à jour à la volée)
+  // plutôt que ceux du resolvedContext commité (figé jusqu'au clic Analyser).
+  const totalAfter = (previewResolve?.counts ?? resolvedContext?.counts)?.total_matches_after_filters ?? null
   const rawAvailable = previewResolve?.available_options ?? resolvedContext?.available_options
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
@@ -318,14 +273,6 @@ export function SquadLayout() {
     confirmedGts,
     pickedSquadSessionLabels,
   )
-
-  const toggleSelect = (gamertag: string) => {
-    setSelectedGts((prev) => {
-      if (prev.includes(gamertag)) return prev.filter((g) => g !== gamertag)
-      if (prev.length >= MAX_SELECTION) return prev
-      return [...prev, gamertag]
-    })
-  }
 
   // Sessions escouade (stables : LoadSynthesisMatches charge TOUT l'historique,
   // indépendamment de la période filtrée).
@@ -525,47 +472,6 @@ export function SquadLayout() {
           </div>
 
           <Outlet />
-
-          {/* Table coéquipiers */}
-          {teammates.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle>{t.title.allTeammates}</CardTitle></CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted border-b">
-                      <tr>
-                        <th className="px-4 py-3 text-left">{t.table.gamertag}</th>
-                        <th className="px-4 py-3 text-center">{t.table.matches}</th>
-                        <th className="px-4 py-3 text-center">{t.table.wins}</th>
-                        <th className="px-4 py-3 text-center">{t.table.winPct}</th>
-                        <th className="px-4 py-3 text-center">{t.table.kd}</th>
-                        <th className="px-4 py-3 text-center">{t.table.lastSeen}</th>
-                        <th className="px-4 py-3 text-center">{t.table.actions}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {teammates.map((row) => {
-                        const idx = selectedGts.indexOf(row.gamertag)
-                        return (
-                          <TeammateRowItem
-                            key={row.xuid ?? row.gamertag}
-                            row={row}
-                            selectionIndex={idx}
-                            onSelect={() => toggleSelect(row.gamertag)}
-                            onCompare={(gt) => setCompareTarget(gt)}
-                            onPrefetchCompare={prefetchCompare}
-                            intlLocale={t.intlLocale}
-                            openCompareLabel={t.table.openCompare}
-                          />
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 

@@ -1358,6 +1358,7 @@ export interface MapBreakdownRow {
   map_ui: string
   match_count: number
   win_rate: number
+  historical_win_rate?: number
 }
 
 export interface SquadMatchSeriesPoint {

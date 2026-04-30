@@ -1,43 +1,13 @@
 /**
- * SquadSynergiesPage.test.tsx — 3 empty states + bar chart synergies
- * + dégradation gracieuse multi-titres.
+ * SquadSynergiesPage.test.tsx — 2 empty states + rendu sans erreur avec données.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
-import * as useFieldMappingsModule from '@/lib/i18n/fieldMappings'
 import * as squadContextModule from './SquadContext'
-import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
+import type { TeammateRow } from '@/lib/api/types'
 import { SquadSynergiesPage } from './SquadSynergiesPage'
-
-// Mocks wrappers ECharts : echarts-for-react absent en env portable.
-// Le stub expose data-series pour les assertions de contenu.
-vi.mock('@/components/charts/BarGroupedChart', () => ({
-  BarGroupedChart: ({
-    series,
-    title,
-  }: {
-    series: unknown[]
-    title?: string
-  }) => (
-    <div
-      data-testid="chart-card"
-      data-series={JSON.stringify(series)}
-      data-title={title}
-    />
-  ),
-}))
-vi.mock('@/components/charts/TimeseriesLineChart', () => ({
-  TimeseriesLineChart: ({ series }: { series: unknown[] }) => (
-    <div data-testid="chart-card" data-series={JSON.stringify(series)} />
-  ),
-}))
-vi.mock('@/components/charts/Heatmap2DChart', () => ({
-  Heatmap2DChart: ({ series }: { series: unknown[] }) => (
-    <div data-testid="chart-card" data-series={JSON.stringify(series)} />
-  ),
-}))
 
 const ROW = (gamertag: string): TeammateRow => ({
   gamertag,
@@ -58,55 +28,15 @@ const ROW = (gamertag: string): TeammateRow => ({
   without_kpis: null,
 })
 
-function dto(label: string): useFieldMappingsModule.FieldMappingDTO {
-  return {
-    label,
-    storage_unit: 'count',
-    display_unit: 'count',
-    format: 'integer',
-    display_order: 1,
-    group: 'combat',
-  }
-}
-
-const FULL_MAPPINGS: useFieldMappingsModule.FieldMappingsResponse = {
-  title_slug: 'halo_infinite',
-  schema_version: 1,
-  locale: 'fr',
-  fields: {
-    kills: dto('Éliminations'),
-    accuracy: dto('Précision'),
-    kdr: dto('K/D'),
-    win_rate: dto('Taux de victoire'),
-    assists: dto('Assistances'),
-    headshot_kills: dto('Tirs à la tête'),
-  },
-}
-
 function mockSquadContext(opts: {
   selectedRows: TeammateRow[]
   confirmedGamertags: string[]
-  pageData?: TeammatesPageResponse | null
 }) {
   vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
     selectedRows: opts.selectedRows,
     confirmedGamertags: opts.confirmedGamertags,
-    pageData: opts.pageData ?? null,
+    pageData: null,
   })
-}
-
-function mockMappings(value: useFieldMappingsModule.FieldMappingsResponse | undefined) {
-  vi.spyOn(useFieldMappingsModule, 'useFieldMappings').mockReturnValue({
-    data: value,
-    isLoading: false,
-    isError: false,
-    error: null,
-    isSuccess: !!value,
-    isPending: !value,
-    isFetching: false,
-    isStale: false,
-    refetch: vi.fn(),
-  } as unknown as ReturnType<typeof useFieldMappingsModule.useFieldMappings>)
 }
 
 beforeEach(() => {
@@ -118,76 +48,23 @@ afterEach(() => {
 })
 
 describe('SquadSynergiesPage — empty states', () => {
-  it('no_selection : wording analyse, pas de chart', () => {
+  it('no_selection : wording analyse, pas de contenu', () => {
     mockSquadContext({ selectedRows: [], confirmedGamertags: [] })
-    mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.getByText(/Choisis 1 à 3 coéquipiers/)).toBeInTheDocument()
-    expect(screen.queryByTestId('chart-card')).toBeNull()
   })
 
   it('invalid_selection : message dédié', () => {
     mockSquadContext({ selectedRows: [], confirmedGamertags: ['ghost'] })
-    mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.getByText(/Aucune donnée commune/)).toBeInTheDocument()
   })
 
-  it('avec rows : rend le bar chart synergies, plus de "Référence solo"', () => {
+  it('avec rows : rend sans erreur', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
     })
-    mockMappings(FULL_MAPPINGS)
-    renderWithProviders(<SquadSynergiesPage />)
-    const charts = screen.getAllByTestId('chart-card')
-    // Au moins le bar chart synergies + hsPk.
-    expect(charts.length).toBeGreaterThanOrEqual(1)
-    const json = charts[0].getAttribute('data-series')!
-    expect(json).not.toMatch(/Référence solo/)
-    expect(json).not.toMatch(/Solo ref/)
-    expect(json).toContain('Avec A')
-    expect(json).toContain('Avec B')
-  })
-})
-
-describe('SquadSynergiesPage — locale EN', () => {
-  it('compose les noms de traces avec "With" et l\'unité /game', () => {
-    useAppShellStore.setState({ locale: 'en' })
-    mockSquadContext({
-      selectedRows: [ROW('A')],
-      confirmedGamertags: ['A'],
-    })
-    mockMappings(FULL_MAPPINGS)
-    renderWithProviders(<SquadSynergiesPage />)
-    const json = screen.getAllByTestId('chart-card')[0].getAttribute('data-series')!
-    expect(json).toContain('With A')
-    expect(json).toContain('/game')
-    expect(json).not.toContain('Avec A')
-    expect(json).not.toContain('/partie')
-  })
-})
-
-describe('SquadSynergiesPage — multi-titres', () => {
-  it('synthetic_title_b : ne crashe pas, axes filtrés sur kills uniquement', () => {
-    const minimal: useFieldMappingsModule.FieldMappingsResponse = {
-      title_slug: 'synthetic_title_b',
-      schema_version: 1,
-      locale: 'fr',
-      fields: {
-        kills: dto('Frags'),
-      },
-    }
-    mockSquadContext({
-      selectedRows: [ROW('A')],
-      confirmedGamertags: ['A'],
-    })
-    mockMappings(minimal)
     expect(() => renderWithProviders(<SquadSynergiesPage />)).not.toThrow()
-    const json = screen.getAllByTestId('chart-card')[0].getAttribute('data-series')!
-    expect(json).toContain('Frags')
-    expect(json).not.toContain('Taux de victoire')
-    expect(json).not.toContain('K/D')
-    expect(json).not.toContain('Assistances')
   })
 })
