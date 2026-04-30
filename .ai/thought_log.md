@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-30] docs(i18n): création .ai/I18N_REFERENCE.md tracked + allègement skill
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Constat : `.claude/` est dans `.gitignore` (ligne 119), donc la skill `halo-i18n` créée précédemment n'est pas versionnée. Convention historique du projet.
+- Choix utilisateur : option (a) + (c). Garder la skill locale ET dupliquer le contenu utile dans un fichier tracked qui devient la source de vérité versionnée.
+- Création de `.ai/I18N_REFERENCE.md` (~150 lignes) : carte complète des traductions, langues supportées, architecture cible 3 couches, anti-patterns détaillés avec exemples, helpers à utiliser, requêtes SQL types, fichiers source. Discoverable via `.ai/` qui est consulté en priorité par les agents (CLAUDE.md le mentionne).
+- Skill `halo-i18n` allégée pour devenir un pointeur léger vers `.ai/I18N_REFERENCE.md` (TL;DR + 5 anti-patterns + lien). Évite la duplication de contenu, garantit que la skill ne devient pas obsolète si le doc tracked évolue.
+
+**Résultats observés** :
+- `.ai/I18N_REFERENCE.md` créé (tracked, versionné).
+- `.claude/skills/halo-i18n/SKILL.md` réduit (~30 lignes) à un pointeur.
+- Architecture i18n maintenant documentée à 3 niveaux : (1) PLAN §4sexies pour le design, (2) `.ai/I18N_REFERENCE.md` pour la référence opérationnelle versionnée, (3) skill locale comme rappel léger pour Claude Code.
+
+**Conclusion** :
+Le sujet i18n est désormais discoverable par tous les chemins : agent IA cherchant via les keywords (skill triggers), agent ou humain qui parcourt `.ai/`, dev qui lit le PLAN. Plus de risque que les agents « fassent leur sauce ».
+
 ## [2026-04-30] docs(filters): TOML mode_category + i18n robuste + skill halo-i18n
 
 **Statut** : Complété  
