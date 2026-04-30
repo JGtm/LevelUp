@@ -344,7 +344,91 @@ Une question reste ouverte : faut-il exposer `mode_label` comme dimension de fil
 - Distribution des matchs entre catégories (équilibrée ou Pareto-skewed ?)
 - Couverture de la catégorie `Other` (si > 10% → dette de `_PREFIX_RULES` à boucher avant)
 
-→ **Audit cardinalité prévu en §4quater** (à compléter après mesure sur la DB de production).
+→ **Audit cardinalité réalisé en §4quater** (mesure 2026-04-30 sur la DB de production locale).
+
+---
+
+## 4quater. Audit cardinalité réelle (mesuré 2026-04-30)
+
+Mesure faite sur `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb` (1545 matchs, 4 joueurs sync). Détail des requêtes : DuckDB CLI direct sur `match_registry` qui porte déjà la colonne `mode_category` (sortie de `InferModeCategoryFromPairName()` au sync).
+
+### 4quater.1 Distribution `mode_category`
+
+| Catégorie | Matchs | % | Pair_names distincts | Playlists distinctes |
+|---|---:|---:|---:|---:|
+| **Assassin** | 636 | 41.2 % | 250 | 8 |
+| **BTB** | 493 | 31.9 % | 65 | 3 |
+| **Fiesta** | 307 | 19.9 % | 73 | 6 |
+| Other | 70 | 4.5 % | 21 | 6 |
+| Ranked | 34 | 2.2 % | 19 | 3 |
+| Firefight | 5 | 0.3 % | 5 | 3 |
+
+3 catégories absorbent **93%** du volume (Assassin + BTB + Fiesta). Catégorie `Other` à 4.5% — sous le seuil de 10% qui aurait justifié un boucher prioritaire des `_PREFIX_RULES`. Les 70 matchs `Other` se répartissent entre UUID asset_id non résolus (~70%), `Event:Escalation Slayer`, et quelques variantes Community: exotiques.
+
+### 4quater.2 Insight cardinalité — `mode_label` est nécessaire
+
+34 `mode_label` distincts au total, 48 paires `(mode_category, mode_label)` distinctes. Détail Assassin (la plus grosse catégorie, 17 labels) :
+
+| mode_label | n |
+|---|---:|
+| Team Slayer | 186 |
+| Slayer | 186 |
+| CTF | 89 |
+| Strongholds | 56 |
+| King of the Hill | 49 |
+| Oddball | 17 |
+| Neutral Flag CTF | 17 |
+| Team Snipers | 8 |
+| One Flag CTF | 7 |
+| Escalation Slayer | 6 |
+| Neutral Bomb | 4 |
+| VIP | 3 |
+| One Bomb | 3 |
+| Attrition | 2 |
+| Land Grab, FFA Slayer, Neutral Bomb Squad | 1 |
+
+**Insight critique** : la catégorie `Assassin` ne contient PAS uniquement des Slayer-likes. Elle contient CTF, Strongholds, KoTH, Oddball, Bomb, VIP, etc. Ce sont les modes joués via les playlists Arena/Tactical/Assault/Community (cf. skill `halo-modes` §préfixes). Idem pour BTB qui mélange Slayer/CTF/Total Control/Stockpile/etc.
+
+→ **`mode_category` et `mode_label` sont vraiment orthogonaux**, pas hiérarchiques. Un utilisateur peut vouloir « tous les Slayer peu importe la playlist » (= 186+186+189+? = au moins 561 matchs cumulés sur les 3 catégories majeures, soit **36%** du total). Cette intention n'est exprimable QUE via `mode_label`, pas via `mode_category`.
+
+### 4quater.3 Insight playlists — gain immédiat du catalogue
+
+Top playlists par volume :
+
+| playlist | n |
+|---|---:|
+| Quick Play | 827 |
+| Big Team Battle | 341 |
+| **`<UUID non résolu>`** | **333** |
+| Super Fiesta | 9 |
+| Ranked Arena | 8 |
+| Ranked Slayer | 7 |
+| Team Snipers | 6 |
+| ... (8 autres playlists < 5 matchs) | |
+
+**21.5% des matchs ont une `playlist_name` qui est encore l'UUID brut** — DiscoveryUGC n'a pas été appelé au sync ou a échoué. C'est exactement ce que le catalogue résoudrait d'un coup au bootstrap. Gain immédiat de qualité d'affichage **gratuit**.
+
+### 4quater.4 Décisions tranchées
+
+1. **Exposer `mode_category` ET `mode_label` comme dimensions parallèles dans le filtre** (pas hiérarchiques). Confirmé par les données : 36% des matchs sont du « Slayer » réparti dans 3 catégories différentes — le filtre par catégorie seule ne permet pas de les regrouper.
+2. **Ajouter `playlists_catalog` en bootstrap prioritaire** : 333 UUIDs à résoudre = 21.5% du volume. Le CLI Phase G les attrape tous d'un coup.
+3. **Pas de boucher prioritaire `_PREFIX_RULES`** pour `Other` — 4.5% est tolérable, le catalogue résoudra la majorité (UUID).
+4. **Cardinalité gérable côté UI** : 6 catégories × 21 playlists × 34 labels × 103 maps. Aucun risque de saturation. Le toggle « only_played » reste pertinent pour réduire la surface visible mais n'est pas strictement nécessaire pour la perf.
+
+### 4quater.5 Schéma de filtre UI implicite
+
+Trois facettes parallèles + une dimension de scope :
+
+```
+[Experience]      Ranked / Social / BTB / Firefight / Action Sack / Custom    (playlist-level via TOML)
+[Mode Category]   Assassin / BTB / Fiesta / SuperFiesta / HuskyRaid / Ranked / Firefight / Other    (pair-level via Go)
+[Mode Label]      Slayer / Team Slayer / CTF / Strongholds / KoTH / ...    (pair-level via NormalizeModeLabel)
+[Map]             Aquarius / Live Fire / Bazaar / ...    (pair-level via maps_catalog)
+
+[Scope]           only_played (défaut) | all
+```
+
+Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionne BTB, montre-moi les playlists BTB ») reste pertinente comme aide à l'exploration mais n'est plus une nécessité technique.
 
 ---
 
@@ -436,7 +520,7 @@ Une question reste ouverte : faut-il exposer `mode_label` comme dimension de fil
 | 5 | Faut-il garder un historique des `version_id` par playlist | Non au début (`waypoint_assets_raw` couvre l'audit forensique si besoin) |
 | 6 | Enregistrement des `title_slug` connus | Implicite dans les tables (DISTINCT sur `playlists_catalog.title_slug`) ou table dédiée `titles_registry` ? La couche `internal/games/` les énumère déjà via le `StaticResolver` — probablement suffisant. |
 | 7 | Image map (`maps_catalog.image_url`) | **Tranché 2026-04-30** : peuplement dès Phase F via `assetResolver.Resolve(KindMapImage, ...)`. Cohérent avec home_repo.go pour les assets Spartan. NULL si GameCMS down → retry au refresh mensuel. |
-| 8 | Faut-il exposer `mode_label` comme dimension de filtre, ou seulement `mode_category` | Dépend de la cardinalité réelle — audit prévu en §4quater. |
+| 8 | Faut-il exposer `mode_label` comme dimension de filtre, ou seulement `mode_category` | **Tranché 2026-04-30 (§4quater)** : exposer les deux comme dimensions parallèles. La catégorie n'est pas une "famille de mode" mais une "famille de playlist" (Arena/Tactical/Assault → Assassin) ; un filtre `mode_label = 'Slayer'` est nécessaire pour regrouper les ~561 matchs Slayer-likes répartis sur 3 catégories. |
 
 ---
 

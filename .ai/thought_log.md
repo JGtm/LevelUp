@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-04-30] audit(filters): cardinalité réelle mode_category × mode_label sur shared_matches_v2
+
+**Statut** : Complété — partie (b) du débrief utilisateur.  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Audit cardinalité sur `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb` (1545 matchs, 4 joueurs sync). Outil utilisé : DuckDB CLI 1.1.3 standalone téléchargé dans `/tmp/duckdb.exe` (ni Python ni gcc dispos sur cette branche, code Go non tracké).
+- Découverte importante : `match_registry.mode_category` est déjà une colonne persistée au sync (sortie de `InferModeCategoryFromPairName()`). La classification est donc déjà faite par le code Go au moment de l'ingestion, pas à recalculer.
+- Distribution des catégories observée : Assassin 41% / BTB 32% / Fiesta 20% / Other 4.5% / Ranked 2.2% / Firefight 0.3%. Concentration Pareto sur 3 catégories.
+- Insight critique : la catégorie `Assassin` ne contient PAS uniquement des Slayer-likes (CTF 89, Strongholds 56, KoTH 49, Oddball 17, etc. sont aussi dedans). C'est en réalité une "famille de playlist" (Arena/Tactical/Assault), pas une "famille de mode". Conséquence : `mode_category` et `mode_label` sont vraiment orthogonaux, le filtre UI doit exposer les deux comme dimensions parallèles. Un utilisateur voulant "tous les Slayer" cumulerait au moins 561 matchs (36% du total) répartis sur 3 catégories différentes — exprimable uniquement via `mode_label`.
+- Insight bonus : 21.5% des matchs (333/1545) ont une `playlist_name` qui est encore l'UUID brut (DiscoveryUGC pas appelé ou échec au sync). Le bootstrap CLI Phase G les résoudra tous d'un coup. Gain immédiat de qualité d'affichage gratuit.
+- Catégorie `Other` à 4.5% — sous le seuil de 10% qui aurait justifié un boucher prioritaire des `_PREFIX_RULES`. Acceptable, le catalogue résoudra la majorité (les UUID assets).
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` enrichi de la §4quater (5 sous-sections : distribution, insight cardinalité, insight playlists, décisions tranchées, schéma filtre UI implicite).
+- Décision ouverte #8 tranchée : exposer `mode_category` et `mode_label` comme dimensions parallèles (pas hiérarchiques).
+- Schéma final du filtre UI implicite : 3 facettes parallèles (experience, mode_category, mode_label) + 1 dimension scope (only_played).
+- Aucun code livré, aucune modification du repo runtime. Audit reproductible via les requêtes SQL versionnées dans le doc.
+
+**Conclusion** :
+Cardinalité validée et compatible avec un filtre UI à 4 facettes sans risque de saturation (6 cat × 21 playlists × 34 labels × 103 maps). Le design du catalogue est gelé, prêt pour ouverture des phases d'implémentation. DuckDB CLI laissé dans `/tmp/duckdb.exe` (volatile) — peut être réutilisé pour des audits ad hoc ultérieurs ou supprimé.
+
 ## [2026-04-30] docs(filters): articulation catalogue ↔ normalisation modes (image Phase F + 3 colonnes pair)
 
 **Statut** : Complété — partie (a) du débrief utilisateur. Audit de cardinalité (partie b) à suivre.  
