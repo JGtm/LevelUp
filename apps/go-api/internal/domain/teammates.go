@@ -48,9 +48,10 @@ type TeammateKPIs struct {
 
 // MapBreakdownRow est la performance par carte pour la heatmap.
 type MapBreakdownRow struct {
-	MapUI      string  `json:"map_ui"`
-	MatchCount int     `json:"match_count"`
-	WinRate    float64 `json:"win_rate"`
+	MapUI             string   `json:"map_ui"`
+	MatchCount        int      `json:"match_count"`
+	WinRate           float64  `json:"win_rate"`
+	HistoricalWinRate *float64 `json:"historical_win_rate,omitempty"`
 }
 
 // SquadMatchSeriesPoint est un point de la série par match (perf/timeline).

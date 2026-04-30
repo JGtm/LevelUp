@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -393,6 +395,72 @@ func TestComputeMapBreakdown_EmptyMapUIFallback(t *testing.T) {
 	if len(rows) != 1 || rows[0].MapUI != "Unknown" {
 		t.Errorf("expected MapUI=Unknown, got %v", rows)
 	}
+}
+
+// ---------- enrichMapBreakdownWithHistory + computeHistoricalMapWRByLabel ----------
+
+// TestEnrichMapBreakdown_JoinKeyMatchesMapUI vérifie que enrichMapBreakdownWithHistory
+// joint correctement quand DefaultLabel == MapUI (cas nominal Halo Infinite :
+// noms de cartes identiques EN et FR).
+func TestEnrichMapBreakdown_JoinKeyMatchesMapUI(t *testing.T) {
+	rows := []domain.MapBreakdownRow{
+		{MapUI: "Bazaar", MatchCount: 3, WinRate: 0.67},
+	}
+	historical := map[string]float64{"Bazaar": 0.55}
+	enriched := enrichMapBreakdownWithHistory(rows, historical)
+	if enriched[0].HistoricalWinRate == nil {
+		t.Fatal("expected HistoricalWinRate to be set, got nil")
+	}
+	if *enriched[0].HistoricalWinRate != 0.55 {
+		t.Errorf("expected 0.55, got %f", *enriched[0].HistoricalWinRate)
+	}
+}
+
+// TestEnrichMapBreakdown_NoMatchLeaveNil vérifie que si la clé n'est pas dans
+// l'historique (ex : carte récente sans historique), HistoricalWinRate reste nil.
+func TestEnrichMapBreakdown_NoMatchLeaveNil(t *testing.T) {
+	rows := []domain.MapBreakdownRow{
+		{MapUI: "NewMap", MatchCount: 1, WinRate: 1.0},
+	}
+	historical := map[string]float64{"Bazaar": 0.55}
+	enriched := enrichMapBreakdownWithHistory(rows, historical)
+	if enriched[0].HistoricalWinRate != nil {
+		t.Errorf("expected HistoricalWinRate=nil for unknown map, got %v", enriched[0].HistoricalWinRate)
+	}
+}
+
+// TestComputeHistoricalMapWR_UsesDefaultLabel vérifie que la clé est DefaultLabel
+// (= map_name EN depuis assetReference). Cohérent avec Q30 quand map_name_fr == map_name.
+func TestComputeHistoricalMapWR_UsesDefaultLabel(t *testing.T) {
+	rows := makeCanonicalRowsWithMaps([]struct{ id, name string }{
+		{"bazaar_id", "Bazaar"},
+		{"bazaar_id", "Bazaar"},
+		{"recharge_id", "Recharge"},
+	}, []canonical.Outcome{canonical.OutcomeWin, canonical.OutcomeLoss, canonical.OutcomeWin})
+
+	hist := computeHistoricalMapWRByLabel(rows)
+	if hist["Bazaar"] != 0.5 {
+		t.Errorf("Bazaar WR: expected 0.5, got %f", hist["Bazaar"])
+	}
+	if hist["Recharge"] != 1.0 {
+		t.Errorf("Recharge WR: expected 1.0, got %f", hist["Recharge"])
+	}
+}
+
+func makeCanonicalRowsWithMaps(maps []struct{ id, name string }, outcomes []canonical.Outcome) []canonical.PlayerMatchRow {
+	rows := make([]canonical.PlayerMatchRow, len(maps))
+	for i, m := range maps {
+		rows[i] = canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{
+				MatchID: fmt.Sprintf("m%d", i),
+				Map:     &canonical.AssetReference{Kind: "map", ID: m.id, DefaultLabel: m.name},
+				Outcome: outcomes[i],
+			},
+			// computeHistoricalMapWRByLabel utilise r.Self.Outcome
+			Self: canonical.MatchParticipant{Outcome: outcomes[i]},
+		}
+	}
+	return rows
 }
 
 // ---------- buildMatchSeries ----------

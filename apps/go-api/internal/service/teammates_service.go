@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -106,13 +107,23 @@ func (s *TeammatesService) GetPage(
 
 	totalMatches := len(filteredMatches)
 
-	// Calculs dÃƒÂ©taillÃƒÂ©s pour les gamertags sÃƒÂ©lectionnÃƒÂ©s.
+	// Construire le set d'IDs de session si un filtre de session est actif.
+	// Nil = pas de filtre = tous les matchs escouade retournés.
+	var sessionMatchIDs map[string]bool
+	if len(req.PickedSoloSessions) > 0 || len(req.PickedSquadSessions) > 0 {
+		sessionMatchIDs = make(map[string]bool, len(filteredMatches))
+		for _, m := range filteredMatches {
+			sessionMatchIDs[m.MatchID] = true
+		}
+	}
+
+	// Calculs détaillés pour les gamertags sélectionnés.
 	teammates := make([]domain.TeammateRow, 0, len(req.SelectedGamertags))
 	var allSquadRows []domain.SquadMatchRow
 	matchSeries := map[string][]domain.SquadMatchSeriesPoint{}
 
 	for _, gt := range req.SelectedGamertags {
-		row, squadMatches, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches)
+		row, squadMatches, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches, sessionMatchIDs)
 		if err != nil {
 			slog.WarnContext(ctx, "teammates: erreur buildTeammateRow", "gamertag", gt, "err", err)
 			continue // skip teammate on error
@@ -130,6 +141,8 @@ func (s *TeammatesService) GetPage(
 	if len(allSquadRows) > 0 {
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
+		historicalWR := computeHistoricalMapWRByLabel(canonicalRows)
+		mapBreakdown = enrichMapBreakdownWithHistory(mapBreakdown, historicalWR)
 	}
 
 	return domain.TeammatesPageResponse{
@@ -334,6 +347,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	playerXUID, gamertag string,
 	topRows []domain.TopTeammateRow,
 	allMatches []legacymatch.SynthesisMatchRow,
+	sessionMatchIDs map[string]bool,
 ) (*domain.TeammateRow, []domain.SquadMatchRow, error) {
 	// Ãƒâ€°tape 1 : chercher le gamertag dans le top 50 escouade Ã¢â‚¬â€ case-insensitive
 	// pour absorber les variations de casse entre la saisie user et la valeur en
@@ -377,13 +391,24 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	// Charger les matchs communs.
 	squadMatches, err := s.repo.LoadSquadMatches(ctx, playerXUID, teammateXUID)
 	if err != nil {
-		// Erreur DB : on log avec contexte (le warn gÃƒÂ©nÃƒÂ©rique
-		// "teammates: erreur buildTeammateRow" du caller perd le dÃƒÂ©tail
-		// du XUID rÃƒÂ©solu, on conserve donc une trace ciblÃƒÂ©e ici).
+		// Erreur DB : on log avec contexte (le warn générique
+		// "teammates: erreur buildTeammateRow" du caller perd le détail
+		// du XUID résolu, on conserve donc une trace ciblée ici).
 		slog.ErrorContext(ctx, "teammates_load_squad_matches_failed",
 			"player_xuid", playerXUID, "teammate_xuid", teammateXUID,
 			"gamertag", gamertag, "err", err.Error())
 		return nil, nil, fmt.Errorf("buildTeammateRowWithMatches LoadSquadMatches: %w", err)
+	}
+
+	// Restreindre aux matchs de la session sélectionnée (nil = pas de filtre de session).
+	if len(sessionMatchIDs) > 0 {
+		filtered := make([]domain.SquadMatchRow, 0, len(squadMatches))
+		for _, m := range squadMatches {
+			if sessionMatchIDs[m.MatchID] {
+				filtered = append(filtered, m)
+			}
+		}
+		squadMatches = filtered
 	}
 
 	withKPIs := computeKPIsFromSquadMatches(squadMatches)
@@ -514,6 +539,50 @@ func safeDiv(a, b float64) float64 {
 
 func round2(v float64) float64 {
 	return math.Round(v*100) / 100
+}
+
+// computeHistoricalMapWRByLabel calcule le win rate par carte sur TOUT l'historique
+// du joueur principal (canonicalRows non filtrés). Clé = DefaultLabel (= map_name SQL).
+func computeHistoricalMapWRByLabel(rows []canonical.PlayerMatchRow) map[string]float64 {
+	type stats struct{ count, wins int }
+	m := map[string]*stats{}
+	for _, r := range rows {
+		if r.Summary.Map == nil {
+			continue
+		}
+		key := r.Summary.Map.DefaultLabel
+		if key == "" {
+			key = r.Summary.Map.ID
+		}
+		if key == "" {
+			continue
+		}
+		if _, ok := m[key]; !ok {
+			m[key] = &stats{}
+		}
+		m[key].count++
+		if r.Self.Outcome == canonical.OutcomeWin {
+			m[key].wins++
+		}
+	}
+	result := make(map[string]float64, len(m))
+	for k, s := range m {
+		if s.count > 0 {
+			result[k] = round2(float64(s.wins) / float64(s.count))
+		}
+	}
+	return result
+}
+
+// enrichMapBreakdownWithHistory injecte HistoricalWinRate depuis la map d'historique.
+func enrichMapBreakdownWithHistory(rows []domain.MapBreakdownRow, historical map[string]float64) []domain.MapBreakdownRow {
+	for i := range rows {
+		if wr, ok := historical[rows[i].MapUI]; ok {
+			v := wr
+			rows[i].HistoricalWinRate = &v
+		}
+	}
+	return rows
 }
 
 // computeMapBreakdown agrÃƒÂ¨ge les stats par carte depuis les matchs escouade.
