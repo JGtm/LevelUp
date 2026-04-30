@@ -11,6 +11,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGlobalFilterStore, DEFAULT_GAP_MINUTES } from '@/stores/globalFilterStore'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { useFiltersPreview } from '@/features/filters/queries'
 import type { CascadeInput, FilterContextInput, PeriodInput, SessionsInput } from '@/lib/api/types'
 
 // ─── Helpers période (réutilisés depuis l'ancien FilterPanel) ────────────────
@@ -96,9 +98,13 @@ export function FilterOmnibar() {
   const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
   const setFilterContext = useGlobalFilterStore((s) => s.setFilterContext)
   const resetFilters = useGlobalFilterStore((s) => s.resetFilters)
+  const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
 
   // État local (pending) — commité vers le store uniquement sur "Analyser".
   const [pending, setPending] = useState<FilterContextInput>(() => filterContext)
+  // Preview live : résout les options disponibles pour le pending courant,
+  // sans attendre "Analyser". Permet la détection zombie en temps réel.
+  const { data: previewData } = useFiltersPreview(playerSlug, pending)
 
   // Sync depuis le store quand un changement externe arrive (auto-snap, reset).
   const lastSyncedHash = useRef(filterContextHash)
@@ -130,7 +136,9 @@ export function FilterOmnibar() {
   const hasActiveFilters = !!pendingPickedId || hasPeriod || cascadeCount > 0
   const totalAfter = resolvedContext?.counts?.total_matches_after_filters ?? null
 
-  const rawAvailable = resolvedContext?.available_options
+  // Priorité au preview (temps réel) ; fallback sur le contexte commité
+  // tant que le premier fetch preview n'est pas revenu.
+  const rawAvailable = previewData?.available_options ?? resolvedContext?.available_options
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
     const filterUUIDs = (opts: { label: string; value: string }[]) =>
