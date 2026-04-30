@@ -53,6 +53,24 @@ func ResolveFiltersFromRows(
 		return emptyResolved(effective, sessionOpts)
 	}
 
+	// Migre les valeurs stockées en anglais vers les noms FR (modes, cartes, playlists).
+	// Transparent si aucune traduction n'est disponible (map vide).
+	if len(effective.Cascade.Modes) > 0 {
+		if tr := buildModeTranslationMap(rows); len(tr) > 0 {
+			effective.Cascade.Modes = migrateCascadeValues(effective.Cascade.Modes, tr)
+		}
+	}
+	if len(effective.Cascade.Maps) > 0 {
+		if tr := buildMapTranslationMap(rows); len(tr) > 0 {
+			effective.Cascade.Maps = migrateCascadeValues(effective.Cascade.Maps, tr)
+		}
+	}
+	if len(effective.Cascade.Playlists) > 0 {
+		if tr := buildPlaylistTranslationMap(rows); len(tr) > 0 {
+			effective.Cascade.Playlists = migrateCascadeValues(effective.Cascade.Playlists, tr)
+		}
+	}
+
 	// 1. Filtre temporel
 	var temporal []domain.FilterMatchRow
 	if effective.FilterMode == "sessions" {
@@ -252,6 +270,9 @@ func applyExperienceFilter(rows []domain.FilterMatchRow, types []string) []domai
 		switch {
 		case strings.Contains(tl, "pve") || strings.Contains(tl, "firefight"):
 			wantPVE = true
+		// "non classé" must be checked before "classé" — it is a substring of it.
+		case strings.Contains(tl, "non classé") || strings.Contains(tl, "non-classé") || strings.Contains(tl, "unranked"):
+			wantUnranked = true
 		case strings.Contains(tl, "classé") || strings.Contains(tl, "ranked"):
 			wantRanked = true
 		default:
@@ -293,10 +314,30 @@ func filterBySet(rows []domain.FilterMatchRow, values []string, fn func(domain.F
 // Options disponibles
 // ---------------------------------------------------------------------------
 
+// rowExperienceLabel dérive le label d'expérience d'un FilterMatchRow.
+// Doit rester cohérent avec synthesisExperienceLabel (teammates_service.go).
+func rowExperienceLabel(r domain.FilterMatchRow) string {
+	if r.IsFirefight {
+		return "PVE"
+	}
+	if r.IsRanked {
+		return "PVP classé"
+	}
+	return "PVP non classé"
+}
+
 func buildAvailableOptions(rows []domain.FilterMatchRow, c domain.CascadeFilter) domain.AvailableFilterOptions {
-	expOpts := make([]domain.LabelValue, len(experienceLabels))
-	for i, lbl := range experienceLabels {
-		expOpts[i] = domain.LabelValue{Label: lbl, Value: lbl}
+	// Experience types dynamiques : seulement ceux présents dans les données temporelles.
+	// Ordre canonique préservé pour l'affichage (experienceLabels).
+	existing := make(map[string]struct{}, 3)
+	for _, r := range rows {
+		existing[rowExperienceLabel(r)] = struct{}{}
+	}
+	expOpts := make([]domain.LabelValue, 0, len(experienceLabels))
+	for _, lbl := range experienceLabels {
+		if _, ok := existing[lbl]; ok {
+			expOpts = append(expOpts, domain.LabelValue{Label: lbl, Value: lbl})
+		}
 	}
 
 	rowsExp := applyExperienceFilter(rows, c.ExperienceTypes)
@@ -359,4 +400,60 @@ func emptyResolved(effective domain.FilterContextInput, sess domain.SessionOptio
 		SessionOptions:   sess,
 		Counts:           domain.FilterCounts{},
 	}
+}
+
+// migrateCascadeValues remplace chaque valeur par sa traduction FR si disponible.
+func migrateCascadeValues(values []string, tr map[string]string) []string {
+	out := make([]string, len(values))
+	for i, v := range values {
+		if fr, ok := tr[v]; ok {
+			out[i] = fr
+		} else {
+			out[i] = v
+		}
+	}
+	return out
+}
+
+// buildModeTranslationMap construit une map EN→FR depuis les FilterMatchRows déjà enrichis.
+// Si applyModeFRTranslations a tournée, PairNameFR contient un nom FR pur ("Assassin")
+// tandis que PairName contient encore le nom brut ("Arena:Slayer").
+func buildModeTranslationMap(rows []domain.FilterMatchRow) map[string]string {
+	tr := make(map[string]string, 8)
+	for _, row := range rows {
+		en := analysis.NormalizeModeLabel(derefStr(row.PairName))
+		fr := analysis.NormalizeModeLabel(derefStr(row.PairNameFR))
+		if en != "" && fr != "" && en != fr {
+			tr[en] = fr
+		}
+	}
+	return tr
+}
+
+// buildMapTranslationMap construit une map EN→FR pour les cartes.
+// MapName = nom brut EN, MapNameFR = nom enrichi par applyMapFRTranslations.
+func buildMapTranslationMap(rows []domain.FilterMatchRow) map[string]string {
+	tr := make(map[string]string, 8)
+	for _, row := range rows {
+		en := derefStr(row.MapName)
+		fr := derefStr(row.MapNameFR)
+		if en != "" && fr != "" && en != fr {
+			tr[en] = fr
+		}
+	}
+	return tr
+}
+
+// buildPlaylistTranslationMap construit une map EN→FR pour les playlists.
+// PlaylistNameEN = nom brut EN, PlaylistName = nom enrichi par applyPlaylistFRTranslations.
+func buildPlaylistTranslationMap(rows []domain.FilterMatchRow) map[string]string {
+	tr := make(map[string]string, 8)
+	for _, row := range rows {
+		en := derefStr(row.PlaylistNameEN)
+		fr := derefStr(row.PlaylistName)
+		if en != "" && fr != "" && en != fr {
+			tr[en] = fr
+		}
+	}
+	return tr
 }

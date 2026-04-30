@@ -17,7 +17,8 @@ SELECT
     COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,
     pme.session_id,
     pme.session_label,
-    COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends
+    COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends,
+    ms.playlist_name                                     AS playlist_name_en
 FROM (
     SELECT r.match_id, r.start_time, r.map_name,
            r.map_name_fr, r.pair_name, r.pair_name_fr,
@@ -46,7 +47,8 @@ SELECT
     COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,
     pme.session_id,
     pme.session_label,
-    COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends
+    COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends,
+    ms.playlist_name                                     AS playlist_name_en
 FROM (
     SELECT match_id, start_time, map_id, map_name, map_name_fr,
            pair_name, pair_name_fr, playlist_name, playlist_name_fr,

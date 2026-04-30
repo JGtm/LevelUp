@@ -22,18 +22,19 @@ type LabelValue struct {
 // FilterMatchRow représente une ligne minimale pour la résolution des filtres.
 // Type de transfert entre platform/duckdb et les services.
 type FilterMatchRow struct {
-	MatchID       string
-	StartTime     *time.Time
-	MapName       *string
-	MapNameFR     *string
-	PairName      *string
-	PairNameFR    *string
-	PlaylistName  *string
-	IsFirefight   bool
-	IsRanked      bool
-	SessionID     *string
-	SessionLabel  *string
-	IsWithFriends bool
+	MatchID        string
+	StartTime      *time.Time
+	MapName        *string // nom EN brut
+	MapNameFR      *string // COALESCE(map_name_fr, map_name), enrichi par applyMapFRTranslations
+	PairName       *string // nom EN brut
+	PairNameFR     *string // COALESCE, enrichi par applyModeFRTranslations
+	PlaylistName   *string // COALESCE(playlist_name_fr, playlist_name), enrichi par applyPlaylistFRTranslations
+	PlaylistNameEN *string // playlist_name EN brut — clé de migration cascade
+	IsFirefight    bool
+	IsRanked       bool
+	SessionID      *string
+	SessionLabel   *string
+	IsWithFriends  bool
 }
 
 // PeriodInput représente le filtre de période.
