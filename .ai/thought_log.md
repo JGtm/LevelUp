@@ -1,5 +1,81 @@
 # Thought Log
 
+## [2026-04-30] Filtres cascade — détection zombie temps réel + bug applyExperienceFilter
+
+**Statut** : Complété.
+
+**Décisions techniques** :
+
+1. **Bug `applyExperienceFilter` ("PVP non classé" traité comme ranked)** :
+   - Cause : `strings.Contains("pvp non classé", "classé")` = true → la branche `wantRanked=true` était atteinte au lieu de `wantUnranked`.
+   - Fix : ajout d'un cas `"non classé"` **avant** le cas `"classé"` dans le switch.
+   - Impact : les filtres expérience avec les valeurs exactes générées par le service ("PVP non classé", "PVP classé") fonctionnent maintenant correctement.
+
+2. **`buildAvailableOptions` — ExperienceTypes dynamiques** :
+   - Avant : retournait toujours les 3 types même si les données n'en contenaient qu'un.
+   - Fix : `rowExperienceLabel(r)` détecte le type de chaque row ; seuls les types présents dans les rows temporelles sont inclus dans `ExperienceTypes`. Permet la détection zombie côté frontend.
+
+3. **`FilterOmnibar.tsx` — détection zombie temps réel** :
+   - Avant : `rawAvailable = resolvedContext?.available_options` (données du dernier "Analyser" uniquement).
+   - Fix : `useFiltersPreview(playerSlug, pending)` fire à chaque changement de l'état `pending` (chaque toggle de checkbox). `rawAvailable = previewData?.available_options ?? resolvedContext?.available_options` — préférence au preview live, fallback sur le commité tant que le premier fetch n'est pas revenu.
+
+**Résultats observés** :
+- `filters_cascade_test.go` : 28 nouveaux tests Go couvrant les 4 niveaux (experience, playlist, mode, map), zombies à chaque niveau, cascade complète compatible, session+cascade — tous verts.
+- `FiltresPill.test.tsx` : 15 nouveaux tests frontend couvrant zombie par dimension, zombies multiples, sélection mixte, click déselection, badge ⚠ — tous verts.
+- `go test ./...` (go-api) — tous OK.
+- `vitest run` — 94 fichiers, 763 tests, tous verts.
+
+**Prochaine étape** : Validation visuelle — changer de session et vérifier que les options incompatibles apparaissent barrées immédiatement sans cliquer "Analyser".
+
+## [2026-04-30] FiltersRepo — localisation cartes et playlists en FR (bugfix)
+
+**Statut** : Complété.
+
+**Décision technique** :
+- Même cause racine que le bug modes : `applyMapFRTranslations` et `applyPlaylistFRTranslations` (FiltersRepo) enrichissent `MapNameFR` et `PlaylistName` avec des noms FR, mais `cascade.maps` / `cascade.playlists` persistés en localStorage restent en anglais.
+- Fix : `buildMapTranslationMap(rows)` et `buildPlaylistTranslationMap(rows)` dérivent des maps EN→FR depuis les rows enrichis. `migrateCascadeValues()` factorise la migration (utilisée pour modes, cartes, playlists). Appliquées dans `ResolveFiltersFromRows` avant la cascade. Transparent si aucune traduction.
+- Pour les cartes : `MapName` (EN brut) vs `MapNameFR` (enrichi). Pour les playlists : `PlaylistNameEN` (EN brut) vs `PlaylistName` (enrichi).
+- `PlaylistNameEN` est un nouveau champ `FilterMatchRow` alimenté par `ms.playlist_name AS playlist_name_en` dans Q4 et Q4MV.
+
+**Résultats observés** :
+- 15 nouveaux tests dans `filters_map_playlist_translation_test.go` — tous verts
+- `go test ./internal/service/... ./internal/platform/duckdb/...` — tous OK
+- `go vet ./internal/service/... ./internal/platform/duckdb/...` — aucun warning
+
+**Prochaine étape** : Validation visuelle — vérifier que les dropdowns cartes et playlists s'affichent en FR.
+
+## [2026-04-30] SquadLayout — localisation modes FR + compteur dynamique (bugfix)
+
+**Statut** : Complété.
+
+**Décision technique** :
+- Cause racine bug : `applyModeFRTranslations` (FiltersRepo) réécrit `PairNameFR` en noms FR purs ("Assassin"). Mais `filterContext.cascade.modes` persisté en localStorage contient encore les vieux noms EN ("Slayer"). `filterBySet(rows, ["Slayer"], modeUI)` ne matche rien → 0 lignes → compteur = 0 + options disparaissent.
+- Fix : `buildModeTranslationMap(rows)` dans `service/filters_service.go` dérive une map EN→FR depuis les rows déjà enrichis (PairName vs PairNameFR). Appliquée dans `ResolveFiltersFromRows` pour migrer `effective.Cascade.Modes` avant le filtre cascade. Transparent si aucune traduction disponible.
+- Le fix du compteur (SquadLayout.tsx utilise `previewResolve?.counts`) est correct et fonctionne maintenant que le backend retourne des counts non-nuls.
+
+**Résultats observés** :
+- 12 nouveaux tests dans `filters_mode_translation_test.go` — tous verts
+- `go test ./...` — tous les packages OK
+- `go vet ./internal/service/... ./internal/platform/duckdb/...` — aucun warning
+- Les vet warnings présents dans `presence_test.go` sont pre-existing (non touchés)
+
+**Prochaine étape** : Validation visuelle — vérifier que les modes s'affichent en FR dans les dropdowns et que le compteur se met à jour à la volée.
+
+## [2026-04-30] SquadSynergiesPage — bugfixes session filter + couleurs divergentes
+
+**Statut** : Complété.
+
+**Décision technique** :
+- Bug 1 (filtre session) : première tentative incorrecte — le filtre buildait `sessionIDs` depuis `allMatches` et filtrait inconditionnellement, cassant tous les tests où `synthRows` était vide. Correction finale : construire `sessionMatchIDs` dans `GetPage` uniquement si `len(PickedSoloSessions) > 0 || len(PickedSquadSessions) > 0`, puis passer ce map à `buildTeammateRowWithMatches` comme paramètre explicite (nil = pas de filtre). `buildTeammateRowWithMatches` n'applique le filtre que si `len(sessionMatchIDs) > 0`.
+- Bug 2 (couleurs divergentes) : `resolveToken()` lit les CSS vars au moment de la construction de l'option ECharts → vide si palette pas encore appliquée. Remplacé par `tokenCssVar()` qui retourne `'var(--ac-divergent-pos)'` — ECharts résout au paint time.
+
+**Résultats observés** :
+- `go test ./internal/service/...` — OK (inclut 5 nouveaux tests session filter dans `teammates_session_filter_test.go`)
+- `vitest run winRateVsHistoryChart.test.ts` — 9/9 tests
+- Join clé `MapUI vs DefaultLabel` confirmé correct pour Halo Infinite (noms propres anglais non traduits)
+
+**Prochaine étape** : Validation visuelle en navigation réelle.
+
 ## [2026-04-29] static/medals — suppression niveau icons/ legacy
 
 **Statut** : Complété.
@@ -23,7 +99,17 @@
 
 **Complément** : Suppression de la section "Tous les équipiers" (table coéquipiers) du SquadLayout, ainsi que `TeammateRowItem`, `toggleSelect`, `prefetchCompare` et l'import `useComparePrefetch` devenus orphelins.
 
-**Prochaine étape** : Ajouter les nouvelles représentations sur cette base propre.
+**Prochaine étape** : Ajouter d'autres représentations si besoin.
+
+## [2026-04-29] SquadSynergiesPage — graphe "Taux de victoire vs historique par carte"
+
+**Statut** : Complété.
+
+**Décision technique** : Chart horizontal barres groupées (yAxis=cartes, xAxis=win rate %). Deux séries : historique (chart-series-1 uniforme) + session (token divergent par barre : divergent-pos/neutral/neg selon ±5pp). Historical win rate calculé côté Go depuis `canonicalRows` (tous matchs non filtrés) via `computeHistoricalMapWRByLabel` + `enrichMapBreakdownWithHistory`, joint sur `DefaultLabel` (= `map_name` SQL). Architecture : builder pur `winRateVsHistoryChart.ts` + wrapper squad `WinRateVsHistoryChart.tsx` + `ChartCard` (pattern ChartSeries<MapBreakdownRow>). Tokens couleur via `resolveToken` (aucun hex).
+
+**Résultats** : Go compile proprement. 104 tests TS passent (16 fichiers). 7 nouveaux tests unitaires sur le builder (tri, couleurs divergentes, conversion %).
+
+**Prochaine étape** : Prêt à ajouter d'autres graphes sur la base propre.
 
 ## [2026-04-29] P8.4 finition optionnelle — HomePage 735L → 433L (5/5 god pages <500L)
 
