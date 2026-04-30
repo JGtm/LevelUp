@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-30] docs(filters): comparatif AVANT/APRÈS + Super Fiesta + traductions FR
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- §4ter.6 ajoutée avec tableau comparatif concret AVANT/APRÈS sur 4 cas réels tirés de `shared_matches_v2.duckdb`. Réponse limpide à la question utilisateur : la normalisation reste indispensable, le catalogue change juste son moment d'exécution (one-shot par pair_asset_id au lieu d'à chaque vue UI). État global mesuré : 0/1545 colonnes `_fr` remplies, 21.5% playlists UUID non résolues.
+- §4ter.7 ajoutée sur la promotion Super Fiesta + Husky Raid : mesure DuckDB confirme 240/307 matchs `Fiesta` actuels = Super Fiesta (78%), 15/307 = Husky Raid. Code Python regroupe à tort, code Go a déjà fait la promotion (cf. skill `halo-modes`). Migration one-shot des matchs anciens à signaler comme dépendance hors scope (à traiter quand le sync passera en Go).
+- §4ter.8 ajoutée sur les traductions FR : 0/1545 colonnes `_fr` peuplées dans la DB actuelle = bricolage runtime à chaque vue UI. Reco : double fetch DiscoveryUGC `lang=en` + `lang=fr` à l'hydratation catalogue, fallback sur `mode_name_tr`/`mode_pair_overrides` si null. Persistance dans le catalogue → fin du calcul à chaud. À termes (hors scope), les colonnes `_fr` de `match_registry` deviennent redondantes et peuvent être supprimées.
+- Décisions ouvertes #9 et #10 ajoutées pour tracer ces deux sujets.
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : 3 sous-sections ajoutées dans §4ter (~6 → ~8), 2 décisions ouvertes ajoutées.
+- Insight chiffré majeur : la classification Python actuelle noie 3 expériences gameplay distinctes (Fiesta + SuperFiesta + HuskyRaid) sous une seule étiquette, alors qu'elles ont des règles de gameplay très différentes.
+- Aucun code modifié.
+
+**Conclusion** :
+Le doc couvre désormais les 4 dimensions du sujet : (1) catalogue référentiel, (2) articulation avec normalisation, (3) cardinalité réelle, (4) traductions FR + promotion catégories. Prêt pour ouverture des phases d'implémentation.
+
 ## [2026-04-30] audit(filters): cardinalité réelle mode_category × mode_label sur shared_matches_v2
 
 **Statut** : Complété — partie (b) du débrief utilisateur.  
