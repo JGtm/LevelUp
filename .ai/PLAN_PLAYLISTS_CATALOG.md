@@ -141,10 +141,14 @@ CREATE TABLE map_mode_pair_definitions (
   title_slug             VARCHAR,
   pair_asset_id          UUID,
   current_version_id     UUID,
-  name_en                VARCHAR,     -- ex: "Slayer on Aquarius"
+  name_en                VARCHAR,     -- ex: "Arena:Slayer on Bazaar" (brut DiscoveryUGC)
   name_fr                VARCHAR,
   map_asset_id           UUID,        -- FK -> maps_catalog
   game_variant_asset_id  UUID,        -- FK -> game_variants_catalog
+  -- Dérivations stockées au moment du fetch (cf. §4ter)
+  mode_label_en          VARCHAR,     -- sortie NormalizeModeLabel(name_en, map_labels)
+  mode_label_fr          VARCHAR,     -- sortie NormalizeModeLabel(name_fr, map_labels)
+  mode_category          VARCHAR,     -- sortie InferModeCategoryFromPairName(name_en) — enum Go: 'Assassin' | 'Fiesta' | 'SuperFiesta' | 'HuskyRaid' | 'BTB' | 'Ranked' | 'Firefight' | 'Other'
   last_fetched_at        TIMESTAMP,
   PRIMARY KEY (title_slug, pair_asset_id)
 );
@@ -179,6 +183,7 @@ CREATE TABLE catalog_fetch_queue (
 - **`weight` est conservé** : pas critique pour le filtre, mais ouvre la porte à une future feature « probabilité de tomber sur cette map dans Quick Play ».
 - **`current_version_id` au lieu d'une table d'historique** : on ne garde que la version active. Si un audit historique est jamais demandé, `waypoint_assets_raw` garde déjà les snapshots bruts datés.
 - **Pas de FK déclarées en DuckDB** : DuckDB supporte les FK mais la pratique du repo (cf. autres tables metadata) est de ne pas les imposer pour éviter les blocages au sync. La cohérence est garantie par le `CatalogFetcherService` (un fetch playlist hydrate aussi ses pairs / maps / variants).
+- **`maps_catalog.image_url` peuplé dès Phase F** (décision actée 2026-04-30) : au moment du fetch catalogue, on appelle `assetResolver.Resolve(KindMapImage, map_asset_id)` qui retourne l'URL interne `/api/v1/assets/maps/...`. Cohérent avec le pattern déjà en place pour les assets Spartan ([home_repo.go](apps/go-api/internal/platform/duckdb/home_repo.go)). Si GameCMS est down → URL NULL, retry au refresh mensuel, frontend gère le fallback.
 
 ---
 
@@ -279,6 +284,70 @@ Le `CatalogService` n'a **aucune connaissance Halo** : il délègue tout au `Tit
 
 ---
 
+## 4ter. Articulation avec la normalisation des modes existante
+
+La feature de normalisation (skill `halo-modes`) **survit en intégralité** comme couche complémentaire. Elle n'est ni remplacée ni dépréciée par le catalogue — elle est **consommée à l'hydratation** et ses sorties sont stockées comme colonnes du catalogue.
+
+### 4ter.1 Trois niveaux orthogonaux à ne pas confondre
+
+| Niveau | Granularité | Source | Usage filtre |
+|---|---|---|---|
+| `experience` (playlist-level) | ~6-8 buckets | TOML `experience_rules.toml` (Phase D) | « je veux que du Ranked » |
+| `mode_category` (pair-level) | ~7-8 buckets enum Go | [mode_category.go](apps/go-api/internal/analysis/mode_category.go) `InferModeCategoryFromPairName()` | « je veux que du Slayer-like » |
+| `mode_label` (pair-level) | ~30-50 valeurs | [mode_label.go](apps/go-api/internal/analysis/mode_label.go) `NormalizeModeLabel()` | « je veux uniquement du Tactical Slayer » |
+
+`experience` (playlist) et `mode_category` (pair) sont **deux dimensions parallèles** dans le filtre, pas hiérarchiques. L'utilisateur peut combiner « Ranked **et** Assassin », ou « Social **et** Fiesta ». Le `mode_label` est un sous-niveau optionnel de `mode_category`.
+
+### 4ter.2 Qui produit quoi
+
+```
+                                                      ┌─────────────────────────────────────┐
+   DiscoveryUGC API                                   │  internal/analysis/  (pure Go)       │
+   (asset brut + name_en)                             │  - NormalizeModeLabel()              │
+            │                                         │  - InferModeCategoryFromPairName()   │
+            ▼                                         │                                      │
+   ┌────────────────────┐                            └──────────────┬──────────────────────┘
+   │ TitleCatalogAdapter│                                           │
+   │ (Halo Infinite)    │   appelle au fetch                        │
+   └────────┬───────────┘  ─────────────────────────────────────────┘
+            │
+            │ persiste les sorties dans :
+            ▼
+   map_mode_pair_definitions.{mode_label_en, mode_label_fr, mode_category}
+   playlists_catalog.experience  (depuis TOML, autre dimension)
+```
+
+### 4ter.3 Tables existantes : input upstream, pas output runtime
+
+- `metadata.mode_name_tr` (traductions EN→FR des sous-modes) → consommée par `NormalizeModeLabel()` au moment du fetch pour produire `mode_label_fr`. Reste utile.
+- `metadata.mode_pair_overrides` (surcharges des paires aux noms cassés DiscoveryUGC) → consommée par l'adapter Halo pour patcher `name_en` / `name_fr` avant l'appel à `NormalizeModeLabel()`. Reste utile.
+- `metadata.mode_prefix_names` / `mode_lang_settings` → potentiellement consommées par les helpers existants. À conserver comme input.
+
+**Aucune dépréciation prévue.** Ces tables servent désormais d'input à un pipeline qui les fige dans le catalogue, plutôt que d'être interrogées à chaque requête utilisateur.
+
+### 4ter.4 Distinction entre `mode_canonical` et `mode_category`
+
+- `game_variants_catalog.mode_canonical` = **fait technique stable** au niveau du game variant atomique (`'slayer'`, `'ctf'`, `'firefight_kotr'`). Dérivé de `game_variant_category` numérique + heuristique TOML. Sert à des aggrégations métier stables, pas à l'UI.
+- `map_mode_pair_definitions.mode_category` = **catégorie UX au niveau du pair** (`'Assassin'`, `'Fiesta'`, `'SuperFiesta'`, etc.). Sert au filtre et au regroupement visuel.
+
+Un pair `Tactical:Slayer on Bazaar` a :
+- `mode_label_en = "Slayer"`, `mode_label_fr = "Assassin"` (sortie de `NormalizeModeLabel`)
+- `mode_category = "Assassin"` (sortie de `InferModeCategoryFromPairName`)
+- `game_variants_catalog.mode_canonical = "slayer"` (fait technique du variant lié)
+
+Trois représentations différentes, complémentaires.
+
+### 4ter.5 Cardinalité réelle à observer
+
+Une question reste ouverte : faut-il exposer `mode_label` comme dimension de filtre, ou le laisser comme « expand » optionnel d'une catégorie ? Cela dépend de :
+- Combien de `mode_label` distincts par `mode_category` en pratique
+- Distribution des matchs entre catégories (équilibrée ou Pareto-skewed ?)
+- Couverture de la catégorie `Other` (si > 10% → dette de `_PREFIX_RULES` à boucher avant)
+
+→ **Audit cardinalité prévu en §4quater** (à compléter après mesure sur la DB de production).
+
+---
+
 ## 5. Plan d'implémentation par phases
 
 ### Phase A — Migration schéma metadata (1 commit)
@@ -300,12 +369,13 @@ Le `CatalogService` n'a **aucune connaissance Halo** : il délègue tout au `Tit
 - Étendre le `StaticResolver` pour exposer `CatalogAdapter(titleSlug)`.
 - Tests d'isolation cross-titres : un appel `Resolver.CatalogAdapter("synthetic_title_b")` ne doit jamais router vers Halo.
 
-### Phase D — Adapter Halo Infinite + TOML (1 commit)
+### Phase D — Adapter Halo Infinite + TOML experience + reuse normalisation (1 commit)
 
 - Créer `internal/games/halo_infinite/catalog_adapter.go` qui enveloppe [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go).
-- Porter la logique de classification depuis `src/analysis/playlist_groups.py` (Python) vers le TOML `config/titles/halo_infinite/catalog/experience_rules.toml`.
+- À chaque hydratation de pair, appeler les fonctions Go existantes [NormalizeModeLabel](apps/go-api/internal/analysis/mode_label.go) et [InferModeCategoryFromPairName](apps/go-api/internal/analysis/mode_category.go) — **ne pas réimplémenter** ni porter en TOML, ce sont déjà du code Go enum-like (cf. §4ter).
+- Porter la logique de classification d'`experience` (playlist-level) depuis [src/analysis/playlist_groups.py](src/analysis/playlist_groups.py) (Python) vers le TOML `config/titles/halo_infinite/catalog/experience_rules.toml`. Le TOML couvre **uniquement** l'`experience` playlist, pas la `mode_category` pair.
 - Loader TOML dans `internal/games/halo_infinite/` (réutiliser `pelletier/go-toml/v2` déjà en place).
-- Tests : 25-30 playlists permanentes mappées correctement, snapshot des règles TOML versionné.
+- Tests : 25-30 playlists permanentes mappées correctement (experience), 50+ pair_names couverts par mode_category (snapshot), snapshot des règles TOML versionné.
 
 ### Phase E — Détection lazy + enqueue au sync (1 commit)
 
@@ -362,10 +432,11 @@ Le `CatalogService` n'a **aucune connaissance Halo** : il délègue tout au `Tit
 | 1 | Critère de désactivation `is_active = false` | (a) jamais (manuel) ; (b) pas vue depuis 3 mois ; (c) pas vue depuis 6 mois |
 | 2 | Mécanisme du refresh mensuel | (a) cron OS documenté ; (b) goroutine Go avec ticker ; (c) endpoint admin déclenchable |
 | 3 | Faut-il exposer `weight` dans l'API React | Pas pour le filtre, mais pour une future page « stats par carte/mode » oui |
-| 4 | Format des règles de classification `experience` | (a) TOML versionné dans `config/titles/{slug}/catalog/` (préféré, cohérent avec `mappings/fields.toml`) ; (b) en dur dans Go ; (c) table SQL administrable |
+| 4 | Format des règles de classification | **Tranché 2026-04-30** : TOML versionné `config/titles/{slug}/catalog/experience_rules.toml` pour `experience` (playlist) ; code Go enum-like existant (`mode_category.go`, `mode_label.go`) pour `mode_category` + `mode_label` (pair). Découpage assumé : TOML pour ce qui peut bouger entre saisons sans redéploiement, code Go pour ce qui est stable enum-like. |
 | 5 | Faut-il garder un historique des `version_id` par playlist | Non au début (`waypoint_assets_raw` couvre l'audit forensique si besoin) |
 | 6 | Enregistrement des `title_slug` connus | Implicite dans les tables (DISTINCT sur `playlists_catalog.title_slug`) ou table dédiée `titles_registry` ? La couche `internal/games/` les énumère déjà via le `StaticResolver` — probablement suffisant. |
-| 7 | Les images de map (`maps_catalog.image_url`) sont-elles peuplées dès la Phase F | Idéalement oui via le pipeline `internal/assets` existant (`KindMapImage`) ; sinon NULL et résolu lazy à l'affichage. |
+| 7 | Image map (`maps_catalog.image_url`) | **Tranché 2026-04-30** : peuplement dès Phase F via `assetResolver.Resolve(KindMapImage, ...)`. Cohérent avec home_repo.go pour les assets Spartan. NULL si GameCMS down → retry au refresh mensuel. |
+| 8 | Faut-il exposer `mode_label` comme dimension de filtre, ou seulement `mode_category` | Dépend de la cardinalité réelle — audit prévu en §4quater. |
 
 ---
 
@@ -423,6 +494,11 @@ Le `CatalogService` n'a **aucune connaissance Halo** : il délègue tout au `Tit
 - `apps/go-api/internal/api/handlers/multi_title_preview.go` — Pattern handler proof-of-concept
 - `config/titles/halo_infinite/mappings/fields.toml` — Pattern config TOML versionnée (à dupliquer pour `catalog/`)
 - `tools/mappings/CHANGELOG.md` — Pattern de versionnement TOML
+
+### Couche normalisation modes Halo (à consommer, pas réinventer)
+- [apps/go-api/internal/analysis/mode_label.go](apps/go-api/internal/analysis/mode_label.go) — `NormalizeModeLabel(raw, mapLabels...)` consommée par l'adapter Halo (Phase D)
+- [apps/go-api/internal/analysis/mode_category.go](apps/go-api/internal/analysis/mode_category.go) — `InferModeCategoryFromPairName(pairName)` consommée par l'adapter Halo (Phase D), enum 8 valeurs
+- Skill projet : `.claude/skills/halo-modes/SKILL.md` — conventions de normalisation (2 niveaux orthogonaux, divergences assumées vs Python v7)
 
 ### Code Python à porter (logique éprouvée)
 - [src/analysis/playlist_groups.py](src/analysis/playlist_groups.py) — Heuristiques de classification `experience` (à porter vers TOML Halo)

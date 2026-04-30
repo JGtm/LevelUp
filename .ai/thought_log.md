@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-04-30] docs(filters): articulation catalogue ↔ normalisation modes (image Phase F + 3 colonnes pair)
+
+**Statut** : Complété — partie (a) du débrief utilisateur. Audit de cardinalité (partie b) à suivre.  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Image map (`maps_catalog.image_url`) : peuplement dès Phase F via `assetResolver.Resolve(KindMapImage, ...)`. Cohérent avec home_repo.go pour les assets Spartan. Décision actée.
+- Normalisation modes : la skill `halo-modes` confirme l'existence de DEUX niveaux orthogonaux Go déjà codés et testés : `NormalizeModeLabel()` (sous-mode affiché, ex "Slayer") et `InferModeCategoryFromPairName()` (catégorie parente UX, enum 8 valeurs : Assassin/Fiesta/SuperFiesta/HuskyRaid/BTB/Ranked/Firefight/Other). Le catalogue ne réinvente pas — il consomme ces fonctions à l'hydratation et persiste les sorties.
+- `map_mode_pair_definitions` étendu de 3 colonnes : `mode_label_en`, `mode_label_fr`, `mode_category`. Calculées une fois au fetch, plus jamais au runtime du filtre.
+- Découpage TOML/Go tranché : TOML `experience_rules.toml` pour la classification `experience` playlist (peut bouger entre saisons sans redéploiement) ; code Go enum-like existant pour `mode_category` + `mode_label` pair (stable, déjà testé, divergences assumées vs Python v7).
+- Trois dimensions de filtre orthogonales (pas hiérarchiques) : `experience` (playlist), `mode_category` (pair), `mode_label` (pair sous-niveau). L'utilisateur peut combiner « Ranked + Assassin », « Social + Fiesta », etc.
+- Tables existantes `mode_name_tr`, `mode_pair_overrides`, `mode_prefix_names`, `mode_lang_settings` : pas de dépréciation. Elles deviennent input upstream consommé par `NormalizeModeLabel()` au moment du fetch, pas output runtime interrogé à chaque requête.
+- Distinction maintenue entre `game_variants_catalog.mode_canonical` (fait technique stable du variant) et `map_mode_pair_definitions.mode_category` (catégorie UX du pair) — trois représentations complémentaires.
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : nouvelle §4ter (5 sous-sections) sur l'articulation, schéma `map_mode_pair_definitions` étendu, Phase D précisée pour réutiliser `internal/analysis/mode_*.go`, décisions ouvertes #4 et #7 tranchées avec horodatage, décision #8 ajoutée pour la cardinalité.
+- Aucun code livré. Document seulement.
+- Audit de cardinalité (§4quater) annoncé mais pas encore exécuté — prochaine étape avant fermeture du design.
+
+**Conclusion** :
+Articulation catalogue ↔ normalisation clarifiée et alignée sur les conventions Halo existantes. Reste à mesurer la cardinalité réelle `mode_category` × `mode_label` sur la DB de production pour décider si `mode_label` est exposé comme dimension de filtre ou comme expand optionnel.
+
 ## [2026-04-30] docs(filters): révision plan catalogue — N-N + multi-titre
 
 **Statut** : Complété  
