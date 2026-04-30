@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-30] docs(filters): plan catalogue global Playlists / Pairs / Maps
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Le système de filtres actuel (`FilterOmnibar.tsx` -> `filters_service.go`) recharge tous les matchs du joueur à chaque toggle et recalcule la cascade Expérience -> Playlists -> Modes -> Maps en mémoire Go. Aucun cache de la hiérarchie -> latence perçue côté UI.
+- Insight clé confirmé via `support.halowaypoint.com` et `den.dev` : les playlists Halo Infinite sont au niveau du jeu (asset GUID + version_id stables), pas dérivées des matchs joués. La hiérarchie est énumérable et stable à la cadence saisonnière (~3 mois).
+- Audit de l'existant : 80% du terrain est préparé. `match_registry` stocke déjà les asset IDs, `discovery_client.go` supporte `AssetTypePlaylist` et `AssetTypePair` mais n'est jamais appelé depuis `internal/sync/`, et `waypoint_assets_raw` peut servir de cache brut. Manquent : `version_id` au sync, tables dédiées de relation, mapping `experience` catalogué.
+- Stratégie cible : référentiel global dans `metadata.duckdb` (4 tables) + détection lazy au sync (enqueue sans fetch) + bootstrap CLI one-shot + refresh mensuel (cron ou ticker). Pas de worker async par sync (les playlists changent au pire toutes les semaines, multiplier les appels HTTP serait disproportionné).
+- Ecremage UX : toggle "Joué / Tous" dans le filtre, par défaut limite l'affichage aux options où le joueur a `match_count > 0` (~10-15 options vs ~80 pour le catalogue complet). Vrai gain UX, plus important que la perf brute.
+
+**Résultats observés** :
+- Document `.ai/PLAN_PLAYLISTS_CATALOG.md` créé sur la branche `docs/playlists-catalog-design` (depuis `origin/main`).
+- 10 sections : contexte, audit, stratégie, schéma SQL, plan en 8 phases, décisions ouvertes, tests, hors scope, estimation 3-5 jours-homme, références cliquables vers les fichiers Go/React concernés.
+
+**Conclusion** :
+Plan validé conceptuellement, en attente de revue utilisateur avant ouverture des phases d'implémentation. Prochaine étape : décider du mécanisme de refresh mensuel (cron OS vs goroutine ticker vs endpoint admin) et des critères de désactivation `is_active`.
+
 ## [2026-04-11] fix(media): bloquer la récursion infinie des thumbnails d'images
 
 **Statut** : Complété  
