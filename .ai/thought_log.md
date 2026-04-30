@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-04-30] docs(filters): TOML mode_category + i18n robuste + skill halo-i18n
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- §4cinquies ajoutée — Évolutivité catégories : option (c) actée. Migration `mode_category` rules en TOML versionné + auto-détection des préfixes inconnus via nouvelle table `unknown_prefix_candidates` + alerting Discord au seuil ≥5. Validation au boot pour cohérence enum Go ↔ TOML. Cohérent avec le découpage `experience_rules.toml` déjà acté.
+- §4sexies ajoutée — i18n catalogue multi-langues robuste. Architecture en 3 couches : (1) `name_canonical` inline EN par défaut dans chaque table catalogue pour debug + lookup rapide, (2) toutes les autres langues dans `asset_translations` (existante, multi-lang native), (3) labels normalisés multi-langues dans nouvelle table `pair_mode_label_translations(pair_asset_id, lang, label)`. Hydratation : double fetch DiscoveryUGC sur ~14 langues (en, fr, de, es-ES, es-MX, it, ja, ko, nl, pl, pt-BR, ru, zh-CN, zh-TW), fallback `mode_name_tr`/`mode_pair_overrides` si null.
+- Schéma §4.2 propagé pour cohérence : passé de 6 à 8 tables. Retrait de `name_en`/`name_fr` inline → remplacé par `name_canonical`. Suppression de `mode_label_en/fr` du pair → déplacé dans `pair_mode_label_translations`. §4ter.6 (tableau comparatif) mis à jour pour refléter ces changements.
+- Skill `halo-i18n` créée — répond directement au feedback utilisateur « les agents font leur sauce et ne comprennent pas que les traductions sont à tels endroit et qu'elles existent bien ». Mémo opérationnel discoverable : où sont les traductions (table par table), quelles langues, helpers à utiliser, anti-patterns à éviter (ex: ne pas créer une nouvelle table xxx_translations sans regarder asset_translations d'abord). Triggers ajoutés dans `skill-rules.json` (keywords : asset_translations, name_fr, traduction, lang=, DiscoveryUGC, etc.).
+- Phases d'implémentation mises à jour : Phase A passe à 8 tables, Phase D inclut multi-lang + TOML mode_category + auto-détection, nouvelle Phase K conditionnelle pour cleanup post-migration (suppression colonnes `_fr` de match_registry, audit code Python legacy, migration matchs Python Fiesta → SuperFiesta/HuskyRaid).
+- Décisions ouvertes #10, #11, #12, #13 toutes tranchées avec horodatage.
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : 2 nouvelles sous-sections principales (§4cinquies, §4sexies) + schéma §4.2 propagé + §4ter.6 cohérent + Phase D enrichie + nouvelle Phase K + 4 décisions tranchées + références §10 mises à jour.
+- `.claude/skills/halo-i18n/SKILL.md` : nouveau mémo opérationnel (~150 lignes) avec TL;DR, langues supportées, 5 anti-patterns documentés avec exemples, helpers à utiliser, requêtes SQL types, fichiers source référencés.
+- `.claude/skills/skill-rules.json` : entrée `halo-i18n` avec 22 keywords + 6 intentPatterns pour activation automatique.
+- 0 code modifié, uniquement doc + skill.
+
+**Conclusion** :
+Architecture du catalogue figée à 8 tables, documentée à 3 niveaux (plan technique, schéma SQL, skill opérationnel pour les agents futurs). Les 13 décisions ouvertes initiales sont toutes tranchées. Le doc est prêt pour ouverture des phases d'implémentation. Question de discoverability i18n résolue par la skill dédiée + triggers automatiques.
+
 ## [2026-04-30] docs(filters): comparatif AVANT/APRÈS + Super Fiesta + traductions FR
 
 **Statut** : Complété  
