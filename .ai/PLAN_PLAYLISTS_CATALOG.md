@@ -92,16 +92,18 @@ Trois relations N-N à modéliser **proprement**, pas une seule :
 
 → Le pair ne porte que les **FK** vers map et game_variant, plus son nom propre (« Slayer on Aquarius » par exemple). Un changement de nom de map ou de mode se propage gratuitement à tous les pairs qui le référencent.
 
-### 4.2 Tables (6 au total, toutes title-aware via `title_slug`)
+### 4.2 Tables (8 au total, toutes title-aware via `title_slug`)
+
+> **Schéma final, intégrant les décisions §4sexies (multi-langues) et §4cinquies (auto-détection préfixes).**
+> Les tables catalogue ne portent plus `name_en` + `name_fr` inline mais un seul `name_canonical` (EN). Toutes les langues sont dans `asset_translations` (existante, multi-lang). Les labels normalisés multi-langues sont dans `pair_mode_label_translations` (nouvelle, dédiée).
 
 ```sql
--- Référentiel des playlists, par titre
+-- 1. Référentiel des playlists, par titre
 CREATE TABLE playlists_catalog (
   title_slug          VARCHAR,
   playlist_asset_id   UUID,
   current_version_id  UUID,
-  name_en             VARCHAR,
-  name_fr             VARCHAR,
+  name_canonical      VARCHAR,       -- EN par défaut (debug + lookup rapide). Autres langues : asset_translations.
   experience          VARCHAR,        -- 'ranked' | 'social' | 'btb' | 'firefight' | 'action_sack' | 'limited_time' | 'custom_browser' | 'unknown'
   is_ranked           BOOLEAN,
   is_active           BOOLEAN DEFAULT TRUE,
@@ -111,49 +113,44 @@ CREATE TABLE playlists_catalog (
   PRIMARY KEY (title_slug, playlist_asset_id)
 );
 
--- Référentiel des maps (séparé pour ne pas dupliquer name/image)
+-- 2. Référentiel des maps (séparé pour ne pas dupliquer name/image)
 CREATE TABLE maps_catalog (
   title_slug          VARCHAR,
   map_asset_id        UUID,
   current_version_id  UUID,
-  name_en             VARCHAR,
-  name_fr             VARCHAR,
-  image_url           VARCHAR,        -- déjà résolu via internal/assets si dispo
+  name_canonical      VARCHAR,       -- EN par défaut. Autres langues : asset_translations.
+  image_url           VARCHAR,       -- résolu via internal/assets (KindMapImage) au fetch (cf. §4.3)
   last_fetched_at     TIMESTAMP,
   PRIMARY KEY (title_slug, map_asset_id)
 );
 
--- Référentiel des game variants (séparé : un variant peut être dans N pairs)
+-- 3. Référentiel des game variants (séparé : un variant peut être dans N pairs)
 CREATE TABLE game_variants_catalog (
   title_slug              VARCHAR,
   game_variant_asset_id   UUID,
   current_version_id      UUID,
-  name_en                 VARCHAR,
-  name_fr                 VARCHAR,
+  name_canonical          VARCHAR,    -- EN par défaut. Autres langues : asset_translations.
   mode_canonical          VARCHAR,    -- 'slayer' | 'ctf' | 'oddball' | 'koth' | 'strongholds' | 'extraction' | 'firefight_kotr' | 'fiesta' | ...
   game_variant_category   INTEGER,    -- code numérique Halo (équivalent GameVariantCategory)
   last_fetched_at         TIMESTAMP,
   PRIMARY KEY (title_slug, game_variant_asset_id)
 );
 
--- Pair = jonction map + game_variant + nom composite, par titre
+-- 4. Pair = jonction map + game_variant + nom composite, par titre
 CREATE TABLE map_mode_pair_definitions (
   title_slug             VARCHAR,
   pair_asset_id          UUID,
   current_version_id     UUID,
-  name_en                VARCHAR,     -- ex: "Arena:Slayer on Bazaar" (brut DiscoveryUGC)
-  name_fr                VARCHAR,
-  map_asset_id           UUID,        -- FK -> maps_catalog
-  game_variant_asset_id  UUID,        -- FK -> game_variants_catalog
-  -- Dérivations stockées au moment du fetch (cf. §4ter)
-  mode_label_en          VARCHAR,     -- sortie NormalizeModeLabel(name_en, map_labels)
-  mode_label_fr          VARCHAR,     -- sortie NormalizeModeLabel(name_fr, map_labels)
-  mode_category          VARCHAR,     -- sortie InferModeCategoryFromPairName(name_en) — enum Go: 'Assassin' | 'Fiesta' | 'SuperFiesta' | 'HuskyRaid' | 'BTB' | 'Ranked' | 'Firefight' | 'Other'
+  name_canonical         VARCHAR,    -- ex: "Arena:Slayer on Bazaar" (EN brut DiscoveryUGC). Autres langues : asset_translations.
+  map_asset_id           UUID,       -- FK logique -> maps_catalog
+  game_variant_asset_id  UUID,       -- FK logique -> game_variants_catalog
+  mode_category          VARCHAR,    -- sortie InferModeCategoryFromPairName — enum Go via TOML (cf. §4cinquies)
+                                     -- Note : labels normalisés multi-langues dans pair_mode_label_translations
   last_fetched_at        TIMESTAMP,
   PRIMARY KEY (title_slug, pair_asset_id)
 );
 
--- Relation N-N playlist <-> pair, avec poids de tirage
+-- 5. Relation N-N playlist <-> pair, avec poids de tirage
 CREATE TABLE playlist_pair_links (
   title_slug         VARCHAR,
   playlist_asset_id  UUID,
@@ -162,7 +159,7 @@ CREATE TABLE playlist_pair_links (
   PRIMARY KEY (title_slug, playlist_asset_id, pair_asset_id)
 );
 
--- File d'attente du fetcher (pattern Kinds, drain mensuel)
+-- 6. File d'attente du fetcher (pattern Kinds, drain mensuel)
 CREATE TABLE catalog_fetch_queue (
   title_slug    VARCHAR,
   asset_type    VARCHAR,             -- 'playlist' | 'pair' | 'map' | 'game_variant'
@@ -173,7 +170,34 @@ CREATE TABLE catalog_fetch_queue (
   last_error    VARCHAR,
   PRIMARY KEY (title_slug, asset_type, asset_id)
 );
+
+-- 7. Labels normalisés multi-langues (sortie NormalizeModeLabel par langue)
+CREATE TABLE pair_mode_label_translations (
+  title_slug      VARCHAR,
+  pair_asset_id   UUID,
+  lang            VARCHAR,           -- 'en', 'fr', 'de', 'es-ES', 'es-MX', 'it', 'ja', 'ko', 'nl', 'pl', 'pt-BR', 'ru', 'zh-CN', 'zh-TW'
+  label           VARCHAR,           -- sortie NormalizeModeLabel(name_in_lang, mapLabels)
+  PRIMARY KEY (title_slug, pair_asset_id, lang)
+);
+
+-- 8. Auto-détection des préfixes inconnus (alerting sur nouvelles catégories candidates)
+CREATE TABLE unknown_prefix_candidates (
+  title_slug    VARCHAR,
+  prefix        VARCHAR,             -- ex: "Mega Fiesta" si jamais ça émerge
+  n_matches     INTEGER DEFAULT 1,
+  first_seen_at TIMESTAMP,
+  last_seen_at  TIMESTAMP,
+  pair_examples VARCHAR[],           -- 3-5 pair_name observés
+  PRIMARY KEY (title_slug, prefix)
+);
 ```
+
+### Tables existantes consommées (pas créées par ce plan)
+
+| Table | Rôle |
+|---|---|
+| `metadata.asset_translations(asset_id, asset_type, lang, name, description, fetched_at)` | Stockage multi-langues des noms bruts d'asset (déjà multi-lang via colonne `lang`). Ce plan l'étend en lui poussant les noms de playlists/pairs/maps/variants multi-langues lors de l'hydratation. |
+| `metadata.mode_name_tr` / `metadata.mode_pair_overrides` / `metadata.mode_prefix_names` | Input fallback consommé par `NormalizeModeLabel` quand DiscoveryUGC ne fournit pas la traduction. Conservées telles quelles. |
 
 ### 4.3 Décisions de modélisation
 
@@ -352,10 +376,10 @@ Une question reste ouverte : faut-il exposer `mode_label` comme dimension de fil
 
 | pair_name (brut DB) | n matchs | AUJOURD'HUI (sans catalogue) | DEMAIN (avec catalogue) |
 |---|---:|---|---|
-| `BTB:Slayer on Deadlock` | 42 | `mode_category='BTB'` ✅ persisté au sync, `pair_name_fr=NULL` ❌, label EN/FR recalculé à chaque vue UI | `name_en="BTB:Slayer on Deadlock"`, `mode_label_en="Slayer"`, `mode_label_fr="Assassin"`, `mode_category="BTB"`, `map_asset_id→Deadlock`, `game_variant_asset_id→Slayer 4v4`, tout persisté une fois |
-| `Super Fiesta:Slayer on Streets - Forge` | 23 | `mode_category='Fiesta'` (regroupement Python — cf. §4ter.7), `_fr=NULL`, suffixe `Forge` à stripper à chaque vue | `mode_label_en="Slayer"`, `mode_label_fr="Assassin"`, **`mode_category="SuperFiesta"`** (Go), suffixe stripé une fois au fetch |
-| `Event:Escalation Slayer on Streets` | 2 | `mode_category='Other'` (préfixe Event mappé Other), `_fr=NULL` | `mode_label_en="Escalation Slayer"`, `mode_label_fr="Assassin par escalade"`, `mode_category="Other"` |
-| `b51efd48-ffd9-4a03-...` (UUID) | 12 | `mode_category='Other'` par défaut, UUID brut affiché à l'utilisateur (= bug visuel) | Bootstrap CLI fetch DiscoveryUGC → résout l'UUID en (par exemple) `"Arena:Slayer on Bazaar"` → applique normalisation → `mode_label_fr="Assassin"`, label propre persisté |
+| `BTB:Slayer on Deadlock` | 42 | `mode_category='BTB'` ✅ persisté au sync, `pair_name_fr=NULL` ❌, label EN/FR recalculé à chaque vue UI | `map_mode_pair_definitions.name_canonical="BTB:Slayer on Deadlock"` + `mode_category="BTB"` ; `asset_translations` reçoit le nom brut dans 14 langues ; `pair_mode_label_translations(lang='fr', label='Assassin')` + autres langues, tout persisté une fois |
+| `Super Fiesta:Slayer on Streets - Forge` | 23 | `mode_category='Fiesta'` (regroupement Python — cf. §4ter.7), `_fr=NULL`, suffixe `Forge` à stripper à chaque vue | `name_canonical="Super Fiesta:Slayer on Streets - Forge"`, **`mode_category="SuperFiesta"`** (Go via TOML §4cinquies), `pair_mode_label_translations(lang='fr', label='Assassin')` (suffixe stripé une fois au fetch) |
+| `Event:Escalation Slayer on Streets` | 2 | `mode_category='Other'` (préfixe Event mappé Other), `_fr=NULL` | `name_canonical="Event:Escalation Slayer on Streets"`, `mode_category="Other"`, `pair_mode_label_translations(lang='en', label='Escalation Slayer')`, `(lang='fr', label='Assassin par escalade')` |
+| `b51efd48-ffd9-4a03-...` (UUID) | 12 | `mode_category='Other'` par défaut, UUID brut affiché à l'utilisateur (= bug visuel) | Bootstrap CLI fetch DiscoveryUGC → résout l'UUID en (par exemple) `"Arena:Slayer on Bazaar"` → upsert `name_canonical` + `asset_translations` + `pair_mode_label_translations` pour toutes les langues. Label propre dans toutes les langues. |
 
 État global mesuré (1545 matchs) :
 - `mode_category` : **1545/1545 remplis** ✅ (calculé au sync)
@@ -414,6 +438,195 @@ Constat brutal : **0 / 1545 matchs ont `pair_name_fr`, `map_name_fr` ou `playlis
 - **Hors scope mais à signaler** : une fois le catalogue alimenté, on peut **dépeupler** les colonnes FR de `match_registry` (elles deviennent redondantes — info portée par le catalogue via FK). Cleanup ultérieur, pas bloquant.
 
 → **Pas de "bricolage" à craindre** : le catalogue convertit la résolution opportuniste actuelle en pipeline propre persisté.
+
+---
+
+## 4cinquies. Évolutivité des catégories : TOML + auto-détection
+
+Le code Go actuel ([mode_category.go](apps/go-api/internal/analysis/mode_category.go)) hardcode 8 constantes (Assassin, Fiesta, SuperFiesta, HuskyRaid, BTB, Ranked, Firefight, Other) avec un mapping préfixe → catégorie en dur. Conséquence : ajouter une nouvelle catégorie (ex: futur « Mega Fiesta ») = ajouter une constante + modifier le mapping + recompiler. Friction inutile vu la cadence d'évolution Halo.
+
+### 4cinquies.1 Cible : TOML + auto-détection (option (c) actée 2026-04-30)
+
+**Volet 1 — Migrer les règles en TOML versionné**, cohérent avec `experience_rules.toml` :
+
+```
+config/titles/halo_infinite/catalog/
+├── experience_rules.toml         # déjà prévu (ranked/social/btb/firefight/...)
+└── mode_category_rules.toml      # nouveau : prefix -> category enum
+```
+
+`mode_category_rules.toml` (extrait) :
+
+```toml
+schema_version = 1
+
+[[rule]]
+category = "Assassin"
+prefixes = ["Arena", "Tactical", "Assault", "Community"]
+
+[[rule]]
+category = "SuperFiesta"
+prefixes = ["Super Fiesta"]
+note = "Promu vs Python v7 (cf. skill halo-modes). 240 matchs historiques en attente de migration."
+
+[[rule]]
+category = "HuskyRaid"
+prefixes = ["Husky Raid", "Super Husky Raid"]
+
+[[rule]]
+category = "BTB"
+prefixes = ["BTB", "BTB Heavies"]
+
+# ...
+```
+
+[mode_category.go](apps/go-api/internal/analysis/mode_category.go) devient un loader TOML + cache en mémoire au boot. Les helpers existants (`PairNamePrefixesForCategory`, `AllKnownPairNamePrefixes`) lisent depuis ce cache. Validation au boot : tous les enum Go doivent avoir une règle correspondante (sinon panic au démarrage = échec rapide).
+
+**Volet 2 — Auto-détection des préfixes inconnus** :
+
+Nouvelle table dans `metadata.duckdb` :
+
+```sql
+CREATE TABLE unknown_prefix_candidates (
+  title_slug    VARCHAR,
+  prefix        VARCHAR,
+  n_matches     INTEGER DEFAULT 1,
+  first_seen_at TIMESTAMP,
+  last_seen_at  TIMESTAMP,
+  pair_examples VARCHAR[],         -- 3-5 exemples concrets
+  PRIMARY KEY (title_slug, prefix)
+);
+```
+
+Le sync, après extraction du `pair_name` de chaque match, vérifie si le préfixe (partie avant `:` ou label complet si pas de `:`) matche une règle existante. Si non → INSERT OR REPLACE dans `unknown_prefix_candidates` avec incrément de `n_matches`.
+
+**Workflow alerting** :
+- Quand `n_matches >= 5` pour un préfixe non couvert → log warning + notification Discord (réutiliser le webhook existant côté `discord_notifier.py`).
+- Endpoint admin `GET /api/v1/titles/{slug}/catalog/unknown-prefixes` qui liste les candidats triés par `n_matches DESC` pour décision humaine.
+- Décision humaine : éditer `mode_category_rules.toml` pour ajouter le préfixe, ou ignorer (laisser en `Other`).
+
+### 4cinquies.2 Avantages
+
+- **Édition sans recompil** : un nouveau préfixe = 1 commit TOML.
+- **Pas de surveillance manuelle** : le système alerte quand un seuil est franchi.
+- **Cohérence avec experience_rules.toml** : même mécanisme de loader + cache + validation au boot.
+- **Traçabilité** : `unknown_prefix_candidates` archive l'historique des candidats — pas perdu si on décide plus tard.
+- **Pas de rupture** : tant que `mode_category_rules.toml` charge les mêmes 8 catégories enum Go, le code consommateur est inchangé.
+
+### 4cinquies.3 Tradeoff
+
+- **Validation compile-time perdue** : aujourd'hui les constantes Go garantissent que tout le code utilise les bonnes catégories. Avec TOML, la validation se fait au boot (panic si désynchronisation enum vs TOML). Mitigation : test d'intégration qui charge le TOML et vérifie la couverture exhaustive des enum.
+- **Migration des matchs Python historiques** : indépendant de cette décision (cf. décision ouverte #9). Reste à traiter dans la phase de bascule sync Python → Go.
+
+---
+
+## 4sexies. i18n catalogue : architecture multi-langues robuste
+
+Sujet sensible (cf. retour utilisateur 2026-04-30 : « les agents font leur sauce et ne comprennent pas que les traductions sont à tels endroit et qu'elles existent bien »). L'architecture cible est documentée à 3 endroits pour discoverability :
+- Ce plan (§4sexies, design)
+- **Skill `.claude/skills/halo-i18n/SKILL.md`** (mémo opérationnel, anti-patterns, helpers à utiliser)
+- Code (commentaires de schéma + docstrings d'adapter)
+
+### 4sexies.1 Architecture en 3 couches
+
+| Couche | Stockage | Contenu | Multi-lang |
+|---|---|---|---|
+| **Nom canonique** (debug + lookup rapide) | Inline `name_canonical VARCHAR` dans chaque table catalogue | Nom EN par défaut depuis DiscoveryUGC | Non (1 seule valeur) |
+| **Noms bruts traduits** | Table partagée `metadata.asset_translations` (existante, multi-lang via colonne `lang`) | Toutes les langues hydratées depuis DiscoveryUGC | **Oui native** |
+| **Labels normalisés** (sortie `NormalizeModeLabel`) | Nouvelle table `metadata.pair_mode_label_translations(pair_asset_id, lang, label)` | Sortie de la normalisation par langue | **Oui native** |
+
+### 4sexies.2 Schéma révisé (impact §4.2)
+
+Les 4 tables catalogue (`playlists_catalog`, `maps_catalog`, `game_variants_catalog`, `map_mode_pair_definitions`) **conservent un seul `name_canonical`** au lieu de `name_en` + `name_fr` :
+
+```sql
+-- AVANT (§4.2)
+name_en  VARCHAR,
+name_fr  VARCHAR,
+
+-- APRÈS (§4sexies)
+name_canonical  VARCHAR,    -- EN par défaut, pour debug + requêtes simples sans JOIN
+```
+
+Pour `map_mode_pair_definitions`, les colonnes `mode_label_en` et `mode_label_fr` ajoutées en §4ter.6 deviennent **redondantes** — elles partent dans `pair_mode_label_translations`. Le pair conserve uniquement `mode_category` (qui est un enum Go non traduit).
+
+Schéma final de `pair_mode_label_translations` :
+
+```sql
+CREATE TABLE pair_mode_label_translations (
+  title_slug      VARCHAR,
+  pair_asset_id   UUID,
+  lang            VARCHAR,        -- 'en', 'fr', 'de', 'es-ES', ...
+  label           VARCHAR,        -- sortie de NormalizeModeLabel pour cette langue
+  PRIMARY KEY (title_slug, pair_asset_id, lang)
+);
+```
+
+`asset_translations` reste tel quel (déjà multi-lang).
+
+### 4sexies.3 Hydratation multi-langues
+
+**Liste des langues cibles** (à confirmer en lisant [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go) `doGetWithLang` au moment de l'implémentation) :
+
+```
+en, fr, de, es-ES, es-MX, it, ja, ko, nl, pl, pt-BR, ru, zh-CN, zh-TW
+```
+
+**Stratégie de fetch** au moment de l'hydratation (Phase D) :
+
+1. Pour chaque asset (playlist/pair/map/game_variant) à hydrater, l'adapter Halo loope sur la liste des langues cibles.
+2. Pour chaque `lang`, appel `FetchAsset(ctx, assetType, titleID, assetID, versionID, lang)` → upsert dans `asset_translations`.
+3. Pour les pairs uniquement : après chaque fetch `lang`, appel `NormalizeModeLabel(name_in_lang, mapLabels)` → upsert dans `pair_mode_label_translations`.
+4. Si DiscoveryUGC retourne 404 pour une langue (cas connu : modes Forge UGC) → fallback sur `mode_name_tr` + `mode_pair_overrides` pour cette langue. Si fallback nul aussi → laisser absent (la lecture COALESCE sur `name_canonical`).
+
+Coût marginal : 14 round-trips HTTP par asset au lieu de 2. Sur 250 pairs uniques + ~30 playlists + ~100 maps + ~30 variants = ~410 assets × 14 langues = ~5740 calls au bootstrap. Avec le rate limiter existant (cf. `discovery_client.go`), ça prend ~10-15 minutes une fois pour toutes. Acceptable pour un one-shot bootstrap.
+
+### 4sexies.4 Lecture côté API
+
+Endpoint REST title-aware accepte `?lang=` :
+
+```
+GET /api/v1/titles/halo_infinite/catalog/playlists?lang=fr
+```
+
+Requête typique côté Go :
+
+```sql
+SELECT
+  p.playlist_asset_id,
+  COALESCE(t.name, p.name_canonical) AS display_name,
+  p.experience,
+  ...
+FROM playlists_catalog p
+LEFT JOIN asset_translations t
+  ON  t.asset_id   = p.playlist_asset_id
+ AND  t.asset_type = 'playlist'
+ AND  t.lang       = $1
+WHERE p.title_slug = 'halo_infinite' AND p.is_active = TRUE;
+```
+
+Pour les labels normalisés, JOIN sur `pair_mode_label_translations` avec même pattern.
+
+### 4sexies.5 Impact sur l'existant — plan de cleanup
+
+| Aspect | État courant | Action requise | Phase |
+|---|---|---|---|
+| `match_registry.{pair_name_fr, map_name_fr, playlist_name_fr}` (0/1545 peuplées) | Colonnes existantes mais inutilisées | **Supprimer en cleanup final** une fois le catalogue alimenté et l'UI migrée vers les JOINs catalogue | Phase K (cleanup) |
+| Code UI Go qui résout les FR à chaud | Lit `mode_name_tr` + `mode_pair_overrides` à chaque requête | **Migrer** vers JOIN sur `asset_translations` + `pair_mode_label_translations` | Phase I (migration FiltersService) |
+| Tables `mode_name_tr`, `mode_pair_overrides`, `mode_prefix_names` | Source d'input | **Conserver** comme input fallback dans la pipeline d'hydratation. Pas de dépréciation. | — |
+| Helpers Python `resolve_display_mode`, `resolve_weapon_display`, etc. | Calcul à chaud | **Conserver** en parallèle pendant la migration. À termes (post Go) → suppression. | Hors scope |
+
+### 4sexies.6 Anti-patterns à proscrire (cf. skill halo-i18n)
+
+À chaque revue de PR touchant aux traductions, vérifier :
+
+1. ❌ Aucun ajout de colonne `_fr` inline dans une table métier (utiliser `asset_translations` ou `pair_mode_label_translations`)
+2. ❌ Aucun calcul de traduction à chaud dans une boucle UI (utiliser le catalogue persisté)
+3. ❌ Aucune nouvelle table `xxx_translations` sans justification : étendre `asset_translations` avec un nouveau `asset_type` à la place
+4. ❌ Aucun string littéral français/anglais hardcodé pour une catégorie ou un mode (utiliser les constantes Go)
+5. ❌ Aucun import direct de `mode_name_tr` dans le code consommateur — passer par les helpers / le catalogue
+
+---
 
 ---
 
@@ -505,7 +718,8 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 
 ### Phase A — Migration schéma metadata (1 commit)
 
-- Ajouter une migration dans [steps_metadata.go](apps/go-api/internal/migration/steps_metadata.go) qui crée les **6 tables** title-aware : `playlists_catalog`, `maps_catalog`, `game_variants_catalog`, `map_mode_pair_definitions`, `playlist_pair_links`, `catalog_fetch_queue`.
+- Ajouter une migration dans [steps_metadata.go](apps/go-api/internal/migration/steps_metadata.go) qui crée les **8 tables** title-aware : `playlists_catalog`, `maps_catalog`, `game_variants_catalog`, `map_mode_pair_definitions`, `playlist_pair_links`, `catalog_fetch_queue`, `pair_mode_label_translations`, `unknown_prefix_candidates`.
+- Vérifier que `asset_translations` (existante) supporte les `asset_type` 'playlist', 'pair', 'map', 'game_variant' (étendre l'enum si nécessaire).
 - Tests : migration appliquée deux fois sans erreur, schéma matches, isolation `title_slug` vérifiée avec une seed `synthetic_title_b`.
 
 ### Phase B — Extraction `version_id` au sync (1 commit)
@@ -522,13 +736,15 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 - Étendre le `StaticResolver` pour exposer `CatalogAdapter(titleSlug)`.
 - Tests d'isolation cross-titres : un appel `Resolver.CatalogAdapter("synthetic_title_b")` ne doit jamais router vers Halo.
 
-### Phase D — Adapter Halo Infinite + TOML experience + reuse normalisation (1 commit)
+### Phase D — Adapter Halo Infinite + TOML (experience + mode_category) + multi-lang (1 commit)
 
 - Créer `internal/games/halo_infinite/catalog_adapter.go` qui enveloppe [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go).
-- À chaque hydratation de pair, appeler les fonctions Go existantes [NormalizeModeLabel](apps/go-api/internal/analysis/mode_label.go) et [InferModeCategoryFromPairName](apps/go-api/internal/analysis/mode_category.go) — **ne pas réimplémenter** ni porter en TOML, ce sont déjà du code Go enum-like (cf. §4ter).
-- Porter la logique de classification d'`experience` (playlist-level) depuis [src/analysis/playlist_groups.py](src/analysis/playlist_groups.py) (Python) vers le TOML `config/titles/halo_infinite/catalog/experience_rules.toml`. Le TOML couvre **uniquement** l'`experience` playlist, pas la `mode_category` pair.
-- Loader TOML dans `internal/games/halo_infinite/` (réutiliser `pelletier/go-toml/v2` déjà en place).
-- Tests : 25-30 playlists permanentes mappées correctement (experience), 50+ pair_names couverts par mode_category (snapshot), snapshot des règles TOML versionné.
+- **Multi-lang** : à chaque hydratation d'asset, looper sur la liste des langues cibles (~14 langues, cf. §4sexies.3) et appeler `FetchAsset(..., lang)` pour chacune. Upsert dans `asset_translations`. Coût : ~10-15 min au bootstrap initial, négligeable ensuite (refresh mensuel).
+- À chaque hydratation de pair, appeler [NormalizeModeLabel](apps/go-api/internal/analysis/mode_label.go) pour chaque langue → upsert dans `pair_mode_label_translations`. Si DiscoveryUGC retourne 404 pour une langue → fallback sur `mode_name_tr` + `mode_pair_overrides`.
+- **Migrer `mode_category` en TOML** (§4cinquies actée) : créer `config/titles/halo_infinite/catalog/mode_category_rules.toml`, refactorer [mode_category.go](apps/go-api/internal/analysis/mode_category.go) en loader + cache au boot. Validation au boot : tous les enum Go doivent avoir une règle (panic si désynchronisation).
+- Porter la logique de classification d'`experience` (playlist-level) depuis [src/analysis/playlist_groups.py](src/analysis/playlist_groups.py) vers `config/titles/halo_infinite/catalog/experience_rules.toml`.
+- **Auto-détection préfixes inconnus** (§4cinquies.1 volet 2) : à l'hydratation, si un préfixe pair_name n'est couvert par aucune règle TOML → INSERT OR REPLACE dans `unknown_prefix_candidates` avec incrément `n_matches`. Quand seuil ≥5 atteint → log warning + notification Discord.
+- Tests : 25-30 playlists permanentes mappées correctement (experience), 50+ pair_names couverts par mode_category (snapshot), validation au boot que TOML couvre tous les enum Go, snapshot multi-lang sur 5 assets de référence, snapshot d'auto-détection sur préfixe inconnu.
 
 ### Phase E — Détection lazy + enqueue au sync (1 commit)
 
@@ -574,7 +790,16 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 ### Phase J — Refresh mensuel (1 commit, optionnel selon cadence)
 
 - Soit cron OS (instructions doc dans `docs/`), soit goroutine dans [server.go](apps/go-api/internal/api/server.go) avec `time.Ticker(30*24*time.Hour)`.
-- Drain de la queue + re-fetch des `is_active = true` pour tous les `title_slug` enregistrés.
+- Drain de la queue + re-fetch des `is_active = true` pour tous les `title_slug` enregistrés (toutes langues).
+
+### Phase K — Cleanup post-migration (1 commit, conditionnel)
+
+À ouvrir uniquement après confirmation que l'UI consomme exclusivement le catalogue (typiquement quelques semaines après Phase I).
+
+- Supprimer les colonnes `match_registry.{pair_name_fr, map_name_fr, playlist_name_fr}` (jamais peuplées, info portée par catalogue via FK).
+- Auditer le code Python `resolve_display_mode`, `resolve_weapon_display`, etc. pour identifier les call sites encore actifs côté UI legacy. Migration ou suppression selon le statut Streamlit/Go de chaque page.
+- Migration des matchs Python historiques `mode_category='Fiesta'` → `'SuperFiesta'` ou `'HuskyRaid'` selon le préfixe pair_name (cf. décision ouverte #9). UPDATE one-shot avec snapshot avant/après.
+- Tests : aucune régression UI, parité d'affichage avant/après cleanup, comptes catégories cohérents.
 
 ---
 
@@ -591,7 +816,10 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 | 7 | Image map (`maps_catalog.image_url`) | **Tranché 2026-04-30** : peuplement dès Phase F via `assetResolver.Resolve(KindMapImage, ...)`. Cohérent avec home_repo.go pour les assets Spartan. NULL si GameCMS down → retry au refresh mensuel. |
 | 8 | Faut-il exposer `mode_label` comme dimension de filtre, ou seulement `mode_category` | **Tranché 2026-04-30 (§4quater)** : exposer les deux comme dimensions parallèles. La catégorie n'est pas une "famille de mode" mais une "famille de playlist" (Arena/Tactical/Assault → Assassin) ; un filtre `mode_label = 'Slayer'` est nécessaire pour regrouper les ~561 matchs Slayer-likes répartis sur 3 catégories. |
 | 9 | Migration des matchs Python "Fiesta" vers les bonnes catégories Go (SuperFiesta, HuskyRaid) | **Hors scope catalogue** mais dépendance à signaler. Cf. §4ter.7 : 78 % des `mode_category='Fiesta'` actuels sont en réalité Super Fiesta. Migration one-shot à intégrer dans la phase qui passe le sync en Go. |
-| 10 | Hydratation FR au catalogue : double fetch `lang=en` + `lang=fr`, ou fetch EN seul + fallback sur `mode_name_tr`/`mode_pair_overrides` | Reco : double fetch DiscoveryUGC + fallback tables si null. Coût marginal négligeable (1 round-trip de plus par asset, fait une fois). Cf. §4ter.8. |
+| 10 | Hydratation FR au catalogue : double fetch `lang=en` + `lang=fr`, ou fetch EN seul + fallback sur `mode_name_tr`/`mode_pair_overrides` | **Tranché 2026-04-30 (§4sexies)** : multi-langues complet (~14 langues DiscoveryUGC), persistance dans `asset_translations` + `pair_mode_label_translations`. Schéma rendu DRY (une seule colonne `name_canonical` inline + JOIN sur tables traductions). |
+| 11 | Format des règles `mode_category` : code Go enum-like vs TOML | **Tranché 2026-04-30 (§4cinquies)** : option (c) — TOML `mode_category_rules.toml` + auto-détection des préfixes inconnus via table `unknown_prefix_candidates` + alerting Discord au seuil ≥5. Validation au boot pour cohérence enum Go ↔ TOML. |
+| 12 | Architecture i18n : colonnes inline vs table dédiée | **Tranché 2026-04-30 (§4sexies)** : `name_canonical` (EN) inline pour debug + lookup rapide, autres langues dans `asset_translations` (existante, multi-lang native), labels normalisés dans `pair_mode_label_translations` (nouvelle, dédiée). Documenté dans skill `halo-i18n` pour discoverability. |
+| 13 | Cleanup des colonnes `_fr` de `match_registry` | **Tranché 2026-04-30 (§4sexies.5)** : Phase K conditionnelle, après confirmation UI migrée. Pas bloquant pour le catalogue. |
 
 ---
 
@@ -652,8 +880,9 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 
 ### Couche normalisation modes Halo (à consommer, pas réinventer)
 - [apps/go-api/internal/analysis/mode_label.go](apps/go-api/internal/analysis/mode_label.go) — `NormalizeModeLabel(raw, mapLabels...)` consommée par l'adapter Halo (Phase D)
-- [apps/go-api/internal/analysis/mode_category.go](apps/go-api/internal/analysis/mode_category.go) — `InferModeCategoryFromPairName(pairName)` consommée par l'adapter Halo (Phase D), enum 8 valeurs
+- [apps/go-api/internal/analysis/mode_category.go](apps/go-api/internal/analysis/mode_category.go) — `InferModeCategoryFromPairName(pairName)` consommée par l'adapter Halo (Phase D), refactoré en Phase D pour charger les règles depuis TOML
 - Skill projet : `.claude/skills/halo-modes/SKILL.md` — conventions de normalisation (2 niveaux orthogonaux, divergences assumées vs Python v7)
+- Skill projet : `.claude/skills/halo-i18n/SKILL.md` — **où sont les traductions, quelles langues, anti-patterns à éviter**. Référence prioritaire pour tout PR touchant aux traductions.
 
 ### Code Python à porter (logique éprouvée)
 - [src/analysis/playlist_groups.py](src/analysis/playlist_groups.py) — Heuristiques de classification `experience` (à porter vers TOML Halo)
