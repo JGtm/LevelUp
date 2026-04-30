@@ -1,0 +1,352 @@
+# =============================================================================
+# Résultats par mode — barres empilées verticales (W/L/T/DNF)
+# =============================================================================
+# Affiché dans la colonne DROITE de la section "Résultats par carte et mode".
+# Identique à `synthesis.01` (par carte) mais sur la colonne `_mode_short`,
+# obtenue en extrayant la partie après " : " du libellé de mode.
+# Exemple : "Arène : Assassin" → "Assassin", regroupant ainsi les variantes
+# de modes par leur nom court.
+# =============================================================================
+
+id: "synthesis.02"
+title: "Résultats par mode"
+page: synthesis
+section: "Résultats par carte et mode"
+source_function: "src/visualization/distributions_outcomes.py::plot_stacked_outcomes_by_category"
+source_helpers:
+  - "src/visualization/_distributions_outcomes_helpers.py::build_outcome_pivot"
+  - "src/visualization/_distributions_outcomes_helpers.py::add_outcome_traces"
+  - "src/visualization/_distributions_outcomes_helpers.py::_add_sparse_bar_trace"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+  - "src/visualization/theme.py::get_legend_horizontal_bottom"
+  - "src/ui/pages/win_loss.py::_render_map_mode_breakdown"
+fragment: true
+chart_kind: "stacked_bar"
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null
+  input_dataframe:
+    required_columns: [match_id, outcome]
+    mode_column_resolution:                          # win_loss.py:131-135 — fallback en cascade
+      preferred: "mode_ui"
+      fallbacks: ["mode_category", "pair_name"]
+    polars_dtype_hints:
+      match_id: "String"
+      outcome: "Int64"
+      mode_ui: "String"
+      mode_category: "String"
+      pair_name: "String"
+  call_args:
+    category_col: "_mode_short"                      # nom temporaire généré par la transformation
+    min_matches: 1
+    sort_by: "total"
+    max_categories: 10                               # /!\ DIFFÉRENT de 01 (qui est à 12)
+  call_args_semantics:
+    min_matches: "exclut les modes avec total < min_matches après pivot"
+    sort_by: "total | wins | losses | win_rate | name"
+    max_categories: "top 10 modes après tri"
+  filters_applied: [date_range, period_selector]
+
+  transformations:
+    - description: "Résolution de la colonne de mode source (cascade)"
+      polars: |
+        mode_col = "mode_ui" if "mode_ui" in dff.columns
+                   else "mode_category" if "mode_category" in dff.columns
+                   else "pair_name"
+      sql_duckdb: |
+        -- Côté Go : choisir la colonne disponible dans le SELECT.
+        -- En pratique sur v7, mode_ui est la colonne canonique, calculée par le service de modes.
+        SELECT COALESCE(mode_ui, mode_category, pair_name) AS mode_source FROM ...
+
+    - description: "Extraction du nom de mode court (après ' : ')"
+      polars: |
+        dff_mode = dff.with_columns(
+          pl.col(mode_col)
+            .map_elements(
+              lambda s: s.split(" : ", 1)[1] if isinstance(s, str) and " : " in s else s,
+              return_dtype=pl.String,
+            )
+            .alias("_mode_short")
+        )
+      sql_duckdb: |
+        -- DuckDB string_split + list indexing
+        SELECT
+          CASE
+            WHEN mode_source LIKE '% : %'
+              THEN regexp_replace(mode_source, '^[^:]+ : ', '')
+            ELSE mode_source
+          END AS _mode_short,
+          ...
+      detail: |
+        Ce regroupement est volontaire : "Arène : Assassin", "Big Team : Assassin" et "Quickplay : Assassin"
+        sont fusionnés sous "Assassin" pour donner une vue agrégée par TYPE de mode plutôt que par
+        playlist. Cette logique vit côté UI Python ; en Go elle migrera côté SQL pour bénéficier de
+        l'agrégation native (et éviter de transporter 1 ligne par match jusqu'au client).
+
+    - description: "Drop des lignes sans catégorie ou outcome (idem chart 01)"
+      polars: 'd = ensure_polars(df).drop_nulls(subset=["_mode_short", "outcome"])'
+      sql_duckdb: "WHERE _mode_short IS NOT NULL AND outcome IS NOT NULL"
+
+    - description: "Pivot des outcomes par catégorie (idem chart 01)"
+      polars: |
+        pivot = (d.group_by("_mode_short", "outcome")
+                  .agg(pl.col("match_id").count().alias("count"))
+                  .pivot(on="outcome", index="_mode_short", values="count")
+                  .fill_null(0))
+      sql_duckdb: |
+        -- Combiné avec la transformation _mode_short en CTE :
+        WITH modes AS (
+          SELECT
+            CASE WHEN mode_source LIKE '% : %'
+                 THEN regexp_replace(mode_source, '^[^:]+ : ', '')
+                 ELSE mode_source END AS _mode_short,
+            outcome
+          FROM match_participants
+          WHERE xuid = ? AND start_time >= ?
+            AND mode_source IS NOT NULL AND outcome IS NOT NULL
+        )
+        SELECT
+          _mode_short AS category,
+          COUNT(*) FILTER (WHERE outcome = 2) AS wins,
+          COUNT(*) FILTER (WHERE outcome = 3) AS losses,
+          COUNT(*) FILTER (WHERE outcome = 1) AS ties,
+          COUNT(*) FILTER (WHERE outcome = 4) AS left,
+          COUNT(*)                              AS total,
+          (COUNT(*) FILTER (WHERE outcome = 2)) * 1.0 / NULLIF(COUNT(*), 0) AS win_rate
+        FROM modes
+        GROUP BY _mode_short
+        HAVING COUNT(*) >= ?              -- min_matches
+        ORDER BY total DESC               -- ou autre selon sort_by
+        LIMIT 10;                          -- max_categories=10 pour ce chart
+
+    - description: "Si pivot vide après filtres → return None (caller affiche st.info)"
+      polars: "if pivot.is_empty(): return None"
+      sql_duckdb: "-- Côté Go : 0 lignes → état vide"
+
+# === TRACES ===
+# Identiques au chart 01 (même fonction productrice). Cf. 01_outcomes_by_map.yaml pour les détails.
+traces:
+  - id: "wins"
+    name: "{{viz_t.trace_wins}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.green}}"
+    color_token: "HALO_COLORS.green"
+    orientation: v
+    opacity: 0.85
+    customdata:
+      fields: [win_rate]
+      schema:
+        win_rate: "float (0.0–1.0)"
+    text_data:
+      source: "values"
+      template: "{value:d}"
+      empty_when: null
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_wins}}: %{y}<br>{{viz_t.hover_win_rate}}: %{customdata:.1%}<extra></extra>"
+    show_when: "always"
+
+  - id: "losses"
+    name: "{{viz_t.trace_losses}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.red}}"
+    color_token: "HALO_COLORS.red"
+    orientation: v
+    opacity: 0.75
+    text_data:
+      source: "values"
+      template: "{value:d}"
+      empty_when: null
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_losses}}: %{y}<extra></extra>"
+    show_when: "always"
+
+  - id: "ties"
+    name: "{{viz_t.trace_ties}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.amber}}"
+    color_token: "HALO_COLORS.amber"
+    orientation: v
+    opacity: 0.70
+    text_data:
+      source: "values"
+      template: "{value:d}"
+      empty_when: "value == 0"
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_ties}}: %{y}<extra></extra>"
+    show_when: "sum(values) > 0"
+
+  - id: "left"
+    name: "{{viz_t.trace_unfinished}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.violet}}"
+    color_token: "HALO_COLORS.violet"
+    orientation: v
+    opacity: 0.60
+    text_data:
+      source: "values"
+      template: "{value:d}"
+      empty_when: "value == 0"
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_unfinished}}: %{y}<extra></extra>"
+    show_when: "sum(values) > 0"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: null
+    expression: null
+    branches:
+      - {when: "pivot.height > 10", height: 520}
+      - {else: true, height: 360}
+  margin: {l: 40, r: 20, t: 30, b: 100}             # première passe par plot_stacked_outcomes_by_category
+  barmode: "stack"
+  bargap: 0.15
+  hovermode: null
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  legend_override:                                   # win_loss.py:163 — second update_layout par caller
+    orientation: h
+    yanchor: bottom
+    y: 1.02
+    xanchor: right
+    x: 1
+  margin_override: {l: 40, r: 20, t: 30, b: 60}     # /!\ DIFFÉRENT de 01 (qui passe à b:80)
+
+  xaxis:
+    type: "category"
+    title: ""
+    tickformat: null
+    tickangle: 45
+    range: null
+    autorange: null
+    automargin: false
+    showticklabels: true
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.trace_matches}}"
+    range: null
+    autorange: null
+    automargin: false
+
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    ('mode_ui' in dff.columns OR 'mode_category' in dff.columns OR 'pair_name' in dff.columns)
+    AND 'outcome' in dff.columns
+    AND not dff.is_empty()
+    AND plot_stacked_outcomes_by_category(...) is not None
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.insufficient_data_chart}}"
+    triggered_by:
+      - "aucune des colonnes mode_ui / mode_category / pair_name présente"
+      - "outcome absent des colonnes"
+      - "df vide après drop_nulls"
+      - "build_outcome_pivot retourne None (toutes catégories filtrées par min_matches)"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: [synthesis_period]
+  fragment_isolation: true
+  layout_position:
+    container: "st.columns(2)"
+    column_index: 1                                  # colonne DROITE
+    column_label: "{{t.wl_by_mode}}"
+  preceded_by:
+    - "(divider et subheader partagés avec le chart 01 dans le même bloc fragment)"
+    - "st.markdown(f'##### {t(\"wl_by_mode\")}')"
+
+# === CONTROLS ===
+controls:
+  - id: "synthesis_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_page"
+    scope: "page"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Filtre dff en amont sur start_time. Affecte tous les charts."
+    api_param_mapping:
+      query_param: "period"
+      values_passthrough: true
+    requires_refetch: false
+    affects_charts: ["synthesis.01", "synthesis.02", "synthesis.03", "synthesis.04", "synthesis.05"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_wins
+    - trace_losses
+    - trace_ties
+    - trace_unfinished
+    - hover_win_rate
+    - trace_matches
+  t:
+    - wl_results_by_map_mode
+    - wl_by_mode
+    - insufficient_data_chart
+    - encounters_period_label
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  sample_dataset: null
+  fig_dict_path: null
+  ast_extracted_fields: []
+  runtime_extracted_fields: []
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Spec dupliquée vs spec partagée avec 01"
+      why: |
+        Tentation : factoriser 01 et 02 dans une seule spec puisqu'ils utilisent la même fonction.
+        Choix retenu : duplication. Trois raisons :
+        (1) max_categories diffère (12 vs 10), margin override b diffère (80 vs 60).
+        (2) Le 02 a une transformation supplémentaire (_mode_short) qui n'existe pas sur 01.
+        (3) En Go API, ce seront probablement DEUX endpoints distincts (/synthesis/by-map et
+            /synthesis/by-mode) avec leur propre SQL. La duplication YAML reflète la cible.
+
+    - decision: "Transformation `_mode_short` documentée en pseudo-SQL DuckDB"
+      why: |
+        Le code Python utilise `str.split(" : ", 1)[1]`. DuckDB n'a pas exactement cette syntaxe ;
+        j'ai proposé `regexp_replace(mode_source, '^[^:]+ : ', '')` qui retire tout ce qui
+        précède et inclut " : ". Alternative : `string_split(mode_source, ' : ')[2]` (DuckDB
+        list indexing 1-based). À valider lors de l'implémentation Go avec une vraie requête.
+
+    - decision: "Différence max_categories 10 vs 12 explicitée dans call_args"
+      why: |
+        Subtilité facile à manquer en relisant le code : 12 cartes, 10 modes. La raison probable :
+        il y a moins de modes distincts que de cartes dans Halo Infinite (~10-15 modes vs
+        ~25 cartes), donc 10 couvre déjà l'essentiel sans tronquer. Ce n'est pas documenté côté
+        Python mais c'est cohérent avec le domaine.
+
+    - decision: "margin_override.b = 60 (mode) vs 80 (carte)"
+      why: |
+        Petite asymétrie dans win_loss.py:120 vs win_loss.py:163. Probablement parce que les
+        labels de modes sont plus courts en moyenne ("Assassin", "CTF") que les noms de cartes
+        ("Behemoth", "Aquarius") → moins de hauteur nécessaire pour les labels rotation 45°.
+        Documenté pour ne pas l'aplatir lors du portage.

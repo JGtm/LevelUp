@@ -1,0 +1,214 @@
+# =============================================================================
+# Histogramme de cadence kills (bicolore + moyennes glissantes)
+# =============================================================================
+# 4 traces : 2 séries Bar (kills mon équipe + kills ennemis) par bucket de
+# 15s/30s/60s, et 2 Scatter pour les moyennes glissantes (window=3) avec
+# halo blanc sous les courbes (effet outline).
+# Sélecteur de granularité au-dessus du chart : segmented_control [15, 30, 60].
+# =============================================================================
+
+id: "match_view.11"
+title: "Cadence kills par tranche de temps"
+page: match_view
+section: "Onglet Combat — Cadence"
+source_function: "src/ui/pages/match_view_players_timeline.py::render_match_cadence_section"
+source_helpers:
+  - "src/visualization/_cadence_histogram.py::plot_match_cadence_histogram"
+  - "src/visualization/_cadence_histogram.py::_add_cadence_traces"
+  - "src/analysis/match_cadence.py::compute_cadence_buckets"
+  - "src/analysis/match_cadence.py::compute_cadence_moving_avg"
+fragment: true                                                # @fragment_if_available sur render_match_cadence_section
+chart_kind: grouped_bar                                        # bars (mode group/stack TBD via barmode)
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_highlight_events_fn(...) + compute_cadence_buckets(he, xuid_to_team, my_team_id, duration_s, bucket_s)"
+  input_dataframe:
+    required_fields:
+      highlight_events: "list[dict] avec event_type, time_ms, xuid"
+      xuid_to_team: "dict {xuid → team_id}"
+      my_team_id: "int"
+      duration_s: "float"
+      bucket_s: "int (15, 30, ou 60)"
+  call_args:
+    bucket_s_default: 15
+    height_px: 320
+    ma_window: 3                                              # /!\ moyenne glissante sur 3 buckets
+  filters_applied: [bucket_size_selector]
+  timezone: "match_clock"
+
+  transformations:
+    - description: "Bucketisation des kills par tranche de bucket_s secondes"
+      polars: |
+        # CadenceBucket dataclass : {start_s, end_s, my_kills, enemy_kills, my_team_id_winner}
+        buckets = compute_cadence_buckets(he, xuid_to_team, my_team_id, duration_s, bucket_s)
+
+    - description: "Calcul des moyennes glissantes (window=3) par série"
+      polars: |
+        ma_my = compute_cadence_moving_avg(buckets, window=3, field='my_kills')
+        ma_enemy = compute_cadence_moving_avg(buckets, window=3, field='enemy_kills')
+
+    - description: "Format des labels temporels x_labels (mm:ss du bucket center)"
+      polars: |
+        x_labels = [_format_time_label(b.start_s + bucket_s/2) for b in buckets]
+
+# === TRACES ===
+traces:
+  # Trace 1 : bars kills mon équipe
+  - id: my_team_kills
+    name: "{{viz_t.trace_cadence_my_team}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{MY_TEAM_RGBA}}"                                # rgba(0, 114, 178, 0.80)
+    marker_line:
+      width: 1
+      color: "{{MY_TEAM_COLOR}}"                              # #0072B2
+    hovertemplate: "%{y} {{viz_t.hover_cadence_kills}}<extra></extra>"
+
+  # Trace 2 : bars kills ennemis
+  - id: enemy_kills
+    name: "{{viz_t.trace_cadence_enemy}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{ENEMY_RGBA}}"                                   # rgba(213, 94, 0, 0.80)
+    marker_line:
+      width: 1
+      color: "{{ENEMY_COLOR}}"                                # #D55E00
+    hovertemplate: "%{y} {{viz_t.hover_cadence_kills}}<extra></extra>"
+
+  # Traces 3 & 4 : halos blancs (outline) sous les MA — width 5, opacité 0.8, hoverinfo skip
+  - id: ma_outline_my
+    name: ""
+    type: go.Scatter
+    chart_role: overlay
+    mode: "lines"
+    line: {color: "rgba(255, 255, 255, 0.8)", width: 5}
+    showlegend: false
+    hoverinfo: "skip"
+
+  - id: ma_outline_enemy
+    name: ""
+    type: go.Scatter
+    chart_role: overlay
+    mode: "lines"
+    line: {color: "rgba(255, 255, 255, 0.8)", width: 5}
+    showlegend: false
+    hoverinfo: "skip"
+
+  # Traces 5 & 6 : MA visibles
+  - id: ma_my_team
+    name: "{{viz_t.trace_cadence_ma_my_team}}"
+    type: go.Scatter
+    chart_role: secondary
+    mode: "lines"
+    line:
+      color: "rgba(0, 114, 178, 0.85)"                        # MY_TEAM bleu semi-opaque
+      width: 3
+    hovertemplate: "%{y:.1f}<extra></extra>"
+
+  - id: ma_enemy
+    name: "{{viz_t.trace_cadence_ma_enemy}}"
+    type: go.Scatter
+    chart_role: secondary
+    mode: "lines"
+    line:
+      color: "rgba(213, 94, 0, 0.85)"                         # ENEMY vermillon semi-opaque
+      width: 3
+    hovertemplate: "%{y:.1f}<extra></extra>"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 320                                                 # PlotOptions.height_px
+    expression: null
+    branches: []
+  margin: {l: 40, r: 20, t: 30, b: 60}
+  barmode: "stack"                                              # /!\ EMPILÉES — kills mon équipe + kills ennemis cumulés par bucket
+  bargap: 0.15
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  xaxis:
+    type: "category"
+    title: "{{viz_t.axis_match_time}}"
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.trace_kills}}"
+    rangemode: "tozero"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    not is_firefight
+    AND highlight_events table exists
+    AND len(he) > 0
+    AND my_team_id is not None
+    AND len(kill_events) >= 3
+  empty_state:
+    type: "st.info"
+    message: "{{t.mv_cadence_no_data}}"
+    triggered_by:
+      - "is_firefight → return early"
+      - "he vide ou < 3 kills → mv_cadence_no_data"
+      - "fig None → mv_cadence_no_data"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('mv_match_cadence'))"
+    - "(segmented_control granularité juste au-dessus)"
+
+# === CONTROLS ===
+controls:
+  - id: "cadence_bucket"                                       # clé : f'cadence_bucket_{match_id}'
+    label: "{{t.mv_cadence_granularity}}"
+    widget: "segmented_control"
+    position: "above_chart"
+    scope: "chart"
+    options:
+      values: [15, 30, 60]
+      labels_format: "{value}s"
+      default: 15
+    effect: "filter_dataset"
+    effect_detail: "Recalcule les buckets avec la nouvelle taille bucket_s"
+    requires_refetch: false                                    # re-bucket côté client si toutes les données déjà chargées
+    affects_charts: ["match_view.11"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_cadence_my_team
+    - trace_cadence_enemy
+    - trace_cadence_ma_my_team
+    - trace_cadence_ma_enemy
+    - hover_cadence_kills
+    - axis_match_time
+    - trace_kills
+  t:
+    - mv_match_cadence
+    - mv_cadence_no_data
+    - mv_cadence_granularity
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Halo blanc sous les MA via traces 'outline' fantômes (width 5, opacity 0.8)"
+      why: |
+        Plotly trick visuel : pour faire ressortir une courbe sur un fond chargé (les barres),
+        on dessine d'abord une trace épaisse blanche semi-transparente, puis la vraie courbe
+        plus fine par-dessus. Effet 'glow' qui donne plus de lisibilité aux MA.
+        ECharts equivalent : utiliser `series[i].lineStyle.shadowBlur` + `shadowColor` en blanc.
+
+    - decision: "Sélecteur de granularité 15/30/60 documenté comme control chart-level"
+      why: |
+        Trois niveaux de zoom temporel : 15s (très détaillé, ~30 buckets sur 8 min),
+        30s, 60s (vue grosse maille). Re-bucketing côté client si données complètes,
+        sinon refetch API. À documenter côté Go avec un endpoint paramétrable.

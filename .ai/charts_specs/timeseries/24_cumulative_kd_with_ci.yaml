@@ -1,0 +1,126 @@
+# =============================================================================
+# Cumulative K/D avec confidence band 90%
+# =============================================================================
+# Line cumulative_kd avec areaStyle (band ci_lower / ci_upper) qui SE RÉTRÉCIT
+# au fil des matchs (statistiquement plus de données = moins d'incertitude).
+# Hline référence à y=1.0 (K/D = 1 = neutre) en pointillés.
+# Markers V/D optionnels via _add_outcome_markers.
+# =============================================================================
+
+id: "timeseries.24"
+title: "Cumulative K/D avec CI 90%"
+page: timeseries
+section: "Onglet Avancé — K/D cumulé"
+display_order_in_tab: 4
+source_function: "src/visualization/_perf_progression.py::plot_cumulative_kd_with_ci"
+source_helpers:
+  - "src/visualization/_perf_progression.py::_add_kd_ci_traces"
+  - "src/visualization/_perf_progression.py::_add_outcome_markers"
+fragment: false
+chart_kind: line                                                # line + areaStyle CI
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_cumulative_kd_with_ci(dff) → DataFrame avec start_time, kd, cumulative_kd, ci_lower, ci_upper"
+  input_dataframe:
+    required_fields:
+      cumul_ci_df: [start_time, kd, cumulative_kd, ci_lower, ci_upper]
+  call_args:
+    height: 400
+    outcome_values: "list[int|None] — pour markers V/D optionnels"
+    lang: "fr | en"
+
+  constants:
+    ci_level: 0.90                                              # 90% (pas 95%)
+    baseline_y: 1.0                                             # K/D=1 = neutre
+
+# === TRACES ===
+traces:
+  - id: ci_band
+    type: scatter
+    mode: lines
+    fill: tonexty                                                # band entre 2 lignes
+    fillcolor: "rgba(KD color, 0.2)"
+    optional: false                                             # toujours affiché si compute OK
+  - id: cumulative_kd
+    type: scatter
+    mode: lines
+    color: "PERFORMANCE_COLORS.cumulative"
+    line_width: 3
+    name_i18n: "Cumulative K/D"
+  - id: per_match_kd
+    type: scatter
+    mode: markers
+    marker: { size: 4, opacity: 0.5 }
+    name_i18n: "K/D par match"
+    optional: true
+  - id: outcome_markers
+    type: "scatter or shapes"
+    via: "_add_outcome_markers"
+    optional: true                                               # ssi outcome_values fourni
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 400
+  hovermode: "x unified"
+  legend: { orientation: h, yanchor: bottom, y: 1.02, xanchor: center, x: 0.5 }
+  yaxis:
+    title_i18n: "{{viz_t.axis_kd_ratio}}"
+  xaxis:
+    title: "Match"
+  shapes:
+    - id: hline_baseline
+      type: line
+      y_field: 1.0
+      line: { dash: dash, color: "PERFORMANCE_COLORS.baseline" }
+      annotation:
+        text_i18n: "{{viz_t.label_target}} (1.0)"
+        position: right
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "cumul_ci_df non vide"
+  empty_state:
+    type: "annotation in figure"
+    triggered_by: ["cumul_ci_df.is_empty() → empty_no_data viz_t"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  followed_by:
+    - "_render_note(t('ts_note_ci'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - empty_no_data
+    - axis_kd_ratio
+    - label_target
+  t: ["ts_note_ci"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "CI 90% (pas 95%)"
+      why: |
+        Pour un dashboard d'analyse perso, 90% donne une bande plus étroite et lisible que 95%.
+        Le but n'est pas la rigueur statistique pour publication mais la lecture visuelle de
+        l'incertitude résiduelle. Documenté pour traçabilité.
+
+    - decision: "Hline y=1.0 référence en pointillés"
+      why: |
+        K/D = 1.0 est le seuil 'neutre' (autant de kills que de morts). Lecture immédiate :
+        au-dessus = positif, en-dessous = négatif. Couleur PERFORMANCE_COLORS.baseline (gris)
+        pour ne pas concurrencer la courbe principale.
+
+    - decision: "Bande CI qui se RÉTRÉCIT avec n matchs"
+      why: |
+        Plus on a de matchs, plus l'estimation du cumulative_kd est précise (CI ∝ 1/√n).
+        Visuellement la bande converge vers la ligne au fil du temps — pédagogie statistique
+        intégrée à la visualisation.

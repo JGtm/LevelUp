@@ -1,0 +1,233 @@
+{
+  "grid": {
+    "left": 40,
+    "right": 60,
+    "top": 30,
+    "bottom": 80,
+    "containLabel": false
+  },
+  "tooltip": {
+    "trigger": "axis",
+    "backgroundColor": "rgba(29, 35, 40, 0.96)",
+    "borderColor": "rgba(255, 255, 255, 0.12)",
+    "textStyle": {
+      "color": "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  "legend": {
+    "orient": "horizontal",
+    "bottom": 5,
+    "left": 0
+  },
+  "xAxis": {
+    "type": "category",
+    "splitLine": {
+      "show": true,
+      "lineStyle": {
+        "color": "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    "data": [
+      "2026-02-02",
+      "2026-02-09",
+      "2026-02-16",
+      "2026-02-23",
+      "2026-03-02",
+      "2026-03-09",
+      "2026-03-16",
+      "2026-03-23",
+      "2026-03-30",
+      "2026-04-06",
+      "2026-04-13",
+      "2026-04-20"
+    ]
+  },
+  "yAxis": [
+    {
+      "type": "value",
+      "splitLine": {
+        "show": true,
+        "lineStyle": {
+          "color": "rgba(255, 255, 255, 0.07)"
+        }
+      }
+    },
+    {
+      "name": "i18n:viz_t.axis_rate_pct",
+      "min": 0,
+      "max": 100,
+      "splitLine": {
+        "show": false
+      },
+      "position": "right"
+    }
+  ],
+  "series": [
+    {
+      "type": "bar",
+      "name": "Top {{call_args.top_n_ranks}}",
+      "stack": "total",
+      "data": [
+        {
+          "value": 3,
+          "top_rate": 20
+        },
+        {
+          "value": 5,
+          "top_rate": 33.3
+        },
+        {
+          "value": 2,
+          "top_rate": 12.5
+        },
+        {
+          "value": 4,
+          "top_rate": 26.7
+        },
+        {
+          "value": 6,
+          "top_rate": 40
+        },
+        {
+          "value": 3,
+          "top_rate": 18.8
+        },
+        {
+          "value": 4,
+          "top_rate": 25
+        },
+        {
+          "value": 5,
+          "top_rate": 31.3
+        },
+        {
+          "value": 7,
+          "top_rate": 46.7
+        },
+        {
+          "value": 3,
+          "top_rate": 18.8
+        },
+        {
+          "value": 4,
+          "top_rate": 25
+        },
+        {
+          "value": 5,
+          "top_rate": 33.3
+        }
+      ],
+      "itemStyle": {
+        "color": "#00DC82",
+        "opacity": 0.85
+      },
+      "label": {
+        "show": true,
+        "position": "inside",
+        "formatter": "[Function: params=>String(params.value)...]"
+      },
+      "tooltip": {
+        "formatter": "[Function: params=>{const period=params.name;return`${period}<br>Top: ${params.data.value}<...]"
+      }
+    },
+    {
+      "type": "bar",
+      "name": "i18n:viz_t.trace_others",
+      "stack": "total",
+      "data": [
+        {
+          "value": 12
+        },
+        {
+          "value": 10
+        },
+        {
+          "value": 14
+        },
+        {
+          "value": 11
+        },
+        {
+          "value": 9
+        },
+        {
+          "value": 13
+        },
+        {
+          "value": 12
+        },
+        {
+          "value": 11
+        },
+        {
+          "value": 8
+        },
+        {
+          "value": 13
+        },
+        {
+          "value": 12
+        },
+        {
+          "value": 10
+        }
+      ],
+      "itemStyle": {
+        "color": "#374151",
+        "opacity": 0.55
+      },
+      "label": {
+        "show": true,
+        "position": "inside",
+        "formatter": "[Function: params=>params.value>0?String(params.value):\"\"...]"
+      },
+      "tooltip": {
+        "formatter": "[Function: params=>{return`${params.name}<br>${traceName}: ${params.value}`}...]"
+      }
+    },
+    {
+      "type": "line",
+      "name": "i18n:viz_t.trace_top_rate",
+      "data": [
+        20,
+        33.3,
+        12.5,
+        26.7,
+        40,
+        18.8,
+        25,
+        31.3,
+        46.7,
+        18.8,
+        25,
+        33.3
+      ],
+      "yAxisIndex": 1,
+      "lineStyle": {
+        "color": "#FFB703",
+        "width": 2
+      },
+      "itemStyle": {
+        "color": "#FFB703"
+      },
+      "symbol": "circle",
+      "symbolSize": 6,
+      "smooth": false,
+      "tooltip": {
+        "formatter": "[Function: params=>{return`${params.name}<br>${traceName}: ${params.value.toFixed(1)}%`}...]"
+      }
+    }
+  ],
+  "backgroundColor": "rgba(29, 35, 40, 1.0)",
+  "textStyle": {
+    "color": "rgba(245, 248, 255, 0.92)",
+    "fontSize": 13
+  },
+  "__meta": {
+    "spec_id": "synthesis.04",
+    "chart_kind": "grouped_bar",
+    "source_function": "src/visualization/distributions_outcomes.py::plot_matches_at_top_by_week",
+    "warnings": [],
+    "height": 360
+  }
+}

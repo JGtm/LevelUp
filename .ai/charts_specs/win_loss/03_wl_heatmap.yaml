@@ -1,0 +1,44 @@
+# =============================================================================
+# Win/Loss page · Section 3 · Win/Loss heatmap (jour × heure)
+# =============================================================================
+# Wrapper réutilisant synthesis.03 / timeseries.27.
+# =============================================================================
+
+id: "win_loss.03"
+title: "Win/Loss heatmap — jour × heure"
+page: win_loss
+section: "Section 3 (linéaire)"
+display_order_in_page: 3
+source_function: "src/ui/pages/win_loss.py::_render_heatmap_section"
+source_helpers:
+  - "src/visualization::plot_win_ratio_heatmap"
+chart_kind: heatmap
+
+data:
+  reuses:
+    of: ["synthesis.03", "timeseries.27"]
+    differences: "Aucune — même fonction plot_win_ratio_heatmap(min_matches=1)."
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 380 }
+
+display:
+  shown_when: "start_time + outcome ∈ dff.columns"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_heatmap_title'))"
+
+i18n_keys:
+  viz_t: []
+  t: ["wl_heatmap_title", "insufficient_data_chart"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]

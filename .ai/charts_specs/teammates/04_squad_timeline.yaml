@@ -1,0 +1,156 @@
+# =============================================================================
+# Squad performance timeline (subplots avec MMR sur Y2)
+# =============================================================================
+# Bar chart performance d'escouade par session (bucket_label sur X) avec :
+#   - Bars perf colorées dynamiquement selon _bar_color (vert/cyan/ambre/...)
+#   - Trace winrate optionnelle si has_winrate
+#   - Trace MMR moyen équipe sur Y secondaire si has_mmr
+# Hovermode 'x unified' avec hovertext riche (perf, count, wins/losses).
+# =============================================================================
+
+id: "teammates.04"
+title: "Performance d'escouade par session"
+page: teammates
+section: "Onglet Synergies — Squad timeline"
+source_function: "src/visualization/_squad_timeline.py::plot_squad_performance_timeline"
+source_helpers:
+  - "src/visualization/_squad_timeline.py::_bar_color"
+  - "src/visualization/_squad_timeline.py::_build_hover_texts"
+  - "src/visualization/_squad_timeline.py::_add_winrate_trace"
+  - "src/visualization/_squad_timeline.py::_add_mmr_trace"
+  - "src/visualization/_squad_timeline.py::_configure_axes"
+  - "src/ui/pages/teammates_map_charts.py::render_squad_timeline (caller)"
+fragment: false
+chart_kind: line                                                # bars + line(s) — converter line gère subplots Y2
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_squad_session_stats(series, db_path)"
+  input_dataframe:
+    required_columns: [bucket_label, squad_perf, match_count]
+    optional_columns: [win_rate, wins, losses, team_mmr_avg]
+  call_args:
+    lang: "fr"
+  filters_applied: []
+
+  transformations:
+    - description: "Détection optionnelle des colonnes (winrate / MMR)"
+      polars: |
+        has_mmr = 'team_mmr_avg' in d.columns and d['team_mmr_avg'].drop_nulls().len() > 0
+        has_winrate = 'win_rate' in d.columns and d['win_rate'].drop_nulls().len() > 0
+
+    - description: "Couleurs des barres dynamiques selon perf via _bar_color"
+      polars: |
+        bar_colors = [_bar_color(v) for v in perf]
+        # _bar_color(v) : palette excellent→good→average→below→poor (cf. SCORE_THRESHOLDS)
+
+    - description: "Hover texts riches (perf + count + win/loss)"
+      polars: |
+        hover_texts = _build_hover_texts(x_labels, perf, counts, lang, (wins, losses))
+
+# === TRACES ===
+traces:
+  # Trace 1 : Bar perf squad (toujours)
+  - id: "squad_perf_bars"
+    name: "{{viz_t.trace_squad_perf}}"
+    type: go.Bar
+    chart_role: primary
+    color_per_bar: "computed via _bar_color(perf_value)"
+    opacity: 0.85                                                # PLOT_CONFIG.bar_opacity
+    secondary_y: false
+    hovertemplate: "%{hovertext}<extra></extra>"
+    show_when: "always"
+
+  # Trace 2 : Winrate (line) — conditionnel
+  - id: "winrate_line"
+    name: "{{viz_t.trace_winrate}}"
+    type: go.Scatter
+    chart_role: secondary
+    mode: "lines+markers"
+    secondary_y: false                                            # /!\ même Y que les bars (winrate aussi 0-100)
+    show_when: "has_winrate == True"
+
+  # Trace 3 : MMR moyen équipe (line sur Y2) — conditionnel
+  - id: "team_mmr_line"
+    name: "{{viz_t.trace_team_mmr}}"
+    type: go.Scatter
+    chart_role: secondary
+    mode: "lines+markers"
+    line: {dash: "dot"}                                          # pointillés pour distinguer
+    secondary_y: true                                             # /!\ axe Y2 (range MMR ~800-2400)
+    show_when: "has_mmr == True"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360                                                    # PLOT_CONFIG.default_height
+  margin: {l: 40, r: 60, t: 60, b: 90}                            # r=60 et t=60 pour Y2 + annotations
+  hovermode: "x unified"
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  xaxis:
+    type: "category"
+    detail: "x_idx (indices) avec ticks labels = bucket_label (session names)"
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.axis_squad_perf}}"
+    detail: "Range 0-100 pour perf et winrate%"
+
+  yaxis2:
+    title: "{{viz_t.axis_team_mmr}}"
+    overlaying: "y"
+    side: "right"
+    showgrid: false
+    visible_when: "has_mmr"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df is not None AND 'squad_perf' in df.columns AND not df.is_empty()"
+  empty_state:
+    type: none
+    triggered_by: ["df vide ou colonne squad_perf absente"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by: ["(rendu juste après render_squad_heatmap dans onglet Synergies)"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_squad_perf
+    - trace_winrate
+    - trace_team_mmr
+    - axis_squad_perf
+    - axis_team_mmr
+  t: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Subplots avec secondary_y pour MMR uniquement si has_mmr"
+      why: |
+        Le chart est construit avec `make_subplots(specs=[[{secondary_y: has_mmr}]])` —
+        l'axe Y2 n'est ajouté QUE si team_mmr_avg est dispo. ECharts equivalent : conditionnel
+        `yAxis: [...]` à 2 entrées vs 1 selon présence des données. Le converter line doit
+        détecter ce flag et ajouter yAxisIndex:1 sur la trace MMR.
+
+    - decision: "Couleur des bars dynamique par perf_value (per-bar coloring)"
+      why: |
+        `_bar_color(v)` mappe la valeur perf à une couleur (excellent vert, good cyan, ...).
+        Donc data[i].itemStyle.color différent par bar selon sa valeur. Cohérent avec le pattern
+        per-bar coloring déjà utilisé sur match_view.04 (spree). À porter via data[i].itemStyle.
+
+    - decision: "Hovermode 'x unified' avec hovertext riche"
+      why: |
+        Au survol d'une session, on veut voir TOUS les bars/lignes de cette session affichés
+        ensemble (perf, winrate, MMR). 'x unified' Plotly = ECharts `tooltip.trigger: 'axis'`.
+        Le contenu riche (perf + count + W/L) est pré-calculé via _build_hover_texts.

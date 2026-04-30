@@ -1,0 +1,123 @@
+# =============================================================================
+# Médailles du match (grille)
+# =============================================================================
+# Grille centrée 8 colonnes max via render_medals_grid affichant toutes les
+# médailles obtenues pendant le match. Chaque tile = image médaille + count.
+# Sortie triée par (count DESC, label ASC).
+# =============================================================================
+
+id: "match_view.16"
+title: "Médailles obtenues dans ce match"
+page: match_view
+section: "Onglet Citations & Médailles — Médailles"
+source_function: "src/ui/pages/match_view_citations.py::render_medals_tab"
+source_helpers:
+  - "src/ui/medals_grid.py::render_medals_grid"                   # à confirmer si chemin correct
+  - "src/data/medal_translations.py::load_medal_name_maps"
+  - "src/data/medal_translations.py::load_medal_description_map"
+fragment: false
+chart_kind: composite_block
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "params.load_match_medals_fn(db_path, match_id, xuid)"
+  input_dataframe:
+    required_fields:
+      medals_last:
+        - name_id      # int (ID interne médaille Halo)
+        - count        # int (nombre de fois obtenue dans CE match)
+  call_args:
+    cols_per_row: 8
+    center: true
+  filters_applied: []
+
+  transformations:
+    - description: "Construction du DataFrame depuis medals_last"
+      polars: "md_df = pl.DataFrame(medals_last)"
+
+    - description: "Résolution des labels de médailles (FR + EN map fusionnés)"
+      polars: |
+        _fr_map, _en_map = load_medal_name_maps()
+        _medal_map = {**en_map, **fr_map}  # FR écrase EN si conflit
+        md_df = md_df.with_columns(
+          pl.col("name_id").cast(Utf8)
+            .replace_strict(_medal_map, default=None)
+            .fill_null(t("mv_medal_fallback", n="") + " " + name_id)
+            .alias("label")
+        )
+      sql_duckdb: |
+        -- Côté Go : table de mapping name_id → (label_fr, label_en) en référentiel statique.
+
+    - description: "Tri par count DESC puis label ASC"
+      polars: 'md_df.sort(["count", "label"], descending=[True, False])'
+
+    - description: "Chargement des descriptions (tooltip au hover)"
+      polars: |
+        _desc_map = load_medal_description_map(lang)
+        descriptions = {int(k): v for k, v in _desc_map.items()}
+
+# === COMPOSITE BLOCK ===
+composite_block:
+  layout_grid:
+    type: "centered_grid"
+    cols_per_row: 8
+    center: true
+
+  tile_template:
+    structure: |
+      <div class="medal-tile" title="<description>">
+        <img src="data:image/png;base64,<base64>" alt="<label>" width="64" height="64">
+        <div class="medal-count">×<count></div>
+        <div class="medal-label"><label></div>
+      </div>
+    image_size: "64×64 px"
+    image_format: "data URI base64"
+
+  rendered_via: "render_medals_grid(items, cols_per_row=8, center=True, lang, descriptions)"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "medals_last is not None AND len(medals_last) > 0"
+  empty_state:
+    type: "st.info"
+    message: "{{t.mv_medals_no_data}}"
+    triggered_by: ["medals_last vide ou None"]
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('mv_medals'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - mv_medals
+    - mv_medals_no_data
+    - mv_medal_fallback                                          # paramétré : n=name_id
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Composant `render_medals_grid` partagé (réutilisable)"
+      why: |
+        Le composant `render_medals_grid` est probablement réutilisé ailleurs (page Citations
+        globales, peut-être le scoreboard expand). Le YAML ne décrit pas son interne en détail,
+        juste l'interface (items + cols_per_row + center + lang + descriptions).
+        Côté React : composant <MedalsGrid medals={...} center={true} cols={8}/> partagé.
+
+    - decision: "Fusion FR + EN map avec FR prioritaire"
+      why: |
+        Le code fait `{**_en_map, **_fr_map}` → en cas de doublon, FR écrase EN. Comportement
+        attendu pour un utilisateur FR. Le fallback final (si name_id ne mappe ni en EN ni en
+        FR) est `t('mv_medal_fallback', n=name_id)` → ex "Médaille #1234".
+
+    - decision: "Tri par count DESC puis label ASC"
+      why: |
+        Affiche les médailles les plus obtenues en premier (focus naturel utilisateur).
+        Tie-break sur le label alphabétique pour que l'ordre soit déterministe.

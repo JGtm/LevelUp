@@ -1,0 +1,158 @@
+# =============================================================================
+# Heatmap performance par joueur × carte
+# =============================================================================
+# Heatmap 2D : axe Y = membres de l'escouade (moi + amis), axe X = top 15
+# cartes par fréquence, valeur Z = performance moyenne (0-100) du joueur sur
+# cette carte. Colorscale discrète selon seuils performance.
+# =============================================================================
+
+id: "teammates.03"
+title: "Performance par joueur × carte (top 15)"
+page: teammates
+section: "Onglet Synergies — Squad heatmap"
+source_function: "src/visualization/_heatmap_squad.py::plot_squad_map_heatmap"
+source_helpers:
+  - "src/visualization/_heatmap_squad.py::_top_maps_by_frequency"
+  - "src/visualization/_heatmap_squad.py::_order_maps_by_first_seen"
+  - "src/visualization/_heatmap_squad.py::_build_perf_matrix"
+  - "src/visualization/_heatmap_squad.py::_discrete_perf_colorscale"
+  - "src/analysis::compute_map_breakdown"
+  - "src/ui/pages/teammates_map_charts.py::render_squad_heatmap (caller)"
+fragment: false
+chart_kind: heatmap
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_map_breakdown(df) par joueur"
+  input_dataframe:
+    series: "list[(name, df_matchs)] — 1 entrée par membre (moi + amis)"
+  call_args:
+    top_n_maps: 15                                              # /!\ top 15 cartes par fréquence
+    lang: "fr"
+  filters_applied: []
+
+  transformations:
+    - description: "Pour chaque joueur, calcul du map breakdown (perf_avg par carte)"
+      polars: |
+        for name, df in series:
+          df_pl = ensure_polars(df)
+          if 'map_ui' not in df_pl.columns and 'map_name_fr' in df_pl.columns and lang == 'fr':
+            df_pl = df_pl.with_columns(coalesce(map_name_fr, map_name).alias('map_ui'))
+          bd = compute_map_breakdown(df_pl)
+          if not bd.is_empty():
+            player_bds.append(bd.with_columns(pl.lit(name).alias('_player')))
+      sql_duckdb: |
+        SELECT map_name, AVG(performance_score) AS perf_avg, COUNT(*) AS n_matches, ?
+        FROM match_participants WHERE xuid = ? GROUP BY map_name;
+
+    - description: "Concat tous joueurs + sélection top 15 cartes par fréquence"
+      polars: |
+        all_bd = pl.concat(player_bds, how='diagonal_relaxed')
+        top_maps = _top_maps_by_frequency(all_bd)[:15]
+        # Réordonner par "first seen order" (ordre d'apparition dans series)
+        top_maps = _order_maps_by_first_seen(series, top_maps)
+
+    - description: "Construction de la matrice perf [n_players × 15]"
+      polars: |
+        matrix = _build_perf_matrix(all_bd, player_names, top_maps)
+        # Cellule (i, j) = perf_avg du joueur i sur la carte j (NaN si pas joué)
+
+# === HEATMAP-SPECIFIC ===
+heatmap:
+  z_field: "perf_avg"
+  x_field: "map_name"
+  y_field: "player_name"
+  z_range: [0, 100]
+  colorscale:
+    type: discrete                                              # /!\ DISCRÈTE pas linéaire (cf. _discrete_perf_colorscale)
+    description: |
+      _discrete_perf_colorscale construit des paliers : rouge → orange → ambre → cyan → vert
+      selon les seuils SCORE_THRESHOLDS (poor/below_average/average/good/excellent).
+      À reproduire côté ECharts via visualMap.pieces[] avec gte/lte par tier.
+    pieces:                                                     # approximation — à confirmer dans le code
+      - {min: 0,  max: 30,  color: "#FF4444", label: "Faible"}
+      - {min: 30, max: 50,  color: "#FF8C00", label: "Sous-moyenne"}
+      - {min: 50, max: 65,  color: "#FFBF00", label: "Moyenne"}
+      - {min: 65, max: 80,  color: "#00B7EB", label: "Bonne"}
+      - {min: 80, max: 100, color: "#50C878", label: "Excellente"}
+  nan_treatment: "mask"                                         # cellules sans matchs → vide
+  cell_label:
+    enabled: false                                              # pas de texte dans les cellules (espace réduit)
+  colorbar:
+    title: "Perf"
+    thickness: 15
+    visible: true
+
+# === TRACES ===
+traces:
+  - id: "squad_heatmap"
+    type: go.Heatmap
+    chart_role: primary
+    color: null
+    hovertemplate: "%{y} — %{x}<br>Perf=%{z:.1f}<extra></extra>"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: null
+    expression: "max(180, len(player_names) * 60 + 100)"
+    detail: "180 mini, +60px par joueur, +100 marges. Pour 4 joueurs → 340px."
+  margin: {l: 40, r: 80, t: 30, b: 120}                         # b=120 important pour noms de cartes inclinés
+  showlegend: false                                             # heatmap a colorbar, pas legend
+
+  xaxis:
+    type: "category"
+    tickangle: -35                                              # /!\ noms de cartes inclinés
+  yaxis:
+    type: "category"
+    automargin: true
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(series) >= 1 AND au moins 1 player_bd non vide"
+  empty_state:
+    type: none
+    triggered_by:
+      - "series vide → return None"
+      - "tous les player_bds vides après filtrage top_maps → return None"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by: ["(rendu juste après _render_map_breakdown dans onglet Synergies)"]
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t: []
+  literal: ["Perf"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Colorscale DISCRÈTE (paliers) au lieu d'un gradient continu"
+      why: |
+        `_discrete_perf_colorscale` construit des paliers explicites au lieu d'un gradient lisse
+        rouge→vert. Les frontières correspondent aux seuils performance (poor/below/avg/good/excellent).
+        Avantage UX : on voit immédiatement à quel "tier" chaque cellule appartient. ECharts
+        equivalent : visualMap.pieces[] avec ranges discrets (à porter en remplaçant le gradient
+        linéaire utilisé pour winrate heatmap synthesis.03).
+
+    - decision: "Top 15 cartes par fréquence (pas par player_name alphabétique)"
+      why: |
+        On ne peut pas afficher TOUTES les cartes en X — pas d'espace. Filtrer aux 15 plus jouées
+        (toutes équipes confondues) garantit que la heatmap montre les cartes pertinentes.
+        Le 'first_seen_order' réordonne pour cohérence visuelle quand des amis jouent souvent
+        ensemble sur certaines cartes en début de session.
+
+    - decision: "Hauteur dynamique selon nombre de joueurs"
+      why: |
+        4 amis sélectionnés → 5 lanes (moi + 4) × 60px = 300px + 100 marges = 400px.
+        2 amis → 3 lanes × 60 = 180px + 100 = 280px (plancher 180).
+        Évite que la heatmap soit écrasée verticalement avec peu de joueurs ou trop large
+        avec beaucoup.

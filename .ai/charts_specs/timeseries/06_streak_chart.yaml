@@ -1,0 +1,152 @@
+# =============================================================================
+# Streak chart — séries de victoires/défaites consécutives
+# =============================================================================
+# Bars Y signées : positif (vert) = match dans une streak de victoires, négatif
+# (rouge) = streak de défaites. La VALEUR de Y est le compteur cumulé DANS la
+# streak courante (pas le rang du match dans le temps absolu).
+# Ex : 3 V consécutives → barres y=1, y=2, y=3 (vertes)
+#       puis 2 D       → barres y=-1, y=-2 (rouges)
+#       puis 1 V       → y=1
+# Filtre : ne garde QUE les V (outcome=2) et D (outcome=3) — exclut Tie/DNF.
+# =============================================================================
+
+id: "timeseries.06"
+title: "Streak chart — séries V/D consécutives"
+page: timeseries
+section: "Onglet Résumé K/D/A — Streaks"
+display_order_in_tab: 7
+source_function: "src/ui/pages/win_loss.py::_render_streak_section"
+source_helpers:
+  - "src/visualization/timeseries_combat.py::plot_streak_chart"
+  - "src/visualization/_timeseries_helpers.py::prepare_time_axis"
+  - "src/visualization/_timeseries_helpers.py::apply_chrono_xaxis"
+  - "src/data/outcome_codes::Outcome"
+fragment: true                                                  # @fragment_if_available
+chart_kind: stacked_bar                                         # techniquement bar avec Y signé
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_normalize_df(dff).sort('start_time').filter(outcome IN [2,3])"
+  input_dataframe:
+    required_fields:
+      dff:
+        - outcome, start_time, map_name | map_ui
+  call_args: { lang: "fr | en" }
+  filters_applied: ["outcome IN (2 WIN, 3 LOSS) — Tie et NoFinish exclus"]
+
+  constants:
+    win_color: "#00e676"
+    loss_color: "#e53935"
+    bar_opacity: 0.85
+    height: 240                                                 # PLOT_CONFIG.short_height
+
+  transformations:
+    - description: "Détection des changements de streak (outcome != outcome précédent)"
+      polars: |
+        new_streak = (col('outcome') != col('outcome').shift(1)).fill_null(True)
+        streak_group = new_streak.cast(Int64).cum_sum()
+
+    - description: "Compteur cumulé DANS chaque streak (1, 2, 3, ... puis reset)"
+      polars: |
+        streak_counter = []
+        prev_group, count = -1, 0
+        for g in streak_group:
+            if g != prev_group:  count = 1
+            else:                count += 1
+            streak_counter.append(count)
+            prev_group = g
+
+    - description: "Application du signe : positif si win, négatif si loss"
+      polars: 'streak_values = [c if w else -c for c, w in zip(streak_counter, is_win)]'
+
+    - description: "Couleur par bar selon signe"
+      polars: 'bar_colors = ["#00e676" if v > 0 else "#e53935" for v in streak_values]'
+
+# === TRACES ===
+traces:
+  - id: streak_bars
+    type: bar
+    color_per_bar: "bar_colors"                                 # vert (V) ou rouge (D)
+    opacity: 0.85
+    showlegend: false
+    customdata_field: labels                                    # date+map du match
+    hovertemplate_i18n: "{{viz_t.hover_streak}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 240                                                  # short_height
+  margin: { l: 40, r: 20, t: 10, b: 90 }
+  hovermode: "x unified"
+  yaxis:
+    title_i18n: "{{viz_t.axis_streak}}"
+    zeroline: true
+    zerolinecolor: "rgba(255,255,255,0.75)"                     # DEFAULT_THEME.zero_line_color
+    zerolinewidth: 2
+  xaxis:
+    type: category                                              # via apply_chrono_xaxis
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "outcome ∈ dff.columns AND start_time ∈ dff.columns"
+  empty_state:
+    type: "annotation in figure"
+    triggered_by:
+      - "outcome absent → t('missing_outcome_data')"
+      - "d.height == 0 après filtre → empty_no_streak_data viz_t"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_streaks'))"
+    - "if hints_visible(): st.caption(t('wl_streaks_caption'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - empty_no_streak_data
+    - hover_streak
+    - axis_streak
+  t:
+    - wl_streaks
+    - wl_streaks_caption
+    - missing_outcome_data
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Y = compteur DANS la streak (pas le numéro de match)"
+      why: |
+        Le but est de visualiser les MOMENTUMS — voir d'un coup d'œil "j'ai eu une streak de 5
+        victoires", "puis une chute de 3 défaites". Si Y était le numéro absolu du match, on ne
+        verrait pas cette structure. Le pattern triangulaire (1-2-3-...) est intuitif.
+
+    - decision: "Filtrage Tie/NoFinish AVANT le calcul de streak"
+      why: |
+        Une 'streak de victoires' ne doit pas être interrompue (ni continuée) par un Tie ou un
+        match abandonné — on les retire purement et simplement. Si l'utilisateur voit 'V V V' dans
+        l'historique, c'est ce qu'il s'attend à voir dans le streak chart, même s'il y avait un
+        Tie au milieu.
+
+    - decision: "Couleur par bar selon signe (vert/rouge)"
+      why: |
+        Lecture instantanée : pas besoin de regarder l'axe Y pour comprendre. Convention sportive
+        habituelle (vert=positif, rouge=négatif). Côté ECharts : `data[i].itemStyle.color` (cf.
+        teammates.04 squad timeline).
+
+    - decision: "showlegend=false (pas de légende)"
+      why: |
+        Une seule série technique (les barres) avec couleur dynamique — la légende
+        "Streak" ne porte pas d'info utile. Évite l'encombrement visuel.
+
+    - decision: "@fragment_if_available"
+      why: |
+        Calcul de streak peut être coûteux (boucle Python sur tous les matchs filtrés).
+        Le fragment évite de recalculer si seul un autre chart de la page est interagi.

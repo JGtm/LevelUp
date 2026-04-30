@@ -1,0 +1,121 @@
+# =============================================================================
+# Regression trend — 3 indicateurs (jauges) compacts
+# =============================================================================
+# 3 indicators côte à côte (subplots indicator) :
+#   - col 1 : ΔK/D (delta relatif K/D ou pente × 10) avec icône ▲ ▼ ━
+#   - col 2 : R² (coefficient de détermination, avec ⚠ si < 0.3)
+#   - col 3 : ΔWR (delta relatif win rate) — affiché ssi wr_relative_change ≠ None
+# Hauteur très compacte (160 px) — pas de chart classique mais un dashboard de
+# 3 indicateurs Plotly (type='indicator'). Titre géré côté Streamlit.
+# =============================================================================
+
+id: "timeseries.26"
+title: "Regression trend — 3 indicateurs (ΔK/D, R², ΔWR)"
+page: timeseries
+section: "Onglet Avancé — Tendance régression"
+display_order_in_tab: 6
+source_function: "src/visualization/_perf_session.py::plot_regression_trend"
+source_helpers:
+  - "src/visualization/_perf_session.py::_kd_progression_indicator"
+  - "src/visualization/_perf_session.py::_r2_indicator"
+  - "src/visualization/_perf_session.py::_wr_progression_indicator"
+fragment: false
+chart_kind: kpi_row                                              # famille — 3 indicateurs Plotly
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_linear_regression_kd(df) → dict avec slope/r_squared/is_significant/trend/kd_relative_change/wr_relative_change"
+  input_dataframe:
+    required_fields:
+      regression_data:
+        - slope                                                   # float
+        - r_squared                                                # 0-1
+        - is_significant                                           # bool
+        - trend                                                    # 'up' | 'down' | 'stable'
+        - kd_relative_change                                       # float (e.g., 0.15 = +15%)
+        - wr_relative_change                                       # float | None (si pas calculé)
+  call_args:
+    height: 160
+    lang: "fr | en"
+
+  constants:
+    r2_warn_threshold: 0.3                                        # ⚠ "tendance non significative"
+    height_compact: 160
+
+# === TRACES (3 indicators) ===
+traces:
+  - id: kd_progression
+    type: indicator
+    indicator_mode: "delta+number"
+    layout: { row: 1, col: 1 }
+    title_i18n: "ΔK/D"
+    arrow_icon: "▲ if trend=='up' else ▼ if 'down' else ━"
+    fallback_value: "slope * 10 (si kd_relative_change is None)"
+  - id: r_squared
+    type: indicator
+    indicator_mode: "number"
+    layout: { row: 1, col: 2 }
+    title_i18n: "R²"
+    suffix: "⚠ si < 0.3"
+  - id: wr_progression
+    type: indicator
+    indicator_mode: "delta+number"
+    layout: { row: 1, col: 3 }
+    title_i18n: "ΔWR"
+    optional: true                                                 # ssi wr_relative_change ≠ None
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 160                                                     # /!\ très compact
+  margin: { l: 10, r: 10, t: 10, b: 10 }                           # marges minimales
+  composite: "make_subplots(rows=1, cols=2 ou 3, specs=[[indicator]*n_cols])"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "regression non None et regression['slope'] not None"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "(titre géré par st.markdown au-dessus pour ne pas déborder dans 160px)"
+  followed_by:
+    - "_render_note(t('ts_note_regression'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t: ["ts_note_regression"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "3 indicators Plotly compacts (pas un chart classique)"
+      why: |
+        Le but n'est pas de visualiser une SÉRIE TEMPORELLE mais de RÉSUMER en 3 chiffres clés
+        la tendance globale. Plotly indicator est parfait : grosse valeur + delta + couleur trend.
+        Côté React : composant <KPIRow /> avec 3 cellules.
+
+    - decision: "Hauteur 160px ULTRA-COMPACTE"
+      why: |
+        Section secondaire de l'onglet Avancé — pas la peine de prendre la pleine hauteur. 160px
+        suffit pour afficher 3 nombres + leurs labels. Le titre est géré par st.markdown au-dessus
+        pour ne pas déborder dans cette hauteur.
+
+    - decision: "wr_progression OPTIONNEL (ne s'affiche que si calculé)"
+      why: |
+        wr_relative_change peut être None si pas assez de matchs avec outcome dispo. Dans ce cas,
+        on tombe à 2 indicators au lieu de 3 (le subplot s'adapte avec n_cols=2). Mode défensif
+        sans crash UI.
+
+    - decision: "Suffixe ⚠ sur R² si < 0.3"
+      why: |
+        Pédagogie statistique : R² faible = la régression linéaire ne capture pas la variance.
+        L'utilisateur doit savoir que les valeurs ΔK/D / ΔWR sont à prendre avec des pincettes
+        dans ce cas. Indicateur visuel direct sans nécessiter de comprendre R².

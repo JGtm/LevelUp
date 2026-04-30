@@ -1,0 +1,63 @@
+# =============================================================================
+# Win/Loss heatmap (jour × heure)
+# =============================================================================
+# Réutilise SYNTHESIS.03 — heatmap winrate par jour de semaine × heure.
+# Même fonction Plotly, même données upstream. Section Tab Avancé timeseries.
+# =============================================================================
+
+id: "timeseries.27"
+title: "Win/Loss heatmap — jour × heure"
+page: timeseries
+section: "Onglet Avancé — Heatmap V/D"
+display_order_in_tab: 7
+source_function: "src/ui/pages/win_loss.py::_render_heatmap_section"
+source_helpers:
+  - "(cf. synthesis.03 pour les helpers Plotly détaillés)"
+fragment: true                                                  # @fragment_if_available
+chart_kind: heatmap
+
+# === COUCHE DONNÉES ===
+data:
+  reuses:
+    of: "synthesis.03"
+    differences: |
+      - Aucune. Même fonction _render_heatmap_section appelée avec dff (matchs filtrés du
+        joueur principal dans le contexte timeseries).
+  upstream_service: "(cf. synthesis.03)"
+  input_dataframe:
+    required_fields:
+      dff: [start_time, outcome]
+  call_args: {}
+
+# === TRACES ===
+traces: []                                                       # cf. synthesis.03
+
+layout:
+  inherits: _theme_default
+  height: { value: 360 }
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "(cf. synthesis.03)"
+  config: "(cf. synthesis.03 — PLOTLY_STATIC_CONFIG ou similaire)"
+  width_mode: stretch
+  preceded_by:
+    - "(rendu via _render_heatmap_section dans tab Avancé)"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Réutilisation 100% de synthesis.03"
+      why: |
+        Même fonction _render_heatmap_section. Côté React : composant <WLHeatmap /> partagé
+        entre les 2 pages. Pas de duplication.

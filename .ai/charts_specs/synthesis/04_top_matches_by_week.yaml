@@ -1,0 +1,375 @@
+# =============================================================================
+# Matchs "Top" vs Total par période — barres empilées + ligne ratio
+# =============================================================================
+# Empile par période (semaine, mois, jour selon range) :
+#   - les matchs "Top" (rang ≤ top_n_ranks ou victoires) en vert
+#   - les autres matchs en gris
+# Ligne sur axe Y2 (0–100 %) : ratio Top/Total pour la période.
+# La granularité de la période est calculée automatiquement par
+# `determine_top_period` selon l'amplitude temporelle des données.
+# =============================================================================
+
+id: "synthesis.04"
+title: "Matchs Top par semaine"
+page: synthesis
+section: "Performance par période"
+source_function: "src/visualization/distributions_outcomes.py::plot_matches_at_top_by_week"
+source_helpers:
+  - "src/visualization/_distributions_outcomes_helpers.py::determine_top_period"
+  - "src/visualization/_distributions_outcomes_helpers.py::ensure_datetime"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+  - "src/visualization/theme.py::get_legend_horizontal_bottom"
+  - "src/ui/pages/win_loss.py::_render_top_by_week"   # appelant
+fragment: true                                       # @fragment_if_available sur _render_top_by_week
+chart_kind: "grouped_bar"                            # techniquement bars empilées + line ; pas de chart_kind dédié
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null                             # à créer côté Go
+  input_dataframe:
+    required_columns: [match_id, start_time]
+    optional_columns: [rank, outcome]                # rank préféré, fallback sur outcome
+    rank_column_resolution:                          # win_loss.py:200 — fallback sur outcome
+      preferred: "rank"
+      fallback: "outcome"
+    polars_dtype_hints:
+      start_time: "Datetime[us]"
+      rank: "Int64"
+      outcome: "Int64"
+  call_args:
+    rank_col: "rank"                                 # ou "outcome" en fallback
+    top_n_ranks: 1                                   # /!\ override par caller (default fonction = 1, identique ici)
+                                                      # cf. win_loss.py:204 plot_matches_at_top_by_week(dff, rank_col, top_n_ranks=1, lang)
+  call_args_semantics:
+    rank_col: "colonne pour déterminer le 'top' : si rank existe, c'est le rang dans le scoreboard ; sinon outcome (WIN=top)"
+    top_n_ranks: "match top SI rank ≤ top_n_ranks (avec rank_col=rank) OU outcome==WIN (fallback)"
+  filters_applied: [date_range, period_selector]
+  timezone: "user_local"                             # le truncate("1w") dépend de la TZ pour le découpage des semaines
+
+  transformations:
+    - description: "Drop des lignes sans start_time + ensure datetime"
+      polars: |
+        d = ensure_polars(df).drop_nulls(subset=["start_time"])
+        d = ensure_datetime(d, "start_time")
+      sql_duckdb: "WHERE start_time IS NOT NULL"
+
+    - description: "Filtrage des années peu actives (uniquement si range > 548 jours)"
+      polars: |
+        if days > _TOP_PERIOD_WEEK_MAX_DAYS:  # 548
+          year_stats = group_by("_year").agg(total_matches, n_unique(_week))
+          keep_years = where(total >= 12 AND active_weeks >= 4)
+          d = d.filter(year.is_in(keep_years))
+      sql_duckdb: |
+        -- À implémenter côté Go si l'historique > 548 jours :
+        WITH year_stats AS (
+          SELECT
+            EXTRACT(YEAR FROM start_time) AS year,
+            COUNT(*) AS total_matches,
+            COUNT(DISTINCT date_trunc('week', start_time)) AS active_weeks
+          FROM source
+          GROUP BY year
+          HAVING total_matches >= 12 AND active_weeks >= 4
+        )
+        SELECT s.* FROM source s
+        JOIN year_stats y ON EXTRACT(YEAR FROM s.start_time) = y.year;
+      detail: |
+        Constantes du helper :
+          _TOP_PERIOD_WEEK_MAX_DAYS = 548  (~18 mois)
+          _TOP_PERIOD_MIN_MATCHES_PER_YEAR = 12
+          _TOP_PERIOD_MIN_ACTIVE_WEEKS_PER_YEAR = 4
+        Objectif : si l'utilisateur a > 18 mois d'historique mais avec des années très peu actives
+        (ex. il a joué 5 matchs en 2020 puis revient en 2024), filtrer les années faibles pour
+        que la granularité auto choisisse "semaine" plutôt que "mois" sur la période active.
+
+    - description: "Détermination automatique de la granularité de période"
+      polars: |
+        days = (tmax - tmin).total_seconds() / 86400
+        if days < 2:    period = match_index                            # bucket_cap_match
+        if days < 7:    period = strftime(start_time, "%Y-%m-%d")       # bucket_cap_day
+        if days <= 548: period = strftime(truncate(start_time, 1w), "%Y-%m-%d")  # bucket_cap_week
+        else:           period = strftime(start_time, "%Y-%m")          # bucket_cap_month
+      sql_duckdb: |
+        -- Le choix de granularité est fait CÔTÉ Go API selon le range des données.
+        -- Exemple pour range=1y → bucket_cap_week :
+        SELECT
+          strftime(date_trunc('week', start_time), '%Y-%m-%d') AS period,
+          ...
+        FROM source ...
+        GROUP BY period;
+      detail: "Le label de période ('Semaine', 'Jour', 'Mois') est aussi déterminé ici via viz_t('bucket_cap_*', lang)."
+
+    - description: "Calcul de la colonne is_top (rank ≤ top_n_ranks OU outcome == WIN)"
+      polars: |
+        if "rank" in d.columns:
+          d = d.with_columns(
+            (col("rank").cast(Float64).fill_null(99.0) <= top_n_ranks).alias("is_top")
+          )
+        elif "outcome" in d.columns:
+          d = d.with_columns((col("outcome") == OUTCOME_CODES.WIN).alias("is_top"))
+        else:
+          d = d.with_columns(pl.lit(False).alias("is_top"))
+      sql_duckdb: |
+        -- Côté Go : choisir l'expression CASE selon disponibilité de la colonne rank.
+        -- Avec rank :
+        CASE WHEN COALESCE(rank, 99) <= ? THEN 1 ELSE 0 END AS is_top
+        -- Sans rank (fallback) :
+        CASE WHEN outcome = 2 THEN 1 ELSE 0 END AS is_top
+      detail: |
+        Le `99.0` comme fillna est un sentinel : si rank est NULL, on considère que le match n'est
+        pas un "top" (on ne sait pas, conservatif). Si tout passe via outcome (fallback), un match
+        Top = une victoire (cohérent : "tu finis premier dans le scoreboard => tu as gagné").
+
+    - description: "Agrégation par période : total + top_count + other_count + top_rate"
+      polars: |
+        agg = d.group_by("period").agg(
+          col("match_id").count().alias("total"),
+          col("is_top").sum().alias("top_count"),
+        ).sort("period")
+        agg = agg.with_columns(
+          (col("total") - col("top_count")).alias("other_count"),
+          (col("top_count").cast(Float64) / col("total") * 100.0).round(1).alias("top_rate"),
+        )
+      sql_duckdb: |
+        SELECT
+          period,
+          COUNT(*)                                          AS total,
+          SUM(is_top)                                       AS top_count,
+          COUNT(*) - SUM(is_top)                            AS other_count,
+          ROUND(SUM(is_top) * 100.0 / COUNT(*), 1)          AS top_rate
+        FROM (... CTE avec is_top ...)
+        GROUP BY period
+        ORDER BY period;
+
+    - description: "Texte conditionnel pour la trace 'Others' (vide si other_count == 0)"
+      polars: |
+        text_other = when(other_count > 0).then(other_count.cast(String)).otherwise("").to_list()
+      sql_duckdb: "-- Côté ECharts : conditionnel dans label.formatter, cf. traces[1].text_data.empty_when"
+
+# === TRACES ===
+traces:
+  - id: "top"
+    name: "Top {{call_args.top_n_ranks}}"            # ex. "Top 1" ; littéral construit côté Python en f-string
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.green}}"
+    color_token: "HALO_COLORS.green"
+    orientation: v
+    opacity: 0.85
+    customdata:
+      fields: [top_rate]
+      schema:
+        top_rate: "float (0.0–100.0, %)"
+    text_data:
+      source: "values"                               # text=top_counts
+      template: "{value:d}"
+      empty_when: null
+      position: "inside"
+    hovertemplate: "%{x}<br>Top: %{y}<br>{{viz_t.trace_top_rate}}: %{customdata:.1f}%<extra></extra>"
+    show_when: "always"
+
+  - id: "others"
+    name: "{{viz_t.trace_others}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{palette.slate}}"
+    color_token: "HALO_COLORS.slate"
+    orientation: v
+    opacity: 0.55
+    text_data:
+      source: "values"                               # text=text_other (déjà conditionnel "" si 0)
+      template: "{value:d}"
+      empty_when: "value == 0"                       # text_other masque les 0
+      position: "inside"
+    hovertemplate: "%{x}<br>{{viz_t.trace_others}}: %{y}<extra></extra>"
+    show_when: "always"
+
+  - id: "top_rate_line"
+    name: "{{viz_t.trace_top_rate}}"
+    type: go.Scatter
+    chart_role: secondary
+    color: "{{palette.amber}}"
+    color_token: "HALO_COLORS.amber"
+    orientation: null
+    secondary_y: true                                # yaxis="y2"
+    mode: "lines+markers"
+    line:
+      width: 2
+      dash: "solid"
+      shape: "linear"
+    marker:
+      size: 6
+      symbol: "circle"
+    hovertemplate: "%{x}<br>{{viz_t.trace_top_rate}}: %{y:.1f}%<extra></extra>"
+    show_when: "always"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360                                        # PLOT_CONFIG.default_height
+    expression: null
+    branches: []
+  margin: {l: 40, r: 60, t: 30, b: 80}              # /!\ r=60 important pour le titre Y2 ("Top %")
+  barmode: "stack"                                   # top + other empilés à hauteur total
+  bargap: 0.15
+  hovermode: null
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  xaxis:
+    type: "category"                                 # period (string) — pas date typée
+    title: null
+    tickformat: null
+    range: null
+    autorange: null
+    automargin: false
+    showticklabels: true
+
+  yaxis:
+    type: "linear"
+    title: null                                       # pas de titre explicite (count implicite)
+    range: null
+    autorange: null
+    automargin: false
+
+  yaxis2:
+    title: "{{viz_t.axis_rate_pct}}"                 # "Taux %" / "Rate %"
+    overlaying: "y"
+    side: "right"
+    range: [0, 100]                                  # range fixe 0-100 % (stable visuellement)
+    showgrid: false                                  # /!\ override des axes_default (pas de grille sur Y2)
+    tickformat: null
+
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "'start_time' in dff.columns AND not dff.is_empty()"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message_per_case:
+      - case: "missing_time"
+        condition: "start_time absent"
+        message: "{{t.missing_time_data}}"
+      - case: "insufficient_data"
+        condition: "plot_matches_at_top_by_week retourne fig vide"
+        message: "{{t.insufficient_data_chart}}"
+    triggered_by:
+      - "start_time absent du dataframe"
+      - "df vide après drop_nulls"
+      - "fonction retourne une figure vide (pas explicitement None — return fig avec layout seul)"
+  config: PLOTLY_CLEAN_CONFIG                        # /!\ DIFFÉRENT des charts 1/2/3/5 (qui utilisent STATIC)
+                                                      # CLEAN = displayModeBar:false, staticPlot:false → interactif (zoom, hover)
+  width_mode: "stretch"
+  filters_widgets: [synthesis_period]
+  fragment_isolation: true
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_top_by_week'))"
+    - "if hints_visible(): st.caption(t('wl_top_by_week_caption'))"
+
+# === CONTROLS ===
+controls:
+  - id: "synthesis_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_page"
+    scope: "page"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: |
+      Filtre dff en amont sur start_time. Affecte tous les charts.
+      IMPORTANT : ce filtre interagit avec determine_top_period — réduire la période force
+      mécaniquement la granularité fine (jour/semaine plutôt que mois). Comportement attendu.
+    api_param_mapping:
+      query_param: "period"
+      values_passthrough: true
+    requires_refetch: false
+    affects_charts: ["synthesis.01", "synthesis.02", "synthesis.03", "synthesis.04", "synthesis.05"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_others                                   # "Autres" / "Others"
+    - trace_top_rate                                 # "Taux Top" / "Top Rate"
+    - axis_rate_pct                                  # "Taux %" / "Rate %"
+    - bucket_cap_match                               # label de période quand granularité = match
+    - bucket_cap_day
+    - bucket_cap_week
+    - bucket_cap_month
+  t:
+    - wl_top_by_week
+    - wl_top_by_week_caption
+    - missing_time_data
+    - insufficient_data_chart
+    - encounters_period_label
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  sample_dataset: null
+  fig_dict_path: null
+  ast_extracted_fields: []
+  runtime_extracted_fields: []
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Granularité de période auto documentée comme transformation"
+      why: |
+        `determine_top_period` est l'élément le plus complexe de ce chart : il choisit la
+        granularité (match/jour/semaine/mois) selon l'amplitude des données. Cette logique doit
+        être portée IDENTIQUE en Go sinon l'utilisateur verra une granularité différente après
+        migration. Documenté avec les seuils exacts (< 2j → match, < 7j → jour, ≤ 548j → semaine,
+        > 548j → mois) et la pré-filtre des années peu actives.
+
+    - decision: "rank_col fallback sur outcome documenté"
+      why: |
+        Tous les matchs n'ont pas de `rank` calculé (par exemple les modes objectifs où le scoreboard
+        est secondaire). Le fallback sur `outcome` (WIN = top) est une approximation raisonnable
+        qui permet d'afficher quelque chose plutôt que rien. Côté Go, l'API peut renvoyer un
+        champ `top_strategy: 'rank' | 'outcome'` pour que le frontend sache lequel a été utilisé
+        et puisse adapter le titre / la caption si besoin.
+
+    - decision: "Trace ratio sur axe Y2 avec range fixe [0, 100]"
+      why: |
+        Le range fixe est crucial : sans lui, l'axe Y2 zoome sur les valeurs réelles (ex. 30-50%
+        pour un joueur moyen) et la ligne semble varier énormément. Avec [0, 100] fixe, la ligne
+        garde une amplitude visuelle proportionnelle à la performance absolue, ce qui est plus
+        honnête pour comparer mentalement.
+
+    - decision: "PLOTLY_CLEAN_CONFIG (interactif) au lieu de STATIC sur ce chart"
+      why: |
+        Win/Loss et Synthèse utilisent majoritairement PLOTLY_STATIC_CONFIG (chart figé), mais ce
+        chart-ci utilise PLOTLY_CLEAN_CONFIG (interactif sans modeBar). Probablement parce qu'il
+        a un Y2 et des hovers riches qui méritent d'être explorables. À répliquer côté ECharts :
+        activer le tooltip et la possibilité de désactiver les séries via clic légende.
+
+    - decision: "_TOP_PERIOD_WEEK_MAX_DAYS = 548 jours (~18 mois) — pas 365"
+      why: |
+        Subtilité non évidente : le seuil pour basculer de "semaine" à "mois" n'est pas 1 an mais
+        1.5 an. Pourquoi 548 ? Probablement pour qu'un joueur avec 14-18 mois d'historique ait
+        encore une vue hebdomadaire (une cinquantaine de barres lisibles) plutôt qu'une vue
+        mensuelle trop grossière. Documenté pour ne pas le réajuster arbitrairement en Go.
+
+    - decision: "name de la trace top construite en f-string Python"
+      why: |
+        `name=f\"Top {top_n_ranks}\"` n'est pas une clé i18n mais une concaténation locale.
+        Pour Go/i18n proprement : utiliser un template i18n du type `synthesis_top_n_label`
+        avec un paramètre `{n}`. Documenté pour signaler ce qui doit être ajouté côté i18n
+        lors du portage (sinon "Top 1" ne sera jamais traduit en anglais... mais "Top" est
+        déjà anglophone donc l'impact est limité).

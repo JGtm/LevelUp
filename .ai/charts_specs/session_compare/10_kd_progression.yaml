@@ -1,0 +1,132 @@
+# =============================================================================
+# K/D progression — courbe F/D par partie + précision Y2 (par session)
+# =============================================================================
+# 2 sessions × 2 traces (1 line F/D + 1 line accuracy en pointillés Y2 si dispo).
+# Hline horizontale à y=1.0 (seuil neutre F/D=1) avec annotation "1.0".
+# Hover custom : F/D + accuracy + avg_life par point. dtick=1 (ticks à chaque
+# match). Y2 range fixe [0, 100] pour accuracy.
+# =============================================================================
+
+id: "session_compare.10"
+title: "K/D progression — F/D par match + précision Y2"
+page: session_compare
+section: "Section 10 (linéaire)"
+display_order_in_page: 10
+source_function: "src/ui/pages/_session_compare_viz.py::render_kd_progression"
+source_helpers:
+  - "src/ui/pages/_session_compare_viz.py::_compute_match_series"
+  - "src/ui/pages/_session_compare_viz.py::_kd_layout"
+  - "src/ui/pages/_session_compare_viz.py::_build_kd_progression_figure"
+fragment: true                                                  # @fragment_if_available
+chart_kind: line
+
+data:
+  computed_by: server
+  upstream_service: "_compute_match_series(df) → {kds, accuracies, avg_lifes, hover_labels}"
+  input_dataframe:
+    required_fields: { df_session_a, df_session_b: [start_time, kills, deaths, accuracy, avg_life_seconds, pair_fr|mode_ui|pair_name] }
+  call_args: { label_a: "Session A", label_b: "Session B" }
+
+  constants:
+    palette: { session_a: "#E74C3C", session_b: "#3498DB" }
+    hline_kd_ref: 1.0
+    hline_color: "rgba(255,255,255,0.25)"
+    accuracy_y2_range: [0, 100]
+    height: 310
+
+  transformations:
+    - description: "Calcul K/D par match (k/d ou k si d==0)"
+      polars: |
+        kd = round(k/d if d > 0 else k, 2)
+    - description: "Hover label : 'Match {i} — {mode_short}' (mode tronqué à 18 chars)"
+      polars: |
+        pair = str(row.get('pair_fr') or row.get('mode_ui') or row.get('pair_name') or '')
+        short = pair.split(':')[-1].strip()[:18] if ':' in pair else pair[:18]
+
+# === TRACES ===
+traces: []                                                       # template_per_session — voir spec_kd / spec_accuracy ci-dessous
+
+trace_specs:
+  template_per_session: true
+  cardinality: 2
+  spec_kd:
+    type: scatter
+    mode: lines+markers
+    line_width: 2
+    marker_size: 7
+    name: "{{label}}"
+    hover_template: "{hover_label}<br>F/D: {kd:.2f}<br>Précision: {acc:.1f}%<br>Vie moy: {life:.0f}s"
+  spec_accuracy:
+    optional: true                                              # ssi accuracies non null
+    type: scatter
+    mode: lines+markers
+    y_axis: y2
+    line: { width: 1.5, dash: dash }
+    marker: { size: 5, symbol: "circle-open" }
+    opacity: 0.75
+    name: "{{label}} — Précision"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height: { value: 310 }
+  margin: { l: 50, r: 55, t: 20, b: 75 }
+  legend: { orientation: h, y: -0.28, x: 0.5, xanchor: center }
+  yaxis:
+    title_i18n: "{{t.sc_fd_ratio}}"
+    rangemode: tozero
+  yaxis_secondary:
+    title_i18n: "{{t.col_accuracy}}"
+    range: [0, 100]
+    optional: true
+  xaxis:
+    title_i18n: "{{t.sc_match_index}}"
+    tickmode: linear
+    dtick: 1                                                    # 1 tick par match
+  shapes:
+    - id: hline_kd_ref
+      type: line
+      y_field: 1.0
+      line: { dash: dot, color: "rgba(255,255,255,0.25)" }
+      annotation: { text: "1.0", position: right }
+
+display:
+  shown_when: "kds (au moins 1 session) non vide"
+  empty_state:
+    type: "render_chart_or_info(insufficient_data_chart)"
+    triggered_by: ["s_a et s_b kds vides → return"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown(t('sc_kd_progression'))"
+
+i18n_keys:
+  viz_t: []
+  t:
+    - sc_kd_progression
+    - sc_fd_ratio, sc_match_index
+    - col_accuracy, col_avg_life
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Précision affichée seulement si AU MOINS 1 valeur non null dans les 2 sessions"
+      why: |
+        Si toutes les sessions ont accuracy=null (data legacy), on n'affiche pas l'axe Y2 ni
+        les traces accuracy. _kd_layout renvoie un layout sans yaxis2 dans ce cas. Évite un
+        axe vide qui distrait.
+
+    - decision: "Marker symbol='circle-open' + line dash='dash' pour la précision"
+      why: |
+        Distingue visuellement les traces accuracy (Y2) des traces F/D (Y1) qui ont les
+        mêmes couleurs (par session). Les markers vides + lignes pointillées = 'données
+        complémentaires sur axe secondaire'.
+
+    - decision: "dtick=1 sur xaxis"
+      why: |
+        Sessions courtes (5-15 matchs) → on veut UN tick par match pour aller vite à un match
+        précis. Sessions longues (50+ matchs) → axes serrés mais lisibles. dtick=1 marche dans
+        les 2 cas tant que sessions < ~30 matchs (au-delà, Plotly skip naturellement).

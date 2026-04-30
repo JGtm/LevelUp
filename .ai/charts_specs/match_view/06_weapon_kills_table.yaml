@@ -1,0 +1,170 @@
+# =============================================================================
+# Tableau Kills par arme
+# =============================================================================
+# Tableau HTML 2 colonnes (Arme, Frags) avec le style scoreboard Halo (os-sb-*).
+# Affiché à côté du pie weapon_kills (#5) dans st.columns(2). Wrapper avec
+# min-height:300px + display:flex pour aligner verticalement avec le pie.
+# Source de données identique au pie (cf. match_view.05).
+# =============================================================================
+
+id: "match_view.06"
+title: "Tableau Kills par arme"
+page: match_view
+section: "Onglet Summary — Kills par arme"
+source_function: "src/ui/pages/match_view_weapon_kills.py::_render_weapon_table"
+source_helpers:
+  - "src/ui/pages/match_view_weapon_kills.py::render_weapon_kills_section (caller)"
+  - "src/ui/pages/match_view_weapon_kills.py::_build_weapon_kills_df"
+  - "src/ui/pages/match_view_weapon_kills.py::_enrich_with_grenade_melee"
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "DuckDBRepository.load_match_weapon_kills(match_id, xuid) + _enrich_with_grenade_melee"
+  input_dataframe:
+    required_columns: [weapon_name, kills]
+    polars_dtype_hints:
+      weapon_name: "Utf8"
+      kills: "Int32"
+  call_args: {}
+  filters_applied: []
+
+  transformations:
+    - description: "Lecture des kills par arme depuis film/highlight events"
+      polars: |
+        df = repo.load_match_weapon_kills(match_id, xuid)
+        # → DataFrame [{weapon_name: "MA40 Assault Rifle", kills: 12}, ...]
+      sql_duckdb: |
+        SELECT weapon_name, COUNT(*) AS kills
+        FROM shared.highlight_events
+        WHERE match_id = ? AND xuid = ?
+          AND event_type = 'kill' AND weapon_name IS NOT NULL
+        GROUP BY weapon_name
+        ORDER BY kills DESC;
+
+    - description: "Enrichissement grenade/melee depuis l'API (post-correction film)"
+      polars: |
+        # _enrich_with_grenade_melee :
+        # 1. grenade, melee = repo.load_grenade_melee_kills(xuid, [match_id])
+        # 2. film_kills = sum(df.kills)
+        # 3. api_total = repo.load_total_kills_for_player(xuid, [match_id])
+        # 4. remainder = max(0, api_total - film_kills)
+        # 5. melee_net = min(melee, remainder)
+        # 6. grenade_net = min(grenade, max(0, remainder - melee_net))
+        # 7. Append rows {weapon_name=t("col_grenade_kills"), kills=grenade_net} si grenade_net > 0
+        #    Append rows {weapon_name=t("col_melee"), kills=melee_net} si melee_net > 0
+      sql_duckdb: |
+        -- Calcul côté Go : agréger grenades/melee depuis API endpoint distinct,
+        -- puis cap au remainder pour éviter le double-comptage des melee filmés
+        -- sous le weapon_id de l'arme tenue.
+      detail: |
+        Ce cap au remainder est CRITIQUE : sans lui, les melee kills sont comptés DEUX fois
+        (une fois sous le weapon_id de l'arme tenue dans le film, une fois en explicit melee
+        depuis l'API). Le remainder = api_total - film_kills donne le nombre de kills "non vus
+        dans le film" qu'on peut attribuer aux grenades + melee sans risque de double-comptage.
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes:
+    wrapper: "os-table-wrap"
+    table: "os-table os-scoreboard"
+    header_team: null                                         # /!\ pas de caption colspan ici
+    header_cell: "os-sb-th"
+    row: "os-sb-row"
+    cell: "os-sb-td"
+  inline_styles:
+    table: "min-width: 0; width: 100%"
+    wrapper_outer: "display: flex; align-items: center; min-height: 300px"  # /!\ aligne verticalement avec le pie
+
+  caption:                                                    # /!\ PAS de caption — juste les headers de colonnes
+    enabled: false
+
+  columns:
+    - id: weapon
+      header: "{{t.mv_weapon_kills_col_weapon}}"
+      source_field: weapon_name
+      formatter: "raw (déjà résolu côté API)"
+
+    - id: frags
+      header: "{{t.mv_weapon_kills_col_frags}}"
+      source_field: kills
+      formatter: "{value} (entier)"
+      style: "text-align: right; font-weight: 600"
+
+  legend:
+    enabled: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df is not None AND not df.is_empty()"
+  hidden_when: null
+  empty_state:
+    type: none
+    triggered_by: ["df vide après load_match_weapon_kills + enrichissement"]
+  config: null
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: true                                    # rendu dans render_weapon_kills_section décoré @fragment_if_available
+  layout_position:
+    container: "st.columns(2)"                                # rendu à droite du pie
+    column_index: 1                                           # cf. weapon_kills.py — pie à gauche, table à droite
+  preceded_by: []
+  alignment_quirk: |
+    Le wrapper outer (min-height:300px + display:flex + align-items:center) sert à
+    centrer verticalement le tableau avec le pie chart d'à côté. Sans ça, si le tableau
+    est plus court que 300px (cas typique avec 3-5 armes), il s'aligne en haut et le pie
+    semble flotter.
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - mv_weapon_kills_col_weapon                              # "Arme" / "Weapon"
+    - mv_weapon_kills_col_frags                               # "Frags" / "Frags"
+    - col_grenade_kills                                       # "Grenades" — utilisé pour la ligne ajoutée par enrichissement
+    - col_melee                                               # "Mêlée" / "Melee"
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Pas de caption colspan dans ce tableau (différent des tableaux career.05+)"
+      why: |
+        Le tableau weapon_kills n'a PAS de bandeau titre cyan en colspan : juste les 2 headers
+        de colonnes (Arme, Frags). Côté code, le `<thead>` ne contient qu'une seule `<tr>` avec
+        les `<th>` de colonnes (pas de `<th colspan>`). À reproduire fidèlement côté React.
+
+    - decision: "Wrapper outer avec min-height:300px + flex pour alignement avec pie"
+      why: |
+        Quirk d'UX : le tableau est cohabité avec un pie chart de hauteur 300px dans un st.columns(2).
+        Sans le min-height:300px + align-items:center sur le wrapper, le tableau (qui fait moins
+        de 300px en pratique) s'aligne tout en haut du col, créant un déséquilibre visuel.
+        Documenté pour porter ce détail côté React (display: flex sur le parent ou alignSelf: center).
+
+    - decision: "Enrichissement grenade/melee est une logique métier non triviale"
+      why: |
+        Le cap au `remainder = api_total - film_kills` évite le double-comptage des melee kills
+        qui apparaissent à la fois dans le film (sous le weapon_id de l'arme tenue) et dans
+        l'API (en explicit melee). C'est une connaissance de domaine qu'il faut bien porter
+        côté Go pour ne pas surcompter. À mettre dans `internal/analysis/weapon_kills.go`.
+
+    - decision: "Source de données partagée avec match_view.05 (pie)"
+      why: |
+        Le pie et le tableau lisent EXACTEMENT le même DataFrame via render_weapon_kills_section.
+        Une seule requête côté Go API qui renvoie la liste, le frontend rend les deux composants
+        à partir de cette unique source. Ne JAMAIS faire 2 endpoints séparés.

@@ -1,0 +1,80 @@
+# =============================================================================
+# MMR comparison rows — comparaison MMR équipe / ennemi (HTML)
+# =============================================================================
+# Idem 05 (detailed_metrics) mais focalisé MMR :
+#   - Team MMR moyen
+#   - Enemy MMR moyen
+#   - Delta team-enemy (ou autre indicateur sym)
+# Section conditionnelle : ne s'affiche que si team_mmr/enemy_mmr présents dans
+# perf_a et perf_b.
+# =============================================================================
+
+id: "session_compare.06"
+title: "MMR comparison rows — Team / Enemy MMR par session"
+page: session_compare
+section: "Section 6 (linéaire, conditionnelle)"
+display_order_in_page: 6
+source_function: "src/ui/pages/session_compare.py::_render_mmr_comparison"
+source_helpers:
+  - "src/ui/components/performance.py::render_metric_comparison_row"
+fragment: false
+chart_kind: table_html
+
+data:
+  computed_by: server
+  upstream_service: "perf_a / perf_b avec team_mmr_avg, enemy_mmr_avg calculés"
+  input_dataframe:
+    required_fields: { perf_a, perf_b: [team_mmr_avg, enemy_mmr_avg] }
+  call_args: {}
+  filters_applied:
+    - "section masquée silencieusement si team_mmr/enemy_mmr absents"
+
+  metrics:
+    - { label_i18n: "sc_team_mmr_avg",  field: team_mmr_avg,  format: "{:.0f}" }
+    - { label_i18n: "sc_enemy_mmr_avg", field: enemy_mmr_avg, format: "{:.0f}" }
+    - { label_i18n: "sc_mmr_delta",     field: "team_mmr - enemy_mmr", format: "{:+.0f}" }
+
+# === TABLE HTML ===
+table_html:
+  columns:
+    - { id: label,    header_i18n: "MMR" }
+    - { id: value_a,  header: "Session A", color_field: "_COLOR_A" }
+    - { id: value_b,  header: "Session B", color_field: "_COLOR_B" }
+    - { id: delta,    header: "Δ" }
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 140 }
+
+display:
+  shown_when: "team_mmr_avg ∈ perf_a AND team_mmr_avg ∈ perf_b"
+  empty_state:
+    type: "section masquée silencieusement"
+    triggered_by: ["mmr absent → return"]
+  config: null
+  width_mode: stretch
+
+i18n_keys:
+  viz_t: []
+  t:
+    - sc_team_mmr_avg, sc_enemy_mmr_avg, sc_mmr_delta
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Section conditionnelle (masquée si MMR absent)"
+      why: |
+        team_mmr / enemy_mmr ne sont disponibles que pour les playlists ranked. Pour les
+        sessions casual, les colonnes sont nulles partout — masquage propre plutôt que
+        d'afficher des '—' sur toutes les lignes.
+
+    - decision: "Delta MMR team - enemy"
+      why: |
+        Indicateur clé : si delta > 0, l'équipe était favorite (MMR moyen plus élevé) ;
+        si delta < 0, sous-cotée. Permet de comprendre la difficulté relative des matchs
+        de chaque session ('Session A je matchais des plus forts que moi').

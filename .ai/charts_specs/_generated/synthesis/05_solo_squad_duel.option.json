@@ -1,0 +1,181 @@
+{
+  "grid": {
+    "left": 24,
+    "right": 24,
+    "top": 16,
+    "bottom": 16,
+    "containLabel": true
+  },
+  "tooltip": {
+    "trigger": "axis",
+    "backgroundColor": "rgba(29, 35, 40, 0.96)",
+    "borderColor": "rgba(255, 255, 255, 0.12)",
+    "textStyle": {
+      "color": "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  "legend": {
+    "orient": "horizontal",
+    "top": 5,
+    "left": "center"
+  },
+  "xAxis": {
+    "type": "value",
+    "min": -120,
+    "max": 120,
+    "axisLabel": {
+      "show": false
+    },
+    "splitLine": {
+      "show": false
+    }
+  },
+  "yAxis": {
+    "type": "category",
+    "splitLine": {
+      "show": true,
+      "lineStyle": {
+        "color": "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    "data": [
+      "Score de performance",
+      "Vie moyenne",
+      "KPM",
+      "Précision",
+      "Win Rate",
+      "K/D"
+    ]
+  },
+  "series": [
+    {
+      "type": "bar",
+      "name": "i18n:t.syn_solo",
+      "data": [
+        {
+          "value": -87.64044943820224,
+          "text": "62.4",
+          "label": "Score de performance"
+        },
+        {
+          "value": -89.50617283950618,
+          "text": "145s",
+          "label": "Vie moyenne"
+        },
+        {
+          "value": -87.61904761904762,
+          "text": "0.92",
+          "label": "KPM"
+        },
+        {
+          "value": -94.10430839002267,
+          "text": "41.5%",
+          "label": "Précision"
+        },
+        {
+          "value": -85.71428571428571,
+          "text": "48.0%",
+          "label": "Win Rate"
+        },
+        {
+          "value": -83.09859154929578,
+          "text": "1.18",
+          "label": "K/D"
+        }
+      ],
+      "itemStyle": {
+        "color": "#33D6FF",
+        "opacity": 1
+      },
+      "label": {
+        "show": true,
+        "position": "left",
+        "formatter": "[Function: params=>params.data?.text??\"\"...]"
+      },
+      "clip": false,
+      "tooltip": {
+        "formatter": "[Function: params=>{const lbl=params.data?.label??params.name;const txt=params.data?.text??...]"
+      },
+      "markLine": {
+        "silent": true,
+        "symbol": "none",
+        "data": [
+          {
+            "xAxis": 0,
+            "lineStyle": {
+              "color": "#374151",
+              "width": 1,
+              "opacity": 0.8,
+              "type": "solid"
+            },
+            "symbol": "none",
+            "label": {
+              "show": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "bar",
+      "name": "i18n:t.syn_squad",
+      "data": [
+        {
+          "value": 100,
+          "text": "71.2",
+          "label": "Score de performance"
+        },
+        {
+          "value": 100,
+          "text": "162s",
+          "label": "Vie moyenne"
+        },
+        {
+          "value": 100,
+          "text": "1.05",
+          "label": "KPM"
+        },
+        {
+          "value": 100,
+          "text": "44.1%",
+          "label": "Précision"
+        },
+        {
+          "value": 100,
+          "text": "56.0%",
+          "label": "Win Rate"
+        },
+        {
+          "value": 100,
+          "text": "1.42",
+          "label": "K/D"
+        }
+      ],
+      "itemStyle": {
+        "color": "#00DC82",
+        "opacity": 1
+      },
+      "label": {
+        "show": true,
+        "position": "right",
+        "formatter": "[Function: params=>params.data?.text??\"\"...]"
+      },
+      "clip": false,
+      "tooltip": {
+        "formatter": "[Function: params=>{const lbl=params.data?.label??params.name;const txt=params.data?.text??...]"
+      }
+    }
+  ],
+  "backgroundColor": "rgba(29, 35, 40, 1.0)",
+  "textStyle": {
+    "color": "rgba(245, 248, 255, 0.92)",
+    "fontSize": 13
+  },
+  "__meta": {
+    "spec_id": "synthesis.05",
+    "chart_kind": "bar_diverging",
+    "source_function": "src/ui/pages/synthesis.py::_build_duel_chart",
+    "warnings": [],
+    "height": 420
+  }
+}

@@ -1,0 +1,141 @@
+# =============================================================================
+# Friends history table — historique des matchs joués avec l'escouade
+# =============================================================================
+# Tableau HTML 12 colonnes (250 derniers matchs partagés) avec :
+#   - Liens app + Waypoint (cliquables)
+#   - Date, carte, playlist, mode, résultat (avec couleur)
+#   - Score, MMRs (équipe / ennemis / delta)
+#   - Win rate historique sur cette playlist (référence)
+# Style HTML pur (os-table os-scoreboard avec map-hover effect).
+# =============================================================================
+
+id: "teammates.11"
+title: "Historique des matchs avec coéquipiers (250 derniers)"
+page: teammates
+section: "Onglet Contributions — Historique"
+source_function: "src/ui/pages/teammates_helpers.py::render_friends_history_table"
+source_helpers:
+  - "src/ui/pages/teammates_helpers.py::_prepare_friends_table_data"
+  - "src/ui/pages/teammates_helpers.py::_build_html_rows"
+  - "src/config::HALO_COLORS"
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_prepare_friends_table_data(sub_all, db_path, xuid, db_key, waypoint_player, full_df)"
+  input_dataframe:
+    sub_all: "pl.DataFrame matchs partagés escouade"
+    full_df: "pl.DataFrame complet pour calculer win_rate_hist par playlist"
+    waypoint_player: "string (gamertag pour URL Waypoint)"
+  call_args: {}
+  filters_applied: []
+
+  transformations:
+    - description: "Préparation : ajout colonnes formatées (date_fr, playlist_fr, mode, urls, win_rate_hist)"
+      polars: |
+        # _prepare_friends_table_data fait :
+        # 1. start_time_fr = strftime FMT_DATETIME_FR
+        # 2. playlist_fr = playlist_name_fr OR translate_playlist_name(playlist_name)
+        # 3. mode = mode_ui si non null sinon null
+        # 4. outcome_label + outcome_color via Outcome enum
+        # 5. score = my_team_score - enemy_team_score formaté
+        # 6. team_mmr / enemy_mmr / delta_mmr (avec coloration si delta > seuil)
+        # 7. win_rate_hist = winrate sur cette playlist sur full_df
+        # 8. URLs : _app (page=Match View&match_id=...) + match_url (Waypoint)
+
+    - description: "Limite à 250 derniers matchs"
+      polars: |
+        view = friends_table.sort('start_time', descending=True).head(250)
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes:
+    wrapper: "os-table-wrap os-table-wrap--map-hover"
+    table: "os-table"                                          # /!\ pas os-scoreboard ici
+    header_cell: "th"                                          # standard, pas de classe os-sb-th
+    row: "tr"
+    cell: "td"
+
+  caption:
+    enabled: false                                             # pas de caption
+
+  columns:                                                     # 12 colonnes
+    - {id: app,            header: "{{t.tmh_col_match}}",      source_field: _app,            formatter: "<a href=...>match_id[:8]…</a>"}
+    - {id: waypoint,       header: "{{t.tmh_waypoint}}",       source_field: match_url,       formatter: "<a href=halowaypoint>HW</a>"}
+    - {id: date,           header: "{{t.tmh_col_date}}",       source_field: start_time_fr,   formatter: "raw"}
+    - {id: map,            header: "{{t.tmh_col_map}}",        source_field: map_ui,          formatter: "map_name_cell_html avec hover image"}
+    - {id: playlist,       header: "{{t.tmh_col_playlist}}",   source_field: playlist_fr}
+    - {id: mode,           header: "{{t.tmh_col_mode}}",       source_field: mode}
+    - {id: result,         header: "{{t.tmh_col_result}}",     source_field: outcome_label,   conditional_style: "color: outcome_color"}
+    - {id: win_rate_hist,  header: "{{t.col_win_rate_hist}}",  source_field: win_rate_hist,   formatter: "{value:.1%}"}
+    - {id: score,          header: "{{t.tmh_col_score}}",      source_field: score}
+    - {id: team_mmr,       header: "{{t.tmh_col_team_mmr}}",   source_field: team_mmr,        formatter: "{value:.1f}"}
+    - {id: enemy_mmr,      header: "{{t.tmh_col_enemy_mmr}}",  source_field: enemy_mmr,       formatter: "{value:.1f}"}
+    - {id: delta_mmr,      header: "{{t.tmh_col_delta_mmr}}",  source_field: delta_mmr,       formatter: "{:+.1f}", conditional_style: "color: green/red selon signe"}
+
+  legend:
+    enabled: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "sub_all non vide"
+  empty_state:
+    type: none
+  config: null
+  width_mode: stretch
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tmh_col_match
+    - tmh_waypoint
+    - tmh_col_date
+    - tmh_col_map
+    - tmh_col_playlist
+    - tmh_col_mode
+    - tmh_col_result
+    - tmh_col_score
+    - tmh_col_team_mmr
+    - tmh_col_enemy_mmr
+    - tmh_col_delta_mmr
+    - col_win_rate_hist
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target_per_col:
+    app: "page=Match View&match_id={match_id}"
+    waypoint: "https://halowaypoint.com/.../matches/{match_id}"
+  drilldown_chain: ["match_view"]
+  hover_effects:
+    - target: "map cell"
+      effect: "Hover-only image carte (CSS class os-table-wrap--map-hover)"
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "12 colonnes — tableau LARGE"
+      why: |
+        Plus large que les autres tables Career/Match View (5-9 cols). Justifié par la richesse
+        d'information : 2 liens (app + Waypoint), date, carte, playlist, mode, outcome, win_rate
+        historique de référence, score, 3 MMRs. Utile pour analyser l'historique avec l'escouade.
+        Risque : rendu mobile compromis. Côté React : prévoir scroll horizontal pour mobile.
+
+    - decision: "Limite 250 derniers matchs"
+      why: |
+        Sur des escouades très actives (1000+ matchs partagés), tout afficher serait trop lourd.
+        Limite 250 = environ 6 mois de jeu intensif → suffisant pour la plupart des usages.
+        Tri descending par start_time → les plus récents en haut.
+
+    - decision: "win_rate_hist comme colonne de référence"
+      why: |
+        Permet de comparer le RÉSULTAT du match (W/L) avec la "norme" de la playlist
+        (ex: W sur une playlist où on a 35% de winrate hist = exploit). Ajout de contexte
+        analytique précieux sans avoir besoin de drill-down.

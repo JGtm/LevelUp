@@ -1,0 +1,171 @@
+# =============================================================================
+# Skill rank progression — LUSR/CSR timeseries avec confidence band
+# =============================================================================
+# Évolution du rating LUSR (Light Universal Skill Rating) ou CSR (Competitive
+# Skill Rating) selon disponibilité. Toggle st.radio horizontal si LES DEUX
+# types sont présents. Sinon, affiche directement l'unique type dispo.
+#
+# Côté viz (plot_lusr_timeseries) :
+#   - Line principale du rating
+#   - Confidence band (zone d'incertitude basée sur n matchs)
+#   - Optionnellement : tier backgrounds (Onyx/Diamond/Platinum/Gold/...) en
+#     visualMap zones colorées
+#   - show_smooth=False ici (vs True ailleurs) : pas de lissage, valeurs brutes
+#
+# Filtré sur les match_ids présents dans dff (sélection courante).
+# =============================================================================
+
+id: "timeseries.22"
+title: "Skill rank progression — LUSR / CSR timeseries"
+page: timeseries
+section: "Onglet Avancé — Rang"
+display_order_in_tab: 2
+source_function: "src/ui/pages/timeseries_skill_rank.py::render_skill_rank_progression"
+source_helpers:
+  - "src/visualization/_timeseries_progression.py::plot_lusr_timeseries"
+  - "src/visualization/_timeseries_progression.py::_add_main_rating_trace"
+  - "src/visualization/_timeseries_progression.py::_add_tier_background"
+  - "src/visualization/_timeseries_progression.py::_add_confidence_band"
+  - "src/visualization/_timeseries_progression.py::_perf_color"
+  - "src/ui/pages/career_data.py::_load_lusr_history"
+fragment: false
+chart_kind: line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_load_lusr_history(db_path, xuid) → list[dict] (1 ligne par match avec rating LUSR/CSR)"
+  input_dataframe:
+    required_fields:
+      df_hist: [match_id, start_time, rating_type, rating_value, ci_low, ci_high]
+      dff: [match_id, map_name]                                 # pour join labels carte
+  call_args:
+    show_confidence: true
+    show_smooth: false                                          # /!\ pas de lissage ici
+    playlist_group: null
+    lang: "fr | en"
+
+  constants:
+    rating_types: ["LUSR", "CSR"]                               # toggle si BOTH dispo
+    label_threshold: 50                                         # _MATCH_LABEL_THRESHOLD — au-delà : 1 sample par semaine
+
+  transformations:
+    - description: "Filtrage match_ids ∈ dff"
+      polars: "df_hist = df_hist.filter(pl.col('match_id').is_in(dff['match_id'].to_list()))"
+
+    - description: "Détection types disponibles + sélection (toggle si 2)"
+      polars: |
+        types_av = df_hist['rating_type'].unique().to_list()
+        has_lusr, has_csr = 'LUSR' in types_av, 'CSR' in types_av
+        if has_lusr and has_csr:
+            sel = st.radio(t('ts_skill_rank_type'), ['LUSR', 'CSR'], horizontal=True)
+            df_plot = df_hist.filter(pl.col('rating_type') == sel)
+        else:
+            sel = 'LUSR' if has_lusr else 'CSR'
+            df_plot = df_hist
+
+    - description: "Si > 50 matchs : downsampling à 1 sample par semaine"
+      polars: |
+        if len(df_plot) > _MATCH_LABEL_THRESHOLD:
+            df_plot = (df_plot.with_columns(pl.col('start_time').dt.truncate('1w').alias('_bucket'))
+                              .sort('start_time', descending=True)
+                              .unique(subset=['_bucket'], keep='first')
+                              .drop('_bucket')
+                              .sort('start_time'))
+
+    - description: "Join map_name pour labels (si <= 50 matchs)"
+      polars: |
+        if len(df_plot) <= 50 and 'map_name' in dff.columns:
+            df_plot = df_plot.join(dff.select(['match_id', 'map_name']), on='match_id', how='left')
+
+# === TRACES ===
+traces:
+  - id: rating_main
+    type: scatter
+    mode: lines+markers
+    color: "perf_color (selon valeur du rating)"
+    line_width: 2
+    name: "{{rating_type}}"                                     # 'LUSR' ou 'CSR'
+
+  - id: confidence_band
+    type: scatter
+    mode: lines
+    fill: tonexty                                               # band Y_lower/Y_upper
+    fillcolor: "rgba(rating_color, 0.15)"
+    optional: true                                              # ssi show_confidence
+
+  - id: tier_backgrounds
+    type: rect_shapes                                           # zones colorées de niveau
+    optional: true
+    via: "_add_tier_background"
+
+# === CONTRÔLES ===
+controls:
+  - id: rating_type_toggle
+    widget: st.radio
+    optional: true                                              # ssi LUSR ET CSR dispos
+    label_i18n: "{{t.ts_skill_rank_type}}"
+    options: [LUSR, CSR]
+    horizontal: true
+    key: "ts_skill_rank_type_radio"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 420
+  yaxis:
+    title: "Rating"
+  xaxis:
+    type: category
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    db_path AND xuid AND history_all non vide
+    AND df_hist filtré non vide
+    AND has_lusr OR has_csr
+  empty_state:
+    type: "return silencieux"
+    triggered_by:
+      - "db_path None ou xuid None → return"
+      - "history_all vide → return"
+      - "df_hist filtré vide → return"
+      - "ni LUSR ni CSR → return"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_skill_rank_evolution'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - ts_skill_rank_evolution
+    - ts_skill_rank_type
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "show_smooth=False sur cette page (vs True dans Career)"
+      why: |
+        En page timeseries, l'utilisateur veut voir l'EXACT rating de chaque match (chasse aux
+        anomalies, comparaison match ↔ rating delta). Le smoothing masquerait ces variations.
+        En Career, on veut une TENDANCE long terme — le smoothing est pertinent.
+
+    - decision: "Toggle conditionnel LUSR/CSR (disparaît si un seul type dispo)"
+      why: |
+        LUSR (Light Universal Skill Rating) couvre TOUS les modes ; CSR (Competitive Skill Rating)
+        ne s'applique que aux ranked playlists. Beaucoup de joueurs n'ont que LUSR. Affichage
+        simple sans toggle inutile.
+
+    - decision: "Downsampling à 1 sample/semaine si > 50 matchs"
+      why: |
+        Au-delà de 50 matchs, les courbes deviennent illisibles (trop de points). 1 sample par
+        semaine (le DERNIER de la semaine) suffit pour visualiser une tendance long terme. Sous
+        50 matchs : on garde tout + on join les noms de carte pour le tooltip.

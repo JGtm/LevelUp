@@ -1,0 +1,44 @@
+# =============================================================================
+# Win/Loss page · Section 5 · Streak chart
+# =============================================================================
+# Wrapper réutilisant timeseries.06 (séries V/D consécutives en bars Y signé).
+# =============================================================================
+
+id: "win_loss.05"
+title: "Streak chart — séries V/D consécutives"
+page: win_loss
+section: "Section 5 (linéaire)"
+display_order_in_page: 5
+source_function: "src/ui/pages/win_loss.py::_render_streak_section"
+fragment: true                                                  # @fragment_if_available
+chart_kind: stacked_bar
+
+data:
+  reuses:
+    of: "timeseries.06"
+    differences: "Aucune — même fonction plot_streak_chart."
+
+traces: []                                                       # cf. timeseries.06
+
+layout:
+  inherits: _theme_default
+  height: { value: 240 }                                         # short_height
+
+display:
+  shown_when: "outcome + start_time ∈ dff.columns"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_streaks'))"
+    - "if hints_visible(): st.caption(t('wl_streaks_caption'))"
+
+i18n_keys:
+  viz_t: ["empty_no_streak_data", "hover_streak", "axis_streak"]
+  t: ["wl_streaks", "wl_streaks_caption", "missing_outcome_data"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]

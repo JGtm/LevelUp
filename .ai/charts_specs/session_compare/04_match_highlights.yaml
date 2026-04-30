@@ -1,0 +1,83 @@
+# =============================================================================
+# Match highlights — best/worst match par F/D ratio (markdown text)
+# =============================================================================
+# Pas un chart Plotly. 2 colonnes (st.columns(2)) avec st.markdown.
+# Pour chaque session : meilleur match (F/D max) + pire match (F/D min).
+# Format : "{kills}F/{deaths}D · F/D {ratio:.2f} — {mode_short}"
+# =============================================================================
+
+id: "session_compare.04"
+title: "Match highlights — best / worst match par session (markdown)"
+page: session_compare
+section: "Section 4 (linéaire)"
+display_order_in_page: 4
+source_function: "src/ui/pages/_session_compare_extra.py::render_match_highlights"
+source_helpers:
+  - "src/ui/pages/_session_compare_extra.py::_extract_mode"
+fragment: false
+chart_kind: composite_block
+
+data:
+  computed_by: server
+  upstream_service: "Calcul kd par match + extraction extremums via max(kds), min(kds)"
+  input_dataframe:
+    required_fields: { df_session_a, df_session_b: [kills, deaths, mode_ui|pair_name, pair_fr] }
+  call_args: {}
+
+  transformations:
+    - description: "Calcul KD par match avec fallback k/1 si deaths=0"
+      polars: |
+        kds = [k/d if d > 0 else k for r in df.iter_rows(named=True)
+               for k, d in [(r.get('kills', 0), r.get('deaths', 0))]]
+    - description: "Extraction max et min via index"
+      polars: |
+        best  = rows[kds.index(max(kds))]
+        worst = rows[kds.index(min(kds))] if len(rows) > 1 else None
+
+# === COMPOSITE BLOCK ===
+composite_block:
+  blocks_template:
+    cardinality: 2                                              # session A + B
+    cell_template: |
+      <div>
+        <div>{{t.sc_best_match}} : <b>{{best_text}}</b></div>
+        <div>{{t.sc_worst_match}} : <b>{{worst_text}}</b></div>
+      </div>
+    text_format: "{kills}F/{deaths}D · F/D {ratio:.2f} — {mode_short[:24]}"
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 80 }
+
+display:
+  shown_when: "best_a OR best_b non None"
+  empty_state:
+    type: "section masquée"
+    triggered_by: ["best_a et best_b None → return"]
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown(t('sc_match_highlights'))"
+
+i18n_keys:
+  viz_t: []
+  t: ["sc_match_highlights", "sc_best_match", "sc_worst_match"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Pas un chart — markdown text inline"
+      why: |
+        Information ponctuelle (1 best + 1 worst par session) qui n'a pas besoin de viz.
+        Une carte/badge texte suffit. Côté React : composant <MatchHighlightCard /> avec
+        2 lignes par session.
+
+    - decision: "Worst affiché seulement si len(rows) > 1"
+      why: |
+        Si une session contient 1 seul match, best == worst — afficher 'best: X / worst: X'
+        serait redondant. Skip silencieusement.

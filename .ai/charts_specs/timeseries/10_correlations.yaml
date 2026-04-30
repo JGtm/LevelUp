@@ -1,0 +1,174 @@
+# =============================================================================
+# Corrélations — 5 scatter plots colorés par outcome avec trendline
+# =============================================================================
+# 5 sub-charts via plot_correlation_scatter (avec trendline OLS) :
+#   Row 1 : life vs kills    | accuracy vs FDA (kda)
+#   Row 2 : life vs deaths   | kills vs deaths
+#   Row 3 (full)  : team_mmr vs enemy_mmr
+#
+# Tous coloriés par `outcome` (vert win, rouge loss, etc.). show_trendline=True.
+# Min 6 valid points pour afficher (sinon st.info).
+# =============================================================================
+
+id: "timeseries.10"
+title: "Corrélations — 5 scatter plots colorés par outcome"
+page: timeseries
+section: "Onglet Distributions — Corrélations"
+display_order_in_tab: 2
+source_function: "src/ui/pages/_timeseries_distributions.py::render_correlations"
+source_helpers:
+  - "src/ui/pages/_timeseries_distributions.py::_render_correlation_row1"
+  - "src/ui/pages/_timeseries_distributions.py::_render_correlation_row2"
+  - "src/ui/pages/_timeseries_distributions.py::_render_mmr_correlation"
+  - "src/ui/pages/_timeseries_distributions.py::_render_scatter"
+  - "src/visualization/_distributions_advanced.py::plot_correlation_scatter"
+fragment: true                                                  # @fragment_if_available sur render_correlations
+chart_kind: scatter_matrix                                      # nouveau kind, famille de scatter
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "plot_correlation_scatter(dff, x_col, y_col, color_col='outcome', show_trendline=True)"
+  input_dataframe:
+    required_fields:
+      dff:
+        - kills, deaths, assists
+        - kda
+        - accuracy
+        - avg_life_seconds | average_life_seconds
+        - team_mmr, enemy_mmr
+        - outcome
+  call_args: { lang: "fr | en" }
+  filters_applied: ["filtres globaux + drop_nulls(subset=[x_col, y_col])"]
+
+  constants:
+    min_data: 6
+    show_trendline: true                                        # OLS regression line
+    color_col: outcome                                          # palette discrete par outcome
+    palette_outcome:
+      win:    "#00e676"
+      loss:   "#e53935"
+      tie:    "#ab47bc"
+      nofin:  "#888888"
+
+# === SUB-CHARTS ===
+sub_charts:
+  - id: corr_life_kills
+    x_col: "avg_life_seconds | average_life_seconds"
+    y_col: kills
+    title_i18n: "{{t.ts_lifespan_vs_kills}}"
+    x_label_i18n: "{{t.ts_lifespan_s}}"
+    y_label_i18n: "{{t.ts_kills_label}}"
+    layout: { row: 1, col: 1 }
+
+  - id: corr_accuracy_kda
+    x_col: accuracy
+    y_col: kda
+    title_i18n: "{{t.ts_accuracy_vs_kda}}"
+    x_label_i18n: "{{t.ts_accuracy_label}}"
+    y_label_i18n: "{{t.ts_fda}}"
+    layout: { row: 1, col: 2 }
+
+  - id: corr_life_deaths
+    x_col: "avg_life_seconds | average_life_seconds"
+    y_col: deaths
+    title_i18n: "{{t.ts_lifespan_vs_deaths}}"
+    x_label_i18n: "{{t.ts_lifespan_s}}"
+    y_label_i18n: "{{t.ts_deaths_label}}"
+    layout: { row: 2, col: 1 }
+
+  - id: corr_kills_deaths
+    x_col: kills
+    y_col: deaths
+    title_i18n: "{{t.ts_kills_vs_deaths}}"
+    x_label_i18n: "{{t.ts_kills_label}}"
+    y_label_i18n: "{{t.ts_deaths_label}}"
+    layout: { row: 2, col: 2 }
+
+  - id: corr_team_vs_enemy_mmr
+    x_col: team_mmr
+    y_col: enemy_mmr
+    title_i18n: "{{t.ts_mmr_team_vs_enemy}}"
+    x_label_i18n: "{{t.ts_mmr_team}}"
+    y_label_i18n: "{{t.ts_mmr_enemy}}"
+    layout: { row: 3, col: "full_width" }                       # toute la largeur (pas en col)
+
+# === TRACES (template) ===
+traces:
+  template_per_subchart: true
+  spec:
+    type: scatter
+    mode: markers
+    color_by: outcome                                            # palette discrete win/loss/tie/nofin
+    marker:
+      size: 8
+      opacity: 0.7
+    trendline:
+      type: ols                                                  # régression linéaire
+      color: "rgba(255,255,255,0.5)"
+      line_dash: dash
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 320
+  composite: "st.columns(2) × 2 rows + 1 chart full-width"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(valid) >= 6 par sub-chart (min_data) AND x_col, y_col ∈ dff.columns"
+  empty_state:
+    type: "st.info par cellule"
+    triggered_by:
+      - "x_col ou y_col absent → insufficient_data_chart"
+      - "len(valid) < 6 → ts_not_enough_corr"
+      - "fig None → ts_corr_gen_error"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('ts_correlations'))"
+    - "if hints_visible(): st.caption(t('ts_correlations_caption'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - ts_correlations, ts_correlations_caption
+    - ts_lifespan_vs_kills, ts_accuracy_vs_kda
+    - ts_lifespan_vs_deaths, ts_kills_vs_deaths
+    - ts_mmr_team_vs_enemy
+    - ts_lifespan_s, ts_kills_label, ts_deaths_label
+    - ts_accuracy_label, ts_fda
+    - ts_mmr_team, ts_mmr_enemy
+    - ts_not_enough_corr, ts_corr_gen_error
+    - insufficient_data_chart
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "5 scatter plots avec coloration par outcome + trendline OLS"
+      why: |
+        Le but est de visualiser CORRÉLATIONS (life ↔ kills, accuracy ↔ kda, etc.) en distinguant
+        visuellement les wins (vert) des losses (rouge) — les patterns de correlation peuvent
+        DIFFÉRER selon outcome (ex: les wins ont peut-être une corrélation life↔kills plus forte).
+        La trendline OLS donne la tendance globale ; les couleurs montrent la dispersion par outcome.
+
+    - decision: "MMR scatter en row 3 PLEINE LARGEUR (pas dans une colonne)"
+      why: |
+        team_mmr vs enemy_mmr est l'analyse la plus IMPORTANTE pour comprendre le matchmaking
+        (suis-je face à des équipes plus fortes ?). On lui donne plus de place visuelle qu'aux
+        4 autres scatter qui sont en duo dans st.columns(2). Pas besoin de doubler avec un autre
+        scatter MMR-related ; il est seul.
+
+    - decision: "Dropna conjoint sur x_col et y_col"
+      why: |
+        Pour la correlation, il faut DEUX valeurs valides simultanément. Si on dropna seulement
+        sur x_col, on aurait des points avec y=null (artefact) qui fausserait la trendline.
+        `drop_nulls(subset=[x_col, y_col])` impose les 2.

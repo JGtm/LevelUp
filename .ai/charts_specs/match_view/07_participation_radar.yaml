@@ -1,0 +1,322 @@
+# =============================================================================
+# Radar Participation 6 axes
+# =============================================================================
+# Radar (go.Scatterpolar fill='toself') à 6 axes mesurant la contribution du
+# joueur sur 6 dimensions normalisées 0-1 (avec ticks 25/50/75/100%) :
+#   1. Objectifs (objectifs_norm)
+#   2. Combat (combat_norm)
+#   3. Support (support_norm)
+#   4. Score (score_norm)
+#   5. Impact (impact_norm)
+#   6. Survie (survie_norm)
+#
+# Layout conditionnel selon hints_visible() :
+#   - True : st.columns([2, 1]) — radar à gauche + légende textuelle des axes à droite
+#   - False : radar plein largeur
+# =============================================================================
+
+id: "match_view.07"
+title: "Profil de participation au match"
+page: match_view
+section: "Onglet Summary — Participation"
+source_function: "src/ui/components/_radar_participation.py::create_participation_profile_radar"
+source_helpers:
+  - "src/ui/pages/match_view_participation.py::render_participation_section (caller)"
+  - "src/ui/pages/match_view_participation.py::_plot_participation_radar_fig"
+  - "src/ui/pages/match_view_participation.py::_load_participation_awards"
+  - "src/visualization/participation_radar.py::compute_participation_profile"
+  - "src/visualization/participation_radar.py::get_radar_thresholds"
+  - "src/visualization/participation_radar.py::get_radar_axis_lines"
+  - "src/analysis/participation_radar.py::ProfileOptions"
+  - "src/analysis/participation_radar.py::RADAR_THRESHOLDS_PER_MODE"
+  - "src/analysis/participation_radar.py::get_mode_family"
+  - "src/analysis/participation_radar.py::is_objective_mode_from_pair_name"
+fragment: false
+chart_kind: radar                                              # /!\ nouveau kind
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_participation_profile(df, match_row, ProfileOptions(...))"
+  input_dataframe:
+    required_columns_awards:                                   # df = _load_participation_awards
+      - personal_score_award_type
+      - personal_score_amount
+    required_fields:
+      match_row:
+        pair_name: "string  (pour family + thresholds)"
+        deaths: "int  (pour Survie)"
+        time_played_seconds: "float  (pour Impact)"
+  call_args:
+    height: 380
+    fill_opacity: 1.0
+    show_fill: true
+    radial_range: [0, 1.1]
+  filters_applied: []
+
+  transformations:
+    - description: "Chargement des Personal Score Awards du match"
+      polars: |
+        df = _load_participation_awards(db_path, match_id, xuid)
+        # df contient les awards par type : objectifs, combat, support, score
+      sql_duckdb: |
+        SELECT personal_score_award_type, SUM(personal_score_amount) AS total
+        FROM personal_score_awards
+        WHERE match_id = ? AND xuid = ?
+        GROUP BY personal_score_award_type;
+
+    - description: "Détermination du seuil 'objectifs' selon la famille de mode"
+      polars: |
+        thresholds = get_radar_thresholds(db_path)
+        per_mode = thresholds.pop("per_mode", None) or RADAR_THRESHOLDS_PER_MODE
+        family = get_mode_family(pair_name_match)
+        if is_objective_mode_from_pair_name(pair_name_match):
+            thresholds["objectifs"] = per_mode.get(family, RADAR_THRESHOLDS_PER_MODE.get(family, 950.0))
+        else:
+            thresholds["objectifs"] = per_mode.get("slayer", RADAR_THRESHOLDS_PER_MODE["slayer"])
+      sql_duckdb: "-- Logique côté Go : table de mapping famille → seuil objectifs"
+      detail: |
+        Le seuil 'objectifs' est CALIBRÉ sur la famille de mode :
+          - Mode objectif (CTF, Strongholds, Oddball, KOTH, etc.) : seuil par famille
+          - Mode slayer pur : seuil 'slayer' (plus bas, car peu d'objectifs)
+        Évite que le radar montre des objectifs à 0% sur un slayer juste parce que ce mode
+        n'en génère pas.
+
+    - description: "Calcul du profil de participation (6 axes normalisés + raw)"
+      polars: |
+        profile = compute_participation_profile(
+            df,
+            match_row=row_dict,
+            options=ProfileOptions(
+                name=t("mvc_this_match"),
+                color="#636EFA",                                # bleu Plotly default
+                pair_name=pair_name_match,
+                thresholds=thresholds,
+            ),
+        )
+        # Retourne dict :
+        # {
+        #   name, color,
+        #   objectifs_norm, objectifs_raw,
+        #   combat_norm, combat_raw,
+        #   support_norm, support_raw,
+        #   score_norm, score_raw,
+        #   impact_norm, impact_raw,        # impact_raw = pts/min
+        #   survie_norm, survie_raw,        # survie_raw = ratio 0-1
+        # }
+      sql_duckdb: "-- Calcul côté Go via compute_participation_profile portée"
+
+    - description: "Construction du customdata (valeurs raw formatées) pour les hovers"
+      polars: |
+        customdata = [
+            [f"{int(obj_r):,} pts"],      # Objectifs en points
+            [f"{int(combat_r):,} pts"],   # Combat
+            [f"{int(support_r):,} pts"],  # Support
+            [f"{int(score_r):,} pts"],    # Score total
+            [f"{impact_r:.1f} pts/min"],  # Impact = pts/min
+            [f"{survie_pct:.0f}% {t('radar_hover_survival_pct')}"],
+            [f"{int(obj_r):,} pts"],      # Doublon (closure du polygone)
+        ]
+
+# === RADAR-SPECIFIC ===
+radar:
+  axes:                                                         # 6 axes (7 avec closure)
+    - id: objectifs
+      label: "{{t.radar_objectives}}"
+      norm_field: objectifs_norm
+      raw_field: objectifs_raw
+      raw_unit: "pts"
+
+    - id: combat
+      label: "{{t.radar_combat}}"
+      norm_field: combat_norm
+      raw_field: combat_raw
+      raw_unit: "pts"
+
+    - id: support
+      label: "{{t.radar_support}}"
+      norm_field: support_norm
+      raw_field: support_raw
+      raw_unit: "pts"
+
+    - id: score
+      label: "{{t.col_score}}"                                  # /!\ utilise t('col_score'), pas t('radar_score')
+      norm_field: score_norm
+      raw_field: score_raw
+      raw_unit: "pts"
+
+    - id: impact
+      label: "{{t.radar_impact}}"
+      norm_field: impact_norm
+      raw_field: impact_raw
+      raw_unit: "pts/min"
+
+    - id: survival
+      label: "{{t.radar_survival}}"
+      norm_field: survie_norm
+      raw_field: survie_raw                                     # multiplié par 100 pour affichage % dans le hover
+      raw_unit: "% (survie)"
+
+  radial_axis:
+    range: [0, 1.1]                                             # /!\ 1.1 pour laisser un peu d'air au-dessus de 100%
+    show_ticklabels: true
+    tickvals: [0.25, 0.5, 0.75, 1.0]
+    ticktext: ["25%", "50%", "75%", "100%"]
+    tickfont:
+      color: "rgba(255, 255, 255, 0.85)"
+      size: 11
+      weight: bold
+    gridcolor: "rgba(255, 255, 255, 0.12)"
+
+  angular_axis:
+    gridcolor: "rgba(255, 255, 255, 0.12)"
+    linecolor: "rgba(255, 255, 255, 0.12)"                      # THEME_COLORS.border
+    tickfont:
+      color: "rgba(245, 248, 255, 0.92)"                        # THEME_COLORS.text_primary
+
+  polar_bgcolor: "rgba(29, 35, 40, 1.0)"                        # THEME_COLORS.bg_plot_rgba(1.0)
+
+  fill:
+    show_fill: true
+    fill_opacity: 1.0
+    detail: |
+      Si show_fill=True : fill='toself' avec fillcolor = couleur du profile en RGBA
+      (composant calcule rgba depuis hex via int(fc[0:2],16) etc.).
+      Si show_fill=False : fill='none' (lignes seulement, lisible en multi-profile).
+
+# === TRACES ===
+traces:
+  - id: "this_match"
+    name: "{{t.mvc_this_match}}"                                # "Ce match"
+    type: go.Scatterpolar
+    chart_role: primary
+    color: "#636EFA"                                            # /!\ couleur Plotly default (bleu) — fixée dans ProfileOptions
+    color_token: "ProfileOptions.color (default '#636EFA')"
+    line: {width: 3}
+    fill: "toself"
+    fill_opacity: 1.0
+    customdata_fields: [objectifs_raw_fmt, combat_raw_fmt, support_raw_fmt, score_raw_fmt, impact_raw_fmt, survie_pct_fmt]
+    hovertemplate: "%{theta}: %{customdata[0]}<extra>%{fullData.name}</extra>"
+    show_when: "always"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380                                                  # height passée par _plot_participation_radar_fig
+    expression: null
+    branches: []
+  margin: {l: 60, r: 60, t: 50, b: 40}                          # /!\ marges égales L/R pour centrer le polar
+  showlegend: false                                             # /!\ false si 1 seul profil ; true si N profils (cas comparison Phase 2)
+  legend:
+    orientation: h
+    yanchor: top
+    y: -0.08
+    xanchor: center
+    x: 0.5
+    detail: "Légende affichée seulement si >= 2 profiles (comparaison)"
+
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df is not None  (awards chargés)"
+  hidden_when: null
+  empty_state:
+    type: none
+    triggered_by: ["_load_participation_awards retourne None → return early sans rendre rien"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  layout_position:
+    container: "st.columns([2, 1])"
+    column_index: 0
+    detail: |
+      /!\ Layout CONDITIONNEL :
+        - Si hints_visible() == True : st.columns([2, 1]) — radar à gauche, légende texte des axes à droite
+          Légende = bullet list rendue via st.markdown(get_radar_axis_lines()) — explication
+          de chaque axe en français/anglais.
+        - Si hints_visible() == False : juste le radar, pleine largeur.
+  preceded_by:
+    - "st.subheader(f'🎯 {t(\"mvp_participation_title\")}')"
+    - "(la légende texte n'est rendue QUE si hints_visible())"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - mvp_participation_title                                   # subheader "Profil de participation"
+    - mvp_axes_label                                            # "Axes du radar :"
+    - mvc_this_match                                            # "Ce match"
+    - radar_objectives
+    - radar_combat
+    - radar_support
+    - col_score                                                 # /!\ utilise col_score pas radar_score
+    - radar_impact
+    - radar_survival
+    - radar_hover_survival_pct                                  # "de chances de survie" / "survival rate"
+    - radar_hover_deaths                                        # utilisé par _add_radar_player_traces (autre radar)
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Nouveau chart_kind: radar avec section dédiée radar:"
+      why: |
+        Plotly go.Scatterpolar a une structure spécifique (theta + r + polar layout avec radial/angular
+        axis) qui ne mappe pas naturellement sur traces[]/xaxis/yaxis. Section dédiée capture les
+        6 axes labellisés + les ticks 25/50/75/100% + le polar bgcolor.
+        Côté ECharts : `series.type='radar'` + `radar.indicator: [{name, max}, ...]` (1 par axe) +
+        `radar.splitNumber: 4` (pour les 4 ticks) + `radar.axisName.formatter` pour styliser les labels.
+
+    - decision: "Theta closure (categories + [categories[0]]) pour fermer le polygone"
+      why: |
+        Plotly Scatterpolar attend une liste fermée pour dessiner un polygone fermé.
+        Le code fait `theta = categories + [categories[0]]` et `r = values + [values[0]]`.
+        ECharts gère cette fermeture automatiquement (data dans series.data[0].value).
+        À noter dans le porteur Go pour ne pas oublier la fermeture si on génère manuellement.
+
+    - decision: "Customdata structuré (1 dict par axe avec valeur formatée)"
+      why: |
+        Plutôt que de passer les valeurs raw brutes au hovertemplate, le code Python pré-formate
+        chaque valeur (avec unité 'pts' ou 'pts/min' ou '% survie') et les passe via customdata.
+        Le hovertemplate affiche juste %{customdata[0]}. Côté ECharts : `tooltip.formatter`
+        custom qui consomme `data.customdata[indicator_index]`.
+
+    - decision: "Calibration des seuils 'objectifs' par famille de mode"
+      why: |
+        Logique métier critique : un slayer génère ~0 pts d'objectif vs un CTF qui en génère
+        beaucoup. Pour que le radar reste lisible sur les deux modes, on calibre le seuil
+        'objectifs' sur la famille (slayer → seuil bas, ctf/strongholds → seuil haut).
+        Sans cette calibration, le radar montrerait 'objectifs: 0%' systématiquement sur slayer
+        (faussement décourageant). Documenté pour porter PRÉCISÉMENT côté Go.
+
+    - decision: "Layout conditionnel hints_visible (st.columns vs full-width)"
+      why: |
+        Quand hints sont actifs (mode débutant) : ajoute une légende texte à droite expliquant
+        les 6 axes. Sinon : juste le radar centré pleine largeur. Côté React : prop `showHints`
+        sur le composant <ParticipationRadar> qui conditionne l'ajout d'un sidebar à droite
+        avec la légende textuelle.
+
+    - decision: "Cas Phase 2 : `render_participation_comparison` non couvert ici"
+      why: |
+        Le fichier match_view_participation.py a aussi une fonction `render_participation_comparison`
+        qui rend le MÊME chart mais avec N profils (joueur courant + N coéquipiers/adversaires
+        à comparer). Sera couvert en Phase 2 quand on s'attaquera à l'onglet Combat ou Team.
+        La fonction `create_participation_profile_radar` est ré-utilisable telle quelle pour
+        N profils (paramètre `profiles: list[dict]`).

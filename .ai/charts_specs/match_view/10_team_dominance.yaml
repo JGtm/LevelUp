@@ -1,0 +1,257 @@
+# =============================================================================
+# Tug-of-war dominance d'équipe + kill feed
+# =============================================================================
+# 2 panneaux liés par l'axe X temporel (subplots verticaux 68/32) :
+#   - Panneau 1 (haut, 68%) : barres empilées dominance équipe (mon équipe %
+#     vers le haut, équipe ennemie % vers le bas) par bucket de 30s par défaut
+#     + ligne de parité y=50% en pointillés blancs + annotations de zone +
+#     points kill feed bleus (mon équipe, y=143) et vermillons (ennemis, y=0.65)
+#     + annotations de frags cumulés.
+#   - Panneau 2 (bas, 32%) : kill feed individuel — chaque kill = un point
+#     positionné sur l'axe Y selon le joueur (1 row par joueur, séries annotées
+#     pour les streaks).
+# =============================================================================
+
+id: "match_view.10"
+title: "Tug-of-war dominance + kill feed"
+page: match_view
+section: "Onglet Combat — Dynamique du match"
+source_function: "src/ui/pages/match_view_players_timeline.py::render_team_dominance_section"
+source_helpers:
+  - "src/visualization/team_dominance_timeline.py::plot_dominance_chart"
+  - "src/visualization/_team_dominance_helpers.py::prepare_bar_data"
+  - "src/visualization/_team_dominance_helpers.py::prepare_kill_feed"
+  - "src/visualization/_team_dominance_helpers.py::add_cumul_annotations"
+  - "src/analysis/team_dominance.py::compute_dominance_buckets"
+  - "src/analysis/team_dominance.py::detect_streaks"
+fragment: false
+chart_kind: grouped_bar                                     # /!\ vrai kind : Plotly go.Bar empilées par bucket (tug-of-war)
+                                                             # Subplots Plotly (2 panels) → simplifié en mono-panel pour le mock
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_highlight_events_fn(...) + compute_dominance_buckets + detect_streaks"
+  input_dataframe:
+    required_fields:
+      highlight_events: "list[dict] avec event_type, time_ms, xuid, gamertag"
+      xuid_to_team: "dict {xuid → team_id}"
+      my_team_id: "int (équipe du joueur courant)"
+      duration_s: "float (durée jouable en secondes)"
+  call_args:
+    bucket_s: 30                                            # /!\ taille bucket par défaut
+  filters_applied: []
+  timezone: "match_clock"
+
+  transformations:
+    - description: "Calcul des buckets de dominance par tranche de 30s (compute_dominance_buckets)"
+      polars: |
+        # Pour chaque bucket [t, t+30s] :
+        #   - my_kills = count(kills mon équipe)
+        #   - enemy_kills = count(kills équipe adverse)
+        #   - my_pct, enemy_pct = pct répartition normalisé à 100%
+        # Si égalité : 50/50.
+      sql_duckdb: "-- Calcul Go via fonction dédiée internal/analysis/dominance.go"
+
+    - description: "Cumul des frags par équipe pour les annotations"
+      polars: |
+        cumul_my = []; cumul_enemy = []
+        for b in buckets: cumul_my.append(sum_so_far_my); cumul_enemy.append(sum_so_far_enemy)
+
+    - description: "Détection de killstreaks (detect_streaks)"
+      polars: |
+        # Renvoie list[KillStreak] avec start_time_ms, end_time_ms, length, xuid
+        # Un streak = N kills consécutifs par le même joueur sans mort entre temps
+
+    - description: "Préparation du kill feed (séparation mon équipe/adversaire)"
+      polars: |
+        my_xs, enemy_xs, my_tips, enemy_tips = prepare_kill_feed(...)
+        # Un point par kill, x=time_ms, y=143 (mon équipe) ou y=0.65 (adversaire)
+
+# === TRACES (multi-panel via subplots) ===
+subplots:                                                   # /!\ structure spéciale Plotly subplots
+  rows: 2
+  cols: 1
+  shared_xaxes: true
+  row_heights: [0.68, 0.32]
+  vertical_spacing: 0.03
+
+traces:
+  # Panneau 1 (row=1) — barres empilées dominance
+  - id: enemy_dominance_bars
+    name: "{{viz_t.trace_opponents}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{ENEMY_RGBA}}"                                  # rgba(213, 94, 0, 0.80)
+    color_per_bar: "from prepare_bar_data colors_enemy"     # nuances par bucket
+    width_field: bar_widths                                   # variable selon duration
+    showlegend: false
+    hovertemplate: "<b>%{customdata}</b><br>{{viz_t.trace_opponents}} : %{y:.0f}%<extra></extra>"
+    subplot: {row: 1, col: 1}
+
+  - id: my_team_dominance_bars
+    name: "{{viz_t.trace_my_team}}"
+    type: go.Bar
+    chart_role: primary
+    color: "{{MY_TEAM_RGBA}}"                                # rgba(0, 114, 178, 0.80)
+    color_per_bar: "from prepare_bar_data colors_my"
+    showlegend: false
+    hovertemplate: "<b>%{customdata}</b><br>{{viz_t.trace_my_team}} : %{y:.0f}%<extra></extra>"
+    subplot: {row: 1, col: 1}
+
+  # Panneau 1 — kill feed points
+  - id: my_kills_points
+    type: go.Scatter
+    chart_role: overlay
+    mode: "markers"
+    color: "{{MY_TEAM_COLOR}}"                               # #0072B2
+    marker: {size: NORMAL_MARKER_SIZE, opacity: 0.65}
+    fixed_y: 143.0                                            # /!\ position Y fixe au-dessus du panel
+    text_field: my_tips
+    showlegend: false
+    subplot: {row: 1, col: 1}
+
+  - id: enemy_kills_points
+    type: go.Scatter
+    chart_role: overlay
+    mode: "markers"
+    color: "{{ENEMY_COLOR}}"                                  # #D55E00
+    marker: {size: NORMAL_MARKER_SIZE, opacity: 0.65}
+    fixed_y: 0.65                                              # position Y proche de 0
+    text_field: enemy_tips
+    showlegend: false
+    subplot: {row: 1, col: 1}
+
+  # Panneau 2 (row=2) — kill feed individuel par joueur (1 row par joueur, séries annotées)
+  - id: kill_feed_per_player
+    type: go.Scatter
+    chart_role: secondary
+    mode: "markers+text"
+    detail: |
+      Pour chaque joueur impliqué dans le match :
+        - Une trace markers à y=index_du_joueur (ligne dédiée)
+        - Couleur = couleur de l'équipe (bleu/vermillon selon team_id)
+        - Annotations sur les streaks détectés (label "Killing Spree" etc.)
+    subplot: {row: 2, col: 1}
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360                                                # PLOT_CONFIG.default_height
+    expression: null
+    branches: []
+  margin: {l: 60, r: 30, t: 40, b: 60}
+  hovermode: "x unified"
+  showlegend: false                                           # toutes les traces ont showlegend=False
+  barmode: "relative"
+
+  shapes:
+    # Ligne de parité y=50% sur le panel 1
+    - type: line
+      kind: hline
+      y: 50
+      line_dash: "dot"
+      line_color: "rgba(255, 255, 255, 0.35)"
+      line_width: 1
+      subplot: {row: 1, col: 1}
+
+  annotations:
+    # 2 annotations de zone sur panel 1 (label "mon équipe" en haut, "ennemis" en bas)
+    - text: "{{viz_t.trace_my_team}}"
+      x_expression: "duration_s * 0.015"
+      y: 82
+      x_ref: "x"
+      y_ref: "y"
+      font: {color: "{{MY_TEAM_COLOR}}", size: 10}
+      showarrow: false
+      xanchor: left
+
+    - text: "{{viz_t.trace_opponents}}"
+      x_expression: "duration_s * 0.015"
+      y: 18
+      x_ref: "x"
+      y_ref: "y"
+      font: {color: "{{ENEMY_COLOR}}", size: 10}
+      showarrow: false
+      xanchor: left
+
+    # + N annotations de cumul de frags (positions calculées par add_cumul_annotations)
+    - description: "Annotations de cumul ajoutées dynamiquement par add_cumul_annotations"
+      detail: "Une annotation par bucket avec les totaux courants des 2 équipes"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    not is_firefight
+    AND highlight_events table exists
+    AND len(he) > 0
+    AND len(all_players) > 0
+    AND len(set(team_ids)) >= 2                                 # au moins 2 équipes
+    AND my_team_id is not None
+    AND len(kill_events) > 0
+  empty_state:
+    type: "st.info"
+    triggered_by:
+      - "is_firefight → return early sans rendre"
+      - "table highlight_events absente"
+      - "he vide → mv_dynamics_no_data"
+      - "no roster → mv_dynamics_no_roster"
+      - "moins de 2 équipes ou my_team_id null → mv_dynamics_no_team"
+      - "no kill events → mv_dynamics_no_kills"
+      - "fig None → mv_dynamics_no_dominance"
+  config: PLOTLY_CLEAN_CONFIG                                   # interactif (zoom/hover)
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('mv_match_dynamics'))"
+    - "st.spinner(t('mv_dynamics_computing'))"
+  followed_by:
+    - "if hints_visible(): st.markdown(t('mv_dominance_legend'))"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_opponents
+    - trace_my_team
+  t:
+    - mv_match_dynamics
+    - mv_dynamics_computing
+    - mv_dynamics_no_data
+    - mv_dynamics_no_roster
+    - mv_dynamics_no_team
+    - mv_dynamics_no_kills
+    - mv_dynamics_no_dominance
+    - mv_dominance_legend
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Multi-panel via Plotly subplots (rows=2, cols=1)"
+      why: |
+        Le chart utilise `make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.68, 0.32])`.
+        ECharts equivalent : `grid: [{top:0, height:'62%'}, {top:'68%', height:'30%'}]` + `xAxis:[{}, {gridIndex:1}]`
+        + `yAxis:[{}, {gridIndex:1}]` + `series[i].xAxisIndex/yAxisIndex` selon le panel.
+        Section `subplots:` documentée séparément ; le converter doit reconnaître ce flag pour
+        générer la structure multi-grid ECharts (non implémenté en Phase 1, à faire si visuel critique).
+
+    - decision: "Position Y fixe pour les kill feed points (143 et 0.65)"
+      why: |
+        Les points kill feed sont positionnés HORS de la plage 0-100% des barres dominance via
+        des Y arbitraires (143 au-dessus, 0.65 juste au-dessus de 0). Truc visuel pour faire
+        flotter les points dans les "zones marges" du panel 1. À reproduire avec un yAxis
+        étendu (ex range [-5, 150]) ou un overlay graphic.
+
+    - decision: "Section `subplots` non couverte par le converter Phase 1"
+      why: |
+        Le converter actuel n'a pas de support multi-panel. Pour la preview HTML mock, ce chart
+        sera rendu avec une simplification (un seul panel barres dominance, sans kill feed),
+        et un warning dans l'option ECharts émise. À enrichir si ce chart devient critique pour
+        la migration (priorité Phase 2 secondaire).

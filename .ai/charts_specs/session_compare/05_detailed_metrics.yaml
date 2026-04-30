@@ -1,0 +1,90 @@
+# =============================================================================
+# Detailed metrics rows — table HTML stylée comparative A/B
+# =============================================================================
+# Pas un chart. Multiple appels à render_metric_comparison_row qui produit
+# des lignes HTML stylées (label + valeur A + valeur B + delta avec icône).
+# Métriques affichées :
+#   - Match count
+#   - K/D ratio (FDA)
+#   - Win rate
+#   - (autre métrique selon disponibilité)
+#   - Total kills, deaths (négatif si plus = mieux), assists
+# =============================================================================
+
+id: "session_compare.05"
+title: "Detailed metrics rows — comparaison A/B HTML"
+page: session_compare
+section: "Section 5 (linéaire)"
+display_order_in_page: 5
+source_function: "src/ui/pages/session_compare.py::_render_detailed_metrics"
+source_helpers:
+  - "src/ui/components/performance.py::render_metric_comparison_row"
+fragment: false
+chart_kind: table_html
+
+data:
+  computed_by: server
+  upstream_service: "perf_a / perf_b dicts"
+  input_dataframe:
+    required_fields: { perf_a, perf_b: [matches, kd_ratio, win_rate, kills, deaths, assists] }
+  call_args: {}
+
+  metrics:
+    - { label_i18n: "sc_match_count",   field: matches,   format: "{}" }
+    - { label_i18n: "sc_kd_ratio",      field: kd_ratio,  format: "{:.2f}" }
+    - { label_i18n: "sc_win_rate",      field: win_rate,  format: "{:.1f}%" }
+    - { label_i18n: "sc_total_kills",   field: kills,     format: "{}" }
+    - { label_i18n: "sc_total_deaths",  field: deaths,    format: "{}", invert_better: true }
+    - { label_i18n: "sc_total_assists", field: assists,   format: "{}" }
+
+# === TABLE HTML ===
+table_html:
+  columns:
+    - { id: label,    header_i18n: "Métrique" }
+    - { id: value_a,  header: "Session A", color_field: "_COLOR_A" }
+    - { id: value_b,  header: "Session B", color_field: "_COLOR_B" }
+    - { id: delta,    header: "Δ", icon_field: "▲ / ▼ / ━" }
+
+  row_template:
+    label: "{{metric.label_i18n}}"
+    value_a: "{{format(perf_a[metric.field])}}"
+    value_b: "{{format(perf_b[metric.field])}}"
+    delta:
+      sign: "B - A si !invert_better else A - B"
+      icon: "▲ if positive else ▼ if negative else ━"
+      color: "vert si positif, rouge si négatif, gris si nul"
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 280 }
+
+display:
+  shown_when: "perf_a et perf_b non None"
+  config: null
+  width_mode: stretch
+
+i18n_keys:
+  viz_t: []
+  t:
+    - sc_match_count
+    - sc_kd_ratio, sc_win_rate
+    - sc_total_kills, sc_total_deaths, sc_total_assists
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Métrique 'deaths' avec invert_better=true"
+      why: |
+        Pour les morts, MOINS = BETTER. L'icône ▲ doit apparaître quand B a MOINS de morts
+        que A (et non plus). render_metric_comparison_row gère via paramètre.
+
+    - decision: "Pas un chart Plotly — table HTML stylée"
+      why: |
+        Comparaison directe ligne à ligne — un chart serait sur-engineered. Le composant
+        Streamlit produit du HTML inline avec couleurs canoniques A/B. Côté React :
+        composant <ComparisonTable rows={metrics} perfA perfB />.

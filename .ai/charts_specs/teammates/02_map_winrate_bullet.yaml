@@ -1,0 +1,213 @@
+# =============================================================================
+# Bullet chart — Winrate session vs historique par carte
+# =============================================================================
+# 4 traces Bar empilées en `barmode=overlay` :
+#   - barre rose Okabe (#CC79A7) ARRIÈRE = winrate historique sur la carte
+#   - barre rose Okabe AVANT          = idem (par-dessus quand session > histo)
+#   - barre session UNDER (couleur conditionnelle vert/ambre/rouge)
+#   - barre session OVER  (couleur idem)
+# + vline x=0.5 pointillée = ligne de référence parité
+# + 3 traces légende couleur (vert/ambre/rouge avec libellés ±5%)
+# + scatter "0%" pour les cartes avec 0 victoires (visibles malgré barre invisible)
+# =============================================================================
+
+id: "teammates.02"
+title: "Winrate session vs historique — bullet chart"
+page: teammates
+section: "Onglet Synergies — Map breakdown"
+source_function: "src/visualization/_maps_outcome_bullet.py::plot_map_winrate_bullet"
+source_helpers:
+  - "src/visualization/_maps_outcome_bullet.py::_prepare_bullet_joined_data"
+  - "src/visualization/_maps_outcome_bullet.py::_add_bullet_overlay_traces"
+  - "src/visualization/_maps_outcome_bullet.py::_add_bullet_bar_traces"
+  - "src/visualization/_maps_outcome_bullet.py::_add_bullet_color_legend_traces"
+  - "src/ui/pages/teammates_views.py::_render_map_breakdown (caller)"
+  - "src/ui/pages/teammates_map_charts.py::render_map_charts_section (caller)"
+fragment: false
+chart_kind: bullet                                             # /!\ nouveau kind à supporter
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_map_breakdown(sub_all) + compute_map_breakdown(full_squad_df)"
+  input_dataframe:
+    bd_current:                                                 # session courante
+      required_columns: [map_name, win_rate, n_matches]
+    bd_history:                                                 # historique global
+      required_columns: [map_name, win_rate, n_matches]
+  call_args:
+    map_order: "list[str] | null  (ordre canonique des cartes, sinon top par fréquence)"
+  filters_applied: []
+  constants:
+    _BULLET_DELTA_THRESHOLD:
+      value: 0.05
+      type: float
+      why: "Seuil ±5% qui différencie session > historique (vert) vs ≈ (ambre) vs < (rouge)"
+    _OKABE_ROSE:
+      value: "#CC79A7"
+      type: hex
+      why: "Couleur rose Okabe-Ito pour la barre HISTORIQUE — distinct des couleurs session conditionnelles vert/ambre/rouge"
+
+  transformations:
+    - description: "Jointure bd_current avec bd_history par map_name"
+      polars: |
+        joined = bd_current.join(bd_history, on='map_name', how='left', suffix='_hist')
+        # Colonnes : map_name, win_rate, _hist_wr, n_matches_session, n_matches_hist
+
+    - description: "Calcul des couleurs de barres session selon delta vs historique"
+      polars: |
+        # _sess_color(curr, hist):
+        #   curr >= hist + 0.05 → green
+        #   curr <= hist - 0.05 → red
+        #   sinon → amber
+        curr_colors = [_sess_color(c, h) for c, h in zip(d.win_rate, d._hist_wr)]
+        over_mask = [c > h for c, h in zip(d.win_rate, d._hist_wr)]
+
+# === BULLET-SPECIFIC ===
+bullet:
+  orientation: horizontal                                      # axe Y catégoriel (cartes)
+  x_range: [-0.05, 1.1]                                        # -5% à 110% (avec marge)
+  x_tickformat: ".0%"
+
+  bars:                                                         # 4 traces empilées en overlay
+    - id: hist_under
+      name: "Historique"
+      color: "#CC79A7"                                         # _OKABE_ROSE (rose)
+      legendgroup: "hist"
+      showlegend: true
+      detail: "barre histo arrière — visible quand session < histo"
+
+    - id: under_session
+      name: "Session actuelle"
+      color: "{{conditional}} green/amber/red selon delta vs histo"
+      legendgroup: "sess"
+      showlegend: true
+      detail: "barre session UNDER (longueur=session_value, masquée si over)"
+
+    - id: hist_over
+      name: "Historique"
+      color: "#CC79A7"
+      legendgroup: "hist"
+      showlegend: false                                        # /!\ FALSE — déjà légende via hist_under
+      detail: "barre histo avant — visible quand session > histo (par-dessus)"
+
+    - id: over_session
+      name: "Session actuelle"
+      color: "{{conditional}}"
+      legendgroup: "sess"
+      showlegend: true
+      detail: "barre session OVER (longueur=session_value, premier plan Plotly)"
+
+  reference_line:                                               # vline x=0.5
+    x: 0.5
+    line:
+      dash: "dot"
+      color: "rgba(180, 180, 180, 0.6)"
+      width: 1.5
+    purpose: "Référence visuelle de parité 50% winrate"
+
+  zero_winrate_markers:                                         # scatter pour cartes 0%
+    enabled: true
+    description: |
+      Quand le winrate session d'une carte est EXACTEMENT 0% (toutes défaites),
+      la barre a une longueur 0 → invisible. On ajoute un marker line-ns rouge
+      pour signaler la donnée existe.
+    symbol: "line-ns"
+    size: 14
+    color: "#FF4D6D"                                            # HALO_COLORS.red
+    label_per_lang: {fr: "0% (toutes défaites)", en: "0% (all losses)"}
+
+  color_legend:                                                 # 3 traces additionnelles pour la légende
+    description: "Traces invisibles (x=None, y=None) avec name uniquement, juste pour entrée légende"
+    entries:
+      - {color: "{{HALO_COLORS.green}}", label_template: "Session > hist. (+{pct}%)"}
+      - {color: "{{HALO_COLORS.amber}}", label_template: "Session ≈ hist. (±{pct}%)"}
+      - {color: "{{HALO_COLORS.red}}",   label_template: "Session < hist. (-{pct}%)"}
+    pct_template: "{int(_BULLET_DELTA_THRESHOLD * 100)}"        # 5
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 520                                                  # PLOT_CONFIG.tall_height
+  margin: {l: 40, r: 20, t: 30, b: 70}
+  barmode: "overlay"                                            # /!\ pas stack — overlay
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  xaxis:
+    type: "linear"
+    tickformat: ".0%"
+    range: [-0.05, 1.1]
+
+  yaxis:
+    type: "category"                                            # cartes en Y
+    automargin: true                                            # noms de cartes longs
+
+  shapes:
+    - type: line
+      kind: vline
+      x: 0.5
+      line_dash: "dot"
+      line_color: "rgba(180, 180, 180, 0.6)"
+      line_width: 1.5
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "joined is not None (bd_current et bd_history non vides)"
+  empty_state:
+    type: "st.info"
+    triggered_by: ["bd_current vide ou jointure vide"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by: ["(rendu dans _render_map_breakdown — onglet Synergies)"]
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t: []
+  literal:
+    - "Historique / History"
+    - "Session actuelle / Current session"
+    - "Session > hist. (+5 %)"
+    - "Session ≈ hist. (±5 %)"
+    - "Session < hist. (-5 %)"
+    - "0% (toutes défaites) / 0% (all losses)"
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "4 traces overlay au lieu d'un simple stacked bar"
+      why: |
+        Pattern Plotly avancé pour faire un "bullet chart" : on superpose 2 barres histo (arrière
+        + avant) et 2 barres session (under + over) avec masques transparents. Le résultat visuel :
+        si session > hist, on voit la barre session colorée + une bande rose qui dépasse à droite.
+        Si session < hist, on voit la bande rose avec la barre session courte par-dessus.
+        Implémentation ECharts : 4 series bar (overlay = pas de stack) avec data conditionnelle
+        (transparent ou coloré selon over_mask).
+
+    - decision: "Couleur conditionnelle vert/ambre/rouge (HALO_COLORS) pour signal session"
+      why: |
+        Les couleurs des barres SESSION (under + over) varient selon le delta avec l'historique.
+        Vert = bonne perf (≥ histo+5%), rouge = mauvaise (≤ histo-5%), ambre = équivalent (±5%).
+        Le seuil 5% (_BULLET_DELTA_THRESHOLD) est documenté en constante. À porter exactement
+        côté Go pour ne pas dérégler les seuils visuels.
+
+    - decision: "Marker line-ns pour les cartes à 0% winrate"
+      why: |
+        Détail UX : une carte avec winrate 0% a une barre de longueur 0 → invisible. Sans
+        compensation, l'utilisateur ne voit pas que la donnée existe. Le marker `symbol: line-ns`
+        (segment vertical) à x=0 sur la lane de la carte rend la donnée visible.
+
+    - decision: "Légende couleur via 3 traces fantômes"
+      why: |
+        Plotly n'expose pas de "legend.colorscale" pour les barres avec couleur conditionnelle.
+        Le contournement : ajouter 3 traces Bar invisibles (x=[None], y=[None]) avec `name` =
+        libellé de la couleur. Elles n'apparaissent que dans la légende. Côté ECharts : utiliser
+        `legend.data` custom ou un `visualMap.pieces` discrets.

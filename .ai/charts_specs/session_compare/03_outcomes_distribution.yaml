@@ -1,0 +1,107 @@
+# =============================================================================
+# Outcomes distribution — 2 donuts W/L/T/DNF en colonnes
+# =============================================================================
+# 2 pie charts en colonnes (st.columns(2)) avec hole=0.55 (donut). Chaque donut :
+#   - Compte par outcome (WIN=2, LOSS=3, TIE=1, DNF=4)
+#   - Couleurs : vert/rouge/violet/gris (ordered fixe)
+#   - textinfo="label+percent"
+#   - Annotation centrale "<wins>/<total>" (ex "6/12")
+#   - height=220 px
+# =============================================================================
+
+id: "session_compare.03"
+title: "Outcomes distribution — 2 donuts W/L/T/DNF par session"
+page: session_compare
+section: "Section 3 (linéaire)"
+display_order_in_page: 3
+source_function: "src/ui/pages/_session_compare_viz.py::render_outcomes_distribution"
+source_helpers:
+  - "src/ui/pages/_session_compare_viz.py::_build_outcome_donut"
+  - "src/data/outcome_codes::Outcome"
+fragment: true                                                  # @fragment_if_available
+chart_kind: pie
+
+data:
+  computed_by: server
+  upstream_service: "df.get_column('outcome').drop_nulls() → counts par code outcome"
+  input_dataframe:
+    required_fields: { df_session_a, df_session_b: [outcome] }
+  call_args: {}
+  constants:
+    hole_ratio: 0.55                                            # donut, pas pie pleine
+    outcome_codes: { WIN: 2, LOSS: 3, TIE: 1, DNF: 4 }
+    outcome_colors:
+      "2": "#00e676"                                            # WIN green
+      "3": "#e53935"                                            # LOSS red
+      "1": "#ab47bc"                                            # TIE violet
+      "4": "#888888"                                            # DNF gris
+    height: 220
+
+  transformations:
+    - description: "Comptage par code outcome (ordre fixe W/L/T/DNF)"
+      polars: |
+        counts = {}
+        for val in df.get_column('outcome').drop_nulls().to_list():
+            key = int(val)
+            counts[key] = counts.get(key, 0) + 1
+    - description: "Filtrage : ne garder que les codes avec count > 0"
+      polars: "ordered = [WIN, LOSS, TIE, DNF]; pie_values = [counts[o] for o in ordered if counts.get(o, 0) > 0]"
+
+# === TRACES (template per session) ===
+traces:
+  template_per_session: true
+  cardinality: 2
+  spec:
+    type: pie
+    hole: 0.55
+    textinfo: "label+percent"
+    sort: false                                                 # garder l'ordre canonique W/L/T/DNF
+    marker_line: { color: "rgba(0,0,0,0.25)", width: 1 }
+    annotation_center:
+      text: "{wins}/{total}"
+      font: { size: 14, color: "#E0E0E0" }
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height: { value: 220 }
+
+display:
+  shown_when: "outcome ∈ df_a.columns OR outcome ∈ df_b.columns"
+  empty_state:
+    type: "render_chart_or_info(insufficient_data_chart)"
+    triggered_by: ["df vide ou outcome absent → fig=None"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown(t('sc_outcomes_distribution'))"
+
+i18n_keys:
+  viz_t: []
+  t:
+    - sc_outcomes_distribution
+    - outcome_win, outcome_loss, outcome_draw, outcome_dnf
+    - insufficient_data_chart
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Donut (hole=0.55) plutôt que pie pleine"
+      why: |
+        L'annotation centrale '<wins>/<total>' (ex '6/12') est l'INFO PRINCIPALE — le donut
+        crée l'espace visuel pour la mettre en valeur. Pie pleine masquerait le centre.
+
+    - decision: "sort=false pour garder l'ordre canonique W→L→T→DNF"
+      why: |
+        Plotly trie par défaut les segments par valeur décroissante. On force l'ordre
+        sémantique pour cohérence : Wins, Losses, Ties, DNF (lecture naturelle même si une
+        catégorie est plus grosse). Couleurs identiques entre A et B donc comparable d'un
+        donut à l'autre.
+
+    - decision: "Filtrage des codes outcome avec count=0"
+      why: |
+        Si pas de Tie/DNF dans les 2 sessions, on retire ces segments — donut plus lisible
+        avec 2 segments (W+L) qu'avec 4 dont 2 quasi-vides. Cohérent avec timeseries.05.

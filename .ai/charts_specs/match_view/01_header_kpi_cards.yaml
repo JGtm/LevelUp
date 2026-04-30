@@ -1,0 +1,217 @@
+# =============================================================================
+# Header — 4 KPI tiles
+# =============================================================================
+# Rangée de 4 cartes KPI au-dessus du chart : Date / Score+badge / Playlist / Mode-Carte.
+# Chaque tile est un st.container(border=True) avec st.markdown HTML personnalisé.
+# La 2e tile (Score) est ENRICHIE : couleur dynamique selon outcome + badge
+# domination optionnel sous le score (5 styles selon dominance_flag).
+# =============================================================================
+
+id: "match_view.01"
+title: "Header KPI tiles"
+page: match_view
+section: "Header"
+source_function: "src/ui/pages/match_view.py::_render_kpi_cards"
+source_helpers:
+  - "src/ui/pages/match_view.py::_render_simple_kpi_tile"
+  - "src/ui/pages/match_view.py::_render_score_kpi_tile"
+  - "src/ui/pages/match_view.py::_dominance_badge_html"
+  - "src/ui/pages/match_view.py::_DOMINANCE_BADGE_STYLES"
+  - "src/app/helpers.py::normalize_mode_label"
+  - "src/ui/__init__.py::translate_pair_name"
+  - "src/ui/__init__.py::translate_playlist_name"
+  - "src/ui/formatting.py::format_date_fr"
+fragment: false
+chart_kind: kpi_row                                           # /!\ nouveau kind composite UI
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null
+  input_dataframe:
+    required_fields:
+      last_time: "datetime"
+      outcome_color: "string (hex)"
+      score_label: "string (déjà formaté '{my} — {enemy}')"
+      had_bot: "bool"
+      dominance_flag: "int | null  (1..5 ou null)"
+      row:
+        playlist_name: "string"
+        playlist_name_fr: "string | null"
+        pair_name: "string"
+        mode_ui: "string | null"
+        game_variant_name: "string"
+        map_name: "string"
+        map_name_fr: "string | null"
+  call_args: {}
+  filters_applied: []
+
+  transformations:
+    - description: "Résolution du label de playlist (cascade FR → EN traduit → '-')"
+      polars: |
+        playlist_display = (
+          last_playlist_fr if last_playlist_fr
+          else translate_playlist_name(last_playlist, lang) if last_playlist
+          else "-"
+        )
+      sql_duckdb: |
+        SELECT COALESCE(playlist_name_fr, playlist_name, '-') AS playlist_display
+        -- (la traduction EN→FR via translate_playlist_name est faite côté client)
+
+    - description: "Résolution du label de mode (cascade mode_ui → pair_name_fr → game_variant_name → '-')"
+      polars: |
+        mode_display = (
+          mode_ui or normalize_mode_label(pair_name, lang)
+          or last_pair_fr or row.game_variant_name or "-"
+        )
+      sql_duckdb: "-- Cascade côté Go via COALESCE + lookup table modes"
+
+    - description: "Composition de la 4e tile : Mode + ' sur ' (FR) ou ' on ' (EN) + Carte"
+      polars: |
+        sep = " sur " if lang == "fr" else " on "
+        mode_map_display = f"{mode_display}{sep}{map_display}"
+
+    - description: "Format de date français"
+      polars: 'date_display = format_date_fr(last_time, lang)'
+      sql_duckdb: "-- Côté Go : strftime selon lang"
+
+# === KPI ROW SPECIFIC ===
+kpi_row:
+  layout: "st.columns(4)"                                     # 4 colonnes égales
+  tiles:
+    - id: date
+      type: simple
+      text_source: "format_date_fr(row.start_time, lang)"
+      example_fr: "lun. 15 avr. 2026 — 21:32"
+      example_en: "Mon Apr 15, 2026 — 21:32"
+
+    - id: score
+      type: enriched                                          # /!\ tile enrichie : couleur dynamique + badge optionnel
+      score_text: "{my_team_score} — {enemy_team_score}"
+      example: "50 — 32"
+      color_source: "outcome_color"                           # cf. resolve_outcome (match_view_logic.py)
+      color_resolution:
+        WIN: "#4CAF50 (green)"
+        LOSS: "#F44336 (red)"
+        TIE: "#2196F3 (blue)"
+        DNF: "#9E9E9E (grey)"
+      score_style:
+        font_family: "var(--font-display)"
+        font_size: "38px"
+        font_weight: 700
+        line_height: 1
+      badge_optional:
+        condition: "dominance_flag in (1, 2, 3, 4, 5)"
+        styles_per_flag:
+          1: { i18n: "outcome_domination",                bg: "#2e7d32", fg: "#e8f5e9", label_fr: "DOMINATION" }
+          2: { i18n: "outcome_humiliation",               bg: "#6a1b9a", fg: "#f3e5f5", label_fr: "HUMILIATION" }
+          3: { i18n: "career_top_badge_remontada",        bg: "#1565c0", fg: "#e3f2fd", label_fr: "REMONTADA" }
+          4: { i18n: "career_top_badge_debandade",        bg: "#bf360c", fg: "#fbe9e7", label_fr: "DÉBÂCLE" }
+          5: { i18n: "career_top_badge_contre_remontada", bg: "#00695c", fg: "#e0f2f1", label_fr: "CONTRE-REMONTADA" }
+        badge_style: |
+          display: block;
+          margin-top: 1px;
+          padding: 3px 10px;
+          border-radius: 4px;
+          font-size: 0.975em;
+          font-weight: 600;
+
+    - id: playlist
+      type: simple
+      text_source: "playlist_display (FR > EN traduit > '-')"
+      example: "Quickplay"
+
+    - id: mode_map
+      type: simple
+      text_source: "mode_display + ' sur '/' on ' + map_display"
+      example: "Slayer sur Aquarius"
+
+  tile_common_style:                                          # _KPI_TEXT_STYLE (match_view.py:64)
+    font_family: "var(--font-display)"
+    font_size: "24px"
+    font_weight: 400
+    letter_spacing: "0.02em"
+    color: "rgba(255, 255, 255, 0.98)"
+    text_align: center
+    padding: "9px 15px"
+
+  container:
+    type: "st.container(border=True)"
+    style_react: "Card with subtle border (rgba 0.12 alpha standard Halo)"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 0                                                  # composant UI sans hauteur Plotly
+    expression: null
+    branches: []
+  margin: {l: 0, r: 0, t: 0, b: 0}
+  showlegend: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "always (header toujours rendu)"
+  hidden_when: null
+  empty_state:
+    type: none                                                # les valeurs nulles tombent en '-'
+  config: null                                                # pas un Plotly chart
+  width_mode: stretch
+  filters_widgets: []
+  fragment_isolation: false
+  preceded_by: []                                             # tout en haut de la page
+  followed_by:
+    - "_render_map_and_rank() — bloc carte+perf+rang juste en-dessous (cf. match_view.02)"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - outcome_domination
+    - outcome_humiliation
+    - career_top_badge_remontada
+    - career_top_badge_debandade
+    - career_top_badge_contre_remontada
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Nouveau chart_kind: kpi_row pour la rangée de 4 tiles"
+      why: |
+        Pas un chart ECharts mais une rangée de cards. Côté Go/React : composant
+        <KpiRow tiles={...}> qui rend 4 <KpiTile>. Plus simple à modéliser comme un kind dédié
+        que de l'éclater en 4 YAML séparés (qui partageraient 90% de structure).
+
+    - decision: "Tile #2 (Score) est polymorphe — type 'enriched' vs 'simple'"
+      why: |
+        Les tiles 1, 3, 4 sont juste du texte centré ; la tile 2 a une typographie XXL
+        (38px, 700) + couleur dynamique outcome + badge dominance optionnel sous le score.
+        Le YAML modélise via `type: enriched` avec `score_style` et `badge_optional` dédiés.
+        Le converter doit traiter ce cas spécial.
+
+    - decision: "_DOMINANCE_BADGE_STYLES inliné dans le YAML"
+      why: |
+        Le dict Python a 5 entrées avec triplets (i18n_key, bg, fg). Pour la traçabilité du portage
+        Go, mieux vaut les voir dans le YAML que de référencer la constante Python. Les couleurs
+        (notamment #00695c contre-remontada vert-canard) sont spécifiques et identiques aux
+        badges career.05/06 — possible factorisation côté Go en `internal/domain/dominance.go`.
+
+    - decision: "Cascade de fallback sur playlist et mode documentée comme transformations"
+      why: |
+        Le code Python fait `last_playlist_fr or translate_playlist_name(last_playlist, lang) or "-"`,
+        ce qui est une logique de résolution non triviale. Côté Go : soit pré-résoudre côté API
+        (recommandé), soit reproduire la cascade côté React avec les mêmes priorités.

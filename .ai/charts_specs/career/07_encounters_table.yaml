@@ -1,0 +1,271 @@
+# =============================================================================
+# Tableau HTML — Top 10 joueurs croisés (encounters)
+# =============================================================================
+# Tableau "Encounter History" listant les 10 joueurs (hors amis) le plus
+# souvent rencontrés. 7 colonnes : Joueur (avec badges), Rôle, Rencontres,
+# Win Rate allié, Win Rate ennemi, K/D cross, Dernière rencontre.
+# Ligne dégradée si total_encounters <= 1 (texte italique colspan).
+# =============================================================================
+
+id: "career.07"
+title: "Top 10 joueurs croisés"
+page: career
+section: "Rencontres"
+source_function: "src/ui/pages/career_encounters_html.py::build_encounters_table_html"
+source_helpers:
+  - "src/ui/pages/career_encounters_html.py::_encounter_row_html"
+  - "src/ui/pages/match_view_encounters.py::badge_html"
+  - "src/ui/pages/match_view_encounters.py::wr_cell_html"
+  - "src/ui/pages/match_view_encounters.py::kd_cell_html"
+  - "src/ui/pages/match_view_encounters.py::role_cell_html"
+  - "src/ui/pages/match_view_encounters.py::ordinal_badge_html"
+  - "src/ui/pages/match_view_encounters_logic.py::compute_encounter_badges"
+  - "src/ui/pages/match_view_encounters_logic.py::EncounterStats"
+  - "src/ui/pages/match_view_encounters_logic.py::_relative_date"
+  - "src/ui/pages/career_encounters_data.py::_load_top_encountered"
+  - "src/data/repositories/_career_encounters_repo.py::_TOP_ENCOUNTERED_SQL"
+  - "src/ui/pages/career_encounters_render.py::render_encounters_section"  # appelant
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_load_top_encountered(xuid, db_path, limit=10, exclude_xuids=friends, since)"
+  input_dataframe:
+    required_columns:
+      - xuid
+      - gamertag
+      - total_encounters
+      - ally_count, enemy_count
+      - winrate_as_ally, winrate_vs_enemy
+      - kills_dealt, deaths_suffered
+      - last_seen
+  call_args:
+    limit: 10
+    exclude_xuids: "friends_set (depuis _load_friends_from_json(xuid))"
+    since: "computed from encounters_period control (now - days(period))"
+  filters_applied: [encounters_period]
+  timezone: "user_local"
+
+  transformations:
+    - description: "Lecture via _TOP_ENCOUNTERED_SQL (CTE complexe)"
+      sql_duckdb: |
+        -- Voir _TOP_ENCOUNTERED_SQL dans _career_encounters_repo.py
+        -- Structure :
+        WITH my_matches AS (
+          SELECT match_id, team_id, outcome FROM shared.match_participants
+          WHERE xuid = ? AND (since IS NULL OR start_time >= since)
+        ),
+        encounters AS (
+          SELECT
+            p.xuid,
+            MAX(COALESCE(vg.gamertag, p.gamertag)) AS gamertag,
+            COUNT(*) AS total_encounters,
+            SUM(CASE WHEN p.team_id = m.team_id THEN 1 ELSE 0 END) AS ally_count,
+            SUM(CASE WHEN p.team_id != m.team_id THEN 1 ELSE 0 END) AS enemy_count,
+            AVG(...) AS winrate_as_ally,
+            AVG(...) AS winrate_vs_enemy,
+            MAX(r.start_time) AS last_seen
+          FROM shared.match_participants p
+          JOIN my_matches m ON m.match_id = p.match_id
+          LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
+          LEFT JOIN shared.match_registry r ON r.match_id = p.match_id
+          WHERE p.xuid != ?
+            AND <_GHOST_FILTER_P>                             -- exclut les ghosts
+            AND NOT LOWER(CAST(p.xuid AS VARCHAR)) LIKE 'bid(%' -- exclut les bots
+          GROUP BY p.xuid
+        ),
+        kvp_agg AS (
+          SELECT ... FROM shared.v_killer_victim_full ...     -- agg kills/deaths per opponent
+        )
+        SELECT e.*, COALESCE(kvp.kills_dealt, 0) AS kills_dealt,
+                    COALESCE(kvp.deaths_suffered, 0) AS deaths_suffered
+        FROM encounters e
+        LEFT JOIN kvp_agg kvp ON kvp.opp = e.xuid
+        ORDER BY total_encounters DESC
+        LIMIT ?;
+
+    - description: "Filtre post-SQL : exclure les amis (case-insensitive sur xuid + gamertag)"
+      polars: |
+        if exclude_xuids:
+            results = [r for r in results if r.xuid not in exclude_xuids
+                                         and r.gamertag.casefold() not in lower_excl]
+      sql_duckdb: "-- Côté Go : applique aussi un filtre xuid NOT IN (...) sur les amis"
+
+    - description: "Calcul du `side` (allié | ennemi) pour chaque ligne"
+      polars: 'side = "allié" if ally_count > enemy_count else "ennemi"'
+      sql_duckdb: "-- Côté Go : calculé en post-process pour chaque row"
+
+    - description: "Calcul des badges via compute_encounter_badges(EncounterStats)"
+      detail: |
+        Génère 0..N badges par joueur selon : ratio allié/ennemi, win_rate, K/D, last_seen…
+        Voir match_view_encounters_logic.py pour la logique complète. Côté Go : à porter dans
+        internal/analysis/encounter_badges.go.
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes:
+    wrapper: "os-table-wrap os-sb-wrap"
+    table: "os-table os-scoreboard"
+    header_team: "os-sb-team"
+    header_cell: "os-sb-th"
+    row: "os-sb-row"
+    cell: "os-sb-td"
+
+  caption:
+    text: "{{title}}"                                         # = t("career_encounters_header") quand appelé
+    colspan: 7
+
+  columns:
+    - id: player
+      header: "{{t.col_player}}"
+      source_field: gamertag, xuid, total_encounters, badges
+      formatter: |
+        gamertag_link(gamertag) + ordinal_badge_html(total) + " " + " ".join(badge_html(b) for b in badges)
+      detail: "Si total<=1 : juste gamertag + ordinal_badge(1) (pas de stats colspan=5 italic)"
+
+    - id: role
+      header: "{{t.col_role}}"
+      source_field: side
+      formatter: "role_cell_html(side) — pill colorée allié(vert) / ennemi(rouge)"
+
+    - id: encounters
+      header: "{{t.col_encounters}}"
+      source_field: total_encounters, ally_count, enemy_count
+      formatter: "f'{total} <span style=\"color:#888;font-size:0.8em;\">(A:{ally} | E:{enemy})</span>'"
+
+    - id: wr_ally
+      header: "{{t.col_wr_ally}}"
+      source_field: winrate_as_ally, ally_count
+      formatter: "wr_cell_html(winrate, n_matches) — % avec couleur conditionnelle (vert si >=0.6, rouge si <=0.4)"
+
+    - id: wr_enemy
+      header: "{{t.col_wr_enemy}}"
+      source_field: winrate_vs_enemy, enemy_count
+      formatter: "wr_cell_html(winrate, n_matches)"
+
+    - id: kd_cross
+      header: "{{t.col_kd_cross}}"
+      source_field: kills_dealt, deaths_suffered
+      formatter: "kd_cell_html(kills_dealt, deaths_suffered)"
+
+    - id: last_seen
+      header: "{{t.col_last_seen}}"
+      source_field: last_seen
+      formatter: "_relative_date(last_seen) — 'il y a 3j', 'hier', date sinon"
+      style: "color: #aaa; font-size: 0.85em"
+
+  degraded_row:                                               # comportement si total_encounters <= 1
+    enabled: true
+    condition: "total_encounters <= 1"
+    template: |
+      <tr><td>{gamertag_link} {ordinal_badge(1)}</td>
+          <td>{role_cell}</td>
+          <td colspan="5" style="color:#666;font-style:italic;">{t('encounter_ordinal', ordinal=ordinal(1))}</td>
+      </tr>
+
+  legend:
+    enabled: true                                             # légende des badges via build_badge_legend_html
+    builder: "build_badge_legend_html() — affiché dans st.popover('ℹ️ Légende')"
+    placement: "popover_below_table"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "encountered is not None AND len(encountered) > 0"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.career_encounters_no_data}}"
+    triggered_by:
+      - "_load_top_encountered retourne []"
+      - "tous filtrés par friends_set"
+  config: null
+  width_mode: "stretch"
+  filters_widgets: [encounters_period]
+  fragment_isolation: false
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('career_encounters_header'))"
+    - "st.segmented_control (encounters_period)"
+
+# === CONTROLS ===
+controls:
+  - id: "encounters_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_section"
+    scope: "section"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Filtre `since = now - days(period)` ; affecte les 3 tableaux d'encounters (07, 08, 09)"
+    api_param_mapping:
+      query_param: "since"
+      values_format: "ISO 8601 date — calculé côté frontend ou serveur"
+    requires_refetch: true                                    # /!\ filtre côté SQL → refetch nécessaire
+    affects_charts: ["career.07", "career.08", "career.09"]
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - career_encounters_header
+    - career_encounters_no_data
+    - col_player
+    - col_role
+    - col_encounters
+    - col_wr_ally
+    - col_wr_enemy
+    - col_kd_cross
+    - col_last_seen
+    - encounter_ordinal
+    - encounters_period_label
+    - encounters_period_all
+    - encounters_period_2y
+    - encounters_period_1y
+    - encounters_period_1m
+    - encounters_period_1w
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: "page=Explorer&gamertag={gamertag}"           # via gamertag_link
+  drilldown_chain: ["explorer_player_filter"]
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "`requires_refetch: true` (vs false sur Synthèse)"
+      why: |
+        Ce filtre fait partie de la requête SQL (`since` dans le WHERE). Pas de moyen de
+        re-filter client-side car la liste des 10 candidats top dépend du filtre — un joueur
+        peut sortir/entrer du top selon la période. Donc refetch obligatoire à chaque
+        changement de période. Différent du sélecteur de période sur Synthèse qui filtre
+        un dataset déjà chargé.
+
+    - decision: "Comportement dégradé pour total_encounters <= 1"
+      why: |
+        Si le joueur n'a été croisé qu'une seule fois, les stats de WR sont peu signifiantes
+        (1 match = 100% ou 0%). Le code affiche alors juste l'ordinal "1ère rencontre" en
+        italique colspan=5. Côté UX cohérent. À porter avec un check explicite côté React.
+
+    - decision: "Badges joueur via `compute_encounter_badges` complexe"
+      why: |
+        Logique non triviale pour décider quels badges afficher (allié+, coriace, noix-dure…)
+        selon WR + K/D + ratio allié/ennemi + last_seen. Localisée dans
+        match_view_encounters_logic.py — à porter ENTIÈREMENT côté Go pour ne pas casser
+        l'UX. Liste exhaustive des badges + critères = TODO côté implémentation Go.
+
+    - decision: "Légende dans `st.popover` séparé"
+      why: |
+        Côté Streamlit, la légende des badges vit dans un popover (`st.popover('ℹ️ Légende')`)
+        affiché sous le tableau. Côté React, équivalent : un `<Tooltip>` ou `<Popover>` déclenché
+        par un bouton info.

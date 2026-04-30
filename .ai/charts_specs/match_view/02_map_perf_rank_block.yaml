@@ -1,0 +1,213 @@
+# =============================================================================
+# Map thumbnail + Perf block + Rank HTML (header secondaire)
+# =============================================================================
+# Bloc 3-colonnes (1.8 / 0.7 / 1.2) sous les KPI cards :
+#   - Col 1 (1.8) : miniature de la carte (map_thumb_path)
+#   - Col 2 (0.7) : performance block (texte coloré, height fixe)
+#   - Col 3 (1.2) : bloc rang LUSR/CSR du match (HTML complexe avec image rank)
+#
+# Si rank_html est None (pas de skill rank pour ce match), seule la miniature
+# carte est rendue (pas de columns).
+# =============================================================================
+
+id: "match_view.02"
+title: "Map thumbnail + Perf + Rank du match"
+page: match_view
+section: "Header secondaire"
+source_function: "src/ui/pages/match_view.py::_render_map_and_rank"
+source_helpers:
+  - "src/ui/pages/match_view.py::_render_map_thumbnail"
+  - "src/ui/pages/match_view.py::_render_performance_block"
+  - "src/ui/pages/match_view_helpers.py::map_thumb_path"
+  - "src/ui/pages/match_view_rank.py::_build_match_rank_html"
+  - "src/ui/cache_loaders.py::cached_get_match_skill_rank"
+  - "src/analysis/skill_rating_config.py::get_rank_image_path"
+  - "src/analysis/skill_rating_config.py::get_tier_for_rating"
+fragment: false
+chart_kind: composite_block                                    # /!\ nouveau kind composite UI
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "cached_get_match_skill_rank(db_path, match_id, db_key)"
+  input_dataframe:
+    required_fields:
+      row:
+        map_id: "string"
+        map_name: "string"
+        map_name_fr: "string | null"
+      match_id: "string"
+      had_bot_teammate: "bool"
+      bot_outcome: "int (Outcome enum value)"
+      perf_display: "string (déjà formaté)"
+      perf_color: "string (hex) | null"
+  call_args: {}
+  filters_applied: []
+
+  transformations:
+    - description: "Résolution du chemin de la miniature carte"
+      polars: |
+        thumb = map_thumb_path(row, str(map_id) if map_id else None)
+        # Cherche un fichier local : data/titles/halo_infinite/maps/{map_id}_thumb.jpg
+      sql_duckdb: "-- Pas de SQL — résolution par filesystem"
+
+    - description: "Lecture du skill rank du match (LUSR ou CSR)"
+      polars: |
+        row_rank = cached_get_match_skill_rank(db_path, match_id, db_key)
+        # → tuple (rating_type, rating_value, rating_deviation, tier_label,
+        #          sub_tier, tier_name, tier_fr, rating_delta, playlist_group)
+      sql_duckdb: |
+        SELECT rating_type, rating_value, rating_deviation, tier_label,
+               sub_tier, tier_name, tier_fr, rating_delta, playlist_group
+        FROM match_skill_rank
+        WHERE match_id = ?;
+
+    - description: "Construction du HTML du bloc rang via _build_match_rank_html"
+      polars: |
+        rank_html = _build_match_rank_html(
+          match_id, db_path, db_key, had_bot_teammate, bot_outcome
+        )
+        # Si row_rank is None → état "rating en attente" (?+ msg + hint)
+        # Sinon : layout flex avec image rang (data-URL base64) + tier label + delta
+      sql_duckdb: "-- Construit côté Go (template HTML ou composant React)"
+      detail: |
+        Le HTML retourné par _build_match_rank_html est un bloc complexe :
+          - Si rating en attente : "?" gris + msg + hint
+          - Sinon : flex 16px gap avec :
+            - Image du rang (90×90 PNG depuis get_rank_image_path(rating_value))
+            - Bloc texte droit : tier_label + badge type (LUSR cyan / CSR gold) + valeur + delta
+
+# === COMPOSITE BLOCK SPECIFIC ===
+composite_block:
+  layout: "st.columns([1.8, 0.7, 1.2])"                       # /!\ ratio explicite
+  blocks:
+    - id: map_thumbnail
+      column_index: 0
+      column_ratio: 1.8
+      type: image
+      source_field: "thumb"
+      detail: |
+        Si thumb est un Path résolu : st.image(thumb)
+        Si thumb est un dict {url, alt} : injection HTML <img>
+        Si thumb est None : placeholder vide ou message "Pas d'image"
+
+    - id: perf_block
+      column_index: 1
+      column_ratio: 0.7
+      type: text_coloured
+      source_field: "perf_display"
+      color_field: "perf_color"
+      detail: |
+        Texte coloré centré indiquant le score de performance du match.
+        Couleur dynamique selon perf_score (cf. _perf_color helper) :
+          excellent → green
+          good → cyan
+          average → amber
+          below_average → orange
+          poor → red
+
+    - id: rank_html
+      column_index: 2
+      column_ratio: 1.2
+      type: raw_html
+      source_field: "rank_html"
+      detail: |
+        Bloc HTML auto-suffisant rendu via st.markdown(unsafe_allow_html=True).
+        Contenu :
+          - Image rang (base64 data URL inline pour éviter les ID éphémères Streamlit)
+          - Tier label en gros
+          - Badge type rating (LUSR cyan / CSR gold)
+          - Valeur de rating
+          - Delta (▲ vert / ▼ rouge / = gris)
+          - Si had_bot_teammate : note contextuelle (msg différent selon bot_outcome)
+
+  fallback:
+    condition: "rank_html is None"
+    behavior: "Affiche SEULEMENT la miniature carte (pas de st.columns), prend toute la largeur"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 0
+    expression: null
+    branches: []
+  margin: {l: 0, r: 0, t: 0, b: 0}
+  showlegend: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "always (header toujours rendu)"
+  hidden_when: null
+  empty_state:
+    type: none
+    triggered_by:
+      - "thumb None ET rank_html None → bloc vide (cas rare, généralement au moins thumb dispo)"
+  config: null
+  width_mode: stretch
+  filters_widgets: []
+  fragment_isolation: false
+  preceded_by:
+    - "_render_kpi_cards (#01) juste au-dessus"
+  followed_by:
+    - "(warning si is_abandoned, puis _render_match_id_badge popover, puis tabs)"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - mv_rating_pending
+    - mv_rating_pending_hint
+    # + clés des notes contextuelles bot (à explorer dans _build_match_rank_html — logique conditionnelle non lue ici)
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Nouveau chart_kind: composite_block pour les blocs 3-colonnes UI"
+      why: |
+        Pas un chart, pas un tableau, mais un bloc structurel UI avec 3 sous-composants typés
+        (image, text, raw_html). Côté Go/React : composant <MatchHeaderSecondary> avec 3 enfants.
+        Plus simple à modéliser comme un kind dédié que de découper en 3 YAML séparés
+        artificiellement.
+
+    - decision: "rank_html en raw_html (pas de structure parsée)"
+      why: |
+        Le HTML produit par _build_match_rank_html est complexe (image base64 + tier + delta + note
+        bot conditionnelle). Le YAML ne tente PAS de le décomposer en sous-champs typés —
+        on documente sa structure en commentaire et on laisse le porteur Go le re-construire en
+        composant React équivalent. Pragmatique car la décomposition complète serait un YAML de
+        300+ lignes pour un composant déjà bien encapsulé côté Python.
+
+    - decision: "Image rang en data URL base64 (pas de file path)"
+      why: |
+        Le code Python encode l'image PNG en base64 et l'injecte inline (`<img src='data:image/png;base64,...'>`)
+        plutôt que de servir un file path. Raison : éviter les ID éphémères Streamlit qui
+        invalident le cache du navigateur entre re-runs. Côté React : pas le même problème,
+        on peut servir `/assets/ranks/{tier}_{sub_tier}.png` via le serveur Go en static.
+
+    - decision: "Fallback si rank_html None : seule la miniature carte est rendue"
+      why: |
+        Cas où le match n'a pas de skill rank (mode social, mode custom, etc.). Le code Python
+        fait un return early sans st.columns(). Côté React : conditional render qui simplifie
+        le layout en single-column si pas de rank dispo.
+
+    - decision: "Note contextuelle bot non détaillée dans ce YAML"
+      why: |
+        _build_match_rank_html ajoute une note conditionnelle si had_bot_teammate=True (texte
+        différent selon que le joueur a gagné ou perdu malgré le bot). La logique exacte n'a
+        pas été lue (>200 lignes de _build_match_rank_html). À explorer en Phase 2 si besoin
+        d'une fidélité de pixel sur ce détail.

@@ -1,0 +1,130 @@
+# =============================================================================
+# Spree + Headshots + Perfect kills — bars groupées (3 traces sur Y1)
+# =============================================================================
+# 3 bars groupées par match (offsetgroup distinct, alignmentgroup='spree_hs') :
+#   - max_killing_spree (amber, opacity 0.85, width 0.42)
+#   - headshot_kills (red, opacity 0.7, width 0.42)
+#   - perfect_kills (green, opacity 0.65, width 0.28) — depuis perfect_counts dict externe
+# Y1 unique pour les 3 (rangemode=tozero). Pas d'axe Y2 utilisé (subplots
+# secondary_y mais aucune trace dessus dans le code actuel — vestige).
+# =============================================================================
+
+id: "timeseries.16"
+title: "Spree + Headshots + Perfect kills — bars groupées"
+page: timeseries
+section: "Onglet Progression — Spree"
+display_order_in_tab: 6
+source_function: "src/visualization/timeseries_combat.py::plot_spree_headshots_accuracy"
+source_helpers:
+  - "src/visualization/_timeseries_helpers.py::prepare_time_axis"
+  - "src/visualization/_timeseries_helpers.py::apply_chrono_xaxis"
+fragment: false
+chart_kind: grouped_bar
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "df + perfect_counts dict (depuis pk_data.counts via TimeseriesService)"
+  input_dataframe:
+    required_fields:
+      df: [start_time, max_killing_spree, headshot_kills, accuracy, match_id]
+      perfect_counts: "dict[match_id → count] (médailles Perfect par match)"
+  call_args: { lang: "fr | en" }
+
+  constants:
+    spree_color: "#ffb300"                                      # amber
+    spree_opacity: 0.85
+    headshots_color: "#e53935"                                  # red
+    headshots_opacity: 0.7
+    perfect_color: "#00e676"                                    # green
+    perfect_opacity: 0.65
+    bar_width_main: 0.42
+    bar_width_perfect: 0.28                                     # plus fin (rare)
+    height: 360                                                 # HEIGHT_TIMESERIES
+
+# === TRACES ===
+traces:
+  - id: spree
+    type: bar
+    color: "#ffb300"
+    opacity: 0.85
+    width: 0.42
+    alignmentgroup: spree_hs
+    offsetgroup: spree
+    name_i18n: "{{viz_t.trace_killing_spree}}"
+
+  - id: headshots
+    type: bar
+    color: "#e53935"
+    opacity: 0.7
+    width: 0.42
+    alignmentgroup: spree_hs
+    offsetgroup: headshots
+    name_i18n: "{{viz_t.trace_headshots}}"
+
+  - id: perfect_kills
+    type: bar
+    color: "#00e676"
+    opacity: 0.65
+    width: 0.28                                                 # plus fin pour distinguer
+    alignmentgroup: spree_hs
+    offsetgroup: perfect
+    name_i18n: "{{viz_t.trace_perfect_kills}}"
+    hovertemplate_i18n: "{{viz_t.hover_perfect_sprees}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360
+  margin: { l: 40, r: 50, t: 30, b: 90 }
+  hovermode: "x unified"
+  legend: "horizontal_bottom"
+  barmode: group
+  bargap: 0.15
+  bargroupgap: 0.06
+  yaxis:
+    title_i18n: "{{viz_t.axis_spree_headshots}}"
+    rangemode: tozero
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df non vide"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_spree'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_killing_spree, trace_headshots, trace_perfect_kills
+    - hover_killing_spree, hover_headshots, hover_perfect_sprees
+    - axis_spree_headshots
+  t: ["ts_spree"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Perfect kills en barre PLUS FINE (width 0.28 vs 0.42)"
+      why: |
+        Les Perfect kills sont RARES (souvent 0 par match, parfois 1-2). La barre plus fine
+        évite de prendre autant de place visuelle que spree/headshots qui ont des valeurs plus
+        élevées et fréquentes. Sans cela, la 3e bar paraîtrait disproportionnée.
+
+    - decision: "perfect_counts dict externe (pas dans df)"
+      why: |
+        La donnée perfect_kills vient des MÉDAILLES (medals_earned) et non du DataFrame de stats
+        principales. _render_spree_section charge perfect_counts via TimeseriesService et le
+        passe en argument séparé. Côté Go : 2 queries séparées + jointure côté client.
+
+    - decision: "Subplots secondary_y mais inutilisé"
+      why: |
+        Le code crée make_subplots avec secondary_y=True mais n'ajoute AUCUNE trace sur Y2.
+        Vestige d'une version où l'accuracy était affichée sur Y2 — retirée ensuite. À porter
+        comme un single-axis chart (pas besoin de simulate Y2).

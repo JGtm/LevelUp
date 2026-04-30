@@ -1,0 +1,21 @@
+{
+  "name": "@levelup/echarts-converter",
+  "version": "0.1.0",
+  "description": "Convertit les YAML de spec graphique (.ai/charts_specs/) en options ECharts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convert": "tsx src/cli.ts",
+    "convert:all": "tsx src/cli.ts --all",
+    "render": "tsx src/render-html.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.0"
+  }
+}

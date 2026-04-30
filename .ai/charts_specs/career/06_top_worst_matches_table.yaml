@@ -1,0 +1,145 @@
+# =============================================================================
+# Tableau HTML — Top 10 pires matchs
+# =============================================================================
+# Variante de career.05 avec `best=False`. Filtre : défaites uniquement
+# (outcome=3). Tri par badge_priority pires (2,4) + durée + ratio score.
+# Voir `05_top_best_matches_table.yaml` pour les détails communs (colonnes,
+# CSS, formatters, interactivité). Ce fichier ne documente que les différences.
+# =============================================================================
+
+id: "career.06"
+title: "Top 10 pires matchs"
+page: career
+section: "Top matchs"
+source_function: "src/ui/pages/career_top_matches_render.py::_build_top_table_html"
+source_helpers:
+  - "src/ui/pages/career_top_matches_data.py::load_top_worst_matches"
+  - "(idem que career.05 — voir 05_top_best_matches_table.yaml)"
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_top_worst_matches(db_path, xuid, exclude_btb=False)"
+  input_dataframe:
+    required_columns: "(idem career.05)"
+  call_args:
+    best: false                                               # /!\ DIFFÉRENT de career.05
+    exclude_btb: false
+    limit: 10
+    min_match_duration_seconds: 180
+  filters_applied: []
+  timezone: "user_local"
+
+  transformations:
+    - description: "Lecture identique à career.05 mais filtre outcome = 3 (LOSS) au lieu de 2 (WIN)"
+      sql_duckdb: |
+        -- Identique à _TOP_MATCHES_SQL avec :
+        SELECT * FROM enriched
+        WHERE outcome = 3                                     -- LOSS pour best=False
+        ORDER BY
+          -- {badge_priority pour best=False} DESC,            -- _BADGE_PRIORITY_EXPR[False]
+          time_played_seconds ASC,
+          ABS(my_team_score - enemy_team_score) / GREATEST(...) DESC
+        LIMIT 10;
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes: "(idem career.05 : os-table os-scoreboard, os-sb-th, os-sb-row, os-sb-td)"
+
+  caption:
+    text: "{{t.career_top_worst_title}}"                      # /!\ "Top 10 pires matchs"
+    colspan: "auto"
+
+  columns: "(structure identique à career.05 — 8 cols + 1 conditionnelle)"
+
+  badges_definition:                                          # /!\ DIFFÉRENT : flags 2 et 4 au lieu de 1, 3, 5
+    - flag: 2
+      key: "career_top_badge_humiliation"                     # défaite humiliante
+      label_fr: "HUMILIATION"
+      bg: "#6a1b9a"                                           # violet foncé
+      fg: "#f3e5f5"
+      legend_key: "career_top_legend_humiliation"
+    - flag: 4
+      key: "career_top_badge_debandade"                       # défaite avec abandon
+      label_fr: "DÉBÂCLE"
+      bg: "#bf360c"                                           # orange-rouge
+      fg: "#fbe9e7"
+      legend_key: "career_top_legend_debandade"
+
+  legend:
+    enabled: true
+    builder: "_build_match_badge_legend_html(best=False)"     # /!\ best=False ici
+    placement: "below_table"
+    style: "font-size: 0.78em; opacity: 0.72; margin-top: 4px; line-height: 1.8"
+
+  badge_html_template: "(idem career.05)"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "rows is not None AND len(rows) > 0"
+  hidden_when: null
+  empty_state:
+    type: "none"
+    triggered_by: ["load_top_worst_matches retourne []"]
+  config: null
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  preceded_by:
+    - "(rendu juste après le tableau best dans render_top_matches_section)"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - career_top_worst_title                                  # /!\ DIFFÉRENT
+    - career_top_col_match_id
+    - career_top_col_date
+    - career_top_col_mode
+    - career_top_col_map
+    - career_top_col_score
+    - career_top_col_kda
+    - career_top_col_kd
+    - career_top_col_duration
+    - career_top_badge_humiliation                            # /!\
+    - career_top_badge_debandade                              # /!\
+    - career_top_legend_humiliation
+    - career_top_legend_debandade
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: "page=Explorer&match_id={match_id}&gamertag={gamertag}"
+  drilldown_chain: ["match_view"]
+  session_state_writes: []
+  hover_effects:
+    - target: "<td> with map cell"
+      effect: "Affiche l'image de la carte au survol"
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Spec courte qui pointe vers career.05 pour les éléments communs"
+      why: |
+        Les colonnes, CSS, formatters, comportements UI sont strictement identiques. Seules
+        diffèrent : `best=False`, titre du tableau, ensemble de badges admis (HUMILIATION,
+        DÉBÂCLE), filtre SQL outcome=3. Pour ne pas dupliquer 200 lignes, on liste explicitement
+        ce qui change et on délègue le reste à career.05. Le converter doit charger les deux
+        YAML pour avoir les détails complets (ou les YAML peuvent partager via un mécanisme
+        d'inclusion à ajouter ultérieurement si besoin).
+
+    - decision: "Pas de badges 1, 3, 5 dans worst — explicit `_WORST_FLAGS = (2, 4)`"
+      why: |
+        Le code Python a deux constantes : `_BEST_FLAGS = (1, 3, 5)` et `_WORST_FLAGS = (2, 4)`.
+        Un match Domination (1) ne peut PAS apparaître dans le tableau worst, et un match
+        Humiliation (2) ne peut PAS apparaître dans best. Sécurité applicative pour ne pas
+        afficher un badge incohérent avec le contexte. Documenté pour ne pas le rater côté Go.

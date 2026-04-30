@@ -1,0 +1,158 @@
+# =============================================================================
+# Per minute timeseries — bars groupées K/D/A par minute (D négatives)
+# =============================================================================
+# 3 traces bars groupées au même x (avec offsetgroup distincts) :
+#   - kills_per_min (cyan, opacity 0.85)
+#   - deaths_per_min INVERSÉS (red, opacity 0.4) — sous l'axe X
+#   - assists_per_min (violet, opacity 0.7)
+# + 3 traces lines de rolling mean (smoothing) par-dessus chaque bar via
+# _add_permin_rolling_lines.
+# Tickvals SYMÉTRIQUES autour de 0 avec labels en valeur ABSOLUE
+# (build_symmetric_abs_ticks). Cohérent avec teammates.14 (per-minute escouade).
+# =============================================================================
+
+id: "timeseries.14"
+title: "Per minute timeseries — K/D/A par minute (D négatives)"
+page: timeseries
+section: "Onglet Progression — Stats/min"
+display_order_in_tab: 4
+source_function: "src/visualization/timeseries.py::plot_per_minute_timeseries"
+source_helpers:
+  - "src/visualization/timeseries.py::_add_permin_rolling_lines"
+  - "src/visualization/_permin_helpers.py::build_symmetric_abs_ticks"
+fragment: false
+chart_kind: line                                                # bars+lines
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "Auto-compute kills_per_min/deaths_per_min/assists_per_min si absents (kills / time_played_seconds * 60)"
+  input_dataframe:
+    required_fields:
+      df:
+        - start_time, time_played_seconds, kills, deaths, assists, match_id
+        - kills_per_min, deaths_per_min, assists_per_min        # ou recalculés si absents
+        - map_ui | map_name                                     # tickvals
+  call_args: { lang: "fr | en" }
+
+  constants:
+    kpm_color: "#41d6ff"                                        # cyan
+    dpm_color: "#e53935"                                        # red (opacity 0.4 désaturé)
+    apm_color: "#ab47bc"                                        # violet
+    bar_opacity: 0.85
+    bar_opacity_secondary: 0.7
+    dpm_opacity_neg: 0.4                                        # désaturée pour valeur négative
+    smoothing_window: "à confirmer (likely 10)"
+
+  transformations:
+    - description: "Auto-compute *_per_min si absents"
+      polars: |
+        if not all(c in d.columns for c in ('kills_per_min', 'deaths_per_min', 'assists_per_min')):
+            tps = pl.col('time_played_seconds') / 60
+            d = d.with_columns([
+                (pl.col('kills') / tps).fill_nan(0).alias('kills_per_min'),
+                (pl.col('deaths') / tps).fill_nan(0).alias('deaths_per_min'),
+                (pl.col('assists') / tps).fill_nan(0).alias('assists_per_min'),
+            ])
+
+    - description: "Inversion DPM pour Y négatif + abs gardée en customdata"
+      polars: "dpm_neg = (-dpm).to_list(); customdata_with_dpm = [(*row, abs_dpm), ...]"
+
+# === TRACES ===
+traces:
+  - id: kpm
+    type: bar
+    color: "#41d6ff"
+    opacity: 0.85
+    y_field: kpm
+    name_i18n: "{{viz_t.trace_kills_per_min}}"
+    hovertemplate_i18n: "{{viz_t.hover_kpm}}"
+  - id: dpm
+    type: bar
+    color: "#e53935"
+    opacity: 0.4                                                # désaturée
+    y_field: "[-v for v in dpm]"                                # NÉGATIF
+    name_i18n: "{{viz_t.trace_deaths_per_min}}"
+    hovertemplate_i18n: "{{viz_t.hover_dpm_neg}}"
+  - id: apm
+    type: bar
+    color: "#ab47bc"
+    opacity: 0.7
+    y_field: apm
+    name_i18n: "{{viz_t.trace_assists_per_min}}"
+    hovertemplate_i18n: "{{viz_t.hover_apm}}"
+
+rolling_lines:
+  template_per_metric: true
+  spec:
+    type: scatter
+    mode: lines
+    via: "_add_permin_rolling_lines (rolling mean per metric)"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  margin: { l: 40, r: 20, t: 60, b: 90 }
+  hovermode: "x unified"
+  legend: "horizontal_bottom"
+  barmode: group
+  bargap: 0.15
+  bargroupgap: 0.06
+  yaxis:
+    title_i18n: "{{viz_t.axis_per_minute}}"
+    tickvals_method: "build_symmetric_abs_ticks(max(kpm,apm), max(|dpm|))"
+    ticktext: "abs values"
+  xaxis:
+    type: category
+    title_i18n: "{{viz_t.axis_match_number}}"
+    tickangle: -45
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df non vide"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_per_minute'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_kills_per_min, trace_deaths_per_min, trace_assists_per_min
+    - hover_kpm, hover_dpm_neg, hover_apm
+    - axis_per_minute, axis_match_number
+  t: ["ts_per_minute"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "DPM en barres NÉGATIVES avec opacity DÉSATURÉE (0.4)"
+      why: |
+        Cohérent avec teammates.14 — les morts vers le bas. La désaturation supplémentaire (0.4
+        au lieu de 0.85) accentue visuellement le message "moins c'est mieux pour les morts".
+
+    - decision: "build_symmetric_abs_ticks pour Y"
+      why: |
+        L'axe Y a des valeurs négatives (deaths) ET positives (kills+assists). Sans tickvals
+        symétriques, on aurait des labels '-1.5, -1.0, ... 0, 0.5, 1.0' qui distraient.
+        L'helper retourne des ticks symétriques avec labels en valeur ABSOLUE :
+        '1.5, 1.0, 0.5, 0, 0.5, 1.0, 1.5'.
+
+    - decision: "Smoothing par métrique via _add_permin_rolling_lines"
+      why: |
+        3 lignes de rolling mean (1 par métrique) ajoutées au-dessus des barres pour visualiser
+        les TENDANCES — particulièrement utile sur stats par minute qui peuvent être bruitées
+        (matchs très courts avec peu de samples).
+
+    - decision: "Auto-compute des colonnes per_min si absentes"
+      why: |
+        Code défensif : la DB peut ne pas contenir les colonnes pré-calculées (cas legacy). Le
+        code recalcule à la volée depuis kills/deaths/assists/time_played_seconds. À porter côté
+        Go avec gestion fillna(0) pour éviter division par zéro.

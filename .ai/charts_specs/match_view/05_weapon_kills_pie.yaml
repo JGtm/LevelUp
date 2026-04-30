@@ -1,0 +1,182 @@
+# =============================================================================
+# Pie (donut) — Kills par arme
+# =============================================================================
+# Donut chart (hole=0.35) listant les armes utilisées dans le match avec
+# leur part de kills. 8 couleurs custom palette, légende verticale à droite,
+# textinfo='percent' (les % à l'intérieur des slices), hovertemplate avec
+# le label + valeur absolue + percent. sort=False = ordre du DataFrame préservé.
+# =============================================================================
+
+id: "match_view.05"
+title: "Pie kills par arme"
+page: match_view
+section: "Onglet Summary — Kills par arme"
+source_function: "src/ui/pages/match_view_weapon_kills.py::_render_weapon_pie"
+source_helpers:
+  - "src/ui/pages/match_view_weapon_kills.py::render_weapon_kills_section (caller)"
+  - "src/ui/pages/match_view_weapon_kills.py::_build_weapon_kills_df"
+  - "src/ui/pages/match_view_weapon_kills.py::_enrich_with_grenade_melee"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+fragment: false                                               # caller render_weapon_kills_section EST décoré @fragment
+chart_kind: pie                                               # /!\ nouveau kind
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "DuckDBRepository.load_match_weapon_kills(match_id, xuid) + _enrich_with_grenade_melee"
+  input_dataframe:
+    required_columns: [weapon_name, kills]
+  call_args:
+    height: 300
+  filters_applied: []
+
+  transformations:
+    - description: "Identique à match_view.06 (pie et table partagent le même df)"
+      polars: "(cf. 06_weapon_kills_table.yaml — load_match_weapon_kills + enrichissement)"
+      sql_duckdb: "(cf. 06_weapon_kills_table.yaml)"
+
+    - description: "Génération de la palette de slice : 8 couleurs cyclées"
+      polars: |
+        palette = [
+          colors.get("highlight", "#29B6F6"),   # bleu clair
+          colors.get("accent", "#FF7043"),      # orange-rouge
+          "#66BB6A",                             # vert
+          "#FFA726",                             # orange Material
+          "#AB47BC",                             # violet
+          "#26C6DA",                             # cyan
+          "#EC407A",                             # rose
+          "#8D6E63",                             # marron
+        ]
+        slice_colors = (palette * ((len(df) // len(palette)) + 1))[:len(df)]
+      sql_duckdb: "-- Calcul côté client (couleurs)"
+      detail: |
+        Palette CYCLE (modulo 8) si plus de 8 armes. En pratique rare (< 6 armes/match typique).
+        Les 2 premières couleurs viennent de HALO_COLORS (highlight + accent), les 6 suivantes
+        sont fixes Material Design. Cohérence visuelle avec la charte Halo.
+
+# === PIE-SPECIFIC ===
+pie:
+  hole: 0.35                                                  # donut effect
+  sort: false                                                 # /!\ NE PAS RE-TRIER côté frontend — l'ordre du DF est intentionnel (déjà trié DESC kills par le SELECT)
+  textinfo: "percent"                                         # affiche % à l'intérieur de chaque slice
+  textposition: "inside"
+  insidetextorientation: "horizontal"
+  hovertemplate: "%{label}<br>%{value} frags (%{percent})<extra></extra>"
+
+# === TRACES ===
+traces:
+  - id: "weapon_kills_pie"
+    name: "weapon_kills"                                      # nom interne, pas de légende sur ce nom
+    type: go.Pie
+    chart_role: primary
+    color: null                                                # géré par marker.colors[]
+    color_palette:
+      - "#29B6F6"                                              # HALO_COLORS.highlight
+      - "#FF7043"                                              # HALO_COLORS.accent
+      - "#66BB6A"
+      - "#FFA726"
+      - "#AB47BC"
+      - "#26C6DA"
+      - "#EC407A"
+      - "#8D6E63"
+    show_when: "always"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 300
+    expression: null
+    branches: []
+  margin: {l: 10, r: 10, t: 10, b: 10}                        # /!\ marges très serrées (10px) pour maximiser la taille du donut
+  showlegend: true
+  legend:                                                     # /!\ legend VERTICALE à droite (différent du legend_horizontal_bottom du thème)
+    orientation: v
+    x: 1.02                                                   # juste à droite du chart
+    y: 0.5
+    xanchor: left
+    yanchor: middle
+    font: {color: "#dce8ff", size: 11}
+    bgcolor: "rgba(0, 0, 0, 0)"                               # transparent
+    borderwidth: 0
+
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df is not None AND not df.is_empty()"
+  hidden_when: null
+  empty_state:
+    type: none                                                # le caller (render_weapon_kills_section) gère l'absence du chart si df vide
+    triggered_by: ["df vide"]
+  config: PLOTLY_CLEAN_CONFIG                                 # interactif (clic légende toggle slice visibility)
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: true                                    # caller @fragment_if_available
+  layout_position:
+    container: "st.columns(2)"                                # à GAUCHE du tableau
+    column_index: 0
+  preceded_by:
+    - "(rendu dans render_weapon_kills_section avec le tableau à droite)"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - col_grenade_kills                                       # peut apparaître comme nom de slice si enrichissement
+    - col_melee                                               # idem
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+  legend_toggle: true                                         # CLEAN_CONFIG → clic légende toggle slice
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Nouveau chart_kind: pie avec section dédiée pie:"
+      why: |
+        Pie a des propriétés spécifiques (hole, sort, textinfo/textposition, insidetextorientation,
+        hovertemplate avec %{percent}) qui ne mappent pas naturellement sur les sections traces[]/layout
+        utilisées par bar/line/heatmap. Section dédiée plus propre. Côté ECharts : `series.type='pie'`
+        avec `radius: ['35%', '70%']` (équivalent de hole=0.35), `label.position: 'inside'`,
+        `label.formatter: '{d}%'` (pour textinfo=percent).
+
+    - decision: "Légende verticale à droite (différente de legend_horizontal_bottom du thème)"
+      why: |
+        Les pies bénéficient d'une légende verticale à côté (un slice = une ligne de légende avec
+        carré couleur + nom). En bas horizontale serait illisible avec 6+ armes. Override explicite
+        documenté dans layout.legend (orientation: v, x: 1.02, y: 0.5).
+
+    - decision: "sort: false"
+      why: |
+        Plotly trie automatiquement les slices par valeur DESC par défaut. Le code définit
+        `sort: false` pour préserver l'ordre du DataFrame, qui est déjà trié DESC par kills via
+        le SELECT SQL. Mais surtout, sort:false GARANTIT que les couleurs assignées par index
+        restent cohérentes (slice 0 = couleur 0, etc.). Si Plotly re-triait, l'arme avec le
+        plus de kills pourrait se retrouver avec une couleur 'milieu' de palette.
+        Côté ECharts : `sort: false` n'existe pas — passer `data` déjà trié et utiliser
+        `series.itemStyle.color` par index dans `data[i].itemStyle.color`.
+
+    - decision: "Marges 10px (très serrées) au lieu du margin_default 40/20/30/40"
+      why: |
+        Maximise la taille du donut dans son container. Compatible avec le layout st.columns(2)
+        où le chart partage l'espace avec le tableau. Le donut bénéficie d'être grand pour
+        que les slice labels soient lisibles.
+
+    - decision: "PLOTLY_CLEAN_CONFIG (interactif) au lieu de STATIC"
+      why: |
+        Sur ce chart, l'utilisateur peut vouloir cliquer sur la légende pour masquer une arme
+        (par exemple pour mieux voir les % des autres). CLEAN_CONFIG permet ce toggle. Cohérent
+        avec l'expérience Streamlit.

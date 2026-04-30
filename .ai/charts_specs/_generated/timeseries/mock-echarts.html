@@ -1,0 +1,6604 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock ECharts — timeseries</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: rgb(20, 28, 33);
+      color: rgba(245, 248, 255, 0.92);
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 500;
+    }
+    header .info {
+      font-size: 13px;
+      color: rgba(182, 196, 214, 0.88);
+    }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 1100px) {
+      main {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .chart-card.full-width {
+        grid-column: 1 / -1;
+      }
+    }
+    .chart-card {
+      background: rgba(29, 35, 40, 1.0);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px 16px 8px;
+    }
+    .chart-card h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #33D6FF;
+    }
+    .chart-card .meta {
+      font-size: 11px;
+      color: rgba(182, 196, 214, 0.72);
+      margin-bottom: 12px;
+    }
+    .chart-card .meta code {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .chart-canvas {
+      width: 100%;
+    }
+    .chart-card--table .os-table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    table.os-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86em;
+      background: rgba(29, 35, 40, 0.96);
+    }
+    table.os-table th, table.os-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: left;
+      vertical-align: middle;
+    }
+    table.os-table th.os-sb-team {
+      background: rgba(51, 214, 255, 0.08);
+      color: #33D6FF;
+      font-weight: 600;
+      font-size: 0.95em;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(51, 214, 255, 0.2);
+    }
+    table.os-table th.os-sb-th {
+      color: rgba(182, 196, 214, 0.88);
+      font-size: 0.78em;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    table.os-table tr.os-sb-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    table.os-table td.os-sb-td {
+      color: rgba(245, 248, 255, 0.92);
+    }
+    .table-legend {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .kpi-tile {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 9px 15px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-tile-text {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.98);
+    }
+    .composite-block {
+      margin-top: 8px;
+      padding: 4px 0;
+    }
+    .composite-block .cb-cell img {
+      max-width: 100%;
+      border-radius: 6px;
+    }
+    footer {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: rgba(182, 196, 214, 0.72);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mock ECharts — Page timeseries</h1>
+    <div class="info">
+      29 charts · Données mock synthétiques · ECharts 5.5.1<br>
+      Source : <code>origin/v7/cockpit</code> (Plotly Python) — généré le 2026-04-30T20:45:58.699Z
+    </div>
+  </header>
+  <main>
+    <section class="chart-card chart-card--composite">
+      <h2>timeseries.00 — KPI Section — 8 cards perf joueur (vs all-time)</h2>
+      <div class="meta">
+        <code>src/app/kpis_render.py::render_kpis_section</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"><div class="cb-cell" style="flex:0 0 100.00%;padding:0 8px"><div style="display:flex;flex-wrap:wrap;gap:10px;width:100%"><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Matchs</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">24</span>
+        
+      </div>
+      <div style="font-size:0.72em;color:#888">08:42/match</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Durée totale</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">3h 28min</span>
+        
+      </div>
+      
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Kills/match</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">14.20</span>
+        <span style="color:#00C853;font-size:0.85em">▲</span>
+      </div>
+      <div style="font-size:0.72em;color:#888">1.63/min</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Morts/match</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">9.80</span>
+        <span style="color:#00C853;font-size:0.85em">▲</span>
+      </div>
+      <div style="font-size:0.72em;color:#888">1.13/min</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Assists/match</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">5.50</span>
+        <span style="color:#888888;font-size:0.85em">━</span>
+      </div>
+      <div style="font-size:0.72em;color:#888">0.63/min</div>
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Précision</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">52.34%</span>
+        <span style="color:#888888;font-size:0.85em">━</span>
+      </div>
+      
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:140px">
+      <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Vie moy.</div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:1.6em;font-weight:700;color:#fff">1:18</span>
+        <span style="color:#FF5252;font-size:0.85em">▼</span>
+      </div>
+      
+    </div><div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;flex:2;min-width:280px">
+    <div style="font-size:0.78em;color:#A0A0A0;font-weight:500">Résultats</div>
+    <div style="display:flex;height:32px;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <div style="flex:14;background:#3DFF9A;display:flex;align-items:center;justify-content:center;color:#000;font-weight:600;font-size:0.78em" title="14 V">14</div>
+      <div style="flex:9;background:#FF5C5C;display:flex;align-items:center;justify-content:center;color:#000;font-weight:600;font-size:0.78em" title="9 D">9</div>
+      <div style="flex:1;background:#A855F7;display:flex;align-items:center;justify-content:center;color:#000;font-weight:600;font-size:0.78em" title="1 E">1</div>
+      
+    </div>
+    <div style="font-size:0.72em;color:#888;display:flex;gap:10px">
+      <span><span style="color:#3DFF9A">●</span> 14 V</span>
+      <span><span style="color:#FF5C5C">●</span> 9 D</span>
+      <span><span style="color:#A855F7">●</span> 1 E</span>
+    </div>
+  </div></div></div></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.01 — Form score — évolution session vs historique</h2>
+      <div class="meta">
+        <code>src/ui/pages/_timeseries_form.py::render_form_score_section</code>
+      </div>
+      <div id="chart-1" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 50,
+    right: 30,
+    top: 50,
+    bottom: 60,
+    containLabel: false
+  },
+  legend: {
+    bottom: 8,
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  tooltip: {
+    trigger: "axis"
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11",
+      "S12",
+      "S13",
+      "S14",
+      "S15",
+      "S16",
+      "S17",
+      "S18",
+      "S19",
+      "S20",
+      "S21",
+      "S22",
+      "S23",
+      "S24",
+      "S25",
+      "S26",
+      "S27",
+      "S28",
+      "S29",
+      "S30"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.7)",
+      fontSize: 9,
+      interval: 2
+    }
+  },
+  yAxis: {
+    type: "value",
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.5)",
+        width: 1
+      }
+    },
+    axisLabel: {
+      color: "rgba(245,248,255,0.7)"
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245,248,255,0.05)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "Form score (positif)",
+      type: "line",
+      data: [
+        5.5,
+        1.7,
+        6.1,
+        7.4,
+        9.6,
+        9.8,
+        4.3,
+        4.4,
+        3.1,
+        3.3,
+        3.8,
+        1.1,
+        1.1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4.8,
+        3.7,
+        6.2,
+        10.4,
+        12.1
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#00e676",
+        width: 2
+      },
+      areaStyle: {
+        color: "rgba(0,200,100,0.25)",
+        origin: "start"
+      }
+    },
+    {
+      name: "Form score (négatif)",
+      type: "line",
+      data: [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -0.5,
+        -3.1,
+        -5.3,
+        -6.4,
+        -4.7,
+        -8,
+        -7,
+        -8.6,
+        -4.6,
+        -6.2,
+        -6.4,
+        -5.2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#e53935",
+        width: 2
+      },
+      areaStyle: {
+        color: "rgba(213,94,0,0.25)",
+        origin: "start"
+      }
+    },
+    {
+      name: "Form score",
+      type: "line",
+      data: [
+        5.5,
+        1.7,
+        6.1,
+        7.4,
+        9.6,
+        9.8,
+        4.3,
+        4.4,
+        3.1,
+        3.3,
+        3.8,
+        1.1,
+        1.1,
+        -0.5,
+        -3.1,
+        -5.3,
+        -6.4,
+        -4.7,
+        -8,
+        -7,
+        -8.6,
+        -4.6,
+        -6.2,
+        -6.4,
+        -5.2,
+        4.8,
+        3.7,
+        6.2,
+        10.4,
+        12.1
+      ],
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 5,
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2
+      },
+      markArea: {
+        silent: true,
+        itemStyle: {
+          color: "rgba(0,200,100,0.18)"
+        },
+        data: [
+          [
+            {
+              xAxis: "S26",
+              name: "Session courante"
+            },
+            {
+              xAxis: "S30"
+            }
+          ]
+        ]
+      },
+      markLine: {
+        symbol: "none",
+        silent: true,
+        data: [
+          {
+            yAxis: 0
+          }
+        ],
+        lineStyle: {
+          color: "rgba(255,255,255,0.4)",
+          type: "dashed",
+          width: 1
+        },
+        label: {
+          show: false
+        }
+      }
+    }
+  ],
+  title: {
+    text: "Form score — Session vs Historique (zone colorée = session courante)",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 380
+};
+          const dom = document.getElementById('chart-1');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.02 — K/D/A timeseries — Kills, Deaths, Ratio</h2>
+      <div class="meta">
+        <code>src/visualization/timeseries.py::plot_timeseries</code>
+      </div>
+      <div id="chart-2" class="chart-canvas" style="height: 480px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 80,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    axisLabel: {
+      rotate: -45
+    }
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "kills",
+      data: [
+        ["2025-08-01", 62],
+        ["2025-08-08", 48],
+        ["2025-08-15", 76],
+        ["2025-08-22", 77],
+        ["2025-08-29", 98],
+        ["2025-09-05", 25],
+        ["2025-09-12", 41],
+        ["2025-09-19", 30],
+        ["2025-09-26", 13],
+        ["2025-10-03", 79],
+        ["2025-10-10", 100],
+        ["2025-10-17", 15],
+        ["2025-10-24", 32],
+        ["2025-10-31", 56],
+        ["2025-11-07", 83],
+        ["2025-11-14", 85],
+        ["2025-11-21", 81],
+        ["2025-11-28", 99],
+        ["2025-12-05", 87],
+        ["2025-12-12", 70],
+        ["2025-12-19", 12],
+        ["2025-12-26", 80],
+        ["2026-01-02", 30],
+        ["2026-01-09", 95],
+        ["2026-01-16", 2],
+        ["2026-01-23", 35],
+        ["2026-01-30", 100],
+        ["2026-02-06", 28],
+        ["2026-02-13", 65],
+        ["2026-02-20", 96]
+      ],
+      itemStyle: {
+        color: "#41d6ff"
+      },
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "deaths",
+      data: [
+        ["2025-08-01", 72],
+        ["2025-08-08", 3],
+        ["2025-08-15", 91],
+        ["2025-08-22", 71],
+        ["2025-08-29", 55],
+        ["2025-09-05", 8],
+        ["2025-09-12", 91],
+        ["2025-09-19", 20],
+        ["2025-09-26", 13],
+        ["2025-10-03", 42],
+        ["2025-10-10", 80],
+        ["2025-10-17", 51],
+        ["2025-10-24", 77],
+        ["2025-10-31", 72],
+        ["2025-11-07", 20],
+        ["2025-11-14", 78],
+        ["2025-11-21", 96],
+        ["2025-11-28", 75],
+        ["2025-12-05", 43],
+        ["2025-12-12", 78],
+        ["2025-12-19", 44],
+        ["2025-12-26", 51],
+        ["2026-01-02", 66],
+        ["2026-01-09", 5],
+        ["2026-01-16", 8],
+        ["2026-01-23", 23],
+        ["2026-01-30", 71],
+        ["2026-02-06", 10],
+        ["2026-02-13", 98],
+        ["2026-02-20", 24]
+      ],
+      itemStyle: {
+        color: "#e53935"
+      },
+      lineStyle: {
+        color: "#e53935",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "ratio",
+      data: [
+        ["2025-08-01", 13],
+        ["2025-08-08", 44],
+        ["2025-08-15", 13],
+        ["2025-08-22", 20],
+        ["2025-08-29", 59],
+        ["2025-09-05", 21],
+        ["2025-09-12", 97],
+        ["2025-09-19", 49],
+        ["2025-09-26", 83],
+        ["2025-10-03", 83],
+        ["2025-10-10", 82],
+        ["2025-10-17", 60],
+        ["2025-10-24", 33],
+        ["2025-10-31", 66],
+        ["2025-11-07", 22],
+        ["2025-11-14", 66],
+        ["2025-11-21", 33],
+        ["2025-11-28", 62],
+        ["2025-12-05", 42],
+        ["2025-12-12", 98],
+        ["2025-12-19", 83],
+        ["2025-12-26", 32],
+        ["2026-01-02", 46],
+        ["2026-01-09", 87],
+        ["2026-01-16", 12],
+        ["2026-01-23", 76],
+        ["2026-01-30", 68],
+        ["2026-02-06", 65],
+        ["2026-02-13", 44],
+        ["2026-02-20", 81]
+      ],
+      itemStyle: {
+        color: "#00e676"
+      },
+      lineStyle: {
+        color: "#00e676",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-2');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.03 — K/D/A distribution — densité KDE + rug plot</h2>
+      <div class="meta">
+        <code>src/visualization/distributions.py::plot_kda_distribution</code>
+      </div>
+      <div id="chart-3" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 40,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "kde",
+      data: [
+        ["2025-08-01", 85],
+        ["2025-08-08", 86],
+        ["2025-08-15", 87],
+        ["2025-08-22", 84],
+        ["2025-08-29", 22],
+        ["2025-09-05", 75],
+        ["2025-09-12", 98],
+        ["2025-09-19", 31],
+        ["2025-09-26", 65],
+        ["2025-10-03", 53],
+        ["2025-10-10", 68],
+        ["2025-10-17", 37],
+        ["2025-10-24", 3],
+        ["2025-10-31", 10],
+        ["2025-11-07", 14],
+        ["2025-11-14", 56],
+        ["2025-11-21", 59],
+        ["2025-11-28", 93],
+        ["2025-12-05", 12],
+        ["2025-12-12", 24],
+        ["2025-12-19", 24],
+        ["2025-12-26", 23],
+        ["2026-01-02", 22],
+        ["2026-01-09", 48],
+        ["2026-01-16", 29],
+        ["2026-01-23", 28],
+        ["2026-01-30", 87],
+        ["2026-02-06", 72],
+        ["2026-02-13", 29],
+        ["2026-02-20", 64]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(53,208,255,0.18)",
+        opacity: 1
+      }
+    },
+    {
+      type: "line",
+      name: "rug_plot",
+      data: [
+        ["2025-08-01", 50],
+        ["2025-08-08", 19],
+        ["2025-08-15", 26],
+        ["2025-08-22", 32],
+        ["2025-08-29", 20],
+        ["2025-09-05", 27],
+        ["2025-09-12", 30],
+        ["2025-09-19", 17],
+        ["2025-09-26", 23],
+        ["2025-10-03", 46],
+        ["2025-10-10", 24],
+        ["2025-10-17", 75],
+        ["2025-10-24", 8],
+        ["2025-10-31", 65],
+        ["2025-11-07", 54],
+        ["2025-11-14", 93],
+        ["2025-11-21", 52],
+        ["2025-11-28", 21],
+        ["2025-12-05", 93],
+        ["2025-12-12", 88],
+        ["2025-12-19", 100],
+        ["2025-12-26", 46],
+        ["2026-01-02", 71],
+        ["2026-01-09", 46],
+        ["2026-01-16", 36],
+        ["2026-01-23", 14],
+        ["2026-01-30", 67],
+        ["2026-02-06", 26],
+        ["2026-02-13", 17],
+        ["2026-02-20", 4]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "line-ns-open",
+      symbolSize: 10,
+      showSymbol: true,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-3');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.04 — Top weapons by kills</h2>
+      <div class="meta">
+        <code>src/ui/pages/_timeseries_weapons.py::render_weapon_kills_chart</code>
+      </div>
+      <div id="chart-4" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 120,
+    right: 60,
+    top: 30,
+    bottom: 40,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "bar",
+      name: "kills_bars",
+      data: [
+        {
+          value: 18,
+          itemStyle: {
+            color: "#41d6ff",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 19,
+          itemStyle: {
+            color: "#41d6ff",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 8,
+          itemStyle: {
+            color: "#41d6ff",
+            opacity: 0.85
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "kills_bars" + '): ' + params.value;
+}
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-4');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.05 — Outcomes over time — V/D par période</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_outcomes_over_time</code>
+      </div>
+      <div id="chart-5" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 40,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    data: ["Aquarius", "Behemoth", "Bazaar", "Recharge", "Live Fire", "Streets", "Catalyst", "Argyle"]
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "bar",
+      name: null,
+      stack: "total",
+      data: [
+        {
+          value: 12
+        },
+        {
+          value: 8
+        },
+        {
+          value: 15
+        },
+        {
+          value: 6
+        },
+        {
+          value: 11
+        },
+        {
+          value: 9
+        },
+        {
+          value: 4
+        },
+        {
+          value: 7
+        }
+      ],
+      itemStyle: {
+        color: "#00e676",
+        opacity: 1
+      },
+      label: {
+        show: true,
+        position: "inside",
+        formatter: params=>String(params.value)
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+
+    var cat = params.name;
+    var val = (params.data && params.data.value !== undefined) ? params.data.value : params.value;
+    var result = cat + '<br>' + "Series" + ': ' + val;
+    return result;
+  
+}
+      }
+    },
+    {
+      type: "bar",
+      name: null,
+      stack: "total",
+      data: [
+        {
+          value: 10
+        },
+        {
+          value: 14
+        },
+        {
+          value: 7
+        },
+        {
+          value: 11
+        },
+        {
+          value: 8
+        },
+        {
+          value: 12
+        },
+        {
+          value: 6
+        },
+        {
+          value: 9
+        }
+      ],
+      itemStyle: {
+        color: "#e53935",
+        opacity: 1
+      },
+      label: {
+        show: true,
+        position: "inside",
+        formatter: params=>String(params.value)
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+
+    var cat = params.name;
+    var val = (params.data && params.data.value !== undefined) ? params.data.value : params.value;
+    var result = cat + '<br>' + "Series" + ': ' + val;
+    return result;
+  
+}
+      }
+    },
+    {
+      type: "bar",
+      name: null,
+      stack: "total",
+      data: [
+        {
+          value: 0
+        },
+        {
+          value: 1
+        },
+        {
+          value: 0
+        },
+        {
+          value: 0
+        },
+        {
+          value: 2
+        },
+        {
+          value: 0
+        },
+        {
+          value: 0
+        },
+        {
+          value: 0
+        }
+      ],
+      itemStyle: {
+        color: "#ab47bc",
+        opacity: 1
+      },
+      label: {
+        show: true,
+        position: "inside",
+        formatter: params=>String(params.value)
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+
+    var cat = params.name;
+    var val = (params.data && params.data.value !== undefined) ? params.data.value : params.value;
+    var result = cat + '<br>' + "Series" + ': ' + val;
+    return result;
+  
+}
+      }
+    },
+    {
+      type: "bar",
+      name: null,
+      stack: "total",
+      data: [],
+      itemStyle: {
+        color: "#888888",
+        opacity: 1
+      },
+      label: {
+        show: true,
+        position: "inside",
+        formatter: params=>String(params.value)
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+
+    var cat = params.name;
+    var val = (params.data && params.data.value !== undefined) ? params.data.value : params.value;
+    var result = cat + '<br>' + "Series" + ': ' + val;
+    return result;
+  
+}
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-5');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.06 — Streak chart — séries V/D consécutives</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_streak_section</code>
+      </div>
+      <div id="chart-6" class="chart-canvas" style="height: 240px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 10,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    data: ["Aquarius", "Behemoth", "Bazaar", "Recharge", "Live Fire", "Streets", "Catalyst", "Argyle"]
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "bar",
+      name: null,
+      stack: "total",
+      data: [],
+      itemStyle: {
+        color: null,
+        opacity: 0.85
+      },
+      label: {
+        show: true,
+        position: "inside",
+        formatter: params=>String(params.value)
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+
+    var cat = params.name;
+    var val = (params.data && params.data.value !== undefined) ? params.data.value : params.value;
+    var result = cat + '<br>' + "Series" + ': ' + val;
+    return result;
+  
+}
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-6');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.07 — Map / Mode breakdown — V/D/T par carte (top 12) + par mode</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_map_mode_breakdown</code>
+      </div>
+      <div id="chart-7" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  legend: {
+    top: 10,
+    right: 30,
+    orient: "horizontal",
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    },
+    data: ["Wins", "Losses", "Ties"]
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  grid: [
+    {
+      left: "5%",
+      top: "20%",
+      width: "40%",
+      height: "70%",
+      containLabel: true
+    },
+    {
+      left: "55%",
+      top: "20%",
+      width: "40%",
+      height: "70%",
+      containLabel: true
+    }
+  ],
+  xAxis: [
+    {
+      gridIndex: 0,
+      type: "category",
+      data: ["Aquarius", "Recharge", "Live Fire", "Streets", "Bazaar", "Behemoth", "Catalyst", "Argyle"],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9,
+        rotate: -30
+      },
+      name: "Cartes (top 12)",
+      nameLocation: "middle",
+      nameGap: 35,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "category",
+      data: ["Slayer", "CTF", "Strongholds", "Oddball", "King of the Hill", "Land Grab", "Quickplay", "BTB"],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9,
+        rotate: -30
+      },
+      name: "Modes",
+      nameLocation: "middle",
+      nameGap: 35,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      }
+    }
+  ],
+  yAxis: [
+    {
+      gridIndex: 0,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Wins",
+      type: "bar",
+      stack: "maps",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [12, 9, 7, 6, 11, 4, 8, 5],
+      itemStyle: {
+        color: "#00e676"
+      }
+    },
+    {
+      name: "Losses",
+      type: "bar",
+      stack: "maps",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [8, 11, 6, 9, 7, 12, 5, 8],
+      itemStyle: {
+        color: "#e53935"
+      }
+    },
+    {
+      name: "Ties",
+      type: "bar",
+      stack: "maps",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [1, 0, 0, 1, 0, 0, 0, 0],
+      itemStyle: {
+        color: "#ab47bc"
+      }
+    },
+    {
+      name: "Wins ",
+      type: "bar",
+      stack: "modes",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [15, 8, 6, 7, 5, 3, 12, 9],
+      itemStyle: {
+        color: "#00e676"
+      }
+    },
+    {
+      name: "Losses ",
+      type: "bar",
+      stack: "modes",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [10, 9, 8, 6, 7, 4, 9, 11],
+      itemStyle: {
+        color: "#e53935"
+      }
+    },
+    {
+      name: "Ties ",
+      type: "bar",
+      stack: "modes",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [0, 1, 0, 0, 0, 0, 1, 0],
+      itemStyle: {
+        color: "#ab47bc"
+      }
+    }
+  ],
+  title: {
+    text: "V/D/T par carte (gauche, top 12) / par mode (droite)",
+    left: "center",
+    top: 5,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 460
+};
+          const dom = document.getElementById('chart-7');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>timeseries.08 — Winrate &amp; Performance vs Historique — 2 sub-charts</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_winrate_perf_vs_history</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.09 — Distributions — 6 histogrammes (KDA, accuracy, life, perf, score/min, rolling WR)</h2>
+      <div class="meta">
+        <code>src/ui/pages/_timeseries_distributions.py::render_distributions</code>
+      </div>
+      <div id="chart-9" class="chart-canvas" style="height: 320px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item"
+  },
+  grid: [
+    {
+      left: "5%",
+      top: "8%",
+      width: "28%",
+      height: "38%",
+      containLabel: true
+    },
+    {
+      left: "38%",
+      top: "8%",
+      width: "28%",
+      height: "38%",
+      containLabel: true
+    },
+    {
+      left: "71%",
+      top: "8%",
+      width: "28%",
+      height: "38%",
+      containLabel: true
+    },
+    {
+      left: "5%",
+      top: "54%",
+      width: "28%",
+      height: "38%",
+      containLabel: true
+    },
+    {
+      left: "38%",
+      top: "54%",
+      width: "28%",
+      height: "38%",
+      containLabel: true
+    },
+    {
+      left: "71%",
+      top: "54%",
+      width: "28%",
+      height: "38%",
+      containLabel: true
+    }
+  ],
+  xAxis: [
+    {
+      gridIndex: 0,
+      type: "category",
+      data: [
+        "12.6",
+        "16.3",
+        "19.9",
+        "23.5",
+        "27.2",
+        "30.8",
+        "34.4",
+        "38.1",
+        "41.7",
+        "45.3",
+        "48.9",
+        "52.6",
+        "56.2",
+        "59.8",
+        "63.5",
+        "67.1",
+        "70.7",
+        "74.4"
+      ],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 8,
+        interval: 2
+      },
+      name: "Accuracy",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)",
+        fontSize: 10
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "category",
+      data: [
+        "0.2",
+        "2.0",
+        "3.8",
+        "5.6",
+        "7.4",
+        "9.2",
+        "11.0",
+        "12.8",
+        "14.6",
+        "16.4",
+        "18.2",
+        "20.0",
+        "21.8",
+        "23.6",
+        "25.4",
+        "27.2",
+        "29.0",
+        "30.8"
+      ],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 8,
+        interval: 2
+      },
+      name: "Kills",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)",
+        fontSize: 10
+      }
+    },
+    {
+      gridIndex: 2,
+      type: "category",
+      data: [
+        "-5.1",
+        "-2.5",
+        "0.1",
+        "2.6",
+        "5.2",
+        "7.8",
+        "10.4",
+        "12.9",
+        "15.5",
+        "18.1",
+        "20.7",
+        "23.2",
+        "25.8",
+        "28.4",
+        "31.0",
+        "33.5",
+        "36.1",
+        "38.7"
+      ],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 8,
+        interval: 2
+      },
+      name: "Average life (s)",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)",
+        fontSize: 10
+      }
+    },
+    {
+      gridIndex: 3,
+      type: "category",
+      data: [
+        "9.5",
+        "14.1",
+        "18.6",
+        "23.2",
+        "27.8",
+        "32.3",
+        "36.9",
+        "41.5",
+        "46.1",
+        "50.6",
+        "55.2",
+        "59.8",
+        "64.3",
+        "68.9",
+        "73.5",
+        "78.1",
+        "82.6",
+        "87.2"
+      ],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 8,
+        interval: 2
+      },
+      name: "Performance",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)",
+        fontSize: 10
+      }
+    },
+    {
+      gridIndex: 4,
+      type: "category",
+      data: [
+        "0.2",
+        "0.3",
+        "0.4",
+        "0.5",
+        "0.6",
+        "0.8",
+        "0.9",
+        "1.0",
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "1.6",
+        "1.7",
+        "1.8",
+        "1.9",
+        "2.0",
+        "2.1"
+      ],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 8,
+        interval: 2
+      },
+      name: "Score / min",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)",
+        fontSize: 10
+      }
+    },
+    {
+      gridIndex: 5,
+      type: "category",
+      data: [
+        "0.1",
+        "0.2",
+        "0.2",
+        "0.3",
+        "0.3",
+        "0.4",
+        "0.4",
+        "0.5",
+        "0.5",
+        "0.6",
+        "0.6",
+        "0.7",
+        "0.7",
+        "0.8",
+        "0.8",
+        "0.9",
+        "0.9",
+        "1.0"
+      ],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 8,
+        interval: 2
+      },
+      name: "Rolling WR",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)",
+        fontSize: 10
+      }
+    }
+  ],
+  yAxis: [
+    {
+      gridIndex: 0,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 2,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 3,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 4,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 5,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Accuracy",
+      type: "bar",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [
+        2,
+        0,
+        3,
+        6,
+        5,
+        10,
+        14,
+        19,
+        22,
+        15,
+        16,
+        16,
+        8,
+        3,
+        2,
+        5,
+        2,
+        2
+      ],
+      barCategoryGap: "5%",
+      itemStyle: {
+        color: "#41d6ff",
+        opacity: 0.7
+      }
+    },
+    {
+      name: "Accuracy KDE",
+      type: "line",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [
+        1,
+        1.6666666666666667,
+        3,
+        4.666666666666667,
+        7,
+        9.666666666666666,
+        14.333333333333334,
+        18.333333333333332,
+        18.666666666666668,
+        17.666666666666668,
+        15.666666666666666,
+        13.333333333333334,
+        9,
+        4.333333333333333,
+        3.3333333333333335,
+        3,
+        3,
+        2
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2
+      },
+      areaStyle: {
+        color: "#41d6ff",
+        opacity: 0.1
+      }
+    },
+    {
+      name: "Kills",
+      type: "bar",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [
+        2,
+        2,
+        8,
+        2,
+        12,
+        16,
+        15,
+        21,
+        21,
+        20,
+        17,
+        6,
+        3,
+        0,
+        2,
+        2,
+        0,
+        1
+      ],
+      barCategoryGap: "5%",
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      }
+    },
+    {
+      name: "Kills KDE",
+      type: "line",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [
+        2,
+        4,
+        4,
+        7.333333333333333,
+        10,
+        14.333333333333334,
+        17.333333333333332,
+        19,
+        20.666666666666668,
+        19.333333333333332,
+        14.333333333333334,
+        8.666666666666666,
+        3,
+        1.6666666666666667,
+        1.3333333333333333,
+        1.3333333333333333,
+        1,
+        0.5
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#00e676",
+        width: 2
+      },
+      areaStyle: {
+        color: "#00e676",
+        opacity: 0.1
+      }
+    },
+    {
+      name: "Average life (s)",
+      type: "bar",
+      xAxisIndex: 2,
+      yAxisIndex: 2,
+      data: [
+        1,
+        0,
+        0,
+        0,
+        0,
+        5,
+        5,
+        8,
+        22,
+        19,
+        14,
+        26,
+        16,
+        12,
+        5,
+        9,
+        5,
+        3
+      ],
+      barCategoryGap: "5%",
+      itemStyle: {
+        color: "#ffb300",
+        opacity: 0.7
+      }
+    },
+    {
+      name: "Average life (s) KDE",
+      type: "line",
+      xAxisIndex: 2,
+      yAxisIndex: 2,
+      data: [
+        0.5,
+        0.3333333333333333,
+        0,
+        0,
+        1.6666666666666667,
+        3.3333333333333335,
+        6,
+        11.666666666666666,
+        16.333333333333332,
+        18.333333333333332,
+        19.666666666666668,
+        18.666666666666668,
+        18,
+        11,
+        8.666666666666666,
+        6.333333333333333,
+        5.666666666666667,
+        4
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#ffb300",
+        width: 2
+      },
+      areaStyle: {
+        color: "#ffb300",
+        opacity: 0.1
+      }
+    },
+    {
+      name: "Performance",
+      type: "bar",
+      xAxisIndex: 3,
+      yAxisIndex: 3,
+      data: [
+        1,
+        0,
+        0,
+        1,
+        5,
+        6,
+        9,
+        8,
+        16,
+        15,
+        22,
+        21,
+        19,
+        16,
+        3,
+        4,
+        3,
+        1
+      ],
+      barCategoryGap: "5%",
+      itemStyle: {
+        color: "#ab47bc",
+        opacity: 0.7
+      }
+    },
+    {
+      name: "Performance KDE",
+      type: "line",
+      xAxisIndex: 3,
+      yAxisIndex: 3,
+      data: [
+        0.5,
+        0.3333333333333333,
+        0.3333333333333333,
+        2,
+        4,
+        6.666666666666667,
+        7.666666666666667,
+        11,
+        13,
+        17.666666666666668,
+        19.333333333333332,
+        20.666666666666668,
+        18.666666666666668,
+        12.666666666666666,
+        7.666666666666667,
+        3.3333333333333335,
+        2.6666666666666665,
+        2
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#ab47bc",
+        width: 2
+      },
+      areaStyle: {
+        color: "#ab47bc",
+        opacity: 0.1
+      }
+    },
+    {
+      name: "Score / min",
+      type: "bar",
+      xAxisIndex: 4,
+      yAxisIndex: 4,
+      data: [
+        3,
+        1,
+        1,
+        9,
+        8,
+        11,
+        14,
+        14,
+        12,
+        18,
+        10,
+        14,
+        13,
+        7,
+        9,
+        4,
+        1,
+        1
+      ],
+      barCategoryGap: "5%",
+      itemStyle: {
+        color: "#ffb300",
+        opacity: 0.7
+      }
+    },
+    {
+      name: "Score / min KDE",
+      type: "line",
+      xAxisIndex: 4,
+      yAxisIndex: 4,
+      data: [
+        2,
+        1.6666666666666667,
+        3.6666666666666665,
+        6,
+        9.333333333333334,
+        11,
+        13,
+        13.333333333333334,
+        14.666666666666666,
+        13.333333333333334,
+        14,
+        12.333333333333334,
+        11.333333333333334,
+        9.666666666666666,
+        6.666666666666667,
+        4.666666666666667,
+        2,
+        1
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#ffb300",
+        width: 2
+      },
+      areaStyle: {
+        color: "#ffb300",
+        opacity: 0.1
+      }
+    },
+    {
+      name: "Rolling WR",
+      type: "bar",
+      xAxisIndex: 5,
+      yAxisIndex: 5,
+      data: [
+        2,
+        0,
+        2,
+        10,
+        4,
+        12,
+        14,
+        24,
+        19,
+        15,
+        22,
+        15,
+        5,
+        3,
+        1,
+        1,
+        0,
+        1
+      ],
+      barCategoryGap: "5%",
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      }
+    },
+    {
+      name: "Rolling WR KDE",
+      type: "line",
+      xAxisIndex: 5,
+      yAxisIndex: 5,
+      data: [
+        1,
+        1.3333333333333333,
+        4,
+        5.333333333333333,
+        8.666666666666666,
+        10,
+        16.666666666666668,
+        19,
+        19.333333333333332,
+        18.666666666666668,
+        17.333333333333332,
+        14,
+        7.666666666666667,
+        3,
+        1.6666666666666667,
+        0.6666666666666666,
+        0.6666666666666666,
+        0.5
+      ],
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: "#00e676",
+        width: 2
+      },
+      areaStyle: {
+        color: "#00e676",
+        opacity: 0.1
+      }
+    }
+  ],
+  title: {
+    text: "Distributions — 6 histogrammes (KDA, accuracy, life, perf, score/min, rolling WR)",
+    left: "center",
+    top: 0,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 560
+};
+          const dom = document.getElementById('chart-9');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.10 — Corrélations — 5 scatter plots colorés par outcome</h2>
+      <div class="meta">
+        <code>src/ui/pages/_timeseries_distributions.py::render_correlations</code>
+      </div>
+      <div id="chart-10" class="chart-canvas" style="height: 320px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item"
+  },
+  grid: [
+    {
+      left: "6%",
+      top: "8%",
+      width: "40%",
+      height: "24%",
+      containLabel: true
+    },
+    {
+      left: "53%",
+      top: "8%",
+      width: "40%",
+      height: "24%",
+      containLabel: true
+    },
+    {
+      left: "6%",
+      top: "38%",
+      width: "40%",
+      height: "24%",
+      containLabel: true
+    },
+    {
+      left: "53%",
+      top: "38%",
+      width: "40%",
+      height: "24%",
+      containLabel: true
+    },
+    {
+      left: "6%",
+      top: "70%",
+      width: "88%",
+      height: "24%",
+      containLabel: true
+    }
+  ],
+  xAxis: [
+    {
+      gridIndex: 0,
+      type: "value",
+      name: "Life (s)",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "value",
+      name: "Accuracy %",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 2,
+      type: "value",
+      name: "Life (s)",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 3,
+      type: "value",
+      name: "Kills",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 4,
+      type: "value",
+      name: "Team MMR",
+      nameLocation: "middle",
+      nameGap: 18,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    }
+  ],
+  yAxis: [
+    {
+      gridIndex: 0,
+      type: "value",
+      name: "Kills",
+      nameLocation: "middle",
+      nameGap: 28,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "value",
+      name: "FDA",
+      nameLocation: "middle",
+      nameGap: 28,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 2,
+      type: "value",
+      name: "Deaths",
+      nameLocation: "middle",
+      nameGap: 28,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 3,
+      type: "value",
+      name: "Deaths",
+      nameLocation: "middle",
+      nameGap: 28,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 4,
+      type: "value",
+      name: "Enemy MMR",
+      nameLocation: "middle",
+      nameGap: 28,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.6)",
+        fontSize: 8
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Life vs Kills — wins",
+      type: "scatter",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [
+        [12.973705113530519, 14.496378208515626],
+        [12.44294075316498, 13.663976892593855],
+        [25.695477365375638, 15.172840016175357],
+        [33.57662834829881, 23.585498674947388],
+        [35.29551235061804, 18.889273564630564],
+        [15.668192843195937, 11.65380377274401],
+        [11.050251953480227, 12.991527839185743],
+        [12.139900625353146, 8.55503414500279],
+        [26.81669756611515, 14.774589011901174],
+        [34.174442106816805, 20.304532806067737],
+        [14.54935084762165, 15.91006761599115],
+        [11.96907129510722, 12.15850454390592],
+        [27.511771548135712, 20.486280207898606],
+        [28.733012411304784, 17.323649411665183],
+        [34.64003179687583, 22.16789152145198],
+        [39.39276622862192, 22.782143320714983],
+        [15.319313528789568, 14.371299187884016],
+        [19.995968007077728, 11.0845551867409],
+        [16.402139275319882, 12.86076295299333],
+        [20.204920429540792, 13.66451992078565],
+        [32.06024907504803, 23.40014763775977],
+        [18.123716245594025, 16.962386838040583],
+        [39.9584628359617, 21.0609139022361],
+        [13.91293789582842, 8.112736812440154],
+        [13.938947803061442, 14.507104424620561],
+        [38.5519302066787, 27.497492377145214],
+        [29.33899029077364, 18.97254048484574],
+        [18.27762613547214, 12.880111842277785],
+        [32.37968385131873, 18.959727543788933],
+        [23.908153308692313, 20.847783263870696],
+        [12.704931667828687, 8.683209923978733],
+        [25.302654048889664, 21.59393749504466],
+        [15.32985011100514, 13.718276353352087],
+        [21.03102356676448, 15.530170584931302],
+        [22.720984910041512, 16.817443833819876],
+        [13.790660701521166, 10.760531519114224],
+        [36.411487258324655, 19.435857853683043],
+        [38.005494713930794, 21.60095857266594],
+        [33.70591577372497, 24.699036361993493],
+        [25.829945887156853, 15.204105311008707]
+      ],
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Life vs Kills — losses",
+      type: "scatter",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [
+        [27.727065670974305, 21.080262901633027],
+        [32.93319611103253, 24.95613577676678],
+        [35.81451472507835, 20.045236594395966],
+        [11.477389439400675, 7.266196019308286],
+        [29.009768730517855, 21.209236015401324],
+        [23.40232881526253, 14.094431768878504],
+        [26.68809261429991, 20.7324797964718],
+        [27.620577185663944, 20.599961477841873],
+        [35.16476957153316, 26.37528452742849],
+        [24.26140444789762, 19.391149074782742],
+        [32.753538401322984, 20.105667388185154],
+        [15.32445784592798, 8.788819487910501],
+        [15.58835149386094, 10.002852884240252],
+        [32.76687121601903, 22.363822461961334],
+        [37.85108492436195, 22.19333917777281],
+        [17.194309248341654, 14.187618546983252],
+        [13.421907979194634, 12.700133705295531],
+        [10.21916116670523, 8.391023410941049],
+        [21.48041031057512, 12.953730017207308],
+        [18.39758227111029, 15.306513749737249],
+        [25.44046504897948, 18.4460556875442],
+        [31.79952776350239, 21.256716185496177],
+        [37.93099496880695, 23.667812576383355],
+        [34.594492354742925, 24.374391958033854],
+        [29.86074743962062, 23.531879295534083],
+        [15.900665259463986, 10.567315415355454],
+        [17.03642909169595, 14.495094146978786],
+        [29.77680132514861, 18.206106138326177],
+        [12.902105756906826, 10.713340652353086],
+        [24.63995225635515, 19.576023357647852],
+        [19.044787138203727, 18.01226833899667],
+        [36.363164622793256, 23.392525974286873],
+        [13.851005588173425, 14.329460182765187],
+        [31.924290253148257, 19.766760402510155],
+        [35.46814145841973, 25.35120668462197],
+        [39.055691775016, 23.751629368726128],
+        [31.18093929687404, 21.534358424079898],
+        [12.101951581038694, 12.638500676455903],
+        [32.64368440647094, 25.19344746299638],
+        [37.53915671774445, 21.557354732991477]
+      ],
+      itemStyle: {
+        color: "#e53935",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Life vs Kills — trend",
+      type: "line",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [
+        [10.21916116670523, 10.298278913183967],
+        [39.9584628359617, 24.918715642262484]
+      ],
+      symbol: "none",
+      lineStyle: {
+        color: "rgba(255,255,255,0.5)",
+        width: 1.5,
+        type: "dashed"
+      }
+    },
+    {
+      name: "Accuracy vs FDA — wins",
+      type: "scatter",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [
+        [45.01683281734965, 1.8594842821761859],
+        [59.10321961449554, 1.9229413108580293],
+        [26.202321419983285, 0.7184330775825996],
+        [34.73411257951959, 0.4917466058882507],
+        [45.89015313201617, 2.0948103205442288],
+        [44.63100109294362, 1.8258577461925367],
+        [32.071596057964534, 1.5556546076274902],
+        [47.65761990304736, 2.046195868003303],
+        [27.806040953743732, 1.5171652594451075],
+        [63.46597558141907, 2.3154046928265632],
+        [23.981605174758567, 0.7567862500687326],
+        [33.21912904789567, 1.8793694292680803],
+        [66.35974387593595, 3.546187709356277],
+        [42.243814019951486, 2.3003210252432407],
+        [61.6647011505315, 2.6002991332167955],
+        [60.35493082149259, 2.437731005420962],
+        [66.1802193559367, 2.79573556581105],
+        [33.4540116595556, 1.1431029504691046],
+        [33.52491569321054, 1.4352557365038043],
+        [41.386882297721016, 1.4675014044055155],
+        [21.556985172423918, -0.06580906694066369],
+        [34.39404411865633, 0.7985083804731837],
+        [24.962169540986, 1.0352648023818578],
+        [32.834217460081774, 1.3252986565791804],
+        [23.730624330296912, 1.0857810591224326],
+        [27.59456313107936, 0.8850280269594528],
+        [40.03878539421551, 1.0272125712457918],
+        [29.03205075822181, 1.1450375775756692],
+        [55.587620277909494, 2.56596038280053],
+        [68.27875646482038, 2.7799290353410377],
+        [32.70395434491965, 0.747754687453711],
+        [62.34984041874609, 2.5673569701235217],
+        [29.885963117534637, 1.114905619796514],
+        [24.770033235741913, 1.2949557031104864],
+        [52.496521336505666, 1.8654047994780387],
+        [54.347276032104176, 2.5275471656550046]
+      ],
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Accuracy vs FDA — losses",
+      type: "scatter",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [
+        [61.03850116007702, 2.9987493664756197],
+        [41.158776981183465, 1.336672185841484],
+        [24.210346440020874, 1.0375614233286439],
+        [24.894121143428098, 0.01372473531765217],
+        [52.61810289369766, 2.57516181210556],
+        [46.16472437476405, 1.0797100410667695],
+        [57.79315150040306, 2.217044868956825],
+        [69.68934016242461, 2.280383269985662],
+        [25.371031026107392, 0.3385142068622816],
+        [69.7000974686477, 3.494673640114371],
+        [59.85805211078159, 3.0327346230145347],
+        [44.49803743963029, 2.465002292786703],
+        [48.427186239407874, 2.6677226731296213],
+        [23.80857675352929, 1.0642560083128298],
+        [39.57311867248268, 1.052864668194944],
+        [30.675315636968442, 1.2349367573624737],
+        [57.318947323691496, 2.3487261046227457],
+        [22.44492394143293, 1.1135175476608392],
+        [49.63239521578919, 2.725655948124318],
+        [50.514775628754734, 1.7494886789499375],
+        [47.7631507787322, 1.3861644967177615],
+        [49.30014825922609, 2.3927572680731974],
+        [27.67750135759365, 0.8902084792144064],
+        [20.84595445997161, 0.5578787819298869],
+        [64.73752557578771, 3.351812240485405],
+        [30.75079928298235, 1.3524974849174884],
+        [25.21978521556605, 1.0629796470939326],
+        [48.7466769404785, 1.7451725211757103],
+        [38.3963561146936, 1.1840211659750004],
+        [21.92461522012643, 0.5969469614494516],
+        [21.42173651316388, 0.988604522006135],
+        [20.2715848061768, 0.9895386723561401],
+        [23.187536363872606, 1.12934272880505],
+        [65.87872422414299, 3.000186413275544],
+        [60.048923936789656, 2.450068855468001],
+        [66.69269871421704, 2.4248709409562785],
+        [34.98591344245912, 1.4486969082330818],
+        [58.26209481509384, 1.9799807422723137],
+        [68.61336406331648, 2.399286032789523],
+        [44.52298489925634, 1.8545757623746368],
+        [33.44012918472586, 0.5928157539846142],
+        [21.429320397071308, 0.0890270439730263],
+        [32.08912315654837, 0.6065202001136836],
+        [51.37483373626462, 1.4049317057890112]
+      ],
+      itemStyle: {
+        color: "#e53935",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Accuracy vs FDA — trend",
+      type: "line",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [
+        [20.2715848061768, 0.5993824554832413],
+        [69.7000974686477, 2.9647901163255375]
+      ],
+      symbol: "none",
+      lineStyle: {
+        color: "rgba(255,255,255,0.5)",
+        width: 1.5,
+        type: "dashed"
+      }
+    },
+    {
+      name: "Life vs Deaths — wins",
+      type: "scatter",
+      xAxisIndex: 2,
+      yAxisIndex: 2,
+      data: [
+        [11.68758516995358, 15.751916265212603],
+        [28.223456430356094, 11.723741725551868],
+        [28.120566586296786, 12.579790505218364],
+        [11.629460698432247, 14.385152783462873],
+        [38.24045710494917, 9.912774461532385],
+        [28.340051838059694, 10.827985426639046],
+        [14.233409099930226, 15.073700002939752],
+        [29.901268982080044, 12.866623288921776],
+        [37.9164484312782, 12.902985767692837],
+        [30.93490474983802, 12.244171973301041],
+        [32.39775134461538, 14.500093086029977],
+        [37.018519370977884, 10.827043978925357],
+        [32.70277073665969, 12.397583814458212],
+        [20.19180602890849, 16.436290543941887],
+        [28.463258661134173, 11.234087365980965],
+        [35.53638366297691, 10.755814013538494],
+        [16.306265126806135, 12.084390011921979],
+        [30.744133517005892, 10.502576947750377],
+        [13.858857648400477, 16.223318548449157],
+        [16.689516515816365, 12.489277913900326],
+        [20.885190272294704, 13.984179457640412],
+        [13.123929182643863, 18.243493072707526],
+        [35.53521264609297, 9.455931628502736],
+        [11.168123108904668, 17.362277305659482],
+        [10.867423379260105, 14.332450259937461],
+        [17.76765831784742, 11.500034038650382],
+        [18.524163923209247, 13.208282251099742],
+        [37.70618295011814, 10.83645027503945],
+        [28.68499674300111, 11.046537051988413],
+        [28.740524372722177, 14.592864043039077],
+        [34.634506558042546, 11.207563943764125],
+        [37.1384863518584, 11.992140407418887],
+        [11.024322881879803, 15.972207457941924],
+        [39.726153985835, 8.77959191123076],
+        [32.986765712363194, 9.347495767863398],
+        [25.757703174986382, 13.501067537966005]
+      ],
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Life vs Deaths — losses",
+      type: "scatter",
+      xAxisIndex: 2,
+      yAxisIndex: 2,
+      data: [
+        [11.632748081813412, 13.725747740421838],
+        [32.957977067162865, 10.299277427760517],
+        [20.992335884226627, 12.578159261736173],
+        [34.84293655373327, 8.530457227877976],
+        [27.646019879842513, 11.089908292333915],
+        [26.197474745532638, 10.977588090173194],
+        [35.3185120307734, 10.494388597054881],
+        [19.579364057201975, 15.51074947391989],
+        [16.48596378099536, 16.13465619568281],
+        [11.090818412412064, 16.687329307166067],
+        [18.833480632835485, 13.464439581362402],
+        [10.62195540418997, 17.888867039675308],
+        [25.76207808303883, 10.921727918585486],
+        [14.649416887754855, 13.907727759820279],
+        [20.297012017767045, 13.13736393054875],
+        [30.008981524556894, 12.466155072013072],
+        [29.34053179946542, 12.266276260952042],
+        [32.90897481316617, 10.290409111089597],
+        [31.72450873410558, 12.353211626101972],
+        [35.57879384621668, 9.857949512070723],
+        [13.191601480705827, 17.669706086430686],
+        [18.23761301458263, 16.969358176822134],
+        [29.58341247080397, 13.73889478300623],
+        [37.1760423361856, 10.333814009158267],
+        [20.8980848046115, 14.671653023850725],
+        [27.277186829944526, 12.135147618890073],
+        [37.18588558936253, 10.618824968614746],
+        [35.21212240223538, 12.24283185274197],
+        [29.035598248602856, 14.758217531396449],
+        [18.85138812980989, 15.681353793708737],
+        [10.840270214227381, 16.24132205841151],
+        [32.47914461368196, 14.25542090475463],
+        [21.123483221481898, 11.317644495866475],
+        [25.21979000426679, 14.798231475549239],
+        [17.708002457302207, 16.0234876004574],
+        [33.8659650910273, 13.546159506678837],
+        [38.30328595316695, 8.260863705688866],
+        [37.352436213996185, 10.53563330399036],
+        [25.458033577424267, 11.731162955438608],
+        [28.84879092171401, 11.422573013274116],
+        [37.28630379207228, 12.019157554970375],
+        [27.62627863356586, 10.31356443023591],
+        [12.149431904885937, 18.042520585263098],
+        [22.05815715816386, 11.032785991680935]
+      ],
+      itemStyle: {
+        color: "#e53935",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Life vs Deaths — trend",
+      type: "line",
+      xAxisIndex: 2,
+      yAxisIndex: 2,
+      data: [
+        [10.62195540418997, 16.040338708008413],
+        [39.726153985835, 9.9533282560432]
+      ],
+      symbol: "none",
+      lineStyle: {
+        color: "rgba(255,255,255,0.5)",
+        width: 1.5,
+        type: "dashed"
+      }
+    },
+    {
+      name: "Kills vs Deaths — wins",
+      type: "scatter",
+      xAxisIndex: 3,
+      yAxisIndex: 3,
+      data: [
+        [8.502288839046564, 10.047837627881835],
+        [27.647727696835883, 16.637615182461204],
+        [26.57106730055598, 14.746181743348098],
+        [17.32094234289113, 11.528478746398534],
+        [13.43245892941108, 13.191324726662147],
+        [16.425724052616484, 14.271961628930997],
+        [27.303894041479257, 14.293253108518417],
+        [20.751384164584657, 13.356199039967443],
+        [27.283393389370744, 16.684025048038748],
+        [28.229451625186755, 17.207068895882276],
+        [20.894746107755356, 15.9358254522028],
+        [23.15245124000804, 12.512136879686777],
+        [29.39081703485452, 19.29514721001836],
+        [6.917228255882936, 11.369309163420843],
+        [19.295780517068902, 15.186177545819383],
+        [29.0929977989055, 16.506197560798377],
+        [23.606523556833924, 13.045163929252128],
+        [26.87472947795514, 14.90401235414615],
+        [11.007342542720693, 11.564041782789758],
+        [6.257688336347842, 8.037918194104698],
+        [22.725966271164136, 12.521979843671643],
+        [5.151168502078019, 11.570431671658039],
+        [16.942679875522384, 11.484797877025494],
+        [10.70204636403384, 9.087410140882664],
+        [19.32332497780441, 15.818352905289704],
+        [20.378317091066137, 13.558771666203588],
+        [21.247446854257074, 13.047260456928013],
+        [15.015170926252209, 13.185322579299765],
+        [23.662109384612027, 12.717686782187048],
+        [26.60624661482823, 16.569008820474906],
+        [23.41087482580646, 13.825273901713283],
+        [22.479319355142536, 14.985276919111183],
+        [21.282536302370502, 16.068179736702948],
+        [16.035171948644773, 13.669742961589613],
+        [21.09724567187309, 14.242745555441402],
+        [10.792002512274099, 11.34578584118484],
+        [23.993694718479677, 16.220613268235358],
+        [20.336125880864003, 15.228135910593133],
+        [7.465243016000018, 11.587022118794266],
+        [10.690062857170874, 13.221482043525072],
+        [14.292922222761014, 12.463771265152358],
+        [7.789662654477718, 8.76383615290377],
+        [15.285798772198609, 10.15645963498358]
+      ],
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Kills vs Deaths — losses",
+      type: "scatter",
+      xAxisIndex: 3,
+      yAxisIndex: 3,
+      data: [
+        [6.743553374961445, 10.36620365321048],
+        [15.085551683256334, 11.69567339872433],
+        [24.57003624011861, 15.23915328149436],
+        [12.362190991176586, 12.204624414858632],
+        [16.084323182383137, 12.001450932477649],
+        [5.2406764351905535, 10.348610092815521],
+        [7.340204619239664, 12.266610742514281],
+        [26.81032969286415, 18.0964379386794],
+        [5.842067671888522, 7.985049271929441],
+        [16.179390981256986, 11.750602838298796],
+        [24.931939234368635, 14.20487982567033],
+        [14.77199685417807, 10.25251494332701],
+        [8.889897759896987, 12.99311986030731],
+        [29.439177641850357, 14.564749494415434],
+        [9.793242848024502, 12.549921028777447],
+        [19.284647725109558, 11.439659327203444],
+        [10.502911388072722, 12.768027445146757],
+        [27.234988474259715, 17.97760988842867],
+        [29.171624740125267, 17.669664062118414],
+        [21.09408566420702, 14.23815731366369],
+        [8.155112091406645, 8.32973993752016],
+        [5.325754608687315, 7.243730379588953],
+        [12.828158029253554, 9.714826935941012],
+        [8.367872083180673, 8.0484610865457],
+        [6.886165919788882, 10.741948171141674],
+        [16.553208334266138, 13.094312440752557],
+        [20.721069039930093, 15.700498948892255],
+        [7.642427035814079, 7.831199755949305],
+        [18.494994986620107, 11.831048718705203],
+        [18.967597310176636, 13.693158305053961],
+        [11.894556163786994, 10.584396611599175],
+        [6.6096813976522295, 10.42185010581697],
+        [10.810074884390659, 12.152053854221895],
+        [8.625822649042384, 8.801360799298717],
+        [14.568077877841647, 10.667583477626073],
+        [27.143859575876192, 15.059077037747164],
+        [16.251057484528737, 11.0674666597011]
+      ],
+      itemStyle: {
+        color: "#e53935",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Kills vs Deaths — trend",
+      type: "line",
+      xAxisIndex: 3,
+      yAxisIndex: 3,
+      data: [
+        [5.151168502078019, 9.281137895144543],
+        [29.439177641850357, 16.593915165218075]
+      ],
+      symbol: "none",
+      lineStyle: {
+        color: "rgba(255,255,255,0.5)",
+        width: 1.5,
+        type: "dashed"
+      }
+    },
+    {
+      name: "Team MMR vs Enemy MMR — wins",
+      type: "scatter",
+      xAxisIndex: 4,
+      yAxisIndex: 4,
+      data: [
+        [1211.2661108056216, 1177.7629953161934],
+        [1360.6778871602844, 1333.7174861491394],
+        [1229.79637892675, 1230.3915627953436],
+        [1426.0789600921676, 1394.6198089851587],
+        [1807.9353318453961, 1782.9894465574948],
+        [1695.470233874392, 1639.7551949493893],
+        [1521.3850710776717, 1505.8804940310085],
+        [1563.5042017519295, 1520.4654848097343],
+        [1711.776486979571, 1666.8243642061036],
+        [1537.9700531623919, 1549.4257746913602],
+        [1209.9764849766755, 1202.4899905238083],
+        [1887.761906354996, 1818.2435344500861],
+        [1893.190853459406, 1842.4837644217519],
+        [1403.5123324641102, 1385.1564566345469],
+        [1743.2558408657958, 1672.968815879212],
+        [1385.9952808413825, 1344.541844080885],
+        [1368.0898060267896, 1345.9310852013125],
+        [1401.2833757396875, 1379.5804492626885],
+        [1647.818676245406, 1581.6215450326374],
+        [1688.9638334323352, 1647.4121609281233],
+        [1565.2234765418089, 1516.4530023932855],
+        [1331.0391773229405, 1292.9024713460371],
+        [1867.6956773432314, 1848.3940156245487],
+        [1606.5378178796718, 1559.8634253008463],
+        [1398.538466512207, 1385.6435309413396],
+        [1709.7380163494227, 1650.8685844021197],
+        [1898.7104388875405, 1824.604750365489],
+        [1260.0372633812306, 1259.1163892309794],
+        [1853.0385070328994, 1835.078270529988],
+        [1286.534664153738, 1278.505459423096],
+        [1432.9138803472213, 1423.6036635519567],
+        [1746.8618683190316, 1711.500435982746],
+        [1878.494211460365, 1865.3935125843834],
+        [1775.06137704012, 1769.2389784369332],
+        [1855.0589616495445, 1799.2632806213758],
+        [1486.9163322932523, 1466.7639978622412],
+        [1655.4761315437422, 1658.8748212990633],
+        [1843.2621337485407, 1777.1694714043026],
+        [1576.3086321876094, 1587.1474997135772],
+        [1629.0553636438872, 1624.3720129861756],
+        [1296.0140018536154, 1300.8649256427238],
+        [1890.599209914084, 1832.4185689413955],
+        [1352.9095293534597, 1326.7595755666048]
+      ],
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Team MMR vs Enemy MMR — losses",
+      type: "scatter",
+      xAxisIndex: 4,
+      yAxisIndex: 4,
+      data: [
+        [1621.459423212657, 1598.137429625403],
+        [1234.0851258751686, 1232.8399584535466],
+        [1208.9414165246235, 1170.5056536491209],
+        [1787.3531369066604, 1781.667732769258],
+        [1715.5105040687176, 1695.9940764420091],
+        [1429.6516658709008, 1413.7260219518375],
+        [1405.883967706023, 1425.141364914962],
+        [1853.6503312750717, 1807.8421544073913],
+        [1816.4348903075904, 1760.685616096402],
+        [1751.8605537576414, 1716.4202699119799],
+        [1496.9878379573786, 1459.7722664190526],
+        [1694.0960313363396, 1671.5888881935582],
+        [1731.772366467088, 1710.1691825104303],
+        [1321.2667854446215, 1338.9617659940411],
+        [1423.5361404982978, 1431.0818007627754],
+        [1454.103086111026, 1419.897963143944],
+        [1209.412728164628, 1193.2768357373266],
+        [1662.0569617934793, 1624.718016193385],
+        [1714.308964795891, 1655.854781636285],
+        [1257.2408759020234, 1220.754313368616],
+        [1669.853137234626, 1640.5290067698102],
+        [1481.605439490736, 1496.5076426863895],
+        [1746.994276089567, 1706.2399338955577],
+        [1645.7953310497055, 1629.3517297994658],
+        [1542.3199127877924, 1526.0234083273428],
+        [1388.9111045167647, 1388.1107955179841],
+        [1490.4312908100665, 1426.2321858764942],
+        [1381.3079275150592, 1342.404419465998],
+        [1811.089116592451, 1749.8742342746086],
+        [1455.125500696687, 1446.7244756116966],
+        [1619.792379027706, 1565.6556372449504],
+        [1463.5376099233292, 1441.2663180617446],
+        [1457.6923354312496, 1404.990852162507],
+        [1890.5402407143592, 1814.1319075215333],
+        [1611.2640648285778, 1602.617721932852],
+        [1514.3873465499325, 1461.9955523926737],
+        [1318.5300382843234, 1328.4315465291584]
+      ],
+      itemStyle: {
+        color: "#e53935",
+        opacity: 0.7
+      },
+      symbolSize: 6
+    },
+    {
+      name: "Team MMR vs Enemy MMR — trend",
+      type: "line",
+      xAxisIndex: 4,
+      yAxisIndex: 4,
+      data: [
+        [1208.9414165246235, 1200.9475963304835],
+        [1898.7104388875405, 1851.596493845909]
+      ],
+      symbol: "none",
+      lineStyle: {
+        color: "rgba(255,255,255,0.5)",
+        width: 1.5,
+        type: "dashed"
+      }
+    }
+  ],
+  title: {
+    text: "Corrélations — 5 scatter plots colorés par outcome (vert/rouge) + trendline OLS",
+    left: "center",
+    top: 0,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 720
+};
+          const dom = document.getElementById('chart-10');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.11 — Premier événement — distribution kills/deaths superposée</h2>
+      <div class="meta">
+        <code>src/visualization/_distributions_advanced.py::plot_first_event_distribution</code>
+      </div>
+      <div id="chart-11" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 30,
+    top: 60,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: {
+    bottom: 10,
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "0s",
+      "9s",
+      "18s",
+      "27s",
+      "36s",
+      "45s",
+      "54s",
+      "63s",
+      "72s",
+      "81s",
+      "90s",
+      "99s",
+      "108s",
+      "117s",
+      "126s",
+      "135s",
+      "144s",
+      "153s",
+      "162s",
+      "171s"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      fontSize: 10,
+      interval: 1
+    },
+    name: "Temps (secondes)",
+    nameLocation: "middle",
+    nameGap: 28,
+    nameTextStyle: {
+      color: "rgba(245,248,255,0.7)"
+    }
+  },
+  yAxis: {
+    type: "value",
+    axisLabel: {
+      color: "rgba(245,248,255,0.6)"
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245,248,255,0.05)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "1er frag",
+      type: "bar",
+      data: [
+        4,
+        5,
+        13,
+        22,
+        32,
+        27,
+        12,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#00e676",
+        opacity: 0.7
+      },
+      barGap: "-100%",
+      markLine: {
+        symbol: "none",
+        silent: true,
+        data: [
+          {
+            xAxis: 4
+          }
+        ],
+        lineStyle: {
+          color: "#00e676",
+          type: "dashed",
+          width: 2
+        },
+        label: {
+          show: true,
+          formatter: "Moy. 38s",
+          position: "insideEndTop",
+          color: "#00e676",
+          fontSize: 11,
+          fontWeight: "bold"
+        }
+      }
+    },
+    {
+      name: "1ère mort",
+      type: "bar",
+      data: [
+        0,
+        2,
+        6,
+        7,
+        27,
+        21,
+        24,
+        11,
+        12,
+        7,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      itemStyle: {
+        color: "#e53935",
+        opacity: 0.6
+      },
+      barGap: "-100%",
+      markLine: {
+        symbol: "none",
+        silent: true,
+        data: [
+          {
+            xAxis: 6
+          }
+        ],
+        lineStyle: {
+          color: "#e53935",
+          type: "dashed",
+          width: 2
+        },
+        label: {
+          show: true,
+          formatter: "Moy. 54s",
+          position: "insideEndBottom",
+          color: "#e53935",
+          fontSize: 11,
+          fontWeight: "bold"
+        }
+      }
+    }
+  ],
+  title: {
+    text: "Premier événement — distribution kills (vert) vs deaths (rouge)",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 400
+};
+          const dom = document.getElementById('chart-11');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.12 — Performance timeseries — bars colorées par palier + smoothing</h2>
+      <div class="meta">
+        <code>src/visualization/_timeseries_progression.py::plot_performance_timeseries</code>
+      </div>
+      <div id="chart-12" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 60,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    min: 0,
+    max: 100,
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "performance_bars",
+      data: [
+        ["2025-08-01", 68],
+        ["2025-08-08", 20],
+        ["2025-08-15", 25],
+        ["2025-08-22", 0],
+        ["2025-08-29", 88],
+        ["2025-09-05", 86],
+        ["2025-09-12", 68],
+        ["2025-09-19", 75],
+        ["2025-09-26", 14],
+        ["2025-10-03", 36],
+        ["2025-10-10", 52],
+        ["2025-10-17", 51],
+        ["2025-10-24", 12],
+        ["2025-10-31", 77],
+        ["2025-11-07", 62],
+        ["2025-11-14", 95],
+        ["2025-11-21", 93],
+        ["2025-11-28", 3],
+        ["2025-12-05", 45],
+        ["2025-12-12", 61],
+        ["2025-12-19", 75],
+        ["2025-12-26", 78],
+        ["2026-01-02", 93],
+        ["2026-01-09", 69],
+        ["2026-01-16", 50],
+        ["2026-01-23", 70],
+        ["2026-01-30", 45],
+        ["2026-02-06", 2],
+        ["2026-02-13", 72],
+        ["2026-02-20", 32]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "smoothed_line",
+      data: [
+        ["2025-08-01", 28],
+        ["2025-08-08", 11],
+        ["2025-08-15", 22],
+        ["2025-08-22", 82],
+        ["2025-08-29", 20],
+        ["2025-09-05", 93],
+        ["2025-09-12", 88],
+        ["2025-09-19", 55],
+        ["2025-09-26", 18],
+        ["2025-10-03", 88],
+        ["2025-10-10", 25],
+        ["2025-10-17", 20],
+        ["2025-10-24", 49],
+        ["2025-10-31", 85],
+        ["2025-11-07", 53],
+        ["2025-11-14", 51],
+        ["2025-11-21", 5],
+        ["2025-11-28", 65],
+        ["2025-12-05", 96],
+        ["2025-12-12", 20],
+        ["2025-12-19", 52],
+        ["2025-12-26", 17],
+        ["2026-01-02", 41],
+        ["2026-01-09", 9],
+        ["2026-01-16", 67],
+        ["2026-01-23", 1],
+        ["2026-01-30", 96],
+        ["2026-02-06", 10],
+        ["2026-02-13", 18],
+        ["2026-02-20", 7]
+      ],
+      itemStyle: {
+        color: "#8B5CF6"
+      },
+      lineStyle: {
+        color: "#8B5CF6",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-12');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.13 — Assists timeseries — bars + smoothing rolling 10</h2>
+      <div class="meta">
+        <code>src/visualization/timeseries.py::plot_assists_timeseries</code>
+      </div>
+      <div id="chart-13" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 60,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "assists_bars",
+      data: [
+        ["2025-08-01", 61],
+        ["2025-08-08", 72],
+        ["2025-08-15", 70],
+        ["2025-08-22", 66],
+        ["2025-08-29", 61],
+        ["2025-09-05", 65],
+        ["2025-09-12", 94],
+        ["2025-09-19", 30],
+        ["2025-09-26", 35],
+        ["2025-10-03", 84],
+        ["2025-10-10", 1],
+        ["2025-10-17", 58],
+        ["2025-10-24", 8],
+        ["2025-10-31", 33],
+        ["2025-11-07", 45],
+        ["2025-11-14", 80],
+        ["2025-11-21", 87],
+        ["2025-11-28", 43],
+        ["2025-12-05", 89],
+        ["2025-12-12", 90],
+        ["2025-12-19", 71],
+        ["2025-12-26", 62],
+        ["2026-01-02", 40],
+        ["2026-01-09", 57],
+        ["2026-01-16", 48],
+        ["2026-01-23", 9],
+        ["2026-01-30", 6],
+        ["2026-02-06", 19],
+        ["2026-02-13", 17],
+        ["2026-02-20", 10]
+      ],
+      itemStyle: {
+        color: "#ab47bc"
+      },
+      lineStyle: {
+        color: "#ab47bc",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "smoothed",
+      data: [
+        ["2025-08-01", 6],
+        ["2025-08-08", 85],
+        ["2025-08-15", 66],
+        ["2025-08-22", 21],
+        ["2025-08-29", 65],
+        ["2025-09-05", 32],
+        ["2025-09-12", 22],
+        ["2025-09-19", 86],
+        ["2025-09-26", 53],
+        ["2025-10-03", 91],
+        ["2025-10-10", 68],
+        ["2025-10-17", 93],
+        ["2025-10-24", 64],
+        ["2025-10-31", 55],
+        ["2025-11-07", 36],
+        ["2025-11-14", 99],
+        ["2025-11-21", 60],
+        ["2025-11-28", 59],
+        ["2025-12-05", 50],
+        ["2025-12-12", 83],
+        ["2025-12-19", 55],
+        ["2025-12-26", 65],
+        ["2026-01-02", 21],
+        ["2026-01-09", 20],
+        ["2026-01-16", 15],
+        ["2026-01-23", 96],
+        ["2026-01-30", 13],
+        ["2026-02-06", 93],
+        ["2026-02-13", 6],
+        ["2026-02-20", 84]
+      ],
+      itemStyle: {
+        color: "#00e676"
+      },
+      lineStyle: {
+        color: "#00e676",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-13');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.14 — Per minute timeseries — K/D/A par minute (D négatives)</h2>
+      <div class="meta">
+        <code>src/visualization/timeseries.py::plot_per_minute_timeseries</code>
+      </div>
+      <div id="chart-14" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 60,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    axisLabel: {
+      rotate: -45
+    }
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "kpm",
+      data: [
+        ["2025-08-01", 61],
+        ["2025-08-08", 82],
+        ["2025-08-15", 82],
+        ["2025-08-22", 96],
+        ["2025-08-29", 48],
+        ["2025-09-05", 57],
+        ["2025-09-12", 0],
+        ["2025-09-19", 94],
+        ["2025-09-26", 10],
+        ["2025-10-03", 98],
+        ["2025-10-10", 64],
+        ["2025-10-17", 20],
+        ["2025-10-24", 84],
+        ["2025-10-31", 99],
+        ["2025-11-07", 90],
+        ["2025-11-14", 68],
+        ["2025-11-21", 37],
+        ["2025-11-28", 42],
+        ["2025-12-05", 34],
+        ["2025-12-12", 100],
+        ["2025-12-19", 48],
+        ["2025-12-26", 45],
+        ["2026-01-02", 78],
+        ["2026-01-09", 76],
+        ["2026-01-16", 49],
+        ["2026-01-23", 52],
+        ["2026-01-30", 63],
+        ["2026-02-06", 14],
+        ["2026-02-13", 98],
+        ["2026-02-20", 85]
+      ],
+      itemStyle: {
+        color: "#41d6ff"
+      },
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "dpm",
+      data: [
+        ["2025-08-01", 90],
+        ["2025-08-08", 40],
+        ["2025-08-15", 3],
+        ["2025-08-22", 12],
+        ["2025-08-29", 1],
+        ["2025-09-05", 86],
+        ["2025-09-12", 49],
+        ["2025-09-19", 2],
+        ["2025-09-26", 51],
+        ["2025-10-03", 10],
+        ["2025-10-10", 2],
+        ["2025-10-17", 3],
+        ["2025-10-24", 76],
+        ["2025-10-31", 91],
+        ["2025-11-07", 3],
+        ["2025-11-14", 41],
+        ["2025-11-21", 17],
+        ["2025-11-28", 54],
+        ["2025-12-05", 48],
+        ["2025-12-12", 93],
+        ["2025-12-19", 78],
+        ["2025-12-26", 9],
+        ["2026-01-02", 55],
+        ["2026-01-09", 100],
+        ["2026-01-16", 100],
+        ["2026-01-23", 94],
+        ["2026-01-30", 49],
+        ["2026-02-06", 84],
+        ["2026-02-13", 21],
+        ["2026-02-20", 68]
+      ],
+      itemStyle: {
+        color: "#e53935"
+      },
+      lineStyle: {
+        color: "#e53935",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "apm",
+      data: [
+        ["2025-08-01", 63],
+        ["2025-08-08", 92],
+        ["2025-08-15", 8],
+        ["2025-08-22", 6],
+        ["2025-08-29", 16],
+        ["2025-09-05", 59],
+        ["2025-09-12", 81],
+        ["2025-09-19", 22],
+        ["2025-09-26", 40],
+        ["2025-10-03", 42],
+        ["2025-10-10", 86],
+        ["2025-10-17", 27],
+        ["2025-10-24", 29],
+        ["2025-10-31", 23],
+        ["2025-11-07", 10],
+        ["2025-11-14", 48],
+        ["2025-11-21", 6],
+        ["2025-11-28", 79],
+        ["2025-12-05", 38],
+        ["2025-12-12", 1],
+        ["2025-12-19", 91],
+        ["2025-12-26", 68],
+        ["2026-01-02", 75],
+        ["2026-01-09", 83],
+        ["2026-01-16", 3],
+        ["2026-01-23", 10],
+        ["2026-01-30", 29],
+        ["2026-02-06", 93],
+        ["2026-02-13", 7],
+        ["2026-02-20", 24]
+      ],
+      itemStyle: {
+        color: "#ab47bc"
+      },
+      lineStyle: {
+        color: "#ab47bc",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-14');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.15 — Average life timeseries — durée de vie moyenne par match</h2>
+      <div class="meta">
+        <code>src/visualization/timeseries_combat.py::plot_average_life</code>
+      </div>
+      <div id="chart-15" class="chart-canvas" style="height: 280px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 50,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {},
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "life_bars",
+      data: [
+        ["2025-08-01", 66],
+        ["2025-08-08", 50],
+        ["2025-08-15", 86],
+        ["2025-08-22", 24],
+        ["2025-08-29", 12],
+        ["2025-09-05", 83],
+        ["2025-09-12", 99],
+        ["2025-09-19", 42],
+        ["2025-09-26", 8],
+        ["2025-10-03", 81],
+        ["2025-10-10", 25],
+        ["2025-10-17", 26],
+        ["2025-10-24", 87],
+        ["2025-10-31", 30],
+        ["2025-11-07", 97],
+        ["2025-11-14", 95],
+        ["2025-11-21", 22],
+        ["2025-11-28", 31],
+        ["2025-12-05", 72],
+        ["2025-12-12", 11],
+        ["2025-12-19", 25],
+        ["2025-12-26", 71],
+        ["2026-01-02", 41],
+        ["2026-01-09", 47],
+        ["2026-01-16", 30],
+        ["2026-01-23", 4],
+        ["2026-01-30", 32],
+        ["2026-02-06", 71],
+        ["2026-02-13", 16],
+        ["2026-02-20", 24]
+      ],
+      itemStyle: {
+        color: "#00e676"
+      },
+      lineStyle: {
+        color: "#00e676",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "smoothed",
+      data: [
+        ["2025-08-01", 16],
+        ["2025-08-08", 54],
+        ["2025-08-15", 51],
+        ["2025-08-22", 8],
+        ["2025-08-29", 39],
+        ["2025-09-05", 23],
+        ["2025-09-12", 31],
+        ["2025-09-19", 15],
+        ["2025-09-26", 80],
+        ["2025-10-03", 38],
+        ["2025-10-10", 94],
+        ["2025-10-17", 1],
+        ["2025-10-24", 17],
+        ["2025-10-31", 51],
+        ["2025-11-07", 15],
+        ["2025-11-14", 38],
+        ["2025-11-21", 68],
+        ["2025-11-28", 2],
+        ["2025-12-05", 66],
+        ["2025-12-12", 80],
+        ["2025-12-19", 62],
+        ["2025-12-26", 94],
+        ["2026-01-02", 3],
+        ["2026-01-09", 1],
+        ["2026-01-16", 24],
+        ["2026-01-23", 13],
+        ["2026-01-30", 14],
+        ["2026-02-06", 96],
+        ["2026-02-13", 69],
+        ["2026-02-20", 23]
+      ],
+      itemStyle: {
+        color: "#41d6ff"
+      },
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-15');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.16 — Spree + Headshots + Perfect kills — bars groupées</h2>
+      <div class="meta">
+        <code>src/visualization/timeseries_combat.py::plot_spree_headshots_accuracy</code>
+      </div>
+      <div id="chart-16" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 50,
+    top: 30,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {},
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    min: 0
+  },
+  series: [
+    {
+      type: "bar",
+      name: "spree",
+      data: [
+        {
+          value: 6,
+          itemStyle: {
+            color: "#ffb300",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 18,
+          itemStyle: {
+            color: "#ffb300",
+            opacity: 0.85
+          }
+        },
+        {
+          value: 7,
+          itemStyle: {
+            color: "#ffb300",
+            opacity: 0.85
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "spree" + '): ' + params.value;
+}
+      }
+    },
+    {
+      type: "bar",
+      name: "headshots",
+      data: [
+        {
+          value: 4,
+          itemStyle: {
+            color: "#e53935",
+            opacity: 0.7
+          }
+        },
+        {
+          value: 13,
+          itemStyle: {
+            color: "#e53935",
+            opacity: 0.7
+          }
+        },
+        {
+          value: 4,
+          itemStyle: {
+            color: "#e53935",
+            opacity: 0.7
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "headshots" + '): ' + params.value;
+}
+      }
+    },
+    {
+      type: "bar",
+      name: "perfect_kills",
+      data: [
+        {
+          value: 19,
+          itemStyle: {
+            color: "#00e676",
+            opacity: 0.65
+          }
+        },
+        {
+          value: 11,
+          itemStyle: {
+            color: "#00e676",
+            opacity: 0.65
+          }
+        },
+        {
+          value: 12,
+          itemStyle: {
+            color: "#00e676",
+            opacity: 0.65
+          }
+        }
+      ],
+      label: {
+        show: false
+      },
+      tooltip: {
+        formatter: function anonymous(params
+) {
+return params.name + ' (' + "perfect_kills" + '): ' + params.value;
+}
+      }
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-16');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.17 — Shots accuracy — tirs tirés/touchés + précision (Y2)</h2>
+      <div class="meta">
+        <code>src/visualization/timeseries_combat.py::plot_shots_accuracy</code>
+      </div>
+      <div id="chart-17" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 50,
+    top: 40,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {},
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "shots_fired",
+      data: [
+        ["2025-08-01", 18],
+        ["2025-08-08", 33],
+        ["2025-08-15", 43],
+        ["2025-08-22", 30],
+        ["2025-08-29", 78],
+        ["2025-09-05", 56],
+        ["2025-09-12", 97],
+        ["2025-09-19", 71],
+        ["2025-09-26", 77],
+        ["2025-10-03", 79],
+        ["2025-10-10", 18],
+        ["2025-10-17", 53],
+        ["2025-10-24", 93],
+        ["2025-10-31", 81],
+        ["2025-11-07", 28],
+        ["2025-11-14", 84],
+        ["2025-11-21", 48],
+        ["2025-11-28", 82],
+        ["2025-12-05", 73],
+        ["2025-12-12", 33],
+        ["2025-12-19", 99],
+        ["2025-12-26", 17],
+        ["2026-01-02", 38],
+        ["2026-01-09", 59],
+        ["2026-01-16", 42],
+        ["2026-01-23", 65],
+        ["2026-01-30", 12],
+        ["2026-02-06", 77],
+        ["2026-02-13", 81],
+        ["2026-02-20", 51]
+      ],
+      itemStyle: {
+        color: "#ffb300"
+      },
+      lineStyle: {
+        color: "#ffb300",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "shots_hit",
+      data: [
+        ["2025-08-01", 77],
+        ["2025-08-08", 91],
+        ["2025-08-15", 57],
+        ["2025-08-22", 72],
+        ["2025-08-29", 31],
+        ["2025-09-05", 84],
+        ["2025-09-12", 77],
+        ["2025-09-19", 95],
+        ["2025-09-26", 47],
+        ["2025-10-03", 63],
+        ["2025-10-10", 80],
+        ["2025-10-17", 46],
+        ["2025-10-24", 8],
+        ["2025-10-31", 57],
+        ["2025-11-07", 87],
+        ["2025-11-14", 83],
+        ["2025-11-21", 69],
+        ["2025-11-28", 73],
+        ["2025-12-05", 59],
+        ["2025-12-12", 20],
+        ["2025-12-19", 4],
+        ["2025-12-26", 68],
+        ["2026-01-02", 64],
+        ["2026-01-09", 12],
+        ["2026-01-16", 32],
+        ["2026-01-23", 66],
+        ["2026-01-30", 13],
+        ["2026-02-06", 47],
+        ["2026-02-13", 3],
+        ["2026-02-20", 39]
+      ],
+      itemStyle: {
+        color: "#00e676"
+      },
+      lineStyle: {
+        color: "#00e676",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "accuracy",
+      data: [
+        ["2025-08-01", 56],
+        ["2025-08-08", 45],
+        ["2025-08-15", 36],
+        ["2025-08-22", 84],
+        ["2025-08-29", 60],
+        ["2025-09-05", 23],
+        ["2025-09-12", 95],
+        ["2025-09-19", 85],
+        ["2025-09-26", 21],
+        ["2025-10-03", 82],
+        ["2025-10-10", 43],
+        ["2025-10-17", 11],
+        ["2025-10-24", 48],
+        ["2025-10-31", 23],
+        ["2025-11-07", 76],
+        ["2025-11-14", 95],
+        ["2025-11-21", 39],
+        ["2025-11-28", 74],
+        ["2025-12-05", 33],
+        ["2025-12-12", 80],
+        ["2025-12-19", 82],
+        ["2025-12-26", 51],
+        ["2026-01-02", 46],
+        ["2026-01-09", 67],
+        ["2026-01-16", 39],
+        ["2026-01-23", 63],
+        ["2026-01-30", 97],
+        ["2026-02-06", 91],
+        ["2026-02-13", 35],
+        ["2026-02-20", 72]
+      ],
+      itemStyle: {
+        color: "#ab47bc"
+      },
+      lineStyle: {
+        color: "#ab47bc",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-17');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.18 — Damage dealt vs taken — bars + smoothing</h2>
+      <div class="meta">
+        <code>src/visualization/timeseries_combat.py::plot_damage_dealt_taken</code>
+      </div>
+      <div id="chart-18" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 40,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {},
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "dmg_dealt_bars",
+      data: [
+        ["2025-08-01", 62],
+        ["2025-08-08", 67],
+        ["2025-08-15", 75],
+        ["2025-08-22", 97],
+        ["2025-08-29", 20],
+        ["2025-09-05", 61],
+        ["2025-09-12", 17],
+        ["2025-09-19", 37],
+        ["2025-09-26", 22],
+        ["2025-10-03", 12],
+        ["2025-10-10", 27],
+        ["2025-10-17", 65],
+        ["2025-10-24", 47],
+        ["2025-10-31", 46],
+        ["2025-11-07", 21],
+        ["2025-11-14", 53],
+        ["2025-11-21", 11],
+        ["2025-11-28", 81],
+        ["2025-12-05", 49],
+        ["2025-12-12", 32],
+        ["2025-12-19", 80],
+        ["2025-12-26", 41],
+        ["2026-01-02", 86],
+        ["2026-01-09", 8],
+        ["2026-01-16", 75],
+        ["2026-01-23", 89],
+        ["2026-01-30", 30],
+        ["2026-02-06", 8],
+        ["2026-02-13", 82],
+        ["2026-02-20", 15]
+      ],
+      itemStyle: {
+        color: "#41d6ff"
+      },
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "dmg_dealt_smooth",
+      data: [
+        ["2025-08-01", 40],
+        ["2025-08-08", 25],
+        ["2025-08-15", 6],
+        ["2025-08-22", 34],
+        ["2025-08-29", 30],
+        ["2025-09-05", 92],
+        ["2025-09-12", 86],
+        ["2025-09-19", 94],
+        ["2025-09-26", 1],
+        ["2025-10-03", 42],
+        ["2025-10-10", 1],
+        ["2025-10-17", 97],
+        ["2025-10-24", 96],
+        ["2025-10-31", 22],
+        ["2025-11-07", 19],
+        ["2025-11-14", 40],
+        ["2025-11-21", 1],
+        ["2025-11-28", 14],
+        ["2025-12-05", 71],
+        ["2025-12-12", 98],
+        ["2025-12-19", 75],
+        ["2025-12-26", 48],
+        ["2026-01-02", 25],
+        ["2026-01-09", 98],
+        ["2026-01-16", 43],
+        ["2026-01-23", 63],
+        ["2026-01-30", 59],
+        ["2026-02-06", 40],
+        ["2026-02-13", 80],
+        ["2026-02-20", 11]
+      ],
+      itemStyle: {
+        color: "#41d6ff"
+      },
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "dmg_taken_bars",
+      data: [
+        ["2025-08-01", 44],
+        ["2025-08-08", 31],
+        ["2025-08-15", 49],
+        ["2025-08-22", 23],
+        ["2025-08-29", 42],
+        ["2025-09-05", 96],
+        ["2025-09-12", 58],
+        ["2025-09-19", 27],
+        ["2025-09-26", 91],
+        ["2025-10-03", 72],
+        ["2025-10-10", 66],
+        ["2025-10-17", 10],
+        ["2025-10-24", 11],
+        ["2025-10-31", 21],
+        ["2025-11-07", 24],
+        ["2025-11-14", 73],
+        ["2025-11-21", 18],
+        ["2025-11-28", 93],
+        ["2025-12-05", 74],
+        ["2025-12-12", 17],
+        ["2025-12-19", 5],
+        ["2025-12-26", 50],
+        ["2026-01-02", 20],
+        ["2026-01-09", 70],
+        ["2026-01-16", 65],
+        ["2026-01-23", 7],
+        ["2026-01-30", 82],
+        ["2026-02-06", 30],
+        ["2026-02-13", 99],
+        ["2026-02-20", 69]
+      ],
+      itemStyle: {
+        color: "#e53935"
+      },
+      lineStyle: {
+        color: "#e53935",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "dmg_taken_smooth",
+      data: [
+        ["2025-08-01", 54],
+        ["2025-08-08", 78],
+        ["2025-08-15", 68],
+        ["2025-08-22", 73],
+        ["2025-08-29", 78],
+        ["2025-09-05", 25],
+        ["2025-09-12", 73],
+        ["2025-09-19", 31],
+        ["2025-09-26", 6],
+        ["2025-10-03", 68],
+        ["2025-10-10", 91],
+        ["2025-10-17", 77],
+        ["2025-10-24", 77],
+        ["2025-10-31", 18],
+        ["2025-11-07", 21],
+        ["2025-11-14", 79],
+        ["2025-11-21", 54],
+        ["2025-11-28", 85],
+        ["2025-12-05", 74],
+        ["2025-12-12", 59],
+        ["2025-12-19", 10],
+        ["2025-12-26", 18],
+        ["2026-01-02", 36],
+        ["2026-01-09", 2],
+        ["2026-01-16", 32],
+        ["2026-01-23", 82],
+        ["2026-01-30", 66],
+        ["2026-02-06", 52],
+        ["2026-02-13", 29],
+        ["2026-02-20", 31]
+      ],
+      itemStyle: {
+        color: "#e53935"
+      },
+      lineStyle: {
+        color: "#e53935",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-18');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.19 — Rank score — score personnel + rang (Y2 inversé)</h2>
+      <div class="meta">
+        <code>src/visualization/_timeseries_progression.py::plot_rank_score</code>
+      </div>
+      <div id="chart-19" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 50,
+    top: 40,
+    bottom: 90,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {},
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "personal_score",
+      data: [
+        ["2025-08-01", 43],
+        ["2025-08-08", 6],
+        ["2025-08-15", 78],
+        ["2025-08-22", 28],
+        ["2025-08-29", 24],
+        ["2025-09-05", 30],
+        ["2025-09-12", 79],
+        ["2025-09-19", 43],
+        ["2025-09-26", 34],
+        ["2025-10-03", 16],
+        ["2025-10-10", 26],
+        ["2025-10-17", 24],
+        ["2025-10-24", 82],
+        ["2025-10-31", 59],
+        ["2025-11-07", 67],
+        ["2025-11-14", 21],
+        ["2025-11-21", 18],
+        ["2025-11-28", 7],
+        ["2025-12-05", 55],
+        ["2025-12-12", 43],
+        ["2025-12-19", 60],
+        ["2025-12-26", 86],
+        ["2026-01-02", 3],
+        ["2026-01-09", 81],
+        ["2026-01-16", 60],
+        ["2026-01-23", 99],
+        ["2026-01-30", 10],
+        ["2026-02-06", 49],
+        ["2026-02-13", 59],
+        ["2026-02-20", 3]
+      ],
+      itemStyle: {
+        color: "#ffb300"
+      },
+      lineStyle: {
+        color: "#ffb300",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "rank_line",
+      data: [
+        ["2025-08-01", 2],
+        ["2025-08-08", 72],
+        ["2025-08-15", 35],
+        ["2025-08-22", 87],
+        ["2025-08-29", 46],
+        ["2025-09-05", 12],
+        ["2025-09-12", 27],
+        ["2025-09-19", 69],
+        ["2025-09-26", 72],
+        ["2025-10-03", 56],
+        ["2025-10-10", 7],
+        ["2025-10-17", 81],
+        ["2025-10-24", 1],
+        ["2025-10-31", 75],
+        ["2025-11-07", 14],
+        ["2025-11-14", 90],
+        ["2025-11-21", 5],
+        ["2025-11-28", 48],
+        ["2025-12-05", 77],
+        ["2025-12-12", 33],
+        ["2025-12-19", 80],
+        ["2025-12-26", 27],
+        ["2026-01-02", 31],
+        ["2026-01-09", 17],
+        ["2026-01-16", 58],
+        ["2026-01-23", 32],
+        ["2026-01-30", 37],
+        ["2026-02-06", 18],
+        ["2026-02-13", 29],
+        ["2026-02-20", 35]
+      ],
+      itemStyle: {
+        color: "#41d6ff"
+      },
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: true,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-19');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.20 — Personal score — bars + smoothing rolling 10</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_personal_score_section</code>
+      </div>
+      <div id="chart-20" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {},
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "personal_score_bars",
+      data: [
+        ["2025-08-01", 73],
+        ["2025-08-08", 66],
+        ["2025-08-15", 74],
+        ["2025-08-22", 46],
+        ["2025-08-29", 5],
+        ["2025-09-05", 49],
+        ["2025-09-12", 39],
+        ["2025-09-19", 27],
+        ["2025-09-26", 41],
+        ["2025-10-03", 94],
+        ["2025-10-10", 83],
+        ["2025-10-17", 1],
+        ["2025-10-24", 62],
+        ["2025-10-31", 92],
+        ["2025-11-07", 5],
+        ["2025-11-14", 89],
+        ["2025-11-21", 49],
+        ["2025-11-28", 43],
+        ["2025-12-05", 45],
+        ["2025-12-12", 99],
+        ["2025-12-19", 89],
+        ["2025-12-26", 10],
+        ["2026-01-02", 67],
+        ["2026-01-09", 26],
+        ["2026-01-16", 64],
+        ["2026-01-23", 36],
+        ["2026-01-30", 50],
+        ["2026-02-06", 89],
+        ["2026-02-13", 46],
+        ["2026-02-20", 57]
+      ],
+      itemStyle: {
+        color: "#ffb300"
+      },
+      lineStyle: {
+        color: "#ffb300",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "smoothed",
+      data: [
+        ["2025-08-01", 41],
+        ["2025-08-08", 27],
+        ["2025-08-15", 30],
+        ["2025-08-22", 79],
+        ["2025-08-29", 76],
+        ["2025-09-05", 81],
+        ["2025-09-12", 39],
+        ["2025-09-19", 12],
+        ["2025-09-26", 5],
+        ["2025-10-03", 93],
+        ["2025-10-10", 87],
+        ["2025-10-17", 38],
+        ["2025-10-24", 84],
+        ["2025-10-31", 71],
+        ["2025-11-07", 18],
+        ["2025-11-14", 9],
+        ["2025-11-21", 73],
+        ["2025-11-28", 85],
+        ["2025-12-05", 26],
+        ["2025-12-12", 72],
+        ["2025-12-19", 32],
+        ["2025-12-26", 13],
+        ["2026-01-02", 39],
+        ["2026-01-09", 63],
+        ["2026-01-16", 91],
+        ["2026-01-23", 61],
+        ["2026-01-30", 82],
+        ["2026-02-06", 70],
+        ["2026-02-13", 90],
+        ["2026-02-20", 26]
+      ],
+      itemStyle: {
+        color: "#ab47bc"
+      },
+      lineStyle: {
+        color: "#ab47bc",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-20');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.21 — Match intensity heatmap (self only)</h2>
+      <div class="meta">
+        <code>src/ui/pages/_timeseries_intensity.py::render_intensity_heatmap</code>
+      </div>
+      <div id="chart-21" class="chart-canvas" style="height: 480px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 160,
+    right: 80,
+    top: 60,
+    bottom: 60,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: function anonymous(p
+) {
+return "Phase " + p.value[0] + " (" + ["0-10%","10-20%","20-30%","30-40%","40-50%","50-60%","60-70%","70-80%","80-90%","90-100%"][p.value[0]] + ")<br>" + ["Aquarius — 28 avr.","Recharge — 28 avr.","Live Fire — 27 avr.","Streets — 27 avr.","Bazaar — 26 avr.","Behemoth — 26 avr.","Catalyst — 25 avr.","Argyle — 25 avr.","Solitude — 24 avr.","Empyrean — 24 avr.","Forbidden — 23 avr.","Cliffhanger — 23 avr."][p.value[1]] + "<br>Intensité : " + p.value[2].toFixed(2);
+}
+  },
+  xAxis: {
+    type: "category",
+    data: ["0-10%", "10-20%", "20-30%", "30-40%", "40-50%", "50-60%", "60-70%", "70-80%", "80-90%", "90-100%"],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 10
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: [
+      "Aquarius — 28 avr.",
+      "Recharge — 28 avr.",
+      "Live Fire — 27 avr.",
+      "Streets — 27 avr.",
+      "Bazaar — 26 avr.",
+      "Behemoth — 26 avr.",
+      "Catalyst — 25 avr.",
+      "Argyle — 25 avr.",
+      "Solitude — 24 avr.",
+      "Empyrean — 24 avr.",
+      "Forbidden — 23 avr.",
+      "Cliffhanger — 23 avr."
+    ],
+    axisLabel: {
+      color: "rgba(245, 248, 255, 0.85)",
+      fontSize: 11
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  visualMap: {
+    min: 0,
+    max: 1,
+    calculable: false,
+    show: true,
+    orient: "vertical",
+    right: 10,
+    top: "middle",
+    inRange: {
+      color: ["#38C8C8", "#FFFF00", "#FFB300", "#FF5500", "#FF1A00"]
+    },
+    text: ["intense", "calme"],
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.85)"
+    }
+  },
+  series: [
+    {
+      name: "Intensité",
+      type: "heatmap",
+      data: [
+        [0, 0, 0.5],
+        [1, 0, 0.67],
+        [2, 0, 1],
+        [3, 0, 0.72],
+        [4, 0, 0.45],
+        [5, 0, 0.31],
+        [6, 0, 0.06],
+        [7, 0, 0],
+        [8, 0, 0],
+        [9, 0, 0],
+        [0, 1, 0],
+        [1, 1, 0.11],
+        [2, 1, 0.29],
+        [3, 1, 0.62],
+        [4, 1, 0.83],
+        [5, 1, 0.92],
+        [6, 1, 0.68],
+        [7, 1, 0.59],
+        [8, 1, 0.25],
+        [9, 1, 0.19],
+        [0, 2, 0],
+        [1, 2, 0],
+        [2, 2, 0],
+        [3, 2, 0.26],
+        [4, 2, 0.34],
+        [5, 2, 0.52],
+        [6, 2, 0.76],
+        [7, 2, 1],
+        [8, 2, 0.88],
+        [9, 2, 0.68],
+        [0, 3, 0.29],
+        [1, 3, 0.64],
+        [2, 3, 0.27],
+        [3, 3, 0.62],
+        [4, 3, 0.54],
+        [5, 3, 0.53],
+        [6, 3, 0.36],
+        [7, 3, 0.35],
+        [8, 3, 0.24],
+        [9, 3, 0.64],
+        [0, 4, 0.43],
+        [1, 4, 0.81],
+        [2, 4, 1],
+        [3, 4, 0.75],
+        [4, 4, 0.5],
+        [5, 4, 0.3],
+        [6, 4, 0],
+        [7, 4, 0],
+        [8, 4, 0],
+        [9, 4, 0],
+        [0, 5, 0],
+        [1, 5, 0.16],
+        [2, 5, 0.37],
+        [3, 5, 0.61],
+        [4, 5, 0.8],
+        [5, 5, 0.93],
+        [6, 5, 0.88],
+        [7, 5, 0.64],
+        [8, 5, 0.36],
+        [9, 5, 0.2],
+        [0, 6, 0],
+        [1, 6, 0],
+        [2, 6, 0],
+        [3, 6, 0.28],
+        [4, 6, 0.42],
+        [5, 6, 0.65],
+        [6, 6, 0.71],
+        [7, 6, 0.9],
+        [8, 6, 0.72],
+        [9, 6, 0.65],
+        [0, 7, 0.49],
+        [1, 7, 0.55],
+        [2, 7, 0.65],
+        [3, 7, 0.34],
+        [4, 7, 0.26],
+        [5, 7, 0.18],
+        [6, 7, 0.39],
+        [7, 7, 0.29],
+        [8, 7, 0.53],
+        [9, 7, 0.22],
+        [0, 8, 0.58],
+        [1, 8, 0.72],
+        [2, 8, 0.95],
+        [3, 8, 0.83],
+        [4, 8, 0.43],
+        [5, 8, 0.17],
+        [6, 8, 0.02],
+        [7, 8, 0],
+        [8, 8, 0],
+        [9, 8, 0],
+        [0, 9, 0],
+        [1, 9, 0.12],
+        [2, 9, 0.29],
+        [3, 9, 0.59],
+        [4, 9, 0.71],
+        [5, 9, 1],
+        [6, 9, 0.72],
+        [7, 9, 0.64],
+        [8, 9, 0.32],
+        [9, 9, 0.09],
+        [0, 10, 0],
+        [1, 10, 0],
+        [2, 10, 0],
+        [3, 10, 0.15],
+        [4, 10, 0.44],
+        [5, 10, 0.66],
+        [6, 10, 0.79],
+        [7, 10, 1],
+        [8, 10, 0.76],
+        [9, 10, 0.64],
+        [0, 11, 0.41],
+        [1, 11, 0.2],
+        [2, 11, 0.2],
+        [3, 11, 0.32],
+        [4, 11, 0.4],
+        [5, 11, 0.45],
+        [6, 11, 0.28],
+        [7, 11, 0.2],
+        [8, 11, 0.36],
+        [9, 11, 0.51]
+      ],
+      emphasis: {
+        itemStyle: {
+          borderColor: "#fff",
+          borderWidth: 1
+        }
+      }
+    }
+  ],
+  title: {
+    text: "Heatmap d'intensité — kills par phase de match",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 456
+};
+          const dom = document.getElementById('chart-21');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.22 — Skill rank progression — LUSR / CSR timeseries</h2>
+      <div class="meta">
+        <code>src/ui/pages/timeseries_skill_rank.py::render_skill_rank_progression</code>
+      </div>
+      <div id="chart-22" class="chart-canvas" style="height: 420px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {
+    type: "category",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    name: "Rating",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "{{rating_type}}",
+      data: [
+        ["2025-08-01", 22],
+        ["2025-08-08", 79],
+        ["2025-08-15", 98],
+        ["2025-08-22", 56],
+        ["2025-08-29", 36],
+        ["2025-09-05", 67],
+        ["2025-09-12", 56],
+        ["2025-09-19", 51],
+        ["2025-09-26", 89],
+        ["2025-10-03", 36],
+        ["2025-10-10", 71],
+        ["2025-10-17", 92],
+        ["2025-10-24", 85],
+        ["2025-10-31", 38],
+        ["2025-11-07", 74],
+        ["2025-11-14", 53],
+        ["2025-11-21", 2],
+        ["2025-11-28", 13],
+        ["2025-12-05", 98],
+        ["2025-12-12", 44],
+        ["2025-12-19", 88],
+        ["2025-12-26", 37],
+        ["2026-01-02", 18],
+        ["2026-01-09", 88],
+        ["2026-01-16", 25],
+        ["2026-01-23", 33],
+        ["2026-01-30", 21],
+        ["2026-02-06", 72],
+        ["2026-02-13", 15],
+        ["2026-02-20", 45]
+      ],
+      itemStyle: {
+        color: "perf_color (selon valeur du rating)"
+      },
+      lineStyle: {
+        color: "perf_color (selon valeur du rating)",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "confidence_band",
+      data: [
+        ["2025-08-01", 91],
+        ["2025-08-08", 93],
+        ["2025-08-15", 2],
+        ["2025-08-22", 83],
+        ["2025-08-29", 11],
+        ["2025-09-05", 78],
+        ["2025-09-12", 42],
+        ["2025-09-19", 8],
+        ["2025-09-26", 49],
+        ["2025-10-03", 82],
+        ["2025-10-10", 83],
+        ["2025-10-17", 74],
+        ["2025-10-24", 37],
+        ["2025-10-31", 99],
+        ["2025-11-07", 62],
+        ["2025-11-14", 22],
+        ["2025-11-21", 15],
+        ["2025-11-28", 60],
+        ["2025-12-05", 26],
+        ["2025-12-12", 20],
+        ["2025-12-19", 19],
+        ["2025-12-26", 48],
+        ["2026-01-02", 72],
+        ["2026-01-09", 38],
+        ["2026-01-16", 29],
+        ["2026-01-23", 8],
+        ["2026-01-30", 17],
+        ["2026-02-06", 38],
+        ["2026-02-13", 4],
+        ["2026-02-20", 34]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(rating_color, 0.15)",
+        opacity: 1
+      }
+    },
+    {
+      type: "line",
+      name: "tier_backgrounds",
+      data: [
+        ["2025-08-01", 33],
+        ["2025-08-08", 42],
+        ["2025-08-15", 10],
+        ["2025-08-22", 94],
+        ["2025-08-29", 50],
+        ["2025-09-05", 26],
+        ["2025-09-12", 22],
+        ["2025-09-19", 33],
+        ["2025-09-26", 93],
+        ["2025-10-03", 63],
+        ["2025-10-10", 67],
+        ["2025-10-17", 30],
+        ["2025-10-24", 42],
+        ["2025-10-31", 54],
+        ["2025-11-07", 39],
+        ["2025-11-14", 71],
+        ["2025-11-21", 53],
+        ["2025-11-28", 47],
+        ["2025-12-05", 52],
+        ["2025-12-12", 36],
+        ["2025-12-19", 28],
+        ["2025-12-26", 9],
+        ["2026-01-02", 5],
+        ["2026-01-09", 15],
+        ["2026-01-16", 7],
+        ["2026-01-23", 81],
+        ["2026-01-30", 11],
+        ["2026-02-06", 9],
+        ["2026-02-13", 26],
+        ["2026-02-20", 15]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-22');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.23 — Net score per hour — rolling adaptatif avec zones ±</h2>
+      <div class="meta">
+        <code>src/visualization/_perf_progression.py::plot_net_score_per_hour</code>
+      </div>
+      <div id="chart-23" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: false,
+  xAxis: {},
+  yAxis: {},
+  series: [
+    {
+      type: "line",
+      name: "zone_positive",
+      data: [
+        ["2025-08-01", 94],
+        ["2025-08-08", 5],
+        ["2025-08-15", 68],
+        ["2025-08-22", 69],
+        ["2025-08-29", 18],
+        ["2025-09-05", 94],
+        ["2025-09-12", 75],
+        ["2025-09-19", 20],
+        ["2025-09-26", 7],
+        ["2025-10-03", 55],
+        ["2025-10-10", 56],
+        ["2025-10-17", 9],
+        ["2025-10-24", 55],
+        ["2025-10-31", 77],
+        ["2025-11-07", 44],
+        ["2025-11-14", 22],
+        ["2025-11-21", 8],
+        ["2025-11-28", 95],
+        ["2025-12-05", 55],
+        ["2025-12-12", 97],
+        ["2025-12-19", 22],
+        ["2025-12-26", 54],
+        ["2026-01-02", 77],
+        ["2026-01-09", 25],
+        ["2026-01-16", 43],
+        ["2026-01-23", 15],
+        ["2026-01-30", 29],
+        ["2026-02-06", 93],
+        ["2026-02-13", 21],
+        ["2026-02-20", 90]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(0,158,115,0.25)",
+        opacity: 1
+      }
+    },
+    {
+      type: "line",
+      name: "zone_negative",
+      data: [
+        ["2025-08-01", 3],
+        ["2025-08-08", 30],
+        ["2025-08-15", 49],
+        ["2025-08-22", 96],
+        ["2025-08-29", 98],
+        ["2025-09-05", 29],
+        ["2025-09-12", 25],
+        ["2025-09-19", 33],
+        ["2025-09-26", 96],
+        ["2025-10-03", 65],
+        ["2025-10-10", 48],
+        ["2025-10-17", 83],
+        ["2025-10-24", 19],
+        ["2025-10-31", 86],
+        ["2025-11-07", 38],
+        ["2025-11-14", 86],
+        ["2025-11-21", 58],
+        ["2025-11-28", 59],
+        ["2025-12-05", 39],
+        ["2025-12-12", 48],
+        ["2025-12-19", 95],
+        ["2025-12-26", 20],
+        ["2026-01-02", 12],
+        ["2026-01-09", 19],
+        ["2026-01-16", 93],
+        ["2026-01-23", 52],
+        ["2026-01-30", 92],
+        ["2026-02-06", 77],
+        ["2026-02-13", 1],
+        ["2026-02-20", 49]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(213,94,0,0.25)",
+        opacity: 1
+      }
+    },
+    {
+      type: "line",
+      name: "raw_markers",
+      data: [
+        ["2025-08-01", 91],
+        ["2025-08-08", 1],
+        ["2025-08-15", 63],
+        ["2025-08-22", 59],
+        ["2025-08-29", 45],
+        ["2025-09-05", 71],
+        ["2025-09-12", 80],
+        ["2025-09-19", 27],
+        ["2025-09-26", 41],
+        ["2025-10-03", 29],
+        ["2025-10-10", 79],
+        ["2025-10-17", 90],
+        ["2025-10-24", 25],
+        ["2025-10-31", 58],
+        ["2025-11-07", 41],
+        ["2025-11-14", 47],
+        ["2025-11-21", 13],
+        ["2025-11-28", 70],
+        ["2025-12-05", 19],
+        ["2025-12-12", 64],
+        ["2025-12-19", 76],
+        ["2025-12-26", 85],
+        ["2026-01-02", 51],
+        ["2026-01-09", 49],
+        ["2026-01-16", 34],
+        ["2026-01-23", 34],
+        ["2026-01-30", 77],
+        ["2026-02-06", 92],
+        ["2026-02-13", 81],
+        ["2026-02-20", 12]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 5,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "rolling_line",
+      data: [
+        ["2025-08-01", 3],
+        ["2025-08-08", 12],
+        ["2025-08-15", 28],
+        ["2025-08-22", 31],
+        ["2025-08-29", 57],
+        ["2025-09-05", 38],
+        ["2025-09-12", 74],
+        ["2025-09-19", 63],
+        ["2025-09-26", 10],
+        ["2025-10-03", 26],
+        ["2025-10-10", 16],
+        ["2025-10-17", 15],
+        ["2025-10-24", 86],
+        ["2025-10-31", 41],
+        ["2025-11-07", 95],
+        ["2025-11-14", 9],
+        ["2025-11-21", 86],
+        ["2025-11-28", 67],
+        ["2025-12-05", 93],
+        ["2025-12-12", 98],
+        ["2025-12-19", 59],
+        ["2025-12-26", 96],
+        ["2026-01-02", 20],
+        ["2026-01-09", 59],
+        ["2026-01-16", 72],
+        ["2026-01-23", 86],
+        ["2026-01-30", 24],
+        ["2026-02-06", 98],
+        ["2026-02-13", 46],
+        ["2026-02-20", 66]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 3,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: true,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-23');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.24 — Cumulative K/D avec CI 90%</h2>
+      <div class="meta">
+        <code>src/visualization/_perf_progression.py::plot_cumulative_kd_with_ci</code>
+      </div>
+      <div id="chart-24" class="chart-canvas" style="height: 400px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    top: 5,
+    left: "center"
+  },
+  xAxis: {
+    name: "Match",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "ci_band",
+      data: [
+        ["2025-08-01", 53],
+        ["2025-08-08", 69],
+        ["2025-08-15", 34],
+        ["2025-08-22", 40],
+        ["2025-08-29", 81],
+        ["2025-09-05", 4],
+        ["2025-09-12", 73],
+        ["2025-09-19", 14],
+        ["2025-09-26", 64],
+        ["2025-10-03", 33],
+        ["2025-10-10", 20],
+        ["2025-10-17", 55],
+        ["2025-10-24", 60],
+        ["2025-10-31", 41],
+        ["2025-11-07", 61],
+        ["2025-11-14", 65],
+        ["2025-11-21", 24],
+        ["2025-11-28", 46],
+        ["2025-12-05", 80],
+        ["2025-12-12", 93],
+        ["2025-12-19", 58],
+        ["2025-12-26", 25],
+        ["2026-01-02", 44],
+        ["2026-01-09", 47],
+        ["2026-01-16", 61],
+        ["2026-01-23", 7],
+        ["2026-01-30", 3],
+        ["2026-02-06", 45],
+        ["2026-02-13", 16],
+        ["2026-02-20", 12]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false,
+      areaStyle: {
+        color: "rgba(KD color, 0.2)",
+        opacity: 1
+      }
+    },
+    {
+      type: "line",
+      name: "cumulative_kd",
+      data: [
+        ["2025-08-01", 62],
+        ["2025-08-08", 42],
+        ["2025-08-15", 59],
+        ["2025-08-22", 26],
+        ["2025-08-29", 68],
+        ["2025-09-05", 20],
+        ["2025-09-12", 48],
+        ["2025-09-19", 40],
+        ["2025-09-26", 13],
+        ["2025-10-03", 14],
+        ["2025-10-10", 100],
+        ["2025-10-17", 17],
+        ["2025-10-24", 84],
+        ["2025-10-31", 31],
+        ["2025-11-07", 37],
+        ["2025-11-14", 53],
+        ["2025-11-21", 48],
+        ["2025-11-28", 49],
+        ["2025-12-05", 46],
+        ["2025-12-12", 53],
+        ["2025-12-19", 12],
+        ["2025-12-26", 37],
+        ["2026-01-02", 33],
+        ["2026-01-09", 33],
+        ["2026-01-16", 4],
+        ["2026-01-23", 35],
+        ["2026-01-30", 16],
+        ["2026-02-06", 47],
+        ["2026-02-13", 72],
+        ["2026-02-20", 23]
+      ],
+      itemStyle: {
+        color: "PERFORMANCE_COLORS.cumulative"
+      },
+      lineStyle: {
+        color: "PERFORMANCE_COLORS.cumulative",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "per_match_kd",
+      data: [
+        ["2025-08-01", 81],
+        ["2025-08-08", 25],
+        ["2025-08-15", 64],
+        ["2025-08-22", 82],
+        ["2025-08-29", 84],
+        ["2025-09-05", 61],
+        ["2025-09-12", 46],
+        ["2025-09-19", 32],
+        ["2025-09-26", 76],
+        ["2025-10-03", 14],
+        ["2025-10-10", 15],
+        ["2025-10-17", 11],
+        ["2025-10-24", 95],
+        ["2025-10-31", 59],
+        ["2025-11-07", 31],
+        ["2025-11-14", 54],
+        ["2025-11-21", 23],
+        ["2025-11-28", 58],
+        ["2025-12-05", 55],
+        ["2025-12-12", 18],
+        ["2025-12-19", 75],
+        ["2025-12-26", 16],
+        ["2026-01-02", 30],
+        ["2026-01-09", 28],
+        ["2026-01-16", 61],
+        ["2026-01-23", 89],
+        ["2026-01-30", 86],
+        ["2026-02-06", 85],
+        ["2026-02-13", 69],
+        ["2026-02-20", 56]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "outcome_markers",
+      data: [
+        ["2025-08-01", 58],
+        ["2025-08-08", 64],
+        ["2025-08-15", 34],
+        ["2025-08-22", 19],
+        ["2025-08-29", 72],
+        ["2025-09-05", 71],
+        ["2025-09-12", 48],
+        ["2025-09-19", 20],
+        ["2025-09-26", 43],
+        ["2025-10-03", 78],
+        ["2025-10-10", 100],
+        ["2025-10-17", 70],
+        ["2025-10-24", 100],
+        ["2025-10-31", 45],
+        ["2025-11-07", 9],
+        ["2025-11-14", 30],
+        ["2025-11-21", 48],
+        ["2025-11-28", 33],
+        ["2025-12-05", 87],
+        ["2025-12-12", 92],
+        ["2025-12-19", 39],
+        ["2025-12-26", 84],
+        ["2026-01-02", 74],
+        ["2026-01-09", 68],
+        ["2026-01-16", 74],
+        ["2026-01-23", 13],
+        ["2026-01-30", 87],
+        ["2026-02-06", 45],
+        ["2026-02-13", 60],
+        ["2026-02-20", 54]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-24');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.25 — EWMA K/D — moyenne mobile exponentielle</h2>
+      <div class="meta">
+        <code>src/visualization/_perf_progression.py::plot_ewma_kd</code>
+      </div>
+      <div id="chart-25" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  grid: {
+    left: 40,
+    right: 20,
+    top: 30,
+    bottom: 60,
+    containLabel: false
+  },
+  tooltip: {
+    trigger: "axis",
+    backgroundColor: "rgba(29, 35, 40, 0.96)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  legend: {
+    orient: "horizontal",
+    top: 5,
+    left: "center"
+  },
+  xAxis: {
+    name: "Match",
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  yAxis: {
+    splitLine: {
+      show: true,
+      lineStyle: {
+        color: "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  series: [
+    {
+      type: "line",
+      name: "K/D par match",
+      data: [
+        ["2025-08-01", 99],
+        ["2025-08-08", 1],
+        ["2025-08-15", 53],
+        ["2025-08-22", 2],
+        ["2025-08-29", 7],
+        ["2025-09-05", 21],
+        ["2025-09-12", 86],
+        ["2025-09-19", 82],
+        ["2025-09-26", 50],
+        ["2025-10-03", 16],
+        ["2025-10-10", 3],
+        ["2025-10-17", 93],
+        ["2025-10-24", 88],
+        ["2025-10-31", 40],
+        ["2025-11-07", 38],
+        ["2025-11-14", 86],
+        ["2025-11-21", 92],
+        ["2025-11-28", 96],
+        ["2025-12-05", 3],
+        ["2025-12-12", 86],
+        ["2025-12-19", 16],
+        ["2025-12-26", 89],
+        ["2026-01-02", 90],
+        ["2026-01-09", 34],
+        ["2026-01-16", 29],
+        ["2026-01-23", 38],
+        ["2026-01-30", 79],
+        ["2026-02-06", 15],
+        ["2026-02-13", 80],
+        ["2026-02-20", 71]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 4,
+      showSymbol: true,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "EWMA K/D",
+      data: [
+        ["2025-08-01", 33],
+        ["2025-08-08", 73],
+        ["2025-08-15", 25],
+        ["2025-08-22", 93],
+        ["2025-08-29", 32],
+        ["2025-09-05", 0],
+        ["2025-09-12", 51],
+        ["2025-09-19", 35],
+        ["2025-09-26", 0],
+        ["2025-10-03", 80],
+        ["2025-10-10", 50],
+        ["2025-10-17", 32],
+        ["2025-10-24", 77],
+        ["2025-10-31", 15],
+        ["2025-11-07", 19],
+        ["2025-11-14", 10],
+        ["2025-11-21", 10],
+        ["2025-11-28", 69],
+        ["2025-12-05", 94],
+        ["2025-12-12", 10],
+        ["2025-12-19", 6],
+        ["2025-12-26", 46],
+        ["2026-01-02", 54],
+        ["2026-01-09", 65],
+        ["2026-01-16", 8],
+        ["2026-01-23", 34],
+        ["2026-01-30", 38],
+        ["2026-02-06", 20],
+        ["2026-02-13", 30],
+        ["2026-02-20", 50]
+      ],
+      itemStyle: {
+        color: "PERFORMANCE_COLORS.cumulative"
+      },
+      lineStyle: {
+        color: "PERFORMANCE_COLORS.cumulative",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "regression_line",
+      data: [
+        ["2025-08-01", 25],
+        ["2025-08-08", 23],
+        ["2025-08-15", 7],
+        ["2025-08-22", 23],
+        ["2025-08-29", 1],
+        ["2025-09-05", 58],
+        ["2025-09-12", 7],
+        ["2025-09-19", 17],
+        ["2025-09-26", 14],
+        ["2025-10-03", 32],
+        ["2025-10-10", 71],
+        ["2025-10-17", 77],
+        ["2025-10-24", 24],
+        ["2025-10-31", 36],
+        ["2025-11-07", 100],
+        ["2025-11-14", 82],
+        ["2025-11-21", 84],
+        ["2025-11-28", 91],
+        ["2025-12-05", 80],
+        ["2025-12-12", 42],
+        ["2025-12-19", 32],
+        ["2025-12-26", 57],
+        ["2026-01-02", 52],
+        ["2026-01-09", 26],
+        ["2026-01-16", 98],
+        ["2026-01-23", 61],
+        ["2026-01-30", 29],
+        ["2026-02-06", 9],
+        ["2026-02-13", 14],
+        ["2026-02-20", 47]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    },
+    {
+      type: "line",
+      name: "outcome_markers",
+      data: [
+        ["2025-08-01", 28],
+        ["2025-08-08", 50],
+        ["2025-08-15", 40],
+        ["2025-08-22", 23],
+        ["2025-08-29", 21],
+        ["2025-09-05", 80],
+        ["2025-09-12", 29],
+        ["2025-09-19", 24],
+        ["2025-09-26", 23],
+        ["2025-10-03", 47],
+        ["2025-10-10", 4],
+        ["2025-10-17", 25],
+        ["2025-10-24", 28],
+        ["2025-10-31", 27],
+        ["2025-11-07", 18],
+        ["2025-11-14", 14],
+        ["2025-11-21", 17],
+        ["2025-11-28", 55],
+        ["2025-12-05", 48],
+        ["2025-12-12", 28],
+        ["2025-12-19", 65],
+        ["2025-12-26", 38],
+        ["2026-01-02", 55],
+        ["2026-01-09", 79],
+        ["2026-01-16", 44],
+        ["2026-01-23", 33],
+        ["2026-01-30", 62],
+        ["2026-02-06", 13],
+        ["2026-02-13", 42],
+        ["2026-02-20", 11]
+      ],
+      itemStyle: {
+        color: "#33D6FF"
+      },
+      lineStyle: {
+        color: "#33D6FF",
+        width: 2,
+        type: "solid"
+      },
+      symbol: "circle",
+      symbolSize: 6,
+      showSymbol: false,
+      smooth: false
+    }
+  ],
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  }
+};
+          const dom = document.getElementById('chart-25');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>timeseries.26 — Regression trend — 3 indicateurs (ΔK/D, R², ΔWR)</h2>
+      <div class="meta">
+        <code>src/visualization/_perf_session.py::plot_regression_trend</code>
+      </div>
+      <div class="kpi-row"></div>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.27 — Win/Loss heatmap — jour × heure</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_heatmap_section</code>
+      </div>
+      <div id="chart-27" class="chart-canvas" style="height: 360px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 60,
+    top: 60,
+    bottom: 50,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: function anonymous(p
+) {
+if (p.value[2] === null || p.value[2] === undefined) return p.value[0] + 'h ' + ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"][p.value[1]] + '<br>Aucun match';
+return p.value[0] + 'h ' + ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"][p.value[1]] + '<br>WR: ' + (p.value[2] * 100).toFixed(0) + '% (' + p.value[3] + ' matchs)';
+}
+  },
+  visualMap: {
+    min: 0,
+    max: 1,
+    show: true,
+    orient: "vertical",
+    right: 10,
+    top: "middle",
+    inRange: {
+      color: ["#e53935", "#ffb300", "#00e676"]
+    },
+    text: ["Bon", "Mauvais"],
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "00h",
+      "01h",
+      "02h",
+      "03h",
+      "04h",
+      "05h",
+      "06h",
+      "07h",
+      "08h",
+      "09h",
+      "10h",
+      "11h",
+      "12h",
+      "13h",
+      "14h",
+      "15h",
+      "16h",
+      "17h",
+      "18h",
+      "19h",
+      "20h",
+      "21h",
+      "22h",
+      "23h"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      fontSize: 9,
+      interval: 1
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+    inverse: true,
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)"
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  series: [
+    {
+      name: "WL heatmap",
+      type: "heatmap",
+      data: [
+        [0, 0, null, 0],
+        [1, 0, null, 0],
+        [2, 0, null, 0],
+        [3, 0, null, 0],
+        [4, 0, null, 0],
+        [5, 0, null, 0],
+        [6, 0, null, 0],
+        [7, 0, null, 0],
+        [8, 0, null, 0],
+        [9, 0, null, 0],
+        [10, 0, 0.6707715866537121, 1],
+        [11, 0, 0.815598091276019, 1],
+        [12, 0, 0.7495982062543001, 1],
+        [13, 0, null, 0],
+        [14, 0, 0.8386006776332076, 1],
+        [15, 0, 0.40724287728192826, 2],
+        [16, 0, 0.42423708796791193, 1],
+        [17, 0, 0.4473957201823622, 1],
+        [18, 0, 0.47284259257164285, 7],
+        [19, 0, 0.8063702066753053, 2],
+        [20, 0, 0.7777104803385673, 2],
+        [21, 0, 0.37519238538511424, 4],
+        [22, 0, 0.609694019145198, 5],
+        [23, 0, 0.8013607999929622, 4],
+        [0, 1, null, 0],
+        [1, 1, null, 0],
+        [2, 1, null, 0],
+        [3, 1, null, 0],
+        [4, 1, null, 0],
+        [5, 1, null, 0],
+        [6, 1, null, 0],
+        [7, 1, null, 0],
+        [8, 1, 0.40328616400991973, 1],
+        [9, 1, 0.6451958165551448, 1],
+        [10, 1, null, 0],
+        [11, 1, null, 0],
+        [12, 1, 0.542450803408297, 1],
+        [13, 1, 0.8790712784836232, 2],
+        [14, 1, null, 0],
+        [15, 1, 0.6189604627186444, 2],
+        [16, 1, null, 0],
+        [17, 1, 0.6521699213228122, 2],
+        [18, 1, 0.7295980981520397, 5],
+        [19, 1, 0.606363900075716, 7],
+        [20, 1, 0.4249055077691776, 2],
+        [21, 1, 0.5412796479576747, 5],
+        [22, 1, 0.5688285245101304, 3],
+        [23, 1, 0.32329731936686196, 4],
+        [0, 2, null, 0],
+        [1, 2, null, 0],
+        [2, 2, null, 0],
+        [3, 2, null, 0],
+        [4, 2, null, 0],
+        [5, 2, null, 0],
+        [6, 2, null, 0],
+        [7, 2, null, 0],
+        [8, 2, null, 0],
+        [9, 2, null, 0],
+        [10, 2, null, 0],
+        [11, 2, null, 0],
+        [12, 2, null, 0],
+        [13, 2, 0.5469575782900686, 1],
+        [14, 2, 0.7314245426782507, 1],
+        [15, 2, 0.4815337965358564, 1],
+        [16, 2, 0.5432961173503124, 1],
+        [17, 2, null, 0],
+        [18, 2, 0.7664153863959964, 3],
+        [19, 2, 0.8592848520242276, 6],
+        [20, 2, 0.8216449248314159, 5],
+        [21, 2, 0.3306240140332554, 4],
+        [22, 2, 0.5569321868726886, 3],
+        [23, 2, 0.34180675275234074, 6],
+        [0, 3, null, 0],
+        [1, 3, null, 0],
+        [2, 3, null, 0],
+        [3, 3, null, 0],
+        [4, 3, null, 0],
+        [5, 3, null, 0],
+        [6, 3, null, 0],
+        [7, 3, null, 0],
+        [8, 3, 0.8158451152411272, 1],
+        [9, 3, 0.6127628842254954, 1],
+        [10, 3, 0.7141394157558748, 1],
+        [11, 3, null, 0],
+        [12, 3, null, 0],
+        [13, 3, 0.3431636587049163, 2],
+        [14, 3, 0.6426318383009071, 2],
+        [15, 3, 0.6453507002899335, 2],
+        [16, 3, null, 0],
+        [17, 3, null, 0],
+        [18, 3, 0.346697128640615, 2],
+        [19, 3, 0.5635909948716593, 3],
+        [20, 3, 0.7577735990551171, 4],
+        [21, 3, 0.7748719922828362, 6],
+        [22, 3, 0.6475945624873769, 4],
+        [23, 3, 0.4909753999625456, 4],
+        [0, 4, null, 0],
+        [1, 4, null, 0],
+        [2, 4, null, 0],
+        [3, 4, null, 0],
+        [4, 4, null, 0],
+        [5, 4, null, 0],
+        [6, 4, null, 0],
+        [7, 4, null, 0],
+        [8, 4, 0.4598948327905482, 1],
+        [9, 4, null, 0],
+        [10, 4, null, 0],
+        [11, 4, 0.6942869022613237, 1],
+        [12, 4, null, 0],
+        [13, 4, 0.4855683495956558, 2],
+        [14, 4, 0.39637546027055803, 2],
+        [15, 4, 0.7038315206297439, 1],
+        [16, 4, 0.7016784287864484, 1],
+        [17, 4, 0.43524859314655806, 2],
+        [18, 4, 0.5566766483491048, 7],
+        [19, 4, 0.8133869339083111, 2],
+        [20, 4, 0.5411359240075402, 3],
+        [21, 4, 0.5999676937899905, 3],
+        [22, 4, 0.642029031698565, 5],
+        [23, 4, 0.628298038941673, 4],
+        [0, 5, null, 0],
+        [1, 5, null, 0],
+        [2, 5, null, 0],
+        [3, 5, null, 0],
+        [4, 5, null, 0],
+        [5, 5, null, 0],
+        [6, 5, null, 0],
+        [7, 5, null, 0],
+        [8, 5, null, 0],
+        [9, 5, 0.4694726032212765, 1],
+        [10, 5, null, 0],
+        [11, 5, 0.5863056328047593, 1],
+        [12, 5, null, 0],
+        [13, 5, 0.5584571544371584, 2],
+        [14, 5, null, 0],
+        [15, 5, null, 0],
+        [16, 5, 0.871622552428116, 1],
+        [17, 5, 0.33400700478284456, 1],
+        [18, 5, 0.7178916106079012, 5],
+        [19, 5, 0.3961100400374089, 4],
+        [20, 5, 0.6872379843347807, 7],
+        [21, 5, 0.4269326644239698, 6],
+        [22, 5, 0.42893968655907816, 4],
+        [23, 5, 0.46324674065547405, 5],
+        [0, 6, null, 0],
+        [1, 6, null, 0],
+        [2, 6, null, 0],
+        [3, 6, null, 0],
+        [4, 6, null, 0],
+        [5, 6, null, 0],
+        [6, 6, null, 0],
+        [7, 6, null, 0],
+        [8, 6, 0.34756356466338073, 1],
+        [9, 6, null, 0],
+        [10, 6, 0.863287101046307, 1],
+        [11, 6, 0.6789415403360742, 1],
+        [12, 6, 0.7376885021425672, 1],
+        [13, 6, 0.3460222839330134, 1],
+        [14, 6, null, 0],
+        [15, 6, 0.43912359794659095, 1],
+        [16, 6, 0.43406458304334905, 2],
+        [17, 6, null, 0],
+        [18, 6, 0.5481239035103225, 6],
+        [19, 6, 0.7888696600979757, 5],
+        [20, 6, 0.7470057341138636, 3],
+        [21, 6, 0.8598748081349539, 4],
+        [22, 6, 0.3727730820318875, 5],
+        [23, 6, 0.41136774517321695, 7]
+      ],
+      emphasis: {
+        itemStyle: {
+          borderColor: "#fff",
+          borderWidth: 1
+        }
+      }
+    }
+  ],
+  title: {
+    text: "Win Rate par jour × heure",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 380
+};
+          const dom = document.getElementById('chart-27');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>timeseries.28 — Top matches by week</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_top_by_week</code>
+      </div>
+      <div id="chart-28" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 60,
+    top: 60,
+    bottom: 80,
+    containLabel: false
+  },
+  legend: {
+    bottom: 8,
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "2026-02-02",
+      "2026-02-09",
+      "2026-02-16",
+      "2026-02-23",
+      "2026-03-02",
+      "2026-03-09",
+      "2026-03-16",
+      "2026-03-23",
+      "2026-03-30",
+      "2026-04-06",
+      "2026-04-13",
+      "2026-04-20"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      rotate: -45,
+      fontSize: 10
+    }
+  },
+  yAxis: [
+    {
+      type: "value",
+      name: "Matchs",
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.85)"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      type: "value",
+      name: "% Top",
+      max: 100,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.85)",
+        formatter: "{value}%"
+      },
+      splitLine: {
+        show: false
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Top (rank=1)",
+      type: "bar",
+      data: [
+        3,
+        5,
+        2,
+        4,
+        6,
+        3,
+        4,
+        5,
+        7,
+        3,
+        4,
+        5
+      ],
+      itemStyle: {
+        color: "#FFD700"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Total semaine",
+      type: "bar",
+      data: [
+        12,
+        15,
+        10,
+        13,
+        17,
+        14,
+        12,
+        16,
+        18,
+        11,
+        13,
+        14
+      ],
+      itemStyle: {
+        color: "rgba(120,120,120,0.45)"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "% Top",
+      type: "line",
+      yAxisIndex: 1,
+      data: [
+        25,
+        33.3,
+        20,
+        30.8,
+        35.3,
+        21.4,
+        33.3,
+        31.3,
+        38.9,
+        27.3,
+        30.8,
+        35.7
+      ],
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 6,
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2
+      }
+    }
+  ],
+  title: {
+    text: "Top matches by week (rank=1) vs Total — % Top sur Y2",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 400
+};
+          const dom = document.getElementById('chart-28');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+  </main>
+  <footer>
+    <strong>But</strong> : valider visuellement que les YAML de spec graphique
+    (<code>.ai/charts_specs/timeseries/*.yaml</code>) reproduisent fidèlement
+    les charts Plotly d'origine. Comparer chaque chart ci-dessus avec son équivalent
+    Streamlit/Plotly en lançant l'app Python (si dispo) ou en regardant un screenshot.
+  </footer>
+</body>
+</html>

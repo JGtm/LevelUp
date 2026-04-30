@@ -1,0 +1,155 @@
+# =============================================================================
+# Stats par minute — Frags/min, Morts/min, Assists/min (N joueurs)
+# =============================================================================
+# Barres groupées catégorielles : 3 catégories X (frags/min, deaths/min,
+# assists/min) × N traces (1 par joueur escouade, 2 à 4). Frags & assists
+# positifs vers le haut, morts négatives sous l'axe X (axe zéro en gras blanc).
+# Couleur normale du joueur pour frags/assists ; teinte "négative" Okabe-Ito
+# pour les morts. Records éventuels en barres fantômes hachurées.
+# =============================================================================
+
+id: "teammates.14"
+title: "Stats par minute — Frags / Morts / Assists"
+page: teammates
+section: "Onglet Contributions — Stats/min"
+display_order_in_tab: 1                                        # tout début de tab_con
+source_function: "src/ui/pages/_teammates_trio_helpers.py::_render_per_minute_stats"
+source_helpers:
+  - "src/analysis::compute_aggregated_stats (kills_per_minute / deaths_per_minute / assists_per_minute)"
+  - "src/visualization/_chart_data.py::ChartData::add_record_overlays"
+  - "src/visualization/_chart_data.py::MatchSeries"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+  - "src/visualization/theme.py::OKABE_ITO_PALETTE"
+  - "src/visualization/theme.py::_negative_color"
+fragment: false
+chart_kind: grouped_bar
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_aggregated_stats(df) par joueur → kills_per_minute / deaths_per_minute / assists_per_minute"
+  input_dataframe:
+    required_fields:
+      me_df, f1_df, f2_df, f3_df:
+        - kills, deaths, assists
+        - time_played_seconds                                   # pour calcul /min
+  call_args:
+    pm_records: "dict[str, tuple[float?, float?, float?]] — records personnels (frags_max, deaths_min, assists_max)"
+    colors_by_name: "dict[str, str]"
+  filters_applied: ["filtres globaux + same_team_only"]
+
+  constants:
+    okabe_ito_palette: ["#56B4E9","#E69F00","#009E73","#CC79A7","#0072B2","#D55E00"]
+    bar_height: 350
+    barmode: group
+
+  transformations:
+    - description: "Construction de la liste {nom, stats agrégées, couleur}"
+      polars: |
+        _pm_players = [
+            (name, compute_aggregated_stats(df), colors_by_name.get(name, OKABE_ITO_PALETTE[i]))
+            for i, (name, df) in enumerate([(me, me_df), (f1, f1_df), ...])
+        ]
+
+    - description: "Calcul des Y avec inversion de signe pour les morts"
+      polars: |
+        _pm_y    = [round(kpm,2), -round(dpm,2), round(apm,2)]   # morts NÉGATIVES
+        _pm_text = [f"{kpm:.2f}", f"{dpm:.2f}", f"{apm:.2f}"]    # labels en valeur ABSOLUE
+
+    - description: "Couleurs par bar (frags & assists couleur normale, morts couleur négative)"
+      polars: |
+        _bar_colors = [_pm_color, _negative_color(_pm_color), _pm_color]
+      detail: "_negative_color() applique une teinte rouge/sombre à la couleur joueur"
+
+    - description: "Ajout de records personnels en traces fantômes hachurées (si pm_records fourni)"
+      polars: |
+        ChartData(
+            series=[MatchSeries(name=n, x=[], y=[], color=color, map_names=[]) ...],
+            x_labels=_pm_metrics,
+            barmode="categorical",
+            global_records={p_name: rec for p_name, rec in pm_records.items()},
+        ).add_record_overlays(fig_pm)
+
+# === TRACES ===
+traces:
+  template_per_player: true
+  template_id: "pm_player_template"
+  cardinality: "2 à 4 (1 par joueur escouade)"
+  spec:
+    type: bar
+    x_field: "_pm_metrics"                                      # ['Frags/min', 'Morts/min', 'Assists/min']
+    y_field: "_pm_y"                                            # [+kpm, -dpm, +apm]
+    color_per_bar: "_bar_colors"                                # [color, neg(color), color]
+    text_field: "_pm_text"                                      # valeurs absolues
+    text_position: auto
+    offsetgroup: "{player_name}"
+
+  records_overlays:
+    type: "ghost_bars_with_pattern"
+    pattern: "/"                                                # hachuré
+    cardinality: "1 par joueur ayant un record"
+
+# === LAYOUT ===
+layout:
+  barmode: group
+  height: 350
+  margin: { l: 40, r: 20, t: 30, b: 80 }
+  showlegend: false                                             # _hide_legend wrapper
+  yaxis:
+    zeroline: true
+    zerolinecolor: "rgba(255,255,255,0.75)"                     # AXE ZÉRO BLANC GRAS
+    zerolinewidth: 2
+  xaxis:
+    type: category
+  plot_style: "apply_halo_plot_style"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "fig_pm not None (toujours, fallback insufficient_data_chart sinon)"
+  empty_state:
+    type: "st.info"
+    triggered_by: ["fig_pm None → t('insufficient_data_chart')"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('tm_per_minute'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tm_per_minute
+    - tm_metric_frags_min
+    - tm_metric_deaths_min
+    - tm_metric_assists_min
+    - insufficient_data_chart
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Morts en barres NÉGATIVES (sous l'axe X)"
+      why: |
+        Inversion visuelle pour distinguer les "bonnes" stats (frags+assists, vers le haut)
+        des "mauvaises" (morts, vers le bas). Combiné avec couleur "négative" de la palette
+        Okabe-Ito du joueur pour les morts. Axe zéro forcé en blanc gras (zerolinewidth=2).
+
+    - decision: "Couleur Morts = _negative_color(couleur_joueur)"
+      why: |
+        Pas la même couleur que frags/assists pour différencier visuellement, mais reste
+        une variante de la couleur joueur (pour garder l'identité visuelle).
+
+    - decision: "Labels affichés en valeurs ABSOLUES (pas négatives)"
+      why: |
+        Y inversé pour la viz, mais le label sur la barre montre le chiffre absolu (ex: "1.42")
+        — sinon l'utilisateur lirait "-1.42" et serait perdu.
+
+    - decision: "Records personnels en barres fantômes hachurées (pattern '/')"
+      why: |
+        Affiche le record max de chaque joueur sur la même bar groupée, en hachuré pour ne
+        pas confondre avec la session courante. Permet de voir "ce match je suis à 90 % de
+        mon record" en un coup d'œil.

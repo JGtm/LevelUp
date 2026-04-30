@@ -1,0 +1,156 @@
+# =============================================================================
+# Section Media du match (captures + vidéos)
+# =============================================================================
+# Affichage des médias liés au match (captures d'écran, vidéos). Source en
+# priorité : BDD indexée (media_match_associations). Fallback : scan filesystem
+# legacy. Render conditionnel selon settings.media_enabled.
+# =============================================================================
+
+id: "match_view.17"
+title: "Médias du match (captures + vidéos)"
+page: match_view
+section: "Onglet Media"
+source_function: "src/ui/pages/match_view_helpers.py::render_media_section"
+source_helpers:
+  - "src/ui/pages/match_view_helpers.py::_render_media_from_indexed_db"
+  - "src/ui/pages/match_view_helpers.py::_render_media_legacy"
+  - "src/ui/pages/match_view_helpers.py::_render_legacy_video_selector"
+  - "src/ui/settings.py::AppSettings.media_enabled"
+fragment: false
+chart_kind: composite_block
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "DuckDBRepository.load_media_for_match(match_id) ou scan filesystem"
+  input_dataframe:
+    required_fields:
+      row:
+        match_id: "string"
+        start_time: "datetime"
+      settings:
+        media_enabled: "bool"
+        media_capture_dir: "string  (path filesystem fallback)"
+        media_video_dir: "string"
+      gamertag: "string"
+      current_xuid: "string"
+  call_args: {}
+  filters_applied: []
+  timezone: "user_local"
+
+  transformations:
+    - description: "Vérification du flag media_enabled"
+      polars: |
+        if not settings.media_enabled:
+            return  # Section masquée si l'utilisateur a désactivé le module media
+
+    - description: "Source #1 : BDD indexée (media_match_associations)"
+      polars: |
+        # _render_media_from_indexed_db :
+        # 1. Lit media_match_associations WHERE match_id = ?
+        # 2. Pour chaque media : load metadata (file_path, type=image|video, owner_xuid)
+        # 3. Si current_xuid == owner_xuid : marque "Mes captures"
+        # 4. Sinon : marque "Captures de <gamertag_owner>"
+        # 5. Affiche images via st.image() + vidéos via st.video()
+        # 6. Si data renvoyée : return True (pas de fallback)
+      sql_duckdb: |
+        SELECT mma.media_id, mf.file_path, mf.media_type, mf.owner_xuid, mf.captured_at
+        FROM media_match_associations mma
+        JOIN media_files mf ON mf.media_id = mma.media_id
+        WHERE mma.match_id = ?
+        ORDER BY mf.captured_at ASC;
+
+    - description: "Source #2 : fallback scan filesystem (legacy)"
+      polars: |
+        # _render_media_legacy :
+        # 1. Cherche dans settings.media_capture_dir/<gamertag>/<date>_<match_id>*.png
+        # 2. Cherche dans settings.media_video_dir/<gamertag>/<date>_<match_id>*.mp4
+        # 3. Affiche jusqu'à N images via st.image() + 1 video via _render_legacy_video_selector
+        # 4. Selector vidéo si plusieurs vidéos disponibles
+      detail: |
+        Le fallback filesystem est dépendant du PC client (path local), donc NON portable
+        côté serveur Go. La migration devra abandonner cette source ou la recréer via une
+        API dédiée d'upload + indexation.
+
+# === COMPOSITE BLOCK ===
+composite_block:
+  blocks:
+    - id: media_grid
+      type: media_carousel
+      detail: |
+        Grille de captures (images PNG/JPEG) :
+          - st.image(path, caption=date_capture) par image
+          - Affichage en colonnes responsive (probablement st.columns(N) ou directement
+            st.image() qui prend la largeur full).
+          - Tri chronologique (captured_at ASC).
+          - Caption avec timestamp formaté + gamertag du propriétaire.
+
+    - id: video_player
+      type: video_selector
+      detail: |
+        Si plusieurs vidéos (typique cas multi-clips d'un même match) :
+          _render_legacy_video_selector :
+            - st.selectbox("Choisir une vidéo", options=[paths])
+            - st.video(path_choisi)
+        Si une seule vidéo : st.video(path) directement.
+
+  empty_messages:
+    media_disabled: "(silent return — section non rendue)"
+    no_media_found: "(silent return — pas de message)"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    settings.media_enabled == True
+    AND (BDD indexée a des résultats OR fallback legacy a des fichiers)
+  empty_state:
+    type: none
+    triggered_by:
+      - "settings.media_enabled == False → return early sans rendre"
+      - "Aucun média (BDD vide ET filesystem vide) → return silent"
+  config: null
+  width_mode: stretch
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    # Pas explorées en détail — médias affichés via st.image/st.video natif Streamlit
+    # Probablement : mv_media_section_title, mv_no_media, mv_video_selector_label, mv_capture_at_label
+    - mv_media_section_title
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Source double : BDD indexée prioritaire + fallback filesystem legacy"
+      why: |
+        L'app supporte 2 modes :
+          (a) `media_match_associations` (table indexée) — moderne, multi-joueurs (chaque
+              ami peut partager ses captures via index)
+          (b) Scan filesystem `<media_dir>/<gamertag>/<date>_<match_id>*.{png,mp4}` — legacy,
+              local au PC du joueur
+        Côté Go : abandonner (b) et garder uniquement (a) avec un endpoint d'upload + OCR/index.
+        À documenter pour la planification de la migration.
+
+    - decision: "Section silencieuse si désactivée ou vide"
+      why: |
+        Pas de st.info ni de message d'erreur si media_enabled=False ou si pas de média.
+        L'onglet "Media" sera donc vide visuellement (juste son label dans les tabs).
+        Cohérent : pas de bruit pour les utilisateurs qui ne jouent pas avec captures.
+
+    - decision: "Pas de chart Plotly — composants Streamlit natifs"
+      why: |
+        st.image() et st.video() rendent du HTML <img>/<video> standard. Le converter ECharts
+        n'a rien à faire ici. Côté React : composants <ImgGallery> + <VideoPlayer> avec un
+        endpoint API pour servir les médias (`/api/v1/match/{match_id}/media`).
+
+    - decision: "_render_legacy_video_selector + selectbox"
+      why: |
+        Si N vidéos pour un match : un selectbox permet de choisir laquelle visionner. Évite
+        d'afficher N players côte à côte qui consommeraient bcp de mémoire navigateur.
+        Côté React : <Tabs> ou <Carousel> avec un seul player actif à la fois.

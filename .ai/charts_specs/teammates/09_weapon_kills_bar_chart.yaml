@@ -1,0 +1,173 @@
+# =============================================================================
+# Weapon kills — barres horizontales groupées multi-joueurs
+# =============================================================================
+# 1 chart unique avec N traces Bar (1 par joueur) horizontales (orientation='h').
+# Y = noms d'armes (triés par total cumulé escouade ASC),
+# X = nombre de kills par joueur (text affiché à droite de chaque barre).
+# Bandes "zebra" alternées en arrière-plan (rect rgba blanc 0.15).
+# =============================================================================
+
+id: "teammates.09"
+title: "Kills par arme — comparatif multi-joueurs"
+page: teammates
+section: "Onglet Contributions — Armes"
+source_function: "src/ui/pages/teammates_weapons.py::render_weapon_kills_bar_chart"
+source_helpers:
+  - "src/ui/pages/teammates_weapons.py::_add_weapon_bar_traces"
+  - "src/ui/pages/teammates_weapons.py::_build_zebra_shapes"
+  - "src/ui/pages/teammates_weapons.py::_resolve_weapon_name"
+  - "src/ui/pages/teammates_weapons.py::load_weapon_kills_data"
+  - "src/ui/pages/teammates_weapons.py::_append_grenade_melee"
+  - "src/analysis/_weapon_data::resolve_weapon_display"
+  - "src/config::OKABE_ITO_PALETTE"
+fragment: false
+chart_kind: grouped_bar                                       # /!\ horizontales groupées multi-joueurs
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_weapon_kills_data(player_infos, db_path)"
+  input_dataframe:
+    player_infos: "list[(name, xuid, match_ids)] — N joueurs"
+    colors_by_name: "dict {gamertag → hex}"
+  call_args: {}
+  filters_applied: []
+  constants:
+    _GRENADE_WEAPON_ID: "ID synthétique pour grenade kills"
+    _MELEE_WEAPON_ID:   "ID synthétique pour melee kills"
+    _FILM_EXCLUDED_IDS: "set d'IDs à exclure (ex: weapons générés par scripts)"
+
+  transformations:
+    - description: "Pour chaque joueur, lecture des weapon_kills agrégés depuis shared.match_participants"
+      polars: |
+        # load_weapon_kills_data :
+        #   for name, xuid, match_ids in player_infos:
+        #     df = repo.load_weapon_kills_aggregated(xuid, match_ids)
+        #     df = _append_grenade_melee(conn, xuid, match_ids, df)  # injecte synthetics
+        #     data.append((name, df))
+      sql_duckdb: |
+        SELECT weapon_id, SUM(kills) AS total_kills
+        FROM shared.weapon_kills
+        WHERE xuid = ? AND match_id IN (?, ?, ...)
+          AND weapon_id NOT IN <_FILM_EXCLUDED_IDS>
+        GROUP BY weapon_id;
+        -- Puis grenade/melee depuis match_participants :
+        SELECT SUM(grenade_kills), SUM(melee_kills)
+        FROM shared.match_participants
+        WHERE xuid = ? AND match_id IN (?, ...);
+
+    - description: "Tri global des armes par total cumulé escouade ASC"
+      polars: |
+        all_weapons = {wid: 0 for wid in all_data}
+        for _, df in data:
+          for row in df:
+            all_weapons[row.weapon_id] += row.total_kills
+        weapons_sorted_ids = sorted(all_weapons, key=lambda w: all_weapons[w])
+        # Tri ASC : armes peu utilisées en haut, plus utilisées en bas
+
+    - description: "Résolution des noms d'arme via resolve_weapon_display"
+      polars: |
+        weapons_sorted = [_resolve_weapon_name(wid, lang) for wid in weapons_sorted_ids]
+        # Cas spéciaux : _GRENADE_WEAPON_ID → t('col_grenade_kills'),
+        #                _MELEE_WEAPON_ID   → t('col_melee')
+
+# === TRACES ===
+# 1 trace par joueur — N traces total (2 à 4)
+traces:
+  - id: "weapon_player_template"
+    chart_role: primary
+    detail: |
+      Pour chaque (name, df) dans data :
+        Bar horizontale :
+          - x = liste de kills (1 par arme, dans weapons_sorted_ids order, 0 si pas joué cette arme)
+          - y = weapons_sorted (noms d'armes)
+          - orientation = "h"
+          - marker_color = colors_by_name[name] OR OKABE_ITO_PALETTE[idx % len]
+          - text = list[str] (nombre par arme, "" si 0)
+          - textposition = "outside"
+          - textfont = {color: white, size: 11, family: "Arial Black"}
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: null
+    expression: "max(350, len(weapons_sorted) * 38)"
+    detail: "350 mini, +38px par arme. 8 armes → 304+marges = ~350. 15 armes → 570px."
+  margin: {l: 20, r: 80, t: 60, b: 20}                        # r=80 pour le text outside
+  bgcolor:
+    paper: "rgba(0, 0, 0, 0)"                                  # /!\ transparent
+    plot:  "rgba(0, 0, 0, 0)"
+  barmode: "group"                                              # /!\ groupées (1 bar par joueur par arme)
+  bargap: 0.35
+  bargroupgap: 0.08
+  showlegend: false                                              # /!\ panel flottant teammates.01 sert de légende
+
+  shapes:                                                        # zebra background
+    - description: "Pour i pair dans range(len(weapons_sorted)) : rect xref=paper, x0=0, x1=1, y0=i-0.5, y1=i+0.5, fillcolor=rgba(255,255,255,0.15), layer=below"
+
+  xaxis:
+    showgrid: false
+    visible: false                                               # axe X invisible (les valeurs sont dans le text)
+  yaxis:
+    type: "category"
+    automargin: true                                             # noms d'armes longs (ex MA40 Assault Rifle)
+
+  title:
+    text: "{{t.tm_weapon_kills_chart}}"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "data non vide (au moins 1 joueur avec weapon_kills)"
+  empty_state:
+    type: "st.caption"
+    message: "{{t.tm_weapons_no_data}}"
+    triggered_by: ["data vide après load_weapon_kills_data"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "if hints_visible(): st.caption(t('tm_weapons_chart_caption'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tm_weapon_kills_chart
+    - tm_weapons_no_data
+    - tm_weapons_chart_caption
+    - col_grenade_kills
+    - col_melee
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Bandes zebra background pour délimiter les armes"
+      why: |
+        Avec N joueurs × M armes, le chart peut être visuellement chargé. Les bandes zebra
+        (rectangles rgba blanc 0.15 alternés sur les armes pairs) aident à suivre la lane
+        de chaque arme horizontalement. Côté ECharts : utiliser `series` avec markArea
+        ou les `splitArea` du yAxis catégoriel.
+
+    - decision: "Légende désactivée + panel flottant teammates.01 sert de légende"
+      why: |
+        Cohérent avec metric_bar_charts (teammates.08). Évite la duplication de légende
+        sur chaque chart de la page. Le panel flottant teammates.01 (avec dot + nom)
+        identifie les couleurs des joueurs pour TOUS les charts.
+
+    - decision: "Tri ASC des armes par total escouade (peu utilisées en haut)"
+      why: |
+        Les armes les plus utilisées (mitraillettes basiques type AR) sont en BAS du chart,
+        les armes "spéciales" (snipers, power weapons) sont en haut. UX : balayage visuel
+        permet de voir d'abord les pics rares (high-skill weapons), puis le reste.
+        À reproduire en ECharts via `yAxis.data` ordonné explicitement.
+
+    - decision: "Bg transparent (paper et plot)"
+      why: |
+        Le chart se fond dans la page Streamlit (pas de cadre coloré). Les bandes zebra
+        seules délimitent visuellement les zones. Côté ECharts : `backgroundColor: transparent`
+        sur `option` global.

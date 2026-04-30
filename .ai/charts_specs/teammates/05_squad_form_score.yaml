@@ -1,0 +1,188 @@
+# =============================================================================
+# Form score history — courbe d'évolution de la forme
+# =============================================================================
+# Une trace ligne par membre de l'escouade (multi-player) OU une seule trace
+# avec areaStyle vert/rouge selon le signe (single-player). Hline y=0 (équilibre)
+# avec annotation. Highlight match_ids = points encerclés (session courante).
+# Mode détail (bucket_series_by_name fourni) : fusion des points intra-match
+# avec les bornes de bucket.
+# =============================================================================
+
+id: "teammates.05"
+title: "Score de forme — évolution"
+page: teammates
+section: "Onglet Synergies — Form score"
+source_function: "src/visualization/_form_score.py::plot_form_score_history"
+source_helpers:
+  - "src/visualization/_form_score.py::_add_player_line"
+  - "src/visualization/_form_score.py::_add_fill_traces"
+  - "src/visualization/_form_score.py::_merge_series_with_buckets"
+  - "src/ui/pages/teammates_map_charts.py::render_squad_form_score_section (caller)"
+fragment: false
+chart_kind: line                                                # multi-line + areaStyle conditionnel
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_form_score_per_match(series, db_path)"
+  input_dataframe:
+    series_by_name: "dict {gamertag → pl.DataFrame avec start_time + form_score + match_id}"
+    bucket_series_by_name: "dict {gamertag → pl.DataFrame buckets} | None  (mode détail)"
+    highlight_match_ids: "set[str] | None  (session courante)"
+    colors_by_name: "dict {gamertag → hex}"
+  call_args:
+    height: 280
+    lang: "fr"
+  filters_applied: []
+
+  transformations:
+    - description: "Filtrage : ne garder que les séries non vides avec form_score"
+      polars: |
+        non_empty = {n: df for n, df in series_by_name.items()
+                     if not df.is_empty() and 'form_score' in df.columns}
+
+    - description: "Pour chaque joueur : tri par start_time + extraction (x, y, match_ids)"
+      polars: |
+        for name, df in non_empty.items():
+          data = df.sort('start_time').to_dicts()
+          x_vals = [d['start_time'] for d in data]
+          y_vals = [d.get('form_score') for d in data]
+          match_ids = [str(d.get('match_id', '')) for d in data]
+
+    - description: "MODE DÉTAIL : fusion buckets intra-match + matches en courbe unique"
+      polars: |
+        if bucket_series_by_name and bucket_series_by_name.get(name):
+          x_vals, y_vals, match_ids = _merge_series_with_buckets(data, bucket_df)
+      detail: |
+        Quand l'utilisateur sélectionne une session précise pour drill-down, les buckets
+        intra-match (ex: form_score à t=2min, t=5min dans un match) sont fusionnés avec
+        les points par-match pour densifier la courbe.
+
+# === TRACES ===
+traces:
+  # Mode SINGLE-PLAYER : 1 seule trace + 2 fill traces (vert/rouge selon signe)
+  - id: "fill_positive"
+    name: ""
+    type: go.Scatter
+    chart_role: overlay
+    fill: "tozeroy"
+    fillcolor: "rgba(0, 220, 130, 0.15)"                       # vert clair pour zones positives
+    line: {width: 0}
+    showlegend: false
+    show_when: "is_single == True"
+
+  - id: "fill_negative"
+    name: ""
+    type: go.Scatter
+    chart_role: overlay
+    fill: "tozeroy"
+    fillcolor: "rgba(255, 75, 75, 0.15)"                       # rouge clair pour zones négatives
+    line: {width: 0}
+    showlegend: false
+    show_when: "is_single == True"
+
+  # 1 trace par joueur (template polymorphique)
+  - id: "player_lines_template"
+    name: "{{name}} (per-player)"
+    type: go.Scatter
+    chart_role: primary
+    color: "{{colors_by_name[name]}}"
+    mode: "lines+markers"
+    line: {width: 2}
+    marker:
+      size: 6
+      detail: "Markers ENCERCLÉS (border=3px) pour les match_ids ∈ highlight_match_ids (session courante)"
+    detail: |
+      Pour chaque joueur dans non_empty :
+        - x = start_time (datetime)
+        - y = form_score (peut être positif ou négatif autour de 0)
+        - color = colors_by_name[name] (déjà assigné)
+        - markers : taille std 6, mais bordure 3px rouge/contraste pour highlight_match_ids
+    customdata_fields: [match_id]
+    hovertemplate: "{{name}}<br>{form_score:.1f} (match {match_id[:8]}...)"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 280
+  margin: {t: 60, b: 10, l: 50, r: 20}
+  hovermode: "x unified"
+  showlegend: "{{not is_single}}"                               # FALSE en single-player, TRUE multi
+  legend:
+    orientation: h
+    yanchor: top
+    y: -0.25
+    xanchor: center
+    x: 0.5
+
+  xaxis:
+    type: "date"
+    title: ""
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.axis_form_score}}"
+
+  shapes:
+    - type: line
+      kind: hline
+      y: 0
+      line_width: 1.5
+      line_color: "rgba(255, 255, 255, 0.4)"
+      annotation:
+        text: "{{viz_t.label_balance}}"
+        position: "right"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "non_empty (au moins 1 série non vide avec form_score)"
+  empty_state:
+    type: none
+    triggered_by: ["toutes les series_by_name vides ou sans form_score → return None"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by: ["(rendu après render_squad_timeline dans onglet Synergies)"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - axis_form_score
+    - label_balance
+  t: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Mode single-player avec fill traces vert/rouge SOUS la courbe"
+      why: |
+        Quand 1 seul joueur affiché, le code ajoute 2 traces fill='tozeroy' avec areaStyle
+        vert (zone positive) et rouge (zone négative). Visuellement, ça donne une courbe
+        avec des zones colorées sous elle selon le signe — utile pour identifier rapidement
+        les phases de bonne/mauvaise forme. ECharts equivalent : 2 series line avec areaStyle
+        et data masquée selon le signe (data[i] = y if y > 0 else null pour la trace positive).
+
+    - decision: "Markers encerclés pour highlight_match_ids (session courante)"
+      why: |
+        Les matchs de la session sélectionnée par l'utilisateur reçoivent un marker plus gros
+        avec une bordure colorée. Visuellement = "voici les matchs que tu regardes en détail".
+        Côté ECharts : data[i].symbolSize et symbolBorderWidth conditionnels selon
+        match_id ∈ highlight_match_ids.
+
+    - decision: "Mode détail avec bucket_series_by_name (fusion intra-match)"
+      why: |
+        Mode avancé : si l'utilisateur veut voir l'évolution INTRA-match de form_score
+        (sub-buckets de 30s par match), les bucket_series sont fusionnés avec les points
+        par-match. Ça densifie la courbe sur la session courante uniquement. Côté Go API :
+        endpoint optionnel /form_score?bucket_resolution=intra_match.
+
+    - decision: "Hline y=0 avec annotation 'Équilibre' à droite"
+      why: |
+        La ligne d'équilibre y=0 est la référence : au-dessus = bonne forme cumulée,
+        en-dessous = mauvaise forme. L'annotation 'Équilibre' au bout droit (paper coords
+        x=1.0) est un repère permanent. ECharts : markLine avec label.position='end'.

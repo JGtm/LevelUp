@@ -1,0 +1,133 @@
+# =============================================================================
+# Médailles de l'escouade (2-4 joueurs)
+# =============================================================================
+# Section avec st.columns(N) où N = nombre de membres escouade (2 à 4),
+# chaque colonne contient un st.expander avec le nom du joueur + grille
+# de 12 médailles top via render_medals_grid (réutilisé de match_view.16).
+# =============================================================================
+
+id: "teammates.12"
+title: "Médailles de l'escouade"
+page: teammates
+section: "Onglet Contributions — Médailles"
+source_function: "src/ui/pages/_teammates_trio_helpers.py::_render_trio_medals"
+source_helpers:
+  - "(top_medals_fn injecté en callback) — souvent via load_top_medals(db_path, xuid, match_ids, top_n)"
+  - "src/ui/medals_grid.py::render_medals_grid"
+fragment: false
+chart_kind: composite_block
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "top_medals_fn(db_path, xuid, match_ids, top_n=12, db_key) par joueur"
+  input_dataframe:
+    required_fields:
+      match_ids: "list[str] — matchs partagés escouade"
+      xuid, f1_xuid, f2_xuid?, f3_xuid?: "string — XUIDs membres"
+      me_name, f1_name, f2_name?, f3_name?: "string — noms d'affichage"
+      top_medals_fn: "callback fonction"
+  call_args:
+    top_n: 12                                                  # 12 médailles par joueur
+  filters_applied: []
+
+  transformations:
+    - description: "Pour chaque membre escouade, lecture top 12 médailles sur les match_ids partagés"
+      polars: |
+        with st.spinner(t('tm_computing_medals_all')):
+            top_self = top_medals_fn(db_path, xuid, match_ids, top_n=12)
+            top_f1 = top_medals_fn(db_path, f1_xuid, match_ids, top_n=12)
+            top_f2 = top_medals_fn(db_path, f2_xuid, match_ids, top_n=12) if f2_xuid else None
+            top_f3 = top_medals_fn(db_path, f3_xuid, match_ids, top_n=12) if f3_xuid else None
+      sql_duckdb: |
+        SELECT name_id, COUNT(*) AS count
+        FROM shared.medals_earned
+        WHERE xuid = ? AND match_id IN (?, ?, ...)
+        GROUP BY name_id
+        ORDER BY count DESC
+        LIMIT 12;
+
+    - description: "Construction de la liste players_medals filtrée"
+      polars: |
+        players_medals = [(me_name, top_self), (f1_name, top_f1)]
+        if f2_xuid and f2_name and top_f2: players_medals.append((f2_name, top_f2))
+        if f3_xuid and f3_name and top_f3: players_medals.append((f3_name, top_f3))
+
+# === COMPOSITE BLOCK ===
+composite_block:
+  layout: "st.columns(N)"                                      # N = len(players_medals), 2 à 4
+  blocks_template:
+    type: "expander_with_medals_grid"
+    structure: |
+      Pour chaque (name, top) dans players_medals :
+        with col, st.expander(name, expanded=True):
+          render_medals_grid(
+            [{name_id: int(n), count: int(c)} for n, c in (top or [])],
+            cols_per_row=6
+          )
+    expander_props:
+      title: "{name}  (gamertag du joueur)"
+      expanded: true                                            # ouvert par défaut
+    medals_grid_props:
+      cols_per_row: 6                                            # /!\ 6 cols par row (vs 8 dans match_view.16)
+      max_items: 12
+
+  rendering_pattern: |
+    Layout final attendu :
+      ┌─────────────┬─────────────┬─────────────┬─────────────┐
+      │ JGtm        │ NeoSpartan  │ BlazingFury │ ShadowKnight│
+      ├─────────────┼─────────────┼─────────────┼─────────────┤
+      │ ▼ (open)    │ ▼ (open)    │ ▼ (open)    │ ▼ (open)    │
+      │ [grid 6×2]  │ [grid 6×2]  │ [grid 6×2]  │ [grid 6×2]  │
+      │ medals×12   │ medals×12   │ medals×12   │ medals×12   │
+      └─────────────┴─────────────┴─────────────┴─────────────┘
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "match_ids non vide AND top_self/f1 retournent des données"
+  empty_state:
+    type: "st.info"
+    message: "{{t.tm_no_medals_aggregate}}"
+    triggered_by:
+      - "match_ids vide → tm_no_medals_aggregate"
+      - "tous les top_* vides → expander vide (silencieux)"
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('tm_medals_all'))"
+    - "st.spinner(t('tm_computing_medals_all'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tm_medals_all
+    - tm_no_medals_aggregate
+    - tm_computing_medals_all
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "render_medals_grid réutilisé (composant partagé avec match_view.16)"
+      why: |
+        Même composant <MedalsGrid /> côté React, prop `cols_per_row` paramétrable.
+        Différence : match_view.16 = 1 grille avec 8 cols, teammates.12 = N grilles
+        avec 6 cols (espace plus contraint quand 4 colonnes en parallèle).
+
+    - decision: "Expander expanded=True par défaut"
+      why: |
+        L'utilisateur veut VOIR les médailles immédiatement, pas avoir à cliquer pour
+        développer chaque expander. expanded=True évite ce friction. Côté React :
+        composant <Accordion defaultOpen={true}>.
+
+    - decision: "Layout dynamique 2/3/4 colonnes selon nombre d'amis"
+      why: |
+        Si 1 ami sélectionné → 2 colonnes (moi + ami).
+        Si 2 amis → 3 colonnes.
+        Si 3 amis → 4 colonnes (max 4 — limité par render_trio_medals API).
+        Côté React : grid-template-columns dynamique selon length du tableau.

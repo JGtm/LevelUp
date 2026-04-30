@@ -1,0 +1,252 @@
+{
+  "grid": {
+    "left": 40,
+    "right": 20,
+    "top": 30,
+    "bottom": 60,
+    "containLabel": false
+  },
+  "tooltip": {
+    "trigger": "axis",
+    "backgroundColor": "rgba(29, 35, 40, 0.96)",
+    "borderColor": "rgba(255, 255, 255, 0.12)",
+    "textStyle": {
+      "color": "rgba(245, 248, 255, 0.92)"
+    }
+  },
+  "legend": {
+    "orient": "horizontal",
+    "top": 5,
+    "right": 0
+  },
+  "xAxis": {
+    "type": "category",
+    "splitLine": {
+      "show": true,
+      "lineStyle": {
+        "color": "rgba(255, 255, 255, 0.07)"
+      }
+    },
+    "axisLabel": {
+      "rotate": 45
+    },
+    "data": [
+      "Aquarius",
+      "Behemoth",
+      "Bazaar",
+      "Recharge",
+      "Live Fire",
+      "Streets",
+      "Catalyst",
+      "Argyle"
+    ]
+  },
+  "yAxis": {
+    "type": "value",
+    "name": "i18n:viz_t.trace_matches",
+    "splitLine": {
+      "show": true,
+      "lineStyle": {
+        "color": "rgba(255, 255, 255, 0.07)"
+      }
+    }
+  },
+  "series": [
+    {
+      "type": "bar",
+      "name": "i18n:viz_t.trace_wins",
+      "stack": "total",
+      "data": [
+        {
+          "value": 12,
+          "win_rate": 0.5454545454545454
+        },
+        {
+          "value": 8,
+          "win_rate": 0.34782608695652173
+        },
+        {
+          "value": 15,
+          "win_rate": 0.6521739130434783
+        },
+        {
+          "value": 6,
+          "win_rate": 0.35294117647058826
+        },
+        {
+          "value": 11,
+          "win_rate": 0.5238095238095238
+        },
+        {
+          "value": 9,
+          "win_rate": 0.42857142857142855
+        },
+        {
+          "value": 4,
+          "win_rate": 0.4
+        },
+        {
+          "value": 7,
+          "win_rate": 0.4117647058823529
+        }
+      ],
+      "itemStyle": {
+        "color": "#00DC82",
+        "opacity": 0.85
+      },
+      "label": {
+        "show": true,
+        "position": "inside",
+        "formatter": "[Function: params=>String(params.value)...]"
+      },
+      "tooltip": {
+        "formatter": "[Function: params=>{const cat=params.name;const val=params.data?.value??params.value;let re...]"
+      },
+      "barCategoryGap": "15%"
+    },
+    {
+      "type": "bar",
+      "name": "i18n:viz_t.trace_losses",
+      "stack": "total",
+      "data": [
+        {
+          "value": 10
+        },
+        {
+          "value": 14
+        },
+        {
+          "value": 7
+        },
+        {
+          "value": 11
+        },
+        {
+          "value": 8
+        },
+        {
+          "value": 12
+        },
+        {
+          "value": 6
+        },
+        {
+          "value": 9
+        }
+      ],
+      "itemStyle": {
+        "color": "#FF4B4B",
+        "opacity": 0.75
+      },
+      "label": {
+        "show": true,
+        "position": "inside",
+        "formatter": "[Function: params=>String(params.value)...]"
+      },
+      "tooltip": {
+        "formatter": "[Function: params=>{const cat=params.name;const val=params.data?.value??params.value;let re...]"
+      },
+      "barCategoryGap": "15%"
+    },
+    {
+      "type": "bar",
+      "name": "i18n:viz_t.trace_ties",
+      "stack": "total",
+      "data": [
+        {
+          "value": 0
+        },
+        {
+          "value": 1
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 2
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 0
+        }
+      ],
+      "itemStyle": {
+        "color": "#FFB703",
+        "opacity": 0.7
+      },
+      "label": {
+        "show": true,
+        "position": "inside",
+        "formatter": "[Function: params=>params.value>0?String(params.value):\"\"...]"
+      },
+      "tooltip": {
+        "formatter": "[Function: params=>{const cat=params.name;const val=params.data?.value??params.value;let re...]"
+      },
+      "barCategoryGap": "15%"
+    },
+    {
+      "type": "bar",
+      "name": "i18n:viz_t.trace_unfinished",
+      "stack": "total",
+      "data": [
+        {
+          "value": 0
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 1
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 0
+        },
+        {
+          "value": 1
+        }
+      ],
+      "itemStyle": {
+        "color": "#8B5CF6",
+        "opacity": 0.6
+      },
+      "label": {
+        "show": true,
+        "position": "inside",
+        "formatter": "[Function: params=>params.value>0?String(params.value):\"\"...]"
+      },
+      "tooltip": {
+        "formatter": "[Function: params=>{const cat=params.name;const val=params.data?.value??params.value;let re...]"
+      },
+      "barCategoryGap": "15%"
+    }
+  ],
+  "backgroundColor": "rgba(29, 35, 40, 1.0)",
+  "textStyle": {
+    "color": "rgba(245, 248, 255, 0.92)",
+    "fontSize": 13
+  },
+  "__meta": {
+    "spec_id": "synthesis.02",
+    "chart_kind": "stacked_bar",
+    "source_function": "src/visualization/distributions_outcomes.py::plot_stacked_outcomes_by_category",
+    "warnings": [],
+    "height": 520
+  }
+}

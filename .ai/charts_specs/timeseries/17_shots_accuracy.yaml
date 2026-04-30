@@ -1,0 +1,122 @@
+# =============================================================================
+# Shots accuracy — bars groupées tirés/touchés + line accuracy sur Y2
+# =============================================================================
+# 2 bars groupées sur Y1 (alignmentgroup='shots') :
+#   - shots_fired (amber, width 0.42)
+#   - shots_hit (green, width 0.42)
+# 1 line sur Y2 :
+#   - accuracy (violet, %) — secondary_y avec ticksuffix='%'
+# =============================================================================
+
+id: "timeseries.17"
+title: "Shots accuracy — tirs tirés/touchés + précision (Y2)"
+page: timeseries
+section: "Onglet Progression — Tirs"
+display_order_in_tab: 7
+source_function: "src/visualization/timeseries_combat.py::plot_shots_accuracy"
+source_helpers:
+  - "src/visualization/timeseries_combat.py::_add_shots_traces"
+fragment: false
+chart_kind: line                                                # bars+line via secondary_y
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  input_dataframe:
+    required_fields:
+      df: [start_time, shots_fired, shots_hit, accuracy]
+  call_args: { lang: "fr | en" }
+  filters_applied: ["filtres globaux"]
+
+  constants:
+    fired_color: "#ffb300"                                      # amber
+    hit_color: "#00e676"                                        # green
+    accuracy_color: "#ab47bc"                                   # violet
+    bar_width: 0.42
+    height: 360                                                 # HEIGHT_TIMESERIES
+
+# === TRACES ===
+traces:
+  - id: shots_fired
+    type: bar
+    y_axis: y1
+    color: "#ffb300"
+    opacity: 0.7
+    width: 0.42
+    alignmentgroup: shots
+    offsetgroup: fired
+    optional: true                                              # ssi shots_fired in columns
+    name_i18n: "{{viz_t.trace_shots_fired}}"
+  - id: shots_hit
+    type: bar
+    y_axis: y1
+    color: "#00e676"
+    opacity: 0.7
+    width: 0.42
+    alignmentgroup: shots
+    offsetgroup: hit
+    optional: true                                              # ssi shots_hit in columns
+    name_i18n: "{{viz_t.trace_shots_hit}}"
+  - id: accuracy
+    type: scatter
+    mode: lines
+    y_axis: y2                                                  # secondary
+    color: "#ab47bc"
+    line_width: 2
+    optional: true                                              # ssi accuracy in columns
+    name_i18n: "{{viz_t.trace_accuracy}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360
+  margin: { l: 40, r: 50, t: 40, b: 90 }
+  hovermode: "x unified"
+  legend: "horizontal_bottom"
+  barmode: group
+  bargap: 0.15
+  bargroupgap: 0.06
+  yaxis:
+    title_i18n: "{{viz_t.axis_shots}}"
+    rangemode: tozero
+  yaxis_secondary:
+    title_i18n: "{{viz_t.trace_accuracy}}"
+    ticksuffix: "%"
+    rangemode: tozero
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "shots_fired ∈ df.columns OR accuracy ∈ df.columns"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_shots'))"
+    - "(conditionnel sur 'shots_fired' in dff.columns dans _render_sprint7_sections)"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_shots_fired, trace_shots_hit, trace_accuracy
+    - hover_shots_fired, hover_shots_hit, hover_accuracy_pct
+    - axis_shots
+  t: ["ts_shots"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Affichage CONDITIONNEL des 3 traces"
+      why: |
+        Les colonnes shots_fired/shots_hit ne sont pas TOUJOURS présentes (data legacy ou erreur
+        sync). Le code teste `if 'shots_fired' in d.columns` pour chaque trace. Section masquée
+        entièrement (st.subheader inclus) si aucune n'est dispo.
+
+    - decision: "Accuracy sur Y2 avec ticksuffix='%'"
+      why: |
+        Échelles incompatibles : shots_fired/hit ~50-200 par match, accuracy 0-100%. secondary_y
+        permet l'affichage simultané. ECharts : `yAxisIndex: 1` + `axisLabel.formatter: "{value}%"`.

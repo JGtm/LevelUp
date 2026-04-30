@@ -1,0 +1,559 @@
+# =============================================================================
+# Timeline XP / Progression des rangs
+# =============================================================================
+# Multi-traces line+markers retraçant et projetant la carrière XP du joueur :
+#
+#  ┌─ AVANT 2023-06-20 (CAREER_XP_LAUNCH_DATE) ─┬─ DEPUIS 1er sync DB ─┬─ FUTUR
+#  │                                            │                       │
+#  │   (rien — pas d'XP avant cette date)       │                       │
+#  │                                            │                       │
+#  │       ESTIMÉ (violet pointillé)            │   RÉEL (cyan)         │   PROJECTION NORMALE (orange dash)
+#  │   ◌──◌──◌──◌──◌──◌──◌                     ●──●──●──●──●          ┄ ┄ ┄ ┄ ┄ → 9.3M XP (Héros)
+#  │                                                                       PROJECTION OPTIMISTE (vert dashdot)
+#  │                                                                    ┅ ┅ ┅ → 9.3M XP (Héros)
+#  │                                                                       (avec défis + boost ×2)
+#  └────────────────────────────────────────────┴───────────────────────┴─────────────────────────────
+#
+# Les MÊMES 4 traces existent pour chaque AMI (joueur avec DB locale et >= 2
+# snapshots). Toutes ces traces amis sont rendues `visible: legendonly` —
+# l'utilisateur les active depuis la légende. La palette `_OTHER_PLAYERS_COLORS`
+# garantit jusqu'à 6 amis distincts.
+#
+# Ligne horizontale gold = seuil rang Héros (9 319 350 XP).
+# =============================================================================
+
+id: "career.03"
+title: "Historique XP"
+page: career
+section: "Historique XP"
+source_function: "src/ui/pages/career_charts.py::_create_xp_history_chart"
+source_helpers:
+  - "src/ui/pages/career_charts.py::_add_main_xp_trace"
+  - "src/ui/pages/career_charts.py::_add_estimated_xp_trace"
+  - "src/ui/pages/career_charts.py::_add_other_player_traces"
+  - "src/ui/pages/career_charts.py::_add_single_other_player_traces"
+  - "src/ui/pages/career_charts.py::_add_single_other_player_proj_traces"
+  - "src/ui/pages/career_charts.py::_add_projection_traces"
+  - "src/ui/pages/career_charts.py::_build_main_hover_texts"
+  - "src/ui/pages/career_logic.py::CAREER_XP_LAUNCH_DATE"
+  - "src/ui/pages/career_logic.py::WEEKLY_CHALLENGE_XP"
+  - "src/ui/pages/career_logic.py::DAILY_CHALLENGE_XP"
+  - "src/ui/pages/career_logic.py::XP_BOOST_MULTIPLIER"
+  - "src/ui/pages/career_logic.py::INACTIVITY_GAP_DAYS"
+  - "src/ui/pages/career_logic.py::_compute_estimated_xp_curve"
+  - "src/ui/pages/career_logic.py::_compute_active_xp_per_day"
+  - "src/ui/pages/career_logic.py::_compute_fallback_xp_per_day"
+  - "src/ui/pages/career_logic.py::_compute_hero_projections"
+  - "src/ui/pages/career_data.py::_load_other_players_histories"
+  - "src/ui/pages/career.py::_render_xp_history"             # appelant
+fragment: false
+chart_kind: line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null                                     # à créer côté Go
+  input_dataframe:
+    required_columns: [recorded_at, xp_total, rank]
+    optional_columns: [rank_name, rank_tier]
+
+  # ────────────────────────────────────────────────────────────────────────
+  # Constantes métier (à porter telles quelles côté Go dans internal/domain/career.go)
+  # ────────────────────────────────────────────────────────────────────────
+  constants:
+    CAREER_XP_LAUNCH_DATE:
+      value: "2023-06-20"
+      type: "date"
+      why: |
+        Date d'introduction des Career Ranks (Halo Infinite update CU32, 20 juin 2023).
+        Avant cette date, l'XP n'existait PAS — tout le monde démarrait à 0.
+        Conséquence : tous les matchs avant cette date sont EXCLUS de l'estimation pré-sync,
+        sinon on attribuerait de l'XP à des matchs qui n'en généraient pas.
+
+    XP_HERO_TOTAL:
+      value: 9_319_350
+      type: int
+      why: "XP cumulée pour atteindre le rang 272 (Héros). Cible commune des 2 projections."
+
+    WEEKLY_CHALLENGE_XP:
+      value: 950
+      type: int
+      decomposition: "4 défis Normal × 50 + 3 Heroic × 100 + 3 Legendary × 150 = 950"
+      source: "Halopedia, post-CU32"
+
+    DAILY_CHALLENGE_XP:
+      value: 500
+      type: int
+      source: "Halopedia — 1 défi/jour × 500 XP"
+
+    XP_BOOST_MULTIPLIER:
+      value: 2.0
+      type: float
+      why: "Consommable Double XP en jeu — multiplie tous les gains par 2."
+
+    INACTIVITY_GAP_DAYS:
+      value: 14
+      type: int
+      why: |
+        Seuil au-delà duquel un gap entre 2 snapshots est considéré comme inactivité.
+        Les gaps > 14j sont **écrêtés à 7j** dans le calcul du rythme actif (au lieu d'être
+        ignorés ou comptés en plein) — comportement indulgent pour pas sous-estimer le rythme.
+
+  call_args:
+    is_max_rank: false                                        # si true → projections masquées
+  filters_applied: []                                         # affichage de tout l'historique
+
+  transformations:
+    # ─────── 1. Trace XP RÉEL (joueur courant) ───────
+    - description: "Lecture de l'historique XP réel depuis career_progression"
+      polars: |
+        history = repo.load_career_history()
+        # → [{recorded_at, xp_total, rank, rank_name, rank_tier}, ...]
+      sql_duckdb: |
+        SELECT recorded_at, xp_total, rank, rank_name, rank_tier
+        FROM career_progression
+        WHERE xuid = ?
+        ORDER BY recorded_at ASC;
+
+    # ─────── 2. Trace XP ESTIMÉ pré-sync (joueur courant) ───────
+    - description: "Estimation rétroactive de l'XP pour les matchs antérieurs au 1er sync"
+      polars: |
+        # _compute_estimated_xp_curve(history, pre_sync_match_dates) :
+        # 1. first_xp = history[0].xp_total
+        # 2. eligible_dates = [d for d in pre_sync_match_dates if d.date() >= 2023-06-20]
+        # 3. avg_xp_per_match = first_xp / len(eligible_dates)
+        # 4. Remontée chronologique :
+        #    current_xp = first_xp
+        #    for match_date in reversed(eligible_dates):
+        #        current_xp -= avg_xp_per_match
+        #        curve.append((match_date, max(0, current_xp)))
+        # 5. curve.reverse() + ajout du point de raccord (first_sync_at, first_xp)
+      sql_duckdb: |
+        -- Étape 1 : récupérer les dates des matchs pré-sync ÉLIGIBLES
+        WITH pre_sync AS (
+          SELECT mp.start_time AS match_date
+          FROM shared.match_participants mp
+          WHERE mp.xuid = ?
+            AND mp.start_time < ?                              -- first_sync_at
+            AND mp.start_time >= '2023-06-20'                  -- CAREER_XP_LAUNCH_DATE
+          ORDER BY mp.start_time ASC
+        ),
+        cnt AS (SELECT COUNT(*) AS n FROM pre_sync),
+        first_xp_tbl AS (
+          SELECT xp_total FROM career_progression
+          WHERE xuid = ? ORDER BY recorded_at ASC LIMIT 1
+        )
+        -- Calcul côté Go : avg = first_xp / n, puis itération en mémoire
+        SELECT match_date FROM pre_sync;
+      detail: |
+        Logique d'estimation : "L'XP au 1er snapshot a été générée par les matchs joués
+        depuis le 20/06/2023. Si le joueur a joué N matchs éligibles, on suppose une
+        contribution uniforme = first_xp / N par match." Approximation grossière mais
+        nécessaire car Halo n'expose pas l'XP par match historique.
+
+    # ─────── 3. Calcul du rythme XP par jour actif ───────
+    - description: "Calcul de xp_per_active_day pour les projections"
+      polars: |
+        xp_per_day = _compute_active_xp_per_day(history)
+        if xp_per_day <= 0:                                  # delta nul ou < 2 snapshots
+            ref_date = pre_sync_first_date or CAREER_XP_LAUNCH_DATE
+            xp_per_day = _compute_fallback_xp_per_day(xp_total, ref_date)
+        # _compute_active_xp_per_day :
+        #   xp_delta = last.xp_total - first.xp_total
+        #   total_active_days = sum(min(gap, 7) for gap in gaps)  # cf. INACTIVITY_GAP_DAYS=14 -> écrêté à 7
+        #   return xp_delta / total_active_days
+        # _compute_fallback_xp_per_day :
+        #   return xp_total / (now - first_date).days
+      sql_duckdb: |
+        -- Pseudocode Go :
+        -- 1. Récupérer history et calculer les gaps entre snapshots
+        -- 2. Si gap > 14 jours, l'écrêter à 7 (compromis indulgent)
+        -- 3. xp_per_day = (last_xp - first_xp) / total_active_days
+
+    # ─────── 4. Calcul des deux projections ───────
+    - description: "Projection NORMALE (sans boost) — rythme réel actuel"
+      polars: |
+        # Dans _compute_hero_projections :
+        normal_xp_per_day = xp_per_active_day                # rythme réel
+        normal_days = (XP_HERO_TOTAL - xp_total) / normal_xp_per_day
+        normal_days = min(normal_days, 365 * 10)             # cap 10 ans
+        # _build_curve génère des points hebdomadaires depuis last_date jusqu'à atteindre Hero
+      formula: "xp_per_active_day"
+
+    - description: "Projection OPTIMISTE (avec boosts + défis quotidiens/hebdo + ×2)"
+      polars: |
+        # challenge_xp_per_day = WEEKLY_CHALLENGE_XP / 7 + DAILY_CHALLENGE_XP
+        #                     = 950 / 7 + 500 = 135.71 + 500 ≈ 635.71 XP/jour
+        # optimistic_xp_per_day = (xp_per_active_day + challenge_xp_per_day) × XP_BOOST_MULTIPLIER
+        #                      = (rythme_réel + ~636) × 2
+        challenge_xp_per_day = WEEKLY_CHALLENGE_XP / 7.0 + DAILY_CHALLENGE_XP
+        optimistic_xp_per_day = (xp_per_active_day + challenge_xp_per_day) * XP_BOOST_MULTIPLIER
+        optimistic_days = (XP_HERO_TOTAL - xp_total) / optimistic_xp_per_day
+      formula: "(xp_per_active_day + 950/7 + 500) × 2.0"
+      detail: |
+        Optimiste = scénario "joueur engagé" qui :
+          • complète tous les défis quotidiens (+500 XP/jour)
+          • complète tous les défis hebdomadaires (+135.7 XP/jour)
+          • a TOUJOURS un boost Double XP actif (×2 sur tous les gains)
+        Très optimiste mais théoriquement atteignable.
+
+    # ─────── 5. Génération des points hebdomadaires (build_curve) ───────
+    - description: "Construction des courbes hebdomadaires (points tous les 7 jours)"
+      polars: |
+        # Pour chaque projection :
+        points = [(last_date, xp_total)]                      # point de départ
+        weeks = int(days_total / 7) + 1
+        for w in range(1, weeks + 1):
+            d = last_date + timedelta(days=w * 7)
+            xp = min(xp_total + xp_day * w * 7, XP_HERO_TOTAL)
+            points.append((d, int(xp)))
+            if xp >= XP_HERO_TOTAL: break
+        # Cap : si Hero non atteint, ajout du point d'arrivée tronqué à days_total
+
+    # ─────── 6. Chargement des AMIS (autres joueurs avec DB) ───────
+    - description: "Itération sur les profils locaux pour récupérer l'historique XP des amis"
+      polars: |
+        # _load_other_players_histories(current_xuid) :
+        # 1. profiles = load_profiles()
+        # 2. Pour chaque (gamertag, profile) du yaml de profils :
+        #    - skip si puid == current_xuid
+        #    - skip si profile.db_path n'existe pas
+        #    - hist = _load_career_history(db_path, puid)
+        #    - skip si len(hist) < 2
+        #    - calcul estimated_curve, hero_proj, optimistic_proj (idem joueur courant)
+        # 3. Retourne [{gamertag, history, estimated_curve, hero_proj, optimistic_proj}, ...]
+      sql_duckdb: |
+        -- Côté Go : nécessite un endpoint qui agrège plusieurs DBs
+        -- (une par ami) — ou une vue partagée si toutes les career_progression
+        -- sont dans une même table (cf. shared.career_progression à confirmer).
+        --
+        -- Stratégie recommandée Go :
+        --   1. Endpoint /api/v1/friends/career-histories?xuid={current_xuid}
+        --   2. Pour chaque ami avec DB : SELECT * FROM career_progression WHERE xuid = ?
+        --   3. Calcul des projections en post-process Go.
+        --   4. Retour JSON : [{gamertag, history, estimated_curve, hero_proj, optimistic_proj}, ...]
+      detail: |
+        Limitation Python actuelle : on accède au filesystem (data/players/{gt}/stats.duckdb)
+        pour CHAQUE ami via load_profiles(). Côté Go, ce n'est plus viable car le serveur
+        n'a pas accès aux DBs locales du PC client. Stratégies possibles :
+          (a) Migrer vers une table `shared.career_progression` partagée (xuid colonne).
+          (b) Synchroniser les histories d'amis via une API dédiée.
+        Décision côté architecture Go à prendre. Documenté pour ne pas l'oublier.
+
+# === TRACES ===
+# Structure de traces de la figure finale :
+#   - 4 traces CORE (joueur courant) : main, estimated, projection_normal, projection_optimistic
+#   - hline (seuil Héros)
+#   - PAR AMI (jusqu'à 6) : 4 sous-traces du même type avec couleurs distinctes,
+#     toutes visible:legendonly. Pattern documenté dans `friends_traces_template`.
+#
+# Ordre d'add_trace Plotly :
+#   1. main_xp
+#   2. estimated_xp
+#   3. (pour chaque ami i ∈ 0..N-1, dans l'ordre de _OTHER_PLAYERS_COLORS) :
+#      3.a. friend_real
+#      3.b. friend_estimated (conditionnel)
+#      3.c. friend_projection_normal (conditionnel)
+#      3.d. friend_projection_optimistic (conditionnel)
+#   4. projection_normal (joueur courant)
+#   5. projection_optimistic (joueur courant)
+#   6. hline (seuil Héros) — via add_hline, pas une trace
+traces:
+  # ────── 1. XP réel du joueur courant ──────
+  - id: "main_xp"
+    name: "{{t.career_xp_total}}"                            # "XP total"
+    type: go.Scatter
+    chart_role: primary
+    color: "rgba(51, 214, 255, 1)"                           # THEME_COLORS.accent (cyan)
+    color_token: "THEME_COLORS.accent"
+    mode: "lines+markers"
+    line: {width: 2}
+    marker: {size: 6}
+    hovertext_template: "{{t.career_rank_hover}}"            # paramétré : rank, label, xp
+    hovertext_detail: "Construit via _build_main_hover_texts (career_charts.py:34) — résout le label de rang via metadata.duckdb"
+    show_when: "always"
+
+  # ────── 2. XP estimé pré-sync du joueur courant ──────
+  - id: "estimated_xp"
+    name: "{{t.career_xp_estimated}}"                        # "XP estimé"
+    type: go.Scatter
+    chart_role: overlay
+    color: "#CE93D8"                                          # violet doux Material
+    mode: "lines"
+    line: {width: 2, dash: "dot"}
+    hovertext_template: "{{t.career_xp_estimated_hover}}"    # paramétré : date, xp
+    show_when: "estimated_curve is not None and len(estimated_curve) > 0"
+
+  # ────── 3. Projections du joueur courant ──────
+  - id: "projection_normal"                                   # PROJECTION SANS BOOST (rythme réel)
+    name: "{{t.career_projection_hero}}"
+    type: go.Scatter
+    chart_role: reference
+    color: "#FFA726"                                          # orange Plotly Material
+    mode: "lines"
+    line: {width: 2, dash: "dash"}
+    visible: "legendonly"                                     # masqué par défaut
+    hovertext_template: "{{t.career_projection_hero_hover}}"
+    show_when: "hero_projection is not None and not is_max_rank"
+    semantics: |
+      "Quand atteindrai-je Hero AU rythme actuel ?"
+      Calculée avec normal_xp_per_day = xp_per_active_day (rythme réel mesuré).
+
+  - id: "projection_optimistic"                               # PROJECTION AVEC BOOST + DÉFIS (×2)
+    name: "{{t.career_projection_optimistic}}"
+    type: go.Scatter
+    chart_role: reference
+    color: "#66BB6A"                                          # vert Plotly Material
+    mode: "lines"
+    line: {width: 2, dash: "dashdot"}
+    visible: "legendonly"
+    hovertext_template: "{{t.career_projection_optimistic_hover}}"
+    show_when: "optimistic_projection is not None and not is_max_rank"
+    semantics: |
+      "Quand atteindrai-je Hero SI je fais TOUS les défis quotidiens + hebdomadaires
+      ET j'ai un boost Double XP en permanence ?"
+      Calculée avec optimistic_xp_per_day = (xp_per_active_day + 950/7 + 500) × 2.
+
+  # ────── 4. Template des traces AMIS (jusqu'à 6 amis × 4 sous-traces = 24 traces max) ──────
+  - id: "friends_traces_template"
+    chart_role: reference
+    detail: |
+      Pour chaque ami i ∈ 0..N-1 (N <= 6), on génère 4 sous-traces avec la couleur
+      `_OTHER_PLAYERS_COLORS[i % 6]`. Toutes ces traces sont `visible: legendonly`.
+      Conditions : ami doit avoir une DB locale + >= 2 snapshots dans career_progression.
+    color_palette:                                            # _OTHER_PLAYERS_COLORS dans career_charts.py:21
+      - "#EF5350"                                             # rouge
+      - "#29B6F6"                                             # bleu clair
+      - "#FFCA28"                                             # ambre
+      - "#26C6DA"                                             # cyan
+      - "#FF7043"                                             # orange-rouge
+      - "#AB47BC"                                             # violet foncé
+    sub_traces:
+      - id: "friend_real"
+        name_template: "{{t.career_xp_other_player}}"        # paramétré : gamertag={ami}
+        mode: "lines+markers"
+        line: {width: 1.5}                                    # /!\ plus fin que main_xp (2px)
+        marker: {size: 5}
+        dash: solid
+        hovertext_template: "{{t.career_xp_other_player_hover}}"  # paramétré : gamertag, date, xp
+        visible: "legendonly"
+        show_when: "always (si l'ami passe le filtre len(hist)>=2)"
+
+      - id: "friend_estimated"
+        name_template: "{{t.career_xp_other_estimated}}"
+        mode: "lines"
+        line: {width: 1.5, dash: "dot"}
+        hovertext_template: "{{t.career_xp_other_estimated_hover}}"
+        visible: "legendonly"
+        show_when: "estimated_curve is not None"
+
+      - id: "friend_projection_normal"
+        name_template: "{{t.career_projection_other_hero}}"
+        mode: "lines"
+        line: {width: 1.5, dash: "dash"}
+        hovertext_template: "{{t.career_projection_other_hover}}"
+        visible: "legendonly"
+        show_when: "hero_proj is not None"
+
+      - id: "friend_projection_optimistic"
+        name_template: "{{t.career_projection_other_optimistic}}"
+        mode: "lines"
+        line: {width: 1.5, dash: "dashdot"}
+        hovertext_template: "{{t.career_projection_other_hover}}"
+        visible: "legendonly"
+        show_when: "optimistic_proj is not None"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 400
+    expression: null
+    branches: []
+  margin: {t: 40, b: 80, l: 60, r: 20}
+  bgcolor:
+    paper: "rgb(29, 35, 40)"
+    plot:  "rgb(29, 35, 40)"
+  font: {color: "white"}
+  showlegend: true
+  legend:
+    orientation: h
+    yanchor: top
+    y: -0.18
+    xanchor: center
+    x: 0.5
+    font: {size: 11}
+
+  xaxis:
+    type: "date"
+    title: "{{t.col_date}}"
+    gridcolor: "rgba(255,255,255,0.05)"
+
+  yaxis:
+    type: "linear"
+    title: "{{t.career_xp_total}}"
+    gridcolor: "rgba(255,255,255,0.1)"
+
+  shapes:
+    # Ligne horizontale au seuil XP Héros
+    - type: line
+      kind: hline
+      y: 9319350                                              # XP_HERO_TOTAL
+      line_width: 1
+      line_color: "rgba(255, 215, 0, 0.3)"                    # gold doux
+      line_dash: "dot"
+      opacity: 1
+      annotation:
+        text: "{{t.career_hero_threshold}}"
+        position: "top left"
+        font_size: 10
+        font_color: "rgba(255, 215, 0, 0.5)"
+      show_when: "(hero_projection or optimistic_projection) and not is_max_rank"
+
+  annotations: []
+
+  title:
+    text: "{{t.career_xp_progress}}"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(history) >= 2"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message_per_case:
+      - case: "no_history"
+        condition: "history is empty"
+        message: "{{t.career_computing}}"
+      - case: "fig_returned_none"
+        condition: "len(history) < 2"
+        message: "{{t.career_rank_history_no_data}}"
+    triggered_by:
+      - "history vide (sync XP en cours)"
+      - "len(history) < 2 — au moins 2 points requis pour tracer une ligne"
+  config: PLOTLY_CLEAN_CONFIG                                 # interactif (zoom + hover)
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  preceded_by:
+    - "st.divider()"
+  followed_by:
+    - "_render_xp_snapshots_table(history) — st.expander avec 10 dernières lignes"
+    - "if estimated_curve and hints_visible(): st.caption(t('career_xp_estimated_note'))"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    # Joueur courant
+    - career_xp_total                                         # "XP total"
+    - career_xp_estimated                                     # "XP estimé"
+    - career_xp_estimated_hover                               # paramétré (date, xp)
+    - career_xp_estimated_note
+    - career_projection_hero                                  # "Projection vers Héros (rythme actuel)"
+    - career_projection_hero_hover                            # paramétré (date, xp)
+    - career_projection_optimistic                            # "Projection optimiste (avec boosts)"
+    - career_projection_optimistic_hover                      # paramétré (date, xp)
+    - career_hero_threshold                                   # "Seuil Héros"
+    - career_rank_hover                                       # paramétré (rank, label, xp) — main_xp
+    - career_xp_progress                                      # title du chart
+
+    # Amis (paramétrés par gamertag)
+    - career_xp_other_player                                  # "XP {gamertag}"
+    - career_xp_other_player_hover                            # paramétré (gamertag, date, xp)
+    - career_xp_other_estimated                               # "XP estimé {gamertag}"
+    - career_xp_other_estimated_hover                         # paramétré (gamertag, date, xp)
+    - career_projection_other_hero                            # "Projection {gamertag}"
+    - career_projection_other_optimistic                      # "Projection optimiste {gamertag}"
+    - career_projection_other_hover                           # paramétré (gamertag, date, xp)
+
+    # États vides
+    - career_computing
+    - career_rank_history_no_data
+    - col_date
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+  legend_toggle: true                                         # CLEAN_CONFIG → clic légende toggle visibility
+  legend_strategy: |
+    Toutes les traces des AMIS sont `visible: legendonly` au chargement initial.
+    L'utilisateur les ACTIVE en cliquant sur leur entrée de légende (toggle ECharts
+    standard). Idem pour les 2 projections du joueur courant. Le rendu initial est
+    donc épuré : main_xp + estimated_xp visibles, le reste accessible à la demande.
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0.2"                            # /!\ révision après bug visuel
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Section `data.constants` ajoutée — toute la logique métier dépend de ces valeurs"
+      why: |
+        Le YAML précédent omettait CAREER_XP_LAUNCH_DATE, WEEKLY_CHALLENGE_XP, DAILY_CHALLENGE_XP,
+        XP_BOOST_MULTIPLIER, INACTIVITY_GAP_DAYS — ces 5 valeurs régissent l'ESTIMATION pré-sync
+        ET les 2 PROJECTIONS. Sans elles, le portage Go ne peut pas reproduire les courbes.
+        À mettre dans internal/domain/career.go côté Go (constantes typées).
+
+    - decision: "Sémantique des 2 projections clarifiée : 'normale' = rythme réel, 'optimiste' = avec boosts"
+      why: |
+        Première version du YAML disait juste "projection Hero" et "projection optimiste"
+        sans expliciter ce qui les différencie. Or :
+          - normale = xp_per_active_day (rythme RÉEL du joueur, mesuré entre snapshots)
+          - optimiste = (xp_per_active_day + 950/7 + 500) × 2 = +636 XP/jour (défis) + boost ×2
+        Les deux ciblent le MÊME XP_HERO_TOTAL, mais la pente diffère drastiquement.
+        Documenté dans `traces[*].semantics` pour qu'un dev Go porte les bonnes formules.
+
+    - decision: "Estimation pré-sync = répartition uniforme du first_xp sur les matchs éligibles"
+      why: |
+        Halo ne fournit pas l'XP par match historique. L'algo suppose donc que tous les matchs
+        joués depuis le 20/06/2023 ont contribué également au first_xp visible au 1er sync.
+        Approximation discutable mais transparente. La courbe estimée est donc une INFÉRENCE,
+        pas un fait — on l'affiche en pointillés violets pour signaler l'incertitude.
+
+    - decision: "INACTIVITY_GAP_DAYS = 14, gaps écrêtés à 7j (pas ignorés)"
+      why: |
+        Comportement INDULGENT pour ne pas sous-estimer le rythme du joueur. Si quelqu'un fait
+        une pause de 21 jours puis joue intensément, le rythme calculé prend 7j d'inactivité
+        (pas 21) au milieu — sinon le rythme serait artificiellement bas. À porter exactement
+        dans Go : `if gap > 14 { active_days += 7 } else { active_days += gap }`.
+
+    - decision: "4 sous-traces × N amis modélisées via `friends_traces_template`"
+      why: |
+        BUG du YAML précédent : 1 entrée `other_players` au lieu de 4 sous-traces × N amis.
+        Le code Python ajoute jusqu'à 24 traces (6 amis × 4 sous-traces), toutes legendOnly.
+        Le converter doit générer ces séries via une boucle, pas un seul append. Documenté
+        avec `sub_traces` qui liste les 4 templates (réelle / estimée / proj normale / proj
+        optimiste) avec leurs widths et dashes spécifiques (1.5px au lieu de 2px, dot/dash/dashdot).
+
+    - decision: "Limitation architecture amis : DB par fichier local"
+      why: |
+        Côté Python, `_load_other_players_histories` accède au filesystem du PC client pour
+        chaque ami (data/players/{gt}/stats.duckdb). Ne peut PAS être porté tel quel côté Go
+        serveur — le serveur n'a pas accès aux DBs locales des autres joueurs. Migration
+        recommandée : table partagée `shared.career_progression(xuid, recorded_at, xp_total, rank)`
+        ou endpoint dédié de synchro multi-joueurs. Décision architecture à trancher en amont
+        du portage de cette page.
+
+    - decision: "Toutes les traces 'amis' sont `visible: legendonly` (pas de showlegend:false)"
+      why: |
+        Distinction subtile mais importante : `legendOnly` = la trace existe et a une entrée
+        de légende, masquée par défaut, l'utilisateur peut l'activer en cliquant. `showlegend:false`
+        = la trace est rendue dans le graphique mais SANS entrée de légende du tout.
+        Le code utilise `legendOnly` partout pour les amis et projections — ECharts equivalent :
+        `legend.selected[seriesName] = false` au démarrage.
+
+    - decision: "`apply_halo_plot_style` appelé après `update_layout`"
+      why: |
+        Subtilité conservée du YAML précédent : `_create_xp_history_chart` fait
+        update_layout(...) puis apply_halo_plot_style(fig). apply_halo_plot_style ÉCRASE
+        certains réglages (paper_bgcolor, plot_bgcolor, font, gridcolor X/Y). Le rendu
+        final = thème Halo standard, donc les `gridcolor` 0.05/0.1 du YAML peuvent ne pas
+        s'appliquer en réalité. À vérifier visuellement post-portage Go (ECharts).

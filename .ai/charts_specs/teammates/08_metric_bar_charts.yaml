@@ -1,0 +1,129 @@
+# =============================================================================
+# Metric bar charts — comparaison multi-joueurs
+# =============================================================================
+# Plusieurs charts générés en boucle (1 par métrique) pour comparer les
+# membres de l'escouade :
+#   - Killing spree (max_killing_spree par match)
+#   - HS + PK combiné (Headshots + Perfect Kills empilés)
+# Chaque chart : N traces Bar (1 par joueur) avec barmode='group' + line MA(10)
+# par-dessus si show_smooth.
+# =============================================================================
+
+id: "teammates.08"
+title: "Comparaison multi-joueurs (killing spree + HS/PK)"
+page: teammates
+section: "Onglet Contributions — Metric bars"
+source_function: "src/ui/pages/teammates_charts.py::render_metric_bar_charts"
+source_helpers:
+  - "(plot_fn injecté en callback) — souvent plot_multi_metric_bars_fn"
+  - "src/visualization/_hs_pk_stacked.py::plot_hs_pk_stacked"
+  - "src/ui/pages/teammates_charts.py::_hide_legend"
+fragment: false
+chart_kind: line                                              # bars+line via converter line (multi-traces)
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_per_match_metrics(series, metrics_list)"
+  input_dataframe:
+    series: "list[(name, df_matchs)] — moi + amis"
+    colors_by_name: "dict {gamertag → hex}"
+  call_args:
+    show_smooth: true                                          # affichage des lignes MA(10)
+    metrics: [max_killing_spree]                              # /!\ liste itérée (potentiellement extensible)
+    smooth_window: 10
+  filters_applied: []
+
+  transformations:
+    - description: "Pour chaque metric_col dans metrics, génération d'un chart"
+      polars: |
+        for metric_col, label, key_prefix in [
+            ('max_killing_spree', 'Killing Spree', 'friend_spree_multi'),
+        ]:
+            fig = plot_fn(series, metric_col=metric_col, ...)
+
+    - description: "Chart combiné HS+PK (headshots + perfect kills empilés)"
+      polars: |
+        fig_combined = plot_hs_pk_stacked(series, colors=colors_by_name, ...)
+      detail: "Stack vertical : HS en bas + PK en haut, 1 paire de stack par joueur"
+
+# === TRACES ===
+# N traces par chart = N joueurs (moi + 1-3 amis = 2 à 4)
+traces:
+  - id: "player_metric_bars_template"
+    chart_role: primary
+    detail: |
+      Pour chaque (name, df) dans series :
+        - Bar verticale : x = match indices, y = metric_col value
+        - Couleur = colors_by_name[name]
+        - Si show_smooth : ligne MA(10) lissée par-dessus, même couleur
+    multi_player: true                                          # une vraie boucle dans le converter
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360
+  margin: {l: 40, r: 20, t: 40, b: 60}
+  barmode: "group"                                              # /!\ groupées (pas stacked)
+  showlegend: false                                             # /!\ legend hide via _hide_legend (le panel flottant teammates.01 la remplace)
+
+  xaxis:
+    type: "category"
+    detail: "x = numéros de matchs (#1, #2, ...)"
+  yaxis:
+    type: "linear"
+    rangemode: "tozero"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(series) >= 2 (au moins moi + 1 ami)"
+  empty_state:
+    type: "st.info"
+    message: "{{t.insufficient_data_chart}}"
+    triggered_by: ["fig is None (data insuffisante)"]
+  config: PLOTLY_CLEAN_CONFIG                                   # interactif (zoom + hover)
+  width_mode: stretch
+  preceded_by:
+    - "if hints_visible(): st.caption(t('tm_metrics_caption'))"
+    - "st.subheader(label)  # ex 'Killing Spree'"
+  followed_by:
+    - "Chart HS+PK combiné (st.subheader('HS+PK') + plot_hs_pk_stacked)"
+
+# === I18N ===
+i18n_keys:
+  viz_t: ["hs_pk_combined_title"]
+  t:
+    - tm_metrics_caption
+    - tm_killing_spree
+    - insufficient_data_chart
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Boucle for sur metrics_list — 1 chart Plotly par métrique"
+      why: |
+        Le code Python génère N charts indépendants (1 par métrique) avec st.subheader
+        + st.plotly_chart à chaque itération. Le YAML documente la STRUCTURE d'un chart
+        (toutes les métriques ont la même structure : N bars groupées par joueur + MA optionnelle).
+        Côté React : composant <MetricComparisonChart metric={...} series={...} />
+        appelé dans une .map().
+
+    - decision: "Légende masquée via _hide_legend"
+      why: |
+        Le panel légende joueurs flottant (teammates.01) sert de légende permanente pour TOUS
+        les charts de la page. Cacher les légendes individuelles évite la redondance et libère
+        de l'espace vertical. À reproduire côté React en passant `showLegend={false}` à tous
+        les charts de la page Teammates.
+
+    - decision: "Chart combiné HS+PK STACKED (séparé du killing spree)"
+      why: |
+        plot_hs_pk_stacked combine 2 métriques (Headshots + Perfect Kills) en SINGLE chart
+        avec stacking vertical. Différent des killing spree qui sont en GROUP. Documenté
+        comme un chart séparé dans `followed_by` plutôt que comme une 2e métrique de la
+        boucle (différence de barmode = stacked vs group).

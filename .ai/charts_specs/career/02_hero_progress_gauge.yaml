@@ -1,0 +1,186 @@
+# =============================================================================
+# Gauge progression vers le rang Héros (272)
+# =============================================================================
+# Identique structurellement au gauge `01_rank_progress_gauge` (réutilise
+# `_build_progress_gauge`), mais traque la progression GLOBALE vers le rang
+# 272 (XP cumulé requis = 9 319 350) plutôt que le rang suivant.
+# =============================================================================
+
+id: "career.02"
+title: "Progression vers le rang Héros"
+page: career
+section: "Progression Héros"
+source_function: "src/ui/components/career_progress_circle.py::create_hero_progress_gauge"
+source_helpers:
+  - "src/ui/components/career_progress_circle.py::_build_progress_gauge"
+  - "src/ui/components/career_progress_circle.py::_progress_bar_color"
+  - "src/ui/components/career_progress_circle.py::compute_hero_progress"
+  - "src/ui/pages/career.py::_render_hero_section"           # appelant
+fragment: false
+chart_kind: gauge
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null
+  input_dataframe:
+    required_fields:
+      hero_pct: float                                        # 0–100, calculé par compute_hero_progress
+      xp_total: int
+      xp_remaining: int
+      is_max_rank: bool
+  call_args:
+    height: 280
+  filters_applied: []
+  transformations:
+    - description: "Calcul du pourcentage Héros via compute_hero_progress"
+      polars: |
+        if is_max_rank or rank >= 272:
+          return {percentage: 100.0, xp_remaining: 0, ...}
+        percentage = min(100, (xp_total / XP_HERO_TOTAL) * 100)
+        xp_remaining = max(0, XP_HERO_TOTAL - xp_total)
+      sql_duckdb: |
+        -- Côté Go : trivial à calculer après lecture career_progression.
+        -- XP_HERO_TOTAL = 9_319_350 (constante).
+        SELECT
+          CASE
+            WHEN rank >= 272 THEN 100.0
+            ELSE ROUND(LEAST(100.0, xp_total * 100.0 / 9319350), 2)
+          END AS hero_pct,
+          GREATEST(0, 9319350 - xp_total) AS xp_remaining,
+          xp_total
+        FROM career_progression
+        WHERE xuid = ?
+        ORDER BY recorded_at DESC LIMIT 1;
+
+    - description: "Subtitle conditionnel rang max"
+      polars: |
+        if is_max_rank: subtitle = t("career_hero_rank")
+        else: subtitle = f"{xp_total:,} / 9,319,350 XP"
+
+# === GAUGE-SPECIFIC ===
+gauge:
+  value_field: "hero_pct"
+  axis_range: [0, 100]
+  dtick: 25
+  number:
+    suffix: "%"
+    font: {size: 36, color: "white"}
+  title:
+    text: "{{t.career_progression_to_hero}}"                 # "Progression vers Héros" (pas le nom du rang comme dans gauge 01)
+    subtitle: "{xp_total:,} / 9,319,350 XP"                  # OU t.career_hero_rank si is_max_rank
+    font: {size: 16, color: "white"}
+    subtitle_font: {size: 12, color: "#aaa"}
+  bar:
+    color_expression: |
+      pct >= 75 → "#00ff88"
+      pct >= 50 → "#33d6ff"
+      pct >= 25 → "#ffaa00"
+      else      → "#ff6666"
+    thickness: 0.7
+  bgcolor: "rgba(50, 60, 70, 0.3)"
+  borderwidth: 0
+  steps:
+    - {range: [0, 25],   color: "rgba(255, 102, 102, 0.08)"}
+    - {range: [25, 50],  color: "rgba(255, 170, 0, 0.08)"}
+    - {range: [50, 75],  color: "rgba(51, 214, 255, 0.08)"}
+    - {range: [75, 100], color: "rgba(0, 255, 136, 0.08)"}
+  threshold:
+    color: "white"
+    width: 2
+    thickness: 0.8
+  axis_style:
+    tickwidth: 0
+    tickcolor: "rgba(0,0,0,0)"
+    tickfont: {size: 10, color: "#666"}
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 280
+    expression: null
+    branches: []
+  margin: {t: 80, b: 20, l: 30, r: 30}
+  bgcolor:
+    paper: "rgb(29, 35, 40)"
+    plot:  "rgb(29, 35, 40)"
+  font: {color: "white"}
+  showlegend: false
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "career_data is not None"                      # toujours affiché si rang dispo
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.career_hero_progress_error}}"              # via safe_chart_render
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  layout_position:
+    container: "st.columns([3, 2])"
+    column_index: 1                                          # 2e colonne (col_hero_gauge)
+    column_label: null
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('career_progression_to_hero'))"
+    - "(4 KPI cards dans col_hero_metrics : xp_earned/xp_remaining/xp_required/rank)"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - career_progression_to_hero
+    - career_hero_rank
+    - career_metric_xp_earned
+    - career_metric_xp_remaining
+    - career_metric_xp_required
+    - career_metric_rank
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  sample_dataset: null
+  fig_dict_path: null
+  ast_extracted_fields: []
+  runtime_extracted_fields: []
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Spec dupliquée vs partagée avec career.01"
+      why: |
+        Mêmes choix que pour synthesis.01 vs synthesis.02 : duplication assumée.
+        Différences signifiantes : valeur affichée (% vs prochain rang vs % vs Héros), title.text
+        (nom du rang vs label "Progression Héros"), subtitle (current/next vs total/9.3M),
+        valeur courante (xp_for_next vs xp_remaining). Côté Go API ce seront vraisemblablement
+        deux endpoints distincts (ou un seul endpoint /career/progress qui renvoie les 2 dans
+        la même réponse). Préférer 2 YAML pour aligner sur le mapping API/visuel 1:1.
+
+    - decision: "Constante XP_HERO_TOTAL = 9 319 350 inlinée dans le SQL"
+      why: |
+        Cette valeur est officielle (XP requis pour le rang 272 d'après Halo Waypoint).
+        Le code Python l'a en constante module (`XP_HERO_TOTAL: int = 9_319_350` dans
+        career_progress_circle.py). Côté Go, à mettre dans `internal/domain/career.go`
+        comme `const XPHeroTotal = 9319350`. Ne JAMAIS dupliquer en plusieurs endroits.
+
+    - decision: "Title vs gauge 01"
+      why: |
+        Gauge 01 affiche le nom du rang (ex "Capitaine III") car on progresse vers le rang
+        suivant — l'identité du rang courant est pertinente. Gauge 02 affiche "Progression Héros"
+        (constant) car on progresse vers une cible fixe (rang 272). Ces deux titres ne sont pas
+        interchangeables — bien capturés dans `gauge.title.text` de chaque YAML.

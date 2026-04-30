@@ -1,0 +1,150 @@
+# =============================================================================
+# K/D/A distribution — KDE + rug plot + médiane
+# =============================================================================
+# Distribution univariée du KDA (kills/deaths) sur tous les matchs filtrés :
+#   - Densité gaussienne KDE (bandwidth Silverman)
+#   - Aire sous courbe en cyan transparent (fill='tozeroy')
+#   - Rug plot (markers line-ns-open) sur l'axe X = chaque match individuel
+#   - Vline médiane (orange #ffaa00, dashed) avec annotation valeur
+#   - Vline x=0 (référence, dotted blanc)
+# =============================================================================
+
+id: "timeseries.03"
+title: "K/D/A distribution — densité KDE + rug plot"
+page: timeseries
+section: "Onglet Résumé K/D/A — FDA"
+display_order_in_tab: 4
+source_function: "src/visualization/distributions.py::plot_kda_distribution"
+source_helpers: []
+fragment: false
+chart_kind: line                                               # KDE = scatter+fill, mais on garde "line" famille
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "df.drop_nulls(subset=['kda']).get_column('kda').to_numpy()"
+  input_dataframe:
+    required_fields: { dff: [kda] }
+  call_args: { lang: "fr | en" }
+  filters_applied: ["filtres globaux"]
+
+  constants:
+    silverman_factor: 1.06
+    bandwidth_min: 0.05
+    grid_size: 256
+    pad_ratio: 0.15                                            # padding 15% du span sur les bornes
+    fill_color: "rgba(53,208,255,0.18)"                        # cyan transparent 18%
+    median_color: "#ffaa00"                                    # orange
+    zero_line_color: "rgba(255,255,255,0.35)"
+
+  transformations:
+    - description: "Calcul de la bandwidth Silverman avec correction IQR"
+      polars: |
+        n = len(x)
+        std = float(np.std(x, ddof=1)) if n > 1 else 0.0
+        q25, q75 = np.percentile(x, [25, 75])
+        iqr = q75 - q25
+        sigma = min(std, iqr / 1.34) if (std > 0 and iqr > 0) else max(std, iqr / 1.34)
+        bw = max(1.06 * sigma * n**(-1/5), 0.05)
+
+    - description: "Évaluation KDE sur grille 256 points"
+      polars: |
+        grid = np.linspace(xmin - pad, xmax + pad, 256)
+        z = (grid[:, None] - x[None, :]) / bw
+        dens = np.exp(-0.5 * z**2).sum(axis=1) / (n * bw * np.sqrt(2 * np.pi))
+
+# === TRACES ===
+traces:
+  - id: kde
+    type: scatter
+    mode: lines
+    fill: tozeroy
+    fillcolor: "rgba(53,208,255,0.18)"
+    line: { color: "#41d6ff", width: 2 }
+    name_i18n: "{{viz_t.trace_density}}"
+    hovertemplate_i18n: "{{viz_t.hover_kde}}"
+
+  - id: rug_plot
+    type: scatter
+    mode: markers
+    marker:
+      symbol: "line-ns-open"
+      size: 10
+      color: "rgba(255,255,255,0.45)"
+    name_i18n: "{{viz_t.trace_matches}}"
+    y_field: "zeros"                                           # tous à y=0
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380                                                 # PLOT_CONFIG.default_height
+  margin: { l: 40, r: 20, t: 30, b: 40 }
+  xaxis:
+    title_i18n: "{{viz_t.axis_fda}}"
+    zeroline: true
+  yaxis:
+    title_i18n: "{{viz_t.trace_density_short}}"
+    rangemode: tozero
+  shapes:
+    - id: vline_zero
+      type: line
+      x_field: 0
+      line: { dash: "dot", color: "rgba(255,255,255,0.35)", width: 1 }
+    - id: vline_median
+      type: line
+      x_field: "median(x)"
+      line: { dash: "dash", color: "#ffaa00", width: 2 }
+      annotation:
+        text_i18n: "{{viz_t.annot_median}} (valeur)"
+        position: "top right"
+        font_color: "#ffaa00"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "x.size > 0"
+  empty_state:
+    type: "figure vide avec axes"
+    triggered_by: ["x.size == 0"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_fda'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_density
+    - trace_density_short
+    - trace_matches
+    - hover_kde
+    - hover_kda_rug
+    - annot_median
+    - axis_fda
+  t: ["ts_fda"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "KDE gaussien avec bandwidth Silverman + correction IQR"
+      why: |
+        Silverman (1.06σn^(-1/5)) lisse de manière robuste. Correction min(σ, IQR/1.34) gère mieux
+        les distributions asymétriques (skewed) ou multi-modales que σ seul. Bandwidth flooré à 0.05
+        pour éviter pics excessifs sur petits N. Côté React/JS : utiliser `simple-statistics` ou
+        implémenter la formule (256 points × n_matches matrix), pas trop coûteux.
+
+    - decision: "Rug plot pour visualiser chaque match individuel"
+      why: |
+        Le KDE seul lisse trop — l'utilisateur ne voit pas les outliers. Le rug plot ajoute des
+        ticks sur l'axe X pour matérialiser chaque match (markers symbol='line-ns-open' = trait
+        vertical court). Particulièrement utile sur petites tailles d'échantillon.
+
+    - decision: "Médiane plutôt que moyenne pour la vline annotation"
+      why: |
+        Le KDA est SKEWED (queue droite : quelques matchs exceptionnels avec ratio>5). La moyenne
+        serait tirée par ces outliers ; la médiane est plus représentative du "match typique".

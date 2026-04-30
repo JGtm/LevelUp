@@ -1,0 +1,204 @@
+# =============================================================================
+# Premier frag / Première mort — butterfly histogram chronologique
+# =============================================================================
+# Histogramme butterfly : tranches de 15 secondes en X. Pour chaque joueur :
+#   - barres positives (haut) = nombre de matchs où ce joueur a fait son
+#                                premier frag dans ce bin
+#   - barres négatives (bas)  = nombre de matchs où ce joueur a fait sa
+#                                première mort dans ce bin
+# N joueurs × 2 traces (frags + deaths). offsetgroup partagé via legendgroup
+# (1 entrée par joueur). Séparateurs verticaux pointillés entre chaque tranche
+# de 15 s pour aérer visuellement.
+# =============================================================================
+
+id: "teammates.17"
+title: "Premier frag / première mort — butterfly chronologique"
+page: teammates
+section: "Onglet Contributions — Tendance premier événement"
+display_order_in_tab: 7                                        # tout en bas, juste avant médailles (12)
+source_function: "src/ui/pages/teammates_charts.py::render_first_events_chart"
+source_helpers:
+  - "src/ui/pages/teammates_charts.py::_load_first_events_data"
+  - "src/ui/pages/teammates_charts.py::_compute_bin_counts"
+  - "src/ui/pages/teammates_charts.py::_format_bin_label"
+  - "src/ui/pages/teammates_charts.py::_build_first_events_fig"
+fragment: false
+chart_kind: grouped_bar
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_load_first_events_data(db_path, xuids_by_name, match_ids) → DataFrame brut"
+  input_dataframe:
+    required_fields:
+      df_brut:
+        - player_name
+        - first_kill_s            # int — secondes du premier kill du joueur dans ce match
+        - first_death_s           # int — secondes de la première mort
+  call_args:
+    bin_size_s: 15                                              # _BIN_SIZE_S
+    xuids_by_name: "dict[str, str] — escouade complète"
+    match_ids: "list[str] — matchs d'escouade"
+    colors_by_name: "dict[str, str]"
+  filters_applied: ["xuids_by_name non vide AND match_ids non vide"]
+
+  constants:
+    bin_size_s: 15
+    bin_label_format: |
+      _format_bin_label(start_s) :
+        if start_s < 60:        return f"{start_s}s"        # ex "15s", "30s"
+        else:                   return f"{m}m{s:02d}s"      # ex "1m00s", "1m15s"
+
+  transformations:
+    - description: "Chargement bulk depuis shared (1 ligne par match × joueur)"
+      sql_duckdb: |
+        WITH first_events AS (
+          SELECT match_id, xuid,
+                 MIN(CASE WHEN event_type = 'kill'  THEN time_ms END) / 1000 AS first_kill_s,
+                 MIN(CASE WHEN event_type = 'death' THEN time_ms END) / 1000 AS first_death_s
+          FROM shared.highlight_events
+          WHERE match_id IN (?, ...) AND xuid IN (?, ...)
+          GROUP BY match_id, xuid
+        )
+        SELECT * FROM first_events;
+
+    - description: "Bucketing en tranches de 15 s + comptage par joueur × bin"
+      polars: |
+        kill_counts  = _compute_bin_counts(df, player_names, "first_kill_s")
+        death_counts = _compute_bin_counts(df, player_names, "first_death_s")
+        # Returns : dict[player_name → dict[bin_label → count]]
+
+    - description: "Tri des bins par valeur de seconds (chronologique)"
+      polars: |
+        sorted_bins = sorted(all_bins, key=_bin_key)
+        # _bin_key("1m15s") = 75, _bin_key("15s") = 15
+
+    - description: "Calcul des bordures de colonnes pour les ticks (i-0.5)"
+      polars: |
+        # Tickvals positionnés aux BORDURES (entre les barres) plutôt qu'au centre
+        border_tickvals = [i - 0.5 for i in range(n_bins + 1)]
+        border_ticktext = [_format_bin_label(...) for i in range(n_bins + 1)]
+
+# === TRACES ===
+traces:
+  template_per_player_x2: true                                  # 2 traces par joueur (frag + death)
+  cardinality: "2N (N joueurs × 2)"
+  frag_trace:
+    type: bar
+    x_field: "sorted_bins"
+    y_field: "kill_counts[name]"                                # POSITIF
+    name: "{player_name}"
+    legendgroup: "{player_name}"
+    showlegend: true
+    marker_color: "{colors_by_name[player_name]}"
+    customdata: "{kill_counts}"
+    hovertemplate: '<b>{name}</b><br>%{x}<br>{{viz_t.tm_first_frag}} : %{customdata} matchs<extra></extra>'
+  death_trace:
+    type: bar
+    x_field: "sorted_bins"
+    y_field: "[-v for v in death_counts[name]]"                 # NÉGATIF
+    name: "{player_name}"
+    legendgroup: "{player_name}"
+    showlegend: false                                           # legend déjà via frag_trace
+    marker_color: "{colors_by_name[player_name]}"
+    customdata: "[-v for v in y_death]"                         # rétabli en valeur ABSOLUE pour le tooltip
+    hovertemplate: '<b>{name}</b><br>%{x}<br>{{viz_t.tm_first_death}} : %{customdata} matchs<extra></extra>'
+
+# === LAYOUT ===
+layout:
+  title: "{{t.tm_first_events_title}}"
+  barmode: group
+  height: 420
+  margin: { l: 50, r: 20, t: 60, b: 80 }
+  paper_bgcolor: "rgba(0,0,0,0)"
+  plot_bgcolor: "rgba(0,0,0,0)"
+  showlegend: false                                             # _hide_legend wrapper
+  shapes:
+    template: "vertical_separators_between_bins"
+    cardinality: "n_bins - 1"
+    spec:
+      type: line
+      x_field: "i - 0.5"                                        # entre chaque tranche
+      y0: 0
+      y1: 1
+      yref: paper
+      line: { color: "rgba(255,255,255,0.18)", width: 1, dash: "dot" }
+  yaxis:
+    tickvals: "symmetric_around_zero"                           # ex: [-6, -3, 0, 3, 6]
+    ticktext: "abs values"                                      # labels en valeur absolue
+    zeroline: true                                              # axe X en gras blanc
+  xaxis:
+    type: category
+    tickvals: "border_tickvals"                                 # ticks aux bordures
+    ticktext: "border_ticktext"
+  plot_style: "apply_halo_plot_style"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    xuids_by_name non vide
+    AND match_ids non vide
+    AND df non vide après _load_first_events_data
+    AND 'player_name' in df.columns
+  empty_state:
+    type: "st.caption"
+    triggered_by:
+      - "df vide → t('insufficient_data_chart')"
+      - "player_name absent → t('insufficient_data_chart')"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tm_first_events_title
+    - tm_first_frag
+    - tm_first_death
+    - insufficient_data_chart
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Bins de 15 s (granularité fine, lisible jusqu'à ~3-4 min)"
+      why: |
+        15 s = granularité suffisante pour distinguer "early game" (0-30s, often
+        pre-spawn-out) vs "mid game" (1-2 min). Trop fin (5s) = bruité ; trop large (60s)
+        = rate les patterns d'engagement précoce. Compromis empirique.
+
+    - decision: "Tickvals positionnés aux BORDURES (i - 0.5)"
+      why: |
+        Les bins sont des PLAGES ([0, 15s], [15s, 30s], ...) — afficher le label au centre
+        est ambigu ("15s" pourrait signifier 'à 15s' ou 'jusqu'à 15s'). En positionnant le
+        label à la BORDURE de la colonne, l'utilisateur lit clairement '15s' = 'jusqu'à 15s'.
+        Astuce Plotly : tickvals=[-0.5, 0.5, 1.5, ...].
+
+    - decision: "Butterfly avec frags positifs / morts négatives"
+      why: |
+        Cohérent avec teammates.14 (per-minute stats). Permet de comparer visuellement
+        l'agressivité (premier frag tôt) à la vulnérabilité (première mort tôt). Un joueur
+        'agressif' aura ses barres concentrées en haut à gauche ; un joueur 'défensif' les
+        aura en haut à droite.
+
+    - decision: "Séparateurs verticaux dotted entre chaque bin"
+      why: |
+        Aération visuelle pour ne pas confondre des barres adjacentes de même couleur (chez
+        des joueurs avec frags+morts proches dans le même bin). Pointillés très discrets
+        (rgba 0.18) pour ne pas surcharger.
+
+    - decision: "Une seule entrée légende par joueur (legendgroup)"
+      why: |
+        legendgroup = nom du joueur, showlegend=true SEULEMENT sur la trace frag. La trace
+        death partage le même legendgroup donc cliquer sur la légende cache/affiche les 2
+        ensemble. UX plus propre que 'JGtm (frags)' + 'JGtm (deaths)' en double.
+
+    - decision: "Yaxis tickvals symétriques autour de 0 (label en abs)"
+      why: |
+        L'axe Y va de -max_death à +max_kill, mais l'utilisateur ne doit lire QUE des
+        nombres positifs (le signe est porté par la position haut/bas). Donc les ticks
+        sont espacés régulièrement et les LABELS sont en valeur absolue : '6, 3, 0, 3, 6'.

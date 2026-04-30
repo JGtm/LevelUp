@@ -1,0 +1,263 @@
+# =============================================================================
+# Charts de performance escouade — 6 sous-charts en cascade
+# =============================================================================
+# Family chart : un st.subheader par métrique, suivi d'un Plotly chart.
+# 6 sub-charts pour une escouade de 2-4 joueurs :
+#   1. plot_trio_kills_deaths  — Combined K↑ / D↓ (butterfly horizontal time-series)
+#   2. plot_trio_metric → assists                     (line multi-joueurs)
+#   3. plot_trio_metric → ratio (KDA)                  (line)
+#   4. plot_trio_metric → accuracy (%)                  (line)
+#   5. plot_trio_metric → average_life_seconds          (line)
+#   6. plot_trio_metric → performance_score             (line)
+#
+# Tous partagent le même axe X (matchs alignés sur start_time inner-join entre
+# les N joueurs). 1 trace par joueur + smoothing rolling 7. Records personnels
+# en barres fantômes hachurées si squad_records fourni.
+# =============================================================================
+
+id: "teammates.16"
+title: "Charts de performance escouade — 6 sous-charts (KD + assists + KDA + accuracy + avg_life + performance)"
+page: teammates
+section: "Onglet Contributions — Performance escouade"
+display_order_in_tab: 4
+source_function: "src/ui/pages/_teammates_trio_helpers.py::_render_trio_performance_charts"
+source_helpers:
+  - "src/ui/pages/teammates_charts.py::render_trio_charts"
+  - "src/ui/pages/teammates_charts.py::_plot_trio_metric_chart"
+  - "src/visualization/trio.py::plot_trio_kills_deaths"
+  - "src/visualization/trio.py::plot_trio_metric"
+  - "src/visualization/trio.py::_negative_color"
+  - "src/visualization/trio.py::_OKABE_NEGATIVE_COLORS"
+  - "src/visualization/_chart_series.py::SquadRecordSet"
+  - "src/ui/pages/_teammates_trio_helpers.py::_merge_trio_dataframes"
+  - "src/ui/pages/_teammates_trio_helpers.py::_extract_player_df"
+  - "src/ui/pages/_teammates_trio_helpers.py::_use_or_compute_performance"
+fragment: true                                                  # @fragment_if_available sur render_trio_charts
+chart_kind: line                                                # famille line (subplots compatibles)
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: |
+    _merge_trio_dataframes(me_df, f1_df, f2_df) → inner-join sur match_id,
+    puis _extract_player_df pour chaque joueur (renommage f1_kills → kills, etc.)
+  input_dataframe:
+    required_fields:
+      d_self, d_f1, d_f2, d_f3:
+        - start_time
+        - kills, deaths, assists
+        - ratio                                                 # KDA
+        - accuracy                                              # %
+        - average_life_seconds
+        - time_played_seconds
+        - performance_score                                     # depuis player_match_enrichment
+        - map_name | map_ui                                     # pour tooltip
+  call_args:
+    smooth_window: 7                                            # rolling moyenne mobile
+    squad_records: "SquadRecordSet | None — records historiques par joueur"
+    colors_by_name: "dict[str, str]"
+  filters_applied: ["alignement strict des matchs entre joueurs"]
+
+  constants:
+    metrics:                                                    # ordre exact d'affichage
+      - { metric: "kills_deaths_combined", title_key: "tm_kills_deaths", chart_func: "plot_trio_kills_deaths" }
+      - { metric: "assists",               title_key: "tm_assists",      ytitle_key: "tm_assists",      key_prefix: "trio_assists",    extra: {} }
+      - { metric: "ratio",                 title_key: "tm_kda",          ytitle_key: "tm_kda",          key_prefix: "trio_ratio",      extra: { y_format: ".3f" } }
+      - { metric: "accuracy",              title_key: "tm_accuracy",     ytitle_key: null,              key_prefix: "trio_accuracy",   extra: { y_suffix: "%", y_format: ".2f" } }
+      - { metric: "average_life_seconds",  title_key: "tm_avg_life",     ytitle_key: "tm_seconds",      key_prefix: "trio_life",       extra: { y_format: ".1f" } }
+      - { metric: "performance",           title_key: "tm_performance",  ytitle_key: "tm_score",        key_prefix: "trio_performance",extra: { y_format: ".1f" } }
+    okabe_negative_palette:                                     # pour les morts dans plot_trio_kills_deaths
+      "#56B4E9": "#ff6666"                                      # cyan → saumon (L=70%)
+      "#E69F00": "#e63333"                                      # orange → rouge franc (L=55%)
+      "#009E73": "#b31c1c"                                      # vert → rouge profond (L=41%)
+      "#CC79A7": "#7a1111"                                      # mauve → rouge sombre (L=27%)
+      "#D55E00": "#500a0a"                                      # vermillon → quasi-noir (L=18%)
+
+  transformations:
+    - description: "Merge inner sur match_id de tous les DF joueurs"
+      polars: "merged = _merge_trio_dataframes(me_df, f1_df, f2_df)"
+      detail: "Ne garde QUE les matchs présents pour TOUS les joueurs"
+
+    - description: "Extraction par joueur (rename f1_kills → kills, etc.)"
+      polars: |
+        d_self = _extract_player_df(merged, None)
+        d_f1   = _extract_player_df(merged, "f1")
+        d_f2   = _extract_player_df(merged, "f2") if has_f2_cols else None
+
+    - description: "Alignement f3 (3e ami) sur les match_ids du merged"
+      polars: "d_f3_p = _align_f3_to_merged(f3_df, merged)"
+
+    - description: "Calcul/lecture du performance_score (depuis player_match_enrichment ou recalcul)"
+      polars: |
+        d = _use_or_compute_performance(d_player)
+        # Si performance_score présent → renommé en 'performance'
+        # Sinon → compute_performance_series sur le sous-ensemble local
+
+# === SUB-CHARTS ===
+sub_charts:
+  - id: kd_combined
+    chart_kind: line                                            # bars+lines en réalité
+    plot_function: plot_trio_kills_deaths
+    title_i18n: "{{t.tm_kills_deaths}}"
+    description: |
+      Butterfly time-series : kills positifs (couleur joueur), morts négatives (couleur _negative_color).
+      offsetgroup partagé kills/morts → barres alignées au même x. smoothing rolling 7.
+    config: PLOTLY_CLEAN_CONFIG
+    key_template: "trio_kd_{key_suffix}"
+
+  - id: assists
+    chart_kind: line
+    plot_function: plot_trio_metric
+    title_i18n: "{{t.tm_assists}}"
+    metric: assists
+    y_title_i18n: "{{t.tm_assists}}"
+    config: PLOTLY_CLEAN_CONFIG
+    key_template: "trio_assists_{key_suffix}"
+
+  - id: kda_ratio
+    chart_kind: line
+    plot_function: plot_trio_metric
+    title_i18n: "{{t.tm_kda}}"
+    metric: ratio
+    y_title_i18n: "{{t.tm_kda}}"
+    y_format: ".3f"
+    config: PLOTLY_CLEAN_CONFIG
+    key_template: "trio_ratio_{key_suffix}"
+
+  - id: accuracy
+    chart_kind: line
+    plot_function: plot_trio_metric
+    title_i18n: "{{t.tm_accuracy}}"
+    metric: accuracy
+    y_suffix: "%"
+    y_format: ".2f"
+    config: PLOTLY_CLEAN_CONFIG
+    key_template: "trio_accuracy_{key_suffix}"
+
+  - id: average_life
+    chart_kind: line
+    plot_function: plot_trio_metric
+    title_i18n: "{{t.tm_avg_life}}"
+    metric: average_life_seconds
+    y_title_i18n: "{{t.tm_seconds}}"
+    y_format: ".1f"
+    config: PLOTLY_CLEAN_CONFIG
+    key_template: "trio_life_{key_suffix}"
+
+  - id: performance
+    chart_kind: line
+    plot_function: plot_trio_metric
+    title_i18n: "{{t.tm_performance}}"
+    metric: performance
+    y_title_i18n: "{{t.tm_score}}"
+    y_format: ".1f"
+    config: PLOTLY_CLEAN_CONFIG
+    key_template: "trio_performance_{key_suffix}"
+
+# === TRACES (template) ===
+traces:
+  template_per_player: true
+  cardinality: "2 à 4 par sub-chart"
+  spec:
+    type: scatter
+    mode: lines+markers
+    smoothing_rolling: 7
+    line_width: 2
+    marker_size: 5
+    color: "{{colors_by_name[player_name]}}"
+    name: "{{player_name}}"
+  records_overlays:
+    type: "ghost_bars_with_pattern"
+    pattern: "/"
+    cardinality: "1 par joueur si squad_records fourni pour cette métrique"
+
+# === LAYOUT (commun aux 6 sub-charts) ===
+layout:
+  height: PLOT_CONFIG.default_height                            # ~350-400 px
+  margin: { l: 50, r: 20, t: 40, b: 60 }
+  legend: "horizontal_bottom"                                   # via get_legend_horizontal_bottom()
+  showlegend: false                                             # _hide_legend wrapper
+  xaxis:
+    type: linear                                                # 0..N (matchs alignés)
+    title: ""
+  yaxis:
+    title_per_metric: true
+  plot_style: "apply_halo_plot_style"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    merged non vide
+    AND ≥2 joueurs (me + f1 obligatoires)
+  empty_state:
+    type: "logger.warning + return silencieux"
+    triggered_by:
+      - "merged vide → 'merged vide, aucun match aligné'"
+      - "tm_trio_warning si me_df ou f1_df vide"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "1 st.subheader(t(title_key)) AVANT chaque sub-chart"
+    - "Si KD : if hints_visible(): st.caption(t('tm_kd_half_caption'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - tm_kills_deaths
+    - tm_kd_half_caption
+    - tm_assists
+    - tm_kda
+    - tm_accuracy
+    - tm_avg_life
+    - tm_seconds
+    - tm_performance
+    - tm_score
+    - tm_trio_warning
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "1 YAML parent + 6 sub_charts plutôt que 6 YAML séparés"
+      why: |
+        Cohérence : ces 6 charts sont rendus en bloc par render_trio_charts (fragment unique),
+        partagent les mêmes données upstream (merged DF), le même styling, le même
+        wrapper _hide_legend. Les séparer en 6 YAML créerait de la redondance massive.
+        Côté React : composant <TrioPerformanceCharts /> qui boucle sur la liste de métriques.
+
+    - decision: "Inner-join strict sur start_time entre joueurs"
+      why: |
+        On ne montre QUE les matchs où TOUS les joueurs étaient présents (escouade
+        complète). Sinon les courbes n'auraient pas le même nombre de points et la
+        comparaison serait biaisée. Implémenté dans plot_trio_kills_deaths via
+        join inner sur start_time.
+
+    - decision: "_negative_color() pour les morts dans le butterfly"
+      why: |
+        Mapping fixe Okabe-Ito → rouge avec luminance espacée (5 niveaux : L=70/55/41/27/18).
+        Garantit que les morts restent distinguables en deutéranopie ET sur fond sombre.
+        Si un joueur a une couleur custom non dans la palette → fallback _NEGATIVE_FALLBACK
+        ('#b31c1c').
+
+    - decision: "performance_score lu depuis enrichment, recalculé sinon"
+      why: |
+        Si player_match_enrichment.performance_score est présent (cas standard avec sync à
+        jour), on l'utilise tel quel. Sinon (cas legacy ou enrichment manquant pour un ami),
+        on recalcule via compute_performance_series sur le sous-ensemble local — mais ça
+        donne une valeur RELATIVE au sous-ensemble, pas comparable à l'historique global.
+
+    - decision: "smoothing rolling 7 par défaut"
+      why: |
+        Lisse les courbes pour visualiser des tendances sur ~7 matchs (≈ 1 session
+        normale). Configurable via show_smooth (toggle utilisateur). Si désactivé,
+        affiche les valeurs brutes.
+
+    - decision: "@fragment_if_available pour render_trio_charts"
+      why: |
+        Permet le re-rendu rapide des 6 sub-charts sans recalculer le merge upstream
+        ou recharger les données. Fallback si la version Streamlit n'a pas st.fragment.

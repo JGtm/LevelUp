@@ -1,0 +1,298 @@
+# =============================================================================
+# Tableau HTML — Top 10 meilleurs matchs
+# =============================================================================
+# Tableau scoreboard avec 8 colonnes (id match, date, mode, carte, score, K/D/A,
+# K/D, durée) + colonne badge optionnelle. Tri SQL par badge_priority puis
+# durée ASC puis ratio score DESC. Filtre : victoires uniquement (outcome=2).
+# =============================================================================
+
+id: "career.05"
+title: "Top 10 meilleurs matchs"
+page: career
+section: "Top matchs"
+source_function: "src/ui/pages/career_top_matches_render.py::_build_top_table_html"
+source_helpers:
+  - "src/ui/pages/career_top_matches_render.py::_match_id_link"
+  - "src/ui/pages/career_top_matches_render.py::_format_kda"
+  - "src/ui/pages/career_top_matches_render.py::_kd_ratio"
+  - "src/ui/pages/career_top_matches_render.py::_kd_color"
+  - "src/ui/pages/career_top_matches_render.py::_format_duration"
+  - "src/ui/pages/career_top_matches_render.py::_format_score"
+  - "src/ui/pages/career_top_matches_render.py::_format_date"
+  - "src/ui/pages/career_top_matches_render.py::_badge_html"
+  - "src/ui/pages/career_top_matches_render.py::_build_match_badge_legend_html"
+  - "src/ui/pages/career_top_matches_data.py::load_top_best_matches"
+  - "src/data/repositories/_career_encounters_repo.py::_TOP_MATCHES_SQL"
+  - "src/ui/pages/career.py::render_top_matches_section"      # appelant
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_top_best_matches(db_path, xuid, exclude_btb=False)"
+  input_dataframe:
+    required_columns:
+      - match_id
+      - start_time
+      - map_name (+ map_ui, map_name_fr, map_id pour rendu)
+      - playlist_name (+ pair_name, pair_name_fr, mode_ui, game_variant_name)
+      - outcome
+      - kills, deaths, assists, kda
+      - time_played_seconds
+      - my_team_score, enemy_team_score
+      - dominance_flag                                        # 0..5 — 0 = aucun badge
+      - had_bot_teammate                                      # filtre : exclure si TRUE
+  call_args:
+    best: true                                                # /!\ flag clé : True = victoires
+    exclude_btb: false                                        # default
+    limit: 10
+    min_match_duration_seconds: 180
+  call_args_semantics:
+    best: "True → outcome=WIN (=2), tri par badges victoires (1, 3, 5). False → outcome=LOSS (=3), badges (2, 4)"
+    exclude_btb: "Si True, exclut les matchs Big Team Battle (cf. _BTB_FILTER_SQL)"
+    min_match_duration_seconds: "180s = 3 min minimum pour qu'un match soit considéré 'valide'"
+  filters_applied: []                                         # pas de contrôle utilisateur sur ce chart
+  timezone: "user_local"
+
+  transformations:
+    - description: "Lecture de la matérialized view shared.mv_player_matches + jointure player_match_enrichment"
+      polars: |
+        # Réalisé en SQL (cf. _TOP_MATCHES_SQL). Pas de Polars sur ce chart.
+      sql_duckdb: |
+        WITH enriched AS (
+          SELECT mv.match_id, mv.start_time, mv.map_name, mv.playlist_name,
+                 mv.game_variant_name, mv.outcome, mv.kills, mv.deaths, mv.assists,
+                 mv.kda, mv.time_played_seconds, mv.my_team_score, mv.enemy_team_score,
+                 mv.my_team_ps_score, mv.enemy_team_ps_score,
+                 COALESCE(pme.dominance_flag, 0) AS dominance_flag,
+                 COALESCE(pme.had_bot_teammate, FALSE) AS had_bot_teammate
+          FROM shared.mv_player_matches mv
+          LEFT JOIN player_match_enrichment pme ON pme.match_id = mv.match_id
+          WHERE mv.xuid = ?
+            AND mv.outcome IN (2, 3)                          -- WIN ou LOSS
+            AND COALESCE(mv.time_played_seconds, 0) >= 180
+            AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE -- pas de bot coéquipier
+            AND COALESCE(mv.is_firefight, FALSE) = FALSE
+            AND mv.my_team_score IS NOT NULL
+            AND mv.enemy_team_score IS NOT NULL
+            -- {btb_filter}                                    -- cf. _BTB_FILTER_SQL
+        )
+        SELECT * FROM enriched
+        WHERE outcome = 2                                     -- WIN pour best=True
+        ORDER BY
+          -- {badge_priority} DESC,                            -- cf. _BADGE_PRIORITY_EXPR pour best=True
+          time_played_seconds ASC,                            -- match court = perf intense
+          ABS(COALESCE(my_team_score, 0) - COALESCE(enemy_team_score, 0))
+            / NULLIF(GREATEST(COALESCE(my_team_score, 0), COALESCE(enemy_team_score, 0)), 0) DESC
+        LIMIT 10;
+
+    - description: "Détection de la présence de la colonne badge (au moins 1 match avec dominance_flag != 0)"
+      polars: |
+        show_badge_col = any(_badge_html(row.dominance_flag, best=True) for row in rows)
+      sql_duckdb: "-- Côté Go : check sur les 10 lignes après SELECT"
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes:
+    wrapper: "os-table-wrap os-table-wrap--map-hover"
+    table: "os-table os-scoreboard"
+    header_team: "os-sb-team"                                 # titre colspan
+    header_cell: "os-sb-th"
+    row: "os-sb-row"
+    cell: "os-sb-td"
+  inline_styles:
+    table: "width:100%"
+
+  caption:
+    text: "{{t.career_top_best_title}}"                       # "Top 10 meilleurs matchs"
+    colspan: "auto"                                           # = nombre total de colonnes (8 ou 9 selon badge)
+
+  columns:
+    - id: match_id
+      header: "{{t.career_top_col_match_id}}"
+      source_field: match_id
+      formatter: "match_id_link(match_id, gamertag) — <a href='/?page=Explorer&match_id=...' target='_self'>{8 chars}…</a>"
+      style: "font-family: monospace; font-size: 0.75em; color: var(--accent, #33d6ff)"
+
+    - id: date
+      header: "{{t.career_top_col_date}}"
+      source_field: start_time
+      formatter: "_format_date — datetime.strftime('%d/%m/%Y %H:%M')"
+      style: "white-space: nowrap"
+
+    - id: mode
+      header: "{{t.career_top_col_mode}}"
+      source_field: "mode_ui | pair_name_fr | translate_pair_name(pair_name) | game_variant_name | playlist_name | '—'"
+      formatter: "html.escape(...)"
+      detail: "Cascade de fallback en 5 niveaux pour résoudre le label de mode"
+
+    - id: map
+      header: "{{t.career_top_col_map}}"
+      source_field: "map_ui | map_name_fr | map_name"
+      formatter: "map_name_cell_html(map_display, map_id) — composant complexe avec image carte au hover"
+      detail: |
+        Renvoie un <td> entier avec image hover-only (lazy-load). Source :
+        src/ui/pages/win_loss_table_style.py::map_name_cell_html
+
+    - id: score
+      header: "{{t.career_top_col_score}}"
+      source_field: "{my_team_score} — {enemy_team_score}"
+      formatter: "_format_score — '{my} — {enemy}'"
+      style: "font-weight: 600"
+
+    - id: kda
+      header: "{{t.career_top_col_kda}}"
+      source_field: "{kills}/{deaths}/{assists}"
+      formatter: "_format_kda — '{k}/{d}/{a}'"
+
+    - id: kd_ratio
+      header: "{{t.career_top_col_kd}}"
+      source_field: kills, deaths
+      formatter: "_kd_ratio — k/d arrondi 2 décimales, '—' si k=0 et d=0, '{k:.1f}' si d=0 et k>0"
+      conditional_style:
+        rule: "_kd_color"
+        details: |
+          if d == 0 and k > 0: color = "#3DFFB5" (cyan-vert)
+          elif ratio >= 1.5:    color = "#3DFFB5"
+          elif ratio <= 0.67:   color = "#FF4D6D" (rouge)
+          else:                 color = "" (default)
+      style_when_colored: "color: {color}; font-weight: 700"
+
+    - id: duration
+      header: "{{t.career_top_col_duration}}"
+      source_field: time_played_seconds
+      formatter: "_format_duration — '{m}:{s:02d}' ou '—' si <= 0"
+
+    - id: badge                                                # /!\ colonne CONDITIONNELLE
+      header: ""                                               # pas de titre
+      source_field: dominance_flag
+      formatter: "_badge_html(dom_flag, best=True)"
+      show_when: "any row has dominance_flag in (1, 3, 5)"     # _BEST_FLAGS
+      detail: |
+        Si la colonne est cachée, headers = 8 cols ; sinon 9. col_count s'ajuste pour le caption colspan.
+
+  badges_definition:                                          # config _BADGE_CONFIGS pour best=True
+    - flag: 1
+      key: "career_top_badge_domination"                      # i18n
+      label_fr: "DOMINATION"                                  # littéral du screenshot
+      bg: "#2e7d32"
+      fg: "#e8f5e9"
+      legend_key: "career_top_legend_domination"
+    - flag: 3
+      key: "career_top_badge_remontada"
+      bg: "#1565c0"
+      fg: "#e3f2fd"
+      legend_key: "career_top_legend_remontada"
+    - flag: 5
+      key: "career_top_badge_contre_remontada"
+      bg: "#00695c"
+      fg: "#e0f2f1"
+      legend_key: "career_top_legend_contre_remontada"
+
+  legend:
+    enabled: true
+    builder: "_build_match_badge_legend_html(best=True)"
+    placement: "below_table"
+    style: "font-size: 0.78em; opacity: 0.72; margin-top: 4px; line-height: 1.8"
+
+  badge_html_template: |
+    <span style="padding:1px 6px;border-radius:3px;font-size:0.75em;
+                 font-weight:600;background:{bg};color:{fg}">{label}</span>
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "rows is not None AND len(rows) > 0"
+  hidden_when: null
+  empty_state:
+    type: "none"                                              # le tableau est juste vide (pas de st.info)
+    message: null
+    triggered_by:
+      - "load_top_best_matches retourne []"
+  config: null                                                # pas un chart Plotly — pas de config
+  width_mode: "stretch"
+  filters_widgets: []
+  fragment_isolation: false
+  preceded_by:
+    - "st.divider()"
+    - "(rendu via st.markdown(table_html, unsafe_allow_html=True) dans render_top_matches_section)"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - career_top_best_title
+    - career_top_col_match_id
+    - career_top_col_date
+    - career_top_col_mode
+    - career_top_col_map
+    - career_top_col_score
+    - career_top_col_kda
+    - career_top_col_kd
+    - career_top_col_duration
+    - career_top_badge_domination
+    - career_top_badge_remontada
+    - career_top_badge_contre_remontada
+    - career_top_legend_domination
+    - career_top_legend_remontada
+    - career_top_legend_contre_remontada
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: "page=Explorer&match_id={match_id}&gamertag={gamertag}"  # via _match_id_link
+  drilldown_chain: ["match_view"]
+  session_state_writes: []
+  hover_effects:
+    - target: "<td> with map cell"
+      effect: "Affiche l'image de la carte au survol (CSS class 'os-table-wrap--map-hover')"
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "`chart_kind: table_html` (nouveau) — rendu HTML pur, pas ECharts"
+      why: |
+        ECharts ne couvre pas les tableaux HTML. Le converter doit produire un objet décrivant
+        la structure (colonnes, formatters, badges, CSS) que le renderer HTML mock convertit
+        en `<table>` directement (pas `setOption()`). Côté React/Go : composant `<TopMatchesTable>`
+        custom plutôt qu'un wrapper ECharts.
+
+    - decision: "Documentation des formatters comme noms de fonctions Python"
+      why: |
+        Les formatters Python (`_format_kda`, `_kd_ratio`, etc.) ont une logique non triviale
+        (fallbacks, couleurs conditionnelles, html.escape). Plutôt que de tenter de les exprimer
+        en pseudo-code, on documente le NOM Python et on attend que le portage Go ré-implémente
+        la même logique. Le YAML détaille la sémantique en `details` quand pertinent.
+
+    - decision: "Colonne badge conditionnelle (show_when sur ligne max)"
+      why: |
+        Le code n'affiche pas la 9ème colonne badge si AUCUN match du top 10 n'a de dominance_flag
+        non nul. Évite une colonne vide. Côté API Go : renvoyer un champ `has_badges: bool` à
+        la racine de la réponse pour que le frontend pré-décide d'afficher la colonne.
+
+    - decision: "Cascade de fallback pour le label de mode (5 niveaux)"
+      why: |
+        `mode_ui | pair_name_fr | translate_pair_name(pair_name) | game_variant_name | playlist_name`
+        — chaque match peut avoir certaines colonnes nulles selon l'âge du sync. La cascade
+        garantit qu'on affiche toujours quelque chose. À porter côté Go avec un COALESCE
+        SQL ou une logique applicative équivalente.
+
+    - decision: "_match_id_link utilise un fragment URL avec target='_self'"
+      why: |
+        Le lien clique navigue vers /?page=Explorer&match_id=... DANS le même onglet (target='_self').
+        Côté React, équivalent : <Link to={`/explorer?match_id=${id}`}> + accessibility focus
+        management. Pas de window.open externe.
+
+    - decision: "Spec quasi-identique à career.06 (worst) mais YAML séparé"
+      why: |
+        Les deux YAML 05 et 06 partagent la fonction productrice `_build_top_table_html` mais
+        diffèrent par : `best` (True/False), titre (best vs worst), badges admis (1,3,5 vs 2,4),
+        outcome filtré (WIN vs LOSS). Spec dupliquée pour permettre 2 endpoints API distincts
+        et faciliter la lecture isolée.

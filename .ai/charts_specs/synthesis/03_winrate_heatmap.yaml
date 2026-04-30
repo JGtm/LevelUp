@@ -1,0 +1,356 @@
+# =============================================================================
+# Heatmap Win Rate par jour × heure
+# =============================================================================
+# Grille 7 jours (Lun→Dim, Lun en haut) × 24 heures (00h→23h).
+# Couleur : gradient rouge (0 %) → ambre (50 %) → vert (100 %).
+# Texte par cellule : nombre de matchs (masqué si 0).
+# Cellules avec total < min_matches → masquées (NaN).
+# =============================================================================
+
+id: "synthesis.03"
+title: "Heatmap Win Rate jour × heure"
+page: synthesis
+section: "Win Rate temporel"
+source_function: "src/visualization/distributions_outcomes.py::plot_win_ratio_heatmap"
+source_helpers:
+  - "src/visualization/_distributions_outcomes_helpers.py::ensure_datetime"
+  - "src/visualization/theme.py::apply_halo_plot_style"
+  - "src/ui/pages/win_loss.py::_render_heatmap_section"   # appelant
+fragment: true                                       # @fragment_if_available sur _render_heatmap_section
+chart_kind: "heatmap"
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: null                             # à créer côté Go
+  input_dataframe:
+    required_columns: [match_id, start_time, outcome]
+    polars_dtype_hints:
+      start_time: "Datetime[us]"                     # ensure_datetime convertit String→Datetime si besoin
+      outcome: "Int64"
+  call_args:
+    min_matches: 1                                   # /!\ override par le caller (default fonction = 2)
+                                                      # cf. win_loss.py:184 plot_win_ratio_heatmap(dff, min_matches=1, lang=...)
+  call_args_semantics:
+    min_matches: |
+      Cellules (jour, heure) avec total < min_matches → win_rate = NaN (masqué).
+      Sur cette page Synthèse, seuil à 1 = on affiche dès qu'il y a au moins 1 match.
+  filters_applied: [date_range, period_selector]
+  timezone: "user_local"                             # CRITIQUE : day_of_week et hour dépendent de la TZ
+                                                      # Côté Python, get_tz_name() est mentionné dans la caption ;
+                                                      # le code utilise directement dt.weekday() / dt.hour() sur le
+                                                      # start_time stocké, qui doit donc être en heure locale du joueur.
+
+  transformations:
+    - description: "Drop des lignes sans start_time ni outcome"
+      polars: 'd = ensure_polars(df).drop_nulls(subset=["start_time", "outcome"])'
+      sql_duckdb: "WHERE start_time IS NOT NULL AND outcome IS NOT NULL"
+
+    - description: "Conversion start_time en Datetime si nécessaire (helper ensure_datetime)"
+      polars: |
+        if dtype == pl.String:
+          d = d.with_columns(pl.col("start_time").str.to_datetime(strict=False))
+      sql_duckdb: "-- DuckDB stocke déjà start_time en TIMESTAMP, pas de conversion nécessaire"
+
+    - description: "Extraction (day_of_week, hour) en heure locale + flag is_win"
+      polars: |
+        d.with_columns(
+          (pl.col("start_time").dt.weekday() - 1).cast(pl.Int32).alias("day_of_week"),  # 0=Lun, 6=Dim
+          pl.col("start_time").dt.hour().cast(pl.Int32).alias("hour"),                   # 0..23
+          (pl.col("outcome") == OUTCOME_CODES.WIN).cast(pl.Int32).alias("is_win"),
+        )
+      sql_duckdb: |
+        SELECT
+          (EXTRACT(DOW FROM start_time)::INT + 6) % 7 AS day_of_week,  -- DuckDB DOW: 0=Sun..6=Sat → on shift pour 0=Lun
+          EXTRACT(HOUR FROM start_time)::INT          AS hour,
+          CASE WHEN outcome = 2 THEN 1 ELSE 0 END     AS is_win,
+          match_id
+        FROM match_participants
+        WHERE xuid = ? AND start_time >= ?
+          AND start_time IS NOT NULL AND outcome IS NOT NULL;
+      detail: |
+        Polars `dt.weekday()` retourne 1=Lun..7=Dim (ISO 8601), d'où le `-1` pour aboutir à 0=Lun.
+        DuckDB `EXTRACT(DOW)` retourne 0=Dim..6=Sam ; le shift `(dow + 6) % 7` aligne sur 0=Lun.
+
+    - description: "Agrégation wins / total par (day_of_week, hour)"
+      polars: |
+        agg = d.group_by("day_of_week", "hour").agg(
+          pl.col("is_win").sum().alias("wins"),
+          pl.col("match_id").count().alias("total"),
+        )
+      sql_duckdb: |
+        SELECT day_of_week, hour, SUM(is_win) AS wins, COUNT(*) AS total
+        FROM (... CTE de la transformation précédente ...)
+        GROUP BY day_of_week, hour;
+
+    - description: "Calcul win_rate (avec masking si total < min_matches)"
+      polars: |
+        agg = agg.with_columns(
+          (pl.col("wins").cast(pl.Float64) / pl.col("total")).fill_null(0.0).alias("win_rate"),
+        )
+        agg = agg.with_columns(
+          pl.when(pl.col("total") < min_matches).then(None)
+            .otherwise(pl.col("win_rate")).alias("win_rate"),
+        )
+      sql_duckdb: |
+        -- Wrapper du SELECT avec CASE de masking :
+        SELECT day_of_week, hour, wins, total,
+          CASE WHEN total < ? THEN NULL          -- min_matches
+               ELSE wins * 1.0 / NULLIF(total, 0)
+          END AS win_rate
+        FROM (... agrégation ...);
+
+    - description: "Si tous les win_rate sont NULL → return None (caller affiche st.info)"
+      polars: 'if agg["win_rate"].drop_nulls().is_empty(): return None'
+      sql_duckdb: "-- Côté Go : vérifier qu'au moins une ligne a win_rate IS NOT NULL"
+
+    - description: "Reconstruction de la grille complète 7×24 (cellules manquantes ajoutées avec total=0)"
+      polars: |
+        full_grid = pl.DataFrame({
+          "day_of_week": [d for d in range(7) for _ in range(24)],
+          "hour":        [h for _ in range(7) for h in range(24)],
+        })
+        merged = full_grid.join(agg, on=["day_of_week", "hour"], how="left").sort("day_of_week", "hour")
+        merged = merged.with_columns(pl.col("total").fill_null(0).cast(pl.Int64))
+      sql_duckdb: |
+        -- Côté Go : utiliser un CROSS JOIN avec les listes générées
+        WITH grid AS (
+          SELECT d AS day_of_week, h AS hour
+          FROM generate_series(0, 6) AS d_t(d)
+          CROSS JOIN generate_series(0, 23) AS h_t(h)
+        )
+        SELECT g.day_of_week, g.hour,
+               COALESCE(a.win_rate, NULL) AS win_rate,    -- NULL si masqué ou cellule absente
+               COALESCE(a.total, 0)        AS total
+        FROM grid g
+        LEFT JOIN (... agrégation ...) a USING (day_of_week, hour)
+        ORDER BY day_of_week, hour;
+      detail: |
+        Important pour ECharts : la heatmap doit recevoir TOUTES les cellules (7×24=168), même
+        celles à 0, sinon les cases manquantes sont laissées vides au lieu d'apparaître en
+        gris/transparent. C'est aussi cohérent avec Plotly qui reçoit une matrice 7×24 reshape.
+
+    - description: "Reshape en matrice 7×24 (numpy)"
+      polars: |
+        win_rate_vals = merged["win_rate"].to_numpy().reshape(7, 24)
+        count_vals    = merged["total"].to_numpy().reshape(7, 24).astype(int)
+      sql_duckdb: "-- Côté ECharts : la liste plate [[d, h, wr, count], ...] est suffisante (pas de reshape)"
+
+    - description: "Construction de la matrice de texte (count, masqué si 0)"
+      polars: |
+        text_matrix = count_vals.astype(str)
+        text_matrix[count_vals == 0] = ""
+      sql_duckdb: "-- Côté ECharts : conditionnel dans label.formatter, cf. heatmap.cell_label"
+
+    - description: "Si tous les win_rate sont NaN après reshape → return None"
+      polars: "if np.all(np.isnan(win_rate_vals.astype(float))): return None"
+      sql_duckdb: "-- déjà vérifié plus haut"
+
+# === HEATMAP-SPECIFIC ===
+heatmap:
+  z_field: "win_rate"
+  x_field: "hour"
+  y_field: "day_of_week"
+  z_range: [0.0, 1.0]                                # zmin=0, zmax=1
+  colorscale:
+    type: linear
+    stops:
+      - {value: 0.0, color: "{{palette.red}}"}      # 0 % → rouge
+      - {value: 0.5, color: "{{palette.amber}}"}    # 50 % → ambre
+      - {value: 1.0, color: "{{palette.green}}"}    # 100 % → vert
+  nan_treatment: "mask"                              # cellules win_rate=NaN → transparentes (count<min_matches ou cellule absente)
+  cell_label:
+    source: "count"                                  # text_matrix = count_vals.astype(str)
+    empty_when: "count == 0"                         # masquage explicite des 0
+    font_size: 10                                    # textfont={"size": 10}
+  colorbar:
+    title: "{{viz_t.hover_win_rate}}"                # "Win Rate" / "Win Rate"
+    tickformat: ".0%"                                 # affichage 0%, 25%, 50%, 75%, 100%
+    visible: true
+
+  # Labels d'axes (calculés côté Python selon lang ; côté Go API, idem ou via i18n côté client)
+  x_labels:
+    type: "literal"
+    values: ["00h", "01h", "02h", "03h", "04h", "05h", "06h", "07h", "08h", "09h", "10h", "11h",
+             "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"]
+    format: "%02dh"                                  # f"{h:02d}h"
+  y_labels:
+    type: "i18n_per_lang"
+    values_fr: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+    values_en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+# === TRACES (la heatmap est traitée comme une trace unique) ===
+traces:
+  - id: "winrate_heatmap"
+    name: "winrate"                                  # nom interne ; pas de légende sur les heatmaps
+    type: go.Heatmap
+    chart_role: primary
+    color: null                                       # géré par colorscale (cf. heatmap.colorscale)
+    customdata:
+      fields: [count]
+      schema:
+        count: "int (nombre de matchs dans la cellule)"
+    text_data:
+      source: "count"
+      template: "{value}"
+      empty_when: "count == 0"
+      position: null                                  # texttemplate="%{text}" overlay
+      font_size: 10
+    hovertemplate: "%{y} %{x}<br>{{viz_t.hover_win_rate}}: %{z:.1%}<br>{{viz_t.trace_matches}}: %{text}<extra></extra>"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 360                                        # PLOT_CONFIG.default_height
+    expression: null
+    branches: []
+  margin: {l: 60, r: 20, t: 30, b: 40}              # /!\ l=60 plus large pour titres jours (Lun, Mar...)
+  barmode: null
+  bargap: null
+  hovermode: null
+  showlegend: false                                  # heatmaps n'ont pas de légende
+  legend: null
+
+  xaxis:
+    type: "category"
+    title: "{{viz_t.axis_hour_label}}"               # update_xaxes(title_text=axis_hour_label, side="bottom")
+    tickformat: null
+    range: null
+    autorange: null
+    automargin: false
+    showticklabels: true
+    side: "bottom"
+
+  yaxis:
+    type: "category"
+    title: "{{viz_t.axis_day_label}}"                # update_yaxes(title_text=axis_day_label, autorange="reversed")
+    range: null
+    autorange: "reversed"                            # Lun en HAUT (CRITIQUE — équivalent ECharts yAxis.inverse:true)
+    automargin: false
+
+  shapes: []
+  annotations: []
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "'start_time' in dff.columns AND 'outcome' in dff.columns"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message_per_case:                                # le caller distingue deux cas
+      - case: "missing_columns"
+        condition: "start_time OR outcome absents"
+        message: "{{t.missing_time_data}}"
+      - case: "insufficient_data"
+        condition: "plot_win_ratio_heatmap retourne None"
+        message: "{{t.insufficient_data_chart}}"
+    triggered_by:
+      - "start_time absent"
+      - "outcome absent"
+      - "df vide après drop_nulls"
+      - "tous les win_rate sont NULL après filtre min_matches"
+      - "matrice 7×24 entièrement NaN après reshape"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: "stretch"
+  filters_widgets: [synthesis_period]
+  fragment_isolation: true
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_heatmap_title'))"
+    - "if hints_visible(): st.caption(t('wl_heatmap_caption', tz=get_tz_name()))"
+
+# === CONTROLS ===
+controls:
+  - id: "synthesis_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_page"
+    scope: "page"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Filtre dff en amont sur start_time. Affecte tous les charts."
+    api_param_mapping:
+      query_param: "period"
+      values_passthrough: true
+    requires_refetch: false
+    affects_charts: ["synthesis.01", "synthesis.02", "synthesis.03", "synthesis.04", "synthesis.05"]
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - hover_win_rate                                 # "Win Rate" / "Win Rate"
+    - trace_matches                                  # "Matchs" / "Matches"
+    - axis_hour_label                                # "Heure" / "Hour"
+    - axis_day_label                                 # "Jour" / "Day"
+  t:
+    - wl_heatmap_title
+    - wl_heatmap_caption                             # paramétré : tz=get_tz_name()
+    - missing_time_data
+    - insufficient_data_chart
+    - encounters_period_label
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: null
+  drilldown_chain: []
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  sample_dataset: null
+  fig_dict_path: null
+  ast_extracted_fields: []
+  runtime_extracted_fields: []
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "`timezone: user_local` documenté explicitement"
+      why: |
+        C'est LE détail qui peut casser silencieusement la heatmap après portage.
+        Si l'API Go renvoie start_time en UTC mais que le frontend ne le convertit pas en local,
+        un joueur français qui joue à 22h verra ses matchs comptabilisés à 21h (UTC) — toute la
+        heatmap est décalée d'1h en hiver, 2h en été.
+        Le code Python s'appuie sur la TZ du système (pas de conversion explicite). Pour Go,
+        deux options : (a) stocker start_time en local, (b) convertir au moment du SELECT en
+        utilisant la TZ du joueur (depuis settings utilisateur). À trancher lors du design.
+
+    - decision: "Reconstruction de la grille complète 7×24 documentée"
+      why: |
+        Plotly et ECharts ne gèrent pas les cellules manquantes de la même façon. Plotly comble
+        avec NaN, ECharts laisse vide. Pour avoir un rendu IDENTIQUE, le backend Go doit générer
+        les 168 cellules même si certaines sont à count=0. C'est ce que fait le `full_grid + join`
+        Polars ; côté SQL DuckDB on le fait via `generate_series CROSS JOIN`.
+
+    - decision: "Décalage day_of_week entre Polars et DuckDB documenté"
+      why: |
+        Polars `dt.weekday()` (ISO : 1=Lun..7=Dim, je soustrais 1 pour 0=Lun) ≠ DuckDB EXTRACT(DOW)
+        (0=Dim..6=Sam). J'ai mis la formule de shift `(dow + 6) % 7` dans le SQL pour aligner
+        sur 0=Lun. Sans cette correction, le portage Go afficherait une heatmap décalée d'1 jour
+        par rapport au Python (Lun et Dim échangés visuellement).
+
+    - decision: "min_matches=1 explicité dans call_args"
+      why: |
+        Le default de la fonction `plot_win_ratio_heatmap` est min_matches=2, mais le caller
+        `_render_heatmap_section` passe min_matches=1. Différence importante : avec 2, les
+        cellules avec un seul match ont un win_rate (0% ou 100%) qui peut être trompeur ;
+        avec 1, on les affiche quand même. La page Synthèse a choisi la version "tout afficher".
+
+    - decision: "Heatmap traitée comme une seule trace dans le YAML"
+      why: |
+        Plotly met la heatmap dans `fig.data` comme un go.Heatmap unique. ECharts l'a aussi en
+        une seule `series`. Mais elle a des champs spécifiques (colorscale, z_range, cell_label,
+        colorbar) qui justifient une section `heatmap:` dédiée dans le YAML, en plus de la
+        section `traces[]` minimale (pour rester cohérent avec les autres charts).
+
+    - decision: "Deux cas d'empty_state distincts (missing_columns vs insufficient_data)"
+      why: |
+        Le caller win_loss.py:181-189 distingue deux messages différents selon la cause.
+        Documenter les deux permet au frontend Go de choisir le bon message. Dans le YAML
+        j'utilise un champ `message_per_case` (extension ad-hoc) plutôt que `message` simple.

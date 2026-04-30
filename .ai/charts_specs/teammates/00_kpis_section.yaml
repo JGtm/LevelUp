@@ -1,0 +1,58 @@
+# =============================================================================
+# Teammates page · Section 0 · KPI Section (mes stats)
+# =============================================================================
+# Wrapper réutilisant timeseries.00 — appelée par teammates.py:235 sous le
+# subheader 'tm_my_stats_section'. Affiche les 8 KPI cards stylées avec trends
+# vs all-time, identique à la version Timeseries.
+# =============================================================================
+
+id: "teammates.00"
+title: "KPI Section — Mes stats sur le scope (vs all-time)"
+page: teammates
+section: "Section 0 (header)"
+display_order_in_page: 1
+source_function: "src/ui/pages/teammates.py::render_teammates_page (line 235)"
+source_helpers:
+  - "src/app/kpis_render.py::render_kpis_section"
+chart_kind: kpi_row
+
+data:
+  reuses:
+    of: "timeseries.00"
+    differences: |
+      Identique — même fonction render_kpis_section(dff, df). Seule différence : la
+      section est précédée du subheader 'tm_my_stats_section' au lieu d'être en haut
+      d'un onglet. Layout et calculs identiques.
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: 140 }
+
+display:
+  shown_when: "dff non vide"
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('tm_my_stats_section'))"
+  followed_by:
+    - "st.divider()"
+    - "st.subheader(t('tm_squad_section'))    # transition vers le squad header"
+
+i18n_keys:
+  viz_t: []
+  t: ["tm_my_stats_section", "tm_squad_section"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Wrapper sur timeseries.00 — pas de duplication"
+      why: |
+        Même fonction sous-jacente (`render_kpis_section`). Côté React : composant
+        `<KPISection />` partagé avec prop optionnelle `subheader` pour le label
+        spécifique à la page (Teammates uniquement, Timeseries pas de subheader).

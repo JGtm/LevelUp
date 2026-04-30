@@ -24952,3 +24952,714 @@ Plan méta § 6.2.1 : *"Synthesis adopte les fondations directement, pas de rebr
 5. `TestEngagementRepo_*` (x3) : `TestOpenReadWrite_TimezoneInvalid` discardait `*DB` (`_, err := ...`) sans `defer db.Close()`. La connexion restait dans le cache `"rw::memory:"` et polluait les tests engagement suivants (colonne `engagement_score` deja presente). Fix : capture la DB + `defer db.Close()`.
 
 **Resultat** : `go test -tags "integration cgo" ./...` — 44 packages OK, 0 FAIL.
+
+---
+
+<!-- Entrées rétroactives ajoutées depuis branche docs/playlists-catalog-design (rebasée hors arbre) -->
+<!-- Date d'origine : 2026-04-30 — voir backup/docs-playlists-catalog-design-pre-rebase pour l'historique commit-by-commit -->
+
+## [2026-04-30] docs(filters): plan catalogue global Playlists / Pairs / Maps
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Le système de filtres actuel (`FilterOmnibar.tsx` -> `filters_service.go`) recharge tous les matchs du joueur à chaque toggle et recalcule la cascade Expérience -> Playlists -> Modes -> Maps en mémoire Go. Aucun cache de la hiérarchie -> latence perçue côté UI.
+- Insight clé confirmé via `support.halowaypoint.com` et `den.dev` : les playlists Halo Infinite sont au niveau du jeu (asset GUID + version_id stables), pas dérivées des matchs joués. La hiérarchie est énumérable et stable à la cadence saisonnière (~3 mois).
+- Audit de l'existant : 80% du terrain est préparé. `match_registry` stocke déjà les asset IDs, `discovery_client.go` supporte `AssetTypePlaylist` et `AssetTypePair` mais n'est jamais appelé depuis `internal/sync/`, et `waypoint_assets_raw` peut servir de cache brut. Manquent : `version_id` au sync, tables dédiées de relation, mapping `experience` catalogué.
+- Stratégie cible : référentiel global dans `metadata.duckdb` (4 tables) + détection lazy au sync (enqueue sans fetch) + bootstrap CLI one-shot + refresh mensuel (cron ou ticker). Pas de worker async par sync (les playlists changent au pire toutes les semaines, multiplier les appels HTTP serait disproportionné).
+- Ecremage UX : toggle "Joué / Tous" dans le filtre, par défaut limite l'affichage aux options où le joueur a `match_count > 0` (~10-15 options vs ~80 pour le catalogue complet). Vrai gain UX, plus important que la perf brute.
+
+**Résultats observés** :
+- Document `.ai/PLAN_PLAYLISTS_CATALOG.md` créé sur la branche `docs/playlists-catalog-design` (depuis `origin/main`).
+- 10 sections : contexte, audit, stratégie, schéma SQL, plan en 8 phases, décisions ouvertes, tests, hors scope, estimation 3-5 jours-homme, références cliquables vers les fichiers Go/React concernés.
+
+**Conclusion** :
+Plan validé conceptuellement, en attente de revue utilisateur avant ouverture des phases d'implémentation. Prochaine étape : décider du mécanisme de refresh mensuel (cron OS vs goroutine ticker vs endpoint admin) et des critères de désactivation `is_active`.
+
+## [2026-04-30] docs(filters): révision plan catalogue — N-N + multi-titre
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Citation Halo Waypoint sur les cardinalités confirme trois N-N à modéliser séparément : pair-playlist (déjà couvert), map-pair (à séparer), game_variant-pair (à séparer). Le schéma initial à 4 tables fusionnait map et variant dans `map_mode_pair_definitions`, ce qui aurait dupliqué `map_name` et `image_url` à chaque pair partageant la même map.
+- Schéma révisé à 6 tables : `playlists_catalog`, `maps_catalog`, `game_variants_catalog`, `map_mode_pair_definitions` (FK uniquement), `playlist_pair_links`, `catalog_fetch_queue`. Toutes title-aware avec `title_slug` en PK composite, aligné sur le pattern `waypoint_assets_raw(title_id, asset_id, version_id)` documenté dans le project_map.
+- Intégration multi-titre : nouvelle interface `TitleCatalogAdapter` sœur de `TitleDataAdapter` et `TitleSemanticAdapter` déjà en place dans `internal/games/{adapter,resolver}.go`. Implémentation Halo dans `internal/games/halo_infinite/catalog_adapter.go` qui enveloppe `discovery_client.go` existant. Règles de classification `experience` portées dans des TOML versionnés `config/titles/halo_infinite/catalog/experience_rules.toml`, cohérent avec `mappings/fields.toml`.
+- Endpoint REST symétrique `GET /api/v1/titles/{slug}/catalog/{playlists|pairs|maps}` gated par `MULTI_TITLE_API_ENABLED=true`.
+- Plan d'implémentation passé de 8 à 10 phases, estimation 5-6 jours-homme (vs 3-5 initialement, surcoût lié au respect du pattern multi-titre).
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` mis à jour : §4 (schéma 6 tables + insight cardinalités), nouvelle §4bis (intégration multi-titre), §5 (10 phases), §6 (2 décisions ouvertes ajoutées), §9 (estimation révisée), §10 (références multi-titre + Python à porter).
+- Pas de code livré à ce stade — uniquement de la doc.
+
+**Conclusion** :
+Plan aligné sur l'architecture multi-titre existante et les vraies cardinalités du domaine Halo. Prochaine étape : valider auprès de l'utilisateur les décisions ouvertes (TOML vs Go pour les règles d'experience, endroit du refresh mensuel) avant ouverture des phases d'implémentation.
+
+## [2026-04-30] docs(filters): articulation catalogue ↔ normalisation modes (image Phase F + 3 colonnes pair)
+
+**Statut** : Complété — partie (a) du débrief utilisateur. Audit de cardinalité (partie b) à suivre.  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Image map (`maps_catalog.image_url`) : peuplement dès Phase F via `assetResolver.Resolve(KindMapImage, ...)`. Cohérent avec home_repo.go pour les assets Spartan. Décision actée.
+- Normalisation modes : la skill `halo-modes` confirme l'existence de DEUX niveaux orthogonaux Go déjà codés et testés : `NormalizeModeLabel()` (sous-mode affiché, ex "Slayer") et `InferModeCategoryFromPairName()` (catégorie parente UX, enum 8 valeurs : Assassin/Fiesta/SuperFiesta/HuskyRaid/BTB/Ranked/Firefight/Other). Le catalogue ne réinvente pas — il consomme ces fonctions à l'hydratation et persiste les sorties.
+- `map_mode_pair_definitions` étendu de 3 colonnes : `mode_label_en`, `mode_label_fr`, `mode_category`. Calculées une fois au fetch, plus jamais au runtime du filtre.
+- Découpage TOML/Go tranché : TOML `experience_rules.toml` pour la classification `experience` playlist (peut bouger entre saisons sans redéploiement) ; code Go enum-like existant pour `mode_category` + `mode_label` pair (stable, déjà testé, divergences assumées vs Python v7).
+- Trois dimensions de filtre orthogonales (pas hiérarchiques) : `experience` (playlist), `mode_category` (pair), `mode_label` (pair sous-niveau). L'utilisateur peut combiner « Ranked + Assassin », « Social + Fiesta », etc.
+- Tables existantes `mode_name_tr`, `mode_pair_overrides`, `mode_prefix_names`, `mode_lang_settings` : pas de dépréciation. Elles deviennent input upstream consommé par `NormalizeModeLabel()` au moment du fetch, pas output runtime interrogé à chaque requête.
+- Distinction maintenue entre `game_variants_catalog.mode_canonical` (fait technique stable du variant) et `map_mode_pair_definitions.mode_category` (catégorie UX du pair) — trois représentations complémentaires.
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : nouvelle §4ter (5 sous-sections) sur l'articulation, schéma `map_mode_pair_definitions` étendu, Phase D précisée pour réutiliser `internal/analysis/mode_*.go`, décisions ouvertes #4 et #7 tranchées avec horodatage, décision #8 ajoutée pour la cardinalité.
+- Aucun code livré. Document seulement.
+- Audit de cardinalité (§4quater) annoncé mais pas encore exécuté — prochaine étape avant fermeture du design.
+
+**Conclusion** :
+Articulation catalogue ↔ normalisation clarifiée et alignée sur les conventions Halo existantes. Reste à mesurer la cardinalité réelle `mode_category` × `mode_label` sur la DB de production pour décider si `mode_label` est exposé comme dimension de filtre ou comme expand optionnel.
+
+## [2026-04-30] audit(filters): cardinalité réelle mode_category × mode_label sur shared_matches_v2
+
+**Statut** : Complété — partie (b) du débrief utilisateur.  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Audit cardinalité sur `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb` (1545 matchs, 4 joueurs sync). Outil utilisé : DuckDB CLI 1.1.3 standalone téléchargé dans `/tmp/duckdb.exe` (ni Python ni gcc dispos sur cette branche, code Go non tracké).
+- Découverte importante : `match_registry.mode_category` est déjà une colonne persistée au sync (sortie de `InferModeCategoryFromPairName()`). La classification est donc déjà faite par le code Go au moment de l'ingestion, pas à recalculer.
+- Distribution des catégories observée : Assassin 41% / BTB 32% / Fiesta 20% / Other 4.5% / Ranked 2.2% / Firefight 0.3%. Concentration Pareto sur 3 catégories.
+- Insight critique : la catégorie `Assassin` ne contient PAS uniquement des Slayer-likes (CTF 89, Strongholds 56, KoTH 49, Oddball 17, etc. sont aussi dedans). C'est en réalité une "famille de playlist" (Arena/Tactical/Assault), pas une "famille de mode". Conséquence : `mode_category` et `mode_label` sont vraiment orthogonaux, le filtre UI doit exposer les deux comme dimensions parallèles. Un utilisateur voulant "tous les Slayer" cumulerait au moins 561 matchs (36% du total) répartis sur 3 catégories différentes — exprimable uniquement via `mode_label`.
+- Insight bonus : 21.5% des matchs (333/1545) ont une `playlist_name` qui est encore l'UUID brut (DiscoveryUGC pas appelé ou échec au sync). Le bootstrap CLI Phase G les résoudra tous d'un coup. Gain immédiat de qualité d'affichage gratuit.
+- Catégorie `Other` à 4.5% — sous le seuil de 10% qui aurait justifié un boucher prioritaire des `_PREFIX_RULES`. Acceptable, le catalogue résoudra la majorité (les UUID assets).
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` enrichi de la §4quater (5 sous-sections : distribution, insight cardinalité, insight playlists, décisions tranchées, schéma filtre UI implicite).
+- Décision ouverte #8 tranchée : exposer `mode_category` et `mode_label` comme dimensions parallèles (pas hiérarchiques).
+- Schéma final du filtre UI implicite : 3 facettes parallèles (experience, mode_category, mode_label) + 1 dimension scope (only_played).
+- Aucun code livré, aucune modification du repo runtime. Audit reproductible via les requêtes SQL versionnées dans le doc.
+
+**Conclusion** :
+Cardinalité validée et compatible avec un filtre UI à 4 facettes sans risque de saturation (6 cat × 21 playlists × 34 labels × 103 maps). Le design du catalogue est gelé, prêt pour ouverture des phases d'implémentation. DuckDB CLI laissé dans `/tmp/duckdb.exe` (volatile) — peut être réutilisé pour des audits ad hoc ultérieurs ou supprimé.
+
+## [2026-04-30] docs(filters): comparatif AVANT/APRÈS + Super Fiesta + traductions FR
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- §4ter.6 ajoutée avec tableau comparatif concret AVANT/APRÈS sur 4 cas réels tirés de `shared_matches_v2.duckdb`. Réponse limpide à la question utilisateur : la normalisation reste indispensable, le catalogue change juste son moment d'exécution (one-shot par pair_asset_id au lieu d'à chaque vue UI). État global mesuré : 0/1545 colonnes `_fr` remplies, 21.5% playlists UUID non résolues.
+- §4ter.7 ajoutée sur la promotion Super Fiesta + Husky Raid : mesure DuckDB confirme 240/307 matchs `Fiesta` actuels = Super Fiesta (78%), 15/307 = Husky Raid. Code Python regroupe à tort, code Go a déjà fait la promotion (cf. skill `halo-modes`). Migration one-shot des matchs anciens à signaler comme dépendance hors scope (à traiter quand le sync passera en Go).
+- §4ter.8 ajoutée sur les traductions FR : 0/1545 colonnes `_fr` peuplées dans la DB actuelle = bricolage runtime à chaque vue UI. Reco : double fetch DiscoveryUGC `lang=en` + `lang=fr` à l'hydratation catalogue, fallback sur `mode_name_tr`/`mode_pair_overrides` si null. Persistance dans le catalogue → fin du calcul à chaud. À termes (hors scope), les colonnes `_fr` de `match_registry` deviennent redondantes et peuvent être supprimées.
+- Décisions ouvertes #9 et #10 ajoutées pour tracer ces deux sujets.
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : 3 sous-sections ajoutées dans §4ter (~6 → ~8), 2 décisions ouvertes ajoutées.
+- Insight chiffré majeur : la classification Python actuelle noie 3 expériences gameplay distinctes (Fiesta + SuperFiesta + HuskyRaid) sous une seule étiquette, alors qu'elles ont des règles de gameplay très différentes.
+- Aucun code modifié.
+
+**Conclusion** :
+Le doc couvre désormais les 4 dimensions du sujet : (1) catalogue référentiel, (2) articulation avec normalisation, (3) cardinalité réelle, (4) traductions FR + promotion catégories. Prêt pour ouverture des phases d'implémentation.
+
+## [2026-04-30] docs(filters): TOML mode_category + i18n robuste + skill halo-i18n
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- §4cinquies ajoutée — Évolutivité catégories : option (c) actée. Migration `mode_category` rules en TOML versionné + auto-détection des préfixes inconnus via nouvelle table `unknown_prefix_candidates` + alerting Discord au seuil ≥5. Validation au boot pour cohérence enum Go ↔ TOML. Cohérent avec le découpage `experience_rules.toml` déjà acté.
+- §4sexies ajoutée — i18n catalogue multi-langues robuste. Architecture en 3 couches : (1) `name_canonical` inline EN par défaut dans chaque table catalogue pour debug + lookup rapide, (2) toutes les autres langues dans `asset_translations` (existante, multi-lang native), (3) labels normalisés multi-langues dans nouvelle table `pair_mode_label_translations(pair_asset_id, lang, label)`. Hydratation : double fetch DiscoveryUGC sur ~14 langues (en, fr, de, es-ES, es-MX, it, ja, ko, nl, pl, pt-BR, ru, zh-CN, zh-TW), fallback `mode_name_tr`/`mode_pair_overrides` si null.
+- Schéma §4.2 propagé pour cohérence : passé de 6 à 8 tables. Retrait de `name_en`/`name_fr` inline → remplacé par `name_canonical`. Suppression de `mode_label_en/fr` du pair → déplacé dans `pair_mode_label_translations`. §4ter.6 (tableau comparatif) mis à jour pour refléter ces changements.
+- Skill `halo-i18n` créée — répond directement au feedback utilisateur « les agents font leur sauce et ne comprennent pas que les traductions sont à tels endroit et qu'elles existent bien ». Mémo opérationnel discoverable : où sont les traductions (table par table), quelles langues, helpers à utiliser, anti-patterns à éviter (ex: ne pas créer une nouvelle table xxx_translations sans regarder asset_translations d'abord). Triggers ajoutés dans `skill-rules.json` (keywords : asset_translations, name_fr, traduction, lang=, DiscoveryUGC, etc.).
+- Phases d'implémentation mises à jour : Phase A passe à 8 tables, Phase D inclut multi-lang + TOML mode_category + auto-détection, nouvelle Phase K conditionnelle pour cleanup post-migration (suppression colonnes `_fr` de match_registry, audit code Python legacy, migration matchs Python Fiesta → SuperFiesta/HuskyRaid).
+- Décisions ouvertes #10, #11, #12, #13 toutes tranchées avec horodatage.
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : 2 nouvelles sous-sections principales (§4cinquies, §4sexies) + schéma §4.2 propagé + §4ter.6 cohérent + Phase D enrichie + nouvelle Phase K + 4 décisions tranchées + références §10 mises à jour.
+- `.claude/skills/halo-i18n/SKILL.md` : nouveau mémo opérationnel (~150 lignes) avec TL;DR, langues supportées, 5 anti-patterns documentés avec exemples, helpers à utiliser, requêtes SQL types, fichiers source référencés.
+- `.claude/skills/skill-rules.json` : entrée `halo-i18n` avec 22 keywords + 6 intentPatterns pour activation automatique.
+- 0 code modifié, uniquement doc + skill.
+
+**Conclusion** :
+Architecture du catalogue figée à 8 tables, documentée à 3 niveaux (plan technique, schéma SQL, skill opérationnel pour les agents futurs). Les 13 décisions ouvertes initiales sont toutes tranchées. Le doc est prêt pour ouverture des phases d'implémentation. Question de discoverability i18n résolue par la skill dédiée + triggers automatiques.
+
+## [2026-04-30] docs(i18n): création .ai/I18N_REFERENCE.md tracked + allègement skill
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Constat : `.claude/` est dans `.gitignore` (ligne 119), donc la skill `halo-i18n` créée précédemment n'est pas versionnée. Convention historique du projet.
+- Choix utilisateur : option (a) + (c). Garder la skill locale ET dupliquer le contenu utile dans un fichier tracked qui devient la source de vérité versionnée.
+- Création de `.ai/I18N_REFERENCE.md` (~150 lignes) : carte complète des traductions, langues supportées, architecture cible 3 couches, anti-patterns détaillés avec exemples, helpers à utiliser, requêtes SQL types, fichiers source. Discoverable via `.ai/` qui est consulté en priorité par les agents (CLAUDE.md le mentionne).
+- Skill `halo-i18n` allégée pour devenir un pointeur léger vers `.ai/I18N_REFERENCE.md` (TL;DR + 5 anti-patterns + lien). Évite la duplication de contenu, garantit que la skill ne devient pas obsolète si le doc tracked évolue.
+
+**Résultats observés** :
+- `.ai/I18N_REFERENCE.md` créé (tracked, versionné).
+- `.claude/skills/halo-i18n/SKILL.md` réduit (~30 lignes) à un pointeur.
+- Architecture i18n maintenant documentée à 3 niveaux : (1) PLAN §4sexies pour le design, (2) `.ai/I18N_REFERENCE.md` pour la référence opérationnelle versionnée, (3) skill locale comme rappel léger pour Claude Code.
+
+**Conclusion** :
+Le sujet i18n est désormais discoverable par tous les chemins : agent IA cherchant via les keywords (skill triggers), agent ou humain qui parcourt `.ai/`, dev qui lit le PLAN. Plus de risque que les agents « fassent leur sauce ».
+
+## [2026-04-30] docs(filters): retrait notif Discord du plan + statut doc-only
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Suppression de toutes les mentions de notification Discord dans le plan (3 occurrences en §4cinquies + Phase D + décision #11). Remplacé par log warning structuré (`event=unknown_prefix_candidate`, niveau WARN) + endpoint admin `GET /api/v1/titles/{slug}/catalog/unknown-prefixes` pour consultation humaine.
+- Pas de canal de notification externe (Discord, Slack, email) intégré dans ce plan. Si le besoin émerge plus tard, décision séparée.
+- Statut du chantier confirmé : **doc-only**. Pas d'ouverture de PR ni de phase d'implémentation à ce stade. Le plan reste sur la branche `docs/playlists-catalog-design` en l'état pour référence future.
+- Corollaire : pas d'agent à scheduler pour suivre l'évolution Halo (les hypothèses du plan tiendront tant qu'elles tiennent — révision à la main si réveil du chantier).
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` : 3 mentions Discord retirées, remplacées par log + endpoint admin.
+- 0 autre fichier impacté (`.ai/I18N_REFERENCE.md` ne mentionnait pas Discord).
+
+**Conclusion** :
+Plan figé en doc-only. Les 13 décisions ouvertes sont toutes tranchées, le scope d'observabilité est volontairement minimal (log structuré seul), prêt à reposer dans `.ai/` jusqu'à réactivation.
+
+## [2026-04-30] fix(charts-specs): audit global + corrections 4 manques détectés
+
+**Statut** : Complété (102 charts documentés, 0 anomalie restante)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+Audit systématique des 7 pages déjà documentées (Synthèse, Career, Match View, Teammates, Timeseries, Win/Loss, Session Compare) en relisant chaque `render_*_page` et comparant avec les YAMLs présents.
+
+**Anomalies détectées** :
+1. **Teammates YAML 01** documentait `render_teammate_cards` qui est **DEAD CODE** (jamais appelée — confirmé par grep). La VRAIE fonction du squad header est `render_squad_session_header`.
+2. **`render_kpis_section`** non documenté — section KPI cards (8 cards stylées avec trends) appelée par teammates.py:235 et timeseries.py:80.
+3. **Career `_render_xp_snapshots_table`** mentionné dans 03 mais sans YAML dédié.
+4. **Career `_render_lusr_rank_cards`** mentionné dans 04 mais sans YAML dédié.
+
+**Corrections appliquées** :
+
+1. **YAML mutualisé KPI Section** :
+   - [`timeseries.00_kpis_section.yaml`](.ai/charts_specs/timeseries/00_kpis_section.yaml) — spec principale (8 cards : matchs, durée, K/D/A par match+/min, accuracy, lifespan, results bar W/L/T/DNF segmentée). Trend logic ±8% threshold avec inversion pour deaths.
+   - [`teammates.00_kpis_section.yaml`](.ai/charts_specs/teammates/00_kpis_section.yaml) — wrapper avec `data.reuses.of: timeseries.00`.
+
+2. **Réécriture Teammates 01** :
+   - Ancien `01_teammate_cards_legend.yaml` SUPPRIMÉ.
+   - Nouveau [`01_squad_session_header.yaml`](.ai/charts_specs/teammates/01_squad_session_header.yaml) documente `render_squad_session_header` :
+     - 1 team card avec `compute_squad_performance_score` → grade A/B/C/D/F + bonus de synergie
+     - N cards joueurs avec `render_performance_score_card` + badge ▲/▼ via `is_better=score > avg_score`
+
+3. **Career — 2 nouveaux YAMLs** :
+   - [`career.10_xp_snapshots_table.yaml`](.ai/charts_specs/career/10_xp_snapshots_table.yaml) — table HTML dans st.expander (10 derniers snapshots career_progression).
+   - [`career.11_lusr_rank_cards.yaml`](.ai/charts_specs/career/11_lusr_rank_cards.yaml) — grille de cards N playlists (image rank base64, badge LUSR/CSR cyan/doré, delta ▲/▼/=).
+
+4. **5 helpers TS dédiés** :
+   - `convertKpisSection` (composite-ui.ts) — 7 cards numériques avec trends + 1 results bar segmentée 4 segments
+   - `convertSquadSessionHeader` (composite-ui.ts) — team card avec grade + 4 player cards avec badges
+   - `convertLusrRankCards` (composite-ui.ts) — grille 3 cols × 6 cards avec SVG rank stylisé (couronne avec gradient hue selon rating)
+   - `mockXpSnapshotsRows` + colonnes default (table-html.ts) — 10 snapshots avec rank coloré cyan + XP formaté FR
+
+5. **Mises à jour `_index.md`** :
+   - Teammates : ajout pos 1 (KPI section) + pos 2 (Squad header)
+   - Timeseries : ajout 00 (KPI section) en tête de tab Résumé
+   - Career : 3.2 et 4 pointent maintenant vers leurs YAMLs respectifs
+
+**Résultats observés** :
+- 29/29 charts Timeseries (vs 28 avant), 18/18 Teammates (vs 17), 11/11 Career (vs 9).
+- 0 `series: []` dans les 3 mocks régénérés.
+- `tsc --noEmit` propre.
+
+**Bilan global** :
+
+| Page | YAMLs | Status |
+|---|---|---|
+| Synthèse | 5 | ✅ |
+| Career | 11 | ✅ (10, 11 ajoutés) |
+| Match View | 17 | ✅ |
+| Teammates | 18 | ✅ (01 réécrit, 00 ajouté) |
+| Timeseries | 29 | ✅ (00 ajouté) |
+| Win/Loss | 7 | ✅ |
+| Session Compare | 14 | ✅ |
+
+**Total documenté : 101 charts** (vs 97 avant audit) — **0 anomalie restante**.
+
+**Conclusion / prochaine étape** :
+- Page Teammates et Timeseries désormais **fidèles à 100 % au code source** (plus de dead code documenté).
+- Pattern KPI Section mutualisé démontre la valeur de `data.reuses.of` pour traçabilité sans duplication.
+- Pages restantes : Citations globales (~8 charts) → Home Mission Control (~15 charts) → Objective Analysis (~8 charts) → Explorer / Match History (~6 charts) — utilisateur a confirmé "ça ira" pour le moment.
+
+---
+
+## [2026-04-30] docs(charts-specs): page Session Comparison complète (14 sections, 5 helpers TS)
+
+**Statut** : Complété (Session Compare = 14 sections documentées et rendues)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+Lecture intégrale de `src/ui/pages/session_compare.py` (534 L) + 4 sous-modules :
+- `_session_compare_viz.py` (header, donuts, kd_progression, participation_bar)
+- `_session_compare_extra.py` (modes_breakdown, match_highlights, map_table)
+- `_session_compare_history.py` (table history avec 6+ helpers `_add_*_display_column`)
+- `session_compare_charts.py` (radar, bar comparison, participation_trend, history)
+- `_perf_session.py::plot_cumulative_comparison`
+
+**Cartographie de 14 sections** (page linéaire, sauf section 14 en 2 tabs) :
+
+| # | Élément | Source | chart_kind |
+|---|---|---|---|
+| 01 | Temporal header (date+count) | `render_session_temporal_header` | `composite_block` |
+| 02 | Score cards perf A/B | `_render_score_cards` → 2× `render_performance_score_card` | `kpi_row` |
+| 03 | Outcomes distribution (2 donuts) | `render_outcomes_distribution` | `pie` (multi-grid) |
+| 04 | Match highlights (best/worst) | `render_match_highlights` | `composite_block` |
+| 05 | Detailed metrics rows | `_render_detailed_metrics` | `table_html` |
+| 06 | MMR comparison rows | `_render_mmr_comparison` (conditionnel) | `table_html` |
+| 07 | Radar comparison (3 axes) | `render_comparison_radar_chart` | `radar` |
+| 08 | Bar comparison (Y1 + Y2 win rate) | `render_comparison_bar_chart` | `grouped_bar` (Y2) |
+| 09 | Cumulative net score (hline 0) | `_render_cumulative_section` → `plot_cumulative_comparison` | `line` |
+| 10 | K/D progression + accuracy Y2 | `render_kd_progression` | `line` (Y2) |
+| 11 | Modes breakdown (horizontal) | `render_modes_breakdown` | `grouped_bar` (h) |
+| 12 | Map table (HTML) | `render_map_table` | `table_html` |
+| 13 | Participation trend (ex-radar → bars h) | `render_participation_trend_section` | `grouped_bar` (h) |
+| 14 | Match history (2 tabs) | `_render_match_history_tabs` | `table_html` (× 2) |
+
+**Patterns notables capturés** :
+- **Couleurs canoniques** : Session A `#E74C3C` (rouge corail), Session B `#3498DB` (bleu vif), historical `#9B59B6` (violet en pointillés). Convention pour le reste de la page.
+- **Section 13** : conversion explicite radar → bars horizontales documentée dans le code source : *"Remplace le radar superposé/opaque par une représentation plus lisible"*. Pédagogie UX intéressante.
+- **Section 04, 12** : pas de chart Plotly mais HTML pur via `st.markdown(... unsafe_allow_html=True)`.
+- **Section 02** : `kpi_row` avec badge "Better" calculé côté caller (`is_a_better=score_a > score_b`).
+- **Section 07** : normalisation kd × 50 → 100 (F/M 2.0 = 100%) pour radar lisible. Badge ⚠️ si `session_count < 3` (moyenne historique non significative).
+- **Section 14** : 2 onglets `st.tabs()` plutôt que 2 colonnes — tables history sont LARGES (8 cols) et nécessitent toute la largeur.
+
+**Extensions converter (5 nouveaux helpers TS)** :
+- `convertOutcomesDonutsSC` (pie.ts) → 03 : 2 donuts ECharts en multi-position (`center: ['25%', '50%']` et `['75%', '50%']`) + 4 titres (labels + counts centrés)
+- `convertSessionCompareRadar` (radar.ts) → 07 : 3 series radar (hist dotted + A solide + B solide)
+- `convertSessionCompareKD` (line.ts) → 10 : 4 series (KD A/B + accuracy A/B Y2 dashed) + markLine y=1.0
+- `convertSessionCompareCumulative` (line.ts) → 09 : 2 series cumul + markLine y=0 "Équilibre"
+- `convertParticipationTrend` (grouped-bar.ts) → 13 : bars horizontales 6 catégories × 2 séries
+- `convertModesBreakdownSC` (grouped-bar.ts) → 11 : bars horizontales 8 modes × 2 sessions
+- `convertSessionCompareBar` (grouped-bar.ts) → 08 : 6 series (3 sessions × 2 axes Y) avec décalage hist via `decal` ECharts pour pattern hachuré
+
+**Bugs corrigés en cours** :
+- 3 YAMLs avec `traces:` en mode template (objet) au lieu d'array → renommés `trace_specs:` au top-level avec `traces: []` placeholder.
+- YAML 12 : guillemets imbriqués `"...""` → simple-quotes pour éviter parser YAML.
+
+**Résultats observés** :
+- 14/14 charts rendus dans `_generated/session_compare/mock-echarts.html`.
+- 0 `series: []` (8 ECharts canvas + 6 composites/tables).
+- `tsc --noEmit` propre.
+
+**Conclusion / prochaine étape** :
+- **Pages couvertes : Synthèse (5) + Career (9) + Match View (17) + Teammates (17) + Timeseries (28) + Win/Loss (7) + Session Compare (14) = 97 charts/tables documentés**.
+- Pages restantes par priorité : Citations globales (~8 charts) → Home Mission Control (~15 charts) → Objective Analysis (~8 charts) → Explorer / Match History (~6 charts).
+- Pattern `multi-grid pie` (2 donuts côte à côte via `center: ['X%', 'Y%']`) à propager si d'autres pages comparent 2 distributions.
+
+---
+
+## [2026-04-30] docs(charts-specs): page Win/Loss (7 wrappers, 100 % réutilisations)
+
+**Statut** : Complété (Win/Loss = 7 sections, toutes réutilisations d'autres pages)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+Lecture intégrale de `src/ui/pages/win_loss.py` (394 L) sur `origin/v7/cockpit`. **Constat important** : la page Win/Loss est **linéaire** (pas d'onglets) et compose **uniquement** des fonctions partagées avec d'autres pages. Aucune section spécifique WL n'existe dans la version active du code (la seule section unique `_render_ratio_by_map_section` est commentée, ligne 74 `# DISABLED`).
+
+**Mapping des 7 sections** (ordre de rendu réel dans `render_win_loss_page`) :
+| # | Section | YAML existant réutilisé |
+|---|---|---|
+| 1 | `_render_outcomes_over_time` | `timeseries.05` |
+| 2 | `_render_map_mode_breakdown` | `timeseries.07` (= `synthesis.01` + `02`) |
+| 3 | `_render_heatmap_section` | `synthesis.03` / `timeseries.27` |
+| 4 | `_render_top_by_week` | `synthesis.04` / `timeseries.28` |
+| 5 | `_render_streak_section` | `timeseries.06` |
+| 6 | `_render_personal_score_section` | `timeseries.20` |
+| 7 | `_render_winrate_perf_vs_history` | `timeseries.08` (= `teammates.02` + `13`) |
+
+**Approche** :
+- 7 YAML "wrappers" courts (~30-50 L chacun) pointant vers les YAMLs existants via `data.reuses.of`. Justifie l'existence de la page côté traçabilité sans dupliquer la spec.
+- `_index.md` exhaustif documentant le scope de la page, les pré-conditions et la section désactivée.
+- Dispatchs converter ajoutés pour les `win_loss.NN` qui pointent vers les helpers TS existants (avec `||` dans la condition pour grouper avec leur jumeau timeseries) :
+  - `convertMapModeBreakdownTwoCol` → `timeseries.07 || win_loss.02`
+  - `convertWlHeatmap` → `timeseries.27 || win_loss.03`
+  - `convertTopByWeek` → `timeseries.28 || win_loss.04`
+- 3 nouveaux helpers TS (mocks dédiés) :
+  - `convertOutcomesOverTimeMock` (stacked-bar.ts) — 12 buckets W/L/T avec losses négatives
+  - `convertStreakChartMock` (stacked-bar.ts) — séquence 19 matchs avec compteur cumulé V/D
+  - `convertPersonalScoreMock` (line.ts) — 30 bars amber + smoothing rolling 10 line violet
+
+**Résultats observés** :
+- 7/7 charts rendus dans `_generated/win_loss/mock-echarts.html`.
+- 0 `series: []` (les 6 ECharts ont du contenu, le 7e est composite_block donc rendu HTML).
+- `tsc --noEmit` propre.
+
+**Conclusion / prochaine étape** :
+- **Pages couvertes : Synthèse (5) + Career (9) + Match View (17) + Teammates (17) + Timeseries (28) + Win/Loss (7) = 83 charts/tables documentés**.
+- Win/Loss conclut le bloc "compétitif" (Synthèse + Timeseries + Win/Loss + Teammates couvrent toutes les analyses V/D + perf).
+- Pages restantes par priorité suggérée : Session Comparison (~12 charts) → Citations globales (~8 charts) → Home Mission Control (~15 charts) → Objective Analysis (~8 charts) → Explorer / Match History.
+- L'approche **wrapper + dispatchs ||** est efficace pour les pages composites — à reproduire pour les futures pages qui réutilisent massivement (notamment Last Match qui semble être un alias de Match View).
+
+---
+
+## [2026-04-30] fix(charts-specs): correction des 8 charts vides Timeseries (helpers TS dédiés)
+
+**Statut** : Complété (28/28 charts Timeseries avec series non vides)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+L'utilisateur a signalé que "plein" de charts Timeseries n'affichaient rien. Audit : **8 charts avec `series: []`** :
+
+| Chart | Cause |
+|---|---|
+| timeseries.01 (form_score) | `traces: []` (réutilisation teammates.05) |
+| timeseries.07 (map_mode_breakdown) | `traces: []` (réutilisation synthesis.01-02) |
+| timeseries.09 (distributions) | `chart_kind: histogram` non supporté → fallback `default` |
+| timeseries.10 (correlations) | `chart_kind: scatter_matrix` non supporté |
+| timeseries.11 (first_event) | `chart_kind: histogram` non supporté |
+| timeseries.21 (intensity_heatmap) | `traces: []` (réutilisation teammates.15) |
+| timeseries.27 (wl_heatmap) | `traces: []` (réutilisation synthesis.03) |
+| timeseries.28 (top_by_week) | `traces: []` (réutilisation synthesis.04) |
+
+**Corrections appliquées** :
+
+1. **Nouveaux chart_kinds** ajoutés à `types.ts` : `histogram`, `scatter_matrix`. Cases dispatch dans `converter.ts`.
+
+2. **Nouveau fichier** `converters/histogram.ts` (∼440 L) avec 4 helpers :
+   - `convertDistributionsGrid` (timeseries.09) : multi-grid 2×3 de 6 sub-histogrammes (KDE smoothée + bars). Données mock gaussiennes.
+   - `convertCorrelationsScatter` (timeseries.10) : multi-grid 3×2 (last full-width) de 5 scatter plots colorés par outcome (vert/rouge) + trendline OLS calculée par moindres carrés.
+   - `convertFirstEventOverlay` (timeseries.11) : 2 histogrammes superposés (kills vert opacity 0.7 / deaths rouge opacity 0.6) avec barGap=-100% pour overlay réel + markLine pour les moyennes annotées.
+   - `convertGenericKDE` (fallback) : KDE avec areaStyle.
+
+3. **Helpers ajoutés aux converters existants** :
+   - `convertFormScoreSelf` (line.ts) → timeseries.01 : courbe avec areaStyle positif/négatif (vert/rouge) + markArea pour highlight session courante (vert si current ≥ baseline, rouge sinon) + markLine y=0.
+   - `convertMapModeBreakdownTwoCol` (stacked-bar.ts) → timeseries.07 : multi-grid 2 colonnes (cartes top 12 / modes), 3 series stacked W/L/T par grid.
+   - `convertSquadIntensityHeatmap` réutilisé (heatmap.ts) → timeseries.21.
+   - `convertWlHeatmap` (heatmap.ts) → timeseries.27 : heatmap jour×heure avec colorscale vert→ambre→rouge, days inverse (Lun en haut), tooltip custom différenciant cellules vides.
+   - `convertTopByWeek` (grouped-bar.ts) → timeseries.28 : 2 bars (top doré + total gris transparent) + line cyan sur Y2 (% Top).
+
+4. **Fix défensif** dans `buildGrid` (converter.ts) : retourne `{l:40, r:20, t:30, b:60}` par défaut si `layout.margin` absent (résout 13 YAMLs sans margin sans nécessiter de les éditer un par un).
+
+**Résultats observés** :
+- 28/28 charts ECharts ont maintenant des `series` non vides (zéro `series: []` dans le HTML généré).
+- `tsc --noEmit` propre sur tout le projet converter.
+- Les 2 charts de type composite (timeseries.08 winrate_perf_vs_history et timeseries.26 regression_trend) rendent en HTML inline (kpi_row / composite_block), pas en ECharts canvas — comportement attendu.
+
+**Limitation connue** :
+- Pour les YAMLs avec `chart_kind: line` qui sont en réalité des bars+lines (timeseries.12, 13, 15, 18, 20), le converter line.ts produit une simple ligne plutôt que le vrai mix bars+line. Acceptable pour validation visuelle, mais à raffiner si l'utilisateur veut une fidélité totale (nécessiterait des helpers dédiés par chart, comme pour teammates.04).
+
+**Conclusion / prochaine étape** :
+- Validation visuelle utilisateur attendue sur le mock complet maintenant que les charts vides sont remplis.
+- Les YAMLs documentent fidèlement la source Python ; le mock est une approximation visuelle pour relire la structure attendue côté Go/React.
+
+---
+
+## [2026-04-30] docs(charts-specs): page Timeseries complète (28 YAML, 5 onglets)
+
+**Statut** : Complété (Timeseries total = 28 visuels documentés et rendus)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+Documentation complète de la page Timeseries (`src/ui/pages/timeseries.py`, 430 L) — la plus volumineuse du projet avec 5 onglets et 28 charts/sections. Lecture intégrale de tous les sous-modules :
+- `_timeseries_distributions.py`, `_timeseries_form.py`, `_timeseries_intensity.py`, `_timeseries_weapons.py`
+- `timeseries_skill_rank.py`, `_timeseries_progression.py`, `_timeseries_helpers.py`
+- `timeseries_combat.py`, `timeseries.py` (dans visualization/)
+- `_perf_progression.py`, `_perf_session.py` (régression + EWMA + cumulative CI)
+- `distributions.py`, `_distributions_advanced.py`, `distributions_outcomes.py`
+- `win_loss.py` (sections partagées : `_render_outcomes_over_time`, `_render_streak_section`, `_render_personal_score_section`, `_render_winrate_perf_vs_history`)
+
+**Cartographie 5 onglets** (le code Python a un MISMATCH entre l'ordre des `st.tabs(labels)` et l'ordre des `with _tab_X:` — corrigé dans le `_index.md`) :
+
+| Onglet | Label | Charts | YAMLs |
+|---|---|---|---|
+| 1 | Résumé K/D/A | 6 | 01-06 |
+| 2 | Cartes & Modes | 2 | 07-08 |
+| 3 | Distributions | 2 | 09-10 |
+| 4 | Progression | 10 | 11-20 |
+| 5 | Avancé | 8 | 21-28 |
+
+**Réutilisations** documentées explicitement dans chaque YAML concerné :
+- `timeseries.01` (form_score) → `teammates.05`
+- `timeseries.07` (map_mode_breakdown) → `synthesis.01, 02`
+- `timeseries.08` (winrate_perf_vs_history) → `teammates.02, 13`
+- `timeseries.21` (intensity_heatmap) → `teammates.15`
+- `timeseries.27` (wl_heatmap) → `synthesis.03`
+- `timeseries.28` (top_by_week) → `synthesis.04`
+
+**Patterns repérés et documentés** :
+- **Y signé** (négatif sous l'axe X) : appliqué dans `05_outcomes_over_time` (losses), `06_streak_chart` (defeats), `14_per_minute_timeseries` (deaths_per_min). Cohérent avec teammates.14.
+- **2 axes Y (secondary_y)** : `02_kda_timeseries` (ratio sur Y2), `16_spree_headshots_accuracy`, `17_shots_accuracy` (accuracy %), `19_rank_score` (rang `autorange='reversed'`).
+- **Colorisation par palier** (`SCORE_THRESHOLDS`) : `12_performance_timeseries` — cohérent avec teammates.04, 13.
+- **Smoothing rolling 10** : 13/15/18/20 (line par-dessus bars).
+- **Zones ± avec aire colorée** : `23_net_score_per_hour` (positive verte / négative rouge via 2 traces splittées).
+- **CI band** : `24_cumulative_kd_with_ci` (90%, se rétrécit avec n).
+- **EWMA + régression conditionnelle R² >= 0.3** : `25_ewma_kd`.
+- **Indicators dashboard** (3 jauges) : `26_regression_trend` — chart_kind=`kpi_row`.
+- **Famille de N sub-charts** dans 1 YAML parent : `09_distributions` (6 histo), `10_correlations` (5 scatter).
+
+**Bugs corrigés en cours de rédaction** :
+- 13 YAMLs sans section `margin:` au top-level → erreur `Cannot read properties of undefined (reading 'l')` dans `buildGrid`. **Fix** : valeur par défaut `{ l: 40, r: 20, t: 30, b: 60 }` dans `buildGrid` plutôt que d'éditer chaque YAML.
+- 5 YAMLs sans `traces:` ou `layout:` au top-level → ajout de stubs `traces: []` + `layout: { inherits, height }` minimaux pour passer le parser (le contenu réel est dans les YAMLs référencés).
+- YAML 14 indentation invalide sur `rolling_lines:` (sous-section dans `traces:`) — déplacé au top-level.
+
+**Résultats observés** :
+- **28/28 charts** rendus dans `_generated/timeseries/mock-echarts.html`.
+- `tsc --noEmit` propre.
+- `_index.md` détaillé avec ordre de rendu réel par onglet (✗ ordre code Python est trompeur).
+
+**Conclusion / prochaine étape** :
+- **Pages couvertes : Synthèse (5) + Career (9) + Match View (17) + Teammates (17) + Timeseries (28) = 76 charts/tables documentés**.
+- Validation visuelle utilisateur attendue avant la prochaine page.
+- Pages restantes : Win/Loss (sections non couvertes), Citations globales, Objectives, Match History, Media Library, Session Compare, Explorer.
+- **Le mock timeseries va probablement révéler des détails à corriger** (cohérent avec le pattern observé sur teammates) — viz complexes comme `26_regression_trend` (indicators) et `09/10` (familles de sub-charts) sont les plus à risque de rendu incomplet.
+
+---
+
+## [2026-04-30] docs(charts-specs): audit onglet Contributions Teammates (ajout teammates.14-17)
+
+**Statut** : Complété (Teammates total = 17 charts, dont 9 dans tab_con)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+Audit complet de l'onglet Contributions (`tab_con` dans `teammates_views.py:122`) après audit similaire de l'onglet Synergies. Lecture intégrale de `_teammates_trio.py::render_trio_view` (457 L) + `_teammates_trio_helpers.py` + `teammates_charts.py` + `teammates_intensity.py`. **4 charts manquants identifiés** parmi les sous-fonctions appelées par `render_trio_view` :
+
+| # | Fonction Python | Source |
+|---|---|---|
+| 14 | `_render_per_minute_stats` | `_teammates_trio_helpers.py:91` |
+| 15 | `render_squad_intensity_heatmap` | `teammates_intensity.py:102` |
+| 16 | `_render_trio_performance_charts` (6 sub-charts) | `_teammates_trio_helpers.py:305` |
+| 17 | `render_first_events_chart` | `teammates_charts.py:507` |
+
+**4 nouveaux YAML** rédigés en lecture directe du code (pas d'extrapolation) :
+
+- **teammates.14** : barres groupées catégorielles (3 cats × N joueurs). Frags/Assists positifs (couleur joueur), Morts négatives sous l'axe X (`_negative_color()` Okabe-Ito → palette rouge à 5 niveaux de luminance L=70/55/41/27/18 pour distinguabilité daltonisme/fond sombre). Records personnels en barres fantômes hachurées.
+- **teammates.15** : heatmap matchs × 10 phases NORMALISÉES (% de durée, pas absolu). Toggle `st.segmented_control` pour basculer "Tous" (densité globale) vs joueur (filtre xuid). Colorscale cyan→jaune→ambre→orange→rouge (5 stops). Y labels = "carte - date" via `_build_y_labels_from_me_df`.
+- **teammates.16** : YAML PARENT documentant 6 sub-charts en cascade (`render_trio_charts`) plutôt que 6 YAML séparés. Charts : KD combined butterfly + assists + ratio (KDA) + accuracy + average_life + performance. Tous partagent `merged DF` (inner-join strict sur match_ids des N joueurs), smoothing rolling 7, `_negative_color()` pour les morts. `@fragment_if_available` pour rerender rapide.
+- **teammates.17** : butterfly histogram bins 15 s × N joueurs × 2 traces (frags+/morts−). Tickvals positionnés aux BORDURES (i-0.5) plutôt qu'au centre des barres pour clarté ("15s" = "jusqu'à 15s"). Séparateurs verticaux dotted entre bins. Une seule entrée légende par joueur via `legendgroup` partagé.
+
+**Extensions converter** :
+- `grouped-bar.ts` : dispatch précoce **AVANT** `spec.traces.some(...)` pour les YAML 14/17 dont `traces:` est un objet template (pas array) — sinon `spec.traces.some is not a function`. Helpers `convertPerMinuteStats` (3 cats × 4 joueurs avec barres négatives + axe zéro blanc gras) et `convertFirstEventsButterfly` (12 bins × 4 joueurs × 2 traces avec `markLine` pour les séparateurs verticaux).
+- `heatmap.ts` : nouveau `convertSquadIntensityHeatmap` (12 matchs × 10 phases, profil synthétique avec pics distribués early/mid/late/uniform).
+- `line.ts` : nouveau `convertTrioKdCombined` (1 sub-chart représentatif des 6 — bars + lines smoothées rolling 7, kills↑/morts↓).
+
+**Erreurs corrigées en cours d'audit** :
+- Premier render : `spec.traces.some is not a function` pour 14 et 17 → fix : hisser les dispatches teammates.14/17 AU DÉBUT de `convertGroupedBar`, avant l'appel `.some()` qui suppose un array.
+
+**Cartographie corrigée dans `_index.md`** : ordre de rendu réel `tab_con` (9 entrées) :
+14 → 06 → 15 → 16 → 09 → 08 → 17 → 10 → 12.
+
+**Résultats observés** :
+- 17/17 charts rendus dans `_generated/teammates/mock-echarts.html`.
+- `tsc --noEmit` propre.
+- `_index.md` à jour : tab_syn 7 charts + tab_con 9 charts + Header (01) avec ordre de rendu explicite.
+
+**Conclusion / prochaine étape** :
+- **Pages couvertes : Synthèse (5) + Career (9) + Match View (17) + Teammates (17) = 48 charts/tables documentés**.
+- Page Teammates **complète et fidèle aux deux onglets**.
+- Validation visuelle attendue avant la prochaine page (Win/Loss complément, Timeseries, Citations globales, etc.).
+- Pattern repérable et déjà appliqué : pour les fonctions Python qui rendent N sous-charts en cascade (`render_trio_charts`, `render_metric_bar_charts`), 1 YAML parent + section `sub_charts` plutôt que N YAML — économise la duplication et reflète la réalité du code.
+
+---
+
+## [2026-04-30] docs(charts-specs): correction teammates.07 + audit onglet Synergies (ajout teammates.13)
+
+**Statut** : Complété (Teammates total = 13 charts, dont 7 dans l'onglet Synergies)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- L'utilisateur a signalé que `teammates.07 — Impact taquinerie` ne correspondait pas à la vraie source. **Erreur initiale** : j'avais supposé un panel ranking 4 cartes avec barres + badges taquins. **Vraie structure** (cf. `teammates_impact.py::_render_impact_ranking_html` sur `origin/v7/cockpit`) :
+  - Tableau matriciel HTML scoreboard (classes `os-scoreboard / os-impact-table`).
+  - Colonnes : Joueur | matchs 1..N (header coloré win/loss/tie) | 8 cols emoji agrégat (⚡🎯💀🐌🪦🛡️🗡️💥) | Score signé | Badge.
+  - Lignes : 1 par joueur, triées par score décroissant. `os-sb-row--mvp` (rank 1, "🏆 Champion"), `os-sb-row--lvp` (rank N avec score<0, "🍌 Maillon faible"), sinon "📉 Passager clandestin".
+  - Cellules agrégat colorées best (vert) / worst (rouge), **inversion** pour `last_casualty / last_group_kill / first_group_death / false_brother` (count élevé = mauvais).
+  - Score weights documentés : `+2 / +2 / -2 / +1.5 / -1.5 / -1 / -1 / +1` (cf. `_impact_types.py:8-15`).
+  - Sentinelle DOM `#llp-impact-end` injectée AVANT le contenu pour piloter la visibilité du panel légende JS.
+- YAML 07 réécrit en mode "structure exacte" + helper TS `convertImpactTaquinerie` refait : produit un vrai `<table>` HTML avec style scoped (pas de feuille CSS dispo dans le mock).
+
+**Audit complet onglet Synergies** : relecture `teammates_views.py::render_multi_teammate_view` ligne 87. Ordre réel de rendu dans `tab_syn` :
+1. `_render_map_breakdown` → `render_map_charts_section` → bullet (02) + **`plot_map_perf_vs_history` (manquant)** → `render_friends_history_table` (11)
+2. `render_squad_heatmap` (03)
+3. `render_squad_timeline` (04)
+4. `render_squad_form_score_section` (05)
+5. `render_impact_taquinerie` (07)
+
+Le chart `plot_map_perf_vs_history` (cf. `_maps_outcome_history.py:40`) n'avait pas été documenté. Ajouté sous **teammates.13** :
+- Barres horizontales **groupées** (barmode='group') comparant Session vs Historique par carte.
+- 2 traces : Historique en gris `rgba(120,120,120,0.45)`, Session colorée par palier `SCORE_THRESHOLDS` (excellent ≥75 vert, good ≥60 cyan, average ≥45 ambre, below_average ≥30 orange, sinon rouge).
+- Tri par `map_order` (chronologique session) si fourni, sinon par perf ascendante head 20.
+- vline x=0 pointillée (cosmétique, performance_avg toujours ≥0).
+- Helper TS `convertMapPerfVsHistory` ajouté dans `grouped-bar.ts` avec mock 12 cartes.
+
+**Cartographie corrigée des onglets dans `_index.md`** : la "synergie" est en fait split en 2 tabs avec une attribution différente de mon initial mapping. Le radar synergie (06) est dans **Contributions** (pas Synergies), via `render_trio_view`. Le tableau d'historique des matchs (11) est dans **Synergies** (pas autonome).
+
+**Résultats observés** :
+- 13/13 charts rendus dans `_generated/teammates/mock-echarts.html`.
+- `tsc --noEmit` propre.
+- `_index.md` mis à jour : tableau séparé pour Synergies (7 entrées) + Contributions (5 entrées) + Header (01) avec position de rendu explicite.
+
+**Conclusion / prochaine étape** :
+- **Pages couvertes : Synthèse (5) + Career (9) + Match View (17) + Teammates (13) = 44 charts/tables documentés**.
+- Onglet Synergies désormais **complet et fidèle** (7/7 charts).
+- Onglet Contributions reste tel quel (déjà documenté en Phase 2).
+- Validation visuelle attendue avant d'attaquer la prochaine page (Win/Loss compléments ou Timeseries).
+
+---
+
+## [2026-04-30] docs(charts-specs): page Teammates Phase 2 complétée (6 YAML supplémentaires + 4 helpers composite-ui)
+
+**Statut** : Complété (Teammates total = 12 visuels documentés et rendus)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Extension Teammates Phase 2 (charts 07-12) après validation Phase 1. Sources lues intégralement (`teammates_impact.py`, `teammates_charts.py`, `teammates_weapons.py`, `teammates_helpers.py`, `_teammates_trio_helpers.py`) sans extrapolation.
+- Réutilisation des `chart_kind` existants : 07/12 = `composite_block`, 08 = `line` (bars+line multi-joueurs), 09 = `grouped_bar` (horizontal), 10/11 = `table_html`.
+- Extensions converter ciblées (au lieu d'un renderer générique) :
+  - `composite-ui.ts` : 4 helpers ad hoc (`convertImpactTaquinerie` ranking 4 joueurs, `convertTrioMedals` 4 expanders × grille 6×2, `convertCitationsGrid` 6 anneaux conic-gradient, `convertMedalsGrid` 8 cols × 12 médailles). Tous retournent un seul block `raw_html` avec layout HTML inline complet.
+  - `grouped-bar.ts` : nouveau `convertWeaponKillsMulti` (12 armes × 4 joueurs en barres horizontales avec markArea zebra).
+  - `line.ts` : handler `player_metric_bars_template` qui génère 4 sub-traces (1 par joueur mocké) à partir d'une seule trace template — résolution propre du problème "trace template polymorphic" identifié en Phase 2 Match View.
+  - `table-html.ts` : mocks dédiés pour teammates.10 (kills/arme joueur principal), teammates.11 (12 cols history), match_view.14 (encounters).
+
+**Bugs corrigés en cours de Phase 2 Teammates** :
+- Chart 04 (squad timeline) ne rendait que des courbes alors que la source Plotly utilise `go.Bar` pour le score d'escouade : ajout détection `trace.type === 'go.Bar'` dans `line.ts` + per-bar coloring (excellent/good/avg/below/poor) + 2e yAxis quand `secondary_y: true`.
+- Title type trop strict dans `EChartsOption` (`{ text?: string }` seul) → erreur TS sur `convertWeaponKillsMulti`. Élargi pour accepter `left/right/top/bottom/textStyle`.
+
+**Résultats observés** :
+- 12 YAML dans `.ai/charts_specs/teammates/` + `_index.md` à jour avec Phase 1 et Phase 2.
+- HTML mock teammates : 12/12 charts rendus (4 ECharts ECharts via line/grouped-bar/heatmap/radar/bullet + 2 tables + 6 composites).
+- Re-render `match_view/` : 17/17 OK (charts 14/15/16 désormais rendus correctement avec les helpers ajoutés).
+- `tsc --noEmit` propre sur tout le projet converter.
+
+**Conclusion / prochaine étape** :
+- **Pages couvertes : Synthèse (5) + Career (9) + Match View (17) + Teammates (12) = 43 charts/tables documentés**.
+- Pages restantes : Win/Loss (compléter les 7 ajouts), Timeseries (~20), Citations globales, Objectives, Match History, Media Library, Session Compare, Explorer.
+- Validation visuelle utilisateur sur Teammates Phase 2 attendue avant d'étendre.
+- Pattern `template_polymorphic` (handler line.ts) à propager vers career.03 (friends courbes) si encore non factorisé.
+
+---
+
+## [2026-04-30] docs(charts-specs): page Match View Phase 2 complétée (9 YAML supplémentaires)
+
+**Statut** : Complété (Match View total = 17 visuels documentés et rendus)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Extension de Match View avec **Phase 2** (9 YAML) après validation Phase 1. Source lue intégralement sans extrapolation depuis CHARTS_AND_TABLES.md (à la demande explicite de l'utilisateur "œil neuf, pas de suppositions").
+- Cartographie réelle : tab Combat = 5 sections (impact, dominance, cadence, nemesis, all_players_frags), tab Team supplémentaire = encounters, tab Citations = 2 sections (citations+medals), tab Media = 1 section.
+- Pas de NOUVEAU chart_kind requis pour Phase 2 — tout réutilise les kinds existants : `line` (charts 09, 10, 13), `grouped_bar` (chart 11), `kpi_row` (chart 12), `table_html` (chart 14), `composite_block` (charts 15, 16, 17).
+- 9 YAML rédigés en mode condensé (vs Phase 1 plus exhaustive) — densité d'info préservée mais notes "why" plus concises pour gérer le volume.
+- Subtilités notables capturées :
+  - Chart 09 : palette **Okabe-Ito** (bleu/vermillon/orange) explicitement pour accessibilité daltonisme — à respecter strictement lors du portage.
+  - Chart 10 : **multi-panel subplots Plotly** (rows=2, shared_xaxes) avec kill feed à Y fixes (143 et 0.65) — non couvert par converter Phase 1, simplifié dans le mock.
+  - Chart 11 : technique de **halo blanc** sous les courbes MA (traces "outline" fantômes width 5) pour faire ressortir les courbes sur fond chargé.
+  - Chart 12 : algo `compute_personal_antagonists` non trivial avec tolerance_ms=5 et matching kill→death — à porter avec test de référence.
+  - Chart 13 : ligne **y=0 horizontale** comme référence (les courbes K-D peuvent descendre sous 0).
+  - Chart 14 : helpers HTML **partagés avec career.07** — opportunité de factorisation côté Go/React.
+  - Chart 15 : **anneau CSS conique** avec variables `--p / --ring-color / --img` pour la progression citations.
+  - Chart 17 : double source **BDD indexée + filesystem legacy** — la migration devra abandonner le filesystem.
+
+**Bugs corrigés en cours de Phase 2** :
+- Avant Phase 2 : `grouped-bar.ts` était spécialisé pour synthesis.04 (ids `top`/`others`/`top_rate_line`). Charts match_view.03 et 04 (ids `actual`/`expected`/`history_avg`) tombaient dans le `else { warnings.push }` → series vide → charts blancs. **Fix** : dispatch interne avec mode legacy + mode générique avec `color_per_bar` + patterns `decal` (ECharts 5.4+).
+
+**Résultats observés** :
+- 17 YAML totaux dans `.ai/charts_specs/match_view/` + `_index.md` mis à jour avec les 17 entrées (Phase 1 + Phase 2 cataloguées).
+- HTML mock complet : `8 ECharts blocks + 3 HTML tables + 6 composites = 17 visuels rendus`. 8/8 ECharts options évaluables.
+- Charts 10 (team_dominance multi-panel) et 13 (all_players_frags template) rendus avec **simplification mock** (le converter line n'a pas de support natif pour subplots ECharts ni traces template polymorphiques avec N>10) — documenté dans les notes des YAML.
+
+**Conclusion / prochaine étape** :
+- **Pages couvertes : Synthèse (5) + Career (9) + Match View (17) = 31 charts/tables documentés**.
+- Pages restantes : Win/Loss complète (~7 ajouts car 4 visuels déjà via Synthèse), Timeseries (~20), Teammates (~15), Citations globales, Objectives, Match History, Media Library, Session Compare, Explorer.
+- **Validation visuelle utilisateur** sur Match View Phase 2 attendue avant d'étendre.
+- Si validation OK, prochaine page logique : Win/Loss (compléter les 7 manquants) ou Timeseries (page complexe avec onglets multiples).
+- Le converter Phase 1 pourrait gagner en :
+  - Support `subplots` ECharts (multi-grid) — utile pour chart 10 et probablement d'autres pages
+  - Support `trace template polymorphic` (cf. chart 13 et career.03) en factorisant le pattern
+  - Annotations Plotly → ECharts `graphic.elements` (pour les badges flottants)
+
+## [2026-04-30] docs(charts-specs): page Match View Phase 1 (8 YAML) + 4 nouveaux chart_kinds
+
+**Statut** : Complété (Phase 1 — 8/8 visuels rendus en HTML mock)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Extension du pilote à la **page Match View** en mode **Phase 1** (selon recommandation du user). La page complète a ~17 visuels répartis sur header + 5 onglets ; la Phase 1 couvre header + onglet Summary + scoreboard de l'onglet Team = **8 visuels emblématiques**, choisis pour couvrir les chart_kinds nouveaux et les composants UI structurels.
+- **Lecture du source faite "œil neuf"** sur demande user : pas d'extrapolation depuis `CHARTS_AND_TABLES.md`, lecture directe de `match_view.py` (426 lignes) + 5 helpers (`match_view_charts.py`, `match_view_weapon_kills.py`, `match_view_participation.py`, `match_view_scoreboard.py`, `_radar_participation.py`).
+- 8 YAML rédigés : 01 header_kpi_cards, 02 map_perf_rank_block, 03 expected_vs_actual, 04 spree_headshots, 05 weapon_kills_pie, 06 weapon_kills_table, 07 participation_radar, 08 match_scoreboard.
+- 4 nouveaux `chart_kind` ajoutés au converter Node TS :
+  - **`pie`** (Plotly Pie → ECharts pie series) : hole→radius[inner,outer], textinfo→label.formatter, sort:false, légende verticale droite, 8 couleurs palette custom cyclées.
+  - **`radar`** (Plotly Scatterpolar → ECharts radar) : axes[]→indicator[], theta closure, customdata par axe, splitNumber via tickvals, axisLabel formatter avec %.
+  - **`kpi_row`** (composant UI) : 4 tiles avec une enriched (score+badge dominance optionnel) + 3 simples (text). Rendu HTML pur, pas Plotly. CSS dédié dans render-html.ts.
+  - **`composite_block`** (composant UI) : 3 colonnes [1.8, 0.7, 1.2] avec 3 sub-blocks typés (image / text_coloured / raw_html). Rendu HTML pur via flex.
+- Renderer `render-html.ts` adapté pour mixer ECharts charts + table_html + composite UI dans une même page (3 chemins de rendu distincts dans la même page selon `isTable` / `isComposite`).
+- Mock data rich : scoreboard 4 joueurs avec couleurs MVP-like, weapon table 7 lignes, KPI tiles avec badge DOMINATION, composite block avec image SVG inline + perf score 78 + rank Onyx Diamond III LUSR 1842 ▲+24.
+
+**Résultats observés** :
+- 9 fichiers créés/modifiés dans `tools/specs/echarts-converter/src/converters/` (pie.ts, radar.ts, composite-ui.ts) + extensions table-html.ts + converter.ts dispatch + render-html.ts CSS et branchements composite.
+- 9 fichiers dans `.ai/charts_specs/match_view/` : `_index.md` complet (cartographie Phase 1 + Phase 2 répertoriée + i18n keys + hiérarchie d'appels) + 8 YAML.
+- HTML mock Match View : 22 KB, **8/8 visuels rendus, 0 warning**. Comptage exact : 4 ECharts charts (init() détectés) + 2 tables HTML + 1 kpi_row + 1 composite_block = 8 ✓.
+- Synthèse et Career re-validés : 5/5 et 9/9 toujours OK, **0 régression**.
+- TypeScript typecheck propre après ajustements `as unknown as Record<string, unknown>`.
+
+**Conclusion / prochaine étape** :
+- Pages couvertes : **Synthèse (5) + Career (9) + Match View Phase 1 (8) = 22 charts/tables** dans le pilote.
+- 7 chart_kinds supportés par le converter : `bar_diverging`, `stacked_bar`, `grouped_bar`, `heatmap`, `gauge`, `line`, `table_html`, `pie`, `radar` + 2 composites UI (`kpi_row`, `composite_block`) = 11 kinds au total.
+- **Phase 2 Match View** (à faire après validation) : ~9 visuels supplémentaires sur l'onglet Combat (KD timeline, match impact, team dominance, match cadence, nemesis), Team encounters, Citations + Medals, Media. Pas de nouveaux chart_kinds attendus côté ECharts (à confirmer en lisant les sources).
+- **Validation visuelle utilisateur** sur Match View Phase 1 attendue avant d'étendre. Notamment : conformité du radar 6 axes, du donut weapon_kills (couleurs + légende droite), du scoreboard multi-team, du KPI row header avec badge, et du composite block map+perf+rank.
+
+## [2026-04-30] docs(charts-specs): page Career complète (9 YAML) + 3 nouveaux chart_kinds + tables HTML
+
+**Statut** : Complété (9/9 charts/tables Career rendus dans mock-echarts.html)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Extension du pilote à la **page Career** (charts_specs/career/) après validation visuelle de Synthèse. Cartographie en 6 sections : rang actuel (gauge XP), Hero (gauge), historique XP (timeline), LUSR/CSR (cards + timeline filtrée), top 10 best/worst (2 tableaux), encounters (3 tableaux : encountered + nemeses + victims).
+- 9 YAML rédigés : 2 gauges (`01_rank_progress_gauge`, `02_hero_progress_gauge`), 2 timelines (`03_xp_history_timeline`, `04_lusr_timeline`), 5 tables HTML (`05_top_best_matches`, `06_top_worst_matches`, `07_encounters`, `08_nemeses`, `09_victims`).
+- 3 nouveaux `chart_kind` ajoutés au converter Node TS :
+  - **`gauge`** (Plotly Indicator → ECharts gauge series, axisLine.lineStyle.color = steps, progress.itemStyle.color = bar dynamique selon pct, pointer = threshold, detail.formatter = nombre central)
+  - **`line`** (Plotly Scatter modes lines/lines+markers → ECharts line, support fill='tonexty' pour CI ribbons via areaStyle, dash → lineStyle.type, markArea pour zones de tier LUSR, markLine pour seuil hline, visible:'legendonly' → legend.selected[name]:false)
+  - **`table_html`** (rendu HTML pur, pas une option ECharts — produit une struct `TableSpec` consommée par le renderer pour générer une vraie `<table>` avec classes CSS Halo `os-table os-scoreboard`, `os-sb-th`, `os-sb-row`, `os-sb-td`)
+- Renderer `render-html.ts` adapté pour mixer charts ECharts et tables HTML dans la même page (nouveau champ `isTable` dans `ChartItem`, branchement renderTableHtml() vs init ECharts standard). CSS Halo ajouté pour les tables (caption avec `os-sb-team`, headers, rows hover, légende).
+- Pattern "spec courte qui pointe vers la spec frère" introduit pour les paires de YAML quasi-identiques (career.06 ↔ 05, career.09 ↔ 08). Le converter a un fallback `getDefaultColumnsFor(specId)` qui inline les colonnes par défaut quand le YAML utilise une string raccourci au lieu d'une vraie liste.
+- Bug fix au passage : `barGap: '-100%'` ajouté au converter `bar_diverging` pour le duel Solo vs Squad (les barres partagent maintenant la même ligne par catégorie Y, alors qu'ECharts par défaut groupait les séries).
+
+**Résultats observés** :
+- 9 YAML créés dans `.ai/charts_specs/career/` + `_index.md` (composition page).
+- 3 fichiers source Node ajoutés dans `tools/specs/echarts-converter/src/converters/` (gauge.ts, line.ts, table-html.ts).
+- `render-html.ts` mis à jour avec branchement chart vs table + CSS Halo pour tables.
+- HTML mock Career généré : 44 KB, **9/9 charts/tables rendus, 0 warning**. 4 options ECharts évaluables, 5 tables HTML correctement structurées.
+- Synthèse re-validée après modifications : 5/5 OK toujours, pas de régression.
+- TypeScript typecheck propre.
+
+**Conclusion / prochaine étape** :
+- Pages couvertes : **Synthèse (5) + Career (9) = 14 charts/tables** dans le pilote.
+- Pages restantes du projet : Win/Loss (11+ charts), Timeseries (~20), Teammates (~15), Match View (~20), Citations, Objectives, Match History, Media Library, Session Compare, Explorer. Soit ~80 visuels à générer pour couvrir tout le projet.
+- **Validation visuelle utilisateur** sur Career attendue avant d'étendre. Refresh de `mock-echarts.html` dans le navigateur pour comparer avec les screenshots Plotly d'origine.
+- Si validation OK, prochaine page logique : Win/Loss complète (les 3 sous-renders importés sur Synthèse couvrent déjà 4 visuels — il reste 7+ visuels Win/Loss à documenter).
+- L'extracteur AST Python reste différé (pas de Python local) ; pas bloquant car le manuel + converter ECharts ont prouvé leur valeur sur 14 visuels.
+
+## [2026-04-30] docs(charts-specs): squelette specs reproductibles + 5 YAML pilote Synthèse + converter Node TS
+
+**Statut** : Complété (pilote Synthèse validé par converter ECharts ; extension aux autres pages à scheduler)
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Constat : `.ai/CHARTS_AND_TABLES.md` est un inventaire descriptif (~80 visuels listés) qui ne suffit pas pour reproduire fidèlement les graphes lors du portage Python → Go/ECharts. Il manque les requêtes amont, paramètres de calcul, layout détaillé, hovertemplates, états vides, contrôles UI.
+- Approche retenue : **B + C amendée**. B = un YAML par chart + un `_index.md` par page. C initial = extracteur AST + runtime Python ; pivoté en **converter Node TS YAML → ECharts option** parce qu'aucun environnement Python n'est exécutable localement (droits limités) mais Node 25.9 et Go 1.26.2 sont dispo. Le converter ECharts est plus aligné avec la cible de migration que l'extracteur Python.
+- Pilote = page Synthèse complète (5 charts, source `origin/v7/cockpit:src/ui/pages/synthesis.py` + 3 sous-renders importés de win_loss).
+- Squelette créé dans `.ai/charts_specs/` : `README.md`, `_schema.yaml` (~250 lignes, 12 ajouts critiques après test mental ECharts dont colorscale/data_transform/clip/show_when/customdata/branches/yaxis2/shapes paramétrés/computed_by/timezone + section `controls` avec scope page/section/chart), `_theme_default.yaml` (palette HALO, axes par défaut, légendes, configs Plotly).
+- 5 YAML rédigés manuellement (~250-280 lignes chacun) par lecture du source via `git show origin/v7/cockpit:...`. Chaque YAML inclut : Polars + SQL DuckDB pour chaque transformation, notes structurées `decision/why` pour les choix non triviaux, fingerprint (commit `db638c09`), references croisées.
+- Inexactitudes corrigées dans `_index.md` au passage : barres outcomes_by_map/mode sont **verticales** (pas horizontales comme indiqué dans `CHARTS_AND_TABLES.md`), couleurs traces (Wins green 0.85 / Losses red 0.75 / Ties amber 0.70 / DNF violet 0.60), légende `xanchor:left, x:0` (pas centrée).
+
+**Résultats observés** :
+- 8 fichiers créés dans `.ai/charts_specs/` : `README.md`, `_schema.yaml`, `_theme_default.yaml`, `synthesis/_index.md`, `synthesis/01_outcomes_by_map.yaml`, `synthesis/02_outcomes_by_mode.yaml`, `synthesis/03_winrate_heatmap.yaml`, `synthesis/04_top_matches_by_week.yaml`, `synthesis/05_solo_squad_duel.yaml`.
+- Test mental ECharts validé sur les 5 charts (chaque pattern Plotly a son équivalent ECharts via le YAML, sans avoir à relire le code Python).
+- Patterns récurrents identifiés pour le converter : layout double-passe (fonction + caller), `show_when` sur trace, `text_data.empty_when`, `data_transform.x_expression`, `yaxis2`, `heatmap.colorscale`, `autorange:reversed`, héritage thème + override.
+
+**Converter Node TS écrit et validé** :
+- Setup `tools/specs/echarts-converter/` : Node 25.9, TypeScript 5.7, dépendance unique `yaml` 2.8 (pas de framework de test, juste tsx pour exécuter le TS directement). 6 fichiers source : `types.ts` (typage du YAML + ECharts option), `loader.ts` (lecture YAML + recherche `_theme_default.yaml` en remontant l'arbo + résolution tokens palette/i18n + évaluation des `height.expression`/`branches`), `converter.ts` (orchestrateur : `buildGrid`, `buildLegend`, `buildAxis`, `buildTooltip`, dispatcher par `chart_kind`), 4 converters par kind (`bar-diverging`, `stacked-bar`, `heatmap`, `grouped-bar`), `cli.ts`.
+- Test final sur les 5 YAML Synthèse : **5/5 OK, 0 warning**. Tous les détails Plotly se traduisent en option ECharts conforme : couleurs et opacités précises (Wins green 0.85 / Losses red 0.75 / Ties amber 0.70 / DNF violet 0.60), `markLine` x=0 du duel chart, `grid.containLabel:true` quand `automargin:true`, légende override (legend_horizontal_bottom du thème → top:5 right:0 quand le caller override), barres stack avec `barCategoryGap: 15%`, heatmap avec `visualMap` 3-stops + `yAxis.inverse:true` + 168 cellules, `yAxisIndex:1` pour la ligne ratio sur Y2 du chart 4, `data_transform.x_expression` appliqué (Solo négatif, Squad positif).
+- 2 corrections appliquées en cours de route :
+  (1) `_theme_default.yaml` avait `bluish_green:"#009E73"` sans espace après `:` (YAML strict requiert un espace, parser yaml@2.8 lève "Implicit keys need to be on a single line").
+  (2) Tokens `{{THEME_COLORS.text_primary}}` et `{{THEME_COLORS.border}}` non résolvables (placeholders Python) → remplacés par leurs valeurs hex/rgba lues dans `src/config.py::ThemeColors`.
+
+**Outputs générés** : `.ai/charts_specs/_generated/synthesis/{01..05}.option.json` (gitignoré côté tools, mais commité côté `.ai/` si on veut).
+
+**Conclusion / prochaine étape** :
+- **Format YAML validé** : la spec produit bien des options ECharts conformes pour les 4 chart_kinds rencontrés (bar_diverging, stacked_bar, heatmap, grouped_bar). Reproduction fidèle théoriquement garantie au niveau structurel.
+- **À étendre quand pertinent** :
+  - Phase runtime `fig.to_dict()` Python (différée).
+  - Validation visuelle (rendu ECharts via Puppeteer/Playwright pour comparer avec screenshot Plotly d'origine) — non bloquant.
+  - Génération des YAML pour les autres pages (Career, Win/Loss complète, Timeseries, Match View, Teammates, etc.) — long, à industrialiser progressivement avec les patterns identifiés sur le pilote.
+- **Recommandation** : ne pas étendre tant que la validation visuelle d'au moins UN des 5 charts ECharts générés n'a pas été faite par un développeur front (preuve concrète vs preuve théorique).
+

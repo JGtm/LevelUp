@@ -1,0 +1,193 @@
+# =============================================================================
+# Heatmap d'intensité de kills par match (toggle joueur)
+# =============================================================================
+# Heatmap matchs × phases (10 buckets temporels par match, normalisés) avec
+# colorscale cyan→jaune→rouge. Toggle segmented_control en haut permet de
+# basculer entre "Tous" (densité kills toutes équipes confondues) et un joueur
+# spécifique (filtré par xuid). Utilise plot_match_intensity_heatmap (réutilisé
+# de match_view).
+# =============================================================================
+
+id: "teammates.15"
+title: "Heatmap d'intensité — kills par phase de match"
+page: teammates
+section: "Onglet Contributions — Intensité"
+display_order_in_tab: 3                                        # entre radar (06) et trio_perf (16)
+source_function: "src/ui/pages/teammates_intensity.py::render_squad_intensity_heatmap"
+source_helpers:
+  - "src/visualization/match_intensity_heatmap.py::plot_match_intensity_heatmap"
+  - "src/ui/pages/teammates_intensity.py::_compute_player_profile"
+  - "src/ui/pages/teammates_intensity.py::_build_y_labels_from_me_df"
+  - "src/ui/pages/teammates_intensity.py::_sort_profile_by_match_order"
+  - "src/analysis/match_intensity.py::IntensityProfile"
+  - "src/ui/_cache_queries.py::cached_load_kill_timing_for_matches"
+fragment: false
+chart_kind: heatmap
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "cached_load_kill_timing_for_matches → events_df + _compute_player_profile → IntensityProfile"
+  input_dataframe:
+    required_fields:
+      events_df:
+        - match_id    # str
+        - time_ms     # int (timestamp d'un kill au sein du match)
+        - xuid        # str (joueur ayant fait le kill)
+      profile.df:
+        - match_id
+        - phase_0..phase_9                                     # 10 colonnes de densité normalisée
+  call_args:
+    xuid_name_map: "dict[xuid, display_name] — escouade complète"
+    match_ids_ordered: "list[str] — chronologique"
+    selected_xuid: "str | None — None = mode 'Tous' (toutes équipes), str = mode joueur"
+  filters_applied:
+    - "len(match_ids_ordered) >= 3 SINON la section ne s'affiche pas"
+
+  constants:
+    n_buckets: 10                                              # 10 phases par match (0-10%, 10-20%, ...)
+    colorscale:
+      - [0.00, "#38C8C8"]                                      # cyan = peu d'activité
+      - [0.25, "#FFFF00"]                                      # jaune
+      - [0.50, "#FFB300"]                                      # ambre
+      - [0.75, "#FF5500"]                                      # orange
+      - [1.00, "#FF1A00"]                                      # rouge intense
+    colorbar:
+      title_key: "axis_cadence_kills"
+      thickness: 12
+      length: 0.8
+
+  transformations:
+    - description: "Chargement des kill timings via cache (1 ligne par kill : match_id, time_ms, xuid)"
+      sql_duckdb: |
+        SELECT match_id, time_ms, xuid
+        FROM shared.highlight_events
+        WHERE match_id IN (?, ...) AND xuid IN (?, ...)
+        AND event_type = 'kill';
+
+    - description: "Calcul du profil d'intensité (10 phases normalisées par match)"
+      polars: |
+        # Pour chaque match, on découpe la durée totale en 10 buckets égaux,
+        # on compte les kills par bucket, puis on normalise par le max du match
+        profile = _compute_player_profile(
+            events_df,
+            xuid=selected_xuid,                                # None = all teams
+            match_ids_ordered=match_ids_ordered,
+        )
+      detail: "Renvoie IntensityProfile avec df = 1 ligne par match × 10 colonnes phase_*"
+
+    - description: "Construction des labels Y (carte si dispo, sinon date du match)"
+      polars: |
+        y_labels = _build_y_labels_from_me_df(profile.df['match_id'].to_list(), me_df)
+        # Ex: ['Aquarius - 14 avr.', 'Recharge - 14 avr.', ...]
+
+# === TRACES ===
+traces:
+  - id: intensity_heatmap
+    type: heatmap
+    z_field: "profile.df.phase_0..phase_9"                     # 2D matrix, normalisée 0-1
+    x_field: "phase_labels"                                    # ['0-10%', '10-20%', ..., '90-100%']
+    y_field: "y_labels"                                        # ['Aquarius - 14 avr.', ...]
+    colorscale: "cyan_yellow_red_5_stops"
+    hovertemplate: |
+      {{viz_t.axis_intensity_phase}}: %{x}<br>
+      {{viz_t.axis_intensity_match}}: %{y}<br>
+      {{viz_t.axis_cadence_kills}}: %{z}<extra></extra>
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 480                                                  # ~12 matchs × 28 px + 120 px de marges
+    note: "côté Python : dérivé du nombre de matchs (max(380, n_matches*28+120))"
+  xaxis_title: "{{viz_t.axis_intensity_phase}}"
+  yaxis_title: "{{viz_t.axis_intensity_match}}"
+  plot_style: "PlotOptions(lang=lang).theme"
+
+# === CONTRÔLES ===
+controls:
+  - id: player_select
+    widget: st.segmented_control
+    label: "{{t.tm_intensity_player_select}}"
+    options:
+      - "{{t.tm_intensity_all}}"                                # → selected_xuid = None
+      - "{{f1_name}}"                                           # → selected_xuid = f1_xuid
+      - "{{f2_name}}"                                           # ... etc
+      - "{{f3_name}}"
+    default: "{{t.tm_intensity_all}}"
+    key: "squad_intensity_player_select"
+    on_change: "Recompute profile avec _compute_player_profile(xuid=selected_xuid)"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    len(match_ids_ordered) >= 3
+    AND xuid_name_map non vide
+    AND raw (kill timings) non vide
+    AND profile non None
+  empty_state:
+    type: "st.info | rien (silencieux)"
+    triggered_by:
+      - "match_ids_ordered < 3 → return silencieux"
+      - "xuid_name_map vide → return silencieux"
+      - "raw vide → return silencieux"
+      - "profile None → t('tm_intensity_no_data')"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('tm_intensity_title'))"
+    - "if hints_visible(): st.caption(t('tm_intensity_caption'))"
+    - "Toggle segmented_control"
+    - "st.caption(t('tm_intensity_match_count').format(n=len(profile.df)))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - axis_cadence_kills
+    - axis_intensity_phase
+    - axis_intensity_match
+  t:
+    - tm_intensity_title
+    - tm_intensity_caption
+    - tm_intensity_match_count
+    - tm_intensity_player_select
+    - tm_intensity_all
+    - tm_intensity_no_data
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Phases NORMALISÉES (10 buckets de % de durée) plutôt qu'absolues"
+      why: |
+        Les matchs n'ont pas tous la même durée (3 min vs 12 min). Si on utilisait
+        des buckets absolus en secondes, un match court serait écrasé. Les 10 phases
+        en % permettent de comparer la dynamique relative : "ce match j'ai été agressif
+        au début (phase 0-30%), ce match plutôt à la fin (phase 70-100%)".
+
+    - decision: "Toggle 'Tous' (toutes équipes) vs joueur"
+      why: |
+        Mode 'Tous' = densité globale du match (intensité de combat) — utile pour voir
+        quels matchs étaient riches en action. Mode joueur = filtre xuid → intensité
+        personnelle. Permet à l'utilisateur de comparer "intensité globale vs ma
+        propre activité". Implémenté via st.segmented_control (Streamlit 1.32+).
+
+    - decision: "Colorscale cyan→jaune→ambre→orange→rouge (5 stops)"
+      why: |
+        Palette chaud/froid intuitive. Cyan = 'rien' (calme), rouge = 'beaucoup' (intense).
+        5 stops avec saut entre 0.25 et 0.5 (jaune→ambre) pour bien séparer les niveaux
+        intermédiaires. Réutilisé de match_view (cohérence visuelle).
+
+    - decision: "Y labels = carte + date (pas juste #1, #2...)"
+      why: |
+        _build_y_labels_from_me_df construit 'map_name - 14 avr.' depuis me_df. Plus
+        informatif que '#1, #2, ...'. Si pas de carte (data manquante), fallback date seule.
+
+    - decision: "Section masquée si <3 matchs"
+      why: |
+        En dessous de 3 matchs la heatmap n'a pas de sens visuel (1-2 lignes seulement).
+        Plutôt que d'afficher un chart pauvre, on cache la section silencieusement.

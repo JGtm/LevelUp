@@ -1,0 +1,116 @@
+# =============================================================================
+# Match history tables — 2 onglets Session A | B avec tables HTML détaillées
+# =============================================================================
+# st.tabs([Session A, Session B]) — 2 onglets côte à côte. Chaque onglet rend
+# render_session_history_table avec :
+#   - colonnes : Time, Mode, Map, K/D/A, F/D ratio, Outcome, Performance, MMR delta
+#   - couleur par row (alternance)
+#   - lignes triées chronologiquement (oldest → newest ?)
+#
+# Section finale de la page Session Comparison.
+# =============================================================================
+
+id: "session_compare.14"
+title: "Match history tables — 2 onglets Session A | B"
+page: session_compare
+section: "Section 14 (linéaire, 2 onglets)"
+display_order_in_page: 14
+source_function: "src/ui/pages/session_compare.py::_render_match_history_tabs"
+source_helpers:
+  - "src/ui/pages/_session_compare_history.py::render_session_history_table"
+  - "src/ui/pages/_session_compare_history.py::_build_history_dataframe"
+  - "src/ui/pages/_session_compare_history.py::_prepare_history_source"
+  - "src/ui/pages/_session_compare_history.py::_build_display_metadata"
+  - "src/ui/pages/_session_compare_history.py::_add_time_display_column"
+  - "src/ui/pages/_session_compare_history.py::_add_mode_display_column"
+  - "src/ui/pages/_session_compare_history.py::_add_map_display_column"
+  - "src/ui/pages/_session_compare_history.py::_add_stat_display_columns"
+  - "src/ui/pages/_session_compare_history.py::_add_outcome_display_column"
+  - "src/ui/pages/_session_compare_history.py::_add_performance_display"
+  - "src/ui/pages/_session_compare_history.py::_add_mmr_display_columns"
+fragment: false
+chart_kind: table_html
+
+data:
+  computed_by: server
+  upstream_service: "_build_history_dataframe(df_session, df_full) — assemblage colonnes affichage"
+  input_dataframe:
+    required_fields:
+      df_session_a, df_session_b: [match_id, start_time, mode_ui, map_ui, kills, deaths, assists, ratio, outcome, performance_score, csr_pre, csr_post]
+      df_full: "DataFrame complet pour calculs MMR delta"
+  call_args:
+    label: "Session A | Session B"
+  filters_applied: []
+
+# === TABLE HTML ===
+table_html:
+  columns:
+    - { id: time,        header: "Heure",       align: left }
+    - { id: mode,        header: "Mode",        align: left }
+    - { id: map,         header: "Carte",       align: left }
+    - { id: kda,         header: "K/D/A",       align: center }
+    - { id: ratio,       header: "F/D",         align: center }
+    - { id: outcome,     header: "Résultat",    align: center }
+    - { id: performance, header: "Perf",        align: center }
+    - { id: mmr_delta,   header: "Δ MMR",       align: center }
+
+  row_template:
+    time: "_add_time_display_column"
+    mode: "_add_mode_display_column"
+    map: "_add_map_display_column"
+    kda: "_add_stat_display_columns (kills/deaths/assists)"
+    ratio: "_add_stat_display_columns (ratio)"
+    outcome: "_add_outcome_display_column (V/D/E/DNF avec icône)"
+    performance: "_add_performance_display (palette palier)"
+    mmr_delta: "_add_mmr_display_columns (csr_post - csr_pre, ± format)"
+
+# === ONGLETS ===
+tabs:
+  - id: tab_a
+    label: "Session A"
+    target_df: df_session_a
+  - id: tab_b
+    label: "Session B"
+    target_df: df_session_b
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: null }                                       # auto-fit nombre de lignes
+
+display:
+  shown_when: "df_session_a OR df_session_b non vide"
+  config: null
+  width_mode: stretch
+  preceded_by: []
+
+i18n_keys:
+  viz_t: []
+  t: ["sc_session_a", "sc_session_b"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "2 onglets st.tabs() plutôt que 2 colonnes"
+      why: |
+        Les tables history sont LARGES (8 colonnes) — les afficher en 2 colonnes côte à côte
+        écraserait chaque table à la moitié de la largeur, rendant les colonnes illisibles.
+        Les onglets permettent à chaque table d'utiliser TOUTE la largeur disponible.
+        L'utilisateur bascule de A à B avec un clic.
+
+    - decision: "Multiples helpers _add_*_display_column"
+      why: |
+        Chaque colonne a son formatage propre (durée, badge outcome, couleur palier perf,
+        signe ± MMR). Plutôt que d'inliner toute la logique de formatage, le code est splité
+        en 6+ helpers spécialisés. Côté React : composant <SessionHistoryTable /> avec
+        des cell renderers par type de colonne.
+
+    - decision: "df_full passé en paramètre pour MMR delta"
+      why: |
+        csr_post du match N - csr_pre du match N+1 nécessite l'accès au match SUIVANT, qui
+        peut ne pas être dans df_session si la session est partielle. df_full = historique
+        complet permet ce lookup même hors session.

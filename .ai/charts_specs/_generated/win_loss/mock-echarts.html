@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock ECharts — win_loss</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: rgb(20, 28, 33);
+      color: rgba(245, 248, 255, 0.92);
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 500;
+    }
+    header .info {
+      font-size: 13px;
+      color: rgba(182, 196, 214, 0.88);
+    }
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 1100px) {
+      main {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .chart-card.full-width {
+        grid-column: 1 / -1;
+      }
+    }
+    .chart-card {
+      background: rgba(29, 35, 40, 1.0);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px 16px 8px;
+    }
+    .chart-card h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #33D6FF;
+    }
+    .chart-card .meta {
+      font-size: 11px;
+      color: rgba(182, 196, 214, 0.72);
+      margin-bottom: 12px;
+    }
+    .chart-card .meta code {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .chart-canvas {
+      width: 100%;
+    }
+    .chart-card--table .os-table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    table.os-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86em;
+      background: rgba(29, 35, 40, 0.96);
+    }
+    table.os-table th, table.os-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      text-align: left;
+      vertical-align: middle;
+    }
+    table.os-table th.os-sb-team {
+      background: rgba(51, 214, 255, 0.08);
+      color: #33D6FF;
+      font-weight: 600;
+      font-size: 0.95em;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(51, 214, 255, 0.2);
+    }
+    table.os-table th.os-sb-th {
+      color: rgba(182, 196, 214, 0.88);
+      font-size: 0.78em;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    table.os-table tr.os-sb-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    table.os-table td.os-sb-td {
+      color: rgba(245, 248, 255, 0.92);
+    }
+    .table-legend {
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .kpi-tile {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 9px 15px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-tile-text {
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.98);
+    }
+    .composite-block {
+      margin-top: 8px;
+      padding: 4px 0;
+    }
+    .composite-block .cb-cell img {
+      max-width: 100%;
+      border-radius: 6px;
+    }
+    footer {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: rgba(182, 196, 214, 0.72);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mock ECharts — Page win_loss</h1>
+    <div class="info">
+      7 charts · Données mock synthétiques · ECharts 5.5.1<br>
+      Source : <code>origin/v7/cockpit</code> (Plotly Python) — généré le 2026-04-30T19:59:38.335Z
+    </div>
+  </header>
+  <main>
+    <section class="chart-card">
+      <h2>win_loss.01 — Outcomes over time — V/D par période (page WL)</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_outcomes_over_time</code>
+      </div>
+      <div id="chart-0" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 50,
+    right: 30,
+    top: 50,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: {
+    bottom: 8,
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "Sem 5",
+      "Sem 6",
+      "Sem 7",
+      "Sem 8",
+      "Sem 9",
+      "Sem 10",
+      "Sem 11",
+      "Sem 12",
+      "Sem 13",
+      "Sem 14",
+      "Sem 15",
+      "Sem 16"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      fontSize: 10
+    }
+  },
+  yAxis: {
+    type: "value",
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.75)",
+        width: 2
+      }
+    },
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      formatter: function anonymous(v
+) {
+return Math.abs(v);
+}
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245,248,255,0.05)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "Victoires",
+      type: "bar",
+      data: [
+        12,
+        8,
+        14,
+        10,
+        16,
+        11,
+        9,
+        13,
+        15,
+        8,
+        12,
+        14
+      ],
+      itemStyle: {
+        color: "#00e676"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Défaites",
+      type: "bar",
+      data: [
+        -8,
+        -11,
+        -7,
+        -10,
+        -6,
+        -9,
+        -12,
+        -8,
+        -7,
+        -11,
+        -9,
+        -7
+      ],
+      itemStyle: {
+        color: "#e53935"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Égalités",
+      type: "bar",
+      data: [
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1
+      ],
+      itemStyle: {
+        color: "#ab47bc"
+      },
+      barCategoryGap: "30%"
+    }
+  ],
+  title: {
+    text: "Outcomes over time — V/D par semaine (losses négatives)",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 380
+};
+          const dom = document.getElementById('chart-0');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>win_loss.02 — Map / Mode breakdown — V/D/T par carte (top 12) + par mode</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_map_mode_breakdown</code>
+      </div>
+      <div id="chart-1" class="chart-canvas" style="height: 460px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  legend: {
+    top: 10,
+    right: 30,
+    orient: "horizontal",
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    },
+    data: ["Wins", "Losses", "Ties"]
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  grid: [
+    {
+      left: "5%",
+      top: "20%",
+      width: "40%",
+      height: "70%",
+      containLabel: true
+    },
+    {
+      left: "55%",
+      top: "20%",
+      width: "40%",
+      height: "70%",
+      containLabel: true
+    }
+  ],
+  xAxis: [
+    {
+      gridIndex: 0,
+      type: "category",
+      data: ["Aquarius", "Recharge", "Live Fire", "Streets", "Bazaar", "Behemoth", "Catalyst", "Argyle"],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9,
+        rotate: -30
+      },
+      name: "Cartes (top 12)",
+      nameLocation: "middle",
+      nameGap: 35,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "category",
+      data: ["Slayer", "CTF", "Strongholds", "Oddball", "King of the Hill", "Land Grab", "Quickplay", "BTB"],
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)",
+        fontSize: 9,
+        rotate: -30
+      },
+      name: "Modes",
+      nameLocation: "middle",
+      nameGap: 35,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      }
+    }
+  ],
+  yAxis: [
+    {
+      gridIndex: 0,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      gridIndex: 1,
+      type: "value",
+      axisLabel: {
+        color: "rgba(245,248,255,0.7)"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Wins",
+      type: "bar",
+      stack: "maps",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [12, 9, 7, 6, 11, 4, 8, 5],
+      itemStyle: {
+        color: "#00e676"
+      }
+    },
+    {
+      name: "Losses",
+      type: "bar",
+      stack: "maps",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [8, 11, 6, 9, 7, 12, 5, 8],
+      itemStyle: {
+        color: "#e53935"
+      }
+    },
+    {
+      name: "Ties",
+      type: "bar",
+      stack: "maps",
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: [1, 0, 0, 1, 0, 0, 0, 0],
+      itemStyle: {
+        color: "#ab47bc"
+      }
+    },
+    {
+      name: "Wins ",
+      type: "bar",
+      stack: "modes",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [15, 8, 6, 7, 5, 3, 12, 9],
+      itemStyle: {
+        color: "#00e676"
+      }
+    },
+    {
+      name: "Losses ",
+      type: "bar",
+      stack: "modes",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [10, 9, 8, 6, 7, 4, 9, 11],
+      itemStyle: {
+        color: "#e53935"
+      }
+    },
+    {
+      name: "Ties ",
+      type: "bar",
+      stack: "modes",
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: [0, 1, 0, 0, 0, 0, 1, 0],
+      itemStyle: {
+        color: "#ab47bc"
+      }
+    }
+  ],
+  title: {
+    text: "V/D/T par carte (gauche, top 12) / par mode (droite)",
+    left: "center",
+    top: 5,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 460
+};
+          const dom = document.getElementById('chart-1');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>win_loss.03 — Win/Loss heatmap — jour × heure</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_heatmap_section</code>
+      </div>
+      <div id="chart-2" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 60,
+    top: 60,
+    bottom: 50,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: function anonymous(p
+) {
+if (p.value[2] === null || p.value[2] === undefined) return p.value[0] + 'h ' + ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"][p.value[1]] + '<br>Aucun match';
+return p.value[0] + 'h ' + ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"][p.value[1]] + '<br>WR: ' + (p.value[2] * 100).toFixed(0) + '% (' + p.value[3] + ' matchs)';
+}
+  },
+  visualMap: {
+    min: 0,
+    max: 1,
+    show: true,
+    orient: "vertical",
+    right: 10,
+    top: "middle",
+    inRange: {
+      color: ["#e53935", "#ffb300", "#00e676"]
+    },
+    text: ["Bon", "Mauvais"],
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "00h",
+      "01h",
+      "02h",
+      "03h",
+      "04h",
+      "05h",
+      "06h",
+      "07h",
+      "08h",
+      "09h",
+      "10h",
+      "11h",
+      "12h",
+      "13h",
+      "14h",
+      "15h",
+      "16h",
+      "17h",
+      "18h",
+      "19h",
+      "20h",
+      "21h",
+      "22h",
+      "23h"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      fontSize: 9,
+      interval: 1
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  yAxis: {
+    type: "category",
+    data: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+    inverse: true,
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)"
+    },
+    splitArea: {
+      show: true
+    }
+  },
+  series: [
+    {
+      name: "WL heatmap",
+      type: "heatmap",
+      data: [
+        [0, 0, null, 0],
+        [1, 0, null, 0],
+        [2, 0, null, 0],
+        [3, 0, null, 0],
+        [4, 0, null, 0],
+        [5, 0, null, 0],
+        [6, 0, null, 0],
+        [7, 0, null, 0],
+        [8, 0, null, 0],
+        [9, 0, null, 0],
+        [10, 0, 0.40360928352052255, 1],
+        [11, 0, 0.8174640065757237, 1],
+        [12, 0, null, 0],
+        [13, 0, 0.33917223637142596, 2],
+        [14, 0, 0.36147175860303765, 1],
+        [15, 0, 0.7158195071200334, 2],
+        [16, 0, null, 0],
+        [17, 0, 0.7020846769221613, 2],
+        [18, 0, 0.3358816881320444, 7],
+        [19, 0, 0.7418093581049438, 3],
+        [20, 0, 0.41180854055596305, 2],
+        [21, 0, 0.46853427122666813, 5],
+        [22, 0, 0.6678263381840781, 3],
+        [23, 0, 0.8170423444778356, 5],
+        [0, 1, null, 0],
+        [1, 1, null, 0],
+        [2, 1, null, 0],
+        [3, 1, null, 0],
+        [4, 1, null, 0],
+        [5, 1, null, 0],
+        [6, 1, null, 0],
+        [7, 1, null, 0],
+        [8, 1, null, 0],
+        [9, 1, 0.6678492487355827, 1],
+        [10, 1, null, 0],
+        [11, 1, null, 0],
+        [12, 1, 0.8264433458732339, 1],
+        [13, 1, 0.4150002226942797, 1],
+        [14, 1, 0.4554744194453054, 1],
+        [15, 1, null, 0],
+        [16, 1, null, 0],
+        [17, 1, 0.45271189256158983, 1],
+        [18, 1, 0.5652713607436632, 4],
+        [19, 1, 0.5182261087360893, 2],
+        [20, 1, 0.34599589293137506, 4],
+        [21, 1, 0.4294508026658954, 3],
+        [22, 1, 0.4484275872722504, 2],
+        [23, 1, 0.6804967875762298, 3],
+        [0, 2, null, 0],
+        [1, 2, null, 0],
+        [2, 2, null, 0],
+        [3, 2, null, 0],
+        [4, 2, null, 0],
+        [5, 2, null, 0],
+        [6, 2, null, 0],
+        [7, 2, null, 0],
+        [8, 2, null, 0],
+        [9, 2, null, 0],
+        [10, 2, null, 0],
+        [11, 2, null, 0],
+        [12, 2, 0.3740472011632125, 1],
+        [13, 2, 0.606187396356534, 1],
+        [14, 2, 0.3431859017151185, 1],
+        [15, 2, 0.6041148051290881, 2],
+        [16, 2, 0.4157312288727295, 1],
+        [17, 2, null, 0],
+        [18, 2, 0.3266156950936755, 3],
+        [19, 2, 0.6409723874694797, 7],
+        [20, 2, 0.8765099398446199, 3],
+        [21, 2, 0.37760937827922436, 2],
+        [22, 2, 0.31415285683927746, 4],
+        [23, 2, 0.35635843911799925, 2],
+        [0, 3, null, 0],
+        [1, 3, null, 0],
+        [2, 3, null, 0],
+        [3, 3, null, 0],
+        [4, 3, null, 0],
+        [5, 3, null, 0],
+        [6, 3, null, 0],
+        [7, 3, null, 0],
+        [8, 3, null, 0],
+        [9, 3, null, 0],
+        [10, 3, null, 0],
+        [11, 3, null, 0],
+        [12, 3, null, 0],
+        [13, 3, null, 0],
+        [14, 3, 0.791857874068717, 1],
+        [15, 3, null, 0],
+        [16, 3, null, 0],
+        [17, 3, 0.7774923648497116, 2],
+        [18, 3, 0.8582400366147671, 3],
+        [19, 3, 0.7360491277619403, 7],
+        [20, 3, 0.7819735855141146, 4],
+        [21, 3, 0.35929511813746157, 2],
+        [22, 3, 0.7602511806191911, 3],
+        [23, 3, 0.7717632926268301, 7],
+        [0, 4, null, 0],
+        [1, 4, null, 0],
+        [2, 4, null, 0],
+        [3, 4, null, 0],
+        [4, 4, null, 0],
+        [5, 4, null, 0],
+        [6, 4, null, 0],
+        [7, 4, null, 0],
+        [8, 4, 0.39480358956703465, 1],
+        [9, 4, 0.6132691544551742, 1],
+        [10, 4, null, 0],
+        [11, 4, null, 0],
+        [12, 4, 0.6792932056913035, 1],
+        [13, 4, null, 0],
+        [14, 4, 0.4519609214967746, 2],
+        [15, 4, null, 0],
+        [16, 4, null, 0],
+        [17, 4, null, 0],
+        [18, 4, 0.6388152715751652, 3],
+        [19, 4, 0.7492838822793264, 7],
+        [20, 4, 0.44665493049419747, 2],
+        [21, 4, 0.34380647100590184, 7],
+        [22, 4, 0.45657816471107776, 3],
+        [23, 4, 0.5171038222942987, 4],
+        [0, 5, null, 0],
+        [1, 5, null, 0],
+        [2, 5, null, 0],
+        [3, 5, null, 0],
+        [4, 5, null, 0],
+        [5, 5, null, 0],
+        [6, 5, null, 0],
+        [7, 5, null, 0],
+        [8, 5, null, 0],
+        [9, 5, 0.8956439788408264, 1],
+        [10, 5, 0.7789779253445579, 1],
+        [11, 5, 0.5309201145900082, 1],
+        [12, 5, null, 0],
+        [13, 5, 0.6281222351270966, 1],
+        [14, 5, 0.5729710725256156, 2],
+        [15, 5, null, 0],
+        [16, 5, 0.7606021740008051, 2],
+        [17, 5, null, 0],
+        [18, 5, 0.4158019071085882, 2],
+        [19, 5, 0.5674578352266921, 6],
+        [20, 5, 0.84068063504005, 6],
+        [21, 5, 0.8530462419687703, 7],
+        [22, 5, 0.573838185768793, 6],
+        [23, 5, 0.4244817704616479, 2],
+        [0, 6, null, 0],
+        [1, 6, null, 0],
+        [2, 6, null, 0],
+        [3, 6, null, 0],
+        [4, 6, null, 0],
+        [5, 6, null, 0],
+        [6, 6, null, 0],
+        [7, 6, null, 0],
+        [8, 6, null, 0],
+        [9, 6, 0.4369175143170111, 1],
+        [10, 6, 0.5313799927932817, 1],
+        [11, 6, 0.657676232263469, 1],
+        [12, 6, null, 0],
+        [13, 6, 0.3226100031511492, 1],
+        [14, 6, null, 0],
+        [15, 6, null, 0],
+        [16, 6, 0.6497752543789557, 2],
+        [17, 6, null, 0],
+        [18, 6, 0.5178234053371293, 6],
+        [19, 6, 0.6358009808334442, 3],
+        [20, 6, 0.634202890615335, 2],
+        [21, 6, 0.7917637651089657, 5],
+        [22, 6, 0.3405205020359438, 4],
+        [23, 6, 0.37173502251421187, 3]
+      ],
+      emphasis: {
+        itemStyle: {
+          borderColor: "#fff",
+          borderWidth: 1
+        }
+      }
+    }
+  ],
+  title: {
+    text: "Win Rate par jour × heure",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 380
+};
+          const dom = document.getElementById('chart-2');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>win_loss.04 — Top matches by week</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_top_by_week</code>
+      </div>
+      <div id="chart-3" class="chart-canvas" style="height: 400px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 60,
+    top: 60,
+    bottom: 80,
+    containLabel: false
+  },
+  legend: {
+    bottom: 8,
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "2026-02-02",
+      "2026-02-09",
+      "2026-02-16",
+      "2026-02-23",
+      "2026-03-02",
+      "2026-03-09",
+      "2026-03-16",
+      "2026-03-23",
+      "2026-03-30",
+      "2026-04-06",
+      "2026-04-13",
+      "2026-04-20"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      rotate: -45,
+      fontSize: 10
+    }
+  },
+  yAxis: [
+    {
+      type: "value",
+      name: "Matchs",
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.85)"
+      },
+      splitLine: {
+        lineStyle: {
+          color: "rgba(245,248,255,0.05)"
+        }
+      }
+    },
+    {
+      type: "value",
+      name: "% Top",
+      max: 100,
+      nameTextStyle: {
+        color: "rgba(245,248,255,0.85)"
+      },
+      axisLabel: {
+        color: "rgba(245,248,255,0.85)",
+        formatter: "{value}%"
+      },
+      splitLine: {
+        show: false
+      }
+    }
+  ],
+  series: [
+    {
+      name: "Top (rank=1)",
+      type: "bar",
+      data: [
+        3,
+        5,
+        2,
+        4,
+        6,
+        3,
+        4,
+        5,
+        7,
+        3,
+        4,
+        5
+      ],
+      itemStyle: {
+        color: "#FFD700"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "Total semaine",
+      type: "bar",
+      data: [
+        12,
+        15,
+        10,
+        13,
+        17,
+        14,
+        12,
+        16,
+        18,
+        11,
+        13,
+        14
+      ],
+      itemStyle: {
+        color: "rgba(120,120,120,0.45)"
+      },
+      barCategoryGap: "30%"
+    },
+    {
+      name: "% Top",
+      type: "line",
+      yAxisIndex: 1,
+      data: [
+        25,
+        33.3,
+        20,
+        30.8,
+        35.3,
+        21.4,
+        33.3,
+        31.3,
+        38.9,
+        27.3,
+        30.8,
+        35.7
+      ],
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 6,
+      lineStyle: {
+        color: "#41d6ff",
+        width: 2
+      }
+    }
+  ],
+  title: {
+    text: "Top matches by week (rank=1) vs Total — % Top sur Y2",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 400
+};
+          const dom = document.getElementById('chart-3');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>win_loss.05 — Streak chart — séries V/D consécutives</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_streak_section</code>
+      </div>
+      <div id="chart-4" class="chart-canvas" style="height: 240px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "transparent",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 50,
+    right: 30,
+    top: 30,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: false,
+  tooltip: {
+    trigger: "item",
+    formatter: function anonymous(p
+) {
+var v = Math.abs(p.value); return p.name + "<br>Streak " + (p.value > 0 ? "victoire" : "défaite") + " : " + v;
+}
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10",
+      "m11",
+      "m12",
+      "m13",
+      "m14",
+      "m15",
+      "m16",
+      "m17",
+      "m18",
+      "m19"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.7)",
+      fontSize: 9,
+      interval: 1
+    }
+  },
+  yAxis: {
+    type: "value",
+    axisLine: {
+      lineStyle: {
+        color: "rgba(255,255,255,0.75)",
+        width: 2
+      }
+    },
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)",
+      formatter: function anonymous(v
+) {
+return Math.abs(v);
+}
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245,248,255,0.05)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "Streak",
+      type: "bar",
+      data: [
+        {
+          value: 1,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: 3,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: -1,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: -2,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: 1,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: -1,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: -2,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: -3,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: -4,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: 1,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: 2,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: 3,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: 4,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: 5,
+          itemStyle: {
+            color: "#00e676"
+          }
+        },
+        {
+          value: -1,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: -2,
+          itemStyle: {
+            color: "#e53935"
+          }
+        },
+        {
+          value: 1,
+          itemStyle: {
+            color: "#00e676"
+          }
+        }
+      ],
+      barCategoryGap: "15%"
+    }
+  ],
+  title: {
+    text: "Streak chart — séries V/D consécutives (compteur cumulé dans la streak)",
+    left: "center",
+    top: 5,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 240
+};
+          const dom = document.getElementById('chart-4');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card">
+      <h2>win_loss.06 — Personal score — bars + smoothing rolling 10</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_personal_score_section</code>
+      </div>
+      <div id="chart-5" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          const option = {
+  backgroundColor: "rgba(29, 35, 40, 1.0)",
+  textStyle: {
+    color: "rgba(245, 248, 255, 0.92)",
+    fontSize: 13
+  },
+  grid: {
+    left: 60,
+    right: 30,
+    top: 50,
+    bottom: 70,
+    containLabel: false
+  },
+  legend: {
+    bottom: 8,
+    textStyle: {
+      color: "rgba(245,248,255,0.85)"
+    }
+  },
+  tooltip: {
+    trigger: "axis",
+    axisPointer: {
+      type: "shadow"
+    }
+  },
+  xAxis: {
+    type: "category",
+    data: [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10",
+      "m11",
+      "m12",
+      "m13",
+      "m14",
+      "m15",
+      "m16",
+      "m17",
+      "m18",
+      "m19",
+      "m20",
+      "m21",
+      "m22",
+      "m23",
+      "m24",
+      "m25",
+      "m26",
+      "m27",
+      "m28",
+      "m29",
+      "m30"
+    ],
+    axisLabel: {
+      color: "rgba(245,248,255,0.7)",
+      fontSize: 9,
+      interval: 2
+    }
+  },
+  yAxis: {
+    type: "value",
+    axisLabel: {
+      color: "rgba(245,248,255,0.85)"
+    },
+    splitLine: {
+      lineStyle: {
+        color: "rgba(245,248,255,0.05)"
+      }
+    }
+  },
+  series: [
+    {
+      name: "Personal score",
+      type: "bar",
+      data: [
+        4528,
+        4467,
+        6854,
+        4889,
+        3614,
+        3878,
+        5883,
+        3717,
+        2984,
+        3800,
+        6351,
+        5924,
+        3637,
+        4742,
+        5942,
+        2734,
+        2510,
+        3849,
+        5800,
+        5372,
+        6461,
+        4170,
+        6617,
+        6265,
+        5327,
+        3041,
+        4682,
+        6000,
+        5739,
+        4603
+      ],
+      itemStyle: {
+        color: "#ffb300",
+        opacity: 0.85
+      },
+      barCategoryGap: "20%"
+    },
+    {
+      name: "Smoothing (rolling 10)",
+      type: "line",
+      data: [
+        4870,
+        4705,
+        4873,
+        4729,
+        4535,
+        4461,
+        4644,
+        4789,
+        4468,
+        4453,
+        4686,
+        4571,
+        4234,
+        4247,
+        4529,
+        4686,
+        4697,
+        4522,
+        4820,
+        4972,
+        4911,
+        4941,
+        5158,
+        5374,
+        5367,
+        5291,
+        5160,
+        5284,
+        5094,
+        4899
+      ],
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 5,
+      lineStyle: {
+        color: "#ab47bc",
+        width: 2
+      }
+    }
+  ],
+  title: {
+    text: "Personal score par match — bars amber + smoothing rolling 10 (line violet)",
+    left: "center",
+    top: 8,
+    textStyle: {
+      color: "rgba(245, 248, 255, 0.92)",
+      fontSize: 13
+    }
+  },
+  __height: 380
+};
+          const dom = document.getElementById('chart-5');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+    </section>
+
+    <section class="chart-card chart-card--composite">
+      <h2>win_loss.07 — Winrate &amp; Performance vs Historique — 2 sub-charts</h2>
+      <div class="meta">
+        <code>src/ui/pages/win_loss.py::_render_winrate_perf_vs_history</code>
+      </div>
+      <div class="composite-block" style="display:flex;align-items:center;gap:8px"></div>
+    </section>
+  </main>
+  <footer>
+    <strong>But</strong> : valider visuellement que les YAML de spec graphique
+    (<code>.ai/charts_specs/win_loss/*.yaml</code>) reproduisent fidèlement
+    les charts Plotly d'origine. Comparer chaque chart ci-dessus avec son équivalent
+    Streamlit/Plotly en lançant l'app Python (si dispo) ou en regardant un screenshot.
+  </footer>
+</body>
+</html>

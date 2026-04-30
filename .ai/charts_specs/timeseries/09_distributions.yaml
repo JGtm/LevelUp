@@ -1,0 +1,169 @@
+# =============================================================================
+# Distributions — 6 histogrammes en grille 2×3
+# =============================================================================
+# 6 sub-charts sur 3 lignes × 2 colonnes (st.columns(2) par ligne) :
+#   Row 1 : accuracy (cyan)         | kills (green)
+#   Row 2 : average_life (amber)    | performance_score (violet)
+#   Row 3 : score_per_minute (amber)| rolling_win_rate (green)
+#
+# Tous via plot_histogram avec show_kde=True (KDE superposée à l'histogramme).
+# 2 derniers calculés via TimeseriesService (score/min, rolling WR sur N matchs).
+# =============================================================================
+
+id: "timeseries.09"
+title: "Distributions — 6 histogrammes (KDA, accuracy, life, perf, score/min, rolling WR)"
+page: timeseries
+section: "Onglet Distributions"
+display_order_in_tab: 1
+source_function: "src/ui/pages/_timeseries_distributions.py::render_distributions"
+source_helpers:
+  - "src/ui/pages/_timeseries_distributions.py::_render_distribution_row1"
+  - "src/ui/pages/_timeseries_distributions.py::_render_distribution_row2"
+  - "src/ui/pages/_timeseries_distributions.py::_render_distribution_row3"
+  - "src/ui/pages/_timeseries_distributions.py::_render_single_histogram"
+  - "src/visualization/distributions.py::plot_histogram"
+  - "src/data/services/timeseries_service.py::TimeseriesService.compute_score_per_minute"
+  - "src/data/services/timeseries_service.py::TimeseriesService.compute_rolling_win_rate"
+fragment: false                                                 # parent ; chaque sub n'a pas de fragment
+chart_kind: histogram                                           # famille — chaque sub = histogramme
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "1 colonne dff par sub-chart + 2 services calculés (score_per_min, rolling_win_rate)"
+  input_dataframe:
+    required_fields:
+      dff:
+        - accuracy, kills
+        - avg_life_seconds | average_life_seconds              # fallback si avg_* absent
+        - performance_score
+        - personal_score, time_played_seconds                  # pour score_per_min
+        - outcome                                              # pour rolling_win_rate
+  call_args: { lang: "fr | en" }
+  filters_applied: ["filtres globaux"]
+
+  constants:
+    min_data: 6                                                 # min matchs pour afficher chaque histogramme
+    show_kde: true                                              # KDE superposée à barres
+    palette:
+      cyan:   "#41d6ff"
+      green:  "#00e676"
+      amber:  "#ffb300"
+      violet: "#ab47bc"
+    rolling_win_rate_window: "à confirmer (probablement 10 matchs)"
+
+# === SUB-CHARTS ===
+sub_charts:
+  - id: hist_accuracy
+    column: accuracy
+    color: "#41d6ff"
+    title_i18n: "{{t.ts_dist_accuracy_title}}"
+    x_label_i18n: "{{t.ts_accuracy_label}}"
+    layout: { row: 1, col: 1 }
+  - id: hist_kills
+    column: kills
+    color: "#00e676"
+    title_i18n: "{{t.ts_dist_kills_title}}"
+    x_label_i18n: "{{t.ts_kills_label}}"
+    layout: { row: 1, col: 2 }
+  - id: hist_life
+    column: "avg_life_seconds | average_life_seconds"
+    color: "#ffb300"
+    title_i18n: "{{t.ts_dist_life_title}}"
+    x_label_i18n: "{{t.ts_life_label}}"
+    layout: { row: 2, col: 1 }
+  - id: hist_perf
+    column: performance_score
+    color: "#ab47bc"
+    title_i18n: "{{t.ts_dist_perf_title}}"
+    x_label_i18n: "{{t.ts_score_label}}"
+    layout: { row: 2, col: 2 }
+  - id: hist_score_per_min
+    upstream: "TimeseriesService.compute_score_per_minute(dff)"
+    color: "#ffb300"
+    x_label_i18n: "{{t.ts_score_per_min_label}}"
+    y_label_i18n: "{{t.ts_frequency_label}}"
+    layout: { row: 3, col: 1 }
+  - id: hist_rolling_win_rate
+    upstream: "TimeseriesService.compute_rolling_win_rate(dff)"
+    color: "#00e676"
+    x_label_i18n: "{{t.ts_win_rate_label}}"
+    y_label_i18n: "{{t.ts_frequency_label}}"
+    layout: { row: 3, col: 2 }
+
+# === TRACES (template par sub-chart) ===
+traces:
+  template_per_subchart: true
+  spec:
+    type: histogram
+    show_kde: true                                              # KDE en line+fill superposé
+    nbinsx: 20                                                  # à confirmer dans plot_histogram
+
+# === LAYOUT (commun aux 6 sub-charts) ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 320                                                  # par sub-chart (pas le total)
+  margin: { l: 40, r: 20, t: 30, b: 40 }
+  composite: "st.columns(2) × 3 rows"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(data) >= 6 par colonne (min_data)"
+  empty_state:
+    type: "st.info par cellule"
+    triggered_by:
+      - "column absent → cannot_display"
+      - "len(data) == 0 → no_data_filter"
+      - "len(data) < 6 → ts_not_enough_dist"
+      - "TimeseriesService missing_column → ts_col_missing_score_per_min"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_distributions'))"
+    - "if hints_visible(): st.caption(t('ts_distributions_caption'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - ts_distributions
+    - ts_distributions_caption
+    - ts_dist_accuracy_title, ts_accuracy_label
+    - ts_dist_kills_title, ts_kills_label
+    - ts_dist_life_title, ts_life_label
+    - ts_dist_perf_title, ts_score_label
+    - ts_score_per_min_label, ts_frequency_label
+    - ts_win_rate_label
+    - ts_col_missing_score_per_min, ts_insufficient_score_per_min
+    - ts_col_missing_outcome, ts_insufficient_win_rate, ts_insufficient_win_rate_dist
+    - ts_not_enough_dist, no_data_filter, cannot_display
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "1 YAML parent + 6 sub_charts (pas 6 YAML séparés)"
+      why: |
+        Pattern repris de teammates.16 (trio_performance_charts) : famille de sub-charts avec
+        layout commun et même fonction Plotly sous-jacente. Côté React : composant <DistributionGrid />
+        qui boucle sur la liste de configs.
+
+    - decision: "Min matchs = 6 pour afficher l'histogramme"
+      why: |
+        En dessous de 6 matchs, un histogramme/KDE n'a pas de sens statistique (variance trop
+        élevée, KDE artefact). Affichage de st.info(ts_not_enough_dist) à la place.
+
+    - decision: "score_per_min et rolling_win_rate via TimeseriesService"
+      why: |
+        Ces 2 métriques nécessitent un calcul complexe (score_per_min = personal_score/time_played
+        avec gestion des zéros ; rolling_win_rate = window glissante de N matchs). Encapsulés dans
+        TimeseriesService côté Python pour testabilité. Côté Go : 2 méthodes du service correspondant.
+
+    - decision: "Fallback colonne avg_life_seconds → average_life_seconds"
+      why: |
+        Renommage progressif dans le schéma DB v5. Code défensif avec `'avg_life_seconds' if ... else 'average_life_seconds'`. À retirer une fois la migration complète.

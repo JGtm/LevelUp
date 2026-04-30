@@ -1,0 +1,90 @@
+# =============================================================================
+# Top matches by week (rank=1 ou outcome) — réutilise synthesis.04
+# =============================================================================
+# Réutilise SYNTHESIS.04 — barres groupées matches Top vs Total par semaine.
+# Même fonction Plotly (plot_matches_at_top_by_week). Section dernière de
+# l'onglet Avancé timeseries.
+# =============================================================================
+
+id: "timeseries.28"
+title: "Top matches by week"
+page: timeseries
+section: "Onglet Avancé — Top par semaine"
+display_order_in_tab: 8
+source_function: "src/ui/pages/win_loss.py::_render_top_by_week"
+source_helpers:
+  - "src/visualization/distributions_outcomes.py::plot_matches_at_top_by_week"
+  - "(cf. synthesis.04 pour les détails)"
+fragment: false
+chart_kind: grouped_bar
+
+# === COUCHE DONNÉES ===
+data:
+  reuses:
+    of: "synthesis.04"
+    differences: |
+      - Même fonction. Argument rank_col détecté dynamiquement : 'rank' si présent
+        dans dff, sinon 'outcome'.
+      - Toujours top_n_ranks=1 (on compte les matchs où le joueur a fini #1).
+
+  upstream_service: "plot_matches_at_top_by_week(dff, rank_col=rank_col, top_n_ranks=1)"
+  input_dataframe:
+    required_fields:
+      dff: [start_time, rank | outcome]
+  call_args:
+    rank_col: "'rank' si dff a la col, sinon 'outcome'"
+    top_n_ranks: 1
+
+  transformations:
+    - description: "Détection dynamique rank_col"
+      polars: 'rank_col = "rank" if "rank" in dff.columns else "outcome"'
+
+# === TRACES ===
+traces: []                                                       # cf. synthesis.04
+
+layout:
+  inherits: _theme_default
+  height: { value: 380 }
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "'start_time' ∈ dff.columns"
+  empty_state:
+    type: "st.info"
+    triggered_by:
+      - "'start_time' absent → t('missing_time_data')"
+      - "fig_top None → t('insufficient_data_chart')"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.divider()"
+    - "st.subheader(t('wl_top_by_week'))"
+    - "if hints_visible(): st.caption(t('wl_top_by_week_caption'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - wl_top_by_week
+    - wl_top_by_week_caption
+    - missing_time_data
+    - insufficient_data_chart
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Réutilisation de synthesis.04"
+      why: |
+        Même fonction _render_top_by_week + plot_matches_at_top_by_week. Côté React : composant
+        <TopByWeekChart /> partagé entre synthesis et timeseries.
+
+    - decision: "rank_col détecté dynamiquement (rank ou outcome)"
+      why: |
+        Si la DB a une colonne `rank` (ranking position du joueur dans le match), on l'utilise
+        pour compter les matchs où le joueur a fini #1. Sinon on retombe sur outcome (V comme
+        proxy de #1) — moins précis mais fonctionnel pour les modes sans rank.

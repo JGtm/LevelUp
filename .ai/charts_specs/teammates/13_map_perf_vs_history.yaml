@@ -1,0 +1,217 @@
+# =============================================================================
+# Performance par carte — Session vs Historique
+# =============================================================================
+# Barres horizontales groupées comparant la performance moyenne du joueur
+# principal sur chaque carte ENTRE :
+#   - la session courante (filtrée, "sub_all" → bd_current) — couleur selon palier
+#   - l'historique complet (full_squad_df → bd_history) — gris référence
+#
+# Affiché juste APRÈS le bullet (teammates.02) dans la même section
+# render_map_charts_section. Ordre des cartes = chronologique (oldest first)
+# si possible, sinon tri par performance ascendante (head 20).
+# =============================================================================
+
+id: "teammates.13"
+title: "Performance par carte — Session vs Historique"
+page: teammates
+section: "Onglet Synergies — Performance vs Historique"
+display_order_in_tab: 2                                        # juste après le bullet (02)
+source_function: "src/visualization/_maps_outcome_history.py::plot_map_perf_vs_history"
+source_helpers:
+  - "src/ui/pages/teammates_map_charts.py::render_map_charts_section"
+  - "src/visualization/_maps_outcome_history.py::_perf_color"
+  - "src/visualization/_maps_outcome_bullet.py::_sort_by_map_order"
+  - "src/analysis/performance_config.py::SCORE_THRESHOLDS"
+  - "src/analysis/__init__.py::compute_map_breakdown"
+fragment: false
+chart_kind: grouped_bar
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_map_breakdown(sub_all) + compute_map_breakdown(full_squad_df) → join inner"
+  input_dataframe:
+    required_fields:
+      bd_current:
+        - map_name              # str — clé de jointure
+        - performance_avg       # float (0-100) — perf moyenne session
+        - matches               # int — N matchs session
+      bd_history:
+        - map_name              # str
+        - performance_avg       # float (0-100) — perf moyenne historique (renommé _hist_perf)
+        - matches               # int (renommé _hist_n)
+  call_args:
+    lang: "fr | en"
+    map_order: "list[str] | None — ordre chronologique (oldest first) ou None pour tri par perf"
+  filters_applied:
+    - "Filtres globaux + same_team_only + apply_current_filters (côté sub_all)"
+
+  constants:
+    score_thresholds:                                          # src/analysis/performance_config.py
+      excellent:     75                                        # → vert
+      good:          60                                        # → cyan
+      average:       45                                        # → ambre
+      below_average: 30                                        # → orange
+      below:         "<30"                                     # → rouge
+    palette:
+      excellent: "#00e676"                                     # HALO_COLORS.green
+      good:      "#00b7eb"                                     # HALO_COLORS.cyan
+      average:   "#ffb300"                                     # HALO_COLORS.amber
+      below:     "#FF8C00"                                     # HALO_COLORS.orange
+      poor:      "#e53935"                                     # HALO_COLORS.red
+    history_color: "rgba(120,120,120,0.45)"                    # gris semi-transparent
+    session_opacity: 0.85
+    vline_x: 0
+    vline_style: { dash: "dot", color: "rgba(180,180,180,0.6)", width: 1 }
+    head_limit: 20                                             # max 20 cartes affichées
+
+  transformations:
+    - description: "Drop des nulls sur performance_avg côté courant et historique"
+      polars: |
+        bd_curr = ensure_polars(bd_current).drop_nulls(subset=["performance_avg"])
+        bd_hist = (
+            ensure_polars(bd_history)
+            .drop_nulls(subset=["performance_avg"])
+            .select(["map_name", "performance_avg", "matches"])
+            .rename({"performance_avg": "_hist_perf", "matches": "_hist_n"})
+        )
+
+    - description: "Jointure inner sur map_name (cartes communes uniquement)"
+      polars: 'joined = bd_curr.join(bd_hist, on="map_name", how="inner")'
+      detail: "Si vide → return None (pas de chart, fallback Streamlit)"
+
+    - description: "Tri : par map_order si fourni (chronologique session), sinon par perf asc head 20"
+      polars: |
+        if map_order is not None:
+            joined = _sort_by_map_order(joined, map_order)
+        else:
+            joined = joined.sort("performance_avg", descending=False).head(20)
+
+    - description: "Calcul des couleurs session par carte (palier de performance)"
+      polars: |
+        bar_colors = [_perf_color(v) for v in d["performance_avg"]]
+        # _perf_color(v) :
+        #   if v >= 75 → green
+        #   elif v >= 60 → cyan
+        #   elif v >= 45 → amber
+        #   elif v >= 30 → orange
+        #   else → red
+
+# === TRACES ===
+traces:
+  - id: history
+    role: reference
+    type: bar
+    orientation: horizontal
+    x_field: "_hist_perf"
+    y_field: "map_name"
+    color: "rgba(120,120,120,0.45)"
+    opacity: 1.0
+    name_i18n: "{{lang=='fr' ? 'Historique' : 'History'}}"
+    customdata_field: "_hist_n"
+    hovertemplate: "%{y}<br>{name}=%{x:.1f} (N=%{customdata})<extra></extra>"
+
+  - id: session
+    role: primary
+    type: bar
+    orientation: horizontal
+    x_field: "performance_avg"
+    y_field: "map_name"
+    color_per_bar: "bar_colors"                                # vert/cyan/ambre/orange/rouge
+    opacity: 0.85
+    name_i18n: "{{lang=='fr' ? 'Session actuelle' : 'Current session'}}"
+    customdata_field: "matches"
+    hovertemplate: "%{y}<br>{name}=%{x:.1f} (N=%{customdata})<extra></extra>"
+
+# === LAYOUT ===
+layout:
+  barmode: group                                               # /!\ groupées (côte à côte), pas stacked
+  bargap: null                                                 # défaut Plotly (pas overridé)
+  height: PLOT_CONFIG.tall_height                              # ~400-500 px
+  margin: { l: 40, r: 20, t: 30, b: 70 }
+  legend: "horizontal_bottom"                                  # via get_legend_horizontal_bottom()
+  shapes:
+    - id: vline_zero
+      type: line
+      x0: 0
+      x1: 0
+      y_ref: "paper"
+      y0: 0
+      y1: 1
+      line: { dash: "dot", color: "rgba(180,180,180,0.6)", width: 1 }
+
+  xaxis:
+    title: ""
+    range_auto: true
+  yaxis:
+    title: ""
+    type: category
+    autorange: "reversed"                                      # Plotly orientation horizontale par défaut
+
+  plot_style: "apply_halo_plot_style"
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    bd_current et bd_history non vides
+    AND ≥1 carte commune entre les deux
+    AND full_squad_df non vide (sinon section entière non rendue)
+  empty_state:
+    type: "fallback Plotly None"
+    triggered_by:
+      - "Aucune carte commune → return None → safe_chart_render gère le no-display"
+      - "full_squad_df vide → la section perf_vs_history n'est pas appelée"
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown(`##### {t('tm_perf_vs_history_title')}`)"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - 'Historique | History'                                    # selon lang
+    - 'Session actuelle | Current session'
+  t:
+    - tm_perf_vs_history_title
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"                                     # origin/v7/cockpit
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Couleur session par seuils SCORE_THRESHOLDS (5 paliers), historique gris neutre"
+      why: |
+        Le but est de comparer perf SESSION vs perf HISTORIQUE. La barre HISTORIQUE est
+        neutre (gris) pour servir de référence visuelle ; la barre SESSION est colorée
+        selon où elle se situe dans la gamme (excellent/solide/correct/mauvais/pourri).
+        Permet de voir "ce match je suis au-dessus ou en dessous de mon historique ?"
+        et "quel niveau de perf absolu ?". Palier identique à teammates.04 (squad_timeline).
+
+    - decision: "Tri par map_order (chronologique session) si fourni"
+      why: |
+        Côté UI Streamlit, map_order vient de sub_all.sort('start_time').unique(map_ui)
+        → cartes triées dans l'ordre où elles ont été jouées dans la session. Plus naturel
+        pour l'utilisateur que le tri alphabétique. Fallback : sort par perf asc head 20.
+
+    - decision: "Limite à 20 cartes max"
+      why: |
+        head(20) après tri. Au-delà, le chart devient illisible. Cohérent avec la limite
+        appliquée dans render_map_charts_section (view = bd_all.head(20)). Si l'historique
+        d'un joueur compte 50 cartes, on ne montre que les 20 plus représentatives.
+
+    - decision: "vline x=0 en pointillés"
+      why: |
+        Sert de référence visuelle pour identifier les cartes où la perf est négative
+        (échec moyen). En pratique performance_avg est toujours ≥0 sur l'échelle 0-100,
+        donc cette ligne est cosmétique. Conservée car présente dans le code source,
+        à reproduire fidèlement.
+
+    - decision: "barmode='group' (pas stacked)"
+      why: |
+        Les deux barres sont côte à côte pour comparer visuellement leurs longueurs
+        (et non empilées qui montrerait la SOMME). C'est une comparaison, pas une
+        décomposition. Plotly group → ECharts barGap=0 + 2 series side-by-side
+        sur le même y (catégorie).

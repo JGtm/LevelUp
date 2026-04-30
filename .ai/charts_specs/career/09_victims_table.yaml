@@ -1,0 +1,170 @@
+# =============================================================================
+# Tableau HTML — Top 10 souffre-douleurs (joueurs que tu tues le plus)
+# =============================================================================
+# Variante de career.08 avec mode='victim'. Affiché dans la colonne DROITE
+# du st.columns(2). Colonnes main/sec inversées + tri SQL différent.
+# Voir `08_nemeses_table.yaml` pour les détails communs.
+# =============================================================================
+
+id: "career.09"
+title: "Top 10 souffre-douleurs"
+page: career
+section: "Rencontres"
+source_function: "src/ui/pages/career_encounters_html.py::build_antagonist_table_html"
+source_helpers:
+  - "src/ui/pages/career_encounters_data.py::_load_top_victims"
+  - "(idem career.08 — voir 08_nemeses_table.yaml pour le reste)"
+fragment: false
+chart_kind: table_html
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_load_top_victims(xuid, db_path, limit=10, exclude_xuids=friends, since)"
+  input_dataframe:
+    required_columns: "(idem career.08 : opponent_xuid, opponent_gamertag, times_killed, times_killed_by, net_kills, matches_against)"
+  call_args:
+    mode: "victim"                                            # /!\ DIFFÉRENT de career.08
+    limit: 10
+    exclude_xuids: "friends_set"
+    since: "= encounters_period"
+  filters_applied: [encounters_period]
+  timezone: "user_local"
+
+  transformations:
+    - description: "Identique career.08 mais ORDER BY times_killed DESC (au lieu de times_killed_by)"
+      sql_duckdb: |
+        -- Identique au SQL career.08 jusqu'à l'agrégation, mais :
+        ORDER BY a.times_killed DESC                          -- /!\ tri sur les kills FAITS
+        LIMIT 10;
+
+# === TABLE-SPECIFIC ===
+table:
+  css_classes: "(idem career.08)"
+
+  caption:
+    text: "{{t.career_victims_header}}"                       # /!\ "Souffre-douleurs"
+    colspan: 6
+
+  columns:
+    - id: rank
+      header: "#"
+      source_field: index
+      formatter: "i (entier)"
+      style: "text-align: left"
+
+    - id: player
+      header: "{{t.col_player}}"
+      source_field: opponent_gamertag
+      formatter: "gamertag_link(opp_gt)"
+      style: "text-align: left"
+
+    - id: main_metric                                         # /!\ DIFFÉRENT vs career.08
+      header: "{{t.col_times_killed}}"                        # "Tué X fois" (tu as tué l'adversaire)
+      source_field: times_killed                              # main_val = times_killed
+      formatter: "{value}"
+      style: "text-align: center; font-weight: 700"
+
+    - id: sec_metric                                          # /!\ inversé
+      header: "{{t.col_times_killed_by}}"                     # "Tué par X fois"
+      source_field: times_killed_by                           # sec_val = times_killed_by
+      formatter: "{value}"
+      style: "text-align: center"
+
+    - id: net
+      header: "{{t.col_net_kills}}"
+      source_field: net_kills
+      formatter: "f'{net_sign}{net}'"
+      conditional_style: "(idem career.08 — _kd_style(times_killed, times_killed_by))"
+      style: "text-align: center"
+
+    - id: matches_against
+      header: "{{t.col_matches_against}}"
+      source_field: matches_against
+      formatter: "{value}"
+      style: "text-align: center; color: #aaa"
+
+  legend:
+    enabled: false
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "victims is not None AND len(victims) > 0"
+  hidden_when: null
+  empty_state:
+    type: "st.info"
+    message: "{{t.career_antagonists_no_data}}"
+    triggered_by:
+      - "load_antagonists(mode='victim') retourne []"
+  config: null
+  width_mode: "stretch"
+  filters_widgets: [encounters_period]
+  fragment_isolation: false
+  layout_position:
+    container: "st.columns(2)"
+    column_index: 1                                           # DROITE
+    column_label: "{{t.career_victims_header}}"
+  preceded_by:
+    - "(rendu juste après career.08 dans le même st.columns(2))"
+
+# === CONTROLS ===
+controls:
+  - id: "encounters_period"
+    label: "{{t.encounters_period_label}}"
+    widget: "segmented_control"
+    position: "above_section"
+    scope: "section"
+    options:
+      values: ["all", "2y", "1y", "1m", "1w"]
+      labels_i18n: "encounters_period_{value}"
+      default: "all"
+    effect: "filter_dataset"
+    effect_detail: "Identique career.07/08 — partagé entre 07/08/09"
+    api_param_mapping:
+      query_param: "since"
+      values_format: "ISO 8601 date"
+    requires_refetch: true
+    affects_charts: ["career.07", "career.08", "career.09"]
+
+# === I18N ===
+i18n_keys:
+  viz_t: []
+  t:
+    - career_victims_header
+    - career_antagonists_no_data
+    - col_player
+    - col_times_killed
+    - col_times_killed_by
+    - col_net_kills
+    - col_matches_against
+    - encounters_period_label
+
+# === INTERACTIVITÉ ===
+interactivity:
+  click_target: "page=Explorer&gamertag={opponent_gamertag}"
+  drilldown_chain: ["explorer_player_filter"]
+  session_state_writes: []
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Spec courte qui pointe vers career.08 pour les éléments communs"
+      why: |
+        Mêmes fonctions productrices, mêmes CSS classes, même structure colonne.
+        Seules différences : `mode='victim'`, tri SQL (ORDER BY times_killed DESC),
+        headers et i18n keys (col_times_killed devient main, col_times_killed_by devient sec).
+        Le YAML est volontairement court pour mettre l'accent sur ce qui change.
+
+    - decision: "Layout `column_index: 1` vs 0 pour career.08"
+      why: |
+        Dans `render_encounters_section`, la structure est :
+          col_nem, col_vic = st.columns(2)
+          with col_nem: build_antagonist_table_html(nemeses, mode='nemesis')   # gauche
+          with col_vic: build_antagonist_table_html(victims, mode='victim')    # droite
+        L'ordre est figé : nemeses à gauche, victims à droite. Côté React : un layout 2 colonnes
+        avec ces deux composants positionnés explicitement.

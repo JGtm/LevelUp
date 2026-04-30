@@ -1,0 +1,226 @@
+# =============================================================================
+# Timeline kills/deaths cumulés du joueur (avec annotations d'impact)
+# =============================================================================
+# 2 courbes lines+markers : kills cumulés (bleu Okabe-Ito) et deaths cumulés
+# (vermillon). Les "impact events" (kill streaks, multi-kills, etc.) sont
+# annotés sur la courbe kills via des marqueurs dorés (orange Okabe-Ito).
+# =============================================================================
+
+id: "match_view.09"
+title: "Kill/Death cumulés du match"
+page: match_view
+section: "Onglet Combat — Timeline impact"
+source_function: "src/ui/pages/match_view_players.py::render_match_impact_section"
+source_helpers:
+  - "src/visualization/match_impact_timeline.py::plot_match_kill_death_timeline"
+  - "src/ui/pages/match_view_players.py::_resolve_impact_team_xuids"
+  - "src/ui/pages/match_view_players.py::_enrich_impact_gamertags"
+  - "src/ui/pages/match_view_players.py::_render_impact_badges"
+fragment: false
+chart_kind: line
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_highlight_events_fn(db_path, match_id) + compute_match_impact_events(...)"
+  input_dataframe:
+    required_fields:
+      highlight_events:
+        - event_type   # 'kill' | 'death' | autre
+        - time_ms      # int (ms depuis le début du match)
+        - xuid
+        - gamertag
+      impact_events:
+        - "MatchImpactEvent (dataclass) avec time_ms + label + type"
+      me_xuid: "string"
+  call_args:
+    height: 340
+    lang: "fr"
+  filters_applied: []
+  timezone: "match_clock"  # /!\ temps relatif au début du match (ms), pas une TZ absolue
+
+  transformations:
+    - description: "Filtrage des events 'kill' et 'death' du joueur principal triés par time_ms"
+      polars: |
+        my_kills = sorted([e for e in events if e.event_type=='kill' and e.xuid==me_xuid], key=time_ms)
+        my_deaths = sorted([e for e in events if e.event_type=='death' and e.xuid==me_xuid], key=time_ms)
+      sql_duckdb: |
+        SELECT event_type, time_ms FROM shared.highlight_events
+        WHERE match_id = ? AND xuid = ? AND event_type IN ('kill', 'death')
+        ORDER BY time_ms ASC;
+
+    - description: "Cumul incrémental côté client (1, 2, 3, ... pour chaque event)"
+      polars: |
+        kill_cum = list(range(1, len(my_kills)+1))
+        death_cum = list(range(1, len(my_deaths)+1))
+
+    - description: "Format des labels temporels (mm:ss)"
+      polars: |
+        kill_labels = [_format_time(t) for t in kill_times]  # _format_time = format_time_ms
+      detail: "format_time_ms(123456) → '2:03'"
+
+# === TRACES ===
+traces:
+  - id: kills_cum
+    name: "{{viz_t.trace_kills}}"
+    type: go.Scatter
+    chart_role: primary
+    color: "#0072B2"                                       # bleu Okabe-Ito (accessibilité daltonisme)
+    color_token: "Okabe-Ito blue"
+    mode: "lines+markers"
+    line: {width: 2.5}
+    marker: {size: 5}
+    hovertemplate: "{{viz_t.hover_kill_cumul}}"            # "Kill #{y} à {text}"
+    text_data:
+      source: "kill_labels"                                # mm:ss formaté
+      template: null
+    show_when: "len(my_kills) > 0"
+
+  - id: deaths_cum
+    name: "{{viz_t.trace_deaths}}"
+    type: go.Scatter
+    chart_role: primary
+    color: "#D55E00"                                       # vermillon Okabe-Ito
+    color_token: "Okabe-Ito vermillion"
+    mode: "lines+markers"
+    line: {width: 2.5}
+    marker: {size: 5}
+    hovertemplate: "{{viz_t.hover_death_cumul}}"
+    show_when: "len(my_deaths) > 0"
+
+# /!\ Pas de 3ème trace : les impact events sont des ANNOTATIONS Plotly
+# (cf. section impact_events: ci-dessous), positionnées sur les courbes
+# kills/deaths existantes selon le type d'event.
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 340
+    expression: null
+    branches: []
+  margin: {l: 60, r: 30, t: 30, b: 60}
+  hovermode: "x unified"
+  showlegend: true
+  legend:
+    inherits: legend_horizontal_bottom
+
+  xaxis:
+    type: "linear"
+    title: "{{viz_t.axis_match_time}}"
+    tickformat: null
+    tick_labels_format: "mm:ss (via _format_time)"
+
+  yaxis:
+    type: "linear"
+    title: "{{viz_t.axis_count}}"
+    rangemode: "tozero"
+
+# === IMPACT EVENTS (annotations Plotly — pas une trace) ===
+impact_events:
+  description: |
+    Marqueurs ponctuels avec étiquette texte (icône + label + gamertag) ancrés
+    sur la courbe kills OU deaths selon le type d'event. Chaque event est une
+    `add_annotation` Plotly avec une flèche pointant sur un point précis.
+    Côté ECharts : `markPoint` sur la série appropriée avec label élaboré.
+
+  proximity_threshold_ms: 30000                                # 30s
+  ay_levels: [-40, -90, -140]                                  # 3 niveaux de décalage vertical pour éviter superposition
+
+  events_on_kills_curve:                                       # types ancrés sur la courbe kills
+    - first_blood
+    - clutch_finisher
+    - last_group_kill
+    - top_gun                                                   # ex: "Top Gun" — meilleur frag count
+
+  events_on_deaths_curve:                                      # types ancrés sur la courbe deaths
+    - tourist                                                   # /!\ "Touriste" : 1er frag le plus tard de l'équipe
+    - first_group_death
+    - last_casualty
+    - autres                                                    # tout type non listé → courbe deaths
+
+  position_logic: |
+    Pour chaque event :
+      - Si event.event_type ∈ events_on_kills_curve :
+          arrow_x = clamp(event.time_ms, my_kills[0].time_ms, my_kills[-1].time_ms)
+          y_val = nb de kills <= arrow_x (position sur la courbe kills cumulés)
+      - Sinon (events_on_deaths_curve ou autre) :
+          arrow_x = clamp(event.time_ms, my_deaths[0].time_ms, my_deaths[-1].time_ms)
+          y_val = nb de deaths <= arrow_x (position sur la courbe deaths cumulés)
+    Le clamp garantit que la flèche pointe TOUJOURS sur un segment existant
+    (cas event.time_ms < first_event ou > last_event).
+
+  styling:
+    color_is_me: "#3DFFB5"                                     # vert si l'event concerne le joueur courant
+    color_other: "#E69F00"                                     # orange Okabe-Ito si autre joueur
+    bgcolor_is_me: "rgba(61, 255, 181, 0.15)"                 # bg semi-transparent vert
+    bgcolor_other: "rgba(255, 183, 3, 0.15)"                  # bg semi-transparent ambre
+    border_width: 1
+    border_pad: 4
+    arrow_head: 2
+    arrow_size: 1
+    arrow_width: 1.5
+    label_align: "center"
+    label_font:
+      size: 12
+      color: "#F5F8FF"
+
+  label_template: |
+    <b>{icon} {label_fr}</b><br>
+    <span style='font-size:11px'>{display_name}</span>
+
+  example_events:
+    - {event_type: "first_blood",     icon: "🩸", label_fr: "First Blood",     example_player: "JGtm"}
+    - {event_type: "clutch_finisher", icon: "⚡", label_fr: "Clutch Finisher", example_player: "JGtm"}
+    - {event_type: "top_gun",         icon: "🎯", label_fr: "Top Gun",         example_player: "JGtm"}
+    - {event_type: "tourist",         icon: "🧳", label_fr: "Touriste",        example_player: "BotPlayer42"}
+    - {event_type: "last_casualty",   icon: "🪦", label_fr: "Last Casualty",   example_player: "JGtm"}
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "len(highlight_events) > 0 AND (my_kills OR my_deaths)"
+  empty_state:
+    type: none
+    triggered_by: ["highlight_events vide ou pas d'events du joueur"]
+  config: PLOTLY_STATIC_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('mv_match_impact'))"
+    - "_render_impact_badges(impact_events, lang) — badges au-dessus du chart"
+
+# === CONTROLS ===
+controls: []
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_kills
+    - trace_deaths
+    - trace_impact_events
+    - hover_kill_cumul
+    - hover_death_cumul
+    - axis_match_time
+    - axis_count
+  t:
+    - mv_match_impact
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Palette Okabe-Ito (bleu/vermillon/orange) au lieu des couleurs Halo standard"
+      why: |
+        Accessibilité daltonisme (deutéranopie/protanopie). Le commentaire dans le code Python
+        documente le passage de #3DFFB5 (vert) → #0072B2 (bleu), #FF4D6D (rose) → #D55E00 (vermillon),
+        #FFB703 (ambre) → #E69F00 (orange). À RESPECTER STRICTEMENT lors du portage Go pour ne
+        pas régresser sur l'accessibilité.
+
+    - decision: "Trace `impact_annotations` modélisée comme une 3ème série markers+text"
+      why: |
+        Plotly add_trace avec mode='markers+text' superpose des marqueurs étoile dorés sur la
+        courbe kills aux moments exacts des impact events (multi-kills, sprees). Le label texte
+        affiche l'event name. Côté ECharts : `series[2].type='scatter' + symbol:'star' + label`.

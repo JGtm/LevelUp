@@ -1,0 +1,173 @@
+# =============================================================================
+# Outcomes over time — bars Wins (haut) / Losses (bas, négatives) par bucket
+# =============================================================================
+# Bars groupées : Wins en positif (vert), Losses en négatif (rouge) sur le même
+# axe Y (axe zéro horizontal séparant). Optionnellement : Ties (violet) et
+# Unfinished (gris) si > 0.
+# X = bucket label (semaine/jour/session selon `session_style`).
+# Retourne (figure, bucket_label) — bucket_label affiché en intro st.markdown.
+# =============================================================================
+
+id: "timeseries.05"
+title: "Outcomes over time — V/D par période"
+page: timeseries
+section: "Onglet Résumé K/D/A — Outcomes"
+display_order_in_tab: 6
+source_function: "src/ui/pages/win_loss.py::_render_outcomes_over_time"
+source_helpers:
+  - "src/visualization/distributions_outcomes.py::plot_outcomes_over_time"
+  - "src/visualization/distributions_outcomes.py::compute_outcome_buckets"
+  - "src/data/outcome_codes::OUTCOME_CODES"
+fragment: false
+chart_kind: stacked_bar                                        # techniquement group + Y signé
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "compute_outcome_buckets(d, session_style, lang) → DataFrame buckets, bucket_label"
+  input_dataframe:
+    required_fields:
+      dff:
+        - match_id, outcome, start_time
+  call_args:
+    session_style: "bool — True si filter_mode='Sessions' AND picked_session_labels"
+    lang: "fr | en"
+  filters_applied: ["filtres globaux"]
+
+  constants:
+    outcome_codes: { WIN: 2, LOSS: 3, TIE: 1, NO_FINISH: 4 }
+    win_color: "#00e676"                                       # green
+    loss_color: "#e53935"                                      # red
+    tie_color: "#ab47bc"                                       # violet
+    nofin_color: "#888888"                                     # gris
+    bucket_default: "weekly"
+
+  transformations:
+    - description: "Compute buckets (weekly par défaut, daily/session selon session_style)"
+      polars: |
+        d, bucket_label = compute_outcome_buckets(d, session_style=is_session_scope, lang=lang)
+      detail: "session_style=True → 1 bucket par session ; sinon mode auto (semaine/jour selon volume)"
+
+    - description: "Pivot count par bucket × outcome → 4 colonnes (W/L/T/NF)"
+      polars: |
+        pivot = (
+          d.group_by('bucket', 'outcome')
+           .agg(pl.col('match_id').count().alias('count'))
+           .pivot(on='outcome', index='bucket', values='count')
+           .fill_null(0)
+           .sort('bucket')
+        )
+
+    - description: "Inversion du signe pour Losses (Y NÉGATIF)"
+      polars: "losses_neg = [-v for v in losses]"
+
+    - description: "Ties et Unfinished affichés conditionnellement (si sum > 0)"
+      polars: |
+        if sum(ties) > 0: fig.add_bar(name='Ties', y=ties, color=violet)
+        if sum(nofin) > 0: fig.add_bar(name='Unfinished', y=nofin, color=gris)
+
+# === TRACES ===
+traces:
+  - id: wins
+    type: bar
+    color: "#00e676"
+    y_field: wins
+    name_i18n: "{{viz_t.trace_wins}}"
+    hovertemplate: "%{x}<br>{{trace_wins}}: %{y}<extra></extra>"
+
+  - id: losses
+    type: bar
+    color: "#e53935"
+    y_field: "[-v for v in losses]"                             # NÉGATIF
+    customdata_field: losses                                    # valeur ABSOLUE pour le tooltip
+    name_i18n: "{{viz_t.trace_losses}}"
+    hovertemplate: "%{x}<br>{{trace_losses}}: %{customdata}<extra></extra>"
+
+  - id: ties
+    type: bar
+    optional: true                                              # affiché ssi sum(ties) > 0
+    color: "#ab47bc"
+    y_field: ties
+    name_i18n: "{{viz_t.trace_ties}}"
+
+  - id: unfinished
+    type: bar
+    optional: true
+    color: "#888888"
+    y_field: nofin
+    name_i18n: "{{viz_t.trace_unfinished}}"
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  margin: { l: 40, r: 20, t: 30, b: 40 }
+  yaxis:
+    title_i18n: "{{viz_t.axis_count}}"
+    zeroline: true                                              # axe horizontal entre wins↑/losses↓
+    zerolinewidth: 2
+    zerolinecolor: "rgba(255,255,255,0.75)"
+  xaxis:
+    type: category
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "d non vide après drop_nulls(['outcome'])"
+  empty_state:
+    type: "figure axes uniquement"
+    triggered_by:
+      - "d vide → return (figure_vide, viz_t.bucket_period)"
+      - "fig_out None → st.info(t('wl_insufficient_evolution'))"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown(t('wl_bucket_intro', bucket=bucket_label))   # ex 'Évolution par semaine'"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_wins
+    - trace_losses
+    - trace_ties
+    - trace_unfinished
+    - axis_count
+    - bucket_period
+  t:
+    - wl_bucket_intro
+    - wl_period_default
+    - wl_cannot_display_evolution
+    - wl_insufficient_evolution
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Losses en barres NÉGATIVES (sous l'axe X)"
+      why: |
+        Cohérent avec teammates.14 (per-minute). La séparation visuelle haut/bas évite la confusion
+        entre wins et losses qui auraient sinon des couleurs similaires en hauteur égale. Permet
+        aussi de "lire" le bilan d'une période en un coup d'œil (plus de vert haut = bonne période).
+
+    - decision: "session_style change le bucketing"
+      why: |
+        Quand l'utilisateur a sélectionné des sessions spécifiques dans le sidebar
+        (filter_mode='Sessions'), on bucketize par SESSION (1 barre par session sélectionnée)
+        plutôt que par période chronologique automatique. Plus intuitif quand la sélection est
+        déjà segmentée par session.
+
+    - decision: "Ties et Unfinished optionnels (cachés si sum=0)"
+      why: |
+        La majorité des modes Halo Infinite ne PRODUIT pas de tie (DM, Slayer, etc.) — sauf BR
+        d'équipe ou modes objectif. Afficher 0 ties partout pollue la légende et l'axe X.
+        Convention : ne montrer que les codes outcome qui ont eu lieu au moins une fois.
+
+    - decision: "tuple (figure, bucket_label) retourné"
+      why: |
+        bucket_label est nécessaire CÔTÉ UI pour afficher le st.markdown('Évolution par semaine')
+        au-dessus du chart. La fonction Plotly est la mieux placée pour décider du bucketing
+        (en lisant la distribution temporelle). Côté React : le composant retourne {fig, bucketLabel}.

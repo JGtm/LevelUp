@@ -1,0 +1,128 @@
+# =============================================================================
+# Performance timeseries — bars colorées par palier + smoothing rolling 10
+# =============================================================================
+# Bars (1 par match) avec couleur selon palier de performance (green/cyan/amber/
+# orange/red via _perf_color cf. SCORE_THRESHOLDS). Optionnel : smoothing line
+# violet (rolling mean window=10) si show_smooth=True (défaut).
+# Y range fixe [0, 100]. X = catégoriel chronologique avec carte si dispo.
+# =============================================================================
+
+id: "timeseries.12"
+title: "Performance timeseries — bars colorées par palier + smoothing"
+page: timeseries
+section: "Onglet Progression — Performance"
+display_order_in_tab: 2
+source_function: "src/visualization/_timeseries_progression.py::plot_performance_timeseries"
+source_helpers:
+  - "src/visualization/_timeseries_progression.py::_perf_color"
+  - "src/visualization/_timeseries_progression.py::_ensure_performance_column"
+  - "src/visualization/_timeseries_helpers.py::prepare_time_axis"
+  - "src/visualization/_timeseries_helpers.py::apply_chrono_xaxis"
+  - "src/visualization/_timeseries_helpers.py::_rolling_mean"
+  - "src/analysis/performance_config.py::SCORE_THRESHOLDS"
+fragment: false
+chart_kind: line                                                # bars + line via per-bar coloring
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "_ensure_performance_column(d, history) → injection ou recalcul de la col `performance`"
+  input_dataframe:
+    required_fields:
+      df:
+        - performance | (kills, deaths, assists, accuracy, outcome)  # fallback recalcul
+        - start_time
+      df_history: "DataFrame complet (référence pour score relatif)"
+  call_args:
+    show_smooth: true
+    lang: "fr | en"
+
+  constants:
+    score_thresholds: { excellent: 75, good: 60, average: 45, below_average: 30 }
+    palette:
+      excellent: "#00e676"  # green
+      good: "#41d6ff"        # cyan
+      average: "#ffb300"     # amber
+      below_average: "#FF8C00"  # orange
+      poor: "#e53935"        # red
+    smoothing_window: 10
+    smooth_color: "#8B5CF6"  # violet
+    y_range: [0, 100]
+
+# === TRACES ===
+traces:
+  - id: performance_bars
+    type: bar
+    color_per_bar: "[_perf_color(v) for v in performance]"
+    opacity: 0.85
+    name_i18n: "{{viz_t.trace_performance}}"
+    hovertemplate: "performance=%{y:.1f}<br>date=%{customdata[0]}<extra></extra>"
+
+  - id: smoothed_line
+    type: scatter
+    mode: lines
+    color: "#8B5CF6"
+    name_i18n: "{{viz_t.trace_avg_smoothed}}"
+    optional: true                                              # ssi show_smooth
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    value: 380
+  margin: { l: 40, r: 20, t: 60, b: 90 }
+  hovermode: "x unified"
+  legend: "horizontal_bottom"
+  yaxis:
+    title_i18n: "{{viz_t.title_performance}}"
+    rangemode: tozero
+    range: [0, 100]                                             # palier visuel fixe
+  xaxis:
+    type: category                                              # via apply_chrono_xaxis
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: "df non vide"
+  empty_state:
+    type: "annotation in figure"
+    triggered_by: ["d vide après normalize"]
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+  preceded_by:
+    - "st.subheader(t('ts_performance'))"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_performance
+    - trace_avg_smoothed
+    - hover_avg_s1
+    - title_performance
+  t: ["ts_performance"]
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Y range fixe [0, 100]"
+      why: |
+        performance_score est borné 0-100 par construction (SCORE_THRESHOLDS et formule). Forcer
+        l'axe à cette plage évite les distorsions visuelles entre périodes de la sélection (sinon
+        une période à 30-60 occuperait toute la hauteur, masquant le fait que le joueur n'atteint
+        jamais le palier excellent).
+
+    - decision: "Per-bar coloring selon palier (5 niveaux)"
+      why: |
+        Lecture immédiate du 'niveau' de chaque match sans regarder l'axe Y. Cohérent avec
+        teammates.04 (squad timeline) et teammates.13 (perf vs hist). Côté ECharts :
+        `data[i].itemStyle.color` calculé en JS depuis _perf_color.
+
+    - decision: "Smoothing rolling 10 (line violet) — toggle show_smooth"
+      why: |
+        Window=10 ≈ 1-2 sessions normales. Lisse les fluctuations match-à-match pour visualiser
+        une TENDANCE (en hausse / en baisse / stable). Couleur violet (différent de la palette
+        de palier) pour distinguer la trace de smoothing des barres data brute.

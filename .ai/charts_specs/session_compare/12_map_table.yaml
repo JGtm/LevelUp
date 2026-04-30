@@ -1,0 +1,101 @@
+# =============================================================================
+# Map table — table HTML comparative parties + V/D/E par carte
+# =============================================================================
+# Pas un chart Plotly. Table HTML stylée construite manuellement avec _TH/_TD :
+#   colonnes : Map | A — Parties | A — V/D/E | B — Parties | B — V/D/E
+#   tri alphabétique de l'union(maps_a, maps_b)
+#   alternance background sur lignes paires (_TR_EVEN)
+# Le contenu V/D/E formaté "{w}V/{l}D" + "/Eg" si ties > 0.
+# =============================================================================
+
+id: "session_compare.12"
+title: "Map table — comparatif parties + V/D/E par carte"
+page: session_compare
+section: "Section 12 (linéaire)"
+display_order_in_page: 12
+source_function: "src/ui/pages/_session_compare_extra.py::render_map_table"
+source_helpers:
+  - "src/ui/pages/_session_compare_extra.py::_vd_html"
+fragment: false
+chart_kind: table_html
+
+data:
+  computed_by: server
+  upstream_service: "_map_counts(df) → dict[map → {n, w, l, ties}]"
+  input_dataframe:
+    required_fields: { df_session_a, df_session_b: [map_ui|map_name, outcome] }
+  call_args: {}
+
+  transformations:
+    - description: "Comptage par carte (n total, w wins, l losses, ties)"
+      polars: |
+        for row in df.iter_rows(named=True):
+            m = str(row.get(map_col) or '?')
+            counts[m].n += 1
+            if outcome == WIN: counts[m].w += 1
+            elif outcome == LOSS: counts[m].l += 1
+            elif outcome == TIE: counts[m].ties += 1
+    - description: "Union triée alphabétiquement"
+      polars: "all_maps = sorted(set(mc_a) | set(mc_b))"
+
+# === TABLE HTML ===
+table_html:
+  inline_styles:
+    th: "padding:6px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.15);color:#A0A0A0;font-size:0.8rem;white-space:nowrap"
+    td: "padding:5px 12px;white-space:nowrap;vertical-align:middle;font-size:0.9rem"
+    td_centered: "(td) + ;text-align:center"
+    tr_even: "background:rgba(255,255,255,0.03)"
+
+  columns:
+    - { id: map,         header_i18n: "{{t.sc_map_col}}",            align: left }
+    - { id: a_count,     header: "A — Parties",                      align: center, color: "#E74C3C" }
+    - { id: a_outcomes,  header: "A — V/D/E",                        align: center }
+    - { id: b_count,     header: "B — Parties",                      align: center, color: "#3498DB" }
+    - { id: b_outcomes,  header: "B — V/D/E",                        align: center }
+
+  cell_format:
+    counts: "{n} ou — si 0"
+    outcomes: '{w}V/{l}D (+{ties}E si ties > 0)'
+
+traces: []
+
+layout:
+  inherits: _theme_default
+  height: { value: null }                                       # auto-fit table
+
+display:
+  shown_when: "all_maps non vide AND (map_ui OR map_name) ∈ df"
+  empty_state:
+    type: "section masquée"
+    triggered_by: ["all_maps vide → return"]
+  config: null
+  width_mode: stretch
+  preceded_by:
+    - "st.markdown(t('sc_map_table'))"
+
+i18n_keys:
+  viz_t: []
+  t: ["sc_map_table", "sc_map_col"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Couleurs A/B sur les en-têtes 'A — Parties' / 'B — Parties'"
+      why: |
+        Cohérence visuelle avec le reste de la page (rouge corail / bleu vif). Permet à
+        l'utilisateur d'identifier rapidement quelle colonne correspond à quelle session
+        sans relire 'A' / 'B'.
+
+    - decision: "Pas un chart Plotly mais HTML brut"
+      why: |
+        Comparaison ligne-à-ligne tabulaire — un chart serait sur-engineered. La table HTML
+        avec st.markdown(unsafe_allow_html=True) est plus dense et plus rapide à scanner.
+
+    - decision: "Format V/D/E conditionnel sur ties"
+      why: |
+        Dans la majorité des modes, ties=0 → on affiche '6V/4D' (compact). Quand des ties
+        existent, on ajoute '+1E' pour montrer l'info supplémentaire sans encombrer
+        sur les lignes 'normales'.

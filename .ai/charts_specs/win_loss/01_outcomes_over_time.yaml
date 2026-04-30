@@ -1,0 +1,45 @@
+# =============================================================================
+# Win/Loss page · Section 1 · Outcomes over time
+# =============================================================================
+# Wrapper de la spec timeseries.05 — même fonction Python `_render_outcomes_over_time`.
+# =============================================================================
+
+id: "win_loss.01"
+title: "Outcomes over time — V/D par période (page WL)"
+page: win_loss
+section: "Section 1 (linéaire)"
+display_order_in_page: 1
+source_function: "src/ui/pages/win_loss.py::_render_outcomes_over_time"
+chart_kind: stacked_bar
+
+data:
+  reuses:
+    of: "timeseries.05"
+    differences: "Aucune — même fonction et mêmes args."
+
+traces: []                                                       # cf. timeseries.05
+
+layout:
+  inherits: _theme_default
+  height: { value: 380 }
+
+display:
+  shown_when: "dff non vide AND outcome présent"
+  config: PLOTLY_CLEAN_CONFIG
+  width_mode: stretch
+
+i18n_keys:
+  viz_t: []
+  t: ["wl_bucket_intro", "wl_period_default", "wl_cannot_display_evolution", "wl_insufficient_evolution"]
+
+fingerprint:
+  source_commit: "0abef2c0"
+  generated_at: "2026-04-30T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+  notes:
+    - decision: "Wrapper sur timeseries.05"
+      why: |
+        La page Win/Loss n'a pas d'onglets — c'est un regroupement linéaire des charts
+        partagés. Wrapper pour conserver la traçabilité de la composition de la page WL.
+        Côté React : pas de duplication, on réutilise `<OutcomesOverTime />` partagé.
