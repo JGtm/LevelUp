@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-04-30] docs(filters): révision plan catalogue — N-N + multi-titre
+
+**Statut** : Complété  
+**Branche** : `docs/playlists-catalog-design`
+
+**Décision technique** :
+- Citation Halo Waypoint sur les cardinalités confirme trois N-N à modéliser séparément : pair-playlist (déjà couvert), map-pair (à séparer), game_variant-pair (à séparer). Le schéma initial à 4 tables fusionnait map et variant dans `map_mode_pair_definitions`, ce qui aurait dupliqué `map_name` et `image_url` à chaque pair partageant la même map.
+- Schéma révisé à 6 tables : `playlists_catalog`, `maps_catalog`, `game_variants_catalog`, `map_mode_pair_definitions` (FK uniquement), `playlist_pair_links`, `catalog_fetch_queue`. Toutes title-aware avec `title_slug` en PK composite, aligné sur le pattern `waypoint_assets_raw(title_id, asset_id, version_id)` documenté dans le project_map.
+- Intégration multi-titre : nouvelle interface `TitleCatalogAdapter` sœur de `TitleDataAdapter` et `TitleSemanticAdapter` déjà en place dans `internal/games/{adapter,resolver}.go`. Implémentation Halo dans `internal/games/halo_infinite/catalog_adapter.go` qui enveloppe `discovery_client.go` existant. Règles de classification `experience` portées dans des TOML versionnés `config/titles/halo_infinite/catalog/experience_rules.toml`, cohérent avec `mappings/fields.toml`.
+- Endpoint REST symétrique `GET /api/v1/titles/{slug}/catalog/{playlists|pairs|maps}` gated par `MULTI_TITLE_API_ENABLED=true`.
+- Plan d'implémentation passé de 8 à 10 phases, estimation 5-6 jours-homme (vs 3-5 initialement, surcoût lié au respect du pattern multi-titre).
+
+**Résultats observés** :
+- `.ai/PLAN_PLAYLISTS_CATALOG.md` mis à jour : §4 (schéma 6 tables + insight cardinalités), nouvelle §4bis (intégration multi-titre), §5 (10 phases), §6 (2 décisions ouvertes ajoutées), §9 (estimation révisée), §10 (références multi-titre + Python à porter).
+- Pas de code livré à ce stade — uniquement de la doc.
+
+**Conclusion** :
+Plan aligné sur l'architecture multi-titre existante et les vraies cardinalités du domaine Halo. Prochaine étape : valider auprès de l'utilisateur les décisions ouvertes (TOML vs Go pour les règles d'experience, endroit du refresh mensuel) avant ouverture des phases d'implémentation.
+
 ## [2026-04-30] docs(filters): plan catalogue global Playlists / Pairs / Maps
 
 **Statut** : Complété  

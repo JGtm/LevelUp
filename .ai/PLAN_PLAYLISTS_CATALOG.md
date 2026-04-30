@@ -78,10 +78,27 @@ C'est le vrai gain UX, plus important que la perf brute.
 
 ## 4. Schéma proposé (`metadata.duckdb`)
 
+### 4.1 Insight cardinalités — citation Halo Waypoint
+
+> « The same game mode and map combination can belong to more than one playlist. Every map can be used in many map-mode pairs, and every mode can, just like the maps, belong to more than one combo. »
+
+Trois relations N-N à modéliser **proprement**, pas une seule :
+
+| Relation | Cardinalité | Conséquence |
+|---|---|---|
+| `pair` ↔ `playlist` | N-N | Table d'association `playlist_pair_links` |
+| `map` ↔ `pair` | 1-N | Une map référencée par plusieurs pairs → **table `maps_catalog` séparée**, sinon duplication massive de `map_name` / `map_image_url` |
+| `game_variant` ↔ `pair` | 1-N | Idem pour les variants → **table `game_variants_catalog` séparée** |
+
+→ Le pair ne porte que les **FK** vers map et game_variant, plus son nom propre (« Slayer on Aquarius » par exemple). Un changement de nom de map ou de mode se propage gratuitement à tous les pairs qui le référencent.
+
+### 4.2 Tables (6 au total, toutes title-aware via `title_slug`)
+
 ```sql
--- Référentiel des playlists Halo Infinite
+-- Référentiel des playlists, par titre
 CREATE TABLE playlists_catalog (
-  playlist_asset_id   UUID PRIMARY KEY,
+  title_slug          VARCHAR,
+  playlist_asset_id   UUID,
   current_version_id  UUID,
   name_en             VARCHAR,
   name_fr             VARCHAR,
@@ -90,48 +107,175 @@ CREATE TABLE playlists_catalog (
   is_active           BOOLEAN DEFAULT TRUE,
   first_seen_at       TIMESTAMP,
   last_seen_at        TIMESTAMP,
-  last_fetched_at     TIMESTAMP
+  last_fetched_at     TIMESTAMP,
+  PRIMARY KEY (title_slug, playlist_asset_id)
 );
 
--- Définitions canoniques des paires map+mode
+-- Référentiel des maps (séparé pour ne pas dupliquer name/image)
+CREATE TABLE maps_catalog (
+  title_slug          VARCHAR,
+  map_asset_id        UUID,
+  current_version_id  UUID,
+  name_en             VARCHAR,
+  name_fr             VARCHAR,
+  image_url           VARCHAR,        -- déjà résolu via internal/assets si dispo
+  last_fetched_at     TIMESTAMP,
+  PRIMARY KEY (title_slug, map_asset_id)
+);
+
+-- Référentiel des game variants (séparé : un variant peut être dans N pairs)
+CREATE TABLE game_variants_catalog (
+  title_slug              VARCHAR,
+  game_variant_asset_id   UUID,
+  current_version_id      UUID,
+  name_en                 VARCHAR,
+  name_fr                 VARCHAR,
+  mode_canonical          VARCHAR,    -- 'slayer' | 'ctf' | 'oddball' | 'koth' | 'strongholds' | 'extraction' | 'firefight_kotr' | 'fiesta' | ...
+  game_variant_category   INTEGER,    -- code numérique Halo (équivalent GameVariantCategory)
+  last_fetched_at         TIMESTAMP,
+  PRIMARY KEY (title_slug, game_variant_asset_id)
+);
+
+-- Pair = jonction map + game_variant + nom composite, par titre
 CREATE TABLE map_mode_pair_definitions (
-  pair_asset_id          UUID PRIMARY KEY,
+  title_slug             VARCHAR,
+  pair_asset_id          UUID,
   current_version_id     UUID,
-  name_en                VARCHAR,
+  name_en                VARCHAR,     -- ex: "Slayer on Aquarius"
   name_fr                VARCHAR,
-  map_asset_id           UUID,
-  map_name               VARCHAR,
-  game_variant_asset_id  UUID,
-  mode_canonical         VARCHAR,     -- 'slayer' | 'ctf' | 'oddball' | 'koth' | 'strongholds' | 'extraction' | 'firefight_kotr' | 'fiesta' | ...
-  last_fetched_at        TIMESTAMP
+  map_asset_id           UUID,        -- FK -> maps_catalog
+  game_variant_asset_id  UUID,        -- FK -> game_variants_catalog
+  last_fetched_at        TIMESTAMP,
+  PRIMARY KEY (title_slug, pair_asset_id)
 );
 
--- Relation N-N playlist ↔ pair, avec poids de tirage
+-- Relation N-N playlist <-> pair, avec poids de tirage
 CREATE TABLE playlist_pair_links (
+  title_slug         VARCHAR,
   playlist_asset_id  UUID,
   pair_asset_id      UUID,
   weight             DOUBLE,           -- depuis CustomData.PlaylistEntries[].Metadata.Weight
-  PRIMARY KEY (playlist_asset_id, pair_asset_id)
+  PRIMARY KEY (title_slug, playlist_asset_id, pair_asset_id)
 );
 
 -- File d'attente du fetcher (pattern Kinds, drain mensuel)
 CREATE TABLE catalog_fetch_queue (
-  asset_type    VARCHAR,             -- 'playlist' | 'pair' | 'map'
+  title_slug    VARCHAR,
+  asset_type    VARCHAR,             -- 'playlist' | 'pair' | 'map' | 'game_variant'
   asset_id      UUID,
   version_id    UUID,                -- nullable si on ne connaît pas encore
   enqueued_at   TIMESTAMP,
   attempts      INTEGER DEFAULT 0,
   last_error    VARCHAR,
-  PRIMARY KEY (asset_type, asset_id)
+  PRIMARY KEY (title_slug, asset_type, asset_id)
 );
 ```
 
-### Décisions de modélisation
+### 4.3 Décisions de modélisation
 
-- **Pas de table `map_canonical_definitions` séparée** : `map_asset_id` + `map_name` dans `map_mode_pair_definitions` suffisent. Une map n'a pas de hiérarchie propre indépendante du pair.
-- **`experience` en VARCHAR + enum applicatif** : pas de table de référence séparée. La liste reste petite et stable, et l'enum vit dans le code Go pour bénéficier de la validation au compile-time.
+- **6 tables au lieu de 4** : la séparation maps / game_variants / pairs est imposée par les cardinalités N-N. Sans ça, la moindre correction de nom de map nécessiterait un UPDATE multi-lignes et on perdrait toute l'info image au passage.
+- **`title_slug` PK composite partout** : aligné sur le pattern `waypoint_assets_raw(title_id, asset_id, version_id)` documenté dans le `project_map.md`. Permet à l'adapter `synthetic_title_b/` (corpus de tests) de cohabiter sans pollution croisée.
+- **`experience` en VARCHAR + enum applicatif** : pas de table de référence séparée. La liste reste petite et stable par titre, et l'enum vit dans `internal/games/canonical/` pour la validation au compile-time. La règle de classification est portée par le `TitleCatalogAdapter` (cf. §5bis).
 - **`weight` est conservé** : pas critique pour le filtre, mais ouvre la porte à une future feature « probabilité de tomber sur cette map dans Quick Play ».
-- **`current_version_id` au lieu d'une table d'historique** : on ne garde que la version active. Si un audit historique des versions est jamais demandé, `waypoint_assets_raw` garde déjà les snapshots bruts datés.
+- **`current_version_id` au lieu d'une table d'historique** : on ne garde que la version active. Si un audit historique est jamais demandé, `waypoint_assets_raw` garde déjà les snapshots bruts datés.
+- **Pas de FK déclarées en DuckDB** : DuckDB supporte les FK mais la pratique du repo (cf. autres tables metadata) est de ne pas les imposer pour éviter les blocages au sync. La cohérence est garantie par le `CatalogFetcherService` (un fetch playlist hydrate aussi ses pairs / maps / variants).
+
+---
+
+## 4bis. Intégration multi-titre
+
+Le repo a déjà une couche multi-titre Go en place (cf. `project_map.md` §« Multi-titres — couche canonical + adapters + TOML mappings »). Le catalogue doit s'y aligner pour ne pas créer un silo Halo Infinite parallèle.
+
+### 4bis.1 Pattern existant à réutiliser
+
+| Composant | Rôle | Référence |
+|---|---|---|
+| `internal/games/{adapter,resolver}.go` | Interfaces `TitleDataAdapter` + `TitleSemanticAdapter` (SRP), `StaticResolver` injecté au boot | déjà en prod |
+| `internal/games/halo_infinite/` | Implémentation Halo : `DataAdapter` (wrap `CareerSource`), `SemanticAdapter` (wrap `FieldMappingSet`) | déjà en prod |
+| `internal/games/synthetic_title_b/` | Corpus synthétique pour tests d'isolation cross-titres | déjà en prod |
+| `config/titles/{slug}/mappings/fields.toml` | Sources de vérité versionnées Git | déjà en prod |
+| `MULTI_TITLE_API_ENABLED` | Feature flag qui gate les endpoints `/api/v1/titles/{slug}/...` | déjà en prod |
+| `tools/mappings/CHANGELOG.md` | Historique des bumps de `schema_version` | déjà en prod |
+
+### 4bis.2 Nouvelle interface à introduire
+
+Une troisième interface, sœur des deux existantes, dans `internal/games/catalog_adapter.go` :
+
+```go
+type TitleCatalogAdapter interface {
+    // Fetch une playlist depuis l'API du titre et retourne sa définition canonique.
+    FetchPlaylist(ctx context.Context, assetID, versionID string) (CanonicalPlaylist, error)
+
+    // Fetch un pair (map+mode) depuis l'API du titre.
+    FetchPair(ctx context.Context, assetID, versionID string) (CanonicalPair, error)
+
+    // Classifie l'experience d'une playlist (ranked/social/btb/firefight/...)
+    // depuis ses attributs natifs (nom, tags, GameVariantCategory, etc.).
+    ClassifyExperience(playlist CanonicalPlaylist) Experience
+
+    // Mappe un game_variant_asset_id vers un mode canonique ('slayer', 'ctf', ...).
+    CanonicalMode(variant CanonicalGameVariant) ModeCanonical
+}
+```
+
+### 4bis.3 Implémentations
+
+- **`internal/games/halo_infinite/catalog_adapter.go`** : enveloppe le [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go) existant, parse `CustomData.PlaylistEntries`, applique les heuristiques de classification (préfixes `Ranked:`, `BTB:`, etc. — porter la logique de `src/analysis/playlist_groups.py` qui est déjà éprouvée).
+- **`internal/games/synthetic_title_b/catalog_adapter.go`** : implémentation no-op ou fixtures, suit le pattern du corpus de tests.
+
+### 4bis.4 Configuration TOML versionnée
+
+Cohérent avec `config/titles/halo_infinite/mappings/fields.toml`, ajouter :
+
+```
+config/titles/halo_infinite/catalog/
+├── experience_rules.toml      # Règles de classification ranked/social/btb/firefight
+└── mode_canonical_map.toml    # Mapping game_variant_category INT -> mode_canonical
+```
+
+`experience_rules.toml` (extrait) :
+
+```toml
+schema_version = 1
+
+[[rule]]
+experience = "ranked"
+match_any = { name_prefix = ["Ranked "], tag = ["Ranked"] }
+
+[[rule]]
+experience = "btb"
+match_any = { name_contains = ["Big Team", "BTB"], pair_prefix = ["BTB:", "BigTeam:"] }
+
+[[rule]]
+experience = "firefight"
+match_any = { game_variant_category = [22, 32, 40, 41, 42] }
+```
+
+Cette config est chargée par `halo_infinite/CatalogAdapter` au boot. Un changement de classification = un commit TOML + bump `schema_version`, pas de redéploiement de code.
+
+### 4bis.5 Endpoint REST
+
+Symétrie avec `/api/v1/titles/{slug}/field-mappings` :
+
+```
+GET /api/v1/titles/{slug}/catalog/playlists?xuid={xuid}&only_played={bool}
+GET /api/v1/titles/{slug}/catalog/pairs?playlist_asset_id={uuid}&xuid={xuid}&only_played={bool}
+GET /api/v1/titles/{slug}/catalog/maps?xuid={xuid}&only_played={bool}
+```
+
+Gated par `MULTI_TITLE_API_ENABLED=true`. Conserve l'endpoint legacy `POST /players/{slug}/filters/resolve` qui consomme le catalogue en interne sans changer son contrat (Phase G).
+
+### 4bis.6 Service Go
+
+```go
+type CatalogService struct {
+    repo     CatalogRepo                   // accès DuckDB metadata
+    resolver games.Resolver                // récupère TitleCatalogAdapter par slug
+    fetcher  *CatalogFetcherService        // drain de la queue
+}
+```
+
+Le `CatalogService` n'a **aucune connaissance Halo** : il délègue tout au `TitleCatalogAdapter` résolu via le `StaticResolver`. C'est la même séparation que `MultiTitlePreviewHandler`.
 
 ---
 
@@ -139,8 +283,8 @@ CREATE TABLE catalog_fetch_queue (
 
 ### Phase A — Migration schéma metadata (1 commit)
 
-- Ajouter une migration dans [steps_metadata.go](apps/go-api/internal/migration/steps_metadata.go) qui crée les 4 tables.
-- Tests : migration appliquée deux fois sans erreur, schéma matches.
+- Ajouter une migration dans [steps_metadata.go](apps/go-api/internal/migration/steps_metadata.go) qui crée les **6 tables** title-aware : `playlists_catalog`, `maps_catalog`, `game_variants_catalog`, `map_mode_pair_definitions`, `playlist_pair_links`, `catalog_fetch_queue`.
+- Tests : migration appliquée deux fois sans erreur, schéma matches, isolation `title_slug` vérifiée avec une seed `synthetic_title_b`.
 
 ### Phase B — Extraction `version_id` au sync (1 commit)
 
@@ -149,46 +293,65 @@ CREATE TABLE catalog_fetch_queue (
 - Migration de backfill (NULL acceptés, hydratés au prochain sync).
 - Tests : `transforms_test.go` couvre extraction sur fixtures réelles.
 
-### Phase C — Détection lazy + enqueue (1 commit)
+### Phase C — Interfaces multi-titre canoniques (1 commit)
 
-- Hook après `ExtractRegistry()`, avant `InsertRegistryIfNotExists()` ([writes.go:22-65](apps/go-api/internal/sync/writes.go#L22-L65)) : vérifier si `playlist_id` et `pair_id` existent dans `playlists_catalog` / `map_mode_pair_definitions`. Si absents → INSERT OR IGNORE dans `catalog_fetch_queue`.
-- Tests : un sync delta avec asset inconnu enqueue une ligne ; un sync delta avec asset connu n'enqueue rien ; pas de blocage de l'ingestion en cas d'erreur DB sur la queue.
+- Créer `internal/games/catalog_adapter.go` avec l'interface `TitleCatalogAdapter` (cf. §4bis.2).
+- Créer les types canoniques `CanonicalPlaylist`, `CanonicalPair`, `CanonicalMap`, `CanonicalGameVariant`, `Experience`, `ModeCanonical` dans `internal/games/canonical/` (à côté des `MatchType`, `Outcome` existants).
+- Étendre le `StaticResolver` pour exposer `CatalogAdapter(titleSlug)`.
+- Tests d'isolation cross-titres : un appel `Resolver.CatalogAdapter("synthetic_title_b")` ne doit jamais router vers Halo.
 
-### Phase D — Drain de la queue (1 commit)
+### Phase D — Adapter Halo Infinite + TOML (1 commit)
+
+- Créer `internal/games/halo_infinite/catalog_adapter.go` qui enveloppe [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go).
+- Porter la logique de classification depuis `src/analysis/playlist_groups.py` (Python) vers le TOML `config/titles/halo_infinite/catalog/experience_rules.toml`.
+- Loader TOML dans `internal/games/halo_infinite/` (réutiliser `pelletier/go-toml/v2` déjà en place).
+- Tests : 25-30 playlists permanentes mappées correctement, snapshot des règles TOML versionné.
+
+### Phase E — Détection lazy + enqueue au sync (1 commit)
+
+- Hook après `ExtractRegistry()`, avant `InsertRegistryIfNotExists()` ([writes.go:22-65](apps/go-api/internal/sync/writes.go#L22-L65)) : vérifier si `(title_slug, playlist_id)`, `(title_slug, pair_id)`, `(title_slug, map_id)`, `(title_slug, game_variant_id)` existent dans leurs tables respectives. Si absents → INSERT OR IGNORE dans `catalog_fetch_queue`.
+- Le `title_slug` provient du contexte sync (déjà disponible — Halo Infinite est seul titre productif aujourd'hui).
+- Tests : un sync delta avec asset inconnu enqueue les bonnes lignes ; un sync delta avec asset connu n'enqueue rien ; pas de blocage de l'ingestion en cas d'erreur DB sur la queue ; isolation `title_slug` vérifiée.
+
+### Phase F — Drain de la queue via adapters (1 commit)
 
 - Service `CatalogFetcherService` qui :
-  1. SELECT les lignes `catalog_fetch_queue` triées par `attempts` ASC, `enqueued_at` ASC
-  2. Pour chaque playlist : appel [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go) `FetchAsset(AssetTypePlaylist, ...)` → parse `CustomData.PlaylistEntries` → upsert `playlists_catalog` + `playlist_pair_links` + enqueue les pairs si inconnus
-  3. Pour chaque pair : `FetchAsset(AssetTypePair, ...)` → upsert `map_mode_pair_definitions`
-  4. Sur succès → DELETE de la queue ; sur erreur → `attempts++` + `last_error`
-- Pas de worker auto à ce stade — exposé via CLI `drain-catalog-queue`.
-- Tests : drain sur fixtures DiscoveryUGC mockées ; gestion 404 (asset disparu) → marquer `is_active = false` ; gestion erreur transitoire → réessayable.
+  1. SELECT les lignes `catalog_fetch_queue` triées par `title_slug`, `attempts` ASC, `enqueued_at` ASC
+  2. Récupère le `TitleCatalogAdapter` via le `Resolver` selon `title_slug`
+  3. Pour chaque playlist : `adapter.FetchPlaylist()` → parse → upsert `playlists_catalog` + `playlist_pair_links` + enqueue les pairs / maps / variants si inconnus
+  4. Pour chaque pair : `adapter.FetchPair()` → upsert `map_mode_pair_definitions` + enqueue map et game_variant si inconnus
+  5. Sur succès → DELETE ; sur erreur → `attempts++` + `last_error`
+- Pas de worker auto à ce stade — exposé via CLI `drain-catalog-queue --title halo_infinite`.
+- Tests : drain sur fixtures DiscoveryUGC mockées via `synthetic_title_b` ; gestion 404 → `is_active = false` ; gestion erreur transitoire → réessayable.
 
-### Phase E — CLI bootstrap one-shot (1 commit)
+### Phase G — CLI bootstrap one-shot (1 commit)
 
-- Commande Go `populate-playlists-catalog` qui :
-  1. Seed la queue depuis `SELECT DISTINCT playlist_id, pair_id FROM shared.match_registry WHERE playlist_id IS NOT NULL`
-  2. Lance le drain
-  3. Loggue les stats finales (X playlists, Y pairs, Z erreurs)
-- Tests : sur une DB de test avec 5 matchs distincts, peuple correctement le catalogue.
+- Commande Go `populate-playlists-catalog --title halo_infinite` qui :
+  1. Seed la queue depuis `SELECT DISTINCT playlist_id, pair_id, map_id, game_variant_id FROM shared.match_registry WHERE playlist_id IS NOT NULL`
+  2. Lance le drain via `CatalogFetcherService`
+  3. Loggue les stats finales (X playlists, Y pairs, Z maps, W variants, E erreurs)
+- Tests : sur une DB de test avec 5 matchs distincts, peuple correctement les 4 tables référentielles.
 
-### Phase F — Mapping `experience` (1 commit)
+### Phase H — Endpoint REST title-aware (1 commit)
 
-- Définir l'enum `Experience` dans `internal/games/canonical/` ou `internal/sync/`.
-- Heuristique de classification depuis le nom de playlist + flags `is_ranked` / `is_firefight` (réutiliser la logique existante de [filters_service.go](apps/go-api/internal/service/filters_service.go) mais l'appliquer **au moment du fetch catalogue**, pas à chaque requête).
-- Stocker la valeur calculée dans `playlists_catalog.experience`.
-- Tests : 25-30 playlists permanentes mappées correctement (snapshot des noms officiels).
+- Créer `internal/api/handlers/catalog.go` qui expose :
+  - `GET /api/v1/titles/{slug}/catalog/playlists?xuid={xuid}&only_played={bool}`
+  - `GET /api/v1/titles/{slug}/catalog/pairs?playlist_asset_id={uuid}&xuid={xuid}&only_played={bool}`
+  - `GET /api/v1/titles/{slug}/catalog/maps?xuid={xuid}&only_played={bool}`
+- Gated par `MULTI_TITLE_API_ENABLED=true` (cohérent avec [field_mappings.go](apps/go-api/internal/api/handlers/field_mappings.go)).
+- ETag + Cache-Control comme les autres endpoints title-aware.
+- Tests : payload conforme contrats, 404 si `MULTI_TITLE_API_ENABLED=false`, isolation cross-titres.
 
-### Phase G — Migration `FiltersService` vers le catalogue (1 commit)
+### Phase I — Migration `FiltersService` vers le catalogue (1 commit)
 
-- Réécrire [filters_service.go](apps/go-api/internal/service/filters_service.go) `Resolve()` pour requêter `playlists_catalog` ⨝ `match_registry` au lieu de scanner `match_participants`.
+- Réécrire [filters_service.go](apps/go-api/internal/service/filters_service.go) `Resolve()` pour requêter `playlists_catalog` ⨝ `match_registry` au lieu de scanner `match_participants`. Le `title_slug` vient du contexte (HTTP middleware).
 - Ajouter le toggle `mode_only_played` (défaut `true`) dans la signature de l'endpoint.
-- Tests : parité de comportement avec l'ancien service sur fixtures réelles ; perf (benchmark Go) pour mesurer le gain.
+- Tests : parité de comportement avec l'ancien service sur fixtures réelles ; benchmark Go avant/après pour quantifier le gain.
 
-### Phase H — Refresh mensuel (1 commit, optionnel selon cadence)
+### Phase J — Refresh mensuel (1 commit, optionnel selon cadence)
 
 - Soit cron OS (instructions doc dans `docs/`), soit goroutine dans [server.go](apps/go-api/internal/api/server.go) avec `time.Ticker(30*24*time.Hour)`.
-- Drain de la queue + re-fetch des `is_active = true`.
+- Drain de la queue + re-fetch des `is_active = true` pour tous les `title_slug` enregistrés.
 
 ---
 
@@ -199,8 +362,10 @@ CREATE TABLE catalog_fetch_queue (
 | 1 | Critère de désactivation `is_active = false` | (a) jamais (manuel) ; (b) pas vue depuis 3 mois ; (c) pas vue depuis 6 mois |
 | 2 | Mécanisme du refresh mensuel | (a) cron OS documenté ; (b) goroutine Go avec ticker ; (c) endpoint admin déclenchable |
 | 3 | Faut-il exposer `weight` dans l'API React | Pas pour le filtre, mais pour une future page « stats par carte/mode » oui |
-| 4 | Mapping `experience` : enum Go vs table SQL | Enum Go préféré (validation compile-time, peu d'entrées) — à confirmer |
+| 4 | Format des règles de classification `experience` | (a) TOML versionné dans `config/titles/{slug}/catalog/` (préféré, cohérent avec `mappings/fields.toml`) ; (b) en dur dans Go ; (c) table SQL administrable |
 | 5 | Faut-il garder un historique des `version_id` par playlist | Non au début (`waypoint_assets_raw` couvre l'audit forensique si besoin) |
+| 6 | Enregistrement des `title_slug` connus | Implicite dans les tables (DISTINCT sur `playlists_catalog.title_slug`) ou table dédiée `titles_registry` ? La couche `internal/games/` les énumère déjà via le `StaticResolver` — probablement suffisant. |
+| 7 | Les images de map (`maps_catalog.image_url`) sont-elles peuplées dès la Phase F | Idéalement oui via le pipeline `internal/assets` existant (`KindMapImage`) ; sinon NULL et résolu lazy à l'affichage. |
 
 ---
 
@@ -225,25 +390,47 @@ CREATE TABLE catalog_fetch_queue (
 
 ## 9. Estimation ordre de grandeur
 
-- Phases A à E : ~2-3 jours de dev focalisé (catalogue + bootstrap fonctionnels)
-- Phases F à G : ~1-2 jours (migration FiltersService + tests parité)
-- Phase H : ~0,5 jour
-- Total raisonnable : **3-5 jours-homme** pour un sprint dédié
+- Phases A-B : ~1 jour (migration schéma + extraction `version_id`)
+- Phases C-D : ~1,5 jour (interfaces multi-titre + adapter Halo + TOML classification)
+- Phases E-G : ~1,5 jour (lazy enqueue + drain + CLI bootstrap)
+- Phase H : ~0,5 jour (endpoint REST title-aware)
+- Phase I : ~1 jour (migration FiltersService + tests parité + benchmark)
+- Phase J : ~0,5 jour (refresh mensuel)
+- Total raisonnable : **5-6 jours-homme** pour un sprint dédié (vs 3-5 estimés initialement, surcoût lié au respect du pattern multi-titre).
 
 ---
 
 ## 10. Références
 
+### Code à étendre
 - [FilterOmnibar.tsx](apps/web/src/components/shell/FilterOmnibar.tsx) — UI actuelle des filtres
 - [globalFilterStore.ts](apps/web/src/stores/globalFilterStore.ts) — Zustand store
-- [filters_service.go](apps/go-api/internal/service/filters_service.go) — Logique cascade actuelle
+- [filters_service.go](apps/go-api/internal/service/filters_service.go) — Logique cascade actuelle (cible Phase I)
 - [filters_repo.go](apps/go-api/internal/platform/duckdb/filters_repo.go) — Accès données filtres
-- [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go) — Provider Halo DiscoveryUGC
-- [discovery_types.go](apps/go-api/internal/platform/halo/discovery_types.go) — Types AssetType
+- [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go) — Provider Halo DiscoveryUGC à wrapper dans l'adapter Halo
+- [discovery_types.go](apps/go-api/internal/platform/halo/discovery_types.go) — Types `AssetTypePlaylist`, `AssetTypePair`
 - [transforms.go](apps/go-api/internal/sync/transforms.go) — Extraction registry au sync
 - [writes.go](apps/go-api/internal/sync/writes.go) — Persistance match_registry
 - [schema.go](apps/go-api/internal/sync/schema.go) — Schéma `shared.match_registry`
 - [steps_metadata.go](apps/go-api/internal/migration/steps_metadata.go) — Migrations metadata
-- Pattern Kinds (référence d'inspiration) : [resolver_default.go](apps/go-api/internal/assets/resolver_default.go), [kinds.go](apps/go-api/internal/assets/kinds.go), [fetcher_chain.go](apps/go-api/internal/assets/fetcher_chain.go)
+
+### Couche multi-titre Go (à étendre)
+- `apps/go-api/internal/games/{adapter,resolver}.go` — Interfaces `TitleDataAdapter`, `TitleSemanticAdapter`, `StaticResolver` (à étendre avec `TitleCatalogAdapter`)
+- `apps/go-api/internal/games/canonical/` — 43 FieldKey + enums (à étendre avec `Experience`, `ModeCanonical`, `CanonicalPlaylist`, `CanonicalPair`, `CanonicalMap`, `CanonicalGameVariant`)
+- `apps/go-api/internal/games/halo_infinite/` — `DataAdapter` + `SemanticAdapter` (à étendre avec `CatalogAdapter`)
+- `apps/go-api/internal/games/synthetic_title_b/` — Corpus de tests d'isolation cross-titres
+- `apps/go-api/internal/api/handlers/field_mappings.go` — Pattern endpoint title-aware avec ETag + gating `MULTI_TITLE_API_ENABLED`
+- `apps/go-api/internal/api/handlers/multi_title_preview.go` — Pattern handler proof-of-concept
+- `config/titles/halo_infinite/mappings/fields.toml` — Pattern config TOML versionnée (à dupliquer pour `catalog/`)
+- `tools/mappings/CHANGELOG.md` — Pattern de versionnement TOML
+
+### Code Python à porter (logique éprouvée)
+- [src/analysis/playlist_groups.py](src/analysis/playlist_groups.py) — Heuristiques de classification `experience` (à porter vers TOML Halo)
+- [src/data/domain/refdata.py](src/data/domain/refdata.py) — Enum `GameVariantCategory` (à porter vers `internal/games/canonical/`)
+
+### Pattern Kinds (référence d'inspiration architecture)
+- [resolver_default.go](apps/go-api/internal/assets/resolver_default.go), [kinds.go](apps/go-api/internal/assets/kinds.go), [fetcher_chain.go](apps/go-api/internal/assets/fetcher_chain.go)
+
+### Sources externes
 - [Halo Waypoint — Multiplayer Playlists](https://support.halowaypoint.com/hc/en-us/articles/17920041655188-Halo-Infinite-Multiplayer-Playlists)
 - [den.dev — Halo Infinite Playlist Weights](https://den.dev/blog/halo-infinite-playlist-weights/)
