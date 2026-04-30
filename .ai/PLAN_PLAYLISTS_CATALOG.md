@@ -346,6 +346,75 @@ Une question reste ouverte : faut-il exposer `mode_label` comme dimension de fil
 
 → **Audit cardinalité réalisé en §4quater** (mesure 2026-04-30 sur la DB de production locale).
 
+### 4ter.6 Comparatif concret AVANT / APRÈS sur 4 cas réels
+
+Échantillon tiré de `shared_matches_v2.duckdb` (mesure 2026-04-30) :
+
+| pair_name (brut DB) | n matchs | AUJOURD'HUI (sans catalogue) | DEMAIN (avec catalogue) |
+|---|---:|---|---|
+| `BTB:Slayer on Deadlock` | 42 | `mode_category='BTB'` ✅ persisté au sync, `pair_name_fr=NULL` ❌, label EN/FR recalculé à chaque vue UI | `name_en="BTB:Slayer on Deadlock"`, `mode_label_en="Slayer"`, `mode_label_fr="Assassin"`, `mode_category="BTB"`, `map_asset_id→Deadlock`, `game_variant_asset_id→Slayer 4v4`, tout persisté une fois |
+| `Super Fiesta:Slayer on Streets - Forge` | 23 | `mode_category='Fiesta'` (regroupement Python — cf. §4ter.7), `_fr=NULL`, suffixe `Forge` à stripper à chaque vue | `mode_label_en="Slayer"`, `mode_label_fr="Assassin"`, **`mode_category="SuperFiesta"`** (Go), suffixe stripé une fois au fetch |
+| `Event:Escalation Slayer on Streets` | 2 | `mode_category='Other'` (préfixe Event mappé Other), `_fr=NULL` | `mode_label_en="Escalation Slayer"`, `mode_label_fr="Assassin par escalade"`, `mode_category="Other"` |
+| `b51efd48-ffd9-4a03-...` (UUID) | 12 | `mode_category='Other'` par défaut, UUID brut affiché à l'utilisateur (= bug visuel) | Bootstrap CLI fetch DiscoveryUGC → résout l'UUID en (par exemple) `"Arena:Slayer on Bazaar"` → applique normalisation → `mode_label_fr="Assassin"`, label propre persisté |
+
+État global mesuré (1545 matchs) :
+- `mode_category` : **1545/1545 remplis** ✅ (calculé au sync)
+- `pair_name_fr`, `map_name_fr`, `playlist_name_fr` : **0/1545 remplis** ❌ (calculés à la volée à chaque requête UI)
+- `playlist_name` UUID brut non résolu : **333/1545 = 21.5%** ❌
+
+### 4ter.7 Super Fiesta + Husky Raid : promotion en catégories distinctes
+
+Tu as raison sur ce point — le code Python actuel regroupe abusivement :
+
+```python
+# src/analysis/mode_display.py L. 50-52
+"Super Fiesta": {"category": "Fiesta", "qualifier": None},
+"Husky Raid": {"category": "Fiesta", "qualifier": None},
+"Super Husky Raid": {"category": "Fiesta", "qualifier": None},
+```
+
+Mesure réelle sur `shared_matches_v2.duckdb` (catégorie `Fiesta` actuelle = 307 matchs) :
+
+| Préfixe pair_name | n matchs | Catégorie cible Go (correcte) |
+|---|---:|---|
+| `Super Fiesta:...` | 240 (78 %) | **SuperFiesta** |
+| `Super Husky Raid:...` | 11 | **HuskyRaid** |
+| `Husky Raid...` | 4 | **HuskyRaid** |
+| `Fiesta:...` | 3 | Fiesta (correct) |
+| `Castle Wars...` | 1 | Fiesta (correct) |
+| Autre | 48 | à investiguer |
+
+→ **78 % des matchs « Fiesta » sont en réalité du Super Fiesta**, gameplay distinct (modes random vs vraie Fiesta dés-driven). Le code Go a déjà fait la promotion (cf. skill `halo-modes` : « Super Fiesta et Husky Raid sont des catégories distinctes en Go (Python les regroupait sous Fiesta). Ne pas revenir en arrière. »).
+
+**Conséquence pour le plan** :
+
+- Au moment où le sync passera en Go (cible de la migration `LevelUp-go-migration`), `match_registry.mode_category` sera re-calculé pour les nouveaux matchs → catégories correctes.
+- Pour les **matchs anciens déjà synchronisés en Python**, deux options :
+  - **(a)** Migration one-shot : `UPDATE match_registry SET mode_category = 'SuperFiesta' WHERE pair_name LIKE 'Super Fiesta:%'` etc. — à intégrer dans une phase de migration.
+  - **(b)** Les laisser en `Fiesta` historique et accepter la divergence — pas idéal pour le filtre (« Super Fiesta » groupe vide visuellement).
+- **Reco** : (a) — migration explicite dans la phase qui passe le sync en Go, traitée hors scope de ce plan mais à signaler comme dépendance.
+
+Le catalogue, lui, n'a pas de bricolage à faire : il consomme ce que le sync stocke. Si le sync stocke la bonne catégorie, le filtre l'expose proprement.
+
+### 4ter.8 Traductions FR : du bricolage à la persistance
+
+Constat brutal : **0 / 1545 matchs ont `pair_name_fr`, `map_name_fr` ou `playlist_name_fr` remplis** dans la DB actuelle. Ces colonnes existent dans le schéma (cf. migration `add_match_registry_i18n_columns`) mais ne sont jamais peuplées par le sync. Conséquence : à chaque vue UI qui affiche un mode/map/playlist en français, on déclenche un appel `resolve_display_mode()` ou équivalent qui consulte `mode_name_tr` + `mode_pair_overrides`. Ça tourne mais c'est du runtime gaspillé.
+
+**Le catalogue règle ça naturellement** :
+
+1. **`maps_catalog.name_fr`, `game_variants_catalog.name_fr`, `map_mode_pair_definitions.mode_label_fr`, `playlists_catalog.name_fr`** sont peuplés au moment du fetch DiscoveryUGC. L'API supporte le paramètre `lang` (cf. [discovery_client.go](apps/go-api/internal/platform/halo/discovery_client.go) `doGetWithLang`). Deux fetchs successifs `lang=en` puis `lang=fr` hydratent les deux versions.
+2. **Fallback** : si DiscoveryUGC ne fournit pas la traduction FR pour un asset (cas connu pour les modes Forge UGC), on retombe sur `mode_name_tr` + `mode_pair_overrides` au moment du fetch — résultat persisté quand même.
+3. **Durabilité** : les traductions ne sont calculées qu'**une fois** par asset, vivent dans le catalogue, et survivent à toutes les vues UI futures.
+
+**Conséquence pour le plan** :
+
+- **Phase D (adapter Halo)** : ajouter un appel `FetchAsset(..., lang="fr")` en plus de `lang="en"` pour chaque asset hydraté (playlist, pair, map, game_variant).
+- **Phase F (drain queue)** : persister les deux versions dans les colonnes `name_en` / `name_fr`.
+- **Phase D bis** : appliquer la normalisation FR (`resolve_display_mode` Python ou son équivalent Go) au résultat pour produire `mode_label_fr` propre.
+- **Hors scope mais à signaler** : une fois le catalogue alimenté, on peut **dépeupler** les colonnes FR de `match_registry` (elles deviennent redondantes — info portée par le catalogue via FK). Cleanup ultérieur, pas bloquant.
+
+→ **Pas de "bricolage" à craindre** : le catalogue convertit la résolution opportuniste actuelle en pipeline propre persisté.
+
 ---
 
 ## 4quater. Audit cardinalité réelle (mesuré 2026-04-30)
@@ -521,6 +590,8 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 | 6 | Enregistrement des `title_slug` connus | Implicite dans les tables (DISTINCT sur `playlists_catalog.title_slug`) ou table dédiée `titles_registry` ? La couche `internal/games/` les énumère déjà via le `StaticResolver` — probablement suffisant. |
 | 7 | Image map (`maps_catalog.image_url`) | **Tranché 2026-04-30** : peuplement dès Phase F via `assetResolver.Resolve(KindMapImage, ...)`. Cohérent avec home_repo.go pour les assets Spartan. NULL si GameCMS down → retry au refresh mensuel. |
 | 8 | Faut-il exposer `mode_label` comme dimension de filtre, ou seulement `mode_category` | **Tranché 2026-04-30 (§4quater)** : exposer les deux comme dimensions parallèles. La catégorie n'est pas une "famille de mode" mais une "famille de playlist" (Arena/Tactical/Assault → Assassin) ; un filtre `mode_label = 'Slayer'` est nécessaire pour regrouper les ~561 matchs Slayer-likes répartis sur 3 catégories. |
+| 9 | Migration des matchs Python "Fiesta" vers les bonnes catégories Go (SuperFiesta, HuskyRaid) | **Hors scope catalogue** mais dépendance à signaler. Cf. §4ter.7 : 78 % des `mode_category='Fiesta'` actuels sont en réalité Super Fiesta. Migration one-shot à intégrer dans la phase qui passe le sync en Go. |
+| 10 | Hydratation FR au catalogue : double fetch `lang=en` + `lang=fr`, ou fetch EN seul + fallback sur `mode_name_tr`/`mode_pair_overrides` | Reco : double fetch DiscoveryUGC + fallback tables si null. Coût marginal négligeable (1 round-trip de plus par asset, fait une fois). Cf. §4ter.8. |
 
 ---
 
