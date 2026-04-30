@@ -501,9 +501,10 @@ CREATE TABLE unknown_prefix_candidates (
 Le sync, après extraction du `pair_name` de chaque match, vérifie si le préfixe (partie avant `:` ou label complet si pas de `:`) matche une règle existante. Si non → INSERT OR REPLACE dans `unknown_prefix_candidates` avec incrément de `n_matches`.
 
 **Workflow alerting** :
-- Quand `n_matches >= 5` pour un préfixe non couvert → log warning + notification Discord (réutiliser le webhook existant côté `discord_notifier.py`).
+- Quand `n_matches >= 5` pour un préfixe non couvert → **log warning structuré** (niveau WARN, champ `event=unknown_prefix_candidate` pour filtrage côté observabilité).
 - Endpoint admin `GET /api/v1/titles/{slug}/catalog/unknown-prefixes` qui liste les candidats triés par `n_matches DESC` pour décision humaine.
 - Décision humaine : éditer `mode_category_rules.toml` pour ajouter le préfixe, ou ignorer (laisser en `Other`).
+- **Pas de notification externe** (Discord, Slack, email). Le log + l'endpoint admin suffisent ; ajout d'un canal de notif réservé à une décision séparée si le besoin émerge.
 
 ### 4cinquies.2 Avantages
 
@@ -743,7 +744,7 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 - À chaque hydratation de pair, appeler [NormalizeModeLabel](apps/go-api/internal/analysis/mode_label.go) pour chaque langue → upsert dans `pair_mode_label_translations`. Si DiscoveryUGC retourne 404 pour une langue → fallback sur `mode_name_tr` + `mode_pair_overrides`.
 - **Migrer `mode_category` en TOML** (§4cinquies actée) : créer `config/titles/halo_infinite/catalog/mode_category_rules.toml`, refactorer [mode_category.go](apps/go-api/internal/analysis/mode_category.go) en loader + cache au boot. Validation au boot : tous les enum Go doivent avoir une règle (panic si désynchronisation).
 - Porter la logique de classification d'`experience` (playlist-level) depuis [src/analysis/playlist_groups.py](src/analysis/playlist_groups.py) vers `config/titles/halo_infinite/catalog/experience_rules.toml`.
-- **Auto-détection préfixes inconnus** (§4cinquies.1 volet 2) : à l'hydratation, si un préfixe pair_name n'est couvert par aucune règle TOML → INSERT OR REPLACE dans `unknown_prefix_candidates` avec incrément `n_matches`. Quand seuil ≥5 atteint → log warning + notification Discord.
+- **Auto-détection préfixes inconnus** (§4cinquies.1 volet 2) : à l'hydratation, si un préfixe pair_name n'est couvert par aucune règle TOML → INSERT OR REPLACE dans `unknown_prefix_candidates` avec incrément `n_matches`. Quand seuil ≥5 atteint → log warning structuré (`event=unknown_prefix_candidate`). Pas de notification externe.
 - Tests : 25-30 playlists permanentes mappées correctement (experience), 50+ pair_names couverts par mode_category (snapshot), validation au boot que TOML couvre tous les enum Go, snapshot multi-lang sur 5 assets de référence, snapshot d'auto-détection sur préfixe inconnu.
 
 ### Phase E — Détection lazy + enqueue au sync (1 commit)
@@ -817,7 +818,7 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 | 8 | Faut-il exposer `mode_label` comme dimension de filtre, ou seulement `mode_category` | **Tranché 2026-04-30 (§4quater)** : exposer les deux comme dimensions parallèles. La catégorie n'est pas une "famille de mode" mais une "famille de playlist" (Arena/Tactical/Assault → Assassin) ; un filtre `mode_label = 'Slayer'` est nécessaire pour regrouper les ~561 matchs Slayer-likes répartis sur 3 catégories. |
 | 9 | Migration des matchs Python "Fiesta" vers les bonnes catégories Go (SuperFiesta, HuskyRaid) | **Hors scope catalogue** mais dépendance à signaler. Cf. §4ter.7 : 78 % des `mode_category='Fiesta'` actuels sont en réalité Super Fiesta. Migration one-shot à intégrer dans la phase qui passe le sync en Go. |
 | 10 | Hydratation FR au catalogue : double fetch `lang=en` + `lang=fr`, ou fetch EN seul + fallback sur `mode_name_tr`/`mode_pair_overrides` | **Tranché 2026-04-30 (§4sexies)** : multi-langues complet (~14 langues DiscoveryUGC), persistance dans `asset_translations` + `pair_mode_label_translations`. Schéma rendu DRY (une seule colonne `name_canonical` inline + JOIN sur tables traductions). |
-| 11 | Format des règles `mode_category` : code Go enum-like vs TOML | **Tranché 2026-04-30 (§4cinquies)** : option (c) — TOML `mode_category_rules.toml` + auto-détection des préfixes inconnus via table `unknown_prefix_candidates` + alerting Discord au seuil ≥5. Validation au boot pour cohérence enum Go ↔ TOML. |
+| 11 | Format des règles `mode_category` : code Go enum-like vs TOML | **Tranché 2026-04-30 (§4cinquies)** : option (c) — TOML `mode_category_rules.toml` + auto-détection des préfixes inconnus via table `unknown_prefix_candidates` + log warning structuré au seuil ≥5 + endpoint admin pour consultation. Validation au boot pour cohérence enum Go ↔ TOML. Pas de notification externe (décision séparée si besoin émerge). |
 | 12 | Architecture i18n : colonnes inline vs table dédiée | **Tranché 2026-04-30 (§4sexies)** : `name_canonical` (EN) inline pour debug + lookup rapide, autres langues dans `asset_translations` (existante, multi-lang native), labels normalisés dans `pair_mode_label_translations` (nouvelle, dédiée). Documenté dans skill `halo-i18n` pour discoverability. |
 | 13 | Cleanup des colonnes `_fr` de `match_registry` | **Tranché 2026-04-30 (§4sexies.5)** : Phase K conditionnelle, après confirmation UI migrée. Pas bloquant pour le catalogue. |
 
