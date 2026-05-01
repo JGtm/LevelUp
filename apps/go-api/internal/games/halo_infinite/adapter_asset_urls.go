@@ -125,12 +125,13 @@ func (a *AssetURLAdapter) MapImageURL(mapName string) string {
 	if mapName == "" || uuidRe.MatchString(mapName) {
 		return ""
 	}
-	for _, suffix := range mapVariantSuffixes {
-		if strings.HasSuffix(mapName, suffix) {
-			return ""
-		}
-	}
 	if a.mapImageExts != nil {
+		// En mode répertoire, exclure les variantes mode+map sans image dédiée.
+		for _, suffix := range mapVariantSuffixes {
+			if strings.HasSuffix(mapName, suffix) {
+				return ""
+			}
+		}
 		ext, ok := a.mapImageExts[mapName]
 		if !ok {
 			return ""
