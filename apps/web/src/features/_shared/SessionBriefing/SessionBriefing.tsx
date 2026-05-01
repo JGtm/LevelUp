@@ -72,9 +72,11 @@ export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
     ? squad?.players.find((p) => p.xuid === viewedXuid)?.gamertag ?? viewedXuid
     : ''
 
-  const gridTitle = isDrilledIn
-    ? texts.grid.titleDrilled(drilledGamertag)
-    : texts.grid.titleSelf
+  // Quand drillé, on n'affiche pas de titre redondant : la verdict band
+  // highlight déjà la card du joueur viewé + la reset bar "Vue active : X"
+  // indique le scope. Le titre "Mes stats sur cette session" reste pour le
+  // mode self.
+  const gridTitle = isDrilledIn ? '' : texts.grid.titleSelf
 
   return (
     <div className="flex flex-col gap-2">

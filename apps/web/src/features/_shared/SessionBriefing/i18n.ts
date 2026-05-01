@@ -28,7 +28,6 @@ export interface BriefingTexts {
   }
   grid: {
     titleSelf: string
-    titleDrilled: (gamertag: string) => string
     trendHint: string
     matchesPlayed: string
     totalDuration: string
@@ -64,7 +63,6 @@ const FR: BriefingTexts = {
   },
   grid: {
     titleSelf: 'Mes stats sur cette session',
-    titleDrilled: (gt) => `Vue : ${gt}`,
     trendHint: "▲/▼ vs moyenne d'équipe sur la session",
     matchesPlayed: 'Matchs joués',
     totalDuration: 'Durée totale',
@@ -101,7 +99,6 @@ const EN: BriefingTexts = {
   },
   grid: {
     titleSelf: 'My stats this session',
-    titleDrilled: (gt) => `Viewing: ${gt}`,
     trendHint: '▲/▼ vs team average on this session',
     matchesPlayed: 'Matches played',
     totalDuration: 'Total duration',
