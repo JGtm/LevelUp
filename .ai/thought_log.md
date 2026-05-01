@@ -26042,3 +26042,29 @@ Phase 2 — composant React `<SessionBriefing>` dans `apps/web/src/features/_sha
 **PR de suivi suggéré** : étendre `/pages/teammates` pour exposer `SquadHeader` afin d'intégrer `<SessionBriefing>` dans `SquadLayout.tsx` (Synergies + Contributions tabs). Le composant frontend est déjà prêt — il suffira de brancher la donnée.
 
 **Note commit Phase 1** : le commit `fae759a4 feat(catalog): Phase D` contient AUSSI les fichiers Phase 1 du SessionBriefing (squad_v2.go, kpi_stats.go, etc.) bundlés. Le titre reflète Phase D catalogue mais le diff inclut les deux. Cause probable : pre-commit hook `detect-secrets` qui a restauré les changements lors d'un échec, puis le second commit a hérité du staging pour Phase D. À nettoyer si l'historique git doit être propre, sinon fonctionnellement OK.
+
+---
+
+## [2026-05-01] SessionBriefing — porting Synergies (commit 0aee64e0) + swap ⌀ → moy.
+
+**Statut** : Complété.
+
+**Décisions techniques** :
+- **Étendre `/pages/teammates`** (option A) plutôt que faire deux requêtes côté front. Plan-review validé : 1 round-trip, pas de duplication de données, payload <1KB additionnel.
+- **Réutilisation maximale** : aucun nouveau code dans `analysis/`. Réutilise `ComputeKPIStats`, `ComputeTeamAvgKPIs`, `buildSquadHeader`, `extractSquadXUIDs`, `buildSquadOrder`, `intersectByMatchID`, `filterRowsByCascade` — tous existants depuis le travail squad. Le seul code nouveau est l'orchestration dans `teammates_service.go`.
+- **Pont legacy/canonical** : `filterCanonicalByMatchIDsSet` filtre les rows canoniques par match_id du `filteredMatches` legacy. Nécessaire parce que `filterSynthesisByCascade` (legacy) et `filterRowsByCascade` (canonical) opèrent sur des types différents — on applique le filtre legacy d'abord (existant) puis on re-filtre canonical par match_id.
+- **Loading parallèle** : `loadTeammatesCanonicalParallel` utilise `errgroup` + `sync.Mutex` (pattern identique à `loadAllPlayers` dans squad_service_v2). Capability absente ignorée silencieusement (mode dégradé).
+- **`MainPlayer string` ajouté** au payload pour que le front identifie le card "moi" sans heuristique brittle.
+- **⌀ → moy.** (FR) : le glyph diamètre est obscur pour un user non-technique. EN restait `avg ` qui est explicite — pas changé.
+
+**Fichiers modifiés (commit `0aee64e0`)** : 6 fichiers — domain, service, tests, types front, SquadLayout, i18n.
+
+**Résultats observés** :
+- `go test ./...` : tous tests passent (2 nouveaux dont les 2 du briefing teammates)
+- `npm run typecheck` : 0 erreur
+- Lint : 0 erreur sur mon code (2 warnings hors-scope préexistantes)
+- `vitest run SessionBriefing.test.tsx` : 8/8 toujours verts
+- Commit propre cette fois (pas de bundling parasite avec d'autres travaux).
+
+**Conclusion / prochaine étape** :
+Le porting de SessionBriefing est terminé sur les 3 surfaces : `SquadV2Page`, `SquadLayout` (Synergies + Contributions), `TimeseriesPage`. Aucun PR de suivi nécessaire. Reste à observer en prod (volume payload, latence parallel loading) — pas bloquant.
