@@ -39,7 +39,6 @@ func (r *MetadataRepo) ListMapsByTitle(
 		   AND at_fr.lang       = 'fr-FR'
 		WHERE m.title_slug = ?
 		  AND COALESCE(m.name_canonical, '') NOT LIKE '% - %'
-		  AND COALESCE(m.name_canonical, '') NOT LIKE '% sur %'
 		  AND (? = ''
 		       OR lower(COALESCE(at_en.name, m.name_canonical, '')) LIKE lower('%' || ? || '%')
 		       OR lower(COALESCE(at_fr.name, ''))                    LIKE lower('%' || ? || '%'))
