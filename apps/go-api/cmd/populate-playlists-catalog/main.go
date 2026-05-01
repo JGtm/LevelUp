@@ -457,6 +457,13 @@ func populateCatalogFromMatchRegistry(ctx context.Context, metadataDB, sharedDB 
 			rows.Close()
 			return r, fmt.Errorf("scan map: %w", err)
 		}
+		// Skip mode-variant names (≥ 4 words): Halo Infinite base map names are ≤ 3 words
+		// regardless of locale. Mode variants embed the mode in the name, e.g.
+		// "du Lourd sur Aquarius" (FR) or "Sentry Defense on Highpower" (EN).
+		if len(strings.Fields(name)) > 3 {
+			slog.DebugContext(ctx, "map skip: mode-variant name", "map_id", id, "name", name)
+			continue
+		}
 		_, err := metadataDB.ExecContext(ctx, `
 			INSERT INTO maps_catalog
 				(title_slug, map_asset_id, current_version_id, name_canonical, last_fetched_at)
