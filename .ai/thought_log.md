@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-05-01] Phase E catalogue — détection lazy + enqueue au sync
+
+**Statut** : Complété.
+
+**Décision technique** :
+- Fonction `EnqueueCatalogAssets(ctx, metadataDB, titleSlug, row)` dans [internal/sync/catalog_enqueue.go](apps/go-api/internal/sync/catalog_enqueue.go).
+- Pour chaque match passant par le sync (post-`ExtractRegistry`), vérifie l'existence des 4 asset IDs (playlist, pair, map, game_variant) dans leur table catalogue respective. Si absents → `INSERT OR IGNORE` dans `catalog_fetch_queue`.
+- **Best-effort** : si `metadataDB == nil` ou si une erreur DB survient sur la queue → `slog.WarnContext` puis continue. Le sync ne doit JAMAIS être bloqué par la queue (cache opportuniste).
+- Coût : 0-4 SELECT EXISTS + 0-4 INSERT par match (typiquement 0 dans 95% des cas en sync delta).
+- Helper `catalogAssetExists(ctx, db, titleSlug, assetType, assetID)` factorise les 4 SQL EXISTS par table.
+
+**Tests** (`//go:build integration`, 7 cas) :
+- `TestEnqueueCatalogAssets_AllUnknown_Enqueues4` : 4 IDs nouveaux → 4 entrées queue.
+- `TestEnqueueCatalogAssets_PlaylistKnown_Skips` : seul l'asset absent du catalogue est enqueué.
+- `TestEnqueueCatalogAssets_NilDB_NoError` : DB nil → return nil sans paniquer.
+- `TestEnqueueCatalogAssets_EmptyTitleSlug_Skips` : titleSlug vide → skip silencieux.
+- `TestEnqueueCatalogAssets_NilAssetIDs_Skipped` : aucun ID → 0 entrée queue.
+- `TestEnqueueCatalogAssets_DuplicateMatch_NoDuplicate` : 3 passes du même match → 1 seule entrée (INSERT OR IGNORE).
+- `TestEnqueueCatalogAssets_TitleSlugIsolation` : même asset ID sur 2 titres → 2 entrées queue.
+
+**Note Phase E.bis** (à brancher au moment du wiring sync→engine) : appeler `EnqueueCatalogAssets` après `InsertRegistryIfNotExists` dans le pipeline d'ingestion. La fonction est déjà autonome — wiring trivial une fois le metadata DB injecté côté `engine.go`.
+
+**Prochaine étape** : Phase F — drain queue via adapters + implémentation `port.CatalogRepo` côté DuckDB.
+
 ## [2026-05-01] Phase D catalogue — adapter Halo + experience_rules.toml
 
 **Statut** : Complété (scope minimal viable, multi-lang étendu en Phase F).
