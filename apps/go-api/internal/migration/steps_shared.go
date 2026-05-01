@@ -439,6 +439,22 @@ func init() {
 		},
 	})
 
+	// Phase B du plan catalogue : version_id par asset pour détecter les rotations Ranked
+	// et les mises à jour DiscoveryUGC (cf. .ai/PLAN_PLAYLISTS_CATALOG.md §5).
+	Register(Migration{
+		Name:        "add_match_registry_version_ids",
+		TargetDB:    TargetShared,
+		Description: "Ajoute playlist_version_id, map_version_id, pair_version_id, game_variant_version_id à match_registry",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS playlist_version_id VARCHAR;
+				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS map_version_id VARCHAR;
+				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS pair_version_id VARCHAR;
+				ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS game_variant_version_id VARCHAR;
+			`)
+		},
+	})
+
 	// Correction timezone : start_time/end_time étaient des TIMESTAMP naïfs en convention mixte
 	// (Paris pour batch fév. 2026, UTC pour matchs post-fix DuckDB 1.4.4).
 	// start_time_utc/end_time_utc sont TIMESTAMPTZ UTC garanti — supprime la dépendance au SET TimeZone

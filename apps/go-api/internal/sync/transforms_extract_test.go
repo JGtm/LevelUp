@@ -21,18 +21,22 @@ func minimalMatchJSON() map[string]any {
 			"PlayableDuration": "PT14M30S",
 			"Playlist": map[string]any{
 				"AssetId":    "playlist-uuid-001",
+				"VersionId":  "playlist-ver-001",
 				"PublicName": "Quick Play",
 			},
 			"MapVariant": map[string]any{
 				"AssetId":    "map-uuid-001",
+				"VersionId":  "map-ver-001",
 				"PublicName": "Bazaar",
 			},
 			"PlaylistMapModePair": map[string]any{
 				"AssetId":    "pair-uuid-001",
+				"VersionId":  "pair-ver-001",
 				"PublicName": "Quick Play: Slayer on Bazaar",
 			},
 			"UgcGameVariant": map[string]any{
 				"AssetId":    "gv-uuid-001",
+				"VersionId":  "gv-ver-001",
 				"PublicName": "Slayer",
 			},
 		},
@@ -158,6 +162,49 @@ func TestExtractRegistry_Valid(t *testing.T) {
 	}
 	if row.IsFirefight {
 		t.Error("should not be firefight")
+	}
+}
+
+// Phase B du plan catalogue : extraction version_id depuis MatchInfo.
+func TestExtractRegistry_VersionIDs(t *testing.T) {
+	row, err := ExtractRegistry(minimalMatchJSON(), "TestSyncer")
+	if err != nil {
+		t.Fatalf("ExtractRegistry error: %v", err)
+	}
+	if row.PlaylistVersionID == nil || *row.PlaylistVersionID != "playlist-ver-001" {
+		t.Errorf("PlaylistVersionID = %v", row.PlaylistVersionID)
+	}
+	if row.MapVersionID == nil || *row.MapVersionID != "map-ver-001" {
+		t.Errorf("MapVersionID = %v", row.MapVersionID)
+	}
+	if row.PairVersionID == nil || *row.PairVersionID != "pair-ver-001" {
+		t.Errorf("PairVersionID = %v", row.PairVersionID)
+	}
+	if row.GameVariantVersionID == nil || *row.GameVariantVersionID != "gv-ver-001" {
+		t.Errorf("GameVariantVersionID = %v", row.GameVariantVersionID)
+	}
+}
+
+// Phase B : VersionId absent du JSON → pointeur nil (NULL en DB), pas d'erreur.
+func TestExtractRegistry_VersionIDsAbsent(t *testing.T) {
+	j := map[string]any{
+		"MatchId": "match-no-versions",
+		"MatchInfo": map[string]any{
+			"StartTime": "2025-03-15T18:30:00Z",
+			"Playlist":  map[string]any{"AssetId": "p"},
+			// pas de VersionId
+		},
+	}
+	row, err := ExtractRegistry(j, "x")
+	if err != nil {
+		t.Fatalf("ExtractRegistry: %v", err)
+	}
+	// strPtr("") retourne nil — convention pour insérer NULL en DB.
+	if row.PlaylistVersionID != nil {
+		t.Errorf("PlaylistVersionID attendu nil, got %v", *row.PlaylistVersionID)
+	}
+	if row.PairVersionID != nil {
+		t.Errorf("PairVersionID attendu nil, got %v", *row.PairVersionID)
 	}
 }
 
