@@ -287,10 +287,25 @@ func NewRouter(
 			fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
 			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
 
+			// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
+			if catalogMetaDB, err := platform_duckdb.OpenReadOnly(
+				titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
+			); err != nil {
+				slog.Warn("catalog_meta_db_unavailable", "err", err)
+			} else {
+				catalogH := handlers.NewCatalogHandler(platform_duckdb.NewCatalogRepo(catalogMetaDB.SQLDb(), nil))
+				r.Get("/titles/{slug}/catalog/playlists", catalogH.PlaylistsHandler)
+				r.Get("/titles/{slug}/catalog/pairs", catalogH.PairsHandler)
+				r.Get("/titles/{slug}/catalog/maps", catalogH.MapsHandler)
+			}
+
 			slog.Info("multi_title_api_enabled",
 				"slugs", fieldMappingsRegistry.Slugs(),
 				"endpoints", []string{
 					"/api/v1/titles/{slug}/field-mappings",
+					"/api/v1/titles/{slug}/catalog/playlists",
+					"/api/v1/titles/{slug}/catalog/pairs",
+					"/api/v1/titles/{slug}/catalog/maps",
 				},
 			)
 		}

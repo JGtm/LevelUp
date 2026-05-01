@@ -43,20 +43,24 @@ function badgeVariantFor(tone: RewardLightboxBadgeTone | undefined) {
 export function BattlePassRewardLightbox({
   reward,
   onClose,
+  onPrev,
+  onNext,
 }: {
   reward: RewardLightboxData | null
   onClose: () => void
+  onPrev?: () => void
+  onNext?: () => void
 }) {
   useEffect(() => {
     if (!reward) return
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onClose()
-      }
+      if (event.key === 'Escape') onClose()
+      if (event.key === 'ArrowLeft') onPrev?.()
+      if (event.key === 'ArrowRight') onNext?.()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [reward, onClose])
+  }, [reward, onClose, onPrev, onNext])
 
   if (!reward) {
     return null
@@ -101,23 +105,45 @@ export function BattlePassRewardLightbox({
           </button>
         </div>
 
-        <div
-          className={[
-            'flex flex-1 items-center justify-center overflow-auto p-6',
-            rarityStyles?.bg ?? 'bg-black/60',
-          ].join(' ')}
-        >
-          {reward.imageUrl ? (
-            <img
-              src={reward.imageUrl}
-              alt={reward.title}
-              className="max-h-[60vh] max-w-full object-contain"
-              data-testid="battle-pass-reward-lightbox-image"
-            />
-          ) : (
-            <div className="flex h-64 w-64 items-center justify-center rounded-xl bg-black/40 text-center">
-              <p className="text-5xl font-semibold text-white">{reward.rank ?? '?'}</p>
-            </div>
+        <div className="relative flex-1 overflow-hidden">
+          <div
+            className={[
+              'flex h-full items-center justify-center overflow-auto p-6',
+              rarityStyles?.bg ?? 'bg-black/60',
+            ].join(' ')}
+          >
+            {reward.imageUrl ? (
+              <img
+                src={reward.imageUrl}
+                alt={reward.title}
+                className="max-h-[60vh] max-w-full object-contain"
+                data-testid="battle-pass-reward-lightbox-image"
+              />
+            ) : (
+              <div className="flex h-64 w-64 items-center justify-center rounded-xl bg-black/40 text-center">
+                <p className="text-5xl font-semibold text-white">{reward.rank ?? '?'}</p>
+              </div>
+            )}
+          </div>
+          {onPrev && (
+            <button
+              type="button"
+              onClick={onPrev}
+              aria-label="Récompense précédente"
+              className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/75 transition-colors hover:bg-black/75 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+          )}
+          {onNext && (
+            <button
+              type="button"
+              onClick={onNext}
+              aria-label="Récompense suivante"
+              className="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/75 transition-colors hover:bg-black/75 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
           )}
         </div>
 

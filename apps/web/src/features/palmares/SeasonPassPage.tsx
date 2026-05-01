@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { useParams } from '@tanstack/react-router'
 
@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/spinner'
 import type { SeasonPassStatus, SeasonPassTrackSummary } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { BattlePassRewardCarousel, type RewardCard } from './BattlePassRewardCarousel'
+import { BattlePassRewardCarousel, buildTierGroups, type RewardCard } from './BattlePassRewardCarousel'
 import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassRewardLightbox'
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PassContentSummary, type ContentLabels } from './PassContentSummary'
@@ -214,24 +214,35 @@ function PassShowcase({
   onBackToActive: () => void
   showcaseRef?: React.Ref<HTMLDivElement>
 }) {
-  const [selectedReward, setSelectedReward] = useState<RewardLightboxData | null>(null)
+  const allCards = useMemo(
+    () => (pass.tiers ? buildTierGroups(pass.tiers).flatMap((g) => g.cards) : []),
+    [pass.tiers],
+  )
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
-  const handleOpenCard = useCallback((card: RewardCard) => {
+  const selectedReward = useMemo<RewardLightboxData | null>(() => {
+    if (selectedIndex == null) return null
+    const card = allCards[selectedIndex]
+    if (!card) return null
     const badges: RewardLightboxData['badges'] = []
     if (card.is_current) badges.push({ label: text.seasonPass.active, tone: 'current' })
     if (card.is_obtained) badges.push({ label: text.seasonPass.obtained, tone: 'obtained' })
     if (card.is_free) badges.push({ label: text.seasonPass.freeLabel, tone: 'free' })
     else badges.push({ label: text.seasonPass.premium, tone: 'premium' })
-    setSelectedReward({
-      title: card.title,
-      rank: card.rank,
-      imageUrl: card.image_url ?? null,
-      description: card.description ?? null,
-      quality: card.quality ?? null,
-      itemType: card.item_type ?? null,
-      badges,
-    })
-  }, [text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.freeLabel, text.seasonPass.premium])
+    return {
+      title: card.title, rank: card.rank,
+      imageUrl: card.image_url ?? null, description: card.description ?? null,
+      quality: card.quality ?? null, itemType: card.item_type ?? null, badges,
+    }
+  }, [selectedIndex, allCards, text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.freeLabel, text.seasonPass.premium])
+
+  const handleOpenCard = useCallback((card: RewardCard) => {
+    const idx = allCards.findIndex((c) => c.key === card.key)
+    setSelectedIndex(idx >= 0 ? idx : null)
+  }, [allCards])
+
+  const handlePrev = useCallback(() => setSelectedIndex((i) => (i != null && i > 0 ? i - 1 : i)), [])
+  const handleNext = useCallback(() => setSelectedIndex((i) => (i != null && i < allCards.length - 1 ? i + 1 : i)), [allCards.length])
 
   const tierProgress = pass.active_tier_progress_percent ?? 0
   // Pour les passes sans palier actif (complété, non commencé), rabat sur completion_percent.
@@ -337,7 +348,12 @@ function PassShowcase({
             </div>
           )}
         </CardContent>
-        <BattlePassRewardLightbox reward={selectedReward} onClose={() => setSelectedReward(null)} />
+        <BattlePassRewardLightbox
+          reward={selectedReward}
+          onClose={() => setSelectedIndex(null)}
+          onPrev={selectedIndex != null && selectedIndex > 0 ? handlePrev : undefined}
+          onNext={selectedIndex != null && selectedIndex < allCards.length - 1 ? handleNext : undefined}
+        />
       </Card>
     </div>
   )

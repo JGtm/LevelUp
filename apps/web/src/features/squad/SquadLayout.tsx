@@ -232,7 +232,9 @@ export function SquadLayout() {
 
   // Preview live : résout le pending state dès que l'utilisateur change un filtre,
   // sans attendre le clic Analyser. Fallback sur le resolvedContext commité.
-  const { data: previewResolve } = useFiltersPreview(playerSlug, pending)
+  // match_context="squad" restreint le compteur et les options cascade aux matchs en escouade.
+  const squadPending = useMemo(() => ({ ...pending, match_context: 'squad' as const }), [pending])
+  const { data: previewResolve } = useFiltersPreview(playerSlug, squadPending)
 
   // Compteur dynamique : préférer les counts du preview (mis à jour à la volée)
   // plutôt que ceux du resolvedContext commité (figé jusqu'au clic Analyser).
@@ -261,8 +263,10 @@ export function SquadLayout() {
   }, [settings?.friend_gamertags])
 
   // ── Requête TeammatesService ─────────────────────────────────────────────
+  // match_context="squad" : le backend ne considère que les matchs is_with_friends=true.
+  const squadFilterContext = useMemo(() => ({ ...filterContext, match_context: 'squad' as const }), [filterContext])
   const request: TeammatesQueryRequest = {
-    filters: filterContext,
+    filters: squadFilterContext,
     selected_gamertags: confirmedGts.length > 0 ? confirmedGts : undefined,
     picked_squad_session_labels: pickedSquadSessionLabels.length > 0 ? pickedSquadSessionLabels : undefined,
   }
