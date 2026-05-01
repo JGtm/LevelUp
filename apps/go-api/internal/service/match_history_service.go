@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
 
@@ -52,6 +53,12 @@ type MatchHistoryService struct {
 	// la totalité du payload (delta_mmr, performance_score, etc.). Le hook
 	// est en place pour permettre une bascule incrémentale.
 	dataAdapter games.TitleDataAdapter
+	// playerMatchesRepo (optionnel) : utilisé pour charger les canonical rows
+	// nécessaires au calcul de BriefingKPIs (alimente <SessionBriefing> en haut
+	// de page). Si non câblé, BriefingKPIs reste nil → briefing absent côté front.
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
+	gamertag          string
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
@@ -63,6 +70,16 @@ func NewMatchHistoryService(repo port.MatchHistoryRepository, waypointPlayer str
 // future bascule LoadMatchSummaries. Dégradation gracieuse si nil.
 func (s *MatchHistoryService) WithDataAdapter(a games.TitleDataAdapter) *MatchHistoryService {
 	s.dataAdapter = a
+	return s
+}
+
+// WithPlayerMatchesRepo injecte le loader canonical-aware utilisé pour calculer
+// BriefingKPIs (composant <SessionBriefing> en haut de la page Stats).
+// Dégradation gracieuse si non câblé : BriefingKPIs reste nil.
+func (s *MatchHistoryService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *MatchHistoryService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	s.gamertag = gamertag
 	return s
 }
 
@@ -118,6 +135,35 @@ func (s *MatchHistoryService) GetPage(
 	// solo/squad indépendamment du filtre période courant.
 	sessionLabels := buildMatchHistorySessionLabels(rawRows)
 
+	// BriefingKPIs : alimente <SessionBriefing> en haut de la page Stats.
+	// Charge les canonical rows et filtre par les match_id du scope filtré
+	// (mêmes filtres que la table). Dégradation gracieuse si playerMatchesRepo
+	// n'est pas câblé.
+	var briefingKPIs *domain.KPIStats
+	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" && len(filtered) > 0 {
+		canonicalRows, cerr := s.playerMatchesRepo.LoadPlayerMatches(
+			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+		)
+		if cerr != nil {
+			slog.WarnContext(ctx, "match_history.briefing_kpis.load_failed", "err", cerr)
+		} else {
+			keep := make(map[string]struct{}, len(filtered))
+			for _, r := range filtered {
+				keep[r.MatchID] = struct{}{}
+			}
+			scoped := make([]canonical.PlayerMatchRow, 0, len(filtered))
+			for _, c := range canonicalRows {
+				if _, ok := keep[c.Summary.MatchID]; ok {
+					scoped = append(scoped, c)
+				}
+			}
+			if len(scoped) > 0 {
+				kpis := analysis.ComputeKPIStats(scoped)
+				briefingKPIs = &kpis
+			}
+		}
+	}
+
 	return domain.MatchHistoryPageResponse{
 		Summary: domain.MatchHistoryQuerySummary{
 			TotalMatchesScoped:     totalScoped,
@@ -133,6 +179,7 @@ func (s *MatchHistoryService) GetPage(
 		AvailableColumns:    availableColumns,
 		ExportHint:          exportHint,
 		SessionLabels:       sessionLabels,
+		BriefingKPIs:        briefingKPIs,
 	}, nil
 }
 

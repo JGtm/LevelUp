@@ -134,6 +134,10 @@ type MatchHistoryPageResponse struct {
 	// §5 plan Squad/Sessions : sessions disponibles (split solo/squad) pour
 	// alimenter SessionMultiSelect côté front. Triées StartedAt DESC.
 	SessionLabels SessionLabelsList `json:"session_labels"`
+	// BriefingKPIs alimente le composant <SessionBriefing> en haut de la page
+	// Stats Solo (mode solo : pas de squad verdict). Calculé sur les canonical
+	// rows correspondant aux match_id filtrés. Nil si aucun match.
+	BriefingKPIs *KPIStats `json:"briefing_kpis,omitempty"`
 }
 
 // ExportHint indique qu'un export CSV est disponible.

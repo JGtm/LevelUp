@@ -837,6 +837,8 @@ export interface MatchHistoryPageResponse {
   privacy_warning?: MatchPrivacyWarning | null
   /** §5 plan Squad/Sessions : sessions dispo (split solo/squad). */
   session_labels: SessionLabelsList
+  /** Alimente <SessionBriefing> en haut de la page Stats Solo (mode solo). */
+  briefing_kpis?: KPIStats
 }
 
 export interface MatchHistoryQueryRequest {
@@ -1189,6 +1191,7 @@ export interface ChallengeItem {
   progress_target?: number | null
   progress_percent?: number | null
   xp_reward?: number | null
+  is_squad?: boolean | null
 }
 
 export interface ChallengesResponse {
