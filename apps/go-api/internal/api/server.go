@@ -247,7 +247,10 @@ func NewRouter(
 				continue
 			}
 			assetMetaHandler = handlers.NewAssetMetadataHandler(
-				service.NewAssetService(service.NewStaticAssetMetaRepo(maps, weapons)),
+				service.NewAssetService(service.NewStaticAssetMetaRepo(maps, weapons)).
+					WithMapImageURL(func(_ string, nameEN string) string {
+						return hiAssetURL.MapImageURL(nameEN)
+					}),
 				func(slug string, cap titlePkg.Capability) bool {
 					d := titleRegistry.Get(slug)
 					return d != nil && d.HasCapability(cap)

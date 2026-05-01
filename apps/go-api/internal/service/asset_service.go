@@ -11,12 +11,20 @@ import (
 
 // AssetService construit les métadonnées d'assets pour l'Asset Drawer.
 type AssetService struct {
-	repo port.AssetMetaRepository
+	repo        port.AssetMetaRepository
+	mapImageURL func(titleID, nameEN string) string // nil = UUID-based URL (fallback)
 }
 
 // NewAssetService crée un AssetService.
 func NewAssetService(repo port.AssetMetaRepository) *AssetService {
 	return &AssetService{repo: repo}
+}
+
+// WithMapImageURL configure une fonction de construction d'URL d'image de map.
+// Prioritaire sur l'URL UUID par défaut — utiliser l'adapter TitleAssetURLAdapter.
+func (s *AssetService) WithMapImageURL(fn func(titleID, nameEN string) string) *AssetService {
+	s.mapImageURL = fn
+	return s
 }
 
 // ListMaps retourne les maps d'un titre avec image_url.
@@ -26,7 +34,11 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 		return nil, fmt.Errorf("AssetService.ListMaps: %w", err)
 	}
 	for i := range items {
-		items[i].ImageURL = fmt.Sprintf("/api/v1/assets/maps/%s/%s/image", titleID, items[i].ID)
+		if s.mapImageURL != nil {
+			items[i].ImageURL = s.mapImageURL(titleID, items[i].NameEN)
+		} else {
+			items[i].ImageURL = fmt.Sprintf("/api/v1/assets/maps/%s/%s/image", titleID, items[i].ID)
+		}
 	}
 	return items, nil
 }
