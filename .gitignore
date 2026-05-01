@@ -65,6 +65,8 @@ apps/go-api/tmp_cov/
 # air hot-reload
 apps/go-api/tmp/
 apps/go-api/build-errors.log
+apps/go-api/nohup.out
+apps/go-api/server-*.log
 # Build artifacts root-level (revue 2026-04-29 P0.1)
 apps/tmp/
 htmlcov/
