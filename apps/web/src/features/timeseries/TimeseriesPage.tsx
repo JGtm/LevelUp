@@ -37,6 +37,7 @@ import {
 } from './seriesAdapters'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
+import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 
 type TabId = 'summary' | 'cumul' | 'form' | 'intensity' | 'distributions' | 'combat'
 
@@ -114,6 +115,13 @@ export function TimeseriesPage() {
 
   return (
     <div className="flex flex-col">
+      {/* Briefing — KPI bar mode solo (rail + grid 7 cards, pas de verdict) */}
+      {data.briefing_kpis && (
+        <div className="px-6 pt-6">
+          <SessionBriefing kpis={data.briefing_kpis} />
+        </div>
+      )}
+
       {/* Onglets */}
       <div className="flex gap-0 border-b bg-background px-6">
         {TAB_KEYS.map((tab) => (

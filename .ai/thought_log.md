@@ -1,5 +1,20 @@
 # Thought Log
 
+## [2026-05-01] Phase H catalogue — endpoints REST title-aware
+
+**Statut** : Complété (handler + tests, wiring serveur reporté à Phase H.bis).
+
+**Décision technique** :
+- `internal/api/handlers/catalog.go` : `CatalogHandler` avec 3 méthodes (`PlaylistsHandler`, `PairsHandler`, `MapsHandler`).
+- Routes prévues : `GET /api/v1/titles/{slug}/catalog/{playlists,pairs,maps}` (gated par `MultiTitleAPIEnabled()`).
+- Injection `port.CatalogRepo` lecture seule. Cache-Control 5 min.
+- Slug vide → 400. Erreur DB → 500 `catalog_query_failed`.
+- Wiring serveur reporté (Phase H.bis) : ajouter routes derrière `MultiTitleAPIEnabled` dans `internal/api/server.go` quand `catalogRepo` sera construit au boot.
+
+**Tests** : 3 tests httptest (mock `port.CatalogRepo`) — playlists, pairs avec query param, maps.
+
+**Prochaine étape** : Phase I — migration `FiltersService.Resolve()` pour consommer le catalogue + filtre `match_context` + fallback guard catalogue vide.
+
 ## [2026-05-01] Phase G catalogue — CLI bootstrap
 
 **Statut** : Complété.
@@ -25926,3 +25941,34 @@ Le chart `plot_map_perf_vs_history` (cf. `_maps_outcome_history.py:40`) n'avait 
 
 **Conclusion / prochaine étape** :
 Phase 2 — composant React `<SessionBriefing>` dans `apps/web/src/features/_shared/SessionBriefing/` avec 4 sous-composants (`<ResultsRail>`, `<SquadVerdict>`, `<DrillResetBar>`, `<KpiGrid>`), i18n FR + EN, intégration dans `SquadLayout.tsx` + `TimeseriesPage.tsx`, tests Vitest 8 cas. Estimation 4h restant.
+
+---
+
+## [2026-05-01] SessionBriefing — Phase 2 frontend (composant + intégrations + tests)
+
+**Statut** : Complété.
+
+**Décisions techniques** :
+- **Sous-composants éclatés** : `ResultsRail.tsx`, `SquadVerdict.tsx`, `KpiGrid.tsx`, `SessionBriefing.tsx` (orchestrateur). Helpers purs séparés : `trends.ts`, `format.ts`, `tier.ts`, `i18n.ts`. Aucun fichier > 200L.
+- **Drill-down state local** : `useState(viewedXuid)` dans `<SessionBriefing>`, pas de prop drilling. Le parent ne connaît pas le state — détail UX du composant.
+- **Trend deaths inversé** : `computeTrend(value, ref, { lowerIsBetter: true })`. Test Vitest dédié vérifie `deaths > team_avg → ▼`.
+- **Pluralisation outcomes** : helper `pluralize(count, label)` dans i18n FR + EN. Source des libellés : `useOutcomeLabel()` (outcomes.toml multi-titres).
+- **Tokens uniquement** : `tokenCssVar('perf-tier-{1..5}')`, `tokenCssVar('outcome-*')`, `tokenCssVar('divergent-*')`. Conforme règle 20 du CLAUDE.md (zéro hex, zéro Tailwind couleur).
+- **Scope intégration ajusté** : SquadV2Page (a `SquadHeader`) + TimeseriesPage (avec `briefing_kpis`). **SquadLayout legacy déféré à un PR de suivi** — il utilise `/teammates` qui n'a pas `SquadHeader` (extension contrat backend non-triviale).
+
+**Fichiers créés** : 10 fichiers dans `apps/web/src/features/_shared/SessionBriefing/` (orchestrateur + 3 sous-composants + 4 helpers + barrel + tests).
+
+**Fichiers modifiés** :
+- `apps/web/src/features/squad/v2/SquadV2Page.tsx` : import + rendu `<SessionBriefing>` en haut de page (mode squad si header présent)
+- `apps/web/src/features/timeseries/TimeseriesPage.tsx` : rendu mode solo `<SessionBriefing kpis={data.briefing_kpis} />`
+
+**Résultats observés** :
+- `npm run typecheck` : 0 erreur
+- `eslint src/features/_shared/SessionBriefing/` : 0 erreur, 0 warning
+- `vitest run SessionBriefing.test.tsx` : **8/8 tests passent** (solo, squad, drill-down, reset, trend kills, trend deaths inversé, pluralisation, fallback xuid manquant)
+- Aucune régression typecheck globale.
+
+**Conclusion / prochaine étape** :
+**PR de suivi suggéré** : étendre `/pages/teammates` pour exposer `SquadHeader` afin d'intégrer `<SessionBriefing>` dans `SquadLayout.tsx` (Synergies + Contributions tabs). Le composant frontend est déjà prêt — il suffira de brancher la donnée.
+
+**Note commit Phase 1** : le commit `fae759a4 feat(catalog): Phase D` contient AUSSI les fichiers Phase 1 du SessionBriefing (squad_v2.go, kpi_stats.go, etc.) bundlés. Le titre reflète Phase D catalogue mais le diff inclut les deux. Cause probable : pre-commit hook `detect-secrets` qui a restauré les changements lors d'un échec, puis le second commit a hérité du staging pour Phase D. À nettoyer si l'historique git doit être propre, sinon fonctionnellement OK.
