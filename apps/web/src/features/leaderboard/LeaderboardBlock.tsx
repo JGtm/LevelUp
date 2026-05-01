@@ -6,6 +6,7 @@
  *   <LeaderboardBlock playerSlug={slug} />
  */
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useLeaderboard } from './queries'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +23,25 @@ interface LeaderboardBlockProps {
 }
 
 /** Ligne du classement. */
-function LeaderboardRow({ entry, onHover }: { entry: LeaderboardEntry; onHover?: (gamertag: string) => void }) {
+function LeaderboardRow({
+  playerSlug,
+  entry,
+  onHover,
+}: {
+  playerSlug: string
+  entry: LeaderboardEntry
+  onHover?: (gamertag: string) => void
+}) {
+  const navigate = useNavigate()
+
+  function goToExplorer() {
+    void navigate({
+      to: '/players/$playerSlug/explorer/',
+      params: { playerSlug },
+      search: { mode: 'player', target: entry.gamertag },
+    })
+  }
+
   return (
     <tr
       className="border-b last:border-0 text-sm hover:bg-muted transition-colors"
@@ -32,11 +51,20 @@ function LeaderboardRow({ entry, onHover }: { entry: LeaderboardEntry; onHover?:
         {entry.rank}
       </td>
       <td className="py-2 pr-4 font-medium text-foreground">
-        {entry.gamertag}
-        {entry.is_local && (
-          <Badge variant="secondary" className="ml-2 text-xs">
-            Local
-          </Badge>
+        {entry.is_local ? (
+          <span>
+            {entry.gamertag}
+            <Badge variant="secondary" className="ml-2 text-xs">Local</Badge>
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="hover:text-primary hover:underline transition-colors"
+            onClick={goToExplorer}
+            title={`Voir l'historique avec ${entry.gamertag}`}
+          >
+            {entry.gamertag}
+          </button>
         )}
       </td>
       <td className="py-2 pr-4 text-center">
@@ -135,7 +163,7 @@ export function LeaderboardBlock({
             </thead>
             <tbody>
               {data.entries.map((entry) => (
-                <LeaderboardRow key={`${entry.xuid}-${entry.rank}`} entry={entry} onHover={onHoverEntry} />
+                <LeaderboardRow key={`${entry.xuid}-${entry.rank}`} playerSlug={playerSlug} entry={entry} onHover={onHoverEntry} />
               ))}
             </tbody>
           </table>

@@ -4,6 +4,7 @@
  * 1 ligne par match, colonnes : date, mode, carte, durée, K/D/A par joueur,
  * outcome global. Le tri est fait côté backend (date desc).
  */
+import { useNavigate } from '@tanstack/react-router'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatDate, formatDurationMMSS } from '@/lib/formatters'
 
@@ -24,6 +25,8 @@ export interface HistoryTableProps {
     duration: string
     kdaSuffix: string
   }
+  /** playerSlug pour naviguer vers le détail du match au clic. */
+  playerSlug?: string
 }
 
 // formatDate et formatDurationMMSS importés depuis @/lib/formatters
@@ -49,7 +52,17 @@ function outcomeColorVar(o: Outcome): string {
   }
 }
 
-export function HistoryTable({ rows, squadOrder, locale, labels }: HistoryTableProps) {
+export function HistoryTable({ rows, squadOrder, locale, labels, playerSlug }: HistoryTableProps) {
+  const navigate = useNavigate()
+
+  function goToMatch(matchId: string) {
+    if (!playerSlug) return
+    void navigate({
+      to: '/players/$playerSlug/matches/$matchId',
+      params: { playerSlug, matchId },
+    })
+  }
+
   if (rows.length === 0) {
     return null
   }
@@ -72,7 +85,14 @@ export function HistoryTable({ rows, squadOrder, locale, labels }: HistoryTableP
         </thead>
         <tbody className="divide-y">
           {rows.map((row) => (
-            <tr key={row.match_id}>
+            <tr
+              key={row.match_id}
+              className={playerSlug ? 'cursor-pointer hover:bg-primary/10 transition-colors' : ''}
+              onClick={playerSlug ? () => goToMatch(row.match_id) : undefined}
+              role={playerSlug ? 'button' : undefined}
+              tabIndex={playerSlug ? 0 : undefined}
+              onKeyDown={playerSlug ? (e) => e.key === 'Enter' && goToMatch(row.match_id) : undefined}
+            >
               <td className="px-3 py-2">{formatDate(row.started_at_utc, locale, HISTORY_DATE_OPTS)}</td>
               <td className="px-3 py-2">{row.mode_label ?? '-'}</td>
               <td className="px-3 py-2">{row.map_label ?? '-'}</td>

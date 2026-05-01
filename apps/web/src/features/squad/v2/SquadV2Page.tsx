@@ -234,6 +234,7 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
             rows={tables.history}
             squadOrder={squadOrder}
             locale={intlLocale}
+            playerSlug={playerSlug}
             labels={{
               date: t('squad.history.col_date'),
               mode: t('squad.history.col_mode'),
