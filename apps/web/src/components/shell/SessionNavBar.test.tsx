@@ -2,11 +2,11 @@
  * Tests SessionNavBar — barre sticky h-12 avec gros boutons de nav session.
  *
  * Couvre :
- *  - Visibilité conditionnelle (Stats/Escouade uniquement)
+ *  - Visibilité conditionnelle (Stats uniquement, mode Session uniquement)
  *  - Mode session : affiche label + Précédente/Suivante/Dernière
- *  - Mode analyse (sans session pickée) : résumé période + filtres + counts
+ *  - Mode analyse (sans session pickée) : barre masquée — info redondante avec
+ *    le briefing en haut de page (KPI grid + FilterOmnibar)
  *  - États disabled des boutons selon position dans la liste
- *  - Hauteur h-12 stable (zéro reflow lors du switch de mode)
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
@@ -67,8 +67,21 @@ describe('SessionNavBar', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('rend la barre sur la section Stats', () => {
+  it('ne rend pas la barre sans session pickée (mode Analyse masqué)', () => {
+    // La barre n'apparaît qu'en mode Session — l'info "Toutes les sessions ·
+    // N filtres · N matchs" était redondante avec le briefing (KPI grid +
+    // FilterOmnibar) et a été retirée.
     useGlobalFilterStore.getState().setResolvedContext(buildResolved())
+    const { container } = renderWithProviders(<SessionNavBar />)
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('rend la barre sur la section Stats en mode Session', () => {
+    useGlobalFilterStore.getState().setResolvedContext(buildResolved())
+    useGlobalFilterStore.getState().setSessions({
+      picked_sessions: ['sess-mid'],
+      gap_minutes: DEFAULT_GAP_MINUTES,
+    })
     renderWithProviders(<SessionNavBar />)
     expect(screen.getByRole('navigation', { name: /session/i })).toBeInTheDocument()
   })
@@ -128,33 +141,22 @@ describe('SessionNavBar', () => {
     expect(screen.getByText('auto')).toBeInTheDocument()
   })
 
-  it('mode analyse : affiche "Toutes les sessions" sans boutons de nav session', () => {
+  it('mode analyse : barre masquée (rendu null)', () => {
+    // L'info "Toutes les sessions · filtres · N matchs" est désormais portée
+    // par le briefing + FilterOmnibar — on ne rend rien.
     useGlobalFilterStore.getState().setResolvedContext(buildResolved())
-    renderWithProviders(<SessionNavBar />)
-    expect(screen.getByText('Toutes les sessions')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /précédente/i })).not.toBeInTheDocument()
+    const { container } = renderWithProviders(<SessionNavBar />)
+    expect(container.firstChild).toBeNull()
   })
 
-  it('mode analyse : affiche le compteur de matchs filtrés', () => {
-    const resolved = buildResolved()
-    resolved.counts.total_matches_after_filters = 42
-    useGlobalFilterStore.getState().setResolvedContext(resolved)
-    renderWithProviders(<SessionNavBar />)
-    expect(screen.getByText(/42 match/i)).toBeInTheDocument()
-  })
-
-  it('hauteur fixe h-12 (48px) — zéro reflow entre modes', () => {
+  it('hauteur fixe h-12 en mode Session', () => {
     useGlobalFilterStore.getState().setResolvedContext(buildResolved())
-    const { container, rerender } = renderWithProviders(<SessionNavBar />)
-    const barInAnalyse = container.querySelector('[role="navigation"]')!
-    expect(barInAnalyse.className).toContain('h-12')
-    // Switch en mode session — la classe h-12 reste
     useGlobalFilterStore.getState().setSessions({
       picked_sessions: ['sess-mid'],
       gap_minutes: DEFAULT_GAP_MINUTES,
     })
-    rerender(<SessionNavBar />)
-    const barInSession = container.querySelector('[role="navigation"]')!
-    expect(barInSession.className).toContain('h-12')
+    const { container } = renderWithProviders(<SessionNavBar />)
+    const bar = container.querySelector('[role="navigation"]')!
+    expect(bar.className).toContain('h-12')
   })
 })
