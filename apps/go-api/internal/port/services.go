@@ -44,6 +44,10 @@ type HomeService interface {
 	GetHomePage(ctx context.Context, gamertag, locale string) (*domain.HomePageResponse, error)
 	GetBattlePass(ctx context.Context) domain.BattlePassResponse
 	GetChallenges(ctx context.Context) domain.ChallengesResponse
+	// RefreshTrack hydrate (synchroneement) la définition d'un reward track
+	// et toutes ses définitions d'items dans la DB metadata (battlepass_item_definitions).
+	// Best-effort : silencieux en cas d'erreur (resolver miss, GameCMS down…).
+	RefreshTrack(ctx context.Context, trackPath string)
 }
 
 // SeasonPassService construit la réponse de la page Season Pass (palmares).

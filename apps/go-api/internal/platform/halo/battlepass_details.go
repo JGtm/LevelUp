@@ -93,6 +93,54 @@ func (p *HaloProvider) fetchRewardTrackDefinition(
 	return &def
 }
 
+// FetchAndWarmTrack résout une définition de track + warm tous ses assets
+// SYNCHRONEMENT (track image, background, et toutes les définitions d'items
+// via KindBPItemDefinition). Retourne quand tous les items sont persistés
+// dans battlepass_item_definitions.
+//
+// Utilisé par SeasonPassService pour garantir que la métadata d'un pass est
+// hydratée avant de répondre à la page (évite "image manquante au premier
+// load" sur les passes non-actives).
+//
+// Différence avec fetchRewardTrackDefinition : tout est synchrone (pas de
+// goroutines internes pour persist + warm). Les images sont warmées via
+// assetResolver.Warm qui reste async par construction, mais les items sont
+// résolus en série pour garantir la persistance avant retour.
+func (p *HaloProvider) FetchAndWarmTrack(ctx context.Context, trackPath string) {
+	trimmed := strings.TrimSpace(trackPath)
+	if trimmed == "" || p.assetResolver == nil {
+		return
+	}
+	ref := assets.Ref{
+		Kind:    assets.KindRewardTrackDefinition,
+		TitleID: p.titleID(),
+		ID:      trimmed,
+	}
+	resolved, err := p.assetResolver.Get(ctx, ref)
+	if err != nil {
+		slog.DebugContext(ctx, "halo_provider: refresh track resolver miss",
+			"path", trimmed, "err", err)
+		return
+	}
+	jp, ok := resolved.Payload.(assets.JSONPayload)
+	if !ok {
+		return
+	}
+	var def battlepassTrackDefinitionRaw
+	if err := json.Unmarshal(jp.RawJSON, &def); err != nil {
+		slog.DebugContext(ctx, "halo_provider: refresh track decode error",
+			"path", trimmed, "err", err)
+		return
+	}
+	if p.trackDefPersister != nil {
+		if err := p.trackDefPersister.UpsertTrackDefinition(ctx, trimmed, jp.RawJSON); err != nil {
+			slog.WarnContext(ctx, "halo_provider: track definition persist failed",
+				"path", trimmed, "err", err)
+		}
+	}
+	p.warmBPTrackAssets(ctx, &def)
+}
+
 // warmBPTrackAssets pré-cache les images et les items d'un track via le resolver.
 // Appelé dans une goroutine (fire-and-forget).
 func (p *HaloProvider) warmBPTrackAssets(ctx context.Context, def *battlepassTrackDefinitionRaw) {

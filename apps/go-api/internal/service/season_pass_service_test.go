@@ -34,6 +34,7 @@ func (m *mockHomeServiceForSP) GetBattlePass(_ context.Context) domain.BattlePas
 func (m *mockHomeServiceForSP) GetChallenges(_ context.Context) domain.ChallengesResponse {
 	return m.challenges
 }
+func (m *mockHomeServiceForSP) RefreshTrack(_ context.Context, _ string) {}
 
 // --- tests ---
 

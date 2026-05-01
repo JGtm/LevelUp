@@ -40,6 +40,8 @@ func (m *mockHomeService) GetChallenges(_ context.Context) domain.ChallengesResp
 	return m.challenges
 }
 
+func (m *mockHomeService) RefreshTrack(_ context.Context, _ string) {}
+
 func newHomeRouter(factory handlers.HomeAuthFactory, settingsStore *settings_platform.Store) *chi.Mux {
 	r := chi.NewRouter()
 	h := handlers.NewHomeHandler(factory, settingsStore)
