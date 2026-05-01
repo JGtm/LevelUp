@@ -7,9 +7,10 @@ const PLACEHOLDER_SVG =
 interface AssetCardProps {
   asset: AssetMeta
   locale: ManifestLocale
+  kind: 'maps' | 'weapons'
 }
 
-export function AssetCard({ asset, locale }: AssetCardProps) {
+export function AssetCard({ asset, locale, kind }: AssetCardProps) {
   const label = locale === 'fr' && asset.name_fr ? asset.name_fr : asset.name_en
 
   return (
@@ -23,7 +24,7 @@ export function AssetCard({ asset, locale }: AssetCardProps) {
           alt={label}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover"
+          className={`h-full w-full ${kind === 'weapons' ? 'object-contain p-1' : 'object-cover'}`}
           onError={(e) => {
             ;(e.currentTarget as HTMLImageElement).src = PLACEHOLDER_SVG
           }}
