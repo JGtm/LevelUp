@@ -1,15 +1,20 @@
 /**
  * SquadVerdict — bande verdict squad du SessionBriefing.
  *
- * Affichée uniquement en mode squad (≥1 coéquipier sélectionné). Composée de :
- *   - Team card fixe (score d'équipe + grade lettre + Δ vs base)
- *   - N+1 cards joueurs cliquables (main + chaque coéquipier) avec ▲/▼ vs avg
+ * 3 zones séparées visuellement :
+ *   - LEFT   : team card (Score d'équipe + palier + Δ vs base)
+ *   - CENTER : N+1 player cards cliquables (drill-down click)
+ *   - RIGHT  : Results bar 4 segments + libellés complets (Victoire/Défaite/...)
  *
- * Le clic sur une card joueur déclenche onSelectXuid(xuid) → drill-down dans la
- * KpiGrid en aval. La card "viewée" est mise en évidence (border + bg).
+ * Le team card et la Results bar sont des "résumés" de la session collective ;
+ * ils encadrent la zone clickable des player cards. Pas affichée en mode solo.
+ *
+ * Libellés outcomes : tirés de outcomes.toml via useOutcomeLabel() (multi-titres).
  */
+import type { KPIStats } from '@/lib/api/types'
 import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { useOutcomeLabel } from '@/lib/i18n/fieldMappings'
 
 import { getScoreTier, type TierKey } from './tier'
 import { trendSymbol, type TrendState } from './trends'
@@ -23,6 +28,8 @@ interface SquadVerdictProps {
   /** xuid actuellement affiché dans la KpiGrid (drill-down). */
   viewedXuid: string
   onSelectXuid: (xuid: string) => void
+  /** KPIs du joueur viewé — utilisé pour la Results bar à droite. */
+  kpis: KPIStats
   texts: BriefingTexts
 }
 
@@ -34,12 +41,16 @@ const TIER_LABEL_FALLBACK: Record<TierKey, string> = {
   bad: 'Pourri',
 }
 
-function tierLabelOf(card: PlayerScoreCard | { score: number; label?: TierKey }): string {
-  // Si le card vient avec un label (PlayerScoreCard), on l'utilise. Sinon
-  // dérivation depuis le score (cas SquadScore qui n'a pas de label).
-  const label = (card as PlayerScoreCard).label
-  if (label) return TIER_LABEL_FALLBACK[label]
+function tierLabelOf(card: PlayerScoreCard): string {
+  if (card.label) return TIER_LABEL_FALLBACK[card.label]
   return TIER_LABEL_FALLBACK[getScoreTier(card.score).key]
+}
+
+interface OutcomeSeg {
+  count: number
+  token: 'outcome-win' | 'outcome-loss' | 'outcome-draw' | 'outcome-dnf'
+  outcomeKey: string
+  fallbackLabel: string
 }
 
 export function SquadVerdict({
@@ -48,12 +59,12 @@ export function SquadVerdict({
   activeXuid,
   viewedXuid,
   onSelectXuid,
+  kpis,
   texts,
 }: SquadVerdictProps) {
   const teamTier = getScoreTier(squadScore.score)
-  const teamLabel = tierLabelOf({ score: squadScore.score })
+  const teamLabel = TIER_LABEL_FALLBACK[teamTier.key]
 
-  // Δ vs base : score = base + bonus_winrate + bonus_min_kd + bonus_balance
   const delta = Math.round(squadScore.score - squadScore.base_avg)
   const deltaText =
     delta === 0
@@ -61,12 +72,26 @@ export function SquadVerdict({
       : delta > 0
         ? texts.verdict.deltaBonusPositive(delta)
         : texts.verdict.deltaBonusNegative(delta)
-  const deltaToken =
+  const deltaToken: SemanticToken =
     delta > 0 ? 'divergent-pos' : delta < 0 ? 'divergent-neg' : 'divergent-neutral'
 
+  // Results bar (right section)
+  const winLabel = useOutcomeLabel('win')
+  const lossLabel = useOutcomeLabel('loss')
+  const tieLabel = useOutcomeLabel('tie')
+  const dnfLabel = useOutcomeLabel('dnf')
+  const segs: OutcomeSeg[] = [
+    { count: kpis.outcomes.wins, token: 'outcome-win', outcomeKey: 'win', fallbackLabel: winLabel },
+    { count: kpis.outcomes.losses, token: 'outcome-loss', outcomeKey: 'loss', fallbackLabel: lossLabel },
+    { count: kpis.outcomes.ties, token: 'outcome-draw', outcomeKey: 'tie', fallbackLabel: tieLabel },
+    { count: kpis.outcomes.dnf, token: 'outcome-dnf', outcomeKey: 'dnf', fallbackLabel: dnfLabel },
+  ]
+  const total = segs.reduce((acc, s) => acc + s.count, 0)
+  const hasResults = total > 0
+
   return (
-    <div className="flex flex-wrap items-stretch gap-2 rounded border border-border bg-[#16191d] px-4 py-3">
-      {/* Team card — non cliquable */}
+    <div className="flex flex-wrap items-stretch gap-4 rounded border border-border bg-[#16191d] px-4 py-3">
+      {/* LEFT : team card — non cliquable */}
       <div className="min-w-[180px] rounded border border-border bg-[#1d2328] px-3 py-2">
         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
           {texts.verdict.teamScore}
@@ -88,65 +113,101 @@ export function SquadVerdict({
         </p>
       </div>
 
-      {/* Player cards — cliquables */}
-      {players.map((p) => {
-        const tier = getScoreTier(p.score)
-        const isActive = p.xuid === activeXuid
-        const isViewed = p.xuid === viewedXuid
-        const trendState: TrendState =
-          p.comparison === 'above' || p.comparison === 'below' || p.comparison === 'near'
-            ? p.comparison
-            : 'none'
-        return (
-          <button
-            key={p.xuid || p.gamertag}
-            type="button"
-            onClick={() => p.xuid && onSelectXuid(p.xuid)}
-            disabled={!p.xuid}
-            className={[
-              'rounded border px-3 py-2 text-left transition cursor-pointer',
-              'hover:border-foreground/40 disabled:cursor-default disabled:opacity-60',
-              isViewed
-                ? 'border-foreground/60 bg-[#252b32]'
-                : 'border-border bg-[#1d2328]',
-            ].join(' ')}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                {p.gamertag}
-                {isActive && (
-                  <span className="ml-1 text-[10px] opacity-60">(moi)</span>
+      {/* CENTER : player cards — cliquables */}
+      <div className="flex flex-wrap items-stretch gap-2">
+        {players.map((p) => {
+          const tier = getScoreTier(p.score)
+          const isActive = p.xuid === activeXuid
+          const isViewed = p.xuid === viewedXuid
+          const trendState: TrendState =
+            p.comparison === 'above' || p.comparison === 'below' || p.comparison === 'near'
+              ? p.comparison
+              : 'none'
+          return (
+            <button
+              key={p.xuid || p.gamertag}
+              type="button"
+              onClick={() => p.xuid && onSelectXuid(p.xuid)}
+              disabled={!p.xuid}
+              className={[
+                'rounded border px-3 py-2 text-left transition cursor-pointer',
+                'hover:border-foreground/40 disabled:cursor-default disabled:opacity-60',
+                isViewed
+                  ? 'border-foreground/60 bg-[#252b32]'
+                  : 'border-border bg-[#1d2328]',
+              ].join(' ')}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {p.gamertag}
+                  {isActive && (
+                    <span className="ml-1 text-[10px] opacity-60">(moi)</span>
+                  )}
+                </p>
+                {trendState !== 'none' && (
+                  <span
+                    className="text-xs font-bold"
+                    style={{
+                      color: tokenCssVar(
+                        trendState === 'above'
+                          ? 'divergent-pos'
+                          : trendState === 'below'
+                            ? 'divergent-neg'
+                            : 'divergent-neutral',
+                      ),
+                    }}
+                  >
+                    {trendSymbol(trendState)}
+                  </span>
                 )}
-              </p>
-              {trendState !== 'none' && (
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
                 <span
-                  className="text-xs font-bold"
-                  style={{
-                    color: tokenCssVar(
-                      trendState === 'above'
-                        ? 'divergent-pos'
-                        : trendState === 'below'
-                          ? 'divergent-neg'
-                          : 'divergent-neutral',
-                    ),
-                  }}
+                  className="text-2xl font-bold"
+                  style={{ color: tokenCssVar(tier.token) }}
                 >
-                  {trendSymbol(trendState)}
+                  {Math.round(p.score)}
                 </span>
-              )}
-            </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span
-                className="text-2xl font-bold"
-                style={{ color: tokenCssVar(tier.token) }}
-              >
-                {Math.round(p.score)}
-              </span>
-              <span className="text-xs text-muted-foreground">{tierLabelOf(p)}</span>
-            </div>
-          </button>
-        )
-      })}
+                <span className="text-xs text-muted-foreground">{tierLabelOf(p)}</span>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* RIGHT : Results bar avec libellés complets */}
+      {hasResults && (
+        <div className="ml-auto flex min-w-[260px] flex-col gap-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {texts.rail.resultsLabel}
+          </span>
+          <div className="flex h-3.5 overflow-hidden rounded-sm">
+            {segs.map((s) =>
+              s.count > 0 ? (
+                <div
+                  key={s.outcomeKey}
+                  style={{ flex: s.count, backgroundColor: tokenCssVar(s.token) }}
+                  title={`${s.count} ${texts.pluralize(s.count, s.fallbackLabel)}`}
+                />
+              ) : null,
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3 text-[11px]">
+            {segs.map((s) =>
+              s.count > 0 ? (
+                <span key={s.outcomeKey} className="inline-flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2 w-2 rounded-sm"
+                    style={{ backgroundColor: tokenCssVar(s.token) }}
+                  />
+                  <strong>{s.count}</strong>{' '}
+                  {texts.pluralize(s.count, s.fallbackLabel)}
+                </span>
+              ) : null,
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
