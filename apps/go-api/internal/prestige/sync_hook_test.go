@@ -75,12 +75,21 @@ func (m *mockService) DisablePilotMode(ctx context.Context, _, _ string) error {
 
 func TestIsEnabled_Defaults(t *testing.T) {
 	t.Setenv(FeatureFlagEnv, "")
-	if IsEnabled() {
-		t.Error("expected disabled when env var empty")
+	if !IsEnabled() {
+		t.Error("expected enabled when env var empty (default-on)")
 	}
 	t.Setenv(FeatureFlagEnv, "false")
 	if IsEnabled() {
 		t.Error("expected disabled when explicitly false")
+	}
+}
+
+func TestIsEnabled_FalsyValues(t *testing.T) {
+	for _, v := range []string{"0", "false", "FALSE", "no", "off"} {
+		t.Setenv(FeatureFlagEnv, v)
+		if IsEnabled() {
+			t.Errorf("expected disabled for %q", v)
+		}
 	}
 }
 

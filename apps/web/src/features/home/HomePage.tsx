@@ -23,7 +23,7 @@ import { HomeHighlightTile } from './HomeHighlightTile'
 import { HomeSessionCarousel } from './HomeSessionCarousel'
 import { HomeSpartanIdentityBanner } from './HomeSpartanIdentityBanner'
 import { HomeHeroKPIGrid } from './HomeHeroKPIGrid'
-import { ChallengesCarousel } from '@/features/prestige/components/ChallengesCarousel'
+import { HomePrestigeSection } from './HomePrestigeSection'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -122,6 +122,13 @@ export function HomePage() {
     ? `${challengesCompleted} / ${challengesTotal} complétés`
     : null
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  // Bug #6 : on restreint la séquence d'outcomes à la dernière session pour
+  // ne pas afficher tout l'historique du joueur (sinon ça produit un bloc
+  // monochrome 'x745'). recent_matches arrive trié par start_time DESC.
+  const lastSessionLabel = recentMatches[0]?.session_label
+  const lastSessionMatches = lastSessionLabel
+    ? recentMatches.filter((m) => m.session_label === lastSessionLabel)
+    : recentMatches.slice(0, Math.min(20, recentMatches.length))
   const kpiText = getKPIText(locale)
   // Phase D multi-titres : résout les libellés métier via le backend TOML.
   // Fallback gracieux sur les libellés locaux de kpi.i18n.ts si l'endpoint
@@ -276,16 +283,8 @@ export function HomePage() {
           </Card>
         </div>
 
-        {/* Carousel défis Prestige (au-dessus des Faits Marquants) */}
-        <Card>
-          <CardContent className="pt-4">
-            <ChallengesCarousel
-              userId={playerSlug}
-              titleSlug="halo_infinite"
-              playerSlug={playerSlug}
-            />
-          </CardContent>
-        </Card>
+        {/* Section Prestige unifiée (PP + arc + objectifs) */}
+        <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
 
         {/* Highlights */}
         <Card>
@@ -311,19 +310,24 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        {/* Séquence des outcomes — bande compacte avant les tuiles */}
-        {recentMatches.length > 0 && (
+        {/* Séquence des outcomes — bande compacte avant les tuiles.
+            Bug #5 : le backend renvoie outcome_tone = "win"/"loss"/"tie"/"dnf"
+            (cf. analysis/home.go::homeOutcomeTones). L'ancien mapping cherchait
+            "positive"/"negative" → tout collapsait sur 'tie' (cyan).
+            Bug #6 : restreint à la dernière session uniquement. */}
+        {lastSessionMatches.length > 0 && (
           <OutcomeSequenceTape
-            matches={[...recentMatches].reverse().map((m) => ({
-              matchId: m.match_id,
-              outcome:
-                m.outcome_tone === 'positive'
-                  ? ('win' as const)
-                  : m.outcome_tone === 'negative'
-                    ? ('loss' as const)
-                    : ('tie' as const),
-              map: m.detail,
-            }))}
+            matches={[...lastSessionMatches].reverse().map((m) => {
+              const outcome: 'win' | 'loss' | 'tie' | 'dnf' =
+                m.outcome_tone === 'win'
+                  ? 'win'
+                  : m.outcome_tone === 'loss'
+                    ? 'loss'
+                    : m.outcome_tone === 'dnf'
+                      ? 'dnf'
+                      : 'tie'
+              return { matchId: m.match_id, outcome, map: m.detail }
+            })}
             labels={{
               win: fieldMappings?.outcomes?.['win']?.label ?? 'win',
               loss: fieldMappings?.outcomes?.['loss']?.label ?? 'loss',

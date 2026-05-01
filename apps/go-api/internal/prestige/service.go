@@ -441,10 +441,21 @@ func (s *service) ListActiveChallenges(ctx context.Context, userID, titleSlug st
 // ---------- GetUserPrestige ----------
 
 func (s *service) GetUserPrestige(ctx context.Context, userID, titleSlug string) (UserPrestige, error) {
+	var (
+		up  UserPrestige
+		err error
+	)
 	if titleSlug == "" {
-		return s.deps.Prestige.GetUserPrestigeCrossTitle(ctx, userID)
+		up, err = s.deps.Prestige.GetUserPrestigeCrossTitle(ctx, userID)
+	} else {
+		up, err = s.deps.Prestige.GetUserPrestige(ctx, userID, titleSlug)
 	}
-	return s.deps.Prestige.GetUserPrestige(ctx, userID, titleSlug)
+	if err != nil {
+		return up, err
+	}
+	lvl := LevelFromPP(s.deps.Tuning, up.TotalPP)
+	up.Level = &lvl
+	return up, nil
 }
 
 // ---------- Suggestions ----------

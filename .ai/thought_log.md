@@ -1,5 +1,45 @@
 # Thought Log
 
+## [2026-05-01] Home Prestige — section unifiée + flag default-on + seeder JGtm
+
+**Statut** : Complété.
+
+**Décision technique principale** :
+Consolidation de l'expérience Prestige sur la home en **une seule Card `HomePrestigeSection`** :
+- Header : "Prestige" + lien "Gérer"
+- Top : barre composite niveau/PP (`CompositeProgressBar`, même composant que le rang carrière)
+- Bottom : grille 2 colonnes (`Arc en cours` à gauche, `Mes objectifs` à droite, format compact)
+
+Remplace les anciennes 3 sections séparées (HomePrestigeBar, HomeActiveArcCard, ChallengesCarousel embarqué dans une Card vide) qui fragmentaient l'UX.
+
+**Ce qui a été fait** :
+1. **Backend Go** :
+   - `prestige.UserPrestige` enrichi du champ `Level *Level` (nom, threshold_pp, next_threshold_pp, progress_ratio).
+   - `service.GetUserPrestige` enrichit la réponse via `LevelFromPP(tuning, totalPP)`.
+   - `sync_hook.go` : flag `PRESTIGE_ENABLED` inversé en **opt-out** — activé par défaut, désactivé seulement si `PRESTIGE_ENABLED=false|0|no|off`. Tests adaptés (`TestIsEnabled_Defaults`, nouveau `TestIsEnabled_FalsyValues`).
+2. **Frontend** :
+   - `lib/prestige.ts` — interface `PrestigeLevel` + champ `level?` sur `UserPrestige`. URLs préfixées `/players/{userId}/` pour `getMyPrestige`, `listArcs`, `listActiveChallenges` (les routes Go sont sous `r.Route("/players/{player_slug}", ...)`).
+   - `features/home/HomePrestigeSection.tsx` (nouveau) — section unifiée. Termes "défi" → "objectif" pour éviter la confusion avec les défis officiels Halo.
+   - `features/prestige/components/ObjectiveRow.tsx` (nouveau) — row compact avec badge depuis `static/prestige-assets/Objectives-badges/objective-{cadence}-{tier}.png` (mapping spécial `weekly+mythic → capstone-mythic`). Background teinté ~8 % par couleur du tier, pill du tier en haut-droite. Le champ `metric` brut (ex. "FieldKDA") n'est plus affiché — seul le `label` lisible est rendu.
+   - `HomePage.tsx` — remplacement de `<Card><ChallengesCarousel/></Card>` par `<HomePrestigeSection/>`.
+3. **Outillage** :
+   - `cmd/prestige-seed/main.go` (nouveau, build tag `ignore`) — seeder Go qui upserte directement dans `shared_social.duckdb` (`user_prestige`, `prestige_events`) et dans la DB joueur (`arc`, `challenge`). Lancé sur JGtm → 1500 PP / niv. 2 / arc "Ascension Heroic" / objectif Heroic FDA≥1.5 hebdo.
+
+**Diagnostic du bug initial** :
+La section home Prestige n'affichait rien. Causes :
+- `PRESTIGE_ENABLED=false` par défaut → routes non montées → 404. **Fix** : default-on.
+- URLs frontend `/api/v1/prestige/me` au lieu de `/api/v1/players/{slug}/prestige/me` (les routes sont nichées sous le subroute joueur). **Fix** : préfixer les URLs.
+- Section vide même avec données seedées car le payload n'incluait pas `level`. **Fix** : enrichissement service.
+
+**Résultats observés** :
+- `GET /api/v1/players/JGtm/prestige/me` → `{total_pp:1500, current_level:2, level:{index:2, name:"Vétéran", threshold_pp:1500, next_threshold_pp:3000, progress_ratio:0}}`.
+- `GET /api/v1/players/JGtm/arcs` → 1 arc actif. `GET /challenges` → 1 objectif Heroic hebdo.
+- Badges servis : `/static/prestige-assets/Objectives-badges/objective-weekly-heroic.png` → 200.
+- `go vet ./internal/prestige ./internal/api/handlers ./internal/api/` : OK.
+- TypeScript : aucune erreur sur HomePrestigeSection / ObjectiveRow / HomePage / prestige.ts.
+
+**Prochaine étape** : implémenter le leaderboard PP backend (handler + route), puis ajouter une cadence "Capstone" dédiée au mythic-weekly pour pleinement exploiter le badge `objective-capstone-mythic.png`.
+
 ## [2026-04-30] Filtres cascade — détection zombie temps réel + bug applyExperienceFilter
 
 **Statut** : Complété.
@@ -25662,4 +25702,3 @@ Le chart `plot_map_perf_vs_history` (cf. `_maps_outcome_history.py:40`) n'avait 
   - Validation visuelle (rendu ECharts via Puppeteer/Playwright pour comparer avec screenshot Plotly d'origine) — non bloquant.
   - Génération des YAML pour les autres pages (Career, Win/Loss complète, Timeseries, Match View, Teammates, etc.) — long, à industrialiser progressivement avec les patterns identifiés sur le pilote.
 - **Recommandation** : ne pas étendre tant que la validation visuelle d'au moins UN des 5 charts ECharts générés n'a pas été faite par un développeur front (preuve concrète vs preuve théorique).
-

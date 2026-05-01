@@ -102,6 +102,9 @@ type UserPrestige struct {
 	TotalPP      int       `json:"total_pp"`
 	CurrentLevel int       `json:"current_level"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	// Level est l'agrégat des seuils du niveau courant (nom, prochain seuil,
+	// ratio de progression). Vide si non enrichi (lecture brute repository).
+	Level *Level `json:"level,omitempty"`
 }
 
 // ---------- Template ----------
