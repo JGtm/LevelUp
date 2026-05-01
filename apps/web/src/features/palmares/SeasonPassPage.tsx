@@ -4,7 +4,7 @@ import { useParams } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { buildCompositeProgressEdgeLabels, CompositeProgressBar } from '@/components/ui/composite-progress-bar'
+import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { SeasonPassStatus, SeasonPassTrackSummary } from '@/lib/api/types'
@@ -192,10 +192,14 @@ function PassShowcase({
   }, [text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.freeLabel, text.seasonPass.premium])
 
   const tierProgress = pass.active_tier_progress_percent ?? 0
+  // Pour les passes sans palier actif (complété, non commencé), rabat sur completion_percent.
+  const barPercent = pass.active_tier_rank != null
+    ? clampCompositeProgress(tierProgress)
+    : clampCompositeProgress(pass.completion_percent ?? 0)
   const progressLabels = buildCompositeProgressEdgeLabels({
     partialProgress: pass.partial_progress,
     xpPerRank: pass.xp_per_rank,
-    progressPercent: tierProgress,
+    progressPercent: barPercent,
     locale: text.intlLocale,
   })
 
@@ -280,30 +284,25 @@ function PassShowcase({
                 freeLabel={text.seasonPass.freeLabel}
               />
 
-              {pass.is_active && pass.active_tier_rank != null && (
-                <div className="space-y-3 rounded-3xl border border-slate-200/70 bg-slate-50/80 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{text.seasonPass.activeTierProgress}</p>
-                      <p className="mt-1 text-base font-semibold text-foreground">#{pass.active_tier_rank}</p>
+              <div className="flex justify-center">
+                <div className="grid w-2/3 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-[11px] text-muted-foreground">
+                  <span data-testid="season-pass-active-tier-progress-current" className="shrink-0 whitespace-nowrap">
+                    {progressLabels.current}
+                  </span>
+                  <div className="min-w-0 overflow-hidden rounded-full bg-muted-foreground/25">
+                    <div className="h-2 w-full">
+                      <div
+                        data-testid="season-pass-active-tier-progress-fill"
+                        className="h-full rounded-full bg-sky-500 transition-all duration-300"
+                        style={{ width: `${barPercent}%` }}
+                      />
                     </div>
-                    <p className="text-lg font-semibold text-sky-700">
-                      {tierProgress.toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })} %
-                    </p>
                   </div>
-                  <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-                    <span data-testid="season-pass-active-tier-progress-current" className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
-                      {progressLabels.current}
-                    </span>
-                    <div className="min-w-0">
-                      <CompositeProgressBar value={tierProgress} fillTestId="season-pass-active-tier-progress-fill" />
-                    </div>
-                    <span data-testid="season-pass-active-tier-progress-target" className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
-                      {progressLabels.target}
-                    </span>
-                  </div>
+                  <span data-testid="season-pass-active-tier-progress-target" className="shrink-0 whitespace-nowrap text-right">
+                    {progressLabels.target}
+                  </span>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </CardContent>
