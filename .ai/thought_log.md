@@ -19,6 +19,19 @@
 
 **Prochaine étape** : Phase Discovery UGC — récupérer les noms officiels des playlists sans nom (4 avec UUID comme nom) via `gamecms /assets/{id}.json` + `discovery-infiniteugc /Playlists/{id}/versions/{versionId}`.
 
+## [2026-05-01] Fix Asset Drawer — "Erreur de chargement." (lock Windows metadata.duckdb)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Bug racine** : `assetMetaHandler` était `nil` au démarrage car `OpenReadWriteShared(metadata.duckdb)` échouait avec "Le processus ne peut pas accéder au fichier" — l'ancien processus Air (server.exe) tenait encore le lock Windows. Les routes `/assets/{title_id}/maps` et `/assets/{title_id}/weapons` n'étaient jamais enregistrées → 404 → "Erreur de chargement." côté frontend.
+- **Fix 1 — Retry** : boucle 3× (délai 500ms inter-essai) sur `OpenReadWriteShared` pour absorber la fenêtre de chevauchement Air hot-reload.
+- **Fix 2 — Nil guard** : routes toujours enregistrées ; si `assetMetaHandler` est encore nil après retry, on renvoie `[]` + 200. Le frontend affiche "Aucune map trouvée." au lieu de "Erreur de chargement.".
+
+**Résultats** : `go build ./internal/api/...` OK. Les routes répondent 200/[] même sans DB disponible.
+
+**Prochaine étape** : valider que le drawer affiche bien les maps après redémarrage Air.
+
 ## [2026-05-01] Fix Asset Drawer — maps et armes invisibles (régression)
 
 **Statut** : Complété
