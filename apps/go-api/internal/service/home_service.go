@@ -480,6 +480,20 @@ func (s *HomeService) GetBattlePass(ctx context.Context) domain.BattlePassRespon
 	return resp
 }
 
+// RefreshTrack hydrate (synchroneement) une définition de reward track et toutes
+// ses définitions d'items via le resolver assets (KindRewardTrackDefinition →
+// KindBPItemDefinition). Persiste dans battlepass_track_definitions et
+// battlepass_item_definitions. Best-effort : silencieux en cas d'erreur.
+//
+// Utilisé par SeasonPassService pour hydrater on-demand les passes non-actives
+// dont les items n'ont jamais été résolus en DB.
+func (s *HomeService) RefreshTrack(ctx context.Context, trackPath string) {
+	if s.provider == nil {
+		return
+	}
+	s.provider.FetchAndWarmTrack(ctx, trackPath)
+}
+
 // GetChallenges retourne les dÃ©fis actifs (live d'abord, cache DB en fallback).
 // Appel live systÃ©matique pour garantir des donnÃ©es fraÃ®ches au rechargement de page.
 // Si le live Ã©choue (tokens absents, API indisponible), le cache DB est retournÃ©.

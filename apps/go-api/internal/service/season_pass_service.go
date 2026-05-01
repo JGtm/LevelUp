@@ -5,10 +5,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
+
+// trackRefreshTimeout borne le temps total alloué à l'hydratation synchrone des
+// définitions d'items pour les tracks dont la métadata est incomplète. Dépassé,
+// on rend la page avec ce qu'on a — le fond cache continue à se warmer.
+const trackRefreshTimeout = 12 * time.Second
 
 // SeasonPassService orchestre la page Season Pass.
 type SeasonPassService struct {
@@ -69,12 +75,20 @@ func (s *SeasonPassService) GetSeasonPassPage(ctx context.Context) (domain.Seaso
 		}
 	}
 
-	// Si des images de paliers sont manquantes (battlepass_item_definitions pas encore peuplé),
-	// déclencher GetBattlePass en arrière-plan pour peupler les définitions d'items.
-	// Les images apparaîtront au prochain rafraîchissement de la page.
-	if hasMissingTierImages(tracks) {
-		detachedCtx := context.WithoutCancel(ctx)
-		go func() { _ = s.homeSvc.GetBattlePass(detachedCtx) }()
+	// Si des images de paliers sont manquantes, hydrater synchronement les tracks
+	// concernés via le resolver (KindRewardTrackDefinition → KindBPItemDefinition).
+	// Garantit que la page rend des images résolues sans nécessiter de refresh manuel.
+	// Borné par trackRefreshTimeout pour éviter de bloquer la page si GameCMS rame.
+	if missing := tracksWithMissingItems(tracks); len(missing) > 0 {
+		refreshCtx, cancel := context.WithTimeout(ctx, trackRefreshTimeout)
+		for _, trackPath := range missing {
+			s.homeSvc.RefreshTrack(refreshCtx, trackPath)
+		}
+		cancel()
+		// Re-lecture après hydratation pour récupérer les image_url fraîchement persistés.
+		if reloaded, rerr := s.repo.LoadSeasonPassTracks(ctx, s.xuid, s.titleSlug); rerr == nil {
+			tracks = reloaded
+		}
 	}
 
 	resp := domain.SeasonPassPageResponse{
@@ -99,15 +113,18 @@ func (s *SeasonPassService) GetSeasonPassPage(ctx context.Context) (domain.Seaso
 	return resp, nil
 }
 
-// hasMissingTierImages retourne true si au moins un palier d'un pass n'a pas d'image_url.
-// Utilisé pour détecter que battlepass_item_definitions n'est pas encore peuplé.
-func hasMissingTierImages(tracks []domain.SeasonPassTrackSummary) bool {
+// tracksWithMissingItems retourne les reward_track_path des tracks dont au moins
+// un palier n'a pas d'image_url — signal que battlepass_item_definitions n'est
+// pas encore peuplé pour ce track.
+func tracksWithMissingItems(tracks []domain.SeasonPassTrackSummary) []string {
+	var missing []string
 	for _, track := range tracks {
 		for _, tier := range track.Tiers {
 			if tier.ImageURL == nil {
-				return true
+				missing = append(missing, track.RewardTrackPath)
+				break
 			}
 		}
 	}
-	return false
+	return missing
 }
