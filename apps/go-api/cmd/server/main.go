@@ -186,7 +186,8 @@ func main() {
 	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
 
 	// --- 3a. Migrations (read-write, avant l'ouverture des connexions runtime) ---
-	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pr.SharedPVEDBPath(titleSlug)); err != nil {
+	titleConfigDir := filepath.Join(cfg.RepoRoot, "config", "titles", titleSlug)
+	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pr.SharedPVEDBPath(titleSlug), titleConfigDir); err != nil {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
 	} else {
 		slog.Debug("migrations appliquées")
@@ -375,9 +376,17 @@ func strPtr(s string) *string { return &s }
 // runMigrations applique les migrations DuckDB dans l'ordre :
 // metadata → shared → shared_pve → shared_social.
 // Les migrations player sont gérées à l'ouverture de chaque player DB.
-func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath string) error {
+//
+// prestige ConfigDir : chemin vers config/titles/{slug}/ pour le seed du catalogue
+// Prestige (challenge_template + preset_arc). Si vide, le seed est ignoré.
+func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConfigDir string) error {
 	// Ensure all step init() have been registered (side-effect imports).
 	_ = migration.All()
+
+	// Seed Prestige catalogue via migration backfill (une seule fois, idempotent).
+	if prestigeConfigDir != "" {
+		migration.RegisterPrestigeSeedMigration(prestigeConfigDir)
+	}
 
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
