@@ -1,5 +1,19 @@
 # Thought Log
 
+## [2026-04-30] Fix miniatures manquantes (clips coéquipiers)
+
+**Statut** : Complété
+
+**Décision technique** :
+- `ops.GenerateThumbnails` n'était appelé que dans le chemin upload (`media_service.go`), pas dans `IndexMedia`. Résultat : les clips indexés via `ScanAllMedia` ou `ResetAndReindex` n'avaient jamais leur miniature générée (cas des clips de Madina97294).
+- Fix : intégration de `GenerateThumbnails` directement dans `IndexMedia` (avant `BackfillThumbnailPaths`). Tous les chemins d'indexation génèrent maintenant les miniatures WebP manquantes.
+- Nettoyage : suppression du bloc redondant `GenerateThumbnails + BackfillThumbnailPaths` dans `media_service.go` upload path (désormais géré par `IndexMedia`).
+- Fallback frontend conservé : `<video preload="metadata" src={file_path}#t=0.5>` pour les clips sans thumbnail_path.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/ops/...` vert.
+
+**Prochaine étape** : relancer `ScanAllMedia` (Settings → Médias → Scanner) pour regénérer les miniatures des clips Madina97294.
+
 ## [2026-05-01] Phase H.bis + Frontend match_context — câblage complet catalogue & escouade
 
 **Statut** : Complété
