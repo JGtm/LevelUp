@@ -13,10 +13,10 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { BattlePassRewardCarousel, type RewardCard } from './BattlePassRewardCarousel'
 import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassRewardLightbox'
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
-import { PassContentSummary } from './PassContentSummary'
+import { PassContentSummary, type ContentLabels } from './PassContentSummary'
 import { PalmaresShell } from './PalmaresShell'
 import { useSeasonPassPage } from './queries'
-import { rarityLabel, type RarityTier } from './rarity'
+import { isArmorItemType, rarityLabel, rarityStyle, type RarityTier } from './rarity'
 
 function statusVariant(status: SeasonPassStatus) {
   switch (status) {
@@ -30,37 +30,79 @@ function statusVariant(status: SeasonPassStatus) {
 // Ordre décroissant de rareté — du plus rare au plus commun.
 const RARITY_ORDER: RarityTier[] = ['mythic', 'legendary', 'epic', 'rare', 'common']
 
-function topRarityEntry(breakdown: Record<string, number> | null | undefined): { tier: RarityTier; count: number } | null {
-  if (!breakdown) return null
-  for (const tier of RARITY_ORDER) {
-    const count = breakdown[tier]
-    if (count > 0) return { tier, count }
-  }
-  return null
-}
-
-type ContentLabels = { tiersLabel: string; spartanPointsLabel: string; creditsLabel: string; cosmeticsLabel: string }
 type SeasonPassContent = NonNullable<SeasonPassTrackSummary['content']>
 
-function buildOverlayMetrics(
-  content: SeasonPassContent,
-  labels: ContentLabels,
-  intlLocale: string,
-  locale: 'fr' | 'en',
-): string {
-  const parts: string[] = []
-  parts.push(`${content.total_tiers} ${labels.tiersLabel}`)
-  if (content.spartan_points > 0) {
-    parts.push(`${content.spartan_points.toLocaleString(intlLocale)} ${labels.spartanPointsLabel}`)
-  } else if (content.credits > 0) {
-    parts.push(`${content.credits.toLocaleString(intlLocale)} ${labels.creditsLabel}`)
+function OverlayContentRows({
+  content,
+  labels,
+  locale,
+  palmaresLocale,
+}: {
+  content: SeasonPassContent
+  labels: ContentLabels
+  locale: string
+  palmaresLocale: 'fr' | 'en'
+}) {
+  type Chip = { key: string; value: string; label: string }
+
+  const row1: Chip[] = []
+  if (content.total_tiers > 0) row1.push({ key: 'tiers', value: String(content.total_tiers), label: labels.tiersLabel })
+  if (content.credits) row1.push({ key: 'cr', value: content.credits.toLocaleString(locale), label: labels.creditsLabel })
+  if (content.spartan_points) row1.push({ key: 'sp', value: content.spartan_points.toLocaleString(locale), label: labels.spartanPointsLabel })
+  if (content.xp_boosts) row1.push({ key: 'xp', value: String(content.xp_boosts), label: labels.xpBoostsLabel })
+  if (content.challenge_swaps) row1.push({ key: 'swap', value: String(content.challenge_swaps), label: labels.challengeSwapsLabel })
+
+  const row2: Chip[] = []
+  if (content.cosmetics_total) {
+    if (content.type_breakdown && Object.keys(content.type_breakdown).length > 0) {
+      let armor = 0
+      for (const [type, count] of Object.entries(content.type_breakdown)) {
+        if (isArmorItemType(type)) armor += count
+      }
+      const cosmetic = Math.max(0, content.cosmetics_total - armor)
+      if (armor > 0) row2.push({ key: 'armor', value: String(armor), label: labels.armorLabel })
+      if (cosmetic > 0) row2.push({ key: 'cosmetic', value: String(cosmetic), label: labels.cosmeticsSplitLabel })
+    } else {
+      row2.push({ key: 'cosmetics', value: String(content.cosmetics_total), label: labels.cosmeticsLabel })
+    }
   }
-  if (content.cosmetics_total > 0) {
-    parts.push(`${content.cosmetics_total} ${labels.cosmeticsLabel}`)
-  }
-  const top = topRarityEntry(content.rarity_breakdown)
-  if (top) parts.push(`${rarityLabel(top.tier, locale)} ${top.count}`)
-  return parts.join(' · ')
+
+  const rarities = RARITY_ORDER
+    .map((tier) => ({ tier, count: content.rarity_breakdown?.[tier] ?? 0 }))
+    .filter((e) => e.count > 0)
+
+  if (row1.length === 0 && row2.length === 0 && rarities.length === 0) return null
+
+  const chipRow = (chips: Chip[]) => chips.length === 0 ? null : (
+    <div className="flex flex-wrap items-baseline gap-x-3 text-xs">
+      {chips.map(({ key, value, label }) => (
+        <span key={key}>
+          <span className="font-semibold text-white tabular-nums">{value}</span>
+          {' '}
+          <span className="text-white/60">{label}</span>
+        </span>
+      ))}
+    </div>
+  )
+
+  return (
+    <div className="mt-2 space-y-0.5">
+      {chipRow(row1)}
+      {chipRow(row2)}
+      {rarities.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-2.5 text-xs">
+          {rarities.map(({ tier, count }) => (
+            <span key={tier} className="flex items-center gap-1">
+              <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${rarityStyle(tier)?.segment ?? 'bg-slate-400'}`} />
+              <span className="text-white/60">{rarityLabel(tier, palmaresLocale)}</span>
+              {' '}
+              <span className="font-semibold text-white tabular-nums">{count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -203,10 +245,6 @@ function PassShowcase({
     locale: text.intlLocale,
   })
 
-  const overlayMetrics = pass.content
-    ? buildOverlayMetrics(pass.content, text.seasonPass.content, text.intlLocale, locale)
-    : null
-
   return (
     <div ref={showcaseRef}>
       <Card className="overflow-hidden border-border/70 bg-card/95 shadow-sm">
@@ -231,27 +269,26 @@ function PassShowcase({
                 alt={pass.name}
                 className="aspect-[986/248] w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/28 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                      {pass.name}
-                    </h2>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <Badge variant={statusVariant(pass.status)}>
-                        {text.seasonPass.status[pass.status] ?? pass.status}
-                      </Badge>
-                      {overlayMetrics && (
-                        <span className="text-xs text-white/75">{overlayMetrics}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
-                    {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
-                  </div>
+                <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                  {pass.name}
+                </h2>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <Badge variant={statusVariant(pass.status)}>
+                    {text.seasonPass.status[pass.status] ?? pass.status}
+                  </Badge>
+                  {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
+                  {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
                 </div>
+                {pass.content && (
+                  <OverlayContentRows
+                    content={pass.content}
+                    labels={text.seasonPass.content}
+                    locale={text.intlLocale}
+                    palmaresLocale={locale}
+                  />
+                )}
               </div>
             </div>
           ) : (
@@ -267,12 +304,6 @@ function PassShowcase({
 
           {pass.description && (
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">{pass.description}</p>
-          )}
-
-          {pass.content && (
-            <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
-              <PassContentSummary content={pass.content} labels={text.seasonPass.content} locale={text.intlLocale} />
-            </div>
           )}
 
           {pass.tiers && pass.tiers.length > 0 && (
