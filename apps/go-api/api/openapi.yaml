@@ -1293,6 +1293,34 @@ paths:
       responses:
         "200": { description: "Binary image" }
 
+  /assets/{title_id}/maps:
+    get:
+      tags: [assets]
+      operationId: listMapsMetadata
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Liste les maps du catalogue avec leurs traductions"
+      responses:
+        "200": { description: "Liste des maps" }
+        "503": { description: "Asset metadata DB indisponible" }
+
+  /assets/{title_id}/weapons:
+    get:
+      tags: [assets]
+      operationId: listWeaponsMetadata
+      parameters:
+        - name: title_id
+          in: path
+          required: true
+          schema: { type: string }
+      summary: "Liste les armes du catalogue avec leurs traductions"
+      responses:
+        "200": { description: "Liste des armes" }
+        "503": { description: "Asset metadata DB indisponible" }
+
   /assets/maps/{title_id}/{map_id}/image:
     get:
       tags: [assets]
