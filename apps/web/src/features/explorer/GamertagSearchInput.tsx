@@ -14,6 +14,8 @@ import type { TeammateOption } from '@/lib/api/types'
 interface Props {
   onSelect: (gamertag: string) => void
   placeholder?: string
+  /** Valeur initiale du champ (ex: gamertag venant d'un paramètre URL). */
+  initialValue?: string
   /** Coéquipiers fréquents à afficher en deuxième groupe (optionnel). */
   frequentOptions?: TeammateOption[]
   /** Gamertags à exclure des suggestions (ex: joueur courant). */
@@ -23,10 +25,11 @@ interface Props {
 export function GamertagSearchInput({
   onSelect,
   placeholder = 'Rechercher un joueur…',
+  initialValue,
   frequentOptions,
   excludeGamertags,
 }: Props) {
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialValue ?? '')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 

@@ -77,6 +77,11 @@ export const okabePalette: Palette = {
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
 
+  // ── Badges encounter — Okabe-Ito daltonisme-safe ────────────────────────────
+  'narrative-encounter-ally-plus':    '#009E73', // Bluish Green — allié positif
+  'narrative-encounter-tough-enemy':  '#D55E00', // Vermillion   — ennemi dangereux
+  'narrative-encounter-ordinal':      '#56B4E9', // Sky Blue     — compteur rencontres
+
   // ── Heatmaps ────────────────────────────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais
   'heatmap-hot':            '#009E73', // Bluish Green — bon

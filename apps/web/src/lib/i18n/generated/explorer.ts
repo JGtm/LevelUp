@@ -44,6 +44,12 @@ export const explorerManifest = {
   "explorer.player.recent_common_matches": { fr: "Matchs communs récents", en: "Recent shared matches" },
   "explorer.player.searching": { fr: "Recherche en cours…", en: "Searching…" },
   "explorer.player.wins_together": { fr: "Victoires", en: "Wins" },
+  "explorer.player.history_title": { fr: "Historique complet", en: "Full history" },
+  "explorer.player.prev_page": { fr: "Précédent", en: "Previous" },
+  "explorer.player.next_page": { fr: "Suivant", en: "Next" },
+  "explorer.player.page_info": { fr: "Page {page} / {total}", en: "Page {page} of {total}" },
+  "explorer.player.were_teammates": { fr: "Coéquipiers", en: "Teammates" },
+  "explorer.player.were_enemies": { fr: "Adversaires", en: "Enemies" },
 } as const
 
 export type ExplorerManifestKey = keyof typeof explorerManifest

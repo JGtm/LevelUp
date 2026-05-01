@@ -5,6 +5,7 @@
  * E1 : expansion de ligne avec PlayerDetailPanel.
  */
 import { useState, useMemo } from 'react'
+import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { PlayerDetailPanel } from './PlayerDetailPanel'
 import type { MatchScoreboardRow, MatchWeaponKill, MatchMedal, MatchCitation } from '@/lib/api/types'
@@ -84,6 +85,18 @@ interface Props {
 export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props) {
   const [expandedXuid, setExpandedXuid] = useState<string | null>(null)
   const { data: fieldMappings } = useFieldMappings()
+  const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
+  const navigate = useNavigate()
+
+  function goToExplorer(gamertag: string, e: React.MouseEvent) {
+    if (!playerSlug) return
+    e.stopPropagation()
+    void navigate({
+      to: '/players/$playerSlug/explorer/',
+      params: { playerSlug },
+      search: { mode: 'player', target: gamertag },
+    })
+  }
   const cols = useMemo(() => buildCols(fieldMappings), [fieldMappings])
   const extremes = Object.fromEntries(cols.map((c) => [c.key, getExtremes(rows, c.key)]))
   const { mvp, lvp } = getMvpLvpXuids(rows)
@@ -122,7 +135,18 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
                     >
                       <td className="py-1 pr-2 font-medium text-foreground whitespace-nowrap">
                         <span className="mr-1 text-muted-foreground">{isExpanded ? '▾' : '▸'}</span>
-                        {row.gamertag}
+                        {!row.is_me && playerSlug ? (
+                          <button
+                            type="button"
+                            className="hover:text-primary hover:underline transition-colors"
+                            onClick={(e) => goToExplorer(row.gamertag, e)}
+                            title={`Voir l'historique avec ${row.gamertag}`}
+                          >
+                            {row.gamertag}
+                          </button>
+                        ) : (
+                          row.gamertag
+                        )}
                         {row.xuid === mvp && (
                           <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-warning/80 text-foreground">MVP</span>
                         )}

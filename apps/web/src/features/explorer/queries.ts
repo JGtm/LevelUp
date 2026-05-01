@@ -31,7 +31,7 @@ export function useExplorerMatches(
 
 export function useExplorerPlayer(playerSlug: string, request: ExplorerPlayerQueryRequest) {
   return useQuery({
-    queryKey: ['explorer-player', playerSlug, request.target_gamertag],
+    queryKey: queryKeys.explorerPlayer(playerSlug, request.target_gamertag, request.page ?? 1),
     queryFn: () =>
       api.post<ExplorerPlayerQueryResponse>(
         `/players/${playerSlug}/pages/explorer/player-query`,
@@ -39,5 +39,6 @@ export function useExplorerPlayer(playerSlug: string, request: ExplorerPlayerQue
       ),
     enabled: !!playerSlug && !!request.target_gamertag,
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   })
 }

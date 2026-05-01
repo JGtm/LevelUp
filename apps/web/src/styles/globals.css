@@ -230,6 +230,10 @@
   --ac-narrative-debacle-text:           #FFF7ED;
   --ac-narrative-contre-remontada:       #33D6FF;
   --ac-narrative-contre-remontada-text:  #082F49;
+  /* Badges encounter */
+  --ac-narrative-encounter-ally-plus:    #10B981;
+  --ac-narrative-encounter-tough-enemy:  #EF4444;
+  --ac-narrative-encounter-ordinal:      #3B82F6;
   /* Heatmaps */
   --ac-heatmap-cold:           #EF4444;
   --ac-heatmap-hot:            #10B981;

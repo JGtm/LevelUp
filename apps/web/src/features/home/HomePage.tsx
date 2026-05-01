@@ -122,10 +122,13 @@ export function HomePage() {
     ? `${challengesCompleted} / ${challengesTotal} complétés`
     : null
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
-  // Bug #6 : on restreint la séquence d'outcomes à la dernière session pour
-  // ne pas afficher tout l'historique du joueur (sinon ça produit un bloc
-  // monochrome 'x745'). recent_matches arrive trié par start_time DESC.
-  const lastSessionLabel = recentMatches[0]?.session_label
+  // Séquence d'outcomes : filtrer recent_matches par le session_label de la
+  // dernière session connue (solo ou squad). On prend le premier label qui
+  // apparaît dans recent_matches (trié DESC) parmi les deux sessions.
+  const knownLabels = new Set(
+    [soloSession?.session_label, squadSession?.session_label].filter(Boolean) as string[],
+  )
+  const lastSessionLabel = recentMatches.find((m) => m.session_label && knownLabels.has(m.session_label))?.session_label ?? null
   const lastSessionMatches = lastSessionLabel
     ? recentMatches.filter((m) => m.session_label === lastSessionLabel)
     : recentMatches.slice(0, Math.min(20, recentMatches.length))
@@ -310,31 +313,36 @@ export function HomePage() {
           </CardContent>
         </Card>
 
-        {/* Séquence des outcomes — bande compacte avant les tuiles.
-            Bug #5 : le backend renvoie outcome_tone = "win"/"loss"/"tie"/"dnf"
-            (cf. analysis/home.go::homeOutcomeTones). L'ancien mapping cherchait
-            "positive"/"negative" → tout collapsait sur 'tie' (cyan).
-            Bug #6 : restreint à la dernière session uniquement. */}
+        {/* Séquence des outcomes — bande compacte avant les tuiles. */}
         {lastSessionMatches.length > 0 && (
-          <OutcomeSequenceTape
-            matches={[...lastSessionMatches].reverse().map((m) => {
-              const outcome: 'win' | 'loss' | 'tie' | 'dnf' =
-                m.outcome_tone === 'win'
-                  ? 'win'
-                  : m.outcome_tone === 'loss'
-                    ? 'loss'
-                    : m.outcome_tone === 'dnf'
-                      ? 'dnf'
-                      : 'tie'
-              return { matchId: m.match_id, outcome, map: m.detail }
-            })}
-            labels={{
-              win: fieldMappings?.outcomes?.['win']?.label ?? 'win',
-              loss: fieldMappings?.outcomes?.['loss']?.label ?? 'loss',
-              tie: fieldMappings?.outcomes?.['tie']?.label ?? 'tie',
-              dnf: fieldMappings?.outcomes?.['dnf']?.label ?? 'dnf',
-            }}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-1.5 text-base">
+                {locale === 'en' ? 'Last session results' : 'Résultats de la dernière session'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OutcomeSequenceTape
+                matches={[...lastSessionMatches].reverse().map((m) => {
+                  const outcome: 'win' | 'loss' | 'tie' | 'dnf' =
+                    m.outcome_tone === 'win'
+                      ? 'win'
+                      : m.outcome_tone === 'loss'
+                        ? 'loss'
+                        : m.outcome_tone === 'dnf'
+                          ? 'dnf'
+                          : 'tie'
+                  return { matchId: m.match_id, outcome, map: m.detail }
+                })}
+                labels={{
+                  win: fieldMappings?.outcomes?.['win']?.label ?? 'win',
+                  loss: fieldMappings?.outcomes?.['loss']?.label ?? 'loss',
+                  tie: fieldMappings?.outcomes?.['tie']?.label ?? 'tie',
+                  dnf: fieldMappings?.outcomes?.['dnf']?.label ?? 'dnf',
+                }}
+              />
+            </CardContent>
+          </Card>
         )}
 
         {/* Matchs récents / Favoris — 4 tuiles MatchCard */}
