@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-05-01] Phase G catalogue — CLI bootstrap
+
+**Statut** : Complété.
+
+**Décision technique** :
+- Binaire `cmd/populate-playlists-catalog/main.go` avec flags `--title`, `--metadata-db`, `--shared-db`, `--experience-rules`, `--max-retries`, `--dry-run`.
+- Workflow :
+  1. `migration.RunForDB(metadata, TargetMetadata)` : garantit que les tables catalogue existent.
+  2. `seedQueueFromMatchRegistry` : `SELECT DISTINCT` sur les 4 colonnes (`playlist_id`, `pair_id`, `map_id`, `game_variant_id`) de `shared.match_registry`, INSERT OR IGNORE dans `catalog_fetch_queue` côté metadata.
+  3. Construit le resolver + adapter Halo (`halo.NewHaloProvider` → `halo.NewCatalogFetcher` → `halo_infinite.NewCatalogAdapter` avec rules TOML).
+  4. Boucle `svc.Drain()` jusqu'à queue vide ou tous max-retries (max 10 passes pour éviter loop infini).
+- `--dry-run` : skip drain, n'effectue que le seed (utile pour vérifier le périmètre avant gros fetch DiscoveryUGC).
+- Logs structurés `slog` avec compteurs par pass + total.
+- Ouvre `shared.duckdb` en `?access_mode=READ_ONLY` (catalogue read-only sur shared, écriture uniquement metadata).
+
+**Tests** : compilation + `--help` fonctionnel. Pas de test d'intégration runtime (nécessiterait fixture DiscoveryUGC mockée — couvert via les tests unitaires de `service.CatalogFetcherService`).
+
+**Prochaine étape** : Phase H — endpoints REST title-aware (`/api/v1/titles/{slug}/catalog/{playlists,pairs,maps}`) gated par `MULTI_TITLE_API_ENABLED`.
+
 ## [2026-05-01] Phase F catalogue — drain queue + CatalogRepo DuckDB
 
 **Statut** : Complété.
