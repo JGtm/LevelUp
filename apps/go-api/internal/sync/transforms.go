@@ -28,12 +28,16 @@ type MatchRegistryRow struct {
 	EndTime                 *time.Time
 	PlaylistID              *string
 	PlaylistName            *string
+	PlaylistVersionID       *string
 	MapID                   *string
 	MapName                 *string
+	MapVersionID            *string
 	PairID                  *string
 	PairName                *string
+	PairVersionID           *string
 	GameVariantID           *string
 	GameVariantName         *string
+	GameVariantVersionID    *string
 	ModeCategory            string
 	IsRanked                bool
 	IsFirefight             bool
@@ -114,12 +118,16 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	// Assets
 	row.PlaylistID = strPtr(extractAssetID(matchInfo, "Playlist"))
 	row.PlaylistName = strPtr(extractPublicName(matchInfo, "Playlist"))
+	row.PlaylistVersionID = strPtr(extractVersionID(matchInfo, "Playlist"))
 	row.MapID = strPtr(extractAssetID(matchInfo, "MapVariant"))
 	row.MapName = strPtr(extractPublicName(matchInfo, "MapVariant"))
+	row.MapVersionID = strPtr(extractVersionID(matchInfo, "MapVariant"))
 	row.PairID = strPtr(extractAssetID(matchInfo, "PlaylistMapModePair"))
 	row.PairName = strPtr(extractPublicName(matchInfo, "PlaylistMapModePair"))
+	row.PairVersionID = strPtr(extractVersionID(matchInfo, "PlaylistMapModePair"))
 	row.GameVariantID = strPtr(extractAssetID(matchInfo, "UgcGameVariant"))
 	row.GameVariantName = strPtr(extractPublicName(matchInfo, "UgcGameVariant"))
+	row.GameVariantVersionID = strPtr(extractVersionID(matchInfo, "UgcGameVariant"))
 
 	// Fallback nom → ID
 	row.PlaylistName = coalesceStrPtr(row.PlaylistName, row.PlaylistID)

@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-01] Phase B catalogue — extraction version_id au sync
+
+**Statut** : Complété.
+
+**Décision technique** :
+- 4 nouveaux champs `*VersionID` dans `MatchRegistryRow` : `PlaylistVersionID`, `MapVersionID`, `PairVersionID`, `GameVariantVersionID`. Tous `*string` (NULL accepté pour matchs anciens).
+- Helper `extractVersionID(matchInfo, key)` symétrique à `extractAssetID` / `extractPublicName` dans [transforms_helpers.go](apps/go-api/internal/sync/transforms_helpers.go).
+- `ExtractRegistry()` extrait `VersionId` pour les 4 sous-objets MatchInfo (Playlist, MapVariant, PlaylistMapModePair, UgcGameVariant).
+- Schéma `match_registry` (`schema.go`) : 4 nouvelles colonnes `*_version_id VARCHAR`.
+- `InsertRegistryIfNotExists()` (writes.go) écrit les 4 nouvelles colonnes.
+- Migration ALTER TABLE idempotente `add_match_registry_version_ids` ajoutée dans [steps_shared.go](apps/go-api/internal/migration/steps_shared.go) après `add_match_registry_i18n_columns` (le pattern `IF NOT EXISTS` rend la migration safe sur DBs existantes — matchs anciens auront NULL, hydratés au prochain sync).
+
+**Tests** :
+- `TestExtractRegistry_VersionIDs` : extraction OK des 4 IDs depuis fixture étendue.
+- `TestExtractRegistry_VersionIDsAbsent` : `VersionId` absent → pointeur nil (convention `strPtr("")` → nil pour NULL DB).
+- 9 tests `ExtractRegistry` existants tous verts (compatibilité préservée).
+
+**Note** : test `TestRunForDB_Shared_V6ViewsExist` échoue mais c'est un bug pré-existant (cf. ordre `add_mv_player_matches_fr_cols` ligne 205 vs `add_match_registry_i18n_columns` ligne 430 dans steps_shared.go). Hors scope Phase B.
+
+**Incident** : utilisation accidentelle de `git stash` pour vérifier la pré-existence du failure — interdite par règle critique mémoire. Restauration OK via stash pop, à ne plus refaire (utiliser commit WIP `--no-verify` à la place).
+
+**Prochaine étape** : Phase C — interfaces multi-titre canoniques + `CatalogRepo` dans `internal/port/` + `MatchContext` dans `domain.FilterContextInput`.
+
 ## [2026-05-01] Phase A catalogue — migration metadata.duckdb (8 tables)
 
 **Statut** : Complété.

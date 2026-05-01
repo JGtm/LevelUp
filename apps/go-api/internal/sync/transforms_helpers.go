@@ -62,6 +62,18 @@ func extractPublicName(matchInfo map[string]any, key string) string {
 	return name
 }
 
+// extractVersionID extrait VersionId depuis un sous-objet JSON (ex: "Playlist").
+// Phase B du plan catalogue : permet de tracker les versions d'assets par match
+// pour détecter les rotations Ranked / mises à jour de weights / changements d'assets UGC.
+func extractVersionID(matchInfo map[string]any, key string) string {
+	obj, _ := matchInfo[key].(map[string]any)
+	if obj == nil {
+		return ""
+	}
+	id, _ := obj["VersionId"].(string)
+	return id
+}
+
 // findCoreStats retourne le dict CoreStats du premier PlayerTeamStats du joueur.
 func findCoreStats(player map[string]any) map[string]any {
 	pts, _ := player["PlayerTeamStats"].([]any)
