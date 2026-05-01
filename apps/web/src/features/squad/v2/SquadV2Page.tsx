@@ -19,6 +19,7 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
+import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { HistoryTable } from './components/HistoryTable'
 import { WeaponsTable } from './components/WeaponsTable'
 import { MedalsGallery } from './components/MedalsGallery'
@@ -84,9 +85,29 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
   const charts = data.charts
   const tables = data.tables
   const squadOrder = [data.main_player, ...data.teammates]
+  const header = data.header
+
+  // Briefing : alimente <SessionBriefing> en haut de page (rail + verdict + grid).
+  // Mode squad si squad_score + player_cards + team_avg_kpis presents.
+  const mainXuid = header?.player_cards?.find((c) => c.gamertag === data.main_player)?.xuid ?? ''
+  const briefingSquad =
+    header?.squad_score && header?.player_cards && header?.team_avg_kpis && header?.kpis_by_xuid && mainXuid
+      ? {
+          score: header.squad_score,
+          players: header.player_cards,
+          kpisByXuid: header.kpis_by_xuid,
+          teamAvgKpis: header.team_avg_kpis,
+          activeXuid: mainXuid,
+        }
+      : undefined
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="squad-v2-page">
+      {/* Briefing — KPIs + verdict squad + drill-down click */}
+      {header?.solo_kpis && (
+        <SessionBriefing kpis={header.solo_kpis} squad={briefingSquad} />
+      )}
+
       {/* Séquence des outcomes (S13) */}
       {data.shared_matches.length > 0 && (
         <section data-testid="squad-v2-outcome-sequence">
