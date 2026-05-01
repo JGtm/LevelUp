@@ -197,6 +197,7 @@ export function PalmaresRelationsPage() {
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           <RelationshipGroupCard
+            playerSlug={playerSlug}
             title={text.relations.sections.frequentAlliesTitle}
             description={text.relations.sections.frequentAlliesDescription}
             items={data.frequent_allies}
@@ -207,6 +208,7 @@ export function PalmaresRelationsPage() {
             emptyDescription={text.relations.emptyDescription}
           />
           <RelationshipGroupCard
+            playerSlug={playerSlug}
             title={text.relations.sections.bestSynergiesTitle}
             description={text.relations.sections.bestSynergiesDescription}
             items={data.best_synergies}
@@ -217,6 +219,7 @@ export function PalmaresRelationsPage() {
             emptyDescription={text.relations.emptyDescription}
           />
           <RelationshipGroupCard
+            playerSlug={playerSlug}
             title={text.relations.sections.nemesesTitle}
             description={text.relations.sections.nemesesDescription}
             items={data.nemeses}
@@ -227,6 +230,7 @@ export function PalmaresRelationsPage() {
             emptyDescription={text.relations.emptyDescription}
           />
           <RelationshipGroupCard
+            playerSlug={playerSlug}
             title={text.relations.sections.victimsTitle}
             description={text.relations.sections.victimsDescription}
             items={data.favorite_victims}
@@ -238,6 +242,7 @@ export function PalmaresRelationsPage() {
           />
           <div className="xl:col-span-2">
             <RelationshipGroupCard
+              playerSlug={playerSlug}
               title={text.relations.sections.closedCircleTitle}
               description={text.relations.sections.closedCircleDescription}
               items={data.closed_circle}
