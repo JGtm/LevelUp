@@ -112,12 +112,22 @@ export interface MomentCard {
   created_at: string
 }
 
+export interface PrestigeLevel {
+  index: number
+  name: string
+  threshold_pp: number
+  next_threshold_pp: number
+  progress_ratio: number
+}
+
 export interface UserPrestige {
   user_id: string
   title_slug: string
   total_pp: number
   current_level: number
   updated_at: string
+  /** Détails du niveau courant (nom, prochain seuil, ratio). Présent depuis 2026-05-01. */
+  level?: PrestigeLevel
 }
 
 export interface Template {
@@ -206,7 +216,7 @@ export const prestigeApi = {
 
   listActiveChallenges: (userId: string, titleSlug: string) =>
     api.get<{ challenges: Challenge[]; count: number }>(
-      `/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
+      `/players/${encodeURIComponent(userId)}/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
     ),
 
   updateChallenge: (id: string, body: UpdateChallengeBody) =>
@@ -222,7 +232,7 @@ export const prestigeApi = {
 
   listArcs: (userId: string, titleSlug: string) =>
     api.get<{ arcs: Arc[]; count: number }>(
-      `/arcs?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
+      `/players/${encodeURIComponent(userId)}/arcs?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
     ),
 
   getArc: (id: string) => api.get<Arc>(`/arcs/${id}`),
@@ -232,7 +242,7 @@ export const prestigeApi = {
     const qs = titleSlug
       ? `?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`
       : `?user_id=${encodeURIComponent(userId)}`
-    return api.get<UserPrestige>(`/prestige/me${qs}`)
+    return api.get<UserPrestige>(`/players/${encodeURIComponent(userId)}/prestige/me${qs}`)
   },
 
   // Templates

@@ -17,23 +17,25 @@ import (
 // totalement absent du flux de sync.
 
 // FeatureFlagEnv est le nom de la variable d'environnement contrôlant
-// l'activation du module Prestige dans le pipeline sync.
+// l'activation du module Prestige.
 //
-// Valeurs reconnues comme "activé" : "1", "true", "yes" (insensible à la casse).
+// Activé par défaut. Désactivé seulement si PRESTIGE_ENABLED vaut explicitement
+// "0", "false", "no" ou "off" (insensible à la casse).
 const FeatureFlagEnv = "PRESTIGE_ENABLED"
 
 // IsEnabled retourne true si le feature flag Prestige est activé.
 //
 // Lit PRESTIGE_ENABLED à chaque appel — le boot ne cache pas l'état pour
-// permettre un toggle sans redémarrage en dev. Le sync hook étant rare
-// (post-ingestion), le surcoût est négligeable.
+// permettre un toggle sans redémarrage en dev.
+//
+// Défaut : activé. Pour désactiver, exporter PRESTIGE_ENABLED=false.
 func IsEnabled() bool {
 	raw := strings.ToLower(strings.TrimSpace(os.Getenv(FeatureFlagEnv)))
 	switch raw {
-	case "1", "true", "yes", "on":
-		return true
+	case "0", "false", "no", "off":
+		return false
 	}
-	return false
+	return true
 }
 
 // RunPostSyncHook ré-évalue les défis actifs d'un joueur après une sync.

@@ -392,3 +392,73 @@ en = "Win rate {wr}%"
 [home.highlights.detail.volume_kda_wr]
 fr = "FDA {kda} · {wr}% victoires"
 en = "KDA {kda} · {wr}% win rate"
+
+# ─── Section Prestige (HomePrestigeSection) ──────────────────────────────────
+
+[home.prestige.title]
+fr = "Prestige"
+en = "Prestige"
+
+[home.prestige.manage]
+fr = "Gérer"
+en = "Manage"
+
+[home.prestige.level_label]
+fr = "Niv. {n}"
+en = "Lv. {n}"
+
+[home.prestige.max_level]
+fr = "Niveau max"
+en = "Max level"
+
+[home.prestige.arc_section]
+fr = "Arc en cours"
+en = "Current arc"
+
+[home.prestige.arc_empty_title]
+fr = "Aucun arc actif"
+en = "No active arc"
+
+[home.prestige.arc_empty_description]
+fr = "Démarre un arc depuis la page Objectifs."
+en = "Start a narrative arc from the objectives page."
+
+[home.prestige.objectives_section]
+fr = "Mes objectifs"
+en = "My objectives"
+
+[home.prestige.objectives_filter_active]
+fr = "Actifs"
+en = "Active"
+
+[home.prestige.objectives_filter_completed]
+fr = "Terminés"
+en = "Done"
+
+[home.prestige.objectives_empty_active_title]
+fr = "Aucun objectif actif"
+en = "No active objective"
+
+[home.prestige.objectives_empty_completed_title]
+fr = "Aucun objectif terminé"
+en = "No completed objective"
+
+[home.prestige.objectives_empty_description]
+fr = "Crée un objectif depuis la page Objectifs."
+en = "Create an objective from the objectives page."
+
+[home.prestige.cadence_daily]
+fr = "Quotidien"
+en = "Daily"
+
+[home.prestige.cadence_weekly]
+fr = "Hebdomadaire"
+en = "Weekly"
+
+[home.prestige.cadence_monthly]
+fr = "Mensuel"
+en = "Monthly"
+
+[home.prestige.cadence_free]
+fr = "Sans échéance"
+en = "Open-ended"
