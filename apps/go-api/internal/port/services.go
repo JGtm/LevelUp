@@ -31,7 +31,7 @@ type CitationsService interface {
 
 // ExplorerService orchestre les requêtes de l'Explorer (matchs communs).
 type ExplorerService interface {
-	GetCommonMatches(ctx context.Context, otherGamertag string, limit int) (domain.ExplorerPlayerQueryResponse, error)
+	GetCommonMatches(ctx context.Context, otherGamertag string, page int) (domain.ExplorerPlayerQueryResponse, error)
 }
 
 // FiltersService résout le contexte de filtres d'un joueur.

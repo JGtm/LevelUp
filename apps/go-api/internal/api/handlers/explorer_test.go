@@ -24,7 +24,7 @@ type mockExplorerService struct {
 }
 
 func (m *mockExplorerService) GetCommonMatches(_ context.Context, _ string, _ int) (domain.ExplorerPlayerQueryResponse, error) {
-	return m.resp, m.err
+	return m.resp, m.err // page ignoré dans le mock
 }
 
 // mockMatchHistoryForExplorer implémente port.MatchHistoryService pour l'explorer.
@@ -67,7 +67,7 @@ func TestExplorerHandler_QueryPlayer_OK(t *testing.T) {
 	}
 	r := newExplorerRouter(explorerF, matchHistF)
 
-	body, _ := json.Marshal(domain.ExplorerPlayerQueryRequest{TargetGamertag: "opponent", Limit: 20})
+	body, _ := json.Marshal(domain.ExplorerPlayerQueryRequest{TargetGamertag: "opponent", Page: 1})
 	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/explorer/player-query", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

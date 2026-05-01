@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/assets"
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -164,7 +165,8 @@ func NewRouter(
 
 	// Phase 6 finition multi-titres : 3e adapter — TitleAssetURLAdapter.
 	// Compose les URLs /static/... title-scopées (post-Phase 6.5 migration FS).
-	hiAssetURL := halo_games.NewAssetURLAdapter()
+	hiAssetURL := halo_games.NewAssetURLAdapter().
+		WithMapImagesDir(static.AbsKindRoot(cfg.RepoRoot, static.KindMap, halo_games.TitleSlug))
 	titleResolver.RegisterAssetURL(hiAssetURL)
 	slog.Info("adapter_loaded",
 		"title_slug", hiAssetURL.TitleSlug(),

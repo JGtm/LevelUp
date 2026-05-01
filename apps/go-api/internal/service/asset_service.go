@@ -40,14 +40,19 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("AssetService.ListMaps: %w", err)
 	}
+	var out []canonical.AssetMeta
 	for i := range items {
 		if s.mapImageURL != nil {
 			items[i].ImageURL = s.mapImageURL(titleID, items[i].NameEN)
+			if items[i].ImageURL == "" {
+				continue // variante mode+map sans image : exclure du drawer
+			}
 		} else {
 			items[i].ImageURL = fmt.Sprintf("/api/v1/assets/maps/%s/%s/image", titleID, items[i].ID)
 		}
+		out = append(out, items[i])
 	}
-	return items, nil
+	return out, nil
 }
 
 // ListWeapons retourne les armes avec image_url.

@@ -206,8 +206,21 @@ SELECT
 FROM shared.match_registry r
 JOIN shared.match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
 JOIN shared.match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
-ORDER BY r.start_time DESC
-LIMIT 100`
+ORDER BY r.start_time DESC`
+
+// Q19b : Kills croisés agrégés entre deux joueurs sur l'ensemble de leurs matchs communs.
+// Paramètres : ?1 = xuid joueur principal, ?2 = xuid autre joueur (répétés 2 fois chacun).
+// Retourne 2 colonnes : kills_dealt, deaths_suffered.
+const Q19bKillerVictimBetween = `
+SELECT
+    COALESCE((
+        SELECT SUM(kill_count) FROM shared.killer_victim_pairs
+        WHERE killer_xuid = ? AND victim_xuid = ?
+    ), 0) AS kills_dealt,
+    COALESCE((
+        SELECT SUM(kill_count) FROM shared.killer_victim_pairs
+        WHERE killer_xuid = ? AND victim_xuid = ?
+    ), 0) AS deaths_suffered`
 
 // Paramètre : ? = match_id.
 // Retourne 6 colonnes : killer_xuid, killer_gamertag, victim_xuid,

@@ -285,7 +285,7 @@ func TestConvertCommonMatches_WereTeammates(t *testing.T) {
 			Player1Outcome: 2,
 		},
 	}
-	result := convertCommonMatches(raw, 0)
+	result := convertCommonMatches(raw)
 	if len(result) != 1 {
 		t.Fatalf("expected 1, got %d", len(result))
 	}
@@ -294,6 +294,9 @@ func TestConvertCommonMatches_WereTeammates(t *testing.T) {
 	}
 	if result[0].PlayerOutcome != 2 {
 		t.Errorf("expected outcome=2, got %d", result[0].PlayerOutcome)
+	}
+	if result[0].OutcomeLabel == "" {
+		t.Error("OutcomeLabel vide — doit être résolu")
 	}
 }
 
@@ -307,24 +310,8 @@ func TestConvertCommonMatches_Enemies(t *testing.T) {
 			Player2TeamID: &team1,
 		},
 	}
-	result := convertCommonMatches(raw, 0)
+	result := convertCommonMatches(raw)
 	if result[0].WereTeammates {
 		t.Error("expected were_teammates=false when different team IDs")
-	}
-}
-
-func TestConvertCommonMatches_LimitApplied(t *testing.T) {
-	team0 := 0
-	raw := make([]domain.CommonMatchRaw, 10)
-	for i := range raw {
-		raw[i] = domain.CommonMatchRaw{
-			MatchID:       "match",
-			Player1TeamID: &team0,
-			Player2TeamID: &team0,
-		}
-	}
-	result := convertCommonMatches(raw, 3)
-	if len(result) != 3 {
-		t.Errorf("expected 3 (limit), got %d", len(result))
 	}
 }

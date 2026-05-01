@@ -922,10 +922,6 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		if r.Self.KDA != nil {
 			kdaStr = fmt.Sprintf("%.2f", *r.Self.KDA)
 		}
-		accStr := "-"
-		if r.Self.Accuracy != nil {
-			accStr = fmt.Sprintf("%.0f%%", *r.Self.Accuracy)
-		}
 		t := r.Summary.StartedAtUTC
 
 		mapName, mapNameFR := assetLabels(r.Summary.Map)
@@ -944,6 +940,10 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 
 		// Score label : reconstruit depuis Summary.Teams.
 		scoreLabel := buildScoreLabelCanonical(r)
+		scoreStr := "-"
+		if scoreLabel != nil {
+			scoreStr = *scoreLabel
+		}
 		narrativeBadges := buildHomeNarrativeBadges(int(r.Enrichment.DominanceFlag))
 
 		kills := derefIntZero(r.Self.Kills)
@@ -1032,7 +1032,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  r.Summary.MatchID,
 			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
-			Detail:                   fmt.Sprintf("%s · FDA %s · %s", modeUI, kdaStr, accStr),
+			Detail:                   fmt.Sprintf("%s · FDA %s · %s", modeUI, kdaStr, scoreStr),
 			StartedAt:                &t,
 			OutcomeLabel:             label,
 			OutcomeTone:              tone,

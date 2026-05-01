@@ -171,6 +171,9 @@ type ExplorerRepository interface {
 	// GetCommonMatches retourne les matchs joués par 2 joueurs (Q19).
 	GetCommonMatches(ctx context.Context, xuid1, xuid2 string) ([]domain.CommonMatchRaw, error)
 
+	// GetKillerVictimBetween retourne les kills croisés agrégés entre xuid1 et xuid2.
+	GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 string) (domain.KillerVictimAggregate, error)
+
 	// ResolveXUIDByGamertag retourne le XUID pour un gamertag donné.
 	ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error)
 }
@@ -297,6 +300,9 @@ type noopExplorerRepo struct{}
 
 func (n *noopExplorerRepo) GetCommonMatches(_ context.Context, _, _ string) ([]domain.CommonMatchRaw, error) {
 	return nil, nil
+}
+func (n *noopExplorerRepo) GetKillerVictimBetween(_ context.Context, _, _ string) (domain.KillerVictimAggregate, error) {
+	return domain.KillerVictimAggregate{}, nil
 }
 func (n *noopExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
 	return "", nil
