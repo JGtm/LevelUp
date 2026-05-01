@@ -1,5 +1,20 @@
 # Thought Log
 
+## [2026-05-01] Phase H.bis + Frontend match_context — câblage complet catalogue & escouade
+
+**Statut** : Complété
+
+**Décision technique** :
+- **server.go** : routes `GET /api/v1/titles/{slug}/catalog/{playlists,pairs,maps}` montées dans le bloc `MultiTitleAPIEnabled()`. Ouvre `metadata.duckdb` en read-only via `OpenReadOnly().SQLDb()` → `platform_duckdb.NewCatalogRepo`.
+- **types.ts** : ajout de `match_context?: 'solo' | 'squad' | 'all'` à `FilterContextInput`. Champ optionnel, non-breaking.
+- **SquadLayout.tsx** : injection locale de `match_context: 'squad'` via deux `useMemo` — un pour `squadPending` (preview zombie detection), un pour `squadFilterContext` (requête TeammatesService). La valeur n'est pas persistée dans `globalFilterStore` (non polluant pour les autres pages).
+
+**Résultats** : `go build ./...` OK, `go test ./internal/...` tous verts, typecheck propre sur les fichiers modifiés.
+
+**Prochaine étape** : le catalogue n'est pas encore peuplé — lancer `populate-playlists-catalog` pour seeder depuis `match_registry`. L'amendement complet (A→H+frontend) est livré.
+
+---
+
 ## [2026-05-01] Phase I catalogue — application match_context dans FiltersService
 
 **Statut** : Complété (scope minimal viable amendement Phase C/I — match_context appliqué).

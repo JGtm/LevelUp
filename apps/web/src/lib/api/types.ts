@@ -367,6 +367,7 @@ export interface FilterContextInput {
   period?: PeriodInput
   sessions?: SessionsInput
   cascade?: CascadeInput
+  match_context?: 'solo' | 'squad' | 'all'
 }
 
 export interface LabelValue {
