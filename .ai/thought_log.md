@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-05-01] Phase F catalogue — drain queue + CatalogRepo DuckDB
+
+**Statut** : Complété.
+
+**Décision technique** :
+- **`CatalogFetcherService`** dans [internal/service/catalog_fetcher_service.go](apps/go-api/internal/service/catalog_fetcher_service.go) : `Drain(ctx, titleSlug)` lit la queue triée par `(attempts ASC, enqueued_at ASC)`, ignore `attempts >= maxRetries`, appelle `adapter.Fetch*` selon `asset_type`, upsert dans la table catalogue correspondante, supprime la ligne sur succès / `attempts++` + `last_error` sur échec.
+- **Re-enqueue automatique** : un upsert de pair ré-enqueue map et game_variant si pas déjà connus ; un upsert de playlist écrit `playlist_pair_links` et ré-enqueue les pairs (Phase D ne remplit pas encore `PairLinks`, mais l'infrastructure est là pour Phase D.bis ou Phase F.bis).
+- **Multi-langues côté pair** : `pair_mode_label_translations` upserté pour chaque langue présente dans `ModeLabels` (Phase D produit `en` seulement, multi-lang complet en Phase F.bis).
+- **`CatalogRepo` DuckDB** dans [internal/platform/duckdb/catalog_repo.go](apps/go-api/internal/platform/duckdb/catalog_repo.go) : 4 méthodes (`PlaylistsByTitle`, `PairsByPlaylist`, `MapsByTitle`, `CountCatalogEntries`) implémentent `port.CatalogRepo`.
+- **Cross-DB JOIN** : `playlistsPlayedByXUID` JOIN `shared.match_registry` + `match_participants` pour `onlyPlayed=true`. Si l'ATTACH shared échoue → fallback sur le catalogue complet (warn slog). Le pattern ATTACH explicite sera affiné en Phase I.
+- `slog.ErrorContext(ctx, ...)` pour les erreurs query, `slog.WarnContext` pour les fallbacks.
+
+**Tests** :
+- `CatalogFetcherService` (4 cas) : drain playlist+pair, transient error → attempts++, max retries skip, queue vide.
+- `CatalogRepo` (5 cas) : full catalog (exclut is_active=false), title isolation, pairs by playlist (avec weight), maps by title, count (3 titres).
+- 9 tests Phase F verts au total.
+
+**Note Phase F.bis** (reportable) :
+- Multi-lang complet (loop sur 14 langues dans adapter Halo) : nécessite extension de `discovery_client.FetchAsset` ou helper dédié.
+- Parsing `CustomData.PlaylistEntries` → `PairLinks` côté `halo_infinite/CatalogAdapter` : nécessite enrichir `DiscoveryAsset` ou exposer le JSON brut.
+- Auto-détection préfixes inconnus : à brancher post-`upsertPair` (vérifier prefix vs TOML rules, INSERT OR REPLACE dans `unknown_prefix_candidates`).
+
+**Prochaine étape** : Phase G — CLI `populate-playlists-catalog` qui seed la queue depuis `match_registry` et lance le drain.
+
 ## [2026-05-01] Phase E catalogue — détection lazy + enqueue au sync
 
 **Statut** : Complété.
