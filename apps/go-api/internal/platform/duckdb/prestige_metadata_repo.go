@@ -94,13 +94,9 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Workaround bug ART index DuckDB : DELETE (même par PK) échoue avec
-	// "Failed to delete all rows from index" dans ce contexte pool partagé.
-	// TRUNCATE évite entièrement les opérations d'index — vidage atomique bulk.
-	// Acceptable car Replace porte TOUJOURS la liste complète pour le title_slug.
-	if _, err := r.db.Exec(ctx, `TRUNCATE TABLE challenge_template`); err != nil {
-		return fmt.Errorf("truncate: %w", err)
-	}
+	// UPSERT par ligne — jamais de DELETE/TRUNCATE pour éviter le bug ART index DuckDB
+	// ("Failed to delete all rows from index"). Les rows retirées du TOML restent en DB
+	// (acceptable : les templates ne sont jamais supprimés, seulement ajoutés/modifiés).
 	for _, t := range templates {
 		if _, err := r.db.Exec(ctx, `
 			INSERT INTO challenge_template (
@@ -109,14 +105,31 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 				normal_target, heroic_target, legendary_target, mythic_target,
 				schema_version, updated_at
 			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-		`,
+			ON CONFLICT (id) DO UPDATE SET
+				title_slug       = excluded.title_slug,
+				metric           = excluded.metric,
+				window_type      = excluded.window_type,
+				window_value     = excluded.window_value,
+				cadence          = excluded.cadence,
+				eval_type        = excluded.eval_type,
+				mode_filter      = excluded.mode_filter,
+				label_en         = excluded.label_en,
+				label_fr         = excluded.label_fr,
+				description_en   = excluded.description_en,
+				description_fr   = excluded.description_fr,
+				normal_target    = excluded.normal_target,
+				heroic_target    = excluded.heroic_target,
+				legendary_target = excluded.legendary_target,
+				mythic_target    = excluded.mythic_target,
+				schema_version   = excluded.schema_version,
+				updated_at       = excluded.updated_at`,
 			t.ID, t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue,
 			string(t.Cadence), string(t.EvalType), t.ModeFilter,
 			t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR,
 			t.NormalTarget, t.HeroicTarget, t.LegendaryTarget, t.MythicTarget,
 			t.SchemaVersion, t.UpdatedAt,
 		); err != nil {
-			return fmt.Errorf("insert %s: %w", t.ID, err)
+			return fmt.Errorf("upsert %s: %w", t.ID, err)
 		}
 	}
 	return nil
@@ -225,32 +238,36 @@ func (r *PrestigePresetArcRepo) Replace(ctx context.Context, titleSlug string, a
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Workaround bug ART index DuckDB : DELETE (même par PK) échoue avec
-	// "Failed to delete all rows from index" dans ce contexte pool partagé.
-	// TRUNCATE évite entièrement les opérations d'index — vidage atomique bulk.
-	if _, err := r.db.Exec(ctx, `TRUNCATE TABLE preset_arc_step`); err != nil {
-		return fmt.Errorf("truncate steps: %w", err)
-	}
-	if _, err := r.db.Exec(ctx, `TRUNCATE TABLE preset_arc`); err != nil {
-		return fmt.Errorf("truncate arcs: %w", err)
-	}
-
+	// UPSERT par ligne — jamais de DELETE/TRUNCATE pour éviter le bug ART index DuckDB.
 	for _, a := range arcs {
 		if _, err := r.db.Exec(ctx, `
 			INSERT INTO preset_arc (id, title_slug, title_en, title_fr,
 			                       description_en, description_fr, schema_version, updated_at)
 			VALUES (?,?,?,?,?,?,?,?)
-		`, a.ID, a.TitleSlug, a.TitleEN, a.TitleFR, a.DescriptionEN, a.DescriptionFR,
-			a.SchemaVersion, a.UpdatedAt); err != nil {
-			return fmt.Errorf("insert arc %s: %w", a.ID, err)
+			ON CONFLICT (id) DO UPDATE SET
+				title_slug     = excluded.title_slug,
+				title_en       = excluded.title_en,
+				title_fr       = excluded.title_fr,
+				description_en = excluded.description_en,
+				description_fr = excluded.description_fr,
+				schema_version = excluded.schema_version,
+				updated_at     = excluded.updated_at`,
+			a.ID, a.TitleSlug, a.TitleEN, a.TitleFR, a.DescriptionEN, a.DescriptionFR,
+			a.SchemaVersion, a.UpdatedAt,
+		); err != nil {
+			return fmt.Errorf("upsert arc %s: %w", a.ID, err)
 		}
 	}
 	for _, s := range steps {
 		if _, err := r.db.Exec(ctx, `
 			INSERT INTO preset_arc_step (preset_arc_id, position, template_id, target_tier)
 			VALUES (?, ?, ?, ?)
-		`, s.PresetArcID, s.Position, s.TemplateID, string(s.TargetTier)); err != nil {
-			return fmt.Errorf("insert step: %w", err)
+			ON CONFLICT (preset_arc_id, position) DO UPDATE SET
+				template_id = excluded.template_id,
+				target_tier = excluded.target_tier`,
+			s.PresetArcID, s.Position, s.TemplateID, string(s.TargetTier),
+		); err != nil {
+			return fmt.Errorf("upsert step arc=%s pos=%d: %w", s.PresetArcID, s.Position, err)
 		}
 	}
 	return nil

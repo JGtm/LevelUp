@@ -2,8 +2,10 @@
 //
 // Au boot :
 //  1. Charge tuning.toml (fallback DefaultTuning si absent)
-//  2. Charge templates + preset arcs Halo dans metadata.duckdb
-//  3. Construit une PrestigeFactory qui résout un Service par player_slug
+//  2. Construit une PrestigeFactory qui résout un Service par player_slug
+//
+// Le catalogue (challenge_template, preset_arc) est seedé via la migration
+// "seed_prestige_catalog_v1" — pas de chargement TOML au boot.
 //
 // Au runtime :
 //  - Routes derrière le flag (handlers.PrestigeHandler avec service factory)
@@ -82,36 +84,12 @@ func NewPrestigeBundle(repoRoot string, resolve PlayerResolver) (*PrestigeBundle
 		resolve:        resolve,
 	}
 
-	// 4. Charger le catalogue Halo Infinite depuis TOML.
-	// Best-effort : si le fichier est absent ou invalide, on log warn mais
-	// on continue — le boot ne doit pas échouer pour absence de catalogue.
-	bundle.loadHaloCatalog(repoRoot, titleSlug)
-
 	slog.Info("prestige_bundle_initialized",
 		"shared_social_path", pr.SharedSocialDBPath(titleSlug),
 		"metadata_path", pr.MetadataDBPath(titleSlug),
 		"feature_flag_enabled", prestige.IsEnabled(),
 	)
 	return bundle, nil
-}
-
-// loadHaloCatalog charge templates + preset arcs Halo dans la DB metadata.
-func (b *PrestigeBundle) loadHaloCatalog(repoRoot, titleSlug string) {
-	ctx := context.Background()
-
-	templatesPath := filepath.Join(repoRoot, "config", "titles", titleSlug, "challenges", "templates.toml")
-	if n, err := prestige.LoadTemplatesFromTOML(ctx, b.templateRepo, templatesPath); err != nil {
-		slog.Warn("prestige_templates_load_failed", "title_slug", titleSlug, "err", err.Error())
-	} else if n > 0 {
-		slog.Info("prestige_templates_loaded", "title_slug", titleSlug, "count", n)
-	}
-
-	presetsPath := filepath.Join(repoRoot, "config", "titles", titleSlug, "arcs", "presets.toml")
-	if n, err := prestige.LoadPresetArcsFromTOML(ctx, b.presetArcRepo, presetsPath); err != nil {
-		slog.Warn("prestige_presets_load_failed", "title_slug", titleSlug, "err", err.Error())
-	} else if n > 0 {
-		slog.Info("prestige_presets_loaded", "title_slug", titleSlug, "count", n)
-	}
 }
 
 // Close libère les pools de connexions.
