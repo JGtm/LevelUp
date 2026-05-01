@@ -61,6 +61,11 @@ export const defaultPalette: Palette = {
   'narrative-contre-remontada':     '#33D6FF',
   'narrative-contre-remontada-text':'#082F49',
 
+  // ── Badges encounter (source : narrative/encounter.go ColorToken) ──────────
+  'narrative-encounter-ally-plus':    '#10B981', // emerald-500 — allié positif
+  'narrative-encounter-tough-enemy':  '#EF4444', // red-500     — ennemi dangereux
+  'narrative-encounter-ordinal':      '#3B82F6', // blue-500    — compteur rencontres
+
   // ── Heatmaps (source : timeseries-heatmap.tsx, heatmapChart.ts) ────────────
   'heatmap-cold':           '#EF4444', // mauvais — rouge
   'heatmap-hot':            '#10B981', // bon     — vert

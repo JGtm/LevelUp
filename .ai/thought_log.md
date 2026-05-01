@@ -1,5 +1,43 @@
 # Thought Log
 
+## [2026-05-01] FilterOmnibar — UX cascade + feedback bouton Analyser
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Problème 1 — cascade muette** : `useFiltersPreview` tire `previewData` depuis le serveur à chaque changement de sélection. Si le serveur répond, `available.modes/maps/etc.` se restreint automatiquement. Si le serveur est en 502, `previewData` reste `undefined` et le fallback `resolvedContext.available_options` = toutes les options → rien ne disparaît. Ajout d'un spinner CSS inline sur le trigger pill et d'un message "Mise à jour…" dans le popover pendant `isPreviewFetching`.
+- **Problème 2 — bouton Analyser sans retour** : ajout d'un état `justAnalysed` (1.8 s) qui affiche "✓ Appliqué" après le clic. Bouton `disabled` pendant `isPreviewFetching` pour éviter un commit avant que les options cascade soient à jour.
+- **Bonus — purge des zombies à l'Analyser** : avant de committer dans le store, on filtre les valeurs sélectionnées qui ne sont plus dans `previewData.available_options`. Évite de committer une combinaison incompatible.
+- Message incompatibilité mis à jour : "Cliquez Analyser pour les retirer automatiquement."
+
+**Résultats** : 14/14 FilterOmnibar tests + 15/15 FiltresPill tests passent. TypeScript propre sur ces fichiers.
+
+**Prochaine étape** : Vérifier visuellement avec le serveur démarré.
+
+## [2026-05-01] Fix séquence d'outcomes home — filtrage via session_label existant + titre
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause racine** : `recentMatches[0]?.session_label` était null pour les matchs les plus récents (non encore backfillés) → fallback `slice(0, 20)` déclenché. Mais `solo_session` et `squad_session` (déjà calculés en BDD) ont des `session_label` valides.
+- **Solution** : Côté frontend uniquement — chercher le premier `session_label` de `recent_matches` (trié DESC) qui correspond à `soloSession.session_label` ou `squadSession.session_label`. Ce label est garanti non-null puisqu'il vient des sessions déjà calculées en BDD.
+- **Titre** : "Résultats de la dernière session" (i18n inline FR/EN) ajouté au-dessus de la bande.
+- **Aucune modification backend** — les données existent déjà, on les utilise correctement.
+
+**Résultats** : `go build + go vet ./...` propres. `tsc --noEmit` propre.
+
+**Prochaine étape** : Vérifier visuellement que la séquence n'affiche plus 20 matchs mais seulement la vraie dernière session.
+
+## [2026-05-01] Fix tooltip OutcomeSequenceTape — remplacer précision% par score
+
+**Statut** : Complété
+
+**Décision technique** : Le champ `Detail` de `RecentMatchItem` était construit avec `accStr` (précision ex. "59%") en troisième segment : `"%s · FDA %s · %s"`. Remplacé par `scoreStr` (ex. "6-3") dérivé de `scoreLabel` déjà calculé dans la même boucle (`buildScoreLabelCanonical`). Si le score n'est pas disponible, fallback "-".
+
+**Résultats** : `go build + go vet ./internal/analysis/...` propres.
+
+**Prochaine étape** : Aucune.
+
 ## [2026-05-01] Delivery checklist — fix 2 tests Vitest HomePage pré-existants
 
 **Statut** : Complété
@@ -61,6 +99,20 @@
 - `GET /api/v1/titles/halo_infinite/catalog/maps` → 122 maps.
 
 **Prochaine étape** : Phase Discovery UGC — récupérer les noms officiels des playlists sans nom (4 avec UUID comme nom) via `gamecms /assets/{id}.json` + `discovery-infiniteugc /Playlists/{id}/versions/{versionId}`.
+
+## [2026-05-01] Fix Asset Drawer — filtre variantes maps via FS image + suffixes
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Abandon du filtre par nombre de mots** : heuristique fragile — "Highpower Sentry Defense" (3 mots, vraie variante) serait gardée ; une future map "City of Angels" (3 mots) serait incorrectement filtrée. Rejeté.
+- **Filtre par fichiers images réels** : `WithMapImagesDir(dir)` scanne `static/maps/halo_infinite/` au démarrage → `mapImageExts map[string]string`. `MapImageURL` retourne `""` pour tout nom absent du répertoire. `AssetService.ListMaps` exclut les items avec `image_url == ""`. Source de vérité = FS.
+- **Exclusion explicite des variantes connues** : `mapVariantSuffixes = [" Heavies", " Sentry Defense", " Firefight"]` — ces variantes ont des fichiers image mais ne doivent pas apparaître dans le drawer. `MapImageURL` retourne `""` malgré le fichier existant.
+- **Revert populate-playlists-catalog** : filtre à l'import retiré — la DB est source de vérité.
+
+**Résultats** : `go build ./...` OK, tests DuckDB + halo_infinite passent.
+
+**Prochaine étape** : valider visuellement après redémarrage Air.
 
 ## [2026-05-01] Fix Asset Drawer — doublons ranked + thumbnails
 

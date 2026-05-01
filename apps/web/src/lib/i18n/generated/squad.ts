@@ -2,6 +2,9 @@
 // Source : apps/web/src/lib/i18n/manifests/squad.toml
 
 export const squadManifest = {
+  "narrative.encounter.ally_plus": { fr: "Allié+", en: "Ally+" },
+  "narrative.encounter.ordinal": { fr: "×{ordinal}", en: "×{ordinal}" },
+  "narrative.encounter.tough_enemy": { fr: "Coriace", en: "Tough enemy" },
   "narrative.role.clutch_finisher": { fr: "Finisher clutch", en: "Clutch finisher" },
   "narrative.role.false_brother": { fr: "Faux-frère", en: "False brother" },
   "narrative.role.first_blood": { fr: "Premier sang", en: "First blood" },

@@ -74,6 +74,30 @@ en = "No recent shared match"
 fr = "Ce joueur n'a aucun match commun visible avec le scope actuel."
 en = "This player has no visible shared match with the current scope."
 
+[explorer.player.history_title]
+fr = "Historique complet"
+en = "Full history"
+
+[explorer.player.prev_page]
+fr = "Précédent"
+en = "Previous"
+
+[explorer.player.next_page]
+fr = "Suivant"
+en = "Next"
+
+[explorer.player.page_info]
+fr = "Page {page} / {total}"
+en = "Page {page} of {total}"
+
+[explorer.player.were_teammates]
+fr = "Coéquipiers"
+en = "Teammates"
+
+[explorer.player.were_enemies]
+fr = "Adversaires"
+en = "Enemies"
+
 # ─── Mode Matchs - Filtres ─────────────────────────────────────────────────
 
 [explorer.filters.date]

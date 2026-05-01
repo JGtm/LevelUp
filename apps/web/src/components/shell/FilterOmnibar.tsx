@@ -104,7 +104,10 @@ export function FilterOmnibar() {
   const [pending, setPending] = useState<FilterContextInput>(() => filterContext)
   // Preview live : résout les options disponibles pour le pending courant,
   // sans attendre "Analyser". Permet la détection zombie en temps réel.
-  const { data: previewData } = useFiltersPreview(playerSlug, pending)
+  const { data: previewData, isFetching: isPreviewFetching } = useFiltersPreview(playerSlug, pending)
+
+  // Feedback visuel après clic sur Analyser.
+  const [justAnalysed, setJustAnalysed] = useState(false)
 
   // Sync depuis le store quand un changement externe arrive (auto-snap, reset).
   const lastSyncedHash = useRef(filterContextHash)
@@ -176,8 +179,33 @@ export function FilterOmnibar() {
   }
 
   function handleAnalyser() {
-    setFilterContext(pending)
-    lastSyncedHash.current = computePendingHash(pending)
+    // Purger les zombies avant de committer : évite de committer une combinaison
+    // incompatible quand le preview a déjà identifié les conflits.
+    let committed = pending
+    if (previewData) {
+      const av = previewData.available_options
+      const avSets = {
+        playlists: new Set(av.playlists.map((o) => o.value)),
+        modes: new Set(av.modes.map((o) => o.value)),
+        maps: new Set(av.maps.map((o) => o.value)),
+        experience_types: new Set(av.experience_types.map((o) => o.value)),
+      }
+      const c = (pending.cascade ?? DEFAULT_CASCADE) as CascadeInput
+      const cleanCascade: CascadeInput = {
+        playlists: ((c.playlists ?? []) as string[]).filter((v) => avSets.playlists.has(v)),
+        modes: ((c.modes ?? []) as string[]).filter((v) => avSets.modes.has(v)),
+        maps: ((c.maps ?? []) as string[]).filter((v) => avSets.maps.has(v)),
+        experience_types: ((c.experience_types ?? []) as string[]).filter((v) =>
+          avSets.experience_types.has(v),
+        ),
+      }
+      committed = { ...pending, cascade: cleanCascade }
+      setPending(committed)
+    }
+    setFilterContext(committed)
+    lastSyncedHash.current = computePendingHash(committed)
+    setJustAnalysed(true)
+    setTimeout(() => setJustAnalysed(false), 1800)
   }
 
   return (
@@ -195,6 +223,7 @@ export function FilterOmnibar() {
           cascade={pendingCascade}
           cascadeCount={cascadeCount}
           onSetCascade={setPendingCascade}
+          isFetching={isPreviewFetching}
         />
       )}
 
@@ -236,14 +265,17 @@ export function FilterOmnibar() {
       <button
         type="button"
         onClick={handleAnalyser}
+        disabled={isPreviewFetching}
         className={[
           'shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors',
-          isDirty
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-            : 'border border-input bg-background text-muted-foreground hover:bg-muted',
+          justAnalysed
+            ? 'border border-input bg-background text-foreground'
+            : isDirty
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60'
+              : 'border border-input bg-background text-muted-foreground hover:bg-muted',
         ].join(' ')}
       >
-        Analyser
+        {justAnalysed ? '✓ Appliqué' : isPreviewFetching ? '…' : 'Analyser'}
       </button>
 
       {hasActiveFilters && (
@@ -512,6 +544,7 @@ export interface FiltresPillProps {
   cascade: CascadeInput
   cascadeCount: number
   onSetCascade: (c: CascadeInput) => void
+  isFetching?: boolean
 }
 
 export function FiltresPill({
@@ -522,6 +555,7 @@ export function FiltresPill({
   cascade,
   cascadeCount,
   onSetCascade,
+  isFetching = false,
 }: FiltresPillProps) {
   const ref = useDismissable(open, onClose)
 
@@ -585,6 +619,9 @@ export function FiltresPill({
             ⚠
           </span>
         )}
+        {isFetching && (
+          <span className="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent opacity-60" aria-hidden />
+        )}
         <span className="text-[10px] opacity-60">▾</span>
       </button>
 
@@ -594,9 +631,14 @@ export function FiltresPill({
           aria-label="Filtres avancés"
           className="absolute left-0 top-full z-40 mt-1 grid w-[28rem] grid-cols-2 gap-3 rounded-md border border-border bg-background p-3 shadow-lg"
         >
-          {incompatibleCount > 0 && (
+          {isFetching && (
+            <p className="col-span-2 text-[10px] text-muted-foreground animate-pulse">
+              Mise à jour des options disponibles…
+            </p>
+          )}
+          {!isFetching && incompatibleCount > 0 && (
             <p className="col-span-2 rounded border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
-              {incompatibleCount} filtre{incompatibleCount > 1 ? 's' : ''} incompatible{incompatibleCount > 1 ? 's' : ''} avec la sélection actuelle. Désélectionnez-les ou réinitialisez.
+              {incompatibleCount} filtre{incompatibleCount > 1 ? 's' : ''} incompatible{incompatibleCount > 1 ? 's' : ''} avec la sélection actuelle. Cliquez Analyser pour les retirer automatiquement.
             </p>
           )}
           <CheckboxGroup

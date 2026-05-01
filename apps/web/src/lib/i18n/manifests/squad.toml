@@ -183,6 +183,19 @@ en = "False brother"
 fr = "Top killer"
 en = "Top killer"
 
+# Labels des badges de rencontre (narrative.encounter.*)
+[narrative.encounter.ally_plus]
+fr = "Allié+"
+en = "Ally+"
+
+[narrative.encounter.tough_enemy]
+fr = "Coriace"
+en = "Tough enemy"
+
+[narrative.encounter.ordinal]
+fr = "×{ordinal}"
+en = "×{ordinal}"
+
 # ─── S7 : Contributions ─────────────────────────────────────────────────────
 
 [squad.contrib.section_title]

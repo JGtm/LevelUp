@@ -934,20 +934,45 @@ export interface ExplorerMatchesQueryRequest {
 
 export interface ExplorerPlayerQueryRequest {
   target_gamertag: string
-  filters?: FilterContextInput | null
+  page?: number
+}
+
+export interface ExplorerCommonMatchRow {
+  match_id: string
+  start_time: string
+  map_ui: string
+  mode_ui: string
+  were_teammates: boolean
+  player_outcome: number
+  outcome_label: string
+  kills: number
+  deaths: number
+  kda: number
+}
+
+export interface MatchEncounterBadge {
+  kind: string
+  label_key: string
+  color_token: string
+  detail?: Record<string, unknown>
+}
+
+export interface ExplorerPlayerQueryResponse {
+  target_gamertag: string
+  target_xuid: string
+  common_matches: ExplorerCommonMatchRow[]
+  badges?: MatchEncounterBadge[]
+  total: number
+  total_count: number
+  wins_together: number
+  losses_together: number
+  page: number
+  page_size: number
 }
 
 export interface ExplorerMatchesQueryResponse {
   summary: ExplorerMatchesQuerySummary
   table: PaginatedResponse<ExplorerMatchRow>
-}
-
-export interface ExplorerPlayerQueryResponse {
-  target: ExplorerPlayerTarget
-  summary: ExplorerPlayerSummary
-  allies_table: ExplorerEncounterRow[]
-  enemies_table: ExplorerEncounterRow[]
-  common_matches: ExplorerMatchRow[]
 }
 
 // ---------------------------------------------------------------------------

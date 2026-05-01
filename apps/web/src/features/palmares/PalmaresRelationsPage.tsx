@@ -1,4 +1,4 @@
-import { useParams } from '@tanstack/react-router'
+import { useParams, useNavigate } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,16 +28,19 @@ function OverviewCard({ label, value }: { label: string; value: string }) {
 }
 
 function RelationRow({
+  playerSlug,
   entry,
   variant,
   locale,
   labels,
 }: {
+  playerSlug: string
   entry: RelationInsight
   variant: RelationVariant
   locale: string
   labels: { with: string; against: string; winRate: string; avgKDA: string; lastSeen: string }
 }) {
+  const navigate = useNavigate()
   const teammateLine = `${labels.with} ${entry.teammate_matches}`
   const enemyLine = `${labels.against} ${entry.enemy_matches}`
 
@@ -53,10 +56,25 @@ function RelationRow({
     metricLine = `${labels.avgKDA} ${formatKDA(entry.avg_kda_against, locale)} · ${labels.lastSeen} ${formatDate(entry.last_seen_at, locale)}`
   }
 
+  function goToExplorer() {
+    void navigate({
+      to: '/players/$playerSlug/explorer/',
+      params: { playerSlug },
+      search: { mode: 'player', target: entry.gamertag },
+    })
+  }
+
   return (
     <div className="flex items-start justify-between gap-4 rounded-2xl border border-border/70 bg-background/70 p-4">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">{entry.gamertag}</p>
+        <button
+          type="button"
+          className="truncate text-sm font-semibold text-foreground hover:text-primary hover:underline transition-colors"
+          onClick={goToExplorer}
+          title={`Voir l'historique avec ${entry.gamertag}`}
+        >
+          {entry.gamertag}
+        </button>
         <p className="mt-1 text-sm text-muted-foreground">{contextLine}</p>
         <p className="mt-1 text-xs text-muted-foreground">{metricLine}</p>
       </div>
@@ -71,6 +89,7 @@ function RelationRow({
 }
 
 function RelationshipGroupCard({
+  playerSlug,
   title,
   description,
   items,
@@ -80,6 +99,7 @@ function RelationshipGroupCard({
   emptyTitle,
   emptyDescription,
 }: {
+  playerSlug: string
   title: string
   description: string
   items: RelationInsight[]
@@ -102,6 +122,7 @@ function RelationshipGroupCard({
           items.map((entry) => (
             <RelationRow
               key={`${variant}-${entry.xuid}`}
+              playerSlug={playerSlug}
               entry={entry}
               variant={variant}
               locale={locale}

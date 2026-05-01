@@ -40,6 +40,8 @@ export const queryKeys = {
   // Explorer (Slice 4)
   explorer: (playerSlug: string, filterHash: string) =>
     ['explorer', playerSlug, filterHash] as const,
+  explorerPlayer: (playerSlug: string, targetGamertag: string, page: number) =>
+    ['explorer-player', playerSlug, targetGamertag, page] as const,
   gamertagSearch: (q: string) => ['gamertag-search', q] as const,
   matchView: (playerSlug: string, matchId: string) =>
     ['match-view', playerSlug, matchId] as const,
