@@ -956,13 +956,15 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			perfScoreRel = &v
 		}
 
-		// SkillSnapshot : data fields uniquement (label / URL = TODO).
+		// SkillSnapshot : data fields + label + badge URL.
 		var skillRatingVal *int
 		var skillRatingType *string
 		var skillRatingDelta *float64
 		var skillPlaylistGroup *string
 		var skillProgressPct *float64
 		var skillPointsInTier *int
+		var skillTierLabelVal *string
+		var skillBadgeURLVal *string
 		if ss := r.Enrichment.SkillSnapshot; ss != nil {
 			if ss.RatingValue != nil {
 				v := int(math.Round(*ss.RatingValue))
@@ -982,6 +984,10 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			skillRatingDelta = ss.Delta
 			if ss.PlaylistGroup != nil && *ss.PlaylistGroup != "" {
 				skillPlaylistGroup = ss.PlaylistGroup
+			}
+			// Badge URL et label de tier depuis TierCode + SubTier.
+			if ss.TierCode != nil && *ss.TierCode != "" {
+				skillTierLabelVal, skillBadgeURLVal = buildCanonicalSkillBadge(*ss.TierCode, ss.SubTier)
 			}
 		}
 
@@ -1043,10 +1049,10 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			DamageTaken:              dmgTakenPtr,
 			SkillRatingValue:         skillRatingVal,
 			SkillRatingType:          skillRatingType,
-			SkillTierLabel:           nil, // TODO P4.3 finale: TitleSemanticAdapter
+			SkillTierLabel:           skillTierLabelVal,
 			SkillRatingDelta:         skillRatingDelta,
 			SkillPlaylistGroup:       skillPlaylistGroup,
-			SkillRankImageURL:        nil, // TODO P4.3 finale: TitleAssetURLAdapter
+			SkillRankImageURL:        skillBadgeURLVal,
 			SkillProgressPct:         skillProgressPct,
 			SkillPointsInTier:        skillPointsInTier,
 			KDA:                      r.Self.KDA,
@@ -1512,4 +1518,37 @@ func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, 
 		}
 	}
 	return hasRanked, hasUnranked
+}
+
+// buildCanonicalSkillBadge construit le label de tier et l'URL du badge à partir
+// de SkillSnapshot.TierCode (lowercase, ex: "platinum") et SubTier (1..6, nil = Onyx).
+// URL : /static/ranks/halo_infinite/120px-HINF-CSR_{Tier}{SubTier}.png
+// (même format que halo_infinite.AssetURLAdapter.CSRRankImageURL, sans import cyclique).
+func buildCanonicalSkillBadge(tierCode string, subTier *int) (*string, *string) {
+	tier := strings.ToLower(strings.TrimSpace(tierCode))
+	if tier == "" {
+		return nil, nil
+	}
+	// Capitalize first letter (Bronze, Silver, Gold, Platinum, Diamond, Onyx).
+	tier = strings.ToUpper(tier[:1]) + tier[1:]
+
+	var label string
+	var urlStr string
+
+	if strings.EqualFold(tier, "Onyx") {
+		label = "Onyx"
+		urlStr = "/static/ranks/halo_infinite/120px-HINF-CSR_Onyx.png"
+	} else {
+		st := 0
+		if subTier != nil {
+			st = *subTier
+		}
+		if st < 1 || st > 6 {
+			return nil, nil
+		}
+		label = fmt.Sprintf("%s %d", tier, st)
+		urlStr = fmt.Sprintf("/static/ranks/halo_infinite/120px-HINF-CSR_%s%d.png", tier, st)
+	}
+
+	return &label, &urlStr
 }
