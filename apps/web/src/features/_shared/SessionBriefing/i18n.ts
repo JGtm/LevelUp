@@ -9,11 +9,9 @@
 export type BriefingLocale = 'fr' | 'en'
 
 export interface BriefingTexts {
+  /** Libellé "Résultats" + helper pluralisation outcomes — utilisés dans la
+   *  Results bar de SquadVerdict (squad mode uniquement). */
   rail: {
-    sessionLabel: string
-    matchesUnit: string
-    avgMatchPrefix: string
-    avgMatchSuffix: string
     resultsLabel: string
   }
   verdict: {
@@ -31,24 +29,20 @@ export interface BriefingTexts {
     trendHint: string
     matchesPlayed: string
     totalDuration: string
+    avgMatchDuration: string
     fragsPerMatch: string
     deathsPerMatch: string
     assistsPerMatch: string
     accuracy: string
     lifespan: string
     perMin: string
-    perMatch: string
   }
-  /** Format pluriel pour les libellés outcomes — utilisé dans <ResultsRail> */
+  /** Format pluriel pour les libellés outcomes — utilisé dans la Results bar */
   pluralize: (count: number, singular: string) => string
 }
 
 const FR: BriefingTexts = {
   rail: {
-    sessionLabel: 'Ma session',
-    matchesUnit: 'matchs',
-    avgMatchPrefix: 'moy. ',
-    avgMatchSuffix: '/match',
     resultsLabel: 'Résultats',
   },
   verdict: {
@@ -66,13 +60,13 @@ const FR: BriefingTexts = {
     trendHint: "▲/▼ vs moyenne d'équipe sur la session",
     matchesPlayed: 'Matchs joués',
     totalDuration: 'Durée totale',
+    avgMatchDuration: 'Durée moyenne par match',
     fragsPerMatch: 'Frags par partie',
     deathsPerMatch: 'Morts par partie',
     assistsPerMatch: 'Assistances par partie',
     accuracy: 'Précision moyenne',
     lifespan: 'Durée de vie moyenne',
     perMin: '/min',
-    perMatch: '/match',
   },
   // FR : ajout "s" si count > 1, sauf "Abandon" qui prend aussi "s".
   // Toutes nos labels (Victoire/Défaite/Égalité/Abandon) suivent la même règle.
@@ -81,10 +75,6 @@ const FR: BriefingTexts = {
 
 const EN: BriefingTexts = {
   rail: {
-    sessionLabel: 'My session',
-    matchesUnit: 'matches',
-    avgMatchPrefix: 'avg ',
-    avgMatchSuffix: '/match',
     resultsLabel: 'Results',
   },
   verdict: {
@@ -102,13 +92,13 @@ const EN: BriefingTexts = {
     trendHint: '▲/▼ vs team average on this session',
     matchesPlayed: 'Matches played',
     totalDuration: 'Total duration',
+    avgMatchDuration: 'Avg duration per match',
     fragsPerMatch: 'Frags per match',
     deathsPerMatch: 'Deaths per match',
     assistsPerMatch: 'Assists per match',
     accuracy: 'Avg accuracy',
     lifespan: 'Avg lifespan',
     perMin: '/min',
-    perMatch: '/match',
   },
   // EN : pluralisation par "s" couvre nos labels outcomes (Win → Wins, Loss → Losses
   // est géré séparément si needed — ici on assume singulier sans -s).

@@ -1,10 +1,10 @@
 /**
- * KpiGrid — bande KPI 7 cards du SessionBriefing.
+ * KpiGrid — bande KPI 8 cards du SessionBriefing.
  *
- * Affiche : Matchs joués, Durée totale, Frags/match, Morts/match, Assists/match,
- * Précision, Vie moyenne. Trends ▲/▼ (vs teamAvgKpis quand fourni en mode squad)
- * sur les 5 cards évaluatives (frags, morts, assists, précision, vie). Morts =
- * lower_is_better (▲ quand value < team_avg).
+ * Affiche : Matchs joués, Durée totale, Durée moy/match, Frags/match, Morts/match,
+ * Assists/match, Précision, Vie moyenne. Trends ▲/▼ (vs teamAvgKpis quand fourni
+ * en mode squad) sur les 5 cards évaluatives (frags, morts, assists, précision,
+ * vie). Morts = lower_is_better (▲ quand value < team_avg).
  *
  * Si teamAvgKpis est null (mode solo), trends affichés en 'none' (rien).
  */
@@ -89,15 +89,18 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
           <span className="text-[10px] text-muted-foreground">{hint}</span>
         )}
       </div>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-8 gap-2">
         <KpiCell
           label={texts.grid.matchesPlayed}
           value={String(kpis.matches_count)}
-          sub={`${formatMmss(kpis.avg_match_seconds)}${texts.grid.perMatch}`}
         />
         <KpiCell
           label={texts.grid.totalDuration}
           value={formatDurationDhm(kpis.total_play_seconds)}
+        />
+        <KpiCell
+          label={texts.grid.avgMatchDuration}
+          value={formatMmss(kpis.avg_match_seconds)}
         />
         <KpiCell
           label={texts.grid.fragsPerMatch}

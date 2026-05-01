@@ -93,18 +93,21 @@ afterEach(() => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SessionBriefing — mode solo', () => {
-  it('rend la bande Résultats + KpiGrid sans verdict ni trends', () => {
+  it('rend KpiGrid 8 cards sans verdict band ni trends', () => {
     const kpis = makeKPIs()
     renderWithProviders(<SessionBriefing kpis={kpis} />)
 
-    // Rail descriptif
-    expect(screen.getByText(/Ma session/)).toBeInTheDocument()
-    expect(screen.getByText(/matchs/)).toBeInTheDocument()
-    // Pas de bande verdict en solo
+    // KPI grid : labels descriptifs visibles (cards Matchs / Durée / Durée moy)
+    expect(screen.getByText('Matchs joués')).toBeInTheDocument()
+    expect(screen.getByText('Durée totale')).toBeInTheDocument()
+    expect(screen.getByText('Durée moyenne par match')).toBeInTheDocument()
+    // Pas de bande verdict en solo (le score d'équipe et la Results bar n'y sont
+    // que dans la bande verdict, qui n'apparaît pas en solo)
     expect(screen.queryByText(/Score d'équipe/)).not.toBeInTheDocument()
-    // Pas de trend hint affiché en solo
+    expect(screen.queryByText(/Résultats/)).not.toBeInTheDocument()
+    // Pas de trend hint en solo
     expect(screen.queryByText(/vs moyenne d'équipe/)).not.toBeInTheDocument()
-    // KPI affichés
+    // KPI évaluatifs affichés
     expect(screen.getByText('Frags par partie')).toBeInTheDocument()
     expect(screen.getByText('8.70')).toBeInTheDocument()
   })
@@ -238,9 +241,18 @@ describe('SessionBriefing — trends', () => {
 })
 
 describe('SessionBriefing — outcomes pluralisation', () => {
-  it('rend "1 Victoire" (singulier) et "7 Défaites" (pluriel)', () => {
+  it('rend "1 Victoire" (singulier) et "7 Défaites" (pluriel) — squad mode', () => {
+    // La Results bar avec libellés outcomes est désormais dans SquadVerdict
+    // (squad mode uniquement) ; en solo, pas de Results bar.
     const kpis = makeKPIs({ outcomes: { wins: 1, losses: 7, ties: 0, dnf: 0 } })
-    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    const squad = {
+      score: makeSquadScore(),
+      players: [makePlayerCard('xuid-me', 'Spartan-117', 50, 'above')],
+      kpisByXuid: { 'xuid-me': kpis },
+      teamAvgKpis: makeKPIs(),
+      activeXuid: 'xuid-me',
+    }
+    renderWithProviders(<SessionBriefing kpis={kpis} squad={squad} />)
     expect(screen.getByText(/Victoire\b/)).toBeInTheDocument()
     expect(screen.getByText(/Défaites\b/)).toBeInTheDocument()
   })

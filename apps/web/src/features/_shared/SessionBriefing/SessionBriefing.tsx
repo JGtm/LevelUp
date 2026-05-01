@@ -1,17 +1,19 @@
 /**
  * SessionBriefing — composant principal.
  *
- * Fusion KPI bar + Squad verdict en un seul briefing structuré en 3 bandes :
- *   1. <ResultsRail>  : descriptif (Matchs / Durée / Résultats avec libellés)
- *   2. <SquadVerdict> : score d'équipe + N+1 cards joueurs cliquables (squad only)
- *   3. <KpiGrid>      : 7 cards KPI avec trends ▲/▼ vs moyenne d'équipe
+ * Structure :
+ *   - <SquadVerdict> (squad only) : team card + N+1 player cards + Results bar (right)
+ *   - <KpiGrid> (toujours) : 8 cards KPI (Matchs / Durée totale / Durée moy/match
+ *     / Frags / Morts / Assists / Précision / Vie). Trends ▲/▼ vs moyenne d'équipe
+ *     (squad mode uniquement).
  *
- * Mode solo : `squad` undefined → bande verdict masquée + trends ▲/▼ masqués
- * dans la grille (pas de référence sans escouade).
+ * Mode solo : pas de bande verdict, pas de Results bar (la Results bar n'est
+ * affichée qu'en mode squad — décision UX). Les KPIs descriptifs (Matchs joués,
+ * durées) sont dans la grille.
  *
- * Mode squad : `squad` fourni → verdict visible, drill-down click sur card joueur
- * recalcule la KpiGrid pour ce joueur via state local. La moyenne d'équipe
- * (`squad.teamAvgKpis`) reste la référence des trends quel que soit le drilled.
+ * Mode squad : verdict band visible, drill-down click sur card joueur recalcule
+ * la KpiGrid pour ce joueur via state local. La moyenne d'équipe reste la
+ * référence des trends quel que soit le drilled.
  *
  * Multi-titres : libellés outcomes via useOutcomeLabel() (outcomes.toml).
  */
@@ -22,7 +24,6 @@ import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { KpiGrid } from './KpiGrid'
-import { ResultsRail } from './ResultsRail'
 import { SquadVerdict } from './SquadVerdict'
 import { getBriefingTexts, type BriefingLocale } from './i18n'
 
@@ -80,8 +81,6 @@ export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <ResultsRail kpis={viewedKpis} texts={texts} />
-
       {squad && (
         <SquadVerdict
           squadScore={squad.score}
@@ -89,6 +88,7 @@ export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
           activeXuid={activeXuid}
           viewedXuid={viewedXuid}
           onSelectXuid={setViewedXuid}
+          kpis={viewedKpis}
           texts={texts}
         />
       )}
