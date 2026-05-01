@@ -210,33 +210,47 @@ SELECT
     pme.performance_score,
     COALESCE(pme.dominance_flag, 0)                   AS dominance_flag,
     COALESCE(pme.had_bot_teammate, FALSE)             AS had_bot_teammate,
-    COALESCE(pme.is_with_friends, FALSE)              AS is_with_friends
+    COALESCE(pme.is_with_friends, FALSE)              AS is_with_friends,
+    COALESCE(r.team_0_score, -1)                      AS team_0_score,
+    COALESCE(r.team_1_score, -1)                      AS team_1_score,
+    msr.rating_type                                   AS skill_rating_type,
+    msr.rating_value                                  AS skill_rating_value,
+    msr.tier                                          AS skill_tier,
+    msr.tier_fr                                       AS skill_tier_fr,
+    msr.sub_tier                                      AS skill_sub_tier,
+    msr.rating_delta                                  AS skill_delta,
+    msr.playlist_group                                AS skill_playlist_group
 FROM shared.match_participants p
 JOIN shared.v_match_full r ON r.match_id = p.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = p.match_id
+LEFT JOIN match_skill_rank msr ON msr.match_id = p.match_id
 WHERE p.xuid = ?`
 
 // scanPlayerMatchRow scanne une row SQL en canonical.PlayerMatchRow. Les
 // colonnes nullable utilisent sql.Null* puis sont converties en *T.
 func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.PlayerMatchRow, error) {
 	var (
-		matchID, mapID, mapName, mapNameFR                 string
-		playlistID, playlistName, playlistNameFR           string
-		variantID, variantName                             string
-		pairID, pairName, pairNameFR                       string
-		startTime                                          time.Time
-		durationSeconds, teamID                            int
-		outcomeCode                                        sql.NullInt64
-		kills, deaths, assists, headshotKills              int
-		timePlayedSeconds                                  int
-		dominanceFlag                                      int
-		isRanked, isFirefight                              bool
-		hadBotTeammate, isWithFriends                      bool
-		kda, accuracy, teamMMR, enemyMMR, performanceScore sql.NullFloat64
-		avgLifeSeconds                                     sql.NullFloat64
-		damageDealt, damageTaken                           sql.NullFloat64
-		sessionID                                          sql.NullInt64
-		sessionLabel                                       sql.NullString
+		matchID, mapID, mapName, mapNameFR                          string
+		playlistID, playlistName, playlistNameFR                    string
+		variantID, variantName                                      string
+		pairID, pairName, pairNameFR                                string
+		startTime                                                   time.Time
+		durationSeconds, teamID                                     int
+		outcomeCode                                                 sql.NullInt64
+		kills, deaths, assists, headshotKills                       int
+		timePlayedSeconds                                           int
+		dominanceFlag                                               int
+		isRanked, isFirefight                                       bool
+		hadBotTeammate, isWithFriends                               bool
+		kda, accuracy, teamMMR, enemyMMR, performanceScore          sql.NullFloat64
+		avgLifeSeconds                                              sql.NullFloat64
+		damageDealt, damageTaken                                    sql.NullFloat64
+		sessionID                                                   sql.NullInt64
+		sessionLabel                                                sql.NullString
+		team0Score, team1Score                                      int
+		skillRatingType, skillTier, skillTierFR, skillPlaylistGroup sql.NullString
+		skillRatingValue, skillDelta                                sql.NullFloat64
+		skillSubTier                                                sql.NullInt64
 	)
 	if err := rows.Scan(
 		&matchID, &startTime, &durationSeconds,
@@ -252,48 +266,60 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		&teamMMR, &enemyMMR,
 		&sessionID, &sessionLabel, &performanceScore,
 		&dominanceFlag, &hadBotTeammate, &isWithFriends,
+		&team0Score, &team1Score,
+		&skillRatingType, &skillRatingValue,
+		&skillTier, &skillTierFR, &skillSubTier, &skillDelta, &skillPlaylistGroup,
 	); err != nil {
 		return canonical.PlayerMatchRow{}, err
 	}
 	return projectPlayerMatchRow(playerMatchScanResult{
-		matchID:           matchID,
-		startTime:         startTime,
-		durationSeconds:   durationSeconds,
-		mapID:             mapID,
-		mapName:           mapName,
-		mapNameFR:         mapNameFR,
-		playlistID:        playlistID,
-		playlistName:      playlistName,
-		playlistNameFR:    playlistNameFR,
-		variantID:         variantID,
-		variantName:       variantName,
-		pairID:            pairID,
-		pairName:          pairName,
-		pairNameFR:        pairNameFR,
-		isRanked:          isRanked,
-		isFirefight:       isFirefight,
-		teamID:            teamID,
-		outcomeCode:       outcomeCode,
-		kills:             kills,
-		deaths:            deaths,
-		assists:           assists,
-		headshotKills:     headshotKills,
-		timePlayedSeconds: timePlayedSeconds,
-		dominanceFlag:     dominanceFlag,
-		hadBotTeammate:    hadBotTeammate,
-		isWithFriends:     isWithFriends,
-		kda:               kda,
-		accuracy:          accuracy,
-		avgLifeSeconds:    avgLifeSeconds,
-		damageDealt:       damageDealt,
-		damageTaken:       damageTaken,
-		teamMMR:           teamMMR,
-		enemyMMR:          enemyMMR,
-		performanceScore:  performanceScore,
-		sessionID:         sessionID,
-		sessionLabel:      sessionLabel,
-		xuid:              xuid,
-		gamertag:          gamertag,
+		matchID:            matchID,
+		startTime:          startTime,
+		durationSeconds:    durationSeconds,
+		mapID:              mapID,
+		mapName:            mapName,
+		mapNameFR:          mapNameFR,
+		playlistID:         playlistID,
+		playlistName:       playlistName,
+		playlistNameFR:     playlistNameFR,
+		variantID:          variantID,
+		variantName:        variantName,
+		pairID:             pairID,
+		pairName:           pairName,
+		pairNameFR:         pairNameFR,
+		isRanked:           isRanked,
+		isFirefight:        isFirefight,
+		teamID:             teamID,
+		outcomeCode:        outcomeCode,
+		kills:              kills,
+		deaths:             deaths,
+		assists:            assists,
+		headshotKills:      headshotKills,
+		timePlayedSeconds:  timePlayedSeconds,
+		dominanceFlag:      dominanceFlag,
+		hadBotTeammate:     hadBotTeammate,
+		isWithFriends:      isWithFriends,
+		kda:                kda,
+		accuracy:           accuracy,
+		avgLifeSeconds:     avgLifeSeconds,
+		damageDealt:        damageDealt,
+		damageTaken:        damageTaken,
+		teamMMR:            teamMMR,
+		enemyMMR:           enemyMMR,
+		performanceScore:   performanceScore,
+		sessionID:          sessionID,
+		sessionLabel:       sessionLabel,
+		team0Score:         team0Score,
+		team1Score:         team1Score,
+		skillRatingType:    skillRatingType,
+		skillRatingValue:   skillRatingValue,
+		skillTier:          skillTier,
+		skillTierFR:        skillTierFR,
+		skillSubTier:       skillSubTier,
+		skillDelta:         skillDelta,
+		skillPlaylistGroup: skillPlaylistGroup,
+		xuid:               xuid,
+		gamertag:           gamertag,
 	}), nil
 }
 
@@ -317,6 +343,14 @@ type playerMatchScanResult struct {
 	performanceScore                         sql.NullFloat64
 	sessionID                                sql.NullInt64
 	sessionLabel                             sql.NullString
+	team0Score, team1Score                   int
+	skillRatingType                          sql.NullString
+	skillRatingValue                         sql.NullFloat64
+	skillTier                                sql.NullString
+	skillTierFR                              sql.NullString
+	skillSubTier                             sql.NullInt64
+	skillDelta                               sql.NullFloat64
+	skillPlaylistGroup                       sql.NullString
 }
 
 // projectPlayerMatchRow construit la row canonique depuis les valeurs scannees.
@@ -331,6 +365,41 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 	var outcome canonical.Outcome
 	if s.outcomeCode.Valid && s.outcomeCode.Int64 != 0 {
 		outcome = outcomeFromInt(int(s.outcomeCode.Int64))
+	}
+
+	// Scores des équipes (team_0_score / team_1_score, -1 = absent via COALESCE).
+	var teams []canonical.TeamSnapshot
+	if s.team0Score >= 0 {
+		score := s.team0Score
+		teams = append(teams, canonical.TeamSnapshot{TeamID: 0, Score: &score})
+	}
+	if s.team1Score >= 0 {
+		score := s.team1Score
+		teams = append(teams, canonical.TeamSnapshot{TeamID: 1, Score: &score})
+	}
+
+	// SkillSnapshot depuis match_skill_rank (LEFT JOIN — nil si absent).
+	var skillSnap *canonical.SkillSnapshot
+	if s.skillRatingType.Valid && s.skillRatingType.String != "" {
+		snap := canonical.SkillSnapshot{
+			RatingType:    canonical.RatingType(strings.ToLower(s.skillRatingType.String)),
+			RatingValue:   nullFloatPtr(s.skillRatingValue),
+			Delta:         nullFloatPtr(s.skillDelta),
+			PlaylistGroup: nullStringPtr(s.skillPlaylistGroup),
+		}
+		if s.skillTier.Valid && s.skillTier.String != "" {
+			tier := strings.ToLower(s.skillTier.String)
+			snap.TierCode = &tier
+		}
+		if s.skillTierFR.Valid && s.skillTierFR.String != "" {
+			tierFR := s.skillTierFR.String
+			snap.TierCodeFR = &tierFR
+		}
+		if s.skillSubTier.Valid {
+			st := int(s.skillSubTier.Int64)
+			snap.SubTier = &st
+		}
+		skillSnap = &snap
 	}
 
 	// Bug #3 : damage_dealt/damage_taken sont DOUBLE en DB.
@@ -357,6 +426,7 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			IsRanked:        &s.isRanked,
 			IsPvE:           &s.isFirefight,
 			Outcome:         outcome,
+			Teams:           teams,
 		},
 		Self: canonical.MatchParticipant{
 			Identity:       canonical.PlayerIdentity{XUID: s.xuid, Gamertag: s.gamertag},
@@ -382,6 +452,7 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			IsWithFriends:    s.isWithFriends,
 			TeamMMR:          nullFloatPtr(s.teamMMR),
 			EnemyMMR:         nullFloatPtr(s.enemyMMR),
+			SkillSnapshot:    skillSnap,
 		},
 	}
 	return row

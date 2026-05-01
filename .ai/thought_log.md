@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-05-01] Delivery checklist — fix 2 tests Vitest HomePage pré-existants
+
+**Statut** : Complété
+
+**Décision technique** :
+- **`challengeEndpointCalls` (test "défis actifs détaillés")** : `HomePrestigeSection` (ajouté dans `3ff7302f`) appelle `prestigeApi.listActiveChallenges` → `/players/test-player/challenges?title_slug=...`. Le test interceptait `/challenges` sans discriminer les appels prestige des appels directs. Fix : vérifier `searchParams.has('title_slug')` dans le handler MSW — les appels prestige retournent `{ challenges: [], count: 0 }` sans incrémenter le compteur.
+- **`home-battle-pass-tier-card` (test "visuel battle pass")** : testid supprimé dans `4569516e feat(season-pass)`, remplacé par `BattlePassRewardCarousel` (testid `battle-pass-tier-card`). Fix : mise à jour du testid dans le test + titre du test ("rail horizontal" → "carrousel de paliers").
+- **Cause racine** : les deux tests n'avaient pas été mis à jour lors des commits qui ont changé le rendu. Pas de régression introduite par notre travail.
+
+**Résultats** : 95 fichiers, 771 tests — tous passent.
+
+**Prochaine étape** : aucune — côté Go (tests, vet) et côté frontend (vitest) tout est vert.
+
+## [2026-05-01] Fix tuiles match — score X-Y + SkillSnapshot (CSR/LUSR) + label Performance
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Score X-Y absent** : `playerMatchesBaseSelect` ne sélectionnait pas `team_0_score`/`team_1_score` → `Summary.Teams` toujours vide → `buildScoreLabelCanonical` retournait nil. Fix : ajout `COALESCE(r.team_0_score, -1)` + `COALESCE(r.team_1_score, -1)` dans le SELECT, population de `Summary.Teams` dans `projectPlayerMatchRow`.
+- **SkillSnapshot nil** : Aucun LEFT JOIN `match_skill_rank` dans la requête canonique → `Enrichment.SkillSnapshot` toujours nil → badge CSR/LUSR invisible. Fix : ajout `LEFT JOIN match_skill_rank msr ON msr.match_id = p.match_id` + 6 colonnes skill, construction du `canonical.SkillSnapshot` dans `projectPlayerMatchRow` (normalisation lowercase pour `TierCode` et `RatingType`).
+- **Label "Performance"** : Ajout `<span class="text-[10px]…">Performance</span>` sous le score dans `match-card.tsx`, avec layout `flex-col`.
+- **Thumbnails scan** : `ops.IndexMedia` appelle désormais `GenerateThumbnails` avant `BackfillThumbnailPaths` (thumbnails WebP générés automatiquement à chaque scan). Clips Madina97294 backfillés via Go one-shot.
+
+**Résultats** : `go test ./internal/platform/duckdb/...` OK (4s). `go vet ./...` propre. Build complet OK.
+
+**Prochaine étape** : Vérifier visuellement l'affichage du score et du badge CSR/LUSR dans les tuiles.
+
 ## [2026-05-01] Fix ART index DuckDB — seed Prestige via migration (boot-sync supprimé) + fix Shared fresh-DB
 
 **Statut** : Complété
@@ -59,6 +86,18 @@
 **Résultats** : 3 tests ListMaps passent, `go build ./...` OK. 122 maps visibles sans `populate-assets`.
 
 **Prochaine étape** : lancer `populate-assets --types map --langs fr-FR,en-US` pour enrichir les noms traduits.
+
+## [2026-05-01] Fix Asset Drawer — doublons FR/EN + images armes
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Doublons FR/EN** : `maps_catalog` a plusieurs UUIDs par map réelle, certains avec `asset_translations` (→ nom EN) et d'autres sans (→ fallback `name_canonical` FR). Fix : `SELECT DISTINCT ON (m.name_canonical)` + `ORDER BY m.name_canonical, at_en.name` — un seul rang par map, préférant la ligne avec traduction EN.
+- **Images armes** : 28 PNGs dans `static/weapons-assets/halo_infinite/`. Ajout de `weaponImageFiles map[string]string` (39 armes → 27 fichiers) + `WeaponImageURL(nameEN)` dans `adapter_asset_urls.go`. Pattern `WithWeaponImageURL` identique à `WithMapImageURL` dans `AssetService`. Câblage dans `server.go`.
+
+**Résultats** : `go build ./...` OK, 12 tests (ListMaps + ListWeapons + StaticAssetMetaRepo) passent.
+
+**Prochaine étape** : valider visuellement (plus de doublons, thumbnails armes présents).
 
 ## [2026-05-01] Fix Asset Drawer — "Erreur de chargement." (lock Windows metadata.duckdb)
 

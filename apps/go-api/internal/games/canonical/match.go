@@ -177,7 +177,8 @@ type PlayerMatchEnrichment struct {
 type SkillSnapshot struct {
 	RatingType     RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
 	RatingValue    *float64   // valeur brute du rating (CSR points, LUSR mu)
-	TierCode       *string    // code stable cross-titre (ex: "diamond", "onyx")
+	TierCode       *string    // code stable cross-titre (ex: "diamond", "onyx") — EN
+	TierCodeFR     *string    // libellé localisé FR (ex: "Or", "Platine") depuis match_skill_rank.tier_fr
 	SubTier        *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
 	Delta          *float64   // points gagnés/perdus ce match (positif/négatif)
 	PlaylistGroup  *string    // groupe normalisé (ex: "ranked-arena")
