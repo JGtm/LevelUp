@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -221,20 +222,30 @@ func NewRouter(
 	reg.WithAssetResolver(assetResolver)
 
 	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer (best-effort).
+	// Retry jusqu'à 3× (délai 500ms) pour absorber la fenêtre Air hot-reload où l'ancien
+	// processus tient encore le lock fichier Windows sur metadata.duckdb.
 	var assetMetaHandler *handlers.AssetMetadataHandler
-	if metaDB, err := platform_duckdb.OpenReadWriteShared(
-		titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
-	); err != nil {
-		slog.Warn("asset_metadata_db_unavailable", "err", err)
-	} else {
-		assetMetaHandler = handlers.NewAssetMetadataHandler(
-			service.NewAssetService(platform_duckdb.NewMetadataRepoFromDB(metaDB)),
-			func(slug string, cap titlePkg.Capability) bool {
-				d := titleRegistry.Get(slug)
-				return d != nil && d.HasCapability(cap)
-			},
-		)
-		slog.Info("asset_metadata_handler_ready", "title", titlePkg.DefaultSlug)
+	{
+		metaDBPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+		for attempt := 0; attempt < 3; attempt++ {
+			if attempt > 0 {
+				time.Sleep(500 * time.Millisecond)
+			}
+			metaDB, err := platform_duckdb.OpenReadWriteShared(metaDBPath)
+			if err != nil {
+				slog.Warn("asset_metadata_db_unavailable", "attempt", attempt+1, "err", err)
+				continue
+			}
+			assetMetaHandler = handlers.NewAssetMetadataHandler(
+				service.NewAssetService(platform_duckdb.NewMetadataRepoFromDB(metaDB)),
+				func(slug string, cap titlePkg.Capability) bool {
+					d := titleRegistry.Get(slug)
+					return d != nil && d.HasCapability(cap)
+				},
+			)
+			slog.Info("asset_metadata_handler_ready", "title", titlePkg.DefaultSlug, "attempt", attempt+1)
+			break
+		}
 	}
 
 	// Fichiers statiques (images maps, médailles, armes…)
@@ -404,11 +415,23 @@ func NewRouter(
 		r.Get("/assets/challenge-badge/{title_id}/{badge_id}", assetHandler.GetChallengeBadge)
 		r.Get("/assets/spartan/{image_type}/{title_id}/*", assetHandler.GetSpartanImage)
 
-		// Asset Drawer — listing metadata maps & armes (best-effort, désactivé si metaDB indisponible).
-		if assetMetaHandler != nil {
-			r.Get("/assets/{title_id}/maps", assetMetaHandler.ListMaps)
-			r.Get("/assets/{title_id}/weapons", assetMetaHandler.ListWeapons)
-		}
+		// Asset Drawer — toujours enregistré ; renvoie [] si metaDB indisponible (best-effort).
+		r.Get("/assets/{title_id}/maps", func(w http.ResponseWriter, r *http.Request) {
+			if assetMetaHandler == nil {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("[]"))
+				return
+			}
+			assetMetaHandler.ListMaps(w, r)
+		})
+		r.Get("/assets/{title_id}/weapons", func(w http.ResponseWriter, r *http.Request) {
+			if assetMetaHandler == nil {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("[]"))
+				return
+			}
+			assetMetaHandler.ListWeapons(w, r)
+		})
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
