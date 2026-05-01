@@ -17,14 +17,15 @@ var _ port.AssetMetaRepository = (*MetadataRepo)(nil)
 // Enrichissement optionnel : asset_translations (peuplé via populate-assets).
 // Si asset_translations est vide, name_canonical de maps_catalog est utilisé comme
 // name_en — le drawer affiche les noms même sans populate-assets.
-// search filtre par nom anglais (case-insensitive, LIKE %search%). Vide = tout.
+// search filtre par nom EN ou FR (case-insensitive, LIKE %search%). Vide = tout.
 func (r *MetadataRepo) ListMapsByTitle(
 	ctx context.Context,
 	titleID string,
 	search string,
 ) ([]canonical.AssetMeta, error) {
 	query := `
-		SELECT m.map_asset_id                                     AS asset_id,
+		SELECT DISTINCT ON (m.name_canonical)
+		       m.map_asset_id                                     AS asset_id,
 		       COALESCE(at_en.name, m.name_canonical, '')         AS name_en,
 		       COALESCE(at_fr.name, '')                           AS name_fr
 		FROM maps_catalog m
@@ -38,11 +39,14 @@ func (r *MetadataRepo) ListMapsByTitle(
 		   AND at_fr.lang       = 'fr-FR'
 		WHERE m.title_slug = ?
 		  AND COALESCE(m.name_canonical, '') NOT LIKE '% - %'
-		  AND (? = '' OR lower(COALESCE(at_en.name, m.name_canonical, '')) LIKE lower('%' || ? || '%'))
-		ORDER BY COALESCE(at_en.name, m.name_canonical, '')
+		  AND COALESCE(m.name_canonical, '') NOT LIKE '% sur %'
+		  AND (? = ''
+		       OR lower(COALESCE(at_en.name, m.name_canonical, '')) LIKE lower('%' || ? || '%')
+		       OR lower(COALESCE(at_fr.name, ''))                    LIKE lower('%' || ? || '%'))
+		ORDER BY m.name_canonical, at_en.name
 	`
 
-	rows, err := r.meta.Query(ctx, query, titleID, search, search)
+	rows, err := r.meta.Query(ctx, query, titleID, search, search, search)
 	if err != nil {
 		return nil, fmt.Errorf("ListMapsByTitle: %w", err)
 	}
@@ -60,7 +64,7 @@ func (r *MetadataRepo) ListMapsByTitle(
 }
 
 // ListWeaponsByTitle retourne les armes avec leurs traductions EN/FR.
-// search filtre par nom anglais (case-insensitive, LIKE %search%). Vide = tout.
+// search filtre par nom EN ou FR (case-insensitive, LIKE %search%). Vide = tout.
 // titleID est accepté pour respecter l'interface — weapon_labels n'est pas segmenté par titre en V1.
 func (r *MetadataRepo) ListWeaponsByTitle(
 	ctx context.Context,
@@ -72,11 +76,13 @@ func (r *MetadataRepo) ListWeaponsByTitle(
 		       name_en,
 		       COALESCE(name_fr, '')        AS name_fr
 		FROM weapon_labels
-		WHERE ? = '' OR lower(name_en) LIKE lower('%' || ? || '%')
+		WHERE ? = ''
+		   OR lower(name_en)                LIKE lower('%' || ? || '%')
+		   OR lower(COALESCE(name_fr, ''))  LIKE lower('%' || ? || '%')
 		ORDER BY name_en
 	`
 
-	rows, err := r.meta.Query(ctx, query, search, search)
+	rows, err := r.meta.Query(ctx, query, search, search, search)
 	if err != nil {
 		return nil, fmt.Errorf("ListWeaponsByTitle: %w", err)
 	}

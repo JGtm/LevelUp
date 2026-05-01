@@ -16,6 +16,50 @@ const TitleSlug = "halo_infinite"
 // fait des UUID bruts (non utilisables comme nom de fichier statique).
 var uuidRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+// weaponImageFiles mappe le name_en d'une arme vers le stem du fichier PNG
+// dans static/weapons-assets/halo_infinite/. Armes sans entrée → ImageURL vide.
+var weaponImageFiles = map[string]string{
+	"Grenade":               "Grenade",
+	"Frag Grenade":          "Grenade",
+	"Plasma Grenade":        "Grenade",
+	"Dynamo Grenade":        "Grenade",
+	"Melee":                 "Melee",
+	"Bandit Evo":            "Bandit",
+	"M392 Bandit":           "Bandit",
+	"BR75":                  "BR75",
+	"Cindershot":            "Cremator",
+	"CQS48 Bulldog":         "Bulldog",
+	"Disruptor":             "Disruptor",
+	"Fuel Rod SPNKr":        "M41",
+	"M41 SPNKr":             "M41",
+	"Gravity Hammer":        "Hammer",
+	"Diminisher of Hope":    "Hammer",
+	"Rushdown Hammer":       "Hammer",
+	"Heatwave":              "Heatwave",
+	"MA40 AR":               "MA40",
+	"MA5K Avenger":          "Storm",
+	"Mangler":               "Mangler",
+	"MLRS-2 Hydra":          "Hydra",
+	"Mk51 Sidekick":         "Sidekick",
+	"Mutilator":             "Mutilator",
+	"Needler":               "Needler-1",
+	"Plasma Pistol":         "Plasma",
+	"Pulse Carbine":         "Carabine",
+	"Vestige Carbine":       "Carabine",
+	"Ravager":               "Ravager",
+	"S7 Sniper":             "Sniper-S7",
+	"Sentinel Beam":         "Sentinel",
+	"Shock Rifle":           "Shock-rifle",
+	"Shock Rifle (Ranked)":  "Shock-rifle",
+	"Skewer":                "Skewer",
+	"Stalker Rifle":         "Stalker",
+	"VK78 Commando":         "Commando",
+	"Energy Sword":          "Sword",
+	"Duelist Energy Sword":  "Sword",
+	"Elite Bloodblade":      "Sword",
+	"Infected Energy Sword": "Sword",
+}
+
 // mapPNGNames contient les noms de maps (EN) dont l'image locale est au format PNG.
 // Tous les autres noms utilisent le format JPEG par défaut.
 var mapPNGNames = map[string]struct{}{
@@ -69,6 +113,16 @@ func (a *AssetURLAdapter) MapImageURL(mapName string) string {
 		ext = ".png"
 	}
 	return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
+}
+
+// WeaponImageURL retourne l'URL de l'image d'une arme à partir de son name_en.
+// Retourne "" si aucun fichier ne correspond au nom.
+func (a *AssetURLAdapter) WeaponImageURL(nameEN string) string {
+	stem, ok := weaponImageFiles[nameEN]
+	if !ok {
+		return ""
+	}
+	return static.URL(static.KindWeapon, a.titleSlug, stem, ".png")
 }
 
 // MedalImageURL retourne l'URL de l'icône d'une médaille à partir de son ID numérique.

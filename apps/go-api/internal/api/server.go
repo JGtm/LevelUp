@@ -250,6 +250,9 @@ func NewRouter(
 				service.NewAssetService(service.NewStaticAssetMetaRepo(maps, weapons)).
 					WithMapImageURL(func(_ string, nameEN string) string {
 						return hiAssetURL.MapImageURL(nameEN)
+					}).
+					WithWeaponImageURL(func(_ string, nameEN string) string {
+						return hiAssetURL.WeaponImageURL(nameEN)
 					}),
 				func(slug string, cap titlePkg.Capability) bool {
 					d := titleRegistry.Get(slug)
