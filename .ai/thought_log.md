@@ -1,5 +1,62 @@
 # Thought Log
 
+## [2026-05-01] Fix Asset Drawer — maps et armes invisibles (régression)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Bug racine** : `ListMapsByTitle` faisait `FROM map_images_registry INNER JOIN asset_translations`. Si `map_images_registry` est vide (images pas encore mises en cache via `populate-assets`), la query retourne 0 lignes. Toutes les maps disparaissaient même si `asset_translations` était peuplée.
+- **Fix** : remplacé par `FROM asset_translations LEFT JOIN asset_translations` (traductions FR). `map_images_registry` supprimée du chemin de listing ; `image_url` est injectée programmatiquement par `AssetService.ListMaps()` de toute façon.
+- **`Kinds()` hors du chemin** : confirmé que `AssetMappingSet.Kinds()` (TOML mappings modes/playlists) n'est pas dans la pipeline de l'Asset Drawer.
+- **Tests** : `metadata_repo_assets_list_test.go` avait `//go:build integration` à tort (tous les autres tests DuckDB du package sont sans tag). Tag supprimé, helper `openAssetMemDB` ajouté localement (car `openMemDB` de `repo_test.go` reste taggué integration). Nouveau test `TestListMapsByTitle_EmptyRegistry_StillReturnsNames` qui aurait catchté la régression.
+- **Compile-time check** : `var _ port.AssetMetaRepository = (*MetadataRepo)(nil)` ajouté.
+- **Label** : "Référentiel" → "Référentiels" dans TOML + TS généré.
+
+**Résultats** : 5 tests passent, `go build ./...` OK.
+
+**Prochaine étape** : vérifier que `asset_translations` est bien peuplée (fetch KindAssetTranslation depuis DiscoveryUGC) — si la table est vide, le drawer affichera "Aucune map trouvée." même avec le fix.
+
+## [2026-05-01] Prestige — domain.ChallengeItem + tuning.toml finalisés
+
+**Statut** : Complété
+
+**Décision technique** :
+- `domain/home.go` : `IsSquad *bool \`json:"is_squad,omitempty"\`` ajouté sur `ChallengeItem`. `omitempty` → les défis Halo saison (jamais escouade) n'émettent pas le champ. Les futurs builders Prestige→home renseigneront `true` pour les SquadChallenge.
+- `config/prestige/tuning.toml` : sections `[expiration]` et `[match_count]` ajoutées avec les valeurs validées (Normal 48h/5m, Heroic 168h/15m, Legendary 336h/30m, Mythic 720h/50m). Cohérentes avec `DefaultTuning()`.
+
+**Résultats** : `go build ./...` OK.
+
+**Prochaine étape** : aucune — le système Prestige (modèle, évaluateur, service, TOML, domain, frontend) est complet pour la feature last_n_matches + expiration par tier + badge escouade.
+
+## [2026-05-01] Prestige — câblage service + badge escouade home page
+
+**Statut** : Complété
+
+**Décision technique** :
+- `service.go / CreateChallenge` : pour `WindowLastNMatches`, dérive `WindowValue` depuis `Tuning.RequiredMatchCount(tier)` si non fourni par le caller. Calcule `ExpiresAt = now + ExpirationDurationFor(tier, mode)` (nil pour mode libre). Import `strconv` ajouté.
+- `api/types.ts` : `is_squad?: boolean | null` ajouté sur `ChallengeItem` — champ optionnel, non-breaking pour l'existant.
+- `HomeChallengesList.tsx` : badge "Escouade" conditionnel (`item.is_squad`) à côté du titre. Style : `border-muted-foreground/30`, `text-muted-foreground`, uppercase — pas de couleur hex ni Tailwind de couleur sémantique (conforme règle 20).
+
+**Résultats** : `go build` OK, `go test ./internal/prestige/...` OK, `tsc --noEmit` OK.
+
+**Prochaine étape** : le handler API qui construit `ChallengeItem` doit renseigner `is_squad` selon l'origine du défi (perso vs escouade) ; mettre à jour `config/prestige/tuning.toml` avec les sections `[expiration]` et `[match_count]`.
+
+## [2026-05-01] Prestige — fenêtres last_n_matches + expiration par tier
+
+**Statut** : Complété
+
+**Décision technique** :
+- `WindowLastNMatches` ("last_n_matches") remplace `WindowRollingDays` comme fenêtre de référence pour les défis threshold. L'unité de mesure est le match (atomique, immuable), pas le temps.
+- `ExpiresAt *time.Time` ajouté sur `Challenge` : timestamp d'expiration calculé à la création selon tier + mode, consulté par l'évaluateur pour toute WindowType (source unique de vérité).
+- `ExpirationTuning` + `MatchCountTuning` dans `tuning.go` (TOML) : Normal 48h/5m, Heroic 168h/15m, Legendary 336h/30m, Mythic 720h/50m. Mode libre = 0 (pas de timer).
+- `EvaluateCumulative` : plus de fenêtre matchs — uniquement le timer. La cible est testée avant l'expiration (atteinte pile à la deadline → completed).
+- `isExpirationPassed` unifie la vérification : priorité à `ExpiresAt`, fallback backward compat `WindowDeadline` + `WindowValue` ISO.
+- `WindowRollingDays` conservé mais marqué déprécié dans le code.
+
+**Résultats** : `go build ./internal/prestige/...` OK, `go test ./internal/prestige/...` OK.
+
+**Prochaine étape** : câbler `ExpirationDurationFor` dans le service de création de défi pour alimenter `ExpiresAt` à la création ; mettre à jour `config/prestige/tuning.toml` avec les nouvelles sections.
+
 ## [2026-05-01] Phase H.bis + Frontend match_context — câblage complet catalogue & escouade
 
 **Statut** : Complété

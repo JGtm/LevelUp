@@ -1,14 +1,27 @@
-//go:build integration
-
 package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"testing"
+
+	_ "github.com/duckdb/duckdb-go/v2"
 )
 
+// openAssetMemDB ouvre une DB DuckDB in-memory pour les tests de l'Asset Drawer.
+// Défini localement : repo_test.go est taggué //go:build integration.
+func openAssetMemDB(t *testing.T) *DB {
+	t.Helper()
+	sqlDB, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("openAssetMemDB: %v", err)
+	}
+	t.Cleanup(func() { sqlDB.Close() })
+	return &DB{sqlDB: sqlDB, path: ":memory:"}
+}
+
 func TestListMapsByTitle_All(t *testing.T) {
-	db := openMemDB(t)
+	db := openAssetMemDB(t)
 	repo := NewMetadataRepoFromDB(db)
 	ctx := context.Background()
 
@@ -24,7 +37,7 @@ func TestListMapsByTitle_All(t *testing.T) {
 }
 
 func TestListMapsByTitle_Search(t *testing.T) {
-	db := openMemDB(t)
+	db := openAssetMemDB(t)
 	repo := NewMetadataRepoFromDB(db)
 	ctx := context.Background()
 
@@ -45,24 +58,62 @@ func TestListMapsByTitle_Search(t *testing.T) {
 	}
 }
 
-func TestListMapsByTitle_UnknownTitle(t *testing.T) {
-	db := openMemDB(t)
+// TestListMapsByTitle_EmptyRegistry_StillReturnsNames est le test de régression pour le bug
+// où l'INNER JOIN sur map_images_registry retournait 0 lignes quand la table était vide
+// (images pas encore mises en cache via populate-assets). Les noms doivent s'afficher
+// même si aucune image n'est en cache.
+func TestListMapsByTitle_EmptyRegistry_StillReturnsNames(t *testing.T) {
+	db := openAssetMemDB(t)
 	repo := NewMetadataRepoFromDB(db)
 	ctx := context.Background()
 
-	setupAssetDrawerFixtures(t, db, ctx)
+	// On crée les tables SANS map_images_registry peuplé (table vide).
+	ddl := []string{
+		`CREATE TABLE map_images_registry (
+			title_id   VARCHAR NOT NULL,
+			map_id     VARCHAR NOT NULL,
+			local_path VARCHAR NOT NULL DEFAULT '',
+			fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			PRIMARY KEY (title_id, map_id)
+		)`,
+		`CREATE TABLE asset_translations (
+			asset_id   VARCHAR NOT NULL,
+			asset_type VARCHAR NOT NULL,
+			lang       VARCHAR NOT NULL,
+			name       VARCHAR NOT NULL DEFAULT '',
+			description VARCHAR NOT NULL DEFAULT '',
+			fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			PRIMARY KEY (asset_id, asset_type, lang)
+		)`,
+		`CREATE TABLE weapon_labels (weapon_id UBIGINT PRIMARY KEY, name_en VARCHAR, name_fr VARCHAR)`,
+	}
+	for _, q := range ddl {
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatalf("DDL: %v", err)
+		}
+	}
+	// Traductions présentes, mais map_images_registry est VIDE.
+	fixtures := []string{
+		`INSERT INTO asset_translations VALUES ('map-001','map','en-US','Aquarius','',now())`,
+		`INSERT INTO asset_translations VALUES ('map-002','map','en-US','Breaker','',now())`,
+	}
+	for _, q := range fixtures {
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatalf("fixture: %v", err)
+		}
+	}
 
-	maps, err := repo.ListMapsByTitle(ctx, "unknown_title", "")
+	maps, err := repo.ListMapsByTitle(ctx, "halo_infinite", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(maps) != 0 {
-		t.Errorf("titre inconnu: attendu 0, obtenu %d", len(maps))
+	if len(maps) != 2 {
+		t.Errorf("registry vide: attendu 2 maps via asset_translations, obtenu %d", len(maps))
 	}
 }
 
 func TestListWeaponsByTitle_All(t *testing.T) {
-	db := openMemDB(t)
+	db := openAssetMemDB(t)
 	repo := NewMetadataRepoFromDB(db)
 	ctx := context.Background()
 
@@ -78,7 +129,7 @@ func TestListWeaponsByTitle_All(t *testing.T) {
 }
 
 func TestListWeaponsByTitle_Search(t *testing.T) {
-	db := openMemDB(t)
+	db := openAssetMemDB(t)
 	repo := NewMetadataRepoFromDB(db)
 	ctx := context.Background()
 

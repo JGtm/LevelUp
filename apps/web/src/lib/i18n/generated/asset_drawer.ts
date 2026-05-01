@@ -6,7 +6,7 @@ export const assetDrawerManifest = {
   "asset_drawer.empty.loading": { fr: "Chargement…", en: "Loading…" },
   "asset_drawer.empty.maps": { fr: "Aucune map trouvée.", en: "No map found." },
   "asset_drawer.empty.weapons": { fr: "Aucune arme trouvée.", en: "No weapon found." },
-  "asset_drawer.mini_tab": { fr: "Référentiel", en: "Reference" },
+  "asset_drawer.mini_tab": { fr: "Référentiels", en: "References" },
   "asset_drawer.search.placeholder": { fr: "Rechercher…", en: "Search…" },
   "asset_drawer.tab.maps": { fr: "Cartes", en: "Maps" },
   "asset_drawer.tab.weapons": { fr: "Armes", en: "Weapons" },
