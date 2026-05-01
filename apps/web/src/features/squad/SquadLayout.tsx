@@ -24,18 +24,15 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { useFiltersPreview } from '@/features/filters/queries'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { AddFriendModal } from '@/features/friends/AddFriendFlow'
 import { getSeriesColors, tokenCssVar } from '@/lib/accessibility'
-import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import { getSquadText } from './i18n'
-import { SQUAD_KPI_METRICS, type SquadMetric } from './metrics'
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
-import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest } from '@/lib/api/types'
+import type { TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 
@@ -66,80 +63,6 @@ function formatError(err: unknown): string {
     try { return JSON.stringify(err) } catch { return 'Erreur non sérialisable' }
   }
   return String(err)
-}
-
-// ─── Helpers d'affichage ──────────────────────────────────────────────────────
-
-function filterAvailableMetrics(
-  metrics: readonly SquadMetric[],
-  mappings: FieldMappingsResponse | undefined,
-  surface: string,
-): SquadMetric[] {
-  if (!mappings) return [...metrics]
-  const slug = mappings.title_slug
-  return metrics.filter((m) => {
-    const present = !!mappings.fields[m.key]
-    if (!present) {
-      log.warn(
-        `field_missing:${slug}:${m.key}:${surface}`,
-        `FieldKey "${m.key}" absent du fields.toml de ${slug} (surface=${surface}) — métrique masquée.`,
-      )
-    }
-    return present
-  })
-}
-
-function formatMetricValue(value: number | null, format: SquadMetric['format']): string {
-  if (value == null) return '-'
-  switch (format) {
-    case 'integer': return String(Math.round(value))
-    case 'percent': return `${value.toFixed(1)}%`
-    case 'ratio': return value.toFixed(2)
-    case 'per_game': return value.toFixed(2)
-  }
-}
-
-function composeMetricLabel(
-  metric: SquadMetric,
-  mappings: FieldMappingsResponse | undefined,
-  perGameSuffix: string,
-): string {
-  const baseLabel = mappings?.fields[metric.key]?.label ?? metric.key
-  if (metric.format === 'per_game') return `${baseLabel}${perGameSuffix}`
-  return baseLabel
-}
-
-// ─── KPI Block ────────────────────────────────────────────────────────────────
-
-interface KPICardProps { label: string; value: string }
-function KPICard({ label, value }: KPICardProps) {
-  return (
-    <div className="flex flex-col gap-1 rounded-lg border p-3">
-      <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
-      <span className="text-xl font-bold">{value}</span>
-    </div>
-  )
-}
-
-interface KPIBlockProps { title: string; kpis: TeammateKPIs; color?: string; perGameSuffix: string }
-function KPIBlock({ title, kpis, color = 'text-muted-foreground', perGameSuffix }: KPIBlockProps) {
-  const { data: mappings } = useFieldMappings()
-  const metrics = filterAvailableMetrics(SQUAD_KPI_METRICS, mappings, 'kpi')
-  if (metrics.length === 0) return null
-  return (
-    <div>
-      <h3 className={`text-sm font-medium mb-2 ${color}`}>{title}</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {metrics.map((m) => (
-          <KPICard
-            key={m.key}
-            label={composeMetricLabel(m, mappings, perGameSuffix)}
-            value={formatMetricValue(m.extract(kpis), m.format)}
-          />
-        ))}
-      </div>
-    </div>
-  )
 }
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -431,25 +354,10 @@ export function SquadLayout() {
 
       {!isLoading && !isError && data && (
         <div className="flex flex-col gap-6 p-6">
-          {/* KPI block si coéquipier(s) sélectionné(s) */}
-          {selectedRows.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle>{t.title.statsWith}</CardTitle></CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                {selectedRows.map((row, i) => (
-                  <KPIBlock
-                    key={row.gamertag}
-                    title={t.table.withTeammate(row.gamertag)}
-                    kpis={row.with_kpis}
-                    color={`text-[${CHART_COLORS[i % CHART_COLORS.length]}]`}
-                    perGameSuffix={t.units.perGame}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
           {/* SessionBriefing — KPIs + verdict squad + drill-down click */}
+          {/* Remplace l'ancienne section "Synergies avec les coéquipiers sélectionnés"
+             (KPIBlock par teammate) — meme info accessible via le drill-down click sur
+             la card du joueur dans la bande verdict. */}
           {data?.header?.solo_kpis && (() => {
             const header = data.header
             const mainGT = data.main_player ?? ''
