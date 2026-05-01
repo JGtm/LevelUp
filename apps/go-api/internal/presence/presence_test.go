@@ -366,7 +366,10 @@ func TestSteamPoller_Active(t *testing.T) {
 	ctx := context.Background()
 	url := srv.URL + "?key=test&steamids=76561198000000000"
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	resp, _ := p.client.Do(req)
+	resp, err := p.client.Do(req)
+	if err != nil {
+		t.Fatalf("client.Do: %v", err)
+	}
 	defer resp.Body.Close()
 
 	var result steamAPIResponse
@@ -395,7 +398,10 @@ func TestSteamPoller_Inactive(t *testing.T) {
 	defer srv.Close()
 
 	var result steamAPIResponse
-	resp, _ := http.Get(srv.URL)
+	resp, err := http.Get(srv.URL) //nolint:noctx
+	if err != nil {
+		t.Fatalf("http.Get: %v", err)
+	}
 	defer resp.Body.Close()
 	_ = json.NewDecoder(resp.Body).Decode(&result)
 
@@ -418,7 +424,10 @@ func TestSteamPoller_EmptyPlayers(t *testing.T) {
 	defer srv.Close()
 
 	var result steamAPIResponse
-	resp, _ := http.Get(srv.URL)
+	resp, err := http.Get(srv.URL) //nolint:noctx
+	if err != nil {
+		t.Fatalf("http.Get: %v", err)
+	}
 	defer resp.Body.Close()
 	_ = json.NewDecoder(resp.Body).Decode(&result)
 
