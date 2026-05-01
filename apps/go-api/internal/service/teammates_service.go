@@ -37,9 +37,16 @@ type TeammatesService struct {
 	friendGamertags FriendGamertagsResolver
 	// playerMatchesRepo (P4.3 finale) : loader canonical-only. CÃƒÂ¢blÃƒÂ© en DI
 	// universellement via registry.go (ServiceRegistry.playerMatchesAdapterFor).
+	// IMPORTANT : cet adapteur est BOUND au gamertag du joueur principal (ignore
+	// l'arg gamertag). Pour charger les canonical rows d'un coequipier different,
+	// utiliser squadLoader.LoadFor (resolution dynamique par gamertag).
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// squadLoader (optionnel) : utilise pour charger les canonical rows des
+	// coequipiers (mode squad du SessionBriefing). Si nil, le briefing degrade
+	// en mode solo (SoloKPIs uniquement, pas de squad verdict).
+	squadLoader SquadV2Loader
 }
 
 // NewTeammatesService crÃƒÂ©e un TeammatesService.
@@ -56,6 +63,14 @@ func (s *TeammatesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposito
 	s.playerMatchesRepo = repo
 	s.titleSlug = titleSlug
 	s.gamertag = gamertag
+	return s
+}
+
+// WithSquadLoader injecte le loader per-gamertag utilise pour le SessionBriefing
+// mode squad (chargement des canonical rows de chaque coequipier en parallele
+// via TitlePlayerResolver). Si non cable, le briefing degrade en mode solo.
+func (s *TeammatesService) WithSquadLoader(loader SquadV2Loader) *TeammatesService {
+	s.squadLoader = loader
 	return s
 }
 
@@ -212,7 +227,8 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	sessionMatchIDs map[string]bool,
 ) *domain.SquadHeader {
 	// Mode solo : SoloKPIs uniquement (pas de verdict squad).
-	if len(selectedGamertags) == 0 {
+	// Egalement le cas si squadLoader pas cable (degradation gracieuse).
+	if len(selectedGamertags) == 0 || s.squadLoader == nil {
 		if len(mainFiltered) == 0 {
 			return nil
 		}
@@ -263,22 +279,29 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 // loadTeammatesCanonicalParallel charge les canonical PlayerMatchRow pour
 // chaque gamertag en parallele via errgroup. Capability absente est ignoree
 // silencieusement (le teammate sera juste absent du resultat).
+//
+// Utilise squadLoader.LoadFor (resolution dynamique par gamertag) plutot que
+// playerMatchesRepo (qui est bound au main et ignore l'arg gamertag).
+// Si squadLoader est nil, retourne une map vide → mode solo dans le briefing.
 func (s *TeammatesService) loadTeammatesCanonicalParallel(
 	ctx context.Context,
 	gamertags []string,
 ) (map[string][]canonical.PlayerMatchRow, error) {
+	if s.squadLoader == nil {
+		return map[string][]canonical.PlayerMatchRow{}, nil
+	}
 	g, gctx := errgroup.WithContext(ctx)
 	var mu sync.Mutex
 	out := make(map[string][]canonical.PlayerMatchRow, len(gamertags))
 	for _, gt := range gamertags {
 		gt := gt
 		g.Go(func() error {
-			rows, err := s.playerMatchesRepo.LoadPlayerMatches(gctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+			rows, err := s.squadLoader.LoadFor(gctx, s.titleSlug, gt, port.PlayerMatchFilters{})
 			if err != nil {
 				if errors.Is(err, games.ErrCapabilityNotSupported) {
 					return nil
 				}
-				return fmt.Errorf("LoadPlayerMatches(%s): %w", gt, err)
+				return fmt.Errorf("LoadFor(%s): %w", gt, err)
 			}
 			mu.Lock()
 			out[gt] = rows

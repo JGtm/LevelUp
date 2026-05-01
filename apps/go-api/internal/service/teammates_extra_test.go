@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/port"
 )
 
 // ---------- computeKPIsFromSquadMatches ----------
@@ -594,6 +595,81 @@ func TestTeammatesService_GetPage_HeaderSoloKPIs_NoSelectedGamertags(t *testing.
 	}
 	if len(resp.Header.PlayerCards) != 0 {
 		t.Errorf("PlayerCards should be empty in solo mode, got %d", len(resp.Header.PlayerCards))
+	}
+}
+
+// directRowsMainMock retourne directement des canonical.PlayerMatchRow via
+// LoadPlayerMatches (utile pour les tests qui veulent contrôler XUID/Identity
+// du main, contrairement au mockSynthPlayerMatches qui ne set pas Identity).
+type directRowsMainMock struct{ rows []canonical.PlayerMatchRow }
+
+func (m *directRowsMainMock) LoadPlayerMatches(_ context.Context, _, _ string, _ port.PlayerMatchFilters) ([]canonical.PlayerMatchRow, error) {
+	return m.rows, nil
+}
+func (m *directRowsMainMock) InvalidatePlayer(_, _ string) {}
+
+func TestTeammatesService_GetPage_HeaderSquadMode_DrillDownDataIsolated(t *testing.T) {
+	// Ce test cadenasse le bug du PlayerMatchesAdapter bound-to-main : sans
+	// SquadV2Loader, charger les rows d'un teammate retournait silencieusement
+	// les rows du main → kpis_by_xuid contenait une seule entree (le main) et
+	// le drill-down click n'avait aucun effet. Avec WithSquadLoader, chaque
+	// teammate a ses propres canonical rows → entree distincte dans kpis_by_xuid.
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	mainRows := []canonical.PlayerMatchRow{
+		rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80),
+	}
+	teammateRows := []canonical.PlayerMatchRow{
+		rowWithStatsXUID("xuid-friend1", "m1", t0, canonical.OutcomeWin, 6, 8, 3, 600, 40, 50),
+	}
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    mainRows,
+			"friend1": teammateRows,
+		},
+	}
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{{XUID: "xuid-friend1", Gamertag: "friend1", GamesTogether: 5}},
+		synthRows: func() []legacymatch.SynthesisMatchRow {
+			tp := 600
+			return []legacymatch.SynthesisMatchRow{
+				{MatchID: "m1", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5, TimePlayedSecs: &tp, StartTime: t0},
+			}
+		}(),
+	}
+	// playerMatchesRepo doit retourner des canonical rows AVEC Identity.XUID
+	// pour que extractSquadXUIDs trouve le xuid du main (cf. fix bound-to-main).
+	mainMock := &directRowsMainMock{rows: mainRows}
+	svc := NewTeammatesService(repo, nil).
+		WithPlayerMatchesRepo(mainMock, "halo_infinite", "main").
+		WithSquadLoader(loader)
+	resp, err := svc.GetPage(context.Background(), "xuid-main", domain.TeammatesQueryRequest{
+		SelectedGamertags: []string{"friend1"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Header == nil {
+		t.Fatal("Header should be non-nil in squad mode")
+	}
+	// Doit contenir 2 entrees (main + friend1) avec des KPIs distincts
+	if len(resp.Header.KPIsByXUID) != 2 {
+		t.Fatalf("KPIsByXUID: want 2 entries (main + friend1), got %d — bug bound-to-main probable", len(resp.Header.KPIsByXUID))
+	}
+	mainKPIs := resp.Header.KPIsByXUID["xuid-main"]
+	friendKPIs := resp.Header.KPIsByXUID["xuid-friend1"]
+	if mainKPIs == nil || friendKPIs == nil {
+		t.Fatalf("Both xuids should have KPIs: main=%v friend=%v", mainKPIs, friendKPIs)
+	}
+	// Les KPIs doivent etre distincts (sinon le drill-down est cassé)
+	if mainKPIs.KillsPerGame == friendKPIs.KillsPerGame {
+		t.Errorf("KillsPerGame identique (%v) → bug bound-to-main : les rows teammate sont les rows main",
+			mainKPIs.KillsPerGame)
+	}
+	// PlayerCards doit avoir XUID renseigne pour chaque entree
+	for _, c := range resp.Header.PlayerCards {
+		if c.XUID == "" {
+			t.Errorf("PlayerScoreCard %q : XUID vide → drill-down click sera disabled", c.Gamertag)
+		}
 	}
 }
 
