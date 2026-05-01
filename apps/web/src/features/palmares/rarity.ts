@@ -42,6 +42,8 @@ export interface RarityStyle {
   badge: string
   /** Halo lumineux léger sur la carte (Légendaire/Mythique surtout). */
   glow: string
+  /** Couleur solide pour les segments de la barre de distribution des raretés. */
+  segment: string
 }
 
 const RARITY_STYLES: Record<RarityTier, RarityStyle> = {
@@ -49,26 +51,31 @@ const RARITY_STYLES: Record<RarityTier, RarityStyle> = {
     bg: 'bg-gradient-to-br from-slate-500/40 via-slate-600/30 to-slate-800/50',
     badge: 'bg-slate-500/30 text-slate-100 border border-slate-400/40',
     glow: '',
+    segment: 'bg-slate-500',
   },
   rare: {
     bg: 'bg-gradient-to-br from-sky-500/55 via-sky-600/40 to-sky-900/60',
     badge: 'bg-sky-500/30 text-sky-100 border border-sky-400/50',
     glow: 'shadow-[0_0_10px_-2px_rgba(56,189,248,0.45)]',
+    segment: 'bg-sky-500',
   },
   epic: {
     bg: 'bg-gradient-to-br from-purple-500/60 via-purple-600/45 to-purple-900/65',
     badge: 'bg-purple-500/35 text-purple-100 border border-purple-400/50',
     glow: 'shadow-[0_0_12px_-2px_rgba(192,132,252,0.5)]',
+    segment: 'bg-purple-500',
   },
   legendary: {
     bg: 'bg-gradient-to-br from-amber-400/65 via-amber-500/50 to-amber-800/70',
     badge: 'bg-amber-500/35 text-amber-100 border border-amber-400/55',
     glow: 'shadow-[0_0_14px_-2px_rgba(251,191,36,0.6)]',
+    segment: 'bg-amber-400',
   },
   mythic: {
     bg: 'bg-gradient-to-br from-rose-500/65 via-rose-600/50 to-rose-900/70',
     badge: 'bg-rose-500/35 text-rose-100 border border-rose-500/55',
     glow: 'shadow-[0_0_16px_-2px_rgba(244,63,94,0.6)]',
+    segment: 'bg-rose-500',
   },
 }
 
@@ -137,6 +144,33 @@ const ITEM_TYPE_LABELS_FR: Record<string, string> = {
   Currency: 'Monnaie',
   XpBoost: 'Boost XP',
   ChallengeSwap: 'Relance défi',
+}
+
+/**
+ * Catégorise un ItemType brut en "armure" (pièces et revêtements qui modifient
+ * l'apparence du Spartan en jeu) ou "cosmétique" (le reste : armes, véhicules,
+ * profil, IA). Permet de distinguer la personnalisation d'armure des cosmétiques
+ * purs dans les résumés de pass saisonniers.
+ */
+const ARMOR_ITEM_TYPES = new Set([
+  'ArmorCoating',
+  'ArmorHelmet',
+  'ArmorHelmetAttachment',
+  'ArmorChestAttachment',
+  'ArmorLeftShoulderPad',
+  'ArmorRightShoulderPad',
+  'ArmorKneePad',
+  'ArmorHipAttachment',
+  'ArmorVisor',
+  'ArmorWristAttachment',
+  'ArmorGlove',
+  'ArmorMythicEffect',
+  'SpartanBody',
+])
+
+export function isArmorItemType(raw?: string | null): boolean {
+  if (!raw) return false
+  return ARMOR_ITEM_TYPES.has(raw.trim())
 }
 
 export function itemTypeLabel(raw?: string | null): string | null {

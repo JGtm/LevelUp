@@ -78,10 +78,25 @@ export interface PalmaresText {
     obtained: string
     upcoming: string
     otherPassesTitle: string
+    backToActive: string
+    nowShowing: string
+    freeLabel: string
     noDescription: string
     noPassesTitle: string
     noPassesDescription: string
     status: Record<string, string>
+    content: {
+      creditsLabel: string
+      spartanPointsLabel: string
+      xpBoostsLabel: string
+      challengeSwapsLabel: string
+      cosmeticsLabel: string
+      armorLabel: string
+      cosmeticsSplitLabel: string
+      tiersLabel: string
+      rarityTitle: string
+      typeTitle: string
+    }
   }
 }
 
@@ -165,6 +180,9 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       obtained: t(loc, 'palmares.season_pass.obtained'),
       upcoming: t(loc, 'palmares.season_pass.upcoming'),
       otherPassesTitle: t(loc, 'palmares.season_pass.other_passes_title'),
+      backToActive: t(loc, 'palmares.season_pass.back_to_active'),
+      nowShowing: t(loc, 'palmares.season_pass.now_showing'),
+      freeLabel: t(loc, 'palmares.season_pass.free_label'),
       noDescription: t(loc, 'palmares.season_pass.no_description'),
       noPassesTitle: t(loc, 'palmares.season_pass.no_passes_title'),
       noPassesDescription: t(loc, 'palmares.season_pass.no_passes_description'),
@@ -173,6 +191,18 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         in_progress: t(loc, 'palmares.season_pass.status.in_progress'),
         completed: t(loc, 'palmares.season_pass.status.completed'),
         not_started: t(loc, 'palmares.season_pass.status.not_started'),
+      },
+      content: {
+        creditsLabel: t(loc, 'palmares.season_pass.content.credits_label'),
+        spartanPointsLabel: t(loc, 'palmares.season_pass.content.spartan_points_label'),
+        xpBoostsLabel: t(loc, 'palmares.season_pass.content.xp_boosts_label'),
+        challengeSwapsLabel: t(loc, 'palmares.season_pass.content.challenge_swaps_label'),
+        cosmeticsLabel: t(loc, 'palmares.season_pass.content.cosmetics_label'),
+        armorLabel: t(loc, 'palmares.season_pass.content.armor_label'),
+        cosmeticsSplitLabel: t(loc, 'palmares.season_pass.content.cosmetics_split_label'),
+        tiersLabel: t(loc, 'palmares.season_pass.content.tiers_label'),
+        rarityTitle: t(loc, 'palmares.season_pass.content.rarity_title'),
+        typeTitle: t(loc, 'palmares.season_pass.content.type_title'),
       },
     },
   }

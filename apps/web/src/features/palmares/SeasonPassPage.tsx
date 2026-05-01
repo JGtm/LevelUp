@@ -1,51 +1,36 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 import { useParams } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, CompositeProgressBar } from '@/components/ui/composite-progress-bar'
-import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
-import type { SeasonPassStatus, SeasonPassTierSummary, SeasonPassTrackSummary } from '@/lib/api/types'
+import type { SeasonPassStatus, SeasonPassTrackSummary } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { BattlePassRewardCarousel, type RewardCard } from './BattlePassRewardCarousel'
 import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassRewardLightbox'
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
+import { PassContentSummary } from './PassContentSummary'
 import { PalmaresShell } from './PalmaresShell'
 import { useSeasonPassPage } from './queries'
-import { normalizeRarity, rarityStyle } from './rarity'
-
-function centerTierInRail(container: HTMLDivElement | null, item: HTMLDivElement | null) {
-  if (!container || !item) {
-    return
-  }
-
-  const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth)
-  const targetLeft = Math.max(
-    0,
-    Math.min(item.offsetLeft - (container.clientWidth - item.offsetWidth) / 2, maxScrollLeft),
-  )
-
-  if (typeof container.scrollTo === 'function') {
-    container.scrollTo({ left: targetLeft, behavior: 'smooth' })
-    return
-  }
-
-  container.scrollLeft = targetLeft
-}
 
 function statusVariant(status: SeasonPassStatus) {
   switch (status) {
-    case 'active':
-      return 'default' as const
-    case 'completed':
-      return 'success' as const
-    case 'in_progress':
-      return 'secondary' as const
-    default:
-      return 'outline' as const
+    case 'active': return 'default' as const
+    case 'completed': return 'success' as const
+    case 'in_progress': return 'secondary' as const
+    default: return 'outline' as const
   }
+}
+
+// Extrait le dossier parent du reward_track_path pour identifier le type de pass
+// (ex: "RewardTracks/Operations/foo.json" → "Operations").
+function trackTypeLabel(rewardTrackPath: string): string | null {
+  const parts = rewardTrackPath.replace(/\\/g, '/').split('/').filter(Boolean)
+  return parts.length >= 2 ? parts[parts.length - 2] : null
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -62,169 +47,125 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function ProgressBar({ value }: { value?: number | null }) {
   const width = value == null ? 0 : Math.max(0, Math.min(100, value))
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
       <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${width}%` }} />
     </div>
   )
 }
 
-function SeasonPassCard({ pass, intlLocale, statusLabel, labels }: {
+type Text = ReturnType<typeof getPalmaresText>
+
+function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, isSelected, onSelect }: {
   pass: SeasonPassTrackSummary
   intlLocale: string
   statusLabel: string
-  labels: { premium: string; active: string; rank: string; progress: string }
+  labels: { premium: string; active: string; rank: string; progress: string; nowShowing: string }
+  contentLabels: Parameters<typeof PassContentSummary>[0]['labels']
+  isSelected: boolean
+  onSelect: (pass: SeasonPassTrackSummary) => void
 }) {
   const background = pass.background_image_url ?? pass.image_url ?? null
-  const rankValue = pass.max_rank ? `${pass.current_rank}/${pass.max_rank}` : pass.current_rank.toLocaleString(intlLocale)
+  const rankValue = pass.max_rank
+    ? `${pass.current_rank} / ${pass.max_rank}`
+    : pass.current_rank.toLocaleString(intlLocale)
+  const typeLabel = trackTypeLabel(pass.reward_track_path)
 
   return (
-    <Card className="relative overflow-hidden border-border/70 bg-card/95 shadow-sm">
+    <button
+      type="button"
+      onClick={() => onSelect(pass)}
+      aria-pressed={isSelected}
+      className={[
+        'group relative block w-full overflow-hidden rounded-xl border bg-card/95 text-left shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70',
+        isSelected ? 'border-sky-400/70 ring-2 ring-sky-400/40' : 'border-border/70',
+      ].join(' ')}
+    >
       {background && (
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-15"
+          className="absolute inset-0 bg-cover bg-center opacity-30 transition-opacity group-hover:opacity-40"
           style={{ backgroundImage: `url(${background})` }}
           aria-hidden="true"
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-background/92 to-background/75" aria-hidden="true" />
-      <CardContent className="relative flex h-full flex-col gap-4 pt-6">
+      <div className="relative flex h-full flex-col gap-4 p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{pass.reward_track_path.split('/').slice(-1)[0]}</p>
+            {typeLabel && (
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{typeLabel}</p>
+            )}
             <h3 className="mt-2 text-lg font-semibold text-foreground">{pass.name}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
+            {isSelected && <Badge variant="default">{labels.nowShowing}</Badge>}
             {pass.is_active && <Badge variant="default">{labels.active}</Badge>}
             {pass.is_owned && <Badge variant="outline">{labels.premium}</Badge>}
             <Badge variant={statusVariant(pass.status)}>{statusLabel}</Badge>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <p className="text-xs text-muted-foreground">{labels.rank}</p>
-            <p className="mt-1 text-xl font-semibold text-foreground">{rankValue}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{labels.progress}</p>
-            <p className="mt-1 text-xl font-semibold text-foreground">
-              {pass.completion_percent == null
-                ? '—'
-                : `${pass.completion_percent.toLocaleString(intlLocale, { maximumFractionDigits: 0 })} %`}
-            </p>
-          </div>
-        </div>
+        {pass.description && (
+          <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{pass.description}</p>
+        )}
 
-        <ProgressBar value={pass.completion_percent} />
-      </CardContent>
-    </Card>
-  )
-}
+        {pass.content && (
+          <PassContentSummary content={pass.content} labels={contentLabels} locale={intlLocale} compact />
+        )}
 
-function SeasonPassTierCard({ tier, labels, activeRef, onOpen }: {
-  tier: SeasonPassTierSummary
-  labels: { obtained: string; upcoming: string }
-  activeRef?: (node: HTMLDivElement | null) => void
-  onOpen: (tier: SeasonPassTierSummary) => void
-}) {
-  const rarityTier = normalizeRarity(tier.quality)
-  const rarityStyles = rarityStyle(rarityTier)
-  const imageClasses = [
-    'relative overflow-hidden rounded-[1.35rem] border border-white/80 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.85)]',
-    rarityStyles?.bg ?? 'bg-slate-950/85',
-    rarityStyles?.glow ?? '',
-    tier.is_current ? 'ring-2 ring-sky-400/70 ring-offset-2 ring-offset-background' : '',
-    tier.is_obtained && !tier.is_current ? 'opacity-65 grayscale-[0.7]' : '',
-  ].filter(Boolean).join(' ')
-
-  return (
-    <div
-      ref={activeRef}
-      data-testid="season-pass-tier-card"
-      data-current={tier.is_current ? 'true' : 'false'}
-      data-obtained={tier.is_obtained ? 'true' : 'false'}
-      className="snap-center shrink-0"
-    >
-      <button
-        type="button"
-        onClick={() => onOpen(tier)}
-        aria-label={`Voir le détail de ${tier.title}`}
-        className="block w-40 space-y-3 text-left transition-transform duration-150 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded-[1.4rem]"
-      >
-        <div className={imageClasses}>
-          {tier.is_obtained && (
-            <div className="absolute right-2 top-2 z-10 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-500 px-2 text-[11px] font-semibold text-white shadow-sm">
-              ✓
+        <div className="mt-auto space-y-3">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground">{labels.rank}</p>
+              <p className="mt-1 text-xl font-semibold text-foreground">{rankValue}</p>
             </div>
-          )}
-          <div className="aspect-[4/5] w-full">
-            {tier.image_url ? (
-              <img
-                src={tier.image_url}
-                alt={tier.title}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.22),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(30,41,59,0.84))] text-center text-white">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-slate-300">Tier</p>
-                  <p className="mt-2 text-4xl font-semibold">{tier.rank}</p>
-                </div>
-              </div>
-            )}
+            <div>
+              <p className="text-xs text-muted-foreground">{labels.progress}</p>
+              <p className="mt-1 text-xl font-semibold text-foreground">
+                {pass.completion_percent == null
+                  ? '—'
+                  : `${pass.completion_percent.toLocaleString(intlLocale, { maximumFractionDigits: 0 })} %`}
+              </p>
+            </div>
           </div>
+          <ProgressBar value={pass.completion_percent} />
         </div>
-        <div className="space-y-1 px-1">
-          <div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            <span>{`#${tier.rank}`}</span>
-            <span>{tier.is_obtained ? labels.obtained : labels.upcoming}</span>
-          </div>
-          <p className="line-clamp-2 text-sm font-semibold text-foreground">{tier.title}</p>
-        </div>
-      </button>
-    </div>
+      </div>
+    </button>
   )
 }
 
-function ActivePassShowcase({
+function PassShowcase({
   pass,
   text,
+  isViewingActive,
+  onBackToActive,
+  showcaseRef,
 }: {
   pass: SeasonPassTrackSummary
-  text: ReturnType<typeof getPalmaresText>
+  text: Text
+  isViewingActive: boolean
+  onBackToActive: () => void
+  showcaseRef?: React.Ref<HTMLDivElement>
 }) {
-  const tiersRailRef = useRef<HTMLDivElement | null>(null)
-  const activeTier = pass.tiers?.find((tier) => tier.is_current)
-    ?? pass.tiers?.find((tier) => tier.rank === pass.active_tier_rank)
-    ?? null
-  const activeTierRef = useRef<HTMLDivElement | null>(null)
   const [selectedReward, setSelectedReward] = useState<RewardLightboxData | null>(null)
 
-  const handleOpenTier = useCallback((tier: SeasonPassTierSummary) => {
+  const handleOpenCard = useCallback((card: RewardCard) => {
     const badges: RewardLightboxData['badges'] = []
-    if (tier.is_current) badges.push({ label: text.seasonPass.active, tone: 'current' })
-    if (tier.is_obtained) badges.push({ label: text.seasonPass.obtained, tone: 'obtained' })
-    else if (!tier.is_current) badges.push({ label: text.seasonPass.upcoming, tone: 'upcoming' })
-    if (tier.is_premium) badges.push({ label: text.seasonPass.premium, tone: 'premium' })
+    if (card.is_current) badges.push({ label: text.seasonPass.active, tone: 'current' })
+    if (card.is_obtained) badges.push({ label: text.seasonPass.obtained, tone: 'obtained' })
+    if (card.is_free) badges.push({ label: text.seasonPass.freeLabel, tone: 'free' })
+    else badges.push({ label: text.seasonPass.premium, tone: 'premium' })
     setSelectedReward({
-      title: tier.title,
-      rank: tier.rank,
-      imageUrl: tier.image_url ?? null,
-      description: tier.description ?? null,
-      quality: tier.quality ?? null,
-      itemType: tier.item_type ?? null,
+      title: card.title,
+      rank: card.rank,
+      imageUrl: card.image_url ?? null,
+      description: card.description ?? null,
+      quality: card.quality ?? null,
+      itemType: card.item_type ?? null,
       badges,
     })
-  }, [text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.upcoming, text.seasonPass.premium])
-
-  useEffect(() => {
-    centerTierInRail(tiersRailRef.current, activeTierRef.current)
-  }, [pass.active_tier_rank, pass.tiers])
+  }, [text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.freeLabel, text.seasonPass.premium])
 
   const tierProgress = pass.active_tier_progress_percent ?? 0
-  const tierLabel = activeTier?.title ?? text.seasonPass.activeTierFallback
-  const rankLabel = pass.active_tier_rank == null ? '—' : `#${pass.active_tier_rank}`
   const progressLabels = buildCompositeProgressEdgeLabels({
     partialProgress: pass.partial_progress,
     xpPerRank: pass.xp_per_rank,
@@ -233,34 +174,52 @@ function ActivePassShowcase({
   })
 
   return (
-    <Card className="relative overflow-hidden border-border/70 bg-card/95 shadow-sm">
-      {pass.background_image_url && (
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-15"
-          style={{ backgroundImage: `url(${pass.background_image_url})` }}
-          aria-hidden="true"
-        />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-background/96 to-background/85" aria-hidden="true" />
-      <CardContent className="relative space-y-8 p-6 lg:p-8">
+    <div ref={showcaseRef}>
+      <Card className="relative overflow-hidden border-border/70 bg-card/95 shadow-sm">
+        {pass.background_image_url && (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-25"
+            style={{ backgroundImage: `url(${pass.background_image_url})` }}
+            aria-hidden="true"
+          />
+        )}
+        <CardContent className="relative space-y-7 p-6 lg:p-8">
+
+        {!isViewingActive && (
+          <button
+            type="button"
+            onClick={onBackToActive}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded"
+          >
+            <span aria-hidden="true">←</span>
+            <span>{text.seasonPass.backToActive}</span>
+          </button>
+        )}
+
         <div className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">{text.seasonPass.activePassTitle}</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                {pass.is_active ? text.seasonPass.activePassTitle : trackTypeLabel(pass.reward_track_path) ?? ''}
+              </p>
               <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{pass.name}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
               {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
-              <Badge variant="default">{text.seasonPass.active}</Badge>
+              {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
               <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
             </div>
           </div>
           {pass.description && (
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-              {pass.description}
-            </p>
+            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">{pass.description}</p>
           )}
         </div>
+
+        {pass.content && (
+          <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
+            <PassContentSummary content={pass.content} labels={text.seasonPass.content} locale={text.intlLocale} />
+          </div>
+        )}
 
         {pass.background_image_url && (
           <div className="overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/80 shadow-[0_30px_90px_-50px_rgba(15,23,42,0.9)]">
@@ -274,74 +233,43 @@ function ActivePassShowcase({
 
         {pass.tiers && pass.tiers.length > 0 && (
           <div className="space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{text.seasonPass.activeTierTitle}</p>
-                <p className="mt-2 text-xl font-semibold text-foreground">{tierLabel}</p>
-              </div>
-              <Badge variant="outline" className="border-sky-200 bg-sky-50/80 text-sky-700">
-                {rankLabel}
-              </Badge>
-            </div>
+            <BattlePassRewardCarousel
+              tiers={pass.tiers}
+              activeTierRank={pass.active_tier_rank}
+              onOpenCard={handleOpenCard}
+              freeLabel={text.seasonPass.freeLabel}
+            />
 
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" aria-hidden="true" />
-              <div
-                ref={tiersRailRef}
-                className="flex gap-4 overflow-x-auto pb-4 pr-6 pt-1 [scrollbar-width:none]"
-              >
-                {pass.tiers.map((tier) => (
-                  <SeasonPassTierCard
-                    key={tier.rank}
-                    tier={tier}
-                    labels={{ obtained: text.seasonPass.obtained, upcoming: text.seasonPass.upcoming }}
-                    activeRef={tier.is_current ? (node) => { activeTierRef.current = node } : undefined}
-                    onOpen={handleOpenTier}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-3xl border border-slate-200/70 bg-slate-50/80 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{text.seasonPass.activeTierProgress}</p>
-                  <p className="mt-1 text-base font-semibold text-foreground">{tierLabel}</p>
-                  {activeTier?.description && (
-                    <p className="mt-1 text-sm italic text-muted-foreground">{activeTier.description}</p>
-                  )}
+            {pass.is_active && pass.active_tier_rank != null && (
+              <div className="space-y-3 rounded-3xl border border-slate-200/70 bg-slate-50/80 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{text.seasonPass.activeTierProgress}</p>
+                    <p className="mt-1 text-base font-semibold text-foreground">#{pass.active_tier_rank}</p>
+                  </div>
+                  <p className="text-lg font-semibold text-sky-700">
+                    {tierProgress.toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })} %
+                  </p>
                 </div>
-                <p className="text-lg font-semibold text-sky-700">
-                  {tierProgress.toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })} %
-                </p>
-              </div>
-              <div
-                data-testid="season-pass-active-tier-progress-row"
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3"
-              >
-                <span
-                  data-testid="season-pass-active-tier-progress-current"
-                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
-                >
-                  {progressLabels.current}
-                </span>
-                <div className="min-w-0">
-                  <CompositeProgressBar value={tierProgress} fillTestId="season-pass-active-tier-progress-fill" />
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                  <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
+                    {progressLabels.current}
+                  </span>
+                  <div className="min-w-0">
+                    <CompositeProgressBar value={tierProgress} />
+                  </div>
+                  <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
+                    {progressLabels.target}
+                  </span>
                 </div>
-                <span
-                  data-testid="season-pass-active-tier-progress-target"
-                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
-                >
-                  {progressLabels.target}
-                </span>
               </div>
-            </div>
+            )}
           </div>
         )}
-      </CardContent>
-      <BattlePassRewardLightbox reward={selectedReward} onClose={() => setSelectedReward(null)} />
-    </Card>
+        </CardContent>
+        <BattlePassRewardLightbox reward={selectedReward} onClose={() => setSelectedReward(null)} />
+      </Card>
+    </div>
   )
 }
 
@@ -350,6 +278,8 @@ export function SeasonPassPage() {
   const locale = normalizePalmaresLocale(useAppShellStore((state) => state.locale))
   const text = getPalmaresText(locale)
   const { data, isLoading, isError, error, refetch } = useSeasonPassPage(playerSlug)
+  const [selectedPassPath, setSelectedPassPath] = useState<string | null>(null)
+  const showcaseRef = useRef<HTMLDivElement | null>(null)
 
   if (isLoading) {
     return (
@@ -374,81 +304,72 @@ export function SeasonPassPage() {
     )
   }
 
-  const completedCount = data.passes.filter((pass) => pass.status === 'completed').length
-  const inProgressCount = data.passes.filter((pass) => pass.status === 'in_progress').length
-  const activePass = data.passes.find((pass) => pass.is_active)
-  const otherPasses = data.passes.filter((pass) => !pass.is_active)
+  const completedCount = data.passes.filter((p) => p.status === 'completed').length
+  const inProgressCount = data.passes.filter((p) => p.status === 'in_progress').length
+  const activePass = data.passes.find((p) => p.is_active) ?? null
+  const selectedPass = (selectedPassPath
+    ? data.passes.find((p) => p.reward_track_path === selectedPassPath)
+    : null) ?? activePass
+  const otherPasses = data.passes.filter((p) => p.reward_track_path !== selectedPass?.reward_track_path)
+  const isViewingActive = !selectedPass || selectedPass.is_active
+
+  function selectPass(pass: SeasonPassTrackSummary) {
+    setSelectedPassPath(pass.reward_track_path)
+    requestAnimationFrame(() => {
+      showcaseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  function backToActive() {
+    setSelectedPassPath(null)
+    requestAnimationFrame(() => {
+      showcaseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   return (
     <PalmaresShell playerSlug={playerSlug} activeTab="season-pass">
-      <div className="grid gap-4 xl:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-3">
         <StatCard label={text.seasonPass.activeCard} value={activePass?.name ?? '—'} />
         <StatCard label={text.seasonPass.completedCard} value={completedCount.toLocaleString(text.intlLocale)} />
         <StatCard label={text.seasonPass.inProgressCard} value={inProgressCount.toLocaleString(text.intlLocale)} />
-        <StatCard label={text.seasonPass.challengesCard} value={(data.challenges.total ?? 0).toLocaleString(text.intlLocale)} />
       </div>
 
-      {activePass ? (
-        <ActivePassShowcase pass={activePass} text={text} />
-      ) : data.passes.length > 0 ? null : (
+      {selectedPass ? (
+        <PassShowcase
+          pass={selectedPass}
+          text={text}
+          isViewingActive={isViewingActive}
+          onBackToActive={backToActive}
+          showcaseRef={showcaseRef}
+        />
+      ) : data.passes.length === 0 ? (
         <EmptyStateCard title={text.seasonPass.noPassesTitle} description={text.seasonPass.noPassesDescription} />
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{text.seasonPass.challengesTitle}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.challenges.available ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <p className="text-xs text-muted-foreground">{text.seasonPass.completed}</p>
-                <p className="mt-1 text-lg font-semibold">{(data.challenges.completed ?? 0).toLocaleString(text.intlLocale)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{text.seasonPass.total}</p>
-                <p className="mt-1 text-lg font-semibold">{(data.challenges.total ?? 0).toLocaleString(text.intlLocale)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{text.seasonPass.xpAvailable}</p>
-                <p className="mt-1 text-lg font-semibold">{(data.challenges.xp_available ?? 0).toLocaleString(text.intlLocale)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{text.seasonPass.nextExpiry}</p>
-                <p className="mt-1 text-lg font-semibold">
-                  {data.challenges.next_expiry
-                    ? new Date(data.challenges.next_expiry).toLocaleString(text.intlLocale)
-                    : text.seasonPass.noExpiry}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <EmptyStateNotice title={text.seasonPass.challengesUnavailable} description={data.challenges.error_hint ?? text.seasonPass.unavailableDescription} />
-          )}
-        </CardContent>
-      </Card>
+      ) : null}
 
       {otherPasses.length > 0 && (
         <div className="space-y-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">{text.seasonPass.otherPassesTitle}</p>
+          <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">{text.seasonPass.otherPassesTitle}</p>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {otherPasses.map((pass) => (
+              <SeasonPassCard
+                key={pass.reward_track_path}
+                pass={pass}
+                intlLocale={text.intlLocale}
+                statusLabel={text.seasonPass.status[pass.status] ?? pass.status}
+                contentLabels={text.seasonPass.content}
+                isSelected={false}
+                onSelect={selectPass}
+                labels={{
+                  premium: text.seasonPass.premium,
+                  active: text.seasonPass.active,
+                  rank: text.seasonPass.cardRank,
+                  progress: text.seasonPass.cardProgress,
+                  nowShowing: text.seasonPass.nowShowing,
+                }}
+              />
+            ))}
           </div>
-        <div className="grid gap-4 xl:grid-cols-2">
-          {otherPasses.map((pass) => (
-            <SeasonPassCard
-              key={pass.reward_track_path}
-              pass={pass}
-              intlLocale={text.intlLocale}
-              statusLabel={text.seasonPass.status[pass.status] ?? pass.status}
-              labels={{
-                premium: text.seasonPass.premium,
-                active: text.seasonPass.active,
-                rank: text.seasonPass.cardRank,
-                progress: text.seasonPass.cardProgress,
-              }}
-            />
-          ))}
-        </div>
         </div>
       )}
     </PalmaresShell>

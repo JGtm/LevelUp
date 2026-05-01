@@ -480,6 +480,7 @@ func buildTrackSummary(
 		ActiveTierRank:            activeTierRank,
 		ActiveTierProgressPercent: activeTierProgressPercent,
 		Tiers:                     tiers,
+		Content:                   computeContentSummary(payload, itemMap),
 	}
 	if xpPerRank != nil {
 		v := *xpPerRank
@@ -492,6 +493,75 @@ func buildTrackSummary(
 		s.BackgroundImageURL = backgroundURL
 	}
 	return s
+}
+
+// computeContentSummary agrège le contenu d'un track (currencies + cosmétiques + raretés).
+// Itère tous les paliers (free + paid) pour un inventaire complet indépendant de l'ownership.
+func computeContentSummary(
+	payload *seasonPassTrackPayload,
+	itemMap map[string]seasonPassItemMeta,
+) *domain.SeasonPassContentSummary {
+	if payload == nil || len(payload.Ranks) == 0 {
+		return nil
+	}
+	s := &domain.SeasonPassContentSummary{
+		TotalTiers:      len(payload.Ranks),
+		RarityBreakdown: map[string]int{},
+		TypeBreakdown:   map[string]int{},
+	}
+	seen := map[string]struct{}{}
+	for _, rank := range payload.Ranks {
+		aggregateRewardBucket(rank.FreeRewards, itemMap, s, seen)
+		aggregateRewardBucket(rank.PaidRewards, itemMap, s, seen)
+	}
+	if len(s.RarityBreakdown) == 0 {
+		s.RarityBreakdown = nil
+	}
+	if len(s.TypeBreakdown) == 0 {
+		s.TypeBreakdown = nil
+	}
+	return s
+}
+
+// aggregateRewardBucket accumule les currencies et items cosmétiques d'un bucket.
+func aggregateRewardBucket(
+	bucket seasonPassRewardBucket,
+	itemMap map[string]seasonPassItemMeta,
+	s *domain.SeasonPassContentSummary,
+	seen map[string]struct{},
+) {
+	for _, reward := range bucket.CurrencyRewards {
+		slug := currencySlug(reward.CurrencyPath)
+		switch slug {
+		case "cr":
+			s.Credits += reward.Amount
+		case "softcurrency":
+			s.SpartanPoints += reward.Amount
+		case "xpboost":
+			s.XPBoosts++
+		case "rerollcurrency":
+			s.ChallengeSwaps++
+		}
+	}
+	for _, reward := range bucket.InventoryRewards {
+		p := strings.TrimSpace(reward.InventoryItemPath)
+		if p == "" {
+			continue
+		}
+		if _, already := seen[p]; already {
+			continue
+		}
+		seen[p] = struct{}{}
+		s.CosmeticsTotal++
+		if meta, ok := itemMap[p]; ok {
+			if meta.Quality != nil && *meta.Quality != "" {
+				s.RarityBreakdown[strings.ToLower(*meta.Quality)]++
+			}
+			if meta.ItemType != nil && *meta.ItemType != "" {
+				s.TypeBreakdown[*meta.ItemType]++
+			}
+		}
+	}
 }
 
 func parseTrackPayload(raw sql.NullString) *seasonPassTrackPayload {

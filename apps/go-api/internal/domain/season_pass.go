@@ -39,26 +39,40 @@ type SeasonPassTierSummary struct {
 	FreeRewards []SeasonPassItemSummary `json:"free_rewards,omitempty"`
 }
 
+// SeasonPassContentSummary résume le contenu d'un reward track (agrégé côté API).
+// Calculé depuis le payload JSON brut ; zéros exclus du JSON (omitempty).
+type SeasonPassContentSummary struct {
+	TotalTiers      int            `json:"total_tiers"`
+	Credits         int            `json:"credits,omitempty"`          // cR Halo (premium)
+	SpartanPoints   int            `json:"spartan_points,omitempty"`   // softcurrency
+	XPBoosts        int            `json:"xp_boosts,omitempty"`        // nombre de boosts
+	ChallengeSwaps  int            `json:"challenge_swaps,omitempty"`  // nombre de relances
+	CosmeticsTotal  int            `json:"cosmetics_total,omitempty"`  // items inventory
+	RarityBreakdown map[string]int `json:"rarity_breakdown,omitempty"` // "common":15, "rare":8…
+	TypeBreakdown   map[string]int `json:"type_breakdown,omitempty"`   // "ArmorCoating":5…
+}
+
 // SeasonPassTrackSummary résume un Battle Pass / Operation Reward Track.
 // Les champs sont un mirror exact des types TypeScript côté frontend.
 type SeasonPassTrackSummary struct {
-	RewardTrackPath           string                  `json:"reward_track_path"`
-	Name                      string                  `json:"name"`
-	Description               *string                 `json:"description,omitempty"`
-	Status                    SeasonPassStatus        `json:"status"`
-	IsActive                  bool                    `json:"is_active"`
-	IsOwned                   bool                    `json:"is_owned"`
-	HasReachedMaxRank         bool                    `json:"has_reached_max_rank"`
-	CurrentRank               int                     `json:"current_rank"`
-	PartialProgress           int                     `json:"partial_progress"`
-	XPPerRank                 *int                    `json:"xp_per_rank,omitempty"`
-	MaxRank                   *int                    `json:"max_rank,omitempty"`
-	CompletionPercent         *float64                `json:"completion_percent,omitempty"`
-	ActiveTierRank            *int                    `json:"active_tier_rank,omitempty"`
-	ActiveTierProgressPercent *float64                `json:"active_tier_progress_percent,omitempty"`
-	ImageURL                  *string                 `json:"image_url,omitempty"`
-	BackgroundImageURL        *string                 `json:"background_image_url,omitempty"`
-	Tiers                     []SeasonPassTierSummary `json:"tiers,omitempty"`
+	RewardTrackPath           string                    `json:"reward_track_path"`
+	Name                      string                    `json:"name"`
+	Description               *string                   `json:"description,omitempty"`
+	Status                    SeasonPassStatus          `json:"status"`
+	IsActive                  bool                      `json:"is_active"`
+	IsOwned                   bool                      `json:"is_owned"`
+	HasReachedMaxRank         bool                      `json:"has_reached_max_rank"`
+	CurrentRank               int                       `json:"current_rank"`
+	PartialProgress           int                       `json:"partial_progress"`
+	XPPerRank                 *int                      `json:"xp_per_rank,omitempty"`
+	MaxRank                   *int                      `json:"max_rank,omitempty"`
+	CompletionPercent         *float64                  `json:"completion_percent,omitempty"`
+	ActiveTierRank            *int                      `json:"active_tier_rank,omitempty"`
+	ActiveTierProgressPercent *float64                  `json:"active_tier_progress_percent,omitempty"`
+	ImageURL                  *string                   `json:"image_url,omitempty"`
+	BackgroundImageURL        *string                   `json:"background_image_url,omitempty"`
+	Tiers                     []SeasonPassTierSummary   `json:"tiers,omitempty"`
+	Content                   *SeasonPassContentSummary `json:"content,omitempty"`
 }
 
 // SeasonPassPageResponse est la réponse de l'endpoint /pages/palmares/season-pass.
