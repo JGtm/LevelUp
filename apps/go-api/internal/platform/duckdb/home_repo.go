@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/legacymatch"
 )
@@ -225,12 +226,14 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 	if tierLabel.Valid {
 		peak.TierLabel = stringPtr(tierLabel.String)
 	}
-	// LUSR est un rating cross-titre (LevelUp) : pas de slug de titre dans l'URL.
-	titleSlug := homeStaticTitleSlug
-	if strings.EqualFold(ratingType, "LUSR") {
-		titleSlug = ""
-	}
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(optionalNullStringValue(tier), optionalNullStringValue(tierLabel), optionalNullInt16Value(subTier), titleSlug)
+	// Bug #1 : LUSR utilise les mêmes assets que CSR — fichiers stockés sous
+	// /static/ranks/halo_infinite/. Sans le slug, l'URL pointait sur 404.
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(
+		optionalNullStringValue(tier),
+		optionalNullStringValue(tierLabel),
+		optionalNullInt16Value(subTier),
+		homeStaticTitleSlug,
+	)
 	return peak
 }
 
@@ -712,6 +715,126 @@ func needsHomeAssetTranslation(labelFR, labelEN string) bool {
 	}
 	trimmedEN := strings.TrimSpace(labelEN)
 	return trimmedEN != "" && strings.EqualFold(trimmedFR, trimmedEN)
+}
+
+// EnrichCanonicalAssetTranslations remplit Labels["fr"] sur les
+// AssetReference (Map, Playlist, GameVariant, PairMode) des canonical rows
+// depuis metadata.asset_translations + mode_name_tr quand match_registry
+// .{...}_name_fr est NULL en DB. Bug #2/#7 cascade : sans ça, modes/maps/
+// playlists restent en EN sur la home (Faits marquants, KPIs, sessions,
+// tuiles match).
+func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error {
+	if r == nil || r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
+		return nil
+	}
+
+	mapIDs := collectCanonicalAssetIDsNeedingFR(rows, "map")
+	playlistIDs := collectCanonicalAssetIDsNeedingFR(rows, "playlist")
+	variantIDs := collectCanonicalAssetIDsNeedingFR(rows, "game_variant")
+	pairIDs := collectCanonicalAssetIDsNeedingFR(rows, "pair")
+
+	mapNames, _ := r.loadHomeAssetTranslationNames(ctx, "map", mapIDs)
+	playlistNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", playlistIDs)
+	variantNames, _ := r.loadHomeAssetTranslationNames(ctx, "game_variant", variantIDs)
+	pairNames, _ := r.loadHomeAssetTranslationNames(ctx, "pair", pairIDs)
+
+	modeENSet := map[string]struct{}{}
+	for i := range rows {
+		if pair := rows[i].Summary.PairMode; pair != nil {
+			if en := analysis.NormalizeModeLabel(pair.DefaultLabel); en != "" {
+				modeENSet[en] = struct{}{}
+			}
+			if name := strings.TrimSpace(pairNames[pair.ID]); name != "" {
+				if en := analysis.NormalizeModeLabel(name); en != "" {
+					modeENSet[en] = struct{}{}
+				}
+			}
+		}
+	}
+	modeENList := make([]string, 0, len(modeENSet))
+	for k := range modeENSet {
+		modeENList = append(modeENList, k)
+	}
+	modeNamesFR, _ := r.loadHomeModeNameTranslations(ctx, modeENList)
+
+	for i := range rows {
+		applyCanonicalAssetFR(rows[i].Summary.Map, mapNames)
+		applyCanonicalAssetFR(rows[i].Summary.Playlist, playlistNames)
+		applyCanonicalAssetFR(rows[i].Summary.GameVariant, variantNames)
+
+		if pair := rows[i].Summary.PairMode; pair != nil {
+			if pair.Labels == nil {
+				pair.Labels = map[string]string{}
+			}
+			modeEN := analysis.NormalizeModeLabel(pair.DefaultLabel)
+			if fr, ok := modeNamesFR[modeEN]; ok && fr != "" {
+				pair.Labels["fr"] = fr
+			} else if name := strings.TrimSpace(pairNames[pair.ID]); name != "" {
+				if fr := modeNamesFR[analysis.NormalizeModeLabel(name)]; fr != "" {
+					pair.Labels["fr"] = fr
+				} else if needsHomeAssetTranslation(pair.Labels["fr"], pair.DefaultLabel) {
+					pair.Labels["fr"] = name
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func collectCanonicalAssetIDsNeedingFR(rows []canonical.PlayerMatchRow, kind string) []string {
+	ids := map[string]struct{}{}
+	for i := range rows {
+		var ref *canonical.AssetReference
+		switch kind {
+		case "map":
+			ref = rows[i].Summary.Map
+		case "playlist":
+			ref = rows[i].Summary.Playlist
+		case "game_variant":
+			ref = rows[i].Summary.GameVariant
+		case "pair":
+			ref = rows[i].Summary.PairMode
+		}
+		if ref == nil || strings.TrimSpace(ref.ID) == "" {
+			continue
+		}
+		fr := ""
+		en := ref.DefaultLabel
+		if ref.Labels != nil {
+			fr = ref.Labels["fr"]
+			if v, ok := ref.Labels["en"]; ok && v != "" {
+				en = v
+			}
+		}
+		if needsHomeAssetTranslation(fr, en) {
+			ids[ref.ID] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(ids))
+	for id := range ids {
+		out = append(out, id)
+	}
+	return out
+}
+
+func applyCanonicalAssetFR(ref *canonical.AssetReference, translations map[string]string) {
+	if ref == nil || len(translations) == 0 {
+		return
+	}
+	name := strings.TrimSpace(translations[ref.ID])
+	if name == "" {
+		return
+	}
+	if ref.Labels == nil {
+		ref.Labels = map[string]string{}
+	}
+	en := ref.DefaultLabel
+	if v, ok := ref.Labels["en"]; ok && v != "" {
+		en = v
+	}
+	if needsHomeAssetTranslation(ref.Labels["fr"], en) {
+		ref.Labels["fr"] = name
+	}
 }
 
 // CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).

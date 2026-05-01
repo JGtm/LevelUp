@@ -205,6 +205,9 @@ type RecentMatchItem struct {
 	PerfectKills             *int                   `json:"perfect_kills,omitempty"`
 	TopMedals                []RecentMatchMedal     `json:"top_medals,omitempty"`
 	TopCitations             []MatchCitationSnippet `json:"top_citations,omitempty"`
+	// SessionLabel : permet au frontend de filtrer recent_matches par session
+	// (ex. OutcomeSequenceTape limitée à la dernière session). Bug #6.
+	SessionLabel *string `json:"session_label,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

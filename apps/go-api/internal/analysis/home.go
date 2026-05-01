@@ -710,20 +710,20 @@ func BuildHighlights(matches []legacymatch.HomeMatchRow) []domain.HighlightItem 
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.best_underdog_win",
 				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
-				Detail:     fmt.Sprintf("%s Â· %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
 				ValueColor: color,
 			})
 		}
 	}
 
-	// Highlight 4 : Pic FDA rÃ©cent (meilleur KDA sur toutes les sessions sÃ©lectionnÃ©es).
+	// Highlight 4 : Pic FDA récent (meilleur KDA sur toutes les sessions sélectionnées).
 	{
 		best := bestKDAMatch(window)
 		if best != nil && best.KDA != nil {
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.kda_peak",
 				Value:      fmt.Sprintf("%.2f", *best.KDA),
-				Detail:     fmt.Sprintf("%s Â· %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
 				ValueColor: highlightKDAColor(*best.KDA),
 			})
 		}
@@ -942,7 +942,7 @@ func sliceBestKillingSpree(window []legacymatch.HomeMatchRow) *domain.HighlightS
 	return &domain.HighlightSlide{
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
-		Detail:     fmt.Sprintf("%s Â· %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
+		Detail:     fmt.Sprintf("%s · %s", labelFR(best.MapNameFR, best.MapName), labelFR(best.PairNameFR, best.PairName)),
 		ValueColor: homeColorPositive,
 	}
 }

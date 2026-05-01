@@ -281,15 +281,22 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		return nil, err
 	}
 
+	// Bug #2/#7 cascade : remplit Labels["fr"] des AssetReference depuis
+	// metadata.asset_translations + mode_name_tr quand match_registry
+	// .{...}_name_fr est NULL. Sans ça, modes/maps/playlists restent en EN.
+	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, d.canonicalRows); err != nil {
+		slog.WarnContext(ctx, "home: EnrichCanonicalAssetTranslations failed", "err", err)
+	}
+
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
-	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches)
+	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale)
 	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows)
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale)
 	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale)
-	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false)
-	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true)
-	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20)
-	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20)
+	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale)
+	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale)
+	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale)
+	squadSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, true, 20, locale)
 
 	if d.favWeaponName != "" {
 		hero.KPIs.FavoriteWeaponName = d.favWeaponName

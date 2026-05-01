@@ -1059,6 +1059,8 @@ export interface RecentMatchItem {
   perfect_kills?: number | null
   top_medals?: RecentMatchMedal[] | null
   top_citations?: MatchCitationSnippet[] | null
+  /** Bug #6 — permet au front de filtrer l'OutcomeSequenceTape sur la dernière session. */
+  session_label?: string | null
 }
 
 export interface MatchCitationSnippet {

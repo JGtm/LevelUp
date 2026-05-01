@@ -62,11 +62,13 @@ function flattenManifest(obj, prefix = '') {
 
 function generateTSModule(domainName, flat) {
   const sortedKeys = Object.keys(flat).sort()
+  const constName = `${toCamelCase(domainName)}Manifest`
+  const typeName = `${toPascalCase(domainName)}ManifestKey`
   const lines = []
   lines.push('// Auto-genere par scripts/build_i18n_manifests.mjs - NE PAS EDITER A LA MAIN.')
   lines.push(`// Source : apps/web/src/lib/i18n/manifests/${domainName}.toml`)
   lines.push('')
-  lines.push(`export const ${domainName}Manifest = {`)
+  lines.push(`export const ${constName} = {`)
   for (const key of sortedKeys) {
     const v = flat[key]
     const fr = JSON.stringify(v.fr)
@@ -75,13 +77,18 @@ function generateTSModule(domainName, flat) {
   }
   lines.push('} as const')
   lines.push('')
-  lines.push(`export type ${capitalize(domainName)}ManifestKey = keyof typeof ${domainName}Manifest`)
+  lines.push(`export type ${typeName} = keyof typeof ${constName}`)
   lines.push('')
   return lines.join('\n')
 }
 
-function capitalize(s) {
-  return s.charAt(0).toUpperCase() + s.slice(1)
+function toCamelCase(s) {
+  return s.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase())
+}
+
+function toPascalCase(s) {
+  const camel = toCamelCase(s)
+  return camel.charAt(0).toUpperCase() + camel.slice(1)
 }
 
 async function main() {

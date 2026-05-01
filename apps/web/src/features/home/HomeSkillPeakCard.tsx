@@ -45,12 +45,15 @@ export function HomeSkillPeakCard({
             decoding="async"
           />
         </div>
-      ) : isPlacement ? (
+      ) : (peak || isPlacement) ? (
+        // Bug #1 : quand un peak existe (rating mais pas de tier_code stocké
+        // en DB) ou que le joueur est en placement, on rend le badge unranked
+        // générique au lieu de l'abréviation textuelle "MMR/LUSR".
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 p-1.5">
           <img
             data-testid={`${testIdPrefix}-unranked`}
             src={unrankedBadgeURL()}
-            alt="En placement"
+            alt={isPlacement ? 'En placement' : label}
             className="h-full w-full object-contain opacity-80"
             loading="lazy"
             decoding="async"

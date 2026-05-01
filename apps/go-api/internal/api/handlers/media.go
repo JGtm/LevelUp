@@ -573,36 +573,47 @@ func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
 }
 
 // filePathToURL transforme un chemin absolu en URL servable via l'API.
-// Retourne le chemin original si la transformation n'est pas possible.
-// filePathToURL transforme un chemin absolu en URL servable via l'API.
-// Tente d'abord capturesBase (depuis les settings), puis le chemin interne data/ du repo.
-// Retourne le chemin original si aucune correspondance.
+// Bug #8 : 3 tentatives — capturesBase+slug (multi-player), capturesBase brut
+// (single-player, dossier captures sans sous-folder slug), repoRoot interne.
 func (h *MediaHandler) filePathToURL(slug, absPath, capturesBase string) string {
 	clean := filepath.Clean(absPath)
 
-	// Tentative 1 : capturesBase configuré dans les settings.
 	if capturesBase != "" {
 		playerDir := filepath.Join(capturesBase, slug)
-		relPath, err := filepath.Rel(playerDir, clean)
-		if err == nil && !strings.HasPrefix(relPath, "..") {
-			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(relPath)
+		if rel, ok := relIfWithin(playerDir, clean); ok {
+			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(rel)
+		}
+		// Single-player : capturesBase pointe directement sur le dossier
+		// captures sans sous-folder slug (cas typique production).
+		if rel, ok := relIfWithin(capturesBase, clean); ok {
+			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(rel)
 		}
 	}
 
-	// Tentative 2 : chemin interne repo (data/titles/.../players/{slug}).
-	// PlayerCapturesDir retourne .../players/{slug}/captures — on remonte d'un niveau
-	// pour obtenir .../players/{slug} et calculer une URL relative correcte.
 	if h.repoRoot != "" {
 		pr := titlePkg.NewPathResolver(h.repoRoot)
 		internalCapturesDir := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
 		internalPlayerDir := filepath.Dir(internalCapturesDir)
-		relPath, err := filepath.Rel(internalPlayerDir, clean)
-		if err == nil && !strings.HasPrefix(relPath, "..") {
-			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(relPath)
+		if rel, ok := relIfWithin(internalPlayerDir, clean); ok {
+			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(rel)
 		}
 	}
 
+	slog.Warn("filePathToURL: aucun mapping trouvé",
+		"slug", slug, "abs_path", absPath, "captures_base", capturesBase)
 	return absPath
+}
+
+// relIfWithin retourne (rel, true) si target est sous base.
+func relIfWithin(base, target string) (string, bool) {
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		return "", false
+	}
+	if strings.HasPrefix(rel, "..") || rel == "." || rel == "" {
+		return "", false
+	}
+	return rel, true
 }
 
 // urlToFilePath fait l'inverse de filePathToURL : convertit une URL servable
@@ -703,10 +714,11 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Construire la liste des répertoires candidates (settings puis chemin interne).
+	// Bug #8 : symétrique de filePathToURL — capturesBase+slug ET capturesBase brut.
 	var playerDirs []string
 	if capturesBase != "" {
 		playerDirs = append(playerDirs, filepath.Join(capturesBase, slug))
+		playerDirs = append(playerDirs, filepath.Clean(capturesBase))
 	}
 	if h.repoRoot != "" {
 		pr := titlePkg.NewPathResolver(h.repoRoot)

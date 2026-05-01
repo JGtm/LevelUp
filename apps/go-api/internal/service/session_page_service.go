@@ -253,25 +253,25 @@ func scoreSessionCandidate(current, candidate sessionCandidate) int {
 func buildSuggestionReason(current, candidate sessionCandidate) string {
 	parts := make([]string, 0, 3)
 	if current.Category == candidate.Category {
-		parts = append(parts, fmt.Sprintf("mÃªme catÃ©gorie %s", strings.ToLower(candidate.Category)))
+		parts = append(parts, fmt.Sprintf("même catégorie %s", strings.ToLower(candidate.Category)))
 	}
 	if current.IsRanked == candidate.IsRanked {
 		if candidate.IsRanked {
-			parts = append(parts, "mÃªme statut classÃ©")
+			parts = append(parts, "même statut classé")
 		} else {
-			parts = append(parts, "mÃªme statut social")
+			parts = append(parts, "même statut social")
 		}
 	}
 	diff := absInt(current.Count - candidate.Count)
 	if diff == 0 {
-		parts = append(parts, "mÃªme volume")
+		parts = append(parts, "même volume")
 	} else {
-		parts = append(parts, fmt.Sprintf("Ã©cart de %d match(s)", diff))
+		parts = append(parts, fmt.Sprintf("écart de %d match(s)", diff))
 	}
 	if len(parts) == 0 {
 		return "session chronologiquement proche"
 	}
-	return strings.Join(parts, " Â· ")
+	return strings.Join(parts, " · ")
 }
 
 func resolveRequestedCompareLabel(

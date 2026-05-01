@@ -167,6 +167,10 @@ func (m *mockHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, 
 	return "", 0, nil
 }
 
+func (m *mockHomeRepo) EnrichCanonicalAssetTranslations(_ context.Context, _ []canonical.PlayerMatchRow) error {
+	return nil
+}
+
 // --- tests ---
 
 func TestHomeService_GetHomePage_OK(t *testing.T) {
