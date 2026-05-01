@@ -19,6 +19,19 @@
 
 **Prochaine étape** : Phase Discovery UGC — récupérer les noms officiels des playlists sans nom (4 avec UUID comme nom) via `gamecms /assets/{id}.json` + `discovery-infiniteugc /Playlists/{id}/versions/{versionId}`.
 
+## [2026-05-01] Fix Asset Drawer — "Aucune carte trouvée." (asset_translations vide)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause** : `asset_translations` est vide — `populate-assets` n'a pas été relancé sur cette instance DB après la migration v5. L'ancienne query INNER JOIN (map_images_registry × asset_translations) fonctionnait car les deux tables étaient peuplées ; avec la migration v5, les deux sont perdues.
+- **Fix** : `ListMapsByTitle` utilise maintenant `maps_catalog` (122 maps, toujours peuplée par `populate-playlists-catalog`) comme source primaire. `asset_translations` reste en LEFT JOIN comme enrichissement optionnel — si elle est vide, `name_canonical` de `maps_catalog` est utilisé comme `name_en`.
+- **Tests** : fixtures `setupAssetDrawerFixtures` mises à jour pour utiliser `maps_catalog`. Nouveau test `TestListMapsByTitle_NoTranslations_FallsBackToNameCanonical` pour le cas sans `asset_translations`.
+
+**Résultats** : 3 tests ListMaps passent, `go build ./...` OK. 122 maps visibles sans `populate-assets`.
+
+**Prochaine étape** : lancer `populate-assets --types map --langs fr-FR,en-US` pour enrichir les noms traduits.
+
 ## [2026-05-01] Fix Asset Drawer — "Erreur de chargement." (lock Windows metadata.duckdb)
 
 **Statut** : Complété

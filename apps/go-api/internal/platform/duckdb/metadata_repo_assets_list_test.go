@@ -58,31 +58,31 @@ func TestListMapsByTitle_Search(t *testing.T) {
 	}
 }
 
-// TestListMapsByTitle_EmptyRegistry_StillReturnsNames est le test de régression pour le bug
-// où l'INNER JOIN sur map_images_registry retournait 0 lignes quand la table était vide
-// (images pas encore mises en cache via populate-assets). Les noms doivent s'afficher
-// même si aucune image n'est en cache.
-func TestListMapsByTitle_EmptyRegistry_StillReturnsNames(t *testing.T) {
+// TestListMapsByTitle_NoTranslations_FallsBackToNameCanonical est le test de régression
+// pour le cas où asset_translations est vide (populate-assets pas encore lancé).
+// Les maps doivent s'afficher via maps_catalog.name_canonical même sans traductions.
+func TestListMapsByTitle_NoTranslations_FallsBackToNameCanonical(t *testing.T) {
 	db := openAssetMemDB(t)
 	repo := NewMetadataRepoFromDB(db)
 	ctx := context.Background()
 
-	// On crée les tables SANS map_images_registry peuplé (table vide).
 	ddl := []string{
-		`CREATE TABLE map_images_registry (
-			title_id   VARCHAR NOT NULL,
-			map_id     VARCHAR NOT NULL,
-			local_path VARCHAR NOT NULL DEFAULT '',
-			fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			PRIMARY KEY (title_id, map_id)
+		`CREATE TABLE maps_catalog (
+			title_slug         VARCHAR NOT NULL,
+			map_asset_id       VARCHAR NOT NULL,
+			current_version_id VARCHAR,
+			name_canonical     VARCHAR,
+			image_url          VARCHAR,
+			last_fetched_at    TIMESTAMP,
+			PRIMARY KEY (title_slug, map_asset_id)
 		)`,
 		`CREATE TABLE asset_translations (
-			asset_id   VARCHAR NOT NULL,
-			asset_type VARCHAR NOT NULL,
-			lang       VARCHAR NOT NULL,
-			name       VARCHAR NOT NULL DEFAULT '',
+			asset_id    VARCHAR NOT NULL,
+			asset_type  VARCHAR NOT NULL,
+			lang        VARCHAR NOT NULL,
+			name        VARCHAR NOT NULL DEFAULT '',
 			description VARCHAR NOT NULL DEFAULT '',
-			fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			fetched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 			PRIMARY KEY (asset_id, asset_type, lang)
 		)`,
 		`CREATE TABLE weapon_labels (weapon_id UBIGINT PRIMARY KEY, name_en VARCHAR, name_fr VARCHAR)`,
@@ -92,10 +92,10 @@ func TestListMapsByTitle_EmptyRegistry_StillReturnsNames(t *testing.T) {
 			t.Fatalf("DDL: %v", err)
 		}
 	}
-	// Traductions présentes, mais map_images_registry est VIDE.
+	// maps_catalog peuplé, asset_translations VIDE.
 	fixtures := []string{
-		`INSERT INTO asset_translations VALUES ('map-001','map','en-US','Aquarius','',now())`,
-		`INSERT INTO asset_translations VALUES ('map-002','map','en-US','Breaker','',now())`,
+		`INSERT INTO maps_catalog (title_slug, map_asset_id, name_canonical) VALUES ('halo_infinite','map-001','Aquarius')`,
+		`INSERT INTO maps_catalog (title_slug, map_asset_id, name_canonical) VALUES ('halo_infinite','map-002','Breaker')`,
 	}
 	for _, q := range fixtures {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -108,7 +108,10 @@ func TestListMapsByTitle_EmptyRegistry_StillReturnsNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(maps) != 2 {
-		t.Errorf("registry vide: attendu 2 maps via asset_translations, obtenu %d", len(maps))
+		t.Errorf("sans traductions: attendu 2 maps via name_canonical, obtenu %d", len(maps))
+	}
+	if maps[0].NameEN != "Aquarius" {
+		t.Errorf("NameEN=%q, attendu Aquarius (fallback name_canonical)", maps[0].NameEN)
 	}
 }
 
@@ -148,24 +151,27 @@ func TestListWeaponsByTitle_Search(t *testing.T) {
 }
 
 // setupAssetDrawerFixtures crée les tables et insère 3 maps + 2 armes en mémoire.
+// maps_catalog est la source primaire ; asset_translations enrichit les noms (optionnel).
 func setupAssetDrawerFixtures(t *testing.T, db *DB, ctx context.Context) {
 	t.Helper()
 
 	ddl := []string{
-		`CREATE TABLE map_images_registry (
-			title_id   VARCHAR NOT NULL,
-			map_id     VARCHAR NOT NULL,
-			local_path VARCHAR NOT NULL DEFAULT '',
-			fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			PRIMARY KEY (title_id, map_id)
+		`CREATE TABLE maps_catalog (
+			title_slug         VARCHAR NOT NULL,
+			map_asset_id       VARCHAR NOT NULL,
+			current_version_id VARCHAR,
+			name_canonical     VARCHAR,
+			image_url          VARCHAR,
+			last_fetched_at    TIMESTAMP,
+			PRIMARY KEY (title_slug, map_asset_id)
 		)`,
 		`CREATE TABLE asset_translations (
-			asset_id   VARCHAR NOT NULL,
-			asset_type VARCHAR NOT NULL,
-			lang       VARCHAR NOT NULL,
-			name       VARCHAR NOT NULL DEFAULT '',
+			asset_id    VARCHAR NOT NULL,
+			asset_type  VARCHAR NOT NULL,
+			lang        VARCHAR NOT NULL,
+			name        VARCHAR NOT NULL DEFAULT '',
 			description VARCHAR NOT NULL DEFAULT '',
-			fetched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			fetched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 			PRIMARY KEY (asset_id, asset_type, lang)
 		)`,
 		`CREATE TABLE weapon_labels (
@@ -181,13 +187,15 @@ func setupAssetDrawerFixtures(t *testing.T, db *DB, ctx context.Context) {
 	}
 
 	fixtures := []string{
-		`INSERT INTO map_images_registry VALUES ('halo_infinite','map-001','',now())`,
-		`INSERT INTO map_images_registry VALUES ('halo_infinite','map-002','',now())`,
-		`INSERT INTO map_images_registry VALUES ('halo_infinite','map-003','',now())`,
+		// maps_catalog — source primaire (toujours peuplée)
+		`INSERT INTO maps_catalog (title_slug, map_asset_id, name_canonical) VALUES ('halo_infinite','map-001','Aquarius')`,
+		`INSERT INTO maps_catalog (title_slug, map_asset_id, name_canonical) VALUES ('halo_infinite','map-002','Breaker')`,
+		`INSERT INTO maps_catalog (title_slug, map_asset_id, name_canonical) VALUES ('halo_infinite','map-003','Streets')`,
+		// asset_translations — enrichissement optionnel (EN + FR pour map-001 uniquement)
 		`INSERT INTO asset_translations VALUES ('map-001','map','en-US','Aquarius','',now())`,
 		`INSERT INTO asset_translations VALUES ('map-001','map','fr-FR','Aquarius','',now())`,
 		`INSERT INTO asset_translations VALUES ('map-002','map','en-US','Breaker','',now())`,
-		`INSERT INTO asset_translations VALUES ('map-003','map','en-US','Streets','',now())`,
+		// map-003 n'a pas de traduction → nom vient de name_canonical
 		`INSERT INTO weapon_labels VALUES (100,'BR75 Battle Rifle','Fusil BR75')`,
 		`INSERT INTO weapon_labels VALUES (200,'Skewer','Brochette')`,
 	}
