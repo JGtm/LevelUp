@@ -79,7 +79,6 @@ export function SquadVerdict({
             {Math.round(squadScore.score)}
           </span>
           <span className="text-xs text-muted-foreground">{teamLabel}</span>
-          <span className="ml-1 text-base font-bold">[{squadScore.grade}]</span>
         </div>
         <p
           className="mt-0.5 text-[10px]"
