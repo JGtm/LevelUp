@@ -79,16 +79,22 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
     ? computeTrend(kpis.avg_life_seconds, teamAvgKpis.avg_life_seconds)
     : 'none'
 
+  // Header row : affichée uniquement quand un titre existe (mode self).
+  // En mode drilled (title vide), la reset bar "Vue active : X" indique déjà
+  // le scope ; on évite l'empty line + on supprime le hint trend redondant
+  // (les ▲/▼ colorés à côté de chaque value sont auto-explicites).
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between px-1">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </span>
-        {teamAvgKpis && hint && (
-          <span className="text-[10px] text-muted-foreground">{hint}</span>
-        )}
-      </div>
+      {title && (
+        <div className="mb-1.5 flex items-center justify-between px-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {title}
+          </span>
+          {teamAvgKpis && hint && (
+            <span className="text-[10px] text-muted-foreground">{hint}</span>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-8 gap-2">
         <KpiCell
           label={texts.grid.matchesPlayed}
