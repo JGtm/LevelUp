@@ -16,6 +16,7 @@ import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PassContentSummary } from './PassContentSummary'
 import { PalmaresShell } from './PalmaresShell'
 import { useSeasonPassPage } from './queries'
+import { rarityLabel, type RarityTier } from './rarity'
 
 function statusVariant(status: SeasonPassStatus) {
   switch (status) {
@@ -26,11 +27,40 @@ function statusVariant(status: SeasonPassStatus) {
   }
 }
 
-// Extrait le dossier parent du reward_track_path pour identifier le type de pass
-// (ex: "RewardTracks/Operations/foo.json" → "Operations").
-function trackTypeLabel(rewardTrackPath: string): string | null {
-  const parts = rewardTrackPath.replace(/\\/g, '/').split('/').filter(Boolean)
-  return parts.length >= 2 ? parts[parts.length - 2] : null
+// Ordre décroissant de rareté — du plus rare au plus commun.
+const RARITY_ORDER: RarityTier[] = ['mythic', 'legendary', 'epic', 'rare', 'common']
+
+function topRarityEntry(breakdown: Record<string, number> | null | undefined): { tier: RarityTier; count: number } | null {
+  if (!breakdown) return null
+  for (const tier of RARITY_ORDER) {
+    const count = breakdown[tier]
+    if (count > 0) return { tier, count }
+  }
+  return null
+}
+
+type ContentLabels = { tiersLabel: string; spartanPointsLabel: string; creditsLabel: string; cosmeticsLabel: string }
+type SeasonPassContent = NonNullable<SeasonPassTrackSummary['content']>
+
+function buildOverlayMetrics(
+  content: SeasonPassContent,
+  labels: ContentLabels,
+  intlLocale: string,
+  locale: 'fr' | 'en',
+): string {
+  const parts: string[] = []
+  parts.push(`${content.total_tiers} ${labels.tiersLabel}`)
+  if (content.spartan_points > 0) {
+    parts.push(`${content.spartan_points.toLocaleString(intlLocale)} ${labels.spartanPointsLabel}`)
+  } else if (content.credits > 0) {
+    parts.push(`${content.credits.toLocaleString(intlLocale)} ${labels.creditsLabel}`)
+  }
+  if (content.cosmetics_total > 0) {
+    parts.push(`${content.cosmetics_total} ${labels.cosmeticsLabel}`)
+  }
+  const top = topRarityEntry(content.rarity_breakdown)
+  if (top) parts.push(`${rarityLabel(top.tier, locale)} ${top.count}`)
+  return parts.join(' · ')
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
@@ -68,7 +98,6 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
   const rankValue = pass.max_rank
     ? `${pass.current_rank} / ${pass.max_rank}`
     : pass.current_rank.toLocaleString(intlLocale)
-  const typeLabel = trackTypeLabel(pass.reward_track_path)
 
   return (
     <button
@@ -89,12 +118,7 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
       )}
       <div className="relative flex h-full flex-col gap-4 p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            {typeLabel && (
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{typeLabel}</p>
-            )}
-            <h3 className="mt-2 text-lg font-semibold text-foreground">{pass.name}</h3>
-          </div>
+          <h3 className="text-lg font-semibold text-foreground">{pass.name}</h3>
           <div className="flex flex-wrap gap-2">
             {isSelected && <Badge variant="default">{labels.nowShowing}</Badge>}
             {pass.is_active && <Badge variant="default">{labels.active}</Badge>}
@@ -136,12 +160,14 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
 function PassShowcase({
   pass,
   text,
+  locale,
   isViewingActive,
   onBackToActive,
   showcaseRef,
 }: {
   pass: SeasonPassTrackSummary
   text: Text
+  locale: 'fr' | 'en'
   isViewingActive: boolean
   onBackToActive: () => void
   showcaseRef?: React.Ref<HTMLDivElement>
@@ -173,99 +199,113 @@ function PassShowcase({
     locale: text.intlLocale,
   })
 
+  const overlayMetrics = pass.content
+    ? buildOverlayMetrics(pass.content, text.seasonPass.content, text.intlLocale, locale)
+    : null
+
   return (
     <div ref={showcaseRef}>
-      <Card className="relative overflow-hidden border-border/70 bg-card/95 shadow-sm">
-        {pass.background_image_url && (
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-25"
-            style={{ backgroundImage: `url(${pass.background_image_url})` }}
-            aria-hidden="true"
-          />
-        )}
-        <CardContent className="relative space-y-7 p-6 lg:p-8">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-sm">
+        <CardContent className="space-y-6 p-6 lg:p-8">
 
-        {!isViewingActive && (
-          <button
-            type="button"
-            onClick={onBackToActive}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded"
-          >
-            <span aria-hidden="true">←</span>
-            <span>{text.seasonPass.backToActive}</span>
-          </button>
-        )}
+          {!isViewingActive && (
+            <button
+              type="button"
+              onClick={onBackToActive}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded"
+            >
+              <span aria-hidden="true">←</span>
+              <span>{text.seasonPass.backToActive}</span>
+            </button>
+          )}
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                {pass.is_active ? text.seasonPass.activePassTitle : trackTypeLabel(pass.reward_track_path) ?? ''}
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{pass.name}</h2>
+          {/* Hero : image du pass avec infos en overlay */}
+          {pass.background_image_url ? (
+            <div className="relative overflow-hidden rounded-2xl">
+              <img
+                src={pass.background_image_url}
+                alt={pass.name}
+                className="aspect-[986/248] w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/28 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                      {pass.name}
+                    </h2>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <Badge variant={statusVariant(pass.status)}>
+                        {text.seasonPass.status[pass.status] ?? pass.status}
+                      </Badge>
+                      {overlayMetrics && (
+                        <span className="text-xs text-white/75">{overlayMetrics}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
+                    {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
-              {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
-              <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
+          ) : (
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{pass.name}</h2>
+              <div className="flex flex-wrap gap-2">
+                {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
+                {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
+                <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
+              </div>
             </div>
-          </div>
+          )}
+
           {pass.description && (
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">{pass.description}</p>
           )}
-        </div>
 
-        {pass.content && (
-          <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
-            <PassContentSummary content={pass.content} labels={text.seasonPass.content} locale={text.intlLocale} />
-          </div>
-        )}
+          {pass.content && (
+            <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
+              <PassContentSummary content={pass.content} labels={text.seasonPass.content} locale={text.intlLocale} />
+            </div>
+          )}
 
-        {pass.background_image_url && (
-          <div className="overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/80 shadow-[0_30px_90px_-50px_rgba(15,23,42,0.9)]">
-            <img
-              src={pass.background_image_url}
-              alt={`Illustration de ${pass.name}`}
-              className="aspect-[986/248] w-full object-cover"
-            />
-          </div>
-        )}
+          {pass.tiers && pass.tiers.length > 0 && (
+            <div className="space-y-5">
+              <BattlePassRewardCarousel
+                tiers={pass.tiers}
+                activeTierRank={pass.active_tier_rank}
+                onOpenCard={handleOpenCard}
+                freeLabel={text.seasonPass.freeLabel}
+              />
 
-        {pass.tiers && pass.tiers.length > 0 && (
-          <div className="space-y-5">
-            <BattlePassRewardCarousel
-              tiers={pass.tiers}
-              activeTierRank={pass.active_tier_rank}
-              onOpenCard={handleOpenCard}
-              freeLabel={text.seasonPass.freeLabel}
-            />
-
-            {pass.is_active && pass.active_tier_rank != null && (
-              <div className="space-y-3 rounded-3xl border border-slate-200/70 bg-slate-50/80 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{text.seasonPass.activeTierProgress}</p>
-                    <p className="mt-1 text-base font-semibold text-foreground">#{pass.active_tier_rank}</p>
+              {pass.is_active && pass.active_tier_rank != null && (
+                <div className="space-y-3 rounded-3xl border border-slate-200/70 bg-slate-50/80 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{text.seasonPass.activeTierProgress}</p>
+                      <p className="mt-1 text-base font-semibold text-foreground">#{pass.active_tier_rank}</p>
+                    </div>
+                    <p className="text-lg font-semibold text-sky-700">
+                      {tierProgress.toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })} %
+                    </p>
                   </div>
-                  <p className="text-lg font-semibold text-sky-700">
-                    {tierProgress.toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })} %
-                  </p>
-                </div>
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-                  <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
-                    {progressLabels.current}
-                  </span>
-                  <div className="min-w-0">
-                    <CompositeProgressBar value={tierProgress} />
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                    <span data-testid="season-pass-active-tier-progress-current" className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
+                      {progressLabels.current}
+                    </span>
+                    <div className="min-w-0">
+                      <CompositeProgressBar value={tierProgress} fillTestId="season-pass-active-tier-progress-fill" />
+                    </div>
+                    <span data-testid="season-pass-active-tier-progress-target" className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
+                      {progressLabels.target}
+                    </span>
                   </div>
-                  <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs">
-                    {progressLabels.target}
-                  </span>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
         </CardContent>
         <BattlePassRewardLightbox reward={selectedReward} onClose={() => setSelectedReward(null)} />
       </Card>
@@ -339,6 +379,7 @@ export function SeasonPassPage() {
         <PassShowcase
           pass={selectedPass}
           text={text}
+          locale={locale}
           isViewingActive={isViewingActive}
           onBackToActive={backToActive}
           showcaseRef={showcaseRef}

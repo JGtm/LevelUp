@@ -131,9 +131,9 @@ describe('SeasonPassPage', () => {
     expect(scrollToMock).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
     expect(scrollIntoViewMock).not.toHaveBeenCalled()
 
-    expect(screen.getByAltText('Illustration de Operation Alpha')).toBeInTheDocument()
+    expect(screen.getByAltText('Operation Alpha')).toBeInTheDocument()
 
-    const tierCards = screen.getAllByTestId('season-pass-tier-card')
+    const tierCards = screen.getAllByTestId('battle-pass-tier-card')
     expect(tierCards).toHaveLength(3)
     expect(tierCards[0]).toHaveAttribute('data-obtained', 'true')
     expect(tierCards[1]).toHaveAttribute('data-current', 'true')
