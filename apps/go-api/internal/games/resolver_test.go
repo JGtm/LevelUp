@@ -61,6 +61,26 @@ func (s *stubAssetURL) MedalImageURL(_ uint64) string          { return "" }
 func (s *stubAssetURL) CSRRankImageURL(_ string, _ int) string { return "" }
 func (s *stubAssetURL) CSRRankImageURLOnyx() string            { return "" }
 
+// stubCatalog implémente TitleCatalogAdapter pour les tests resolver.
+type stubCatalog struct{ slug string }
+
+func (s *stubCatalog) TitleSlug() string { return s.slug }
+func (s *stubCatalog) FetchPlaylist(_ context.Context, _, _ string) (canonical.CanonicalPlaylist, error) {
+	return canonical.CanonicalPlaylist{}, nil
+}
+func (s *stubCatalog) FetchPair(_ context.Context, _, _ string) (canonical.CanonicalPair, error) {
+	return canonical.CanonicalPair{}, nil
+}
+func (s *stubCatalog) FetchMap(_ context.Context, _, _ string) (canonical.CanonicalMap, error) {
+	return canonical.CanonicalMap{}, nil
+}
+func (s *stubCatalog) FetchGameVariant(_ context.Context, _, _ string) (canonical.CanonicalGameVariant, error) {
+	return canonical.CanonicalGameVariant{}, nil
+}
+func (s *stubCatalog) ClassifyExperience(_ canonical.CanonicalPlaylist) canonical.Experience {
+	return canonical.ExperienceUnknown
+}
+
 // hiSlug constante locale aux tests pour réutiliser le littéral du titre
 // par défaut sans déclencher goconst sur les multiples occurrences.
 const hiSlug = "halo_infinite"
@@ -106,6 +126,46 @@ func TestStaticResolver_RegisterAndResolve(t *testing.T) {
 	}
 	if a.TitleSlug() != hiSlug {
 		t.Errorf("AssetURL slug = %q", a.TitleSlug())
+	}
+
+	// Phase C plan catalogue : Catalog adapter résolu correctement.
+	r.RegisterCatalog(&stubCatalog{slug: hiSlug})
+	c, err := r.Catalog(hiSlug)
+	if err != nil {
+		t.Fatalf("Catalog err: %v", err)
+	}
+	if c.TitleSlug() != hiSlug {
+		t.Errorf("Catalog slug = %q", c.TitleSlug())
+	}
+}
+
+// Phase C plan catalogue : isolation cross-titres pour TitleCatalogAdapter.
+// Un appel Catalog("synthetic_title_b") ne doit jamais router vers Halo.
+func TestStaticResolver_Catalog_Isolation(t *testing.T) {
+	t.Parallel()
+	r := NewStaticResolver(hiSlug)
+	r.RegisterCatalog(&stubCatalog{slug: hiSlug})
+	r.RegisterCatalog(&stubCatalog{slug: "synthetic_title_b"})
+
+	cHalo, err := r.Catalog(hiSlug)
+	if err != nil {
+		t.Fatalf("Catalog(halo): %v", err)
+	}
+	if cHalo.TitleSlug() != hiSlug {
+		t.Errorf("Catalog(halo).TitleSlug = %q", cHalo.TitleSlug())
+	}
+
+	cSynth, err := r.Catalog("synthetic_title_b")
+	if err != nil {
+		t.Fatalf("Catalog(synth): %v", err)
+	}
+	if cSynth.TitleSlug() != "synthetic_title_b" {
+		t.Errorf("Catalog(synth).TitleSlug = %q (cross-title leak)", cSynth.TitleSlug())
+	}
+
+	// Catalog inconnu → ErrTitleNotResolved (pas de fallback silencieux).
+	if _, err := r.Catalog("nonexistent"); !errors.Is(err, ErrTitleNotResolved) {
+		t.Errorf("Catalog(unknown) err = %v, want ErrTitleNotResolved", err)
 	}
 }
 

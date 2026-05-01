@@ -16,6 +16,7 @@ type StaticResolver struct {
 	data        map[string]TitleDataAdapter
 	semantic    map[string]TitleSemanticAdapter
 	assetURL    map[string]TitleAssetURLAdapter
+	catalog     map[string]TitleCatalogAdapter
 }
 
 // NewStaticResolver crée un resolver vide pour un slug par défaut donné.
@@ -28,6 +29,7 @@ func NewStaticResolver(defaultSlug string) *StaticResolver {
 		data:        make(map[string]TitleDataAdapter),
 		semantic:    make(map[string]TitleSemanticAdapter),
 		assetURL:    make(map[string]TitleAssetURLAdapter),
+		catalog:     make(map[string]TitleCatalogAdapter),
 	}
 }
 
@@ -50,6 +52,13 @@ func (r *StaticResolver) RegisterAssetURL(a TitleAssetURLAdapter) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.assetURL[a.TitleSlug()] = a
+}
+
+// RegisterCatalog enregistre un TitleCatalogAdapter pour son TitleSlug().
+func (r *StaticResolver) RegisterCatalog(a TitleCatalogAdapter) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.catalog[a.TitleSlug()] = a
 }
 
 // Data retourne le TitleDataAdapter d'un slug ou ErrTitleNotResolved.
@@ -82,6 +91,16 @@ func (r *StaticResolver) AssetURL(slug string) (TitleAssetURLAdapter, error) {
 	return nil, fmt.Errorf("%w: %q", ErrTitleNotResolved, slug)
 }
 
+// Catalog retourne le TitleCatalogAdapter d'un slug ou ErrTitleNotResolved.
+func (r *StaticResolver) Catalog(slug string) (TitleCatalogAdapter, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if a, ok := r.catalog[slug]; ok {
+		return a, nil
+	}
+	return nil, fmt.Errorf("%w: %q", ErrTitleNotResolved, slug)
+}
+
 // DefaultSlug retourne le slug par défaut configuré au boot.
 func (r *StaticResolver) DefaultSlug() string { return r.defaultSlug }
 
@@ -97,6 +116,9 @@ func (r *StaticResolver) Slugs() []string {
 		seen[s] = struct{}{}
 	}
 	for s := range r.assetURL {
+		seen[s] = struct{}{}
+	}
+	for s := range r.catalog {
 		seen[s] = struct{}{}
 	}
 	out := make([]string, 0, len(seen))
