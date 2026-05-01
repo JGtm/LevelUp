@@ -462,3 +462,7 @@ en = "Monthly"
 [home.prestige.cadence_free]
 fr = "Sans échéance"
 en = "Open-ended"
+
+[home.prestige.objectives_view_all]
+fr = "Voir tous ({n})"
+en = "View all ({n})"

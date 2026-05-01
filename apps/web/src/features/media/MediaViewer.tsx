@@ -159,6 +159,18 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
             alt={item.basename}
             className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
           />
+        ) : item.kind === 'clip' ? (
+          // Bug #8 : clips sans thumbnail backfillé (cas typique des médias
+          // de coéquipiers). Le browser affiche la première frame avec
+          // `preload="metadata"` + fragment `#t=0.5` qui force un seek dès
+          // le chargement metadata — pas de download de la vidéo entière.
+          <video
+            src={`${item.file_path}#t=0.5`}
+            preload="metadata"
+            muted
+            playsInline
+            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-2xl text-muted-foreground">
             ▶

@@ -12,7 +12,7 @@
  *
  * Tous les libellés FR/EN passent par homeManifest (clés home.prestige.*).
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +22,7 @@ import { ArcSummary } from '@/features/prestige/components/ArcSummary'
 import { ObjectiveRow } from '@/features/prestige/components/ObjectiveRow'
 import { useMyPrestige } from '@/features/prestige/hooks/usePrestige'
 import { useArcs } from '@/features/prestige/hooks/useArcs'
-import { prestigeApi, type Cadence, type Challenge } from '@/lib/prestige'
+import { prestigeApi, type Challenge } from '@/lib/prestige'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
@@ -32,24 +32,28 @@ interface HomePrestigeSectionProps {
   locale: ManifestLocale
 }
 
-const CADENCE_ORDER: Cadence[] = ['daily', 'weekly', 'monthly', 'free']
+const VISIBLE_OBJECTIVES = 3
+const ROTATION_MS = 4500
+const FADE_MS = 250
 
-const CADENCE_KEY: Record<Cadence, HomeManifestKey> = {
-  daily: 'home.prestige.cadence_daily',
-  weekly: 'home.prestige.cadence_weekly',
-  monthly: 'home.prestige.cadence_monthly',
-  free: 'home.prestige.cadence_free',
-}
-
-function groupByCadence(challenges: Challenge[]): Map<Cadence, Challenge[]> {
-  const out = new Map<Cadence, Challenge[]>()
-  for (const c of CADENCE_ORDER) out.set(c, [])
-  for (const c of challenges) {
-    const key = (c.cadence ?? 'free') as Cadence
-    const arr = out.get(key) ?? out.get('free')!
-    arr.push(c)
-  }
-  return out
+/**
+ * Tri d'affichage des objectifs.
+ *
+ * Ordre :
+ *   1. Actifs avant terminés.
+ *   2. (TODO quand l'API expose current_value) % de progression desc.
+ *   3. Fallback : created_at desc pour les actifs, completed_at desc pour les terminés.
+ */
+function sortObjectives(challenges: Challenge[]): Challenge[] {
+  return [...challenges].sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'active' ? -1 : 1
+    if (a.status === 'completed') {
+      const aT = a.completed_at ?? a.created_at
+      const bT = b.completed_at ?? b.created_at
+      return bT.localeCompare(aT)
+    }
+    return b.created_at.localeCompare(a.created_at)
+  })
 }
 
 export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrestigeSectionProps) {
@@ -69,11 +73,38 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
 
   const challenges = challengesQ.data?.challenges ?? []
   const filteredObjectives = useMemo(
-    () => challenges.filter((c) => (filter === 'active' ? c.status === 'active' : c.status === 'completed')),
+    () =>
+      sortObjectives(
+        challenges.filter((c) => (filter === 'active' ? c.status === 'active' : c.status === 'completed')),
+      ),
     [challenges, filter],
   )
-  const grouped = useMemo(() => groupByCadence(filteredObjectives), [filteredObjectives])
-  const visibleSections = CADENCE_ORDER.filter((c) => (grouped.get(c)?.length ?? 0) > 0)
+
+  // Pagination par fenêtres de 3 + rotation auto si > 3 objectifs.
+  const totalPages = Math.max(1, Math.ceil(filteredObjectives.length / VISIBLE_OBJECTIVES))
+  const [page, setPage] = useState(0)
+  const [fading, setFading] = useState(false)
+  // Reset page si le filtre change ou si la liste rétrécit.
+  useEffect(() => {
+    setPage(0)
+  }, [filter, totalPages])
+  const pagesRef = useRef(totalPages)
+  pagesRef.current = totalPages
+  useEffect(() => {
+    if (totalPages <= 1) return
+    const iv = window.setInterval(() => {
+      setFading(true)
+      window.setTimeout(() => {
+        setPage((p) => (p + 1) % pagesRef.current)
+        setFading(false)
+      }, FADE_MS)
+    }, ROTATION_MS)
+    return () => window.clearInterval(iv)
+  }, [totalPages])
+  const visibleObjectives = filteredObjectives.slice(
+    page * VISIBLE_OBJECTIVES,
+    page * VISIBLE_OBJECTIVES + VISIBLE_OBJECTIVES,
+  )
 
   const activeArc = arcsQ.data?.arcs.find((a) => a.completed_at == null) ?? null
 
@@ -88,7 +119,19 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
   const progressPct = lvl ? Math.round(lvl.progress_ratio * 100) : 0
 
   return (
-    <Card data-testid="home-prestige-section">
+    <Card data-testid="home-prestige-section" className="relative overflow-hidden isolate">
+      {/* Background décoratif Prestige (pattern hexagonal cyber). */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat opacity-60"
+        style={{ backgroundImage: "url('/static/prestige-assets/prestige-bg.webp')" }}
+      />
+      {/* Overlay pour préserver la lisibilité du contenu. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-card/70"
+      />
+
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
         <CardTitle className="text-base">{t('home.prestige.title')}</CardTitle>
         <Link
@@ -101,9 +144,9 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
       </CardHeader>
 
       <CardContent className="space-y-5">
-        {/* ─── Barre composite niveau / PP ─── */}
+        {/* ─── Barre composite niveau / PP (fond opaque) ─── */}
         {pp && (
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-lg border border-border bg-card p-3">
             <div className="flex items-center justify-between gap-3 text-xs">
               <span className="font-semibold text-foreground">
                 {ppLabel}
@@ -127,32 +170,15 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
           </div>
         )}
 
-        {/* ─── Grille Arc (gauche) | Objectifs (droite) ─── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.45fr)_minmax(0,0.55fr)]">
-          {/* Arc en cours */}
-          <div className="space-y-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
-              {t('home.prestige.arc_section')}
-            </h3>
-            {arcsQ.isLoading ? (
-              <div className="h-24 w-full animate-pulse rounded-lg bg-muted" />
-            ) : activeArc ? (
-              <ArcSummary arc={activeArc} />
-            ) : (
-              <EmptyStateNotice
-                title={t('home.prestige.arc_empty_title')}
-                description={t('home.prestige.arc_empty_description')}
-              />
-            )}
-          </div>
-
-          {/* Mes objectifs */}
-          <div className="space-y-2">
+        {/* ─── Grille Objectifs (gauche, fond opaque) | Arc (droite, semi-transparent) ─── */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)]">
+          {/* Mes objectifs — fond opaque */}
+          <div className="space-y-2 rounded-lg border border-border bg-card p-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
                 {t('home.prestige.objectives_section')}
               </h3>
-              <div className="flex items-center rounded-md border border-border bg-card p-0.5 text-[10px]">
+              <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-[10px]">
                 <button
                   type="button"
                   onClick={() => setFilter('active')}
@@ -186,7 +212,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
                   <div key={i} className="h-16 w-full animate-pulse rounded-lg bg-muted" />
                 ))}
               </div>
-            ) : visibleSections.length === 0 ? (
+            ) : filteredObjectives.length === 0 ? (
               <EmptyStateNotice
                 title={
                   filter === 'active'
@@ -196,11 +222,54 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
                 description={t('home.prestige.objectives_empty_description')}
               />
             ) : (
-              <div className="space-y-3">
-                {visibleSections.map((c) => (
-                  <CadenceGroup key={c} cadence={c} items={grouped.get(c) ?? []} t={t} />
-                ))}
+              <div className="space-y-2">
+                <div
+                  className={`space-y-1.5 transition-opacity duration-200 ${fading ? 'opacity-0' : 'opacity-100'}`}
+                  aria-live="polite"
+                >
+                  {visibleObjectives.map((c) => (
+                    <ObjectiveRow key={c.id} challenge={c} />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <Link
+                      to="/players/$playerSlug/objectifs"
+                      params={{ playerSlug }}
+                      className="text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {t('home.prestige.objectives_view_all', { n: filteredObjectives.length })}
+                    </Link>
+                    <div className="flex gap-1" aria-hidden="true">
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <span
+                          key={i}
+                          className={`h-1 w-4 rounded-full transition-colors ${
+                            i === page ? 'bg-primary' : 'bg-border'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
+          </div>
+
+          {/* Arc en cours — fond semi-transparent (laisse voir le pattern) */}
+          <div className="space-y-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
+              {t('home.prestige.arc_section')}
+            </h3>
+            {arcsQ.isLoading ? (
+              <div className="h-24 w-full animate-pulse rounded-lg bg-muted" />
+            ) : activeArc ? (
+              <ArcSummary arc={activeArc} />
+            ) : (
+              <EmptyStateNotice
+                title={t('home.prestige.arc_empty_title')}
+                description={t('home.prestige.arc_empty_description')}
+              />
             )}
           </div>
         </div>
@@ -209,25 +278,3 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
   )
 }
 
-function CadenceGroup({
-  cadence,
-  items,
-  t,
-}: {
-  cadence: Cadence
-  items: Challenge[]
-  t: (key: HomeManifestKey, values?: Record<string, string | number>) => string
-}) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {t(CADENCE_KEY[cadence])}
-      </p>
-      <div className="space-y-1.5">
-        {items.map((c) => (
-          <ObjectiveRow key={c.id} challenge={c} />
-        ))}
-      </div>
-    </div>
-  )
-}

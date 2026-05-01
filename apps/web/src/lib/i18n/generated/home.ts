@@ -79,6 +79,7 @@ export const homeManifest = {
   "home.prestige.objectives_filter_active": { fr: "Actifs", en: "Active" },
   "home.prestige.objectives_filter_completed": { fr: "Terminés", en: "Done" },
   "home.prestige.objectives_section": { fr: "Mes objectifs", en: "My objectives" },
+  "home.prestige.objectives_view_all": { fr: "Voir tous ({n})", en: "View all ({n})" },
   "home.prestige.title": { fr: "Prestige", en: "Prestige" },
   "home.sessions.detail_aria": { fr: "Voir le détail de la session {label}", en: "View session details for {label}" },
   "home.sessions.dnfs_count": { fr: "{n, plural, one {# Non terminé} other {# Non terminés}}", en: "{n, plural, one {# Not finished} other {# Not finished}}" },
