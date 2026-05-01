@@ -259,8 +259,32 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 	}
 	result.NewIndexed = idxResult.NewFiles
 	result.Associated = idxResult.Associated
-	result.Thumbnails = idxResult.Thumbnails
 	result.Errors = append(result.Errors, idxResult.Errors...)
+
+	// Miniatures — non bloquant, erreurs tracées mais pas remontées
+	thumbsDir := filepath.Join(req.CapturesDir, "thumbs")
+	n, thumbErrs := ops.GenerateThumbnails(req.CapturesDir, thumbsDir)
+	result.Thumbnails = n
+	if len(thumbErrs) > 0 {
+		slog.WarnContext(ctx, "upload: erreurs miniatures", "count", len(thumbErrs))
+		result.Errors = append(result.Errors, thumbErrs...)
+	}
+
+	// Lier les miniatures générées aux enregistrements DB (thumbnail_path NULL → chemin absolu).
+	targetPath := req.DBPath
+	if req.SharedSocialDBPath != "" {
+		targetPath = req.SharedSocialDBPath
+	}
+	if targetPath != "" {
+		if db, err := sql.Open("duckdb", targetPath); err == nil {
+			if backfilled, err := ops.BackfillThumbnailPaths(db, req.CapturesDir, thumbsDir); err != nil {
+				slog.WarnContext(ctx, "upload: backfill thumbnail_path échoué", "err", err)
+			} else {
+				result.Thumbnails += backfilled
+			}
+			db.Close() //nolint:errcheck
+		}
+	}
 
 	slog.InfoContext(ctx, "upload: terminé",
 		"saved", result.Saved,

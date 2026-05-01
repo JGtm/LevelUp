@@ -181,18 +181,8 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		result.Associated = assoc
 	}
 
-	// Générer les miniatures WebP pour les vidéos qui n'en ont pas encore.
-	// Appelé ici pour couvrir tous les chemins d'indexation (upload, scan, reindex).
-	thumbsDir := filepath.Join(opts.CapturesDir, "thumbs")
-	if thumbN, thumbErrs := GenerateThumbnails(opts.CapturesDir, thumbsDir); thumbN > 0 || len(thumbErrs) > 0 {
-		result.Thumbnails += thumbN
-		for _, e := range thumbErrs {
-			result.Errors = append(result.Errors, fmt.Sprintf("generate_thumbnail: %s", e))
-		}
-		slog.Debug("IndexMedia: miniatures générées", "count", thumbN, "errors", len(thumbErrs))
-	}
-
 	// Lier les miniatures existantes sur disque aux enregistrements dont thumbnail_path est NULL.
+	thumbsDir := filepath.Join(opts.CapturesDir, "thumbs")
 	if n, backfillErr := BackfillThumbnailPaths(db, opts.CapturesDir, thumbsDir); backfillErr != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("backfill_thumbnails: %v", backfillErr))
 	} else {
