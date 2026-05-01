@@ -1,5 +1,22 @@
 # Thought Log
 
+## [2026-05-01] Pass saisonnier — refonte UX complète (résumé contenu + swap in-place + carrousel partagé)
+
+**Statut** : Complété (restauré depuis stash dangling après reset accidentel par un autre agent).
+
+**Décision technique** :
+1. **Backend Go** — `SeasonPassContentSummary` ajouté dans `domain/season_pass.go` (paliers, cR, Pts Spartan, XP Boosts, Relances, cosmetics_total, rarity_breakdown, type_breakdown). `computeContentSummary` + `aggregateRewardBucket` dans `season_pass_repo.go` agrègent depuis le payload JSON brut (free + paid, dedup par chemin item). Champ `Content` ajouté à `SeasonPassTrackSummary`.
+2. **Composant partagé** — `BattlePassRewardCarousel.tsx` (287L) extrait du panel home (rewards groupées par palier, scaling 1.10 sur palier actif, flèches, scroll snap, lightbox via callback). `HomeBattlePassPanel` refondu pour l'utiliser (436 → 183L).
+3. **Swap in-place** — `SeasonPassPage` état `selectedPassPath`. `PassShowcase` (renommé de `ActivePassShowcase`) accepte n'importe quel pass. Click sur une carte → swap + `scrollIntoView` smooth. Bouton "← Retour au pass actif" si non-actif. Cards cliquables avec ring sky + badge "Affiché".
+4. **PassContentSummary** (188L, nouveau) — 3 rangées de chips compactes : devises / items (split armure vs cosmétique via `isArmorItemType` dans `rarity.ts`) / raretés (chips à point coloré). Mode `compact` pour les cartes secondaires.
+5. **Polish** — overlay opaque retiré sur les tuiles (image opacity 30%/25% au lieu d'un gradient `from-background/92` qui écrasait l'image). JSON filename `battlepass-x.json` remplacé par le dossier parent (`Operations`). Section "Défis live" supprimée (hors scope pass). Carte "Défis actifs" retirée du grid stats.
+
+**Résultats** : Go build 0 erreur, `go vet` propre, typecheck TS 0 erreur sur les fichiers modifiés. Tailles — SeasonPassPage 377L, PassContentSummary 188L, BattlePassRewardCarousel 287L, HomeBattlePassPanel 183L. Tous < 500L.
+
+**Incident** : un autre agent a fait `git stash` puis `git reset HEAD~1` pendant la session (violation de la règle "no git stash"). Restauration chirurgicale depuis le commit dangling `75bddbad` (8 fichiers + patch manuel sur `types.ts` pour ne pas réintroduire le `session_label?` du home agent).
+
+**Prochaine étape** : valider visuellement le swap (click sur carte → scroll + showcase change). Le `selectedReward` du lightbox vit dans `PassShowcase` donc se réinitialise au swap, comportement attendu.
+
 ## [2026-05-01] Home Prestige — section unifiée + flag default-on + seeder JGtm
 
 **Statut** : Complété.

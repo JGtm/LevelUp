@@ -267,9 +267,63 @@ en = "Upcoming"
 fr = "Autres passes"
 en = "Other passes"
 
+[palmares.season_pass.back_to_active]
+fr = "Retour au pass actif"
+en = "Back to active pass"
+
+[palmares.season_pass.now_showing]
+fr = "Affiché"
+en = "Showing"
+
+[palmares.season_pass.free_label]
+fr = "gratuit"
+en = "free"
+
 [palmares.season_pass.no_description]
 fr = "Aucune description disponible pour ce pass."
 en = "No description is available for this pass."
+
+# ─── Season pass - Contenu du pass ───────────────────────────────────────────
+
+[palmares.season_pass.content.armor_label]
+fr = "pièces d'armure"
+en = "armor pieces"
+
+[palmares.season_pass.content.challenge_swaps_label]
+fr = "Relances"
+en = "Swaps"
+
+[palmares.season_pass.content.cosmetics_label]
+fr = "cosmétiques"
+en = "cosmetics"
+
+[palmares.season_pass.content.cosmetics_split_label]
+fr = "cosmétiques"
+en = "cosmetics"
+
+[palmares.season_pass.content.credits_label]
+fr = "cR"
+en = "cR"
+
+[palmares.season_pass.content.rarity_title]
+fr = "Raretés"
+en = "Rarities"
+
+[palmares.season_pass.content.spartan_points_label]
+fr = "Pts Spartan"
+en = "Spartan Pts"
+
+[palmares.season_pass.content.tiers_label]
+fr = "paliers"
+en = "tiers"
+
+[palmares.season_pass.content.type_title]
+fr = "Catégories"
+en = "Item types"
+
+[palmares.season_pass.content.xp_boosts_label]
+fr = "Boosts XP"
+en = "XP Boosts"
 
 # ─── Season pass - Statuts ────────────────────────────────────────────────
 

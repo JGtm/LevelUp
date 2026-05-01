@@ -1223,6 +1223,17 @@ export interface SeasonPassTierSummary {
   free_rewards?: SeasonPassItemSummary[]
 }
 
+export interface SeasonPassContentSummary {
+  total_tiers: number
+  credits?: number | null
+  spartan_points?: number | null
+  xp_boosts?: number | null
+  challenge_swaps?: number | null
+  cosmetics_total?: number | null
+  rarity_breakdown?: Record<string, number> | null
+  type_breakdown?: Record<string, number> | null
+}
+
 export interface SeasonPassTrackSummary {
   reward_track_path: string
   name: string
@@ -1241,6 +1252,7 @@ export interface SeasonPassTrackSummary {
   image_url?: string | null
   background_image_url?: string | null
   tiers?: SeasonPassTierSummary[]
+  content?: SeasonPassContentSummary | null
 }
 
 export interface SeasonPassPageResponse {
