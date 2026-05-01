@@ -1,5 +1,20 @@
 # Thought Log
 
+## [2026-05-01] Explorer — historique joueur paginé + badges encounter + gamertags cliquables
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Backend** : `ExplorerService.GetCommonMatches` restructuré avec pagination in-memory (20/page) et calcul des `EncounterStats` depuis les matchs bruts + agrégat `killer_victim_pairs` (requête `Q19bKillerVictimBetween`). Dégradation gracieuse si la requête KV échoue. Badges convertis de `narrative.EncounterBadge` → `domain.MatchEncounterBadge` avec `label_key` résolu côté frontend.
+- **CSS tokens** : `ColorToken` Go corrigé de dot-notation (`narrative.encounter.ally_plus`) → kebab-case (`narrative-encounter-ally-plus`) pour compatibilité avec `tokenCssVar()` qui produit `var(--ac-${token})`. 3 nouveaux tokens ajoutés dans les 4 fichiers de la chaîne (semantic-tokens.ts + palettes/default + palettes/okabe-ito + globals.css).
+- **Frontend ExplorerPage** : URL params `?mode=player&target=<gamertag>` via `validateSearch` + `useSearch` → auto-switch au chargement. Historique complet paginé (20/page) avec badges `NarrativeBadge` + `tokenVar()`. Pagination prev/next avec indicateur page X/Y.
+- **Gamertags cliquables** : 5 points de navigation vers `/players/$playerSlug/explorer/?mode=player&target=<gamertag>` — MatchScoreboard (non-me), SynthesisRelationsPreview, PalmaresRelationsPage, LeaderboardBlock (non-local), HistoryTable (squad rows → match detail).
+- **i18n** : 3 clés `narrative.encounter.*` ajoutées dans `squad.toml` et `squad.ts` pour résolution des labels de badges.
+
+**Résultats** : `go test ./internal/service/... ./internal/api/... ./internal/analysis/...` = OK. `tsc --noEmit` propre.
+
+**Prochaine étape** : Vérifier visuellement le flow gamertag click → page explorer avec pagination et badges.
+
 ## [2026-05-01] FilterOmnibar — UX cascade + feedback bouton Analyser
 
 **Statut** : Complété
