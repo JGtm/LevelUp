@@ -985,9 +985,13 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			if ss.PlaylistGroup != nil && *ss.PlaylistGroup != "" {
 				skillPlaylistGroup = ss.PlaylistGroup
 			}
-			// Badge URL et label de tier depuis TierCode + SubTier.
+			// Badge URL depuis TierCode (EN) ; label depuis TierCodeFR si locale == "fr".
 			if ss.TierCode != nil && *ss.TierCode != "" {
-				skillTierLabelVal, skillBadgeURLVal = buildCanonicalSkillBadge(*ss.TierCode, ss.SubTier)
+				tierForLabel := *ss.TierCode
+				if locale == "fr" && ss.TierCodeFR != nil && *ss.TierCodeFR != "" {
+					tierForLabel = *ss.TierCodeFR
+				}
+				skillTierLabelVal, skillBadgeURLVal = buildCanonicalSkillBadge(tierForLabel, *ss.TierCode, ss.SubTier)
 			}
 		}
 
@@ -1520,23 +1524,35 @@ func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, 
 	return hasRanked, hasUnranked
 }
 
-// buildCanonicalSkillBadge construit le label de tier et l'URL du badge à partir
-// de SkillSnapshot.TierCode (lowercase, ex: "platinum") et SubTier (1..6, nil = Onyx).
-// URL : /static/ranks/halo_infinite/120px-HINF-CSR_{Tier}{SubTier}.png
+// buildCanonicalSkillBadge construit le label localisé et l'URL du badge.
+//
+//   - tierDisplay : nom du tier dans la locale cible (ex: "Or", "gold") — pour le label
+//   - tierCodeEN  : nom du tier en anglais lowercase (ex: "gold") — pour l'URL de badge
+//   - subTier     : 1..6, nil pour Onyx
+//
+// URL : /static/ranks/halo_infinite/120px-HINF-CSR_{TierEN}{SubTier}.png
 // (même format que halo_infinite.AssetURLAdapter.CSRRankImageURL, sans import cyclique).
-func buildCanonicalSkillBadge(tierCode string, subTier *int) (*string, *string) {
-	tier := strings.ToLower(strings.TrimSpace(tierCode))
-	if tier == "" {
+func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*string, *string) {
+	tierEN := strings.ToLower(strings.TrimSpace(tierCodeEN))
+	if tierEN == "" {
 		return nil, nil
 	}
-	// Capitalize first letter (Bronze, Silver, Gold, Platinum, Diamond, Onyx).
-	tier = strings.ToUpper(tier[:1]) + tier[1:]
+	// Capitalize first letter pour l'URL (Bronze, Silver, Gold, Platinum, Diamond, Onyx).
+	tierENcap := strings.ToUpper(tierEN[:1]) + tierEN[1:]
+
+	// Label : capitalize first letter du nom localisé.
+	display := strings.TrimSpace(tierDisplay)
+	if display == "" {
+		display = tierENcap
+	} else {
+		display = strings.ToUpper(display[:1]) + display[1:]
+	}
 
 	var label string
 	var urlStr string
 
-	if strings.EqualFold(tier, "Onyx") {
-		label = "Onyx"
+	if strings.EqualFold(tierEN, "onyx") {
+		label = display
 		urlStr = "/static/ranks/halo_infinite/120px-HINF-CSR_Onyx.png"
 	} else {
 		st := 0
@@ -1546,8 +1562,8 @@ func buildCanonicalSkillBadge(tierCode string, subTier *int) (*string, *string) 
 		if st < 1 || st > 6 {
 			return nil, nil
 		}
-		label = fmt.Sprintf("%s %d", tier, st)
-		urlStr = fmt.Sprintf("/static/ranks/halo_infinite/120px-HINF-CSR_%s%d.png", tier, st)
+		label = fmt.Sprintf("%s %d", display, st)
+		urlStr = fmt.Sprintf("/static/ranks/halo_infinite/120px-HINF-CSR_%s%d.png", tierENcap, st)
 	}
 
 	return &label, &urlStr
