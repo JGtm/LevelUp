@@ -197,7 +197,7 @@ func derefIntZero(p *int) int {
 
 // ComputeKPIsFromCanonical est la variante canonical-aware de ComputeKPIs
 // (P4.3 finale). Logique strictement identique ; lit depuis Self/Enrichment.
-func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int) domain.HeroKPIs {
+func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int, locale string) domain.HeroKPIs {
 	if len(rows) == 0 {
 		return domain.HeroKPIs{}
 	}
@@ -253,11 +253,9 @@ func ComputeKPIsFromCanonical(rows []canonical.PlayerMatchRow, totalMatches int)
 		}
 		if r.Summary.Playlist != nil {
 			id := r.Summary.Playlist.ID
-			name := r.Summary.Playlist.DefaultLabel
-			if v, ok := r.Summary.Playlist.Labels["fr"]; ok && v != "" {
-				name = v
-			}
-			if name != "" && !homeUUIDRe.MatchString(name) && id != "" {
+			en, fr := assetLabels(r.Summary.Playlist)
+			name := labelForLocale(locale, fr, en)
+			if name != "" && id != "" {
 				playlistCounts[id]++
 				if _, seen := playlistNames[id]; !seen {
 					playlistNames[id] = name
@@ -383,8 +381,8 @@ func winRateCanonical(rows []canonical.PlayerMatchRow) float64 {
 }
 
 // BuildHeroCardFromCanonical : entiÃ¨rement canonical (P4.3 finale).
-func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string, totalMatches int) domain.HomeHeroCard {
-	kpis := ComputeKPIsFromCanonical(rows, totalMatches)
+func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string, totalMatches int, locale string) domain.HomeHeroCard {
+	kpis := ComputeKPIsFromCanonical(rows, totalMatches, locale)
 	trend := ComputeTrendFromCanonical(rows, 5)
 	return domain.HomeHeroCard{PlayerName: gamertag, KPIs: kpis, Trend: trend}
 }
@@ -483,26 +481,26 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 				color = homeColorNegative
 			}
 			mapEN, mapFR := assetLabels(best.Summary.Map)
-			variantEN, variantFR := assetLabels(best.Summary.GameVariant)
+			modeEN, modeFR := modeLabels(*best)
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.best_underdog_win",
 				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
-				Detail:     fmt.Sprintf("%s Â· %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), normalizeHomeModeLabel(labelFR(modeFR, modeEN), mapFR, mapEN)),
 				ValueColor: color,
 			})
 		}
 	}
 
-	// Highlight 4 : Pic FDA rÃ©cent.
+	// Highlight 4 : Pic FDA récent.
 	{
 		best := bestKDAMatchCanonical(window)
 		if best != nil && best.Self.KDA != nil {
 			mapEN, mapFR := assetLabels(best.Summary.Map)
-			variantEN, variantFR := assetLabels(best.Summary.GameVariant)
+			modeEN, modeFR := modeLabels(*best)
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.kda_peak",
 				Value:      fmt.Sprintf("%.2f", *best.Self.KDA),
-				Detail:     fmt.Sprintf("%s Â· %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), normalizeHomeModeLabel(labelFR(modeFR, modeEN), mapFR, mapEN)),
 				ValueColor: highlightKDAColor(*best.Self.KDA),
 			})
 		}
@@ -792,11 +790,11 @@ func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow) *domain.H
 		return nil
 	}
 	mapEN, mapFR := assetLabels(best.Summary.Map)
-	variantEN, variantFR := assetLabels(best.Summary.GameVariant)
+	modeEN, modeFR := modeLabels(*best)
 	return &domain.HighlightSlide{
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
-		Detail:     fmt.Sprintf("%s Â· %s", labelFR(mapFR, mapEN), labelFR(variantFR, variantEN)),
+		Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), normalizeHomeModeLabel(labelFR(modeFR, modeEN), mapFR, mapEN)),
 		ValueColor: homeColorPositive,
 	}
 }
@@ -931,12 +929,13 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		t := r.Summary.StartedAtUTC
 
 		mapName, mapNameFR := assetLabels(r.Summary.Map)
-		variantName, variantNameFR := assetLabels(r.Summary.GameVariant)
+		// modeLabels privilégie PairMode (FR/EN dispo en DB) puis fallback
+		// GameVariant (FR jamais peuplé). Bug #7.
+		modeEN, modeFR := modeLabels(r)
 		playlistName, playlistNameFR := assetLabels(r.Summary.Playlist)
 
 		mapUI := labelForLocale(locale, mapNameFR, mapName)
-		// PairName composite Halo-only â†’ proxy GameVariant.
-		modeUI := normalizeHomeModeLabel(labelForLocale(locale, variantNameFR, variantName), mapNameFR, mapName)
+		modeUI := normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapNameFR, mapName)
 		var playlistUI *string
 		if playlistName != "" || playlistNameFR != "" {
 			playlist := labelForLocale(locale, playlistNameFR, playlistName)
@@ -1061,6 +1060,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			RankInTeam:               r.Self.RankInMatch,
 			HeadshotKills:            intPtrIfPos(derefIntZero(r.Self.HeadshotKills)),
 			PerfectKills:             intPtrIfPos(derefIntZero(r.Self.PerfectKills)),
+			SessionLabel:             r.Enrichment.SessionLabel,
 		})
 	}
 	return items
@@ -1081,19 +1081,101 @@ func canonicalOutcomeToInt(o canonical.Outcome) int {
 	return 0
 }
 
+// cleanAssetLabel filtre les valeurs UUID brutes (cas où la metadata
+// translation est manquante et le sync stocke l'asset ID comme fallback).
+// Bug #6.
+func cleanAssetLabel(value string) string {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return ""
+	}
+	if homeUUIDRe.MatchString(v) {
+		return ""
+	}
+	return v
+}
+
 // assetLabels extrait (en/fr) d'une AssetReference canonical (nil-safe).
+// Les UUIDs bruts sont filtrés via cleanAssetLabel. Bug #6.
 func assetLabels(ref *canonical.AssetReference) (en, fr string) {
 	if ref == nil {
 		return "", ""
 	}
-	en = ref.DefaultLabel
-	if v, ok := ref.Labels["en"]; ok && v != "" {
-		en = v
+	en = cleanAssetLabel(ref.DefaultLabel)
+	if v, ok := ref.Labels["en"]; ok {
+		if cleaned := cleanAssetLabel(v); cleaned != "" {
+			en = cleaned
+		}
 	}
-	if v, ok := ref.Labels["fr"]; ok && v != "" {
-		fr = v
+	if v, ok := ref.Labels["fr"]; ok {
+		fr = cleanAssetLabel(v)
 	}
 	return en, fr
+}
+
+// modeLabels privilégie PairMode (FR/EN dispo en DB) puis fallback GameVariant
+// (FR jamais peuplé en DB). Bug #7.
+func modeLabels(r canonical.PlayerMatchRow) (en, fr string) {
+	if r.Summary.PairMode != nil {
+		en, fr = assetLabels(r.Summary.PairMode)
+		if en != "" || fr != "" {
+			return en, fr
+		}
+	}
+	return assetLabels(r.Summary.GameVariant)
+}
+
+// dominantNameFromRows agrège la fréquence d'un label par row et retourne le
+// nom dominant dans la locale demandée. Bug #2.
+func dominantNameFromRows(
+	rows []canonical.PlayerMatchRow,
+	locale string,
+	extractor func(canonical.PlayerMatchRow) (string, string),
+) *string {
+	type counts struct {
+		en, fr string
+		count  int
+	}
+	freq := make(map[string]*counts)
+	for _, r := range rows {
+		en, fr := extractor(r)
+		key := en
+		if key == "" {
+			key = fr
+		}
+		if key == "" {
+			continue
+		}
+		c, ok := freq[key]
+		if !ok {
+			c = &counts{en: en, fr: fr}
+			freq[key] = c
+		}
+		c.count++
+	}
+	if len(freq) == 0 {
+		return nil
+	}
+	var best *counts
+	var bestKey string
+	for key, c := range freq {
+		switch {
+		case best == nil:
+			best = c
+			bestKey = key
+		case c.count > best.count:
+			best = c
+			bestKey = key
+		case c.count == best.count && key < bestKey:
+			best = c
+			bestKey = key
+		}
+	}
+	name := labelForLocale(locale, best.fr, best.en)
+	if name == "" {
+		return nil
+	}
+	return &name
 }
 
 // buildScoreLabelCanonical : reconstruit le score "X-Y" depuis Summary.Teams
@@ -1128,7 +1210,7 @@ func buildScoreLabelCanonical(r canonical.PlayerMatchRow) *string {
 // BuildSessionSummaryFromCanonical : full canonical (P4.3 finale).
 // Filtre par IsWithFriends (squadMode), trouve la session la plus rÃ©cente
 // par StartedAtUTC, agrÃ¨ge ses matchs en KPIs.
-func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool) *domain.SessionSummaryItem {
+func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, locale string) *domain.SessionSummaryItem {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -1161,7 +1243,7 @@ func BuildSessionSummaryFromCanonical(rows []canonical.PlayerMatchRow, squadMode
 		return nil
 	}
 
-	kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows))
+	kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows), locale)
 	item := &domain.SessionSummaryItem{
 		SessionLabel: latestLabel,
 		MatchCount:   len(sessionRows),
@@ -1207,7 +1289,7 @@ func earliestStartTimeCanonical(rows []canonical.PlayerMatchRow) *time.Time {
 // Note ADR 0011 : legacymatch.HomeMatchRow.PairNameFR (composite Halo-only)
 // n'a pas d'Ã©quivalent canonical. dominantMode est dÃ©rivÃ© de
 // Summary.GameVariant.Labels["fr"] || DefaultLabel comme proxy.
-func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, limit int) []domain.SessionSummaryItem {
+func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMode bool, limit int, locale string) []domain.SessionSummaryItem {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -1323,65 +1405,21 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 			}
 		}
 
-		// Mode dominant : GameVariant FR le plus jouÃ© (proxy pour PairNameFR).
-		var dominantMode *string
-		{
-			freq := make(map[string]int)
-			for _, r := range sessionRows {
-				if r.Summary.GameVariant == nil {
-					continue
-				}
-				name := r.Summary.GameVariant.DefaultLabel
-				if v, ok := r.Summary.GameVariant.Labels["fr"]; ok && v != "" {
-					name = v
-				}
-				if name != "" {
-					freq[name]++
-				}
-			}
-			var best string
-			var bestCount int
-			for name, cnt := range freq {
-				if cnt > bestCount || (cnt == bestCount && name < best) {
-					best = name
-					bestCount = cnt
-				}
-			}
-			if best != "" {
-				dominantMode = &best
-			}
-		}
+		// Mode dominant : PairMode FR le plus joué (fallback GameVariant).
+		// Bug #7 — PairMode expose pair_name_fr en DB.
+		dominantMode := dominantNameFromRows(sessionRows, locale, func(r canonical.PlayerMatchRow) (string, string) {
+			return modeLabels(r)
+		})
 
-		// Playlist dominante.
-		var dominantPlaylist *string
-		{
-			freq := make(map[string]int)
-			for _, r := range sessionRows {
-				if r.Summary.Playlist == nil {
-					continue
-				}
-				name := r.Summary.Playlist.DefaultLabel
-				if v, ok := r.Summary.Playlist.Labels["fr"]; ok && v != "" {
-					name = v
-				}
-				if name != "" {
-					freq[name]++
-				}
+		// Playlist dominante (FR si dispo et locale=fr, sinon EN). Bug #2.
+		dominantPlaylist := dominantNameFromRows(sessionRows, locale, func(r canonical.PlayerMatchRow) (string, string) {
+			if r.Summary.Playlist == nil {
+				return "", ""
 			}
-			var best string
-			var bestCount int
-			for name, cnt := range freq {
-				if cnt > bestCount || (cnt == bestCount && name < best) {
-					best = name
-					bestCount = cnt
-				}
-			}
-			if best != "" {
-				dominantPlaylist = &best
-			}
-		}
+			return assetLabels(r.Summary.Playlist)
+		})
 
-		kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows))
+		kpis := ComputeKPIsFromCanonical(sessionRows, len(sessionRows), locale)
 		item := domain.SessionSummaryItem{
 			SessionLabel:         lbl,
 			MatchCount:           len(sessionRows),

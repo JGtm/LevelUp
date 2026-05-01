@@ -168,6 +168,11 @@ func (r *PlayerMatchesRepo) buildQuery(f port.PlayerMatchFilters) (string, []any
 
 // playerMatchesBaseSelect est la partie fixe du SELECT (colonnes + JOINs +
 // WHERE p.xuid = ?). Les filtres additionnels sont concatenes en AND.
+// Bug #2/#7 : on ne fallback PAS sur l'EN dans la projection FR. Si NULL en
+// DB, on renvoie chaîne vide ; HomeRepo.EnrichCanonicalAssetTranslations
+// remplit ensuite Labels["fr"] depuis metadata.asset_translations.
+//
+// Bug #3 : projeter damage_dealt / damage_taken pour ComputeCombatYield.
 const playerMatchesBaseSelect = `
 SELECT
     p.match_id,
@@ -175,19 +180,19 @@ SELECT
     COALESCE(r.duration_seconds, 0)                   AS duration_seconds,
     COALESCE(r.map_id, '')                            AS map_id,
     COALESCE(r.map_name, '')                          AS map_name,
-    COALESCE(r.map_name_fr, r.map_name, '')           AS map_name_fr,
+    COALESCE(r.map_name_fr, '')                       AS map_name_fr,
     COALESCE(r.playlist_id, '')                       AS playlist_id,
     COALESCE(r.playlist_name, '')                     AS playlist_name,
-    COALESCE(r.playlist_name_fr, r.playlist_name, '') AS playlist_name_fr,
+    COALESCE(r.playlist_name_fr, '')                  AS playlist_name_fr,
     COALESCE(r.game_variant_id, '')                   AS variant_id,
     COALESCE(r.game_variant_name, '')                 AS variant_name,
     COALESCE(r.pair_id, '')                           AS pair_id,
     COALESCE(r.pair_name, '')                         AS pair_name,
-    COALESCE(r.pair_name_fr, r.pair_name, '')         AS pair_name_fr,
+    COALESCE(r.pair_name_fr, '')                      AS pair_name_fr,
     COALESCE(r.is_ranked, FALSE)                      AS is_ranked,
     COALESCE(r.is_firefight, FALSE)                   AS is_firefight,
     COALESCE(p.team_id, 0)                            AS team_id,
-    COALESCE(p.outcome, 0)                            AS outcome_code,
+    p.outcome                                         AS outcome_code,
     COALESCE(p.kills, 0)                              AS kills,
     COALESCE(p.deaths, 0)                             AS deaths,
     COALESCE(p.assists, 0)                            AS assists,
@@ -195,6 +200,8 @@ SELECT
     COALESCE(p.headshot_kills, 0)                     AS headshot_kills,
     p.accuracy,
     COALESCE(p.time_played_seconds, 0)                AS time_played_seconds,
+    p.damage_dealt,
+    p.damage_taken,
     p.team_mmr,
     p.enemy_mmr,
     pme.session_id,
@@ -217,13 +224,15 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		variantID, variantName                             string
 		pairID, pairName, pairNameFR                       string
 		startTime                                          time.Time
-		durationSeconds, teamID, outcomeCode               int
+		durationSeconds, teamID                            int
+		outcomeCode                                        sql.NullInt64
 		kills, deaths, assists, headshotKills              int
 		timePlayedSeconds                                  int
 		dominanceFlag                                      int
 		isRanked, isFirefight                              bool
 		hadBotTeammate, isWithFriends                      bool
 		kda, accuracy, teamMMR, enemyMMR, performanceScore sql.NullFloat64
+		damageDealt, damageTaken                           sql.NullFloat64
 		sessionID                                          sql.NullInt64
 		sessionLabel                                       sql.NullString
 	)
@@ -237,7 +246,8 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		&teamID, &outcomeCode,
 		&kills, &deaths, &assists,
 		&kda, &headshotKills, &accuracy,
-		&timePlayedSeconds, &teamMMR, &enemyMMR,
+		&timePlayedSeconds, &damageDealt, &damageTaken,
+		&teamMMR, &enemyMMR,
 		&sessionID, &sessionLabel, &performanceScore,
 		&dominanceFlag, &hadBotTeammate, &isWithFriends,
 	); err != nil {
@@ -272,6 +282,8 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		isWithFriends:     isWithFriends,
 		kda:               kda,
 		accuracy:          accuracy,
+		damageDealt:       damageDealt,
+		damageTaken:       damageTaken,
 		teamMMR:           teamMMR,
 		enemyMMR:          enemyMMR,
 		performanceScore:  performanceScore,
@@ -290,12 +302,14 @@ type playerMatchScanResult struct {
 	variantID, variantName, xuid, gamertag   string
 	pairID, pairName, pairNameFR             string
 	startTime                                time.Time
-	durationSeconds, teamID, outcomeCode     int
+	durationSeconds, teamID                  int
+	outcomeCode                              sql.NullInt64
 	kills, deaths, assists, headshotKills    int
 	timePlayedSeconds, dominanceFlag         int
 	isRanked, isFirefight, hadBotTeammate    bool
 	isWithFriends                            bool
 	kda, accuracy, teamMMR, enemyMMR         sql.NullFloat64
+	damageDealt, damageTaken                 sql.NullFloat64
 	performanceScore                         sql.NullFloat64
 	sessionID                                sql.NullInt64
 	sessionLabel                             sql.NullString
@@ -309,6 +323,23 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 	headshotPtr := s.headshotKills
 	timePlayedPtr := s.timePlayedSeconds
 
+	// Bug #5 : si outcome NULL/0 en DB, l'Outcome canonical reste vide.
+	var outcome canonical.Outcome
+	if s.outcomeCode.Valid && s.outcomeCode.Int64 != 0 {
+		outcome = outcomeFromInt(int(s.outcomeCode.Int64))
+	}
+
+	// Bug #3 : damage_dealt/damage_taken sont DOUBLE en DB.
+	var dmgDealt, dmgTaken *int
+	if s.damageDealt.Valid {
+		v := int(s.damageDealt.Float64)
+		dmgDealt = &v
+	}
+	if s.damageTaken.Valid {
+		v := int(s.damageTaken.Float64)
+		dmgTaken = &v
+	}
+
 	row := canonical.PlayerMatchRow{
 		Summary: canonical.MatchSummary{
 			MatchID:         s.matchID,
@@ -321,12 +352,12 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			PairMode:        assetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
 			IsRanked:        &s.isRanked,
 			IsPvE:           &s.isFirefight,
-			Outcome:         outcomeFromInt(s.outcomeCode),
+			Outcome:         outcome,
 		},
 		Self: canonical.MatchParticipant{
 			Identity:      canonical.PlayerIdentity{XUID: s.xuid, Gamertag: s.gamertag},
 			TeamID:        &teamIDPtr,
-			Outcome:       outcomeFromInt(s.outcomeCode),
+			Outcome:       outcome,
 			Kills:         &killsPtr,
 			Deaths:        &deathsPtr,
 			Assists:       &assistsPtr,
@@ -334,6 +365,8 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			KDA:           nullFloatPtr(s.kda),
 			Accuracy:      nullFloatPtr(s.accuracy),
 			TimePlayed:    &timePlayedPtr,
+			DamageDealt:   dmgDealt,
+			DamageTaken:   dmgTaken,
 		},
 		Enrichment: canonical.PlayerMatchEnrichment{
 			SessionID:        nullInt64ToStringPtr(s.sessionID),

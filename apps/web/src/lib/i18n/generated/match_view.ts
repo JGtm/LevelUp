@@ -1,7 +1,7 @@
 // Auto-genere par scripts/build_i18n_manifests.mjs - NE PAS EDITER A LA MAIN.
 // Source : apps/web/src/lib/i18n/manifests/match_view.toml
 
-export const match_viewManifest = {
+export const matchViewManifest = {
   "match_view.citations.empty": { fr: "Aucune citation pour ce match", en: "No citation for this match" },
   "match_view.citations.medals_section": { fr: "Médailles", en: "Medals" },
   "match_view.citations.section_title": { fr: "Citations gagnées", en: "Citations earned" },
@@ -67,4 +67,4 @@ export const match_viewManifest = {
   "narrative.dominance.remontada": { fr: "Remontada", en: "Comeback" },
 } as const
 
-export type Match_viewManifestKey = keyof typeof match_viewManifest
+export type MatchViewManifestKey = keyof typeof matchViewManifest

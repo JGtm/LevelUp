@@ -220,7 +220,7 @@ func TestBuildSessionCompareSuggestion_CategoryRankedReason(t *testing.T) {
 	if suggestion.Strategy != "category-ranked-close-volume" {
 		t.Fatalf("unexpected strategy: %s", suggestion.Strategy)
 	}
-	if suggestion.Reason != "mÃªme catÃ©gorie ranked Â· mÃªme statut classÃ© Â· Ã©cart de 1 match(s)" {
+	if suggestion.Reason != "même catégorie ranked · même statut classé · écart de 1 match(s)" {
 		t.Fatalf("unexpected reason: %s", suggestion.Reason)
 	}
 }

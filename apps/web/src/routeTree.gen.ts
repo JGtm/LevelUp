@@ -20,7 +20,6 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerSlug'
 import { Route as LabChartsRouteImport } from './routes/lab/charts'
-import { Route as LabBriefingRouteImport } from './routes/lab/briefing'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
 import { Route as PlayersPlayerSlugSquadRouteImport } from './routes/players/$playerSlug/squad'
 import { Route as PlayersPlayerSlugNotificationsRouteImport } from './routes/players/$playerSlug/notifications'
@@ -98,11 +97,6 @@ const PlayersPlayerSlugRoute = PlayersPlayerSlugRouteImport.update({
 const LabChartsRoute = LabChartsRouteImport.update({
   id: '/charts',
   path: '/charts',
-  getParentRoute: () => LabRoute,
-} as any)
-const LabBriefingRoute = LabBriefingRouteImport.update({
-  id: '/briefing',
-  path: '/briefing',
   getParentRoute: () => LabRoute,
 } as any)
 const PlayersPlayerSlugSynthesisRoute =
@@ -250,7 +244,6 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
-  '/lab/briefing': typeof LabBriefingRoute
   '/lab/charts': typeof LabChartsRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
@@ -287,7 +280,6 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
-  '/lab/briefing': typeof LabBriefingRoute
   '/lab/charts': typeof LabChartsRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
@@ -324,7 +316,6 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
-  '/lab/briefing': typeof LabBriefingRoute
   '/lab/charts': typeof LabChartsRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
@@ -363,7 +354,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
-    | '/lab/briefing'
     | '/lab/charts'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
@@ -400,7 +390,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
-    | '/lab/briefing'
     | '/lab/charts'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
@@ -436,7 +425,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
-    | '/lab/briefing'
     | '/lab/charts'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
@@ -554,13 +542,6 @@ declare module '@tanstack/react-router' {
       path: '/charts'
       fullPath: '/lab/charts'
       preLoaderRoute: typeof LabChartsRouteImport
-      parentRoute: typeof LabRoute
-    }
-    '/lab/briefing': {
-      id: '/lab/briefing'
-      path: '/briefing'
-      fullPath: '/lab/briefing'
-      preLoaderRoute: typeof LabBriefingRouteImport
       parentRoute: typeof LabRoute
     }
     '/players/$playerSlug/synthesis': {
@@ -728,12 +709,10 @@ declare module '@tanstack/react-router' {
 }
 
 interface LabRouteChildren {
-  LabBriefingRoute: typeof LabBriefingRoute
   LabChartsRoute: typeof LabChartsRoute
 }
 
 const LabRouteChildren: LabRouteChildren = {
-  LabBriefingRoute: LabBriefingRoute,
   LabChartsRoute: LabChartsRoute,
 }
 

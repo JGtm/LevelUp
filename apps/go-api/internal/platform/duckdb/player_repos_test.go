@@ -550,7 +550,8 @@ func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	if identity.HighestLUSR.TierLabel == nil || *identity.HighestLUSR.TierLabel != "Platinum V" {
 		t.Fatalf("HighestLUSR.TierLabel = %v, want Platinum V", identity.HighestLUSR.TierLabel)
 	}
-	if identity.HighestLUSR.BadgeImageURL == nil || *identity.HighestLUSR.BadgeImageURL != "/static/ranks/120px-HINF-CSR_Platinum5.png" {
+	// Bug #1 : LUSR utilise le slug halo_infinite (les badges existent là).
+	if identity.HighestLUSR.BadgeImageURL == nil || *identity.HighestLUSR.BadgeImageURL != "/static/ranks/halo_infinite/120px-HINF-CSR_Platinum5.png" {
 		t.Fatalf("HighestLUSR.BadgeImageURL = %v, want Platinum5 badge", identity.HighestLUSR.BadgeImageURL)
 	}
 }

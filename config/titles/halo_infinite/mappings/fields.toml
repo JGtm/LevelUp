@@ -119,7 +119,7 @@ display_order = 120
 group         = "combat"
 
 [fields.kdr]
-labels        = { en = "KDR", fr = "FDA" }
+labels        = { en = "KDR", fr = "Ratio F/D" }
 description   = { en = "Kill/Death ratio.", fr = "Ratio Éliminations/Morts." }
 storage_unit  = ""
 display_unit  = ""
@@ -128,7 +128,7 @@ display_order = 130
 group         = "combat"
 
 [fields.kda]
-labels        = { en = "KDA", fr = "FDA+A" }
+labels        = { en = "KDA", fr = "FDA" }
 description   = { en = "Kills + Assists/2 - Deaths.", fr = "Éliminations + Assistances/2 - Morts." }
 storage_unit  = ""
 display_unit  = ""

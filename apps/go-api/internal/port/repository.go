@@ -404,6 +404,11 @@ type HomeRepository interface {
 	// LoadFavoriteWeapon retourne le nom localisé et les kills totaux de l'arme favorite (Q26k).
 	// Dégradation silencieuse : retourne ("", 0, nil) si aucune donnée.
 	LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error)
+
+	// EnrichCanonicalAssetTranslations remplit Labels["fr"] des AssetReference
+	// (Map, Playlist, GameVariant, PairMode) depuis metadata.asset_translations
+	// + mode_name_tr quand absent. Mute les rows en place. Bug #2/#7 cascade.
+	EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error
 }
 
 // Ensure compile-time check pour HomeRepository.
@@ -435,6 +440,10 @@ func (n *noopHomeRepo) LoadMatchCitations(_ context.Context, _ []string) (map[st
 
 func (n *noopHomeRepo) LoadFavoriteWeapon(_ context.Context, _ string) (string, int, error) {
 	return "", 0, nil
+}
+
+func (n *noopHomeRepo) EnrichCanonicalAssetTranslations(_ context.Context, _ []canonical.PlayerMatchRow) error {
+	return nil
 }
 
 // SquadRepository fournit les données pour la page Escouade.
