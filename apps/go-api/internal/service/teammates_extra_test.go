@@ -557,6 +557,62 @@ func TestTeammatesService_GetPage_WithSelectedGamertag(t *testing.T) {
 	}
 }
 
+// SessionBriefing — Header populated tests
+// =============================================================================
+
+func TestTeammatesService_GetPage_HeaderSoloKPIs_NoSelectedGamertags(t *testing.T) {
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{},
+		synthRows: func() []legacymatch.SynthesisMatchRow {
+			tp600, tp400 := 600, 400
+			return []legacymatch.SynthesisMatchRow{
+				{MatchID: "m1", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5, TimePlayedSecs: &tp600, StartTime: time.Now()},
+				{MatchID: "m2", Outcome: domain.OutcomeLoss, Kills: 6, Deaths: 8, TimePlayedSecs: &tp400, StartTime: time.Now()},
+			}
+		}(),
+	}
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
+
+	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{
+		// SelectedGamertags vide → mode solo
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Header == nil {
+		t.Fatal("Header should be non-nil with matches")
+	}
+	if resp.Header.SoloKPIs == nil {
+		t.Fatal("SoloKPIs should be populated in solo mode")
+	}
+	if resp.Header.SoloKPIs.MatchesCount != 2 {
+		t.Errorf("SoloKPIs.MatchesCount: want 2, got %d", resp.Header.SoloKPIs.MatchesCount)
+	}
+	// Mode solo → pas de squad fields
+	if resp.Header.SquadScore != nil {
+		t.Errorf("SquadScore should be nil in solo mode, got %+v", resp.Header.SquadScore)
+	}
+	if len(resp.Header.PlayerCards) != 0 {
+		t.Errorf("PlayerCards should be empty in solo mode, got %d", len(resp.Header.PlayerCards))
+	}
+}
+
+func TestTeammatesService_GetPage_HeaderEmptyWhenNoMatches(t *testing.T) {
+	repo := &mockSquadRepo{
+		topRows:   []domain.TopTeammateRow{},
+		synthRows: []legacymatch.SynthesisMatchRow{},
+	}
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
+	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Pas de match → Header nil (rien à afficher)
+	if resp.Header != nil {
+		t.Errorf("Header should be nil with no matches, got %+v", resp.Header)
+	}
+}
+
 func TestTeammatesService_GetPage_UnknownGamertag_Skipped(t *testing.T) {
 	repo := &mockSquadRepo{
 		topRows: []domain.TopTeammateRow{

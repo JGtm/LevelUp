@@ -1395,6 +1395,10 @@ export interface TeammatesPageResponse {
   timeseries?: SquadTimeseriesPoint[]
   map_breakdown?: MapBreakdownRow[]
   match_series?: Record<string, SquadMatchSeriesPoint[]>
+  /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
+  header?: import('@/features/squad/v2/types').SquadHeader
+  /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
+  main_player?: string
 }
 
 // ---------------------------------------------------------------------------

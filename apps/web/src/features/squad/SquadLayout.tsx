@@ -37,6 +37,7 @@ import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import type { TeammateRow, TeammateKPIs, TeammatesQueryRequest } from '@/lib/api/types'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
+import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 
 import {
   FiltresPill,
@@ -447,6 +448,24 @@ export function SquadLayout() {
               </CardContent>
             </Card>
           )}
+
+          {/* SessionBriefing — KPIs + verdict squad + drill-down click */}
+          {data?.header?.solo_kpis && (() => {
+            const header = data.header
+            const mainGT = data.main_player ?? ''
+            const mainXuid = header?.player_cards?.find((c) => c.gamertag === mainGT)?.xuid ?? ''
+            const briefingSquad =
+              header?.squad_score && header?.player_cards && header?.team_avg_kpis && header?.kpis_by_xuid && mainXuid
+                ? {
+                    score: header.squad_score,
+                    players: header.player_cards,
+                    kpisByXuid: header.kpis_by_xuid,
+                    teamAvgKpis: header.team_avg_kpis,
+                    activeXuid: mainXuid,
+                  }
+                : undefined
+            return <SessionBriefing kpis={header.solo_kpis} squad={briefingSquad} />
+          })()}
 
           {/* Navigation onglets */}
           <div className="border-b">
