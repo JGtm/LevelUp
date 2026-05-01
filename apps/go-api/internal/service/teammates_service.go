@@ -7,15 +7,20 @@ package service
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"slices"
 	"strings"
+	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
@@ -145,6 +150,14 @@ func (s *TeammatesService) GetPage(
 		mapBreakdown = enrichMapBreakdownWithHistory(mapBreakdown, historicalWR)
 	}
 
+	// Header (SessionBriefing) — alimente le composant <SessionBriefing> dans
+	// SquadLayout. Mode solo (SoloKPIs uniquement) si aucun coequipier
+	// selectionne ; mode squad complet sinon.
+	mainFilteredCanonical := filterCanonicalByMatchIDsSet(canonicalRows, filteredMatches)
+	header := s.buildBriefingHeaderForTeammatesPage(
+		ctx, mainFilteredCanonical, req.SelectedGamertags, req.Filters, sessionMatchIDs,
+	)
+
 	return domain.TeammatesPageResponse{
 		Options:       options,
 		Teammates:     teammates,
@@ -154,7 +167,129 @@ func (s *TeammatesService) GetPage(
 		Timeseries:    timeseries,
 		MapBreakdown:  mapBreakdown,
 		MatchSeries:   matchSeries,
+		Header:        header,
+		MainPlayer:    s.gamertag,
 	}, nil
+}
+
+// filterCanonicalByMatchIDsSet ne garde que les canonical rows dont le match_id
+// figure dans le slice de SynthesisMatchRow filtré (post cascade + sessions).
+// Sert de pont entre la pipeline legacy SynthesisMatchRow et les builders
+// canoniques (ComputeKPIStats, buildSquadHeader).
+func filterCanonicalByMatchIDsSet(
+	rows []canonical.PlayerMatchRow,
+	filtered []legacymatch.SynthesisMatchRow,
+) []canonical.PlayerMatchRow {
+	if len(filtered) == 0 || len(rows) == 0 {
+		return nil
+	}
+	keep := make(map[string]struct{}, len(filtered))
+	for _, m := range filtered {
+		keep[m.MatchID] = struct{}{}
+	}
+	out := make([]canonical.PlayerMatchRow, 0, len(filtered))
+	for _, r := range rows {
+		if _, ok := keep[r.Summary.MatchID]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// buildBriefingHeaderForTeammatesPage construit le SquadHeader pour la page
+// Teammates. Mode solo si selectedGamertags vide ; mode squad complet sinon
+// (charge les canonical rows par teammate en parallele puis appelle le builder
+// existant buildSquadHeader).
+//
+// Degradation gracieuse : si le chargement des teammates echoue (capability
+// absente, erreur DB), retourne au moins le SoloKPIs du joueur principal pour
+// que le briefing reste utile en mode degrade.
+func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
+	ctx context.Context,
+	mainFiltered []canonical.PlayerMatchRow,
+	selectedGamertags []string,
+	filters *domain.FilterContextInput,
+	sessionMatchIDs map[string]bool,
+) *domain.SquadHeader {
+	// Mode solo : SoloKPIs uniquement (pas de verdict squad).
+	if len(selectedGamertags) == 0 {
+		if len(mainFiltered) == 0 {
+			return nil
+		}
+		kpis := analysis.ComputeKPIStats(mainFiltered)
+		return &domain.SquadHeader{SoloKPIs: &kpis}
+	}
+
+	// Mode squad : charge canonical rows par teammate en parallele.
+	teammateRows, err := s.loadTeammatesCanonicalParallel(ctx, selectedGamertags)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates_briefing.load_failed",
+			"err", err.Error(), "selected_count", len(selectedGamertags))
+		// Degradation : juste SoloKPIs.
+		if len(mainFiltered) == 0 {
+			return nil
+		}
+		kpis := analysis.ComputeKPIStats(mainFiltered)
+		return &domain.SquadHeader{SoloKPIs: &kpis}
+	}
+
+	// Construire perPlayer : main + chaque teammate (filtres appliques).
+	perPlayer := map[string][]canonical.PlayerMatchRow{s.gamertag: mainFiltered}
+	for gt, rows := range teammateRows {
+		filtered := rows
+		if filters != nil {
+			c := filters.Cascade
+			filtered = filterRowsByCascade(filtered, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
+		}
+		if len(sessionMatchIDs) > 0 {
+			kept := make([]canonical.PlayerMatchRow, 0, len(filtered))
+			for _, r := range filtered {
+				if sessionMatchIDs[r.Summary.MatchID] {
+					kept = append(kept, r)
+				}
+			}
+			filtered = kept
+		}
+		perPlayer[gt] = filtered
+	}
+
+	squadOrder := buildSquadOrder(s.gamertag, selectedGamertags)
+	gtToXUID := extractSquadXUIDs(squadOrder, perPlayer)
+	sharedMatches := intersectByMatchID(perPlayer)
+
+	return buildSquadHeader(ctx, s.gamertag, perPlayer, gtToXUID, sharedMatches)
+}
+
+// loadTeammatesCanonicalParallel charge les canonical PlayerMatchRow pour
+// chaque gamertag en parallele via errgroup. Capability absente est ignoree
+// silencieusement (le teammate sera juste absent du resultat).
+func (s *TeammatesService) loadTeammatesCanonicalParallel(
+	ctx context.Context,
+	gamertags []string,
+) (map[string][]canonical.PlayerMatchRow, error) {
+	g, gctx := errgroup.WithContext(ctx)
+	var mu sync.Mutex
+	out := make(map[string][]canonical.PlayerMatchRow, len(gamertags))
+	for _, gt := range gamertags {
+		gt := gt
+		g.Go(func() error {
+			rows, err := s.playerMatchesRepo.LoadPlayerMatches(gctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+			if err != nil {
+				if errors.Is(err, games.ErrCapabilityNotSupported) {
+					return nil
+				}
+				return fmt.Errorf("LoadPlayerMatches(%s): %w", gt, err)
+			}
+			mu.Lock()
+			out[gt] = rows
+			mu.Unlock()
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // filterTopRowsToFriends garde uniquement les lignes dont le gamertag matche

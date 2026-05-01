@@ -108,4 +108,12 @@ type TeammatesPageResponse struct {
 	Timeseries   []SquadTimeseriesPoint             `json:"timeseries,omitempty"`
 	MapBreakdown []MapBreakdownRow                  `json:"map_breakdown,omitempty"`
 	MatchSeries  map[string][]SquadMatchSeriesPoint `json:"match_series,omitempty"`
+	// Header alimente <SessionBriefing> en haut de SquadLayout (Synergies +
+	// Contributions). Mode solo (SoloKPIs uniquement) si aucun coequipier
+	// selectionne ; mode squad complet (KPIsByXUID + TeamAvgKPIs + PlayerCards
+	// + SquadScore) si selection >= 1.
+	Header *SquadHeader `json:"header,omitempty"`
+	// MainPlayer est le gamertag du joueur principal (proprietaire de la page)
+	// — necessaire au front pour identifier le card "moi" dans Header.PlayerCards.
+	MainPlayer string `json:"main_player,omitempty"`
 }

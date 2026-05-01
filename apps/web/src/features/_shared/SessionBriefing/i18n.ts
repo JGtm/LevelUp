@@ -48,7 +48,7 @@ const FR: BriefingTexts = {
   rail: {
     sessionLabel: 'Ma session',
     matchesUnit: 'matchs',
-    avgMatchPrefix: '⌀ ',
+    avgMatchPrefix: 'moy. ',
     avgMatchSuffix: '/match',
     resultsLabel: 'Résultats',
   },
