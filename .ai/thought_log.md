@@ -1,8 +1,31 @@
 # Thought Log
 
-## [2026-05-01] PLAN_PLAYLISTS_CATALOG.md — amendements + démarrage implémentation
+## [2026-05-01] Phase A catalogue — migration metadata.duckdb (8 tables)
 
-**Statut** : Amendements plan complétés, implémentation Phase A en cours sur `docs/charts-specs`.
+**Statut** : Complété.
+
+**Décision technique** :
+- Migration `add_catalog_playlists` enregistrée dans un fichier dédié `steps_metadata_catalog.go` (séparation lisibilité par rapport aux migrations metadata historiques).
+- 8 tables créées : `playlists_catalog`, `maps_catalog`, `game_variants_catalog`, `map_mode_pair_definitions`, `playlist_pair_links`, `catalog_fetch_queue`, `pair_mode_label_translations`, `unknown_prefix_candidates`.
+- **Choix `VARCHAR` au lieu de `UUID`** pour les asset IDs : alignement avec la convention existante (`match_registry.playlist_id`, `waypoint_assets_raw.asset_id` en `VARCHAR`). Le plan §4.2 mentionnait `UUID` mais l'écosystème actuel ne l'utilise pas — éviter une divergence de type.
+- PK composite `(title_slug, *_asset_id)` partout pour isolation cross-titres.
+- Indices sur les colonnes de filtre métier (`is_active`, `experience`, `mode_canonical`, `mode_category`, drain queue ordonnée par `attempts ASC, enqueued_at ASC`).
+
+**Tests** : 3 tests d'intégration `//go:build integration` :
+1. `TestRunForDB_Catalog_AllTablesCreated` : 8 tables présentes après migration.
+2. `TestRunForDB_Catalog_TitleSlugIsolation` : même `playlist_asset_id` sur 2 titres = 2 lignes ; duplicat sur même `(title_slug, playlist_asset_id)` rejeté.
+3. `TestRunForDB_Catalog_QueueAndPrefixCandidates` : `INSERT OR IGNORE` sur la queue (pattern Phase E), `VARCHAR[]` supporté pour `pair_examples`.
+
+**Résultats observés** :
+- 4 tests verts (incluant `TestRunForDB_Metadata_IdempotentOnEmptyDB` à 3 passes).
+- 16 migrations metadata enregistrées au total après ajout.
+- `go vet ./internal/migration/...` sans warning.
+
+**Prochaine étape** : Phase B — extraction `playlist_version_id` / `pair_version_id` au sync (transforms.go + schema.go match_registry).
+
+## [2026-05-01] PLAN_PLAYLISTS_CATALOG.md — amendements
+
+**Statut** : Complété (avant Phase A).
 
 **Amendements appliqués** :
 1. Branche cible : `docs/charts-specs` (branche courante, contexte spec → impl).
@@ -11,8 +34,6 @@
 4. **§8 Hors scope** : UI `mode_label` / `mode_category` reportée au sprint UI suivant.
 
 **Décision** : implémentation directement sur `docs/charts-specs` (sans nouvelle branche), commits réguliers par phase pour limiter le risque de perte.
-
-**Prochaine étape** : Phase A — créer la migration `metadata.duckdb` (8 tables catalogue) dans `internal/migration/steps_metadata.go`.
 
 ## [2026-05-01] Pass saisonnier — refonte UX complète (résumé contenu + swap in-place + carrousel partagé)
 
