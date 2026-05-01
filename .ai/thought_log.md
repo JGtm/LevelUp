@@ -1,5 +1,21 @@
 # Thought Log
 
+## [2026-05-01] Fix ART index DuckDB — seed Prestige via migration (boot-sync supprimé) + fix Shared fresh-DB
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause racine** : `TRUNCATE TABLE challenge_template` au boot déclenchait le bug ART index DuckDB ("Failed to delete all rows from index. Only deleted 0 out of 27 rows"), invalidant toute la connexion `metadata.duckdb` partagée. Le TRUNCATE précédent (workaround du PR précédent) ne bypasse PAS les index ART — il appelle la même suppression bulk en interne.
+- **Mauvaise approche** : TRUNCATE, DELETE, DROP TABLE à chaque boot — tous déclenchent le bug ART ou sont trop destructifs.
+- **Solution** : Supprimer `loadHaloCatalog()` du boot de `PrestigeBundle`. Déplacer le seed vers une migration `"seed_prestige_catalog_v1"` (`ApplyBackfill`) avec `INSERT … ON CONFLICT DO UPDATE`. Le framework de migration trace `backfill_done=TRUE` → ne tourne qu'une seule fois. Si TOML absent au moment du backfill : WARN + retry au prochain boot.
+- **Replace() repo** : Converti de TRUNCATE+INSERT en UPSERT (ON CONFLICT DO UPDATE) pour les deux repos (`PrestigeTemplateRepo`, `PrestigePresetArcRepo`). Aucun DELETE ni TRUNCATE dans les chemins d'écriture.
+- **Tests** : 12 tests dans `steps_metadata_prestige_seed_test.go` (`//go:build integration`) couvrant first run, idempotence (3 passes), update de lignes modifiées, erreurs fichier absent/title_slug manquant, TOML synthétique, run complet halo_infinite.
+- **Bug Shared fresh-DB** (pré-existant, découvert via tests) : `add_mv_player_matches_fr_cols` référençait `mr.playlist_name_fr` AVANT que `add_match_registry_i18n_columns` ne l'ait ajouté. Sur une DB fraîche (tests in-memory), la view échouait avec "Table mr does not have a column named playlist_name_fr". Fix : ajouter `map_name_fr`, `pair_name_fr`, `playlist_name_fr` directement au `CREATE TABLE match_registry` initial dans `create_base_shared_schema`. Les DBs existantes ne sont pas impactées (`ADD COLUMN IF NOT EXISTS` reste en place pour elles).
+
+**Résultats** : `go test -tags=integration ./internal/migration/` → OK (0 failures). `go build ./...` OK.
+
+**Prochaine étape** : Aucune — ART corruption corrigée en prod, seed migré, tests verts.
+
 ## [2026-05-01] Catalog playlists/pairs/maps — peuplement + fix DuckDB ART index corruption
 
 **Statut** : Complété
@@ -18,6 +34,18 @@
 - `GET /api/v1/titles/halo_infinite/catalog/maps` → 122 maps.
 
 **Prochaine étape** : Phase Discovery UGC — récupérer les noms officiels des playlists sans nom (4 avec UUID comme nom) via `gamecms /assets/{id}.json` + `discovery-infiniteugc /Playlists/{id}/versions/{versionId}`.
+
+## [2026-05-01] Fix Asset Drawer — doublons ranked + thumbnails
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Doublons** : `maps_catalog` stocke chaque variante de map (base + ranked) comme une ligne distincte. Filtre SQL ajouté : `WHERE name_canonical NOT LIKE '% - %'` pour exclure "Aquarius - Classé", "Streets - Classé", etc.
+- **Thumbnails** : `GetMapImage` utilise l'UUID comme ID → `KindMapImage` n'a pas de fetcher → 500. Les images statiques existent dans `static/maps/halo_infinite/` nommées par le nom EN. Fix : `AssetService.WithMapImageURL(fn)` — callback optionnel. `server.go` passe `hiAssetURL.MapImageURL` (adapter Halo, déjà instancié). Fallback UUID conservé pour les contextes sans adapter.
+
+**Résultats** : `go build ./...` OK, 15 tests service+duckdb passent.
+
+**Prochaine étape** : valider visuellement les thumbnails après redémarrage Air.
 
 ## [2026-05-01] Fix Asset Drawer — "Aucune carte trouvée." (asset_translations vide)
 
