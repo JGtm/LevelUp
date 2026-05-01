@@ -30,6 +30,8 @@ type Tuning struct {
 	QuotasPilote  QuotasPiloteTuning `toml:"quotas_pilote"`
 	SquadPool     SquadPoolTuning    `toml:"squad_pool"`
 	Suggestion    SuggestionTuning   `toml:"suggestion"`
+	Expiration    ExpirationTuning   `toml:"expiration"`
+	MatchCount    MatchCountTuning   `toml:"match_count"`
 }
 
 type AntiSmurfTuning struct {
@@ -116,6 +118,24 @@ type SuggestionTuning struct {
 	AlternativesCount      int     `toml:"alternatives_count"`
 }
 
+// ExpirationTuning définit les durées d'expiration par tier pour les défis pilote.
+// Les défis mode libre n'ont pas de timer (valeur ignorée pour ModeLibre).
+type ExpirationTuning struct {
+	NormalHours    int `toml:"normal_hours"`
+	HeroicHours    int `toml:"heroic_hours"`
+	LegendaryHours int `toml:"legendary_hours"`
+	MythicHours    int `toml:"mythic_hours"`
+}
+
+// MatchCountTuning définit le nombre de matchs requis pour compléter
+// un défi threshold selon son tier (WindowLastNMatches).
+type MatchCountTuning struct {
+	Normal    int `toml:"normal"`
+	Heroic    int `toml:"heroic"`
+	Legendary int `toml:"legendary"`
+	Mythic    int `toml:"mythic"`
+}
+
 // DefaultTuning retourne les valeurs hardcodées de fallback.
 //
 // Doivent rester cohérentes avec config/prestige/tuning.toml. Si un
@@ -174,6 +194,12 @@ func DefaultTuning() Tuning {
 		},
 		Suggestion: SuggestionTuning{
 			NextPalierExtraStretch: 0.15, AlternativesCount: 3,
+		},
+		Expiration: ExpirationTuning{
+			NormalHours: 48, HeroicHours: 168, LegendaryHours: 336, MythicHours: 720,
+		},
+		MatchCount: MatchCountTuning{
+			Normal: 5, Heroic: 15, Legendary: 30, Mythic: 50,
 		},
 	}
 }
@@ -235,6 +261,16 @@ func (t Tuning) Validate() error {
 	}
 	if t.Baseline.WindowMatches <= 0 {
 		return fmt.Errorf("baseline.window_matches must be > 0")
+	}
+	if t.MatchCount.Normal <= 0 || t.MatchCount.Normal >= t.MatchCount.Heroic ||
+		t.MatchCount.Heroic >= t.MatchCount.Legendary ||
+		t.MatchCount.Legendary >= t.MatchCount.Mythic {
+		return fmt.Errorf("match_count non monotones ou invalides")
+	}
+	if t.Expiration.NormalHours <= 0 || t.Expiration.NormalHours >= t.Expiration.HeroicHours ||
+		t.Expiration.HeroicHours >= t.Expiration.LegendaryHours ||
+		t.Expiration.LegendaryHours >= t.Expiration.MythicHours {
+		return fmt.Errorf("expiration non monotone ou invalide")
 	}
 	if t.SquadPool.SizeMin > t.SquadPool.SizeMax {
 		return fmt.Errorf("squad_pool size_min > size_max")
@@ -316,4 +352,40 @@ func (t Tuning) WinRateMinForWindow(wt WindowType, value string) int {
 		}
 	}
 	return 0
+}
+
+// ExpirationDurationFor retourne la durée d'expiration d'un défi selon son tier et son mode.
+// Retourne 0 pour le mode libre (pas de timer).
+func (t Tuning) ExpirationDurationFor(tier Tier, mode ChallengeMode) time.Duration {
+	if mode == ModeLibre {
+		return 0
+	}
+	var hours int
+	switch tier {
+	case TierNormal:
+		hours = t.Expiration.NormalHours
+	case TierHeroic:
+		hours = t.Expiration.HeroicHours
+	case TierLegendary:
+		hours = t.Expiration.LegendaryHours
+	case TierMythic:
+		hours = t.Expiration.MythicHours
+	}
+	return time.Duration(hours) * time.Hour
+}
+
+// RequiredMatchCount retourne le nombre de matchs nécessaires pour compléter
+// un défi threshold de type WindowLastNMatches selon son tier.
+func (t Tuning) RequiredMatchCount(tier Tier) int {
+	switch tier {
+	case TierNormal:
+		return t.MatchCount.Normal
+	case TierHeroic:
+		return t.MatchCount.Heroic
+	case TierLegendary:
+		return t.MatchCount.Legendary
+	case TierMythic:
+		return t.MatchCount.Mythic
+	}
+	return t.MatchCount.Normal
 }

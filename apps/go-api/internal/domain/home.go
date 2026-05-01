@@ -308,6 +308,8 @@ type BattlePassResponse struct {
 }
 
 // ChallengeItem représente un défi actif détaillé pour l'accueil.
+// IsSquad est nil pour les défis Halo saison (jamais escouade) ;
+// true pour les défis Prestige issus d'un SquadChallenge.
 type ChallengeItem struct {
 	ChallengePath   string   `json:"challenge_path"`
 	TrackingID      *string  `json:"tracking_id,omitempty"`
@@ -318,6 +320,7 @@ type ChallengeItem struct {
 	ProgressTarget  *int     `json:"progress_target,omitempty"`
 	ProgressPercent *float64 `json:"progress_percent,omitempty"`
 	XPReward        *int     `json:"xp_reward,omitempty"`
+	IsSquad         *bool    `json:"is_squad,omitempty"`
 }
 
 // ChallengesResponse contient le résumé des défis actifs ou depuis le cache DB.

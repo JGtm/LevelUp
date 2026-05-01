@@ -222,7 +222,7 @@ func NewRouter(
 
 	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer (best-effort).
 	var assetMetaHandler *handlers.AssetMetadataHandler
-	if metaDB, err := platform_duckdb.OpenReadOnly(
+	if metaDB, err := platform_duckdb.OpenReadWriteShared(
 		titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
 	); err != nil {
 		slog.Warn("asset_metadata_db_unavailable", "err", err)
@@ -288,7 +288,9 @@ func NewRouter(
 			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
 
 			// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
-			if catalogMetaDB, err := platform_duckdb.OpenReadOnly(
+			// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
+			// (prestige presets, rank catalog) sur le même fichier DuckDB.
+			if catalogMetaDB, err := platform_duckdb.OpenReadWriteShared(
 				titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug),
 			); err != nil {
 				slog.Warn("catalog_meta_db_unavailable", "err", err)

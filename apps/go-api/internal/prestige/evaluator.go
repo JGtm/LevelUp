@@ -1,6 +1,7 @@
 package prestige
 
 import (
+	"strconv"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -13,6 +14,13 @@ import (
 // L'évaluateur est PUR : prend un défi + des données déjà chargées, retourne
 // un résultat (nouvelle valeur, transition éventuelle). Il n'écrit ni ne lit
 // la DB — c'est le service qui orchestre.
+//
+// Fenêtres supportées :
+//   - WindowLastNMatches : l'appelant fournit les N derniers matchs ; N = WindowValue.
+//     Expiration via ExpiresAt (calculé à la création selon tier + mode).
+//   - WindowDeadline     : backward compat, expiration via WindowValue ISO ou ExpiresAt.
+//   - WindowRollingDays  : déprécié — migrer vers WindowLastNMatches.
+//   - WindowSession      : usage interne.
 
 // EvaluationResult est le résultat d'une passe d'évaluation.
 type EvaluationResult struct {
@@ -29,7 +37,7 @@ const (
 	EvalReasonProgress       EvalReason = "progress"             // valeur mise à jour, défi continue
 	EvalReasonTargetReached  EvalReason = "target_reached"       // cible atteinte → completed
 	EvalReasonDeadlinePassed EvalReason = "deadline_passed"      // fenêtre écoulée → expired
-	EvalReasonInsufficient   EvalReason = "insufficient_matches" // pas assez de matchs (win_rate)
+	EvalReasonInsufficient   EvalReason = "insufficient_matches" // pas assez de matchs
 )
 
 // MatchSample représente un match exploité pour l'évaluation threshold.
@@ -48,19 +56,17 @@ type MedalEvent struct {
 
 // EvaluateThreshold évalue un défi de type threshold (moyenne sur fenêtre).
 //
-// Calcule la moyenne de la métrique sur les matchs fournis.
-// Si win_rate avec fenêtre dont matchs < min requis → EvalReasonInsufficient.
+// Pour WindowLastNMatches : l'appelant fournit les N derniers matchs.
+// Si len(matches) < N → EvalReasonInsufficient (joueur n'a pas encore joué N matchs).
 // Si moyenne ≥ target → completed.
-// Sinon → progress.
+// Si ExpiresAt dépassé et cible non atteinte → expired.
 //
-// Précondition : matches fournis sont DÉJÀ filtrés sur la fenêtre du défi
-// (l'appelant a fait le tri sessions/jours/deadline).
+// Précondition : matches fournis sont DÉJÀ filtrés sur la fenêtre du défi.
 func EvaluateThreshold(t Tuning, c Challenge, matches []MatchSample, now time.Time) EvaluationResult {
-	// Cas spécial : fenêtre deadline expirée
-	if c.WindowType == WindowDeadline && isDeadlinePassed(c.WindowValue, now) {
-		// Évaluer une dernière fois la moyenne ; si pas atteinte → expired
+	if isExpirationPassed(c, now) {
 		avg := computeAverage(matches, c.Metric)
-		if len(matches) >= minMatchesForMetric(t, c) && avg >= c.Target {
+		minReq := minMatchesForMetric(t, c)
+		if (minReq == 0 || len(matches) >= minReq) && avg >= c.Target {
 			return EvaluationResult{
 				NewValue:      avg,
 				NewStatus:     StatusCompleted,
@@ -76,13 +82,11 @@ func EvaluateThreshold(t Tuning, c Challenge, matches []MatchSample, now time.Ti
 		}
 	}
 
-	// Vérifier minimum de matchs (cas win_rate)
-	minMatches := minMatchesForMetric(t, c)
-	if len(matches) < minMatches {
-		// Progression affichée mais pas validable
+	minReq := minMatchesForMetric(t, c)
+	if len(matches) < minReq {
 		return EvaluationResult{
 			NewValue:      computeAverage(matches, c.Metric),
-			NewStatus:     c.Status, // inchangé
+			NewStatus:     c.Status,
 			StatusChanged: false,
 			Reason:        EvalReasonInsufficient,
 		}
@@ -99,7 +103,7 @@ func EvaluateThreshold(t Tuning, c Challenge, matches []MatchSample, now time.Ti
 	}
 	return EvaluationResult{
 		NewValue:      avg,
-		NewStatus:     c.Status, // inchangé
+		NewStatus:     c.Status,
 		StatusChanged: false,
 		Reason:        EvalReasonProgress,
 	}
@@ -107,11 +111,12 @@ func EvaluateThreshold(t Tuning, c Challenge, matches []MatchSample, now time.Ti
 
 // EvaluateCumulative évalue un défi de type cumulative (compteur d'événements).
 //
-// Pour les défis "5× Killtacular ce mois" : somme les Count des MedalEvent
+// Pour les défis "5× Killtacular" : somme les Count des MedalEvent
 // dont l'ID match la métrique du défi (filtré par l'appelant).
+// Pas de fenêtre par matchs — uniquement le timer d'expiration (ExpiresAt).
 //
-// Si total ≥ target → completed.
-// Si deadline passée → expired (cible non atteinte) ou completed (si atteinte).
+// Si total ≥ target → completed (priorité sur l'expiration).
+// Si ExpiresAt dépassé et cible non atteinte → expired.
 func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Time) EvaluationResult {
 	total := 0
 	for _, ev := range events {
@@ -119,23 +124,7 @@ func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Tim
 	}
 	totalF := float64(total)
 
-	if c.WindowType == WindowDeadline && isDeadlinePassed(c.WindowValue, now) {
-		if totalF >= c.Target {
-			return EvaluationResult{
-				NewValue:      totalF,
-				NewStatus:     StatusCompleted,
-				StatusChanged: true,
-				Reason:        EvalReasonTargetReached,
-			}
-		}
-		return EvaluationResult{
-			NewValue:      totalF,
-			NewStatus:     StatusExpired,
-			StatusChanged: true,
-			Reason:        EvalReasonDeadlinePassed,
-		}
-	}
-
+	// La cible est vérifiée avant l'expiration : si atteinte pile à la deadline → completed.
 	if totalF >= c.Target {
 		return EvaluationResult{
 			NewValue:      totalF,
@@ -144,6 +133,16 @@ func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Tim
 			Reason:        EvalReasonTargetReached,
 		}
 	}
+
+	if isExpirationPassed(c, now) {
+		return EvaluationResult{
+			NewValue:      totalF,
+			NewStatus:     StatusExpired,
+			StatusChanged: true,
+			Reason:        EvalReasonDeadlinePassed,
+		}
+	}
+
 	return EvaluationResult{
 		NewValue:      totalF,
 		NewStatus:     c.Status,
@@ -154,8 +153,8 @@ func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Tim
 
 // computeAverage retourne la moyenne de la métrique sur les matchs fournis.
 //
-// Pour la métrique win_rate, calcule (#wins / #matches) × 100 pour rester
-// dans la même échelle que la cible (exprimée en %).
+// Pour win_rate, calcule (#wins / #matches) × 100.
+// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 func computeAverage(matches []MatchSample, metric string) float64 {
 	if len(matches) == 0 {
 		return 0
@@ -167,7 +166,6 @@ func computeAverage(matches []MatchSample, metric string) float64 {
 				wins++
 			}
 		}
-		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 		return analysis.WinRate(wins, len(matches)) * 100.0
 	}
 	var sum float64
@@ -177,27 +175,47 @@ func computeAverage(matches []MatchSample, metric string) float64 {
 	return sum / float64(len(matches))
 }
 
-// minMatchesForMetric retourne le nb minimal de matchs pour évaluer le défi.
+// minMatchesForMetric retourne le nb minimal de matchs requis pour évaluer le défi.
 //
-// Pour win_rate avec session/rolling_days, utilise tuning.WinRateMin.
-// Pour les autres métriques, retourne 0 (toujours évaluable).
+// Pour WindowLastNMatches : N = WindowValue (parsé), fallback sur tuning.RequiredMatchCount.
+// Pour win_rate avec rolling_days/session : utilise WinRateMin du tuning.
+// Autres cas : 0 (toujours évaluable).
 func minMatchesForMetric(t Tuning, c Challenge) int {
+	if c.WindowType == WindowLastNMatches {
+		n, err := strconv.Atoi(c.WindowValue)
+		if err != nil || n <= 0 {
+			return t.RequiredMatchCount(c.Tier)
+		}
+		return n
+	}
 	if c.Metric != "FieldWinRate" && c.Metric != "win_rate" {
 		return 0
 	}
 	return t.WinRateMinForWindow(c.WindowType, c.WindowValue)
 }
 
-// isDeadlinePassed parse la deadline ISO et compare avec now.
+// isExpirationPassed retourne true si le défi est expiré.
 //
-// Si parsing échoue, retourne false (le défi n'expire pas faute de date claire).
+// Priorité : ExpiresAt (champ unifié, calculé à la création).
+// Fallback backward compat : WindowDeadline avec WindowValue ISO.
+func isExpirationPassed(c Challenge, now time.Time) bool {
+	if c.ExpiresAt != nil {
+		return now.After(*c.ExpiresAt)
+	}
+	if c.WindowType == WindowDeadline {
+		return isDeadlinePassed(c.WindowValue, now)
+	}
+	return false
+}
+
+// isDeadlinePassed parse la deadline ISO et compare avec now.
+// Conservé pour backward compat avec WindowDeadline sans ExpiresAt.
 func isDeadlinePassed(windowValue string, now time.Time) bool {
 	if windowValue == "" {
 		return false
 	}
 	deadline, err := time.Parse(time.RFC3339, windowValue)
 	if err != nil {
-		// Tentative format simple YYYY-MM-DD
 		deadline, err = time.Parse("2006-01-02", windowValue)
 		if err != nil {
 			return false

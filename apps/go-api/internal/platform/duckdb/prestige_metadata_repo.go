@@ -93,10 +93,13 @@ func (r *PrestigeTemplateRepo) Suggest(ctx context.Context, titleSlug string, ex
 func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, templates []prestige.Template) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	// Suppression + réinsertion atomique non garantie ici (DuckDB pool RW).
-	// Pour Phase 2 c'est suffisant ; Phase 3 pourrait utiliser une transaction explicite.
-	if _, err := r.db.Exec(ctx, `DELETE FROM challenge_template WHERE title_slug = ?`, titleSlug); err != nil {
-		return fmt.Errorf("delete: %w", err)
+
+	// Workaround bug ART index DuckDB : DELETE (même par PK) échoue avec
+	// "Failed to delete all rows from index" dans ce contexte pool partagé.
+	// TRUNCATE évite entièrement les opérations d'index — vidage atomique bulk.
+	// Acceptable car Replace porte TOUJOURS la liste complète pour le title_slug.
+	if _, err := r.db.Exec(ctx, `TRUNCATE TABLE challenge_template`); err != nil {
+		return fmt.Errorf("truncate: %w", err)
 	}
 	for _, t := range templates {
 		if _, err := r.db.Exec(ctx, `
@@ -221,29 +224,15 @@ func (r *PrestigePresetArcRepo) GetSteps(ctx context.Context, presetArcID string
 func (r *PrestigePresetArcRepo) Replace(ctx context.Context, titleSlug string, arcs []prestige.PresetArc, steps []prestige.PresetArcStep) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	// Récupérer les IDs existants à supprimer
-	existing := make(map[string]struct{})
-	rows, err := r.db.Query(ctx, `SELECT id FROM preset_arc WHERE title_slug = ?`, titleSlug)
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return err
-		}
-		existing[id] = struct{}{}
-	}
-	rows.Close()
 
-	for id := range existing {
-		if _, err := r.db.Exec(ctx, `DELETE FROM preset_arc_step WHERE preset_arc_id = ?`, id); err != nil {
-			return fmt.Errorf("delete steps: %w", err)
-		}
+	// Workaround bug ART index DuckDB : DELETE (même par PK) échoue avec
+	// "Failed to delete all rows from index" dans ce contexte pool partagé.
+	// TRUNCATE évite entièrement les opérations d'index — vidage atomique bulk.
+	if _, err := r.db.Exec(ctx, `TRUNCATE TABLE preset_arc_step`); err != nil {
+		return fmt.Errorf("truncate steps: %w", err)
 	}
-	if _, err := r.db.Exec(ctx, `DELETE FROM preset_arc WHERE title_slug = ?`, titleSlug); err != nil {
-		return fmt.Errorf("delete arcs: %w", err)
+	if _, err := r.db.Exec(ctx, `TRUNCATE TABLE preset_arc`); err != nil {
+		return fmt.Errorf("truncate arcs: %w", err)
 	}
 
 	for _, a := range arcs {

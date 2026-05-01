@@ -189,9 +189,19 @@ function ChallengeSection({ section }: { section: ChallengeSection }) {
 
                   <div className="flex min-h-16 min-w-0 flex-1 flex-col justify-between gap-2">
                     <div className="min-w-0">
-                      <p data-testid="home-challenge-title" className="truncate text-[15px] font-semibold leading-tight text-foreground">
-                        {item.title}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p data-testid="home-challenge-title" className="min-w-0 truncate text-[15px] font-semibold leading-tight text-foreground">
+                          {item.title}
+                        </p>
+                        {item.is_squad && (
+                          <span
+                            data-testid="home-challenge-squad-badge"
+                            className="shrink-0 rounded border border-muted-foreground/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                          >
+                            Escouade
+                          </span>
+                        )}
+                      </div>
                       {item.description && (
                         <p data-testid="home-challenge-description" className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">
                           {item.description}

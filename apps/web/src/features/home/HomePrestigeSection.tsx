@@ -41,12 +41,19 @@ const FADE_MS = 250
  *
  * Ordre :
  *   1. Actifs avant terminés.
- *   2. (TODO quand l'API expose current_value) % de progression desc.
- *   3. Fallback : created_at desc pour les actifs, completed_at desc pour les terminés.
+ *   2. % de progression desc (current_value / target).
+ *   3. Tie-break : created_at desc pour les actifs, completed_at desc pour les terminés.
  */
+function progressPct(c: Challenge): number {
+  if (!c.target || c.target <= 0) return 0
+  return Math.min(100, ((c.current_value ?? 0) / c.target) * 100)
+}
+
 function sortObjectives(challenges: Challenge[]): Challenge[] {
   return [...challenges].sort((a, b) => {
     if (a.status !== b.status) return a.status === 'active' ? -1 : 1
+    const dPct = progressPct(b) - progressPct(a)
+    if (dPct !== 0) return dPct
     if (a.status === 'completed') {
       const aT = a.completed_at ?? a.created_at
       const bT = b.completed_at ?? b.created_at
@@ -277,4 +284,3 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
     </Card>
   )
 }
-

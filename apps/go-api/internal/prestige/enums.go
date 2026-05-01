@@ -177,14 +177,15 @@ type WindowType string
 
 const (
 	WindowSession         WindowType = "session"
-	WindowRollingDays     WindowType = "rolling_days"
+	WindowRollingDays     WindowType = "rolling_days"   // déprécié — préférer WindowLastNMatches
+	WindowLastNMatches    WindowType = "last_n_matches" // fenêtre par compteur de matchs (N = WindowValue)
 	WindowDeadline        WindowType = "deadline"
 	WindowMatchesInternal WindowType = "matches_internal"
 )
 
 func (w WindowType) Valid() bool {
 	switch w {
-	case WindowSession, WindowRollingDays, WindowDeadline, WindowMatchesInternal:
+	case WindowSession, WindowRollingDays, WindowLastNMatches, WindowDeadline, WindowMatchesInternal:
 		return true
 	}
 	return false
