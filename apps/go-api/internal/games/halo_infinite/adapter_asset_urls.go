@@ -2,6 +2,8 @@ package halo_infinite
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,6 +17,12 @@ const TitleSlug = "halo_infinite"
 // uuidRe matche un UUID v4 — utilisé pour rejeter les map names qui sont en
 // fait des UUID bruts (non utilisables comme nom de fichier statique).
 var uuidRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// mapVariantSuffixes liste les suffixes de variantes mode qui ont des images
+// mais ne doivent pas apparaître dans le drawer (modes spécifiques : BTB Heavies,
+// Sentry Defense, Firefight sur une map). Les variantes "- Ranked" sont filtrées
+// en amont par SQL (NOT LIKE '% - %').
+var mapVariantSuffixes = []string{" Heavies", " Sentry Defense", " Firefight"}
 
 // weaponImageFiles mappe le name_en d'une arme vers le stem du fichier PNG
 // dans static/weapons-assets/halo_infinite/. Armes sans entrée → ImageURL vide.
@@ -60,28 +68,6 @@ var weaponImageFiles = map[string]string{
 	"Infected Energy Sword": "Sword",
 }
 
-// mapPNGNames contient les noms de maps (EN) dont l'image locale est au format PNG.
-// Tous les autres noms utilisent le format JPEG par défaut.
-var mapPNGNames = map[string]struct{}{
-	"Aquarius":                 {},
-	"Aquarius - Ranked":        {},
-	"Bazaar":                   {},
-	"Behemoth":                 {},
-	"Breaker":                  {},
-	"Breaker Heavies":          {},
-	"Catalyst":                 {},
-	"Deadlock":                 {},
-	"Deadlock Heavies":         {},
-	"Highpower":                {},
-	"Highpower Heavies":        {},
-	"Highpower Sentry Defense": {},
-	"Launch Site":              {},
-	"Recharge":                 {},
-	"Recharge - Ranked":        {},
-	"Streets":                  {},
-	"Streets - Ranked":         {},
-}
-
 // AssetURLAdapter implémente games.TitleAssetURLAdapter pour Halo Infinite.
 //
 // Composition path déléguée à internal/assets/static (couche 2 SRP). Les URLs
@@ -89,7 +75,8 @@ var mapPNGNames = map[string]struct{}{
 // avec l'arborescence FS title-scopée (post-Phase 6.5 du plan finition
 // multi-titres).
 type AssetURLAdapter struct {
-	titleSlug string
+	titleSlug    string
+	mapImageExts map[string]string // name → ".jpg"|".png" ; nil = mode permissif (tests)
 }
 
 // NewAssetURLAdapter construit un AssetURLAdapter pour Halo Infinite.
@@ -97,19 +84,67 @@ func NewAssetURLAdapter() *AssetURLAdapter {
 	return &AssetURLAdapter{titleSlug: TitleSlug}
 }
 
+// WithMapImagesDir scanne dir et construit la liste autorisée des images de map.
+// Seuls les fichiers .jpg/.png sont indexés ; toute autre extension est ignorée.
+// Après appel, MapImageURL retourne "" pour tout nom absent du répertoire.
+// En cas d'erreur de lecture du répertoire, l'adapter reste en mode permissif.
+func (a *AssetURLAdapter) WithMapImagesDir(dir string) *AssetURLAdapter {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return a // répertoire absent ou inaccessible → mode permissif
+	}
+	exts := make(map[string]string, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		if ext != ".jpg" && ext != ".png" {
+			continue
+		}
+		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+		exts[name] = ext
+	}
+	if len(exts) > 0 {
+		a.mapImageExts = exts
+	}
+	return a
+}
+
 // TitleSlug retourne "halo_infinite".
 func (a *AssetURLAdapter) TitleSlug() string { return a.titleSlug }
 
 // MapImageURL retourne l'URL de l'image d'une map.
-// Encode les espaces du nom en %20 manuellement (pas via net/url.PathEscape
-// pour préserver les "/" éventuels). Retourne "" si nom vide ou UUID.
+// Si WithMapImagesDir a été appelé, seuls les noms avec un fichier image réel
+// retournent une URL — les variantes mode+map sans image retournent "".
+// Les variantes avec suffixe connu (Heavies, Sentry Defense, Firefight) sont
+// toujours exclues même si un fichier image existe pour elles.
+// Encode les espaces du nom en %20 (pas net/url.PathEscape pour préserver les "/").
 func (a *AssetURLAdapter) MapImageURL(mapName string) string {
 	mapName = strings.TrimSpace(mapName)
 	if mapName == "" || uuidRe.MatchString(mapName) {
 		return ""
 	}
+	for _, suffix := range mapVariantSuffixes {
+		if strings.HasSuffix(mapName, suffix) {
+			return ""
+		}
+	}
+	if a.mapImageExts != nil {
+		ext, ok := a.mapImageExts[mapName]
+		if !ok {
+			return ""
+		}
+		return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
+	}
+	// Mode permissif (tests, pas de répertoire configuré) : jpg par défaut.
 	ext := ".jpg"
-	if _, ok := mapPNGNames[mapName]; ok {
+	if mapName == "Aquarius" || mapName == "Bazaar" || mapName == "Behemoth" ||
+		mapName == "Breaker" || mapName == "Breaker Heavies" || mapName == "Catalyst" ||
+		mapName == "Deadlock" || mapName == "Deadlock Heavies" || mapName == "Highpower" ||
+		mapName == "Highpower Heavies" || mapName == "Highpower Sentry Defense" ||
+		mapName == "Launch Site" || mapName == "Recharge" || mapName == "Streets" ||
+		strings.HasSuffix(mapName, " - Ranked") {
 		ext = ".png"
 	}
 	return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)

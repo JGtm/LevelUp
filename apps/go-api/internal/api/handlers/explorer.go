@@ -51,7 +51,7 @@ func (h *ExplorerHandler) QueryPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := svc.GetCommonMatches(r.Context(), req.TargetGamertag, req.Limit)
+	resp, err := svc.GetCommonMatches(r.Context(), req.TargetGamertag, req.Page)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "explorer_error", err.Error())
 		return

@@ -69,7 +69,7 @@ func ComputeEncounterBadges(stats EncounterStats, ordinal int) []EncounterBadge 
 		badges = append(badges, EncounterBadge{
 			Kind:       EncounterOrdinal,
 			LabelKey:   "narrative.encounter.ordinal",
-			ColorToken: "narrative.encounter.ordinal",
+			ColorToken: "narrative-encounter-ordinal",
 			Detail:     map[string]any{"ordinal": ordinal},
 		})
 	}
@@ -79,7 +79,7 @@ func ComputeEncounterBadges(stats EncounterStats, ordinal int) []EncounterBadge 
 		badges = append(badges, EncounterBadge{
 			Kind:       EncounterAllyPlus,
 			LabelKey:   "narrative.encounter.ally_plus",
-			ColorToken: "narrative.encounter.ally_plus",
+			ColorToken: "narrative-encounter-ally-plus",
 			Detail:     map[string]any{"winrate": *stats.WinrateAsAlly},
 		})
 	}
@@ -121,7 +121,7 @@ func toughEnemyBadge(stats EncounterStats) *EncounterBadge {
 	return &EncounterBadge{
 		Kind:       EncounterToughEnemy,
 		LabelKey:   "narrative.encounter.tough_enemy",
-		ColorToken: "narrative.encounter.tough_enemy",
+		ColorToken: "narrative-encounter-tough-enemy",
 		Detail:     detail,
 	}
 }

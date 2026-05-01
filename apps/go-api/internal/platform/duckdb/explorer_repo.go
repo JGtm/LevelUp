@@ -56,6 +56,16 @@ func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string
 	return results, nil
 }
 
+// GetKillerVictimBetween retourne les kills croisés agrégés entre xuid1 et xuid2 (Q19b).
+func (r *ExplorerRepo) GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 string) (domain.KillerVictimAggregate, error) {
+	row := r.pdb.ReadDB().QueryRow(ctx, Q19bKillerVictimBetween, xuid1, xuid2, xuid2, xuid1)
+	var agg domain.KillerVictimAggregate
+	if err := row.Scan(&agg.KillsDealt, &agg.DeathsSuffered); err != nil {
+		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)
+	}
+	return agg, nil
+}
+
 // ResolveXUIDByGamertag résout un gamertag en xuid via xuid_aliases (ILIKE).
 func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error) {
 	const q = `SELECT xuid FROM global.xuid_aliases WHERE gamertag ILIKE ? LIMIT 1`

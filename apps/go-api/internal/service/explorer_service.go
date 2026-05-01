@@ -8,10 +8,14 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
+
+// outcomeWin est le code de victoire (Halo Infinite outcome = 2).
+const outcomeWin = 2
 
 // ExplorerService orchestre les requêtes de l'Explorer.
 type ExplorerService struct {
@@ -53,12 +57,13 @@ func (s *ExplorerService) logCapabilityIfMissing(ctx context.Context, cap games.
 	}
 }
 
-// GetCommonMatches retourne les matchs en commun avec un autre joueur.
-// Résout le gamertag de l'autre joueur, puis filtre via Q19.
+// GetCommonMatches retourne l'historique paginé de matchs communs avec un autre
+// joueur, enrichi des badges encounter (ally_plus, tough_enemy, ordinal).
+// page est 1-indexé ; PageSizeCommonMatches = 20 éléments par page.
 func (s *ExplorerService) GetCommonMatches(
 	ctx context.Context,
 	otherGamertag string,
-	limit int,
+	page int,
 ) (domain.ExplorerPlayerQueryResponse, error) {
 	s.logCapabilityIfMissing(ctx, games.CapMatchHistory, "explorer_service.GetCommonMatches")
 
@@ -74,33 +79,67 @@ func (s *ExplorerService) GetCommonMatches(
 			fmt.Errorf("ExplorerService: matchs communs: %w", err)
 	}
 
-	matches := convertCommonMatches(rawMatches, limit)
+	kv, err := s.repo.GetKillerVictimBetween(ctx, s.xuid, otherXUID)
+	if err != nil {
+		// Dégradation gracieuse : les badges tough_enemy ne seront pas calculés,
+		// mais le reste de la réponse reste valide.
+		slog.WarnContext(ctx, "explorer_kv_between_failed",
+			"xuid1", s.xuid, "xuid2", otherXUID, "err", err)
+		kv = domain.KillerVictimAggregate{}
+	}
+
+	totalCount := len(rawMatches)
+	if page < 1 {
+		page = 1
+	}
+	pageSize := domain.PageSizeCommonMatches
+	offset := (page - 1) * pageSize
+	end := offset + pageSize
+	if end > totalCount {
+		end = totalCount
+	}
+
+	var pageMatches []domain.CommonMatchRaw
+	if offset < totalCount {
+		pageMatches = rawMatches[offset:end]
+	}
+
+	rows := convertCommonMatches(pageMatches)
+
+	stats := buildEncounterStats(otherXUID, otherGamertag, rawMatches, kv)
+	badges := narrative.ComputeEncounterBadges(stats, totalCount)
+	wins, losses := countWinsLosses(rawMatches)
+
+	slog.DebugContext(ctx, "explorer_common_matches",
+		"xuid", s.xuid, "other_xuid", otherXUID,
+		"total", totalCount, "page", page, "badges", len(badges))
+
 	return domain.ExplorerPlayerQueryResponse{
 		TargetGamertag: otherGamertag,
 		TargetXUID:     otherXUID,
-		CommonMatches:  matches,
-		Total:          len(matches),
+		CommonMatches:  rows,
+		Badges:         convertEncounterBadges(badges),
+		Total:          len(rows),
+		TotalCount:     totalCount,
+		WinsTogether:   wins,
+		LossesTogether: losses,
+		Page:           page,
+		PageSize:       pageSize,
 	}, nil
 }
 
-// convertCommonMatches convertit les lignes brutes en CommonMatchRow avec were_teammates.
-func convertCommonMatches(raw []domain.CommonMatchRaw, limit int) []domain.CommonMatchRow {
+// convertCommonMatches convertit les lignes brutes en CommonMatchRow avec
+// were_teammates et outcome_label résolus.
+func convertCommonMatches(raw []domain.CommonMatchRaw) []domain.CommonMatchRow {
 	if len(raw) == 0 {
 		return []domain.CommonMatchRow{}
 	}
-
-	max := len(raw)
-	if limit > 0 && limit < max {
-		max = limit
-	}
-
-	result := make([]domain.CommonMatchRow, 0, max)
-	for i := range raw[:max] {
+	result := make([]domain.CommonMatchRow, 0, len(raw))
+	for i := range raw {
 		r := &raw[i]
 		wereTeammates := r.Player1TeamID != nil &&
 			r.Player2TeamID != nil &&
 			*r.Player1TeamID == *r.Player2TeamID
-
 		result = append(result, domain.CommonMatchRow{
 			MatchID:       r.MatchID,
 			StartTime:     r.StartTime,
@@ -108,9 +147,87 @@ func convertCommonMatches(raw []domain.CommonMatchRaw, limit int) []domain.Commo
 			ModeUI:        r.ModeUI,
 			WereTeammates: wereTeammates,
 			PlayerOutcome: r.Player1Outcome,
+			OutcomeLabel:  outcomeLabel(r.Player1Outcome),
 			Kills:         r.Player1Kills,
 			Deaths:        r.Player1Deaths,
 			KDA:           r.Player1KDA,
+		})
+	}
+	return result
+}
+
+// buildEncounterStats construit un narrative.EncounterStats depuis les données
+// brutes de matchs communs et les kills croisés.
+func buildEncounterStats(xuid, gamertag string, raw []domain.CommonMatchRaw, kv domain.KillerVictimAggregate) narrative.EncounterStats {
+	stats := narrative.EncounterStats{
+		XUID:            xuid,
+		Gamertag:        gamertag,
+		TotalEncounters: len(raw),
+		KillsDealt:      kv.KillsDealt,
+		DeathsSuffered:  kv.DeathsSuffered,
+	}
+
+	var allyWins, allyTotal, enemyWins, enemyTotal int
+	for i := range raw {
+		r := &raw[i]
+		wereTeammates := r.Player1TeamID != nil &&
+			r.Player2TeamID != nil &&
+			*r.Player1TeamID == *r.Player2TeamID
+		if wereTeammates {
+			allyTotal++
+			if r.Player1Outcome == outcomeWin {
+				allyWins++
+			}
+		} else {
+			enemyTotal++
+			if r.Player1Outcome == outcomeWin {
+				enemyWins++
+			}
+		}
+		if stats.LastSeen == nil || r.StartTime.After(*stats.LastSeen) {
+			t := r.StartTime
+			stats.LastSeen = &t
+		}
+	}
+
+	stats.AllyCount = allyTotal
+	stats.EnemyCount = enemyTotal
+	if allyTotal > 0 {
+		wr := float64(allyWins) / float64(allyTotal)
+		stats.WinrateAsAlly = &wr
+	}
+	if enemyTotal > 0 {
+		wr := float64(enemyWins) / float64(enemyTotal)
+		stats.WinrateVsEnemy = &wr
+	}
+	return stats
+}
+
+// countWinsLosses compte les victoires et défaites sur l'ensemble des matchs.
+func countWinsLosses(raw []domain.CommonMatchRaw) (wins, losses int) {
+	for i := range raw {
+		switch raw[i].Player1Outcome {
+		case outcomeWin:
+			wins++
+		default:
+			losses++
+		}
+	}
+	return
+}
+
+// convertEncounterBadges convertit les badges narrative en types domain.
+func convertEncounterBadges(badges []narrative.EncounterBadge) []domain.MatchEncounterBadge {
+	if len(badges) == 0 {
+		return nil
+	}
+	result := make([]domain.MatchEncounterBadge, 0, len(badges))
+	for _, b := range badges {
+		result = append(result, domain.MatchEncounterBadge{
+			Kind:       string(b.Kind),
+			LabelKey:   b.LabelKey,
+			ColorToken: b.ColorToken,
+			Detail:     b.Detail,
 		})
 	}
 	return result

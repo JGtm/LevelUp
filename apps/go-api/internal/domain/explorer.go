@@ -13,10 +13,13 @@ import "time"
 // Explorer — Player Query
 // ---------------------------------------------------------------------------
 
+// PageSizeCommonMatches est la taille de page fixe pour l'historique commun.
+const PageSizeCommonMatches = 20
+
 // ExplorerPlayerQueryRequest : corps de la requête POST player-query.
 type ExplorerPlayerQueryRequest struct {
 	TargetGamertag string `json:"target_gamertag"`
-	Limit          int    `json:"limit,omitempty"`
+	Page           int    `json:"page,omitempty"` // 1-indexé, défaut 1
 }
 
 // CommonMatchRow : un match en commun entre 2 joueurs.
@@ -27,6 +30,7 @@ type CommonMatchRow struct {
 	ModeUI        string    `json:"mode_ui"`
 	WereTeammates bool      `json:"were_teammates"`
 	PlayerOutcome int       `json:"player_outcome"`
+	OutcomeLabel  string    `json:"outcome_label"`
 	Kills         int       `json:"kills"`
 	Deaths        int       `json:"deaths"`
 	KDA           float64   `json:"kda"`
@@ -34,10 +38,22 @@ type CommonMatchRow struct {
 
 // ExplorerPlayerQueryResponse : réponse de la requête player-query.
 type ExplorerPlayerQueryResponse struct {
-	TargetGamertag string           `json:"target_gamertag"`
-	TargetXUID     string           `json:"target_xuid"`
-	CommonMatches  []CommonMatchRow `json:"common_matches"`
-	Total          int              `json:"total"`
+	TargetGamertag string                `json:"target_gamertag"`
+	TargetXUID     string                `json:"target_xuid"`
+	CommonMatches  []CommonMatchRow      `json:"common_matches"`
+	Badges         []MatchEncounterBadge `json:"badges,omitempty"`
+	Total          int                   `json:"total"`       // items sur la page courante
+	TotalCount     int                   `json:"total_count"` // total tous matchs confondus
+	WinsTogether   int                   `json:"wins_together"`
+	LossesTogether int                   `json:"losses_together"`
+	Page           int                   `json:"page"`
+	PageSize       int                   `json:"page_size"`
+}
+
+// KillerVictimAggregate : kills croisés agrégés entre deux joueurs.
+type KillerVictimAggregate struct {
+	KillsDealt     int // kills du joueur courant sur le joueur cible
+	DeathsSuffered int // kills du joueur cible sur le joueur courant
 }
 
 // ---------------------------------------------------------------------------
