@@ -3,6 +3,10 @@
 > Analyse réalisée le 2026-04-30. Conception d'un référentiel global Halo Infinite
 > pour accélérer la cascade de filtres et écrémer l'UI aux options réellement utiles.
 > Ce document couvre uniquement le design data + sync — pas l'UI React (cible d'un sprint suivant).
+>
+> **Branche Git cible : implémentation sur `docs/charts-specs` (branche courante).**
+> Amendements 2026-04-30 : `match_context` solo/squad (Phase C), `CatalogRepo` port (Phase C),
+> cascade preservation + session filter cross-DB + fallback guard (Phase I), migration tests, logging.
 
 ---
 
@@ -730,12 +734,21 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 - Migration de backfill (NULL acceptés, hydratés au prochain sync).
 - Tests : `transforms_test.go` couvre extraction sur fixtures réelles.
 
-### Phase C — Interfaces multi-titre canoniques (1 commit)
+### Phase C — Interfaces multi-titre canoniques + port/CatalogRepo + FilterContextInput (1 commit)
 
 - Créer `internal/games/catalog_adapter.go` avec l'interface `TitleCatalogAdapter` (cf. §4bis.2).
-- Créer les types canoniques `CanonicalPlaylist`, `CanonicalPair`, `CanonicalMap`, `CanonicalGameVariant`, `Experience`, `ModeCanonical` dans `internal/games/canonical/` (à côté des `MatchType`, `Outcome` existants).
+- Créer les types canoniques `CanonicalPlaylist`, `CanonicalPair`, `CanonicalMap`, `CanonicalGameVariant`, `Experience`, `ModeCanonical` dans `internal/games/canonical/`.
 - Étendre le `StaticResolver` pour exposer `CatalogAdapter(titleSlug)`.
-- Tests d'isolation cross-titres : un appel `Resolver.CatalogAdapter("synthetic_title_b")` ne doit jamais router vers Halo.
+- **Ajouter `CatalogRepo` dans `internal/port/`** : interface lecture seule (le fetch DiscoveryUGC est exclusivement du ressort du `CatalogFetcherService`). Méthodes minimales : `PlaylistsByTitle(ctx, titleSlug, xuid, onlyPlayed bool)`, `PairsByPlaylist(ctx, titleSlug, playlistID string)`, `MapsByTitle(ctx, titleSlug, xuid string)`. Implémentation DuckDB dans `internal/platform/duckdb/catalog_repo.go`.
+- **Ajouter le champ `MatchContext`** dans `domain.FilterContextInput` :
+  ```go
+  // "solo"  : is_with_friends = false
+  // "squad" : is_with_friends = true
+  // "all"   : pas de filtre supplémentaire (défaut)
+  MatchContext string `json:"match_context,omitempty"`
+  ```
+  Pages escouade → `"squad"` ; pages stats solo → `"all"`. Consommé en Phase I.
+- Tests d'isolation cross-titres : `Resolver.CatalogAdapter("synthetic_title_b")` ne doit jamais router vers Halo.
 
 ### Phase D — Adapter Halo Infinite + TOML (experience + mode_category) + multi-lang (1 commit)
 
@@ -786,7 +799,62 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 
 - Réécrire [filters_service.go](apps/go-api/internal/service/filters_service.go) `Resolve()` pour requêter `playlists_catalog` ⨝ `match_registry` au lieu de scanner `match_participants`. Le `title_slug` vient du contexte (HTTP middleware).
 - Ajouter le toggle `mode_only_played` (défaut `true`) dans la signature de l'endpoint.
-- Tests : parité de comportement avec l'ancien service sur fixtures réelles ; benchmark Go avant/après pour quantifier le gain.
+
+#### Décision requise — cascade "parents actifs" : Go pur ou SQL ?
+
+| Option | Description | Avantages | Inconvénients |
+|---|---|---|---|
+| **(A) Go pur** (reco) | `Resolve()` charge l'ensemble filtré depuis `match_registry` (xuid + match_context) puis exécute `buildAvailableOptions` en Go (logique actuelle) | `filters_cascade_test.go` (28 tests) réutilisable sans modification | Plus de lignes en mémoire si catalogue ne réduit pas assez |
+| **(B) SQL catalogue** | Requêtes SQL successives par niveau ; `playlists_catalog ⨝ match_registry WHERE id IN (...)` parents actifs | Moins de data en mémoire, exploite les index DuckDB | Cascade dispersée en SQL, tests plus complexes |
+
+**Reco** : Option (A). Phase J+1 si benchmarks insuffisants.
+
+#### Session filter — implémentation cross-DB
+
+`session_label` vit dans `stats.duckdb/player_match_enrichment`, pas dans `match_registry`. JOIN cross-DB explicite dans `FiltersRepo` :
+
+```go
+// internal/platform/duckdb/filters_repo.go (lorsque session_ids présents)
+//   ATTACH 'data/players/{gamertag}/stats.duckdb' AS player_db (READ_ONLY);
+//   SELECT DISTINCT mr.match_id
+//   FROM shared.match_registry mr
+//   JOIN player_db.player_match_enrichment pme ON pme.match_id = mr.match_id
+//   WHERE pme.session_label IN (?) AND mr.title_slug = ? AND mr.xuid = ?
+//   DETACH player_db;
+```
+
+#### Contexte solo/squad (`match_context`)
+
+```go
+switch input.MatchContext {
+case "squad": // AND pme.is_with_friends = TRUE
+case "solo":  // AND pme.is_with_friends = FALSE
+default:      // "all" → pas de filtre
+}
+```
+
+#### Garde de sécurité — catalogue vide
+
+```go
+if catalogCount == 0 {
+    slog.ErrorContext(ctx, "catalog empty: falling back to legacy scan", "title_slug", titleSlug)
+    return r.legacyLoadMatchesForFilters(ctx, input)
+}
+```
+
+Fallback transitoire, suppression en Phase K après confirmation prod.
+
+#### Migration des tests existants
+
+Si Option (A) retenue : `filters_cascade_test.go` (28 tests) s'applique sans modification — la source de données change, la cascade Go reste identique. Si Option (B) : remplacer par tests d'intégration DuckDB `:memory:` + fixture catalogue. À mentionner dans le commit message.
+
+#### Logging
+
+- `slog.ErrorContext(ctx, "catalog empty: falling back to legacy scan", "title_slug", titleSlug)`
+- `slog.InfoContext(ctx, "FiltersService.Resolve", "source", "catalog", "matches_loaded", n, "duration_ms", ms)`
+- `slog.ErrorContext(ctx, "session filter cross-DB attach failed", "err", err, "gamertag", gamertag)`
+
+- Tests : parité fixtures réelles, fallback catalogue vide, session cross-DB, `match_context` solo/squad/all, benchmark avant/après.
 
 ### Phase J — Refresh mensuel (1 commit, optionnel selon cadence)
 
@@ -837,6 +905,7 @@ Toutes les combinaisons sont AND-ables. La cascade visible (« si je sélectionn
 ## 8. Hors scope (à reporter)
 
 - Refonte UI du `FilterOmnibar` au-delà de l'ajout du toggle « Joué / Tous »
+- **Exposition `mode_label` / `mode_category` comme dimensions de filtre dans l'UI React** : ce sprint pose les fondations backend (Phase C, Phase H endpoints) ; intégration FilterOmnibar reportée au sprint UI suivant.
 - Page de configuration admin du catalogue (édition manuelle d'`is_active`, etc.)
 - Statistiques agrégées par playlist (matchs joués totaux, durée moyenne, etc.) — possible suite naturelle
 - Intégration AMQP `lobby-hi.svc.halowaypoint.com` mentionnée dans l'article den.dev pour la liste autoritative des playlists actives — overkill pour le besoin actuel
