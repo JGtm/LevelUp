@@ -24,13 +24,15 @@
 **Statut** : Complété
 
 **Décision technique** :
-- **Bug racine** : `assetMetaHandler` était `nil` au démarrage car `OpenReadWriteShared(metadata.duckdb)` échouait avec "Le processus ne peut pas accéder au fichier" — l'ancien processus Air (server.exe) tenait encore le lock Windows. Les routes `/assets/{title_id}/maps` et `/assets/{title_id}/weapons` n'étaient jamais enregistrées → 404 → "Erreur de chargement." côté frontend.
-- **Fix 1 — Retry** : boucle 3× (délai 500ms inter-essai) sur `OpenReadWriteShared` pour absorber la fenêtre de chevauchement Air hot-reload.
-- **Fix 2 — Nil guard** : routes toujours enregistrées ; si `assetMetaHandler` est encore nil après retry, on renvoie `[]` + 200. Le frontend affiche "Aucune map trouvée." au lieu de "Erreur de chargement.".
+- **Bug racine** : `assetMetaHandler` était `nil` au démarrage car `OpenReadWriteShared(metadata.duckdb)` échouait avec "Le processus ne peut pas accéder au fichier" — l'ancien processus Air (server.exe) tenait encore le lock Windows. Les routes n'étaient jamais enregistrées → 404 → "Erreur de chargement.".
+- **Fix principal — `StaticAssetMetaRepo`** : `internal/service/asset_meta_static.go` — implémentation in-memory de `port.AssetMetaRepository`. On ouvre metadata.duckdb, on charge maps+armes en `[]canonical.AssetMeta`, on ferme la connexion **immédiatement** via `metaDB.Close()`. Plus aucun lock Windows persistant entre processus. Le tri/filtrage (LIKE case-insensitive) est répliqué en Go pur.
+- **Fix secondaire — Retry** : boucle 3× (500ms) pour absorber la fenêtre de chevauchement Air.
+- **Nil guard** : routes toujours enregistrées, fallback `[]`+200 si le retry échoue.
+- **i18n** : "Aucune map trouvée." → "Aucune carte trouvée." (TOML + TS généré).
 
-**Résultats** : `go build ./internal/api/...` OK. Les routes répondent 200/[] même sans DB disponible.
+**Résultats** : `go build ./...` OK, 7 tests `TestStaticAssetMetaRepo_*` passent.
 
-**Prochaine étape** : valider que le drawer affiche bien les maps après redémarrage Air.
+**Prochaine étape** : valider le drawer après redémarrage Air.
 
 ## [2026-05-01] Fix Asset Drawer — maps et armes invisibles (régression)
 
