@@ -23,7 +23,7 @@ fr = "Rechercher…"
 en = "Search…"
 
 [asset_drawer.empty.maps]
-fr = "Aucune map trouvée."
+fr = "Aucune carte trouvée."
 en = "No map found."
 
 [asset_drawer.empty.weapons]

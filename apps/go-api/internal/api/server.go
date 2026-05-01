@@ -221,9 +221,10 @@ func NewRouter(
 	assetHandler := handlers.NewAssetHandler(assetResolver)
 	reg.WithAssetResolver(assetResolver)
 
-	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer (best-effort).
-	// Retry jusqu'à 3× (délai 500ms) pour absorber la fenêtre Air hot-reload où l'ancien
-	// processus tient encore le lock fichier Windows sur metadata.duckdb.
+	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer.
+	// Stratégie in-memory : on ouvre metadata.duckdb, on charge tout en RAM, on ferme
+	// la connexion immédiatement. Avantage : aucun lock Windows persistant entre processus
+	// (Air hot-reload). Retry 3× (500ms) pour absorber la fenêtre de chevauchement Air.
 	var assetMetaHandler *handlers.AssetMetadataHandler
 	{
 		metaDBPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
@@ -236,14 +237,28 @@ func NewRouter(
 				slog.Warn("asset_metadata_db_unavailable", "attempt", attempt+1, "err", err)
 				continue
 			}
+			liveRepo := platform_duckdb.NewMetadataRepoFromDB(metaDB)
+			loadCtx := context.Background()
+			maps, errM := liveRepo.ListMapsByTitle(loadCtx, titlePkg.DefaultSlug, "")
+			weapons, errW := liveRepo.ListWeaponsByTitle(loadCtx, titlePkg.DefaultSlug, "")
+			_ = metaDB.Close() // relâche le lock Windows immédiatement après chargement
+			if errM != nil || errW != nil {
+				slog.Warn("asset_metadata_load_failed", "err_maps", errM, "err_weapons", errW)
+				continue
+			}
 			assetMetaHandler = handlers.NewAssetMetadataHandler(
-				service.NewAssetService(platform_duckdb.NewMetadataRepoFromDB(metaDB)),
+				service.NewAssetService(service.NewStaticAssetMetaRepo(maps, weapons)),
 				func(slug string, cap titlePkg.Capability) bool {
 					d := titleRegistry.Get(slug)
 					return d != nil && d.HasCapability(cap)
 				},
 			)
-			slog.Info("asset_metadata_handler_ready", "title", titlePkg.DefaultSlug, "attempt", attempt+1)
+			slog.Info("asset_metadata_handler_ready",
+				"title", titlePkg.DefaultSlug,
+				"maps", len(maps),
+				"weapons", len(weapons),
+				"attempt", attempt+1,
+			)
 			break
 		}
 	}
