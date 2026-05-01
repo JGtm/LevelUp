@@ -1,5 +1,19 @@
 # Thought Log
 
+## [2026-05-01] PLAN_PLAYLISTS_CATALOG.md — amendements + démarrage implémentation
+
+**Statut** : Amendements plan complétés, implémentation Phase A en cours sur `docs/charts-specs`.
+
+**Amendements appliqués** :
+1. Branche cible : `docs/charts-specs` (branche courante, contexte spec → impl).
+2. **Phase C** enrichie : `CatalogRepo` ajouté dans `internal/port/` (lecture seule), champ `MatchContext string` ajouté dans `domain.FilterContextInput` (`"solo" | "squad" | "all"`).
+3. **Phase I** étoffée : tableau décisionnel Go pur (reco) vs SQL pour cascade ; pattern session filter cross-DB ATTACH ; filtre `is_with_friends` selon `match_context` ; fallback guard catalogue vide → `legacyLoadMatchesForFilters` + `slog.ErrorContext` ; note migration `filters_cascade_test.go` ; 3 appels `slog` spécifiés.
+4. **§8 Hors scope** : UI `mode_label` / `mode_category` reportée au sprint UI suivant.
+
+**Décision** : implémentation directement sur `docs/charts-specs` (sans nouvelle branche), commits réguliers par phase pour limiter le risque de perte.
+
+**Prochaine étape** : Phase A — créer la migration `metadata.duckdb` (8 tables catalogue) dans `internal/migration/steps_metadata.go`.
+
 ## [2026-05-01] Pass saisonnier — refonte UX complète (résumé contenu + swap in-place + carrousel partagé)
 
 **Statut** : Complété (restauré depuis stash dangling après reset accidentel par un autre agent).
