@@ -1,0 +1,75 @@
+# experience_rules.toml — Phase D du plan PLAN_PLAYLISTS_CATALOG.md.
+#
+# Classification des playlists Halo Infinite en "experience" (granularité ~6-8
+# buckets). Cette config est chargée par halo_infinite/catalog_adapter.go au boot.
+#
+# Une règle matche une playlist si l'un des critères match_any est satisfait :
+#   - name_prefix     : le nom canonique commence par l'un des prefixes
+#   - name_contains   : le nom canonique contient l'une des sous-chaînes
+#   - name_exact      : le nom canonique est strictement égal à l'une des valeurs
+#   - is_ranked       : flag is_ranked du playlist
+#
+# Première règle qui match → experience retenue. Les règles sont évaluées dans
+# l'ordre déclaré du fichier. La règle "unknown" en fin sert de fallback.
+#
+# Source : git show v7/cockpit:src/analysis/playlist_groups.py + Halo Waypoint
+# https://support.halowaypoint.com/hc/en-us/articles/17920041655188
+
+schema_version = 1
+
+# ----------------------------------------------------------------------------
+# Ranked — Arena classé + listes Ranked rotatives
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "ranked"
+match_any = { name_prefix = ["Ranked "], is_ranked = true }
+
+# ----------------------------------------------------------------------------
+# BTB — Big Team Battle (12v12)
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "btb"
+match_any = { name_contains = ["Big Team Battle", " BTB"], name_exact = ["BTB", "BTB Heavies"] }
+
+# ----------------------------------------------------------------------------
+# Firefight — coopératif PvE
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "firefight"
+match_any = { name_contains = ["Firefight", "Gruntpocalypse"] }
+
+# ----------------------------------------------------------------------------
+# Action Sack — playlists fun éphémères ou rotatives
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "action_sack"
+match_any = { name_contains = ["Action Sack", "Snipers", "Tactical Slayer"], name_exact = ["Husky Raid", "Super Husky Raid", "Castle Wars"] }
+
+# ----------------------------------------------------------------------------
+# Limited Time — events temporaires (Fiesta, Super Fiesta, événements saisonniers)
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "limited_time"
+match_any = { name_contains = ["Fiesta", "Super Fiesta", "Event"] }
+
+# ----------------------------------------------------------------------------
+# Custom Browser — playlists communautaires UGC
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "custom_browser"
+match_any = { name_contains = ["Custom", "Community"] }
+
+# ----------------------------------------------------------------------------
+# Social — Quick Play, Team Slayer Social, etc.
+# Capture par défaut tout ce qui n'est ni ranked ni firefight ni limited time.
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "social"
+match_any = { name_contains = ["Quick Play", "Team Slayer", "Social"] }
+
+# ----------------------------------------------------------------------------
+# Fallback — playlist non reconnue
+# ----------------------------------------------------------------------------
+[[rule]]
+experience = "unknown"
+match_any = { name_contains = [""] }  # match toujours

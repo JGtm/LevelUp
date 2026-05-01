@@ -244,6 +244,25 @@ func TestTimeseriesService_GetPage_WithData(t *testing.T) {
 	if resp.TotalMatches != 1 {
 		t.Errorf("TotalMatches = %d, want 1", resp.TotalMatches)
 	}
+	// BriefingKPIs alimente le composant <SessionBriefing> en haut de page.
+	if resp.BriefingKPIs == nil {
+		t.Fatal("BriefingKPIs should be filled when matches > 0")
+	}
+	if resp.BriefingKPIs.MatchesCount != 1 {
+		t.Errorf("BriefingKPIs.MatchesCount = %d, want 1", resp.BriefingKPIs.MatchesCount)
+	}
+}
+
+func TestTimeseriesService_GetPage_BriefingKPIsEmptyWhenNoMatches(t *testing.T) {
+	svc := NewTimeseriesService(&mockTimeseriesRepo{}).
+		WithPlayerMatchesRepo(newStatsMockFromRows(nil, nil), "halo_infinite", "Test")
+	resp, err := svc.GetPage(context.Background(), domain.TimeseriesQueryRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.BriefingKPIs != nil {
+		t.Errorf("BriefingKPIs should be nil when no matches, got %+v", resp.BriefingKPIs)
+	}
 }
 
 // ---------------------------------------------------------------------------

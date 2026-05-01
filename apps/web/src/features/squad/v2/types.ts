@@ -65,6 +65,8 @@ export interface SquadScoreCard {
 }
 
 export interface PlayerScoreCard {
+  /** xuid du joueur — utilise pour le drill-down click dans <SessionBriefing>. */
+  xuid: string
   gamertag: string
   score: number
   label: 'excellent' | 'good' | 'average' | 'poor' | 'bad'
@@ -80,6 +82,10 @@ export interface SquadHeader {
   all_time_kpis?: KPIStats
   squad_score?: SquadScoreCard
   player_cards?: PlayerScoreCard[]
+  /** KPIs par xuid sur le scope courant (drill-down SessionBriefing). */
+  kpis_by_xuid?: Record<string, KPIStats>
+  /** Moyenne arithmetique field-by-field des kpis_by_xuid (reference trends ▲/▼). */
+  team_avg_kpis?: KPIStats
 }
 
 /** ImpactRolesMatrix (S5). */

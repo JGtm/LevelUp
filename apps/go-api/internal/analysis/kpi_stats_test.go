@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -124,5 +125,104 @@ func TestComputeKPIStats_ZeroPlaySecondsNoPanicOnPerMin(t *testing.T) {
 	if got.KillsPerMinute != 0 || got.DeathsPerMinute != 0 || got.AssistsPerMinute != 0 {
 		t.Errorf("zero play seconds: per-min should be 0, got %+v",
 			[]float64{got.KillsPerMinute, got.DeathsPerMinute, got.AssistsPerMinute})
+	}
+}
+
+// =============================================================================
+// ComputeTeamAvgKPIs
+// =============================================================================
+
+func TestComputeTeamAvgKPIs_Empty(t *testing.T) {
+	t.Parallel()
+	if got := ComputeTeamAvgKPIs(nil); got != nil {
+		t.Errorf("nil map: got %+v, want nil", got)
+	}
+	if got := ComputeTeamAvgKPIs(map[string]*domain.KPIStats{}); got != nil {
+		t.Errorf("empty map: got %+v, want nil", got)
+	}
+}
+
+func TestComputeTeamAvgKPIs_OnlyNilEntries(t *testing.T) {
+	t.Parallel()
+	in := map[string]*domain.KPIStats{
+		"a": nil,
+		"b": nil,
+	}
+	if got := ComputeTeamAvgKPIs(in); got != nil {
+		t.Errorf("only nil entries: got %+v, want nil", got)
+	}
+}
+
+func TestComputeTeamAvgKPIs_SingleEntry_MirrorsValues(t *testing.T) {
+	t.Parallel()
+	src := &domain.KPIStats{
+		MatchesCount:     10,
+		TotalPlaySeconds: 6540,
+		AvgMatchSeconds:  654,
+		KillsPerGame:     8.7,
+		KillsPerMinute:   1.0,
+		DeathsPerGame:    10.8,
+		DeathsPerMinute:  1.24,
+		AssistsPerGame:   4.5,
+		AssistsPerMinute: 0.52,
+		AvgAccuracy:      46.92,
+		AvgLifeSeconds:   37,
+	}
+	src.Outcomes.Wins = 3
+	src.Outcomes.Losses = 7
+
+	got := ComputeTeamAvgKPIs(map[string]*domain.KPIStats{"me": src})
+	if got == nil {
+		t.Fatal("single entry: got nil")
+	}
+	if got.KillsPerGame != 8.7 {
+		t.Errorf("KillsPerGame: got %v, want 8.7", got.KillsPerGame)
+	}
+	if got.AvgAccuracy != 46.92 {
+		t.Errorf("AvgAccuracy: got %v, want 46.92", got.AvgAccuracy)
+	}
+	// Outcomes mis a zero (sans signification en moyenne).
+	if got.Outcomes.Wins != 0 || got.Outcomes.Losses != 0 {
+		t.Errorf("Outcomes should be zero in avg: got %+v", got.Outcomes)
+	}
+}
+
+func TestComputeTeamAvgKPIs_ThreeEntries_FieldByFieldMean(t *testing.T) {
+	t.Parallel()
+	in := map[string]*domain.KPIStats{
+		"a": {KillsPerGame: 6.0, DeathsPerGame: 12.0, AvgAccuracy: 40.0, AvgLifeSeconds: 30, KillsPerMinute: 0.6, MatchesCount: 10, TotalPlaySeconds: 6000, AvgMatchSeconds: 600},
+		"b": {KillsPerGame: 9.0, DeathsPerGame: 10.0, AvgAccuracy: 50.0, AvgLifeSeconds: 40, KillsPerMinute: 0.9, MatchesCount: 10, TotalPlaySeconds: 6000, AvgMatchSeconds: 600},
+		"c": {KillsPerGame: 12.0, DeathsPerGame: 8.0, AvgAccuracy: 60.0, AvgLifeSeconds: 50, KillsPerMinute: 1.2, MatchesCount: 10, TotalPlaySeconds: 6000, AvgMatchSeconds: 600},
+	}
+	got := ComputeTeamAvgKPIs(in)
+	if got == nil {
+		t.Fatal("3 entries: got nil")
+	}
+	approxEqualKPI := func(t *testing.T, name string, gotV, wantV float64) {
+		t.Helper()
+		if math.Abs(gotV-wantV) > 1e-9 {
+			t.Errorf("%s: got %v, want %v", name, gotV, wantV)
+		}
+	}
+	approxEqualKPI(t, "KillsPerGame", got.KillsPerGame, 9.0)
+	approxEqualKPI(t, "DeathsPerGame", got.DeathsPerGame, 10.0)
+	approxEqualKPI(t, "AvgAccuracy", got.AvgAccuracy, 50.0)
+	approxEqualKPI(t, "AvgLifeSeconds", got.AvgLifeSeconds, 40.0)
+	approxEqualKPI(t, "KillsPerMinute", got.KillsPerMinute, 0.9)
+}
+
+func TestComputeTeamAvgKPIs_IgnoresNilEntry(t *testing.T) {
+	t.Parallel()
+	in := map[string]*domain.KPIStats{
+		"a":   {KillsPerGame: 6.0},
+		"nil": nil,
+		"b":   {KillsPerGame: 12.0},
+	}
+	got := ComputeTeamAvgKPIs(in)
+	if got == nil {
+		t.Fatal("got nil, want avg of 2 valid entries")
+	}
+	if math.Abs(got.KillsPerGame-9.0) > 1e-9 {
+		t.Errorf("KillsPerGame ignoring nil: got %v, want 9.0 (mean of 6 and 12)", got.KillsPerGame)
 	}
 }

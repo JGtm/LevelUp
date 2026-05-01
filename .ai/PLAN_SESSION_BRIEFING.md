@@ -1,6 +1,6 @@
 # PLAN — `<SessionBriefing>` (variant B retenu)
 
-> Mock visuel : [`.ai/mocks/session-briefing.html`](mocks/session-briefing.html) (standalone, double-clic) — conservé après merge comme référence design.
+> Mock visuel : [`.ai/mockups/session-briefing.html`](mocks/session-briefing.html) (standalone, double-clic) — conservé après merge comme référence design.
 > Branche : `feat/session-briefing` (à créer depuis `docs/charts-specs`).
 > Scope : pages **Squad** (Synergies + Contributions via `SquadLayout`) ET **Timeseries** (mode solo).
 

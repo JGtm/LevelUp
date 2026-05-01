@@ -2110,6 +2110,22 @@ export interface TimeseriesQueryRequest {
   filters: FilterContextInput
 }
 
+/** KPIStats — agreges du joueur sur le scope filtre. Miroir Go domain.KPIStats. */
+export interface KPIStats {
+  matches_count: number
+  total_play_seconds: number
+  avg_match_seconds: number
+  kills_per_game: number
+  kills_per_minute: number
+  deaths_per_game: number
+  deaths_per_minute: number
+  assists_per_game: number
+  assists_per_minute: number
+  avg_accuracy: number
+  avg_life_seconds: number
+  outcomes: { wins: number; losses: number; ties: number; dnf: number }
+}
+
 export interface TimeseriesPageResponse {
   total_matches: number
   match_rows: TimeseriesMatchRow[]
@@ -2118,6 +2134,8 @@ export interface TimeseriesPageResponse {
   form_tab: TimeseriesFormTab
   intensity_tab: TimeseriesIntensityTab
   distributions_tab: TimeseriesDistributionsTab
+  /** Alimente <SessionBriefing> en haut de la page (mode solo). Nil si aucun match. */
+  briefing_kpis?: KPIStats
 }
 
 // ---------------------------------------------------------------------------

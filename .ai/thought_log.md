@@ -1,5 +1,25 @@
 # Thought Log
 
+## [2026-05-01] Phase D catalogue — adapter Halo + experience_rules.toml
+
+**Statut** : Complété (scope minimal viable, multi-lang étendu en Phase F).
+
+**Décision technique** :
+- **`config/titles/halo_infinite/catalog/experience_rules.toml`** créé avec 8 règles de classification. `schema_version = 1`.
+- **`internal/games/halo_infinite/catalog_adapter.go`** : implémente `games.TitleCatalogAdapter`. 4 méthodes `Fetch*` enveloppent `AssetFetcher` (single-lang EN — multi-lang en Phase F où le coût de 14 round-trips est acceptable). `ClassifyExperience(playlist)` applique les règles TOML séquentiellement.
+- **Pattern AssetFetcher injecté** : pour résoudre le cycle d'import `games/halo_infinite ↔ platform/halo` (le premier importe duckdb qui réimporte halo_infinite), j'ai défini une interface locale `AssetFetcher` + types miroir `AssetType` / `DiscoveryAssetRaw`. Le wrapper `platform/halo/catalog_fetcher.go` adapte `HaloProvider` à cette interface.
+- **`InferModeCategoryFromPairName` + `analysis.NormalizeModeLabel`** réutilisés via Go imports : pas de refactor TOML `mode_category` à ce stade.
+- **`classifyModeCanonical(name)`** : heuristique simple par sous-chaîne. Ordre du switch important (ex: "Fiesta Slayer" → ModeSlayer parce que slayer match avant fiesta).
+
+**Tests** : 18+ tests verts (`TestClassifyExperience` 12 cas, `TestClassifyExperience_RankedFlag`, `TestFetchPlaylist_UsesFetcherAndClassifies`, `TestFetchPair_ProducesModeCategoryAndLabel`, `TestClassifyModeCanonical` 11 cas, `TestNewCatalogAdapter_LoadsRules`).
+
+**Hors scope explicite Phase D** (reporté à Phase F) :
+- Multi-lang (14 langues) : nécessite boucle dans `FetchAsset` + upsert `asset_translations` + `pair_mode_label_translations`.
+- Parsing `CustomData.PlaylistEntries` → `PairLinks` : le `DiscoveryAsset` actuel ne retourne que `{AssetID, VersionID, PublicName, Description}`. Étendre côté `platform/halo` quand on en aura besoin pour le drain.
+- Auto-détection préfixes inconnus : SQL-side pendant le drain.
+
+**Prochaine étape** : Phase E — détection lazy + enqueue dans `catalog_fetch_queue` lors de chaque sync.
+
 ## [2026-05-01] Phase C catalogue — interfaces multi-titre + CatalogRepo + MatchContext
 
 **Statut** : Complété.
@@ -25803,3 +25823,39 @@ Le chart `plot_map_perf_vs_history` (cf. `_maps_outcome_history.py:40`) n'avait 
   - Validation visuelle (rendu ECharts via Puppeteer/Playwright pour comparer avec screenshot Plotly d'origine) — non bloquant.
   - Génération des YAML pour les autres pages (Career, Win/Loss complète, Timeseries, Match View, Teammates, etc.) — long, à industrialiser progressivement avec les patterns identifiés sur le pilote.
 - **Recommandation** : ne pas étendre tant que la validation visuelle d'au moins UN des 5 charts ECharts générés n'a pas été faite par un développeur front (preuve concrète vs preuve théorique).
+
+---
+
+## [2026-05-01] SessionBriefing — Phase 1 backend (KPIsByXUID + TeamAvgKPIs + BriefingKPIs)
+
+**Statut** : Phase 1 complétée (backend Go + types front). Phase 2 (composant React) à suivre.
+
+**Objectif** : Fusionner KPI bar + Squad verdict en un composant unique `<SessionBriefing>` réutilisable pour Squad ET Timeseries. Variant B retenu (cf. mock [`.ai/mockups/session-briefing.html`](mocks/session-briefing.html) et plan [`.ai/PLAN_SESSION_BRIEFING.md`](PLAN_SESSION_BRIEFING.md)).
+
+**Décision technique** :
+- **Drill-down strategy** : pré-calcul `kpis_by_xuid` map dans le payload (pas d'endpoint lazy-fetch). Justification dans Annexe A du plan : <1KB JSON, réutilise les rows déjà chargés en mémoire, instantané au click, pas de nouvelle surface API à versionner. Lazy-fetch rejeté sur les 6 axes (code, archi, payload, surface, UX, cohérence).
+- **Trends ▲/▼ vs moyenne d'équipe sur la session** (PAS vs all-time) — sémantique corrigée par feedback utilisateur. Le composant compare le KPI joueur affiché (active ou drill-down) à `team_avg_kpis` calculé sur les rows partagés.
+- **PlayerScoreCard.XUID ajouté** : permet au front de matcher `header.kpis_by_xuid[card.xuid]` sans deviner depuis le gamertag. Source : `Self.Identity.XUID` dans canonical PlayerMatchRow.
+- **Capability gating** : pas de gate explicite ajouté — l'absence de `Self.Identity.XUID` dans les rows (titre sans matchmaking ou xuid non résolu) → `kpis_by_xuid` vide → `team_avg_kpis` nil → composant front dégrade (pas de trends, pas de drill-down).
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/domain/squad_v2.go` : `SquadHeader.KPIsByXUID`, `SquadHeader.TeamAvgKPIs`, `PlayerScoreCard.XUID`
+- `apps/go-api/internal/domain/timeseries.go` : `TimeseriesPageResponse.BriefingKPIs`
+- `apps/go-api/internal/analysis/kpi_stats.go` : nouvelle fonction `ComputeTeamAvgKPIs(perXuid)` (algo pur, 50L)
+- `apps/go-api/internal/analysis/kpi_stats_test.go` : 5 tests (Empty, OnlyNilEntries, SingleEntry, ThreeEntriesMean, IgnoresNilEntry)
+- `apps/go-api/internal/service/squad_service_v2.go` : `buildSquadHeader` étend signature (ctx + gtToXUID), calcule `KPIsByXUID` + `TeamAvgKPIs`, log `slog.DebugContext`
+- `apps/go-api/internal/service/squad_service_v2_test.go` : 2 tests (HeaderKPIsByXUIDAndTeamAvg, KPIsByXUIDEmptyWhenNoXUIDs)
+- `apps/go-api/internal/service/timeseries_service.go` : `BriefingKPIs` calculé via `filterCanonicalByMatchIDs` + `ComputeKPIStats`
+- `apps/go-api/internal/service/timeseries_service_test.go` : 2 tests (BriefingKPIs populé, nil quand pas de matches)
+- `apps/web/src/features/squad/v2/types.ts` : `PlayerScoreCard.xuid`, `SquadHeader.kpis_by_xuid`, `SquadHeader.team_avg_kpis`
+- `apps/web/src/lib/api/types.ts` : ajout `KPIStats` interface + `TimeseriesPageResponse.briefing_kpis`
+
+**Résultats observés** :
+- `go test ./...` : tous tests passent (analysis, service, handlers — 9 nouveaux tests dont 5 unitaires sur ComputeTeamAvgKPIs)
+- `go vet ./...` : 3 warnings pré-existants dans presence_test.go (pas mon scope)
+- `npm run typecheck` (apps/web) : 0 erreur
+- Aucune nouvelle requête DuckDB ajoutée — `KPIsByXUID` réutilise les rows déjà chargés pour `PlayerCards`. Coût quasi-nul.
+- Mock visuel [`.ai/mockups/session-briefing.html`](mocks/session-briefing.html) standalone validé par utilisateur (variant B + Résultats avec libellés complets dans rail descriptif).
+
+**Conclusion / prochaine étape** :
+Phase 2 — composant React `<SessionBriefing>` dans `apps/web/src/features/_shared/SessionBriefing/` avec 4 sous-composants (`<ResultsRail>`, `<SquadVerdict>`, `<DrillResetBar>`, `<KpiGrid>`), i18n FR + EN, intégration dans `SquadLayout.tsx` + `TimeseriesPage.tsx`, tests Vitest 8 cas. Estimation 4h restant.

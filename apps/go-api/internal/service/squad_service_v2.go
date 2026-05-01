@@ -156,7 +156,13 @@ func (s *SquadServiceV2) GetSquadPage(
 
 	resp.SharedMatches = intersectByMatchID(perPlayer)
 	resp.SharedMatchesCount = len(resp.SharedMatches)
-	resp.Header = buildSquadHeader(mainGT, perPlayer, resp.SharedMatches)
+
+	// gtToXUID est utilise par buildSquadHeader (KPIsByXUID drill-down) ET
+	// par les charts/tables ci-dessous (squadXUIDs). Calcul fait une seule fois.
+	squadOrder := buildSquadOrder(mainGT, teammateGTs)
+	squadXUIDs := extractSquadXUIDs(squadOrder, perPlayer)
+
+	resp.Header = buildSquadHeader(ctx, mainGT, perPlayer, squadXUIDs, resp.SharedMatches)
 
 	// Si pas de matchs partages, retourner sans charger les sections lourdes.
 	if len(resp.SharedMatches) == 0 {
@@ -166,8 +172,6 @@ func (s *SquadServiceV2) GetSquadPage(
 	// Composition des charts + tableaux. Charge les sources externes
 	// (events, weapons, medals) en parallele puis appelle les 16 builders.
 	rowsBySharedPlayer := projectSharedRows(resp.SharedMatches)
-	squadOrder := buildSquadOrder(mainGT, teammateGTs)
-	squadXUIDs := extractSquadXUIDs(squadOrder, perPlayer)
 
 	historicalMain, _ := s.loadHistoricalMain(ctx, slug, mainGT)
 	events, eventsCapGap := s.loadSharedEvents(ctx, slug, resp.SharedMatches, squadXUIDs)
@@ -388,8 +392,8 @@ func xuidsOf(squadXUIDs map[string]string) []string {
 }
 
 // buildSquadHeader construit le SquadHeader (KPIs personnels + score equipe +
-// cartes joueurs) depuis les rows par joueur et l'intersection des matchs
-// partages.
+// cartes joueurs + KPIs per-xuid pour drill-down SessionBriefing) depuis les
+// rows par joueur et l'intersection des matchs partages.
 //
 // SoloKPIs : agreges depuis les rows complets du joueur principal (scope
 // courant filtre par period). AllTimeKPIs nil pour S2 (a remplir dans un
@@ -398,9 +402,20 @@ func xuidsOf(squadXUIDs map[string]string) []string {
 // PlayerCards : 1 carte par joueur sur les matchs PARTAGES (intersection),
 // pas sur l'historique solo. C'est aligne avec Python qui calcule le score
 // d'equipe sur les matchs en escouade.
+//
+// KPIsByXUID + TeamAvgKPIs : agreges sur les matchs PARTAGES (meme scope que
+// PlayerCards). Alimentent le SessionBriefing (drill-down click + reference
+// trends ▲/▼). KPIsByXUID est cle par xuid (pas gamertag) pour matcher avec
+// PlayerScoreCard.XUID cote front.
+//
+// Capability gating : si LoadFor a retourne ErrCapabilityNotSupported pour le
+// joueur principal, perPlayer[mainGT] est absent et le caller GetSquadPage a
+// deja court-circuite. Pas besoin de gate explicite ici.
 func buildSquadHeader(
+	ctx context.Context,
 	mainGT string,
 	perPlayer map[string][]canonical.PlayerMatchRow,
+	gtToXUID map[string]string,
 	shared []domain.SquadSharedMatch,
 ) *domain.SquadHeader {
 	header := &domain.SquadHeader{}
@@ -416,11 +431,30 @@ func buildSquadHeader(
 
 	// Carte par joueur : agreger les rows partages depuis SharedMatches.
 	rowsByPlayer := projectSharedRows(shared)
-	cards := buildPlayerScoreCards(rowsByPlayer)
+	cards := buildPlayerScoreCards(rowsByPlayer, gtToXUID)
 	header.PlayerCards = cards
 
 	// Score d'equipe : agreger les cartes individuelles + bonus.
 	header.SquadScore = buildSquadScoreCard(cards)
+
+	// KPIs par xuid (drill-down SessionBriefing) + moyenne d'equipe (reference
+	// pour trends ▲/▼). Calcul sur les memes rows que PlayerCards.
+	kpisByXUID := make(map[string]*domain.KPIStats, len(rowsByPlayer))
+	for gt, rows := range rowsByPlayer {
+		xuid := gtToXUID[gt]
+		if xuid == "" {
+			continue
+		}
+		kpis := analysis.ComputeKPIStats(rows)
+		kpisByXUID[xuid] = &kpis
+	}
+	if len(kpisByXUID) > 0 {
+		header.KPIsByXUID = kpisByXUID
+		header.TeamAvgKPIs = analysis.ComputeTeamAvgKPIs(kpisByXUID)
+	}
+	slog.DebugContext(ctx, "squad_briefing.kpis_by_xuid_computed",
+		"team_size", len(kpisByXUID),
+		"shared_match_count", len(shared))
 
 	return header
 }
@@ -444,7 +478,14 @@ func projectSharedRows(shared []domain.SquadSharedMatch) map[string][]canonical.
 // fallback sur une approximation lineaire (50 + delta KD * 10 clampe).
 //
 // Comparison ▲▼ : calcule apres avoir agrege tous les scores (passe ulterieur).
-func buildPlayerScoreCards(rowsByPlayer map[string][]canonical.PlayerMatchRow) []domain.PlayerScoreCard {
+//
+// gtToXUID est utilise pour renseigner PlayerScoreCard.XUID (utilise par le
+// SessionBriefing front pour le drill-down click). Si un gamertag n'a pas de
+// xuid resolu, le card.XUID reste vide (le front fallback sur SoloKPIs).
+func buildPlayerScoreCards(
+	rowsByPlayer map[string][]canonical.PlayerMatchRow,
+	gtToXUID map[string]string,
+) []domain.PlayerScoreCard {
 	gts := make([]string, 0, len(rowsByPlayer))
 	for gt := range rowsByPlayer {
 		gts = append(gts, gt)
@@ -455,6 +496,7 @@ func buildPlayerScoreCards(rowsByPlayer map[string][]canonical.PlayerMatchRow) [
 	var sumScore float64
 	for _, gt := range gts {
 		card := computeOneCard(gt, rowsByPlayer[gt])
+		card.XUID = gtToXUID[gt]
 		cards = append(cards, card)
 		sumScore += card.Score
 	}
