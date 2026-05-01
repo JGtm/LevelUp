@@ -200,6 +200,7 @@ SELECT
     COALESCE(p.headshot_kills, 0)                     AS headshot_kills,
     p.accuracy,
     COALESCE(p.time_played_seconds, 0)                AS time_played_seconds,
+    p.avg_life_seconds,
     p.damage_dealt,
     p.damage_taken,
     p.team_mmr,
@@ -232,6 +233,7 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		isRanked, isFirefight                              bool
 		hadBotTeammate, isWithFriends                      bool
 		kda, accuracy, teamMMR, enemyMMR, performanceScore sql.NullFloat64
+		avgLifeSeconds                                     sql.NullFloat64
 		damageDealt, damageTaken                           sql.NullFloat64
 		sessionID                                          sql.NullInt64
 		sessionLabel                                       sql.NullString
@@ -246,7 +248,7 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		&teamID, &outcomeCode,
 		&kills, &deaths, &assists,
 		&kda, &headshotKills, &accuracy,
-		&timePlayedSeconds, &damageDealt, &damageTaken,
+		&timePlayedSeconds, &avgLifeSeconds, &damageDealt, &damageTaken,
 		&teamMMR, &enemyMMR,
 		&sessionID, &sessionLabel, &performanceScore,
 		&dominanceFlag, &hadBotTeammate, &isWithFriends,
@@ -282,6 +284,7 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		isWithFriends:     isWithFriends,
 		kda:               kda,
 		accuracy:          accuracy,
+		avgLifeSeconds:    avgLifeSeconds,
 		damageDealt:       damageDealt,
 		damageTaken:       damageTaken,
 		teamMMR:           teamMMR,
@@ -309,6 +312,7 @@ type playerMatchScanResult struct {
 	isRanked, isFirefight, hadBotTeammate    bool
 	isWithFriends                            bool
 	kda, accuracy, teamMMR, enemyMMR         sql.NullFloat64
+	avgLifeSeconds                           sql.NullFloat64
 	damageDealt, damageTaken                 sql.NullFloat64
 	performanceScore                         sql.NullFloat64
 	sessionID                                sql.NullInt64
@@ -355,18 +359,19 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			Outcome:         outcome,
 		},
 		Self: canonical.MatchParticipant{
-			Identity:      canonical.PlayerIdentity{XUID: s.xuid, Gamertag: s.gamertag},
-			TeamID:        &teamIDPtr,
-			Outcome:       outcome,
-			Kills:         &killsPtr,
-			Deaths:        &deathsPtr,
-			Assists:       &assistsPtr,
-			HeadshotKills: &headshotPtr,
-			KDA:           nullFloatPtr(s.kda),
-			Accuracy:      nullFloatPtr(s.accuracy),
-			TimePlayed:    &timePlayedPtr,
-			DamageDealt:   dmgDealt,
-			DamageTaken:   dmgTaken,
+			Identity:       canonical.PlayerIdentity{XUID: s.xuid, Gamertag: s.gamertag},
+			TeamID:         &teamIDPtr,
+			Outcome:        outcome,
+			Kills:          &killsPtr,
+			Deaths:         &deathsPtr,
+			Assists:        &assistsPtr,
+			HeadshotKills:  &headshotPtr,
+			KDA:            nullFloatPtr(s.kda),
+			Accuracy:       nullFloatPtr(s.accuracy),
+			AvgLifeSeconds: nullFloatPtr(s.avgLifeSeconds),
+			TimePlayed:     &timePlayedPtr,
+			DamageDealt:    dmgDealt,
+			DamageTaken:    dmgTaken,
 		},
 		Enrichment: canonical.PlayerMatchEnrichment{
 			SessionID:        nullInt64ToStringPtr(s.sessionID),
