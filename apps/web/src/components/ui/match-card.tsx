@@ -177,7 +177,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             <button
               type="button"
               onClick={onClick}
-              className="group inline-flex items-center gap-1 text-sm font-semibold text-foreground leading-tight hover:underline cursor-pointer bg-transparent border-none p-0"
+              className="group mx-auto inline-flex items-center gap-1 text-sm font-semibold text-foreground leading-tight hover:underline cursor-pointer bg-transparent border-none p-0"
             >
               {heading}
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0 opacity-40 group-hover:opacity-90 transition-opacity" aria-hidden="true">
