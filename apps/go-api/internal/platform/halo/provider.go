@@ -144,6 +144,8 @@ type HaloProvider struct {
 	// Pointeur pour permettre les clones de HaloProvider (With*) sans copier
 	// le mutex interne — les clones partagent le même cache.
 	privacyCache *privacyTTLCache
+	// staticTokens est injecté par WithTokens pour les CLIs batch (pas de contexte HTTP).
+	staticTokens *domain.HaloTokens
 }
 
 // DefaultHaloProvider est l'instance globale du provider (60 req/min, 3 retries).
@@ -164,6 +166,29 @@ func NewHaloProvider() *HaloProvider {
 		maxRetries:   providerMaxRetries,
 		privacyCache: &privacyTTLCache{entries: make(map[string]privacyCacheEntry)},
 	}
+}
+
+// WithRateLimit remplace le rate limiter par un nouveau limiter avec maxPerMinute.
+// Utile pour les opérations batch (populate-playlists-catalog) sur des APIs publiques CDN.
+func (p *HaloProvider) WithRateLimit(maxPerMinute int) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	clone.limiter = newRateLimiter(maxPerMinute)
+	return &clone
+}
+
+// WithTokens injecte des tokens Halo statiques dans le provider.
+// Utilisé par les CLIs batch qui ne tournent pas dans le contexte HTTP du serveur.
+// Les tokens sont ajoutés aux requêtes Discovery UGC (gamecms-hacs) qui nécessitent auth.
+func (p *HaloProvider) WithTokens(tokens *domain.HaloTokens) *HaloProvider {
+	if p == nil {
+		return nil
+	}
+	clone := *p
+	clone.staticTokens = tokens
+	return &clone
 }
 
 // WithAssetResolver câble le resolver unifié (P4/P5).

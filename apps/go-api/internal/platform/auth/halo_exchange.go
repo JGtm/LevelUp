@@ -80,6 +80,28 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResu
 	}, nil
 }
 
+// ExchangeXSTSForHaloTokens échange un XSTS Token Halo déjà obtenu contre un Spartan Token
+// et un Clearance Token. Utile pour les CLIs batch qui chargent le token depuis tokens.json
+// sans refaire la chaîne OAuth complète.
+func ExchangeXSTSForHaloTokens(ctx context.Context, xstsToken string) (*domain.HaloTokens, error) {
+	client := &http.Client{Timeout: 20 * time.Second}
+
+	spartanToken, err := requestSpartanToken(ctx, client, xstsToken)
+	if err != nil {
+		return nil, fmt.Errorf("spartan token depuis XSTS: %w", err)
+	}
+
+	clearanceToken, err := requestClearanceToken(ctx, client, spartanToken)
+	if err != nil {
+		return nil, fmt.Errorf("clearance token: %w", err)
+	}
+
+	return &domain.HaloTokens{
+		SpartanToken:   spartanToken,
+		ClearanceToken: clearanceToken,
+	}, nil
+}
+
 // =============================================================================
 // Étapes de la chaîne d'échange
 // =============================================================================

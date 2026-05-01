@@ -84,6 +84,9 @@ export interface Challenge {
   data_tier: DataTier
   label?: string
   status: ChallengeStatus
+  /** Valeur courante mesurée (calculée par l'évaluateur dans ListActiveChallenges). 0 si non renseignée. */
+  current_value?: number
+  expires_at?: string
   created_at: string
   committed_at?: string
   completed_at?: string
@@ -91,6 +94,8 @@ export interface Challenge {
   abandoned_at?: string
   last_palier_recompute_at?: string
   is_private: boolean
+  /** true si ce défi provient d'un SquadChallenge. Absent/null pour les défis perso. */
+  is_squad?: boolean
 }
 
 export interface Arc {

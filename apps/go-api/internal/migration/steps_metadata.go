@@ -244,16 +244,18 @@ func init() {
 		Description: "Ajout PRIMARY KEY (citation_name_norm, medal_id) sur citation_mappings (nécessaire pour ON CONFLICT DO NOTHING)",
 		ApplySchema: func(db *sql.DB) error {
 			// DuckDB ne supporte pas ALTER TABLE ADD CONSTRAINT PK.
-			// On recrée la table avec déduplication si la PK n'existe pas encore.
+			// On recrée la table avec déduplication. La PK est sur citation_name_norm
+			// uniquement : medal_id peut être NULL (citations non liées à une médaille
+			// spécifique), ce qui interdit de l'inclure dans une PRIMARY KEY.
 			return execScript(db, `
 				CREATE TABLE IF NOT EXISTS citation_mappings_v2 AS
-					SELECT DISTINCT ON (citation_name_norm, COALESCE(medal_id, 0))
+					SELECT DISTINCT ON (citation_name_norm)
 						citation_name_norm, citation_name_display, mapping_type,
 						category, image_path, description, tier_targets, medal_id, enabled
 					FROM citation_mappings;
 				DROP TABLE IF EXISTS citation_mappings;
 				ALTER TABLE citation_mappings_v2 RENAME TO citation_mappings;
-				ALTER TABLE citation_mappings ADD PRIMARY KEY (citation_name_norm, medal_id);
+				ALTER TABLE citation_mappings ADD PRIMARY KEY (citation_name_norm);
 				CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
 				CREATE INDEX IF NOT EXISTS idx_citation_mappings_medal ON citation_mappings(medal_id);
 			`)

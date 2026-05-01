@@ -135,3 +135,19 @@ next_palier_extra_stretch = 0.15
 
 # Nombre d'alternatives proposées si pas de défi actif.
 alternatives_count = 3
+
+[expiration]
+# Durée d'expiration (en heures) par tier pour les défis mode pilote.
+# Le mode libre n'a pas de timer — ces valeurs sont ignorées pour ModeLibre.
+normal_hours    = 48    # 2 jours
+heroic_hours    = 168   # 7 jours
+legendary_hours = 336   # 14 jours
+mythic_hours    = 720   # 30 jours
+
+[match_count]
+# Nombre de matchs requis pour compléter un défi threshold (WindowLastNMatches).
+# L'appelant peut surcharger via WindowValue ; ce tuning sert de fallback et de défaut à la création.
+normal    = 5
+heroic    = 15
+legendary = 30
+mythic    = 50

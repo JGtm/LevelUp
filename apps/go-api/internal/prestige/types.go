@@ -33,6 +33,15 @@ type Challenge struct {
 	Label  string          `json:"label,omitempty"`
 	Status ChallengeStatus `json:"status"`
 
+	// CurrentValue est la valeur courante mesurée pour la métrique du défi.
+	// Renseignée uniquement par les endpoints qui invoquent l'évaluateur
+	// (ListActiveChallenges enrichi). Pas persistée — recalculée à la demande.
+	CurrentValue float64 `json:"current_value,omitempty"`
+
+	// ExpiresAt est le timestamp d'expiration calculé à la création selon le tier et le mode.
+	// Nil pour le mode libre (pas de timer). Consulté par l'évaluateur pour toute WindowType.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
 	CreatedAt             time.Time  `json:"created_at"`
 	CommittedAt           *time.Time `json:"committed_at,omitempty"`
 	CompletedAt           *time.Time `json:"completed_at,omitempty"`

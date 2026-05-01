@@ -39,10 +39,15 @@ func (p *HaloProvider) FetchAsset(
 		return nil, fmt.Errorf("asset type invalide : %s", assetType)
 	}
 
-	url := fmt.Sprintf(
-		"%s/hi/multiplayer/file/%s/%s/%s/%s",
-		discoveryUGCHost, endpoint, titleID, assetID, versionID,
-	)
+	var url string
+	if versionID != "" {
+		url = fmt.Sprintf("%s/hi/multiplayer/file/%s/%s/%s/%s",
+			discoveryUGCHost, endpoint, titleID, assetID, versionID)
+	} else {
+		// Sans version_id : fetch la dernière version de l'asset.
+		url = fmt.Sprintf("%s/hi/multiplayer/file/%s/%s/%s",
+			discoveryUGCHost, endpoint, titleID, assetID)
+	}
 
 	body, err := p.doGetWithLang(ctx, url, lang)
 	if err != nil {
@@ -93,7 +98,7 @@ func (p *HaloProvider) FetchMatchStats(
 }
 
 // doGetWithLang effectue un GET avec Accept-Language header.
-// Pas d'authentification (API publique Discovery UGC).
+// Ajoute le Spartan token si p.staticTokens est configuré (APIs gamecms-hacs requérant auth).
 func (p *HaloProvider) doGetWithLang(ctx context.Context, rawURL string, lang string) ([]byte, error) {
 	if err := p.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("rate limiter: %w", err)
@@ -119,6 +124,12 @@ func (p *HaloProvider) doGetWithLang(ctx context.Context, rawURL string, lang st
 
 		req.Header.Set("Accept-Language", lang)
 		req.Header.Set("Accept", "application/json")
+		if p.staticTokens != nil {
+			req.Header.Set("x-343-authorization-spartan", p.staticTokens.SpartanToken)
+			if p.staticTokens.ClearanceToken != "" {
+				req.Header.Set("343-clearance", p.staticTokens.ClearanceToken)
+			}
+		}
 
 		resp, err := p.client.Do(req)
 		if err != nil {
@@ -141,6 +152,11 @@ func (p *HaloProvider) doGetWithLang(ctx context.Context, rawURL string, lang st
 		// 404 : asset inexistant ou supprimé par 343 → erreur non retriable
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, fmt.Errorf("asset not found (404)")
+		}
+
+		// 401/403 : token absent ou expiré → non retriable
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return nil, fmt.Errorf("http %d: auth requise — %s", resp.StatusCode, string(body))
 		}
 
 		// 5xx : erreur serveur → retry

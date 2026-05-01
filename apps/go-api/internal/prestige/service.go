@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 )
 
@@ -216,6 +217,19 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		DataTier:             baseline.DataTier,
 	})
 
+	// Pour WindowLastNMatches : dériver WindowValue depuis le tuning si non fourni.
+	windowValue := req.WindowValue
+	if req.WindowType == WindowLastNMatches && windowValue == "" {
+		windowValue = strconv.Itoa(s.deps.Tuning.RequiredMatchCount(tier))
+	}
+
+	// Calculer ExpiresAt selon tier et mode (nil pour mode libre ou durée = 0).
+	var expiresAt *time.Time
+	if d := s.deps.Tuning.ExpirationDurationFor(tier, req.Mode); d > 0 {
+		exp := now.Add(d)
+		expiresAt = &exp
+	}
+
 	c := Challenge{
 		ID:              newID("ch"),
 		UserID:          req.UserID,
@@ -227,7 +241,7 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		Target:          req.Target,
 		TargetPerMember: req.TargetPerMember,
 		WindowType:      req.WindowType,
-		WindowValue:     req.WindowValue,
+		WindowValue:     windowValue,
 		Cadence:         req.Cadence,
 		EvalType:        req.EvalType,
 		Mode:            req.Mode,
@@ -235,6 +249,7 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		DataTier:        baseline.DataTier,
 		Label:           req.Label,
 		Status:          StatusActive,
+		ExpiresAt:       expiresAt,
 		CreatedAt:       now,
 		CommittedAt:     &now,
 		IsPrivate:       req.IsPrivate,
@@ -431,11 +446,39 @@ func (s *service) GetChallenge(ctx context.Context, id string) (Challenge, error
 
 func (s *service) ListActiveChallenges(ctx context.Context, userID, titleSlug string) ([]Challenge, error) {
 	active := StatusActive
-	return s.deps.Challenges.List(ctx, ChallengeFilter{
+	list, err := s.deps.Challenges.List(ctx, ChallengeFilter{
 		UserID:    userID,
 		TitleSlug: titleSlug,
 		Status:    &active,
 	})
+	if err != nil {
+		return nil, err
+	}
+	// Enrichit chaque défi avec sa valeur courante mesurée. Pure (pas de
+	// persistance) — l'évaluateur threshold est lui-même pur. Permet au front
+	// de trier par % de progression dans la home Prestige.
+	now := s.deps.Now()
+	for i, c := range list {
+		list[i].CurrentValue = s.computeCurrentValue(ctx, c, now)
+	}
+	return list, nil
+}
+
+// computeCurrentValue calcule la valeur courante mesurée pour un défi sans
+// persister. Best-effort : si la source des matchs échoue, retourne 0.
+func (s *service) computeCurrentValue(ctx context.Context, c Challenge, now time.Time) float64 {
+	matches, err := s.deps.BaselineProvider.RecentMatches(
+		ctx, c.UserID, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
+	)
+	if err != nil {
+		return 0
+	}
+	samples := make([]MatchSample, len(matches))
+	for i, m := range matches {
+		samples[i] = MatchSample{StartedAt: m.StartedAt, MetricValue: m.MetricValue}
+	}
+	// Threshold suffit pour Phase 2 (cumulative tombe sur le même fallback).
+	return EvaluateThreshold(s.deps.Tuning, c, samples, now).NewValue
 }
 
 // ---------- GetUserPrestige ----------

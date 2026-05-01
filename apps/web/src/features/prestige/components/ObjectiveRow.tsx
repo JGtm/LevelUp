@@ -13,7 +13,7 @@ import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 
 interface ObjectiveRowProps {
   challenge: Challenge
-  /** Valeur courante mesurée (0 si inconnu). */
+  /** Valeur courante mesurée — override le `challenge.current_value`. */
   currentValue?: number
   onClick?: () => void
 }
@@ -62,7 +62,8 @@ function ObjectiveBadge({ cadence, tier, alt }: { cadence: Cadence; tier: Tier; 
   )
 }
 
-export function ObjectiveRow({ challenge, currentValue = 0, onClick }: ObjectiveRowProps) {
+export function ObjectiveRow({ challenge, currentValue, onClick }: ObjectiveRowProps) {
+  const cv = currentValue ?? challenge.current_value ?? 0
   const tier: Tier = challenge.tier ?? 'normal'
   const cadence: Cadence = challenge.cadence
   const tierColor = TIER_COLORS[tier]
@@ -71,7 +72,7 @@ export function ObjectiveRow({ challenge, currentValue = 0, onClick }: Objective
 
   const target = challenge.target
   const progressPercent = target > 0
-    ? Math.max(0, Math.min(100, Math.round((currentValue / target) * 100)))
+    ? Math.max(0, Math.min(100, Math.round((cv / target) * 100)))
     : 0
   const isComplete = challenge.status === 'completed'
   const title = challenge.label || challenge.metric
@@ -97,21 +98,31 @@ export function ObjectiveRow({ challenge, currentValue = 0, onClick }: Objective
         <div className="flex items-center justify-between gap-2">
           <p
             data-testid="objective-row-title"
-            className="truncate text-[13px] font-semibold leading-tight text-foreground"
+            className="min-w-0 truncate text-[13px] font-semibold leading-tight text-foreground"
           >
             {title}
           </p>
-          <span
-            className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
-            style={{ backgroundColor: `${tierColor}30`, color: tierColor }}
-          >
-            {tierLabel}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {challenge.is_squad && (
+              <span
+                data-testid="objective-row-squad-badge"
+                className="rounded border border-muted-foreground/30 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Escouade
+              </span>
+            )}
+            <span
+              className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+              style={{ backgroundColor: `${tierColor}30`, color: tierColor }}
+            >
+              {tierLabel}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="shrink-0 whitespace-nowrap tabular-nums">
-            {currentValue.toFixed(2)}/{target.toFixed(2)}
+            {cv.toFixed(2)}/{target.toFixed(2)}
           </span>
           <div className="min-w-0 overflow-hidden rounded-full bg-muted-foreground/25">
             <div className="h-1.5 w-full">

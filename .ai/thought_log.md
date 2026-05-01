@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-05-01] Catalog playlists/pairs/maps — peuplement + fix DuckDB ART index corruption
+
+**Statut** : Complété
+
+**Décision technique** :
+- **populate-playlists-catalog `--from-match-registry`** : mode ajouté pour seeder les tables `playlists_catalog`, `map_mode_pair_definitions`, `maps_catalog`, `game_variants_catalog`, `pair_mode_label_translations` directement depuis `match_registry` sans API Discovery UGC. Résultat : 20 playlists, 503 paires, 122 maps, 55 variants.
+- **Bug ART index DuckDB** : `DELETE FROM table WHERE non-PK` corrompt les index secondaires (ART) et invalide la connexion entière. Touche `challenge_template`, `preset_arc`, `preset_arc_step`. Workaround définitif : remplacer `DELETE` par `TRUNCATE TABLE` dans les deux `Replace()` des repos Prestige. `TRUNCATE` est un DDL bulk qui ne passe pas par les index.
+- **`cmd/repair-metadata`** : outil Go écrit pour réparer les tables dont l'ART index est déjà corrompu en production. Copie données → DROP TABLE → CREATE TABLE + index → réinsertion. À lancer une fois sur la DB corrompue avant redémarrage.
+- **`server.go` — OpenReadWriteShared** : tous les accès à `metadata.duckdb` convertis de `OpenReadOnly` vers `OpenReadWriteShared` (3 sites : rank catalog, asset metadata handler, catalog handler). Raison : prestige ouvre déjà la DB en R/W ; une connexion R/O sur la même DB échoue avec "different configuration".
+- **Discovery UGC auth** : `doGetWithLang` injecte maintenant le Spartan token quand `p.staticTokens != nil`. `WithTokens()` ajouté à `HaloProvider`. `ExchangeXSTSForHaloTokens` dans `auth/halo_exchange.go`.
+
+**Résultats** :
+- Serveur démarre sans WARN/ERROR : prestige (27 templates, 4 arcs), asset metadata handler, catalog prêts.
+- `GET /api/v1/titles/halo_infinite/catalog/playlists` → 20 playlists.
+- `GET /api/v1/titles/halo_infinite/catalog/pairs` → 503 paires.
+- `GET /api/v1/titles/halo_infinite/catalog/maps` → 122 maps.
+
+**Prochaine étape** : Phase Discovery UGC — récupérer les noms officiels des playlists sans nom (4 avec UUID comme nom) via `gamecms /assets/{id}.json` + `discovery-infiniteugc /Playlists/{id}/versions/{versionId}`.
+
 ## [2026-05-01] Fix Asset Drawer — maps et armes invisibles (régression)
 
 **Statut** : Complété
