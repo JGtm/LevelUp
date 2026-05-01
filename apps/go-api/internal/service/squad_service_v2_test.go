@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -692,5 +693,89 @@ func TestFilterRowsByCascade_NilModeExcluded(t *testing.T) {
 	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"})
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
 		t.Errorf("want only m1 (m2 has nil PairMode), got %v", matchIDs(got))
+	}
+}
+
+// =============================================================================
+// SessionBriefing — KPIsByXUID + TeamAvgKPIs (drill-down + trends ▲/▼)
+// =============================================================================
+
+// rowWithStatsXUID est rowWithStats avec un xuid renseigne sur Self.Identity.
+// Necessaire pour les tests SessionBriefing qui dependent de gtToXUID resolu.
+func rowWithStatsXUID(xuid, matchID string, ts time.Time, outcome canonical.Outcome,
+	kills, deaths, assists, timePlayed int, accuracy float64, perfScore float64,
+) canonical.PlayerMatchRow {
+	row := rowWithStats(matchID, ts, outcome, kills, deaths, assists, timePlayed, accuracy, perfScore)
+	row.Self.Identity.XUID = xuid
+	return row
+}
+
+func TestSquadServiceV2_GetSquadPage_HeaderKPIsByXUIDAndTeamAvg(t *testing.T) {
+	t.Parallel()
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main": {rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80)},
+			"f1":   {rowWithStatsXUID("xuid-f1", "m1", t0, canonical.OutcomeWin, 8, 4, 3, 600, 48, 70)},
+			"f2":   {rowWithStatsXUID("xuid-f2", "m1", t0, canonical.OutcomeWin, 6, 6, 1, 600, 45, 60)},
+		},
+	}
+	svc := NewSquadServiceV2(loader)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
+		[]string{"f1", "f2"}, temporal.PeriodAll, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GetSquadPage: %v", err)
+	}
+	// 3 entrees dans KPIsByXUID
+	if len(resp.Header.KPIsByXUID) != 3 {
+		t.Fatalf("KPIsByXUID: want 3 entries, got %d", len(resp.Header.KPIsByXUID))
+	}
+	for _, xuid := range []string{"xuid-main", "xuid-f1", "xuid-f2"} {
+		if resp.Header.KPIsByXUID[xuid] == nil {
+			t.Errorf("KPIsByXUID[%q] should be non-nil", xuid)
+		}
+	}
+	// TeamAvgKPIs : moyenne kills_per_game = (10 + 8 + 6) / 3 = 8.0
+	if resp.Header.TeamAvgKPIs == nil {
+		t.Fatal("TeamAvgKPIs should be filled")
+	}
+	if math.Abs(resp.Header.TeamAvgKPIs.KillsPerGame-8.0) > 1e-9 {
+		t.Errorf("TeamAvgKPIs.KillsPerGame: want 8.0, got %v", resp.Header.TeamAvgKPIs.KillsPerGame)
+	}
+	// Chaque PlayerScoreCard a son XUID
+	for _, card := range resp.Header.PlayerCards {
+		if card.XUID == "" {
+			t.Errorf("PlayerScoreCard for %q: XUID should be set", card.Gamertag)
+		}
+	}
+}
+
+func TestSquadServiceV2_GetSquadPage_KPIsByXUIDEmptyWhenNoXUIDs(t *testing.T) {
+	t.Parallel()
+	// Rows sans XUID -> gtToXUID vide -> KPIsByXUID nil/empty et TeamAvgKPIs nil.
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main": {rowWithStats("m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80)},
+			"f1":   {rowWithStats("m1", t0, canonical.OutcomeWin, 8, 4, 3, 600, 48, 70)},
+		},
+	}
+	svc := NewSquadServiceV2(loader)
+	resp, err := svc.GetSquadPage(context.Background(), "halo_infinite", "main",
+		[]string{"f1"}, temporal.PeriodAll, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GetSquadPage: %v", err)
+	}
+	if len(resp.Header.KPIsByXUID) != 0 {
+		t.Errorf("no XUIDs -> KPIsByXUID should be empty, got %d entries", len(resp.Header.KPIsByXUID))
+	}
+	if resp.Header.TeamAvgKPIs != nil {
+		t.Errorf("no KPIsByXUID -> TeamAvgKPIs should be nil, got %+v", resp.Header.TeamAvgKPIs)
+	}
+	// PlayerCards sans XUID -> XUID vide (comportement defini, pas de panic)
+	for _, card := range resp.Header.PlayerCards {
+		if card.XUID != "" {
+			t.Errorf("PlayerScoreCard for %q: XUID should be empty when no xuid in rows, got %q", card.Gamertag, card.XUID)
+		}
 	}
 }

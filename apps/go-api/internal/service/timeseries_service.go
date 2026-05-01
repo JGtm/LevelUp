@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
@@ -102,7 +103,36 @@ func (s *TimeseriesService) GetPage(
 		DistributionsTab: buildDistributionsTab(matches),
 	}
 
+	// BriefingKPIs : KPIs sur les rows canoniques filtres (memes match_ids que
+	// matches). Alimente le composant <SessionBriefing> en mode solo. Reutilise
+	// ComputeKPIStats sans re-filtrer les filtres metier.
+	if filtered := filterCanonicalByMatchIDs(canonicalRows, matches); len(filtered) > 0 {
+		briefingKPIs := analysis.ComputeKPIStats(filtered)
+		resp.BriefingKPIs = &briefingKPIs
+	}
+
 	return resp, nil
+}
+
+// filterCanonicalByMatchIDs ne garde que les canonical rows dont le match_id
+// figure dans le slice de StatsMatchRow filtre. Sert de pont entre la pipeline
+// legacy (filterStatsMatchRows operant sur StatsMatchRow) et ComputeKPIStats
+// (qui consomme du canonical.PlayerMatchRow).
+func filterCanonicalByMatchIDs(canonicalRows []canonical.PlayerMatchRow, matches []legacymatch.StatsMatchRow) []canonical.PlayerMatchRow {
+	if len(matches) == 0 || len(canonicalRows) == 0 {
+		return nil
+	}
+	keep := make(map[string]struct{}, len(matches))
+	for _, m := range matches {
+		keep[m.MatchID] = struct{}{}
+	}
+	out := make([]canonical.PlayerMatchRow, 0, len(matches))
+	for _, r := range canonicalRows {
+		if _, ok := keep[r.Summary.MatchID]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------------

@@ -158,4 +158,8 @@ type TimeseriesPageResponse struct {
 	FormTab          TimeseriesFormTab          `json:"form_tab"`
 	IntensityTab     TimeseriesIntensityTab     `json:"intensity_tab"`
 	DistributionsTab TimeseriesDistributionsTab `json:"distributions_tab"`
+	// BriefingKPIs alimente le composant <SessionBriefing> en haut de la page
+	// (mode solo : pas de squad verdict). Calcule sur les memes match_ids que
+	// les autres onglets (apres filtres). Nil si aucun match.
+	BriefingKPIs *KPIStats `json:"briefing_kpis,omitempty"`
 }

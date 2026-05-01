@@ -109,6 +109,13 @@ type SquadHeader struct {
 	SquadScore *SquadScoreCard `json:"squad_score,omitempty"`
 	// PlayerCards : 1 carte par joueur (main + coequipiers) avec score + ▲▼ vs avg.
 	PlayerCards []PlayerScoreCard `json:"player_cards,omitempty"`
+	// KPIsByXUID : KPIs par xuid sur le scope courant (drill-down SessionBriefing).
+	// Cle = xuid (main + coequipiers). Pre-calcule au meme moment que PlayerCards.
+	KPIsByXUID map[string]*KPIStats `json:"kpis_by_xuid,omitempty"`
+	// TeamAvgKPIs : moyenne arithmetique field-by-field des KPIsByXUID.
+	// Sert de reference pour les fleches de tendance (▲▼) du SessionBriefing
+	// (PAS l'historique all-time — la comparaison est intra-session).
+	TeamAvgKPIs *KPIStats `json:"team_avg_kpis,omitempty"`
 }
 
 // KPIStats agrege les indicateurs personnels affiches dans le bandeau header.
@@ -154,6 +161,7 @@ type SquadScoreCard struct {
 // Comparison signale si le joueur tire l'equipe vers le haut ou vers le bas
 // par rapport a la moyenne squad : "above" (▲), "below" (▼) ou "near" (=).
 type PlayerScoreCard struct {
+	XUID       string  `json:"xuid"` // pour matcher avec SquadHeader.KPIsByXUID au click drill-down
 	Gamertag   string  `json:"gamertag"`
 	Score      float64 `json:"score"`
 	Label      string  `json:"label"`      // excellent / good / average / poor / bad

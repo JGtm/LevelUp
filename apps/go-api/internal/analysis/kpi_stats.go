@@ -89,3 +89,53 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	}
 	return stats
 }
+
+// ComputeTeamAvgKPIs calcule la moyenne arithmetique des KPI individuels
+// (un par joueur de l'escouade) pour servir de reference aux fleches de
+// tendance ▲/▼ du SessionBriefing.
+//
+// Comparaison intra-session (vs moyenne d'equipe sur le scope filtre), PAS
+// vs all-time du joueur. Les outcomes (wins/losses/...) sont mis a zero — la
+// moyenne d'outcomes n'a pas de sens metier.
+//
+// Retourne nil si la map est vide ou ne contient que des entrees nil.
+func ComputeTeamAvgKPIs(perXuid map[string]*domain.KPIStats) *domain.KPIStats {
+	var valid []*domain.KPIStats
+	for _, k := range perXuid {
+		if k != nil {
+			valid = append(valid, k)
+		}
+	}
+	if len(valid) == 0 {
+		return nil
+	}
+	n := float64(len(valid))
+	avg := &domain.KPIStats{}
+	var totalPlaySec int64
+	for _, k := range valid {
+		avg.MatchesCount += k.MatchesCount
+		totalPlaySec += k.TotalPlaySeconds
+		avg.AvgMatchSeconds += k.AvgMatchSeconds
+		avg.KillsPerGame += k.KillsPerGame
+		avg.KillsPerMinute += k.KillsPerMinute
+		avg.DeathsPerGame += k.DeathsPerGame
+		avg.DeathsPerMinute += k.DeathsPerMinute
+		avg.AssistsPerGame += k.AssistsPerGame
+		avg.AssistsPerMinute += k.AssistsPerMinute
+		avg.AvgAccuracy += k.AvgAccuracy
+		avg.AvgLifeSeconds += k.AvgLifeSeconds
+	}
+	avg.MatchesCount = int(float64(avg.MatchesCount) / n)
+	avg.TotalPlaySeconds = int64(float64(totalPlaySec) / n)
+	avg.AvgMatchSeconds /= n
+	avg.KillsPerGame /= n
+	avg.KillsPerMinute /= n
+	avg.DeathsPerGame /= n
+	avg.DeathsPerMinute /= n
+	avg.AssistsPerGame /= n
+	avg.AssistsPerMinute /= n
+	avg.AvgAccuracy /= n
+	avg.AvgLifeSeconds /= n
+	// Outcomes laisses a zero (sans signification en moyenne).
+	return avg
+}
