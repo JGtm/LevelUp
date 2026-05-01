@@ -267,13 +267,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
               <div className="flex items-center justify-center gap-0 pt-3 pb-1.5">
                 {/* Colonne gauche : Performance */}
                 {perfScore != null && (
-                  <div className="flex items-center justify-center shrink-0 px-3">
+                  <div className="flex flex-col items-center justify-center shrink-0 px-3 gap-0.5">
                     <span
                       className="text-[36px] font-black leading-none"
                       style={{ color: getPerfColor(perfScore) }}
                     >
                       {perfScore}
                     </span>
+                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Performance</span>
                   </div>
                 )}
                 {/* Séparateur vertical fin blanc */}
