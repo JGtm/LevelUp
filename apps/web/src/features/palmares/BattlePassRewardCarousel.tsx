@@ -260,6 +260,10 @@ export function BattlePassRewardCarousel({
       <div
         ref={tiersRailRef}
         onScroll={updateScrollState}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') { e.preventDefault(); scrollRail('left') }
+          if (e.key === 'ArrowRight') { e.preventDefault(); scrollRail('right') }
+        }}
         className="flex gap-4 overflow-x-auto px-10 pb-6 pt-3 [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
       >
         {groups.map((group) => (
