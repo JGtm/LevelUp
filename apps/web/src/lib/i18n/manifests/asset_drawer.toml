@@ -7,8 +7,8 @@
 #      régénérer le module TS dans lib/i18n/generated/
 
 [asset_drawer.mini_tab]
-fr = "Référentiel"
-en = "Reference"
+fr = "Référentiels"
+en = "References"
 
 [asset_drawer.tab.maps]
 fr = "Cartes"
