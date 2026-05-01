@@ -16,7 +16,6 @@ export interface SquadText {
   intlLocale: string
   title: {
     teammates: string
-    statsWith: string
     allTeammates: string
   }
   nav: {
@@ -96,7 +95,6 @@ const FR_TEXT: SquadText = {
   intlLocale: 'fr-FR',
   title: {
     teammates: 'Coéquipiers',
-    statsWith: 'Synergies avec les coéquipiers sélectionnés',
     allTeammates: 'Tous les coéquipiers',
   },
   nav: {
@@ -178,7 +176,6 @@ const EN_TEXT: SquadText = {
   intlLocale: 'en-US',
   title: {
     teammates: 'Teammates',
-    statsWith: 'Synergies with selected teammates',
     allTeammates: 'All teammates',
   },
   nav: {
