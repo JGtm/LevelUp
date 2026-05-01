@@ -583,8 +583,14 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	if err != nil {
 		return nil, "", "", err
 	}
+	// SessionBriefing mode squad : besoin d'un loader per-gamertag (le
+	// playerMatchesAdapterFor est bound au main, ne sait pas charger les
+	// canonical rows d'un coequipier different). On reutilise le SquadV2Loader.
+	briefingLoader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
+	briefingLoader.SetDefaultGamertag(pdb.Gamertag)
 	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		WithSquadLoader(briefingLoader)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
