@@ -1,5 +1,46 @@
 # Thought Log
 
+## [2026-05-01] Phase I catalogue — application match_context dans FiltersService
+
+**Statut** : Complété (scope minimal viable amendement Phase C/I — match_context appliqué).
+
+**Décision technique** :
+- Fonction `applyMatchContextFilter(rows, matchContext)` dans [internal/service/filters_service.go](apps/go-api/internal/service/filters_service.go) :
+  - `"solo"`  → `is_with_friends = false`
+  - `"squad"` → `is_with_friends = true`
+  - `"all"` ou vide → pas de filtre
+- Appel placé en TÊTE de `ResolveFiltersFromRows` : le filtre transversal restreint la population de matchs **avant** sessions, cascade, options disponibles, counts. Cohérent avec la sémantique métier (la page squad n'a pas à voir des matchs solo dans ses options de filtres).
+- Pas de modification du repo : la fonction reste pure et testable sans DB. Le `FilterMatchRow.IsWithFriends` était déjà alimenté par `LoadMatchesForFilters` (existant).
+
+**Choix de scope** : Option (A) Go-pur du tableau décisionnel (cf. amendement plan §Phase I). Ne réécrit pas la source de données vers `playlists_catalog ⨝ match_registry` — cette migration est une suite naturelle (Phase J ou un sprint dédié benchmarks). L'amendement principal de la revue (`match_context`) est livré ; les amendements infrastructure (CatalogRepo, fallback guard, session cross-DB) sont en place mais le swap effectif de la source de données reste à brancher si les benchmarks le justifient.
+
+**Tests** :
+- `TestApplyMatchContextFilter_Solo` : 4 rows mixtes → 2 solo.
+- `TestApplyMatchContextFilter_Squad` : 4 rows → 2 squad.
+- `TestApplyMatchContextFilter_All` : pas de filtre.
+- `TestApplyMatchContextFilter_Empty` : vide = pas de filtre (default).
+- `TestResolveFiltersFromRows_AppliesMatchContext` : intégration avec counts (5 rows → 3 squad / 2 solo / 5 all / 5 empty).
+- 28 tests cascade existants verts (compatibilité préservée).
+- 5 tests `TestIsValidMatchContext` + `TestFilterContextInput_Validate_MatchContext` verts (Phase C).
+
+**Frontend (hors scope ce sprint)** : envoyer `match_context` depuis les pages consommatrices :
+- Pages escouade (`SquadSynergiesPage`, `SquadCompositionPage`, etc.) → `"squad"`
+- Pages stats solo → `"all"` (pas de filtre, comportement actuel)
+- Pages teammates → `"squad"` ou `"all"` selon le contexte de l'analyse
+
+**Récap commits Phase A→I** :
+- `398b47b4` docs amendements plan
+- `14244ef6` Phase A — migration metadata 8 tables
+- `f567ac2d` Phase B — version_id au sync
+- `4305ffeb` Phase C — interfaces multi-titre + CatalogRepo + MatchContext
+- `fae759a4` Phase D — adapter Halo + experience_rules.toml
+- `f01e9033` Phase E — détection lazy + enqueue
+- `b304145c` (parallel agent) — contient catalog_fetcher_service.go + catalog_repo.go (Phase F partiel)
+- `721c7934` Phase F — tests + thought_log
+- `1b01da42` Phase G — CLI populate-playlists-catalog
+- `1b4984b0` Phase H — endpoints REST catalog
+- (Phase I à committer)
+
 ## [2026-05-01] Phase H catalogue — endpoints REST title-aware
 
 **Statut** : Complété (handler + tests, wiring serveur reporté à Phase H.bis).

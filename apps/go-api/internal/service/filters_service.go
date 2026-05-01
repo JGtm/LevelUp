@@ -41,10 +41,18 @@ func (s *FiltersService) Resolve(
 }
 
 // ResolveFiltersFromRows est la fonction pure testable sans repo.
+//
+// Phase I plan catalogue : applique le filtre `match_context` (solo/squad/all)
+// avant tout autre traitement. C'est un filtre transversal qui restreint la
+// population de matchs selon le contexte de la page appelante.
 func ResolveFiltersFromRows(
 	rows []domain.FilterMatchRow,
 	input domain.FilterContextInput,
 ) domain.FilterContextResolved {
+	// Phase I : filtre solo/squad appliqué tôt pour réduire la population
+	// avant tous les calculs (sessions, cascade, etc.).
+	rows = applyMatchContextFilter(rows, input.MatchContext)
+
 	totalBefore := len(rows)
 	sessionOpts := buildSessionOptions(rows)
 	effective := normalizeInput(input)
@@ -94,6 +102,35 @@ func ResolveFiltersFromRows(
 			TotalMatchesAfterFilters:  len(filtered),
 		},
 	}
+}
+
+// applyMatchContextFilter restreint les rows selon le contexte de la page :
+//   - "solo"  : ne garde que les matchs avec is_with_friends = false
+//   - "squad" : ne garde que les matchs avec is_with_friends = true
+//   - "all" / vide : retourne rows tel quel
+//
+// Phase I plan catalogue. Filtre transversal indépendant de la cascade.
+func applyMatchContextFilter(rows []domain.FilterMatchRow, matchContext string) []domain.FilterMatchRow {
+	switch matchContext {
+	case domain.MatchContextSolo:
+		out := make([]domain.FilterMatchRow, 0, len(rows))
+		for _, r := range rows {
+			if !r.IsWithFriends {
+				out = append(out, r)
+			}
+		}
+		return out
+	case domain.MatchContextSquad:
+		out := make([]domain.FilterMatchRow, 0, len(rows))
+		for _, r := range rows {
+			if r.IsWithFriends {
+				out = append(out, r)
+			}
+		}
+		return out
+	}
+	// "all" ou vide → pas de filtre.
+	return rows
 }
 
 // ---------------------------------------------------------------------------
