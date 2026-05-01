@@ -11,8 +11,9 @@ import (
 
 // AssetService construit les métadonnées d'assets pour l'Asset Drawer.
 type AssetService struct {
-	repo        port.AssetMetaRepository
-	mapImageURL func(titleID, nameEN string) string // nil = UUID-based URL (fallback)
+	repo           port.AssetMetaRepository
+	mapImageURL    func(titleID, nameEN string) string // nil = UUID-based URL (fallback)
+	weaponImageURL func(titleID, nameEN string) string // nil = pas d'image
 }
 
 // NewAssetService crée un AssetService.
@@ -24,6 +25,12 @@ func NewAssetService(repo port.AssetMetaRepository) *AssetService {
 // Prioritaire sur l'URL UUID par défaut — utiliser l'adapter TitleAssetURLAdapter.
 func (s *AssetService) WithMapImageURL(fn func(titleID, nameEN string) string) *AssetService {
 	s.mapImageURL = fn
+	return s
+}
+
+// WithWeaponImageURL configure une fonction de construction d'URL d'image d'arme.
+func (s *AssetService) WithWeaponImageURL(fn func(titleID, nameEN string) string) *AssetService {
+	s.weaponImageURL = fn
 	return s
 }
 
@@ -44,11 +51,15 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 }
 
 // ListWeapons retourne les armes avec image_url.
-// ImageURL est vide en V1 — les images armes n'ont pas de mapping weapon_id→fichier (B2).
 func (s *AssetService) ListWeapons(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error) {
 	items, err := s.repo.ListWeaponsByTitle(ctx, titleID, search)
 	if err != nil {
 		return nil, fmt.Errorf("AssetService.ListWeapons: %w", err)
+	}
+	if s.weaponImageURL != nil {
+		for i := range items {
+			items[i].ImageURL = s.weaponImageURL(titleID, items[i].NameEN)
+		}
 	}
 	return items, nil
 }

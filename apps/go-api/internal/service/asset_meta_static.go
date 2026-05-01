@@ -24,13 +24,13 @@ func NewStaticAssetMetaRepo(maps, weapons []canonical.AssetMeta) *StaticAssetMet
 	return &StaticAssetMetaRepo{maps: maps, weapons: weapons}
 }
 
-// ListMapsByTitle retourne les maps filtrées par search (LIKE case-insensitive sur NameEN).
+// ListMapsByTitle retourne les maps filtrées par search (LIKE case-insensitive sur NameEN ou NameFR).
 // titleID est ignoré — les maps sont globales (asset_translations n'a pas de colonne title_id).
 func (r *StaticAssetMetaRepo) ListMapsByTitle(_ context.Context, _ string, search string) ([]canonical.AssetMeta, error) {
 	return filterAssets(r.maps, search), nil
 }
 
-// ListWeaponsByTitle retourne les armes filtrées par search (LIKE case-insensitive sur NameEN).
+// ListWeaponsByTitle retourne les armes filtrées par search (LIKE case-insensitive sur NameEN ou NameFR).
 func (r *StaticAssetMetaRepo) ListWeaponsByTitle(_ context.Context, _ string, search string) ([]canonical.AssetMeta, error) {
 	return filterAssets(r.weapons, search), nil
 }
@@ -42,7 +42,8 @@ func filterAssets(items []canonical.AssetMeta, search string) []canonical.AssetM
 	lower := strings.ToLower(search)
 	var out []canonical.AssetMeta
 	for _, m := range items {
-		if strings.Contains(strings.ToLower(m.NameEN), lower) {
+		if strings.Contains(strings.ToLower(m.NameEN), lower) ||
+			strings.Contains(strings.ToLower(m.NameFR), lower) {
 			out = append(out, m)
 		}
 	}
