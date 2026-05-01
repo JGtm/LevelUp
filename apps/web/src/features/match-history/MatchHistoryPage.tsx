@@ -15,6 +15,7 @@ import { useMatchHistory, useMatchHistoryExport } from './queries'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 
 const OUTCOME_FROM_CODE: Record<number, OutcomeValue> = {
   1: 'tie',
@@ -97,6 +98,13 @@ export function MatchHistoryPage() {
       <div className="p-6">
         {/* Sprint 54-B : avertissement privacy */}
         <PrivacyBanner warning={data?.privacy_warning} className="mb-4" />
+
+        {/* SessionBriefing — KPI bar en haut de page (mode solo) */}
+        {data?.briefing_kpis && (
+          <div className="mb-4">
+            <SessionBriefing kpis={data.briefing_kpis} />
+          </div>
+        )}
 
         {/* §5 plan Squad/Sessions : filtre multi-sessions solo */}
         {(data?.session_labels?.solo?.length ?? 0) > 0 && (
