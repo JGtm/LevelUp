@@ -183,7 +183,7 @@ describe('HomePage', () => {
     expect(screen.queryByText('Spartan ID')).not.toBeInTheDocument()
   })
 
-  it('affiche le visuel battle pass, le rail horizontal et la progression du palier actif sur la home', async () => {
+  it('affiche le visuel battle pass, le carrousel de paliers et la progression du palier actif sur la home', async () => {
     const originalScrollTo = HTMLElement.prototype.scrollTo
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
     const scrollToMock = vi.fn()
@@ -277,7 +277,7 @@ describe('HomePage', () => {
     expect(scrollToMock).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
     expect(scrollIntoViewMock).not.toHaveBeenCalled()
 
-    const tierCards = screen.getAllByTestId('home-battle-pass-tier-card')
+    const tierCards = screen.getAllByTestId('battle-pass-tier-card')
     expect(tierCards).toHaveLength(3)
     expect(tierCards[0]).toHaveAttribute('data-obtained', 'true')
     expect(tierCards[1]).toHaveAttribute('data-current', 'true')
@@ -301,7 +301,11 @@ describe('HomePage', () => {
   it('affiche les défis actifs détaillés triés du plus avancé au moins avancé', async () => {
     let challengeEndpointCalls = 0
     server.use(
-      http.get('/api/v1/players/:playerSlug/challenges', () => {
+      http.get('/api/v1/players/:playerSlug/challenges', ({ request }) => {
+        // Prestige challenges use title_slug query param — don't count them
+        if (new URL(request.url).searchParams.has('title_slug')) {
+          return HttpResponse.json({ challenges: [], count: 0 })
+        }
         challengeEndpointCalls += 1
         return HttpResponse.json({ error: 'should not be called' }, { status: 500 })
       }),

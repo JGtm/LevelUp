@@ -93,6 +93,7 @@ export function AssetDrawer() {
           <AssetGrid
             items={items}
             locale={locale}
+            kind={activeTab}
             emptyMessage={t(emptyKey)}
             isLoading={currentQuery.isLoading}
             isError={currentQuery.isError}
