@@ -146,8 +146,8 @@ type TitleAssetURLAdapter interface {
 // Resolver injecte les adapters d'un titre courant aux services produit.
 //
 // Il est construit au boot du serveur et exposé via la DI. Un service produit
-// reçoit Resolver et appelle Data(slug), Semantic(slug) ou AssetURL(slug)
-// selon son besoin.
+// reçoit Resolver et appelle Data(slug), Semantic(slug), AssetURL(slug) ou
+// Catalog(slug) selon son besoin.
 //
 // Il n'a aucune connaissance des slugs supportés en dur : c'est le constructeur
 // (api/server.go) qui peuple le resolver via Register*().
@@ -155,5 +155,6 @@ type Resolver interface {
 	Data(titleSlug string) (TitleDataAdapter, error)
 	Semantic(titleSlug string) (TitleSemanticAdapter, error)
 	AssetURL(titleSlug string) (TitleAssetURLAdapter, error)
+	Catalog(titleSlug string) (TitleCatalogAdapter, error)
 	DefaultSlug() string
 }

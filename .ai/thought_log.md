@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-05-01] Phase C catalogue — interfaces multi-titre + CatalogRepo + MatchContext
+
+**Statut** : Complété.
+
+**Décision technique** :
+- **Types canoniques** dans [canonical/catalog.go](apps/go-api/internal/games/canonical/catalog.go) : `CanonicalPlaylist`, `CanonicalPair`, `CanonicalMap`, `CanonicalGameVariant`, plus enums `Experience` (8 valeurs) et `ModeCanonical` (12 valeurs). Multi-langues stocké dans `Names map[string]string` côté types canoniques (rempli par l'adapter Halo en Phase D).
+- **Interface `TitleCatalogAdapter`** dans [games/catalog_adapter.go](apps/go-api/internal/games/catalog_adapter.go) : 4 méthodes `Fetch*` + `ClassifyExperience`. Conserve la séparation SRP avec les autres adapters (Data/Semantic/AssetURL).
+- **`Resolver` interface étendue** : ajout de `Catalog(titleSlug)`. `StaticResolver` extends avec `catalog map[string]TitleCatalogAdapter` + `RegisterCatalog()` + intégration dans `Slugs()`.
+- **`port.CatalogRepo`** dans [port/catalog.go](apps/go-api/internal/port/catalog.go) : interface lecture seule (4 méthodes : `PlaylistsByTitle`, `PairsByPlaylist`, `MapsByTitle`, `CountCatalogEntries`). Le fetch est dans `CatalogFetcherService` (Phase F), pas ici.
+- **Types domain.Catalog\***  dans [domain/catalog.go](apps/go-api/internal/domain/catalog.go) : `CatalogPlaylist`, `CatalogPair`, `CatalogMap` (vue lecture, distincts des canonical pour ne pas exposer Names map en API).
+- **Champ `MatchContext`** dans `domain.FilterContextInput` : `"solo" | "squad" | "all"` + constantes exportées + `IsValidMatchContext()` + intégration dans `Validate()`. Support du JSON omitempty.
+
+**Tests** :
+- `TestStaticResolver_RegisterAndResolve` étendu : Catalog résolu correctement.
+- `TestStaticResolver_Catalog_Isolation` : 2 catalogs sur titres distincts → résolution sans cross-leak ; titre inconnu → `ErrTitleNotResolved`.
+- `TestIsValidMatchContext` : 9 cas (case-sensitive, no trim).
+- `TestFilterContextInput_Validate_MatchContext` : 5 cas (validation OK/erreur).
+
+**Résultats observés** :
+- `go build ./...` OK.
+- `go vet ./internal/games/... ./internal/domain/... ./internal/port/...` aucun warning.
+- Tests resolver existants verts (compatibilité préservée — aucune signature publique changée).
+- 14 nouveaux tests verts sur les 4 fichiers modifiés/créés.
+
+**Prochaine étape** : Phase D — adapter Halo Infinite (`internal/games/halo_infinite/catalog_adapter.go`) qui enveloppe DiscoveryUGC, charge les TOML rules (experience + mode_category), et hydrate multi-langues.
+
 ## [2026-05-01] Phase B catalogue — extraction version_id au sync
 
 **Statut** : Complété.

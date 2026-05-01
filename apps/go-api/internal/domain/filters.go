@@ -66,6 +66,30 @@ type FilterContextInput struct {
 	Period     PeriodInput    `json:"period"`
 	Sessions   SessionsFilter `json:"sessions"`
 	Cascade    CascadeFilter  `json:"cascade"`
+
+	// MatchContext restreint les matchs selon le contexte de la page appelante (Phase C plan catalogue).
+	// Consommé par FiltersService.Resolve() pour appliquer le filtre is_with_friends en Phase I.
+	//
+	//   "solo"  : is_with_friends = false (matchs solo uniquement)
+	//   "squad" : is_with_friends = true  (matchs en groupe uniquement, pages escouade)
+	//   "all"   : pas de filtre supplémentaire (défaut, comportement actuel)
+	MatchContext string `json:"match_context,omitempty"`
+}
+
+// MatchContext valid values, exposed for service-layer validation.
+const (
+	MatchContextSolo  = "solo"
+	MatchContextSquad = "squad"
+	MatchContextAll   = "all"
+)
+
+// IsValidMatchContext valide une valeur MatchContext (string vide acceptée = "all").
+func IsValidMatchContext(s string) bool {
+	switch s {
+	case "", MatchContextSolo, MatchContextSquad, MatchContextAll:
+		return true
+	}
+	return false
 }
 
 // validFilterModes est l'ensemble des modes de filtre valides.
@@ -88,6 +112,9 @@ func (f FilterContextInput) Validate() error {
 	}
 	if f.Sessions.GapMinutes < 0 {
 		return fmt.Errorf("FilterContextInput: gap_minutes doit être ≥ 0 (reçu %d)", f.Sessions.GapMinutes)
+	}
+	if !IsValidMatchContext(f.MatchContext) {
+		return fmt.Errorf("FilterContextInput: match_context invalide %q (attendu : solo|squad|all)", f.MatchContext)
 	}
 	return nil
 }
