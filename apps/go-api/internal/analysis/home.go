@@ -1127,9 +1127,11 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow
 		}
 		label := outcomeLabelForLocale(m.Outcome, locale)
 		tone := outcomeTone(m.Outcome)
-		ratioStr := "-"
-		if m.Ratio != nil {
-			ratioStr = fmt.Sprintf("%.2f", *m.Ratio)
+		// FDA (KDA canonique fourni par l'API ; pas un calcul custom).
+		// Le label dans Detail est "FDA" en FR (cf. fields.toml::kda).
+		kdaStr := "-"
+		if m.KDA != nil {
+			kdaStr = fmt.Sprintf("%.2f", *m.KDA)
 		}
 		accStr := "-"
 		if m.Accuracy != nil {
@@ -1221,8 +1223,8 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow
 
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  m.MatchID,
-			Title:                    fmt.Sprintf("%s Â· %s", label, mapUI),
-			Detail:                   fmt.Sprintf("%s Â· KD %s Â· %s", modeUI, ratioStr, accStr),
+			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
+			Detail:                   fmt.Sprintf("%s · FDA %s · %s", modeUI, kdaStr, accStr),
 			StartedAt:                &t,
 			OutcomeLabel:             label,
 			OutcomeTone:              tone,

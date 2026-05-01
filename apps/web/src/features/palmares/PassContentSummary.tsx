@@ -1,0 +1,188 @@
+/**
+ * PassContentSummary — résumé visuel du contenu d'un pass saisonnier.
+ *
+ * Trois rangées de chips compactes :
+ *   1. Devises          → paliers, cR, Pts Spartan, XP Boosts, Relances
+ *   2. Items            → pièces d'armure, cosmétiques (split type-aware)
+ *   3. Raretés          → chips avec point coloré par tier (Légendaire, Épique…)
+ *
+ * Mode `compact` (cartes secondaires) : seules les rangées 1 et 2 sont rendues.
+ * En mode complet (showcase actif), les tags de catégories d'items sont ajoutés
+ * en bas pour la granularité fine.
+ */
+import type { SeasonPassContentSummary } from '@/lib/api/types'
+
+import { isArmorItemType, itemTypeLabel, rarityLabel, rarityStyle, type RarityTier } from './rarity'
+
+const RARITY_ORDER: RarityTier[] = ['mythic', 'legendary', 'epic', 'rare', 'common']
+
+export interface ContentLabels {
+  creditsLabel: string
+  spartanPointsLabel: string
+  xpBoostsLabel: string
+  challengeSwapsLabel: string
+  cosmeticsLabel: string
+  armorLabel: string
+  cosmeticsSplitLabel: string
+  tiersLabel: string
+  rarityTitle: string
+  typeTitle: string
+}
+
+interface Chip {
+  key: string
+  value: string | number
+  label: string
+}
+
+/**
+ * Sépare le total des items en deux : pièces d'armure (Armor* + SpartanBody)
+ * et cosmétiques purs (le reste : armes, véhicules, profil, IA).
+ * Si aucune méta de type n'est disponible, retourne null pour afficher le total brut.
+ */
+function splitArmorVsCosmetic(
+  total: number | null | undefined,
+  breakdown: Record<string, number> | null | undefined,
+): { armor: number; cosmetic: number } | null {
+  if (!total || total <= 0) return null
+  if (!breakdown || Object.keys(breakdown).length === 0) return null
+  let armor = 0
+  for (const [type, count] of Object.entries(breakdown)) {
+    if (isArmorItemType(type)) armor += count
+  }
+  const cosmetic = Math.max(0, total - armor)
+  return { armor, cosmetic }
+}
+
+function buildCurrencyChips(content: SeasonPassContentSummary, labels: ContentLabels, locale: string): Chip[] {
+  const chips: Chip[] = []
+  if (content.total_tiers > 0) {
+    chips.push({ key: 'tiers', value: content.total_tiers, label: labels.tiersLabel })
+  }
+  if (content.credits) {
+    chips.push({ key: 'cr', value: content.credits.toLocaleString(locale), label: labels.creditsLabel })
+  }
+  if (content.spartan_points) {
+    chips.push({ key: 'sp', value: content.spartan_points.toLocaleString(locale), label: labels.spartanPointsLabel })
+  }
+  if (content.xp_boosts) {
+    chips.push({ key: 'xp', value: content.xp_boosts, label: labels.xpBoostsLabel })
+  }
+  if (content.challenge_swaps) {
+    chips.push({ key: 'swap', value: content.challenge_swaps, label: labels.challengeSwapsLabel })
+  }
+  return chips
+}
+
+function buildItemChips(content: SeasonPassContentSummary, labels: ContentLabels, locale: string): Chip[] {
+  const chips: Chip[] = []
+  const split = splitArmorVsCosmetic(content.cosmetics_total, content.type_breakdown)
+  if (split) {
+    if (split.armor > 0) chips.push({ key: 'armor', value: split.armor.toLocaleString(locale), label: labels.armorLabel })
+    if (split.cosmetic > 0) chips.push({ key: 'cosmetic', value: split.cosmetic.toLocaleString(locale), label: labels.cosmeticsSplitLabel })
+  } else if (content.cosmetics_total) {
+    chips.push({ key: 'cosmetics', value: content.cosmetics_total, label: labels.cosmeticsLabel })
+  }
+  return chips
+}
+
+function StatChip({ value, label }: { value: string | number; label: string }) {
+  return (
+    <span className="flex items-baseline gap-1">
+      <span className="text-sm font-semibold tabular-nums text-foreground">{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </span>
+  )
+}
+
+function ChipRow({ chips }: { chips: Chip[] }) {
+  if (chips.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+      {chips.map((chip, i) => (
+        <span key={chip.key} className="flex items-center gap-x-5">
+          <StatChip value={chip.value} label={chip.label} />
+          {i < chips.length - 1 && <span className="h-3 w-px bg-border/60" aria-hidden="true" />}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function RarityChips({ breakdown, locale }: { breakdown: Record<string, number>; locale: string }) {
+  const ordered = RARITY_ORDER
+    .map((tier) => ({ tier, count: breakdown[tier] ?? 0 }))
+    .filter((e) => e.count > 0)
+
+  if (ordered.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      {ordered.map(({ tier, count }, i) => {
+        const styles = rarityStyle(tier)
+        return (
+          <span key={tier} className="flex items-center gap-x-4">
+            <span className="flex items-center gap-1.5">
+              <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${styles?.segment ?? 'bg-slate-500'}`} />
+              <span className="text-xs text-muted-foreground">
+                {rarityLabel(tier)}{' '}
+                <span className="font-semibold tabular-nums text-foreground">{count.toLocaleString(locale)}</span>
+              </span>
+            </span>
+            {i < ordered.length - 1 && <span className="h-3 w-px bg-border/60" aria-hidden="true" />}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+function TypeTags({ breakdown, locale, title }: { breakdown: Record<string, number>; locale: string; title: string }) {
+  const sorted = Object.entries(breakdown).sort((a, b) => b[1] - a[1]).slice(0, 6)
+  if (sorted.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {sorted.map(([type, count]) => (
+          <span
+            key={type}
+            className="inline-flex items-center gap-1.5 rounded border border-border/50 bg-muted/40 px-2 py-0.5 text-[11px]"
+          >
+            <span className="text-muted-foreground">{itemTypeLabel(type) ?? type}</span>
+            <span className="font-medium tabular-nums text-foreground">{count.toLocaleString(locale)}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function PassContentSummary({
+  content,
+  labels,
+  locale,
+  compact = false,
+}: {
+  content: SeasonPassContentSummary
+  labels: ContentLabels
+  locale: string
+  compact?: boolean
+}) {
+  const currencyChips = buildCurrencyChips(content, labels, locale)
+  const itemChips = buildItemChips(content, labels, locale)
+  const hasRarity = content.rarity_breakdown && Object.keys(content.rarity_breakdown).length > 0
+  const hasTypes = !compact && content.type_breakdown && Object.keys(content.type_breakdown).length > 0
+
+  if (currencyChips.length === 0 && itemChips.length === 0 && !hasRarity) return null
+
+  return (
+    <div className="space-y-3">
+      <ChipRow chips={currencyChips} />
+      <ChipRow chips={itemChips} />
+      {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} locale={locale} />}
+      {hasTypes && <TypeTags breakdown={content.type_breakdown!} locale={locale} title={labels.typeTitle} />}
+    </div>
+  )
+}

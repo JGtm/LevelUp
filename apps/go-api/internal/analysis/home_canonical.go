@@ -918,13 +918,11 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		label := outcomeLabelForLocale(outcome, locale)
 		tone := outcomeTone(outcome)
 
-		// Ratio (KDR) computed.
-		var ratioPtr *float64
-		ratioStr := "-"
-		if r.Self.Deaths != nil && *r.Self.Deaths > 0 && r.Self.Kills != nil {
-			v := float64(*r.Self.Kills) / float64(*r.Self.Deaths)
-			ratioPtr = &v
-			ratioStr = fmt.Sprintf("%.2f", v)
+		// FDA (KDA canonique fourni par l'API ; pas un calcul custom).
+		// Le label dans Detail est "FDA" en FR (cf. fields.toml::kda).
+		kdaStr := "-"
+		if r.Self.KDA != nil {
+			kdaStr = fmt.Sprintf("%.2f", *r.Self.KDA)
 		}
 		accStr := "-"
 		if r.Self.Accuracy != nil {
@@ -1021,12 +1019,11 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			mapID = r.Summary.Map.ID
 		}
 		mapImageURL := buildMapImageURL("halo_infinite", mapID, mapName, mapNameFR)
-		_ = ratioStr // kept for parity with legacy detail format
 
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  r.Summary.MatchID,
-			Title:                    fmt.Sprintf("%s Â· %s", label, mapUI),
-			Detail:                   fmt.Sprintf("%s Â· KD %s Â· %s", modeUI, ratioStr, accStr),
+			Title:                    fmt.Sprintf("%s · %s", label, mapUI),
+			Detail:                   fmt.Sprintf("%s · FDA %s · %s", modeUI, kdaStr, accStr),
 			StartedAt:                &t,
 			OutcomeLabel:             label,
 			OutcomeTone:              tone,
@@ -1065,7 +1062,6 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			HeadshotKills:            intPtrIfPos(derefIntZero(r.Self.HeadshotKills)),
 			PerfectKills:             intPtrIfPos(derefIntZero(r.Self.PerfectKills)),
 		})
-		_ = ratioPtr
 	}
 	return items
 }
