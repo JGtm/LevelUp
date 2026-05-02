@@ -13,12 +13,15 @@ export interface SquadContextValue {
   selectedRows: TeammateRow[]
   confirmedGamertags: string[]
   pageData: TeammatesPageResponse | null
+  /** Slug du joueur principal (URL param) — utilisé par les enfants pour navigation. */
+  playerSlug: string
 }
 
 export const SquadContext = createContext<SquadContextValue>({
   selectedRows: [],
   confirmedGamertags: [],
   pageData: null,
+  playerSlug: '',
 })
 
 export function useSquadContext(): SquadContextValue {

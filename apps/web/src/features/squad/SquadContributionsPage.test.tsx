@@ -82,6 +82,7 @@ function mockSquadContext({
     selectedRows,
     confirmedGamertags,
     pageData: null as unknown as TeammatesPageResponse,
+    playerSlug: 'test',
   })
 }
 

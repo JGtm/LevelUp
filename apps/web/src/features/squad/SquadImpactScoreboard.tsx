@@ -1,0 +1,263 @@
+/**
+ * SquadImpactScoreboard — teammates.07 : tableau scoreboard "Impact des coéquipiers".
+ *
+ * Spec : .ai/charts_specs/teammates/07_impact_taquinerie.yaml
+ *
+ * Implémentation TanStack Table :
+ *  - Colonnes dynamiques : Joueur (sticky) + 1 par match avec ≥1 badge + 8 colonnes
+ *    agrégat (1 par badge_key) + Score + Badge ranking.
+ *  - Cellule joueur×match : emojis empilés 2/ligne pour les badges obtenus ce match.
+ *  - Cellule agrégat : compte ou "—" si 0. Couleur best/worst selon extrêmes (best
+ *    inversé pour les badges "négatifs" cf. impactInverted).
+ *  - Header de colonne match : fond coloré selon outcome du joueur principal.
+ *  - Tri serveur : players DESC par score → 🏆 Champion (rank=1) / 📉 Passager
+ *    clandestin (rank=N, score≥0) / 🍌 Maillon faible (rank=N, score<0).
+ */
+import { useMemo } from 'react'
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+
+import type {
+  SquadImpactMatrix,
+  SquadImpactPlayerSummary,
+  SquadImpactCell,
+} from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { getSquadText } from './i18n'
+
+const BADGE_EMOJI: Record<string, string> = {
+  first_blood: '⚡',
+  clutch_finisher: '🎯',
+  last_casualty: '💀',
+  last_group_kill: '🐌',
+  first_group_death: '🪦',
+  silent_hero: '🛡️',
+  false_brother: '🗡️',
+  top_killer: '💥',
+}
+
+/** Badges où un count élevé est PIRE (rouge=worst au lieu de best). */
+const BADGE_INVERTED: Record<string, true> = {
+  last_casualty: true,
+  last_group_kill: true,
+  first_group_death: true,
+  false_brother: true,
+}
+
+function outcomeBg(outcome: number): string {
+  switch (outcome) {
+    case 2:
+      return 'rgba(0, 158, 115, 0.30)' // win
+    case 3:
+      return 'rgba(213, 94, 0, 0.30)' // loss
+    default:
+      return 'rgba(100, 100, 130, 0.15)' // tie/dnf
+  }
+}
+
+interface ImpactRow {
+  player: string
+  /** match_id → liste de badge_keys */
+  perMatch: Record<string, string[]>
+  /** badge_key → count agrégé */
+  perBadge: Record<string, number>
+  score: number
+  rank: number
+  badge: 'champion' | 'middle' | 'maillon-faible' | 'passager-clandestin'
+}
+
+function buildRows(matrix: SquadImpactMatrix): ImpactRow[] {
+  const cellByPM = new Map<string, SquadImpactCell>()
+  for (const c of matrix.cells) {
+    cellByPM.set(`${c.player}|${c.match_id}`, c)
+  }
+  return matrix.players.map((p, idx) => {
+    const perMatch: Record<string, string[]> = {}
+    for (const m of matrix.matches) {
+      perMatch[m.match_id] = cellByPM.get(`${p.player}|${m.match_id}`)?.badge_keys ?? []
+    }
+    const perBadge: Record<string, number> = {}
+    for (const b of p.counts) perBadge[b.badge_key] = b.count
+    const rank = idx + 1
+    const isLast = idx === matrix.players.length - 1
+    const lastScore = matrix.players[matrix.players.length - 1]?.score ?? 0
+    let badge: ImpactRow['badge'] = 'middle'
+    if (rank === 1) badge = 'champion'
+    else if (isLast && lastScore < 0) badge = 'maillon-faible'
+    else if (isLast) badge = 'passager-clandestin'
+    return { player: p.player, perMatch, perBadge, score: p.score, rank, badge }
+  })
+}
+
+/** Pour chaque badge_key, calcule (min, max) parmi les counts non nuls. */
+function computeExtremes(players: SquadImpactPlayerSummary[]): Record<string, { min: number; max: number }> {
+  const out: Record<string, { min: number; max: number }> = {}
+  for (const p of players) {
+    for (const c of p.counts) {
+      const v = c.count
+      if (v <= 0) continue
+      const cur = out[c.badge_key]
+      if (!cur) out[c.badge_key] = { min: v, max: v }
+      else out[c.badge_key] = { min: Math.min(cur.min, v), max: Math.max(cur.max, v) }
+    }
+  }
+  // Conserver uniquement les badges avec ≥2 valeurs distinctes pour avoir un best/worst.
+  for (const k of Object.keys(out)) {
+    if (out[k].min === out[k].max) delete out[k]
+  }
+  return out
+}
+
+function aggCellClass(badgeKey: string, count: number, ext: { min: number; max: number } | undefined): string {
+  if (!ext) return ''
+  const inverted = BADGE_INVERTED[badgeKey] === true
+  if (count === ext.max) return inverted ? 'text-[var(--ac-perf-tier-5)] font-semibold' : 'text-[var(--ac-perf-tier-1)] font-semibold'
+  if (count === ext.min) return inverted ? 'text-[var(--ac-perf-tier-1)] font-semibold' : 'text-[var(--ac-perf-tier-5)] font-semibold'
+  return ''
+}
+
+function pivotEmojis(badgeKeys: string[]): string {
+  if (badgeKeys.length === 0) return ''
+  const emojis = badgeKeys.map((k) => BADGE_EMOJI[k] ?? '·')
+  // Empile 2 par ligne avec saut de ligne.
+  const lines: string[] = []
+  for (let i = 0; i < emojis.length; i += 2) {
+    lines.push(emojis.slice(i, i + 2).join(''))
+  }
+  return lines.join('\n')
+}
+
+interface SquadImpactScoreboardProps {
+  matrix: SquadImpactMatrix
+}
+
+export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = getSquadText(locale)
+  const i18n = t.impact
+
+  const rows = useMemo(() => buildRows(matrix), [matrix])
+  const extremes = useMemo(() => computeExtremes(matrix.players), [matrix.players])
+  const scoreExt = useMemo(() => {
+    const scores = matrix.players.map((p) => p.score)
+    if (scores.length < 2) return undefined
+    const min = Math.min(...scores)
+    const max = Math.max(...scores)
+    return min === max ? undefined : { min, max }
+  }, [matrix.players])
+
+  const columns = useMemo<ColumnDef<ImpactRow>[]>(() => {
+    const cols: ColumnDef<ImpactRow>[] = [
+      {
+        id: 'player',
+        header: i18n.colPlayer,
+        accessorKey: 'player',
+        cell: (ctx) => (
+          <span className="whitespace-nowrap font-medium">{ctx.row.original.player}</span>
+        ),
+      },
+      ...matrix.matches.map<ColumnDef<ImpactRow>>((m, idx) => ({
+        id: `match-${m.match_id}`,
+        header: () => (
+          <div
+            className="text-center text-xs font-semibold"
+            style={{ background: outcomeBg(m.outcome), padding: '4px 6px', borderRadius: 3 }}
+            title={m.match_id}
+          >
+            {idx + 1}
+          </div>
+        ),
+        cell: (ctx) => (
+          <pre className="text-center font-sans text-base leading-tight m-0">
+            {pivotEmojis(ctx.row.original.perMatch[m.match_id] ?? [])}
+          </pre>
+        ),
+      })),
+      ...matrix.badge_ord.map<ColumnDef<ImpactRow>>((badgeKey) => ({
+        id: `agg-${badgeKey}`,
+        header: () => (
+          <span title={i18n.badgeNames[badgeKey] ?? badgeKey}>
+            {BADGE_EMOJI[badgeKey] ?? badgeKey}
+          </span>
+        ),
+        cell: (ctx) => {
+          const v = ctx.row.original.perBadge[badgeKey] ?? 0
+          if (v === 0) return <span className="text-muted-foreground">—</span>
+          return <span className={aggCellClass(badgeKey, v, extremes[badgeKey])}>{v}</span>
+        },
+      })),
+      {
+        id: 'score',
+        header: i18n.colScore,
+        cell: (ctx) => {
+          const s = ctx.row.original.score
+          const formatted = s > 0 ? `+${s}` : `${s}`
+          let cls = ''
+          if (scoreExt) {
+            if (s === scoreExt.max) cls = 'text-[var(--ac-perf-tier-1)] font-semibold'
+            else if (s === scoreExt.min) cls = 'text-[var(--ac-perf-tier-5)] font-semibold'
+          }
+          return <span className={cls}>{formatted}</span>
+        },
+      },
+      {
+        id: 'badge',
+        header: i18n.colBadge,
+        cell: (ctx) => {
+          switch (ctx.row.original.badge) {
+            case 'champion':
+              return <span title={i18n.badgeChampion}>🏆 {i18n.badgeChampionShort}</span>
+            case 'maillon-faible':
+              return <span title={i18n.badgeWeakLink}>🍌 {i18n.badgeWeakLinkShort}</span>
+            case 'passager-clandestin':
+              return <span title={i18n.badgeStowaway}>📉 {i18n.badgeStowawayShort}</span>
+            default:
+              return null
+          }
+        },
+      },
+    ]
+    return cols
+  }, [matrix.matches, matrix.badge_ord, extremes, scoreExt, i18n])
+
+  const table = useReactTable<ImpactRow>({
+    data: rows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  })
+
+  if (matrix.matches.length === 0 || matrix.players.length === 0) return null
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-border" data-testid="squad-impact-scoreboard">
+      <table className="w-full text-sm">
+        <thead className="bg-muted">
+          {table.getHeaderGroups().map((hg) => (
+            <tr key={hg.id} className="border-b border-border">
+              {hg.headers.map((h) => (
+                <th key={h.id} className="px-2 py-1 text-center align-bottom font-medium">
+                  {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody className="divide-y divide-border">
+          {table.getRowModel().rows.map((r) => (
+            <tr key={r.id}>
+              {r.getVisibleCells().map((cell) => (
+                <td key={cell.id} className="px-2 py-1 align-middle">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

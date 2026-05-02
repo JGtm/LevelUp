@@ -82,6 +82,109 @@ export interface SquadText {
     winRateVsHistoryTitle: string
     winRateVsHistorySession: string
     winRateVsHistoryHistory: string
+    winRateVsHistoryBulletTitle: string
+    winRateVsHistoryBulletParity: string
+    winRateVsHistoryBulletZero: string
+    mapPerfVsHistoryTitle: string
+    mapPerfVsHistorySession: string
+    mapPerfVsHistoryHistory: string
+  }
+  history: {
+    title: string
+    description: string
+    date: string
+    map: string
+    playlist: string
+    mode: string
+    outcome: string
+    kda: string
+    accuracy: string
+    perf: string
+    teamMmr: string
+    session: string
+    outcomeLabel: { win: string; loss: string; draw: string; dnf: string }
+    prev: string
+    next: string
+    pageOf: (cur: number, total: number) => string
+    totalRows: (n: number) => string
+  }
+  timeline: {
+    title: string
+    perf: string
+    winRate: string
+    teamMmr: string
+    perfAxis: string
+    mmrAxis: string
+  }
+  heatmap: {
+    title: string
+    pieceTier1: string
+    pieceTier2: string
+    pieceTier3: string
+    pieceTier4: string
+    pieceTier5: string
+    noScore: string
+  }
+  impact: {
+    title: string
+    description: string
+    colPlayer: string
+    colScore: string
+    colBadge: string
+    badgeChampion: string
+    badgeChampionShort: string
+    badgeWeakLink: string
+    badgeWeakLinkShort: string
+    badgeStowaway: string
+    badgeStowawayShort: string
+    badgeNames: Record<string, string>
+  }
+  perMinute: {
+    title: string
+    description: string
+    frags: string
+    deaths: string
+    assists: string
+    suffix: string
+  }
+  synergyRadar: {
+    title: string
+    description: string
+    axes: { combat: string; survival: string; support: string; score: string; objective: string; impact: string }
+  }
+  intensity: {
+    title: string
+    description: string
+    toggleLabel: string
+    allLabel: string
+    zLabel: string
+  }
+  performanceCharts: {
+    title: string
+    description: string
+    killsDeathsTitle: string
+    killsLabel: string
+    deathsLabel: string
+    assistsTitle: string
+    kdaTitle: string
+    accuracyTitle: string
+    avgLifeTitle: string
+    performanceTitle: string
+    maxSpreeTitle: string
+    hsPerfectTitle: string
+    hsLabel: string
+    perfectLabel: string
+  }
+  weaponKills: {
+    title: string
+    description: string
+  }
+  firstEvents: {
+    title: string
+    description: string
+    fragLabel: string
+    deathLabel: string
+    matchesSuffix: string
   }
   units: {
     perGame: string
@@ -163,6 +266,125 @@ const FR_TEXT: SquadText = {
     winRateVsHistoryTitle: 'Taux de victoire vs historique par carte',
     winRateVsHistorySession: 'Session',
     winRateVsHistoryHistory: 'Historique',
+    winRateVsHistoryBulletTitle: 'Winrate session vs historique — bullet chart',
+    winRateVsHistoryBulletParity: 'Parité 50 %',
+    winRateVsHistoryBulletZero: '0 % (toutes défaites)',
+    mapPerfVsHistoryTitle: 'Performance par carte — Session vs Historique',
+    mapPerfVsHistorySession: 'Session actuelle',
+    mapPerfVsHistoryHistory: 'Historique',
+  },
+  history: {
+    title: 'Historique des matchs avec coéquipiers',
+    description: 'Tous les matchs partagés sur les filtres actifs.',
+    date: 'Date',
+    map: 'Carte',
+    playlist: 'Playlist',
+    mode: 'Mode',
+    outcome: 'Résultat',
+    kda: 'K/D/A',
+    accuracy: 'Précision',
+    perf: 'Perf.',
+    teamMmr: 'MMR équipe',
+    session: 'Session',
+    outcomeLabel: { win: 'Victoire', loss: 'Défaite', draw: 'Égalité', dnf: 'DNF' },
+    prev: '← Précédent',
+    next: 'Suivant →',
+    pageOf: (cur, total) => `Page ${cur} / ${total}`,
+    totalRows: (n) => `${n} match${n > 1 ? 's' : ''}`,
+  },
+  timeline: {
+    title: 'Performance d\'escouade par session',
+    perf: 'Perf. escouade',
+    winRate: 'Taux de victoire',
+    teamMmr: 'MMR équipe',
+    perfAxis: 'Perf / Win %',
+    mmrAxis: 'MMR',
+  },
+  heatmap: {
+    title: 'Performance par joueur × carte (top 15)',
+    pieceTier1: 'Excellente',
+    pieceTier2: 'Bonne',
+    pieceTier3: 'Moyenne',
+    pieceTier4: 'Sous-moyenne',
+    pieceTier5: 'Faible',
+    noScore: 'Pas de score',
+  },
+  impact: {
+    title: 'Impact des coéquipiers',
+    description: 'Tableau matriciel des badges obtenus, par joueur × match. Colonnes agrégat triées par compte décroissant.',
+    colPlayer: 'Joueur',
+    colScore: 'Score',
+    colBadge: 'Rang',
+    badgeChampion: 'Champion (rang #1)',
+    badgeChampionShort: 'Champion',
+    badgeWeakLink: 'Maillon faible (rang dernier, score négatif)',
+    badgeWeakLinkShort: 'Maillon faible',
+    badgeStowaway: 'Passager clandestin (rang dernier, score positif ou nul)',
+    badgeStowawayShort: 'Passager clandestin',
+    badgeNames: {
+      first_blood: 'Premier sang',
+      clutch_finisher: 'Clutch',
+      last_casualty: 'Boulet (dernière mort)',
+      last_group_kill: 'Touriste (premier kill tardif)',
+      first_group_death: 'Première victime',
+      silent_hero: 'Héros silencieux',
+      false_brother: 'Faux-frère',
+      top_killer: 'Bourreau (top kills)',
+    },
+  },
+  perMinute: {
+    title: 'Stats par minute — Frags / Morts / Assists',
+    description: 'Cadence par joueur sur le scope filtré. Les morts s\'affichent sous l\'axe (couleur joueur atténuée).',
+    frags: 'Frags/min',
+    deaths: 'Morts/min',
+    assists: 'Assists/min',
+    suffix: ' /min',
+  },
+  synergyRadar: {
+    title: 'Radar synergie — 6 axes par joueur',
+    description: 'Profil de participation calculé sur les matchs où tous les coéquipiers sélectionnés étaient présents. Lignes seules (pas d\'aire), 4 profils superposés max.',
+    axes: {
+      combat: 'Combat',
+      survival: 'Survie',
+      support: 'Support',
+      score: 'Score',
+      objective: 'Objectif',
+      impact: 'Impact',
+    },
+  },
+  intensity: {
+    title: 'Intensité — kills par phase de match',
+    description: 'Densité de kills par tranche de 10 % de la durée du match. Bascule entre toute l\'équipe et un joueur précis.',
+    toggleLabel: 'Filtrer par joueur :',
+    allLabel: 'Toute l\'équipe',
+    zLabel: 'Cadence',
+  },
+  performanceCharts: {
+    title: 'Performance escouade par match',
+    description: 'Time-series alignée sur les matchs où tous les coéquipiers étaient présents. 1 ligne par joueur, couleurs cohérentes avec la pill et le multiselect.',
+    killsDeathsTitle: 'Frags / Morts',
+    killsLabel: 'Frags',
+    deathsLabel: 'Morts',
+    assistsTitle: 'Assistances',
+    kdaTitle: 'FDA',
+    accuracyTitle: 'Précision',
+    avgLifeTitle: 'Durée de vie moyenne',
+    performanceTitle: 'Performance',
+    maxSpreeTitle: 'Folie meurtrière max',
+    hsPerfectTitle: 'Tirs à la tête & Frags parfaits',
+    hsLabel: 'Tirs à la tête',
+    perfectLabel: 'Frags parfaits',
+  },
+  weaponKills: {
+    title: 'Kills par arme — comparatif',
+    description: 'Kills cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
+  },
+  firstEvents: {
+    title: 'Premier frag / première mort — chronologie',
+    description: 'Histogramme butterfly : bins de 15 s. Frags positifs en haut, morts négatives en bas (couleur joueur atténuée).',
+    fragLabel: 'Premier frag',
+    deathLabel: 'Première mort',
+    matchesSuffix: 'matchs',
   },
   units: {
     perGame: '/partie',
@@ -244,6 +466,125 @@ const EN_TEXT: SquadText = {
     winRateVsHistoryTitle: 'Win rate vs history by map',
     winRateVsHistorySession: 'Session',
     winRateVsHistoryHistory: 'All time',
+    winRateVsHistoryBulletTitle: 'Session winrate vs history — bullet chart',
+    winRateVsHistoryBulletParity: '50% parity',
+    winRateVsHistoryBulletZero: '0% (all losses)',
+    mapPerfVsHistoryTitle: 'Performance per map — Session vs History',
+    mapPerfVsHistorySession: 'Current session',
+    mapPerfVsHistoryHistory: 'History',
+  },
+  history: {
+    title: 'Match history with teammates',
+    description: 'All shared matches matching the active filters.',
+    date: 'Date',
+    map: 'Map',
+    playlist: 'Playlist',
+    mode: 'Mode',
+    outcome: 'Result',
+    kda: 'K/D/A',
+    accuracy: 'Accuracy',
+    perf: 'Perf.',
+    teamMmr: 'Team MMR',
+    session: 'Session',
+    outcomeLabel: { win: 'Win', loss: 'Loss', draw: 'Tie', dnf: 'DNF' },
+    prev: '← Previous',
+    next: 'Next →',
+    pageOf: (cur, total) => `Page ${cur} / ${total}`,
+    totalRows: (n) => `${n} match${n > 1 ? 'es' : ''}`,
+  },
+  timeline: {
+    title: 'Squad performance by session',
+    perf: 'Squad perf',
+    winRate: 'Win rate',
+    teamMmr: 'Team MMR',
+    perfAxis: 'Perf / Win %',
+    mmrAxis: 'MMR',
+  },
+  heatmap: {
+    title: 'Performance per player × map (top 15)',
+    pieceTier1: 'Excellent',
+    pieceTier2: 'Good',
+    pieceTier3: 'Average',
+    pieceTier4: 'Below average',
+    pieceTier5: 'Poor',
+    noScore: 'No score',
+  },
+  impact: {
+    title: 'Teammates impact',
+    description: 'Player × match badge matrix. Aggregate columns sorted by decreasing count.',
+    colPlayer: 'Player',
+    colScore: 'Score',
+    colBadge: 'Rank',
+    badgeChampion: 'Champion (rank #1)',
+    badgeChampionShort: 'Champion',
+    badgeWeakLink: 'Weak link (last rank, negative score)',
+    badgeWeakLinkShort: 'Weak link',
+    badgeStowaway: 'Stowaway (last rank, non-negative score)',
+    badgeStowawayShort: 'Stowaway',
+    badgeNames: {
+      first_blood: 'First blood',
+      clutch_finisher: 'Clutch',
+      last_casualty: 'Last casualty',
+      last_group_kill: 'Late starter',
+      first_group_death: 'First down',
+      silent_hero: 'Silent hero',
+      false_brother: 'False brother',
+      top_killer: 'Top killer',
+    },
+  },
+  perMinute: {
+    title: 'Per-minute stats — Frags / Deaths / Assists',
+    description: 'Per-player cadence over the filtered scope. Deaths render below the axis (muted player color).',
+    frags: 'Frags/min',
+    deaths: 'Deaths/min',
+    assists: 'Assists/min',
+    suffix: ' /min',
+  },
+  synergyRadar: {
+    title: 'Synergy radar — 6 axes per player',
+    description: 'Participation profile computed on matches where all selected teammates were present. Lines only (no fill), max 4 overlaid profiles.',
+    axes: {
+      combat: 'Combat',
+      survival: 'Survival',
+      support: 'Support',
+      score: 'Score',
+      objective: 'Objective',
+      impact: 'Impact',
+    },
+  },
+  intensity: {
+    title: 'Intensity — kills per match phase',
+    description: 'Kill density per 10% slice of match duration. Toggle between the whole team and a specific player.',
+    toggleLabel: 'Filter by player:',
+    allLabel: 'Whole team',
+    zLabel: 'Cadence',
+  },
+  performanceCharts: {
+    title: 'Squad performance per match',
+    description: 'Time-series aligned on matches where every teammate was present. One line per player, colors mirror the active-player pill and multiselect.',
+    killsDeathsTitle: 'Frags / Deaths',
+    killsLabel: 'Frags',
+    deathsLabel: 'Deaths',
+    assistsTitle: 'Assists',
+    kdaTitle: 'KDA',
+    accuracyTitle: 'Accuracy',
+    avgLifeTitle: 'Avg lifespan',
+    performanceTitle: 'Performance',
+    maxSpreeTitle: 'Max killing spree',
+    hsPerfectTitle: 'Headshots & Perfect kills',
+    hsLabel: 'Headshots',
+    perfectLabel: 'Perfect kills',
+  },
+  weaponKills: {
+    title: 'Weapon kills — comparison',
+    description: 'Cumulative kills per weapon over shared matches. Sorted ASC: rare weapons on top, primaries at the bottom.',
+  },
+  firstEvents: {
+    title: 'First frag / first death — chronology',
+    description: 'Butterfly histogram with 15 s bins. Frags above the axis, deaths below (muted player color).',
+    fragLabel: 'First frag',
+    deathLabel: 'First death',
+    matchesSuffix: 'matches',
   },
   units: {
     perGame: '/game',

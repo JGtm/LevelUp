@@ -52,6 +52,13 @@ type MapBreakdownRow struct {
 	MatchCount        int      `json:"match_count"`
 	WinRate           float64  `json:"win_rate"`
 	HistoricalWinRate *float64 `json:"historical_win_rate,omitempty"`
+	// PerformanceAvg : moyenne du performance_score sur les matchs escouade
+	// filtrés (session courante). Nil si aucun match n'a de score renseigné.
+	PerformanceAvg *float64 `json:"performance_avg,omitempty"`
+	// HistoricalPerformanceAvg : moyenne du performance_score du joueur principal
+	// sur TOUT son historique pour cette carte. Sert de référence pour le chart
+	// teammates.13. Nil si aucune donnée historique avec score.
+	HistoricalPerformanceAvg *float64 `json:"historical_performance_avg,omitempty"`
 }
 
 // SquadMatchSeriesPoint est un point de la série par match (perf/timeline).
@@ -59,6 +66,204 @@ type SquadMatchSeriesPoint struct {
 	MatchID          string   `json:"match_id"`
 	StartTime        string   `json:"start_time"` // ISO 8601
 	Outcome          int      `json:"outcome"`
+	PerformanceScore *float64 `json:"performance_score,omitempty"`
+	TeamMMRAvg       float64  `json:"team_mmr_avg"`
+	SessionLabel     *string  `json:"session_label,omitempty"`
+}
+
+// SquadFirstEventsRow est la ligne d'un joueur dans le butterfly first-events
+// teammates.17 : 2 vecteurs alignés sur les bins du chart parent (KillCounts
+// pour les premiers frags, DeathCounts pour les premières morts).
+type SquadFirstEventsRow struct {
+	Player      string `json:"player"`
+	KillCounts  []int  `json:"kill_counts"`
+	DeathCounts []int  `json:"death_counts"`
+}
+
+// SquadFirstEvents alimente teammates.17 (butterfly : premier frag positifs
+// haut, première mort négatifs bas — bins 15 s).
+type SquadFirstEvents struct {
+	BinSizeSeconds int                   `json:"bin_size_seconds"`
+	BinLabels      []string              `json:"bin_labels"` // ex: ["15s", "30s", "1m00s", ...]
+	Rows           []SquadFirstEventsRow `json:"rows"`
+}
+
+// SquadWeaponBar est une ligne du chart kills par arme teammates.09 :
+// 1 arme avec ses kills par joueur de l'escouade + total cumulé.
+type SquadWeaponBar struct {
+	WeaponID       int64          `json:"weapon_id"`
+	Label          string         `json:"label"`
+	IsGrenadeMelee bool           `json:"is_grenade_melee,omitempty"`
+	KillsByPlayer  map[string]int `json:"kills_by_player"` // gamertag → kills
+	TotalSquad     int            `json:"total_squad"`
+}
+
+// SquadWeaponKills alimente teammates.09 (barres horizontales groupées par
+// arme, 1 trace par joueur). Players est l'ordre canonique (main puis
+// teammates) ; Bars est trié par TotalSquad ASC (peu utilisées en haut).
+type SquadWeaponKills struct {
+	Players []string         `json:"players"`
+	Bars    []SquadWeaponBar `json:"bars"`
+}
+
+// SquadPerformanceSeriesPoint est une mesure 1-match × 1-joueur pour le
+// chart family teammates.16. Toutes les métriques sont optionnelles (nil =
+// non disponible côté DB / pas calculé). MatchOrder est un index 0..N-1
+// commun à tous les joueurs (inner-join sur les matchs partagés).
+type SquadPerformanceSeriesPoint struct {
+	MatchID          string   `json:"match_id"`
+	StartTime        string   `json:"start_time"` // ISO 8601
+	MatchOrder       int      `json:"match_order"`
+	Kills            int      `json:"kills"`
+	Deaths           int      `json:"deaths"`
+	Assists          int      `json:"assists"`
+	KDA              *float64 `json:"kda,omitempty"`
+	Accuracy         *float64 `json:"accuracy,omitempty"`
+	AvgLifeSeconds   *float64 `json:"avg_life_seconds,omitempty"`
+	PerformanceScore *float64 `json:"performance_score,omitempty"`
+	MaxKillingSpree  *int     `json:"max_killing_spree,omitempty"`
+	HeadshotKills    *int     `json:"headshot_kills,omitempty"`
+	PerfectKills     *int     `json:"perfect_kills,omitempty"`
+}
+
+// SquadSynergyRadarAxis est l'un des 6 axes du radar de participation
+// (combat / survival / support / score / objective / impact). Value est
+// normalisé 0..100, Raw garde la donnée brute pour debug/tooltip.
+type SquadSynergyRadarAxis struct {
+	Axis  string  `json:"axis"`
+	Value float64 `json:"value"`
+	Raw   float64 `json:"raw"`
+}
+
+// SquadSynergyRadarSeries est un profil radar pour un joueur de l'escouade
+// sur les matchs PARTAGÉS (intersection des match_ids de tous les membres
+// sélectionnés). Cf. teammates.06.
+type SquadSynergyRadarSeries struct {
+	Player     string                  `json:"player"`
+	Axes       []SquadSynergyRadarAxis `json:"axes"`
+	ModeFamily string                  `json:"mode_family,omitempty"`
+}
+
+// SquadIntensityMatchRow est une ligne du heatmap d'intensité teammates.15 :
+// 1 match × 10 phases normalisées (0..1) + un label affichable côté front
+// (carte + date).
+type SquadIntensityMatchRow struct {
+	MatchID string      `json:"match_id"`
+	Label   string      `json:"label"`
+	Phases  [10]float64 `json:"phases"`
+}
+
+// SquadIntensityOption est une entrée du segmented control du heatmap
+// d'intensité (toggle "all" ou un joueur).
+type SquadIntensityOption struct {
+	Key   string `json:"key"`   // "all" | gamertag (utilisé pour l'index `Rows`)
+	Label string `json:"label"` // texte affiché dans le toggle
+}
+
+// SquadIntensityProfile alimente teammates.15 (heatmap d'intensité avec
+// toggle Tous/joueur). Les phases sont déjà bucket-isées et normalisées
+// côté serveur.
+type SquadIntensityProfile struct {
+	Options []SquadIntensityOption              `json:"options"`
+	Rows    map[string][]SquadIntensityMatchRow `json:"rows"` // optionKey → lignes (1 par match)
+}
+
+// SquadPerMinuteEntry est l'agrégat par joueur des stats /minute pour le
+// chart teammates.14. Calculé à partir de sum(kills/deaths/assists) / sum(time_played_secs / 60).
+// Si TimePlayedSecs == 0, les ratios sont nuls.
+type SquadPerMinuteEntry struct {
+	Player           string  `json:"player"`
+	KillsPerMinute   float64 `json:"kills_per_minute"`
+	DeathsPerMinute  float64 `json:"deaths_per_minute"`
+	AssistsPerMinute float64 `json:"assists_per_minute"`
+	MatchCount       int     `json:"match_count"`
+}
+
+// SquadSessionPoint est un point agrégé par session pour le chart timeline
+// (teammates.04). Calculé sur l'union dédupliquée de allSquadRows groupé par
+// SessionLabel. team_mmr_avg / win_rate facultatifs (toutes-Nil → omitempty).
+type SquadSessionPoint struct {
+	SessionLabel string   `json:"session_label"`
+	SquadPerf    float64  `json:"squad_perf"` // moyenne PerformanceScore (0..100), 0 si aucun score
+	MatchCount   int      `json:"match_count"`
+	Wins         int      `json:"wins"`
+	Losses       int      `json:"losses"`
+	WinRate      *float64 `json:"win_rate,omitempty"`     // wins/match_count si match_count>0
+	TeamMMRAvg   *float64 `json:"team_mmr_avg,omitempty"` // moyenne TeamMMR si dispo
+}
+
+// SquadMapHeatmapCell est une cellule (joueur, carte, perf_avg) pour le
+// heatmap teammates.03. n_matches sert au tooltip.
+type SquadMapHeatmapCell struct {
+	Player     string   `json:"player"`
+	MapUI      string   `json:"map_ui"`
+	PerfAvg    *float64 `json:"perf_avg,omitempty"` // nil si pas de match avec score
+	MatchCount int      `json:"match_count"`
+}
+
+// SquadMapHeatmap regroupe les axes ordonnés + cellules pour teammates.03.
+// MapsTopN est limité à 15 cartes (les plus jouées toutes équipes confondues).
+type SquadMapHeatmap struct {
+	Players  []string              `json:"players"`   // ordre Y (moi en tête)
+	MapsTopN []string              `json:"maps_topn"` // ordre X
+	Cells    []SquadMapHeatmapCell `json:"cells"`
+}
+
+// SquadImpactBadgeCount est l'agrégat d'un badge sur un joueur (col aggrégat
+// du scoreboard teammates.07).
+type SquadImpactBadgeCount struct {
+	BadgeKey string `json:"badge_key"`
+	Count    int    `json:"count"`
+}
+
+// SquadImpactCell est une cellule joueur×match du scoreboard teammates.07 :
+// la liste des badges obtenus par ce joueur dans ce match.
+type SquadImpactCell struct {
+	Player    string   `json:"player"`
+	MatchID   string   `json:"match_id"`
+	BadgeKeys []string `json:"badge_keys"`
+}
+
+// SquadImpactPlayerSummary agrège les comptes par badge + score pondéré pour
+// un joueur sur l'ensemble des matchs.
+type SquadImpactPlayerSummary struct {
+	Player string                  `json:"player"`
+	Counts []SquadImpactBadgeCount `json:"counts"`
+	Score  float64                 `json:"score"`
+}
+
+// SquadImpactMatchHeader est un en-tête de colonne match dans teammates.07.
+type SquadImpactMatchHeader struct {
+	MatchID string `json:"match_id"`
+	Outcome int    `json:"outcome"` // outcome du joueur principal
+}
+
+// SquadImpactMatrix regroupe toutes les données nécessaires au scoreboard
+// teammates.07. Les players sont triés par Score DESC côté serveur ; le front
+// rend le tableau tel quel + applique badges (Champion / Maillon faible /
+// Passager clandestin) selon position.
+type SquadImpactMatrix struct {
+	Matches  []SquadImpactMatchHeader   `json:"matches"`
+	Players  []SquadImpactPlayerSummary `json:"players"`
+	Cells    []SquadImpactCell          `json:"cells"`
+	BadgeOrd []string                   `json:"badge_ord"` // ordre canonique des badges (= colonnes agg)
+}
+
+// SquadMatchHistoryRow est une ligne du tableau historique des matchs partagés
+// (teammates.11). Une ligne par match unique sur le scope filtré (cascade,
+// période, sessions escouade, sélection coéquipiers). Tri client par
+// StartTime DESC. Pagination assurée côté front (TanStack Table).
+type SquadMatchHistoryRow struct {
+	MatchID          string   `json:"match_id"`
+	StartTime        string   `json:"start_time"` // ISO 8601
+	MapUI            string   `json:"map_ui"`
+	PlaylistName     string   `json:"playlist_name,omitempty"`
+	PairName         string   `json:"pair_name,omitempty"` // libellé mode/pair
+	Outcome          int      `json:"outcome"`
+	Kills            int      `json:"kills"`
+	Deaths           int      `json:"deaths"`
+	Assists          int      `json:"assists"`
+	Accuracy         *float64 `json:"accuracy,omitempty"`
 	PerformanceScore *float64 `json:"performance_score,omitempty"`
 	TeamMMRAvg       float64  `json:"team_mmr_avg"`
 	SessionLabel     *string  `json:"session_label,omitempty"`
@@ -108,6 +313,36 @@ type TeammatesPageResponse struct {
 	Timeseries   []SquadTimeseriesPoint             `json:"timeseries,omitempty"`
 	MapBreakdown []MapBreakdownRow                  `json:"map_breakdown,omitempty"`
 	MatchSeries  map[string][]SquadMatchSeriesPoint `json:"match_series,omitempty"`
+	// MatchHistory alimente le tableau teammates.11 (TanStack Table). Une ligne
+	// par match unique partagé sur le scope filtré, triée par StartTime DESC.
+	// La pagination est gérée côté client (20/page par défaut).
+	MatchHistory []SquadMatchHistoryRow `json:"match_history,omitempty"`
+	// SessionTimeline alimente teammates.04 (bars perf colorées + line winrate
+	// + line MMR sur axe Y2 conditionnel). Un point par session label.
+	SessionTimeline []SquadSessionPoint `json:"session_timeline,omitempty"`
+	// MapHeatmap alimente teammates.03 (heatmap player×map top 15).
+	MapHeatmap *SquadMapHeatmap `json:"map_heatmap,omitempty"`
+	// ImpactMatrix alimente teammates.07 (scoreboard impact, 8 badges).
+	ImpactMatrix *SquadImpactMatrix `json:"impact_matrix,omitempty"`
+	// PerMinuteStats alimente teammates.14 (bars groupées K/D/A par minute par joueur).
+	PerMinuteStats []SquadPerMinuteEntry `json:"per_minute_stats,omitempty"`
+	// SynergyRadar alimente teammates.06 (radar 6 axes par joueur sur les
+	// matchs PARTAGÉS). Nil si aucun match commun.
+	SynergyRadar []SquadSynergyRadarSeries `json:"synergy_radar,omitempty"`
+	// IntensityProfile alimente teammates.15 (heatmap d'intensité avec toggle
+	// Tous/joueur). Nil si <3 matchs ou aucun kill event.
+	IntensityProfile *SquadIntensityProfile `json:"intensity_profile,omitempty"`
+	// PerformanceSeries alimente teammates.16 (8 sous-charts par joueur sur
+	// matchs partagés). Map gamertag → série triée par MatchOrder ASC. Nil
+	// si aucun match commun.
+	PerformanceSeries map[string][]SquadPerformanceSeriesPoint `json:"performance_series,omitempty"`
+	// WeaponKills alimente teammates.09 (kills par arme, comparatif multi-joueurs).
+	// Nil si aucune donnée weapon_kills disponible (capability absente ou shared
+	// match_ids vides).
+	WeaponKills *SquadWeaponKills `json:"weapon_kills,omitempty"`
+	// FirstEvents alimente teammates.17 (butterfly premier frag/première mort,
+	// bins 15 s). Nil si aucune donnée highlight_events.
+	FirstEvents *SquadFirstEvents `json:"first_events,omitempty"`
 	// Header alimente <SessionBriefing> en haut de SquadLayout (Synergies +
 	// Contributions). Mode solo (SoloKPIs uniquement) si aucun coequipier
 	// selectionne ; mode squad complet (KPIsByXUID + TeamAvgKPIs + PlayerCards

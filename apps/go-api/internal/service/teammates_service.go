@@ -158,11 +158,33 @@ func (s *TeammatesService) GetPage(
 	// Timeseries + MapBreakdown sur l'union des matchs escouade.
 	var timeseries []domain.SquadTimeseriesPoint
 	var mapBreakdown []domain.MapBreakdownRow
+	var matchHistory []domain.SquadMatchHistoryRow
+	var sessionTimeline []domain.SquadSessionPoint
+	var mapHeatmap *domain.SquadMapHeatmap
+	var impactMatrix *domain.SquadImpactMatrix
+	var perMinuteStats []domain.SquadPerMinuteEntry
+	var synergyRadar []domain.SquadSynergyRadarSeries
+	var intensityProfile *domain.SquadIntensityProfile
+	var performanceSeries map[string][]domain.SquadPerformanceSeriesPoint
+	var weaponKills *domain.SquadWeaponKills
+	var firstEvents *domain.SquadFirstEvents
 	if len(allSquadRows) > 0 {
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
 		historicalWR := computeHistoricalMapWRByLabel(canonicalRows)
 		mapBreakdown = enrichMapBreakdownWithHistory(mapBreakdown, historicalWR)
+		historicalPerf := computeHistoricalMapPerfByLabel(canonicalRows)
+		mapBreakdown = enrichMapBreakdownWithHistoricalPerf(mapBreakdown, historicalPerf)
+		matchHistory = buildSquadMatchHistory(allSquadRows)
+		sessionTimeline = buildSquadSessionTimeline(allSquadRows)
+		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, sessionMatchIDs)
+		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
+		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
+		synergyRadar = s.buildSquadSynergyRadar(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
+		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, "all")
+		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
+		weaponKills = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		firstEvents = s.buildSquadFirstEvents(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 	}
 
 	// Header (SessionBriefing) — alimente le composant <SessionBriefing> dans
@@ -174,16 +196,26 @@ func (s *TeammatesService) GetPage(
 	)
 
 	return domain.TeammatesPageResponse{
-		Options:       options,
-		Teammates:     teammates,
-		TotalMatches:  totalMatches,
-		SessionLabels: sessionLabels,
-		FriendsCount:  len(friendGTs),
-		Timeseries:    timeseries,
-		MapBreakdown:  mapBreakdown,
-		MatchSeries:   matchSeries,
-		Header:        header,
-		MainPlayer:    s.gamertag,
+		Options:           options,
+		Teammates:         teammates,
+		TotalMatches:      totalMatches,
+		SessionLabels:     sessionLabels,
+		FriendsCount:      len(friendGTs),
+		Timeseries:        timeseries,
+		MapBreakdown:      mapBreakdown,
+		MatchSeries:       matchSeries,
+		MatchHistory:      matchHistory,
+		SessionTimeline:   sessionTimeline,
+		MapHeatmap:        mapHeatmap,
+		ImpactMatrix:      impactMatrix,
+		PerMinuteStats:    perMinuteStats,
+		SynergyRadar:      synergyRadar,
+		IntensityProfile:  intensityProfile,
+		PerformanceSeries: performanceSeries,
+		WeaponKills:       weaponKills,
+		FirstEvents:       firstEvents,
+		Header:            header,
+		MainPlayer:        s.gamertag,
 	}, nil
 }
 
@@ -743,9 +775,26 @@ func enrichMapBreakdownWithHistory(rows []domain.MapBreakdownRow, historical map
 	return rows
 }
 
-// computeMapBreakdown agrÃƒÂ¨ge les stats par carte depuis les matchs escouade.
+// enrichMapBreakdownWithHistoricalPerf injecte HistoricalPerformanceAvg depuis
+// la map d'historique perf (alimentée par computeHistoricalMapPerfByLabel).
+func enrichMapBreakdownWithHistoricalPerf(rows []domain.MapBreakdownRow, historical map[string]float64) []domain.MapBreakdownRow {
+	for i := range rows {
+		if perf, ok := historical[rows[i].MapUI]; ok {
+			v := perf
+			rows[i].HistoricalPerformanceAvg = &v
+		}
+	}
+	return rows
+}
+
+// computeMapBreakdown agrège les stats par carte depuis les matchs escouade.
+// PerformanceAvg = moyenne des PerformanceScore non nil ; nil si aucun.
 func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRow {
-	type stats struct{ count, wins int }
+	type stats struct {
+		count, wins int
+		perfSum     float64
+		perfCount   int
+	}
 	m := map[string]*stats{}
 	for _, r := range matches {
 		key := r.MapUI
@@ -759,16 +808,100 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 		if r.Outcome == analysis.OutcomeWin {
 			m[key].wins++
 		}
+		if r.PerformanceScore != nil {
+			m[key].perfSum += *r.PerformanceScore
+			m[key].perfCount++
+		}
 	}
 	result := make([]domain.MapBreakdownRow, 0, len(m))
 	for mapUI, s := range m {
-		result = append(result, domain.MapBreakdownRow{
+		row := domain.MapBreakdownRow{
 			MapUI:      mapUI,
 			MatchCount: s.count,
 			WinRate:    round2(float64(s.wins) / float64(s.count)),
-		})
+		}
+		if s.perfCount > 0 {
+			avg := round2(s.perfSum / float64(s.perfCount))
+			row.PerformanceAvg = &avg
+		}
+		result = append(result, row)
 	}
 	return result
+}
+
+// computeHistoricalMapPerfByLabel calcule la moyenne de performance_score
+// par carte sur TOUT l'historique du joueur principal (canonicalRows non
+// filtrés). Clé = DefaultLabel (= MapUI côté SquadMatchRow). Carte ignorée
+// si aucun match avec score.
+func computeHistoricalMapPerfByLabel(rows []canonical.PlayerMatchRow) map[string]float64 {
+	type stats struct {
+		sum   float64
+		count int
+	}
+	m := map[string]*stats{}
+	for _, r := range rows {
+		if r.Summary.Map == nil {
+			continue
+		}
+		if r.Enrichment.PerformanceScore == nil {
+			continue
+		}
+		key := r.Summary.Map.DefaultLabel
+		if key == "" {
+			key = r.Summary.Map.ID
+		}
+		if key == "" {
+			continue
+		}
+		if _, ok := m[key]; !ok {
+			m[key] = &stats{}
+		}
+		m[key].sum += *r.Enrichment.PerformanceScore
+		m[key].count++
+	}
+	result := make(map[string]float64, len(m))
+	for k, s := range m {
+		if s.count > 0 {
+			result[k] = round2(s.sum / float64(s.count))
+		}
+	}
+	return result
+}
+
+// buildSquadMatchHistory construit la table historique pour teammates.11 :
+// une ligne par match unique, triée par StartTime DESC. Pas de cap serveur —
+// la pagination (20/page) est gérée côté client (TanStack Table).
+func buildSquadMatchHistory(matches []domain.SquadMatchRow) []domain.SquadMatchHistoryRow {
+	seen := make(map[string]struct{}, len(matches))
+	rows := make([]domain.SquadMatchHistoryRow, 0, len(matches))
+	for _, m := range matches {
+		if m.MatchID == "" {
+			continue
+		}
+		if _, dup := seen[m.MatchID]; dup {
+			continue
+		}
+		seen[m.MatchID] = struct{}{}
+		rows = append(rows, domain.SquadMatchHistoryRow{
+			MatchID:          m.MatchID,
+			StartTime:        m.StartTime.Format("2006-01-02T15:04:05Z"),
+			MapUI:            m.MapUI,
+			PlaylistName:     m.PlaylistName,
+			PairName:         m.PairName,
+			Outcome:          m.Outcome,
+			Kills:            m.Kills,
+			Deaths:           m.Deaths,
+			Assists:          m.Assists,
+			Accuracy:         m.Accuracy,
+			PerformanceScore: m.PerformanceScore,
+			TeamMMRAvg:       m.TeamMMR,
+			SessionLabel:     m.SessionLabel,
+		})
+	}
+	slices.SortFunc(rows, func(a, b domain.SquadMatchHistoryRow) int {
+		return cmp.Compare(b.StartTime, a.StartTime) // DESC
+	})
+	return rows
 }
 
 // buildMatchSeries construit la sÃƒÂ©rie temporelle des matchs pour un coÃƒÂ©quipier.
