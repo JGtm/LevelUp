@@ -133,18 +133,17 @@ func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSes
 }
 
 // ---------------------------------------------------------------------------
-// teammates.03 — Heatmap performance player × map (top 15)
+// teammates.03 — Heatmap performance player × map (toutes cartes jouées)
 // ---------------------------------------------------------------------------
-
-const heatmapTopMaps = 15
 
 // buildSquadMapHeatmap construit la matrice perf joueur × carte. Le main
 // player est la première ligne ; ses données viennent de allSquadRows
 // (PerformanceScore = perf du main). Pour chaque coéquipier, on charge ses
-// matchs canoniques et on filtre sur l'union des match_ids escouade.
+// matchs canoniques via squadLoader (résolution dynamique par gamertag) et
+// on filtre sur l'union des match_ids escouade.
 //
-// Si LoadPlayerMatches échoue pour un teammate, sa ligne reste vide (cells
-// nil) et un warn est loggé.
+// Si LoadFor échoue pour un teammate, sa ligne reste vide (cells nil) et
+// un warn est loggé.
 func (s *TeammatesService) buildSquadMapHeatmap(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -155,7 +154,8 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		return nil
 	}
 
-	// 1. Top 15 cartes par fréquence (toutes équipes confondues, dédup match_id).
+	// 1. Toutes les cartes jouées en escouade (dédup match_id), triées par
+	// fréquence décroissante puis ordre alphabétique.
 	type mapStats struct {
 		mapUI string
 		count int
@@ -186,22 +186,18 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		}
 		return all[i].mapUI < all[j].mapUI
 	})
-	topN := heatmapTopMaps
-	if len(all) < topN {
-		topN = len(all)
-	}
-	mapsTop := make([]string, topN)
-	mapSet := make(map[string]bool, topN)
-	for i := 0; i < topN; i++ {
-		mapsTop[i] = all[i].mapUI
-		mapSet[all[i].mapUI] = true
+	mapsTop := make([]string, len(all))
+	mapSet := make(map[string]bool, len(all))
+	for i, m := range all {
+		mapsTop[i] = m.mapUI
+		mapSet[m.mapUI] = true
 	}
 
 	// 2. Joueurs : moi en tête + coéquipiers sélectionnés (dans l'ordre).
 	players := append([]string{s.gamertag}, selectedGamertags...)
 
 	// 3. Cellules. Main player : agrège PerformanceScore depuis allSquadRows.
-	cells := make([]domain.SquadMapHeatmapCell, 0, len(players)*topN)
+	cells := make([]domain.SquadMapHeatmapCell, 0, len(players)*len(mapsTop))
 	type cellAgg struct {
 		sum    float64
 		count  int
@@ -251,8 +247,17 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		matchIDsAllowed = filtered
 	}
 
+	// squadLoader résout dynamiquement la PlayerDB par gamertag (vs
+	// playerMatchesRepo qui est BOUND au main player et ignore l'arg gamertag).
+	// Si squadLoader est nil (ex : tests legacy), on dégrade en cells vides.
 	for _, gt := range selectedGamertags {
-		mateRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		if s.squadLoader == nil {
+			for _, mapUI := range mapsTop {
+				cells = append(cells, domain.SquadMapHeatmapCell{Player: gt, MapUI: mapUI})
+			}
+			continue
+		}
+		mateRows, err := s.squadLoader.LoadFor(
 			ctx, s.titleSlug, gt, port.PlayerMatchFilters{},
 		)
 		if err != nil {
