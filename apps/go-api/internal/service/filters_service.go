@@ -6,7 +6,7 @@ package service
 
 import (
 	"context"
-	"sort"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -35,30 +35,49 @@ func (s *FiltersService) Resolve(
 ) (domain.FilterContextResolved, error) {
 	rows, err := s.repo.LoadMatchesForFilters(ctx)
 	if err != nil {
+		slog.ErrorContext(ctx, "load matches for filters", "err", err)
 		return domain.FilterContextResolved{}, err
 	}
-	return ResolveFiltersFromRows(rows, input), nil
+	resolved := ResolveFiltersFromRows(rows, input)
+	slog.DebugContext(ctx, "filters resolved",
+		"rows_in", resolved.Counts.TotalMatchesBeforeFilters,
+		"rows_out", resolved.Counts.TotalMatchesAfterFilters,
+		"match_context", input.MatchContext,
+		"filter_mode", input.FilterMode,
+	)
+	return resolved, nil
 }
 
 // ResolveFiltersFromRows est la fonction pure testable sans repo.
+// Utilise time.Now() pour les period presets ; pour la testabilité
+// précise, voir ResolveFiltersFromRowsAt.
+func ResolveFiltersFromRows(
+	rows []domain.FilterMatchRow,
+	input domain.FilterContextInput,
+) domain.FilterContextResolved {
+	return ResolveFiltersFromRowsAt(rows, input, time.Now())
+}
+
+// ResolveFiltersFromRowsAt est la fonction pure testable avec injection de l'heure
+// courante (pour les comptes de presets de période).
 //
 // Phase I plan catalogue : applique le filtre `match_context` (solo/squad/all)
 // avant tout autre traitement. C'est un filtre transversal qui restreint la
 // population de matchs selon le contexte de la page appelante.
-func ResolveFiltersFromRows(
+func ResolveFiltersFromRowsAt(
 	rows []domain.FilterMatchRow,
 	input domain.FilterContextInput,
+	now time.Time,
 ) domain.FilterContextResolved {
 	// Phase I : filtre solo/squad appliqué tôt pour réduire la population
 	// avant tous les calculs (sessions, cascade, etc.).
 	rows = applyMatchContextFilter(rows, input.MatchContext)
 
 	totalBefore := len(rows)
-	sessionOpts := buildSessionOptions(rows)
 	effective := normalizeInput(input)
 
 	if totalBefore == 0 {
-		return emptyResolved(effective, sessionOpts)
+		return emptyResolved(effective, buildSessionOptions(rows, effective.Cascade))
 	}
 
 	// Migre les valeurs stockées en anglais vers les noms FR (modes, cartes, playlists).
@@ -79,6 +98,14 @@ func ResolveFiltersFromRows(
 		}
 	}
 
+	// Sessions enrichies (count + count post-cascade) — calculées sur rows
+	// post-match_context pour rester indépendantes du filter_mode courant.
+	sessionOpts := buildSessionOptions(rows, effective.Cascade)
+
+	// Period presets — counts si on switchait en mode period sur ce preset
+	// (indépendants du filter_mode courant et du filtre sessions).
+	periodPresetCounts := buildPeriodPresetCounts(rows, effective.Cascade, now)
+
 	// 1. Filtre temporel
 	var temporal []domain.FilterMatchRow
 	if effective.FilterMode == "sessions" {
@@ -87,7 +114,7 @@ func ResolveFiltersFromRows(
 		temporal = applyPeriodFilter(rows, effective.Period)
 	}
 
-	// 2. Options disponibles (avant cascade)
+	// 2. Options disponibles (avant cascade) avec counts OR
 	available := buildAvailableOptions(temporal, effective.Cascade)
 
 	// 3. Cascade
@@ -101,6 +128,7 @@ func ResolveFiltersFromRows(
 			TotalMatchesBeforeFilters: totalBefore,
 			TotalMatchesAfterFilters:  len(filtered),
 		},
+		PeriodPresets: periodPresetCounts,
 	}
 }
 
@@ -161,77 +189,6 @@ func derefStr(s *string) string {
 		return ""
 	}
 	return *s
-}
-
-// ---------------------------------------------------------------------------
-// Session options
-// ---------------------------------------------------------------------------
-
-func buildSessionOptions(rows []domain.FilterMatchRow) domain.SessionOptions {
-	type aggEntry struct {
-		count    int
-		isSquad  bool
-		latestAt time.Time // heure de début du match le plus récent de la session
-	}
-	agg := make(map[string]aggEntry)
-	sessionID := make(map[string]string) // label → session_id
-
-	for _, r := range rows {
-		lbl := derefStr(r.SessionLabel)
-		if lbl == "" {
-			continue
-		}
-		e := agg[lbl]
-		e.count++
-		if r.IsWithFriends {
-			e.isSquad = true
-		}
-		if r.StartTime != nil && r.StartTime.After(e.latestAt) {
-			e.latestAt = *r.StartTime
-		}
-		agg[lbl] = e
-		if sid := derefStr(r.SessionID); sid != "" {
-			sessionID[lbl] = sid
-		}
-	}
-
-	labels := make([]string, 0, len(agg))
-	for lbl := range agg {
-		labels = append(labels, lbl)
-	}
-	// Tri par date réelle décroissante (la plus récente en tête).
-	// L'ancien tri lexicographique sur les labels DD/MM/YYYY était faux
-	// dès qu'on comparait des jours identiques de mois différents.
-	sort.Slice(labels, func(i, j int) bool {
-		return agg[labels[i]].latestAt.After(agg[labels[j]].latestAt)
-	})
-
-	var all []domain.SessionOption //nolint:prealloc
-	var soloLabels, squadLabels []string
-	for _, lbl := range labels {
-		e := agg[lbl]
-		sid := sessionID[lbl]
-		if sid == "" {
-			sid = lbl
-		}
-		opt := domain.SessionOption{
-			Label:      lbl,
-			SessionID:  sid,
-			MatchCount: e.count,
-			IsSquad:    e.isSquad,
-		}
-		all = append(all, opt)
-		if e.isSquad {
-			squadLabels = append(squadLabels, lbl)
-		} else {
-			soloLabels = append(soloLabels, lbl)
-		}
-	}
-	return domain.SessionOptions{
-		AllSessions: all,
-		SoloLabels:  soloLabels,
-		SquadLabels: squadLabels,
-	}
 }
 
 // ---------------------------------------------------------------------------
@@ -348,72 +305,6 @@ func filterBySet(rows []domain.FilterMatchRow, values []string, fn func(domain.F
 }
 
 // ---------------------------------------------------------------------------
-// Options disponibles
-// ---------------------------------------------------------------------------
-
-// rowExperienceLabel dérive le label d'expérience d'un FilterMatchRow.
-// Doit rester cohérent avec synthesisExperienceLabel (teammates_service.go).
-func rowExperienceLabel(r domain.FilterMatchRow) string {
-	if r.IsFirefight {
-		return "PVE"
-	}
-	if r.IsRanked {
-		return "PVP classé"
-	}
-	return "PVP non classé"
-}
-
-func buildAvailableOptions(rows []domain.FilterMatchRow, c domain.CascadeFilter) domain.AvailableFilterOptions {
-	// Experience types dynamiques : seulement ceux présents dans les données temporelles.
-	// Ordre canonique préservé pour l'affichage (experienceLabels).
-	existing := make(map[string]struct{}, 3)
-	for _, r := range rows {
-		existing[rowExperienceLabel(r)] = struct{}{}
-	}
-	expOpts := make([]domain.LabelValue, 0, len(experienceLabels))
-	for _, lbl := range experienceLabels {
-		if _, ok := existing[lbl]; ok {
-			expOpts = append(expOpts, domain.LabelValue{Label: lbl, Value: lbl})
-		}
-	}
-
-	rowsExp := applyExperienceFilter(rows, c.ExperienceTypes)
-	playlistOpts := uniqueLabelValues(rowsExp, playlistUI)
-
-	rowsPl := filterBySet(rowsExp, c.Playlists, playlistUI)
-	modeOpts := uniqueLabelValues(rowsPl, modeUI)
-
-	rowsMo := filterBySet(rowsPl, c.Modes, modeUI)
-	mapOpts := uniqueLabelValues(rowsMo, mapUI)
-
-	return domain.AvailableFilterOptions{
-		ExperienceTypes: expOpts,
-		Playlists:       playlistOpts,
-		Modes:           modeOpts,
-		Maps:            mapOpts,
-	}
-}
-
-func uniqueLabelValues(rows []domain.FilterMatchRow, fn func(domain.FilterMatchRow) string) []domain.LabelValue {
-	seen := make(map[string]struct{})
-	for _, r := range rows {
-		if v := fn(r); v != "" {
-			seen[v] = struct{}{}
-		}
-	}
-	vals := make([]string, 0, len(seen))
-	for v := range seen {
-		vals = append(vals, v)
-	}
-	sort.Strings(vals)
-	out := make([]domain.LabelValue, len(vals))
-	for i, v := range vals {
-		out[i] = domain.LabelValue{Label: v, Value: v}
-	}
-	return out
-}
-
-// ---------------------------------------------------------------------------
 // Helpers mineurs
 // ---------------------------------------------------------------------------
 
@@ -429,13 +320,18 @@ func normalizeInput(in domain.FilterContextInput) domain.FilterContextInput {
 func emptyResolved(effective domain.FilterContextInput, sess domain.SessionOptions) domain.FilterContextResolved {
 	expOpts := make([]domain.LabelValue, len(experienceLabels))
 	for i, lbl := range experienceLabels {
-		expOpts[i] = domain.LabelValue{Label: lbl, Value: lbl}
+		expOpts[i] = domain.LabelValue{Label: lbl, Value: lbl, Count: 0}
+	}
+	presets := make([]domain.PeriodPresetCount, 0, len(periodPresets))
+	for _, p := range periodPresets {
+		presets = append(presets, domain.PeriodPresetCount{PresetID: p.id, Days: p.days, Count: 0})
 	}
 	return domain.FilterContextResolved{
 		Effective:        effective,
 		AvailableOptions: domain.AvailableFilterOptions{ExperienceTypes: expOpts},
 		SessionOptions:   sess,
 		Counts:           domain.FilterCounts{},
+		PeriodPresets:    presets,
 	}
 }
 

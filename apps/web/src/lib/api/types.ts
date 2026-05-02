@@ -373,6 +373,11 @@ export interface FilterContextInput {
 export interface LabelValue {
   label: string
   value: string
+  /** Nombre de matchs si on AJOUTE cette option à la sélection courante de la
+   *  catégorie (sémantique OR). Pour une option déjà cochée : total post-cascade.
+   *  Pour une option non cochée : matchs après ajout. 0 = option à neutraliser
+   *  (grisée dans la cascade, masquée pour sessions/presets). */
+  count: number
   /** Optionnel : si présent, l'option est un enfant à grouper sous l'option racine
    *  dont la value est <parent>. Utilisé pour les <optgroup> hiérarchiques. */
   parent?: string
@@ -389,6 +394,10 @@ export interface SessionOption {
   label: string
   session_id: string
   match_count: number
+  /** Nombre de matchs de la session APRÈS application de la cascade et du
+   *  match_context (sans filtre période, puisque period et sessions sont
+   *  mutuellement exclusifs). 0 = session à masquer dans le dropdown. */
+  match_count_filtered: number
   is_squad: boolean
 }
 
@@ -403,11 +412,24 @@ export interface FilterCounts {
   total_matches_after_filters: number
 }
 
+export interface PeriodPresetCount {
+  /** "7d" | "30d" | "90d" | "all" — doit rester aligné avec PERIOD_PRESETS
+   *  côté frontend (apps/web/src/components/shell/_filter_pills/_hooks.ts). */
+  preset_id: string
+  /** 7, 30, 90, 0 (=all). Permet au frontend de croiser preset_id et days
+   *  sans recompter. */
+  days: number
+  /** Matchs si l'utilisateur switchait en mode period sur ce preset, avec la
+   *  cascade actuelle. 0 = preset à griser dans PeriodePill. */
+  count: number
+}
+
 export interface FilterContextResolved {
   effective: FilterContextInput
   available_options: AvailableOptions
   session_options: SessionOptions
   counts: FilterCounts
+  period_presets: PeriodPresetCount[]
 }
 
 // ---------------------------------------------------------------------------
