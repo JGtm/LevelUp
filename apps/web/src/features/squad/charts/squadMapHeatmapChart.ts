@@ -7,7 +7,7 @@
  * yAxis = joueurs (moi en haut). xAxis = top 15 cartes par fréquence.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { tokenCssVar } from '@/lib/accessibility'
+import { resolveToken } from '@/lib/accessibility'
 import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadMapHeatmap, SquadMapHeatmapCell } from '@/lib/api/types'
@@ -77,11 +77,11 @@ export function buildSquadMapHeatmapOption(
     visualMap: {
       type: 'piecewise',
       pieces: [
-        { lt: 30, color: tokenCssVar('perf-tier-5'), label: opts.pieceLabels.tier5 },
-        { gte: 30, lt: 45, color: tokenCssVar('perf-tier-4'), label: opts.pieceLabels.tier4 },
-        { gte: 45, lt: 60, color: tokenCssVar('perf-tier-3'), label: opts.pieceLabels.tier3 },
-        { gte: 60, lt: 75, color: tokenCssVar('perf-tier-2'), label: opts.pieceLabels.tier2 },
-        { gte: 75, color: tokenCssVar('perf-tier-1'), label: opts.pieceLabels.tier1 },
+        { lt: 30, color: resolveToken('perf-tier-5'), label: opts.pieceLabels.tier5 },
+        { gte: 30, lt: 45, color: resolveToken('perf-tier-4'), label: opts.pieceLabels.tier4 },
+        { gte: 45, lt: 60, color: resolveToken('perf-tier-3'), label: opts.pieceLabels.tier3 },
+        { gte: 60, lt: 75, color: resolveToken('perf-tier-2'), label: opts.pieceLabels.tier2 },
+        { gte: 75, color: resolveToken('perf-tier-1'), label: opts.pieceLabels.tier1 },
       ],
       orient: 'vertical',
       right: 4,

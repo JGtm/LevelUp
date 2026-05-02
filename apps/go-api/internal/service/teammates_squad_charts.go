@@ -18,8 +18,25 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
+
+// canonicalOutcomeToInt convertit canonical.Outcome (string) vers le code int
+// historique consomme par analysis.ParticipantSnap (2/3/1/4).
+func canonicalOutcomeToInt(o canonical.Outcome) int {
+	switch o {
+	case canonical.OutcomeWin:
+		return analysis.OutcomeWin
+	case canonical.OutcomeLoss:
+		return analysis.OutcomeLoss
+	case canonical.OutcomeTie:
+		return analysis.OutcomeTie
+	case canonical.OutcomeDNF:
+		return analysis.OutcomeDNF
+	}
+	return 0
+}
 
 // ---------------------------------------------------------------------------
 // teammates.04 — Squad timeline par session
@@ -379,7 +396,7 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 				k:       intPtrOrZero(r.Self.Kills),
 				d:       intPtrOrZero(r.Self.Deaths),
 				a:       intPtrOrZero(r.Self.Assists),
-				outcome: int(r.Self.Outcome),
+				outcome: canonicalOutcomeToInt(r.Self.Outcome),
 				present: true,
 			}
 			participants[r.Summary.MatchID][gt] = info
@@ -937,7 +954,7 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 			}
 			pt := domain.SquadPerformanceSeriesPoint{
 				MatchID:    r.Summary.MatchID,
-				StartTime:  r.Summary.StartTime.Format("2006-01-02T15:04:05Z"),
+				StartTime:  r.Summary.StartedAtUTC.Format("2006-01-02T15:04:05Z"),
 				MatchOrder: idx,
 				Kills:      intPtrOrZero(r.Self.Kills),
 				Deaths:     intPtrOrZero(r.Self.Deaths),

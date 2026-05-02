@@ -13,7 +13,7 @@
  * Tri canonique : match_count desc + yAxis inverse (carte la plus jouée en haut).
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { tokenCssVar } from '@/lib/accessibility'
+import { resolveToken } from '@/lib/accessibility'
 import { CHART_BG, axisBase, tooltipBase, legendBase } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
@@ -31,10 +31,10 @@ export interface WinRateVsHistoryBulletOpts {
 
 function sessionItemColor(row: MapBreakdownRow): string {
   const hist = row.historical_win_rate
-  if (hist === undefined) return tokenCssVar('divergent-neutral')
-  if (row.win_rate - hist > DIVERGENCE_THRESHOLD) return tokenCssVar('divergent-pos')
-  if (hist - row.win_rate > DIVERGENCE_THRESHOLD) return tokenCssVar('divergent-neg')
-  return tokenCssVar('divergent-neutral')
+  if (hist === undefined) return resolveToken('divergent-neutral')
+  if (row.win_rate - hist > DIVERGENCE_THRESHOLD) return resolveToken('divergent-pos')
+  if (hist - row.win_rate > DIVERGENCE_THRESHOLD) return resolveToken('divergent-neg')
+  return resolveToken('divergent-neutral')
 }
 
 function toPercent(v: number): number {
@@ -51,8 +51,8 @@ export function buildWinRateVsHistoryBulletOption(
   const { mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel } = opts
   const sorted = [...rows].sort((a, b) => b.match_count - a.match_count)
   const mapLabels = sorted.map((r) => mapLabelOf(r.map_ui))
-  const histColor = tokenCssVar('chart-series-1')
-  const negColor = tokenCssVar('divergent-neg')
+  const histColor = resolveToken('chart-series-1')
+  const negColor = resolveToken('divergent-neg')
 
   const histData = sorted.map((r) =>
     r.historical_win_rate !== undefined
