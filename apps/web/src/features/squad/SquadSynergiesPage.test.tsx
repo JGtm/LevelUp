@@ -36,6 +36,7 @@ function mockSquadContext(opts: {
     selectedRows: opts.selectedRows,
     confirmedGamertags: opts.confirmedGamertags,
     pageData: null,
+    playerSlug: 'test',
   })
 }
 

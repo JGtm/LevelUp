@@ -1,0 +1,191 @@
+/**
+ * squadPerformanceLineCharts.test.ts — teammates.16 (8 sous-charts).
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import {
+  buildHsPerfectOption,
+  buildKillsDeathsButterflyOption,
+  buildPerformanceLineOption,
+} from './squadPerformanceLineCharts'
+import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+
+vi.mock('@/lib/accessibility', () => ({
+  tokenCssVar: (token: string) => `color:${token}`,
+  resolveToken: (token: string) => `hex(${token})`,
+}))
+
+vi.mock('@/components/charts/_utils', async () => {
+  const actual = await vi.importActual<typeof import('@/components/charts/_utils')>(
+    '@/components/charts/_utils',
+  )
+  return { ...actual, seriesColor: (i: number) => `series-${i}` }
+})
+
+function pt(order: number, overrides: Partial<SquadPerformanceSeriesPoint> = {}): SquadPerformanceSeriesPoint {
+  return {
+    match_id: `m${order}`,
+    start_time: '2026-04-30T12:00:00Z',
+    match_order: order,
+    kills: 10,
+    deaths: 5,
+    assists: 3,
+    kda: 2,
+    accuracy: 0.5,
+    avg_life_seconds: 30,
+    performance_score: 60,
+    max_killing_spree: 4,
+    headshot_kills: 2,
+    perfect_kills: 1,
+    ...overrides,
+  }
+}
+
+const COLORS = { Me: '#aaa', F1: '#bbb' }
+const ORDER = ['Me', 'F1']
+
+beforeEach(() => { vi.clearAllMocks() })
+
+describe('buildPerformanceLineOption', () => {
+  it('vide → option minimale', () => {
+    const opt = buildPerformanceLineOption({}, { colorByPlayer: COLORS, metric: 'assists' })
+    expect(opt).toMatchObject({ backgroundColor: 'transparent' })
+  })
+
+  it('1 line par joueur sur la métrique demandée', () => {
+    const rows = {
+      Me: [pt(0, { assists: 3 }), pt(1, { assists: 5 })],
+      F1: [pt(0, { assists: 1 }), pt(1, { assists: 2 })],
+    }
+    const opt = buildPerformanceLineOption(rows, {
+      colorByPlayer: COLORS,
+      playerOrder: ORDER,
+      metric: 'assists',
+    })
+    const series = opt.series as Array<{ name: string; type: string; data: Array<number | null> }>
+    expect(series).toHaveLength(2)
+    expect(series.map((s) => s.name)).toEqual(['Me', 'F1'])
+    expect(series.every((s) => s.type === 'line')).toBe(true)
+    expect(series[0].data).toEqual([3, 5])
+    expect(series[1].data).toEqual([1, 2])
+  })
+
+  it('valeurs alignées sur match_order avec null pour les trous', () => {
+    const rows = {
+      Me: [pt(0, { kda: 1.5 }), pt(2, { kda: 3.0 })], // skip order=1
+      F1: [pt(0, { kda: 2 }), pt(1, { kda: 2.5 }), pt(2, { kda: 1 })],
+    }
+    const opt = buildPerformanceLineOption(rows, {
+      colorByPlayer: COLORS,
+      playerOrder: ORDER,
+      metric: 'kda',
+      decimals: 2,
+    })
+    const series = opt.series as Array<{ data: Array<number | null> }>
+    expect(series[0].data).toEqual([1.5, null, 3])
+    expect(series[1].data).toEqual([2, 2.5, 1])
+  })
+
+  it('scale + decimals appliqués (accuracy 0..1 → %)', () => {
+    const rows = { Me: [pt(0, { accuracy: 0.4567 })] }
+    const opt = buildPerformanceLineOption(rows, {
+      colorByPlayer: COLORS,
+      metric: 'accuracy',
+      decimals: 1,
+      unitSuffix: ' %',
+      scale: 100,
+    })
+    const series = opt.series as Array<{ data: Array<number | null> }>
+    expect(series[0].data[0]).toBe(45.7)
+  })
+
+  it('couleur du joueur appliquée (cohérence pill/combobox)', () => {
+    const rows = { Me: [pt(0)], F1: [pt(0)] }
+    const opt = buildPerformanceLineOption(rows, {
+      colorByPlayer: COLORS,
+      playerOrder: ORDER,
+      metric: 'assists',
+    })
+    const series = opt.series as Array<{ lineStyle: { color: string } }>
+    expect(series[0].lineStyle.color).toBe('#aaa')
+    expect(series[1].lineStyle.color).toBe('#bbb')
+  })
+})
+
+describe('buildKillsDeathsButterflyOption', () => {
+  it('2 séries par joueur (kills + deaths) ; deaths négatif', () => {
+    const rows = {
+      Me: [pt(0, { kills: 12, deaths: 4 }), pt(1, { kills: 8, deaths: 6 })],
+    }
+    const opt = buildKillsDeathsButterflyOption(rows, {
+      colorByPlayer: COLORS,
+      playerOrder: ['Me'],
+      killsLabel: 'Frags',
+      deathsLabel: 'Morts',
+    })
+    const series = opt.series as Array<{ name: string; type: string; data: Array<number | null> }>
+    expect(series).toHaveLength(2)
+    expect(series[0].name).toBe('Me — Frags')
+    expect(series[0].data).toEqual([12, 8])
+    expect(series[1].name).toBe('Me — Morts')
+    expect(series[1].data).toEqual([-4, -6]) // négatif
+  })
+
+  it('couleur deaths = couleur joueur avec opacity réduite', () => {
+    const rows = { Me: [pt(0)] }
+    const opt = buildKillsDeathsButterflyOption(rows, {
+      colorByPlayer: COLORS,
+      playerOrder: ['Me'],
+      killsLabel: 'Frags',
+      deathsLabel: 'Morts',
+    })
+    const series = opt.series as Array<{ itemStyle: { color: string; opacity?: number } }>
+    expect(series[0].itemStyle).toMatchObject({ color: '#aaa' })
+    expect(series[0].itemStyle.opacity).toBeUndefined()
+    expect(series[1].itemStyle).toMatchObject({ color: '#aaa', opacity: 0.45 })
+  })
+})
+
+describe('buildHsPerfectOption', () => {
+  it('2 séries par joueur (HS dashed/atténuée + Perfect emphasée avec area)', () => {
+    const rows = {
+      Me: [pt(0, { headshot_kills: 4, perfect_kills: 1 })],
+    }
+    const opt = buildHsPerfectOption(rows, {
+      colorByPlayer: COLORS,
+      playerOrder: ['Me'],
+      hsLabel: 'HS',
+      perfectLabel: 'Perfect',
+    })
+    const series = opt.series as Array<{
+      name: string
+      lineStyle: { width: number; type?: string }
+      areaStyle?: { color: string; opacity: number }
+      symbol: string
+    }>
+    expect(series).toHaveLength(2)
+    expect(series[0].name).toBe('Me — HS')
+    expect(series[0].lineStyle.width).toBe(1.5)
+    expect(series[0].lineStyle.type).toBe('dashed')
+    expect(series[0].areaStyle).toBeUndefined()
+
+    expect(series[1].name).toBe('Me — Perfect')
+    expect(series[1].lineStyle.width).toBe(3) // épaisseur supérieure → emphase
+    expect(series[1].areaStyle).toBeDefined() // areaStyle pour faire ressortir les pics
+    expect(series[1].symbol).toBe('diamond') // marker plus voyant
+  })
+
+  it('null pour valeurs manquantes (pas de fallback à 0)', () => {
+    const rows = {
+      Me: [pt(0, { headshot_kills: 3, perfect_kills: undefined })],
+    }
+    const opt = buildHsPerfectOption(rows, {
+      colorByPlayer: COLORS,
+      playerOrder: ['Me'],
+      hsLabel: 'HS',
+      perfectLabel: 'Perfect',
+    })
+    const series = opt.series as Array<{ data: Array<number | null> }>
+    expect(series[0].data).toEqual([3]) // HS
+    expect(series[1].data).toEqual([null]) // Perfect undefined → null
+  })
+})

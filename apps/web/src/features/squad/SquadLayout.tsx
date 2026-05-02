@@ -28,10 +28,11 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { AddFriendModal } from '@/features/friends/AddFriendFlow'
-import { getSeriesColors, tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar } from '@/lib/accessibility'
 import { getSquadText } from './i18n'
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
+import { getSquadTeammateColors } from './colors'
 import type { TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
@@ -48,7 +49,7 @@ import {
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const MAX_SELECTION = 3
-const CHART_COLORS = getSeriesColors(3, ['narrative-dominant', 'perf-tier-3', 'divergent-pos'])
+const CHART_COLORS = getSquadTeammateColors(MAX_SELECTION)
 
 function formatError(err: unknown): string {
   if (err == null) return 'Erreur inconnue'
@@ -233,7 +234,12 @@ export function SquadLayout() {
 
   return (
     <SquadContext.Provider
-      value={{ selectedRows, confirmedGamertags: confirmedGts, pageData: data ?? null }}
+      value={{
+        selectedRows,
+        confirmedGamertags: confirmedGts,
+        pageData: data ?? null,
+        playerSlug,
+      }}
     >
       {/* ─── Barre de filtres unifiée (sticky top-12, remplace NavL2/FilterOmnibar) ─── */}
       <div className="sticky top-0 z-30 border-b border-border" style={{ background: 'var(--background)' }}>

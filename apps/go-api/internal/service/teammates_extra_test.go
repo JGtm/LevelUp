@@ -430,6 +430,94 @@ func TestEnrichMapBreakdown_NoMatchLeaveNil(t *testing.T) {
 	}
 }
 
+// ---------- PerformanceAvg session + historique (teammates.13) ----------
+
+// TestComputeMapBreakdown_PerformanceAvg vérifie l'agrégation de PerformanceScore
+// par carte : moyenne des non-nil, nil si aucun score.
+func TestComputeMapBreakdown_PerformanceAvg(t *testing.T) {
+	p1, p2, p3 := 60.0, 80.0, 50.0
+	matches := []domain.SquadMatchRow{
+		{MatchID: "m1", MapUI: "Bazaar", Outcome: domain.OutcomeWin, PerformanceScore: &p1},
+		{MatchID: "m2", MapUI: "Bazaar", Outcome: domain.OutcomeWin, PerformanceScore: &p2},
+		{MatchID: "m3", MapUI: "Bazaar", Outcome: domain.OutcomeLoss, PerformanceScore: nil},
+		{MatchID: "m4", MapUI: "Recharge", Outcome: domain.OutcomeLoss, PerformanceScore: &p3},
+		{MatchID: "m5", MapUI: "Aquarius", Outcome: domain.OutcomeLoss, PerformanceScore: nil},
+	}
+	rows := computeMapBreakdown(matches)
+	byMap := map[string]domain.MapBreakdownRow{}
+	for _, r := range rows {
+		byMap[r.MapUI] = r
+	}
+	bazaar := byMap["Bazaar"]
+	if bazaar.PerformanceAvg == nil {
+		t.Fatal("Bazaar: expected PerformanceAvg, got nil")
+	}
+	if *bazaar.PerformanceAvg != 70.0 {
+		t.Errorf("Bazaar: expected PerformanceAvg=70 ((60+80)/2), got %f", *bazaar.PerformanceAvg)
+	}
+	recharge := byMap["Recharge"]
+	if recharge.PerformanceAvg == nil || *recharge.PerformanceAvg != 50.0 {
+		t.Errorf("Recharge: expected PerformanceAvg=50, got %v", recharge.PerformanceAvg)
+	}
+	aquarius := byMap["Aquarius"]
+	if aquarius.PerformanceAvg != nil {
+		t.Errorf("Aquarius: expected PerformanceAvg=nil (no scores), got %v", aquarius.PerformanceAvg)
+	}
+}
+
+// TestComputeHistoricalMapPerf_AveragesScores vérifie la moyenne par carte
+// depuis canonical.PlayerMatchRow.Enrichment.PerformanceScore. Carte ignorée
+// si aucun match n'a de score renseigné.
+func TestComputeHistoricalMapPerf_AveragesScores(t *testing.T) {
+	p1, p2, p3 := 70.0, 50.0, 90.0
+	rows := []canonical.PlayerMatchRow{
+		{
+			Summary:    canonical.MatchSummary{MatchID: "m1", Map: &canonical.AssetReference{Kind: "map", ID: "bazaar", DefaultLabel: "Bazaar"}},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p1},
+		},
+		{
+			Summary:    canonical.MatchSummary{MatchID: "m2", Map: &canonical.AssetReference{Kind: "map", ID: "bazaar", DefaultLabel: "Bazaar"}},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p2},
+		},
+		{
+			Summary:    canonical.MatchSummary{MatchID: "m3", Map: &canonical.AssetReference{Kind: "map", ID: "recharge", DefaultLabel: "Recharge"}},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p3},
+		},
+		// carte sans score : doit être ignorée.
+		{
+			Summary:    canonical.MatchSummary{MatchID: "m4", Map: &canonical.AssetReference{Kind: "map", ID: "aquarius", DefaultLabel: "Aquarius"}},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: nil},
+		},
+	}
+	hist := computeHistoricalMapPerfByLabel(rows)
+	if hist["Bazaar"] != 60.0 {
+		t.Errorf("Bazaar: expected 60 ((70+50)/2), got %f", hist["Bazaar"])
+	}
+	if hist["Recharge"] != 90.0 {
+		t.Errorf("Recharge: expected 90, got %f", hist["Recharge"])
+	}
+	if _, ok := hist["Aquarius"]; ok {
+		t.Errorf("Aquarius: expected absent (no score), got %f", hist["Aquarius"])
+	}
+}
+
+// TestEnrichMapBreakdown_HistoricalPerf_JoinsByMapUI vérifie que l'enrichment
+// historique perf utilise MapUI comme clé.
+func TestEnrichMapBreakdown_HistoricalPerf_JoinsByMapUI(t *testing.T) {
+	rows := []domain.MapBreakdownRow{
+		{MapUI: "Bazaar", MatchCount: 3, WinRate: 0.67},
+		{MapUI: "NewMap", MatchCount: 1, WinRate: 1.0},
+	}
+	historical := map[string]float64{"Bazaar": 65.5}
+	enriched := enrichMapBreakdownWithHistoricalPerf(rows, historical)
+	if enriched[0].HistoricalPerformanceAvg == nil || *enriched[0].HistoricalPerformanceAvg != 65.5 {
+		t.Errorf("Bazaar: expected HistoricalPerformanceAvg=65.5, got %v", enriched[0].HistoricalPerformanceAvg)
+	}
+	if enriched[1].HistoricalPerformanceAvg != nil {
+		t.Errorf("NewMap: expected HistoricalPerformanceAvg=nil, got %v", enriched[1].HistoricalPerformanceAvg)
+	}
+}
+
 // TestComputeHistoricalMapWR_UsesDefaultLabel vérifie que la clé est DefaultLabel
 // (= map_name EN depuis assetReference). Cohérent avec Q30 quand map_name_fr == map_name.
 func TestComputeHistoricalMapWR_UsesDefaultLabel(t *testing.T) {

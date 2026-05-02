@@ -1,0 +1,121 @@
+/**
+ * squadFirstEventsChart — teammates.17 : butterfly premier frag / première mort.
+ *
+ * Spec : .ai/charts_specs/teammates/17_first_events_butterfly.yaml
+ *
+ *   - X axis : bins 15 s (label = borne droite : "15s", "30s", ..., "1m00s", ...).
+ *   - Y axis : nombre de matchs ; symétrique autour de 0, labels en valeur ABSOLUE
+ *     (le signe est porté par la position haut/bas).
+ *   - 2 séries par joueur :
+ *       • Premier frag → bars POSITIVES, couleur joueur.
+ *       • Première mort → bars NÉGATIVES, couleur joueur opacity 0.45.
+ *   - Séparateurs verticaux pointillés entre chaque bin (markLine sur la 1ère série).
+ *   - Pas de légende — la pill+combobox de la page identifie chaque joueur.
+ */
+import type { EChartsCoreOption } from 'echarts/core'
+import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
+import type { SquadFirstEvents } from '@/lib/api/types'
+
+const SEPARATOR_COLOR = 'rgba(255, 255, 255, 0.18)'
+const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.55)'
+const DEATHS_OPACITY = 0.45
+
+export interface SquadFirstEventsOpts {
+  /** gamertag → couleur hex (cf. getSquadPlayerColors). */
+  colorByPlayer: Record<string, string>
+  /** i18n labels pour le tooltip et la légende (frag / death). */
+  fragLabel: string
+  deathLabel: string
+  /** i18n suffix tooltip ex: "matchs". */
+  matchesSuffix: string
+}
+
+export function buildSquadFirstEventsOption(
+  data: SquadFirstEvents | null | undefined,
+  opts: SquadFirstEventsOpts,
+): EChartsCoreOption {
+  if (!data || data.bin_labels.length === 0 || data.rows.length === 0) {
+    return { backgroundColor: CHART_BG }
+  }
+
+  const xLabels = data.bin_labels
+  const series: Array<Record<string, unknown>> = []
+
+  for (let pi = 0; pi < data.rows.length; pi += 1) {
+    const row = data.rows[pi]
+    const color = opts.colorByPlayer[row.player] ?? '#888'
+    const isFirst = pi === 0
+
+    // Frags positifs.
+    series.push({
+      name: `${row.player} — ${opts.fragLabel}`,
+      type: 'bar',
+      stack: `frag-${row.player}`,
+      barMaxWidth: 16,
+      itemStyle: { color },
+      data: row.kill_counts,
+      // markLine sur la 1ère série uniquement → séparateurs verticaux entre les bins.
+      ...(isFirst
+        ? {
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              label: { show: false },
+              lineStyle: { color: SEPARATOR_COLOR, width: 1, type: 'dotted' },
+              data: xLabels.slice(0, -1).map((_, i) => ({ xAxis: i + 0.5 })),
+            },
+          }
+        : {}),
+    })
+
+    // Morts négatives — couleur joueur opacity 0.45.
+    series.push({
+      name: `${row.player} — ${opts.deathLabel}`,
+      type: 'bar',
+      stack: `death-${row.player}`,
+      barMaxWidth: 16,
+      itemStyle: { color, opacity: DEATHS_OPACITY },
+      data: row.death_counts.map((v) => (v === 0 ? 0 : -v)),
+    })
+  }
+
+  return {
+    backgroundColor: CHART_BG,
+    grid: { top: 16, bottom: 36, left: 8, right: 24, containLabel: true },
+    tooltip: {
+      ...tooltipBase,
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: unknown) => {
+        const arr = Array.isArray(params) ? params : []
+        if (arr.length === 0) return ''
+        const cat = (arr[0] as { name?: string }).name ?? ''
+        const lines = arr
+          .map((p) => {
+            const point = p as { seriesName: string; value: unknown; color: string }
+            const v = typeof point.value === 'number' ? Math.abs(point.value) : 0
+            if (v === 0) return null
+            return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${point.seriesName}: ${v} ${opts.matchesSuffix}`
+          })
+          .filter(Boolean)
+        if (lines.length === 0) return ''
+        return `<strong>${cat}</strong><br/>${lines.join('<br/>')}`
+      },
+    },
+    legend: { show: false },
+    xAxis: {
+      ...axisBase,
+      type: 'category',
+      data: xLabels,
+      axisLabel: { ...axisBase.axisLabel, interval: 0 },
+    },
+    yAxis: {
+      ...axisBase,
+      type: 'value',
+      // Labels en valeur absolue (le signe est porté par la position haut/bas).
+      axisLabel: { ...axisBase.axisLabel, formatter: (v: number) => `${Math.abs(v)}` },
+      axisLine: { lineStyle: { color: ZERO_LINE_COLOR, width: 1.5 } },
+    },
+    series,
+  }
+}

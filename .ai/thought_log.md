@@ -50,7 +50,233 @@
 
 ---
 
-## [2026-05-02] docs — Ajout réassociation manuelle des médias dans changelog + READMEs
+## [2026-05-02] teammates.17 — Premier frag / première mort (butterfly chronologique, bins 15 s)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Backend Go** : nouveaux types `domain.SquadFirstEventsRow { Player, KillCounts, DeathCounts }` + `domain.SquadFirstEvents { BinSizeSeconds: 15, BinLabels, Rows }` ; champ `FirstEvents *SquadFirstEvents` sur `TeammatesPageResponse`. Builder `s.buildSquadFirstEvents` :
+  - Charge `repo.LoadImpactEvents(matchIDs)` sur les match_ids dédupliqués depuis `allSquadRows`.
+  - Pour chaque `(match_id, xuid)` ∈ escouade (main + teammates avec xuid résolu), calcule `MIN(time_ms)` pour `event_type='kill'` (= `first_kill_s`) et pour `event_type='death'` (= `first_death_s`).
+  - Bucket en bins de 15 s. `nBins = (max_sec / 15) + 1`. Compteurs par `(player, bin)` pour kills + deaths séparément.
+  - Helper `formatFirstEventsBinLabel` : `<60s → "Ns"`, `≥60s → "MmSSs"` (ex `"45s"`, `"1m00s"`, `"2m15s"`).
+  - Retourne `nil` si aucun event, aucun joueur résolu, ou tous les compteurs nuls.
+- **Frontend** :
+  - Miroir TS : `SquadFirstEventsRow` / `SquadFirstEvents` + `first_events?` sur `TeammatesPageResponse`.
+  - Builder ECharts `charts/squadFirstEventsChart.ts` :
+    - 2 séries par joueur (frag positif → couleur normale ; death négatif → couleur joueur **opacity 0.45**, cohérent avec teammates.14 / 16).
+    - `markLine` pointillé (`type: 'dotted'`, `rgba(255,255,255,0.18)`) sur la 1ère série, à `xAxis: i + 0.5` pour `i ∈ [0..n-1]` → séparateurs verticaux entre chaque bin (spec).
+    - `yAxis.axisLabel.formatter: (v) => Math.abs(v)` → labels en valeur **absolue** (le signe est porté par la position haut/bas).
+    - `xAxis.axisLine` blanc semi-transparent (`rgba(255,255,255,0.55)`) width 1.5 → axe zéro en gras.
+    - **Pas de légende** (la pill `compare-a` + le combobox identifient les joueurs sur toute la page).
+    - Tooltip multi-séries avec puces colorées + valeur absolue + suffix "matchs".
+    - 10 tests Vitest. Note : la conversion `0 → -0` qui apparaît avec `(v) => -v` est explicitement gardée à `0` via `(v) => v === 0 ? 0 : -v` pour éviter les surprises `Object.is(-0, 0)` côté tests.
+  - Wrapper `SquadFirstEventsChart.tsx` avec hauteur fixe 420 (cf. spec).
+  - i18n FR/EN : section `firstEvents` (titre + description + fragLabel + deathLabel + matchesSuffix).
+  - Câblage : carte rendue après `weaponKills` dans `SquadContributionsPage`, conditionnel `firstEvents.rows.length > 0`.
+
+**Tests** :
+- Vitest squad : 29 fichiers / **217/217** tests.
+- `tsc --noEmit` propre.
+- Go : `gofmt -l` propre, `go vet ./internal/domain/...` propre.
+
+## [2026-05-02] teammates.09 — Kills par arme (comparatif multi-joueurs, horizontal grouped + zebra)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Backend Go** : nouveau type `domain.SquadWeaponBar { WeaponID, Label, IsGrenadeMelee, KillsByPlayer map[gamertag]int, TotalSquad }` + `domain.SquadWeaponKills { Players, Bars }` ; champ `WeaponKills` ajouté à `TeammatesPageResponse`. Builder `s.buildSquadWeaponKills` dans `service/teammates_squad_charts.go` :
+  - Réutilise le `squadLoader.LoadWeaponKills()` (déjà câblé via DI universelle, capability gating intégré).
+  - Calcule l'INTERSECTION des match_ids (un match qui apparaît `len(teammates)` fois dans `allSquadRows`).
+  - Construit `xuidByPlayer` depuis `playerXUID` (main, param de `GetPage`) + `teammates[].XUID` (résolus déjà par `buildTeammateRowWithMatches`).
+  - **1 seul appel** `LoadWeaponKills({MatchIDs: shared, XUIDs: [...], IncludeGrenadeMelee: true})` — le repo agrège côté DuckDB par `(xuid, weapon_id)` et résout les labels via `metadata.weapon_labels`.
+  - Réindex `xuid → gamertag`, group_by `weapon_id`, calcule `total_squad`. Tri ASC (peu utilisées en haut, principales en bas — UX du spec).
+  - Retourne `nil` si `squadLoader == nil`, aucun match commun, aucun xuid résolu, ou rows vides.
+- **Frontend** :
+  - Miroir TS : `SquadWeaponBar` / `SquadWeaponKills` + `weapon_kills?` sur `TeammatesPageResponse`.
+  - Builder ECharts `charts/squadWeaponKillsChart.ts` :
+    - 1 série bar par joueur (orientation horizontale via `yAxis: 'category'`, `xAxis: 'value'`).
+    - Couleurs par joueur via `colorByPlayer` (`getSquadPlayerColors`).
+    - `xAxis: { show: false }` — les kills sont affichés en label à droite de chaque barre (`label.formatter`, masque les 0 par chaîne vide conformément au spec).
+    - `yAxis.splitArea` activé (alternance bandes claires/transparentes) → effet zebra réclamé par le spec pour suivre les lanes d'arme avec N joueurs.
+    - **Pas de légende** (la pill `compare-a` + le `GamertagCombobox` servent déjà de légende globale page, comme indiqué dans la spec).
+    - 11 tests Vitest (vide, alignement, fallback `0`, couleurs, fallback gris `#888`, xAxis caché, zebra, legend désactivée, formatter masquant 0).
+  - Wrapper `SquadWeaponKillsChart.tsx` avec hauteur dynamique `max(350, n × 38)` (cap 800).
+  - i18n FR/EN : section `weaponKills` (titre + description).
+  - Câblage : carte rendue après les charts performance dans `SquadContributionsPage`, conditionnel `weaponKills.bars.length > 0`.
+
+**Tests** :
+- Vitest squad : 28 fichiers / **207/207** tests.
+- `tsc --noEmit` propre.
+- Go : `gofmt -l` propre, `go vet ./internal/domain/...` propre.
+
+**Note** :
+- Pas de wiring DI supplémentaire requis : `s.squadLoader.LoadWeaponKills` était déjà disponible (utilisé par `SquadServiceV2`). Si la capability `match.detail.weapon_kills` est absente du titre, la section retourne `nil` → carte masquée gracieusement.
+
+## [2026-05-02] teammates.16 — Charts performance escouade (8 sous-charts par joueur, matchs partagés)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Spec étendue** à la demande utilisateur : 6 sous-charts du spec d'origine + 2 ajoutés = **8 sous-charts** : (1) Frags/Morts butterfly, (2) Assistances, (3) FDA/KDA, (4) Précision, (5) Durée de vie moyenne, (6) Performance, (7) **Folie meurtrière max** (ajout), (8) **Tirs à la tête + Frags parfaits** (ajout — perfect mis en valeur).
+- **Backend Go** : nouveau type `domain.SquadPerformanceSeriesPoint` (1 par match × joueur, métriques toutes optionnelles) + champ `PerformanceSeries map[gamertag][]SquadPerformanceSeriesPoint` sur `TeammatesPageResponse`. Builder `s.buildSquadPerformanceSeries` :
+  - Calcule l'INTERSECTION des matchs (un match qui apparaît `len(selectedGamertags)` fois dans `allSquadRows`).
+  - Tri chronologique ASC par `StartTime` puis attribution d'un `MatchOrder` 0..N-1 commun à tous les joueurs.
+  - Pour chaque joueur (main + teammates) : `LoadPlayerMatches(slug, gamertag)` → filter par shared match_ids → projeter `Kills/Deaths/Assists`, `KDA`, `Accuracy`, `AvgLifeSeconds`, `MaxKillingSpree`, `HeadshotKills`, `PerfectKills` (canonical.MatchParticipant fields) + `Enrichment.PerformanceScore`.
+  - Renvoie `nil` si aucun joueur n'a de série non vide.
+- **Frontend** : 3 builders ECharts dans `charts/squadPerformanceLineCharts.ts` :
+  1. `buildPerformanceLineOption(rows, {metric, decimals, scale, unitSuffix, colorByPlayer})` — 1 line par joueur sur une métrique simple. Aligne via `match_order` (null pour les trous, `connectNulls: true`). Supporte `scale` (ex. accuracy 0..1 → %).
+  2. `buildKillsDeathsButterflyOption(...)` — 2 bars par joueur : kills positifs (couleur normale) + deaths négatifs (couleur joueur, opacity 0.45). `stack: 'kills-Player'` / `stack: 'deaths-Player'` séparés pour permettre la coexistence de plusieurs joueurs dans le même chart.
+  3. `buildHsPerfectOption(...)` — sous-chart #8 spécial : HS = ligne **fine dashed (width 1.5, opacity 0.7)** ; Perfect kills = ligne **épaisse (width 3) + areaStyle opacity 0.18 + marker diamond size 8 + emphasis.scale 1.5** → frags parfaits visuellement dominants comme demandé.
+- **Wrapper** `SquadPerformanceCharts.tsx` : 8 `<ChartCard>` empilés avec leurs titres i18n. Reçoit `colorByPlayer` (de `getSquadPlayerColors`) + `playerOrder` (main puis teammates dans l'ordre du combobox). 1 `<Card>` parent dans `SquadContributionsPage`.
+- **i18n** : nouvelle section `SquadText.performanceCharts` (FR/EN) — title, description, 8 sub-titles, 4 series labels (kills/deaths/HS/perfect).
+
+**Tests** :
+- Vitest squad : 27 fichiers / **196/196** tests (9 nouveaux sur les 3 builders : ligne générique, butterfly, HS+Perfect).
+- `tsc --noEmit` propre.
+- Go : `gofmt -l` propre, `go vet ./internal/domain/...` propre.
+
+**Notes** :
+- Total `LoadPlayerMatches` par requête de page : 1 (main canonical) + N (teammates pour chaque builder qui en a besoin : heatmap 03, impact 07, perminute 14, radar 06, intensity 15 résolution xuid, perf series 16). Cumul ~5×N appels — ces résultats devraient être cachés par `playerMatchesRepo` (LRU) sinon ça devient coûteux. À surveiller en prod.
+- L'axe X est `#1 → #N` (index match_order), pas la date. Compromis : préserve l'alignement entre joueurs sur les matchs partagés. Si `N > 30`, intervalle automatique sur les ticks.
+
+**Prochaine étape** : valider visuellement (1) les 8 charts s'enchaînent bien sous l'impact scoreboard, (2) les couleurs joueur sont cohérentes pill+combobox, (3) frags parfaits dominent visuellement les HS dans le sous-chart #8.
+
+## [2026-05-02] teammates.06 + 15 — Radar synergie 6 axes (sans aire) + heatmap d'intensité (toggle Tous/joueur)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Backend Go** :
+  - Domain : `SquadSynergyRadarAxis/Series`, `SquadIntensityMatchRow/Option/Profile` ajoutés dans `domain/teammates.go` ; champs `SynergyRadar` + `IntensityProfile` sur `TeammatesPageResponse`.
+  - **teammates.06** (`buildSquadSynergyRadar`) : reuse `narrative.ComputeParticipationProfile` + `narrative.DefaultThresholds("")`. Calcule l'INTERSECTION des match_ids partagés (un match qui apparaît `len(selectedGamertags)` fois dans `allSquadRows` = présent pour tous les teammates). Pour chaque joueur (main + teammates) : `LoadPlayerMatches` → filtre sur shared match_ids → agrège raw values par axe :
+    - combat = `sum(Kills) + 0.5*HeadshotKills`
+    - support = `sum(Assists)`
+    - score = `sum(PersonalScore)` (fallback `Score`)
+    - impact = `sum(MaxKillingSpree)`
+    - survival = `sum(TimePlayed) / max(1, Deaths)` (longévité moyenne)
+    - objective = 0 (nécessite awards repo, hors MVP — la table inline `haloAwardToAxis` du service MatchView est inacessible sans wiring DI supplémentaire).
+  - **teammates.15** (`buildSquadIntensityProfile`) : charge `repo.LoadImpactEvents(matchIDs)`, calcule pour chaque match une durée approximée = `max(time_ms)` des kill events. 10 buckets (0-10%, …, 90-100%) calculés par `(time_ms × 10) / duration` puis normalisés par `max(bucket)` du match. Options du toggle : `"all"` + `mainGT` + chaque teammate (xuid résolu via `LoadPlayerMatches[0].Self.Identity.XUID`). Y label = `"<MapUI> — DD/MM"`. Renvoie `nil` si <3 matchs (intensityMinMatches), aucun event, ou aucun bucket non nul.
+
+- **Frontend** :
+  - Miroir TS : `SquadSynergyRadarSeries/Axis`, `SquadIntensityProfile/MatchRow/Option`.
+  - **teammates.06** : `charts/squadSynergyRadarChart.ts` + wrapper `SquadSynergyRadarChart.tsx`. Builder ECharts radar dédié avec `colorByPlayer: Record<gamertag, hex>` passé depuis la page (cohérent avec la pill `compare-a` + les 3 slots du combobox via `getSquadPlayerColors`). **PAS d'`areaStyle`** sur les data → lignes seules conformément à la spec `show_fill: false` (multi-profils superposés deviennent illisibles avec aire). Réutilise `ChartCard` via cast (payload non `ChartSeries<T>`). 6 tests Vitest.
+  - **teammates.15** : `charts/squadIntensityHeatmapChart.ts` + wrapper `SquadIntensityHeatmapChart.tsx`. Builder ECharts heatmap avec `visualMap` continu 5 stops `cyan #38C8C8 → jaune #FFFF00 → ambre #FFB300 → orange #FF5500 → rouge #FF1A00` (couleurs structurelles, pas de tokens). yAxis `inverse`. xAxis labels rotated -25°. Le wrapper gère un **toggle interne** (boutons segmentés en tête de la carte) qui sélectionne une option du profile et reflète les rows correspondantes. Hauteur dynamique `28×N + 120`. 6 tests Vitest.
+  - i18n FR/EN : 2 nouvelles sections `synergyRadar` (titre + 6 axis labels) + `intensity` (titre + toggle + zLabel + allLabel) dans `SquadText`.
+  - Câblage : 06 puis 15 dans `SquadContributionsPage` avant l'impact scoreboard. Le label `"all"` du backend est localisé front-side (`intensityProfileLocalized.options[0].label = t.intensity.allLabel`) car le backend ne connaît pas la locale.
+
+**Tests** :
+- Vitest squad : 26 fichiers / **187/187** tests.
+- `tsc --noEmit` propre.
+- Go : `gofmt -l` propre, `go vet ./internal/domain/...` propre. `go test ./internal/service/...` exige cgo+gcc → CI.
+
+**Notes de scope** :
+- Le builder du radar 06 fait 1 + N appels `LoadPlayerMatches` (main + teammates) ; le builder du heatmap 15 fait 1 `LoadImpactEvents(matchIDs)` + 1 + N `LoadPlayerMatches` (juste pour résoudre les xuids — première ligne suffit). Total : ~2-4 queries supplémentaires sur la page.
+- Pour l'axe `objective` du radar : laissé à 0 (placeholder) faute d'`awardsRepo` câblé dans `TeammatesService`. Une amélioration future serait d'ajouter `WithAwardsRepo()` à `TeammatesService` et d'utiliser `haloAwardToAxis` (déjà dans `match_view_radar.go`) pour avoir les 6 axes complets.
+
+**Prochaine étape** : valider visuellement (1) la cohérence des couleurs radar avec la pill+combobox (2) le fonctionnement du toggle Tous/joueur sur le heatmap.
+
+## [2026-05-02] teammates.14 — Stats par minute (Frags / Morts / Assists) + helper couleurs squad partagé
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Backend Go** : nouveau type `domain.SquadPerMinuteEntry` (player + kills/deaths/assists per_minute + match_count) ajouté dans `domain/teammates.go` + champ `PerMinuteStats` dans `TeammatesPageResponse`. Builder `s.buildSquadPerMinuteStats` dans `service/teammates_squad_charts.go` :
+  - Main player : agrège `allSquadRows` dédupliqué par `match_id` (sum Kills/Deaths/Assists/TimePlayedSecs).
+  - Coéquipiers : `LoadPlayerMatches(slug, gamertag)` puis filtre sur match_ids escouade, lit `r.Self.{Kills,Deaths,Assists,TimePlayed}` (pointeurs → `intPtrOrZero`).
+  - per-minute = sum_stat / (sum_secs / 60), arrondi à 2 décimales. Retourne `nil` si tous les joueurs ont 0 minutes (insufficient data).
+  - Câblé dans `TeammatesService.Get` après `buildSquadImpactMatrix`.
+- **Helper couleurs partagé** (`features/squad/colors.ts`) — réponse à la consigne « les joueurs ont des couleurs attribuées depuis le multiselect, le joueur actif a aussi sa couleur ; ces couleurs sont valides et utilisées sur toute la page » :
+  - `SQUAD_MAIN_PLAYER_TOKEN = 'compare-a'` (= la pill colorée à gauche du multiselect dans `SquadLayout`).
+  - `SQUAD_TEAMMATE_COLOR_TOKENS = ['narrative-dominant', 'perf-tier-3', 'divergent-pos']` (= ordre des slots dans `GamertagCombobox`).
+  - `getSquadPlayerColors(mainGT, teammateGTs)` retourne `Record<gamertag, hex>` mappant chaque joueur à sa couleur résolue par la palette active. `getSquadTeammateColors(n)` pour les charts qui ne veulent que les couleurs teammates.
+  - `SquadLayout.tsx` refactorisé : `CHART_COLORS = getSquadTeammateColors(MAX_SELECTION)` au lieu de la liste hardcodée → source unique. `SquadContributionsPage` utilise `getSquadPlayerColors(playerSlug, confirmedGamertags)` pour passer le mapping au chart.
+- **Frontend chart** (`charts/squadPerMinuteChart.ts` + `SquadPerMinuteChart.tsx`) :
+  - 3 catégories X (Frags/min, Morts/min, Assists/min), 1 série bar par joueur.
+  - Frags & Assists positifs (au-dessus de l'axe), Morts en valeur **négative** sous l'axe (cf. spec « morts NÉGATIVES, axe zéro blanc gras zerolinewidth=2 »).
+  - Couleur normale du joueur pour Frags/Assists, **opacity 0.45** pour Morts → conserve l'identité visuelle (alternative pragmatique au `_negative_color` Plotly mentionné dans le spec, qui appliquerait un mélange rouge dans la palette Okabe).
+  - Label sur barre = valeur **absolue** (formatter custom : pour `dataIndex===1` on retourne `Math.abs(value)`).
+  - axisLine xAxis : `width: 2, color: rgba(255,255,255,0.75)` → axe zéro blanc gras conforme spec.
+  - Pas de légende (le mapping joueur→couleur est dans la pill / combobox de la page, le chart ne le redonne pas).
+  - Tooltip custom multi-séries avec puces colorées + valeur absolue + suffixe " /min".
+- **i18n** : nouvelle section `SquadText.perMinute` (FR/EN) — title, description, 3 metric labels, suffix.
+- **Câblage** : carte rendue **en tête** de `SquadContributionsPage` (avant le radar), affichage conditionnel `perMinuteRows.length > 0`.
+
+**Tests** :
+- Vitest squad : 24 fichiers / **175/175** tests passent (8 nouveaux sur le builder + 5 sur le helper colors).
+- `tsc --noEmit` propre.
+- Go : `gofmt -l` propre, `go vet ./internal/domain/...` propre. `go test ./internal/service/...` requiert cgo+gcc → CI.
+
+**Prochaine étape** : valider visuellement sur la page Contributions que les couleurs des barres correspondent EXACTEMENT à la pill `compare-a` (main, vert clair) et aux 3 slots du combobox (narrative-dominant / perf-tier-3 / divergent-pos).
+
+## [2026-05-02] teammates.03 + 04 + 07 — Heatmap player×map, squad timeline par session, impact scoreboard (TanStack)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Backend Go (apps/go-api)** :
+  - 6 nouveaux types domain dans `domain/teammates.go` : `SquadSessionPoint`, `SquadMapHeatmap[Cell]`, `SquadImpactBadgeCount/PlayerSummary/Cell/MatchHeader/Matrix`. Ajout des champs `SessionTimeline`, `MapHeatmap`, `ImpactMatrix` à `TeammatesPageResponse`.
+  - Nouveau fichier `service/teammates_squad_charts.go` avec 3 builders :
+    1. `buildSquadSessionTimeline(allSquadRows)` : groupe par `SessionLabel`, dédup par `match_id`, calcule `squad_perf` (avg PerformanceScore), `wins/losses`, `win_rate`, `team_mmr_avg`. Tri chronologique par `firstSeenStartTime` ASC.
+    2. `s.buildSquadMapHeatmap(...)` : top 15 cartes par fréquence (dédup match_id), 1 ligne par joueur. Main player : agrégation depuis `allSquadRows.PerformanceScore`. Coéquipiers : appel `LoadPlayerMatches(slug, gamertag)` par teammate (1-3 queries supplémentaires) + filtre sur match_ids escouade. Cellule = `(player, map_ui, perf_avg, match_count)`.
+    3. `s.buildSquadImpactMatrix(...)` : charge events highlight via `repo.LoadImpactEvents(matchIDs)`, charge participants via `LoadPlayerMatches` pour main + teammates, applique `analysis.ComputeMatchImpactFull` (réutilisation des 8 badges déjà implémentés). Filtre matchs sans badge (impact_match_set), score pondéré par `impactScoreWeights` (mapping spec : clutch=+2, first_blood=+2, last_casualty=-2, silent_hero=+1.5, false_brother=-1.5, last_group_kill/first_group_death=-1, top_killer=+1). Joueurs triés par score DESC.
+  - Tests `teammates_squad_charts_test.go` : 4 cas (group/aggregate, no_session bucket, perf_nil → 0, weights coverage). `gofmt` propre, `go vet ./internal/domain/...` OK.
+
+- **Frontend (apps/web)** :
+  - Miroir TS dans `lib/api/types.ts` : `SquadSessionPoint`, `SquadMapHeatmap[Cell]`, `SquadImpact*` + 3 champs ajoutés à `TeammatesPageResponse`.
+  - **teammates.04** : `charts/squadSessionTimelineChart.ts` + wrapper `SquadSessionTimelineChart.tsx`. Bars perf colorées par tier (`perf-tier-1..5`) + line winrate (sur même axe Y) + line MMR (axe Y2 conditionnel, dotted). Tooltip `trigger='axis'`. 6 tests Vitest.
+  - **teammates.03** : `charts/squadMapHeatmapChart.ts` + wrapper `SquadMapHeatmapChart.tsx`. ECharts heatmap avec `visualMap.piecewise` (5 paliers `perf-tier-1..5` sur seuils 75/60/45/30). yAxis `inverse` (moi en haut). xAxis labels rotated -35°. Hauteur dynamique `60×N + 160`. 6 tests Vitest.
+  - **teammates.07** : `SquadImpactScoreboard.tsx` avec **TanStack Table** (suite à demande utilisateur — pas un chart ECharts). Colonnes dynamiques : Player + 1 par match (header coloré selon outcome main : win/loss/tie) + 8 colonnes agrégat (emojis ⚡🎯💀🐌🪦🛡️🗡️💥) + Score + Rang. Cellule joueur×match = emojis empilés 2/ligne. Couleur best/worst par colonne agrégat (inversé pour `last_casualty/last_group_kill/first_group_death/false_brother`). Badges ranking : 🏆 Champion (rank 1), 🍌 Maillon faible (rank N, score<0), 📉 Passager clandestin (rank N, score≥0). 5 tests Vitest.
+  - i18n FR/EN : 3 nouvelles sections `timeline`, `heatmap`, `impact` dans `SquadText` (8 badge names + 5 piece labels + 3 ranking labels + tous les axes/légendes).
+  - Câblage : 03 + 04 dans `SquadSynergiesPage` (après les autres charts map). 07 dans `SquadContributionsPage` (avant l'historique 11). Affichage conditionnel sur présence des données (`mapHeatmap.players.length > 0`, `sessionTimeline.length > 0`, `impactMatrix.matches.length > 0`).
+
+**Tests** :
+- Vitest squad : 22 fichiers / 160 tests passent.
+- `tsc --noEmit` propre.
+- `gofmt -l` + `go vet ./internal/domain/...` propres. `go test ./internal/service/...` exige cgo+gcc indisponibles localement (binding DuckDB) → tournera en CI.
+
+**Prochaine étape** : vérifier visuellement les 3 nouveaux composants sur la page squad. Note de complexité : `buildSquadMapHeatmap` et `buildSquadImpactMatrix` font 1-3 appels `LoadPlayerMatches` supplémentaires + 1 `LoadImpactEvents` ; surveiller la latence si l'escouade contient le max (3 teammates × ~500 matchs).
+
+## [2026-05-02] teammates.11 — Ajout du tableau historique des matchs partagés (TanStack Table, onglet Contributions)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Périmètre vs spec** : la spec mentionne « 250 derniers matchs » (head-cap serveur). Sur instruction utilisateur, la limite serveur est supprimée — on liste **tous les matchs retournés par le scope filtré** (cascade, période, sessions escouade, sélection coéquipiers). La pagination de 20/page est gérée côté client via TanStack Table.
+- **Dépendance ajoutée** : `@tanstack/react-table@^8.21.3` (peer-deps `--legacy-peer-deps` car la repo utilise TS 6.x avec un `openapi-typescript@7` qui exige `^5.x` — pattern déjà imposé par les autres deps). Aucune autre table TanStack n'existait dans le repo.
+- **Backend Go** :
+  - Nouveau type `domain.SquadMatchHistoryRow` (`apps/go-api/internal/domain/teammates.go`) : `match_id`, `start_time` (ISO 8601), `map_ui`, `playlist_name`, `pair_name`, `outcome`, `kills/deaths/assists`, `accuracy?`, `performance_score?`, `team_mmr_avg`, `session_label?`. Volontairement plus simple que la spec Plotly (pas de score X-Y / enemy_mmr / win_rate_hist par playlist — données pas exposées par la pipeline `SquadMatchRow`).
+  - Champ `MatchHistory []SquadMatchHistoryRow` dans `TeammatesPageResponse`.
+  - Builder `buildSquadMatchHistory(allSquadRows)` : déduplication par `match_id`, tri `StartTime` DESC via `slices.SortFunc + cmp.Compare`.
+- **TS contract** : `SquadMatchHistoryRow` + `match_history?` dans `TeammatesPageResponse` (`apps/web/src/lib/api/types.ts`).
+- **Composant** `SquadMatchHistoryTable.tsx` (TanStack Table v8) : 10 colonnes (Date, Carte, Playlist, Mode, Résultat, K/D/A, Précision, Perf, MMR équipe, Session). Pagination client `pageSize: 20` avec boutons prev/next + indicateur « Page X / Y » + total matchs ; pagination masquée si `rows.length <= 20`. Outcome coloré via `getOutcomeColor`. Clic sur une ligne → `/players/$playerSlug/matches/$matchId`. Labels `map_ui` + `playlist_name` résolus via `useFieldMappings()` (assets multi-titres).
+- **Câblage** : rendu dans `SquadContributionsPage` après le radar (cf. spec « Onglet Contributions — Historique »). Affichage conditionnel sur `matchHistory.length > 0`. `playerSlug` propagé via `SquadContext` (extension du context au lieu d'un appel `useParams` direct dans le composant — évite un crash en test sans RouterProvider).
+- **i18n** : nouvelle section `SquadText.history` (FR/EN) — title, description, 10 entêtes, 4 outcome labels, prev/next/pageOf/totalRows.
+
+**Tests** :
+- Front : 8 tests Vitest sur le composant table (rendu colonnes, formatage valeurs, outcome label, valeurs nulles, pagination ≤20 / >20, navigation au clic, page 1 vs 2). Mocks `useFieldMappings` (assets) + `useNavigate` via `vi.mock('@tanstack/react-router')`. Tests existants `SquadContributionsPage` + `SquadSynergiesPage` mis à jour (mock context inclut `playerSlug`). Suite squad complète : 63/63 OK. `tsc --noEmit` propre.
+- Go : `gofmt -l` propre, `go vet ./internal/domain/...` propre. Le service entier exige cgo+gcc indisponibles localement (DuckDB binding) → tournera en CI.
+
+**Prochaine étape** : vérifier visuellement sur `/players/$playerSlug/squad/contributions` — pagination, formatage des dates en `fr-FR`, navigation au clic vers la page match.
+
+## [2026-05-02] teammates.13 — Ajout du chart « Performance par carte — Session vs Historique » (onglet Synergies)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Backend Go** : extension de `domain.MapBreakdownRow` (`apps/go-api/internal/domain/teammates.go`) avec deux champs optionnels : `PerformanceAvg *float64` (moyenne `PerformanceScore` sur les matchs escouade filtrés) + `HistoricalPerformanceAvg *float64` (moyenne perf sur tout l'historique du joueur principal pour cette carte). `computeMapBreakdown` enrichi pour agréger `PerformanceScore` non-nil ; nouveau helper `computeHistoricalMapPerfByLabel` symétrique de `computeHistoricalMapWRByLabel` (utilise `r.Enrichment.PerformanceScore`). Câblage dans `TeammatesService.Get` après `enrichMapBreakdownWithHistory`.
+- **TS contract** : `MapBreakdownRow` (`apps/web/src/lib/api/types.ts`) gagne `performance_avg?` et `historical_performance_avg?`.
+- **Chart ECharts** (spec `teammates.13`, `.ai/charts_specs/teammates/13_map_perf_vs_history.yaml`) : 2 séries grouped-bar (pas overlay — `barmode='group'` Plotly → 2 series ECharts côte à côte). Historique = gris neutre `rgba(120,120,120,0.45)` (référence) ; Session = couleur par palier perf (`perf-tier-1..5` mappé sur seuils 75/60/45/30 — identiques `SCORE_THRESHOLDS` Python). Jointure inner sur `performance_avg` ET `historical_performance_avg` non nuls. Tri perf session ASC + cap à 20 cartes (cf. `head_limit: 20` du spec). yAxis `inverse: true` → worst-first en haut. `markLine` pointillé à `xAxis: 0` (cosmétique, fidèle au spec).
+- **i18n** : 3 nouvelles clés dans `SquadText` — `mapPerfVsHistoryTitle`, `mapPerfVsHistorySession`, `mapPerfVsHistoryHistory` (FR/EN).
+- **Câblage page** : `SquadSynergiesPage` rend `<MapPerfVsHistoryChart />` après `<WinRateVsHistoryBulletChart />`. Affichage conditionnel sur `mapBreakdown.some(perf_avg && hist_perf_avg)` — masqué si aucune carte commune n'a les deux scores. Données partagées avec les autres charts via `useSquadContext().pageData.map_breakdown` → réagit aux mêmes filtres (cascade, période, sessions escouade, sélection coéquipiers).
+
+**Tests** :
+- Go : 3 nouveaux tests dans `teammates_extra_test.go` — `TestComputeMapBreakdown_PerformanceAvg`, `TestComputeHistoricalMapPerf_AveragesScores`, `TestEnrichMapBreakdown_HistoricalPerf_JoinsByMapUI`. `gofmt -l` propre. `go vet ./internal/domain/...` propre. Le service complet exige cgo+gcc indisponibles localement (binding DuckDB) → exécutera en CI.
+- Front : 16 nouveaux tests Vitest dans `mapPerfVsHistoryChart.test.ts` (jointure inner, tri ASC+cap20, 5 paliers, gris historique, arrondi, markLine, mapLabelOf). Suite Vitest squad complète : 51/51 OK. `tsc --noEmit` propre.
+
+**Prochaine étape** : vérifier visuellement sur `/players/$playerSlug/squad/synergies` que le chart s'affiche après le bullet, avec les couleurs paliers correctes selon la perf session.
+
+## [2026-05-02] teammates.02 — Ajout du bullet chart « Winrate session vs historique » (onglet Synergies)
 
 **Statut** : Complété
 

@@ -1402,6 +1402,10 @@ export interface MapBreakdownRow {
   match_count: number
   win_rate: number
   historical_win_rate?: number
+  /** Moyenne du performance_score sur les matchs escouade filtrés (session). Nil si aucun score. */
+  performance_avg?: number
+  /** Moyenne du performance_score sur l'historique complet du joueur principal pour cette carte. */
+  historical_performance_avg?: number
 }
 
 export interface SquadMatchSeriesPoint {
@@ -1411,6 +1415,170 @@ export interface SquadMatchSeriesPoint {
   performance_score: number | null
   team_mmr_avg: number
   session_label: string | null
+}
+
+/** Une ligne (joueur) du butterfly first-events teammates.17. */
+export interface SquadFirstEventsRow {
+  player: string
+  kill_counts: number[]
+  death_counts: number[]
+}
+
+/** Données du chart teammates.17 — bins 15 s par défaut. */
+export interface SquadFirstEvents {
+  bin_size_seconds: number
+  bin_labels: string[]
+  rows: SquadFirstEventsRow[]
+}
+
+/** Une ligne du chart kills par arme teammates.09. */
+export interface SquadWeaponBar {
+  weapon_id: number
+  label: string
+  is_grenade_melee?: boolean
+  /** gamertag → kills (joueurs absents = 0). */
+  kills_by_player: Record<string, number>
+  total_squad: number
+}
+
+/** Données du chart teammates.09 — players ordonnés (main puis teammates),
+ *  bars triées par TotalSquad ASC (peu utilisées en haut). */
+export interface SquadWeaponKills {
+  players: string[]
+  bars: SquadWeaponBar[]
+}
+
+/** Point d'une série performance (1 par match × joueur) pour teammates.16. */
+export interface SquadPerformanceSeriesPoint {
+  match_id: string
+  start_time: string
+  match_order: number
+  kills: number
+  deaths: number
+  assists: number
+  kda?: number
+  accuracy?: number
+  avg_life_seconds?: number
+  performance_score?: number
+  max_killing_spree?: number
+  headshot_kills?: number
+  perfect_kills?: number
+}
+
+/** Un axe du radar synergie teammates.06 (value normalisé 0..100, raw debug). */
+export interface SquadSynergyRadarAxis {
+  axis: string
+  value: number
+  raw: number
+}
+
+/** Profil radar (1 par joueur, sur les matchs partagés). */
+export interface SquadSynergyRadarSeries {
+  player: string
+  axes: SquadSynergyRadarAxis[]
+  mode_family?: string
+}
+
+/** Ligne du heatmap d'intensité teammates.15. Phases est une matrice 1×10. */
+export interface SquadIntensityMatchRow {
+  match_id: string
+  label: string
+  phases: number[]
+}
+
+export interface SquadIntensityOption {
+  key: string
+  label: string
+}
+
+export interface SquadIntensityProfile {
+  options: SquadIntensityOption[]
+  rows: Record<string, SquadIntensityMatchRow[]>
+}
+
+/** Agrégat par joueur pour le chart per-minute teammates.14. */
+export interface SquadPerMinuteEntry {
+  player: string
+  kills_per_minute: number
+  deaths_per_minute: number
+  assists_per_minute: number
+  match_count: number
+}
+
+/** Point agrégé par session pour le chart timeline teammates.04. */
+export interface SquadSessionPoint {
+  session_label: string
+  squad_perf: number
+  match_count: number
+  wins: number
+  losses: number
+  win_rate?: number
+  team_mmr_avg?: number
+}
+
+/** Cellule (joueur, carte, perf_avg) du heatmap teammates.03. */
+export interface SquadMapHeatmapCell {
+  player: string
+  map_ui: string
+  perf_avg?: number
+  match_count: number
+}
+
+export interface SquadMapHeatmap {
+  players: string[]
+  maps_topn: string[]
+  cells: SquadMapHeatmapCell[]
+}
+
+export interface SquadImpactBadgeCount {
+  badge_key: string
+  count: number
+}
+
+export interface SquadImpactPlayerSummary {
+  player: string
+  counts: SquadImpactBadgeCount[]
+  score: number
+}
+
+export interface SquadImpactMatchHeader {
+  match_id: string
+  outcome: number
+}
+
+export interface SquadImpactCell {
+  player: string
+  match_id: string
+  badge_keys: string[]
+}
+
+/** Données du scoreboard impact teammates.07. */
+export interface SquadImpactMatrix {
+  matches: SquadImpactMatchHeader[]
+  players: SquadImpactPlayerSummary[]
+  cells: SquadImpactCell[]
+  badge_ord: string[]
+}
+
+/**
+ * Ligne du tableau historique escouade (teammates.11). Une ligne par match
+ * unique sur le scope filtré, triée serveur-side par start_time DESC.
+ * Pagination assurée côté client (TanStack Table, 20/page).
+ */
+export interface SquadMatchHistoryRow {
+  match_id: string
+  start_time: string
+  map_ui: string
+  playlist_name?: string
+  pair_name?: string
+  outcome: number
+  kills: number
+  deaths: number
+  assists: number
+  accuracy?: number
+  performance_score?: number
+  team_mmr_avg: number
+  session_label?: string | null
 }
 
 export interface TeammatesPageResponse {
@@ -1423,6 +1591,16 @@ export interface TeammatesPageResponse {
   timeseries?: SquadTimeseriesPoint[]
   map_breakdown?: MapBreakdownRow[]
   match_series?: Record<string, SquadMatchSeriesPoint[]>
+  match_history?: SquadMatchHistoryRow[]
+  session_timeline?: SquadSessionPoint[]
+  map_heatmap?: SquadMapHeatmap
+  impact_matrix?: SquadImpactMatrix
+  per_minute_stats?: SquadPerMinuteEntry[]
+  synergy_radar?: SquadSynergyRadarSeries[]
+  intensity_profile?: SquadIntensityProfile
+  performance_series?: Record<string, SquadPerformanceSeriesPoint[]>
+  weapon_kills?: SquadWeaponKills
+  first_events?: SquadFirstEvents
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */

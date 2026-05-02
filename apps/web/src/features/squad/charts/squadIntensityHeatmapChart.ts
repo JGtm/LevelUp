@@ -1,0 +1,99 @@
+/**
+ * squadIntensityHeatmapChart — teammates.15 : heatmap d'intensité kills par phase.
+ *
+ * Spec : .ai/charts_specs/teammates/15_squad_intensity_heatmap.yaml
+ *
+ *   - Y axis : matchs (label = "Carte — date").
+ *   - X axis : 10 phases (0-10%, ..., 90-100%).
+ *   - Z value : densité de kills normalisée 0..1 par match.
+ *   - visualMap continu cyan→jaune→ambre→orange→rouge (5 stops).
+ *   - Toggle (cf. wrapper) : "all" ou un joueur spécifique.
+ */
+import type { EChartsCoreOption } from 'echarts/core'
+import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
+import type { SquadIntensityMatchRow } from '@/lib/api/types'
+
+const PHASE_LABELS = [
+  '0-10%', '10-20%', '20-30%', '30-40%', '40-50%',
+  '50-60%', '60-70%', '70-80%', '80-90%', '90-100%',
+]
+
+const COLOR_STOPS = [
+  { color: '#38C8C8' }, // cyan
+  { color: '#FFFF00' }, // jaune
+  { color: '#FFB300' }, // ambre
+  { color: '#FF5500' }, // orange
+  { color: '#FF1A00' }, // rouge
+]
+
+export interface SquadIntensityOpts {
+  /** label tooltip pour la valeur (i18n caller, ex: "kills"). */
+  zLabel: string
+}
+
+export function buildSquadIntensityHeatmapOption(
+  rows: SquadIntensityMatchRow[],
+  opts: SquadIntensityOpts,
+): EChartsCoreOption {
+  if (rows.length === 0) return { backgroundColor: CHART_BG }
+
+  const yLabels = rows.map((r) => r.label)
+  const data: Array<[number, number, number]> = []
+  for (let yi = 0; yi < rows.length; yi += 1) {
+    const phases = rows[yi].phases ?? []
+    for (let xi = 0; xi < PHASE_LABELS.length; xi += 1) {
+      const v = phases[xi] ?? 0
+      data.push([xi, yi, Number(v.toFixed(2))])
+    }
+  }
+
+  return {
+    backgroundColor: CHART_BG,
+    grid: { top: 16, bottom: 60, left: 8, right: 60, containLabel: true },
+    tooltip: {
+      ...tooltipBase,
+      trigger: 'item',
+      formatter: (p: unknown) => {
+        const point = p as { data?: [number, number, number] }
+        const d = point?.data
+        if (!d) return ''
+        const [xi, yi, v] = d
+        return `${yLabels[yi]}<br/>${PHASE_LABELS[xi]}<br/>${opts.zLabel}: <b>${(v * 100).toFixed(0)}%</b>`
+      },
+    },
+    xAxis: {
+      ...axisBase,
+      type: 'category',
+      data: PHASE_LABELS,
+      axisLabel: { ...axisBase.axisLabel, rotate: -25, interval: 0 },
+    },
+    yAxis: {
+      ...axisBase,
+      type: 'category',
+      data: yLabels,
+      inverse: true,
+    },
+    visualMap: {
+      type: 'continuous',
+      min: 0,
+      max: 1,
+      calculable: false,
+      orient: 'vertical',
+      right: 4,
+      top: 'middle',
+      inRange: { color: COLOR_STOPS.map((c) => c.color) },
+      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+      formatter: (v: number) => `${(v * 100).toFixed(0)}%`,
+    },
+    series: [
+      {
+        type: 'heatmap',
+        data,
+        label: { show: false },
+        emphasis: { itemStyle: { borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1 } },
+      },
+    ],
+  }
+}
+
+export const SQUAD_INTENSITY_PHASE_LABELS = PHASE_LABELS
