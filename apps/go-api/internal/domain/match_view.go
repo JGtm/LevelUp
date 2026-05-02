@@ -226,6 +226,17 @@ type MatchKDTimelinePoint struct {
 	Deaths      int `json:"deaths"`
 }
 
+// MatchKillerVictimPair : agrégat killer→victim pour un match (chart
+// match_view.18 — "Graphe des antagonistes"). Une entrée par paire unique
+// (killer_xuid, victim_xuid) ; KillCount = somme des kills sur ce match.
+type MatchKillerVictimPair struct {
+	KillerXUID     string `json:"killer_xuid"`
+	KillerGamertag string `json:"killer_gamertag"`
+	VictimXUID     string `json:"victim_xuid"`
+	VictimGamertag string `json:"victim_gamertag"`
+	KillCount      int    `json:"kill_count"`
+}
+
 // MatchCombatTab : contenu de l'onglet Combat.
 type MatchCombatTab struct {
 	WeaponKills     []MatchWeaponKill      `json:"weapon_kills"`
@@ -234,6 +245,10 @@ type MatchCombatTab struct {
 	ImpactBadges    []MatchImpactBadge     `json:"impact_badges"`
 	KDTimeline      []MatchKDTimelinePoint `json:"kd_timeline"`
 	NemesisDuels    []MatchNemesisRow      `json:"nemesis_duels"`
+
+	// KillerVictim : paires killer→victim agrégées pour le chart antagoniste
+	// (match_view.18). Vide si killer_victim_pairs n'est pas peuplé.
+	KillerVictim []MatchKillerVictimPair `json:"killer_victim,omitempty"`
 
 	// ImpactRoles (Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné
 	// fondations narrative). 8 rôles narratifs typés via

@@ -797,6 +797,9 @@ func buildCombatTabFull(
 		impactRoles = BuildMatchImpactRoles8(events, scoreboard, matchID)
 	}
 
+	// Killer-victim aggregation (chart match_view.18 — antagonistes).
+	killerVictim := buildKillerVictimPairs(kvPairs, scoreboard)
+
 	return domain.MatchCombatTab{
 		WeaponKills:     wkList,
 		HighlightEvents: evtList,
@@ -804,9 +807,71 @@ func buildCombatTabFull(
 		ImpactBadges:    badgesDomain,
 		KDTimeline:      kdDomain,
 		NemesisDuels:    []domain.MatchNemesisRow{},
+		KillerVictim:    killerVictim,
 		ImpactRoles:     impactRoles,
 		Cadence:         cadence,
 	}
+}
+
+// buildKillerVictimPairs agrège les kvPairs par (killer_xuid, victim_xuid).
+// Résout les gamertags via le scoreboard quand kv.{Killer,Victim}GT est vide.
+func buildKillerVictimPairs(
+	kvPairs []domain.KVPairRaw,
+	scoreboard []domain.ScoreboardRaw,
+) []domain.MatchKillerVictimPair {
+	if len(kvPairs) == 0 {
+		return nil
+	}
+	gtMap := make(map[string]string, len(scoreboard))
+	for _, s := range scoreboard {
+		if s.Gamertag != "" {
+			gtMap[s.XUID] = s.Gamertag
+		}
+	}
+	resolveGT := func(xuid, fallback string) string {
+		if gt, ok := gtMap[xuid]; ok && gt != "" {
+			return gt
+		}
+		if fallback != "" {
+			return fallback
+		}
+		return xuid
+	}
+
+	type pairKey struct {
+		killer, victim string
+	}
+	agg := make(map[pairKey]*domain.MatchKillerVictimPair)
+	order := make([]pairKey, 0)
+
+	for _, kv := range kvPairs {
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
+		k := pairKey{killer: kv.KillerXUID, victim: kv.VictimXUID}
+		count := kv.KillCount
+		if count <= 0 {
+			count = 1
+		}
+		if existing, ok := agg[k]; ok {
+			existing.KillCount += count
+			continue
+		}
+		agg[k] = &domain.MatchKillerVictimPair{
+			KillerXUID:     kv.KillerXUID,
+			KillerGamertag: resolveGT(kv.KillerXUID, kv.KillerGT),
+			VictimXUID:     kv.VictimXUID,
+			VictimGamertag: resolveGT(kv.VictimXUID, kv.VictimGT),
+			KillCount:      count,
+		}
+		order = append(order, k)
+	}
+
+	pairs := make([]domain.MatchKillerVictimPair, 0, len(order))
+	for _, k := range order {
+		pairs = append(pairs, *agg[k])
+	}
+	return pairs
 }
 
 func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfWarEvent {
