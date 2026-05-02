@@ -31,6 +31,21 @@
 
 ---
 
+## [2026-05-02] docs — réorganisation `.ai/` et `docs/` vers `.ai/V7/`
+
+**Statut** : Complété.
+
+**Décision technique** :
+- Regroupement de l'ensemble des plans/audits/specs liés au chantier V7 (migration Python→Go, refonte React, multi-titres) sous `.ai/V7/` pour clarifier la séparation entre la doc projet pérenne (racine `.ai/`) et les artefacts du chantier en cours.
+- Déplacés depuis `.ai/` racine : tous les `PLAN_*GO_PORTAGE.md`, `PLAN_META_FOUNDATIONS_GO.md`, `PLAN_MULTI_TITLE_*`, `SPEC_ECHARTS_TIMESERIES.md`, `REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md`, `AUDIT_I18N_REACT_2026-04-25.md`, `Revue projet LevelUp.md`, `SPRINT_EXPLORATION.md`, dossier complet `go_migration_v2/`, `mockups/`, `review/`.
+- Déplacés depuis `docs/` : `AUDIT_TEAMMATES_V7_COCKPIT.md`, `MIGRATION_GAP_PYTHON_TO_GO.md`, `SQUAD_*.md` (CHART_HELPERS, DESIGN_TOKENS, VISUAL_SPEC) — pas d'équivalent dans `docs/FR/` à synchroniser.
+- Reste à la racine `.ai/` : doc transverse non liée à V7 (project_map, data_lineage, thought_log, BACKLOG, START_HERE, audits weapons/engagement, archive).
+
+**Conclusion / prochaine étape** :
+- Aucun changement de code, uniquement réorganisation. Les références internes éventuelles (liens markdown entre docs) n'ont pas été corrigées dans ce commit ; à faire au cas par cas si certains liens cassent.
+
+---
+
 ## [2026-05-02] match_view.10 + match_view.11 — Tug-of-war (+ kill feed) + Cadence
 
 **Statut** : Complété (front).
