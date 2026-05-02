@@ -1,9 +1,10 @@
 /**
  * MatchViewPage — détail d'un match (5 onglets).
  *
- * P8.4 (revue 2026-04-29) : MatchBreadcrumb + MatchNavigation extraits dans
- * MatchHeader.tsx ; helpers ChartSeries dans _chartSeries.ts. Ce fichier ne
- * porte plus que l'orchestrateur d'onglets.
+ * Refonte 2026-05-02 :
+ *  - Bandeau "Faits marquants" (badges d'impact + timing) au-dessus des onglets.
+ *  - Onglet Combat : chart match_view.09 (K/D cumulés) avec annotation badges.
+ *  - Autres onglets : placeholders en attendant la refonte.
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
@@ -13,16 +14,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { useMatchView } from './queries'
-import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
-
-import { MatchScoreboard } from './MatchScoreboard'
-import { ExpectedCardsSection, MatchRankBadge, KdIndicatorCard } from './MatchStatCards'
 import { MatchBreadcrumb, MatchNavigation } from './MatchHeader'
-import { kdTimelineSeries, tugOfWarSeries } from './_chartSeries'
+import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
+import { MatchTugOfWarChart } from './MatchTugOfWarChart'
+import { MatchCadenceChart } from './MatchCadenceChart'
+import { kdTimelineSeries } from './_chartSeries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
-import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
@@ -43,9 +42,6 @@ export function MatchViewPage() {
   const { data, isLoading, isError, refetch } = useMatchView(playerSlug, matchId)
   const queryClient = useQueryClient()
   const excludeMutation = useSetMatchExclusion(playerSlug)
-  const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string): string =>
-    fieldMappings?.fields[key]?.label ?? key
 
   if (isLoading) return null
 
@@ -66,8 +62,11 @@ export function MatchViewPage() {
     )
   }
 
-  const { header, rank, summary_tab, combat_tab, team_tab, media_tab, citations_tab } = data
+  const { header, rank, combat_tab, team_tab } = data
   const matchLabel = `${header.map_ui} — ${header.mode_ui}`
+  const labelOf = (key: string, fallback: string) => fallback ?? key
+  const kdSeries = kdTimelineSeries(combat_tab.kd_timeline, labelOf)
+  const meXUID = team_tab.scoreboard.find((r) => r.is_me)?.xuid ?? null
 
   return (
     <div className="flex flex-col">
@@ -132,6 +131,12 @@ export function MatchViewPage() {
         </div>
       </div>
 
+      {/* Faits marquants — badges d'impact + horodatage */}
+      <MatchImpactBadgesBar
+        badges={combat_tab.impact_badges}
+        scoreboard={team_tab.scoreboard}
+      />
+
       {/* Onglets */}
       <div className="flex gap-0 border-b bg-background px-6">
         {TABS.map((tab) => (
@@ -152,286 +157,51 @@ export function MatchViewPage() {
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Onglet Résumé */}
-        {activeTab === 'summary' && (
-          <div className="space-y-6">
-            {/* KPI grid principale */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              {[
-                { label: labelOf('kills'), value: summary_tab.kpis.kills },
-                { label: labelOf('deaths'), value: summary_tab.kpis.deaths },
-                { label: labelOf('assists'), value: summary_tab.kpis.assists },
-                { label: labelOf('kda'), value: summary_tab.kpis.kda?.toFixed(2) },
-                { label: labelOf('damage_dealt'), value: summary_tab.kpis.damage_dealt?.toFixed(0) },
-                { label: 'Vie moy.', value: summary_tab.kpis.average_life },
-              ].map((kpi) => (
-                <Card key={kpi.label}>
-                  <CardContent className="py-3 text-center">
-                    <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                    <p className="text-lg font-bold text-foreground">{kpi.value ?? '-'}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* C3 — Expected vs Actual */}
-            <ExpectedCardsSection
-              kpis={summary_tab.kpis}
-              expectedStats={summary_tab.expected_stats}
-            />
-
-            {/* C4 — Rang après match + C5 — K/D vs nemesis */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <MatchRankBadge rank={rank} hadBotTeammate={header.had_bot_teammate} />
-              <KdIndicatorCard nemesis={team_tab.nemesis[0] ?? null} />
-            </div>
-
-            {summary_tab.medals.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Médailles</p>
-                  <div className="flex flex-wrap gap-2">
-                    {summary_tab.medals.map((m) => (
-                      <Badge key={m.medal_name_id} variant="secondary" title={m.description ?? undefined}>
-                        {m.name} × {m.count}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {summary_tab.citations.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Citations</p>
-                  <div className="flex flex-wrap gap-2">
-                    {summary_tab.citations.map((c) => (
-                      <Badge
-                        key={c.key}
-                        style={{ backgroundColor: c.color ?? undefined, color: '#fff' }}
-                      >
-                        {c.label}
-                        {c.value != null && ` · ${c.value}`}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* Onglet Combat */}
-        {activeTab === 'combat' && (
-          <div className="space-y-6">
-            {combat_tab.weapon_kills.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Kills par arme</p>
-                  <div className="space-y-1">
-                    {combat_tab.weapon_kills.map((w) => (
-                      <div key={w.weapon_id} className="flex items-center justify-between text-sm">
-                        <span className="text-foreground">{w.weapon_label}</span>
-                        <span className="font-semibold text-primary">{w.kill_count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Impact badges */}
-            {combat_tab.impact_badges.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Moments clés</p>
-                  <div className="flex flex-wrap gap-2">
-                    {combat_tab.impact_badges.map((b) => (
-                      <Badge key={b.key} variant="outline" className="text-xs">
-                        {b.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* K/D Timeline (chunk MV5 — migration Recharts -> ECharts wrapper S10) */}
-            {combat_tab.kd_timeline.length > 1 && (
+        {activeTab === 'combat' ? (
+          <>
+            {combat_tab.kd_timeline.length > 1 ? (
               <Card>
                 <CardContent className="py-4">
                   <TimeseriesLineChart
-                    title="Timeline K/D"
-                    height={200}
+                    title="K/D cumulés du match"
+                    height={320}
                     xAxisType="value"
                     timeAxis={false}
                     outcomeMarkers={false}
-                    series={kdTimelineSeries(combat_tab.kd_timeline, labelOf)}
+                    series={kdSeries}
                   />
                 </CardContent>
               </Card>
-            )}
-
-            {/* Tug-of-War (chunk MV5) */}
-            {combat_tab.tug_of_war.length > 1 && (
-              <Card>
-                <CardContent className="py-4">
-                  <TimeseriesLineChart
-                    title="Tir à la corde (kills nets)"
-                    height={160}
-                    xAxisType="value"
-                    timeAxis={false}
-                    outcomeMarkers={false}
-                    series={tugOfWarSeries(combat_tab.tug_of_war)}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Nemesis duels */}
-            {combat_tab.nemesis_duels.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Duels nemesis</p>
-                  <div className="space-y-1">
-                    {combat_tab.nemesis_duels.map((n) => (
-                      <div key={n.xuid} className="flex items-center justify-between text-sm">
-                        <span className="text-foreground">{n.gamertag}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {n.killed_me} kills reçus · {n.i_killed} kills rendus
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* Onglet Équipe */}
-        {activeTab === 'team' && (
-          <div className="space-y-6">
-            <EngagementMatchSection
-              playerSlug={playerSlug}
-              matchId={matchId}
-              granularity="intra"
-            />
-            <MatchScoreboard
-              rows={team_tab.scoreboard}
-              weaponKills={combat_tab.weapon_kills}
-              medals={summary_tab.medals}
-              citations={summary_tab.citations}
-            />
-
-            {team_tab.nemesis.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Nemesis</p>
-                  <div className="space-y-1">
-                    {team_tab.nemesis.map((n) => (
-                      <div key={n.xuid} className="flex items-center justify-between text-sm">
-                        <span className="text-foreground">{n.gamertag}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {n.killed_me} kills reçus · {n.i_killed} kills rendus
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {team_tab.encounters && team_tab.encounters.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Joueurs fréquents</p>
-                  <div className="space-y-1">
-                    {team_tab.encounters.map((e) => (
-                      <div key={e.xuid} className="flex items-center justify-between text-sm">
-                        <span className="text-foreground">{e.gamertag}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {e.count_together} matchs ensemble
-                          {e.is_ally ? ' · Coéquipier' : ' · Adversaire'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {/* Onglet Médias */}
-        {activeTab === 'media' && (
-          <div className="space-y-4">
-            {media_tab.media_items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun média associé à ce match.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {media_tab.media_items.map((item) => (
-                  <Card key={item.file_id}>
-                    <CardContent className="p-3">
-                      {item.thumbnail_url ? (
-                        <img
-                          src={item.thumbnail_url}
-                          alt={item.file_name}
-                          className="mb-2 h-24 w-full rounded object-cover"
-                        />
-                      ) : (
-                        <div className="mb-2 flex h-24 items-center justify-center rounded bg-muted">
-                          <span className="text-xs text-muted-foreground">Aperçu indisponible</span>
-                        </div>
-                      )}
-                      <p className="truncate text-xs text-foreground">{item.file_name}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Pas assez d'événements pour tracer la timeline K/D de ce match.
+                  </p>
+                </CardContent>
+              </Card>
             )}
-          </div>
-        )}
 
-        {/* Onglet Citations */}
-        {activeTab === 'citations' && (
-          <div className="space-y-6">
-            {citations_tab.commendations.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Commendations</p>
-                  <div className="flex flex-wrap gap-2">
-                    {citations_tab.commendations.map((c) => (
-                      <Badge
-                        key={c.key}
-                        style={{ backgroundColor: c.color ?? undefined, color: '#fff' }}
-                      >
-                        {c.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {citations_tab.medals.length > 0 && (
-              <Card>
-                <CardContent className="py-4">
-                  <p className="mb-3 text-sm font-semibold text-foreground">Médailles contextuelles</p>
-                  <div className="flex flex-wrap gap-2">
-                    {citations_tab.medals.map((m) => (
-                      <Badge key={m.medal_name_id} variant="secondary">
-                        {m.name} × {m.count}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {citations_tab.commendations.length === 0 && citations_tab.medals.length === 0 && (
-              <p className="text-sm text-muted-foreground">Aucune citation pour ce match.</p>
-            )}
-          </div>
+            <MatchTugOfWarChart
+              bins={combat_tab.tug_of_war}
+              events={combat_tab.highlight_events}
+              scoreboard={team_tab.scoreboard}
+              meXUID={meXUID}
+            />
+
+            <MatchCadenceChart
+              cadence={combat_tab.cadence}
+              scoreboard={team_tab.scoreboard}
+            />
+          </>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                Onglet « {TABS.find((t) => t.id === activeTab)?.label} » — contenu à refaire.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

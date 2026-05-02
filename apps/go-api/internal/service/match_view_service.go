@@ -758,11 +758,16 @@ func buildCombatTabFull(
 	allBadges := analysis.ComputeMatchImpactFull(impactInput)
 	badgesDomain := make([]domain.MatchImpactBadge, 0, len(allBadges))
 	for _, b := range allBadges {
-		badgesDomain = append(badgesDomain, domain.MatchImpactBadge{
+		badge := domain.MatchImpactBadge{
 			Key:        b.BadgeKey,
 			Label:      b.BadgeFR,
 			PlayerXUID: b.PlayerXUID,
-		})
+		}
+		if b.TimeMS > 0 {
+			t := b.TimeMS
+			badge.TimeMS = &t
+		}
+		badgesDomain = append(badgesDomain, badge)
 	}
 
 	// KD timeline

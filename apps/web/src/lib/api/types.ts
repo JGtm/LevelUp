@@ -1827,6 +1827,10 @@ export interface MatchImpactBadge {
   key: string
   label: string
   value?: string | null
+  player_xuid?: string
+  /** Instant (ms depuis le début du match) pour les badges event-based.
+   *  Nul/absent pour les badges stat-based (top_killer, silent_hero, false_brother). */
+  time_ms?: number | null
 }
 
 export interface MatchKDTimelinePoint {

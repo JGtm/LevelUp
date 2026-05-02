@@ -25,10 +25,17 @@ type ParticipantSnap struct {
 }
 
 // ImpactBadge représente un badge attribué à un joueur sur ce match.
+//
+// TimeMS est l'instant (ms depuis le début du match) auquel le badge a été
+// déclenché pour les badges event-based (first_blood, first_group_death,
+// clutch_finisher, last_casualty, last_group_kill, top_gun). Vaut 0 pour les
+// badges stat-based qui n'ont pas de timestamp (top_killer, silent_hero,
+// false_brother).
 type ImpactBadge struct {
 	BadgeKey   string // identifiant technique
 	BadgeFR    string // libellé français
 	PlayerXUID string
+	TimeMS     int64
 }
 
 // MatchImpactInput regroupe toutes les données nécessaires au calcul des badges.
@@ -84,6 +91,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 			BadgeKey:   "first_blood",
 			BadgeFR:    "Premier sang",
 			PlayerXUID: fb.ActorXUID,
+			TimeMS:     fb.TimeMS,
 		})
 	}
 
@@ -93,6 +101,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 			BadgeKey:   "first_group_death",
 			BadgeFR:    "Première victime",
 			PlayerXUID: fd.ActorXUID,
+			TimeMS:     fd.TimeMS,
 		})
 	}
 
@@ -102,6 +111,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 			BadgeKey:   "clutch_finisher",
 			BadgeFR:    "Finisseur",
 			PlayerXUID: cf.ActorXUID,
+			TimeMS:     cf.TimeMS,
 		})
 	}
 
@@ -111,15 +121,17 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 			BadgeKey:   "last_casualty",
 			BadgeFR:    "Boulet",
 			PlayerXUID: lc.ActorXUID,
+			TimeMS:     lc.TimeMS,
 		})
 	}
 
 	// --- 5. last_group_kill (Touriste) : plus lent à obtenir son premier kill ---
-	if xuid := slowestFirstKiller(kills); xuid != "" {
+	if xuid, t := slowestFirstKillerWithTime(kills); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "last_group_kill",
 			BadgeFR:    "Touriste",
 			PlayerXUID: xuid,
+			TimeMS:     t,
 		})
 	}
 
@@ -151,11 +163,12 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	}
 
 	// --- 9. top_gun : premier joueur à atteindre topGunKillThreshold kills ---
-	if xuid := topGun(kills); xuid != "" {
+	if xuid, t := topGunWithTime(kills); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "top_gun",
 			BadgeFR:    "Top Gun",
 			PlayerXUID: xuid,
+			TimeMS:     t,
 		})
 	}
 
@@ -195,12 +208,12 @@ func lastByTimeFiltered(events []ImpactEvent, allowedXUIDs map[string]bool) *Imp
 	return best
 }
 
-// slowestFirstKiller retourne le XUID du joueur avec le timestamp de premier kill
+// slowestFirstKillerWithTime retourne le XUID + timestamp du premier kill
 // le plus tardif parmi tous les joueurs ayant fait au moins 1 kill.
 // Retourne "" si moins de 2 tueurs distincts (badge n'a pas de sens).
-func slowestFirstKiller(kills []ImpactEvent) string {
+func slowestFirstKillerWithTime(kills []ImpactEvent) (string, int64) {
 	if len(kills) == 0 {
-		return ""
+		return "", 0
 	}
 	// firstKillTime[xuid] = min TimeMS de ce tueur
 	firstKillTime := make(map[string]int64)
@@ -211,7 +224,7 @@ func slowestFirstKiller(kills []ImpactEvent) string {
 		}
 	}
 	if len(firstKillTime) < 2 {
-		return ""
+		return "", 0
 	}
 	var slowestXUID string
 	var slowestTime int64 = math.MinInt64
@@ -221,7 +234,7 @@ func slowestFirstKiller(kills []ImpactEvent) string {
 			slowestXUID = xuid
 		}
 	}
-	return slowestXUID
+	return slowestXUID, slowestTime
 }
 
 // topKiller retourne le XUID du joueur avec le plus de kills.
@@ -375,19 +388,19 @@ func filterDeaths(ps []ParticipantSnap, minVal int) []ParticipantSnap {
 	return out
 }
 
-// topGun retourne le XUID du premier joueur à atteindre topGunKillThreshold kills
-// en parcourant les kills dans l'ordre chronologique (TimeMS ASC).
-// Retourne "" si aucun joueur n'atteint le seuil.
-func topGun(kills []ImpactEvent) string {
+// topGunWithTime retourne le XUID + le TimeMS auquel le premier joueur atteint
+// topGunKillThreshold kills, en parcourant les kills dans l'ordre chronologique.
+// Retourne ("", 0) si aucun joueur n'atteint le seuil.
+func topGunWithTime(kills []ImpactEvent) (string, int64) {
 	sorted := sortedByTime(kills)
 	killCount := make(map[string]int)
 	for _, ev := range sorted {
 		killCount[ev.ActorXUID]++
 		if killCount[ev.ActorXUID] >= topGunKillThreshold {
-			return ev.ActorXUID
+			return ev.ActorXUID, ev.TimeMS
 		}
 	}
-	return ""
+	return "", 0
 }
 
 // sortedByTime retourne une copie des événements triée par TimeMS ASC.

@@ -29,6 +29,15 @@ func hasBadge(badges []analysis.ImpactBadge, key, xuid string) bool {
 	return false
 }
 
+func badgeTime(badges []analysis.ImpactBadge, key string) int64 {
+	for _, b := range badges {
+		if b.BadgeKey == key {
+			return b.TimeMS
+		}
+	}
+	return -1
+}
+
 // ---------------------------------------------------------------------------
 // first_blood
 // ---------------------------------------------------------------------------
@@ -346,6 +355,87 @@ func TestTopGun_ExactlyThreshold(t *testing.T) {
 	badges := analysis.ComputeMatchImpactFull(input)
 	if !hasBadge(badges, "top_gun", "C") {
 		t.Error("attendu top_gun pour C (exactement 10 kills)")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TimeMS sur les badges event-based
+// ---------------------------------------------------------------------------
+
+func TestImpactBadge_TimeMS_EventBased(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Events: []analysis.ImpactEvent{
+			deathEv(500, "L1"),  // first_group_death
+			killEv(600, "A"),    // first_blood
+			killEv(2000, "A"),   // A first kill = 600 (rapide)
+			killEv(3000, "B"),   // B first kill = 3000 → touriste
+			deathEv(8500, "L2"), // last_casualty
+			killEv(9000, "A"),   // clutch_finisher (A est gagnant, dernier kill)
+		},
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("A", 2, 3, 0, 0),
+			mkSnap("B", 2, 1, 0, 0),
+			mkSnap("L1", 3, 0, 1, 0),
+			mkSnap("L2", 3, 0, 1, 0),
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	cases := []struct {
+		key      string
+		expected int64
+	}{
+		{"first_blood", 600},
+		{"first_group_death", 500},
+		{"clutch_finisher", 9000},
+		{"last_casualty", 8500},
+		{"last_group_kill", 3000},
+	}
+	for _, c := range cases {
+		if got := badgeTime(badges, c.key); got != c.expected {
+			t.Errorf("badge %s : TimeMS attendu %d, obtenu %d", c.key, c.expected, got)
+		}
+	}
+}
+
+func TestImpactBadge_TimeMS_StatBased_IsZero(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Events: []analysis.ImpactEvent{
+			killEv(1000, "TK"),
+		},
+		Participants: []analysis.ParticipantSnap{
+			// Gagnants : TK (top), SH (silent_hero), X
+			mkSnap("TK", 2, 10, 2, 1),
+			mkSnap("SH", 2, 2, 0, 8),
+			mkSnap("X", 2, 3, 3, 3),
+			// Perdants : LK (top killer perdants), FB (false_brother), Y
+			mkSnap("LK", 3, 5, 2, 0),
+			mkSnap("FB", 3, 1, 9, 0),
+			mkSnap("Y", 3, 2, 4, 3),
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	for _, key := range []string{"top_killer", "silent_hero", "false_brother"} {
+		got := badgeTime(badges, key)
+		if got == -1 {
+			t.Errorf("badge %s : absent du résultat", key)
+			continue
+		}
+		if got != 0 {
+			t.Errorf("badge %s : TimeMS attendu 0 (stat-based), obtenu %d", key, got)
+		}
+	}
+}
+
+func TestImpactBadge_TopGun_TimeMS(t *testing.T) {
+	var events []analysis.ImpactEvent
+	for i := 0; i < 10; i++ {
+		events = append(events, killEv(int64(i*100+50), "A"))
+	}
+	// 10e kill de A à t = 9*100+50 = 950
+	input := analysis.MatchImpactInput{Events: events}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if got := badgeTime(badges, "top_gun"); got != 950 {
+		t.Errorf("top_gun : TimeMS attendu 950, obtenu %d", got)
 	}
 }
 
