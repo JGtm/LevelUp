@@ -1,10 +1,11 @@
 /**
- * squadMapHeatmapChart — teammates.03 : heatmap perf joueur × carte (top 15).
+ * squadMapHeatmapChart — teammates.03 : heatmap perf joueur × carte.
  *
  * Spec : .ai/charts_specs/teammates/03_squad_heatmap.yaml
  *
  * visualMap discret (5 paliers) sur les seuils SCORE_THRESHOLDS (75/60/45/30).
- * yAxis = joueurs (moi en haut). xAxis = top 15 cartes par fréquence.
+ * yAxis = joueurs (moi en haut). xAxis = toutes les cartes jouées en escouade,
+ * triées par fréquence décroissante.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'

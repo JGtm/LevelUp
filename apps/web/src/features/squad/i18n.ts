@@ -301,7 +301,7 @@ const FR_TEXT: SquadText = {
     mmrAxis: 'MMR',
   },
   heatmap: {
-    title: 'Performance par joueur × carte (top 15)',
+    title: 'Performance par joueur × carte',
     pieceTier1: 'Excellente',
     pieceTier2: 'Bonne',
     pieceTier3: 'Moyenne',
@@ -501,7 +501,7 @@ const EN_TEXT: SquadText = {
     mmrAxis: 'MMR',
   },
   heatmap: {
-    title: 'Performance per player × map (top 15)',
+    title: 'Performance per player × map',
     pieceTier1: 'Excellent',
     pieceTier2: 'Good',
     pieceTier3: 'Average',

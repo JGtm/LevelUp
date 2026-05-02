@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-05-02] fix heatmap escouade — perf par joueur réelle + retrait du cap top 15
+
+**Statut** : Complété.
+
+**Contexte** : Sur l'image envoyée par user du chart "Performance par joueur × carte (top 15)", les 3 lignes (JGtm, Madina97294, Chocoboflor) avaient TOUTES les mêmes couleurs sur chaque carte. C-à-d que les coéquipiers affichaient les mêmes notes que le main player. Aussi, le titre mentionnait "(top 15)" jugé non pertinent.
+
+**Diagnostic** :
+1. Dans `buildSquadMapHeatmap` ([teammates_squad_charts.go:255](apps/go-api/internal/service/teammates_squad_charts.go)), le chargement des matchs des coéquipiers passait par `s.playerMatchesRepo.LoadPlayerMatches(ctx, slug, gt, ...)`.
+2. Mais `PlayerMatchesAdapter` ([player_matches_adapter.go:35](apps/go-api/internal/platform/duckdb/player_matches_adapter.go)) IGNORE les paramètres `slug` et `gamertag` — il est BOUND à un seul joueur via son constructeur. Le commentaire ligne 41 de `teammates_service.go` documente déjà ce piège : *"cet adapteur est BOUND au gamertag du joueur principal (ignore l'arg gamertag). Pour charger les canonical rows d'un coequipier different, utiliser squadLoader.LoadFor"*.
+3. Conséquence : pour chaque coéquipier, on récupérait en réalité les matchs du main → `mateAgg` était alimenté avec les `PerformanceScore` du main → mêmes valeurs sur les 3 lignes. La méthode `loadTeammatesCanonicalParallel` utilisait déjà `squadLoader.LoadFor` correctement, mais `buildSquadMapHeatmap` n'avait pas été migré.
+
+**Décision technique** :
+- Remplacé `s.playerMatchesRepo.LoadPlayerMatches(...)` par `s.squadLoader.LoadFor(...)` dans `buildSquadMapHeatmap`. Si `squadLoader` est nil (test legacy sans wiring complet), on dégrade en cells vides au lieu de retourner les données du main.
+- Retiré la constante `heatmapTopMaps = 15` et la logique de cap. Le heatmap affiche maintenant toutes les cartes jouées en escouade (triées par fréquence décroissante puis ordre alphabétique pour les ex-aequo).
+- i18n FR + EN : "Performance par joueur × carte (top 15)" → "Performance par joueur × carte" (idem en EN). Commentaires backend + frontend (`squadMapHeatmapChart.ts`) actualisés pour refléter "toutes les cartes".
+
+**Vérifications** :
+- `go build ./...` : OK.
+- `go test ./internal/service/...` : OK (1.6s).
+- `npx tsc --noEmit` (web) : OK.
+- `squadLoader` est bien câblé en prod via `TeammatesCtx` ([registry.go:594](apps/go-api/internal/api/registry.go)) → `WithSquadLoader(briefingLoader)` avec `briefingLoader = NewSquadV2LoaderAdapter(resolveByGT)`. Donc le fix est actif côté prod.
+
+**Reste à faire user** : redémarrer le binaire `apps/go-api/main` pour que le fix prenne effet.
+
 ## [2026-05-02] feat filtres intelligents — counts OR + progressive disclosure (FilterOmnibar)
 
 **Statut** : Complété (back + front), 0 commit créé (en attente du go user).
