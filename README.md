@@ -46,6 +46,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Drag-and-drop upload** — add your manual captures straight from the Media page
 - **Non-destructive scanning** — automatic background re-indexing with a dedicated `--captures-dir` option
 - **Discord notifications for new media** — embed with a GIF or screenshot thumbnail whenever a new capture is indexed; anti-spam (each file notified once); toggle `discord_notify_new_media` in Settings
+- **Manual reassociation with match suggestions** — built-in modal listing your matches in a ±15 / ±60 / ±180 min window around the capture, with map thumbnail, map · mode · playlist, local time + delta, outcome badge and full lobby per team; one click + confirm to fix any media linked to the wrong match
 
 **Dedicated Match page & richer visualizations**
 - **Clean URL per match** — `/players/{gamertag}/matches/{id}`, shareable, with prev/next match navigation
@@ -176,6 +177,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 ### Clips & Media
 - **Media library** — browse screenshots and video clips linked to their match; filter by owner, map, mode, outcome, or solo/squad context
 - **Auto-indexing** — clips re-scanned automatically every few hours and after each sync
+- **Manual reassociation** — fix a wrongly linked clip in one click: a built-in picker suggests matches around the capture timestamp (±15 / ±60 / ±180 min) with map thumbnails, outcome and full lobby
 
 ### Notifications & Setup
 - **In-app notification center** — per-player feed with unread badge, category filters, day-grouped timeline, and bulk actions; 60-second live refresh; preferences per player

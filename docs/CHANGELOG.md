@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [Unreleased] - 2026-05-02
+
+### Added (React / TypeScript)
+
+- **Media — manual reassociation with match suggestions** — new `MediaMatchPicker` modal opened from the media cover-flow / detail view. Lists the player's matches inside an adjustable time window (±15 / ±60 / ±180 min) around the capture timestamp; each candidate is presented with the map thumbnail, localized map · mode · playlist, local start time + delta vs capture, outcome badge and full per-team lobby. Two-step confirmation (click to highlight, then *Confirm*) calls `POST /players/{slug}/media/associate` and invalidates the media cache on success. Useful when the automatic timestamp-based association picked the wrong match (DST edge cases, server-side mtime, OBS captures…). Backed by the existing `GET /players/{slug}/media/match-candidates` endpoint.
+
 ## [Go-API Phase 14] - 2026-04-29
 
 ### Added (Go API)
