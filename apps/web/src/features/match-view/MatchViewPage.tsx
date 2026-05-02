@@ -18,6 +18,8 @@ import { MatchBreadcrumb, MatchNavigation } from './MatchHeader'
 import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
+import { MatchAntagonistChart } from './MatchAntagonistChart'
+import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { kdTimelineSeries } from './_chartSeries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
@@ -189,10 +191,18 @@ export function MatchViewPage() {
               meXUID={meXUID}
             />
 
+            <MatchFragDiffChart
+              events={combat_tab.highlight_events}
+              scoreboard={team_tab.scoreboard}
+              meXUID={meXUID}
+            />
+
             <MatchCadenceChart
               cadence={combat_tab.cadence}
               scoreboard={team_tab.scoreboard}
             />
+
+            <MatchAntagonistChart pairs={combat_tab.killer_victim} />
           </>
         ) : (
           <Card>

@@ -2017,6 +2017,15 @@ export interface MatchKDTimelinePoint {
   deaths: number
 }
 
+/** Paire killer→victim agrégée pour le chart match_view.18 (antagonistes). */
+export interface MatchKillerVictimPair {
+  killer_xuid: string
+  killer_gamertag: string
+  victim_xuid: string
+  victim_gamertag: string
+  kill_count: number
+}
+
 export interface MatchCombatTab {
   weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
@@ -2026,6 +2035,8 @@ export interface MatchCombatTab {
   impact_badges: MatchImpactBadge[]
   kd_timeline: MatchKDTimelinePoint[]
   nemesis_duels: MatchNemesisRow[]
+  /** Paires killer→victim agrégées (match_view.18). Vide si killer_victim_pairs absent. */
+  killer_victim?: MatchKillerVictimPair[]
   /** Phase 1 MV2 : 8 rôles narratifs typés via narrative.IdentifyImpactRoles. */
   impact_roles?: MatchViewImpactRole[]
   /** Phase 1 MV2 : cadence intra-match (ChartSeries<ChartPointStacked>). */

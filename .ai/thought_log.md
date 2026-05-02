@@ -1,5 +1,36 @@
 # Thought Log
 
+## [2026-05-02] match_view.18 + match_view.13 — Antagonistes + Frags différentiel cumulé
+
+**Statut** : Complété (front + backend Go).
+
+**Décision technique** :
+- **Backend Go** :
+  - Nouveau type `domain.MatchKillerVictimPair { KillerXUID, KillerGamertag, VictimXUID, VictimGamertag, KillCount }`.
+  - Champ optionnel `KillerVictim []MatchKillerVictimPair` (`json:"killer_victim,omitempty"`) sur `MatchCombatTab`.
+  - `match_view_service.buildKillerVictimPairs(kvPairs, scoreboard)` : agrège les `KVPairRaw` (1 ligne = 1 kill, sortie de `v_killer_victim_full`) par `(killer_xuid, victim_xuid)` en sommant `KillCount`. Garde l'ordre d'apparition pour un résultat déterministe (Go map iteration randomisée). Fallback gamertag = scoreboard sinon `kv.KillerGT/VictimGT` sinon xuid. Si `KillCount == 0` (cas SQL ambigu), compté pour 1.
+  - 4 nouveaux tests `match_view_extra_test.go` : `TestBuildKillerVictimPairs_{Empty, AggregatesPairs, FallbackGT, KillCountZeroDefaultsToOne}`. Code passe `go vet` (les tests nécessitent CGO non dispo localement, à valider en CI / poste avec MSYS2).
+- **Frontend** :
+  - **Types** : `MatchKillerVictimPair` + `killer_victim?: MatchKillerVictimPair[]` sur `MatchCombatTab`.
+  - **Helpers** (`_chartSeries.ts`) :
+    - `antagonistStackedSeries(pairs)` : agrège par tueur (Map `xuid → total`), trie par total décroissant, produit `ChartSeries<ChartPointStacked>[]` avec `category=tueur` et `components={victim → kills}`.
+    - `allPlayersFragDiffSeries(events, scoreboard, meXUID)` : tri chrono des events kill/death, cumul +1/-1 par xuid, série par joueur avec point initial `(0, 0)`. Joueur principal en première position pour mapping de couleurs cohérent.
+  - **Composants** :
+    - `MatchAntagonistChart` (match_view.18) : `BarStackedChart` horizontal, hauteur dynamique `max(240, 80 + 24 × n_killers)`.
+    - `MatchFragDiffChart` (match_view.13) : `TimeseriesLineChart` (xAxisType="value", X = secondes), 1 série par joueur, h=360.
+  - **Câblage** : ajoutés dans l'onglet Combat de `MatchViewPage` après le tug-of-war (KD → tug-of-war → frag diff → cadence → antagonistes).
+
+**Tests** :
+- 7 nouveaux tests Vitest (`antagonistStackedSeries` × 3, `allPlayersFragDiffSeries` × 4) : ✅ tous verts.
+- Suite match-view complète : 21/21 verts.
+- `tsc --noEmit -p apps/web/tsconfig.json` : ✅ propre.
+
+**Conclusion / prochaine étape** :
+- Comme pour les charts précédents, les données ne s'afficheront qu'après rebuild + restart du serveur Go (binaire actuel pré-2026-04-29 ne renvoie ni `killer_victim` ni `highlight_events`). Les composants gèrent les cas vides avec un placeholder explicite.
+- L'onglet Combat couvre désormais 5 charts : KD cumulés, Tug-of-war (+ kill feed), Frag diff cumulé multi-joueurs, Cadence, Antagonistes.
+
+---
+
 ## [2026-05-02] match_view.10 + match_view.11 — Tug-of-war (+ kill feed) + Cadence
 
 **Statut** : Complété (front).
