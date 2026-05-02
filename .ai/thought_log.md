@@ -1,5 +1,55 @@
 # Thought Log
 
+## [2026-05-02] match_view.10 + match_view.11 — Tug-of-war (+ kill feed) + Cadence
+
+**Statut** : Complété (front).
+
+**Décision technique** :
+- **`_chartSeries.ts`** : ajout de 3 helpers
+  - `formatBinSeconds(s) → "m:ss"` (utilisé par tug-of-war + kill feed).
+  - `tugOfWarStackedSeries(bins)` : transforme `MatchTugOfWarBin[]` en `ChartSeries<ChartPointStacked>[]` divergent (mon équipe = positif, adverses = négatif). Une seule série, deux composants étiquetés via `TUG_OF_WAR_LABELS`.
+  - `cadenceSeriesWithGamertags(cadence, scoreboard)` : remappe `components` (xuid → kills) vers `(gamertag → kills)` pour une légende lisible. Drop les composants à 0.
+- **`MatchTugOfWarChart`** (match_view.10) : `BarStackedChart` divergent (couleurs `outcome-win` / `outcome-loss`) + sous-section "Kill feed" — liste scrollable max-h-48 des kills horodatés (allié = vert, adverse = rouge, joueur principal = gras, dot pastille de 2px). Distingue allié vs adverse via `team_side` du scoreboard du joueur principal.
+- **`MatchCadenceChart`** (match_view.11) : `BarStackedChart` vertical avec couleurs cyclées par défaut (1 série par joueur, empilée). Titre dynamique avec `phase_seconds` extrait de `cadence.meta`. Source : `combat_tab.cadence` (déjà construit côté Go via `narrative.ComputeCadenceProfiles`).
+- **`MatchViewPage`** : onglet Combat affiche désormais les 3 charts en colonne (KD cumulés → Tug-of-war + kill feed → Cadence). Le `meXUID` est résolu une fois via `team_tab.scoreboard.find(is_me)`.
+
+**Tests** :
+- 8 nouveaux tests Vitest dans `_chartSeries.test.ts` (formatBinSeconds, tugOfWarStackedSeries, cadenceSeriesWithGamertags) : ✅ tous verts.
+- `MatchNarrativeSection.test.tsx` (existant) : ✅ inchangé (6/6).
+- `tsc --noEmit -p apps/web/tsconfig.json` : ✅ propre.
+
+**Conclusion / prochaine étape** :
+- L'onglet Combat est complet côté représentation. Comme noté pour match_view.09, le serveur Go en cours d'exécution est antérieur au portage `narrative.ComputeCadenceProfiles` + `analysis.ComputeTugOfWar` côté API : `combat_tab.tug_of_war = []` et `combat_tab.cadence = undefined` aujourd'hui. Les composants gèrent ces cas (placeholder informatif).
+- Prochaine étape possible : annoter le chart KD cumulé avec des markers issus des badges event-based (cohérent avec la branche main).
+
+---
+
+## [2026-05-02] match_view.09 — K/D cumulés + bandeau "Faits marquants"
+
+**Statut** : Complété (front + analysis Go) ; rebuild serveur Go requis pour exposer `time_ms` côté API.
+
+**Décision technique** :
+- **Backend Go** :
+  - `analysis.ImpactBadge` : ajout du champ `TimeMS int64`. Renommé `slowestFirstKiller` → `slowestFirstKillerWithTime` et `topGun` → `topGunWithTime` pour retourner `(xuid, time)`.
+  - `ComputeMatchImpactFull` peuple `TimeMS` pour les badges event-based (`first_blood`, `first_group_death`, `clutch_finisher`, `last_casualty`, `last_group_kill`, `top_gun`). 0 pour les badges stat-based (`top_killer`, `silent_hero`, `false_brother`).
+  - `domain.MatchImpactBadge` : ajout `TimeMS *int64` (`json:"time_ms,omitempty"`). Service `match_view_service.buildCombatTabFull` pose le pointeur si `TimeMS > 0`.
+  - 3 tests ajoutés : `TestImpactBadge_TimeMS_EventBased`, `TestImpactBadge_TimeMS_StatBased_IsZero`, `TestImpactBadge_TopGun_TimeMS`.
+- **Frontend** :
+  - `MatchImpactBadge` (types.ts) : ajout `player_xuid?` + `time_ms?: number | null`.
+  - Nouveau composant `MatchImpactBadgesBar` (84L) — affiche les badges au-dessus des onglets, classés par ordre canonique (event-based d'abord, stat-based après), avec icône, label, gamertag (résolu via scoreboard) et timing `m:ss`. Anneau `ring-primary` pour le joueur principal. Alias backward-compat pour les anciens keys (`tourist`, `finisher`, `first_victim`).
+  - `MatchViewPage` : remontage du chart `TimeseriesLineChart` dans l'onglet Combat (xAxisType="value", timeAxis=false, kdTimelineSeries existant). Bandeau MatchImpactBadgesBar entre le header match et le switch d'onglets.
+
+**Tests** :
+- `go test ./internal/analysis/...` : ✅ tous verts (incluant les 3 nouveaux).
+- `tsc --noEmit -p apps/web/tsconfig.json` : ✅ propre.
+
+**Conclusion / prochaine étape** :
+- Le serveur Go en cours d'exécution est un binaire pré-2026-04-29 (avant le portage 7fc39360 qui a aligné les keys et étendu à 9 badges) — il ne renverra ni les nouveaux keys, ni `time_ms`. Aliases backward-compat front absorbent l'ancien `tourist`. **Rebuild + restart `apps/go-api/bin/server.exe`** nécessaire pour bénéficier du timing et des 9 badges.
+- GCC absent du PATH local (msys2/mingw introuvable) — la compile `go build` échoue sur la dépendance `duckdb-go-bindings` (CGO requis). Le rebuild serveur reste à faire dans un environnement avec MSYS2 UCRT64.
+- Prochaine étape : annoter le chart KD avec des markers correspondant aux badges event-based (cohérent avec la branche main).
+
+---
+
 ## [2026-05-02] docs — Ajout réassociation manuelle des médias dans changelog + READMEs
 
 **Statut** : Complété

@@ -197,6 +197,11 @@ type MatchImpactBadge struct {
 	Label      string `json:"label"`
 	PlayerXUID string `json:"player_xuid,omitempty"`
 	Value      string `json:"value,omitempty"`
+	// TimeMS : instant (ms depuis le début du match) où le badge a été
+	// déclenché, pour les badges event-based uniquement. Nil pour les badges
+	// stat-based (top_killer, silent_hero, false_brother) qui n'ont pas de
+	// notion de temps.
+	TimeMS *int64 `json:"time_ms,omitempty"`
 }
 
 // MatchViewImpactRole : rôle narratif attribué via narrative.IdentifyImpactRoles
