@@ -8,6 +8,7 @@ import type { SquadMapHeatmap } from '@/lib/api/types'
 
 vi.mock('@/lib/accessibility', () => ({
   tokenCssVar: (token: string) => `color:${token}`,
+  resolveToken: (token: string) => `color:${token}`,
 }))
 
 const OPTS = {

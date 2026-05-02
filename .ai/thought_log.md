@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-05-02] fix charts squad — compile Go + canvas ECharts color resolution
+
+**Statut** : Complété (back + front).
+
+**Contexte** : User signale que les nouveaux charts Squad (Synergies + Contributions) ajoutés dans le commit 55829238 ne s'affichent pas, et que les rares charts visibles ont des couleurs grises (notamment "color scheme de la performance").
+
+**Diagnostic** :
+1. **Backend Go ne compilait pas** — 2 erreurs dans `apps/go-api/internal/service/teammates_squad_charts.go` :
+   - L382 : `int(r.Self.Outcome)` — `canonical.Outcome` est `string`, non convertible en `int`.
+   - L940 : `r.Summary.StartTime.Format(...)` — le champ s'appelle `StartedAtUTC`.
+   → Logs serveur datent du 1er mai (avant le commit), donc le binaire en prod ignore tous les nouveaux champs JSON (`match_history`, `impact_matrix`, `per_minute_stats`, `synergy_radar`, `intensity_profile`, `performance_series`, `weapon_kills`, `first_events`, `map_heatmap`, `session_timeline`, `historical_performance_avg`). Toutes les sections sont gated `{xxx.length > 0 && …}` → invisibles.
+2. **`tokenCssVar` (= `var(--ac-…)`) inutilisable dans canvas ECharts** — passé à `itemStyle.color`, `visualMap.pieces[].color`, `lineStyle.color` : ECharts canvas2d ne résout pas les CSS variables → couleurs grises/transparentes. Affectait 5 builders : `squadMapHeatmapChart` (visualMap perf-tier-1..5), `squadSessionTimelineChart` (bars perf), `mapPerfVsHistoryChart` (bars perf), `winRateVsHistoryChart`, `winRateVsHistoryBulletChart` (divergent + chart-series-1).
+3. **`playerSlug` (URL lowercase) ≠ `s.gamertag` (DB casse mixte)** — `getSquadPlayerColors(playerSlug, …)` produisait un mapping qui ne matchait pas les clés `Player` / `player` retournées par les builders backend (`buildSquadPerMinuteStats`, `buildSquadFirstEvents`, etc.). Fallback `'#888'` codé dans tous les chart builders → joueur principal en gris.
+
+**Décisions techniques** :
+- **Helper `canonicalOutcomeToInt`** dans `teammates_squad_charts.go` (mappe `canonical.Outcome` string → 2/3/1/4 via `analysis.Outcome*` constants). Pas de helper pré-existant dans le package `service`.
+- **Bascule `tokenCssVar` → `resolveToken`** dans les 5 chart builders + ajout `resolveToken: (t) => "color:${t}"` dans les mocks `vi.mock('@/lib/accessibility', …)` des 5 fichiers de test correspondants (préserve les assertions `color:perf-tier-N` / `color:divergent-pos`).
+- **Ajout `mainPlayerKey = pageData?.main_player ?? playerSlug`** dans `SquadContributionsPage.tsx` pour aligner le mapping `colorByPlayer` sur le gamertag canonique renvoyé par le backend (`MainPlayer = s.gamertag` exposé dans la réponse). Idem pour `playerOrder` du `SquadPerformanceCharts`.
+
+**Vérifications** :
+- `go build ./...` : OK
+- `go vet ./...` : OK
+- `go test ./internal/service/...` : OK (1.9s)
+- `npx vitest run src/features/squad/` : 29/29 fichiers, 217/217 tests verts.
+- TS errors squad pré-existants (`squadSessionTimelineChart` L73/L93/L106 `'unknown'` types ECharts, `SquadLayout` L381 `KPIStats | undefined`) — non causés par ce fix (vérifié via stash/typecheck/restore).
+
+**À faire côté user** : redémarrer le binaire `apps/go-api/main` pour que les nouveaux endpoints répondent. Les logs `server-*.log` du 1er mai resteront stale jusqu'au restart.
+
+**Conclusion** : le pipeline complet (compile + couleurs canvas + matching gamertag) est cohérent, mais ne se manifestera qu'après restart du serveur. Pas commit (user ne l'a pas demandé).
+
+---
+
 ## [2026-05-02] cleanup couleurs hardcodées — ratchet 158 → 0
 
 **Statut** : Complété (front uniquement).

@@ -14,7 +14,7 @@
  * Échelle perf 0..100 (cf. SCORE_THRESHOLDS Python : 75/60/45/30).
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { CHART_BG, axisBase, tooltipBase, legendBase } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
@@ -77,7 +77,7 @@ export function buildMapPerfVsHistoryOption(
   const mapLabels = joined.map((r) => mapLabelOf(r.mapUI))
   const sessionData = joined.map((r) => ({
     value: round1(r.perfSession),
-    itemStyle: { color: tokenCssVar(perfTierToken(r.perfSession)), opacity: 0.85 },
+    itemStyle: { color: resolveToken(perfTierToken(r.perfSession)), opacity: 0.85 },
   }))
   const historyData = joined.map((r) => ({
     value: round1(r.perfHistory),

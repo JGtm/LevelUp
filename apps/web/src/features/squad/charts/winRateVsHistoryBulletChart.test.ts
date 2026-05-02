@@ -10,6 +10,7 @@ import type { MapBreakdownRow } from '@/lib/api/types'
 
 vi.mock('@/lib/accessibility', () => ({
   tokenCssVar: (token: string) => `color:${token}`,
+  resolveToken: (token: string) => `color:${token}`,
 }))
 
 function row(

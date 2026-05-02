@@ -7,7 +7,7 @@
  * La série historique utilise chart-series-1 (couleur de référence stable).
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { tokenCssVar } from '@/lib/accessibility'
+import { resolveToken } from '@/lib/accessibility'
 import { CHART_BG, axisBase, tooltipBase, legendBase } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
@@ -22,10 +22,10 @@ export interface WinRateVsHistoryOpts {
 
 function sessionItemColor(row: MapBreakdownRow): string {
   const hist = row.historical_win_rate
-  if (hist === undefined) return tokenCssVar('divergent-neutral')
-  if (row.win_rate - hist > DIVERGENCE_THRESHOLD) return tokenCssVar('divergent-pos')
-  if (hist - row.win_rate > DIVERGENCE_THRESHOLD) return tokenCssVar('divergent-neg')
-  return tokenCssVar('divergent-neutral')
+  if (hist === undefined) return resolveToken('divergent-neutral')
+  if (row.win_rate - hist > DIVERGENCE_THRESHOLD) return resolveToken('divergent-pos')
+  if (hist - row.win_rate > DIVERGENCE_THRESHOLD) return resolveToken('divergent-neg')
+  return resolveToken('divergent-neutral')
 }
 
 function toPercent(v: number): number {
@@ -42,7 +42,7 @@ export function buildWinRateVsHistoryOption(
   const { mapLabelOf, sessionLabel, historyLabel } = opts
   const sorted = [...rows].sort((a, b) => a.win_rate - b.win_rate)
   const mapLabels = sorted.map((r) => mapLabelOf(r.map_ui))
-  const histColor = tokenCssVar('chart-series-1')
+  const histColor = resolveToken('chart-series-1')
 
   const histData = sorted.map((r) =>
     r.historical_win_rate !== undefined ? toPercent(r.historical_win_rate) : null,

@@ -10,7 +10,7 @@
  *   - tooltip trigger='axis' (hover unifié par session)
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { CHART_BG, axisBase, tooltipBase, legendBase, seriesColor } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadSessionPoint } from '@/lib/api/types'
@@ -45,7 +45,7 @@ export function buildSquadSessionTimelineOption(
   const labels = points.map((p) => p.session_label)
   const perfData = points.map((p) => ({
     value: round1(p.squad_perf),
-    itemStyle: { color: tokenCssVar(perfTierToken(p.squad_perf)), opacity: 0.85 },
+    itemStyle: { color: resolveToken(perfTierToken(p.squad_perf)), opacity: 0.85 },
   }))
   const hasWinRate = points.some((p) => p.win_rate !== undefined)
   const hasMmr = points.some((p) => p.team_mmr_avg !== undefined)

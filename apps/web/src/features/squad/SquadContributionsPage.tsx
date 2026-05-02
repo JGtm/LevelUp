@@ -75,7 +75,12 @@ export function SquadContributionsPage() {
   const performanceSeries = pageData?.performance_series
   const weaponKills = pageData?.weapon_kills
   const firstEvents = pageData?.first_events
-  const playerColors = getSquadPlayerColors(playerSlug, confirmedGamertags)
+  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
+  // pour que le mapping couleurs matche les clés des SquadPerMinuteEntry.player
+  // / SquadSynergyRadarSeries.player / SquadFirstEventsRow.player etc.
+  const mainPlayerKey = pageData?.main_player ?? playerSlug
+  const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
   const intensityProfileLocalized = intensityProfile
     ? {
         ...intensityProfile,
@@ -209,7 +214,7 @@ export function SquadContributionsPage() {
             </div>
             <SquadPerformanceCharts
               rowsByPlayer={performanceSeries}
-              playerOrder={[playerSlug, ...confirmedGamertags].filter((p) => performanceSeries[p])}
+              playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
               colorByPlayer={playerColors}
               labels={t.performanceCharts}
             />
