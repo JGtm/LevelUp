@@ -6,6 +6,12 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [Non publié] - 2026-05-02
+
+### Ajouté
+
+- **Médias — réassociation manuelle avec suggestions de matchs** — nouvelle modale `MediaMatchPicker` accessible depuis le cover-flow et la fiche d'un média. Elle liste les matchs du joueur dans une fenêtre temporelle ajustable (±15 / ±60 / ±180 min) autour de l'instant de capture ; chaque candidat affiche la miniature de la carte, la carte · mode · playlist localisés, l'heure locale + l'écart vs capture, un badge de résultat et le lobby complet par équipe. Sélection en deux temps (clic pour pré-sélectionner puis *Confirmer*) qui appelle `POST /players/{slug}/media/associate` et invalide le cache média en cas de succès. Pratique quand l'association automatique par timestamp a choisi le mauvais match (cas DST, mtime serveur, captures OBS…). S'appuie sur l'endpoint `GET /players/{slug}/media/match-candidates` existant.
+
 ## [7.0.1] - 2026-04-29
 
 ### Ajouté

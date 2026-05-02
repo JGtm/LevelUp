@@ -1,5 +1,40 @@
 # Thought Log
 
+## [2026-05-02] docs — Ajout réassociation manuelle des médias dans changelog + READMEs
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Vérification préalable** : `grep` sur `réassoc|reassoc|MediaMatchPicker` dans `docs/` et `README.md` → 0 mention de la fonctionnalité, donc à ajouter (et pas un doublon).
+- **Feature à documenter** : `MediaMatchPicker.tsx` (modale ouverte depuis `CoverFlowModal` / `MediaPage`) qui liste les matchs candidats dans une fenêtre ±15/60/180 min autour de l'horodatage de capture, avec miniature carte, map · mode · playlist, heure locale + delta, badge outcome et lobby complet par équipe. Sélection en deux temps (clic puis Confirmer) → `POST /players/{slug}/media/associate`. S'appuie sur `GET /players/{slug}/media/match-candidates`.
+- **4 fichiers mis à jour** :
+  - `docs/CHANGELOG.md` : nouvelle entrée `[Unreleased] - 2026-05-02` au-dessus de `Go-API Phase 14`, section *Added (React / TypeScript)*.
+  - `docs/FR/CHANGELOG.md` : entrée miroir `[Non publié] - 2026-05-02` au-dessus de `[7.0.1]`, section *Ajouté*.
+  - `README.md` : bullet ajouté dans la section *Media V2* (What's new) **et** dans *Features → Clips & Media*.
+  - `docs/FR/README.md` : bullet miroir dans *Médias V2* (Dernières nouveautés) **et** *Clips & Médias*.
+- Format respecté : §18 CLAUDE.md (sync `docs/` ↔ `docs/FR/` dans le même PR) appliqué pour CHANGELOG et README.
+
+**Résultats** : aucune logique modifiée — pure documentation. Pas de tests à lancer.
+
+**Prochaine étape** : commit + relire la modale en local pour valider que la copie correspond bien à la fenêtre ±15/60/180 et au flow deux-temps décrits.
+
+## [2026-05-02] teammates.02 — Ajout du bullet chart « Winrate session vs historique » (onglet Synergies)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Nouveau composant ajouté** (sans toucher l'existant) : `winRateVsHistoryBulletChart.ts` (builder) + `WinRateVsHistoryBulletChart.tsx` (wrapper) + tests Vitest. Le grouped-bar `WinRateVsHistoryChart` existant est conservé tel quel — le bullet chart est rendu en plus, sous lui, dans `SquadSynergiesPage.tsx`.
+- **Implémentation bullet** (mock-echarts.html style, 2 séries) : `barGap: '-100%'` overlay des séries Historique (rose `chart-series-1`, opacity 0.85, z=1) et Session (couleur conditionnelle `divergent-pos/-neg/-neutral` selon Δ ±5 pp, z=2). `markLine` pointillé à `xAxis: 50` (parité). `markPoint` rectangle vertical (3×14) `divergent-neg` pour les cartes `match_count > 0 && win_rate === 0`. yAxis `inverse: true` + tri `match_count` desc → carte la plus jouée en haut.
+- **Couleurs** : tokens uniquement (`chart-series-1`, `divergent-*`). Une seule rgba structurelle pour le markLine de parité (`PARITY_LINE_COLOR = 'rgba(180,180,180,0.6)'`), conforme exception § 20 CLAUDE.md (couleur d'axe, sans signification métier).
+- **i18n** : 3 nouvelles clés ajoutées dans `SquadText` — `winRateVsHistoryBulletTitle`, `winRateVsHistoryBulletParity`, `winRateVsHistoryBulletZero` (FR/EN). Les clés existantes `winRateVsHistorySession` / `winRateVsHistoryHistory` sont réutilisées par les deux charts.
+- **Backend** : aucun changement (`MapBreakdownRow.HistoricalWinRate` déjà enrichi par `enrichMapBreakdownWithHistory` côté Go).
+
+**Résultats** :
+- `npx vitest run` sur `winRateVsHistoryBulletChart.test.ts` (16 cas) + `winRateVsHistoryChart.test.ts` (9) + `i18n.test.ts` (8) + `SquadSynergiesPage.test.tsx` (3) → 36/36 passent.
+- `npx tsc --noEmit` côté `apps/web` → propre.
+
+**Prochaine étape** : vérification visuelle du bullet chart (overlay, parité 50 %, markers 0 %) sous le grouped-bar dans `/players/$playerSlug/squad/synergies`.
+
 ## [2026-05-01] Explorer — historique joueur paginé + badges encounter + gamertags cliquables
 
 **Statut** : Complété
