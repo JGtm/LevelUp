@@ -1,0 +1,237 @@
+# =============================================================================
+# Graphe des antagonistes du match (qui a tué qui — stacked bar horizontal)
+# =============================================================================
+# 1 ligne (Y) = 1 tueur, longueur de la barre (X) = nombre total de frags du
+# tueur sur le match. Chaque segment de la barre = 1 victime, coloré avec la
+# couleur stable de la victime (cohérente avec le scoreboard, le radar, le
+# kill feed, et tous les charts joueur-centric de la page).
+#
+# Lecture instantanée : "qui a fait combien de kills, et sur qui ils sont
+# répartis". Symétrique du tableau des Encounters (carrière) mais à l'échelle
+# d'un seul match.
+#
+# Étend la spec match_view.12 (Nemesis/Bully = top-1 dans chaque sens) en
+# montrant *toutes* les rivalités du match, pas uniquement les extrêmes.
+# =============================================================================
+
+id: "match_view.18"
+title: "Graphe des antagonistes du match (qui a tué qui)"
+page: match_view
+section: "Onglet Combat — Antagonistes"
+source_function: "(à porter) src/ui/pages/match_view_players_nemesis.py::render_antagonists_graph"
+source_helpers:
+  - "src/analysis/personal_antagonists.py::compute_match_kill_matrix (à factoriser depuis compute_personal_antagonists)"
+  - "shared.killer_victim_pairs (DuckDB) — table source"
+  - "apps/go-api/internal/platform/duckdb/queries_match.go::Q19bKillerVictimBetween (modèle de requête)"
+fragment: false
+chart_kind: stacked_bar                                          # bar horizontal, stack='total' par tueur
+
+# === COUCHE DONNÉES ===
+data:
+  computed_by: server
+  upstream_service: "load_match_kill_matrix(match_id) → list[(killer_xuid, victim_xuid, kill_count)]"
+  input_dataframe:
+    required_columns:
+      - killer_xuid
+      - victim_xuid
+      - kill_count
+      - killer_gamertag                                          # résolu via match_gt_map
+      - victim_gamertag
+      - killer_team_id                                           # 0 = mon équipe, 1+ = ennemis
+      - victim_team_id
+  call_args:
+    match_id: required
+    self_xuid: required                                          # pour mettre en évidence la ligne du joueur courant
+  filters_applied: []
+  timezone: n/a
+
+  transformations:
+    - description: "Chargement de la matrice kill→death du match"
+      polars: |
+        rows = repo.load_match_kill_matrix(match_id)
+        # Schéma : killer_xuid, victim_xuid, kill_count, agrégé sur tout le match
+      sql_duckdb: |
+        SELECT
+            killer_xuid,
+            victim_xuid,
+            SUM(kill_count) AS kill_count
+        FROM shared.killer_victim_pairs
+        WHERE match_id = ?
+        GROUP BY killer_xuid, victim_xuid
+        HAVING SUM(kill_count) > 0;
+
+    - description: "Résolution gamertags + team_id via le scoreboard du match"
+      polars: |
+        scoreboard = load_match_scoreboard(match_id)
+        gt_by_xuid = {p.xuid: p.gamertag for p in scoreboard}
+        team_by_xuid = {p.xuid: p.team_id for p in scoreboard}
+
+    - description: "Agrégation par tueur — total frags + tri DESC pour ordonner l'axe Y"
+      polars: |
+        totals = (rows.group_by('killer_xuid')
+                      .agg(pl.col('kill_count').sum().alias('total_kills'))
+                      .sort('total_kills', descending=True))
+        # killers_order = totals['killer_xuid'].to_list()
+        # victims_order = liste stable des xuids présents dans la table (par team puis gamertag)
+
+    - description: "Construction de la matrice dense [n_killers × n_victims]"
+      polars: |
+        # matrix[killer][victim] = kill_count (0 si pas de kill enregistré)
+        # Une cellule par paire ; les diagonales (suicide/auto-frag) sont exclues côté SQL
+        # via le filtre HAVING > 0 ; si la donnée le contient, elles seraient nulles par défaut.
+
+# === TRACES ===
+# 1 série par victime (= 1 couleur stable) — empilées horizontalement.
+# Le nombre de séries = nombre de joueurs ayant été tués au moins une fois
+# dans le match (≤ 8 en 4v4, ≤ 12 en 6v6, ≤ 16 en 8v8).
+traces:
+  - id: per_victim_series
+    name: "{{viz_t.trace_kills_on_victim}}"                       # "Frags sur {victim}"
+    type: go.Bar                                                  # ECharts : type:'bar'
+    chart_role: primary
+    orientation: "h"                                              # /!\ horizontal — Y catégoriel, X numérique
+    color: "{{ COLOR_BY_VICTIM_XUID }}"                            # résolu via getMatchPlayerColors(scoreboard)
+    marker_line:
+      width: 1
+      color: "rgba(255, 255, 255, 0.08)"                          # filet sombre entre segments pour lisibilité
+    hovertemplate: |
+      <b>{{killer_gamertag}}</b> a tué
+      <b>{{victim_gamertag}}</b>
+      <b>%{x}</b> {{viz_t.hover_times}}
+      <extra></extra>
+
+# === LAYOUT ===
+layout:
+  inherits: _theme_default
+  height:
+    expression: "max(280, n_killers * 36 + 80)"                   # hauteur dynamique : 36px / ligne, min 280
+    branches: []
+  margin: {l: 120, r: 40, t: 30, b: 40}
+  barmode: "stack"                                                 # /!\ EMPILÉES — total kills par tueur en X
+  bargap: 0.20
+  showlegend: false                                                # PAS de légende (les couleurs sont celles du scoreboard / radar / kill feed — la cohérence visuelle suffit)
+
+  xaxis:
+    type: "linear"
+    title: "{{viz_t.axis_kills}}"                                  # "Frags"
+    rangemode: "tozero"
+    gridcolor: "rgba(255, 255, 255, 0.07)"
+
+  yaxis:
+    type: "category"
+    title: ""                                                      # le label "Tueur" est implicite (axe nommé)
+    autorange: "reversed"                                          # /!\ TOP = plus gros tueur (totals DESC)
+    tickfont:
+      # Surlignage de la ligne du joueur courant via préfixe (★) côté formatter
+      # ou via richText ECharts {self|gamertag} — voir notes
+      size: 13
+
+# === ENRICHISSEMENT VISUEL ===
+emphasis:
+  self_row:
+    enabled: true
+    detail: |
+      La ligne dont killer_xuid == self_xuid est mise en évidence :
+        - Préfixe ★ (ou icône) devant le gamertag dans yAxis.axisLabel
+        - Optionnel : weight: 700 + couleur outcome-win pour la étiquette
+      Permet de retrouver immédiatement sa propre performance dans le graphe.
+
+  totals_label:
+    enabled: true
+    detail: |
+      À droite de chaque barre (à la fin du dernier segment) : total kills en
+      gras. ECharts : `series[last].label.show=true, position:'right',
+      formatter:'{c}'` ne fonctionne pas en stacked → utiliser une série
+      "ghost" invisible avec stack:'total' value 0 et label total.
+      Alternative : annotation custom calculée côté front avec le total.
+
+# === COMPOSITION / AFFICHAGE ===
+display:
+  shown_when: |
+    match_id is not None
+    AND len(load_match_kill_matrix(match_id)) > 0
+    AND len(scoreboard) >= 2
+  empty_state:
+    type: "st.info"
+    message: "{{t.mv_antagonists_graph_no_data}}"
+    triggered_by:
+      - "killer_victim_pairs vide pour ce match (PvE/Firefight, ou data manquante)"
+      - "scoreboard vide ou mono-joueur"
+  config: PLOTLY_CLEAN_CONFIG                                      # interactif — clic légende n/a (pas de légende), hover OK
+  width_mode: stretch
+  preceded_by:
+    - "Cartes Nemesis + Souffre-douleur (#12) — le graphe les contextualise"
+  followed_by:
+    - "(suite de l'onglet Combat — encounters #14 si présent ailleurs)"
+
+# === I18N ===
+i18n_keys:
+  viz_t:
+    - trace_kills_on_victim                                        # "Frags sur {victim}"
+    - axis_kills                                                   # "Frags"
+    - hover_times                                                  # "fois"
+  t:
+    - mv_antagonists_graph_title                                   # "Graphe des antagonistes"
+    - mv_antagonists_graph_no_data                                 # "Aucune donnée d'antagonistes pour ce match."
+
+# === FINGERPRINT ===
+fingerprint:
+  source_commit: "(à créer — chart neuf)"
+  generated_at: "2026-05-02T00:00:00Z"
+  generator_version: "manual@v0"
+  manual_fields: ["all"]
+
+  notes:
+    - decision: "Stacked bar horizontal plutôt que graphe network ou heatmap"
+      why: |
+        - Network (force-directed) : touffu en 8v8 (16 nœuds, ~50 arêtes orientées),
+          difficile à lire sans interaction et impossible à imprimer.
+        - Heatmap killer × victim : très dense en infos mais lecture quantitative
+          uniquement par survol ; la longueur d'une barre (= total kills) est
+          immédiatement lisible et compare bien les joueurs entre eux.
+        - Stacked bar horizontal : la hiérarchie verticale (top tueur en haut)
+          + la longueur (perf totale) + la composition par couleur (qui était
+          la cible) = 3 lectures simultanées sans interaction. Choix retenu.
+
+    - decision: "Couleurs par victime, PAS par tueur"
+      why: |
+        Si on colorait chaque barre selon le tueur, on aurait des barres
+        monochromes (peu informatives). En colorant par victime, chaque
+        segment porte l'identité du joueur ciblé → on peut suivre une
+        couleur (un joueur) à travers toutes les lignes pour voir "qui m'a
+        tué le plus". La couleur du joueur est stable sur toute la page
+        (radar #7, scoreboard #8, kill feed #10, nemesis #12) — c'est la
+        même qu'ailleurs.
+
+    - decision: "Pas de légende (cohérence visuelle suffit)"
+      why: |
+        Les mêmes couleurs joueur sont déjà utilisées dans les charts amont
+        de la page (notamment le scoreboard #8 et le kill feed du chart
+        #10). Une légende ici doublerait l'info et prendrait de la place.
+        Le hover suffit à identifier la victime de chaque segment.
+
+    - decision: "Mise en évidence de la ligne du joueur courant"
+      why: |
+        Sur 8-16 joueurs, retrouver sa propre ligne est crucial. Préfixe ★
+        (ou équivalent) + bold sur l'étiquette de l'axe Y. Évite d'avoir à
+        scanner la liste de gamertags pour se localiser.
+
+    - decision: "Tri par total kills DESC (top tueur en haut)"
+      why: |
+        Convention de scoreboard. Le joueur le plus performant en premier.
+        Couplé au surlignage de la ligne self, on identifie immédiatement
+        son rang relatif sans avoir à compter.
+
+    - decision: "Hauteur dynamique 36px/ligne"
+      why: |
+        Adapte la carte à 4v4 (8 lignes ≈ 368px) jusqu'à 8v8 (16 lignes ≈
+        656px). Cohérent avec teammates.03 (heatmap player×map) qui utilise
+        la même technique.
+
+    - decision: "Source de données = shared.killer_victim_pairs (déjà alimentée)"
+      why: |
+        Table v6 partagée, peuplée par le sync (writes.go). Aucune
+        nouvelle pipeline à construire — uniquement un service de lecture
+        à exposer (ex. `MatchAntagonistsService.GetMatrix(matchID)`).
+        Cohérent avec Q19bKillerVictimBetween qui utilise déjà cette
+        table pour les encounters #14.

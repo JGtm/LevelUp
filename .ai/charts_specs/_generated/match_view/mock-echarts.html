@@ -161,7 +161,7 @@
   <header>
     <h1>Mock ECharts — Page match_view</h1>
     <div class="info">
-      17 charts · Données mock synthétiques · ECharts 5.5.1<br>
+      18 charts · Données mock synthétiques · ECharts 5.5.1<br>
       Source : <code>origin/v7/cockpit</code> (Plotly Python) — généré le 2026-04-30T18:40:20.672Z
     </div>
   </header>
@@ -3239,6 +3239,126 @@ return p.data._tip || '';
             <div style="font-family:'Segoe UI',sans-serif;font-size:38px;font-weight:700;line-height:1;color:#4CAF50">50 — 32</div>
             <div style="display:block;margin-top:1px;padding:3px 10px;border-radius:4px;font-size:0.875em;font-weight:600;background:#2e7d32;color:#e8f5e9">DOMINATION</div>
           </div></div>
+    </section>
+
+    <section class="chart-card full-width">
+      <h2>match_view.18 — Graphe des antagonistes (qui a tué qui)</h2>
+      <div class="meta">
+        <code>(à porter) match_view_players_nemesis.py::render_antagonists_graph</code> · source : <code>shared.killer_victim_pairs</code>
+      </div>
+      <div id="chart-antagonists" class="chart-canvas" style="height: 380px;"></div>
+      <script>
+        (function() {
+          // Mock : 8 joueurs (4v4). Couleurs stables = palette joueur (cohérente avec scoreboard / kill feed / radar).
+          // JGtm = joueur courant (préfixe ★ sur l'étiquette Y).
+          const players = [
+            { xuid: "JGtm",          gt: "JGtm",          color: "#33D6FF", isMe: true  }, // Mon équipe
+            { xuid: "BlazingFury",   gt: "BlazingFury",   color: "#29B6F6", isMe: false }, // Mon équipe
+            { xuid: "ShadowKnight",  gt: "ShadowKnight",  color: "#FFCA28", isMe: false }, // Mon équipe
+            { xuid: "GlitchHunter",  gt: "GlitchHunter",  color: "#26C6DA", isMe: false }, // Mon équipe
+            { xuid: "NeoSpartan_42", gt: "NeoSpartan_42", color: "#EF5350", isMe: false }, // Adverse
+            { xuid: "VortexMaster",  gt: "VortexMaster",  color: "#FF7043", isMe: false }, // Adverse
+            { xuid: "NightHawk",     gt: "NightHawk",     color: "#AB47BC", isMe: false }, // Adverse
+            { xuid: "CrimsonRage",   gt: "CrimsonRage",   color: "#66BB6A", isMe: false }, // Adverse
+          ];
+
+          // matrix[killer_xuid][victim_xuid] = nb kills sur le match (mock cohérent avec le score 50-32)
+          const matrix = {
+            JGtm:          { NeoSpartan_42: 5, VortexMaster: 4, NightHawk: 3, CrimsonRage: 2 },
+            BlazingFury:   { NeoSpartan_42: 3, VortexMaster: 4, NightHawk: 2, CrimsonRage: 4 },
+            NightHawk:     { JGtm: 3, BlazingFury: 2, ShadowKnight: 4, GlitchHunter: 3 },
+            ShadowKnight:  { NeoSpartan_42: 3, VortexMaster: 2, NightHawk: 1, CrimsonRage: 3 },
+            VortexMaster:  { JGtm: 2, BlazingFury: 3, ShadowKnight: 2, GlitchHunter: 1 },
+            GlitchHunter:  { NeoSpartan_42: 2, VortexMaster: 2, CrimsonRage: 3 },
+            NeoSpartan_42: { BlazingFury: 2, ShadowKnight: 1, GlitchHunter: 3 },
+            CrimsonRage:   { JGtm: 1, ShadowKnight: 2, GlitchHunter: 1 },
+          };
+
+          // Total kills par tueur — pour tri DESC sur l'axe Y
+          const totals = players.map(p => ({
+            xuid: p.xuid,
+            total: Object.values(matrix[p.xuid] || {}).reduce((a, b) => a + b, 0)
+          })).sort((a, b) => b.total - a.total);
+
+          const killerOrder = totals.map(t => t.xuid);            // top kill en premier (rendu inversé en bas par autorange:'reversed' équivalent)
+          const killerOrderReversed = [...killerOrder].reverse(); // ECharts yAxis affiche bottom-up : on inverse pour avoir le top en haut
+          const totalByKiller = Object.fromEntries(totals.map(t => [t.xuid, t.total]));
+          const playerByXUID = Object.fromEntries(players.map(p => [p.xuid, p]));
+
+          // Y-axis labels : ★ devant le joueur courant + couleur outcome-win
+          const yLabels = killerOrderReversed.map(xuid => {
+            const p = playerByXUID[xuid];
+            const total = totalByKiller[xuid];
+            return p.isMe ? `{self|★ ${p.gt}}{count|  ${total}}` : `{normal|${p.gt}}{count|  ${total}}`;
+          });
+
+          // 1 série par victime (couleur = couleur stable du joueur ciblé)
+          const series = players.map(victim => ({
+            name: victim.gt,
+            type: "bar",
+            stack: "total",
+            barCategoryGap: "30%",
+            itemStyle: {
+              color: victim.color,
+              borderColor: "rgba(255, 255, 255, 0.08)",
+              borderWidth: 1
+            },
+            emphasis: { focus: "series" },
+            data: killerOrderReversed.map(killerXUID => matrix[killerXUID]?.[victim.xuid] ?? 0),
+          }));
+
+          const option = {
+            grid: { left: 150, right: 60, top: 24, bottom: 40, containLabel: false },
+            tooltip: {
+              trigger: "item",
+              backgroundColor: "rgba(29, 35, 40, 0.96)",
+              borderColor: "rgba(255, 255, 255, 0.12)",
+              textStyle: { color: "rgba(245, 248, 255, 0.92)" },
+              formatter: (params) => {
+                const killer = killerOrderReversed[params.dataIndex];
+                const killerGT = playerByXUID[killer].gt;
+                if (params.value === 0) return "";
+                return `<b>${killerGT}</b> a tué <b style="color:${params.color}">${params.seriesName}</b><br>${params.value} fois`;
+              }
+            },
+            legend: { show: false },
+            xAxis: {
+              type: "value",
+              name: "Frags",
+              nameLocation: "middle",
+              nameGap: 26,
+              splitLine: { show: true, lineStyle: { color: "rgba(255, 255, 255, 0.07)" } }
+            },
+            yAxis: {
+              type: "category",
+              data: killerOrderReversed.map((_, i) => yLabels[i]),
+              axisLabel: {
+                fontSize: 13,
+                rich: {
+                  self:   { color: "#3DFFB5", fontWeight: 700, fontSize: 13 },
+                  normal: { color: "rgba(245, 248, 255, 0.92)", fontSize: 13 },
+                  count:  { color: "rgba(182, 196, 214, 0.72)", fontWeight: 700, fontSize: 12 }
+                }
+              },
+              axisLine:  { lineStyle: { color: "rgba(255, 255, 255, 0.18)" } },
+              axisTick:  { show: false }
+            },
+            series: series,
+            backgroundColor: "rgba(29, 35, 40, 1.0)",
+            textStyle: { color: "rgba(245, 248, 255, 0.92)", fontSize: 13 }
+          };
+
+          const dom = document.getElementById('chart-antagonists');
+          const chart = echarts.init(dom, null, { renderer: 'canvas' });
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        })();
+      </script>
+      <div style="margin-top:8px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:4px;font-size:12px;color:rgba(182,196,214,0.85);line-height:1.5">
+        <strong style="color:#33D6FF">Lecture</strong> : 1 ligne = 1 tueur, longueur = total frags du match. Chaque segment porte la <em>couleur stable de la victime</em>
+        (cohérente avec scoreboard #8 / kill feed #10 / nemesis #12). Tri DESC par total kills (top tueur en haut).
+        ★ = joueur courant (étiquette en vert). Survol d'un segment : tueur → victime + nb fois.
+      </div>
     </section>
 
     <section class="chart-card">

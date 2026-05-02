@@ -40,9 +40,12 @@ Le scope **Phase 1** couvre le header + onglet Summary + scoreboard de l'onglet 
 | 15 | Citations du match | `render_match_citations_section` (match_view_citations.py:18) | `15_match_citations.yaml` | composite_block |
 | 16 | Médailles du match (grille) | `render_medals_tab` (match_view_citations.py:185) | `16_match_medals.yaml` | composite_block |
 | 17 | Section Media (captures + vidéos) | `render_media_section` (match_view_helpers.py:295) | `17_media_section.yaml` | composite_block |
+| 18 | Graphe des antagonistes (qui a tué qui) | _(à porter)_ `render_antagonists_graph` — source `shared.killer_victim_pairs` | `18_antagonists_graph.yaml` | stacked_bar |
 
 > **Note structurelle Phase 2** : pas de nouveau `chart_kind` à créer (tous réutilisent ce qui existe en Phase 1 — `line`, `grouped_bar`, `kpi_row`, `table_html`, `composite_block`).
 > Le converter `line` pourra avoir besoin d'évolutions mineures pour gérer les annotations + markers pluriels (chart 09) et les hlines (chart 13).
+>
+> **Chart 18 (nouveau)** : `stacked_bar` horizontal — étend les cartes Nemesis #12 (top-1 dans chaque sens) en montrant *toutes* les rivalités du match. Couleur par victime (stable avec scoreboard / kill feed / radar). Source de données déjà alimentée (`shared.killer_victim_pairs`).
 
 ## Ordre d'affichage Phase 1
 
