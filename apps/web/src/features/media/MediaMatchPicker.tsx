@@ -64,9 +64,9 @@ function outcomeKeyOf(outcome: number | null | undefined): string | null {
 }
 
 const outcomeClassByCode: Record<number, string> = {
-  2: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
-  3: 'bg-rose-500/15 text-rose-400 border-rose-500/40',
-  1: 'bg-amber-500/15 text-amber-400 border-amber-500/40',
+  2: 'bg-success/15 text-success border-success/40',
+  3: 'bg-destructive/15 text-destructive border-destructive/40',
+  1: 'bg-warning/15 text-warning border-warning/40',
   4: 'bg-muted text-muted-foreground border-border',
 }
 

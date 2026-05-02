@@ -46,7 +46,7 @@ export function CompositeProgressBar({
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/25">
       <div
         data-testid={fillTestId}
-        className="h-full rounded-full bg-sky-500 transition-all duration-300"
+        className="h-full rounded-full bg-primary transition-all duration-300"
         style={{ width: `${width}%` }}
       />
     </div>

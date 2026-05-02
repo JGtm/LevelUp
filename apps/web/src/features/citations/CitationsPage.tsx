@@ -133,7 +133,7 @@ export function CitationsPage() {
                 <div
                   key={c.key}
                   className="rounded-lg border p-3 space-y-1"
-                  style={{ borderLeftColor: c.color ?? '#a78bfa', borderLeftWidth: 4 }}
+                  style={{ borderLeftColor: c.color ?? '#a78bfa', borderLeftWidth: 4 }} // color-allow: fallback violet quand l'API ne fournit pas de couleur de citation
                 >
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">{c.label}</p>

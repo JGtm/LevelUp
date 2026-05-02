@@ -182,6 +182,12 @@ export interface SettingsText {
   badgeExcludeBotsFromRecordsLabel: string
   badgeExcludeBotsFromRecordsHint: string
 
+  // Onglet Analyse — Progression Objectifs/Prestige
+  progressionTitle: string
+  showProgressionLabel: string
+  progressionHint: string
+  progressionGlossaryLink: string
+
   // Admin — Fournisseur d'authentification
   authProviderTitle: string
   authProviderLabel: string
@@ -396,6 +402,15 @@ const FR_TEXT: SettingsText = {
   badgeExcludeBotsFromRecordsHint:
     'Les matchs avec bots peuvent produire des stats atypiques ' +
     'qui fausseraient vos records personnels.',
+
+  progressionTitle: 'Progression long-terme',
+  showProgressionLabel: 'Afficher Objectifs & Prestige',
+  progressionHint:
+    "Les Objectifs sont des défis personnalisés (kills, KDA, précision…) sur une fenêtre " +
+    "temporelle ; chaque objectif complété rapporte des Prestige Points qui déterminent " +
+    "votre palier (Normal, Heroic, Legendary, Mythic). Désactiver masque la section " +
+    "Prestige sur l'Accueil et l'entrée Objectifs dans la barre de navigation.",
+  progressionGlossaryLink: 'En savoir plus dans le glossaire',
 
   authProviderTitle: "Fournisseur d'authentification",
   authProviderLabel: 'Provider',
@@ -613,6 +628,15 @@ const EN_TEXT: SettingsText = {
   badgeExcludeBotsFromRecordsHint:
     'Bot matches can produce atypical stats ' +
     'that would distort your personal records.',
+
+  progressionTitle: 'Long-term progression',
+  showProgressionLabel: 'Show Objectives & Prestige',
+  progressionHint:
+    'Objectives are custom challenges (kills, KDA, accuracy…) over a time window; ' +
+    'each completed objective awards Prestige Points that determine your tier ' +
+    '(Normal, Heroic, Legendary, Mythic). Disabling hides the Prestige section on ' +
+    'the Home page and the Objectives entry in the navigation bar.',
+  progressionGlossaryLink: 'Learn more in the glossary',
 
   authProviderTitle: 'Authentication provider',
   authProviderLabel: 'Provider',

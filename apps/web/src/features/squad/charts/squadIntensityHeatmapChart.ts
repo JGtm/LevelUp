@@ -18,12 +18,13 @@ const PHASE_LABELS = [
   '50-60%', '60-70%', '70-80%', '80-90%', '90-100%',
 ]
 
+// color-allow: échelle d'intensité 5 paliers (cyan→jaune→ambre→orange→rouge) — pas de token AC pour scale 5-stops
 const COLOR_STOPS = [
-  { color: '#38C8C8' }, // cyan
-  { color: '#FFFF00' }, // jaune
-  { color: '#FFB300' }, // ambre
-  { color: '#FF5500' }, // orange
-  { color: '#FF1A00' }, // rouge
+  { color: '#38C8C8' }, // color-allow: cyan (intensité min)
+  { color: '#FFFF00' }, // color-allow: jaune (intensité 2)
+  { color: '#FFB300' }, // color-allow: ambre (intensité 3)
+  { color: '#FF5500' }, // color-allow: orange (intensité 4)
+  { color: '#FF1A00' }, // color-allow: rouge (intensité max)
 ]
 
 export interface SquadIntensityOpts {

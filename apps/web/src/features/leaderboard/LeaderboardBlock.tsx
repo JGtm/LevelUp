@@ -107,14 +107,14 @@ export function LeaderboardBlock({
               value={season}
               onChange={(e) => setSeason(e.target.value)}
               placeholder="Saison (ex: Season5)"
-              className="border rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="border rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <input
               type="text"
               value={playlist}
               onChange={(e) => setPlaylist(e.target.value)}
               placeholder="Playlist (optionnel)"
-              className="border rounded px-2 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="border rounded px-2 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
         </div>

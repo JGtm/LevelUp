@@ -378,3 +378,85 @@ func TestToResponse_NewAnalyseFields(t *testing.T) {
 		t.Error("ToResponse: OutcomeExcludeBotMatchesFromRecords not mapped")
 	}
 }
+
+// ─── ShowProgression (toggle Objectifs/Prestige) ────────────────────────────
+
+func TestDefaults_ShowProgression(t *testing.T) {
+	d := settings.Defaults()
+	if !d.ShowProgression {
+		t.Error("ShowProgression default should be true")
+	}
+}
+
+func TestStore_Load_ShowProgressionDefaultsTrueWhenAbsent(t *testing.T) {
+	// Fichier existant sans show_progression → rétrocompat : default true
+	store := newTestStore(t, map[string]interface{}{
+		"lang": "fr",
+		// show_progression absent
+	})
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.ShowProgression {
+		t.Error("absent show_progression should default to true")
+	}
+}
+
+func TestStore_Load_ShowProgressionFalseRespected(t *testing.T) {
+	store := newTestStore(t, map[string]interface{}{
+		"lang":             "fr",
+		"show_progression": false,
+	})
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.ShowProgression {
+		t.Error("explicit show_progression=false must be respected")
+	}
+}
+
+func TestApply_ShowProgression(t *testing.T) {
+	cfg := settings.Defaults()
+	v := false
+	req := &domain.UpdateSettingsRequest{ShowProgression: &v}
+	settings.Apply(cfg, req)
+	if cfg.ShowProgression {
+		t.Error("ShowProgression should be false after Apply(false)")
+	}
+}
+
+func TestToResponse_ShowProgressionMapped(t *testing.T) {
+	cfg := settings.Defaults()
+	cfg.ShowProgression = false
+	resp := settings.ToResponse(cfg)
+	if resp.ShowProgression {
+		t.Error("ToResponse: ShowProgression=false not propagated")
+	}
+
+	cfg.ShowProgression = true
+	resp = settings.ToResponse(cfg)
+	if !resp.ShowProgression {
+		t.Error("ToResponse: ShowProgression=true not propagated")
+	}
+}
+
+func TestStore_SaveLoadRoundTrip_ShowProgression(t *testing.T) {
+	store := newTestStore(t, map[string]interface{}{"lang": "fr"})
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg.ShowProgression = false
+	if err := store.Save(cfg); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	cfg2, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load2: %v", err)
+	}
+	if cfg2.ShowProgression {
+		t.Error("ShowProgression=false not persisted across save/load")
+	}
+}

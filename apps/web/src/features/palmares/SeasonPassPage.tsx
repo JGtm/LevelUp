@@ -93,7 +93,7 @@ function OverlayContentRows({
         <div className="flex flex-wrap items-center gap-x-2.5 text-xs">
           {rarities.map(({ tier, count }) => (
             <span key={tier} className="flex items-center gap-1">
-              <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${rarityStyle(tier)?.segment ?? 'bg-slate-400'}`} />
+              <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${rarityStyle(tier)?.segment ?? 'bg-muted-foreground/60'}`} />
               <span className="text-white/60">{rarityLabel(tier, palmaresLocale)}</span>
               {' '}
               <span className="font-semibold text-white tabular-nums">{count}</span>
@@ -147,8 +147,8 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
       onClick={() => onSelect(pass)}
       aria-pressed={isSelected}
       className={[
-        'group relative block w-full overflow-hidden rounded-xl border bg-card/95 text-left shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70',
-        isSelected ? 'border-sky-400/70 ring-2 ring-sky-400/40' : 'border-border/70',
+        'group relative block w-full overflow-hidden rounded-xl border bg-card/95 text-left shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        isSelected ? 'border-primary/70 ring-2 ring-primary/40' : 'border-border/70',
       ].join(' ')}
     >
       {background && (
@@ -265,7 +265,7 @@ function PassShowcase({
             <button
               type="button"
               onClick={onBackToActive}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded"
             >
               <span aria-hidden="true">←</span>
               <span>{text.seasonPass.backToActive}</span>
@@ -335,7 +335,7 @@ function PassShowcase({
                     <div className="h-2 w-full">
                       <div
                         data-testid="season-pass-active-tier-progress-fill"
-                        className="h-full rounded-full bg-sky-500 transition-all duration-300"
+                        className="h-full rounded-full bg-primary transition-all duration-300"
                         style={{ width: `${barPercent}%` }}
                       />
                     </div>

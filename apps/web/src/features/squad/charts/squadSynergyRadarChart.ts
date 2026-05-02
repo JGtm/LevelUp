@@ -35,7 +35,7 @@ export function buildSquadSynergyRadarOption(
   }))
 
   const data = series.map((s) => {
-    const color = opts.colorByPlayer[s.player] ?? '#888'
+    const color = opts.colorByPlayer[s.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     return {
       name: s.player,
       value: s.axes.map((a) => a.value),

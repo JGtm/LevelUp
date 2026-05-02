@@ -135,7 +135,7 @@ function ScopeBar({ scope }: ScopeBarProps) {
             <span className="text-muted-foreground">Filtres : <strong className="text-foreground">{appliedFilters.join(', ')}</strong></span>
           )}
           {ignoredFilters.length > 0 && (
-            <span className="text-xs text-amber-500">⚠ Ignorés : {ignoredFilters.join(', ')}</span>
+            <span className="text-xs text-warning">⚠ Ignorés : {ignoredFilters.join(', ')}</span>
           )}
         </div>
       </CardContent>

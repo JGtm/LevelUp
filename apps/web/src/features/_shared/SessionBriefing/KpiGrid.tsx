@@ -44,7 +44,7 @@ function KpiCell({ label, value, sub, trend = 'none' }: CellProps) {
           : null
 
   return (
-    <div className="rounded border border-border bg-[#1d2328] px-3 py-2">
+    <div className="rounded border border-border bg-card px-3 py-2">
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="mt-0.5 flex items-baseline">
         <span className="text-lg font-bold">{value}</span>

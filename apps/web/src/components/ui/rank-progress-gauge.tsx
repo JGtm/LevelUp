@@ -59,7 +59,7 @@ export function RankProgressGauge({ title, progressPct, subtitle, size = 220 }: 
         <path
           d={describeArc(cx, cy, r, -200, 40)}
           fill="none"
-          stroke="#2d3748"
+          stroke="#2d3748" // color-allow: fond de piste SVG (CLAUDE.md §20 — couleurs structurelles SVG)
           strokeWidth={strokeWidth}
           strokeLinecap="round"
         />
@@ -93,7 +93,7 @@ export function RankProgressGauge({ title, progressPct, subtitle, size = 220 }: 
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={size * 0.075}
-          fill="#e2e8f0"
+          fill="#e2e8f0" // color-allow: gris clair structurel pour le titre SVG (CLAUDE.md §20)
         >
           {title.length > 18 ? title.slice(0, 17) + '…' : title}
         </text>

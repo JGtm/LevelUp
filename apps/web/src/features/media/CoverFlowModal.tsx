@@ -312,8 +312,8 @@ export function CoverFlowModal({
                 title={autoChain ? text.coverFlow.disableChaining : text.coverFlow.enableChaining}
                 className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
                   autoChain
-                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                    : 'bg-red-500/20 border-red-500/50 text-red-400'
+                    ? 'bg-success/20 border-success/50 text-success'
+                    : 'bg-destructive/20 border-destructive/50 text-destructive'
                 }`}
               >
                 <svg

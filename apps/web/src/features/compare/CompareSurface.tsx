@@ -106,7 +106,7 @@ export function CompareSurface({ playerSlug }: { playerSlug: string }) {
             value={targetGamertag}
             onChange={(event) => setTargetGamertag(event.target.value)}
             placeholder={text.placeholder}
-            className="flex-1 rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="flex-1 rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <button
             type="submit"

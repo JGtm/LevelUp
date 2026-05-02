@@ -122,7 +122,7 @@ export function HomeBattlePassPanel({
       </CardHeader>
 
       <CardContent className="relative space-y-6">
-        <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/80 shadow-[0_24px_72px_-44px_rgba(15,23,42,0.92)]">
+        <div className="overflow-hidden rounded-xl border border-white/15 bg-slate-950/80 shadow-[0_24px_72px_-44px_rgba(15,23,42,0.92)]"> {/* color-allow: thématique Spartan UI (BattlePass image frame) */}
           {(featuredPass.background_image_url ?? featuredPass.image_url) ? (
             <img
               src={featuredPass.background_image_url ?? featuredPass.image_url!}
@@ -133,7 +133,7 @@ export function HomeBattlePassPanel({
           ) : (
             <div className="flex h-44 w-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.18),transparent_45%),linear-gradient(135deg,rgba(15,23,42,1),rgba(51,65,85,0.95))] px-6 text-center text-white sm:h-52 xl:h-60">
               <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-slate-300">Pass actif</p>
+                <p className="text-xs uppercase tracking-[0.34em] text-slate-300">Pass actif</p> {/* color-allow: thématique Spartan UI (BattlePass placeholder) */}
                 <p className="mt-3 text-2xl font-semibold sm:text-3xl">{featuredPass.name}</p>
               </div>
             </div>
@@ -160,7 +160,7 @@ export function HomeBattlePassPanel({
                   <div className="h-2 w-full">
                     <div
                       data-testid="home-battle-pass-active-tier-progress-fill"
-                      className="h-full rounded-full bg-sky-500 transition-all duration-300"
+                      className="h-full rounded-full bg-primary transition-all duration-300"
                       style={{ width: `${clampCompositeProgress(tierProgress)}%` }}
                     />
                   </div>

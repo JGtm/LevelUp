@@ -346,7 +346,7 @@ export function MediaToolbar({
         onClick={() => onLikedOnlyChange(!likedOnly)}
         className={`flex h-8 items-center justify-center rounded-md border px-2 text-base leading-none transition-colors ${
           likedOnly
-            ? 'border-rose-500/60 bg-rose-500/10 text-rose-500'
+            ? 'border-rose-500/60 bg-rose-500/10 text-rose-500' // color-allow: rose pour le filtre "favoris" (heart icon) — CLAUDE.md §20 tolère rose pour liked
             : 'border-input text-muted-foreground hover:text-foreground'
         }`}
       >

@@ -51,6 +51,10 @@ type SettingsResponse struct {
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
 	OutcomeBadgeSensitivity             string `json:"outcome_badge_sensitivity"`
 
+	// ShowProgression contrôle l'affichage du système Objectifs/Prestige
+	// (section Accueil + entrée nav L1). Défaut : true.
+	ShowProgression bool `json:"show_progression"`
+
 	// AuthProvider indique le mécanisme d'authentification actif.
 	// Valeurs : "msal" (défaut) | "sisu" (Xbox natif).
 	AuthProvider string `json:"auth_provider"`
@@ -102,6 +106,9 @@ type UpdateSettingsRequest struct {
 	OutcomeExcludeBotMatchesFromBadges  *bool   `json:"outcome_exclude_bot_matches_from_badges,omitempty"`
 	OutcomeExcludeBotMatchesFromRecords *bool   `json:"outcome_exclude_bot_matches_from_records,omitempty"`
 	OutcomeBadgeSensitivity             *string `json:"outcome_badge_sensitivity,omitempty"`
+
+	// ShowProgression : toggle d'affichage Objectifs/Prestige.
+	ShowProgression *bool `json:"show_progression,omitempty"`
 
 	// AuthProvider bascule le mécanisme d'authentification. "msal" | "sisu".
 	AuthProvider *string `json:"auth_provider,omitempty"`

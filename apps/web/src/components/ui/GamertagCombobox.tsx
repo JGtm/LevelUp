@@ -164,7 +164,7 @@ export function GamertagCombobox({
               className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium"
               style={
                 color
-                  ? { backgroundColor: color, color: '#fff', border: 'none' }
+                  ? { backgroundColor: color, color: '#fff', border: 'none' } // color-allow: blanc structurel pour contraste sur fond coloré du pill
                   : undefined
               }
               data-pill={!color ? 'neutral' : undefined}

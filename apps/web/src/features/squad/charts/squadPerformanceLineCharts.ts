@@ -110,7 +110,7 @@ export function buildPerformanceLineOption(
         data[idx] = Number((v * scale).toFixed(decimals))
       }
     }
-    const color = opts.colorByPlayer[player] ?? '#888'
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     return {
       name: player,
       type: 'line' as const,
@@ -177,7 +177,7 @@ export function buildKillsDeathsButterflyOption(
 
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   for (const player of players) {
-    const color = opts.colorByPlayer[player] ?? '#888'
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const killsData = new Array<number | null>(n).fill(null)
     const deathsData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
@@ -249,7 +249,7 @@ export function buildHsPerfectOption(
   // pour faire ressortir les pics de perfect kills).
   const series: Array<Record<string, unknown>> = []
   for (const player of players) {
-    const color = opts.colorByPlayer[player] ?? '#888'
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const hsData = new Array<number | null>(n).fill(null)
     const perfectData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {

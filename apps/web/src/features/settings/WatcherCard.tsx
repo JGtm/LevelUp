@@ -59,7 +59,7 @@ function TokenStatus({ t, onStartAuth }: { t: SettingsText; onStartAuth: () => v
   if (data.token_valid && data.token_expires_at) {
     const date = new Date(data.token_expires_at).toLocaleDateString()
     return (
-      <p className="text-xs text-green-600 dark:text-green-400">
+      <p className="text-xs text-success">
         ✅ {t.watcherTokenValid.replace('{date}', date).replace('{gamertag}', data.token_gamertag ?? '')}
       </p>
     )
@@ -68,7 +68,7 @@ function TokenStatus({ t, onStartAuth }: { t: SettingsText; onStartAuth: () => v
   if (data.token_expires_at && !data.token_valid) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs text-amber-600 dark:text-amber-400">⚠️ {t.watcherTokenExpired}</span>
+        <span className="text-xs text-warning">⚠️ {t.watcherTokenExpired}</span>
         <Button variant="outline" size="sm" onClick={onStartAuth}>{t.watcherAuthReconnect}</Button>
       </div>
     )
@@ -109,7 +109,7 @@ function AuthFlow({
   }, [userCode])
 
   if (pollData?.status === 'authorized') {
-    return <p className="text-xs text-green-600 dark:text-green-400">✅ {t.watcherAuthSuccess}</p>
+    return <p className="text-xs text-success">✅ {t.watcherAuthSuccess}</p>
   }
   if (pollData?.status === 'failed' || pollData?.status === 'expired') {
     return <p className="text-xs text-destructive">✗ {t.watcherAuthFailed}</p>
@@ -168,7 +168,7 @@ function PlayersSelector({ t }: { t: SettingsText }) {
           <option key={p.gamertag} value={p.gamertag}>{p.gamertag}</option>
         ))}
       </select>
-      {feedback && <p className="text-xs text-green-600 dark:text-green-400">{feedback}</p>}
+      {feedback && <p className="text-xs text-success">{feedback}</p>}
     </div>
   )
 }
@@ -190,7 +190,7 @@ function RTAStatus({ t }: { t: SettingsText }) {
   return (
     <div className="space-y-1 py-2">
       <div className="flex items-center gap-1.5 text-xs">
-        <span className={`h-2 w-2 rounded-full ${data.rta_connected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
+        <span className={`h-2 w-2 rounded-full ${data.rta_connected ? 'bg-success' : 'bg-muted-foreground'}`} />
         <span className="text-muted-foreground">
           {data.rta_connected ? t.watcherRtaConnected : t.watcherRtaDisconnected}
         </span>
@@ -201,7 +201,7 @@ function RTAStatus({ t }: { t: SettingsText }) {
             <li key={p.xuid} className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">{p.gamertag}</span>
               <span className="rounded bg-muted px-1 py-0.5 text-[10px]">{resolveStateLabel(p.state, t)}</span>
-              {p.in_game && <span className="text-green-500 text-[10px]">{t.watcherInGame}</span>}
+              {p.in_game && <span className="text-success text-[10px]">{t.watcherInGame}</span>}
               {p.subscribe_error ? (
                 <span
                   className="rounded bg-destructive/15 px-1 py-0.5 text-[10px] text-destructive"
@@ -210,7 +210,7 @@ function RTAStatus({ t }: { t: SettingsText }) {
                   ⚠ {t.watcherSubscribeError}
                 </span>
               ) : (
-                <span className="text-[10px] text-green-600">✓</span>
+                <span className="text-[10px] text-success">✓</span>
               )}
             </li>
           ))}

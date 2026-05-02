@@ -43,7 +43,7 @@ export function buildSquadPerMinuteOption(
 
   // 1 série bar par joueur, 3 valeurs (frags, -deaths, assists).
   const echSeries = rows.map((r) => {
-    const color = opts.colorByPlayer[r.player] ?? '#888'
+    const color = opts.colorByPlayer[r.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     return {
       name: r.player,
       type: 'bar' as const,
