@@ -28,7 +28,10 @@ function getTexts(locale: string): Texts {
   return {
     all:        isFr ? 'Toutes les sessions'    : 'All sessions',
     count:      (n) => isFr ? `${n} session${n > 1 ? 's' : ''}` : `${n} session${n !== 1 ? 's' : ''}`,
-    filterList: isFr ? 'Filtrer la liste'       : 'Filter list',
+    // Renommé "Filtrer la liste" → "Trouver dans la liste" pour clarifier
+    // qu'il filtre seulement la liste visible (vs PeriodePill qui filtre les
+    // matchs analysés). Plan smart-filter-counts, Phase 3.
+    filterList: isFr ? 'Trouver dans la liste'  : 'Find in list',
     from:       isFr ? 'Du'                     : 'From',
     to:         isFr ? 'Au'                     : 'To',
     validate:   isFr ? 'Valider'                : 'Apply',
@@ -49,6 +52,10 @@ export interface SessionMultiSelectProps {
   placeholder?: string
   /** Surcharge la classe CSS du bouton déclencheur (ex: taille dans une barre compacte). */
   triggerClassName?: string
+  /** Si fourni, retourne le nombre de matchs de la session avec les filtres
+   *  actifs. Les sessions retournant 0 sont masquées (sauf si déjà sélectionnées,
+   *  pour ne pas les faire disparaître brutalement). Plan smart-filter-counts. */
+  getMatchCount?: (label: string) => number | undefined
 }
 
 // ─── Composant ───────────────────────────────────────────────────────────────
@@ -60,6 +67,7 @@ export function SessionMultiSelect({
   locale,
   placeholder,
   triggerClassName,
+  getMatchCount,
 }: SessionMultiSelectProps) {
   const t = getTexts(locale)
   const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
@@ -88,10 +96,16 @@ export function SessionMultiSelect({
   }, [])
 
   // Sessions filtrées par recherche + plage de dates (filtre la liste uniquement).
+  // Si getMatchCount est fourni, masquer les sessions retournant 0 matchs (sauf
+  // si déjà sélectionnée — pour ne pas les faire disparaître brutalement).
   const filtered = sessions.filter((s) => {
     if (query && !s.label.toLowerCase().includes(query.toLowerCase())) return false
     if (dateFrom && new Date(s.ended_at) < new Date(dateFrom)) return false
     if (dateTo   && new Date(s.started_at) > new Date(dateTo))  return false
+    if (getMatchCount) {
+      const c = getMatchCount(s.label)
+      if (c === 0 && !selected.includes(s.label)) return false
+    }
     return true
   })
 
@@ -198,6 +212,7 @@ export function SessionMultiSelect({
             {filtered.map((s) => {
               const isChecked = pending.includes(s.label)
               const dateLabel = new Date(s.started_at).toLocaleDateString(intlLocale)
+              const count = getMatchCount?.(s.label)
               return (
                 <label
                   key={s.label}
@@ -209,10 +224,15 @@ export function SessionMultiSelect({
                     onChange={() => togglePending(s.label)}
                     className="mt-0.5 shrink-0"
                   />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-sm truncate">{s.label}</div>
                     <div className="text-xs text-muted-foreground">{dateLabel}</div>
                   </div>
+                  {count !== undefined && (
+                    <span className="shrink-0 self-center text-[10px] tabular-nums text-muted-foreground">
+                      {count}
+                    </span>
+                  )}
                 </label>
               )
             })}

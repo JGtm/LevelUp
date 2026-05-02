@@ -14,8 +14,13 @@ import (
 // (Assassin, Fiesta, …). Si vide, l'option est un header de catégorie ou
 // hors hiérarchie.
 type LabelValue struct {
-	Label  string `json:"label"`
-	Value  string `json:"value"`
+	Label string `json:"label"`
+	Value string `json:"value"`
+	// Count : nombre de matchs si on AJOUTE cette option à la sélection courante
+	// de la catégorie (sémantique OR). Pour une option déjà cochée, vaut le total
+	// post-cascade actuel. Pour une option non cochée, vaut le count si on la coche.
+	// Permet à l'UI d'afficher "Mode (42)" et de griser/masquer les options à 0.
+	Count  int    `json:"count"`
 	Parent string `json:"parent,omitempty"`
 }
 
@@ -124,7 +129,11 @@ type SessionOption struct {
 	Label      string `json:"label"`
 	SessionID  string `json:"session_id"`
 	MatchCount int    `json:"match_count"`
-	IsSquad    bool   `json:"is_squad"`
+	// MatchCountFiltered : nombre de matchs de la session si elle était sélectionnée
+	// avec les autres filtres actifs (cascade + match_context). Permet à l'UI de
+	// masquer les sessions retournant 0 sous la sélection courante.
+	MatchCountFiltered int  `json:"match_count_filtered"`
+	IsSquad            bool `json:"is_squad"`
 }
 
 // SessionOptions contient toutes les sessions par catégorie.
@@ -148,10 +157,20 @@ type FilterCounts struct {
 	TotalMatchesAfterFilters  int `json:"total_matches_after_filters"`
 }
 
+// PeriodPresetCount donne, pour un preset de période (7j/30j/90j/Toutes),
+// le nombre de matchs qu'il contiendrait si l'utilisateur l'activait
+// (en gardant la cascade et le match_context actifs).
+type PeriodPresetCount struct {
+	PresetID string `json:"preset_id"` // "7d" | "30d" | "90d" | "all"
+	Days     int    `json:"days"`      // 7, 30, 90, 0 (=all)
+	Count    int    `json:"count"`
+}
+
 // FilterContextResolved est la réponse de POST filters/resolve.
 type FilterContextResolved struct {
 	Effective        FilterContextInput     `json:"effective"`
 	AvailableOptions AvailableFilterOptions `json:"available_options"`
 	SessionOptions   SessionOptions         `json:"session_options"`
 	Counts           FilterCounts           `json:"counts"`
+	PeriodPresets    []PeriodPresetCount    `json:"period_presets"`
 }

@@ -171,7 +171,7 @@ func TestNormalizeInput_SwapDates(t *testing.T) {
 // ---------- buildSessionOptions ----------
 
 func TestBuildSessionOptions_Empty(t *testing.T) {
-	got := buildSessionOptions(nil)
+	got := buildSessionOptions(nil, domain.CascadeFilter{})
 	if len(got.AllSessions) != 0 {
 		t.Errorf("expected 0 sessions")
 	}
@@ -185,7 +185,7 @@ func TestBuildSessionOptions_MixedSoloSquad(t *testing.T) {
 		{MatchID: "m2", SessionLabel: &lbl1, SessionID: &sid1, IsWithFriends: false},
 		{MatchID: "m3", SessionLabel: &lbl2, SessionID: &sid2, IsWithFriends: true},
 	}
-	got := buildSessionOptions(rows)
+	got := buildSessionOptions(rows, domain.CascadeFilter{})
 	if len(got.AllSessions) != 2 {
 		t.Fatalf("expected 2 sessions, got %d", len(got.AllSessions))
 	}

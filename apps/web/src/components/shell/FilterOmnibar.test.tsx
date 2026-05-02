@@ -28,20 +28,26 @@ function buildResolved(): FilterContextResolved {
   return {
     effective: DEFAULT_FILTER_CONTEXT,
     available_options: {
-      experience_types: [{ label: 'PVP non classé', value: 'PVP non classé' }],
-      playlists: [{ label: 'Arène classée', value: 'Arène classée' }],
-      modes: [{ label: 'Slayer', value: 'Slayer' }],
-      maps: [{ label: 'Recharge', value: 'Recharge' }],
+      experience_types: [{ label: 'PVP non classé', value: 'PVP non classé', count: 8 }],
+      playlists: [{ label: 'Arène classée', value: 'Arène classée', count: 8 }],
+      modes: [{ label: 'Slayer', value: 'Slayer', count: 8 }],
+      maps: [{ label: 'Recharge', value: 'Recharge', count: 8 }],
     },
     session_options: {
       all_sessions: [
-        { session_id: 's1', label: '01/04/2026 21:00', match_count: 5, is_squad: true },
-        { session_id: 's2', label: '15/03/2026 18:00', match_count: 3, is_squad: false },
+        { session_id: 's1', label: '01/04/2026 21:00', match_count: 5, match_count_filtered: 5, is_squad: true },
+        { session_id: 's2', label: '15/03/2026 18:00', match_count: 3, match_count_filtered: 3, is_squad: false },
       ],
       solo_labels: [],
       squad_labels: [],
     },
     counts: { total_matches_before_filters: 8, total_matches_after_filters: 8 },
+    period_presets: [
+      { preset_id: '7d', days: 7, count: 2 },
+      { preset_id: '30d', days: 30, count: 5 },
+      { preset_id: '90d', days: 90, count: 8 },
+      { preset_id: 'all', days: 0, count: 8 },
+    ],
   }
 }
 
@@ -135,7 +141,10 @@ describe('FilterOmnibar', () => {
   it('toggle cascade + Analyser déclenche setFilterContext', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /^filtres/i }))
-    fireEvent.click(screen.getByLabelText('Slayer'))
+    // Le label inclut maintenant le count (ex: "Slayer 8") — on cible
+    // l'option par son texte et on remonte au label parent.
+    const slayerLabel = screen.getByText('Slayer').closest('label')!
+    fireEvent.click(slayerLabel.querySelector('input[type="checkbox"]')!)
     // Pending uniquement — store pas encore mis à jour
     expect(useGlobalFilterStore.getState().filterContext.cascade!.modes).not.toContain('Slayer')
     // Commit via Analyser

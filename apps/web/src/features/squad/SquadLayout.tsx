@@ -33,7 +33,7 @@ import { getSquadText } from './i18n'
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { getSquadTeammateColors } from './colors'
-import type { TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
+import type { LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 
@@ -168,7 +168,7 @@ export function SquadLayout() {
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    const filterUUIDs = (opts: { label: string; value: string }[]) =>
+    const filterUUIDs = (opts: LabelValue[]): LabelValue[] =>
       opts.filter((o) => !UUID_RE.test(o.label.trim()))
     return {
       playlists: filterUUIDs(rawAvailable.playlists),
@@ -177,6 +177,23 @@ export function SquadLayout() {
       experience_types: filterUUIDs(rawAvailable.experience_types),
     }
   }, [rawAvailable])
+
+  // Counts par session label (post-cascade en mode escouade) — alimente
+  // SessionMultiSelect pour masquer les sessions vides + afficher les counts.
+  const sessionCounts = useMemo(() => {
+    const src = previewResolve?.session_options?.all_sessions ?? resolvedContext?.session_options?.all_sessions ?? []
+    const map = new Map<string, number>()
+    for (const s of src) {
+      map.set(s.label, s.match_count_filtered)
+    }
+    return map
+  }, [previewResolve, resolvedContext])
+  const getSessionCount = useMemo(
+    () => (label: string) => sessionCounts.get(label),
+    [sessionCounts],
+  )
+
+  const presetCounts = previewResolve?.period_presets ?? resolvedContext?.period_presets
 
 
   // ── Init coéquipiers depuis settings ────────────────────────────────────
@@ -288,6 +305,7 @@ export function SquadLayout() {
             onClose={closeAll}
             period={pendingPeriod}
             onSetPeriod={setPendingPeriod}
+            presetCounts={presetCounts}
           />
 
           {/* Sessions escouade (multi-select par label) */}
@@ -298,6 +316,7 @@ export function SquadLayout() {
               onChange={applySessionLabels}
               locale={locale}
               triggerClassName="flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted whitespace-nowrap transition-colors"
+              getMatchCount={getSessionCount}
             />
           )}
 
