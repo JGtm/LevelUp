@@ -58,8 +58,10 @@ const ALLOWED_FILES = [
   'lib/accessibility/palettes/',
   'lib/accessibility/_palettes.ts',
   // Rareté Halo (BattlePass) — couleurs de rareté hors charte sémantique.
+  // Cf. CLAUDE.md §20 : couleurs de rareté Halo (Battlepass, `rarity.ts`) tolérées.
   'features/home/rarity.ts',
   'features/battlepass/rarity.ts',
+  'features/palmares/rarity.ts',
   // Tests : on accepte les fixtures et snapshots.
   '.test.ts',
   '.test.tsx',
@@ -178,15 +180,13 @@ console.log(
     'Marqueur inline pour exception ponctuelle : `// color-allow: <raison>`.',
 )
 
-// Ratchet : pour P8.1 initial on tolère les violations existantes (release
-// progressive du linter). Le but est d'interdire les NOUVELLES violations.
-// Le seuil sera resserré commit après commit.
-// Plafond actuel — abaissé progressivement par PR. Au moment de l'écriture
-// de P8.1 (revue 2026-04-29) : 143 violations. Bumpé à 155 le 2026-05-01
-// pour absorber la dette introduite par les commits "wip(home): 8 bugs"
-// (12 violations introduites hors-scope du présent travail Prestige). À
-// resserrer dès que la dette LUSR/SkillPeak sera nettoyée.
-const RATCHET_THRESHOLD = 155
+// Ratchet : abaissé à 0 le 2026-05-02 après nettoyage complet du backlog
+// dans le PR settings.show_progression. Toute nouvelle violation doit
+// soit être remplacée par un token (`tokenCssVar` / classe thème
+// `bg-warning`/`text-success`/etc.), soit annotée `// color-allow:` avec
+// une justification (couleur structurelle SVG, fallback API, thématique
+// Spartan UI, like rose, etc. — cf. CLAUDE.md §20).
+const RATCHET_THRESHOLD = 0
 
 if (violations.length > RATCHET_THRESHOLD) {
   console.log(

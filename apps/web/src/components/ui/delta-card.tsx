@@ -51,7 +51,7 @@ export function DeltaCard({
   const { text: deltaText, color: deltaColor, colorStyle } = formatDelta(delta, lowerIsBetter)
 
   return (
-    <div className="rounded-lg border border-border bg-[#1d2328] px-4 py-3">
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
       <div className="flex items-baseline gap-1.5">
         <span className="text-xl font-bold text-foreground">{value}</span>

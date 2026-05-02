@@ -83,7 +83,7 @@ export function BattlePassRewardLightbox({
     >
       <div
         className={[
-          'relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 text-white shadow-2xl',
+          'relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 text-white shadow-2xl', // color-allow: thématique Spartan UI (lightbox sombre Halo)
           rarityStyles?.glow ?? '',
         ].filter(Boolean).join(' ')}
         onClick={(event) => event.stopPropagation()}
@@ -91,7 +91,11 @@ export function BattlePassRewardLightbox({
         <div className="flex items-start justify-between gap-4 border-b border-white/10 bg-black/40 px-5 py-3">
           <div className="min-w-0 space-y-1">
             {subtitle && (
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{subtitle}</p>
+              <p
+                className="text-[11px] uppercase tracking-[0.24em] text-slate-400" // color-allow: thématique Spartan UI (subtitle metadata)
+              >
+                {subtitle}
+              </p>
             )}
             <h2 className="truncate text-lg font-semibold sm:text-xl">{reward.title}</h2>
           </div>
@@ -167,7 +171,11 @@ export function BattlePassRewardLightbox({
               </div>
             )}
             {reward.description && (
-              <p className="text-sm leading-6 text-slate-200">{reward.description}</p>
+              <p
+                className="text-sm leading-6 text-slate-200" // color-allow: thématique Spartan UI (description sur fond sombre)
+              >
+                {reward.description}
+              </p>
             )}
           </div>
         )}

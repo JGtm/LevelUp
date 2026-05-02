@@ -85,7 +85,7 @@ export function CitationProgressRing({
       {/* Badge ✓ si nouvellement masterisée */}
       {isNewlyMastered && (
         <div
-          className="absolute bottom-0 right-0 flex items-center justify-center rounded-full bg-yellow-400 text-black"
+          className="absolute bottom-0 right-0 flex items-center justify-center rounded-full bg-warning text-warning-foreground"
           style={{ width: 12, height: 12, fontSize: 7, fontWeight: 700 }}
         >
           ✓

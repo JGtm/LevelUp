@@ -123,7 +123,7 @@ function RarityChips({ breakdown, locale }: { breakdown: Record<string, number>;
         return (
           <span key={tier} className="flex items-center gap-x-4">
             <span className="flex items-center gap-1.5">
-              <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${styles?.segment ?? 'bg-slate-500'}`} />
+              <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${styles?.segment ?? 'bg-muted'}`} />
               <span className="text-xs text-muted-foreground">
                 {rarityLabel(tier)}{' '}
                 <span className="font-semibold tabular-nums text-foreground">{count.toLocaleString(locale)}</span>

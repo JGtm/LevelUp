@@ -4,6 +4,7 @@
  * P8.4 (revue 2026-04-29) : extrait de SettingsPage.tsx (~165L).
  */
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -169,6 +170,28 @@ export function AnalyseTab({ merged, handleChange, t }: TabProps) {
             />
             <p className="text-xs text-muted-foreground">{t.badgeExcludeBotsFromRecordsHint}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Card : Progression long-terme (Objectifs & Prestige) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.progressionTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ToggleRow
+            label={t.showProgressionLabel}
+            value={merged.show_progression ?? true}
+            onChange={(v) => handleChange('show_progression', v)}
+          />
+          <p className="text-xs text-muted-foreground">{t.progressionHint}</p>
+          <Link
+            to="/help"
+            search={{ tab: 'glossary' }}
+            className="inline-flex text-xs font-medium text-sidebar-primary hover:underline"
+          >
+            {t.progressionGlossaryLink} →
+          </Link>
         </CardContent>
       </Card>
     </>

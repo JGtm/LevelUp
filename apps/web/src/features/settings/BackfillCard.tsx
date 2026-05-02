@@ -199,8 +199,8 @@ export function BackfillCard({ t }: BackfillCardProps) {
 
         {/* Warnings retournés par le backend après exécution */}
         {jobStatus?.status === 'succeeded' && jobStatus.warnings && jobStatus.warnings.length > 0 && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-            <p className="font-medium text-amber-700 dark:text-amber-400">{t.backfillWarningsHeader}</p>
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-sm">
+            <p className="font-medium text-warning">{t.backfillWarningsHeader}</p>
             <ul className="mt-1 list-disc pl-5 text-xs text-muted-foreground">
               {jobStatus.warnings.map((w, i) => (
                 <li key={i}>{w}</li>

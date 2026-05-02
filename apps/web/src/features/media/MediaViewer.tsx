@@ -44,7 +44,7 @@ function LikersLine({ likers, totalLikers }: { likers?: string[]; totalLikers?: 
   } else {
     label = `${names.join(', ')} et ${rest} autre${rest > 1 ? 's' : ''} ♥`
   }
-  return <p className="text-[11px] text-rose-400 leading-tight">{label}</p>
+  return <p className="text-[11px] text-rose-400 leading-tight">{label}</p> // color-allow: rose pour like indicator — CLAUDE.md §20
 }
 
 function HeartIcon({ filled, className }: { filled: boolean; className?: string }) {
@@ -96,9 +96,10 @@ export function MediaLikeButton({
       type="button"
       disabled={disabled}
       onClick={handleClick}
+      // color-allow: rose pour le bouton like (heart) — CLAUDE.md §20 tolère rose pour liked
       className={compact
-        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-black/55 text-rose-400' : 'bg-black/45 text-white/50 hover:text-rose-300'}`
-        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-white/20 bg-black/35 text-white/85 hover:border-rose-400/40 hover:text-rose-300'}`}
+        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-black/55 text-rose-400' : 'bg-black/45 text-white/50 hover:text-rose-300'}` // color-allow: rose like button compact
+        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-white/20 bg-black/35 text-white/85 hover:border-rose-400/40 hover:text-rose-300'}`} // color-allow: rose like button
       aria-label={isLiked ? 'Retirer le like' : 'Liker'}
     >
       <HeartIcon

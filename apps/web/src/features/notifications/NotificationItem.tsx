@@ -114,8 +114,8 @@ export function NotificationItem(props: NotificationItemProps) {
 
 const SEVERITY_CLASS: Record<Notification['severity'], string> = {
   info: 'text-popover-foreground/70',
-  success: 'text-emerald-500 dark:text-emerald-400',
-  warn: 'text-amber-500 dark:text-amber-400',
+  success: 'text-success',
+  warn: 'text-warning',
   error: 'text-destructive',
 }
 

@@ -636,6 +636,8 @@ export interface SettingsResponse {
   outcome_exclude_bot_matches_from_badges: boolean
   outcome_exclude_bot_matches_from_records: boolean
   outcome_badge_sensitivity: 'relaxed' | 'standard' | 'strict'
+  // --- Affichage Objectifs/Prestige ---
+  show_progression: boolean
   // --- Fournisseur d'authentification (admin uniquement) ---
   auth_provider: string
 }

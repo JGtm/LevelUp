@@ -60,6 +60,9 @@ type AppSettings struct {
 	OutcomeExcludeBotMatchesFromRecords bool   `json:"outcome_exclude_bot_matches_from_records"`
 	OutcomeBadgeSensitivity             string `json:"outcome_badge_sensitivity"`
 
+	// ShowProgression — affichage du système Objectifs/Prestige (défaut : true).
+	ShowProgression bool `json:"show_progression"`
+
 	// Capabilities (défaut : true)
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
@@ -117,6 +120,10 @@ func (s *Store) Load() (*AppSettings, error) {
 	// can_start_initial_sync absent → default true
 	if _, ok := raw["can_start_initial_sync"]; !ok {
 		cfg.CanStartInitialSync = true
+	}
+	// show_progression absent → default true (rétrocompatibilité fichiers existants)
+	if _, ok := raw["show_progression"]; !ok {
+		cfg.ShowProgression = true
 	}
 
 	return cfg, nil
@@ -278,6 +285,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.OutcomeBadgeSensitivity != nil {
 		cfg.OutcomeBadgeSensitivity = *req.OutcomeBadgeSensitivity
 	}
+	if req.ShowProgression != nil {
+		cfg.ShowProgression = *req.ShowProgression
+	}
 	if req.AuthProvider != nil {
 		cfg.AuthProvider = *req.AuthProvider
 	}
@@ -325,6 +335,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		OutcomeExcludeBotMatchesFromBadges:  cfg.OutcomeExcludeBotMatchesFromBadges,
 		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
 		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,
+		ShowProgression:                     cfg.ShowProgression,
 		AuthProvider:                        cfg.AuthProvider,
 	}
 }
@@ -350,5 +361,7 @@ func defaultSettings() *AppSettings {
 		OutcomeExcludeBotMatchesFromBadges:  true,       // bots faussent les scores adverses
 		OutcomeExcludeBotMatchesFromRecords: false,      // pas de changement de comportement par défaut
 		OutcomeBadgeSensitivity:             "standard", // seuils historiques Python
+		// Affichage Objectifs/Prestige activé par défaut
+		ShowProgression: true,
 	}
 }

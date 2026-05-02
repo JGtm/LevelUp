@@ -25,6 +25,7 @@ import { HomeSpartanIdentityBanner } from './HomeSpartanIdentityBanner'
 import { HomeHeroKPIGrid } from './HomeHeroKPIGrid'
 import { HomePrestigeSection } from './HomePrestigeSection'
 import { useHomePage, useSeasonPassPreview } from './queries'
+import { useSettings } from '@/features/settings/queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -42,6 +43,8 @@ export function HomePage() {
   const locale = useAppShellStore((s) => s.locale)
   const userTimezone = useAppShellStore((s) => s.userTimezone)
   const { data: fieldMappings } = useFieldMappings()
+  const { data: settings } = useSettings()
+  const showProgression = settings?.show_progression ?? true
   const t = (key: HomeManifestKey, values?: Record<string, string | number>) =>
     formatMessage(homeManifest, key, locale, values)
   const { data, isLoading, isError, refetch } = useHomePage(playerSlug)
@@ -286,8 +289,10 @@ export function HomePage() {
           </Card>
         </div>
 
-        {/* Section Prestige unifiée (PP + arc + objectifs) */}
-        <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
+        {/* Section Prestige unifiée (PP + arc + objectifs) — masquée si show_progression=false */}
+        {showProgression && (
+          <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
+        )}
 
         {/* Highlights */}
         <Card>
@@ -377,7 +382,7 @@ export function HomePage() {
                 >
                   {t('home.matches.tab_favorites')}
                   {favoriteMatches.length > 0 && (
-                    <span className="ml-1.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
+                    <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] text-warning">
                       {favoriteMatches.length}
                     </span>
                   )}

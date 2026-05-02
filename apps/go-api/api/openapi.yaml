@@ -3684,6 +3684,9 @@ components:
           type: array
           items:
             type: string
+        show_progression:
+          type: boolean
+          description: Affichage du système Objectifs/Prestige (section Accueil + nav L1).
 
     CreatePlayerProfileResponse:
       type: object

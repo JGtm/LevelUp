@@ -131,16 +131,16 @@ function BattlePassRewardCard({ card, onOpen, freeLabel }: { card: RewardCard; o
       onClick={() => onOpen(card)}
       aria-label={`Voir le détail de ${card.title}`}
       data-rarity={rarityTier ?? 'none'}
-      className="group block w-14 sm:w-16 xl:w-[4.5rem] space-y-1 text-left transition-transform duration-150 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:rounded-lg"
+      className="group block w-14 sm:w-16 xl:w-[4.5rem] space-y-1 text-left transition-transform duration-150 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-lg"
     >
       <div className={`relative aspect-[4/5] w-full overflow-hidden rounded-lg ${imageBackground}`}>
         {card.is_obtained && (
-          <div className="absolute right-1 top-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[8px] font-semibold text-white shadow-sm">
+          <div className="absolute right-1 top-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-success px-1 text-[8px] font-semibold text-white shadow-sm">
             ✓
           </div>
         )}
         {card.is_free && (
-          <div className="absolute bottom-1 left-1 z-10 rounded bg-amber-500/90 px-[3px] py-[1px] text-[6px] font-bold uppercase tracking-wide text-white">
+          <div className="absolute bottom-1 left-1 z-10 rounded bg-warning/90 px-[3px] py-[1px] text-[6px] font-bold uppercase tracking-wide text-white">
             {freeLabel}
           </div>
         )}
@@ -170,7 +170,7 @@ function BattlePassTierGroupView({
 }) {
   const borderClasses = [
     'flex gap-1.5 rounded-xl border p-1.5',
-    group.is_current ? 'border-sky-400/60 shadow-[0_0_12px_-4px_rgba(56,189,248,0.5)]' : 'border-white/15',
+    group.is_current ? 'border-primary/60 shadow-[0_0_12px_-4px_rgba(56,189,248,0.5)]' : 'border-white/15',
     group.is_obtained && !group.is_current ? 'opacity-60 grayscale-[0.82]' : '',
   ].filter(Boolean).join(' ')
 

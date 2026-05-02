@@ -33,7 +33,7 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
   return (
-    <div className="bg-[#151a1f]/80 border border-border rounded-b px-4 py-3 space-y-3">
+    <div className="bg-card/80 border border-border rounded-b px-4 py-3 space-y-3">
       {/* Stats de combat */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Statistiques</p>
@@ -101,7 +101,7 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
               <span
                 key={c.key}
                 className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-white"
-                style={{ backgroundColor: c.color ?? '#4B5563' }}
+                style={{ backgroundColor: c.color ?? '#4B5563' }} // color-allow: fallback gris neutre quand l'API ne fournit pas de couleur de citation
               >
                 {c.label}{c.value != null && ` · ${c.value}`}
               </span>

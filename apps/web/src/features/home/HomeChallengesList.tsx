@@ -54,9 +54,9 @@ function cadenceKeyOf(category: ChallengeCategory): string {
 
 function challengeCategoryClasses(category: ChallengeCategory): string {
   if (category === 'daily') {
-    return 'border-amber-500/25 bg-amber-500/8'
+    return 'border-warning/25 bg-warning/8'
   }
-  return 'border-sky-500/25 bg-sky-500/8'
+  return 'border-info/25 bg-info/8'
 }
 
 function challengeCategoryForItem(item: ChallengeItem): ChallengeCategory {
@@ -220,7 +220,7 @@ function ChallengeSection({ section }: { section: ChallengeSection }) {
                         <div className="h-2 w-full">
                           <div
                             data-testid="home-challenge-progress-fill"
-                            className="h-full rounded-full bg-sky-500 transition-all duration-300"
+                            className="h-full rounded-full bg-primary transition-all duration-300"
                             style={{ width: `${progressPercent}%` }}
                           />
                         </div>

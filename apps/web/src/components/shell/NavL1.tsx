@@ -14,6 +14,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { useJobStatus } from '@/features/setup/queries'
+import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 // ─── SyncStatusIndicator ───────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ function SyncStatusIndicator() {
       className="flex shrink-0 items-center"
     >
       <svg
-        className="h-3.5 w-3.5 text-green-500"
+        className="h-3.5 w-3.5 text-success"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
@@ -405,9 +406,14 @@ export function NavL1() {
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
   const isAdmin = useAppShellStore((s) => s.isAdmin)
   const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
+  const { data: settings } = useSettings()
+  const showProgression = settings?.show_progression ?? true
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const playerSlug = currentPlayer?.player_slug ?? ''
+  const visibleSections = showProgression
+    ? L1_SECTIONS
+    : L1_SECTIONS.filter((s) => s.key !== 'objectifs')
 
   function resolvePath(templatePath: string): string {
     return templatePath.replace('$playerSlug', playerSlug)
@@ -439,7 +445,7 @@ export function NavL1() {
 
       {/* ── Sections (seulement si un joueur est actif) ──────────────────── */}
       {playerSlug &&
-        L1_SECTIONS.map((section) => {
+        visibleSections.map((section) => {
           const isActive = section.matchPathname(pathname)
           const resolvedDefaultPath = resolvePath(section.defaultPath)
 

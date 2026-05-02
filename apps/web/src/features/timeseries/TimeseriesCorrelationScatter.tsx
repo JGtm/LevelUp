@@ -127,8 +127,8 @@ export function TimeseriesCorrelationScatter({
             className={[
               'rounded px-2 py-0.5 text-xs font-medium transition-colors',
               activeLabel === lbl
-                ? 'bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/40'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10',
+                ? 'bg-info/20 text-info ring-1 ring-info/40'
+                : 'bg-white/5 text-muted-foreground hover:bg-white/10',
             ].join(' ')}
           >
             {labelConfigs[lbl]?.title ?? lbl}

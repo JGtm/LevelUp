@@ -90,9 +90,9 @@ export function SquadVerdict({
   const hasResults = total > 0
 
   return (
-    <div className="flex flex-wrap items-stretch gap-4 rounded border border-border bg-[#16191d] px-4 py-3">
+    <div className="flex flex-wrap items-stretch gap-4 rounded border border-border bg-background px-4 py-3">
       {/* LEFT : team card — non cliquable */}
-      <div className="min-w-[180px] rounded border border-border bg-[#1d2328] px-3 py-2">
+      <div className="min-w-[180px] rounded border border-border bg-card px-3 py-2">
         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
           {texts.verdict.teamScore}
         </p>
@@ -133,8 +133,8 @@ export function SquadVerdict({
                 'rounded border px-3 py-2 text-left transition cursor-pointer',
                 'hover:border-foreground/40 disabled:cursor-default disabled:opacity-60',
                 isViewed
-                  ? 'border-foreground/60 bg-[#252b32]'
-                  : 'border-border bg-[#1d2328]',
+                  ? 'border-foreground/60 bg-secondary'
+                  : 'border-border bg-card',
               ].join(' ')}
             >
               <div className="flex items-center justify-between gap-2">

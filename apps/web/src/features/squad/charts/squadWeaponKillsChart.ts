@@ -34,7 +34,7 @@ export function buildSquadWeaponKillsOption(
 
   // 1 série bar (horizontale, group) par joueur, valeurs alignées sur yLabels.
   const series = data.players.map((player) => {
-    const color = opts.colorByPlayer[player] ?? '#888'
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const values = data.bars.map((b) => b.kills_by_player[player] ?? 0)
     return {
       name: player,

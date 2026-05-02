@@ -248,7 +248,7 @@ export function SquadLayout() {
           {/* Joueur actif — pill colorée fixe, non supprimable */}
           <span
             className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-sm font-medium"
-            style={{ backgroundColor: tokenCssVar('compare-a'), color: '#fff' }}
+            style={{ backgroundColor: tokenCssVar('compare-a'), color: '#fff' }} // color-allow: blanc structurel pour contraste sur fond compare-a
             title={playerSlug}
           >
             <span className="max-w-[7rem] truncate">{playerSlug}</span>

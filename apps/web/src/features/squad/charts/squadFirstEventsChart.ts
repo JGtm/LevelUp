@@ -43,7 +43,7 @@ export function buildSquadFirstEventsOption(
 
   for (let pi = 0; pi < data.rows.length; pi += 1) {
     const row = data.rows[pi]
-    const color = opts.colorByPlayer[row.player] ?? '#888'
+    const color = opts.colorByPlayer[row.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const isFirst = pi === 0
 
     // Frags positifs.

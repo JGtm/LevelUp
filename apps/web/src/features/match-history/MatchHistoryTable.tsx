@@ -141,7 +141,7 @@ export function MatchHistoryTable({
       </div>
 
       {/* Tableau */}
-      <div className="overflow-x-auto rounded-lg border border-border bg-[#1d2328]">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-card/60 text-xs font-medium text-muted-foreground">
