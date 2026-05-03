@@ -36,6 +36,8 @@ interface RailText {
   matchCountSuffix: (n: number) => string
   multiSessionLabel: (n: number) => string
   multiSessionTooltip: string
+  allTimeLabel: (n: number) => string
+  allTimeTooltip: string
   periodLabel: (start: string, end: string) => string
   periodDuration: (days: number) => string
   auto: string
@@ -60,6 +62,8 @@ const TEXTS: Record<Locale, RailText> = {
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 's' : ''}`,
     multiSessionLabel: (n) => `${n} sessions sélectionnées`,
     multiSessionTooltip: 'Désélectionnez des sessions pour activer la navigation',
+    allTimeLabel: (n) => `Toutes les sessions (${n})`,
+    allTimeTooltip: 'Choisissez une période ou une session via les filtres pour activer la navigation',
     periodLabel: (start, end) => `Période du ${start} au ${end}`,
     periodDuration: (days) => `${days} jour${days > 1 ? 's' : ''}`,
     auto: 'auto',
@@ -82,6 +86,8 @@ const TEXTS: Record<Locale, RailText> = {
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 'es' : ''}`,
     multiSessionLabel: (n) => `${n} sessions selected`,
     multiSessionTooltip: 'Deselect sessions to enable navigation',
+    allTimeLabel: (n) => `All sessions (${n})`,
+    allTimeTooltip: 'Pick a period or session in the filters to enable navigation',
     periodLabel: (start, end) => `From ${start} to ${end}`,
     periodDuration: (days) => `${days} day${days > 1 ? 's' : ''}`,
     auto: 'auto',
@@ -133,6 +139,7 @@ export function PeriodSessionRail() {
   }
 
   if (mode.kind === 'hidden') return null
+  if (mode.kind === 'all-time') return <AllTimeRail total={mode.total} t={t} />
   if (mode.kind === 'multi-session') return <MultiSessionRail count={mode.count} t={t} />
   if (mode.kind === 'session') {
     return (
@@ -151,6 +158,37 @@ export function PeriodSessionRail() {
 // ---------------------------------------------------------------------------
 // Sous-composants par mode
 // ---------------------------------------------------------------------------
+
+function AllTimeRail({ total, t }: { total: number; t: RailText }) {
+  return (
+    <div
+      className={RAIL_BASE_CLASS}
+      role="navigation"
+      aria-label={t.ariaNav}
+      data-testid="period-session-rail"
+      data-mode="all-time"
+    >
+      <span
+        className="text-sm font-semibold text-muted-foreground"
+        title={t.allTimeTooltip}
+      >
+        {t.allTimeLabel(total)}
+      </span>
+      <NavButtons
+        prevLabel={t.prev}
+        nextLabel={t.next}
+        prevTitle={t.allTimeTooltip}
+        nextTitle={t.allTimeTooltip}
+        ariaPrev={t.ariaPrevSession}
+        ariaNext={t.ariaNextSession}
+        canPrev={false}
+        canNext={false}
+        onPrev={() => {}}
+        onNext={() => {}}
+      />
+    </div>
+  )
+}
 
 function MultiSessionRail({ count, t }: { count: number; t: RailText }) {
   return (

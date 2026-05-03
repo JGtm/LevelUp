@@ -42,9 +42,25 @@ describe('PeriodSessionRail', () => {
     useGlobalFilterStore.getState().resetFilters()
   })
 
-  it('mode hidden : ne rend rien quand all-time', () => {
+  it('mode hidden : ne rend rien quand pas de session disponible (cold start)', () => {
     const { container } = renderWithProviders(<PeriodSessionRail />)
     expect(container.firstChild).toBeNull()
+  })
+
+  it('mode all-time : rail informatif "Toutes les sessions" + boutons disabled', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(
+      buildResolved([
+        { id: 's-1', label: '06/04' },
+        { id: 's-2', label: '05/04' },
+      ]),
+    )
+    // filterContext reste en defaults (pas de période, pas de session) → all-time
+
+    renderWithProviders(<PeriodSessionRail />)
+    expect(screen.getByText(/Toutes les sessions|All sessions/)).toBeTruthy()
+    const prevBtn = screen.getByLabelText(/Session précédente|Previous session/) as HTMLButtonElement
+    expect(prevBtn.disabled).toBe(true)
   })
 
   it('mode session : affiche le label de session + boutons', () => {

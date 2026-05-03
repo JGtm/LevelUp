@@ -24,6 +24,9 @@ export type RailMode =
   | { kind: 'session'; session: SessionOption; index: number; total: number }
   | { kind: 'multi-session'; count: number }
   | { kind: 'period'; period: PeriodInput; durationDays: number }
+  /** Aucun scope choisi mais ≥1 session existe : rail informatif "Toutes les sessions",
+   *  boutons prev/next désactivés (pas de fenêtre à shift). */
+  | { kind: 'all-time'; total: number }
   | { kind: 'hidden' }
 
 // ---------------------------------------------------------------------------
@@ -60,6 +63,12 @@ export function getRailMode(
     }
   }
 
+  // Aucun scope MAIS au moins une session existe → mode all-time informatif.
+  if (allSessions.length > 0) {
+    return { kind: 'all-time', total: allSessions.length }
+  }
+
+  // Aucune donnée du tout (premier launch, sync pas terminé) → rail caché.
   return { kind: 'hidden' }
 }
 
