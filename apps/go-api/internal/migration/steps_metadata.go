@@ -308,13 +308,42 @@ func init() {
 	})
 
 	Register(Migration{
-		Name:        "enrich_medal_definitions_v2",
+		Name:        "medal_definitions_add_indices",
 		TargetDB:    TargetMetadata,
-		Description: "medal_definitions : ajout difficulty (Normal/Heroic/Legendary/Mythic) + medal_type (multikill/spree/…) issus de waypoint_medals_raw",
+		Description: "medal_definitions : ajout difficulty_index + type_index (entiers Waypoint) — idempotent via IF NOT EXISTS",
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, `
-				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS difficulty VARCHAR NOT NULL DEFAULT 'Normal';
-				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS medal_type VARCHAR NOT NULL DEFAULT '';
+				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS difficulty_index TINYINT DEFAULT 0;
+				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS type_index TINYINT DEFAULT 0;
+			`)
+		},
+	})
+
+	Register(Migration{
+		Name:        "enrich_medal_definitions_v2",
+		TargetDB:    TargetMetadata,
+		Description: "medal_definitions : ajout difficulty (Normal/Heroic/Legendary/Mythic) + medal_type (multikill/spree/…) depuis difficulty_index/type_index existants",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS difficulty VARCHAR;
+				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS medal_type VARCHAR;
+				UPDATE medal_definitions SET
+					difficulty = CASE difficulty_index
+						WHEN 0 THEN 'Normal'
+						WHEN 1 THEN 'Heroic'
+						WHEN 2 THEN 'Legendary'
+						WHEN 3 THEN 'Mythic'
+						ELSE 'Normal'
+					END,
+					medal_type = CASE type_index
+						WHEN 0 THEN 'spree'
+						WHEN 1 THEN 'mode'
+						WHEN 2 THEN 'multikill'
+						WHEN 3 THEN 'proficiency'
+						WHEN 4 THEN 'skill'
+						WHEN 5 THEN 'style'
+						ELSE ''
+					END;
 			`)
 		},
 	})

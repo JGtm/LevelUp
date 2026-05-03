@@ -18,13 +18,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/metadata"
 	"levelup/go-api/internal/notify"
+	authpkg "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 )
@@ -196,6 +199,7 @@ func runMedals(cfg *config.AppConfig, args []string) error {
 	titleID := fs.String("title-id", "halo_infinite", "Title ID")
 	force := fs.Bool("force", false, "Ignorer le garde-fou de cardinalité")
 	promote := fs.Bool("promote", false, "Promouvoir difficulty+medal_type vers medal_definitions après l'upsert")
+	player := fs.String("player", "", "Gamertag pour la résolution des tokens OAuth (si SPARTAN_TOKEN absent)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -207,6 +211,12 @@ func runMedals(cfg *config.AppConfig, args []string) error {
 
 	repo := duckdb.NewMetadataRepoFromDB(metaDB)
 	ctx := context.Background()
+
+	tokens, err := resolveTokens(ctx, cfg, *player)
+	if err != nil {
+		return fmt.Errorf("résolution tokens: %w", err)
+	}
+	ctx = ctxkeys.WithHaloAuth(ctx, tokens, "")
 
 	if err := repo.EnsureStagingTables(ctx); err != nil {
 		return fmt.Errorf("EnsureStagingTables: %w", err)
@@ -345,6 +355,67 @@ func buildSnapshot(titleID, key, hash, etag string, payload []byte) domain.Waypo
 		ETag:        etag,
 		Payload:     string(payload),
 	}
+}
+
+// resolveTokens obtient les tokens Halo depuis SPARTAN_TOKEN (env)
+// ou en rejouant la chaîne OAuth depuis la DB du joueur (--player).
+func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string) (*domain.HaloTokens, error) {
+	if envToken := os.Getenv("SPARTAN_TOKEN"); envToken != "" {
+		return &domain.HaloTokens{
+			SpartanToken:   envToken,
+			ClearanceToken: os.Getenv("CLEARANCE_TOKEN"),
+		}, nil
+	}
+	if playerSlug == "" {
+		return nil, fmt.Errorf("SPARTAN_TOKEN absent ET --player non fourni")
+	}
+
+	provider := authpkg.NewMSALProvider()
+
+	// Chemin 1 : SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_NORM> depuis .env.local
+	if envRefresh := oauthRefreshEnvForPlayer(playerSlug); envRefresh != "" {
+		if accessToken, err := provider.TryOAuthRefresh(ctx, envRefresh); err == nil && accessToken != "" {
+			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
+				return result.Tokens, nil
+			}
+		}
+	}
+
+	pdb, err := config.ResolvePlayer(ctx, cfg, playerSlug, titlePkg.DefaultSlug)
+	if err != nil {
+		return nil, fmt.Errorf("résoudre player %q: %w", playerSlug, err)
+	}
+
+	if cacheJSON, _ := duckdb.ReadMSALCacheJSON(ctx, pdb.Player); cacheJSON != "" {
+		if accessToken, err := provider.TrySilentRefresh(ctx, cacheJSON); err == nil && accessToken != "" {
+			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
+				return result.Tokens, nil
+			}
+		}
+	}
+
+	if refreshToken, _ := duckdb.ReadOAuthRefreshToken(ctx, pdb.Player); refreshToken != "" {
+		if accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken); err == nil && accessToken != "" {
+			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
+				return result.Tokens, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("aucun token disponible pour player %q", playerSlug)
+}
+
+// oauthRefreshEnvForPlayer construit la clé env SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORM>
+// (gamertag en majuscules, espaces/tirets/points remplacés par _).
+func oauthRefreshEnvForPlayer(gamertag string) string {
+	key := strings.ToUpper(gamertag)
+	key = strings.Map(func(r rune) rune {
+		if r == ' ' || r == '-' || r == '.' {
+			return '_'
+		}
+		return r
+	}, key)
+	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key)
 }
 
 func notifyHashChange(cfg *config.AppConfig, resource, hash string) {
