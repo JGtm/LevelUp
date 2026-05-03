@@ -42,7 +42,9 @@ export function getRailMode(
 
   if (picked.length === 1) {
     const id = picked[0]
-    const idx = allSessions.findIndex((s) => s.session_id === id)
+    // Match par session_id OU par label : sur Squad, picked_sessions contient
+    // des labels (le backend Squad mappe label → match_ids), pas des session_id.
+    const idx = allSessions.findIndex((s) => s.session_id === id || s.label === id)
     if (idx === -1) {
       // Session pickée mais introuvable (cache stale, sync en cours) → hidden.
       return { kind: 'hidden' }
