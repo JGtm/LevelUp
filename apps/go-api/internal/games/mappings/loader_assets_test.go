@@ -359,3 +359,56 @@ display_order = 10
 		t.Errorf("TitleSlug = %q", set.TitleSlug())
 	}
 }
+
+// TestLoadAssetsFromFile_HaloInfiniteSeasonsCatalog cadenasse le contenu réel
+// de config/titles/halo_infinite/mappings/assets.toml :
+//   - >= 13 entrées dans le kind "season"
+//   - toutes les saisons ont StartDate non-nil
+//   - DisplayOrder strictement croissant (pas de collision par construction
+//     car le validator l'aurait rejeté, mais on vérifie l'ordre logique)
+//   - extra.csr_season_id présent partout (utile pour cross-réf futures)
+//
+// Cas d'usage : sécurise qu'un futur ajout d'opération ne casse rien et
+// que le catalog reste cohérent.
+func TestLoadAssetsFromFile_HaloInfiniteSeasonsCatalog(t *testing.T) {
+	// Path relatif au repo : on remonte depuis le package mappings.
+	// Structure : apps/go-api/internal/games/mappings → repo root + 5 niveaux.
+	repoRoot := filepath.Join("..", "..", "..", "..", "..")
+	tomlPath := filepath.Join(repoRoot, "config", "titles", "halo_infinite", "mappings", "assets.toml")
+
+	set, err := LoadAssetsFromFile(tomlPath)
+	if err != nil {
+		t.Fatalf("LoadAssetsFromFile(%s): %v", tomlPath, err)
+	}
+
+	seasons := set.AllOfKind("season")
+	if len(seasons) < 13 {
+		t.Fatalf("len(seasons) = %d, want >= 13 (S1-S13 + Winter Update)", len(seasons))
+	}
+
+	prevOrder := -1
+	for _, s := range seasons {
+		if s.StartDate == nil {
+			t.Errorf("season %q : StartDate nil (toutes les saisons doivent en avoir une)", s.ID)
+		}
+		if s.Extra["csr_season_id"] == "" {
+			t.Errorf("season %q : extra.csr_season_id manquant", s.ID)
+		}
+		if s.DisplayOrder <= prevOrder {
+			t.Errorf("season %q : display_order=%d non strictement croissant (précédent=%d)", s.ID, s.DisplayOrder, prevOrder)
+		}
+		prevOrder = s.DisplayOrder
+	}
+
+	// Au moins une saison ouverte (la courante) — fin nil.
+	hasOpen := false
+	for _, s := range seasons {
+		if s.EndDate == nil {
+			hasOpen = true
+			break
+		}
+	}
+	if !hasOpen {
+		t.Errorf("aucune saison ouverte (sans end_date) dans le catalog — la saison courante doit l'être")
+	}
+}

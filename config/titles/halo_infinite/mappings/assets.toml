@@ -240,3 +240,127 @@ display_order = 100
 [assets.map.Unknown]
 labels = { en = "Unknown", fr = "Inconnue" }
 display_order = 999
+
+# =============================================================================
+# Saisons Halo Infinite
+#
+# Calendrier marketing officiel (Halo Waypoint + recoupement
+# SpartanRecord/AllSeasons.ts). Format ID : "season{N}" pour S1-S13 +
+# "season_winter_22" pour la mise à jour hivernale 2022 (Winter Update,
+# parfois appelée S2.5).
+#
+# Fenêtre temporelle : start_date = début officiel de la saison (au format
+# RFC 3339 strict, heure 17:00 UTC = 18h Paris hiver / 19h Paris été, conforme
+# aux drops Halo). end_date = début de la saison suivante. La saison courante
+# (S13 — Infinite) est laissée ouverte (end_date absent) tant qu'aucune nouvelle
+# saison n'est annoncée.
+#
+# extra.csr_season_id = identifiant CSR Waypoint correspondant
+# (CsrSeason{N}-{op}, utile pour cross-référencer les ratings classés).
+# extra.short_label = libellé compact pour rails et badges (ex. "S6").
+#
+# Maintenance : ajouter une nouvelle entrée à chaque nouvelle Operation /
+# saison annoncée (cadence ~3 mois). Le job admin de validation TOML vs
+# Waypoint reste à venir (out of scope du plan saisons V1).
+#
+# Distinction critique : ces saisons calendaires ne sont PAS les Battle Pass
+# reward tracks (qui sont gérés par season_pass_service + battlepass_track_*
+# en DB). Ici on ne décrit que le découpage temporel global du jeu.
+# =============================================================================
+
+[assets.season.season1]
+labels = { en = "Heroes of Reach", fr = "Heroes of Reach" }
+display_order = 10
+start_date = "2021-12-08T17:00:00Z"
+end_date   = "2022-05-03T17:00:00Z"
+extra = { csr_season_id = "CsrSeason1", short_label = "S1" }
+
+[assets.season.season2]
+labels = { en = "Lone Wolves", fr = "Loups solitaires" }
+display_order = 20
+start_date = "2022-05-03T17:00:00Z"
+end_date   = "2022-11-08T17:00:00Z"
+extra = { csr_season_id = "CsrSeason2", short_label = "S2" }
+
+[assets.season.season_winter_22]
+labels = { en = "Winter Update", fr = "Mise à jour hivernale" }
+display_order = 25
+start_date = "2022-11-08T17:00:00Z"
+end_date   = "2023-03-07T17:00:00Z"
+extra = { csr_season_id = "CsrSeason2-2", short_label = "Winter 22" }
+
+[assets.season.season3]
+labels = { en = "Echoes Within", fr = "Échos intérieurs" }
+display_order = 30
+start_date = "2023-03-07T17:00:00Z"
+end_date   = "2023-06-20T17:00:00Z"
+extra = { csr_season_id = "CsrSeason3-1", short_label = "S3" }
+
+[assets.season.season4]
+labels = { en = "Infection", fr = "Infection" }
+display_order = 40
+start_date = "2023-06-20T17:00:00Z"
+end_date   = "2023-10-17T17:00:00Z"
+extra = { csr_season_id = "CsrSeason4-1", short_label = "S4" }
+
+[assets.season.season5]
+labels = { en = "Reckoning", fr = "Reckoning" }
+display_order = 50
+start_date = "2023-10-17T17:00:00Z"
+end_date   = "2024-01-30T18:00:00Z"
+extra = { csr_season_id = "CsrSeason5-1", short_label = "S5" }
+
+[assets.season.season6]
+labels = { en = "Spirit of Fire", fr = "Spirit of Fire" }
+display_order = 60
+start_date = "2024-01-30T18:00:00Z"
+end_date   = "2024-04-30T18:00:00Z"
+extra = { csr_season_id = "CsrSeason6-1", short_label = "S6" }
+
+[assets.season.season7]
+labels = { en = "Banished Honor", fr = "Honneur Banished" }
+display_order = 70
+start_date = "2024-04-30T18:00:00Z"
+end_date   = "2024-07-30T18:00:00Z"
+extra = { csr_season_id = "CsrSeason7-1", short_label = "S7" }
+
+[assets.season.season8]
+labels = { en = "Fleetcom", fr = "Fleetcom" }
+display_order = 80
+start_date = "2024-07-30T18:00:00Z"
+end_date   = "2024-11-05T18:00:00Z"
+extra = { csr_season_id = "CsrSeason8-1", short_label = "S8" }
+
+[assets.season.season9]
+labels = { en = "Great Journey", fr = "Grand Voyage" }
+display_order = 90
+start_date = "2024-11-05T18:00:00Z"
+end_date   = "2025-02-04T18:00:00Z"
+extra = { csr_season_id = "CsrSeason9-1", short_label = "S9" }
+
+[assets.season.season10]
+labels = { en = "Frontlines", fr = "Lignes de front" }
+display_order = 100
+start_date = "2025-02-04T18:00:00Z"
+end_date   = "2025-05-06T18:00:00Z"
+extra = { csr_season_id = "CsrSeason10-1", short_label = "S10" }
+
+[assets.season.season11]
+labels = { en = "Last Stand", fr = "Dernier rempart" }
+display_order = 110
+start_date = "2025-05-06T18:00:00Z"
+end_date   = "2025-08-05T18:00:00Z"
+extra = { csr_season_id = "CsrSeason11-1", short_label = "S11" }
+
+[assets.season.season12]
+labels = { en = "Shadows", fr = "Ombres" }
+display_order = 120
+start_date = "2025-08-05T18:00:00Z"
+end_date   = "2025-11-18T18:00:00Z"
+extra = { csr_season_id = "CsrSeason12-1", short_label = "S12" }
+
+[assets.season.season13]
+labels = { en = "Infinite", fr = "Infinite" }
+display_order = 130
+start_date = "2025-11-18T18:00:00Z"
+extra = { csr_season_id = "CsrSeason13-1", short_label = "S13" }
