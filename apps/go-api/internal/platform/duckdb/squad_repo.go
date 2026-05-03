@@ -119,6 +119,7 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 			&row.KDA,
 			&row.Accuracy,
 			&row.TimePlayedSecs,
+			&row.DurationSeconds,
 			&row.TeamMMR,
 			&row.SessionID,
 			&row.SessionLabel,

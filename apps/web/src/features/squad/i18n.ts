@@ -98,10 +98,15 @@ export interface SquadText {
     playlist: string
     mode: string
     outcome: string
+    score: string
+    winRateHist: string
     kda: string
     accuracy: string
     perf: string
+    duration: string
     teamMmr: string
+    enemyMmr: string
+    deltaMMR: string
     session: string
     outcomeLabel: { win: string; loss: string; draw: string; dnf: string }
     prev: string
@@ -304,9 +309,11 @@ const FR_TEXT: SquadText = {
     mode: 'Mode',
     outcome: 'Résultat',
     score: 'Score',
+    winRateHist: 'Taux hist.',
     kda: 'K/D/A',
     accuracy: 'Précision',
     perf: 'Perf.',
+    duration: 'Durée',
     teamMmr: 'MMR équipe',
     enemyMmr: 'MMR adv.',
     deltaMMR: 'Écart MMR',
@@ -528,9 +535,11 @@ const EN_TEXT: SquadText = {
     mode: 'Mode',
     outcome: 'Result',
     score: 'Score',
+    winRateHist: 'Hist. win%',
     kda: 'K/D/A',
     accuracy: 'Accuracy',
     perf: 'Perf.',
+    duration: 'Duration',
     teamMmr: 'Team MMR',
     enemyMmr: 'Enemy MMR',
     deltaMMR: 'MMR Gap',

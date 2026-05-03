@@ -42,6 +42,7 @@ type SquadMatchRow struct {
 	KDA              *float64
 	Accuracy         *float64
 	TimePlayedSecs   int
+	DurationSeconds  int
 	TeamMMR          float64
 	SessionID        *int
 	SessionLabel     *string
