@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadAssetsFromBytes_HappyPath(t *testing.T) {
@@ -202,6 +203,137 @@ func TestLoadAssetsFromFile_FileNotFound(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "read") {
 		t.Errorf("error = %v, want read prefix", err)
+	}
+}
+
+// ─── Saisons : champs optionnels start_date / end_date / extra ───────────────
+
+func TestLoadAssets_SeasonsWithDates(t *testing.T) {
+	doc := []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[assets.season.season1]
+labels = { en = "Heroes of Reach", fr = "Heroes of Reach" }
+display_order = 10
+start_date = "2021-12-08T00:00:00Z"
+end_date   = "2022-05-03T00:00:00Z"
+extra = { csr_season_id = "CsrSeason1", short_label = "S1" }
+`)
+	set, err := LoadAssetsFromBytes("test.toml", doc)
+	if err != nil {
+		t.Fatalf("LoadAssetsFromBytes: %v", err)
+	}
+	a, ok := set.Get("season", "season1")
+	if !ok {
+		t.Fatal("Get(season, season1) introuvable")
+	}
+	if a.StartDate == nil || a.StartDate.Format(time.RFC3339) != "2021-12-08T00:00:00Z" {
+		t.Errorf("StartDate = %v, want 2021-12-08T00:00:00Z", a.StartDate)
+	}
+	if a.EndDate == nil || a.EndDate.Format(time.RFC3339) != "2022-05-03T00:00:00Z" {
+		t.Errorf("EndDate = %v, want 2022-05-03T00:00:00Z", a.EndDate)
+	}
+	if a.Extra["csr_season_id"] != "CsrSeason1" {
+		t.Errorf("Extra[csr_season_id] = %q, want CsrSeason1", a.Extra["csr_season_id"])
+	}
+	if a.Extra["short_label"] != "S1" {
+		t.Errorf("Extra[short_label] = %q, want S1", a.Extra["short_label"])
+	}
+}
+
+func TestLoadAssets_OpenSeasonNoEndDate(t *testing.T) {
+	doc := []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[assets.season.s_current]
+labels = { en = "Current", fr = "Courante" }
+display_order = 999
+start_date = "2026-04-01T00:00:00Z"
+`)
+	set, err := LoadAssetsFromBytes("test.toml", doc)
+	if err != nil {
+		t.Fatalf("LoadAssetsFromBytes: %v", err)
+	}
+	a, ok := set.Get("season", "s_current")
+	if !ok {
+		t.Fatal("Get(season, s_current) introuvable")
+	}
+	if a.StartDate == nil {
+		t.Fatal("StartDate doit être non-nil")
+	}
+	if a.EndDate != nil {
+		t.Errorf("EndDate = %v, want nil pour saison ouverte", a.EndDate)
+	}
+}
+
+func TestLoadAssets_InvalidDateFormat(t *testing.T) {
+	doc := []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[assets.season.bad]
+labels = { en = "Bad", fr = "Bad" }
+display_order = 10
+start_date = "2022-05-03"
+`)
+	_, err := LoadAssetsFromBytes("test.toml", doc)
+	if err == nil {
+		t.Fatal("expected error for invalid date format")
+	}
+	if !strings.Contains(err.Error(), "RFC 3339") {
+		t.Errorf("error = %v, want RFC 3339 mention", err)
+	}
+}
+
+func TestLoadAssets_EndBeforeStart(t *testing.T) {
+	doc := []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[assets.season.bad]
+labels = { en = "Bad", fr = "Bad" }
+display_order = 10
+start_date = "2022-05-03T00:00:00Z"
+end_date   = "2022-01-01T00:00:00Z"
+`)
+	_, err := LoadAssetsFromBytes("test.toml", doc)
+	if err == nil {
+		t.Fatal("expected error when end_date < start_date")
+	}
+	if !strings.Contains(err.Error(), "avant start_date") {
+		t.Errorf("error = %v, want 'avant start_date' mention", err)
+	}
+}
+
+func TestLoadAssets_LegacyKindsUnaffected(t *testing.T) {
+	doc := []byte(`
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+[assets.mode.ranked]
+labels = { en = "Ranked", fr = "Classé" }
+display_order = 50
+`)
+	set, err := LoadAssetsFromBytes("test.toml", doc)
+	if err != nil {
+		t.Fatalf("LoadAssetsFromBytes: %v", err)
+	}
+	a, _ := set.Get("mode", "ranked")
+	if a.StartDate != nil {
+		t.Errorf("StartDate = %v, want nil pour kind sans dates", a.StartDate)
+	}
+	if a.EndDate != nil {
+		t.Errorf("EndDate = %v, want nil", a.EndDate)
+	}
+	if a.Extra != nil {
+		t.Errorf("Extra = %v, want nil pour kind sans extra", a.Extra)
 	}
 }
 

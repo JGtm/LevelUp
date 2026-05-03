@@ -15,6 +15,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -72,10 +73,13 @@ type fieldMappingDTO struct {
 }
 
 type assetMappingDTO struct {
-	Label        string `json:"label"`
-	ColorToken   string `json:"color_token,omitempty"`
-	Icon         string `json:"icon,omitempty"`
-	DisplayOrder int    `json:"display_order"`
+	Label        string            `json:"label"`
+	ColorToken   string            `json:"color_token,omitempty"`
+	Icon         string            `json:"icon,omitempty"`
+	DisplayOrder int               `json:"display_order"`
+	StartDate    *time.Time        `json:"start_date,omitempty"`
+	EndDate      *time.Time        `json:"end_date,omitempty"`
+	Extra        map[string]string `json:"extra,omitempty"`
 }
 
 type outcomeMappingDTO struct {
@@ -156,6 +160,9 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 					ColorToken:   a.ColorToken,
 					Icon:         a.Icon,
 					DisplayOrder: a.DisplayOrder,
+					StartDate:    a.StartDate,
+					EndDate:      a.EndDate,
+					Extra:        a.Extra,
 				}
 			}
 			out[kind] = byID

@@ -1,19 +1,29 @@
 package mappings
 
-import "sort"
+import (
+	"sort"
+	"time"
+)
 
 // AssetMapping est la projection d'une section [assets.{kind}.{id}] du TOML.
 //
 // Les "assets" couvrent les regroupements UX et les enums sémantiques portés par
 // le titre : modes, playlists, tiers de médaille, tiers de défi, cadences,
-// statuts de défi. Pas les médailles elles-mêmes (cf. plan §6.7 : restent en DB).
+// statuts de défi, saisons. Pas les médailles elles-mêmes (cf. plan §6.7 :
+// restent en DB).
 type AssetMapping struct {
-	Kind         string            // "mode" | "playlist" | "medal_tier" | "challenge_tier" | "cadence" | "challenge_status"
+	Kind         string            // "mode" | "playlist" | "medal_tier" | "challenge_tier" | "cadence" | "challenge_status" | "season"
 	ID           string            // identifiant stable au sein du Kind (ex : "ranked", "heroic", "daily")
 	Labels       map[string]string // locale → libellé
 	ColorToken   string            // token de design system (optionnel — vide si non applicable)
 	Icon         string            // chemin SVG/PNG (optionnel)
 	DisplayOrder int               // ordre stable dans le Kind
+
+	// Champs optionnels pour les kinds time-bounded (ex: "season").
+	// nil pour les kinds non-temporels.
+	StartDate *time.Time        // début de fenêtre (RFC 3339 dans le TOML)
+	EndDate   *time.Time        // fin de fenêtre, nil = saison ouverte
+	Extra     map[string]string // refs cross-mappings (csr_season_id, background_url, short_label, …)
 }
 
 // Label retourne le libellé pour la locale demandée + fallback.
