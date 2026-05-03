@@ -248,7 +248,10 @@ describe('GlobalFilterStore', () => {
     }
   }
 
-  it('goToPrevSession bascule vers la session plus ancienne', () => {
+  it('goToPrevSession bascule vers la session plus ancienne (écrit le label)', () => {
+    // Régression : le rail doit écrire le LABEL (pas le session_id), car
+    // teammates_service.filterSynthesisByPickedSessions matche uniquement par
+    // SessionLabel — SynthesisMatchRow ne porte pas de SessionID.
     const store = useGlobalFilterStore.getState()
     store.setResolvedContext(makeResolved([
       { session_id: 's-latest', label: '06/04' },
@@ -257,7 +260,7 @@ describe('GlobalFilterStore', () => {
     ]))
     store.setSessions({ picked_sessions: ['s-latest'], gap_minutes: DEFAULT_GAP_MINUTES })
     useGlobalFilterStore.getState().goToPrevSession()
-    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-mid'])
+    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['05/04'])
   })
 
   it('goToPrevSession no-op si déjà à la session la plus ancienne', () => {
@@ -271,7 +274,7 @@ describe('GlobalFilterStore', () => {
     expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-old'])
   })
 
-  it('goToNextSession bascule vers la session plus récente', () => {
+  it('goToNextSession bascule vers la session plus récente (écrit le label)', () => {
     const store = useGlobalFilterStore.getState()
     store.setResolvedContext(makeResolved([
       { session_id: 's-latest', label: '06/04' },
@@ -279,7 +282,7 @@ describe('GlobalFilterStore', () => {
     ]))
     store.setSessions({ picked_sessions: ['s-mid'], gap_minutes: DEFAULT_GAP_MINUTES })
     useGlobalFilterStore.getState().goToNextSession()
-    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-latest'])
+    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['06/04'])
   })
 
   it('goToPrevPeriod shift la fenêtre vers le passé', () => {
