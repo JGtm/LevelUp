@@ -1,5 +1,70 @@
 # Thought Log
 
+## [2026-05-03] fix FilterOmnibar — compteur live (preview) + tests cascade descendante manquants
+
+**Statut** : Complété.
+
+**Contexte** : User signale 2 bugs sur les filtres :
+1. Le compteur "N matchs" à côté du bouton "Analyser" n'affiche pas le bon nombre (reste figé sur l'état commité).
+2. Cocher Experience=PVE (2 matchs) ne fait disparaître aucune option dans les autres catégories — alors qu'il devrait y avoir 95%+ d'options non-PVE retirées.
+
+**Diagnostic** :
+
+1. **Bug 1 — compteur figé** : dans [FilterOmnibar.tsx:100](apps/web/src/components/shell/FilterOmnibar.tsx#L100), j'utilisais `resolvedContext?.counts?.total_matches_after_filters` (commité) au lieu de `previewData?.counts` (live sur pending). `SquadLayout` faisait déjà la bonne chose ([ligne 166](apps/web/src/features/squad/SquadLayout.tsx#L166)) : `(previewResolve?.counts ?? resolvedContext?.counts)?...`. J'avais simplement oublié de l'aligner.
+
+2. **Bug 2 — options qui ne disparaissent pas** : 19 tests `TestBuildAvailableOptions_*` (16 préexistants + 3 nouveaux) prouvent que la cascade descendante backend filtre correctement Playlists/Modes/Maps quand Experience=[PVE]. Les nouveaux tests utilisent des datasets représentatifs (2 matchs PVE + 5 PVP, Arena vs BTB).
+   → Le backend est correct. Le bug observé vient du **binaire Go non redémarré** : l'ancienne version retournait `LabelValue` sans le champ `count`. Avec un binaire à jour, le test vitest `options à count=0 sont repliées sous "+ N indisponibles"` montre que la progressive disclosure fonctionne (4 modes non-PVE repliés derrière un bouton, seul Firefight visible).
+
+**Décisions techniques** :
+
+- Aligné `FilterOmnibar.totalAfter` sur le pattern `(previewData?.counts ?? resolvedContext?.counts)?...`.
+- Ajouté 2 tests d'intégration backend (`TestBuildAvailableOptions_ExperienceFiltersPlaylistsModesMaps`, `TestBuildAvailableOptions_PlaylistFiltersDownStream`).
+- Ajouté un test vitest `options à count=0 sont repliées sous "+ N indisponibles"` qui prouve la sémantique côté UI.
+
+**Vérifications** :
+- `go test ./internal/service/... -run TestBuildAvailableOptions` : 19/19.
+- `npx vitest run src/components/shell/` : 23/23.
+- `tsc --noEmit` + `go vet ./...` : exit 0.
+
+**Action user requise** : redémarrer le binaire `apps/go-api/main` pour que la cascade renvoie les counts. Sans redémarrage, les options ne disparaissent pas car `LabelValue.count` reste undefined.
+
+## [2026-05-03] feat escouade — Séquence des matchs + suppression WinRateVsHistoryChart
+
+**Statut** : Complété.
+
+**Contexte** : Supprimer le graphe "Taux de victoire vs historique par carte" (`WinRateVsHistoryChart`) de la page Synergies. Ajouter le composant "Séquence des matchs" (`OutcomeSequenceTape`) depuis la page Squad V2, câblé sur `match_history` (session/période filtrée).
+
+**Décision technique** :
+- Suppression de `WinRateVsHistoryChart` uniquement (le bullet chart `WinRateVsHistoryBulletChart` est conservé).
+- `OutcomeSequenceTape` consomme `matchHistory` (déjà disponible via `pageData?.match_history`). Les outcomes numériques (1/2/3/autre) sont convertis en `OutcomeValue` ('tie'/'win'/'loss'/'dnf') via `outcomeNumToValue()`.
+- Labels d'outcome : `fieldMappings.outcomes[key].label` avec fallback sur `t.history.outcomeLabel`.
+- Section titre "Séquence des matchs" / "Match sequence" ajoutée à l'interface `charts` dans `i18n.ts`.
+- Placement : entre le bullet chart et le tableau historique.
+
+**Vérifications** :
+- `npx tsc --noEmit` : OK.
+
+## [2026-05-03] feat escouade — SquadSynergyHistoryTable (tableau historique contextuel)
+
+**Statut** : Complété.
+
+**Contexte** : Ajouter un tableau d'historique de matchs sur la page Synergies, avant `MapPerfVsHistoryChart`. Colonnes contextuelles uniquement (pas de stats personnelles) : Ouvrir | ↗ wp | Date | Carte | Playlist | Mode | Résultat | Score | MMR équipe | MMR adv. | Écart MMR.
+
+**Décision technique** :
+- Nouveau fichier `SquadSynergyHistoryTable.tsx` — TanStack Table v8, pagination 20/page, bordures `border-r border-border`.
+- Go : ajout de `EnemyMMR *float64`, `MyTeamScore *int`, `EnemyTeamScore *int` dans `SquadMatchRow` (domain/squad.go), scan dans `squad_repo.go`, et calcul de `EnemyMMRAvg`, `DeltaMMR`, `ScoreLabel`, `ModeUI` dans `buildSquadMatchHistory` (teammates_service.go). Mode normalisé via `analysis.NormalizeModeLabel(m.PairName, m.MapUI)`.
+- SQL (Q30) : ajout de `p1.enemy_mmr`, `CASE team_id` pour `my_team_score` / `enemy_team_score` depuis `v_match_full`.
+- TypeScript : interface `SquadMatchHistoryRow` étendue avec `enemy_mmr_avg?`, `delta_mmr?`, `score_label?`, `mode_ui?`.
+- i18n : labels `score`, `enemyMmr`, `deltaMMR` ajoutés en FR et EN dans `squad/i18n.ts`.
+- URL Waypoint construite côté client depuis `playerSlug` (pas de dépendance supplémentaire dans le service Go).
+- `Écart MMR` coloré : `text-success` (positif) / `text-destructive` (négatif).
+
+**Vérifications** :
+- `go build ./...` : OK.
+- `npx tsc --noEmit` (web) : OK.
+
+**Reste** : la colonne "Taux hist.%" n'est pas affichée dans ce tableau (nécessiterait une requête supplémentaire sur tous les matchs du joueur pour les win rates par carte).
+
 ## [2026-05-02] fix heatmap escouade — perf par joueur réelle + retrait du cap top 15
 
 **Statut** : Complété.
