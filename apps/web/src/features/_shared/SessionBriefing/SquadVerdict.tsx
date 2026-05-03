@@ -65,13 +65,16 @@ export function SquadVerdict({
   const teamTier = getScoreTier(squadScore.score)
   const teamLabel = TIER_LABEL_FALLBACK[teamTier.key]
 
+  // delta = bonus de cohésion (winrate >60%, min KDA >1, faible variance kills).
+  // Quand le bonus vaut 0, on n'affiche RIEN — pas la peine d'encombrer la card
+  // avec « base only » : l'absence de label = score brut sans bonus.
   const delta = Math.round(squadScore.score - squadScore.base_avg)
   const deltaText =
-    delta === 0
-      ? texts.verdict.baseOnly
-      : delta > 0
-        ? texts.verdict.deltaBonusPositive(delta)
-        : texts.verdict.deltaBonusNegative(delta)
+    delta > 0
+      ? texts.verdict.deltaBonusPositive(delta)
+      : delta < 0
+        ? texts.verdict.deltaBonusNegative(delta)
+        : null
   const deltaToken: SemanticToken =
     delta > 0 ? 'divergent-pos' : delta < 0 ? 'divergent-neg' : 'divergent-neutral'
 
@@ -105,12 +108,14 @@ export function SquadVerdict({
           </span>
           <span className="text-xs text-muted-foreground">{teamLabel}</span>
         </div>
-        <p
-          className="mt-0.5 text-[10px]"
-          style={{ color: tokenCssVar(deltaToken) }}
-        >
-          {deltaText}
-        </p>
+        {deltaText !== null && (
+          <p
+            className="mt-0.5 text-[10px]"
+            style={{ color: tokenCssVar(deltaToken) }}
+          >
+            {deltaText}
+          </p>
+        )}
       </div>
 
       {/* CENTER : player cards — cliquables */}

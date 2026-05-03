@@ -18,7 +18,6 @@ export interface BriefingTexts {
     teamScore: string
     deltaBonusPositive: (delta: number) => string
     deltaBonusNegative: (delta: number) => string
-    baseOnly: string
   }
   drill: {
     activeView: (gamertag: string) => string
@@ -49,7 +48,6 @@ const FR: BriefingTexts = {
     teamScore: "Score d'équipe",
     deltaBonusPositive: (d) => `Δ +${d} vs base`,
     deltaBonusNegative: (d) => `Δ ${d} vs base`,
-    baseOnly: 'base only',
   },
   drill: {
     activeView: (gt) => `Vue active : ${gt}`,
@@ -81,7 +79,6 @@ const EN: BriefingTexts = {
     teamScore: 'Team score',
     deltaBonusPositive: (d) => `Δ +${d} vs base`,
     deltaBonusNegative: (d) => `Δ ${d} vs base`,
-    baseOnly: 'base only',
   },
   drill: {
     activeView: (gt) => `Viewing: ${gt}`,
