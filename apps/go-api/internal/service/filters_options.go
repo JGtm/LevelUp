@@ -47,9 +47,10 @@ var periodPresets = []presetSpec{
 // l'info brute pour les autres consommateurs.
 func buildSessionOptions(rows []domain.FilterMatchRow, cascade domain.CascadeFilter) domain.SessionOptions {
 	type aggEntry struct {
-		count    int
-		isSquad  bool
-		latestAt time.Time // heure de début du match le plus récent de la session
+		count      int
+		isSquad    bool
+		latestAt   time.Time // start_time du match le plus récent de la session
+		earliestAt time.Time // start_time du match le plus ancien de la session
 	}
 	agg := make(map[string]aggEntry)
 	sessionID := make(map[string]string) // label → session_id
@@ -64,8 +65,13 @@ func buildSessionOptions(rows []domain.FilterMatchRow, cascade domain.CascadeFil
 		if r.IsWithFriends {
 			e.isSquad = true
 		}
-		if r.StartTime != nil && r.StartTime.After(e.latestAt) {
-			e.latestAt = *r.StartTime
+		if r.StartTime != nil {
+			if r.StartTime.After(e.latestAt) {
+				e.latestAt = *r.StartTime
+			}
+			if e.earliestAt.IsZero() || r.StartTime.Before(e.earliestAt) {
+				e.earliestAt = *r.StartTime
+			}
 		}
 		agg[lbl] = e
 		if sid := derefStr(r.SessionID); sid != "" {
@@ -106,6 +112,8 @@ func buildSessionOptions(rows []domain.FilterMatchRow, cascade domain.CascadeFil
 			MatchCount:         e.count,
 			MatchCountFiltered: cascadeCount[lbl],
 			IsSquad:            e.isSquad,
+			StartedAtUTC:       e.earliestAt,
+			EndedAtUTC:         e.latestAt,
 		}
 		all = append(all, opt)
 		if e.isSquad {

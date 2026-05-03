@@ -134,6 +134,12 @@ type SessionOption struct {
 	// masquer les sessions retournant 0 sous la sélection courante.
 	MatchCountFiltered int  `json:"match_count_filtered"`
 	IsSquad            bool `json:"is_squad"`
+	// StartedAtUTC / EndedAtUTC : timestamps du premier et dernier match de la
+	// session. Permettent à l'UI (PeriodSessionRail) de formater des labels
+	// localisés type « Session du 6 avril 2026 de 21:43 à 23:40 » sans dépendre
+	// du label backend qui peut être tronqué/anglicisé.
+	StartedAtUTC time.Time `json:"started_at_utc"`
+	EndedAtUTC   time.Time `json:"ended_at_utc"`
 }
 
 // SessionOptions contient toutes les sessions par catégorie.

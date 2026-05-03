@@ -399,6 +399,11 @@ export interface SessionOption {
    *  mutuellement exclusifs). 0 = session à masquer dans le dropdown. */
   match_count_filtered: number
   is_squad: boolean
+  /** Timestamps début/fin de session (ISO UTC) — start_time du 1er et du
+   *  dernier match. Permettent à l'UI de formater des labels localisés
+   *  type « Session du 6 avril 2026 de 21:43 à 23:40 ». */
+  started_at_utc?: string
+  ended_at_utc?: string
 }
 
 export interface SessionOptions {
