@@ -429,12 +429,24 @@ export interface PeriodPresetCount {
   count: number
 }
 
+/** Compte cascade-aware par saison du catalog (kind="season" du TOML).
+ *  Sert au folding "+N saisons sans matchs ▾" dans SaisonPill. */
+export interface SeasonCount {
+  /** Identifiant stable de la saison (ex: "season6", "season10_op1"). */
+  season_id: string
+  /** Matchs si l'utilisateur sélectionnait cette saison, avec la cascade
+   *  actuelle. 0 = saison repliée sous le folding. */
+  count: number
+}
+
 export interface FilterContextResolved {
   effective: FilterContextInput
   available_options: AvailableOptions
   session_options: SessionOptions
   counts: FilterCounts
   period_presets: PeriodPresetCount[]
+  /** Optionnel : absent si le titre n'a pas de kind "season" dans son TOML. */
+  season_counts?: SeasonCount[]
 }
 
 // ---------------------------------------------------------------------------
