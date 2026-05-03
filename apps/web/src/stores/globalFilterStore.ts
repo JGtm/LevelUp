@@ -112,12 +112,22 @@ interface GlobalFilterState {
 // Hash stable
 // ---------------------------------------------------------------------------
 
+// Identité stable du FilterContextInput, utilisée comme dernier élément des
+// queryKeys TanStack et pour la détection isDirty dans FilterOmnibar/SquadLayout.
+//
+// Implémentation : FNV-1a 32 bits sur la sérialisation JSON. Le hash doit être
+// sensible à TOUTES les diffs (y compris cascade), donc surtout pas de
+// truncation — un précédent btoa(...).slice(0, 32) n'encodait que les 24
+// premiers caractères du JSON, ce qui rendait toute modif de cascade
+// invisible pour React Query (preview/resolve jamais refetch après un toggle).
 function computeHash(ctx: FilterContextInput): string {
-  try {
-    return btoa(JSON.stringify(ctx)).slice(0, 32)
-  } catch {
-    return 'default'
+  const s = JSON.stringify(ctx) ?? ''
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
   }
+  return h.toString(16).padStart(8, '0')
 }
 
 // ---------------------------------------------------------------------------

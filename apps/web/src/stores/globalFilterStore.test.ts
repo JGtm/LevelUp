@@ -76,15 +76,46 @@ describe('GlobalFilterStore', () => {
 
   it('filterContextHash change quand le contexte change', () => {
     const hashBefore = useGlobalFilterStore.getState().filterContextHash
-    // Le hash est tronqué à 32 chars du base64 du JSON ; il faut donc
-    // toucher un champ qui sérialise tôt (filter_mode), pas la cascade
-    // qui apparaît après les premiers 32 chars communs.
     useGlobalFilterStore.getState().setSessions({
       picked_sessions: ['sess-1'],
       gap_minutes: DEFAULT_GAP_MINUTES,
     })
     const hashAfter = useGlobalFilterStore.getState().filterContextHash
     expect(hashAfter).not.toBe(hashBefore)
+  })
+
+  // Régression : un hash tronqué (btoa(JSON).slice(0, 32)) capture seulement
+  // `{"filter_mode":"...","period":{` et ignore toute diff dans la cascade,
+  // ce qui empêche TanStack Query de refetcher après un toggle de checkbox
+  // dans FiltresPill — cassait toute la feature smart-filter-counts.
+  it('filterContextHash change quand SEULE la cascade change (cascade en fin de JSON)', () => {
+    const hashBefore = useGlobalFilterStore.getState().filterContextHash
+    useGlobalFilterStore.getState().setCascade({
+      experience_types: ['PVE'],
+      playlists: [],
+      modes: [],
+      maps: [],
+    })
+    const hashAfter = useGlobalFilterStore.getState().filterContextHash
+    expect(hashAfter).not.toBe(hashBefore)
+  })
+
+  it('filterContextHash distingue deux cascades différentes (toggle d\'une option)', () => {
+    useGlobalFilterStore.getState().setCascade({
+      experience_types: ['PVE'],
+      playlists: [],
+      modes: [],
+      maps: [],
+    })
+    const withPVE = useGlobalFilterStore.getState().filterContextHash
+    useGlobalFilterStore.getState().setCascade({
+      experience_types: ['PVP non classé'],
+      playlists: [],
+      modes: [],
+      maps: [],
+    })
+    const withUnranked = useGlobalFilterStore.getState().filterContextHash
+    expect(withPVE).not.toBe(withUnranked)
   })
 
   it('setSessions auto-derive filter_mode=sessions quand session pickée', () => {
