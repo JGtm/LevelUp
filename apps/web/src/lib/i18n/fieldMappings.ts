@@ -15,6 +15,7 @@
  *   strings hardcodées.
  */
 
+import { useMemo } from 'react'
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
@@ -35,12 +36,20 @@ export interface FieldMappingDTO {
   icon?: string
 }
 
-/** DTO d'un asset (mode, tier, cadence, statut). Plan finition multi-titres §3.1. */
+/** DTO d'un asset (mode, tier, cadence, statut, saison, …). Plan finition multi-titres §3.1.
+ *
+ * Champs `start_date` / `end_date` / `extra` ne sont peuplés que pour les kinds
+ * time-bounded (saisons, opérations, événements). Pour les autres kinds ils
+ * restent absents grâce à omitempty côté backend.
+ */
 export interface AssetMappingDTO {
   label: string
   color_token?: string
   icon?: string
   display_order: number
+  start_date?: string // ISO 8601 (RFC 3339)
+  end_date?: string // ISO 8601 (RFC 3339), absent = saison ouverte
+  extra?: Record<string, string>
 }
 
 /** DTO d'un outcome (win/loss/tie/dnf). */
@@ -190,4 +199,65 @@ export function useOutcomeLabel(key: string): string {
 export function useOutcomeMapping(key: string): OutcomeMappingDTO | undefined {
   const { data } = useFieldMappings()
   return data?.outcomes?.[key]
+}
+
+// ─── Saisons : sélecteur dérivé sur le kind "season" du field-mappings ─────
+
+/**
+ * Saison projetée depuis le kind "season" du field-mappings.
+ *
+ * Les champs typés (startDate / endDate / shortLabel / csrSeasonId) sont
+ * dérivés des chaînes ISO et de extra côté backend.
+ */
+export interface SeasonEntry {
+  id: string
+  label: string
+  shortLabel: string
+  startDate: Date
+  endDate: Date | null // null = saison ouverte (en cours)
+  displayOrder: number
+  csrSeasonId?: string
+}
+
+function toSeasonEntry(id: string, dto: AssetMappingDTO): SeasonEntry | null {
+  if (!dto.start_date) return null
+  const start = new Date(dto.start_date)
+  if (Number.isNaN(start.getTime())) return null
+  let end: Date | null = null
+  if (dto.end_date) {
+    const e = new Date(dto.end_date)
+    if (!Number.isNaN(e.getTime())) end = e
+  }
+  return {
+    id,
+    label: dto.label,
+    shortLabel: dto.extra?.short_label ?? id,
+    startDate: start,
+    endDate: end,
+    displayOrder: dto.display_order,
+    csrSeasonId: dto.extra?.csr_season_id,
+  }
+}
+
+/**
+ * Hook qui retourne la liste des saisons du titre courant, triées par
+ * displayOrder. Sélecteur dérivé sur useFieldMappings — pas de queryKey
+ * additionnelle, le cache est partagé.
+ *
+ * Comportement :
+ *   - Mappings non chargés ou kind "season" absent → tableau vide
+ *   - Entrées sans start_date valide → ignorées (filtrage défensif)
+ */
+export function useSeasons(): SeasonEntry[] {
+  const { data } = useFieldMappings()
+  return useMemo(() => {
+    const raw = data?.assets?.season ?? {}
+    const entries: SeasonEntry[] = []
+    for (const [id, dto] of Object.entries(raw)) {
+      const e = toSeasonEntry(id, dto)
+      if (e) entries.push(e)
+    }
+    entries.sort((a, b) => a.displayOrder - b.displayOrder)
+    return entries
+  }, [data])
 }

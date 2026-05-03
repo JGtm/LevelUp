@@ -41,12 +41,14 @@ import { deriveSquadPending } from './squadPending'
 import {
   FiltresPill,
   PeriodePill,
+  SaisonPill,
   DEFAULT_CASCADE,
   DEFAULT_PERIOD,
   DEFAULT_SESSIONS,
   computePendingHash,
 } from '@/components/shell/FilterOmnibar'
 import { PeriodSessionRail } from '@/components/shell/PeriodSessionRail'
+import { useActiveSeason, seasonToPeriod } from './useActiveSeason'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -176,8 +178,8 @@ export function SquadLayout() {
     }
   }, [filterContextHash, filterContext])
 
-  const [activePopover, setActivePopover] = useState<'filtres' | 'periode' | null>(null)
-  const togglePopover = (which: 'filtres' | 'periode') =>
+  const [activePopover, setActivePopover] = useState<'filtres' | 'periode' | 'saison' | null>(null)
+  const togglePopover = (which: 'filtres' | 'periode' | 'saison') =>
     setActivePopover((cur) => (cur === which ? null : which))
   const closeAll = () => setActivePopover(null)
 
@@ -248,6 +250,9 @@ export function SquadLayout() {
 
   const presetCounts = previewResolve?.period_presets ?? resolvedContext?.period_presets
 
+  // ── Saisons (cascade-aware counts + détection saison active) ─────────────
+  const { seasons, activeSeason } = useActiveSeason(pendingPeriod)
+  const seasonCounts = previewResolve?.season_counts ?? resolvedContext?.season_counts
 
   // ── Init coéquipiers depuis settings ────────────────────────────────────
   useEffect(() => {
@@ -351,6 +356,20 @@ export function SquadLayout() {
             cascadeCount={cascadeCount}
             onSetCascade={setPendingCascade}
           />
+
+          {/* Saison (catalog TOML kind="season" — applique la fenêtre via setPendingPeriod) */}
+          {seasons.length > 0 && (
+            <SaisonPill
+              open={activePopover === 'saison'}
+              onToggle={() => togglePopover('saison')}
+              onClose={closeAll}
+              seasons={seasons}
+              activeSeason={activeSeason}
+              seasonCounts={seasonCounts}
+              onSelectSeason={(s) => setPendingPeriod(seasonToPeriod(s))}
+              onClear={() => setPendingPeriod(DEFAULT_PERIOD)}
+            />
+          )}
 
           {/* Période */}
           <PeriodePill
