@@ -15,13 +15,7 @@ import { useMemo } from 'react'
 
 import type { PeriodInput } from '@/lib/api/types'
 import { useSeasons, type SeasonEntry } from '@/lib/i18n/fieldMappings'
-
-function isoDateUTC(d: Date): string {
-  const yyyy = d.getUTCFullYear()
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
+import { findActiveSeason, isoDateUTC } from '@/lib/seasons/findSeasonAt'
 
 /** Convertit une saison vers son couple ISO `YYYY-MM-DD` exploitable par
  *  setPeriod. Pour une saison ouverte, end_date = aujourd'hui en UTC. */
@@ -37,15 +31,9 @@ export function useActiveSeason(period: PeriodInput | undefined): {
   activeSeason: SeasonEntry | null
 } {
   const seasons = useSeasons()
-  const activeSeason = useMemo(() => {
-    if (!period?.start_date || !period?.end_date) return null
-    for (const s of seasons) {
-      if (isoDateUTC(s.startDate) !== period.start_date) continue
-      const expectedEnd = isoDateUTC(s.endDate ?? new Date())
-      if (expectedEnd === period.end_date) return s
-    }
-    return null
-  }, [seasons, period])
-
+  const activeSeason = useMemo(
+    () => findActiveSeason(seasons, period?.start_date, period?.end_date),
+    [seasons, period],
+  )
   return { seasons, activeSeason }
 }

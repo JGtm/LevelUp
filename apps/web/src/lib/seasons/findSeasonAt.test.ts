@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
-import { currentSeason, findSeasonAt, nextSeason, prevSeason } from './findSeasonAt'
+import { currentSeason, findActiveSeason, findSeasonAt, isoDateUTC, nextSeason, prevSeason } from './findSeasonAt'
 
 const fixture: SeasonEntry[] = [
   {
@@ -104,5 +104,38 @@ describe('prevSeason / nextSeason', () => {
     }
     expect(prevSeason(fixture, ghost)).toBeNull()
     expect(nextSeason(fixture, ghost)).toBeNull()
+  })
+})
+
+describe('findActiveSeason', () => {
+  it('retourne null si start ou end est nul', () => {
+    expect(findActiveSeason(fixture, null, '2022-04-01')).toBeNull()
+    expect(findActiveSeason(fixture, '2022-01-01', null)).toBeNull()
+    expect(findActiveSeason(fixture, undefined, undefined)).toBeNull()
+  })
+
+  it('matche pile S1 sur la fenêtre exacte', () => {
+    expect(findActiveSeason(fixture, '2022-01-01', '2022-04-01')?.id).toBe('s1')
+  })
+
+  it('ne matche pas une fenêtre proche mais différente (un jour de plus)', () => {
+    expect(findActiveSeason(fixture, '2022-01-01', '2022-04-02')).toBeNull()
+  })
+
+  it('matche une saison ouverte avec end_date = today (UTC)', () => {
+    const today = isoDateUTC(new Date())
+    expect(findActiveSeason(fixture, '2023-04-01', today)?.id).toBe('s_open')
+  })
+
+  it('ne matche pas une saison ouverte avec end_date != today', () => {
+    expect(findActiveSeason(fixture, '2023-04-01', '2099-12-31')).toBeNull()
+  })
+})
+
+describe('isoDateUTC', () => {
+  it('formate au format YYYY-MM-DD en UTC', () => {
+    expect(isoDateUTC(new Date('2024-03-19T18:00:00Z'))).toBe('2024-03-19')
+    // Date juste avant minuit UTC : pas de glissement de jour
+    expect(isoDateUTC(new Date('2024-03-19T23:59:00Z'))).toBe('2024-03-19')
   })
 })
