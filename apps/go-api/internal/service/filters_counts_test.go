@@ -102,6 +102,88 @@ func TestUniqueLabelValuesWithORCounts_DownFilterAppliedToCount(t *testing.T) {
 
 // ─── buildAvailableOptions — bout à bout ──────────────────────────────────
 
+// TestBuildAvailableOptions_ExperienceFiltersPlaylistsModesMaps cadenasse le
+// comportement attendu sur le terrain : si l'utilisateur coche Experience=PVE,
+// les Playlists/Modes/Maps non-PVE doivent disparaître complètement de la
+// liste retournée (pas juste avoir count=0).
+//
+// Bug observé : sur un dataset avec 2 matchs PVE et 50+ matchs PVP, cocher
+// PVE laissait toutes les options PVP visibles côté UI car la liste backend
+// les retournait avec un count > 0.
+func TestBuildAvailableOptions_ExperienceFiltersPlaylistsModesMaps(t *testing.T) {
+	rows := []domain.FilterMatchRow{
+		// 2 matchs PVE — Firefight sur Sanctuary
+		{MatchID: "pve1", PairName: strPtr("Firefight"), PairNameFR: strPtr("Firefight"), MapName: strPtr("Sanctuary"), MapNameFR: strPtr("Sanctuary"), PlaylistName: strPtr("Firefight"), IsFirefight: true},
+		{MatchID: "pve2", PairName: strPtr("Firefight"), PairNameFR: strPtr("Firefight"), MapName: strPtr("Sanctuary"), MapNameFR: strPtr("Sanctuary"), PlaylistName: strPtr("Firefight"), IsFirefight: true},
+		// 5 matchs PVP — Slayer/CTF/Strongholds sur Streets/Bazaar/Aquarius
+		makeFilterRow("pvp1", "Slayer", "Streets", "Arena", false, false),
+		makeFilterRow("pvp2", "Slayer", "Bazaar", "Arena", false, false),
+		makeFilterRow("pvp3", "CTF", "Streets", "Arena", false, false),
+		makeFilterRow("pvp4", "CTF", "Bazaar", "BTB", false, false),
+		makeFilterRow("pvp5", "Strongholds", "Aquarius", "BTB", false, false),
+	}
+
+	got := buildAvailableOptions(rows, domain.CascadeFilter{
+		ExperienceTypes: []string{"PVE"},
+	})
+
+	// Playlists : seule "Firefight" doit apparaître.
+	playlistVals := make([]string, 0, len(got.Playlists))
+	for _, p := range got.Playlists {
+		playlistVals = append(playlistVals, p.Value)
+	}
+	if len(got.Playlists) != 1 || got.Playlists[0].Value != "Firefight" {
+		t.Errorf("Playlists avec Experience=[PVE] : want [Firefight], got %v", playlistVals)
+	}
+
+	// Modes : seul "Firefight" doit apparaître.
+	modeVals := make([]string, 0, len(got.Modes))
+	for _, m := range got.Modes {
+		modeVals = append(modeVals, m.Value)
+	}
+	if len(got.Modes) != 1 || got.Modes[0].Value != "Firefight" {
+		t.Errorf("Modes avec Experience=[PVE] : want [Firefight], got %v", modeVals)
+	}
+
+	// Maps : seule "Sanctuary" doit apparaître.
+	mapVals := make([]string, 0, len(got.Maps))
+	for _, m := range got.Maps {
+		mapVals = append(mapVals, m.Value)
+	}
+	if len(got.Maps) != 1 || got.Maps[0].Value != "Sanctuary" {
+		t.Errorf("Maps avec Experience=[PVE] : want [Sanctuary], got %v", mapVals)
+	}
+}
+
+// TestBuildAvailableOptions_PlaylistFiltersDownStream : cocher une playlist
+// doit masquer les modes/cartes non joués sur cette playlist.
+func TestBuildAvailableOptions_PlaylistFiltersDownStream(t *testing.T) {
+	rows := []domain.FilterMatchRow{
+		makeFilterRow("a1", "Slayer", "Streets", "Arena", false, false),
+		makeFilterRow("a2", "Slayer", "Bazaar", "Arena", false, false),
+		makeFilterRow("b1", "Strongholds", "Aquarius", "BTB", false, false),
+	}
+
+	got := buildAvailableOptions(rows, domain.CascadeFilter{
+		Playlists: []string{"Arena"},
+	})
+
+	if len(got.Modes) != 1 || got.Modes[0].Value != "Slayer" {
+		vals := []string{}
+		for _, m := range got.Modes {
+			vals = append(vals, m.Value)
+		}
+		t.Errorf("Modes avec Playlists=[Arena] : want [Slayer], got %v", vals)
+	}
+	mapVals := make([]string, 0, len(got.Maps))
+	for _, m := range got.Maps {
+		mapVals = append(mapVals, m.Value)
+	}
+	if len(got.Maps) != 2 {
+		t.Errorf("Maps avec Playlists=[Arena] : want 2 (Bazaar + Streets), got %d %v", len(got.Maps), mapVals)
+	}
+}
+
 func TestBuildAvailableOptions_CountsAreOR(t *testing.T) {
 	rows := []domain.FilterMatchRow{
 		makeFilterRow("m1", "Slayer", "Streets", "Arena", false, false),

@@ -194,6 +194,28 @@ describe('FilterOmnibar', () => {
     expect(screen.getByText(/23 matchs/)).toBeInTheDocument()
   })
 
+  it('options à count=0 sont repliées sous "+ N indisponibles"', () => {
+    // Dataset PVE only : 2 matchs Firefight sur Sanctuary. Cocher PVE doit
+    // masquer Slayer/CTF/Strongholds dans la cascade Modes.
+    const resolved = buildResolved()
+    resolved.available_options.modes = [
+      { label: 'Firefight', value: 'Firefight', count: 2 },
+      { label: 'Slayer', value: 'Slayer', count: 0 },
+      { label: 'CTF', value: 'CTF', count: 0 },
+      { label: 'Strongholds', value: 'Strongholds', count: 0 },
+      { label: 'Oddball', value: 'Oddball', count: 0 },
+    ]
+    useGlobalFilterStore.getState().setResolvedContext(resolved)
+    renderWithProviders(<FilterOmnibar />)
+    fireEvent.click(screen.getByRole('button', { name: /^filtres/i }))
+
+    // Firefight (count > 0) visible, les 4 autres repliées
+    expect(screen.getByText('Firefight')).toBeInTheDocument()
+    expect(screen.queryByText('Slayer')).not.toBeInTheDocument()
+    expect(screen.queryByText('CTF')).not.toBeInTheDocument()
+    expect(screen.getByText(/4 options indisponibles/)).toBeInTheDocument()
+  })
+
   it('Escape ferme le popover ouvert', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /toutes les sessions/i }))

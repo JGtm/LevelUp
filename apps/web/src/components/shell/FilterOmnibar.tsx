@@ -97,7 +97,10 @@ export function FilterOmnibar() {
     .reduce((n, k) => n + ((pendingCascade[k] as string[] | undefined)?.length ?? 0), 0)
   const hasPeriod = !!(pendingPeriod?.start_date || pendingPeriod?.end_date)
   const hasActiveFilters = !!pendingPickedId || hasPeriod || cascadeCount > 0
-  const totalAfter = resolvedContext?.counts?.total_matches_after_filters ?? null
+  // Priorité au preview (live) pour que le compteur reflète le pending —
+  // sinon il reste figé sur le dernier commit jusqu'au clic Analyser.
+  const totalAfter =
+    (previewData?.counts ?? resolvedContext?.counts)?.total_matches_after_filters ?? null
 
   // Priorité au preview (temps réel) ; fallback sur le contexte commité
   // tant que le premier fetch preview n'est pas revenu.
