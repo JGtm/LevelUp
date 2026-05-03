@@ -16,6 +16,8 @@
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { computeNextWindow, computePrevWindow, getRailMode } from '@/features/filters/periodSessionNav'
+import { useSeasons, type SeasonEntry } from '@/lib/i18n/fieldMappings'
+import { findActiveSeason, isoDateUTC, nextSeason, prevSeason } from '@/lib/seasons/findSeasonAt'
 
 type Locale = 'fr' | 'en'
 
@@ -32,6 +34,10 @@ interface RailText {
   ariaLatestSession: string
   ariaPrevPeriod: string
   ariaNextPeriod: string
+  ariaPrevSeason: string
+  ariaNextSeason: string
+  prevSeasonTitle: string
+  nextSeasonTitle: string
   positionLabel: (idx: number, total: number) => string
   matchCountSuffix: (n: number) => string
   multiSessionLabel: (n: number) => string
@@ -40,6 +46,7 @@ interface RailText {
   allTimeTooltip: string
   periodLabel: (start: string, end: string) => string
   periodDuration: (days: number) => string
+  seasonRangeLabel: (start: string, end: string) => string
   auto: string
   autoTitle: string
 }
@@ -58,6 +65,10 @@ const TEXTS: Record<Locale, RailText> = {
     ariaLatestSession: 'Aller à la dernière session',
     ariaPrevPeriod: 'Période précédente',
     ariaNextPeriod: 'Période suivante',
+    ariaPrevSeason: 'Saison précédente',
+    ariaNextSeason: 'Saison suivante',
+    prevSeasonTitle: 'Saison précédente',
+    nextSeasonTitle: 'Saison suivante',
     positionLabel: (idx, total) => `${idx + 1} / ${total}`,
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 's' : ''}`,
     multiSessionLabel: (n) => `${n} sessions sélectionnées`,
@@ -66,6 +77,7 @@ const TEXTS: Record<Locale, RailText> = {
     allTimeTooltip: 'Choisissez une période ou une session via les filtres pour activer la navigation',
     periodLabel: (start, end) => `Période du ${start} au ${end}`,
     periodDuration: (days) => `${days} jour${days > 1 ? 's' : ''}`,
+    seasonRangeLabel: (start, end) => `du ${start} au ${end}`,
     auto: 'auto',
     autoTitle: 'Sélection automatique : nouvelle session détectée.',
   },
@@ -82,6 +94,10 @@ const TEXTS: Record<Locale, RailText> = {
     ariaLatestSession: 'Go to latest session',
     ariaPrevPeriod: 'Previous period',
     ariaNextPeriod: 'Next period',
+    ariaPrevSeason: 'Previous season',
+    ariaNextSeason: 'Next season',
+    prevSeasonTitle: 'Previous season',
+    nextSeasonTitle: 'Next season',
     positionLabel: (idx, total) => `${idx + 1} / ${total}`,
     matchCountSuffix: (n) => ` · ${n} match${n > 1 ? 'es' : ''}`,
     multiSessionLabel: (n) => `${n} sessions selected`,
@@ -90,6 +106,7 @@ const TEXTS: Record<Locale, RailText> = {
     allTimeTooltip: 'Pick a period or session in the filters to enable navigation',
     periodLabel: (start, end) => `From ${start} to ${end}`,
     periodDuration: (days) => `${days} day${days > 1 ? 's' : ''}`,
+    seasonRangeLabel: (start, end) => `from ${start} to ${end}`,
     auto: 'auto',
     autoTitle: 'Auto-selection: new session detected.',
   },
@@ -169,10 +186,11 @@ const ZONE_RIGHT_CLASS = 'flex shrink-0 items-center gap-1.5'
 const NAV_BTN_CLASS =
   'rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30'
 
-/** Composant principal — dispatcher selon le mode (session / multi-session / period). */
+/** Composant principal — dispatcher selon le mode (session / multi-session / period / season). */
 export function PeriodSessionRail() {
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
+  const seasons = useSeasons()
 
   const locale = (useAppShellStore((s) => s.locale) as Locale) ?? 'fr'
   const t = TEXTS[locale]
@@ -194,7 +212,12 @@ export function PeriodSessionRail() {
       />
     )
   }
-  // mode.kind === 'period'
+  // mode.kind === 'period' — bascule en mode "season" si la fenêtre matche
+  // pile une saison du catalog (priorité à l'affichage saison).
+  const activeSeason = findActiveSeason(seasons, mode.period.start_date, mode.period.end_date)
+  if (activeSeason) {
+    return <SeasonRail season={activeSeason} seasons={seasons} locale={locale} t={t} />
+  }
   return <PeriodRail period={mode.period} durationDays={mode.durationDays} locale={locale} t={t} />
 }
 
@@ -207,7 +230,7 @@ export function PeriodSessionRail() {
 // ---------------------------------------------------------------------------
 
 interface RailFrameProps {
-  modeAttr: 'session' | 'multi-session' | 'period' | 'all-time'
+  modeAttr: 'session' | 'multi-session' | 'period' | 'all-time' | 'season'
   ariaLabel: string
   prev: React.ReactNode
   center: React.ReactNode
@@ -417,6 +440,75 @@ function PeriodRail({ period, durationDays, locale, t }: PeriodRailProps) {
           ariaLabel={t.ariaNextPeriod}
           enabled={canGoNext}
           onClick={goToNextPeriod}
+        />
+      }
+    />
+  )
+}
+
+interface SeasonRailProps {
+  season: SeasonEntry
+  seasons: SeasonEntry[]
+  locale: Locale
+  t: RailText
+}
+
+/** Mode "season" : prend le relais du mode period quand la fenêtre courante
+ *  matche pile une saison du catalog. Boutons prev/next sautent saison-à-
+ *  saison via setPeriod (au lieu du sliding-window classique). */
+function SeasonRail({ season, seasons, locale, t }: SeasonRailProps) {
+  const setPeriod = useGlobalFilterStore((s) => s.setPeriod)
+
+  const prev = prevSeason(seasons, season)
+  const next = nextSeason(seasons, season)
+  const todayUTC = isoDateUTC(new Date())
+
+  const startLabel = formatDateShort(isoDateUTC(season.startDate), locale)
+  const endLabel = formatDateShort(
+    season.endDate ? isoDateUTC(season.endDate) : todayUTC,
+    locale,
+  )
+
+  const goToSeason = (s: SeasonEntry) => {
+    setPeriod({
+      start_date: isoDateUTC(s.startDate),
+      end_date: isoDateUTC(s.endDate ?? new Date()),
+    })
+  }
+
+  return (
+    <RailFrame
+      modeAttr="season"
+      ariaLabel={t.ariaNav}
+      prev={
+        <NavBtn
+          label={t.prev}
+          title={t.prevSeasonTitle}
+          ariaLabel={t.ariaPrevSeason}
+          enabled={prev !== null}
+          onClick={() => prev && goToSeason(prev)}
+        />
+      }
+      center={
+        <>
+          <span className="shrink-0 rounded bg-muted/50 px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">
+            {season.shortLabel}
+          </span>
+          <span className="truncate text-sm font-semibold text-foreground" title={season.label}>
+            {season.label}
+          </span>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {t.seasonRangeLabel(startLabel, endLabel)}
+          </span>
+        </>
+      }
+      next={
+        <NavBtn
+          label={t.next}
+          title={t.nextSeasonTitle}
+          ariaLabel={t.ariaNextSeason}
+          enabled={next !== null}
+          onClick={() => next && goToSeason(next)}
         />
       }
     />
