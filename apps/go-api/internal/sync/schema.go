@@ -98,6 +98,8 @@ CREATE TABLE IF NOT EXISTS match_registry (
     match_id                  VARCHAR   PRIMARY KEY,
     start_time                TIMESTAMP NOT NULL,
     end_time                  TIMESTAMP,
+    start_time_utc            TIMESTAMPTZ,
+    end_time_utc              TIMESTAMPTZ,
     playlist_id               VARCHAR,
     playlist_name             VARCHAR,
     playlist_version_id       VARCHAR,

@@ -1,5 +1,34 @@
 # Thought Log
 
+## [2026-05-03] fix(timezone): unifier la conversion start_time_utc via session TZ
+
+**Statut** : Complété.
+
+**Contexte** : Page Squad Synergies affichait toutes les heures de match décalées de +2h CEST (e.g. match du 6 avril 23:40 Paris affiché 7 avril 01:40). Le rail "période/session" était lui correct (label `session.label` formaté côté Go avec `t.Format("15:04")`). Bug visible aussi avant le commit `257667eb` (fix précédent du pattern SQL).
+
+**Cause racine confirmée par diagnostic (`cmd/analyze_media_tz` + cmd one-shot supprimé après usage)** :
+- bytes `start_time` = "23:40" (Paris, écrit par le sync sous session TZ=Paris)
+- migration `add_start_time_utc_to_match_registry` appliquait `start_time AT TIME ZONE 'UTC'` aux matchs avec `first_sync_at >= 2026-03-01`, partant du principe "post-fix DuckDB = bytes UTC". Faux : le sync Go écrit toujours en bytes session-TZ (pas en bytes UTC) peu importe la version DuckDB.
+- résultat stocké : `start_time_utc` = 23:40 UTC = 01:40 Paris CEST ❌ (devrait être 21:40 UTC)
+- driver duckdb-go retourne le `time.Time` avec Location=UTC mais value = bytes stockés tels quels → JSON marshal en `"...23:40Z"` → front Paris CEST → 01:40
+
+**Décision technique** :
+1. **Sync explicite** ([writes.go:24](apps/go-api/internal/sync/writes.go#L24)) — `InsertRegistryIfNotExists` écrit désormais `start_time_utc = row.StartTime.UTC()` et `end_time_utc = row.EndTime.UTC()` directement (TIMESTAMPTZ explicite). Plus de dépendance à la conversion implicite session TZ ; tous les futurs matchs sont correctement étiquetés UTC à l'insert.
+2. **Migration corrective** `fix_start_time_utc_via_session_tz` (steps_shared.go) — re-backfill : `UPDATE match_registry SET start_time_utc = start_time::TIMESTAMPTZ, end_time_utc = end_time::TIMESTAMPTZ`. Le cast TIMESTAMP → TIMESTAMPTZ utilise la session TZ courante = celle du sync à l'écriture, donc inverse exact de la conversion d'écriture, sans heuristique. Filet de sécurité : si end_time NULL, reconstruction depuis start_time_utc + duration.
+3. **Cmd one-shot simplifié** (`cmd/apply_tz_migration/main.go`) — même logique unifiée + paramètre TZ optionnel. Pour rattraper en manuel si besoin.
+4. **Seed de test** ([internal/sync/schema.go::sharedSchemaSQL](apps/go-api/internal/sync/schema.go) + [internal/sync/testutil/fixture.go](apps/go-api/internal/sync/testutil/fixture.go)) — ajout des colonnes `start_time_utc` / `end_time_utc` TIMESTAMPTZ, requises par le nouveau INSERT du sync.
+
+**Pourquoi pas de heuristique avant/après mars 2026** : la heuristique précédente (CASE sur `real_start_time` delta + `first_sync_at`) était fondée sur l'idée "post-fix DuckDB stocke en UTC" — fausse pour le sync Go qui passe par la session TZ. Tout le code timezone est désormais une seule règle : `bytes naïfs sous session TZ user → cast TIMESTAMPTZ inverse exactement → UTC correct`. Risque résiduel : ~385 matchs du batch fév. 2026 que l'ancienne heuristique avait classifiés "UTC" (delta `real - start < 30min`). Si leurs bytes étaient effectivement en UTC (et pas Paris comme les 961 autres), ils seront décalés. Mais la détection précédente était déjà douteuse — elle confondait "petit countdown film" avec "convention UTC".
+
+**Résultats observés** :
+- `go build ./...` OK, `go vet ./...` zéro warning
+- `go test ./...` tous verts
+- Binaire serveur rebuilt (95.8 MB, 2026-05-03 20:02). Au prochain démarrage, la migration `fix_start_time_utc_via_session_tz` se déclenchera automatiquement.
+
+**Prochaine étape** : redémarrage serveur côté user → migration applique le re-backfill → vérification sur la page Synergies que les heures sont alignées avec le rail.
+
+---
+
 ## [2026-05-03] fix(squad/filters): trois bugs liés sessions — propagation, ID/label, disparition multi-select
 
 **Statut** : Complété.

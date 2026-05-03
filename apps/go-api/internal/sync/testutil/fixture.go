@@ -21,10 +21,15 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 	t.Cleanup(func() { _ = db.Close() })
 
 	stmts := []string{
+		// start_time / end_time : TIMESTAMP naïf historique (compat).
+		// start_time_utc / end_time_utc : TIMESTAMPTZ explicites — source de
+		// vérité pour les requêtes d'affichage post-fix_start_time_utc_via_session_tz.
 		`CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMP,
 			end_time TIMESTAMP,
+			start_time_utc TIMESTAMPTZ,
+			end_time_utc TIMESTAMPTZ,
 			playlist_id VARCHAR,
 			playlist_name VARCHAR,
 			map_id VARCHAR,
