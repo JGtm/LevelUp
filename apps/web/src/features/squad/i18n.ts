@@ -192,6 +192,8 @@ export interface SquadText {
   }
   medals: {
     title: string
+    dominantCategory: string
+    topMedals: string
     statsDistinct: string
     statsAvg: string
     statsPeak: string
@@ -414,6 +416,8 @@ const FR_TEXT: SquadText = {
   },
   medals: {
     title: 'Médailles — Résumé de l\'escouade',
+    dominantCategory: 'Catégorie dominante',
+    topMedals: 'Top médailles',
     statsDistinct: 'Types distincts',
     statsAvg: 'Moy./match',
     statsPeak: 'Pic',
@@ -636,6 +640,8 @@ const EN_TEXT: SquadText = {
   },
   medals: {
     title: 'Medals — Squad summary',
+    dominantCategory: 'Dominant category',
+    topMedals: 'Top medals',
     statsDistinct: 'Distinct types',
     statsAvg: 'Avg/match',
     statsPeak: 'Peak',

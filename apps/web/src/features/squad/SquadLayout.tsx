@@ -211,6 +211,7 @@ export function SquadLayout() {
     filters: squadFilterContext,
     selected_gamertags: confirmedGts.length > 0 ? confirmedGts : undefined,
     picked_squad_session_labels: pickedSquadSessionLabels.length > 0 ? pickedSquadSessionLabels : undefined,
+    locale,
   }
   const { data, isLoading, isError, error } = useTeammates(
     playerSlug,

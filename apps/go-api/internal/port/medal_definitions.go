@@ -14,5 +14,5 @@ type MedalDefinitionRow struct {
 // MedalDefinitionsRepository résout les labels et descriptions de médailles
 // depuis la base metadata (medal_definitions + medal_translations).
 type MedalDefinitionsRepository interface {
-	LookupByIDs(ctx context.Context, ids []int64) (map[int64]MedalDefinitionRow, error)
+	LookupByIDs(ctx context.Context, ids []int64, locale string) (map[int64]MedalDefinitionRow, error)
 }

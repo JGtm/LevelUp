@@ -1397,6 +1397,7 @@ export interface TeammatesQueryRequest {
   filters?: FilterContextInput | null
   picked_solo_session_labels?: string[]
   picked_squad_session_labels?: string[]
+  locale?: string
 }
 
 export interface SessionLabelEntry {
