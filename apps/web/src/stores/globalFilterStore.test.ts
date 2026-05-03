@@ -192,6 +192,86 @@ describe('GlobalFilterStore', () => {
     expect(parsed.state.isAutoSnappingToLatest).toBeUndefined()
   })
 
+  // -------------------------------------------------------------------------
+  // Actions de navigation rail (goToPrev/NextSession/Period)
+  // -------------------------------------------------------------------------
+
+  function makeResolved(allSessions: Array<{ session_id: string; label: string }>): FilterContextResolved {
+    return {
+      effective: DEFAULT_FILTER_CONTEXT,
+      available_options: { experience_types: [], playlists: [], modes: [], maps: [] },
+      session_options: {
+        all_sessions: allSessions.map((s) => ({
+          session_id: s.session_id,
+          label: s.label,
+          match_count: 5,
+          match_count_filtered: 5,
+          is_squad: false,
+        })),
+        solo_labels: [],
+        squad_labels: [],
+      },
+      counts: { total_matches_before_filters: 100, total_matches_after_filters: 50 },
+      // @ts-expect-error — tests legacy : period_presets ajouté plus tard côté types
+      period_presets: [],
+    }
+  }
+
+  it('goToPrevSession bascule vers la session plus ancienne', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([
+      { session_id: 's-latest', label: '06/04' },
+      { session_id: 's-mid', label: '05/04' },
+      { session_id: 's-old', label: '01/04' },
+    ]))
+    store.setSessions({ picked_sessions: ['s-latest'], gap_minutes: DEFAULT_GAP_MINUTES })
+    useGlobalFilterStore.getState().goToPrevSession()
+    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-mid'])
+  })
+
+  it('goToPrevSession no-op si déjà à la session la plus ancienne', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([
+      { session_id: 's-latest', label: '06/04' },
+      { session_id: 's-old', label: '01/04' },
+    ]))
+    store.setSessions({ picked_sessions: ['s-old'], gap_minutes: DEFAULT_GAP_MINUTES })
+    useGlobalFilterStore.getState().goToPrevSession()
+    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-old'])
+  })
+
+  it('goToNextSession bascule vers la session plus récente', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([
+      { session_id: 's-latest', label: '06/04' },
+      { session_id: 's-mid', label: '05/04' },
+    ]))
+    store.setSessions({ picked_sessions: ['s-mid'], gap_minutes: DEFAULT_GAP_MINUTES })
+    useGlobalFilterStore.getState().goToNextSession()
+    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-latest'])
+  })
+
+  it('goToPrevPeriod shift la fenêtre vers le passé', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([]))
+    store.setPeriod({ start_date: '2026-04-01', end_date: '2026-04-08' })
+    useGlobalFilterStore.getState().goToPrevPeriod()
+    const period = useGlobalFilterStore.getState().filterContext.period
+    expect(period?.start_date).toBe('2026-03-24')
+    expect(period?.end_date).toBe('2026-03-31')
+  })
+
+  it('goToPrevPeriod no-op en mode session', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([
+      { session_id: 's-latest', label: '06/04' },
+    ]))
+    store.setSessions({ picked_sessions: ['s-latest'], gap_minutes: DEFAULT_GAP_MINUTES })
+    const beforeHash = useGlobalFilterStore.getState().filterContextHash
+    useGlobalFilterStore.getState().goToPrevPeriod()
+    expect(useGlobalFilterStore.getState().filterContextHash).toBe(beforeHash)
+  })
+
   it('setResolvedContext stocke la réponse résolue', () => {
     const resolved: FilterContextResolved = {
       effective: {

@@ -21,6 +21,13 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { log } from '@/features/filters/_logger'
+import {
+  computeNextSession,
+  computeNextWindow,
+  computePrevSession,
+  computePrevWindow,
+  getRailMode,
+} from '@/features/filters/periodSessionNav'
 import type {
   CascadeInput,
   FilterContextInput,
@@ -91,6 +98,12 @@ interface GlobalFilterState {
   /** Bascule le filtre sur la session passée en paramètre (filter_mode='sessions',
    *  sessions.picked_sessions=[id]). Si triggeredBySync=true, marque le snap auto. */
   autoSnapToLatestSession: (latestSessionId: string, triggeredBySync: boolean) => void
+
+  // --- Rail de navigation période/session (no-op si pas applicable) ---
+  goToPrevSession: () => void
+  goToNextSession: () => void
+  goToPrevPeriod: () => void
+  goToNextPeriod: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -243,6 +256,58 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
         log.debug(
           `auto_snap:fired session=${latestSessionId} trigger=${triggeredBySync ? 'sync' : 'manual'}`,
         )
+      },
+
+      // ---------------------------------------------------------------------
+      // Navigation rail (period/session prev/next) — no-op si pas applicable.
+      // Délègue le calcul aux helpers purs `periodSessionNav.ts` et réutilise
+      // setSessions / setPeriod existants : le hash change, react-query refetch.
+      // ---------------------------------------------------------------------
+
+      goToPrevSession: () => {
+        const { filterContext, resolvedContext } = get()
+        const all = resolvedContext?.session_options?.all_sessions ?? []
+        const mode = getRailMode(filterContext, all)
+        if (mode.kind !== 'session') return
+        const target = computePrevSession(mode.session.session_id, all)
+        if (!target) return
+        get().setSessions({
+          ...(filterContext.sessions ?? DEFAULT_SESSIONS),
+          picked_sessions: [target.session_id],
+        })
+      },
+
+      goToNextSession: () => {
+        const { filterContext, resolvedContext } = get()
+        const all = resolvedContext?.session_options?.all_sessions ?? []
+        const mode = getRailMode(filterContext, all)
+        if (mode.kind !== 'session') return
+        const target = computeNextSession(mode.session.session_id, all)
+        if (!target) return
+        get().setSessions({
+          ...(filterContext.sessions ?? DEFAULT_SESSIONS),
+          picked_sessions: [target.session_id],
+        })
+      },
+
+      goToPrevPeriod: () => {
+        const { filterContext, resolvedContext } = get()
+        const all = resolvedContext?.session_options?.all_sessions ?? []
+        const mode = getRailMode(filterContext, all)
+        if (mode.kind !== 'period') return
+        const target = computePrevWindow(mode.period)
+        if (!target) return
+        get().setPeriod(target)
+      },
+
+      goToNextPeriod: () => {
+        const { filterContext, resolvedContext } = get()
+        const all = resolvedContext?.session_options?.all_sessions ?? []
+        const mode = getRailMode(filterContext, all)
+        if (mode.kind !== 'period') return
+        const target = computeNextWindow(mode.period)
+        if (!target) return
+        get().setPeriod(target)
       },
     }),
     {

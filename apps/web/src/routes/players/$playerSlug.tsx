@@ -9,7 +9,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useEffect, useRef } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
-import { SessionNavBar } from '@/components/shell/SessionNavBar'
+import { PeriodSessionRail } from '@/components/shell/PeriodSessionRail'
 import { useFiltersResolve } from '@/features/filters/queries'
 import { log as filtersLog } from '@/features/filters/_logger'
 
@@ -65,7 +65,7 @@ function PlayerLayout() {
 
   // Résolution du filterContext côté backend → alimente
   // resolvedContext.session_options et resolvedContext.available_options
-  // dans le globalFilterStore, consommés par SessionNavBar/FilterOmnibar/SquadLayout.
+  // dans le globalFilterStore, consommés par PeriodSessionRail/FilterOmnibar/SquadLayout.
   const filtersResolve = useFiltersResolve(playerSlug)
 
   // Auto-snap-to-latest : sur la transition activeSyncJobId string → null
@@ -97,8 +97,9 @@ function PlayerLayout() {
 
   return (
     <div className="flex flex-col">
-      {/* Barre de navigation de session (sticky h-12) — Stats/Escouade uniquement */}
-      <SessionNavBar />
+      {/* Rail de navigation période/session (sticky h-12) — visible toutes pages joueur,
+          masqué automatiquement quand le scope est all-time (mode hidden). */}
+      <PeriodSessionRail />
       {/* Bandeau contextuel L2 : sous-onglets Stats + filtres (Stats/Escouade uniquement) */}
       <NavL2 />
       <Outlet />

@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-05-03] feat(filters): rail sticky de navigation période/session universel
+
+**Statut** : Complété (Phase 1 + Phase 2 livrées en bloc).
+
+**Contexte** : L'ancien `SessionNavBar` proposait ◀ Précédente / Suivante ▶ uniquement sur l'onglet Stats (gating par regex `pathname`). Pas de navigation pour les périodes, pas visible sur Squad/Home/Synthèse. Le user voulait un rail unifié, sticky sous la barre de filtres, primaire pour la navigation session (cas d'usage : "regarder la dernière, puis explorer les précédentes en 1 clic").
+
+**Décisions** :
+- **Helpers purs** dans `apps/web/src/features/filters/periodSessionNav.ts` : `getRailMode` (discriminated union session | multi-session | period | hidden), `computePrev/NextSession`, `computePrev/NextWindow` (sliding window UTC, cap aujourd'hui pour next).
+- **4 actions store** ajoutées dans `globalFilterStore` : `goToPrev/NextSession`, `goToPrev/NextPeriod`. No-op si mode inadapté. Réutilisent `setSessions`/`setPeriod` existants → `filterContextHash` change → react-query refetch automatique sur toutes les pages.
+- **Composant** `PeriodSessionRail.tsx` qui remplace `SessionNavBar.tsx` (supprimé). i18n locale FR/EN. Insertion dans `routes/players/$playerSlug.tsx` au même endroit (sticky h-12, top-0). Visible sur toutes les pages joueur, gating par `getRailMode === 'hidden'`.
+- **Sémantique window-shift** : `[start, end]` → précédent = `[start - delta - 1, start - 1]` (delta cohérent avec `presetPeriod`, pas de chevauchement). Phase 2 (custom range) traitée par les mêmes helpers — pas de code spécifique preset vs custom.
+
+**Tests** : 48 verts (18 helpers purs + 25 store dont 5 nouveaux pour les actions navigation + 5 composant RTL).
+
+**Vérifications** : `npx tsc --noEmit` exit 0. Anciens tests `SessionNavBar.test.tsx` supprimés avec le composant.
+
+**Prochaine étape** : Validation utilisateur sur le rail. Si retour positif, considérer raccourcis clavier (← / →) en Phase 3.
+
 ## [2026-05-03] mock(medal-digest): mise à jour mock HTML v3 — difficulté jeu + 6 catégories API
 
 **Statut** : Complété.
