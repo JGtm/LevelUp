@@ -1554,8 +1554,13 @@ func (s *TeammatesService) buildMedalDigest(
 		}
 		return nil
 	}
+	gamertags := make([]string, len(players))
+	for i, p := range players {
+		gamertags[i] = p.gamertag
+	}
+	emblems := s.squadLoader.LoadEmblemURLs(ctx, s.titleSlug, gamertags)
 	defs := resolveMedalDigestDefs(ctx, s.medalDefs, rows, locale)
-	return assembleMedalDigest(rows, players, defs, s.titleSlug)
+	return assembleMedalDigest(rows, players, defs, emblems, s.titleSlug)
 }
 
 // collectSharedMatchIDsForDigest retourne les matchs présents pour au moins
@@ -1623,11 +1628,12 @@ func resolveMedalDigestDefs(
 }
 
 // assembleMedalDigest construit les entrées digest par joueur à partir des
-// rows de médailles + définitions résolues.
+// rows de médailles + définitions résolues + emblèmes.
 func assembleMedalDigest(
 	rows []port.MedalRow,
 	players []digestPlayer,
 	defs map[int64]port.MedalDefinitionRow,
+	emblems map[string]string,
 	titleSlug string,
 ) []domain.MedalDigestEntry {
 	type agg struct{ totalCount, matchCount int }
@@ -1693,8 +1699,13 @@ func assembleMedalDigest(
 		if len(top) > 5 {
 			top = items[:5]
 		}
+		emblemURL := ""
+		if emblems != nil {
+			emblemURL = emblems[p.gamertag]
+		}
 		out = append(out, domain.MedalDigestEntry{
 			Player:        p.gamertag,
+			EmblemURL:     emblemURL,
 			DistinctTypes: len(byMedal),
 			TotalCount:    total,
 			AvgPerMatch:   avg,

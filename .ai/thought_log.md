@@ -1,5 +1,47 @@
 # Thought Log
 
+## [2026-05-03] feat(squad): MedalDigest — médailles FR, emblèmes Spartan, layout complet
+
+**Statut** : Complété.
+
+**Décision technique** :
+1. **Root cause médailles absentes** : `medalsEarnedTableExists()` testait `table_schema='shared'` mais DuckDB ATTACHed DBs exposent `table_catalog='shared'`, `table_schema='main'`. Fix identique dans `weapon_kills_repo.go`.
+2. **Locale médailles** : propagation `locale` depuis `TeammatesQueryRequest` → `buildMedalDigest` → `resolveMedalDigestDefs` → `LookupByIDs` → SQL `COALESCE(mt_loc.name, mt_en.name, md.name_en)`. Helper `medalLangCode()` normalise `"fr"`/`"fr-fr"` → `"fr-FR"`.
+3. **Emblèmes Spartan** : `SquadV2Loader.LoadEmblemURLs` (goroutines parallèles) lit `ARG_MAX(emblem_image_url, recorded_at)` depuis `career_progression` de chaque joueur, construit l'URL via `buildHomeIdentityAssetURL`, retourne `map[string]string`. Nouveau champ `EmblemURL` dans `domain.MedalDigestEntry`. Frontend : `PlayerAvatar` reçoit `emblemUrl` prop directement depuis `entry.emblem_url`.
+4. **Grid pleine largeur** : remplacé `auto-fill minmax(240px, 1fr)` par `repeat(N, 1fr)` (N = nombre d'entrées).
+5. **Labels manquants** : `dominantCategory` et `topMedals` ajoutés dans `SquadText['medals']` (FR + EN), `dominantCategoryFor()` calcule la catégorie dominante front-side depuis `all_medals`.
+
+**Résultats** : `go test ./internal/service/...` → ok. Build Go → ok. TypeScript (fichiers modifiés) → sans erreur.
+
+**Prochaine étape** : merge dans main si tests passent en CI.
+
+---
+
+## [2026-05-03] fix(filters): hash queryKey sensible à la cascade — débloque smart-filter-counts
+
+**Statut** : Complété.
+
+**Contexte** : 20h passées sur la branche `feat/smart-filter-counts` à essayer de comprendre pourquoi cocher une option (ex. PVE avec 2 matchs Firefight) ne masquait pas les options à 0 résultat dans les 3 autres catégories de FiltresPill — alors que le backend Go calcule pourtant correctement `available_options` post-cascade dans `buildAvailableOptions` (filters_options.go). Toute la chaîne paraissait inerte côté UI : checkbox cliquée, mais ni le compteur Filtres ni le bouton « Analyser » ne réagissaient, et même après commit le résolu côté store ne changeait pas.
+
+**Décision technique** : 3 implémentations parallèles du même hash `btoa(JSON.stringify(ctx)).slice(0, 32)` étaient utilisées pour construire le queryKey TanStack — `globalFilterStore.computeHash`, `_filter_pills/_hooks.computePendingHash` et l'inline dans `useFiltersPreview`. La troncation à 32 caractères de base64 ne capture que les 24 premiers octets du JSON, soit `{"filter_mode":"sessions` (ou `"period"`). La cascade vit en fin de structure JSON et n'apparaît jamais dans ces 24 octets : deux contextes qui ne diffèrent que sur `cascade.experience_types` ou autre produisaient un hash IDENTIQUE. Conséquences en chaîne :
+- `useFiltersPreview` queryKey inchangé → React Query renvoie le cache initial → `available_options` ne reflète jamais la cascade pending → CheckboxGroup affiche toujours toutes les options.
+- `isDirty = filterContextHash !== computePendingHash(pending)` → toujours `false` → bouton « Analyser » reste grisé.
+- Même après un clic sur Analyser, `setFilterContext` recalcule le hash via la même fonction buggée → `useFiltersResolve` queryKey inchangé → backend pas requêté → toutes les pages consommatrices restent sur le résolu pré-cascade.
+
+Pire : le test `globalFilterStore.test.ts` documentait littéralement le bug en commentaire (« il faut donc toucher un champ qui sérialise tôt, pas la cascade ») au lieu de le faire échouer.
+
+Fix : remplacement par un FNV-1a 32 bits sur la sérialisation JSON entière (8 chars hex stables, sensibles à toutes les diffs). Algo identique partagé entre les 3 sites — commenté pour interdire la divergence.
+
+**Résultats observés** :
+- `vitest run src/components/shell src/stores src/features/filters` → 116 verts.
+- `npx tsc --noEmit` → clean.
+- Régressions ajoutées : `_hooks.test.ts` couvre toggle indépendant de chaque catégorie cascade ; `globalFilterStore.test.ts` ajoute « hash change quand SEULE la cascade change » + « distinguer deux cascades différentes ».
+- Test trompeur (« il faut toucher un champ qui sérialise tôt ») supprimé.
+
+**Conclusion / prochaine étape** : la feature smart-filter-counts est désormais fonctionnelle de bout en bout. Garde-fou anti-régression posé. Si on ajoute d'autres champs au `FilterContextInput` (ex. `match_context`), le hash les couvre automatiquement.
+
+---
+
 ## [2026-05-03] fix(test): aligner seeds tests intégration sur le pattern start_time_utc
 
 **Statut** : Complété.

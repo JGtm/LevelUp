@@ -319,13 +319,14 @@ type MedalDigestItem struct {
 // MedalDigestEntry est le résumé médailles d'un joueur sur les matchs partagés.
 // Alimente <MedalDigest> dans SquadSynergiesPage (bottom card narrative).
 type MedalDigestEntry struct {
-	Player        string            `json:"player"`         // gamertag
-	DistinctTypes int               `json:"distinct_types"` // nb types distincts
-	TotalCount    int               `json:"total_count"`    // total toutes médailles
-	AvgPerMatch   float64           `json:"avg_per_match"`  // moy. par match avec médaille
-	PeakInMatch   int               `json:"peak_in_match"`  // max en 1 match
-	TopMedals     []MedalDigestItem `json:"top_medals"`     // top 5 par count
-	AllMedals     []MedalDigestItem `json:"all_medals"`     // tous triés count desc
+	Player        string            `json:"player"`               // gamertag
+	EmblemURL     string            `json:"emblem_url,omitempty"` // URL emblème Spartan (optionnel)
+	DistinctTypes int               `json:"distinct_types"`       // nb types distincts
+	TotalCount    int               `json:"total_count"`          // total toutes médailles
+	AvgPerMatch   float64           `json:"avg_per_match"`        // moy. par match avec médaille
+	PeakInMatch   int               `json:"peak_in_match"`        // max en 1 match
+	TopMedals     []MedalDigestItem `json:"top_medals"`           // top 5 par count
+	AllMedals     []MedalDigestItem `json:"all_medals"`           // tous triés count desc
 }
 
 // TeammatesPageResponse est la réponse de POST /pages/teammates.

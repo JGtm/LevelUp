@@ -14,10 +14,12 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -174,6 +176,52 @@ func (a *SquadV2LoaderAdapter) resolveAnyPlayerDB(ctx context.Context, titleSlug
 		return nil, fmt.Errorf("resolveAnyPlayerDB %s: %w", titleSlug, err)
 	}
 	return pdb, nil
+}
+
+// LoadEmblemURLs retourne l'URL de l'emblème Spartan de chaque gamertag en
+// chargeant career_progression.emblem_image_url depuis le PlayerDB de chaque
+// joueur. Dégradation silencieuse : un joueur absent ou sans données reçoit
+// une entrée vide dans la map. Les chargements sont parallélisés.
+func (a *SquadV2LoaderAdapter) LoadEmblemURLs(
+	ctx context.Context,
+	titleSlug string,
+	gamertags []string,
+) map[string]string {
+	result := make(map[string]string, len(gamertags))
+	if a.resolve == nil || len(gamertags) == 0 {
+		return result
+	}
+
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, gt := range gamertags {
+		wg.Add(1)
+		go func(gamertag string) {
+			defer wg.Done()
+			pdb, err := a.resolve(ctx, titleSlug, gamertag)
+			if err != nil || pdb == nil || pdb.Player == nil {
+				return
+			}
+			var rawURL sql.NullString
+			err = pdb.Player.QueryRow(ctx,
+				`SELECT ARG_MAX(emblem_image_url, recorded_at)
+				 FILTER (WHERE NULLIF(TRIM(emblem_image_url), '') IS NOT NULL)
+				 FROM career_progression`,
+			).Scan(&rawURL)
+			if err != nil || !rawURL.Valid || rawURL.String == "" {
+				return
+			}
+			built := buildHomeIdentityAssetURL("emblem", titleSlug, rawURL.String)
+			if built == nil {
+				return
+			}
+			mu.Lock()
+			result[gamertag] = *built
+			mu.Unlock()
+		}(gt)
+	}
+	wg.Wait()
+	return result
 }
 
 // SetDefaultGamertag configure le gamertag par defaut pour resoudre les DBs

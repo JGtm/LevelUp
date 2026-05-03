@@ -35,6 +35,10 @@ func (f *fakeSquadLoaderFull) LoadMedals(_ context.Context, _ string, _ port.Med
 	return f.medals, nil
 }
 
+func (f *fakeSquadLoaderFull) LoadEmblemURLs(_ context.Context, _ string, _ []string) map[string]string {
+	return nil
+}
+
 func mkRowFull(gt, xuid, matchID string, t time.Time, outcome canonical.Outcome, kills, deaths int) canonical.PlayerMatchRow {
 	k, d := kills, deaths
 	a := 3
