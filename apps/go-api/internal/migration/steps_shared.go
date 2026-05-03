@@ -558,6 +558,48 @@ func init() {
 		ApplySchema: applyMvPlayerMatchesView,
 	})
 
+	// Re-backfill start_time_utc / end_time_utc avec une règle uniforme :
+	// `start_time::TIMESTAMPTZ` (cast utilise la session TZ courante = celle
+	// utilisée à l'écriture). La heuristique précédente (branches Paris/UTC
+	// selon real_start_time delta + first_sync_at) était fausse pour les matchs
+	// post-mars 2026 : elle supposait bytes UTC alors que le sync Go écrit
+	// toujours en bytes session-TZ (Paris pour les users FR). Résultat :
+	// décalage +1/+2h sur l'affichage des heures de match sur la page Squad
+	// Synergies et toutes les pages qui consomment start_time_utc.
+	//
+	// Cette migration est idempotente : elle re-écrit start_time_utc pour TOUS
+	// les matchs. Pour les nouveaux matchs (post-deploy), InsertRegistryIfNotExists
+	// remplit start_time_utc directement à l'INSERT — cette migration ne sert
+	// plus qu'à rattraper les matchs déjà stockés.
+	Register(Migration{
+		Name:        "fix_start_time_utc_via_session_tz",
+		TargetDB:    TargetShared,
+		Description: "Re-backfill start_time_utc et end_time_utc via session TZ (corrige les +/-1/2h des matchs post-mars 2026)",
+		ApplySchema: func(db *sql.DB) error { return nil }, // pas de DDL — colonnes déjà créées par add_start_time_utc_to_match_registry
+		ApplyBackfill: func(db *sql.DB) error {
+			if _, err := db.Exec(`
+				UPDATE match_registry SET
+					start_time_utc = start_time::TIMESTAMPTZ,
+					end_time_utc   = end_time::TIMESTAMPTZ
+				WHERE start_time IS NOT NULL
+			`); err != nil {
+				return fmt.Errorf("fix_start_time_utc backfill: %w", err)
+			}
+			// Filet de sécurité : si end_time est NULL mais duration connue,
+			// reconstruit end_time_utc depuis start_time_utc + duration.
+			if _, err := db.Exec(`
+				UPDATE match_registry SET
+					end_time_utc = start_time_utc + (duration_seconds * INTERVAL '1 second')
+				WHERE end_time_utc IS NULL
+				  AND start_time_utc IS NOT NULL
+				  AND duration_seconds IS NOT NULL
+			`); err != nil {
+				return fmt.Errorf("fix_start_time_utc end_time fallback: %w", err)
+			}
+			return nil
+		},
+	})
+
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.

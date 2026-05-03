@@ -21,11 +21,23 @@ import (
 
 // InsertRegistryIfNotExists insère un match dans match_registry (INSERT OR IGNORE).
 // Portage de _insert_shared_registry() (Python _shared_writes.py).
+//
+// start_time_utc / end_time_utc (TIMESTAMPTZ) sont remplis explicitement avec
+// row.StartTime / row.EndTime convertis en UTC : ces colonnes sont la source
+// de vérité non-ambiguë pour les requêtes d'affichage. start_time / end_time
+// (TIMESTAMP naïf) restent écrits par compat ; leur convention bytes dépend
+// de la session TZ DuckDB et n'est plus utilisée pour exposer la date au front.
 func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 	now := time.Now().UTC()
+	startUTC := row.StartTime.UTC()
+	var endUTC interface{}
+	if row.EndTime != nil {
+		t := row.EndTime.UTC()
+		endUTC = t
+	}
 	_, err := db.Exec(`
 		INSERT OR IGNORE INTO match_registry (
-			match_id, start_time, end_time,
+			match_id, start_time, end_time, start_time_utc, end_time_utc,
 			playlist_id, playlist_name, playlist_version_id,
 			map_id, map_name, map_version_id,
 			pair_id, pair_name, pair_version_id,
@@ -36,7 +48,7 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 			first_sync_by, first_sync_at, last_updated_at,
 			created_at, updated_at
 		) VALUES (
-			?, ?, ?,
+			?, ?, ?, ?, ?,
 			?, ?, ?,
 			?, ?, ?,
 			?, ?, ?,
@@ -47,7 +59,7 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 			?, ?, ?,
 			?, ?
 		)`,
-		row.MatchID, row.StartTime, row.EndTime,
+		row.MatchID, row.StartTime, row.EndTime, startUTC, endUTC,
 		row.PlaylistID, row.PlaylistName, row.PlaylistVersionID,
 		row.MapID, row.MapName, row.MapVersionID,
 		row.PairID, row.PairName, row.PairVersionID,
