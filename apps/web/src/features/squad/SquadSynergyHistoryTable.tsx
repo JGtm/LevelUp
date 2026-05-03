@@ -3,7 +3,7 @@
  *
  * Colonnes contextuelles (pas de stats personnelles) :
  *   Ouvrir | ↗ wp | Date | Carte | Playlist | Mode |
- *   Résultat | Score | MMR équipe | MMR adv. | Écart MMR
+ *   Résultat | Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
  *
  * Utilise TanStack Table v8. Pagination 20/page côté client.
  * Labels carte/playlist via useFieldMappings (assets titre).
@@ -22,7 +22,7 @@ import type { SquadMatchHistoryRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { getOutcomeColor } from '@/lib/outcome-color'
-import { formatDate } from '@/lib/formatters'
+import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { getSquadText } from './i18n'
 
 const PAGE_SIZE = 20
@@ -147,11 +147,39 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         },
       },
       {
+        accessorKey: 'win_rate_hist',
+        header: labels.winRateHist,
+        cell: (ctx) => {
+          const v = ctx.getValue<number | undefined>()
+          if (v == null) return <span className="text-muted-foreground">—</span>
+          const pct = Math.round(v * 100)
+          const color = pct >= 50 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
+          const total = ctx.row.original.win_rate_hist_total
+          return (
+            <span className="font-mono tabular-nums" style={{ color }}>
+              {pct}%
+              {total != null && (
+                <span className="text-muted-foreground text-xs ml-1">({total})</span>
+              )}
+            </span>
+          )
+        },
+      },
+      {
         accessorKey: 'score_label',
         header: labels.score,
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono">
             {ctx.getValue<string | undefined>() || '-'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'duration_seconds',
+        header: labels.duration,
+        cell: (ctx) => (
+          <span className="text-muted-foreground font-mono tabular-nums">
+            {formatDurationMinSec(ctx.getValue<number | undefined>())}
           </span>
         ),
       },

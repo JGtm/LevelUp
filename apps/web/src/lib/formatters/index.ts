@@ -12,4 +12,4 @@
 export { formatPercent, formatPercentValue } from './percent'
 export { formatDate, formatDateShort, formatDateTime, type Locale } from './date'
 export { formatNumber, formatNumberFixed, formatRatio, formatKDA } from './number'
-export { formatDurationMMSS, formatDurationHMS } from './duration'
+export { formatDurationMMSS, formatDurationHMS, formatDurationMinSec } from './duration'

@@ -273,6 +273,13 @@ type SquadMatchHistoryRow struct {
 	EnemyMMRAvg      *float64 `json:"enemy_mmr_avg,omitempty"`
 	DeltaMMR         *float64 `json:"delta_mmr,omitempty"`
 	ScoreLabel       string   `json:"score_label,omitempty"`
+	DurationSeconds  int      `json:"duration_seconds,omitempty"`
+	// WinRateHist : taux de victoire historique du joueur sur cette carte
+	// (ratio 0..1). Calculé sur l'historique complet (canonicalRows non
+	// filtré). WinRateHistTotal = nombre de matchs joués sur la carte. Sert
+	// de référence à comparer avec le résultat du match courant.
+	WinRateHist      *float64 `json:"win_rate_hist,omitempty"`
+	WinRateHistTotal *int     `json:"win_rate_hist_total,omitempty"`
 	SessionLabel     *string  `json:"session_label,omitempty"`
 }
 

@@ -50,6 +50,7 @@ SELECT
     p1.kda,
     p1.accuracy,
     COALESCE(p1.time_played_seconds, 0)                          AS time_played_seconds,
+    COALESCE(r.duration_seconds, 0)                              AS duration_seconds,
     COALESCE(p1.team_mmr, 0.0)                                   AS team_mmr,
     pme.session_id,
     pme.session_label,
