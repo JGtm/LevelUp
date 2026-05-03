@@ -270,9 +270,16 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
         const { filterContext, resolvedContext } = get()
         const all = resolvedContext?.session_options?.all_sessions ?? []
         const mode = getRailMode(filterContext, all)
-        if (mode.kind !== 'session') return
+        if (mode.kind !== 'session') {
+          log.debug(`rail_nav:noop kind=goToPrevSession reason=mode-${mode.kind}`)
+          return
+        }
         const target = computePrevSession(mode.session.session_id, all)
-        if (!target) return
+        if (!target) {
+          log.debug(`rail_nav:noop kind=goToPrevSession reason=at-oldest from=${mode.session.session_id}`)
+          return
+        }
+        log.debug(`rail_nav:fired kind=goToPrevSession from=${mode.session.session_id} to=${target.session_id}`)
         get().setSessions({
           ...(filterContext.sessions ?? DEFAULT_SESSIONS),
           picked_sessions: [target.session_id],
@@ -283,9 +290,16 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
         const { filterContext, resolvedContext } = get()
         const all = resolvedContext?.session_options?.all_sessions ?? []
         const mode = getRailMode(filterContext, all)
-        if (mode.kind !== 'session') return
+        if (mode.kind !== 'session') {
+          log.debug(`rail_nav:noop kind=goToNextSession reason=mode-${mode.kind}`)
+          return
+        }
         const target = computeNextSession(mode.session.session_id, all)
-        if (!target) return
+        if (!target) {
+          log.debug(`rail_nav:noop kind=goToNextSession reason=at-latest from=${mode.session.session_id}`)
+          return
+        }
+        log.debug(`rail_nav:fired kind=goToNextSession from=${mode.session.session_id} to=${target.session_id}`)
         get().setSessions({
           ...(filterContext.sessions ?? DEFAULT_SESSIONS),
           picked_sessions: [target.session_id],
@@ -296,9 +310,16 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
         const { filterContext, resolvedContext } = get()
         const all = resolvedContext?.session_options?.all_sessions ?? []
         const mode = getRailMode(filterContext, all)
-        if (mode.kind !== 'period') return
+        if (mode.kind !== 'period') {
+          log.debug(`rail_nav:noop kind=goToPrevPeriod reason=mode-${mode.kind}`)
+          return
+        }
         const target = computePrevWindow(mode.period)
-        if (!target) return
+        if (!target) {
+          log.debug(`rail_nav:noop kind=goToPrevPeriod reason=invalid-window`)
+          return
+        }
+        log.debug(`rail_nav:fired kind=goToPrevPeriod to=${target.start_date}..${target.end_date}`)
         get().setPeriod(target)
       },
 
@@ -306,9 +327,16 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
         const { filterContext, resolvedContext } = get()
         const all = resolvedContext?.session_options?.all_sessions ?? []
         const mode = getRailMode(filterContext, all)
-        if (mode.kind !== 'period') return
+        if (mode.kind !== 'period') {
+          log.debug(`rail_nav:noop kind=goToNextPeriod reason=mode-${mode.kind}`)
+          return
+        }
         const target = computeNextWindow(mode.period)
-        if (!target) return
+        if (!target) {
+          log.debug(`rail_nav:noop kind=goToNextPeriod reason=at-today`)
+          return
+        }
+        log.debug(`rail_nav:fired kind=goToNextPeriod to=${target.start_date}..${target.end_date}`)
         get().setPeriod(target)
       },
     }),
