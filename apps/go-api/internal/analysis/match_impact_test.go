@@ -340,6 +340,36 @@ func TestFalseBrother(t *testing.T) {
 	}
 }
 
+// Parité Python identify_false_brother_multi : si plusieurs joueurs partagent
+// le max_kills, ils sont TOUS exclus. Si l'éligibilité tombe à <2, pas de badge.
+func TestFalseBrother_TiedTopKillers_NoBadge(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("TK1", 3, 7, 3, 2), // top killer (égalité kills=7)
+			mkSnap("TK2", 3, 7, 5, 1), // top killer (égalité kills=7) — exclu aussi
+			mkSnap("FB", 3, 1, 9, 0),  // seul éligible → < 2 → pas de badge
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if hasBadge(badges, "false_brother", "") {
+		t.Error("pas de false_brother si <2 éligibles après exclusion de TOUS les top killers (parité Python)")
+	}
+}
+
+func TestSilentHero_TiedTopKillers_NoBadge(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("TK1", 2, 10, 2, 1), // top killer (égalité)
+			mkSnap("TK2", 2, 10, 1, 8), // top killer (égalité) — exclu aussi
+			mkSnap("SH", 2, 5, 0, 5),   // seul éligible → <2 → pas de badge
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if hasBadge(badges, "silent_hero", "") {
+		t.Error("pas de silent_hero si <2 éligibles après exclusion de TOUS les top killers")
+	}
+}
+
 func TestFalseBrother_NoLosers_NoBadge(t *testing.T) {
 	input := analysis.MatchImpactInput{
 		Participants: []analysis.ParticipantSnap{

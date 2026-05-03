@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-03] fix impact — parité totale Go ↔ Python validée par diff sur session 6 avril
+
+**Statut** : Complété.
+
+**Contexte** : Après le 1er fix (filtre squad pour `first_group_death`/`last_group_kill`), les scores Go restaient ≠ Python pour la session du 6 avril. Investigation par script one-shot Go (`cmd/debug_impact_session`, supprimé après usage) qui rejouait la session sur la DB réelle et comparait Go (`ComputeMatchImpactFull`) vs replica exact de la logique Python badge par badge.
+
+**Cause racine restante** : `silentHero` et `falseBrother` excluaient UN SEUL top killer (`topKillerXUID`), Python exclut TOUS les joueurs avec `kills == max_kills`. En cas d'égalité de top kills, Python tombait à <2 éligibles → pas de badge ; Go en attribuait un quand même. Sur la session du 6 avril, ça causait un `false_brother` fantôme à Madina (-1.5 → score Go = -10, score Py = -8.5).
+
+**Fix** :
+- Nouveau helper `excludeAllTopKillers(ps)` qui exclut tous les `Kills == max_kills`.
+- `silentHero` et `falseBrother` utilisent ce helper au lieu de `excludeXUID(ps, topKillerXUID(ps))`.
+- Suppression de `topKillerXUID` et `excludeXUID` (devenus morts).
+- `buildSquadImpactMatrix` filtre désormais via `impactScoreWeights` les badges retournés par `ComputeMatchImpactFull` — le `top_gun` (calculé en Go, absent en Python) ne pollue plus les cellules d'affichage.
+
+**Validation** : script de diagnostic relancé après fix → scores Δ = 0 sur les 4 joueurs squad pour les 12 matchs du 6 avril 2026 :
+- Chocoboflor : -3.00 (Go) = -3.00 (Py)
+- Madina97294 : -8.50 = -8.50
+- JGtm : -10.00 = -10.00
+
+**Tests ajoutés** : `TestFalseBrother_TiedTopKillers_NoBadge` + `TestSilentHero_TiedTopKillers_NoBadge` cadenassent la parité.
+
+**Vérifications** : `go build ./...` OK. Tests analysis + service OK. Échecs DuckDB sur `enrich_medal_definitions_v2` (migration `ADD COLUMN ... NOT NULL` non supportée) sans rapport.
+
 ## [2026-05-03] MedalDigest — difficulty + medal_type (couleurs jeu + catégories)
 
 **Statut** : Complété.
