@@ -144,6 +144,33 @@ describe('computePrevWindow', () => {
   })
 })
 
+describe('getRailMode — edge cases', () => {
+  it('hidden si all_sessions vide même avec session pickée', () => {
+    const ctx: FilterContextInput = {
+      ...DEFAULT_CTX,
+      filter_mode: 'sessions',
+      sessions: { picked_sessions: ['s-1'], gap_minutes: 120 },
+    }
+    expect(getRailMode(ctx, []).kind).toBe('hidden')
+  })
+
+  it('hidden si période avec start === end (durée 0)', () => {
+    const ctx: FilterContextInput = {
+      ...DEFAULT_CTX,
+      period: { start_date: '2026-04-08', end_date: '2026-04-08' },
+    }
+    expect(getRailMode(ctx, SESSIONS).kind).toBe('hidden')
+  })
+
+  it('hidden si période avec end < start (invalide)', () => {
+    const ctx: FilterContextInput = {
+      ...DEFAULT_CTX,
+      period: { start_date: '2026-04-10', end_date: '2026-04-01' },
+    }
+    expect(getRailMode(ctx, SESSIONS).kind).toBe('hidden')
+  })
+})
+
 describe('computeNextWindow', () => {
   it('shift vers le futur si la fenêtre se termine avant aujourd\'hui', () => {
     const today = new Date('2026-05-03T00:00:00Z')

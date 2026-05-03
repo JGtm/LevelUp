@@ -272,6 +272,63 @@ describe('GlobalFilterStore', () => {
     expect(useGlobalFilterStore.getState().filterContextHash).toBe(beforeHash)
   })
 
+  it('goToNextSession no-op à la session la plus récente', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([
+      { session_id: 's-latest', label: '06/04' },
+      { session_id: 's-old', label: '01/04' },
+    ]))
+    store.setSessions({ picked_sessions: ['s-latest'], gap_minutes: DEFAULT_GAP_MINUTES })
+    useGlobalFilterStore.getState().goToNextSession()
+    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-latest'])
+  })
+
+  it('goToNextPeriod shift la fenêtre vers le futur dans la limite d\'aujourd\'hui', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([]))
+    // Période ancienne pour garantir un next valide
+    const yearAgo = new Date(Date.now() - 365 * 86_400_000)
+    const yyyy = yearAgo.getUTCFullYear()
+    const startISO = `${yyyy}-01-01`
+    const endISO = `${yyyy}-01-08`
+    store.setPeriod({ start_date: startISO, end_date: endISO })
+    useGlobalFilterStore.getState().goToNextPeriod()
+    const period = useGlobalFilterStore.getState().filterContext.period
+    expect(period?.start_date).toBe(`${yyyy}-01-09`)
+    expect(period?.end_date).toBe(`${yyyy}-01-16`)
+  })
+
+  it('goToNextPeriod no-op si la fenêtre est déjà collée à aujourd\'hui', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([]))
+    const today = new Date()
+    const todayISO = today.toISOString().slice(0, 10)
+    const startISO = new Date(today.getTime() - 7 * 86_400_000).toISOString().slice(0, 10)
+    store.setPeriod({ start_date: startISO, end_date: todayISO })
+    const beforeHash = useGlobalFilterStore.getState().filterContextHash
+    useGlobalFilterStore.getState().goToNextPeriod()
+    expect(useGlobalFilterStore.getState().filterContextHash).toBe(beforeHash)
+  })
+
+  it('goToPrevSession no-op si pas de resolvedContext (data pas chargée)', () => {
+    const store = useGlobalFilterStore.getState()
+    // resolvedContext reste null
+    store.setSessions({ picked_sessions: ['ghost'], gap_minutes: DEFAULT_GAP_MINUTES })
+    const before = useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions
+    useGlobalFilterStore.getState().goToPrevSession()
+    const after = useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions
+    expect(after).toEqual(before)
+  })
+
+  it('goToPrevPeriod no-op si période invalide (start_date null)', () => {
+    const store = useGlobalFilterStore.getState()
+    store.setResolvedContext(makeResolved([]))
+    // Avec start_date=null, getRailMode renvoie hidden, l'action no-op
+    const beforeHash = useGlobalFilterStore.getState().filterContextHash
+    useGlobalFilterStore.getState().goToPrevPeriod()
+    expect(useGlobalFilterStore.getState().filterContextHash).toBe(beforeHash)
+  })
+
   it('setResolvedContext stocke la réponse résolue', () => {
     const resolved: FilterContextResolved = {
       effective: {
