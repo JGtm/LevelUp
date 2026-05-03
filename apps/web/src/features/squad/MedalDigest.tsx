@@ -4,19 +4,22 @@
  * Rendu : une carte par joueur avec top 5 médailles en chips + stats footer +
  * grille déroulante de toutes les médailles.
  *
- * Chaque chip affiche :
- *  - Icône médaille (img si image_url, sinon pill avec initial du label)
- *  - Badge count (toujours opaque/neutre pour accessibilité daltonienne)
- *  - Tooltip natif HTML : "Name: description"
+ * Avatar joueur : emblème Spartan lu depuis le cache TanStack Query
+ * (queryKeys.home — zéro requête supplémentaire). Fallback : initiale dans
+ * un cercle à la couleur du joueur. L'emblème est toujours disponible pour
+ * le joueur principal (home page déjà en cache) ; pour les coéquipiers il
+ * apparaît si leur home a déjà été visitée.
  *
- * Couleurs de bordure par joueur alignées sur SQUAD_MAIN_PLAYER_TOKEN +
- * SQUAD_TEAMMATE_COLOR_TOKENS (tokenCssVar — pas de hex en JSX).
+ * Grille adaptative : 2 joueurs → 2 colonnes 50/50 ; 3-4 → auto-fill 240px.
  */
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty, boxShadowForDifficulty } from '@/lib/medalDifficulty'
-import type { MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
+import { api } from '@/lib/api/client'
+import { queryKeys } from '@/lib/query/keys'
+import type { HomePageResponse, MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
 import {
   SQUAD_MAIN_PLAYER_TOKEN,
   SQUAD_TEAMMATE_COLOR_TOKENS,
@@ -41,6 +44,37 @@ function medalTooltip(item: MedalDigestItem): string {
   return item.description ? `${name}: ${item.description}` : name
 }
 
+/** Emblème rond du joueur — lit le cache home sans déclencher de requête. */
+function PlayerAvatar({ gamertag, color }: { gamertag: string; color: string }) {
+  const { data: emblemUrl } = useQuery({
+    queryKey: queryKeys.home(gamertag),
+    queryFn: () => api.get<HomePageResponse>(`/players/${gamertag}/pages/home`),
+    select: (d: HomePageResponse) => d.spartan_identity?.emblem_image_url ?? null,
+    enabled: false,
+    staleTime: Infinity,
+  })
+
+  if (emblemUrl) {
+    return (
+      <img
+        src={emblemUrl}
+        alt={gamertag}
+        className="h-8 w-8 rounded-full object-cover flex-shrink-0"
+        style={{ boxShadow: `0 0 0 2px ${color}` }}
+      />
+    )
+  }
+
+  return (
+    <span
+      className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+      style={{ background: color, color: '#fff' }} // color-allow: blanc structurel sur fond joueur
+    >
+      {gamertag.charAt(0).toUpperCase()}
+    </span>
+  )
+}
+
 function MedalChip({ item }: { item: MedalDigestItem }) {
   const tip = medalTooltip(item)
   return (
@@ -63,9 +97,9 @@ function MedalChip({ item }: { item: MedalDigestItem }) {
       <span
         className="rounded-full px-1 text-[10px] font-bold leading-tight"
         style={{
-          background: tokenCssVar('muted'),
-          color: tokenCssVar('foreground'),
-          border: `1.5px solid ${tokenCssVar('background')}`,
+          background: 'var(--muted)', // color-allow: structurel — badge count neutre
+          color: 'var(--foreground)',
+          border: '1.5px solid var(--background)', // color-allow: structurel — séparation badge/icône
           minWidth: '1.1rem',
           textAlign: 'center',
         }}
@@ -100,9 +134,9 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
       <span
         className="rounded-full px-1 text-[10px] font-bold leading-tight"
         style={{
-          background: tokenCssVar('muted'),
-          color: tokenCssVar('foreground'),
-          border: `1.5px solid ${tokenCssVar('background')}`,
+          background: 'var(--muted)', // color-allow: structurel — badge count neutre
+          color: 'var(--foreground)',
+          border: '1.5px solid var(--background)', // color-allow: structurel — séparation badge/icône
           minWidth: '1.1rem',
           textAlign: 'center',
         }}
@@ -113,20 +147,15 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
   )
 }
 
-// Ordre d'affichage des catégories dans la grille expandable.
 const CATEGORY_ORDER = ['multikill', 'spree', 'skill', 'style', 'mode', 'proficiency']
 
-const CATEGORY_LABEL: Record<string, string> = {
-  multikill:   'Multi-kills',
-  spree:       'Séries',
-  skill:       'Compétence',
-  style:       'Style',
-  mode:        'Mode',
-  proficiency: 'Maîtrise',
-}
-
-function MedalExpandedGrid({ medals }: { medals: MedalDigestItem[] }) {
-  // Grouper par catégorie ; les sans-catégorie vont dans "other"
+function MedalExpandedGrid({
+  medals,
+  categoryLabels,
+}: {
+  medals: MedalDigestItem[]
+  categoryLabels: SquadText['medals']['categoryLabels']
+}) {
   const groups = new Map<string, MedalDigestItem[]>()
   for (const m of medals) {
     const key = m.category || 'other'
@@ -142,7 +171,7 @@ function MedalExpandedGrid({ medals }: { medals: MedalDigestItem[] }) {
       {orderedKeys.map((cat) => (
         <div key={cat}>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-            {CATEGORY_LABEL[cat] ?? cat}
+            {categoryLabels[cat as keyof typeof categoryLabels] ?? cat}
           </p>
           <div className="flex flex-wrap gap-3">
             {groups.get(cat)!.map((m) => (
@@ -171,7 +200,7 @@ function PlayerMedalCard({
       style={{ borderLeft: `4px solid ${color}` }}
     >
       <div className="flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+        <PlayerAvatar gamertag={entry.player} color={color} />
         <span className="font-semibold text-sm text-foreground truncate">{entry.player}</span>
       </div>
 
@@ -206,7 +235,9 @@ function PlayerMedalCard({
           >
             {expanded ? t.collapseLabel : `${t.expandLabel} (${entry.all_medals.length})`}
           </button>
-          {expanded && <MedalExpandedGrid medals={entry.all_medals} />}
+          {expanded && (
+            <MedalExpandedGrid medals={entry.all_medals} categoryLabels={t.categoryLabels} />
+          )}
         </>
       )}
     </div>
@@ -220,19 +251,20 @@ export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
 
   const allPlayers = entries.map((e) => e.player)
 
+  // 2 joueurs → 2 colonnes 50/50 pour occuper tout l'espace.
+  // 3-4 joueurs → auto-fill 240px (3 colonnes sur écran large, 2×2 sur moyen).
+  const gridCols =
+    entries.length <= 2
+      ? `repeat(${entries.length}, 1fr)`
+      : 'repeat(auto-fill, minmax(240px, 1fr))'
+
   return (
     <Card>
       <CardContent className="pt-4 space-y-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {t.title}
         </p>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: '1rem',
-          }}
-        >
+        <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: '1rem' }}>
           {entries.map((entry) => (
             <PlayerMedalCard
               key={entry.player}
