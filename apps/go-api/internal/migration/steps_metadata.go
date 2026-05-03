@@ -347,6 +347,17 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "medal_definitions_add_personal_score",
+		TargetDB:    TargetMetadata,
+		Description: "medal_definitions : ajout personal_score (XP de carrière accordé par médaille, 0 par défaut)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS personal_score INTEGER DEFAULT 0;
+			`)
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
