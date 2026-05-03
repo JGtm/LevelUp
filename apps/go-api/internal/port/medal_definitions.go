@@ -4,11 +4,12 @@ import "context"
 
 // MedalDefinitionRow est une ligne résolue depuis medal_definitions (metadata DB).
 type MedalDefinitionRow struct {
-	MedalID     int64
-	Label       string
-	Description string
-	Difficulty  string // "Normal" | "Heroic" | "Legendary" | "Mythic"
-	MedalType   string // "multikill" | "spree" | "skill" | "style" | "mode" | "proficiency"
+	MedalID       int64
+	Label         string
+	Description   string
+	Difficulty    string // "Normal" | "Heroic" | "Legendary" | "Mythic"
+	MedalType     string // "multikill" | "spree" | "skill" | "style" | "mode" | "proficiency"
+	PersonalScore int    // XP de progression de carrière accordé par médaille (0 si absent)
 }
 
 // MedalDefinitionsRepository résout les labels et descriptions de médailles

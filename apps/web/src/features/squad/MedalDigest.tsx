@@ -171,11 +171,17 @@ function MedalExpandedGrid({
   )
 }
 
+// Fallback quand personal_score est absent : poids par difficulté.
+const DIFFICULTY_WEIGHT: Record<string, number> = { Normal: 1, Heroic: 3, Legendary: 5, Mythic: 10 }
+
 function dominantCategoryFor(medals: MedalDigestItem[]): string | null {
   const totals = new Map<string, number>()
   for (const m of medals) {
     const cat = m.category || 'other'
-    totals.set(cat, (totals.get(cat) ?? 0) + m.total_count)
+    const w = m.personal_score && m.personal_score > 0
+      ? m.personal_score
+      : (DIFFICULTY_WEIGHT[m.difficulty ?? 'Normal'] ?? 1)
+    totals.set(cat, (totals.get(cat) ?? 0) + m.total_count * w)
   }
   let best: string | null = null
   let bestVal = 0
