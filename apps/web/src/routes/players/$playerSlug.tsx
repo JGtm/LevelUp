@@ -97,11 +97,14 @@ function PlayerLayout() {
 
   return (
     <div className="flex flex-col">
-      {/* Rail de navigation période/session (sticky h-12) — visible toutes pages joueur,
-          masqué automatiquement quand le scope est all-time (mode hidden). */}
-      <PeriodSessionRail />
-      {/* Bandeau contextuel L2 : sous-onglets Stats + filtres (Stats/Escouade uniquement) */}
-      <NavL2 />
+      {/* Wrapper sticky qui empile NavL2 (filtres + sous-onglets) puis le rail
+          de navigation période/session, en dessous. Le rail reste sous les
+          filtres au scroll. NavL2 et PeriodSessionRail sont en flow normal
+          dans ce wrapper (leur sticky interne est neutralisé). */}
+      <div className="sticky top-0 z-30 flex flex-col bg-background">
+        <NavL2 />
+        <PeriodSessionRail />
+      </div>
       <Outlet />
     </div>
   )

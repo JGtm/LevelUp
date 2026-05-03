@@ -110,8 +110,17 @@ function formatDateShort(iso: string, locale: Locale): string {
   }
 }
 
+// Layout 3-zones : [◀ Précédente | Label centré | Suivante ▶]
+// Pas de sticky propre — le wrapper parent dans $playerSlug.tsx gère le sticky.
 const RAIL_BASE_CLASS =
-  'sticky top-0 z-30 flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-4'
+  'flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-4'
+
+const ZONE_LEFT_CLASS = 'flex shrink-0 items-center gap-1.5'
+const ZONE_CENTER_CLASS = 'flex flex-1 items-center justify-center gap-2 min-w-0 text-center'
+const ZONE_RIGHT_CLASS = 'flex shrink-0 items-center gap-1.5'
+
+const NAV_BTN_CLASS =
+  'rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30'
 
 /** Composant principal — dispatcher selon le mode (session / multi-session / period). */
 export function PeriodSessionRail() {
@@ -123,20 +132,6 @@ export function PeriodSessionRail() {
 
   const allSessions = resolvedContext?.session_options?.all_sessions ?? []
   const mode = getRailMode(filterContext, allSessions)
-
-  // Sentinelle dev : émet le mode dans la console à chaque rerender pour
-  // faciliter le diagnostic ("pourquoi le rail ne s'affiche pas ?"). Disparait
-  // en build prod (import.meta.env.DEV est strippé par Vite).
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.debug(
-      `[PeriodSessionRail] mode=${mode.kind}`,
-      'filter_mode=', filterContext.filter_mode,
-      'picked=', filterContext.sessions?.picked_sessions ?? [],
-      'period=', filterContext.period,
-      'allSessions.length=', allSessions.length,
-    )
-  }
 
   if (mode.kind === 'hidden') return null
   if (mode.kind === 'all-time') return <AllTimeRail total={mode.total} t={t} />
@@ -159,62 +154,99 @@ export function PeriodSessionRail() {
 // Sous-composants par mode
 // ---------------------------------------------------------------------------
 
-function AllTimeRail({ total, t }: { total: number; t: RailText }) {
+// ---------------------------------------------------------------------------
+// Frame 3-zones réutilisable : [zone gauche | zone centre | zone droite]
+// ---------------------------------------------------------------------------
+
+interface RailFrameProps {
+  modeAttr: 'session' | 'multi-session' | 'period' | 'all-time'
+  ariaLabel: string
+  prev: React.ReactNode
+  center: React.ReactNode
+  next: React.ReactNode
+}
+
+function RailFrame({ modeAttr, ariaLabel, prev, center, next }: RailFrameProps) {
   return (
     <div
       className={RAIL_BASE_CLASS}
       role="navigation"
-      aria-label={t.ariaNav}
+      aria-label={ariaLabel}
       data-testid="period-session-rail"
-      data-mode="all-time"
+      data-mode={modeAttr}
     >
-      <span
-        className="text-sm font-semibold text-muted-foreground"
-        title={t.allTimeTooltip}
-      >
-        {t.allTimeLabel(total)}
-      </span>
-      <NavButtons
-        prevLabel={t.prev}
-        nextLabel={t.next}
-        prevTitle={t.allTimeTooltip}
-        nextTitle={t.allTimeTooltip}
-        ariaPrev={t.ariaPrevSession}
-        ariaNext={t.ariaNextSession}
-        canPrev={false}
-        canNext={false}
-        onPrev={() => {}}
-        onNext={() => {}}
-      />
+      <div className={ZONE_LEFT_CLASS}>{prev}</div>
+      <div className={ZONE_CENTER_CLASS}>{center}</div>
+      <div className={ZONE_RIGHT_CLASS}>{next}</div>
     </div>
+  )
+}
+
+interface NavBtnProps {
+  label: string
+  title: string
+  ariaLabel: string
+  enabled: boolean
+  onClick: () => void
+}
+
+function NavBtn({ label, title, ariaLabel, enabled, onClick }: NavBtnProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!enabled}
+      className={NAV_BTN_CLASS}
+      title={title}
+      aria-label={ariaLabel}
+    >
+      {label}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sous-composants par mode
+// ---------------------------------------------------------------------------
+
+function AllTimeRail({ total, t }: { total: number; t: RailText }) {
+  const disabled = (
+    <NavBtn label={t.prev} title={t.allTimeTooltip} ariaLabel={t.ariaPrevSession} enabled={false} onClick={() => {}} />
+  )
+  return (
+    <RailFrame
+      modeAttr="all-time"
+      ariaLabel={t.ariaNav}
+      prev={disabled}
+      center={
+        <span className="text-sm font-semibold text-muted-foreground" title={t.allTimeTooltip}>
+          {t.allTimeLabel(total)}
+        </span>
+      }
+      next={
+        <NavBtn label={t.next} title={t.allTimeTooltip} ariaLabel={t.ariaNextSession} enabled={false} onClick={() => {}} />
+      }
+    />
   )
 }
 
 function MultiSessionRail({ count, t }: { count: number; t: RailText }) {
   return (
-    <div
-      className={RAIL_BASE_CLASS}
-      role="navigation"
-      aria-label={t.ariaNav}
-      data-testid="period-session-rail"
-      data-mode="multi-session"
-    >
-      <span className="text-sm font-semibold text-foreground" title={t.multiSessionTooltip}>
-        {t.multiSessionLabel(count)}
-      </span>
-      <NavButtons
-        prevLabel={t.prev}
-        nextLabel={t.next}
-        prevTitle={t.multiSessionTooltip}
-        nextTitle={t.multiSessionTooltip}
-        ariaPrev={t.ariaPrevSession}
-        ariaNext={t.ariaNextSession}
-        canPrev={false}
-        canNext={false}
-        onPrev={() => {}}
-        onNext={() => {}}
-      />
-    </div>
+    <RailFrame
+      modeAttr="multi-session"
+      ariaLabel={t.ariaNav}
+      prev={
+        <NavBtn label={t.prev} title={t.multiSessionTooltip} ariaLabel={t.ariaPrevSession} enabled={false} onClick={() => {}} />
+      }
+      center={
+        <span className="text-sm font-semibold text-foreground" title={t.multiSessionTooltip}>
+          {t.multiSessionLabel(count)}
+        </span>
+      }
+      next={
+        <NavBtn label={t.next} title={t.multiSessionTooltip} ariaLabel={t.ariaNextSession} enabled={false} onClick={() => {}} />
+      }
+    />
   )
 }
 
@@ -226,77 +258,55 @@ interface SessionRailProps {
 }
 
 function SessionRail({ session, index, total, t }: SessionRailProps) {
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
-  const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
   const isAutoSnapping = useGlobalFilterStore((s) => s.isAutoSnappingToLatest)
-  const setSessions = useGlobalFilterStore((s) => s.setSessions)
   const goToPrevSession = useGlobalFilterStore((s) => s.goToPrevSession)
   const goToNextSession = useGlobalFilterStore((s) => s.goToNextSession)
 
-  const allSessions = resolvedContext?.session_options?.all_sessions ?? []
   const canGoPrev = index < total - 1
   const canGoNext = index > 0
-  const canGoLatest = index !== 0
-
-  function goLatest() {
-    if (allSessions.length === 0) return
-    setSessions({
-      ...(filterContext.sessions ?? { picked_sessions: [], gap_minutes: 120 }),
-      picked_sessions: [allSessions[0].session_id],
-    })
-  }
 
   return (
-    <div
-      className={RAIL_BASE_CLASS}
-      role="navigation"
-      aria-label={t.ariaNav}
-      data-testid="period-session-rail"
-      data-mode="session"
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="truncate text-sm font-semibold text-foreground" title={session.label}>
-          {session.label}
-        </span>
-        {isAutoSnapping && (
-          <span
-            className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary"
-            title={t.autoTitle}
-          >
-            {t.auto}
+    <RailFrame
+      modeAttr="session"
+      ariaLabel={t.ariaNav}
+      prev={
+        <NavBtn
+          label={t.prev}
+          title={t.prevTitle}
+          ariaLabel={t.ariaPrevSession}
+          enabled={canGoPrev}
+          onClick={goToPrevSession}
+        />
+      }
+      center={
+        <>
+          <span className="truncate text-sm font-semibold text-foreground" title={session.label}>
+            {session.label}
           </span>
-        )}
-      </div>
-      <NavButtons
-        prevLabel={t.prev}
-        nextLabel={t.next}
-        prevTitle={t.prevTitle}
-        nextTitle={t.nextTitle}
-        ariaPrev={t.ariaPrevSession}
-        ariaNext={t.ariaNextSession}
-        canPrev={canGoPrev}
-        canNext={canGoNext}
-        onPrev={goToPrevSession}
-        onNext={goToNextSession}
-        extraButton={
-          <button
-            type="button"
-            onClick={goLatest}
-            disabled={!canGoLatest}
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
-            title={t.latestTitle}
-            aria-label={t.ariaLatestSession}
-          >
-            {t.latest}
-          </button>
-        }
-      />
-      <div className="flex-1" />
-      <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
-        {t.positionLabel(index, total)}
-        {session.match_count > 0 && t.matchCountSuffix(session.match_count)}
-      </span>
-    </div>
+          {isAutoSnapping && (
+            <span
+              className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary"
+              title={t.autoTitle}
+            >
+              {t.auto}
+            </span>
+          )}
+          <span className="shrink-0 text-xs text-muted-foreground" aria-live="polite">
+            ({t.positionLabel(index, total)}
+            {session.match_count > 0 && t.matchCountSuffix(session.match_count)})
+          </span>
+        </>
+      }
+      next={
+        <NavBtn
+          label={t.next}
+          title={t.nextTitle}
+          ariaLabel={t.ariaNextSession}
+          enabled={canGoNext}
+          onClick={goToNextSession}
+        />
+      }
+    />
   )
 }
 
@@ -317,94 +327,37 @@ function PeriodRail({ period, durationDays, locale, t }: PeriodRailProps) {
   const canGoNext = !!computeNextWindow(period)
 
   return (
-    <div
-      className={RAIL_BASE_CLASS}
-      role="navigation"
-      aria-label={t.ariaNav}
-      data-testid="period-session-rail"
-      data-mode="period"
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="text-sm font-semibold text-foreground">
-          {t.periodLabel(startLabel, endLabel)}
-        </span>
-        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-          {t.periodDuration(durationDays)}
-        </span>
-      </div>
-      <NavButtons
-        prevLabel={t.prev}
-        nextLabel={t.next}
-        prevTitle={t.prevTitle}
-        nextTitle={t.nextTitle}
-        ariaPrev={t.ariaPrevPeriod}
-        ariaNext={t.ariaNextPeriod}
-        canPrev={canGoPrev}
-        canNext={canGoNext}
-        onPrev={goToPrevPeriod}
-        onNext={goToNextPeriod}
-      />
-      <div className="flex-1" />
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Sous-composants
-// ---------------------------------------------------------------------------
-
-interface NavButtonsProps {
-  prevLabel: string
-  nextLabel: string
-  prevTitle: string
-  nextTitle: string
-  ariaPrev: string
-  ariaNext: string
-  canPrev: boolean
-  canNext: boolean
-  onPrev: () => void
-  onNext: () => void
-  extraButton?: React.ReactNode
-}
-
-function NavButtons({
-  prevLabel,
-  nextLabel,
-  prevTitle,
-  nextTitle,
-  ariaPrev,
-  ariaNext,
-  canPrev,
-  canNext,
-  onPrev,
-  onNext,
-  extraButton,
-}: NavButtonsProps) {
-  const btnClass =
-    'rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30'
-  return (
-    <div className="flex shrink-0 items-center gap-1.5">
-      <button
-        type="button"
-        onClick={onPrev}
-        disabled={!canPrev}
-        className={btnClass}
-        title={prevTitle}
-        aria-label={ariaPrev}
-      >
-        {prevLabel}
-      </button>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={!canNext}
-        className={btnClass}
-        title={nextTitle}
-        aria-label={ariaNext}
-      >
-        {nextLabel}
-      </button>
-      {extraButton}
-    </div>
+    <RailFrame
+      modeAttr="period"
+      ariaLabel={t.ariaNav}
+      prev={
+        <NavBtn
+          label={t.prev}
+          title={t.prevTitle}
+          ariaLabel={t.ariaPrevPeriod}
+          enabled={canGoPrev}
+          onClick={goToPrevPeriod}
+        />
+      }
+      center={
+        <>
+          <span className="text-sm font-semibold text-foreground">
+            {t.periodLabel(startLabel, endLabel)}
+          </span>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {t.periodDuration(durationDays)}
+          </span>
+        </>
+      }
+      next={
+        <NavBtn
+          label={t.next}
+          title={t.nextTitle}
+          ariaLabel={t.ariaNextPeriod}
+          enabled={canGoNext}
+          onClick={goToNextPeriod}
+        />
+      }
+    />
   )
 }

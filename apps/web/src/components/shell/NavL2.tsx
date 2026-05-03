@@ -50,7 +50,7 @@ export function NavL2() {
 
   return (
     <div
-      className="sticky top-12 z-20 shrink-0 border-b border-border bg-background"
+      className="shrink-0 border-b border-border bg-background"
       role="navigation"
       aria-label="Navigation analytique"
     >
