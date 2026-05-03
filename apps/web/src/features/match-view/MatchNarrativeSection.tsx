@@ -173,7 +173,6 @@ function DominanceBadgePill({
       }}
       data-testid="match-narrative-dominance-badge"
     >
-      <span aria-hidden="true">⚡</span>
       <span>{resolveLabelKey(labelKey)}</span>
     </div>
   )

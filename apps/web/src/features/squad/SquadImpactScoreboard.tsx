@@ -6,12 +6,12 @@
  * Implémentation TanStack Table :
  *  - Colonnes dynamiques : Joueur (sticky) + 1 par match avec ≥1 badge + 8 colonnes
  *    agrégat (1 par badge_key) + Score + Badge ranking.
- *  - Cellule joueur×match : emojis empilés 2/ligne pour les badges obtenus ce match.
+ *  - Cellule joueur×match : pictos Fluent Flat empilés 2/ligne (BadgeIcon).
  *  - Cellule agrégat : compte ou "—" si 0. Couleur best/worst selon extrêmes (best
  *    inversé pour les badges "négatifs" cf. impactInverted).
  *  - Header de colonne match : fond coloré selon outcome du joueur principal.
- *  - Tri serveur : players DESC par score → 🏆 Champion (rank=1) / 📉 Passager
- *    clandestin (rank=N, score≥0) / 🍌 Maillon faible (rank=N, score<0).
+ *  - Tri serveur : players DESC par score → Champion (rank=1) / Passager
+ *    clandestin (rank=N, score≥0) / Maillon faible (rank=N, score<0).
  */
 import { useMemo } from 'react'
 import {
@@ -28,18 +28,9 @@ import type {
 } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
+import { BadgeIcon } from '@/components/feedback/BadgeIcon'
+import { Card, CardContent } from '@/components/ui/card'
 import { getSquadText } from './i18n'
-
-const BADGE_EMOJI: Record<string, string> = {
-  first_blood: '⚡',
-  clutch_finisher: '🎯',
-  last_casualty: '💀',
-  last_group_kill: '🐌',
-  first_group_death: '🪦',
-  silent_hero: '🛡️',
-  false_brother: '🗡️',
-  top_killer: '💥',
-}
 
 /** Badges où un count élevé est PIRE (rouge=worst au lieu de best). */
 const BADGE_INVERTED: Record<string, true> = {
@@ -121,15 +112,11 @@ function aggCellClass(badgeKey: string, count: number, ext: { min: number; max: 
   return ''
 }
 
-function pivotEmojis(badgeKeys: string[]): string {
-  if (badgeKeys.length === 0) return ''
-  const emojis = badgeKeys.map((k) => BADGE_EMOJI[k] ?? '·')
-  // Empile 2 par ligne avec saut de ligne.
-  const lines: string[] = []
-  for (let i = 0; i < emojis.length; i += 2) {
-    lines.push(emojis.slice(i, i + 2).join(''))
-  }
-  return lines.join('\n')
+/** Découpe une liste de badge_keys en lignes de 2 pour l'empilage en cellule. */
+function chunkPairs<T>(arr: T[]): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += 2) out.push(arr.slice(i, i + 2))
+  return out
 }
 
 interface SquadImpactScoreboardProps {
@@ -172,18 +159,35 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
             {idx + 1}
           </div>
         ),
-        cell: (ctx) => (
-          <pre className="text-center font-sans text-base leading-tight m-0">
-            {pivotEmojis(ctx.row.original.perMatch[m.match_id] ?? [])}
-          </pre>
-        ),
+        cell: (ctx) => {
+          const keys = ctx.row.original.perMatch[m.match_id] ?? []
+          if (keys.length === 0) return null
+          return (
+            <div className="flex flex-col items-center gap-0.5" data-testid="squad-impact-cell">
+              {chunkPairs(keys).map((pair, i) => (
+                <div key={i} className="flex gap-0.5">
+                  {pair.map((k) => (
+                    <BadgeIcon
+                      key={k}
+                      badgeKey={k}
+                      size={18}
+                      title={i18n.badgeNames[k] ?? k}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )
+        },
       })),
       ...matrix.badge_ord.map<ColumnDef<ImpactRow>>((badgeKey) => ({
         id: `agg-${badgeKey}`,
         header: () => (
-          <span title={i18n.badgeNames[badgeKey] ?? badgeKey}>
-            {BADGE_EMOJI[badgeKey] ?? badgeKey}
-          </span>
+          <BadgeIcon
+            badgeKey={badgeKey}
+            size={18}
+            title={i18n.badgeNames[badgeKey] ?? badgeKey}
+          />
         ),
         cell: (ctx) => {
           const v = ctx.row.original.perBadge[badgeKey] ?? 0
@@ -211,11 +215,23 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
         cell: (ctx) => {
           switch (ctx.row.original.badge) {
             case 'champion':
-              return <span title={i18n.badgeChampion}>🏆 {i18n.badgeChampionShort}</span>
+              return (
+                <span title={i18n.badgeChampion} className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <BadgeIcon badgeKey="champion" size={16} /> {i18n.badgeChampionShort}
+                </span>
+              )
             case 'maillon-faible':
-              return <span title={i18n.badgeWeakLink}>🍌 {i18n.badgeWeakLinkShort}</span>
+              return (
+                <span title={i18n.badgeWeakLink} className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <BadgeIcon badgeKey="maillon_faible" size={16} /> {i18n.badgeWeakLinkShort}
+                </span>
+              )
             case 'passager-clandestin':
-              return <span title={i18n.badgeStowaway}>📉 {i18n.badgeStowawayShort}</span>
+              return (
+                <span title={i18n.badgeStowaway} className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <BadgeIcon badgeKey="passager_clandestin" size={16} /> {i18n.badgeStowawayShort}
+                </span>
+              )
             default:
               return null
           }
@@ -234,31 +250,48 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
   if (matrix.matches.length === 0 || matrix.players.length === 0) return null
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border" data-testid="squad-impact-scoreboard">
-      <table className="w-full text-sm">
-        <thead className="bg-muted">
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} className="border-b border-border">
-              {hg.headers.map((h) => (
-                <th key={h.id} className="px-2 py-1 text-center align-bottom font-medium">
-                  {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                </th>
+    <Card data-testid="squad-impact-section">
+      <CardContent className="pt-4 space-y-3">
+        <div>
+          <h3 className="text-base font-semibold">{i18n.title}</h3>
+          <p className="text-sm text-muted-foreground">{i18n.description}</p>
+        </div>
+        <div
+          className="overflow-x-auto rounded-md border border-border"
+          data-testid="squad-impact-scoreboard"
+        >
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-muted">
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="border-b border-border">
+                  {hg.headers.map((h, idx) => (
+                    <th
+                      key={h.id}
+                      className={`px-2 py-1 text-center align-bottom font-medium ${idx > 0 ? 'border-l border-border/60' : ''}`}
+                    >
+                      {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                    </th>
+                  ))}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody className="divide-y divide-border">
-          {table.getRowModel().rows.map((r) => (
-            <tr key={r.id}>
-              {r.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-2 py-1 align-middle">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {table.getRowModel().rows.map((r) => (
+                <tr key={r.id}>
+                  {r.getVisibleCells().map((cell, idx) => (
+                    <td
+                      key={cell.id}
+                      className={`px-2 py-1 align-middle ${idx > 0 ? 'border-l border-border/60' : ''}`}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

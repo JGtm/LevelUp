@@ -100,12 +100,15 @@ describe('SquadImpactScoreboard', () => {
     expect(screen.getByText(/Maillon faible/)).toBeInTheDocument()
   })
 
-  it('cellule joueur×match contient les emojis des badges (empilés 2/ligne)', () => {
+  it('cellule joueur×match contient les pictos des badges (empilés 2/ligne)', () => {
     renderWithProviders(<SquadImpactScoreboard matrix={matrix()} />)
-    // Champ a deux badges sur m1 (first_blood ⚡, clutch_finisher 🎯).
-    expect(screen.getByText('⚡🎯')).toBeInTheDocument()
-    // WeakLink a deux badges sur m2 (last_casualty 💀, false_brother 🗡️).
-    expect(screen.getByText('💀🗡️')).toBeInTheDocument()
+    // Champ a deux badges sur m1 (first_blood + clutch_finisher).
+    // WeakLink a deux badges sur m2 (last_casualty + false_brother).
+    // Le scoreboard rend 2 cellules badges + headers d'agrégat → comptes ≥2 par picto.
+    expect(screen.getAllByAltText('first_blood').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByAltText('clutch_finisher').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByAltText('last_casualty').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByAltText('false_brother').length).toBeGreaterThanOrEqual(2)
   })
 
   it('cellule agrégat à 0 affiche "—"', () => {
