@@ -6,9 +6,9 @@
  * Stats    : sous-onglets (Historique · Séries · Sessions) + FilterOmnibar.
  * Escouade : FilterOmnibar uniquement.
  *
- * Sticky en dessous de SessionNavBar (top-12). La nav session "gros boutons"
- * vit dans SessionNavBar.tsx, pas ici. Les filtres (Session, Période, cascade)
- * sont gérés par FilterOmnibar.tsx via des pills cliquables.
+ * Sticky en dessous de PeriodSessionRail (top-12). La nav session/période
+ * vit dans PeriodSessionRail.tsx, pas ici. Les filtres (Session, Période,
+ * cascade) sont gérés par FilterOmnibar.tsx via des pills cliquables.
  */
 import { Link, useRouterState, useParams } from '@tanstack/react-router'
 import { FilterOmnibar } from './FilterOmnibar'
