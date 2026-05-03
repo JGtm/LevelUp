@@ -1595,6 +1595,7 @@ export interface SquadMatchHistoryRow {
   map_ui: string
   playlist_name?: string
   pair_name?: string
+  mode_ui?: string
   outcome: number
   kills: number
   deaths: number
@@ -1602,7 +1603,29 @@ export interface SquadMatchHistoryRow {
   accuracy?: number
   performance_score?: number
   team_mmr_avg: number
+  enemy_mmr_avg?: number
+  delta_mmr?: number
+  score_label?: string
   session_label?: string | null
+}
+
+export interface MedalDigestItem {
+  medal_id: number
+  label?: string
+  description?: string
+  image_url?: string
+  total_count: number
+  match_count: number
+}
+
+export interface MedalDigestEntry {
+  player: string
+  distinct_types: number
+  total_count: number
+  avg_per_match: number
+  peak_in_match: number
+  top_medals: MedalDigestItem[]
+  all_medals: MedalDigestItem[]
 }
 
 export interface TeammatesPageResponse {
@@ -1629,6 +1652,8 @@ export interface TeammatesPageResponse {
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
   main_player?: string
+  /** MedalDigest alimente <MedalDigest> en bas de SquadSynergiesPage. */
+  medal_digest?: MedalDigestEntry[]
 }
 
 // ---------------------------------------------------------------------------

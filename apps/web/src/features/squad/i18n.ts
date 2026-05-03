@@ -88,6 +88,7 @@ export interface SquadText {
     mapPerfVsHistoryTitle: string
     mapPerfVsHistorySession: string
     mapPerfVsHistoryHistory: string
+    outcomeSequenceTitle: string
   }
   history: {
     title: string
@@ -189,6 +190,15 @@ export interface SquadText {
   units: {
     perGame: string
   }
+  medals: {
+    title: string
+    statsDistinct: string
+    statsAvg: string
+    statsPeak: string
+    expandLabel: string
+    collapseLabel: string
+    noMedals: string
+  }
   errors: {
     loadError: (message: string) => string
   }
@@ -272,6 +282,7 @@ const FR_TEXT: SquadText = {
     mapPerfVsHistoryTitle: 'Performance par carte — Session vs Historique',
     mapPerfVsHistorySession: 'Session actuelle',
     mapPerfVsHistoryHistory: 'Historique',
+    outcomeSequenceTitle: 'Séquence des matchs',
   },
   history: {
     title: 'Historique des matchs avec coéquipiers',
@@ -281,10 +292,13 @@ const FR_TEXT: SquadText = {
     playlist: 'Playlist',
     mode: 'Mode',
     outcome: 'Résultat',
+    score: 'Score',
     kda: 'K/D/A',
     accuracy: 'Précision',
     perf: 'Perf.',
     teamMmr: 'MMR équipe',
+    enemyMmr: 'MMR adv.',
+    deltaMMR: 'Écart MMR',
     session: 'Session',
     outcomeLabel: { win: 'Victoire', loss: 'Défaite', draw: 'Égalité', dnf: 'DNF' },
     prev: '← Précédent',
@@ -389,6 +403,15 @@ const FR_TEXT: SquadText = {
   units: {
     perGame: '/partie',
   },
+  medals: {
+    title: 'Médailles — Résumé de l\'escouade',
+    statsDistinct: 'Types distincts',
+    statsAvg: 'Moy./match',
+    statsPeak: 'Pic',
+    expandLabel: 'Voir toutes les médailles',
+    collapseLabel: 'Réduire',
+    noMedals: 'Aucune médaille disponible pour cette sélection.',
+  },
   errors: {
     loadError: (message) => `Erreur : ${message}`,
   },
@@ -472,6 +495,7 @@ const EN_TEXT: SquadText = {
     mapPerfVsHistoryTitle: 'Performance per map — Session vs History',
     mapPerfVsHistorySession: 'Current session',
     mapPerfVsHistoryHistory: 'History',
+    outcomeSequenceTitle: 'Match sequence',
   },
   history: {
     title: 'Match history with teammates',
@@ -481,10 +505,13 @@ const EN_TEXT: SquadText = {
     playlist: 'Playlist',
     mode: 'Mode',
     outcome: 'Result',
+    score: 'Score',
     kda: 'K/D/A',
     accuracy: 'Accuracy',
     perf: 'Perf.',
     teamMmr: 'Team MMR',
+    enemyMmr: 'Enemy MMR',
+    deltaMMR: 'MMR Gap',
     session: 'Session',
     outcomeLabel: { win: 'Win', loss: 'Loss', draw: 'Tie', dnf: 'DNF' },
     prev: '← Previous',
@@ -588,6 +615,15 @@ const EN_TEXT: SquadText = {
   },
   units: {
     perGame: '/game',
+  },
+  medals: {
+    title: 'Medals — Squad summary',
+    statsDistinct: 'Distinct types',
+    statsAvg: 'Avg/match',
+    statsPeak: 'Peak',
+    expandLabel: 'Show all medals',
+    collapseLabel: 'Collapse',
+    noMedals: 'No medals available for this selection.',
   },
   errors: {
     loadError: (message) => `Error: ${message}`,

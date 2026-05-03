@@ -47,6 +47,10 @@ type TeammatesService struct {
 	// coequipiers (mode squad du SessionBriefing). Si nil, le briefing degrade
 	// en mode solo (SoloKPIs uniquement, pas de squad verdict).
 	squadLoader SquadV2Loader
+	// medalDefs (optionnel) : résout les labels/descriptions anglais des médailles
+	// depuis metadata.medal_definitions. Si nil, le digest est retourné sans
+	// labels (medal_id et count seulement).
+	medalDefs port.MedalDefinitionsRepository
 }
 
 // NewTeammatesService crÃƒÂ©e un TeammatesService.
@@ -71,6 +75,14 @@ func (s *TeammatesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposito
 // via TitlePlayerResolver). Si non cable, le briefing degrade en mode solo.
 func (s *TeammatesService) WithSquadLoader(loader SquadV2Loader) *TeammatesService {
 	s.squadLoader = loader
+	return s
+}
+
+// WithMedalDefs injecte le repo de définitions médailles (labels + descriptions
+// anglaises depuis metadata.medal_definitions). Si non câblé, le MedalDigest
+// est retourné avec medal_id + count uniquement (sans labels ni images).
+func (s *TeammatesService) WithMedalDefs(repo port.MedalDefinitionsRepository) *TeammatesService {
+	s.medalDefs = repo
 	return s
 }
 
@@ -140,10 +152,11 @@ func (s *TeammatesService) GetPage(
 	// Calculs détaillés pour les gamertags sélectionnés.
 	teammates := make([]domain.TeammateRow, 0, len(req.SelectedGamertags))
 	var allSquadRows []domain.SquadMatchRow
+	var allSquadRowsForTimeline []domain.SquadMatchRow
 	matchSeries := map[string][]domain.SquadMatchSeriesPoint{}
 
 	for _, gt := range req.SelectedGamertags {
-		row, squadMatches, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches, sessionMatchIDs)
+		row, squadMatches, allSquadMatchesTm, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches, sessionMatchIDs)
 		if err != nil {
 			slog.WarnContext(ctx, "teammates: erreur buildTeammateRow", "gamertag", gt, "err", err)
 			continue // skip teammate on error
@@ -151,6 +164,7 @@ func (s *TeammatesService) GetPage(
 		if row != nil {
 			teammates = append(teammates, *row)
 			allSquadRows = append(allSquadRows, squadMatches...)
+			allSquadRowsForTimeline = append(allSquadRowsForTimeline, allSquadMatchesTm...)
 			matchSeries[gt] = buildMatchSeries(squadMatches)
 		}
 	}
@@ -168,15 +182,21 @@ func (s *TeammatesService) GetPage(
 	var performanceSeries map[string][]domain.SquadPerformanceSeriesPoint
 	var weaponKills *domain.SquadWeaponKills
 	var firstEvents *domain.SquadFirstEvents
+	var medalDigest []domain.MedalDigestEntry
 	if len(allSquadRows) > 0 {
+		enrichSquadMatchAssets(ctx, s.repo, allSquadRows)
+		modeFR, err := s.repo.LoadModeTranslationsFR(ctx, collectModeENs(allSquadRows))
+		if err != nil {
+			slog.WarnContext(ctx, "teammates: LoadModeTranslationsFR failed", "err", err)
+		}
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
 		historicalWR := computeHistoricalMapWRByLabel(canonicalRows)
 		mapBreakdown = enrichMapBreakdownWithHistory(mapBreakdown, historicalWR)
 		historicalPerf := computeHistoricalMapPerfByLabel(canonicalRows)
 		mapBreakdown = enrichMapBreakdownWithHistoricalPerf(mapBreakdown, historicalPerf)
-		matchHistory = buildSquadMatchHistory(allSquadRows)
-		sessionTimeline = buildSquadSessionTimeline(allSquadRows)
+		matchHistory = buildSquadMatchHistory(allSquadRows, modeFR)
+		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, sessionMatchIDs)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
 		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
@@ -185,6 +205,7 @@ func (s *TeammatesService) GetPage(
 		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
 		weaponKills = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		firstEvents = s.buildSquadFirstEvents(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 	}
 
 	// Header (SessionBriefing) — alimente le composant <SessionBriefing> dans
@@ -216,6 +237,7 @@ func (s *TeammatesService) GetPage(
 		FirstEvents:       firstEvents,
 		Header:            header,
 		MainPlayer:        s.gamertag,
+		MedalDigest:       medalDigest,
 	}, nil
 }
 
@@ -531,14 +553,17 @@ func buildTeammateOptions(rows []domain.TopTeammateRow) []domain.TeammateOption 
 	return opts
 }
 
-// buildTeammateRowWithMatches construit les KPIs avec/sans pour un coÃƒÂ©quipier et retourne aussi les matches escouade.
+// buildTeammateRowWithMatches construit les KPIs avec/sans pour un coéquipier.
+// Retourne (row, filteredMatches, allMatches, error) :
+//   - filteredMatches : matchs restreints à la session active (utilisés pour KPIs, history, breakdown)
+//   - allMatches      : tous les matchs communs sans filtre de session (utilisés pour la timeline)
 func (s *TeammatesService) buildTeammateRowWithMatches(
 	ctx context.Context,
 	playerXUID, gamertag string,
 	topRows []domain.TopTeammateRow,
 	allMatches []legacymatch.SynthesisMatchRow,
 	sessionMatchIDs map[string]bool,
-) (*domain.TeammateRow, []domain.SquadMatchRow, error) {
+) (*domain.TeammateRow, []domain.SquadMatchRow, []domain.SquadMatchRow, error) {
 	// Ãƒâ€°tape 1 : chercher le gamertag dans le top 50 escouade Ã¢â‚¬â€ case-insensitive
 	// pour absorber les variations de casse entre la saisie user et la valeur en
 	// DB (Halo API renvoie tantÃƒÂ´t "Madina97294" tantÃƒÂ´t "madina97294").
@@ -564,7 +589,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 				"gamertag", gamertag,
 				"err", err.Error(),
 			)
-			return nil, nil, nil
+			return nil, nil, nil, nil
 		}
 		if !found {
 			// Vraiment inconnu de tous les aliases Ã¢â‚¬â€ on log et on drop.
@@ -573,27 +598,25 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 				"gamertag", gamertag,
 				"top_rows_count", len(topRows),
 			)
-			return nil, nil, nil
+			return nil, nil, nil, nil
 		}
 		teammateXUID = resolved
 	}
 
-	// Charger les matchs communs.
-	squadMatches, err := s.repo.LoadSquadMatches(ctx, playerXUID, teammateXUID)
+	// Charger tous les matchs communs (sans filtre de session — nécessaire pour la timeline).
+	allSquadMatches, err := s.repo.LoadSquadMatches(ctx, playerXUID, teammateXUID)
 	if err != nil {
-		// Erreur DB : on log avec contexte (le warn générique
-		// "teammates: erreur buildTeammateRow" du caller perd le détail
-		// du XUID résolu, on conserve donc une trace ciblée ici).
 		slog.ErrorContext(ctx, "teammates_load_squad_matches_failed",
 			"player_xuid", playerXUID, "teammate_xuid", teammateXUID,
 			"gamertag", gamertag, "err", err.Error())
-		return nil, nil, fmt.Errorf("buildTeammateRowWithMatches LoadSquadMatches: %w", err)
+		return nil, nil, nil, fmt.Errorf("buildTeammateRowWithMatches LoadSquadMatches: %w", err)
 	}
 
-	// Restreindre aux matchs de la session sélectionnée (nil = pas de filtre de session).
+	// Restreindre aux matchs de la session sélectionnée pour les KPIs/historique.
+	squadMatches := allSquadMatches
 	if len(sessionMatchIDs) > 0 {
-		filtered := make([]domain.SquadMatchRow, 0, len(squadMatches))
-		for _, m := range squadMatches {
+		filtered := make([]domain.SquadMatchRow, 0, len(allSquadMatches))
+		for _, m := range allSquadMatches {
 			if sessionMatchIDs[m.MatchID] {
 				filtered = append(filtered, m)
 			}
@@ -622,10 +645,8 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		lastSeen = &t
 	}
 
-	// Si encounterCount n'a pas ÃƒÂ©tÃƒÂ© renseignÃƒÂ© par le top 50 (fallback alias-only),
-	// on le calcule depuis les matchs communs effectivement chargÃƒÂ©s.
 	if encounterCount == 0 {
-		encounterCount = len(squadMatches)
+		encounterCount = len(allSquadMatches)
 	}
 
 	return &domain.TeammateRow{
@@ -635,7 +656,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		LastSeenAt:     lastSeen,
 		WithKPIs:       withKPIs,
 		WithoutKPIs:    &withoutKPIs,
-	}, squadMatches, nil
+	}, squadMatches, allSquadMatches, nil
 }
 
 // computeKPIsFromSquadMatches calcule les KPIs depuis les matchs communs.
@@ -740,9 +761,9 @@ func computeHistoricalMapWRByLabel(rows []canonical.PlayerMatchRow) map[string]f
 		if r.Summary.Map == nil {
 			continue
 		}
-		key := r.Summary.Map.DefaultLabel
+		key := r.Summary.Map.ID
 		if key == "" {
-			key = r.Summary.Map.ID
+			key = r.Summary.Map.DefaultLabel
 		}
 		if key == "" {
 			continue
@@ -767,7 +788,11 @@ func computeHistoricalMapWRByLabel(rows []canonical.PlayerMatchRow) map[string]f
 // enrichMapBreakdownWithHistory injecte HistoricalWinRate depuis la map d'historique.
 func enrichMapBreakdownWithHistory(rows []domain.MapBreakdownRow, historical map[string]float64) []domain.MapBreakdownRow {
 	for i := range rows {
-		if wr, ok := historical[rows[i].MapUI]; ok {
+		key := rows[i].MapID
+		if key == "" {
+			key = rows[i].MapUI
+		}
+		if wr, ok := historical[key]; ok {
 			v := wr
 			rows[i].HistoricalWinRate = &v
 		}
@@ -779,7 +804,11 @@ func enrichMapBreakdownWithHistory(rows []domain.MapBreakdownRow, historical map
 // la map d'historique perf (alimentée par computeHistoricalMapPerfByLabel).
 func enrichMapBreakdownWithHistoricalPerf(rows []domain.MapBreakdownRow, historical map[string]float64) []domain.MapBreakdownRow {
 	for i := range rows {
-		if perf, ok := historical[rows[i].MapUI]; ok {
+		key := rows[i].MapID
+		if key == "" {
+			key = rows[i].MapUI
+		}
+		if perf, ok := historical[key]; ok {
 			v := perf
 			rows[i].HistoricalPerformanceAvg = &v
 		}
@@ -787,22 +816,81 @@ func enrichMapBreakdownWithHistoricalPerf(rows []domain.MapBreakdownRow, histori
 	return rows
 }
 
+// enrichSquadMatchAssets enrichit MapUI et PlaylistName des rows avec les traductions FR
+// depuis metadata.asset_translations (calqué sur home_repo.enrichHomeMatchTranslations).
+func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows []domain.SquadMatchRow) {
+	mapIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.MapID })
+	playlistIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PlaylistID })
+
+	mapFR, err := repo.LoadAssetTranslationsFR(ctx, "map", mapIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR map failed", "err", err)
+	}
+	playlistFR, err := repo.LoadAssetTranslationsFR(ctx, "playlist", playlistIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR playlist failed", "err", err)
+	}
+
+	for i := range rows {
+		if fr := strings.TrimSpace(mapFR[rows[i].MapID]); fr != "" {
+			rows[i].MapUI = fr
+		}
+		if fr := strings.TrimSpace(playlistFR[rows[i].PlaylistID]); fr != "" {
+			rows[i].PlaylistName = fr
+		}
+	}
+}
+
+func collectUniqueIDs(rows []domain.SquadMatchRow, idOf func(domain.SquadMatchRow) string) []string {
+	seen := make(map[string]struct{}, len(rows))
+	result := make([]string, 0, len(rows))
+	for _, r := range rows {
+		id := idOf(r)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; !ok {
+			seen[id] = struct{}{}
+			result = append(result, id)
+		}
+	}
+	return result
+}
+
+// modeLabel retourne le label FR du mode si disponible dans modeFR, sinon le label EN normalisé.
+func modeLabel(pairName, mapUI string, modeFR map[string]string) string {
+	en := analysis.NormalizeModeLabel(pairName, mapUI)
+	if fr, ok := modeFR[en]; ok && fr != "" {
+		return fr
+	}
+	return en
+}
+
 // computeMapBreakdown agrège les stats par carte depuis les matchs escouade.
 // PerformanceAvg = moyenne des PerformanceScore non nil ; nil si aucun.
 func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRow {
 	type stats struct {
+		mapUI       string
 		count, wins int
 		perfSum     float64
 		perfCount   int
 	}
 	m := map[string]*stats{}
 	for _, r := range matches {
-		key := r.MapUI
+		// Clé interne = UUID si dispo (language-agnostic), sinon label d'affichage.
+		key := r.MapID
+		if key == "" {
+			key = r.MapUI
+		}
 		if key == "" {
 			key = "Unknown"
 		}
 		if _, ok := m[key]; !ok {
-			m[key] = &stats{}
+			lbl := r.MapUI
+			if lbl == "" {
+				lbl = "Unknown"
+			}
+			m[key] = &stats{mapUI: lbl}
 		}
 		m[key].count++
 		if r.Outcome == analysis.OutcomeWin {
@@ -814,9 +902,10 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 		}
 	}
 	result := make([]domain.MapBreakdownRow, 0, len(m))
-	for mapUI, s := range m {
+	for mapKey, s := range m {
 		row := domain.MapBreakdownRow{
-			MapUI:      mapUI,
+			MapID:      mapKey,
+			MapUI:      s.mapUI,
 			MatchCount: s.count,
 			WinRate:    round2(float64(s.wins) / float64(s.count)),
 		}
@@ -846,9 +935,9 @@ func computeHistoricalMapPerfByLabel(rows []canonical.PlayerMatchRow) map[string
 		if r.Enrichment.PerformanceScore == nil {
 			continue
 		}
-		key := r.Summary.Map.DefaultLabel
+		key := r.Summary.Map.ID
 		if key == "" {
-			key = r.Summary.Map.ID
+			key = r.Summary.Map.DefaultLabel
 		}
 		if key == "" {
 			continue
@@ -868,10 +957,28 @@ func computeHistoricalMapPerfByLabel(rows []canonical.PlayerMatchRow) map[string
 	return result
 }
 
+// collectModeENs retourne les noms de modes EN normalisés uniques depuis les matchs squad.
+// Utilisé pour le batch-lookup mode_name_tr FR.
+func collectModeENs(matches []domain.SquadMatchRow) []string {
+	seen := make(map[string]struct{}, 16)
+	result := make([]string, 0, 16)
+	for _, m := range matches {
+		en := analysis.NormalizeModeLabel(m.PairName, m.MapUI)
+		if en == "" {
+			continue
+		}
+		if _, ok := seen[en]; !ok {
+			seen[en] = struct{}{}
+			result = append(result, en)
+		}
+	}
+	return result
+}
+
 // buildSquadMatchHistory construit la table historique pour teammates.11 :
 // une ligne par match unique, triée par StartTime DESC. Pas de cap serveur —
 // la pagination (20/page) est gérée côté client (TanStack Table).
-func buildSquadMatchHistory(matches []domain.SquadMatchRow) []domain.SquadMatchHistoryRow {
+func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]string) []domain.SquadMatchHistoryRow {
 	seen := make(map[string]struct{}, len(matches))
 	rows := make([]domain.SquadMatchHistoryRow, 0, len(matches))
 	for _, m := range matches {
@@ -882,12 +989,22 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow) []domain.SquadMatchH
 			continue
 		}
 		seen[m.MatchID] = struct{}{}
+		var deltaMMR *float64
+		if m.EnemyMMR != nil {
+			d := m.TeamMMR - *m.EnemyMMR
+			deltaMMR = &d
+		}
+		var scoreLabel string
+		if m.MyTeamScore != nil && m.EnemyTeamScore != nil {
+			scoreLabel = fmt.Sprintf("%d - %d", *m.MyTeamScore, *m.EnemyTeamScore)
+		}
 		rows = append(rows, domain.SquadMatchHistoryRow{
 			MatchID:          m.MatchID,
 			StartTime:        m.StartTime.Format("2006-01-02T15:04:05Z"),
 			MapUI:            m.MapUI,
 			PlaylistName:     m.PlaylistName,
 			PairName:         m.PairName,
+			ModeUI:           modeLabel(m.PairName, m.MapUI, modeFR),
 			Outcome:          m.Outcome,
 			Kills:            m.Kills,
 			Deaths:           m.Deaths,
@@ -895,6 +1012,9 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow) []domain.SquadMatchH
 			Accuracy:         m.Accuracy,
 			PerformanceScore: m.PerformanceScore,
 			TeamMMRAvg:       m.TeamMMR,
+			EnemyMMRAvg:      m.EnemyMMR,
+			DeltaMMR:         deltaMMR,
+			ScoreLabel:       scoreLabel,
 			SessionLabel:     m.SessionLabel,
 		})
 	}
