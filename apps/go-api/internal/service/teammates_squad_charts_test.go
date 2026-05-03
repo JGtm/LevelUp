@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
 
 // ---------- buildSquadSessionTimeline (teammates.04) ----------
@@ -122,5 +124,113 @@ func TestImpactScoreWeights_Coverage(t *testing.T) {
 		if impactScoreWeights[k] != v {
 			t.Errorf("%s: weight=%v, want %v", k, impactScoreWeights[k], v)
 		}
+	}
+}
+
+// ---------- buildSquadMapHeatmap (teammates.03) ----------
+
+// rowWithMap est un helper local (pas de collision avec rowWithStats) qui
+// construit une PlayerMatchRow canonique avec une map et un perf score.
+func rowWithMap(matchID, mapName string, perf float64) canonical.PlayerMatchRow {
+	p := perf
+	return canonical.PlayerMatchRow{
+		Summary: canonical.MatchSummary{
+			MatchID: matchID,
+			Map: &canonical.AssetReference{
+				Kind:         "map",
+				ID:           mapName,
+				DefaultLabel: mapName,
+			},
+		},
+		Enrichment: canonical.PlayerMatchEnrichment{
+			PerformanceScore: &p,
+		},
+	}
+}
+
+// TestBuildSquadMapHeatmap_TeammatePerfsAreDistinctFromMain cadenasse le bug
+// "bound-to-main" du PlayerMatchesAdapter : si buildSquadMapHeatmap chargeait
+// les rows des coéquipiers via playerMatchesRepo (qui ignore l'arg gamertag),
+// chaque ligne du heatmap aurait les mêmes perfs que le main player. Le fix
+// (commit fabc3b3c) bascule sur squadLoader.LoadFor qui résout la PlayerDB
+// par gamertag.
+func TestBuildSquadMapHeatmap_TeammatePerfsAreDistinctFromMain(t *testing.T) {
+	mainPerf := 80.0
+	teammatePerf := 50.0
+	streets := "Streets"
+	mainSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", PerformanceScore: &mainPerf, MapUI: streets, IsWithFriends: true},
+	}
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"friend1": {rowWithMap("m1", streets, teammatePerf)},
+		},
+	}
+	svc := &TeammatesService{
+		squadLoader: loader,
+		titleSlug:   "halo_infinite",
+		gamertag:    "main",
+	}
+
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, nil)
+	if heatmap == nil {
+		t.Fatal("heatmap should be non-nil")
+	}
+	if len(heatmap.Players) != 2 || heatmap.Players[0] != "main" || heatmap.Players[1] != "friend1" {
+		t.Fatalf("Players want [main, friend1], got %v", heatmap.Players)
+	}
+
+	// Cell main + Streets : perf=80
+	// Cell friend1 + Streets : perf=50 (PAS 80 — bug bound-to-main)
+	var mainCell, friendCell *domain.SquadMapHeatmapCell
+	for i := range heatmap.Cells {
+		c := &heatmap.Cells[i]
+		if c.MapUI != streets {
+			continue
+		}
+		switch c.Player {
+		case "main":
+			mainCell = c
+		case "friend1":
+			friendCell = c
+		}
+	}
+	if mainCell == nil || friendCell == nil {
+		t.Fatalf("cells main+friend1 expected, got %+v", heatmap.Cells)
+	}
+	if mainCell.PerfAvg == nil || friendCell.PerfAvg == nil {
+		t.Fatalf("PerfAvg should be set for both: main=%v friend=%v", mainCell.PerfAvg, friendCell.PerfAvg)
+	}
+	if *mainCell.PerfAvg != mainPerf {
+		t.Errorf("main PerfAvg: want %v, got %v", mainPerf, *mainCell.PerfAvg)
+	}
+	if *friendCell.PerfAvg != teammatePerf {
+		t.Errorf("friend1 PerfAvg: want %v (sa propre perf), got %v — bug bound-to-main probable",
+			teammatePerf, *friendCell.PerfAvg)
+	}
+	if *mainCell.PerfAvg == *friendCell.PerfAvg {
+		t.Errorf("main et friend1 ont des perfs identiques (%v) → heatmap retourne les rows du main pour tous", *mainCell.PerfAvg)
+	}
+}
+
+// TestBuildSquadMapHeatmap_NoCapOnMaps : le cap top 15 a été retiré (commit
+// fabc3b3c). 18 cartes en input → 18 cartes en output (toutes affichées).
+func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {
+	rows := make([]domain.SquadMatchRow, 0, 18)
+	perf := 60.0
+	for i := 0; i < 18; i++ {
+		rows = append(rows, domain.SquadMatchRow{
+			MatchID:          string(rune('a' + i)),
+			PerformanceScore: &perf,
+			MapUI:            string(rune('A'+i)) + "_map",
+		})
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"}
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil)
+	if heatmap == nil {
+		t.Fatal("heatmap should be non-nil")
+	}
+	if len(heatmap.MapsTopN) != 18 {
+		t.Errorf("toutes les cartes attendues (18), got %d → cap top 15 réintroduit ?", len(heatmap.MapsTopN))
 	}
 }
