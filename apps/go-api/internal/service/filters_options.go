@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
 )
 
 // presetSpec décrit un preset période côté backend (mirror du tableau frontend
@@ -157,6 +158,78 @@ func buildPeriodPresetCounts(rows []domain.FilterMatchRow, cascade domain.Cascad
 			}
 		}
 		out = append(out, domain.PeriodPresetCount{PresetID: p.id, Days: p.days, Count: count})
+	}
+	return out
+}
+
+// ---------------------------------------------------------------------------
+// Season counts — counts si l'utilisateur sélectionnait une saison
+// ---------------------------------------------------------------------------
+
+// SeasonWindow est la projection minimale d'une saison nécessaire au calcul
+// du nombre de matchs qu'elle couvre. Construit depuis le mappings registry
+// via SeasonsFromAssets.
+type SeasonWindow struct {
+	ID    string
+	Start time.Time
+	End   *time.Time // nil = saison ouverte (compte tout >= Start)
+}
+
+// BuildSeasonCounts retourne, pour chaque saison du catalog, le nombre de
+// matchs dont StartTime ∈ [season.Start, season.End) ET qui matchent la
+// cascade active.
+//
+// Symétrique de buildPeriodPresetCounts. Sert au folding "+N saisons sans
+// matchs" côté frontend (popover SaisonPill).
+//
+// `rows` doit déjà avoir le match_context appliqué.
+// Si `seasons` est vide → retourne nil (pas d'allocation).
+func BuildSeasonCounts(rows []domain.FilterMatchRow, cascade domain.CascadeFilter, seasons []SeasonWindow) []domain.SeasonCount {
+	if len(seasons) == 0 {
+		return nil
+	}
+	rowsCascade := applyCascadeFilter(rows, cascade)
+	out := make([]domain.SeasonCount, 0, len(seasons))
+	for _, s := range seasons {
+		count := 0
+		for _, r := range rowsCascade {
+			if r.StartTime == nil {
+				continue
+			}
+			if r.StartTime.Before(s.Start) {
+				continue
+			}
+			if s.End != nil && !r.StartTime.Before(*s.End) {
+				continue
+			}
+			count++
+		}
+		out = append(out, domain.SeasonCount{SeasonID: s.ID, Count: count})
+	}
+	return out
+}
+
+// SeasonsFromAssets projette les entrées du kind "season" d'un AssetMappingSet
+// en []SeasonWindow exploitable par BuildSeasonCounts.
+//
+// Filtre les entrées dont StartDate est nil (les autres kinds n'en auront
+// pas, mais le filtrage rend le helper robuste à toute évolution du TOML).
+// Préserve l'ordre AllOfKind (DisplayOrder croissant).
+func SeasonsFromAssets(assets *mappings.AssetMappingSet) []SeasonWindow {
+	if assets == nil {
+		return nil
+	}
+	entries := assets.AllOfKind("season")
+	out := make([]SeasonWindow, 0, len(entries))
+	for _, e := range entries {
+		if e.StartDate == nil {
+			continue
+		}
+		out = append(out, SeasonWindow{
+			ID:    e.ID,
+			Start: *e.StartDate,
+			End:   e.EndDate,
+		})
 	}
 	return out
 }

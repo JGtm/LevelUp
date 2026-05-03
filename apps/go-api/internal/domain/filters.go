@@ -172,6 +172,17 @@ type PeriodPresetCount struct {
 	Count    int    `json:"count"`
 }
 
+// SeasonCount donne, pour une saison du catalog (kind="season" dans
+// assets.toml), le nombre de matchs qu'elle contiendrait si l'utilisateur
+// la sélectionnait via la SaisonPill (cascade et match_context appliqués).
+//
+// Symétrique de PeriodPresetCount : sert au folding "+N saisons sans matchs"
+// côté frontend.
+type SeasonCount struct {
+	SeasonID string `json:"season_id"` // ex: "season6", "season10_op1"
+	Count    int    `json:"count"`
+}
+
 // FilterContextResolved est la réponse de POST filters/resolve.
 type FilterContextResolved struct {
 	Effective        FilterContextInput     `json:"effective"`
@@ -179,4 +190,5 @@ type FilterContextResolved struct {
 	SessionOptions   SessionOptions         `json:"session_options"`
 	Counts           FilterCounts           `json:"counts"`
 	PeriodPresets    []PeriodPresetCount    `json:"period_presets"`
+	SeasonCounts     []SeasonCount          `json:"season_counts,omitempty"` // nil si le titre n'a pas de kind "season"
 }

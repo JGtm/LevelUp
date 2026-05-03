@@ -245,6 +245,90 @@ func TestBuildPeriodPresetCounts(t *testing.T) {
 	}
 }
 
+// ─── BuildSeasonCounts ────────────────────────────────────────────────────
+
+func TestBuildSeasonCounts_BasicWindowCount(t *testing.T) {
+	// 3 saisons disjointes : S1 [2022-01, 2022-04), S2 [2022-04, 2022-07), S3 [2022-07, 2022-10)
+	s1End := time.Date(2022, 4, 1, 0, 0, 0, 0, time.UTC)
+	s2End := time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC)
+	s3End := time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)
+	seasons := []SeasonWindow{
+		{ID: "s1", Start: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), End: &s1End},
+		{ID: "s2", Start: time.Date(2022, 4, 1, 0, 0, 0, 0, time.UTC), End: &s2End},
+		{ID: "s3", Start: time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC), End: &s3End},
+	}
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m1", StartTime: tsPtr(time.Date(2022, 2, 15, 0, 0, 0, 0, time.UTC))}, // s1
+		{MatchID: "m2", StartTime: tsPtr(time.Date(2022, 3, 1, 0, 0, 0, 0, time.UTC))},  // s1
+		{MatchID: "m3", StartTime: tsPtr(time.Date(2022, 5, 10, 0, 0, 0, 0, time.UTC))}, // s2
+		{MatchID: "m4", StartTime: tsPtr(time.Date(2022, 8, 20, 0, 0, 0, 0, time.UTC))}, // s3
+		{MatchID: "m5", StartTime: tsPtr(time.Date(2022, 9, 30, 0, 0, 0, 0, time.UTC))}, // s3
+	}
+	got := BuildSeasonCounts(rows, domain.CascadeFilter{}, seasons)
+	want := map[string]int{"s1": 2, "s2": 1, "s3": 2}
+	if len(got) != 3 {
+		t.Fatalf("expected 3 season counts, got %d", len(got))
+	}
+	for _, c := range got {
+		if c.Count != want[c.SeasonID] {
+			t.Errorf("season %q: count=%d, want %d", c.SeasonID, c.Count, want[c.SeasonID])
+		}
+	}
+}
+
+func TestBuildSeasonCounts_CascadeApplied(t *testing.T) {
+	s1End := time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC)
+	seasons := []SeasonWindow{
+		{ID: "s1", Start: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), End: &s1End},
+	}
+	rows := []domain.FilterMatchRow{
+		// 2 matchs Slayer + 3 matchs CTF, tous dans s1.
+		{MatchID: "m1", StartTime: tsPtr(time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer")},
+		{MatchID: "m2", StartTime: tsPtr(time.Date(2022, 3, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer")},
+		{MatchID: "m3", StartTime: tsPtr(time.Date(2022, 4, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("CTF"), PairNameFR: strPtr("CTF")},
+		{MatchID: "m4", StartTime: tsPtr(time.Date(2022, 5, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("CTF"), PairNameFR: strPtr("CTF")},
+		{MatchID: "m5", StartTime: tsPtr(time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC)), PairName: strPtr("CTF"), PairNameFR: strPtr("CTF")},
+	}
+	got := BuildSeasonCounts(rows, domain.CascadeFilter{Modes: []string{"Slayer"}}, seasons)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 season count, got %d", len(got))
+	}
+	if got[0].Count != 2 {
+		t.Errorf("s1 avec cascade Modes=[Slayer]: count=%d, want 2", got[0].Count)
+	}
+}
+
+func TestBuildSeasonCounts_OpenSeason(t *testing.T) {
+	// Saison ouverte : Start = 2022-01-01, End = nil → tout match >= Start compte.
+	seasons := []SeasonWindow{
+		{ID: "s_open", Start: time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), End: nil},
+	}
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m_before", StartTime: tsPtr(time.Date(2021, 12, 31, 0, 0, 0, 0, time.UTC))}, // exclu
+		{MatchID: "m_in1", StartTime: tsPtr(time.Date(2022, 6, 1, 0, 0, 0, 0, time.UTC))},
+		{MatchID: "m_in2", StartTime: tsPtr(time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC))},
+		{MatchID: "m_far_future", StartTime: tsPtr(time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC))},
+	}
+	got := BuildSeasonCounts(rows, domain.CascadeFilter{}, seasons)
+	if got[0].Count != 3 {
+		t.Errorf("saison ouverte: count=%d, want 3 (tous les matchs >= Start)", got[0].Count)
+	}
+}
+
+func TestBuildSeasonCounts_NoSeasonsInRegistry(t *testing.T) {
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m1", StartTime: tsPtr(time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC))},
+	}
+	got := BuildSeasonCounts(rows, domain.CascadeFilter{}, nil)
+	if got != nil {
+		t.Errorf("seasons nil → BuildSeasonCounts doit retourner nil (pas []), got %v", got)
+	}
+	got = BuildSeasonCounts(rows, domain.CascadeFilter{}, []SeasonWindow{})
+	if got != nil {
+		t.Errorf("seasons vide → BuildSeasonCounts doit retourner nil, got %v", got)
+	}
+}
+
 // ─── buildSessionOptions — MatchCountFiltered ──────────────────────────────
 
 func TestBuildSessionOptions_MatchCountFiltered(t *testing.T) {
