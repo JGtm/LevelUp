@@ -235,8 +235,20 @@ func applySessionFilter(rows []domain.FilterMatchRow, s domain.SessionsFilter) [
 	if len(keep) == 0 {
 		return rows
 	}
+	// `picked_sessions` reçoit soit le label ("30/04/2026 18:30—22:15 (12)"),
+	// soit le session_id stocké dans pme.session_id ("1", "2", …) selon le
+	// composant frontend qui appelle (SessionMultiSelect envoie des labels,
+	// FilterOmnibar.SessionPill envoie des session_id). On accepte les deux
+	// pour rester agnostique côté serveur — sinon les pages utilisant SessionPill
+	// retournent systématiquement 0 match en production (session_id ≠ label).
 	out := rows[:0:0]
 	for _, r := range rows {
+		if id := derefStr(r.SessionID); id != "" {
+			if _, ok := keep[id]; ok {
+				out = append(out, r)
+				continue
+			}
+		}
 		if lbl := derefStr(r.SessionLabel); lbl != "" {
 			if _, ok := keep[lbl]; ok {
 				out = append(out, r)

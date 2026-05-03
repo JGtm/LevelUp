@@ -57,6 +57,48 @@ func TestApplySessionFilter_PickedSessions(t *testing.T) {
 	}
 }
 
+// Régression : en prod, pme.session_id est strconv.Itoa(int) ("1", "2", …)
+// alors que session_label est un horodatage formaté ("30/04/2026 18:30 (12)").
+// FilterOmnibar.SessionPill envoie le session_id dans picked_sessions ; si le
+// backend ne matche QUE par SessionLabel, picked_sessions=["1"] ne capture
+// jamais une row dont SessionLabel="30/04/2026 18:30 (12)" → counter à 0.
+func TestApplySessionFilter_PickedSessions_ByID(t *testing.T) {
+	id1, id2 := "1", "2"
+	lbl1, lbl2 := "30/04/2026 18:30 (12)", "01/05/2026 14:00 (8)"
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m1", SessionID: &id1, SessionLabel: &lbl1},
+		{MatchID: "m2", SessionID: &id2, SessionLabel: &lbl2},
+		{MatchID: "m3"}, // pas de session
+	}
+	sf := domain.SessionsFilter{PickedSessions: []string{"1"}}
+	got := applySessionFilter(rows, sf)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 (id match), got %d", len(got))
+	}
+	if got[0].MatchID != "m1" {
+		t.Errorf("expected m1, got %s", got[0].MatchID)
+	}
+}
+
+func TestApplySessionFilter_PickedSessions_MixedIDAndLabel(t *testing.T) {
+	id1, id2 := "1", "2"
+	lbl1, lbl2 := "30/04/2026 18:30 (12)", "01/05/2026 14:00 (8)"
+	id3 := "3"
+	lbl3 := "02/05/2026 19:00 (5)"
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m1", SessionID: &id1, SessionLabel: &lbl1},
+		{MatchID: "m2", SessionID: &id2, SessionLabel: &lbl2},
+		{MatchID: "m3", SessionID: &id3, SessionLabel: &lbl3},
+	}
+	// SessionMultiSelect (squad) envoie un label, SessionPill envoie un id —
+	// les deux doivent fonctionner dans la même requête sans casser l'autre.
+	sf := domain.SessionsFilter{PickedSessions: []string{"1", "01/05/2026 14:00 (8)"}}
+	got := applySessionFilter(rows, sf)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 (id match + label match), got %d", len(got))
+	}
+}
+
 // ---------- applyExperienceFilter ----------
 
 func TestApplyExperienceFilter_Empty(t *testing.T) {

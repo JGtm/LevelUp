@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-05-03] fix(squad/filters): trois bugs liés sessions — propagation, ID/label, disparition multi-select
+
+**Statut** : Complété.
+
+**Contexte** : Suite directe du fix hash cascade. L'utilisateur fait remarquer que sur la page Escouade, les autres filtres semblent ne pas affecter le multi-select de sessions, que le compteur sticky « N matchs » ignore complètement la sélection sessions, et que parfois le multi-select disparaît tout seul. Investigation : trois bugs distincts mais entrelacés dans le wiring.
+
+**Décisions techniques** :
+
+1. **`pickedSquadSessionLabels` orbite sans propagation** (SquadLayout.tsx) — le multi-select sessions est un `useState` local persisté en localStorage, totalement séparé du `pending` (FilterContextInput). Il était envoyé uniquement à la query `teammates` via `picked_squad_session_labels`, jamais à `filters/resolve`. Conséquence : `previewResolve.counts.total_matches_after_filters` et `previewResolve.session_options.match_count_filtered` ignoraient la sélection. Fix : extraction d'un helper pur `deriveSquadPending(pending, labels)` qui bascule en `filter_mode='sessions'` + injecte les labels dans `picked_sessions` + neutralise la période (period et sessions sont mutuellement exclusives côté backend, cf. `applyAllFilters` if/else). Le `pending` d'origine reste intact pour le commit Analyser ; seule la requête preview est dérivée.
+
+2. **`applySessionFilter` ne matche que par label** (filters_service.go) — en production, `pme.session_id` est `strconv.Itoa(int)` ("1", "2", …) tandis que `pme.session_label` est un horodatage ("30/04/2026 18:30 (12)"). `FilterOmnibar.SessionPill` envoie le `session_id` dans `picked_sessions`, mais `applySessionFilter` comparait uniquement contre `r.SessionLabel` → mismatch → temporal vide → counter 0 sur les pages Career/MatchHistory dès qu'une session était pickée via SessionPill. Les tests existants ne le voyaient pas car les fixtures (`fWithSession`) ne posent que `SessionLabel` sans `SessionID`, et le fallback `sid := lbl` dans `buildSessionOptions` masquait la divergence. Fix : matcher contre `r.SessionID` OU `r.SessionLabel` — agnostique au mode d'envoi du frontend, compatible avec le SessionMultiSelect (labels) ET avec SessionPill (ids).
+
+3. **`useTeammates` sans `keepPreviousData`** (queries.ts) — chaque toggle qui changeait `filterContextHash`, `confirmedGts`, `pickedSquadSessionLabels` ou `locale` invalidait le queryKey ; `data` retombait à `undefined` pendant le refetch (~200-800 ms). `squadSessions = data?.session_labels?.squad ?? []` devenait vide → `{squadSessions.length > 0 && (<SessionMultiSelect />)}` retirait le composant. Visible désormais que la cascade change le hash (cf. fix précédent). Fix : `placeholderData: keepPreviousData` — le composant reste monté avec la sélection visible jusqu'à arrivée de la nouvelle donnée.
+
+**Résultats observés** :
+- Backend : `go test ./internal/service/` 100% — 3 nouveaux tests applySessionFilter (ByID, MixedIDAndLabel, ByLabel existant).
+- Frontend : `vitest run squad shell stores filters` → 153/153 verts. 6 nouveaux tests sur `deriveSquadPending` couvrent : pas-de-sessions / sessions-cochées / période-neutralisée / match_context / gap_minutes / cascade préservée.
+- Typecheck `tsc --noEmit` clean.
+- Régression posée à 3 niveaux (helper extrait + tests pure ; backend session ID-or-label ; comportement keepPreviousData implicitement préservé via tests existants qui passent toujours).
+
+**Conclusion / prochaine étape** : sessions désormais cohérentes avec le reste des filtres sur Escouade (compteur reflète la sélection, multi-select reste visible pendant les refetch). Bug `SessionPill` corrigé côté serveur (zéro change frontend nécessaire pour Career/MatchHistory). À surveiller : si un consommateur futur a un `r.SessionID` qui collisionne avec un `r.SessionLabel` d'une autre row, le matcheur dual pourrait sur-filtrer — improbable en pratique vu les formats distincts mais à garder en tête.
+
+---
+
 ## [2026-05-03] fix(filters): rail période/session — position correcte sur Stats ET Squad
 
 **Statut** : Complété (validé E2E Playwright dual-route).
