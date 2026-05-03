@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-05-03] feat(medal-digest): difficulty + medal_type enrichment via migration Go
+
+**Statut** : Complété.
+
+**Contexte** : L'API Waypoint `medals/metadata.json` retourne 403 même avec un Spartan token valide (endpoints 343i non accessibles depuis notre app Azure). `medal_definitions` avait déjà `difficulty_index` (0-3) et `type_index` (0-5) depuis le sync Python — source de vérité suffisante.
+
+**Décision technique** :
+1. Migration `medal_definitions_add_indices` : ajoute `difficulty_index TINYINT` et `type_index TINYINT` avec `ADD COLUMN IF NOT EXISTS` (idempotent — colonnes déjà présentes en prod via Python, ajoutées pour les DBs de test).
+2. Migration `enrich_medal_definitions_v2` : ajoute `difficulty VARCHAR` et `medal_type VARCHAR` et les peuple avec CASE sur les indices entiers. 167 médailles enrichies (distribution : Normal/Heroic/Legendary/Mythic × spree/mode/multikill/proficiency/skill/style).
+3. `medal_definitions_repo.go` : `LookupByIDs` lit désormais `difficulty` et `medal_type` → `MedalDefinitionRow`.
+4. `domain/teammates.go` : `MedalDigestItem` a `Category` et `Difficulty` propagés depuis `assembleMedalDigest`.
+5. `apps/web/src/lib/medalDifficulty.ts` : couleurs glow fidèles au jeu (vert Normal, bleu Heroic, violet Legendary, rose Mythic). `drop-shadow` sur `<img>` PNG, `box-shadow` sur fallback.
+6. `MedalDigest.tsx` : `MedalExpandedGrid` groupant les médailles par catégorie avec headers.
+7. CLI `refresh-metadata medals --player JGtm` : résolution OAuth via `SPNKR_OAUTH_REFRESH_TOKEN_*` env var pour futur refresh Waypoint.
+
+**Résultats observés** :
+- `go test ./internal/platform/duckdb/... ./internal/service/...` : tous verts.
+- `go build ./...` : propre.
+- La migration appliquée sur la DB prod enrichit 167 médailles correctement.
+
+**Prochaine étape** : Démarrer le serveur Go pour servir les nouvelles colonnes difficulty/medal_type vers l'UI.
+
 ## [2026-05-03] fix(timezone): généralisation du pattern média à toutes les pages Go
 
 **Statut** : Complété.
