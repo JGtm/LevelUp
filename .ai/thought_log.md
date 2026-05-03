@@ -1,5 +1,59 @@
 # Thought Log
 
+## [2026-05-03] fix escouade — badges impact corrects pour tous les coéquipiers
+
+**Statut** : Complété.
+
+**Contexte** : `SquadImpactScoreboard` n'affichait des badges que pour un seul joueur (le "gagnant" aléatoire d'une collision de map).
+
+**Cause racine** : `buildSquadImpactMatrix` utilisait `s.playerMatchesRepo.LoadPlayerMatches(ctx, titleSlug, gt, ...)` pour tous les gamertags. Mais `PlayerMatchesAdapter` ignore le paramètre gamertag (bound au main player — cf. ADR 0011). Résultat : tous les `loadInto(gt)` retournaient les données du main player. `xuidToGT[mainXUID]` était écrasé à chaque itération → seul le dernier gamertag itéré (non-déterministe) recevait les badges du main player, tous les autres joueurs étaient invisibles.
+
+**Fix** : Dans `loadInto`, utiliser `s.squadLoader.LoadFor(ctx, slug, gt, ...)` quand `squadLoader` est câblé (résolution dynamique per-gamertag). Fallback sur `playerMatchesRepo` uniquement pour le main player quand `squadLoader` est nil.
+
+**Vérifications** : `go build ./...` OK. `go test ./internal/service/...` OK (1.85s).
+
+## [2026-05-03] feat escouade — couleurs MMR + SquadImpactScoreboard câblé
+
+**Statut** : Complété.
+
+**Contexte** : (1) `fmtDeltaMMR` dans `SquadSynergyHistoryTable` utilisait les classes Tailwind `text-success`/`text-destructive` au lieu des tokens sémantiques. (2) `outcomeBg` dans `SquadImpactScoreboard` utilisait des rgba hardcodés. (3) `SquadImpactScoreboard` n'était pas rendu sur la page Synergies.
+
+**Décisions** :
+- `fmtDeltaMMR` : import `tokenCssVar` depuis `@/lib/accessibility`, inline style `{ color: tokenCssVar('outcome-win'/'outcome-loss') }` remplace les classes Tailwind.
+- `outcomeBg` : `color-mix(in srgb, tokenCssVar('outcome-win') 30%, transparent)` pour win/loss/dnf.
+- `SquadSynergiesPage` : import + render `<SquadImpactScoreboard matrix={pageData.impact_matrix} />` conditionnel en dernier dans le `space-y-4`.
+
+**Vérifications** : `npm run typecheck` — aucune nouvelle erreur introduite.
+
+## [2026-05-03] fix escouade — labels cartes/playlists/modes FR complets (asset_translations + mode_name_tr)
+
+**Statut** : Complété.
+
+**Contexte** : Cartes, playlists ET modes restaient en anglais sur toute la page Synergies. La cause racine : `map_name_fr`/`playlist_name_fr` en DB sont souvent NULL → COALESCE retombait sur la valeur EN. Sans `asset_translations`, aucune traduction appliquée. Même constat pour les modes sans `mode_name_tr`.
+
+**Décision** : Reproduire exactement le pattern de `home_repo.enrichHomeMatchTranslations` :
+- Ajout de `map_id` et `playlist_id` à Q30 (depuis `v_match_full`)  
+- Ajout de `MapID`/`PlaylistID` dans `domain.SquadMatchRow`
+- `SquadRepo.LoadAssetTranslationsFR(assetType, assetIDs)` — requête `metadata.asset_translations WHERE asset_type=? AND lang IN ('fr-FR','fr')` (calquée sur `loadHomeAssetTranslationNames`)
+- `SquadRepo.LoadModeTranslationsFR` — déjà présent (mode_name_tr)
+- `enrichSquadMatchAssets` — enrichit `MapUI` et `PlaylistName` sur tous les rows avant calculs dérivés
+- `collectUniqueIDs` — helper générique d'extraction d'IDs uniques
+- Ajout `LoadAssetTranslationsFR` à `port.SquadRepository` + noop + mock test
+
+**Vérifications** : `go build ./...` OK. `go test ./internal/service/...` OK (1.6s).
+
+## [2026-05-03] fix escouade — labels modes FR via mode_name_tr
+
+**Statut** : Complété.
+
+**Contexte** : Les modes apparaissaient en anglais ("Slayer", "BTB") sur la page Synergies alors que la home les affiche en FR ("Tueur", "Grande bataille en équipe"). Cartes et playlists étaient déjà FR via `map_name_fr`/`playlist_name_fr` en SQL.
+
+**Diagnostic** : La home appelle `loadHomeModeNameTranslations` (metadata.mode_name_tr). Le service squad n'avait rien d'équivalent — `NormalizeModeLabel` produisait des noms EN normalisés sans traduction.
+
+**Décision** : Ajout de `LoadModeTranslationsFR` à `port.SquadRepository` + implémentation sur `SquadRepo` (même requête `mode_name_tr WHERE lang='fr'`). Helper `collectModeENs` + `modeLabel` dans le service. `buildSquadMatchHistory` accepte maintenant `modeFR map[string]string`.
+
+**Vérifications** : `go build ./...` OK. `go test ./internal/service/...` OK.
+
 ## [2026-05-03] fix FilterOmnibar — compteur live (preview) + tests cascade descendante manquants
 
 **Statut** : Complété.

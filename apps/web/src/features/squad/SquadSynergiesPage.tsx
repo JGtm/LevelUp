@@ -9,16 +9,25 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { OutcomeSequenceTape, type OutcomePoint, type OutcomeValue } from '@/components/charts/OutcomeSequenceTape'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
-import { WinRateVsHistoryChart } from './WinRateVsHistoryChart'
 import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
+import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
+import { SquadImpactScoreboard } from './SquadImpactScoreboard'
+
+function outcomeNumToValue(n: number): OutcomeValue {
+  if (n === 2) return 'win'
+  if (n === 3) return 'loss'
+  if (n === 1) return 'tie'
+  return 'dnf'
+}
 
 export function SquadSynergiesPage() {
-  const { selectedRows, confirmedGamertags, pageData } = useSquadContext()
+  const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
   const { data: mappings } = useFieldMappings()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
@@ -55,41 +64,61 @@ export function SquadSynergiesPage() {
   const mapAssets = mappings?.assets?.['map']
   const mapLabelOf = (mapUI: string) => mapAssets?.[mapUI]?.label ?? mapUI
   const mapBreakdown = pageData?.map_breakdown ?? []
+  const matchHistory = pageData?.match_history ?? []
   const sessionTimeline = pageData?.session_timeline ?? []
   const mapHeatmap = pageData?.map_heatmap
+
+  const outcomeLabels = {
+    win: mappings?.outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
+    loss: mappings?.outcomes?.['loss']?.label ?? t.history.outcomeLabel.loss,
+    tie: mappings?.outcomes?.['tie']?.label ?? t.history.outcomeLabel.draw,
+    dnf: mappings?.outcomes?.['dnf']?.label ?? t.history.outcomeLabel.dnf,
+  }
 
   return (
     <div className="space-y-4">
       {mapBreakdown.length > 0 && (
-        <WinRateVsHistoryChart
-          title={t.charts.winRateVsHistoryTitle}
-          rows={mapBreakdown}
-          mapLabelOf={mapLabelOf}
-          sessionLabel={t.charts.winRateVsHistorySession}
-          historyLabel={t.charts.winRateVsHistoryHistory}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <WinRateVsHistoryBulletChart
+            title={t.charts.winRateVsHistoryBulletTitle}
+            rows={mapBreakdown}
+            mapLabelOf={mapLabelOf}
+            sessionLabel={t.charts.winRateVsHistorySession}
+            historyLabel={t.charts.winRateVsHistoryHistory}
+            parityLabel={t.charts.winRateVsHistoryBulletParity}
+            zeroWinrateLabel={t.charts.winRateVsHistoryBulletZero}
+          />
+          {mapBreakdown.some(
+            (r) => r.performance_avg !== undefined && r.historical_performance_avg !== undefined,
+          ) && (
+            <MapPerfVsHistoryChart
+              title={t.charts.mapPerfVsHistoryTitle}
+              rows={mapBreakdown}
+              mapLabelOf={mapLabelOf}
+              sessionLabel={t.charts.mapPerfVsHistorySession}
+              historyLabel={t.charts.mapPerfVsHistoryHistory}
+            />
+          )}
+        </div>
       )}
-      {mapBreakdown.length > 0 && (
-        <WinRateVsHistoryBulletChart
-          title={t.charts.winRateVsHistoryBulletTitle}
-          rows={mapBreakdown}
-          mapLabelOf={mapLabelOf}
-          sessionLabel={t.charts.winRateVsHistorySession}
-          historyLabel={t.charts.winRateVsHistoryHistory}
-          parityLabel={t.charts.winRateVsHistoryBulletParity}
-          zeroWinrateLabel={t.charts.winRateVsHistoryBulletZero}
-        />
+      {matchHistory.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t.charts.outcomeSequenceTitle}
+          </p>
+          <OutcomeSequenceTape
+            matches={matchHistory.map<OutcomePoint>((m) => ({
+              outcome: outcomeNumToValue(m.outcome),
+              matchId: m.match_id,
+              map: m.map_ui || undefined,
+              mode: m.mode_ui || m.pair_name || undefined,
+            }))}
+            labels={outcomeLabels}
+          />
+        </div>
       )}
-      {mapBreakdown.some(
-        (r) => r.performance_avg !== undefined && r.historical_performance_avg !== undefined,
-      ) && (
-        <MapPerfVsHistoryChart
-          title={t.charts.mapPerfVsHistoryTitle}
-          rows={mapBreakdown}
-          mapLabelOf={mapLabelOf}
-          sessionLabel={t.charts.mapPerfVsHistorySession}
-          historyLabel={t.charts.mapPerfVsHistoryHistory}
-        />
+      {matchHistory.length > 0 && (
+        <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
       )}
       {mapHeatmap && mapHeatmap.players.length > 0 && mapHeatmap.maps_topn.length > 0 && (
         <SquadMapHeatmapChart
@@ -116,6 +145,9 @@ export function SquadSynergiesPage() {
           perfAxisLabel={t.timeline.perfAxis}
           mmrAxisLabel={t.timeline.mmrAxis}
         />
+      )}
+      {pageData?.impact_matrix && (
+        <SquadImpactScoreboard matrix={pageData.impact_matrix} />
       )}
     </div>
   )
