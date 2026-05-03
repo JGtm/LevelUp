@@ -62,8 +62,17 @@ export function useFiltersResolve(playerSlug: string) {
  * dropdown, avant que l'utilisateur clique sur Analyser.
  */
 export function useFiltersPreview(playerSlug: string, input: FilterContextInput) {
+  // FNV-1a 32 bits — même algo que computeHash/computePendingHash. Crucial :
+  // le hash doit refléter les diffs de cascade pour que toggler une checkbox
+  // dans FiltresPill déclenche un refetch et mette à jour available_options.
   const hash = (() => {
-    try { return btoa(JSON.stringify(input)).slice(0, 32) } catch { return 'default' }
+    const s = JSON.stringify(input) ?? ''
+    let h = 0x811c9dc5
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i)
+      h = Math.imul(h, 0x01000193) >>> 0
+    }
+    return h.toString(16).padStart(8, '0')
   })()
   return useQuery<FilterContextResolved>({
     queryKey: queryKeys.filtersPreview(playerSlug, hash),

@@ -98,11 +98,18 @@ export function useDismissable(open: boolean, onClose: () => void) {
 }
 
 // ─── Hash de l'état pending — détection de dirty ─────────────────────────────
+//
+// Doit utiliser EXACTEMENT le même algo que `computeHash` dans
+// `globalFilterStore.ts` : `isDirty` compare `filterContextHash` (calculé par
+// le store) à `computePendingHash(pending)` (calculé ici). Un algo divergent
+// rendrait le bouton « Analyser » faussement actif/inactif.
 
 export function computePendingHash(ctx: FilterContextInput): string {
-  try {
-    return btoa(JSON.stringify(ctx)).slice(0, 32)
-  } catch {
-    return 'default'
+  const s = JSON.stringify(ctx) ?? ''
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
   }
+  return h.toString(16).padStart(8, '0')
 }
