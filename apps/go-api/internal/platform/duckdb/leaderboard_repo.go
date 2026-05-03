@@ -38,7 +38,13 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 				COALESCE(NULLIF(msr.tier, ''), NULLIF(msr.tier_label, ''), '—') AS tier,
 				COALESCE(msr.sub_tier, 0) AS sub_tier,
 				COALESCE(mr.playlist_name, msr.playlist_group, '') AS playlist_name,
-				COALESCE(mr.start_time, msr.start_time, msr.updated_at, msr.created_at) AS sort_time,
+				COALESCE(
+					mr.start_time_utc,
+					mr.start_time AT TIME ZONE 'UTC',
+					msr.start_time AT TIME ZONE 'UTC',
+					msr.updated_at AT TIME ZONE 'UTC',
+					msr.created_at AT TIME ZONE 'UTC'
+				) AS sort_time,
 				CASE
 					WHEN mr.match_id IS NOT NULL AND (
 						COALESCE(mr.is_ranked, FALSE)

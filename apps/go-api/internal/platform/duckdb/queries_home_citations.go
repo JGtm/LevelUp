@@ -23,7 +23,7 @@ WITH perfect AS (
 )
 SELECT
     mp.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     COALESCE(r.map_id, '')                                  AS map_id,
     COALESCE(r.map_name, '')                                AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                 AS map_name_fr,
@@ -89,7 +89,7 @@ LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 LEFT JOIN match_skill_rank msr ON msr.match_id = mp.match_id
 LEFT JOIN perfect ON perfect.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY r.start_time DESC
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
 LIMIT 150`
 
 // Q26h : Home â€” mÃ©dailles par match pour un joueur, lots de match_id.
@@ -227,13 +227,13 @@ WITH recent_playlists AS (
 				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
 			THEN 1 ELSE 0
 		END) > 0                           AS is_ranked,
-		MAX(r.start_time)                  AS last_played
+		MAX(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_played
 	FROM shared.match_participants mp
 	JOIN shared.match_registry r ON r.match_id = mp.match_id
 	WHERE mp.xuid = ?
 	  AND NULLIF(TRIM(COALESCE(r.playlist_id, '')), '') IS NOT NULL
 	GROUP BY r.playlist_id
-	ORDER BY MAX(r.start_time) DESC
+	ORDER BY MAX(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) DESC
 	LIMIT 3
 ),
 last_skill AS (
@@ -282,11 +282,11 @@ SELECT
     pme.session_id,
     pme.session_label,
     COALESCE(pme.is_with_friends, FALSE)    AS is_with_friends,
-    r.start_time
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
 FROM player_match_enrichment pme
 LEFT JOIN shared.match_registry r ON r.match_id = pme.match_id
 WHERE pme.session_label IS NOT NULL
-ORDER BY r.start_time DESC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q28 : Home â€” medias recents depuis media_files + media_match_associations.
 // Parametre : ?1 = LIMIT (nombre de medias).
@@ -571,7 +571,7 @@ func (cfg mediaQueryConfig) baseWhereClause(sectionFilter string) ([]string, []a
 
 func (cfg mediaQueryConfig) matchStartExpr() string {
 	if cfg.useSharedSocialSchema() {
-		return "mr.start_time"
+		return "COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')"
 	}
 	return "mma.match_start_time"
 }
@@ -763,7 +763,7 @@ QUALIFY ROW_NUMBER() OVER (
     PARTITION BY mf.file_path
     ORDER BY
         CASE WHEN mr.start_time IS NULL THEN 1 ELSE 0 END,
-        ABS(EXTRACT(EPOCH FROM (mr.start_time - mf.capture_end_utc))) ASC NULLS LAST,
+        ABS(EXTRACT(EPOCH FROM (COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') - mf.capture_end_utc))) ASC NULLS LAST,
         COALESCE(mma.match_id, '')
 ) = 1
 ORDER BY ` + orderBy + `

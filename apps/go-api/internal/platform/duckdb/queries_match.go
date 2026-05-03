@@ -93,7 +93,7 @@ ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST`
 const Q13MatchMeta = `
 SELECT
     r.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     r.duration_seconds,
     r.map_name,
     r.pair_name,
@@ -194,7 +194,7 @@ WHERE pme.match_id = ?`
 const Q19CommonMatches = `
 SELECT
     r.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     COALESCE(r.map_name, '')          AS map_ui,
     COALESCE(r.pair_name, '')         AS mode_ui,
     p1.team_id                        AS player1_team_id,
@@ -206,7 +206,7 @@ SELECT
 FROM shared.match_registry r
 JOIN shared.match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
 JOIN shared.match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
-ORDER BY r.start_time DESC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q19b : Kills croisés agrégés entre deux joueurs sur l'ensemble de leurs matchs communs.
 // Paramètres : ?1 = xuid joueur principal, ?2 = xuid autre joueur (répétés 2 fois chacun).
@@ -256,8 +256,10 @@ const Q25NeighborMatches = `
 WITH ordered AS (
     SELECT
         mr.match_id,
-        mr.start_time,
-        ROW_NUMBER() OVER (ORDER BY mr.start_time DESC) - 1 AS idx,
+        COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS start_time,
+        ROW_NUMBER() OVER (
+            ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
+        ) - 1 AS idx,
         COUNT(*) OVER () AS total
     FROM shared.match_registry mr
     JOIN shared.match_participants mp

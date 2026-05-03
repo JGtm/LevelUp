@@ -20,7 +20,9 @@ SELECT
     COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends,
     ms.playlist_name                                     AS playlist_name_en
 FROM (
-    SELECT r.match_id, r.start_time, r.map_name,
+    SELECT r.match_id,
+           COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+           r.map_name,
            r.map_name_fr, r.pair_name, r.pair_name_fr,
            r.playlist_name, r.playlist_name_fr,
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
@@ -50,7 +52,9 @@ SELECT
     COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends,
     ms.playlist_name                                     AS playlist_name_en
 FROM (
-    SELECT match_id, start_time, map_id, map_name, map_name_fr,
+    SELECT match_id,
+           COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time,
+           map_id, map_name, map_name_fr,
            pair_name, pair_name_fr, playlist_name, playlist_name_fr,
            is_firefight, is_ranked
     FROM shared.mv_player_matches
@@ -88,7 +92,9 @@ SELECT
     p.avg_life_seconds                                   AS average_life_seconds,
     p.time_played_seconds
 FROM (
-    SELECT r.match_id, r.start_time, r.map_name,
+    SELECT r.match_id,
+           COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+           r.map_name,
            r.map_name_fr, r.pair_name, r.pair_name_fr,
            r.playlist_name, r.playlist_name_fr,
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
@@ -139,13 +145,13 @@ SELECT
     msr.rating_value,
     msr.tier_label,
     msr.playlist_group,
-    r.start_time AS recorded_at,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS recorded_at,
     msr.rating_value - LAG(msr.rating_value) OVER (
-        PARTITION BY msr.playlist_group ORDER BY r.start_time
+        PARTITION BY msr.playlist_group ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
     ) AS rating_delta
 FROM match_skill_rank msr
 LEFT JOIN shared.match_registry r ON msr.match_id = r.match_id
-ORDER BY r.start_time ASC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 
 // Q9 : Career — top matches : 10 meilleurs (WIN) + 10 moins bons (LOSS).
 // Paramètres : ?1 = xuid (section WIN), ?2 = xuid (section LOSS).
@@ -163,7 +169,7 @@ FROM (
         SELECT
             pme.match_id,
             pme.performance_score,
-            r.start_time,
+            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
             r.map_name,
             r.pair_name,
             r.playlist_name,
@@ -195,7 +201,7 @@ FROM (
         SELECT
             pme.match_id,
             pme.performance_score,
-            r.start_time,
+            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
             r.map_name,
             r.pair_name,
             r.playlist_name,
@@ -232,7 +238,7 @@ ORDER BY _s ASC`
 const Q22SessionMatches = `
 SELECT
     mp.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     -- Signature des coeequipiers : XUIDs tries concatenes (hors joueur lui-meme)
     (SELECT string_agg(t.xuid, ',' ORDER BY t.xuid)
      FROM shared.match_participants t
@@ -241,13 +247,13 @@ SELECT
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
     mp.time_played_seconds,
     CASE WHEN mp.time_played_seconds IS NOT NULL
-         THEN r.start_time + INTERVAL (mp.time_played_seconds || ' seconds')
+         THEN COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') + INTERVAL (mp.time_played_seconds || ' seconds')
          ELSE NULL
     END                                                 AS end_time
 FROM shared.match_participants mp
 JOIN shared.match_registry r ON r.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY r.start_time ASC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 
 // Q23 : Stats series — chargement des matchs avec metriques pour perf score.
 // Parametre : ?1 = xuid du joueur.
@@ -255,7 +261,7 @@ ORDER BY r.start_time ASC`
 const Q23StatsMatches = `
 SELECT
     mp.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     mp.outcome,
     COALESCE(mp.kills, 0)              AS kills,
     COALESCE(mp.deaths, 0)             AS deaths,
@@ -292,7 +298,7 @@ FROM shared.match_participants mp
 JOIN shared.match_registry r ON r.match_id = mp.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY r.start_time ASC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 
 // Q24 : LUSR — chargement du rating par match depuis match_skill_rank.
 // Parametre : ?1 = xuid du joueur (filtre via player_match_enrichment).

@@ -315,8 +315,8 @@ func TestBuildQ37MediaQuery_SharedSocialSchemaUsesPlayerScopedJoin(t *testing.T)
 	if !strings.Contains(q, "mf.id = mma.media_file_id") {
 		t.Errorf("expected shared_social join on media_file_id, got: %s", q)
 	}
-	if !strings.Contains(q, "mr.start_time AS match_start_time") {
-		t.Errorf("expected match_start_time from match_registry, got: %s", q)
+	if !strings.Contains(q, "mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS match_start_time") {
+		t.Errorf("expected match_start_time via COALESCE(start_time_utc, start_time AT TIME ZONE UTC), got: %s", q)
 	}
 	if strings.Contains(q, "mf.status = 'active'") {
 		t.Errorf("did not expect legacy status filter in shared_social query, got: %s", q)

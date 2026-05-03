@@ -52,7 +52,11 @@ func (r *MatchExclusionRepo) ListExcluded(ctx context.Context) ([]domain.Exclude
 	rows, err := r.pdb.ReadDB().Query(ctx, `
 		SELECT
 			pme.match_id,
-			COALESCE(r.start_time, pme.updated_at)  AS start_time,
+			COALESCE(
+				r.start_time_utc,
+				r.start_time AT TIME ZONE 'UTC',
+				pme.updated_at AT TIME ZONE 'UTC'
+			)                                        AS start_time,
 			COALESCE(r.map_name,   '')               AS map_name,
 			COALESCE(r.pair_name,  '')               AS mode_name
 		FROM player_match_enrichment pme

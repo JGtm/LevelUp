@@ -546,6 +546,18 @@ func init() {
 		ApplySchema: applyMvPlayerMatchesView,
 	})
 
+	// Recrée mv_player_matches pour exposer start_time_utc et end_time_utc
+	// (TIMESTAMPTZ ajoutés par add_start_time_utc_to_match_registry). Sans ces
+	// colonnes dans la vue, les pages qui lisaient mv_player_matches.start_time
+	// affichaient les heures décalées (+1/+2h) sur les matchs synchronisés après
+	// le fix DuckDB. Idempotent : CREATE OR REPLACE VIEW.
+	Register(Migration{
+		Name:        "add_mv_player_matches_utc_cols",
+		TargetDB:    TargetShared,
+		Description: "Recrée mv_player_matches avec start_time_utc et end_time_utc",
+		ApplySchema: applyMvPlayerMatchesView,
+	})
+
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.
@@ -712,6 +724,8 @@ func applyMvPlayerMatchesView(db *sql.DB) error {
 			mr.match_id,
 			mr.start_time,
 			mr.end_time,
+			mr.start_time_utc,
+			mr.end_time_utc,
 			mr.playlist_id,
 			mr.playlist_name,
 			mr.playlist_name_fr,
