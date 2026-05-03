@@ -56,6 +56,12 @@ func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 func (m *mockSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
 	return m.heatmapRows, m.heatmapErr
 }
+func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ []string) (map[string]string, error) {
+	return nil, nil
+}
+func (m *mockSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+	return nil, nil
+}
 func (m *mockSquadRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
 	return m.synthRows, m.synthErr
 }

@@ -126,6 +126,11 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 			&row.IsWithFriends,
 			&row.HeadshotKills,
 			&row.PerfectKills,
+			&row.EnemyMMR,
+			&row.MyTeamScore,
+			&row.EnemyTeamScore,
+			&row.MapID,
+			&row.PlaylistID,
 		); err != nil {
 			return nil, fmt.Errorf("LoadSquadMatches scan: %w", err)
 		}
@@ -276,5 +281,82 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]le
 	return result, rows.Err()
 }
 
+// LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.
+// Calqué sur homeRepo.loadHomeAssetTranslationNames — même table, même requête.
+// assetType : "map" | "playlist" | "game_variant" | "pair".
+func (r *SquadRepo) LoadAssetTranslationsFR(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error) {
+	if len(assetIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(assetIDs)), ",")
+	q := fmt.Sprintf(`
+		SELECT asset_id, name, lang
+		FROM asset_translations
+		WHERE asset_type = ?
+		  AND lang IN ('fr-FR', 'fr')
+		  AND name IS NOT NULL
+		  AND TRIM(name) != ''
+		  AND asset_id IN (%s)
+		ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
+	`, placeholders)
+	args := make([]any, 0, len(assetIDs)+1)
+	args = append(args, assetType)
+	for _, id := range assetIDs {
+		args = append(args, id)
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("LoadAssetTranslationsFR(%s): %w", assetType, err)
+	}
+	defer rows.Close()
+	result := make(map[string]string, len(assetIDs))
+	for rows.Next() {
+		var assetID, name, lang string
+		if err := rows.Scan(&assetID, &name, &lang); err != nil {
+			continue
+		}
+		if _, exists := result[assetID]; !exists {
+			result[assetID] = name
+		}
+	}
+	return result, rows.Err()
+}
+
+// LoadModeTranslationsFR retourne les traductions FR depuis metadata.mode_name_tr.
+// Calqué sur homeRepo.loadHomeModeNameTranslations — même table, même logique.
+func (r *SquadRepo) LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error) {
+	if len(modeENs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(modeENs)), ",")
+	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, placeholders)
+	args := make([]any, len(modeENs))
+	for i, n := range modeENs {
+		args[i] = n
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("LoadModeTranslationsFR: %w", err)
+	}
+	defer rows.Close()
+	result := make(map[string]string, len(modeENs))
+	for rows.Next() {
+		var en, fr string
+		if err := rows.Scan(&en, &fr); err != nil {
+			continue
+		}
+		if strings.TrimSpace(fr) != "" {
+			result[en] = fr
+		}
+	}
+	return result, rows.Err()
+}
+
 // Ensure SquadRepo implements port.SquadRepository at compile time.
-// (VÃ©rification implicite via injection dans le service.)
+// (Vérification implicite via injection dans le service.)

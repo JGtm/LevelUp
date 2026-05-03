@@ -77,7 +77,11 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 
 	winXUIDs := make(map[string]bool)
 	lossXUIDs := make(map[string]bool)
+	squadXUIDs := make(map[string]bool, len(input.Participants))
 	for _, p := range input.Participants {
+		if p.XUID != "" {
+			squadXUIDs[p.XUID] = true
+		}
 		if p.Outcome == 2 {
 			winXUIDs[p.XUID] = true
 		} else if p.Outcome == 3 {
@@ -85,7 +89,7 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 		}
 	}
 
-	// --- 1. first_blood ---
+	// --- 1. first_blood : premier kill global, retenu seulement si squad (parité Python identify_first_blood) ---
 	if fb := firstByTime(kills); fb != nil {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "first_blood",
@@ -95,8 +99,12 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 		})
 	}
 
-	// --- 2. first_group_death ---
-	if fd := firstByTime(deaths); fd != nil {
+	// --- 2. first_group_death : première mort PARMI le squad (parité Python identify_first_group_death) ---
+	deathsForSquad := deaths
+	if len(squadXUIDs) > 0 {
+		deathsForSquad = filterEventsByActor(deaths, squadXUIDs)
+	}
+	if fd := firstByTime(deathsForSquad); fd != nil {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "first_group_death",
 			BadgeFR:    "Première victime",
@@ -125,8 +133,13 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 		})
 	}
 
-	// --- 5. last_group_kill (Touriste) : plus lent à obtenir son premier kill ---
-	if xuid, t := slowestFirstKillerWithTime(kills); xuid != "" {
+	// --- 5. last_group_kill (Touriste) : plus lent à obtenir son premier kill PARMI le squad
+	//        (parité Python identify_last_group_kill — filtre amis avant de chercher le slowest) ---
+	killsForSquad := kills
+	if len(squadXUIDs) > 0 {
+		killsForSquad = filterEventsByActor(kills, squadXUIDs)
+	}
+	if xuid, t := slowestFirstKillerWithTime(killsForSquad); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "last_group_kill",
 			BadgeFR:    "Touriste",
@@ -190,6 +203,19 @@ func firstByTime(events []ImpactEvent) *ImpactEvent {
 		}
 	}
 	return best
+}
+
+// filterEventsByActor retourne les événements dont ActorXUID est dans allowedXUIDs.
+// Utilisé pour les badges qui doivent être calculés PARMI le squad uniquement
+// (first_group_death, last_group_kill — parité Python identify_*_group_*).
+func filterEventsByActor(events []ImpactEvent, allowedXUIDs map[string]bool) []ImpactEvent {
+	out := make([]ImpactEvent, 0, len(events))
+	for _, ev := range events {
+		if allowedXUIDs[ev.ActorXUID] {
+			out = append(out, ev)
+		}
+	}
+	return out
 }
 
 // lastByTimeFiltered retourne l'événement avec le TimeMS maximum parmi les événements
@@ -258,14 +284,14 @@ func topKiller(participants []ParticipantSnap) string {
 }
 
 // silentHero : en victoire, joueur avec max assists ET min deaths hors top-killer.
-// Nécessite ≥2 joueurs éligibles et ≥1 assist.
+// Nécessite ≥2 joueurs éligibles et ≥1 assist. Parité Python : exclut TOUS les
+// joueurs avec kills == max_kills (pas juste un seul) pour gérer les égalités.
 func silentHero(participants []ParticipantSnap) string {
 	wins := filterOutcome(participants, 2)
 	if len(wins) < 2 {
 		return ""
 	}
-	tkXUID := topKillerXUID(wins)
-	eligible := excludeXUID(wins, tkXUID)
+	eligible := excludeAllTopKillers(wins)
 	if len(eligible) < 2 {
 		return ""
 	}
@@ -294,14 +320,14 @@ func silentHero(participants []ParticipantSnap) string {
 }
 
 // falseBrother : en défaite, joueur avec max deaths ET min assists hors top-killer.
-// Nécessite ≥2 joueurs éligibles et ≥1 mort.
+// Nécessite ≥2 joueurs éligibles et ≥1 mort. Parité Python : exclut TOUS les
+// joueurs avec kills == max_kills.
 func falseBrother(participants []ParticipantSnap) string {
 	losses := filterOutcome(participants, 3)
 	if len(losses) < 2 {
 		return ""
 	}
-	tkXUID := topKillerXUID(losses)
-	eligible := excludeXUID(losses, tkXUID)
+	eligible := excludeAllTopKillers(losses)
 	if len(eligible) < 2 {
 		return ""
 	}
@@ -339,29 +365,25 @@ func filterOutcome(ps []ParticipantSnap, outcome int) []ParticipantSnap {
 	return out
 }
 
-func topKillerXUID(ps []ParticipantSnap) string {
-	if len(ps) == 0 {
-		return ""
-	}
-	best := ps[0]
-	for _, p := range ps[1:] {
-		if p.Kills > best.Kills {
-			best = p
+// excludeAllTopKillers retire TOUS les participants ayant le max de kills > 0
+// (parité Python : `eligible = [r for r in rows if r.kills < max_kills]`).
+// Si max_kills == 0, tous sont éligibles.
+func excludeAllTopKillers(ps []ParticipantSnap) []ParticipantSnap {
+	maxK := 0
+	for _, p := range ps {
+		if p.Kills > maxK {
+			maxK = p.Kills
 		}
 	}
-	if best.Kills == 0 {
-		return ""
-	}
-	return best.XUID
-}
-
-func excludeXUID(ps []ParticipantSnap, xuid string) []ParticipantSnap {
-	if xuid == "" {
-		return ps
+	if maxK == 0 {
+		// Aucun kill — pas de top killer à exclure
+		out := make([]ParticipantSnap, len(ps))
+		copy(out, ps)
+		return out
 	}
 	out := make([]ParticipantSnap, 0, len(ps))
 	for _, p := range ps {
-		if p.XUID != xuid {
+		if p.Kills < maxK {
 			out = append(out, p)
 		}
 	}

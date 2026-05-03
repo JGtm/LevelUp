@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { tokenCssVar } from '@/lib/accessibility'
+import { dropShadowForDifficulty, boxShadowForDifficulty } from '@/lib/medalDifficulty'
 import type { MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
 import {
   SQUAD_MAIN_PLAYER_TOKEN,
@@ -77,6 +78,8 @@ function MedalChip({ item }: { item: MedalDigestItem }) {
 
 function MedalIconTile({ item }: { item: MedalDigestItem }) {
   const tip = medalTooltip(item)
+  const dropGlow = dropShadowForDifficulty(item.difficulty)
+  const boxGlow = boxShadowForDifficulty(item.difficulty)
   return (
     <span className="relative flex flex-col items-center gap-0.5" title={tip}>
       {item.image_url ? (
@@ -84,9 +87,13 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
           src={item.image_url}
           alt={item.label || String(item.medal_id)}
           className="h-10 w-10 object-contain"
+          style={dropGlow ? { filter: dropGlow } : undefined}
         />
       ) : (
-        <span className="h-10 w-10 flex items-center justify-center rounded-full bg-muted text-xs font-bold uppercase">
+        <span
+          className="h-10 w-10 flex items-center justify-center rounded-full bg-muted text-xs font-bold uppercase"
+          style={boxGlow ? { boxShadow: boxGlow } : undefined}
+        >
           {(item.label ?? '?').charAt(0)}
         </span>
       )}
@@ -103,6 +110,48 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
         {item.total_count}
       </span>
     </span>
+  )
+}
+
+// Ordre d'affichage des catégories dans la grille expandable.
+const CATEGORY_ORDER = ['multikill', 'spree', 'skill', 'style', 'mode', 'proficiency']
+
+const CATEGORY_LABEL: Record<string, string> = {
+  multikill:   'Multi-kills',
+  spree:       'Séries',
+  skill:       'Compétence',
+  style:       'Style',
+  mode:        'Mode',
+  proficiency: 'Maîtrise',
+}
+
+function MedalExpandedGrid({ medals }: { medals: MedalDigestItem[] }) {
+  // Grouper par catégorie ; les sans-catégorie vont dans "other"
+  const groups = new Map<string, MedalDigestItem[]>()
+  for (const m of medals) {
+    const key = m.category || 'other'
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(m)
+  }
+  const orderedKeys = [
+    ...CATEGORY_ORDER.filter((k) => groups.has(k)),
+    ...[...groups.keys()].filter((k) => !CATEGORY_ORDER.includes(k)),
+  ]
+  return (
+    <div className="pt-1 space-y-3">
+      {orderedKeys.map((cat) => (
+        <div key={cat}>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+            {CATEGORY_LABEL[cat] ?? cat}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {groups.get(cat)!.map((m) => (
+              <MedalIconTile key={m.medal_id} item={m} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -157,13 +206,7 @@ function PlayerMedalCard({
           >
             {expanded ? t.collapseLabel : `${t.expandLabel} (${entry.all_medals.length})`}
           </button>
-          {expanded && (
-            <div className="flex flex-wrap gap-3 pt-1">
-              {entry.all_medals.map((m) => (
-                <MedalIconTile key={m.medal_id} item={m} />
-              ))}
-            </div>
-          )}
+          {expanded && <MedalExpandedGrid medals={entry.all_medals} />}
         </>
       )}
     </div>

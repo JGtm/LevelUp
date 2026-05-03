@@ -406,9 +406,9 @@ const FR_TEXT: SettingsText = {
   progressionTitle: 'Progression long-terme',
   showProgressionLabel: 'Afficher Objectifs & Prestige',
   progressionHint:
-    "Les Objectifs sont des défis personnalisés (kills, KDA, précision…) sur une fenêtre " +
-    "temporelle ; chaque objectif complété rapporte des Prestige Points qui déterminent " +
-    "votre palier (Normal, Heroic, Legendary, Mythic). Désactiver masque la section " +
+    "Les Objectifs sont des défis personnalisés (frags, FDA, précision…) sur une fenêtre " +
+    "temporelle ; chaque objectif complété rapporte des Points de Prestige qui déterminent " +
+    "votre palier (Normal, Héroïque, Légendaire, Mythique). Désactiver masque la section " +
     "Prestige sur l'Accueil et l'entrée Objectifs dans la barre de navigation.",
   progressionGlossaryLink: 'En savoir plus dans le glossaire',
 

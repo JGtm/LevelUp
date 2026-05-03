@@ -1616,6 +1616,8 @@ export interface MedalDigestItem {
   image_url?: string
   total_count: number
   match_count: number
+  category?: string    // multikill | spree | skill | style | mode | proficiency
+  difficulty?: string  // Normal | Heroic | Legendary | Mythic
 }
 
 export interface MedalDigestEntry {

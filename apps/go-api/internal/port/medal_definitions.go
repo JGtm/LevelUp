@@ -7,6 +7,8 @@ type MedalDefinitionRow struct {
 	MedalID     int64
 	Label       string
 	Description string
+	Difficulty  string // "Normal" | "Heroic" | "Legendary" | "Mythic"
+	MedalType   string // "multikill" | "spree" | "skill" | "style" | "mode" | "proficiency"
 }
 
 // MedalDefinitionsRepository résout les labels et descriptions de médailles

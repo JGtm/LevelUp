@@ -208,6 +208,52 @@ func TestTourist_OnlyOneKiller_NoBadge(t *testing.T) {
 	}
 }
 
+// Parité Python identify_last_group_kill : si l'enemy est globalement le plus
+// lent à tuer mais que le squad a aussi un slowest, le badge va au slowest squad.
+func TestTourist_FilterToSquadBeforeSlowest(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Events: []analysis.ImpactEvent{
+			killEv(500, "A"),  // squad
+			killEv(2000, "B"), // squad (slowest squad first kill)
+			killEv(9000, "E"), // enemy (slowest globally — doit être ignoré)
+		},
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("A", 2, 1, 0, 0),
+			mkSnap("B", 2, 1, 0, 0),
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if !hasBadge(badges, "last_group_kill", "B") {
+		t.Error("attendu last_group_kill pour B (slowest first kill PARMI le squad)")
+	}
+	if hasBadge(badges, "last_group_kill", "E") {
+		t.Error("E (enemy) ne doit pas avoir last_group_kill même s'il est globalement le plus lent")
+	}
+}
+
+// Parité Python identify_first_group_death : si l'enemy meurt globalement en
+// premier, le badge va au premier mort PARMI le squad.
+func TestFirstGroupDeath_FilterToSquadBeforeFirst(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Events: []analysis.ImpactEvent{
+			deathEv(200, "E"),  // enemy mort en 1er globalement (à ignorer)
+			deathEv(800, "S1"), // squad (premier mort du squad)
+			deathEv(1200, "S2"),
+		},
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("S1", 3, 0, 1, 0),
+			mkSnap("S2", 3, 0, 1, 0),
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if !hasBadge(badges, "first_group_death", "S1") {
+		t.Error("attendu first_group_death pour S1 (premier mort PARMI le squad)")
+	}
+	if hasBadge(badges, "first_group_death", "E") {
+		t.Error("E (enemy) ne doit pas avoir first_group_death même s'il meurt globalement en 1er")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // top_killer / Bourreau
 // ---------------------------------------------------------------------------

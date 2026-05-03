@@ -494,10 +494,15 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		badges := analysis.ComputeMatchImpactFull(analysis.MatchImpactInput{
 			Events: evs, Participants: snaps,
 		})
-		// Filtrer aux badges des joueurs de l'escouade.
+		// Filtrer aux badges des joueurs de l'escouade ET aux 8 badges du
+		// scoreboard impact (parité Python : top_gun n'est pas inclus dans
+		// la matrice impact même s'il est calculé).
 		matchHadBadge := false
 		cellByGT := map[string][]string{}
 		for _, b := range badges {
+			if _, scored := impactScoreWeights[b.BadgeKey]; !scored {
+				continue
+			}
 			gt, ok := xuidToGT[b.PlayerXUID]
 			if !ok {
 				continue
@@ -1661,6 +1666,8 @@ func assembleMedalDigest(
 				ImageURL:    imageURL,
 				TotalCount:  ma.totalCount,
 				MatchCount:  ma.matchCount,
+				Category:    def.MedalType,
+				Difficulty:  def.Difficulty,
 			})
 			total += ma.totalCount
 		}

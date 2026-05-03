@@ -20,6 +20,7 @@ import type { MapBreakdownRow } from '@/lib/api/types'
 
 const DIVERGENCE_THRESHOLD = 0.05
 const PARITY_LINE_COLOR = 'rgba(180, 180, 180, 0.6)'
+const HISTORY_COLOR = 'rgba(120, 120, 120, 0.45)'
 
 export interface WinRateVsHistoryBulletOpts {
   mapLabelOf: (mapUI: string) => string
@@ -51,13 +52,12 @@ export function buildWinRateVsHistoryBulletOption(
   const { mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel } = opts
   const sorted = [...rows].sort((a, b) => b.match_count - a.match_count)
   const mapLabels = sorted.map((r) => mapLabelOf(r.map_ui))
-  const histColor = resolveToken('chart-series-1')
   const negColor = resolveToken('divergent-neg')
 
   const histData = sorted.map((r) =>
     r.historical_win_rate !== undefined
-      ? { value: toPercent(r.historical_win_rate), itemStyle: { color: histColor, opacity: 0.85 } }
-      : { value: null, itemStyle: { color: histColor, opacity: 0.85 } },
+      ? { value: toPercent(r.historical_win_rate), itemStyle: { color: HISTORY_COLOR } }
+      : { value: null, itemStyle: { color: HISTORY_COLOR } },
   )
   const sessionData = sorted.map((r) => ({
     value: toPercent(r.win_rate),
@@ -96,9 +96,7 @@ export function buildWinRateVsHistoryBulletOption(
       {
         name: historyLabel,
         type: 'bar',
-        barMaxWidth: 14,
-        barGap: '-100%',
-        z: 1,
+        barMaxWidth: 12,
         data: histData,
         markLine: {
           silent: true,
@@ -111,9 +109,7 @@ export function buildWinRateVsHistoryBulletOption(
       {
         name: sessionLabel,
         type: 'bar',
-        barMaxWidth: 14,
-        barGap: '-100%',
-        z: 2,
+        barMaxWidth: 12,
         data: sessionData,
         ...(zeroIndices.length > 0
           ? {

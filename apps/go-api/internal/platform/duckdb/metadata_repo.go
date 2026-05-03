@@ -320,3 +320,25 @@ func (r *MetadataRepo) EnsureStagingTables(ctx context.Context) error {
 	}
 	return nil
 }
+
+// PromoteMedalDifficultyType met à jour les colonnes difficulty et medal_type
+// dans medal_definitions en joignant waypoint_medals_raw sur name_id → medal_name_id.
+// Idempotent : ne touche que les lignes où difficulty = 'Normal' ET medal_type = ”
+// (valeurs par défaut), pour ne pas écraser des surcharges manuelles.
+func (r *MetadataRepo) PromoteMedalDifficultyType(ctx context.Context, titleID string) (int64, error) {
+	result, err := r.meta.Exec(ctx, `
+		UPDATE medal_definitions
+		SET difficulty = wr.difficulty,
+		    medal_type  = wr.medal_type
+		FROM waypoint_medals_raw wr
+		WHERE medal_definitions.medal_name_id = TRY_CAST(wr.name_id AS BIGINT)
+		  AND wr.title_id   = ?
+		  AND wr.difficulty != ''
+		  AND wr.medal_type != ''
+	`, titleID)
+	if err != nil {
+		return 0, fmt.Errorf("PromoteMedalDifficultyType: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	return n, nil
+}

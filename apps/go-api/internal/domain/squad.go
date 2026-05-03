@@ -48,8 +48,13 @@ type SquadMatchRow struct {
 	PerformanceScore *float64
 	IsWithFriends    bool
 	// Sprint N : métriques précision avancée
-	HeadshotKills int
-	PerfectKills  int
+	HeadshotKills  int
+	PerfectKills   int
+	EnemyMMR       *float64
+	MyTeamScore    *int
+	EnemyTeamScore *int
+	MapID          string
+	PlaylistID     string
 }
 
 // TeammateMatchRow est une ligne brute chargée depuis Q31 (stats d'un coéquipier).
