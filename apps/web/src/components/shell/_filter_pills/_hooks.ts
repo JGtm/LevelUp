@@ -4,7 +4,7 @@
  * Extrait de FilterOmnibar.tsx pour respecter la limite 500L/module.
  */
 import { useEffect, useRef } from 'react'
-import { DEFAULT_GAP_MINUTES } from '@/stores/globalFilterStore'
+import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import type {
   CascadeInput,
   FilterContextInput,
