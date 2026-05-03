@@ -3,18 +3,19 @@
  *
  * Affiche, au-dessus des onglets de la page match, les badges narratifs
  * calculés côté backend (analysis.ComputeMatchImpactFull) :
- *   - event-based : ⚡ Premier sang, 🪦 Première victime, 🎯 Finisseur,
- *     💀 Boulet, 🐌 Touriste, 🔫 Top Gun (timing affiché)
- *   - stat-based : 🥇 Bourreau, 🛡️ Héros silencieux, 🐍 Faux-frère
+ *   - event-based : Premier sang, Première victime, Finisseur, Boulet,
+ *     Touriste, Top Gun (timing affiché)
+ *   - stat-based : Bourreau, Héros silencieux, Faux-frère
  *
+ * Pictos : Fluent Emoji Flat (cf. components/feedback/BadgeIcon).
  * Aligne le rendu sur la branche main (badges + horodatage). La résolution
  * xuid → gamertag se fait via le scoreboard du match.
  */
 import { Badge } from '@/components/ui/badge'
+import { BadgeIcon } from '@/components/feedback/BadgeIcon'
 import type { MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
 
 interface BadgeMeta {
-  icon: string
   /** order d'affichage (1 = en premier) */
   order: number
   /** style visuel — outline par défaut */
@@ -22,19 +23,19 @@ interface BadgeMeta {
 }
 
 const BADGE_META: Record<string, BadgeMeta> = {
-  first_blood: { icon: '⚡', order: 1 },
-  first_group_death: { icon: '🪦', order: 2 },
-  clutch_finisher: { icon: '🎯', order: 3 },
-  last_casualty: { icon: '💀', order: 4 },
-  last_group_kill: { icon: '🐌', order: 5 },
-  top_gun: { icon: '🔫', order: 6 },
-  top_killer: { icon: '🥇', order: 7, variant: 'secondary' },
-  silent_hero: { icon: '🛡️', order: 8, variant: 'secondary' },
-  false_brother: { icon: '🐍', order: 9, variant: 'secondary' },
+  first_blood: { order: 1 },
+  first_group_death: { order: 2 },
+  clutch_finisher: { order: 3 },
+  last_casualty: { order: 4 },
+  last_group_kill: { order: 5 },
+  top_gun: { order: 6 },
+  top_killer: { order: 7, variant: 'secondary' },
+  silent_hero: { order: 8, variant: 'secondary' },
+  false_brother: { order: 9, variant: 'secondary' },
   // Alias — anciens keys backend (avant le portage analysis Go).
-  tourist: { icon: '🐌', order: 5 },
-  finisher: { icon: '🎯', order: 3 },
-  first_victim: { icon: '🪦', order: 2 },
+  tourist: { order: 5 },
+  finisher: { order: 3 },
+  first_victim: { order: 2 },
 }
 
 function formatTime(ms: number | null | undefined): string | null {
@@ -88,7 +89,7 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
               className={`gap-1 text-xs ${isMe ? 'ring-1 ring-primary/60' : ''}`}
               title={[b.label, gamertag, time && `à ${time}`].filter(Boolean).join(' · ')}
             >
-              {meta?.icon && <span>{meta.icon}</span>}
+              <BadgeIcon badgeKey={b.key} size={14} />
               <span className="font-medium">{b.label}</span>
               {gamertag && (
                 <span className="text-muted-foreground">· {gamertag}</span>

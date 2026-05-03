@@ -256,15 +256,7 @@ export function SquadContributionsPage() {
       )}
 
       {impactMatrix && impactMatrix.matches.length > 0 && impactMatrix.players.length > 0 && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold">{t.impact.title}</h3>
-              <p className="text-sm text-muted-foreground">{t.impact.description}</p>
-            </div>
-            <SquadImpactScoreboard matrix={impactMatrix} />
-          </CardContent>
-        </Card>
+        <SquadImpactScoreboard matrix={impactMatrix} />
       )}
 
       {matchHistory.length > 0 && (
