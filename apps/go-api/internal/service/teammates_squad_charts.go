@@ -1668,14 +1668,15 @@ func assembleMedalDigest(
 				imageURL = fmt.Sprintf("/static/medals/%s/%d.png", titleSlug, medalID)
 			}
 			items = append(items, domain.MedalDigestItem{
-				MedalID:     medalID,
-				Label:       def.Label,
-				Description: def.Description,
-				ImageURL:    imageURL,
-				TotalCount:  ma.totalCount,
-				MatchCount:  ma.matchCount,
-				Category:    def.MedalType,
-				Difficulty:  def.Difficulty,
+				MedalID:       medalID,
+				Label:         def.Label,
+				Description:   def.Description,
+				ImageURL:      imageURL,
+				TotalCount:    ma.totalCount,
+				MatchCount:    ma.matchCount,
+				Category:      def.MedalType,
+				Difficulty:    def.Difficulty,
+				PersonalScore: def.PersonalScore,
 			})
 			total += ma.totalCount
 		}

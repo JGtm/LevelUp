@@ -54,7 +54,8 @@ func (r *MedalDefinitionsRepo) LookupByIDs(
 		        COALESCE(NULLIF(TRIM(mt_loc.name),''), NULLIF(TRIM(mt_en.name),''), NULLIF(TRIM(md.name_en),''), '') AS label,
 		        COALESCE(NULLIF(TRIM(mt_loc.description),''), NULLIF(TRIM(md.description_en),''), '') AS description,
 		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty,
-		        COALESCE(NULLIF(TRIM(md.medal_type),''), '') AS medal_type
+		        COALESCE(NULLIF(TRIM(md.medal_type),''), '') AS medal_type,
+		        COALESCE(md.personal_score, 0) AS personal_score
 		 FROM medal_definitions md
 		 LEFT JOIN medal_translations mt_loc
 		     ON mt_loc.medal_name_id = md.medal_name_id AND mt_loc.lang = '`+lang+`'
@@ -76,15 +77,17 @@ func (r *MedalDefinitionsRepo) LookupByIDs(
 	for rows.Next() {
 		var id int64
 		var label, description, difficulty, medalType string
-		if err := rows.Scan(&id, &label, &description, &difficulty, &medalType); err != nil {
+		var personalScore int
+		if err := rows.Scan(&id, &label, &description, &difficulty, &medalType, &personalScore); err != nil {
 			return result, fmt.Errorf("MedalDefinitionsRepo.LookupByIDs: scan: %w", err)
 		}
 		result[id] = port.MedalDefinitionRow{
-			MedalID:     id,
-			Label:       label,
-			Description: description,
-			Difficulty:  difficulty,
-			MedalType:   medalType,
+			MedalID:       id,
+			Label:         label,
+			Description:   description,
+			Difficulty:    difficulty,
+			MedalType:     medalType,
+			PersonalScore: personalScore,
 		}
 	}
 	if err := rows.Err(); err != nil {

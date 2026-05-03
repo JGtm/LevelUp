@@ -306,14 +306,15 @@ type SessionLabelsList struct {
 // MedalDigestItem est une médaille agrégée sur tous les matchs partagés
 // pour un joueur donné.
 type MedalDigestItem struct {
-	MedalID     int64  `json:"medal_id"`
-	Label       string `json:"label,omitempty"`
-	Description string `json:"description,omitempty"`
-	ImageURL    string `json:"image_url,omitempty"`
-	TotalCount  int    `json:"total_count"`          // total sur tous les matchs
-	MatchCount  int    `json:"match_count"`          // nb matchs où obtenu
-	Category    string `json:"category,omitempty"`   // multikill | spree | skill | style | mode | proficiency
-	Difficulty  string `json:"difficulty,omitempty"` // Normal | Heroic | Legendary | Mythic
+	MedalID       int64  `json:"medal_id"`
+	Label         string `json:"label,omitempty"`
+	Description   string `json:"description,omitempty"`
+	ImageURL      string `json:"image_url,omitempty"`
+	TotalCount    int    `json:"total_count"`              // total sur tous les matchs
+	MatchCount    int    `json:"match_count"`              // nb matchs où obtenu
+	Category      string `json:"category,omitempty"`       // multikill | spree | skill | style | mode | proficiency
+	Difficulty    string `json:"difficulty,omitempty"`     // Normal | Heroic | Legendary | Mythic
+	PersonalScore int    `json:"personal_score,omitempty"` // XP de carrière par médaille (0 si absent)
 }
 
 // MedalDigestEntry est le résumé médailles d'un joueur sur les matchs partagés.
