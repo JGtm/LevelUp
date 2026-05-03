@@ -1,5 +1,52 @@
 # Thought Log
 
+## [2026-05-03] MedalDigest — difficulty + medal_type (couleurs jeu + catégories)
+
+**Statut** : Complété.
+
+**Contexte** : MedalDigest v1 (livré session précédente) n'avait ni couleurs de difficulté ni
+groupement par catégorie. L'API Halo retourne `Difficulty` (Normal/Heroic/Legendary/Mythic) et
+`Type` (multikill/spree/skill/style/mode/proficiency) dans `waypoint_medals_raw` via le flow
+`refresh-metadata medals`.
+
+**Décision** : stocker `difficulty` + `medal_type` dans `medal_definitions` (migration), les
+propager full-stack jusqu'au composant. Couleurs alignées sur le jeu (vert/bleu/violet/rouge),
+PAS sur l'échelle Palmarès (labels ne correspondent pas : Halo "Legendary" = violet = `epic`
+Palmarès). `dropShadowForDifficulty` sur `<img>` suit la forme PNG ; `boxShadowForDifficulty`
+sur les fallbacks initiale.
+
+**Peuplement** : `refresh-metadata medals --promote` (nouveau flag) copie
+`waypoint_medals_raw.difficulty/medal_type` → `medal_definitions` via JOIN sur `name_id`.
+
+**Résultats** : `go build ./...` + `go test ./internal/service/...` + `tsc --noEmit` : OK.
+
+**Prochaine étape** : relancer `refresh-metadata medals --promote` pour enrichir les données
+existantes en base.
+
+## [2026-05-03] fix impact — parité Python pour first_group_death + last_group_kill
+
+**Statut** : Complété.
+
+**Contexte** : Les scores Impact divergeaient entre Go et Python pour la session du 6 avril. Audit des 5 badges event-based vs `_impact_event_badges.py` sur main.
+
+**Cause racine** : 2 badges Go cherchaient l'extremum globalement (tous joueurs du match) puis filtraient au squad. Python filtre AU SQUAD AVANT de chercher l'extremum :
+
+| Badge | Python | Go (avant) | Go (après) |
+|---|---|---|---|
+| `first_blood` | global min, puis filtre amis | identique | identique |
+| `clutch_finisher` | filtre amis (winners), puis max | identique (`winXUIDs` du squad) | identique |
+| `last_casualty` | filtre amis (losers), puis max | identique (`lossXUIDs` du squad) | identique |
+| `last_group_kill` | filtre amis, puis slowest first kill | global slowest, puis filtre | filtre amis, puis slowest |
+| `first_group_death` | filtre amis, puis first death | global first, puis filtre | filtre amis, puis first |
+
+Conséquence du bug : si un ennemi avait le slowest first kill ou la first death du match, le badge était perdu côté Go alors que Python l'attribuait au slowest/first squad.
+
+**Fix** : Ajout de `squadXUIDs` dérivé de `Participants` dans `ComputeMatchImpactFull`. Helper `filterEventsByActor`. Filtrage des events au squad avant `firstByTime(deaths)` et `slowestFirstKillerWithTime(kills)`. Si `Participants` vide (tests legacy sans squad context), comportement global préservé.
+
+**Tests ajoutés** : `TestTourist_FilterToSquadBeforeSlowest` + `TestFirstGroupDeath_FilterToSquadBeforeFirst` cadenassent que le slowest/first PARMI le squad est attribué même si un ennemi est le slowest/first global.
+
+**Vérifications** : `go test ./...` OK (tout vert, aucune régression).
+
 ## [2026-05-02] feat escouade — MedalDigest narratif en bas de SquadSynergiesPage
 
 **Statut** : Complété.

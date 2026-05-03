@@ -308,8 +308,10 @@ type MedalDigestItem struct {
 	Label       string `json:"label,omitempty"`
 	Description string `json:"description,omitempty"`
 	ImageURL    string `json:"image_url,omitempty"`
-	TotalCount  int    `json:"total_count"` // total sur tous les matchs
-	MatchCount  int    `json:"match_count"` // nb matchs où obtenu
+	TotalCount  int    `json:"total_count"`          // total sur tous les matchs
+	MatchCount  int    `json:"match_count"`          // nb matchs où obtenu
+	Category    string `json:"category,omitempty"`   // multikill | spree | skill | style | mode | proficiency
+	Difficulty  string `json:"difficulty,omitempty"` // Normal | Heroic | Legendary | Mythic
 }
 
 // MedalDigestEntry est le résumé médailles d'un joueur sur les matchs partagés.

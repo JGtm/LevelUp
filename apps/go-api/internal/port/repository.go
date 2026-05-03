@@ -476,6 +476,15 @@ type SquadRepository interface {
 	// LoadSynthesisHeatmap charge les données heatmap carte × mode (Q33).
 	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
 
+	// LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.
+	// assetType : "map" | "playlist". Retourne nil sans erreur si table absente ou IDs vides.
+	LoadAssetTranslationsFR(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error)
+
+	// LoadModeTranslationsFR retourne les traductions FR des modes EN (depuis metadata.mode_name_tr).
+	// Les clés sont les noms EN normalisés (ex: "Slayer"), les valeurs les noms FR (ex: "Tueur").
+	// Retourne nil sans erreur si la table est absente ou si modeENs est vide.
+	LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error)
+
 	// P4.3 finale : LoadSynthesisMatches retiré (squad/teammates chargent
 	// canonical via PlayerMatchesRepository).
 }
@@ -602,6 +611,12 @@ func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ []string) (map[string]string, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
 	return nil, nil
 }
 

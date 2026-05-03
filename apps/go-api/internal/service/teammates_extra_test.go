@@ -490,14 +490,14 @@ func TestComputeHistoricalMapPerf_AveragesScores(t *testing.T) {
 		},
 	}
 	hist := computeHistoricalMapPerfByLabel(rows)
-	if hist["Bazaar"] != 60.0 {
-		t.Errorf("Bazaar: expected 60 ((70+50)/2), got %f", hist["Bazaar"])
+	if hist["bazaar"] != 60.0 {
+		t.Errorf("Bazaar: expected 60 ((70+50)/2), got %f", hist["bazaar"])
 	}
-	if hist["Recharge"] != 90.0 {
-		t.Errorf("Recharge: expected 90, got %f", hist["Recharge"])
+	if hist["recharge"] != 90.0 {
+		t.Errorf("Recharge: expected 90, got %f", hist["recharge"])
 	}
-	if _, ok := hist["Aquarius"]; ok {
-		t.Errorf("Aquarius: expected absent (no score), got %f", hist["Aquarius"])
+	if _, ok := hist["aquarius"]; ok {
+		t.Errorf("Aquarius: expected absent (no score), got %f", hist["aquarius"])
 	}
 }
 
@@ -518,9 +518,9 @@ func TestEnrichMapBreakdown_HistoricalPerf_JoinsByMapUI(t *testing.T) {
 	}
 }
 
-// TestComputeHistoricalMapWR_UsesDefaultLabel vérifie que la clé est DefaultLabel
-// (= map_name EN depuis assetReference). Cohérent avec Q30 quand map_name_fr == map_name.
-func TestComputeHistoricalMapWR_UsesDefaultLabel(t *testing.T) {
+// TestComputeHistoricalMapWR_UsesMapID vérifie que la clé est l'UUID (Map.ID),
+// language-agnostic — nécessaire pour que la jointure survive à l'enrichissement FR des labels.
+func TestComputeHistoricalMapWR_UsesMapID(t *testing.T) {
 	rows := makeCanonicalRowsWithMaps([]struct{ id, name string }{
 		{"bazaar_id", "Bazaar"},
 		{"bazaar_id", "Bazaar"},
@@ -528,11 +528,11 @@ func TestComputeHistoricalMapWR_UsesDefaultLabel(t *testing.T) {
 	}, []canonical.Outcome{canonical.OutcomeWin, canonical.OutcomeLoss, canonical.OutcomeWin})
 
 	hist := computeHistoricalMapWRByLabel(rows)
-	if hist["Bazaar"] != 0.5 {
-		t.Errorf("Bazaar WR: expected 0.5, got %f", hist["Bazaar"])
+	if hist["bazaar_id"] != 0.5 {
+		t.Errorf("Bazaar WR: expected 0.5, got %f", hist["bazaar_id"])
 	}
-	if hist["Recharge"] != 1.0 {
-		t.Errorf("Recharge WR: expected 1.0, got %f", hist["Recharge"])
+	if hist["recharge_id"] != 1.0 {
+		t.Errorf("Recharge WR: expected 1.0, got %f", hist["recharge_id"])
 	}
 }
 

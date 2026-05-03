@@ -190,10 +190,12 @@ func runAll(cfg *config.AppConfig, args []string) error {
 
 // runMedals fetch les métadonnées médailles Waypoint, applique les garde-fous
 // et upserte dans waypoint_medals_raw (staging uniquement, pas de promotion auto).
+// Avec --promote : copie difficulty + medal_type vers medal_definitions après l'upsert.
 func runMedals(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("medals", flag.ExitOnError)
 	titleID := fs.String("title-id", "halo_infinite", "Title ID")
 	force := fs.Bool("force", false, "Ignorer le garde-fou de cardinalité")
+	promote := fs.Bool("promote", false, "Promouvoir difficulty+medal_type vers medal_definitions après l'upsert")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -237,7 +239,16 @@ func runMedals(cfg *config.AppConfig, args []string) error {
 	}
 
 	fmt.Printf("✅ %d médailles upsertées dans waypoint_medals_raw (hash %s)\n", len(entries), newHash[:8])
-	fmt.Println("ℹ️  Promotion vers medal_metadata : à valider manuellement avant d'activer (D1.4)")
+
+	if *promote {
+		n, err := repo.PromoteMedalDifficultyType(ctx, *titleID)
+		if err != nil {
+			return fmt.Errorf("PromoteMedalDifficultyType: %w", err)
+		}
+		fmt.Printf("✅ %d lignes medal_definitions enrichies (difficulty + medal_type)\n", n)
+	} else {
+		fmt.Println("ℹ️  Promotion vers medal_definitions : relancer avec --promote pour enrichir difficulty+medal_type")
+	}
 	return nil
 }
 

@@ -39,8 +39,8 @@ SELECT
     r.start_time,
     COALESCE(r.map_name, '')                                     AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
-    COALESCE(r.pair_name, '')                                    AS pair_name,
-    COALESCE(r.playlist_name, '')                                AS playlist_name,
+    COALESCE(r.pair_name_fr, r.pair_name, '')                    AS pair_name,
+    COALESCE(r.playlist_name_fr, r.playlist_name, '')            AS playlist_name,
     COALESCE(r.is_firefight, FALSE)                              AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                                 AS is_ranked,
     COALESCE(p1.outcome, 0)                                      AS outcome,
@@ -65,7 +65,12 @@ SELECT
         WHERE me.match_id = p1.match_id
           AND me.xuid = p1.xuid
           AND me.medal_name_id = 1512363953
-    ), 0)::INTEGER                                              AS perfect_kills
+    ), 0)::INTEGER                                              AS perfect_kills,
+    p1.enemy_mmr,
+    CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+    CASE WHEN p1.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+    COALESCE(r.map_id, '')                                               AS map_id,
+    COALESCE(r.playlist_id, '')                                          AS playlist_id
 FROM shared.match_participants p1
 JOIN shared.v_match_full r ON r.match_id = p1.match_id
 JOIN shared.match_participants p2

@@ -83,6 +83,7 @@ const WHITELIST_PATTERNS = [
   /\/features\/compare\/i18n\.ts$/,         // dict FR/EN local de compare
   /\/lib\/prestige\.ts$/,                   // dict TIER_LABELS_FR — fallback canonique
   /\/features\/palmares\/rarity\.ts$/,      // dict rarity Halo (asset Halo natif)
+  /\/lib\/medalDifficulty\.ts$/,            // dict difficulty médailles Halo (Normal/Heroic/Legendary/Mythic — valeurs API)
   /\/lib\/i18n\/manifests\//,                // sources TOML i18n (whitelistees a la racine du linter mais le walker filtre .ts uniquement)
   /\/lib\/i18n\/generated\//,                // modules generes par scripts/build_i18n_manifests.mjs
   /\/lib\/i18n\/format\.tsx?$/,              // wrapper runtime ICU MessageFormat (fallback strings techniques uniquement)

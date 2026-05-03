@@ -306,6 +306,18 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "enrich_medal_definitions_v2",
+		TargetDB:    TargetMetadata,
+		Description: "medal_definitions : ajout difficulty (Normal/Heroic/Legendary/Mythic) + medal_type (multikill/spree/…) issus de waypoint_medals_raw",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS difficulty VARCHAR NOT NULL DEFAULT 'Normal';
+				ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS medal_type VARCHAR NOT NULL DEFAULT '';
+			`)
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
