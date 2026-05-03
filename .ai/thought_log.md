@@ -1,5 +1,17 @@
 # Thought Log
 
+## [2026-05-03] tweak(badges): top_killer/false_brother fidèles aux originaux squad
+
+**Statut** : Complété.
+
+**Contexte** : Suite à la migration Fluent Flat, j'avais unifié `top_killer` sur `1st-place-medal` (🥇) et `false_brother` sur `snake` (🐍) — les choix match-view. User a remarqué que les originaux côté squad (💥 collision, 🗡️ dagger) avaient eux aussi un équivalent flat direct. Préférence affirmée pour la fidélité au scoreboard escouade.
+
+**Décision technique** : remplacement des 2 SVG vendorés (`top_killer.svg` ← `collision`, `false_brother.svg` ← `dagger`) par overwrite. Aucune modif code : `BadgeIcon.tsx` mappe `badge_key → import statique` et le filename n'a pas changé. Le `MatchImpactBadgesBar` côté match-view affiche désormais aussi collision/dagger là où le code natif avait 🥇/🐍 — c'est le compromis assumé pour garder un picto unique par `badge_key`.
+
+**Tests** : `vitest run SquadImpactScoreboard` → 5 verts (alt-text inchangé puisque basé sur `badge_key`).
+
+**Prochaine étape** : RAS.
+
 ## [2026-05-03] feat(medal-digest): câblage final UI — emblèmes joueurs + i18n catégories + grid adaptative
 
 **Statut** : Complété.

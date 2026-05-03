@@ -322,7 +322,7 @@ func (r *WeaponKillsRepo) weaponKillsTableExists(ctx context.Context) bool {
 	err := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT COUNT(*)
 		FROM information_schema.tables
-		WHERE table_schema = 'shared'
+		WHERE table_catalog = 'shared'
 		  AND table_name IN ('weapon_kills', 'v_weapon_kills')
 	`).Scan(&count)
 	if err != nil {
