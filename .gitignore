@@ -184,3 +184,10 @@ make.sh
 dev.ps1
 make.ps1
 SETUP.md
+
+# Vite cache (apps/web)
+apps/web/.vite/
+
+# Mockups UI HTML temporaires (scratchpad design)
+.ai/mock_*.html
+apps/web/__mockup_*.html
