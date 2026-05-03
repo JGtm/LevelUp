@@ -110,6 +110,51 @@ function formatDateShort(iso: string, locale: Locale): string {
   }
 }
 
+/**
+ * Formate une session en label localisé long :
+ *   FR : « Session du 6 avril 2026 de 21:43 à 23:40 »
+ *   EN : « Session of Apr 6, 2026 from 9:43 PM to 11:40 PM »
+ *
+ * Fallback sur le `label` brut backend si les timestamps sont absents
+ * (compat ancien backend qui ne renvoie pas started_at_utc/ended_at_utc).
+ */
+function formatSessionLabel(
+  sessionLabel: string,
+  startedAtUTC: string | undefined,
+  endedAtUTC: string | undefined,
+  locale: Locale,
+): string {
+  if (!startedAtUTC) return sessionLabel
+  try {
+    const start = new Date(startedAtUTC)
+    if (isNaN(start.getTime())) return sessionLabel
+    const dateFmt = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    const timeFmt = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: locale !== 'fr',
+    })
+    const dateLabel = dateFmt.format(start)
+    const startTime = timeFmt.format(start)
+    const end = endedAtUTC ? new Date(endedAtUTC) : null
+    if (end && !isNaN(end.getTime()) && end.getTime() !== start.getTime()) {
+      const endTime = timeFmt.format(end)
+      return locale === 'fr'
+        ? `Session du ${dateLabel} de ${startTime} à ${endTime}`
+        : `Session of ${dateLabel} from ${startTime} to ${endTime}`
+    }
+    return locale === 'fr'
+      ? `Session du ${dateLabel} à ${startTime}`
+      : `Session of ${dateLabel} at ${startTime}`
+  } catch {
+    return sessionLabel
+  }
+}
+
 // Layout 3-zones : [◀ Précédente | Label centré | Suivante ▶]
 // Pas de sticky propre — le parent (NavL2 ou SquadLayout) gère sa propre
 // barre sticky qui contient le rail. La border-t/-b délimite visuellement
@@ -144,6 +189,7 @@ export function PeriodSessionRail() {
         session={mode.session}
         index={mode.index}
         total={mode.total}
+        locale={locale}
         t={t}
       />
     )
@@ -253,13 +299,26 @@ function MultiSessionRail({ count, t }: { count: number; t: RailText }) {
 }
 
 interface SessionRailProps {
-  session: { session_id: string; label: string; match_count: number }
+  session: {
+    session_id: string
+    label: string
+    match_count: number
+    started_at_utc?: string
+    ended_at_utc?: string
+  }
   index: number
   total: number
+  locale: Locale
   t: RailText
 }
 
-function SessionRail({ session, index, total, t }: SessionRailProps) {
+function SessionRail({ session, index, total, locale, t }: SessionRailProps) {
+  const formattedLabel = formatSessionLabel(
+    session.label,
+    session.started_at_utc,
+    session.ended_at_utc,
+    locale,
+  )
   const isAutoSnapping = useGlobalFilterStore((s) => s.isAutoSnappingToLatest)
   const goToPrevSession = useGlobalFilterStore((s) => s.goToPrevSession)
   const goToNextSession = useGlobalFilterStore((s) => s.goToNextSession)
@@ -283,7 +342,7 @@ function SessionRail({ session, index, total, t }: SessionRailProps) {
       center={
         <>
           <span className="truncate text-sm font-semibold text-foreground" title={session.label}>
-            {session.label}
+            {formattedLabel}
           </span>
           {isAutoSnapping && (
             <span
