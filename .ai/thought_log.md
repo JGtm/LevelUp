@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-03] fix(timezone): généralisation du pattern média à toutes les pages Go
+
+**Statut** : Complété.
+
+**Contexte** : User signale que la page Escouade affiche des heures de match décalées de +1/+2h. Investigation : seuls `media_repo.go`, `ops/media.go`, `sync/engagement.go` et `engagement_score_repo_queries.go` appliquaient le pattern canonique `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')`. Les 7 autres pages lisaient `r.start_time` direct → bug visible sur tous les matchs synchronisés après le fix DuckDB de mars 2026 (bytes UTC interprétés comme Paris par la session TZ).
+
+**Décision technique** :
+1. Généralisation du pattern média à 7 fichiers : `queries_squad.go`, `queries_career.go`, `queries_match.go`, `queries_home_citations.go`, `highlight_events_repo.go`, `match_exclusion_repo.go`, `leaderboard_repo.go`. Toutes les expressions `r.start_time` (SELECT, ORDER BY, WHERE, sous-queries, fenêtres window) sont remplacées par `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')`.
+2. Vue `mv_player_matches` régénérée pour exposer `start_time_utc` et `end_time_utc` (`applyMvPlayerMatchesView` + nouvelle migration `add_mv_player_matches_utc_cols`, idempotente via `CREATE OR REPLACE VIEW`). Sans ça, `Q4MV` (vue matérialisée) n'avait pas accès aux colonnes UTC.
+3. Pour les COALESCE qui mélangeaient `r.start_time` avec d'autres TIMESTAMPs naïfs (ex: `pme.updated_at`, `msr.created_at` dans leaderboard), tous les TIMESTAMPs sont convertis en TIMESTAMPTZ via `AT TIME ZONE 'UTC'` pour préserver la cohérence des types.
+4. Test `TestBuildQ37MediaQuery_SharedSocialSchemaUsesPlayerScopedJoin` mis à jour pour matcher la nouvelle expression.
+
+**Résultats observés** :
+- `go build ./...` OK, `go vet ./...` zéro warning.
+- `go test ./internal/platform/duckdb/...` : aucun nouveau fail. Les 8 fails restants sont pré-existants (commit `5fb6363a` medal-digest, ALTER TABLE NOT NULL non supporté par DuckDB).
+- `go test ./internal/service/... ./internal/sync/... ./internal/ops/...` tous verts.
+
+**Pages corrigées** : Squad (Q30/Q31/Q33b), Career (Q4/Q4MV/Q5/Q8/Q9/Q22/Q23), Match (Q13/Q19/Q25 navigation prev/next), Home (Q26/Q26g/Q27 sessions, Q37 media QUALIFY ORDER), Highlight events (filtre Since), Match exclusions (ListExcluded), Leaderboard (sort_time).
+
+**Conclusion / prochaine étape** : Pattern timezone unifié sur les 11 pages Go qui touchaient `match_registry.start_time`. Le user devra relancer le serveur pour appliquer la migration `add_mv_player_matches_utc_cols`. Pattern documenté en mémoire (`reference_timezone_canonical_pattern.md`) pour ne plus jamais reconstruire ce diagnostic.
+
+---
+
 ## [2026-05-03] fix impact — parité totale Go ↔ Python validée par diff sur session 6 avril
 
 **Statut** : Complété.

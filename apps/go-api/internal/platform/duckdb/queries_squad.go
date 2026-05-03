@@ -36,7 +36,7 @@ LIMIT 50`
 const Q30SquadMatches = `
 SELECT
     p1.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     COALESCE(r.map_name, '')                                     AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
     COALESCE(r.pair_name_fr, r.pair_name, '')                    AS pair_name,
@@ -79,14 +79,14 @@ JOIN shared.match_participants p2
     AND p2.xuid     = ?
 LEFT JOIN player_match_enrichment pme ON pme.match_id = p1.match_id
 WHERE p1.xuid = ?
-ORDER BY r.start_time DESC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q31 : Squad — stats d'un coéquipier sur les matchs communs.
 // Paramètres : ?1 = xuid joueur principal (p_main), ?2 = xuid coéquipier (p).
 const Q31TeammateMatches = `
 SELECT
     p.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
     COALESCE(r.pair_name, '')                                    AS pair_name,
     COALESCE(p.outcome, 0)                                       AS outcome,
@@ -106,7 +106,7 @@ JOIN shared.match_participants p_main
     AND p_main.team_id  = p.team_id
     AND p_main.xuid     = ?
 WHERE p.xuid = ?
-ORDER BY r.start_time DESC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q32SquadImpactEventsTemplate : template SQL pour charger les events d'impact escouade.
 // Les '?' positionnels sont insérés dynamiquement (fmt.Sprintf(Q32SquadImpactEventsTemplate, placeholders)).
@@ -145,7 +145,7 @@ ORDER BY match_count DESC`
 const Q33bSynthesisMatches = `
 SELECT
     r.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     p.outcome,
     p.kills,
     p.deaths,
@@ -162,4 +162,4 @@ FROM shared.match_participants p
 JOIN shared.match_registry r ON r.match_id = p.match_id
 LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id
 WHERE p.xuid = ?
-ORDER BY r.start_time DESC`
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
