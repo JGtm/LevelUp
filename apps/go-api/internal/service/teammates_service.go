@@ -205,7 +205,7 @@ func (s *TeammatesService) GetPage(
 		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
 		weaponKills = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		firstEvents = s.buildSquadFirstEvents(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
-		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
 	}
 
 	// Header (SessionBriefing) — alimente le composant <SessionBriefing> dans

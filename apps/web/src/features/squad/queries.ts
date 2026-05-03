@@ -14,7 +14,7 @@ export function useTeammates(
   sessionLabels: string[] = [],
 ) {
   return useQuery({
-    queryKey: queryKeys.teammates(playerSlug, filterContextHash, confirmedGts, sessionLabels),
+    queryKey: queryKeys.teammates(playerSlug, filterContextHash, confirmedGts, sessionLabels, request.locale ?? ''),
     queryFn: () =>
       api.post<TeammatesPageResponse>(
         `/players/${playerSlug}/pages/teammates`,

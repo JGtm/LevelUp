@@ -65,8 +65,8 @@ export const queryKeys = {
   palmaresRelations: (playerSlug: string) => ['palmares', playerSlug, 'relations'] as const,
 
   // Escouade / Teammates (Slice 6)
-  teammates: (playerSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = []) =>
-    ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(',')] as const,
+  teammates: (playerSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '') =>
+    ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale] as const,
   squadV2: (playerSlug: string, teammates: string[], period: string, experienceTypes: string[], playlists: string[], maps: string[] = [], modes: string[] = []) =>
     ['squad-v2', playerSlug, [...teammates].sort().join(','), period, [...experienceTypes].sort().join(','), [...playlists].sort().join(','), [...maps].sort().join(','), [...modes].sort().join(',')] as const,
 

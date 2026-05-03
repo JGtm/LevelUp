@@ -184,6 +184,20 @@ function MedalExpandedGrid({
   )
 }
 
+function dominantCategoryFor(medals: MedalDigestItem[]): string | null {
+  const totals = new Map<string, number>()
+  for (const m of medals) {
+    const cat = m.category || 'other'
+    totals.set(cat, (totals.get(cat) ?? 0) + m.total_count)
+  }
+  let best: string | null = null
+  let bestVal = 0
+  for (const [cat, val] of totals) {
+    if (val > bestVal) { bestVal = val; best = cat }
+  }
+  return best
+}
+
 function PlayerMedalCard({
   entry,
   color,
@@ -194,21 +208,46 @@ function PlayerMedalCard({
   t: SquadText['medals']
 }) {
   const [expanded, setExpanded] = useState(false)
+  const domCat = dominantCategoryFor(entry.all_medals)
+  const domCatLabel = domCat
+    ? (t.categoryLabels[domCat as keyof typeof t.categoryLabels] ?? domCat)
+    : null
+
   return (
     <div
       className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
       style={{ borderLeft: `4px solid ${color}` }}
     >
-      <div className="flex items-center gap-2">
-        <PlayerAvatar gamertag={entry.player} color={color} />
-        <span className="font-semibold text-sm text-foreground truncate">{entry.player}</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <PlayerAvatar gamertag={entry.player} color={color} />
+          <span className="font-semibold text-sm text-foreground truncate">{entry.player}</span>
+        </div>
+        {domCatLabel && (
+          <div className="flex flex-col items-end shrink-0">
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground leading-none">
+              {t.dominantCategory}
+            </span>
+            <span
+              className="text-xs font-semibold mt-0.5 rounded px-1.5 py-0.5"
+              style={{ background: `${color}22`, color }}
+            >
+              {domCatLabel}
+            </span>
+          </div>
+        )}
       </div>
 
       {entry.top_medals.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {entry.top_medals.map((m) => (
-            <MedalChip key={m.medal_id} item={m} />
-          ))}
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1.5">
+            {t.topMedals}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {entry.top_medals.map((m) => (
+              <MedalChip key={m.medal_id} item={m} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -251,12 +290,8 @@ export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
 
   const allPlayers = entries.map((e) => e.player)
 
-  // 2 joueurs → 2 colonnes 50/50 pour occuper tout l'espace.
-  // 3-4 joueurs → auto-fill 240px (3 colonnes sur écran large, 2×2 sur moyen).
-  const gridCols =
-    entries.length <= 2
-      ? `repeat(${entries.length}, 1fr)`
-      : 'repeat(auto-fill, minmax(240px, 1fr))'
+  // Toujours N colonnes égales — squads 2-4 joueurs, largeur fixe.
+  const gridCols = `repeat(${entries.length}, 1fr)`
 
   return (
     <Card>
