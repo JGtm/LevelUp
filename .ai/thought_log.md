@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-05-03] fix(filters): rail période/session — position sous NavL2 + layout 3-zones
+
+**Statut** : Complété (validé en E2E Playwright sur dev server live).
+
+**Contexte** : Le user signalait que le rail "n'apparaissait jamais" même en sélectionnant période/session. Investigation Playwright sur `/players/JGtm/stats/history` (live dev server) :
+
+1. **Le rail ÉTAIT bien rendu** (mode all-time avec 132 sessions visible dans le DOM)
+2. **Mais positionné AU-DESSUS de NavL2** (filtres) — le user attendait l'inverse
+3. **Layout incorrect** : `[Label][BoutonsCollésAuLabel][flex-1][Position]` au lieu de l'attendu `[◀ Précédente | Label centré | Suivante ▶]`
+
+**Fix structurel** :
+1. Layout `routes/players/$playerSlug.tsx` : NavL2 et PeriodSessionRail emballés dans un wrapper unique `sticky top-0 z-30 flex flex-col bg-background`. Le rail est rendu APRÈS NavL2 dans le DOM = visuellement en dessous des filtres. Le wrapper sticky garde l'ensemble (filtres + rail) collé au top au scroll.
+2. NavL2 perd son `sticky top-12 z-20` (le wrapper parent gère).
+3. PeriodSessionRail perd son `sticky top-0 z-30` (idem).
+4. Refactor du composant : `RailFrame` 3-zones (`ZONE_LEFT_CLASS` + `ZONE_CENTER_CLASS flex-1 justify-center` + `ZONE_RIGHT_CLASS`) + helper `NavBtn` réutilisable. Tous les sous-modes (session/multi-session/period/all-time) utilisent `RailFrame` avec props `prev` / `center` / `next`.
+5. Suppression du bouton "Latest" en mode session (le user n'en voulait pas) — le compteur position est intégré au label central : `« Session du 6 avril (1 / 132 · 12 matchs) »`.
+
+**Validation E2E** : `e2e/period-session-rail.spec.ts` cadenasse :
+- Rail visible avec `data-testid` + `data-mode="all-time"`
+- Boutons prev/next disabled en mode all-time
+- Label central contient le compteur `Toutes les sessions (N)`
+- Ordre DOM : `compareDocumentPosition(navL2, rail)` → `DOCUMENT_POSITION_FOLLOWING` (rail vient après)
+
+**Vérifications** : Vitest 60/60 verts (helpers + store + composant). TSC exit 0. Playwright 1/1 vert sur live dev server (Vite :5173 + API :8000).
+
+**Cleanup** : suppression du `console.debug` DEV ajouté pendant le diagnostic. `data-testid` conservés pour tests E2E futurs.
+
 ## [2026-05-03] feat(squad): MedalDigest — médailles FR, emblèmes Spartan, layout complet
 
 **Statut** : Complété.
