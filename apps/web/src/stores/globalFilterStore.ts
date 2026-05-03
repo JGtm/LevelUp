@@ -35,12 +35,14 @@ import type {
   PeriodInput,
   SessionsInput,
 } from '@/lib/api/types'
+import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
+
+// Re-export pour compat des consommateurs existants (tests, hooks).
+export { DEFAULT_GAP_MINUTES }
 
 // ---------------------------------------------------------------------------
 // Valeurs par défaut
 // ---------------------------------------------------------------------------
-
-export const DEFAULT_GAP_MINUTES = 120
 
 const DEFAULT_PERIOD: PeriodInput = { start_date: null, end_date: null }
 const DEFAULT_SESSIONS: SessionsInput = {
