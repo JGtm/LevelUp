@@ -141,6 +141,31 @@ export function SquadLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // mount-only
 
+  // Post-mount : sync global -> local quand picked_sessions change ailleurs
+  // (rail nav prev/next, FilterOmnibar SessionPill, autoSnapToLatestSession).
+  // Sans ce sync, le rail navigue le filterContext mais le SessionMultiSelect
+  // garde son ancienne sélection ; teammates_service reçoit alors deux états
+  // contradictoires (filters.sessions vs picked_squad_session_labels).
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      return
+    }
+    const globalPicked = filterContext.sessions?.picked_sessions ?? []
+    const same =
+      globalPicked.length === pickedSquadSessionLabels.length &&
+      globalPicked.every((v, i) => v === pickedSquadSessionLabels[i])
+    if (same) return
+    setPickedSquadSessionLabelsRaw(globalPicked)
+    try {
+      localStorage.setItem(sessionStorageKey, JSON.stringify(globalPicked))
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterContext.sessions?.picked_sessions])
+
   // ── Filtres global pending (période + cascade) — commités via Analyser ──
   const [pending, setPending] = useState(() => filterContext)
   const lastSyncedHash = useRef(filterContextHash)

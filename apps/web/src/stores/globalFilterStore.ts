@@ -290,9 +290,13 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
           return
         }
         log.debug(`rail_nav:fired kind=goToPrevSession from=${mode.session.session_id} to=${target.session_id}`)
+        // Ecrit le LABEL (pas le session_id) : SynthesisMatchRow ne porte que
+        // SessionLabel cote backend, donc filterSynthesisByPickedSessions ne
+        // peut matcher que par label. applySessionLabels (Squad multi-select)
+        // ecrit deja des labels — meme convention partout.
         get().setSessions({
           ...(filterContext.sessions ?? DEFAULT_SESSIONS),
-          picked_sessions: [target.session_id],
+          picked_sessions: [target.label],
         })
       },
 
@@ -312,7 +316,7 @@ export const useGlobalFilterStore = create<GlobalFilterState>()(
         log.debug(`rail_nav:fired kind=goToNextSession from=${mode.session.session_id} to=${target.session_id}`)
         get().setSessions({
           ...(filterContext.sessions ?? DEFAULT_SESSIONS),
-          picked_sessions: [target.session_id],
+          picked_sessions: [target.label],
         })
       },
 

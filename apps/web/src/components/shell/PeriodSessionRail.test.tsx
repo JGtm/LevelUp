@@ -105,7 +105,7 @@ describe('PeriodSessionRail', () => {
     expect(screen.getByText(/du.+au/i)).toBeTruthy()
   })
 
-  it('clic ◀ Précédente bascule vers la session plus ancienne', () => {
+  it('clic ◀ Précédente bascule vers la session plus ancienne (label en sortie)', () => {
     const store = useGlobalFilterStore.getState()
     store.setResolvedContext(
       buildResolved([
@@ -118,6 +118,6 @@ describe('PeriodSessionRail', () => {
     renderWithProviders(<PeriodSessionRail />)
     const prevBtn = screen.getByLabelText(/Session précédente|Previous session/)
     fireEvent.click(prevBtn)
-    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['s-mid'])
+    expect(useGlobalFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['05/04'])
   })
 })

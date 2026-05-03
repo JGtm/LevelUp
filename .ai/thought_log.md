@@ -1,5 +1,84 @@
 # Thought Log
 
+## [2026-05-03] fix(squad/rail): nav période/session sans effet — teammates ignorait Period et picked_sessions
+
+**Statut** : Complété.
+
+**Contexte** : Suite directe du fix multi-select. L'utilisateur signale que la navigation rail (Précédente / Suivante session ou période) ne change rien aux charts ni aux tableaux sur l'écran Escouade — alors que le centre du rail mute correctement et que le compteur sticky bouge.
+
+**Décisions techniques** :
+
+1. **`teammates_service.GetPage` ignorait `req.Filters.Period` et `req.Filters.Sessions.PickedSessions`** — `LoadPlayerMatches` était appelé avec `port.PlayerMatchFilters{}` (filtres vides), puis seuls `filterSynthesisBySession(req.PickedSoloSessions, req.PickedSquadSessions)` et `filterSynthesisByCascade(req.Filters.Cascade)` étaient appliqués. Tous les autres filtres du `FilterContextInput` étaient silencieusement perdus. Le rail mute pourtant `filterContext.period` (via `setPeriod`) et `filterContext.sessions.picked_sessions` (via `goToPrev/NextSession`), donc ses changements arrivaient bien au backend via le hash mais étaient ignorés au moment du filtrage. Fix : ajout de deux helpers purs `filterSynthesisByPeriodInput` (filtre par `StartTime ∈ [start, end+24h-1s]`) et `filterSynthesisByPickedSessions` (filtre par `SessionLabel ∈ picked_sessions`), branchés après le filtre cascade dans `Resolve`.
+
+2. **`goToPrevSession` / `goToNextSession` écrivaient `target.session_id`** — `SynthesisMatchRow` ne porte que `SessionLabel` (pas de `SessionID` côté squad), donc le helper backend ne pouvait matcher par id. `applySessionLabels` (Squad multi-select) écrivait déjà des labels — la divergence rail vs multi-select était silencieuse mais cassait le filtrage côté squad. Fix : le rail écrit désormais `target.label`. La détection `getRailMode` accepte déjà `s.session_id === id || s.label === id`, donc l'UI continue de retrouver la session courante. Pour les pages Stats (timeseries, match-history), `applySessionFilter` accepte déjà id ou label depuis le fix précédent — pas de régression.
+
+3. **SquadLayout reverter le rail** — un useEffect mount-only poussait `pickedSquadSessionLabels` (local) → `filterContext.sessions.picked_sessions` (global) au cold reload. Pas le sens inverse : quand le rail mutait le global après mount, le local ne suivait pas, et l'envoi de `picked_squad_session_labels` (encore l'ancienne sélection) dominait le filtrage côté backend. Fix : ajout d'un second useEffect post-mount qui mirroir global → local (avec garde `mountedRef` pour ne pas concurrencer le mount-only). La direction au mount reste « squad-specific localStorage gagne » (per-player), puis tout changement externe (rail, FilterOmnibar SessionPill, autoSnapToLatestSession) propage vers le SessionMultiSelect.
+
+**Résultats observés** :
+- Backend : `go test ./internal/service/` 100% — 11 nouveaux tests sur `filterSynthesisByPeriodInput` et `filterSynthesisByPickedSessions` (no-filter, start, end inclusive, both bounds, single-label, multi-labels, nil-label).
+- Frontend : `vitest run stores shell squad filters` → 360/362 (les 2 fails restants sur `winRateVsHistoryBulletChart` sont pré-existants, hors scope). Tests `goToPrevSession` / `goToNextSession` mis à jour pour asserter le label en sortie.
+- Typecheck `tsc --noEmit` clean.
+- Conflit nom : `filterSynthesisByPeriod` existait déjà dans `synthesis_service.go` (signature différente, prend une string `"1w"`/`"1m"`). Le helper teammates a été nommé `filterSynthesisByPeriodInput` pour éviter la collision et expliciter qu'il consomme un `domain.PeriodInput`.
+
+**Conclusion / prochaine étape** : la navigation rail affecte désormais charts, tableaux et KPIs Escouade (en plus du compteur déjà fixé). Le wiring filterContext → backend est cohérent : tout consommateur de la page Escouade qui charge `LoadPlayerMatches` + applique cascade applique maintenant aussi période + sessions. Pour les pages Stats (timeseries, match-history, sessions), `applyAllFilters` couvrait déjà ce cas via `applySessionFilter` post-fix B.
+
+---
+
+## [2026-05-03] feat(squad/synergies): colonne « Taux hist. » par carte après l'outcome
+
+**Statut** : Complété.
+
+**Contexte** : Mock 4a (`apps/web/__mockup_tables.html`, MatchHistoryTable.tsx corrigé) demande une colonne « Taux hist. » placée juste après l'Outcome, format `XX% (NN)` coloré vert/rouge selon ≥/< 50 %. Sur la page Squad Synergies (SquadSynergyHistoryTable), cette colonne manquait. **Précision utilisateur** : taux de victoire **par carte** (pas par playlist), nombre entre parenthèses = matchs joués sur la carte.
+
+**Décision technique** :
+1. **Domaine** ([teammates.go:276](apps/go-api/internal/domain/teammates.go#L276)) — ajout `WinRateHist *float64` (ratio 0..1) + `WinRateHistTotal *int` sur `SquadMatchHistoryRow`. JSON `omitempty` pour ne pas polluer la réponse quand la donnée est absente.
+2. **Helper analyse** ([teammates_service.go::computeHistoricalMapStatsByLabel](apps/go-api/internal/service/teammates_service.go)) — pendant de `computeHistoricalMapWRByLabel` existant mais conserve le compteur total (nécessaire pour l'affichage `(NN)`). Retourne `map[mapID][2]int{wins,total}`.
+3. **Builder** ([teammates_service.go::buildSquadMatchHistory](apps/go-api/internal/service/teammates_service.go)) — nouveau paramètre `mapWR map[string][2]int`. Match par `m.MapID` (fallback `m.MapName` pour les matchs sans ID). Ratio arrondi via `round2` partagé.
+4. **Wiring** — `historicalMapStats := computeHistoricalMapStatsByLabel(canonicalRows)` calculé sur l'historique COMPLET du joueur (canonicalRows, non filtré), passé à `buildSquadMatchHistory`. Cohérent avec le pattern map breakdown qui utilise déjà ce scope.
+5. **Front** :
+   - Type `SquadMatchHistoryRow` ([lib/api/types.ts](apps/web/src/lib/api/types.ts)) — `win_rate_hist?: number` + `win_rate_hist_total?: number`.
+   - i18n ([squad/i18n.ts](apps/web/src/features/squad/i18n.ts)) — clé `winRateHist` (FR « Taux hist. » / EN « Hist. win% ») + interface `SquadText.history`.
+   - Colonne ([SquadSynergyHistoryTable.tsx](apps/web/src/features/squad/SquadSynergyHistoryTable.tsx)) insérée entre Outcome et Score. Couleur via `tokenCssVar('outcome-win'/'outcome-loss')` selon seuil 50 % (règle color-tokens, pas de hex). Format `XX% (NN)` avec total en muted small.
+
+**Pourquoi par carte (correction)** : initialement implémenté par playlist (spec teammates.11 yaml), corrigé en par carte sur retour utilisateur — sémantique métier voulue : « sur cette carte, j'ai N% de victoires sur K matchs ». Aligne aussi sur le pattern de `MatchHistoryTable.tsx` (`computeMapWinRates` côté `match_history_service.go`).
+
+**Résultats observés** :
+- `go build` / `go vet` OK.
+- `go test ./internal/service/...` → vert (tests existants inchangés ; signature de `buildSquadMatchHistory` modifiée mais sans test direct, donc pas de breakage).
+- `npx vitest run src/features/squad src/lib/formatters` → 248/250 (2 échecs `winRateVsHistoryBulletChart` préexistants, sans rapport).
+- `npm run typecheck` : seule erreur résiduelle = `JSX.Element` préexistante au fichier.
+
+**Prochaine étape** : redémarrer le serveur Go pour servir `win_rate_hist` ; vérifier visuel sur la page Synergies (couleurs vert/rouge sur le pourcentage, total entre parenthèses).
+
+---
+
+## [2026-05-03] feat(squad/synergies): durée du match dans l'historique
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Squad Synergies, le tableau d'historique des matchs partagés (SquadSynergyHistoryTable) affichait Score sans la durée du match. Demande utilisateur : ajouter une colonne juste après le score, format `0min30s`.
+
+**Décision technique** :
+1. **SQL Q30** ([queries_squad.go](apps/go-api/internal/platform/duckdb/queries_squad.go)) — ajout projection `COALESCE(r.duration_seconds, 0) AS duration_seconds` depuis `shared.v_match_full` (la vue inclut bien le champ via `match_registry`).
+2. **Domaine Go** — `domain.SquadMatchRow.DurationSeconds int` (ligne brute Q30) + `domain.SquadMatchHistoryRow.DurationSeconds int` (DTO frontière, JSON `duration_seconds,omitempty`).
+3. **Scanner repo** ([squad_repo.go::LoadSquadMatches](apps/go-api/internal/platform/duckdb/squad_repo.go)) — ajout du scan dans l'ordre du SELECT.
+4. **Builder** ([teammates_service.go::buildSquadMatchHistory](apps/go-api/internal/service/teammates_service.go)) — forwarding `m.DurationSeconds` vers le DTO.
+5. **Front** :
+   - Helper `formatDurationMinSec(seconds)` ajouté à [lib/formatters/duration.ts](apps/web/src/lib/formatters/duration.ts) + barrel — produit `XminYs` (ex: 30 → "0min30s", 125 → "2min5s").
+   - Type `SquadMatchHistoryRow` ([lib/api/types.ts](apps/web/src/lib/api/types.ts)) — `duration_seconds?: number`.
+   - i18n `squad/i18n.ts` — clé `history.duration` (FR : "Durée", EN : "Duration") + interface `SquadText.history` complétée par les clés déjà utilisées en runtime mais manquantes (`score`, `enemyMmr`, `deltaMMR`, `duration`).
+   - [SquadSynergyHistoryTable.tsx](apps/web/src/features/squad/SquadSynergyHistoryTable.tsx) — colonne `duration_seconds` insérée juste après `score_label`, classes `font-mono tabular-nums`, fallback `-`.
+
+**Résultats observés** :
+- `go build ./...` OK, `go vet ./...` zéro warning.
+- `go test ./internal/service/... ./internal/platform/duckdb/... -run "Squad|Teammate"` → vert (tests Squad/Teammates inchangés, fixture seed de match_registry incluait déjà `duration_seconds`).
+- `npx vitest run src/features/squad src/lib/formatters` → 248/250 (les 2 échecs `winRateVsHistoryBulletChart` sont préexistants, sans rapport avec ce changement).
+- `npm run typecheck` : seule erreur résiduelle dans le fichier touché = `JSX.Element` (préexistante, non introduite ici).
+
+**Prochaine étape** : redémarrer le serveur Go pour servir la nouvelle projection `duration_seconds` ; vérification visuelle sur la page Synergies (colonne "Durée" entre Score et MMR équipe).
+
+---
+
 ## [2026-05-03] fix(timezone): unifier la conversion start_time_utc via session TZ
 
 **Statut** : Complété.

@@ -135,6 +135,14 @@ func (s *TeammatesService) GetPage(
 	// Appliquer les filtres cascade (experience_types, playlists) si prÃƒÂ©sents.
 	if req.Filters != nil {
 		filteredMatches = filterSynthesisByCascade(filteredMatches, req.Filters.Cascade)
+		// Period (rail nav, PeriodePill) — sans cela la navigation periode n'a aucun
+		// effet sur les charts/tableaux Escouade. Filtre par StartTime [start, end+1j-1s].
+		filteredMatches = filterSynthesisByPeriodInput(filteredMatches, req.Filters.Period)
+		// picked_sessions du filterContext (rail nav, FilterOmnibar SessionPill).
+		// Vit en parallele de PickedSquadSessions/PickedSoloSessions ; intersection
+		// volontaire pour le cas multi-select + nav, en pratique l'un est vide quand
+		// l'autre est pose donc l'effet net est equivalent a "remplacement".
+		filteredMatches = filterSynthesisByPickedSessions(filteredMatches, req.Filters.Sessions.PickedSessions)
 	}
 
 	totalMatches := len(filteredMatches)
@@ -195,7 +203,8 @@ func (s *TeammatesService) GetPage(
 		mapBreakdown = enrichMapBreakdownWithHistory(mapBreakdown, historicalWR)
 		historicalPerf := computeHistoricalMapPerfByLabel(canonicalRows)
 		mapBreakdown = enrichMapBreakdownWithHistoricalPerf(mapBreakdown, historicalPerf)
-		matchHistory = buildSquadMatchHistory(allSquadRows, modeFR)
+		historicalMapStats := computeHistoricalMapStatsByLabel(canonicalRows)
+		matchHistory = buildSquadMatchHistory(allSquadRows, modeFR, historicalMapStats)
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, sessionMatchIDs)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
@@ -514,6 +523,57 @@ func filterSynthesisByCascade(matches []legacymatch.SynthesisMatchRow, c domain.
 
 // filterSynthesisBySession filtre les matchs selon les sessions sÃƒÂ©lectionnÃƒÂ©es (union des labels).
 // Slices vides Ã¢â€ â€™ tous les matchs retournÃƒÂ©s sans filtre.
+// filterSynthesisByPeriodInput filtre les matchs selon une fenetre temporelle (start/end inclus).
+// Le rail periode et le PeriodePill du FilterOmnibar ecrivent dans req.Filters.Period ;
+// teammates_service doit appliquer ce filtre pour que la nav periode ait un effet sur
+// l'ecran Escouade (charts, tableaux, KPIs). Aucune valeur posee = no-op.
+func filterSynthesisByPeriodInput(matches []legacymatch.SynthesisMatchRow, p domain.PeriodInput) []legacymatch.SynthesisMatchRow {
+	if p.StartDate == nil && p.EndDate == nil {
+		return matches
+	}
+	out := matches[:0:0]
+	for _, m := range matches {
+		t := m.StartTime
+		if p.StartDate != nil && t.Before(*p.StartDate) {
+			continue
+		}
+		if p.EndDate != nil {
+			end := p.EndDate.Add(24*time.Hour - time.Second)
+			if t.After(end) {
+				continue
+			}
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// filterSynthesisByPickedSessions filtre par labels presents dans
+// req.Filters.Sessions.PickedSessions (rail nav, FilterOmnibar SessionPill,
+// applySessionLabels squad). SynthesisMatchRow ne porte que SessionLabel ;
+// les valeurs envoyees par le frontend doivent donc etre des labels (cf. fix
+// goToPrevSession qui ecrit target.label, applySessionLabels qui propage les
+// labels du SessionMultiSelect). Slice vide = no-op.
+func filterSynthesisByPickedSessions(matches []legacymatch.SynthesisMatchRow, pickedSessions []string) []legacymatch.SynthesisMatchRow {
+	if len(pickedSessions) == 0 {
+		return matches
+	}
+	keep := make(map[string]struct{}, len(pickedSessions))
+	for _, lbl := range pickedSessions {
+		keep[lbl] = struct{}{}
+	}
+	out := matches[:0:0]
+	for _, m := range matches {
+		if m.SessionLabel == nil {
+			continue
+		}
+		if _, ok := keep[*m.SessionLabel]; ok {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 func filterSynthesisBySession(
 	matches []legacymatch.SynthesisMatchRow,
 	pickedSolo []string,
@@ -752,6 +812,34 @@ func round2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
+// computeHistoricalMapStatsByLabel calcule (wins, total) par carte sur TOUT
+// l'historique du joueur principal (canonicalRows non filtrés). Pendant de
+// computeHistoricalMapWRByLabel mais conserve le compteur total pour pouvoir
+// l'afficher entre parenthèses (« Taux hist. : 62% (37) »). Clé = Map.ID
+// (fallback DefaultLabel).
+func computeHistoricalMapStatsByLabel(rows []canonical.PlayerMatchRow) map[string][2]int {
+	m := map[string][2]int{}
+	for _, r := range rows {
+		if r.Summary.Map == nil {
+			continue
+		}
+		key := r.Summary.Map.ID
+		if key == "" {
+			key = r.Summary.Map.DefaultLabel
+		}
+		if key == "" {
+			continue
+		}
+		entry := m[key]
+		entry[1]++ // total
+		if r.Self.Outcome == canonical.OutcomeWin {
+			entry[0]++ // wins
+		}
+		m[key] = entry
+	}
+	return m
+}
+
 // computeHistoricalMapWRByLabel calcule le win rate par carte sur TOUT l'historique
 // du joueur principal (canonicalRows non filtrés). Clé = DefaultLabel (= map_name SQL).
 func computeHistoricalMapWRByLabel(rows []canonical.PlayerMatchRow) map[string]float64 {
@@ -978,7 +1066,11 @@ func collectModeENs(matches []domain.SquadMatchRow) []string {
 // buildSquadMatchHistory construit la table historique pour teammates.11 :
 // une ligne par match unique, triée par StartTime DESC. Pas de cap serveur —
 // la pagination (20/page) est gérée côté client (TanStack Table).
-func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]string) []domain.SquadMatchHistoryRow {
+//
+// mapWR : (wins, total) par MapID sur l'historique complet du joueur
+// principal — sert à injecter le taux historique par carte. Si nil ou clé
+// absente, WinRateHist reste nil (la cellule front affiche "—").
+func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]string, mapWR map[string][2]int) []domain.SquadMatchHistoryRow {
 	seen := make(map[string]struct{}, len(matches))
 	rows := make([]domain.SquadMatchHistoryRow, 0, len(matches))
 	for _, m := range matches {
@@ -998,6 +1090,22 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]st
 		if m.MyTeamScore != nil && m.EnemyTeamScore != nil {
 			scoreLabel = fmt.Sprintf("%d - %d", *m.MyTeamScore, *m.EnemyTeamScore)
 		}
+		var winRate *float64
+		var winRateTotal *int
+		if mapWR != nil {
+			key := m.MapID
+			if key == "" {
+				key = m.MapName
+			}
+			if key != "" {
+				if entry, ok := mapWR[key]; ok && entry[1] > 0 {
+					v := round2(float64(entry[0]) / float64(entry[1]))
+					winRate = &v
+					total := entry[1]
+					winRateTotal = &total
+				}
+			}
+		}
 		rows = append(rows, domain.SquadMatchHistoryRow{
 			MatchID:          m.MatchID,
 			StartTime:        m.StartTime.Format("2006-01-02T15:04:05Z"),
@@ -1015,6 +1123,9 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]st
 			EnemyMMRAvg:      m.EnemyMMR,
 			DeltaMMR:         deltaMMR,
 			ScoreLabel:       scoreLabel,
+			DurationSeconds:  m.DurationSeconds,
+			WinRateHist:      winRate,
+			WinRateHistTotal: winRateTotal,
 			SessionLabel:     m.SessionLabel,
 		})
 	}
