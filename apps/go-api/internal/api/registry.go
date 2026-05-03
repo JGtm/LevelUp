@@ -194,12 +194,21 @@ func (r *ServiceRegistry) TitleDataAdapter(ctx context.Context, slug string) (ga
 }
 
 // Filters retourne un FiltersService pour le joueur.
+//
+// Injecte le catalog de saisons projeté depuis l'AssetMappingSet du titre
+// (kind "season" du TOML) pour alimenter les SeasonCounts du folding
+// SaisonPill côté frontend. Si le titre n'a pas de kind "season" → seasons
+// vide → aucun SeasonCount renvoyé (dégradation gracieuse).
 func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.FiltersService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return service.NewFiltersService(duckdb.NewFiltersRepo(pdb)), nil
+	svc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
+	if sem := r.semanticFor(slug); sem != nil {
+		svc = svc.WithSeasons(service.SeasonsFromAssets(sem.Assets()))
+	}
+	return svc, nil
 }
 
 // MatchView retourne un MatchViewService pour le joueur.

@@ -20,12 +20,24 @@ var experienceLabels = []string{"PVP non classé", "PVP classé", "PVE"}
 
 // FiltersService calcule FilterContextResolved depuis les données du repo.
 type FiltersService struct {
-	repo port.FiltersRepository
+	repo    port.FiltersRepository
+	seasons []SeasonWindow // optionnel : nil → aucun SeasonCount renvoyé
 }
 
 // NewFiltersService crée un FiltersService.
 func NewFiltersService(repo port.FiltersRepository) *FiltersService {
 	return &FiltersService{repo: repo}
+}
+
+// WithSeasons injecte le catalog de saisons utilisé pour calculer les
+// SeasonCounts (popover SaisonPill côté frontend).
+//
+// Appelé au boot par api/registry.go avec SeasonsFromAssets() projeté depuis
+// l'AssetMappingSet du titre. Si non appelé → pas de season counts (dégradation
+// gracieuse, le frontend affiche les saisons sans compteur ni folding).
+func (s *FiltersService) WithSeasons(seasons []SeasonWindow) *FiltersService {
+	s.seasons = seasons
+	return s
 }
 
 // Resolve charge les matchs du joueur et retourne le contexte résolu.
@@ -39,11 +51,19 @@ func (s *FiltersService) Resolve(
 		return domain.FilterContextResolved{}, err
 	}
 	resolved := ResolveFiltersFromRows(rows, input)
+	if len(s.seasons) > 0 {
+		// Le match_context a déjà été appliqué dans ResolveFiltersFromRowsAt.
+		// Pour les SeasonCounts on veut le même périmètre : on ré-applique
+		// match_context à rows et on calcule sur la base post-context.
+		seasonRows := applyMatchContextFilter(rows, input.MatchContext)
+		resolved.SeasonCounts = BuildSeasonCounts(seasonRows, resolved.Effective.Cascade, s.seasons)
+	}
 	slog.DebugContext(ctx, "filters resolved",
 		"rows_in", resolved.Counts.TotalMatchesBeforeFilters,
 		"rows_out", resolved.Counts.TotalMatchesAfterFilters,
 		"match_context", input.MatchContext,
 		"filter_mode", input.FilterMode,
+		"season_counts", len(resolved.SeasonCounts),
 	)
 	return resolved, nil
 }
