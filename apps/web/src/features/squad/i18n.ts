@@ -198,6 +198,15 @@ export interface SquadText {
     expandLabel: string
     collapseLabel: string
     noMedals: string
+    categoryLabels: {
+      multikill: string
+      spree: string
+      skill: string
+      style: string
+      mode: string
+      proficiency: string
+      other: string
+    }
   }
   errors: {
     loadError: (message: string) => string
@@ -411,6 +420,15 @@ const FR_TEXT: SquadText = {
     expandLabel: 'Voir toutes les médailles',
     collapseLabel: 'Réduire',
     noMedals: 'Aucune médaille disponible pour cette sélection.',
+    categoryLabels: {
+      multikill: 'Multi-kills',
+      spree: 'Séries',
+      skill: 'Compétence',
+      style: 'Style',
+      mode: 'Mode',
+      proficiency: 'Maîtrise',
+      other: 'Autres',
+    },
   },
   errors: {
     loadError: (message) => `Erreur : ${message}`,
@@ -624,6 +642,15 @@ const EN_TEXT: SquadText = {
     expandLabel: 'Show all medals',
     collapseLabel: 'Collapse',
     noMedals: 'No medals available for this selection.',
+    categoryLabels: {
+      multikill: 'Multi-kills',
+      spree: 'Spree',
+      skill: 'Skill',
+      style: 'Style',
+      mode: 'Mode',
+      proficiency: 'Proficiency',
+      other: 'Other',
+    },
   },
   errors: {
     loadError: (message) => `Error: ${message}`,

@@ -1,5 +1,67 @@
 # Thought Log
 
+## [2026-05-03] feat(medal-digest): câblage final UI — emblèmes joueurs + i18n catégories + grid adaptative
+
+**Statut** : Complété.
+
+**Contexte** : `MedalDigest` était déjà câblé dans `SquadSynergiesPage` mais avait 3 défauts : labels de catégories hardcodés en français, avatar réduit à un dot de 10px, grille non optimisée pour 2 joueurs.
+
+**Décision technique** :
+1. **i18n catégories** : ajout de `categoryLabels` dans `SquadText['medals']` (FR + EN). `MedalExpandedGrid` reçoit maintenant `categoryLabels` via `t` — zéro chaîne hardcodée.
+2. **Emblèmes joueurs** : composant `PlayerAvatar` utilise `useQuery` avec `enabled: false` (lecture cache uniquement, zéro requête réseau) sur `queryKeys.home(gamertag)` → `spartan_identity.emblem_image_url`. Fallback gracieux : initiale dans cercle à la couleur du joueur. L'emblème est garanti pour le joueur principal (home déjà en cache), bonus pour les coéquipiers si leur home a été visitée.
+3. **Grid adaptative** : 2 joueurs → `repeat(2, 1fr)` (50/50 pleine largeur) ; 3-4 → `auto-fill minmax(240px, 1fr)`. Couvre toutes les configurations d'escouade.
+4. **Fix tokenCssVar** : `'muted'`, `'foreground'`, `'background'` ne sont pas des `SemanticToken` — remplacés par `var(--muted)` etc. (vars shadcn structurelles, commentaire `// color-allow`).
+
+**Résultats observés** : `npm run typecheck` → zéro erreur MedalDigest.
+
+**Prochaine étape** : Tester visuellement avec une session escouade réelle.
+
+## [2026-05-03] feat(squad/impact): titre + bordure Card auto-portée dans SquadImpactScoreboard
+
+**Statut** : Complété.
+
+**Contexte** : La matrice d'impact apparaissait nue (sans titre, sans Card-border) sur la page Synergies, et avec une duplication titre+description+Card côté Contributions. Le user demandait une bordure et un titre pour la matrice. Faire l'enrobage côté composant plutôt que côté pages = SRP + DRY.
+
+**Décision technique** :
+1. **Self-wrapping** : `SquadImpactScoreboard` rend désormais son propre `<Card><CardContent>` avec `i18n.impact.title` + `i18n.impact.description`. Le composant devient plug-and-play — les pages le consomment sans wrapper.
+2. **Déduplication** : retiré le `<Card>...title+description...</Card>` autour de `SquadImpactScoreboard` dans `SquadContributionsPage.tsx`. La page Synergies en bénéficie automatiquement (avant elle n'avait pas de titre).
+3. **Bordures internes** : ajout de `border-l border-border/60` sur chaque cellule sauf la première colonne, plus `border-collapse` sur la table — donne un vrai feel de matrice/grille sans surcharger (opacité 60%).
+4. **i18n** : aucun changement, les strings `t.impact.title` / `t.impact.description` existaient déjà côté FR + EN.
+
+**Fichiers modifiés** :
+- `apps/web/src/features/squad/SquadImpactScoreboard.tsx` (Card wrapper + dividers verticaux)
+- `apps/web/src/features/squad/SquadContributionsPage.tsx` (suppression du Card+title duplicate)
+
+**Tests** : `vitest run SquadImpactScoreboard` → 5 verts. Le `data-testid="squad-impact-scoreboard"` reste sur le div table pour préserver les assertions ; `data-testid="squad-impact-section"` ajouté sur la Card pour permettre des tests futurs au niveau section.
+
+**Prochaine étape** : RAS — validation visuelle utilisateur en local.
+
+## [2026-05-03] feat(badges): pictos Fluent Emoji Flat pour la matrice d'impact
+
+**Statut** : Complété.
+
+**Contexte** : Le user trouvait que certains badges (matrice d'impact d'escouade + bandeau match-view) avaient trop d'effet de volume 3D — notamment 💀 🐌 🪦 🏆 🍌. Demande : remplacer par un set plus "flat", esthétique data-viz moderne.
+
+**Décision technique** :
+1. **Set retenu** : Fluent Emoji Flat (Microsoft, MIT) — flat 2D moderne avec dégradés doux. Choisi après mockup comparatif `.ai/mock_badges_flat.html` (5 sets côte à côte : système / OpenMoji / Twemoji / Fluent Flat / Noto / Unicode pur) avec scoreboards en contexte.
+2. **Vendoring** : 12 SVG téléchargés via `api.iconify.design/fluent-emoji-flat/{name}.svg` dans `apps/web/src/assets/badges/fluent-flat/`. Zéro nouvelle dépendance npm. Nommage par `badge_key` (et non par nom Iconify) pour cohérence sémantique (`top_killer.svg` plutôt que `1st-place-medal.svg`).
+3. **Composant unique** : `apps/web/src/components/feedback/BadgeIcon.tsx` — `<BadgeIcon badgeKey="..." size={18} title="..." />`. Mappe les 12 keys + 3 alias backend (`tourist`, `finisher`, `first_victim`).
+4. **Unification cross-pages** : la map squad utilisait `🗡️` pour `false_brother` et `💥` pour `top_killer`, vs `🐍` et `🥇` côté match-view. Unifié sur les choix match-view (snake + 1st-place-medal) pour éviter qu'un même badge_key affiche 2 pictos distincts selon la page.
+5. **Cas particulier** : iconify ne référence pas `pistol` (404) → `water-pistol` retenu pour `top_gun`. Visuellement OK pour un badge "best aim".
+
+**Fichiers modifiés** :
+- `apps/web/src/components/feedback/BadgeIcon.tsx` (nouveau)
+- `apps/web/src/assets/badges/fluent-flat/*.svg` (12 fichiers)
+- `apps/web/src/features/squad/SquadImpactScoreboard.tsx` (suppression `BADGE_EMOJI`, `pivotEmojis` → JSX flex avec `<BadgeIcon>`)
+- `apps/web/src/features/match-view/MatchImpactBadgesBar.tsx` (suppression `icon: string` du `BADGE_META`, remplacement par `<BadgeIcon>`)
+- `apps/web/src/features/squad/SquadImpactScoreboard.test.tsx` (assertions `getByText('⚡🎯')` → `getAllByAltText('first_blood')`)
+
+**Tests** : `vitest run SquadImpactScoreboard` (5 verts) + `vitest run MatchImpactBadgesBar MatchNarrativeSection` (6 verts). `npm run typecheck` n'introduit aucune nouvelle erreur sur les fichiers modifiés (les erreurs préexistantes de `squadSessionTimelineChart`, `MedalDigest`, etc. sont indépendantes).
+
+**Hors scope** : `MatchNarrativeSection.tsx` contient un `⚡` inline dans le DominanceBadgePill — c'est un badge "dominance d'équipe", pas un badge d'impact joueur. Non modifié. `StepInitialSync.tsx` utilise `⚡` dans un message d'erreur sync, hors scope.
+
+**Prochaine étape** : Validation visuelle utilisateur en local. Si OK, possible d'élargir Fluent Flat à d'autres badges narratifs (DominanceBadge, EncounterBadge) en cohérence.
+
 ## [2026-05-03] feat(filters): rail sticky de navigation période/session universel
 
 **Statut** : Complété (Phase 1 + Phase 2 livrées en bloc).
