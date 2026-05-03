@@ -45,6 +45,7 @@ import {
   DEFAULT_SESSIONS,
   computePendingHash,
 } from '@/components/shell/FilterOmnibar'
+import { PeriodSessionRail } from '@/components/shell/PeriodSessionRail'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -158,7 +159,30 @@ export function SquadLayout() {
   // Preview live : résout le pending state dès que l'utilisateur change un filtre,
   // sans attendre le clic Analyser. Fallback sur le resolvedContext commité.
   // match_context="squad" restreint le compteur et les options cascade aux matchs en escouade.
-  const squadPending = useMemo(() => ({ ...pending, match_context: 'squad' as const }), [pending])
+  //
+  // Si l'utilisateur a coché des sessions dans le SessionMultiSelect, on les
+  // injecte dans `picked_sessions` et on bascule en filter_mode='sessions'.
+  // Sans ça, le compteur et les options cascade ignorent totalement la
+  // sélection multi-sessions (le state vit dans pickedSquadSessionLabels,
+  // séparé du pending state) — d'où l'impression que « les autres filtres
+  // n'ont aucun effet sur les sessions et inversement ». Période et sessions
+  // restent mutuellement exclusives côté backend (cf. filter_mode if/else)
+  // donc on accepte que la période soit ignorée pour le preview tant que des
+  // sessions sont sélectionnées ; le pending d'origine reste intact pour le
+  // commit Analyser.
+  const squadPending = useMemo(() => {
+    const base = { ...pending, match_context: 'squad' as const }
+    if (pickedSquadSessionLabels.length === 0) return base
+    return {
+      ...base,
+      filter_mode: 'sessions' as const,
+      sessions: {
+        ...(pending.sessions ?? DEFAULT_SESSIONS),
+        picked_sessions: pickedSquadSessionLabels,
+      },
+      period: DEFAULT_PERIOD,
+    }
+  }, [pending, pickedSquadSessionLabels])
   const { data: previewResolve } = useFiltersPreview(playerSlug, squadPending)
 
   // Compteur dynamique : préférer les counts du preview (mis à jour à la volée)
@@ -357,6 +381,9 @@ export function SquadLayout() {
             ↺ Réinitialiser
           </button>
         </div>
+        {/* Rail de navigation période/session — placé DANS la barre sticky pour
+            apparaître toujours juste sous les filtres Squad au scroll. */}
+        <PeriodSessionRail />
       </div>
 
       {/* ─── Contenu ─────────────────────────────────────────────────────────── */}

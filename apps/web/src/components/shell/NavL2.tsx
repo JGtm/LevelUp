@@ -12,6 +12,7 @@
  */
 import { Link, useRouterState, useParams } from '@tanstack/react-router'
 import { FilterOmnibar } from './FilterOmnibar'
+import { PeriodSessionRail } from './PeriodSessionRail'
 
 // ─── Sous-onglets de la section Stats ─────────────────────────────────────────
 
@@ -50,7 +51,7 @@ export function NavL2() {
 
   return (
     <div
-      className="shrink-0 border-b border-border bg-background"
+      className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
       role="navigation"
       aria-label="Navigation analytique"
     >
@@ -79,6 +80,7 @@ export function NavL2() {
       )}
 
       <FilterOmnibar />
+      <PeriodSessionRail />
     </div>
   )
 }

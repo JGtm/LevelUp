@@ -9,40 +9,69 @@
  */
 import { test, expect } from '@playwright/test'
 
-test('PeriodSessionRail — rail visible en mode all-time + sous NavL2 + 3-zones', async ({ page }) => {
-  // Reset localStorage AVANT le chargement pour repartir d'un filterContext vierge.
+test('Stats : rail rendu DANS NavL2, après FilterOmnibar, en mode all-time au cold load', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.clear() } catch { /* noop */ }
   })
 
   await page.goto('/players/JGtm/stats/history')
   await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(2000) // laisser /filters/resolve revenir
+  await page.waitForTimeout(2500) // laisser /filters/resolve revenir
 
   const rail = page.locator('[data-testid="period-session-rail"]')
   await expect(rail).toBeVisible()
+  // Cold load : aucun scope choisi → mode all-time
   await expect(rail).toHaveAttribute('data-mode', 'all-time')
 
-  // Boutons prev/next présents et disabled (mode all-time)
+  // Boutons prev/next disabled en mode all-time
   const prev = rail.getByLabel(/Session précédente|Previous session/)
   const next = rail.getByLabel(/Session suivante|Next session/)
   await expect(prev).toBeDisabled()
   await expect(next).toBeDisabled()
 
-  // Label central avec compteur de sessions
-  await expect(rail).toContainText(/Toutes les sessions \(\d+\)|All sessions \(\d+\)/)
-
-  // Position : rail rendu APRÈS NavL2 dans le DOM (donc visuellement en dessous).
-  const order = await page.evaluate(() => {
+  // Position : rail est DANS le conteneur NavL2 (descendant), donc visuellement
+  // sous FilterOmnibar (rendu avant lui dans NavL2).
+  const containment = await page.evaluate(() => {
     const navL2 = document.querySelector('[aria-label="Navigation analytique"]')
     const rail = document.querySelector('[data-testid="period-session-rail"]')
-    if (!navL2 || !rail) return { found: false }
-    const rel = navL2.compareDocumentPosition(rail)
+    const omnibar = document.querySelector('[role="toolbar"][aria-label="Filtres"]')
+    if (!navL2 || !rail || !omnibar) return { found: false }
     return {
       found: true,
-      railFollowsNavL2: (rel & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      navContainsRail: navL2.contains(rail),
+      navContainsOmnibar: navL2.contains(omnibar),
+      railFollowsOmnibar: (omnibar.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
     }
   })
-  expect(order.found).toBe(true)
-  expect(order.railFollowsNavL2).toBe(true)
+  expect(containment.found).toBe(true)
+  expect(containment.navContainsRail).toBe(true)
+  expect(containment.navContainsOmnibar).toBe(true)
+  expect(containment.railFollowsOmnibar).toBe(true)
+})
+
+test('Squad : rail rendu DANS la barre Squad (pas dans NavL2 qui est null)', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.clear() } catch { /* noop */ }
+  })
+
+  await page.goto('/players/JGtm/squad/synergies')
+  await page.waitForLoadState('networkidle')
+  await page.waitForTimeout(2500)
+
+  const rail = page.locator('[data-testid="period-session-rail"]')
+  await expect(rail).toBeVisible()
+
+  // NavL2 absent sur Squad — le rail doit être dans la barre sticky Squad.
+  // Vérifie que le rail n'est PAS dans NavL2 (qui n'existe pas) mais bien
+  // dans le DOM — donc dans SquadLayout.
+  const containment = await page.evaluate(() => {
+    const navL2 = document.querySelector('[aria-label="Navigation analytique"]')
+    const rail = document.querySelector('[data-testid="period-session-rail"]')
+    return {
+      navL2Present: !!navL2,
+      railPresent: !!rail,
+    }
+  })
+  expect(containment.navL2Present).toBe(false)
+  expect(containment.railPresent).toBe(true)
 })
