@@ -118,6 +118,20 @@ export function PeriodSessionRail() {
   const allSessions = resolvedContext?.session_options?.all_sessions ?? []
   const mode = getRailMode(filterContext, allSessions)
 
+  // Sentinelle dev : émet le mode dans la console à chaque rerender pour
+  // faciliter le diagnostic ("pourquoi le rail ne s'affiche pas ?"). Disparait
+  // en build prod (import.meta.env.DEV est strippé par Vite).
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      `[PeriodSessionRail] mode=${mode.kind}`,
+      'filter_mode=', filterContext.filter_mode,
+      'picked=', filterContext.sessions?.picked_sessions ?? [],
+      'period=', filterContext.period,
+      'allSessions.length=', allSessions.length,
+    )
+  }
+
   if (mode.kind === 'hidden') return null
   if (mode.kind === 'multi-session') return <MultiSessionRail count={mode.count} t={t} />
   if (mode.kind === 'session') {
@@ -140,7 +154,13 @@ export function PeriodSessionRail() {
 
 function MultiSessionRail({ count, t }: { count: number; t: RailText }) {
   return (
-    <div className={RAIL_BASE_CLASS} role="navigation" aria-label={t.ariaNav}>
+    <div
+      className={RAIL_BASE_CLASS}
+      role="navigation"
+      aria-label={t.ariaNav}
+      data-testid="period-session-rail"
+      data-mode="multi-session"
+    >
       <span className="text-sm font-semibold text-foreground" title={t.multiSessionTooltip}>
         {t.multiSessionLabel(count)}
       </span>
@@ -189,7 +209,13 @@ function SessionRail({ session, index, total, t }: SessionRailProps) {
   }
 
   return (
-    <div className={RAIL_BASE_CLASS} role="navigation" aria-label={t.ariaNav}>
+    <div
+      className={RAIL_BASE_CLASS}
+      role="navigation"
+      aria-label={t.ariaNav}
+      data-testid="period-session-rail"
+      data-mode="session"
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate text-sm font-semibold text-foreground" title={session.label}>
           {session.label}
@@ -253,7 +279,13 @@ function PeriodRail({ period, durationDays, locale, t }: PeriodRailProps) {
   const canGoNext = !!computeNextWindow(period)
 
   return (
-    <div className={RAIL_BASE_CLASS} role="navigation" aria-label={t.ariaNav}>
+    <div
+      className={RAIL_BASE_CLASS}
+      role="navigation"
+      aria-label={t.ariaNav}
+      data-testid="period-session-rail"
+      data-mode="period"
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span className="text-sm font-semibold text-foreground">
           {t.periodLabel(startLabel, endLabel)}
