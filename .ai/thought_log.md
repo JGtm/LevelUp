@@ -1,5 +1,23 @@
 # Thought Log
 
+## [2026-05-03] mock(medal-digest): mise à jour mock HTML v3 — difficulté jeu + 6 catégories API
+
+**Statut** : Complété.
+
+**Contexte** : Le mock `.ai/mock_medals_ui.html` utilisait encore l'ancien système Palmarès/Battlepass (legendary=amber, ultra-rare=purple, rare=sky, uncommon=slate). Après l'enrichissement `difficulty`/`medal_type` en DB et l'implémentation de `medalDifficulty.ts`, le mock devait être mis à jour.
+
+**Décision technique** :
+1. Suppression de toutes les classes `.legendary/.ultra-rare/.rare/.uncommon` (rarity scale Battlepass).
+2. Remplacement par `.normal/.heroic/.legendary/.mythic` avec les RGBA exacts de `medalDifficulty.ts` : Normal=vert `rgba(74,222,128)`, Heroic=sky `rgba(56,189,248)`, Legendary=violet `rgba(192,132,252)`, Mythic=rose `rgba(244,63,94)`.
+3. 6 catégories API couvertes dans les panels : `multikill`, `spree`, `skill`, `style`, `mode`, `proficiency` (avant : seulement Multikill/Style/Survival/Objectif).
+4. Tooltips enrichis avec le couple difficulté+catégorie (`"Heroic · skill"`).
+5. Légende visuelle difficulté ajoutée en tête de page.
+6. `has-legendary` → `has-mythic` pour Spartan_117 (Perfection est Mythic).
+
+**Résultats observés** : mock visuel cohérent avec `medalDifficulty.ts` et le système de catégories API réel.
+
+**Prochaine étape** : Démarrer le serveur Go pour servir les nouvelles colonnes difficulty/medal_type vers l'UI.
+
 ## [2026-05-03] feat(medal-digest): difficulty + medal_type enrichment via migration Go
 
 **Statut** : Complété.
