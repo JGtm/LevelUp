@@ -1,6 +1,27 @@
 # Thought Log
 
-## [2026-05-03] fix(filters): rail période/session — position sous NavL2 + layout 3-zones
+## [2026-05-03] fix(filters): rail période/session — position correcte sur Stats ET Squad
+
+**Statut** : Complété (validé E2E Playwright dual-route).
+
+**Contexte** : 1ère version mettait le rail dans un wrapper sticky parent englobant NavL2 + rail. Sur Stats : OK car NavL2 affiche les filtres → rail dessous. Sur Squad : NavL2 retourne null (Squad gère ses filtres dans SquadLayout) → rail rendu seul AU-DESSUS du SquadLayout = au-dessus des filtres Squad.
+
+**Décisions** :
+- Suppression du wrapper sticky parent dans `routes/players/$playerSlug.tsx`. Le rail n'est plus rendu globalement.
+- `PeriodSessionRail` rendu DANS `NavL2` (après `FilterOmnibar`) → s'affiche sur Stats sous les filtres.
+- `PeriodSessionRail` rendu DANS `SquadLayout` (à l'intérieur de la barre sticky Squad, après les filtres) → s'affiche sur Squad sous les filtres.
+- NavL2 récupère son `sticky top-0 z-30` propre. Chaque parent gère sa propre position sticky.
+- Auto-snap-to-latest au cold load testé puis abandonné — déclenchait un crash pré-existant dans `MatchHistoryPage.tsx:132` (`data.table.items.length` sur null avec session pickée). Out-of-scope. Le rail reste en mode `all-time` tant que l'utilisateur n'a pas choisi un scope via les filtres.
+
+**Tests** :
+- Vitest 60/60 verts (composant + helpers + store)
+- E2E Playwright 2/2 verts :
+  - Stats : rail visible, mode `all-time`, contenu dans `[aria-label="Navigation analytique"]`, suit `[role="toolbar"][aria-label="Filtres"]` dans le DOM
+  - Squad : rail visible, NavL2 absent du DOM, rail dans le SquadLayout
+
+**Vérifications** : TSC exit 0. Live dev server (Vite :5173 + API :8000) confirme le comportement.
+
+## [2026-05-03] fix(filters): rail période/session — position sous NavL2 + layout 3-zones (1ère tentative)
 
 **Statut** : Complété (validé en E2E Playwright sur dev server live).
 
@@ -41,6 +62,20 @@
 **Résultats** : `go test ./internal/service/...` → ok. Build Go → ok. TypeScript (fichiers modifiés) → sans erreur.
 
 **Prochaine étape** : merge dans main si tests passent en CI.
+
+---
+
+## [2026-05-03] fix(squad): medal_definitions_add_personal_score — correction régression labels médailles
+
+**Statut** : Complété.
+
+**Contexte** : Après l'ajout de `personal_score` dans `medal_definitions_repo.go` (pour pondérer la catégorie dominante par XP de carrière), les chips de médailles affichaient `#medal_id` et la catégorie dominante tombait toujours sur "Autres". Root cause : la colonne `personal_score` existe dans le DDL Go (`steps_metadata.go`) mais les fichiers `metadata.duckdb` existants ont été créés avant que cette colonne soit ajoutée — ils ne l'ont donc pas. Le `COALESCE(md.personal_score, 0)` dans la requête SQL échouait → `LookupByIDs` retournait une erreur → `resolveMedalDigestDefs` loggait un warning et retournait `nil` → tous les `def[medalID]` retournaient la zero-value struct → `Label` vide → chip affiche `#medal_id`.
+
+**Décision technique** : ajout d'un step de migration `medal_definitions_add_personal_score` dans `internal/migration/steps_metadata.go` : `ALTER TABLE medal_definitions ADD COLUMN IF NOT EXISTS personal_score INTEGER DEFAULT 0`. Idempotent (IF NOT EXISTS). Appliqué automatiquement au prochain boot du service via le mécanisme de migrations existant. La requête `LookupByIDs` fonctionne dès que la migration a tourné.
+
+**Résultats** : `go test ./internal/...` → ok (tous verts). `go build ./internal/migration/...` → ok.
+
+**Prochaine étape** : merge dans main.
 
 ---
 

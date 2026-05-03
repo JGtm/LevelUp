@@ -9,7 +9,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useEffect, useRef } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
-import { PeriodSessionRail } from '@/components/shell/PeriodSessionRail'
 import { useFiltersResolve } from '@/features/filters/queries'
 import { log as filtersLog } from '@/features/filters/_logger'
 
@@ -97,14 +96,11 @@ function PlayerLayout() {
 
   return (
     <div className="flex flex-col">
-      {/* Wrapper sticky qui empile NavL2 (filtres + sous-onglets) puis le rail
-          de navigation période/session, en dessous. Le rail reste sous les
-          filtres au scroll. NavL2 et PeriodSessionRail sont en flow normal
-          dans ce wrapper (leur sticky interne est neutralisé). */}
-      <div className="sticky top-0 z-30 flex flex-col bg-background">
-        <NavL2 />
-        <PeriodSessionRail />
-      </div>
+      {/* NavL2 = onglets Stats + FilterOmnibar (Stats/Squad uniquement). Le rail
+          de navigation période/session est rendu DANS NavL2 (Stats) et DANS
+          SquadLayout (Squad), juste après leurs filtres respectifs, pour
+          apparaître toujours en dessous des filtres. */}
+      <NavL2 />
       <Outlet />
     </div>
   )
