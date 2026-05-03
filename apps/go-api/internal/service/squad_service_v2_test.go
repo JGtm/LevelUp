@@ -69,6 +69,15 @@ func (f *fakeSquadLoader) LoadMedals(
 	return nil, games.ErrCapabilityNotSupported
 }
 
+// LoadEmblemURLs stub — retourne nil (pas d'emblemes dans les tests unitaires).
+func (f *fakeSquadLoader) LoadEmblemURLs(
+	_ context.Context,
+	_ string,
+	_ []string,
+) map[string]string {
+	return nil
+}
+
 // row construit une PlayerMatchRow minimale avec match_id + start_time.
 func row(matchID string, startedAt time.Time, outcome canonical.Outcome) canonical.PlayerMatchRow {
 	return canonical.PlayerMatchRow{

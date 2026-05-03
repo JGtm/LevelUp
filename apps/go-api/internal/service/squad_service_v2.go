@@ -72,6 +72,15 @@ type SquadV2Loader interface {
 		slug string,
 		filters port.MedalsByXUIDFilters,
 	) ([]port.MedalRow, error)
+
+	// LoadEmblemURLs retourne l'URL de l'emblème Spartan de chaque gamertag
+	// (depuis career_progression.emblem_image_url). Dégradation silencieuse :
+	// les joueurs sans DB ou sans données retournent une entrée vide.
+	LoadEmblemURLs(
+		ctx context.Context,
+		slug string,
+		gamertags []string,
+	) map[string]string
 }
 
 // SquadServiceV2 orchestre la page Squad V2.

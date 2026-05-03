@@ -1623,6 +1623,7 @@ export interface MedalDigestItem {
 
 export interface MedalDigestEntry {
   player: string
+  emblem_url?: string
   distinct_types: number
   total_count: number
   avg_per_match: number

@@ -4,22 +4,17 @@
  * Rendu : une carte par joueur avec top 5 médailles en chips + stats footer +
  * grille déroulante de toutes les médailles.
  *
- * Avatar joueur : emblème Spartan lu depuis le cache TanStack Query
- * (queryKeys.home — zéro requête supplémentaire). Fallback : initiale dans
- * un cercle à la couleur du joueur. L'emblème est toujours disponible pour
- * le joueur principal (home page déjà en cache) ; pour les coéquipiers il
- * apparaît si leur home a déjà été visitée.
+ * Avatar joueur : emblème Spartan fourni directement par le backend dans
+ * entry.emblem_url (chargé en parallèle côté Go via career_progression).
+ * Fallback : initiale dans un cercle à la couleur du joueur.
  *
- * Grille adaptative : 2 joueurs → 2 colonnes 50/50 ; 3-4 → auto-fill 240px.
+ * Grille adaptative : N joueurs → N colonnes égales (repeat(N, 1fr)).
  */
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty, boxShadowForDifficulty } from '@/lib/medalDifficulty'
-import { api } from '@/lib/api/client'
-import { queryKeys } from '@/lib/query/keys'
-import type { HomePageResponse, MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
+import type { MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
 import {
   SQUAD_MAIN_PLAYER_TOKEN,
   SQUAD_TEAMMATE_COLOR_TOKENS,
@@ -44,16 +39,8 @@ function medalTooltip(item: MedalDigestItem): string {
   return item.description ? `${name}: ${item.description}` : name
 }
 
-/** Emblème rond du joueur — lit le cache home sans déclencher de requête. */
-function PlayerAvatar({ gamertag, color }: { gamertag: string; color: string }) {
-  const { data: emblemUrl } = useQuery({
-    queryKey: queryKeys.home(gamertag),
-    queryFn: () => api.get<HomePageResponse>(`/players/${gamertag}/pages/home`),
-    select: (d: HomePageResponse) => d.spartan_identity?.emblem_image_url ?? null,
-    enabled: false,
-    staleTime: Infinity,
-  })
-
+/** Emblème rond du joueur — utilise l'URL fournie par le backend (career_progression). */
+function PlayerAvatar({ gamertag, color, emblemUrl }: { gamertag: string; color: string; emblemUrl?: string }) {
   if (emblemUrl) {
     return (
       <img
@@ -220,7 +207,7 @@ function PlayerMedalCard({
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <PlayerAvatar gamertag={entry.player} color={color} />
+          <PlayerAvatar gamertag={entry.player} color={color} emblemUrl={entry.emblem_url} />
           <span className="font-semibold text-sm text-foreground truncate">{entry.player}</span>
         </div>
         {domCatLabel && (
