@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -21,6 +22,12 @@ type assetEntryTOML struct {
 	ColorToken   string            `toml:"color_token"`
 	Icon         string            `toml:"icon"`
 	DisplayOrder int               `toml:"display_order"`
+
+	// Champs optionnels pour les kinds time-bounded (ex: "season").
+	// Format strict RFC 3339 (ex: "2021-12-08T00:00:00Z").
+	StartDate string            `toml:"start_date,omitempty"`
+	EndDate   string            `toml:"end_date,omitempty"`
+	Extra     map[string]string `toml:"extra,omitempty"`
 }
 
 // LoadAssetsFromFile lit et valide un assets.toml à un chemin donné.
@@ -83,6 +90,11 @@ func LoadAssetsFromBytes(path string, raw []byte) (*AssetMappingSet, error) {
 			} else {
 				seen[entry.DisplayOrder] = id
 			}
+			startDate, endDate, dateErr := parseAssetWindow(entry.StartDate, entry.EndDate)
+			if dateErr != nil {
+				errs = append(errs, fmt.Errorf("[assets.%s.%s]: %w", kind, id, dateErr))
+				continue
+			}
 			bucket[id] = AssetMapping{
 				Kind:         kind,
 				ID:           id,
@@ -90,6 +102,9 @@ func LoadAssetsFromBytes(path string, raw []byte) (*AssetMappingSet, error) {
 				ColorToken:   entry.ColorToken,
 				Icon:         entry.Icon,
 				DisplayOrder: entry.DisplayOrder,
+				StartDate:    startDate,
+				EndDate:      endDate,
+				Extra:        copyStringMap(entry.Extra),
 			}
 		}
 		byKindID[kind] = bucket
@@ -120,9 +135,45 @@ func validateAsset(kind, id string, e assetEntryTOML) []error {
 }
 
 func copyStringMap(m map[string]string) map[string]string {
+	if len(m) == 0 {
+		return nil
+	}
 	out := make(map[string]string, len(m))
 	for k, v := range m {
 		out[k] = v
 	}
 	return out
+}
+
+// parseAssetWindow parse les champs start_date / end_date d'une entrée TOML.
+//
+// Format attendu : RFC 3339 strict (ex: "2021-12-08T00:00:00Z").
+// Retourne (nil, nil, nil) si les deux champs sont vides (kind non-temporel).
+// Retourne une erreur si une date est mal formée OU si end < start.
+func parseAssetWindow(startRaw, endRaw string) (*time.Time, *time.Time, error) {
+	startRaw = strings.TrimSpace(startRaw)
+	endRaw = strings.TrimSpace(endRaw)
+	if startRaw == "" && endRaw == "" {
+		return nil, nil, nil
+	}
+
+	var startPtr, endPtr *time.Time
+	if startRaw != "" {
+		t, err := time.Parse(time.RFC3339, startRaw)
+		if err != nil {
+			return nil, nil, fmt.Errorf("start_date invalide %q : RFC 3339 attendu (ex: 2021-12-08T00:00:00Z)", startRaw)
+		}
+		startPtr = &t
+	}
+	if endRaw != "" {
+		t, err := time.Parse(time.RFC3339, endRaw)
+		if err != nil {
+			return nil, nil, fmt.Errorf("end_date invalide %q : RFC 3339 attendu (ex: 2022-05-03T00:00:00Z)", endRaw)
+		}
+		endPtr = &t
+	}
+	if startPtr != nil && endPtr != nil && endPtr.Before(*startPtr) {
+		return nil, nil, fmt.Errorf("end_date %q est avant start_date %q", endRaw, startRaw)
+	}
+	return startPtr, endPtr, nil
 }
