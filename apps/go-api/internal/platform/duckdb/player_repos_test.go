@@ -73,8 +73,14 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 	ddl := []string{
 		// ── Schéma shared simulé (ATTACH shared_matches_v2.duckdb)
 		`CREATE SCHEMA IF NOT EXISTS shared`,
+		// start_time TIMESTAMP (naïf, convention mixte selon époque) +
+		// start_time_utc TIMESTAMPTZ (UTC garanti après migration). end_time
+		// suit la même structure. Les queries de prod lisent toujours
+		// COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC').
 		`CREATE TABLE shared.match_registry (
-			match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ,
+			match_id VARCHAR PRIMARY KEY,
+			start_time TIMESTAMP, end_time TIMESTAMP,
+			start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ,
 			playlist_id VARCHAR,
 			map_id VARCHAR,
 			pair_id VARCHAR,
@@ -168,9 +174,9 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 	}
 	inserts := []row{
 		{`INSERT INTO shared.match_registry
-			(match_id,start_time,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			[]interface{}{"m1", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "2025-01-10 14:30:00+00",
+			(match_id,start_time,start_time_utc,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m1", "2025-01-10 14:00:00", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "2025-01-10 14:30:00+00",
 				"Aquarius", "Slayer", "Arena:Slayer", "Ranked Slayer", true, 1, 3, 600}},
 		{`INSERT INTO shared.match_participants
 			(match_id,xuid,gamertag,outcome,kills,deaths,assists,kda,accuracy,personal_score,
@@ -268,8 +274,14 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 	ctx := context.Background()
 	ddl := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
+		// start_time TIMESTAMP (naïf, convention mixte selon époque) +
+		// start_time_utc TIMESTAMPTZ (UTC garanti après migration). end_time
+		// suit la même structure. Les queries de prod lisent toujours
+		// COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC').
 		`CREATE TABLE shared.match_registry (
-			match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ,
+			match_id VARCHAR PRIMARY KEY,
+			start_time TIMESTAMP, end_time TIMESTAMP,
+			start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ,
 			playlist_id VARCHAR,
 			map_id VARCHAR,
 			pair_id VARCHAR,
@@ -306,8 +318,8 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		args []interface{}
 	}
 	inserts := []row{
-		{`INSERT INTO shared.match_registry (match_id,start_time,playlist_id,map_id,pair_id,game_variant_id,map_name,game_variant_name,pair_name,playlist_name,is_ranked,team_0_score,team_1_score) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			[]interface{}{"m1", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "Aquarius", "Arena:Slayer", "Slayer", "Ranked Slayer", true, 1, 3}},
+		{`INSERT INTO shared.match_registry (match_id,start_time,start_time_utc,playlist_id,map_id,pair_id,game_variant_id,map_name,game_variant_name,pair_name,playlist_name,is_ranked,team_0_score,team_1_score) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m1", "2025-01-10 14:00:00", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "Aquarius", "Arena:Slayer", "Slayer", "Ranked Slayer", true, 1, 3}},
 		{`INSERT INTO shared.match_participants (match_id,xuid,gamertag,outcome,kills,deaths,team_id,kda) VALUES (?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", pTestXUID, pTestGamertag, 2, 10, 5, 1, 1.5}},
 		{`INSERT INTO shared.xuid_aliases VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},

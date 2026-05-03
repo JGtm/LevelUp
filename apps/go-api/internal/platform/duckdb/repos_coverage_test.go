@@ -250,9 +250,13 @@ func seedSharedForExclusion(t *testing.T, db *DB) {
 	ctx := context.Background()
 	ddl := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
+		// start_time TIMESTAMP (naïf, convention mixte) + start_time_utc
+		// TIMESTAMPTZ (UTC garanti). Les queries de prod lisent toujours
+		// COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC').
 		`CREATE TABLE IF NOT EXISTS shared.match_registry (
 			match_id VARCHAR PRIMARY KEY,
-			start_time TIMESTAMPTZ,
+			start_time TIMESTAMP,
+			start_time_utc TIMESTAMPTZ,
 			map_name VARCHAR DEFAULT '',
 			pair_name VARCHAR DEFAULT ''
 		)`,
@@ -263,8 +267,8 @@ func seedSharedForExclusion(t *testing.T, db *DB) {
 		}
 	}
 	_, err := db.Exec(ctx, `INSERT INTO shared.match_registry VALUES
-		('m1', TIMESTAMPTZ '2025-01-10 14:00:00+00', 'Recharge', 'Slayer'),
-		('m2', TIMESTAMPTZ '2025-01-11 18:00:00+00', 'Streets', 'CTF')`)
+		('m1', TIMESTAMP '2025-01-10 14:00:00', TIMESTAMPTZ '2025-01-10 14:00:00+00', 'Recharge', 'Slayer'),
+		('m2', TIMESTAMP '2025-01-11 18:00:00', TIMESTAMPTZ '2025-01-11 18:00:00+00', 'Streets', 'CTF')`)
 	if err != nil {
 		t.Fatalf("seedSharedForExclusion INSERT: %v", err)
 	}

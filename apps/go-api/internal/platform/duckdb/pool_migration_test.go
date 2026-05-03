@@ -246,9 +246,12 @@ func seedSharedDBForPoolTest(t *testing.T, path string) {
 	defer db.Close()
 
 	ddl := []string{
+		// start_time TIMESTAMP + start_time_utc TIMESTAMPTZ : pattern canonique
+		// requis par toutes les queries qui font COALESCE(start_time_utc, ...).
 		`CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMP,
+			start_time_utc TIMESTAMPTZ,
 			map_id VARCHAR,
 			map_name VARCHAR,
 			map_name_fr VARCHAR,

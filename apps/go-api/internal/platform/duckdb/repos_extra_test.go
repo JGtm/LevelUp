@@ -184,7 +184,9 @@ func TestMatchExclusionRepo_ListExcluded_Empty(t *testing.T) {
 	ctx := context.Background()
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
-		`CREATE TABLE shared.match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ, map_name VARCHAR, pair_name VARCHAR)`,
+		// start_time TIMESTAMP + start_time_utc TIMESTAMPTZ : pattern canonique
+		// requis par MatchExclusionRepo.ListExcluded.
+		`CREATE TABLE shared.match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ, map_name VARCHAR, pair_name VARCHAR)`,
 		`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, is_excluded BOOLEAN, updated_at TIMESTAMPTZ)`,
 	}
 	for _, q := range ddls {
@@ -210,7 +212,7 @@ func TestMatchExclusionRepo_ListExcluded(t *testing.T) {
 	ctx := context.Background()
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
-		`CREATE TABLE shared.match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMPTZ, map_name VARCHAR, pair_name VARCHAR)`,
+		`CREATE TABLE shared.match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ, map_name VARCHAR, pair_name VARCHAR)`,
 		`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, is_excluded BOOLEAN, updated_at TIMESTAMPTZ)`,
 	}
 	for _, q := range ddls {
@@ -219,7 +221,7 @@ func TestMatchExclusionRepo_ListExcluded(t *testing.T) {
 		}
 	}
 	inserts := []string{
-		`INSERT INTO shared.match_registry VALUES ('m1', '2025-01-10 14:00:00+00', 'Arena', 'Slayer')`,
+		`INSERT INTO shared.match_registry VALUES ('m1', '2025-01-10 14:00:00', '2025-01-10 14:00:00+00', 'Arena', 'Slayer')`,
 		`INSERT INTO player_match_enrichment VALUES ('m1', TRUE, '2025-06-01 00:00:00+00')`,
 		`INSERT INTO player_match_enrichment VALUES ('m2', FALSE, '2025-06-01 00:00:00+00')`,
 	}

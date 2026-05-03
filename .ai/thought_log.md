@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-03] fix(test): aligner seeds tests intégration sur le pattern start_time_utc
+
+**Statut** : Complété.
+
+**Contexte** : Vérification finale post-livraison du fix timezone (commit `257667eb`). Le run `go test -tags=integration ./internal/platform/duckdb/` révélait 84 fails « Binder Error: column named "start_time_utc" not found » : les seeds des tests d'intégration créaient `match_registry` sans les colonnes `start_time_utc` / `end_time_utc` introduites en prod via la migration `add_start_time_utc_to_match_registry`. La suite par défaut (sans tag) passait, ce qui avait masqué la régression au moment du commit timezone.
+
+**Décision technique** : ajout des colonnes `start_time TIMESTAMP, end_time TIMESTAMP, start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ` à 4 seeds de tests :
+- `player_repos_test.go::seedPlayerSchema` + `seedSharedDBSchema` (les 2 schemas principaux)
+- `repos_coverage_test.go::seedSharedForExclusion`
+- `repos_extra_test.go` (2 seeds inline)
+- `pool_migration_test.go::seedSharedDBForPoolTest`
+
+INSERT correspondants enrichis avec valeur `start_time_utc` (TIMESTAMPTZ avec offset +00). Pattern documenté en commentaire dans chaque seed : « Les queries de prod lisent toujours COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ».
+
+**Résultats observés** :
+- Suite intégration : 84 fails timezone → 0. Reste 20 fails pré-existants liés à `global.xuid_aliases` (commit `feat/migrate-xuid-aliases-global`, hors scope).
+- Suite par défaut `go test ./internal/platform/duckdb/` : tous verts.
+- Suite frontend (cycle d'imports `DEFAULT_GAP_MINUTES`) : 67/67 verts sur les fichiers modifiés.
+
+**Conclusion / prochaine étape** : pattern timezone désormais cohérent prod ↔ test. Tout futur ajout de query lisant `match_registry` doit passer par `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')` ; les seeds de test sont prêts à le supporter.
+
+---
+
 ## [2026-05-03] tweak(badges): top_killer/false_brother fidèles aux originaux squad
 
 **Statut** : Complété.
