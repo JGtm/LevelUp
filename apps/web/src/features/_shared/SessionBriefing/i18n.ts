@@ -46,8 +46,8 @@ const FR: BriefingTexts = {
   },
   verdict: {
     teamScore: "Score d'équipe",
-    deltaBonusPositive: (d) => `Δ +${d} vs base`,
-    deltaBonusNegative: (d) => `Δ ${d} vs base`,
+    deltaBonusPositive: (d) => `Bonus équipe +${d}`,
+    deltaBonusNegative: (d) => `Malus équipe ${d}`,
   },
   drill: {
     activeView: (gt) => `Vue active : ${gt}`,
@@ -77,8 +77,8 @@ const EN: BriefingTexts = {
   },
   verdict: {
     teamScore: 'Team score',
-    deltaBonusPositive: (d) => `Δ +${d} vs base`,
-    deltaBonusNegative: (d) => `Δ ${d} vs base`,
+    deltaBonusPositive: (d) => `Team bonus +${d}`,
+    deltaBonusNegative: (d) => `Team penalty ${d}`,
   },
   drill: {
     activeView: (gt) => `Viewing: ${gt}`,
