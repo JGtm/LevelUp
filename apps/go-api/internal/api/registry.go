@@ -591,7 +591,8 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	briefingLoader.SetDefaultGamertag(pdb.Gamertag)
 	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithSquadLoader(briefingLoader)
+		WithSquadLoader(briefingLoader).
+		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

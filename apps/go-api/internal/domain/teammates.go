@@ -48,6 +48,7 @@ type TeammateKPIs struct {
 
 // MapBreakdownRow est la performance par carte pour la heatmap.
 type MapBreakdownRow struct {
+	MapID             string   `json:"-"` // UUID interne pour les lookups historiques — non exposé
 	MapUI             string   `json:"map_ui"`
 	MatchCount        int      `json:"match_count"`
 	WinRate           float64  `json:"win_rate"`
@@ -258,7 +259,8 @@ type SquadMatchHistoryRow struct {
 	StartTime        string   `json:"start_time"` // ISO 8601
 	MapUI            string   `json:"map_ui"`
 	PlaylistName     string   `json:"playlist_name,omitempty"`
-	PairName         string   `json:"pair_name,omitempty"` // libellé mode/pair
+	PairName         string   `json:"pair_name,omitempty"` // libellé brut
+	ModeUI           string   `json:"mode_ui,omitempty"`   // mode normalisé (NormalizeModeLabel)
 	Outcome          int      `json:"outcome"`
 	Kills            int      `json:"kills"`
 	Deaths           int      `json:"deaths"`
@@ -266,6 +268,9 @@ type SquadMatchHistoryRow struct {
 	Accuracy         *float64 `json:"accuracy,omitempty"`
 	PerformanceScore *float64 `json:"performance_score,omitempty"`
 	TeamMMRAvg       float64  `json:"team_mmr_avg"`
+	EnemyMMRAvg      *float64 `json:"enemy_mmr_avg,omitempty"`
+	DeltaMMR         *float64 `json:"delta_mmr,omitempty"`
+	ScoreLabel       string   `json:"score_label,omitempty"`
 	SessionLabel     *string  `json:"session_label,omitempty"`
 }
 
@@ -294,6 +299,29 @@ type SessionLabelEntry struct {
 type SessionLabelsList struct {
 	Solo  []SessionLabelEntry `json:"solo"`
 	Squad []SessionLabelEntry `json:"squad"`
+}
+
+// MedalDigestItem est une médaille agrégée sur tous les matchs partagés
+// pour un joueur donné.
+type MedalDigestItem struct {
+	MedalID     int64  `json:"medal_id"`
+	Label       string `json:"label,omitempty"`
+	Description string `json:"description,omitempty"`
+	ImageURL    string `json:"image_url,omitempty"`
+	TotalCount  int    `json:"total_count"` // total sur tous les matchs
+	MatchCount  int    `json:"match_count"` // nb matchs où obtenu
+}
+
+// MedalDigestEntry est le résumé médailles d'un joueur sur les matchs partagés.
+// Alimente <MedalDigest> dans SquadSynergiesPage (bottom card narrative).
+type MedalDigestEntry struct {
+	Player        string            `json:"player"`         // gamertag
+	DistinctTypes int               `json:"distinct_types"` // nb types distincts
+	TotalCount    int               `json:"total_count"`    // total toutes médailles
+	AvgPerMatch   float64           `json:"avg_per_match"`  // moy. par match avec médaille
+	PeakInMatch   int               `json:"peak_in_match"`  // max en 1 match
+	TopMedals     []MedalDigestItem `json:"top_medals"`     // top 5 par count
+	AllMedals     []MedalDigestItem `json:"all_medals"`     // tous triés count desc
 }
 
 // TeammatesPageResponse est la réponse de POST /pages/teammates.
@@ -351,4 +379,8 @@ type TeammatesPageResponse struct {
 	// MainPlayer est le gamertag du joueur principal (proprietaire de la page)
 	// — necessaire au front pour identifier le card "moi" dans Header.PlayerCards.
 	MainPlayer string `json:"main_player,omitempty"`
+	// MedalDigest alimente <MedalDigest> en bas de SquadSynergiesPage :
+	// résumé narratif médailles par joueur sur les matchs partagés.
+	// Nil si aucune médaille disponible ou squad vide.
+	MedalDigest []MedalDigestEntry `json:"medal_digest,omitempty"`
 }

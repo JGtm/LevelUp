@@ -1,5 +1,19 @@
 # Thought Log
 
+## [2026-05-02] feat escouade — MedalDigest narratif en bas de SquadSynergiesPage
+
+**Statut** : Complété.
+
+**Contexte** : La section médailles de la page Synergies montrait une galerie brute par match sans narratif. Objectif : ajouter un digest narratif (carte par joueur, top médailles + stats + grille déroulante) câblé à la fin de la page.
+
+**Décision technique** :
+- Go : nouveau port `MedalDefinitionsRepository` (labels + descriptions anglaises depuis `metadata.medal_definitions`). DuckDB impl dans `medal_definitions_repo.go`. Nouveaux types domain `MedalDigestItem` + `MedalDigestEntry`. Champ `medal_digest` ajouté à `TeammatesPageResponse`. Builder `buildMedalDigest` dans `teammates_squad_charts.go` utilisant `s.squadLoader.LoadMedals()` existant + nouveau `s.medalDefs.LookupByIDs()`. DI câblée dans `registry.go` via `.WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb))`.
+- TS : interfaces `MedalDigestItem` + `MedalDigestEntry` dans `lib/api/types.ts`. Section `medals` ajoutée à `SquadText` + FR/EN i18n. Composant `MedalDigest.tsx` avec grille auto-fill (2-4 joueurs), chips top médailles avec count badge neutre, grille déroulante sur demande, couleurs de bordure via `tokenCssVar` alignées sur `getSquadPlayerColors`. Câblé dans `SquadSynergiesPage.tsx` après `SquadImpactScoreboard`.
+
+**Résultats** : `go build ./...` OK. `go test ./internal/service/...` OK. `tsc --noEmit` OK. `assembleMedalDigest` = 79L (dans les limites). Labels/descriptions anglaises résolus depuis `medal_definitions` via jointure `medal_translations`.
+
+**Prochaine étape** : Enrichir `medal_definitions` avec le champ rareté pour activer les glows Halo (amber/purple/sky) sur les icônes.
+
 ## [2026-05-03] fix escouade — badges impact corrects pour tous les coéquipiers
 
 **Statut** : Complété.

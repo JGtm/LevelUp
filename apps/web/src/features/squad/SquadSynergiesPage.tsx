@@ -18,6 +18,7 @@ import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
+import { MedalDigest } from './MedalDigest'
 
 function outcomeNumToValue(n: number): OutcomeValue {
   if (n === 2) return 'win'
@@ -148,6 +149,13 @@ export function SquadSynergiesPage() {
       )}
       {pageData?.impact_matrix && (
         <SquadImpactScoreboard matrix={pageData.impact_matrix} />
+      )}
+      {pageData?.medal_digest && pageData.medal_digest.length > 0 && (
+        <MedalDigest
+          entries={pageData.medal_digest}
+          mainPlayer={pageData.main_player ?? playerSlug}
+          t={t.medals}
+        />
       )}
     </div>
   )
