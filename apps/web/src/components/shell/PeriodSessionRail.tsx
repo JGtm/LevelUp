@@ -111,9 +111,11 @@ function formatDateShort(iso: string, locale: Locale): string {
 }
 
 // Layout 3-zones : [◀ Précédente | Label centré | Suivante ▶]
-// Pas de sticky propre — le wrapper parent dans $playerSlug.tsx gère le sticky.
+// Pas de sticky propre — le parent (NavL2 ou SquadLayout) gère sa propre
+// barre sticky qui contient le rail. La border-t/-b délimite visuellement
+// le rail des filtres au-dessus et du contenu en dessous.
 const RAIL_BASE_CLASS =
-  'flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-4'
+  'flex h-12 shrink-0 items-center gap-3 border-t border-b border-border bg-background px-4'
 
 const ZONE_LEFT_CLASS = 'flex shrink-0 items-center gap-1.5'
 const ZONE_CENTER_CLASS = 'flex flex-1 items-center justify-center gap-2 min-w-0 text-center'

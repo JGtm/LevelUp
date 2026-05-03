@@ -77,6 +77,7 @@ export function SquadLayout() {
     filterContextHash,
     resolvedContext,
     setFilterContext,
+    setSessions,
     resetFilters,
   } = useGlobalFilterStore()
   const locale = useAppShellStore((s) => s.locale)
@@ -115,7 +116,30 @@ export function SquadLayout() {
   const applySessionLabels = (labels: string[]) => {
     setPickedSquadSessionLabelsRaw(labels)
     try { localStorage.setItem(sessionStorageKey, JSON.stringify(labels)) } catch { /* ignore */ }
+    // Synchroniser avec le globalFilterStore pour que PeriodSessionRail voie
+    // la sélection (le rail lit le store global). Squad utilise des labels
+    // (pas des session_id) — getRailMode matche par label OU session_id.
+    setSessions({
+      picked_sessions: labels,
+      gap_minutes: filterContext.sessions?.gap_minutes ?? 120,
+    })
   }
+
+  // Au mount, si des labels sont restaurés du localStorage mais que le store
+  // global n'a pas la même sélection, on les push (cold reload Squad).
+  useEffect(() => {
+    if (pickedSquadSessionLabels.length === 0) return
+    const current = filterContext.sessions?.picked_sessions ?? []
+    const same =
+      current.length === pickedSquadSessionLabels.length &&
+      current.every((id, i) => id === pickedSquadSessionLabels[i])
+    if (same) return
+    setSessions({
+      picked_sessions: pickedSquadSessionLabels,
+      gap_minutes: filterContext.sessions?.gap_minutes ?? 120,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // mount-only
 
   // ── Filtres global pending (période + cascade) — commités via Analyser ──
   const [pending, setPending] = useState(() => filterContext)
