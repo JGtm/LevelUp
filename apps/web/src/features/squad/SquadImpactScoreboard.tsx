@@ -27,6 +27,7 @@ import type {
   SquadImpactCell,
 } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { tokenCssVar } from '@/lib/accessibility'
 import { getSquadText } from './i18n'
 
 const BADGE_EMOJI: Record<string, string> = {
@@ -51,11 +52,11 @@ const BADGE_INVERTED: Record<string, true> = {
 function outcomeBg(outcome: number): string {
   switch (outcome) {
     case 2:
-      return 'rgba(0, 158, 115, 0.30)' // win
+      return `color-mix(in srgb, ${tokenCssVar('outcome-win')} 30%, transparent)`
     case 3:
-      return 'rgba(213, 94, 0, 0.30)' // loss
+      return `color-mix(in srgb, ${tokenCssVar('outcome-loss')} 30%, transparent)`
     default:
-      return 'rgba(100, 100, 130, 0.15)' // tie/dnf
+      return `color-mix(in srgb, ${tokenCssVar('outcome-dnf')} 15%, transparent)`
   }
 }
 

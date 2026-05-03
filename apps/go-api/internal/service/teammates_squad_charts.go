@@ -154,31 +154,43 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		return nil
 	}
 
-	// 1. Toutes les cartes jouées en escouade (dédup match_id), triées par
-	// fréquence décroissante puis ordre alphabétique.
+	// 1. Toutes les cartes jouées en escouade (dédup match_id).
+	// Clé interne = MapID (UUID, language-agnostic) si dispo, sinon MapUI.
+	// mapIDToUI assure la correspondance UUID → label d'affichage (FR).
 	type mapStats struct {
 		mapUI string
 		count int
 	}
 	mapCounts := make(map[string]int)
+	mapIDToUI := make(map[string]string)
 	matchIDByID := make(map[string]struct{}, len(allSquadRows))
 	for _, m := range allSquadRows {
 		if _, dup := matchIDByID[m.MatchID]; dup {
 			continue
 		}
 		matchIDByID[m.MatchID] = struct{}{}
-		key := m.MapUI
+		key := m.MapID
+		if key == "" {
+			key = m.MapUI
+		}
 		if key == "" {
 			continue
 		}
 		mapCounts[key]++
+		if m.MapUI != "" {
+			mapIDToUI[key] = m.MapUI
+		}
 	}
 	if len(mapCounts) == 0 {
 		return nil
 	}
 	all := make([]mapStats, 0, len(mapCounts))
 	for k, c := range mapCounts {
-		all = append(all, mapStats{mapUI: k, count: c})
+		ui := mapIDToUI[k]
+		if ui == "" {
+			ui = k
+		}
+		all = append(all, mapStats{mapUI: ui, count: c})
 	}
 	sort.Slice(all, func(i, j int) bool {
 		if all[i].count != all[j].count {
@@ -186,11 +198,22 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		}
 		return all[i].mapUI < all[j].mapUI
 	})
-	mapsTop := make([]string, len(all))
+	// mapsTopKeys = clés internes (UUID ou MapUI), mapsTop = labels FR pour le frontend.
+	mapsTopKeys := make([]string, 0, len(all))
+	mapsTop := make([]string, 0, len(all))
 	mapSet := make(map[string]bool, len(all))
-	for i, m := range all {
-		mapsTop[i] = m.mapUI
-		mapSet[m.mapUI] = true
+	for _, ms := range all {
+		// Retrouver la clé interne depuis le label d'affichage
+		key := ms.mapUI
+		for k, v := range mapIDToUI {
+			if v == ms.mapUI {
+				key = k
+				break
+			}
+		}
+		mapsTopKeys = append(mapsTopKeys, key)
+		mapsTop = append(mapsTop, ms.mapUI)
+		mapSet[key] = true
 	}
 
 	// 2. Joueurs : moi en tête + coéquipiers sélectionnés (dans l'ordre).
@@ -210,21 +233,26 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 			continue
 		}
 		mainSeen[m.MatchID] = struct{}{}
-		if !mapSet[m.MapUI] {
+		key := m.MapID
+		if key == "" {
+			key = m.MapUI
+		}
+		if !mapSet[key] {
 			continue
 		}
-		if _, ok := mainAgg[m.MapUI]; !ok {
-			mainAgg[m.MapUI] = &cellAgg{}
+		if _, ok := mainAgg[key]; !ok {
+			mainAgg[key] = &cellAgg{}
 		}
-		mainAgg[m.MapUI].nMatch++
+		mainAgg[key].nMatch++
 		if m.PerformanceScore != nil {
-			mainAgg[m.MapUI].sum += *m.PerformanceScore
-			mainAgg[m.MapUI].count++
+			mainAgg[key].sum += *m.PerformanceScore
+			mainAgg[key].count++
 		}
 	}
-	for _, mapUI := range mapsTop {
+	for i, mapKey := range mapsTopKeys {
+		mapUI := mapsTop[i]
 		c := domain.SquadMapHeatmapCell{Player: s.gamertag, MapUI: mapUI}
-		if a, ok := mainAgg[mapUI]; ok && a.nMatch > 0 {
+		if a, ok := mainAgg[mapKey]; ok && a.nMatch > 0 {
 			c.MatchCount = a.nMatch
 			if a.count > 0 {
 				p := round2(a.sum / float64(a.count))
@@ -237,7 +265,6 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 	// 4. Coéquipiers : LoadPlayerMatches par gamertag, filtre sur match_ids escouade.
 	matchIDsAllowed := matchIDByID
 	if len(sessionMatchIDs) > 0 {
-		// Si un filtre de session est actif, recroiser avec ces match_ids
 		filtered := make(map[string]struct{}, len(sessionMatchIDs))
 		for id := range matchIDByID {
 			if sessionMatchIDs[id] {
@@ -247,9 +274,6 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		matchIDsAllowed = filtered
 	}
 
-	// squadLoader résout dynamiquement la PlayerDB par gamertag (vs
-	// playerMatchesRepo qui est BOUND au main player et ignore l'arg gamertag).
-	// Si squadLoader est nil (ex : tests legacy), on dégrade en cells vides.
 	for _, gt := range selectedGamertags {
 		if s.squadLoader == nil {
 			for _, mapUI := range mapsTop {
@@ -276,9 +300,10 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 			if r.Summary.Map == nil {
 				continue
 			}
-			key := r.Summary.Map.DefaultLabel
+			// Clé interne = UUID (même source que MapID dans SquadMatchRow).
+			key := r.Summary.Map.ID
 			if key == "" {
-				key = r.Summary.Map.ID
+				key = r.Summary.Map.DefaultLabel
 			}
 			if !mapSet[key] {
 				continue
@@ -292,9 +317,10 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 				mateAgg[key].count++
 			}
 		}
-		for _, mapUI := range mapsTop {
+		for i, mapKey := range mapsTopKeys {
+			mapUI := mapsTop[i]
 			c := domain.SquadMapHeatmapCell{Player: gt, MapUI: mapUI}
-			if a, ok := mateAgg[mapUI]; ok && a.nMatch > 0 {
+			if a, ok := mateAgg[mapKey]; ok && a.nMatch > 0 {
 				c.MatchCount = a.nMatch
 				if a.count > 0 {
 					p := round2(a.sum / float64(a.count))
@@ -385,7 +411,15 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		participants[mid] = make(map[string]*pInfo)
 	}
 	loadInto := func(gt string) {
-		rows, err := s.playerMatchesRepo.LoadPlayerMatches(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		var rows []canonical.PlayerMatchRow
+		var err error
+		if s.squadLoader != nil {
+			rows, err = s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		} else if gt == mainGamertag {
+			rows, err = s.playerMatchesRepo.LoadPlayerMatches(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		} else {
+			return
+		}
 		if err != nil {
 			slog.WarnContext(ctx, "teammates_impact_load_failed",
 				"gamertag", gt, "err", err.Error())
