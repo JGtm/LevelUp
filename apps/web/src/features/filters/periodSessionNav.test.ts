@@ -42,8 +42,14 @@ const SESSIONS: SessionOption[] = [
 ]
 
 describe('getRailMode', () => {
-  it('hidden quand all-time (pas de période ni session)', () => {
-    expect(getRailMode(DEFAULT_CTX, SESSIONS).kind).toBe('hidden')
+  it('all-time quand pas de scope mais sessions disponibles', () => {
+    const mode = getRailMode(DEFAULT_CTX, SESSIONS)
+    expect(mode.kind).toBe('all-time')
+    if (mode.kind === 'all-time') expect(mode.total).toBe(3)
+  })
+
+  it('hidden quand pas de scope ET aucune session disponible', () => {
+    expect(getRailMode(DEFAULT_CTX, []).kind).toBe('hidden')
   })
 
   it('session quand 1 session pickée et trouvée', () => {
@@ -154,20 +160,20 @@ describe('getRailMode — edge cases', () => {
     expect(getRailMode(ctx, []).kind).toBe('hidden')
   })
 
-  it('hidden si période avec start === end (durée 0)', () => {
+  it('all-time si période durée 0 mais sessions dispos (fallback)', () => {
     const ctx: FilterContextInput = {
       ...DEFAULT_CTX,
       period: { start_date: '2026-04-08', end_date: '2026-04-08' },
     }
-    expect(getRailMode(ctx, SESSIONS).kind).toBe('hidden')
+    expect(getRailMode(ctx, SESSIONS).kind).toBe('all-time')
   })
 
-  it('hidden si période avec end < start (invalide)', () => {
+  it('all-time si période invalide (end < start) mais sessions dispos', () => {
     const ctx: FilterContextInput = {
       ...DEFAULT_CTX,
       period: { start_date: '2026-04-10', end_date: '2026-04-01' },
     }
-    expect(getRailMode(ctx, SESSIONS).kind).toBe('hidden')
+    expect(getRailMode(ctx, SESSIONS).kind).toBe('all-time')
   })
 })
 
