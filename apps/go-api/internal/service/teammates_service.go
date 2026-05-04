@@ -218,7 +218,7 @@ func (s *TeammatesService) GetPage(
 		matchHistory = buildSquadMatchHistory(allSquadRows, modeFR, squadStatsToWinTotal(squadStats))
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, sessionMatchIDs)
-		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
+		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags)
 		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
 		synergyRadar = s.buildSquadSynergyRadar(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
 		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, "all")

@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"slices"
 	"sort"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
@@ -370,6 +371,7 @@ var impactScoreWeights = map[string]float64{
 func (s *TeammatesService) buildSquadImpactMatrix(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
+	mainXUID string,
 	mainGamertag string,
 	selectedGamertags []string,
 ) *domain.SquadImpactMatrix {
@@ -377,88 +379,69 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		return nil
 	}
 
-	// 1. Match IDs uniques + outcome du main player.
+	// 1. Match IDs uniques + outcome du main player. On trie ensuite par
+	//    start_time ASC pour que la colonne #1 du scoreboard corresponde au
+	//    match le plus ancien (Q30SquadMatches retourne DESC, et allSquadRows
+	//    concatène plusieurs teammates donc l'ordre d'arrivée n'est pas
+	//    globalement chronologique).
 	mainOutcomeByMatch := make(map[string]int)
+	startTimeByMatch := make(map[string]time.Time)
 	matchIDOrder := make([]string, 0, len(allSquadRows))
 	for _, m := range allSquadRows {
 		if _, ok := mainOutcomeByMatch[m.MatchID]; ok {
 			continue
 		}
 		mainOutcomeByMatch[m.MatchID] = m.Outcome
+		startTimeByMatch[m.MatchID] = m.StartTime
 		matchIDOrder = append(matchIDOrder, m.MatchID)
 	}
 	if len(matchIDOrder) == 0 {
 		return nil
 	}
+	slices.SortStableFunc(matchIDOrder, func(a, b string) int {
+		return startTimeByMatch[a].Compare(startTimeByMatch[b])
+	})
 
 	// 2. Charger les events impact pour tous les matchs.
 	eventsByMatch := s.loadImpactEventsByMatch(ctx, matchIDOrder)
 
-	// 3. Charger les participants par match via LoadPlayerMatches du main +
-	//    teammates pour récupérer kills/deaths/assists/outcome de chaque
-	//    joueur de l'escouade. On indexe par match_id.
-	mainXUID := ""
-	type pInfo struct {
-		gt      string
-		xuid    string
-		k, d, a int
-		outcome int
-		present bool
-	}
-	// participants[matchID][gamertag] = info
-	participants := make(map[string]map[string]*pInfo, len(matchIDOrder))
-	for _, mid := range matchIDOrder {
-		participants[mid] = make(map[string]*pInfo)
-	}
-	loadInto := func(gt string) {
-		var rows []canonical.PlayerMatchRow
-		var err error
-		if s.squadLoader != nil {
-			rows, err = s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
-		} else if gt == mainGamertag {
-			rows, err = s.playerMatchesRepo.LoadPlayerMatches(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
-		} else {
-			return
-		}
+	// 3. Charger les participants de l'ÉQUIPE ALLIÉE complète du main pour
+	//    chaque match (parité Python team_xuids dans compute_single_match_impact).
+	//    On passera tous ces alliés à analysis.ComputeMatchImpactFull → les
+	//    badges seront calculés en team-wide. Le filtre xuidToGT ci-dessous
+	//    ne contient QUE les squad members (main + selected) → les badges qui
+	//    tombent sur un allié non-squad sont silencieusement ignorés (cohérent
+	//    avec la sémantique de la matrice scoreboard où il n'y a pas de
+	//    ligne pour ces joueurs).
+	allyByMatch := map[string][]domain.AllyParticipant{}
+	if mainXUID != "" {
+		allies, err := s.repo.LoadMainTeamParticipants(ctx, mainXUID, matchIDOrder)
 		if err != nil {
-			slog.WarnContext(ctx, "teammates_impact_load_failed",
-				"gamertag", gt, "err", err.Error())
-			return
+			slog.WarnContext(ctx, "teammates_impact_load_team_failed",
+				"main_xuid", mainXUID, "err", err.Error())
 		}
-		for _, r := range rows {
-			if _, ok := participants[r.Summary.MatchID]; !ok {
-				continue
-			}
-			info := &pInfo{
-				gt:      gt,
-				xuid:    r.Self.Identity.XUID,
-				k:       intPtrOrZero(r.Self.Kills),
-				d:       intPtrOrZero(r.Self.Deaths),
-				a:       intPtrOrZero(r.Self.Assists),
-				outcome: canonicalOutcomeToInt(r.Self.Outcome),
-				present: true,
-			}
-			participants[r.Summary.MatchID][gt] = info
-			if gt == mainGamertag && mainXUID == "" {
-				mainXUID = r.Self.Identity.XUID
-			}
+		for _, a := range allies {
+			allyByMatch[a.MatchID] = append(allyByMatch[a.MatchID], a)
 		}
-	}
-	loadInto(mainGamertag)
-	for _, gt := range selectedGamertags {
-		loadInto(gt)
 	}
 
-	// xuid → gamertag pour l'escouade (utilisé pour mapper les events).
+	// xuid → gamertag des squad members uniquement (main + selected). Sert à
+	// filtrer les badges affichés dans le scoreboard.
 	xuidToGT := map[string]string{}
 	gamertagSet := map[string]bool{mainGamertag: true}
 	for _, gt := range selectedGamertags {
 		gamertagSet[gt] = true
 	}
-	for _, byGT := range participants {
-		for gt, info := range byGT {
-			if info.xuid != "" && gamertagSet[gt] {
-				xuidToGT[info.xuid] = gt
+	if mainXUID != "" {
+		xuidToGT[mainXUID] = mainGamertag
+	}
+	for _, allies := range allyByMatch {
+		for _, a := range allies {
+			if a.XUID == "" {
+				continue
+			}
+			if _, isSquad := gamertagSet[a.Gamertag]; isSquad {
+				xuidToGT[a.XUID] = a.Gamertag
 			}
 		}
 	}
@@ -476,16 +459,15 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 
 	for _, mid := range matchIDOrder {
 		evs := eventsByMatch[mid]
-		// Construire les ParticipantSnap pour ce match (TOUS les joueurs présents
-		// dans participants[mid] — limités à l'escouade ; les badges concernent
-		// uniquement ces joueurs).
-		snaps := make([]analysis.ParticipantSnap, 0, len(participants[mid]))
-		for _, p := range participants[mid] {
-			if !p.present {
-				continue
-			}
+		allies := allyByMatch[mid]
+		// Snaps = TOUS les alliés du main pour ce match (équipe alliée
+		// complète, pas seulement squad). Les filtres internes de
+		// ComputeMatchImpactFull (winXUIDs, lossXUIDs, squadXUIDs) en
+		// découlent → calcul team-wide alliée.
+		snaps := make([]analysis.ParticipantSnap, 0, len(allies))
+		for _, a := range allies {
 			snaps = append(snaps, analysis.ParticipantSnap{
-				XUID: p.xuid, Outcome: p.outcome, Kills: p.k, Deaths: p.d, Assists: p.a,
+				XUID: a.XUID, Outcome: a.Outcome, Kills: a.Kills, Deaths: a.Deaths, Assists: a.Assists,
 			})
 		}
 		if len(snaps) == 0 && len(evs) == 0 {
@@ -496,7 +478,8 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		})
 		// Filtrer aux badges des joueurs de l'escouade ET aux 8 badges du
 		// scoreboard impact (parité Python : top_gun n'est pas inclus dans
-		// la matrice impact même s'il est calculé).
+		// la matrice impact même s'il est calculé). Les badges qui tombent
+		// sur un allié non-squad sont droppés ici via xuidToGT.
 		matchHadBadge := false
 		cellByGT := map[string][]string{}
 		for _, b := range badges {

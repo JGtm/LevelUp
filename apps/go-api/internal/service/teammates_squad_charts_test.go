@@ -213,6 +213,122 @@ func TestBuildSquadMapHeatmap_TeammatePerfsAreDistinctFromMain(t *testing.T) {
 	}
 }
 
+// TestBuildSquadImpactMatrix_TeamWideAllyDropped : le scoreboard impact est
+// calculé en team-wide alliée (parité Python compute_single_match_impact).
+// Si un badge (ex. top_killer) tombe sur un allié NON-squad, il ne doit PAS
+// apparaître dans le scoreboard ni se reporter sur un squad member.
+//
+// Setup : main + A (squad). NS = allié non-squad. NS a 12 kills (top killer
+// global de l'équipe alliée), main a 5, A a 4. Le badge top_killer va donc à
+// NS et doit être droppé. silent_hero (max_assists+min_deaths) tombe sur A
+// (max_assists=8, min_deaths=0) → doit apparaître dans le scoreboard.
+func TestBuildSquadImpactMatrix_TeamWideAllyDropped(t *testing.T) {
+	mainXUID := "x_main"
+	matchID := "m_session_1"
+	startTime := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
+
+	// Mock repo : retourne 3 alliés (main, A=squad, NS=non-squad). NS a le
+	// max kills donc top_killer. A a max assists + min deaths donc silent_hero.
+	repo := &mockSquadRepo{
+		allyRows: []domain.AllyParticipant{
+			{MatchID: matchID, XUID: mainXUID, Gamertag: "main", Kills: 5, Deaths: 2, Assists: 3, Outcome: domain.OutcomeWin},
+			{MatchID: matchID, XUID: "x_a", Gamertag: "A", Kills: 4, Deaths: 0, Assists: 8, Outcome: domain.OutcomeWin},
+			{MatchID: matchID, XUID: "x_ns", Gamertag: "NS", Kills: 12, Deaths: 1, Assists: 1, Outcome: domain.OutcomeWin},
+		},
+	}
+	svc := &TeammatesService{
+		repo:      repo,
+		titleSlug: "halo_infinite",
+		gamertag:  "main",
+	}
+
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeWin},
+	}
+	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, "main", []string{"A"})
+	if matrix == nil {
+		t.Fatal("matrix should be non-nil")
+	}
+
+	// top_killer va sur NS (non-squad) → ne doit apparaître nulle part.
+	for _, c := range matrix.Cells {
+		for _, k := range c.BadgeKeys {
+			if k == "top_killer" {
+				t.Errorf("top_killer ne doit pas apparaître (tombe sur NS, allié non-squad) — trouvé sur %s", c.Player)
+			}
+		}
+	}
+	// Aucun joueur ne doit avoir un compte top_killer non nul dans la summary.
+	for _, p := range matrix.Players {
+		for _, b := range p.Counts {
+			if b.BadgeKey == "top_killer" && b.Count != 0 {
+				t.Errorf("player %s : top_killer count=%d, want 0 (badge tombé sur non-squad)", p.Player, b.Count)
+			}
+		}
+	}
+
+	// silent_hero doit aller à A (max assists=8, min deaths=0 sur l'équipe alliée).
+	foundSilentOnA := false
+	for _, c := range matrix.Cells {
+		if c.Player != "A" {
+			continue
+		}
+		for _, k := range c.BadgeKeys {
+			if k == "silent_hero" {
+				foundSilentOnA = true
+			}
+		}
+	}
+	if !foundSilentOnA {
+		t.Error("silent_hero attendu sur A (max assists + min deaths parmi alliés)")
+	}
+}
+
+// TestBuildSquadImpactMatrix_TeamWideAllySwapsBadge : si un allié non-squad
+// est plus extrême que le squad member, c'est lui qui reçoit le badge en
+// team-wide → le squad member NE DOIT PAS recevoir le badge "à défaut".
+//
+// Setup défaite : main perd, A (squad) a 5 deaths, NS (non-squad) a 9 deaths.
+// false_brother en team-wide va sur NS, donc A ne le reçoit pas.
+func TestBuildSquadImpactMatrix_TeamWideNoFallback(t *testing.T) {
+	mainXUID := "x_main"
+	matchID := "m_session_2"
+	startTime := time.Date(2026, 4, 6, 19, 0, 0, 0, time.UTC)
+
+	repo := &mockSquadRepo{
+		allyRows: []domain.AllyParticipant{
+			{MatchID: matchID, XUID: mainXUID, Gamertag: "main", Kills: 4, Deaths: 3, Assists: 1, Outcome: domain.OutcomeLoss},
+			{MatchID: matchID, XUID: "x_a", Gamertag: "A", Kills: 3, Deaths: 5, Assists: 2, Outcome: domain.OutcomeLoss},
+			{MatchID: matchID, XUID: "x_ns", Gamertag: "NS", Kills: 2, Deaths: 9, Assists: 0, Outcome: domain.OutcomeLoss},
+		},
+	}
+	svc := &TeammatesService{
+		repo:      repo,
+		titleSlug: "halo_infinite",
+		gamertag:  "main",
+	}
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeLoss},
+	}
+	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, "main", []string{"A"})
+
+	// false_brother doit aller à NS (max deaths=9, min assists=0). Donc :
+	// - A ne doit PAS recevoir false_brother malgré ses 5 deaths (squad-only,
+	//   il l'aurait reçu en logique squad-only buggée).
+	// - matrix peut être nil si AUCUN badge ne tombe sur un squad member.
+	if matrix == nil {
+		// OK : aucun badge alloué à un squad member, matrice vide donc nil.
+		return
+	}
+	for _, c := range matrix.Cells {
+		for _, k := range c.BadgeKeys {
+			if k == "false_brother" {
+				t.Errorf("false_brother ne doit pas apparaître (tombe sur NS en team-wide) — trouvé sur %s", c.Player)
+			}
+		}
+	}
+}
+
 // TestBuildSquadMapHeatmap_NoCapOnMaps : le cap top 15 a été retiré (commit
 // fabc3b3c). 18 cartes en input → 18 cartes en output (toutes affichées).
 func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {

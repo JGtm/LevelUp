@@ -85,6 +85,20 @@ type ImpactEventRow struct {
 	TimeMS    int64
 }
 
+// AllyParticipant est une ligne participant côté équipe alliée d'un match.
+// Chargé par SquadRepository.LoadMainTeamParticipants pour alimenter le calcul
+// des badges d'impact (analysis.ComputeMatchImpactFull) en périmètre team-wide
+// (toute l'équipe du joueur principal, pas seulement le squad sélectionné).
+type AllyParticipant struct {
+	MatchID  string
+	XUID     string
+	Gamertag string
+	Kills    int
+	Deaths   int
+	Assists  int
+	Outcome  int
+}
+
 // SynthesisHeatmapRow est une ligne brute chargée depuis Q33 (heatmap map×mode).
 type SynthesisHeatmapRow struct {
 	MapName    string

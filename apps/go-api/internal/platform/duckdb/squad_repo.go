@@ -219,6 +219,51 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	return result, rows.Err()
 }
 
+// LoadMainTeamParticipants charge tous les participants de l'équipe alliée
+// du joueur principal pour une liste de matchs (Q32b). Pour chaque match,
+// retourne les rows match_participants où team_id = team_id du mainXUID dans
+// ce match (le main inclus).
+func (r *SquadRepo) LoadMainTeamParticipants(ctx context.Context, mainXUID string, matchIDs []string) ([]domain.AllyParticipant, error) {
+	if len(matchIDs) == 0 || mainXUID == "" {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	placeholders := make([]string, len(matchIDs))
+	args := make([]interface{}, 0, 1+len(matchIDs))
+	args = append(args, mainXUID)
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	query := fmt.Sprintf(Q32bMainTeamParticipantsTemplate, strings.Join(placeholders, ","))
+
+	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("LoadMainTeamParticipants: %w", err)
+	}
+	defer rows.Close()
+
+	var result []domain.AllyParticipant
+	for rows.Next() {
+		var row domain.AllyParticipant
+		if err := rows.Scan(
+			&row.MatchID,
+			&row.XUID,
+			&row.Gamertag,
+			&row.Kills,
+			&row.Deaths,
+			&row.Assists,
+			&row.Outcome,
+		); err != nil {
+			return nil, fmt.Errorf("LoadMainTeamParticipants scan: %w", err)
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
 // LoadSynthesisHeatmap charge les donnÃ©es heatmap mapÃ—mode (Q33).
 func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
