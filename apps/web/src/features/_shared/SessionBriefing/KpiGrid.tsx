@@ -1,9 +1,13 @@
 /**
  * KpiGrid — bande KPI du SessionBriefing.
  *
- * 8 cards toujours présentes (Matchs / Durées / Frags / Morts / Assists /
- * Précision / Vie) + 1 card conditionnelle : Delta rang (si rank_delta
- * renseigné). Total : 8 ou 9 colonnes selon les données du scope.
+ * 7 cards toujours présentes (Matchs+durée moy / Durée totale / Frags / Morts
+ * / Assists / Précision / Vie) + 1 card conditionnelle : Delta rang (si
+ * rank_delta renseigné). Total : 7 ou 8 colonnes selon les données du scope.
+ *
+ * "Matchs joués" affiche le count + la durée moyenne par match en inline-sub
+ * (ex: "12  8min07/match") pour économiser une colonne — l'info était
+ * historiquement dans une card séparée mais peu auto-suffisante seule.
  *
  * Trends ▲/▼ vs teamAvgKpis (mode squad uniquement) sur les 5 cards
  * évaluatives historiques (frags, morts, assists, précision, vie). Morts =
@@ -18,7 +22,7 @@ import type { CSSProperties } from 'react'
 
 import type { KPIStats, RankDelta } from '@/lib/api/types'
 
-import { formatDurationDhm, formatMmss } from './format'
+import { formatDurationDhm, formatMinSec, formatMmss } from './format'
 import type { BriefingTexts } from './i18n'
 import { computeTrend, trendSymbol, type TrendState } from './trends'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
@@ -37,13 +41,18 @@ interface KpiGridProps {
 interface CellProps {
   label: string
   value: string
+  /** Sub-info affichée en dessous (ex: "1.20/min" sous frags par partie). */
   sub?: string
+  /** Sub-info affichée à droite de la valeur sur la même ligne, plus petite
+   *  et muted. Utile pour combiner deux infos liées dans une seule colonne
+   *  (ex: count matchs + durée moyenne par match). */
+  inlineSub?: string
   trend?: TrendState
   /** Couleur absolue de la valeur. Si fourni, override la couleur trend. */
   valueColorToken?: SemanticToken
 }
 
-function KpiCell({ label, value, sub, trend = 'none', valueColorToken }: CellProps) {
+function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken }: CellProps) {
   const trendToken =
     trend === 'above'
       ? 'divergent-pos'
@@ -62,6 +71,9 @@ function KpiCell({ label, value, sub, trend = 'none', valueColorToken }: CellPro
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="mt-0.5 flex items-baseline">
         <span className="text-lg font-bold" style={valueStyle}>{value}</span>
+        {inlineSub && (
+          <span className="ml-1.5 text-[11px] text-muted-foreground">{inlineSub}</span>
+        )}
         {!valueColorToken && trendToken && (
           <span
             className="ml-1 text-xs font-bold"
@@ -115,7 +127,7 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
   // Card conditionnelle : présente uniquement si rank_delta existe pour le
   // scope. Cachée proprement si aucun match avec rating dans le scope.
   const hasDelta = kpis.rank_delta != null
-  const colCount = 8 + (hasDelta ? 1 : 0)
+  const colCount = 7 + (hasDelta ? 1 : 0)
   // Tailwind ne purge pas les `grid-cols-N` dynamiques → utiliser inline
   // grid-template-columns pour un colCount calculé.
   const gridStyle: CSSProperties = {
@@ -142,14 +154,11 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
         <KpiCell
           label={texts.grid.matchesPlayed}
           value={String(kpis.matches_count)}
+          inlineSub={`${formatMinSec(kpis.avg_match_seconds)}${texts.grid.perMatch}`}
         />
         <KpiCell
           label={texts.grid.totalDuration}
           value={formatDurationDhm(kpis.total_play_seconds)}
-        />
-        <KpiCell
-          label={texts.grid.avgMatchDuration}
-          value={formatMmss(kpis.avg_match_seconds)}
         />
         <KpiCell
           label={texts.grid.fragsPerMatch}

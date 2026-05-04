@@ -19,3 +19,13 @@ export function formatMmss(seconds: number): string {
   const s = Math.round(seconds % 60)
   return `${m}:${String(s).padStart(2, '0')}`
 }
+
+/**
+ * Format "Mmin SS" pour durées courtes affichées en complément (ex inline sub
+ * de la card "Matchs joués"). Ex : 487s → "8min07".
+ */
+export function formatMinSec(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.round(seconds % 60)
+  return `${m}min${String(s).padStart(2, '0')}`
+}

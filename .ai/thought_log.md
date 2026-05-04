@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-05-04] feat(squad/header): fusion cards "Matchs joués" + "Durée moy/match"
+
+**Statut** : Complété.
+
+**Contexte** : L'utilisateur veut économiser une colonne de la grille SessionBriefing en combinant les cards "Matchs joués" et "Durée moyenne par match" dans une seule card. Format souhaité : `"12  8min07/match"` où `8min07/match` est plus petit que le count, sur la même ligne.
+
+**Décision technique** :
+
+1. **Nouveau format helper** ([format.ts](apps/web/src/features/_shared/SessionBriefing/format.ts)) — `formatMinSec(seconds)` retourne `"Mmin SS"` (ex `654s → "10min54"`). `formatMmss` reste utilisé pour la card "Vie moyenne" (format `M:SS` cohérent ailleurs).
+2. **KpiCell étendu** — nouveau prop `inlineSub?: string` rendu à droite de la valeur sur la même baseline (`text-[11px] text-muted-foreground`, `ml-1.5`). Préserve le comportement existant de `sub` (rendu en dessous, plus petit). Cohabitation propre : un cell peut avoir les deux si besoin futur.
+3. **i18n** : retrait de `avgMatchDuration` (FR + EN + interface), ajout de `perMatch: '/match'` (FR) et `perMatch: '/match'` (EN, identique). Pattern symétrique au `perMin: '/min'` déjà présent.
+4. **Grille** : la card "Durée moyenne par match" disparaît (économie d'1 colonne). La card "Matchs joués" gagne `inlineSub={formatMinSec(avg) + perMatch}`. Total : 7 cards permanentes + 1 conditionnelle (Delta rang) = 7 ou 8 cols (au lieu de 8 ou 9).
+5. **Test SessionBriefing** : un assert sur `"Durée moyenne par match"` (label retiré) remplacé par un assert sur `/10min54\/match/` (regex pour échapper le slash).
+
+**Résultats observés** :
+- `npx tsc --noEmit` clean.
+- `npx eslint` clean sur les fichiers touchés.
+- `npx vitest run SessionBriefing/` : 12/12 verts.
+- `grep avgMatchDuration|"Durée moyenne par match"|"Avg duration per match"` → 0 résidu.
+
+**Conclusion / prochaine étape** : grille plus compacte (1 colonne en moins), info équivalente, sémantique préservée (toutes les cards restent des moyennes ou des totaux du scope). Livrable.
+
+---
+
 ## [2026-05-04] revert(squad/header): retrait card "Performance moyenne" (info dupliquée)
 
 **Statut** : Complété.
