@@ -93,6 +93,46 @@ func (r *MetadataRepo) GetCurrentSeason(ctx context.Context, titleID string) (*d
 	return scanSeasonCalendar(row)
 }
 
+// ListSeasons retourne toutes les saisons d'un titre, triées par StartDate ASC.
+//
+// Utilisé par SeasonsCatalog pour la fusion TOML+DB (V2 saisons : pattern
+// lazy-fetch + persist symétrique au battle pass — cf. season_pass_service).
+func (r *MetadataRepo) ListSeasons(ctx context.Context, titleID string) ([]domain.SeasonCalendar, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	const q = `
+		SELECT title_id, season_id, version, name, start_date, end_date,
+		       fetched_at, content_hash, etag, source_url
+		FROM season_calendars
+		WHERE title_id = ?
+		ORDER BY start_date ASC`
+
+	rows, err := r.meta.Query(ctx, q, titleID)
+	if err != nil {
+		return nil, fmt.Errorf("MetadataRepo.ListSeasons: %w", err)
+	}
+	defer rows.Close()
+
+	var results []domain.SeasonCalendar
+	for rows.Next() {
+		var s domain.SeasonCalendar
+		var endDate sql.NullTime
+		if err := rows.Scan(
+			&s.TitleID, &s.SeasonID, &s.Version, &s.Name,
+			&s.StartDate, &endDate,
+			&s.FetchedAt, &s.ContentHash, &s.ETag, &s.SourceURL,
+		); err != nil {
+			return nil, fmt.Errorf("MetadataRepo.ListSeasons scan: %w", err)
+		}
+		if endDate.Valid {
+			s.EndDate = &endDate.Time
+		}
+		results = append(results, s)
+	}
+	return results, rows.Err()
+}
+
 // GetCSRSeasons retourne toutes les saisons CSR pour un titre.
 func (r *MetadataRepo) GetCSRSeasons(ctx context.Context, titleID string) ([]domain.CSRSeasonCalendar, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)

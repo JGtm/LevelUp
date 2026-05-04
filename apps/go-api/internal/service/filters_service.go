@@ -20,8 +20,9 @@ var experienceLabels = []string{"PVP non classé", "PVP classé", "PVE"}
 
 // FiltersService calcule FilterContextResolved depuis les données du repo.
 type FiltersService struct {
-	repo    port.FiltersRepository
-	seasons []SeasonWindow // optionnel : nil → aucun SeasonCount renvoyé
+	repo      port.FiltersRepository
+	titleSlug string
+	catalog   *SeasonsCatalog // optionnel : nil → aucun SeasonCount renvoyé
 }
 
 // NewFiltersService crée un FiltersService.
@@ -29,14 +30,19 @@ func NewFiltersService(repo port.FiltersRepository) *FiltersService {
 	return &FiltersService{repo: repo}
 }
 
-// WithSeasons injecte le catalog de saisons utilisé pour calculer les
-// SeasonCounts (popover SaisonPill côté frontend).
+// WithSeasonsCatalog injecte le résolveur unifié des saisons (TOML + DB +
+// lazy fetch live). Source des SeasonCounts du popover SaisonPill côté
+// frontend.
 //
-// Appelé au boot par api/registry.go avec SeasonsFromAssets() projeté depuis
-// l'AssetMappingSet du titre. Si non appelé → pas de season counts (dégradation
-// gracieuse, le frontend affiche les saisons sans compteur ni folding).
-func (s *FiltersService) WithSeasons(seasons []SeasonWindow) *FiltersService {
-	s.seasons = seasons
+// Le titleSlug est nécessaire car le catalog est title-scoped (il faut
+// passer le bon titleID au resolver pour que la lookup DB et le fetch live
+// ciblent les bonnes données).
+//
+// Si non appelé → pas de season counts (dégradation gracieuse, le frontend
+// affiche les saisons sans compteur ni folding).
+func (s *FiltersService) WithSeasonsCatalog(titleSlug string, catalog *SeasonsCatalog) *FiltersService {
+	s.titleSlug = titleSlug
+	s.catalog = catalog
 	return s
 }
 
@@ -51,12 +57,18 @@ func (s *FiltersService) Resolve(
 		return domain.FilterContextResolved{}, err
 	}
 	resolved := ResolveFiltersFromRows(rows, input)
-	if len(s.seasons) > 0 {
+	if s.catalog != nil && s.titleSlug != "" {
 		// Le match_context a déjà été appliqué dans ResolveFiltersFromRowsAt.
 		// Pour les SeasonCounts on veut le même périmètre : on ré-applique
 		// match_context à rows et on calcule sur la base post-context.
-		seasonRows := applyMatchContextFilter(rows, input.MatchContext)
-		resolved.SeasonCounts = BuildSeasonCounts(seasonRows, resolved.Effective.Cascade, s.seasons)
+		// Le catalog peut déclencher un fetch live + persist si la DB est
+		// vide — best-effort, échec gracieux vers TOML statique.
+		catalog := s.catalog.Load(ctx, s.titleSlug)
+		if len(catalog) > 0 {
+			seasonRows := applyMatchContextFilter(rows, input.MatchContext)
+			windows := SeasonWindowsFromCatalog(catalog)
+			resolved.SeasonCounts = BuildSeasonCounts(seasonRows, resolved.Effective.Cascade, windows)
+		}
 	}
 	slog.DebugContext(ctx, "filters resolved",
 		"rows_in", resolved.Counts.TotalMatchesBeforeFilters,

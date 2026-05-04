@@ -6,6 +6,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -30,12 +31,36 @@ type FieldMappingsRegistry interface {
 	GetOutcomes(titleSlug string) (*mappings.OutcomeMappingSet, bool)
 }
 
+// SeasonsCatalogResolver résout le catalog unifié des saisons (TOML + DB +
+// lazy fetch) pour un titre. Implémenté par service.SeasonsCatalog.
+//
+// L'interface est définie ici pour découpler le handler de l'implémentation
+// concrète (tests : injecter un fake ; runtime : injecter le catalog du
+// service.SeasonsCatalog wiré dans server.go).
+type SeasonsCatalogResolver interface {
+	Load(ctx context.Context, titleID string) []SeasonCatalogEntry
+}
+
+// SeasonCatalogEntry est la projection minimale d'une saison utilisée par le
+// handler pour enrichir le DTO assets. Aligné sur service.SeasonCatalogEntry
+// mais redéfini ici pour éviter l'import circulaire (les types domain/canonical
+// ne suffisent pas car on a besoin du Label localisé).
+type SeasonCatalogEntry struct {
+	ID           string
+	Label        string
+	Start        time.Time
+	End          *time.Time
+	DisplayOrder int
+	Extra        map[string]string
+}
+
 // FieldMappingsHandler gère GET /api/v1/titles/{slug}/field-mappings.
 //
 // Le handler n'est enregistré que si MULTI_TITLE_API_ENABLED=true au boot.
 // En Phase A : flag off par défaut → endpoint absent du routeur.
 type FieldMappingsHandler struct {
 	registry FieldMappingsRegistry
+	seasons  SeasonsCatalogResolver // optionnel : nil → kind season exposé tel quel depuis TOML
 	logger   *slog.Logger
 
 	mu        sync.RWMutex
@@ -52,6 +77,17 @@ func NewFieldMappingsHandler(reg FieldMappingsRegistry, logger *slog.Logger) *Fi
 		logger:    logger,
 		etagByKey: make(map[string]string),
 	}
+}
+
+// WithSeasonsCatalog branche le résolveur unifié (TOML + DB + lazy fetch).
+// Quand câblé, le DTO assets.season retourné par le handler contient l'union
+// TOML + DB : les saisons découvertes en DB mais absentes du TOML apparaissent
+// avec leur libellé Waypoint brut (en attente de traduction FR via update du
+// TOML). Symétrie avec FiltersService qui consomme le même catalog pour les
+// SeasonCounts.
+func (h *FieldMappingsHandler) WithSeasonsCatalog(resolver SeasonsCatalogResolver) *FieldMappingsHandler {
+	h.seasons = resolver
+	return h
 }
 
 // MultiTitleAPIEnabled retourne true si la feature flag MULTI_TITLE_API_ENABLED
@@ -168,6 +204,34 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			out[kind] = byID
 		}
 		resp.Assets = out
+	}
+
+	// V2 saisons : si le SeasonsCatalogResolver est câblé, on remplace
+	// purement le bucket "season" du DTO par le résultat du resolver — qui
+	// fait l'union TOML + DB + éventuel lazy fetch live (avec persistance).
+	// Cela permet à une nouvelle Operation Halo découverte en DB d'apparaître
+	// automatiquement dans la SaisonPill côté frontend, sans intervention
+	// manuelle sur le TOML. Les saisons DB-only (pas encore de FR) sont
+	// affichées avec leur libellé Waypoint brut.
+	if h.seasons != nil {
+		catalog := h.seasons.Load(r.Context(), slug)
+		if len(catalog) > 0 {
+			if resp.Assets == nil {
+				resp.Assets = make(map[string]map[string]assetMappingDTO, 1)
+			}
+			seasonBucket := make(map[string]assetMappingDTO, len(catalog))
+			for _, e := range catalog {
+				start := e.Start
+				seasonBucket[e.ID] = assetMappingDTO{
+					Label:        e.Label,
+					DisplayOrder: e.DisplayOrder,
+					StartDate:    &start,
+					EndDate:      e.End,
+					Extra:        e.Extra,
+				}
+			}
+			resp.Assets["season"] = seasonBucket
+		}
 	}
 
 	// Phase 1 plan finition multi-titres : exposer les outcomes s'ils sont chargés.

@@ -34,6 +34,7 @@ import (
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	gitcli "levelup/go-api/internal/platform/git"
+	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -223,6 +224,33 @@ func NewRouter(
 	assetHandler := handlers.NewAssetHandler(assetResolver)
 	reg.WithAssetResolver(assetResolver)
 
+	// V2 saisons — résolveur unifié (TOML + DB live + lazy fetch via Waypoint).
+	// Pattern symétrique à season_pass_service : DB d'abord, fetch + persist
+	// si vide, merge avec le TOML (libellés FR + display_order). Le metaDB
+	// reste ouvert pour la durée du process (OpenReadWriteShared = pool
+	// reference-counted, le close de cmd/server décrémente).
+	if seasonsAssets, ok := fieldMappingsRegistry.GetAssets(titlePkg.DefaultSlug); ok {
+		seasonsMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+		if seasonsMetaDB, err := platform_duckdb.OpenReadWriteShared(seasonsMetaPath); err != nil {
+			slog.Warn("seasons_catalog_meta_db_unavailable",
+				"err", err, "fallback", "static_toml_only")
+		} else {
+			seasonsRepo := platform_duckdb.NewMetadataRepoFromDB(seasonsMetaDB)
+			// Tables idempotentes : la migration peut ne pas avoir tourné encore.
+			if ensureErr := seasonsRepo.EnsureSeasonTables(context.Background()); ensureErr != nil {
+				slog.Warn("seasons_catalog_ensure_tables_failed",
+					"err", ensureErr, "fallback", "static_toml_only")
+			} else {
+				catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, halo.DefaultHaloProvider, slog.Default())
+				reg.WithSeasonsCatalog(catalog)
+				slog.Info("seasons_catalog_ready",
+					"title_slug", titlePkg.DefaultSlug,
+					"toml_count", len(seasonsAssets.AllOfKind("season")),
+				)
+			}
+		}
+	}
+
 	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer.
 	// Stratégie in-memory : on ouvre metadata.duckdb, on charge tout en RAM, on ferme
 	// la connexion immédiatement. Avantage : aucun lock Windows persistant entre processus
@@ -319,6 +347,11 @@ func NewRouter(
 		// admin/debug si besoin de re-valider le pipeline canonique.
 		if handlers.MultiTitleAPIEnabled() {
 			fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
+			// V2 saisons : si le catalog est câblé, on enrichit le DTO assets
+			// avec l'union TOML + DB (cf. SeasonsCatalogForHandler ci-dessous).
+			if seasonsResolver := reg.SeasonsCatalogForHandler(); seasonsResolver != nil {
+				fieldMappingsHandler = fieldMappingsHandler.WithSeasonsCatalog(seasonsResolver)
+			}
 			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
 
 			// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
