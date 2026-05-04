@@ -467,26 +467,27 @@ func TestComputeMapBreakdown_PerformanceAvg(t *testing.T) {
 
 // TestComputeHistoricalMapPerf_AveragesScores vérifie la moyenne par carte
 // depuis canonical.PlayerMatchRow.Enrichment.PerformanceScore. Carte ignorée
-// si aucun match n'a de score renseigné.
+// si aucun match n'a de score renseigné. Les rows simulent un contexte squad
+// (IsWithFriends=true) — le filtre solo est testé séparément.
 func TestComputeHistoricalMapPerf_AveragesScores(t *testing.T) {
 	p1, p2, p3 := 70.0, 50.0, 90.0
 	rows := []canonical.PlayerMatchRow{
 		{
 			Summary:    canonical.MatchSummary{MatchID: "m1", Map: &canonical.AssetReference{Kind: "map", ID: "bazaar", DefaultLabel: "Bazaar"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p1},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p1, IsWithFriends: true},
 		},
 		{
 			Summary:    canonical.MatchSummary{MatchID: "m2", Map: &canonical.AssetReference{Kind: "map", ID: "bazaar", DefaultLabel: "Bazaar"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p2},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p2, IsWithFriends: true},
 		},
 		{
 			Summary:    canonical.MatchSummary{MatchID: "m3", Map: &canonical.AssetReference{Kind: "map", ID: "recharge", DefaultLabel: "Recharge"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p3},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p3, IsWithFriends: true},
 		},
 		// carte sans score : doit être ignorée.
 		{
 			Summary:    canonical.MatchSummary{MatchID: "m4", Map: &canonical.AssetReference{Kind: "map", ID: "aquarius", DefaultLabel: "Aquarius"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: nil},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: nil, IsWithFriends: true},
 		},
 	}
 	hist := computeHistoricalMapPerfByLabel(rows)
@@ -498,6 +499,29 @@ func TestComputeHistoricalMapPerf_AveragesScores(t *testing.T) {
 	}
 	if _, ok := hist["aquarius"]; ok {
 		t.Errorf("Aquarius: expected absent (no score), got %f", hist["aquarius"])
+	}
+}
+
+// TestComputeHistoricalMapPerf_FiltersSoloMatches vérifie que les matchs solo
+// (IsWithFriends=false) sont exclus du calcul de perf historique. Sur la page
+// Synergies, la référence doit être squad-only — sinon une perf solo
+// (souvent supérieure) fausserait la barre histo du bullet teammates.13.
+func TestComputeHistoricalMapPerf_FiltersSoloMatches(t *testing.T) {
+	pSquad, pSolo := 60.0, 90.0
+	rows := []canonical.PlayerMatchRow{
+		{
+			Summary:    canonical.MatchSummary{MatchID: "m1", Map: &canonical.AssetReference{ID: "bazaar", DefaultLabel: "Bazaar"}},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &pSquad, IsWithFriends: true},
+		},
+		{
+			// Match solo avec perf supérieure — doit être ignoré (sinon avg = 75).
+			Summary:    canonical.MatchSummary{MatchID: "m2", Map: &canonical.AssetReference{ID: "bazaar", DefaultLabel: "Bazaar"}},
+			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &pSolo, IsWithFriends: false},
+		},
+	}
+	hist := computeHistoricalMapPerfByLabel(rows)
+	if hist["bazaar"] != 60.0 {
+		t.Errorf("expected Bazaar perf=60 (solo match excluded), got %f", hist["bazaar"])
 	}
 }
 
@@ -545,11 +569,40 @@ func makeCanonicalRowsWithMaps(maps []struct{ id, name string }, outcomes []cano
 				Map:     &canonical.AssetReference{Kind: "map", ID: m.id, DefaultLabel: m.name},
 				Outcome: outcomes[i],
 			},
-			// computeHistoricalMapWRByLabel utilise r.Self.Outcome
-			Self: canonical.MatchParticipant{Outcome: outcomes[i]},
+			// computeHistoricalMapWRByLabel utilise r.Self.Outcome et filtre sur
+			// IsWithFriends — l'helper de test simule donc un contexte escouade.
+			Self:       canonical.MatchParticipant{Outcome: outcomes[i]},
+			Enrichment: canonical.PlayerMatchEnrichment{IsWithFriends: true},
 		}
 	}
 	return rows
+}
+
+// TestComputeHistoricalMapWR_FiltersSoloMatches vérifie que les matchs solo
+// (IsWithFriends=false) sont exclus du calcul du taux historique. Sur la page
+// Synergies, la référence doit être squad-only.
+func TestComputeHistoricalMapWR_FiltersSoloMatches(t *testing.T) {
+	rows := []canonical.PlayerMatchRow{
+		{
+			Summary:    canonical.MatchSummary{MatchID: "m1", Map: &canonical.AssetReference{ID: "bazaar_id", DefaultLabel: "Bazaar"}, Outcome: canonical.OutcomeWin},
+			Self:       canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
+			Enrichment: canonical.PlayerMatchEnrichment{IsWithFriends: true},
+		},
+		{
+			// Match solo — doit être ignoré, sinon WR = 1/2 au lieu de 1/1
+			Summary:    canonical.MatchSummary{MatchID: "m2", Map: &canonical.AssetReference{ID: "bazaar_id", DefaultLabel: "Bazaar"}, Outcome: canonical.OutcomeLoss},
+			Self:       canonical.MatchParticipant{Outcome: canonical.OutcomeLoss},
+			Enrichment: canonical.PlayerMatchEnrichment{IsWithFriends: false},
+		},
+	}
+	hist := computeHistoricalMapWRByLabel(rows)
+	if hist["bazaar_id"] != 1.0 {
+		t.Errorf("expected Bazaar WR=1.0 (solo match excluded), got %f", hist["bazaar_id"])
+	}
+	stats := computeHistoricalMapStatsByLabel(rows)
+	if stats["bazaar_id"] != [2]int{1, 1} {
+		t.Errorf("expected Bazaar stats=[1,1], got %v", stats["bazaar_id"])
+	}
 }
 
 // ---------- buildMatchSeries ----------

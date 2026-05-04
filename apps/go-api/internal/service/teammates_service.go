@@ -812,14 +812,24 @@ func round2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
-// computeHistoricalMapStatsByLabel calcule (wins, total) par carte sur TOUT
-// l'historique du joueur principal (canonicalRows non filtrés). Pendant de
-// computeHistoricalMapWRByLabel mais conserve le compteur total pour pouvoir
-// l'afficher entre parenthèses (« Taux hist. : 62% (37) »). Clé = Map.ID
-// (fallback DefaultLabel).
+// computeHistoricalMapStatsByLabel calcule (wins, total) par carte sur
+// l'historique ESCOUADE du joueur principal (canonicalRows filtrés sur
+// Enrichment.IsWithFriends). Sur la page Squad/Synergies on compare toujours
+// du squad-vs-squad : intégrer les matchs solo polluerait la référence.
+//
+// Conserve le compteur total pour pouvoir l'afficher entre parenthèses
+// (« Taux hist. : 62 % (37) »). Clé = Map.ID (fallback DefaultLabel).
+//
+// Note : duplication tolérée avec computeHistoricalMapWRByLabel — même règle
+// de filtrage et même clé de regroupement, mais signature de retour différente
+// (ratio vs (wins,total)). Refactor possible quand enrichMapBreakdownWithHistory
+// acceptera (wins,total).
 func computeHistoricalMapStatsByLabel(rows []canonical.PlayerMatchRow) map[string][2]int {
 	m := map[string][2]int{}
 	for _, r := range rows {
+		if !r.Enrichment.IsWithFriends {
+			continue
+		}
 		if r.Summary.Map == nil {
 			continue
 		}
@@ -840,12 +850,17 @@ func computeHistoricalMapStatsByLabel(rows []canonical.PlayerMatchRow) map[strin
 	return m
 }
 
-// computeHistoricalMapWRByLabel calcule le win rate par carte sur TOUT l'historique
-// du joueur principal (canonicalRows non filtrés). Clé = DefaultLabel (= map_name SQL).
+// computeHistoricalMapWRByLabel calcule le win rate par carte sur l'historique
+// ESCOUADE du joueur principal (canonicalRows filtrés sur Enrichment.IsWithFriends).
+// Sur la page Squad/Synergies on compare toujours du squad-vs-squad. Clé = Map.ID
+// (fallback DefaultLabel).
 func computeHistoricalMapWRByLabel(rows []canonical.PlayerMatchRow) map[string]float64 {
 	type stats struct{ count, wins int }
 	m := map[string]*stats{}
 	for _, r := range rows {
+		if !r.Enrichment.IsWithFriends {
+			continue
+		}
 		if r.Summary.Map == nil {
 			continue
 		}
@@ -1007,9 +1022,11 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 }
 
 // computeHistoricalMapPerfByLabel calcule la moyenne de performance_score
-// par carte sur TOUT l'historique du joueur principal (canonicalRows non
-// filtrés). Clé = DefaultLabel (= MapUI côté SquadMatchRow). Carte ignorée
-// si aucun match avec score.
+// par carte sur l'historique ESCOUADE du joueur principal (canonicalRows
+// filtrés sur Enrichment.IsWithFriends). Sur la page Squad/Synergies on
+// compare toujours du squad-vs-squad : intégrer les matchs solo polluerait
+// la référence (perf solo souvent supérieure → injuste pour la barre squad).
+// Clé = Map.ID (fallback DefaultLabel). Carte ignorée si aucun match avec score.
 func computeHistoricalMapPerfByLabel(rows []canonical.PlayerMatchRow) map[string]float64 {
 	type stats struct {
 		sum   float64
@@ -1017,6 +1034,9 @@ func computeHistoricalMapPerfByLabel(rows []canonical.PlayerMatchRow) map[string
 	}
 	m := map[string]*stats{}
 	for _, r := range rows {
+		if !r.Enrichment.IsWithFriends {
+			continue
+		}
 		if r.Summary.Map == nil {
 			continue
 		}
