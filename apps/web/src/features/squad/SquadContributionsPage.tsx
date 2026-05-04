@@ -19,6 +19,7 @@ import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadIntensityHeatmapChart } from './SquadIntensityHeatmapChart'
+import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
 import { SquadFirstEventsChart } from './SquadFirstEventsChart'
@@ -127,6 +128,23 @@ export function SquadContributionsPage() {
               profile={intensityProfileLocalized}
               zLabel={t.intensity.zLabel}
               toggleLabel={t.intensity.toggleLabel}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {performanceSeries && Object.keys(performanceSeries).length > 0 && (
+        <Card>
+          <CardContent className="pt-4 space-y-3">
+            <div>
+              <h3 className="text-base font-semibold">{t.efficiencySeries.title}</h3>
+              <p className="text-sm text-muted-foreground">{t.efficiencySeries.description}</p>
+            </div>
+            <SquadEfficiencyChart
+              rowsByPlayer={performanceSeries}
+              playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
+              colorByPlayer={playerColors}
+              labels={t.efficiencySeries}
             />
           </CardContent>
         </Card>

@@ -166,6 +166,14 @@ export interface SquadText {
     allLabel: string
     zLabel: string
   }
+  efficiencySeries: {
+    title: string
+    description: string
+    rendementLabel: string
+    resistanceLabel: string
+    refLabel: string
+    noData: string
+  }
   performanceCharts: {
     title: string
     description: string
@@ -412,6 +420,14 @@ const FR_TEXT: SquadText = {
     allLabel: 'Toute l\'équipe',
     zLabel: 'Cadence',
   },
+  efficiencySeries: {
+    title: 'Rendement & Résistance — évolution par match',
+    description: 'Rendement offensif (trait plein) = 225 × (frags + ass/3) / dégâts infligés. Résistance défensive (pointillé) = dégâts subis / (225 × morts). Seuil 1,0 = efficacité parfaite sur la base de 225 PV.',
+    rendementLabel: 'Rendement offensif',
+    resistanceLabel: 'Résistance défensive',
+    refLabel: '1,0 (seuil physique)',
+    noData: 'Aucune donnée d\'efficacité disponible.',
+  },
   performanceCharts: {
     title: 'Performance escouade par match',
     description: 'Time-series alignée sur les matchs où tous les coéquipiers étaient présents. 1 ligne par joueur, couleurs cohérentes avec la pill et le multiselect.',
@@ -657,6 +673,14 @@ const EN_TEXT: SquadText = {
     toggleLabel: 'Filter by player:',
     allLabel: 'Whole team',
     zLabel: 'Cadence',
+  },
+  efficiencySeries: {
+    title: 'Offensive & Defensive Efficiency — per match',
+    description: 'Offensive conversion (solid) = 225 × (kills + ass/3) / damage dealt. Defensive resistance (dashed) = damage taken / (225 × deaths). Threshold 1.0 = perfect efficiency based on 225 HP.',
+    rendementLabel: 'Offensive conversion',
+    resistanceLabel: 'Defensive resistance',
+    refLabel: '1.0 (physical baseline)',
+    noData: 'No efficiency data available.',
   },
   performanceCharts: {
     title: 'Squad performance per match',
