@@ -2,17 +2,12 @@
  * KpiGrid — bande KPI du SessionBriefing.
  *
  * 8 cards toujours présentes (Matchs / Durées / Frags / Morts / Assists /
- * Précision / Vie) + 2 cards conditionnelles : Performance moyenne (si
- * avg_performance_score renseigné) et Delta rang (si rank_delta renseigné).
- * Total : 8, 9 ou 10 colonnes selon les données du scope.
+ * Précision / Vie) + 1 card conditionnelle : Delta rang (si rank_delta
+ * renseigné). Total : 8 ou 9 colonnes selon les données du scope.
  *
  * Trends ▲/▼ vs teamAvgKpis (mode squad uniquement) sur les 5 cards
  * évaluatives historiques (frags, morts, assists, précision, vie). Morts =
  * lower_is_better. Si teamAvgKpis est null (mode solo) → trends 'none'.
- *
- * Performance moyenne : couleur ABSOLUE par tier (perf-tier-{1..5}) via
- * getScoreTier() — pas de comparaison teamAvg, le tier suffit (visible aussi
- * en mode solo). Pas de glyphe trend.
  *
  * Delta rang : couleur ABSOLUE par SIGNE (divergent-pos/neg/neutral). Kind
  * détermine le label (Delta CSR / Delta LUSR) et la précision (CSR=int,
@@ -25,7 +20,6 @@ import type { KPIStats, RankDelta } from '@/lib/api/types'
 
 import { formatDurationDhm, formatMmss } from './format'
 import type { BriefingTexts } from './i18n'
-import { getScoreTier } from './tier'
 import { computeTrend, trendSymbol, type TrendState } from './trends'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
@@ -118,12 +112,10 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
     ? computeTrend(kpis.avg_life_seconds, teamAvgKpis.avg_life_seconds)
     : 'none'
 
-  // Cards conditionnelles : présentes uniquement si la donnée existe pour
-  // le scope. Cache propre quand le scope n'a aucun match avec score
-  // (perf) ou aucun match avec rating (delta rang).
-  const hasPerf = kpis.avg_performance_score != null
+  // Card conditionnelle : présente uniquement si rank_delta existe pour le
+  // scope. Cachée proprement si aucun match avec rating dans le scope.
   const hasDelta = kpis.rank_delta != null
-  const colCount = 8 + (hasPerf ? 1 : 0) + (hasDelta ? 1 : 0)
+  const colCount = 8 + (hasDelta ? 1 : 0)
   // Tailwind ne purge pas les `grid-cols-N` dynamiques → utiliser inline
   // grid-template-columns pour un colCount calculé.
   const gridStyle: CSSProperties = {
@@ -187,13 +179,6 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
           value={formatMmss(kpis.avg_life_seconds)}
           trend={trendLife}
         />
-        {hasPerf && (
-          <KpiCell
-            label={texts.grid.avgPerformance}
-            value={kpis.avg_performance_score!.toFixed(1)}
-            valueColorToken={getScoreTier(kpis.avg_performance_score!).token}
-          />
-        )}
         {hasDelta && (
           <KpiCell
             label={

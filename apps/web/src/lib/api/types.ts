@@ -2434,9 +2434,6 @@ export interface KPIStats {
   assists_per_minute: number
   avg_accuracy: number
   avg_life_seconds: number
-  /** Moyenne du performance_score (0..100) sur les matchs du scope avec
-   *  score renseigné. Absent si aucun. Couleur absolue par tier. */
-  avg_performance_score?: number
   /** Delta de rang (CSR ou LUSR) sur le scope. Absent si aucun match
    *  classé/non-classé dans le scope. Couleur par signe (pos/neg/neutral). */
   rank_delta?: RankDelta
