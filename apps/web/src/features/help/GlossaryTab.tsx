@@ -131,7 +131,7 @@ export function GlossaryTab({ text }: GlossaryTabProps) {
           {filteredSections.length > 0 && (
             <nav
               aria-label={text.glossary.search.sectionsLabel}
-              className="flex flex-1 min-w-0 flex-wrap gap-2 sm:flex-nowrap sm:overflow-x-auto sm:pb-1.5"
+              className="flex flex-1 min-w-0 flex-wrap gap-2"
             >
               {filteredSections.map(({ section, id }) => {
                 const active = activeId === id
