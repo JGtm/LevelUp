@@ -164,3 +164,35 @@ JOIN shared.match_registry r ON r.match_id = p.match_id
 LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id
 WHERE p.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+
+// Q42MapStatsForSquadTemplate : taux de victoire et performance moyenne par carte
+// du joueur principal, restreint aux matchs où TOUS les xuids de l'escouade
+// sélectionnée sont participants. Aucun filtre temporel — c'est l'historique
+// complet "avec cette escouade exacte". Si le squad est composé d'un seul xuid
+// (uniquement le main = solo), retombe sur les stats solo+squad du main.
+//
+// Construit dynamiquement (fmt.Sprintf) car la clause IN dépend de la taille
+// du squad. Ne PAS utiliser directement — passer par squad_repo.LoadMapStatsForSquad().
+//
+// Paramètres positionnels :
+//   - autant de '?' que de xuids dans le squad (clause IN)
+//   - 1 '?' pour le main xuid (filtre des rows main)
+const Q42MapStatsForSquadTemplate = `
+WITH squad_matches AS (
+    SELECT match_id
+    FROM shared.match_participants
+    WHERE xuid IN (%s)
+    GROUP BY match_id
+    HAVING COUNT(DISTINCT xuid) = %d
+)
+SELECT COALESCE(r.map_id, '')                            AS map_id,
+       COUNT(*)                                           AS total,
+       SUM(CASE WHEN mp.outcome = 2 THEN 1 ELSE 0 END)   AS wins,
+       AVG(pme.performance_score)                         AS perf_avg
+FROM shared.match_participants mp
+JOIN shared.match_registry r       ON r.match_id = mp.match_id
+JOIN squad_matches sm              ON sm.match_id = mp.match_id
+LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
+WHERE mp.xuid = ?
+  AND COALESCE(r.map_id, '') <> ''
+GROUP BY r.map_id`

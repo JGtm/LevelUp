@@ -81,6 +81,17 @@ type SquadV2Loader interface {
 		slug string,
 		gamertags []string,
 	) map[string]string
+
+	// LoadMapStatsForSquad retourne les stats par carte (winrate, perf moyenne)
+	// du joueur principal sur les matchs où TOUS les xuids du squad sont
+	// participants. Aucun filtre temporel — référence "avec cette escouade
+	// exacte" pour les charts BulletWinrate / PerfVsHistorical (S3).
+	// Capability absente -> nil sans erreur.
+	LoadMapStatsForSquad(
+		ctx context.Context,
+		slug, mainGT string,
+		squadXUIDs []string,
+	) (map[string]domain.MapSquadStats, error)
 }
 
 // SquadServiceV2 orchestre la page Squad V2.
@@ -182,19 +193,19 @@ func (s *SquadServiceV2) GetSquadPage(
 	// (events, weapons, medals) en parallele puis appelle les 16 builders.
 	rowsBySharedPlayer := projectSharedRows(resp.SharedMatches)
 
-	historicalMain, _ := s.loadHistoricalMain(ctx, slug, mainGT)
+	squadHistorical := s.loadSquadHistorical(ctx, slug, mainGT, squadXUIDs)
 	events, eventsCapGap := s.loadSharedEvents(ctx, slug, resp.SharedMatches, squadXUIDs)
 	weapons, weaponsCapGap := s.loadWeapons(ctx, slug, resp.SharedMatches, squadXUIDs)
 	medals, medalsCapGap := s.loadMedals(ctx, slug, resp.SharedMatches, squadXUIDs)
 
 	resp.Charts = buildSquadCharts(buildSquadChartsInput{
-		mainGT:         mainGT,
-		squadOrder:     squadOrder,
-		squadXUIDs:     squadXUIDs,
-		rowsByPlayer:   rowsBySharedPlayer,
-		mainHistorical: historicalMain,
-		events:         events,
-		sharedMatches:  resp.SharedMatches,
+		mainGT:          mainGT,
+		squadOrder:      squadOrder,
+		squadXUIDs:      squadXUIDs,
+		rowsByPlayer:    rowsBySharedPlayer,
+		squadHistorical: squadHistorical,
+		events:          events,
+		sharedMatches:   resp.SharedMatches,
 	})
 	resp.Tables = buildSquadTables(buildSquadTablesInput{
 		sharedMatches: resp.SharedMatches,
@@ -239,19 +250,38 @@ func extractSquadXUIDs(squadOrder []string, perPlayer map[string][]canonical.Pla
 	return out
 }
 
-// loadHistoricalMain charge l'historique complet du joueur principal (sans
-// filtre period) pour les charts BulletWinrate / PerfVsHistorical (S3).
-// Capability absente -> retourne nil (les charts dependants seront omis).
-func (s *SquadServiceV2) loadHistoricalMain(ctx context.Context, slug, mainGT string) ([]canonical.PlayerMatchRow, error) {
-	rows, err := s.loader.LoadFor(ctx, slug, mainGT, port.PlayerMatchFilters{})
+// loadSquadHistorical charge les stats par carte du main AVEC l'escouade
+// strict (winrate + perf moyenne sur tous les matchs où le squad complet
+// est present). Aucun filtre temporel. Sert aux charts BulletWinrate /
+// PerfVsHistorical (S3). Capability absente / squad vide -> nil.
+func (s *SquadServiceV2) loadSquadHistorical(
+	ctx context.Context,
+	slug, mainGT string,
+	squadXUIDs map[string]string,
+) map[string]domain.MapSquadStats {
+	if len(squadXUIDs) == 0 {
+		return nil
+	}
+	xuids := make([]string, 0, len(squadXUIDs))
+	for gt, x := range squadXUIDs {
+		if gt == mainGT || x == "" {
+			continue
+		}
+		xuids = append(xuids, x)
+	}
+	if len(xuids) == 0 {
+		return nil
+	}
+	stats, err := s.loader.LoadMapStatsForSquad(ctx, slug, mainGT, xuids)
 	if err != nil {
 		if errors.Is(err, games.ErrCapabilityNotSupported) {
-			return nil, nil
+			return nil
 		}
-		slog.WarnContext(ctx, "squad: loadHistoricalMain echec", "err", err, "player", mainGT)
-		return nil, nil
+		slog.WarnContext(ctx, "squad: loadSquadHistorical echec",
+			"err", err, "player", mainGT, "squad_size", len(xuids))
+		return nil
 	}
-	return rows, nil
+	return stats
 }
 
 // loadSharedEvents charge les events filmes des matchs partages (squad XUIDs).

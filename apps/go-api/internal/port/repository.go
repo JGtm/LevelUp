@@ -485,6 +485,13 @@ type SquadRepository interface {
 	// Retourne nil sans erreur si la table est absente ou si modeENs est vide.
 	LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error)
 
+	// LoadMapStatsForSquad retourne par map_id les stats historiques (wins,
+	// total, perf moyenne) du joueur principal sur les matchs où TOUS les xuids
+	// du squad sont participants. Aucun filtre temporel — c'est la référence
+	// "avec cette escouade exacte" pour le chart Synergies et le tableau de
+	// matchs squad. Retourne nil sans erreur si squadXUIDs est vide.
+	LoadMapStatsForSquad(ctx context.Context, mainXUID string, squadXUIDs []string) (map[string]domain.MapSquadStats, error)
+
 	// P4.3 finale : LoadSynthesisMatches retiré (squad/teammates chargent
 	// canonical via PlayerMatchesRepository).
 }
@@ -617,6 +624,9 @@ func (n *noopSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ [
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _ []string) (map[string]domain.MapSquadStats, error) {
 	return nil, nil
 }
 

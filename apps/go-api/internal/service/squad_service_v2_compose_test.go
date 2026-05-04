@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
@@ -37,6 +38,10 @@ func (f *fakeSquadLoaderFull) LoadMedals(_ context.Context, _ string, _ port.Med
 
 func (f *fakeSquadLoaderFull) LoadEmblemURLs(_ context.Context, _ string, _ []string) map[string]string {
 	return nil
+}
+
+func (f *fakeSquadLoaderFull) LoadMapStatsForSquad(_ context.Context, _, _ string, _ []string) (map[string]domain.MapSquadStats, error) {
+	return nil, nil
 }
 
 func mkRowFull(gt, xuid, matchID string, t time.Time, outcome canonical.Outcome, kills, deaths int) canonical.PlayerMatchRow {

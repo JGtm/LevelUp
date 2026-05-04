@@ -18,13 +18,13 @@ import (
 // Si une source est absente (events nil pour capability non supportee), les
 // charts dependants sont omis (pointer nil dans SquadCharts).
 type buildSquadChartsInput struct {
-	mainGT         string
-	squadOrder     []string
-	squadXUIDs     map[string]string
-	rowsByPlayer   map[string][]canonical.PlayerMatchRow
-	mainHistorical []canonical.PlayerMatchRow
-	events         []canonical.HighlightEvent
-	sharedMatches  []domain.SquadSharedMatch
+	mainGT          string
+	squadOrder      []string
+	squadXUIDs      map[string]string
+	rowsByPlayer    map[string][]canonical.PlayerMatchRow
+	squadHistorical map[string]domain.MapSquadStats
+	events          []canonical.HighlightEvent
+	sharedMatches   []domain.SquadSharedMatch
 }
 
 // buildSquadCharts assemble tous les ChartSeries de la page V2.
@@ -32,16 +32,17 @@ func buildSquadCharts(in buildSquadChartsInput) *domain.SquadCharts {
 	out := &domain.SquadCharts{}
 
 	// Synergies par carte (S3) : utilisent les rows partages (intersection)
-	// pour la session, l'historique main pour le compare.
+	// pour la session, et les stats du squad strict (LoadMapStatsForSquad)
+	// pour la reference historique.
 	mainSharedRows := in.rowsByPlayer[in.mainGT]
 	if len(mainSharedRows) > 0 {
 		lollipop := BuildMapBreakdownLollipop(mainSharedRows, MapBreakdownLimit)
 		out.MapBreakdownLollipop = &lollipop
 
-		bullet := BuildBulletWinrate(mainSharedRows, in.mainHistorical, MapBreakdownLimit)
+		bullet := BuildBulletWinrate(mainSharedRows, in.squadHistorical, MapBreakdownLimit)
 		out.BulletWinrate = &bullet
 
-		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.mainHistorical, MapBreakdownLimit)
+		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.squadHistorical, MapBreakdownLimit)
 		out.PerfVsHistorical = &perfDelta
 	}
 	if len(in.rowsByPlayer) > 0 {

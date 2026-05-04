@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -83,11 +84,10 @@ func TestBuildBulletWinrate_SessionVsHistorical(t *testing.T) {
 		mkRowMap("m1", "bazaar", "Bazaar", canonical.OutcomeWin, nil),
 		mkRowMap("m2", "bazaar", "Bazaar", canonical.OutcomeLoss, nil),
 	}
-	historical := []canonical.PlayerMatchRow{
-		mkRowMap("h1", "bazaar", "Bazaar", canonical.OutcomeWin, nil),
-		mkRowMap("h2", "bazaar", "Bazaar", canonical.OutcomeWin, nil),
-		mkRowMap("h3", "bazaar", "Bazaar", canonical.OutcomeWin, nil),
-		mkRowMap("h4", "bazaar", "Bazaar", canonical.OutcomeLoss, nil),
+	// L'historique squad strict est désormais alimenté en agrégé (Wins, Total)
+	// par SquadRepository.LoadMapStatsForSquad — pas par les rows canoniques.
+	historical := map[string]domain.MapSquadStats{
+		"bazaar": {Wins: 3, Total: 4}, // 75% sur 4 matchs avec le squad strict
 	}
 	got := BuildBulletWinrate(session, historical, 0)
 	if len(got.Datapoints) != 1 {
@@ -122,9 +122,10 @@ func TestBuildPerfVsHistorical_DeltaCorrect(t *testing.T) {
 		mkRowMap("m1", "bazaar", "Bazaar", canonical.OutcomeWin, fptrSyn(80)),
 		mkRowMap("m2", "bazaar", "Bazaar", canonical.OutcomeWin, fptrSyn(90)),
 	}
-	historical := []canonical.PlayerMatchRow{
-		mkRowMap("h1", "bazaar", "Bazaar", canonical.OutcomeWin, fptrSyn(60)),
-		mkRowMap("h2", "bazaar", "Bazaar", canonical.OutcomeLoss, fptrSyn(50)),
+	// historique squad strict = perf moyenne pré-agrégée par le repo
+	histPerf := 55.0
+	historical := map[string]domain.MapSquadStats{
+		"bazaar": {Wins: 1, Total: 2, PerfAvg: &histPerf},
 	}
 	got := BuildPerfVsHistorical(session, historical, 0)
 	if len(got.Datapoints) != 1 {
@@ -141,8 +142,9 @@ func TestBuildPerfVsHistorical_SkipsCardWithNoPerf(t *testing.T) {
 	session := []canonical.PlayerMatchRow{
 		mkRowMap("m1", "bazaar", "Bazaar", canonical.OutcomeWin, nil), // pas de perf
 	}
-	historical := []canonical.PlayerMatchRow{
-		mkRowMap("h1", "bazaar", "Bazaar", canonical.OutcomeWin, fptrSyn(60)),
+	histPerf := 60.0
+	historical := map[string]domain.MapSquadStats{
+		"bazaar": {Wins: 1, Total: 1, PerfAvg: &histPerf},
 	}
 	got := BuildPerfVsHistorical(session, historical, 0)
 	if len(got.Datapoints) != 0 {

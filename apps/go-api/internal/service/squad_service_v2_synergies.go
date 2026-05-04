@@ -25,6 +25,43 @@ import (
 // dernieres cartes jouees). On garde 20 par defaut, override via parametre.
 const MapBreakdownLimit = 20
 
+// squadStatsToMapAggregates materialise les stats squad en []MapAggregate
+// compatible avec breakdown.CompareToHistorical. Le label est repris depuis
+// sessionAgg (meme MapID) pour preserver le rendu côté chart ; clef absente =
+// MapAggregate avec label vide (le builder degrade gracieusement).
+func squadStatsToMapAggregates(
+	stats map[string]domain.MapSquadStats,
+	sessionAgg []breakdown.MapAggregate,
+) []breakdown.MapAggregate {
+	if len(stats) == 0 {
+		return nil
+	}
+	labelByID := make(map[string]string, len(sessionAgg))
+	for _, s := range sessionAgg {
+		if s.MapLabel != "" {
+			labelByID[s.MapID] = s.MapLabel
+		}
+	}
+	out := make([]breakdown.MapAggregate, 0, len(stats))
+	for mapID, s := range stats {
+		var wr float64
+		if s.Total > 0 {
+			wr = float64(s.Wins) / float64(s.Total)
+		}
+		out = append(out, breakdown.MapAggregate{
+			MapID:    mapID,
+			MapLabel: labelByID[mapID],
+			Counts: breakdown.Counts{
+				Played:  s.Total,
+				Wins:    s.Wins,
+				WinRate: wr,
+			},
+			AvgPerformanceScore: s.PerfAvg,
+		})
+	}
+	return out
+}
+
 // rowsToBreakdownInputs convertit []canonical.PlayerMatchRow vers
 // []breakdown.Row pour reutiliser analysis/breakdown.ByMap.
 func rowsToBreakdownInputs(rows []canonical.PlayerMatchRow) []breakdown.Row {
@@ -103,25 +140,23 @@ func BuildMapBreakdownLollipop(
 
 // BuildBulletWinrate compose une serie bullet (3 valeurs par carte) :
 //
-//	"session"    : winrate sur les matchs partages (squad)
-//	"historical" : winrate du joueur principal sur tout son historique de cette carte
+//	"session"    : winrate sur les matchs partages (squad courante)
+//	"historical" : winrate du joueur principal AVEC l'escouade strict sur
+//	               tous les matchs joues ensemble sur cette carte (aucun
+//	               filtre temporel).
 //
-// La 3eme valeur (reference du joueur principal) est meta. Pour S3, on se
-// limite a 2 traces (session vs historical), conforme audit § 3.2.
+// historical est alimente par SquadRepository.LoadMapStatsForSquad — clef =
+// map_id, valeur = (Wins, Total, PerfAvg). Carte absente du map = pas de
+// trace "historical" dans le bullet.
 func BuildBulletWinrate(
 	sessionRows []canonical.PlayerMatchRow,
-	historicalRows []canonical.PlayerMatchRow,
+	historical map[string]domain.MapSquadStats,
 	limit int,
 ) domain.ChartSeries[domain.ChartPointStacked] {
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
 	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows))
-	histAgg := breakdown.ByMap(rowsToBreakdownInputs(historicalRows))
-	histByID := make(map[string]breakdown.MapAggregate, len(histAgg))
-	for _, h := range histAgg {
-		histByID[h.MapID] = h
-	}
 
 	// On re-trie sessionAgg par Played desc pour limiter aux N plus jouees.
 	sort.SliceStable(sessionAgg, func(i, j int) bool {
@@ -143,8 +178,8 @@ func BuildBulletWinrate(
 		comp := map[string]float64{
 			"session": s.WinRate,
 		}
-		if h, ok := histByID[s.MapID]; ok {
-			comp["historical"] = h.WinRate
+		if h, ok := historical[s.MapID]; ok && h.Total > 0 {
+			comp["historical"] = float64(h.Wins) / float64(h.Total)
 		}
 		dps = append(dps, domain.ChartPointStacked{
 			Category:   category,
@@ -160,19 +195,24 @@ func BuildBulletWinrate(
 
 // BuildPerfVsHistorical compose une serie de barres delta perf_score
 // (session - historique) par carte. Negatif = sous-performance, positif =
-// sur-performance par rapport a l'historique solo+squad du joueur principal.
+// sur-performance par rapport a l'historique du main AVEC l'escouade strict
+// (aucun filtre temporel).
 //
-// Les cartes sans AvgPerformanceScore session OU sans historique sont skippees.
+// historical est alimente par SquadRepository.LoadMapStatsForSquad. Les cartes
+// sans AvgPerformanceScore session OU sans PerfAvg historique sont skippees.
 func BuildPerfVsHistorical(
 	sessionRows []canonical.PlayerMatchRow,
-	historicalRows []canonical.PlayerMatchRow,
+	historical map[string]domain.MapSquadStats,
 	limit int,
 ) domain.ChartSeries[domain.ChartPoint2D] {
 	if limit <= 0 {
 		limit = MapBreakdownLimit
 	}
 	sessionAgg := breakdown.ByMap(rowsToBreakdownInputs(sessionRows))
-	histAgg := breakdown.ByMap(rowsToBreakdownInputs(historicalRows))
+	// CompareToHistorical attend []MapAggregate. On materialise une liste
+	// minimale a partir du map (Played/Wins/WinRate/AvgPerformanceScore)
+	// pour reutiliser la logique de delta.
+	histAgg := squadStatsToMapAggregates(historical, sessionAgg)
 	deltas := breakdown.CompareToHistorical(sessionAgg, histAgg)
 	if len(deltas) > limit {
 		deltas = deltas[:limit]

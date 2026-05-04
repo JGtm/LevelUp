@@ -48,6 +48,17 @@ type TeammateKPIs struct {
 	PerfectKillsPerGame  *float64 `json:"perfect_kills_per_game,omitempty"`
 }
 
+// MapSquadStats agrège (sur l'historique complet, sans filtre temporel) les
+// matchs du joueur principal sur une carte donnée joués avec exactement
+// l'escouade sélectionnée (intersection stricte des xuids). Sert à alimenter
+// HistoricalWinRate / HistoricalPerformanceAvg sur MapBreakdownRow et le
+// taux historique du tableau Squad/Synergies.
+type MapSquadStats struct {
+	Wins    int
+	Total   int
+	PerfAvg *float64 // nil si aucun match n'a de performance_score
+}
+
 // MapBreakdownRow est la performance par carte pour la heatmap.
 type MapBreakdownRow struct {
 	MapID             string   `json:"-"` // UUID interne pour les lookups historiques — non exposé
