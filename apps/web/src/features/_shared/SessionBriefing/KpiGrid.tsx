@@ -1,13 +1,17 @@
 /**
  * KpiGrid — bande KPI du SessionBriefing.
  *
- * 7 cards toujours présentes (Matchs+durée moy / Durée totale / Frags / Morts
- * / Assists / Précision / Vie) + 1 card conditionnelle : Delta rang (si
- * rank_delta renseigné). Total : 7 ou 8 colonnes selon les données du scope.
+ * Mode SOLO (par défaut) : 7 cards permanentes (Matchs+durée moy / Durée
+ * totale / Frags / Morts / Assists / Précision / Vie) + 1 conditionnelle
+ * (Delta rang) → 7 ou 8 colonnes.
+ *
+ * Mode SQUAD (omitSummaryCards=true) : "Matchs joués" et "Durée totale"
+ * sont déplacées dans SquadVerdict (à droite de la Results bar). La grille
+ * descend à 5 cards permanentes + 1 conditionnelle → 5 ou 6 colonnes.
  *
  * "Matchs joués" affiche le count + la durée moyenne par match en inline-sub
- * (ex: "12  8min07/match") pour économiser une colonne — l'info était
- * historiquement dans une card séparée mais peu auto-suffisante seule.
+ * (ex: "12  8min07/match"). Cette présentation est répliquée dans
+ * SquadVerdict en mode squad pour préserver l'info.
  *
  * Trends ▲/▼ vs teamAvgKpis (mode squad uniquement) sur les 5 cards
  * évaluatives historiques (frags, morts, assists, précision, vie). Morts =
@@ -36,6 +40,9 @@ interface KpiGridProps {
   title: string
   /** Hint affiché à droite du titre — affiché seulement si teamAvgKpis présent */
   hint?: string
+  /** Si true, retire les cards "Matchs joués" et "Durée totale" de la grille
+   *  car elles sont rendues ailleurs (typiquement SquadVerdict en mode squad). */
+  omitSummaryCards?: boolean
 }
 
 interface CellProps {
@@ -107,7 +114,7 @@ function rankDeltaColorToken(value: number): SemanticToken {
   return 'divergent-neutral'
 }
 
-export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps) {
+export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCards = false }: KpiGridProps) {
   const trendKills = teamAvgKpis
     ? computeTrend(kpis.kills_per_game, teamAvgKpis.kills_per_game)
     : 'none'
@@ -127,7 +134,8 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
   // Card conditionnelle : présente uniquement si rank_delta existe pour le
   // scope. Cachée proprement si aucun match avec rating dans le scope.
   const hasDelta = kpis.rank_delta != null
-  const colCount = 7 + (hasDelta ? 1 : 0)
+  const baseCols = omitSummaryCards ? 5 : 7
+  const colCount = baseCols + (hasDelta ? 1 : 0)
   // Tailwind ne purge pas les `grid-cols-N` dynamiques → utiliser inline
   // grid-template-columns pour un colCount calculé.
   const gridStyle: CSSProperties = {
@@ -151,15 +159,19 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint }: KpiGridProps)
         </div>
       )}
       <div className="grid gap-2" style={gridStyle}>
-        <KpiCell
-          label={texts.grid.matchesPlayed}
-          value={String(kpis.matches_count)}
-          inlineSub={`${formatMinSec(kpis.avg_match_seconds)}${texts.grid.perMatch}`}
-        />
-        <KpiCell
-          label={texts.grid.totalDuration}
-          value={formatDurationDhm(kpis.total_play_seconds)}
-        />
+        {!omitSummaryCards && (
+          <>
+            <KpiCell
+              label={texts.grid.matchesPlayed}
+              value={String(kpis.matches_count)}
+              inlineSub={`${formatMinSec(kpis.avg_match_seconds)}${texts.grid.perMatch}`}
+            />
+            <KpiCell
+              label={texts.grid.totalDuration}
+              value={formatDurationDhm(kpis.total_play_seconds)}
+            />
+          </>
+        )}
         <KpiCell
           label={texts.grid.fragsPerMatch}
           value={kpis.kills_per_game.toFixed(2)}
