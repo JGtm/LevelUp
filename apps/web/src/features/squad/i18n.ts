@@ -143,6 +143,7 @@ export interface SquadText {
     badgeStowaway: string
     badgeStowawayShort: string
     badgeNames: Record<string, string>
+    badgeDescriptions: Record<string, string>
   }
   perMinute: {
     title: string
@@ -360,6 +361,18 @@ const FR_TEXT: SquadText = {
       silent_hero: 'Héros silencieux',
       false_brother: 'Faux-frère',
       top_killer: 'Bourreau (top frags)',
+      top_gun: 'Top Gun',
+    },
+    badgeDescriptions: {
+      first_blood: 'Premier frag du match, toutes équipes confondues',
+      clutch_finisher: 'Dernier frag réalisé par un joueur de l\'équipe gagnante',
+      last_casualty: 'Dernière mort subie par un joueur de l\'équipe perdante',
+      last_group_kill: 'Joueur de l\'équipe dont le premier frag arrive le plus tardivement',
+      first_group_death: 'Première mort subie par un membre de l\'équipe',
+      silent_hero: 'Joueur (hors top-fragger) avec le plus d\'assists et le moins de morts',
+      false_brother: 'Joueur (hors top-fragger) avec le plus de morts et le moins d\'assists',
+      top_killer: 'Joueur avec le plus grand nombre de frags du match',
+      top_gun: 'Premier membre du squad à atteindre 10 frags',
     },
   },
   perMinute: {
@@ -585,6 +598,18 @@ const EN_TEXT: SquadText = {
       silent_hero: 'Silent hero',
       false_brother: 'False brother',
       top_killer: 'Top killer',
+      top_gun: 'Top Gun',
+    },
+    badgeDescriptions: {
+      first_blood: 'First kill of the match, across all teams',
+      clutch_finisher: 'Last kill dealt by a player from the winning team',
+      last_casualty: 'Last death suffered by a player from the losing team',
+      last_group_kill: 'Squad member whose first kill came latest in the match',
+      first_group_death: 'First death suffered by a squad member',
+      silent_hero: 'Winner (excl. top killer) with most assists and fewest deaths',
+      false_brother: 'Loser (excl. top killer) with most deaths and fewest assists',
+      top_killer: 'Player with the highest kill count in the match',
+      top_gun: 'First squad member to reach 10 kills',
     },
   },
   perMinute: {

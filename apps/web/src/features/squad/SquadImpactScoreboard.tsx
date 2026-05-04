@@ -29,6 +29,7 @@ import type {
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
+import { Tooltip } from '@/components/ui/tooltip'
 import { Card, CardContent } from '@/components/ui/card'
 import { getSquadText } from './i18n'
 
@@ -167,12 +168,19 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
               {chunkPairs(keys).map((pair, i) => (
                 <div key={i} className="flex gap-0.5">
                   {pair.map((k) => (
-                    <BadgeIcon
+                    <Tooltip
                       key={k}
-                      badgeKey={k}
-                      size={18}
-                      title={i18n.badgeNames[k] ?? k}
-                    />
+                      content={
+                        <>
+                          <span className="font-semibold">{i18n.badgeNames[k] ?? k}</span>
+                          {i18n.badgeDescriptions[k] && (
+                            <p className="text-muted-foreground mt-0.5">{i18n.badgeDescriptions[k]}</p>
+                          )}
+                        </>
+                      }
+                    >
+                      <BadgeIcon badgeKey={k} size={18} />
+                    </Tooltip>
                   ))}
                 </div>
               ))}
@@ -183,11 +191,18 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
       ...matrix.badge_ord.map<ColumnDef<ImpactRow>>((badgeKey) => ({
         id: `agg-${badgeKey}`,
         header: () => (
-          <BadgeIcon
-            badgeKey={badgeKey}
-            size={18}
-            title={i18n.badgeNames[badgeKey] ?? badgeKey}
-          />
+          <Tooltip
+            content={
+              <>
+                <span className="font-semibold">{i18n.badgeNames[badgeKey] ?? badgeKey}</span>
+                {i18n.badgeDescriptions[badgeKey] && (
+                  <p className="text-muted-foreground mt-0.5">{i18n.badgeDescriptions[badgeKey]}</p>
+                )}
+              </>
+            }
+          >
+            <BadgeIcon badgeKey={badgeKey} size={18} />
+          </Tooltip>
         ),
         cell: (ctx) => {
           const v = ctx.row.original.perBadge[badgeKey] ?? 0
