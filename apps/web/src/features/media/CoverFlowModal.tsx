@@ -138,7 +138,7 @@ export function CoverFlowModal({
   const [pendingPageAdvance, setPendingPageAdvance] = useState(false)
   const animatingRef = useRef(false)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
-  const autoChainTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const autoChainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Garde la dernière position valide pour éviter les sauts visuels si
   // l'item disparaît temporairement (refetch entre 2 vues).

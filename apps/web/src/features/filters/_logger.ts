@@ -39,7 +39,7 @@ export const log = {
   },
 
   debug(msg: string, ...args: unknown[]): void {
-    if (process.env.NODE_ENV !== 'development') return
+    if (!import.meta.env.DEV) return
     console.debug(`${PREFIX} ${msg}`, ...args)
   },
 
