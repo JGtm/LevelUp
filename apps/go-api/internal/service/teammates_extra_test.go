@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -398,35 +397,86 @@ func TestComputeMapBreakdown_EmptyMapUIFallback(t *testing.T) {
 	}
 }
 
-// ---------- enrichMapBreakdownWithHistory + computeHistoricalMapWRByLabel ----------
+// ---------- enrichMapBreakdownWithSquadStats ----------
 
-// TestEnrichMapBreakdown_JoinKeyMatchesMapUI vérifie que enrichMapBreakdownWithHistory
-// joint correctement quand DefaultLabel == MapUI (cas nominal Halo Infinite :
-// noms de cartes identiques EN et FR).
-func TestEnrichMapBreakdown_JoinKeyMatchesMapUI(t *testing.T) {
+// TestEnrichMapBreakdownWithSquadStats_JoinByMapID vérifie le chemin nominal :
+// jointure par MapID, injection de HistoricalWinRate (= Wins/Total) et
+// HistoricalPerformanceAvg en une seule passe.
+func TestEnrichMapBreakdownWithSquadStats_JoinByMapID(t *testing.T) {
+	perf := 65.5
 	rows := []domain.MapBreakdownRow{
-		{MapUI: "Bazaar", MatchCount: 3, WinRate: 0.67},
+		{MapID: "bazaar_id", MapUI: "Bazaar", MatchCount: 3, WinRate: 0.67},
 	}
-	historical := map[string]float64{"Bazaar": 0.55}
-	enriched := enrichMapBreakdownWithHistory(rows, historical)
-	if enriched[0].HistoricalWinRate == nil {
-		t.Fatal("expected HistoricalWinRate to be set, got nil")
+	stats := map[string]domain.MapSquadStats{
+		"bazaar_id": {Wins: 11, Total: 20, PerfAvg: &perf},
 	}
-	if *enriched[0].HistoricalWinRate != 0.55 {
-		t.Errorf("expected 0.55, got %f", *enriched[0].HistoricalWinRate)
+	enriched := enrichMapBreakdownWithSquadStats(rows, stats)
+	if enriched[0].HistoricalWinRate == nil || *enriched[0].HistoricalWinRate != 0.55 {
+		t.Errorf("HistoricalWinRate: want 0.55, got %v", enriched[0].HistoricalWinRate)
+	}
+	if enriched[0].HistoricalPerformanceAvg == nil || *enriched[0].HistoricalPerformanceAvg != 65.5 {
+		t.Errorf("HistoricalPerformanceAvg: want 65.5, got %v", enriched[0].HistoricalPerformanceAvg)
 	}
 }
 
-// TestEnrichMapBreakdown_NoMatchLeaveNil vérifie que si la clé n'est pas dans
-// l'historique (ex : carte récente sans historique), HistoricalWinRate reste nil.
-func TestEnrichMapBreakdown_NoMatchLeaveNil(t *testing.T) {
+// TestEnrichMapBreakdownWithSquadStats_FallbackMapUI vérifie le fallback
+// MapUI quand MapID est vide (cas dégradé sans UUID exposé).
+func TestEnrichMapBreakdownWithSquadStats_FallbackMapUI(t *testing.T) {
 	rows := []domain.MapBreakdownRow{
-		{MapUI: "NewMap", MatchCount: 1, WinRate: 1.0},
+		{MapID: "", MapUI: "Bazaar", MatchCount: 3, WinRate: 0.67},
 	}
-	historical := map[string]float64{"Bazaar": 0.55}
-	enriched := enrichMapBreakdownWithHistory(rows, historical)
+	stats := map[string]domain.MapSquadStats{
+		"Bazaar": {Wins: 1, Total: 2},
+	}
+	enriched := enrichMapBreakdownWithSquadStats(rows, stats)
+	if enriched[0].HistoricalWinRate == nil || *enriched[0].HistoricalWinRate != 0.5 {
+		t.Errorf("expected 0.5 via MapUI fallback, got %v", enriched[0].HistoricalWinRate)
+	}
+}
+
+// TestEnrichMapBreakdownWithSquadStats_NoMatchLeaveNil : si la clé n'est pas
+// dans le map de stats (carte jamais jouée avec ce squad), les deux champs
+// historiques restent nil — la cellule front affiche "—".
+func TestEnrichMapBreakdownWithSquadStats_NoMatchLeaveNil(t *testing.T) {
+	rows := []domain.MapBreakdownRow{
+		{MapID: "newmap_id", MapUI: "NewMap", MatchCount: 1, WinRate: 1.0},
+	}
+	stats := map[string]domain.MapSquadStats{"bazaar_id": {Wins: 1, Total: 2}}
+	enriched := enrichMapBreakdownWithSquadStats(rows, stats)
 	if enriched[0].HistoricalWinRate != nil {
-		t.Errorf("expected HistoricalWinRate=nil for unknown map, got %v", enriched[0].HistoricalWinRate)
+		t.Errorf("HistoricalWinRate: want nil, got %v", enriched[0].HistoricalWinRate)
+	}
+	if enriched[0].HistoricalPerformanceAvg != nil {
+		t.Errorf("HistoricalPerformanceAvg: want nil, got %v", enriched[0].HistoricalPerformanceAvg)
+	}
+}
+
+// TestEnrichMapBreakdownWithSquadStats_NilStats : map nil ne crashe pas et
+// laisse les rows intactes (cas LoadMapStatsForSquad échoue ou squad vide).
+func TestEnrichMapBreakdownWithSquadStats_NilStats(t *testing.T) {
+	rows := []domain.MapBreakdownRow{{MapID: "x", MapUI: "X", MatchCount: 1, WinRate: 1.0}}
+	enriched := enrichMapBreakdownWithSquadStats(rows, nil)
+	if enriched[0].HistoricalWinRate != nil {
+		t.Errorf("nil stats: HistoricalWinRate should remain nil")
+	}
+}
+
+// TestSquadStatsToWinTotal : conversion vers le format historique
+// map[mapID][2]int{wins,total} attendu par buildSquadMatchHistory.
+func TestSquadStatsToWinTotal(t *testing.T) {
+	stats := map[string]domain.MapSquadStats{
+		"a": {Wins: 5, Total: 10},
+		"b": {Wins: 0, Total: 3},
+	}
+	got := squadStatsToWinTotal(stats)
+	if got["a"] != [2]int{5, 10} {
+		t.Errorf("a: want [5 10], got %v", got["a"])
+	}
+	if got["b"] != [2]int{0, 3} {
+		t.Errorf("b: want [0 3], got %v", got["b"])
+	}
+	if squadStatsToWinTotal(nil) != nil {
+		t.Errorf("nil input: want nil output")
 	}
 }
 
@@ -465,145 +515,11 @@ func TestComputeMapBreakdown_PerformanceAvg(t *testing.T) {
 	}
 }
 
-// TestComputeHistoricalMapPerf_AveragesScores vérifie la moyenne par carte
-// depuis canonical.PlayerMatchRow.Enrichment.PerformanceScore. Carte ignorée
-// si aucun match n'a de score renseigné. Les rows simulent un contexte squad
-// (IsWithFriends=true) — le filtre solo est testé séparément.
-func TestComputeHistoricalMapPerf_AveragesScores(t *testing.T) {
-	p1, p2, p3 := 70.0, 50.0, 90.0
-	rows := []canonical.PlayerMatchRow{
-		{
-			Summary:    canonical.MatchSummary{MatchID: "m1", Map: &canonical.AssetReference{Kind: "map", ID: "bazaar", DefaultLabel: "Bazaar"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p1, IsWithFriends: true},
-		},
-		{
-			Summary:    canonical.MatchSummary{MatchID: "m2", Map: &canonical.AssetReference{Kind: "map", ID: "bazaar", DefaultLabel: "Bazaar"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p2, IsWithFriends: true},
-		},
-		{
-			Summary:    canonical.MatchSummary{MatchID: "m3", Map: &canonical.AssetReference{Kind: "map", ID: "recharge", DefaultLabel: "Recharge"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &p3, IsWithFriends: true},
-		},
-		// carte sans score : doit être ignorée.
-		{
-			Summary:    canonical.MatchSummary{MatchID: "m4", Map: &canonical.AssetReference{Kind: "map", ID: "aquarius", DefaultLabel: "Aquarius"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: nil, IsWithFriends: true},
-		},
-	}
-	hist := computeHistoricalMapPerfByLabel(rows)
-	if hist["bazaar"] != 60.0 {
-		t.Errorf("Bazaar: expected 60 ((70+50)/2), got %f", hist["bazaar"])
-	}
-	if hist["recharge"] != 90.0 {
-		t.Errorf("Recharge: expected 90, got %f", hist["recharge"])
-	}
-	if _, ok := hist["aquarius"]; ok {
-		t.Errorf("Aquarius: expected absent (no score), got %f", hist["aquarius"])
-	}
-}
-
-// TestComputeHistoricalMapPerf_FiltersSoloMatches vérifie que les matchs solo
-// (IsWithFriends=false) sont exclus du calcul de perf historique. Sur la page
-// Synergies, la référence doit être squad-only — sinon une perf solo
-// (souvent supérieure) fausserait la barre histo du bullet teammates.13.
-func TestComputeHistoricalMapPerf_FiltersSoloMatches(t *testing.T) {
-	pSquad, pSolo := 60.0, 90.0
-	rows := []canonical.PlayerMatchRow{
-		{
-			Summary:    canonical.MatchSummary{MatchID: "m1", Map: &canonical.AssetReference{ID: "bazaar", DefaultLabel: "Bazaar"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &pSquad, IsWithFriends: true},
-		},
-		{
-			// Match solo avec perf supérieure — doit être ignoré (sinon avg = 75).
-			Summary:    canonical.MatchSummary{MatchID: "m2", Map: &canonical.AssetReference{ID: "bazaar", DefaultLabel: "Bazaar"}},
-			Enrichment: canonical.PlayerMatchEnrichment{PerformanceScore: &pSolo, IsWithFriends: false},
-		},
-	}
-	hist := computeHistoricalMapPerfByLabel(rows)
-	if hist["bazaar"] != 60.0 {
-		t.Errorf("expected Bazaar perf=60 (solo match excluded), got %f", hist["bazaar"])
-	}
-}
-
-// TestEnrichMapBreakdown_HistoricalPerf_JoinsByMapUI vérifie que l'enrichment
-// historique perf utilise MapUI comme clé.
-func TestEnrichMapBreakdown_HistoricalPerf_JoinsByMapUI(t *testing.T) {
-	rows := []domain.MapBreakdownRow{
-		{MapUI: "Bazaar", MatchCount: 3, WinRate: 0.67},
-		{MapUI: "NewMap", MatchCount: 1, WinRate: 1.0},
-	}
-	historical := map[string]float64{"Bazaar": 65.5}
-	enriched := enrichMapBreakdownWithHistoricalPerf(rows, historical)
-	if enriched[0].HistoricalPerformanceAvg == nil || *enriched[0].HistoricalPerformanceAvg != 65.5 {
-		t.Errorf("Bazaar: expected HistoricalPerformanceAvg=65.5, got %v", enriched[0].HistoricalPerformanceAvg)
-	}
-	if enriched[1].HistoricalPerformanceAvg != nil {
-		t.Errorf("NewMap: expected HistoricalPerformanceAvg=nil, got %v", enriched[1].HistoricalPerformanceAvg)
-	}
-}
-
-// TestComputeHistoricalMapWR_UsesMapID vérifie que la clé est l'UUID (Map.ID),
-// language-agnostic — nécessaire pour que la jointure survive à l'enrichissement FR des labels.
-func TestComputeHistoricalMapWR_UsesMapID(t *testing.T) {
-	rows := makeCanonicalRowsWithMaps([]struct{ id, name string }{
-		{"bazaar_id", "Bazaar"},
-		{"bazaar_id", "Bazaar"},
-		{"recharge_id", "Recharge"},
-	}, []canonical.Outcome{canonical.OutcomeWin, canonical.OutcomeLoss, canonical.OutcomeWin})
-
-	hist := computeHistoricalMapWRByLabel(rows)
-	if hist["bazaar_id"] != 0.5 {
-		t.Errorf("Bazaar WR: expected 0.5, got %f", hist["bazaar_id"])
-	}
-	if hist["recharge_id"] != 1.0 {
-		t.Errorf("Recharge WR: expected 1.0, got %f", hist["recharge_id"])
-	}
-}
-
-func makeCanonicalRowsWithMaps(maps []struct{ id, name string }, outcomes []canonical.Outcome) []canonical.PlayerMatchRow {
-	rows := make([]canonical.PlayerMatchRow, len(maps))
-	for i, m := range maps {
-		rows[i] = canonical.PlayerMatchRow{
-			Summary: canonical.MatchSummary{
-				MatchID: fmt.Sprintf("m%d", i),
-				Map:     &canonical.AssetReference{Kind: "map", ID: m.id, DefaultLabel: m.name},
-				Outcome: outcomes[i],
-			},
-			// computeHistoricalMapWRByLabel utilise r.Self.Outcome et filtre sur
-			// IsWithFriends — l'helper de test simule donc un contexte escouade.
-			Self:       canonical.MatchParticipant{Outcome: outcomes[i]},
-			Enrichment: canonical.PlayerMatchEnrichment{IsWithFriends: true},
-		}
-	}
-	return rows
-}
-
-// TestComputeHistoricalMapWR_FiltersSoloMatches vérifie que les matchs solo
-// (IsWithFriends=false) sont exclus du calcul du taux historique. Sur la page
-// Synergies, la référence doit être squad-only.
-func TestComputeHistoricalMapWR_FiltersSoloMatches(t *testing.T) {
-	rows := []canonical.PlayerMatchRow{
-		{
-			Summary:    canonical.MatchSummary{MatchID: "m1", Map: &canonical.AssetReference{ID: "bazaar_id", DefaultLabel: "Bazaar"}, Outcome: canonical.OutcomeWin},
-			Self:       canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
-			Enrichment: canonical.PlayerMatchEnrichment{IsWithFriends: true},
-		},
-		{
-			// Match solo — doit être ignoré, sinon WR = 1/2 au lieu de 1/1
-			Summary:    canonical.MatchSummary{MatchID: "m2", Map: &canonical.AssetReference{ID: "bazaar_id", DefaultLabel: "Bazaar"}, Outcome: canonical.OutcomeLoss},
-			Self:       canonical.MatchParticipant{Outcome: canonical.OutcomeLoss},
-			Enrichment: canonical.PlayerMatchEnrichment{IsWithFriends: false},
-		},
-	}
-	hist := computeHistoricalMapWRByLabel(rows)
-	if hist["bazaar_id"] != 1.0 {
-		t.Errorf("expected Bazaar WR=1.0 (solo match excluded), got %f", hist["bazaar_id"])
-	}
-	stats := computeHistoricalMapStatsByLabel(rows)
-	if stats["bazaar_id"] != [2]int{1, 1} {
-		t.Errorf("expected Bazaar stats=[1,1], got %v", stats["bazaar_id"])
-	}
-}
+// Note : les anciens tests sur computeHistoricalMap{Stats,WR,Perf}ByLabel ont
+// été retirés en même temps que ces fonctions (le filtre IsWithFriends agrégeait
+// "matchs avec n'importe quel ami" et non "matchs avec l'escouade exacte"). La
+// référence est désormais calculée côté repo via LoadMapStatsForSquad et
+// vérifiée par les tests TestEnrichMapBreakdownWithSquadStats_*.
 
 // ---------- buildMatchSeries ----------
 

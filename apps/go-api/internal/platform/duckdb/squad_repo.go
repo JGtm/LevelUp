@@ -3,6 +3,7 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -280,6 +281,80 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]le
 		result = append(result, row)
 	}
 	return result, rows.Err()
+}
+
+// LoadMapStatsForSquad calcule par carte (map_id) le winrate et la performance
+// moyenne du joueur principal sur les matchs où TOUS les xuids du squad sont
+// participants. Aucun filtre temporel — c'est l'historique complet "avec cette
+// escouade exacte".
+//
+// Comportement :
+//   - squadXUIDs vide : retourne nil, nil (pas de squad sélectionné).
+//   - squadXUIDs ne contenant que mainXUID : tombe sur les stats solo du main
+//     (cas dégénéré utile pour le mode solo).
+//   - mainXUID inclus dans squadXUIDs : pas de doublonnage côté SQL grâce au
+//     COUNT(DISTINCT xuid) dans squad_matches.
+//
+// Retour : map keyée sur map_id (jamais vide ; clé absente = aucun match avec
+// ce squad sur cette carte).
+func (r *SquadRepo) LoadMapStatsForSquad(ctx context.Context, mainXUID string, squadXUIDs []string) (map[string]domain.MapSquadStats, error) {
+	if mainXUID == "" || len(squadXUIDs) == 0 {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(squadXUIDs)), ",")
+	q := fmt.Sprintf(Q42MapStatsForSquadTemplate, placeholders, len(uniqueXUIDs(squadXUIDs)))
+	args := make([]any, 0, len(squadXUIDs)+1)
+	for _, x := range squadXUIDs {
+		args = append(args, x)
+	}
+	args = append(args, mainXUID)
+
+	rows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("LoadMapStatsForSquad: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]domain.MapSquadStats)
+	for rows.Next() {
+		var (
+			mapID       string
+			total, wins int
+			perf        sql.NullFloat64
+		)
+		if err := rows.Scan(&mapID, &total, &wins, &perf); err != nil {
+			return nil, fmt.Errorf("LoadMapStatsForSquad scan: %w", err)
+		}
+		if mapID == "" {
+			continue
+		}
+		s := domain.MapSquadStats{Wins: wins, Total: total}
+		if perf.Valid {
+			v := perf.Float64
+			s.PerfAvg = &v
+		}
+		result[mapID] = s
+	}
+	return result, rows.Err()
+}
+
+// uniqueXUIDs déduplique sans modifier l'ordre — utile uniquement pour le
+// HAVING COUNT(DISTINCT) du SQL squad_matches (la cardinalité ne doit pas
+// compter les doublons applicatifs).
+func uniqueXUIDs(xs []string) []string {
+	seen := make(map[string]struct{}, len(xs))
+	out := xs[:0:0]
+	for _, x := range xs {
+		if _, ok := seen[x]; ok {
+			continue
+		}
+		seen[x] = struct{}{}
+		out = append(out, x)
+	}
+	return out
 }
 
 // LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.

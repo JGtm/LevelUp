@@ -199,12 +199,23 @@ func (s *TeammatesService) GetPage(
 		}
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
-		historicalWR := computeHistoricalMapWRByLabel(canonicalRows)
-		mapBreakdown = enrichMapBreakdownWithHistory(mapBreakdown, historicalWR)
-		historicalPerf := computeHistoricalMapPerfByLabel(canonicalRows)
-		mapBreakdown = enrichMapBreakdownWithHistoricalPerf(mapBreakdown, historicalPerf)
-		historicalMapStats := computeHistoricalMapStatsByLabel(canonicalRows)
-		matchHistory = buildSquadMatchHistory(allSquadRows, modeFR, historicalMapStats)
+
+		// Squad XUIDs résolus (depuis les teammate rows construits) — sert au
+		// calcul de l'historique "avec cette escouade exacte". Aucun filtre
+		// période/session ne s'applique : la référence est l'historique complet
+		// du main avec les coéquipiers sélectionnés présents simultanément.
+		squadXUIDs := make([]string, 0, len(teammates))
+		for _, t := range teammates {
+			if t.XUID != nil && *t.XUID != "" {
+				squadXUIDs = append(squadXUIDs, *t.XUID)
+			}
+		}
+		squadStats, err := s.repo.LoadMapStatsForSquad(ctx, playerXUID, squadXUIDs)
+		if err != nil {
+			slog.WarnContext(ctx, "teammates: LoadMapStatsForSquad failed", "err", err)
+		}
+		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
+		matchHistory = buildSquadMatchHistory(allSquadRows, modeFR, squadStatsToWinTotal(squadStats))
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, sessionMatchIDs)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
@@ -812,111 +823,47 @@ func round2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
-// computeHistoricalMapStatsByLabel calcule (wins, total) par carte sur
-// l'historique ESCOUADE du joueur principal (canonicalRows filtrés sur
-// Enrichment.IsWithFriends). Sur la page Squad/Synergies on compare toujours
-// du squad-vs-squad : intégrer les matchs solo polluerait la référence.
+// enrichMapBreakdownWithSquadStats injecte HistoricalWinRate et
+// HistoricalPerformanceAvg depuis la map de stats agrégées par le repo
+// (LoadMapStatsForSquad). Une seule jointure par MapID — fallback MapUI si
+// le map_id n'est pas exposé (cas dégradé).
 //
-// Conserve le compteur total pour pouvoir l'afficher entre parenthèses
-// (« Taux hist. : 62 % (37) »). Clé = Map.ID (fallback DefaultLabel).
-//
-// Note : duplication tolérée avec computeHistoricalMapWRByLabel — même règle
-// de filtrage et même clé de regroupement, mais signature de retour différente
-// (ratio vs (wins,total)). Refactor possible quand enrichMapBreakdownWithHistory
-// acceptera (wins,total).
-func computeHistoricalMapStatsByLabel(rows []canonical.PlayerMatchRow) map[string][2]int {
-	m := map[string][2]int{}
-	for _, r := range rows {
-		if !r.Enrichment.IsWithFriends {
-			continue
-		}
-		if r.Summary.Map == nil {
-			continue
-		}
-		key := r.Summary.Map.ID
-		if key == "" {
-			key = r.Summary.Map.DefaultLabel
-		}
-		if key == "" {
-			continue
-		}
-		entry := m[key]
-		entry[1]++ // total
-		if r.Self.Outcome == canonical.OutcomeWin {
-			entry[0]++ // wins
-		}
-		m[key] = entry
+// Aucune ligne n'est ajoutée : seules les MapBreakdownRow déjà présentes
+// dans la session courante (computeMapBreakdown) reçoivent leur enrichissement.
+func enrichMapBreakdownWithSquadStats(rows []domain.MapBreakdownRow, stats map[string]domain.MapSquadStats) []domain.MapBreakdownRow {
+	if len(stats) == 0 {
+		return rows
 	}
-	return m
-}
-
-// computeHistoricalMapWRByLabel calcule le win rate par carte sur l'historique
-// ESCOUADE du joueur principal (canonicalRows filtrés sur Enrichment.IsWithFriends).
-// Sur la page Squad/Synergies on compare toujours du squad-vs-squad. Clé = Map.ID
-// (fallback DefaultLabel).
-func computeHistoricalMapWRByLabel(rows []canonical.PlayerMatchRow) map[string]float64 {
-	type stats struct{ count, wins int }
-	m := map[string]*stats{}
-	for _, r := range rows {
-		if !r.Enrichment.IsWithFriends {
-			continue
-		}
-		if r.Summary.Map == nil {
-			continue
-		}
-		key := r.Summary.Map.ID
-		if key == "" {
-			key = r.Summary.Map.DefaultLabel
-		}
-		if key == "" {
-			continue
-		}
-		if _, ok := m[key]; !ok {
-			m[key] = &stats{}
-		}
-		m[key].count++
-		if r.Self.Outcome == canonical.OutcomeWin {
-			m[key].wins++
-		}
-	}
-	result := make(map[string]float64, len(m))
-	for k, s := range m {
-		if s.count > 0 {
-			result[k] = round2(float64(s.wins) / float64(s.count))
-		}
-	}
-	return result
-}
-
-// enrichMapBreakdownWithHistory injecte HistoricalWinRate depuis la map d'historique.
-func enrichMapBreakdownWithHistory(rows []domain.MapBreakdownRow, historical map[string]float64) []domain.MapBreakdownRow {
 	for i := range rows {
 		key := rows[i].MapID
 		if key == "" {
 			key = rows[i].MapUI
 		}
-		if wr, ok := historical[key]; ok {
-			v := wr
-			rows[i].HistoricalWinRate = &v
+		s, ok := stats[key]
+		if !ok || s.Total == 0 {
+			continue
 		}
-	}
-	return rows
-}
-
-// enrichMapBreakdownWithHistoricalPerf injecte HistoricalPerformanceAvg depuis
-// la map d'historique perf (alimentée par computeHistoricalMapPerfByLabel).
-func enrichMapBreakdownWithHistoricalPerf(rows []domain.MapBreakdownRow, historical map[string]float64) []domain.MapBreakdownRow {
-	for i := range rows {
-		key := rows[i].MapID
-		if key == "" {
-			key = rows[i].MapUI
-		}
-		if perf, ok := historical[key]; ok {
-			v := perf
+		wr := round2(float64(s.Wins) / float64(s.Total))
+		rows[i].HistoricalWinRate = &wr
+		if s.PerfAvg != nil {
+			v := *s.PerfAvg
 			rows[i].HistoricalPerformanceAvg = &v
 		}
 	}
 	return rows
+}
+
+// squadStatsToWinTotal convertit la map repo en format compatible avec
+// buildSquadMatchHistory (signature historique : map[mapID][2]int{wins,total}).
+func squadStatsToWinTotal(stats map[string]domain.MapSquadStats) map[string][2]int {
+	if len(stats) == 0 {
+		return nil
+	}
+	out := make(map[string][2]int, len(stats))
+	for k, s := range stats {
+		out[k] = [2]int{s.Wins, s.Total}
+	}
+	return out
 }
 
 // enrichSquadMatchAssets enrichit MapUI et PlaylistName des rows avec les traductions FR
@@ -1017,50 +964,6 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 			row.PerformanceAvg = &avg
 		}
 		result = append(result, row)
-	}
-	return result
-}
-
-// computeHistoricalMapPerfByLabel calcule la moyenne de performance_score
-// par carte sur l'historique ESCOUADE du joueur principal (canonicalRows
-// filtrés sur Enrichment.IsWithFriends). Sur la page Squad/Synergies on
-// compare toujours du squad-vs-squad : intégrer les matchs solo polluerait
-// la référence (perf solo souvent supérieure → injuste pour la barre squad).
-// Clé = Map.ID (fallback DefaultLabel). Carte ignorée si aucun match avec score.
-func computeHistoricalMapPerfByLabel(rows []canonical.PlayerMatchRow) map[string]float64 {
-	type stats struct {
-		sum   float64
-		count int
-	}
-	m := map[string]*stats{}
-	for _, r := range rows {
-		if !r.Enrichment.IsWithFriends {
-			continue
-		}
-		if r.Summary.Map == nil {
-			continue
-		}
-		if r.Enrichment.PerformanceScore == nil {
-			continue
-		}
-		key := r.Summary.Map.ID
-		if key == "" {
-			key = r.Summary.Map.DefaultLabel
-		}
-		if key == "" {
-			continue
-		}
-		if _, ok := m[key]; !ok {
-			m[key] = &stats{}
-		}
-		m[key].sum += *r.Enrichment.PerformanceScore
-		m[key].count++
-	}
-	result := make(map[string]float64, len(m))
-	for k, s := range m {
-		if s.count > 0 {
-			result[k] = round2(s.sum / float64(s.count))
-		}
 	}
 	return result
 }

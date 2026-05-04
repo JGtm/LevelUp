@@ -1,5 +1,129 @@
 # Thought Log
 
+## [2026-05-04] fix(impact): parité Python pour silent_hero et false_brother — exiger max+min sur LE MÊME joueur
+
+**Statut** : Complété.
+
+**Contexte** : L'utilisateur a comparé Python (main) vs Go (branche) pour la session du 6 avril sur le scoreboard "Impact des coéquipiers" et a relevé 3 cas où Go octroie un badge que Python n'octroie pas : `false_brother` à Chocoboflor sur match #1, `last_group_kill` à Chocoboflor sur #11, `silent_hero` à JGtm sur #7.
+
+**Cause racine (silent_hero / false_brother)** :
+- Python (`identify_silent_hero_multi` / `identify_false_brother_multi`) calcule `min_deaths` (resp. `min_assists`) sur **TOUS les eligible** (post exclusion des top killers), puis `candidates = eligible où assists==max ET deaths==min`. Si le porteur du max n'a pas aussi le min absolu, candidates est vide → pas de badge.
+- Go (`silentHero` / `falseBrother`, [match_impact.go](apps/go-api/internal/analysis/match_impact.go)) calculait min_deaths/min_assists sur le sous-ensemble `withMaxAssists` / `withMaxDeaths`, ce qui garantit toujours un candidat → badge octroyé même quand Python ne l'aurait pas.
+
+**Décision technique** :
+- Réécriture des deux fonctions pour calculer `minDeaths` / `minAssists` sur tous les `eligible`, puis n'attribuer le badge que si un même joueur cumule les deux conditions.
+- Suppression des helpers `filterAssists` / `filterDeaths` devenus morts.
+- Ajout de 2 tests cadenas :
+  - `TestSilentHero_MaxAssistsAndMinDeathsOnDifferentPlayers_NoBadge`
+  - `TestFalseBrother_MaxDeathsAndMinAssistsOnDifferentPlayers_NoBadge`
+
+**Périmètre exclu / à creuser** :
+- `last_group_kill` (Touriste) sur match #11 : ma comparaison ligne-à-ligne entre Go et Python ne montre qu'une divergence (Go ajoute `len(firstKillTime) < 2 → no badge` que Python n'a pas), ce qui rend Go *plus restrictif* — l'inverse de l'observation utilisateur. Je n'ai pas trouvé d'autre divergence d'algorithme. Il faut récupérer les données concrètes du match #11 (events highlight + participants escouade) pour reproduire et identifier la cause (peut-être un mapping XUID→gamertag, ou un détail dans `loadImpactEventsByMatch`).
+
+**Résultats observés** :
+- `go build ./...` clean.
+- `go test ./internal/analysis/... ./internal/service/...` ok — 4 packages, 0 régression.
+
+**Conclusion / prochaine étape** : 2 bugs sur 3 corrigés. Reste à investiguer le cas `last_group_kill` du match #11 avec données concrètes.
+
+---
+
+## [2026-05-04] fix(squad/v2): BuildBulletWinrate / BuildPerfVsHistorical alignés sur squad strict
+
+**Statut** : Complété.
+
+**Suite directe** du fix précédent (page Synergies). Les builders `BuildBulletWinrate` et `BuildPerfVsHistorical` côté `squad_service_v2_synergies.go` consommaient encore `loadHistoricalMain` — qui charge tous les matchs du main sans filtre squad. Même incohérence sémantique : "historique" devait être l'agrégat squad strict.
+
+**Décision** : changer la signature des deux builders pour accepter `map[string]domain.MapSquadStats` au lieu de `[]canonical.PlayerMatchRow`, et les alimenter via le même `LoadMapStatsForSquad` introduit dans le PR précédent.
+
+**Changements** :
+- `internal/service/squad_service_v2.go` : interface `SquadV2Loader` étendue avec `LoadMapStatsForSquad(slug, mainGT, squadXUIDs []string)`. `loadHistoricalMain` → `loadSquadHistorical` (extrait les xuids hors main puis appelle le loader).
+- `internal/service/squad_service_v2_compose.go` : champ `mainHistorical []canonical.PlayerMatchRow` → `squadHistorical map[string]domain.MapSquadStats` dans `buildSquadChartsInput`.
+- `internal/service/squad_service_v2_synergies.go` : signatures refactorées + helper `squadStatsToMapAggregates` pour réutiliser `breakdown.CompareToHistorical` (delta perf). `BuildBulletWinrate` lit directement `Wins/Total` du map.
+- `internal/platform/duckdb/squad_v2_adapter.go` : implémentation prod de `LoadMapStatsForSquad` — résout PlayerDB du main, instancie SquadRepo, délègue. Capability gating via `isPlayerCapabilityError`.
+- Tests : `fakeSquadLoader` + `fakeSquadLoaderFull` reçoivent un stub `LoadMapStatsForSquad` retournant nil. Tests `TestBuildBulletWinrate_*` et `TestBuildPerfVsHistorical_*` adaptés à la nouvelle signature (map littéral au lieu de rows canoniques).
+
+**Résultats** :
+- API JSON inchangée (les `ChartSeries` sortent les mêmes payloads).
+- `go test ./...` vert + 3 tests intégration repo conservés verts.
+- Plus aucun appel à `loadHistoricalMain` (fonction supprimée).
+
+**Cohérence finale** : tableau Synergies + 2 charts squad_v2 (BulletWinrate, PerfVsHistorical) + chart MapPerfVsHistory + chart WinRateVsHistory passent désormais tous par `LoadMapStatsForSquad`. Même définition de l'historique sur les 4 vues : main + xuids du squad strict simultanément présents dans `match_participants`, aucun filtre temporel.
+
+---
+
+## [2026-05-04] fix(squad/synergies): taux historique par carte = squad strict (pas IsWithFriends)
+
+**Statut** : Complété (Go-only ; squad_v2 endpoint non-touché — voir Prochaine étape).
+
+**Symptôme** : sur la page Synergies, le tableau de matchs et le chart "Performance par carte — Session vs Historique" affichaient des `taux historique` divergents pour la session du 6 avril. Diag SQL via `cmd/diag_session_map_winrate` (nouveau) confirme que les deux pipelines calculaient deux choses différentes, dont aucune ne correspondait à l'intention UI ("taux pour l'escouade sélectionnée") :
+- `computeMapWinRates` (match_history_service) — winrate sur tout l'historique main, sans filtre.
+- `computeHistoricalMap{Stats,WR,Perf}ByLabel` (teammates_service) — filtre `IsWithFriends=TRUE` → "avec n'importe quel ami", pas le squad strict.
+
+Mesure factuelle (JGtm comme main, session 06/04 squad = Choco+JGtm+Madina) : Banished Narrows 4/9 (table) / 3/8 (chart) / **0/4 (squad strict)**. Trois agrégats radicalement différents.
+
+**Décision** : un seul SQL agrégé côté repo qui produit (wins, total, perf_avg) par `map_id`, avec filtre "tous les xuids du squad participants au même match" via CTE `squad_matches HAVING COUNT(DISTINCT xuid) = squad_size`. Aucun filtre temporel (période/session) — c'est la référence stable, conforme à l'intention UI clarifiée par l'utilisateur ("on s'en fout des sessions et périodes").
+
+**Changements** :
+- `internal/platform/duckdb/queries_squad.go` : ajout `Q42MapStatsForSquadTemplate`.
+- `internal/platform/duckdb/squad_repo.go` : ajout `LoadMapStatsForSquad(mainXUID, squadXUIDs)` → `map[string]MapSquadStats`.
+- `internal/domain/teammates.go` : ajout struct `MapSquadStats{Wins, Total, PerfAvg *float64}`.
+- `internal/port/repository.go` : extension de `SquadRepository` + noopSquadRepo.
+- `internal/service/teammates_service.go` : remplacement des 3 appels `compute*ByLabel` + 2 enrichers par 1 appel repo + 2 helpers (`enrichMapBreakdownWithSquadStats`, `squadStatsToWinTotal`). Suppression des 3 fonctions obsolètes (~120 LOC supprimées). Squad XUIDs résolus une fois depuis les `teammates[].XUID` au lieu d'être recalculés implicitement.
+- `internal/service/teammates_extra_test.go` : suppression des tests obsolètes (filtre IsWithFriends), remplacement par 5 tests sur `enrichMapBreakdownWithSquadStats` et `squadStatsToWinTotal` (incl. fallback MapUI, NilStats).
+- `internal/platform/duckdb/squad_repo_loadmapstats_test.go` (nouveau, build tag `integration`) : 3 tests fixture in-memory — empty / strict intersection / never played together. Le test "strict" prouve que m3 (squad partiel) est exclu.
+- `internal/service/squad_service_test.go` : ajout stub `LoadMapStatsForSquad` au mockSquadRepo.
+- `cmd/diag_session_map_winrate/main.go` (nouveau) : outil one-shot pour valider la correction sur les vraies DBs (3 winrates côte à côte par carte).
+
+**Résultats** :
+- API JSON inchangée (`historical_win_rate`, `historical_performance_avg` mêmes types) → zéro changement front.
+- `go test ./...` vert, `go vet ./...` clean.
+- Diag confirme : pour Banished Narrows session 06/04, les 3 vues conservées (chart bullet + chart perf + tableau matchs) affichent désormais le même 0/4 (squad strict).
+
+**Prochaine étape** : `BuildBulletWinrate` et `BuildPerfVsHistorical` côté `squad_service_v2_synergies.go` (endpoint `/squad/v2`) consomment encore `loadHistoricalMain` qui charge tous les matchs sans filtre squad. Cohérence à porter dans un PR séparé une fois validée la route `/squad/v2` (consommée actuellement uniquement via `bullet_winrate` dans `types.ts` — pas de chart actif dans `SquadV2Page` pour l'instant). Idem côté Match History où `win_rate_hist` est calculé sans notion de squad : à clarifier produit avant de toucher (si la colonne reste, elle doit aussi passer par `LoadMapStatsForSquad` avec un squad inféré du contexte).
+
+---
+
+## [2026-05-04] chore(squad/synergies): retouches UI — description impact + légende heatmap
+
+**Statut** : Complété.
+
+**Décision technique** :
+- Suppression du sous-titre `description` du scoreboard "Impact des coéquipiers" : retiré du type, des dictionnaires FR/EN dans [features/squad/i18n.ts](apps/web/src/features/squad/i18n.ts) et du JSX dans [SquadImpactScoreboard.tsx:252-258](apps/web/src/features/squad/SquadImpactScoreboard.tsx#L252) (le wrapper `<div>` autour du `<h3>` devenait inutile).
+- Heatmap "Performance par joueur × carte" ([squadMapHeatmapChart.ts:78-91](apps/web/src/features/squad/charts/squadMapHeatmapChart.ts#L78)) : `visualMap` passé en `orient: 'horizontal'`, `left: 'center'`, `bottom: 4`. `grid.bottom` augmenté à 110 (laisse la place sous les xAxis labels rotated -35°) et `grid.right` ramené à 8 (plus besoin de réserve pour la légende verticale).
+
+**Résultats observés** :
+- `npx tsc --noEmit` clean côté `apps/web`.
+
+**Prochaine étape** : commit + PR.
+
+## [2026-05-04] fix(squad/synergies): ordre chronologique ASC du scoreboard "Impact des coéquipiers"
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Escouade > Synergies, le scoreboard "Impact des coéquipiers" ([SquadImpactScoreboard.tsx](apps/web/src/features/squad/SquadImpactScoreboard.tsx)) numérote ses colonnes match `idx + 1`. L'utilisateur s'attend à ce que la colonne #1 soit le match le plus ancien — or c'était l'inverse (le plus récent).
+
+**Cause racine** :
+- [Q30SquadMatches](apps/go-api/internal/platform/duckdb/queries_squad.go#L83) retourne les matchs `ORDER BY start_time DESC`.
+- Dans `teammates_service.go`, `allSquadRows` est construit par concaténation des résultats `LoadSquadMatches` de chaque teammate (boucle [teammates_service.go:166-178](apps/go-api/internal/service/teammates_service.go#L166-L178)) : DESC par teammate mais pas globalement chronologique.
+- `buildSquadImpactMatrix` itérait simplement `allSquadRows` pour construire `matchIDOrder` → la première colonne tombait sur le match le plus récent (et l'ordre n'était même pas strictement DESC global).
+
+**Décision technique** :
+- Dans [buildSquadImpactMatrix](apps/go-api/internal/service/teammates_squad_charts.go#L370), capture `startTimeByMatch[matchID]` pendant la dédup, puis `slices.SortStableFunc(matchIDOrder, ...)` ASC sur `StartTime`. Tous les builds aval (`keptMatchIDs`, `matchHeaders`) héritent de ce nouvel ordre — pas besoin de toucher au front, qui se contente d'afficher `idx + 1` sur `matrix.matches`.
+- Choix d'un tri stable pour la déterminisme en cas de start_times égaux (rare mais possible).
+
+**Périmètre exclu** :
+- Pas de modif du front — l'ordre est piloté par l'API.
+- Pas de modif du SQL `Q30SquadMatches` ni des autres builders qui consomment `allSquadRows` (timeline, mapBreakdown, etc.) : ils ont leurs propres tris/agrégations.
+
+**Résultats observés** :
+- `go build ./internal/service/...` clean.
+- `go test ./internal/service/ -run "Squad|Teammate|Impact"` ok 0.171s — aucun test n'asserte d'ordre des colonnes du scoreboard, pas de régression.
+
+**Conclusion / prochaine étape** : fix scoped et minimal. Si d'autres charts teammates exposaient le même problème (header indexé `1..N` sur `matrix.matches`), ils suivraient la même logique de tri ASC à la source.
+
+---
+
 ## [2026-05-04] feat(squad/header): déplacement Matchs+Durée vers SquadVerdict en mode squad
 
 **Statut** : Complété.

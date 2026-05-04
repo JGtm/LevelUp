@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -135,6 +136,45 @@ func (a *SquadV2LoaderAdapter) LoadWeaponKills(
 		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadWeaponKills: %w", err)
 	}
 	return rows, nil
+}
+
+// LoadMapStatsForSquad delegue a SquadRepo.LoadMapStatsForSquad pour produire
+// la reference "winrate du main avec l'escouade strict par carte" — sans
+// aucun filtre temporel (cf. fix synergies session-vs-historique).
+//
+// Resolution : on resout le PlayerDB du main (via mainGT) car SquadRepo a
+// besoin de la player DB attachee a shared.match_participants. mainXUID est
+// alors lu depuis pdb.XUID. Si le main est absent du pool, ErrCapabilityNotSupported.
+func (a *SquadV2LoaderAdapter) LoadMapStatsForSquad(
+	ctx context.Context,
+	titleSlug, mainGT string,
+	squadXUIDs []string,
+) (map[string]domain.MapSquadStats, error) {
+	if a.resolve == nil {
+		return nil, errors.New("SquadV2LoaderAdapter: resolver non câblé")
+	}
+	if len(squadXUIDs) == 0 {
+		return nil, nil
+	}
+	pdb, err := a.resolve(ctx, titleSlug, mainGT)
+	if err != nil {
+		if isPlayerCapabilityError(err) {
+			return nil, fmt.Errorf("%w: title=%q gamertag=%q (%v)",
+				games.ErrCapabilityNotSupported, titleSlug, mainGT, err)
+		}
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadMapStatsForSquad: resolve %s/%s: %w",
+			titleSlug, mainGT, err)
+	}
+	if pdb == nil || pdb.XUID == "" {
+		return nil, fmt.Errorf("%w: SquadV2LoaderAdapter.LoadMapStatsForSquad: pdb sans XUID pour %s",
+			games.ErrCapabilityNotSupported, mainGT)
+	}
+	repo := NewSquadRepo(pdb)
+	stats, err := repo.LoadMapStatsForSquad(ctx, pdb.XUID, squadXUIDs)
+	if err != nil {
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadMapStatsForSquad: %w", err)
+	}
+	return stats, nil
 }
 
 // LoadMedals charge les medailles par (xuid, match) (chunk S9).

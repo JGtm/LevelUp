@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -76,6 +77,16 @@ func (f *fakeSquadLoader) LoadEmblemURLs(
 	_ []string,
 ) map[string]string {
 	return nil
+}
+
+// LoadMapStatsForSquad stub — retourne nil par defaut (les tests existants
+// ne dependent pas de l'historique squad). Un test dedie peut shadower.
+func (f *fakeSquadLoader) LoadMapStatsForSquad(
+	_ context.Context,
+	_, _ string,
+	_ []string,
+) (map[string]domain.MapSquadStats, error) {
+	return nil, nil
 }
 
 // row construit une PlayerMatchRow minimale avec match_id + start_time.
