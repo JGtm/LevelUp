@@ -258,21 +258,6 @@ describe('SessionBriefing — outcomes pluralisation', () => {
   })
 })
 
-describe('SessionBriefing — Performance moyenne (card conditionnelle)', () => {
-  it('rend la card "Performance moyenne" avec valeur 1 décimale quand avg_performance_score présent', () => {
-    const kpis = makeKPIs({ avg_performance_score: 67.5 })
-    renderWithProviders(<SessionBriefing kpis={kpis} />)
-    expect(screen.getByText('Performance moyenne')).toBeInTheDocument()
-    expect(screen.getByText('67.5')).toBeInTheDocument()
-  })
-
-  it("n'ajoute PAS la card si avg_performance_score absent", () => {
-    const kpis = makeKPIs() // pas de avg_performance_score
-    renderWithProviders(<SessionBriefing kpis={kpis} />)
-    expect(screen.queryByText('Performance moyenne')).not.toBeInTheDocument()
-  })
-})
-
 describe('SessionBriefing — Delta rang (card conditionnelle)', () => {
   it('rend "Delta CSR" + "+27" quand rank_delta.kind=csr et value=27 (entier)', () => {
     const kpis = makeKPIs({ rank_delta: { kind: 'csr', value: 27, count: 3 } })

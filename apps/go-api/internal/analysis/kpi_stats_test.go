@@ -26,14 +26,12 @@ func mkRow(kills, deaths, assists, timePlayed int, outcome canonical.Outcome, ac
 	}
 }
 
-// mkRowWithEnrichment construit une row avec un enrichment (perf score
-// et/ou skill snapshot) pour tester AvgPerformanceScore et RankDelta.
-// Passer perf=nil pour omettre le score, ratingType="" pour omettre le delta.
-func mkRowWithEnrichment(perf *float64, ratingType canonical.RatingType, delta *float64) canonical.PlayerMatchRow {
+// mkRowWithSkill construit une row avec un skill snapshot pour tester
+// RankDelta. Passer ratingType="" pour omettre le snapshot.
+func mkRowWithSkill(ratingType canonical.RatingType, delta *float64) canonical.PlayerMatchRow {
 	row := canonical.PlayerMatchRow{
 		Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
 	}
-	row.Enrichment.PerformanceScore = perf
 	if ratingType != "" {
 		row.Enrichment.SkillSnapshot = &canonical.SkillSnapshot{
 			RatingType: ratingType,
@@ -133,47 +131,15 @@ func TestComputeKPIStats_OutcomeBreakdown(t *testing.T) {
 }
 
 // =============================================================================
-// AvgPerformanceScore
-// =============================================================================
-
-func TestComputeKPIStats_AvgPerformanceScore_AveragesNonNilOnly(t *testing.T) {
-	t.Parallel()
-	rows := []canonical.PlayerMatchRow{
-		mkRowWithEnrichment(float64PtrKPI(60.0), "", nil),
-		mkRowWithEnrichment(float64PtrKPI(80.0), "", nil),
-		mkRowWithEnrichment(nil, "", nil), // sans score : ignore
-	}
-	got := ComputeKPIStats(rows)
-	if got.AvgPerformanceScore == nil {
-		t.Fatal("AvgPerformanceScore: got nil, want pointer")
-	}
-	if math.Abs(*got.AvgPerformanceScore-70.0) > 1e-9 {
-		t.Errorf("AvgPerformanceScore: want 70 (mean of 60,80), got %v", *got.AvgPerformanceScore)
-	}
-}
-
-func TestComputeKPIStats_AvgPerformanceScore_NilWhenNoSamples(t *testing.T) {
-	t.Parallel()
-	rows := []canonical.PlayerMatchRow{
-		mkRowWithEnrichment(nil, "", nil),
-		mkRowWithEnrichment(nil, "", nil),
-	}
-	got := ComputeKPIStats(rows)
-	if got.AvgPerformanceScore != nil {
-		t.Errorf("AvgPerformanceScore: want nil when no samples, got %v", *got.AvgPerformanceScore)
-	}
-}
-
-// =============================================================================
 // RankDelta
 // =============================================================================
 
 func TestComputeKPIStats_RankDelta_CSR_SumsSignedDeltas(t *testing.T) {
 	t.Parallel()
 	rows := []canonical.PlayerMatchRow{
-		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(15.0)),
-		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(-8.0)),
-		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(20.0)),
+		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(15.0)),
+		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(-8.0)),
+		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(20.0)),
 	}
 	got := ComputeKPIStats(rows)
 	if got.RankDelta == nil {
@@ -193,8 +159,8 @@ func TestComputeKPIStats_RankDelta_CSR_SumsSignedDeltas(t *testing.T) {
 func TestComputeKPIStats_RankDelta_LUSR(t *testing.T) {
 	t.Parallel()
 	rows := []canonical.PlayerMatchRow{
-		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(0.05)),
-		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(-0.02)),
+		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.05)),
+		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(-0.02)),
 	}
 	got := ComputeKPIStats(rows)
 	if got.RankDelta == nil {
@@ -216,8 +182,8 @@ func TestComputeKPIStats_RankDelta_LUSR(t *testing.T) {
 func TestComputeKPIStats_RankDelta_NilWhenNoRatedMatches(t *testing.T) {
 	t.Parallel()
 	rows := []canonical.PlayerMatchRow{
-		mkRowWithEnrichment(nil, "", nil),                      // aucun snapshot
-		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, nil), // snapshot sans delta
+		mkRowWithSkill("", nil),                      // aucun snapshot
+		mkRowWithSkill(canonical.RatingTypeCSR, nil), // snapshot sans delta
 	}
 	got := ComputeKPIStats(rows)
 	if got.RankDelta != nil {
@@ -231,9 +197,9 @@ func TestComputeKPIStats_RankDelta_NilWhenNoRatedMatches(t *testing.T) {
 func TestComputeKPIStats_RankDelta_MixedScopeKeepsDominantKind(t *testing.T) {
 	t.Parallel()
 	rows := []canonical.PlayerMatchRow{
-		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(10.0)),
-		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(-5.0)),
-		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(0.1)),
+		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(10.0)),
+		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(-5.0)),
+		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.1)),
 	}
 	got := ComputeKPIStats(rows)
 	if got.RankDelta == nil || got.RankDelta.Kind != "csr" {
@@ -252,8 +218,8 @@ func TestComputeKPIStats_RankDelta_MixedScopeKeepsDominantKind(t *testing.T) {
 func TestComputeKPIStats_RankDelta_TieBrokenByCSR(t *testing.T) {
 	t.Parallel()
 	rows := []canonical.PlayerMatchRow{
-		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(0.5)),
-		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(7.0)),
+		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.5)),
+		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(7.0)),
 	}
 	got := ComputeKPIStats(rows)
 	if got.RankDelta == nil || got.RankDelta.Kind != "csr" {

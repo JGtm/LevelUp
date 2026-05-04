@@ -131,10 +131,6 @@ type KPIStats struct {
 	AssistsPerMinute float64 `json:"assists_per_minute"`
 	AvgAccuracy      float64 `json:"avg_accuracy"` // 0..100
 	AvgLifeSeconds   float64 `json:"avg_life_seconds"`
-	// AvgPerformanceScore : moyenne du performance_score (0..100) sur les
-	// matchs avec score renseigne. Nil si aucun match du scope n'a de score.
-	// Cote frontend : couleur absolue par tier (perf-tier-{1..5}) via getScoreTier().
-	AvgPerformanceScore *float64 `json:"avg_performance_score,omitempty"`
 	// RankDelta : delta de skill rating sur le scope (somme signee des
 	// per-match deltas). Kind = "csr" ou "lusr" — exclusifs au sein d'un
 	// scope cohérent (une session est soit classee soit non, par construction

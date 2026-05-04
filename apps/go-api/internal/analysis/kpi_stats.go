@@ -35,8 +35,6 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	var lifeSamples int
 	var totalAccuracy float64
 	var accuracySamples int
-	var totalPerf float64
-	var perfSamples int
 	// Buckets par RatingType pour le delta de rang. On accumule les deltas
 	// pour chaque type rencontre puis on retient le type majoritaire en
 	// sortie (cf. RankDelta.Kind — exclusivite metier au sein d'un scope coherent).
@@ -66,10 +64,6 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		if r.Self.Accuracy != nil {
 			totalAccuracy += *r.Self.Accuracy
 			accuracySamples++
-		}
-		if r.Enrichment.PerformanceScore != nil {
-			totalPerf += *r.Enrichment.PerformanceScore
-			perfSamples++
 		}
 		if snap := r.Enrichment.SkillSnapshot; snap != nil && snap.Delta != nil && snap.RatingType != "" {
 			b, ok := rankBuckets[snap.RatingType]
@@ -109,10 +103,6 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	}
 	if lifeSamples > 0 {
 		stats.AvgLifeSeconds = totalLifeSeconds / float64(lifeSamples)
-	}
-	if perfSamples > 0 {
-		avg := totalPerf / float64(perfSamples)
-		stats.AvgPerformanceScore = &avg
 	}
 	if len(rankBuckets) > 0 {
 		// Type majoritaire : le bucket avec le plus de matchs.

@@ -35,7 +35,6 @@ export interface BriefingTexts {
     accuracy: string
     lifespan: string
     perMin: string
-    avgPerformance: string
     rankDeltaCSR: string
     rankDeltaLUSR: string
   }
@@ -68,7 +67,6 @@ const FR: BriefingTexts = {
     accuracy: 'Précision moyenne',
     lifespan: 'Durée de vie moyenne',
     perMin: '/min',
-    avgPerformance: 'Performance moyenne',
     rankDeltaCSR: 'Delta CSR',
     rankDeltaLUSR: 'Delta LUSR',
   },
@@ -102,7 +100,6 @@ const EN: BriefingTexts = {
     accuracy: 'Avg accuracy',
     lifespan: 'Avg lifespan',
     perMin: '/min',
-    avgPerformance: 'Avg performance',
     rankDeltaCSR: 'CSR change',
     rankDeltaLUSR: 'LUSR change',
   },

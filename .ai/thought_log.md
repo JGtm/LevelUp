@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-05-04] revert(squad/header): retrait card "Performance moyenne" (info dupliquée)
+
+**Statut** : Complété.
+
+**Contexte** : L'utilisateur signale après livraison que l'info "Performance moyenne" est déjà affichée ailleurs sur la page Escouade — la card que je venais d'ajouter au SessionBriefing fait doublon. Discussion sur l'alternative "Pic KDA" : rejetée comme reco — mélange un agrégat "max" dans une grille de moyennes, ce qui muddle la sémantique. Si on veut un "moment fort" plus tard, ça mérite un encart dédié plutôt qu'un slot dans le grid.
+
+**Décision technique** : Revert chirurgical, garder uniquement RankDelta.
+
+1. **Backend** ([squad_v2.go](apps/go-api/internal/domain/squad_v2.go)) : retrait du champ `AvgPerformanceScore *float64` de `KPIStats`. RankDelta inchangé.
+2. **Analysis** ([kpi_stats.go](apps/go-api/internal/analysis/kpi_stats.go)) : retrait de la boucle `totalPerf/perfSamples` et du bloc d'attribution post-loop. La donnée source `Enrichment.PerformanceScore` reste populée dans le canonical row (utilisée ailleurs) — on n'enlève que l'agrégation dans ce calcul précis.
+3. **Tests Go** : 2 cas perf supprimés (`AvgPerformanceScore_AveragesNonNilOnly`, `AvgPerformanceScore_NilWhenNoSamples`). Helper `mkRowWithEnrichment(perf, kind, delta)` simplifié → `mkRowWithSkill(kind, delta)` (perf-arg n'a plus de raison d'être). Les 5 tests RankDelta sont mis à jour pour la nouvelle signature.
+4. **Frontend** :
+   - [types.ts](apps/web/src/lib/api/types.ts) : retrait `avg_performance_score?` de `KPIStats`.
+   - [i18n.ts](apps/web/src/features/_shared/SessionBriefing/i18n.ts) : retrait `avgPerformance` (FR + EN + interface).
+   - [KpiGrid.tsx](apps/web/src/features/_shared/SessionBriefing/KpiGrid.tsx) : retrait import `getScoreTier`, retrait variable `hasPerf`, retrait card perf, retrait du commentaire correspondant. Doc en tête mis à jour (8 ou 9 cols, plus 8/9/10).
+   - Tests TS : 2 cas perf supprimés (12/12 verts au lieu de 14).
+5. **Pas touché** : le helper `getScoreTier()` reste dans [tier.ts](apps/web/src/features/_shared/SessionBriefing/tier.ts) — il sert à d'autres composants potentiels et est self-contained.
+
+**Résultats observés** :
+- Backend : `go build` clean, `go test ./internal/analysis/ ./internal/service/ ./internal/domain/` 100% verts.
+- Frontend : `npx tsc --noEmit` clean, `npx vitest run SessionBriefing/` 12/12 verts.
+- `grep AvgPerformanceScore|avg_performance_score|avgPerformance` → 0 occurrence (aucun résidu).
+
+**Conclusion / prochaine étape** : feature finale = +1 card "Delta rang" uniquement. Livraison prête à pousser sur la branche `feat/seasons-as-asset-kind`.
+
+---
+
 ## [2026-05-04] feat(squad/header): SessionBriefing — cards "Performance moyenne" + "Delta rang" (frontend)
 
 **Statut** : Complété (frontend, suite directe du commit backend `14b25e73`).
