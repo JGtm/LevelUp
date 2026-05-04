@@ -131,12 +131,34 @@ type KPIStats struct {
 	AssistsPerMinute float64 `json:"assists_per_minute"`
 	AvgAccuracy      float64 `json:"avg_accuracy"` // 0..100
 	AvgLifeSeconds   float64 `json:"avg_life_seconds"`
-	Outcomes         struct {
+	// AvgPerformanceScore : moyenne du performance_score (0..100) sur les
+	// matchs avec score renseigne. Nil si aucun match du scope n'a de score.
+	// Cote frontend : couleur absolue par tier (perf-tier-{1..5}) via getScoreTier().
+	AvgPerformanceScore *float64 `json:"avg_performance_score,omitempty"`
+	// RankDelta : delta de skill rating sur le scope (somme signee des
+	// per-match deltas). Kind = "csr" ou "lusr" — exclusifs au sein d'un
+	// scope cohérent (une session est soit classee soit non, par construction
+	// metier). Nil si aucun match avec rating dans le scope.
+	RankDelta *RankDelta `json:"rank_delta,omitempty"`
+	Outcomes  struct {
 		Wins   int `json:"wins"`
 		Losses int `json:"losses"`
 		Ties   int `json:"ties"`
 		DNF    int `json:"dnf"`
 	} `json:"outcomes"`
+}
+
+// RankDelta agrege le delta de rating sur le scope filtre.
+//
+// Kind : "csr" (classe) ou "lusr" (non classe). Au sein d'un scope coherent
+// (session unique, ou plusieurs sessions du meme type), Kind est uniforme.
+// Si le scope mixe les deux types (cas pathologique : period filter qui
+// englobe plusieurs sessions de natures differentes), on prend le type
+// majoritaire et on ignore l'autre — Count reflete le compte du type retenu.
+type RankDelta struct {
+	Kind  string  `json:"kind"`  // "csr" | "lusr"
+	Value float64 `json:"value"` // somme signee des per-match deltas dans le scope
+	Count int     `json:"count"` // nombre de matchs du Kind retenu dans le scope
 }
 
 // SquadScoreCard est la carte "Score d'equipe" (base + bonus + grade).

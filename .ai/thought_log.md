@@ -1,5 +1,77 @@
 # Thought Log
 
+## [2026-05-04] feat(squad/header): KPIStats étendu avec AvgPerformanceScore + RankDelta (backend)
+
+**Statut** : Complété (backend uniquement — frontend à suivre).
+
+**Contexte** : Sur la page Escouade, le SessionBriefing affiche 8 cards "Mes stats sur cette session" (matchs / durées / frags / morts / assists / précision / vie). L'utilisateur veut deux cards de plus :
+1. **Performance moyenne** sur le scope filtré (couleur absolue par tier perf-tier-{1..5})
+2. **Delta rang** (CSR si scope classé, LUSR sinon) avec couleur signe (positif/négatif/neutre)
+
+Échange préalable : j'avais demandé comment gérer le mix CSR+LUSR dans le scope ; l'utilisateur a corrigé à juste titre — une session est exclusivement classée OU non classée par construction métier, donc la question ne se pose pas pour un scope cohérent.
+
+**Décisions techniques** :
+
+1. **Domain** ([domain.KPIStats](apps/go-api/internal/domain/squad_v2.go)) — additif :
+   - `AvgPerformanceScore *float64` : moyenne du `performance_score` sur les matchs du scope avec score renseigné. Nil si aucun.
+   - `RankDelta *RankDelta` (nouveau struct) : `Kind` ("csr"|"lusr"), `Value float64` (somme signée des per-match deltas), `Count int` (nb matchs du Kind retenu). Nil si aucun match avec rating.
+
+2. **Analysis** ([analysis.ComputeKPIStats](apps/go-api/internal/analysis/kpi_stats.go)) — extension :
+   - Boucle déjà présente sur `rows` enrichie : accumulation `totalPerf/perfSamples` + `rankBuckets map[RatingType]*{sum, count}`.
+   - Source des données : `r.Enrichment.PerformanceScore` (déjà en canonical row depuis player_match_enrichment) + `r.Enrichment.SkillSnapshot.Delta` (déjà en canonical row depuis match_skill_rank, projeté par `projectPlayerMatchRow`). Aucun nouveau SQL — la donnée canonique transporte déjà tout.
+   - Choix du Kind retenu en cas de scope mixte : type majoritaire en nombre de matchs ; en égalité, **CSR l'emporte** (priorité compétitive). Permet de gérer le cas pathologique d'un period filter spannant des sessions de natures différentes sans crasher (la card affiche le delta du sous-ensemble dominant).
+
+3. **Périmètre** : `ComputeTeamAvgKPIs` n'est PAS modifié — pas d'agrégation de perf moyenne ni de rank delta sur la team_avg (ces champs n'ont pas de sens en moyenne inter-joueurs ; le main player est le seul à afficher ces deux cards).
+
+4. **Tests** ([analysis/kpi_stats_test.go](apps/go-api/internal/analysis/kpi_stats_test.go)) — 7 nouveaux cas :
+   - `AvgPerformanceScore_AveragesNonNilOnly` : 2 scores + 1 nil → moyenne sur 2 samples.
+   - `AvgPerformanceScore_NilWhenNoSamples` : tous nil → AvgPerformanceScore nil.
+   - `RankDelta_CSR_SumsSignedDeltas` : 3 deltas CSR signés → somme + count corrects.
+   - `RankDelta_LUSR` : 2 deltas LUSR.
+   - `RankDelta_NilWhenNoRatedMatches` : aucun snapshot ou snapshot sans Delta → RankDelta nil.
+   - `RankDelta_MixedScopeKeepsDominantKind` : 2 CSR + 1 LUSR → CSR majoritaire, LUSR ignoré (Count=2).
+   - `RankDelta_TieBrokenByCSR` : 1 CSR + 1 LUSR → CSR retenu (priorité tie-breaker).
+   - Helper `mkRowWithEnrichment(perf, ratingType, delta)` ajouté.
+
+**Résultats observés** :
+- `go build ./...` clean, `go vet ./...` clean.
+- `go test ./...` full pkg : 100% verts, aucune régression. Tests existants `ComputeKPIStats_*` toujours OK (les nouveaux champs sont `omitempty`).
+- Le flux est end-to-end : `match_skill_rank` (player DB) → `player_matches_repo.projectPlayerMatchRow` (déjà câblé via LEFT JOIN) → `canonical.PlayerMatchRow.Enrichment.SkillSnapshot.Delta` → `ComputeKPIStats` → `KPIStats.RankDelta` → JSON sérialisé pour le frontend.
+
+**Conclusion / prochaine étape** : Backend prêt pour consommation. Côté frontend (à suivre) :
+- Étendre `KPIStats` TS dans `apps/web/src/lib/api/types.ts` (miroir Go).
+- `KpiGrid.tsx` : passer de `grid-cols-8` à 9 ou 10 colonnes dynamiques selon présence des 2 nouvelles cards. Card perf utilise `getScoreTier()` (déjà existant dans `tier.ts`) + `tokenCssVar('perf-tier-N')`. Card delta utilise `tokenCssVar('divergent-pos|neg|neutral')` selon `sign(value)`.
+- i18n : 2 nouveaux labels FR/EN dans `SessionBriefing/i18n.ts`.
+
+---
+
+## [2026-05-04] chore(cleanup): suppression dure du match orphelin 193a0931… (no session)
+
+**Statut** : Complété.
+
+**Contexte** : Suite du diagnostic `diag_orphan_session`. Le match `193a0931-a816-4d31-9a0d-b1f7e722d730` (19 avril 2026 15:44, durée 6:40, score 50-40, carte Forge custom dont map_id/playlist_id/pair_id ne sont jamais résolus en assets) polluait le bucket `(no session)` du chart Squad/Synergies pour les 3 joueurs principaux (Chocoboflor, JGtm, Madina97294). La row `player_match_enrichment` existait pour eux mais avec `session_label` NULL — `session_recalc` ne l'a jamais labelisé. Risque secondaire : pouvait perturber le sync delta s'il calait son curseur sur ce match.
+
+**Décision technique** :
+1. **Cmd one-shot** [`apps/go-api/cmd/cleanup_orphan_match/main.go`](apps/go-api/cmd/cleanup_orphan_match/main.go) — pattern ligné sur `apply_tz_migration` :
+   - Args : `--match-id` (requis), `--apply` (commit ; sans = dry-run rollback), `--data-root`.
+   - Une transaction par DB avec `tableExists(information_schema.tables)` pour skip gracieux des tables absentes (ex : `media_match_associations` n'existe pas dans toutes les player DBs).
+   - 6 tables shared (`match_registry`, `match_participants`, `medals_earned`, `highlight_events`, `killer_victim_pairs`, `weapon_kills`) + 5 tables player (`player_match_enrichment`, `match_skill_rank`, `personal_score_awards`, `match_citations`, `media_match_associations`).
+   - `xuid_aliases` non touché (alias global, partagé).
+2. **Cleanup réel** : 52 lignes supprimées au total :
+   - shared : 1 registry + 8 participants + 37 medals = 46
+   - Chocoboflor : 1 pme + 1 skill = 2
+   - JGtm : 1 pme + 1 skill = 2
+   - Madina97294 : 1 pme + 1 skill = 2
+   - XxDaemonGamerxX : 0 (pas participant)
+
+**Résultats observés** :
+- Re-run `diag_orphan_session` post-cleanup : tous les joueurs descendent de 1 match participant (365→364, 745→744, 1061→1060) et **0 orphelin** restant (vs 1 avant).
+- `go build` / `go vet` OK.
+
+**Prochaine étape** : redémarrer le serveur Go ; le bucket `(no session)` ne devrait plus apparaître sur le chart `Performance d'escouade par session`. Le sync delta peut maintenant s'aligner proprement sur le dernier match « propre » sans rester bloqué sur le 19 avril 2026.
+
+---
+
 ## [2026-05-04] chore(diag): outil one-shot `diag_orphan_session` pour matchs sans session_label
 
 **Statut** : Complété.
