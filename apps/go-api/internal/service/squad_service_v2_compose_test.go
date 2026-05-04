@@ -44,6 +44,10 @@ func (f *fakeSquadLoaderFull) LoadMapStatsForSquad(_ context.Context, _, _ strin
 	return nil, nil
 }
 
+func (f *fakeSquadLoaderFull) LoadObjectiveScores(_ context.Context, _, _ string, _ []string) (map[string]int, error) {
+	return map[string]int{}, nil
+}
+
 func mkRowFull(gt, xuid, matchID string, t time.Time, outcome canonical.Outcome, kills, deaths int) canonical.PlayerMatchRow {
 	k, d := kills, deaths
 	a := 3

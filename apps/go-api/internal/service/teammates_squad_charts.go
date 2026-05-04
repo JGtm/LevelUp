@@ -1045,22 +1045,130 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 // teammates.06 — Radar synergie escouade (6 axes)
 // ---------------------------------------------------------------------------
 
+// synergyRadarThresholds retourne les seuils du radar scalés par nShared.
+// Les seuils absolus (combat/support/score/objective) sont proportionnels au
+// nombre de matchs partagés. Impact est un taux (pts/min) → seuil fixe.
+func synergyRadarThresholds(nShared int) narrative.ParticipationThresholds {
+	n := float64(nShared)
+	return narrative.ParticipationThresholds{
+		Combat:    25.0 * n,   // ~25 kills+équiv par match
+		Survival:  1.0,        // composite 0..1, seuil fixe
+		Support:   8.0 * n,    // ~8 assists par match
+		Score:     4000.0 * n, // ~4000 personal score par match
+		Objective: 350.0 * n,  // ~350 pts objectif par match (CTF/KotH)
+		Impact:    250.0,      // pts/min — indépendant de nShared
+	}
+}
+
+// synergySurvivalComposite calcule le score de survie composite (aligné Python).
+// Formule : 0.5*(1 - dpm/2.0) + 0.5*(avgLife/90), borné à [0, 1].
+func synergySurvivalComposite(totalTimeSec, totalDeaths int) float64 {
+	if totalTimeSec == 0 {
+		return 0
+	}
+	totalMin := float64(totalTimeSec) / 60.0
+	dpm := float64(totalDeaths) / totalMin
+	avgLife := float64(totalTimeSec)
+	if totalDeaths > 0 {
+		avgLife = float64(totalTimeSec) / float64(totalDeaths)
+	}
+	v := 0.5*(1.0-dpm/2.0) + 0.5*(avgLife/90.0)
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
+// synergyMainFallbackAxes calcule les axes combat/support/survival depuis
+// SquadMatchRow (fallback quand squadLoader est absent — pas de PersonalScore).
+func synergyMainFallbackAxes(
+	allSquadRows []domain.SquadMatchRow,
+	sharedMatches map[string]struct{},
+) map[narrative.ParticipationAxis]float64 {
+	seen := make(map[string]struct{})
+	raw := map[narrative.ParticipationAxis]float64{}
+	var totalDeaths, totalTimeSec int
+	for _, m := range allSquadRows {
+		if _, ok := sharedMatches[m.MatchID]; !ok {
+			continue
+		}
+		if _, dup := seen[m.MatchID]; dup {
+			continue
+		}
+		seen[m.MatchID] = struct{}{}
+		raw[narrative.AxisCombat] += float64(m.Kills) + 0.5*float64(m.HeadshotKills)
+		raw[narrative.AxisSupport] += float64(m.Assists)
+		totalDeaths += m.Deaths
+		totalTimeSec += m.TimePlayedSecs
+	}
+	raw[narrative.AxisSurvival] = synergySurvivalComposite(totalTimeSec, totalDeaths)
+	return raw
+}
+
+// loadSynergyMateAxes charge les 6 axes radar depuis canonical.PlayerMatchRow
+// pour un gamertag donné, restreint aux matchs partagés. Objective est chargé
+// via PSA (dégradation silencieuse si absent). Retourne map vide si le
+// squadLoader est absent ou si le chargement échoue.
+func (s *TeammatesService) loadSynergyMateAxes(
+	ctx context.Context,
+	gt string,
+	sharedMatches map[string]struct{},
+	sharedMatchIDs []string,
+) map[narrative.ParticipationAxis]float64 {
+	raw := map[narrative.ParticipationAxis]float64{}
+	if s.squadLoader == nil {
+		return raw
+	}
+	rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+	if err != nil {
+		slog.WarnContext(ctx, "teammates_radar_load_failed", "gamertag", gt, "err", err.Error())
+		return raw
+	}
+
+	var totalDeaths, totalTimeSec int
+	var totalPS float64
+	for _, r := range rows {
+		if _, ok := sharedMatches[r.Summary.MatchID]; !ok {
+			continue
+		}
+		k := intPtrOrZero(r.Self.Kills)
+		hs := intPtrOrZero(r.Self.HeadshotKills)
+		a := intPtrOrZero(r.Self.Assists)
+		ps := intPtrOrZero(r.Self.PersonalScore)
+		if ps == 0 {
+			ps = intPtrOrZero(r.Self.Score)
+		}
+		raw[narrative.AxisCombat] += float64(k) + 0.5*float64(hs)
+		raw[narrative.AxisSupport] += float64(a)
+		totalPS += float64(ps)
+		totalDeaths += intPtrOrZero(r.Self.Deaths)
+		totalTimeSec += intPtrOrZero(r.Self.TimePlayed)
+	}
+
+	totalMin := float64(totalTimeSec) / 60.0
+	raw[narrative.AxisSurvival] = synergySurvivalComposite(totalTimeSec, totalDeaths)
+	raw[narrative.AxisScore] = totalPS
+	if totalMin > 0 {
+		raw[narrative.AxisImpact] = totalPS / totalMin
+	}
+
+	// Objective : PSA catégorie "objective" — dégradation silencieuse si absent.
+	if objScores, err := s.squadLoader.LoadObjectiveScores(ctx, s.titleSlug, gt, sharedMatchIDs); err == nil {
+		var total float64
+		for _, v := range objScores {
+			total += float64(v)
+		}
+		raw[narrative.AxisObjective] = total
+	}
+	return raw
+}
+
 // buildSquadSynergyRadar calcule un profil de participation 6 axes par joueur
 // sur l'INTERSECTION des matchs (matchs où TOUS les coéquipiers sélectionnés
-// + le main player étaient présents).
-//
-// Phase MVP : pas de chargement awards (pas d'awardsRepo dans TeammatesService).
-// Les axes sont approximés depuis canonical.PlayerMatchRow.Self :
-//
-//   - combat    : sum(Kills + 0.5*HeadshotKills)
-//   - survival  : sum(TimePlayed) / max(1, sum(Deaths))   (longévité moyenne en sec)
-//   - support   : sum(Assists)
-//   - score     : sum(PersonalScore) (fallback Score si nil)
-//   - objective : 0 (nécessite awards, hors MVP)
-//   - impact    : sum(MaxKillingSpree)
-//
-// Seuils via narrative.DefaultThresholds("custom") (les modes mixtes squad
-// échouent à un seuil mode-family unique).
+// + le main player étaient présents). Formules alignées sur participation_radar.py.
 func (s *TeammatesService) buildSquadSynergyRadar(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -1071,8 +1179,7 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		return nil
 	}
 
-	// 1. Calculer les matchs PARTAGÉS : un match m est "partagé" s'il apparaît
-	// len(selectedGamertags) fois dans allSquadRows (= 1 par teammate).
+	// Matchs PARTAGÉS : présents pour chaque coéquipier sélectionné.
 	matchOccurrences := make(map[string]int)
 	for _, m := range allSquadRows {
 		matchOccurrences[m.MatchID]++
@@ -1087,88 +1194,20 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		return nil
 	}
 
-	// 2. Compute par joueur. Main : depuis allSquadRows dédup, restreint à sharedMatches.
-	type axisRaw map[narrative.ParticipationAxis]float64
-
-	makeMainRaw := func() axisRaw {
-		seen := make(map[string]struct{})
-		raw := axisRaw{}
-		var deaths, time int
-		for _, m := range allSquadRows {
-			if _, ok := sharedMatches[m.MatchID]; !ok {
-				continue
-			}
-			if _, dup := seen[m.MatchID]; dup {
-				continue
-			}
-			seen[m.MatchID] = struct{}{}
-			raw[narrative.AxisCombat] += float64(m.Kills) + 0.5*float64(m.HeadshotKills)
-			raw[narrative.AxisSupport] += float64(m.Assists)
-			deaths += m.Deaths
-			time += m.TimePlayedSecs
-		}
-		// survival = avg lifespan (sec) clamped à threshold
-		if deaths > 0 {
-			raw[narrative.AxisSurvival] = float64(time) / float64(deaths)
-		} else if time > 0 {
-			raw[narrative.AxisSurvival] = float64(time) // pas de morts, capacité max
-		}
-		// score & impact : pas dispos sur SquadMatchRow, on doit récupérer canonical.
-		return raw
+	sharedMatchIDs := make([]string, 0, len(sharedMatches))
+	for mid := range sharedMatches {
+		sharedMatchIDs = append(sharedMatchIDs, mid)
 	}
 
-	// squadLoader.LoadFor résout les rows par gamertag (playerMatchesRepo est bound
-	// au main → chaque coéquipier héritait des axes combat/survival/support du main).
-	makeMateRaw := func(gt string) axisRaw {
-		raw := axisRaw{}
-		if s.squadLoader == nil {
-			return raw
-		}
-		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
-		if err != nil {
-			slog.WarnContext(ctx, "teammates_radar_load_failed", "gamertag", gt, "err", err.Error())
-			return raw
-		}
-		var deaths, time int
-		for _, r := range rows {
-			if _, ok := sharedMatches[r.Summary.MatchID]; !ok {
-				continue
-			}
-			k := intPtrOrZero(r.Self.Kills)
-			d := intPtrOrZero(r.Self.Deaths)
-			a := intPtrOrZero(r.Self.Assists)
-			hs := intPtrOrZero(r.Self.HeadshotKills)
-			tp := intPtrOrZero(r.Self.TimePlayed)
-			ms := intPtrOrZero(r.Self.MaxKillingSpree)
-			ps := intPtrOrZero(r.Self.PersonalScore)
-			if ps == 0 {
-				ps = intPtrOrZero(r.Self.Score)
-			}
-			raw[narrative.AxisCombat] += float64(k) + 0.5*float64(hs)
-			raw[narrative.AxisSupport] += float64(a)
-			raw[narrative.AxisScore] += float64(ps)
-			raw[narrative.AxisImpact] += float64(ms)
-			deaths += d
-			time += tp
-		}
-		if deaths > 0 {
-			raw[narrative.AxisSurvival] = float64(time) / float64(deaths)
-		} else if time > 0 {
-			raw[narrative.AxisSurvival] = float64(time)
-		}
-		return raw
-	}
+	thresholds := synergyRadarThresholds(len(sharedMatches))
 
-	// Pour le main, on charge aussi via canonical (mêmes axes complets, vs SquadMatchRow incomplet).
-	mainRaw := makeMateRaw(mainGamertag)
+	mainRaw := s.loadSynergyMateAxes(ctx, mainGamertag, sharedMatches, sharedMatchIDs)
 	if len(mainRaw) == 0 {
-		mainRaw = makeMainRaw() // fallback partiel si load échoue
+		mainRaw = synergyMainFallbackAxes(allSquadRows, sharedMatches)
 	}
 
-	thresholds := narrative.DefaultThresholds("")
 	out := make([]domain.SquadSynergyRadarSeries, 0, 1+len(selectedGamertags))
-
-	makeSeries := func(player string, raw axisRaw) domain.SquadSynergyRadarSeries {
+	toSeries := func(player string, raw map[narrative.ParticipationAxis]float64) domain.SquadSynergyRadarSeries {
 		scores := narrative.ComputeParticipationProfile(raw, thresholds)
 		axes := make([]domain.SquadSynergyRadarAxis, 0, len(scores))
 		for _, sc := range scores {
@@ -1181,9 +1220,9 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		return domain.SquadSynergyRadarSeries{Player: player, Axes: axes}
 	}
 
-	out = append(out, makeSeries(mainGamertag, mainRaw))
+	out = append(out, toSeries(mainGamertag, mainRaw))
 	for _, gt := range selectedGamertags {
-		out = append(out, makeSeries(gt, makeMateRaw(gt)))
+		out = append(out, toSeries(gt, s.loadSynergyMateAxes(ctx, gt, sharedMatches, sharedMatchIDs)))
 	}
 	return out
 }
