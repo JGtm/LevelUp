@@ -6,7 +6,6 @@
  */
 import { createFileRoute, useParams, Link } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute(
   '/players/$playerSlug/matches/$matchId/replay',
@@ -27,14 +26,13 @@ function RejeuPage() {
           <p className="text-muted-foreground text-sm">
             Le rejouer le match en 2D est en cours de développement.
           </p>
-          <Button variant="outline" size="sm" asChild>
-            <Link
-              to="/players/$playerSlug/matches/$matchId"
-              params={{ playerSlug, matchId }}
-            >
-              ← Retour au match
-            </Link>
-          </Button>
+          <Link
+            to="/players/$playerSlug/matches/$matchId"
+            params={{ playerSlug, matchId }}
+            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            ← Retour au match
+          </Link>
         </CardContent>
       </Card>
     </div>
