@@ -1020,6 +1020,14 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				v := *r.Self.PerfectKills
 				pt.PerfectKills = &v
 			}
+			if r.Self.DamageDealt != nil && *r.Self.DamageDealt > 0 {
+				v := round2(synergyOffensiveConversion(pt.Kills, pt.Assists, float64(*r.Self.DamageDealt)))
+				pt.RendementOffensif = &v
+			}
+			if r.Self.DamageTaken != nil {
+				v := round2(synergyDefensiveResistance(float64(*r.Self.DamageTaken), pt.Deaths))
+				pt.ResistanceDefensive = &v
+			}
 			series = append(series, pt)
 		}
 		// Sort by MatchOrder pour garantir l'alignement avec les autres joueurs.

@@ -1505,6 +1505,8 @@ export interface SquadPerformanceSeriesPoint {
   max_killing_spree?: number
   headshot_kills?: number
   perfect_kills?: number
+  rendement_offensif?: number
+  resistance_defensive?: number
 }
 
 /** Un axe du radar synergie teammates.06 (value normalisé 0..100, raw debug). */

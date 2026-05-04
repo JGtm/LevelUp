@@ -125,19 +125,21 @@ type SquadWeaponKills struct {
 // non disponible côté DB / pas calculé). MatchOrder est un index 0..N-1
 // commun à tous les joueurs (inner-join sur les matchs partagés).
 type SquadPerformanceSeriesPoint struct {
-	MatchID          string   `json:"match_id"`
-	StartTime        string   `json:"start_time"` // ISO 8601
-	MatchOrder       int      `json:"match_order"`
-	Kills            int      `json:"kills"`
-	Deaths           int      `json:"deaths"`
-	Assists          int      `json:"assists"`
-	KDA              *float64 `json:"kda,omitempty"`
-	Accuracy         *float64 `json:"accuracy,omitempty"`
-	AvgLifeSeconds   *float64 `json:"avg_life_seconds,omitempty"`
-	PerformanceScore *float64 `json:"performance_score,omitempty"`
-	MaxKillingSpree  *int     `json:"max_killing_spree,omitempty"`
-	HeadshotKills    *int     `json:"headshot_kills,omitempty"`
-	PerfectKills     *int     `json:"perfect_kills,omitempty"`
+	MatchID             string   `json:"match_id"`
+	StartTime           string   `json:"start_time"` // ISO 8601
+	MatchOrder          int      `json:"match_order"`
+	Kills               int      `json:"kills"`
+	Deaths              int      `json:"deaths"`
+	Assists             int      `json:"assists"`
+	KDA                 *float64 `json:"kda,omitempty"`
+	Accuracy            *float64 `json:"accuracy,omitempty"`
+	AvgLifeSeconds      *float64 `json:"avg_life_seconds,omitempty"`
+	PerformanceScore    *float64 `json:"performance_score,omitempty"`
+	MaxKillingSpree     *int     `json:"max_killing_spree,omitempty"`
+	HeadshotKills       *int     `json:"headshot_kills,omitempty"`
+	PerfectKills        *int     `json:"perfect_kills,omitempty"`
+	RendementOffensif   *float64 `json:"rendement_offensif,omitempty"`
+	ResistanceDefensive *float64 `json:"resistance_defensive,omitempty"`
 }
 
 // SquadSynergyRadarAxis est l'un des 6 axes du radar de participation
