@@ -8,7 +8,7 @@
  */
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MediaItemRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaLikeButton } from './MediaViewer'

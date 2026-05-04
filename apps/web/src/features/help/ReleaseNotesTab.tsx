@@ -12,7 +12,11 @@ interface ReleaseNotesTabProps {
 export function ReleaseNotesTab({ locale, errorMessage, loadingMessage }: ReleaseNotesTabProps) {
   const { data, isLoading, error } = useReleaseNotes(locale)
 
-  if (isLoading) return null
+  if (isLoading) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">{loadingMessage}</p>
+    )
+  }
 
   if (error || !data) {
     return (

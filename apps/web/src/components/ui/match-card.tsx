@@ -99,7 +99,6 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
   const skillType = m.skill_rating_type ?? 'LUSR'
   const skillTierLabel = m.skill_tier_label
   const skillDelta = m.skill_rating_delta
-  const skillPlaylist = m.skill_playlist_group
   const skillBadgeURL = m.skill_rank_image_url
   const hasPerfOrSkill = perfScore != null || skillValue != null
 

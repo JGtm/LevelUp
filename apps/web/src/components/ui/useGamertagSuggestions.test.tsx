@@ -6,7 +6,7 @@
  *  - Ordre des sources et déduplication entre configured / frequent / remote
  *  - Filtrage via excludeGamertags
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -40,8 +40,6 @@ function asPlayer(gamertag: string, slug?: string): PlayerSummary {
 function asTeammate(gamertag: string, encounter_count = 5): TeammateOption {
   return { gamertag, xuid: `xuid-${gamertag}`, encounter_count, last_seen_at: null }
 }
-
-const apiBase = '/api/v1'
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
