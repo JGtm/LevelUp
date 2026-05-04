@@ -219,10 +219,12 @@ export function SquadVerdict({
           </div>
         )}
         {/* Mini-cards : Matchs joués (avec durée moy/match en inline-sub) +
-            Durée totale. Affichées à droite de la Results bar pour libérer 2
-            colonnes du KpiGrid en mode squad. */}
-        <div className="flex flex-col justify-between gap-1">
-          <div className="rounded border border-border bg-card px-3 py-2">
+            Durée totale. Affichées côte à côte à droite de la Results bar pour
+            libérer 2 colonnes du KpiGrid en mode squad. Pas de fond ni de
+            bordure : ces cards sont des résumés contextuels intégrés au
+            bandeau verdict, le bandeau lui-même portant déjà le cadre. */}
+        <div className="flex items-center gap-6 px-2">
+          <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {texts.grid.matchesPlayed}
             </p>
@@ -233,7 +235,7 @@ export function SquadVerdict({
               </span>
             </div>
           </div>
-          <div className="rounded border border-border bg-card px-3 py-2">
+          <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
               {texts.grid.totalDuration}
             </p>
