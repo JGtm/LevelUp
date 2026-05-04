@@ -16,6 +16,7 @@
 //	levelup gate-check     [--gamertag X] [--json]
 //	levelup surface-status [--json]
 //	levelup sync-delta     (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
+//	levelup sync-achievements (--gamertag X | --all) [--dry-run]
 //	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
@@ -80,6 +81,8 @@ func main() {
 		exitErr = runSurfaceStatus(cfg, args)
 	case "sync-delta":
 		exitErr = runSyncDelta(cfg, args)
+	case "sync-achievements":
+		exitErr = runSyncAchievements(cfg, args)
 	case "backfill":
 		exitErr = runBackfill(cfg, args)
 	case "recompute-friends":
@@ -123,6 +126,7 @@ Commandes:
   gate-check      Verifier la checklist Gate Phase 4
   surface-status  Afficher le backend actif par surface (feature flags)
 	sync-delta      Lancer une sync delta pour un joueur ou pour tous les joueurs configures
+  sync-achievements Lancer le backfill des achievements Xbox (admin one-shot, --dry-run dispo)
   backfill        Lancer un backfill local (Go-only, pas d'API) — voir --engagement-scores
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   migrate         Migrer les donnees vers le namespace multi-titres

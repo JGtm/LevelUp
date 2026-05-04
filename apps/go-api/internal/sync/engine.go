@@ -919,6 +919,38 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	return true
 }
 
+// RunAchievementsOnly synchronise uniquement les achievements Xbox du joueur,
+// indépendamment du sync des matchs. Utilisé par le CLI sync-achievements pour
+// le backfill admin one-shot. Best-effort : retourne false sur erreur (logguée).
+//
+// Acquiert le dblease sur la player DB pour éviter les collisions avec un sync
+// concurrent. Le provider doit être non nil ; sinon retourne false silencieusement.
+func (e *SyncEngine) RunAchievementsOnly(ctx context.Context) bool {
+	if e.provider == nil {
+		slog.WarnContext(ctx, "achievements: provider nil — sync ignorée",
+			"gamertag", e.gamertag)
+		return false
+	}
+
+	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	if err != nil {
+		slog.ErrorContext(ctx, "achievements: lease player DB échoué",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+	defer relPlayer()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		slog.ErrorContext(ctx, "achievements: ouverture player DB échouée",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+	defer playerHandle.Close() //nolint:errcheck
+
+	return e.runAchievementsSync(ctx, playerHandle.SQLDb())
+}
+
 // resolveAccessTokenFromDB lit le cache MSAL et le refresh token depuis sync_meta (DB déjà ouverte),
 // puis tente TrySilentRefresh ou TryOAuthRefresh selon ce qui est disponible.
 // Retourne ("", nil) si aucun token n'est disponible (non fatal).
