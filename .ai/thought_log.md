@@ -1,5 +1,59 @@
 # Thought Log
 
+## [2026-05-05] chore(web/typecheck): élimination des 111 erreurs TS préexistantes
+
+**Statut** : Complété.
+
+**Contexte** : `tsc -b` côté `apps/web` remontait 111 erreurs sur 40 fichiers, accumulées sur les branches feature non mergées (la dernière migration BootstrapResponse, la suppression de spnkrRefreshWithBackfill, l'ajout de period_presets / waypoint_player / is_favorite, le passage à TanStack Router file-based, etc.). Une erreur Vite côté utilisateur (`Failed to resolve import "@/app/providers"`) a déclenché la décision de tout nettoyer en commits par catégorie sur la branche `feat/glossary-search-index` (option 2 retenue par l'utilisateur).
+
+**Décisions techniques** (10 commits successifs, chacun ciblant une famille d'erreurs) :
+
+1. **Cat A — globals Node bannis du browser** : `process.env.NODE_ENV` → `import.meta.env.DEV` (Vite-natif), `NodeJS.Timeout` → `ReturnType<typeof setTimeout>`, `global.Image` → `globalThis.Image`. 3 fichiers.
+
+2. **Cat B — JSX namespace** : `JSX.Element` → `ReactNode` (le namespace `JSX` n'est pas accessible sans config TS dédiée en React 19).
+
+3. **Cat C — Button asChild** : pattern Radix Slot pas implémenté ; remplacement par un `<Link>` direct stylé Tailwind dans replay.tsx (seul caller).
+
+4. **Cat D — TanStack Router /settings search requis** : NavL1 et StepInitialSync passent `search={{ tab: 'general' | 'analyse' }}`.
+
+5. **Cat E — root route + contexte queryClient** : `createRootRoute` → `createRootRouteWithContext<RouterContext>()` ; débloque les loaders enfants qui accédaient à `context.queryClient` (career, home, matches/$matchId).
+
+6. **Cat F — ECharts yAxis/series unions** : type `object[]` au lieu de `EChartsCoreOption['yAxis'|'series']` (unions singleton|array, `.push()` impossible).
+
+7. **Cat G — routes /explorer/ slash final** : 5 fichiers utilisaient `to: '/players/$playerSlug/explorer/'` mais le route tree expose `/explorer` sans slash. Cascade : TS2820 sur `to`, TS2353 sur params, TS2322 sur search.
+
+8. **Cat H — imports/variables inutilisés (TS6133)** : 5 fichiers nettoyés. ReleaseNotesTab utilise désormais sa prop `loadingMessage` (rendait `null` pendant le loading).
+
+9. **Cat I — fixtures de tests désynchronisées des types source** (12 fichiers, ~50 erreurs) :
+   - LabelValue.count requis (FiltresPill, MediaPage, MediaToolbar)
+   - LocalUiPrefs.colorPalette, RecentMatchItem.is_favorite, PlayerSummary.waypoint_player, BootstrapResponse.{auth_mode, registration_mode, is_admin, first_launch}, FilterContextResolved.period_presets, MatchHighlightEvent.{target_xuid, weapon_id}, ApiErrorSchema.retryable, HeroKPIs (avg_kda, draws, dnfs, total_playtime_secs, favorite_*, avg_offensive_conversion, avg_defensive_resistance)
+   - WatcherCard.test : retire spnkrRefreshWithBackfill (champ supprimé) ; cast `as unknown as SettingsText` pour le mock i18n partiel
+   - useJobToasts.test : `initialProps.js` typé `as AsyncJobStatus | undefined` pour ne pas verrouiller le rerender sur `undefined`
+   - retire 2 `@ts-expect-error` stales (PeriodSessionRail, gif-hover-thumbnail)
+
+10. **Cat J — résidus métier** (11 fichiers, 15 erreurs) :
+    - EngagementCurve : token `accent-info` → `info`
+    - PeriodSessionRail : normalise `PeriodInput` (optionnels) → `{ start_date, end_date }` required
+    - delta-card : `formatDelta` retourne maintenant `{text, color, colorStyle}` (signature alignée avec le destructuring)
+    - LoginPage / RegisterPage : `as unknown as ApiError` (Error→ApiError ne se chevauchent pas)
+    - CareerPage : import Spinner manquant
+    - ExplorerPage : EncounterBadges normalise locale en `ManifestLocale ('fr'|'en')`
+    - PlayerDetailPanel : retire 4 StatLines obsolètes (damage_efficiency, betrayals, suicides, objectives_stolen — champs disparus de MatchScoreboardRow)
+    - MediaPage / MediaToolbar : LabelValue.count ajouté
+    - SquadLayout : extrait `soloKpis` dans une const locale pour la propagation du narrowing TS dans l'IIFE
+
+**Résultats observés** :
+- `tsc -b` : 0 erreur (vs 111 au départ).
+- 10 commits, ~40 fichiers touchés, périmètre découpé par catégorie pour faciliter la review.
+- Aucun fichier source de logique métier modifié dans son comportement (sauf SquadLayout qui a un `if (!soloKpis) return null` inoffensif vu le `&&` extérieur).
+- Les pre-commit hooks (lint couleurs, frontières, multi-titres) passent à chaque étape.
+
+**Note vigilance** : le typecheck étant resté rouge longtemps, l'app pouvait être *exécutée* (Vite ignore les erreurs TS) mais les mises à jour de types auraient cassé silencieusement. Maintenir typecheck vert dans la CI éviterait cette dérive.
+
+**Conclusion** : Branche `feat/glossary-search-index` désormais propre côté typecheck. Reste à valider visuellement les 4 fichiers source modifiés à comportement potentiellement visible (ExplorerPage badges, PlayerDetailPanel KPIs réduits, SquadLayout briefing, ReleaseNotesTab loading).
+
+---
+
 ## [2026-05-04] feat(help/glossary): index sticky avec recherche debounced + scrollspy
 
 **Statut** : Complété.
@@ -31,6 +85,33 @@
 **Vérification visuelle navigateur non effectuée** dans cette session (CLI bash sans browser interactif). Le rendu, la fluidité du scrollspy et le comportement sur mobile devront être validés à l'œil avant merge.
 
 **Conclusion** : Composant prêt à reviewer. Branche `feat/glossary-search-index`.
+
+---
+
+## [2026-05-04] feat(squad/contributions): chart Rendement & Résistance par match
+
+**Statut** : Complété.
+
+**Contexte** : La page Contributions affichait l'intensité et la performance série par série, mais aucun chart ne montrait l'évolution du rendement offensif et de la résistance défensive par match pour chaque joueur. Ces métriques (déjà calculées dans le radar synergie) sont précieuses pour identifier les trends individuels.
+
+**Décisions techniques** :
+
+1. **Proposition 2 choisie par l'utilisateur** (time series multi-track) : une instance ECharts par joueur, empilées verticalement, plutôt qu'un scatter 2D à 4 quadrants. Plus lisible pour suivre l'évolution temporelle.
+
+2. **Normalisation par P80** : rendement / P80_RENDEMENT (0.83) et résistance / P80_RESISTANCE (1.59). Ramène les deux métriques sur une échelle commune [0, ~2.5×] avec une ligne de référence partagée à y=1.0×.
+
+3. **Extension Go** : `SquadPerformanceSeriesPoint` dans `domain/teammates.go` étendu avec 2 champs optionnels (`RendementOffensif`, `ResistanceDefensive`). Peuplés dans `buildSquadPerformanceSeries()` en réutilisant `synergyOffensiveConversion()` et `synergyDefensiveResistance()` déjà présents. Test `TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields` ajouté.
+
+4. **Architecture frontend** : chart builder dans `charts/squadEfficiencyChart.ts` (fonction pure EChartsCoreOption) + wrapper `SquadEfficiencyChart.tsx` avec sous-composant `EfficiencyTrack` (useCallback stable par joueur) + légende SVG partagée en haut. Pattern symétrique à `SquadPerformanceCharts`.
+
+5. **Guard d'affichage** : la card efficiency est conditionnée sur `performanceSeries && Object.keys(performanceSeries).length > 0`, même garde que la card performance existante. Le composant filtre en plus les joueurs sans données d'efficacité.
+
+**Résultats observés** :
+- `go test ./internal/service/...` : ok (0.073s).
+- `tsc -b` : 0 erreur dans les fichiers modifiés/créés.
+- 3 erreurs préexistantes hors scope (MediaPage, MediaToolbar, SquadLayout).
+
+**Conclusion** : Feature complète front+back. Branche `feat/seasons-as-asset-kind`.
 
 ---
 
