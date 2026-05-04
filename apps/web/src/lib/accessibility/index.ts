@@ -26,6 +26,9 @@ export { useColorPaletteVersion } from './useColorPaletteVersion'
 // Helper série-colors (usage : chart builders ECharts)
 export { getSeriesColors } from './plotlyColorscale'
 
+// Couleur complémentaire (usage : barres négatives des charts, hue +180°)
+export { hexComplement } from './hexComplement'
+
 // Palettes brutes (usage : ThemeProvider uniquement)
 export { defaultPalette } from './palettes/default'
 export { okabePalette } from './palettes/okabe-ito'

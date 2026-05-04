@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-04] feat(squad/contributions): couleur complémentaire opaque pour les stats négatives (per-minute)
+
+**Statut** : Complété.
+
+**Contexte** : Sur le chart "Stats par minute" (kills/deaths/assists /min), les barres "morts" utilisaient la même couleur du joueur avec opacity: 0.45. L'utilisateur demande l'opposé colorimétrique (rotation HSL +180°) en opaque, avec respect des options d'accessibilité.
+
+**Décision technique** :
+
+1. **`lib/accessibility/hexComplement.ts`** — utilitaire pur `hexComplement(hex: string): string` : parse #RGB/#RRGGBB → RGB → HSL → hue +180° → HSL → RGB → hex. Sans hex codé en dur, sans token, sans DOM. Résultat toujours opaque `#rrggbb`. Fallback `#888888` si hex invalide.
+
+2. **Export barrel `index.ts`** — `export { hexComplement } from './hexComplement'` au même niveau que `getSeriesColors`.
+
+3. **`squadPerMinuteChart.ts`** — suppression de `DEATHS_OPACITY = 0.45` et du pattern `{ color, opacity }`. Remplacement par `const negColor = hexComplement(color)` → `{ color: negColor }` sur la barre morts. Le complement est calculé à partir du hex résolu par la palette → quand la palette change (Okabe-Ito), `colorByPlayer` change, donc les complements changent de concert. Accessibilité maintenue sans nouveau token.
+
+4. **Tests** :
+   - `hexComplement.test.ts` (7 tests) : rotation idempotente double, rouge→cyan, format #RGB court, hex invalide fallback, gris achromatique.
+   - `squadPerMinuteChart.test.ts` : mock vitest async pour inclure `hexComplement` real impl, assertion `data[1].color === hexComplement(PLAYER_COLOR)` + `opacity === undefined`.
+   - Snapshots de palette mis à jour (`narrative-encounter-*` tokens absents du snapshot initial).
+
+**Résultat** : 15/15 tests cibles passants, `npm run typecheck` sans nouvelle erreur dans mes fichiers, 7 failures pré-existantes non impactées.
+
+**Prochaine étape** : autres corrections page Contributions.
+
 ## [2026-05-04] fix(squad/contributions): stats par minute distinctes par coéquipier
 
 **Statut** : Complété.

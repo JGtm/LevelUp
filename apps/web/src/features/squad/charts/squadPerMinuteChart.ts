@@ -6,8 +6,11 @@
  *   - 3 catégories X : Frags/min, Morts/min, Assists/min.
  *   - 1 série bar par joueur (main + coéquipiers, 1..4 séries).
  *   - Frags & Assists au-dessus de l'axe X (positifs), Morts en dessous (négatifs).
- *   - Couleur normale du joueur pour Frags/Assists, couleur "négative" (opacity 0.45)
- *     pour les Morts → conserve l'identité visuelle tout en marquant la nature.
+ *   - Couleur normale du joueur (opaque) pour Frags/Assists.
+ *   - Couleur complémentaire (hue +180°, opaque) pour les Morts et stats négatives :
+ *     identité joueur préservée (dérivée de la même source palette), contraste
+ *     maximal avec la couleur positive, options d'accessibilité héritées
+ *     automatiquement (hexComplement opère sur la couleur résolue par la palette).
  *   - Axe zéro en blanc gras (zerolinewidth=2 ↔ ECharts splitLine[0] custom).
  *   - Pas de légende (le mapping joueur→couleur est dans la pill / combobox de la page).
  *   - Label sur barre = valeur ABSOLUE (frags positifs, morts négatifs vers le bas
@@ -17,9 +20,9 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerMinuteEntry } from '@/lib/api/types'
+import { hexComplement } from '@/lib/accessibility'
 
 const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.75)'
-const DEATHS_OPACITY = 0.45
 
 export interface SquadPerMinuteOpts {
   /** Mapping gamertag → couleur hex. Doit couvrir tous les players de rows. */
@@ -44,12 +47,13 @@ export function buildSquadPerMinuteOption(
   // 1 série bar par joueur, 3 valeurs (frags, -deaths, assists).
   const echSeries = rows.map((r) => {
     const color = opts.colorByPlayer[r.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const negColor = hexComplement(color) // hue +180°, opaque — accessibilité héritée de la palette active
     return {
       name: r.player,
       type: 'bar' as const,
       data: [
         { value: r.kills_per_minute, itemStyle: { color } },
-        { value: -r.deaths_per_minute, itemStyle: { color, opacity: DEATHS_OPACITY } },
+        { value: -r.deaths_per_minute, itemStyle: { color: negColor } },
         { value: r.assists_per_minute, itemStyle: { color } },
       ],
       barMaxWidth: 22,

@@ -3,16 +3,26 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { buildSquadPerMinuteOption } from './squadPerMinuteChart'
+import { hexComplement } from '@/lib/accessibility/hexComplement'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerMinuteEntry } from '@/lib/api/types'
 
-vi.mock('@/lib/accessibility', () => ({
-  tokenCssVar: (token: string) => `color:${token}`,
-  resolveToken: (token: string) => `hex(${token})`,
-}))
+vi.mock('@/lib/accessibility', async () => {
+  // hexComplement est une fonction pure — on la passe en real impl dans le mock
+  // pour que le chart l'utilise sans avoir besoin de DOM ou de palette active.
+  const { hexComplement: hc } = await import('@/lib/accessibility/hexComplement')
+  return {
+    tokenCssVar: (token: string) => `color:${token}`,
+    resolveToken: (token: string) => `hex(${token})`,
+    hexComplement: hc,
+  }
+})
+
+// Couleurs non-grises pour que hexComplement retourne un résultat distinct.
+const PLAYER_COLOR = '#818cf8' // indigo — couleur positive du joueur "Me"
 
 const OPTS = {
-  colorByPlayer: { Me: '#aaa', F1: '#bbb', F2: '#ccc' },
+  colorByPlayer: { Me: PLAYER_COLOR, F1: '#00dc82', F2: '#f59e0b' },
   metricLabels: { frags: 'Frags/min', deaths: 'Morts/min', assists: 'Assists/min' },
   perMinuteSuffix: ' /min',
 }
@@ -58,24 +68,28 @@ describe('buildSquadPerMinuteOption', () => {
     expect(data[2].value).toBe(0.3)
   })
 
-  it('couleur normale du joueur sur frags+assists, opacity réduite sur morts', () => {
+  it('couleur complémentaire opaque sur morts, couleur joueur sur frags+assists', () => {
     const opt = buildSquadPerMinuteOption(makeSeries([entry('Me', 1, 1, 1)]), OPTS)
     const series = opt.series as Array<{ data: Array<{ itemStyle: { color: string; opacity?: number } }> }>
     const data = series[0].data
-    expect(data[0].itemStyle.color).toBe('#aaa')
+    const expectedNeg = hexComplement(PLAYER_COLOR)
+    expect(data[0].itemStyle.color).toBe(PLAYER_COLOR)      // frags = couleur joueur
     expect(data[0].itemStyle.opacity).toBeUndefined()
-    expect(data[1].itemStyle.color).toBe('#aaa')
-    expect(data[1].itemStyle.opacity).toBe(0.45)
-    expect(data[2].itemStyle.color).toBe('#aaa')
+    expect(data[1].itemStyle.color).toBe(expectedNeg)        // morts = complémentaire
+    expect(data[1].itemStyle.opacity).toBeUndefined()        // opaque (pas d'opacity)
+    expect(data[1].itemStyle.color).not.toBe(PLAYER_COLOR)  // must differ from source
+    expect(data[2].itemStyle.color).toBe(PLAYER_COLOR)      // assists = couleur joueur
   })
 
-  it('joueur sans couleur mappée → fallback gris #888', () => {
+  it('joueur sans couleur mappée → fallback gris #888, complément de #888', () => {
     const opt = buildSquadPerMinuteOption(
       makeSeries([entry('Unknown', 1, 1, 1)]),
       OPTS,
     )
     const series = opt.series as Array<{ data: Array<{ itemStyle: { color: string } }> }>
-    expect(series[0].data[0].itemStyle.color).toBe('#888')
+    expect(series[0].data[0].itemStyle.color).toBe('#888') // frags = gris fallback
+    // morts = complément du gris (#888888 → hue 0° → complément = même gris)
+    expect(series[0].data[1].itemStyle.color).toBe(hexComplement('#888'))
   })
 
   it('label formatter retourne valeur ABSOLUE pour les morts (data index 1)', () => {
