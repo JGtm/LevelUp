@@ -97,10 +97,12 @@ describe('SessionBriefing — mode solo', () => {
     const kpis = makeKPIs()
     renderWithProviders(<SessionBriefing kpis={kpis} />)
 
-    // KPI grid : labels descriptifs visibles (cards Matchs / Durée / Durée moy)
+    // KPI grid : labels descriptifs visibles (cards Matchs / Durée totale)
     expect(screen.getByText('Matchs joués')).toBeInTheDocument()
     expect(screen.getByText('Durée totale')).toBeInTheDocument()
-    expect(screen.getByText('Durée moyenne par match')).toBeInTheDocument()
+    // La durée moyenne/match est désormais inline-sub de la card Matchs (10:54)
+    // → vérifie sa présence sans dépendre du label retiré.
+    expect(screen.getByText(/10min54\/match/)).toBeInTheDocument()
     // Pas de bande verdict en solo (le score d'équipe et la Results bar n'y sont
     // que dans la bande verdict, qui n'apparaît pas en solo)
     expect(screen.queryByText(/Score d'équipe/)).not.toBeInTheDocument()

@@ -28,13 +28,13 @@ export interface BriefingTexts {
     trendHint: string
     matchesPlayed: string
     totalDuration: string
-    avgMatchDuration: string
     fragsPerMatch: string
     deathsPerMatch: string
     assistsPerMatch: string
     accuracy: string
     lifespan: string
     perMin: string
+    perMatch: string
     rankDeltaCSR: string
     rankDeltaLUSR: string
   }
@@ -60,13 +60,13 @@ const FR: BriefingTexts = {
     trendHint: "▲/▼ vs moyenne d'équipe sur la session",
     matchesPlayed: 'Matchs joués',
     totalDuration: 'Durée totale',
-    avgMatchDuration: 'Durée moyenne par match',
     fragsPerMatch: 'Frags par partie',
     deathsPerMatch: 'Morts par partie',
     assistsPerMatch: 'Assistances par partie',
     accuracy: 'Précision moyenne',
     lifespan: 'Durée de vie moyenne',
     perMin: '/min',
+    perMatch: '/match',
     rankDeltaCSR: 'Delta CSR',
     rankDeltaLUSR: 'Delta LUSR',
   },
@@ -93,13 +93,13 @@ const EN: BriefingTexts = {
     trendHint: '▲/▼ vs team average on this session',
     matchesPlayed: 'Matches played',
     totalDuration: 'Total duration',
-    avgMatchDuration: 'Avg duration per match',
     fragsPerMatch: 'Frags per match',
     deathsPerMatch: 'Deaths per match',
     assistsPerMatch: 'Assists per match',
     accuracy: 'Avg accuracy',
     lifespan: 'Avg lifespan',
     perMin: '/min',
+    perMatch: '/match',
     rankDeltaCSR: 'CSR change',
     rankDeltaLUSR: 'LUSR change',
   },
