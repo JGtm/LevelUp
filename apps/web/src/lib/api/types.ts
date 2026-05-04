@@ -2412,6 +2412,15 @@ export interface TimeseriesQueryRequest {
   filters: FilterContextInput
 }
 
+/** RankDelta — delta de skill rating sur le scope. Miroir Go domain.RankDelta.
+ *  Kind = "csr" (classé) ou "lusr" (non classé) ; value = somme signée des
+ *  per-match deltas ; count = nb matchs du Kind retenu dans le scope. */
+export interface RankDelta {
+  kind: 'csr' | 'lusr'
+  value: number
+  count: number
+}
+
 /** KPIStats — agreges du joueur sur le scope filtre. Miroir Go domain.KPIStats. */
 export interface KPIStats {
   matches_count: number
@@ -2425,6 +2434,12 @@ export interface KPIStats {
   assists_per_minute: number
   avg_accuracy: number
   avg_life_seconds: number
+  /** Moyenne du performance_score (0..100) sur les matchs du scope avec
+   *  score renseigné. Absent si aucun. Couleur absolue par tier. */
+  avg_performance_score?: number
+  /** Delta de rang (CSR ou LUSR) sur le scope. Absent si aucun match
+   *  classé/non-classé dans le scope. Couleur par signe (pos/neg/neutral). */
+  rank_delta?: RankDelta
   outcomes: { wins: number; losses: number; ties: number; dnf: number }
 }
 
