@@ -114,7 +114,7 @@ export function GlossaryTab({ text }: GlossaryTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-0 z-20 -mx-6 border-b border-border bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <div className="sticky top-0 z-20 -mx-6 border-b border-border bg-background px-6 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative w-full sm:w-72 sm:shrink-0">
             <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
