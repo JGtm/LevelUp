@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { tokenCssVar } from '@/lib/accessibility'
 import { type GlossaryEntry, type GlossarySection, type HelpText } from './i18n'
 
 const SECTION_ID_PREFIX = 'glossary-section-'
@@ -60,6 +61,11 @@ export function GlossaryTab({ text }: GlossaryTabProps) {
   const normalizedQuery = useMemo(
     () => normalizeForSearch(debouncedQuery.trim()),
     [debouncedQuery],
+  )
+
+  const queryTokens = useMemo(
+    () => normalizedQuery.split(/\s+/).filter(Boolean),
+    [normalizedQuery],
   )
 
   const filteredSections = useMemo<FilteredSection[]>(() => {
@@ -125,7 +131,7 @@ export function GlossaryTab({ text }: GlossaryTabProps) {
           {filteredSections.length > 0 && (
             <nav
               aria-label={text.glossary.search.sectionsLabel}
-              className="flex flex-1 min-w-0 flex-wrap gap-2 sm:flex-nowrap sm:overflow-x-auto"
+              className="flex flex-1 min-w-0 flex-wrap gap-2 sm:flex-nowrap sm:overflow-x-auto sm:pb-1.5"
             >
               {filteredSections.map(({ section, id }) => {
                 const active = activeId === id
@@ -165,6 +171,7 @@ export function GlossaryTab({ text }: GlossaryTabProps) {
               section={section}
               entries={entries}
               setRef={setSectionRef(id)}
+              queryTokens={queryTokens}
             />
           ))}
         </div>
@@ -178,9 +185,10 @@ interface GlossarySectionBlockProps {
   section: GlossarySection
   entries: GlossaryEntry[]
   setRef: (el: HTMLElement | null) => void
+  queryTokens: string[]
 }
 
-function GlossarySectionBlock({ id, section, entries, setRef }: GlossarySectionBlockProps) {
+function GlossarySectionBlock({ id, section, entries, setRef, queryTokens }: GlossarySectionBlockProps) {
   return (
     <section id={id} ref={setRef} className="scroll-mt-24">
       <h2 className="mb-4 text-base font-semibold text-foreground/70 uppercase tracking-wider">
@@ -188,30 +196,32 @@ function GlossarySectionBlock({ id, section, entries, setRef }: GlossarySectionB
       </h2>
       <div className="grid gap-3 sm:grid-cols-2">
         {entries.map((entry) => (
-          <GlossaryCard key={entry.term} entry={entry} />
+          <GlossaryCard key={entry.term} entry={entry} queryTokens={queryTokens} />
         ))}
       </div>
     </section>
   )
 }
 
-function GlossaryCard({ entry }: { entry: GlossaryEntry }) {
+function GlossaryCard({ entry, queryTokens }: { entry: GlossaryEntry; queryTokens: string[] }) {
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md">
       <CardHeader className="pb-2 pt-4">
         <CardTitle className="text-sm font-semibold">
-          <span className="text-sidebar-primary">{entry.term}</span>
+          <span className="text-sidebar-primary">
+            <HighlightedText text={entry.term} tokens={queryTokens} />
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4 space-y-3">
         <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-          {entry.definition}
+          <HighlightedText text={entry.definition} tokens={queryTokens} />
         </div>
 
         {entry.example && (
           <CollapsibleSection label="Exemple" sectionName="exemple">
             <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line italic">
-              {entry.example}
+              <HighlightedText text={entry.example} tokens={queryTokens} />
             </p>
           </CollapsibleSection>
         )}
@@ -219,13 +229,87 @@ function GlossaryCard({ entry }: { entry: GlossaryEntry }) {
         {entry.formula && (
           <CollapsibleSection label="Formule" sectionName="formule">
             <code className="block rounded bg-muted px-2.5 py-1.5 text-xs font-mono text-foreground/80 whitespace-pre overflow-x-auto">
-              {entry.formula}
+              <HighlightedText text={entry.formula} tokens={queryTokens} />
             </code>
           </CollapsibleSection>
         )}
       </CardContent>
     </Card>
   )
+}
+
+interface HighlightRange {
+  start: number
+  end: number
+}
+
+function buildNormalizedMap(text: string): { normalized: string; indices: number[] } {
+  let normalized = ''
+  const indices: number[] = []
+  for (let i = 0; i < text.length; i++) {
+    const nfd = text[i].normalize('NFD').toLowerCase()
+    for (const nc of nfd) {
+      if (nc.charCodeAt(0) >= 0x0300 && nc.charCodeAt(0) <= 0x036f) continue
+      normalized += nc
+      indices.push(i)
+    }
+  }
+  return { normalized, indices }
+}
+
+function findMatchRanges(text: string, tokens: string[]): HighlightRange[] {
+  if (!tokens.length) return []
+  const { normalized, indices } = buildNormalizedMap(text)
+  const ranges: HighlightRange[] = []
+  for (const token of tokens) {
+    if (!token) continue
+    let from = 0
+    while (true) {
+      const idx = normalized.indexOf(token, from)
+      if (idx === -1) break
+      const start = indices[idx]
+      const end = indices[idx + token.length - 1] + 1
+      ranges.push({ start, end })
+      from = idx + token.length
+    }
+  }
+  ranges.sort((a, b) => a.start - b.start || a.end - b.end)
+  const merged: HighlightRange[] = []
+  for (const r of ranges) {
+    const last = merged[merged.length - 1]
+    if (last && r.start <= last.end) {
+      last.end = Math.max(last.end, r.end)
+    } else {
+      merged.push({ ...r })
+    }
+  }
+  return merged
+}
+
+function HighlightedText({ text, tokens }: { text: string; tokens: string[] }) {
+  const ranges = useMemo(() => findMatchRanges(text, tokens), [text, tokens])
+  if (ranges.length === 0) return <>{text}</>
+
+  const segments: ReactNode[] = []
+  let pos = 0
+  for (const r of ranges) {
+    if (r.start > pos) segments.push(text.slice(pos, r.start))
+    segments.push(
+      <mark
+        key={r.start}
+        className="rounded-sm px-0.5"
+        style={{
+          backgroundColor: `color-mix(in srgb, ${tokenCssVar('warning')} 35%, transparent)`,
+          color: 'inherit',
+        }}
+      >
+        {text.slice(r.start, r.end)}
+      </mark>,
+    )
+    pos = r.end
+  }
+  if (pos < text.length) segments.push(text.slice(pos))
+  return <>{segments}</>
 }
 
 interface CollapsibleSectionProps {
