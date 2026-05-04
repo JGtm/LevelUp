@@ -1,103 +1,35 @@
 /**
- * SquadContributionsPage.test.tsx — 3 empty states + radar ECharts dégradé.
+ * SquadContributionsPage.test.tsx — smoke tests post-suppression du radar.
+ *
+ * Le radar normalisé a été retiré (teammates.13 supprimé).
+ * La page affiche désormais uniquement les sections conditionnelles (perMinute,
+ * synergy, intensity, performance, weaponKills, firstEvents, impact, history).
+ * Ces sections ne s'affichent que si pageData contient les données correspondantes.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
-import * as useFieldMappingsModule from '@/lib/i18n/fieldMappings'
 import * as squadContextModule from './SquadContext'
-import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
+import type { TeammatesPageResponse } from '@/lib/api/types'
 import { SquadContributionsPage } from './SquadContributionsPage'
 
-// Mock RadarChart : echarts-for-react absent en env portable — évite l'erreur
-// de résolution Vite. Le stub expose data-series pour les assertions de contenu.
-vi.mock('@/components/charts/RadarChart', () => ({
-  RadarChart: ({
-    series,
-    axisLabels,
-  }: {
-    series: Array<{ key: string; axes: Array<{ axis: string }> }>
-    axisLabels?: Record<string, string>
-  }) => (
-    <div
-      data-testid="chart-card"
-      data-axes={JSON.stringify(axisLabels)}
-      data-series={JSON.stringify(series)}
-    />
-  ),
+// Stub des charts ECharts pour éviter les erreurs de résolution en env test.
+vi.mock('./SquadPerMinuteChart', () => ({
+  SquadPerMinuteChart: () => <div data-testid="per-minute-chart" />,
+}))
+vi.mock('./SquadSynergyRadarChart', () => ({
+  SquadSynergyRadarChart: () => <div data-testid="synergy-radar-chart" />,
 }))
 
-const ROW = (gamertag: string): TeammateRow => ({
-  gamertag,
-  xuid: 'x',
-  encounter_count: 5,
-  last_seen_at: null,
-  with_kpis: {
-    match_count: 5,
-    wins: 3,
-    kd_ratio: 1.5,
-    win_rate: 0.6,
-    accuracy: 0.45,
-    kills_per_game: 12,
-    assists_per_game: 4,
-    headshot_kills_per_game: 3,
-    perfect_kills_per_game: 1,
-  },
-  without_kpis: null,
-})
-
-const FULL_MAPPINGS: useFieldMappingsModule.FieldMappingsResponse = {
-  title_slug: 'halo_infinite',
-  schema_version: 1,
-  locale: 'fr',
-  fields: {
-    kills: dto('Éliminations'),
-    accuracy: dto('Précision'),
-    kdr: dto('K/D'),
-    win_rate: dto('Taux de victoire'),
-    assists: dto('Assistances'),
-  },
-}
-
-function dto(label: string): useFieldMappingsModule.FieldMappingDTO {
-  return {
-    label,
-    storage_unit: 'count',
-    display_unit: 'count',
-    format: 'integer',
-    display_order: 1,
-    group: 'combat',
-  }
-}
-
-function mockSquadContext({
-  selectedRows,
-  confirmedGamertags,
-}: {
-  selectedRows: TeammateRow[]
-  confirmedGamertags: string[]
-}) {
+function mockSquadContext(overrides: Partial<ReturnType<typeof squadContextModule.useSquadContext>>) {
   vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
-    selectedRows,
-    confirmedGamertags,
+    selectedRows: [],
+    confirmedGamertags: [],
     pageData: null as unknown as TeammatesPageResponse,
     playerSlug: 'test',
+    ...overrides,
   })
-}
-
-function mockMappings(value: useFieldMappingsModule.FieldMappingsResponse | undefined) {
-  vi.spyOn(useFieldMappingsModule, 'useFieldMappings').mockReturnValue({
-    data: value,
-    isLoading: false,
-    isError: false,
-    error: null,
-    isSuccess: !!value,
-    isPending: !value,
-    isFetching: false,
-    isStale: false,
-    refetch: vi.fn(),
-  } as unknown as ReturnType<typeof useFieldMappingsModule.useFieldMappings>)
 }
 
 beforeEach(() => {
@@ -108,62 +40,41 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('SquadContributionsPage — empty states', () => {
-  it('no_selection : aucun gamertag confirmé → wording analyse', () => {
-    mockSquadContext({ selectedRows: [], confirmedGamertags: [] })
-    mockMappings(FULL_MAPPINGS)
-    renderWithProviders(<SquadContributionsPage />)
-    expect(screen.getByText(/Analyse de synergies/)).toBeInTheDocument()
-    expect(screen.getByText(/Choisis 1 à 3 coéquipiers/)).toBeInTheDocument()
-    expect(screen.queryByTestId('chart-card')).toBeNull()
+describe('SquadContributionsPage', () => {
+  it('monte sans erreur avec pageData null', () => {
+    mockSquadContext({})
+    const { container } = renderWithProviders(<SquadContributionsPage />)
+    expect(container).toBeTruthy()
   })
 
-  it('invalid_selection : confirmedGts > 0 mais selectedRows vide', () => {
-    mockSquadContext({ selectedRows: [], confirmedGamertags: ['ghost'] })
-    mockMappings(FULL_MAPPINGS)
+  it('aucune section visible quand pageData est null', () => {
+    mockSquadContext({})
     renderWithProviders(<SquadContributionsPage />)
-    expect(screen.getByText(/Aucune donnée commune/)).toBeInTheDocument()
-    expect(screen.queryByTestId('chart-card')).toBeNull()
+    expect(screen.queryByTestId('per-minute-chart')).toBeNull()
+    expect(screen.queryByTestId('synergy-radar-chart')).toBeNull()
   })
 
-  it('rows présents : rend le radar ECharts', () => {
+  it('affiche le per-minute chart quand per_minute_stats est renseigné', () => {
     mockSquadContext({
-      selectedRows: [ROW('FriendA')],
       confirmedGamertags: ['FriendA'],
+      pageData: {
+        per_minute_stats: [
+          { player: 'test', kills_per_minute: 1, deaths_per_minute: 0.5, assists_per_minute: 0.2, match_count: 5 },
+        ],
+      } as unknown as TeammatesPageResponse,
     })
-    mockMappings(FULL_MAPPINGS)
     renderWithProviders(<SquadContributionsPage />)
-    expect(screen.getByTestId('chart-card')).toBeInTheDocument()
-    // Vérifie qu'il n'y a pas de résidu "Solo ref" dans les series.
-    const card = screen.getByTestId('chart-card')
-    const seriesJson = card.getAttribute('data-series') ?? ''
-    expect(seriesJson).not.toMatch(/Solo ref/)
-    expect(seriesJson).not.toMatch(/Référence solo/)
+    expect(screen.getByTestId('per-minute-chart')).toBeInTheDocument()
   })
-})
 
-describe('SquadContributionsPage — multi-titres', () => {
-  it('synthetic_title_b minimaliste : ne crashe pas, axes filtrés', () => {
-    const minimal: useFieldMappingsModule.FieldMappingsResponse = {
-      title_slug: 'synthetic_title_b',
-      schema_version: 1,
-      locale: 'fr',
-      fields: {
-        kills: dto('Frags'),
-        accuracy: dto('Taux de réussite'),
-      },
-    }
+  it('affiche le synergy radar quand synergy_radar est renseigné', () => {
     mockSquadContext({
-      selectedRows: [ROW('FriendA')],
       confirmedGamertags: ['FriendA'],
+      pageData: {
+        synergy_radar: [{ player: 'FriendA', combat: 0.8, survival: 0.6, support: 0.4, score: 0.7, objective: 0.5, impact: 0.9 }],
+      } as unknown as TeammatesPageResponse,
     })
-    mockMappings(minimal)
-    expect(() => renderWithProviders(<SquadContributionsPage />)).not.toThrow()
-    expect(screen.getByTestId('chart-card')).toBeInTheDocument()
-    // Sur un titre minimaliste, seuls kills et accuracy passent le filtre.
-    const axesJson = screen.getByTestId('chart-card').getAttribute('data-axes') ?? ''
-    expect(axesJson).toContain('Frags')
-    expect(axesJson).not.toContain('K/D')
-    expect(axesJson).not.toContain('Taux de victoire')
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByTestId('synergy-radar-chart')).toBeInTheDocument()
   })
 })

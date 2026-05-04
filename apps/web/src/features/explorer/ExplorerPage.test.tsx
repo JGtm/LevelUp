@@ -14,6 +14,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ...actual,
     useNavigate: () => vi.fn(),
     useParams: () => ({ playerSlug: 'test-player' }),
+    useSearch: () => ({}),
   }
 })
 

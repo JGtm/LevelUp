@@ -51,7 +51,7 @@ describe('AnalyseTab — Progression long-terme', () => {
     renderTab({ show_progression: true })
     expect(screen.getByText('Progression long-terme')).toBeInTheDocument()
     expect(screen.getByText('Afficher Objectifs & Prestige')).toBeInTheDocument()
-    expect(screen.getByText(/Prestige Points/)).toBeInTheDocument()
+    expect(screen.getByText(/Points de Prestige/)).toBeInTheDocument()
   })
 
   it('active par défaut quand show_progression est absent', () => {
