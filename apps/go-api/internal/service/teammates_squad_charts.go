@@ -967,8 +967,13 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 
 	out := make(map[string][]domain.SquadPerformanceSeriesPoint, 1+len(selectedGamertags))
 
+	// squadLoader.LoadFor résout les rows par gamertag (playerMatchesRepo est bound
+	// au main et ignore l'arg gt → toutes les séries affichaient les stats du main).
 	loadFor := func(gt string) []domain.SquadPerformanceSeriesPoint {
-		rows, err := s.playerMatchesRepo.LoadPlayerMatches(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		if s.squadLoader == nil {
+			return nil
+		}
+		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
 		if err != nil {
 			slog.WarnContext(ctx, "teammates_perf_series_load_failed", "gamertag", gt, "err", err.Error())
 			return nil
@@ -1112,9 +1117,14 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		return raw
 	}
 
+	// squadLoader.LoadFor résout les rows par gamertag (playerMatchesRepo est bound
+	// au main → chaque coéquipier héritait des axes combat/survival/support du main).
 	makeMateRaw := func(gt string) axisRaw {
 		raw := axisRaw{}
-		rows, err := s.playerMatchesRepo.LoadPlayerMatches(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		if s.squadLoader == nil {
+			return raw
+		}
+		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
 		if err != nil {
 			slog.WarnContext(ctx, "teammates_radar_load_failed", "gamertag", gt, "err", err.Error())
 			return raw
@@ -1247,13 +1257,18 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 		}
 	}
 
-	// 4. Résoudre xuid pour le main + chaque teammate (via LoadPlayerMatches → r.Self.Identity.XUID).
+	// 4. Résoudre xuid pour le main + chaque teammate. squadLoader.LoadFor est
+	// obligatoire : playerMatchesRepo est bound au main, donc tous les toggles
+	// "par joueur" affichaient le même xuid (celui du main) → mêmes kill events.
 	xuidByGT := make(map[string]string)
 	resolveXUID := func(gt string) {
 		if _, ok := xuidByGT[gt]; ok {
 			return
 		}
-		rows, err := s.playerMatchesRepo.LoadPlayerMatches(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		if s.squadLoader == nil {
+			return
+		}
+		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
 		if err != nil || len(rows) == 0 {
 			return
 		}
@@ -1426,9 +1441,17 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 
 	entries := []domain.SquadPerMinuteEntry{makeEntry(mainGamertag, mainAgg)}
 
-	// 3. Teammates : LoadPlayerMatches → filter par match_ids → sum r.Self.
+	// 3. Teammates : squadLoader.LoadFor (résolution per-gamertag) → filter par
+	// match_ids → sum r.Self. squadLoader est obligatoire ici : playerMatchesRepo
+	// est bound au gamertag principal et ignore l'arg gt (cf. doc TeammatesService),
+	// l'utiliser ici réagrégeait les stats du main pour chaque coéquipier → toutes
+	// les barres avaient la même valeur.
 	for _, gt := range selectedGamertags {
-		mateRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		if s.squadLoader == nil {
+			entries = append(entries, domain.SquadPerMinuteEntry{Player: gt})
+			continue
+		}
+		mateRows, err := s.squadLoader.LoadFor(
 			ctx, s.titleSlug, gt, port.PlayerMatchFilters{},
 		)
 		if err != nil {

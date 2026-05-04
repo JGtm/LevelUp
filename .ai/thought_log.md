@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-05-04] fix(squad/contributions): stats par minute distinctes par coéquipier
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Squad/Contributions, le chart "Stats par minute" (kills/deaths/assists per min) affichait la même valeur pour tous les joueurs (main + coéquipiers) sur une session ou période donnée — observation de l'utilisateur, hautement improbable statistiquement.
+
+**Cause racine** : Dans `TeammatesService.buildSquadPerMinuteStats` ([teammates_squad_charts.go:1431](apps/go-api/internal/service/teammates_squad_charts.go#L1431)), les rows des coéquipiers étaient chargées via `s.playerMatchesRepo.LoadPlayerMatches(ctx, slug, gt, ...)`. Or cet adapter est explicitement bound au gamertag du joueur principal et **ignore l'argument `gt`** (cf. doc [TeammatesService:38-42](apps/go-api/internal/service/teammates_service.go#L38-L42) — la résolution per-gamertag passe obligatoirement par `squadLoader.LoadFor`). Donc pour chaque coéquipier, on récupérait les matchs du main, on les filtrait sur `matchIDsAllowed` (qui équivaut à l'intersection puisque les rows sont identiques), et on agrégait les stats du main → toutes les barres affichaient la même kpm/dpm/apm.
+
+**Décision technique** :
+
+1. Remplacer `s.playerMatchesRepo.LoadPlayerMatches` par `s.squadLoader.LoadFor` dans `buildSquadPerMinuteStats` (pattern déjà appliqué [ligne 285](apps/go-api/internal/service/teammates_squad_charts.go#L285) pour la heatmap des cartes et dans `loadTeammatesCanonicalParallel`).
+2. Guard `s.squadLoader == nil` → entrée vide pour le coéquipier (cohérent avec le mode dégradé du `SessionBriefing`).
+3. Test régression `TestBuildSquadPerMinuteStats_DistinctValuesPerTeammate` : 3 joueurs sur 1 match commun (600s) avec stats distinctes (10/4/1 kills) → vérifie que kpm = {1.0, 0.4, 0.1}, et asserte `main.KillsPerMinute != f1.KillsPerMinute` pour cadenasser le bug bound-to-main.
+4. Test `TestBuildSquadPerMinuteStats_NoSquadLoader_TeammatesEmpty` : sans loader, les coéquipiers ressortent en placeholder vide (pas de panic, pas de fallback bound-to-main).
+
+**Les 3 autres call-sites ont également été corrigés dans le même commit** :
+- `buildSquadPerformanceSeries` (L971) — closure `loadFor` → `squadLoader.LoadFor`
+- `buildSquadSynergyRadar` (L1117) — closure `makeMateRaw` → `squadLoader.LoadFor`
+- `buildSquadIntensityProfile` (L1256) — closure `resolveXUID` → `squadLoader.LoadFor`
+
+**Tests de régression** (10 tests cadenas au total, tous passants) :
+- `TestBuildSquadPerMinuteStats_DistinctValuesPerTeammate` + `_NoSquadLoader_TeammatesEmpty`
+- `TestBuildSquadPerformanceSeries_DistinctPointsPerPlayer` + `_NoSquadLoader_EmptyResult`
+- `TestBuildSquadSynergyRadar_DistinctAxesPerPlayer`
+- `TestBuildSquadIntensityProfile_NoSquadLoader_NoPanic`
+
+**Résultat** : `go build ./...` OK, `go vet ./...` OK, `go test ./...` exit=0 (tous packages verts).
+
+**Prochaine étape** : les autres corrections sur la page Contributions signalées par l'utilisateur.
+
 ## [2026-05-04] feat(impact): badges calculés en team-wide alliée (cohérence app entière)
 
 **Statut** : Complété.
