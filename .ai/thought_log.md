@@ -1,5 +1,32 @@
 # Thought Log
 
+## [2026-05-05] feat(help/glossary): highlight des matchs + fix scrollbar chips
+
+**Statut** : Complété.
+
+**Contexte** : Retours UX sur la première itération du glossaire indexé (commit `5db1360f`) — (1) la barre de scroll horizontale qui apparaît quand les chips de section débordent (viewport étroit ou écran avec scrollbar non-overlay) se superposait visuellement aux pills ; (2) la search filtre bien les entrées mais ne signale pas où les matches se trouvent dans le texte, ce qui oblige à scanner la card mentalement.
+
+**Décisions techniques** :
+
+1. **`sm:pb-1.5` sur la nav des chips**. La scrollbar horizontale (Windows 11 non-overlay) prend ~6px de hauteur ; le padding-bottom déplace la barre sous les pills. Pas d'utilisation de `scrollbar-gutter: stable` (encore peu portable en 2026 et change le layout même sans overflow).
+
+2. **Helper `HighlightedText` avec mapping NFD → original**. La search normalise (lowercase + strip diacritiques) le haystack, mais on doit surligner dans le texte ORIGINAL (avec accents et casse). J'ai construit une table d'indices : pour chaque caractère du texte normalisé, on stocke l'index correspondant dans le texte original. La recherche se fait sur le normalisé, et les ranges trouvées sont mappées back via la table. Ça gère correctement `é` → `e` (NFD = `e` + U+0301, le combiner est strippé mais l'index pointe toujours vers le `é` d'origine).
+
+3. **Token `warning` pour le highlight, via `color-mix`**. Le token `warning` est jaune en palette default et orange/jaune en Okabe-Ito — toujours suffisamment contrasté pour les 3 types de daltonisme. Le surlignage utilise `color-mix(in srgb, var(--ac-warning) 35%, transparent)` pour un fond jaune translucide qui n'écrase pas le texte (color: inherit). Pattern `tokenCssVar` conforme à la règle 20 du CLAUDE.md (zéro hex, zéro Tailwind couleur).
+
+4. **Multi-token AND avec merge**. La query peut contenir plusieurs tokens (split sur whitespace). Pour chaque token on cherche toutes les occurrences ; les ranges se chevauchant sont fusionnées avant rendu pour éviter des `<mark>` imbriqués.
+
+5. **Élément sémantique `<mark>`**. Standard HTML5 pour le surlignage de search results, lu correctement par les screen readers.
+
+**Résultats observés** :
+- `tsc -b` : 0 erreur.
+- ESLint propre, pre-commit hooks (lint couleurs, frontières) verts.
+- Code source visuellement lisible (pas de retour à `text-yellow-*` ou hex).
+
+**Conclusion** : 1 commit (`418218fe`). Branche `feat/glossary-search-index` toujours propre. Reste à valider visuellement le surlignage et le placement de la scrollbar sur viewport ≤ sm.
+
+---
+
 ## [2026-05-05] chore(web/typecheck): élimination des 111 erreurs TS préexistantes
 
 **Statut** : Complété.
