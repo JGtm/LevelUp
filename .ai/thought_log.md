@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-05-05] style(help/glossary): chips multi-lignes + bg opaque
+
+**Statut** : Complété.
+
+**Contexte** : Retours UX itération 2 — la scrollbar horizontale des chips se superposait toujours visuellement aux pills lors du scroll actif (le `pb-1.5` ajouté en itération précédente ne suffisait pas sur tous les agents/OS), et le `bg-background/95 backdrop-blur` laissait transparaître le contenu qui passe dessous lors du scroll dans le glossaire.
+
+**Décisions techniques** :
+
+1. **Suppression de `flex-nowrap` + `overflow-x-auto` + `pb-1.5`** sur la nav des chips. Remplacement par un simple `flex-wrap` : les pills passent à la ligne suivante quand l'espace manque, plus aucune scrollbar parasite. Solution plus simple et plus accessible que la version scroll.
+
+2. **`bg-background` opaque** sur la barre sticky (au lieu de `bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75`). Choix esthétique de l'utilisateur : préférence pour un séparateur net plutôt que glassmorphism.
+
+**Résultats observés** :
+- `tsc -b` : 0 erreur, ESLint propre, hooks pre-commit verts.
+
+**Conclusion** : 2 commits (`b9a15593`, `b943528b`). Branche `feat/glossary-search-index` prête à reviewer côté UX glossaire.
+
+---
+
 ## [2026-05-05] feat(help/glossary): highlight des matchs + fix scrollbar chips
 
 **Statut** : Complété.
