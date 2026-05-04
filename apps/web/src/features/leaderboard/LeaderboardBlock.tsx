@@ -36,7 +36,7 @@ function LeaderboardRow({
 
   function goToExplorer() {
     void navigate({
-      to: '/players/$playerSlug/explorer/',
+      to: '/players/$playerSlug/explorer',
       params: { playerSlug },
       search: { mode: 'player', target: entry.gamertag },
     })

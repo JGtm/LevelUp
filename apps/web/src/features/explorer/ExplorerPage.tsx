@@ -95,7 +95,7 @@ export function ExplorerPage() {
   function setModeAndUrl(m: SearchMode) {
     setMode(m)
     void navigate({
-      to: '/players/$playerSlug/explorer/',
+      to: '/players/$playerSlug/explorer',
       params: { playerSlug },
       search: (prev) => ({ ...prev, mode: m }),
     })
@@ -105,7 +105,7 @@ export function ExplorerPage() {
     setTargetGamertag(gamertag)
     setPlayerPage(1)
     void navigate({
-      to: '/players/$playerSlug/explorer/',
+      to: '/players/$playerSlug/explorer',
       params: { playerSlug },
       search: (prev) => ({ ...prev, mode: 'player', target: gamertag }),
     })

@@ -20,7 +20,7 @@ function PreviewList({
 
   function goToExplorer(gamertag: string) {
     void navigate({
-      to: '/players/$playerSlug/explorer/',
+      to: '/players/$playerSlug/explorer',
       params: { playerSlug },
       search: { mode: 'player', target: gamertag },
     })

@@ -92,7 +92,7 @@ export function MatchScoreboard({ rows, weaponKills, medals, citations }: Props)
     if (!playerSlug) return
     e.stopPropagation()
     void navigate({
-      to: '/players/$playerSlug/explorer/',
+      to: '/players/$playerSlug/explorer',
       params: { playerSlug },
       search: { mode: 'player', target: gamertag },
     })
