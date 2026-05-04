@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -292,5 +294,119 @@ func TestFieldMappingsHandler_OtherKindsOmitDateFields(t *testing.T) {
 	}
 	if strings.Contains(rankedObj, `"extra"`) {
 		t.Errorf("ranked DTO contient extra : %s", rankedObj)
+	}
+}
+
+// ─── V2 saisons : merge DB+TOML via SeasonsCatalogResolver ─────────────────
+
+// fakeSeasonsCatalog implémente SeasonsCatalogResolver en mémoire.
+type fakeSeasonsCatalog struct {
+	entries []SeasonCatalogEntry
+}
+
+func (f *fakeSeasonsCatalog) Load(_ context.Context, _ string) []SeasonCatalogEntry {
+	return f.entries
+}
+
+func TestFieldMappingsHandler_SeasonsCatalog_OverridesTOMLBucket(t *testing.T) {
+	t.Parallel()
+	// TOML : season6 (FR : "Spirit of Fire")
+	// Catalog (TOML+DB merged) : season6 (DB-fresh dates) + season14 (DB-only "Skyfall")
+	// Le handler doit retourner les 2 dans assets.season, avec les dates et
+	// labels du catalog (qui sont la source de vérité).
+	stub := &stubRegistry{set: mustLoad(t), assets: mustLoadAssets(t)}
+
+	mergedStart6 := time.Date(2024, 3, 19, 0, 0, 0, 0, time.UTC)
+	mergedEnd6 := time.Date(2024, 6, 18, 0, 0, 0, 0, time.UTC) // valeur DB
+	skyStart := time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC)
+	catalog := &fakeSeasonsCatalog{
+		entries: []SeasonCatalogEntry{
+			{
+				ID:           "season6",
+				Label:        "Spirit of Fire",
+				Start:        mergedStart6,
+				End:          &mergedEnd6,
+				DisplayOrder: 60,
+				Extra:        map[string]string{"csr_season_id": "CsrSeason6", "short_label": "S6"},
+			},
+			{
+				ID:           "season14",
+				Label:        "Skyfall", // DB-only (pas de TOML correspondant)
+				Start:        skyStart,
+				End:          nil,
+				DisplayOrder: 70,
+			},
+		},
+	}
+
+	h := newHandler(stub).WithSeasonsCatalog(catalog)
+
+	r := chi.NewRouter()
+	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+
+	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+
+	var body fieldMappingsResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	seasons := body.Assets["season"]
+	if len(seasons) != 2 {
+		t.Fatalf("len(assets.season) = %d, want 2 (merge TOML+DB)", len(seasons))
+	}
+
+	s6 := seasons["season6"]
+	if s6.EndDate == nil || s6.EndDate.Day() != 18 {
+		t.Errorf("season6 end_date = %v, want 2024-06-18 (DB wins)", s6.EndDate)
+	}
+	if s6.Extra["csr_season_id"] != "CsrSeason6" {
+		t.Errorf("season6 extra perdue : %v", s6.Extra)
+	}
+
+	s14, ok := seasons["season14"]
+	if !ok {
+		t.Fatal("season14 absente — DB-only saison perdue dans le merge")
+	}
+	if s14.Label != "Skyfall" {
+		t.Errorf("season14 label = %q, want Skyfall (fallback Name Waypoint)", s14.Label)
+	}
+	if s14.EndDate != nil {
+		t.Errorf("season14 end_date = %v, want nil (saison ouverte)", s14.EndDate)
+	}
+
+	// Les autres kinds (mode.ranked) restent intacts (fallback FR par défaut).
+	if body.Assets["mode"]["ranked"].Label != "Classé" {
+		t.Errorf("mode.ranked label perdu : %v", body.Assets["mode"]["ranked"])
+	}
+}
+
+func TestFieldMappingsHandler_SeasonsCatalogEmpty_FallsBackToTOML(t *testing.T) {
+	t.Parallel()
+	// Catalog vide → le handler doit conserver les saisons du TOML
+	// (dégradation gracieuse, pas de crash).
+	stub := &stubRegistry{set: mustLoad(t), assets: mustLoadAssets(t)}
+	catalog := &fakeSeasonsCatalog{entries: nil}
+	h := newHandler(stub).WithSeasonsCatalog(catalog)
+
+	r := chi.NewRouter()
+	r.Get("/api/v1/titles/{slug}/field-mappings", h.ServeHTTP)
+
+	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings?locale=fr", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	var body fieldMappingsResponse
+	_ = json.Unmarshal(w.Body.Bytes(), &body)
+
+	// Le bucket season du TOML est conservé tel quel quand le catalog est vide.
+	if len(body.Assets["season"]) != 1 || body.Assets["season"]["season6"].Label != "Spirit of Fire" {
+		t.Errorf("catalog vide → TOML conservé attendu, got %v", body.Assets["season"])
 	}
 }

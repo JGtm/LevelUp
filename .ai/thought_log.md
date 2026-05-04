@@ -1,5 +1,100 @@
 # Thought Log
 
+## [2026-05-04] feat(seasons V2): catalog unifié TOML + DB + lazy fetch (pattern symétrique au battle pass)
+
+**Statut** : Complété.
+
+**Contexte** : Suite directe de la livraison V1 saisons (commit 3308d4a8 sur la même branche). En revue, l'utilisateur fait remarquer que le `season_pass_service` adopte le pattern **lazy-fetch + persist** : tente d'abord la DB, si vide déclenche un fetch live + UpsertSeason, puis relit. J'avais shippé V1 en mode TOML-only (interprétation trop littérale de "kinds() pour éviter de refetch") — un écart d'architecture qui demandait une intervention manuelle sur le TOML à chaque nouvelle Operation Halo. V2 corrige en généralisant ce pattern aux saisons calendaires.
+
+**Décisions techniques** :
+
+1. **Nouveau port `SeasonProvider`** ([port/repository.go](apps/go-api/internal/port/repository.go)) — interface minimale `FetchSeasonCalendar(ctx, titleID) ([]SeasonCalendar, []byte, error)`. `halo.HaloProvider` (qui possède déjà la méthode) auto-implémente le port. Le contrat reste title-agnostic : tokens lus depuis `ctxkeys.HaloTokens`, pas dans la signature.
+
+2. **`MetadataRepository.ListSeasons(ctx, titleID)`** ajouté à côté de `GetCurrentSeason` — retourne toutes les saisons triées par StartDate ASC. Implem DuckDB symétrique à `GetCSRSeasons`. Noop pour le check de compilation.
+
+3. **`service.SeasonsCatalog`** — résolveur unifié stateless ([service/seasons_catalog.go](apps/go-api/internal/service/seasons_catalog.go)). Pipeline `Load(ctx, titleID)` :
+   - lit `repo.ListSeasons` (si repo câblé)
+   - si vide ET provider câblé → tente `FetchSeasonCalendar` + `UpsertSeason` pour chaque entrée, puis relit
+   - merge TOML + DB par ID : **DB wins pour Start/End** (dates fraîches, Waypoint corrige parfois rétroactivement), **TOML wins pour Label/DisplayOrder/Extra** (i18n FR + ordre marketing stable)
+   - saison DB-only (présente en DB mais absente du TOML) conservée avec `Name` Waypoint comme libellé fallback ; affiché en queue (DisplayOrder maxTOML+10*N)
+   - saison TOML-only (présente en TOML mais pas en DB) conservée (cas démo offline ou avant 1er fetch)
+   - tags `SeasonSource` (`toml_only` / `db_only` / `merged`) pour debugging
+
+4. **`FiltersService.WithSeasonsCatalog(slug, catalog)`** — remplace `WithSeasons(static)`. Au moment du `Resolve`, le service appelle `catalog.Load(ctx, slug)` qui peut déclencher un fetch live + persist (best-effort, échec gracieux vers TOML). Les `SeasonCounts` calculés via `BuildSeasonCounts` utilisent désormais les fenêtres mergées (donc une nouvelle saison DB compte automatiquement les matchs qui tombent dans sa fenêtre, au lieu de les attribuer à tort à la saison ouverte du TOML).
+
+5. **Field-mappings handler enrichi** ([api/handlers/field_mappings.go](apps/go-api/internal/api/handlers/field_mappings.go)) — nouveau setter `WithSeasonsCatalog(resolver)`. Quand câblé, le bucket `assets.season` du DTO est **remplacé** par l'union TOML+DB calculée à chaque requête (utilise le cache ETag standard ; ETag invalidé automatiquement quand le contenu change). Conséquence : une nouvelle Operation Halo détectée en DB apparaît dans la SaisonPill côté frontend **sans intervention manuelle**, avec son libellé Waypoint brut en attendant la traduction FR (que l'utilisateur ajoute au TOML quand il veut).
+
+6. **Adapter découplage handler ↔ service** ([api/registry.go::seasonsCatalogHandlerAdapter](apps/go-api/internal/api/registry.go)) — l'interface `handlers.SeasonsCatalogResolver` consomme un `[]handlers.SeasonCatalogEntry` (type local au handler, sans `Source`). L'adapter projette `service.SeasonCatalogEntry → handlers.SeasonCatalogEntry`. Maintient le handler découplé de l'implémentation concrète du catalog ; testabilité préservée via `fakeSeasonsCatalog` injecté dans les tests httptest.
+
+7. **Wiring `server.go`** — un seul appel à `OpenReadWriteShared(metadata.duckdb)` (pool reference-counted, le close de cmd/server décrémente). Le `metaDB` reste ouvert pour la durée du process. `EnsureSeasonTables` appelé en best-effort au boot ; échec → fallback static TOML uniquement avec log structuré explicite.
+
+**Résultats observés** :
+
+- Backend : `go vet ./...` clean, `go build ./...` clean. Tests : 100% verts sur `internal/service`, `internal/api`, `internal/api/handlers`, `internal/games/mappings`, `internal/platform/duckdb`, `internal/port`. Nouveaux tests :
+  - 8 cas `SeasonsCatalog` (TOMLOnly, DBPopulated_Merged, DBEmpty_LazyFetchPersist, FetchErrorFallsBackToTOML, ListSeasonsErrorFallsBackToTOML, NoSources, DBOnly_NoTOML, MergeSeasonSources_DBOnlyOrderedAfterTOML)
+  - 2 cas handler (SeasonsCatalog_OverridesTOMLBucket, SeasonsCatalogEmpty_FallsBackToTOML)
+
+- Logging structuré au boot et en runtime :
+  - `seasons_catalog_ready` (info, au boot, count TOML)
+  - `seasons_catalog_meta_db_unavailable` (warn, fallback TOML)
+  - `seasons_catalog: catalog rafraîchi depuis Waypoint` (info, lazy fetch réussi)
+  - `seasons_catalog: fetch live échec — fallback static TOML` (info, dégradation gracieuse, pas une erreur)
+  - `seasons_catalog: ListSeasons échec — fallback static TOML` (warn)
+
+- Architecture : ports propres, aucune logique métier côté handler, FiltersService toujours à 1 dépendance forte (FiltersRepository) + 1 catalog optionnel injecté. Aucun accès DuckDB direct dans le service.
+
+**Comportement attendu** : Au 1er accès à `/filters/preview` après une nouvelle Operation Halo (le user a un token Spartan valide), le `SeasonsCatalog` détecte la DB vide ou désynchronisée, fetche `seasoncalendar.json` Waypoint, persiste les nouvelles saisons via `UpsertSeason`. Au requête suivante (et pour tous les autres users), la saison est déjà en DB → no fetch. La SaisonPill côté frontend voit la nouvelle saison automatiquement (via `useFieldMappings` qui hit `/field-mappings`, qui voit le merge DB+TOML). Le user enrichit ensuite le TOML avec la trad FR à son rythme — l'expérience reste fonctionnelle entre temps avec le label Waypoint brut.
+
+**Conclusion / prochaine étape** : V2 saisons opérationnelle. Plus de "manuel TOML obligatoire à chaque Operation". Le job admin `cmd/refresh-metadata --seasons` reste utile pour un refresh forcé (cron, CI), mais l'auto-update lazy couvre 99% des cas. Le pattern `SeasonsCatalog` est réplicable pour d'autres ressources Waypoint (CSR seasons, operation tracks, etc.) — à considérer si besoin se présente.
+
+---
+
+## [2026-05-04] fix(squad/synergies): perf historique aussi filtrée IsWithFriends (teammates.13)
+
+**Statut** : Complété.
+
+**Contexte** : Suite logique du commit précédent qui a aligné `computeHistoricalMapWRByLabel` + `computeHistoricalMapStatsByLabel` sur le scope squad. Le bullet « Performance par carte — Session vs Historique » (teammates.13) consommait `HistoricalPerformanceAvg` issu de `computeHistoricalMapPerfByLabel` qui, lui, mélangeait toujours solo + squad. Mêmes considérations que pour le WR : un joueur tryhard solo se voyait pénaliser sa barre squad par une référence faussement haute.
+
+**Décision technique** :
+- Ajout du filtre `r.Enrichment.IsWithFriends == true` au début de [`computeHistoricalMapPerfByLabel`](apps/go-api/internal/service/teammates_service.go), strictement parallèle aux deux helpers WR mis à jour la veille.
+- Doc mise à jour pour refléter le scope squad-only.
+- Test existant `TestComputeHistoricalMapPerf_AveragesScores` mis à jour pour mettre `IsWithFriends: true` sur tous ses rows (sinon il aurait produit un map vide après le filtre).
+- Nouveau test de non-régression `TestComputeHistoricalMapPerf_FiltersSoloMatches` : 1 squad (perf=60) + 1 solo (perf=90) sur la même carte → vérifie que la moyenne reste 60 (et non 75).
+
+**Résultats observés** :
+- `go build` / `go vet` OK.
+- 4/4 tests `ComputeHistoricalMap*` verts.
+- `go test ./internal/service/...` (full pkg) → vert, pas de régression.
+
+**Prochaine étape** : redémarrer le serveur Go ; vérifier visuellement que le bullet perf teammates.13 montre bien la référence squad uniquement (cohérent avec le bullet WR teammates.02 et la colonne « Taux hist. » du tableau).
+
+---
+
+## [2026-05-04] fix(squad/synergies): taux historique squad-only (filtre IsWithFriends)
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Squad/Synergies, le « Taux hist. » (table + bullet chart « session vs historique ») se calculait sur l'historique COMPLET du joueur principal (solo + squad confondus). Sur cette page on compare toujours du squad-vs-squad : intégrer les matchs solo pollue la référence (un joueur qui « tryhard solo et chill en escouade » verra une référence faussement haute).
+
+**Décision technique** :
+1. **Filtre commun** sur `r.Enrichment.IsWithFriends == true` ajouté dans :
+   - [`computeHistoricalMapWRByLabel`](apps/go-api/internal/service/teammates_service.go) — alimente le bullet chart teammates.02 via `enrichMapBreakdownWithHistory` → `MapBreakdownRow.HistoricalWinRate`.
+   - [`computeHistoricalMapStatsByLabel`](apps/go-api/internal/service/teammates_service.go) — alimente la colonne « Taux hist. » du tableau historique (`SquadMatchHistoryRow.WinRateHist` + `WinRateHistTotal`).
+2. **Duplication tolérée** : les deux helpers partagent la même règle de filtrage et la même clé de regroupement (`Map.ID` fallback `DefaultLabel`), seules les signatures de retour diffèrent (`map[string]float64` ratio vs `map[string][2]int` wins+total). Refactor en une seule source possible quand `enrichMapBreakdownWithHistory` consommera `[2]int` — pas urgent, choix utilisateur explicite de tolérer.
+3. **Test de non-régression** : `TestComputeHistoricalMapWR_FiltersSoloMatches` avec un match squad + un match solo sur la même carte : vérifie que les deux helpers ne comptent que le squad (WR=1.0, stats=[1,1] au lieu de WR=0.5, stats=[1,2]). Helper `makeCanonicalRowsWithMaps` mis à jour pour mettre `IsWithFriends: true` par défaut (sinon les tests historiques produiraient des maps vides).
+
+**Pas touché** :
+- `computeHistoricalMapPerfByLabel` (alimente `HistoricalPerformanceAvg` du bullet perf teammates.13) — mêmes considérations s'appliquent en théorie, à aligner dans un commit séparé pour cantonner l'impact visuel.
+
+**Résultats observés** :
+- `go build` / `go vet` OK.
+- `go test ./internal/service/... -run "ComputeHistoricalMap"` → 3/3 verts (incluant nouveau test filtre solo).
+- `go test ./internal/service/...` (full pkg) → vert, pas de régression (tests existants utilisaient `makeCanonicalRowsWithMaps` qui marque maintenant `IsWithFriends: true`).
+
+**Prochaine étape** : redémarrer serveur Go ; vérifier visuellement que le bullet chart et la colonne montrent les mêmes pourcentages pour une même carte (alignement scope confirmé). Considérer un commit suivant pour aligner `computeHistoricalMapPerfByLabel`.
+
+---
+
 ## [2026-05-04] docs: 3 plans architecturaux dans `.ai/` (theme consistency, feedback drawer, DB write concurrency)
 
 **Statut** : Complété (commit unique sur branche `feat/seasons-as-asset-kind`, plans destinés à des branches futures dédiées).

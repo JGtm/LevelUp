@@ -14,6 +14,7 @@ import (
 
 	"fmt"
 
+	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -47,6 +48,7 @@ type ServiceRegistry struct {
 	titleResolver    games.Resolver            // nil → services tournent sans semantic adapter (libellés via fallbacks)
 	homeMatchesCache *service.HomeMatchesCache // cache TTL process-level matches+sessions
 	settingsStore    *settings_platform.Store  // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
+	seasonsCatalog   *service.SeasonsCatalog   // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -109,6 +111,51 @@ func (r *ServiceRegistry) WithTitleResolver(resolver games.Resolver) *ServiceReg
 func (r *ServiceRegistry) WithSettingsStore(store *settings_platform.Store) *ServiceRegistry {
 	r.settingsStore = store
 	return r
+}
+
+// WithSeasonsCatalog attache le résolveur unifié des saisons (V2 saisons :
+// pattern lazy-fetch + persist symétrique au battle pass). Le catalog merge
+// TOML (libellés FR + display_order) et DB (dates fraîches Waypoint), avec
+// fallback live via SeasonProvider quand la DB est vide. Si non câblé →
+// FiltersService.Resolve ne renvoie pas SeasonCounts (frontend tombe en mode
+// "saisons sans counts" sans folding, dégradation gracieuse).
+func (r *ServiceRegistry) WithSeasonsCatalog(catalog *service.SeasonsCatalog) *ServiceRegistry {
+	r.seasonsCatalog = catalog
+	return r
+}
+
+// SeasonsCatalogForHandler retourne un resolver compatible avec
+// handlers.SeasonsCatalogResolver, ou nil si le catalog n'est pas câblé.
+//
+// L'adaptation projette service.SeasonCatalogEntry → handlers.SeasonCatalogEntry
+// (champs minimaux nécessaires au DTO assets). Cette frontière maintient le
+// handler découplé de l'implémentation concrète du catalog (testabilité +
+// pas d'import service côté handlers).
+func (r *ServiceRegistry) SeasonsCatalogForHandler() handlers.SeasonsCatalogResolver {
+	if r.seasonsCatalog == nil {
+		return nil
+	}
+	return &seasonsCatalogHandlerAdapter{inner: r.seasonsCatalog}
+}
+
+type seasonsCatalogHandlerAdapter struct {
+	inner *service.SeasonsCatalog
+}
+
+func (a *seasonsCatalogHandlerAdapter) Load(ctx context.Context, titleID string) []handlers.SeasonCatalogEntry {
+	src := a.inner.Load(ctx, titleID)
+	out := make([]handlers.SeasonCatalogEntry, 0, len(src))
+	for _, e := range src {
+		out = append(out, handlers.SeasonCatalogEntry{
+			ID:           e.ID,
+			Label:        e.Label,
+			Start:        e.Start,
+			End:          e.End,
+			DisplayOrder: e.DisplayOrder,
+			Extra:        e.Extra,
+		})
+	}
+	return out
 }
 
 // semanticFor retourne le SemanticAdapter du titre slug, ou nil si le resolver
@@ -195,18 +242,19 @@ func (r *ServiceRegistry) TitleDataAdapter(ctx context.Context, slug string) (ga
 
 // Filters retourne un FiltersService pour le joueur.
 //
-// Injecte le catalog de saisons projeté depuis l'AssetMappingSet du titre
-// (kind "season" du TOML) pour alimenter les SeasonCounts du folding
-// SaisonPill côté frontend. Si le titre n'a pas de kind "season" → seasons
-// vide → aucun SeasonCount renvoyé (dégradation gracieuse).
+// Injecte le catalog unifié des saisons (TOML + DB live + lazy fetch) pour
+// alimenter les SeasonCounts du folding SaisonPill. Si le catalog n'est
+// pas câblé OU si le titre n'a aucune saison résolue → aucun SeasonCount
+// renvoyé (dégradation gracieuse, le frontend affiche les saisons sans
+// folding).
 func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.FiltersService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
 	svc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
-	if sem := r.semanticFor(slug); sem != nil {
-		svc = svc.WithSeasons(service.SeasonsFromAssets(sem.Assets()))
+	if r.seasonsCatalog != nil {
+		svc = svc.WithSeasonsCatalog(slug, r.seasonsCatalog)
 	}
 	return svc, nil
 }

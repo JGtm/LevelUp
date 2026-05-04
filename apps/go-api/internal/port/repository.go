@@ -690,6 +690,11 @@ type MetadataRepository interface {
 	// GetCurrentSeason retourne la saison courante (last EndDate IS NULL ou MAX(StartDate)).
 	GetCurrentSeason(ctx context.Context, titleID string) (*domain.SeasonCalendar, error)
 
+	// ListSeasons retourne toutes les saisons connues pour un titre, triées
+	// par StartDate ASC. Utilisé par SeasonsCatalog pour la fusion TOML+DB
+	// (V2 saisons : pattern lazy-fetch + persist symétrique au battle pass).
+	ListSeasons(ctx context.Context, titleID string) ([]domain.SeasonCalendar, error)
+
 	// GetCSRSeasons retourne toutes les saisons CSR triées par StartDate DESC.
 	GetCSRSeasons(ctx context.Context, titleID string) ([]domain.CSRSeasonCalendar, error)
 
@@ -707,6 +712,17 @@ type MetadataRepository interface {
 
 	// GetSnapshot retourne le dernier snapshot d'une ressource.
 	GetSnapshot(ctx context.Context, titleID, resourceKey string) (*domain.WaypointResourceSnapshot, error)
+}
+
+// SeasonProvider fournit le calendrier des saisons depuis une source externe
+// (Waypoint pour Halo Infinite). Implémenté par platform/halo.HaloProvider.
+//
+// Le contrat : retourne la liste des saisons + le payload brut (pour archive
+// snapshot via UpsertSnapshot) + erreur. Les tokens d'auth sont lus depuis
+// le contexte (cf. ctxkeys.HaloTokens) — pas dans la signature pour rester
+// title-agnostic.
+type SeasonProvider interface {
+	FetchSeasonCalendar(ctx context.Context, titleID string) ([]domain.SeasonCalendar, []byte, error)
 }
 
 // CompareRepository fournit les stats normalisées d'un joueur local depuis DuckDB.
@@ -737,6 +753,9 @@ var (
 type noopMetadataRepo struct{}
 
 func (n *noopMetadataRepo) GetCurrentSeason(_ context.Context, _ string) (*domain.SeasonCalendar, error) {
+	return nil, nil
+}
+func (n *noopMetadataRepo) ListSeasons(_ context.Context, _ string) ([]domain.SeasonCalendar, error) {
 	return nil, nil
 }
 func (n *noopMetadataRepo) GetCSRSeasons(_ context.Context, _ string) ([]domain.CSRSeasonCalendar, error) {
