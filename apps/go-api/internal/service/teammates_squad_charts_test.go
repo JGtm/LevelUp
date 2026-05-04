@@ -570,51 +570,69 @@ func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {
 	}
 }
 
-// ---------- synergySurvivalComposite (formule alignée Python) ----------
+// ---------- synergyOffensiveConversion / synergyDefensiveResistance ----------
 
-func TestSynergySurvivalComposite_ZeroTime(t *testing.T) {
-	if v := synergySurvivalComposite(0, 0); v != 0 {
-		t.Errorf("0 time → want 0, got %v", v)
+func TestSynergyOffensiveConversion_ZeroDamage(t *testing.T) {
+	if v := synergyOffensiveConversion(10, 5, 0); v != 0 {
+		t.Errorf("zero damage → want 0, got %v", v)
 	}
 }
 
-func TestSynergySurvivalComposite_NoDeaths(t *testing.T) {
-	// 0 morts sur 600s → dpm=0, avgLife=600 → 0.5*(1-0) + 0.5*(600/90) ≫ 1 → clamped=1
-	v := synergySurvivalComposite(600, 0)
-	if v != 1.0 {
-		t.Errorf("no deaths, 600s → want 1.0 (clamped), got %v", v)
+func TestSynergyOffensiveConversion_TypicalMatch(t *testing.T) {
+	// 225 × (10 + 5/3) / 2500 ≈ 1.05
+	high := synergyOffensiveConversion(10, 5, 2500)
+	low := synergyOffensiveConversion(3, 1, 2500)
+	if high <= 0 {
+		t.Errorf("typical OC: want > 0, got %v", high)
+	}
+	if high <= low {
+		t.Errorf("more kills → higher OC: high=%v should > low=%v", high, low)
 	}
 }
 
-func TestSynergySurvivalComposite_TooManyDeaths(t *testing.T) {
-	// 60 morts sur 60s → dpm=60/min → résultat très négatif → clamped=0
-	v := synergySurvivalComposite(60, 60)
-	if v != 0 {
-		t.Errorf("60 deaths in 60s → want 0 (clamped), got %v", v)
+func TestSynergyDefensiveResistance_ZeroBoth(t *testing.T) {
+	if v := synergyDefensiveResistance(0, 0); v != 0 {
+		t.Errorf("zero both → want 0, got %v", v)
 	}
 }
 
-func TestSynergySurvivalComposite_TypicalMatch(t *testing.T) {
-	// 3 morts sur 600s → dpm=0.3/min, avgLife=200s → composite > 0.5
-	v := synergySurvivalComposite(600, 3)
-	if v <= 0.5 || v > 1.0 {
-		t.Errorf("typical match survival: want > 0.5 and <= 1.0, got %v", v)
+func TestSynergyDefensiveResistance_ZeroDeaths(t *testing.T) {
+	// 0 mort avec damage pris → score parfait (au-delà du P80)
+	v := synergyDefensiveResistance(1000, 0)
+	if v <= 0 {
+		t.Errorf("zero deaths + damage → want > 0 (parfait), got %v", v)
 	}
 }
 
-// ---------- Radar synergie — formule Impact (taux pts/min) ----------
+func TestSynergyDefensiveResistance_TypicalMatch(t *testing.T) {
+	// 1000 DT / (225 × 4) ≈ 1.11
+	v := synergyDefensiveResistance(1000, 4)
+	if v <= 0.5 || v > 3.0 {
+		t.Errorf("typical DR: want in (0.5, 3.0], got %v", v)
+	}
+}
 
-// TestBuildSquadSynergyRadar_ImpactIsRateNotKillingSpree vérifie que l'axe
-// impact est calculé comme PersonalScore/minute et non sum(MaxKillingSpree).
-// Un joueur avec plus de pts/min doit avoir un impact Raw plus élevé.
-func TestBuildSquadSynergyRadar_ImpactIsRateNotKillingSpree(t *testing.T) {
+// ---------- Radar synergie — axe Impact (rendement offensif) ----------
+
+// rowWithDamage construit une PlayerMatchRow avec PersonalScore, DamageDealt et DamageTaken.
+func rowWithDamage(matchID string, ts time.Time, kills, deaths, assists, timePlayed, personalScore, damageDealt, damageTaken int) canonical.PlayerMatchRow {
+	r := rowWithPersonalScore(matchID, ts, kills, deaths, assists, timePlayed, personalScore)
+	dd, dt := damageDealt, damageTaken
+	r.Self.DamageDealt = &dd
+	r.Self.DamageTaken = &dt
+	return r
+}
+
+// TestBuildSquadSynergyRadar_ImpactIsOffensiveConversion vérifie que l'axe impact
+// est calculé comme rendement offensif 225×(K+A/3)/DD et non comme pts/min.
+func TestBuildSquadSynergyRadar_ImpactIsOffensiveConversion(t *testing.T) {
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
-	// main : 3000 pts sur 600s → 5 pts/s = 300 pts/min
-	// friend1 : 1200 pts sur 600s → 2 pts/s = 120 pts/min
+	// main : 10K, 5A, DD=2500 → OC = 225*(10+5/3)/2500 ≈ 1.05
+	// friend1 : 3K, 1A, DD=3000 → OC = 225*(3+1/3)/3000 ≈ 0.25
 	loader := &fakeSquadLoader{
 		rowsByGT: map[string][]canonical.PlayerMatchRow{
-			"main":    {rowWithPersonalScore("m1", t0, 10, 3, 5, 600, 3000)},
-			"friend1": {rowWithPersonalScore("m1", t0, 5, 3, 3, 600, 1200)},
+			"main":    {rowWithDamage("m1", t0, 10, 3, 5, 600, 3000, 2500, 1000)},
+			"friend1": {rowWithDamage("m1", t0, 3, 3, 1, 600, 1500, 3000, 1500)},
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
@@ -639,11 +657,51 @@ func TestBuildSquadSynergyRadar_ImpactIsRateNotKillingSpree(t *testing.T) {
 	mainImpact := axisRaw(byPlayer["main"], "impact")
 	f1Impact := axisRaw(byPlayer["friend1"], "impact")
 	if mainImpact <= 0 {
-		t.Errorf("main impact raw devrait être > 0 (pts/min), got %v", mainImpact)
+		t.Errorf("main impact devrait être > 0 (OC > 0), got %v", mainImpact)
 	}
 	if mainImpact <= f1Impact {
-		t.Errorf("main (300 pts/min) devrait avoir impact > friend1 (120 pts/min): main=%v f1=%v",
-			mainImpact, f1Impact)
+		t.Errorf("main OC supérieur → impact devrait être > friend1: main=%v f1=%v", mainImpact, f1Impact)
+	}
+}
+
+// TestBuildSquadSynergyRadar_SurvivalIsDefensiveResistance vérifie que l'axe survival
+// est calculé comme résistance défensive ΣDT/(225×ΣD).
+func TestBuildSquadSynergyRadar_SurvivalIsDefensiveResistance(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	// main : DT=2000, 5 deaths → DR = 2000/(225×5) ≈ 1.78 (haut)
+	// friend1 : DT=3000, 10 deaths → DR = 3000/(225×10) ≈ 1.33 (bas)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithDamage("m1", t0, 8, 5, 3, 600, 2500, 2000, 2000)},
+			"friend1": {rowWithDamage("m1", t0, 6, 10, 4, 600, 2000, 2500, 3000)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 8, Deaths: 5}}
+
+	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series, got %d", len(got))
+	}
+	axisRaw := func(s domain.SquadSynergyRadarSeries, axis string) float64 {
+		for _, a := range s.Axes {
+			if a.Axis == axis {
+				return a.Raw
+			}
+		}
+		return -1
+	}
+	byPlayer := map[string]domain.SquadSynergyRadarSeries{}
+	for _, s := range got {
+		byPlayer[s.Player] = s
+	}
+	mainSurvival := axisRaw(byPlayer["main"], "survival")
+	f1Survival := axisRaw(byPlayer["friend1"], "survival")
+	if mainSurvival <= 0 {
+		t.Errorf("main survival devrait être > 0 (DR > 0), got %v", mainSurvival)
+	}
+	if mainSurvival <= f1Survival {
+		t.Errorf("main DR supérieur → survival devrait être > friend1: main=%v f1=%v", mainSurvival, f1Survival)
 	}
 }
 

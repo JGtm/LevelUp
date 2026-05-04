@@ -1046,51 +1046,51 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 // ---------------------------------------------------------------------------
 
 // synergyRadarThresholds retourne les seuils du radar scalés par nShared.
-// Les seuils absolus (combat/support/score/objective) sont proportionnels au
-// nombre de matchs partagés. Impact est un taux (pts/min) → seuil fixe.
+// Les axes absolus (combat/support/score/objective) sont proportionnels au
+// nombre de matchs partagés. Impact et Survival sont des ratios agrégés →
+// seuil fixe au P80 observé (indépendant du nombre de matchs).
 func synergyRadarThresholds(nShared int) narrative.ParticipationThresholds {
 	n := float64(nShared)
 	return narrative.ParticipationThresholds{
-		Combat:    25.0 * n,   // ~25 kills+équiv par match
-		Survival:  1.0,        // composite 0..1, seuil fixe
-		Support:   8.0 * n,    // ~8 assists par match
-		Score:     4000.0 * n, // ~4000 personal score par match
-		Objective: 350.0 * n,  // ~350 pts objectif par match (CTF/KotH)
-		Impact:    250.0,      // pts/min — indépendant de nShared
+		Combat:    25.0 * n,                        // (kills+HS/2+PK/2)×précision, ~25/match
+		Survival:  analysis.DefensiveResistanceP80, // résistance défensive agrégée, P80 = 1.59
+		Support:   300.0 * n,                       // assists × 50, ~6 assists/match
+		Score:     400.0 * n,                       // résiduel medals/streaks, ~400/match
+		Objective: 350.0 * n,                       // PSA objectif, ~350/match
+		Impact:    analysis.OffensiveConversionP80, // rendement offensif agrégé, P80 = 0.83
 	}
 }
 
-// synergySurvivalComposite calcule le score de survie composite (aligné Python).
-// Formule : 0.5*(1 - dpm/2.0) + 0.5*(avgLife/90), borné à [0, 1].
-func synergySurvivalComposite(totalTimeSec, totalDeaths int) float64 {
-	if totalTimeSec == 0 {
+// synergyOffensiveConversion calcule le rendement offensif agrégé sur l'ensemble
+// des matchs : 225 × (ΣK + ΣA/3) / ΣDD. Retourne 0 si aucun dégât infligé.
+func synergyOffensiveConversion(totalKills, totalAssists int, totalDamageDlt float64) float64 {
+	if totalDamageDlt <= 0 {
 		return 0
 	}
-	totalMin := float64(totalTimeSec) / 60.0
-	dpm := float64(totalDeaths) / totalMin
-	avgLife := float64(totalTimeSec)
-	if totalDeaths > 0 {
-		avgLife = float64(totalTimeSec) / float64(totalDeaths)
-	}
-	v := 0.5*(1.0-dpm/2.0) + 0.5*(avgLife/90.0)
-	if v < 0 {
-		return 0
-	}
-	if v > 1 {
-		return 1
-	}
-	return v
+	return 225.0 * (float64(totalKills) + float64(totalAssists)/3.0) / totalDamageDlt
 }
 
-// synergyMainFallbackAxes calcule les axes combat/support/survival depuis
-// SquadMatchRow (fallback quand squadLoader est absent — pas de PersonalScore).
+// synergyDefensiveResistance calcule la résistance défensive agrégée :
+// ΣDT / (225 × ΣD). Zéro mort avec damage positif → score parfait (au-delà du P80).
+func synergyDefensiveResistance(totalDamageTkn float64, totalDeaths int) float64 {
+	if totalDeaths == 0 {
+		if totalDamageTkn > 0 {
+			return analysis.DefensiveResistanceP80 * analysis.CombatYieldClipFactor
+		}
+		return 0
+	}
+	return totalDamageTkn / (225.0 * float64(totalDeaths))
+}
+
+// synergyMainFallbackAxes calcule combat et support depuis SquadMatchRow
+// (fallback quand squadLoader est absent). Impact et Survival restent à 0
+// car damage_dealt/damage_taken ne sont pas dans SquadMatchRow.
 func synergyMainFallbackAxes(
 	allSquadRows []domain.SquadMatchRow,
 	sharedMatches map[string]struct{},
 ) map[narrative.ParticipationAxis]float64 {
 	seen := make(map[string]struct{})
 	raw := map[narrative.ParticipationAxis]float64{}
-	var totalDeaths, totalTimeSec int
 	for _, m := range allSquadRows {
 		if _, ok := sharedMatches[m.MatchID]; !ok {
 			continue
@@ -1099,19 +1099,26 @@ func synergyMainFallbackAxes(
 			continue
 		}
 		seen[m.MatchID] = struct{}{}
-		raw[narrative.AxisCombat] += float64(m.Kills) + 0.5*float64(m.HeadshotKills)
-		raw[narrative.AxisSupport] += float64(m.Assists)
-		totalDeaths += m.Deaths
-		totalTimeSec += m.TimePlayedSecs
+		acc := 0.0
+		if m.Accuracy != nil {
+			acc = *m.Accuracy
+		}
+		combat := (float64(m.Kills) + 0.5*float64(m.HeadshotKills) + 0.5*float64(m.PerfectKills)) *
+			(1.0 + acc*0.4)
+		raw[narrative.AxisCombat] += combat
+		raw[narrative.AxisSupport] += float64(m.Assists) * 50.0
 	}
-	raw[narrative.AxisSurvival] = synergySurvivalComposite(totalTimeSec, totalDeaths)
 	return raw
 }
 
-// loadSynergyMateAxes charge les 6 axes radar depuis canonical.PlayerMatchRow
-// pour un gamertag donné, restreint aux matchs partagés. Objective est chargé
-// via PSA (dégradation silencieuse si absent). Retourne map vide si le
-// squadLoader est absent ou si le chargement échoue.
+// loadSynergyMateAxes charge les 6 axes radar depuis canonical.PlayerMatchRow pour
+// un gamertag, restreint aux matchs partagés. Formules :
+//   - Combat  : (kills + HS/2 + PK/2) × (1 + accuracy × 0.4), somme sur les matchs
+//   - Survival : résistance défensive agrégée ΣDT / (225 × ΣD)
+//   - Support  : assists × 50, somme sur les matchs
+//   - Score    : résiduel PS après kills×100 + assists×50 + objectif (medals/streaks)
+//   - Objective: PSA catégorie "objective" via LoadObjectiveScores
+//   - Impact   : rendement offensif agrégé 225×(ΣK+ΣA/3)/ΣDD
 func (s *TeammatesService) loadSynergyMateAxes(
 	ctx context.Context,
 	gt string,
@@ -1128,41 +1135,52 @@ func (s *TeammatesService) loadSynergyMateAxes(
 		return raw
 	}
 
-	var totalDeaths, totalTimeSec int
-	var totalPS float64
+	var totalKills, totalAssists, totalDeaths int
+	var totalDamageDlt, totalDamageTkn, totalPS float64
 	for _, r := range rows {
 		if _, ok := sharedMatches[r.Summary.MatchID]; !ok {
 			continue
 		}
 		k := intPtrOrZero(r.Self.Kills)
 		hs := intPtrOrZero(r.Self.HeadshotKills)
+		pk := intPtrOrZero(r.Self.PerfectKills)
 		a := intPtrOrZero(r.Self.Assists)
+		acc := 0.0
+		if r.Self.Accuracy != nil {
+			acc = *r.Self.Accuracy
+		}
 		ps := intPtrOrZero(r.Self.PersonalScore)
 		if ps == 0 {
 			ps = intPtrOrZero(r.Self.Score)
 		}
-		raw[narrative.AxisCombat] += float64(k) + 0.5*float64(hs)
-		raw[narrative.AxisSupport] += float64(a)
-		totalPS += float64(ps)
+		raw[narrative.AxisCombat] += (float64(k) + 0.5*float64(hs) + 0.5*float64(pk)) * (1.0 + acc*0.4)
+		raw[narrative.AxisSupport] += float64(a) * 50.0
+		totalKills += k
+		totalAssists += a
 		totalDeaths += intPtrOrZero(r.Self.Deaths)
-		totalTimeSec += intPtrOrZero(r.Self.TimePlayed)
+		totalDamageDlt += float64(intPtrOrZero(r.Self.DamageDealt))
+		totalDamageTkn += float64(intPtrOrZero(r.Self.DamageTaken))
+		totalPS += float64(ps)
 	}
 
-	totalMin := float64(totalTimeSec) / 60.0
-	raw[narrative.AxisSurvival] = synergySurvivalComposite(totalTimeSec, totalDeaths)
-	raw[narrative.AxisScore] = totalPS
-	if totalMin > 0 {
-		raw[narrative.AxisImpact] = totalPS / totalMin
-	}
+	raw[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDamageDlt)
+	raw[narrative.AxisSurvival] = synergyDefensiveResistance(totalDamageTkn, totalDeaths)
 
-	// Objective : PSA catégorie "objective" — dégradation silencieuse si absent.
+	// Objective via PSA — dégradation silencieuse si absent.
+	var objTotal float64
 	if objScores, err := s.squadLoader.LoadObjectiveScores(ctx, s.titleSlug, gt, sharedMatchIDs); err == nil {
-		var total float64
 		for _, v := range objScores {
-			total += float64(v)
+			objTotal += float64(v)
 		}
-		raw[narrative.AxisObjective] = total
+		raw[narrative.AxisObjective] = objTotal
 	}
+
+	// Score : résiduel après kills×100 + assists×50 + objectif (= medals/streaks).
+	residual := totalPS - float64(totalKills)*100.0 - float64(totalAssists)*50.0 - objTotal
+	if residual < 0 {
+		residual = 0
+	}
+	raw[narrative.AxisScore] = residual
 	return raw
 }
 

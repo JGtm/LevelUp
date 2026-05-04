@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-05-04] fix(squad/radar): redesign 6 axes synergie — rendement offensif + résistance défensive
+
+**Statut** : Complété.
+
+**Contexte** : Les axes Impact et Survival du radar synergie escouade utilisaient des formules non alignées avec celles de la home page (Impact = pts/min, Survival = composite dpm/avgLife). Le calcul du rendement offensif et de la résistance défensive était déjà implémenté dans `analysis/combat_yield.go` (P80 observés sur données réelles). L'axe Score était le PersonalScore brut sans déduction des frags/assists/objectifs, masquant la contribution medals/streaks.
+
+**Décisions techniques** :
+
+1. **Impact → rendement offensif agrégé** : `225 × (ΣK + ΣA/3) / ΣDD`, seuil P80 = 0.83 (ratio, non scalé par nShared). Aligné avec `ComputeCombatYield.OffensiveConversion`.
+
+2. **Survival → résistance défensive agrégée** : `ΣDT / (225 × ΣD)`, seuil P80 = 1.59 (ratio, non scalé). Aligné avec `ComputeCombatYield.DefensiveResistance`. Zéro mort + damage > 0 → score parfait (P80 × CombatYieldClipFactor).
+
+3. **Combat → boost précision** : `(kills + HS/2 + PK/2) × (1 + accuracy × 0.4)`. Récompense les tirs à la tête et les frags parfaits, avec multiplicateur précision.
+
+4. **Support → assists × 50** : approximation de la contribution PSA assists (chaque assist vaut 50 pts de PersonalScore). Seuil 300 × nShared (~6 assists/match).
+
+5. **Score → résiduel medals/streaks** : `PS - kills×100 - assists×50 - objective_pts`, clamped à 0. Isole la contribution medals/streaks/autres du reste.
+
+6. **Objective** : inchangé (PSA catégorie "objective" via LoadObjectiveScores).
+
+7. **Fallback sans squadLoader** : `synergyMainFallbackAxes` calcule Combat (avec multiplier précision) et Support depuis SquadMatchRow. Impact et Survival restent à 0 (damage_dealt/taken absent de SquadMatchRow).
+
+8. **Suppression de `synergySurvivalComposite`** : remplacé par `synergyOffensiveConversion` et `synergyDefensiveResistance`, helpers purs testables.
+
+**Résultats observés** :
+
+- `go test ./...` : tous les packages en vert
+- 9 tests nouveaux/mis à jour (3 helpers OC/DR + 2 radar intégration + 4 tests survivalComposite supprimés)
+- Build et vet propres
+
+**Prochaine étape** : UX — tooltip informatif (ℹ️) à côté du titre du radar synergie, avec description courte des 6 axes et lien vers le glossaire (pattern "Faits marquants" de la home).
+
 ## [2026-05-04] feat(achievements): section horizontale Carrière + Xbox bilingue (backend + frontend + CLI backfill)
 
 **Statut** : Complété (en attente de commit).
