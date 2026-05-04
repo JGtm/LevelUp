@@ -82,10 +82,6 @@ func TestBuildSquadSessionTimeline_PerfNilLeavesZero(t *testing.T) {
 
 // ---------- buildSquadPerMinuteStats helpers (teammates.14) ----------
 
-// Note: buildSquadPerMinuteStats lui-même requiert un PlayerMatchesRepository
-// (cgo+gcc indispo localement). On teste ici les sous-helpers numériques via
-// SquadPerMinuteEntry direct.
-
 func TestPerMinuteEntry_RoundingAndMatchCount(t *testing.T) {
 	// Sanity check : un agrégat 60s × 1 kill ⇒ 1.0 kpm.
 	// On vérifie ici uniquement la propriété domain.
@@ -98,6 +94,213 @@ func TestPerMinuteEntry_RoundingAndMatchCount(t *testing.T) {
 	}
 	if e.Player != "Me" || e.MatchCount != 8 {
 		t.Errorf("unexpected entry shape: %+v", e)
+	}
+}
+
+// TestBuildSquadPerMinuteStats_DistinctValuesPerTeammate cadenasse le bug
+// bound-to-main : sans squadLoader.LoadFor (résolution per-gamertag), les rows
+// teammate étaient en réalité celles du main → toutes les barres affichaient
+// la même valeur kpm/dpm/apm pour tout le squad.
+func TestBuildSquadPerMinuteStats_DistinctValuesPerTeammate(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	// Main : 10/5/2 sur m1 (600s), agrégé depuis allSquadRows.
+	// Teammate friend1 : 4/8/6 sur m1 (600s).
+	// Teammate friend2 : 1/3/15 sur m1 (600s).
+	mainRows := []canonical.PlayerMatchRow{
+		rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80),
+	}
+	f1Rows := []canonical.PlayerMatchRow{
+		rowWithStatsXUID("xuid-f1", "m1", t0, canonical.OutcomeWin, 4, 8, 6, 600, 40, 50),
+	}
+	f2Rows := []canonical.PlayerMatchRow{
+		rowWithStatsXUID("xuid-f2", "m1", t0, canonical.OutcomeWin, 1, 3, 15, 600, 35, 45),
+	}
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    mainRows,
+			"friend1": f1Rows,
+			"friend2": f2Rows,
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5, Assists: 2, TimePlayedSecs: 600},
+	}
+	got := svc.buildSquadPerMinuteStats(
+		context.Background(),
+		allSquadRows,
+		"main",
+		[]string{"friend1", "friend2"},
+		nil,
+	)
+	if len(got) != 3 {
+		t.Fatalf("want 3 entries (main + 2 friends), got %d", len(got))
+	}
+	byPlayer := make(map[string]domain.SquadPerMinuteEntry, len(got))
+	for _, e := range got {
+		byPlayer[e.Player] = e
+	}
+	main := byPlayer["main"]
+	f1 := byPlayer["friend1"]
+	f2 := byPlayer["friend2"]
+	// 600s = 10 minutes : kpm = kills / 10.
+	wantKPM := map[string]float64{"main": 1.0, "friend1": 0.4, "friend2": 0.1}
+	for gt, want := range wantKPM {
+		if got := byPlayer[gt].KillsPerMinute; got != want {
+			t.Errorf("%s: KillsPerMinute want %.2f, got %.2f", gt, want, got)
+		}
+	}
+	// Bug cadenassé : les 3 valeurs doivent être distinctes (sinon : rows teammate
+	// = rows main → mêmes barres pour tout le squad).
+	if main.KillsPerMinute == f1.KillsPerMinute || main.KillsPerMinute == f2.KillsPerMinute {
+		t.Errorf("teammates ont la même kpm que le main (%.2f) → bug bound-to-main",
+			main.KillsPerMinute)
+	}
+	if f1.AssistsPerMinute == f2.AssistsPerMinute {
+		t.Errorf("friend1 et friend2 ont la même apm (%.2f) → bug bound-to-main",
+			f1.AssistsPerMinute)
+	}
+}
+
+// TestBuildSquadPerMinuteStats_NoSquadLoader_TeammatesEmpty verifie que sans
+// squadLoader, les coequipiers ressortent avec une entry vide (pas de panic,
+// pas de fallback bound-to-main).
+func TestBuildSquadPerMinuteStats_NoSquadLoader_TeammatesEmpty(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"} // squadLoader == nil
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5, Assists: 2, TimePlayedSecs: 600},
+	}
+	got := svc.buildSquadPerMinuteStats(
+		context.Background(),
+		allSquadRows,
+		"main",
+		[]string{"friend1"},
+		nil,
+	)
+	if len(got) != 2 {
+		t.Fatalf("want 2 entries (main + friend1 placeholder), got %d", len(got))
+	}
+	for _, e := range got {
+		if e.Player == "friend1" && (e.KillsPerMinute != 0 || e.MatchCount != 0) {
+			t.Errorf("friend1 sans squadLoader : entry doit être vide, got %+v", e)
+		}
+	}
+}
+
+// ---------- buildSquadPerformanceSeries (teammates.XX) ----------
+
+// TestBuildSquadPerformanceSeries_DistinctPointsPerPlayer cadenasse le bug
+// bound-to-main : la série de chaque coéquipier affichait les stats du main
+// (kills/deaths/assists identiques) car playerMatchesRepo ignorait l'arg gt.
+func TestBuildSquadPerformanceSeries_DistinctPointsPerPlayer(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 10, 5, 2, 600, 50, 80)},
+			"friend1": {rowWithStatsXUID("xuid-f1", "m1", t0, canonical.OutcomeWin, 3, 9, 7, 600, 35, 40)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Kills: 10, Deaths: 5},
+		{MatchID: "m1", StartTime: t0, Kills: 3, Deaths: 9},
+	}
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series (main + friend1), got %d", len(got))
+	}
+	mainSeries := got["main"]
+	f1Series := got["friend1"]
+	if len(mainSeries) == 0 || len(f1Series) == 0 {
+		t.Fatalf("both series must be non-empty: main=%d friend1=%d", len(mainSeries), len(f1Series))
+	}
+	if mainSeries[0].Kills == f1Series[0].Kills {
+		t.Errorf("kills identiques (main=%d friend1=%d) → bug bound-to-main",
+			mainSeries[0].Kills, f1Series[0].Kills)
+	}
+}
+
+// TestBuildSquadPerformanceSeries_NoSquadLoader_EmptyResult verifie que sans
+// squadLoader, la fonction retourne nil sans panic (loadFor skips all gamertags).
+func TestBuildSquadPerformanceSeries_NoSquadLoader_EmptyResult(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"}
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0},
+		{MatchID: "m1", StartTime: t0},
+	}
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1"})
+	if got != nil {
+		t.Errorf("sans squadLoader : want nil, got %d entries", len(got))
+	}
+}
+
+// ---------- buildSquadSynergyRadar (teammates.11) ----------
+
+// TestBuildSquadSynergyRadar_DistinctAxesPerPlayer cadenasse le bug bound-to-main :
+// combat/survival/support affichaient les mêmes valeurs pour tout le squad car
+// makeMateRaw chargeait les rows du main pour chaque gamertag.
+func TestBuildSquadSynergyRadar_DistinctAxesPerPlayer(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	// Main : 20 kills (combat élevé), friend1 : 2 kills (combat bas).
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithStatsXUID("xuid-main", "m1", t0, canonical.OutcomeWin, 20, 3, 5, 600, 60, 80)},
+			"friend1": {rowWithStatsXUID("xuid-f1", "m1", t0, canonical.OutcomeWin, 2, 3, 15, 600, 35, 40)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	// 1 match présent 1 fois >= len(selectedGamertags)=1 → sharedMatches ok.
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0, Kills: 20, Deaths: 3, Assists: 5, TimePlayedSecs: 600},
+	}
+	got := svc.buildSquadSynergyRadar(context.Background(), allSquadRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series (main + friend1), got %d", len(got))
+	}
+	byPlayer := make(map[string]domain.SquadSynergyRadarSeries, 2)
+	for _, s := range got {
+		byPlayer[s.Player] = s
+	}
+	axisVal := func(s domain.SquadSynergyRadarSeries, axis string) float64 {
+		for _, a := range s.Axes {
+			if a.Axis == axis {
+				return a.Raw
+			}
+		}
+		return 0
+	}
+	mainCombat := axisVal(byPlayer["main"], "combat")
+	f1Combat := axisVal(byPlayer["friend1"], "combat")
+	if mainCombat == f1Combat {
+		t.Errorf("axis combat identique (%.2f) pour main et friend1 → bug bound-to-main", mainCombat)
+	}
+	// Main a largement plus de kills → combat plus élevé.
+	if mainCombat <= f1Combat {
+		t.Errorf("main combat (%.2f) devrait être > friend1 (%.2f)", mainCombat, f1Combat)
+	}
+}
+
+// ---------- buildSquadIntensityProfile xuid resolution ----------
+
+// TestBuildSquadIntensityProfile_NoSquadLoader_NoPanic verifie que sans squadLoader
+// la résolution xuid ne tente pas d'appeler playerMatchesRepo (nil → pas de panic),
+// et la section est soit nil (événements absent) soit présente sans crash.
+func TestBuildSquadIntensityProfile_NoSquadLoader_NoPanic(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	repo := &mockSquadRepo{impactRows: nil}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
+	allSquadRows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: t0},
+		{MatchID: "m2", StartTime: t0.Add(time.Hour)},
+		{MatchID: "m3", StartTime: t0.Add(2 * time.Hour)},
+	}
+	// Pas de panic attendu — retourne nil car pas d'events.
+	got := svc.buildSquadIntensityProfile(context.Background(), allSquadRows, "main", []string{"friend1"}, "all")
+	if got != nil {
+		t.Errorf("sans events : want nil, got profile avec %d options", len(got.Options))
 	}
 }
 
