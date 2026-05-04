@@ -6,8 +6,9 @@
  * En mode setup_required, redirige vers /setup.
  */
 
-import { createRootRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import { createRootRouteWithContext, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import type { RouterContext } from '@/app/router'
 import { useEffect } from 'react'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
@@ -106,6 +107,6 @@ function RootLayout() {
   return <AppShell />
 }
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,
 })
