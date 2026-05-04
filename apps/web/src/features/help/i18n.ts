@@ -30,6 +30,12 @@ export interface HelpText {
   }
   glossary: {
     title: string
+    search: {
+      placeholder: string
+      sectionsLabel: string
+      emptyTitle: string
+      emptyDescription: string
+    }
     sections: GlossarySection[]
   }
 }
@@ -50,6 +56,13 @@ const FR_TEXT: HelpText = {
   },
   glossary: {
     title: 'Glossaire & Concepts',
+    search: {
+      placeholder: 'Rechercher un terme ou une définition…',
+      sectionsLabel: 'Sections du glossaire',
+      emptyTitle: 'Aucun résultat',
+      emptyDescription:
+        'Aucun terme ne correspond à votre recherche. Essayez une autre formulation.',
+    },
     sections: [
       {
         title: 'Métriques de performance',
@@ -124,6 +137,51 @@ const FR_TEXT: HelpText = {
               'match_intensity = total_events_lobby / N_humains_lobby / durée_minutes\n\nStockée au niveau du match (1 valeur par match, ne change jamais après ingestion).',
             example:
               "Match Slayer 11:30, 8 humains au lobby, 95 events highlight (kills + deaths + assists + medals). Intensité = 95 / 8 / 11.5 = 1.03 events/min/joueur côté lobby per_player.\n\nUn match avec 14 events/min/joueur correspond à un cas chaotique (P88 vs votre historique). Un match à 6 events/min/joueur est à l'inverse calme/tactique.",
+          },
+        ],
+      },
+      {
+        title: 'Profil de participation',
+        entries: [
+          {
+            term: 'Impact',
+            definition:
+              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient 225 correspond aux points de vie totaux d\'un Spartan (90 base + 135 bouclier). Au-dessus de 0,83 (P80) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
+            formula: 'Impact = 225 × (frags + assists/3) / dégâts infligés\nP80 de référence (données réelles) : 0,83',
+            example: '10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96 : au-dessus du P80.',
+          },
+          {
+            term: 'Combat',
+            definition:
+              'Efficacité de combat sur les matchs partagés : récompense les frags de qualité (tirs à la tête, frags parfaits) et la précision du joueur. Les tirs à la tête et frags parfaits valent chacun la moitié d\'un frag normal, puis l\'ensemble est multiplié par un facteur de précision.',
+            formula: 'Combat = (frags + ½ tirs à la tête + ½ frags parfaits) × (1 + précision × 0,4)',
+            example: '8 frags, 4 HS, 1 FK, précision 0,45 → (8 + 2 + 0,5) × 1,18 ≈ 12,4.',
+          },
+          {
+            term: 'Survie',
+            definition:
+              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même postulat que l\'Impact : un Spartan possède 225 points de vie. Au-dessus de 1,59 (P80) : vous survivez aux échanges bien au-delà d\'une vie complète. En dessous de 1,0 : vous mourez tôt dans les engagements.',
+            formula: 'Survie = dégâts reçus / (225 × morts)\nP80 de référence (données réelles) : 1,59',
+            example: '5 morts, 1 800 dégâts reçus → 1 800 / 1 125 ≈ 1,60 : légèrement au-dessus du P80.',
+          },
+          {
+            term: 'Support',
+            definition:
+              'Contribution aux assistances sur les matchs partagés. Chaque assistance est pondérée par 50 — même poids que Halo attribue aux assists dans le score personnel — ce qui permet de comparer la contribution Support à la contribution en frags sur une échelle commune.',
+            formula: 'Support = assists × 50',
+            example: '12 assists → Support = 600.',
+          },
+          {
+            term: 'Score',
+            definition:
+              'Score personnel résiduel après déduction de la contribution directe en frags et assists. Capture la valeur ajoutée via les médailles, les streaks et les actions de mode de jeu (défenses de point, captures bonus, etc.) qui ne sont pas comptabilisées dans les autres axes.',
+            formula: 'Score = score personnel − (frags × 100) − (assists × 50) − score objectif, ≥ 0',
+            example: 'Score personnel 2 400, 8 frags, 4 assists, 200 pts objectif → 2 400 − 800 − 200 − 200 = 1 200.',
+          },
+          {
+            term: 'Objectif',
+            definition:
+              'Points de score issus des actions d\'objectif (PersonalScoreAwards) : captures de drapeau, défenses de zone, activations de plots, contributions en mode Oddball, etc. Distingue les joueurs qui jouent l\'objectif de ceux qui se concentrent uniquement sur les frags.',
           },
         ],
       },
@@ -298,6 +356,13 @@ const EN_TEXT: HelpText = {
   },
   glossary: {
     title: 'Glossary & Concepts',
+    search: {
+      placeholder: 'Search a term or a definition…',
+      sectionsLabel: 'Glossary sections',
+      emptyTitle: 'No results',
+      emptyDescription:
+        'No term matches your search. Try a different wording.',
+    },
     sections: [
       {
         title: 'Performance Metrics',
@@ -345,6 +410,51 @@ const EN_TEXT: HelpText = {
             formula: 'KDA = (kills + assists) / max(1, deaths)',
             example:
               '15 kills, 4 assists, 6 deaths → KDA = 19/6 ≈ 3.17\n0 kills, 0 assists, 0 deaths → KDA = 0/1 = 0 (floor at 1 death)',
+          },
+        ],
+      },
+      {
+        title: 'Participation Profile',
+        entries: [
+          {
+            term: 'Impact',
+            definition:
+              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The 225 coefficient represents total Spartan health (90 base HP + 135 shields). Above 0.83 (P80): efficient conversion. Below: wasted damage or unconverted assists.',
+            formula: 'Impact = 225 × (kills + assists/3) / damage dealt\nReference P80 (real data): 0.83',
+            example: '10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96: above P80.',
+          },
+          {
+            term: 'Combat',
+            definition:
+              'Combat effectiveness on shared matches: rewards high-quality kills (headshots, perfect kills) and aiming accuracy. Headshots and perfect kills each count as half a kill, then the total is multiplied by an accuracy factor.',
+            formula: 'Combat = (kills + ½ headshots + ½ perfect kills) × (1 + accuracy × 0.4)',
+            example: '8 kills, 4 headshots, 1 perfect kill, 45% accuracy → (8 + 2 + 0.5) × 1.18 ≈ 12.4.',
+          },
+          {
+            term: 'Survival',
+            definition:
+              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same assumption as Impact: a Spartan has 225 total health. Above 1.59 (P80): you survive engagements well beyond a full life. Below 1.0: you die early in most exchanges.',
+            formula: 'Survival = damage taken / (225 × deaths)\nReference P80 (real data): 1.59',
+            example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: just above P80.',
+          },
+          {
+            term: 'Support',
+            definition:
+              'Assist contribution on shared matches. Each assist is weighted by 50 — the same weight Halo assigns assists in the personal score — allowing Support to be compared with kill contribution on a common scale.',
+            formula: 'Support = assists × 50',
+            example: '12 assists → Support = 600.',
+          },
+          {
+            term: 'Score',
+            definition:
+              'Residual personal score after subtracting direct kill and assist contribution. Captures added value from medals, streaks and game-mode actions (point defences, bonus captures, etc.) not counted in the other axes.',
+            formula: 'Score = personal score − (kills × 100) − (assists × 50) − objective score, ≥ 0',
+            example: 'Personal score 2 400, 8 kills, 4 assists, 200 objective pts → 2 400 − 800 − 200 − 200 = 1 200.',
+          },
+          {
+            term: 'Objective',
+            definition:
+              'Score points from objective actions (PersonalScoreAwards): flag captures, zone defences, zone activations, Oddball contributions, etc. Distinguishes players who play the objective from those who focus purely on kills.',
           },
         ],
       },

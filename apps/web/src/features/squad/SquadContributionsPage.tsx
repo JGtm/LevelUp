@@ -8,7 +8,9 @@
  *
  * Multi-titres : strings UI via getSquadText.
  */
+import { Link } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
@@ -85,7 +87,24 @@ export function SquadContributionsPage() {
         <Card>
           <CardContent className="pt-4 space-y-3">
             <div>
-              <h3 className="text-base font-semibold">{t.synergyRadar.title}</h3>
+              <h3 className="flex items-center gap-1.5 text-base font-semibold">
+                {t.synergyRadar.title}
+                <InfoTooltip
+                  content={
+                    <div className="space-y-1">
+                      <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
+                      <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
+                      <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
+                      <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
+                      <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
+                      <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
+                      <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
+                        {t.synergyRadar.tooltip.glossaryLink}
+                      </Link>
+                    </div>
+                  }
+                />
+              </h3>
               <p className="text-sm text-muted-foreground">{t.synergyRadar.description}</p>
             </div>
             <SquadSynergyRadarChart

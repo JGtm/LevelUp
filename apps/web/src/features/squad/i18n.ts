@@ -157,6 +157,7 @@ export interface SquadText {
     title: string
     description: string
     axes: { combat: string; survival: string; support: string; score: string; objective: string; impact: string }
+    tooltip: { impact: string; combat: string; survival: string; support: string; score: string; objective: string; glossaryLink: string }
   }
   intensity: {
     title: string
@@ -394,6 +395,15 @@ const FR_TEXT: SquadText = {
       objective: 'Objectif',
       impact: 'Impact',
     },
+    tooltip: {
+      impact: 'Rendement offensif — 225 × (frags + ass/3) / dégâts. P80 = 0,83.',
+      combat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
+      survival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
+      support: 'Assists × 50.',
+      score: 'Score résiduel après frags (×100) et assists (×50) : médailles et streaks.',
+      objective: 'Points d\'objectif (PersonalScoreAwards).',
+      glossaryLink: '→ Glossaire',
+    },
   },
   intensity: {
     title: 'Intensité — frags par phase de match',
@@ -630,6 +640,15 @@ const EN_TEXT: SquadText = {
       score: 'Score',
       objective: 'Objective',
       impact: 'Impact',
+    },
+    tooltip: {
+      impact: 'Offensive conversion — 225 × (kills + ass/3) / damage. P80 = 0.83.',
+      combat: 'Kills + headshots + perfect kills, weighted by accuracy.',
+      survival: 'Defensive resistance — damage / (225 × deaths). P80 = 1.59.',
+      support: 'Assists × 50.',
+      score: 'Residual score after kills (×100) and assists (×50): medals and streaks.',
+      objective: 'Objective points (PersonalScoreAwards).',
+      glossaryLink: '→ Glossary',
     },
   },
   intensity: {

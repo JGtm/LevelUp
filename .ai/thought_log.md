@@ -1,5 +1,63 @@
 # Thought Log
 
+## [2026-05-04] feat(help/glossary): index sticky avec recherche debounced + scrollspy
+
+**Statut** : Complété.
+
+**Contexte** : Le glossaire de la page Aide est devenu volumineux (6 sections × ~5 entrées en FR/EN, ~500 lignes d'i18n). Sans index, l'utilisateur doit scroller toutes les cards pour retrouver un terme précis (ex. KDR, perf_tier, LUSR). Le composant rendait simplement `text.glossary.sections.map(...)` sans filtrage ni navigation latérale.
+
+**Décisions techniques** :
+
+1. **Sticky combo search + chips, pas de sidebar TOC**. Le glossaire est un sous-onglet de `HelpPage` ; ajouter un sidebar empilerait un troisième niveau de chrome. Une barre sticky `top-0 z-20` au-dessus du contenu reste dans le flux du tab et fonctionne identiquement sur desktop et mobile.
+
+2. **Search avant chips**. L'usage principal est « retrouver un terme par nom », pas « naviguer entre sections ». La search filtre `term + definition + example + formula` après normalisation NFD (insensible casse + diacritiques). Multi-token AND : chaque mot de la query doit apparaître dans le haystack.
+
+3. **Debounce 120 ms** sur l'input pour éviter le re-filtrage à chaque keystroke (~50 entrées × 4 champs = 200 strings à recalculer par frappe).
+
+4. **Scrollspy via `IntersectionObserver`** avec `rootMargin: '-30% 0px -55% 0px'` : la section dont le top tombe dans le tiers supérieur du viewport est marquée active. Chip active → `border-sidebar-primary bg-sidebar-primary/10 text-sidebar-primary` (token déjà utilisé pour `entry.term`, cohérence visuelle gratuite).
+
+5. **Sections vides masquées** quand la search filtre. Si tout est vide → `EmptyStateNotice` au lieu d'une page blanche.
+
+6. **`aria-current="location"`** sur le chip actif + `aria-label` sur le `<nav>` (i18n FR/EN). `scroll-mt-24` sur les sections pour que le sticky ne masque pas le titre lors d'un click chip → `scrollIntoView`.
+
+7. **Tokens uniquement, zéro hex**. `border-border`, `bg-background/95`, `text-muted-foreground`, `text-sidebar-primary`. Conforme à la règle 20 du CLAUDE.md.
+
+**Résultats observés** :
+- Typecheck `tsc -b` : 0 erreur sur `GlossaryTab.tsx` et `i18n.ts` (les erreurs restantes existent déjà sur la branche, hors scope).
+- ESLint : 0 erreur après correction d'un `setState` cascade dans un effet (`react-hooks/set-state-in-effect`).
+- `vite build` : help bundle 56.31 kB gzippé 20.93 kB (impact mineur).
+- `vite dev` : `/help` répond 200, le module `GlossaryTab.tsx` est servi en 32 KB transformés sans warning HMR.
+
+**Vérification visuelle navigateur non effectuée** dans cette session (CLI bash sans browser interactif). Le rendu, la fluidité du scrollspy et le comportement sur mobile devront être validés à l'œil avant merge.
+
+**Conclusion** : Composant prêt à reviewer. Branche `feat/glossary-search-index`.
+
+---
+
+## [2026-05-04] feat(squad/radar): InfoTooltip 6 axes + section glossaire "Profil de participation"
+
+**Statut** : Complété.
+
+**Contexte** : Suite au redesign des formules radar (session précédente), l'UX demandée était d'ajouter une icône ℹ next to the radar chart title, listing the 6 axis definitions in one line each with a link to the glossary. Also, a "Profil de participation" section was missing from the glossary page.
+
+**Décisions techniques** :
+
+1. **InfoTooltip dans le parent, pas dans le wrapper chart**. `SquadContributionsPage.tsx` rend déjà un `<h3>` pour le titre du radar. Ajouter l'InfoTooltip directement sur cet élément (`flex items-center gap-1.5`) suit le même pattern que la page Accueil ("Faits marquants"). Pas besoin de modifier `ChartCard.tsx` ni `SquadSynergyRadarChart.tsx`.
+
+2. **`tooltip` field dans `synergyRadar` de `squad/i18n.ts`**. 7 champs : 6 descriptions courtes (une par axe) + `glossaryLink`. FR + EN. La description de chaque axe tient en ~10 mots pour rester lisible dans le `w-64` du tooltip.
+
+3. **Lien glossaire via `<Link to="/help" search={{ tab: 'glossary' }}`**. La route `/help` a un `validateSearch` qui attend `tab: 'glossary' | 'release-notes'`. Passage du `search` obligatoire découvert via typecheck.
+
+4. **Section "Profil de participation" dans `help/i18n.ts`**. Insérée après "Métriques de performance" (FR) / "Performance Metrics" (EN). 6 entrées : Impact, Combat, Survie, Support, Score, Objectif — chacune avec définition, formula (sauf Objectif) et exemple.
+
+**Résultats observés** :
+- `tsc -b` : 0 erreur dans les fichiers modifiés (les erreurs préexistantes sur la branche sont hors scope).
+- Aucune modification de `ChartCard.tsx` ni de `SquadSynergyRadarChart.tsx`.
+
+**Conclusion** : UX tooltip complète, glossaire enrichi. Branche `feat/seasons-as-asset-kind`.
+
+---
+
 ## [2026-05-04] fix(squad/radar): redesign 6 axes synergie — rendement offensif + résistance défensive
 
 **Statut** : Complété.
