@@ -114,6 +114,7 @@ export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
         texts={texts}
         title={gridTitle}
         hint={texts.grid.trendHint}
+        omitSummaryCards={squad != null}
       />
     </div>
   )

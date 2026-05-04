@@ -4,10 +4,13 @@
  * 3 zones séparées visuellement :
  *   - LEFT   : team card (Score d'équipe + palier + Δ vs base)
  *   - CENTER : N+1 player cards cliquables (drill-down click)
- *   - RIGHT  : Results bar 4 segments + libellés complets (Victoire/Défaite/...)
+ *   - RIGHT  : Results bar (4 segments + libellés Victoire/Défaite/...) +
+ *              2 mini-cards "Matchs joués" + "Durée totale" en colonne à droite.
  *
- * Le team card et la Results bar sont des "résumés" de la session collective ;
- * ils encadrent la zone clickable des player cards. Pas affichée en mode solo.
+ * Le team card, la Results bar et les mini-cards sont des "résumés" de la
+ * session collective ; ils encadrent la zone clickable des player cards.
+ * Bande pas affichée en mode solo (les cards Matchs/Durée restent alors dans
+ * KpiGrid).
  *
  * Libellés outcomes : tirés de outcomes.toml via useOutcomeLabel() (multi-titres).
  */
@@ -16,6 +19,7 @@ import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { useOutcomeLabel } from '@/lib/i18n/fieldMappings'
 
+import { formatDurationDhm, formatMinSec } from './format'
 import { getScoreTier, type TierKey } from './tier'
 import { trendSymbol, type TrendState } from './trends'
 import type { BriefingTexts } from './i18n'
@@ -180,39 +184,67 @@ export function SquadVerdict({
         })}
       </div>
 
-      {/* RIGHT : Results bar avec libellés complets */}
-      {hasResults && (
-        <div className="ml-auto flex min-w-[260px] flex-col gap-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {texts.rail.resultsLabel}
-          </span>
-          <div className="flex h-3.5 overflow-hidden rounded-sm">
-            {segs.map((s) =>
-              s.count > 0 ? (
-                <div
-                  key={s.outcomeKey}
-                  style={{ flex: s.count, backgroundColor: tokenCssVar(s.token) }}
-                  title={`${s.count} ${texts.pluralize(s.count, s.fallbackLabel)}`}
-                />
-              ) : null,
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3 text-[11px]">
-            {segs.map((s) =>
-              s.count > 0 ? (
-                <span key={s.outcomeKey} className="inline-flex items-center gap-1.5">
-                  <span
-                    className="inline-block h-2 w-2 rounded-sm"
-                    style={{ backgroundColor: tokenCssVar(s.token) }}
+      {/* RIGHT : Results bar + mini-cards Matchs/Durée alignées à droite. */}
+      <div className="ml-auto flex items-stretch gap-3">
+        {hasResults && (
+          <div className="flex min-w-[260px] flex-col gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {texts.rail.resultsLabel}
+            </span>
+            <div className="flex h-3.5 overflow-hidden rounded-sm">
+              {segs.map((s) =>
+                s.count > 0 ? (
+                  <div
+                    key={s.outcomeKey}
+                    style={{ flex: s.count, backgroundColor: tokenCssVar(s.token) }}
+                    title={`${s.count} ${texts.pluralize(s.count, s.fallbackLabel)}`}
                   />
-                  <strong>{s.count}</strong>{' '}
-                  {texts.pluralize(s.count, s.fallbackLabel)}
-                </span>
-              ) : null,
-            )}
+                ) : null,
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 text-[11px]">
+              {segs.map((s) =>
+                s.count > 0 ? (
+                  <span key={s.outcomeKey} className="inline-flex items-center gap-1.5">
+                    <span
+                      className="inline-block h-2 w-2 rounded-sm"
+                      style={{ backgroundColor: tokenCssVar(s.token) }}
+                    />
+                    <strong>{s.count}</strong>{' '}
+                    {texts.pluralize(s.count, s.fallbackLabel)}
+                  </span>
+                ) : null,
+              )}
+            </div>
+          </div>
+        )}
+        {/* Mini-cards : Matchs joués (avec durée moy/match en inline-sub) +
+            Durée totale. Affichées à droite de la Results bar pour libérer 2
+            colonnes du KpiGrid en mode squad. */}
+        <div className="flex flex-col justify-between gap-1">
+          <div className="rounded border border-border bg-card px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {texts.grid.matchesPlayed}
+            </p>
+            <div className="mt-0.5 flex items-baseline">
+              <span className="text-lg font-bold">{kpis.matches_count}</span>
+              <span className="ml-1.5 text-[11px] text-muted-foreground">
+                {formatMinSec(kpis.avg_match_seconds)}{texts.grid.perMatch}
+              </span>
+            </div>
+          </div>
+          <div className="rounded border border-border bg-card px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {texts.grid.totalDuration}
+            </p>
+            <div className="mt-0.5">
+              <span className="text-lg font-bold">
+                {formatDurationDhm(kpis.total_play_seconds)}
+              </span>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -260,6 +260,35 @@ describe('SessionBriefing — outcomes pluralisation', () => {
   })
 })
 
+describe('SessionBriefing — placement Matchs/Durée selon mode', () => {
+  it('mode solo : Matchs joués + Durée totale visibles dans le KpiGrid', () => {
+    const kpis = makeKPIs({ matches_count: 12, total_play_seconds: 6540, avg_match_seconds: 654 })
+    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    expect(screen.getByText('Matchs joués')).toBeInTheDocument()
+    expect(screen.getByText('Durée totale')).toBeInTheDocument()
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(screen.getByText(/10min54\/match/)).toBeInTheDocument()
+  })
+
+  it('mode squad : Matchs joués + Durée totale présents UNE seule fois (dans SquadVerdict, pas dupliqués dans KpiGrid)', () => {
+    const kpis = makeKPIs({ matches_count: 12, total_play_seconds: 6540, avg_match_seconds: 654 })
+    const squad = {
+      score: makeSquadScore(),
+      players: [makePlayerCard('xuid-me', 'Spartan-117', 50, 'above')],
+      kpisByXuid: { 'xuid-me': kpis },
+      teamAvgKpis: makeKPIs(),
+      activeXuid: 'xuid-me',
+    }
+    renderWithProviders(<SessionBriefing kpis={kpis} squad={squad} />)
+    // Les labels existent (dans la verdict bar) mais pas en double.
+    expect(screen.getAllByText('Matchs joués')).toHaveLength(1)
+    expect(screen.getAllByText('Durée totale')).toHaveLength(1)
+    // Valeurs visibles (rendues dans la verdict bar).
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(screen.getByText(/10min54\/match/)).toBeInTheDocument()
+  })
+})
+
 describe('SessionBriefing — Delta rang (card conditionnelle)', () => {
   it('rend "Delta CSR" + "+27" quand rank_delta.kind=csr et value=27 (entier)', () => {
     const kpis = makeKPIs({ rank_delta: { kind: 'csr', value: 27, count: 3 } })

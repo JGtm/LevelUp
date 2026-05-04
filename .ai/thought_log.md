@@ -1,5 +1,40 @@
 # Thought Log
 
+## [2026-05-04] feat(squad/header): déplacement Matchs+Durée vers SquadVerdict en mode squad
+
+**Statut** : Complété.
+
+**Contexte** : L'utilisateur veut alléger le KpiGrid de la page Escouade en déplaçant les cards "Matchs joués" et "Durée totale" dans le rail du dessus (SquadVerdict), à droite de la barre composite de résultats. Logique : ces 2 infos résument la session collective au même titre que la Results bar et la team card — elles ont leur place dans le bandeau verdict, pas dans la grille des stats individuelles.
+
+**Décision technique** :
+
+1. **SquadVerdict.tsx** ([SquadVerdict.tsx](apps/web/src/features/_shared/SessionBriefing/SquadVerdict.tsx)) : la zone RIGHT (jusqu'ici juste la Results bar avec `ml-auto`) devient un wrapper flex contenant deux sous-sections :
+   - Sous-section 1 (existante) : Results bar avec composite + libellés outcomes.
+   - Sous-section 2 (nouvelle) : 2 mini-cards stackées verticalement → "Matchs joués" (count + inline-sub `Mmin SS/match`) et "Durée totale" (`HhMMmin`). Mêmes styles que les cards du KpiGrid (rounded border bg-card px-3 py-2) pour cohérence visuelle.
+   - Le `ml-auto` migre du Results bar vers le wrapper externe pour conserver l'alignement à droite.
+
+2. **KpiGrid.tsx** ([KpiGrid.tsx](apps/web/src/features/_shared/SessionBriefing/KpiGrid.tsx)) : nouveau prop `omitSummaryCards?: boolean` (default false). Quand true, les 2 cards Matchs/Durée sont retirées (fragment React `<></>`) et `colCount` passe de `7+delta` à `5+delta`. Doc en tête mise à jour pour refléter solo (7/8 cols) vs squad (5/6 cols).
+
+3. **SessionBriefing.tsx** : passe `omitSummaryCards={squad != null}` à `KpiGrid`. Mode solo (TimeseriesPageResponse, MatchView…) → cards restent dans la grille (pas de SquadVerdict pour les héberger). Mode squad → cards dans SquadVerdict. Drill-down click compatible : `kpis` passé à SquadVerdict suit le `viewedKpis`, donc Matchs+Durée changent avec le drill, pareil que la Results bar.
+
+4. **Tests** : 2 nouveaux cas dans le describe "placement Matchs/Durée selon mode" :
+   - Mode solo → labels présents dans le DOM (rendus par KpiGrid).
+   - Mode squad → labels présents UNE SEULE fois (rendus par SquadVerdict, pas dupliqués dans le KpiGrid grâce à omitSummaryCards). Vérifie aussi la valeur `12` et l'inline-sub `10min54/match`.
+
+**Périmètre exclu** :
+- Pas de signal explicite "render-in-verdict" passé à SquadVerdict — c'est rendu inconditionnellement quand SquadVerdict est monté, ce qui est aligné sur le fait que SquadVerdict n'est rendu qu'en mode squad (par SessionBriefing).
+- Pas de remontée des cards en solo : pas de "header strip" dédié à la session pour le mode solo, l'info reste dans la grille (cohérent avec l'existant). Si la grille devient trop chargée en solo plus tard, on pourra introduire un mini-header dédié.
+
+**Résultats observés** :
+- `npx tsc --noEmit` clean.
+- `npx eslint` clean sur les fichiers touchés.
+- `npx vitest run SessionBriefing/` : 14/14 verts (12 + 2 nouveaux).
+- Layout en mode squad : la verdict bar contient désormais [Team card] [Player cards] [ml-auto: Results bar | Matchs+Durée stack]. KpiGrid descend à 5 ou 6 cols, lisibilité gagnée.
+
+**Conclusion / prochaine étape** : grille principale recentrée sur le perso (frags/morts/assists/précision/vie + delta éventuel) ; le bandeau verdict porte tout le résumé collectif (team score + outcomes + volume de jeu).
+
+---
+
 ## [2026-05-04] feat(squad/header): fusion cards "Matchs joués" + "Durée moy/match"
 
 **Statut** : Complété.
