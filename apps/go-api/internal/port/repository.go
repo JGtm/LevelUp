@@ -473,6 +473,14 @@ type SquadRepository interface {
 	// LoadImpactEvents charge les événements highlight pour une liste de match_ids (Q32).
 	LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error)
 
+	// LoadMainTeamParticipants charge tous les participants de l'équipe alliée
+	// du joueur principal pour une liste de matchs (Q34, scoreboard impact
+	// team-wide). Pour chaque match dans matchIDs, retourne les rows
+	// match_participants où team_id = team_id du mainXUID dans ce match (le main
+	// inclus). Permet à buildSquadImpactMatrix de calculer les badges sur
+	// l'équipe alliée complète au lieu du squad sélectionné uniquement.
+	LoadMainTeamParticipants(ctx context.Context, mainXUID string, matchIDs []string) ([]domain.AllyParticipant, error)
+
 	// LoadSynthesisHeatmap charge les données heatmap carte × mode (Q33).
 	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
 
@@ -615,6 +623,9 @@ func (n *noopSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]d
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {

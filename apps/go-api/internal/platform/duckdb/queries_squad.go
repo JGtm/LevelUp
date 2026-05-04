@@ -124,6 +124,31 @@ LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id IN (%s)
 ORDER BY he.match_id, he.time_ms`
 
+// Q32bMainTeamParticipantsTemplate : pour chaque match dans la liste, retourne
+// tous les participants de la même team_id que le joueur principal (le main
+// inclus). Utilisé par buildSquadImpactMatrix pour calculer les badges
+// d'impact en périmètre team-wide alliée (parité Python team_xuids), au lieu
+// de se limiter au squad sélectionné.
+//
+// Le 1er '?' est l'XUID du main player, suivi de N '?' pour les match_ids.
+// Ne PAS utiliser directement — passer par squad_repo.LoadMainTeamParticipants().
+const Q32bMainTeamParticipantsTemplate = `
+SELECT
+    p.match_id,
+    p.xuid,
+    COALESCE(vg.gamertag, p.xuid)        AS gamertag,
+    COALESCE(p.kills, 0)                 AS kills,
+    COALESCE(p.deaths, 0)                AS deaths,
+    COALESCE(p.assists, 0)               AS assists,
+    COALESCE(p.outcome, 0)               AS outcome
+FROM shared.match_participants p
+JOIN shared.match_participants main
+    ON main.match_id = p.match_id
+    AND main.xuid    = ?
+    AND p.team_id    = main.team_id
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
+WHERE p.match_id IN (%s)`
+
 // Q33 : Synthèse — heatmap win rate par combinaison carte × mode.
 // Paramètre : ?1 = xuid du joueur.
 const Q33SynthesisHeatmap = `

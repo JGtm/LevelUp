@@ -753,8 +753,12 @@ func buildCombatTabFull(
 		})
 	}
 
-	// Impact badges : calculés pour tous les joueurs du match.
-	impactInput := buildImpactInput(events, scoreboard)
+	// Impact badges : calculés en périmètre team-wide alliée (parité Python
+	// _match_impact_events::compute_single_match_impact). Le filtre par
+	// team_id du main est appliqué dans buildImpactInput → seuls les
+	// participants alliés sont passés à l'analyse, mais les events restent
+	// full (first_blood reste global toutes équipes).
+	impactInput := buildImpactInput(events, scoreboard, myXUID)
 	allBadges := analysis.ComputeMatchImpactFull(impactInput)
 	badgesDomain := make([]domain.MatchImpactBadge, 0, len(allBadges))
 	for _, b := range allBadges {
@@ -888,10 +892,16 @@ func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfW
 }
 
 // buildImpactInput convertit les données brutes du match vers MatchImpactInput.
-// Les events highlight_events (kill/death + horodatage + acteur) alimentent les
-// badges event-based ; le scoreboard fournit les stats par joueur pour les
-// badges stat-based (top_killer, silent_hero, false_brother).
-func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRaw) analysis.MatchImpactInput {
+// Les events highlight_events (kill/death + horodatage + acteur) alimentent
+// les badges event-based ; le scoreboard fournit les stats par joueur pour
+// les badges stat-based (top_killer, silent_hero, false_brother).
+//
+// Périmètre team-wide alliée : Participants ne contient QUE les joueurs de la
+// même team_id que myXUID (le main). Les events restent full (first_blood
+// nécessite tous les kills toutes équipes confondues). Si myXUID n'est pas
+// trouvé dans le scoreboard ou n'a pas de team_id, on dégrade en passant tous
+// les participants pour ne pas casser silencieusement le calcul.
+func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRaw, myXUID string) analysis.MatchImpactInput {
 	impactEvents := make([]analysis.ImpactEvent, 0, len(events))
 	for _, ev := range events {
 		if ev.TimeMS == nil || ev.XUID == nil {
@@ -907,8 +917,20 @@ func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRa
 			ActorXUID: *ev.XUID,
 		})
 	}
+
+	var mainTeamID *int
+	for _, p := range scoreboard {
+		if p.XUID == myXUID && p.TeamID != nil {
+			mainTeamID = p.TeamID
+			break
+		}
+	}
+
 	snaps := make([]analysis.ParticipantSnap, 0, len(scoreboard))
 	for _, p := range scoreboard {
+		if mainTeamID != nil && (p.TeamID == nil || *p.TeamID != *mainTeamID) {
+			continue
+		}
 		snaps = append(snaps, analysis.ParticipantSnap{
 			XUID:    p.XUID,
 			Outcome: p.OutcomeCode,

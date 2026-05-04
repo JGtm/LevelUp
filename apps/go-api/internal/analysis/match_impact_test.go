@@ -383,6 +383,38 @@ func TestFalseBrother_NoLosers_NoBadge(t *testing.T) {
 	}
 }
 
+// Parité Python identify_silent_hero_multi : si le porteur du max_assists n'a
+// pas aussi le min_deaths absolu (parmi tous les éligibles), AUCUN badge n'est
+// attribué — on ne se rabat pas sur le min_deaths du sous-ensemble max_assists.
+func TestSilentHero_MaxAssistsAndMinDeathsOnDifferentPlayers_NoBadge(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("TK", 2, 10, 0, 0), // top killer → exclu
+			mkSnap("A", 2, 2, 3, 5),   // max assists (5) mais 3 deaths
+			mkSnap("B", 2, 2, 1, 3),   // moins d'assists mais MIN deaths absolu (1)
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if hasBadge(badges, "silent_hero", "") {
+		t.Error("pas de silent_hero si max_assists et min_deaths sont sur 2 joueurs différents (parité Python)")
+	}
+}
+
+// Parité Python identify_false_brother_multi : symétrique du test silent_hero.
+func TestFalseBrother_MaxDeathsAndMinAssistsOnDifferentPlayers_NoBadge(t *testing.T) {
+	input := analysis.MatchImpactInput{
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("TK", 3, 7, 1, 1), // top killer → exclu
+			mkSnap("A", 3, 2, 9, 2),  // max deaths (9) mais 2 assists
+			mkSnap("B", 3, 2, 4, 0),  // moins de deaths mais MIN assists absolu (0)
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if hasBadge(badges, "false_brother", "") {
+		t.Error("pas de false_brother si max_deaths et min_assists sont sur 2 joueurs différents (parité Python)")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // top_gun (premier joueur à atteindre 10 kills en ordre chrono)
 // ---------------------------------------------------------------------------
@@ -431,6 +463,35 @@ func TestTopGun_ExactlyThreshold(t *testing.T) {
 	badges := analysis.ComputeMatchImpactFull(input)
 	if !hasBadge(badges, "top_gun", "C") {
 		t.Error("attendu top_gun pour C (exactement 10 kills)")
+	}
+}
+
+// Parité Python _find_top_gun_event : top_gun opère sur les kills filtrés par
+// l'équipe alliée. Si l'ennemi atteint 10 kills avant un allié, c'est l'allié
+// qui doit recevoir le badge — l'ennemi est ignoré.
+func TestTopGun_EnemyReachesThresholdFirst_AllyGetsBadge(t *testing.T) {
+	var events []analysis.ImpactEvent
+	// E (ennemi) atteint 10 kills à t=950 (très rapide).
+	for i := 0; i < 10; i++ {
+		events = append(events, killEv(int64(i*100+50), "E"))
+	}
+	// A (allié) atteint 10 kills à t=2950 (plus lent que E).
+	for i := 0; i < 10; i++ {
+		events = append(events, killEv(int64(i*300+50), "A"))
+	}
+	input := analysis.MatchImpactInput{
+		Events: events,
+		// Seul A est dans l'équipe alliée — E est exclu.
+		Participants: []analysis.ParticipantSnap{
+			mkSnap("A", 2, 12, 1, 0),
+		},
+	}
+	badges := analysis.ComputeMatchImpactFull(input)
+	if hasBadge(badges, "top_gun", "E") {
+		t.Error("top_gun ne doit pas être attribué à un ennemi (parité Python : filtre team_xuids)")
+	}
+	if !hasBadge(badges, "top_gun", "A") {
+		t.Error("top_gun doit être attribué à A (premier allié à 10 kills)")
 	}
 }
 

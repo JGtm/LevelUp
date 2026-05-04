@@ -26,6 +26,8 @@ type mockSquadRepo struct {
 	heatmapErr  error
 	synthRows   []legacymatch.SynthesisMatchRow
 	synthErr    error
+	allyRows    []domain.AllyParticipant
+	allyErr     error
 	// LookupXUIDByGamertag : lookup attendu (gamertag normalisÃ© en lowercase â†’ xuid).
 	// Si vide, retourne ("", false, nil) â€” comportement par dÃ©faut.
 	lookupAliases map[string]string
@@ -52,6 +54,9 @@ func (m *mockSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]d
 }
 func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
 	return m.impactRows, m.impactErr
+}
+func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
+	return m.allyRows, m.allyErr
 }
 func (m *mockSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
 	return m.heatmapRows, m.heatmapErr

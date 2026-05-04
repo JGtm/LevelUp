@@ -49,18 +49,25 @@ type MatchImpactInput struct {
 // topGunKillThreshold est le nombre de kills pour décrocher le badge top_gun.
 const topGunKillThreshold = 10
 
-// ComputeMatchImpactFull calcule les 9 badges d'impact pour l'ensemble des joueurs du match.
+// ComputeMatchImpactFull calcule les 9 badges d'impact pour un match.
+//
+// Convention de périmètre (parité Python compute_single_match_impact) : le
+// caller doit passer dans input.Participants UNIQUEMENT les joueurs de
+// l'équipe alliée du joueur principal. Les filtres internes (squadXUIDs,
+// winXUIDs, lossXUIDs) en découlent — tous les badges hors first_blood sont
+// donc team-wide alliée. first_blood reste GLOBAL (toutes équipes confondues)
+// car il opère sur input.Events non-filtré.
 //
 // Badges produits (au plus 1 par badge-type) :
-//   - first_blood           : premier tueur du match
-//   - first_group_death     : premier joueur à mourir
-//   - clutch_finisher       : dernier tueur parmi les gagnants
-//   - last_casualty         : dernier joueur à mourir parmi les perdants (Boulet)
-//   - last_group_kill       : gagnant le plus lent à obtenir son premier kill (Touriste)
-//   - top_killer            : joueur avec le plus de kills (Bourreau)
-//   - silent_hero           : max assists + min deaths en victoire hors top-killer (Héros silencieux)
-//   - false_brother         : max deaths + min assists en défaite hors top-killer (Faux-frère)
-//   - top_gun               : premier joueur à atteindre topGunKillThreshold kills en ordre chrono
+//   - first_blood           : premier tueur du MATCH (global, toutes équipes)
+//   - first_group_death     : première mort dans l'équipe alliée
+//   - clutch_finisher       : dernier kill d'un allié gagnant (∅ si défaite)
+//   - last_casualty         : dernière mort d'un allié perdant (Boulet, ∅ si victoire)
+//   - last_group_kill       : allié le plus lent à obtenir son premier kill (Touriste)
+//   - top_killer            : allié avec le plus de kills (Bourreau)
+//   - silent_hero           : max assists + min deaths en victoire hors top-killer
+//   - false_brother         : max deaths + min assists en défaite hors top-killer
+//   - top_gun               : premier allié à atteindre topGunKillThreshold kills
 func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	var badges []ImpactBadge
 
@@ -175,8 +182,11 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 		})
 	}
 
-	// --- 9. top_gun : premier joueur à atteindre topGunKillThreshold kills ---
-	if xuid, t := topGunWithTime(kills); xuid != "" {
+	// --- 9. top_gun : premier joueur de l'ÉQUIPE ALLIÉE à atteindre
+	//        topGunKillThreshold kills (parité Python _find_top_gun_event qui
+	//        reçoit kills déjà filtrés par team_xuids). Réutilise killsForSquad
+	//        construit pour last_group_kill.
+	if xuid, t := topGunWithTime(killsForSquad); xuid != "" {
 		badges = append(badges, ImpactBadge{
 			BadgeKey:   "top_gun",
 			BadgeFR:    "Top Gun",
@@ -284,8 +294,11 @@ func topKiller(participants []ParticipantSnap) string {
 }
 
 // silentHero : en victoire, joueur avec max assists ET min deaths hors top-killer.
-// Nécessite ≥2 joueurs éligibles et ≥1 assist. Parité Python : exclut TOUS les
-// joueurs avec kills == max_kills (pas juste un seul) pour gérer les égalités.
+// Nécessite ≥2 joueurs éligibles et ≥1 assist. Parité Python
+// (identify_silent_hero_multi) : exclut TOUS les joueurs avec kills == max_kills,
+// puis n'attribue le badge QUE SI le même joueur cumule à la fois max_assists ET
+// min_deaths parmi tous les éligibles. Si le porteur du max_assists n'a pas
+// aussi le min_deaths absolu, aucun badge n'est attribué.
 func silentHero(participants []ParticipantSnap) string {
 	wins := filterOutcome(participants, 2)
 	if len(wins) < 2 {
@@ -304,15 +317,14 @@ func silentHero(participants []ParticipantSnap) string {
 	if maxAssists == 0 {
 		return ""
 	}
-	withMaxAssists := filterAssists(eligible, maxAssists)
-	minDeaths := withMaxAssists[0].Deaths
-	for _, p := range withMaxAssists {
+	minDeaths := eligible[0].Deaths
+	for _, p := range eligible {
 		if p.Deaths < minDeaths {
 			minDeaths = p.Deaths
 		}
 	}
-	for _, p := range withMaxAssists {
-		if p.Deaths == minDeaths {
+	for _, p := range eligible {
+		if p.Assists == maxAssists && p.Deaths == minDeaths {
 			return p.XUID
 		}
 	}
@@ -320,8 +332,10 @@ func silentHero(participants []ParticipantSnap) string {
 }
 
 // falseBrother : en défaite, joueur avec max deaths ET min assists hors top-killer.
-// Nécessite ≥2 joueurs éligibles et ≥1 mort. Parité Python : exclut TOUS les
-// joueurs avec kills == max_kills.
+// Nécessite ≥2 joueurs éligibles et ≥1 mort. Parité Python
+// (identify_false_brother_multi) : exclut TOUS les joueurs avec kills ==
+// max_kills, puis n'attribue le badge QUE SI le même joueur cumule à la fois
+// max_deaths ET min_assists parmi tous les éligibles.
 func falseBrother(participants []ParticipantSnap) string {
 	losses := filterOutcome(participants, 3)
 	if len(losses) < 2 {
@@ -340,15 +354,14 @@ func falseBrother(participants []ParticipantSnap) string {
 	if maxDeaths == 0 {
 		return ""
 	}
-	withMaxDeaths := filterDeaths(eligible, maxDeaths)
-	minAssists := withMaxDeaths[0].Assists
-	for _, p := range withMaxDeaths {
+	minAssists := eligible[0].Assists
+	for _, p := range eligible {
 		if p.Assists < minAssists {
 			minAssists = p.Assists
 		}
 	}
-	for _, p := range withMaxDeaths {
-		if p.Assists == minAssists {
+	for _, p := range eligible {
+		if p.Deaths == maxDeaths && p.Assists == minAssists {
 			return p.XUID
 		}
 	}
@@ -384,26 +397,6 @@ func excludeAllTopKillers(ps []ParticipantSnap) []ParticipantSnap {
 	out := make([]ParticipantSnap, 0, len(ps))
 	for _, p := range ps {
 		if p.Kills < maxK {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-func filterAssists(ps []ParticipantSnap, minVal int) []ParticipantSnap {
-	out := make([]ParticipantSnap, 0)
-	for _, p := range ps {
-		if p.Assists == minVal {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-func filterDeaths(ps []ParticipantSnap, minVal int) []ParticipantSnap {
-	out := make([]ParticipantSnap, 0)
-	for _, p := range ps {
-		if p.Deaths == minVal {
 			out = append(out, p)
 		}
 	}

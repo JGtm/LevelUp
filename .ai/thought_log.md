@@ -1,5 +1,55 @@
 # Thought Log
 
+## [2026-05-04] feat(impact): badges calculés en team-wide alliée (cohérence app entière)
+
+**Statut** : Complété.
+
+**Contexte** : Suite à l'investigation des divergences Python/Go sur le scoreboard "Impact des coéquipiers", l'utilisateur a identifié le vrai problème : les badges doivent opérer sur **l'équipe alliée du main player**, pas sur le squad sélectionné. C'est ce que fait Python `_match_impact_events.py::compute_single_match_impact` (filtre `team_xuids`), mais ni Python `_impact_event_badges.py::identify_*` (utilisé par le scoreboard, squad-only) ni Go (squad-only ou full-match selon la page). Le user demande la cohérence : team-wide partout.
+
+**Décision technique** :
+
+1. **Analyse pure** ([match_impact.go](apps/go-api/internal/analysis/match_impact.go)) : la fonction `ComputeMatchImpactFull` n'a pas changé de signature — sa convention est désormais documentée comme "le caller doit passer dans `Participants` UNIQUEMENT les alliés du main player". Les filtres internes (`squadXUIDs`, `winXUIDs`, `lossXUIDs`) en découlent. `first_blood` reste global (boucle sur `kills` non-filtré). Bug additionnel corrigé : `top_gun` opérait sur `kills` non-filtré → désormais sur `killsForSquad` (un ennemi ne peut plus décrocher le badge). Test cadenas `TestTopGun_EnemyReachesThresholdFirst_AllyGetsBadge`.
+
+2. **Domain** ([squad.go](apps/go-api/internal/domain/squad.go)) : nouveau type `AllyParticipant{MatchID, XUID, Gamertag, Kills, Deaths, Assists, Outcome}`.
+
+3. **Repo** : nouvelle méthode `LoadMainTeamParticipants(mainXUID, matchIDs)` dans `port.SquadRepository` + impl DuckDB ([squad_repo.go](apps/go-api/internal/platform/duckdb/squad_repo.go)) avec query `Q32bMainTeamParticipantsTemplate` ([queries_squad.go](apps/go-api/internal/platform/duckdb/queries_squad.go)). 1 query unique qui joint `match_participants p` à `match_participants main` sur `match_id` + `xuid=mainXUID` + `p.team_id = main.team_id` (le main inclus).
+
+4. **Service squad** ([teammates_squad_charts.go](apps/go-api/internal/service/teammates_squad_charts.go)) : `buildSquadImpactMatrix` reçoit `mainXUID` en paramètre, charge les alliés via `LoadMainTeamParticipants`, construit `snaps` avec TOUS les alliés. `xuidToGT` ne mappe que les squad members → le filtre existant `if _, ok := xuidToGT[b.PlayerXUID]; !ok continue` drop silencieusement les badges qui tombent sur un allié non-squad. L'ancienne logique `loadInto(gt)` via `squadLoader.LoadFor` est retirée.
+
+5. **Service matchview** ([match_view_service.go](apps/go-api/internal/service/match_view_service.go)) : `buildImpactInput` reçoit `myXUID`, détermine la `team_id` du main via le scoreboard, filtre `Participants` à cette team avant de passer à `ComputeMatchImpactFull`. Events restent full pour first_blood. Dégradation gracieuse : si myXUID introuvable dans le scoreboard, on dégrade en passant tous les participants (comportement legacy).
+
+**Résultat sémantique des 9 badges (cohérent partout)** :
+
+| Badge | Périmètre |
+|-------|-----------|
+| first_blood | Global toutes équipes (intentionnel — premier sang du match) |
+| first_group_death | Équipe alliée |
+| clutch_finisher | Alliés gagnants (∅ si main perd) |
+| last_casualty | Alliés perdants (∅ si main gagne) |
+| last_group_kill | Équipe alliée |
+| top_killer | Équipe alliée |
+| silent_hero | Alliés gagnants |
+| false_brother | Alliés perdants |
+| top_gun | Équipe alliée |
+
+**Tests** :
+- `TestTopGun_EnemyReachesThresholdFirst_AllyGetsBadge` ([match_impact_test.go](apps/go-api/internal/analysis/match_impact_test.go))
+- `TestBuildSquadImpactMatrix_TeamWideAllyDropped` : top_killer sur un allié non-squad → ne doit jamais s'afficher.
+- `TestBuildSquadImpactMatrix_TeamWideNoFallback` : false_brother sur un allié non-squad → squad member ne le reçoit pas "à défaut".
+
+**Périmètre exclu** :
+- Les services Python ne sont pas touchés — projet Go-only désormais. Python `_impact_event_badges.py` reste sur squad-only (legacy connue).
+- Pas de migration DB. Pas de capability nouvelle. Pas de touche frontend.
+
+**Résultats observés** :
+- `go build ./...` clean.
+- Suite complète `go test ./...` ok (incl. `internal/service`, `internal/analysis`, `internal/platform/duckdb`).
+- 3 nouveaux tests cadenas verts.
+
+**Conclusion / prochaine étape** : la cohérence team-wide est en place dans toute l'app Go (scoreboard squad page Synergies + MatchView page match individuel). À valider visuellement par l'utilisateur sur la session du 6 avril : les badges précédemment attribués à des squad members "à défaut" (silent_hero JGtm match #7, false_brother Chocoboflor #1, last_group_kill Chocoboflor #11) devraient désormais soit disparaître soit être réattribués correctement selon la composition réelle de l'équipe alliée.
+
+---
+
 ## [2026-05-04] fix(impact): parité Python pour silent_hero et false_brother — exiger max+min sur LE MÊME joueur
 
 **Statut** : Complété.
