@@ -58,7 +58,7 @@ export function buildSquadSessionTimelineOption(
   if (hasWinRate) legendData.push(opts.winRateLabel)
   if (hasMmr) legendData.push(opts.mmrLabel)
 
-  const yAxis: EChartsCoreOption['yAxis'] = [
+  const yAxis: object[] = [
     {
       ...axisBase,
       type: 'value',
@@ -80,7 +80,7 @@ export function buildSquadSessionTimelineOption(
     })
   }
 
-  const echSeries: EChartsCoreOption['series'] = [
+  const echSeries: object[] = [
     {
       name: opts.perfLabel,
       type: 'bar',
