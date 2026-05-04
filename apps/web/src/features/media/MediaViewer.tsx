@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { GifHoverThumbnail } from '@/components/ui/gif-hover-thumbnail'
 import { CoverFlowModal } from './CoverFlowModal'
@@ -18,17 +17,6 @@ function formatMediaDate(value: string | null | undefined) {
   const datePart = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
   const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   return `${timePart} ${datePart}`
-}
-
-function formatLightboxHeading(item: MediaItemRow, index: number, total: number) {
-  const dateStr = item.match_start_time || item.capture_end_utc
-    ? new Date((item.match_start_time ?? item.capture_end_utc)!).toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })
-    : null
-  return [item.map_name, dateStr, `${index + 1}/${total}`].filter(Boolean).join(' · ')
 }
 
 // LikersLine — affiche "Alice, Bob et 3 autres ♥" sous le bouton like
