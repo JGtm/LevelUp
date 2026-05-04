@@ -92,6 +92,18 @@ type SquadV2Loader interface {
 		slug, mainGT string,
 		squadXUIDs []string,
 	) (map[string]domain.MapSquadStats, error)
+
+	// LoadObjectiveScores retourne le total des award_score de catégorie
+	// "objective" par match_id pour le joueur (slug, gamertag). Utilisé pour
+	// l'axe objectif du radar synergie (teammates.06). Dégradation silencieuse
+	// : retourne map vide + nil si personal_score_awards est absent ou si le
+	// joueur est introuvable.
+	LoadObjectiveScores(
+		ctx context.Context,
+		slug string,
+		gamertag string,
+		matchIDs []string,
+	) (map[string]int, error)
 }
 
 // SquadServiceV2 orchestre la page Squad V2.

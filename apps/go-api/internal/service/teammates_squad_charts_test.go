@@ -9,6 +9,22 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
+// rowWithPersonalScore construit une PlayerMatchRow avec PersonalScore renseigné.
+func rowWithPersonalScore(matchID string, ts time.Time, kills, deaths, assists, timePlayed, personalScore int) canonical.PlayerMatchRow {
+	k, d, a, tp, ps := kills, deaths, assists, timePlayed, personalScore
+	return canonical.PlayerMatchRow{
+		Summary: canonical.MatchSummary{MatchID: matchID, StartedAtUTC: ts, Outcome: canonical.OutcomeWin},
+		Self: canonical.MatchParticipant{
+			Outcome:       canonical.OutcomeWin,
+			Kills:         &k,
+			Deaths:        &d,
+			Assists:       &a,
+			TimePlayed:    &tp,
+			PersonalScore: &ps,
+		},
+	}
+}
+
 // ---------- buildSquadSessionTimeline (teammates.04) ----------
 
 func TestBuildSquadSessionTimeline_GroupAndAggregate(t *testing.T) {
@@ -551,5 +567,128 @@ func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {
 	}
 	if len(heatmap.MapsTopN) != 18 {
 		t.Errorf("toutes les cartes attendues (18), got %d → cap top 15 réintroduit ?", len(heatmap.MapsTopN))
+	}
+}
+
+// ---------- synergySurvivalComposite (formule alignée Python) ----------
+
+func TestSynergySurvivalComposite_ZeroTime(t *testing.T) {
+	if v := synergySurvivalComposite(0, 0); v != 0 {
+		t.Errorf("0 time → want 0, got %v", v)
+	}
+}
+
+func TestSynergySurvivalComposite_NoDeaths(t *testing.T) {
+	// 0 morts sur 600s → dpm=0, avgLife=600 → 0.5*(1-0) + 0.5*(600/90) ≫ 1 → clamped=1
+	v := synergySurvivalComposite(600, 0)
+	if v != 1.0 {
+		t.Errorf("no deaths, 600s → want 1.0 (clamped), got %v", v)
+	}
+}
+
+func TestSynergySurvivalComposite_TooManyDeaths(t *testing.T) {
+	// 60 morts sur 60s → dpm=60/min → résultat très négatif → clamped=0
+	v := synergySurvivalComposite(60, 60)
+	if v != 0 {
+		t.Errorf("60 deaths in 60s → want 0 (clamped), got %v", v)
+	}
+}
+
+func TestSynergySurvivalComposite_TypicalMatch(t *testing.T) {
+	// 3 morts sur 600s → dpm=0.3/min, avgLife=200s → composite > 0.5
+	v := synergySurvivalComposite(600, 3)
+	if v <= 0.5 || v > 1.0 {
+		t.Errorf("typical match survival: want > 0.5 and <= 1.0, got %v", v)
+	}
+}
+
+// ---------- Radar synergie — formule Impact (taux pts/min) ----------
+
+// TestBuildSquadSynergyRadar_ImpactIsRateNotKillingSpree vérifie que l'axe
+// impact est calculé comme PersonalScore/minute et non sum(MaxKillingSpree).
+// Un joueur avec plus de pts/min doit avoir un impact Raw plus élevé.
+func TestBuildSquadSynergyRadar_ImpactIsRateNotKillingSpree(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	// main : 3000 pts sur 600s → 5 pts/s = 300 pts/min
+	// friend1 : 1200 pts sur 600s → 2 pts/s = 120 pts/min
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithPersonalScore("m1", t0, 10, 3, 5, 600, 3000)},
+			"friend1": {rowWithPersonalScore("m1", t0, 5, 3, 3, 600, 1200)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 10, Deaths: 3}}
+
+	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series, got %d", len(got))
+	}
+	axisRaw := func(s domain.SquadSynergyRadarSeries, axis string) float64 {
+		for _, a := range s.Axes {
+			if a.Axis == axis {
+				return a.Raw
+			}
+		}
+		return -1
+	}
+	byPlayer := map[string]domain.SquadSynergyRadarSeries{}
+	for _, s := range got {
+		byPlayer[s.Player] = s
+	}
+	mainImpact := axisRaw(byPlayer["main"], "impact")
+	f1Impact := axisRaw(byPlayer["friend1"], "impact")
+	if mainImpact <= 0 {
+		t.Errorf("main impact raw devrait être > 0 (pts/min), got %v", mainImpact)
+	}
+	if mainImpact <= f1Impact {
+		t.Errorf("main (300 pts/min) devrait avoir impact > friend1 (120 pts/min): main=%v f1=%v",
+			mainImpact, f1Impact)
+	}
+}
+
+// ---------- Radar synergie — axe Objective via PSA ----------
+
+// TestBuildSquadSynergyRadar_ObjectiveSumsFromPSA vérifie que l'axe objective
+// est alimenté depuis LoadObjectiveScores (scores PSA catégorie "objective"),
+// et non toujours à 0.
+func TestBuildSquadSynergyRadar_ObjectiveSumsFromPSA(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000)},
+			"friend1": {rowWithPersonalScore("m1", t0, 3, 4, 8, 600, 1500)},
+		},
+		// main a des pts objectif sur m1, friend1 n'en a pas.
+		objByGT: map[string]map[string]int{
+			"main": {"m1": 700},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}}
+
+	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series, got %d", len(got))
+	}
+	axisRaw := func(s domain.SquadSynergyRadarSeries, axis string) float64 {
+		for _, a := range s.Axes {
+			if a.Axis == axis {
+				return a.Raw
+			}
+		}
+		return -1
+	}
+	byPlayer := map[string]domain.SquadSynergyRadarSeries{}
+	for _, s := range got {
+		byPlayer[s.Player] = s
+	}
+	mainObj := axisRaw(byPlayer["main"], "objective")
+	f1Obj := axisRaw(byPlayer["friend1"], "objective")
+	if mainObj != 700 {
+		t.Errorf("main objective raw: want 700, got %v", mainObj)
+	}
+	if f1Obj != 0 {
+		t.Errorf("friend1 objective raw: want 0 (aucun PSA), got %v", f1Obj)
 	}
 }
