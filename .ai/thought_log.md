@@ -1,5 +1,17 @@
 # Thought Log
 
+## [2026-05-04] fix(squad/radar): axes score et impact à 0 dans le radar synergie
+
+**Statut** : Complété. Commit `b6548ac9`.
+
+**Contexte** : L'utilisateur signale que dans le "Radar synergie — 6 axes par joueur", tous les joueurs affichent 0 pour impact, objectif et score.
+
+**Diagnostic** : `playerMatchesBaseSelect` (dans `player_matches_repo.go`) ne sélectionnait pas `p.max_killing_spree` ni `p.personal_score` depuis `shared.match_participants`. Résultat : `r.Self.MaxKillingSpree` et `r.Self.PersonalScore` toujours `nil` → `intPtrOrZero(nil) = 0` → `AxisScore = 0`, `AxisImpact = 0` pour tous les joueurs.
+
+**Décision** : Ajout des deux colonnes au SELECT, variables de scan, struct `playerMatchScanResult`, projection dans `projectPlayerMatchRow`, et helper `nullInt64ToIntPtr`.
+
+**Objectif** : Reste à 0 (documenté "nécessite personal_score_awards, hors MVP").
+
 ## [2026-05-04] fix(squad/contributions): supprime radar normalisé + corrige 7 erreurs de tests préexistantes
 
 **Statut** : Complété. Commit `74848510`.
