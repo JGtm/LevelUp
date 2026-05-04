@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-05-04] docs: 3 plans architecturaux dans `.ai/` (theme consistency, feedback drawer, DB write concurrency)
+
+**Statut** : Complété (commit unique sur branche `feat/seasons-as-asset-kind`, plans destinés à des branches futures dédiées).
+
+**Contexte** : 3 plans accumulés en untracked dans `.ai/` couvrant 3 sujets indépendants :
+
+1. **`PLAN_THEME_CONSISTENCY.md`** (661 L) — déclenché par un signalement utilisateur : certaines zones (Home banner identity, Battle Pass panel, Skill peak cards, Media viewer/lightbox, lightbox récompense Palmarès) restent figées en sombre lors du switch light/dark. Cause racine : ~38 occurrences de classes Tailwind hardcodées (`bg-slate-950/X`, `text-cyan-100/X`) annotées `// color-allow: thématique Spartan UI` + ~36 occurrences de `text-white/X`/`bg-black/X`/`border-white/X` non détectées par le linter custom + axes/labels des charts ECharts en `rgba(255,255,255,X)` (canvas, ne résout pas les CSS vars). Plan en 7 phases (incluant Phase 0 critique sur `components/ui/match-card.tsx` — 17 hardcodes affectant **toutes** les listes de matchs), avec stratégie pilote pour les charts (1 chart pilote = `squadSynergyRadarChart`, validation via test E2E Playwright qui toggle le thème, puis propagation aux 9 autres). Décisions utilisateur intégrées : thématiser CoverFlow + lightbox récompense entièrement (pas de mode cinema forcé), thématiser le banner identity hero (avec utility CSS `text-shadow-adaptive` à créer), valider les charts via E2E avant propagation. 2 passes : la 2ème a ajouté Phase 0 (MatchCard) + Phase 5 (charts ECharts) totalement manqués en 1ère passe. Estimation : ~7h + gate utilisateur.
+
+2. **`FEEDBACK_DRAWER.md`** (589 L) — plan pour ajouter un drawer feedback "Reporter un retour" : icône bulle SVG sous l'AssetDrawer existant, ouverture panneau qui pré-remplit une URL GitHub Issues `github.com/JGtm/LevelUp/issues/new?...` avec contexte auto-collecté (page, env client, filtres, erreurs console récentes) + heuristiques type/sévérité/zone, détection doublons via GitHub search API (debounce 500 ms), et GitHub Action post-création qui déclenche Claude Haiku 4.5 pour classification fine + commentaire automatique sur l'issue.
+
+3. **`PLAN_DB_WRITE_CONCURRENCY.md`** (607 L) — analyse de la concurrence DuckDB writes entre goroutines HTTP et sync engine, en réponse à une suggestion Gemini ("writer unique + channel buffer + ticker"). Constat : le projet a déjà plusieurs mécanismes de sérialisation (`dblease`, `WriteQueue`, `indexMu`, `sync.RWMutex`) mais pas appliqués uniformément. Plan d'inventaire des chemins critiques + harmonisation.
+
+**Décisions techniques** :
+
+1. **Commit unique sur la branche feature courante** (`feat/seasons-as-asset-kind`) plutôt que création de 3 branches dédiées — choix utilisateur explicite. Les plans restent tracked, l'exécution se fera plus tard sur des branches dédiées (`fix/theme-consistency-tokens`, `feat/feedback-drawer`, `refactor/db-write-concurrency`).
+
+2. **Pas de mélange code + plan** dans ce commit : c'est strictement de la doc archi, aucun code applicatif touché. Pas d'impact tests, pas d'impact build.
+
+3. **Format des plans homogène** : contexte → état des lieux → mapping technique → plan d'exécution par phases → conventions → risques → estimations → checklist. Chaque plan est self-contained (pas de référence croisée) pour pouvoir être exécuté indépendamment plus tard.
+
+**Résultats observés** : 1857 lignes de plans archivés et reproductibles. `PLAN_THEME_CONSISTENCY.md` est le plus directement actionnable (déclencheur user concret). `FEEDBACK_DRAWER.md` et `PLAN_DB_WRITE_CONCURRENCY.md` sont en attente de priorisation.
+
+**Conclusion / prochaine étape** : sur demande utilisateur, exécuter `PLAN_THEME_CONSISTENCY.md` Phase 0 (MatchCard, le plus visible) sur une branche dédiée `fix/theme-consistency-tokens`.
+
+---
+
 ## [2026-05-03] feat(seasons): saisons Halo comme nouveau kind d'assets multi-titres + filtre Squad
 
 **Statut** : Complété (5 commits sur branche `feat/seasons-as-asset-kind`).
