@@ -22,11 +22,12 @@ export interface DeltaCardProps {
 
 function formatDelta(delta: number | string | null | undefined, lowerIsBetter: boolean): {
   text: string
-  color: string
+  color: string | undefined
+  colorStyle: string | undefined
 } {
-  if (delta == null) return { text: '', color: '' }
+  if (delta == null) return { text: '', color: undefined, colorStyle: undefined }
   const num = typeof delta === 'number' ? delta : parseFloat(String(delta))
-  if (isNaN(num)) return { text: String(delta), color: 'text-muted-foreground' }
+  if (isNaN(num)) return { text: String(delta), color: 'text-muted-foreground', colorStyle: undefined }
   const sign = num > 0 ? '+' : ''
   const text = `${sign}${num.toFixed(typeof delta === 'number' && Math.abs(num) < 1 ? 3 : 1)}`
   const rawToken = skillDeltaScale(lowerIsBetter ? -num : num)

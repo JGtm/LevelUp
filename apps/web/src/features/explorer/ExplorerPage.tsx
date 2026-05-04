@@ -35,8 +35,9 @@ function isSemanticToken(s: string): s is SemanticToken {
 
 function EncounterBadges({ badges, locale }: { badges: MatchEncounterBadge[]; locale: string }) {
   if (!badges.length) return null
+  const manifestLocale: 'fr' | 'en' = locale === 'en' ? 'en' : 'fr'
   const t = (key: SquadManifestKey, values?: Record<string, string | number>) =>
-    formatMessage(squadManifest, key, locale, values)
+    formatMessage(squadManifest, key, manifestLocale, values)
 
   return (
     <div className="flex flex-wrap gap-1.5">

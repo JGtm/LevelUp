@@ -218,7 +218,17 @@ export function PeriodSessionRail() {
   if (activeSeason) {
     return <SeasonRail season={activeSeason} seasons={seasons} locale={locale} t={t} />
   }
-  return <PeriodRail period={mode.period} durationDays={mode.durationDays} locale={locale} t={t} />
+  return (
+    <PeriodRail
+      period={{
+        start_date: mode.period.start_date ?? null,
+        end_date: mode.period.end_date ?? null,
+      }}
+      durationDays={mode.durationDays}
+      locale={locale}
+      t={t}
+    />
+  )
 }
 
 // ---------------------------------------------------------------------------

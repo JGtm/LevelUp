@@ -35,7 +35,7 @@ function buildFallbackOptions(items: MediaItemRow[], key: 'map_name' | 'mode_nam
       .filter((value): value is string => Boolean(value)),
   )).sort((left, right) => left.localeCompare(right))
 
-  return labels.map((label) => ({ label, value: label }))
+  return labels.map((label) => ({ label, value: label, count: 0 }))
 }
 
 function extractErrorMessage(error: unknown): string {
