@@ -2725,3 +2725,41 @@ export interface AssetMeta {
   name_fr: string
   image_url: string
 }
+
+// ---------------------------------------------------------------------------
+// Achievements Xbox (bilingues EN/FR)
+// ---------------------------------------------------------------------------
+
+export interface AchievementsSummary {
+  total_count: number
+  unlocked_count: number
+  total_gamerscore: number
+  earned_gamerscore: number
+  /** 0..100, arrondi à 0.1 */
+  completion_pct: number
+}
+
+export interface AchievementEntry {
+  achievement_id: string
+  name_en: string
+  name_fr: string
+  description_en: string
+  description_fr: string
+  locked_desc_en?: string
+  locked_desc_fr?: string
+  gamerscore: number
+  image_url?: string
+  is_secret: boolean
+  rarity_category?: string
+  rarity_percent?: number
+  unlocked: boolean
+  /** ISO 8601 (ex: "2026-04-15T14:30:00Z") */
+  unlocked_at?: string
+  current_progress?: number
+  target_progress?: number
+}
+
+export interface AchievementsPageResponse {
+  summary: AchievementsSummary
+  achievements: AchievementEntry[]
+}

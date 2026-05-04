@@ -33,6 +33,9 @@ export const queryKeys = {
   careerTopMatches: (playerSlug: string) => ['career', playerSlug, 'top-matches'] as const,
   careerEncounters: (playerSlug: string) => ['career', playerSlug, 'encounters'] as const,
 
+  // Achievements Xbox (bilingues EN/FR, statiques après backfill)
+  achievements: (playerSlug: string) => ['achievements', playerSlug] as const,
+
   // Historique des parties (Slice 3)
   matchHistory: (playerSlug: string, filterHash: string, page: number, soloSessions: string[] = []) =>
     ['match-history', playerSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
