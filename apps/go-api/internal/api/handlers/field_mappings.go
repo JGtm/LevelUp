@@ -159,92 +159,9 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		TitleSlug:     set.TitleSlug(),
 		SchemaVersion: set.SchemaVersion(),
 		Locale:        locale,
-		Fields:        make(map[string]fieldMappingDTO, len(set.All())),
-	}
-
-	for _, m := range set.All() {
-		label, fellback := m.Label(locale)
-		if fellback {
-			h.logger.Debug("field_mappings_fallback",
-				"title_slug", set.TitleSlug(),
-				"field_key", m.Key,
-				"locale", locale,
-			)
-		}
-		desc, _ := m.Description(locale)
-		resp.Fields[string(m.Key)] = fieldMappingDTO{
-			Label:        label,
-			Description:  desc,
-			StorageUnit:  string(m.StorageUnit),
-			DisplayUnit:  string(m.DisplayUnit),
-			Format:       string(m.Format),
-			DisplayOrder: m.DisplayOrder,
-			Group:        m.Group,
-			Icon:         m.Icon,
-		}
-	}
-
-	// Phase 1 plan finition multi-titres : exposer les assets s'ils sont chargés.
-	if assets, ok := h.registry.GetAssets(slug); ok && assets != nil {
-		out := make(map[string]map[string]assetMappingDTO, len(assets.Kinds()))
-		for _, kind := range assets.Kinds() {
-			byID := make(map[string]assetMappingDTO)
-			for _, a := range assets.AllOfKind(kind) {
-				label, _ := a.Label(locale)
-				byID[a.ID] = assetMappingDTO{
-					Label:        label,
-					ColorToken:   a.ColorToken,
-					Icon:         a.Icon,
-					DisplayOrder: a.DisplayOrder,
-					StartDate:    a.StartDate,
-					EndDate:      a.EndDate,
-					Extra:        a.Extra,
-				}
-			}
-			out[kind] = byID
-		}
-		resp.Assets = out
-	}
-
-	// V2 saisons : si le SeasonsCatalogResolver est câblé, on remplace
-	// purement le bucket "season" du DTO par le résultat du resolver — qui
-	// fait l'union TOML + DB + éventuel lazy fetch live (avec persistance).
-	// Cela permet à une nouvelle Operation Halo découverte en DB d'apparaître
-	// automatiquement dans la SaisonPill côté frontend, sans intervention
-	// manuelle sur le TOML. Les saisons DB-only (pas encore de FR) sont
-	// affichées avec leur libellé Waypoint brut.
-	if h.seasons != nil {
-		catalog := h.seasons.Load(r.Context(), slug)
-		if len(catalog) > 0 {
-			if resp.Assets == nil {
-				resp.Assets = make(map[string]map[string]assetMappingDTO, 1)
-			}
-			seasonBucket := make(map[string]assetMappingDTO, len(catalog))
-			for _, e := range catalog {
-				start := e.Start
-				seasonBucket[e.ID] = assetMappingDTO{
-					Label:        e.Label,
-					DisplayOrder: e.DisplayOrder,
-					StartDate:    &start,
-					EndDate:      e.End,
-					Extra:        e.Extra,
-				}
-			}
-			resp.Assets["season"] = seasonBucket
-		}
-	}
-
-	// Phase 1 plan finition multi-titres : exposer les outcomes s'ils sont chargés.
-	if outcomes, ok := h.registry.GetOutcomes(slug); ok && outcomes != nil {
-		out := make(map[string]outcomeMappingDTO, len(outcomes.All()))
-		for _, o := range outcomes.All() {
-			label, _ := o.Label(locale)
-			out[o.Key] = outcomeMappingDTO{
-				Label:      label,
-				ColorToken: o.ColorToken,
-			}
-		}
-		resp.Outcomes = out
+		Fields:        h.buildFieldsDTO(set, locale),
+		Assets:        h.buildAssetsDTO(r.Context(), slug, locale),
+		Outcomes:      h.buildOutcomesDTO(slug, locale),
 	}
 
 	body, err := json.Marshal(resp)
@@ -270,6 +187,120 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		"locale", locale,
 		"fields_count", len(resp.Fields),
 	)
+}
+
+// buildFieldsDTO projette les FieldMapping du set en DTO localisés.
+// Loggue chaque fallback de locale pour faciliter le diagnostic des trad
+// manquantes.
+func (h *FieldMappingsHandler) buildFieldsDTO(set *mappings.FieldMappingSet, locale string) map[string]fieldMappingDTO {
+	out := make(map[string]fieldMappingDTO, len(set.All()))
+	for _, m := range set.All() {
+		label, fellback := m.Label(locale)
+		if fellback {
+			h.logger.Debug("field_mappings_fallback",
+				"title_slug", set.TitleSlug(),
+				"field_key", m.Key,
+				"locale", locale,
+			)
+		}
+		desc, _ := m.Description(locale)
+		out[string(m.Key)] = fieldMappingDTO{
+			Label:        label,
+			Description:  desc,
+			StorageUnit:  string(m.StorageUnit),
+			DisplayUnit:  string(m.DisplayUnit),
+			Format:       string(m.Format),
+			DisplayOrder: m.DisplayOrder,
+			Group:        m.Group,
+			Icon:         m.Icon,
+		}
+	}
+	return out
+}
+
+// buildAssetsDTO construit le bucket assets du DTO.
+//
+// Trois sources potentielles fusionnées :
+//   - registry TOML (toujours, si chargé) → tous les kinds (mode, map, season…)
+//   - SeasonsCatalogResolver (V2 saisons, optionnel) → remplace le bucket
+//     "season" par l'union TOML+DB+lazy-fetch live
+//
+// Retourne nil si aucune source ne fournit d'assets (omitempty côté JSON).
+func (h *FieldMappingsHandler) buildAssetsDTO(ctx context.Context, slug, locale string) map[string]map[string]assetMappingDTO {
+	var out map[string]map[string]assetMappingDTO
+
+	if assets, ok := h.registry.GetAssets(slug); ok && assets != nil {
+		out = make(map[string]map[string]assetMappingDTO, len(assets.Kinds()))
+		for _, kind := range assets.Kinds() {
+			byID := make(map[string]assetMappingDTO)
+			for _, a := range assets.AllOfKind(kind) {
+				label, _ := a.Label(locale)
+				byID[a.ID] = assetMappingDTO{
+					Label:        label,
+					ColorToken:   a.ColorToken,
+					Icon:         a.Icon,
+					DisplayOrder: a.DisplayOrder,
+					StartDate:    a.StartDate,
+					EndDate:      a.EndDate,
+					Extra:        a.Extra,
+				}
+			}
+			out[kind] = byID
+		}
+	}
+
+	// V2 saisons : si le SeasonsCatalogResolver est câblé, on remplace
+	// purement le bucket "season" du DTO par le résultat du resolver — qui
+	// fait l'union TOML + DB + éventuel lazy fetch live (avec persistance).
+	// Cela permet à une nouvelle Operation Halo découverte en DB d'apparaître
+	// automatiquement dans la SaisonPill côté frontend, sans intervention
+	// manuelle sur le TOML. Les saisons DB-only (pas encore de FR) sont
+	// affichées avec leur libellé Waypoint brut.
+	if h.seasons != nil {
+		catalog := h.seasons.Load(ctx, slug)
+		if len(catalog) > 0 {
+			if out == nil {
+				out = make(map[string]map[string]assetMappingDTO, 1)
+			}
+			out["season"] = projectCatalogToBucket(catalog)
+		}
+	}
+
+	return out
+}
+
+// projectCatalogToBucket projette le catalog unifié saisons en bucket DTO.
+func projectCatalogToBucket(catalog []SeasonCatalogEntry) map[string]assetMappingDTO {
+	bucket := make(map[string]assetMappingDTO, len(catalog))
+	for _, e := range catalog {
+		start := e.Start
+		bucket[e.ID] = assetMappingDTO{
+			Label:        e.Label,
+			DisplayOrder: e.DisplayOrder,
+			StartDate:    &start,
+			EndDate:      e.End,
+			Extra:        e.Extra,
+		}
+	}
+	return bucket
+}
+
+// buildOutcomesDTO projette les OutcomeMapping en DTO localisés.
+// Retourne nil si le set d'outcomes n'est pas chargé pour ce titre.
+func (h *FieldMappingsHandler) buildOutcomesDTO(slug, locale string) map[string]outcomeMappingDTO {
+	outcomes, ok := h.registry.GetOutcomes(slug)
+	if !ok || outcomes == nil {
+		return nil
+	}
+	out := make(map[string]outcomeMappingDTO, len(outcomes.All()))
+	for _, o := range outcomes.All() {
+		label, _ := o.Label(locale)
+		out[o.Key] = outcomeMappingDTO{
+			Label:      label,
+			ColorToken: o.ColorToken,
+		}
+	}
+	return out
 }
 
 func (h *FieldMappingsHandler) etagFor(slug, locale string, schemaVersion int, body []byte) string {
