@@ -126,11 +126,11 @@ describe('allPlayersFragDiffSeries', () => {
 
   it('calcule cumulatif kill +1 / death -1, ordre joueur principal en premier', () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1' },
-      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1' },
-      { event_type: 'kill', event_time_ms: 3000, actor_xuid: 'X2' },
-      { event_type: 'kill', event_time_ms: 4000, actor_xuid: 'X1' },
-      { event_type: 'kill', event_time_ms: 5000, actor_xuid: 'X2' },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
+      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 3000, actor_xuid: 'X2', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 4000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 5000, actor_xuid: 'X2', target_xuid: null, weapon_id: null },
     ]
     const series = allPlayersFragDiffSeries(events, scoreboard, 'X1')
     expect(series).toHaveLength(2)
@@ -153,9 +153,9 @@ describe('allPlayersFragDiffSeries', () => {
 
   it('ignore les events sans time_ms ou actor_xuid', () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1' },
-      { event_type: 'kill', event_time_ms: undefined, actor_xuid: 'X2' },
-      { event_type: 'kill', event_time_ms: 2000, actor_xuid: undefined },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: null, actor_xuid: 'X2', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 2000, actor_xuid: null, target_xuid: null, weapon_id: null },
     ]
     const series = allPlayersFragDiffSeries(events, scoreboard, null)
     expect(series).toHaveLength(1)
@@ -167,9 +167,9 @@ describe('allPlayersFragDiffSeries', () => {
 
   it('ignore les events autres que kill/death', () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1' },
-      { event_type: 'medal', event_time_ms: 1500, actor_xuid: 'X1' },
-      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1' },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
+      { event_type: 'medal', event_time_ms: 1500, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
+      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
     ]
     const series = allPlayersFragDiffSeries(events, scoreboard, 'X1')
     expect(series[0].datapoints).toEqual([

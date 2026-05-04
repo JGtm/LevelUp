@@ -208,6 +208,7 @@ describe('GlobalFilterStore', () => {
       available_options: { experience_types: [], playlists: [], modes: [], maps: [] },
       session_options: { all_sessions: [], solo_labels: [], squad_labels: [] },
       counts: { total_matches_before_filters: 0, total_matches_after_filters: 0 },
+      period_presets: [],
     }
     useGlobalFilterStore.getState().setResolvedContext(resolved)
     const stored = localStorage.getItem('levelup-filter-store-v1')
@@ -243,7 +244,6 @@ describe('GlobalFilterStore', () => {
         squad_labels: [],
       },
       counts: { total_matches_before_filters: 100, total_matches_after_filters: 50 },
-      // @ts-expect-error — tests legacy : period_presets ajouté plus tard côté types
       period_presets: [],
     }
   }
@@ -382,6 +382,7 @@ describe('GlobalFilterStore', () => {
         total_matches_before_filters: 100,
         total_matches_after_filters: 42,
       },
+      period_presets: [],
     }
     useGlobalFilterStore.getState().setResolvedContext(resolved)
     expect(useGlobalFilterStore.getState().resolvedContext?.counts.total_matches_after_filters).toBe(42)

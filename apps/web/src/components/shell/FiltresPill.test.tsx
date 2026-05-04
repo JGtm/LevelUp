@@ -30,20 +30,20 @@ import type { FiltresPillProps } from './FilterOmnibar'
 function makeAvailable(overrides: Partial<FiltresPillProps['available']> = {}): FiltresPillProps['available'] {
   return {
     experience_types: [
-      { label: 'PVP non classé', value: 'PVP non classé' },
-      { label: 'PVP classé', value: 'PVP classé' },
+      { label: 'PVP non classé', value: 'PVP non classé', count: 1 },
+      { label: 'PVP classé', value: 'PVP classé', count: 1 },
     ],
     playlists: [
-      { label: 'Quick Play', value: 'Quick Play' },
-      { label: 'Ranked Arena', value: 'Ranked Arena' },
+      { label: 'Quick Play', value: 'Quick Play', count: 1 },
+      { label: 'Ranked Arena', value: 'Ranked Arena', count: 1 },
     ],
     modes: [
-      { label: 'Slayer', value: 'Slayer' },
-      { label: 'CTF', value: 'CTF' },
+      { label: 'Slayer', value: 'Slayer', count: 1 },
+      { label: 'CTF', value: 'CTF', count: 1 },
     ],
     maps: [
-      { label: 'Aquarius', value: 'Aquarius' },
-      { label: 'Streets', value: 'Streets' },
+      { label: 'Aquarius', value: 'Aquarius', count: 1 },
+      { label: 'Streets', value: 'Streets', count: 1 },
     ],
     ...overrides,
   }
@@ -66,14 +66,15 @@ function buildResolved(availOverrides: Partial<FilterContextResolved['available_
   return {
     effective: DEFAULT_FILTER_CONTEXT,
     available_options: {
-      experience_types: [{ label: 'PVP non classé', value: 'PVP non classé' }],
-      playlists: [{ label: 'Quick Play', value: 'Quick Play' }],
-      modes: [{ label: 'Slayer', value: 'Slayer' }],
-      maps: [{ label: 'Aquarius', value: 'Aquarius' }],
+      experience_types: [{ label: 'PVP non classé', value: 'PVP non classé', count: 1 }],
+      playlists: [{ label: 'Quick Play', value: 'Quick Play', count: 1 }],
+      modes: [{ label: 'Slayer', value: 'Slayer', count: 1 }],
+      maps: [{ label: 'Aquarius', value: 'Aquarius', count: 1 }],
       ...availOverrides,
     },
     session_options: { all_sessions: [], solo_labels: [], squad_labels: [] },
     counts: { total_matches_before_filters: 5, total_matches_after_filters: 5 },
+    period_presets: [],
   }
 }
 
@@ -108,7 +109,7 @@ describe('FiltresPill — zombie detection', () => {
 
   it('zombie experience : type sélectionné absent des options → banner + strikethrough', () => {
     renderPill({
-      available: makeAvailable({ experience_types: [{ label: 'PVP non classé', value: 'PVP non classé' }] }),
+      available: makeAvailable({ experience_types: [{ label: 'PVP non classé', value: 'PVP non classé', count: 1 }] }),
       cascade: { experience_types: ['PVP classé'], playlists: [], modes: [], maps: [] },
       cascadeCount: 1,
     })
@@ -119,7 +120,7 @@ describe('FiltresPill — zombie detection', () => {
 
   it('zombie experience : les options disponibles restent affichées normalement', () => {
     renderPill({
-      available: makeAvailable({ experience_types: [{ label: 'PVP non classé', value: 'PVP non classé' }] }),
+      available: makeAvailable({ experience_types: [{ label: 'PVP non classé', value: 'PVP non classé', count: 1 }] }),
       cascade: { experience_types: ['PVP classé'], playlists: [], modes: [], maps: [] },
       cascadeCount: 1,
     })
@@ -131,7 +132,7 @@ describe('FiltresPill — zombie detection', () => {
 
   it('zombie playlist : playlist sélectionnée non disponible → banner', () => {
     renderPill({
-      available: makeAvailable({ playlists: [{ label: 'Quick Play', value: 'Quick Play' }] }),
+      available: makeAvailable({ playlists: [{ label: 'Quick Play', value: 'Quick Play', count: 1 }] }),
       cascade: { experience_types: [], playlists: ['Ranked Arena'], modes: [], maps: [] },
       cascadeCount: 1,
     })
@@ -146,7 +147,7 @@ describe('FiltresPill — zombie detection', () => {
 
   it('zombie mode : mode sélectionné non disponible → banner', () => {
     renderPill({
-      available: makeAvailable({ modes: [{ label: 'Slayer', value: 'Slayer' }] }),
+      available: makeAvailable({ modes: [{ label: 'Slayer', value: 'Slayer', count: 1 }] }),
       cascade: { experience_types: [], playlists: [], modes: ['SWAT'], maps: [] },
       cascadeCount: 1,
     })
@@ -159,7 +160,7 @@ describe('FiltresPill — zombie detection', () => {
 
   it('zombie map : carte sélectionnée non disponible → banner', () => {
     renderPill({
-      available: makeAvailable({ maps: [{ label: 'Aquarius', value: 'Aquarius' }] }),
+      available: makeAvailable({ maps: [{ label: 'Aquarius', value: 'Aquarius', count: 1 }] }),
       cascade: { experience_types: [], playlists: [], modes: [], maps: ['Bazaar'] },
       cascadeCount: 1,
     })
@@ -173,8 +174,8 @@ describe('FiltresPill — zombie detection', () => {
   it('plusieurs zombies → banner affiche le bon compteur', () => {
     renderPill({
       available: makeAvailable({
-        playlists: [{ label: 'Quick Play', value: 'Quick Play' }],
-        modes: [{ label: 'Slayer', value: 'Slayer' }],
+        playlists: [{ label: 'Quick Play', value: 'Quick Play', count: 1 }],
+        modes: [{ label: 'Slayer', value: 'Slayer', count: 1 }],
       }),
       cascade: {
         experience_types: [],
@@ -190,8 +191,8 @@ describe('FiltresPill — zombie detection', () => {
   it('plusieurs zombies sur 3 dimensions → compteur = 3', () => {
     renderPill({
       available: makeAvailable({
-        experience_types: [{ label: 'PVP non classé', value: 'PVP non classé' }],
-        playlists: [{ label: 'Quick Play', value: 'Quick Play' }],
+        experience_types: [{ label: 'PVP non classé', value: 'PVP non classé', count: 1 }],
+        playlists: [{ label: 'Quick Play', value: 'Quick Play', count: 1 }],
         modes: [],
       }),
       cascade: {
@@ -210,7 +211,7 @@ describe('FiltresPill — zombie detection', () => {
   it('sélection mixte : options compatibles affichées normalement, zombies barrés', () => {
     renderPill({
       available: makeAvailable({
-        modes: [{ label: 'Slayer', value: 'Slayer' }],
+        modes: [{ label: 'Slayer', value: 'Slayer', count: 1 }],
       }),
       cascade: {
         experience_types: [],
@@ -234,7 +235,7 @@ describe('FiltresPill — zombie detection', () => {
   it('click sur zombie appelle onSetCascade sans la valeur zombie', () => {
     const onSetCascade = vi.fn()
     renderPill({
-      available: makeAvailable({ modes: [{ label: 'Slayer', value: 'Slayer' }] }),
+      available: makeAvailable({ modes: [{ label: 'Slayer', value: 'Slayer', count: 1 }] }),
       cascade: { experience_types: [], playlists: [], modes: ['SWAT'], maps: [] },
       cascadeCount: 1,
       onSetCascade,
@@ -272,7 +273,7 @@ describe('FilterOmnibar — zombie en temps réel (useFiltersPreview)', () => {
     useGlobalFilterStore.getState().setResolvedContext(
       buildResolved({
         // Au départ : Slayer disponible dans les modes
-        modes: [{ label: 'Slayer', value: 'Slayer' }],
+        modes: [{ label: 'Slayer', value: 'Slayer', count: 1 }],
       }),
     )
     // Pas de player → useFiltersPreview désactivé → fallback sur resolvedContext

@@ -72,7 +72,7 @@ describe('useJobToasts', () => {
   it('ne fire pas tant que le job est en cours', () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('queued') })
     rerender({ js: job('running') })
@@ -84,7 +84,7 @@ describe('useJobToasts', () => {
   it('fire toast.success sur succeeded sans warnings', () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('running') })
     rerender({ js: job('succeeded', { current_step: '10 matchs traités' }) })
@@ -96,7 +96,7 @@ describe('useJobToasts', () => {
   it('fire toast.warning sur succeeded avec warnings', () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('running') })
     rerender({ js: job('succeeded', { warnings: ['WARN: weapons ignorés'] }) })
@@ -108,10 +108,10 @@ describe('useJobToasts', () => {
   it("fire toast.error sur failed avec le message d'erreur", () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('running') })
-    rerender({ js: job('failed', { error: { code: 'db_error', message: 'connexion perdue' } }) })
+    rerender({ js: job('failed', { error: { code: 'db_error', message: 'connexion perdue', retryable: false } }) })
     expect(toast.error).toHaveBeenCalledOnce()
     expect(toast.error).toHaveBeenCalledWith('Échoué', expect.objectContaining({
       description: 'connexion perdue',
@@ -122,7 +122,7 @@ describe('useJobToasts', () => {
   it('fire toast.warning sur cancelled', () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('running') })
     rerender({ js: job('cancelled') })
@@ -132,7 +132,7 @@ describe('useJobToasts', () => {
   it('fire toast.warning sur interrupted', () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('running') })
     rerender({ js: job('interrupted') })
@@ -142,7 +142,7 @@ describe('useJobToasts', () => {
   it('ne fire pas deux fois si le statut terminal ne change pas (idempotence)', () => {
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, LABELS),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('running') })
     rerender({ js: job('succeeded') })
@@ -159,7 +159,7 @@ describe('useJobToasts', () => {
     }
     const { rerender } = renderHook(
       ({ js }: { js: AsyncJobStatus | undefined }) => useJobToasts(js, customLabels),
-      { initialProps: { js: undefined } },
+      { initialProps: { js: undefined as AsyncJobStatus | undefined } },
     )
     rerender({ js: job('running') })
     rerender({ js: job('succeeded') })

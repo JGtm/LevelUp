@@ -27,7 +27,7 @@ import {
 
 // ─── Re-exports pour les consommateurs externes (SquadLayout, SquadV2RouteHost…) ───
 
-export { FiltresPill } from './_filter_pills/FiltresPill'
+export { FiltresPill, type FiltresPillProps } from './_filter_pills/FiltresPill'
 export { PeriodePill } from './_filter_pills/PeriodePill'
 export { SessionPill } from './_filter_pills/SessionPill'
 export { SaisonPill } from './_filter_pills/SaisonPill'
