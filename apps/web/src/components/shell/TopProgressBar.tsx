@@ -1,6 +1,9 @@
 /**
  * TopProgressBar — barre de progression unique de chargement de page.
  *
+ * Inspiré de NProgress : trickle continu avec incrément décroissant pour donner
+ * un mouvement perpétuel jusqu'à la résolution, plutôt que des paliers figés.
+ *
  * Deux déclencheurs :
  *   1. Changement de pathname (via useRouterState) → apparition immédiate dès le clic.
  *   2. Queries React Query en état `pending` (sans données en cache) → maintien
@@ -10,10 +13,11 @@
  * filtre sur `q.state.status === 'pending'` (jamais résolu) et pas sur `fetchStatus`.
  *
  * Lifecycle :
- *   - START  : barre à 30 %, monte à 70 % (200 ms), puis 85 % (800 ms).
- *   - SETTLE : 150 ms de grâce après pendingCount→0 (les queries mountent un tick
- *              après le changement de pathname).
- *   - END    : complétion à 100 %, hold court, fade-out 250 ms.
+ *   - START   : barre à INITIAL_PROGRESS (30 %), trickle continu vers 99 % max.
+ *   - SETTLE  : 150 ms de grâce après pendingCount→0 OU navigation sans queries
+ *               (les queries d'une nouvelle page mountent un tick après le pathname change).
+ *   - END     : complétion à 100 %, hold court, fade-out 250 ms.
+ *   - SAFETY  : timeout max MAX_VISIBLE_MS qui force la complétion (filet contre query infinie).
  *   - Durée minimale visible : 450 ms (évite un flash imperceptible).
  *
  * Couleur : `bg-sidebar-primary` — cohérent avec l'onglet actif de la NavL1.
@@ -24,12 +28,21 @@ import { useRouterState } from '@tanstack/react-router'
 
 const FADE_OUT_MS = 250
 const INITIAL_PROGRESS = 30
-const MID_PROGRESS = 70
-const HIGH_PROGRESS = 85
-const MID_AT_MS = 200
-const HIGH_AT_MS = 800
+const MAX_TRICKLE_PROGRESS = 99
+const TRICKLE_INTERVAL_MS = 200
 const MIN_VISIBLE_MS = 450
 const SETTLE_MS = 150
+const MAX_VISIBLE_MS = 8000
+
+// Incrément du trickle : grand au début, infinitésimal à l'approche de 100 %.
+// Calqué sur la courbe NProgress.
+function trickleIncrement(current: number): number {
+  if (current < 20) return 10
+  if (current < 50) return 4
+  if (current < 80) return 2
+  if (current < 99) return 0.5
+  return 0
+}
 
 export function TopProgressBar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -40,15 +53,27 @@ export function TopProgressBar() {
   const [progress, setProgress] = useState(0)
   const [visible, setVisible] = useState(false)
 
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const trickleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const completionTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startedAtRef = useRef<number | null>(null)
   const activeRef = useRef(false)
   const prevPathRef = useRef(pathname)
+  // Ref miroir pour vérifier la valeur courante depuis un closure de timer.
+  const pendingCountRef = useRef(pendingCount)
+  pendingCountRef.current = pendingCount
 
-  function clearProgressTimers() {
-    for (const t of timersRef.current) clearTimeout(t)
-    timersRef.current = []
+  function clearTrickleTimer() {
+    if (trickleTimerRef.current) {
+      clearInterval(trickleTimerRef.current)
+      trickleTimerRef.current = null
+    }
+  }
+
+  function clearCompletionTimers() {
+    for (const t of completionTimersRef.current) clearTimeout(t)
+    completionTimersRef.current = []
   }
 
   function clearSettleTimer() {
@@ -58,27 +83,57 @@ export function TopProgressBar() {
     }
   }
 
+  function clearMaxTimer() {
+    if (maxTimerRef.current) {
+      clearTimeout(maxTimerRef.current)
+      maxTimerRef.current = null
+    }
+  }
+
   function startBar() {
-    if (activeRef.current) return
+    if (activeRef.current) {
+      // Déjà actif : annuler un settle en attente (nouvelle navigation pendant
+      // la fenêtre de grâce) pour éviter de fermer prématurément.
+      clearSettleTimer()
+      return
+    }
     activeRef.current = true
+    // eslint-disable-next-line react-hooks/purity -- appelé depuis un useEffect, pas pendant le render
     startedAtRef.current = Date.now()
-    clearProgressTimers()
+    clearTrickleTimer()
+    clearCompletionTimers()
     clearSettleTimer()
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    clearMaxTimer()
     setVisible(true)
     setProgress(INITIAL_PROGRESS)
-    timersRef.current.push(setTimeout(() => setProgress(MID_PROGRESS), MID_AT_MS))
-    timersRef.current.push(setTimeout(() => setProgress(HIGH_PROGRESS), HIGH_AT_MS))
+
+    trickleTimerRef.current = setInterval(() => {
+      setProgress((prev) => {
+        const inc = trickleIncrement(prev)
+        if (inc === 0) return prev
+        // Léger jitter pour un mouvement plus naturel (entre 50 % et 100 % de l'incrément).
+        const next = prev + inc * (0.5 + Math.random() * 0.5)
+        return Math.min(next, MAX_TRICKLE_PROGRESS)
+      })
+    }, TRICKLE_INTERVAL_MS)
+
+    // Filet de sécurité : si une query reste en pending indéfiniment (timeout réseau,
+    // fetch sans résolution), on force la complétion après MAX_VISIBLE_MS.
+    maxTimerRef.current = setTimeout(() => {
+      if (activeRef.current) completeBar()
+    }, MAX_VISIBLE_MS)
   }
 
   function completeBar() {
     activeRef.current = false
+    clearTrickleTimer()
+    clearMaxTimer()
     const elapsed = startedAtRef.current !== null ? Date.now() - startedAtRef.current : MIN_VISIBLE_MS
     const completionDelay = Math.max(0, MIN_VISIBLE_MS - elapsed)
     startedAtRef.current = null
-    clearProgressTimers()
-    timersRef.current.push(setTimeout(() => setProgress(100), completionDelay))
-    timersRef.current.push(
+    clearCompletionTimers()
+    completionTimersRef.current.push(setTimeout(() => setProgress(100), completionDelay))
+    completionTimersRef.current.push(
       setTimeout(() => {
         setVisible(false)
         setProgress(0)
@@ -86,32 +141,35 @@ export function TopProgressBar() {
     )
   }
 
-  // Déclenchement immédiat sur changement de page.
-  useEffect(() => {
-    if (pathname !== prevPathRef.current) {
-      prevPathRef.current = pathname
-      startBar()
-    }
-  }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+  function scheduleSettle() {
+    clearSettleTimer()
+    settleTimerRef.current = setTimeout(() => {
+      if (activeRef.current && pendingCountRef.current === 0) completeBar()
+    }, SETTLE_MS)
+  }
 
-  // Maintien tant que des queries pending existent ; extinction avec fenêtre de grâce.
+  // Effet unifié — démarrage et complétion. Réagit à pathname ET pendingCount, ce qui
+  // garantit que la barre se ferme même si pendingCount reste à 0 après navigation
+  // (page sans queries ou queries déjà mises en cache → status `success`, pas `pending`).
   useEffect(() => {
+    const navigated = pathname !== prevPathRef.current
+    if (navigated) prevPathRef.current = pathname
+
+    if (navigated || pendingCount > 0) startBar()
+
     if (pendingCount > 0) {
-      startBar()
       clearSettleTimer()
     } else if (activeRef.current) {
-      // Délai : les queries d'une nouvelle page mountent un tick APRÈS le pathname change.
-      clearSettleTimer()
-      settleTimerRef.current = setTimeout(() => {
-        if (activeRef.current) completeBar()
-      }, SETTLE_MS)
+      scheduleSettle()
     }
-  }, [pendingCount]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, pendingCount]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => {
-    clearProgressTimers()
+    clearTrickleTimer()
+    clearCompletionTimers()
     clearSettleTimer()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    clearMaxTimer()
+  }, [])
 
   if (!visible && progress === 0) return null
 
