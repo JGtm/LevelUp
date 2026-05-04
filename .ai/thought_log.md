@@ -1,5 +1,59 @@
 # Thought Log
 
+## [2026-05-04] feat(achievements): section horizontale Carrière + Xbox bilingue (backend + frontend + CLI backfill)
+
+**Statut** : Complété (en attente de commit).
+
+**Contexte** : Le backend achievements (sync, fetch Xbox API, schémas DuckDB, pré-warming images) existait déjà mais n'était exposé nulle part — ni endpoint HTTP ni composant frontend. La page Achievements manquait totalement, et les joueurs existants comme JGtm n'avaient même pas leurs achievements peuplés en DB (intégré au sync engine post-sync mais jamais réellement déclenché pour la plupart).
+
+**Décisions techniques** :
+
+1. **Séparation deux-repos plutôt qu'ATTACH cross-DB** — `AchievementsRepo` lit `player_achievements` (stats.duckdb), `MetadataRepo.GetAchievementDefinitions` lit `xbox_achievement_definitions` (metadata.duckdb). Le service merge Go-side. Volume très faible (quelques centaines au max). Plus testable avec mocks que ATTACH SQL.
+
+2. **Interface segregation `MetadataAchievementsRepository`** — interface minimale séparée de `MetadataRepository` (qui couvre saisons/Waypoint). Le service ne dépend que de la méthode dont il a besoin.
+
+3. **Capability `title.CapAchievements`** plutôt que `games.CapAchievements` — la grille de capabilities `internal/games/` est réservée aux méthodes du `TitleDataAdapter` (les Load* canoniques). Comme les achievements ne sont pas des données canoniques de match, l'accès direct via repos suit le pattern `CareerService` (sans adapter). La capability product-level `title.CapAchievements` est ce qui drive le middleware `RequireCapability` sur la route.
+
+4. **Bilingue côté serveur** — `name_en`/`name_fr` et `description_en`/`description_fr` servis dans la réponse, le frontend choisit selon `locale` (pattern identique à `AssetCard`). Pas de logique Accept-Language côté serveur.
+
+5. **Tri métier dans le service** — unlocked d'abord (par `UnlockedAt` DESC, dates récentes en haut), puis locked par gamerscore DESC, tri secondaire stable par `achievement_id`. Permet une UX naturelle "ce que je viens de gagner / ce qui vaut le plus".
+
+6. **Méthode `RunAchievementsOnly` exportée sur `SyncEngine`** + nouveau CLI `levelup sync-achievements` pour le backfill admin one-shot. Acquiert le `dblease` sur la player DB (évite collisions avec un sync concurrent). Pas de dblease sur metadata.duckdb (la fonction `runAchievementsSync` interne ouvre sa propre connexion sans lease — limite acceptable pour un admin one-shot, écritures rares sur `xbox_achievement_definitions`).
+
+7. **Orphelins (player row sans définition)** ignorés silencieusement par le service — cas d'achievement supprimé côté Xbox post-sync.
+
+**Résultats observés** :
+
+- 17 tests verts (4 repo + 7 service + 3 handler + 3 hook frontend) + 2 tests d'intégration cross-DB
+- `go build ./...` et `go vet ./...` clean
+- `npm run typecheck` ne révèle aucune nouvelle erreur (mon erreur sur `context.queryClient` est strictement identique à celles présentes dans `career.tsx`, `home.tsx` et autres — pattern à fixer projet-wide)
+- `npm run test src/features/achievements/queries.test.ts` → 3/3 passants
+
+**Refonte UX en cours d'implémentation (revue utilisateur)** :
+
+- Page dédiée `/achievements` supprimée → section horizontale intégrée dans `CareerPage` entre les charts de progression et le LUSR
+- Helper `pickLocalized(en, fr, locale)` introduit dans `features/achievements/i18n.ts` — fix robuste des fallbacks bilingues (FR-only, EN-only, both empty)
+- Strings UI factorisées dans `ACHIEVEMENTS_TEXT: Record<Locale, AchievementsText>` (pattern recommandé par skill `frontend-patterns`)
+- Composants finaux : `AchievementsCareerSection` (header KPI inline + scroll horizontal `snap-x`, limite 30 entrées) + `AchievementCard` (compact, largeur fixe pour s'aligner dans la rangée)
+- Tests vitest étendus : 12 tests `pickLocalized`/`formatUnlockedDate` + 11 `AchievementCard` (locale + fallbacks + progression + dates) + 5 `AchievementsCareerSection` (états loading/error/empty/data + limit) = 31 tests verts
+
+**Couverture livrable finale** :
+
+- Backend : CLI `sync-achievements`, ports, repos, domain types, service, handler, capability, route HTTP avec garde middleware, **route documentée dans `openapi.yaml`** (passage du test contract)
+- Frontend : query key, types TS, hook `useAchievementsPage`, section horizontale dans CareerPage, composants avec helper `pickLocalized` et dictionnaires i18n explicites
+- Couleurs : aucun hex ni Tailwind couleur introduit ; tous les états passent par des tokens (`primary`, `muted`, `destructive`)
+
+**Prochaine étape** :
+
+1. Lancer `levelup sync-achievements --gamertag JGtm` pour peupler les données réelles
+2. Tester la page sur `/players/JGtm/achievements` (vérifier images, filtres, tri)
+3. Décider du placement nav L1 (initialement proposé sous Carrière, à valider avec l'utilisateur)
+4. Commit en plusieurs étapes selon le plan `.ai/PLAN_ACHIEVEMENTS_PAGE.md`
+
+**Plan de référence** : `.ai/PLAN_ACHIEVEMENTS_PAGE.md` (6 commits séquentiels, branche `feat/seasons-as-asset-kind`).
+
+---
+
 ## [2026-05-04] feat(badges): tooltip de description sur les badges d'impact (match + escouade)
 
 **Statut** : Complété.
@@ -20,17 +74,27 @@
 
 **Conclusion** : Si d'autres features consomment ces badges plus tard, déplacer `badgeDescriptions` vers `apps/web/src/lib/badges/i18n.ts` partagé.
 
-## [2026-05-04] fix(squad/radar): axes score et impact à 0 dans le radar synergie
+## [2026-05-04] fix(squad/radar): axes score, impact et objectif à 0 + alignement formules Python
 
-**Statut** : Complété. Commit `b6548ac9`.
+**Statut** : Complété.
 
-**Contexte** : L'utilisateur signale que dans le "Radar synergie — 6 axes par joueur", tous les joueurs affichent 0 pour impact, objectif et score.
+**Contexte** : Le "Radar synergie — 6 axes par joueur" affichait 0 pour impact, objectif et score. L'utilisateur confirme que l'axe objectif est dans le périmètre et demande une vérification d'alignement avec la version Python (branche main).
 
-**Diagnostic** : `playerMatchesBaseSelect` (dans `player_matches_repo.go`) ne sélectionnait pas `p.max_killing_spree` ni `p.personal_score` depuis `shared.match_participants`. Résultat : `r.Self.MaxKillingSpree` et `r.Self.PersonalScore` toujours `nil` → `intPtrOrZero(nil) = 0` → `AxisScore = 0`, `AxisImpact = 0` pour tous les joueurs.
+**Phase 1 — SELECT manquants** (commit `b6548ac9`) : `playerMatchesBaseSelect` ne sélectionnait pas `p.max_killing_spree` ni `p.personal_score`. Ajout des colonnes + pipeline de scan complet.
 
-**Décision** : Ajout des deux colonnes au SELECT, variables de scan, struct `playerMatchScanResult`, projection dans `projectPlayerMatchRow`, et helper `nullInt64ToIntPtr`.
+**Phase 2 — Alignement formules + axe objectif** :
 
-**Objectif** : Reste à 0 (documenté "nécessite personal_score_awards, hors MVP").
+1. **Impact** : corrigé de `sum(MaxKillingSpree)` → taux `sum(PersonalScore) / sum(TimePlayed_min)`. Seuil fixe 250 pts/min (indépendant du nombre de matchs).
+
+2. **Survival** : corrigé de `time/deaths` → formule composite Python : `0.5*(1 - dpm/2.0) + 0.5*(avgLife/90.0)`. Résultat 0..1, seuil = 1.0.
+
+3. **Objectif** : ajout de `LoadObjectiveScores(ctx, slug, gamertag, matchIDs)` dans `SquadV2Loader` + implémentation dans `SquadV2LoaderAdapter`. Requête : `SELECT match_id, SUM(award_score) FROM personal_score_awards WHERE award_category='objective' AND xuid=? AND match_id IN (...) GROUP BY match_id`. Dégradation silencieuse si table absente.
+
+4. **Seuils scalés** : les seuils absolus (combat=25, support=8, score=4000, objective=350) sont multipliés par `nShared` pour rester proportionnels au volume de la session.
+
+5. **Fakes de test** mis à jour : `fakeSquadLoader` et `fakeSquadLoaderFull` implémentent `LoadObjectiveScores` (stub → map vide).
+
+**Résultat** : go build OK, go vet OK, TestSquad*/TestTeammates*/TestBuildSquad* passent.
 
 ## [2026-05-04] fix(squad/contributions): supprime radar normalisé + corrige 7 erreurs de tests préexistantes
 
