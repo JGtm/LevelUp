@@ -65,7 +65,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
       <p className="text-xs text-muted-foreground">
         Les règles de regroupement des sessions et les badges de performance sont configurables
         dans{' '}
-        <Link to="/settings" className="underline hover:text-foreground">
+        <Link to="/settings" search={{ tab: 'analyse' }} className="underline hover:text-foreground">
           Paramètres → Analyse
         </Link>{' '}
         après la synchronisation.
