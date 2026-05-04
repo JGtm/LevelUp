@@ -13,6 +13,9 @@
  */
 import { Badge } from '@/components/ui/badge'
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
+import { Tooltip } from '@/components/ui/tooltip'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { getSquadText } from '@/features/squad/i18n'
 import type { MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
 
 interface BadgeMeta {
@@ -58,6 +61,9 @@ interface Props {
 }
 
 export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
+  const locale = useAppShellStore((s) => s.locale)
+  const badgeI18n = getSquadText(locale).impact
+
   if (badges.length === 0) return null
 
   const xuidIndex = buildXUIDIndex(scoreboard)
@@ -82,22 +88,26 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
           const isMe = player?.is_me ?? false
           const time = formatTime(b.time_ms)
           const variant = meta?.variant ?? 'outline'
+          const description = badgeI18n.badgeDescriptions[b.key]
           return (
-            <Badge
+            <Tooltip
               key={`${b.key}:${b.player_xuid ?? 'anon'}`}
-              variant={variant}
-              className={`gap-1 text-xs ${isMe ? 'ring-1 ring-primary/60' : ''}`}
-              title={[b.label, gamertag, time && `à ${time}`].filter(Boolean).join(' · ')}
+              content={description ? <span>{description}</span> : null}
             >
-              <BadgeIcon badgeKey={b.key} size={14} />
-              <span className="font-medium">{b.label}</span>
-              {gamertag && (
-                <span className="text-muted-foreground">· {gamertag}</span>
-              )}
-              {time && (
-                <span className="text-muted-foreground tabular-nums">· {time}</span>
-              )}
-            </Badge>
+              <Badge
+                variant={variant}
+                className={`gap-1 text-xs ${isMe ? 'ring-1 ring-primary/60' : ''}`}
+              >
+                <BadgeIcon badgeKey={b.key} size={14} />
+                <span className="font-medium">{b.label}</span>
+                {gamertag && (
+                  <span className="text-muted-foreground">· {gamertag}</span>
+                )}
+                {time && (
+                  <span className="text-muted-foreground tabular-nums">· {time}</span>
+                )}
+              </Badge>
+            </Tooltip>
           )
         })}
       </div>

@@ -1,5 +1,25 @@
 # Thought Log
 
+## [2026-05-04] feat(badges): tooltip de description sur les badges d'impact (match + escouade)
+
+**Statut** : Complété.
+
+**Contexte** : L'utilisateur souhaitait voir la description de chaque badge d'impact en tooltip — sur le bandeau "Faits marquants" (page match) et dans le tableau "Impact des coéquipiers" (page escouade). Les `title` HTML natifs n'affichaient que le label court.
+
+**Décisions techniques** :
+
+1. **Nouveau composant `Tooltip`** (`apps/web/src/components/ui/tooltip.tsx`) — wrapper hover générique pur CSS+state, sans dépendance externe (pas de Radix dans le projet). Aligné sur le pattern d'`info-tooltip.tsx`.
+
+2. **Source unique des descriptions** : ajout de `badgeDescriptions: Record<string, string>` dans `SquadText.impact` (FR + EN), à côté de `badgeNames`. `top_gun` ajouté à `badgeNames` pour cohérence avec `MatchImpactBadgesBar`.
+
+3. **Descriptions corrigées d'après le code Go** (`internal/analysis/match_impact.go`) — la première version contenait des inexactitudes (ex: "false_brother = a tiré sur ses alliés" alors que c'est juste un perdant non-top-killer avec max(deaths) ∧ min(assists)). Réécrites pour refléter exactement la logique : `min/max(TimeMS)` filtré par outcome, conjonctions strictes, seuil `topGunKillThreshold = 10`, etc.
+
+4. **Cross-feature import assumé** : `MatchImpactBadgesBar` (feature match-view) importe `getSquadText` depuis `features/squad/i18n` pour réutiliser les descriptions plutôt que les dupliquer. Acceptable car les badges sont un concept partagé, ≤ 2 consommateurs.
+
+**Résultats** : Hover sur un badge dans la page match ou sur une icône dans le tableau impact escouade → tooltip avec description précise. Aucune erreur TypeScript.
+
+**Conclusion** : Si d'autres features consomment ces badges plus tard, déplacer `badgeDescriptions` vers `apps/web/src/lib/badges/i18n.ts` partagé.
+
 ## [2026-05-04] fix(squad/radar): axes score et impact à 0 dans le radar synergie
 
 **Statut** : Complété. Commit `b6548ac9`.
