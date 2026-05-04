@@ -11,6 +11,7 @@ import { CareerSummaryCard } from './CareerSummaryCard'
 import { CareerChartsSection } from './CareerChartsSection'
 import { CareerTopMatchesTable } from './CareerTopMatchesTable'
 import { CareerEncountersSection } from './CareerEncountersSection'
+import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
 import { useCareerPage, useCareerTopMatches } from './queries'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { LeaderboardBlock } from '@/features/leaderboard/LeaderboardBlock'
@@ -97,6 +98,9 @@ export function CareerPage() {
             placeholderDescription: 'Aucune donnée exploitable.',
           }}
         />
+
+        {/* Succès Xbox — section horizontale (KPI inline + scroll de cartes) */}
+        <AchievementsCareerSection playerSlug={playerSlug} />
 
         {/* Section LUSR */}
         <Card>
