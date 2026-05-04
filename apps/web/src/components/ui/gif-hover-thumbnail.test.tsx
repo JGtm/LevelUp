@@ -2,7 +2,7 @@
  * Tests GifHoverThumbnail — vérifie l'affichage en cas de succès/échec du canvas.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act, waitFor } from '@testing-library/react'
+import { render, act, waitFor } from '@testing-library/react'
 import { GifHoverThumbnail } from './gif-hover-thumbnail'
 
 // Mock global Image pour contrôler l'onload/onerror
@@ -24,18 +24,18 @@ class MockImage {
 }
 
 let lastImage: MockImage | null = null
-const OriginalImage = global.Image
+const OriginalImage = globalThis.Image
 
 beforeEach(() => {
   // @ts-expect-error stub global Image (constructor)
-  global.Image = function () {
+  globalThis.Image = function () {
     lastImage = new MockImage()
     return lastImage
   } as unknown as typeof Image
 })
 
 afterEach(() => {
-  global.Image = OriginalImage
+  globalThis.Image = OriginalImage
   lastImage = null
 })
 
