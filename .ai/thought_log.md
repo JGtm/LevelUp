@@ -1,5 +1,17 @@
 # Thought Log
 
+## [2026-05-04] chore(diag): outil one-shot `diag_orphan_session` pour matchs sans session_label
+
+**Statut** : Complété.
+
+**Contexte** : Pendant le debug du chart teammates.04 (« Performance d'escouade par session ») un bucket parasite `(no session)` apparaissait. Cause connue : un match importé sans backfill `session_recalc` laisse `player_match_enrichment.session_label` à NULL. J'avais écrit un script de diagnostic ad-hoc qui traînait en untracked depuis ; on le commit propre dans `cmd/` pour pouvoir le rejouer si le symptôme revient (et pour l'historique du dépôt).
+
+**Décision** : tag `//go:build cgo`, lecture READ_ONLY de la shared DB + de chaque player DB, scan global des matchs orphelins par joueur et probe ciblé optionnel sur un match_id. Aucun écrit, donc safe à lancer en parallèle d'un serveur tournant.
+
+**Conclusion** : outil parqué, pas de logique métier. Si le besoin se généralise, à promouvoir en commande Make ou en endpoint admin.
+
+---
+
 ## [2026-05-04] feat(seasons V2): catalog unifié TOML + DB + lazy fetch (pattern symétrique au battle pass)
 
 **Statut** : Complété.
