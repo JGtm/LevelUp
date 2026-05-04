@@ -461,6 +461,8 @@ export function SquadLayout() {
              la card du joueur dans la bande verdict. */}
           {data?.header?.solo_kpis && (() => {
             const header = data.header
+            const soloKpis = header.solo_kpis
+            if (!soloKpis) return null
             const mainGT = data.main_player ?? ''
             const mainXuid = header?.player_cards?.find((c) => c.gamertag === mainGT)?.xuid ?? ''
             const briefingSquad =
@@ -473,7 +475,7 @@ export function SquadLayout() {
                     activeXuid: mainXuid,
                   }
                 : undefined
-            return <SessionBriefing kpis={header.solo_kpis} squad={briefingSquad} />
+            return <SessionBriefing kpis={soloKpis} squad={briefingSquad} />
           })()}
 
           {/* Navigation onglets */}

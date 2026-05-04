@@ -48,7 +48,7 @@ export function RegisterPage() {
           navigate({ to: '/' })
         },
         onError: (err) => {
-          const apiErr = err as ApiError
+          const apiErr = err as unknown as ApiError
           const messages: Record<string, string> = {
             user_exists: 'Ce nom d\'utilisateur est déjà pris.',
             invite_required: 'Un code d\'invitation est requis.',

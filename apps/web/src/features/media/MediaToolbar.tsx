@@ -172,7 +172,7 @@ function withSelectedOption(options: LabelValue[], selectedValue: string) {
   if (!selectedValue || options.some((option) => option.value === selectedValue)) {
     return options
   }
-  return [{ label: selectedValue, value: selectedValue }, ...options]
+  return [{ label: selectedValue, value: selectedValue, count: 0 }, ...options]
 }
 
 /**

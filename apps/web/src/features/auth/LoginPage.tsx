@@ -44,7 +44,7 @@ export function LoginPage() {
           navigate({ to: '/' })
         },
         onError: (err) => {
-          const apiErr = err as ApiError
+          const apiErr = err as unknown as ApiError
           if (apiErr.code === 'invalid_credentials') {
             setError('Identifiants incorrects.')
           } else {

@@ -51,11 +51,7 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
           <StatLine label={labelOf('accuracy')} value={row.shots_accuracy != null ? `${(row.shots_accuracy * 100).toFixed(1)}%` : null} />
           <StatLine label={labelOf('shots_fired')} value={row.shots_fired} />
           <StatLine label={labelOf('shots_hit')} value={row.shots_hit} />
-          <StatLine label="Efficacité" value={row.damage_efficiency?.toFixed(2)} />
           <StatLine label="Vie moyenne" value={row.average_life} />
-          <StatLine label="Trahisons" value={row.betrayals} />
-          <StatLine label="Suicides" value={row.suicides} />
-          <StatLine label="Objectifs volés" value={row.objectives_stolen} />
         </div>
       </div>
 

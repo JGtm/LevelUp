@@ -121,7 +121,7 @@ function buildEngagementOption(
   const xData = points.map((p) => (xFormatter ? xFormatter(p.x) : String(p.x)))
   const teamColor = resolveToken('chart-series-1') // gris fonce / atone
   const expectedColor = resolveToken('chart-series-2') // gris medium pointille
-  const playerColor = resolveToken('accent-info') // saturated blue
+  const playerColor = resolveToken('info') // saturated blue
 
   // Smooth=true en intra (echantillonnage 10s), false en session (matchs discrets).
   const smooth = granularity === 'intra'
