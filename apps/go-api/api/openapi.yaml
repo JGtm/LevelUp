@@ -284,6 +284,39 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   # -------------------------------------------------------------------------
+  # Achievements Xbox (bilingues EN/FR)
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/pages/achievements:
+    get:
+      tags: [career]
+      operationId: getAchievementsPage
+      summary: "Page Achievements Xbox du joueur"
+      description: |
+        Retourne la liste fusionnée des achievements Xbox (référentiel bilingue
+        EN/FR) avec la progression du joueur. Triés : unlocked en premier
+        (UnlockedAt DESC), puis locked par gamerscore DESC.
+
+        Données peuplées par le sync engine post-sync ou par la CLI
+        `levelup sync-achievements`. Si la table est vide (backfill jamais lancé),
+        renvoie une réponse `{summary: zeros, achievements: []}`.
+
+        Capability requise : `achievements` — middleware retourne 405 si le
+        titre courant ne supporte pas cette feature.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Page Achievements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AchievementsPageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
   # Match History (P1)
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/match-history/query:
@@ -2521,6 +2554,98 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CareerEncounter"
+
+    # --- Achievements ---
+    AchievementsSummary:
+      type: object
+      required:
+        - total_count
+        - unlocked_count
+        - total_gamerscore
+        - earned_gamerscore
+        - completion_pct
+      properties:
+        total_count:
+          type: integer
+          description: Nombre total d'achievements définis pour le titre.
+        unlocked_count:
+          type: integer
+          description: Nombre d'achievements débloqués par le joueur.
+        total_gamerscore:
+          type: integer
+          description: Gamerscore total possible (somme de tous les achievements).
+        earned_gamerscore:
+          type: integer
+          description: Gamerscore acquis par le joueur (somme des unlocked).
+        completion_pct:
+          type: number
+          format: double
+          description: Pourcentage 0..100 arrondi à 0.1.
+
+    AchievementEntry:
+      type: object
+      required:
+        - achievement_id
+        - name_en
+        - name_fr
+        - description_en
+        - description_fr
+        - gamerscore
+        - is_secret
+        - unlocked
+      properties:
+        achievement_id:
+          type: string
+        name_en:
+          type: string
+        name_fr:
+          type: string
+        description_en:
+          type: string
+        description_fr:
+          type: string
+        locked_desc_en:
+          type: string
+          description: Description visible quand verrouillé (peut être absente).
+        locked_desc_fr:
+          type: string
+        gamerscore:
+          type: integer
+        image_url:
+          type: string
+          description: URL CDN Xbox de l'icône d'achievement (peut être absente).
+        is_secret:
+          type: boolean
+        rarity_category:
+          type: string
+          description: "ex: Common, Rare (peut être absent)."
+        rarity_percent:
+          type: number
+          format: double
+          description: Pourcentage de joueurs ayant débloqué (peut être absent).
+        unlocked:
+          type: boolean
+        unlocked_at:
+          type: string
+          format: date-time
+          description: ISO 8601 — présent uniquement si unlocked=true.
+        current_progress:
+          type: integer
+          description: Progression actuelle (présent uniquement si la définition expose un compteur).
+        target_progress:
+          type: integer
+          description: Cible de progression.
+
+    AchievementsPageResponse:
+      type: object
+      required: [summary, achievements]
+      properties:
+        summary:
+          $ref: "#/components/schemas/AchievementsSummary"
+        achievements:
+          type: array
+          items:
+            $ref: "#/components/schemas/AchievementEntry"
 
     # --- Match History ---
     MatchHistoryRow:
