@@ -26,6 +26,23 @@ func mkRow(kills, deaths, assists, timePlayed int, outcome canonical.Outcome, ac
 	}
 }
 
+// mkRowWithEnrichment construit une row avec un enrichment (perf score
+// et/ou skill snapshot) pour tester AvgPerformanceScore et RankDelta.
+// Passer perf=nil pour omettre le score, ratingType="" pour omettre le delta.
+func mkRowWithEnrichment(perf *float64, ratingType canonical.RatingType, delta *float64) canonical.PlayerMatchRow {
+	row := canonical.PlayerMatchRow{
+		Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
+	}
+	row.Enrichment.PerformanceScore = perf
+	if ratingType != "" {
+		row.Enrichment.SkillSnapshot = &canonical.SkillSnapshot{
+			RatingType: ratingType,
+			Delta:      delta,
+		}
+	}
+	return row
+}
+
 func TestComputeKPIStats_Empty(t *testing.T) {
 	t.Parallel()
 	got := ComputeKPIStats(nil)
@@ -112,6 +129,138 @@ func TestComputeKPIStats_OutcomeBreakdown(t *testing.T) {
 	got := ComputeKPIStats(rows)
 	if got.Outcomes.Wins != 2 || got.Outcomes.Losses != 1 || got.Outcomes.Ties != 1 || got.Outcomes.DNF != 1 {
 		t.Errorf("outcomes: want W2/L1/T1/DNF1, got %+v", got.Outcomes)
+	}
+}
+
+// =============================================================================
+// AvgPerformanceScore
+// =============================================================================
+
+func TestComputeKPIStats_AvgPerformanceScore_AveragesNonNilOnly(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithEnrichment(float64PtrKPI(60.0), "", nil),
+		mkRowWithEnrichment(float64PtrKPI(80.0), "", nil),
+		mkRowWithEnrichment(nil, "", nil), // sans score : ignore
+	}
+	got := ComputeKPIStats(rows)
+	if got.AvgPerformanceScore == nil {
+		t.Fatal("AvgPerformanceScore: got nil, want pointer")
+	}
+	if math.Abs(*got.AvgPerformanceScore-70.0) > 1e-9 {
+		t.Errorf("AvgPerformanceScore: want 70 (mean of 60,80), got %v", *got.AvgPerformanceScore)
+	}
+}
+
+func TestComputeKPIStats_AvgPerformanceScore_NilWhenNoSamples(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithEnrichment(nil, "", nil),
+		mkRowWithEnrichment(nil, "", nil),
+	}
+	got := ComputeKPIStats(rows)
+	if got.AvgPerformanceScore != nil {
+		t.Errorf("AvgPerformanceScore: want nil when no samples, got %v", *got.AvgPerformanceScore)
+	}
+}
+
+// =============================================================================
+// RankDelta
+// =============================================================================
+
+func TestComputeKPIStats_RankDelta_CSR_SumsSignedDeltas(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(15.0)),
+		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(-8.0)),
+		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(20.0)),
+	}
+	got := ComputeKPIStats(rows)
+	if got.RankDelta == nil {
+		t.Fatal("RankDelta: got nil, want CSR delta")
+	}
+	if got.RankDelta.Kind != "csr" {
+		t.Errorf("Kind: want csr, got %q", got.RankDelta.Kind)
+	}
+	if math.Abs(got.RankDelta.Value-27.0) > 1e-9 {
+		t.Errorf("Value: want 27 (15-8+20), got %v", got.RankDelta.Value)
+	}
+	if got.RankDelta.Count != 3 {
+		t.Errorf("Count: want 3, got %d", got.RankDelta.Count)
+	}
+}
+
+func TestComputeKPIStats_RankDelta_LUSR(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(0.05)),
+		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(-0.02)),
+	}
+	got := ComputeKPIStats(rows)
+	if got.RankDelta == nil {
+		t.Fatal("RankDelta: got nil, want LUSR delta")
+	}
+	if got.RankDelta.Kind != "lusr" {
+		t.Errorf("Kind: want lusr, got %q", got.RankDelta.Kind)
+	}
+	if math.Abs(got.RankDelta.Value-0.03) > 1e-9 {
+		t.Errorf("Value: want 0.03, got %v", got.RankDelta.Value)
+	}
+	if got.RankDelta.Count != 2 {
+		t.Errorf("Count: want 2, got %d", got.RankDelta.Count)
+	}
+}
+
+// TestComputeKPIStats_RankDelta_NilWhenNoRatedMatches : aucun snapshot ou aucun
+// delta renseigne -> RankDelta nil (la card "Delta rang" sera cachee cote front).
+func TestComputeKPIStats_RankDelta_NilWhenNoRatedMatches(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithEnrichment(nil, "", nil),                      // aucun snapshot
+		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, nil), // snapshot sans delta
+	}
+	got := ComputeKPIStats(rows)
+	if got.RankDelta != nil {
+		t.Errorf("RankDelta: want nil, got %+v", got.RankDelta)
+	}
+}
+
+// TestComputeKPIStats_RankDelta_MixedScopeKeepsDominantKind : cas pathologique
+// (scope qui mixe matchs classes et non classes). On retient le type avec le
+// plus de matchs (CSR ici, 2 vs 1).
+func TestComputeKPIStats_RankDelta_MixedScopeKeepsDominantKind(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(10.0)),
+		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(-5.0)),
+		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(0.1)),
+	}
+	got := ComputeKPIStats(rows)
+	if got.RankDelta == nil || got.RankDelta.Kind != "csr" {
+		t.Fatalf("want csr (majority), got %+v", got.RankDelta)
+	}
+	if got.RankDelta.Count != 2 {
+		t.Errorf("Count: want 2 (csr only), got %d", got.RankDelta.Count)
+	}
+	if math.Abs(got.RankDelta.Value-5.0) > 1e-9 {
+		t.Errorf("Value: want 5 (10-5, lusr ignore), got %v", got.RankDelta.Value)
+	}
+}
+
+// TestComputeKPIStats_RankDelta_TieBrokenByCSR : 1 match CSR + 1 match LUSR
+// -> egalite, CSR l'emporte (priorite competitive).
+func TestComputeKPIStats_RankDelta_TieBrokenByCSR(t *testing.T) {
+	t.Parallel()
+	rows := []canonical.PlayerMatchRow{
+		mkRowWithEnrichment(nil, canonical.RatingTypeLUSR, float64PtrKPI(0.5)),
+		mkRowWithEnrichment(nil, canonical.RatingTypeCSR, float64PtrKPI(7.0)),
+	}
+	got := ComputeKPIStats(rows)
+	if got.RankDelta == nil || got.RankDelta.Kind != "csr" {
+		t.Fatalf("tie broken by CSR: want csr, got %+v", got.RankDelta)
+	}
+	if got.RankDelta.Count != 1 || math.Abs(got.RankDelta.Value-7.0) > 1e-9 {
+		t.Errorf("CSR bucket only: want Count=1 Value=7, got %+v", got.RankDelta)
 	}
 }
 

@@ -35,6 +35,16 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	var lifeSamples int
 	var totalAccuracy float64
 	var accuracySamples int
+	var totalPerf float64
+	var perfSamples int
+	// Buckets par RatingType pour le delta de rang. On accumule les deltas
+	// pour chaque type rencontre puis on retient le type majoritaire en
+	// sortie (cf. RankDelta.Kind — exclusivite metier au sein d'un scope coherent).
+	type rankBucket struct {
+		sum   float64
+		count int
+	}
+	rankBuckets := map[canonical.RatingType]*rankBucket{}
 
 	for _, r := range rows {
 		if r.Self.TimePlayed != nil {
@@ -56,6 +66,19 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		if r.Self.Accuracy != nil {
 			totalAccuracy += *r.Self.Accuracy
 			accuracySamples++
+		}
+		if r.Enrichment.PerformanceScore != nil {
+			totalPerf += *r.Enrichment.PerformanceScore
+			perfSamples++
+		}
+		if snap := r.Enrichment.SkillSnapshot; snap != nil && snap.Delta != nil && snap.RatingType != "" {
+			b, ok := rankBuckets[snap.RatingType]
+			if !ok {
+				b = &rankBucket{}
+				rankBuckets[snap.RatingType] = b
+			}
+			b.sum += *snap.Delta
+			b.count++
 		}
 		switch r.Self.Outcome {
 		case canonical.OutcomeWin:
@@ -86,6 +109,31 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	}
 	if lifeSamples > 0 {
 		stats.AvgLifeSeconds = totalLifeSeconds / float64(lifeSamples)
+	}
+	if perfSamples > 0 {
+		avg := totalPerf / float64(perfSamples)
+		stats.AvgPerformanceScore = &avg
+	}
+	if len(rankBuckets) > 0 {
+		// Type majoritaire : le bucket avec le plus de matchs.
+		// En egalite, csr l'emporte (priorite competitive).
+		var bestKind canonical.RatingType
+		var best *rankBucket
+		for kind, b := range rankBuckets {
+			switch {
+			case best == nil:
+				bestKind, best = kind, b
+			case b.count > best.count:
+				bestKind, best = kind, b
+			case b.count == best.count && kind == canonical.RatingTypeCSR:
+				bestKind, best = kind, b
+			}
+		}
+		stats.RankDelta = &domain.RankDelta{
+			Kind:  string(bestKind),
+			Value: best.sum,
+			Count: best.count,
+		}
 	}
 	return stats
 }
