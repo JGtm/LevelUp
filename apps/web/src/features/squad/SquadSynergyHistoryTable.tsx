@@ -8,7 +8,7 @@
  * Utilise TanStack Table v8. Pagination 20/page côté client.
  * Labels carte/playlist via useFieldMappings (assets titre).
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   type ColumnDef,
@@ -45,7 +45,7 @@ function fmtMmr(v: number | undefined): string {
   return Math.round(v).toLocaleString()
 }
 
-function fmtDeltaMMR(v: number | undefined): JSX.Element | string {
+function fmtDeltaMMR(v: number | undefined): ReactNode {
   if (v === undefined || v === null) return '-'
   const sign = v >= 0 ? '+' : ''
   const color = v > 0 ? tokenCssVar('outcome-win') : v < 0 ? tokenCssVar('outcome-loss') : undefined
