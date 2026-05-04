@@ -35,6 +35,9 @@ export interface BriefingTexts {
     accuracy: string
     lifespan: string
     perMin: string
+    avgPerformance: string
+    rankDeltaCSR: string
+    rankDeltaLUSR: string
   }
   /** Format pluriel pour les libellés outcomes — utilisé dans la Results bar */
   pluralize: (count: number, singular: string) => string
@@ -65,6 +68,9 @@ const FR: BriefingTexts = {
     accuracy: 'Précision moyenne',
     lifespan: 'Durée de vie moyenne',
     perMin: '/min',
+    avgPerformance: 'Performance moyenne',
+    rankDeltaCSR: 'Delta CSR',
+    rankDeltaLUSR: 'Delta LUSR',
   },
   // FR : ajout "s" si count > 1, sauf "Abandon" qui prend aussi "s".
   // Toutes nos labels (Victoire/Défaite/Égalité/Abandon) suivent la même règle.
@@ -96,6 +102,9 @@ const EN: BriefingTexts = {
     accuracy: 'Avg accuracy',
     lifespan: 'Avg lifespan',
     perMin: '/min',
+    avgPerformance: 'Avg performance',
+    rankDeltaCSR: 'CSR change',
+    rankDeltaLUSR: 'LUSR change',
   },
   // EN : pluralisation par "s" couvre nos labels outcomes (Win → Wins, Loss → Losses
   // est géré séparément si needed — ici on assume singulier sans -s).

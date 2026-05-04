@@ -1,5 +1,81 @@
 # Thought Log
 
+## [2026-05-04] feat(squad/header): SessionBriefing — cards "Performance moyenne" + "Delta rang" (frontend)
+
+**Statut** : Complété (frontend, suite directe du commit backend `14b25e73`).
+
+**Contexte** : Suite directe de la livraison backend (KPIStats.AvgPerformanceScore + RankDelta). Le frontend lit ces deux nouveaux champs et les affiche en deux cards conditionnelles dans le SessionBriefing de la page Escouade.
+
+**Décisions techniques** :
+
+1. **Type miroir** ([apps/web/src/lib/api/types.ts](apps/web/src/lib/api/types.ts)) — extension additive de `KPIStats` :
+   - `avg_performance_score?: number` (optional → omitempty Go)
+   - `rank_delta?: RankDelta` avec interface dédiée `{ kind: 'csr' | 'lusr', value: number, count: number }`
+
+2. **KpiGrid extensible** ([SessionBriefing/KpiGrid.tsx](apps/web/src/features/_shared/SessionBriefing/KpiGrid.tsx)) :
+   - Grille passe de `grid-cols-8` (statique Tailwind) à `style={{ gridTemplateColumns: repeat(N, ...) }}` calculé dynamiquement (8/9/10 selon présence des données). Tailwind ne purge pas les `grid-cols-N` dynamiques → inline style obligatoire.
+   - `KpiCell` étendu avec un nouveau prop `valueColorToken?: SemanticToken` qui override la couleur trend (les cards perf/delta n'ont pas de glyphe ▲/▼, leur couleur porte directement la sémantique sur la valeur).
+   - **Performance moyenne** : couleur absolue par tier (`getScoreTier(score).token` → `perf-tier-1` à `perf-tier-5`, déjà résolu via `tokenCssVar`). Format `.toFixed(1)` (ex: "67.5"). Visible aussi en mode solo (vs trends qui requièrent `teamAvgKpis`).
+   - **Delta rang** : couleur absolue par signe (`divergent-pos` si >0, `divergent-neg` si <0, `divergent-neutral` si =0). Label dynamique `Delta CSR` / `Delta LUSR`. Format CSR = entier signé (`+27`, `−8`, `±0`), LUSR = 2 décimales (`+0.05`, `−0.02`, `±0.00`). Préfixe explicite `+/−/±` pour que le signe soit lisible **sans dépendre uniquement de la couleur** (a11y).
+
+3. **i18n** ([SessionBriefing/i18n.ts](apps/web/src/features/_shared/SessionBriefing/i18n.ts)) — 3 nouveaux keys (`avgPerformance`, `rankDeltaCSR`, `rankDeltaLUSR`) côté FR + EN.
+
+4. **Tests** ([SessionBriefing.test.tsx](apps/web/src/features/_shared/SessionBriefing/SessionBriefing.test.tsx)) — 6 nouveaux cas (de 8 à 14 tests) :
+   - Perf renseigné → card visible avec label + valeur 1 décimale
+   - Perf absent → card NON rendue
+   - Delta CSR positif (`+27`)
+   - Delta LUSR négatif (`−0.02`, 2 décimales)
+   - Delta zéro (`±0`)
+   - Delta absent → card NON rendue
+
+**Périmètre exclu (volontairement)** :
+- Pas d'extension de `ComputeTeamAvgKPIs` côté Go — ces champs ne sont affichés que sur le main player. Les teammates voient leurs propres `KpiGrid` au drill-down click ; comme leurs canonical rows portent aussi `PerformanceScore` + `SkillSnapshot`, ils auront leurs propres cards quand le user drill (mais le mode drilled affiche leurs stats, pas la moyenne d'équipe).
+- Pas de glyphe ▲/▼ sur les nouvelles cards : la couleur (tier perf / divergent delta) + le préfixe signe explicite sur la valeur suffisent. Cohérent avec le minimalisme demandé par l'utilisateur (préférence dataviz moderne, mémorisée).
+
+**Résultats observés** :
+- `npx tsc --noEmit` clean.
+- `npx eslint` clean sur les fichiers touchés.
+- `npx vitest run SessionBriefing/` : **14/14 tests verts** (8 existants + 6 nouveaux), aucune régression.
+- Le flux end-to-end est désormais : `match_skill_rank` (player DB) → canonical row → ComputeKPIStats Go → JSON → KPIStats TS → KpiGrid → 2 cards conditionnelles colorées par tier/signe.
+
+**Conclusion / prochaine étape** : Feature livrable. À tester visuellement en démarrant `apps/go-api/cmd/server` + `apps/web/dev` et en naviguant sur `/players/<gt>/squad`. Les deux cards apparaîtront automatiquement quand le scope contient des matchs avec score perf ou rating CSR/LUSR.
+
+---
+
+## [2026-05-04] fix(web/shell): TopProgressBar — bugs barre coincée + trickle continu
+
+**Statut** : Complété (frontend uniquement, pas de commit pour l'instant).
+
+**Contexte** : L'utilisateur a remonté trois symptômes sur la barre de progression de chargement de page :
+1. Elle reste affichée alors que la page est chargée.
+2. Elle s'arrête presque toujours au même endroit (impression d'un seuil artificiel).
+3. Parfois elle ne se referme jamais.
+
+**Diagnostic** ([apps/web/src/components/shell/TopProgressBar.tsx](apps/web/src/components/shell/TopProgressBar.tsx)) :
+
+1. **Seuil artificiel = paliers fixes** : la version d'origine montait `30 → 70 (200ms) → 85 (800ms)` puis stagnait. NProgress (référence du marché) utilise un trickle continu avec incrément décroissant pour donner un mouvement perpétuel ; les paliers figés produisaient l'effet "bloquée à 85%".
+
+2. **Bug critique — déclencheur asymétrique** : `startBar()` était déclenché par changement de pathname OU `pendingCount > 0`, mais `completeBar()` n'était appelé QUE sur transition `pendingCount > 0 → 0`. Si la nouvelle page n'a pas de queries pending (ou que des queries déjà mises en cache → status `success`, pas `pending`), `pendingCount` restait à 0 et l'`useEffect [pendingCount]` ne se réexécutait jamais → barre figée pour toujours.
+
+3. **Aucun timeout maximum** : une query coincée en pending (timeout réseau, fetch sans résolution) laissait la barre éternelle.
+
+**Décisions techniques** :
+
+- **Trickle continu** : `setInterval(200ms)` qui ajoute un incrément décroissant (`10 / 4 / 2 / 0.5` selon la zone) avec léger jitter aléatoire. Plafond `MAX_TRICKLE_PROGRESS = 99` (jamais 100 sans complétion réelle). Calqué NProgress.
+- **Effet unifié `[pathname, pendingCount]`** : un seul `useEffect` réagit aux deux signaux. Sur navigation avec `pendingCount === 0`, `scheduleSettle()` est planifié immédiatement → la barre se ferme proprement après `SETTLE_MS + completionDelay`.
+- **Filet de sécurité `MAX_VISIBLE_MS = 8s`** : `setTimeout` programmé au start qui force `completeBar()` même si `pendingCount` reste > 0.
+- **Edge case navigation rapide** : si `startBar()` est appelée alors qu'on est déjà actif (re-navigation pendant la fenêtre de grâce), on annule un settle en attente plutôt que de no-op silencieusement.
+- **Math.random mocké à 0.5** dans les tests pour rendre le trickle déterministe.
+
+**Résultats observés** :
+- 15 tests passent (12 adaptés + 3 nouveaux pour les régressions : pathname-sans-pending, max-timeout, navigation-pendant-settle).
+- Lint clean sur les deux fichiers (un disable `react-hooks/purity` justifié sur `Date.now()` dans `startBar`, appelé depuis useEffect/timer pas pendant le render).
+- Typecheck global a des erreurs préexistantes (routes/stores) non liées à ce fix.
+
+**Prochaine étape** : décider avec l'utilisateur si on sort ce fix sur une branche dédiée (orthogonal à `feat/seasons-as-asset-kind`) ou si on l'inclut dans la branche en cours.
+
+---
+
 ## [2026-05-04] feat(squad/header): KPIStats étendu avec AvgPerformanceScore + RankDelta (backend)
 
 **Statut** : Complété (backend uniquement — frontend à suivre).

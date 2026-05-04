@@ -258,6 +258,50 @@ describe('SessionBriefing — outcomes pluralisation', () => {
   })
 })
 
+describe('SessionBriefing — Performance moyenne (card conditionnelle)', () => {
+  it('rend la card "Performance moyenne" avec valeur 1 décimale quand avg_performance_score présent', () => {
+    const kpis = makeKPIs({ avg_performance_score: 67.5 })
+    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    expect(screen.getByText('Performance moyenne')).toBeInTheDocument()
+    expect(screen.getByText('67.5')).toBeInTheDocument()
+  })
+
+  it("n'ajoute PAS la card si avg_performance_score absent", () => {
+    const kpis = makeKPIs() // pas de avg_performance_score
+    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    expect(screen.queryByText('Performance moyenne')).not.toBeInTheDocument()
+  })
+})
+
+describe('SessionBriefing — Delta rang (card conditionnelle)', () => {
+  it('rend "Delta CSR" + "+27" quand rank_delta.kind=csr et value=27 (entier)', () => {
+    const kpis = makeKPIs({ rank_delta: { kind: 'csr', value: 27, count: 3 } })
+    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    expect(screen.getByText('Delta CSR')).toBeInTheDocument()
+    expect(screen.getByText('+27')).toBeInTheDocument()
+  })
+
+  it('rend "Delta LUSR" + "−0.02" quand rank_delta.kind=lusr et value<0 (2 décimales)', () => {
+    const kpis = makeKPIs({ rank_delta: { kind: 'lusr', value: -0.02, count: 2 } })
+    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    expect(screen.getByText('Delta LUSR')).toBeInTheDocument()
+    expect(screen.getByText('−0.02')).toBeInTheDocument()
+  })
+
+  it('rend "±0" pour delta CSR à zéro (cas neutral)', () => {
+    const kpis = makeKPIs({ rank_delta: { kind: 'csr', value: 0, count: 1 } })
+    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    expect(screen.getByText('±0')).toBeInTheDocument()
+  })
+
+  it("n'ajoute PAS la card si rank_delta absent", () => {
+    const kpis = makeKPIs() // pas de rank_delta
+    renderWithProviders(<SessionBriefing kpis={kpis} />)
+    expect(screen.queryByText(/Delta CSR/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Delta LUSR/)).not.toBeInTheDocument()
+  })
+})
+
 describe('SessionBriefing — fallback drill-down', () => {
   it('xuid manquant dans kpisByXuid → fallback sur kpis du main (pas de crash)', () => {
     const kpis = makeKPIs()
