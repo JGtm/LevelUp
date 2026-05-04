@@ -327,6 +327,7 @@ function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
       <div className={wrapperClass}>
         <Link
           to="/settings"
+          search={{ tab: 'general' }}
           className="px-2 py-1.5"
           aria-label="Paramètres"
           title="Paramètres"
