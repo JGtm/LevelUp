@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-04] fix(squad/contributions): supprime radar normalisé + corrige 7 erreurs de tests préexistantes
+
+**Statut** : Complété. Commit `74848510`.
+
+**Contexte** : Tâche double — (1) corriger 7 erreurs de tests préexistantes dans 3 fichiers, (2) retirer le RadarChart "Profil de contribution normalisé" de `SquadContributionsPage`.
+
+**Décisions techniques** :
+
+1. **ExplorerPage.test.tsx** — `useSearch` absent du mock `@tanstack/react-router` → crash `RouterProvider`. Ajout de `useSearch: () => ({})` dans le mock.
+
+2. **AnalyseTab.test.tsx** — regex `/Prestige Points/` (anglais) sur un composant rendu en FR. Le texte FR est "Points de Prestige". Correction : `/Points de Prestige/`.
+
+3. **winRateVsHistoryBulletChart.ts** — deux non-conformités à la spec teammates.02 :
+   - La couleur historique utilisait `HISTORY_COLOR = 'rgba(120,120,120,0.45)'` au lieu de `tokenCssVar('chart-series-1')` + `opacity: 0.85`.
+   - Pas de `barGap: '-100%'` sur les deux séries (nécessaire pour l'effet bullet overlay).
+   Corrections appliquées dans l'implémentation (import `tokenCssVar` + `barGap` sur les deux séries).
+
+4. **SquadContributionsPage.tsx** — retrait complet du bloc `RadarChart` (Card + emptyContent) et du code associé : fonctions `metricLabel`, `availableMetrics`, `buildRadarSeries` ; variables `metrics`, `axisLabels`, `radarSeries`, `emptyContent`, `hasRows` ; imports `RadarChart`, `SQUAD_RADAR_METRICS`, `SquadMetric`, `TeammateRow`, `FieldMappingsResponse`, `useFieldMappings`. La page passe en modèle "sections conditionnelles pures" (aucune empty state globale).
+
+5. **SquadContributionsPage.test.tsx** — réécrit pour tester le comportement actuel : smoke test, "aucune section si pageData null", "per-minute chart si per_minute_stats", "synergy radar si synergy_radar".
+
+**Résultat** : 996/996 tests passent (117 fichiers).
+
 ## [2026-05-04] feat(squad/contributions): couleur complémentaire opaque pour les stats négatives (per-minute)
 
 **Statut** : Complété.
