@@ -217,6 +217,25 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	return svc, nil
 }
 
+// Achievements retourne un AchievementsService pour le joueur identifié par slug.
+//
+// Le service merge deux sources :
+//   - AchievementsRepo (player_achievements dans stats.duckdb du joueur)
+//   - MetadataRepo.GetAchievementDefinitions (xbox_achievement_definitions dans
+//     metadata.duckdb partagée)
+//
+// Aucun DataAdapter requis : les achievements ne sont pas des données canoniques
+// de match, donc l'accès direct via repos suit le même pattern que Career.
+func (r *ServiceRegistry) Achievements(ctx context.Context, slug string) (port.AchievementsService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	repo := duckdb.NewAchievementsRepo(pdb)
+	metaRepo := duckdb.NewMetadataRepo(pdb)
+	return service.NewAchievementsService(repo, metaRepo).WithTitleSlug(pdb.TitleSlug), nil
+}
+
 // TitleDataAdapter retourne un games.TitleDataAdapter player-scoped pour le
 // joueur courant.
 //

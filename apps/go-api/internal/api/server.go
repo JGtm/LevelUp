@@ -506,6 +506,13 @@ func NewRouter(
 				r.Get("/pages/career/encounters", career.GetEncounters)
 			})
 
+			// Achievements (Xbox bilingues) : guard CapAchievements.
+			achievements := handlers.NewAchievementsHandler(reg.Achievements)
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapAchievements))
+				r.Get("/pages/achievements", achievements.GetAchievementsPage)
+			})
+
 			// Sprint 8 : Match View + Explorer
 			mv := handlers.NewMatchViewHandler(reg.MatchView)
 			r.Get("/matches/{match_id}", mv.GetMatchView)

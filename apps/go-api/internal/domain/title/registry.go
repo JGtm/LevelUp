@@ -28,13 +28,14 @@ const (
 type Capability string
 
 const (
-	CapMatchmaking Capability = "matchmaking"
-	CapFirefight   Capability = "firefight"
-	CapForge       Capability = "forge"
-	CapMedia       Capability = "media"
-	CapRanked      Capability = "ranked"
-	CapCareer      Capability = "career"
-	CapAssetImages Capability = "asset.images" // Asset Drawer — thumbnails maps & armes
+	CapMatchmaking  Capability = "matchmaking"
+	CapFirefight    Capability = "firefight"
+	CapForge        Capability = "forge"
+	CapMedia        Capability = "media"
+	CapRanked       Capability = "ranked"
+	CapCareer       Capability = "career"
+	CapAssetImages  Capability = "asset.images" // Asset Drawer — thumbnails maps & armes
+	CapAchievements Capability = "achievements" // Xbox achievements bilingues (page Achievements)
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -89,6 +90,7 @@ func NewRegistry() *Registry {
 		Capabilities: []Capability{
 			CapMatchmaking, CapFirefight, CapForge,
 			CapMedia, CapRanked, CapCareer, CapAssetImages,
+			CapAchievements,
 		},
 		IsDefault:   true,
 		XboxTitleID: "1144039928",
