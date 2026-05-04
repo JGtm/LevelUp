@@ -35,7 +35,7 @@ vi.mock('./watcher-queries', () => ({
 // ---------------------------------------------------------------------------
 // Fixture i18n (subset des clés utilisées par WatcherCard)
 // ---------------------------------------------------------------------------
-const t: SettingsText = {
+const t = {
   pageTitle: 'Paramètres',
   pageSubtitle: "Configuration de l'application",
   savedStatus: '✓ Enregistré',
@@ -81,7 +81,6 @@ const t: SettingsText = {
   spnkrAutoSyncIntervalUnit: 'h',
   spnkrAutoSyncIntervalMinutes: 'Intervalle (min)',
   spnkrAutoSyncIntervalMinutesUnit: 'min',
-  spnkrRefreshWithBackfill: 'Backfill post-sync',
   watcherTitle: 'Détection de présence',
   watcherPresenceEnabled: 'Détection automatique',
   watcherPresenceDescription: 'Description',
@@ -116,7 +115,7 @@ const t: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillEvents: 'Événements',
   backfillWeapons: 'Armes',
-}
+} as unknown as SettingsText
 
 const baseStatusData: WatcherStatusResponse = {
   daemon_running: false,
@@ -135,8 +134,8 @@ beforeEach(() => {
   useAppShellStore.setState({
     currentPlayer: null,
     availablePlayers: [
-      { player_slug: 'player1', gamertag: 'PlayerOne', xuid: '0001', is_demo: false },
-      { player_slug: 'player2', gamertag: 'PlayerTwo', xuid: '0002', is_demo: false },
+      { player_slug: 'player1', gamertag: 'PlayerOne', xuid: '0001', is_demo: false, waypoint_player: 'PlayerOne' },
+      { player_slug: 'player2', gamertag: 'PlayerTwo', xuid: '0002', is_demo: false, waypoint_player: 'PlayerTwo' },
     ],
     currentTitleSlug: 'halo_infinite',
     availableTitles: [],

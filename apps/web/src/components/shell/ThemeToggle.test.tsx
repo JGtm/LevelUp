@@ -15,6 +15,7 @@ beforeEach(() => {
     localUiPrefs: {
       showHints: true,
       theme: 'dark',
+      colorPalette: 'default',
       lastPlayerSlugByTitle: {},
     },
   })

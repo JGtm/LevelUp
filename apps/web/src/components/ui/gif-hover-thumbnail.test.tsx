@@ -27,7 +27,6 @@ let lastImage: MockImage | null = null
 const OriginalImage = globalThis.Image
 
 beforeEach(() => {
-  // @ts-expect-error stub global Image (constructor)
   globalThis.Image = function () {
     lastImage = new MockImage()
     return lastImage

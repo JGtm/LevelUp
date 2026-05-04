@@ -29,6 +29,7 @@ const WIN_MATCH: RecentMatchItem = {
   damage_dealt: 3200,
   damage_taken: 1800,
   map_image_url: null,
+  is_favorite: false,
 }
 
 const LOSS_MATCH: RecentMatchItem = {
@@ -41,6 +42,7 @@ const LOSS_MATCH: RecentMatchItem = {
   kills: 5,
   assists: 2,
   deaths: 10,
+  is_favorite: false,
 }
 
 describe('MatchCard', () => {

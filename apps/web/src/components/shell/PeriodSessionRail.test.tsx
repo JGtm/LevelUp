@@ -32,7 +32,6 @@ function buildResolved(allSessions: Array<{ id: string; label: string }>): Filte
       squad_labels: [],
     },
     counts: { total_matches_before_filters: 100, total_matches_after_filters: 50 },
-    // @ts-expect-error — period_presets ajouté plus tard côté types
     period_presets: [],
   }
 }

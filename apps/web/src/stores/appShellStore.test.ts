@@ -52,6 +52,10 @@ const BOOTSTRAP_READY = {
     show_records: true,
     normalize_mode_labels: true,
   },
+  auth_mode: 'none' as const,
+  registration_mode: 'closed' as const,
+  is_admin: false,
+  first_launch: false,
 }
 
 describe('AppShellStore', () => {
