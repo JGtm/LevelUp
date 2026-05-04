@@ -48,7 +48,7 @@ export function buildSquadMapHeatmapOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 16, bottom: 80, left: 8, right: 60, containLabel: true },
+    grid: { top: 16, bottom: 110, left: 8, right: 8, containLabel: true },
     tooltip: {
       ...tooltipBase,
       trigger: 'item',
@@ -84,9 +84,9 @@ export function buildSquadMapHeatmapOption(
         { gte: 60, lt: 75, color: resolveToken('perf-tier-2'), label: opts.pieceLabels.tier2 },
         { gte: 75, color: resolveToken('perf-tier-1'), label: opts.pieceLabels.tier1 },
       ],
-      orient: 'vertical',
-      right: 4,
-      top: 'middle',
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 4,
       textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
     },
     series: [

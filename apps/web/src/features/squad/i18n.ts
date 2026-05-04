@@ -133,7 +133,6 @@ export interface SquadText {
   }
   impact: {
     title: string
-    description: string
     colPlayer: string
     colScore: string
     colBadge: string
@@ -292,7 +291,7 @@ const FR_TEXT: SquadText = {
     winRateVsHistoryTitle: 'Taux de victoire vs historique par carte',
     winRateVsHistorySession: 'Session',
     winRateVsHistoryHistory: 'Historique',
-    winRateVsHistoryBulletTitle: 'Taux de victoire session vs historique — bullet chart',
+    winRateVsHistoryBulletTitle: 'Taux de victoire session vs historique',
     winRateVsHistoryBulletParity: 'Parité 50 %',
     winRateVsHistoryBulletZero: '0 % (toutes défaites)',
     mapPerfVsHistoryTitle: 'Performance par carte — Session vs Historique',
@@ -343,7 +342,6 @@ const FR_TEXT: SquadText = {
   },
   impact: {
     title: 'Impact des coéquipiers',
-    description: 'Tableau matriciel des badges obtenus, par joueur × match. Colonnes agrégat triées par compte décroissant.',
     colPlayer: 'Joueur',
     colScore: 'Score',
     colBadge: 'Rang',
@@ -518,7 +516,7 @@ const EN_TEXT: SquadText = {
     winRateVsHistoryTitle: 'Win rate vs history by map',
     winRateVsHistorySession: 'Session',
     winRateVsHistoryHistory: 'All time',
-    winRateVsHistoryBulletTitle: 'Session winrate vs history — bullet chart',
+    winRateVsHistoryBulletTitle: 'Session winrate vs history',
     winRateVsHistoryBulletParity: '50% parity',
     winRateVsHistoryBulletZero: '0% (all losses)',
     mapPerfVsHistoryTitle: 'Performance per map — Session vs History',
@@ -569,7 +567,6 @@ const EN_TEXT: SquadText = {
   },
   impact: {
     title: 'Teammates impact',
-    description: 'Player × match badge matrix. Aggregate columns sorted by decreasing count.',
     colPlayer: 'Player',
     colScore: 'Score',
     colBadge: 'Rank',

@@ -252,10 +252,7 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
   return (
     <Card data-testid="squad-impact-section">
       <CardContent className="pt-4 space-y-3">
-        <div>
-          <h3 className="text-base font-semibold">{i18n.title}</h3>
-          <p className="text-sm text-muted-foreground">{i18n.description}</p>
-        </div>
+        <h3 className="text-base font-semibold">{i18n.title}</h3>
         <div
           className="overflow-x-auto rounded-md border border-border"
           data-testid="squad-impact-scoreboard"
