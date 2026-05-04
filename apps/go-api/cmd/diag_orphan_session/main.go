@@ -234,7 +234,7 @@ func probeMatch(db *sql.DB, playersDir, matchID string) {
 		}
 		pdb := openDuckDB(statsPath)
 		fmt.Printf("  player[%s]:\n", gt)
-		for _, tbl := range []string{"player_match_enrichment", "personal_score_awards", "match_citations", "media_match_associations", "match_skill_rank"} {
+		for _, tbl := range []string{"player_match_enrichment", "personal_score_awards", "match_citations", "media_match_associations", "match_skill_rank", "media_files"} {
 			var n int
 			err := pdb.QueryRow("SELECT COUNT(*) FROM "+tbl+" WHERE match_id = ?", matchID).Scan(&n)
 			if err != nil {
