@@ -325,13 +325,26 @@ func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (*service
 	return service.NewPlayerEngagementService(repo, pdb.XUID, pdb.Gamertag), nil
 }
 
+// mediaWriterAcquirerFor construit l'acquéreur shared_social pour un PlayerDB.
+// Factorise la création de l'option pour les deux factories (Media, MediaUpload).
+// Cf. commit 6 du refactor leased-writer-enforcement (atomicité likes).
+func mediaWriterAcquirerFor(pdb *duckdb.PlayerDB) func() (*dblease.LeasedWriter, error) {
+	return func() (*dblease.LeasedWriter, error) {
+		return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
+	}
+}
+
 // Media retourne un MediaService pour le joueur.
+//
+// Configure WithMediaWriterAcquirer pour activer le chemin atomique de
+// SetMediaLike (transaction unique sur shared_social.duckdb).
 func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone), nil
+	return service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone,
+		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb))), nil
 }
 
 // MediaUpload retourne un MediaService + métadonnées joueur pour l'upload.
@@ -343,7 +356,8 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if err != nil {
 		return nil, "", "", "", "", "", err
 	}
-	svc := service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone)
+	svc := service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone,
+		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb)))
 	sharedSocialPath := ""
 	if pdb.SharedSocial != nil {
 		sharedSocialPath = pdb.SharedSocial.Path()

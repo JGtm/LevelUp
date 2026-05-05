@@ -16,25 +16,54 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
 const defaultMediaPageSize = 24
 const maxMediaPageSize = 100
 
+// atomicMediaLiker est l'interface optionnelle satisfaite par platform/duckdb.MediaRepo
+// (méthode SetMediaLikeAtomic). Permet au service de basculer en mode atomique
+// (transaction) quand le repo concret la supporte, sans modifier l'interface
+// publique port.MediaRepository — cf. commit 6 du refactor leased-writer-enforcement.
+type atomicMediaLiker interface {
+	SetMediaLikeAtomic(ctx context.Context, exec port.DBExecutor,
+		filePath, likerSlug, likerGamertag string, liked bool) (bool, error)
+}
+
 // MediaService orchestre les données de la galerie médias.
 type MediaService struct {
-	repo     port.MediaRepository
-	timezone string // IANA assaini à la construction (ex: "Europe/Paris")
+	repo          port.MediaRepository
+	timezone      string                                // IANA assaini à la construction (ex: "Europe/Paris")
+	acquireWriter func() (*dblease.LeasedWriter, error) // optionnel
+}
+
+// MediaOption configure un MediaService à la construction.
+type MediaOption func(*MediaService)
+
+// WithMediaWriterAcquirer configure l'acquisition d'un *LeasedWriter sur
+// shared_social.duckdb pour rendre SetMediaLike atomique : le service ouvre
+// une transaction via writer.BeginTx et appelle repo.SetMediaLikeAtomic.
+//
+// Si nil, ou si le repo concret n'expose pas SetMediaLikeAtomic, le service
+// retombe sur le chemin legacy non-atomique (SetMediaLike + ToggleSharedLike
+// séparés). Garantit la non-régression pour les tests existants.
+func WithMediaWriterAcquirer(f func() (*dblease.LeasedWriter, error)) MediaOption {
+	return func(s *MediaService) { s.acquireWriter = f }
 }
 
 // NewMediaService crée un MediaService avec le repository et la timezone injectés.
 // La timezone est validée par SanitizeMediaTimezone (caractères IANA autorisés uniquement).
-func NewMediaService(repo port.MediaRepository, timezone string) *MediaService {
-	return &MediaService{
+func NewMediaService(repo port.MediaRepository, timezone string, opts ...MediaOption) *MediaService {
+	s := &MediaService{
 		repo:     repo,
 		timezone: ops.SanitizeMediaTimezone(timezone),
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // GetMediaPage construit la réponse paginée de la galerie médias.
@@ -152,6 +181,16 @@ func (s *MediaService) AssociateMediaToMatch(ctx context.Context, req domain.Med
 }
 
 // SetMediaLike persiste l'état liked d'un média.
+//
+// Deux chemins :
+//   - **Atomique** (commit 6 db-concurrency) : si un WriterAcquirer est
+//     configuré ET le repo concret expose SetMediaLikeAtomic, le service
+//     ouvre une transaction via writer.BeginTx et exécute les deux SQL
+//     (UPDATE media_files + INSERT/DELETE media_likes) dans la même tx.
+//     Rollback automatique si l'un échoue. Garantit P3 (cohérence
+//     media_files.liked ↔ media_likes).
+//   - **Legacy** : sinon (tests existants, mock repo), exécute SetMediaLike
+//     puis ToggleSharedLike séparément. Erreur ToggleSharedLike non-bloquante.
 func (s *MediaService) SetMediaLike(
 	ctx context.Context,
 	req domain.MediaLikeRequest,
@@ -160,6 +199,57 @@ func (s *MediaService) SetMediaLike(
 		return nil, domain.ErrBadRequest("file_path est requis")
 	}
 
+	if atomic, ok := s.repo.(atomicMediaLiker); ok && s.acquireWriter != nil {
+		return s.setMediaLikeAtomic(ctx, atomic, req)
+	}
+	return s.setMediaLikeLegacy(ctx, req)
+}
+
+// setMediaLikeAtomic exécute les deux writes (media_files + media_likes) dans
+// une transaction unique sous un *LeasedWriter acquis. Rollback si l'un
+// des deux SQL échoue.
+func (s *MediaService) setMediaLikeAtomic(
+	ctx context.Context,
+	atomic atomicMediaLiker,
+	req domain.MediaLikeRequest,
+) (*domain.MediaLikeResponse, error) {
+	w, err := s.acquireWriter()
+	if err != nil {
+		return nil, err
+	}
+	defer w.Release()
+
+	tx, err := w.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("media_like begin tx: %w", err)
+	}
+	likerGamertag := req.LikerGamertag
+	if likerGamertag == "" && req.LikerSlug != "" {
+		likerGamertag = req.LikerSlug
+	}
+	updated, err := atomic.SetMediaLikeAtomic(ctx, tx, req.FilePath, req.LikerSlug, likerGamertag, req.Liked)
+	if err != nil {
+		_ = tx.Rollback()
+		slog.WarnContext(ctx, "media_like atomic rollback", "err", err, "file_path", req.FilePath)
+		return nil, err
+	}
+	if !updated {
+		_ = tx.Rollback()
+		return nil, domain.ErrNotFound("media", req.FilePath)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("media_like commit: %w", err)
+	}
+	return s.buildLikeResponse(ctx, req), nil
+}
+
+// setMediaLikeLegacy conserve le comportement pré-commit-6 (non-atomique).
+// Les tests existants qui passent un mock sans SetMediaLikeAtomic continuent
+// à exercer ce chemin.
+func (s *MediaService) setMediaLikeLegacy(
+	ctx context.Context,
+	req domain.MediaLikeRequest,
+) (*domain.MediaLikeResponse, error) {
 	ok, err := s.repo.SetMediaLike(ctx, req.FilePath, req.Liked)
 	if err != nil {
 		return nil, err
@@ -180,7 +270,12 @@ func (s *MediaService) SetMediaLike(
 		}
 	}
 
-	// Récupération des likers pour la réponse
+	return s.buildLikeResponse(ctx, req), nil
+}
+
+// buildLikeResponse construit la réponse en récupérant les likers (lecture
+// best-effort, pas d'erreur si la requête échoue).
+func (s *MediaService) buildLikeResponse(ctx context.Context, req domain.MediaLikeRequest) *domain.MediaLikeResponse {
 	resp := &domain.MediaLikeResponse{
 		FilePath:  req.FilePath,
 		Liked:     req.Liked,
@@ -193,7 +288,7 @@ func (s *MediaService) SetMediaLike(
 			resp.LikeCount = info.Total
 		}
 	}
-	return resp, nil
+	return resp
 }
 
 // UploadMedia sauvegarde les fichiers uploadés sur disque puis les indexe

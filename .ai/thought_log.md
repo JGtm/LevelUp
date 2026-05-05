@@ -1,5 +1,54 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 6 (media likes atomique via SetMediaLikeAtomic)
+
+**Statut** : Complété — commit 6 sur `refactor/leased-writer-enforcement`. P3 résolu : `SetMediaLike` est désormais atomique (UPDATE media_files + INSERT/DELETE media_likes dans une seule transaction) quand un `WriterAcquirer` est configuré. Si l'un des deux SQL échoue, rollback complet — plus de divergence possible entre `media_files.liked` et `media_likes`.
+
+**Décision technique principale** : interface optionnelle `atomicMediaLiker` privée au package `service`.
+
+Pour ne pas modifier `port.MediaRepository` (consommée par 5+ mocks), j'ai :
+1. Ajouté une méthode publique `SetMediaLikeAtomic(ctx, exec port.DBExecutor, ...)` au type concret `*duckdb.MediaRepo` (signature étendue, pas remplacée).
+2. Défini une interface privée `atomicMediaLiker` dans `service/media_service.go` que le repo concret satisfait implicitement.
+3. Le service teste `s.repo.(atomicMediaLiker)` au runtime — si OK ET `acquireWriter != nil`, branche atomique. Sinon → branche legacy.
+
+C'est l'usage canonique de la séparation `port.DBExecutor` (Exec/Query, satisfait par `*sql.DB` ET `*sql.Tx`) vs `port.DBWriter` (DBExecutor + BeginTx, satisfait uniquement par `*sql.DB` / `*LeasedWriter`) introduite au commit 1. Le service ouvre `tx := writer.BeginTx(ctx, nil)` puis passe `tx` au repo via `port.DBExecutor`.
+
+**Fichiers modifiés** :
+- `internal/platform/duckdb/media_repo.go` :
+  - Import `port` (cohérent avec le reste de duckdb).
+  - Nouvelle méthode publique `SetMediaLikeAtomic(ctx, exec port.DBExecutor, filePath, likerSlug, likerGamertag, liked)` qui exécute UPDATE `media_files` puis INSERT/DELETE `media_likes` via le `exec` fourni. Si `likerSlug` est vide, seul le UPDATE est exécuté (pas de ligne dans media_likes côté shared, comportement cohérent avec le legacy).
+- `internal/service/media_service.go` :
+  - Import `dblease`.
+  - Interface privée `atomicMediaLiker`.
+  - Champ `acquireWriter` au struct + `MediaOption` + `WithMediaWriterAcquirer`.
+  - `NewMediaService(repo, timezone, opts ...MediaOption)`.
+  - `SetMediaLike` : aiguillage atomic vs legacy selon configuration.
+  - Helpers `setMediaLikeAtomic` (BeginTx + repo.SetMediaLikeAtomic + Commit/Rollback) et `setMediaLikeLegacy` (comportement pré-commit-6 inchangé).
+  - `buildLikeResponse` factorise la lecture des likers (utilisée par les deux chemins).
+- `internal/api/registry.go` :
+  - Helper `mediaWriterAcquirerFor(pdb)` factorise la création de l'option (utilisé par `Media` ET `MediaUpload`).
+  - Les deux factories `Media` / `MediaUpload` configurent désormais `WithMediaWriterAcquirer`.
+- `internal/api/handlers/media.go` :
+  - Import `dblease`.
+  - Mapping `errors.Is(err, dblease.ErrDBLocked)` → 503 + `Retry-After: 5` + body code `db_busy`. Placé en premier dans le switch pour ne pas confondre avec `ErrNotFound`.
+
+**Tests** :
+- `internal/service/media_service_test.go` :
+  - Compile-time check `var _ atomicMediaLiker = (*mockAtomicMediaRepo)(nil)` — garantit la signature stable.
+  - `mockAtomicMediaRepo` étend `mockMediaRepo` (embedded) avec `SetMediaLikeAtomic` mock.
+  - 2 nouveaux tests :
+    - `_Atomic_LeaseBusy_PropagatesErrDBLocked` — acquéreur retourne ErrDBLocked → propagation, atomic NOT called, repo non modifié.
+    - `_NoAcquirer_LegacyPath` — sans option, branche legacy empruntée même si le repo satisfait atomicMediaLiker (compat).
+  - **Différé en intégration cgo** : `_Atomic_Success` et `_Atomic_RepoError_Rollback` exigent une vraie `*sql.DB` pour `BeginTx` (DuckDB :memory:). Documenté dans le code, à câbler en CI cgo-enabled.
+- `internal/api/handlers/media_test.go` :
+  - `TestMediaHandler_PatchMediaLike_DBLocked_Returns503` — 503 + Retry-After + body code `db_busy`.
+
+**Total tests handler 503 (commits 2-6)** : 11 (Player×3, Squad×2, Notifications×3, Favorite×1, MediaLike×1, NotFound non-confusion×1).
+
+**Conclusion / prochaine étape** : commit 7 — sync engine adopte LeasedWriter et propage au hook Prestige. C'est le commit le plus risqué (~63 tests sync à préserver bit-à-bit). Suivi du commit 8 (ADR 0013 + lint analyzer optionnel).
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 5 (match favorites via Option pattern)
 
 **Statut** : Complété — commit 5 sur `refactor/leased-writer-enforcement`. Match favorites (HTTP) sérialisés avec le sync engine via le lease shared_social.

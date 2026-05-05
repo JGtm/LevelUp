@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
@@ -231,6 +232,12 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := svc.SetMediaLike(r.Context(), req)
 	if err != nil {
+		if errors.Is(err, dblease.ErrDBLocked) {
+			w.Header().Set("Retry-After", "5")
+			writeError(w, http.StatusServiceUnavailable, "db_busy",
+				"database is currently busy, please retry")
+			return
+		}
 		var apiErr *domain.APIError
 		if errors.As(err, &apiErr) {
 			switch apiErr.Code {
