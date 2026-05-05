@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-05-05] MatchView header rework — Phase 2a livrée (router state + sessionStorage)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`, 2 commits Phase 2a (`e5c6ee8a` + commit tests).
+
+**Contexte** : suite logique de Phase 1 (header visuel mock C). Phase 2a livre la navigation contextuelle entre matchs : quand l'utilisateur ouvre un match depuis une page filtrée (history, sessions squad, explorer, top matchs, synthesis...), les boutons prev/next dans la barre de nav restent dans le périmètre d'origine au lieu de retomber sur la chronologie globale du joueur.
+
+**Décision technique** :
+1. **Module `lib/match-nav/`** (et non `features/match-view/`) — pour éviter de dépasser le plafond cross-feature imports (P8.5, max 10). 4 fichiers : `navContext.ts` (type + persist/read/clear/resolveNeighbors purs), `useNavigateToMatch.ts` (helper navigate avec router state + sessionStorage), `useMatchNeighborsResolved.ts` (cascade state→storage→API), `useMatchNeighborsAPI` inliné dedans pour éviter dépendance cross-feature `lib` → `features/match-view/queries`.
+2. **Cascade 3 niveaux** dans `useMatchNeighborsResolved` :
+   - Router state : instantané, scope onglet, lu via `useRouterState({ select })` avec cast `RouterStateWithCtx`
+   - sessionStorage : survit F5 + nav arrière, TTL 1h, fail-open silencieux (mode privé Safari, quota)
+   - Fallback API Q25 (chronologie globale) : appelé inconditionnellement (TanStack Query gère le cache, négligeable)
+3. **Sémantique miroir Q25 backend** : `matchIds` est trié DESC (récent en tête). `prev_match_id` = idx + 1, `next_match_id` = idx - 1. Documenté dans `resolveNeighborsFromContext` pour ne pas se planter en Phase 2b.
+4. **Branchements UI** dans 8 features (.ai/match_nav_inventory.md) : Home recent/favorites, MatchHistoryTable, ExplorerPage (modes player + matches), CareerTopMatchesTable, SquadMatchHistoryTable, SquadSynergyHistoryTable, squad/v2 HistoryTable, SynthesisHighlightsSection (Link → button pour passer le ctx). Chaque source remplit `MatchNavContext.matchIds` à partir de la liste affichée + un `source` typé.
+5. **Sortie de contexte** : bouton "↩ Sortir du contexte" dans la nav-bar appelle `clearNavContext(matchId)` puis `window.history.replaceState({}, '', href)` + `dispatchEvent(new PopStateEvent('popstate'))` pour forcer le re-render TanStack Router sans state. Fallback API repris immédiatement.
+6. **Chaînage prev/next** : la nav prev/next interne propage le `navContext` courant au helper → l'utilisateur peut naviguer dans toute la liste sans perdre le contexte.
+
+**Tests** :
+- `navContext.test.ts` : 15 tests purs (round-trip, TTL expiré, JSON corrompu, payload mal formé, clear idempotent, resolveNeighbors 5 cas).
+- `useMatchNeighborsResolved.test.tsx` : 4 tests cascade (state, storage, API fallback, matchId hors liste).
+- `MatchHeader.test.tsx` étendu : 5 nouveaux tests `MatchNavigationBar` (rendu fallback / router-state, propagation ctx, clearNavContext au clic sortir, locale EN).
+- Tests préexistants adaptés : `SquadMatchHistoryTable.test` (assertion sur `state` function dans navigate args), `SynthesisHighlightsSection.test` (Link → button).
+- `1197/1197` tests vitest verts. `npm run typecheck` OK.
+
+**Limites Phase 2a (volontaires, traitées Phase 2b)** :
+- L'ouverture d'un nouvel onglet (Ctrl+Click) ou un lien partagé ne préserve pas le contexte — fallback API Q25. Phase 2b ajoutera la sérialisation URL query params + `MatchFilterSpec` côté backend.
+- `filtersLabel` n'est pas encore rempli par les consommateurs — il faudra un sélecteur Zustand par feature en Phase 2b pour produire un label localisé depuis le state des filtres.
+
+**Prochaine étape** : Phase 2b — ouverture branche dédiée `feat/match-nav-context-url`. Étape 0 = vérifier tailles fichiers post-Phase 1, puis : `domain.MatchFilterSpec`, `analysis/match_filter.go` pur (PairNamePrefixesForCategory + dégradation gracieuse multi-titres), repo Q25 dynamique, handler validation + whitelist, frontend cascade complète state → session → URL → API.
+
+---
+
 ## [2026-05-05] MatchView header rework — Phase 1 livrée (mock C)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`, 4 commits.

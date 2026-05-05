@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
-import { MatchHeaderCard } from './MatchHeader'
+import { MatchHeaderCard, MatchNavigationBar } from './MatchHeader'
 import type { MatchViewHeader, MatchViewRank } from '@/lib/api/types'
 
 // Mocks shared
@@ -19,11 +19,41 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
   useNavigate: () => vi.fn(),
   useRouter: () => ({ history: { length: 1, back: vi.fn() }, navigate: vi.fn() }),
+  useRouterState: () => undefined,
 }))
 
 vi.mock('./queries', () => ({
   useMatchNeighbors: () => ({ data: null }),
   useToggleMatchFavorite: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+
+const navigateToMatchMock = vi.fn()
+vi.mock('@/lib/match-nav/useNavigateToMatch', () => ({
+  useNavigateToMatch: () => navigateToMatchMock,
+}))
+
+const resolvedRef: {
+  current: {
+    data: { previous_match_id: string | null; next_match_id: string | null; current_index: number; total_matches: number } | undefined
+    isPending: boolean
+    source: 'router-state' | 'session-storage' | 'api'
+    contextLabel?: string
+    navContext?: { source: string; matchIds: string[]; filtersLabel?: string }
+  }
+} = {
+  current: {
+    data: { previous_match_id: 'prev-id', next_match_id: 'next-id', current_index: 1, total_matches: 4 },
+    isPending: false,
+    source: 'api',
+  },
+}
+vi.mock('@/lib/match-nav/useMatchNeighborsResolved', () => ({
+  useMatchNeighborsResolved: () => resolvedRef.current,
+}))
+
+const clearNavContextMock = vi.fn()
+vi.mock('@/lib/match-nav/navContext', () => ({
+  clearNavContext: (...args: unknown[]) => clearNavContextMock(...args),
 }))
 
 vi.mock('@/features/match-history/queries', () => ({
@@ -178,5 +208,82 @@ describe('MatchHeaderCard', () => {
       />,
     )
     expect(screen.getByRole('button', { name: 'Retirer des favoris' })).toBeInTheDocument()
+  })
+})
+
+describe('MatchNavigationBar', () => {
+  beforeEach(() => {
+    navigateToMatchMock.mockClear()
+    clearNavContextMock.mockClear()
+    resolvedRef.current = {
+      data: { previous_match_id: 'prev-id', next_match_id: 'next-id', current_index: 1, total_matches: 4 },
+      isPending: false,
+      source: 'api',
+    }
+  })
+
+  it('rendu fallback API : affiche compteur sans contextLabel ni bouton sortir', () => {
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
+    )
+    expect(screen.getByText('Match 2/4')).toBeInTheDocument()
+    expect(screen.queryByText(/Sortir du contexte/)).toBeNull()
+  })
+
+  it('rendu router-state : affiche contextLabel + lien sortir', () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'p', next_match_id: 'n', current_index: 0, total_matches: 12 },
+      isPending: false,
+      source: 'router-state',
+      contextLabel: 'Classée · 7 derniers jours',
+      navContext: { source: 'history', matchIds: ['m1', 'p', 'n'] },
+    }
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
+    )
+    expect(screen.getByText('Classée · 7 derniers jours')).toBeInTheDocument()
+    expect(screen.getByText(/↩ Sortir du contexte/)).toBeInTheDocument()
+  })
+
+  it('clic prev/next : propage le navContext courant au helper', () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'prev-id', next_match_id: 'next-id', current_index: 1, total_matches: 4 },
+      isPending: false,
+      source: 'session-storage',
+      contextLabel: 'Session 04-30',
+      navContext: { source: 'session', matchIds: ['next-id', 'm1', 'prev-id'] },
+    }
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Match suivant' }))
+    expect(navigateToMatchMock).toHaveBeenCalledWith(
+      'next-id',
+      expect.objectContaining({ source: 'session', matchIds: ['next-id', 'm1', 'prev-id'] }),
+    )
+  })
+
+  it('clic Sortir du contexte : appelle clearNavContext(matchId)', () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'p', next_match_id: 'n', current_index: 0, total_matches: 3 },
+      isPending: false,
+      source: 'router-state',
+      contextLabel: 'Top matchs',
+      navContext: { source: 'history', matchIds: ['m1', 'p', 'n'] },
+    }
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
+    )
+    fireEvent.click(screen.getByText(/↩ Sortir du contexte/))
+    expect(clearNavContextMock).toHaveBeenCalledWith('m1')
+  })
+
+  it('locale=en : counter et boutons en EN', () => {
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="en" />,
+    )
+    expect(screen.getByText('Match 2/4')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous match' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next match' })).toBeInTheDocument()
   })
 })
