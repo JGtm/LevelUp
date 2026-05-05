@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/port"
 )
 
 // MediaRepo implÃ©mente port.MediaRepository.
@@ -535,6 +536,69 @@ func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked boo
 		return false, fmt.Errorf("SetMediaLike rows affected: %w", err)
 	}
 	return rowsAffected > 0, nil
+}
+
+// SetMediaLikeAtomic exécute en une seule transaction (si exec est un *sql.Tx)
+// le UPDATE media_files.liked + l'INSERT/DELETE media_likes correspondant.
+//
+// Si likerSlug est vide, seul le UPDATE media_files.liked est exécuté
+// (pas de ligne dans media_likes côté shared).
+//
+// Retourne true si la ligne media_files a été mise à jour (file_path existe).
+//
+// Cette méthode est l'usage canonique côté MediaService quand un
+// WriterAcquirer est configuré : le service ouvre une *sql.Tx via
+// LeasedWriter.BeginTx, l'injecte ici comme port.DBExecutor → atomicité.
+//
+// Cf. commit 6 du refactor leased-writer-enforcement (résout P3).
+func (r *MediaRepo) SetMediaLikeAtomic(
+	ctx context.Context,
+	exec port.DBExecutor,
+	filePath, likerSlug, likerGamertag string,
+	liked bool,
+) (bool, error) {
+	result, err := exec.ExecContext(ctx, `
+		UPDATE media_files
+		SET liked = ?,
+			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
+		WHERE file_path = ?
+	`, liked, liked, filePath)
+	if err != nil {
+		return false, fmt.Errorf("SetMediaLikeAtomic update: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("SetMediaLikeAtomic rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return false, nil // file_path inconnu — caller traduit en 404 sans toucher media_likes
+	}
+
+	if likerSlug == "" {
+		return true, nil
+	}
+
+	if liked {
+		_, err := exec.ExecContext(ctx, `
+			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
+			VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+			ON CONFLICT (media_path, liker_slug) DO UPDATE SET
+				liker_gamertag = EXCLUDED.liker_gamertag,
+				liked_at = EXCLUDED.liked_at
+		`, filePath, likerSlug, likerGamertag)
+		if err != nil {
+			return true, fmt.Errorf("SetMediaLikeAtomic insert media_likes: %w", err)
+		}
+		return true, nil
+	}
+
+	_, err = exec.ExecContext(ctx, `
+		DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
+	`, filePath, likerSlug)
+	if err != nil {
+		return true, fmt.Errorf("SetMediaLikeAtomic delete media_likes: %w", err)
+	}
+	return true, nil
 }
 
 // ToggleSharedLike Ã©crit ou supprime un like dans media_likes (shared DB).

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -160,6 +162,35 @@ func TestMediaHandler_PatchMediaLike_NotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestMediaHandler_PatchMediaLike_DBLocked_Returns503(t *testing.T) {
+	mock := &mockMediaService{
+		likeErr: fmt.Errorf("simulated lease busy: %w", dblease.ErrDBLocked),
+	}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) {
+		return mock, nil
+	}
+	r := newMediaRouter(factory)
+	body, _ := json.Marshal(domain.MediaLikeRequest{FilePath: "/clips/g1.mp4", Liked: true})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/media/likes", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
+	}
+	var body503 map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body503); err != nil {
+		t.Fatalf("response body not JSON: %v", err)
+	}
+	if code, _ := body503["code"].(string); code != "db_busy" {
+		t.Errorf("error code = %v, want db_busy", body503["code"])
 	}
 }
 
