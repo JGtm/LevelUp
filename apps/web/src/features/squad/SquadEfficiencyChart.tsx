@@ -51,16 +51,6 @@ export function SquadEfficiencyChart({
   const pts = useMemo(() => rowsByPlayer[activePlayer] ?? [], [rowsByPlayer, activePlayer])
   const color = colorByPlayer[activePlayer] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
 
-  // Échelle Y globale : max sur tous les joueurs → stable au switch.
-  const globalYMax = useMemo(() => {
-    let max = 0
-    for (const p of Object.values(rowsByPlayer).flat()) {
-      if (p.rendement_offensif !== undefined) max = Math.max(max, p.rendement_offensif)
-      if (p.resistance_defensive !== undefined) max = Math.max(max, p.resistance_defensive)
-    }
-    return Math.ceil(max * 2) / 2 // arrondi au demi supérieur
-  }, [rowsByPlayer])
-
   const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(
     () => (pts.length > 0 ? [{ key: activePlayer, datapoints: pts }] : []),
     [pts, activePlayer],
@@ -74,9 +64,8 @@ export function SquadEfficiencyChart({
         resistanceLabel: labels.resistanceLabel,
         refLabel: labels.refLabel,
         showXAxis: true,
-        yMax: globalYMax,
       }),
-    [pts, color, labels, globalYMax],
+    [pts, color, labels],
   )
 
   if (players.length === 0) return null
