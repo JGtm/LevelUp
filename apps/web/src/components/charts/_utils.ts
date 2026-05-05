@@ -6,20 +6,42 @@
  * `ChartSeries<T>[]` (mirror du domain.ChartSeries[T] Go) et reposent
  * sur les helpers ci-dessous pour cohérence visuelle.
  *
- * Couleurs : jamais de hex direct. Tout passe par resolveToken() pour
- * permettre le thème dark/light + accessibilité (cf.
- * apps/web/src/lib/accessibility/).
+ * Couleurs : aucun rgba(255,255,255,X) en dur. Tout passe par
+ * `getEChartsThemeColors()` qui résout les CSS vars sémantiques au
+ * runtime (light/dark) — voir `apps/web/src/lib/echarts/themeColors.ts`.
+ *
+ * Pattern d'usage côté builder :
+ *   const tc = getEChartsThemeColors()
+ *   return {
+ *     tooltip: getTooltipBase(tc),
+ *     legend:  getLegendBase(tc),
+ *     xAxis:   getCategoricalXAxis(cats, tc),
+ *     yAxis:   { ...getAxisBase(tc), type: 'value' },
+ *     ...
+ *   }
  */
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/themeColors'
 
 export const CHART_BG = 'transparent'
+
+/**
+ * Anciennes constantes — conservées pour compatibilité ascendante avec les
+ * builders qui ne sont pas encore migrés vers `getAxisBase(tc)` etc.
+ *
+ * @deprecated Préférer `getEChartsThemeColors()` + `getAxisBase(tc)` :
+ * ces constantes sont figées en dark, elles ne suivent pas le thème actif.
+ * Migration en cours (cf. PLAN_THEME_CONSISTENCY.md Phase 5e).
+ */
 export const GRID_COLOR = 'rgba(255,255,255,0.06)'
+/** @deprecated voir GRID_COLOR. */
 export const TEXT_COLOR = 'rgba(255,255,255,0.45)'
+/** @deprecated voir GRID_COLOR. */
 export const ZERO_LINE = 'rgba(255,255,255,0.15)'
 
-/** Base axis style (axes X/Y). À spread avant les overrides spécifiques. */
+/** @deprecated voir GRID_COLOR. */
 export const axisBase = {
   axisLine: { lineStyle: { color: GRID_COLOR } },
   axisTick: { show: false },
@@ -27,7 +49,7 @@ export const axisBase = {
   axisLabel: { color: TEXT_COLOR, fontSize: 10 },
 } as const
 
-/** Base tooltip style. À spread avant `formatter` ou `trigger`. */
+/** @deprecated voir GRID_COLOR. */
 export const tooltipBase = {
   backgroundColor: 'rgba(20,24,30,0.92)',
   borderColor: GRID_COLOR,
@@ -35,13 +57,61 @@ export const tooltipBase = {
   extraCssText: 'border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4)',
 } as const
 
-/** Base legend style (bas du chart). */
+/** @deprecated voir GRID_COLOR. */
 export const legendBase = {
   bottom: 0,
   textStyle: { color: TEXT_COLOR, fontSize: 10 },
   itemWidth: 12,
   itemHeight: 8,
 } as const
+
+/**
+ * @deprecated Préférer `getCategoricalXAxis(categories, tc)` :
+ * cette version utilise les constantes figées en dark.
+ */
+export function categoricalXAxis(categories: string[]): EChartsCoreOption['xAxis'] {
+  const n = categories.length
+  return {
+    ...axisBase,
+    type: 'category',
+    data: categories,
+    axisLabel: {
+      ...axisBase.axisLabel,
+      interval: tickInterval(n) - 1,
+      rotate: n > 60 ? 30 : n > 20 ? 15 : 0,
+    },
+  }
+}
+
+/** Base axis style (axes X/Y). À spread avant les overrides spécifiques. */
+export function getAxisBase(tc: EChartsThemeColors) {
+  return {
+    axisLine: { lineStyle: { color: tc.axisLine } },
+    axisTick: { show: false },
+    splitLine: { lineStyle: { color: tc.splitLine } },
+    axisLabel: { color: tc.axisLabel, fontSize: 10 },
+  } as const
+}
+
+/** Base tooltip style. À spread avant `formatter` ou `trigger`. */
+export function getTooltipBase(tc: EChartsThemeColors) {
+  return {
+    backgroundColor: tc.tooltipBg,
+    borderColor: tc.tooltipBorder,
+    textStyle: { color: tc.text, fontSize: 11 },
+    extraCssText: 'border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4)',
+  } as const
+}
+
+/** Base legend style (bas du chart). */
+export function getLegendBase(tc: EChartsThemeColors) {
+  return {
+    bottom: 0,
+    textStyle: { color: tc.axisLabel, fontSize: 10 },
+    itemWidth: 12,
+    itemHeight: 8,
+  } as const
+}
 
 /**
  * Couleurs des outcomes Halo (win/loss/tie/dnf).
@@ -84,14 +154,18 @@ export function seriesColor(index: number): string {
  * Composant générique d'axe X catégoriel — paramètre les ticks selon le
  * nombre de catégories (rotation labels au-delà de 60 entrées).
  */
-export function categoricalXAxis(categories: string[]): EChartsCoreOption['xAxis'] {
+export function getCategoricalXAxis(
+  categories: string[],
+  tc: EChartsThemeColors = getEChartsThemeColors(),
+): EChartsCoreOption['xAxis'] {
   const n = categories.length
+  const base = getAxisBase(tc)
   return {
-    ...axisBase,
+    ...base,
     type: 'category',
     data: categories,
     axisLabel: {
-      ...axisBase.axisLabel,
+      ...base.axisLabel,
       interval: tickInterval(n) - 1,
       rotate: n > 60 ? 30 : n > 20 ? 15 : 0,
     },
@@ -125,3 +199,7 @@ export function formatNumber(v: number, decimals = 1): string {
   if (!Number.isFinite(v)) return '-'
   return v.toFixed(decimals)
 }
+
+/** Re-export pour les builders qui veulent récupérer le helper themeColors. */
+export { getEChartsThemeColors }
+export type { EChartsThemeColors }
