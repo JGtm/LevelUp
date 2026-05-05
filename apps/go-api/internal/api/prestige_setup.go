@@ -116,15 +116,23 @@ func (b *PrestigeBundle) Close() {
 // player context (CRUD défis, arcs, EvaluateForUser). Les repos partagés
 // (PrestigeRepo, SquadRepo, SquadChallengeRepo) sont réutilisés.
 func (b *PrestigeBundle) ServiceForPlayer(ctx context.Context, playerSlug string) (prestige.Service, error) {
+	_, svc, err := b.serviceAndPlayerDB(ctx, playerSlug)
+	return svc, err
+}
+
+// serviceAndPlayerDB est la variante interne qui retourne aussi le *PlayerDB
+// résolu — utilisé par LazyPrestigeService pour acquérir un *LeasedWriter
+// avant les méthodes write (commit 2 du refactor leased-writer-enforcement).
+func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug string) (*platform_duckdb.PlayerDB, prestige.Service, error) {
 	if b == nil {
-		return nil, errors.New("prestige: bundle not initialized")
+		return nil, nil, errors.New("prestige: bundle not initialized")
 	}
 	pdb, err := b.resolve(ctx, playerSlug)
 	if err != nil {
-		return nil, errors.New("prestige: cannot resolve player: " + err.Error())
+		return nil, nil, errors.New("prestige: cannot resolve player: " + err.Error())
 	}
 	if pdb == nil || pdb.Player == nil {
-		return nil, errors.New("prestige: player db not available")
+		return nil, nil, errors.New("prestige: player db not available")
 	}
 
 	deps := prestige.Deps{
@@ -141,7 +149,7 @@ func (b *PrestigeBundle) ServiceForPlayer(ctx context.Context, playerSlug string
 		Squads:           b.squadRepo,
 		BaselineProvider: platform_duckdb.NewHaloBaselineProvider(pdb.Shared),
 	}
-	return prestige.NewService(deps), nil
+	return pdb, prestige.NewService(deps), nil
 }
 
 // RunPostSync est le point d'entrée du sync engine pour ré-évaluer
