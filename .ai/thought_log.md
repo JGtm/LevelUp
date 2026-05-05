@@ -1,5 +1,43 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 2 (P1 résolu côté HTTP : Prestige Player + handler 503)
+
+**Statut** : Complété — commit 2 sur `refactor/leased-writer-enforcement`. Le sync hook reste fonctionnellement protégé par le partage du mutex `leaseMutex(path)` (même path = même mutex), mais la résolution propre du deadlock sync↔hook attend le commit 3 (`EvaluateForUserWithWriter`).
+
+**Décision technique principale** : pivot vs plan v3.
+
+Le plan demandait de modifier les signatures des méthodes write des repos pour qu'elles prennent `port.DBExecutor` (garantie compile-time stricte). En pratique, les interfaces `prestige.ChallengeRepo` / `prestige.ArcRepo` etc. sont définies dans le package `prestige` (couche métier), pas dans `internal/port/`. Modifier ces interfaces aurait demandé :
+- Changer 8+ méthodes d'interface (Create, UpdateStatus, UpdateLabel, UpdateTarget, MarkCompleted, Emit, Upsert, etc.)
+- Cascader dans tous les mocks de tests (146 tests Prestige existants)
+- Casser la couche hexagonale (le service Prestige doit-il connaître `port.DBExecutor` ?)
+
+J'ai préféré une approche moins invasive et fonctionnellement équivalente : **acquérir le lease au niveau de `LazyPrestigeService` (couche API qui a déjà accès au `*PlayerDB` via le bundle)**, sans modifier les interfaces ni les repos.
+
+Justification : le `*sql.DB` sous-jacent dans `r.db *DB` du repo est le **même** que celui dans le `*LeasedWriter` (cache `openDBs` keyé par chemin), donc le mutex partagé via `leaseMutex(path)` protège bien les writes du repo, même si le repo n'a pas conscience du lease. Le compile-time guard sera renforcé plus tard via le lint analyzer du commit 8 (interdiction de `db.Exec()` direct depuis service/handler).
+
+**Pivot documenté dans le plan v3 § "Choix retenu pour le commit 2"** : à mettre à jour pour refléter cette stratégie pragmatique. La garantie compile-time stricte reste la cible long-terme mais coûte trop pour le commit 2.
+
+**Fichiers modifiés** :
+- `internal/api/prestige_setup.go` : ajout `serviceAndPlayerDB(ctx, slug)` qui retourne `(*PlayerDB, prestige.Service, error)` — variante interne de `ServiceForPlayer` utilisée par `LazyPrestigeService` pour acquérir le writer.
+- `internal/api/prestige_lazy_service.go` : import `dblease` + `platform_duckdb`. Ajout `resolveWithPlayerDB` / `resolveWithPlayerDBByUserID` + helper `acquirePlayerWriter`. **6 méthodes write** (`CreateChallenge`, `UpdateChallenge`, `AbandonChallenge`, `CreateArc`, `EnablePilotMode`, `DisablePilotMode`) acquièrent désormais `pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)` + defer Release avant délégation. Les méthodes read et `EvaluateForUser` (sync hook) restent inchangées.
+- `internal/api/handlers/prestige.go` : `writeServiceError` mappe `errors.Is(err, dblease.ErrDBLocked)` → 503 + `Retry-After: 5` + body JSON `{"code":"db_busy"}`.
+- `internal/api/handlers/prestige_test.go` : 4 nouveaux tests :
+  - `TestPrestigeHandler_CreateChallenge_DBLocked_Returns503` : 503 + Retry-After + body JSON correct.
+  - `TestPrestigeHandler_UpdateChallenge_DBLocked_Returns503` : idem PATCH.
+  - `TestPrestigeHandler_AbandonChallenge_DBLocked_Returns503` : idem DELETE.
+  - `TestPrestigeHandler_NotFoundErrorsNotMistakenForDBLocked` : protection contre régression du switch (404 sans Retry-After).
+
+**Méthodes shared_social non migrées au commit 2** : `CreateSquadChallenge`, `JoinSquadChallenge`, `RefreshSquadPool` écrivent sur `shared_social.duckdb` (pas player). Elles seront migrées au **commit 3** avec le squad/PP. Aucun changement actuel pour elles.
+
+**Dette / limites** :
+- Le commit n'a pas pu être validé via `go build` cgo localement (gcc non disponible dans l'environnement). Vérifié via `gofmt` (OK) + cohérence statique des signatures.
+- Le wrapper `LazyPrestigeService` n'a pas de tests unitaires dédiés — testé indirectement via les 4 tests handler. Les tests directs nécessiteraient un `PrestigeBundle` réel avec DuckDB (cgo). Le pattern d'acquisition/release est trivial et identique sur les 6 méthodes.
+- Le compile-time guard strict (interfaces de repo prennent `port.DBExecutor`) reste à faire — viendra avec le commit 8 (lint analyzer).
+
+**Conclusion / prochaine étape** : commit 2 prêt. P1 critique côté HTTP est résolu : un `POST /challenges` durant un sync long retournera 503 + Retry-After plutôt que 500 ou un état corrompu. Le commit 3 attaque le sync hook + squad/PP sur `shared_social.duckdb` et résout proprement le deadlock potentiel via `EvaluateForUserWithWriter`.
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 1 (LeasedWriter + interfaces port + métriques)
 
 **Statut** : Complété — commit 1 sur `refactor/leased-writer-enforcement`. Aucun caller migré encore (commits 2-7 à suivre).

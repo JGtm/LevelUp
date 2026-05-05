@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -382,5 +384,90 @@ func TestPrestigeHandler_SuggestTemplates(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+// ─────────── ErrDBLocked → 503 Retry-After (commit 2 db-concurrency) ───────────
+
+// dbLockedErr simule l'erreur retournée par LazyPrestigeService quand le sync
+// engine ou un autre handler tient déjà le lease player DB.
+//
+// On wrappe ErrDBLocked dans un fmt.Errorf comme le fait la couche dblease
+// (cf. AcquireWriter), pour vérifier que le mapping handler dépend bien
+// d'errors.Is et pas d'égalité directe.
+func dbLockedErr() error {
+	return fmt.Errorf("dblease: player lease timeout after 5s on test-path: %w", dblease.ErrDBLocked)
+}
+
+func TestPrestigeHandler_CreateChallenge_DBLocked_Returns503(t *testing.T) {
+	mock := &mockPrestigeService{createErr: dbLockedErr()}
+	router := newRouter(mock)
+
+	body := `{"user_id":"u1","title_slug":"halo_infinite","metric":"FieldKDA","target":1.5,"window_type":"session","cadence":"weekly","eval_type":"threshold","mode":"libre"}`
+	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
+	}
+	var body503 map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body503); err != nil {
+		t.Fatalf("response body not JSON: %v", err)
+	}
+	if code, _ := body503["code"].(string); code != "db_busy" {
+		t.Errorf("error code = %v, want db_busy", body503["code"])
+	}
+}
+
+func TestPrestigeHandler_UpdateChallenge_DBLocked_Returns503(t *testing.T) {
+	mock := &mockPrestigeService{updateErr: dbLockedErr()}
+	router := newRouter(mock)
+
+	body := `{"target":2.0}`
+	req := httptest.NewRequest(http.MethodPatch, "/challenges/ch_42", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
+	}
+}
+
+func TestPrestigeHandler_AbandonChallenge_DBLocked_Returns503(t *testing.T) {
+	mock := &mockPrestigeService{abandonErr: dbLockedErr()}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodDelete, "/challenges/ch_42", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+}
+
+// TestPrestigeHandler_NotFoundErrorsNotMistakenForDBLocked vérifie que les
+// erreurs métier classiques (ChallengeNotFound) ne sont pas mal-mappées en 503
+// — protection contre une régression du switch dans writeServiceError.
+func TestPrestigeHandler_NotFoundErrorsNotMistakenForDBLocked(t *testing.T) {
+	mock := &mockPrestigeService{getErr: prestige.ErrChallengeNotFound}
+	router := newRouter(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/challenges/ch_missing", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+	if got := w.Header().Get("Retry-After"); got != "" {
+		t.Errorf("Retry-After should not be set on 404, got %q", got)
 	}
 }
