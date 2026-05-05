@@ -297,9 +297,9 @@ export function buildHsPerfectOption(
   if (n === 0) return { backgroundColor: CHART_BG }
   const xLabels = xAxisLabels(n)
 
-  // Pour chaque joueur : 1 line HS (couleur normale, dotted, fine) + 1 line
-  // perfect_kills (couleur emphasée — opacity 1, width 3, marker carré, area
-  // pour faire ressortir les pics de perfect kills).
+  // HS : barre opaque couleur joueur.
+  // Perfect kills : stackée sur les HS, même couleur + bordure blanche + glow
+  // dans la couleur du joueur → événement rare mis en valeur sans couleur externe.
   const series: Array<Record<string, unknown>> = []
   for (const player of players) {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
@@ -309,20 +309,26 @@ export function buildHsPerfectOption(
       hsData[p.match_order] = p.headshot_kills ?? null
       perfectData[p.match_order] = p.perfect_kills ?? null
     }
-    // HS : barre normale, opacity réduite pour le distinguer des frags parfaits.
     series.push({
       name: `${player} — ${opts.hsLabel}`,
       type: 'bar',
-      barMaxWidth: 10,
-      itemStyle: { color, opacity: 0.6 },
+      stack: player,
+      barMaxWidth: 14,
+      itemStyle: { color },
       data: hsData,
     })
-    // Perfect kills : barre pleine, mise en valeur.
     series.push({
       name: `${player} — ${opts.perfectLabel}`,
       type: 'bar',
-      barMaxWidth: 10,
-      itemStyle: { color },
+      stack: player,
+      barMaxWidth: 14,
+      itemStyle: {
+        color,
+        borderColor: 'rgba(255,255,255,0.75)', // color-allow: blanc structurel pour border d'emphase
+        borderWidth: 1.5,
+        shadowBlur: 8,
+        shadowColor: color,
+      },
       emphasis: { focus: 'series' },
       data: perfectData,
     })
