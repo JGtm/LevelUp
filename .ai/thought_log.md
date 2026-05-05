@@ -1,5 +1,38 @@
 # Thought Log
 
+## [2026-05-05] Cohérence light/dark — éliminer hardcodes couleurs (apps/web)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Contexte** : zones figées en sombre lors d'un toggle light/dark — Home banner, Battle Pass panel, lightbox récompense, Media viewer, MatchCard partagée, et axes/labels des charts ECharts. Cause racine : hardcodes Tailwind nommés (`bg-slate-950`, `text-cyan-100`, `bg-white/X`, `text-white/X`, `border-white/X`) annotés `// color-allow: thématique Spartan UI` (hypothèse skin Halo permanente, invalide), plus 38 `rgba(255,255,255,X)` inline dans les options ECharts (canvas ne résout pas les CSS vars).
+
+**Décision technique** :
+1. **Hors charts (Phases 0-4)** : passer toutes les zones aux tokens shadcn (`bg-card`, `text-foreground`, `bg-muted`, `border-border`...) qui basculent automatiquement via `[data-theme='light' | 'dark']` dans `globals.css`. Ajout d'une utility CSS `text-shadow-adaptive` (text-shadow noir en dark, blanc en light) + overlay gradient adaptatif `bg-gradient-to-b from-background/30...` pour le banner identity sur image. Modales (CoverFlow, lightbox récompense) entièrement thématisées — fini le mode "cinema" forcé sombre.
+2. **Charts ECharts (Phase 5)** : pivot architectural via deux nouveaux fichiers `apps/web/src/lib/echarts/{themeColors.ts, useThemeVersion.ts}`. `getEChartsThemeColors()` lit les CSS vars `--foreground / --muted-foreground / --border / --popover` au runtime via `getComputedStyle()`, retourne `{ axisLabel, axisLine, splitLine, splitAreaA, splitAreaB, text, tooltipBg, tooltipBorder }` (les splitAreaA/B utilisent `color-mix(in oklch, var(--muted) 15%/30%, transparent)` pour les bandes radar). `useThemeVersion()` est un compteur incrémenté par `MutationObserver` sur `data-theme`. Le `_utils.ts` partagé (consommé par 11 wrappers via `axisBase`/`tooltipBase`/`legendBase`) est refactoré en factories `getAxisBase(tc) / getTooltipBase(tc) / getLegendBase(tc)`. `ChartCard.tsx` ajoute `useThemeVersion()` aux deps de son `useMemo(buildOption(series))` → tous les charts sous ChartCard se re-render automatiquement au toggle.
+
+**Stratégie pilote** : refactor du chart `squadSynergyRadarChart` en premier (4 hardcodes représentatifs : axisName / splitArea / splitLine / axisLine), test E2E Playwright (`apps/web/e2e/theme-switch-charts.spec.ts`) qui valide que les CSS vars diffèrent entre dark/light et que le radar reste visible après toggle. Propagation ensuite aux 27 autres builders/wrappers.
+
+**Périmètre livré** (8 commits sur la branche) :
+- Phases 0-4 : 18 fichiers UI (MatchCard 17 hardcodes, Home banner+peaks+battlepass+sessions+challenges, Media CoverFlow+viewer+matchpicker+lightbox, Palmarès lightbox+carousel+page, citation-ring+star-button+CompareDrawer+TimeseriesScatter+AccessibilityTab+PlayerDetailPanel) + utility CSS `text-shadow-adaptive`.
+- Phase 5a : helpers `themeColors.ts` + `useThemeVersion.ts` (2 nouveaux fichiers, 100L).
+- Phase 5b : pivot `_utils.ts` dynamique + `ChartCard` re-render sur themeVersion.
+- Phase 5c : chart pilote `squadSynergyRadarChart` migré + `data-testid="squad-synergy-radar"` sur le wrapper React.
+- Phase 5d : test E2E Playwright pilote (`theme-switch-charts.spec.ts`).
+- Phase 5e : 27 fichiers chart migrés (10 wrappers `components/charts/*`, 12 charts squad, 5 timeseries/synthesis/SquadEngagement, `PlayerChips.tsx`).
+- Phase 6 : suppression annotations `color-allow: thématique Spartan UI` obsolètes + suppression complète des exports `@deprecated` de `_utils.ts` (axisBase, tooltipBase, legendBase, categoricalXAxis, GRID_COLOR, TEXT_COLOR, ZERO_LINE).
+- Phase 7 (cette entrée) : validation finale.
+
+**Résultats** :
+- `tsc -b` passe sans erreur.
+- 1021/1027 tests vitest passent. 6 échecs : 3 pré-existants (FiltresPill zombie detection, sans rapport avec ce refactor), 3 sur des assertions stale dans `squadFirstEventsChart.test.ts`/`squadPerformanceLineCharts.test.ts` qui matchent un layout `opacity: 0.45` et `lineStyle.width` sur série bar — désynchronisation antérieure entre tests et implémentation (le code utilise `hexComplement(color)` sans opacity, et bar sans lineStyle). 1 test du panneau zero-line dans `squadPerMinuteChart` adapté pour vérifier la largeur d'axe + couleur non vide (la couleur est désormais `tc.text` au lieu de `rgba(255,255,255,0.75)`).
+- ESLint pré-existant à 57 errors / 280 warnings — aucune nouvelle erreur introduite par ce refactor (vérifié par filtre sur les fichiers modifiés).
+- `grep -r "rgba(255,255,255" apps/web/src/{features,components}/` → 0 hit dans les fichiers actifs.
+- `grep -r "color-allow: thématique Spartan UI" apps/web/src/` → 0 hit.
+
+**Prochaine étape** : validation manuelle navigateur light/dark sur Home / Match View / Squad / Palmarès / Media / Compare / Settings. Le test E2E Playwright nécessite `make dev` actif pour s'exécuter — à lancer manuellement avant merge. Les 3 tests vitest stales (HsPerfect lineStyle + butterfly opacity x2) sont à corriger en suivi (pré-existants, hors scope de ce PR).
+
+---
+
 ## [2026-05-05] Page Match — i18n map/mode (breadcrumb + titre)
 
 **Statut** : Complété
