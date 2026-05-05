@@ -124,4 +124,4 @@ benchmarks ajoutés. Aucun test existant supprimé.
 - ADR-0009 (expvar monitoring multi-user) — cardinalité bornée
 - ADR-0005 (Prestige phased activation) — contexte d'urgence P1
 - `internal/sync/lease.go` — invariant deadlock-free documenté
-- `apps/go-api/scripts/check_lease_enforcement.sh` — script CI grep
+- [apps/go-api/scripts/check_lease_enforcement.sh](../../../apps/go-api/scripts/check_lease_enforcement.sh) — script CI grep
