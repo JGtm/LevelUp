@@ -1,11 +1,10 @@
 /**
- * SquadEfficiencyChart — une track ECharts par joueur.
+ * SquadEfficiencyChart — track unique avec switch joueur.
  *
- * Affiche le rendement offensif (trait plein) et la résistance défensive
- * (trait pointillé) normalisés par leur P80, empilés verticalement.
- * Seul le dernier track affiche l'axe X (numéro de match).
+ * Pattern aligné sur SquadIntensityHeatmapChart : boutons segmentés en haut,
+ * un seul ECharts pour le joueur sélectionné. Joueur principal par défaut.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { TEXT_COLOR } from '@/components/charts/_utils'
@@ -15,6 +14,7 @@ interface EfficiencyLabels {
   rendementLabel: string
   resistanceLabel: string
   refLabel: string
+  toggleLabel: string
   noData: string
 }
 
@@ -26,46 +26,10 @@ interface SquadEfficiencyChartProps {
   labels: EfficiencyLabels
 }
 
-const TRACK_HEIGHT = 200
+const TRACK_HEIGHT = 320
 
 function hasEfficiencyData(pts: SquadPerformanceSeriesPoint[]): boolean {
   return pts.some((p) => p.rendement_offensif !== undefined || p.resistance_defensive !== undefined)
-}
-
-interface TrackProps {
-  player: string
-  pts: SquadPerformanceSeriesPoint[]
-  color: string
-  labels: EfficiencyLabels
-  showXAxis: boolean
-}
-
-function EfficiencyTrack({ player, pts, color, labels, showXAxis }: TrackProps) {
-  const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(
-    () => (pts.length > 0 ? [{ key: player, datapoints: pts }] : []),
-    [pts, player],
-  )
-  const buildOption = useCallback(
-    () =>
-      buildSquadEfficiencyTrackOption(pts, {
-        color,
-        rendementLabel: labels.rendementLabel,
-        resistanceLabel: labels.resistanceLabel,
-        refLabel: labels.refLabel,
-        showXAxis,
-      }),
-    [pts, color, labels, showXAxis],
-  )
-
-  return (
-    <ChartCard
-      title={player}
-      series={series}
-      buildOption={buildOption}
-      height={TRACK_HEIGHT}
-      emptyMessage={labels.noData}
-    />
-  )
 }
 
 export function SquadEfficiencyChart({
@@ -79,12 +43,54 @@ export function SquadEfficiencyChart({
     [playerOrder, rowsByPlayer],
   )
 
+  const [selectedPlayer, setSelectedPlayer] = useState<string>(players[0] ?? '')
+
+  // Si la sélection courante n'est plus dans la liste (changement de squad),
+  // retomber sur le premier joueur disponible.
+  const activePlayer = players.includes(selectedPlayer) ? selectedPlayer : (players[0] ?? '')
+
+  const pts = useMemo(() => rowsByPlayer[activePlayer] ?? [], [rowsByPlayer, activePlayer])
+  const color = colorByPlayer[activePlayer] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+
+  const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(
+    () => (pts.length > 0 ? [{ key: activePlayer, datapoints: pts }] : []),
+    [pts, activePlayer],
+  )
+
+  const buildOption = useCallback(
+    () =>
+      buildSquadEfficiencyTrackOption(pts, {
+        color,
+        rendementLabel: labels.rendementLabel,
+        resistanceLabel: labels.resistanceLabel,
+        refLabel: labels.refLabel,
+        showXAxis: true,
+      }),
+    [pts, color, labels],
+  )
+
   if (players.length === 0) return null
 
-  const lastIdx = players.length - 1
-
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">{labels.toggleLabel}</p>
+      <div className="flex flex-wrap gap-1">
+        {players.map((player) => (
+          <button
+            key={player}
+            type="button"
+            onClick={() => setSelectedPlayer(player)}
+            className={[
+              'rounded-md border px-2.5 py-1 text-xs transition-colors',
+              player === activePlayer
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-input bg-background hover:bg-muted',
+            ].join(' ')}
+          >
+            {player}
+          </button>
+        ))}
+      </div>
       <div
         className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 pb-1 text-xs"
         style={{ color: TEXT_COLOR }}
@@ -125,16 +131,12 @@ export function SquadEfficiencyChart({
           {labels.refLabel}
         </span>
       </div>
-      {players.map((player, i) => (
-        <EfficiencyTrack
-          key={player}
-          player={player}
-          pts={rowsByPlayer[player] ?? []}
-          color={colorByPlayer[player] ?? '#888'} // color-allow: gris structurel pour joueur sans couleur attribuée
-          labels={labels}
-          showXAxis={i === lastIdx}
-        />
-      ))}
+      <ChartCard
+        series={series}
+        buildOption={buildOption}
+        height={TRACK_HEIGHT}
+        emptyMessage={labels.noData}
+      />
     </div>
   )
 }
