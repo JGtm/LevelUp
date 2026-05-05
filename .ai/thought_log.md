@@ -1,5 +1,25 @@
 # Thought Log
 
+## [2026-05-05] feat(squad/performance): graphe Rang — CSR/LUSR séparés + MMR équipe unique
+
+**Statut** : Complété.
+
+**Contexte** : Le graphe "Rang & MMR équipe" avait deux problèmes : (1) la courbe TeamMMR était dupliquée N fois (une par joueur) alors que c'est une valeur partagée par toute l'escouade, (2) les barres de rang individuel étaient labellisées "MMR équipe" alors qu'elles représentent CSR (classé) ou LUSR (non classé).
+
+**Décisions techniques** :
+
+1. **TeamMMR → courbe unique** : agrégation de la première valeur non-nulle par `match_order` cross-joueurs. Une seule série `line` avec `ZERO_LINE_COLOR` (blanc semi-transparent neutre).
+
+2. **CSR/LUSR → deux séries distinctes par joueur** : `SkillRatingType string` ajouté dans `SquadPerformanceSeriesPoint` (Go) et `skill_rating_type?: 'csr' | 'lusr'` dans le type TS. Le builder `buildTeamMMROption` crée 2 séries de barres par joueur — les données sont mutuellement exclusives par match (soit CSR, soit LUSR, jamais les deux). La légende affiche `"JoueurA — CSR"`, `"JoueurA — LUSR"`, `"MMR équipe"`.
+
+3. **`rankLabel` supprimé** : il n'est plus nécessaire puisque les labels sont maintenant les constantes `"CSR"` / `"LUSR"` (termes techniques non localisés — identiques FR/EN).
+
+**Résultats** : `go build` + `tsc --noEmit` OK sans erreur.
+
+**Prochaine étape** : Vérifier visuellement que les barres CSR/LUSR apparaissent distinctement dans la légende et que les tooltips sont corrects.
+
+---
+
 ## [2026-05-05] feat(squad/performance): barres groupées + FDA colorimétrique
 
 **Statut** : Complété.

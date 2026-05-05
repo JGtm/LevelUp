@@ -1511,6 +1511,7 @@ export interface SquadPerformanceSeriesPoint {
   team_mmr?: number
   skill_rating?: number
   skill_delta?: number
+  skill_rating_type?: 'csr' | 'lusr'
 }
 
 /** Un axe du radar synergie teammates.06 (value normalisé 0..100, raw debug). */

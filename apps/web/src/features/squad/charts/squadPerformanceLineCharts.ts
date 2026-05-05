@@ -358,6 +358,7 @@ export function buildHsPerfectOption(
 // ---------------------------------------------------------------------------
 
 export interface TeamMMROpts extends CommonOpts {
+  /** Label pour la courbe MMR d'équipe (partagée par tous les joueurs). */
   mmrLabel: string
 }
 
@@ -373,57 +374,63 @@ export function buildTeamMMROption(
 
   const allSeries: Array<Record<string, unknown>> = []
 
+  // MMR équipe — valeur identique pour tous les joueurs d'une même escouade sur un match.
+  // On agrège la première valeur non-nulle par match_order (toutes identiques).
+  const sharedMmrData = new Array<number | null>(n).fill(null)
+  for (const player of players) {
+    for (const p of rows[player]) {
+      if (p.team_mmr != null && sharedMmrData[p.match_order] === null) {
+        sharedMmrData[p.match_order] = p.team_mmr
+      }
+    }
+  }
+
+  // CSR et LUSR sont mutuellement exclusifs par match.
+  // On ne crée une série que si le joueur a au moins un point de cette nature.
+  type BarItem = { value: number | null; itemStyle: { color: string; opacity: number } }
+  const nullItem = (c: string): BarItem => ({ value: null, itemStyle: { color: c, opacity: 0 } })
+  const legendData: string[] = []
+
   for (const player of players) {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
-    const negColor = hexComplement(color) // hue +180° — même convention que les autres charts
+    const negColor = hexComplement(color)
 
-    // Barres CSR / LUSR — colorées par delta (gain = couleur joueur, perte = complément).
-    const ratingData = new Array<number | null>(n).fill(null)
-    const ratingBarData = new Array<{ value: number | null; itemStyle: { color: string; opacity: number } }>(n)
-    for (let i = 0; i < n; i++) ratingBarData[i] = { value: null, itemStyle: { color, opacity: 0.75 } }
+    const csrData: BarItem[] = Array.from({ length: n }, () => nullItem(color))
+    const lusrData: BarItem[] = Array.from({ length: n }, () => nullItem(color))
+    let hasCsr = false
+    let hasLusr = false
 
     for (const p of rows[player]) {
       const val = p.skill_rating ?? null
-      ratingData[p.match_order] = val
-      if (val !== null) {
-        const delta = p.skill_delta
-        const barColor = delta !== undefined && delta < 0 ? negColor : color
-        ratingBarData[p.match_order] = { value: val, itemStyle: { color: barColor, opacity: 0.8 } }
-      }
+      if (val === null) continue
+      const barColor = p.skill_delta !== undefined && p.skill_delta < 0 ? negColor : color
+      const item: BarItem = { value: val, itemStyle: { color: barColor, opacity: 0.85 } }
+      if (p.skill_rating_type === 'csr') { csrData[p.match_order] = item; hasCsr = true }
+      else { lusrData[p.match_order] = item; hasLusr = true } // "lusr" ou type inconnu
     }
-    allSeries.push({
-      name: `${player} — ${opts.mmrLabel}`,
-      type: 'bar',
-      barMaxWidth: 12,
-      data: ratingBarData,
-      z: 2,
-    })
 
-    // Courbe TeamMMR — fine, en pointillés, pour la tendance globale de l'équipe.
-    const mmrData = new Array<number | null>(n).fill(null)
-    for (const p of rows[player]) {
-      mmrData[p.match_order] = p.team_mmr ?? null
-    }
+    if (hasCsr)  { allSeries.push({ name: `${player} — CSR`,  type: 'bar', barMaxWidth: 12, data: csrData,  z: 2 }); legendData.push(`${player} — CSR`) }
+    if (hasLusr) { allSeries.push({ name: `${player} — LUSR`, type: 'bar', barMaxWidth: 12, data: lusrData, z: 2 }); legendData.push(`${player} — LUSR`) }
+  }
+
+  // Une seule courbe pour le MMR d'équipe (partagé par tous les joueurs de l'escouade).
+  const hasMmr = sharedMmrData.some((v) => v !== null)
+  if (hasMmr) {
     allSeries.push({
-      name: `${player} — MMR`,
+      name: opts.mmrLabel,
       type: 'line',
-      data: mmrData,
-      lineStyle: { color, width: 1.5, type: 'dashed', opacity: 0.65 },
-      itemStyle: { color },
-      symbol: 'none',
+      data: sharedMmrData,
+      lineStyle: { color: ZERO_LINE_COLOR, width: 2, type: 'dashed' }, // color-allow: blanc neutre pour ligne partagée MMR équipe
+      itemStyle: { color: ZERO_LINE_COLOR },
+      symbol: 'circle',
+      symbolSize: 4,
       connectNulls: false,
       z: 3,
     })
+    legendData.push(opts.mmrLabel)
   }
 
-  const hasData = allSeries.some((s) =>
-    (s.data as Array<{ value: number | null } | number | null>).some(
-      (v) => (typeof v === 'object' && v !== null ? v.value : v) !== null,
-    ),
-  )
-  if (!hasData) return { backgroundColor: CHART_BG }
-
-  const legendData = players.flatMap((p) => [`${p} — ${opts.mmrLabel}`, `${p} — MMR`])
+  if (allSeries.length === 0) return { backgroundColor: CHART_BG }
 
   return {
     backgroundColor: CHART_BG,
