@@ -193,4 +193,4 @@ lease pattern instead.
 - ADR-0009 (expvar monitoring multi-user) — cardinality bounded
 - ADR-0005 (Prestige phased activation) — context for P1 urgency
 - `internal/sync/lease.go` — invariant documentation
-- `apps/go-api/scripts/check_lease_enforcement.sh` — CI lint script
+- [apps/go-api/scripts/check_lease_enforcement.sh](../../apps/go-api/scripts/check_lease_enforcement.sh) — CI lint script
