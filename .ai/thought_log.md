@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — branche `refactor/leased-writer-enforcement`, commit 0 (baseline)
+
+**Statut** : En cours — commit 0 livré, commits 1-7 à venir.
+
+**Contexte** : audit de concurrence DB révélé que `prestige.Service` (HTTP temps réel) écrit sur `stats.duckdb` sans acquérir le `dblease`, alors que le sync engine tient ce même lease pendant la sync. Risque P1 critique d'erreurs "database is locked" en prod si Prestige est activé pendant un sync. Audit étendu identifie aussi : notifications HTTP (P2 contention pool sql.DB) et media likes / match favorites (P3 atomicité). Plan v3 documenté dans `.ai/PLAN_DB_WRITE_CONCURRENCY.md`, ~1100 lignes, 8 commits, 7-8 j d'effort.
+
+**Décision technique principale** :
+- Option A retenue : type `*LeasedWriter` qui rend la règle "tout write passe par un lease" inviolable au compile-time, plutôt que de continuer à reposer sur la convention.
+- Deadlock sync↔Prestige résolu par **propagation explicite** du writer (`EvaluateForUserWithWriter`) plutôt que réentrance via token contexte (plus simple à debugger, `sync.Mutex` reste non réentrant).
+- Pas de package `paths` créé : `*duckdb.DB` expose déjà `Path()` (db.go:211), donc le commit 1 pourra ajouter directement `pdb.AcquirePlayerWriter(ctx)` etc. en utilisant `pdb.Player.Path()`.
+- ADR 0013 prévu (0012 déjà pris par halo-only-adapters-extraction).
+- Métriques expvar `dblease_*` groupées par `kind` (player/shared_matches/shared_social/metadata), pas par chemin individuel — borne la cardinalité en multi-user (cf. ADR-0009).
+
+**Découverte au commit 0** : `*DB.Path()` existant rend le commit 0 plus léger que prévu — aucun fichier Go modifié. Le commit 0 se réduit à : (a) capture baseline tests + coverage, (b) `scripts/check_test_baseline.sh` pour blinder la non-régression.
+
+**Stratégie de tests blindée** (cf. plan §Stratégie de tests) :
+- Baseline figée (1662 noms de tests uniques) immuable jusqu'à fin de la branche.
+- 4 invariants property-based : release balance, double-release idempotent, idempotence Prestige, ordre de verrouillage.
+- 17 tests d'intégration concurrentiels à ajouter (build tag `integration`).
+- Helper `dblease.AssertNoLeasedWriters(t)` à appeler en `t.Cleanup()` partout — vérification anti-fuite systématique.
+- Bench `dblease` baseline figé pour détecter toute régression de latence > 20 %.
+
+**Résultats observés** :
+- Baseline tests : `go test -tags=integration -count=1 -timeout=300s -p 1 -json ./...` → 1662 tests passent. Build failed sur `cmd/*` (toolchain cgo non-réplicable hors environnement développeur, non-bloquant pour le périmètre de refactor qui est sur `internal/...`).
+- Baseline coverage : `-coverpkg=./...` propage les fails cgo des `cmd/*` à tous les packages → relancé sans `-coverpkg`, scoping `./internal/... ./tests/...` (suffisant pour la non-régression). Le script `check_test_baseline.sh` ignore naturellement les fails de build (regex demande un nom de Test, absent quand c'est un build fail).
+
+**Conclusion / prochaine étape** : commit 0 prêt à committer (baseline + script + plan v3). Commit 1 démarre dans la foulée : type `*LeasedWriter`, interfaces `port.DBExecutor` / `port.DBWriter`, métriques expvar par kind, helper `AssertNoLeasedWriters`, bench baseline.
+
+---
+
 ## [2026-05-05] MatchView header rework — Phase 1 livrée (mock C)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`, 4 commits.
