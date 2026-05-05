@@ -120,7 +120,7 @@ benchmarks ajoutés. Aucun test existant supprimé.
 
 ## Références
 
-- Plan complet : `.ai/PLAN_DB_WRITE_CONCURRENCY.md` v3
+- Plan complet : `.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md` v3
 - ADR-0009 (expvar monitoring multi-user) — cardinalité bornée
 - ADR-0005 (Prestige phased activation) — contexte d'urgence P1
 - `internal/sync/lease.go` — invariant deadlock-free documenté

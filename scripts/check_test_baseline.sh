@@ -2,7 +2,7 @@
 # scripts/check_test_baseline.sh — Vérifie que la baseline de tests pré-migration
 # reste verte sur la branche courante.
 #
-# Référence : .ai/PLAN_DB_WRITE_CONCURRENCY.md §Stratégie de tests — non-régression blindée
+# Référence : .ai/V7/PLAN_DB_WRITE_CONCURRENCY.md §Stratégie de tests — non-régression blindée
 #
 # Garanties vérifiées :
 #   1. Tous les tests présents dans la baseline existent encore et passent.
