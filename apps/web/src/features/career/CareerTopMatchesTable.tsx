@@ -2,11 +2,12 @@
  * CareerTopMatchesTable — tableau des meilleurs/pires matchs.
  * A2/A3 NATIVE_COMPONENTS — colonnes K/D/A, badge typé, clic → Match View.
  */
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { CareerTopMatch } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
 interface Props {
   items: CareerTopMatch[]
@@ -34,18 +35,18 @@ function MatchBadge({ type }: { type: string | null }) {
 }
 
 export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugProp }: Props) {
-  const navigate = useNavigate()
   const params = useParams({ strict: false }) as { playerSlug?: string }
   const playerSlug = slugProp ?? params.playerSlug ?? ''
+  const navigateToMatch = useNavigateToMatch(playerSlug)
 
   const filtered = variant ? items.filter((m) => m.variant === variant) : items
   const defaultTitle =
     variant === 'worst' ? 'Pires matchs' : variant === 'best' ? 'Meilleurs matchs' : 'Top matchs'
 
   function goToMatch(matchId: string) {
-    void navigate({
-      to: '/players/$playerSlug/matches/$matchId',
-      params: { playerSlug, matchId },
+    navigateToMatch(matchId, {
+      source: 'history',
+      matchIds: filtered.map((m) => m.match_id),
     })
   }
 

@@ -9,7 +9,6 @@
  * Labels carte/playlist via useFieldMappings (assets titre).
  */
 import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
   type ColumnDef,
   flexRender,
@@ -24,6 +23,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { getOutcomeColor } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { getSquadText } from './i18n'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
 const PAGE_SIZE = 20
 
@@ -61,7 +61,10 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   const t = getSquadText(locale)
   const intlLocale = t.intlLocale
   const labels = t.history
-  const navigate = useNavigate()
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+  const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
+  const goToSynergyMatch = (matchId: string) =>
+    navigateToMatch(matchId, { source: 'session', matchIds: allMatchIds })
 
   const waypointBase = `https://www.halowaypoint.com/halo-infinite/players/${encodeURIComponent(playerSlug)}/matches`
 
@@ -76,10 +79,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             className="text-primary underline text-xs whitespace-nowrap"
             onClick={(e) => {
               e.stopPropagation()
-              void navigate({
-                to: '/players/$playerSlug/matches/$matchId',
-                params: { playerSlug, matchId: ctx.row.original.match_id },
-              })
+              goToSynergyMatch(ctx.row.original.match_id)
             }}
           >
             Ouvrir
@@ -250,18 +250,10 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                 className="cursor-pointer transition-colors hover:bg-primary/10"
                 role="button"
                 tabIndex={0}
-                onClick={() =>
-                  void navigate({
-                    to: '/players/$playerSlug/matches/$matchId',
-                    params: { playerSlug, matchId: row.original.match_id },
-                  })
-                }
+                onClick={() => goToSynergyMatch(row.original.match_id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    void navigate({
-                      to: '/players/$playerSlug/matches/$matchId',
-                      params: { playerSlug, matchId: row.original.match_id },
-                    })
+                    goToSynergyMatch(row.original.match_id)
                   }
                 }}
               >

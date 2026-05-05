@@ -142,14 +142,19 @@ describe('SquadMatchHistoryTable', () => {
   })
 
   it('clic sur une ligne → navigate vers /players/$playerSlug/matches/$matchId', () => {
+    // Phase 2a : navigate est désormais appelé avec un `state` qui pousse
+    // le MatchNavContext (source: 'session', matchIds: [...]) dans le router.
     renderWithProviders(<SquadMatchHistoryTable rows={[row(1)]} playerSlug="me" />)
     const tr = screen.getByTestId('squad-match-history-table').querySelector('tbody tr')
     if (!tr) throw new Error('row not found')
     fireEvent.click(tr)
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/players/$playerSlug/matches/$matchId',
-      params: { playerSlug: 'me', matchId: 'match-1' },
-    })
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/players/$playerSlug/matches/$matchId',
+        params: { playerSlug: 'me', matchId: 'match-1' },
+        state: expect.any(Function),
+      }),
+    )
   })
 
   it('21 rows → exactement 20 sur page 1, 1 sur page 2', () => {

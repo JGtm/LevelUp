@@ -2,21 +2,23 @@
  * SynthesisHighlightsSection — Sprint 55 D5.
  * Affiche les meilleurs et pires matchs du scope courant.
  */
-import { Link } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SynthesisHighlightsPreview, SynthesisMatchHighlight } from '@/lib/api/types'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
 interface HighlightRowProps {
   item: SynthesisMatchHighlight
   playerSlug: string
+  groupMatchIds: string[]
 }
 
-function HighlightRow({ item, playerSlug }: HighlightRowProps) {
+function HighlightRow({ item, playerSlug, groupMatchIds }: HighlightRowProps) {
   const isWin = item.outcome === 2
   const kda = item.kda != null ? item.kda.toFixed(2) : '—'
   const perf = item.perf_score != null ? item.perf_score.toFixed(0) : null
+  const navigateToMatch = useNavigateToMatch(playerSlug)
 
   return (
     <div className="flex items-center justify-between gap-3 border-b last:border-0 px-4 py-3">
@@ -24,12 +26,18 @@ function HighlightRow({ item, playerSlug }: HighlightRowProps) {
         <Badge variant={isWin ? 'success' : 'destructive'} className="shrink-0">
           {isWin ? 'V' : 'D'}
         </Badge>
-        <Link
-          to={`/players/${playerSlug}/matches/${item.match_id}` as never}
-          className="text-sm font-mono text-muted-foreground hover:text-foreground truncate"
+        <button
+          type="button"
+          onClick={() =>
+            navigateToMatch(item.match_id, {
+              source: 'home_recent',
+              matchIds: groupMatchIds,
+            })
+          }
+          className="text-sm font-mono text-muted-foreground hover:text-foreground truncate bg-transparent border-none p-0 cursor-pointer"
         >
           {item.match_id.slice(0, 12)}…
-        </Link>
+        </button>
       </div>
       <div className="flex items-center gap-4 shrink-0 text-sm">
         <span className="text-muted-foreground">
@@ -75,6 +83,9 @@ export function SynthesisHighlightsSection({ highlights, playerSlug }: Synthesis
     )
   }
 
+  const bestIds = best.map((m) => m.match_id)
+  const worstIds = worst.map((m) => m.match_id)
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {best.length > 0 && (
@@ -82,7 +93,12 @@ export function SynthesisHighlightsSection({ highlights, playerSlug }: Synthesis
           <CardHeader><CardTitle>Meilleurs matchs</CardTitle></CardHeader>
           <CardContent className="p-0">
             {best.map((item) => (
-              <HighlightRow key={item.match_id} item={item} playerSlug={playerSlug} />
+              <HighlightRow
+                key={item.match_id}
+                item={item}
+                playerSlug={playerSlug}
+                groupMatchIds={bestIds}
+              />
             ))}
           </CardContent>
         </Card>
@@ -92,7 +108,12 @@ export function SynthesisHighlightsSection({ highlights, playerSlug }: Synthesis
           <CardHeader><CardTitle>Matchs difficiles</CardTitle></CardHeader>
           <CardContent className="p-0">
             {worst.map((item) => (
-              <HighlightRow key={item.match_id} item={item} playerSlug={playerSlug} />
+              <HighlightRow
+                key={item.match_id}
+                item={item}
+                playerSlug={playerSlug}
+                groupMatchIds={worstIds}
+              />
             ))}
           </CardContent>
         </Card>

@@ -4,9 +4,9 @@
  * 1 ligne par match, colonnes : date, mode, carte, durée, K/D/A par joueur,
  * outcome global. Le tri est fait côté backend (date desc).
  */
-import { useNavigate } from '@tanstack/react-router'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatDate, formatDurationMMSS } from '@/lib/formatters'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
 import type { HistoryTableRow, Outcome } from '../types'
 
@@ -53,13 +53,15 @@ function outcomeColorVar(o: Outcome): string {
 }
 
 export function HistoryTable({ rows, squadOrder, locale, labels, playerSlug }: HistoryTableProps) {
-  const navigate = useNavigate()
+  // playerSlug peut être undefined ici (Squad v2). useNavigateToMatch tolère
+  // une chaîne vide — la navigation est juste no-op si on n'a pas le slug.
+  const navigateToMatch = useNavigateToMatch(playerSlug ?? '')
 
   function goToMatch(matchId: string) {
     if (!playerSlug) return
-    void navigate({
-      to: '/players/$playerSlug/matches/$matchId',
-      params: { playerSlug, matchId },
+    navigateToMatch(matchId, {
+      source: 'session',
+      matchIds: rows.map((r) => r.match_id),
     })
   }
 

@@ -12,14 +12,17 @@
  * (utilisé par MatchViewPage avant migration).
  */
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useRouter } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
 import { skillDeltaScale } from '@/lib/accessibility/scales'
-import { useMatchNeighbors, useToggleMatchFavorite } from './queries'
+import { useToggleMatchFavorite } from './queries'
+import { useMatchNeighborsResolved } from '@/lib/match-nav/useMatchNeighborsResolved'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { clearNavContext } from '@/lib/match-nav/navContext'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
@@ -97,20 +100,32 @@ interface MatchNavigationBarProps {
 }
 
 export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigationBarProps) {
-  const navigate = useNavigate()
   const t = MATCH_VIEW_TEXT[locale]
-  const { data: neighbors } = useMatchNeighbors(playerSlug, matchId)
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+  const { data: neighbors, source, contextLabel, navContext } =
+    useMatchNeighborsResolved(playerSlug, matchId)
 
   const goTo = useCallback(
     (targetMatchId: string | null | undefined) => {
       if (!targetMatchId) return
-      void navigate({
-        to: '/players/$playerSlug/matches/$matchId',
-        params: { playerSlug, matchId: targetMatchId },
-      })
+      // Propage le contexte courant lors d'un prev/next : la liste matchIds
+      // reste valable, on continue dans le même périmètre filtré.
+      navigateToMatch(targetMatchId, navContext)
     },
-    [navigate, playerSlug],
+    [navigateToMatch, navContext],
   )
+
+  const exitContext = useCallback(() => {
+    // Purge le sessionStorage pour le matchId courant et rafraîchit
+    // l'historique sans state. Le hook cascade retombera sur l'API globale.
+    clearNavContext(matchId)
+    // Replace l'entrée d'historique courante sans state — TanStack Router
+    // ne propose pas d'API directe pour ça, on utilise window.history avec
+    // l'URL déjà active. Le `useRouterState` du hook se met à jour au prochain
+    // render via l'event popstate déclenché par replaceState (manuellement).
+    window.history.replaceState({}, '', window.location.href)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }, [matchId])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -125,34 +140,51 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
   if (!neighbors) return null
 
   const counter = t.matchCounter(neighbors.current_index + 1, neighbors.total_matches)
+  const showContext = source !== 'api' && !!contextLabel
 
   return (
-    <div className="flex items-center justify-between px-6 py-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={!neighbors.previous_match_id}
-        onClick={() => goTo(neighbors.previous_match_id)}
-        title={`${t.prevMatch} (←)`}
-        aria-label={t.prevMatch}
-        className="text-sm"
-      >
-        ← {t.prevMatch}
-      </Button>
-      <span className="text-xs font-medium tabular-nums text-muted-foreground">
-        {counter}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={!neighbors.next_match_id}
-        onClick={() => goTo(neighbors.next_match_id)}
-        title={`${t.nextMatch} (→)`}
-        aria-label={t.nextMatch}
-        className="text-sm"
-      >
-        {t.nextMatch} →
-      </Button>
+    <div className="flex flex-col gap-0.5 px-6 py-2">
+      <div className="flex items-center justify-between">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={!neighbors.previous_match_id}
+          onClick={() => goTo(neighbors.previous_match_id)}
+          title={`${t.prevMatch} (←)`}
+          aria-label={t.prevMatch}
+          className="text-sm"
+        >
+          ← {t.prevMatch}
+        </Button>
+        <span className="text-xs font-medium tabular-nums text-muted-foreground">
+          {counter}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={!neighbors.next_match_id}
+          onClick={() => goTo(neighbors.next_match_id)}
+          title={`${t.nextMatch} (→)`}
+          aria-label={t.nextMatch}
+          className="text-sm"
+        >
+          {t.nextMatch} →
+        </Button>
+      </div>
+      {showContext && (
+        <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+          <span>{contextLabel}</span>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            onClick={exitContext}
+            className="underline-offset-2 hover:text-foreground hover:underline"
+            title={t.exitContext}
+          >
+            ↩ {t.exitContext}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

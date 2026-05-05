@@ -90,10 +90,16 @@ describe('SynthesisHighlightsSection', () => {
       expect(badges.length).toBeGreaterThan(0)
     })
 
-    it('affiche un lien vers la page du match', () => {
+    it('affiche un bouton qui navigue vers la page du match', () => {
       renderSection(fullPreview)
-      const links = screen.getAllByRole('link')
-      expect(links.some((l) => l.getAttribute('href')?.includes('test-player/matches'))).toBeTruthy()
+      // Phase 2a : le <Link> a été remplacé par un <button> qui appelle
+      // useNavigateToMatch + persiste un MatchNavContext (groupe d'highlights).
+      // Le label affiché est `${match_id.slice(0, 12)}…` — on cherche un
+      // bouton dont le texte contient le préfixe d'un match_id de test.
+      const buttons = screen.getAllByRole('button')
+      expect(
+        buttons.some((b) => b.textContent?.startsWith('aaaabbbb')),
+      ).toBeTruthy()
     })
 
     it('affiche le score de perf si disponible', () => {

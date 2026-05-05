@@ -19,6 +19,7 @@ import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import type { ExplorerMatchFilters, MatchEncounterBadge } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -112,10 +113,12 @@ export function ExplorerPage() {
     })
   }
 
-  function goToMatch(matchId: string) {
-    void navigate({
-      to: '/players/$playerSlug/matches/$matchId',
-      params: { playerSlug, matchId },
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+
+  function goToMatch(matchId: string, matchIds: string[]) {
+    navigateToMatch(matchId, {
+      source: 'history',
+      matchIds,
     })
   }
 
@@ -300,10 +303,13 @@ export function ExplorerPage() {
                                 <tr
                                   key={m.match_id}
                                   className="hover:bg-primary/10 transition-colors cursor-pointer"
-                                  onClick={() => goToMatch(m.match_id)}
+                                  onClick={() => goToMatch(m.match_id, playerQuery.data.common_matches.map((x) => x.match_id))}
                                   role="button"
                                   tabIndex={0}
-                                  onKeyDown={(e) => e.key === 'Enter' && goToMatch(m.match_id)}
+                                  onKeyDown={(e) =>
+                                    e.key === 'Enter' &&
+                                    goToMatch(m.match_id, playerQuery.data.common_matches.map((x) => x.match_id))
+                                  }
                                 >
                                   <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                                     {new Date(m.start_time).toLocaleDateString(numberLocale)}
@@ -536,7 +542,12 @@ export function ExplorerPage() {
                           <tr
                             key={row.match_id}
                             className="hover:bg-primary/10 transition-colors cursor-pointer"
-                            onClick={() => goToMatch(row.match_id)}
+                            onClick={() =>
+                              goToMatch(
+                                row.match_id,
+                                matchesQuery.data!.table.items.map((r) => r.match_id),
+                              )
+                            }
                           >
                             <td className="px-4 py-2 text-muted-foreground">
                               {new Date(row.start_time).toLocaleDateString(numberLocale)}

@@ -4,7 +4,6 @@
  * Sprint exclusion : bouton ⊘ par ligne avec confirmation inline.
  */
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +13,7 @@ import { queryKeys } from '@/lib/query/keys'
 import { tokenCssVar } from '@/lib/accessibility'
 import { mmrDeltaScale } from '@/lib/accessibility/scales'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
 interface Props {
   rows: MatchHistoryRow[]
@@ -73,7 +73,7 @@ export function MatchHistoryTable({
   page,
   hideExport,
 }: Props) {
-  const navigate = useNavigate()
+  const navigateToMatch = useNavigateToMatch(playerSlug)
   const queryClient = useQueryClient()
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const excludeMutation = useSetMatchExclusion(playerSlug)
@@ -94,10 +94,10 @@ export function MatchHistoryTable({
     { key: 'actions', label: '', sortable: false },
   ] as const
 
-  function navigateToMatch(matchId: string) {
-    void navigate({
-      to: '/players/$playerSlug/matches/$matchId',
-      params: { playerSlug, matchId },
+  function navigateToMatchWithCtx(matchId: string) {
+    navigateToMatch(matchId, {
+      source: 'history',
+      matchIds: rows.map((r) => r.match_id),
     })
   }
 
@@ -178,7 +178,7 @@ export function MatchHistoryTable({
                 <tr
                   key={row.match_id}
                   className={`cursor-pointer transition-colors hover:brightness-125 ${bg}`}
-                  onClick={() => navigateToMatch(row.match_id)}
+                  onClick={() => navigateToMatchWithCtx(row.match_id)}
                   title="Voir le détail du match"
                 >
                   <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
