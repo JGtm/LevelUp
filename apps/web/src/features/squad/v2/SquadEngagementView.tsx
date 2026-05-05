@@ -28,6 +28,8 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 export interface SquadEngagementSession {
   /** Labels matchs (ex. M1, M2, ... ou date). */
   labels: string[]
+  /** Noms de carte par match (parallèle à labels). */
+  mapNames: string[]
   /** Pace lobby per_player par match. */
   lobbyPerPlayer: number[]
   /** Pace attendu equipe (mean coef squad × lobby). */
@@ -120,6 +122,15 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
 // Builder ECharts
 // ---------------------------------------------------------------------------
 
+function truncateMapName(s: string, max = 9): string {
+  if (s.length <= max) return s
+  const sepIdx = Math.min(
+    ...[' ', '-'].map((c) => { const i = s.indexOf(c); return i > 0 ? i : Infinity }),
+  )
+  if (sepIdx <= max) return `${s.slice(0, sepIdx)}…`
+  return `${s.slice(0, max - 1)}…`
+}
+
 function buildSquadEngagementOption(
   session: SquadEngagementSession,
   overlay: SquadPlayerEngagement | null,
@@ -127,6 +138,13 @@ function buildSquadEngagementOption(
   if (session.labels.length === 0) {
     return {} as EChartsCoreOption
   }
+
+  // Étiquettes X sur 2 lignes : "#N\nMapName" comme les charts timeseries.
+  const xLabels = session.labels.map((label, i) => {
+    const num = label.replace(/^M/, '#')
+    const mapName = session.mapNames[i]
+    return mapName ? `${num}\n${truncateMapName(mapName)}` : num
+  })
 
   // Auto-zoom Y inclut l'overlay si present.
   const allY = [
@@ -208,14 +226,19 @@ function buildSquadEngagementOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 50, right: 24, top: 18, bottom: 38 },
-    tooltip: { ...tooltipBase, trigger: 'axis' },
+    grid: { left: 50, right: 24, top: 18, bottom: 46 },
+    tooltip: {
+      ...tooltipBase,
+      trigger: 'axis',
+      valueFormatter: (v: unknown) =>
+        typeof v === 'number' ? v.toFixed(2) : String(v),
+    },
     legend: { ...legendBase, top: 0, bottom: 'auto' },
     xAxis: {
       ...axisBase,
       type: 'category',
-      data: session.labels,
-      axisLabel: { ...axisBase.axisLabel },
+      data: xLabels,
+      axisLabel: { ...axisBase.axisLabel, interval: 0 },
     },
     yAxis: {
       ...axisBase,

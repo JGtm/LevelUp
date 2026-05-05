@@ -104,6 +104,7 @@ type HistoricalEngagementBrut struct {
 type EngagementMatchSummary struct {
 	MatchID         string    `json:"match_id"`
 	Label           string    `json:"label"` // "M1", "M2" ou date courte
+	MapName         *string   `json:"map_name,omitempty"`
 	StartedAt       time.Time `json:"started_at"`
 	PaceJoueur      float64   `json:"pace_joueur"`
 	PaceTeam        float64   `json:"pace_team"`
@@ -116,6 +117,7 @@ type EngagementMatchSummary struct {
 // Pour chaque match commun a la squad : 3 traces team-level + per-player paces.
 type SquadEngagementSession struct {
 	Labels         []string                `json:"labels"`
+	MapNames       []string                `json:"map_names"`
 	LobbyPerPlayer []float64               `json:"lobby_per_player"`
 	TeamExpected   []float64               `json:"team_expected"`
 	TeamObserved   []float64               `json:"team_observed"`
