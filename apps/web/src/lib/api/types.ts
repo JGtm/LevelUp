@@ -606,6 +606,7 @@ export interface SquadPlayerEngagementAPI {
 
 export interface SquadEngagementSessionAPI {
   labels: string[]
+  map_names: string[]
   lobby_per_player: number[]
   team_expected: number[]
   team_observed: number[]

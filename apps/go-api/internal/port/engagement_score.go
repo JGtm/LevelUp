@@ -143,6 +143,7 @@ type MatchEngagementContext struct {
 	PersonalScore int
 	Kills         int
 	Assists       int
+	MapName       *string
 }
 
 // MatchEngagementParams regroupe les inputs pour calculer le score d'un match.

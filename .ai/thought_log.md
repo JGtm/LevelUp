@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-05-05] feat(squad/engagement): étiquettes X "#N\nCarte" + tooltip arrondi centième
+
+**Statut** : Complété.
+
+**Contexte** : Le graphe "Engagement équipe" affichait les labels d'axe X en format `M1`, `M2`, sans nom de carte — incohérent avec les graphes timeseries de la section précédente qui utilisent `#1\nNomCarte`. Les valeurs du tooltip n'étaient pas arrondies.
+
+**Décisions techniques** :
+
+1. **Backend — `map_name` dans le contexte** : Ajout de `mr.map_name` dans le SELECT de `LoadMatchEngagementContext` + `MapName *string` dans `MatchEngagementContext` (port) + `EngagementMatchSummary` (domain). Pas de requête supplémentaire, même JOIN `match_registry`.
+
+2. **Backend — propagation** : `SquadEngagementSession` reçoit `MapNames []string` (parallèle à `Labels`). Le service le remplit dans `GetSquadSession` depuis `summary.MapName` (empty string si nil).
+
+3. **Frontend — format X** : `buildSquadEngagementOption` construit `xLabels` depuis `session.labels` (converti `M1` → `#1`) + `session.mapNames[i]` tronqué à 9 caractères selon la même logique que `SquadPerformanceCharts` (coupure à l'espace ou au tiret, sinon mid-word + `…`). `bottom: 46` pour accommoder 2 lignes.
+
+4. **Tooltip arrondi** : `valueFormatter: (v) => typeof v === 'number' ? v.toFixed(2) : String(v)` ajouté au tooltip ECharts.
+
+**Résultats** : `go build ./...` + `tsc --noEmit` OK sans erreur.
+
+**Prochaine étape** : Vérifier visuellement les étiquettes sur la session squad.
+
+---
+
 ## [2026-05-05] refactor(squad): suppression doublons Contributions + route Vue Squad V2
 
 **Statut** : Complété.

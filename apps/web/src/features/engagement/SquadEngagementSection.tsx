@@ -35,7 +35,7 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
 
   const session: ViewSession = useMemo(() => {
     if (!query.data) {
-      return { labels: [], lobbyPerPlayer: [], teamExpected: [], teamObserved: [], players: [] }
+      return { labels: [], mapNames: [], lobbyPerPlayer: [], teamExpected: [], teamObserved: [], players: [] }
     }
     const players: ViewPlayer[] = query.data.players.map((p, i) => ({
       xuid: p.xuid,
@@ -46,6 +46,7 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
     }))
     return {
       labels: query.data.labels,
+      mapNames: query.data.map_names ?? [],
       lobbyPerPlayer: query.data.lobby_per_player,
       teamExpected: query.data.team_expected,
       teamObserved: query.data.team_observed,

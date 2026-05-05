@@ -157,6 +157,7 @@ func (s *PlayerEngagementService) GetSquadSession(
 	}
 	session := &domain.SquadEngagementSession{
 		Labels:         make([]string, 0, len(matchIDs)),
+		MapNames:       make([]string, 0, len(matchIDs)),
 		LobbyPerPlayer: make([]float64, 0, len(matchIDs)),
 		TeamExpected:   make([]float64, 0, len(matchIDs)),
 		TeamObserved:   make([]float64, 0, len(matchIDs)),
@@ -169,6 +170,11 @@ func (s *PlayerEngagementService) GetSquadSession(
 			continue
 		}
 		session.Labels = append(session.Labels, summary.Label)
+		mapName := ""
+		if summary.MapName != nil {
+			mapName = *summary.MapName
+		}
+		session.MapNames = append(session.MapNames, mapName)
 		session.LobbyPerPlayer = append(session.LobbyPerPlayer, summary.PaceLobby)
 		session.TeamExpected = append(session.TeamExpected, summary.PaceAttendu)
 		session.TeamObserved = append(session.TeamObserved, summary.PaceTeam)
@@ -293,6 +299,7 @@ func (s *PlayerEngagementService) computeMatchSummary(
 	return domain.EngagementMatchSummary{
 		MatchID:         matchID,
 		Label:           fmt.Sprintf("M%d", index+1),
+		MapName:         mctx.MapName,
 		StartedAt:       time.UnixMilli(mctx.StartTimeMS),
 		PaceJoueur:      meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceJoueur }),
 		PaceTeam:        meanPace(result.EngagementCurve, func(p domain.EngagementPoint) float64 { return p.PaceTeam }),
