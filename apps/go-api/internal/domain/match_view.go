@@ -443,6 +443,10 @@ type MatchMetaRaw struct {
 	MapNameFR      *string
 	ModeNameFR     *string
 	PlaylistNameFR *string
+	// Team0Score / Team1Score : score de jeu de chaque équipe (match_registry).
+	// Ex: 50/47 pour Slayer, 3/1 pour CTF. Nil si FFA ou custom sans score.
+	Team0Score *int16
+	Team1Score *int16
 }
 
 // PlayerMatchStatsRaw : données brutes de Q17 (match_participants filtré par xuid).

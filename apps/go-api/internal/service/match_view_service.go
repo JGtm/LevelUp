@@ -618,7 +618,7 @@ func buildMatchHeader(
 		// OutcomeColorToken est résolu côté front via tokenCssVar(),
 		// remplace progressivement OutcomeColor (hex legacy).
 		h.OutcomeColorToken = outcomeColorToken(code)
-		h.ScoreLabel = buildScoreLabel(scoreboard)
+		h.ScoreLabel = buildScoreLabelFromMeta(meta, stats)
 	}
 
 	if enrich != nil {
@@ -651,28 +651,21 @@ func buildMatchHeader(
 	return h
 }
 
-// buildScoreLabel calcule "scoreEquipe1-scoreEquipe2" à partir du scoreboard.
-func buildScoreLabel(scoreboard []domain.ScoreboardRaw) string {
-	teamScores := make(map[int]float64)
-	for _, row := range scoreboard {
-		if row.TeamID == nil || row.PersonalScore == nil {
-			continue
-		}
-		teamScores[*row.TeamID] += *row.PersonalScore
-	}
-	if len(teamScores) == 0 {
+// buildScoreLabelFromMeta construit "X-Y" depuis team_0_score/team_1_score de
+// match_registry. L'équipe du joueur (stats.TeamID) est toujours affichée en
+// premier (miroir de buildHomeScoreLabel dans analysis/home.go).
+func buildScoreLabelFromMeta(meta *domain.MatchMetaRaw, stats *domain.PlayerMatchStatsRaw) string {
+	if meta == nil || meta.Team0Score == nil || meta.Team1Score == nil {
 		return ""
 	}
-	teams := make([]int, 0, len(teamScores))
-	for tid := range teamScores {
-		teams = append(teams, tid)
+	s0, s1 := int(*meta.Team0Score), int(*meta.Team1Score)
+	if s0 < 0 || s1 < 0 {
+		return ""
 	}
-	// Trier pour affichage stable
-	sortInts(teams)
-	if len(teams) == 2 {
-		return fmt.Sprintf("%.0f-%.0f", teamScores[teams[0]], teamScores[teams[1]])
+	if stats != nil && stats.TeamID != nil && *stats.TeamID == 1 {
+		return fmt.Sprintf("%d-%d", s1, s0)
 	}
-	return ""
+	return fmt.Sprintf("%d-%d", s0, s1)
 }
 
 // buildRankBlock construit le bloc rank depuis SkillRankRaw.

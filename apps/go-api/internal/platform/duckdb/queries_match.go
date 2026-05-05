@@ -109,7 +109,9 @@ SELECT
     r.playable_duration_seconds,
     r.map_id,
     r.game_variant_name,
-    r.playlist_id
+    r.playlist_id,
+    r.team_0_score,
+    r.team_1_score
 FROM shared.match_registry r
 WHERE r.match_id = ?`
 

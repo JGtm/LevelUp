@@ -374,18 +374,23 @@ export function MatchHeaderCard({
             </div>
           </div>
 
-          {/* Outcome row : Victoire  87-62 */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Outcome row : Victoire · 87-62 */}
+          <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-2xl font-bold" style={{ color: outcomeColor }}>
               {header.outcome_label}
             </span>
             {header.score_label && (
-              <span
-                className="text-xl font-semibold tabular-nums"
-                style={{ color: outcomeColor, opacity: 0.7 }}
-              >
-                {header.score_label}
-              </span>
+              <>
+                <span className="text-2xl font-bold select-none" style={{ color: outcomeColor, opacity: 0.35 }}>
+                  ·
+                </span>
+                <span
+                  className="text-2xl font-bold tabular-nums"
+                  style={{ color: outcomeColor, opacity: 0.75 }}
+                >
+                  {header.score_label}
+                </span>
+              </>
             )}
           </div>
 

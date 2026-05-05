@@ -204,25 +204,30 @@ func TestComputeProgressPct_MaxRank(t *testing.T) {
 // MatchViewService — buildScoreLabel
 // ---------------------------------------------------------------------------
 
-func TestBuildScoreLabel_TwoTeams(t *testing.T) {
-	team0 := 0
-	team1 := 1
-	s1 := 1000.0
-	s2 := 500.0
-	s3 := 400.0
-	scoreboard := []domain.ScoreboardRaw{
-		{XUID: "x1", Gamertag: "P1", TeamID: &team0, PersonalScore: &s1},
-		{XUID: "x2", Gamertag: "P2", TeamID: &team1, PersonalScore: &s2},
-		{XUID: "x3", Gamertag: "P3", TeamID: &team1, PersonalScore: &s3},
-	}
-	label := buildScoreLabel(scoreboard)
-	if label != "1000-900" {
-		t.Errorf("expected 1000-900, got %q", label)
+func TestBuildScoreLabelFromMeta_Team0(t *testing.T) {
+	s0, s1 := int16(50), int16(47)
+	meta := &domain.MatchMetaRaw{Team0Score: &s0, Team1Score: &s1}
+	teamID := 0
+	stats := &domain.PlayerMatchStatsRaw{TeamID: &teamID}
+	label := buildScoreLabelFromMeta(meta, stats)
+	if label != "50-47" {
+		t.Errorf("expected 50-47, got %q", label)
 	}
 }
 
-func TestBuildScoreLabel_Empty(t *testing.T) {
-	label := buildScoreLabel(nil)
+func TestBuildScoreLabelFromMeta_Team1(t *testing.T) {
+	s0, s1 := int16(50), int16(47)
+	meta := &domain.MatchMetaRaw{Team0Score: &s0, Team1Score: &s1}
+	teamID := 1
+	stats := &domain.PlayerMatchStatsRaw{TeamID: &teamID}
+	label := buildScoreLabelFromMeta(meta, stats)
+	if label != "47-50" {
+		t.Errorf("expected 47-50, got %q", label)
+	}
+}
+
+func TestBuildScoreLabelFromMeta_Nil(t *testing.T) {
+	label := buildScoreLabelFromMeta(nil, nil)
 	if label != "" {
 		t.Errorf("expected empty string, got %q", label)
 	}

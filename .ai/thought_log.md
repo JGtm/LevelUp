@@ -1,5 +1,22 @@
 # Thought Log
 
+## [2026-05-05] MatchViewHeader — score_label corrigé (team_0/1_score depuis match_registry)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Problème** : `buildScoreLabel` sommait `personal_score` (points accumulés) par équipe via scoreboard — donnait "" pour FFA et de grands chiffres incorrects pour Slayer/CTF. La home page utilise `team_0_score`/`team_1_score` depuis `match_registry` (score de jeu réel : 50/47 Slayer, 3/1 CTF).
+
+**Décision technique** :
+1. `Team0Score *int16` + `Team1Score *int16` ajoutés à `domain.MatchMetaRaw`
+2. Q13 étend le SELECT avec `r.team_0_score, r.team_1_score`
+3. `GetMatchMeta` ajoute 2 colonnes au Scan
+4. `buildScoreLabel(scoreboard)` → `buildScoreLabelFromMeta(meta, stats)` — miroir de `buildHomeScoreLabel`, place l'équipe du joueur à gauche via `stats.TeamID`
+5. Tests mis à jour (anciens testaient la mauvaise logique de sommation)
+
+**Résultats** : 14/14 tests service verts, compilation propre.
+
+**Prochaine étape** : test visuel en dev server.
+
 ## [2026-05-05] MatchView header rework — Phase 2b livrée (URL params + Q25 paramétrable)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`. 2 commits Phase 2b (backend `33baa51a` + frontend, ce commit).

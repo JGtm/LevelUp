@@ -44,6 +44,8 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		&row.MapAssetID,
 		&row.GameVariantName,
 		&row.PlaylistAssetID,
+		&row.Team0Score,
+		&row.Team1Score,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
