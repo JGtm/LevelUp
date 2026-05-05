@@ -159,7 +159,7 @@ func TestBuildNeighborsWhereClause_Outcome(t *testing.T) {
 				return
 			}
 
-			if !strings.Contains(got.SQL, "mp.outcome_code = ?") {
+			if !strings.Contains(got.SQL, "mp.outcome = ?") {
 				t.Errorf("outcome %q: SQL missing clause, got %q", tc.label, got.SQL)
 			}
 			if len(got.Args) != 1 || got.Args[0] != tc.wantCode {

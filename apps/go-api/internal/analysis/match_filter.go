@@ -117,7 +117,9 @@ func BuildNeighborsWhereClause(spec *domain.MatchFilterSpec, categoryPrefixes Mo
 	if spec.Outcome != nil && *spec.Outcome != "" {
 		code, ok := outcomeLabelToCode[*spec.Outcome]
 		if ok {
-			clauses = append(clauses, "mp.outcome_code = ?")
+			// Note : la colonne en DB s'appelle `outcome` (cf. Q12/Q17 prod).
+			// `outcome_code` est l'alias exposé côté domain via SELECT AS.
+			clauses = append(clauses, "mp.outcome = ?")
 			args = append(args, code)
 		} else {
 			ignored = append(ignored, "outcome")
