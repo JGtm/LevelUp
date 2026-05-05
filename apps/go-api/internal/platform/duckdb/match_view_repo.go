@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -44,7 +45,65 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
 	}
+	if row.MapAssetID != nil {
+		row.MapNameFR = r.lookupMapNameFR(ctx, *row.MapAssetID)
+	}
+	if row.PairName != nil {
+		if modeEN := analysis.NormalizeModeLabel(*row.PairName); modeEN != "" {
+			row.ModeNameFR = r.lookupModeNameFR(ctx, modeEN)
+		}
+	}
 	return &row, nil
+}
+
+// lookupMapNameFR retourne le nom FR d'une map via asset_translations, ou nil.
+func (r *MatchViewRepo) lookupMapNameFR(ctx context.Context, mapAssetID string) *string {
+	if r.pdb.Metadata == nil {
+		return nil
+	}
+	const q = `
+		SELECT name FROM asset_translations
+		WHERE asset_type = 'map' AND asset_id = ?
+		  AND lang IN ('fr-FR', 'fr')
+		  AND name IS NOT NULL AND TRIM(name) != ''
+		ORDER BY CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
+		LIMIT 1`
+	rows, err := r.pdb.Metadata.Query(ctx, q, mapAssetID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err == nil && name != "" {
+			return &name
+		}
+	}
+	return nil
+}
+
+// lookupModeNameFR retourne le nom FR d'un mode via mode_name_tr, ou nil.
+// modeEN doit être le label normalisé (via analysis.NormalizeModeLabel).
+func (r *MatchViewRepo) lookupModeNameFR(ctx context.Context, modeEN string) *string {
+	if r.pdb.Metadata == nil {
+		return nil
+	}
+	const q = `
+		SELECT name FROM mode_name_tr
+		WHERE lang = 'fr' AND mode_en = ?
+		LIMIT 1`
+	rows, err := r.pdb.Metadata.Query(ctx, q, modeEN)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err == nil && name != "" {
+			return &name
+		}
+	}
+	return nil
 }
 
 // GetPlayerMatchStats retourne les stats du joueur pour ce match (Q17).

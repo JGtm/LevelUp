@@ -504,13 +504,17 @@ func buildMatchHeader(
 	if meta.StartTime != nil {
 		h.StartTimeLabel = formatDateFRLong(*meta.StartTime)
 	}
-	if meta.MapName != nil {
+	if meta.MapNameFR != nil && *meta.MapNameFR != "" {
+		h.MapUI = *meta.MapNameFR
+	} else if meta.MapName != nil {
 		h.MapUI = *meta.MapName
 	}
 	if meta.MapAssetID != nil {
 		h.MapID = *meta.MapAssetID
 	}
-	if meta.PairName != nil {
+	if meta.ModeNameFR != nil && *meta.ModeNameFR != "" {
+		h.ModeUI = *meta.ModeNameFR
+	} else if meta.PairName != nil {
 		h.ModeUI = *meta.PairName
 	}
 	if meta.PlaylistName != nil {

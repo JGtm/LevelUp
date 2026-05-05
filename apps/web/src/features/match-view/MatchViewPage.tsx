@@ -21,9 +21,11 @@ import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { kdTimelineSeries } from './_chartSeries'
+import { buildMatchHeadingStr } from './format'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
@@ -41,11 +43,11 @@ export function MatchViewPage() {
     matchId: string
   }
   const [activeTab, setActiveTab] = useState<TabId>('summary')
-  const { data, isLoading, isError, refetch } = useMatchView(playerSlug, matchId)
+  const { data, isPending, isError, refetch } = useMatchView(playerSlug, matchId)
   const queryClient = useQueryClient()
   const excludeMutation = useSetMatchExclusion(playerSlug)
 
-  if (isLoading) return null
+  if (isPending) return null
 
   if (isError || !data) {
     return (
@@ -64,19 +66,24 @@ export function MatchViewPage() {
     )
   }
 
+  const locale = useAppShellStore((s) => s.locale)
   const { header, rank, combat_tab, team_tab } = data
-  const matchLabel = `${header.map_ui} — ${header.mode_ui}`
+  const matchLabel = buildMatchHeadingStr(header.map_ui, header.mode_ui, locale)
+  // Le breadcrumb ajoute la date pour distinguer plusieurs matchs sur la même map/mode
+  const breadcrumbLabel = header.start_time_label
+    ? `${matchLabel} · ${header.start_time_label}`
+    : matchLabel
   const labelOf = (key: string, fallback: string) => fallback ?? key
   const kdSeries = kdTimelineSeries(combat_tab.kd_timeline, labelOf)
   const meXUID = team_tab.scoreboard.find((r) => r.is_me)?.xuid ?? null
 
   return (
     <div className="flex flex-col">
-      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={matchLabel} />
+      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} />
       <div className="flex items-center justify-between px-6 pt-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            {header.map_ui} — {header.mode_ui}
+            {matchLabel}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{header.start_time_label}</p>
         </div>
