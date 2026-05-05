@@ -937,6 +937,15 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 		return nil
 	}
 
+	// 0. Index carte localisée par match_id (MapUI est déjà enrichi en FR par
+	// enrichSquadMatchAssets avant cet appel).
+	mapNameByMatch := make(map[string]string, len(allSquadRows))
+	for _, r := range allSquadRows {
+		if _, ok := mapNameByMatch[r.MatchID]; !ok && r.MapUI != "" {
+			mapNameByMatch[r.MatchID] = r.MapUI
+		}
+	}
+
 	// 1. Matchs partagés (un match qui apparaît N=len(selectedGamertags) fois
 	// dans allSquadRows = présent pour tous les coéquipiers + le main).
 	matchOccurrences := make(map[string]int)
@@ -988,6 +997,7 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				MatchID:    r.Summary.MatchID,
 				StartTime:  r.Summary.StartedAtUTC.Format("2006-01-02T15:04:05Z"),
 				MatchOrder: idx,
+				MapName:    mapNameByMatch[r.Summary.MatchID],
 				Kills:      intPtrOrZero(r.Self.Kills),
 				Deaths:     intPtrOrZero(r.Self.Deaths),
 				Assists:    intPtrOrZero(r.Self.Assists),

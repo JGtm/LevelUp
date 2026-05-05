@@ -67,15 +67,34 @@ export function SquadPerformanceCharts({
     return merged.length > 0 ? [{ key: 'perf-flat', datapoints: merged }] : []
   }, [playerOrder, rowsByPlayer])
 
+  // Labels X enrichis : "#1 Tribord", "#2 Bazaar", etc.
+  // On déduit le nom de la carte depuis les points (identique pour tous les joueurs
+  // sur un même match_order). map_name est optionnel — fallback sur "#N".
+  const xMatchLabels = useMemo(() => {
+    const byOrder = new Map<number, string>()
+    for (const pts of Object.values(rowsByPlayer)) {
+      for (const pt of pts) {
+        if (!byOrder.has(pt.match_order)) {
+          const mapPart = pt.map_name ? ` ${pt.map_name}` : ''
+          byOrder.set(pt.match_order, `#${pt.match_order + 1}${mapPart}`)
+        }
+      }
+    }
+    if (byOrder.size === 0) return []
+    const maxOrder = Math.max(...byOrder.keys())
+    return Array.from({ length: maxOrder + 1 }, (_, i) => byOrder.get(i) ?? `#${i + 1}`)
+  }, [rowsByPlayer])
+
   const buildButterfly = useCallback(
     () =>
       buildKillsDeathsButterflyOption(rowsByPlayer, {
         colorByPlayer,
         playerOrder,
+        xLabels: xMatchLabels,
         killsLabel: labels.killsLabel,
         deathsLabel: labels.deathsLabel,
       }),
-    [rowsByPlayer, colorByPlayer, playerOrder, labels.killsLabel, labels.deathsLabel],
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.killsLabel, labels.deathsLabel],
   )
 
   const buildLine = useCallback(
@@ -83,6 +102,7 @@ export function SquadPerformanceCharts({
       buildPerformanceLineOption(rowsByPlayer, {
         colorByPlayer,
         playerOrder,
+        xLabels: xMatchLabels,
         metric,
         decimals,
         unitSuffix: suffix,
@@ -90,7 +110,7 @@ export function SquadPerformanceCharts({
         chartType: 'bar',
         complementBelowValue,
       }),
-    [rowsByPlayer, colorByPlayer, playerOrder],
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
   )
 
   const buildPerformanceZones = useCallback(
@@ -98,12 +118,13 @@ export function SquadPerformanceCharts({
       buildPerformanceLineOption(rowsByPlayer, {
         colorByPlayer,
         playerOrder,
+        xLabels: xMatchLabels,
         metric: 'performance_score',
         decimals: 1,
         chartType: 'bar',
         showPerformanceZones: true,
       }),
-    [rowsByPlayer, colorByPlayer, playerOrder],
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
   )
 
   const buildHsPerfect = useCallback(
@@ -111,10 +132,11 @@ export function SquadPerformanceCharts({
       buildHsPerfectOption(rowsByPlayer, {
         colorByPlayer,
         playerOrder,
+        xLabels: xMatchLabels,
         hsLabel: labels.hsLabel,
         perfectLabel: labels.perfectLabel,
       }),
-    [rowsByPlayer, colorByPlayer, playerOrder, labels.hsLabel, labels.perfectLabel],
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.hsLabel, labels.perfectLabel],
   )
 
   if (series.length === 0) return null

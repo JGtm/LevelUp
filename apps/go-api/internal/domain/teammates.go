@@ -128,6 +128,7 @@ type SquadPerformanceSeriesPoint struct {
 	MatchID             string   `json:"match_id"`
 	StartTime           string   `json:"start_time"` // ISO 8601
 	MatchOrder          int      `json:"match_order"`
+	MapName             string   `json:"map_name,omitempty"` // libellé localisé de la carte
 	Kills               int      `json:"kills"`
 	Deaths              int      `json:"deaths"`
 	Assists             int      `json:"assists"`

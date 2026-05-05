@@ -51,6 +51,8 @@ interface CommonOpts {
   colorByPlayer: Record<string, string>
   /** Ordre des séries (sinon ordre alphabétique). */
   playerOrder?: string[]
+  /** Labels personnalisés pour l'axe X (ex: "#1 Tribord"). Sinon xAxisLabels(n). */
+  xLabels?: string[]
 }
 
 export interface PerformanceLineOpts extends CommonOpts {
@@ -120,7 +122,7 @@ export function buildPerformanceLineOption(
   const n = maxLength(rows, players)
   if (n === 0) return { backgroundColor: CHART_BG }
 
-  const xLabels = xAxisLabels(n)
+  const xLabels = opts.xLabels ?? xAxisLabels(n)
   const scale = opts.scale ?? 1
   const decimals = opts.decimals ?? 1
   const suffix = opts.unitSuffix ?? ''
@@ -224,7 +226,7 @@ export function buildKillsDeathsButterflyOption(
   if (players.length === 0) return { backgroundColor: CHART_BG }
   const n = maxLength(rows, players)
   if (n === 0) return { backgroundColor: CHART_BG }
-  const xLabels = xAxisLabels(n)
+  const xLabels = opts.xLabels ?? xAxisLabels(n)
 
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   for (const player of players) {
@@ -295,7 +297,7 @@ export function buildHsPerfectOption(
   if (players.length === 0) return { backgroundColor: CHART_BG }
   const n = maxLength(rows, players)
   if (n === 0) return { backgroundColor: CHART_BG }
-  const xLabels = xAxisLabels(n)
+  const xLabels = opts.xLabels ?? xAxisLabels(n)
 
   // HS : barre opaque couleur joueur.
   // Perfect kills : stackée sur les HS, même couleur + bordure blanche + glow
