@@ -116,6 +116,14 @@ func acquirePlayerWriter(pdb *platform_duckdb.PlayerDB) (*dblease.LeasedWriter, 
 	return pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)
 }
 
+// acquireSharedSocialWriter encapsule l'acquisition du lease sur
+// shared_social.duckdb (squad challenges, prestige events / user_prestige).
+// La DB étant partagée entre tous les joueurs, le lease sérialise les writes
+// inter-joueurs aussi.
+func acquireSharedSocialWriter(pdb *platform_duckdb.PlayerDB) (*dblease.LeasedWriter, error) {
+	return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
+}
+
 // ─── Compile-time assertion ───
 var _ prestige.Service = (*LazyPrestigeService)(nil)
 
@@ -238,18 +246,28 @@ func (l *LazyPrestigeService) GetArc(ctx context.Context, id string) (prestige.A
 }
 
 func (l *LazyPrestigeService) CreateSquadChallenge(ctx context.Context, req prestige.CreateSquadChallengeRequest) (prestige.SquadChallenge, error) {
-	svc, err := l.resolveByUserID(ctx, req.CreatedBy)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, req.CreatedBy)
 	if err != nil {
 		return prestige.SquadChallenge{}, err
 	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return prestige.SquadChallenge{}, err
+	}
+	defer w.Release()
 	return svc.CreateSquadChallenge(ctx, req)
 }
 
 func (l *LazyPrestigeService) JoinSquadChallenge(ctx context.Context, challengeID, userID string, chosenTier prestige.Tier, isPrivate bool) error {
-	svc, err := l.resolveByUserID(ctx, userID)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
 	return svc.JoinSquadChallenge(ctx, challengeID, userID, chosenTier, isPrivate)
 }
 
