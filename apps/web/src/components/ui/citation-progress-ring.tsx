@@ -25,7 +25,7 @@ export function CitationProgressRing({
   const clampedPct = Math.min(100, Math.max(0, pct))
   const dashOffset = circumference * (1 - clampedPct / 100)
 
-  const trackColor = 'rgba(255,255,255,0.12)'
+  const trackColor = 'var(--border)'
   const arcColor = isNewlyMastered ? resolveToken('perf-tier-3') : resolveToken('perf-tier-2')
   const imageSize = Math.round(size * 0.58)
   const center = size / 2
@@ -77,7 +77,7 @@ export function CitationProgressRing({
         />
       ) : (
         <div
-          className="absolute rounded-full bg-white/10"
+          className="absolute rounded-full bg-muted/60"
           style={{ width: imageSize, height: imageSize }}
         />
       )}

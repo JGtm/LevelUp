@@ -97,7 +97,7 @@ function buildChallengeSections(items: ChallengeItem[]): ChallengeSection[] {
 }
 
 function challengeSectionDividerClasses(): string {
-  return 'bg-white/90'
+  return 'bg-border'
 }
 
 function ChallengeThumb({

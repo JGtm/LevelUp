@@ -135,19 +135,19 @@ function BattlePassRewardCard({ card, onOpen, freeLabel }: { card: RewardCard; o
     >
       <div className={`relative aspect-[4/5] w-full overflow-hidden rounded-lg ${imageBackground}`}>
         {card.is_obtained && (
-          <div className="absolute right-1 top-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-success px-1 text-[8px] font-semibold text-white shadow-sm">
+          <div className="absolute right-1 top-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-success px-1 text-[8px] font-semibold text-success-foreground shadow-sm">
             ✓
           </div>
         )}
         {card.is_free && (
-          <div className="absolute bottom-1 left-1 z-10 rounded bg-warning/90 px-[3px] py-[1px] text-[6px] font-bold uppercase tracking-wide text-white">
+          <div className="absolute bottom-1 left-1 z-10 rounded bg-warning/90 px-[3px] py-[1px] text-[6px] font-bold uppercase tracking-wide text-warning-foreground">
             {freeLabel}
           </div>
         )}
         {card.image_url ? (
           <img src={card.image_url} alt={card.title} className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.22),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(30,41,59,0.84))] text-center text-white">
+          <div className="flex h-full w-full items-center justify-center bg-muted text-center text-foreground">
             <p className="text-3xl font-semibold">{card.rank}</p>
           </div>
         )}
@@ -170,7 +170,7 @@ function BattlePassTierGroupView({
 }) {
   const borderClasses = [
     'flex gap-1.5 rounded-xl border p-1.5',
-    group.is_current ? 'border-primary/60 shadow-[0_0_12px_-4px_rgba(56,189,248,0.5)]' : 'border-white/15',
+    group.is_current ? 'border-primary/60 shadow-[0_0_12px_-4px_rgba(56,189,248,0.5)]' : 'border-border',
     group.is_obtained && !group.is_current ? 'opacity-60 grayscale-[0.82]' : '',
   ].filter(Boolean).join(' ')
 

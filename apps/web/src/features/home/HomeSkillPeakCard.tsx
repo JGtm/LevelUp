@@ -30,13 +30,12 @@ export function HomeSkillPeakCard({
   return (
     <div
       data-testid={`${testIdPrefix}-card`}
-      // color-allow: thématique visuelle Spartan UI (dark slate + cyan accents) — distinctive Halo design
       className={`flex h-full min-w-[11rem] items-center gap-3 rounded-2xl border px-4 py-3 shadow-[0_12px_30px_rgba(8,15,28,0.24)] backdrop-blur-sm ${
-        hasValue ? 'border-cyan-100/12 bg-slate-950/35' : 'border-white/10 bg-slate-950/22' // color-allow: thématique Spartan UI
+        hasValue ? 'border-border bg-card' : 'border-border bg-muted/30'
       }`}
     >
       {peak?.badge_image_url ? (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 p-1.5"> {/* color-allow: thématique Spartan UI */}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted p-1.5"> {/* color-allow: thématique Spartan UI */}
           <img
             data-testid={`${testIdPrefix}-badge`}
             src={peak.badge_image_url}
@@ -50,7 +49,7 @@ export function HomeSkillPeakCard({
         // Bug #1 : quand un peak existe (rating mais pas de tier_code stocké
         // en DB) ou que le joueur est en placement, on rend le badge unranked
         // générique au lieu de l'abréviation textuelle "MMR/LUSR".
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 p-1.5"> {/* color-allow: thématique Spartan UI */}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted p-1.5"> {/* color-allow: thématique Spartan UI */}
           <img
             data-testid={`${testIdPrefix}-unranked`}
             src={unrankedBadgeURL()}
@@ -61,20 +60,20 @@ export function HomeSkillPeakCard({
           />
         </div>
       ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100/75"> {/* color-allow: thématique Spartan UI */}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
           {label.replace(/[^A-Z]/gi, '').slice(0, 4) || 'MMR'}
         </div>
       )}
 
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-100/68">{label}</p> {/* color-allow: thématique Spartan UI */}
-        <p data-testid={`${testIdPrefix}-value`} className="mt-1 text-xl font-semibold text-white sm:text-2xl">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
+        <p data-testid={`${testIdPrefix}-value`} className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
           {peak ? peak.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
         </p>
         {(peak?.tier_label || detail) && (
           <p
             data-testid={peak?.tier_label ? `${testIdPrefix}-tier` : `${testIdPrefix}-detail`}
-            className="truncate text-xs text-cyan-100/78" // color-allow: thématique Spartan UI
+            className="truncate text-xs text-muted-foreground"
           >
             {peak?.tier_label ?? detail}
           </p>

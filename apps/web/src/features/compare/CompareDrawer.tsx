@@ -28,7 +28,7 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/40 z-40"
+        className="fixed inset-0 bg-background/40 z-40"
         onClick={onClose}
         aria-hidden="true"
       />

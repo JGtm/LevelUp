@@ -96,7 +96,7 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
             {citations.map((c) => (
               <span
                 key={c.key}
-                className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-white"
+                className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-white" // color-allow: blanc structurel sur fond coloré dynamique de citation
                 style={{ backgroundColor: c.color ?? '#4B5563' }} // color-allow: fallback gris neutre quand l'API ne fournit pas de couleur de citation
               >
                 {c.label}{c.value != null && ` · ${c.value}`}

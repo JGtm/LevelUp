@@ -74,7 +74,7 @@ export function BattlePassRewardLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={reward.title}
@@ -83,16 +83,16 @@ export function BattlePassRewardLightbox({
     >
       <div
         className={[
-          'relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 text-white shadow-2xl', // color-allow: thématique Spartan UI (lightbox sombre Halo)
+          'relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-2xl',
           rarityStyles?.glow ?? '',
         ].filter(Boolean).join(' ')}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 bg-black/40 px-5 py-3">
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/60 px-5 py-3">
           <div className="min-w-0 space-y-1">
             {subtitle && (
               <p
-                className="text-[11px] uppercase tracking-[0.24em] text-slate-400" // color-allow: thématique Spartan UI (subtitle metadata)
+                className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground"
               >
                 {subtitle}
               </p>
@@ -102,7 +102,7 @@ export function BattlePassRewardLightbox({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl leading-none text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl leading-none text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Fermer"
           >
             ×
@@ -113,7 +113,7 @@ export function BattlePassRewardLightbox({
           <div
             className={[
               'flex h-full items-center justify-center overflow-auto p-6',
-              rarityStyles?.bg ?? 'bg-black/60',
+              rarityStyles?.bg ?? 'bg-muted/60',
             ].join(' ')}
           >
             {reward.imageUrl ? (
@@ -124,8 +124,8 @@ export function BattlePassRewardLightbox({
                 data-testid="battle-pass-reward-lightbox-image"
               />
             ) : (
-              <div className="flex h-64 w-64 items-center justify-center rounded-xl bg-black/40 text-center">
-                <p className="text-5xl font-semibold text-white">{reward.rank ?? '?'}</p>
+              <div className="flex h-64 w-64 items-center justify-center rounded-xl bg-muted/40 text-center">
+                <p className="text-5xl font-semibold text-foreground">{reward.rank ?? '?'}</p>
               </div>
             )}
           </div>
@@ -134,7 +134,7 @@ export function BattlePassRewardLightbox({
               type="button"
               onClick={onPrev}
               aria-label="Récompense précédente"
-              className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/75 transition-colors hover:bg-black/75 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
             </button>
@@ -144,7 +144,7 @@ export function BattlePassRewardLightbox({
               type="button"
               onClick={onNext}
               aria-label="Récompense suivante"
-              className="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/75 transition-colors hover:bg-black/75 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              className="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
             </button>
@@ -152,7 +152,7 @@ export function BattlePassRewardLightbox({
         </div>
 
         {(reward.badges?.length || reward.description || rarityTier) && (
-          <div className="space-y-3 border-t border-white/10 bg-black/40 px-5 py-4">
+          <div className="space-y-3 border-t border-border bg-muted/40 px-5 py-4">
             {(reward.badges?.length || rarityTier) && (
               <div className="flex flex-wrap gap-2">
                 {rarityTier && rarityStyles && (
@@ -172,7 +172,7 @@ export function BattlePassRewardLightbox({
             )}
             {reward.description && (
               <p
-                className="text-sm leading-6 text-slate-200" // color-allow: thématique Spartan UI (description sur fond sombre)
+                className="text-sm leading-6 text-foreground"
               >
                 {reward.description}
               </p>
