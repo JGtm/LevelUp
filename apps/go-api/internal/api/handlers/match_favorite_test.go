@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -190,4 +192,39 @@ type captureService struct {
 func (c *captureService) ToggleMatchFavorite(ctx context.Context, req domain.MatchFavoriteRequest) error {
 	*c.capture = req
 	return c.inner.ToggleMatchFavorite(ctx, req)
+}
+
+// ─── ErrDBLocked → 503 (commit 5 db-concurrency) ───
+
+func TestMatchFavoriteHandler_DBLocked_Returns503(t *testing.T) {
+	mock := &mockSocialService{
+		toggleErr: fmt.Errorf("simulated lease busy: %w", dblease.ErrDBLocked),
+	}
+	factory := func(_ context.Context, slug string) (port.SocialService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return mock, nil
+	}
+	r := newMatchFavoriteRouter(factory)
+
+	body, _ := json.Marshal(domain.MatchFavoriteRequest{Favorited: true})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/matches/match-abc/favorite", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
+	}
+	var body503 map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body503); err != nil {
+		t.Fatalf("response body not JSON: %v", err)
+	}
+	if code, _ := body503["code"].(string); code != "db_busy" {
+		t.Errorf("error code = %v, want db_busy", body503["code"])
+	}
 }
