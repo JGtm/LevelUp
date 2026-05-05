@@ -136,8 +136,16 @@ type MatchViewRepository interface {
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
 
-	// GetMatchNeighbors retourne les matchs précédent/suivant (Q25).
+	// GetMatchNeighbors retourne les matchs précédent/suivant (Q25 chronologie globale).
 	GetMatchNeighbors(ctx context.Context, xuid, matchID string) (*domain.MatchNeighbors, error)
+
+	// GetMatchNeighborsFiltered : variante paramétrable de Q25. spec=nil
+	// équivaut à GetMatchNeighbors. Phase 2b du rework header MatchView.
+	GetMatchNeighborsFiltered(
+		ctx context.Context,
+		xuid, matchID string,
+		spec *domain.MatchFilterSpec,
+	) (*domain.MatchNeighbors, error)
 
 	// GetMatchSkillRank retourne le rang compétitif pour ce match (Q22).
 	GetMatchSkillRank(ctx context.Context, matchID string) (*domain.SkillRankRaw, error)
@@ -271,6 +279,9 @@ func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]doma
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchNeighbors(_ context.Context, _, _ string) (*domain.MatchNeighbors, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchNeighborsFiltered(_ context.Context, _, _ string, _ *domain.MatchFilterSpec) (*domain.MatchNeighbors, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {

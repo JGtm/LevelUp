@@ -517,6 +517,32 @@ func (s *MatchViewService) GetMatchNeighbors(ctx context.Context, matchID string
 	return *n, nil
 }
 
+// GetMatchNeighborsFiltered : variante Phase 2b — filtres MatchFilterSpec
+// transmis au repo pour Q25 paramétrable. spec nil/vide → comportement
+// identique à GetMatchNeighbors.
+func (s *MatchViewService) GetMatchNeighborsFiltered(
+	ctx context.Context,
+	matchID string,
+	spec *domain.MatchFilterSpec,
+) (domain.MatchNeighbors, error) {
+	slog.DebugContext(ctx, "match_view: GetMatchNeighborsFiltered",
+		"match_id", matchID, "filtered", !spec.IsEmpty())
+	n, err := s.repo.GetMatchNeighborsFiltered(ctx, s.xuid, matchID, spec)
+	if err != nil {
+		slog.ErrorContext(ctx, "match_view: filtered neighbors query failed",
+			"err", err, "match_id", matchID)
+		return domain.MatchNeighbors{}, nil
+	}
+	if n == nil {
+		return domain.MatchNeighbors{}, nil
+	}
+	out := *n
+	if !spec.IsEmpty() {
+		out.AppliedFilters = spec
+	}
+	return out, nil
+}
+
 // ---------------------------------------------------------------------------
 // Header
 // ---------------------------------------------------------------------------

@@ -118,9 +118,9 @@ describe('MatchHeaderCard', () => {
     expect(screen.getByText('▲ +34')).toBeInTheDocument()
     expect(screen.getByText('Performance')).toBeInTheDocument()
     expect(screen.getByText('Rang')).toBeInTheDocument()
-    // Action labels FR
-    expect(screen.getByText("Copier l'ID du match")).toBeInTheDocument()
-    expect(screen.getByText('Marquer comme non pertinent ⊘')).toBeInTheDocument()
+    // Action labels FR (boutons courts)
+    expect(screen.getByText('Copier ID')).toBeInTheDocument()
+    expect(screen.getByText('Exclure')).toBeInTheDocument()
   })
 
   it('affiche les libellés EN quand locale=en', () => {
@@ -136,8 +136,8 @@ describe('MatchHeaderCard', () => {
     )
     expect(screen.getByText('Performance')).toBeInTheDocument()
     expect(screen.getByText('Rank')).toBeInTheDocument()
-    expect(screen.getByText('Copy match ID')).toBeInTheDocument()
-    expect(screen.getByText('Mark as irrelevant ⊘')).toBeInTheDocument()
+    expect(screen.getByText('Copy ID')).toBeInTheDocument()
+    expect(screen.getByText('Exclude')).toBeInTheDocument()
   })
 
   it('affiche le fallback texte si map_image_url est null', () => {
@@ -171,7 +171,7 @@ describe('MatchHeaderCard', () => {
         locale="fr"
       />,
     )
-    expect(screen.getByText('↩ Réactiver')).toBeInTheDocument()
+    expect(screen.getByText('Réactiver')).toBeInTheDocument()
   })
 
   it('rating_type=none : ne rend pas la section rang', () => {

@@ -57,6 +57,9 @@ func (m *mockMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]doma
 func (m *mockMatchViewRepo) GetMatchNeighbors(_ context.Context, _, _ string) (*domain.MatchNeighbors, error) {
 	return nil, nil
 }
+func (m *mockMatchViewRepo) GetMatchNeighborsFiltered(_ context.Context, _, _ string, _ *domain.MatchFilterSpec) (*domain.MatchNeighbors, error) {
+	return nil, nil
+}
 func (m *mockMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) ([]domain.EncounterRaw, error) {
 	return nil, nil
 }
