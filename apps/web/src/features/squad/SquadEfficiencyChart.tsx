@@ -109,21 +109,25 @@ export function SquadEfficiencyChart({
           {labels.refLabel}
         </span>
         <div className="ml-auto flex flex-wrap justify-end gap-1">
-          {players.map((player) => (
-            <button
-              key={player}
-              type="button"
-              onClick={() => setSelectedPlayer(player)}
-              className={[
-                'rounded-md border px-2.5 py-1 text-xs transition-colors',
-                player === activePlayer
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-input bg-background hover:bg-muted',
-              ].join(' ')}
-            >
-              {player}
-            </button>
-          ))}
+          {players.map((player) => {
+            const accentHex = colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+            return (
+              <button
+                key={player}
+                type="button"
+                onClick={() => setSelectedPlayer(player)}
+                className={[
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors',
+                  player === activePlayer
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-background hover:bg-muted',
+                ].join(' ')}
+              >
+                <span aria-hidden style={{ background: accentHex, width: 8, height: 8, display: 'inline-block', flexShrink: 0 }} />
+                {player}
+              </button>
+            )
+          })}
         </div>
       </div>
       <ChartCard
