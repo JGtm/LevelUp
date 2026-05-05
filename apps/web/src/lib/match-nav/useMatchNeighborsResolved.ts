@@ -4,12 +4,15 @@
  * Ordre :
  *   1. Router state (instantané, scope onglet courant)
  *   2. sessionStorage (survit F5 / nav arrière, TTL 1h)
- *   3. (Phase 2b — non implémenté ici) URL query params
+ *   3. URL query params (survit Ctrl+Click / lien partagé) — Phase 2b
  *   4. Fallback API Q25 (chronologie globale du joueur)
  *
- * Quand un contexte est résolu en local (1 ou 2), aucun appel API n'est
- * fait — la latence est nulle et la navigation reste 100% dans le périmètre
- * d'origine.
+ * Quand un contexte avec `matchIds` est résolu en local (1 ou 2), aucun
+ * appel API n'est fait — la latence est nulle.
+ *
+ * Phase 2b : si l'URL contient des query params filterSpec mais ni state ni
+ * sessionStorage ne portent de matchIds → on tape l'API avec ces filtres.
+ * Le serveur calcule prev/next dans le scope filtré via Q25NeighborMatchesTemplate.
  */
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -19,23 +22,38 @@ import { api } from '@/lib/api/client'
 import type { MatchNeighbors } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 import {
+  filterSpecToQueryString,
+  parseFilterSpecFromSearch,
   readNavContext,
   resolveNeighborsFromContext,
+  type MatchFilterSpec,
   type MatchNavContext,
 } from './navContext'
 
 /**
- * useMatchNeighborsAPI — fallback API global Q25 (chronologie complète du joueur).
+ * useMatchNeighborsAPI — fallback API Q25 (chronologie globale ou filtrée).
  *
- * Inliné ici pour éviter une dépendance cross-feature `lib/` → `features/`.
- * La query existante côté `features/match-view/queries.ts` reste utilisée
- * par d'autres consommateurs (ex. prefetch route loader).
+ * Quand `spec` non null et non vide, l'URL inclut les filtres → le backend
+ * appelle Q25NeighborMatchesTemplate (Phase 2b). Sinon Q25 global.
  */
-function useMatchNeighborsAPI(playerSlug: string, matchId: string) {
+function useMatchNeighborsAPI(
+  playerSlug: string,
+  matchId: string,
+  spec: MatchFilterSpec | null,
+) {
   return useQuery({
-    queryKey: queryKeys.matchNeighbors(playerSlug, matchId),
-    queryFn: () =>
-      api.get<MatchNeighbors>(`/players/${playerSlug}/matches/${matchId}/neighbors`),
+    queryKey: queryKeys.matchNeighbors(
+      playerSlug,
+      matchId,
+      spec as Record<string, unknown> | null,
+    ),
+    queryFn: () => {
+      const qs = filterSpecToQueryString(spec)
+      const url = qs
+        ? `/players/${playerSlug}/matches/${matchId}/neighbors?${qs}`
+        : `/players/${playerSlug}/matches/${matchId}/neighbors`
+      return api.get<MatchNeighbors>(url)
+    },
     enabled: !!playerSlug && !!matchId,
     staleTime: 5 * 60 * 1000,
   })
@@ -71,6 +89,12 @@ export function useMatchNeighborsResolved(
     select: (s) => (s.location.state as RouterStateWithCtx)?.matchNavContext,
   })
 
+  // 1bis. URL query params — pour Phase 2b. Lecture via useRouterState pour
+  // qu'on bénéficie du re-render TanStack Router quand l'URL change.
+  const urlSearch = useRouterState({
+    select: (s) => s.location.search as Record<string, unknown>,
+  })
+
   // 2. sessionStorage — fallback si state vide (post-F5)
   // Memoize sur matchId : la lecture est synchronome mais le résultat ne
   // change qu'avec le matchId (TTL purgé à la lecture).
@@ -81,15 +105,17 @@ export function useMatchNeighborsResolved(
 
   const localCtx = stateCtx ?? storedCtx ?? null
 
-  // 3. Fallback API — appelé uniquement si pas de contexte local
-  // (le hook est appelé inconditionnellement, mais avec enabled=false si
-  // localCtx résolt — TanStack Query ne déclenche alors aucune requête).
-  const apiQuery = useMatchNeighborsAPI(playerSlug, matchId)
-  // Note : on ne peut pas désactiver le hook lui-même sans casser la règle
-  // des hooks. On compte donc sur le cache TanStack si la query a déjà
-  // tourné dans la session ; sinon, le coût est marginal (1 fetch fire-and-
-  // forget jamais utilisé). La vraie optimisation viendra Phase 2b avec
-  // le `enabled: !localCtx`.
+  // 3. Spec depuis URL query params si pas de ctx local avec matchIds
+  const urlSpec = useMemo<MatchFilterSpec | null>(
+    () => (localCtx ? null : parseFilterSpecFromSearch(urlSearch)),
+    [localCtx, urlSearch],
+  )
+
+  // 4. Fallback API — toujours appelé (règle des hooks). Le spec URL est
+  // passé pour que le backend filtre côté serveur. Si localCtx résoud, la
+  // requête tourne mais son résultat n'est pas utilisé (cache pour ouverture
+  // future).
+  const apiQuery = useMatchNeighborsAPI(playerSlug, matchId, urlSpec)
 
   if (localCtx) {
     const resolved = resolveNeighborsFromContext(localCtx, matchId)
@@ -107,14 +133,17 @@ export function useMatchNeighborsResolved(
         navContext: localCtx,
       }
     }
-    // Si le matchId n'est pas dans la liste : on ignore le contexte (signal
-    // d'incohérence — peut arriver si l'utilisateur a édité l'URL ou si la
-    // liste est devenue stale). Fallback API silencieux.
+    // matchId hors liste → fallback API silencieux.
   }
 
   return {
     data: apiQuery.data,
     isPending: apiQuery.isPending,
     source: 'api',
+    // Si on a tapé l'API avec un spec URL, le data inclut applied_filters —
+    // on l'expose via navContext synthétique pour que l'UI affiche un label.
+    navContext: urlSpec
+      ? { source: 'history', matchIds: [], filterSpec: urlSpec }
+      : undefined,
   }
 }
