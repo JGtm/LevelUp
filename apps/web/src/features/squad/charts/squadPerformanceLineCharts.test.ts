@@ -7,12 +7,17 @@ import {
   buildKillsDeathsButterflyOption,
   buildPerformanceLineOption,
 } from './squadPerformanceLineCharts'
+import { hexComplement } from '@/lib/accessibility/hexComplement'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 
-vi.mock('@/lib/accessibility', () => ({
-  tokenCssVar: (token: string) => `color:${token}`,
-  resolveToken: (token: string) => `hex(${token})`,
-}))
+vi.mock('@/lib/accessibility', async () => {
+  const { hexComplement: hc } = await import('@/lib/accessibility/hexComplement')
+  return {
+    tokenCssVar: (token: string) => `color:${token}`,
+    resolveToken: (token: string) => `hex(${token})`,
+    hexComplement: hc,
+  }
+})
 
 vi.mock('@/components/charts/_utils', async () => {
   const actual = await vi.importActual<typeof import('@/components/charts/_utils')>(
@@ -130,7 +135,7 @@ describe('buildKillsDeathsButterflyOption', () => {
     expect(series[1].data).toEqual([-4, -6]) // négatif
   })
 
-  it('couleur deaths = couleur joueur avec opacity réduite', () => {
+  it('couleur deaths = couleur complémentaire opaque (hue +180°)', () => {
     const rows = { Me: [pt(0)] }
     const opt = buildKillsDeathsButterflyOption(rows, {
       colorByPlayer: COLORS,
@@ -141,12 +146,13 @@ describe('buildKillsDeathsButterflyOption', () => {
     const series = opt.series as Array<{ itemStyle: { color: string; opacity?: number } }>
     expect(series[0].itemStyle).toMatchObject({ color: '#aaa' })
     expect(series[0].itemStyle.opacity).toBeUndefined()
-    expect(series[1].itemStyle).toMatchObject({ color: '#aaa', opacity: 0.45 })
+    expect(series[1].itemStyle.color).toBe(hexComplement('#aaa'))
+    expect(series[1].itemStyle.opacity).toBeUndefined()
   })
 })
 
 describe('buildHsPerfectOption', () => {
-  it('2 séries par joueur (HS dashed/atténuée + Perfect emphasée avec area)', () => {
+  it('2 séries bar par joueur (HS normale + Perfect stackée avec bordure emphase)', () => {
     const rows = {
       Me: [pt(0, { headshot_kills: 4, perfect_kills: 1 })],
     }
@@ -158,20 +164,22 @@ describe('buildHsPerfectOption', () => {
     })
     const series = opt.series as Array<{
       name: string
-      lineStyle: { width: number; type?: string }
-      areaStyle?: { color: string; opacity: number }
-      symbol: string
+      type: string
+      itemStyle: { color: string; borderColor?: string; borderWidth?: number; shadowBlur?: number }
+      data: Array<number | null>
     }>
     expect(series).toHaveLength(2)
     expect(series[0].name).toBe('Me — HS')
-    expect(series[0].lineStyle.width).toBe(1.5)
-    expect(series[0].lineStyle.type).toBe('dashed')
-    expect(series[0].areaStyle).toBeUndefined()
+    expect(series[0].type).toBe('bar')
+    expect(series[0].itemStyle.color).toBe('#aaa')
+    expect(series[0].itemStyle.borderColor).toBeUndefined()
 
     expect(series[1].name).toBe('Me — Perfect')
-    expect(series[1].lineStyle.width).toBe(3) // épaisseur supérieure → emphase
-    expect(series[1].areaStyle).toBeDefined() // areaStyle pour faire ressortir les pics
-    expect(series[1].symbol).toBe('diamond') // marker plus voyant
+    expect(series[1].type).toBe('bar')
+    expect(series[1].itemStyle.color).toBe('#aaa')
+    expect(series[1].itemStyle.borderColor).toBeTruthy() // bordure emphase thématisée
+    expect(series[1].itemStyle.borderWidth).toBe(1.5)
+    expect(series[1].itemStyle.shadowBlur).toBe(8)
   })
 
   it('null pour valeurs manquantes (pas de fallback à 0)', () => {
