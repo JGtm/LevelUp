@@ -1,5 +1,36 @@
 # Thought Log
 
+## [2026-05-05] MatchView header rework — Phase 1 livrée (mock C)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`, 4 commits.
+
+**Contexte** : refonte visuelle complète du header de la page match (mock C accepté côté UX). Phase 1 = backend + frontend du header sans la nav contextuelle (Phase 2 = router state + URL params, à faire dans une branche dédiée).
+
+**Décision technique** :
+1. **Backend** — `MatchViewHeader` enrichi de `MapImageURL` (résolu via `TitleAssetURLAdapter.MapImageURL`) et `IsFavorite` (lookup `SocialRepo.IsMatchFavorite` synchrone, indexé sur PK `(player_slug, match_id)`). Aucune migration nécessaire — la table `match_favorites` existait déjà dans `shared_social.duckdb`. `PlaylistLabel` enrichi via `lookupPlaylistNameFR` (asset_translations, pattern miroir des maps). `MatchViewRank.IconURL` enfin câblé via `CSRRankImageURL`/`CSRRankImageURLOnyx` après extension de Q22 + `SkillRankRaw` (Tier + SubTier dispos dans la table `match_skill_rank`). Câblage dans `api/registry.go` : nouveau helper `assetURLFor(slug)` symétrique à `semanticFor`.
+
+2. **Frontend** — `MatchHeader.tsx` refondu en 3 composants exportés :
+   - `MatchBreadcrumb` (inchangé)
+   - `MatchNavigationBar` : barre full-width avec labels textuels "← Match précédent · Match X/Y · Match suivant →" (les ◀▶ symboliques étaient peu découvrables — feedback utilisateur)
+   - `MatchHeaderCard` : layout asymétrique image map (400×230) + colonne droite (titre + outcome row + actions copy-ID/non-pertinent + perf grand format + rang avec icône)
+   - `MatchNavigation` conservé en alias rétrocompat
+   - `useToggleMatchFavorite` (mutation PATCH `/matches/{id}/favorite`) câblé sur étoile overlay
+   - `i18n.ts` dédié FR + EN (matchCounter, copyMatchId, performance, rank, addFavorite/removeFavorite, mapUnknown)
+   - `MatchViewPage.tsx` : ancien bloc h1 + nav + "Header match" (~50L) remplacé par 2 lignes JSX. `useAppShellStore` remonté avant les early returns (rules-of-hooks).
+
+**Couches respectées** : domain → port (existant) → service (orchestration via `WithSocial` + `WithAssetURL`) → repo (lookup playlist FR + scan étendu Q13/Q22) → handler (existant). Multi-titres : `assetURL` injecté via `Resolver.AssetURL`, jamais d'`if slug ==`. Dégradation gracieuse partout : adapter nil ou asset manquant → champ vide, le front affiche fallback texte.
+
+**Tests** : 
+- Go : 4 nouveaux tests `match_view_dominance_test.go` (`MapImageURL` 4 cas, `IsFavorite` 2 cas, `PlaylistFR` 2 cas, `IconURL` 5 cas avec stub `TitleAssetURLAdapter`). Suite complète Go au vert (`go test ./...`).
+- Frontend : `MatchHeader.test.tsx` 6 tests (render FR/EN, fallback image, is_excluded, rating_type none, is_favorite aria-label). Suite vitest entière au vert (1050 tests).
+- Quick fix tests pré-existants `engagement_score_service_test` + `engagement_test` (signature 3-args manquait `gamertag`) pour débloquer `go vet`.
+
+**Dette documentée** : 3 fichiers déjà au-delà du seuil 500L (CLAUDE.md règle 14) : `match_view_service.go` 1313L, `match_view_repo.go` 700L, `match_view.go` (domain) 641L. Les ajouts Phase 1 restent thématiquement cohérents — refactor global hors scope. À planifier indépendamment.
+
+**Prochaine étape** : Phase 2a (router state + sessionStorage pour navigation contextuelle) — branche dédiée `feat/match-nav-context-state`. Inventaire exhaustif des points d'entrée vers `/matches/$matchId` à produire en `.ai/match_nav_inventory.md` avant tout code.
+
+---
+
 ## [2026-05-05] MatchView header rework — Étape 0 audit blockers
 
 **Statut** : Complété (audit) — branche `fix/synergy-radar-calibration`.
