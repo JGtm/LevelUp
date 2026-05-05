@@ -24,10 +24,11 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   CHART_BG,
-  axisBase,
-  legendBase,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
   seriesColor,
-  tooltipBase,
 } from './_utils'
 
 export interface ChartPointStacked {
@@ -131,9 +132,11 @@ export function buildBarStackedOption(
     }
   })
 
-  const valueAxis = { ...axisBase, type: 'value' as const }
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+  const valueAxis = { ...axis, type: 'value' as const }
   const categoryAxis = {
-    ...axisBase,
+    ...axis,
     type: 'category' as const,
     data: categories,
   }
@@ -142,11 +145,11 @@ export function buildBarStackedOption(
     backgroundColor: CHART_BG,
     grid: { top: 20, bottom: 40, left: 60, right: 16 },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
     },
-    legend: { ...legendBase, data: components },
+    legend: { ...getLegendBase(tc), data: components },
     xAxis: orientation === 'horizontal' ? valueAxis : categoryAxis,
     yAxis: orientation === 'horizontal' ? categoryAxis : valueAxis,
     series: echartsSeries,

@@ -12,7 +12,9 @@
 import { Suspense, lazy, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
-import { outcomeColor, tooltipBase, CHART_BG } from './_utils'
+import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
+
+import { CHART_BG, getEChartsThemeColors, getTooltipBase, outcomeColor } from './_utils'
 
 const ReactECharts = lazy(() =>
   import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
@@ -75,9 +77,12 @@ export function OutcomeSequenceTape({
 }: OutcomeSequenceTapeProps) {
   const runs = useMemo(() => toRuns(matches), [matches])
   const xMax = runs.reduce((s, r) => s + r.count, 0)
+  const themeVersion = useThemeVersion()
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const option = useMemo((): EChartsCoreOption => {
     if (xMax === 0) return {}
+    const tc = getEChartsThemeColors()
     return {
       backgroundColor: CHART_BG,
       grid: { top: 32, bottom: 32, left: 8, right: 8 },
@@ -85,7 +90,7 @@ export function OutcomeSequenceTape({
       yAxis: { type: 'value', min: -1, max: 1, show: false },
       tooltip: {
         trigger: 'item',
-        ...tooltipBase,
+        ...getTooltipBase(tc),
         formatter: (p: unknown) => {
           const item = p as { data: { run: Run } }
           const r = item.data.run
@@ -176,7 +181,7 @@ export function OutcomeSequenceTape({
         },
       ],
     }
-  }, [runs, xMax, labels])
+  }, [runs, xMax, labels, themeVersion])
 
   if (loading || xMax === 0) return null
 

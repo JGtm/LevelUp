@@ -14,12 +14,17 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, tokenCssVar } from '@/lib/accessibility'
-import { CHART_BG, axisBase, tooltipBase, legendBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
 const DIVERGENCE_THRESHOLD = 0.05
-const PARITY_LINE_COLOR = 'rgba(180, 180, 180, 0.6)'
 
 export interface WinRateVsHistoryBulletOpts {
   mapLabelOf: (mapUI: string) => string
@@ -52,6 +57,8 @@ export function buildWinRateVsHistoryBulletOption(
   const sorted = [...rows].sort((a, b) => b.match_count - a.match_count)
   const mapLabels = sorted.map((r) => mapLabelOf(r.map_ui))
   const negColor = resolveToken('divergent-neg')
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   const histColor = tokenCssVar('chart-series-1')
   const histData = sorted.map((r) =>
@@ -72,25 +79,25 @@ export function buildWinRateVsHistoryBulletOption(
     backgroundColor: CHART_BG,
     grid: { top: 8, bottom: 32, left: 8, right: 24, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)}%` : '-'),
     },
-    legend: { ...legendBase, data: [historyLabel, sessionLabel] },
+    legend: { ...getLegendBase(tc), data: [historyLabel, sessionLabel] },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       min: 0,
       max: 100,
-      axisLabel: { ...axisBase.axisLabel, formatter: '{value}%' },
+      axisLabel: { ...axis.axisLabel, formatter: '{value}%' },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: mapLabels,
       inverse: true,
-      axisLabel: { ...axisBase.axisLabel, width: 100, overflow: 'truncate' },
+      axisLabel: { ...axis.axisLabel, width: 100, overflow: 'truncate' },
     },
     series: [
       {
@@ -103,7 +110,7 @@ export function buildWinRateVsHistoryBulletOption(
           silent: true,
           symbol: 'none',
           label: { show: false },
-          lineStyle: { color: PARITY_LINE_COLOR, type: 'dotted', width: 1.5 },
+          lineStyle: { color: tc.splitLine, type: 'dotted', width: 1.5 },
           data: [{ xAxis: 50, name: parityLabel ?? '50%' }],
         },
       },

@@ -16,7 +16,7 @@ import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard } from './ChartCard'
-import { CHART_BG, legendBase, seriesColor, tooltipBase } from './_utils'
+import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
 
 /** 1 axe radar : libellé + valeur 0..100 + raw debug. */
 export interface RadarAxis {
@@ -93,6 +93,8 @@ export function buildRadarOption(
     return { backgroundColor: CHART_BG }
   }
 
+  const tc = getEChartsThemeColors()
+
   // Axes : du premier joueur (tous alignés côté backend).
   const axes = series[0].axes.map((a) => ({
     name: axisLabels?.[a.axis] ?? a.axis,
@@ -114,7 +116,7 @@ export function buildRadarOption(
   return {
     backgroundColor: CHART_BG,
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       formatter: (params: { name: string; value: number[] }) => {
         const lines = axes.map(
           (a, i) => `${a.name}: <b>${params.value[i].toFixed(0)}</b>`,
@@ -123,17 +125,17 @@ export function buildRadarOption(
       },
     },
     legend: {
-      ...legendBase,
+      ...getLegendBase(tc),
       data: data.map((d) => d.name),
     },
     radar: {
       indicator: axes,
       shape: 'polygon',
       splitNumber: 4,
-      axisName: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
-      splitArea: { areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)'] } },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      axisName: { color: tc.axisLabel, fontSize: 10 },
+      splitArea: { areaStyle: { color: [tc.splitAreaA, tc.splitAreaB] } },
+      splitLine: { lineStyle: { color: tc.splitLine } },
+      axisLine: { lineStyle: { color: tc.axisLine } },
     },
     series: [
       {

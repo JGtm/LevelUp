@@ -7,7 +7,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { TEXT_COLOR } from '@/components/charts/_utils'
 import { buildSquadEfficiencyTrackOption } from './charts/squadEfficiencyChart'
 
 interface EfficiencyLabels {
@@ -72,7 +71,7 @@ export function SquadEfficiencyChart({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs" style={{ color: TEXT_COLOR }}>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <svg aria-hidden="true" width="20" height="4">
             <line x1="0" y1="2" x2="20" y2="2" stroke="currentColor" strokeWidth="2" />

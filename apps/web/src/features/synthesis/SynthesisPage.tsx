@@ -19,11 +19,10 @@ import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heat
 import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
-  TEXT_COLOR,
-  ZERO_LINE,
-  axisBase,
-  legendBase,
-  tooltipBase,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
 } from '@/components/charts/_utils'
 import type {
   ComparisonMetricItem,
@@ -72,13 +71,15 @@ export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCo
   const labels = dps.map((m) => m.label)
   const soloVals = dps.map((m) => -Math.abs(m.solo_value))
   const squadVals = dps.map((m) => Math.abs(m.squad_value))
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
   return {
     backgroundColor: CHART_BG,
     grid: { top: 24, bottom: 40, left: 120, right: 80 },
-    tooltip: { ...tooltipBase, trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { ...legendBase, data: ['Solo', 'Escouade'] },
-    xAxis: { ...axisBase, type: 'value', axisLabel: { show: false }, splitLine: { show: false } },
-    yAxis: { ...axisBase, type: 'category', data: labels },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { ...getLegendBase(tc), data: ['Solo', 'Escouade'] },
+    xAxis: { ...axis, type: 'value', axisLabel: { show: false }, splitLine: { show: false } },
+    yAxis: { ...axis, type: 'category', data: labels },
     series: [
       {
         name: 'Solo',
@@ -87,7 +88,7 @@ export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCo
         itemStyle: { color: resolveToken('perf-tier-2') },
         label: {
           show: true, position: 'left',
-          color: TEXT_COLOR, fontSize: 10,
+          color: tc.axisLabel, fontSize: 10,
           // P7.1 (revue 2026-04-29) : formatage côté front à partir des
           // valeurs brutes (solo_text/squad_text retirés du DTO).
           formatter: (p: { dataIndex: number }) =>
@@ -95,7 +96,7 @@ export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCo
         },
         markLine: {
           symbol: 'none', silent: true,
-          lineStyle: { color: ZERO_LINE, width: 2 },
+          lineStyle: { color: tc.splitLine, width: 2 },
           label: { show: false },
           data: [{ xAxis: 0 }],
         },
@@ -107,7 +108,7 @@ export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCo
         itemStyle: { color: resolveToken('divergent-pos') },
         label: {
           show: true, position: 'right',
-          color: TEXT_COLOR, fontSize: 10,
+          color: tc.axisLabel, fontSize: 10,
           formatter: (p: { dataIndex: number }) =>
             formatComparisonMetric(dps[p.dataIndex]?.label, dps[p.dataIndex]?.squad_value),
         },

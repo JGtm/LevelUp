@@ -19,7 +19,13 @@ import { useCallback, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, axisBase, legendBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 export interface SquadEngagementSession {
@@ -229,33 +235,36 @@ function buildSquadEngagementOption(
     })
   }
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   return {
     backgroundColor: CHART_BG,
     // grid.bottom = espace pour x-axis 2 lignes + légende en bas du container
     grid: { left: 50, right: 24, top: 8, bottom: 64 },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       valueFormatter: (v: unknown) =>
         typeof v === 'number' ? v.toFixed(2) : String(v),
     },
     // legendBase a déjà bottom: 0 — pas d'override top
-    legend: { ...legendBase },
+    legend: { ...getLegendBase(tc) },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xLabels,
-      axisLabel: { ...axisBase.axisLabel, interval: 0 },
+      axisLabel: { ...axis.axisLabel, interval: 0 },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       min: yMin,
       max: yMax,
       name: `events / min (auto-zoom ${yMin}..${yMax})`,
       nameLocation: 'middle',
       nameGap: 36,
-      nameTextStyle: { color: 'rgba(255,255,255,0.45)', fontSize: 10 },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     series,
   }

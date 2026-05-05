@@ -13,7 +13,13 @@
  * serveur sur les matchs partagés (intersection). xAxis = match_order 0..N-1.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { CHART_BG, axisBase, legendBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { hexComplement, resolveToken } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
@@ -35,8 +41,6 @@ const PERF_ZONES: Array<{ yMin: number; yMax: number; token: SemanticToken }> = 
   { yMin: 60, yMax: 80,  token: 'perf-tier-2' },
   { yMin: 80, yMax: 100, token: 'perf-tier-1' },
 ]
-
-const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.55)'
 
 export type PerformanceMetricKey =
   | 'kda'
@@ -116,6 +120,8 @@ export function buildPerformanceLineOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: PerformanceLineOpts,
 ): EChartsCoreOption {
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)
   if (players.length === 0) return { backgroundColor: CHART_BG }
 
@@ -181,27 +187,27 @@ export function buildPerformanceLineOption(
     backgroundColor: CHART_BG,
     grid: { top: 28, bottom: 36, left: 8, right: 24, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: isBar ? 'shadow' : 'line' },
       valueFormatter: (v: unknown) => fmtVal(typeof v === 'number' ? v : null, decimals, suffix),
     },
-    legend: { ...legendBase, data: players },
+    legend: { ...getLegendBase(tc), data: players },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xLabels,
       axisLabel: {
-        ...axisBase.axisLabel,
+        ...axis.axisLabel,
         interval: n > 30 ? Math.floor(n / 12) : 0,
       },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       ...(showZones ? { min: 0, max: 100 } : {}),
       axisLabel: {
-        ...axisBase.axisLabel,
+        ...axis.axisLabel,
         formatter: (v: number) => `${v.toFixed(decimals)}${suffix}`,
       },
     },
@@ -222,6 +228,8 @@ export function buildKillsDeathsButterflyOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: KillsDeathsButterflyOpts,
 ): EChartsCoreOption {
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)
   if (players.length === 0) return { backgroundColor: CHART_BG }
   const n = maxLength(rows, players)
@@ -263,18 +271,18 @@ export function buildKillsDeathsButterflyOption(
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? `${Math.abs(v)}` : '-'),
     },
-    legend: { ...legendBase, data: legendData, type: 'scroll' },
-    xAxis: { ...axisBase, type: 'category', data: xLabels },
+    legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
+    xAxis: { ...axis, type: 'category', data: xLabels },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
-      axisLine: { lineStyle: { color: ZERO_LINE_COLOR, width: 1.5 } },
-      axisLabel: { ...axisBase.axisLabel, formatter: (v: number) => `${Math.abs(v)}` },
+      axisLine: { lineStyle: { color: tc.text, width: 1.5 } },
+      axisLabel: { ...axis.axisLabel, formatter: (v: number) => `${Math.abs(v)}` },
     },
     series: seriesPerPlayer,
   }
@@ -293,6 +301,8 @@ export function buildHsPerfectOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: HsPerfectOpts,
 ): EChartsCoreOption {
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)
   if (players.length === 0) return { backgroundColor: CHART_BG }
   const n = maxLength(rows, players)
@@ -326,7 +336,7 @@ export function buildHsPerfectOption(
       barMaxWidth: 14,
       itemStyle: {
         color,
-        borderColor: 'rgba(255,255,255,0.75)', // color-allow: blanc structurel pour border d'emphase
+        borderColor: tc.text, // foreground — border d'emphase qui suit le thème
         borderWidth: 1.5,
         shadowBlur: 8,
         shadowColor: color,
@@ -341,13 +351,13 @@ export function buildHsPerfectOption(
   return {
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
-    tooltip: { ...tooltipBase, trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { ...legendBase, data: legendData, type: 'scroll' },
-    xAxis: { ...axisBase, type: 'category', data: xLabels },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
+    xAxis: { ...axis, type: 'category', data: xLabels },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
-      axisLabel: { ...axisBase.axisLabel },
+      axisLabel: { ...axis.axisLabel },
     },
     series,
   }
@@ -366,6 +376,8 @@ export function buildTeamMMROption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: TeamMMROpts,
 ): EChartsCoreOption {
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)
   if (players.length === 0) return { backgroundColor: CHART_BG }
   const n = maxLength(rows, players)
@@ -420,8 +432,8 @@ export function buildTeamMMROption(
       name: opts.mmrLabel,
       type: 'line',
       data: sharedMmrData,
-      lineStyle: { color: ZERO_LINE_COLOR, width: 2, type: 'dashed' }, // color-allow: blanc neutre pour ligne partagée MMR équipe
-      itemStyle: { color: ZERO_LINE_COLOR },
+      lineStyle: { color: tc.text, width: 2, type: 'dashed' }, // color-allow: blanc neutre pour ligne partagée MMR équipe
+      itemStyle: { color: tc.text },
       symbol: 'circle',
       symbolSize: 4,
       connectNulls: false,
@@ -436,25 +448,25 @@ export function buildTeamMMROption(
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(0) : '-'),
     },
-    legend: { ...legendBase, data: legendData, type: 'scroll' },
+    legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xLabels,
       axisLabel: {
-        ...axisBase.axisLabel,
+        ...axis.axisLabel,
         interval: n > 30 ? Math.floor(n / 12) : 0,
       },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
-      axisLabel: { ...axisBase.axisLabel, formatter: (v: number) => v.toFixed(0) },
+      axisLabel: { ...axis.axisLabel, formatter: (v: number) => v.toFixed(0) },
     },
     series: allSeries,
   }

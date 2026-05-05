@@ -13,7 +13,12 @@
  *   - Label `{value}` sur chaque barre (vide si 0), couleur joueur.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { SquadWeaponKills } from '@/lib/api/types'
 
 export interface SquadWeaponKillsOpts {
@@ -28,6 +33,9 @@ export function buildSquadWeaponKillsOption(
   if (!data || data.bars.length === 0 || data.players.length === 0) {
     return { backgroundColor: CHART_BG }
   }
+
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   // yAxis = labels d'armes (ASC par TotalSquad côté backend).
   const yLabels = data.bars.map((b) => b.label || `weapon_${b.weapon_id}`)
@@ -44,7 +52,7 @@ export function buildSquadWeaponKillsOption(
       label: {
         show: true,
         position: 'right' as const,
-        color: 'rgba(255,255,255,0.92)',
+        color: tc.text,
         fontSize: 11,
         fontWeight: 'bold' as const,
         // Le label vide masque la valeur 0 (cohérent avec la spec : `text` "" si 0).
@@ -62,7 +70,7 @@ export function buildSquadWeaponKillsOption(
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 16, left: 8, right: 80, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
     },
@@ -70,18 +78,18 @@ export function buildSquadWeaponKillsOption(
     // chaque joueur par sa couleur.
     legend: { show: false },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       show: false, // valeurs dans le label de barre
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: yLabels,
       // Bandes zebra pour distinguer les lanes (cf. spec).
       splitArea: {
         show: true,
-        areaStyle: { color: ['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.10)'] },
+        areaStyle: { color: [tc.splitAreaA, tc.splitAreaB] },
       },
     },
     series,

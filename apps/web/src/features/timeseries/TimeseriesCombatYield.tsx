@@ -16,9 +16,10 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
-  axisBase,
-  legendBase,
-  tooltipBase,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
 } from '@/components/charts/_utils'
 import type { MatchHistoryRow } from '@/lib/api/types'
 
@@ -121,6 +122,8 @@ export function buildCombatYieldOption(
 
   const ocColor = resolveToken('divergent-pos')
   const drColor = resolveToken('divergent-neutral')
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   const ocSeries = series.find((s) => s.key === 'combat.oc')
   const drSeries = series.find((s) => s.key === 'combat.dr')
@@ -128,10 +131,10 @@ export function buildCombatYieldOption(
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 56, left: 56, right: 16 },
-    tooltip: { ...tooltipBase, trigger: 'axis' },
-    legend: { ...legendBase, data: [labels.ocSeries, labels.drSeries] },
-    xAxis: { ...axisBase, type: 'time' },
-    yAxis: { ...axisBase, type: 'value', min: 0 },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+    legend: { ...getLegendBase(tc), data: [labels.ocSeries, labels.drSeries] },
+    xAxis: { ...axis, type: 'time' },
+    yAxis: { ...axis, type: 'value', min: 0 },
     series: [
       {
         type: 'line',

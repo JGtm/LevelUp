@@ -8,7 +8,13 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
-import { CHART_BG, axisBase, tooltipBase, legendBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
@@ -43,6 +49,8 @@ export function buildWinRateVsHistoryOption(
   const sorted = [...rows].sort((a, b) => a.win_rate - b.win_rate)
   const mapLabels = sorted.map((r) => mapLabelOf(r.map_ui))
   const histColor = resolveToken('chart-series-1')
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   const histData = sorted.map((r) =>
     r.historical_win_rate !== undefined ? toPercent(r.historical_win_rate) : null,
@@ -56,23 +64,23 @@ export function buildWinRateVsHistoryOption(
     backgroundColor: CHART_BG,
     grid: { top: 8, bottom: 28, left: 8, right: 40, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
     },
-    legend: { ...legendBase, data: [historyLabel, sessionLabel] },
+    legend: { ...getLegendBase(tc), data: [historyLabel, sessionLabel] },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       min: 0,
       max: 100,
-      axisLabel: { ...axisBase.axisLabel, formatter: '{value}%' },
+      axisLabel: { ...axis.axisLabel, formatter: '{value}%' },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: mapLabels,
-      axisLabel: { ...axisBase.axisLabel, width: 100, overflow: 'truncate' },
+      axisLabel: { ...axis.axisLabel, width: 100, overflow: 'truncate' },
     },
     series: [
       {

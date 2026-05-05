@@ -10,7 +10,12 @@
  *   - résistance = 1.0 → chaque mort a coûté exactement 225 dégâts à l'ennemi
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { CHART_BG, TEXT_COLOR, axisBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 
 export interface EfficiencyTrackOpts {
@@ -47,6 +52,8 @@ export function buildSquadEfficiencyTrackOption(
   const xLabels = Array.from({ length: n }, (_, i) => `#${i + 1}`)
   // color-allow: hex résolu depuis semantic tokens via getSquadPlayerColors
   const color = opts.color
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   return {
     backgroundColor: CHART_BG,
@@ -58,7 +65,7 @@ export function buildSquadEfficiencyTrackOption(
       containLabel: true,
     },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'line' },
       formatter: (params: unknown) => {
@@ -72,22 +79,22 @@ export function buildSquadEfficiencyTrackOption(
       },
     },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xLabels,
       show: opts.showXAxis,
       axisLabel: {
-        ...axisBase.axisLabel,
+        ...axis.axisLabel,
         interval: n > 30 ? Math.floor(n / 12) : 0,
       },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       min: 0,
       max: opts.yMax,
       axisLabel: {
-        ...axisBase.axisLabel,
+        ...axis.axisLabel,
         formatter: (v: number) => v.toFixed(1),
       },
     },
@@ -104,12 +111,12 @@ export function buildSquadEfficiencyTrackOption(
         markLine: {
           silent: true,
           symbol: 'none',
-          lineStyle: { color: TEXT_COLOR, type: 'dashed', width: 1 },
+          lineStyle: { color: tc.axisLabel, type: 'dashed', width: 1 },
           data: [{ yAxis: 1.0 }],
           label: {
             formatter: opts.refLabel,
             position: 'end',
-            color: TEXT_COLOR,
+            color: tc.axisLabel,
             fontSize: 9,
           },
         },

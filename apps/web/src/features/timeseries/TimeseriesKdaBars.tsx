@@ -15,9 +15,10 @@ import { outcomeScale } from '@/lib/accessibility/scales'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import {
   CHART_BG,
-  axisBase,
-  legendBase,
-  tooltipBase,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
 } from '@/components/charts/_utils'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 
@@ -140,21 +141,23 @@ export function buildKdaBarsOption(
 
   const lossColor = resolveToken('outcome-loss')
   const kdColor = resolveToken('perf-tier-2')
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 56, left: 56, right: 56 },
-    tooltip: { ...tooltipBase, trigger: 'axis' },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
     legend: {
-      ...legendBase,
+      ...getLegendBase(tc),
       data: [labels.killsLabel, labels.deathsLabel, labels.kdRatioLabel],
     },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xs,
       axisLabel: {
-        ...axisBase.axisLabel,
+        ...axis.axisLabel,
         formatter: (value: string) => {
           const d = new Date(value)
           if (Number.isNaN(d.getTime())) return value
@@ -164,22 +167,22 @@ export function buildKdaBarsOption(
     },
     yAxis: [
       {
-        ...axisBase,
+        ...axis,
         type: 'value',
         name: labels.yAxisLeft,
         nameLocation: 'middle',
         nameGap: 40,
-        nameTextStyle: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
+        nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
       },
       {
-        ...axisBase,
+        ...axis,
         type: 'value',
         position: 'right',
         name: labels.yAxisRight,
         nameLocation: 'middle',
         nameGap: 32,
         nameTextStyle: { color: kdColor, fontSize: 10 },
-        axisLabel: { ...axisBase.axisLabel, color: kdColor },
+        axisLabel: { ...axis.axisLabel, color: kdColor },
         min: 0,
       },
     ],

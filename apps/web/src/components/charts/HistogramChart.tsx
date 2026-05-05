@@ -18,7 +18,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, axisBase, seriesColor, tooltipBase } from './_utils'
+import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, seriesColor } from './_utils'
 
 export interface ChartPointHistogram {
   binStart: number
@@ -111,31 +111,34 @@ export function buildHistogramOption(
   const counts = dps.map((d) => d.count)
   const color = colorToken ? resolveToken(colorToken) : seriesColor(0)
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 56, left: 48, right: 12 },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
     },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: categories,
       name: xAxisLabel,
       nameLocation: 'middle',
       nameGap: 36,
-      nameTextStyle: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
-      axisLabel: { ...axisBase.axisLabel, rotate: -30 },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+      axisLabel: { ...axis.axisLabel, rotate: -30 },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       name: yAxisLabel,
       nameLocation: 'middle',
       nameGap: 32,
-      nameTextStyle: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     series: [
       {

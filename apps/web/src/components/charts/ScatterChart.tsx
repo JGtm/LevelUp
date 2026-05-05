@@ -18,7 +18,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, axisBase, legendBase, seriesColor, tooltipBase } from './_utils'
+import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
 
 export interface ChartPointScatter {
   x: number
@@ -131,12 +131,14 @@ export function buildScatterOption(
   })
 
   const legendNames = series.map((s) => seriesNameResolver(s))
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   return {
     backgroundColor: CHART_BG,
     grid: { top: 24, bottom: 56, left: 56, right: 16 },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'item',
       formatter: (params: unknown) => {
         const p = params as { seriesName?: string; value?: [number, number] }
@@ -147,22 +149,22 @@ export function buildScatterOption(
         return `${p.seriesName ?? ''}<br>${xLabel} : <b>${x}</b><br>${yLabel} : <b>${y}</b>`
       },
     },
-    legend: { ...legendBase, data: legendNames },
+    legend: { ...getLegendBase(tc), data: legendNames },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       name: xAxisLabel,
       nameLocation: 'middle',
       nameGap: 32,
-      nameTextStyle: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       name: yAxisLabel,
       nameLocation: 'middle',
       nameGap: 40,
-      nameTextStyle: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     series: echartsSeries,
   }
