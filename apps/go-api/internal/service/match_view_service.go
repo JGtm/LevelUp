@@ -225,6 +225,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		matchCitations []domain.CitationMatchViewRow
 		richCitations  []domain.HomeMatchCitationRaw
 		histRows       []domain.MatchHistAvgRow
+		objectiveScore int
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -250,6 +251,16 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
 		if e != nil {
 			slog.Warn("match_view: scoreboard indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		// Score PSA catégorie 'objective' pour le joueur courant — alimente l'axe
+		// Objective du radar synergie. Dégradation silencieuse à 0.
+		objectiveScore, e = s.repo.GetMatchObjectiveScore(gctx, s.xuid, matchID)
+		if e != nil {
+			slog.Warn("match_view: objective score indisponible", "match_id", matchID, "err", e)
 		}
 		return nil
 	})
@@ -424,7 +435,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	// personal_score_awards — toutes les colonnes nécessaires sont déjà dans
 	// match_participants. L'axe Objective reste neutre (threshold=0).
 	modeFamily := matchModeFamilyFromMeta(meta)
-	radarSeries := BuildMatchRadarFromScoreboard(scoreboard, modeFamily)
+	radarSeries := BuildMatchRadarFromScoreboard(scoreboard, s.xuid, objectiveScore, modeFamily)
 	var radar []any
 	for _, s := range radarSeries {
 		radar = append(radar, s)

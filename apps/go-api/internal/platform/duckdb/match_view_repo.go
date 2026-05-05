@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -202,15 +203,16 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	// Q12 utilise 3 fois match_id : medals CTE, weapons CTE, WHERE
 	rows, err := r.pdb.ReadDB().Query(ctx, Q12MatchScoreboard, matchID, matchID, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "DEBUG_SCOREBOARD: query error", "match_id", matchID, "err", err.Error())
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
 	defer rows.Close()
-	slog.InfoContext(ctx, "DEBUG_SCOREBOARD: query ok", "match_id", matchID)
 
 	var results []domain.ScoreboardRaw
 	for rows.Next() {
 		var s domain.ScoreboardRaw
+		// top_weapon_id est UBIGINT côté DuckDB → scanner en *uint64 pour
+		// éviter l'overflow int64 sur les hash de filmshell (bit63=1).
+		var topWeaponU *uint64
 		if err := rows.Scan(
 			&s.XUID,
 			&s.Gamertag,
@@ -237,7 +239,7 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 			&s.MeleeKills,
 			&s.PowerWeaponKills,
 			&s.PerfectKills,
-			&s.TopWeaponID,
+			&topWeaponU,
 			&s.KillsExpected,
 			&s.DeathsExpected,
 			&s.AssistsExpected,
@@ -247,13 +249,15 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard scan: %w", err)
 		}
+		if topWeaponU != nil {
+			v := int64(*topWeaponU) //nolint:gosec
+			s.TopWeaponID = &v
+		}
 		results = append(results, s)
 	}
 	if err := rows.Err(); err != nil {
-		slog.WarnContext(ctx, "DEBUG_SCOREBOARD: rows.Err()", "match_id", matchID, "err", err.Error())
 		return nil, err
 	}
-	slog.InfoContext(ctx, "DEBUG_SCOREBOARD: scan done", "match_id", matchID, "row_count", len(results))
 
 	// Résolution des labels d'armes top-weapon pour chaque joueur du scoreboard
 	var topWeaponIDs []int64
@@ -272,6 +276,36 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	}
 
 	return results, nil
+}
+
+// GetMatchObjectiveScore retourne la somme award_score des awards de
+// catégorie 'objective' pour (xuid, matchID). Mirror du squad
+// LoadObjectiveScores (cf. squad_v2_adapter.go) appliqué à un seul match.
+// Dégradation silencieuse à 0 si la table est absente ou ligne vide.
+func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchID string) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var tableCount int
+	if err := r.pdb.ReadDB().QueryRow(ctx, `
+		SELECT COUNT(*) FROM information_schema.tables
+		WHERE table_name = 'personal_score_awards'
+	`).Scan(&tableCount); err != nil || tableCount == 0 {
+		return 0, nil
+	}
+
+	var total int
+	err := r.pdb.ReadDB().QueryRow(ctx, `
+		SELECT COALESCE(SUM(award_score), 0)::INTEGER
+		FROM personal_score_awards
+		WHERE award_category = 'objective'
+		  AND xuid = ?
+		  AND match_id = ?
+	`, xuid, matchID).Scan(&total)
+	if err != nil {
+		return 0, nil
+	}
+	return total, nil
 }
 
 // GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
@@ -336,6 +370,9 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 }
 
 // GetMatchWeaponKills retourne les kills par arme du joueur (Q16).
+// Applique la fusion variante→canonique (Duelist Energy Sword → Energy Sword,
+// M392 Bandit → Bandit Evo, etc.) avant le lookup pour regrouper les skins
+// — comportement aligné sur la Python resolve_weapon_display.
 func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID string) ([]domain.WeaponKillRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -346,22 +383,42 @@ func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID s
 	}
 	defer rows.Close()
 
-	var results []domain.WeaponKillRaw
-	var weaponIDs []int64
+	// Étape 1 : scan + fusion variant→canonique + regroupement par ID canonique.
+	killsByID := make(map[int64]int)
+	orderedIDs := make([]int64, 0, 16)
 	for rows.Next() {
-		var w domain.WeaponKillRaw
-		var widU uint64 // weapon_id est UBIGINT, scanner en uint64 puis reinterpréter en int64
-		if err := rows.Scan(&widU, &w.Kills); err != nil {
+		var widU uint64
+		var kills int
+		if err := rows.Scan(&widU, &kills); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchWeaponKills scan: %w", err)
 		}
-		w.WeaponID = int64(widU) //nolint:gosec
-		results = append(results, w)
-		weaponIDs = append(weaponIDs, w.WeaponID)
+		canonicalU := widU
+		if canon, ok := analysis.WeaponFusionMapID[widU]; ok {
+			canonicalU = canon
+		}
+		canonicalID := int64(canonicalU) //nolint:gosec
+		if _, seen := killsByID[canonicalID]; !seen {
+			orderedIDs = append(orderedIDs, canonicalID)
+		}
+		killsByID[canonicalID] += kills
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
+	// Étape 2 : assembler trié par kills DESC (Q16 est déjà ORDER BY kills DESC,
+	// mais la fusion peut réordonner — re-trier garde le contrat).
+	results := make([]domain.WeaponKillRaw, 0, len(orderedIDs))
+	for _, id := range orderedIDs {
+		results = append(results, domain.WeaponKillRaw{WeaponID: id, Kills: killsByID[id]})
+	}
+	sort.SliceStable(results, func(i, j int) bool { return results[i].Kills > results[j].Kills })
+
+	// Étape 3 : résolution labels.
+	weaponIDs := make([]int64, 0, len(results))
+	for _, w := range results {
+		weaponIDs = append(weaponIDs, w.WeaponID)
+	}
 	labels := r.lookupWeaponLabels(ctx, weaponIDs)
 	for index := range results {
 		if label, ok := labels[results[index].WeaponID]; ok {
@@ -487,10 +544,15 @@ func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int6
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id int64
+		// weapon_id est UBIGINT en metadata.weapon_labels — scanner en uint64
+		// puis reinterpret en int64 (cohérent avec les callers qui stockent
+		// l'ID en int64 même pour bit63=1). Sans ça les hash filmshell
+		// high-bit (Mutilateur, MK50 Sidekick…) plantent silencieusement le
+		// scan et restent sans label.
+		var idRaw uint64
 		var label string
-		if err := rows.Scan(&id, &label); err == nil && label != "" {
-			labels[id] = label
+		if err := rows.Scan(&idRaw, &label); err == nil && label != "" {
+			labels[int64(idRaw)] = label //nolint:gosec // bit-preserving reinterpret
 		}
 	}
 	return labels
@@ -873,6 +935,8 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 }
 
 // GetMatchBulkWeaponKills retourne les kills par arme de tous les joueurs (Q28).
+// Applique la fusion variante→canonique par xuid (regroupe Duelist Energy Sword
+// + Elite Bloodblade + Energy Sword sous le même canonique pour chaque joueur).
 func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID string) ([]domain.BulkWeaponKillRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -883,20 +947,42 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	}
 	defer rows.Close()
 
-	var results []domain.BulkWeaponKillRaw
-	var weaponIDs []int64
+	type key struct {
+		xuid string
+		wid  int64
+	}
+	killsByKey := make(map[key]int)
+	ordered := make([]key, 0, 32)
 	for rows.Next() {
-		var w domain.BulkWeaponKillRaw
-		var widU uint64 // weapon_id est UBIGINT, scanner en uint64 puis reinterpréter en int64
-		if err := rows.Scan(&w.XUID, &widU, &w.Kills); err != nil {
+		var xuid string
+		var widU uint64
+		var kills int
+		if err := rows.Scan(&xuid, &widU, &kills); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills scan: %w", err)
 		}
-		w.WeaponID = int64(widU) //nolint:gosec
-		results = append(results, w)
-		weaponIDs = append(weaponIDs, w.WeaponID)
+		canonicalU := widU
+		if canon, ok := analysis.WeaponFusionMapID[widU]; ok {
+			canonicalU = canon
+		}
+		k := key{xuid: xuid, wid: int64(canonicalU)} //nolint:gosec
+		if _, seen := killsByKey[k]; !seen {
+			ordered = append(ordered, k)
+		}
+		killsByKey[k] += kills
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	results := make([]domain.BulkWeaponKillRaw, 0, len(ordered))
+	weaponIDs := make([]int64, 0, len(ordered))
+	for _, k := range ordered {
+		results = append(results, domain.BulkWeaponKillRaw{
+			XUID:     k.xuid,
+			WeaponID: k.wid,
+			Kills:    killsByKey[k],
+		})
+		weaponIDs = append(weaponIDs, k.wid)
 	}
 
 	labels := r.lookupWeaponLabels(ctx, weaponIDs)

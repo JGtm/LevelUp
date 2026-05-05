@@ -58,6 +58,13 @@ export interface BarStackedChartProps {
    * Default false.
    */
   tooltipHideZero?: boolean
+  /**
+   * Override hex couleur direct par sous-clé (priorité absolue : > componentColors > cycle).
+   * Permet d'éviter la résolution tardive via tokens quand l'appelant a déjà
+   * résolu les couleurs (sinon `resolveToken` peut retourner '' et ECharts
+   * applique sa palette interne — premières couleurs en bleu).
+   */
+  componentHexColors?: Record<string, string>
 }
 
 export function BarStackedChart({
@@ -71,11 +78,18 @@ export function BarStackedChart({
   componentColors,
   componentOrder,
   tooltipHideZero = false,
+  componentHexColors,
 }: BarStackedChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointStacked>[]) =>
-      buildBarStackedOption(s, { orientation, componentColors, componentOrder, tooltipHideZero }),
-    [orientation, componentColors, componentOrder, tooltipHideZero],
+      buildBarStackedOption(s, {
+        orientation,
+        componentColors,
+        componentOrder,
+        tooltipHideZero,
+        componentHexColors,
+      }),
+    [orientation, componentColors, componentOrder, tooltipHideZero, componentHexColors],
   )
 
   return (
@@ -96,6 +110,7 @@ interface BuildOpts {
   componentColors?: Record<string, SemanticToken>
   componentOrder?: string[]
   tooltipHideZero?: boolean
+  componentHexColors?: Record<string, string>
 }
 
 interface TooltipParam {
@@ -115,7 +130,13 @@ export function buildBarStackedOption(
   series: ChartSeries<ChartPointStacked>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { orientation = 'vertical', componentColors, componentOrder, tooltipHideZero = false } = opts
+  const {
+    orientation = 'vertical',
+    componentColors,
+    componentOrder,
+    tooltipHideZero = false,
+    componentHexColors,
+  } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -135,10 +156,22 @@ export function buildBarStackedOption(
     : Array.from(componentSet)
 
   // 1 ECharts series par component (toutes empilées sur le même stack).
+  // Priorité de résolution couleur :
+  //  1. componentHexColors[comp] (hex pré-résolu — option la plus sûre)
+  //  2. componentColors[comp] résolu via resolveToken (avec fallback vers
+  //     seriesColor si la CSS var n'est pas chargée — sinon ECharts utilise
+  //     son palette interne qui commence par du bleu).
+  //  3. seriesColor(idx) — palette chart-series cyclée.
   const echartsSeries = components.map((comp, idx) => {
-    const color = componentColors?.[comp]
-      ? resolveToken(componentColors[comp])
-      : seriesColor(idx)
+    const explicitHex = componentHexColors?.[comp]
+    let color: string
+    if (explicitHex && explicitHex.length > 0) {
+      color = explicitHex
+    } else if (componentColors?.[comp]) {
+      color = resolveToken(componentColors[comp]) || seriesColor(idx)
+    } else {
+      color = seriesColor(idx)
+    }
     return {
       name: comp,
       type: 'bar' as const,

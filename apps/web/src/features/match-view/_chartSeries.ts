@@ -1,12 +1,12 @@
 /**
  * Helpers ChartSeries pour MatchViewPage — onglet Combat (FragDiff,
- * Antagonistes, Cadence).
+ * Antagonistes).
  *
  * 2026-05-05 : nettoyage post-refonte combat. Ont été retirés :
  *  - kdTimelineSeries / tugOfWarStackedSeries (charts supprimés)
- *  - cadenceSeriesWithGamertags (consommait `combat_tab.cadence` côté API,
- *    désormais reconstruit depuis `combat_tab.highlight_events` via
- *    `cadenceSeriesFromEvents` pour rester cohérent avec FragDiff/Antagonistes).
+ *  - cadenceSeriesWithGamertags (chart Cadence remplacé par
+ *    EngagementMatchSection — courbe team/attendu/joueur via l'API
+ *    /matches/{id}/engagement, branchée comme sur la page Contributions).
  */
 import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
 import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
@@ -15,7 +15,6 @@ import type { SemanticToken } from '@/lib/accessibility'
 import type {
   MatchHighlightEvent,
   MatchKillerVictimPair,
-  MatchScoreboardRow,
 } from '@/lib/api/types'
 import { unknownPlayerLabel } from './colors'
 
@@ -142,62 +141,3 @@ export function allPlayersFragDiffSeries(
   })
 }
 
-/** Construction de la cadence de kills par phase de N secondes, agrégée
- *  par gamertag. Reconstruit côté front depuis `combat_tab.highlight_events`
- *  pour garantir la cohérence avec FragDiff/Antagonistes.
- *
- *  `xuidToGamertag` doit cumuler scoreboard + roster + kvPairs (cf.
- *  `buildXUIDToGamertagMap`) — sinon les xuids présents uniquement dans
- *  `highlight_events` se retrouvent en label `Joueur XXXX`.
- *
- *  Phase par défaut = 60s. Les phases vides (aucun kill) ne sont pas omises
- *  pour préserver la lecture temporelle linéaire — chaque catégorie est un
- *  label `m:ss` du début de phase.
- */
-export function cadenceSeriesFromEvents(
-  events: MatchHighlightEvent[],
-  xuidToGamertag: Map<string, string>,
-  phaseSeconds = 60,
-): ChartSeries<ChartPointStacked>[] {
-  if (events.length === 0 || phaseSeconds <= 0) return []
-
-  const phaseMS = phaseSeconds * 1000
-  let maxTime = 0
-  const phaseBuckets = new Map<number, Map<string, number>>()
-
-  for (const e of events) {
-    if ((e.event_type ?? '').toLowerCase() !== 'kill') continue
-    if (e.event_time_ms == null || !e.actor_xuid) continue
-    const t = e.event_time_ms
-    if (t > maxTime) maxTime = t
-    const phase = Math.floor(t / phaseMS)
-    const gt = xuidToGamertag.get(e.actor_xuid) ?? unknownPlayerLabel(e.actor_xuid)
-    const bucket = phaseBuckets.get(phase) ?? new Map<string, number>()
-    bucket.set(gt, (bucket.get(gt) ?? 0) + 1)
-    phaseBuckets.set(phase, bucket)
-  }
-
-  if (phaseBuckets.size === 0) return []
-
-  const bucketCount = Math.floor(maxTime / phaseMS) + 1
-  const dps: ChartPointStacked[] = []
-  for (let i = 0; i < bucketCount; i++) {
-    const startSec = i * phaseSeconds
-    const components: Record<string, number> = {}
-    const bucket = phaseBuckets.get(i)
-    if (bucket) {
-      for (const [gt, kills] of bucket) {
-        if (kills > 0) components[gt] = kills
-      }
-    }
-    dps.push({ category: formatBinSeconds(startSec), components })
-  }
-
-  return [
-    {
-      key: 'match_view.combat.cadence',
-      datapoints: dps,
-      meta: { phase_seconds: phaseSeconds },
-    },
-  ]
-}

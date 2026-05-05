@@ -124,6 +124,12 @@ type MatchViewRepository interface {
 	// GetMatchScoreboard retourne les stats de tous les joueurs (Q12).
 	GetMatchScoreboard(ctx context.Context, matchID string) ([]domain.ScoreboardRaw, error)
 
+	// GetMatchObjectiveScore retourne la somme des award_score (catégorie
+	// 'objective') pour un joueur dans un match. Source : personal_score_awards.
+	// Utilisé pour l'axe Objective du radar synergie (MatchView). Dégradation
+	// silencieuse à 0 si la table est absente ou pas de données pour ce match.
+	GetMatchObjectiveScore(ctx context.Context, xuid, matchID string) (int, error)
+
 	// GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
 	GetMatchMedals(ctx context.Context, xuid, matchID string) ([]domain.MedalRaw, error)
 
@@ -269,6 +275,9 @@ func (n *noopMatchViewRepo) GetMatchEnrichment(_ context.Context, _ string) (*do
 }
 func (n *noopMatchViewRepo) GetMatchScoreboard(_ context.Context, _ string) ([]domain.ScoreboardRaw, error) {
 	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchObjectiveScore(_ context.Context, _, _ string) (int, error) {
+	return 0, nil
 }
 func (n *noopMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]domain.MedalRaw, error) {
 	return nil, nil

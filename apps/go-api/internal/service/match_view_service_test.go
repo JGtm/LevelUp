@@ -42,6 +42,9 @@ func (m *mockMatchViewRepo) GetMatchEnrichment(_ context.Context, _ string) (*do
 func (m *mockMatchViewRepo) GetMatchScoreboard(_ context.Context, _ string) ([]domain.ScoreboardRaw, error) {
 	return m.board, m.boardErr
 }
+func (m *mockMatchViewRepo) GetMatchObjectiveScore(_ context.Context, _, _ string) (int, error) {
+	return 0, nil
+}
 func (m *mockMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]domain.MedalRaw, error) {
 	return m.medals, m.medalsErr
 }

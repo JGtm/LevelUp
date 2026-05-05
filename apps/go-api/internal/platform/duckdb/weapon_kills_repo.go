@@ -103,12 +103,12 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 	var out []port.WeaponKillRow
 	for dbRows.Next() {
 		var (
-			xuid     string
-			weaponID int64
-			kills    int
-			isGM     bool
+			xuid       string
+			weaponIDRaw uint64 // UBIGINT cote DuckDB ; certains hash filmshell ont bit63=1
+			kills      int
+			isGM       bool
 		)
-		if err := dbRows.Scan(&xuid, &weaponID, &kills, &isGM); err != nil {
+		if err := dbRows.Scan(&xuid, &weaponIDRaw, &kills, &isGM); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
 		if filters.MinKills > 0 && kills < filters.MinKills {
@@ -116,7 +116,7 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 		}
 		out = append(out, port.WeaponKillRow{
 			XUID:           xuid,
-			WeaponID:       weaponID,
+			WeaponID:       int64(weaponIDRaw), //nolint:gosec // bit-preserving reinterpret UBIGINT->BIGINT (cf. attachWeaponLabels qui re-cast en uint64)
 			Kills:          kills,
 			IsGrenadeMelee: isGM,
 		})
@@ -148,11 +148,15 @@ func buildWeaponKillsQuery(f port.WeaponKillFilters) (string, []any) {
 		args = append(args, id)
 	}
 
-	// Branche 1 : weapon_kills (armes principales)
+	// Branche 1 : weapon_kills (armes principales).
+	// effective_weapon_id reste en UBIGINT cote SQL (pas de cast ::BIGINT) car
+	// certaines armes (filmshell hashes avec bit63=1) ont des IDs hors INT64
+	// → "Type UINT64 ... can't be cast ... out of range for INT64". Le scan
+	// Go capture en uint64 puis reinterprete bit-a-bit en int64 (cf. queryWeaponKills).
 	sb.WriteString(`
 SELECT
     wk.xuid,
-    wk.effective_weapon_id::BIGINT AS weapon_id,
+    wk.effective_weapon_id AS weapon_id,
     COUNT(*) AS kills,
     FALSE AS is_grenade_melee
 FROM shared.v_weapon_kills wk
@@ -181,7 +185,7 @@ SELECT
     mp.xuid,
     `)
 	sb.WriteString(strconv.FormatInt(weaponIDGrenadeSentinel, 10))
-	sb.WriteString(`::BIGINT AS weapon_id,
+	sb.WriteString(`::UBIGINT AS weapon_id,
     SUM(COALESCE(mp.grenade_kills, 0))::INTEGER AS kills,
     TRUE AS is_grenade_melee
 FROM shared.match_participants mp
@@ -202,7 +206,7 @@ SELECT
     mp.xuid,
     `)
 	sb.WriteString(strconv.FormatInt(weaponIDMeleeSentinel, 10))
-	sb.WriteString(`::BIGINT AS weapon_id,
+	sb.WriteString(`::UBIGINT AS weapon_id,
     SUM(COALESCE(mp.melee_kills, 0))::INTEGER AS kills,
     TRUE AS is_grenade_melee
 FROM shared.match_participants mp
@@ -262,11 +266,12 @@ func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.We
 	if r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
 		return
 	}
+	// On inclut aussi les sentinels grenade/melee (weapon_id=0/1) — ils ont
+	// des labels "Grenade"/"Mêlée" en metadata.weapon_labels (cf. migration
+	// add_weapon_labels). Skipper ici laissait Label="" alors que le label
+	// est disponible.
 	ids := make([]int64, 0, len(rows))
 	for _, row := range rows {
-		if row.IsGrenadeMelee {
-			continue
-		}
 		ids = append(ids, row.WeaponID)
 	}
 	if len(ids) == 0 {
@@ -294,16 +299,16 @@ func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.We
 
 	labels := map[int64]string{}
 	for dbRows.Next() {
-		var id int64
+		// weapon_id est UBIGINT en metadata.weapon_labels — scanner en uint64
+		// puis reinterpret en int64 (sinon overflow silencieux pour les hash
+		// filmshell bit63=1, ex. Mutilateur, MK50 Sidekick).
+		var idRaw uint64
 		var label string
-		if err := dbRows.Scan(&id, &label); err == nil && label != "" {
-			labels[id] = label
+		if err := dbRows.Scan(&idRaw, &label); err == nil && label != "" {
+			labels[int64(idRaw)] = label //nolint:gosec // bit-preserving reinterpret cohérent avec WeaponKillRow.WeaponID
 		}
 	}
 	for i := range rows {
-		if rows[i].IsGrenadeMelee {
-			continue
-		}
 		if label, ok := labels[rows[i].WeaponID]; ok {
 			rows[i].Label = label
 		}

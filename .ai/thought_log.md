@@ -1,5 +1,144 @@
 # Thought Log
 
+## [2026-05-05] Squad Contributions — Suppression du dual-grid ECharts (tooltips partagés entre charts)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Contexte** : utilisateur signale que sur la page Escouade les tooltips d'un chart débordent sur le graphe attenant. Cause : `SquadPerformanceCharts` fusionnait 4 paires de sous-charts (kills/assists, kda/avg-life, perf/rank, spree/hs-perfect) dans un seul canvas ECharts via `buildDualGridOption` (`apps/web/src/components/charts/_utils.ts`). Le canvas unique avec 2 grilles + `tooltip.trigger:'axis'` racine + `axisPointer.link: [{ xAxisIndex: 'all' }]` synchronise le crosshair entre grilles → la tooltip aggrège les séries des deux moitiés.
+
+**Décision technique** :
+- Suppression complète de `buildDualGridOption`, `dualPanelHeight`, `DUAL_LAYOUT_THRESHOLD` et `DualLayout` du module `_utils.ts`. Ces helpers n'étaient utilisés que par `SquadPerformanceCharts.tsx`.
+- `SquadPerformanceCharts.tsx` réécrit pour rendre 9 `<ChartCard>` indépendants (1 instance ECharts par chart → tooltip et légende isolés par grille). Chaque builder existant (`buildKillsDeathsButterflyOption`, `buildPerformanceLineOption`, `buildHsPerfectOption`, `buildTeamMMROption`) émet déjà une `EChartsCoreOption` complète avec son propre `tooltip` / `legend` / axes.
+- Layout adaptatif préservé : seuil interne `PAIR_LAYOUT_THRESHOLD = 14` (renommé pour la clarté). Au-delà OU sur mobile (<768px) → wrapper `space-y-4` (chaque chart pleine largeur, respire avec beaucoup de matchs). Sinon → `grid grid-cols-1 md:grid-cols-2 gap-4` (côte à côte sur desktop).
+- Hauteur uniforme `SUBCHART_HEIGHT = 280px` par chart, peu importe le mode (vs 300px side-by-side / 600px stacked dans la version dual-grid).
+- Tests `_utils.test.ts` nettoyés : 4 blocs `describe` supprimés (15 tests dual-grid spécifiques), il reste 15 tests passants sur les helpers généraux.
+
+**Résultats observés** :
+- `tsc -b` : OK.
+- `eslint` sur les 3 fichiers modifiés : 0 warning / 0 error.
+- `vitest run src/features/squad/ src/components/charts/` : 41 fichiers / 306 tests passants.
+- `_utils.ts` passe de 256L à 150L (-106L), suppression d'un helper de fusion ad-hoc qui dupliquait la logique d'axes / titres / legend / tooltip.
+
+**Conclusion / prochaine étape** :
+- Bénéfice secondaire : chaque chart a désormais sa propre légende cliquable (toggle séries) au lieu d'une légende fusionnée scrollable au pied du canvas double.
+- Régression mineure assumée : alignement vertical au pixel près des axes Y entre les deux charts d'une paire perdu (2 instances distinctes). En pratique invisible avec hauteurs identiques.
+- Test visuel sur navigateur recommandé pour valider sur dataset 5+ matchs (paires côte-à-côte) et 14+ matchs (paires empilées).
+
+## [2026-05-05] Squad Contributions — Chart « Kills par arme » (teammates.09) absent
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Contexte** : utilisateur signale que le chart `SquadWeaponKillsChart` (teammates.09) ne s'affiche pas sur la page Squad → Contributions, alors que le chart `SquadEngagementSection` juste en-dessous fonctionne. Données présentes en base.
+
+**Décision technique** :
+- **Bug racine** : la requête `buildWeaponKillsQuery` dans `weapon_kills_repo.go` faisait `wk.effective_weapon_id::BIGINT` ; or `effective_weapon_id` est UBIGINT côté DuckDB et certaines armes (hashes filmshell, bit63=1) ont des IDs > INT64 max (ex. `17584332298403800991`). Le cast plantait avec `Conversion Error: Type UINT64 with value … can't be cast … out of range for INT64` → 0 row → service retourne nil → card masquée par le guard front `weaponKills && weaponKills.bars.length > 0`. Échec totalement silencieux côté backend (juste un `slog.Warn` pas remonté côté UI).
+- **Fix `weapon_kills_repo.go`** :
+  - SELECT : retiré `::BIGINT`, gardé `wk.effective_weapon_id` brut (UBIGINT).
+  - Sentinels grenade/melee : `0::BIGINT` / `1::BIGINT` → `0::UBIGINT` / `1::UBIGINT` pour homogénéité de type sur le UNION ALL.
+  - Scan Go : `weaponID int64` → `weaponIDRaw uint64`, puis `WeaponID: int64(weaponIDRaw)` (reinterpret bit-à-bit, cohérent avec `attachWeaponLabels` qui re-cast en uint64 pour matcher metadata).
+- **Fix collatéral `teammates_squad_charts.go::buildSquadWeaponKills`** : intersection stricte (`n >= len(teammates)`) → union des matchs où le main a joué avec au moins un coéquipier sélectionné. Aligne avec la spec Python (`load_weapon_kills_data` reçoit `list[(name, xuid, match_ids)]` — match-set par joueur). Ajouts de `slog.Debug` aux early-returns silencieux.
+
+**Résultats observés** :
+- Diagnostic standalone (`cmd/diag_squad_weapons`) sur 22 matchs partagés XxDaemonGamerxX+JGtm : 31 rows retournées (227 kills JGtm + 98 kills XxDaemon).
+- Curl bout-en-bout `POST /api/v1/players/Madina97294/pages/teammates {selected_gamertags:["JGtm"]}` : `weapon_kills` peuplé avec 48 bars, top BR75 (2138 kills), arme bit63=1 (`weapon_id: -862411775305750625`) à 2774 kills.
+- `go test ./internal/platform/duckdb/ ./internal/service/` : OK.
+
+**Conclusion / prochaine étape** :
+- Le chart va s'afficher dès que le serveur tourne avec le nouveau binaire (air rebuild ou redémarrage manuel).
+- Dette résiduelle : certains hashes filmshell n'ont pas d'entrée dans `metadata.weapon_labels` → label vide → le front retombe sur `weapon_${id}` (cf. `squadWeaponKillsChart.ts:41`). Hors scope de ce fix, à traiter via backfill `weapon_labels`.
+- Outil `cmd/diag_squad_weapons` conservé pour debug futur du même path.
+
+**Round 2 — beaucoup d'armes encore non résolues** : utilisateur signale que la majorité des labels restent vides. Diag standalone sur Madina+JGtm (après stop serveur, DB locked sinon) :
+- `metadata.weapon_labels` : 42 entries — table OK contrairement à ma première lecture (mon diag avait silent-failed sur l'ATTACH locked).
+- Diag résout 25/46 weapon_ids ; API n'en résout que 13/46. Delta = 12 weapons high-bit (Mutilateur, MK50 Sidekick, Needler, Disrupteur…).
+
+**Bug 2** dans `attachWeaponLabels` (`weapon_kills_repo.go:299-306`) : Scan `var id int64` sur la colonne UBIGINT → overflow silencieux pour bit63=1 → `if err == nil` swallow l'erreur → ces rows jamais ajoutées à la map labels. Fix : `var idRaw uint64` puis `labels[int64(idRaw)]` (reinterpret bit-à-bit).
+
+**Bug 3** dans même fonction : sentinels grenade (0) / melee (1) skippés à 2 endroits alors qu'ils ont leurs labels "Grenade" / "Mêlée" en metadata. Fix : retirer les `if row.IsGrenadeMelee { continue }` (la map gère naturellement les ids absents).
+
+**Couverture finale** (curl Madina+JGtm avec serveur rebuilt) :
+- 27 / 48 weapons distincts résolus (vs 13 / 48 avant Round 2).
+- **9613 / 9641 kills couverts (99 %)** — les 28 kills non résolus sont longue traîne (1-6 kills chacun, vrais skins absents de la liste hardcodée des 42 weapons base).
+- Hors scope (longue traîne 1 %) : enrichir `applyWeaponLabels` avec plus de variants OU implémenter le mapping skin→base via le job de réconciliation (`reconciled_as` est `NULL` partout → le job n'a jamais run sur les data existantes).
+
+## [2026-05-05] Match View Combat — Cadence remplacée par EngagementMatchSection (parité avec Contributions)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- **Demande** : remplacer le chart « Cadence des kills par phase de 60s » de l'onglet Combat par le même type de chart que sur la page Contributions (« Engagement »), affichant attendu joueur / réel joueur / réel équipe.
+- **Solution** : réutilisation directe du composant `EngagementMatchSection` (mode `granularity='intra'`) déjà construit pour Contributions/Match View — endpoint `/players/{slug}/matches/{matchId}/engagement`. Les 3 courbes affichées sont :
+  - Équipe alliée (`paceTeam`, gris fonce, fine)
+  - Attendu (`paceAttendu`, gris medium, pointillé)
+  - Joueur (`paceJoueur`, couleur saturée, épaisse 4px)
+  - X = mm:ss (formatté côté composant via `xFormatter`)
+- **Suppressions** :
+  - Composant `MatchCadenceChart.tsx` supprimé (plus aucun consommateur).
+  - Helper `cadenceSeriesFromEvents` retiré de `_chartSeries.ts` + tests associés (3 cas).
+- **Wiring** : `MatchViewPage` importe `EngagementMatchSection` depuis `@/features/engagement/EngagementMatchSection` et le rend entre FragDiff et Antagonistes. Si l'API renvoie 503 (engagement_unavailable), 422 (pve_not_supported) ou aucune courbe, le composant ne rend rien (dégradation silencieuse — déjà gérée).
+- **Tests** : 132/132 passent (`features/match-view` + `components/charts`), `tsc -b` OK. La perte de 3 tests vs avant correspond exactement aux suites supprimées de `cadenceSeriesFromEvents`.
+
+**Résultats** : Onglet Combat = 3 charts cohérents (FragDiff, Engagement intra-match avec attendu/réel joueur/réel équipe, Antagonistes). Cohérence visuelle et fonctionnelle directe avec ce que l'utilisateur voit sur la page Squad → Contributions.
+
+**Prochaine étape** : test visuel sur match avec données engagement disponibles (≥10 matchs d'historique pour avoir un coefficient stable).
+
+## [2026-05-05] Match View Combat — Hotfix « tous les joueurs en bleu »
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- **Bug** : malgré la matrice de tokens (compare-a / cool / warm) attribuée correctement par `buildMatchPlayerColors`, l'utilisateur voyait toutes les courbes du chart Frags Différentiel et toutes les bars Cadence/Antagonistes en nuances de bleu. Cause racine : la résolution `colorToken → resolveToken(...)` arrivait JUSTE-À-TEMPS dans le wrapper ECharts, et quand la CSS var n'était pas chargée (ou retournait `''`), ECharts repassait sur sa palette interne dont les premières couleurs sont toutes du bleu. Pareil pour le fallback `seriesColor(idx)` : `chart-series-1..5` sont 5 nuances d'indigo dans la palette par défaut.
+- **Fix** :
+  - `buildMatchPlayerColors` retourne désormais aussi `hexByXUID` et `hexByGamertag` (résolus une seule fois côté composant React).
+  - Nouvelles props sur les wrappers ECharts pour passer des hex pré-résolus :
+    - `TimeseriesLineChart.seriesColorResolver?: (s, idx) => string | undefined`
+    - `BarStackedChart.componentHexColors?: Record<string, string>`
+  - Priorité de résolution dans les wrappers : hex pré-résolu > token résolu > cycle. Le wrapper retombe sur `seriesColor(idx)` si `resolveToken` renvoie `''` au lieu de laisser ECharts choisir.
+- **Couverture roster** : `buildMatchPlayerColors` accepte maintenant `roster?` en plus du scoreboard. Le roster couvre TOUS les joueurs (bots et joueurs sans stats inclus). Source de team_side : scoreboard puis roster en fallback.
+- **Wiring** : MatchFragDiffChart (via `seriesColorResolver`) + MatchCadenceChart / MatchAntagonistChart (via `componentHexColors`) consomment `colors.hexByXUID` / `colors.hexByGamertag` pré-résolus.
+- **Tests** : 135 tests passent (`features/match-view` + `components/charts`), `tsc -b` OK. Le mock `resolveToken` retourne `var(token)` dans les tests, donc les hex sont des strings non-vides et la priorité hex est exercée correctement.
+
+**Résultats** : Les courbes de FragDiff et les segments Cadence/Antagonistes utilisent désormais explicitement les hex calculés depuis la palette de tokens (compare-a, narrative-dominant, perf-tier-3, divergent-pos pour les amis alliés ; reste du cool pour les autres alliés ; warm pour les ennemis), au lieu de retomber sur la palette ECharts interne (toute en bleu).
+
+**Prochaine étape** : test visuel sur match réel — vérifier que l'équipe alliée et l'équipe adverse sont visuellement distinctes.
+
+## [2026-05-05] Match View Combat — Couleurs squad pour les amis alliés (réutilisation page Squad)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- **Demande** : utiliser les couleurs de la page Squad (`SQUAD_TEAMMATE_COLOR_TOKENS`) pour les amis (`settings.friend_gamertags`) dans les charts Combat de la match-view, **sans casser la distinction allié vs ennemi**.
+- **Règle adoptée** :
+  - Main player → `compare-a` (inchangé).
+  - Ami **allié** (même `team_side` que le main, gamertag dans `friend_gamertags`) → cycle `SQUAD_TEAMMATE_COLOR_TOKENS` (`narrative-dominant`, `perf-tier-3`, `divergent-pos`) — alignement direct avec ce que l'utilisateur voit dans `GamertagCombobox` sur Squad.
+  - Coéquipier non-ami → reste de la palette cool (`perf-tier-2`, `narrative-encounter-ally-plus`, `narrative-remontada`).
+  - Tous les ennemis (amis ou non) → palette warm. Les amis adverses **ne** prennent **pas** la couleur squad : la lecture team prime sur l'identification visuelle individuelle.
+- **Implémentation** :
+  - `buildMatchPlayerColors(scoreboard, meXUID, friendGamertags?)` — nouveau paramètre. Matching gamertag insensible à la casse / espaces.
+  - `MatchViewPage` consomme `useSettings()` et propage `settings.friend_gamertags` aux 3 charts (FragDiff, Cadence, Antagonistes).
+  - `MatchFragDiffChart` / `MatchCadenceChart` / `MatchAntagonistChart` reçoivent `friendGamertags?: readonly string[]` et le forwardent à `buildMatchPlayerColors`.
+- **Import cross-feature** : `apps/web/src/features/match-view/colors.ts` importe `SQUAD_TEAMMATE_COLOR_TOKENS` depuis `apps/web/src/features/squad/colors.ts` — source de vérité unique pour rester aligné si la palette Squad évolue.
+- **Tests** : 6 nouveaux cas dans `colors.test.ts` qui couvrent : main → compare-a, alliés non-amis → other, ennemis → warm, amis alliés → squad tokens, ami adverse → palette ennemie (team prime), matching insensible casse/espaces. 147/147 tests passent (`features/match-view` + `components/charts`). Typecheck `tsc -b` OK.
+
+**Résultats** : Dans un match avec amis alliés présents, ces amis apparaissent désormais dans les mêmes couleurs que sur la page Squad (cohérence d'identité visuelle entre les 2 pages). La distinction allié vs ennemi reste lisible parce que les amis adverses gardent la palette warm.
+
+**Prochaine étape** : test visuel sur match réel avec amis configurés dans Settings.
+
+## [2026-05-05] Match View Combat — Hotfix FragDiff (gamertags + lignes droites)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- **Bug 1 — gamertags non résolus dans FragDiff** : la résolution était basée uniquement sur `team_tab.scoreboard`, mais certains xuids présents dans `combat_tab.highlight_events` ne sont PAS au scoreboard (joueurs sans stats, encodage différent). Le chart Antagonistes fonctionnait parce que `combat_tab.killer_victim` porte `killer_gamertag` / `victim_gamertag` résolus côté Go. Solution : nouveau helper `buildXUIDToGamertagMap(scoreboard, kvPairs?, roster?)` qui cumule les 3 sources avec priorité scoreboard > roster > kvPairs. FragDiff et Cadence consomment désormais cette map, plus le scoreboard seul.
+- **Bug 2 — lissage spline non désiré** : j'avais ajouté `smooth` sur le `TimeseriesLineChart` du FragDiff. Retiré — lignes droites linéaires entre les points.
+- **API helpers** : `allPlayersFragDiffSeries` et `cadenceSeriesFromEvents` acceptent maintenant `xuidToGamertag: Map<string, string>` directement (au lieu de prendre `scoreboard` et reconstruire la map en interne — moins flexible).
+- **Wiring page** : `MatchViewPage.tsx` passe `team_tab.roster` + `combat_tab.killer_victim` à FragDiff et Cadence.
+- **Tests** : nouveau `colors.test.ts` (3 cas pour `buildXUIDToGamertagMap` couvrant priorité scoreboard, fallback kvPair, ignore vides). `_chartSeries.test.ts` adapté à la nouvelle signature. 141/141 passent (`features/match-view` + `components/charts`).
+
+**Résultats** : Les xuids présents uniquement dans `highlight_events` sont désormais résolus via les kvPairs (mêmes gamertags que la chart Antagonistes). Lignes droites sans symboles dans FragDiff comme demandé.
+
+**Prochaine étape** : test visuel sur match réel.
+
 ## [2026-05-05] Match View Combat — Refonte onglet (suppression K/D + Tug-of-war, refonte FragDiff/Antagonistes/Cadence)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.

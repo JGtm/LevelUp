@@ -71,6 +71,14 @@ export interface TimeseriesLineChartProps {
    * pour afficher des secondes en `m:ss`). Reçoit la valeur brute du tick.
    */
   xAxisLabelFormatter?: (value: number | string | Date) => string
+  /**
+   * Override hex couleur par série (priorité absolue : > `colorToken` > cycle).
+   * Reçoit la série + son index ; retourner `undefined` pour fallback.
+   * Utile quand l'appelant a déjà résolu les couleurs via tokens et veut
+   * éviter la double résolution + le risque de fallback sur la palette
+   * cyclée par défaut quand un token CSS n'est pas chargé.
+   */
+  seriesColorResolver?: (s: ChartSeries<ChartPoint2D>, idx: number) => string | undefined
 }
 
 export function TimeseriesLineChart({
@@ -87,6 +95,7 @@ export function TimeseriesLineChart({
   showSymbol = true,
   smooth = false,
   xAxisLabelFormatter,
+  seriesColorResolver,
 }: TimeseriesLineChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPoint2D>[]) =>
@@ -98,8 +107,18 @@ export function TimeseriesLineChart({
         showSymbol,
         smooth,
         xAxisLabelFormatter,
+        seriesColorResolver,
       }),
-    [timeAxis, xAxisType, outcomeMarkers, seriesNameResolver, showSymbol, smooth, xAxisLabelFormatter],
+    [
+      timeAxis,
+      xAxisType,
+      outcomeMarkers,
+      seriesNameResolver,
+      showSymbol,
+      smooth,
+      xAxisLabelFormatter,
+      seriesColorResolver,
+    ],
   )
 
   return (
@@ -123,6 +142,7 @@ interface BuildOpts {
   showSymbol?: boolean
   smooth?: boolean
   xAxisLabelFormatter?: (value: number | string | Date) => string
+  seriesColorResolver?: (s: ChartSeries<ChartPoint2D>, idx: number) => string | undefined
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -138,6 +158,7 @@ export function buildTimeseriesLineOption(
     showSymbol = true,
     smooth = false,
     xAxisLabelFormatter,
+    seriesColorResolver,
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -148,11 +169,20 @@ export function buildTimeseriesLineOption(
     xAxisType ?? (timeAxis ? 'time' : 'category')
 
   const echartsSeries = series.map((s, idx) => {
-    // Une série peut porter explicitement son token (via `colorToken` du
-    // contrat ChartSeries) — on l'utilise en priorité avant la palette cyclée.
-    const color = s.colorToken
-      ? resolveToken(s.colorToken as SemanticToken)
-      : seriesColor(idx)
+    // Priorité de résolution :
+    //  1. seriesColorResolver(s, idx) → hex pré-résolu par l'appelant
+    //     (privilégié quand le caller utilise déjà une palette dédiée :
+    //      évite que `resolveToken` retombe sur '' si le token n'est pas chargé,
+    //      ce qui poussait ECharts à appliquer son palette interne — bleu).
+    //  2. s.colorToken → résolution via tokens à la volée.
+    //  3. seriesColor(idx) → cycle chart-series-1..8.
+    const explicitHex = seriesColorResolver?.(s, idx)
+    const color =
+      explicitHex && explicitHex.length > 0
+        ? explicitHex
+        : s.colorToken
+        ? resolveToken(s.colorToken as SemanticToken) || seriesColor(idx)
+        : seriesColor(idx)
     const name =
       seriesNameResolver?.(s) ??
       (s.meta && typeof s.meta.gamertag === 'string' ? s.meta.gamertag : s.key)

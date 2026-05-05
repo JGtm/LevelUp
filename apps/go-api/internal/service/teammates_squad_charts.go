@@ -784,9 +784,16 @@ func (s *TeammatesService) buildSquadFirstEvents(
 // main + chaque teammate (via leur xuid), agrège par weapon_id et trie ASC
 // par total escouade (peu utilisées en haut).
 //
+// Match set : union des matchs où au moins un coéquipier sélectionné a joué
+// avec le main (cf. spec Python `load_weapon_kills_data` qui passe les
+// match_ids par joueur). Le SQL filtre par (xuid, match_id) — un joueur
+// absent d'un match n'apparaît tout simplement pas dans les rows agrégés
+// pour ce match. L'intersection stricte excluait tout coéquipier qui n'a
+// pas joué exactement les mêmes matchs que les autres → chart absent.
+//
 // Renvoie nil si :
 //   - squadLoader == nil (DI non câblée)
-//   - aucun match partagé
+//   - aucun match commun avec au moins un coéquipier
 //   - aucun joueur avec xuid résolu
 //   - le repo ne renvoie aucune donnée (capability absente ou tables vides)
 func (s *TeammatesService) buildSquadWeaponKills(
@@ -796,20 +803,22 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	teammates []domain.TeammateRow,
 ) *domain.SquadWeaponKills {
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
+		slog.DebugContext(ctx, "teammates_weapon_kills_skipped",
+			"squad_loader_nil", s.squadLoader == nil,
+			"squad_rows", len(allSquadRows),
+			"teammates", len(teammates))
 		return nil
 	}
 
-	// 1. Matchs partagés (intersection — un match qui apparaît N fois dans
-	// allSquadRows = présent pour tous les teammates).
-	matchOccurrences := make(map[string]int)
+	// 1. Union des matchs — chaque match unique présent dans allSquadRows
+	// (= match où le main a joué avec au moins un coéquipier sélectionné).
+	matchSet := make(map[string]struct{})
 	for _, m := range allSquadRows {
-		matchOccurrences[m.MatchID]++
+		matchSet[m.MatchID] = struct{}{}
 	}
-	sharedMatches := make([]string, 0)
-	for mid, n := range matchOccurrences {
-		if n >= len(teammates) {
-			sharedMatches = append(sharedMatches, mid)
-		}
+	sharedMatches := make([]string, 0, len(matchSet))
+	for mid := range matchSet {
+		sharedMatches = append(sharedMatches, mid)
 	}
 	if len(sharedMatches) == 0 {
 		return nil
@@ -845,10 +854,16 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		IncludeGrenadeMelee: true,
 	})
 	if err != nil {
-		slog.WarnContext(ctx, "teammates_weapon_kills_load_failed", "err", err.Error())
+		slog.WarnContext(ctx, "teammates_weapon_kills_load_failed",
+			"err", err.Error(),
+			"matches", len(sharedMatches),
+			"xuids", len(xuids))
 		return nil
 	}
 	if len(rows) == 0 {
+		slog.DebugContext(ctx, "teammates_weapon_kills_empty_rows",
+			"matches", len(sharedMatches),
+			"xuids", len(xuids))
 		return nil
 	}
 

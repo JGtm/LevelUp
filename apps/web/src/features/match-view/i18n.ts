@@ -68,6 +68,8 @@ export interface MatchViewText {
   labelPowerWeapon: string
   labelMelee: string
   labelOtherKills: string
+  weaponUnknownPrefix: string
+  weaponOtherGroup: string
   // Onglet médias
   mediaNoCaptures: string
   mediaNoCapturesDesc: string
@@ -137,6 +139,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelPowerWeapon: 'Armes lourdes',
     labelMelee: 'Mêlée',
     labelOtherKills: 'Autres',
+    weaponUnknownPrefix: 'Arme inconnue',
+    weaponOtherGroup: 'Autres armes',
     mediaNoCaptures: 'Aucune capture',
     mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
     sectionMedals: 'Médailles',
@@ -202,6 +206,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelPowerWeapon: 'Power weapons',
     labelMelee: 'Melee',
     labelOtherKills: 'Other',
+    weaponUnknownPrefix: 'Unknown weapon',
+    weaponOtherGroup: 'Other weapons',
     mediaNoCaptures: 'No captures',
     mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',
     sectionMedals: 'Medals',
