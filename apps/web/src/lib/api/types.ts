@@ -1495,6 +1495,7 @@ export interface SquadPerformanceSeriesPoint {
   match_id: string
   start_time: string
   match_order: number
+  map_name?: string
   kills: number
   deaths: number
   assists: number
