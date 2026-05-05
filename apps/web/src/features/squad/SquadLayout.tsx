@@ -15,7 +15,7 @@
  *   [N matchs] [Analyser] [Réinitialiser]
  *
  * Route parente : /players/$playerSlug/squad
- * Routes enfants : /squad/synergies · /squad/contributions · /squad/v2
+ * Routes enfants : /squad/synergies · /squad/contributions
  */
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
@@ -286,10 +286,8 @@ export function SquadLayout() {
   // ── Routes actives ───────────────────────────────────────────────────────
   const synergiesRoute = '/players/$playerSlug/squad/synergies' as const
   const contributionsRoute = '/players/$playerSlug/squad/contributions' as const
-  const v2Route = '/players/$playerSlug/squad/v2' as const
   const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
-  const isV2 = !!matchRoute({ to: v2Route, fuzzy: true })
 
   // ── Gestion chargement / erreur ──────────────────────────────────────────
   // La barre de filtres (sticky) est toujours rendue; seul le contenu est
@@ -494,13 +492,6 @@ export function SquadLayout() {
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isContributions ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               >
                 {t.nav.contributions}
-              </Link>
-              <Link
-                to="/players/$playerSlug/squad/v2"
-                params={{ playerSlug }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isV2 ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              >
-                {t.nav.v2}
               </Link>
             </nav>
           </div>

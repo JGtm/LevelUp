@@ -11,13 +11,15 @@ import {
   type SquadEngagementSession as ViewSession,
   type SquadPlayerEngagement as ViewPlayer,
 } from '@/features/squad/v2/SquadEngagementView'
-import { useSquadEngagementSession } from '@/features/engagement/queries'
+import { useSquadEngagementSession, type SquadTeammateEntry } from '@/features/engagement/queries'
 import type { SemanticToken } from '@/lib/accessibility'
 
 export interface SquadEngagementSectionProps {
   playerSlug: string
   matchIds?: string[]
-  teammates?: string[]
+  teammates?: SquadTeammateEntry[]
+  /** Couleurs hex par gamertag — utilise en priorité sur les tokens internes. */
+  colorByPlayer?: Record<string, string>
 }
 
 const COLOR_TOKENS: SemanticToken[] = [
@@ -28,7 +30,7 @@ const COLOR_TOKENS: SemanticToken[] = [
 ]
 
 export function SquadEngagementSection(props: SquadEngagementSectionProps) {
-  const { playerSlug, matchIds = [], teammates = [] } = props
+  const { playerSlug, matchIds = [], teammates = [], colorByPlayer } = props
   const query = useSquadEngagementSession(playerSlug, matchIds, teammates)
 
   const session: ViewSession = useMemo(() => {
@@ -40,6 +42,7 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
       gamertag: p.gamertag,
       paceObserved: p.pace_observed,
       colorToken: COLOR_TOKENS[i % COLOR_TOKENS.length],
+      colorHex: colorByPlayer?.[p.gamertag],
     }))
     return {
       labels: query.data.labels,

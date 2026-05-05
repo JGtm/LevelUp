@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-05-05] refactor(squad): suppression doublons Contributions + route Vue Squad V2
+
+**Statut** : Complété.
+
+**Contexte** : La page Contributions contenait deux sections dupliquées par rapport à la page Synergies ("Impact des coéquipiers" et "Historique des matchs avec coéquipiers"). La page "Vue Squad V2" n'était plus utile en tant que route standalone — son contenu clé (SquadEngagementView) a été intégré directement dans la page Contributions.
+
+**Décisions techniques** :
+
+1. **Suppression depuis `SquadContributionsPage`** : blocs `SquadImpactScoreboard` et `SquadMatchHistoryTable` + variables `impactMatrix` / `matchHistory` + imports correspondants.
+
+2. **Suppression du nav tab "Vue Squad V2"** dans `SquadLayout` : lien, variable `isV2`, constante `v2Route` et clé `nav.v2` dans l'i18n.
+
+3. **Suppression du fichier de route** `apps/web/src/routes/players/$playerSlug/squad/v2.tsx` — TanStack Router file-based, routeTree.gen.ts se regénère automatiquement.
+
+4. **Conservation du dossier `v2/`** : `SquadEngagementView.tsx` et `v2/types.ts` restent utilisés par `SquadEngagementSection` et `SessionBriefing` respectively.
+
+5. **Nettoyage tests** : retrait de `/squad/v2` de la whitelist `VALID_PLAYER_SUBPATHS` dans `navigation.test.ts`.
+
+**Résultats** : `tsc --noEmit` propre, 0 référence cassée.
+
+**Prochaine étape** : Aucune — nettoyage complet.
+
+---
+
 ## [2026-05-05] feat(squad/performance): graphe Rang — CSR/LUSR séparés + MMR équipe unique
 
 **Statut** : Complété.

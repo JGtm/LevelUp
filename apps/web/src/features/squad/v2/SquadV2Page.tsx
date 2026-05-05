@@ -211,7 +211,10 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
 
       {/* Engagement equipe (Mock 15 v2) */}
       <section data-testid="squad-v2-engagement">
-        <SquadEngagementSection playerSlug={playerSlug} teammates={teammates} />
+        <SquadEngagementSection
+          playerSlug={playerSlug}
+          teammates={teammates?.map((x) => ({ xuid: x, gamertag: x }))}
+        />
       </section>
 
       {/* Radar (S8) */}

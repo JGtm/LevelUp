@@ -122,9 +122,11 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 
 	matchIDsParam := r.URL.Query().Get("match_ids")
 	teammatesParam := r.URL.Query().Get("teammates")
+	gamertgsParam := r.URL.Query().Get("teammate_gamertags")
 
 	matchIDs := splitCSV(matchIDsParam)
 	teammateXUIDs := splitCSV(teammatesParam)
+	teammateGamertags := splitCSV(gamertgsParam)
 
 	// Si aucun match_id fourni, utilise les matchs recents du joueur (limite a 15).
 	if len(matchIDs) == 0 {
@@ -139,10 +141,14 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 		}
 	}
 
-	// Convertir teammates en EngagementCoefficient (le service utilise XUID).
+	// Convertir en EngagementCoefficient — zippe XUID et gamertag (index identique).
 	teammates := make([]domain.EngagementCoefficient, 0, len(teammateXUIDs))
-	for _, x := range teammateXUIDs {
-		teammates = append(teammates, domain.EngagementCoefficient{XUID: x})
+	for i, x := range teammateXUIDs {
+		gt := ""
+		if i < len(teammateGamertags) {
+			gt = teammateGamertags[i]
+		}
+		teammates = append(teammates, domain.EngagementCoefficient{XUID: x, Gamertag: gt})
 	}
 
 	session, err := svc.GetSquadSession(r.Context(), matchIDs, teammates)

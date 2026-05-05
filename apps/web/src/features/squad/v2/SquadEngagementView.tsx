@@ -43,8 +43,10 @@ export interface SquadPlayerEngagement {
   gamertag: string
   /** Pace observe par match (longueur = labels.length). */
   paceObserved: number[]
-  /** Token couleur semantique pour la courbe + chip. */
+  /** Token couleur semantique pour la courbe + chip (fallback si colorHex absent). */
   colorToken: SemanticToken
+  /** Couleur hex directe — prioritaire sur colorToken (ex. couleur joueur depuis playerColors). */
+  colorHex?: string
 }
 
 export interface SquadEngagementViewProps {
@@ -70,6 +72,7 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
         id: p.xuid,
         label: p.gamertag,
         colorToken: p.colorToken,
+        colorHex: p.colorHex,
       })),
     [session.players],
   )
@@ -140,7 +143,7 @@ function buildSquadEngagementOption(
   const lobbyColor = resolveToken('chart-series-1') // pale, en arriere-plan
   const expectedColor = resolveToken('chart-series-2') // medium, dashed marque
   const teamColor = resolveToken('chart-series-3') // gris fonce sature
-  const overlayColor = overlay ? resolveToken(overlay.colorToken) : undefined
+  const overlayColor = overlay ? (overlay.colorHex ?? resolveToken(overlay.colorToken)) : undefined
 
   type SeriesItem = {
     name: string

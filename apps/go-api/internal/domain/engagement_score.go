@@ -131,6 +131,7 @@ type SquadPlayerEngagement struct {
 
 type EngagementCoefficient struct {
 	XUID         string `json:"xuid"`
+	Gamertag     string `json:"gamertag,omitempty"`
 	ModeCategory string `json:"mode_category"`
 
 	// CoefTeamShare = mediane historique de (pace_joueur / pace_team_per_player).

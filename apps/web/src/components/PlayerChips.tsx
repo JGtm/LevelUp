@@ -25,6 +25,8 @@ export interface PlayerChipItem {
   label: string
   /** Token de couleur semantique (ex. 'chart-series-1'). */
   colorToken: SemanticToken
+  /** Couleur hex directe — prioritaire sur colorToken si fournie (ex. couleur joueur depuis playerColors). */
+  colorHex?: string
 }
 
 export interface PlayerChipsProps {
@@ -97,7 +99,7 @@ interface PlayerChipButtonProps {
 
 function PlayerChipButton(props: PlayerChipButtonProps) {
   const { player, isActive, onClick } = props
-  const accent = tokenCssVar(player.colorToken)
+  const accent = player.colorHex ?? tokenCssVar(player.colorToken)
 
   return (
     <button

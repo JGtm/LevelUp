@@ -55,17 +55,25 @@ export function useEngagementTimeseries(playerSlug: string, limit: number = 50) 
   })
 }
 
+export interface SquadTeammateEntry {
+  xuid: string
+  gamertag: string
+}
+
 export function useSquadEngagementSession(
   playerSlug: string,
   matchIds: string[],
-  teammates: string[],
+  teammates: SquadTeammateEntry[],
 ) {
+  const xuids = teammates.map((t) => t.xuid)
+  const gamertags = teammates.map((t) => t.gamertag)
   return useQuery({
-    queryKey: queryKeys.engagementSquadSession(playerSlug, matchIds, teammates),
+    queryKey: queryKeys.engagementSquadSession(playerSlug, matchIds, xuids),
     queryFn: () => {
       const params = new URLSearchParams()
       if (matchIds.length > 0) params.set('match_ids', matchIds.join(','))
-      if (teammates.length > 0) params.set('teammates', teammates.join(','))
+      if (xuids.length > 0) params.set('teammates', xuids.join(','))
+      if (gamertags.length > 0) params.set('teammate_gamertags', gamertags.join(','))
       const qs = params.toString()
       return api.get<SquadEngagementSessionAPI>(
         `/players/${playerSlug}/pages/squad/v2/engagement${qs ? '?' + qs : ''}`,

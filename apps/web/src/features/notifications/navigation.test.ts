@@ -41,7 +41,6 @@ const VALID_PLAYER_SUBPATHS = [
   '/stats/query',
   '/sessions',
   '/squad',
-  '/squad/v2',
   '/timeseries',
   '/teammates',
   '/compare',

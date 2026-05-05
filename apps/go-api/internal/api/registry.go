@@ -305,7 +305,7 @@ func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (*service
 		return nil, err
 	}
 	repo := duckdb.NewEngagementScoreRepo(pdb)
-	return service.NewPlayerEngagementService(repo, pdb.XUID), nil
+	return service.NewPlayerEngagementService(repo, pdb.XUID, pdb.Gamertag), nil
 }
 
 // Media retourne un MediaService pour le joueur.
