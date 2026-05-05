@@ -178,6 +178,33 @@ func (r *CitationsRepo) LoadMatchCitationsForView(ctx context.Context, matchID s
 	return result, rows.Err()
 }
 
+// LoadMatchCitationsRich charge les citations d'un match avec cumul + métadonnées de paliers (Q41).
+// Retourne les données nécessaires à BuildCitationSnippets (filtrage mastery, progress ring, glow).
+// Dégradation silencieuse si la table match_citations est absente.
+func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID string) ([]domain.HomeMatchCitationRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.ReadDB().Query(ctx, Q41SummaryTabCitations, matchID)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var result []domain.HomeMatchCitationRaw
+	for rows.Next() {
+		var row domain.HomeMatchCitationRaw
+		if err := rows.Scan(
+			&row.Norm, &row.Delta, &row.Cumulative,
+			&row.Display, &row.ImagePath, &row.TierTargets, &row.Description,
+		); err != nil {
+			return nil, fmt.Errorf("LoadMatchCitationsRich scan: %w", err)
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
 // WriteCitationsForMatch écrit les deltas de citations calculés dans match_citations.
 // Utilise un UPSERT — si la ligne existe déjà, on n'écrase pas (idempotent).
 func (r *CitationsRepo) WriteCitationsForMatch(ctx context.Context, matchID string, deltas []domain.CitationMatchDelta) error {

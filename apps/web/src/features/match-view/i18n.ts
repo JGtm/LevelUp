@@ -65,13 +65,16 @@ export interface MatchViewText {
   radarTooltipGlossaryLink: string
   // Charts armes
   chartWeaponPieTitle: string
-  chartWeaponTableTitle: string
   labelPowerWeapon: string
   labelMelee: string
   labelOtherKills: string
   // Onglet médias
   mediaNoCaptures: string
   mediaNoCapturesDesc: string
+  // Résumé — médailles & citations
+  sectionMedals: string
+  sectionCitations: string
+  newlyMastered: string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -129,12 +132,14 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     radarTooltipObjective: "Points d'objectif (PersonalScoreAwards).",
     radarTooltipGlossaryLink: '→ Glossaire',
     chartWeaponPieTitle: 'Frags par arme',
-    chartWeaponTableTitle: 'Détail par arme',
     labelPowerWeapon: 'Armes lourdes',
     labelMelee: 'Mêlée',
     labelOtherKills: 'Autres',
     mediaNoCaptures: 'Aucune capture',
     mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
+    sectionMedals: 'Médailles',
+    sectionCitations: 'Citations',
+    newlyMastered: 'Maîtrisé !',
   },
   en: {
     prevMatch: 'Previous match',
@@ -190,12 +195,14 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     radarTooltipObjective: 'Objective points (PersonalScoreAwards).',
     radarTooltipGlossaryLink: '→ Glossary',
     chartWeaponPieTitle: 'Frags by weapon',
-    chartWeaponTableTitle: 'Weapons breakdown',
     labelPowerWeapon: 'Power weapons',
     labelMelee: 'Melee',
     labelOtherKills: 'Other',
     mediaNoCaptures: 'No captures',
     mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',
+    sectionMedals: 'Medals',
+    sectionCitations: 'Commendations',
+    newlyMastered: 'Mastered!',
   },
 }
 

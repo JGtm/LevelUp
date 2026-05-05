@@ -295,13 +295,14 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 		return nil, err
 	}
 
-	labels := r.lookupMedalLabels(ctx, medalIDs)
+	meta := r.lookupMedalMeta(ctx, medalIDs)
 	for index := range results {
-		if label, ok := labels[results[index].MedalID]; ok {
-			results[index].Label = label
-			continue
+		if m, ok := meta[results[index].MedalID]; ok {
+			results[index].Label = m.label
+			results[index].Difficulty = m.difficulty
+		} else {
+			results[index].Label = strconv.FormatInt(results[index].MedalID, 10)
 		}
-		results[index].Label = strconv.FormatInt(results[index].MedalID, 10)
 	}
 	return results, nil
 }
@@ -344,9 +345,11 @@ func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID s
 	var weaponIDs []int64
 	for rows.Next() {
 		var w domain.WeaponKillRaw
-		if err := rows.Scan(&w.WeaponID, &w.Kills); err != nil {
+		var widU uint64 // weapon_id est UBIGINT, scanner en uint64 puis reinterpréter en int64
+		if err := rows.Scan(&widU, &w.Kills); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchWeaponKills scan: %w", err)
 		}
+		w.WeaponID = int64(widU) //nolint:gosec
 		results = append(results, w)
 		weaponIDs = append(weaponIDs, w.WeaponID)
 	}
@@ -365,6 +368,48 @@ func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID s
 	return results, nil
 }
 
+type medalMeta struct {
+	label      string
+	difficulty string
+}
+
+// lookupMedalMeta retourne label (citation_mappings) + difficulty (medal_definitions) par medal_id.
+func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) map[int64]medalMeta {
+	result := make(map[int64]medalMeta, len(medalIDs))
+	if len(medalIDs) == 0 || r.pdb.Metadata == nil {
+		return result
+	}
+	q, args, ok := buildLookupQuery(
+		`SELECT
+		     cm.medal_id,
+		     cm.citation_name_display,
+		     COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
+		 FROM citation_mappings cm
+		 LEFT JOIN medal_definitions md ON md.medal_name_id = cm.medal_id
+		 WHERE cm.medal_id IN (%s)
+		   AND cm.citation_name_display IS NOT NULL
+		   AND cm.citation_name_display <> ''`,
+		medalIDs,
+	)
+	if !ok {
+		return result
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var label, diff string
+		if err := rows.Scan(&id, &label, &diff); err == nil {
+			result[id] = medalMeta{label: label, difficulty: diff}
+		}
+	}
+	return result
+}
+
+// lookupMedalLabels est conservé pour les usages internes (bulk scoreboard).
 func (r *MatchViewRepo) lookupMedalLabels(ctx context.Context, medalIDs []int64) map[int64]string {
 	return lookupLabelsByID(
 		ctx,
@@ -802,9 +847,11 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	var weaponIDs []int64
 	for rows.Next() {
 		var w domain.BulkWeaponKillRaw
-		if err := rows.Scan(&w.XUID, &w.WeaponID, &w.Kills); err != nil {
+		var widU uint64 // weapon_id est UBIGINT, scanner en uint64 puis reinterpréter en int64
+		if err := rows.Scan(&w.XUID, &widU, &w.Kills); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchBulkWeaponKills scan: %w", err)
 		}
+		w.WeaponID = int64(widU) //nolint:gosec
 		results = append(results, w)
 		weaponIDs = append(weaponIDs, w.WeaponID)
 	}

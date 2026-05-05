@@ -1,5 +1,164 @@
 # Thought Log
 
+## [2026-05-05] Match View Résumé — Médailles + Citations avec glow et progress rings
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- **Go backend** : 7 fichiers modifiés :
+  - `MedalRaw` enrichi avec `Difficulty` ; `MatchMedal` avec `ImageURL` + `Difficulty`
+  - `lookupMedalMeta` dans `match_view_repo.go` : JOIN `citation_mappings` + `medal_definitions` pour label + difficulty en une query
+  - `Q41SummaryTabCitations` (nouvelle constante) : delta + cumul global + tiers + image_path pour un seul match
+  - `LoadMatchCitationsRich` ajouté à `CitationsRepo` + interface `CitationsRepository` + noop
+  - `buildSummaryTabFull` reçoit `titleSlug` + `richCitations`, appelle `analysis.BuildCitationSnippets` (filtre mastery automatique)
+  - `convertMedals` génère `ImageURL` via `static.URL(KindMedal, titleSlug, medalID)` + propage `Difficulty`
+  - `MatchSummaryTab.Citations` passe de `[]MatchCitation` à `[]MatchCitationSnippet` (breaking change volontaire côté JSON)
+- **TypeScript frontend** : `MatchMedal` enrichi (`image_url`, `difficulty`) ; `MatchSummaryTab.citations` typé `MatchCitationSnippet[]`
+- **Nouveau composant** `MatchSummaryMedalsAndCitations.tsx` : `MatchMedalsSection` (toutes médailles, wrap, glow rareté) + `MatchCitationsSection` (CitationProgressRing, bordure jaune si `is_newly_mastered`, label "Maîtrisé !")
+- Citations déjà masterisées avant le match filtrées côté Go (`BuildCitationSnippets` réutilisé tel quel)
+
+**Résultats** : Go compile + tests OK ; TypeScript 0 erreur.
+
+**Prochaine étape** : /.
+
+## [2026-05-05] Home — Glow de rareté sur les médailles des tuiles de match
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- Ajout du champ `Difficulty string` dans `domain.RecentMatchMedal` (Go) et `difficulty?: string` dans `RecentMatchMedal` (TypeScript).
+- `resolveMedalLabels` étendu pour sélectionner `COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal')` depuis `medal_definitions`, propagé dans `medalLabel.difficulty` et remonté dans `LoadMatchMedals`.
+- Côté frontend : import de `dropShadowForDifficulty` dans `match-card.tsx` + application sur l'image de chaque médaille via `style={{ filter: glow }}`.
+- Aucun changement d'interface ni de query principale — ajout additionnel sans breaking change (omitempty côté JSON).
+
+**Résultats** : Go et TypeScript compilent sans erreur. Médailles Normal (pas de glow), Heroic (bleu), Legendary (violet), Mythic (rose) visibles dans les tuiles home.
+
+**Prochaine étape** : /.
+
+## [2026-05-05] Match View — Radar synergie dans l'onglet Résumé
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- `ChartCard.title` : type élargi de `string` à `ReactNode` (backward-compatible) pour permettre un `InfoTooltip` dans le titre.
+- Nouveau composant `MatchSummaryRadarChart` dans `MatchSummaryCharts.tsx` (C10) : filtre `data.radar` sur `meXUID`, construit un `RadarSeriesPayload` avec les axes bruts + `axisLabels` i18n, délègue à `buildRadarOption` (aire remplie `areaStyle opacity 0.15` déjà incluse).
+- `InfoTooltip` dans le titre : 6 axes + lien glossaire (même contenu que Contributions page).
+- Grille résumé étendue à `lg:grid-cols-3` : [KDA] [Spree] [Radar] — reste 2 colonnes en dessous de lg.
+- 14 strings i18n ajoutées (fr + en) dans `MATCH_VIEW_TEXT`.
+
+**Résultats** : Radar joueur actif avec aire remplie et tooltip (i) à droite du graphe Spree. TypeScript clean (0 erreur).
+
+**Prochaine étape** : /.
+
+
+## [2026-05-05] Match View — Onglet Médias
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- Nouveau composant `MatchMediaTab.tsx` : convertit `AssociatedMediaItem[]` (déjà dans `data.media_tab`) en `MediaItemRow[]` pour réutiliser `MediaThumbnailCard` et `MediaLightbox` (CoverFlowModal) sans dupliquer la logique.
+- Empty state : card centré + icône "caméra barrée" SVG + titre + sous-titre localisé. Pas de placeholder générique.
+- Like toggle : état local optimiste (liked + like_count delta) + appel `useToggleMediaLike`. `like_count` initialisé à 0 (non fourni par `AssociatedMediaItem`).
+- i18n : 2 strings ajoutées dans `MATCH_VIEW_TEXT` (fr/en) : `mediaNoCaptures`, `mediaNoCapturesDesc`.
+- `MatchViewPage.tsx` : destructure `media_tab`, branche `activeTab === 'media'` entre combat et le placeholder générique.
+- Couleurs : uniquement tokens sémantiques (`text-muted-foreground`, `bg-muted`, `text-foreground`) — conforme règle §20.
+
+**Résultats** : Onglet fonctionnel avec grille responsive (2→5 colonnes), lightbox, et empty state soigné.
+
+**Prochaine étape** : /.
+
+## [2026-05-05] Match View — Barre de progression de rang dans le header
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- `ProgressPct *float64` ajouté à `MatchViewRank` (domain + JSON `progress_pct`).
+- Calcul dans `buildRankBlock` : `mod(rating_value, 50) / 50` — même `tierSize = 50` que `home_canonical.go` (CSR et LUSR Halo Infinite ont tous les deux des sous-tiers de 50 points). Nil pour Onyx.
+- `progress_pct?: number | null` ajouté à `MatchViewRank` dans `types.ts`.
+- Frontend : barre à droite du bloc rang, prend le `flex-1` restant. Fill `divergent-neutral`, labels `tier_label` (gauche) et `nextTierLabel()` (droite via helper JS avec `TIER_ORDER` EN constant). Dégradation gracieuse si `progress_pct` null.
+- `nextTierLabel()` : calcule le tier suivant depuis l'ordre canonique Halo (Bronze 1→6, Silver, Gold, Platinum, Diamond, Onyx). Retourne null pour Onyx (pas de barre).
+- 6 tests ajoutés dans `TestBuildRankBlock_ProgressPct` — cas nominal, début/fin de tier, Onyx, nil value, nil tier.
+- Barre composite améliorée : deux segments (base stable + delta coloré), centrage `self-center`, labels tier courant / tier suivant. Delta clamped à [0,1] si changement de tier.
+
+**Résultats** : `go test ./...` vert (tous packages).
+
+**Prochaine étape** : Correction du centrage vertical de la barre + `nextTierLabel` pour labels FR.
+
+## [2026-05-05] Match View — Fixes barre de rang : centrage vertical + nextTierLabel FR
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- Centrage vertical : le conteneur de la barre passe de `flex flex-col gap-1 self-center` à `relative flex flex-1 items-center`. Les labels (tier courant / suivant) passent en `absolute inset-x-0 top-full mt-1` pour ne pas gonfler la hauteur du conteneur. Résultat : seule la barre h-2 participe au calcul de hauteur → `items-center` du parent l'aligne parfaitement au centre de l'icône de rang et des lignes de texte.
+- `nextTierLabel` FR : la fonction cherche d'abord dans `TIER_ORDER_EN` (labels anglais canoniques), puis applique un parser de chiffres romains I–VI pour les labels localisés (ex: "Or III" → "Or IV"). Fallback digit pour tout autre format "[nom] [1-5]". Retourne null pour le sous-tier VI (frontière de tier, le tier suivant n'est pas connu sans mapping complet) et pour Onyx.
+
+**Résultats** : Barre centrée en hauteur. "Or III" → "Or IV" correct.
+
+**Prochaine étape** : /.
+
+## [2026-05-05] Match View — Durée du match dans le header
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- `playable_duration_seconds` était déjà présent dans `MatchViewHeader` (Go) et dans `types.ts` — aucun changement backend.
+- Ajout de `formatDuration(secs: number): string` dans `MatchHeader.tsx` : format `Xm Ys` (ou `Xm` si 0 secondes).
+- Affichage dans la ligne méta du `MatchHeaderCard`, après le badge playlist, séparé par un `·` atténué (`text-muted-foreground/50`).
+- Clé i18n `duration` ajoutée dans `MatchViewText` (FR: "Durée" / EN: "Duration") pour l'`aria-label`.
+- Condition d'affichage : `playable_duration_seconds != null` (dégradation gracieuse si absent).
+
+**Résultats** : Purely frontend, aucun test Go impacté.
+
+**Prochaine étape** : Barre composite de progression de rang (nécessite ajout de `progress_pct` dans `MatchViewRank` côté backend).
+
+## [2026-05-05] Match View — charts 03 & 04 + hist avg câblé
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- Q17 étendu à 19 colonnes : ajout `headshot_kills`, `max_killing_spree` depuis `match_participants`.
+- Q29 ajouté : historique 50 matchs récents (K/D/A + spree/headshots + perfect kills via medals CTE) pour le calcul des moyennes historiques par mode.
+- `MatchExpectedStats` étendu : 3 nouveaux champs `HistAvgSpree`, `HistAvgHeadshotKills`, `HistAvgPerfectKills`.
+- `buildExpectedStats` : calcul inline des hist avg depuis `[]MatchHistAvgRow` filtré par mode category (via `analysis.ComputeModeCategory`). `HasHistAvg` désormais peuplé côté service.
+- `buildSummaryTabFull` : populate `HeadshotKills`, `MaxKillingSpree`, `PerfectKills` (via medals scan, medal_name_id=1512363953).
+- Frontend : `MatchKdaExpectedChart` (chart 03) + `MatchSpreeChart` (chart 04) dans `MatchSummaryCharts.tsx`. Per-bar colors via `resolveToken()` (tokens: divergent-pos/neg/info pour K/D/A ; outcome-dnf/narrative-contre-remontada/narrative-dominant pour spree/headshots/perfect). Opacité réduite pour séries secondaires (0.45 attendu, 0.28 hist moy).
+- Strings i18n FR+EN ajoutées dans `features/match-view/i18n.ts`.
+- `ChartCard` utilisé avec dummy series pour accéder aux helpers UI (loading/empty states).
+
+**Résultats** : `go test ./...` vert (1228 tests), `tsc -b` propre.
+
+**Prochaine étape** : /.
+
+## [2026-05-05] Rank badge images + hook path fix
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- `normalizeHomeSkillPeakBadgeParts` : fallback sub_tier depuis `tierLabel` déplacé hors du bloc `if normalizedTier == ""` → fonctionne aussi quand `tier` est valide mais `sub_tier=0`.
+- `buildRankBlock` : même fallback + guard `>= 1 && <= 6` + restriction `RatingType != "CSR"` retirée (LUSR utilise les mêmes fichiers static). Test mis à jour.
+- `settings.json` : chemins hooks absolus pour éviter `MODULE_NOT_FOUND` quand CWD = `apps/go-api`.
+
+**Résultats** : tests verts, images rang visibles home + match view.
+
+**Prochaine étape** : /.
+
+## [2026-05-05] MatchView résumé — cartes stats (MMR, frags, morts, durée de vie)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Contexte** : l'onglet Résumé était un placeholder. Ajout de 4 cartes KPI : MMR équipe vs adverse, Frags vs attendus, Morts vs attendues, Durée de vie moyenne.
+
+**Décision technique** :
+1. **Backend Go** : extension Q17 (`+p.team_mmr, p.enemy_mmr`), `PlayerMatchStatsRaw` (+2 champs), Scan mis à jour, `buildSummaryTabFull` calcule `DeltaMMR = TeamMMR - EnemyMMR` et remplit les 3 champs dans `MatchSummaryKpis`.
+2. **TypeScript** : 3 champs optionnels ajoutés à `MatchSummaryKpis` (`team_mmr`, `enemy_mmr`, `delta_mmr`).
+3. **Frontend** : `MatchVsStatCard` (générique X vs Y + delta, token `divergent-pos/neg`) + `MatchSummaryCardsSection` (grille 2-cols / sm:4-cols) dans `MatchStatCards.tsx`. Branchement dans `MatchViewPage.tsx` sur l'onglet `summary`.
+
+**Tests** : `go test ./internal/service/... -count=1` passe. `npm run typecheck` passe.
+
+**Prochaine étape** : enrichissement de l'onglet Résumé (medals, personal score, rang CSR après match).
+
+---
+
 ## [2026-05-05] MatchView header rework — Sprint 3 (Phase 2c) livré — migration consommateurs filterSpec
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.

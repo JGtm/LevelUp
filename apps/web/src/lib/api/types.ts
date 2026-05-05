@@ -2016,6 +2016,8 @@ export interface MatchMedal {
   name: string
   count: number
   description: string | null
+  image_url?: string | null
+  difficulty?: string | null
 }
 
 export interface MatchCitation {
@@ -2071,7 +2073,7 @@ export interface MatchSummaryTab {
   kpis: MatchSummaryKpis
   personal_result: MatchPersonalResult
   medals: MatchMedal[]
-  citations: MatchCitation[]
+  citations: MatchCitationSnippet[]
   expected_stats: MatchExpectedStats
 }
 

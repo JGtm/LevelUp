@@ -170,6 +170,8 @@ type MatchMedal struct {
 	Name        string  `json:"name"`
 	Count       int     `json:"count"`
 	Description *string `json:"description,omitempty"`
+	ImageURL    string  `json:"image_url,omitempty"`
+	Difficulty  string  `json:"difficulty,omitempty"`
 }
 
 // MatchCitation : badge de citation associé au match.
@@ -182,11 +184,11 @@ type MatchCitation struct {
 
 // MatchSummaryTab : contenu de l'onglet Résumé.
 type MatchSummaryTab struct {
-	KPIs           MatchSummaryKpis    `json:"kpis"`
-	PersonalResult MatchPersonalResult `json:"personal_result"`
-	Medals         []MatchMedal        `json:"medals"`
-	Citations      []MatchCitation     `json:"citations"`
-	ExpectedStats  MatchExpectedStats  `json:"expected_stats"`
+	KPIs           MatchSummaryKpis      `json:"kpis"`
+	PersonalResult MatchPersonalResult   `json:"personal_result"`
+	Medals         []MatchMedal          `json:"medals"`
+	Citations      []MatchCitationSnippet `json:"citations"`
+	ExpectedStats  MatchExpectedStats    `json:"expected_stats"`
 }
 
 // ---------------------------------------------------------------------------
@@ -561,9 +563,10 @@ type MatchEnrichmentRaw struct {
 
 // MedalRaw : données brutes de Q14.
 type MedalRaw struct {
-	MedalID int64
-	Count   int
-	Label   string
+	MedalID    int64
+	Count      int
+	Label      string
+	Difficulty string
 }
 
 // EventRaw : données brutes de Q21.
