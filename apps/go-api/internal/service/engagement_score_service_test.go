@@ -81,7 +81,7 @@ func (m *mockEngagementRepo) LoadAllCoefficients(_ context.Context, _ string) ([
 // =============================================================================
 
 func TestPlayerEngagement_MatchNotFound(t *testing.T) {
-	svc := NewPlayerEngagementService(&mockEngagementRepo{matchCtx: nil}, "xuid-1")
+	svc := NewPlayerEngagementService(&mockEngagementRepo{matchCtx: nil}, "xuid-1", "Tester")
 	_, err := svc.GetMatchEngagement(context.Background(), "match-x")
 	if !errors.Is(err, ErrEngagementMatchNotFound) {
 		t.Errorf("expected ErrEngagementMatchNotFound, got %v", err)
@@ -91,7 +91,7 @@ func TestPlayerEngagement_MatchNotFound(t *testing.T) {
 func TestPlayerEngagement_PvENotSupported(t *testing.T) {
 	svc := NewPlayerEngagementService(&mockEngagementRepo{
 		matchCtx: &port.MatchEngagementContext{MatchID: "m", IsPvE: true},
-	}, "xuid-1")
+	}, "xuid-1", "Tester")
 	_, err := svc.GetMatchEngagement(context.Background(), "m")
 	if !errors.Is(err, ErrEngagementPvENotSupported) {
 		t.Errorf("expected ErrEngagementPvENotSupported, got %v", err)
@@ -146,7 +146,7 @@ func TestPlayerEngagement_HappyPath_PvP(t *testing.T) {
 		},
 	}
 
-	svc := NewPlayerEngagementService(repo, "xuid-1")
+	svc := NewPlayerEngagementService(repo, "xuid-1", "Tester")
 	result, err := svc.GetMatchEngagement(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -183,7 +183,7 @@ func TestPlayerEngagement_ColdStartUsesNeutralCoefs(t *testing.T) {
 		coef:      nil,                                 // cold start
 	}
 
-	svc := NewPlayerEngagementService(repo, "xuid-1")
+	svc := NewPlayerEngagementService(repo, "xuid-1", "Tester")
 	result, err := svc.GetMatchEngagement(context.Background(), "m")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -205,7 +205,7 @@ func TestPlayerEngagement_ColdStartUsesNeutralCoefs(t *testing.T) {
 // =============================================================================
 
 func TestPlayerEngagement_Profile_Empty(t *testing.T) {
-	svc := NewPlayerEngagementService(&mockEngagementRepo{allCoefs: []domain.EngagementCoefficient{}}, "xuid-1")
+	svc := NewPlayerEngagementService(&mockEngagementRepo{allCoefs: []domain.EngagementCoefficient{}}, "xuid-1", "Tester")
 	out, err := svc.GetEngagementProfile(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -220,7 +220,7 @@ func TestPlayerEngagement_Profile_WithCoefs(t *testing.T) {
 		{XUID: "xuid-1", ModeCategory: "PvP_ranked", CoefTeamShare: 1.12, CoefLobbyShare: 1.05, NMatches: 200},
 		{XUID: "xuid-1", ModeCategory: "PvP_unranked", CoefTeamShare: 0.98, CoefLobbyShare: 0.95, NMatches: 150},
 	}
-	svc := NewPlayerEngagementService(&mockEngagementRepo{allCoefs: coefs}, "xuid-1")
+	svc := NewPlayerEngagementService(&mockEngagementRepo{allCoefs: coefs}, "xuid-1", "Tester")
 	out, err := svc.GetEngagementProfile(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -231,7 +231,7 @@ func TestPlayerEngagement_Profile_WithCoefs(t *testing.T) {
 }
 
 func TestPlayerEngagement_Profile_UnavailableDegradesGracefully(t *testing.T) {
-	svc := NewPlayerEngagementService(&mockEngagementRepo{loadAllCoefsErr: port.ErrEngagementUnavailable}, "xuid-1")
+	svc := NewPlayerEngagementService(&mockEngagementRepo{loadAllCoefsErr: port.ErrEngagementUnavailable}, "xuid-1", "Tester")
 	out, err := svc.GetEngagementProfile(context.Background())
 	if err != nil {
 		t.Fatalf("expected nil error on ErrEngagementUnavailable, got %v", err)
@@ -242,7 +242,7 @@ func TestPlayerEngagement_Profile_UnavailableDegradesGracefully(t *testing.T) {
 }
 
 func TestPlayerEngagement_Profile_EmptyXUID(t *testing.T) {
-	svc := NewPlayerEngagementService(&mockEngagementRepo{}, "")
+	svc := NewPlayerEngagementService(&mockEngagementRepo{}, "", "")
 	_, err := svc.GetEngagementProfile(context.Background())
 	if err == nil {
 		t.Error("expected error on empty xuid")

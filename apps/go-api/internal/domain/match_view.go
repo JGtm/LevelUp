@@ -65,6 +65,14 @@ type MatchViewHeader struct {
 	IsExcluded              bool   `json:"is_excluded"`
 	PlayableDurationSeconds *int64 `json:"playable_duration_seconds,omitempty"`
 	WaypointURL             string `json:"waypoint_url,omitempty"`
+	// MapImageURL : URL de l'image de la map (résolue via TitleAssetURLAdapter
+	// au boot du service). Nil si capability non supportée par le titre ou
+	// asset manquant. Le front affiche un fallback texte (cf. mock C).
+	MapImageURL *string `json:"map_image_url,omitempty"`
+	// IsFavorite : true si le joueur a marqué ce match comme favori
+	// (table shared_social.match_favorites). False par défaut si shared_social
+	// indisponible ou erreur de lecture (dégradation gracieuse).
+	IsFavorite bool `json:"is_favorite"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.
@@ -426,10 +434,15 @@ type MatchMetaRaw struct {
 	PlayableDurationSeconds *int64
 	MapAssetID              *string
 	GameVariantName         *string
-	// MapNameFR / ModeNameFR : traductions FR enrichies post-scan via
-	// asset_translations (map) et mode_name_tr (mode). Nil si non disponibles.
-	MapNameFR  *string
-	ModeNameFR *string
+	// PlaylistAssetID : identifiant stable de la playlist (match_registry.playlist_id).
+	// Nil pour les matchs custom games sans playlist enregistrée.
+	PlaylistAssetID *string
+	// MapNameFR / ModeNameFR / PlaylistNameFR : traductions FR enrichies post-scan
+	// via asset_translations (map, playlist) et mode_name_tr (mode). Nil si non
+	// disponibles — le service retombe alors sur le label brut EN.
+	MapNameFR      *string
+	ModeNameFR     *string
+	PlaylistNameFR *string
 }
 
 // PlayerMatchStatsRaw : données brutes de Q17 (match_participants filtré par xuid).
@@ -562,6 +575,12 @@ type SkillRankRaw struct {
 	RatingValue   *float64
 	RatingDelta   *float64
 	PlaylistGroup *string
+	// Tier (EN, ex: "Diamond", "Onyx") et SubTier (1..6 ou 0 pour Onyx) sont
+	// extraits depuis match_skill_rank. Utilisés par buildRankBlock pour
+	// construire l'URL du badge via TitleAssetURLAdapter.CSRRankImageURL.
+	// Nil quand absent (LUSR ou rang non encore résolu côté sync).
+	Tier    *string
+	SubTier *int
 }
 
 // EncounterRaw : données brutes de Q23 (participants du match + historique commun).

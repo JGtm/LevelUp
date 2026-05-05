@@ -108,7 +108,8 @@ SELECT
     END AS is_ranked,
     r.playable_duration_seconds,
     r.map_id,
-    r.game_variant_name
+    r.game_variant_name,
+    r.playlist_id
 FROM shared.match_registry r
 WHERE r.match_id = ?`
 
@@ -294,7 +295,9 @@ SELECT
     msr.tier_label,
     msr.rating_value,
     msr.rating_delta,
-    msr.playlist_group
+    msr.playlist_group,
+    msr.tier,
+    msr.sub_tier
 FROM match_skill_rank msr
 LEFT JOIN shared.match_registry mr ON mr.match_id = msr.match_id
 WHERE msr.match_id = ?

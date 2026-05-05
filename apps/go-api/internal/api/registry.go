@@ -172,6 +172,20 @@ func (r *ServiceRegistry) semanticFor(slug string) games.TitleSemanticAdapter {
 	return sem
 }
 
+// assetURLFor retourne le TitleAssetURLAdapter d'un titre ou nil si non
+// résolu. Permet aux services (HomeService, MatchViewService, ...) de
+// produire des URLs d'images sans coupler leur factory au resolver.
+func (r *ServiceRegistry) assetURLFor(slug string) games.TitleAssetURLAdapter {
+	if r.titleResolver == nil {
+		return nil
+	}
+	a, err := r.titleResolver.AssetURL(slug)
+	if err != nil {
+		return nil
+	}
+	return a
+}
+
 // dataAdapterForPDB retourne un TitleDataAdapter player-scoped HI ou nil si
 // le titre courant ne supporte pas la couche multi-titres player-scoped.
 // Utilisé par les factories de services pour câbler la bascule Phase C+
@@ -293,7 +307,9 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
-	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb))
+	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
+		WithSocial(duckdb.NewSocialRepo(pdb), slug).
+		WithAssetURL(r.assetURLFor(pdb.TitleSlug))
 	return svc, nil
 }
 
