@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -58,7 +59,7 @@ func TestBuildMatchHeader_DominanceBadge(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			enrich := &domain.MatchEnrichmentRaw{DominanceFlag: tc.flag}
-			h := buildMatchHeader("m1", &domain.MatchMetaRaw{}, nil, enrich, nil)
+			h := buildMatchHeader(context.Background(), "m1", &domain.MatchMetaRaw{}, nil, enrich, nil, nil, false)
 
 			if tc.wantBadge {
 				if h.DominanceBadge == nil {
@@ -92,7 +93,7 @@ func TestBuildMatchHeader_DominanceBadge(t *testing.T) {
 // casse pas le header (cas legacy ou capability gap).
 func TestBuildMatchHeader_NilEnrichment(t *testing.T) {
 	t.Parallel()
-	h := buildMatchHeader("m1", &domain.MatchMetaRaw{}, nil, nil, nil)
+	h := buildMatchHeader(context.Background(), "m1", &domain.MatchMetaRaw{}, nil, nil, nil, nil, false)
 	if h.DominanceBadge != nil {
 		t.Errorf("nil enrich: DominanceBadge want nil, got %+v", h.DominanceBadge)
 	}
@@ -145,7 +146,7 @@ func TestPerfColorToken_MapsScoreToTier(t *testing.T) {
 func TestBuildMatchHeader_OutcomeColorToken(t *testing.T) {
 	t.Parallel()
 	stats := &domain.PlayerMatchStatsRaw{OutcomeCode: 2} // win
-	h := buildMatchHeader("m1", &domain.MatchMetaRaw{}, stats, nil, nil)
+	h := buildMatchHeader(context.Background(), "m1", &domain.MatchMetaRaw{}, stats, nil, nil, nil, false)
 	if h.OutcomeColorToken != "outcome-win" {
 		t.Errorf("OutcomeColorToken want outcome-win, got %q", h.OutcomeColorToken)
 	}

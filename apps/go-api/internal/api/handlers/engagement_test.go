@@ -102,7 +102,7 @@ func TestEngagementHandler_GetMatchEngagement_OK(t *testing.T) {
 		if slug != testPlayerSlug {
 			return nil, errors.New("player_not_found")
 		}
-		return service.NewPlayerEngagementService(repo, "xuid-test"), nil
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m1/engagement", nil)
@@ -136,7 +136,7 @@ func TestEngagementHandler_GetMatchEngagement_PlayerNotFound(t *testing.T) {
 func TestEngagementHandler_GetMatchEngagement_MatchNotFound(t *testing.T) {
 	repo := &engagementMockRepo{matchCtx: nil}
 	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
-		return service.NewPlayerEngagementService(repo, "xuid-test"), nil
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/missing/engagement", nil)
 	w := httptest.NewRecorder()
@@ -151,7 +151,7 @@ func TestEngagementHandler_GetMatchEngagement_PvENotSupported(t *testing.T) {
 		matchCtx: &port.MatchEngagementContext{MatchID: "m", IsPvE: true},
 	}
 	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
-		return service.NewPlayerEngagementService(repo, "xuid-test"), nil
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m/engagement", nil)
 	w := httptest.NewRecorder()
@@ -172,7 +172,7 @@ func TestEngagementHandler_GetEngagementProfile_OK(t *testing.T) {
 		},
 	}
 	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
-		return service.NewPlayerEngagementService(repo, "xuid-test"), nil
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/engagement_profile", nil)
 	w := httptest.NewRecorder()
@@ -193,7 +193,7 @@ func TestEngagementHandler_GetEngagementProfile_OK(t *testing.T) {
 func TestEngagementHandler_GetEngagementProfile_EmptyOnUnavailable(t *testing.T) {
 	repo := &engagementMockRepo{allCoefsErr: port.ErrEngagementUnavailable}
 	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
-		return service.NewPlayerEngagementService(repo, "xuid-test"), nil
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
 	}
 	req := httptest.NewRequest(http.MethodGet, "/players/test-player/engagement_profile", nil)
 	w := httptest.NewRecorder()

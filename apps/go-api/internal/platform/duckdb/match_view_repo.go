@@ -41,6 +41,7 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		&row.PlayableDurationSeconds,
 		&row.MapAssetID,
 		&row.GameVariantName,
+		&row.PlaylistAssetID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
@@ -52,6 +53,9 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		if modeEN := analysis.NormalizeModeLabel(*row.PairName); modeEN != "" {
 			row.ModeNameFR = r.lookupModeNameFR(ctx, modeEN)
 		}
+	}
+	if row.PlaylistAssetID != nil {
+		row.PlaylistNameFR = r.lookupPlaylistNameFR(ctx, *row.PlaylistAssetID)
 	}
 	return &row, nil
 }
@@ -93,6 +97,33 @@ func (r *MatchViewRepo) lookupModeNameFR(ctx context.Context, modeEN string) *st
 		WHERE lang = 'fr' AND mode_en = ?
 		LIMIT 1`
 	rows, err := r.pdb.Metadata.Query(ctx, q, modeEN)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err == nil && name != "" {
+			return &name
+		}
+	}
+	return nil
+}
+
+// lookupPlaylistNameFR retourne le nom FR d'une playlist via asset_translations, ou nil.
+// Pattern identique à lookupMapNameFR (asset_type = 'playlist').
+func (r *MatchViewRepo) lookupPlaylistNameFR(ctx context.Context, playlistAssetID string) *string {
+	if r.pdb.Metadata == nil {
+		return nil
+	}
+	const q = `
+		SELECT name FROM asset_translations
+		WHERE asset_type = 'playlist' AND asset_id = ?
+		  AND lang IN ('fr-FR', 'fr')
+		  AND name IS NOT NULL AND TRIM(name) != ''
+		ORDER BY CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
+		LIMIT 1`
+	rows, err := r.pdb.Metadata.Query(ctx, q, playlistAssetID)
 	if err != nil {
 		return nil
 	}
@@ -486,6 +517,8 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		&row.RatingValue,
 		&row.RatingDelta,
 		&row.PlaylistGroup,
+		&row.Tier,
+		&row.SubTier,
 	)
 	if err != nil {
 		// Absent pour les matchs non-ranked ou sans donnée skill → nil sans erreur

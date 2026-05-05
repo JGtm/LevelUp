@@ -1,5 +1,27 @@
 # Thought Log
 
+## [2026-05-05] MatchView header rework — Étape 0 audit blockers
+
+**Statut** : Complété (audit) — branche `fix/synergy-radar-calibration`.
+
+**Contexte** : refonte complète page match (mock C). Avant de coder l'Étape 1 (enrichir MatchViewHeader avec MapImageURL + IsFavorite), audit de 4 blockers documenté dans le plan.
+
+**Findings** :
+1. `MatchViewRank.IconURL` jamais rempli aujourd'hui (`buildRankBlock` l. 595–605 ne fait que copier `TierLabel` brut). → Étape 2 du plan **obligatoire**.
+2. Favoris : table `match_favorites` (PK `(player_slug, match_id)`) existe dans `shared_social.duckdb`. `SocialRepo.IsMatchFavorite/ToggleMatchFavorite/GetFavoriteMatchIDs` existent dans `platform/duckdb/social_repo.go`. Port `port.SocialRepository` aussi. Pattern d'injection déjà appliqué dans `HomeService.WithSocial(repo, slug)` — à reproduire pour `MatchViewService`. Aucune migration nécessaire.
+3. PlaylistLabel : `match_view_service.go` l. 520-522 copie `*meta.PlaylistName` brut sans enrichissement FR. Le pattern `applyPlaylistFRTranslations` (filters_repo.go) lookup via `match_registry.playlist_id → asset_translations(asset_type='playlist', lang IN ('fr-FR','fr'))`. À reproduire dans `match_view_repo.go` (ajouter colonne `r.playlist_id` à Q13 + lookup post-scan, mêmes patterns que MapNameFR/ModeNameFR existants).
+4. Tailles fichiers (CLAUDE.md règle 14) :
+   - `service/match_view_service.go` : 1313 L (2.6× le seuil 500L)
+   - `platform/duckdb/match_view_repo.go` : 700 L
+   - `domain/match_view.go` : 641 L
+   - `api/handlers/match_view.go` : 80 L (OK)
+
+**Décision technique** : dette pré-existante (refactor global hors scope = scope creep). Pour les modifs Phase 1, ajouter dans les fichiers existants quand le code reste thématiquement cohérent (lookups FR dans `match_view_repo.go`, builder header dans `match_view_service.go`). Toute extension future >100L → créer sous-fichier dédié.
+
+**Prochaine étape** : Étape 1 — enrichir MatchViewHeader (MapImageURL + IsFavorite + PlaylistLabel FR).
+
+---
+
 ## [2026-05-05] Squad perf charts — dual-grid ECharts (layout adaptatif)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.

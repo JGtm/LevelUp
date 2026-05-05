@@ -109,6 +109,17 @@ type MatchViewService struct {
 	// la totalité du payload Match View (4 onglets + header). Le hook est en
 	// place pour permettre une bascule incrémentale.
 	dataAdapter games.TitleDataAdapter
+	// assetURL (optionnel) : adapter d'URLs d'assets (image map, badge rang).
+	// Injecté via WithAssetURL au boot. Si nil, MapImageURL et IconURL restent
+	// vides — le front affiche les fallbacks texte (dégradation gracieuse).
+	assetURL games.TitleAssetURLAdapter
+	// socialRepo (optionnel) : repo des données sociales (favoris). Injecté
+	// via WithSocial. Si nil ou shared_social indisponible, IsFavorite reste
+	// false — le bouton favori côté front reste fonctionnel mais idempotent.
+	socialRepo port.SocialRepository
+	// playerSlug : nécessaire pour les lookups socialRepo (clé de la table
+	// match_favorites). Injecté via WithSocial avec le slug courant.
+	playerSlug string
 }
 
 // NewMatchViewService crée un MatchViewService.
@@ -153,6 +164,22 @@ func (s *MatchViewService) WithTitleSlug(slug string) *MatchViewService {
 // 6 axes (chunk MV4.B). Dégradation gracieuse si nil : radar à 0.
 func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) *MatchViewService {
 	s.awardsRepo = r
+	return s
+}
+
+// WithAssetURL configure l'adapter d'URLs d'assets (map image, rank icon).
+// Dégradation gracieuse : si nil ou si l'adapter retourne "", les champs
+// restent vides côté response et le front affiche les fallbacks texte.
+func (s *MatchViewService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchViewService {
+	s.assetURL = a
+	return s
+}
+
+// WithSocial configure le repo social (favoris) et le slug joueur.
+// Pattern identique à HomeService.WithSocial — IsFavorite reste false si nil.
+func (s *MatchViewService) WithSocial(r port.SocialRepository, playerSlug string) *MatchViewService {
+	s.socialRepo = r
+	s.playerSlug = playerSlug
 	return s
 }
 
@@ -361,8 +388,20 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		durationMS = *meta.PlayableDurationSeconds * 1000
 	}
 
-	header := buildMatchHeader(matchID, meta, stats, enrich, scoreboard)
-	rank := buildRankBlock(skillRank)
+	// IsFavorite : lookup synchrone (cheap, indexé sur PK player_slug+match_id).
+	// Dégradation gracieuse si socialRepo nil ou shared_social indisponible.
+	isFavorite := false
+	if s.socialRepo != nil && s.playerSlug != "" {
+		if fav, ferr := s.socialRepo.IsMatchFavorite(ctx, s.playerSlug, matchID); ferr == nil {
+			isFavorite = fav
+		} else {
+			slog.WarnContext(ctx, "match_view: IsMatchFavorite échoué",
+				"match_id", matchID, "player", s.playerSlug, "err", ferr)
+		}
+	}
+
+	header := buildMatchHeader(ctx, matchID, meta, stats, enrich, scoreboard, s.assetURL, isFavorite)
+	rank := buildRankBlock(skillRank, s.assetURL)
 	summary := buildSummaryTabFull(stats, medals, expected)
 	combat := buildCombatTabFull(matchID, weapons, events, canonicalEvents, kvPairs, scoreboard, s.xuid, durationMS)
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid)
@@ -483,17 +522,21 @@ func (s *MatchViewService) GetMatchNeighbors(ctx context.Context, matchID string
 // ---------------------------------------------------------------------------
 
 func buildMatchHeader(
+	ctx context.Context,
 	matchID string,
 	meta *domain.MatchMetaRaw,
 	stats *domain.PlayerMatchStatsRaw,
 	enrich *domain.MatchEnrichmentRaw,
 	scoreboard []domain.ScoreboardRaw,
+	assetURL games.TitleAssetURLAdapter,
+	isFavorite bool,
 ) domain.MatchViewHeader {
 	h := domain.MatchViewHeader{
 		MatchID:      matchID,
 		OutcomeLabel: "-",
 		OutcomeColor: "#94a3b8",
 		PerfDisplay:  "-",
+		IsFavorite:   isFavorite,
 	}
 
 	if meta == nil {
@@ -517,8 +560,23 @@ func buildMatchHeader(
 	} else if meta.PairName != nil {
 		h.ModeUI = *meta.PairName
 	}
-	if meta.PlaylistName != nil {
+	// Playlist : priorité à la traduction FR (asset_translations), fallback
+	// nom brut EN (match_registry.playlist_name).
+	if meta.PlaylistNameFR != nil && *meta.PlaylistNameFR != "" {
+		h.PlaylistLabel = *meta.PlaylistNameFR
+	} else if meta.PlaylistName != nil {
 		h.PlaylistLabel = *meta.PlaylistName
+	}
+	// MapImageURL : résolu via TitleAssetURLAdapter à partir du nom EN brut
+	// (l'adapter Halo Infinite mappe nameEN → /static/maps/halo_infinite/{name}.png).
+	// Dégradation gracieuse : nil si adapter absent ou nameEN inconnu.
+	if assetURL != nil && meta.MapName != nil && *meta.MapName != "" {
+		if url := assetURL.MapImageURL(*meta.MapName); url != "" {
+			h.MapImageURL = &url
+		} else {
+			slog.WarnContext(ctx, "match_header: map image missing for known map",
+				"match_id", matchID, "map_name", *meta.MapName)
+		}
 	}
 	h.PlayableDurationSeconds = meta.PlayableDurationSeconds
 	if meta.MapAssetID != nil {
@@ -592,7 +650,13 @@ func buildScoreLabel(scoreboard []domain.ScoreboardRaw) string {
 }
 
 // buildRankBlock construit le bloc rank depuis SkillRankRaw.
-func buildRankBlock(sr *domain.SkillRankRaw) domain.MatchViewRank {
+//
+// IconURL est résolu via TitleAssetURLAdapter (CSRRankImageURL ou
+// CSRRankImageURLOnyx selon le tier). Dégradation gracieuse :
+//   - assetURL nil → IconURL = "" (front affiche fallback texte)
+//   - rating_type CSR mais tier inconnu → IconURL = ""
+//   - rating_type LUSR (custom games) → pas de badge officiel, IconURL = ""
+func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter) domain.MatchViewRank {
 	if sr == nil {
 		return domain.MatchViewRank{RatingType: "none"}
 	}
@@ -602,6 +666,20 @@ func buildRankBlock(sr *domain.SkillRankRaw) domain.MatchViewRank {
 	}
 	rank.NumericVal = sr.RatingValue
 	rank.DeltaValue = sr.RatingDelta
+
+	// Badge image — uniquement pour CSR (LUSR n'a pas de badge officiel).
+	// Onyx : pas de sub-tier → CSRRankImageURLOnyx().
+	// Autres tiers (Bronze, Silver, Gold, Platinum, Diamond) : tier + sub-tier.
+	// Sources : match_skill_rank.tier (EN, TitleCase) + match_skill_rank.sub_tier.
+	if assetURL == nil || sr.RatingType != "CSR" || sr.Tier == nil || *sr.Tier == "" {
+		return rank
+	}
+	tier := *sr.Tier
+	if strings.EqualFold(tier, "Onyx") {
+		rank.IconURL = assetURL.CSRRankImageURLOnyx()
+	} else if sr.SubTier != nil {
+		rank.IconURL = assetURL.CSRRankImageURL(tier, *sr.SubTier)
+	}
 	return rank
 }
 
