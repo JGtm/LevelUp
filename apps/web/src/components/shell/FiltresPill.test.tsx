@@ -124,8 +124,9 @@ describe('FiltresPill — zombie detection', () => {
       cascade: { experience_types: ['PVP classé'], playlists: [], modes: [], maps: [] },
       cascadeCount: 1,
     })
-    expect(screen.getByLabelText('PVP non classé')).toBeInTheDocument()
-    expect(screen.getByLabelText('PVP non classé')).not.toBeChecked()
+    const pvpCheckbox = screen.getByRole('checkbox', { name: /PVP non classé/i })
+    expect(pvpCheckbox).toBeInTheDocument()
+    expect(pvpCheckbox).not.toBeChecked()
   })
 
   // ── 3. Zombie playlist ───────────────────────────────────────────────────
@@ -222,7 +223,7 @@ describe('FiltresPill — zombie detection', () => {
       cascadeCount: 2,
     })
     // Slayer est coché normalement
-    const slayerCheckbox = screen.getByLabelText('Slayer')
+    const slayerCheckbox = screen.getByRole('checkbox', { name: /^Slayer/i })
     expect(slayerCheckbox).toBeChecked()
     // SWAT est zombie (barré avec titre)
     expect(screen.getByText(/1 filtre incompatible/i)).toBeInTheDocument()
@@ -283,7 +284,7 @@ describe('FilterOmnibar — zombie en temps réel (useFiltersPreview)', () => {
   it('sans player slug, les options disponibles proviennent du resolvedContext commité', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /^filtres/i }))
-    expect(screen.getByLabelText('Slayer')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /^Slayer/i })).toBeInTheDocument()
   })
 
   it('zombie affiché immédiatement quand resolvedContext ne contient plus le mode sélectionné', async () => {
