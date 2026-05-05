@@ -171,7 +171,6 @@ export interface SquadText {
     rendementLabel: string
     resistanceLabel: string
     refLabel: string
-    toggleLabel: string
     noData: string
   }
   performanceCharts: {
@@ -427,7 +426,6 @@ const FR_TEXT: SquadText = {
     rendementLabel: 'Rendement offensif',
     resistanceLabel: 'Résistance défensive',
     refLabel: '1,0 (seuil physique)',
-    toggleLabel: 'Filtrer par joueur :',
     noData: 'Aucune donnée d\'efficacité disponible.',
   },
   performanceCharts: {
@@ -683,7 +681,6 @@ const EN_TEXT: SquadText = {
     rendementLabel: 'Offensive conversion',
     resistanceLabel: 'Defensive resistance',
     refLabel: '1.0 (physical baseline)',
-    toggleLabel: 'Filter by player:',
     noData: 'No efficiency data available.',
   },
   performanceCharts: {
