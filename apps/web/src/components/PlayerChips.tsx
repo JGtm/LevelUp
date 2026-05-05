@@ -65,7 +65,7 @@ export function PlayerChips(props: PlayerChipsProps) {
         <span
           style={{
             fontSize: '11px',
-            color: 'var(--color-text-muted, rgba(255,255,255,0.45))',
+            color: 'var(--muted-foreground)',
             letterSpacing: '0.4px',
             textTransform: 'uppercase',
             fontWeight: 500,
@@ -108,8 +108,8 @@ function PlayerChipButton(props: PlayerChipButtonProps) {
       aria-pressed={isActive}
       style={{
         background: isActive ? `color-mix(in srgb, ${accent} 18%, transparent)` : 'transparent',
-        color: isActive ? '#fff' : 'var(--color-text-muted, rgba(255,255,255,0.7))', // color-allow: blanc structurel pour contraste sur pill colorée active
-        border: `1px solid ${isActive ? accent : 'var(--color-border-subtle, rgba(255,255,255,0.15))'}`,
+        color: isActive ? '#fff' : 'var(--muted-foreground)', // color-allow: blanc structurel pour contraste sur pill colorée active
+        border: `1px solid ${isActive ? accent : 'var(--border)'}`,
         padding: '5px 11px 5px 9px',
         fontFamily: 'inherit',
         fontSize: '11px',

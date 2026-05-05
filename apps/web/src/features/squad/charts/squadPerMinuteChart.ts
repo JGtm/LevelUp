@@ -17,12 +17,15 @@
  *     mais lus en valeur positive).
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadPerMinuteEntry } from '@/lib/api/types'
 import { hexComplement } from '@/lib/accessibility'
-
-const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.75)'
 
 export interface SquadPerMinuteOpts {
   /** Mapping gamertag → couleur hex. Doit couvrir tous les players de rows. */
@@ -44,6 +47,9 @@ export function buildSquadPerMinuteOption(
 
   const xLabels = [opts.metricLabels.frags, opts.metricLabels.deaths, opts.metricLabels.assists]
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   // 1 série bar par joueur, 3 valeurs (frags, -deaths, assists).
   const echSeries = rows.map((r) => {
     const color = opts.colorByPlayer[r.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
@@ -60,7 +66,7 @@ export function buildSquadPerMinuteOption(
       label: {
         show: true,
         position: 'top' as const,
-        color: 'rgba(255,255,255,0.85)',
+        color: tc.text,
         fontSize: 10,
         formatter: (p: { value: unknown; dataIndex: number }) => {
           const v = typeof p.value === 'number' ? p.value : 0
@@ -75,7 +81,7 @@ export function buildSquadPerMinuteOption(
     backgroundColor: CHART_BG,
     grid: { top: 24, bottom: 36, left: 8, right: 24, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: unknown) => {
@@ -91,15 +97,15 @@ export function buildSquadPerMinuteOption(
       },
     },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xLabels,
-      axisLine: { lineStyle: { color: ZERO_LINE_COLOR, width: 2 } }, // axe zéro en gras blanc
+      axisLine: { lineStyle: { color: tc.text, width: 2 } }, // axe zéro accentué (foreground)
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
-      axisLabel: { ...axisBase.axisLabel, formatter: (v: number) => fmt(Math.abs(v)) },
+      axisLabel: { ...axis.axisLabel, formatter: (v: number) => fmt(Math.abs(v)) },
     },
     series: echSeries,
   }

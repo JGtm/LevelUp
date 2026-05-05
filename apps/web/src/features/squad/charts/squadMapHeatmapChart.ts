@@ -9,7 +9,12 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
-import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadMapHeatmap, SquadMapHeatmapCell } from '@/lib/api/types'
 
@@ -46,11 +51,14 @@ export function buildSquadMapHeatmapOption(
     }
   }
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 110, left: 8, right: 8, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'item',
       formatter: (p: unknown) => {
         const point = p as { data?: [number, number, number | null] }
@@ -64,13 +72,13 @@ export function buildSquadMapHeatmapOption(
       },
     },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xLabels,
-      axisLabel: { ...axisBase.axisLabel, rotate: -35, interval: 0 },
+      axisLabel: { ...axis.axisLabel, rotate: -35, interval: 0 },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: yLabels,
       inverse: true,
@@ -87,14 +95,14 @@ export function buildSquadMapHeatmapOption(
       orient: 'horizontal',
       left: 'center',
       bottom: 4,
-      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+      textStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     series: [
       {
         type: 'heatmap',
         data,
         label: { show: false },
-        emphasis: { itemStyle: { borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1 } },
+        emphasis: { itemStyle: { borderColor: tc.text, borderWidth: 1 } },
       },
     ],
   }

@@ -19,7 +19,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, legendBase, seriesColor, tooltipBase } from './_utils'
+import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
 
 export interface ChartPointDonut {
   name: string
@@ -116,15 +116,16 @@ export function buildDonutOption(
   })
 
   const legendNames = dps.map((p) => p.name)
+  const tc = getEChartsThemeColors()
 
   return {
     backgroundColor: CHART_BG,
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'item',
       formatter: '{b} : <b>{c}</b> ({d}%)',
     },
-    legend: { ...legendBase, data: legendNames },
+    legend: { ...getLegendBase(tc), data: legendNames },
     series: [
       {
         type: 'pie',
@@ -132,7 +133,7 @@ export function buildDonutOption(
         avoidLabelOverlap: true,
         label: {
           show: showPercent,
-          color: 'rgba(255,255,255,0.85)',
+          color: tc.text,
           fontSize: 11,
           formatter: showPercent ? '{b}\n{d}%' : '{b}',
         },

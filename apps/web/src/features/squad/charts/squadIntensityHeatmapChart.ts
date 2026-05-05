@@ -10,7 +10,12 @@
  *   - Toggle (cf. wrapper) : "all" ou un joueur spécifique.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { SquadIntensityMatchRow } from '@/lib/api/types'
 
 const PHASE_LABELS = [
@@ -48,11 +53,14 @@ export function buildSquadIntensityHeatmapOption(
     }
   }
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 60, left: 8, right: 60, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'item',
       formatter: (p: unknown) => {
         const point = p as { data?: [number, number, number] }
@@ -63,13 +71,13 @@ export function buildSquadIntensityHeatmapOption(
       },
     },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: PHASE_LABELS,
-      axisLabel: { ...axisBase.axisLabel, rotate: -25, interval: 0 },
+      axisLabel: { ...axis.axisLabel, rotate: -25, interval: 0 },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: yLabels,
       inverse: true,
@@ -83,7 +91,7 @@ export function buildSquadIntensityHeatmapOption(
       right: 4,
       top: 'middle',
       inRange: { color: COLOR_STOPS.map((c) => c.color) },
-      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+      textStyle: { color: tc.axisLabel, fontSize: 10 },
       formatter: (v: number) => `${(v * 100).toFixed(0)}%`,
     },
     series: [
@@ -91,7 +99,7 @@ export function buildSquadIntensityHeatmapOption(
         type: 'heatmap',
         data,
         label: { show: false },
-        emphasis: { itemStyle: { borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1 } },
+        emphasis: { itemStyle: { borderColor: tc.text, borderWidth: 1 } },
       },
     ],
   }

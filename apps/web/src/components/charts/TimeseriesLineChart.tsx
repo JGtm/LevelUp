@@ -21,11 +21,12 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   CHART_BG,
-  axisBase,
-  legendBase,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
   outcomeColor,
   seriesColor,
-  tooltipBase,
 } from './_utils'
 
 export interface ChartPoint2D {
@@ -151,20 +152,23 @@ export function buildTimeseriesLineOption(
     }
   })
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   return {
     backgroundColor: CHART_BG,
     grid: { top: 24, bottom: 56, left: 56, right: 16 },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'cross' },
     },
-    legend: { ...legendBase, data: echartsSeries.map((s) => s.name) },
+    legend: { ...getLegendBase(tc), data: echartsSeries.map((s) => s.name) },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: resolvedAxisType,
     },
-    yAxis: { ...axisBase, type: 'value' },
+    yAxis: { ...axis, type: 'value' },
     series: echartsSeries,
   }
 }

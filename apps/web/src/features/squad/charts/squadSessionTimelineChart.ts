@@ -11,7 +11,14 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
-import { CHART_BG, axisBase, tooltipBase, legendBase, seriesColor } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+  seriesColor,
+} from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { SquadSessionPoint } from '@/lib/api/types'
 
@@ -58,25 +65,28 @@ export function buildSquadSessionTimelineOption(
   if (hasWinRate) legendData.push(opts.winRateLabel)
   if (hasMmr) legendData.push(opts.mmrLabel)
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   const yAxis: object[] = [
     {
-      ...axisBase,
+      ...axis,
       type: 'value',
       min: 0,
       max: 100,
       name: opts.perfAxisLabel,
-      nameTextStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
-      axisLabel: { ...axisBase.axisLabel, formatter: '{value}' },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+      axisLabel: { ...axis.axisLabel, formatter: '{value}' },
     },
   ]
   if (hasMmr) {
     yAxis.push({
-      ...axisBase,
+      ...axis,
       type: 'value',
       name: opts.mmrAxisLabel,
-      nameTextStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
       splitLine: { show: false },
-      axisLabel: { ...axisBase.axisLabel, formatter: '{value}' },
+      axisLabel: { ...axis.axisLabel, formatter: '{value}' },
     })
   }
 
@@ -119,13 +129,13 @@ export function buildSquadSessionTimelineOption(
   return {
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 40, left: 8, right: hasMmr ? 60 : 24, containLabel: true },
-    tooltip: { ...tooltipBase, trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { ...legendBase, data: legendData },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { ...getLegendBase(tc), data: legendData },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: labels,
-      axisLabel: { ...axisBase.axisLabel, rotate: labels.length > 8 ? 30 : 0 },
+      axisLabel: { ...axis.axisLabel, rotate: labels.length > 8 ? 30 : 0 },
     },
     yAxis,
     series: echSeries,

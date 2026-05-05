@@ -17,10 +17,11 @@ import { ChartCard, type ChartSeries } from './ChartCard'
 import type { ChartPointStacked } from './BarStackedChart'
 import {
   CHART_BG,
-  axisBase,
-  legendBase,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
   seriesColor,
-  tooltipBase,
 } from './_utils'
 
 export interface BarGroupedChartProps {
@@ -102,17 +103,20 @@ export function buildBarGroupedOption(
     }
   })
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   return {
     backgroundColor: CHART_BG,
     grid: { top: 20, bottom: 40, left: 56, right: 16 },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
     },
-    legend: { ...legendBase, data: components },
-    xAxis: { ...axisBase, type: 'category', data: categories },
-    yAxis: { ...axisBase, type: 'value' },
+    legend: { ...getLegendBase(tc), data: components },
+    xAxis: { ...axis, type: 'category', data: categories },
+    yAxis: { ...axis, type: 'value' },
     series: echartsSeries,
   }
 }

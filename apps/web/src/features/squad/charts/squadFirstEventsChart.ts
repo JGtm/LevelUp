@@ -13,12 +13,14 @@
  *   - Pas de légende — la pill+combobox de la page identifie chaque joueur.
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { SquadFirstEvents } from '@/lib/api/types'
 import { hexComplement } from '@/lib/accessibility'
-
-const SEPARATOR_COLOR = 'rgba(255, 255, 255, 0.18)'
-const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.55)'
 
 export interface SquadFirstEventsOpts {
   /** gamertag → couleur hex (cf. getSquadPlayerColors). */
@@ -37,6 +39,9 @@ export function buildSquadFirstEventsOption(
   if (!data || data.bin_labels.length === 0 || data.rows.length === 0) {
     return { backgroundColor: CHART_BG }
   }
+
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   const xLabels = data.bin_labels
   const series: Array<Record<string, unknown>> = []
@@ -62,7 +67,7 @@ export function buildSquadFirstEventsOption(
               silent: true,
               symbol: 'none',
               label: { show: false },
-              lineStyle: { color: SEPARATOR_COLOR, width: 1, type: 'dotted' },
+              lineStyle: { color: tc.splitLine, width: 1, type: 'dotted' },
               data: xLabels.slice(0, -1).map((_, i) => ({ xAxis: i + 0.5 })),
             },
           }
@@ -84,7 +89,7 @@ export function buildSquadFirstEventsOption(
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 36, left: 8, right: 24, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: unknown) => {
@@ -105,17 +110,17 @@ export function buildSquadFirstEventsOption(
     },
     legend: { show: false },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xLabels,
-      axisLabel: { ...axisBase.axisLabel, interval: 0 },
+      axisLabel: { ...axis.axisLabel, interval: 0 },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       // Labels en valeur absolue (le signe est porté par la position haut/bas).
-      axisLabel: { ...axisBase.axisLabel, formatter: (v: number) => `${Math.abs(v)}` },
-      axisLine: { lineStyle: { color: ZERO_LINE_COLOR, width: 1.5 } },
+      axisLabel: { ...axis.axisLabel, formatter: (v: number) => `${Math.abs(v)}` },
+      axisLine: { lineStyle: { color: tc.text, width: 1.5 } },
     },
     series,
   }

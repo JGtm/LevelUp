@@ -20,7 +20,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, axisBase, tooltipBase } from './_utils'
+import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from './_utils'
 
 export interface ChartPointHeatmap {
   x: string
@@ -121,19 +121,22 @@ export function buildHeatmap2DOption(
         ]
       : [resolveToken('heatmap-cold'), resolveToken('heatmap-hot')]
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   return {
     backgroundColor: CHART_BG,
     grid: { top: 24, bottom: 80, left: 96, right: 24 },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       position: 'top',
       formatter: (params: { data: [number, number, number] }) => {
         const [xi, yi, v] = params.data
         return `${ys[yi]} × ${xs[xi]}<br/>Valeur: <b>${v.toFixed(2)}</b>`
       },
     },
-    xAxis: { ...axisBase, type: 'category', data: xs, splitArea: { show: true } },
-    yAxis: { ...axisBase, type: 'category', data: ys, splitArea: { show: true } },
+    xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true } },
+    yAxis: { ...axis, type: 'category', data: ys, splitArea: { show: true } },
     visualMap: {
       min: minV,
       max: maxV,
@@ -142,7 +145,7 @@ export function buildHeatmap2DOption(
       left: 'center',
       bottom: 8,
       inRange: { color: colors },
-      textStyle: { color: 'rgba(255,255,255,0.45)', fontSize: 10 },
+      textStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     series: [
       {

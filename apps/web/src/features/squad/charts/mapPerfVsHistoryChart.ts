@@ -15,12 +15,17 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
-import { CHART_BG, axisBase, tooltipBase, legendBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
-const PERF_HISTORY_COLOR = 'rgba(120, 120, 120, 0.45)'
-const ZERO_LINE_COLOR = 'rgba(180, 180, 180, 0.6)'
+const PERF_HISTORY_COLOR = 'rgba(120, 120, 120, 0.45)' // color-allow: gris neutre comparable historique (sur les 2 thèmes)
 const MAX_MAPS = 20
 
 export interface MapPerfVsHistoryOpts {
@@ -74,6 +79,8 @@ export function buildMapPerfVsHistoryOption(
   const joined = joinAndSort(rows)
   if (joined.length === 0) return { backgroundColor: CHART_BG }
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
   const mapLabels = joined.map((r) => mapLabelOf(r.mapUI))
   const sessionData = joined.map((r) => ({
     value: round1(r.perfSession),
@@ -88,23 +95,23 @@ export function buildMapPerfVsHistoryOption(
     backgroundColor: CHART_BG,
     grid: { top: 8, bottom: 32, left: 8, right: 24, containLabel: true },
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(1) : '-'),
     },
-    legend: { ...legendBase, data: [historyLabel, sessionLabel] },
+    legend: { ...getLegendBase(tc), data: [historyLabel, sessionLabel] },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
-      axisLabel: { ...axisBase.axisLabel },
+      axisLabel: { ...axis.axisLabel },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: mapLabels,
       inverse: true,
-      axisLabel: { ...axisBase.axisLabel, width: 100, overflow: 'truncate' },
+      axisLabel: { ...axis.axisLabel, width: 100, overflow: 'truncate' },
     },
     series: [
       {
@@ -116,7 +123,7 @@ export function buildMapPerfVsHistoryOption(
           silent: true,
           symbol: 'none',
           label: { show: false },
-          lineStyle: { color: ZERO_LINE_COLOR, type: 'dotted', width: 1 },
+          lineStyle: { color: tc.splitLine, type: 'dotted', width: 1 },
           data: [{ xAxis: 0 }],
         },
       },

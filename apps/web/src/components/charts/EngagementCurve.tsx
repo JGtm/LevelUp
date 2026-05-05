@@ -25,7 +25,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, axisBase, legendBase, tooltipBase } from './_utils'
+import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from './_utils'
 
 export interface EngagementPoint {
   /** Timestamp en ms (Match View) ou index match (Session) */
@@ -125,27 +125,29 @@ function buildEngagementOption(
 
   // Smooth=true en intra (echantillonnage 10s), false en session (matchs discrets).
   const smooth = granularity === 'intra'
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
 
   return {
     backgroundColor: CHART_BG,
     grid: { left: 50, right: 24, top: 18, bottom: 38 },
-    tooltip: { ...tooltipBase, trigger: 'axis' },
-    legend: { ...legendBase, top: 0, bottom: 'auto' },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+    legend: { ...getLegendBase(tc), top: 0, bottom: 'auto' },
     xAxis: {
-      ...axisBase,
+      ...axis,
       type: 'category',
       data: xData,
-      axisLabel: { ...axisBase.axisLabel, interval: computeXInterval(xData.length) },
+      axisLabel: { ...axis.axisLabel, interval: computeXInterval(xData.length) },
     },
     yAxis: {
-      ...axisBase,
+      ...axis,
       type: 'value',
       min: yMin,
       max: yMax,
       name: `events / min (auto-zoom ${yMin}..${yMax})`,
       nameLocation: 'middle',
       nameGap: 36,
-      nameTextStyle: { color: 'rgba(255,255,255,0.45)', fontSize: 10 },
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
     series: [
       // Equipe alliee — fine effacee
