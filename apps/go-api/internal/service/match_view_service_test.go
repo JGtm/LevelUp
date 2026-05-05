@@ -164,3 +164,101 @@ func TestMatchViewService_GetMatchView_NilMeta(t *testing.T) {
 	}
 	_ = resp
 }
+
+// --- Tests Phase 2b : GetMatchNeighborsFiltered ---
+
+// mockNeighborsRepo : capture le spec passé pour vérifier la propagation
+// jusqu'au repo. Retourne des neighbors fixes.
+type mockNeighborsRepo struct {
+	mockMatchViewRepo
+	receivedSpec  *domain.MatchFilterSpec
+	receivedXUID  string
+	receivedMatch string
+	returnNil     bool
+}
+
+func (m *mockNeighborsRepo) GetMatchNeighborsFiltered(_ context.Context, xuid, matchID string, spec *domain.MatchFilterSpec) (*domain.MatchNeighbors, error) {
+	m.receivedSpec = spec
+	m.receivedXUID = xuid
+	m.receivedMatch = matchID
+	if m.returnNil {
+		return nil, nil
+	}
+	prev := "p"
+	next := "n"
+	return &domain.MatchNeighbors{
+		PreviousMatchID: &prev,
+		NextMatchID:     &next,
+		CurrentIndex:    1,
+		TotalMatches:    3,
+	}, nil
+}
+
+func TestMatchViewService_GetMatchNeighborsFiltered_PropagateSpec(t *testing.T) {
+	repo := &mockNeighborsRepo{}
+	svc := NewMatchViewService(repo, "xuid-me")
+
+	pl := "Ranked Arena"
+	out := "win"
+	spec := &domain.MatchFilterSpec{PlaylistName: &pl, Outcome: &out}
+	resp, err := svc.GetMatchNeighborsFiltered(context.Background(), "m1", spec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if repo.receivedXUID != "xuid-me" {
+		t.Errorf("xuid = %q, want xuid-me", repo.receivedXUID)
+	}
+	if repo.receivedMatch != "m1" {
+		t.Errorf("match = %q, want m1", repo.receivedMatch)
+	}
+	if repo.receivedSpec == nil || repo.receivedSpec.PlaylistName == nil || *repo.receivedSpec.PlaylistName != "Ranked Arena" {
+		t.Errorf("spec not propagated correctly : %+v", repo.receivedSpec)
+	}
+	// AppliedFilters echo doit être présent quand spec non vide
+	if resp.AppliedFilters == nil || resp.AppliedFilters.PlaylistName == nil {
+		t.Errorf("AppliedFilters echo missing : %+v", resp.AppliedFilters)
+	}
+	if resp.CurrentIndex != 1 || resp.TotalMatches != 3 {
+		t.Errorf("neighbors mal renvoyés : %+v", resp)
+	}
+}
+
+func TestMatchViewService_GetMatchNeighborsFiltered_EmptySpec_NoAppliedFilters(t *testing.T) {
+	repo := &mockNeighborsRepo{}
+	svc := NewMatchViewService(repo, "xuid-me")
+
+	resp, err := svc.GetMatchNeighborsFiltered(context.Background(), "m1", &domain.MatchFilterSpec{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.AppliedFilters != nil {
+		t.Errorf("AppliedFilters doit être nil pour spec vide, got %+v", resp.AppliedFilters)
+	}
+}
+
+func TestMatchViewService_GetMatchNeighborsFiltered_NilSpec(t *testing.T) {
+	repo := &mockNeighborsRepo{}
+	svc := NewMatchViewService(repo, "xuid-me")
+
+	_, err := svc.GetMatchNeighborsFiltered(context.Background(), "m1", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Le spec nil est passé tel quel au repo (qui doit le déléguer à GetMatchNeighbors)
+	if repo.receivedSpec != nil {
+		t.Errorf("spec nil doit être propagé tel quel, got %+v", repo.receivedSpec)
+	}
+}
+
+func TestMatchViewService_GetMatchNeighborsFiltered_NilResult(t *testing.T) {
+	repo := &mockNeighborsRepo{returnNil: true}
+	svc := NewMatchViewService(repo, "xuid-me")
+
+	resp, err := svc.GetMatchNeighborsFiltered(context.Background(), "m1", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.PreviousMatchID != nil || resp.NextMatchID != nil {
+		t.Errorf("résultat nil doit retourner MatchNeighbors zéro, got %+v", resp)
+	}
+}
