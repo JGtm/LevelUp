@@ -20,6 +20,7 @@ import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ExplorerMatchFilters, MatchEncounterBadge } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -116,9 +117,12 @@ export function ExplorerPage() {
   const navigateToMatch = useNavigateToMatch(playerSlug)
 
   function goToMatch(matchId: string, matchIds: string[]) {
+    // Phase 2c : capture le filterContext courant pour la nav contextuelle.
+    const filterSpec = filterContextToMatchFilterSpec(filterContext)
     navigateToMatch(matchId, {
       source: 'history',
       matchIds,
+      filterSpec: filterSpec ?? undefined,
     })
   }
 
