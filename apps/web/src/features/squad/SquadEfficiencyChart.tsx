@@ -14,7 +14,6 @@ interface EfficiencyLabels {
   rendementLabel: string
   resistanceLabel: string
   refLabel: string
-  toggleLabel: string
   noData: string
 }
 
@@ -52,6 +51,16 @@ export function SquadEfficiencyChart({
   const pts = useMemo(() => rowsByPlayer[activePlayer] ?? [], [rowsByPlayer, activePlayer])
   const color = colorByPlayer[activePlayer] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
 
+  // Échelle Y globale : max sur tous les joueurs → stable au switch.
+  const globalYMax = useMemo(() => {
+    let max = 0
+    for (const p of Object.values(rowsByPlayer).flat()) {
+      if (p.rendement_offensif !== undefined) max = Math.max(max, p.rendement_offensif)
+      if (p.resistance_defensive !== undefined) max = Math.max(max, p.resistance_defensive)
+    }
+    return Math.ceil(max * 2) / 2 // arrondi au demi supérieur
+  }, [rowsByPlayer])
+
   const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(
     () => (pts.length > 0 ? [{ key: activePlayer, datapoints: pts }] : []),
     [pts, activePlayer],
@@ -65,36 +74,16 @@ export function SquadEfficiencyChart({
         resistanceLabel: labels.resistanceLabel,
         refLabel: labels.refLabel,
         showXAxis: true,
+        yMax: globalYMax,
       }),
-    [pts, color, labels],
+    [pts, color, labels, globalYMax],
   )
 
   if (players.length === 0) return null
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">{labels.toggleLabel}</p>
-      <div className="flex flex-wrap gap-1">
-        {players.map((player) => (
-          <button
-            key={player}
-            type="button"
-            onClick={() => setSelectedPlayer(player)}
-            className={[
-              'rounded-md border px-2.5 py-1 text-xs transition-colors',
-              player === activePlayer
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-input bg-background hover:bg-muted',
-            ].join(' ')}
-          >
-            {player}
-          </button>
-        ))}
-      </div>
-      <div
-        className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 pb-1 text-xs"
-        style={{ color: TEXT_COLOR }}
-      >
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs" style={{ color: TEXT_COLOR }}>
         <span className="flex items-center gap-1.5">
           <svg aria-hidden="true" width="20" height="4">
             <line x1="0" y1="2" x2="20" y2="2" stroke="currentColor" strokeWidth="2" />
@@ -130,6 +119,23 @@ export function SquadEfficiencyChart({
           </svg>
           {labels.refLabel}
         </span>
+        <div className="ml-auto flex flex-wrap justify-end gap-1">
+          {players.map((player) => (
+            <button
+              key={player}
+              type="button"
+              onClick={() => setSelectedPlayer(player)}
+              className={[
+                'rounded-md border px-2.5 py-1 text-xs transition-colors',
+                player === activePlayer
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-input bg-background hover:bg-muted',
+              ].join(' ')}
+            >
+              {player}
+            </button>
+          ))}
+        </div>
       </div>
       <ChartCard
         series={series}

@@ -20,6 +20,8 @@ export interface EfficiencyTrackOpts {
   resistanceLabel: string
   refLabel: string
   showXAxis: boolean
+  /** Valeur max Y partagée entre tous les joueurs (échelle uniforme au switch). */
+  yMax?: number
 }
 
 export function buildSquadEfficiencyTrackOption(
@@ -83,6 +85,7 @@ export function buildSquadEfficiencyTrackOption(
       ...axisBase,
       type: 'value',
       min: 0,
+      max: opts.yMax,
       axisLabel: {
         ...axisBase.axisLabel,
         formatter: (v: number) => v.toFixed(1),
