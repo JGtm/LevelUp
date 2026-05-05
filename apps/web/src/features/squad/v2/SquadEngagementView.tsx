@@ -7,22 +7,19 @@
  * Format :
  *   - 3 courbes team-level toujours visibles (lobby pointille pale, attendu
  *     pointille marque, equipe pleine epaisse)
- *   - Chips sous le chart pour overlay 1 joueur a la fois (PlayerChips)
- *   - Click chip -> ajoute la courbe pace_observed du joueur en couleur saturee
- *   - Click chip active -> deselectionne
+ *   - Boutons joueurs en bas de la card pour overlay 1 joueur a la fois
+ *   - Click bouton -> ajoute la courbe pace_observed du joueur en couleur saturee
+ *   - Click bouton actif -> deselectionne
  *
  * Auto-zoom Y dynamique selon presence de l'overlay (cf §8.6 doc).
  *
- * Source de donnees : payload backend SquadEngagementSession
- * (a wirer en Phase 4.b — pour MVP la prop est typee mais la query peut etre
- * stub).
+ * Source de donnees : payload backend SquadEngagementSession.
  */
 import { useCallback, useMemo, useState } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, axisBase, legendBase, tooltipBase } from '@/components/charts/_utils'
-import { PlayerChips, type PlayerChipItem } from '@/components/PlayerChips'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 export interface SquadEngagementSession {
@@ -45,7 +42,7 @@ export interface SquadPlayerEngagement {
   gamertag: string
   /** Pace observe par match (longueur = labels.length). */
   paceObserved: number[]
-  /** Token couleur semantique pour la courbe + chip (fallback si colorHex absent). */
+  /** Token couleur semantique pour la courbe + bouton (fallback si colorHex absent). */
   colorToken: SemanticToken
   /** Couleur hex directe — prioritaire sur colorToken (ex. couleur joueur depuis playerColors). */
   colorHex?: string
@@ -62,22 +59,11 @@ export interface SquadEngagementViewProps {
 
 /**
  * SquadEngagementView — Mock 15 v2 :
- *   3 courbes team-level + chips squad pour overlay 1 joueur a la fois.
+ *   3 courbes team-level + boutons squad pour overlay 1 joueur a la fois.
  */
 export function SquadEngagementView(props: SquadEngagementViewProps) {
   const { session, state = 'ready', height = 280 } = props
   const [selectedXUID, setSelectedXUID] = useState<string | null>(null)
-
-  const chips: PlayerChipItem[] = useMemo(
-    () =>
-      session.players.map((p) => ({
-        id: p.xuid,
-        label: p.gamertag,
-        colorToken: p.colorToken,
-        colorHex: p.colorHex,
-      })),
-    [session.players],
-  )
 
   const overlayPlayer = useMemo(
     () => session.players.find((p) => p.xuid === selectedXUID) ?? null,
@@ -96,25 +82,44 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
   )
 
   return (
-    <div>
-      <ChartCard
-        title="Engagement equipe"
-        series={dummySeries}
-        loading={state === 'loading'}
-        error={state === 'error' ? new Error('error') : undefined}
-        height={height}
-        buildOption={buildOption}
-      />
-      <div style={{ marginTop: '8px', marginLeft: '50px' }}>
-        <PlayerChips
-          players={chips}
-          selectedId={selectedXUID}
-          onChange={setSelectedXUID}
-          groupLabel="Afficher joueur :"
-          ariaLabel="Selecteur de joueur a afficher"
-        />
-      </div>
-    </div>
+    <ChartCard
+      title="Engagement"
+      series={dummySeries}
+      loading={state === 'loading'}
+      error={state === 'error' ? new Error('error') : undefined}
+      height={height}
+      buildOption={buildOption}
+    >
+      {session.players.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-3 pb-3">
+          {session.players.map((p) => {
+            const isActive = p.xuid === selectedXUID
+            // color-allow: hex résolu depuis semantic tokens via colorHex ou resolveToken
+            const accentHex = p.colorHex ?? resolveToken(p.colorToken)
+            return (
+              <button
+                key={p.xuid}
+                type="button"
+                onClick={() => setSelectedXUID(isActive ? null : p.xuid)}
+                aria-pressed={isActive}
+                className={[
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors',
+                  isActive
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-background hover:bg-muted',
+                ].join(' ')}
+              >
+                <span
+                  aria-hidden
+                  style={{ background: accentHex, width: 8, height: 8, display: 'inline-block', flexShrink: 0 }}
+                />
+                {p.gamertag}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </ChartCard>
   )
 }
 
@@ -226,14 +231,16 @@ function buildSquadEngagementOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 50, right: 24, top: 18, bottom: 46 },
+    // grid.bottom = espace pour x-axis 2 lignes + légende en bas du container
+    grid: { left: 50, right: 24, top: 8, bottom: 64 },
     tooltip: {
       ...tooltipBase,
       trigger: 'axis',
       valueFormatter: (v: unknown) =>
         typeof v === 'number' ? v.toFixed(2) : String(v),
     },
-    legend: { ...legendBase, top: 0, bottom: 'auto' },
+    // legendBase a déjà bottom: 0 — pas d'override top
+    legend: { ...legendBase },
     xAxis: {
       ...axisBase,
       type: 'category',

@@ -128,7 +128,6 @@ export function SquadContributionsPage() {
             <SquadIntensityHeatmapChart
               profile={intensityProfileLocalized}
               zLabel={t.intensity.zLabel}
-              toggleLabel={t.intensity.toggleLabel}
             />
           </CardContent>
         </Card>
