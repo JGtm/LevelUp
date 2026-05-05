@@ -1,5 +1,29 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 5 (match favorites via Option pattern)
+
+**Statut** : Complété — commit 5 sur `refactor/leased-writer-enforcement`. Match favorites (HTTP) sérialisés avec le sync engine via le lease shared_social.
+
+**Décision technique** : même pattern que le commit 4 (Option) — service à très petite surface API (1 méthode write `ToggleMatchFavorite`).
+
+**Fichiers modifiés** :
+- `internal/service/social_service.go` : type `SocialOption`, fonction `WithWriterAcquirer`, `NewSocialService` accepte `opts...`. `ToggleMatchFavorite` appelle l'acquéreur si configuré, propage ErrDBLocked.
+- `internal/api/registry.go` : import `dblease`, `Social(ctx, slug)` configure `WithWriterAcquirer(pdb.AcquireSharedSocialWriterTimeout(SharedLeaseTimeout))`.
+- `internal/api/handlers/match_favorite.go` : import `errors` + `dblease`, mapping `ErrDBLocked` → 503 + `Retry-After: 5` + body code `db_busy`.
+
+**Tests** :
+- `internal/service/social_service_test.go` : 3 nouveaux tests
+  - `TestSocialService_ToggleMatchFavorite_LeaseBusy_PropagatesErrDBLocked` — mock acquirer retourne ErrDBLocked, vérifier propagation + pas d'écriture.
+  - `TestSocialService_ToggleMatchFavorite_LeaseAcquiredSuccessfully` — vrai writer via dblease.AcquireWriter, vérifier release post-opération via `dblease.AssertNoLeasedWriters(t)`.
+  - `TestSocialService_NoAcquirer_BehavesLikeBefore` — non-régression sans option.
+- `internal/api/handlers/match_favorite_test.go` : 1 nouveau test `TestMatchFavoriteHandler_DBLocked_Returns503`.
+
+**Total tests handler 503 (commits 2-5)** : 10 (Player×3, Squad×2, Notifications×3, Favorite×1, NotFound non-confusion×1).
+
+**Conclusion / prochaine étape** : commit 6 — media likes + transaction atomique. C'est le commit le plus complexe car `SetMediaLikeAtomic` ouvre une `*sql.Tx` via `LeasedWriter.BeginTx()` puis passe le `*sql.Tx` (qui satisfait `port.DBExecutor`) à `repo.SetMediaLike` puis `repo.ToggleSharedLike`. C'est l'usage attendu de la séparation `DBExecutor`/`DBWriter` du commit 1.
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 4 (notifications.Service migration via Option pattern)
 
 **Statut** : Complété — commit 4 sur `refactor/leased-writer-enforcement`. P2 résolu : les écritures notifications HTTP sont sérialisées avec le sync engine et le boot via le lease shared_social.duckdb, sans casser le contrat best-effort de `Emit`.
