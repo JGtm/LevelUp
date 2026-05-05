@@ -189,7 +189,7 @@ lease pattern instead.
 
 ## References
 
-- Plan complet : `.ai/PLAN_DB_WRITE_CONCURRENCY.md` v3
+- Plan complet : `.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md` v3
 - ADR-0009 (expvar monitoring multi-user) — cardinality bounded
 - ADR-0005 (Prestige phased activation) — context for P1 urgency
 - `internal/sync/lease.go` — invariant documentation

@@ -16,7 +16,7 @@
 
 **Noté le** : 2026-05-05 | **Priorité** : 🔴 Bloquant merge pour les 3 premiers points, 🟡 follow-up pour le reste
 
-**Contexte** : la branche `refactor/leased-writer-enforcement` (9 commits, `ae03600f`→`5423da2a`) résout P1 (Prestige HTTP), P2 (Notifications), P3 (Media atomicité) en introduisant le type `*dblease.LeasedWriter`, deux patterns de configuration (Wrapper / Option), et 41 nouveaux tests + 3 benchmarks. Le code complet n'a **pas pu être buildé localement** faute de `gcc`/cgo dans l'environnement de la session — vérifié uniquement via `gofmt` et cohérence statique des signatures. Plan complet dans [.ai/PLAN_DB_WRITE_CONCURRENCY.md](.ai/PLAN_DB_WRITE_CONCURRENCY.md), ADR officielle dans [docs/adr/0013-leased-writer-enforcement.md](docs/adr/0013-leased-writer-enforcement.md).
+**Contexte** : la branche `refactor/leased-writer-enforcement` (9 commits, `ae03600f`→`5423da2a`) résout P1 (Prestige HTTP), P2 (Notifications), P3 (Media atomicité) en introduisant le type `*dblease.LeasedWriter`, deux patterns de configuration (Wrapper / Option), et 41 nouveaux tests + 3 benchmarks. Le code complet n'a **pas pu être buildé localement** faute de `gcc`/cgo dans l'environnement de la session — vérifié uniquement via `gofmt` et cohérence statique des signatures. Plan complet dans [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md), ADR officielle dans [docs/adr/0013-leased-writer-enforcement.md](docs/adr/0013-leased-writer-enforcement.md).
 
 **🔴 Bloquant merge — à faire sur une machine cgo-enabled** :
 
@@ -38,7 +38,7 @@
 
 4. **Câbler les 2 scripts en CI** : `scripts/check_test_baseline.sh` et `apps/go-api/scripts/check_lease_enforcement.sh` doivent tourner en GitHub Actions. PR infra dédiée — pas dans le scope db-concurrency.
 
-5. **Tests intégration concurrentiels manquants** : le plan v3 prévoyait 17 scénarios sous build tag `integration`, seuls 2 ont été ajoutés (commit 7). Manquent (cf. [.ai/PLAN_DB_WRITE_CONCURRENCY.md §Tests d'intégration concurrentiels](.ai/PLAN_DB_WRITE_CONCURRENCY.md)) :
+5. **Tests intégration concurrentiels manquants** : le plan v3 prévoyait 17 scénarios sous build tag `integration`, seuls 2 ont été ajoutés (commit 7). Manquent (cf. [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md §Tests d'intégration concurrentiels](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md)) :
    - `TestSyncVsPrestigeConcurrent` — sync long + 10 POST /challenges en parallèle.
    - `TestSyncHookNoDeadlock` — pipeline sync + RunPostSyncHook avec timeout court (échoue par timeout si deadlock).
    - `TestSyncVsNotificationsConcurrent`, `TestSyncVsMediaLikeConcurrent`, `TestSyncVsMatchFavoriteConcurrent`.
@@ -53,7 +53,7 @@
 
 **🟢 Validation manuelle pré-prod** :
 
-8. **Suite de non-régression métier** : à valider en local après merge (cf. [.ai/PLAN_DB_WRITE_CONCURRENCY.md §Suite de non-régression métier](.ai/PLAN_DB_WRITE_CONCURRENCY.md)).
+8. **Suite de non-régression métier** : à valider en local après merge (cf. [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md §Suite de non-régression métier](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md)).
    - Sync delta sur joueur réel : durée + nb matchs identiques.
    - Création/édition/abandon défi via UI : flow inchangé.
    - Page Prestige `/api/v1/prestige/me` : leaderboard et PP cohérents.
@@ -71,7 +71,7 @@
 4. Une fois 1-3 OK : merge de la branche vers `fix/theme-consistency-tokens` ou `main` selon la stratégie.
 
 **Documents liés** :
-- [.ai/PLAN_DB_WRITE_CONCURRENCY.md](.ai/PLAN_DB_WRITE_CONCURRENCY.md) — plan v3 complet (~1100 lignes)
+- [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md) — plan v3 complet (~1100 lignes)
 - [docs/adr/0013-leased-writer-enforcement.md](docs/adr/0013-leased-writer-enforcement.md) — ADR officielle EN
 - [docs/FR/adr/0013-leased-writer-enforcement.md](docs/FR/adr/0013-leased-writer-enforcement.md) — version FR
 - [.ai/baselines/tests_pre_migration.jsonl](.ai/baselines/tests_pre_migration.jsonl) — 1662 tests baseline figés
@@ -101,7 +101,7 @@
 **Documents liés** :
 - `.github/labels.yml` — déclaration versionnée des labels
 - `.github/workflows/sync-labels.yml` — workflow d'auto-sync
-- `.ai/FEEDBACK_DRAWER.md` — plan complet
+- `.ai/V7/FEEDBACK_DRAWER.md` — plan complet
 - `.ai/thought_log.md` — entrée 2026-05-05 (drawer feedback)
 
 ---
