@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-04-26.
+> Mis à jour le 2026-05-05.
 
 ---
 
@@ -9,6 +9,33 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [feedback-drawer] Activer la sync des labels GitHub après merge sur main
+
+**Noté le** : 2026-05-05 | **Priorité** : Bloquante au merge de `feat/feedback-drawer`
+
+**Contexte** : la feature drawer feedback (PR `feat/feedback-drawer`) introduit un workflow `.github/workflows/sync-labels.yml` qui crée automatiquement les labels GitHub (`feedback`, `bug`, `severity:critical`, `area:synthesis`, etc.) à partir de `.github/labels.yml`. Le workflow est trigger sur `push: branches: [main]` quand `labels.yml` change — donc au premier merge il devrait s'exécuter tout seul, **mais** la première fois c'est plus prudent de le lancer manuellement pour vérifier qu'il marche avant qu'une issue feedback réelle arrive.
+
+**À faire — juste APRÈS le merge de la PR feedback-drawer sur main** :
+
+1. Aller sur https://github.com/JGtm/LevelUp/actions
+2. Cliquer dans la liste de gauche sur **Sync labels**
+3. À droite, **Run workflow** → branch: `main` → **Run workflow**
+4. Attendre ~30 secondes
+5. Vérifier sur https://github.com/JGtm/LevelUp/labels que tous les labels du `.github/labels.yml` sont présents (`feedback`, `bug`, `enhancement`, `question`, `severity:*`, `area:*`, `triage:*`).
+
+**Pourquoi ce n'est pas critique au moment du merge** : sans ce run, la première issue feedback créée via le drawer aura une URL avec des `labels=feedback,bug,severity:high,area:synthesis` qui ne pourront pas être appliqués par GitHub puisque les labels n'existent pas encore. L'issue sera créée sans labels → la GitHub Action de triage ne se déclenchera PAS (elle est filtrée sur `contains(github.event.issue.labels.*.name, 'feedback')`). Pas de drame, juste un feedback qui dort sans triage IA tant que les labels ne sont pas créés.
+
+**Conditions de déblocage** :
+1. ❌ PR `feat/feedback-drawer` mergée sur main.
+
+**Documents liés** :
+- `.github/labels.yml` — déclaration versionnée des labels
+- `.github/workflows/sync-labels.yml` — workflow d'auto-sync
+- `.ai/FEEDBACK_DRAWER.md` — plan complet
+- `.ai/thought_log.md` — entrée 2026-05-05 (drawer feedback)
 
 ---
 
