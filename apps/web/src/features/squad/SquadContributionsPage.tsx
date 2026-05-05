@@ -8,14 +8,13 @@
  *
  * Multi-titres : strings UI via getSquadText.
  */
+import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
-import { SquadMatchHistoryTable } from './SquadMatchHistoryTable'
-import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadIntensityHeatmapChart } from './SquadIntensityHeatmapChart'
@@ -23,14 +22,14 @@ import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
 import { SquadFirstEventsChart } from './SquadFirstEventsChart'
+import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
+import type { SquadTeammateEntry } from '@/features/engagement/queries'
 import { getSquadPlayerColors } from './colors'
 
 export function SquadContributionsPage() {
-  const { confirmedGamertags, pageData, playerSlug } = useSquadContext()
+  const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
-  const matchHistory = pageData?.match_history ?? []
-  const impactMatrix = pageData?.impact_matrix
   const perMinuteRows = pageData?.per_minute_stats ?? []
   const synergyRadar = pageData?.synergy_radar ?? []
   const intensityProfile = pageData?.intensity_profile
@@ -43,6 +42,13 @@ export function SquadContributionsPage() {
   // / SquadSynergyRadarSeries.player / SquadFirstEventsRow.player etc.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
   const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
+  const engagementTeammates = useMemo<SquadTeammateEntry[]>(
+    () =>
+      selectedRows
+        .filter((r) => confirmedGamertags.includes(r.gamertag) && r.xuid !== null)
+        .map((r) => ({ xuid: r.xuid as string, gamertag: r.gamertag })),
+    [selectedRows, confirmedGamertags],
+  )
   const intensityProfileLocalized = intensityProfile
     ? {
         ...intensityProfile,
@@ -186,6 +192,8 @@ export function SquadContributionsPage() {
         </Card>
       )}
 
+      <SquadEngagementSection playerSlug={playerSlug} teammates={engagementTeammates} colorByPlayer={playerColors} />
+
       {firstEvents && firstEvents.rows.length > 0 && (
         <Card>
           <CardContent className="pt-4 space-y-3">
@@ -204,21 +212,6 @@ export function SquadContributionsPage() {
         </Card>
       )}
 
-      {impactMatrix && impactMatrix.matches.length > 0 && impactMatrix.players.length > 0 && (
-        <SquadImpactScoreboard matrix={impactMatrix} />
-      )}
-
-      {matchHistory.length > 0 && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold">{t.history.title}</h3>
-              <p className="text-sm text-muted-foreground">{t.history.description}</p>
-            </div>
-            <SquadMatchHistoryTable rows={matchHistory} playerSlug={playerSlug} />
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

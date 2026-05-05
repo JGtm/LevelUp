@@ -22,13 +22,14 @@ import (
 // handlers HTTP. Charge metadata + events + history + coefs via le repo, puis
 // appelle l'algo pur. Pas d'acces SQL direct, pas d'appel cross-service.
 type PlayerEngagementService struct {
-	repo port.EngagementScoreRepository
-	xuid string
+	repo     port.EngagementScoreRepository
+	xuid     string
+	gamertag string
 }
 
 // NewPlayerEngagementService cree un service per-player.
-func NewPlayerEngagementService(repo port.EngagementScoreRepository, xuid string) *PlayerEngagementService {
-	return &PlayerEngagementService{repo: repo, xuid: xuid}
+func NewPlayerEngagementService(repo port.EngagementScoreRepository, xuid, gamertag string) *PlayerEngagementService {
+	return &PlayerEngagementService{repo: repo, xuid: xuid, gamertag: gamertag}
 }
 
 // GetMatchEngagement charge le contexte du match, recompute la courbe et le
@@ -137,19 +138,29 @@ func (s *PlayerEngagementService) GetSquadSession(
 	slog.DebugContext(ctx, "PlayerEngagementService.GetSquadSession: computing",
 		"xuid", s.xuid, "n_matches", len(matchIDs), "n_teammates", len(teammates))
 
+	// Le joueur principal est toujours inclus en premier dans la liste.
+	players := make([]domain.SquadPlayerEngagement, 0, 1+len(teammates))
+	players = append(players, domain.SquadPlayerEngagement{
+		XUID:         s.xuid,
+		Gamertag:     s.gamertag,
+		PaceObserved: make([]float64, 0, len(matchIDs)),
+	})
+	for _, t := range teammates {
+		if t.XUID == s.xuid {
+			continue // évite le doublon si l'appelant inclut déjà le joueur principal
+		}
+		players = append(players, domain.SquadPlayerEngagement{
+			XUID:         t.XUID,
+			Gamertag:     t.Gamertag,
+			PaceObserved: make([]float64, 0, len(matchIDs)),
+		})
+	}
 	session := &domain.SquadEngagementSession{
 		Labels:         make([]string, 0, len(matchIDs)),
 		LobbyPerPlayer: make([]float64, 0, len(matchIDs)),
 		TeamExpected:   make([]float64, 0, len(matchIDs)),
 		TeamObserved:   make([]float64, 0, len(matchIDs)),
-		Players:        make([]domain.SquadPlayerEngagement, 0, len(teammates)),
-	}
-	for _, t := range teammates {
-		session.Players = append(session.Players, domain.SquadPlayerEngagement{
-			XUID:         t.XUID,
-			Gamertag:     t.XUID,
-			PaceObserved: make([]float64, 0, len(matchIDs)),
-		})
+		Players:        players,
 	}
 
 	for i, mid := range matchIDs {

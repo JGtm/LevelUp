@@ -166,36 +166,40 @@ export function SquadPerformanceCharts({
 
   return (
     <div className="space-y-4" data-testid="squad-performance-charts">
-      <ChartCard
-        title={labels.killsDeathsTitle}
-        series={series}
-        buildOption={buildButterfly}
-        height={SUBCHART_HEIGHT}
-      />
-      <ChartCard
-        title={labels.assistsTitle}
-        series={series}
-        buildOption={() => buildLine('assists', 0)}
-        height={SUBCHART_HEIGHT}
-      />
-      <ChartCard
-        title={labels.kdaTitle}
-        series={series}
-        buildOption={() => buildLine('kda', 2, undefined, undefined, 1)}
-        height={SUBCHART_HEIGHT}
-      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title={labels.killsDeathsTitle}
+          series={series}
+          buildOption={buildButterfly}
+          height={SUBCHART_HEIGHT}
+        />
+        <ChartCard
+          title={labels.assistsTitle}
+          series={series}
+          buildOption={() => buildLine('assists', 0)}
+          height={SUBCHART_HEIGHT}
+        />
+      </div>
       <ChartCard
         title={labels.accuracyTitle}
         series={series}
         buildOption={() => buildLine('accuracy', 1, ' %', 100)}
         height={SUBCHART_HEIGHT}
       />
-      <ChartCard
-        title={labels.avgLifeTitle}
-        series={series}
-        buildOption={() => buildLine('avg_life_seconds', 1, ' s')}
-        height={SUBCHART_HEIGHT}
-      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title={labels.kdaTitle}
+          series={series}
+          buildOption={() => buildLine('kda', 2, undefined, undefined, 1)}
+          height={SUBCHART_HEIGHT}
+        />
+        <ChartCard
+          title={labels.avgLifeTitle}
+          series={series}
+          buildOption={() => buildLine('avg_life_seconds', 1, ' s')}
+          height={SUBCHART_HEIGHT}
+        />
+      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
           title={labels.performanceTitle}
@@ -210,18 +214,20 @@ export function SquadPerformanceCharts({
           height={SUBCHART_HEIGHT}
         />
       </div>
-      <ChartCard
-        title={labels.maxSpreeTitle}
-        series={series}
-        buildOption={() => buildLine('max_killing_spree', 0)}
-        height={SUBCHART_HEIGHT}
-      />
-      <ChartCard
-        title={labels.hsPerfectTitle}
-        series={series}
-        buildOption={buildHsPerfect}
-        height={SUBCHART_HEIGHT}
-      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title={labels.maxSpreeTitle}
+          series={series}
+          buildOption={() => buildLine('max_killing_spree', 0)}
+          height={SUBCHART_HEIGHT}
+        />
+        <ChartCard
+          title={labels.hsPerfectTitle}
+          series={series}
+          buildOption={buildHsPerfect}
+          height={SUBCHART_HEIGHT}
+        />
+      </div>
     </div>
   )
 }

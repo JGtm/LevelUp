@@ -15,10 +15,10 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { CHART_BG, axisBase, tooltipBase } from '@/components/charts/_utils'
 import type { SquadFirstEvents } from '@/lib/api/types'
+import { hexComplement } from '@/lib/accessibility'
 
 const SEPARATOR_COLOR = 'rgba(255, 255, 255, 0.18)'
 const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.55)'
-const DEATHS_OPACITY = 0.45
 
 export interface SquadFirstEventsOpts {
   /** gamertag → couleur hex (cf. getSquadPlayerColors). */
@@ -44,6 +44,7 @@ export function buildSquadFirstEventsOption(
   for (let pi = 0; pi < data.rows.length; pi += 1) {
     const row = data.rows[pi]
     const color = opts.colorByPlayer[row.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const negColor = hexComplement(color) // hue +180° — même convention que butterfly et stats/min
     const isFirst = pi === 0
 
     // Frags positifs.
@@ -68,13 +69,13 @@ export function buildSquadFirstEventsOption(
         : {}),
     })
 
-    // Morts négatives — couleur joueur opacity 0.45.
+    // Morts négatives — opposé colorimétrique (hue +180°), même convention que butterfly.
     series.push({
       name: `${row.player} — ${opts.deathLabel}`,
       type: 'bar',
       stack: `death-${row.player}`,
       barMaxWidth: 16,
-      itemStyle: { color, opacity: DEATHS_OPACITY },
+      itemStyle: { color: negColor },
       data: row.death_counts.map((v) => (v === 0 ? 0 : -v)),
     })
   }
