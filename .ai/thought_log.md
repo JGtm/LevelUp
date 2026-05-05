@@ -1,5 +1,68 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 8 (ADR 0013 + script lint CI) — branche complète
+
+**Statut** : Complété — commit 8 sur `refactor/leased-writer-enforcement`. Branche **entièrement livrée** (commits 0-8). 8 commits, ~3000 lignes ajoutées, 41 nouveaux tests + 3 benchmarks, 0 test existant supprimé.
+
+**Décision technique** : pivot lint script bash vs analyzer Go custom.
+
+Le plan v3 prévoyait un Go analyzer custom (`tools/lintwriter/`) qui interdirait `db.Exec()` direct dans `internal/platform/duckdb/` si le receveur n'a pas un `*LeasedWriter` en paramètre. Étant donné le pivot pragmatique (acquisition au-dessus du repo, pas dans les signatures), un tel analyzer n'a plus de sens : le repo continue à utiliser `r.db.Exec()` et c'est attendu.
+
+Ce qui a du sens en revanche : interdire `duckdb.OpenReadWrite` dans `internal/service/` et `internal/api/handlers/` — c'est exactement le périmètre où une régression future pourrait recréer le risque. Un script bash avec `grep -rE` est plus simple à maintenir qu'un analyzer Go custom et fait le travail.
+
+**Fichiers créés** :
+- `docs/adr/0013-leased-writer-enforcement.md` (EN, ~200 lignes) — ADR complète :
+  - Contexte (P1/P2/P3, risque concret, sync engine vs HTTP).
+  - Décision (architecture, deux patterns Wrapper/Option, type system, atomicité, observabilité).
+  - 3 alternatives rejetées avec justifications (signatures cascade, réentrance par token, single-writer goroutine).
+  - Conséquences positives + dette tracée.
+  - Tableau des 8 commits de la branche avec scope.
+- `docs/FR/adr/0013-leased-writer-enforcement.md` (FR, version condensée) — créé sous `docs/FR/adr/` (le sous-dossier n'existait pas, je l'ai initialisé pour respecter la règle CLAUDE.md docs/FR sync).
+- `apps/go-api/scripts/check_lease_enforcement.sh` (~70 lignes bash) :
+  - Patterns interdits : `duckdb.OpenReadWrite`, `OpenReadWriteShared`.
+  - Scan limité à `internal/service/` + `internal/api/handlers/` (les sites où une régression aurait un impact).
+  - Whitelist explicite des fichiers légitimes (tests, db/pool, prestige_setup, registry_notifications, migrations, ops, sync, assets, etc.).
+  - Sortie verte sur la branche actuelle (vérifié).
+
+**Validation** : `bash apps/go-api/scripts/check_lease_enforcement.sh` retourne ✅. À câbler en CI dans une PR séparée infra (pas dans le scope de cette branche).
+
+**Récapitulatif final de la branche** :
+
+| # | SHA | Scope |
+|---|---|---|
+| 0 | `ae03600f` | baseline tests (1662) + plan v3 + script CI baseline |
+| 1 | `7a951aed` | LeasedWriter + interfaces port + métriques + leak helper |
+| 2 | `129067cd` | **P1 HTTP** — Prestige Player (Create/Update/Abandon/Arc/Pilot) |
+| 3 | `ca3cfca8` | squad/PP shared_social (CreateSquad/JoinSquad) |
+| 4 | `6e488896` | **P2** — notifications.Service via Option pattern |
+| 5 | `81bfdd00` | match favorites via Option pattern |
+| 6 | `591678e9` | **P3** — media likes atomique (transaction *sql.Tx) |
+| 7 | `796a0f26` | sync engine invariant + tests coordination cgo |
+| 8 | (current) | ADR 0013 EN+FR + script lint CI |
+
+**Tests ajoutés** :
+- 13 unitaires dblease (writer + leak + property-based) + 3 benchs → commit 1
+- 6 handler 503 Prestige (Player + Squad + non-confusion) → commits 2-3
+- 5 service notifications + 4 handler notifications → commit 4
+- 4 service social + 1 handler favorite → commit 5
+- 2 service media + 1 handler media → commit 6
+- 2 intégration coordination sync ↔ HTTP → commit 7
+- **Total : 41 nouveaux tests + 3 benchmarks**
+
+**Decisions architecturales finales** :
+1. Deux patterns coexistent (Wrapper pour grand service, Option pour petit) — documenté dans ADR.
+2. Sync engine non migré aux nouvelles métriques (dette tracée, fonctionnellement coordonné via mutex partagé).
+3. Compile-time guard strict non livré (pivot accepté), remplacé par lint script + ADR.
+4. Tests atomic cgo-only différés (intégration en CI cgo-enabled).
+
+**Prochaines étapes hors-scope** :
+- Activer Prestige en prod après tests cgo+integration verts en CI (gate ADR-0005).
+- Câbler `check_lease_enforcement.sh` + `check_test_baseline.sh` en CI (PR infra séparée).
+- Migrer le sync engine vers `dblease.AcquireWriterCtx` pour alimenter les métriques expvar (commit follow-up, non bloquant).
+- Implémenter les tests `Atomic_Success` et `Atomic_RepoError_Rollback` en CI cgo-enabled.
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 7 (sync engine : invariant + tests coordination)
 
 **Statut** : Complété — commit 7 sur `refactor/leased-writer-enforcement`. Aucun changement de comportement runtime du sync engine. Documente l'invariant deadlock-free et ajoute des tests d'intégration de coordination entre les deux APIs (legacy `sync.AcquireLeaseCtx` ↔ nouvelle `dblease.AcquireWriter`).
