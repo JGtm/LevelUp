@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-05-05] Page Escouade — LIVRAISON
+
+**Statut** : Complété — page considérée comme livrée.
+
+**Périmètre livré** (commits de cette session, branche `fix/synergy-radar-calibration`) :
+
+- Suppression des doublons Contributions (SquadImpactScoreboard, SquadMatchHistoryTable) + route "Vue Squad V2"
+- Graphe Engagement : étiquettes X `#N\nCarte` (maps FR), tooltip arrondi au centième
+- Suppression de tous les paragraphes de description sous les titres de charts
+- Graphe "Rendement & Résistance" : chips alignés à droite de la ligne de légende, même ligne
+- Graphe "Engagement" : renommé "Engagement", chips intégrés dans la card (`ChartCard` children), style `rounded-md` + swatch couleur, légende en bas, maps FR côté backend
+- Harmonisation chips joueurs : même style `inline-flex rounded-md border + swatch 8×8` sur les 3 graphes (Rendement & Résistance, Engagement, Intensité)
+
+**Décision principale** : Y-axis laissée en auto-zoom par joueur (pas d'axe unifié) — l'alignement sur le joueur principal aplatissait trop les courbes des autres joueurs.
+
+**Résultats** : `tsc --noEmit` OK, lint couleurs OK, hooks pre-commit OK sur tous les commits.
+
+---
+
 ## [2026-05-05] feat(squad/engagement): étiquettes X "#N\nCarte" + tooltip arrondi centième
 
 **Statut** : Complété.
