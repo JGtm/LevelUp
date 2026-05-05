@@ -554,6 +554,10 @@ type CitationsRepository interface {
 	// LoadMatchCitationsForView charge les top citations d'un match pour la vue détail (Q38).
 	LoadMatchCitationsForView(ctx context.Context, matchID string) ([]domain.CitationMatchViewRow, error)
 
+	// LoadMatchCitationsRich charge les citations riches d'un match (Q41) : delta + cumul + tiers.
+	// Utilisé par le Summary tab pour les progress rings et le filtrage mastery.
+	LoadMatchCitationsRich(ctx context.Context, matchID string) ([]domain.HomeMatchCitationRaw, error)
+
 	// WriteCitationsForMatch écrit les deltas calculés dans match_citations.
 	WriteCitationsForMatch(ctx context.Context, matchID string, deltas []domain.CitationMatchDelta) error
 }
@@ -678,6 +682,9 @@ func (n *noopCitationsRepo) LoadCitationMedalMappings(_ context.Context) ([]doma
 	return nil, nil
 }
 func (n *noopCitationsRepo) LoadMatchCitationsForView(_ context.Context, _ string) ([]domain.CitationMatchViewRow, error) {
+	return nil, nil
+}
+func (n *noopCitationsRepo) LoadMatchCitationsRich(_ context.Context, _ string) ([]domain.HomeMatchCitationRaw, error) {
 	return nil, nil
 }
 func (n *noopCitationsRepo) WriteCitationsForMatch(_ context.Context, _ string, _ []domain.CitationMatchDelta) error {

@@ -309,8 +309,7 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	}
 	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
-		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
-		WithAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb))
+		WithAssetURL(r.assetURLFor(pdb.TitleSlug))
 	return svc, nil
 }
 

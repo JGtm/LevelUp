@@ -255,7 +255,7 @@ func TestFormatDateFRLong_Known(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestConvertMedals_Empty(t *testing.T) {
-	result := convertMedals(nil)
+	result := convertMedals(nil, "halo_infinite")
 	if len(result) != 0 {
 		t.Errorf("expected empty slice, got %d", len(result))
 	}
@@ -265,7 +265,7 @@ func TestConvertMedals_Single(t *testing.T) {
 	raw := []domain.MedalRaw{
 		{MedalID: 42, Count: 3, Label: "Killing Spree"},
 	}
-	result := convertMedals(raw)
+	result := convertMedals(raw, "halo_infinite")
 	if len(result) != 1 {
 		t.Fatalf("expected 1, got %d", len(result))
 	}

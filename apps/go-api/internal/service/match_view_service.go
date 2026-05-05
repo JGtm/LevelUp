@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -222,6 +223,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		bulkMedals     []domain.BulkMedalRaw
 		bulkWeapons    []domain.BulkWeaponKillRaw
 		matchCitations []domain.CitationMatchViewRow
+		richCitations  []domain.HomeMatchCitationRaw
 		histRows       []domain.MatchHistAvgRow
 	)
 
@@ -377,6 +379,14 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 			}
 			return nil
 		})
+		g.Go(func() error {
+			var e error
+			richCitations, e = s.citationsRepo.LoadMatchCitationsRich(gctx, matchID)
+			if e != nil {
+				slog.Warn("match_view: rich citations indisponibles", "match_id", matchID, "err", e)
+			}
+			return nil
+		})
 	}
 
 	if err := g.Wait(); err != nil {
@@ -403,22 +413,21 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 
 	header := buildMatchHeader(ctx, matchID, meta, stats, enrich, scoreboard, s.assetURL, isFavorite)
 	rank := buildRankBlock(skillRank, s.assetURL)
-	summary := buildSummaryTabFull(stats, medals, expected, histRows, meta)
+	summary := buildSummaryTabFull(stats, medals, expected, histRows, meta, s.titleSlug, richCitations)
 	combat := buildCombatTabFull(matchID, bulkWeapons, events, canonicalEvents, kvPairs, scoreboard, s.xuid, durationMS)
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
-	// MV4.B' : radar 6 axes pour TOUS les xuids du scoreboard (pas juste le main).
-	// Charge les awards en série après le scoreboard. Latence supplémentaire
-	// acceptable (~50-100ms pour 1 query DuckDB sur l'index match_id+xuid).
-	rawAwards := s.loadAwardsForScoreboard(ctx, matchID, scoreboard)
+	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/
+	// accuracy/deaths/damage/score). Mêmes formules que le radar squad
+	// (loadSynergyMateAxes), appliquées à un seul match. Pas besoin de
+	// personal_score_awards — toutes les colonnes nécessaires sont déjà dans
+	// match_participants. L'axe Objective reste neutre (threshold=0).
+	modeFamily := matchModeFamilyFromMeta(meta)
+	radarSeries := BuildMatchRadarFromScoreboard(scoreboard, modeFamily)
 	var radar []any
-	if len(rawAwards) > 0 {
-		modeFamily := matchModeFamilyFromMeta(meta)
-		series := BuildMatchRadar(rawAwards, scoreboard, modeFamily)
-		for _, s := range series {
-			radar = append(radar, s)
-		}
+	for _, s := range radarSeries {
+		radar = append(radar, s)
 	}
 
 	return domain.MatchViewResponse{
@@ -428,7 +437,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		CombatTab:    combat,
 		TeamTab:      team,
 		MediaTab:     mediaTab,
-		CitationsTab: buildCitationsTab(matchCitations, medals),
+		CitationsTab: buildCitationsTab(matchCitations, medals, s.titleSlug),
 		Radar:        radar,
 	}, nil
 }
@@ -740,12 +749,18 @@ func buildSummaryTabFull(
 	expected *domain.ExpectedStatsRaw,
 	histRows []domain.MatchHistAvgRow,
 	meta *domain.MatchMetaRaw,
+	titleSlug string,
+	richCitations []domain.HomeMatchCitationRaw,
 ) domain.MatchSummaryTab {
+	citations := analysis.BuildCitationSnippets(richCitations, math.MaxInt32)
+	if citations == nil {
+		citations = []domain.MatchCitationSnippet{}
+	}
 	tab := domain.MatchSummaryTab{
 		KPIs:           domain.MatchSummaryKpis{},
 		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: "#94a3b8"},
-		Medals:         convertMedals(medals),
-		Citations:      []domain.MatchCitation{},
+		Medals:         convertMedals(medals, titleSlug),
+		Citations:      citations,
 		ExpectedStats:  buildExpectedStats(expected, histRows, meta),
 	}
 
@@ -870,23 +885,26 @@ func toIntPtr(f *float64) *int {
 	return &v
 }
 
-func convertMedals(raw []domain.MedalRaw) []domain.MatchMedal {
+func convertMedals(raw []domain.MedalRaw, titleSlug string) []domain.MatchMedal {
 	if len(raw) == 0 {
 		return []domain.MatchMedal{}
 	}
 	medals := make([]domain.MatchMedal, 0, len(raw))
 	for _, r := range raw {
+		imgURL := static.URL(static.KindMedal, titleSlug, strconv.FormatInt(r.MedalID, 10), ".png")
 		medals = append(medals, domain.MatchMedal{
 			MedalNameID: r.MedalID,
 			Name:        r.Label,
 			Count:       r.Count,
+			ImageURL:    imgURL,
+			Difficulty:  r.Difficulty,
 		})
 	}
 	return medals
 }
 
 // buildCitationsTab construit l'onglet Citations depuis les données chargées.
-func buildCitationsTab(citations []domain.CitationMatchViewRow, medals []domain.MedalRaw) domain.MatchCitationsTab {
+func buildCitationsTab(citations []domain.CitationMatchViewRow, medals []domain.MedalRaw, titleSlug string) domain.MatchCitationsTab {
 	commendations := make([]domain.MatchCitation, 0, len(citations))
 	for _, c := range citations {
 		val := float64(c.Value)
@@ -898,7 +916,7 @@ func buildCitationsTab(citations []domain.CitationMatchViewRow, medals []domain.
 	}
 	return domain.MatchCitationsTab{
 		Commendations: commendations,
-		Medals:        convertMedals(medals),
+		Medals:        convertMedals(medals, titleSlug),
 	}
 }
 

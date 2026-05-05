@@ -39,6 +39,9 @@ func (m *mockCitationsRepo) LoadCitationMedalMappings(_ context.Context) ([]doma
 func (m *mockCitationsRepo) LoadMatchCitationsForView(_ context.Context, _ string) ([]domain.CitationMatchViewRow, error) {
 	return nil, nil
 }
+func (m *mockCitationsRepo) LoadMatchCitationsRich(_ context.Context, _ string) ([]domain.HomeMatchCitationRaw, error) {
+	return nil, nil
+}
 func (m *mockCitationsRepo) WriteCitationsForMatch(_ context.Context, _ string, _ []domain.CitationMatchDelta) error {
 	return nil
 }

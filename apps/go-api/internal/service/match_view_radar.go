@@ -12,6 +12,7 @@
 package service
 
 import (
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
@@ -175,4 +176,87 @@ func BuildMatchRadar(
 		})
 	}
 	return out
+}
+
+// BuildMatchRadarFromScoreboard construit les séries radar 6 axes à partir
+// des colonnes match_participants (déjà chargées dans ScoreboardRaw). Mêmes
+// formules que le radar squad (loadSynergyMateAxes), appliquées à un seul
+// match — donc autonome : ne dépend pas de personal_score_awards.
+//
+// Axe Objective laissé à 0 (pas de PSA chargé). Pour ré-injecter Objective,
+// passer par BuildMatchRadar (legacy) avec awards.
+func BuildMatchRadarFromScoreboard(
+	scoreboard []domain.ScoreboardRaw,
+	modeFamily string,
+) []MatchViewRadarSeries {
+	if len(scoreboard) == 0 {
+		return nil
+	}
+
+	// Mêmes seuils que synergyRadarThresholds(1) — calibration single-match.
+	// Threshold=0 sur Objective → axe neutre (Value reste 0 dans ComputeParticipationProfile).
+	thresholds := narrative.ParticipationThresholds{
+		Combat:    25.0,
+		Survival:  analysis.DefensiveResistanceP80 * 1.25,
+		Support:   300.0,
+		Score:     350.0,
+		Objective: 0,
+		Impact:    analysis.OffensiveConversionP80 * 1.25,
+	}
+
+	out := make([]MatchViewRadarSeries, 0, len(scoreboard))
+	for _, row := range scoreboard {
+		if row.XUID == "" {
+			continue
+		}
+		raw := computeMatchRadarRawAxes(row)
+		axes := narrative.ComputeParticipationProfile(raw, thresholds)
+		out = append(out, MatchViewRadarSeries{
+			XUID:       row.XUID,
+			Gamertag:   row.Gamertag,
+			Axes:       axes,
+			ModeFamily: modeFamily,
+		})
+	}
+	return out
+}
+
+// computeMatchRadarRawAxes calcule les valeurs brutes par axe pour 1 joueur
+// sur 1 match. Reprend les formules de loadSynergyMateAxes (squad).
+func computeMatchRadarRawAxes(row domain.ScoreboardRaw) map[narrative.ParticipationAxis]float64 {
+	raw := map[narrative.ParticipationAxis]float64{}
+
+	hs := 0
+	if row.HeadshotKills != nil {
+		hs = *row.HeadshotKills
+	}
+	pk := row.PerfectKills
+	acc := 0.0
+	if row.Accuracy != nil {
+		acc = *row.Accuracy / 100.0 // DB stocke 0..100, formule attend 0..1
+	}
+	dd := 0.0
+	if row.DamageDealt != nil {
+		dd = *row.DamageDealt
+	}
+	dt := 0.0
+	if row.DamageTaken != nil {
+		dt = *row.DamageTaken
+	}
+	ps := 0.0
+	if row.PersonalScore != nil {
+		ps = *row.PersonalScore
+	}
+
+	raw[narrative.AxisCombat] = (float64(row.Kills) + 0.5*float64(hs) + 0.5*float64(pk)) * (1.0 + acc*0.4)
+	raw[narrative.AxisSupport] = float64(row.Assists) * 50.0
+	raw[narrative.AxisImpact] = synergyOffensiveConversion(row.Kills, row.Assists, dd)
+	raw[narrative.AxisSurvival] = synergyDefensiveResistance(dt, row.Deaths)
+
+	residual := ps - float64(row.Kills)*100.0 - float64(row.Assists)*50.0
+	if residual < 0 {
+		residual = 0
+	}
+	raw[narrative.AxisScore] = residual
+	return raw
 }

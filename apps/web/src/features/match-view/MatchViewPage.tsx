@@ -18,8 +18,9 @@ import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
-import { MatchWeaponPieChart, MatchWeaponTable } from './MatchWeaponCharts'
+import { MatchWeaponPieChart } from './MatchWeaponCharts'
 import { MatchMediaTab } from './MatchMediaTab'
+import { MatchMedalsSection, MatchCitationsSection } from './MatchSummaryMedalsAndCitations'
 import { kdTimelineSeries } from './_chartSeries'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT, type MatchViewText } from './i18n'
@@ -162,10 +163,13 @@ export function MatchViewPage() {
                 t={t}
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <MatchWeaponPieChart weaponKills={weaponData} t={t} />
-              <MatchWeaponTable weaponKills={weaponData} t={t} />
-            </div>
+            <MatchWeaponPieChart weaponKills={weaponData} t={t} />
+            {((summary_tab.medals?.length ?? 0) > 0 || (summary_tab.citations?.length ?? 0) > 0) && (
+              <div className="border-t border-border/40 pt-4 space-y-5">
+                <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
+                <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
+              </div>
+            )}
           </div>
         ) : activeTab === 'combat' ? (
           <>
