@@ -1,0 +1,9 @@
+goos: windows
+goarch: amd64
+pkg: levelup/go-api/internal/platform/dblease
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkAcquireRelease_Uncontended-8    	11293862	       202.1 ns/op	     160 B/op	       5 allocs/op
+BenchmarkAcquireRelease_Contended_2-8    	11497748	       192.4 ns/op	     160 B/op	       5 allocs/op
+BenchmarkAcquireRelease_Contended_10-8   	11082300	       205.5 ns/op	     160 B/op	       5 allocs/op
+PASS
+ok  	levelup/go-api/internal/platform/dblease	10.497s

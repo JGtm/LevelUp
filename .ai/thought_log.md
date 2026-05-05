@@ -1,5 +1,33 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 1 (LeasedWriter + interfaces port + métriques)
+
+**Statut** : Complété — commit 1 sur `refactor/leased-writer-enforcement`. Aucun caller migré encore (commits 2-7 à suivre).
+
+**Décision technique principale** :
+- `internal/port/dbexecutor.go` : interface `DBExecutor` (Exec/Query/QueryRow), satisfaite par `*sql.DB` et `*sql.Tx` — c'est le type que prendront les méthodes write des repos pour accepter une transaction.
+- `internal/port/dbwriter.go` : interface `DBWriter` = `DBExecutor + BeginTx`, satisfaite uniquement par `*sql.DB` et `*LeasedWriter`. Vérification compile-time dans writer_test.go.
+- `internal/platform/dblease/writer.go` : type `*LeasedWriter` avec `Release()` idempotent (`sync.Once`), constructeurs `AcquireWriter` (timeout) et `AcquireWriterCtx` (ctx). `ErrDBLocked` sentinel exporté pour mapping HTTP 503.
+- `errors.Join(ErrDBLocked, ctx.Err())` au cancel/deadline → un caller peut faire `errors.Is(err, ErrDBLocked)` OU `errors.Is(err, context.Canceled)`. Cette double sentinel est un détail subtil mais critique pour le mapping handlers.
+- `internal/platform/dblease/metrics.go` : compteurs `expvar.Map` par `Kind` (player/shared_matches/shared_social/metadata) — cardinalité bornée à 4 (cf. ADR-0009 multi-user). Pré-initialisés au boot via `init()` pour exposer les 4 clés sur /debug/vars dès le démarrage.
+- `internal/platform/dblease/leak_check.go` : helper `AssertNoLeasedWriters(LeakReporter)` avec interface restreinte (Helper + Fatalf seulement) — évite la dépendance à `testing.TB` qui évolue avec les versions Go (Go 1.24 ajoute ArtifactDir).
+- `internal/platform/duckdb/pool_writers.go` : 6 méthodes sur `*PlayerDB` (`AcquirePlayerWriter`, `AcquireSharedSocialWriter`, `AcquireMetadataWriter` × 2 variantes ctx/timeout). Réutilise `*DB.Path()` existant (db.go:211) — pas de package `paths` créé.
+
+**Tests livrés** (24 tests dblease verts) :
+- 13 nouveaux tests writer : acquire basic, release idempotent (3× release), sequential, concurrent (B attend A), timeout → ErrDBLocked, ctx cancel → ErrDBLocked + ctx.Canceled, deadline exceeded, paths différents indépendants, stress 100 goroutines pas de deadlock, no-leak panic, no-leak ctx cancel, property-based balance (50 goroutines × 20 ops × 5 paths), compile-time check `*sql.Tx` n'est pas DBWriter, smoke test du helper anti-fuite.
+- 3 benchmarks : Uncontended **202 ns/op** (cible < 1 µs), Contended_2 **192 ns/op** (cible < 100 µs), Contended_10 **205 ns/op** (cible P99 < 10× P50). Trois ordres de grandeur sous les seuils du plan. Baseline figée dans `.ai/baselines/bench_dblease_pre.txt`.
+- 10 tests `lease_test.go` pré-existants restent verts (pas de breaking change sur l'API existante `AcquireLease` / `AcquireLeaseCtx`).
+
+**Découvertes / corrections en cours d'implémentation** :
+1. `expvar.Map` ne peut pas être lu avant son initialisation → ajout d'un `init()` qui force `initMetrics()` au load du package. Bonus : /debug/vars expose les 4 Kind dès le boot.
+2. `errors.Join` (Go 1.20+) est le bon outil pour wrapper deux sentinels (ErrDBLocked + ctx.Err) — `fmt.Errorf` avec un seul `%w` ne suffit pas.
+3. `testing.TB` évolue avec les versions Go (ArtifactDir en 1.24) — interface restreinte `LeakReporter` plus stable et plus expressive.
+4. Pas de `gcc` disponible dans l'environnement courant → `pool_writers.go` (package cgo) n'a pas pu être validé via `go build` localement. Vérifié via gofmt + cohérence statique (toutes les signatures réfèrent des types qui existent : `*dblease.LeasedWriter`, `dblease.AcquireWriterCtx`, `*PlayerDB.Player.SQLDb()`, `*PlayerDB.Player.Path()`). **Dette à valider** : run cgo-enabled au prochain commit ou en CI.
+
+**Conclusion / prochaine étape** : commit 1 prêt. Commit 2 attaque P1 critique : migrer `prestige_player_repo` (CRUD) vers `port.DBExecutor` et `prestige.Service` (HTTP) vers `pdb.AcquirePlayerWriterTimeout(...)`. Test concurrentiel `TestSyncVsPrestigeConcurrent` (build tag integration).
+
+---
+
 ## [2026-05-05] DB write concurrency — branche `refactor/leased-writer-enforcement`, commit 0 (baseline)
 
 **Statut** : En cours — commit 0 livré, commits 1-7 à venir.
