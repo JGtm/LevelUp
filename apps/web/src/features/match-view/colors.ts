@@ -1,18 +1,23 @@
 /**
  * colors.ts — palette des joueurs pour les charts de la match-view.
  *
- * Trois rôles distincts :
+ * Quatre rôles distincts (l'équipe alliée vs ennemie reste TOUJOURS lisible) :
  *  - Joueur principal (is_me) → token `compare-a` (cohérent avec la pill
  *    de la page Squad).
- *  - Coéquipiers (même `team_side` que le joueur principal) → palette
- *    « cool/positive » dérivée des tokens utilisés sur Squad
- *    (narrative-dominant / perf-tier-3 / divergent-pos / …).
- *  - Adversaires → palette « warm/négative »
- *    (outcome-loss / narrative-debacle / narrative-humiliation / …).
+ *  - Amis (page Escouade — `settings.friend_gamertags`) côté allié → tokens
+ *    `SQUAD_TEAMMATE_COLOR_TOKENS` (`narrative-dominant` / `perf-tier-3` /
+ *    `divergent-pos`). Garantit la cohérence visuelle avec la page Squad.
+ *  - Autres coéquipiers (même `team_side` que le main, non amis) → reste de
+ *    la palette « cool/positive » (`perf-tier-2` / `narrative-encounter-ally-plus`
+ *    / `narrative-remontada`).
+ *  - Adversaires (amis ou non) → palette « warm/négative »
+ *    (`outcome-loss` / `narrative-debacle` / `narrative-humiliation` / …).
+ *    Les amis adverses ne reçoivent PAS la couleur squad : la distinction
+ *    équipe l'emporte sur le bonus identité (sinon un ami dans l'équipe
+ *    ennemie casserait la lecture team).
  *
  * Le mapping est cyclique à l'intérieur de chaque groupe, ce qui garantit
- * une distinction visuelle des joueurs même quand le scoreboard contient
- * 8+ entrées.
+ * une distinction visuelle même quand un groupe dépasse la palette.
  */
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type {
@@ -20,20 +25,21 @@ import type {
   MatchRosterRow,
   MatchScoreboardRow,
 } from '@/lib/api/types'
+import { SQUAD_TEAMMATE_COLOR_TOKENS } from '@/features/squad/colors'
 
 const MAIN_TOKEN: SemanticToken = 'compare-a'
 
-/** Tokens cool/positifs pour les coéquipiers (palette « squad-like »). */
-const ALLY_TOKENS: SemanticToken[] = [
-  'narrative-dominant',
-  'perf-tier-3',
-  'divergent-pos',
+/** Tokens cool « squad-like » réservés aux amis présents en équipe alliée. */
+const ALLY_FRIEND_TOKENS: SemanticToken[] = [...SQUAD_TEAMMATE_COLOR_TOKENS]
+
+/** Tokens cool pour les coéquipiers non-amis (différents de ALLY_FRIEND_TOKENS). */
+const ALLY_OTHER_TOKENS: SemanticToken[] = [
+  'perf-tier-2',
   'narrative-encounter-ally-plus',
   'narrative-remontada',
-  'perf-tier-2',
 ]
 
-/** Tokens warm/négatifs pour les adversaires. */
+/** Tokens warm/négatifs pour les adversaires (amis ou non). */
 const ENEMY_TOKENS: SemanticToken[] = [
   'outcome-loss',
   'narrative-debacle',
@@ -50,44 +56,117 @@ export interface MatchPlayerColors {
   hexByXUID: Map<string, string>
   /** Token sémantique par gamertag (le BarStacked agrège par gamertag). */
   tokenByGamertag: Map<string, SemanticToken>
+  /** Hex résolu par gamertag (override direct pour BarStacked componentColors). */
+  hexByGamertag: Map<string, string>
+}
+
+function normalizeGamertag(gt: string | null | undefined): string {
+  return (gt ?? '').toLowerCase().trim()
 }
 
 /**
- * Construit la palette joueurs pour un match : main player en `compare-a`,
- * alliés cyclés sur les tokens cool, ennemis cyclés sur les tokens warm.
+ * Construit la palette joueurs pour un match.
  *
- * L'ordre par groupe est stable (ordre du scoreboard) pour que le mapping
- * reste cohérent entre les charts qui partagent les mêmes joueurs.
+ * `friendGamertags` (typiquement `settings.friend_gamertags`) permet de
+ * réutiliser le color scheme de la page Squad pour les amis ALLIÉS. Les amis
+ * adverses tombent dans la palette ennemie pour préserver la lecture
+ * équipe vs équipe.
+ *
+ * `roster` est utilisé comme source primaire si disponible (couvre TOUS les
+ * joueurs du match — bots inclus, joueurs sans stats inclus), avec le
+ * scoreboard en fallback pour le team_side. Les xuids inconnus reçoivent
+ * un token "chart-series-X" cyclé pour éviter de tomber sur la couleur
+ * principale par défaut.
  */
 export function buildMatchPlayerColors(
   scoreboard: MatchScoreboardRow[],
   meXUID: string | null,
+  friendGamertags?: readonly string[],
+  roster?: MatchRosterRow[],
 ): MatchPlayerColors {
   const tokenByXUID = new Map<string, SemanticToken>()
   const hexByXUID = new Map<string, string>()
   const tokenByGamertag = new Map<string, SemanticToken>()
+  const hexByGamertag = new Map<string, string>()
 
-  const meRow = meXUID ? scoreboard.find((r) => r.xuid === meXUID) : undefined
-  const allyTeam = meRow?.team_side ?? null
+  // Index team_side : roster prime (couvre les bots et joueurs sans stats),
+  // scoreboard en fallback.
+  const teamSideByXUID = new Map<string, string | null>()
+  const gamertagByXUID = new Map<string, string>()
+  for (const r of scoreboard) {
+    teamSideByXUID.set(r.xuid, r.team_side ?? null)
+    if (r.gamertag) gamertagByXUID.set(r.xuid, r.gamertag)
+  }
+  if (roster) {
+    for (const r of roster) {
+      if (!teamSideByXUID.has(r.xuid)) teamSideByXUID.set(r.xuid, r.team_side ?? null)
+      if (r.gamertag && !gamertagByXUID.has(r.xuid)) gamertagByXUID.set(r.xuid, r.gamertag)
+    }
+  }
 
-  let allyIdx = 0
+  // team_side du joueur principal : essayer scoreboard puis roster.
+  let allyTeam: string | null = null
+  if (meXUID) {
+    const sbMe = scoreboard.find((r) => r.xuid === meXUID)
+    if (sbMe?.team_side != null) {
+      allyTeam = sbMe.team_side
+    } else if (roster) {
+      const rosterMe = roster.find((r) => r.xuid === meXUID)
+      if (rosterMe?.team_side != null) allyTeam = rosterMe.team_side
+    }
+  }
+
+  const friendSet = new Set<string>()
+  for (const gt of friendGamertags ?? []) {
+    const norm = normalizeGamertag(gt)
+    if (norm) friendSet.add(norm)
+  }
+
+  // Liste ordonnée de joueurs (scoreboard d'abord pour garder l'ordre attendu,
+  // puis roster pour les joueurs absents du scoreboard).
+  const seenXUIDs = new Set<string>()
+  const orderedXUIDs: string[] = []
+  for (const r of scoreboard) {
+    if (!seenXUIDs.has(r.xuid)) { orderedXUIDs.push(r.xuid); seenXUIDs.add(r.xuid) }
+  }
+  if (roster) {
+    for (const r of roster) {
+      if (!seenXUIDs.has(r.xuid)) { orderedXUIDs.push(r.xuid); seenXUIDs.add(r.xuid) }
+    }
+  }
+
+  let allyFriendIdx = 0
+  let allyOtherIdx = 0
   let enemyIdx = 0
-  for (const row of scoreboard) {
+  for (const xuid of orderedXUIDs) {
     let token: SemanticToken
-    if (row.is_me || row.xuid === meXUID) {
+    const isMain = xuid === meXUID
+    const teamSide = teamSideByXUID.get(xuid) ?? null
+    const isAlly = !isMain && allyTeam != null && teamSide === allyTeam
+    const gt = gamertagByXUID.get(xuid)
+    const isFriend = !isMain && gt != null && friendSet.has(normalizeGamertag(gt))
+
+    if (isMain) {
       token = MAIN_TOKEN
-    } else if (allyTeam != null && row.team_side === allyTeam) {
-      token = ALLY_TOKENS[allyIdx % ALLY_TOKENS.length]
-      allyIdx++
+    } else if (isAlly && isFriend) {
+      token = ALLY_FRIEND_TOKENS[allyFriendIdx % ALLY_FRIEND_TOKENS.length]
+      allyFriendIdx++
+    } else if (isAlly) {
+      token = ALLY_OTHER_TOKENS[allyOtherIdx % ALLY_OTHER_TOKENS.length]
+      allyOtherIdx++
     } else {
       token = ENEMY_TOKENS[enemyIdx % ENEMY_TOKENS.length]
       enemyIdx++
     }
-    tokenByXUID.set(row.xuid, token)
-    hexByXUID.set(row.xuid, resolveToken(token))
-    if (row.gamertag) tokenByGamertag.set(row.gamertag, token)
+    const hex = resolveToken(token)
+    tokenByXUID.set(xuid, token)
+    hexByXUID.set(xuid, hex)
+    if (gt) {
+      tokenByGamertag.set(gt, token)
+      hexByGamertag.set(gt, hex)
+    }
   }
-  return { tokenByXUID, hexByXUID, tokenByGamertag }
+  return { tokenByXUID, hexByXUID, tokenByGamertag, hexByGamertag }
 }
 
 /** Label lisible pour un xuid absent du scoreboard (fallback FragDiff). */

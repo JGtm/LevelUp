@@ -65,25 +65,25 @@ export function MatchMedalsSection({ medals, t }: MatchMedalsSectionProps) {
           <div
             key={medal.medal_name_id}
             title={tooltip}
-            className="flex flex-col items-center gap-1 cursor-default w-[64px]"
+            className="flex flex-col items-center gap-1 cursor-default w-[74px]"
           >
             {medal.image_url ? (
               <img
                 src={medal.image_url}
                 alt={medal.name}
-                className="w-11 h-11 object-contain"
+                className="w-[50px] h-[50px] object-contain"
                 style={glow ? { filter: glow } : undefined}
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
               />
             ) : (
-              <div className="w-11 h-11 rounded bg-muted flex items-center justify-center">
-                <span className="text-[9px] text-muted-foreground">{medal.medal_name_id}</span>
+              <div className="w-[50px] h-[50px] rounded bg-muted flex items-center justify-center">
+                <span className="text-[10px] text-muted-foreground">{medal.medal_name_id}</span>
               </div>
             )}
-            <span className="text-[10px] text-muted-foreground leading-tight text-center w-full truncate">
+            <span className="text-[11px] text-muted-foreground leading-tight text-center w-full truncate">
               {medal.name}
             </span>
-            <span className="text-[10px] font-semibold text-foreground/80 leading-none">
+            <span className="text-[11px] font-semibold text-foreground/80 leading-none">
               ×{medal.count}
             </span>
           </div>
@@ -117,32 +117,34 @@ export function MatchCitationsSection({ citations, t }: MatchCitationsSectionPro
           <div
             key={cit.key}
             title={tooltip}
-            className="flex flex-col items-center gap-1 cursor-default w-[64px]"
+            className="flex flex-col items-center gap-1 cursor-default w-[81px]"
           >
             <CitationProgressRing
               pct={cit.progress_pct}
               imageUrl={cit.image_url ?? undefined}
               isNewlyMastered={cit.is_newly_mastered}
-              size={44}
+              size={56}
             />
-            <span className="text-[10px] text-muted-foreground leading-tight text-center w-full truncate">
+            <span className="text-[12px] text-muted-foreground leading-tight text-center w-full truncate">
               {cit.name}
             </span>
             {showTier && (
-              <span className="text-[10px] font-semibold text-foreground/80 leading-none">
+              <span className="text-[12px] font-semibold text-foreground/80 leading-none">
                 {tierIndex}/{tierCount}
               </span>
             )}
-            {showTier && !isMastered && (
-              <span className="text-[9px] text-muted-foreground leading-none">
-                {cumulative}/{nextTarget}
+            <div className="flex items-baseline justify-center gap-1.5 leading-none">
+              {showTier && !isMastered && (
+                <span className="text-[11px] text-muted-foreground">
+                  {cumulative}/{nextTarget}
+                </span>
+              )}
+              <span className="text-[12px] font-semibold text-info">
+                +{cit.delta}
               </span>
-            )}
-            <span className="text-[10px] font-semibold text-info leading-none">
-              +{cit.delta}
-            </span>
+            </div>
             {cit.is_newly_mastered && (
-              <span className="text-[9px] font-bold text-warning leading-none">
+              <span className="text-[11px] font-bold text-warning leading-none">
                 {t.newlyMastered}
               </span>
             )}

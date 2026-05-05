@@ -178,52 +178,62 @@ func BuildMatchRadar(
 	return out
 }
 
-// BuildMatchRadarFromScoreboard construit les séries radar 6 axes à partir
-// des colonnes match_participants (déjà chargées dans ScoreboardRaw). Mêmes
-// formules que le radar squad (loadSynergyMateAxes), appliquées à un seul
-// match — donc autonome : ne dépend pas de personal_score_awards.
+// BuildMatchRadarFromScoreboard construit la série radar 6 axes pour le
+// JOUEUR ACTIF uniquement (myXUID). Calculée depuis les colonnes
+// match_participants (déjà chargées dans ScoreboardRaw) + le score
+// d'objectif PSA (catégorie 'objective'). Mêmes formules que le radar
+// squad (loadSynergyMateAxes), appliquées à un seul match.
 //
-// Axe Objective laissé à 0 (pas de PSA chargé). Pour ré-injecter Objective,
-// passer par BuildMatchRadar (legacy) avec awards.
+// objectiveScore : somme des award_score PSA catégorie 'objective'.
+// 0 si la table est absente ou pas de données pour ce match → l'axe
+// Objective reste à 0 et le résiduel Score n'est pas amputé.
+//
+// Retourne une slice de 1 élément (ou nil si myXUID absent du scoreboard).
 func BuildMatchRadarFromScoreboard(
 	scoreboard []domain.ScoreboardRaw,
+	myXUID string,
+	objectiveScore int,
 	modeFamily string,
 ) []MatchViewRadarSeries {
-	if len(scoreboard) == 0 {
+	if len(scoreboard) == 0 || myXUID == "" {
+		return nil
+	}
+
+	var me *domain.ScoreboardRaw
+	for i := range scoreboard {
+		if scoreboard[i].XUID == myXUID {
+			me = &scoreboard[i]
+			break
+		}
+	}
+	if me == nil {
 		return nil
 	}
 
 	// Mêmes seuils que synergyRadarThresholds(1) — calibration single-match.
-	// Threshold=0 sur Objective → axe neutre (Value reste 0 dans ComputeParticipationProfile).
 	thresholds := narrative.ParticipationThresholds{
 		Combat:    25.0,
 		Survival:  analysis.DefensiveResistanceP80 * 1.25,
 		Support:   300.0,
 		Score:     350.0,
-		Objective: 0,
+		Objective: 350.0,
 		Impact:    analysis.OffensiveConversionP80 * 1.25,
 	}
 
-	out := make([]MatchViewRadarSeries, 0, len(scoreboard))
-	for _, row := range scoreboard {
-		if row.XUID == "" {
-			continue
-		}
-		raw := computeMatchRadarRawAxes(row)
-		axes := narrative.ComputeParticipationProfile(raw, thresholds)
-		out = append(out, MatchViewRadarSeries{
-			XUID:       row.XUID,
-			Gamertag:   row.Gamertag,
-			Axes:       axes,
-			ModeFamily: modeFamily,
-		})
-	}
-	return out
+	raw := computeMatchRadarRawAxes(*me, objectiveScore)
+	axes := narrative.ComputeParticipationProfile(raw, thresholds)
+	return []MatchViewRadarSeries{{
+		XUID:       me.XUID,
+		Gamertag:   me.Gamertag,
+		Axes:       axes,
+		ModeFamily: modeFamily,
+	}}
 }
 
 // computeMatchRadarRawAxes calcule les valeurs brutes par axe pour 1 joueur
 // sur 1 match. Reprend les formules de loadSynergyMateAxes (squad).
-func computeMatchRadarRawAxes(row domain.ScoreboardRaw) map[narrative.ParticipationAxis]float64 {
+// objectiveScore : score PSA catégorie 'objective' (0 si non disponible).
+func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int) map[narrative.ParticipationAxis]float64 {
 	raw := map[narrative.ParticipationAxis]float64{}
 
 	hs := 0
@@ -252,8 +262,10 @@ func computeMatchRadarRawAxes(row domain.ScoreboardRaw) map[narrative.Participat
 	raw[narrative.AxisSupport] = float64(row.Assists) * 50.0
 	raw[narrative.AxisImpact] = synergyOffensiveConversion(row.Kills, row.Assists, dd)
 	raw[narrative.AxisSurvival] = synergyDefensiveResistance(dt, row.Deaths)
+	raw[narrative.AxisObjective] = float64(objectiveScore)
 
-	residual := ps - float64(row.Kills)*100.0 - float64(row.Assists)*50.0
+	// Score résiduel = personal_score − kills×100 − assists×50 − objectif (medals/streaks).
+	residual := ps - float64(row.Kills)*100.0 - float64(row.Assists)*50.0 - float64(objectiveScore)
 	if residual < 0 {
 		residual = 0
 	}

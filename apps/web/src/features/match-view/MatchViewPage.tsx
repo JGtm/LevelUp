@@ -9,9 +9,10 @@ import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useSettings } from '@/features/settings/queries'
+import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
 import { useMatchView } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
-import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { MatchSummaryCardsSection } from './MatchStatCards'
@@ -40,14 +41,13 @@ function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText):
   ].filter((w) => w.kill_count > 0)
 }
 
-type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
+type TabId = 'summary' | 'combat' | 'team' | 'media'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'summary', label: 'Résumé' },
   { id: 'combat', label: 'Combat' },
   { id: 'team', label: 'Équipe' },
   { id: 'media', label: 'Médias' },
-  { id: 'citations', label: 'Citations' },
 ]
 
 export function MatchViewPage() {
@@ -57,6 +57,8 @@ export function MatchViewPage() {
   }
   const [activeTab, setActiveTab] = useState<TabId>('summary')
   const { data, isPending, isError, refetch } = useMatchView(playerSlug, matchId)
+  const { data: settings } = useSettings()
+  const friendGamertags = settings?.friend_gamertags ?? []
   const locale = useAppShellStore((s) => s.locale)
 
   if (isPending) return null
@@ -169,19 +171,24 @@ export function MatchViewPage() {
             <MatchFragDiffChart
               events={combat_tab.highlight_events}
               scoreboard={team_tab.scoreboard}
+              roster={team_tab.roster}
+              pairs={combat_tab.killer_victim}
               meXUID={meXUID}
+              friendGamertags={friendGamertags}
             />
 
-            <MatchCadenceChart
-              events={combat_tab.highlight_events}
-              scoreboard={team_tab.scoreboard}
-              meXUID={meXUID}
+            <EngagementMatchSection
+              playerSlug={playerSlug}
+              matchId={matchId}
+              granularity="intra"
             />
 
             <MatchAntagonistChart
               pairs={combat_tab.killer_victim}
               scoreboard={team_tab.scoreboard}
+              roster={team_tab.roster}
               meXUID={meXUID}
+              friendGamertags={friendGamertags}
             />
           </>
         ) : activeTab === 'media' ? (

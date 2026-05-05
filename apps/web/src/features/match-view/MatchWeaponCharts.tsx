@@ -19,6 +19,39 @@ import type { MatchViewText } from './i18n'
 const DUMMY_SERIES: ChartSeries<number>[] = [{ key: 'data', datapoints: [1] }]
 const EMPTY_SERIES: ChartSeries<number>[] = []
 
+// Le backend met le weapon_id décimal en label quand il n'a pas de match dans
+// weapon_labels (variantes saisonnières, Forge custom, cosmétiques rares).
+// 99 % des kills sont reconnus mais ces variantes peuvent introduire 50-100
+// entrées en longue queue dans la légende. On les agrège en une slice unique
+// "Autres armes (N)" pour garder une légende lisible.
+function isUnknownWeapon(label: string): boolean {
+  return /^\d+$/.test(label)
+}
+
+interface AggregatedSlice {
+  name: string
+  value: number
+}
+
+function aggregateWeaponKills(weaponKills: MatchWeaponKill[], t: MatchViewText): AggregatedSlice[] {
+  const known: AggregatedSlice[] = []
+  let unknownKills = 0
+  let unknownCount = 0
+  for (const w of weaponKills) {
+    if (isUnknownWeapon(w.weapon_label)) {
+      unknownKills += w.kill_count
+      unknownCount++
+    } else {
+      known.push({ name: w.weapon_label, value: w.kill_count })
+    }
+  }
+  known.sort((a, b) => b.value - a.value)
+  if (unknownCount > 0) {
+    known.push({ name: `${t.weaponOtherGroup} (${unknownCount})`, value: unknownKills })
+  }
+  return known
+}
+
 interface WeaponChartsProps {
   weaponKills: MatchWeaponKill[]
   t: MatchViewText
@@ -34,13 +67,11 @@ export function MatchWeaponPieChart({ weaponKills, t }: WeaponChartsProps) {
   const buildOption = useCallback(
     (_s: ChartSeries<unknown>[]): EChartsCoreOption => {
       const tc = getEChartsThemeColors()
-      const data = [...weaponKills]
-        .sort((a, b) => b.kill_count - a.kill_count)
-        .map((w, i) => ({
-          name: w.weapon_label,
-          value: w.kill_count,
-          itemStyle: { color: seriesColor(i) },
-        }))
+      const data = aggregateWeaponKills(weaponKills, t).map((s, i) => ({
+        name: s.name,
+        value: s.value,
+        itemStyle: { color: seriesColor(i) },
+      }))
 
       return {
         backgroundColor: CHART_BG,

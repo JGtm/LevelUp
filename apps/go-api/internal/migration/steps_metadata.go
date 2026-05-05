@@ -451,6 +451,13 @@ func applyModeNameTr(db *sql.DB) error {
 	return nil
 }
 
+// ApplyWeaponLabels expose applyWeaponLabels pour les outils CLI de reseed
+// (cf. cmd/seed-weapon-labels). Idempotent via INSERT OR IGNORE — peut etre
+// appele meme si schema_migrations marque la migration comme done.
+func ApplyWeaponLabels(db *sql.DB) error {
+	return applyWeaponLabels(db)
+}
+
 // applyWeaponLabels crée et peuple weapon_labels avec tous les IDs connus.
 func applyWeaponLabels(db *sql.DB) error {
 	if _, err := db.Exec(`

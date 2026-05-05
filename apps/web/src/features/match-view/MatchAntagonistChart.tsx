@@ -10,18 +10,24 @@
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
-import type { SemanticToken } from '@/lib/accessibility'
-import type { MatchKillerVictimPair, MatchScoreboardRow } from '@/lib/api/types'
+import type {
+  MatchKillerVictimPair,
+  MatchRosterRow,
+  MatchScoreboardRow,
+} from '@/lib/api/types'
 import { antagonistStackedSeries } from './_chartSeries'
 import { buildMatchPlayerColors } from './colors'
 
 interface Props {
   pairs: MatchKillerVictimPair[] | undefined
   scoreboard: MatchScoreboardRow[]
+  roster?: MatchRosterRow[]
   meXUID: string | null
+  /** Gamertags amis (page Squad) — bonus visuel : couleurs squad pour les amis alliés. */
+  friendGamertags?: readonly string[]
 }
 
-export function MatchAntagonistChart({ pairs, scoreboard, meXUID }: Props) {
+export function MatchAntagonistChart({ pairs, scoreboard, roster, meXUID, friendGamertags }: Props) {
   const series = antagonistStackedSeries(pairs ?? [])
   if (series.length === 0) {
     return (
@@ -32,13 +38,14 @@ export function MatchAntagonistChart({ pairs, scoreboard, meXUID }: Props) {
       </Card>
     )
   }
-  // Map gamertag (clé des composants empilés) → token sémantique du joueur
-  // dans le match (allié vs ennemi). Le BarStacked utilise `componentColors`
-  // pour figer la couleur de chaque sous-clé indépendamment de son ordre.
-  const colors = buildMatchPlayerColors(scoreboard, meXUID)
-  const componentColors: Record<string, SemanticToken> = {}
-  for (const [gt, token] of colors.tokenByGamertag) {
-    componentColors[gt] = token
+  // Map gamertag → hex pré-résolu (allié vs ennemi, bonus squad pour amis
+  // alliés). On passe le hex directement plutôt qu'un token : ça évite que
+  // ECharts retombe sur sa palette interne (1ères couleurs en bleu) si la
+  // CSS var d'un token n'a pas pu être lue à temps.
+  const colors = buildMatchPlayerColors(scoreboard, meXUID, friendGamertags, roster)
+  const componentHexColors: Record<string, string> = {}
+  for (const [gt, hex] of colors.hexByGamertag) {
+    if (hex) componentHexColors[gt] = hex
   }
 
   // Hauteur dynamique : 80px de marge + 24px par tueur (min 240px).
@@ -52,7 +59,7 @@ export function MatchAntagonistChart({ pairs, scoreboard, meXUID }: Props) {
           height={height}
           orientation="horizontal"
           series={series}
-          componentColors={componentColors}
+          componentHexColors={componentHexColors}
           tooltipHideZero
         />
       </CardContent>
