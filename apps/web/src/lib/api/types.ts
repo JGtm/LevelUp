@@ -1141,6 +1141,10 @@ export interface MatchCitationSnippet {
   delta: number
   progress_pct: number
   is_newly_mastered?: boolean
+  cumulative?: number
+  tier_index?: number
+  tier_count?: number
+  next_tier_target?: number
 }
 
 export interface RecentMatchMedal {

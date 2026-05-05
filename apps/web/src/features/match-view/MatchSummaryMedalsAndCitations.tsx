@@ -1,7 +1,50 @@
+import type { ReactNode } from 'react'
 import type { MatchMedal, MatchCitationSnippet } from '@/lib/api/types'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import type { MatchViewText } from './i18n'
+
+const CARD_HEIGHT = 280
+
+function buildTooltip(name: string, description?: string | null): string {
+  if (description && description.trim() !== '') {
+    return `${name} : ${description}`
+  }
+  return name
+}
+
+// Mimétique de ChartCard (apps/web/src/components/charts/ChartCard.tsx) :
+// même bordure / padding / titre avec border-b — pour s'aligner visuellement
+// avec MatchWeaponPieChart sur la même rangée.
+function PaneCard({
+  title,
+  children,
+  isEmpty,
+  emptyMessage,
+}: {
+  title: string
+  children: ReactNode
+  isEmpty: boolean
+  emptyMessage: string
+}) {
+  return (
+    <div className="relative rounded-lg border border-border bg-card">
+      <div className="border-b border-border px-3 py-2 text-sm font-medium">{title}</div>
+      <div className="p-3" style={{ minHeight: CARD_HEIGHT }}>
+        {isEmpty ? (
+          <div
+            className="flex items-center justify-center text-sm text-muted-foreground"
+            style={{ minHeight: CARD_HEIGHT }}
+          >
+            {emptyMessage}
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-x-5 gap-y-4">{children}</div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Médailles
@@ -13,46 +56,40 @@ interface MatchMedalsSectionProps {
 }
 
 export function MatchMedalsSection({ medals, t }: MatchMedalsSectionProps) {
-  if (medals.length === 0) return null
-
   return (
-    <div>
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-        {t.sectionMedals}
-      </h3>
-      <div className="flex flex-wrap gap-4">
-        {medals.map((medal) => {
-          const glow = dropShadowForDifficulty(medal.difficulty ?? undefined)
-          return (
-            <div
-              key={medal.medal_name_id}
-              title={medal.description ?? medal.name}
-              className="flex flex-col items-center gap-1 cursor-default"
-            >
-              {medal.image_url ? (
-                <img
-                  src={medal.image_url}
-                  alt={medal.name}
-                  className="w-10 h-10 object-contain"
-                  style={glow ? { filter: glow } : undefined}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                />
-              ) : (
-                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                  <span className="text-[9px] text-muted-foreground">{medal.medal_name_id}</span>
-                </div>
-              )}
-              <span className="text-[9px] text-muted-foreground/80 leading-tight text-center max-w-[48px] truncate">
-                {medal.name}
-              </span>
-              <span className="text-[10px] font-semibold text-foreground/70 leading-none">
-                ×{medal.count}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    <PaneCard title={t.sectionMedals} isEmpty={medals.length === 0} emptyMessage={t.noMedals}>
+      {medals.map((medal) => {
+        const glow = dropShadowForDifficulty(medal.difficulty ?? undefined)
+        const tooltip = buildTooltip(medal.name, medal.description)
+        return (
+          <div
+            key={medal.medal_name_id}
+            title={tooltip}
+            className="flex flex-col items-center gap-1 cursor-default w-[64px]"
+          >
+            {medal.image_url ? (
+              <img
+                src={medal.image_url}
+                alt={medal.name}
+                className="w-11 h-11 object-contain"
+                style={glow ? { filter: glow } : undefined}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+              />
+            ) : (
+              <div className="w-11 h-11 rounded bg-muted flex items-center justify-center">
+                <span className="text-[9px] text-muted-foreground">{medal.medal_name_id}</span>
+              </div>
+            )}
+            <span className="text-[10px] text-muted-foreground leading-tight text-center w-full truncate">
+              {medal.name}
+            </span>
+            <span className="text-[10px] font-semibold text-foreground/80 leading-none">
+              ×{medal.count}
+            </span>
+          </div>
+        )
+      })}
+    </PaneCard>
   )
 }
 
@@ -66,19 +103,21 @@ interface MatchCitationsSectionProps {
 }
 
 export function MatchCitationsSection({ citations, t }: MatchCitationsSectionProps) {
-  if (citations.length === 0) return null
-
   return (
-    <div>
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-        {t.sectionCitations}
-      </h3>
-      <div className="flex flex-wrap gap-4">
-        {citations.map((cit) => (
+    <PaneCard title={t.sectionCitations} isEmpty={citations.length === 0} emptyMessage={t.noCitations}>
+      {citations.map((cit) => {
+        const tooltip = buildTooltip(cit.name, cit.description)
+        const tierCount = cit.tier_count ?? 0
+        const tierIndex = cit.tier_index ?? 0
+        const cumulative = cit.cumulative ?? 0
+        const nextTarget = cit.next_tier_target ?? 0
+        const showTier = tierCount > 0
+        const isMastered = showTier && tierIndex >= tierCount
+        return (
           <div
             key={cit.key}
-            title={cit.description ?? cit.name}
-            className="flex flex-col items-center gap-1 cursor-default"
+            title={tooltip}
+            className="flex flex-col items-center gap-1 cursor-default w-[64px]"
           >
             <CitationProgressRing
               pct={cit.progress_pct}
@@ -86,20 +125,30 @@ export function MatchCitationsSection({ citations, t }: MatchCitationsSectionPro
               isNewlyMastered={cit.is_newly_mastered}
               size={44}
             />
-            <span className="text-[9px] text-muted-foreground/80 leading-tight text-center max-w-[52px] truncate">
+            <span className="text-[10px] text-muted-foreground leading-tight text-center w-full truncate">
               {cit.name}
             </span>
-            <span className="text-[9px] font-semibold text-info leading-none">
+            {showTier && (
+              <span className="text-[10px] font-semibold text-foreground/80 leading-none">
+                {tierIndex}/{tierCount}
+              </span>
+            )}
+            {showTier && !isMastered && (
+              <span className="text-[9px] text-muted-foreground leading-none">
+                {cumulative}/{nextTarget}
+              </span>
+            )}
+            <span className="text-[10px] font-semibold text-info leading-none">
               +{cit.delta}
             </span>
             {cit.is_newly_mastered && (
-              <span className="text-[8px] font-bold text-warning leading-none">
+              <span className="text-[9px] font-bold text-warning leading-none">
                 {t.newlyMastered}
               </span>
             )}
           </div>
-        ))}
-      </div>
-    </div>
+        )
+      })}
+    </PaneCard>
   )
 }

@@ -31,7 +31,7 @@ WITH me_perfect AS (
     GROUP BY xuid
 ),
 top_weapons AS (
-    SELECT xuid, COALESCE(reconciled_as, weapon_id) AS top_weapon_id
+    SELECT xuid, wid AS top_weapon_id
     FROM (
         SELECT xuid, COALESCE(reconciled_as, weapon_id) AS wid, COUNT(*) AS wk,
                ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn

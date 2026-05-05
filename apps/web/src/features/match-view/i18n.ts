@@ -75,6 +75,8 @@ export interface MatchViewText {
   sectionMedals: string
   sectionCitations: string
   newlyMastered: string
+  noMedals: string
+  noCitations: string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -140,6 +142,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
     newlyMastered: 'Maîtrisé !',
+    noMedals: 'Aucune médaille',
+    noCitations: 'Aucune citation',
   },
   en: {
     prevMatch: 'Previous match',
@@ -203,6 +207,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
     newlyMastered: 'Mastered!',
+    noMedals: 'No medals',
+    noCitations: 'No commendations',
   },
 }
 

@@ -202,9 +202,11 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	// Q12 utilise 3 fois match_id : medals CTE, weapons CTE, WHERE
 	rows, err := r.pdb.ReadDB().Query(ctx, Q12MatchScoreboard, matchID, matchID, matchID)
 	if err != nil {
+		slog.WarnContext(ctx, "DEBUG_SCOREBOARD: query error", "match_id", matchID, "err", err.Error())
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
 	defer rows.Close()
+	slog.InfoContext(ctx, "DEBUG_SCOREBOARD: query ok", "match_id", matchID)
 
 	var results []domain.ScoreboardRaw
 	for rows.Next() {
@@ -248,8 +250,10 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 		results = append(results, s)
 	}
 	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "DEBUG_SCOREBOARD: rows.Err()", "match_id", matchID, "err", err.Error())
 		return nil, err
 	}
+	slog.InfoContext(ctx, "DEBUG_SCOREBOARD: scan done", "match_id", matchID, "row_count", len(results))
 
 	// Résolution des labels d'armes top-weapon pour chaque joueur du scoreboard
 	var topWeaponIDs []int64
@@ -299,6 +303,7 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 	for index := range results {
 		if m, ok := meta[results[index].MedalID]; ok {
 			results[index].Label = m.label
+			results[index].Description = m.description
 			results[index].Difficulty = m.difficulty
 		} else {
 			results[index].Label = strconv.FormatInt(results[index].MedalID, 10)
@@ -369,26 +374,39 @@ func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID s
 }
 
 type medalMeta struct {
-	label      string
-	difficulty string
+	label       string
+	description string
+	difficulty  string
 }
 
-// lookupMedalMeta retourne label (citation_mappings) + difficulty (medal_definitions) par medal_id.
+// lookupMedalMeta résout label + description + difficulty depuis medal_definitions
+// (chaîne BCP-47 medal_translations fr-FR/en-US > medal_definitions name_fr/name_en).
+// Fallback citation_mappings.citation_name_display si la médaille n'est pas dans medal_definitions.
 func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) map[int64]medalMeta {
 	result := make(map[int64]medalMeta, len(medalIDs))
 	if len(medalIDs) == 0 || r.pdb.Metadata == nil {
 		return result
 	}
 	q, args, ok := buildLookupQuery(
-		`SELECT
-		     cm.medal_id,
-		     cm.citation_name_display,
-		     COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
-		 FROM citation_mappings cm
-		 LEFT JOIN medal_definitions md ON md.medal_name_id = cm.medal_id
-		 WHERE cm.medal_id IN (%s)
-		   AND cm.citation_name_display IS NOT NULL
-		   AND cm.citation_name_display <> ''`,
+		`SELECT md.medal_name_id,
+		        COALESCE(
+		            NULLIF(TRIM(mt_fr.name),''),
+		            NULLIF(TRIM(md.name_fr),''),
+		            NULLIF(TRIM(mt_en.name),''),
+		            NULLIF(TRIM(md.name_en),'')
+		        ) AS label,
+		        COALESCE(
+		            NULLIF(TRIM(md.description_fr),''),
+		            NULLIF(TRIM(md.description_en),''),
+		            ''
+		        ) AS description,
+		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
+		 FROM medal_definitions md
+		 LEFT JOIN medal_translations mt_fr
+		     ON mt_fr.medal_name_id = md.medal_name_id AND mt_fr.lang = 'fr-FR'
+		 LEFT JOIN medal_translations mt_en
+		     ON mt_en.medal_name_id = md.medal_name_id AND mt_en.lang = 'en-US'
+		 WHERE md.medal_name_id IN (%s)`,
 		medalIDs,
 	)
 	if !ok {
@@ -401,9 +419,31 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) m
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
-		var label, diff string
-		if err := rows.Scan(&id, &label, &diff); err == nil {
-			result[id] = medalMeta{label: label, difficulty: diff}
+		var label, desc, diff string
+		if err := rows.Scan(&id, &label, &desc, &diff); err == nil && label != "" {
+			result[id] = medalMeta{label: label, description: desc, difficulty: diff}
+		}
+	}
+	// Fallback citation_mappings pour les IDs absents de medal_definitions.
+	missing := make([]int64, 0)
+	for _, id := range medalIDs {
+		if _, ok := result[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	if len(missing) > 0 {
+		fb := lookupLabelsByID(
+			ctx,
+			r.pdb.Metadata,
+			`SELECT medal_id, citation_name_display
+			 FROM citation_mappings
+			 WHERE medal_id IN (%s)
+			   AND citation_name_display IS NOT NULL
+			   AND citation_name_display <> ''`,
+			missing,
+		)
+		for id, label := range fb {
+			result[id] = medalMeta{label: label, difficulty: "Normal"}
 		}
 	}
 	return result

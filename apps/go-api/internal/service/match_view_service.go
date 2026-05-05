@@ -892,10 +892,16 @@ func convertMedals(raw []domain.MedalRaw, titleSlug string) []domain.MatchMedal 
 	medals := make([]domain.MatchMedal, 0, len(raw))
 	for _, r := range raw {
 		imgURL := static.URL(static.KindMedal, titleSlug, strconv.FormatInt(r.MedalID, 10), ".png")
+		var desc *string
+		if r.Description != "" {
+			d := r.Description
+			desc = &d
+		}
 		medals = append(medals, domain.MatchMedal{
 			MedalNameID: r.MedalID,
 			Name:        r.Label,
 			Count:       r.Count,
+			Description: desc,
 			ImageURL:    imgURL,
 			Difficulty:  r.Difficulty,
 		})

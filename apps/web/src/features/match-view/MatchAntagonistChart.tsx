@@ -3,20 +3,25 @@
  *
  * Graphe "qui a tué qui" sous forme de barres empilées horizontales :
  *   - 1 ligne par tueur (ordonnée par total kills décroissant)
- *   - segments empilés = victimes (chaque victime a sa couleur cyclée)
+ *   - segments empilés = victimes, colorées selon l'équipe (alliés / ennemis)
+ *     pour offrir une lecture immédiate des duels intra/inter-équipes.
  *
  * Source : `combat_tab.killer_victim` (paires agrégées par le backend Go).
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
-import type { MatchKillerVictimPair } from '@/lib/api/types'
+import type { SemanticToken } from '@/lib/accessibility'
+import type { MatchKillerVictimPair, MatchScoreboardRow } from '@/lib/api/types'
 import { antagonistStackedSeries } from './_chartSeries'
+import { buildMatchPlayerColors } from './colors'
 
 interface Props {
   pairs: MatchKillerVictimPair[] | undefined
+  scoreboard: MatchScoreboardRow[]
+  meXUID: string | null
 }
 
-export function MatchAntagonistChart({ pairs }: Props) {
+export function MatchAntagonistChart({ pairs, scoreboard, meXUID }: Props) {
   const series = antagonistStackedSeries(pairs ?? [])
   if (series.length === 0) {
     return (
@@ -27,6 +32,15 @@ export function MatchAntagonistChart({ pairs }: Props) {
       </Card>
     )
   }
+  // Map gamertag (clé des composants empilés) → token sémantique du joueur
+  // dans le match (allié vs ennemi). Le BarStacked utilise `componentColors`
+  // pour figer la couleur de chaque sous-clé indépendamment de son ordre.
+  const colors = buildMatchPlayerColors(scoreboard, meXUID)
+  const componentColors: Record<string, SemanticToken> = {}
+  for (const [gt, token] of colors.tokenByGamertag) {
+    componentColors[gt] = token
+  }
+
   // Hauteur dynamique : 80px de marge + 24px par tueur (min 240px).
   const killerCount = series[0].datapoints.length
   const height = Math.max(240, 80 + 24 * killerCount)
@@ -38,6 +52,8 @@ export function MatchAntagonistChart({ pairs }: Props) {
           height={height}
           orientation="horizontal"
           series={series}
+          componentColors={componentColors}
+          tooltipHideZero
         />
       </CardContent>
     </Card>

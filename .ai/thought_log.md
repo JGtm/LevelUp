@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-05] Match View Combat — Refonte onglet (suppression K/D + Tug-of-war, refonte FragDiff/Antagonistes/Cadence)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- **Suppression** : charts `K/D cumulés du match` et `Tug-of-war — dominance par tranche` retirés de l'onglet Combat (`MatchViewPage.tsx`). Le composant `MatchTugOfWarChart.tsx` est supprimé ; les helpers `kdTimelineSeries`, `tugOfWarStackedSeries`, `cadenceSeriesWithGamertags`, `TUG_OF_WAR_LABELS`, `TugOfWarBin`, `KDTimelinePoint` sont supprimés de `_chartSeries.ts` (zéro consommateur restant).
+- **Cadence** : reconstruite côté front depuis `combat_tab.highlight_events` (helper `cadenceSeriesFromEvents`). Garantit la cohérence avec FragDiff/Antagonistes : si les events sont présents (ils le sont quand FragDiff a des données), la cadence l'est aussi. Plus de chemin "vide alors que les autres charts ont des données".
+- **FragDiff** : 
+  - Lignes lisses sans marqueurs (`showSymbol={false}`, `smooth`).
+  - Axe X : formatter `m:ss` via `formatBinSeconds` (les valeurs sont en secondes, pas millisecondes — le user lisait les ticks bruts comme des millisecondes).
+  - Gamertag fallback `Joueur XXXX` (4 derniers chars du xuid) quand un xuid n'apparaît pas dans le scoreboard.
+  - Couleurs : helper `buildMatchPlayerColors(scoreboard, meXUID)` qui retourne `compare-a` pour le main, palette cool (`narrative-dominant` / `perf-tier-3` / `divergent-pos` / `narrative-encounter-ally-plus` / `narrative-remontada` / `perf-tier-2`) cyclée pour les alliés (même `team_side`), palette warm (`outcome-loss` / `narrative-debacle` / `narrative-humiliation` / `perf-tier-4` / `perf-tier-5` / `narrative-contre-remontada`) cyclée pour les ennemis.
+  - Wiring : extension de `TimeseriesLineChart` avec `showSymbol`, `smooth`, `xAxisLabelFormatter` ; usage de `s.colorToken` (déjà au contrat `ChartSeries`) en priorité sur la palette cyclée.
+- **Antagonistes** :
+  - Tooltip filtre les composants à 0 (extension `tooltipHideZero` sur `BarStackedChart` qui ajoute un `formatter` axé sur les valeurs non nulles ; échappement HTML inclus).
+  - `componentColors` alimenté par `tokenByGamertag` du helper colors (mêmes tokens allié/ennemi).
+- **Cadence** : même `componentColors` + `tooltipHideZero` que les antagonistes.
+- **Tests** : `_chartSeries.test.ts` adapté (suppression des suites des helpers retirés, ajout suites pour `cadenceSeriesFromEvents` et `colorByXUID` sur FragDiff). 136/136 passent (`features/match-view` + `components/charts`). Typecheck `tsc -b` OK.
+
+**Résultats** : Onglet Combat = 3 charts cohérents (FragDiff lisse + mm:ss, Cadence, Antagonistes), tous coloriés par équipe (compare-a / cool ally / warm enemy), tooltips propres sans zéros. Plus aucun chart "vide alors que les autres ont des données".
+
+**Prochaine étape** : test visuel utilisateur sur match réel.
+
 ## [2026-05-05] Match View Résumé — Médailles + Citations avec glow et progress rings
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.

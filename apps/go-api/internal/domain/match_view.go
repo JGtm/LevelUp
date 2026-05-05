@@ -563,10 +563,11 @@ type MatchEnrichmentRaw struct {
 
 // MedalRaw : données brutes de Q14.
 type MedalRaw struct {
-	MedalID    int64
-	Count      int
-	Label      string
-	Difficulty string
+	MedalID     int64
+	Count       int
+	Label       string
+	Description string
+	Difficulty  string
 }
 
 // EventRaw : données brutes de Q21.
