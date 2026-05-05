@@ -1038,6 +1038,10 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				v := round2(synergyDefensiveResistance(float64(*r.Self.DamageTaken), pt.Deaths))
 				pt.ResistanceDefensive = &v
 			}
+			if r.Enrichment.TeamMMR != nil {
+				v := round2(*r.Enrichment.TeamMMR)
+				pt.TeamMMR = &v
+			}
 			series = append(series, pt)
 		}
 		// Sort by MatchOrder pour garantir l'alignement avec les autres joueurs.

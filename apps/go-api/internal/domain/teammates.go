@@ -141,6 +141,7 @@ type SquadPerformanceSeriesPoint struct {
 	PerfectKills        *int     `json:"perfect_kills,omitempty"`
 	RendementOffensif   *float64 `json:"rendement_offensif,omitempty"`
 	ResistanceDefensive *float64 `json:"resistance_defensive,omitempty"`
+	TeamMMR             *float64 `json:"team_mmr,omitempty"` // MMR équipe ce match (issu de match_skill_rank)
 }
 
 // SquadSynergyRadarAxis est l'un des 6 axes du radar de participation

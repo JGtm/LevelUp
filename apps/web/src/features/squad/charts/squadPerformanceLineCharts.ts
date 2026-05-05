@@ -352,3 +352,72 @@ export function buildHsPerfectOption(
     series,
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sous-chart Rang — MMR équipe par match (courbe par joueur)
+// ---------------------------------------------------------------------------
+
+export interface TeamMMROpts extends CommonOpts {
+  mmrLabel: string
+}
+
+export function buildTeamMMROption(
+  rows: Record<string, SquadPerformanceSeriesPoint[]>,
+  opts: TeamMMROpts,
+): EChartsCoreOption {
+  const players = orderedPlayers(rows, opts.playerOrder)
+  if (players.length === 0) return { backgroundColor: CHART_BG }
+  const n = maxLength(rows, players)
+  if (n === 0) return { backgroundColor: CHART_BG }
+  const xLabels = opts.xLabels ?? xAxisLabels(n)
+
+  const series = players.map((player) => {
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const data = new Array<number | null>(n).fill(null)
+    for (const p of rows[player]) {
+      data[p.match_order] = p.team_mmr ?? null
+    }
+    return {
+      name: player,
+      type: 'line' as const,
+      data,
+      lineStyle: { color, width: 2 },
+      itemStyle: { color },
+      symbol: 'circle' as const,
+      symbolSize: 5,
+      connectNulls: false,
+      // Zone d'area légère pour mieux lire la tendance.
+      areaStyle: { color, opacity: 0.08 },
+    }
+  })
+
+  const hasData = series.some((s) => (s.data as (number | null)[]).some((v) => v !== null))
+  if (!hasData) return { backgroundColor: CHART_BG }
+
+  return {
+    backgroundColor: CHART_BG,
+    grid: { top: 28, bottom: 36, left: 8, right: 24, containLabel: true },
+    tooltip: {
+      ...tooltipBase,
+      trigger: 'axis',
+      axisPointer: { type: 'line' },
+      valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(0) : '-'),
+    },
+    legend: { ...legendBase, data: players },
+    xAxis: {
+      ...axisBase,
+      type: 'category',
+      data: xLabels,
+      axisLabel: {
+        ...axisBase.axisLabel,
+        interval: n > 30 ? Math.floor(n / 12) : 0,
+      },
+    },
+    yAxis: {
+      ...axisBase,
+      type: 'value',
+      axisLabel: { ...axisBase.axisLabel, formatter: (v: number) => v.toFixed(0) },
+    },
+    series,
+  }
+}
