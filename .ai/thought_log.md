@@ -1,5 +1,60 @@
 # Thought Log
 
+## [2026-05-05] fix(squad/contributions): layout 2 colonnes + butterfly chart aligné
+
+**Statut** : Complété.
+
+**Contexte** : Deux correctifs UX demandés sur la page Contributions de l'escouade.
+
+**Décisions techniques** :
+
+1. **Layout 2 colonnes** (`SquadContributionsPage.tsx`) : "Stats par minute" et "Radar synergie" passent dans un `<div className="grid gap-4 lg:grid-cols-2">`. Sur petits écrans ils restent empilés verticalement ; sur `lg` ils se retrouvent côte à côte. Condition englobante `(perMinuteRows.length > 0 || synergyRadar.length > 0)` pour éviter une grille vide.
+
+2. **Butterfly chart aligné** (`buildKillsDeathsButterflyOption` dans `squadPerformanceLineCharts.ts`) :
+   - **Alignement** : les stacks kills et morts passaient de `stack: 'kills-${player}'` / `stack: 'deaths-${player}'` (2 stacks séparés → 2 colonnes par joueur) à `stack: player` (même stack → kills positifs et morts négatifs dans la même colonne x). ECharts empile naturellement positifs vers le haut et négatifs vers le bas dans le même stack.
+   - **Couleur morts** : remplacement de `{ color, opacity: 0.45 }` (même teinte désaturée) par `hexComplement(color)` (hue +180°, opaque), identique au pattern `squadPerMinuteChart.ts`. Suppression de la constante `DEATHS_OPACITY` devenue inutile.
+
+**Résultats** :
+- `tsc -b` : 0 erreur sur les fichiers modifiés.
+- Suppression de la constante morte `DEATHS_OPACITY`.
+
+**Conclusion** : 2 fichiers modifiés. Branche `feat/glossary-search-index`. Prochaine étape : valider visuellement que les barres kills/morts partagent bien la même colonne et que la couleur complémentaire est lisible sur le chart.
+
+---
+
+## [2026-05-05] fix(squad/synergy-radar): normalisation accuracy + recalibration seuils
+
+**Statut** : Complété (2 itérations).
+
+**Contexte** : Sur la session du 6 avril (radar « Synergie escouade — 6 axes par joueur »), les 3 joueurs étaient saturés à 100 sur l'axe Combat même en étant des joueurs moyens.
+
+**Diagnostic** : Double problème découvert après la première itération (seuils +60%) qui n'avait pas suffi.
+
+1. **Bug principal** : accuracy stockée **0..100** en DB (voir `transforms.go:247` : `* 100.0`) mais la formule combat `(1.0 + acc*0.4)` attendait **0..1**. Pour 50% de précision : multiplicateur réel = `1 + 50×0.4 = 21` au lieu de `1.2`. N'importe quel joueur avec 1-2 kills dépassait le seuil × 10.
+
+2. **Impact/Survival aplatis** : seuils fixes au P80 absolu → tout bon joueur dépasse le P80 → tout le monde à 100 sans variance.
+
+**Décisions techniques** :
+
+1. **Normalisation accuracy** : ajout de `/ 100.0` dans `loadSynergyMateAxes` et `synergyMainFallbackAxes`. Commentaire explicatif ajouté (référence `transforms.go`).
+
+2. **Seuil Combat** : revenu à `25 × N` — c'était la valeur correcte pour `acc ∈ 0..1`. Avec le fix, un excellent joueur (~12K, 5HS, 2PK, 55% acc) produit ~19/match → 76% du seuil. Un joueur moyen (~8K, 3HS, 45% acc) → ~11/match → 44%.
+
+3. **Survival / Impact** : seuils étirés à `1.25 × P80` (≈1.99 / ≈1.04). Préserve la variance inter-joueurs au-dessus du P80.
+
+4. **Score** : `350 × N` (compromis entre 400 trop haut et 250 trop bas pour le résiduel slayer).
+
+5. **Support / Objective** : revenus aux valeurs d'origine (300 × N / 350 × N).
+
+**Résultats observés** :
+- `go test ./...` : 100% OK sur tous les packages.
+- `go vet ./...` : 0 warning.
+- Tests synergy radar comparent `Raw` → insensibles aux seuils, insensibles à la division /100 (raw = valeur avant normalisation).
+
+**Conclusion** : 3 fichiers modifiés (`synergyRadarThresholds`, `loadSynergyMateAxes`, `synergyMainFallbackAxes`). Branche `fix/synergy-radar-calibration`. Prochaine étape : valider visuellement sur la session du 6 avril. Si Objective reste nul en slayer, envisager l'option B (seuils mode-aware via `narrative.DefaultThresholds(modeFamily)`).
+
+---
+
 ## [2026-05-05] style(help/glossary): chips multi-lignes + bg opaque
 
 **Statut** : Complété.

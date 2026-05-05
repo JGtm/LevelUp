@@ -1056,16 +1056,23 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 // synergyRadarThresholds retourne les seuils du radar scalés par nShared.
 // Les axes absolus (combat/support/score/objective) sont proportionnels au
 // nombre de matchs partagés. Impact et Survival sont des ratios agrégés →
-// seuil fixe au P80 observé (indépendant du nombre de matchs).
+// seuil fixe étiré au-dessus du P80 observé pour préserver la variance
+// inter-joueurs (un squad de joueurs corrects dépasse tous le P80, ce qui
+// aplatissait les axes à 100).
+//
+// Combat calibration : accuracy est stockée 0..100 en DB (voir transforms.go).
+// Dans loadSynergyMateAxes/synergyMainFallbackAxes acc est normalisé /100
+// avant usage → multiplicateur réel = 1 + (acc/100)×0.4 ≈ 1.2 pour 50%.
+// Un bon joueur (~12K, 5HS, 2PK, 55% acc) produit ~19/match, seuil 25 ≈ 76%.
 func synergyRadarThresholds(nShared int) narrative.ParticipationThresholds {
 	n := float64(nShared)
 	return narrative.ParticipationThresholds{
-		Combat:    25.0 * n,                        // (kills+HS/2+PK/2)×précision, ~25/match
-		Survival:  analysis.DefensiveResistanceP80, // résistance défensive agrégée, P80 = 1.59
-		Support:   300.0 * n,                       // assists × 50, ~6 assists/match
-		Score:     400.0 * n,                       // résiduel medals/streaks, ~400/match
-		Objective: 350.0 * n,                       // PSA objectif, ~350/match
-		Impact:    analysis.OffensiveConversionP80, // rendement offensif agrégé, P80 = 0.83
+		Combat:    25.0 * n,                               // (kills+HS/2+PK/2)×(1+acc×0.4), ~25/match pour un excellent joueur
+		Survival:  analysis.DefensiveResistanceP80 * 1.25, // ~1.99 ; étire le haut au-dessus du P80
+		Support:   300.0 * n,                              // assists × 50, ~6 assists/match
+		Score:     350.0 * n,                              // résiduel medals/streaks, ~350/match
+		Objective: 350.0 * n,                              // PSA objectif, ~350/match
+		Impact:    analysis.OffensiveConversionP80 * 1.25, // ~1.04 ; étire le haut au-dessus du P80
 	}
 }
 
@@ -1109,7 +1116,7 @@ func synergyMainFallbackAxes(
 		seen[m.MatchID] = struct{}{}
 		acc := 0.0
 		if m.Accuracy != nil {
-			acc = *m.Accuracy
+			acc = *m.Accuracy / 100.0 // DB stocke 0..100, formule attend 0..1
 		}
 		combat := (float64(m.Kills) + 0.5*float64(m.HeadshotKills) + 0.5*float64(m.PerfectKills)) *
 			(1.0 + acc*0.4)
@@ -1155,7 +1162,7 @@ func (s *TeammatesService) loadSynergyMateAxes(
 		a := intPtrOrZero(r.Self.Assists)
 		acc := 0.0
 		if r.Self.Accuracy != nil {
-			acc = *r.Self.Accuracy
+			acc = *r.Self.Accuracy / 100.0 // DB stocke 0..100, formule attend 0..1
 		}
 		ps := intPtrOrZero(r.Self.PersonalScore)
 		if ps == 0 {

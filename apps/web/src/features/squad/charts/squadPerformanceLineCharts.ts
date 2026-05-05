@@ -15,6 +15,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { CHART_BG, axisBase, legendBase, tooltipBase } from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { hexComplement } from '@/lib/accessibility'
 
 const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.55)'
 
@@ -163,8 +164,6 @@ export interface KillsDeathsButterflyOpts extends CommonOpts {
   deathsLabel: string
 }
 
-const DEATHS_OPACITY = 0.45
-
 export function buildKillsDeathsButterflyOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: KillsDeathsButterflyOpts,
@@ -178,16 +177,18 @@ export function buildKillsDeathsButterflyOption(
   const seriesPerPlayer: Array<Record<string, unknown>> = []
   for (const player of players) {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const negColor = hexComplement(color) // hue +180°, opaque — même convention que squadPerMinuteChart
     const killsData = new Array<number | null>(n).fill(null)
     const deathsData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
       killsData[p.match_order] = p.kills
       deathsData[p.match_order] = -p.deaths
     }
+    // stack identique → kills (positif) et morts (négatif) partagent la même colonne x.
     seriesPerPlayer.push({
       name: `${player} — ${opts.killsLabel}`,
       type: 'bar',
-      stack: `kills-${player}`,
+      stack: player,
       barMaxWidth: 14,
       itemStyle: { color },
       data: killsData,
@@ -195,9 +196,9 @@ export function buildKillsDeathsButterflyOption(
     seriesPerPlayer.push({
       name: `${player} — ${opts.deathsLabel}`,
       type: 'bar',
-      stack: `deaths-${player}`,
+      stack: player,
       barMaxWidth: 14,
-      itemStyle: { color, opacity: DEATHS_OPACITY },
+      itemStyle: { color: negColor },
       data: deathsData,
     })
   }
