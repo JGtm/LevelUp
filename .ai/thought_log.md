@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-05-05] feat(squad/performance): barres groupées + FDA colorimétrique
+
+**Statut** : Complété.
+
+**Contexte** : Les sous-charts 2 à 8 de "Performance escouade par match" utilisaient des lignes. L'utilisateur a demandé des barres groupées pour tous, et que le FDA (KDA) colore les barres en rouge/complément quand la valeur est inférieure à 1.0 (même convention que "Stats par minute — Morts").
+
+**Décisions techniques** :
+
+1. **`chartType: 'bar'` dans `PerformanceLineOpts`** : option optionnelle ajoutée ; quand `'bar'`, la série utilise `type: 'bar'` avec `barMaxWidth: 12`. Pas de breaking change sur les appelants existants (défaut = 'line').
+
+2. **`complementBelowValue?: number`** : quand défini, chaque barre dont la valeur est < ce seuil reçoit `hexComplement(color)` comme couleur de `itemStyle`. Pour FDA : seuil = 1.0. Même fonction que `squadPerMinuteChart.ts`.
+
+3. **`buildHsPerfectOption`** : remplacé les deux séries 'line' par 'bar'. HS = `opacity: 0.6`, Perfect kills = opaque. L'`axisPointer` passe de 'line' à 'shadow'.
+
+4. **`SquadPerformanceCharts.tsx`** : `buildLine` reçoit `chartType: 'bar'` implicitement + paramètre `complementBelowValue`. Appelants :
+   - Assistances, Précision, Durée vie, Performance, Folie meurtrière : `buildLine(metric, decimals)` — barres sans seuil
+   - FDA : `buildLine('kda', 2, undefined, undefined, 1)` — barres + complement sous 1.0
+
+**Résultats** :
+- `tsc -b` : 0 erreur.
+- Tous les hooks pre-commit passent.
+
+**Conclusion** : 2 fichiers, commit `e648cc00`. Branche `fix/synergy-radar-calibration`.
+
+---
+
 ## [2026-05-05] fix(squad/contributions): layout 2 colonnes + butterfly chart aligné
 
 **Statut** : Complété.
