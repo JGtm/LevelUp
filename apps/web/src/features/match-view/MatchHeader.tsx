@@ -224,8 +224,9 @@ export function MatchHeaderCard({
   }
 
   return (
-    <div className="border-b bg-card">
-      <div className="flex flex-col gap-0 md:flex-row">
+    <div className="px-6 pt-4">
+      <div className="overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm">
+        <div className="flex flex-col gap-0 md:flex-row">
         {/* Colonne image map (400×230 max selon les assets 560/320) */}
         <div className="relative h-[230px] w-full flex-shrink-0 overflow-hidden bg-muted md:w-[400px]">
           {header.map_image_url ? (
@@ -375,6 +376,7 @@ export function MatchHeaderCard({
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
     </div>
