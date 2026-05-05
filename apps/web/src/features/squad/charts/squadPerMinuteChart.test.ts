@@ -102,10 +102,14 @@ describe('buildSquadPerMinuteOption', () => {
     expect(fmt({ value: 1.5, dataIndex: 0 })).toBe('1.50')
   })
 
-  it('axe X = ligne blanche en gras (zero line emphasis)', () => {
+  it('axe X = ligne foreground en gras (zero line emphasis)', () => {
+    // Phase 5e (PLAN_THEME_CONSISTENCY) : la couleur de l'axe zéro est passée
+    // de rgba(255,255,255,0.75) à tc.text (CSS var --foreground résolue au
+    // runtime). On valide que la largeur est renforcée (2px) et qu'une
+    // couleur non vide est posée.
     const opt = buildSquadPerMinuteOption(makeSeries([entry('Me', 1, 1, 1)]), OPTS)
     const xAxis = opt.xAxis as { axisLine: { lineStyle: { color: string; width: number } } }
     expect(xAxis.axisLine.lineStyle.width).toBe(2)
-    expect(xAxis.axisLine.lineStyle.color).toContain('255')
+    expect(xAxis.axisLine.lineStyle.color).toBeTruthy()
   })
 })
