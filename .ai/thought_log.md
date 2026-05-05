@@ -1,5 +1,44 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 3 (squad/PP shared_social, deadlock sync hook différé)
+
+**Statut** : Complété — commit 3 sur `refactor/leased-writer-enforcement`. Protège les écritures squad/PP côté HTTP. La résolution du deadlock potentiel sync hook ↔ Prestige reste à faire au commit 7 (en même temps que le sync engine acquerra son writer player).
+
+**Décision technique principale** : périmètre du commit 3 réduit vs plan v3.
+
+Le plan demandait au commit 3 deux choses :
+1. Migrer `prestige_social_repo` (squad/PP write) → fait, **mais** au niveau LazyPrestigeService (pivot validé).
+2. Ajouter `EvaluateForUserWithWriter` à l'interface Service pour résoudre le deadlock sync hook → **différé au commit 7**.
+
+Justification du report d'`EvaluateForUserWithWriter` :
+- Aujourd'hui le sync engine n'acquiert PAS de lease (commit 7). Donc pas de deadlock effectif.
+- `EvaluateForUser` écrit sur DEUX DBs : `stats.duckdb` (UpdateStatus) et `shared_social.duckdb` (EmitEvent). Une signature `WithWriter(w *LeasedWriter)` suppose un seul writer — la sémantique exacte (un writer player ? un writer shared ? les deux ?) dépend du protocole d'ordre stable que définira le commit 7.
+- Anticiper sans ce contexte produirait du code mort qu'il faudrait re-coder. La règle "n'ajoute pas d'API par anticipation" (CLAUDE.md anti-pattern "dead code museum") prime.
+- Au commit 7, je ferai en une fois : sync engine acquiert player + shared_social writers en début de pipeline (ordre stable), passe les writers au hook, et le service reçoit éventuellement `EvaluateForUserWithWriters(ctx, ..., wPlayer, wShared)` si nécessaire.
+
+**Découverte secondaire** : `RefreshSquadPool` est read-only (génération aléatoire à partir de templates lus depuis metadata.duckdb). Pas besoin de lease. Sortie du scope commit 3.
+
+**Fichiers modifiés** :
+- `internal/api/prestige_lazy_service.go` :
+  - Ajout helper `acquireSharedSocialWriter(pdb)` qui appelle `pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)` (timeout 45s, plus long que `PlayerLeaseTimeout=5s` car la DB est partagée entre tous les joueurs et peut être plus disputée).
+  - `CreateSquadChallenge` et `JoinSquadChallenge` acquièrent désormais `acquireSharedSocialWriter(pdb)` + defer Release avant délégation au service interne.
+  - `RefreshSquadPool` inchangé (read-only).
+- `internal/api/handlers/prestige_test.go` :
+  - 2 nouveaux champs au mock : `createSquadErr`, `joinSquadErr`.
+  - Helper `newSquadRouter(svc)` qui câble les routes squad (le router principal `newRouter` n'inclut pas les squads — laissé tel quel pour ne pas casser les tests existants).
+  - 2 nouveaux tests : `TestPrestigeHandler_CreateSquadChallenge_DBLocked_Returns503`, `TestPrestigeHandler_JoinSquadChallenge_DBLocked_Returns503`. Vérifient 503 + Retry-After: 5 sur les 2 endpoints squad.
+
+**Total tests handler dblease** (commits 2 + 3) : 6 tests 503 — Create / Update / Abandon (player), Create / Join (squad), + non-confusion NotFound. Tous reposent sur le même `dbLockedErr()` helper qui wrappe `dblease.ErrDBLocked` comme le ferait la vraie couche.
+
+**Hors scope (déférés)** :
+- `EvaluateForUser` : sera traité au commit 7 avec le sync engine.
+- `EvaluateForUserWithWriter(s)` interface : pas anticipée — concrétisée au commit 7 quand le protocole sync sera défini.
+- `prestige_social_repo` interfaces : non modifiées (pivot validé — l'acquisition reste au-dessus, dans LazyPrestigeService).
+
+**Conclusion / prochaine étape** : commit 3 prêt. Squad/PP HTTP désormais protégés. Le commit 4 attaque les notifications — `notifications.Service` existe déjà avec son propre port `Repository`, je modifierai `Service.Insert/MarkRead/...` pour acquérir le lease shared_social en interne.
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 2 (P1 résolu côté HTTP : Prestige Player + handler 503)
 
 **Statut** : Complété — commit 2 sur `refactor/leased-writer-enforcement`. Le sync hook reste fonctionnellement protégé par le partage du mutex `leaseMutex(path)` (même path = même mutex), mais la résolution propre du deadlock sync↔hook attend le commit 3 (`EvaluateForUserWithWriter`).

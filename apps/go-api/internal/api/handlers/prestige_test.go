@@ -33,6 +33,8 @@ type mockPrestigeService struct {
 	meErr           error
 	suggestTplResp  []prestige.Template
 	suggestTplErr   error
+	createSquadErr  error
+	joinSquadErr    error
 
 	lastCreate      prestige.CreateChallengeRequest
 	lastUpdate      prestige.UpdateChallengePatch
@@ -92,10 +94,10 @@ func (m *mockPrestigeService) GetArc(ctx context.Context, _ string) (prestige.Ar
 	return prestige.Arc{}, nil
 }
 func (m *mockPrestigeService) CreateSquadChallenge(ctx context.Context, _ prestige.CreateSquadChallengeRequest) (prestige.SquadChallenge, error) {
-	return prestige.SquadChallenge{}, nil
+	return prestige.SquadChallenge{}, m.createSquadErr
 }
 func (m *mockPrestigeService) JoinSquadChallenge(ctx context.Context, _, _ string, _ prestige.Tier, _ bool) error {
-	return nil
+	return m.joinSquadErr
 }
 func (m *mockPrestigeService) GetSquadChallenge(ctx context.Context, _ string) (prestige.SquadChallenge, error) {
 	return prestige.SquadChallenge{}, nil
@@ -469,5 +471,49 @@ func TestPrestigeHandler_NotFoundErrorsNotMistakenForDBLocked(t *testing.T) {
 	}
 	if got := w.Header().Get("Retry-After"); got != "" {
 		t.Errorf("Retry-After should not be set on 404, got %q", got)
+	}
+}
+
+// newSquadRouter étend newRouter avec les endpoints squad pour les tests
+// du commit 3 (lease shared_social.duckdb).
+func newSquadRouter(svc prestige.Service) *chi.Mux {
+	h := NewPrestigeHandler(svc)
+	r := chi.NewRouter()
+	r.Post("/squads/{squad_id}/challenges", h.CreateSquadChallenge)
+	r.Post("/squad-challenges/{id}/join", h.JoinSquadChallenge)
+	return r
+}
+
+func TestPrestigeHandler_CreateSquadChallenge_DBLocked_Returns503(t *testing.T) {
+	mock := &mockPrestigeService{createSquadErr: dbLockedErr()}
+	router := newSquadRouter(mock)
+
+	body := `{"title_slug":"halo_infinite","mode":"collective","eval_type":"threshold","window_type":"session","target_per_member":5,"created_by":"u1"}`
+	req := httptest.NewRequest(http.MethodPost, "/squads/squad_1/challenges", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
+	}
+}
+
+func TestPrestigeHandler_JoinSquadChallenge_DBLocked_Returns503(t *testing.T) {
+	mock := &mockPrestigeService{joinSquadErr: dbLockedErr()}
+	router := newSquadRouter(mock)
+
+	body := `{"user_id":"u1","chosen_tier":"heroic"}`
+	req := httptest.NewRequest(http.MethodPost, "/squad-challenges/sc_1/join", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
 	}
 }
