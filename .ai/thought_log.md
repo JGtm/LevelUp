@@ -104,6 +104,61 @@
 
 ---
 
+## [2026-05-05] Drawer feedback + GitHub Action triage IA — IMPLÉMENTATION
+
+**Statut** : Complété (V1)
+
+**Branche** : `feat/feedback-drawer` (depuis `fix/synergy-radar-calibration`).
+
+**Décision technique** : URL GitHub Issues préremplie côté front + GitHub Action Claude Haiku 4.5 post-création pour affiner classification et commenter. Pas de back-end LevelUp impliqué (sauf `/health` futur pour `app_version`). Sécurité : fetch direct vers `api.github.com` avec `credentials: 'omit'` — le wrapper `api` du projet ne doit JAMAIS être utilisé pour cette query (leak `X-LevelUp-Title` + cookies). CI guard ajouté dans `ci.yml` pour bloquer toute régression.
+
+**Fichiers créés (frontend)** :
+- `apps/web/src/lib/global-capture/{install,buffers}.ts` + tests — wrap console/fetch/window errors. Idempotence HMR via flag `globalThis.__levelup_global_capture_installed__`. URLs fetch capturées sont strippées de leurs query params (anti-leak PII).
+- `apps/web/src/features/feedback-drawer/{FeedbackDrawer.tsx, classifyFeedback.ts, buildIssueUrl.ts, collectContext.ts, queries.ts, rateLimit.ts, _logger.ts, feedbackDrawer.store.ts, index.ts}` + 8 fichiers de tests.
+- `apps/web/src/lib/i18n/manifests/feedback_drawer.toml` (19 clés FR/EN).
+
+**Fichiers créés (GitHub Actions)** :
+- `.github/labels.yml` — déclaration versionnée des labels (feedback, severity:*, area:*, triage:*).
+- `.github/workflows/sync-labels.yml` — sync auto via `crazy-max/ghaction-github-labeler` (pinné par SHA).
+- `.github/workflows/triage-feedback.yml` — trigger `issues.opened` + label `feedback`.
+- `.github/scripts/triage-feedback.{mjs,test.mjs}` + `triage-feedback-prompt.md` — script Node, fail-safe (label `triage:needs-review` ou `triage:parse-error` si erreur).
+
+**Fichiers modifiés** :
+- `apps/web/src/components/shell/AppShell.tsx` — `<FeedbackDrawer />` en sibling après `<AssetDrawer />`.
+- `apps/web/src/main.tsx` — appel `installGlobalCapture()` avant `createRoot`.
+- `.github/workflows/ci.yml` — guard CI : bloque `import { api }` dans `feedback-drawer/queries.ts`.
+- `README.md` — badge GitHub feedback issues.
+
+**Arbitrages tranchés (cf. plan `.ai/FEEDBACK_DRAWER.md`)** :
+- Renommage `lib/bootstrap.ts` → `lib/global-capture/{install,buffers}.ts` (collision sémantique avec `/bootstrap` auth existant).
+- Manifest renommé `feedback_drawer.toml` (cohérence `asset_drawer.toml`).
+- Heuristique `area` refondée : 16 patterns vérifiés contre les routes réelles, plus de match fictif `engagement` ou `session`.
+- Anti-spam extrait en helper pur `rateLimit.ts` testable indépendamment + fail-open silencieux si `localStorage` indisponible.
+- Encodage GitHub-search via `escapeSearchQuery` dédié (5 cas testés).
+- Weekly digest reporté en V1.1 (V1 garde badge README + log stdout des coûts).
+- Actions GitHub pinnées par SHA (placeholder `<sha>` en commentaire — à remplir par l'op qui déploie).
+- Lecture localStorage anti-spam directement au render (pas de `setState in useEffect`, anti-pattern react-hooks).
+
+**Résultats observés** :
+- `npm run typecheck` : OK.
+- `npm run test:run -- src/features/feedback-drawer src/lib/global-capture` : **113/113 tests passent** (9 fichiers).
+- `npm run lint` : aucun warning/erreur dans le scope `feedback-drawer/` ou `global-capture/`.
+- `node tools/lint-no-hardcoded-colors.mjs` : clean (0 violation).
+- `node --test .github/scripts/triage-feedback.test.mjs` : 7/7 OK.
+
+**Limitations connues** :
+- Mobile (< 640px) : drawer caché en V1 (`hidden sm:flex`). FAB bottom-right reporté en V1.1.
+- Pas de test e2e Playwright en V1 (lourd à mettre en place sans setup MSW dédié pour `api.github.com`). À ajouter en V1.1 avec le digest.
+- `app_version` côté front est `null` en V1 (le plan documentait un fetch `/health`, mais le coût d'un fetch supplémentaire à chaque ouverture du drawer n'est pas justifié — la version est déjà visible côté Claude via le commit SHA dans les logs Actions).
+
+**Prochaine étape** :
+1. Pinner les SHA réels des actions tierces avant le merge en main.
+2. Provisionner secret repo `ANTHROPIC_API_KEY` côté Settings GitHub.
+3. Exécuter manuellement `sync-labels.yml` une première fois pour créer les labels.
+4. Smoke test : ouvrir le drawer en local, créer une issue de test, vérifier que l'Action déclenche bien Claude Haiku.
+
+---
+
 ## [2026-05-05] Page Match — i18n map/mode (breadcrumb + titre)
 
 **Statut** : Complété

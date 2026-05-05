@@ -1,0 +1,101 @@
+# Définition versionnée des labels GitHub.
+# Synchronisé via .github/workflows/sync-labels.yml (action crazy-max/ghaction-github-labeler).
+# Toute modif ici est appliquée au repo au prochain push sur main.
+
+# --- Catégorisation feedback drawer ---
+- name: feedback
+  color: "0e8a16"
+  description: "Retour utilisateur envoyé via le drawer in-app"
+
+- name: bug
+  color: "d73a4a"
+  description: "Quelque chose ne fonctionne pas"
+
+- name: enhancement
+  color: "a2eeef"
+  description: "Amélioration ou nouvelle fonctionnalité"
+
+- name: question
+  color: "d876e3"
+  description: "Question utilisateur"
+
+# --- Sévérité (peuplée par classifyFeedback puis affinée par Claude) ---
+- name: "severity:critical"
+  color: "b60205"
+  description: "Bloquant — TypeError ou crash franc"
+
+- name: "severity:high"
+  color: "d93f0b"
+  description: "Impact fort — bug visible / perte de progression"
+
+- name: "severity:medium"
+  color: "fbca04"
+  description: "Bug confirmé sans bloquer l'usage"
+
+- name: "severity:low"
+  color: "0e8a16"
+  description: "Suggestion ou question"
+
+# --- Zone fonctionnelle ---
+- name: "area:synthesis"
+  color: "1d76db"
+  description: "Page Synthèse"
+- name: "area:explorer"
+  color: "1d76db"
+  description: "Page Explorer"
+- name: "area:squad"
+  color: "1d76db"
+  description: "Page Escouade et sous-pages"
+- name: "area:sessions"
+  color: "1d76db"
+  description: "Page sessions / comparaison"
+- name: "area:timeseries"
+  color: "1d76db"
+  description: "Page séries temporelles"
+- name: "area:match_history"
+  color: "1d76db"
+  description: "Historique des matchs"
+- name: "area:match_view"
+  color: "1d76db"
+  description: "Vue détail d'un match"
+- name: "area:palmares"
+  color: "1d76db"
+  description: "Palmarès et sous-pages"
+- name: "area:player_home"
+  color: "1d76db"
+  description: "Home joueur"
+- name: "area:media"
+  color: "1d76db"
+  description: "Page médias"
+- name: "area:career"
+  color: "1d76db"
+  description: "Carrière"
+- name: "area:notifications"
+  color: "1d76db"
+  description: "Notifications"
+- name: "area:objectifs"
+  color: "1d76db"
+  description: "Objectifs"
+- name: "area:citations"
+  color: "1d76db"
+  description: "Citations"
+- name: "area:settings"
+  color: "1d76db"
+  description: "Settings / Setup"
+- name: "area:meta"
+  color: "1d76db"
+  description: "Pages méta (changelog, help)"
+- name: "area:general"
+  color: "c5def5"
+  description: "Aucune zone précise détectée"
+
+# --- État du triage IA ---
+- name: "triage:claude-analyzed"
+  color: "5319e7"
+  description: "Affiné par le triage IA"
+- name: "triage:parse-error"
+  color: "e99695"
+  description: "JSON Claude non-parsable"
+- name: "triage:needs-review"
+  color: "ffa500"
+  description: "Triage IA n'a pas pu juger (spam, vide, timeout)"

@@ -1,5 +1,7 @@
 # Plan — Drawer feedback "Reporter un retour" (FeedbackDrawer)
 
+> **Révision 2026-05-05** : passe de revue d'architecture appliquée (cf. § Changelog plan en bas du document).
+
 ## Context
 
 L'app LevelUp dispose actuellement d'un seul drawer latéral droit : [AssetDrawer](apps/web/src/features/asset-drawer/AssetDrawer.tsx) (référentiel maps/armes), monté dans [AppShell.tsx](apps/web/src/components/shell/AppShell.tsx#L50). On veut ajouter un **second mini-drawer**, plus petit, sous celui-ci avec une marge visible, déclenché par une **icône bulle de message**, qui ouvre un panneau de feedback.
@@ -14,12 +16,13 @@ Choix arrêtés :
 
 ## Pré-requis git (CLAUDE.md — Stratégie de branches)
 
-Avant impl, depuis la branche courante (`feat/seasons-as-asset-kind`) :
+La branche `fix/synergy-radar-calibration` est la base attendue (les blocs UI Drawer en cours y vivent). On ne passe pas par `main` car local et origin ont divergé fortement.
+
 ```bash
-git checkout main && git pull
+git checkout fix/synergy-radar-calibration
 git checkout -b feat/feedback-drawer
 ```
-**Ne jamais travailler sur `main`** ni continuer sur la branche en cours (sujet différent).
+**Ne jamais travailler sur `main`** ni continuer le travail courant sur `fix/synergy-radar-calibration` (sujet différent).
 
 ## UX & visuel
 
@@ -76,42 +79,99 @@ Documenter en commentaire dans `queries.ts` pour qu'aucun futur dev ne switch ve
 
 Helper pur `classifyFeedback(input, context) → { type, severity, area }` :
 
+**Type & severity** (priorité haute → basse, premier match gagne) :
+
 | Signal | Conséquence |
 |---|---|
 | Erreurs console récentes contiennent `TypeError` / `ReferenceError` | `severity: critical`, `type: bug` (force) |
-| Erreurs console récentes ≥1 entry | `severity: high`, `type: bug` (suggéré) |
-| Description contient `crash`, `bug`, `marche pas`, `erreur`, `cassé` | `type: bug` |
-| Description contient `j'aimerais`, `ce serait bien`, `feature`, `idée` | `type: enhancement` |
-| Description contient `?`, `comment`, `pourquoi` | `type: question` |
-| Sinon | `type: enhancement` (par défaut Idée) |
-| URL match `/players/.../synthesis` | `area: synthesis` |
-| URL match `/players/.../explorer` | `area: explorer` |
-| URL match `/players/.../engagement` | `area: engagement` |
-| URL match `/players/.../squad` | `area: squad` |
-| URL match `/players/.../session` | `area: session` |
-| Fallback | `area: general` |
+| Description contient `crash`, `perd ma progression`, `impossible`, `bloqué` | `severity: high`, `type: bug` |
+| Erreurs console récentes ≥1 entry (autres niveaux) | `severity: high`, `type: bug` (suggéré) |
+| Description contient `bug`, `marche pas`, `erreur`, `cassé` (sans mots high) | `severity: medium`, `type: bug` |
+| Description contient `?`, `comment`, `pourquoi` | `severity: low`, `type: question` |
+| Description contient `j'aimerais`, `ce serait bien`, `feature`, `idée` | `severity: low`, `type: enhancement` |
+| Sinon | `severity: low`, `type: enhancement` (par défaut Idée) |
+
+**Area** (URL pathname → zone, premier match gagne) :
+
+> Routes vérifiées dans [apps/web/src/routes/](apps/web/src/routes/). Pas de pattern fictif (`engagement` n'a pas de route propre — il vit sous `/squad`).
+
+| Pattern URL | `area` |
+|---|---|
+| `/players/.../synthesis` | `synthesis` |
+| `/players/.../explorer` | `explorer` |
+| `/players/.../squad` (incl. `/contributions`, `/synergies`) | `squad` |
+| `/players/.../stats/sessions` | `sessions` |
+| `/players/.../stats/timeseries` | `timeseries` |
+| `/players/.../stats/history` | `match_history` |
+| `/players/.../matches/...` | `match_view` |
+| `/players/.../palmares*` (incl. `prestige`, `relations`, `compare`, `season-pass`) | `palmares` |
+| `/players/.../home` | `player_home` |
+| `/players/.../media` | `media` |
+| `/players/.../career` | `career` |
+| `/players/.../notifications` | `notifications` |
+| `/players/.../objectifs` | `objectifs` |
+| `/players/.../profile/citations` | `citations` |
+| `/setup` ou `/settings` | `settings` |
+| `/changelog` ou `/help` | `meta` |
+| Fallback | `general` |
 
 Ces 3 valeurs sont injectées dans `labels=` de l'URL GitHub (ex: `feedback,bug,severity:high,area:synthesis`).
 
-### Métadonnées techniques avancées (lib/bootstrap.ts)
+### Métadonnées techniques avancées (lib/global-capture/)
 
-**Pas de précédent** d'init globaux dans `main.tsx` (10 lignes, juste mount React). Pour rester aligné sur le principe "1 module = 1 responsabilité" :
+**Pas de précédent** d'init globaux dans `main.tsx` (10 lignes, juste mount React). Le terme "bootstrap" est déjà utilisé dans le projet pour l'auth/session ([client.ts L83](apps/web/src/lib/api/client.ts#L83) endpoint `/bootstrap`, `app/providers.tsx`) — éviter la collision sémantique :
 
-→ Créer `apps/web/src/lib/bootstrap.ts` qui exporte `installFeedbackCapture()` regroupant tous les side-effects globaux. Appelé une fois en tête de `main.tsx`, avant `createRoot`.
+→ Créer `apps/web/src/lib/global-capture/install.ts` qui exporte `installGlobalCapture()` regroupant tous les side-effects globaux du feedback drawer. Appelé une fois en tête de `main.tsx`, avant `createRoot`.
 
-Module `console-capture.ts` (appelé par bootstrap) gère plusieurs ring buffers via une seule install :
+Module `lib/global-capture/buffers.ts` (appelé par `install.ts`) gère plusieurs ring buffers :
 
 - **Console** : wrap `console.error` + `console.warn`, garde 20 dernières entrées `{ level, message, timestamp, stack? }`. Stack extraite uniquement si `arg instanceof Error` (sinon stringify les args).
 - **Window errors** : `window.addEventListener('error')` + `'unhandledrejection'` → ajoute aussi au buffer console avec stack complète.
-- **Network** : intercepteur `fetch` (monkey-patch) qui capture les **5 dernières requêtes échouées** (status ≥ 400 ou network error) `{ url, method, status, timestamp }`.
+- **Network** : intercepteur `fetch` (monkey-patch) qui capture les **5 dernières requêtes échouées** (status ≥ 400 ou network error) `{ url, method, status, timestamp }`. **L'URL stockée est toujours strippée des query params** (`url.split('?')[0]`) pour éviter de fuiter tokens, gamertags, IDs en clair dans le body GitHub public.
 - **Focused element** : récupéré au moment du clic feedback via `document.activeElement?.tagName + className`.
 
 API exposée :
 - `getRecentConsoleEntries(): ConsoleEntry[]`
 - `getRecentFailedRequests(): FailedRequest[]`
-- `installConsoleCapture(): void` (idempotent, appelé via bootstrap)
+- `installGlobalCapture(): void` (idempotent, voir ci-dessous)
+- `resetCaptureBuffersForTests(): void` (uniquement utilisé par les tests Vitest, pattern aligné sur `_logger.ts::_resetForTests`)
 
 L'output console n'est **pas** altéré (les originaux sont toujours appelés).
+
+#### Idempotence sous HMR Vite
+
+Un flag module-level `_isInstalled = true` est **insuffisant** : Vite HMR recharge le module → flag re-init à `false` → wrap re-appliqué → ring buffer reçoit chaque event 2× (puis 3× après le HMR suivant).
+
+Solution : stocker le flag sur `globalThis` (survit au HMR car partagé window-level) :
+
+```ts
+const KEY = '__levelup_global_capture_installed__'
+declare global { var __levelup_global_capture_installed__: boolean | undefined }
+export function installGlobalCapture(): void {
+  if (globalThis[KEY]) return
+  globalThis[KEY] = true
+  // … wrap console / fetch / errors …
+}
+```
+
+Le test `install.test.ts` doit simuler 2 imports successifs (ou clear le `globalThis[KEY]` puis re-installer) pour vérifier l'idempotence.
+
+### GitHub search query — encodage safe
+
+Le titre saisi par l'user est injecté dans `?q=...` de l'API search. Caractères GitHub-search réservés (`:`, `+`, `"`, `(`, `)`) cassent ou détournent la query. **Helper `escapeSearchQuery(title): string`** dans `queries.ts` :
+
+1. Remplace les opérateurs réservés par un espace : `title.replace(/[:+"()/]/g, ' ')`.
+2. Trim + collapse les espaces multiples : `.replace(/\s+/g, ' ').trim()`.
+3. Append le scope : `q=<sanitized>+is:issue+repo:JGtm/LevelUp`.
+4. `encodeURIComponent` final sur la query complète.
+
+Test dédié dans `queries.test.ts` couvre 5 cas (`"foo: bar"`, `feature+`, `(crash)`, slashes URL collés au titre, titre 100 % réservés → fallback no-op).
+
+### Fallback repo privé (futur)
+
+La query GitHub Search publique fonctionne tant que le repo est public. Si demain le repo passe privé, l'API retournera 404 sans token auth → la section "Issues similaires" sera masquée silencieusement (`warn similar:fetch_failed`).
+
+→ Comment migrer le jour venu : exposer un endpoint backend `GET /api/v1/feedback/search-issues?q=...` qui proxy l'appel avec un PAT readonly (secret Go API). À documenter en commentaire dans `queries.ts` pour ne pas perdre le chemin de migration.
 
 ### Limite GitHub URL
 
@@ -146,7 +206,7 @@ Actions appliquées au repo :
   - **Issues internes potentiellement liées**.
 - Si `is_actionable === false` (ex: spam, message vide, troll) → label `triage:needs-review`, pas de commentaire long.
 
-**Coût** : repo public → Actions illimitées. Haiku 4.5 ≈ $0.0005/issue. Secret repo `ANTHROPIC_API_KEY` à provisionner via GitHub UI.
+**Coût** : repo public → Actions illimitées. Haiku 4.5 sur ~5k tokens input (system prompt + body + 50 issues récentes en contexte) + ~500 tokens output ≈ **$0.001/issue**. Seuil d'alerte fixé à 1000 issues/mois ($1/mois) — au-delà, vraisemblablement spam ou flux anormal. Secret repo `ANTHROPIC_API_KEY` à provisionner via GitHub UI.
 
 ## Fichiers à créer
 
@@ -160,20 +220,22 @@ Actions appliquées au repo :
 | [apps/web/src/features/feedback-drawer/buildIssueUrl.ts](apps/web/src/features/feedback-drawer/buildIssueUrl.ts) | Helper pur : `(input, context, classification) → URL`, encodage + troncature |
 | [apps/web/src/features/feedback-drawer/classifyFeedback.ts](apps/web/src/features/feedback-drawer/classifyFeedback.ts) | Helper pur : heuristiques type/sévérité/zone |
 | [apps/web/src/features/feedback-drawer/collectContext.ts](apps/web/src/features/feedback-drawer/collectContext.ts) | Helper pur : agrège stores + browser APIs en `FeedbackContext` |
-| [apps/web/src/features/feedback-drawer/queries.ts](apps/web/src/features/feedback-drawer/queries.ts) | Hook `useSimilarIssues` (react-query, **fetch direct GitHub** sans wrapper api) |
+| [apps/web/src/features/feedback-drawer/queries.ts](apps/web/src/features/feedback-drawer/queries.ts) | Hook `useSimilarIssues` (react-query, **fetch direct GitHub** sans wrapper api ; encodage GitHub-search safe — voir § GitHub search query) |
+| [apps/web/src/features/feedback-drawer/rateLimit.ts](apps/web/src/features/feedback-drawer/rateLimit.ts) | Helper pur : `recordSubmit()` / `getRemainingSubmits()` lus depuis `localStorage` (clé `levelup-feedback-submits`, fenêtre glissante 1h, max 5) |
 | [apps/web/src/features/feedback-drawer/_logger.ts](apps/web/src/features/feedback-drawer/_logger.ts) | Logger namespacé `[feedback-drawer]` — pattern existant (`features/filters/_logger.ts`) |
 | [apps/web/src/features/feedback-drawer/buildIssueUrl.test.ts](apps/web/src/features/feedback-drawer/buildIssueUrl.test.ts) | Tests Vitest : encodage, troncature progressive, mapping |
 | [apps/web/src/features/feedback-drawer/classifyFeedback.test.ts](apps/web/src/features/feedback-drawer/classifyFeedback.test.ts) | Tests Vitest : couvre les règles heuristiques |
 | [apps/web/src/features/feedback-drawer/collectContext.test.ts](apps/web/src/features/feedback-drawer/collectContext.test.ts) | Tests Vitest : agrégation des stores (mocks Zustand) |
 | [apps/web/src/features/feedback-drawer/feedbackDrawer.store.test.ts](apps/web/src/features/feedback-drawer/feedbackDrawer.store.test.ts) | Tests Vitest : open/close/toggle/persist |
-| [apps/web/src/features/feedback-drawer/queries.test.ts](apps/web/src/features/feedback-drawer/queries.test.ts) | Tests Vitest + MSW : `useSimilarIssues` (debounce, fetch GitHub mocké, error path, headers `omit`) |
-| [apps/web/src/features/feedback-drawer/FeedbackDrawer.test.tsx](apps/web/src/features/feedback-drawer/FeedbackDrawer.test.tsx) | Tests `@testing-library/react` : rendu, open/close, submit ouvre `window.open` avec URL attendue, Escape ferme, focus auto, accessibilité ARIA |
-| [apps/web/src/lib/bootstrap.ts](apps/web/src/lib/bootstrap.ts) | `installFeedbackCapture()` — point d'entrée des side-effects globaux |
-| [apps/web/src/lib/bootstrap.test.ts](apps/web/src/lib/bootstrap.test.ts) | Tests Vitest : idempotence (2× install = 1× effet), n'altère pas `console.error` original |
-| [apps/web/src/lib/console-capture.ts](apps/web/src/lib/console-capture.ts) | Ring buffers : console + window errors + failed fetch |
-| [apps/web/src/lib/console-capture.test.ts](apps/web/src/lib/console-capture.test.ts) | Tests Vitest : ring buffer 20 entries, FIFO eviction, stack si `instanceof Error`, fetch interceptor capture 4xx/5xx/network errors, `console.error` original toujours appelé |
-| [apps/web/src/lib/i18n/manifests/feedback.toml](apps/web/src/lib/i18n/manifests/feedback.toml) | Clés FR/EN (titres, labels, placeholders) |
-| [apps/web/e2e/feedback-drawer.spec.ts](apps/web/e2e/feedback-drawer.spec.ts) | Test Playwright e2e : ouvre drawer, remplit form, intercepte `window.open`, valide URL GitHub finale (labels, title, body), vérifie aucun cookie/header LevelUp envoyé à api.github.com |
+| [apps/web/src/features/feedback-drawer/queries.test.ts](apps/web/src/features/feedback-drawer/queries.test.ts) | Tests Vitest + MSW : `useSimilarIssues` (debounce, fetch GitHub mocké, error path, headers `omit`, escape opérateurs GitHub-search) |
+| [apps/web/src/features/feedback-drawer/rateLimit.test.ts](apps/web/src/features/feedback-drawer/rateLimit.test.ts) | Tests Vitest : fenêtre glissante 1h, max 5, expire les > 1h, gère `localStorage` indisponible |
+| [apps/web/src/features/feedback-drawer/FeedbackDrawer.test.tsx](apps/web/src/features/feedback-drawer/FeedbackDrawer.test.tsx) | Tests `@testing-library/react` : rendu, open/close, submit ouvre `window.open` avec URL attendue, Escape ferme, focus auto, accessibilité ARIA, fallback clipboard si `window.open` retourne `null`, bouton désactivé après 5 submits |
+| [apps/web/src/lib/global-capture/install.ts](apps/web/src/lib/global-capture/install.ts) | `installGlobalCapture()` — point d'entrée idempotent (HMR-safe via `globalThis`) des side-effects globaux |
+| [apps/web/src/lib/global-capture/install.test.ts](apps/web/src/lib/global-capture/install.test.ts) | Tests Vitest : idempotence (2× install = 1× effet, même après reset du flag `globalThis`), n'altère pas `console.error` original |
+| [apps/web/src/lib/global-capture/buffers.ts](apps/web/src/lib/global-capture/buffers.ts) | Ring buffers : console + window errors + failed fetch (URLs strippées des query params à la capture) |
+| [apps/web/src/lib/global-capture/buffers.test.ts](apps/web/src/lib/global-capture/buffers.test.ts) | Tests Vitest : ring buffer 20 entries FIFO, stack si `instanceof Error`, fetch interceptor capture 4xx/5xx/network errors, **URL strippée des query params**, `console.error` original toujours appelé, `resetCaptureBuffersForTests()` vide proprement |
+| [apps/web/src/lib/i18n/manifests/feedback_drawer.toml](apps/web/src/lib/i18n/manifests/feedback_drawer.toml) | Clés FR/EN (titres, labels, placeholders) — convention snake_case complète alignée sur `asset_drawer.toml` |
+| [apps/web/e2e/feedback-drawer.spec.ts](apps/web/e2e/feedback-drawer.spec.ts) | Test Playwright e2e : ouvre drawer, remplit form, intercepte `window.open`, valide URL GitHub finale (labels, title, body), vérifie aucun cookie/header LevelUp envoyé à api.github.com, **viewport 375×667 → mini-tab caché** (régression mobile) |
 
 ### GitHub Action
 
@@ -191,7 +253,7 @@ Actions appliquées au repo :
 | Fichier | Modif |
 |---|---|
 | [apps/web/src/components/shell/AppShell.tsx](apps/web/src/components/shell/AppShell.tsx#L50) | Ajouter `<FeedbackDrawer />` en sibling après `<AssetDrawer />` |
-| [apps/web/src/main.tsx](apps/web/src/main.tsx) | Importer `installFeedbackCapture()` depuis `lib/bootstrap.ts` et l'appeler avant `createRoot` |
+| [apps/web/src/main.tsx](apps/web/src/main.tsx) | Importer `installGlobalCapture()` depuis `lib/global-capture/install` et l'appeler avant `createRoot` |
 
 ### Réutilisation existant (pas de nouveau code)
 
@@ -200,7 +262,7 @@ Actions appliquées au repo :
 - Thème : [`useSettingsDraftStore`](apps/web/src/stores/settingsDraftStore.ts) — `localUiPrefs.theme`.
 - Player slug : `useParams()` TanStack Router.
 - Version Go API : `GET /health` via [`api`](apps/web/src/lib/api/client.ts) → `app_version`. Fallback `"unknown"`.
-- i18n : `formatMessage(feedbackManifest, key, locale)` (cf. AssetDrawer ligne 17).
+- i18n : `formatMessage(feedbackDrawerManifest, key, locale)` (cf. AssetDrawer ligne 17).
 - Build i18n : `node apps/web/scripts/build_i18n_manifests.mjs`.
 - React Query déjà installé (v5.99.0).
 
@@ -283,8 +345,10 @@ jobs:
       issues: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Toutes les actions tierces sont pinnées par SHA (supply-chain hygiene,
+      # le repo expose ANTHROPIC_API_KEY). Tag en commentaire pour la lisibilité.
+      - uses: actions/checkout@<sha>          # v4
+      - uses: actions/setup-node@<sha>        # v4
         with: { node-version: '20' }
       - run: npm install @anthropic-ai/sdk
       - run: node .github/scripts/triage-feedback.mjs
@@ -309,7 +373,7 @@ jobs:
 
 1. Créer une clé Anthropic API (console.anthropic.com).
 2. Repo Settings → Secrets and variables → Actions → New secret `ANTHROPIC_API_KEY`.
-3. Les labels GitHub sont **synchronisés automatiquement** via `.github/workflows/sync-labels.yml` + `.github/labels.yml` (action `crazy-max/ghaction-github-labeler`). Pas de création manuelle.
+3. Les labels GitHub sont **synchronisés automatiquement** via `.github/workflows/sync-labels.yml` + `.github/labels.yml` (action `crazy-max/ghaction-github-labeler` pinnée par SHA, tag `v5` en commentaire). Pas de création manuelle.
 
 ## Logging
 
@@ -358,13 +422,20 @@ En cas d'erreur :
 | Risque | Test |
 |---|---|
 | Un dev refactor `useSimilarIssues` vers `api.get(...)` → leak header `X-LevelUp-Title` à GitHub | `queries.test.ts` : assertion sur `fetch` mocké que `credentials: 'omit'` est passé et qu'aucun header LevelUp n'apparaît dans la requête |
-| `console-capture` casse l'output console réel | `console-capture.test.ts` : spy sur `console.error` original, vérifier qu'il est toujours appelé après wrap |
-| Ring buffer leak (croît indéfiniment) | `console-capture.test.ts` : push 25 entries, expect length === 20 (FIFO) |
+| `global-capture/buffers` casse l'output console réel | `buffers.test.ts` : spy sur `console.error` original, vérifier qu'il est toujours appelé après wrap |
+| Ring buffer leak (croît indéfiniment) | `buffers.test.ts` : push 25 entries, expect length === 20 (FIFO) |
+| URL avec query params sensibles fuite dans le body GitHub | `buffers.test.ts` : déclencher fail-fetch sur `/api/v1/foo?token=secret` → entrée stockée a `url === '/api/v1/foo'` (pas de `?token=...`) |
+| HMR re-instrumente le wrap (double capture) | `install.test.ts` : 2 imports successifs avec flag `globalThis` préservé → 1 seule install, `console.error('x')` produit 1 entry seulement |
+| GitHub-search query 422 sur titres avec opérateurs (`:`, `+`, `"`) | `queries.test.ts` : 5 cas de titres "exotiques" → URL générée n'a aucun caractère réservé non escapé |
 | Format body Markdown change accidentellement | `buildIssueUrl.test.ts` : snapshot inline du body généré pour 3 cas représentatifs (bug avec erreurs, idée sans erreurs, question avec filtres) |
 | Troncature URL casse le body | `buildIssueUrl.test.ts` : input ≥ 8 000 chars → output ≤ 7 000, mention `…[truncated]`, ordre de troncature vérifié |
-| Heuristiques classifyFeedback drift | `classifyFeedback.test.ts` : table-driven (15+ cas) couvrant toutes les règles + cas limites (description vide, multi-mots-clés contradictoires) |
+| Heuristiques classifyFeedback drift | `classifyFeedback.test.ts` : table-driven (15+ cas) couvrant toutes les règles + cas limites (description vide, multi-mots-clés contradictoires, "crash" sans erreur console → high) |
+| Routes mal mappées dans l'area heuristique | `classifyFeedback.test.ts` : test pour chaque pattern URL listé dans la matrice (synthesis, explorer, squad, stats/sessions, stats/timeseries, stats/history, palmares*, etc.) |
+| Anti-spam contourné en mode privé | `rateLimit.test.ts` : `localStorage` stub qui throw → fail-open silencieux (`getRemainingSubmits() === 5`), log warn 1× |
 | Position drawer chevauche AssetDrawer sur petit viewport | `e2e/feedback-drawer.spec.ts` : Playwright en 768×600 → vérifier `bounding-box` non-overlap |
+| Mini-tab visible sur mobile (régression) | `e2e/feedback-drawer.spec.ts` : viewport 375×667 → `expect(miniTab).toBeHidden()` |
 | Drawer reste ouvert après navigation route | `FeedbackDrawer.test.tsx` : simuler navigate → expect `isOpen === false` (à confirmer côté store, ajouter listener si manquant) |
+| Popup blocker casse le submit | `FeedbackDrawer.test.tsx` : mock `window.open` retourne `null` → fallback `navigator.clipboard.writeText(url)` appelé + toast affiché |
 | AssetDrawer cassé par le sibling FeedbackDrawer | `e2e/asset-drawer.spec.ts` (existant si présent) : doit toujours passer après merge |
 
 ### Lint anti-régression
@@ -420,8 +491,8 @@ Voir checklist UI ci-dessous : un toggle de thème pendant que le drawer est ouv
 | Risque | Mitigation |
 |---|---|
 | Live preview Markdown re-render à **chaque keystroke** sur titre/description (texte potentiellement long) | `useMemo(() => buildBodyPreview(input, context), [input, context])` + `useDeferredValue(description)` (React 19) pour découpler la frappe du render preview |
-| `console-capture` wrap appelé sur **chaque** `console.error/warn` et **chaque** `fetch` | Push sync dans Array borné — coût ~µs négligeable. Wrap `fetch` n'instrumente que la branche fail (response.ok=false) |
-| Hot-Module-Reload re-applique le wrap → double instrumentation, ring buffer reçoit chaque message 2× | Flag idempotent `_isInstalled = true` au premier appel, return early sinon (déjà couvert par les tests `bootstrap.test.ts`) |
+| `global-capture` wrap appelé sur **chaque** `console.error/warn` et **chaque** `fetch` | Push sync dans Array borné — coût ~µs négligeable. Wrap `fetch` n'instrumente que la branche fail (response.ok=false) |
+| Hot-Module-Reload re-applique le wrap → double instrumentation, ring buffer reçoit chaque message 2× | Flag idempotent stocké sur `globalThis` (survit au HMR contrairement à un flag module-level) — voir § Idempotence sous HMR Vite. Couvert par `install.test.ts` |
 | Drawer reste monté en permanence (comme AssetDrawer) → DOM sub-tree existe même fermé | Acceptable : juste un form HTML, pas de queries firing tant que `isOpen === false` (gating dans `queries.ts` via `enabled: isOpen && title.length >= 3`) |
 | `useSimilarIssues` fire à chaque keystroke avant debounce | `enabled: title.length >= 3 && isOpen` + `staleTime: 60_000` (cache 1 min sur le même titre) |
 | Icône SVG inlinée re-créée à chaque render | Composant constant `<ChatBubbleIcon />` défini **hors** du composant principal (pattern AssetDrawer ligne 135) |
@@ -429,15 +500,15 @@ Voir checklist UI ci-dessous : un toggle de thème pendant que le drawer est ouv
 
 ### Pattern debounce
 
-Pas de hook centralisé dans le projet. Suivre le pattern de [useGamertagSuggestions.ts](apps/web/src/features/.../useGamertagSuggestions.ts) (state-based avec `useState` + `useEffect` 250-500 ms) plutôt que `useRef<setTimeout>` ad-hoc — plus testable, plus aligné sur les features récentes.
+Pas de hook centralisé dans le projet. Suivre le pattern de [useGamertagSuggestions.ts](apps/web/src/components/ui/useGamertagSuggestions.ts) (state-based avec `useState` + `useEffect` 250-500 ms) plutôt que `useRef<setTimeout>` ad-hoc — plus testable, plus aligné sur les features récentes.
 
 ### Test perf simple
 
 `FeedbackDrawer.test.tsx` : compter les renders avec un compteur ref, taper un titre de 30 chars → expect ≤ 35 renders (1 par keystroke + quelques dérivés acceptables). Au-delà, useMemo manquant.
 
-## Observabilité côté mainteneur
+## Observabilité côté mainteneur (V1)
 
-L'app n'a aucune télémétrie front (cf. ADR-0009 — expvar planifié côté Go API uniquement). On exploite **GitHub natif** pour l'observabilité du feedback :
+L'app n'a aucune télémétrie front (cf. ADR-0009 — expvar planifié côté Go API uniquement). On exploite **GitHub natif** pour l'observabilité du feedback. **Scope V1 : minimum viable**, le digest hebdo est reporté en V1.1.
 
 ### Badge README "Open feedback issues"
 
@@ -447,50 +518,44 @@ Ajouter dans le `README.md` racine :
 ```
 Visible immédiatement sur la page repo, lien direct vers la liste filtrée.
 
-### Workflow `weekly-feedback-digest.yml`
-
-Cron `0 9 * * MON` (lundi 9h UTC). Génère un rapport Markdown :
-
-| Section | Contenu |
-|---|---|
-| **Volume** | Nombre d'issues `feedback` créées 7 derniers jours (vs 7 jours précédents → tendance ↑/↓) |
-| **Breakdown par area** | Top 3 zones touchées (synthesis, explorer, …) avec compteurs |
-| **Breakdown par severity** | Critical / High / Medium / Low |
-| **Breakdown par type** | Bug / Enhancement / Question |
-| **Top 5 engagement** | Issues feedback ouvertes avec le plus de commentaires (signal "ça parle") |
-| **Qualité du triage IA** | Ratio `triage:claude-analyzed` / `triage:parse-error` / `triage:needs-review` (signal santé du workflow Action) |
-| **Issues triage:needs-review** | Liste avec liens — celles à regarder en priorité |
-
-Posté en commentaire sur une **issue épinglée** dédiée `📊 Feedback Weekly Digest` (mise à jour ou nouveau commentaire). Si l'issue n'existe pas au premier run → créée automatiquement.
-
-### Métriques coût Anthropic
-
-Le script `triage-feedback.mjs` log en stdout `[triage] usage: input_tokens=N output_tokens=N`. Le digest hebdo agrège ces lignes via `gh api /repos/.../actions/runs` + parsing logs → estime le coût mensuel.
-
-Seuil d'alerte : si > $5 / mois, créer une issue `cost:anthropic-spike` automatiquement (probablement un user spam-clique le bouton). Anti-spam future : rate-limit côté front via localStorage (`max 5 submits / hour / browser`).
-
-### Fichiers à créer (observabilité)
-
-| Fichier | Rôle |
-|---|---|
-| [.github/workflows/weekly-feedback-digest.yml](.github/workflows/weekly-feedback-digest.yml) | Cron lundi 9h, exécute le script digest |
-| [.github/scripts/weekly-digest.mjs](.github/scripts/weekly-digest.mjs) | Génère le rapport via `gh` CLI + post-comment |
-| `README.md` | Ajout du badge feedback (modif, pas création) |
-
 ### Anti-spam côté front (limitation soft)
 
 Pour éviter qu'un user clique 100× le bouton "Ouvrir sur GitHub" :
 - LocalStorage key `levelup-feedback-submits` = array de timestamps des submits.
-- Avant submit, expire les > 1h, count restantes.
+- Avant submit, expire les > 1h, count restantes (helper pur `rateLimit.ts`).
 - Si ≥ 5 → bouton désactivé + message "Merci, tu as déjà envoyé 5 retours dans la dernière heure".
-- Pas une vraie protection (le user peut clear localStorage), mais bloque le 99 % des cas accidentels.
+- Si `localStorage` indisponible (mode privé strict) → fail-open silencieusement, le rate-limit est best-effort.
+- Pas une vraie protection (le user peut clear localStorage), mais bloque 99 % des cas accidentels.
+
+### Métriques coût Anthropic — log seulement en V1
+
+Le script `triage-feedback.mjs` log en stdout `[triage] usage: input_tokens=N output_tokens=N` (visible dans l'onglet Actions). Pas d'agrégation automatique en V1 ; check manuel mensuel sur Actions UI ou console.anthropic.com. Estimation : ~$0.001/issue × volume mensuel.
+
+### Fichiers à créer (observabilité V1)
+
+| Fichier | Rôle |
+|---|---|
+| `README.md` | Ajout du badge feedback (modif, pas création) |
+
+> Pas de nouveau workflow / script en V1. Le rate-limit côté front est porté par `rateLimit.ts` (déjà listé dans les fichiers frontend).
+
+### V1.1 (reporté) — Weekly digest
+
+Pour mémoire, à shipper après stabilisation V1 (≥ 4 semaines de données réelles) :
+
+- `.github/workflows/weekly-feedback-digest.yml` — cron `0 9 * * MON`.
+- `.github/scripts/weekly-digest.mjs` — génère le rapport (volume, breakdown area/severity/type, top 5 engagement, qualité triage IA, liste needs-review, coût Anthropic agrégé).
+- Issue épinglée `📊 Feedback Weekly Digest` créée auto au premier run, mise à jour en commentaire.
+- Seuil d'alerte coût : > $1 / mois → issue auto `cost:anthropic-spike`.
+
+Le décalage en V1.1 réduit la surface de bugs au merge initial et permet de calibrer les sections du digest sur des données réelles plutôt que théoriques.
 
 ## Notes de qualité
 
 - **Couleurs** : que des tokens sémantiques. Vérifier qu'aucun `#xxx` ni `text-red-*` dans le diff (règle 20 CLAUDE.md). Lint custom strict ratchet 0 (`tools/lint-no-hardcoded-colors.mjs`).
 - **Taille fichiers** : `FeedbackDrawer.tsx` < 250 lignes (sinon découper le form en sous-composants). Helpers purs < 80 lignes par fonction (règle 13). Modules < 500 lignes (règle 14).
 - **A11y** : `role="complementary"`, `aria-label`, `aria-expanded`, `aria-hidden`, focus auto sur `<input>` titre à l'ouverture.
-- **PII** : aucun token, aucun cookie, aucun email envoyé à GitHub. User-Agent (publique) seul. Le body de l'issue est public côté repo.
+- **PII** : aucun token, aucun cookie, aucun email envoyé à GitHub. User-Agent (publique) seul. Le body de l'issue est public côté repo. **URLs des requêtes échouées toujours strippées des query params** (`url.split('?')[0]`) à la capture (cf. § Métadonnées techniques avancées) — évite le leak de tokens/gamertags/IDs en clair. Test dédié dans `buffers.test.ts`.
 - **Rate-limit GitHub search** : 60 req/h/IP non-auth. Avec debounce 500 ms + queryKey react-query, on reste en deçà même en usage intensif.
 - **Stack trace defensive** : `console.error(...)` peut recevoir n'importe quoi → extraire `.stack` uniquement si `arg instanceof Error`, sinon stringify.
 
@@ -503,7 +568,7 @@ node scripts/build_i18n_manifests.mjs
 npm run typecheck
 
 # 2. Tests unitaires + composants (Vitest + MSW + @testing-library/react)
-npm run test:run -- src/features/feedback-drawer src/lib/console-capture src/lib/bootstrap
+npm run test:run -- src/features/feedback-drawer src/lib/global-capture
 
 # 3. Coverage cible ≥ 85 % sur feedback-drawer
 npm run test:coverage -- src/features/feedback-drawer
@@ -532,14 +597,18 @@ Le **CI existant** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) lance 
 - [ ] Saisir un titre → après 500 ms, section "Issues similaires" apparaît si match.
 - [ ] Toggle "joindre infos techniques" → preview Markdown live.
 - [ ] Changer la période sur la page → reflétée dans le preview.
-- [ ] Provoquer une erreur (`fetch('/api/v1/inexistant')` console) → apparaît dans "Erreurs console" + "Requêtes échouées".
-- [ ] Type "Bug" + erreur console → preview montre `bug, severity:high, area:synthesis`.
+- [ ] Provoquer une erreur (`fetch('/api/v1/inexistant?secret=xyz')` console) → apparaît dans "Erreurs console" + "Requêtes échouées" **avec URL `/api/v1/inexistant` (pas de query param `secret=xyz` dans l'aperçu)**.
+- [ ] Type "Bug" + `TypeError` → preview montre `bug, severity:critical, area:<route>`.
+- [ ] Type "Bug" + description "ça crash sur la page" sans erreur → `bug, severity:high`.
 - [ ] Type "Idée" sans erreur → `enhancement, severity:low`.
 - [ ] Clic "Ouvrir sur GitHub" → nouvel onglet, formulaire prérempli, labels appliqués.
 - [ ] Body très long (8 000 chars description) → troncature, mention `…[truncated]`, redirection OK.
-- [ ] Mobile (`< 640 px`) : mini-tab caché.
+- [ ] Popup blocker actif → fallback : URL copiée dans le clipboard + toast "Lien copié, colle-le dans un onglet GitHub".
+- [ ] Title contient `:`, `+`, `"` → recherche d'issues similaires fonctionne sans 422.
+- [ ] Mobile (`< 640 px`, viewport 375×667) : mini-tab caché.
 - [ ] FR + EN : tous libellés traduits.
 - [ ] Anti-spam : 6e submit dans l'heure → bouton désactivé.
+- [ ] Mode privé strict (localStorage off) → drawer fonctionne, anti-spam fail-open silencieux.
 
 **Thème dark/light**
 - [ ] Light theme : panneau, mini-tab, bordures, texte, focus ring lisibles.
@@ -552,7 +621,7 @@ Le **CI existant** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) lance 
 **Performance**
 - [ ] React DevTools Profiler : taper 30 chars dans le titre → ≤ 35 commits, durée totale < 200 ms.
 - [ ] `useSimilarIssues` ne fire pas tant que `title.length < 3` (Network panel).
-- [ ] HMR : sauvegarder `console-capture.ts` 3× → ring buffer ne reçoit pas de doublons (test : `console.error('x')` puis `getRecentConsoleEntries()` → 1 entry).
+- [ ] HMR : sauvegarder `lib/global-capture/buffers.ts` 3× → ring buffer ne reçoit pas de doublons (test : `console.error('x')` puis `getRecentConsoleEntries()` → 1 entry, **flag `globalThis.__levelup_global_capture_installed__` reste true**).
 - [ ] Drawer fermé : aucune query GitHub en background (Network panel filter `api.github.com`).
 
 **Sécurité**
@@ -566,24 +635,48 @@ Le **CI existant** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) lance 
 - [ ] Workflow `Triage feedback issues` se déclenche dans l'onglet Actions.
 - [ ] L'issue reçoit dans les 30 s : commentaire Claude + labels affinés.
 - [ ] Tester un cas spam (titre vide ou aléatoire) → label `triage:needs-review`.
-- [ ] Vérifier consommation Anthropic dans la console (~$0.0005/issue).
+- [ ] Vérifier consommation Anthropic dans la console (~$0.001/issue).
 - [ ] Stdout du workflow log avec préfixe `[triage]` — pas de body issue logué (RGPD light).
 - [ ] Issue avec body cassé / non-Markdown → fallback `triage:parse-error`, workflow exit 0 (pas d'échec).
 
-### Checklist observabilité mainteneur (après 1 semaine de prod)
+### Checklist observabilité mainteneur V1 (après 1 semaine de prod)
 
 - [ ] Badge README "Open feedback issues" affiche le bon compteur.
-- [ ] Workflow `weekly-feedback-digest` s'exécute lundi 9h UTC.
-- [ ] Issue épinglée `📊 Feedback Weekly Digest` créée et reçoit le premier rapport.
-- [ ] Le rapport contient : volume, breakdown area/severity/type, top 5 engagement, qualité triage IA, liste needs-review.
-- [ ] Coût Anthropic affiché dans le digest (somme tokens × tarif Haiku 4.5).
+- [ ] Onglet GitHub Issues filtré sur `label:feedback` est consultable et lisible.
+- [ ] Logs Actions du workflow `Triage feedback issues` montrent `[triage] usage: input_tokens=N output_tokens=N` pour chaque issue.
+- [ ] Volume hebdo cohérent (pas de spam manifest) — sinon revoir le rate-limit côté front.
+
+> Critère de passage en V1.1 : ≥ 4 semaines stables, ≥ 20 issues feedback réelles → impl du weekly digest sur données calibrées.
 
 ### Avant le commit (CLAUDE.md — règle obligatoire)
 
 - [ ] Ajouter une entrée dans [.ai/thought_log.md](.ai/thought_log.md) :
-  - Date `[2026-05-04]`
+  - Date `[2026-05-05]`
   - Titre : "Drawer feedback + GitHub Action triage IA"
   - Statut (En cours / Complété)
-  - Décision technique principale (URL préremplie + Action Claude post-création, fetch GitHub direct sans wrapper api)
+  - Décision technique principale (URL préremplie + Action Claude post-création, fetch GitHub direct sans wrapper api, sanitize URL query strings côté capture, idempotence HMR via `globalThis`)
   - Résultats observés
   - Conclusion / prochaine étape
+
+## Changelog plan
+
+### 2026-05-05 — Revue d'architecture (passe 1)
+
+Corrections appliquées après cross-check codebase :
+
+1. **Heuristique area** : matrice URL refondée — `engagement` retiré (pas de route propre), `session` corrigé en `stats/sessions`/`stats/timeseries`/`stats/history`, ajout des routes manquantes (`palmares*`, `home`, `media`, `career`, `notifications`, `objectifs`, `profile/citations`, `match_history`, `match_view`, `settings`, `meta`).
+2. **Heuristique severity** : règles ordonnées par priorité explicite, ajout `severity:high` sur description "crash"/"perd ma progression"/"impossible"/"bloqué" même sans erreur console.
+3. **Renommage `lib/bootstrap.ts` → `lib/global-capture/install.ts`** + module séparé `buffers.ts` : évite la collision sémantique avec le bootstrap auth/`/bootstrap` du projet.
+4. **Idempotence HMR** : flag stocké sur `globalThis.__levelup_global_capture_installed__` (pas module-level, sinon HMR Vite re-instrumente). Test dédié.
+5. **Sanitization PII** : `console-capture` strippe systématiquement les query strings des URLs fetch capturées (`url.split('?')[0]`) avant stockage. Test anti-régression.
+6. **Manifest i18n renommé** : `feedback.toml` → `feedback_drawer.toml` pour cohérence avec `asset_drawer.toml`.
+7. **Anti-spam — fichier dédié** : ajout `rateLimit.ts` + `rateLimit.test.ts` (helper pur, fail-open sur `localStorage` indisponible).
+8. **`resetCaptureBuffersForTests()`** exposé pour les tests Vitest, pattern aligné sur `_logger.ts::_resetForTests`.
+9. **GitHub-search query encoding** : helper `escapeSearchQuery` dédié + test 5 cas (caractères réservés `:`, `+`, `"`, `(`, `)`, `/`).
+10. **Repo privé** : commentaire de migration documenté dans `queries.ts` (chemin futur via endpoint backend `/api/v1/feedback/search-issues`).
+11. **Weekly digest reporté en V1.1** : V1 garde seulement le badge README + log stdout des coûts. Critère de passage en V1.1 : ≥ 4 semaines stables, ≥ 20 issues réelles.
+12. **Actions GitHub pinnées par SHA** (supply-chain hygiene, secret `ANTHROPIC_API_KEY` exposé). Tags en commentaire pour lisibilité.
+13. **Estimation coût Anthropic** corrigée : ~$0.001/issue (pas $0.0005), seuil d'alerte recalibré 1000 issues/mois.
+14. **Test e2e mobile** : viewport 375×667 → mini-tab caché (régression facile sinon).
+
+Aucun élément retiré, uniquement des précisions/corrections. Scope V1 inchangé hormis le digest reporté.
