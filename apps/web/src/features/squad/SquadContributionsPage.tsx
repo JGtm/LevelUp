@@ -127,6 +127,7 @@ export function SquadContributionsPage() {
             <h3 className="text-base font-semibold">{t.intensity.title}</h3>
             <SquadIntensityHeatmapChart
               profile={intensityProfileLocalized}
+              colorByPlayer={playerColors}
               zLabel={t.intensity.zLabel}
             />
           </CardContent>

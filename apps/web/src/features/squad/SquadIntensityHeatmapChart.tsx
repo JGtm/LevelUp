@@ -15,6 +15,8 @@ import {
 interface SquadIntensityHeatmapChartProps extends SquadIntensityOpts {
   title?: string
   profile: SquadIntensityProfile
+  /** gamertag → couleur hex résolue depuis semantic tokens. */
+  colorByPlayer?: Record<string, string>
   /** Override du label de l'option "all" (par défaut, l'API renvoie déjà le libellé). */
   toggleLabel?: string
 }
@@ -23,6 +25,7 @@ export function SquadIntensityHeatmapChart({
   profile,
   title,
   zLabel,
+  colorByPlayer,
   toggleLabel,
 }: SquadIntensityHeatmapChartProps) {
   const defaultKey = profile.options[0]?.key ?? 'all'
@@ -54,21 +57,28 @@ export function SquadIntensityHeatmapChart({
     <div className="space-y-2" data-testid="squad-intensity-heatmap">
       {toggleLabel && <p className="text-xs text-muted-foreground">{toggleLabel}</p>}
       <div className="flex flex-wrap gap-1">
-        {profile.options.map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => setSelectedKey(opt.key)}
-            className={[
-              'rounded-md border px-2.5 py-1 text-xs transition-colors',
-              opt.key === selectedKey
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-input bg-background hover:bg-muted',
-            ].join(' ')}
-          >
-            {opt.label}
-          </button>
-        ))}
+        {profile.options.map((opt) => {
+          // color-allow: hex résolu depuis colorByPlayer (semantic tokens via getSquadPlayerColors)
+          const accentHex = opt.key !== 'all' ? (colorByPlayer?.[opt.key] ?? undefined) : undefined
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setSelectedKey(opt.key)}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors',
+                opt.key === selectedKey
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-input bg-background hover:bg-muted',
+              ].join(' ')}
+            >
+              {accentHex && (
+                <span aria-hidden style={{ background: accentHex, width: 8, height: 8, display: 'inline-block', flexShrink: 0 }} />
+              )}
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
       <ChartCard
         title={title}
