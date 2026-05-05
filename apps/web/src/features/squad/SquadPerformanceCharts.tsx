@@ -79,7 +79,7 @@ export function SquadPerformanceCharts({
   )
 
   const buildLine = useCallback(
-    (metric: PerformanceMetricKey, decimals: number, suffix?: string, scale?: number) =>
+    (metric: PerformanceMetricKey, decimals: number, suffix?: string, scale?: number, complementBelowValue?: number) =>
       buildPerformanceLineOption(rowsByPlayer, {
         colorByPlayer,
         playerOrder,
@@ -87,6 +87,8 @@ export function SquadPerformanceCharts({
         decimals,
         unitSuffix: suffix,
         scale,
+        chartType: 'bar',
+        complementBelowValue,
       }),
     [rowsByPlayer, colorByPlayer, playerOrder],
   )
@@ -121,7 +123,7 @@ export function SquadPerformanceCharts({
       <ChartCard
         title={labels.kdaTitle}
         series={series}
-        buildOption={() => buildLine('kda', 2)}
+        buildOption={() => buildLine('kda', 2, undefined, undefined, 1)}
         height={SUBCHART_HEIGHT}
       />
       <ChartCard

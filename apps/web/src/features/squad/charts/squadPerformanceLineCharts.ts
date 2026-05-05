@@ -42,6 +42,10 @@ export interface PerformanceLineOpts extends CommonOpts {
   unitSuffix?: string
   /** Multiplicateur appliqué avant affichage (ex: 100 pour accuracy 0..1 → %). */
   scale?: number
+  /** 'bar' pour des batons groupés, 'line' (défaut) pour une ligne. */
+  chartType?: 'line' | 'bar'
+  /** Si défini, les barres dont la valeur est < ce seuil sont colorées avec hexComplement. */
+  complementBelowValue?: number
 }
 
 function extractValue(p: SquadPerformanceSeriesPoint, metric: PerformanceMetricKey): number | null {
@@ -99,23 +103,31 @@ export function buildPerformanceLineOption(
   const scale = opts.scale ?? 1
   const decimals = opts.decimals ?? 1
   const suffix = opts.unitSuffix ?? ''
+  const isBar = opts.chartType === 'bar'
+  const threshold = opts.complementBelowValue
 
   const series = players.map((player) => {
-    const data = new Array<number | null>(n).fill(null)
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const rawData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
       const idx = p.match_order
       const v = extractValue(p, opts.metric)
-      if (v === null) {
-        data[idx] = null
-      } else {
-        data[idx] = Number((v * scale).toFixed(decimals))
-      }
+      rawData[idx] = v === null ? null : Number((v * scale).toFixed(decimals))
     }
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+
+    if (isBar) {
+      const barData = rawData.map((v) => {
+        const barColor =
+          threshold !== undefined && v !== null && v < threshold ? hexComplement(color) : color
+        return { value: v, itemStyle: { color: barColor } }
+      })
+      return { name: player, type: 'bar' as const, barMaxWidth: 12, data: barData }
+    }
+
     return {
       name: player,
       type: 'line' as const,
-      data,
+      data: rawData,
       lineStyle: { color, width: 2 },
       itemStyle: { color },
       symbol: 'circle' as const,
@@ -130,7 +142,7 @@ export function buildPerformanceLineOption(
     tooltip: {
       ...tooltipBase,
       trigger: 'axis',
-      axisPointer: { type: 'line' },
+      axisPointer: { type: isBar ? 'shadow' : 'line' },
       valueFormatter: (v: unknown) => fmtVal(typeof v === 'number' ? v : null, decimals, suffix),
     },
     legend: { ...legendBase, data: players },
@@ -257,29 +269,22 @@ export function buildHsPerfectOption(
       hsData[p.match_order] = p.headshot_kills ?? null
       perfectData[p.match_order] = p.perfect_kills ?? null
     }
-    // HS : ligne fine, dashed, opacity réduite.
+    // HS : barre normale, opacity réduite pour le distinguer des frags parfaits.
     series.push({
       name: `${player} — ${opts.hsLabel}`,
-      type: 'line',
+      type: 'bar',
+      barMaxWidth: 10,
+      itemStyle: { color, opacity: 0.6 },
       data: hsData,
-      lineStyle: { color, width: 1.5, type: 'dashed', opacity: 0.7 },
-      itemStyle: { color, opacity: 0.7 },
-      symbol: 'circle',
-      symbolSize: 4,
-      connectNulls: true,
     })
-    // Perfect kills : ligne épaisse + areaStyle pour mise en valeur.
+    // Perfect kills : barre pleine, mise en valeur.
     series.push({
       name: `${player} — ${opts.perfectLabel}`,
-      type: 'line',
-      data: perfectData,
-      lineStyle: { color, width: 3 },
+      type: 'bar',
+      barMaxWidth: 10,
       itemStyle: { color },
-      areaStyle: { color, opacity: 0.18 },
-      symbol: 'diamond',
-      symbolSize: 8,
-      emphasis: { focus: 'series', scale: 1.5 },
-      connectNulls: true,
+      emphasis: { focus: 'series' },
+      data: perfectData,
     })
   }
 
@@ -288,7 +293,7 @@ export function buildHsPerfectOption(
   return {
     backgroundColor: CHART_BG,
     grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
-    tooltip: { ...tooltipBase, trigger: 'axis', axisPointer: { type: 'line' } },
+    tooltip: { ...tooltipBase, trigger: 'axis', axisPointer: { type: 'shadow' } },
     legend: { ...legendBase, data: legendData, type: 'scroll' },
     xAxis: { ...axisBase, type: 'category', data: xLabels },
     yAxis: {
