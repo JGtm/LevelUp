@@ -397,7 +397,7 @@ export function MatchHeaderCard({
           {/* Perf + rang row */}
           <div className="mt-auto flex flex-wrap items-start gap-y-3 border-t pt-3">
             {header.performance_display && header.performance_display !== '-' && (
-              <div className="flex flex-col items-start">
+              <div className="flex flex-col items-center">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t.performance}
                 </span>
@@ -415,42 +415,40 @@ export function MatchHeaderCard({
             )}
 
             {rank.rating_type !== 'none' && (
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t.rank}
-                </span>
-                <div className="flex items-center gap-3">
-                  {rank.icon_url && (
-                    <img
-                      src={rank.icon_url}
-                      alt={rank.tier_label ?? rank.rating_type}
-                      className="h-12 w-12 object-contain"
-                      loading="lazy"
-                    />
+              <div className="flex items-center gap-3">
+                {rank.icon_url && (
+                  <img
+                    src={rank.icon_url}
+                    alt={rank.tier_label ?? rank.rating_type}
+                    className="h-[44px] w-[44px] shrink-0 object-contain"
+                    loading="lazy"
+                  />
+                )}
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t.rank}
+                  </span>
+                  {rank.tier_label && (
+                    <span className="text-base font-bold text-foreground leading-none">
+                      {rank.tier_label}
+                    </span>
                   )}
-                  <div className="flex flex-col gap-0.5">
-                    {rank.tier_label && (
-                      <span className="text-base font-bold text-foreground">
-                        {rank.tier_label}
+                  <div className="flex items-center gap-2 text-xs">
+                    {rank.numeric_value != null && (
+                      <span className="tabular-nums text-muted-foreground">
+                        {rank.rating_type} {rank.numeric_value.toFixed(0)}
                       </span>
                     )}
-                    <div className="flex items-center gap-2 text-xs">
-                      {rank.numeric_value != null && (
-                        <span className="tabular-nums text-muted-foreground">
-                          {rank.rating_type} {rank.numeric_value.toFixed(0)}
-                        </span>
-                      )}
-                      {rank.delta_value != null && (
-                        <span
-                          className="font-bold tabular-nums"
-                          style={{ color: deltaColor }}
-                        >
-                          {rank.delta_value >= 0
-                            ? `▲ +${rank.delta_value.toFixed(0)}`
-                            : `▼ ${rank.delta_value.toFixed(0)}`}
-                        </span>
-                      )}
-                    </div>
+                    {rank.delta_value != null && (
+                      <span
+                        className="font-bold tabular-nums"
+                        style={{ color: deltaColor }}
+                      >
+                        {rank.delta_value >= 0
+                          ? `▲ +${rank.delta_value.toFixed(0)}`
+                          : `▼ ${rank.delta_value.toFixed(0)}`}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
