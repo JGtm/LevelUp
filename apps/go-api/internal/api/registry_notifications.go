@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -46,12 +47,22 @@ func (r *ServiceRegistry) NotificationsEmitter(ctx context.Context, slug string)
 }
 
 // notifServiceFor construit ou retourne l'instance cachée pour ce PlayerDB.
+//
+// Le service est configuré avec un WriterAcquirer qui acquiert un lease sur
+// shared_social.duckdb avant chaque méthode write — sérialise les écritures
+// avec le sync engine et les autres handlers (commit 4 du refactor
+// leased-writer-enforcement). Si shared_social n'est pas disponible (boot
+// initial), l'acquireur retourne ErrSharedSocialUnavailable que le service
+// remonte tel quel — comportement préexistant.
 func notifServiceFor(pdb *duckdb.PlayerDB) *notifications.Service {
 	if v, ok := notifServicesByXUID.Load(pdb.XUID); ok {
 		return v.(*notifications.Service)
 	}
 	repo := duckdb.NewNotificationsRepo(pdb)
-	svc := notifications.NewService(repo)
+	acquirer := func() (*dblease.LeasedWriter, error) {
+		return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
+	}
+	svc := notifications.NewService(repo, notifications.WithWriterAcquirer(acquirer))
 	// LoadOrStore évite la race : si un autre goroutine a inséré
 	// entre Load et Store, on retourne celle-là.
 	if existing, loaded := notifServicesByXUID.LoadOrStore(pdb.XUID, svc); loaded {

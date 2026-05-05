@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // fakeRepo est une impl en mémoire de Repository pour les tests du Service.
@@ -343,5 +345,122 @@ func TestServiceUpdatePreferences_RoundTrip(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].Enabled {
 		t.Errorf("expected disabled pref, got %+v", got)
+	}
+}
+
+// ─────────── WithWriterAcquirer (commit 4 db-concurrency) ───────────
+
+// busyWriterAcquirer renvoie un acquéreur qui simule un lease saturé : il tient
+// déjà le mutex sur le path donné, donc toute tentative supplémentaire timeout.
+// Retourne aussi une fonction cleanup à appeler en defer dans le test.
+func busyWriterAcquirer(t *testing.T) (func() (*dblease.LeasedWriter, error), func()) {
+	t.Helper()
+	path := "test://" + t.Name() + "/" + time.Now().Format("150405.000000000")
+
+	// On tient le writer pendant toute la durée du test pour saturer le lease.
+	heldWriter, err := dblease.AcquireWriter(nil, path, dblease.KindSharedSocial, time.Second)
+	if err != nil {
+		t.Fatalf("setup busyWriterAcquirer: %v", err)
+	}
+	cleanup := func() { heldWriter.Release() }
+
+	acquirer := func() (*dblease.LeasedWriter, error) {
+		// Timeout court pour ne pas faire traîner les tests.
+		return dblease.AcquireWriter(nil, path, dblease.KindSharedSocial, 30*time.Millisecond)
+	}
+	return acquirer, cleanup
+}
+
+func TestService_Emit_LeaseBusy_BestEffort(t *testing.T) {
+	acquirer, cleanup := busyWriterAcquirer(t)
+	defer cleanup()
+
+	repo := newFakeRepo()
+	repo.enabledByCat[CategoryMatchSynced] = true
+	svc := NewService(repo, WithWriterAcquirer(acquirer))
+
+	err := svc.Emit(context.Background(), EmitInput{
+		Category: CategoryMatchSynced,
+		TitleKey: "k",
+		BodyKey:  "b",
+		Source:   "test",
+	})
+	if err != nil {
+		t.Fatalf("Emit should be best-effort on lease busy, got err: %v", err)
+	}
+	// Aucune insertion ne doit avoir eu lieu (le lease n'a pas pu être acquis).
+	if len(repo.inserted) != 0 {
+		t.Errorf("Emit should not insert when lease busy, got %d insertions", len(repo.inserted))
+	}
+}
+
+func TestService_MarkRead_LeaseBusy_PropagatesErrDBLocked(t *testing.T) {
+	acquirer, cleanup := busyWriterAcquirer(t)
+	defer cleanup()
+
+	repo := newFakeRepo()
+	svc := NewService(repo, WithWriterAcquirer(acquirer))
+
+	_, err := svc.MarkRead(context.Background(), []int64{1, 2, 3})
+	if err == nil {
+		t.Fatal("MarkRead should propagate ErrDBLocked when lease busy")
+	}
+	if !errors.Is(err, dblease.ErrDBLocked) {
+		t.Errorf("err should wrap dblease.ErrDBLocked, got %v", err)
+	}
+}
+
+func TestService_Delete_LeaseBusy_PropagatesErrDBLocked(t *testing.T) {
+	acquirer, cleanup := busyWriterAcquirer(t)
+	defer cleanup()
+
+	repo := newFakeRepo()
+	svc := NewService(repo, WithWriterAcquirer(acquirer))
+
+	err := svc.Delete(context.Background(), 42)
+	if err == nil {
+		t.Fatal("Delete should propagate ErrDBLocked when lease busy")
+	}
+	if !errors.Is(err, dblease.ErrDBLocked) {
+		t.Errorf("err should wrap dblease.ErrDBLocked, got %v", err)
+	}
+}
+
+func TestService_UpdatePreferences_LeaseBusy_PropagatesErrDBLocked(t *testing.T) {
+	acquirer, cleanup := busyWriterAcquirer(t)
+	defer cleanup()
+
+	repo := newFakeRepo()
+	svc := NewService(repo, WithWriterAcquirer(acquirer))
+
+	_, err := svc.UpdatePreferences(context.Background(),
+		[]Preference{{Category: CategoryMatchSynced, Enabled: true, Delivery: DeliveryToast}})
+	if err == nil {
+		t.Fatal("UpdatePreferences should propagate ErrDBLocked when lease busy")
+	}
+	if !errors.Is(err, dblease.ErrDBLocked) {
+		t.Errorf("err should wrap dblease.ErrDBLocked, got %v", err)
+	}
+}
+
+// TestService_Emit_NoAcquirer_BehavesLikeBefore vérifie qu'un service sans
+// WriterAcquirer (cas legacy / tests existants) garde son comportement
+// strictement identique. Garde-fou de non-régression.
+func TestService_Emit_NoAcquirer_BehavesLikeBefore(t *testing.T) {
+	repo := newFakeRepo()
+	repo.enabledByCat[CategoryMatchSynced] = true
+	svc := NewService(repo) // pas d'option
+
+	err := svc.Emit(context.Background(), EmitInput{
+		Category: CategoryMatchSynced,
+		TitleKey: "k",
+		BodyKey:  "b",
+		Source:   "test",
+	})
+	if err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+	if len(repo.inserted) != 1 {
+		t.Errorf("expected 1 insertion, got %d", len(repo.inserted))
 	}
 }
