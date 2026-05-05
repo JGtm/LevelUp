@@ -1,0 +1,29 @@
+name: Triage feedback issues
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    if: contains(github.event.issue.labels.*.name, 'feedback')
+    runs-on: ubuntu-latest
+    steps:
+      # Pinné par SHA (supply-chain hygiene). Tag en commentaire.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd          # v4
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e        # v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save @anthropic-ai/sdk@^0.32.0
+      - run: node .github/scripts/triage-feedback.mjs
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          REPO: ${{ github.repository }}

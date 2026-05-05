@@ -12,6 +12,7 @@ import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
 import { AssetDrawer } from '@/features/asset-drawer'
+import { FeedbackDrawer } from '@/features/feedback-drawer'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 export function AppShell() {
@@ -48,6 +49,9 @@ export function AppShell() {
 
       {/* Asset Drawer — panneau latéral fixe, toujours monté, état géré par le store */}
       <AssetDrawer />
+
+      {/* Feedback Drawer — second panneau latéral sous AssetDrawer (mini-tab + form) */}
+      <FeedbackDrawer />
 
       {/* Contenu principal scrollable — protégé contre les crashs de composants */}
       <ErrorBoundary>

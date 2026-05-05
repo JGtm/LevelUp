@@ -35,6 +35,13 @@ jobs:
       - name: Lint multi-titres (no hardcoded FieldKey)
         run: npm run lint:fields
 
+      - name: Guard — feedback-drawer ne doit pas importer le wrapper api
+        run: |
+          if grep -E "^import.*\\bapi\\b.*from.*['\"]@/lib/api/client" apps/web/src/features/feedback-drawer/queries.ts; then
+            echo "::error::feedback-drawer/queries.ts ne doit JAMAIS importer { api } — il leakerait X-LevelUp-Title et les cookies de session vers GitHub. Utiliser fetch() direct avec credentials: 'omit'."
+            exit 1
+          fi
+
       - name: Build (Vite)
         run: npm run build
 
