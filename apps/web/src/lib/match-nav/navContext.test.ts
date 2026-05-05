@@ -5,6 +5,9 @@ import {
   readNavContext,
   clearNavContext,
   resolveNeighborsFromContext,
+  filterSpecToQueryString,
+  parseFilterSpecFromSearch,
+  type MatchFilterSpec,
   type MatchNavContext,
 } from './navContext'
 
@@ -116,7 +119,7 @@ describe('resolveNeighborsFromContext', () => {
     expect(resolveNeighborsFromContext(baseCtx, 'm99')).toBeNull()
   })
 
-  it('liste à 1 élément : ni prev ni next', () => {
+  it('liste à 1 élément : ni prev ni next (DEDUP_MARKER)', () => {
     const got = resolveNeighborsFromContext(
       { ...baseCtx, matchIds: ['m1'] },
       'm1',
@@ -127,5 +130,88 @@ describe('resolveNeighborsFromContext', () => {
       current_index: 0,
       total: 1,
     })
+  })
+})
+
+describe('filterSpecToQueryString', () => {
+  it('spec null/undefined : retourne chaîne vide', () => {
+    expect(filterSpecToQueryString(null)).toBe('')
+    expect(filterSpecToQueryString(undefined)).toBe('')
+  })
+
+  it('spec vide : retourne chaîne vide', () => {
+    expect(filterSpecToQueryString({})).toBe('')
+  })
+
+  it('mappe playlist_name → playlist, mode_category → mode, etc.', () => {
+    const spec: MatchFilterSpec = {
+      playlist_name: 'Ranked Arena',
+      mode_category: 'BTB',
+      date_from: '2026-04-01T00:00:00Z',
+      date_to: '2026-05-01T23:59:59Z',
+      session_id: 'session-123',
+      outcome: 'win',
+    }
+    const got = filterSpecToQueryString(spec)
+    const params = new URLSearchParams(got)
+    expect(params.get('playlist')).toBe('Ranked Arena')
+    expect(params.get('mode')).toBe('BTB')
+    expect(params.get('from')).toBe('2026-04-01T00:00:00Z')
+    expect(params.get('to')).toBe('2026-05-01T23:59:59Z')
+    expect(params.get('session')).toBe('session-123')
+    expect(params.get('outcome')).toBe('win')
+  })
+
+  it('encode correctement les espaces et caractères spéciaux', () => {
+    const got = filterSpecToQueryString({ playlist_name: 'Ranked Arena' })
+    expect(got).toContain('playlist=Ranked+Arena')
+  })
+})
+
+describe('parseFilterSpecFromSearch', () => {
+  it('null/undefined : retourne null', () => {
+    expect(parseFilterSpecFromSearch(null)).toBeNull()
+    expect(parseFilterSpecFromSearch(undefined)).toBeNull()
+  })
+
+  it('search vide : retourne null', () => {
+    expect(parseFilterSpecFromSearch({})).toBeNull()
+  })
+
+  it('parse depuis URLSearchParams', () => {
+    const sp = new URLSearchParams('playlist=Ranked&outcome=win')
+    expect(parseFilterSpecFromSearch(sp)).toEqual({
+      playlist_name: 'Ranked',
+      outcome: 'win',
+    })
+  })
+
+  it('parse depuis Record (TanStack Router search)', () => {
+    expect(
+      parseFilterSpecFromSearch({ playlist: 'Classée', mode: 'Assassin', outcome: 'loss' }),
+    ).toEqual({
+      playlist_name: 'Classée',
+      mode_category: 'Assassin',
+      outcome: 'loss',
+    })
+  })
+
+  it('outcome hors whitelist : ignoré silencieusement', () => {
+    expect(parseFilterSpecFromSearch({ outcome: 'invalid' })).toBeNull()
+    expect(parseFilterSpecFromSearch({ playlist: 'X', outcome: 'invalid' })).toEqual({
+      playlist_name: 'X',
+    })
+  })
+
+  it('round-trip toQueryString → parseFromSearch', () => {
+    const orig: MatchFilterSpec = {
+      playlist_name: 'Ranked Arena',
+      mode_category: 'BTB',
+      date_from: '2026-04-01T00:00:00Z',
+      outcome: 'win',
+    }
+    const qs = filterSpecToQueryString(orig)
+    const parsed = parseFilterSpecFromSearch(new URLSearchParams(qs))
+    expect(parsed).toEqual(orig)
   })
 })

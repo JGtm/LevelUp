@@ -28,6 +28,12 @@ export interface MatchViewText {
   mapUnknown: string
   noRank: string
   exitContext: string
+  outcomeWin: string
+  outcomeLoss: string
+  outcomeDraw: string
+  outcomeDnf: string
+  fromDate: string
+  toDate: string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -51,6 +57,12 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     mapUnknown: 'Map inconnue',
     noRank: 'Pas de rang',
     exitContext: 'Sortir du contexte',
+    outcomeWin: 'Victoires',
+    outcomeLoss: 'Défaites',
+    outcomeDraw: 'Égalités',
+    outcomeDnf: 'Non terminés',
+    fromDate: 'Depuis',
+    toDate: "Jusqu'au",
   },
   en: {
     prevMatch: 'Previous match',
@@ -72,5 +84,58 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     mapUnknown: 'Unknown map',
     noRank: 'No rank',
     exitContext: 'Exit context',
+    outcomeWin: 'Wins',
+    outcomeLoss: 'Losses',
+    outcomeDraw: 'Draws',
+    outcomeDnf: 'DNF',
+    fromDate: 'From',
+    toDate: 'To',
   },
+}
+
+/**
+ * buildContextLabel — produit un label localisé depuis un MatchFilterSpec.
+ *
+ * Phase 2b : utilisé quand la cascade tombe sur l'API avec spec URL (pas de
+ * filtersLabel pré-localisé dans le matchNavContext). Format compact :
+ *   "Classée Arena · Victoires · Depuis 01/04/2026"
+ */
+import type { MatchFilterSpec } from '@/lib/match-nav/navContext'
+
+export function buildContextLabel(
+  spec: MatchFilterSpec | null | undefined,
+  locale: MatchViewLocale,
+): string {
+  if (!spec) return ''
+  const t = MATCH_VIEW_TEXT[locale]
+  const parts: string[] = []
+  if (spec.playlist_name) parts.push(spec.playlist_name)
+  if (spec.mode_category) parts.push(spec.mode_category)
+  if (spec.outcome) {
+    const map: Record<string, string> = {
+      win: t.outcomeWin,
+      loss: t.outcomeLoss,
+      draw: t.outcomeDraw,
+      dnf: t.outcomeDnf,
+    }
+    const lbl = map[spec.outcome]
+    if (lbl) parts.push(lbl)
+  }
+  if (spec.date_from || spec.date_to) {
+    const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
+    const fmt = (iso: string) => {
+      const d = new Date(iso)
+      if (isNaN(d.getTime())) return iso
+      return new Intl.DateTimeFormat(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
+    }
+    if (spec.date_from && spec.date_to) {
+      parts.push(`${fmt(spec.date_from)} → ${fmt(spec.date_to)}`)
+    } else if (spec.date_from) {
+      parts.push(`${t.fromDate} ${fmt(spec.date_from)}`)
+    } else if (spec.date_to) {
+      parts.push(`${t.toDate} ${fmt(spec.date_to)}`)
+    }
+  }
+  if (spec.session_id) parts.push(`#${spec.session_id}`)
+  return parts.join(' · ')
 }

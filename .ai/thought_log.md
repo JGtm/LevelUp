@@ -1,5 +1,56 @@
 # Thought Log
 
+## [2026-05-05] MatchView header rework — Phase 2b livrée (URL params + Q25 paramétrable)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`. 2 commits Phase 2b (backend `33baa51a` + frontend, ce commit).
+
+**Contexte** : Phase 2b ferme la cascade complète state → sessionStorage → URL → API. Cette dernière marche supporte les 5% de cas restants après Phase 2a : Ctrl+Click pour ouvrir un nouvel onglet, lien partagé à un coéquipier, refresh F5 après expiration sessionStorage.
+
+**Architecture** :
+1. **Backend** — Q25 paramétrable :
+   - `domain/match_filter.go` : `MatchFilterSpec` (PlaylistName, ModeCategory, DateFrom, DateTo, SessionID, Outcome) + `IsEmpty()`.
+   - `analysis/match_filter.go` : `BuildNeighborsWhereClause(spec, categoryPrefixes ModeCategoryPrefixes)` — pure, retourne `{SQL, Args, IgnoredFilters}`. Le `categoryPrefixes` injecté évite le cycle d'import `analysis → games/halo_infinite`. SessionID marqué "ignored" (player_match_enrichment pas joint dans Q25 — laissé pour une éventuelle Phase 2c).
+   - `Q25NeighborMatchesTemplate` : version paramétrable avec marqueur `/*EXTRA_WHERE*/` injecté après `WHERE TRUE` (no-op si fragment vide).
+   - Repo `GetMatchNeighborsFiltered(ctx, xuid, matchID, spec)` : délègue à `GetMatchNeighbors` si spec vide, sinon assemble la query dynamique. Logge les filtres ignorés.
+   - Service `GetMatchNeighborsFiltered` propage `AppliedFilters` dans la response (echo des filtres).
+   - Handler `parseNeighborsFilterSpec` : whitelist regex `[A-Za-z0-9 _:.\-]{1,64}` pour playlist/mode/session, `time.RFC3339` strict pour dates, `analysis.IsValidOutcomeLabel` pour outcome. Filtre invalide → log warn + skip silencieux. **Jamais 400/500 sur input mal formé**.
+   - Endpoint `/neighbors` détecte spec non-empty et appelle Filtered.
+
+2. **Frontend** — sérialisation URL + cascade complète :
+   - `lib/match-nav/navContext.ts` : `MatchFilterSpec` (miroir TS), `filterSpecToQueryString` (kebab-case → param: `playlist_name → playlist`, etc.), `parseFilterSpecFromSearch` (URLSearchParams ou Record).
+   - `useNavigateToMatch` étendu : ajout `search` aux params navigate quand `ctx.filterSpec` rempli.
+   - `useMatchNeighborsResolved` cascade 4 niveaux : router state (1) → sessionStorage (2) → URL query params (3, parsé via `useRouterState({ select: location.search })`) → API global Q25 (4). Si state/session ont matchIds, utilisation locale ; si seul URL spec → tape `/neighbors?...` qui invoque Q25NeighborMatchesTemplate côté serveur.
+   - `queryKeys.matchNeighbors(slug, matchId, spec?)` enrichi pour différencier les caches global vs filtré.
+   - `i18n.ts` : `buildContextLabel(spec, locale)` produit un label localisé depuis filterSpec quand source=api+URL (ex: "Classée · BTB · Victoires · Depuis 01/04/2026" en FR, traductions outcome whitelist).
+   - `MatchNavigationBar` : si source=api avec navContext.filterSpec, calcule `apiContextLabel` via `buildContextLabel`. Sortie de contexte purge sessionStorage **+** query params URL via `URL.searchParams.delete` + `replaceState`.
+
+**Tests Phase 2b** :
+- Go : 11 tests purs `analysis/match_filter_test.go` (spec vide, playlist, BTB 2 préfixes, mode inconnu, resolver nil, dates, outcome 6 cas dont whitelist, session_id ignored, combinaison 5 args, `IsValidOutcomeLabel`).
+- Frontend : 10 tests `navContext.test.ts` étendus (filterSpecToQueryString 4 cas, parseFilterSpecFromSearch 5 cas + round-trip), 9 tests `i18n.test.ts` (buildContextLabel : null, parts FR/EN, range dates, session, combinaison complète).
+- Cascade frontend `useMatchNeighborsResolved` : 4 tests Phase 2a inchangés (toujours valides).
+- 1216/1216 tests vitest verts. typecheck OK.
+
+**Couches respectées** : `analysis/` pure (0 DB, 0 HTTP), `domain/` types simples, `port/` interfaces étendues additivement, `service/` orchestre + log, `platform/duckdb/` template SQL + paramètres préparés, `handlers/` parse + valide + délègue. Multi-titres : `categoryPrefixes` injectée → titre futur sans la notion → liste vide → clause omise → dégradation gracieuse loggée.
+
+**Limites volontaires** :
+- `session_id` n'est pas implémenté côté SQL (player DB séparée du shared, jointure complexe). Dégradé en filtre ignoré si présent ; le contexte de session est préservé via `matchIds` dans router state / sessionStorage côté front (Phase 2a déjà fonctionnel).
+- Aucun consommateur ne remplit encore `filterSpec` (Étape 2b.9 reportée — c'est une migration mécanique : history → playlist+mode+date+outcome, etc.). Les apps tournant Phase 2b sans cette migration tombent sur la cascade Phase 2a (router state + sessionStorage seuls), comportement strictement supérieur à Phase 1.
+
+**Prochaine étape** : (post-merge) Phase 2c — migration des consommateurs : exposer `getActiveFilterSpec()` dans les stores Zustand des features filtrées (history, explorer, squad), remplir `ctx.filterSpec` au moment de naviguer. Bénéfice immédiat : URL partageable préserve les filtres exacts.
+
+---
+
+## [2026-05-05] MatchNavigationBar — outcome + score dans le compteur central
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+Ajout de `outcomeLabel` + `scoreLabel` dans la section centrale de `MatchNavigationBar` (sous le compteur "Match X/Y"), coloré via `tokenCssVar(outcomeToken)` ou `outcomeFallbackColor` en fallback. Affichage conditionnel (n'apparaît que si `outcomeLabel` est fourni). Positionnement sous le compteur (`flex-col items-center`) pour ne pas perturber le layout `justify-between` des boutons prev/next. Les props sont optionnelles → rétrocompatibles avec l'alias `MatchNavigation`.
+
+**Résultats** : TypeScript conforme, color-tokens respectés (`outcome-win/loss/draw/dnf`), aucun hex direct.
+
+**Prochaine étape** : vérification visuelle en dev server.
+
 ## [2026-05-05] MatchView header — pill playlist + boutons d'action redesign
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.

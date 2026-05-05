@@ -25,7 +25,7 @@ import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { clearNavContext } from '@/lib/match-nav/navContext'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
-import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
+import { MATCH_VIEW_TEXT, buildContextLabel, type MatchViewLocale } from './i18n'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -116,14 +116,15 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
   )
 
   const exitContext = useCallback(() => {
-    // Purge le sessionStorage pour le matchId courant et rafraîchit
-    // l'historique sans state. Le hook cascade retombera sur l'API globale.
+    // Purge sessionStorage + state + query params URL pour ce matchId.
+    // Phase 2b : si l'URL contenait playlist/mode/from/..., on les retire
+    // pour que le hook cascade retombe sur l'API globale propre.
     clearNavContext(matchId)
-    // Replace l'entrée d'historique courante sans state — TanStack Router
-    // ne propose pas d'API directe pour ça, on utilise window.history avec
-    // l'URL déjà active. Le `useRouterState` du hook se met à jour au prochain
-    // render via l'event popstate déclenché par replaceState (manuellement).
-    window.history.replaceState({}, '', window.location.href)
+    const url = new URL(window.location.href)
+    for (const k of ['playlist', 'mode', 'from', 'to', 'session', 'outcome']) {
+      url.searchParams.delete(k)
+    }
+    window.history.replaceState({}, '', url.toString())
     window.dispatchEvent(new PopStateEvent('popstate'))
   }, [matchId])
 
@@ -140,7 +141,15 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
   if (!neighbors) return null
 
   const counter = t.matchCounter(neighbors.current_index + 1, neighbors.total_matches)
-  const showContext = source !== 'api' && !!contextLabel
+  // Phase 2b : si source=api avec navContext.filterSpec (cas URL params),
+  // on construit un label localisé depuis filterSpec. Sinon on garde le
+  // contextLabel pré-localisé du source state/session.
+  const apiContextLabel =
+    source === 'api' && navContext?.filterSpec
+      ? buildContextLabel(navContext.filterSpec, locale)
+      : null
+  const effectiveLabel = contextLabel ?? apiContextLabel
+  const showContext = !!effectiveLabel
 
   return (
     <div className="flex flex-col gap-0.5 px-6 py-2">
@@ -173,7 +182,7 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
       </div>
       {showContext && (
         <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
-          <span>{contextLabel}</span>
+          <span>{effectiveLabel}</span>
           <span aria-hidden="true">·</span>
           <button
             type="button"

@@ -19,17 +19,92 @@
  */
 
 /**
- * `filterSpec` est une interface placeholder qui sera remplie en Phase 2b
- * pour acheminer les filtres de la page source jusqu'à l'endpoint
- * `/neighbors?...`. Phase 2a utilise uniquement `matchIds` + `filtersLabel`.
+ * `filterSpec` — miroir TS du `domain.MatchFilterSpec` Go (Phase 2b).
+ * Sérialisé en query params pour le fallback API (?playlist=...&mode=...).
+ *
+ * Toutes les chaînes sont validées côté backend (whitelist + regex) — un
+ * filtre invalide est ignoré (log warn, jamais 400). Le front sérialise
+ * tel quel sans validation préalable.
  */
+export type MatchFilterOutcome = 'win' | 'loss' | 'draw' | 'dnf'
+
 export interface MatchFilterSpec {
   playlist_name?: string
   mode_category?: string
-  date_from?: string // ISO 8601
-  date_to?: string // ISO 8601
+  date_from?: string // ISO 8601 RFC3339 ("2026-04-01T00:00:00Z")
+  date_to?: string
   session_id?: string
-  outcome?: 'win' | 'loss' | 'draw' | 'dnf'
+  outcome?: MatchFilterOutcome
+}
+
+/**
+ * Sérialise un MatchFilterSpec en query string (sans le `?` initial).
+ *
+ * Mapping vers les noms de query params attendus par le handler Go :
+ *   playlist_name → playlist
+ *   mode_category → mode
+ *   date_from     → from
+ *   date_to       → to
+ *   session_id    → session
+ *   outcome       → outcome
+ *
+ * Retourne une chaîne vide si la spec est vide ou nulle.
+ */
+export function filterSpecToQueryString(spec: MatchFilterSpec | null | undefined): string {
+  if (!spec) return ''
+  const params = new URLSearchParams()
+  if (spec.playlist_name) params.set('playlist', spec.playlist_name)
+  if (spec.mode_category) params.set('mode', spec.mode_category)
+  if (spec.date_from) params.set('from', spec.date_from)
+  if (spec.date_to) params.set('to', spec.date_to)
+  if (spec.session_id) params.set('session', spec.session_id)
+  if (spec.outcome) params.set('outcome', spec.outcome)
+  return params.toString()
+}
+
+/**
+ * Parse un MatchFilterSpec depuis un objet `search` (TanStack Router) ou
+ * URLSearchParams. Retourne null si rien de pertinent.
+ */
+export function parseFilterSpecFromSearch(
+  search: Record<string, unknown> | URLSearchParams | null | undefined,
+): MatchFilterSpec | null {
+  if (!search) return null
+  const get = (key: string): string | undefined => {
+    if (search instanceof URLSearchParams) {
+      return search.get(key) ?? undefined
+    }
+    const v = (search as Record<string, unknown>)[key]
+    return typeof v === 'string' ? v : undefined
+  }
+
+  const spec: MatchFilterSpec = {}
+  const playlist = get('playlist')
+  if (playlist) spec.playlist_name = playlist
+  const mode = get('mode')
+  if (mode) spec.mode_category = mode
+  const from = get('from')
+  if (from) spec.date_from = from
+  const to = get('to')
+  if (to) spec.date_to = to
+  const session = get('session')
+  if (session) spec.session_id = session
+  const outcome = get('outcome')
+  if (outcome === 'win' || outcome === 'loss' || outcome === 'draw' || outcome === 'dnf') {
+    spec.outcome = outcome
+  }
+
+  if (
+    !spec.playlist_name &&
+    !spec.mode_category &&
+    !spec.date_from &&
+    !spec.date_to &&
+    !spec.session_id &&
+    !spec.outcome
+  ) {
+    return null
+  }
+  return spec
 }
 
 export type MatchNavSource =
