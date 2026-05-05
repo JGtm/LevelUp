@@ -1,5 +1,64 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 4 (notifications.Service migration via Option pattern)
+
+**Statut** : Complété — commit 4 sur `refactor/leased-writer-enforcement`. P2 résolu : les écritures notifications HTTP sont sérialisées avec le sync engine et le boot via le lease shared_social.duckdb, sans casser le contrat best-effort de `Emit`.
+
+**Décision technique principale** : Option pattern au lieu d'un wrapper.
+
+Le commit 3 a utilisé un wrapper côté `internal/api/` (`LazyPrestigeService`). Pour notifications, j'ai préféré un autre pattern : injecter l'acquéreur directement via une `Option` au constructeur `notifications.NewService(repo, opts...)`. Justification :
+- Le service `notifications.Service` a une surface API simple (8 méthodes) — un wrapper aurait dupliqué chaque méthode comme passe-plat.
+- Le contrat best-effort de `Emit` (jamais d'erreur propagée pour ne pas casser le sync hook) est plus simple à exprimer dans une méthode helper interne (`withWriterBestEffort`) qu'à dupliquer dans un wrapper.
+- Les tests existants (19 tests) passent `NewService(repo)` sans option → `acquireWriter == nil` → comportement identique. Aucun changement de signature.
+
+Le pattern Option est ergonomique et idiomatique Go (cf. `slog.NewJSONHandler(w, opts)`, `http.NewClient(opts)`, etc.).
+
+**Architecture / dépendances** :
+- `internal/notifications/` importe désormais `internal/platform/dblease`. Vérifié que dblease n'importe que la stdlib + slog → pas de cycle.
+- Le service ne connaît toujours pas la DB : il appelle `acquireWriter()` qui retourne un `*LeasedWriter` opaque. La construction de l'acquéreur reste côté `internal/api/registry_notifications.go` qui connaît le `*PlayerDB`.
+
+**Fichiers modifiés** :
+- `internal/notifications/service.go` :
+  - Import `dblease` + `log/slog`.
+  - Type `Option`, fonction `WithWriterAcquirer(f func() (*LeasedWriter, error)) Option`.
+  - Champ privé `acquireWriter` (nullable) au struct Service.
+  - `NewService(repo, opts ...Option)` applique les options.
+  - Helpers `withWriter` (propage ErrDBLocked) et `withWriterBestEffort` (lease bloqué = log warn + return nil).
+  - 5 méthodes write modifiées : `Emit` (best-effort), `MarkRead`, `MarkUnread`, `MarkAllRead`, `Delete`, `UpdatePreferences` (propagation stricte). `Emit` extrait son corps en `emitInner` pour rester sous 80 L (CLAUDE.md règle 13).
+- `internal/api/registry_notifications.go` :
+  - Import `dblease`.
+  - `notifServiceFor(pdb)` configure désormais `WithWriterAcquirer(func() { return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout) })`.
+- `internal/api/handlers/notifications.go` :
+  - Import `dblease`.
+  - Helper `writeNotifWriteErr(w, ctx, op, err)` centralise le mapping : ErrDBLocked → 503 + Retry-After:5, ErrNotFound → 404, autre → 500.
+  - 5 handlers write (`MarkRead`, `MarkAllRead`, `MarkUnread`, `Delete`, `UpdatePreferences`) délèguent au helper, déduplique 5 blocs d'erreur identiques.
+
+**Tests** :
+- `internal/notifications/service_test.go` : 5 nouveaux tests
+  - `TestService_Emit_LeaseBusy_BestEffort` — Emit retourne nil, aucune insertion (lease tenu via vrai dblease).
+  - `TestService_MarkRead_LeaseBusy_PropagatesErrDBLocked` — propagation stricte.
+  - `TestService_Delete_LeaseBusy_PropagatesErrDBLocked` — idem.
+  - `TestService_UpdatePreferences_LeaseBusy_PropagatesErrDBLocked` — idem.
+  - `TestService_Emit_NoAcquirer_BehavesLikeBefore` — non-régression : sans Option, comportement identique.
+  - Helper `busyWriterAcquirer(t)` qui acquiert un vrai writer + cleanup.
+- `internal/api/handlers/notifications_test.go` : 4 nouveaux tests
+  - `TestNotificationsHandler_MarkRead_DBLocked_Returns503` — 503 + Retry-After + body code db_busy.
+  - `TestNotificationsHandler_Delete_DBLocked_Returns503` — idem.
+  - `TestNotificationsHandler_UpdatePreferences_DBLocked_Returns503` — idem.
+  - `TestNotificationsHandler_Emit_BestEffort_NoErrorOnLeaseBusy` — POST /test retourne 204 même si lease saturé (preuve du best-effort jusqu'à HTTP).
+- 24/24 tests notifications service verts (19 existants + 5 nouveaux). Tests handler non-validables localement (cgo) mais pattern identique aux tests handler Prestige du commit 2 (déjà éprouvés).
+
+**Total tests handler 503 (commits 2-4)** : 9
+- Player : Create / Update / Abandon (commit 2).
+- Squad : Create / Join (commit 3).
+- Notifications : MarkRead / Delete / UpdatePrefs (commit 4).
+- + Non-confusion NotFound / 503 (commit 2).
+- + Best-effort Emit reste 204 sur lease saturé (commit 4).
+
+**Conclusion / prochaine étape** : commit 4 prêt. P2 résolu. Le commit 5 attaque `social_repo` (match favorites — 1 méthode `ToggleMatchFavorite`), suivi du commit 6 (media likes + transaction atomique). Effort restant ~1.5 j pour 5/6/7.
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 3 (squad/PP shared_social, deadlock sync hook différé)
 
 **Statut** : Complété — commit 3 sur `refactor/leased-writer-enforcement`. Protège les écritures squad/PP côté HTTP. La résolution du deadlock potentiel sync hook ↔ Prestige reste à faire au commit 7 (en même temps que le sync engine acquerra son writer player).

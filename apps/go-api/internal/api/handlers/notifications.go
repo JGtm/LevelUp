@@ -15,7 +15,25 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/platform/dblease"
 )
+
+// writeNotifWriteErr centralise le mapping d'erreurs des handlers notifications
+// write : ErrDBLocked → 503 + Retry-After, ErrNotFound → 404, autres → 500.
+// Évite la duplication du switch dans MarkRead / MarkUnread / Delete / etc.
+func writeNotifWriteErr(w http.ResponseWriter, ctx context.Context, op string, err error) {
+	switch {
+	case errors.Is(err, dblease.ErrDBLocked):
+		w.Header().Set("Retry-After", "5")
+		writeError(w, http.StatusServiceUnavailable, "db_busy",
+			"database is currently busy, please retry")
+	case errors.Is(err, notifications.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "notification introuvable")
+	default:
+		slog.WarnContext(ctx, "notifications: "+op, "err", err)
+		writeError(w, http.StatusInternalServerError, op+"_error", err.Error())
+	}
+}
 
 // NotificationsServiceFactory construit un *notifications.Service à partir
 // du player_slug courant (résolution PlayerDB déléguée à la registry).
@@ -103,8 +121,7 @@ func (h *NotificationsHandler) MarkRead(w http.ResponseWriter, r *http.Request) 
 	}
 	res, err := svc.MarkRead(r.Context(), req.IDs)
 	if err != nil {
-		slog.WarnContext(r.Context(), "notifications: mark-read", "err", err)
-		writeError(w, http.StatusInternalServerError, "mark_read_error", err.Error())
+		writeNotifWriteErr(w, r.Context(), "mark_read", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -128,8 +145,7 @@ func (h *NotificationsHandler) MarkAllRead(w http.ResponseWriter, r *http.Reques
 	}
 	res, err := svc.MarkAllRead(r.Context(), notifications.Category(req.Category))
 	if err != nil {
-		slog.WarnContext(r.Context(), "notifications: mark-all-read", "err", err)
-		writeError(w, http.StatusInternalServerError, "mark_all_read_error", err.Error())
+		writeNotifWriteErr(w, r.Context(), "mark_all_read", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -147,12 +163,7 @@ func (h *NotificationsHandler) MarkUnread(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := svc.MarkUnread(r.Context(), id); err != nil {
-		if errors.Is(err, notifications.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "notification introuvable")
-			return
-		}
-		slog.WarnContext(r.Context(), "notifications: mark-unread", "id", id, "err", err)
-		writeError(w, http.StatusInternalServerError, "mark_unread_error", err.Error())
+		writeNotifWriteErr(w, r.Context(), "mark_unread", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -170,12 +181,7 @@ func (h *NotificationsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := svc.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, notifications.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "notification introuvable")
-			return
-		}
-		slog.WarnContext(r.Context(), "notifications: delete", "id", id, "err", err)
-		writeError(w, http.StatusInternalServerError, "delete_error", err.Error())
+		writeNotifWriteErr(w, r.Context(), "delete", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -214,8 +220,7 @@ func (h *NotificationsHandler) UpdatePreferences(w http.ResponseWriter, r *http.
 	}
 	updated, err := svc.UpdatePreferences(r.Context(), req.Items)
 	if err != nil {
-		slog.WarnContext(r.Context(), "notifications: update-preferences", "err", err)
-		writeError(w, http.StatusInternalServerError, "prefs_update_error", err.Error())
+		writeNotifWriteErr(w, r.Context(), "prefs_update", err)
 		return
 	}
 	if updated == nil {
