@@ -1994,6 +1994,10 @@ export interface MatchViewHeader {
   playable_duration_seconds?: number | null
   /** V7 : lien Waypoint vers la replay */
   waypoint_url?: string | null
+  /** URL de l'image de la map (TitleAssetURLAdapter). Null si capability absente. */
+  map_image_url?: string | null
+  /** True si le joueur a marqué ce match comme favori (table match_favorites). */
+  is_favorite: boolean
 }
 
 export interface MatchViewRank {

@@ -8,13 +8,11 @@
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { useMatchView } from './queries'
-import { MatchBreadcrumb, MatchNavigation } from './MatchHeader'
+import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
@@ -22,8 +20,6 @@ import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { kdTimelineSeries } from './_chartSeries'
 import { buildMatchHeadingStr } from './format'
-import { useSetMatchExclusion } from '@/features/match-history/queries'
-import { queryKeys } from '@/lib/query/keys'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -44,8 +40,7 @@ export function MatchViewPage() {
   }
   const [activeTab, setActiveTab] = useState<TabId>('summary')
   const { data, isPending, isError, refetch } = useMatchView(playerSlug, matchId)
-  const queryClient = useQueryClient()
-  const excludeMutation = useSetMatchExclusion(playerSlug)
+  const locale = useAppShellStore((s) => s.locale)
 
   if (isPending) return null
 
@@ -66,7 +61,6 @@ export function MatchViewPage() {
     )
   }
 
-  const locale = useAppShellStore((s) => s.locale)
   const { header, rank, combat_tab, team_tab } = data
   const matchLabel = buildMatchHeadingStr(header.map_ui, header.mode_ui, locale)
   // Le breadcrumb ajoute la date pour distinguer plusieurs matchs sur la même map/mode
@@ -80,15 +74,6 @@ export function MatchViewPage() {
   return (
     <div className="flex flex-col">
       <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} />
-      <div className="flex items-center justify-between px-6 pt-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            {matchLabel}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{header.start_time_label}</p>
-        </div>
-        <MatchNavigation playerSlug={playerSlug} matchId={matchId} />
-      </div>
 
       {/* Sprint 54-B : avertissement privacy */}
       {data.privacy_warning && (
@@ -97,48 +82,18 @@ export function MatchViewPage() {
         </div>
       )}
 
-      {/* Header match */}
-      <div className="border-b bg-background px-6 py-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <span
-            className="text-xl font-bold"
-            style={{ color: header.outcome_color }}
-          >
-            {header.outcome_label}
-          </span>
-          <span className="text-sm text-muted-foreground">{header.score_label}</span>
-          <Badge variant="outline">{header.playlist_label}</Badge>
-          {rank.rating_type !== 'none' && rank.tier_label && (
-            <Badge className="bg-primary/10 text-primary">
-              {rank.rating_type} · {rank.tier_label}
-              {rank.numeric_value != null && ` (${rank.numeric_value.toFixed(0)})`}
-            </Badge>
-          )}
-          <span className="ml-auto text-sm font-medium" style={{ color: header.performance_color ?? undefined }}>
-            {header.performance_display}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={header.is_excluded ? 'text-muted-foreground' : 'text-muted-foreground hover:text-destructive'}
-            loading={excludeMutation.isPending}
-            onClick={() => {
-              excludeMutation.mutate(
-                { matchId, excluded: !header.is_excluded },
-                {
-                  onSuccess: () => {
-                    void queryClient.invalidateQueries({
-                      queryKey: queryKeys.matchView(playerSlug, matchId),
-                    })
-                  },
-                },
-              )
-            }}
-          >
-            {header.is_excluded ? '↩ Réactiver' : 'Marquer comme non pertinent ⊘'}
-          </Button>
-        </div>
-      </div>
+      {/* Barre nav full-width — Match précédent · Match X/Y · Match suivant */}
+      <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale} />
+
+      {/* Header match — image map + outcome + actions + perf/rang (mock C) */}
+      <MatchHeaderCard
+        header={header}
+        rank={rank}
+        matchId={matchId}
+        playerSlug={playerSlug}
+        matchTitle={matchLabel}
+        locale={locale}
+      />
 
       {/* Faits marquants — badges d'impact + horodatage */}
       <MatchImpactBadgesBar

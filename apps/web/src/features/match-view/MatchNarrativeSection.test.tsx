@@ -46,6 +46,7 @@ const headerWithoutBadge: MatchViewHeader = {
   performance_display: '85',
   performance_color: null,
   is_excluded: false,
+  is_favorite: false,
 }
 
 describe('MatchNarrativeSection', () => {
