@@ -1,5 +1,42 @@
 # Thought Log
 
+## [2026-05-05] DB write concurrency — commit 7 (sync engine : invariant + tests coordination)
+
+**Statut** : Complété — commit 7 sur `refactor/leased-writer-enforcement`. Aucun changement de comportement runtime du sync engine. Documente l'invariant deadlock-free et ajoute des tests d'intégration de coordination entre les deux APIs (legacy `sync.AcquireLeaseCtx` ↔ nouvelle `dblease.AcquireWriter`).
+
+**Découverte clé pendant le commit** : le sync engine **acquiert déjà** ses leases via `sync.AcquireLeaseCtx(ctx, path)` à 11 endroits ([engine.go](apps/go-api/internal/sync/engine.go) lignes 137/143/185/191/213/219/358/366/935, [backfill_weapons.go](apps/go-api/internal/sync/backfill_weapons.go):120, [friends_recompute.go](apps/go-api/internal/sync/friends_recompute.go):52/58). La coordination avec les commits 2-6 fonctionne **automatiquement** via le mutex partagé `dblease.leaseMutex(path)` — les deux APIs réutilisent la même map de mutex.
+
+**Conséquence** : pas de migration nécessaire au commit 7. Le plan v3 prévoyait une cascade de signatures dans le sync engine (writers passés en paramètre à toutes les fonctions write) — pivot pragmatique : pas besoin, le mutex partagé fait son travail. Le compile-time guard strict reste différé au commit 8 (lint analyzer).
+
+**Fichiers modifiés** :
+- `internal/sync/lease.go` :
+  - Documentation étendue : section "Coordination avec les commits 2-6" qui explique que `sync.AcquireLeaseCtx` et `dblease.AcquireWriter` partagent le mutex `leaseMutex(path)`. Pendant qu'un sync tient le lease, un POST /challenges concurrent retournera ErrDBLocked → 503 et inversement.
+  - Section "Invariant fragile" : règle d'or — ne pas configurer `LazyPrestigeService` pour qu'`EvaluateForUser` acquière un lease tant que le sync engine ne propage pas explicitement le writer au hook (ne pas créer de deadlock).
+  - Section "Dette : observabilité expvar" : noter que les compteurs `dblease_acquire_total{kind}` du commit 1 ne sont pas alimentés par `sync.AcquireLeaseCtx`. Migration 1:1 vers `dblease.AcquireWriterCtx(ctx, nil, path, kind)` faisable mais touche 11 sites — différée en CI cgo-enabled.
+- `internal/api/prestige_setup.go` :
+  - Commentaire ⚠️ sur `RunPostSync` qui rappelle l'invariant deadlock-free et interdit explicitement de wrapper le service de hook avec un LazyPrestigeService configuré pour acquérir des leases.
+- `internal/sync/lease_test.go` (build tag `integration`) :
+  - Imports `context`, `errors`, `dblease`.
+  - 2 nouveaux tests :
+    - `TestCoordination_SyncLease_BlocksHTTPWriter` : sync.AcquireLeaseCtx tient → dblease.AcquireWriter timeout avec ErrDBLocked.
+    - `TestCoordination_HTTPWriter_BlocksSyncLease` : sens inverse, dblease.AcquireWriter tient → sync.AcquireLeaseCtx attend/échoue.
+  - Confirme la symétrie de la coordination — invariant central de toute la branche.
+
+**Pas exécutables localement** : `internal/sync` import duckdb (cgo) → tests sous cgo+integration en CI uniquement. Vérifié `gofmt` + cohérence statique.
+
+**Total tests d'invariant ajoutés sur la branche (commits 0-7)** :
+- 13 tests unitaires dblease (writer + leak + property-based balance) + 3 benchmarks → commit 1
+- 6 tests handler 503 Prestige (Player + Squad) → commits 2-3
+- 5 tests service notifications + 4 tests handler notifications → commit 4
+- 4 tests service social + 1 test handler favorite → commit 5
+- 2 tests service media + 1 test handler media → commit 6
+- 2 tests intégration coordination sync ↔ HTTP → commit 7
+- **Total : 41 nouveaux tests + 3 benchs**
+
+**Conclusion / prochaine étape** : commit 8 — ADR 0013 + lint analyzer (optionnel, plus simple maintenant que toute l'architecture est en place). Le lint analyzer interdira `db.Exec()` direct depuis service/handler — concrétise le compile-time guard strict que le pivot pragmatique a différé.
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 6 (media likes atomique via SetMediaLikeAtomic)
 
 **Statut** : Complété — commit 6 sur `refactor/leased-writer-enforcement`. P3 résolu : `SetMediaLike` est désormais atomique (UPDATE media_files + INSERT/DELETE media_likes dans une seule transaction) quand un `WriterAcquirer` est configuré. Si l'un des deux SQL échoue, rollback complet — plus de divergence possible entre `media_files.liked` et `media_likes`.

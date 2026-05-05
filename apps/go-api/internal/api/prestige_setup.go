@@ -157,6 +157,15 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 //
 // No-op si PRESTIGE_ENABLED=false. Best-effort : log les erreurs
 // sans propager (le sync ne doit pas échouer à cause de Prestige).
+//
+// ⚠️ Invariant deadlock-free (commit 7 db-concurrency) : RunPostSync est appelé
+// par le sync engine **alors qu'il tient le lease player et shared_social**
+// (cf. internal/sync/lease.go). Le service retourné par ServiceForPlayer ici
+// est une instance **directe** (pas le wrapper LazyPrestigeService) — il
+// n'acquiert pas de lease, ce qui évite le deadlock. Ne pas wrapper ce service
+// avec un LazyPrestigeService configuré pour acquérir des leases sur
+// EvaluateForUser tant qu'on n'a pas de propagation explicite du writer du
+// sync engine au hook (commit futur).
 func (b *PrestigeBundle) RunPostSync(ctx context.Context, playerSlug, titleSlug string) {
 	if b == nil || !prestige.IsEnabled() {
 		return

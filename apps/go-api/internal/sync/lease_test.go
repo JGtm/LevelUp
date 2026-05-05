@@ -5,10 +5,14 @@
 package sync
 
 import (
+	"context"
+	"errors"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/platform/dblease"
 )
 
 func TestAcquireLease_Basic(t *testing.T) {
@@ -137,5 +141,54 @@ func TestAcquireLease_NoGoroutineLeak(t *testing.T) {
 	leaked := after - before
 	if leaked > 2 { // marge pour le GC et le scheduler
 		t.Errorf("goroutine leak detected: %d goroutines added after 10 timeouts", leaked)
+	}
+}
+
+// TestCoordination_SyncLease_BlocksHTTPWriter vérifie l'invariant central du
+// commit 7 db-concurrency : le lease acquis via sync.AcquireLeaseCtx (legacy
+// API utilisée par le sync engine) bloque bien l'acquisition concurrente via
+// dblease.AcquireWriter (nouvelle API utilisée par les handlers HTTP des
+// commits 2-6). Les deux partagent le mutex `dblease.leaseMutex(path)`.
+func TestCoordination_SyncLease_BlocksHTTPWriter(t *testing.T) {
+	path := t.TempDir() + "/coord.duckdb"
+
+	// Goroutine sync : acquiert via sync.AcquireLeaseCtx (legacy).
+	relSync, err := AcquireLeaseCtx(context.Background(), path)
+	if err != nil {
+		t.Fatalf("sync acquire: %v", err)
+	}
+	defer relSync()
+
+	// Goroutine HTTP : tente l'acquisition via dblease.AcquireWriter (timeout court)
+	// — doit échouer avec ErrDBLocked car le sync tient le mutex partagé.
+	_, err = dblease.AcquireWriter(nil, path, dblease.KindPlayer, 50*time.Millisecond)
+	if err == nil {
+		t.Fatal("HTTP acquire should have timed out (sync holds lease via shared mutex)")
+	}
+	if !errors.Is(err, dblease.ErrDBLocked) {
+		t.Errorf("err should wrap dblease.ErrDBLocked, got %v", err)
+	}
+}
+
+// TestCoordination_HTTPWriter_BlocksSyncLease — sens inverse : le HTTP qui
+// tient le writer via dblease.AcquireWriter doit faire attendre le sync qui
+// utilise sync.AcquireLeaseCtx. Confirme la symétrie de la coordination.
+func TestCoordination_HTTPWriter_BlocksSyncLease(t *testing.T) {
+	path := t.TempDir() + "/coord-rev.duckdb"
+
+	// Goroutine HTTP : acquiert via la nouvelle API dblease.AcquireWriter.
+	wHTTP, err := dblease.AcquireWriter(nil, path, dblease.KindPlayer, time.Second)
+	if err != nil {
+		t.Fatalf("HTTP acquire: %v", err)
+	}
+	defer wHTTP.Release()
+
+	// Goroutine sync : tente AcquireLeaseCtx — doit échouer/attendre car le
+	// HTTP tient déjà le mutex.
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, err = AcquireLeaseCtx(ctx, path)
+	if err == nil {
+		t.Fatal("sync AcquireLeaseCtx should have failed (HTTP holds lease)")
 	}
 }
