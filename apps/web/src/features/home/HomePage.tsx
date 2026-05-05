@@ -27,6 +27,7 @@ import { HomePrestigeSection } from './HomePrestigeSection'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
@@ -57,11 +58,13 @@ export function HomePage() {
   const [soloIdx, setSoloIdx] = useState(0)
   const [squadIdx, setSquadIdx] = useState(0)
   const favoriteMutation = useSetMatchFavorite(playerSlug)
+  const navigateToMatch = useNavigateToMatch(playerSlug)
 
-  function goToMatch(matchId: string) {
-    void navigate({
-      to: '/players/$playerSlug/matches/$matchId',
-      params: { playerSlug, matchId },
+  function goToMatch(matchId: string, source: 'home_recent' | 'home_favorites') {
+    const list = source === 'home_recent' ? recentMatches : favoriteMatches
+    navigateToMatch(matchId, {
+      source,
+      matchIds: list.map((m) => m.match_id),
     })
   }
 
@@ -400,7 +403,7 @@ export function HomePage() {
                         match={m}
                         locale={locale}
                         timezone={userTimezone}
-                        onClick={() => goToMatch(m.match_id)}
+                        onClick={() => goToMatch(m.match_id, 'home_recent')}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: !m.is_favorite })
                         }
@@ -424,7 +427,7 @@ export function HomePage() {
                         match={m}
                         locale={locale}
                         timezone={userTimezone}
-                        onClick={() => goToMatch(m.match_id)}
+                        onClick={() => goToMatch(m.match_id, 'home_favorites')}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: false })
                         }

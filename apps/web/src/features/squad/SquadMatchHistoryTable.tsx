@@ -14,7 +14,6 @@
  * on liste tout ce que le backend retourne pour les filtres actifs.
  */
 import { useMemo, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
   type ColumnDef,
   flexRender,
@@ -29,6 +28,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { getOutcomeColor } from '@/lib/outcome-color'
 import { formatDate } from '@/lib/formatters'
 import { getSquadText } from './i18n'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -67,7 +67,10 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
   const t = getSquadText(locale)
   const intlLocale = t.intlLocale
   const { data: mappings } = useFieldMappings()
-  const navigate = useNavigate()
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+  const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
+  const goToSquadMatch = (matchId: string) =>
+    navigateToMatch(matchId, { source: 'session', matchIds: allMatchIds })
 
   const mapAssets = mappings?.assets?.['map']
   const playlistAssets = mappings?.assets?.['playlist']
@@ -186,18 +189,10 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
                 className="cursor-pointer transition-colors hover:bg-primary/10"
                 role="button"
                 tabIndex={0}
-                onClick={() =>
-                  void navigate({
-                    to: '/players/$playerSlug/matches/$matchId',
-                    params: { playerSlug, matchId: row.original.match_id },
-                  })
-                }
+                onClick={() => goToSquadMatch(row.original.match_id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    void navigate({
-                      to: '/players/$playerSlug/matches/$matchId',
-                      params: { playerSlug, matchId: row.original.match_id },
-                    })
+                    goToSquadMatch(row.original.match_id)
                   }
                 }}
               >

@@ -22,6 +22,7 @@ export interface MatchViewText {
   removeFavorite: string
   mapUnknown: string
   noRank: string
+  exitContext: string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -39,6 +40,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     removeFavorite: 'Retirer des favoris',
     mapUnknown: 'Map inconnue',
     noRank: 'Pas de rang',
+    exitContext: 'Sortir du contexte',
   },
   en: {
     prevMatch: 'Previous match',
@@ -54,5 +56,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     removeFavorite: 'Remove from favorites',
     mapUnknown: 'Unknown map',
     noRank: 'No rank',
+    exitContext: 'Exit context',
   },
 }
