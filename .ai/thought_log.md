@@ -134,6 +134,32 @@
 
 ---
 
+## [2026-05-04] refactor(squad/efficiency): switch joueur unique au lieu de N tracks empilées
+
+**Statut** : Complété.
+
+**Contexte** : La V1 du chart efficiency empilait N tracks ECharts (1/joueur), ce qui prenait ~600px de hauteur avec 3 coéquipiers. L'utilisateur a demandé un toggle joueur comme `SquadIntensityHeatmapChart` plutôt que des graphes séparés.
+
+**Décisions techniques** :
+
+1. **Pattern aligné sur SquadIntensityHeatmapChart** : boutons segmentés `border-primary bg-primary` pour le sélectionné, `border-input bg-background hover:bg-muted` pour les autres. Aucun nouveau composant — exact même CSS que l'intensité.
+
+2. **Joueur actif par défaut** : `players[0]` (l'ordre `[mainPlayerKey, ...confirmedGamertags]` met toujours le main en premier). Fallback safe si la sélection courante disparaît du squad.
+
+3. **Affichage multi-joueurs simultané écarté** : 3 joueurs × 2 lignes = 6 traits sur un seul axe Y, illisible. L'utilisateur a explicitement préféré la simplicité d'un switch.
+
+4. **Pas de changement backend** : les données `rendement_offensif` / `resistance_defensive` sont toujours par-joueur dans `performance_series`. Le filtre est 100 % côté front.
+
+5. **Hauteur du track passée de 200px → 320px** : maintenant qu'il y en a un seul, on peut se permettre.
+
+**Résultats observés** :
+- `tsc -b` : 0 erreur dans `SquadEfficiencyChart.tsx` ni `i18n.ts`.
+- L'i18n a un nouveau champ `toggleLabel` (FR + EN) parité avec `intensity.toggleLabel`.
+
+**Conclusion** : UI plus compacte, pattern cohérent avec intensity. Branche `feat/glossary-search-index`.
+
+---
+
 ## [2026-05-04] feat(squad/contributions): chart Rendement & Résistance par match
 
 **Statut** : Complété.
