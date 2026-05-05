@@ -70,16 +70,25 @@ export function SquadPerformanceCharts({
     return merged.length > 0 ? [{ key: 'perf-flat', datapoints: merged }] : []
   }, [playerOrder, rowsByPlayer])
 
-  // Labels X enrichis : "#1 Tribord", "#2 Bazaar", etc.
-  // On déduit le nom de la carte depuis les points (identique pour tous les joueurs
-  // sur un même match_order). map_name est optionnel — fallback sur "#N".
+  // Labels X enrichis sur 2 lignes : "#1\nTribord", "#2\nBazaar…", etc.
+  // Noms de carte tronqués à 9 caractères pour éviter le chevauchement.
   const xMatchLabels = useMemo(() => {
+    const truncate = (s: string, max = 9): string => {
+      if (s.length <= max) return s
+      const sepIdx = Math.min(
+        ...[' ', '-'].map((c) => { const i = s.indexOf(c); return i > 0 ? i : Infinity }),
+      )
+      if (sepIdx <= max) return `${s.slice(0, sepIdx)}…` // "Launch Site" → "Launch…", "Couvre-feu" → "Couvre…"
+      return `${s.slice(0, max - 1)}…` // "Fragmentation" → "Fragment…"
+    }
     const byOrder = new Map<number, string>()
     for (const pts of Object.values(rowsByPlayer)) {
       for (const pt of pts) {
         if (!byOrder.has(pt.match_order)) {
-          const mapPart = pt.map_name ? ` ${pt.map_name}` : ''
-          byOrder.set(pt.match_order, `#${pt.match_order + 1}${mapPart}`)
+          const label = pt.map_name
+            ? `#${pt.match_order + 1}\n${truncate(pt.map_name)}`
+            : `#${pt.match_order + 1}`
+          byOrder.set(pt.match_order, label)
         }
       }
     }
