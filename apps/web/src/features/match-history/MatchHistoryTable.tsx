@@ -14,6 +14,8 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { mmrDeltaScale } from '@/lib/accessibility/scales'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
+import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 
 interface Props {
   rows: MatchHistoryRow[]
@@ -94,10 +96,18 @@ export function MatchHistoryTable({
     { key: 'actions', label: '', sortable: false },
   ] as const
 
+  // Phase 2c : capte le filterContext courant pour produire un filterSpec
+  // sérialisable côté URL → la nav contextuelle survit aux Ctrl+Click et
+  // aux liens partagés. Subscribe au store directement (renvoie une nouvelle
+  // ref si le contexte change → le useCallback se rafraîchit).
+  const filterContext = useGlobalFilterStore((s) => s.filterContext)
+
   function navigateToMatchWithCtx(matchId: string) {
+    const filterSpec = filterContextToMatchFilterSpec(filterContext)
     navigateToMatch(matchId, {
       source: 'history',
       matchIds: rows.map((r) => r.match_id),
+      filterSpec: filterSpec ?? undefined,
     })
   }
 

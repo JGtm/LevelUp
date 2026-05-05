@@ -1,5 +1,52 @@
 # Thought Log
 
+## [2026-05-05] MatchView header rework — Sprint 3 (Phase 2c) livré — migration consommateurs filterSpec
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Contexte** : finalisation de la chaîne nav contextuelle. Les phases 2a et 2b avaient livré l'infrastructure (router state + sessionStorage + URL params + Q25 paramétrable + cascade). Phase 2c branche les **consommateurs** (history, explorer, squad) pour qu'ils alimentent réellement le `filterSpec` dans le ctx — sans cette étape, l'URL reste vide même si elle pourrait survivre Ctrl+Click / lien partagé.
+
+**Décision technique** :
+1. **Helper unique `lib/match-nav/fromFilterContext.ts`** : `filterContextToMatchFilterSpec(ctx, options?)` mappe le `FilterContextInput` du `globalFilterStore` (utilisé par history, explorer, squad, synthesis, timeseries) vers `MatchFilterSpec`. Mapping volontairement minimaliste :
+   - `cascade.playlists[0]` → `playlist_name` (uniquement si exactement 1 playlist sélectionnée — multi = scope trop large pour bénéficier de la nav contextuelle)
+   - `cascade.modes[0]` → `mode_category` (idem)
+   - `period.start_date / end_date` → `date_from / date_to` (avec append T00:00:00Z / T23:59:59Z si pas déjà ISO complet)
+   - `sessions.picked_session_label` (priorité) → `session_id` (uniquement quand `filter_mode === 'sessions'`)
+   - `outcome` optionnel via le 2e arg (filtre spécifique aux features qui ont un outcome filter local).
+2. **Branchement dans 3 sources** :
+   - `MatchHistoryTable.tsx` : `useGlobalFilterStore((s) => s.filterContext)` + `filterContextToMatchFilterSpec(filterContext)` au moment de naviguer.
+   - `ExplorerPage.tsx` : idem (filterContext déjà subscribed plus haut).
+   - `SquadMatchHistoryTable.tsx` : idem, source='session' pour distinguer le contexte squad.
+   - **Non touché en Phase 2c** : Home (recent/favorites — pas de filtre user pertinent), Career top matches, Synthesis highlights, squad/v2 HistoryTable, SquadSynergyHistoryTable — restent en mode Phase 2a (matchIds local sans filterSpec).
+
+**Tests** :
+- `lib/match-nav/fromFilterContext.test.ts` : 12 tests purs (null/empty, single/multi playlist, period dates avec/sans T, sessions FR-priority + fallback solo/squad, mode=period ignore sessions, outcome optionnel, combinaison complète).
+- 1228/1228 tests vitest verts. typecheck OK.
+
+**Impact** :
+- Cliquer un match depuis match-history avec filtres "Ranked Arena · BTB · Avril 2026" pose maintenant `?playlist=Ranked+Arena&mode=BTB&from=2026-04-01T00:00:00Z&to=2026-04-30T23:59:59Z` dans l'URL.
+- Ctrl+Click → nouvel onglet préserve les filtres (cascade niveau 3 URL params déclenche `Q25NeighborMatchesTemplate` côté backend).
+- Lien partagé à un coéquipier → ouvre la même nav contextuelle.
+- Sortie de contexte purge correctement les query params + sessionStorage (Phase 2b).
+
+**Couches respectées** : helper pur en `lib/match-nav/`, 0 dépendance feature → respecte la frontière. Pas de régression typecheck/test.
+
+**Prochaine étape** : (optionnel) Phase 2d — Test E2E Playwright pour valider end-to-end la cascade. Pas critique pour la feature qui est fonctionnelle ; uniquement protection contre régressions futures.
+
+---
+
+## [2026-05-05] MatchHeader — polish UI outcome row + perf/rang row
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+- Outcome row : police unifiée `text-2xl font-bold` (était `text-2xl`/`text-xl` + `bold`/`semibold`), ajout séparateur `·` (`select-none`), opacités supprimées (100%), `items-baseline` pour alignement baseline correct.
+- Perf/rang row : `items-end` → `items-start` (labels alignés en haut), séparateur vertical `w-px self-stretch bg-border` conditionnel (affiché seulement si les deux blocs présents), `gap-x-8` remplacé par `mx-6` sur le séparateur.
+
+**Résultats** : rendu visuel cohérent, pas de changement fonctionnel.
+
+**Prochaine étape** : /.
+
 ## [2026-05-05] MatchViewHeader — score_label corrigé (team_0/1_score depuis match_registry)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.

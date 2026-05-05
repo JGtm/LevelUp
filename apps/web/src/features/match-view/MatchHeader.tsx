@@ -381,12 +381,12 @@ export function MatchHeaderCard({
             </span>
             {header.score_label && (
               <>
-                <span className="text-2xl font-bold select-none" style={{ color: outcomeColor, opacity: 0.35 }}>
+                <span className="text-2xl font-bold select-none" style={{ color: outcomeColor }}>
                   ·
                 </span>
                 <span
                   className="text-2xl font-bold tabular-nums"
-                  style={{ color: outcomeColor, opacity: 0.75 }}
+                  style={{ color: outcomeColor }}
                 >
                   {header.score_label}
                 </span>
@@ -395,9 +395,9 @@ export function MatchHeaderCard({
           </div>
 
           {/* Perf + rang row */}
-          <div className="mt-auto flex flex-wrap items-end gap-x-8 gap-y-3 border-t pt-3">
+          <div className="mt-auto flex flex-wrap items-start gap-y-3 border-t pt-3">
             {header.performance_display && header.performance_display !== '-' && (
-              <div className="flex flex-col">
+              <div className="flex flex-col items-start">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t.performance}
                 </span>
@@ -408,6 +408,10 @@ export function MatchHeaderCard({
                   {header.performance_display}
                 </span>
               </div>
+            )}
+
+            {header.performance_display && header.performance_display !== '-' && rank.rating_type !== 'none' && (
+              <div className="mx-6 w-px self-stretch bg-border" />
             )}
 
             {rank.rating_type !== 'none' && (
