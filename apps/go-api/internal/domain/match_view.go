@@ -426,6 +426,10 @@ type MatchMetaRaw struct {
 	PlayableDurationSeconds *int64
 	MapAssetID              *string
 	GameVariantName         *string
+	// MapNameFR / ModeNameFR : traductions FR enrichies post-scan via
+	// asset_translations (map) et mode_name_tr (mode). Nil si non disponibles.
+	MapNameFR  *string
+	ModeNameFR *string
 }
 
 // PlayerMatchStatsRaw : données brutes de Q17 (match_participants filtré par xuid).

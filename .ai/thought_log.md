@@ -1,5 +1,24 @@
 # Thought Log
 
+## [2026-05-05] Page Match — i18n map/mode (breadcrumb + titre)
+
+**Statut** : Complété
+
+**Décision technique** : Le service match view utilisait directement `map_name` et `pair_name` depuis `match_registry` (anglais bruts), sans passer par les tables de traduction. Fix en deux couches : backend Go enrichit `MatchMetaRaw` avec des lookups FR post-scan (`asset_translations` pour la map, `mode_name_tr` pour le mode normalisé) ; frontend applique `buildMatchHeadingStr` (pattern identique aux tuiles home) pour afficher "Mode sur Carte" avec la locale.
+
+**Fichiers modifiés** :
+- `domain/match_view.go` : +`MapNameFR`, `ModeNameFR` dans `MatchMetaRaw`
+- `platform/duckdb/match_view_repo.go` : enrichissement post-scan + `lookupMapNameFR` + `lookupModeNameFR`
+- `service/match_view_service.go` : `buildMatchHeader` utilise les champs FR en priorité
+- `features/match-view/format.ts` : nouveau fichier `normalizeModeLabel` + `buildMatchHeadingStr`
+- `features/match-view/MatchViewPage.tsx` : `matchLabel` et `<h1>` via `buildMatchHeadingStr`
+
+**Résultats** : `go build ./...` OK, `tsc --noEmit` OK.
+
+**Prochaine étape** : suite du retravail de la page match (autres points signalés).
+
+---
+
 ## [2026-05-05] Page Escouade — LIVRAISON
 
 **Statut** : Complété — page considérée comme livrée.
