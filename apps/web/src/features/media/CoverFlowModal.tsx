@@ -83,13 +83,13 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
 
   if (error) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center bg-black p-4 text-center text-white/80">
-        <svg className="mb-3 h-10 w-10 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="flex h-full w-full flex-col items-center justify-center bg-card p-4 text-center text-foreground/80">
+        <svg className="mb-3 h-10 w-10 text-muted-foreground/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
         </svg>
         <p className="text-sm font-medium">Lecture impossible</p>
-        <p className="mt-1 text-xs text-white/50">{error}</p>
-        {basename && <p className="mt-2 text-xs text-white/30">{basename}</p>}
+        <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+        {basename && <p className="mt-2 text-xs text-muted-foreground/70">{basename}</p>}
       </div>
     )
   }
@@ -111,7 +111,7 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
           : 'Vidéo inaccessible'
         setError(msg)
       }}
-      className="h-full w-full bg-black"
+      className="h-full w-full bg-card"
     />
   )
 }
@@ -273,16 +273,16 @@ export function CoverFlowModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/90"
       onClick={onClose}
     >
       <div
         className="relative mx-4 flex max-h-[90vh] w-full max-w-5xl flex-col"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between bg-black/60 px-4 py-2 text-white">
+        <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-2 text-foreground">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="truncate text-sm opacity-80">{heading}</span>
+            <span className="truncate text-sm text-foreground/80">{heading}</span>
             {onReassociate && (
               <button
                 type="button"
@@ -290,7 +290,7 @@ export function CoverFlowModal({
                   e.stopPropagation()
                   onReassociate(currentItem)
                 }}
-                className="shrink-0 rounded border border-white/20 px-2 py-0.5 text-xs text-white/80 hover:border-white/50 hover:text-white whitespace-nowrap"
+                className="shrink-0 rounded border border-border px-2 py-0.5 text-xs text-foreground/80 hover:border-foreground/50 hover:text-foreground whitespace-nowrap"
                 title={text.coverFlow.reassociateTitle}
               >
                 {text.coverFlow.reassociateButton}
@@ -335,7 +335,7 @@ export function CoverFlowModal({
             <button
               type="button"
               onClick={onClose}
-              className="text-xl leading-none text-white/70 hover:text-white"
+              className="text-xl leading-none text-muted-foreground hover:text-foreground"
               aria-label={text.coverFlow.closeAriaLabel}
             >
               ✕
@@ -343,7 +343,7 @@ export function CoverFlowModal({
           </div>
         </div>
 
-        <div className="relative w-full flex-1 overflow-visible bg-black">
+        <div className="relative w-full flex-1 overflow-visible bg-card">
           <div className="relative aspect-video w-full overflow-visible mx-auto">
             <button
               onClick={(e) => {
@@ -351,7 +351,7 @@ export function CoverFlowModal({
                 navigate('prev')
               }}
               disabled={!canPrev}
-              className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white transition-colors hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-30 md:left-6"
+              className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2 text-foreground transition-colors hover:bg-card disabled:cursor-not-allowed disabled:opacity-30 md:left-6"
             >
               <svg
                 className="h-6 w-6"
@@ -401,7 +401,7 @@ export function CoverFlowModal({
                     <img
                       src={item.file_path}
                       alt={item.basename}
-                      className="h-full w-full object-contain bg-black"
+                      className="h-full w-full object-contain bg-card"
                     />
                   )}
                 </div>
@@ -414,7 +414,7 @@ export function CoverFlowModal({
                 navigate('next')
               }}
               disabled={!canNext && !hasNextPage}
-              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white transition-colors hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-30 md:right-6"
+              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-border bg-card/90 p-2 text-foreground transition-colors hover:bg-card disabled:cursor-not-allowed disabled:opacity-30 md:right-6"
           >
             <svg
               className="h-6 w-6"

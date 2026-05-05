@@ -259,6 +259,14 @@
   .app-shell-width {
     max-width: 1320px;
   }
+
+  /* Text-shadow adaptatif : noir en dark, blanc en light — pour textes sur images de bannière. */
+  :root[data-theme='dark'] .text-shadow-adaptive {
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+  }
+  :root[data-theme='light'] .text-shadow-adaptive {
+    text-shadow: 0 1px 6px rgba(255, 255, 255, 0.85);
+  }
 }
 
 /* Grille KPI home — 7 colonnes proportionnelles (hors @layer pour éviter les purges Tailwind v4) */

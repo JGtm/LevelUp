@@ -33,7 +33,7 @@ export function StarButton({
       aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
       className={
         compact
-          ? `absolute left-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isFavorite ? 'bg-warning/90 text-white' : 'bg-black/45 text-white/60 hover:bg-warning/70 hover:text-white'} ${className}`
+          ? `absolute left-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isFavorite ? 'bg-warning text-warning-foreground' : 'bg-card/70 text-muted-foreground hover:bg-warning/70 hover:text-warning-foreground'} ${className}`
           : `inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isFavorite ? 'bg-warning/15 text-warning hover:bg-warning/25' : 'text-muted-foreground hover:bg-muted hover:text-foreground'} ${className}`
       }
     >

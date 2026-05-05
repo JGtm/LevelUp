@@ -260,7 +260,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
 
         {/* Bloc perf + skill rating + barre KDA */}
         {(hasPerfOrSkill || hasKDA || hasDamageBar) && (
-          <div className="-mx-3 mb-2 bg-white/5 overflow-hidden">
+          <div className="-mx-3 mb-2 bg-muted/40 overflow-hidden">
             {/* Ligne du haut : Performance + Skill — centrée */}
             {hasPerfOrSkill && (
               <div className="flex items-center justify-center gap-0 pt-3 pb-1.5">
@@ -276,9 +276,9 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     <span className="text-[10px] font-medium leading-none text-muted-foreground">Performance</span>
                   </div>
                 )}
-                {/* Séparateur vertical fin blanc */}
+                {/* Séparateur vertical fin */}
                 {perfScore != null && skillValue != null && (
-                  <div className="w-px self-stretch bg-white/20 shrink-0 my-1" />
+                  <div className="w-px self-stretch bg-border shrink-0 my-1" />
                 )}
                 {/* Colonne droite : Skill rating */}
                 {skillValue != null && (
@@ -296,7 +296,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     <div className="flex flex-col gap-1">
                       {/* Titre du rang */}
                       {skillTierLabel && (
-                        <span className="text-sm font-bold text-white leading-none">
+                        <span className="text-sm font-bold text-foreground leading-none">
                           {skillTierLabel}
                         </span>
                       )}
@@ -325,15 +325,15 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{kills}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{kills}</span>
                     <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>frags</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{assists}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{assists}</span>
                     <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>assist.</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{deaths}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{deaths}</span>
                     <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-loss') }}>morts</span>
                   </div>
                 </div>
@@ -349,7 +349,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     <div className="w-16 flex flex-col items-center gap-0.5">
                       {m.headshot_kills != null && m.headshot_kills > 0 ? (
                         <>
-                          <span className="text-lg font-black text-white leading-none">{m.headshot_kills}</span>
+                          <span className="text-lg font-black text-foreground leading-none">{m.headshot_kills}</span>
                           <span className="text-[10px] font-medium leading-none text-muted-foreground">T. tête</span>
                         </>
                       ) : null}
@@ -382,11 +382,11 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{offConv.toFixed(2)}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{offConv.toFixed(2)}</span>
                     <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>Rendement</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{defRes.toFixed(2)}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{defRes.toFixed(2)}</span>
                     <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>Résistance</span>
                   </div>
                 </div>
@@ -398,13 +398,13 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
               <div data-testid="match-card-accuracy-line" className="px-3 pt-2.5 pb-2 flex justify-center gap-5">
                 {m.accuracy != null && (
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{m.accuracy.toFixed(0)} %</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{m.accuracy.toFixed(0)} %</span>
                     <span className="text-[10px] font-medium leading-none text-muted-foreground">Précision</span>
                   </div>
                 )}
                 {m.avg_life_secs != null && (
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{m.avg_life_secs.toFixed(1)} s</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{m.avg_life_secs.toFixed(1)} s</span>
                     <span className="text-[10px] font-medium leading-none text-muted-foreground">Vie moy.</span>
                   </div>
                 )}
@@ -416,14 +416,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
               <div data-testid="match-card-mmr" className="px-3 pt-2.5 pb-2 flex flex-col items-center gap-1">
                 <div className="flex w-full items-center">
                   <div className="flex flex-1 flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{Math.round(m.team_mmr)}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{Math.round(m.team_mmr)}</span>
                     <span className="text-[10px] font-medium leading-none text-muted-foreground">Équipe</span>
                   </div>
                   <div className="w-8 flex justify-center">
                     <span className="text-muted-foreground/50 text-[13px] leading-none">⟷</span>
                   </div>
                   <div className="flex flex-1 flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-white leading-none">{Math.round(m.enemy_mmr)}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{Math.round(m.enemy_mmr)}</span>
                     <span className="text-[10px] font-medium leading-none text-muted-foreground">Adversaires</span>
                   </div>
                 </div>
@@ -449,7 +449,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             {m.top_medals && m.top_medals.length > 0 && (
               <div
                 data-testid="match-card-medals"
-                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-white/[0.06] mt-3"
+                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-border/40 mt-3"
               >
                 {m.top_medals.slice(0, 4).map((medal) => (
                   <div
@@ -480,7 +480,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             {m.top_citations && m.top_citations.length > 0 && (
               <div
                 data-testid="match-card-citations"
-                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-white/[0.06] mt-3"
+                className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-border/40 mt-3"
               >
                 {m.top_citations.map((cit) => (
                   <div
@@ -518,7 +518,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
       {(m.duration_secs != null && m.duration_secs > 0 || m.started_at) && (
         <div
           data-testid="match-card-footer"
-          className="border-t border-white/10 px-3 py-2 text-center bg-white/[0.02]"
+          className="border-t border-border px-3 py-2 text-center bg-muted/30"
         >
           {m.duration_secs != null && m.duration_secs > 0 && (
             <p className="text-[11px] text-muted-foreground leading-tight">

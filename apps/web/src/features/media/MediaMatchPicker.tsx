@@ -145,7 +145,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-background/70"
       onClick={onClose}
     >
       <div

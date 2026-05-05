@@ -77,9 +77,9 @@ function OverlayContentRows({
     <div className="flex flex-wrap items-baseline gap-x-3 text-xs">
       {chips.map(({ key, value, label }) => (
         <span key={key}>
-          <span className="font-semibold text-white tabular-nums">{value}</span>
+          <span className="font-semibold text-foreground tabular-nums">{value}</span>
           {' '}
-          <span className="text-white/60">{label}</span>
+          <span className="text-muted-foreground">{label}</span>
         </span>
       ))}
     </div>
@@ -94,9 +94,9 @@ function OverlayContentRows({
           {rarities.map(({ tier, count }) => (
             <span key={tier} className="flex items-center gap-1">
               <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${rarityStyle(tier)?.segment ?? 'bg-muted-foreground/60'}`} />
-              <span className="text-white/60">{rarityLabel(tier, palmaresLocale)}</span>
+              <span className="text-muted-foreground">{rarityLabel(tier, palmaresLocale)}</span>
               {' '}
-              <span className="font-semibold text-white tabular-nums">{count}</span>
+              <span className="font-semibold text-foreground tabular-nums">{count}</span>
             </span>
           ))}
         </div>
@@ -280,9 +280,9 @@ function PassShowcase({
                 alt={pass.name}
                 className="aspect-[986/248] w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" /> {/* color-allow: gradient sombre fixe pour lisibilité du titre hero (overlay sur image map) */}
               <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl"> {/* color-allow: blanc sur gradient sombre fixe (hero overlay) */}
                   {pass.name}
                 </h2>
                 <div className="mt-1 flex flex-wrap gap-1.5">

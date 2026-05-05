@@ -74,7 +74,7 @@ function ColorSwatch({ token, label }: { token: string; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div
-        className="h-7 w-7 rounded-full border border-white/10 shadow-sm"
+        className="h-7 w-7 rounded-full border border-border shadow-sm"
         style={{ backgroundColor: tokenCssVar(token as Parameters<typeof tokenCssVar>[0]) }}
         aria-label={label}
         title={label}

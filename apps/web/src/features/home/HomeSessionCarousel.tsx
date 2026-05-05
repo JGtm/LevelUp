@@ -241,11 +241,11 @@ export function HomeSessionCarousel({
               )}
               {(session.avg_kda != null && (session.dominant_playlist || session.dominant_mode)) && ' · '}
               {session.dominant_playlist && (
-                <span className="font-bold text-white">{session.dominant_playlist}</span>
+                <span className="font-bold text-foreground">{session.dominant_playlist}</span>
               )}
               {session.dominant_playlist && session.dominant_mode && ' · '}
               {session.dominant_mode && (
-                <span className="font-bold text-white">{session.dominant_mode}</span>
+                <span className="font-bold text-foreground">{session.dominant_mode}</span>
               )}
               {(session.dominant_playlist || session.dominant_mode) && (
                 <span className="ml-1 inline-flex">

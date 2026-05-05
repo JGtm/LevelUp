@@ -57,7 +57,7 @@ export function HomeSpartanIdentityBanner({
       <div className="overflow-hidden rounded-2xl border border-border bg-muted/60 shadow-sm">
         <div
           data-testid="home-spartan-identity-banner"
-          className="relative overflow-hidden bg-slate-950" // color-allow: thématique Spartan UI (banner hero distinctif Halo)
+          className="relative overflow-hidden bg-card"
         >
           {spartanIdentity.banner_image_url && (
             <img
@@ -68,6 +68,12 @@ export function HomeSpartanIdentityBanner({
               className="absolute inset-0 h-full w-full object-cover"
               loading="lazy"
               decoding="async"
+            />
+          )}
+          {spartanIdentity.banner_image_url && (
+            <div
+              className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/40"
+              aria-hidden="true"
             />
           )}
           {careerAdornmentUrl && (
@@ -85,11 +91,10 @@ export function HomeSpartanIdentityBanner({
           )}
           <div
             data-testid="home-spartan-banner-shell"
-            className="relative flex flex-col gap-6 pt-1 pb-5 pl-5 pr-28 text-white sm:pl-6 sm:pr-32 lg:min-h-[9rem] lg:flex-row lg:items-start lg:justify-between"
-            style={{ textShadow: '0 1px 6px rgba(0,0,0,0.85)' }}
+            className="text-shadow-adaptive relative flex flex-col gap-6 pt-1 pb-5 pl-5 pr-28 text-foreground sm:pl-6 sm:pr-32 lg:min-h-[9rem] lg:flex-row lg:items-start lg:justify-between"
           >
             <div className="flex min-w-0 items-center gap-4 lg:self-center">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-cyan-300/60 bg-slate-950/60 shadow-[0_0_0_4px_rgba(8,15,28,0.35)] sm:h-24 sm:w-24"> {/* color-allow: thématique Spartan UI (emblem holder) */}
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-primary/60 bg-card/80 shadow-[0_0_0_4px_rgba(8,15,28,0.35)] sm:h-24 sm:w-24">
                 {spartanIdentity.emblem_image_url ? (
                   <img
                     data-testid="home-spartan-emblem-image"
@@ -101,7 +106,7 @@ export function HomeSpartanIdentityBanner({
                   />
                 ) : (
                   <span
-                    className="text-3xl font-semibold tracking-[0.18em] text-cyan-100" // color-allow: thématique Spartan UI
+                    className="text-3xl font-semibold tracking-[0.18em] text-primary-foreground"
                   >
                     {identityMonogram}
                   </span>
@@ -111,20 +116,20 @@ export function HomeSpartanIdentityBanner({
               <div className="min-w-0">
                 <p
                   data-testid="home-spartan-gamertag"
-                  className="truncate text-3xl font-semibold text-white sm:text-4xl"
+                  className="truncate text-3xl font-semibold text-foreground sm:text-4xl"
                 >
                   {playerName}
                 </p>
                 {spartanIdentity.spartan_id ? (
                   <p
                     data-testid="home-spartan-id-value"
-                    className="mt-2 text-2xl font-medium italic tracking-[0.34em] text-cyan-50 sm:text-3xl" // color-allow: thématique Spartan UI (Spartan ID)
+                    className="mt-2 text-2xl font-medium italic tracking-[0.34em] text-foreground sm:text-3xl"
                   >
                     {spartanIdentity.spartan_id}
                   </p>
                 ) : (
                   <p
-                    className="mt-2 text-sm text-cyan-100/70" // color-allow: thématique Spartan UI
+                    className="mt-2 text-sm text-muted-foreground"
                   >
                     {identityUnavailableLabel}
                   </p>
@@ -134,8 +139,8 @@ export function HomeSpartanIdentityBanner({
 
             {careerRank && (
               <div className="flex items-center gap-4 self-start">
-                <div className="min-w-0 rounded-xl bg-slate-950/15 px-3 py-2 text-right backdrop-blur-sm lg:max-w-[16rem]"> {/* color-allow: thématique Spartan UI (career rank panel) */}
-                  <p data-testid="home-career-rank-title" className="text-lg font-semibold text-white sm:text-xl">
+                <div className="min-w-0 rounded-xl bg-background/40 px-3 py-2 text-right backdrop-blur-sm lg:max-w-[16rem]">
+                  <p data-testid="home-career-rank-title" className="text-lg font-semibold text-foreground sm:text-xl">
                     {careerRank.rank_title}
                   </p>
                 </div>
@@ -193,10 +198,10 @@ export function HomeSpartanIdentityBanner({
         {!highestCSR && !highestLUSR && !hasAnySkillHistory ? (
           <div
             data-testid="home-skill-peaks-empty"
-            className="rounded-2xl border border-dashed border-white/10 bg-slate-950/22 px-4 py-4 text-white shadow-[0_12px_30px_rgba(8,15,28,0.2)]" // color-allow: thématique Spartan UI (empty skill peaks panel)
+            className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-4 text-foreground shadow-[0_12px_30px_rgba(8,15,28,0.2)]"
           >
             <p className="text-sm font-semibold">{emptySkillPanelTitle}</p>
-            <p className="mt-2 text-sm text-cyan-100/72">{emptySkillPanelDescription}</p> {/* color-allow: thématique Spartan UI */}
+            <p className="mt-2 text-sm text-muted-foreground">{emptySkillPanelDescription}</p>
           </div>
         ) : (
           <>

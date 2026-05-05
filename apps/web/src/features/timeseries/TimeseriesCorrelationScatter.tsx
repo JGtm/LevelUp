@@ -128,7 +128,7 @@ export function TimeseriesCorrelationScatter({
               'rounded px-2 py-0.5 text-xs font-medium transition-colors',
               activeLabel === lbl
                 ? 'bg-info/20 text-info ring-1 ring-info/40'
-                : 'bg-white/5 text-muted-foreground hover:bg-white/10',
+                : 'bg-muted/40 text-muted-foreground hover:bg-muted',
             ].join(' ')}
           >
             {labelConfigs[lbl]?.title ?? lbl}

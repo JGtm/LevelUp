@@ -86,8 +86,8 @@ export function MediaLikeButton({
       onClick={handleClick}
       // color-allow: rose pour le bouton like (heart) — CLAUDE.md §20 tolère rose pour liked
       className={compact
-        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-black/55 text-rose-400' : 'bg-black/45 text-white/50 hover:text-rose-300'}` // color-allow: rose like button compact
-        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-white/20 bg-black/35 text-white/85 hover:border-rose-400/40 hover:text-rose-300'}`} // color-allow: rose like button
+        ? `absolute right-1.5 top-1.5 flex h-7 min-w-7 items-center justify-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'bg-card/90 text-rose-400' : 'bg-card/70 text-muted-foreground hover:text-rose-300'}` // color-allow: rose like button compact
+        : `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${isLiked ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-border bg-card/80 text-foreground hover:border-rose-400/40 hover:text-rose-300'}`} // color-allow: rose like button
       aria-label={isLiked ? 'Retirer le like' : 'Liker'}
     >
       <HeartIcon
@@ -168,7 +168,7 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
         {item.kind === 'clip' && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <svg
-              className="h-12 w-12 text-white/60 drop-shadow-md transition-opacity duration-200 group-hover:opacity-0"
+              className="h-12 w-12 text-foreground/60 drop-shadow-md transition-opacity duration-200 group-hover:opacity-0"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
