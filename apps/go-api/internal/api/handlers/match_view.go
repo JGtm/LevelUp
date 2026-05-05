@@ -3,14 +3,92 @@ package handlers
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
+
+// playlistOrSessionPattern : whitelist de chars pour les valeurs de filtres
+// passés en query param. Empêche injection même si le repo utilise des
+// paramètres préparés. Limite 64 chars (cf. plan Phase 2b §5).
+var playlistOrSessionPattern = regexp.MustCompile(`^[A-Za-z0-9 _:.\-]{1,64}$`)
+
+// parseNeighborsFilterSpec : extrait MatchFilterSpec depuis r.URL.Query().
+// Tout filtre invalide est silencieusement ignoré + log warning. Jamais 400.
+//
+// Les noms de query params utilisés (côté front, voir useNavigateToMatch
+// Phase 2b) :
+//   - playlist (PlaylistName)
+//   - mode (ModeCategory)
+//   - from / to (DateFrom / DateTo, ISO 8601 / RFC3339)
+//   - session (SessionID)
+//   - outcome (Outcome — whitelist win/loss/draw/dnf)
+func parseNeighborsFilterSpec(r *http.Request) *domain.MatchFilterSpec {
+	q := r.URL.Query()
+	spec := &domain.MatchFilterSpec{}
+	ctx := r.Context()
+
+	if v := strings.TrimSpace(q.Get("playlist")); v != "" {
+		if playlistOrSessionPattern.MatchString(v) {
+			spec.PlaylistName = &v
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", "playlist", "value", v)
+		}
+	}
+	if v := strings.TrimSpace(q.Get("mode")); v != "" {
+		if playlistOrSessionPattern.MatchString(v) {
+			spec.ModeCategory = &v
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", "mode", "value", v)
+		}
+	}
+	if v := strings.TrimSpace(q.Get("session")); v != "" {
+		if playlistOrSessionPattern.MatchString(v) {
+			spec.SessionID = &v
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", "session", "value", v)
+		}
+	}
+	if v := strings.TrimSpace(q.Get("outcome")); v != "" {
+		if analysis.IsValidOutcomeLabel(v) {
+			spec.Outcome = &v
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", "outcome", "value", v)
+		}
+	}
+	if v := strings.TrimSpace(q.Get("from")); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			spec.DateFrom = &t
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", "from", "value", v, "err", err)
+		}
+	}
+	if v := strings.TrimSpace(q.Get("to")); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			spec.DateTo = &t
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", "to", "value", v, "err", err)
+		}
+	}
+	if spec.IsEmpty() {
+		return nil
+	}
+	return spec
+}
 
 // MatchViewHandler gère GET /players/{player_slug}/matches/{match_id}.
 type MatchViewHandler struct {
@@ -71,7 +149,15 @@ func (h *MatchViewHandler) GetMatchNeighbors(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp, err := svc.GetMatchNeighbors(r.Context(), matchID)
+	spec := parseNeighborsFilterSpec(r)
+	var (
+		resp domain.MatchNeighbors
+	)
+	if spec != nil {
+		resp, err = svc.GetMatchNeighborsFiltered(r.Context(), matchID, spec)
+	} else {
+		resp, err = svc.GetMatchNeighbors(r.Context(), matchID)
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "neighbors_error", err.Error())
 		return

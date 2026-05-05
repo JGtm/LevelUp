@@ -72,6 +72,9 @@ type MatchHistoryService interface {
 type MatchViewService interface {
 	GetMatchView(ctx context.Context, matchID string) (domain.MatchViewResponse, error)
 	GetMatchNeighbors(ctx context.Context, matchID string) (domain.MatchNeighbors, error)
+	// GetMatchNeighborsFiltered : variante paramétrable Phase 2b. spec=nil/vide
+	// → comportement chronologie globale identique à GetMatchNeighbors.
+	GetMatchNeighborsFiltered(ctx context.Context, matchID string, spec *domain.MatchFilterSpec) (domain.MatchNeighbors, error)
 }
 
 // MatchExclusionService gère le marquage et la liste des matchs non pertinents.

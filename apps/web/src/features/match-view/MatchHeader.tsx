@@ -296,58 +296,88 @@ export function MatchHeaderCard({
 
         {/* Colonne droite : titre + outcome + actions + perf/rang */}
         <div className="flex flex-1 flex-col gap-3 px-6 py-4">
-          {/* Titre + date */}
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              {matchTitle}
-            </h1>
-            {header.start_time_label && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {header.start_time_label}
-              </p>
-            )}
+          {/* Titre + date + playlist · actions haut-droite */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                {matchTitle}
+              </h1>
+              {(header.start_time_label || header.playlist_label) && (
+                <div className="mt-1 flex items-center gap-2">
+                  {header.start_time_label && (
+                    <p className="text-sm text-muted-foreground">
+                      {header.start_time_label}
+                    </p>
+                  )}
+                  {header.playlist_label && (
+                    <Badge variant="outline" className="text-xs">
+                      {header.playlist_label}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Boutons d'action haut-droite */}
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyId}
+                title={t.copyTooltip}
+                className="h-8 gap-1.5 text-xs"
+              >
+                {copied ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                )}
+                {copied ? t.copied : t.copyShort}
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleExclusion}
+                disabled={excludeMutation.isPending}
+                title={header.is_excluded ? t.reactivateTooltip : t.excludeTooltip}
+                className={
+                  header.is_excluded
+                    ? 'h-8 gap-1.5 text-xs'
+                    : 'h-8 gap-1.5 text-xs text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive'
+                }
+              >
+                {header.is_excluded ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                )}
+                {header.is_excluded ? t.reactivate : t.excludeShort}
+              </Button>
+            </div>
           </div>
 
-          {/* Outcome row : Victoire 87-62 + Playlist tag */}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Outcome row : Victoire  87-62 */}
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-2xl font-bold" style={{ color: outcomeColor }}>
               {header.outcome_label}
             </span>
             {header.score_label && (
-              <span className="text-sm text-muted-foreground tabular-nums">
+              <span
+                className="text-xl font-semibold tabular-nums"
+                style={{ color: outcomeColor, opacity: 0.7 }}
+              >
                 {header.score_label}
               </span>
             )}
-            {header.playlist_label && (
-              <Badge variant="outline" className="text-xs">
-                {header.playlist_label}
-              </Badge>
-            )}
-          </div>
-
-          {/* Actions bar : copier ID · marquer non pertinent */}
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <button
-              type="button"
-              onClick={handleCopyId}
-              className="rounded px-2 py-1 hover:bg-muted hover:text-foreground transition-colors"
-              title={t.copyMatchId}
-            >
-              {copied ? `✓ ${t.copied}` : t.copyMatchId}
-            </button>
-            <span aria-hidden="true">·</span>
-            <button
-              type="button"
-              onClick={handleToggleExclusion}
-              disabled={excludeMutation.isPending}
-              className={
-                header.is_excluded
-                  ? 'rounded px-2 py-1 hover:bg-muted hover:text-foreground transition-colors'
-                  : 'rounded px-2 py-1 hover:bg-destructive/10 hover:text-destructive transition-colors'
-              }
-            >
-              {header.is_excluded ? `↩ ${t.reactivate}` : `${t.markIrrelevant} ⊘`}
-            </button>
           </div>
 
           {/* Perf + rang row */}

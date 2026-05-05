@@ -566,6 +566,10 @@ type MatchNeighbors struct {
 	NextMatchID     *string `json:"next_match_id"`
 	CurrentIndex    int     `json:"current_index"`
 	TotalMatches    int     `json:"total_matches"`
+	// AppliedFilters : echo des filtres effectivement appliqués (Phase 2b).
+	// Permet au front de reconstruire un contextLabel localisé sans dupliquer
+	// la résolution côté backend. Nil si aucun filtre n'a été passé.
+	AppliedFilters *MatchFilterSpec `json:"applied_filters,omitempty"`
 }
 
 // SkillRankRaw : données brutes de Q22 (match_skill_rank — player DB).

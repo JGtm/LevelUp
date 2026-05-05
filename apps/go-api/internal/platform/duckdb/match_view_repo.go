@@ -4,12 +4,14 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // MatchViewRepo implémente port.MatchViewRepository.
@@ -494,6 +496,53 @@ func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID str
 	var currentIdx, total int
 	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
 		// Match introuvable dans le scope → voisins vides
+		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+	}
+	return &domain.MatchNeighbors{
+		PreviousMatchID: prevID,
+		NextMatchID:     nextID,
+		CurrentIndex:    currentIdx,
+		TotalMatches:    total,
+	}, nil
+}
+
+// GetMatchNeighborsFiltered : variante paramétrable Phase 2b. spec=nil ou
+// vide → délègue à GetMatchNeighbors (chronologie globale).
+//
+// Le fragment SQL est produit par analysis.BuildNeighborsWhereClause avec
+// halo_infinite.PairNamePrefixesForCategory injecté. Pour les titres futurs
+// sans la notion ModeCategory, l'adapter dégradera silencieusement.
+func (r *MatchViewRepo) GetMatchNeighborsFiltered(
+	ctx context.Context,
+	xuid, matchID string,
+	spec *domain.MatchFilterSpec,
+) (*domain.MatchNeighbors, error) {
+	if spec.IsEmpty() {
+		return r.GetMatchNeighbors(ctx, xuid, matchID)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	clauseRes := analysis.BuildNeighborsWhereClause(spec, halo_infinite.PairNamePrefixesForCategory)
+
+	if len(clauseRes.IgnoredFilters) > 0 {
+		slog.WarnContext(ctx, "neighbors: filters ignored",
+			"match_id", matchID, "ignored", clauseRes.IgnoredFilters)
+	}
+
+	query := strings.Replace(Q25NeighborMatchesTemplate, "/*EXTRA_WHERE*/", clauseRes.SQL, 1)
+	args := make([]any, 0, len(clauseRes.Args)+2)
+	args = append(args, xuid)
+	args = append(args, clauseRes.Args...)
+	args = append(args, matchID)
+
+	row := r.pdb.ReadDB().QueryRow(ctx, query, args...)
+	var nextID, prevID *string
+	var currentIdx, total int
+	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
+		// Match hors scope filtré → voisins vides (cas normal : utilisateur
+		// arrivé sur un match qui ne matche plus les filtres).
 		return &domain.MatchNeighbors{TotalMatches: 0}, nil
 	}
 	return &domain.MatchNeighbors{

@@ -277,6 +277,38 @@ SELECT
 FROM current c
 LIMIT 1`
 
+// Q25NeighborMatchesTemplate : version paramétrable de Q25 pour Phase 2b
+// (filtres MatchFilterSpec). Le marqueur `/*EXTRA_WHERE*/` est remplacé par
+// le fragment SQL produit par analysis.BuildNeighborsWhereClause (vide ou
+// commençant par ' AND ').
+//
+// Paramètres positionnels : xuid, [filtres...], match_id.
+// L'ordre est important — le repo concatène les args dans cet ordre.
+const Q25NeighborMatchesTemplate = `
+WITH ordered AS (
+    SELECT
+        mr.match_id,
+        COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS start_time,
+        ROW_NUMBER() OVER (
+            ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
+        ) - 1 AS idx,
+        COUNT(*) OVER () AS total
+    FROM shared.match_registry mr
+    JOIN shared.match_participants mp
+        ON mr.match_id = mp.match_id AND mp.xuid = ?
+    WHERE TRUE /*EXTRA_WHERE*/
+),
+current AS (
+    SELECT idx, total FROM ordered WHERE match_id = ?
+)
+SELECT
+    (SELECT match_id FROM ordered WHERE idx = c.idx - 1) AS next_match_id,
+    (SELECT match_id FROM ordered WHERE idx = c.idx + 1) AS prev_match_id,
+    c.idx    AS current_index,
+    c.total  AS total_matches
+FROM current c
+LIMIT 1`
+
 // Q22 : Rang compétitif du joueur pour ce match (match_skill_rank — player DB).
 // Paramètre : ? = match_id.
 const Q22MatchSkillRank = `

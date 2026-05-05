@@ -1,5 +1,18 @@
 # Thought Log
 
+## [2026-05-05] MatchView header — pill playlist + boutons d'action redesign
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** :
+1. **Pill playlist déplacée** : de la "outcome row" vers une ligne `flex items-center gap-2` inline avec la date, à droite du `start_time_label`.
+2. **Boutons d'action redesignés** : l'ancienne "Actions bar" (texte inline avec `·` séparateur) remplacée par 2 vrais boutons `Button variant="outline" size="sm"` positionnés en haut à droite du titre via `flex justify-between`. Labels courts ("Copier ID" / "Exclure" / "Réactiver") + tooltips enrichis dans l'attribut `title`. Icônes SVG inline (clipboard, check, ban, undo).
+3. **i18n** : 5 nouvelles clés ajoutées (`copyShort`, `copyTooltip`, `excludeShort`, `excludeTooltip`, `reactivateTooltip`) — FR et EN.
+
+**Résultats** : 11/11 tests MatchHeader verts, TypeScript OK.
+
+**Prochaine étape** : suite des tickets UI header ou merge vers main.
+
 ## [2026-05-05] MatchView header rework — Phase 2a livrée (router state + sessionStorage)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`, 2 commits Phase 2a (`e5c6ee8a` + commit tests).
