@@ -1,0 +1,122 @@
+import { useState, useMemo } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import type { AssociatedMediaItem, MediaItemRow } from '@/lib/api/types'
+import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
+import { useToggleMediaLike } from '@/features/media/queries'
+import type { MatchViewLocale } from './i18n'
+import { MATCH_VIEW_TEXT } from './i18n'
+
+function CameraOffIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-8 w-8 text-muted-foreground"
+      aria-hidden="true"
+    >
+      <path d="M2 2l20 20" />
+      <path d="M7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16" />
+      <path d="M9.5 4h5l2 3h3" />
+      <path d="M14.121 15.121A3 3 0 1 1 9.88 10.88" />
+    </svg>
+  )
+}
+
+function toMediaItemRow(item: AssociatedMediaItem, matchId: string): MediaItemRow {
+  return {
+    basename: item.file_name,
+    file_path: item.file_path,
+    kind: item.duration_seconds !== null ? 'clip' : 'screenshot',
+    thumbnail_path: item.thumbnail_url,
+    match_id: matchId,
+    capture_end_utc: item.capture_time,
+    match_start_time: null,
+    section: 'mine',
+    owner_gamertag: null,
+    map_name: null,
+    mode_name: null,
+    liked: item.liked,
+    like_count: 0,
+  }
+}
+
+interface MatchMediaTabProps {
+  items: AssociatedMediaItem[]
+  playerSlug: string
+  matchId: string
+  locale: MatchViewLocale
+}
+
+export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMediaTabProps) {
+  const t = MATCH_VIEW_TEXT[locale]
+  const initialRows = useMemo(
+    () => items.map((item) => toMediaItemRow(item, matchId)),
+    [items, matchId],
+  )
+  const [mediaRows, setMediaRows] = useState<MediaItemRow[]>(initialRows)
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+  const toggleLike = useToggleMediaLike(playerSlug)
+
+  function handleToggleLike(item: MediaItemRow) {
+    const nextLiked = !item.liked
+    const delta = nextLiked ? 1 : -1
+    setMediaRows((prev) =>
+      prev.map((r) =>
+        r.file_path === item.file_path
+          ? { ...r, liked: nextLiked, like_count: Math.max(0, r.like_count + delta) }
+          : r,
+      ),
+    )
+    toggleLike.mutate({ file_path: item.file_path, liked: nextLiked })
+  }
+
+  if (mediaRows.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex min-h-72 flex-col items-center justify-center gap-5 px-8 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+              <CameraOffIcon />
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-semibold text-foreground">{t.mediaNoCaptures}</p>
+              <p className="mx-auto max-w-xs text-sm text-muted-foreground">
+                {t.mediaNoCapturesDesc}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <>
+      {lightboxIdx !== null && (
+        <MediaLightbox
+          items={mediaRows}
+          onToggleLike={handleToggleLike}
+          startIndex={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+          likeDisabled={toggleLike.isPending}
+        />
+      )}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {mediaRows.map((item, idx) => (
+          <MediaThumbnailCard
+            key={item.file_path}
+            item={item}
+            onToggleLike={handleToggleLike}
+            onOpen={() => setLightboxIdx(idx)}
+            likeDisabled={toggleLike.isPending}
+          />
+        ))}
+      </div>
+    </>
+  )
+}

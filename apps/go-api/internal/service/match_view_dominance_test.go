@@ -336,14 +336,14 @@ func TestBuildRankBlock_IconURL(t *testing.T) {
 			want:     "/onyx.png",
 		},
 		{
-			name: "LUSR (custom) → pas de badge officiel",
+			name: "LUSR → même badge que CSR (mêmes fichiers static)",
 			raw: &domain.SkillRankRaw{
 				RatingType: "LUSR",
 				Tier:       &tDiamond,
 				SubTier:    &subTier3,
 			},
 			assetURL: asset,
-			want:     "",
+			want:     "/csr/Diamond:3",
 		},
 		{
 			name: "adapter nil → IconURL vide (dégradation)",
@@ -373,6 +373,74 @@ func TestBuildRankBlock_IconURL(t *testing.T) {
 			rank := buildRankBlock(tc.raw, tc.assetURL)
 			if rank.IconURL != tc.want {
 				t.Errorf("IconURL = %q, want %q", rank.IconURL, tc.want)
+			}
+		})
+	}
+}
+
+// TestBuildRankBlock_ProgressPct vérifie le calcul de la position dans le tier.
+func TestBuildRankBlock_ProgressPct(t *testing.T) {
+	t.Parallel()
+
+	ptr := func(f float64) *float64 { return &f }
+	tierGold := "Gold"
+	tierOnyx := "Onyx"
+	sub3 := 3
+
+	cases := []struct {
+		name    string
+		raw     *domain.SkillRankRaw
+		wantPct *float64 // nil = attendu nil
+	}{
+		{
+			name: "Gold 3 — rating 1112 → 12/50 = 0.24",
+			raw:  &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1112)},
+			wantPct: ptr(12.0 / 50.0),
+		},
+		{
+			name: "début de tier exact — rating 1100 → 0/50 = 0.0",
+			raw:  &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1100)},
+			wantPct: ptr(0.0),
+		},
+		{
+			name: "fin de tier — rating 1149 → 49/50 = 0.98",
+			raw:  &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1149)},
+			wantPct: ptr(49.0 / 50.0),
+		},
+		{
+			name:    "Onyx → nil (pas de tier suivant)",
+			raw:     &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierOnyx, RatingValue: ptr(1600)},
+			wantPct: nil,
+		},
+		{
+			name:    "RatingValue nil → nil",
+			raw:     &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3},
+			wantPct: nil,
+		},
+		{
+			name:    "Tier nil → nil",
+			raw:     &domain.SkillRankRaw{RatingType: "CSR", RatingValue: ptr(1112)},
+			wantPct: nil,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rank := buildRankBlock(tc.raw, nil)
+			if tc.wantPct == nil {
+				if rank.ProgressPct != nil {
+					t.Errorf("ProgressPct = %v, want nil", *rank.ProgressPct)
+				}
+				return
+			}
+			if rank.ProgressPct == nil {
+				t.Fatalf("ProgressPct = nil, want %v", *tc.wantPct)
+			}
+			const epsilon = 1e-9
+			if diff := *rank.ProgressPct - *tc.wantPct; diff < -epsilon || diff > epsilon {
+				t.Errorf("ProgressPct = %.10f, want %.10f", *rank.ProgressPct, *tc.wantPct)
 			}
 		})
 	}

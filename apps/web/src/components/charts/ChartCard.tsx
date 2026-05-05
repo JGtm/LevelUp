@@ -40,8 +40,8 @@ export interface ChartSeries<T = unknown> {
 }
 
 export interface ChartCardProps<T = unknown> {
-  /** Titre i18n-resolu en amont (le ChartCard n'i18n pas lui-meme). */
-  title?: string
+  /** Titre i18n-resolu en amont (le ChartCard n'i18n pas lui-meme). Accepte un ReactNode pour injecter un InfoTooltip à côté du titre. */
+  title?: ReactNode
   /** Donnees du backend, projetees en serie(s). */
   series: ChartSeries<T>[]
   /** True pendant le chargement initial des donnees. */

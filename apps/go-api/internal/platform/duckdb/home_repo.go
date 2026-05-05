@@ -448,9 +448,9 @@ func homeMedalIconURL(medalID int64) string {
 func normalizeHomeSkillPeakBadgeParts(tier string, tierLabel string, subTier int) (string, int) {
 	normalizedTier := canonicalHomeSkillTierName(tier)
 	derivedSubTier := subTier
-	if normalizedTier == "" && strings.TrimSpace(tierLabel) != "" {
+	if strings.TrimSpace(tierLabel) != "" {
 		parts := strings.Fields(strings.TrimSpace(tierLabel))
-		if len(parts) > 0 {
+		if normalizedTier == "" && len(parts) > 0 {
 			normalizedTier = canonicalHomeSkillTierName(parts[0])
 		}
 		if derivedSubTier <= 0 && len(parts) > 1 {
@@ -989,6 +989,7 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 			Count:       rr.count,
 			Description: meta.description,
 			ImageURL:    homeMedalIconURL(rr.medalID),
+			Difficulty:  meta.difficulty,
 		})
 	}
 	return result, nil
@@ -998,6 +999,7 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 type medalLabel struct {
 	label       string
 	description string
+	difficulty  string
 }
 
 // resolveMedalLabels rÃ©sout les labels de mÃ©dailles avec la chaÃ®ne BCP-47 complÃ¨te :
@@ -1025,7 +1027,8 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64
 		            NULLIF(TRIM(md.description_fr),''),
 		            NULLIF(TRIM(md.description_en),''),
 		            ''
-		        ) AS description
+		        ) AS description,
+		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
 		 FROM medal_definitions md
 		 LEFT JOIN medal_translations mt_fr
 		     ON mt_fr.medal_name_id = md.medal_name_id AND mt_fr.lang = 'fr-FR'
@@ -1044,9 +1047,9 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64
 	defer mRows.Close()
 	for mRows.Next() {
 		var id int64
-		var name, desc string
-		if err := mRows.Scan(&id, &name, &desc); err == nil && name != "" {
-			result[id] = medalLabel{label: name, description: desc}
+		var name, desc, diff string
+		if err := mRows.Scan(&id, &name, &desc, &diff); err == nil && name != "" {
+			result[id] = medalLabel{label: name, description: desc, difficulty: diff}
 		}
 	}
 	return result

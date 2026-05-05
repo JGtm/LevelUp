@@ -1,13 +1,15 @@
 /**
  * MatchStatCards — composants KPI pour le Match View.
  *
- * C3 : StatExpectedCard — réel vs attendu (K/D/A)
- * C4 : MatchRankBadge   — delta rang CSR/LUSR après match
- * C5 : KdIndicatorCard  — K/D vs nemesis principal
+ * C3 : StatExpectedCard     — réel vs attendu (K/D/A)
+ * C4 : MatchRankBadge       — delta rang CSR/LUSR après match
+ * C5 : KdIndicatorCard      — K/D vs nemesis principal
+ * C6 : MatchVsStatCard      — générique "X vs Y + delta" (MMR, frags, morts, vie)
+ * C7 : MatchSummaryCardsSection — grille 4 cartes onglet Résumé
  *
- * NATIVE_COMPONENTS items C3, C4, C5.
+ * NATIVE_COMPONENTS items C3, C4, C5, C6, C7.
  */
-import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow } from '@/lib/api/types'
+import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKpis } from '@/lib/api/types'
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -177,6 +179,141 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
       <p className="text-xs text-muted-foreground mt-0.5">
         {nemesis.i_killed} kills · {nemesis.killed_me} morts
       </p>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// C6 — MatchVsStatCard (générique "X vs Y + delta")
+// ---------------------------------------------------------------------------
+
+interface MatchVsStatCardProps {
+  label: string
+  /** Valeur principale (gauche ou seule) */
+  primary: number | string | null
+  /** Valeur secondaire (droite, optionnelle) */
+  secondary?: number | string | null
+  /** Libellé sous la valeur primaire */
+  primaryLabel?: string
+  /** Libellé sous la valeur secondaire */
+  secondaryLabel?: string
+  /** Delta affiché en dessous */
+  delta?: number | null
+  /** Si true, un delta négatif est favorable (morts, durée de vie basse) */
+  lowerIsBetter?: boolean
+  /** Formater la valeur (ex. décimales) */
+  precision?: number
+}
+
+export function MatchVsStatCard({
+  label,
+  primary,
+  secondary,
+  primaryLabel,
+  secondaryLabel,
+  delta,
+  lowerIsBetter = false,
+  precision = 0,
+}: MatchVsStatCardProps) {
+  const fmt = (v: number | string | null | undefined) => {
+    if (v == null) return '—'
+    if (typeof v === 'string') return v
+    return precision > 0 ? v.toFixed(precision) : Math.round(v).toString()
+  }
+
+  const isFavorable =
+    delta == null ? null : lowerIsBetter ? delta < 0 : delta > 0
+
+  const deltaStyle =
+    isFavorable === null
+      ? undefined
+      : { color: tokenCssVar(isFavorable ? 'divergent-pos' : 'divergent-neg') }
+
+  return (
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{label}</p>
+      <div className="flex items-baseline gap-2">
+        <div>
+          <span className="text-2xl font-bold text-foreground leading-none">{fmt(primary)}</span>
+          {primaryLabel && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">{primaryLabel}</p>
+          )}
+        </div>
+        {secondary != null && (
+          <>
+            <span className="text-muted-foreground text-sm font-light">vs</span>
+            <div>
+              <span className="text-2xl font-bold text-foreground leading-none">{fmt(secondary)}</span>
+              {secondaryLabel && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{secondaryLabel}</p>
+              )}
+            </div>
+          </>
+        )}
+        {delta != null && (
+          <span className="ml-auto text-sm font-semibold" style={deltaStyle}>
+            {delta > 0 ? '+' : ''}{fmt(delta)}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// C7 — MatchSummaryCardsSection (grille 4 cartes onglet Résumé)
+// ---------------------------------------------------------------------------
+
+interface MatchSummaryCardsSectionProps {
+  kpis: MatchSummaryKpis
+  expectedStats: MatchExpectedStats
+}
+
+export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCardsSectionProps) {
+  const { expected_kills, expected_deaths } = expectedStats
+
+  const killsDelta =
+    kpis.kills != null && expected_kills != null ? kpis.kills - expected_kills : null
+
+  const deathsDelta =
+    kpis.deaths != null && expected_deaths != null ? kpis.deaths - expected_deaths : null
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <MatchVsStatCard
+        label="MMR équipe vs adverse"
+        primary={kpis.team_mmr ?? null}
+        secondary={kpis.enemy_mmr ?? null}
+        primaryLabel="allié"
+        secondaryLabel="adverse"
+        delta={kpis.delta_mmr ?? null}
+        lowerIsBetter={false}
+        precision={0}
+      />
+      <MatchVsStatCard
+        label="Frags vs attendus"
+        primary={kpis.kills}
+        secondary={expected_kills != null ? Math.round(expected_kills) : null}
+        primaryLabel="réel"
+        secondaryLabel="attendu"
+        delta={killsDelta}
+        lowerIsBetter={false}
+        precision={0}
+      />
+      <MatchVsStatCard
+        label="Morts vs attendues"
+        primary={kpis.deaths}
+        secondary={expected_deaths != null ? Math.round(expected_deaths) : null}
+        primaryLabel="réel"
+        secondaryLabel="attendu"
+        delta={deathsDelta}
+        lowerIsBetter={true}
+        precision={0}
+      />
+      <MatchVsStatCard
+        label="Durée de vie moy."
+        primary={kpis.average_life ?? null}
+      />
     </div>
   )
 }

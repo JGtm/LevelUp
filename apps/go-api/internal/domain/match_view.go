@@ -82,6 +82,9 @@ type MatchViewRank struct {
 	NumericVal *float64 `json:"numeric_value,omitempty"`
 	DeltaValue *float64 `json:"delta_value,omitempty"`
 	IconURL    string   `json:"icon_url,omitempty"`
+	// ProgressPct : position dans le sous-tier courant (0.0–1.0).
+	// Nil pour Onyx (pas de tier suivant) ou si rating_value absent.
+	ProgressPct *float64 `json:"progress_pct,omitempty"`
 }
 
 // MatchViewDominanceBadge : badge narratif typé exposé dans le header.
@@ -114,6 +117,9 @@ type MatchSummaryKpis struct {
 	PerfectKills    *int     `json:"perfect_kills,omitempty"`
 	Accuracy        *float64 `json:"accuracy,omitempty"`
 	PersonalScore   *int     `json:"personal_score,omitempty"`
+	TeamMMR         *float64 `json:"team_mmr,omitempty"`
+	EnemyMMR        *float64 `json:"enemy_mmr,omitempty"`
+	DeltaMMR        *float64 `json:"delta_mmr,omitempty"`
 }
 
 // MatchPersonalResult : résultat personnel du joueur.
@@ -134,12 +140,28 @@ type MatchExpectedStats struct {
 	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
 	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
 	// Moyennes historiques sur le mode (HistAvg)
-	HasHistAvg       bool     `json:"has_hist_avg"`
-	HistAvgKills     *float64 `json:"hist_avg_kills,omitempty"`
-	HistAvgDeaths    *float64 `json:"hist_avg_deaths,omitempty"`
-	HistAvgAssists   *float64 `json:"hist_avg_assists,omitempty"`
-	HistMatchCount   int      `json:"hist_match_count,omitempty"`
-	HistModeCategory string   `json:"hist_mode_category,omitempty"`
+	HasHistAvg              bool     `json:"has_hist_avg"`
+	HistAvgKills            *float64 `json:"hist_avg_kills,omitempty"`
+	HistAvgDeaths           *float64 `json:"hist_avg_deaths,omitempty"`
+	HistAvgAssists          *float64 `json:"hist_avg_assists,omitempty"`
+	HistAvgSpree            *float64 `json:"hist_avg_spree,omitempty"`
+	HistAvgHeadshotKills    *float64 `json:"hist_avg_headshot_kills,omitempty"`
+	HistAvgPerfectKills     *float64 `json:"hist_avg_perfect_kills,omitempty"`
+	HistMatchCount          int      `json:"hist_match_count,omitempty"`
+	HistModeCategory        string   `json:"hist_mode_category,omitempty"`
+}
+
+// MatchHistAvgRow : ligne brute de Q29 (historique récent pour moyennes).
+type MatchHistAvgRow struct {
+	Kills           int
+	Deaths          int
+	Assists         int
+	HeadshotKills   *int
+	MaxKillingSpree *int
+	PerfectKills    int
+	PairName        string
+	IsFirefight     bool
+	IsRanked        bool
 }
 
 // MatchMedal : une médaille gagnée dans le match.
@@ -466,6 +488,10 @@ type PlayerMatchStatsRaw struct {
 	ShotsHit          *int
 	DamageDealt       *float64
 	DamageTaken       *float64
+	TeamMMR           *float64
+	EnemyMMR          *float64
+	HeadshotKills     *int
+	MaxKillingSpree   *int
 }
 
 // ScoreboardRaw : données brutes de Q12 (une ligne du scoreboard).

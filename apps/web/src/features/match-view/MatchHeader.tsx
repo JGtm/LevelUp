@@ -206,6 +206,52 @@ export const MatchNavigation = MatchNavigationBar
 // Header card — image + outcome + actions + perf/rang (mock C)
 // ────────────────────────────────────────────────────────────────────────────
 
+function formatDuration(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return s > 0 ? `${m}m ${s}s` : `${m}m`
+}
+
+const TIER_ORDER_EN = [
+  'Bronze 1', 'Bronze 2', 'Bronze 3', 'Bronze 4', 'Bronze 5', 'Bronze 6',
+  'Silver 1', 'Silver 2', 'Silver 3', 'Silver 4', 'Silver 5', 'Silver 6',
+  'Gold 1', 'Gold 2', 'Gold 3', 'Gold 4', 'Gold 5', 'Gold 6',
+  'Platinum 1', 'Platinum 2', 'Platinum 3', 'Platinum 4', 'Platinum 5', 'Platinum 6',
+  'Diamond 1', 'Diamond 2', 'Diamond 3', 'Diamond 4', 'Diamond 5', 'Diamond 6',
+  'Onyx',
+] as const
+
+// Chiffres romains I–VI dans l'ordre décroissant de longueur pour éviter
+// qu'un préfixe court matche avant le suffixe complet (ex: " V" avant " VI").
+const ROMAN_NEXT: Record<string, string> = {
+  'VI': '',   // tier boundary — pas de "sous-tier 7"
+  'V': 'VI', 'IV': 'V', 'III': 'IV', 'II': 'III', 'I': 'II',
+}
+
+function nextTierLabel(current: string | null | undefined): string | null {
+  if (!current) return null
+
+  // Lookup direct sur les labels anglais (ex: "Gold 3")
+  const idx = TIER_ORDER_EN.indexOf(current as typeof TIER_ORDER_EN[number])
+  if (idx !== -1) return idx < TIER_ORDER_EN.length - 1 ? TIER_ORDER_EN[idx + 1] : null
+
+  // Fallback générique : "[nom] [chiffre romain I-VI]" (ex: "Or III" → "Or IV")
+  // Vérifié du plus long au plus court pour éviter les faux-positifs.
+  for (const rom of ['VI', 'V', 'IV', 'III', 'II', 'I'] as const) {
+    if (current.endsWith(' ' + rom)) {
+      const next = ROMAN_NEXT[rom]
+      if (!next) return null  // sub-tier VI : tier boundary, nom inconnu
+      return current.slice(0, -(rom.length + 1)) + ' ' + next
+    }
+  }
+
+  // Fallback digit "[nom] [1-5]" (ex: "Gold 3" non anglais canonique)
+  const m = current.match(/^(.+)\s+([1-5])$/)
+  if (m) return `${m[1]} ${parseInt(m[2]) + 1}`
+
+  return null
+}
+
 interface MatchHeaderCardProps {
   header: MatchViewHeaderData
   rank: MatchViewRank
@@ -239,6 +285,36 @@ export function MatchHeaderCard({
     rank.delta_value != null
       ? tokenCssVar(skillDeltaScale(rank.delta_value))
       : 'inherit'
+
+  // Barre composite de progression dans le tier.
+  // tierSize = 50 pts (même constante que le backend buildRankBlock).
+  const TIER_SIZE = 50
+  const rankDeltaPct = rank.delta_value != null ? rank.delta_value / TIER_SIZE : 0
+  const rankCurrentFill = rank.progress_pct ?? null
+  // Position avant ce match (clampée à [0, 1] si le delta a changé de tier)
+  const rankBeforeFill =
+    rankCurrentFill != null
+      ? Math.max(0, Math.min(1, rankCurrentFill - rankDeltaPct))
+      : null
+  // Portion stable = la plus petite des deux positions
+  const rankBaseFill = rankCurrentFill != null && rankBeforeFill != null
+    ? Math.min(rankCurrentFill, rankBeforeFill)
+    : null
+  // Segment delta : début et largeur en %
+  const rankDeltaStart =
+    rankCurrentFill != null && rankBeforeFill != null
+      ? Math.min(rankCurrentFill, rankBeforeFill) * 100
+      : 0
+  const rankDeltaWidth =
+    rankCurrentFill != null && rankBeforeFill != null
+      ? Math.abs(rankCurrentFill - rankBeforeFill) * 100
+      : 0
+  const rankDeltaColor =
+    rankDeltaPct > 0
+      ? tokenCssVar('divergent-pos')
+      : rankDeltaPct < 0
+        ? tokenCssVar('divergent-neg')
+        : tokenCssVar('divergent-neutral')
 
   function handleCopyId() {
     void navigator.clipboard.writeText(matchId).then(() => {
@@ -311,12 +387,23 @@ export function MatchHeaderCard({
               <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                 {matchTitle}
               </h1>
-              {(header.start_time_label || header.playlist_label) && (
+              {(header.start_time_label || header.playlist_label || header.playable_duration_seconds) && (
                 <div className="mt-1 flex items-center gap-2">
                   {header.start_time_label && (
                     <p className="text-sm text-muted-foreground">
                       {header.start_time_label}
                     </p>
+                  )}
+                  {header.playable_duration_seconds != null && (
+                    <>
+                      <span className="text-muted-foreground/50 select-none" aria-hidden="true">·</span>
+                      <span
+                        className="text-sm tabular-nums text-muted-foreground"
+                        aria-label={`${t.duration} : ${formatDuration(header.playable_duration_seconds)}`}
+                      >
+                        {formatDuration(header.playable_duration_seconds)}
+                      </span>
+                    </>
                   )}
                   {header.playlist_label && (
                     <Badge variant="outline" className="text-xs">
@@ -381,7 +468,7 @@ export function MatchHeaderCard({
             </span>
             {header.score_label && (
               <>
-                <span className="text-2xl font-bold select-none" style={{ color: outcomeColor }}>
+                <span className="text-2xl font-bold select-none text-muted-foreground">
                   ·
                 </span>
                 <span
@@ -415,7 +502,7 @@ export function MatchHeaderCard({
             )}
 
             {rank.rating_type !== 'none' && (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-1 items-center gap-3 min-w-0">
                 {rank.icon_url && (
                   <img
                     src={rank.icon_url}
@@ -424,7 +511,7 @@ export function MatchHeaderCard({
                     loading="lazy"
                   />
                 )}
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-0.5 shrink-0">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {t.rank}
                   </span>
@@ -451,6 +538,38 @@ export function MatchHeaderCard({
                     )}
                   </div>
                 </div>
+
+                {rankCurrentFill != null && rankBaseFill != null && (
+                  // Conteneur relatif — les labels sont en absolute top-full pour
+                  // ne pas gonfler la hauteur et décentrer la barre.
+                  <div className="relative flex flex-1 items-center min-w-[80px]">
+                    <div className="relative h-2 w-full overflow-hidden rounded-sm bg-muted">
+                      {/* Portion stable (position avant le match) */}
+                      <div
+                        className="absolute inset-y-0 left-0"
+                        style={{
+                          width: `${(rankBaseFill * 100).toFixed(1)}%`,
+                          backgroundColor: tokenCssVar('divergent-neutral'),
+                        }}
+                      />
+                      {/* Segment delta (gain ou perte ce match) */}
+                      {rankDeltaWidth > 0.1 && (
+                        <div
+                          className="absolute inset-y-0"
+                          style={{
+                            left: `${rankDeltaStart.toFixed(1)}%`,
+                            width: `${rankDeltaWidth.toFixed(1)}%`,
+                            backgroundColor: rankDeltaColor,
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div className="absolute inset-x-0 top-full mt-1 flex justify-between text-[10px] text-muted-foreground tabular-nums">
+                      <span>{rank.tier_label ?? ''}</span>
+                      <span>{nextTierLabel(rank.tier_label)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

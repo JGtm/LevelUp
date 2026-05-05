@@ -2,7 +2,6 @@
  * MatchViewPage — détail d'un match (5 onglets).
  *
  * Refonte 2026-05-02 :
- *  - Bandeau "Faits marquants" (badges d'impact + timing) au-dessus des onglets.
  *  - Onglet Combat : chart match_view.09 (K/D cumulés) avec annotation badges.
  *  - Autres onglets : placeholders en attendant la refonte.
  */
@@ -13,15 +12,35 @@ import { Button } from '@/components/ui/button'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { useMatchView } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
-import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
+import { MatchSummaryCardsSection } from './MatchStatCards'
+import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
+import { MatchWeaponPieChart, MatchWeaponTable } from './MatchWeaponCharts'
+import { MatchMediaTab } from './MatchMediaTab'
 import { kdTimelineSeries } from './_chartSeries'
 import { buildMatchHeadingStr } from './format'
+import { MATCH_VIEW_TEXT, type MatchViewText } from './i18n'
+import type { MatchWeaponKill, MatchScoreboardRow } from '@/lib/api/types'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { useAppShellStore } from '@/stores/appShellStore'
+
+function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText): MatchWeaponKill[] {
+  const total = me?.kills ?? 0
+  if (!total) return []
+  const headshots = me?.headshot_kills ?? 0
+  const power = me?.power_weapon_kills ?? 0
+  const melee = me?.melee_kills ?? 0
+  const other = Math.max(0, total - headshots - power - melee)
+  return [
+    { weapon_id: 1001, weapon_label: t.labelHeadshots, effective_weapon_id: null, kill_count: headshots },
+    { weapon_id: 1002, weapon_label: t.labelPowerWeapon, effective_weapon_id: null, kill_count: power },
+    { weapon_id: 1003, weapon_label: t.labelMelee, effective_weapon_id: null, kill_count: melee },
+    { weapon_id: 1004, weapon_label: t.labelOtherKills, effective_weapon_id: null, kill_count: other },
+  ].filter((w) => w.kill_count > 0)
+}
 
 type TabId = 'summary' | 'combat' | 'team' | 'media' | 'citations'
 
@@ -61,7 +80,8 @@ export function MatchViewPage() {
     )
   }
 
-  const { header, rank, combat_tab, team_tab } = data
+  const { header, rank, summary_tab, combat_tab, team_tab, media_tab } = data
+  const t = MATCH_VIEW_TEXT[locale === 'en' ? 'en' : 'fr']
   const matchLabel = buildMatchHeadingStr(header.map_ui, header.mode_ui, locale)
   // Le breadcrumb ajoute la date pour distinguer plusieurs matchs sur la même map/mode
   const breadcrumbLabel = header.start_time_label
@@ -69,7 +89,12 @@ export function MatchViewPage() {
     : matchLabel
   const labelOf = (key: string, fallback: string) => fallback ?? key
   const kdSeries = kdTimelineSeries(combat_tab.kd_timeline, labelOf)
-  const meXUID = team_tab.scoreboard.find((r) => r.is_me)?.xuid ?? null
+  const meRow = team_tab.scoreboard.find((r) => r.is_me)
+  const meXUID = meRow?.xuid ?? null
+  const weaponData: MatchWeaponKill[] =
+    combat_tab.weapon_kills.length > 0
+      ? combat_tab.weapon_kills
+      : killTypeFallback(meRow, t)
 
   return (
     <div className="flex flex-col">
@@ -95,33 +120,54 @@ export function MatchViewPage() {
         locale={locale}
       />
 
-      {/* Faits marquants — badges d'impact + horodatage */}
-      <MatchImpactBadgesBar
-        badges={combat_tab.impact_badges}
-        scoreboard={team_tab.scoreboard}
-      />
-
-      {/* Onglets */}
-      <div className="flex gap-0 border-b bg-background px-6">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-none border-b-2 px-4 py-3 text-sm ${
-              activeTab === tab.id
-                ? 'border-primary font-semibold text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </Button>
-        ))}
+      {/* Onglets — mx-6 aligne la bordure sur le header card (même inset px-6) */}
+      <div className="mx-6 mt-4 border-b border-border">
+        <div className="flex gap-0">
+          {TABS.map((tab) => (
+            <Button
+              key={tab.id}
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-none border-b-2 px-4 py-3 text-sm ${
+                activeTab === tab.id
+                  ? 'border-primary font-semibold text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       <div className="p-6 space-y-6">
-        {activeTab === 'combat' ? (
+        {activeTab === 'summary' ? (
+          <div className="space-y-4">
+            <MatchSummaryCardsSection kpis={summary_tab.kpis} expectedStats={summary_tab.expected_stats} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <MatchKdaExpectedChart
+                kpis={summary_tab.kpis}
+                expectedStats={summary_tab.expected_stats}
+                t={t}
+              />
+              <MatchSpreeChart
+                kpis={summary_tab.kpis}
+                expectedStats={summary_tab.expected_stats}
+                t={t}
+              />
+              <MatchSummaryRadarChart
+                radar={data.radar}
+                meXUID={meXUID}
+                t={t}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <MatchWeaponPieChart weaponKills={weaponData} t={t} />
+              <MatchWeaponTable weaponKills={weaponData} t={t} />
+            </div>
+          </div>
+        ) : activeTab === 'combat' ? (
           <>
             {combat_tab.kd_timeline.length > 1 ? (
               <Card>
@@ -166,6 +212,13 @@ export function MatchViewPage() {
 
             <MatchAntagonistChart pairs={combat_tab.killer_victim} />
           </>
+        ) : activeTab === 'media' ? (
+          <MatchMediaTab
+            items={media_tab.media_items}
+            playerSlug={playerSlug}
+            matchId={matchId}
+            locale={locale === 'en' ? 'en' : 'fr'}
+          />
         ) : (
           <Card>
             <CardContent className="py-12 text-center">

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -213,7 +214,6 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		// tough_enemy). Optionnel — degradation gracieuse vers badge ordinal
 		// seul si la repo retourne nil.
 		encounterStats []domain.EncounterStatsRaw
-		weapons        []domain.WeaponKillRaw
 		kvPairs        []domain.KVPairRaw
 		skillRank      *domain.SkillRankRaw
 		encounters     []domain.EncounterRaw
@@ -222,6 +222,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		bulkMedals     []domain.BulkMedalRaw
 		bulkWeapons    []domain.BulkWeaponKillRaw
 		matchCitations []domain.CitationMatchViewRow
+		histRows       []domain.MatchHistAvgRow
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -295,14 +296,6 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	// bas, après `g.Wait()`.
 	g.Go(func() error {
 		var e error
-		weapons, e = s.repo.GetMatchWeaponKills(gctx, s.xuid, matchID)
-		if e != nil {
-			slog.Warn("match_view: weapons indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		var e error
 		kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
 		if e != nil {
 			slog.Warn("match_view: kv_pairs indisponibles", "match_id", matchID, "err", e)
@@ -367,6 +360,14 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		}
 		return nil
 	})
+	g.Go(func() error {
+		var e error
+		histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: hist_avg indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
 	if s.citationsRepo != nil {
 		g.Go(func() error {
 			var e error
@@ -402,8 +403,8 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 
 	header := buildMatchHeader(ctx, matchID, meta, stats, enrich, scoreboard, s.assetURL, isFavorite)
 	rank := buildRankBlock(skillRank, s.assetURL)
-	summary := buildSummaryTabFull(stats, medals, expected)
-	combat := buildCombatTabFull(matchID, weapons, events, canonicalEvents, kvPairs, scoreboard, s.xuid, durationMS)
+	summary := buildSummaryTabFull(stats, medals, expected, histRows, meta)
+	combat := buildCombatTabFull(matchID, bulkWeapons, events, canonicalEvents, kvPairs, scoreboard, s.xuid, durationMS)
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid)
 	mediaTab := buildMediaTab(media)
 
@@ -686,18 +687,45 @@ func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter
 	rank.NumericVal = sr.RatingValue
 	rank.DeltaValue = sr.RatingDelta
 
-	// Badge image — uniquement pour CSR (LUSR n'a pas de badge officiel).
+	// ProgressPct : position dans le sous-tier (0.0–1.0).
+	// CSR et LUSR Halo Infinite ont tous les deux des sous-tiers de 50 points.
+	// Même constante que home_canonical.go (tierSize = 50).
+	// Onyx : nil (pas de tier suivant défini).
+	if sr.RatingValue != nil && sr.Tier != nil && !strings.EqualFold(*sr.Tier, "Onyx") {
+		const tierSize = 50.0
+		pts := math.Mod(*sr.RatingValue, tierSize)
+		if pts < 0 {
+			pts += tierSize
+		}
+		pct := pts / tierSize
+		rank.ProgressPct = &pct
+	}
+
+	// Badge image — LUSR utilise les mêmes fichiers que CSR (même dossier static).
 	// Onyx : pas de sub-tier → CSRRankImageURLOnyx().
 	// Autres tiers (Bronze, Silver, Gold, Platinum, Diamond) : tier + sub-tier.
 	// Sources : match_skill_rank.tier (EN, TitleCase) + match_skill_rank.sub_tier.
-	if assetURL == nil || sr.RatingType != "CSR" || sr.Tier == nil || *sr.Tier == "" {
+	if assetURL == nil || sr.Tier == nil || *sr.Tier == "" {
 		return rank
 	}
 	tier := *sr.Tier
+	subTier := 0
+	if sr.SubTier != nil {
+		subTier = *sr.SubTier
+	}
+	// Fallback : dériver sub_tier depuis tier_label quand sub_tier = 0 (défaut DB).
+	if subTier <= 0 && sr.TierLabel != nil {
+		parts := strings.Fields(strings.TrimSpace(*sr.TierLabel))
+		if len(parts) > 1 {
+			if n, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+				subTier = n
+			}
+		}
+	}
 	if strings.EqualFold(tier, "Onyx") {
 		rank.IconURL = assetURL.CSRRankImageURLOnyx()
-	} else if sr.SubTier != nil {
-		rank.IconURL = assetURL.CSRRankImageURL(tier, *sr.SubTier)
+	} else if subTier >= 1 && subTier <= 6 {
+		rank.IconURL = assetURL.CSRRankImageURL(tier, subTier)
 	}
 	return rank
 }
@@ -706,28 +734,55 @@ func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter
 // Summary Tab
 // ---------------------------------------------------------------------------
 
-func buildSummaryTabFull(stats *domain.PlayerMatchStatsRaw, medals []domain.MedalRaw, expected *domain.ExpectedStatsRaw) domain.MatchSummaryTab {
+func buildSummaryTabFull(
+	stats *domain.PlayerMatchStatsRaw,
+	medals []domain.MedalRaw,
+	expected *domain.ExpectedStatsRaw,
+	histRows []domain.MatchHistAvgRow,
+	meta *domain.MatchMetaRaw,
+) domain.MatchSummaryTab {
 	tab := domain.MatchSummaryTab{
 		KPIs:           domain.MatchSummaryKpis{},
 		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: "#94a3b8"},
 		Medals:         convertMedals(medals),
 		Citations:      []domain.MatchCitation{},
-		ExpectedStats:  buildExpectedStats(expected),
+		ExpectedStats:  buildExpectedStats(expected, histRows, meta),
 	}
 
 	if stats == nil {
 		return tab
 	}
 
+	var deltaMMR *float64
+	if stats.TeamMMR != nil && stats.EnemyMMR != nil {
+		d := *stats.TeamMMR - *stats.EnemyMMR
+		deltaMMR = &d
+	}
+
+	// perfect_kills depuis les médailles (medal_name_id 1512363953)
+	const perfectKillMedalID = int64(1512363953)
+	var perfectKills int
+	for _, m := range medals {
+		if m.MedalID == perfectKillMedalID {
+			perfectKills += m.Count
+		}
+	}
+
 	tab.KPIs = domain.MatchSummaryKpis{
-		Kills:         &stats.Kills,
-		Deaths:        &stats.Deaths,
-		Assists:       &stats.Assists,
-		KDA:           stats.KDA,
-		DamageDealt:   stats.DamageDealt,
-		AverageLife:   formatLifeSeconds(stats.AvgLifeSeconds),
-		Accuracy:      stats.Accuracy,
-		PersonalScore: toIntPtr(stats.PersonalScore),
+		Kills:           &stats.Kills,
+		Deaths:          &stats.Deaths,
+		Assists:         &stats.Assists,
+		KDA:             stats.KDA,
+		DamageDealt:     stats.DamageDealt,
+		AverageLife:     formatLifeSeconds(stats.AvgLifeSeconds),
+		Accuracy:        stats.Accuracy,
+		PersonalScore:   toIntPtr(stats.PersonalScore),
+		TeamMMR:         stats.TeamMMR,
+		EnemyMMR:        stats.EnemyMMR,
+		DeltaMMR:        deltaMMR,
+		HeadshotKills:   stats.HeadshotKills,
+		MaxKillingSpree: stats.MaxKillingSpree,
+		PerfectKills:    &perfectKills,
 	}
 
 	if stats.OutcomeCode != 0 {
@@ -747,18 +802,64 @@ func buildSummaryTabFull(stats *domain.PlayerMatchStatsRaw, medals []domain.Meda
 	return tab
 }
 
-// buildExpectedStats construit le bloc de stats attendues.
-func buildExpectedStats(e *domain.ExpectedStatsRaw) domain.MatchExpectedStats {
-	if e == nil {
-		return domain.MatchExpectedStats{}
+// buildExpectedStats construit le bloc de stats attendues + moyennes historiques.
+func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistAvgRow, meta *domain.MatchMetaRaw) domain.MatchExpectedStats {
+	out := domain.MatchExpectedStats{}
+	if e != nil {
+		out.HasExpectedData = e.KillsExpected != nil || e.DeathsExpected != nil
+		out.ExpectedKills = e.KillsExpected
+		out.ExpectedDeaths = e.DeathsExpected
+		out.ExpectedAssists = e.AssistsExpected
 	}
-	return domain.MatchExpectedStats{
-		HasExpectedData: e.KillsExpected != nil || e.DeathsExpected != nil,
-		ExpectedKills:   e.KillsExpected,
-		ExpectedDeaths:  e.DeathsExpected,
-		ExpectedAssists: e.AssistsExpected,
-		HasHistAvg:      false, // calculé séparément via ComputeModeCategoryAverages si historique disponible
+	if len(histRows) == 0 || meta == nil {
+		return out
 	}
+
+	pairName := ""
+	if meta.PairName != nil {
+		pairName = *meta.PairName
+	}
+	targetCat := analysis.ComputeModeCategory(pairName, meta.IsFirefight, meta.IsRanked)
+
+	var totalK, totalD, totalA, totalSpree, totalHS, totalPerfect, count int
+	for _, row := range histRows {
+		cat := analysis.ComputeModeCategory(row.PairName, row.IsFirefight, row.IsRanked)
+		if cat != targetCat {
+			continue
+		}
+		totalK += row.Kills
+		totalD += row.Deaths
+		totalA += row.Assists
+		if row.HeadshotKills != nil {
+			totalHS += *row.HeadshotKills
+		}
+		if row.MaxKillingSpree != nil {
+			totalSpree += *row.MaxKillingSpree
+		}
+		totalPerfect += row.PerfectKills
+		count++
+	}
+	if count == 0 {
+		return out
+	}
+	n := float64(count)
+	avgK := float64(totalK) / n
+	avgD := float64(totalD) / n
+	avgA := float64(totalA) / n
+	avgHS := float64(totalHS) / n
+	avgSpree := float64(totalSpree) / n
+	avgPerfect := float64(totalPerfect) / n
+
+	out.HasHistAvg = true
+	out.HistAvgKills = &avgK
+	out.HistAvgDeaths = &avgD
+	out.HistAvgAssists = &avgA
+	out.HistAvgHeadshotKills = &avgHS
+	out.HistAvgSpree = &avgSpree
+	out.HistAvgPerfectKills = &avgPerfect
+	out.HistMatchCount = count
+	out.HistModeCategory = targetCat
+	return out
 }
 
 func toIntPtr(f *float64) *int {
@@ -807,7 +908,7 @@ func buildCitationsTab(citations []domain.CitationMatchViewRow, medals []domain.
 
 func buildCombatTabFull(
 	matchID string,
-	weapons []domain.WeaponKillRaw,
+	bulkWeapons []domain.BulkWeaponKillRaw,
 	events []domain.EventRaw,
 	canonicalEvents []canonical.HighlightEvent,
 	kvPairs []domain.KVPairRaw,
@@ -815,8 +916,11 @@ func buildCombatTabFull(
 	myXUID string,
 	durationMS int64,
 ) domain.MatchCombatTab {
-	wkList := make([]domain.MatchWeaponKill, 0, len(weapons))
-	for _, w := range weapons {
+	wkList := make([]domain.MatchWeaponKill, 0)
+	for _, w := range bulkWeapons {
+		if w.XUID != myXUID {
+			continue
+		}
 		wkList = append(wkList, domain.MatchWeaponKill{
 			WeaponID:    w.WeaponID,
 			WeaponLabel: w.WeaponLabel,

@@ -81,6 +81,9 @@ func (m *mockMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]d
 func (m *mockMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
 	return nil, nil
 }
+func (m *mockMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
+	return nil, nil
+}
 
 // --- tests ---
 

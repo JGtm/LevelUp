@@ -31,13 +31,13 @@ WITH me_perfect AS (
     GROUP BY xuid
 ),
 top_weapons AS (
-    SELECT xuid, effective_weapon_id AS top_weapon_id
+    SELECT xuid, COALESCE(reconciled_as, weapon_id) AS top_weapon_id
     FROM (
-        SELECT xuid, effective_weapon_id, COUNT(*) AS wk,
+        SELECT xuid, COALESCE(reconciled_as, weapon_id) AS wid, COUNT(*) AS wk,
                ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn
-        FROM shared.v_weapon_kills
-        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
-        GROUP BY xuid, effective_weapon_id
+        FROM shared.weapon_kills
+        WHERE match_id = ? AND COALESCE(reconciled_as, weapon_id) NOT IN (0, 1, 2)
+        GROUP BY xuid, COALESCE(reconciled_as, weapon_id)
     ) t WHERE rn = 1
 )
 SELECT
@@ -154,10 +154,11 @@ GROUP BY wk.effective_weapon_id
 ORDER BY kills DESC`
 
 // Q17 : Stats d'un joueur pour un match spécifique (match_participants).
-// Paramètres : ?1 = xuid, ?2 = match_id.
-// Retourne 15 colonnes : outcome_code, team_id, rank_in_team, kills, deaths,
+// Paramètres : ?1 = match_id, ?2 = xuid.
+// Retourne 19 colonnes : outcome_code, team_id, rank_in_team, kills, deaths,
 // assists, kda, accuracy, personal_score, avg_life_seconds, time_played_seconds,
-// shots_fired, shots_hit, damage_dealt, damage_taken.
+// shots_fired, shots_hit, damage_dealt, damage_taken, team_mmr, enemy_mmr,
+// headshot_kills, max_killing_spree.
 const Q17PlayerMatchStats = `
 SELECT
     COALESCE(p.outcome, 0)         AS outcome_code,
@@ -174,9 +175,54 @@ SELECT
     p.shots_fired,
     p.shots_hit,
     p.damage_dealt,
-    p.damage_taken
+    p.damage_taken,
+    p.team_mmr,
+    p.enemy_mmr,
+    p.headshot_kills,
+    p.max_killing_spree
 FROM shared.match_participants p
 WHERE p.match_id = ? AND p.xuid = ?`
+
+// Q29 : Historique récent (50 matchs) pour moyennes K/D/A + spree/headshots/perfect.
+// Paramètres : ?1 = xuid (recent CTE), ?2 = xuid (perfect CTE).
+const Q29HistoryForAvg = `
+WITH recent AS (
+    SELECT
+        p.match_id,
+        COALESCE(p.kills, 0)           AS kills,
+        COALESCE(p.deaths, 0)          AS deaths,
+        COALESCE(p.assists, 0)         AS assists,
+        p.headshot_kills,
+        p.max_killing_spree,
+        COALESCE(r.pair_name, '')      AS pair_name,
+        COALESCE(r.is_firefight, FALSE) AS is_firefight,
+        COALESCE(r.is_ranked, FALSE)    AS is_ranked
+    FROM shared.match_participants p
+    JOIN shared.match_registry r ON r.match_id = p.match_id
+    WHERE p.xuid = ?
+    ORDER BY r.start_time DESC NULLS LAST
+    LIMIT 50
+),
+perfect AS (
+    SELECT m.match_id, COALESCE(SUM(m.count), 0) AS perfect_kills
+    FROM shared.medals_earned m
+    WHERE m.xuid = ?
+      AND m.match_id IN (SELECT match_id FROM recent)
+      AND m.medal_name_id = 1512363953
+    GROUP BY m.match_id
+)
+SELECT
+    rc.kills,
+    rc.deaths,
+    rc.assists,
+    rc.headshot_kills,
+    rc.max_killing_spree,
+    COALESCE(p.perfect_kills, 0) AS perfect_kills,
+    rc.pair_name,
+    rc.is_firefight,
+    rc.is_ranked
+FROM recent rc
+LEFT JOIN perfect p ON p.match_id = rc.match_id`
 
 // Q18 : Enrichissement joueur pour un match (player_match_enrichment).
 // Paramètre : ? = match_id.
@@ -477,15 +523,17 @@ ORDER BY xuid, count DESC`
 // Q28 : Kills par arme de tous les joueurs d'un match (bulk).
 // Paramètre : ? = match_id.
 // Retourne 3 colonnes : xuid, weapon_id, kills.
+// Requête directe sur weapon_kills (sans passer par v_weapon_kills).
 const Q28BulkWeaponKills = `
 SELECT
-    xuid,
-    effective_weapon_id AS weapon_id,
+    wk.xuid,
+    COALESCE(wk.reconciled_as, wk.weapon_id) AS weapon_id,
     COUNT(*) AS kills
-FROM shared.v_weapon_kills
-WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
-GROUP BY xuid, effective_weapon_id
-ORDER BY xuid, kills DESC`
+FROM shared.weapon_kills wk
+WHERE wk.match_id = ?
+  AND COALESCE(wk.reconciled_as, wk.weapon_id) NOT IN (0, 1, 2)
+GROUP BY wk.xuid, COALESCE(wk.reconciled_as, wk.weapon_id)
+ORDER BY wk.xuid, kills DESC`
 
 // Q26 : Stats attendues du joueur pour ce match (match_participants expected columns).
 // Paramètres : ?1 = match_id, ?2 = xuid.

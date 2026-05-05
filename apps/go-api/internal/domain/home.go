@@ -217,6 +217,7 @@ type RecentMatchMedal struct {
 	Count       int    `json:"count"`
 	Description string `json:"description,omitempty"`
 	ImageURL    string `json:"image_url"`
+	Difficulty  string `json:"difficulty,omitempty"`
 }
 
 // MatchCitationSnippet est une citation progressée dans un match, pour l'affichage MatchCard.
