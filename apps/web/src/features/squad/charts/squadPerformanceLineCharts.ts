@@ -15,7 +15,26 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { CHART_BG, axisBase, legendBase, tooltipBase } from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { hexComplement } from '@/lib/accessibility'
+import { hexComplement, resolveToken } from '@/lib/accessibility'
+import type { SemanticToken } from '@/lib/accessibility'
+
+/** Convertit un hex #RRGGBB résolu par resolveToken en rgba avec alpha. */
+function withAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return hex
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+/** 5 zones Y de 20 pts chacune, du pire (tier-5) au meilleur (tier-1). */
+const PERF_ZONES: Array<{ yMin: number; yMax: number; token: SemanticToken }> = [
+  { yMin: 0,  yMax: 20,  token: 'perf-tier-5' },
+  { yMin: 20, yMax: 40,  token: 'perf-tier-4' },
+  { yMin: 40, yMax: 60,  token: 'perf-tier-3' },
+  { yMin: 60, yMax: 80,  token: 'perf-tier-2' },
+  { yMin: 80, yMax: 100, token: 'perf-tier-1' },
+]
 
 const ZERO_LINE_COLOR = 'rgba(255, 255, 255, 0.55)'
 
@@ -46,6 +65,8 @@ export interface PerformanceLineOpts extends CommonOpts {
   chartType?: 'line' | 'bar'
   /** Si défini, les barres dont la valeur est < ce seuil sont colorées avec hexComplement. */
   complementBelowValue?: number
+  /** Affiche des zones de fond colorées via perf-tier-1..5 (pour metric performance_score). */
+  showPerformanceZones?: boolean
 }
 
 function extractValue(p: SquadPerformanceSeriesPoint, metric: PerformanceMetricKey): number | null {
@@ -105,8 +126,19 @@ export function buildPerformanceLineOption(
   const suffix = opts.unitSuffix ?? ''
   const isBar = opts.chartType === 'bar'
   const threshold = opts.complementBelowValue
+  const showZones = isBar && (opts.showPerformanceZones ?? false)
 
-  const series = players.map((player) => {
+  const perfZoneMarkArea = showZones
+    ? {
+        silent: true,
+        data: PERF_ZONES.map(({ yMin, yMax, token }) => [
+          { yAxis: yMin, itemStyle: { color: withAlpha(resolveToken(token), 0.12) } },
+          { yAxis: yMax },
+        ]),
+      }
+    : undefined
+
+  const series = players.map((player, idx) => {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const rawData = new Array<number | null>(n).fill(null)
     for (const p of rows[player]) {
@@ -121,7 +153,14 @@ export function buildPerformanceLineOption(
           threshold !== undefined && v !== null && v < threshold ? hexComplement(color) : color
         return { value: v, itemStyle: { color: barColor } }
       })
-      return { name: player, type: 'bar' as const, barMaxWidth: 12, data: barData }
+      return {
+        name: player,
+        type: 'bar' as const,
+        barMaxWidth: 12,
+        data: barData,
+        // markArea attaché au premier joueur seulement (rendu une fois pour tout le chart).
+        ...(idx === 0 && perfZoneMarkArea ? { markArea: perfZoneMarkArea } : {}),
+      }
     }
 
     return {
@@ -158,6 +197,7 @@ export function buildPerformanceLineOption(
     yAxis: {
       ...axisBase,
       type: 'value',
+      ...(showZones ? { min: 0, max: 100 } : {}),
       axisLabel: {
         ...axisBase.axisLabel,
         formatter: (v: number) => `${v.toFixed(decimals)}${suffix}`,

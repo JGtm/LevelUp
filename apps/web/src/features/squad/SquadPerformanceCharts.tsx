@@ -93,6 +93,19 @@ export function SquadPerformanceCharts({
     [rowsByPlayer, colorByPlayer, playerOrder],
   )
 
+  const buildPerformanceZones = useCallback(
+    () =>
+      buildPerformanceLineOption(rowsByPlayer, {
+        colorByPlayer,
+        playerOrder,
+        metric: 'performance_score',
+        decimals: 1,
+        chartType: 'bar',
+        showPerformanceZones: true,
+      }),
+    [rowsByPlayer, colorByPlayer, playerOrder],
+  )
+
   const buildHsPerfect = useCallback(
     () =>
       buildHsPerfectOption(rowsByPlayer, {
@@ -141,7 +154,7 @@ export function SquadPerformanceCharts({
       <ChartCard
         title={labels.performanceTitle}
         series={series}
-        buildOption={() => buildLine('performance_score', 1)}
+        buildOption={buildPerformanceZones}
         height={SUBCHART_HEIGHT}
       />
       <ChartCard
