@@ -24,6 +24,7 @@ import {
   buildHsPerfectOption,
   buildKillsDeathsButterflyOption,
   buildPerformanceLineOption,
+  buildTeamMMROption,
   type PerformanceMetricKey,
 } from './charts/squadPerformanceLineCharts'
 
@@ -40,6 +41,8 @@ interface I18nLabels {
   hsPerfectTitle: string
   hsLabel: string
   perfectLabel: string
+  rankTitle: string
+  mmrLabel: string
 }
 
 interface SquadPerformanceChartsProps {
@@ -127,6 +130,17 @@ export function SquadPerformanceCharts({
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
   )
 
+  const buildRankMMR = useCallback(
+    () =>
+      buildTeamMMROption(rowsByPlayer, {
+        colorByPlayer,
+        playerOrder,
+        xLabels: xMatchLabels,
+        mmrLabel: labels.mmrLabel,
+      }),
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.mmrLabel],
+  )
+
   const buildHsPerfect = useCallback(
     () =>
       buildHsPerfectOption(rowsByPlayer, {
@@ -173,12 +187,20 @@ export function SquadPerformanceCharts({
         buildOption={() => buildLine('avg_life_seconds', 1, ' s')}
         height={SUBCHART_HEIGHT}
       />
-      <ChartCard
-        title={labels.performanceTitle}
-        series={series}
-        buildOption={buildPerformanceZones}
-        height={SUBCHART_HEIGHT}
-      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          title={labels.performanceTitle}
+          series={series}
+          buildOption={buildPerformanceZones}
+          height={SUBCHART_HEIGHT}
+        />
+        <ChartCard
+          title={labels.rankTitle}
+          series={series}
+          buildOption={buildRankMMR}
+          height={SUBCHART_HEIGHT}
+        />
+      </div>
       <ChartCard
         title={labels.maxSpreeTitle}
         series={series}

@@ -190,6 +190,8 @@ export interface SquadText {
     hsPerfectTitle: string
     hsLabel: string
     perfectLabel: string
+    rankTitle: string
+    mmrLabel: string
   }
   weaponKills: {
     title: string
@@ -445,6 +447,8 @@ const FR_TEXT: SquadText = {
     hsPerfectTitle: 'Tirs à la tête & Frags parfaits',
     hsLabel: 'Tirs à la tête',
     perfectLabel: 'Frags parfaits',
+    rankTitle: 'MMR équipe — évolution par match',
+    mmrLabel: 'MMR équipe',
   },
   weaponKills: {
     title: 'Frags par arme — comparatif',
@@ -700,6 +704,8 @@ const EN_TEXT: SquadText = {
     hsPerfectTitle: 'Headshots & Perfect kills',
     hsLabel: 'Headshots',
     perfectLabel: 'Perfect kills',
+    rankTitle: 'Team MMR — per match trend',
+    mmrLabel: 'Team MMR',
   },
   weaponKills: {
     title: 'Weapon kills — comparison',
