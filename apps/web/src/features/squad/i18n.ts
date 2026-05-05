@@ -447,7 +447,7 @@ const FR_TEXT: SquadText = {
     hsPerfectTitle: 'Tirs à la tête & Frags parfaits',
     hsLabel: 'Tirs à la tête',
     perfectLabel: 'Frags parfaits',
-    rankTitle: 'MMR équipe — évolution par match',
+    rankTitle: 'Rang & MMR équipe — par match',
     mmrLabel: 'MMR équipe',
   },
   weaponKills: {
@@ -704,7 +704,7 @@ const EN_TEXT: SquadText = {
     hsPerfectTitle: 'Headshots & Perfect kills',
     hsLabel: 'Headshots',
     perfectLabel: 'Perfect kills',
-    rankTitle: 'Team MMR — per match trend',
+    rankTitle: 'Rank & Team MMR — per match',
     mmrLabel: 'Team MMR',
   },
   weaponKills: {

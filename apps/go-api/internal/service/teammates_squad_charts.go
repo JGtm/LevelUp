@@ -1051,6 +1051,7 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 					v := round2(*ss.Delta)
 					pt.SkillDelta = &v
 				}
+				pt.SkillRatingType = string(ss.RatingType)
 			}
 			series = append(series, pt)
 		}
