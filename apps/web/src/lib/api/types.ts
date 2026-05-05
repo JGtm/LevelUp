@@ -1509,6 +1509,8 @@ export interface SquadPerformanceSeriesPoint {
   rendement_offensif?: number
   resistance_defensive?: number
   team_mmr?: number
+  skill_rating?: number
+  skill_delta?: number
 }
 
 /** Un axe du radar synergie teammates.06 (value normalisé 0..100, raw debug). */

@@ -1042,6 +1042,16 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				v := round2(*r.Enrichment.TeamMMR)
 				pt.TeamMMR = &v
 			}
+			if ss := r.Enrichment.SkillSnapshot; ss != nil {
+				if ss.RatingValue != nil {
+					v := round2(*ss.RatingValue)
+					pt.SkillRating = &v
+				}
+				if ss.Delta != nil {
+					v := round2(*ss.Delta)
+					pt.SkillDelta = &v
+				}
+			}
 			series = append(series, pt)
 		}
 		// Sort by MatchOrder pour garantir l'alignement avec les autres joueurs.

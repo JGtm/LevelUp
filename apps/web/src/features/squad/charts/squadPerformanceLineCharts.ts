@@ -371,39 +371,70 @@ export function buildTeamMMROption(
   if (n === 0) return { backgroundColor: CHART_BG }
   const xLabels = opts.xLabels ?? xAxisLabels(n)
 
-  const series = players.map((player) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
-    const data = new Array<number | null>(n).fill(null)
-    for (const p of rows[player]) {
-      data[p.match_order] = p.team_mmr ?? null
-    }
-    return {
-      name: player,
-      type: 'line' as const,
-      data,
-      lineStyle: { color, width: 2 },
-      itemStyle: { color },
-      symbol: 'circle' as const,
-      symbolSize: 5,
-      connectNulls: false,
-      // Zone d'area légère pour mieux lire la tendance.
-      areaStyle: { color, opacity: 0.08 },
-    }
-  })
+  const allSeries: Array<Record<string, unknown>> = []
 
-  const hasData = series.some((s) => (s.data as (number | null)[]).some((v) => v !== null))
+  for (const player of players) {
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const negColor = hexComplement(color) // hue +180° — même convention que les autres charts
+
+    // Barres CSR / LUSR — colorées par delta (gain = couleur joueur, perte = complément).
+    const ratingData = new Array<number | null>(n).fill(null)
+    const ratingBarData = new Array<{ value: number | null; itemStyle: { color: string; opacity: number } }>(n)
+    for (let i = 0; i < n; i++) ratingBarData[i] = { value: null, itemStyle: { color, opacity: 0.75 } }
+
+    for (const p of rows[player]) {
+      const val = p.skill_rating ?? null
+      ratingData[p.match_order] = val
+      if (val !== null) {
+        const delta = p.skill_delta
+        const barColor = delta !== undefined && delta < 0 ? negColor : color
+        ratingBarData[p.match_order] = { value: val, itemStyle: { color: barColor, opacity: 0.8 } }
+      }
+    }
+    allSeries.push({
+      name: `${player} — ${opts.mmrLabel}`,
+      type: 'bar',
+      barMaxWidth: 12,
+      data: ratingBarData,
+      z: 2,
+    })
+
+    // Courbe TeamMMR — fine, en pointillés, pour la tendance globale de l'équipe.
+    const mmrData = new Array<number | null>(n).fill(null)
+    for (const p of rows[player]) {
+      mmrData[p.match_order] = p.team_mmr ?? null
+    }
+    allSeries.push({
+      name: `${player} — MMR`,
+      type: 'line',
+      data: mmrData,
+      lineStyle: { color, width: 1.5, type: 'dashed', opacity: 0.65 },
+      itemStyle: { color },
+      symbol: 'none',
+      connectNulls: false,
+      z: 3,
+    })
+  }
+
+  const hasData = allSeries.some((s) =>
+    (s.data as Array<{ value: number | null } | number | null>).some(
+      (v) => (typeof v === 'object' && v !== null ? v.value : v) !== null,
+    ),
+  )
   if (!hasData) return { backgroundColor: CHART_BG }
+
+  const legendData = players.flatMap((p) => [`${p} — ${opts.mmrLabel}`, `${p} — MMR`])
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 28, bottom: 36, left: 8, right: 24, containLabel: true },
+    grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
     tooltip: {
       ...tooltipBase,
       trigger: 'axis',
-      axisPointer: { type: 'line' },
+      axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(0) : '-'),
     },
-    legend: { ...legendBase, data: players },
+    legend: { ...legendBase, data: legendData, type: 'scroll' },
     xAxis: {
       ...axisBase,
       type: 'category',
@@ -418,6 +449,6 @@ export function buildTeamMMROption(
       type: 'value',
       axisLabel: { ...axisBase.axisLabel, formatter: (v: number) => v.toFixed(0) },
     },
-    series,
+    series: allSeries,
   }
 }
