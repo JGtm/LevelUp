@@ -19,6 +19,7 @@ import { Suspense, lazy, useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { Spinner } from '@/components/ui/spinner'
+import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
 // echarts-for-react lazy : evite de payer le cout du bundle echarts (~600KB)
 // avant qu'un chart soit reellement rendu.
@@ -78,9 +79,14 @@ export function ChartCard<T = unknown>({
   children,
 }: ChartCardProps<T>) {
   const isEmpty = !loading && !error && series.length === 0
+  // Le themeVersion s'incrémente lors d'un toggle data-theme : on l'inclut
+  // dans les deps du useMemo pour forcer le rebuild de l'option et donc le
+  // re-render canvas avec les couleurs du nouveau thème.
+  const themeVersion = useThemeVersion()
   const option = useMemo(
     () => (isEmpty || loading || error ? null : buildOption(series)),
-    [isEmpty, loading, error, buildOption, series],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isEmpty, loading, error, buildOption, series, themeVersion],
   )
 
   return (

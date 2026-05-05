@@ -31,12 +31,14 @@ export function SquadSynergyRadarChart({
   )
 
   return (
-    <ChartCard
-      title={title}
-      // Cast nécessaire : le payload radar n'est pas un ChartSeries<T> standard.
-      series={rows as unknown as { key: string; datapoints: unknown[] }[]}
-      buildOption={buildOption}
-      height={height}
-    />
+    <div data-testid="squad-synergy-radar">
+      <ChartCard
+        title={title}
+        // Cast nécessaire : le payload radar n'est pas un ChartSeries<T> standard.
+        series={rows as unknown as { key: string; datapoints: unknown[] }[]}
+        buildOption={buildOption}
+        height={height}
+      />
+    </div>
   )
 }

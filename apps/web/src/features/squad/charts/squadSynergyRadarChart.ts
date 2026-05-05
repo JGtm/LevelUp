@@ -12,7 +12,12 @@
  * passage par `ChartSeries<T>` — payload trop spécifique).
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { CHART_BG, legendBase, tooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+} from '@/components/charts/_utils'
 import type { SquadSynergyRadarSeries } from '@/lib/api/types'
 
 export interface SquadSynergyRadarOpts {
@@ -27,6 +32,8 @@ export function buildSquadSynergyRadarOption(
   opts: SquadSynergyRadarOpts,
 ): EChartsCoreOption {
   if (series.length === 0) return { backgroundColor: CHART_BG }
+
+  const tc = getEChartsThemeColors()
 
   // Tous les profils ont la même structure d'axes ; on prend le premier.
   const axes = series[0].axes.map((a) => ({
@@ -50,21 +57,21 @@ export function buildSquadSynergyRadarOption(
   return {
     backgroundColor: CHART_BG,
     tooltip: {
-      ...tooltipBase,
+      ...getTooltipBase(tc),
       formatter: (params: { name: string; value: number[] }) => {
         const lines = axes.map((a, i) => `${a.name}: <b>${params.value[i].toFixed(0)}</b>`)
         return `<b>${params.name}</b><br/>${lines.join('<br/>')}`
       },
     },
-    legend: { ...legendBase, data: data.map((d) => d.name) },
+    legend: { ...getLegendBase(tc), data: data.map((d) => d.name) },
     radar: {
       indicator: axes,
       shape: 'polygon',
       splitNumber: 4,
-      axisName: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
-      splitArea: { areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)'] } },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      axisName: { color: tc.axisLabel, fontSize: 10 },
+      splitArea: { areaStyle: { color: [tc.splitAreaA, tc.splitAreaB] } },
+      splitLine: { lineStyle: { color: tc.splitLine } },
+      axisLine: { lineStyle: { color: tc.axisLine } },
     },
     series: [{ type: 'radar', data }],
   }
