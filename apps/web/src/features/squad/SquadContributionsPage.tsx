@@ -74,10 +74,7 @@ export function SquadContributionsPage() {
           {perMinuteRows.length > 0 && (
             <Card>
               <CardContent className="pt-4 space-y-3">
-                <div>
-                  <h3 className="text-base font-semibold">{t.perMinute.title}</h3>
-                  <p className="text-sm text-muted-foreground">{t.perMinute.description}</p>
-                </div>
+                <h3 className="text-base font-semibold">{t.perMinute.title}</h3>
                 <SquadPerMinuteChart
                   rows={perMinuteRows}
                   colorByPlayer={playerColors}
@@ -95,27 +92,24 @@ export function SquadContributionsPage() {
           {synergyRadar.length > 0 && (
             <Card>
               <CardContent className="pt-4 space-y-3">
-                <div>
-                  <h3 className="flex items-center gap-1.5 text-base font-semibold">
-                    {t.synergyRadar.title}
-                    <InfoTooltip
-                      content={
-                        <div className="space-y-1">
-                          <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
-                          <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
-                          <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
-                          <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
-                          <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
-                          <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
-                          <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
-                            {t.synergyRadar.tooltip.glossaryLink}
-                          </Link>
-                        </div>
-                      }
-                    />
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{t.synergyRadar.description}</p>
-                </div>
+                <h3 className="flex items-center gap-1.5 text-base font-semibold">
+                  {t.synergyRadar.title}
+                  <InfoTooltip
+                    content={
+                      <div className="space-y-1">
+                        <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
+                        <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
+                        <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
+                        <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
+                        <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
+                        <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
+                        <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
+                          {t.synergyRadar.tooltip.glossaryLink}
+                        </Link>
+                      </div>
+                    }
+                  />
+                </h3>
                 <SquadSynergyRadarChart
                   rows={synergyRadar}
                   colorByPlayer={playerColors}
@@ -130,10 +124,7 @@ export function SquadContributionsPage() {
       {intensityProfileLocalized && intensityProfileLocalized.options.length > 0 && (
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold">{t.intensity.title}</h3>
-              <p className="text-sm text-muted-foreground">{t.intensity.description}</p>
-            </div>
+            <h3 className="text-base font-semibold">{t.intensity.title}</h3>
             <SquadIntensityHeatmapChart
               profile={intensityProfileLocalized}
               zLabel={t.intensity.zLabel}
@@ -146,10 +137,7 @@ export function SquadContributionsPage() {
       {performanceSeries && Object.keys(performanceSeries).length > 0 && (
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold">{t.efficiencySeries.title}</h3>
-              <p className="text-sm text-muted-foreground">{t.efficiencySeries.description}</p>
-            </div>
+            <h3 className="text-base font-semibold">{t.efficiencySeries.title}</h3>
             <SquadEfficiencyChart
               rowsByPlayer={performanceSeries}
               playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
@@ -163,10 +151,7 @@ export function SquadContributionsPage() {
       {performanceSeries && Object.keys(performanceSeries).length > 0 && (
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold">{t.performanceCharts.title}</h3>
-              <p className="text-sm text-muted-foreground">{t.performanceCharts.description}</p>
-            </div>
+            <h3 className="text-base font-semibold">{t.performanceCharts.title}</h3>
             <SquadPerformanceCharts
               rowsByPlayer={performanceSeries}
               playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries[p])}
@@ -180,10 +165,7 @@ export function SquadContributionsPage() {
       {weaponKills && weaponKills.bars.length > 0 && (
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold">{t.weaponKills.title}</h3>
-              <p className="text-sm text-muted-foreground">{t.weaponKills.description}</p>
-            </div>
+            <h3 className="text-base font-semibold">{t.weaponKills.title}</h3>
             <SquadWeaponKillsChart
               data={weaponKills}
               colorByPlayer={playerColors}
@@ -197,10 +179,7 @@ export function SquadContributionsPage() {
       {firstEvents && firstEvents.rows.length > 0 && (
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold">{t.firstEvents.title}</h3>
-              <p className="text-sm text-muted-foreground">{t.firstEvents.description}</p>
-            </div>
+            <h3 className="text-base font-semibold">{t.firstEvents.title}</h3>
             <SquadFirstEventsChart
               data={firstEvents}
               colorByPlayer={playerColors}
