@@ -5,27 +5,30 @@
  *        à 8 charts par demande utilisateur).
  *
  * Sous-charts dans l'ordre :
- *   1. Frags / Morts (butterfly bars)
- *   2. Assistances (line)
- *   3. FDA / KDA (line)
- *   4. Précision (line %)
- *   5. Durée de vie moyenne (line, secondes)
- *   6. Performance (line score 0..100)
- *   7. Folie meurtrière max (line)
- *   8. Tirs à la tête + Frags parfaits (perfect emphasés via line épaisse + area)
+ *   1+2. Frags / Morts (butterfly) + Assistances (dual-grid)
+ *   3.   Précision (pleine largeur)
+ *   4+5. FDA / KDA + Durée de vie moyenne (dual-grid)
+ *   6+7. Performance + Rang / MMR (dual-grid)
+ *   8+9. Folie meurtrière max + Tirs à la tête / Frags parfaits (dual-grid)
  *
- * Tous partagent les mêmes couleurs joueurs (cohérent avec la pill et le
- * combobox) et la même série temporelle backend (matchs partagés ASC).
+ * Layout dual-grid : < 14 matchs → côte à côte, sinon → empilé.
+ * Sur mobile (< 768px) → toujours empilé.
  */
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import {
+  buildDualGridOption,
+  dualPanelHeight,
+  DUAL_LAYOUT_THRESHOLD,
+  type DualLayout,
+} from '@/components/charts/_utils'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import {
   buildHsPerfectOption,
   buildKillsDeathsButterflyOption,
   buildPerformanceLineOption,
   buildTeamMMROption,
-  type PerformanceMetricKey,
 } from './charts/squadPerformanceLineCharts'
 
 interface I18nLabels {
@@ -62,24 +65,23 @@ export function SquadPerformanceCharts({
   colorByPlayer,
   labels,
 }: SquadPerformanceChartsProps) {
-  // Cast helper — la série passée à ChartCard est juste un wrapper pour avoir
-  // un payload non-vide (évite l'empty-state de ChartCard quand les vraies
-  // données sont dans `rowsByPlayer`).
+  const isMobile = useMediaQuery('(max-width: 768px)')
+
+  // Cast helper — série sentinelle pour éviter l'empty-state de ChartCard.
   const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(() => {
     const merged = playerOrder.flatMap((p) => rowsByPlayer[p] ?? [])
     return merged.length > 0 ? [{ key: 'perf-flat', datapoints: merged }] : []
   }, [playerOrder, rowsByPlayer])
 
   // Labels X enrichis sur 2 lignes : "#1\nTribord", "#2\nBazaar…", etc.
-  // Noms de carte tronqués à 9 caractères pour éviter le chevauchement.
   const xMatchLabels = useMemo(() => {
     const truncate = (s: string, max = 9): string => {
       if (s.length <= max) return s
       const sepIdx = Math.min(
         ...[' ', '-'].map((c) => { const i = s.indexOf(c); return i > 0 ? i : Infinity }),
       )
-      if (sepIdx <= max) return `${s.slice(0, sepIdx)}…` // "Launch Site" → "Launch…", "Couvre-feu" → "Couvre…"
-      return `${s.slice(0, max - 1)}…` // "Fragmentation" → "Fragment…"
+      if (sepIdx <= max) return `${s.slice(0, sepIdx)}…`
+      return `${s.slice(0, max - 1)}…`
     }
     const byOrder = new Map<number, string>()
     for (const pts of Object.values(rowsByPlayer)) {
@@ -97,137 +99,131 @@ export function SquadPerformanceCharts({
     return Array.from({ length: maxOrder + 1 }, (_, i) => byOrder.get(i) ?? `#${i + 1}`)
   }, [rowsByPlayer])
 
-  const buildButterfly = useCallback(
+  const layout: DualLayout =
+    isMobile || xMatchLabels.length >= DUAL_LAYOUT_THRESHOLD ? 'stacked' : 'side-by-side'
+  const dualH = dualPanelHeight(layout)
+
+  const commonOpts = { colorByPlayer, playerOrder, xLabels: xMatchLabels }
+
+  const buildKillsAssists = useCallback(
     () =>
-      buildKillsDeathsButterflyOption(rowsByPlayer, {
-        colorByPlayer,
-        playerOrder,
-        xLabels: xMatchLabels,
-        killsLabel: labels.killsLabel,
-        deathsLabel: labels.deathsLabel,
-      }),
-    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.killsLabel, labels.deathsLabel],
+      buildDualGridOption(
+        buildKillsDeathsButterflyOption(rowsByPlayer, {
+          ...commonOpts,
+          killsLabel: labels.killsLabel,
+          deathsLabel: labels.deathsLabel,
+        }),
+        buildPerformanceLineOption(rowsByPlayer, {
+          ...commonOpts,
+          metric: 'assists',
+          decimals: 0,
+          chartType: 'bar',
+        }),
+        labels.killsDeathsTitle,
+        labels.assistsTitle,
+        layout,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, layout, labels],
   )
 
-  const buildLine = useCallback(
-    (metric: PerformanceMetricKey, decimals: number, suffix?: string, scale?: number, complementBelowValue?: number) =>
-      buildPerformanceLineOption(rowsByPlayer, {
-        colorByPlayer,
-        playerOrder,
-        xLabels: xMatchLabels,
-        metric,
-        decimals,
-        unitSuffix: suffix,
-        scale,
-        chartType: 'bar',
-        complementBelowValue,
-      }),
-    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
-  )
-
-  const buildPerformanceZones = useCallback(
+  const buildAccuracy = useCallback(
     () =>
       buildPerformanceLineOption(rowsByPlayer, {
-        colorByPlayer,
-        playerOrder,
-        xLabels: xMatchLabels,
-        metric: 'performance_score',
+        ...commonOpts,
+        metric: 'accuracy',
         decimals: 1,
+        unitSuffix: ' %',
+        scale: 100,
         chartType: 'bar',
-        showPerformanceZones: true,
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
   )
 
-  const buildRankMMR = useCallback(
+  const buildKdaAvgLife = useCallback(
     () =>
-      buildTeamMMROption(rowsByPlayer, {
-        colorByPlayer,
-        playerOrder,
-        xLabels: xMatchLabels,
-        mmrLabel: labels.mmrLabel,
-      }),
-    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.mmrLabel],
+      buildDualGridOption(
+        buildPerformanceLineOption(rowsByPlayer, {
+          ...commonOpts,
+          metric: 'kda',
+          decimals: 2,
+          chartType: 'bar',
+          complementBelowValue: 1,
+        }),
+        buildPerformanceLineOption(rowsByPlayer, {
+          ...commonOpts,
+          metric: 'avg_life_seconds',
+          decimals: 1,
+          unitSuffix: ' s',
+          chartType: 'bar',
+        }),
+        labels.kdaTitle,
+        labels.avgLifeTitle,
+        layout,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, layout, labels],
   )
 
-  const buildHsPerfect = useCallback(
+  const buildPerfRank = useCallback(
     () =>
-      buildHsPerfectOption(rowsByPlayer, {
-        colorByPlayer,
-        playerOrder,
-        xLabels: xMatchLabels,
-        hsLabel: labels.hsLabel,
-        perfectLabel: labels.perfectLabel,
-      }),
-    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.hsLabel, labels.perfectLabel],
+      buildDualGridOption(
+        buildPerformanceLineOption(rowsByPlayer, {
+          ...commonOpts,
+          metric: 'performance_score',
+          decimals: 1,
+          chartType: 'bar',
+          showPerformanceZones: true,
+        }),
+        buildTeamMMROption(rowsByPlayer, {
+          ...commonOpts,
+          mmrLabel: labels.mmrLabel,
+        }),
+        labels.performanceTitle,
+        labels.rankTitle,
+        layout,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, layout, labels],
+  )
+
+  const buildSpreeHsPerfect = useCallback(
+    () =>
+      buildDualGridOption(
+        buildPerformanceLineOption(rowsByPlayer, {
+          ...commonOpts,
+          metric: 'max_killing_spree',
+          decimals: 0,
+          chartType: 'bar',
+        }),
+        buildHsPerfectOption(rowsByPlayer, {
+          ...commonOpts,
+          hsLabel: labels.hsLabel,
+          perfectLabel: labels.perfectLabel,
+        }),
+        labels.maxSpreeTitle,
+        labels.hsPerfectTitle,
+        layout,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, layout, labels],
   )
 
   if (series.length === 0) return null
 
   return (
     <div className="space-y-4" data-testid="squad-performance-charts">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard
-          title={labels.killsDeathsTitle}
-          series={series}
-          buildOption={buildButterfly}
-          height={SUBCHART_HEIGHT}
-        />
-        <ChartCard
-          title={labels.assistsTitle}
-          series={series}
-          buildOption={() => buildLine('assists', 0)}
-          height={SUBCHART_HEIGHT}
-        />
-      </div>
+      <ChartCard series={series} buildOption={buildKillsAssists} height={dualH} />
       <ChartCard
         title={labels.accuracyTitle}
         series={series}
-        buildOption={() => buildLine('accuracy', 1, ' %', 100)}
+        buildOption={buildAccuracy}
         height={SUBCHART_HEIGHT}
       />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard
-          title={labels.kdaTitle}
-          series={series}
-          buildOption={() => buildLine('kda', 2, undefined, undefined, 1)}
-          height={SUBCHART_HEIGHT}
-        />
-        <ChartCard
-          title={labels.avgLifeTitle}
-          series={series}
-          buildOption={() => buildLine('avg_life_seconds', 1, ' s')}
-          height={SUBCHART_HEIGHT}
-        />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard
-          title={labels.performanceTitle}
-          series={series}
-          buildOption={buildPerformanceZones}
-          height={SUBCHART_HEIGHT}
-        />
-        <ChartCard
-          title={labels.rankTitle}
-          series={series}
-          buildOption={buildRankMMR}
-          height={SUBCHART_HEIGHT}
-        />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard
-          title={labels.maxSpreeTitle}
-          series={series}
-          buildOption={() => buildLine('max_killing_spree', 0)}
-          height={SUBCHART_HEIGHT}
-        />
-        <ChartCard
-          title={labels.hsPerfectTitle}
-          series={series}
-          buildOption={buildHsPerfect}
-          height={SUBCHART_HEIGHT}
-        />
-      </div>
+      <ChartCard series={series} buildOption={buildKdaAvgLife} height={dualH} />
+      <ChartCard series={series} buildOption={buildPerfRank} height={dualH} />
+      <ChartCard series={series} buildOption={buildSpreeHsPerfect} height={dualH} />
     </div>
   )
 }

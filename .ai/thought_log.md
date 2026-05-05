@@ -1,5 +1,22 @@
 # Thought Log
 
+## [2026-05-05] Squad perf charts — dual-grid ECharts (layout adaptatif)
+
+**Statut** : Complété — branche `fix/theme-consistency-tokens`.
+
+**Décision technique** : Remplacer les 4 paires de `ChartCard` côte à côte (8 canvas séparés, CSS Grid Tailwind) par 4 `ChartCard` uniques utilisant `buildDualGridOption()` — un canvas ECharts avec deux `grid[]`. Avantages : crosshair synchronisé via `axisPointer.link`, zoom unifié en mode stacked, 4 canvas au lieu de 8. Seuil de bascule = 14 matchs (ou mobile `< 768px`) → `'stacked'`, sinon `'side-by-side'`.
+
+**Fichiers modifiés** :
+- `apps/web/src/lib/hooks/useMediaQuery.ts` (nouveau) — hook `window.matchMedia` + listener `change`
+- `apps/web/src/components/charts/_utils.ts` — ajout `buildDualGridOption`, `dualPanelHeight`, `DUAL_LAYOUT_THRESHOLD`
+- `apps/web/src/features/squad/SquadPerformanceCharts.tsx` — refactorisé pour utiliser les paires dual-grid
+
+**Tests** : 15 nouveaux tests passent (`buildDualGridOption` × 9, `dualPanelHeight` × 2, `DUAL_LAYOUT_THRESHOLD` × 1, `useMediaQuery` × 5). TypeScript et lint sans erreur sur les fichiers touchés.
+
+**Prochaine étape** : Vérification visuelle en dev server — ajuster les positions de grilles si les titres ECharts chevauchent les légendes.
+
+---
+
 ## [2026-05-05] Cohérence light/dark — éliminer hardcodes couleurs (apps/web)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.
@@ -24,7 +41,8 @@
 
 **Résultats** :
 - `tsc -b` passe sans erreur.
-- 1021/1027 tests vitest passent. 6 échecs : 3 pré-existants (FiltresPill zombie detection, sans rapport avec ce refactor), 3 sur des assertions stale dans `squadFirstEventsChart.test.ts`/`squadPerformanceLineCharts.test.ts` qui matchent un layout `opacity: 0.45` et `lineStyle.width` sur série bar — désynchronisation antérieure entre tests et implémentation (le code utilise `hexComplement(color)` sans opacity, et bar sans lineStyle). 1 test du panneau zero-line dans `squadPerMinuteChart` adapté pour vérifier la largeur d'axe + couleur non vide (la couleur est désormais `tc.text` au lieu de `rgba(255,255,255,0.75)`).
+- 1036/1039 tests vitest passent (après correction des 3 assertions stale — voir ci-dessous). 3 échecs restants : FiltresPill zombie detection (pré-existants, sans rapport avec ce refactor).
+- 3 assertions stale corrigées dans `squadFirstEventsChart.test.ts` et `squadPerformanceLineCharts.test.ts` : le mock `@/lib/accessibility` manquait `hexComplement` (TypeError au runtime), et les assertions attendaient `opacity: 0.45` (ancien layout) / `lineStyle.width` + `areaStyle` sur série bar (layout remplacé). Correction : import dynamique du vrai `hexComplement` dans les mocks, assertions mises à jour pour vérifier `hexComplement(color)` opaque et `itemStyle.borderColor/borderWidth/shadowBlur` sur les barres Perfect.
 - ESLint pré-existant à 57 errors / 280 warnings — aucune nouvelle erreur introduite par ce refactor (vérifié par filtre sur les fichiers modifiés).
 - `grep -r "rgba(255,255,255" apps/web/src/{features,components}/` → 0 hit dans les fichiers actifs.
 - `grep -r "color-allow: thématique Spartan UI" apps/web/src/` → 0 hit.

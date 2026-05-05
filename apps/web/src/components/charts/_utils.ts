@@ -218,11 +218,10 @@ export function buildDualGridOption(
   const dataB = legB?.data ?? []
   const mergedLegendData = [...dataA, ...dataB.filter((d) => !dataA.includes(d))]
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return {
     backgroundColor: CHART_BG,
-    title: titles as any,
-    grid: grids as any,
+    title: titles as EChartsCoreOption['title'],
+    grid: grids as EChartsCoreOption['grid'],
     xAxis: [
       { ...rawXA, gridIndex: 0 },
       { ...rawXB, gridIndex: 1 },
@@ -242,7 +241,7 @@ export function buildDualGridOption(
       bottom: 0,
       type: 'scroll',
     },
-    axisPointer: { link: [{ xAxisIndex: 'all' }] } as any,
+    axisPointer: { link: [{ xAxisIndex: 'all' }] } as EChartsCoreOption['axisPointer'],
     ...(layout === 'stacked'
       ? { dataZoom: [{ type: 'inside', xAxisIndex: [0, 1], filterMode: 'none' }] }
       : {}),

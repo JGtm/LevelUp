@@ -3,11 +3,16 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { buildSquadFirstEventsOption } from './squadFirstEventsChart'
+import { hexComplement } from '@/lib/accessibility/hexComplement'
 import type { SquadFirstEvents } from '@/lib/api/types'
 
-vi.mock('@/lib/accessibility', () => ({
-  tokenCssVar: (token: string) => `color:${token}`,
-}))
+vi.mock('@/lib/accessibility', async () => {
+  const { hexComplement: hc } = await import('@/lib/accessibility/hexComplement')
+  return {
+    tokenCssVar: (token: string) => `color:${token}`,
+    hexComplement: hc,
+  }
+})
 
 const COLORS = { Me: '#aaa', F1: '#bbb' }
 const OPTS = {
@@ -61,7 +66,7 @@ describe('buildSquadFirstEventsOption', () => {
     expect(meDeath?.data).toEqual([0, -1, -2, -1])
   })
 
-  it('frag = couleur joueur normale, death = même couleur opacity 0.45', () => {
+  it('frag = couleur joueur normale, death = couleur complémentaire opaque (hue +180°)', () => {
     const opt = buildSquadFirstEventsOption(data(), OPTS)
     const series = opt.series as Array<{
       name: string
@@ -71,7 +76,8 @@ describe('buildSquadFirstEventsOption', () => {
     const meDeath = series.find((s) => s.name === 'Me — Première mort')
     expect(meFrag?.itemStyle).toMatchObject({ color: '#aaa' })
     expect(meFrag?.itemStyle.opacity).toBeUndefined()
-    expect(meDeath?.itemStyle).toMatchObject({ color: '#aaa', opacity: 0.45 })
+    expect(meDeath?.itemStyle.color).toBe(hexComplement('#aaa'))
+    expect(meDeath?.itemStyle.opacity).toBeUndefined()
   })
 
   it('séparateurs verticaux dotted entre chaque bin (markLine sur la 1ère série)', () => {
