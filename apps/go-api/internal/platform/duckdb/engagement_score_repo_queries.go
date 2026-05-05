@@ -39,7 +39,7 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 			COALESCE(mp.personal_score, 0),
 			COALESCE(mp.kills, 0),
 			COALESCE(mp.assists, 0),
-			mr.map_name
+			COALESCE(mr.map_name_fr, mr.map_name)
 		FROM shared.match_registry mr
 		JOIN shared.match_participants mp ON mr.match_id = mp.match_id
 		WHERE mr.match_id = ? AND mp.xuid = ?
