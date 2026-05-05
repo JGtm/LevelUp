@@ -91,6 +91,19 @@ func BuildCitationSnippets(rows []domain.HomeMatchCitationRaw, limit int) []doma
 			isNewlyMastered = row.Cumulative >= lastTier && before < lastTier
 		}
 
+		// tierIndex = nombre de paliers atteints (0..len(tiers)).
+		// nextTierTarget = seuil absolu du prochain palier (0 si maîtrisé).
+		tierIndex := 0
+		nextTierTarget := 0
+		for _, t := range tiers {
+			if row.Cumulative >= t {
+				tierIndex++
+			} else {
+				nextTierTarget = t
+				break
+			}
+		}
+
 		var imgURL *string
 		if row.ImagePath != "" {
 			// image_path en DB : "static/commendations/h5g/FILENAME" (sans / initial).
@@ -120,6 +133,10 @@ func BuildCitationSnippets(rows []domain.HomeMatchCitationRaw, limit int) []doma
 			Delta:           row.Delta,
 			ProgressPct:     pct,
 			IsNewlyMastered: isNewlyMastered,
+			Cumulative:      row.Cumulative,
+			TierIndex:       tierIndex,
+			TierCount:       len(tiers),
+			NextTierTarget:  nextTierTarget,
 		})
 	}
 

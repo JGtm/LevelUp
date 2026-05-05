@@ -1,116 +1,23 @@
 /**
- * Helpers ChartSeries pour MatchViewPage : KD timeline, Tug-of-war, Cadence.
+ * Helpers ChartSeries pour MatchViewPage — onglet Combat (FragDiff,
+ * Antagonistes, Cadence).
  *
- * P8.4 (revue 2026-04-29) : extraits de MatchViewPage.tsx (~40L).
- * 2026-05-02 : ajout helpers tugOfWarStackedSeries + cadenceSeriesWithGamertags
- *              pour match_view.10 et match_view.11.
+ * 2026-05-05 : nettoyage post-refonte combat. Ont été retirés :
+ *  - kdTimelineSeries / tugOfWarStackedSeries (charts supprimés)
+ *  - cadenceSeriesWithGamertags (consommait `combat_tab.cadence` côté API,
+ *    désormais reconstruit depuis `combat_tab.highlight_events` via
+ *    `cadenceSeriesFromEvents` pour rester cohérent avec FragDiff/Antagonistes).
  */
 import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
 import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
+import type { SemanticToken } from '@/lib/accessibility'
 import type {
   MatchHighlightEvent,
   MatchKillerVictimPair,
   MatchScoreboardRow,
-  MatchViewCadence,
 } from '@/lib/api/types'
-
-export interface KDTimelinePoint {
-  time_seconds: number
-  kills: number
-  deaths: number
-}
-
-export function kdTimelineSeries(
-  points: KDTimelinePoint[],
-  labelOf: (key: string, fallback: string) => string,
-): ChartSeries<ChartPoint2D>[] {
-  return [
-    {
-      key: 'match_view.combat.kd_timeline.kills',
-      meta: { gamertag: labelOf('kills', 'Kills') },
-      datapoints: points.map((p) => ({ x: p.time_seconds, y: p.kills })),
-    },
-    {
-      key: 'match_view.combat.kd_timeline.deaths',
-      meta: { gamertag: labelOf('deaths', 'Deaths') },
-      datapoints: points.map((p) => ({ x: p.time_seconds, y: p.deaths })),
-    },
-  ]
-}
-
-export interface TugOfWarBin {
-  bin_start: number
-  bin_end?: number
-  team_kills?: number
-  enemy_kills?: number
-  net_kills: number
-}
-
-export function tugOfWarSeries(bins: TugOfWarBin[]): ChartSeries<ChartPoint2D>[] {
-  return [
-    {
-      key: 'match_view.combat.tug_of_war.net_kills',
-      meta: { gamertag: 'Kills nets' },
-      datapoints: bins.map((b) => ({ x: b.bin_start, y: b.net_kills })),
-    },
-  ]
-}
-
-const TEAM_LABEL = 'Mon équipe'
-const ENEMY_LABEL = 'Adverses'
-
-/** Composant tugOfWarStackedSeries — bars divergentes par bin
- *  (Mon équipe positive en haut, Adverses négatives en bas).
- *
- * Catégories formatées en `m:ss`.
- */
-export function tugOfWarStackedSeries(
-  bins: TugOfWarBin[],
-): ChartSeries<ChartPointStacked>[] {
-  if (bins.length === 0) return []
-  return [
-    {
-      key: 'match_view.combat.tug_of_war.divergent',
-      datapoints: bins.map((b) => ({
-        category: formatBinSeconds(b.bin_start),
-        components: {
-          [TEAM_LABEL]: b.team_kills ?? 0,
-          [ENEMY_LABEL]: -(b.enemy_kills ?? 0),
-        },
-      })),
-    },
-  ]
-}
-
-export const TUG_OF_WAR_LABELS = { team: TEAM_LABEL, enemy: ENEMY_LABEL }
-
-/** Convertit cadence (xuid → kills) en cadence (gamertag → kills) lisible. */
-export function cadenceSeriesWithGamertags(
-  cadence: MatchViewCadence | null | undefined,
-  scoreboard: MatchScoreboardRow[],
-): ChartSeries<ChartPointStacked>[] {
-  if (!cadence || cadence.datapoints.length === 0) return []
-  const xuidToGT = new Map<string, string>()
-  for (const r of scoreboard) {
-    xuidToGT.set(r.xuid, r.gamertag || r.xuid)
-  }
-  return [
-    {
-      key: cadence.key,
-      labelKey: cadence.label_key,
-      datapoints: cadence.datapoints.map((dp) => {
-        const components: Record<string, number> = {}
-        for (const [xuid, kills] of Object.entries(dp.components)) {
-          if (kills === 0) continue
-          components[xuidToGT.get(xuid) ?? xuid] = kills
-        }
-        return { category: dp.category, components }
-      }),
-      meta: cadence.meta,
-    },
-  ]
-}
+import { unknownPlayerLabel } from './colors'
 
 /** Format seconds → "m:ss" (ex 75 → "1:15"). */
 export function formatBinSeconds(seconds: number): string {
@@ -175,20 +82,22 @@ export interface FragDiffPoint extends ChartPoint2D {
  * Une série par joueur, X = secondes depuis le début, Y = différentiel.
  * On insère un point initial (0, 0) pour aligner toutes les courbes.
  *
- * `meXUID` est mis en première position pour que le mapping de couleurs (cyclées
- * dans le wrapper) lui assigne la couleur "principale".
+ * `meXUID` est mis en première position pour que le wrapper attribue d'abord
+ * la couleur principale au joueur. Si `colorByXUID` est fourni, chaque série
+ * porte son `colorToken` sémantique (allié vs ennemi) ; sinon le wrapper
+ * cycle sur la palette par défaut.
+ *
+ * `xuidToGamertag` est la table de résolution (cf. `buildXUIDToGamertagMap`)
+ * — fallback `Joueur XXXX` (4 derniers chars) uniquement si le xuid n'a
+ * été résolu par AUCUNE source serveur.
  */
 export function allPlayersFragDiffSeries(
   events: MatchHighlightEvent[],
-  scoreboard: MatchScoreboardRow[],
+  xuidToGamertag: Map<string, string>,
   meXUID: string | null,
+  colorByXUID?: Map<string, SemanticToken>,
 ): ChartSeries<ChartPoint2D>[] {
   if (events.length === 0) return []
-
-  const xuidToGT = new Map<string, string>()
-  for (const r of scoreboard) {
-    xuidToGT.set(r.xuid, r.gamertag || r.xuid)
-  }
 
   // Tri chronologique stable
   const sorted = [...events]
@@ -222,11 +131,73 @@ export function allPlayersFragDiffSeries(
 
   return xuids.map((xu) => {
     const points = playerSeries.get(xu) ?? []
+    const gamertag = xuidToGamertag.get(xu) ?? unknownPlayerLabel(xu)
     return {
       key: `match_view.combat.frag_diff.${xu}`,
-      meta: { gamertag: xuidToGT.get(xu) ?? xu },
+      colorToken: colorByXUID?.get(xu),
+      meta: { gamertag },
       // Insère (0, 0) en tête pour démarrer toutes les courbes au même point.
       datapoints: [{ x: 0, y: 0 }, ...points],
     }
   })
+}
+
+/** Construction de la cadence de kills par phase de N secondes, agrégée
+ *  par gamertag. Reconstruit côté front depuis `combat_tab.highlight_events`
+ *  pour garantir la cohérence avec FragDiff/Antagonistes.
+ *
+ *  `xuidToGamertag` doit cumuler scoreboard + roster + kvPairs (cf.
+ *  `buildXUIDToGamertagMap`) — sinon les xuids présents uniquement dans
+ *  `highlight_events` se retrouvent en label `Joueur XXXX`.
+ *
+ *  Phase par défaut = 60s. Les phases vides (aucun kill) ne sont pas omises
+ *  pour préserver la lecture temporelle linéaire — chaque catégorie est un
+ *  label `m:ss` du début de phase.
+ */
+export function cadenceSeriesFromEvents(
+  events: MatchHighlightEvent[],
+  xuidToGamertag: Map<string, string>,
+  phaseSeconds = 60,
+): ChartSeries<ChartPointStacked>[] {
+  if (events.length === 0 || phaseSeconds <= 0) return []
+
+  const phaseMS = phaseSeconds * 1000
+  let maxTime = 0
+  const phaseBuckets = new Map<number, Map<string, number>>()
+
+  for (const e of events) {
+    if ((e.event_type ?? '').toLowerCase() !== 'kill') continue
+    if (e.event_time_ms == null || !e.actor_xuid) continue
+    const t = e.event_time_ms
+    if (t > maxTime) maxTime = t
+    const phase = Math.floor(t / phaseMS)
+    const gt = xuidToGamertag.get(e.actor_xuid) ?? unknownPlayerLabel(e.actor_xuid)
+    const bucket = phaseBuckets.get(phase) ?? new Map<string, number>()
+    bucket.set(gt, (bucket.get(gt) ?? 0) + 1)
+    phaseBuckets.set(phase, bucket)
+  }
+
+  if (phaseBuckets.size === 0) return []
+
+  const bucketCount = Math.floor(maxTime / phaseMS) + 1
+  const dps: ChartPointStacked[] = []
+  for (let i = 0; i < bucketCount; i++) {
+    const startSec = i * phaseSeconds
+    const components: Record<string, number> = {}
+    const bucket = phaseBuckets.get(i)
+    if (bucket) {
+      for (const [gt, kills] of bucket) {
+        if (kills > 0) components[gt] = kills
+      }
+    }
+    dps.push({ category: formatBinSeconds(startSec), components })
+  }
+
+  return [
+    {
+      key: 'match_view.combat.cadence',
+      datapoints: dps,
+      meta: { phase_seconds: phaseSeconds },
+    },
+  ]
 }

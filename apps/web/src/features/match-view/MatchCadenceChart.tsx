@@ -1,23 +1,30 @@
 /**
  * MatchCadenceChart — match_view.11.
  *
- * Cadence des kills par tranche de 60s (1 série par joueur du scoreboard,
- * empilée sur le même axe). Couleurs cyclées via la palette par défaut du
- * BarStackedChart. Source : `combat_tab.cadence` (build côté Go via
- * narrative.ComputeCadenceProfiles).
+ * Cadence des kills par tranche de 60s, 1 série empilée par joueur du
+ * scoreboard. Reconstruite côté front depuis `combat_tab.highlight_events`
+ * (mêmes données que FragDiff/Antagonistes) afin de garantir la cohérence
+ * d'affichage : si les autres charts ont des données, la cadence aussi.
+ *
+ * Couleurs alignées sur la matrice main/alliés/ennemis (cf. `colors.ts`).
  */
 import { Card, CardContent } from '@/components/ui/card'
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
-import type { MatchScoreboardRow, MatchViewCadence } from '@/lib/api/types'
-import { cadenceSeriesWithGamertags } from './_chartSeries'
+import type { SemanticToken } from '@/lib/accessibility'
+import type { MatchHighlightEvent, MatchScoreboardRow } from '@/lib/api/types'
+import { cadenceSeriesFromEvents } from './_chartSeries'
+import { buildMatchPlayerColors } from './colors'
+
+const PHASE_SECONDS = 60
 
 interface Props {
-  cadence: MatchViewCadence | null | undefined
+  events: MatchHighlightEvent[]
   scoreboard: MatchScoreboardRow[]
+  meXUID: string | null
 }
 
-export function MatchCadenceChart({ cadence, scoreboard }: Props) {
-  const series = cadenceSeriesWithGamertags(cadence, scoreboard)
+export function MatchCadenceChart({ events, scoreboard, meXUID }: Props) {
+  const series = cadenceSeriesFromEvents(events, scoreboard, PHASE_SECONDS)
   if (series.length === 0) {
     return (
       <Card>
@@ -27,17 +34,20 @@ export function MatchCadenceChart({ cadence, scoreboard }: Props) {
       </Card>
     )
   }
-  const phaseSeconds =
-    typeof cadence?.meta?.phase_seconds === 'number'
-      ? (cadence.meta.phase_seconds as number)
-      : 60
+  const colors = buildMatchPlayerColors(scoreboard, meXUID)
+  const componentColors: Record<string, SemanticToken> = {}
+  for (const [gt, token] of colors.tokenByGamertag) {
+    componentColors[gt] = token
+  }
   return (
     <Card>
       <CardContent className="py-4">
         <BarStackedChart
-          title={`Cadence des kills par phase de ${phaseSeconds}s`}
+          title={`Cadence des kills par phase de ${PHASE_SECONDS}s`}
           height={300}
           series={series}
+          componentColors={componentColors}
+          tooltipHideZero
         />
       </CardContent>
     </Card>

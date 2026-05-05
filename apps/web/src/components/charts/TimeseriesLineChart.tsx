@@ -18,6 +18,8 @@
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   CHART_BG,
@@ -60,6 +62,15 @@ export interface TimeseriesLineChartProps {
   outcomeMarkers?: boolean
   /** Optionnel : nom d'une série côté front (override LabelKey backend). */
   seriesNameResolver?: (s: ChartSeries<ChartPoint2D>) => string
+  /** Si false, masque les symboles (courbes lisses sans marqueurs). Default true. */
+  showSymbol?: boolean
+  /** Si true, applique un lissage spline sur les courbes. Default false. */
+  smooth?: boolean
+  /**
+   * Formatter optionnel pour les labels de l'axe X (utile en xAxisType='value'
+   * pour afficher des secondes en `m:ss`). Reçoit la valeur brute du tick.
+   */
+  xAxisLabelFormatter?: (value: number | string | Date) => string
 }
 
 export function TimeseriesLineChart({
@@ -73,6 +84,9 @@ export function TimeseriesLineChart({
   xAxisType,
   outcomeMarkers = true,
   seriesNameResolver,
+  showSymbol = true,
+  smooth = false,
+  xAxisLabelFormatter,
 }: TimeseriesLineChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPoint2D>[]) =>
@@ -81,8 +95,11 @@ export function TimeseriesLineChart({
         xAxisType,
         outcomeMarkers,
         seriesNameResolver,
+        showSymbol,
+        smooth,
+        xAxisLabelFormatter,
       }),
-    [timeAxis, xAxisType, outcomeMarkers, seriesNameResolver],
+    [timeAxis, xAxisType, outcomeMarkers, seriesNameResolver, showSymbol, smooth, xAxisLabelFormatter],
   )
 
   return (
@@ -103,6 +120,9 @@ interface BuildOpts {
   xAxisType?: 'time' | 'category' | 'value'
   outcomeMarkers?: boolean
   seriesNameResolver?: (s: ChartSeries<ChartPoint2D>) => string
+  showSymbol?: boolean
+  smooth?: boolean
+  xAxisLabelFormatter?: (value: number | string | Date) => string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -110,7 +130,15 @@ export function buildTimeseriesLineOption(
   series: ChartSeries<ChartPoint2D>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { timeAxis = true, xAxisType, outcomeMarkers = true, seriesNameResolver } = opts
+  const {
+    timeAxis = true,
+    xAxisType,
+    outcomeMarkers = true,
+    seriesNameResolver,
+    showSymbol = true,
+    smooth = false,
+    xAxisLabelFormatter,
+  } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -120,7 +148,11 @@ export function buildTimeseriesLineOption(
     xAxisType ?? (timeAxis ? 'time' : 'category')
 
   const echartsSeries = series.map((s, idx) => {
-    const color = seriesColor(idx)
+    // Une série peut porter explicitement son token (via `colorToken` du
+    // contrat ChartSeries) — on l'utilise en priorité avant la palette cyclée.
+    const color = s.colorToken
+      ? resolveToken(s.colorToken as SemanticToken)
+      : seriesColor(idx)
     const name =
       seriesNameResolver?.(s) ??
       (s.meta && typeof s.meta.gamertag === 'string' ? s.meta.gamertag : s.key)
@@ -143,8 +175,8 @@ export function buildTimeseriesLineOption(
     return {
       name,
       type: 'line' as const,
-      smooth: false,
-      showSymbol: true,
+      smooth,
+      showSymbol,
       symbolSize: 6,
       lineStyle: { color, width: 1.5 },
       itemStyle: { color },
@@ -154,6 +186,10 @@ export function buildTimeseriesLineOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
+  const xAxis: Record<string, unknown> = { ...axis, type: resolvedAxisType }
+  if (xAxisLabelFormatter) {
+    xAxis.axisLabel = { ...axis.axisLabel, formatter: xAxisLabelFormatter }
+  }
 
   return {
     backgroundColor: CHART_BG,
@@ -164,10 +200,7 @@ export function buildTimeseriesLineOption(
       axisPointer: { type: 'cross' },
     },
     legend: { ...getLegendBase(tc), data: echartsSeries.map((s) => s.name) },
-    xAxis: {
-      ...axis,
-      type: resolvedAxisType,
-    },
+    xAxis,
     yAxis: { ...axis, type: 'value' },
     series: echartsSeries,
   }

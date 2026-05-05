@@ -52,6 +52,12 @@ export interface BarStackedChartProps {
   componentColors?: Record<string, SemanticToken>
   /** Tableau des sous-clés à inclure dans l'ordre voulu (default: collecte auto). */
   componentOrder?: string[]
+  /**
+   * Si true, le tooltip filtre les composants à 0 pour la catégorie survolée
+   * (utile sur les bars empilées éparses où la majorité des sous-clés sont 0).
+   * Default false.
+   */
+  tooltipHideZero?: boolean
 }
 
 export function BarStackedChart({
@@ -64,11 +70,12 @@ export function BarStackedChart({
   orientation = 'vertical',
   componentColors,
   componentOrder,
+  tooltipHideZero = false,
 }: BarStackedChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointStacked>[]) =>
-      buildBarStackedOption(s, { orientation, componentColors, componentOrder }),
-    [orientation, componentColors, componentOrder],
+      buildBarStackedOption(s, { orientation, componentColors, componentOrder, tooltipHideZero }),
+    [orientation, componentColors, componentOrder, tooltipHideZero],
   )
 
   return (
@@ -88,6 +95,16 @@ interface BuildOpts {
   orientation?: 'vertical' | 'horizontal'
   componentColors?: Record<string, SemanticToken>
   componentOrder?: string[]
+  tooltipHideZero?: boolean
+}
+
+interface TooltipParam {
+  seriesName?: string
+  value?: number | null
+  color?: string
+  marker?: string
+  axisValueLabel?: string
+  axisValue?: string | number
 }
 
 /**
@@ -98,7 +115,7 @@ export function buildBarStackedOption(
   series: ChartSeries<ChartPointStacked>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { orientation = 'vertical', componentColors, componentOrder } = opts
+  const { orientation = 'vertical', componentColors, componentOrder, tooltipHideZero = false } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -141,17 +158,45 @@ export function buildBarStackedOption(
     data: categories,
   }
 
+  const tooltipBase = {
+    ...getTooltipBase(tc),
+    trigger: 'axis' as const,
+    axisPointer: { type: 'shadow' as const },
+  }
+  const tooltip = tooltipHideZero
+    ? {
+        ...tooltipBase,
+        formatter: (raw: unknown) => {
+          const params = (Array.isArray(raw) ? raw : [raw]) as TooltipParam[]
+          if (params.length === 0) return ''
+          const header = params[0]?.axisValueLabel ?? String(params[0]?.axisValue ?? '')
+          const lines = params
+            .filter((p) => typeof p.value === 'number' && p.value !== 0)
+            .map(
+              (p) =>
+                `${p.marker ?? ''}${escapeHtml(p.seriesName ?? '')}: <strong>${p.value}</strong>`,
+            )
+          if (lines.length === 0) return ''
+          return `<div style="margin-bottom:4px;font-weight:600">${escapeHtml(header)}</div>${lines.join('<br/>')}`
+        },
+      }
+    : tooltipBase
+
   return {
     backgroundColor: CHART_BG,
     grid: { top: 20, bottom: 40, left: 60, right: 16 },
-    tooltip: {
-      ...getTooltipBase(tc),
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-    },
+    tooltip,
     legend: { ...getLegendBase(tc), data: components },
     xAxis: orientation === 'horizontal' ? valueAxis : categoryAxis,
     yAxis: orientation === 'horizontal' ? categoryAxis : valueAxis,
     series: echartsSeries,
   }
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }

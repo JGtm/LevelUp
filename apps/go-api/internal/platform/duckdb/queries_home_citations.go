@@ -865,27 +865,21 @@ ORDER BY label ASC`
 	return q, args
 }
 
-// Q41 : MatchView Summary — citations riches pour un seul match.
-// Retourne delta (valeur du match) + cumul global + métadonnées mapping (tiers, image, description).
-// Paramètre : ?1 = match_id. Requête sur pdb.Player (match_citations) + pdb.Metadata (citation_mappings).
+// Q41 : MatchView Summary — match_citations + cumul global pour un seul match (player DB).
+// Les métadonnées (display, image_path, tier_targets, description) sont chargées
+// séparément via Q26j sur la metadata DB et mergées en Go (citation_mappings n'est
+// pas attachée au player DB — voir pool.go).
 const Q41SummaryTabCitations = `
 SELECT
     mc.citation_name_norm,
-    mc.value                                                   AS match_delta,
-    cum.total                                                  AS cumulative_total,
-    COALESCE(cm.citation_name_display, mc.citation_name_norm)  AS display,
-    COALESCE(cm.image_path, '')                                AS image_path,
-    COALESCE(cm.tier_targets, '')                              AS tier_targets,
-    COALESCE(cm.description, '')                               AS description
+    mc.value                AS match_delta,
+    cum.total               AS cumulative_total
 FROM match_citations mc
 JOIN (
     SELECT citation_name_norm, SUM(value) AS total
     FROM match_citations
     GROUP BY citation_name_norm
 ) cum ON cum.citation_name_norm = mc.citation_name_norm
-LEFT JOIN citation_mappings cm
-    ON cm.citation_name_norm = mc.citation_name_norm
-   AND cm.enabled IS NOT FALSE
 WHERE mc.match_id = ?
   AND mc.value > 0
 ORDER BY mc.value DESC`

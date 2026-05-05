@@ -9,10 +9,8 @@ import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { useMatchView } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
-import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
@@ -21,7 +19,6 @@ import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from '
 import { MatchWeaponPieChart } from './MatchWeaponCharts'
 import { MatchMediaTab } from './MatchMediaTab'
 import { MatchMedalsSection, MatchCitationsSection } from './MatchSummaryMedalsAndCitations'
-import { kdTimelineSeries } from './_chartSeries'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT, type MatchViewText } from './i18n'
 import type { MatchWeaponKill, MatchScoreboardRow } from '@/lib/api/types'
@@ -88,8 +85,6 @@ export function MatchViewPage() {
   const breadcrumbLabel = header.start_time_label
     ? `${matchLabel} · ${header.start_time_label}`
     : matchLabel
-  const labelOf = (key: string, fallback: string) => fallback ?? key
-  const kdSeries = kdTimelineSeries(combat_tab.kd_timeline, labelOf)
   const meRow = team_tab.scoreboard.find((r) => r.is_me)
   const meXUID = meRow?.xuid ?? null
   const weaponData: MatchWeaponKill[] =
@@ -163,46 +158,14 @@ export function MatchViewPage() {
                 t={t}
               />
             </div>
-            <MatchWeaponPieChart weaponKills={weaponData} t={t} />
-            {((summary_tab.medals?.length ?? 0) > 0 || (summary_tab.citations?.length ?? 0) > 0) && (
-              <div className="border-t border-border/40 pt-4 space-y-5">
-                <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
-                <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
-              </div>
-            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <MatchWeaponPieChart weaponKills={weaponData} t={t} />
+              <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
+              <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
+            </div>
           </div>
         ) : activeTab === 'combat' ? (
           <>
-            {combat_tab.kd_timeline.length > 1 ? (
-              <Card>
-                <CardContent className="py-4">
-                  <TimeseriesLineChart
-                    title="K/D cumulés du match"
-                    height={320}
-                    xAxisType="value"
-                    timeAxis={false}
-                    outcomeMarkers={false}
-                    series={kdSeries}
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Pas assez d'événements pour tracer la timeline K/D de ce match.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            <MatchTugOfWarChart
-              bins={combat_tab.tug_of_war}
-              events={combat_tab.highlight_events}
-              scoreboard={team_tab.scoreboard}
-              meXUID={meXUID}
-            />
-
             <MatchFragDiffChart
               events={combat_tab.highlight_events}
               scoreboard={team_tab.scoreboard}
@@ -210,11 +173,16 @@ export function MatchViewPage() {
             />
 
             <MatchCadenceChart
-              cadence={combat_tab.cadence}
+              events={combat_tab.highlight_events}
               scoreboard={team_tab.scoreboard}
+              meXUID={meXUID}
             />
 
-            <MatchAntagonistChart pairs={combat_tab.killer_victim} />
+            <MatchAntagonistChart
+              pairs={combat_tab.killer_victim}
+              scoreboard={team_tab.scoreboard}
+              meXUID={meXUID}
+            />
           </>
         ) : activeTab === 'media' ? (
           <MatchMediaTab

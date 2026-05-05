@@ -229,6 +229,14 @@ type MatchCitationSnippet struct {
 	Delta           int     `json:"delta"`
 	ProgressPct     float64 `json:"progress_pct"`
 	IsNewlyMastered bool    `json:"is_newly_mastered,omitempty"`
+	// Cumulative : total absolu après ce match (ex: 35 sur tiers [10,20,30,50,100]).
+	Cumulative int `json:"cumulative,omitempty"`
+	// TierIndex : palier atteint (0 = aucun, len(tiers) = maîtrisé).
+	TierIndex int `json:"tier_index,omitempty"`
+	// TierCount : nombre total de paliers (longueur de tier_targets).
+	TierCount int `json:"tier_count,omitempty"`
+	// NextTierTarget : seuil absolu du prochain palier (0 si maîtrisé).
+	NextTierTarget int `json:"next_tier_target,omitempty"`
 }
 
 // HomeMatchCitationRaw est une ligne brute merger depuis match_citations + citation_mappings.

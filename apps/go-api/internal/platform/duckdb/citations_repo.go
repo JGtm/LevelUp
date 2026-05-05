@@ -4,6 +4,7 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -178,9 +179,11 @@ func (r *CitationsRepo) LoadMatchCitationsForView(ctx context.Context, matchID s
 	return result, rows.Err()
 }
 
-// LoadMatchCitationsRich charge les citations d'un match avec cumul + métadonnées de paliers (Q41).
-// Retourne les données nécessaires à BuildCitationSnippets (filtrage mastery, progress ring, glow).
-// Dégradation silencieuse si la table match_citations est absente.
+// LoadMatchCitationsRich charge les citations d'un match avec cumul + métadonnées de paliers.
+// Étape 1 : Q41 sur player DB → norm + delta + cumul.
+// Étape 2 : Q26j sur metadata DB → display + image_path + tier_targets + description.
+// Étape 3 : merge en Go (citation_mappings n'est pas attachée au player DB).
+// Retour utilisable directement par analysis.BuildCitationSnippets.
 func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID string) ([]domain.HomeMatchCitationRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -191,18 +194,89 @@ func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID stri
 	}
 	defer rows.Close()
 
-	var result []domain.HomeMatchCitationRaw
+	type rawRow struct {
+		norm       string
+		delta      int
+		cumulative int
+	}
+	var raws []rawRow
+	normsSeen := make(map[string]struct{})
 	for rows.Next() {
-		var row domain.HomeMatchCitationRaw
-		if err := rows.Scan(
-			&row.Norm, &row.Delta, &row.Cumulative,
-			&row.Display, &row.ImagePath, &row.TierTargets, &row.Description,
-		); err != nil {
+		var rr rawRow
+		if err := rows.Scan(&rr.norm, &rr.delta, &rr.cumulative); err != nil {
 			return nil, fmt.Errorf("LoadMatchCitationsRich scan: %w", err)
 		}
-		result = append(result, row)
+		raws = append(raws, rr)
+		normsSeen[rr.norm] = struct{}{}
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(raws) == 0 {
+		return nil, nil
+	}
+
+	// Étape 2 : métadonnées sur metadata DB.
+	norms := make([]string, 0, len(normsSeen))
+	for n := range normsSeen {
+		norms = append(norms, n)
+	}
+	metaMap := r.loadCitationMappingMeta(ctx, norms)
+
+	// Étape 3 : merge. Display vide → BuildCitationSnippets filtre (norms internes
+	// type _processed n'ont pas de mapping et doivent être ignorées).
+	result := make([]domain.HomeMatchCitationRaw, 0, len(raws))
+	for _, rr := range raws {
+		meta := metaMap[rr.norm]
+		result = append(result, domain.HomeMatchCitationRaw{
+			Norm:        rr.norm,
+			Display:     meta.display,
+			Description: meta.description,
+			ImagePath:   meta.imagePath,
+			TierTargets: meta.tierTargets,
+			Delta:       rr.delta,
+			Cumulative:  rr.cumulative,
+		})
+	}
+	return result, nil
+}
+
+type citationMappingMeta struct {
+	display     string
+	imagePath   string
+	tierTargets string
+	description string
+}
+
+func (r *CitationsRepo) loadCitationMappingMeta(ctx context.Context, norms []string) map[string]citationMappingMeta {
+	result := make(map[string]citationMappingMeta, len(norms))
+	if len(norms) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return result
+	}
+	placeholders := make([]string, len(norms))
+	args := make([]interface{}, len(norms))
+	for i, n := range norms {
+		placeholders[i] = "?"
+		args[i] = n
+	}
+	query := fmt.Sprintf(Q26jCitationMappingsForNormsTemplate, strings.Join(placeholders, ", "))
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var norm, display, imagePath, tierTargets, description string
+		if err := rows.Scan(&norm, &display, &imagePath, &tierTargets, &description); err == nil {
+			result[norm] = citationMappingMeta{
+				display:     display,
+				imagePath:   imagePath,
+				tierTargets: tierTargets,
+				description: description,
+			}
+		}
+	}
+	return result
 }
 
 // WriteCitationsForMatch écrit les deltas de citations calculés dans match_citations.
