@@ -171,6 +171,10 @@ type MatchViewRepository interface {
 
 	// GetMatchBulkWeaponKills retourne les kills par arme de tous les joueurs (Q28).
 	GetMatchBulkWeaponKills(ctx context.Context, matchID string) ([]domain.BulkWeaponKillRaw, error)
+
+	// GetHistoryForAvg retourne les 50 derniers matchs du joueur pour le calcul
+	// des moyennes historiques K/D/A + spree/headshots/perfect (Q29).
+	GetHistoryForAvg(ctx context.Context, xuid string) ([]domain.MatchHistAvgRow, error)
 }
 
 // ExplorerRepository fournit les données pour l'explorer.
@@ -303,6 +307,9 @@ func (n *noopMatchViewRepo) GetMatchBulkMedals(_ context.Context, _ string) ([]d
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string) ([]domain.BulkWeaponKillRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
 	return nil, nil
 }
 

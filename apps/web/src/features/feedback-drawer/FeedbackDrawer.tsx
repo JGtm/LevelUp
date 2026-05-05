@@ -181,16 +181,24 @@ export function FeedbackDrawer() {
         onClick={toggle}
         aria-label={t(isOpen ? 'feedback_drawer.mini_tab.aria_close' : 'feedback_drawer.mini_tab.aria_open')}
         aria-expanded={isOpen}
-        className="fixed right-0 top-[calc(50%+min(330px,42vh))] z-40 hidden h-9 w-9 -translate-y-1/2 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground sm:flex"
+        className={`fixed right-0 top-[calc(50%+125px)] z-40 -translate-y-1/2 ${isOpen ? 'hidden' : 'hidden sm:flex'} h-9 w-10 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground`}
       >
         <ChatBubbleIcon />
       </button>
+
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-[49]"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
 
       <div
         role="complementary"
         aria-label={t('feedback_drawer.title')}
         aria-hidden={!isOpen}
-        className="fixed right-0 top-[calc(50%+min(330px,42vh))] z-50 hidden h-[min(540px,70vh)] w-[340px] -translate-y-1/2 flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl ring-1 ring-border transition-transform duration-200 ease-out sm:flex"
+        className="fixed right-0 top-1/2 z-50 hidden h-[min(540px,70vh)] w-[340px] flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl ring-1 ring-border transition-transform duration-200 ease-out sm:flex"
         style={{
           transform: isOpen
             ? 'translateX(0) translateY(-50%)'

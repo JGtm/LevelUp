@@ -393,7 +393,7 @@ const FR_TEXT: SquadText = {
     suffix: ' /min',
   },
   synergyRadar: {
-    title: 'Radar synergie — 6 axes par joueur',
+    title: 'Radar synergie',
     description: 'Profil de participation calculé sur les matchs où tous les coéquipiers sélectionnés étaient présents. Lignes seules (pas d\'aire), 4 profils superposés max.',
     axes: {
       combat: 'Combat',
@@ -648,7 +648,7 @@ const EN_TEXT: SquadText = {
     suffix: ' /min',
   },
   synergyRadar: {
-    title: 'Synergy radar — 6 axes per player',
+    title: 'Synergy radar',
     description: 'Participation profile computed on matches where all selected teammates were present. Lines only (no fill), max 4 overlaid profiles.',
     axes: {
       combat: 'Combat',

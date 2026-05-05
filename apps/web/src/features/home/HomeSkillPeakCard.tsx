@@ -35,30 +35,26 @@ export function HomeSkillPeakCard({
       }`}
     >
       {peak?.badge_image_url ? (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted p-1.5">
-          <img
-            data-testid={`${testIdPrefix}-badge`}
-            src={peak.badge_image_url}
-            alt={label}
-            className="h-full w-full object-contain"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
+        <img
+          data-testid={`${testIdPrefix}-badge`}
+          src={peak.badge_image_url}
+          alt={label}
+          className="h-12 w-12 shrink-0 object-contain"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (peak || isPlacement) ? (
         // Bug #1 : quand un peak existe (rating mais pas de tier_code stocké
         // en DB) ou que le joueur est en placement, on rend le badge unranked
         // générique au lieu de l'abréviation textuelle "MMR/LUSR".
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted p-1.5">
-          <img
-            data-testid={`${testIdPrefix}-unranked`}
-            src={unrankedBadgeURL()}
-            alt={isPlacement ? 'En placement' : label}
-            className="h-full w-full object-contain opacity-80"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
+        <img
+          data-testid={`${testIdPrefix}-unranked`}
+          src={unrankedBadgeURL()}
+          alt={isPlacement ? 'En placement' : label}
+          className="h-12 w-12 shrink-0 object-contain opacity-80"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
           {label.replace(/[^A-Z]/gi, '').slice(0, 4) || 'MMR'}

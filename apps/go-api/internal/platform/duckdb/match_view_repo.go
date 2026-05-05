@@ -163,6 +163,10 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 		&s.ShotsHit,
 		&s.DamageDealt,
 		&s.DamageTaken,
+		&s.TeamMMR,
+		&s.EnemyMMR,
+		&s.HeadshotKills,
+		&s.MaxKillingSpree,
 	)
 	if err != nil {
 		// Le joueur peut ne pas avoir participé → retourner une stats vide
@@ -747,6 +751,40 @@ func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) 
 		}
 	}
 	return results, nil
+}
+
+// GetHistoryForAvg retourne les 50 derniers matchs du joueur (Q29) pour le
+// calcul des moyennes historiques K/D/A + spree/headshots/perfect.
+func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]domain.MatchHistAvgRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.ReadDB().Query(ctx, Q29HistoryForAvg, xuid, xuid)
+	if err != nil {
+		slog.WarnContext(ctx, "GetHistoryForAvg query failed", "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	var results []domain.MatchHistAvgRow
+	for rows.Next() {
+		var row domain.MatchHistAvgRow
+		if err := rows.Scan(
+			&row.Kills,
+			&row.Deaths,
+			&row.Assists,
+			&row.HeadshotKills,
+			&row.MaxKillingSpree,
+			&row.PerfectKills,
+			&row.PairName,
+			&row.IsFirefight,
+			&row.IsRanked,
+		); err != nil {
+			return nil, fmt.Errorf("GetHistoryForAvg scan: %w", err)
+		}
+		results = append(results, row)
+	}
+	return results, rows.Err()
 }
 
 // GetMatchBulkWeaponKills retourne les kills par arme de tous les joueurs (Q28).

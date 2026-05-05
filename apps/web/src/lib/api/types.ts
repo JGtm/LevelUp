@@ -1149,6 +1149,7 @@ export interface RecentMatchMedal {
   count: number
   description?: string | null
   image_url: string
+  difficulty?: string | null
 }
 
 export interface SessionSummaryItem {
@@ -2006,6 +2007,8 @@ export interface MatchViewRank {
   numeric_value: number | null
   delta_value: number | null
   icon_url: string | null
+  /** Position dans le sous-tier courant (0.0–1.0). Nil pour Onyx. */
+  progress_pct?: number | null
 }
 
 export interface MatchMedal {
@@ -2035,6 +2038,9 @@ export interface MatchSummaryKpis {
   perfect_kills?: number | null
   accuracy?: number | null
   personal_score?: number | null
+  team_mmr?: number | null
+  enemy_mmr?: number | null
+  delta_mmr?: number | null
 }
 
 export interface MatchPersonalResult {
@@ -2054,6 +2060,9 @@ export interface MatchExpectedStats {
   hist_avg_kills?: number | null
   hist_avg_deaths?: number | null
   hist_avg_assists?: number | null
+  hist_avg_spree?: number | null
+  hist_avg_headshot_kills?: number | null
+  hist_avg_perfect_kills?: number | null
   hist_match_count?: number
   hist_mode_category?: string | null
 }
@@ -2071,6 +2080,12 @@ export interface MatchWeaponKill {
   weapon_label: string
   effective_weapon_id: number | null
   kill_count: number
+}
+
+export interface PlayerWeaponKillRow {
+  weapon_id: number
+  kills: number
+  label?: string
 }
 
 export interface MatchHighlightEvent {
@@ -2194,6 +2209,7 @@ export interface MatchScoreboardRow {
   defensive_resistance?: number | null
   damage_per_kill?: number | null
   damage_per_death?: number | null
+  weapon_kills?: PlayerWeaponKillRow[]
 }
 
 export interface MatchRosterRow {

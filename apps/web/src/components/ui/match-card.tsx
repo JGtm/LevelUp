@@ -13,6 +13,7 @@ import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-ca
 import { CitationProgressRing } from './citation-progress-ring'
 import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
+import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 
 export interface MatchCardProps {
   match: RecentMatchItem
@@ -457,12 +458,18 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     title={medal.description ?? medal.name ?? undefined}
                     className="flex flex-col items-center gap-0.5 cursor-default"
                   >
-                    <img
-                      src={medal.image_url}
-                      alt={medal.name ?? String(medal.medal_id)}
-                      className="w-8 h-8 object-contain"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                    />
+                    {(() => {
+                      const glow = dropShadowForDifficulty(medal.difficulty ?? undefined)
+                      return (
+                        <img
+                          src={medal.image_url}
+                          alt={medal.name ?? String(medal.medal_id)}
+                          className="w-8 h-8 object-contain"
+                          style={glow ? { filter: glow } : undefined}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                        />
+                      )
+                    })()}
                     {medal.name && medal.name.trim() !== '' && (
                       <span className="text-[9px] text-muted-foreground/80 leading-tight text-center max-w-[40px] truncate">
                         {medal.name}

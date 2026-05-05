@@ -34,6 +34,44 @@ export interface MatchViewText {
   outcomeDnf: string
   fromDate: string
   toDate: string
+  // Charts résumé
+  chartKdaTitle: string
+  chartSpreeTitle: string
+  seriesActual: string
+  seriesExpected: string
+  seriesHistAvg: string
+  labelKills: string
+  labelDeaths: string
+  labelAssists: string
+  labelSpree: string
+  labelHeadshots: string
+  labelPerfectKills: string
+  noHistData: string
+  duration: string
+  // Radar synergie (joueur actif)
+  chartSynergyRadarTitle: string
+  radarAxisCombat: string
+  radarAxisSurvival: string
+  radarAxisSupport: string
+  radarAxisScore: string
+  radarAxisObjective: string
+  radarAxisImpact: string
+  radarTooltipImpact: string
+  radarTooltipCombat: string
+  radarTooltipSurvival: string
+  radarTooltipSupport: string
+  radarTooltipScore: string
+  radarTooltipObjective: string
+  radarTooltipGlossaryLink: string
+  // Charts armes
+  chartWeaponPieTitle: string
+  chartWeaponTableTitle: string
+  labelPowerWeapon: string
+  labelMelee: string
+  labelOtherKills: string
+  // Onglet médias
+  mediaNoCaptures: string
+  mediaNoCapturesDesc: string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -63,6 +101,40 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     outcomeDnf: 'Non terminés',
     fromDate: 'Depuis',
     toDate: "Jusqu'au",
+    chartKdaTitle: 'F/D/A : Réel vs Attendu vs Moy. hist.',
+    chartSpreeTitle: 'Folie meurtrière · Tirs à la tête · Frags parfaits',
+    seriesActual: 'Réel',
+    seriesExpected: 'Attendu',
+    seriesHistAvg: 'Hist. Moy.',
+    labelKills: 'F',
+    labelDeaths: 'D',
+    labelAssists: 'A',
+    labelSpree: 'Folie meurtrière',
+    labelHeadshots: 'Tirs à la tête',
+    labelPerfectKills: 'Frags parfaits',
+    noHistData: 'Pas de données historiques disponibles',
+    duration: 'Durée',
+    chartSynergyRadarTitle: 'Radar synergie',
+    radarAxisCombat: 'Combat',
+    radarAxisSurvival: 'Survie',
+    radarAxisSupport: 'Support',
+    radarAxisScore: 'Score',
+    radarAxisObjective: 'Objectif',
+    radarAxisImpact: 'Impact',
+    radarTooltipImpact: 'Rendement offensif — 225 × (frags + ass/3) / dégâts. P80 = 0,83.',
+    radarTooltipCombat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
+    radarTooltipSurvival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
+    radarTooltipSupport: 'Assists × 50.',
+    radarTooltipScore: 'Score résiduel après frags (×100) et assists (×50) : médailles et streaks.',
+    radarTooltipObjective: "Points d'objectif (PersonalScoreAwards).",
+    radarTooltipGlossaryLink: '→ Glossaire',
+    chartWeaponPieTitle: 'Frags par arme',
+    chartWeaponTableTitle: 'Détail par arme',
+    labelPowerWeapon: 'Armes lourdes',
+    labelMelee: 'Mêlée',
+    labelOtherKills: 'Autres',
+    mediaNoCaptures: 'Aucune capture',
+    mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
   },
   en: {
     prevMatch: 'Previous match',
@@ -90,6 +162,40 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     outcomeDnf: 'DNF',
     fromDate: 'From',
     toDate: 'To',
+    chartKdaTitle: 'K/D/A: Actual vs Expected vs Hist. Avg.',
+    chartSpreeTitle: 'Spree · Headshots · Perfect kills',
+    seriesActual: 'Actual',
+    seriesExpected: 'Expected',
+    seriesHistAvg: 'Hist. Avg.',
+    labelKills: 'K',
+    labelDeaths: 'D',
+    labelAssists: 'A',
+    labelSpree: 'Killing Spree',
+    labelHeadshots: 'Headshots',
+    labelPerfectKills: 'Perfect kills',
+    noHistData: 'No historical data available',
+    duration: 'Duration',
+    chartSynergyRadarTitle: 'Synergy radar',
+    radarAxisCombat: 'Combat',
+    radarAxisSurvival: 'Survival',
+    radarAxisSupport: 'Support',
+    radarAxisScore: 'Score',
+    radarAxisObjective: 'Objective',
+    radarAxisImpact: 'Impact',
+    radarTooltipImpact: 'Offensive conversion — 225 × (kills + ass/3) / damage. P80 = 0.83.',
+    radarTooltipCombat: 'Kills + headshots + perfect kills, weighted by accuracy.',
+    radarTooltipSurvival: 'Defensive resistance — damage / (225 × deaths). P80 = 1.59.',
+    radarTooltipSupport: 'Assists × 50.',
+    radarTooltipScore: 'Residual score after kills (×100) and assists (×50): medals and streaks.',
+    radarTooltipObjective: 'Objective points (PersonalScoreAwards).',
+    radarTooltipGlossaryLink: '→ Glossary',
+    chartWeaponPieTitle: 'Frags by weapon',
+    chartWeaponTableTitle: 'Weapons breakdown',
+    labelPowerWeapon: 'Power weapons',
+    labelMelee: 'Melee',
+    labelOtherKills: 'Other',
+    mediaNoCaptures: 'No captures',
+    mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',
   },
 }
 
