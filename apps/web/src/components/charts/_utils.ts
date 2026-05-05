@@ -27,62 +27,6 @@ import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/th
 
 export const CHART_BG = 'transparent'
 
-/**
- * Anciennes constantes — conservées pour compatibilité ascendante avec les
- * builders qui ne sont pas encore migrés vers `getAxisBase(tc)` etc.
- *
- * @deprecated Préférer `getEChartsThemeColors()` + `getAxisBase(tc)` :
- * ces constantes sont figées en dark, elles ne suivent pas le thème actif.
- * Migration en cours (cf. PLAN_THEME_CONSISTENCY.md Phase 5e).
- */
-export const GRID_COLOR = 'rgba(255,255,255,0.06)'
-/** @deprecated voir GRID_COLOR. */
-export const TEXT_COLOR = 'rgba(255,255,255,0.45)'
-/** @deprecated voir GRID_COLOR. */
-export const ZERO_LINE = 'rgba(255,255,255,0.15)'
-
-/** @deprecated voir GRID_COLOR. */
-export const axisBase = {
-  axisLine: { lineStyle: { color: GRID_COLOR } },
-  axisTick: { show: false },
-  splitLine: { lineStyle: { color: GRID_COLOR } },
-  axisLabel: { color: TEXT_COLOR, fontSize: 10 },
-} as const
-
-/** @deprecated voir GRID_COLOR. */
-export const tooltipBase = {
-  backgroundColor: 'rgba(20,24,30,0.92)',
-  borderColor: GRID_COLOR,
-  textStyle: { color: 'rgba(255,255,255,0.85)', fontSize: 11 },
-  extraCssText: 'border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4)',
-} as const
-
-/** @deprecated voir GRID_COLOR. */
-export const legendBase = {
-  bottom: 0,
-  textStyle: { color: TEXT_COLOR, fontSize: 10 },
-  itemWidth: 12,
-  itemHeight: 8,
-} as const
-
-/**
- * @deprecated Préférer `getCategoricalXAxis(categories, tc)` :
- * cette version utilise les constantes figées en dark.
- */
-export function categoricalXAxis(categories: string[]): EChartsCoreOption['xAxis'] {
-  const n = categories.length
-  return {
-    ...axisBase,
-    type: 'category',
-    data: categories,
-    axisLabel: {
-      ...axisBase.axisLabel,
-      interval: tickInterval(n) - 1,
-      rotate: n > 60 ? 30 : n > 20 ? 15 : 0,
-    },
-  }
-}
-
 /** Base axis style (axes X/Y). À spread avant les overrides spécifiques. */
 export function getAxisBase(tc: EChartsThemeColors) {
   return {
@@ -203,3 +147,110 @@ export function formatNumber(v: number, decimals = 1): string {
 /** Re-export pour les builders qui veulent récupérer le helper themeColors. */
 export { getEChartsThemeColors }
 export type { EChartsThemeColors }
+
+// ---------------------------------------------------------------------------
+// Dual-grid layout helpers
+// ---------------------------------------------------------------------------
+
+export type DualLayout = 'side-by-side' | 'stacked'
+
+/** Nombre de matchs à partir duquel on bascule en layout empilé. */
+export const DUAL_LAYOUT_THRESHOLD = 14
+
+/**
+ * Fusionne deux EChartsCoreOption dans un canvas unique avec deux grilles.
+ * Les séries de optB sont ré-indexées (gridIndex/xAxisIndex/yAxisIndex = 1).
+ * Un crosshair synchronisé est ajouté via axisPointer.link.
+ *
+ * Contrainte : chaque option doit avoir une seule xAxis et une seule yAxis
+ * (pas de double-axe Y). Pour les builders multi-axes, ne pas utiliser ce helper.
+ */
+export function buildDualGridOption(
+  optA: EChartsCoreOption,
+  optB: EChartsCoreOption,
+  titleA: string,
+  titleB: string,
+  layout: DualLayout,
+): EChartsCoreOption {
+  const tc = getEChartsThemeColors()
+  const legBase = getLegendBase(tc)
+  const titleTextStyle = { color: tc.axisLabel, fontSize: 11, fontWeight: 'normal' as const }
+
+  const grids =
+    layout === 'side-by-side'
+      ? [
+          { left: '4%', right: '54%', top: 40, bottom: 36, containLabel: true },
+          { left: '54%', right: '4%', top: 40, bottom: 36, containLabel: true },
+        ]
+      : [
+          { left: '4%', right: '4%', top: 40, height: '40%', containLabel: true },
+          { left: '4%', right: '4%', top: '56%', bottom: 36, containLabel: true },
+        ]
+
+  const titles =
+    layout === 'side-by-side'
+      ? [
+          { text: titleA, left: '25%', textAlign: 'center' as const, top: 8, textStyle: titleTextStyle },
+          { text: titleB, left: '75%', textAlign: 'center' as const, top: 8, textStyle: titleTextStyle },
+        ]
+      : [
+          { text: titleA, left: '50%', textAlign: 'center' as const, top: 8, textStyle: titleTextStyle },
+          { text: titleB, left: '50%', textAlign: 'center' as const, top: '53%', textStyle: titleTextStyle },
+        ]
+
+  const rawXA = (Array.isArray(optA.xAxis) ? optA.xAxis[0] : optA.xAxis) as object
+  const rawXB = (Array.isArray(optB.xAxis) ? optB.xAxis[0] : optB.xAxis) as object
+  const rawYA = (Array.isArray(optA.yAxis) ? optA.yAxis[0] : optA.yAxis) as object
+  const rawYB = (Array.isArray(optB.yAxis) ? optB.yAxis[0] : optB.yAxis) as object
+
+  const seriesA = (Array.isArray(optA.series) ? optA.series : []) as Record<string, unknown>[]
+  const seriesB = (
+    (Array.isArray(optB.series) ? optB.series : []) as Record<string, unknown>[]
+  ).map((s) => ({ ...s, gridIndex: 1, xAxisIndex: 1, yAxisIndex: 1 }))
+
+  const legA = (Array.isArray(optA.legend) ? optA.legend[0] : optA.legend) as
+    | { data?: string[] }
+    | undefined
+  const legB = (Array.isArray(optB.legend) ? optB.legend[0] : optB.legend) as
+    | { data?: string[] }
+    | undefined
+  const dataA = legA?.data ?? []
+  const dataB = legB?.data ?? []
+  const mergedLegendData = [...dataA, ...dataB.filter((d) => !dataA.includes(d))]
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return {
+    backgroundColor: CHART_BG,
+    title: titles as any,
+    grid: grids as any,
+    xAxis: [
+      { ...rawXA, gridIndex: 0 },
+      { ...rawXB, gridIndex: 1 },
+    ] as EChartsCoreOption['xAxis'],
+    yAxis: [
+      { ...rawYA, gridIndex: 0 },
+      { ...rawYB, gridIndex: 1 },
+    ] as EChartsCoreOption['yAxis'],
+    tooltip: {
+      ...(optA.tooltip as object),
+      trigger: 'axis',
+      valueFormatter: (v: unknown) => (typeof v === 'number' ? Math.abs(v).toFixed(1) : '-'),
+    },
+    legend: {
+      ...legBase,
+      data: mergedLegendData,
+      bottom: 0,
+      type: 'scroll',
+    },
+    axisPointer: { link: [{ xAxisIndex: 'all' }] } as any,
+    ...(layout === 'stacked'
+      ? { dataZoom: [{ type: 'inside', xAxisIndex: [0, 1], filterMode: 'none' }] }
+      : {}),
+    series: [...seriesA, ...seriesB] as EChartsCoreOption['series'],
+  }
+}
+
+/** Hauteur en px du canvas ECharts pour un layout dual-grid. */
+export function dualPanelHeight(layout: DualLayout): number {
+  return layout === 'stacked' ? 600 : 300
+}
