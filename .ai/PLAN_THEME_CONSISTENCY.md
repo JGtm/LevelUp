@@ -1,8 +1,8 @@
 # Plan — Cohérence light/dark : éliminer les couleurs hardcodées dans `apps/web/`
 
-> **Branche cible** : `fix/theme-consistency-tokens`
-> **Date** : 2026-05-04
-> **Statut** : v3 — décisions utilisateur intégrées : thématiser CoverFlow + banner identity, valider charts via Playwright E2E sur 1 chart pilote
+> **Branche cible** : `fix/theme-consistency-tokens` (à créer **après** finalisation du WIP `fix/synergy-radar-calibration`)
+> **Date** : 2026-05-05
+> **Statut** : v4 — audit codebase post-v3 : ajout du pivot `components/charts/_utils.ts` (4 constantes utilisées par 11 wrappers ECharts), de 6 chart wrappers partagés, de 2 squad charts manqués + `PlayerChips.tsx`. La Phase 5 change de stratégie : refactor du pivot d'abord, propagation dérivée.
 
 ## 1. Contexte
 
@@ -15,7 +15,7 @@ L'utilisateur a constaté qu'en switchant `light ↔ dark`, **certaines zones re
 **Décisions complémentaires (validées avec l'utilisateur, 2026-05-04)** :
 - ✅ **CoverFlow modal** : thématisée comme le reste (pas de mode cinema spécial). Chrome + backdrop suivent le thème.
 - ✅ **Banner identity hero** : thématisé. `text-foreground` + on adapte/supprime l'overlay si besoin pour garantir la lisibilité dans les 2 thèmes.
-- ✅ **Charts ECharts** : approche pilote — refactorer **1 chart** (radar synergy retenu — visible et instrumenté), valider via un **test E2E Playwright** qui toggle le thème et vérifie la couleur des axes/labels, **puis** propager aux 9 autres charts.
+- ✅ **Charts ECharts** : approche pilote — refactorer **1 chart** (radar synergy retenu — visible et instrumenté), valider via un **test E2E Playwright** qui toggle le thème et vérifie la couleur des axes/labels, **puis** propager au pivot `_utils.ts` + 6 wrappers partagés + 8 charts spécifiques + `PlayerChips` (cf. v4 — détail § 2.4–2.5 et Phase 5).
 
 **Hors scope** :
 - Couleurs de rareté Halo ([palmares/rarity.ts](apps/web/src/features/palmares/rarity.ts)) — exception § 20 légitime.
@@ -25,9 +25,15 @@ L'utilisateur a constaté qu'en switchant `light ↔ dark`, **certaines zones re
 
 ---
 
-## 2. État des lieux — inventaire complet (v2 — passe approfondie)
+## 2. État des lieux — inventaire complet (v4 — audit codebase complet)
 
-> ⚠️ **Découvertes 2ème passe** : la v1 manquait (1) `components/ui/match-card.tsx` (17 hardcodes — affecte **toutes** les listes de matchs), (2) les axes/labels des charts ECharts en `rgba(255,255,255,X)` (invisibles en light), (3) plusieurs `text-white` dispersés dans Home/Palmarès, (4) le divider `bg-white/90` dans HomeChallengesList. La v2 ci-dessous est exhaustive.
+> ⚠️ **Découvertes v4 (passe code)** :
+> - **`components/charts/_utils.ts`** : 4 hardcodes (`GRID_COLOR`, `TEXT_COLOR`, `ZERO_LINE`, `tooltipBase.textStyle.color`) — utilisés par **11 wrappers** ([BarGroupedChart](apps/web/src/components/charts/BarGroupedChart.tsx), [BarStackedChart](apps/web/src/components/charts/BarStackedChart.tsx), [Heatmap2DChart](apps/web/src/components/charts/Heatmap2DChart.tsx), [EngagementCurve](apps/web/src/components/charts/EngagementCurve.tsx), [DonutChart](apps/web/src/components/charts/DonutChart.tsx), [TimeseriesLineChart](apps/web/src/components/charts/TimeseriesLineChart.tsx), [RadarChart](apps/web/src/components/charts/RadarChart.tsx), [ScatterChart](apps/web/src/components/charts/ScatterChart.tsx), [OutcomeSequenceTape](apps/web/src/components/charts/OutcomeSequenceTape.tsx), [HistogramChart](apps/web/src/components/charts/HistogramChart.tsx), via `axisBase` / `tooltipBase` / `legendBase`). **C'est LE pivot ECharts** — tout fix ici se propage automatiquement.
+> - **6 chart wrappers** ont en plus des `rgba(255,255,255,X)` inline pour des éléments spécifiques (radar `axisName`/`splitArea`/`splitLine`/`axisLine`, histogram `nameTextStyle`, scatter `nameTextStyle`, donut label, engagement-curve `nameTextStyle`, heatmap `visualMap.textStyle`).
+> - **2 squad charts manqués en v3** : [squadFirstEventsChart.ts](apps/web/src/features/squad/charts/squadFirstEventsChart.ts) (2 occ) et [squadPerformanceLineCharts.ts](apps/web/src/features/squad/charts/squadPerformanceLineCharts.ts) (2 occ).
+> - **[components/PlayerChips.tsx](apps/web/src/components/PlayerChips.tsx)** : 3 hardcodes ECharts manqués.
+>
+> **Découvertes v2 (déjà intégrées)** : `components/ui/match-card.tsx` (17 hardcodes), axes/labels charts ECharts, dispersion `text-white` Home/Palmarès, divider `bg-white/90` HomeChallengesList.
 
 ### Mécanisme du switch
 Le thème est piloté par `data-theme` sur `<html>` (cf. [theme-provider.tsx:7](apps/web/src/app/providers/theme-provider.tsx#L7)). Les CSS vars définies dans `:root[data-theme='dark']` et `:root[data-theme='light']` ([globals.css:7-134](apps/web/src/styles/globals.css#L7-L134)) basculent automatiquement. Toute couleur **non liée** à ces vars (hex, rgba, classes Tailwind nommées sans token) reste figée.
@@ -78,24 +84,52 @@ Ces classes ne déclenchent **pas** le linter custom mais figent l'apparence ind
 
 **Impact** : `MatchCard` est utilisé dans [HomeRecentMatches](apps/web/src/features/home/HomeRecentMatches.tsx), [match-history/MatchHistoryTable](apps/web/src/features/match-history/MatchHistoryTable.tsx), partout où des matchs s'affichent. **C'est probablement la zone n°1 que l'utilisateur a vu cassée.**
 
-### 2.4. Charts ECharts — `rgba(255,255,255,X)` figé (manqué en v1)
+### 2.4. Pivot partagé `components/charts/_utils.ts` — point d'effet de levier (NOUVEAU v4)
 
-ECharts est configuré via objets `option` JS — les axes/labels y reçoivent des couleurs en dur. En light theme, ces labels deviennent invisibles.
+[components/charts/_utils.ts](apps/web/src/components/charts/_utils.ts#L17-L44) exporte 4 hardcodes consommés par **11 wrappers** :
+
+| Constante / objet | Ligne | Valeur figée | Consommateurs |
+|---|---|---|---|
+| `GRID_COLOR` | L18 | `rgba(255,255,255,0.06)` | `axisBase` (axisLine, splitLine), `tooltipBase` (borderColor) |
+| `TEXT_COLOR` | L19 | `rgba(255,255,255,0.45)` | `axisBase.axisLabel.color`, `legendBase.textStyle.color` |
+| `ZERO_LINE` | L20 | `rgba(255,255,255,0.15)` | (export, peu utilisé directement) |
+| `tooltipBase.textStyle.color` | L34 | `rgba(255,255,255,0.85)` | `tooltipBase` |
+| `tooltipBase.backgroundColor` | L32 | `rgba(20,24,30,0.92)` | `tooltipBase` (sombre figé) |
+
+**Stratégie** : transformer ces constantes en **getters runtime** (`getGridColor()`, `getTextColor()`...) ou en factories de bases (`getAxisBase()`, `getTooltipBase()`, `getLegendBase()`). Tous les wrappers qui spread `...axisBase` ou `...tooltipBase` bénéficient automatiquement.
+
+**Conséquence** : ces 11 wrappers (BarGrouped, BarStacked, Heatmap2D, EngagementCurve, Donut, TimeseriesLine, Radar, Scatter, OutcomeSequenceTape, Histogram) **n'ont qu'à recevoir le themeVersion en dépendance de leur `useMemo`** et se rendent automatiquement à la couleur du thème. Pas de patch ligne par ligne sur chacun.
+
+### 2.5. Charts ECharts — `rgba(255,255,255,X)` figés (inline, après pivot _utils)
+
+Au-delà du pivot, certains wrappers et charts spécifiques ont des hardcodes inline qui doivent être migrés explicitement (sites où les valeurs sont écrites directement, pas via les bases du pivot) :
 
 | Fichier | Occ. | Élément |
 |---|---|---|
-| [features/squad/charts/squadSynergyRadarChart.ts](apps/web/src/features/squad/charts/squadSynergyRadarChart.ts) | 4 | axisName / splitLine / axisLine |
-| [features/squad/charts/squadSessionTimelineChart.ts](apps/web/src/features/squad/charts/squadSessionTimelineChart.ts) | 2 | nameTextStyle (axes) |
-| [features/squad/charts/squadIntensityHeatmapChart.ts](apps/web/src/features/squad/charts/squadIntensityHeatmapChart.ts) | 2 | textStyle visualMap |
-| [features/squad/charts/squadMapHeatmapChart.ts](apps/web/src/features/squad/charts/squadMapHeatmapChart.ts) | 2 | textStyle visualMap |
-| [features/squad/charts/squadPerMinuteChart.ts](apps/web/src/features/squad/charts/squadPerMinuteChart.ts) | 1 | label sur barres |
-| [features/squad/charts/squadWeaponKillsChart.ts](apps/web/src/features/squad/charts/squadWeaponKillsChart.ts) | 1 | label |
+| [components/charts/RadarChart.tsx](apps/web/src/components/charts/RadarChart.tsx) | 4 | `axisName`, `splitArea` (2 valeurs), `splitLine`, `axisLine` (radar-spécifique, hors `axisBase`) |
+| [components/charts/HistogramChart.tsx](apps/web/src/components/charts/HistogramChart.tsx) | 2 | `nameTextStyle` (axes X et Y) |
+| [components/charts/ScatterChart.tsx](apps/web/src/components/charts/ScatterChart.tsx) | 2 | `nameTextStyle` (axes X et Y) |
+| [components/charts/Heatmap2DChart.tsx](apps/web/src/components/charts/Heatmap2DChart.tsx) | 1 | `visualMap.textStyle` |
+| [components/charts/DonutChart.tsx](apps/web/src/components/charts/DonutChart.tsx) | 1 | `label.color` |
+| [components/charts/EngagementCurve.tsx](apps/web/src/components/charts/EngagementCurve.tsx) | 1 | `nameTextStyle` |
+| [components/PlayerChips.tsx](apps/web/src/components/PlayerChips.tsx) | 3 | (à inventorier — chip color refs) |
+| [features/squad/charts/squadSynergyRadarChart.ts](apps/web/src/features/squad/charts/squadSynergyRadarChart.ts) | 4 | axisName / splitLine / axisLine / splitArea — **chart pilote** |
+| [features/squad/charts/squadSessionTimelineChart.ts](apps/web/src/features/squad/charts/squadSessionTimelineChart.ts) | 2 | nameTextStyle |
+| [features/squad/charts/squadIntensityHeatmapChart.ts](apps/web/src/features/squad/charts/squadIntensityHeatmapChart.ts) | 2 | visualMap.textStyle |
+| [features/squad/charts/squadMapHeatmapChart.ts](apps/web/src/features/squad/charts/squadMapHeatmapChart.ts) | 2 | visualMap.textStyle |
+| [features/squad/charts/squadPerMinuteChart.ts](apps/web/src/features/squad/charts/squadPerMinuteChart.ts) | 2 | label sur barres |
+| [features/squad/charts/squadWeaponKillsChart.ts](apps/web/src/features/squad/charts/squadWeaponKillsChart.ts) | 2 | label |
+| [features/squad/charts/squadFirstEventsChart.ts](apps/web/src/features/squad/charts/squadFirstEventsChart.ts) | 2 | (à inventorier — labels/axes) **NOUVEAU v4** |
+| [features/squad/charts/squadPerformanceLineCharts.ts](apps/web/src/features/squad/charts/squadPerformanceLineCharts.ts) | 2 | (à inventorier — labels/axes) **NOUVEAU v4**, hors `'#aaa'` self-ghost |
 | [features/timeseries/TimeseriesKdaBars.tsx](apps/web/src/features/timeseries/TimeseriesKdaBars.tsx) | 1 | nameTextStyle |
 | [features/squad/v2/SquadEngagementView.tsx](apps/web/src/features/squad/v2/SquadEngagementView.tsx) | 1 | nameTextStyle |
+| [components/ui/citation-progress-ring.tsx](apps/web/src/components/ui/citation-progress-ring.tsx) | 1 | `trackColor` SVG (cf §2.3) |
 
-**Solution** : remplacer par `getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground')` ou créer un helper `useThemeColor()` qui retourne la couleur résolue selon le thème actif et qui re-trigger le re-render quand le thème change. Alternative plus simple : utiliser un wrapper qui résout la CSS var au moment du rendu de l'option ECharts (les composants charts ont déjà `useColorPaletteVersion` pour la palette accessibilité — réutiliser le pattern).
+**Total Phase 5 (post-v4)** : 1 pivot + 6 wrappers partagés + 9 charts spécifiques + PlayerChips = **17 fichiers** (vs 8 en v3).
 
-### 2.5. Hardcodes restants à examiner
+**Solution adoptée** : helper `getEChartsThemeColors()` qui résout les CSS vars au runtime + hook `useThemeVersion()` qui force le re-mémoization quand `data-theme` change. Voir Phase 5 §5.2.
+
+### 2.6. Hardcodes restants à examiner
 
 - [features/home/HomeSessionCarousel.tsx:244,248](apps/web/src/features/home/HomeSessionCarousel.tsx#L244) — `text-white` dans un `<p className="text-muted-foreground">` (playlist + mode dominants) → **invisible en light**.
 - [features/home/HomeChallengesList.tsx:100](apps/web/src/features/home/HomeChallengesList.tsx#L100) — `'bg-white/90'` divider de section.
@@ -106,7 +140,7 @@ ECharts est configuré via objets `option` JS — les axes/labels y reçoivent d
 - [features/palmares/BattlePassRewardCarousel.tsx:173](apps/web/src/features/palmares/BattlePassRewardCarousel.tsx#L173) — `border-white/15` quand non-current.
 - [features/match-view/PlayerDetailPanel.tsx:103](apps/web/src/features/match-view/PlayerDetailPanel.tsx#L103) — `text-white` sur badge coloré (probablement OK si fond coloré, à valider).
 
-### 2.6. Cas particuliers (à arbitrer, pas refactor mécanique)
+### 2.7. Cas particuliers (à arbitrer, pas refactor mécanique)
 
 - **Backdrops modaux** (`bg-black/40`, `bg-black/70`, `bg-black/90`) sur [CompareDrawer](apps/web/src/features/compare/CompareDrawer.tsx), [MediaMatchPicker](apps/web/src/features/media/MediaMatchPicker.tsx), [CoverFlowModal](apps/web/src/features/media/CoverFlowModal.tsx), [BattlePassRewardLightbox](apps/web/src/features/palmares/BattlePassRewardLightbox.tsx) → **conserver `bg-black/X`** est OK : overlay neutre des deux côtés du thème (un dim noir au-dessus du contenu light reste lisible).
 - **Text shadow** (`textShadow: '0 1px 6px rgba(0,0,0,0.85)'` sur banner identity) → reste valide tant que l'image de fond reste sombre (banner Halo officiel).
@@ -266,13 +300,21 @@ C'est probablement la cause n°1 visible par l'utilisateur car la `MatchCard` es
 5. **AccessibilityTab** : `border-white/10` swatch → `border-border`.
 6. **PlayerDetailPanel** : L103 `text-white` (badge coloré) → si fond coloré dynamique → conserver, sinon `text-primary-foreground`.
 
-### Phase 5 — Charts ECharts (axes/labels invisibles en light)
+### Phase 5 — Charts ECharts (axes/labels invisibles en light) — stratégie v4
 
-**Fichiers** : 8 charts dans `features/squad/charts/*` + 2 dans `features/{timeseries, squad/v2}/`.
+**Fichiers** (v4) : 1 pivot (`_utils.ts`) + 6 wrappers partagés (`components/charts/*`) + 9 charts spécifiques (`features/squad/charts/*` + 2 timeseries/engagement) + `PlayerChips.tsx` = **17 fichiers**.
 
-#### 5.1 — Approche pilote (validée utilisateur)
+#### 5.1 — Approche pilote (validée utilisateur, v4)
 
-Refactorer **1 seul chart** d'abord ([squadSynergyRadarChart](apps/web/src/features/squad/charts/squadSynergyRadarChart.ts) retenu — 4 hardcodes représentatifs : `axisName`, `splitLine`, `axisLine`, et configuration radar bien instrumentée déjà en E2E via [squad-charts-render.spec.ts](apps/web/e2e/squad-charts-render.spec.ts)). Valider via test E2E Playwright **avant** de propager.
+**Stratégie revue v4** : profiter du pivot `_utils.ts` pour refactorer en **2 vagues** (helper d'abord, puis chart pilote consommateur) :
+
+1. **Vague 1 — helpers `themeColors.ts` + `useThemeVersion.ts`** (créés dans `lib/echarts/`) — Phase 5a
+2. **Vague 2 — pivot `_utils.ts`** : transformer `GRID_COLOR`, `TEXT_COLOR`, `ZERO_LINE` en getters dynamiques + `axisBase`, `tooltipBase`, `legendBase` en factories `getAxisBase()`, etc. — Phase 5b
+3. **Vague 3 — chart pilote** ([squadSynergyRadarChart](apps/web/src/features/squad/charts/squadSynergyRadarChart.ts) retenu — 4 hardcodes représentatifs : `axisName`, `splitLine`, `axisLine`, `splitArea`, instrumenté E2E via [squad-charts-render.spec.ts](apps/web/e2e/squad-charts-render.spec.ts)). — Phase 5c
+4. **Vague 4 — test E2E Playwright** — Phase 5d
+5. **🚦 Gate utilisateur** avant propagation
+6. **Vague 5 — propagation** : 6 wrappers partagés branchent leur `useMemo(option)` sur `useThemeVersion()` (les bases `axisBase`/`tooltipBase` sont déjà dynamiques après Phase 5b) ; les 8 charts spécifiques restants sont migrés sur le pattern pilote ; `PlayerChips.tsx` aligné. — Phase 5e
+7. **Vague 6 — extension du test E2E** à tous les charts. — Phase 5f
 
 #### 5.2 — Création du helper
 
@@ -288,10 +330,14 @@ Refactorer **1 seul chart** d'abord ([squadSynergyRadarChart](apps/web/src/featu
  * pour re-render automatique sur switch de thème.
  */
 export interface EChartsThemeColors {
-  axisLabel: string  // var(--muted-foreground)
-  axisLine: string   // var(--border)
-  splitLine: string  // var(--border)
-  text: string       // var(--foreground)
+  axisLabel: string         // var(--muted-foreground) — labels d'axe
+  axisLine: string          // var(--border) — ligne d'axe
+  splitLine: string         // var(--border) — gridlines
+  splitAreaA: string        // bande paire splitArea radar (translucide)
+  splitAreaB: string        // bande impaire splitArea radar (translucide légèrement plus opaque)
+  text: string              // var(--foreground) — labels valeurs / tooltips
+  tooltipBg: string         // var(--popover) — fond tooltip
+  tooltipBorder: string     // var(--border)
 }
 
 export function getEChartsThemeColors(): EChartsThemeColors {
@@ -300,11 +346,18 @@ export function getEChartsThemeColors(): EChartsThemeColors {
   // S'il y a un fallback nécessaire (test env sans CSS résolu), retourner des hex sûrs.
   const get = (name: string, fallback: string) =>
     cs.getPropertyValue(name).trim() || fallback
+  // splitArea radar : bandes alternées avec opacité — utiliser muted avec rgba/oklch alpha
+  // Stratégie : on retourne la CSS var avec un wrapper color-mix pour l'alpha.
+  // Fallback : rgba neutre.
   return {
-    axisLabel: get('--muted-foreground', '#9ca3af'),
-    axisLine:  get('--border', '#374151'),
-    splitLine: get('--border', '#374151'),
-    text:      get('--foreground', '#f3f4f6'),
+    axisLabel:     get('--muted-foreground', '#9ca3af'),
+    axisLine:      get('--border', '#374151'),
+    splitLine:     get('--border', '#374151'),
+    splitAreaA:    `color-mix(in oklch, ${get('--muted', '#374151')} 15%, transparent)`,
+    splitAreaB:    `color-mix(in oklch, ${get('--muted', '#374151')} 30%, transparent)`,
+    text:          get('--foreground', '#f3f4f6'),
+    tooltipBg:     get('--popover', 'rgba(20,24,30,0.92)'),
+    tooltipBorder: get('--border', '#374151'),
   }
 }
 ```
@@ -446,17 +499,33 @@ test.describe('Theme switch — charts ECharts suivent le thème', () => {
 - ✅ Le test E2E Playwright passe.
 - ✅ Validation manuelle utilisateur : "le radar est lisible dans les 2 thèmes".
 
-#### 5.4 — Propagation aux charts restants
+#### 5.4 — Propagation aux fichiers restants (v4)
 
-Une fois le pilote validé, propager le pattern aux 9 autres charts :
+Une fois le pilote validé, propager :
+
+**A. Wrappers partagés `components/charts/`** — branchent `useMemo(option)` sur `useThemeVersion()` ; les bases (`axisBase`, `tooltipBase`, `legendBase`) sont déjà dynamiques via le pivot `_utils.ts` refactoré en Phase 5b. Reste à migrer les hardcodes inline spécifiques :
+
+| Fichier | Substitutions inline |
+|---|---|
+| [components/charts/RadarChart.tsx](apps/web/src/components/charts/RadarChart.tsx) | 4 (axisName, splitArea ×2, splitLine, axisLine) |
+| [components/charts/HistogramChart.tsx](apps/web/src/components/charts/HistogramChart.tsx) | 2 (nameTextStyle X+Y) |
+| [components/charts/ScatterChart.tsx](apps/web/src/components/charts/ScatterChart.tsx) | 2 (nameTextStyle X+Y) |
+| [components/charts/Heatmap2DChart.tsx](apps/web/src/components/charts/Heatmap2DChart.tsx) | 1 (visualMap.textStyle) |
+| [components/charts/DonutChart.tsx](apps/web/src/components/charts/DonutChart.tsx) | 1 (label.color) |
+| [components/charts/EngagementCurve.tsx](apps/web/src/components/charts/EngagementCurve.tsx) | 1 (nameTextStyle) |
+| [components/PlayerChips.tsx](apps/web/src/components/PlayerChips.tsx) | 3 (à inventorier au refactor) |
+
+**B. Charts spécifiques `features/squad/charts/` + timeseries/engagement** :
 
 | Fichier | Substitutions |
 |---|---|
 | [squadSessionTimelineChart.ts](apps/web/src/features/squad/charts/squadSessionTimelineChart.ts) | 2 `rgba(...,0.6)` axisName |
 | [squadIntensityHeatmapChart.ts](apps/web/src/features/squad/charts/squadIntensityHeatmapChart.ts) | 2 `rgba(...,0.7)` visualMap |
 | [squadMapHeatmapChart.ts](apps/web/src/features/squad/charts/squadMapHeatmapChart.ts) | 2 `rgba(...,0.7)` visualMap |
-| [squadPerMinuteChart.ts](apps/web/src/features/squad/charts/squadPerMinuteChart.ts) | 1 `rgba(...,0.85)` label |
-| [squadWeaponKillsChart.ts](apps/web/src/features/squad/charts/squadWeaponKillsChart.ts) | 1 `rgba(...,0.92)` label |
+| [squadPerMinuteChart.ts](apps/web/src/features/squad/charts/squadPerMinuteChart.ts) | 2 `rgba(...,0.85)` label |
+| [squadWeaponKillsChart.ts](apps/web/src/features/squad/charts/squadWeaponKillsChart.ts) | 2 `rgba(...,0.92)` label |
+| [squadFirstEventsChart.ts](apps/web/src/features/squad/charts/squadFirstEventsChart.ts) | 2 (à inventorier) **NOUVEAU v4** |
+| [squadPerformanceLineCharts.ts](apps/web/src/features/squad/charts/squadPerformanceLineCharts.ts) | 2 (à inventorier, hors `'#aaa'` self-ghost à conserver) **NOUVEAU v4** |
 | [TimeseriesKdaBars.tsx](apps/web/src/features/timeseries/TimeseriesKdaBars.tsx) | 1 `rgba(...,0.65)` nameTextStyle |
 | [SquadEngagementView.tsx](apps/web/src/features/squad/v2/SquadEngagementView.tsx) | 1 `rgba(...,0.45)` nameTextStyle |
 
@@ -465,6 +534,7 @@ Une fois le pilote validé, propager le pattern aux 9 autres charts :
 - `rgba(255,255,255,0.85-0.92)` (label sur barre) → `themeColors.text`
 - `rgba(255,255,255,0.1)` (splitLine, axisLine) → `themeColors.splitLine`
 - `rgba(255,255,255,0.45-0.7)` (visualMap textStyle) → `themeColors.axisLabel`
+- `rgba(255,255,255,0.02-0.05)` (splitArea radar — bandes alternées) → `themeColors.splitArea` (à ajouter au helper)
 
 #### 5.5 — Étendre le test E2E
 
@@ -530,11 +600,12 @@ Supprimer toutes les annotations `// color-allow: thématique Spartan UI` (deven
    - Phase 3 : `refactor(web): palmares — thématiser reward lightbox+carousel+page`
    - Phase 4 : `refactor(web): cas isolés (citation-ring, star-button, compare, timeseries, settings, player-detail)`
    - Phase 5a : `feat(web): helper themeColors + useThemeVersion pour ECharts`
-   - Phase 5b : `refactor(web): radar synergy — couleurs axes via CSS vars (chart pilote)`
-   - Phase 5c : `test(web): E2E theme-switch-charts — pilote radar synergy`
-   - **🚦 Gate utilisateur** : valider le pilote avant Phase 5d.
-   - Phase 5d : `refactor(web): propager themeColors aux 9 autres charts ECharts`
-   - Phase 5e : `test(web): étendre E2E theme-switch-charts à tous les charts`
+   - Phase 5b : `refactor(web): pivot _utils.ts — bases axisBase/tooltipBase/legendBase dynamiques (themeColors)`
+   - Phase 5c : `refactor(web): radar synergy — couleurs axes via themeColors (chart pilote)`
+   - Phase 5d : `test(web): E2E theme-switch-charts — pilote radar synergy`
+   - **🚦 Gate utilisateur** : valider le pilote avant propagation.
+   - Phase 5e : `refactor(web): propager themeColors aux wrappers partagés + 8 charts spécifiques + PlayerChips`
+   - Phase 5f : `test(web): étendre E2E theme-switch-charts à tous les charts`
    - Phase 6 : `chore(web): supprimer les annotations color-allow:thématique-Spartan-UI obsolètes`
 3. **Supprimer toutes les annotations `// color-allow: thématique Spartan UI`** (devenues obsolètes).
 4. **Conserver** les `// color-allow: rose pour like…`, `// color-allow: amber gold (étoile favori)`, `// color-allow: rareté Halo`, `// color-allow: heatmap intensité`, `// color-allow: structurel SVG`, `// color-allow: blanc structurel sur fond compare-a/medal joueur` (toujours valides).
@@ -561,7 +632,7 @@ Supprimer toutes les annotations `// color-allow: thématique Spartan UI` (deven
 
 ---
 
-## 7. Estimations (v2)
+## 7. Estimations (v4)
 
 - **Phase 0 (MatchCard)** : 1 fichier, ~17 substitutions, ~25 min refactor + 15 min validation (tester sur Home, Match History, MatchView).
 - **Phase 1 (Home)** : 5 fichiers + 1 utility CSS `text-shadow-adaptive`, ~22 substitutions, ~45 min + 25 min.
@@ -569,18 +640,19 @@ Supprimer toutes les annotations `// color-allow: thématique Spartan UI` (deven
 - **Phase 3 (Palmarès)** : 3 fichiers, ~18 substitutions, ~30 min + 20 min.
 - **Phase 4 (cas isolés + composants UI)** : 6 fichiers, ~10 substitutions, ~25 min + 15 min.
 - **Phase 5a (helper themeColors + useThemeVersion)** : 2 nouveaux fichiers, ~25 min.
-- **Phase 5b (chart pilote radar synergy)** : 1 fichier + composant React consommateur, ~30 min refactor + 20 min validation manuelle.
-- **Phase 5c (test E2E pilote)** : 1 fichier de test, ~40 min écriture + ~10 min run.
+- **Phase 5b (pivot `_utils.ts` dynamique)** : 1 fichier ; transformer 4 constantes + 3 bases en factories `getAxisBase()` etc. ; ajuster les callers (`axisBase` consommé tel quel devient `getAxisBase()`). ~45 min + 15 min run de tests `_utils.test.ts`. **NOUVEAU v4**
+- **Phase 5c (chart pilote radar synergy)** : 1 fichier + composant React consommateur, ~30 min refactor + 20 min validation manuelle.
+- **Phase 5d (test E2E pilote)** : 1 fichier de test, ~40 min écriture + ~10 min run.
 - **🚦 Gate utilisateur** : 0–24h selon disponibilité.
-- **Phase 5d (propagation 9 charts)** : 9 fichiers, ~13 substitutions + branchement composants, ~1h + 30 min validation visuelle.
-- **Phase 5e (extension E2E)** : ~30 min.
+- **Phase 5e (propagation 6 wrappers + 8 charts spécifiques + PlayerChips)** : 15 fichiers, ~22 substitutions + branchement consommateurs sur `useThemeVersion`, ~1h45 + 45 min validation visuelle. **DÉRIVE v4 (+45 min)**
+- **Phase 5f (extension E2E)** : ~30 min.
 - **Phase 6 (cleanup color-allow)** : ~15 min.
 - **Phase 7 (validation + thought_log)** : ~30 min.
 
-**Total** : ~7h hors imprévus + gate utilisateur (vs 3h en v1, vs 5h30 en v2). La dérive vient de :
-- Thématisation complète des modales (vs cinema mode conservé en v2)
-- Plomberie ECharts (helper + hook) + test E2E pilote
-- Propagation contrôlée plutôt qu'en bloc
+**Total v4** : ~8h30 hors imprévus + gate utilisateur (vs 7h en v3). La dérive vient de :
+- Pivot `_utils.ts` ajouté en Phase 5b (+1h)
+- 6 wrappers partagés + 2 squad charts manqués + `PlayerChips` ajoutés en Phase 5e (+45 min)
+- Inverse positif : la Phase 5e profite de la base dynamique du pivot — pas de patch ligne par ligne sur les bases axes/tooltip/legend pour les 11 wrappers
 
 ---
 
@@ -592,7 +664,7 @@ Supprimer toutes les annotations `// color-allow: thématique Spartan UI` (deven
 - [ ] `grep -r "border-cyan-" apps/web/src/features/ apps/web/src/components/` → 0 résultat
 - [ ] `grep -r "text-slate-" apps/web/src/features/ apps/web/src/components/` → 0 résultat
 - [ ] `grep -r "text-white\b" apps/web/src/features/ apps/web/src/components/` → uniquement les exceptions documentées (overlay sur image, fond coloré token)
-- [ ] `grep -r "rgba(255,255,255" apps/web/src/features/squad/charts/ apps/web/src/features/timeseries/` → 0 résultat (remplacés par tokens)
+- [ ] `grep -r "rgba(255,255,255" apps/web/src/features/squad/ apps/web/src/features/timeseries/ apps/web/src/components/charts/ apps/web/src/components/PlayerChips.tsx` → 0 résultat (remplacés par tokens)
 
 ### Annotations
 - [ ] `grep -r "color-allow: thématique Spartan UI" apps/web/src/` → 0 résultat
@@ -625,7 +697,7 @@ Supprimer toutes les annotations `// color-allow: thématique Spartan UI` (deven
 
 ---
 
-## 9. Tableau récapitulatif des fichiers (v2)
+## 9. Tableau récapitulatif des fichiers (v4)
 
 | Phase | Fichier | Type | Occ. |
 |---|---|---|---|
@@ -648,14 +720,26 @@ Supprimer toutes les annotations `// color-allow: thématique Spartan UI` (deven
 | 4 | `features/timeseries/TimeseriesCorrelationScatter.tsx` | Feature | 1 white |
 | 4 | `features/settings/AccessibilityTab.tsx` | Feature | 1 white |
 | 4 | `features/match-view/PlayerDetailPanel.tsx` | Feature | 1 white |
-| 5 | `features/squad/charts/squadSynergyRadarChart.ts` | Chart | 4 rgba |
-| 5 | `features/squad/charts/squadSessionTimelineChart.ts` | Chart | 2 rgba |
-| 5 | `features/squad/charts/squadIntensityHeatmapChart.ts` | Chart | 2 rgba |
-| 5 | `features/squad/charts/squadMapHeatmapChart.ts` | Chart | 2 rgba |
-| 5 | `features/squad/charts/squadPerMinuteChart.ts` | Chart | 1 rgba |
-| 5 | `features/squad/charts/squadWeaponKillsChart.ts` | Chart | 1 rgba |
-| 5 | `features/timeseries/TimeseriesKdaBars.tsx` | Chart | 1 rgba |
-| 5 | `features/squad/v2/SquadEngagementView.tsx` | Chart | 1 rgba |
-| 5 | `apps/web/src/lib/echarts/themeColors.ts` | **Nouveau helper** | — |
+| 5a | `apps/web/src/lib/echarts/themeColors.ts` | **Nouveau helper** | — |
+| 5a | `apps/web/src/lib/echarts/useThemeVersion.ts` | **Nouveau hook** | — |
+| 5b | `components/charts/_utils.ts` | **Pivot ECharts** | 4 (constantes + tooltip) **NOUVEAU v4** |
+| 5c | `features/squad/charts/squadSynergyRadarChart.ts` | Chart pilote | 4 rgba |
+| 5d | `apps/web/e2e/theme-switch-charts.spec.ts` | **Nouveau test E2E** | — |
+| 5e | `components/charts/RadarChart.tsx` | Wrapper partagé | 4 rgba **NOUVEAU v4** |
+| 5e | `components/charts/HistogramChart.tsx` | Wrapper partagé | 2 rgba **NOUVEAU v4** |
+| 5e | `components/charts/ScatterChart.tsx` | Wrapper partagé | 2 rgba **NOUVEAU v4** |
+| 5e | `components/charts/Heatmap2DChart.tsx` | Wrapper partagé | 1 rgba **NOUVEAU v4** |
+| 5e | `components/charts/DonutChart.tsx` | Wrapper partagé | 1 rgba **NOUVEAU v4** |
+| 5e | `components/charts/EngagementCurve.tsx` | Wrapper partagé | 1 rgba **NOUVEAU v4** |
+| 5e | `components/PlayerChips.tsx` | Composant partagé | 3 rgba **NOUVEAU v4** |
+| 5e | `features/squad/charts/squadSessionTimelineChart.ts` | Chart | 2 rgba |
+| 5e | `features/squad/charts/squadIntensityHeatmapChart.ts` | Chart | 2 rgba |
+| 5e | `features/squad/charts/squadMapHeatmapChart.ts` | Chart | 2 rgba |
+| 5e | `features/squad/charts/squadPerMinuteChart.ts` | Chart | 2 rgba |
+| 5e | `features/squad/charts/squadWeaponKillsChart.ts` | Chart | 2 rgba |
+| 5e | `features/squad/charts/squadFirstEventsChart.ts` | Chart | 2 rgba **NOUVEAU v4** |
+| 5e | `features/squad/charts/squadPerformanceLineCharts.ts` | Chart | 2 rgba **NOUVEAU v4** |
+| 5e | `features/timeseries/TimeseriesKdaBars.tsx` | Chart | 1 rgba |
+| 5e | `features/squad/v2/SquadEngagementView.tsx` | Chart | 1 rgba |
 
-**Total** : 28 fichiers à modifier + 1 helper à créer.
+**Total v4** : 35 fichiers à modifier + 3 fichiers à créer (helper + hook + E2E spec) — vs 28+1 en v3.
