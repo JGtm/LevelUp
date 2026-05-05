@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -153,5 +154,226 @@ func TestBuildMatchHeader_OutcomeColorToken(t *testing.T) {
 	// Le hex legacy reste exposé pour rétrocompat
 	if h.OutcomeColor == "" {
 		t.Error("OutcomeColor (hex legacy) want non-empty")
+	}
+}
+
+// stubAssetURL : implémentation minimale de games.TitleAssetURLAdapter
+// pour les tests buildMatchHeader / buildRankBlock. mapImg = chaîne fixe
+// retournée pour tout name non vide ; csrFn = formateur tier+sub. Onyx fixe.
+type stubAssetURL struct {
+	mapImg     string
+	csrPattern string
+	onyxImg    string
+}
+
+func (s *stubAssetURL) TitleSlug() string { return "halo_infinite" }
+func (s *stubAssetURL) MapImageURL(name string) string {
+	if name == "" {
+		return ""
+	}
+	return s.mapImg
+}
+func (s *stubAssetURL) MedalImageURL(_ uint64) string { return "" }
+func (s *stubAssetURL) CSRRankImageURL(tier string, subTier int) string {
+	if tier == "" {
+		return ""
+	}
+	return s.csrPattern + tier + ":" + itoa(subTier)
+}
+func (s *stubAssetURL) CSRRankImageURLOnyx() string { return s.onyxImg }
+
+func itoa(n int) string {
+	// minimal helper pour éviter strconv import dans le file de test
+	if n == 0 {
+		return "0"
+	}
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	var buf [12]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	if neg {
+		i--
+		buf[i] = '-'
+	}
+	return string(buf[i:])
+}
+
+// TestBuildMatchHeader_MapImageURL verifie le câblage TitleAssetURLAdapter.
+func TestBuildMatchHeader_MapImageURL(t *testing.T) {
+	t.Parallel()
+
+	mapName := "Aquarius"
+	cases := []struct {
+		name     string
+		assetURL *stubAssetURL
+		mapName  *string
+		want     string
+	}{
+		{
+			name:     "asset URL résout → MapImageURL non nil",
+			assetURL: &stubAssetURL{mapImg: "/static/maps/halo_infinite/Aquarius.png"},
+			mapName:  &mapName,
+			want:     "/static/maps/halo_infinite/Aquarius.png",
+		},
+		{
+			name:     "adapter nil → MapImageURL nil (dégradation)",
+			assetURL: nil,
+			mapName:  &mapName,
+			want:     "",
+		},
+		{
+			name:     "adapter retourne vide → MapImageURL nil + warn loggé",
+			assetURL: &stubAssetURL{mapImg: ""},
+			mapName:  &mapName,
+			want:     "",
+		},
+		{
+			name:     "mapName nil → MapImageURL nil (pas de panic)",
+			assetURL: &stubAssetURL{mapImg: "/some.png"},
+			mapName:  nil,
+			want:     "",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			meta := &domain.MatchMetaRaw{MapName: tc.mapName}
+			var assetURL games.TitleAssetURLAdapter
+			if tc.assetURL != nil {
+				assetURL = tc.assetURL
+			}
+			h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, assetURL, false)
+			got := ""
+			if h.MapImageURL != nil {
+				got = *h.MapImageURL
+			}
+			if got != tc.want {
+				t.Errorf("MapImageURL = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestBuildMatchHeader_IsFavorite verifie que le bool IsFavorite est exposé.
+func TestBuildMatchHeader_IsFavorite(t *testing.T) {
+	t.Parallel()
+	for _, fav := range []bool{true, false} {
+		h := buildMatchHeader(context.Background(), "m1", &domain.MatchMetaRaw{}, nil, nil, nil, nil, fav)
+		if h.IsFavorite != fav {
+			t.Errorf("IsFavorite = %v, want %v", h.IsFavorite, fav)
+		}
+	}
+}
+
+// TestBuildMatchHeader_PlaylistFR : la traduction FR a priorité sur le label brut.
+func TestBuildMatchHeader_PlaylistFR(t *testing.T) {
+	t.Parallel()
+	en := "Ranked Arena"
+	fr := "Arène classée"
+	meta := &domain.MatchMetaRaw{
+		PlaylistName:   &en,
+		PlaylistNameFR: &fr,
+	}
+	h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, nil, false)
+	if h.PlaylistLabel != fr {
+		t.Errorf("PlaylistLabel = %q, want %q (FR prioritaire)", h.PlaylistLabel, fr)
+	}
+
+	// Sans FR : fallback brut EN
+	meta2 := &domain.MatchMetaRaw{PlaylistName: &en}
+	h2 := buildMatchHeader(context.Background(), "m1", meta2, nil, nil, nil, nil, false)
+	if h2.PlaylistLabel != en {
+		t.Errorf("PlaylistLabel sans FR = %q, want fallback EN %q", h2.PlaylistLabel, en)
+	}
+}
+
+// TestBuildRankBlock_IconURL verifie la résolution du badge CSR via
+// TitleAssetURLAdapter (chemin Onyx + non-Onyx + LUSR + nil adapter).
+func TestBuildRankBlock_IconURL(t *testing.T) {
+	t.Parallel()
+
+	asset := &stubAssetURL{
+		csrPattern: "/csr/",
+		onyxImg:    "/onyx.png",
+	}
+
+	tDiamond := "Diamond"
+	subTier3 := 3
+	tOnyx := "Onyx"
+
+	cases := []struct {
+		name     string
+		raw      *domain.SkillRankRaw
+		assetURL games.TitleAssetURLAdapter
+		want     string
+	}{
+		{
+			name: "CSR Diamond 3 → URL paramétrée",
+			raw: &domain.SkillRankRaw{
+				RatingType: "CSR",
+				Tier:       &tDiamond,
+				SubTier:    &subTier3,
+			},
+			assetURL: asset,
+			want:     "/csr/Diamond:3",
+		},
+		{
+			name: "CSR Onyx → URL Onyx fixe (pas de sub-tier)",
+			raw: &domain.SkillRankRaw{
+				RatingType: "CSR",
+				Tier:       &tOnyx,
+			},
+			assetURL: asset,
+			want:     "/onyx.png",
+		},
+		{
+			name: "LUSR (custom) → pas de badge officiel",
+			raw: &domain.SkillRankRaw{
+				RatingType: "LUSR",
+				Tier:       &tDiamond,
+				SubTier:    &subTier3,
+			},
+			assetURL: asset,
+			want:     "",
+		},
+		{
+			name: "adapter nil → IconURL vide (dégradation)",
+			raw: &domain.SkillRankRaw{
+				RatingType: "CSR",
+				Tier:       &tDiamond,
+				SubTier:    &subTier3,
+			},
+			assetURL: nil,
+			want:     "",
+		},
+		{
+			name: "Tier nil → IconURL vide",
+			raw: &domain.SkillRankRaw{
+				RatingType: "CSR",
+				SubTier:    &subTier3,
+			},
+			assetURL: asset,
+			want:     "",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rank := buildRankBlock(tc.raw, tc.assetURL)
+			if rank.IconURL != tc.want {
+				t.Errorf("IconURL = %q, want %q", rank.IconURL, tc.want)
+			}
+		})
 	}
 }
