@@ -140,6 +140,10 @@ export function FeedbackDrawer() {
     setSubmitTick((n) => n + 1)
     if (!allowed) return
     if (builtUrl.wasTruncated) log.warn('url:truncated', 'feedback URL body truncated')
+    // Observabilité dev : labels (type/severity/area) + taille URL.
+    // Pas de PII : pas de titre, pas de description, pas de gamertag.
+    const labels = new URL(builtUrl.url).searchParams.get('labels') ?? ''
+    log.info('feedback submitted', { labels, urlLength: builtUrl.url.length })
     const opened = window.open(
       builtUrl.url,
       '_blank',
@@ -147,15 +151,24 @@ export function FeedbackDrawer() {
     )
     if (!opened) {
       log.error('clipboard:open_failed', 'window.open returned null (popup blocked)')
-      navigator.clipboard
-        .writeText(builtUrl.url)
-        .then(() => toast.info(t('feedback_drawer.popup_blocked')))
-        .catch(() => toast.error(t('feedback_drawer.popup_blocked')))
+      copyToClipboardWithToast(builtUrl.url, t('feedback_drawer.popup_blocked'))
       return
     }
     close()
     setTitle('')
     setDescription('')
+  }
+
+  function copyToClipboardWithToast(url: string, message: string) {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      // Contexte non-secure (http://) ou clipboard indisponible : fail visible.
+      toast.error(message)
+      return
+    }
+    navigator.clipboard
+      .writeText(url)
+      .then(() => toast.info(message))
+      .catch(() => toast.error(message))
   }
 
   const submitDisabled = !title.trim() || remaining === 0

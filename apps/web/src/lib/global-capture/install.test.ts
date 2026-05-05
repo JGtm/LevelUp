@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest'
-import { _resetInstallFlagForTests, installGlobalCapture } from './install'
+import {
+  _resetInstallFlagForTests,
+  _uninstallGlobalCaptureForTests,
+  installGlobalCapture,
+} from './install'
 import {
   getRecentConsoleEntries,
   getRecentFailedRequests,
@@ -9,6 +13,13 @@ import {
 beforeEach(() => {
   _resetInstallFlagForTests()
   resetCaptureBuffersForTests()
+})
+
+afterEach(() => {
+  // Critique : restaure console.error/warn, retire les listeners window
+  // et le wrap fetch. Sans ce cleanup, le worker jsdom accumule les
+  // listeners entre fichiers de tests, ralentissant les suites lourdes.
+  _uninstallGlobalCaptureForTests()
 })
 
 describe('installGlobalCapture — idempotence', () => {
@@ -84,6 +95,99 @@ describe('installGlobalCapture — wrap console', () => {
     console.warn('caution')
     const [entry] = getRecentConsoleEntries()
     expect(entry?.level).toBe('warn')
+  })
+})
+
+describe('_uninstallGlobalCaptureForTests', () => {
+  it("restaure console.error original", () => {
+    const beforeInstall = console.error
+    installGlobalCapture()
+    expect(console.error).not.toBe(beforeInstall)
+    _uninstallGlobalCaptureForTests()
+    expect(console.error).toBe(beforeInstall)
+  })
+
+  it("restaure window.fetch original", () => {
+    const beforeInstall = window.fetch
+    installGlobalCapture()
+    expect(window.fetch).not.toBe(beforeInstall)
+    _uninstallGlobalCaptureForTests()
+    expect(window.fetch).toBe(beforeInstall)
+  })
+
+  it("retire les listeners window 'error' (events suivants ne capturent plus)", () => {
+    installGlobalCapture()
+    _uninstallGlobalCaptureForTests()
+    resetCaptureBuffersForTests()
+    window.dispatchEvent(new ErrorEvent('error', { message: 'apres-uninstall' }))
+    expect(getRecentConsoleEntries().some((e) => e.message.includes('apres-uninstall'))).toBe(false)
+  })
+
+  it("permet une réinstallation propre après uninstall", () => {
+    installGlobalCapture()
+    _uninstallGlobalCaptureForTests()
+    installGlobalCapture()
+    expect(
+      (globalThis as Record<string, unknown>)['__levelup_global_capture_installed__'],
+    ).toBe(true)
+  })
+})
+
+describe('installGlobalCapture — safeRun resilience', () => {
+  let originalAddEventListener: typeof window.addEventListener
+  let originalConsoleError: typeof console.error
+
+  beforeEach(() => {
+    originalAddEventListener = window.addEventListener
+    originalConsoleError = console.error
+  })
+
+  afterEach(() => {
+    window.addEventListener = originalAddEventListener
+    console.error = originalConsoleError
+  })
+
+  it("si wrapWindowErrors throw, les autres wraps s'installent quand même + log capture:install_failed", () => {
+    const errorSpy = vi.fn()
+    console.error = errorSpy
+    window.addEventListener = vi.fn(() => {
+      throw new Error('addEventListener KO')
+    }) as typeof window.addEventListener
+    installGlobalCapture()
+    // log d'erreur capté avec la clé stable
+    const errCalls = errorSpy.mock.calls.map((c) => String(c[0]))
+    expect(errCalls.some((c) => c.includes('capture:install_failed'))).toBe(true)
+    // Mais console.error ET fetch sont quand même wrappés
+    expect(console.error).not.toBe(originalConsoleError)
+  })
+})
+
+describe('installGlobalCapture — wrap window errors', () => {
+  it("capture les ErrorEvent dans le buffer", () => {
+    installGlobalCapture()
+    window.dispatchEvent(
+      new ErrorEvent('error', { message: 'window-level boom', error: new Error('e') }),
+    )
+    const entries = getRecentConsoleEntries()
+    expect(entries.some((e) => e.message.includes('window-level boom'))).toBe(true)
+  })
+
+  it("capture les unhandledrejection (reason: Error)", () => {
+    installGlobalCapture()
+    const event = new Event('unhandledrejection') as PromiseRejectionEvent
+    Object.defineProperty(event, 'reason', { value: new Error('promise rejected') })
+    window.dispatchEvent(event)
+    const entries = getRecentConsoleEntries()
+    expect(entries.some((e) => e.message.includes('promise rejected'))).toBe(true)
+  })
+
+  it("capture les unhandledrejection (reason: string)", () => {
+    installGlobalCapture()
+    const event = new Event('unhandledrejection') as PromiseRejectionEvent
+    Object.defineProperty(event, 'reason', { value: 'string reason' })
+    window.dispatchEvent(event)
+    const entries = getRecentConsoleEntries()
+    expect(entries.some((e) => e.message === 'string reason')).toBe(true)
   })
 })
 
