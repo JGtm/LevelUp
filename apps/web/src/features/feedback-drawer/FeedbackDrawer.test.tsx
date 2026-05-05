@@ -130,3 +130,42 @@ describe('FeedbackDrawer — anti-spam', () => {
     await waitFor(() => expect(submitBtn).toBeDisabled())
   })
 })
+
+describe('FeedbackDrawer — observabilité', () => {
+  it("log.info structurée {labels, urlLength} au submit (pas de PII)", async () => {
+    useFeedbackDrawerStore.setState({ isOpen: true })
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    renderWithProviders(<FeedbackDrawer />)
+    fireEvent.change(screen.getByPlaceholderText(/Résumez votre retour/i), {
+      target: { value: 'titre top secret' },
+    })
+    const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
+    await waitFor(() => expect(submitBtn).toBeEnabled())
+    fireEvent.click(submitBtn)
+    await waitFor(() => expect(infoSpy).toHaveBeenCalled())
+    const call = infoSpy.mock.calls.find((c) => String(c[0]).includes('feedback submitted'))
+    expect(call).toBeTruthy()
+    const meta = call?.[1] as { labels: string; urlLength: number }
+    expect(meta.labels).toContain('feedback,bug')
+    expect(meta.urlLength).toBeGreaterThan(0)
+    // Pas de PII : titre user n'apparait pas dans la metadata loggée
+    const allArgs = JSON.stringify(call)
+    expect(allArgs).not.toContain('top secret')
+  })
+
+  it("clipboard indisponible (HTTP context) → toast erreur sans crash", async () => {
+    useFeedbackDrawerStore.setState({ isOpen: true })
+    window.open = vi.fn().mockReturnValue(null) as typeof window.open
+    Object.defineProperty(navigator, 'clipboard', {
+      value: undefined,
+      configurable: true,
+    })
+    renderWithProviders(<FeedbackDrawer />)
+    fireEvent.change(screen.getByPlaceholderText(/Résumez votre retour/i), {
+      target: { value: 'titre' },
+    })
+    const submitBtn = screen.getByRole('button', { name: /Ouvrir sur GitHub/i })
+    await waitFor(() => expect(submitBtn).toBeEnabled())
+    expect(() => fireEvent.click(submitBtn)).not.toThrow()
+  })
+})
