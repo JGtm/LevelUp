@@ -127,7 +127,7 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
   const counter = t.matchCounter(neighbors.current_index + 1, neighbors.total_matches)
 
   return (
-    <div className="flex items-center justify-between border-b bg-card px-6 py-2">
+    <div className="flex items-center justify-between px-6 py-2">
       <Button
         variant="ghost"
         size="sm"
