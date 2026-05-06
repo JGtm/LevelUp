@@ -139,7 +139,7 @@ export function buildCombatYieldOption(
       {
         type: 'line',
         name: labels.ocSeries,
-        data: ocSeries?.datapoints.map((p) => [p.x, p.y]) ?? [],
+        data: ocSeries?.datapoints?.map((p) => [p.x, p.y]) ?? [],
         connectNulls: false,
         symbol: 'circle',
         symbolSize: 5,
@@ -168,7 +168,7 @@ export function buildCombatYieldOption(
       {
         type: 'line',
         name: labels.drSeries,
-        data: drSeries?.datapoints.map((p) => [p.x, p.y]) ?? [],
+        data: drSeries?.datapoints?.map((p) => [p.x, p.y]) ?? [],
         connectNulls: false,
         symbol: 'circle',
         symbolSize: 5,
