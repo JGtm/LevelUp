@@ -103,12 +103,12 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 	var out []port.WeaponKillRow
 	for dbRows.Next() {
 		var (
-			xuid       string
-			weaponIDRaw uint64 // UBIGINT cote DuckDB ; certains hash filmshell ont bit63=1
-			kills      int
-			isGM       bool
+			xuid     string
+			weaponID UBigint // UBIGINT côté DuckDB (cf. ubigint_scanner.go)
+			kills    int
+			isGM     bool
 		)
-		if err := dbRows.Scan(&xuid, &weaponIDRaw, &kills, &isGM); err != nil {
+		if err := dbRows.Scan(&xuid, &weaponID, &kills, &isGM); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
 		if filters.MinKills > 0 && kills < filters.MinKills {
@@ -116,7 +116,7 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 		}
 		out = append(out, port.WeaponKillRow{
 			XUID:           xuid,
-			WeaponID:       int64(weaponIDRaw), //nolint:gosec // bit-preserving reinterpret UBIGINT->BIGINT (cf. attachWeaponLabels qui re-cast en uint64)
+			WeaponID:       weaponID.Int64(),
 			Kills:          kills,
 			IsGrenadeMelee: isGM,
 		})
@@ -299,13 +299,12 @@ func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.We
 
 	labels := map[int64]string{}
 	for dbRows.Next() {
-		// weapon_id est UBIGINT en metadata.weapon_labels — scanner en uint64
-		// puis reinterpret en int64 (sinon overflow silencieux pour les hash
-		// filmshell bit63=1, ex. Mutilateur, MK50 Sidekick).
-		var idRaw uint64
+		// weapon_id UBIGINT scanné via UBigint (cf. ubigint_scanner.go) — sinon
+		// overflow silencieux pour les hash filmshell bit63=1.
+		var id UBigint
 		var label string
-		if err := dbRows.Scan(&idRaw, &label); err == nil && label != "" {
-			labels[int64(idRaw)] = label //nolint:gosec // bit-preserving reinterpret cohérent avec WeaponKillRow.WeaponID
+		if err := dbRows.Scan(&id, &label); err == nil && label != "" {
+			labels[id.Int64()] = label
 		}
 	}
 	for i := range rows {

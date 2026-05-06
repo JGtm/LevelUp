@@ -19,6 +19,17 @@ interface Props {
   citations?: MatchCitation[]
 }
 
+/**
+ * Le backend renvoie `weapon_label` soit comme nom résolu (BR75, MA40 AR…)
+ * soit comme weapon_id décimal en fallback pour les variantes absentes de
+ * `metadata.weapon_labels`. On détecte le cas numérique via regex pour
+ * préfixer `#` et identifier visuellement les armes non résolues.
+ */
+function formatWeaponLabel(label: string | null | undefined, id: number): string {
+  if (!label || /^-?\d+$/.test(label)) return `#${id}`
+  return label
+}
+
 function StatLine({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between text-xs py-0.5">
@@ -62,7 +73,7 @@ export function PlayerDetailPanel({ row, weaponKills, medals, citations }: Props
           <div className="space-y-0.5">
             {weaponKills.slice(0, 5).map((w) => (
               <div key={w.weapon_id} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{w.weapon_label ?? `#${w.weapon_id}`}</span>
+                <span className="text-muted-foreground">{formatWeaponLabel(w.weapon_label, w.weapon_id)}</span>
                 <span className="font-mono font-semibold" style={{ color: tokenCssVar('perf-tier-2') }}>{w.kill_count} kills</span>
               </div>
             ))}

@@ -544,15 +544,13 @@ func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int6
 	}
 	defer rows.Close()
 	for rows.Next() {
-		// weapon_id est UBIGINT en metadata.weapon_labels — scanner en uint64
-		// puis reinterpret en int64 (cohérent avec les callers qui stockent
-		// l'ID en int64 même pour bit63=1). Sans ça les hash filmshell
-		// high-bit (Mutilateur, MK50 Sidekick…) plantent silencieusement le
-		// scan et restent sans label.
-		var idRaw uint64
+		// weapon_id UBIGINT scanné via UBigint (cf. ubigint_scanner.go) — sinon
+		// overflow silencieux pour les hash filmshell bit63=1 (Mutilateur,
+		// MK50 Sidekick, Fuel Rod SPNKr…).
+		var id UBigint
 		var label string
-		if err := rows.Scan(&idRaw, &label); err == nil && label != "" {
-			labels[int64(idRaw)] = label //nolint:gosec // bit-preserving reinterpret
+		if err := rows.Scan(&id, &label); err == nil && label != "" {
+			labels[id.Int64()] = label
 		}
 	}
 	return labels
@@ -989,7 +987,13 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	for i := range results {
 		if label, ok := labels[results[i].WeaponID]; ok {
 			results[i].WeaponLabel = label
+			continue
 		}
+		// Fallback : weapon_id en string pour les variantes absentes de
+		// metadata.weapon_labels (cohérent avec GetMatchWeaponKills L428).
+		// Évite que le frontend ait à gérer un weapon_label vide (`??` ne
+		// fallback pas sur "").
+		results[i].WeaponLabel = strconv.FormatInt(results[i].WeaponID, 10)
 	}
 	return results, nil
 }
