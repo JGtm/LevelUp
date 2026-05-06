@@ -1,5 +1,39 @@
 # Thought Log
 
+## [2026-05-06] fix/media-player-ux — Onglet Combat : badges + 4 charts en tête (mock match_view)
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Câblage en haut de l'onglet Combat de la page match (`apps/web/src/features/match-view/MatchViewPage.tsx`) du bandeau de badges et des 4 visuels du mock (`.ai/charts_specs/_generated/match_view/mock-echarts.html`) :
+- `MatchImpactBadgesBar` (déjà présent, non utilisé) — bandeau "Faits marquants" reformaté en card à coins arrondis pour s'intégrer dans la séquence des cartes Combat.
+- `MatchKDCumulChart` (nouveau, match_view.09) — TimeseriesLineChart `xAxisType=value`, courbes en escalier Frags vs Morts cumulées, avec point initial (0, 0). Source : `combat_tab.kd_timeline`. Volontairement simplifié vs mock (pas de `markPoint`/`markLine` d'annotations badges — les badges sont au-dessus dans la barre dédiée).
+- `MatchTugOfWarChart` (nouveau, match_view.10) — BarStackedChart vertical alimenté par `combat_tab.tug_of_war`, components `team_kills`/`enemy_kills` libellés "Mon équipe"/"Adversaires" avec couleurs `compare-a` / `outcome-loss`.
+- `MatchCadenceChart` (nouveau, match_view.11) — BarStackedChart vertical alimenté par `combat_tab.cadence` (1 component par xuid côté backend), agrégé en 2 piles (mon équipe vs adverse) via le `team_side` du scoreboard.
+- `MatchNemesisCards` (nouveau, match_view.12) — 2 cartes côte à côte sur fond sombre dégradé, accent gauche `outcome-loss` (Némésis = max killed_me) et `outcome-win` (Souffre-douleur = max i_killed). Filtre les coéquipiers via `team_side` du scoreboard. Source : `team_tab.nemesis`.
+
+Les helpers de séries (`kdCumulSeries`, `tugOfWarStackedSeries`, `cadenceTeamSeries`) sont ajoutés dans `_chartSeries.ts` à côté des helpers existants (mêmes conventions ChartSeries<T>). Couleurs résolues via `tokenCssVar`/`resolveToken` — aucun hex hardcodé. i18n FR/EN ajoutée pour tous les libellés des 4 sections.
+
+**Résultats observés** :
+- `npm run typecheck` : OK sans erreur.
+- `npm run test -- src/features/match-view` : 58 tests passants (49 anciens + 9 nouveaux pour `kdCumulSeries`/`tugOfWarStackedSeries`/`cadenceTeamSeries`).
+- `npm run lint` : aucun nouveau warning sur les fichiers ajoutés (les warnings restants sont préexistants dans la codebase).
+- Aucun nouveau hex ni classe Tailwind couleur introduits dans `features/`.
+- **E2E Playwright** (spec dédiée `apps/web/e2e/match-view-combat.spec.ts`) : 1 test passant en 6.8s sur Chromium contre `make dev` réel. Couvre : récupération joueur via `/api/v1/players` → recherche du 1er match dont `combat_tab.kd_timeline` + `tug_of_war` sont peuplés → navigation `/players/{slug}/matches/{id}` → click onglet Combat → assertions visibilité sur "Faits marquants", "Frags / Morts cumulés", "Dominance par tranche de temps", "Cadence des frags", "Némésis", "Souffre-douleur" → screenshot fullPage `tests/e2e-results/match-view-combat-tab.png`. Sur le screenshot capturé (match "Assassin en équipe sur Bazaar"), bandeau de badges affiche bien le format "label · gamertag · m:ss" pour les 6 badges (Premier sang Duke748biposto 0:44, Boulet Chocoboflor 9:51, Touriste Chocoboflor 2:08, Top Gun JGtm 4:31, Bourreau JGtm) — exactement le format demandé par l'utilisateur.
+
+**Prochaine étape** : commit + PR.
+
+## [2026-05-06] fix/media-player-ux — Médias intégrés dans l'onglet Résumé (suppression onglet Médias)
+
+**Statut** : Complété
+
+**Décision technique principale** :
+L'onglet Médias (peu de contenu, redondant) est supprimé. `MatchMediaTab` est intégré en section dédiée en bas de l'onglet Résumé, enveloppé dans un `div` carte avec titre i18n (`sectionMedia`). L'état vide du composant perd son wrapper `Card`/`CardContent` (géré par la section parente). `TabId` et `TABS` passent de 4 à 3 entrées.
+
+**Résultats observés** : `tsc -b` sans erreur. 3 fichiers modifiés : `MatchViewPage.tsx`, `MatchMediaTab.tsx`, `i18n.ts`.
+
+**Prochaine étape** : Test visuel en dev, puis commit.
+
 ## [2026-05-06] fix/media-player-ux — Autoplay, border-radius lecteur, fallback match
 
 **Statut** : Complété — branche `fix/media-player-ux` depuis `feat/token-pool-parallel-sync`.

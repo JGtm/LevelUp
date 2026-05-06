@@ -79,6 +79,21 @@ export interface MatchViewText {
   newlyMastered: string
   noMedals: string
   noCitations: string
+  // Onglet Combat — charts en haut (mock match_view.09 / .10 / .11 / .12)
+  combatHighlights: string
+  combatKdCumulTitle: string
+  combatTugOfWarTitle: string
+  combatCadenceTitle: string
+  combatKillsLabel: string
+  combatDeathsLabel: string
+  combatTeamLabel: string
+  combatEnemyLabel: string
+  combatNemesisTitle: string
+  combatBullyTitle: string
+  combatNoNemesis: string
+  combatKilledMeFmt: (n: number) => string
+  combatIKilledFmt: (n: number) => string
+  combatNoData: string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -148,6 +163,20 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     newlyMastered: 'Maîtrisé !',
     noMedals: 'Aucune médaille',
     noCitations: 'Aucune citation',
+    combatHighlights: 'Faits marquants',
+    combatKdCumulTitle: 'Frags / Morts cumulés',
+    combatTugOfWarTitle: 'Dominance par tranche de temps',
+    combatCadenceTitle: 'Cadence des frags',
+    combatKillsLabel: 'Frags',
+    combatDeathsLabel: 'Morts',
+    combatTeamLabel: 'Mon équipe',
+    combatEnemyLabel: 'Adversaires',
+    combatNemesisTitle: 'Némésis',
+    combatBullyTitle: 'Souffre-douleur',
+    combatNoNemesis: '—',
+    combatKilledMeFmt: (n) => `T'a victimisé ${n} fois`,
+    combatIKilledFmt: (n) => `Tu l'as persécuté ${n} fois`,
+    combatNoData: 'Pas de données disponibles',
   },
   en: {
     prevMatch: 'Previous match',
@@ -215,6 +244,20 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     newlyMastered: 'Mastered!',
     noMedals: 'No medals',
     noCitations: 'No commendations',
+    combatHighlights: 'Highlights',
+    combatKdCumulTitle: 'Cumulative Kills / Deaths',
+    combatTugOfWarTitle: 'Time-window dominance',
+    combatCadenceTitle: 'Kill cadence',
+    combatKillsLabel: 'Kills',
+    combatDeathsLabel: 'Deaths',
+    combatTeamLabel: 'My team',
+    combatEnemyLabel: 'Opponents',
+    combatNemesisTitle: 'Nemesis',
+    combatBullyTitle: 'Bully target',
+    combatNoNemesis: '—',
+    combatKilledMeFmt: (n) => `Killed you ${n} times`,
+    combatIKilledFmt: (n) => `You killed them ${n} times`,
+    combatNoData: 'No data available',
   },
 }
 
