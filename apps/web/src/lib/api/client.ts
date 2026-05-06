@@ -43,6 +43,22 @@ function getTitleHeader(): Record<string, string> {
   return {}
 }
 
+/**
+ * Locale courante pour les réponses API. Mis à jour par appShellStore.
+ * Le backend lit ce header en priorité (fallback sur app_settings.lang) pour
+ * sélectionner les labels FR/EN dans les payloads (map names, mode names…).
+ */
+let _currentLocale: 'fr' | 'en' = 'fr'
+
+/** Appelé par le store pour mettre à jour la locale courante. */
+export function setApiLocale(locale: 'fr' | 'en'): void {
+  _currentLocale = locale
+}
+
+function getLocaleHeader(): Record<string, string> {
+  return { 'X-LevelUp-Locale': _currentLocale }
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -59,6 +75,7 @@ async function request<T>(
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...getTitleHeader(),
+      ...getLocaleHeader(),
       ...options?.headers,
     },
     body: options?.body != null ? JSON.stringify(options.body) : undefined,
@@ -120,6 +137,7 @@ export const api = {
       headers: {
         Accept: 'application/json',
         ...getTitleHeader(),
+        ...getLocaleHeader(),
         // Content-Type intentionnellement absent → boundary auto
       },
       body: form,

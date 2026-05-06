@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   AsyncJobStatus,
   BackfillStartRequest,
@@ -24,11 +25,29 @@ export function useSettings() {
 
 export function useUpdateSettings() {
   const qc = useQueryClient()
+  const setLocale = useAppShellStore((s) => s.setLocale)
+  const currentLocale = useAppShellStore((s) => s.locale)
   return useMutation({
     mutationFn: (req: UpdateSettingsRequest) =>
       api.patch<SettingsResponse>('/settings', req),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       qc.setQueryData(queryKeys.settings, data)
+
+      // Si l'utilisateur a changé `lang` dans Settings, propager au store
+      // appShell (qui pousse le header X-LevelUp-Locale via setApiLocale) et
+      // invalider les queries dont la réponse dépend de la locale (map_ui,
+      // mode_ui, playlist_ui, labels narratifs…). Sans cela, le cache 5min
+      // de useHomePage masquerait le changement.
+      const newLang = (variables as Partial<SettingsResponse>).lang
+      if (typeof newLang === 'string') {
+        const next = newLang.toLowerCase().startsWith('en') ? 'en' : 'fr'
+        if (next !== currentLocale) {
+          setLocale(next)
+          void qc.invalidateQueries() // toutes les queries — la locale touche
+          // potentiellement chaque page. Côté coût : refetch on-demand,
+          // pas un sync exhaustif, donc acceptable.
+        }
+      }
     },
   })
 }

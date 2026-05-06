@@ -10,7 +10,7 @@
 
 import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
-import { api, setApiTitleSlug } from '@/lib/api/client'
+import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
 
 interface AppShellState {
   // Joueur courant
@@ -97,12 +97,14 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
     setApiTitleSlug(titleSlug)
+    const locale: 'fr' | 'en' = (data.locale as 'fr' | 'en') ?? 'fr'
+    setApiLocale(locale)
     set({
       currentPlayer: data.current_player,
       availablePlayers: data.available_players,
       currentTitleSlug: titleSlug,
       availableTitles: data.available_titles ?? [],
-      locale: (data.locale as 'fr' | 'en') ?? 'fr',
+      locale,
       userTimezone: data.settings_excerpt?.user_timezone || 'Europe/Paris',
       hintsVisible: data.hints_visible_default,
       capabilities: data.capabilities ?? DEFAULT_CAPABILITIES,
@@ -155,7 +157,10 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
     }
   },
 
-  setLocale: (locale) => set({ locale }),
+  setLocale: (locale) => {
+    setApiLocale(locale)
+    set({ locale })
+  },
   setHintsVisible: (visible) => set({ hintsVisible: visible }),
   setActiveSyncJobId: (id) => set({ activeSyncJobId: id }),
 
