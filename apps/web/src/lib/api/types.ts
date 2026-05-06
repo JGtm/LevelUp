@@ -633,6 +633,7 @@ export interface BackfillStartRequest {
   weapons?: boolean
   lusr?: boolean
   engagement_scores?: boolean
+  engagement_coefficients?: boolean
   all_data?: boolean
   max_matches?: number
   dry_run?: boolean

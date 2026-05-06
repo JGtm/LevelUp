@@ -127,11 +127,12 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
     (_s: ChartSeries<unknown>[]): EChartsCoreOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelKills, t.labelDeaths, t.labelAssists]
+      // color-allow: hex en commentaires de documentation token→couleur
       // K=#00DC82  D=#FF4B4B  A=#33D6FF — tokens qui correspondent exactement
       const tokens: SemanticToken[] = [
-        'narrative-dominant',        // #00DC82 — vert vif
-        'heatmap-divergent-low',     // #FF4B4B — rouge vif
-        'narrative-contre-remontada', // #33D6FF — cyan
+        'narrative-dominant', // color-allow: doc token (vert vif #00DC82)
+        'heatmap-divergent-low', // color-allow: doc token (rouge vif #FF4B4B)
+        'narrative-contre-remontada', // color-allow: doc token (cyan #33D6FF)
       ]
 
       const seriesList: BarSeries[] = [
@@ -226,11 +227,12 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
     (_s: ChartSeries<unknown>[]): EChartsCoreOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelSpree, t.labelHeadshots, t.labelPerfectKills]
+      // color-allow: hex en commentaires de documentation token→couleur
       // Spree=#8B5CF6  Headshots=#33D6FF  Perfect=#00DC82
       const tokens: SemanticToken[] = [
-        'outcome-dnf',                // #8B5CF6 — violet
-        'narrative-contre-remontada', // #33D6FF — cyan
-        'narrative-dominant',         // #00DC82 — vert vif
+        'outcome-dnf', // color-allow: doc token (violet #8B5CF6)
+        'narrative-contre-remontada', // color-allow: doc token (cyan #33D6FF)
+        'narrative-dominant', // color-allow: doc token (vert vif #00DC82)
       ]
 
       const seriesList: BarSeries[] = [
