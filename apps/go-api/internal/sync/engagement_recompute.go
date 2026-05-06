@@ -160,6 +160,10 @@ func loadRatioSamples(
 	xuid, modeCategory string,
 	limit int,
 ) ([]temporal.RatioSample, error) {
+	// Note : player_match_enrichment est dans la player DB (1 DB par joueur)
+	// donc pas de colonne xuid — `xuid` est implicite. On ne filtre que par
+	// mode_category et la présence des paces.
+	_ = xuid
 	const q = `
 		SELECT
 			match_id,
@@ -168,13 +172,12 @@ func loadRatioSamples(
 			COALESCE(engagement_pace_lobby, 0),
 			COALESCE(engagement_player_activity, 0)
 		FROM player_match_enrichment
-		WHERE xuid = ?
-		  AND mode_category = ?
+		WHERE mode_category = ?
 		  AND engagement_pace_team IS NOT NULL
 		ORDER BY match_id DESC
 		LIMIT ?
 	`
-	rows, err := playerDB.QueryContext(ctx, q, xuid, modeCategory, limit)
+	rows, err := playerDB.QueryContext(ctx, q, modeCategory, limit)
 	if err != nil {
 		return nil, fmt.Errorf("loadRatioSamples query: %w", err)
 	}
