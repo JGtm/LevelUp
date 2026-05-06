@@ -1,7 +1,8 @@
 import { type ReactNode, useLayoutEffect } from 'react'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import type { UiTheme } from '@/stores/settingsDraftStore'
-import { applyPalette, defaultPalette, okabePalette } from '@/lib/accessibility'
+import { applyPalette } from '@/lib/accessibility'
+import { pickPalette } from './palette-picker'
 
 function applyDocumentTheme(theme: UiTheme) {
   document.documentElement.setAttribute('data-theme', theme)
@@ -16,8 +17,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme])
 
   useLayoutEffect(() => {
-    const palette = colorPalette === 'okabe-ito' ? okabePalette : defaultPalette
-    applyPalette(palette, colorPalette)
+    applyPalette(pickPalette(colorPalette), colorPalette)
   }, [colorPalette])
 
   return <>{children}</>

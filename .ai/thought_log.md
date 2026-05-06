@@ -1,5 +1,37 @@
 # Thought Log
 
+## [2026-05-06] Phase B accessibilité — ajout palettes Cividis + Tol Bright
+
+**Statut** : Complété.
+
+**Contexte** : Phase B du plan `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md`. Ajout de 2 palettes en plus de `default` + `okabe-ito` : Cividis (séquentielle CVD-safe, Nuñez et al. 2018) et Tol Bright (catégorielle 7 couleurs, Paul Tol 2018).
+
+**Décisions techniques** :
+
+1. **2 nouvelles palettes** créées dans [apps/web/src/lib/accessibility/palettes/](apps/web/src/lib/accessibility/palettes/) :
+   - `cividis.ts` : ramp séquentiel monotone en L* pour `perf-tier-*`. Pour les couples binaires (outcomes, divergent, encounter, heatmap) on emprunte l'axe blue/vermillion d'Okabe-Ito (Cividis ne définit pas de sémantique binaire native).
+   - `tol-bright.ts` : 7 couleurs Tol Bright + black en s8. Pour `perf-tier-*`, on utilise Tol's "Sunset" sequential scheme (5 échantillons, CVD-safe).
+
+2. **Type `ColorPalette` étendu** : `'default' | 'okabe-ito'` → `'default' | 'okabe-ito' | 'cividis' | 'tol-bright'` ([settingsDraftStore.ts](apps/web/src/stores/settingsDraftStore.ts)).
+
+3. **Garde-fou défensif `pickPalette`** dans un fichier dédié [palette-picker.ts](apps/web/src/app/providers/palette-picker.ts), pas dans `theme-provider.tsx`. Raison : `react-refresh/only-export-components` interdit aux fichiers `.tsx` d'exporter autre chose que des composants. Pattern déjà utilisé dans la codebase pour `useMediaPicker`. Le `switch` a un `default: defaultPalette` qui retombe sur la palette standard si la valeur localStorage est obsolète (rollback) — testé explicitement avec `'unknown'` et `''`.
+
+4. **UI Settings** : grille `sm:grid-cols-2` → `sm:grid-cols-2 lg:grid-cols-4`, 2 nouvelles `<PaletteOption>` ajoutées avec strings i18n FR + EN (4 strings × 2 langues).
+
+5. **Tests** :
+   - `coverage.test.ts` étendu : `PALETTES` map passe de 2 à 4 entrées. Snapshots auto-régénérés (8 → 16 tests, 4 par palette : tokens couverts, pas de clé inconnue, hex valides, snapshot stable).
+   - `AccessibilityTab.test.tsx` : +2 tests (clic Cividis, clic Tol Bright).
+   - `theme-provider.test.ts` : 5 tests sur `pickPalette` (4 valeurs valides + 2 valeurs invalides).
+
+**Résultats observés** :
+- TypeScript : 0 erreur.
+- ESLint : 0 erreur sur les 10 fichiers modifiés/créés.
+- Vitest : 1280/1281 passent (le 1 échec = `SeasonPassPage.test.tsx` pré-existant, non lié). Phase B = +15 tests verts vs baseline post-A.
+
+**Conclusion / prochaine étape** : Phase B livrée. Passage à Phase C (test contraste WCAG AA automatique) sur la même branche.
+
+---
+
 ## [2026-05-06] Phase A accessibilité — remap Okabe-Ito sur axe blue/orange
 
 **Statut** : Complété.

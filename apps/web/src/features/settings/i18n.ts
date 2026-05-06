@@ -205,6 +205,10 @@ export interface SettingsText {
   paletteDefaultDesc: string
   paletteOkabeIto: string
   paletteOkabeItoDesc: string
+  paletteCividis: string
+  paletteCividisDesc: string
+  paletteTolBright: string
+  paletteTolBrightDesc: string
   previewLabel: string
 }
 
@@ -425,12 +429,16 @@ const FR_TEXT: SettingsText = {
 
   tabAccessibility: 'Accessibilité',
   accessibilityTitle: 'Accessibilité visuelle',
-  accessibilityDescription: 'Choisissez une palette de couleurs adaptée à votre vision. La palette Okabe-Ito (2008) est conçue pour être perceptible par les personnes daltonniennes.',
+  accessibilityDescription: 'Choisissez une palette de couleurs adaptée à votre vision. Plusieurs palettes optimisées pour le daltonisme sont disponibles.',
   paletteLabel: 'Palette de couleurs',
   paletteDefault: 'Standard (défaut)',
   paletteDefaultDesc: 'Palette originale de LevelUp.',
   paletteOkabeIto: 'Okabe-Ito (daltonisme)',
   paletteOkabeItoDesc: 'Palette universellement lisible, distinguable en cas de deutéranopie, protanopie et tritanopie.',
+  paletteCividis: 'Cividis (séquentiel CVD)',
+  paletteCividisDesc: 'Palette perceptuellement uniforme conçue pour la déficience visuelle des couleurs (PLOS ONE 2018). Idéale pour heatmaps et gradients.',
+  paletteTolBright: 'Tol Bright (catégoriel)',
+  paletteTolBrightDesc: 'Palette catégorielle 7 couleurs optimisée daltonisme par Paul Tol (SRON 2018). Recommandée pour les graphes multi-séries.',
   previewLabel: 'Aperçu',
 }
 
@@ -652,12 +660,16 @@ const EN_TEXT: SettingsText = {
 
   tabAccessibility: 'Accessibility',
   accessibilityTitle: 'Visual accessibility',
-  accessibilityDescription: 'Choose a colour palette suited to your vision. The Okabe-Ito (2008) palette is designed to be distinguishable for people with colour vision deficiencies.',
+  accessibilityDescription: 'Choose a colour palette suited to your vision. Several palettes optimised for colour-blindness are available.',
   paletteLabel: 'Colour palette',
   paletteDefault: 'Standard (default)',
   paletteDefaultDesc: 'Original LevelUp palette.',
   paletteOkabeIto: 'Okabe-Ito (colour-blind safe)',
   paletteOkabeItoDesc: 'Universally readable, distinguishable under deuteranopia, protanopia and tritanopia.',
+  paletteCividis: 'Cividis (CVD sequential)',
+  paletteCividisDesc: 'Perceptually uniform palette designed for colour vision deficiency (PLOS ONE 2018). Ideal for heatmaps and gradients.',
+  paletteTolBright: 'Tol Bright (categorical)',
+  paletteTolBrightDesc: 'Categorical 7-colour palette optimised for colour-blindness by Paul Tol (SRON 2018). Recommended for multi-series charts.',
   previewLabel: 'Preview',
 }
 
