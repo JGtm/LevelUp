@@ -189,14 +189,18 @@ func engagementColumnsAvailable(playerDB *sql.DB) bool {
 
 // loadMatchesForEngagement charge les matchs PvP du joueur avec metadata.
 //
-// Filtre les matchs où `events_loaded=TRUE AND no highlight_events` — c'est
-// l'indicateur "events fetch tenté, aucune donnée disponible" (film 404 CDN
-// ou match jamais joué assez longtemps). Pour ces matchs, engagement_score
-// reste NULL definitivement — pas la peine de re-tenter à chaque sync. Les
-// matchs avec `events_loaded=FALSE/NULL` restent inclus : events_heal peut
-// encore les charger.
+// Filtre les matchs où le bit MBitEvents est set ET highlight_events est
+// vide — c'est l'indicateur "events fetch tenté, aucune donnée disponible"
+// (film 404 CDN ou match jamais joué assez longtemps). Pour ces matchs,
+// engagement_score reste NULL definitivement — pas la peine de re-tenter
+// à chaque sync. Les matchs où MBitEvents n'est pas set restent inclus :
+// events_heal peut encore les charger.
+//
+// Note : MarkEventsLoaded() synchronise events_loaded (boolean legacy) et
+// le bit MBitEvents (bitmask) ; on utilise le bit pour cohérence avec le
+// reste du projet (skill, weapon_kills, pve, etc. utilisent tous des bits).
 func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchRow, error) {
-	const q = `
+	q := fmt.Sprintf(`
 		SELECT
 			mr.match_id,
 			COALESCE(EPOCH_MS(mr.start_time_utc), EPOCH_MS(mr.start_time)),
@@ -213,11 +217,11 @@ func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchR
 		  AND mr.start_time IS NOT NULL
 		  AND mr.end_time IS NOT NULL
 		  AND (
-		    COALESCE(mr.events_loaded, FALSE) = FALSE
+		    (COALESCE(mr.backfill_completed, 0) & %d) = 0
 		    OR EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id)
 		  )
 		ORDER BY mr.start_time ASC
-	`
+	`, MBitEvents)
 	rows, err := sharedDB.Query(q, xuid)
 	if err != nil {
 		return nil, err
