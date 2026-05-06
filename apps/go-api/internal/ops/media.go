@@ -572,7 +572,7 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 
 	var captureAt *time.Time
 
-	// Priorité 1 : datetime extraite du nom de fichier Xbox.
+	// Priorité 1 : datetime extraite du nom de fichier (OBS Studio, Xbox, ShadowPlay).
 	if t := parseCaptureTimeFromFilename(filepath.Base(path), loc); t != nil {
 		captureAt = t
 		slog.Debug("insertMediaFile: datetime extraite du nom de fichier",
@@ -587,15 +587,14 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 			"file", filepath.Base(path), "capture_start_utc", t)
 	}
 
-	// Priorité 3 : mtime filesystem (fallback — incorrect sur serveur, correct en local).
+	// Le mtime filesystem du serveur n'est PAS utilisé en fallback : sur un fichier
+	// uploadé/copié, il correspond à l'heure d'arrivée et fausserait l'association
+	// match (média associé au match en cours pendant l'upload). Mieux vaut laisser
+	// capture_start_utc NULL → le média est inséré mais non-associé tant qu'une
+	// source fiable (regex nom de fichier ou ré-upload) n'est pas disponible.
 	if captureAt == nil {
-		fi, _ := os.Stat(path)
-		if fi != nil {
-			t := fi.ModTime().UTC()
-			captureAt = &t
-			slog.Debug("insertMediaFile: datetime depuis mtime filesystem (fallback)",
-				"file", filepath.Base(path), "capture_start_utc", t)
-		}
+		slog.Warn("insertMediaFile: capture_start_utc indéterminé, média non-associable",
+			"file", filepath.Base(path), "player", playerSlug)
 	}
 
 	_, err := db.Exec(`
@@ -630,20 +629,37 @@ func SanitizeMediaTimezone(tz string) string {
 // Ex: "Halo Infinite 2025-12-18 17-40-46_9430c6551833" → base "Halo Infinite 2025-12-18 17-40-46"
 var thumbHashSuffixRe = regexp.MustCompile(`_[0-9a-fA-F]{6,}$`)
 
-// xboxFilenameRe matche le pattern Xbox :
+// xboxFilenameRe matche le pattern Xbox / NVIDIA ShadowPlay :
 // "Halo Infinite 2024.11.15 - 21.30.45.01.mp4"
 // Groupe 1=année 2=mois 3=jour 4=heure 5=min 6=sec
 var xboxFilenameRe = regexp.MustCompile(
 	`(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`)
 
-// parseCaptureTimeFromFilename tente d'extraire la datetime depuis le nom de fichier Xbox.
-// Retourne nil si aucun pattern connu n'est trouvé.
+// obsFilenameRe matche le pattern OBS Studio par défaut (%CCYY-%MM-%DD %hh-%mm-%ss) :
+// "Replay 2026-04-19 17-10-54.mp4"
+// Groupe 1=année 2=mois 3=jour 4=heure 5=min 6=sec
+var obsFilenameRe = regexp.MustCompile(
+	`(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})`)
+
+// captureTimeRegexes liste les patterns de noms de fichiers reconnus,
+// du plus spécifique au plus générique. L'ordre importe peu en pratique
+// (les patterns ne se chevauchent pas) mais OBS arrive en premier car
+// c'est le format le plus fréquent dans nos captures.
+var captureTimeRegexes = []*regexp.Regexp{obsFilenameRe, xboxFilenameRe}
+
+// parseCaptureTimeFromFilename tente d'extraire la datetime depuis le nom de fichier.
+// Formats supportés : OBS Studio, Xbox / NVIDIA ShadowPlay.
+// Retourne nil si aucun pattern connu n'est trouvé ou si loc est nil.
 // La datetime est interprétée comme heure locale (loc), puis convertie en UTC.
 func parseCaptureTimeFromFilename(name string, loc *time.Location) *time.Time {
 	if loc == nil {
 		return nil
 	}
-	if m := xboxFilenameRe.FindStringSubmatch(name); m != nil {
+	for _, re := range captureTimeRegexes {
+		m := re.FindStringSubmatch(name)
+		if m == nil {
+			continue
+		}
 		year := mustAtoi(m[1])
 		month := mustAtoi(m[2])
 		day := mustAtoi(m[3])
@@ -651,7 +667,7 @@ func parseCaptureTimeFromFilename(name string, loc *time.Location) *time.Time {
 		min := mustAtoi(m[5])
 		sec := mustAtoi(m[6])
 		if year == 0 {
-			return nil
+			continue
 		}
 		t := time.Date(year, time.Month(month), day, hour, min, sec, 0, loc).UTC()
 		return &t

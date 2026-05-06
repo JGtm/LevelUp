@@ -226,13 +226,52 @@ func TestParseCaptureTimeFromFilename_XboxFormat_CEST(t *testing.T) {
 	}
 }
 
+func TestParseCaptureTimeFromFilename_OBSFormat_CEST(t *testing.T) {
+	// OBS Studio : format par défaut "%CCYY-%MM-%DD %hh-%mm-%ss"
+	// CEST = UTC+2 (avril = été)
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	name := "Replay 2026-04-19 17-10-54.mp4"
+	got := parseCaptureTimeFromFilename(name, loc)
+	if got == nil {
+		t.Fatal("expected non-nil result")
+	}
+	// CEST = UTC+2 → 17:10:54 Paris = 15:10:54 UTC
+	want := time.Date(2026, 4, 19, 15, 10, 54, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestParseCaptureTimeFromFilename_OBSFormat_CET(t *testing.T) {
+	// CET = UTC+1 (janvier = hiver)
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	name := "Recording 2026-01-15 09-00-00.mp4"
+	got := parseCaptureTimeFromFilename(name, loc)
+	if got == nil {
+		t.Fatal("expected non-nil result")
+	}
+	// CET = UTC+1 → 09:00:00 Paris = 08:00:00 UTC
+	want := time.Date(2026, 1, 15, 8, 0, 0, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
 func TestParseCaptureTimeFromFilename_NoMatch(t *testing.T) {
 	loc, _ := time.LoadLocation("Europe/Paris")
 	cases := []string{
-		"OBS-Recording-2024-01-01.mp4",
+		"OBS-Recording-2024-01-01.mp4", // date sans time
 		"clip.mp4",
 		"screenshot.png",
 		"Halo Infinite.mp4",
+		"2024-01-01.mp4", // date seule
+		"recording-no-date.mp4",
 	}
 	for _, name := range cases {
 		if got := parseCaptureTimeFromFilename(name, loc); got != nil {
