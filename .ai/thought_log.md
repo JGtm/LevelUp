@@ -43,6 +43,48 @@ Architecture clé : Pool n'instancie PAS HaloAPIClient (évite cycle sync↔auth
 
 ---
 
+## [2026-05-06] Token Pool — Étape 4 : PooledHaloClient adapter
+
+**Statut** : Complété — commit eb57edfb sur `feat/token-pool-parallel-sync`.
+
+**Décision technique principale** :
+PooledHaloClient wraps pool.Pool et implémente HaloClient interface (7 méthodes). Aucune modification HaloAPIClient existant. Chaque Acquire() crée un HaloAPIClient frais — pas de client réutilisé (rate limiting via lease duration).
+
+Patterns :
+- Endpoints publics (GetMatchHistory, GetMatchStats, GetMatchFilm, GetHighlightEventsChunk) → PolicyAnyPublic
+- Endpoint privacy (GetCareerRank) → PolicyPinnedPlayer (pin sur gamertag fourni au constructeur)
+- Silent-skip GetCareerRank si token absent ou 401/403 (comportement identique à halo_client.go:434)
+
+**Implémentation** :
+- `NewPooledHaloClient(pool, pinnedGamertag, pinnedXUID)` — optionnel pinned pour privacy endpoints
+- Chaque méthode : Acquire() → NewHaloAPIClient() → delegate → Release()
+- Pas de caching, pas de multiplexing — simple "per-request client" architecture
+- Error handling : Acquire failure → propagate; 401/403 dans GetCareerRank → HaloAPIClient gère en interne (silent-skip)
+
+**Tests** (7 test cases) :
+- GetMatchHistory/Stats/Film/Events avec AnyPublic
+- GetCareerRank avec pinned token
+- GetCareerRank sans pinned token (silent-skip)
+- GetCareerRank avec pool error (silent-skip)
+- Acquire failure propagation
+- Interface implementation check
+
+**Résultats observés** :
+- Tous les tests passent
+- PooledHaloClient = drop-in replacement pour n'importe quel HaloClient
+- Pas de race conditions (chaque Acquire → nouvelle lease instance)
+- Compatible avec engine.go et cmd_sync.go sans refactor
+
+**Architectural avantages** :
+- Pool en auth/, PooledHaloClient en sync/ → évite cycle sync↔auth
+- Un seul client par requête → pas besoin de sémaphore/RPS dans pool lui-même
+- RPS limité par HaloAPIClient.minInterval (voir halo_client.go:90)
+- Silent-skip 401/403 déjà implémenté dans HaloAPIClient (ligne 525-526 : `doPlayerGatedGet`)
+
+**Prochaine étape** : Étape 5 — Fetch parallèle intra-page (engine.go refactor) — paralléliser les fetchs au sein d'une page de matchs tout en gardant les inserts séquentiels par order preservation.
+
+---
+
 ## [2026-05-06] PR 7 — Sync engine migration to dblease.AcquireWriterCtx
 
 **Statut** : Complété — 17 sites migrés en synchronisation.
