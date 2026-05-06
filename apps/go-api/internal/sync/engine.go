@@ -59,6 +59,10 @@ type SyncEngine struct {
 	// customClient est optionnel — si non-nil, utilisé à la place de NewHaloAPIClient.
 	// Permet l'injection de PooledHaloClient ou autres implémentations HaloClient.
 	customClient HaloClient
+	// localFilmCache (optionnel) court-circuite l'API film en lisant le cache
+	// disque hérité du projet Python. Utile pour récupérer manifestes +
+	// chunks REPLICATION_DATA déjà téléchargés (~942 matchs en cache).
+	localFilmCache *LocalFilmCache
 	// prestigeHook est appelé après ingestion (best-effort, no-op si nil).
 	// Reçoit (ctx, gamertag, titleSlug) — le hook se charge lui-même de
 	// la résolution Prestige et du feature flag.
@@ -132,6 +136,13 @@ func (e *SyncEngine) WithFriendsLoader(loader FriendsLoader) *SyncEngine {
 // Si défini, ce client sera utilisé à la place de NewHaloAPIClient.
 func (e *SyncEngine) SetCustomClient(client HaloClient) {
 	e.customClient = client
+}
+
+// SetLocalFilmCache injecte un cache disque film hérité du projet Python.
+// Le cache sera consulté avant l'API pour les manifestes et chunks
+// REPLICATION_DATA. Sans effet si nil ou si le repertoire est introuvable.
+func (e *SyncEngine) SetLocalFilmCache(cache *LocalFilmCache) {
+	e.localFilmCache = cache
 }
 
 func (e *SyncEngine) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error) {
@@ -462,7 +473,12 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		client = e.customClient
 		slog.DebugContext(ctx, "sync: utilisation client personnalisé (pool)")
 	} else {
-		client = NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, opts.RequestsPerSecond)
+		api := NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, opts.RequestsPerSecond)
+		if e.localFilmCache != nil {
+			api = api.WithLocalFilmCache(e.localFilmCache)
+			slog.InfoContext(ctx, "sync: cache film local actif", "gamertag", e.gamertag)
+		}
+		client = api
 		slog.DebugContext(ctx, "sync: utilisation HaloAPIClient standard")
 	}
 
