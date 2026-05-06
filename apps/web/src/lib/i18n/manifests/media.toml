@@ -230,3 +230,9 @@ en = "By mode"
 [media.toolbar.group.by_session]
 fr = "Par session"
 en = "By session"
+
+# ─── Thumbnail card ────────────────────────────────────────────────────────
+
+[media.thumbnail.no_match_associated]
+fr = "Pas de match associé"
+en = "No associated match"
