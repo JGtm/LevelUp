@@ -83,8 +83,6 @@ func init() {
 					kills_expected DOUBLE,
 					deaths_expected DOUBLE,
 					kills_stddev DOUBLE,
-					assists_expected DOUBLE,
-					assists_stddev DOUBLE,
 					deaths_stddev DOUBLE,
 					team_mmr DOUBLE,
 					enemy_mmr DOUBLE,
@@ -186,8 +184,6 @@ func init() {
 				{"kills_stddev", "FLOAT"},
 				{"deaths_expected", "FLOAT"},
 				{"deaths_stddev", "FLOAT"},
-				{"assists_expected", "FLOAT"},
-				{"assists_stddev", "FLOAT"},
 				{"backfill_bits", "INTEGER DEFAULT 0"},
 			}
 			for _, c := range cols {
@@ -602,6 +598,56 @@ func init() {
 		},
 	})
 
+	// L'API Halo Infinite (SPNKr StatPerformances) ne renvoie que Kills + Deaths,
+	// jamais Assists — confirmation : 0/24617 rows non-NULL en prod. Les colonnes
+	// `assists_expected` / `assists_stddev` n'ont jamais été peuplées et ne
+	// le seront jamais pour Halo Infinite. Les types canoniques multi-titres
+	// (canonical.MatchSkillSnapshot.AssistsExpected) restent disponibles si un
+	// futur titre les expose.
+	Register(Migration{
+		Name:        "drop_assists_expected_halo_infinite",
+		TargetDB:    TargetShared,
+		Description: "DROP assists_expected/stddev de match_participants (API Halo Infinite ne fournit pas)",
+		ApplySchema: func(db *sql.DB) error {
+			if err := dropColumnIfExists(db, "match_participants", "assists_expected"); err != nil {
+				return err
+			}
+			return dropColumnIfExists(db, "match_participants", "assists_stddev")
+		},
+	})
+
+}
+
+// dropColumnIfExists supprime une colonne d'une table si elle existe.
+// No-op si la colonne est déjà absente.
+func dropColumnIfExists(db *sql.DB, table, column string) error {
+	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info('%s')`, table))
+	if err != nil {
+		return fmt.Errorf("dropColumnIfExists pragma %s: %w", table, err)
+	}
+	exists := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var nn int
+		var dflt *string
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &nn, &dflt, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		if name == column {
+			exists = true
+		}
+	}
+	rows.Close()
+	if !exists {
+		return nil
+	}
+	if _, err := db.Exec(fmt.Sprintf(`ALTER TABLE %s DROP COLUMN %s`, table, column)); err != nil {
+		return fmt.Errorf("DROP COLUMN %s.%s: %w", table, column, err)
+	}
+	return nil
 }
 
 // applyHighlightEventsAutoincrement recrée highlight_events avec séquence.

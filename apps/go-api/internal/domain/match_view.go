@@ -134,21 +134,21 @@ type MatchPersonalResult struct {
 }
 
 // MatchExpectedStats : comparaison réel vs attendu + moyennes historiques.
+// Halo Infinite : pas d'expected_assists (l'API skill ne fournit que Kills + Deaths).
 type MatchExpectedStats struct {
 	HasExpectedData bool     `json:"has_expected_data"`
 	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
 	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
-	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
 	// Moyennes historiques sur le mode (HistAvg)
-	HasHistAvg              bool     `json:"has_hist_avg"`
-	HistAvgKills            *float64 `json:"hist_avg_kills,omitempty"`
-	HistAvgDeaths           *float64 `json:"hist_avg_deaths,omitempty"`
-	HistAvgAssists          *float64 `json:"hist_avg_assists,omitempty"`
-	HistAvgSpree            *float64 `json:"hist_avg_spree,omitempty"`
-	HistAvgHeadshotKills    *float64 `json:"hist_avg_headshot_kills,omitempty"`
-	HistAvgPerfectKills     *float64 `json:"hist_avg_perfect_kills,omitempty"`
-	HistMatchCount          int      `json:"hist_match_count,omitempty"`
-	HistModeCategory        string   `json:"hist_mode_category,omitempty"`
+	HasHistAvg           bool     `json:"has_hist_avg"`
+	HistAvgKills         *float64 `json:"hist_avg_kills,omitempty"`
+	HistAvgDeaths        *float64 `json:"hist_avg_deaths,omitempty"`
+	HistAvgAssists       *float64 `json:"hist_avg_assists,omitempty"`
+	HistAvgSpree         *float64 `json:"hist_avg_spree,omitempty"`
+	HistAvgHeadshotKills *float64 `json:"hist_avg_headshot_kills,omitempty"`
+	HistAvgPerfectKills  *float64 `json:"hist_avg_perfect_kills,omitempty"`
+	HistMatchCount       int      `json:"hist_match_count,omitempty"`
+	HistModeCategory     string   `json:"hist_mode_category,omitempty"`
 }
 
 // MatchHistAvgRow : ligne brute de Q29 (historique récent pour moyennes).
@@ -184,11 +184,11 @@ type MatchCitation struct {
 
 // MatchSummaryTab : contenu de l'onglet Résumé.
 type MatchSummaryTab struct {
-	KPIs           MatchSummaryKpis      `json:"kpis"`
-	PersonalResult MatchPersonalResult   `json:"personal_result"`
-	Medals         []MatchMedal          `json:"medals"`
+	KPIs           MatchSummaryKpis       `json:"kpis"`
+	PersonalResult MatchPersonalResult    `json:"personal_result"`
+	Medals         []MatchMedal           `json:"medals"`
 	Citations      []MatchCitationSnippet `json:"citations"`
-	ExpectedStats  MatchExpectedStats    `json:"expected_stats"`
+	ExpectedStats  MatchExpectedStats     `json:"expected_stats"`
 }
 
 // ---------------------------------------------------------------------------
@@ -347,13 +347,12 @@ type MatchScoreboardRow struct {
 	DefensiveResistance *float64 `json:"defensive_resistance,omitempty"`
 	DamagePerKill       *float64 `json:"damage_per_kill,omitempty"`
 	DamagePerDeath      *float64 `json:"damage_per_death,omitempty"`
-	// Expected vs actual (depuis match_participants)
-	ExpectedKills   *float64 `json:"expected_kills,omitempty"`
-	ExpectedDeaths  *float64 `json:"expected_deaths,omitempty"`
-	ExpectedAssists *float64 `json:"expected_assists,omitempty"`
-	KillsStdDev     *float64 `json:"kills_stddev,omitempty"`
-	DeathsStdDev    *float64 `json:"deaths_stddev,omitempty"`
-	AssistsStdDev   *float64 `json:"assists_stddev,omitempty"`
+	// Expected vs actual (depuis match_participants).
+	// Halo Infinite : pas d'expected_assists (l'API skill ne renvoie que Kills + Deaths).
+	ExpectedKills  *float64 `json:"expected_kills,omitempty"`
+	ExpectedDeaths *float64 `json:"expected_deaths,omitempty"`
+	KillsStdDev    *float64 `json:"kills_stddev,omitempty"`
+	DeathsStdDev   *float64 `json:"deaths_stddev,omitempty"`
 	// Expander : données per-player chargées en bulk
 	Medals      []PlayerMedalRow      `json:"medals,omitempty"`
 	WeaponKills []PlayerWeaponKillRow `json:"weapon_kills,omitempty"`
@@ -525,13 +524,12 @@ type ScoreboardRaw struct {
 	PerfectKills     int
 	TopWeaponID      *int64
 	TopWeaponLabel   string
-	// Expected stats (kills_expected, deaths_expected, etc. depuis match_participants)
-	KillsExpected   *float64
-	DeathsExpected  *float64
-	AssistsExpected *float64
-	KillsStdDev     *float64
-	DeathsStdDev    *float64
-	AssistsStdDev   *float64
+	// Expected stats (kills_expected, deaths_expected, etc. depuis match_participants).
+	// Halo Infinite : pas d'assists_expected/stddev (l'API ne les renvoie pas).
+	KillsExpected  *float64
+	DeathsExpected *float64
+	KillsStdDev    *float64
+	DeathsStdDev   *float64
 }
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
@@ -660,13 +658,12 @@ type MediaAssocRaw struct {
 }
 
 // ExpectedStatsRaw : données brutes de Q26 (match_participants expected columns).
+// Halo Infinite : pas d'assists (l'API ne renvoie que Kills + Deaths).
 type ExpectedStatsRaw struct {
-	KillsExpected   *float64
-	DeathsExpected  *float64
-	AssistsExpected *float64
-	KillsStddev     *float64
-	DeathsStddev    *float64
-	AssistsStddev   *float64
+	KillsExpected  *float64
+	DeathsExpected *float64
+	KillsStddev    *float64
+	DeathsStddev   *float64
 }
 
 // MatchViewRawRow : DEPRECATED — conservé le temps de migrer les appelants.

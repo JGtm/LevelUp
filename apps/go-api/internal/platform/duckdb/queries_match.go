@@ -69,10 +69,8 @@ SELECT
     w.top_weapon_id,
     p.kills_expected,
     p.deaths_expected,
-    p.assists_expected,
     p.kills_stddev,
-    p.deaths_stddev,
-    p.assists_stddev
+    p.deaths_stddev
 FROM shared.match_participants p
 LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
@@ -541,9 +539,7 @@ const Q26MatchExpectedStats = `
 SELECT
     p.kills_expected,
     p.deaths_expected,
-    p.assists_expected,
     p.kills_stddev,
-    p.deaths_stddev,
-    p.assists_stddev
+    p.deaths_stddev
 FROM shared.match_participants p
 WHERE p.match_id = ? AND p.xuid = ?`

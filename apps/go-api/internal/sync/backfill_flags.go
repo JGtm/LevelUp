@@ -21,12 +21,13 @@ package sync
 // ─────────────────────────────────────────────────────────────────────────────
 
 const (
-	// Stats skill / MMR
-	PBitTeamMMR    = 1 << 0 // 1       — team_mmr
-	PBitEnemyMMR   = 1 << 1 // 2       — enemy_mmr
-	PBitKillsExp   = 1 << 2 // 4       — kills_expected, kills_stddev
-	PBitDeathsExp  = 1 << 3 // 8       — deaths_expected, deaths_stddev
-	PBitAssistsExp = 1 << 4 // 16      — assists_expected, assists_stddev
+	// Stats skill / MMR (Halo Infinite : pas d'assists, l'API ne les fournit pas).
+	PBitTeamMMR   = 1 << 0 // 1       — team_mmr
+	PBitEnemyMMR  = 1 << 1 // 2       — enemy_mmr
+	PBitKillsExp  = 1 << 2 // 4       — kills_expected, kills_stddev
+	PBitDeathsExp = 1 << 3 // 8       — deaths_expected, deaths_stddev
+	// bit 4 (PBitAssistsExp) retiré — l'API Halo Infinite ne renvoie pas d'Assists
+	// dans StatPerformances. Si un futur titre les expose, reservé pour ré-utilisation.
 
 	// Stats de combat (get_match_stats)
 	PBitAccuracy = 1 << 5 // 32      — accuracy
@@ -52,7 +53,7 @@ const (
 
 	// ── Groupes (combinaisons logiques) ──
 	PBitMMR         = PBitTeamMMR | PBitEnemyMMR
-	PBitExpected    = PBitKillsExp | PBitDeathsExp | PBitAssistsExp
+	PBitExpected    = PBitKillsExp | PBitDeathsExp
 	PBitSkill       = PBitMMR | PBitExpected
 	PBitCombat      = PBitAccuracy | PBitShots | PBitDamage
 	PBitKillsDetail = PBitGrenadeKills | PBitMeleeKills | PBitPowerWeapon | PBitHeadshotKills
@@ -159,7 +160,6 @@ func ComputeParticipantBitsFromData(data map[string]interface{}) int {
 	check("enemy_mmr", PBitEnemyMMR)
 	check("kills_expected", PBitKillsExp)
 	check("deaths_expected", PBitDeathsExp)
-	check("assists_expected", PBitAssistsExp)
 	check("accuracy", PBitAccuracy)
 	check("shots_fired", PBitShots)
 	check("damage_dealt", PBitDamage)

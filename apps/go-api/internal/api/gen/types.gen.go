@@ -685,7 +685,6 @@ type MatchEncounterRow struct {
 
 // MatchExpectedStats defines model for MatchExpectedStats.
 type MatchExpectedStats struct {
-	ExpectedAssists *float32 `json:"expected_assists,omitempty"`
 	ExpectedDeaths  *float32 `json:"expected_deaths,omitempty"`
 	ExpectedKills   *float32 `json:"expected_kills,omitempty"`
 	HasExpectedData *bool    `json:"has_expected_data,omitempty"`
