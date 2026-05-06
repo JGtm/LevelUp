@@ -1,5 +1,19 @@
 # Thought Log
 
+## [2026-05-06] fix/media-player-ux — Autoplay, border-radius lecteur, fallback match
+
+**Statut** : Complété — branche `fix/media-player-ux` depuis `feat/token-pool-parallel-sync`.
+
+**Décision technique principale** :
+Trois régressions UI corrigées en 4 fichiers :
+1. `RecentMediaRail` + `MatchMediaTab` n'exposaient pas les props `autoChain`/`onToggleAutoChain` à `<MediaLightbox>` → le bouton enchaînement et l'autoplay n'apparaissaient jamais hors page médias.
+2. L'outer container de `CoverFlowModal` (`relative mx-4 flex …`) n'avait ni `rounded-xl` ni `overflow-hidden` → coins droits sur le header et le fond.
+3. `MediaThumbnailCard` : `{item.map_name && …}` affichait rien si pas de map — désormais affiche « Pas de match associé » en italique atténué quand `match_id === null` (cas médias non associés), et ne touche pas au cas `match_id` présent + `map_name` absent (médias match tab).
+
+**Résultats observés** : TypeScript compilé sans erreur, pas de prop manquante.
+
+**Prochaine étape** : PR vers `feat/token-pool-parallel-sync` ou `main`.
+
 ## [2026-05-06] Token Pool — Étape 3 : Pool layer (round-robin + pinned)
 
 **Statut** : Complété — commit adc9fd07 sur `feat/token-pool-parallel-sync`.
