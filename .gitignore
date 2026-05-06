@@ -191,3 +191,8 @@ apps/web/.vite/
 # Mockups UI HTML temporaires (scratchpad design)
 .ai/mock_*.html
 apps/web/__mockup_*.html
+
+# Bug-guard : Playwright écrit parfois son cache sous "undefined/temp/..."
+# (variable d'env non résolue côté Windows). Couvert aussi dans apps/web/.gitignore
+# pour les exécutions depuis ce sous-dossier.
+undefined/
