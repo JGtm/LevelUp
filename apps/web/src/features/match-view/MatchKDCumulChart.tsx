@@ -17,7 +17,7 @@ import { kdCumulSeries, formatBinSeconds } from './_chartSeries'
 import type { MatchViewText } from './i18n'
 
 interface Props {
-  points: MatchKDTimelinePoint[]
+  points: MatchKDTimelinePoint[] | null | undefined
   t: MatchViewText
 }
 

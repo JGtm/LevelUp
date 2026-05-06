@@ -91,12 +91,22 @@ export function MatchViewPage() {
   const breadcrumbLabel = header.start_time_label
     ? `${matchLabel} · ${header.start_time_label}`
     : matchLabel
-  const meRow = team_tab.scoreboard.find((r) => r.is_me)
+  // Sécurité : le backend Go peut renvoyer `null` pour les slices non
+  // initialisés (`var x []T` non assigné → JSON null). On normalise une fois.
+  const scoreboard = team_tab.scoreboard ?? []
+  const roster = team_tab.roster ?? []
+  const nemesis = team_tab.nemesis ?? []
+  const weaponKills = combat_tab.weapon_kills ?? []
+  const highlightEvents = combat_tab.highlight_events ?? []
+  const killerVictim = combat_tab.killer_victim ?? []
+  const impactBadges = combat_tab.impact_badges ?? []
+  const kdTimeline = combat_tab.kd_timeline ?? []
+  const tugOfWar = combat_tab.tug_of_war ?? []
+
+  const meRow = scoreboard.find((r) => r.is_me)
   const meXUID = meRow?.xuid ?? null
   const weaponData: MatchWeaponKill[] =
-    combat_tab.weapon_kills.length > 0
-      ? combat_tab.weapon_kills
-      : killTypeFallback(meRow, t)
+    weaponKills.length > 0 ? weaponKills : killTypeFallback(meRow, t)
 
   return (
     <div className="flex flex-col">
@@ -183,35 +193,32 @@ export function MatchViewPage() {
           </div>
         ) : activeTab === 'combat' ? (
           <>
-            <MatchImpactBadgesBar
-              badges={combat_tab.impact_badges}
-              scoreboard={team_tab.scoreboard}
-            />
+            <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} />
 
-            <MatchKDCumulChart points={combat_tab.kd_timeline} t={t} />
+            <MatchKDCumulChart points={kdTimeline} t={t} />
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <MatchTugOfWarChart bins={combat_tab.tug_of_war} t={t} />
+              <MatchTugOfWarChart bins={tugOfWar} t={t} />
               <MatchCadenceChart
                 cadence={combat_tab.cadence}
-                scoreboard={team_tab.scoreboard}
+                scoreboard={scoreboard}
                 meXUID={meXUID}
                 t={t}
               />
             </div>
 
             <MatchNemesisCards
-              nemesis={team_tab.nemesis}
-              scoreboard={team_tab.scoreboard}
+              nemesis={nemesis}
+              scoreboard={scoreboard}
               meXUID={meXUID}
               t={t}
             />
 
             <MatchFragDiffChart
-              events={combat_tab.highlight_events}
-              scoreboard={team_tab.scoreboard}
-              roster={team_tab.roster}
-              pairs={combat_tab.killer_victim}
+              events={highlightEvents}
+              scoreboard={scoreboard}
+              roster={roster}
+              pairs={killerVictim}
               meXUID={meXUID}
               friendGamertags={friendGamertags}
             />
@@ -223,9 +230,9 @@ export function MatchViewPage() {
             />
 
             <MatchAntagonistChart
-              pairs={combat_tab.killer_victim}
-              scoreboard={team_tab.scoreboard}
-              roster={team_tab.roster}
+              pairs={killerVictim}
+              scoreboard={scoreboard}
+              roster={roster}
               meXUID={meXUID}
               friendGamertags={friendGamertags}
             />
