@@ -78,7 +78,7 @@ export function WeaponsTable({
             {filtered.map((row) => (
               <tr key={`${row.weapon_id}-${row.is_grenade_melee ? 'gm' : 'w'}`}>
                 <td className="px-3 py-2">
-                  {row.label ?? `#${row.weapon_id}`}
+                  {row.label && !/^-?\d+$/.test(row.label) ? row.label : `#${row.weapon_id}`}
                   {row.is_grenade_melee && (
                     <span className="ml-2 text-xs text-muted-foreground">
                       ({labels.grenadeMelee})
