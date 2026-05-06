@@ -20,6 +20,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,11 +118,11 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 	ctx context.Context,
 	matchIDs []string,
 ) (done, noFilm int, err error) {
-	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		return 0, 0, fmt.Errorf("BackfillWeaponKillsForMatches lease shared: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
 	if err != nil {

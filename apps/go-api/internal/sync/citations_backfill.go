@@ -16,6 +16,8 @@ import (
 	"log/slog"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // RunBackfillCitations calcule et persiste les citations dans match_citations
@@ -24,17 +26,17 @@ import (
 // Si force=true, supprime d'abord les citations existantes pour ces matchs ;
 // sinon ne traite que les matchs qui n'ont aucune entrée dans match_citations.
 func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int, error) {
-	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations lease player: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
-	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations lease shared: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {

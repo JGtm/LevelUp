@@ -1,5 +1,31 @@
 # Thought Log
 
+## [2026-05-06] PR 7 — Sync engine migration to dblease.AcquireWriterCtx
+
+**Statut** : Complété — 17 sites migrés en synchronisation.
+
+**Décision technique principale** :
+Migrer les 17 appels `AcquireLeaseCtx(ctx, path)` de l'ancien package sync/lease.go vers `dblease.AcquireWriterCtx(ctx, nil, path, kind)` pour unifier l'observabilité des acquisitions de lease. Le `nil` pour `*sql.DB` est sûr car le sync engine ne appelle jamais `writer.ExecContext()` — il ouvre les DBs séparément après le lease et passe `*sql.DB` directement aux fonctions métier de réécit.
+
+**17 sites migrés** :
+- engine.go (10 sites) : RunBackfill, RunBackfillEngagementScores, RunBackfillEngagementCoefficients, RunBackfillComebackBadges, run, RunAchievementsOnly
+- backfill_weapons.go (1 site) : BackfillWeaponKillsForMatches
+- citations_backfill.go (2 sites) : RunBackfillCitations
+- friends_recompute.go (2 sites) : RecomputeIsWithFriends
+- session_recalc.go (2 sites) : RecalculatePlayerSessions
+
+**Résultats** :
+- Tous les sites utilise maintenant le nouveau API avec métriques expvar (`dblease_acquire_total{kind,status}`)
+- Facade `AcquireLeaseCtx` conservée mais marquée `@Deprecated` (utilisée par les tests)
+- Ordonnancement "lease first, open DB second" préservé (requis pour DuckDB exclusive write access)
+- Aucun changement de signature de constructeur, pas de breaking change pour les callers
+
+**Observabilité gagnée** : 17 acquisitions de lease sync engine sont maintenant tracées par les compteurs expvar unifiés (même mutex, même instrumentation que les leases HTTP prestige/media).
+
+**Prochaine étape** : CI (ubuntu-latest, CGO_ENABLED=1) valide les 1662 tests baseline. Post-merge : monitoring des compteurs `dblease_acquire_total{kind=player|shared_matches,status=success|timeout}`.
+
+---
+
 ## [2026-05-05] DB write concurrency — commit 8 (ADR 0013 + script lint CI) — branche complète
 
 **Statut** : Complété — commit 8 sur `refactor/leased-writer-enforcement`. Branche **entièrement livrée** (commits 0-8). 8 commits, ~3000 lignes ajoutées, 41 nouveaux tests + 3 benchmarks, 0 test existant supprimé.

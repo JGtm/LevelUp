@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // sessionMatchesSQL charge les matchs d'un joueur depuis shared DB.
@@ -99,17 +100,17 @@ func RecalculatePlayerSessions(
 		"gap_minutes", opts.GapMinutes,
 		"team_change_mode", opts.TeamChangeMode,
 	)
-	relPlayer, err := AcquireLeaseCtx(ctx, playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RecalculatePlayerSessions lease player: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
-	relShared, err := AcquireLeaseCtx(ctx, sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		return 0, fmt.Errorf("RecalculatePlayerSessions lease shared: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	playerHandle, err := OpenPlayerDB(playerDBPath)
 	if err != nil {
