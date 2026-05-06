@@ -29618,3 +29618,57 @@ go test ./apps/go-api/internal/sync/... -race -v
 - Automatic recovery on 429/503 via GlobalCooldown
 
 **Prochaine étape** : PR ready-to-merge après tests validant 429/503 backoff + order preservation + e2e speedup bench.
+
+---
+
+## [2026-05-06] Token Pool — CRITICAL FIX + E2E Validation
+
+**Statut** : Complété — 3 commits (24ebc8e8, 45874bd5, 37ecaca4) sur `feat/token-pool-parallel-sync`.
+
+### CRITICAL FIX (commit 24ebc8e8)
+
+**Problème découvert** : PooledHaloClient ne signalait JAMAIS 429/503 au pool. Global cooldown ne s'activait jamais.
+
+**Solution** :
+1. Créer `HTTPError` type dans halo_client.go exposant `StatusCode`
+2. Modifier `doGet()` pour retourner `*HTTPError` au lieu de `fmt.Errorf()`
+3. Implémenter `PooledHaloClient.notifyPoolOnHTTPError()` qui inspecte l'erreur avec `errors.As()`
+4. Tous les endpoints publics (GetMatchHistory/Stats/Film/HighlightEvents) appellent `notifyPoolOnHTTPError()` après HaloAPIClient
+5. GetCareerRank ne signale PAS (401/403 silencieusement ignoré — comportement privacy-gated)
+
+**Autres fixes** :
+- Retirer unused Discovery field de poolImpl
+- Fixer goto jump-over-declaration en wrappant Phase 2&3 dans `if len(toFetch) > 0`
+- Fixer type mismatches : `[]ParticipantRow` / `[]MedalRow` (values pas pointers)
+
+### OPTIONAL Enhancements (commit 45874bd5)
+
+- Logs structurés : "rate_limit_exceeded" vs "service_unavailable" + statusCode
+- 5 nouveaux tests validant HTTP error signaling (429/503/other/nil)
+- Tous passants avec slog output visible
+
+### E2E Validation (commit 37ecaca4)
+
+**Test de synchronisation réelle** :
+```bash
+./levelup sync-delta --all --max-matches 3 --token-pool-size 0
+```
+
+**Résultats** ✅ :
+- Pool scan : 3 tokens découverts (Chocoboflor, JGtm, Madina97294)
+- 4 joueurs traités (total=4)
+- 4 synchros réussies (synced=4, failed=0)
+- Parallel fetch confirmé : logs montrent "match traité (parallèle)"
+- Performance : ~25 matchs en ~44s par joueur (fetch parallel + inserts séquentiel)
+- Pool fermé proprement : "INFO pool: fermé"
+
+**Logs observés** :
+```
+INFO pool: scan terminé total_players_scanned=4 players_with_token=3
+INFO pool: créé size=3 perTokenRPS=1
+INFO sync: match traité (parallèle) gamertag=... [x25 matchs]
+INFO sync: terminé ... duration_s=44.22 status=success
+INFO pool: fermé
+```
+
+**Conclusion** : Token pool architecture complete end-to-end. All 8 étapes delivered. Tests + logging + e2e validation ✅. Ready for production use.
