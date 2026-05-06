@@ -6,6 +6,8 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useRecentMediaRail, useToggleMediaLike } from '@/features/media/queries'
 import { MediaLightbox, MediaThumbnailCard } from '@/features/media/MediaViewer'
+import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
+import { useMediaPicker } from '@/features/media/useMediaPicker'
 
 const HOME_MEDIA_LIMIT = 20
 
@@ -23,6 +25,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [autoChain, setAutoChain] = useState(false)
+  const picker = useMediaPicker()
   const items = data?.items.items ?? []
   const recentTotal = recentQuery.data?.items.pagination.total
   const likedTotal = likedQuery.data?.items.pagination.total
@@ -38,6 +41,17 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
           likeDisabled={toggleMediaLike.isPending}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((c) => !c)}
+          playerSlug={playerSlug}
+          onReassociate={picker.openFor}
+        />
+      )}
+
+      {picker.state && (
+        <MediaMatchPicker
+          playerSlug={playerSlug}
+          filePath={picker.state.filePath}
+          hasCurrentMatch={picker.state.hasCurrentMatch}
+          onClose={picker.close}
         />
       )}
 
@@ -99,6 +113,8 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                   }}
                   onOpen={() => setLightboxIndex(index)}
                   likeDisabled={toggleMediaLike.isPending}
+                  playerSlug={playerSlug}
+                  onAssociate={picker.openFor}
                 />
               </CarouselItem>
             ))}

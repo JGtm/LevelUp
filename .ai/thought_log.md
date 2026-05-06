@@ -1,5 +1,65 @@
 # Thought Log
 
+## [2026-05-06] UX Médias — label conditionnel Associer/Réassocier + lien Voir le match
+
+**Statut** : Complété (front uniquement, pas de back-end touché).
+
+**Contexte** : L'option "Réassocier" apparaissait toujours dans le lecteur média (`CoverFlowModal`) même quand le média n'avait jamais été associé à un match — sémantiquement faux (Associer ≠ Réassocier). Par ailleurs aucun lien vers la page du match n'existait depuis les vignettes ni depuis le lecteur, alors que le user veut pouvoir naviguer vers le match associé sans devoir filtrer manuellement la liste de matchs. Demande propagée : la même UX doit être active sur les 3 surfaces qui consomment ces composants partagés (home `RecentMediaRail`, page Médias `MediaPage`, onglet Médias d'un match `MatchMediaTab`).
+
+**Décisions techniques** :
+
+1. **Label conditionnel sur le bouton (Ré)associer** — `CoverFlowModal` affiche désormais "Associer" quand `currentItem.match_id === null`, "Réassocier" sinon. Le tooltip suit la même logique. Idem pour `MediaMatchPicker` (titre header + footer confirm + message d'erreur).
+
+2. **Nouveau lien "Voir le match →"** — disponible sur :
+   - `MediaThumbnailCard` : lien secondaire en footer (sous la ligne badge/map/date), couleur `primary/80`, taille `text-[11px]`. Ne s'affiche pas si `currentMatchId === item.match_id` (déjà sur la page) ni si `playerSlug` absent.
+   - `CoverFlowModal` header : à côté du heading, taille `text-xs`, même règle de masquage. Sur la page `MatchMediaTab`, on passe `currentMatchId={matchId}` ce qui supprime le lien — pas de double aller-retour vers la page courante.
+
+3. **Lien "+ Associer" en remplacement de l'italic "Pas de match associé"** — quand le média n'a pas de match ET que `onAssociate` est fourni, l'italic informatif devient un bouton actionnable qui ouvre le picker.
+
+4. **Tanstack `<Link>` → `<a href>` plain** — le `<Link>` casse les tests qui n'ont pas de router context (cf. `MediaPage.test.tsx` qui crashait sur `useLinkProps`). Remplacement par `<a href={...}>`. Compromis : full page reload au lieu de SPA-nav, acceptable pour un lien secondaire peu cliqué. Si les tests intègrent un router test wrapper plus tard, repasser à `<Link>`.
+
+5. **Propagation aux 3 callers** — `RecentMediaRail`, `MatchMediaTab` et `MediaPage` tracent désormais l'état du picker via `{ filePath, hasCurrentMatch }` (au lieu d'un simple `filePath` qui obligeait le picker à deviner le mode). `MediaMatchPicker` accepte `hasCurrentMatch?: boolean` qui pilote le titre/confirm/erreur.
+
+6. **Bonus : refactor 4 erreurs eslint pré-existantes dans `CoverFlowModal`**
+   - `setError(null)` dans `useEffect` → pattern render-time (`if (filePath !== lastFilePath) { ... }`) recommandé par React.
+   - `lastValidIdxRef.current = X` lu/écrit en render → migration `useRef` vers `useState` + render-time setState (pattern recommandé par React docs "you might not need an Effect"). Tests "stabilité de l'item courant" tous verts (18/18). Net : **329 → 321 problèmes lint** (−4 erreurs, −4 warnings). Important : ne PAS ajouter `items` aux deps du useEffect `[startIndex]` — ça casse les tests de réordonnancement (le user-facing item courant doit survivre aux refetch).
+
+**Résultats observés** :
+- TypeScript : 0 erreur (clean).
+- Vitest : 1243/1244 (le seul échec `SeasonPassPage.test.tsx` était déjà rouge sur baseline pre-changes).
+- ESLint : 321 problèmes vs 329 baseline (−8, dont −4 errors).
+
+**Conclusion / prochaine étape** : feature complète sur les 3 surfaces. Si le lien "Voir le match" devient un point chaud, repasser au `<Link>` Tanstack avec un router-aware test wrapper. Le i18n hardcodé FR de `MediaMatchPicker` (4 strings flaggées par `@levelup/no-hardcoded-strings`) reste un debt pré-existant — faire un passage dédié pour migrer vers `getMediaModalsText` qui contient déjà les strings EN/FR.
+
+**Vérification finale (post-livraison)** :
+
+7. **DRY — extraction `useMediaPicker`** : le pattern `const [pickerState, setPickerState] = useState<{ filePath; hasCurrentMatch }>(null)` apparaissait dans les 3 callers (CLAUDE.md règle ≤ 2 copies). Extrait dans `apps/web/src/features/media/useMediaPicker.ts` — hook autonome qui expose `{ state, openFor(item), close }`. `openFor` et `close` sont stables via `useCallback` (utile si un caller décide de mémoïser plus loin). 6 tests dédiés (`useMediaPicker.test.ts`) couvrent : démarrage null, dérivation correcte du `hasCurrentMatch` selon `match_id`, `close()`, remplacement par open successif, stabilité des callbacks entre renders. **Note** : le hook a été extrait dans son propre fichier (et non co-localisé dans `MediaMatchPicker.tsx`) pour respecter `react-refresh/only-export-components` — un fichier ne doit exporter que des composants pour préserver le HMR.
+
+8. **Couverture tests étendue** :
+   - `MediaThumbnailCard` (`MediaViewer.test.tsx`) : +9 tests ciblant les nouveaux flows. Lien "Voir le match" (5) — affichage avec `playerSlug`, masquage si `currentMatchId === item.match_id`, masquage sans `playerSlug`, `stopPropagation` ne déclenche pas `onOpen`, EN locale "View match →". Bouton "+ Associer" (4) — affichage si `match_id=null`+`onAssociate`, fallback italic préservé sans `onAssociate`, dispatch correct du callback, masquage si match déjà associé.
+   - `CoverFlowModal` (`CoverFlowModal.test.tsx`) : +5 tests. Label conditionnel "Associer" pour items sans match (1), lien "Voir le match" header (4) — affichage, masquage si déjà sur la page, masquage sans match, suivi de la navigation flèches.
+   - `useMediaPicker` (`useMediaPicker.test.ts`) : 6 tests neufs.
+   - **Total : 23 nouveaux tests, tous verts**. Suite globale : 1262/1263 passants (1244 baseline pre-changes → +18 tests verts net, le seul échec restant `SeasonPassPage` était déjà rouge sur baseline).
+
+9. **Audit final** :
+   - **TypeScript** : 0 erreur (clean).
+   - **ESLint** : 321 problèmes (vs 329 baseline) — net **−8 problèmes (−4 errors, −4 warnings)**, **0 nouveau introduit**. Les 51 errors restantes sont toutes pré-existantes hors scope.
+   - **i18n** : tous les nouveaux strings (`associateButton`, `associateTitle`, `viewMatchButton`, `viewMatchTitle`) ont leurs versions FR + EN dans `i18n-modals.ts`. Test `getByRole('link', { name: /View match/ })` valide la locale=en.
+   - **Couleurs** : 0 hex `#RRGGBB`, 0 classe Tailwind couleur (`text-red-*`, etc.) introduits. Tous les liens utilisent les tokens sémantiques (`text-primary/80`, `text-muted-foreground`).
+   - **Code quality** : 0 `console.log/warn/error`, 0 `any`/`as any`, pas de duplication ≥ 3 (DRY enforced via le hook).
+
+**Polish UI post-review (sur retours user)** :
+
+10. **`+ Associer` inline avec le badge clip/screenshot** — déplacé du bloc "ligne secondaire" vers le slot `map_name` (même position que prend le nom de la map quand elle est connue). Garde la card compacte sur 2 lignes (badge+map/action+date / likers) au lieu de 3.
+
+11. **Texte "Voir le match →" remplacé par une icône SVG** — réutilise le pictogramme Heroicons "arrow-top-right-on-square" déjà utilisé sur `MatchCard` (cohérence visuelle entre les surfaces qui invitent à ouvrir un match). L'icône est inline juste après le `map_name` sur la vignette, et juste après le heading dans le header du `CoverFlowModal`. SVG inliné dans les 2 fichiers pour éviter d'aggraver la dépendance circulaire MediaViewer ↔ CoverFlowModal. `aria-label` = `viewMatchTitle` (FR : "Ouvrir la page du match associé", EN : "Open the associated match page") pour l'accessibilité.
+
+12. **Truncate `map_name` à 13 chars** — helper `truncateMapName(name)` : si `name.length > 13`, retourne `name.slice(0, 12) + '...'`. Évite de pousser l'icône hors-vue ou de wrapper la ligne quand un map_name long est associé. 3 tests dédiés : intact si ≤ 13 chars, intact si exactement 13 chars (`Streets-Forge`), tronqué sinon (`Behemoth Forge Edition` → `Behemoth For...`).
+
+**Audit final ré-actualisé** : Vitest 1265/1266 (1 échec pré-existant `SeasonPassPage`), TypeScript 0 erreur, ESLint −8 net vs baseline. **+22 tests** ajoutés vs baseline pre-feature (couverture map truncate, icône, hook, label conditionnel, view-match, +Associer).
+
+---
+
 ## [2026-05-06] UI Battle Pass — cadrage image tuiles + suppression descriptions vides
 
 **Statut** : Complété (front uniquement, pas de back-end touché).

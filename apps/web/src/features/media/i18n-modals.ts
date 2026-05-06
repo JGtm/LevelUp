@@ -33,6 +33,10 @@ export interface MatchPickerText {
 export interface CoverFlowText {
   reassociateButton: string
   reassociateTitle: string
+  associateButton: string
+  associateTitle: string
+  viewMatchButton: string
+  viewMatchTitle: string
   chainButton: string
   enableChaining: string
   disableChaining: string
@@ -72,6 +76,10 @@ const FR: MediaModalsText = {
   coverFlow: {
     reassociateButton: 'Réassocier',
     reassociateTitle: 'Réassocier ce média à un autre match',
+    associateButton: 'Associer',
+    associateTitle: 'Associer ce média à un match',
+    viewMatchButton: 'Voir le match →',
+    viewMatchTitle: 'Ouvrir la page du match associé',
     chainButton: 'Enchaîner',
     enableChaining: 'Activer enchaînement',
     disableChaining: 'Désactiver enchaînement',
@@ -107,6 +115,10 @@ const EN: MediaModalsText = {
   coverFlow: {
     reassociateButton: 'Reassociate',
     reassociateTitle: 'Reassociate this media to another match',
+    associateButton: 'Associate',
+    associateTitle: 'Associate this media to a match',
+    viewMatchButton: 'View match →',
+    viewMatchTitle: 'Open the associated match page',
     chainButton: 'Chain',
     enableChaining: 'Enable chaining',
     disableChaining: 'Disable chaining',

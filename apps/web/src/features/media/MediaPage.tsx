@@ -10,6 +10,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
 import { MediaToolbar } from './MediaToolbar'
 import { MediaMatchPicker } from './MediaMatchPicker'
+import { useMediaPicker } from './useMediaPicker'
 import { UploadButton } from './UploadButton'
 import { getMediaText, type MediaText } from './i18n'
 import { useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
@@ -168,7 +169,7 @@ export function MediaPage() {
   const [sortKey, setSortKey] = useState('date_desc')
   const [likedOnly, setLikedOnly] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
-  const [reassociateFilePath, setReassociateFilePath] = useState<string | null>(null)
+  const picker = useMediaPicker()
   const [autoChain, setAutoChain] = useState(false)
 
   // Par défaut on filtre sur les médias DU joueur courant. Le AuthorsMultiSelect
@@ -277,17 +278,19 @@ export function MediaPage() {
           onLoadNextPage={() => setPage((current) => current + 1)}
           globalIndexOffset={(page - 1) * PAGE_SIZE}
           globalTotal={pagination?.total ?? mediaItems.length}
-          onReassociate={(item) => setReassociateFilePath(item.file_path)}
+          onReassociate={picker.openFor}
+          playerSlug={playerSlug}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((prev) => !prev)}
         />
       )}
 
-      {reassociateFilePath && (
+      {picker.state && (
         <MediaMatchPicker
           playerSlug={playerSlug}
-          filePath={reassociateFilePath}
-          onClose={() => setReassociateFilePath(null)}
+          filePath={picker.state.filePath}
+          hasCurrentMatch={picker.state.hasCurrentMatch}
+          onClose={picker.close}
         />
       )}
 
@@ -351,6 +354,8 @@ export function MediaPage() {
                         }}
                         onOpen={() => setLightboxIdx(flatIndex)}
                         likeDisabled={toggleMediaLike.isPending}
+                        playerSlug={playerSlug}
+                        onAssociate={picker.openFor}
                       />
                     )
                   })}
