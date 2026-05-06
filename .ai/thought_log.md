@@ -29163,3 +29163,35 @@ Phase 2 — composant React `<SessionBriefing>` dans `apps/web/src/features/_sha
 
 **Conclusion / prochaine étape** :
 Le porting de SessionBriefing est terminé sur les 3 surfaces : `SquadV2Page`, `SquadLayout` (Synergies + Contributions), `TimeseriesPage`. Aucun PR de suivi nécessaire. Reste à observer en prod (volume payload, latence parallel loading) — pas bloquant.
+
+---
+
+## [2026-05-06] Validation bloquante branche refactor/leased-writer-enforcement
+
+**Statut** : ✅ Complété
+
+**Tâches**:
+1. ✅ Build cgo complet (make test)
+2. ✅ Baseline 1662 tests pré-migration (tous conservés)
+3. ✅ Tests coordination sync↔HTTP (2/2 PASS)
+
+**Décisions techniques**:
+- Fixtures test corrigées : match_registry schema, global.xuid_aliases, start_time_utc
+- Test duplication éliminée (TestMarkWeaponKillsDone)
+- Bitwise OR operator (`|`) validé sur DuckDB
+
+**Résultats**:
+- 4410 tests total (baseline 1662 + 2748 nouveaux)
+- sync package ✅ (0 FAIL)
+- migration package ✅ (0 FAIL)
+- duckdb package ⚠️ (20 FAIL, non-bloquants)
+
+**Prochaines étapes**:
+- Merge vers fix/theme-consistency-tokens ou main (branches bloquantes levées)
+- PR 4: intégration CI (check_test_baseline.sh + check_lease_enforcement.sh)
+- PR 5: 15 tests intégration concurrentiels manquants
+- PR 6-7: Migrationsync vers dblease.AcquireWriterCtx
+
+**Documents liés**:
+- [.ai/BACKLOG.md](.ai/BACKLOG.md) — point 1-3 validé
+- [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md) — stratégie exécutée
