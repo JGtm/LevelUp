@@ -580,3 +580,140 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 		t.Errorf("AssociateMediaWithMatches = %d associations, want 1 (start_time_utc UTC)", n)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// insertMediaFile — dédup extension-agnostique (file_stem)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestInsertMediaFile_StemDedup_OldFileGone vérifie que lors d'une conversion
+// de format (ex. .mp4 → .webm avec même stem), si l'ancien fichier n'existe plus,
+// l'entrée existante est mise à jour (id préservé → associations préservées).
+func TestInsertMediaFile_StemDedup_OldFileGone(t *testing.T) {
+	db, dir := openInsertTestDB(t)
+
+	// 1. Indexer video.mp4
+	oldPath := filepath.Join(dir, "capture.mp4")
+	if err := os.WriteFile(oldPath, []byte("video mp4"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil); err != nil {
+		t.Fatalf("insertMediaFile (mp4): %v", err)
+	}
+
+	// Lire l'id généré
+	var oldID string
+	var oldExt string
+	if err := db.QueryRow(
+		"SELECT id, file_ext FROM media_files WHERE file_hash = ?", "hash_mp4",
+	).Scan(&oldID, &oldExt); err != nil {
+		t.Fatalf("SELECT after insert: %v", err)
+	}
+	if oldID == "" {
+		t.Fatal("id doit être non-vide après INSERT")
+	}
+	if oldExt != ".mp4" {
+		t.Errorf("file_ext = %q, want .mp4", oldExt)
+	}
+
+	// 2. Supprimer le fichier physique (simule conversion)
+	if err := os.Remove(oldPath); err != nil {
+		t.Fatal(err)
+	}
+
+	// 3. Créer video.webm (même stem, nouvelle extension)
+	newPath := filepath.Join(dir, "capture.webm")
+	if err := os.WriteFile(newPath, []byte("video webm"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 4. Indexer capture.webm
+	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil); err != nil {
+		t.Fatalf("insertMediaFile (webm): %v", err)
+	}
+
+	// 5. Vérifier que l'id est PRÉSERVÉ (UPDATE au lieu d'INSERT)
+	var newID string
+	var newPath_read string
+	var newExt string
+	if err := db.QueryRow(
+		"SELECT id, file_path, file_ext FROM media_files WHERE id = ?", oldID,
+	).Scan(&newID, &newPath_read, &newExt); err != nil {
+		t.Fatalf("SELECT après UPDATE: %v", err)
+	}
+	if newID != oldID {
+		t.Errorf("id changed: %q → %q (should be preserved)", oldID, newID)
+	}
+	if newPath_read != newPath {
+		t.Errorf("file_path = %q, want %q", newPath_read, newPath)
+	}
+	if newExt != ".webm" {
+		t.Errorf("file_ext = %q, want .webm", newExt)
+	}
+
+	// 6. Vérifier que file_hash a été mis à jour
+	var updatedHash string
+	if err := db.QueryRow(
+		"SELECT file_hash FROM media_files WHERE id = ?", oldID,
+	).Scan(&updatedHash); err != nil {
+		t.Fatalf("SELECT file_hash: %v", err)
+	}
+	if updatedHash != "hash_webm" {
+		t.Errorf("file_hash = %q, want hash_webm", updatedHash)
+	}
+}
+
+// TestInsertMediaFile_StemDedup_BothFilesPresent vérifie que lors d'une conversion
+// avec les deux fichiers coexistant (ancien non supprimé), l'insertion du nouveau est SKIPPÉE.
+func TestInsertMediaFile_StemDedup_BothFilesPresent(t *testing.T) {
+	db, dir := openInsertTestDB(t)
+
+	// 1. Indexer capture.mp4
+	oldPath := filepath.Join(dir, "capture.mp4")
+	if err := os.WriteFile(oldPath, []byte("video mp4"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil); err != nil {
+		t.Fatalf("insertMediaFile (mp4): %v", err)
+	}
+
+	var oldID string
+	if err := db.QueryRow(
+		"SELECT id FROM media_files WHERE file_hash = ?", "hash_mp4",
+	).Scan(&oldID); err != nil {
+		t.Fatalf("SELECT id: %v", err)
+	}
+
+	// 2. Créer capture.webm SANS supprimer capture.mp4
+	newPath := filepath.Join(dir, "capture.webm")
+	if err := os.WriteFile(newPath, []byte("video webm"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 3. Essayer d'indexer capture.webm
+	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil); err != nil {
+		t.Fatalf("insertMediaFile (webm): %v", err)
+	}
+
+	// 4. Vérifier que la première entrée reste inchangée (file_path toujours oldPath, pas updaté)
+	var readPath string
+	if err := db.QueryRow(
+		"SELECT file_path FROM media_files WHERE id = ?", oldID,
+	).Scan(&readPath); err != nil {
+		t.Fatalf("SELECT file_path: %v", err)
+	}
+	if readPath != oldPath {
+		t.Errorf("file_path changed to %q, want %q (SKIP, not UPDATE, because old file exists)",
+			readPath, oldPath)
+	}
+
+	// 5. Vérifier qu'aucune nouvelle entrée n'a été créée pour le stem
+	var count int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM media_files WHERE file_stem = ?", "capture",
+	).Scan(&count); err != nil {
+		t.Fatalf("SELECT COUNT: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("row count for stem='capture' = %d, want 1 (SKIP, no new entry)", count)
+	}
+}

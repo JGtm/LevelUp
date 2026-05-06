@@ -465,6 +465,8 @@ func ensureMediaTables(db *sql.DB) error {
 		{"liked", "BOOLEAN DEFAULT FALSE"},
 		{"liked_at", "TIMESTAMPTZ"},
 		{"discord_notified", "BOOLEAN DEFAULT FALSE"},
+		{"file_stem", "VARCHAR"},
+		{"file_ext", "VARCHAR"},
 	} {
 		if _, err := db.Exec("ALTER TABLE media_files ADD COLUMN IF NOT EXISTS " + col.name + " " + col.typ); err != nil {
 			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
@@ -569,14 +571,16 @@ func fileHash(path string) (string, error) {
 func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location) error {
 	ext := strings.ToLower(filepath.Ext(path))
 	kind := supportedExtensions[ext]
+	baseName := filepath.Base(path)
+	stem := strings.TrimSuffix(baseName, ext)
 
 	var captureAt *time.Time
 
 	// Priorité 1 : datetime extraite du nom de fichier (OBS Studio, Xbox, ShadowPlay).
-	if t := parseCaptureTimeFromFilename(filepath.Base(path), loc); t != nil {
+	if t := parseCaptureTimeFromFilename(baseName, loc); t != nil {
 		captureAt = t
 		slog.Debug("insertMediaFile: datetime extraite du nom de fichier",
-			"file", filepath.Base(path), "capture_start_utc", *t)
+			"file", baseName, "capture_start_utc", *t)
 	}
 
 	// Priorité 2 : mtime client fourni par le navigateur (file.lastModified).
@@ -584,7 +588,7 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 		t := time.Unix(*captureTimeUnix, 0).UTC()
 		captureAt = &t
 		slog.Debug("insertMediaFile: datetime depuis file.lastModified client",
-			"file", filepath.Base(path), "capture_start_utc", t)
+			"file", baseName, "capture_start_utc", t)
 	}
 
 	// Le mtime filesystem du serveur n'est PAS utilisé en fallback : sur un fichier
@@ -594,13 +598,46 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 	// source fiable (regex nom de fichier ou ré-upload) n'est pas disponible.
 	if captureAt == nil {
 		slog.Warn("insertMediaFile: capture_start_utc indéterminé, média non-associable",
-			"file", filepath.Base(path), "player", playerSlug)
+			"file", baseName, "player", playerSlug)
 	}
 
-	_, err := db.Exec(`
-		INSERT OR IGNORE INTO media_files (player_slug, file_path, file_name, file_hash, kind, capture_start_utc)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, playerSlug, path, filepath.Base(path), hash, kind, captureAt)
+	// Dédup extension-agnostique : cherche une entrée existante avec le même stem.
+	// Si trouvée et ancien fichier encore sur disque → SKIP (les deux coexistent).
+	// Si trouvée mais ancien fichier parti → UPDATE (conversion terminée).
+	// Sinon → INSERT.
+	var existingID string
+	var existingPath string
+	err := db.QueryRow(`
+		SELECT id, file_path FROM media_files
+		WHERE player_slug = ? AND file_stem = ?
+	`, playerSlug, stem).Scan(&existingID, &existingPath)
+
+	if err == nil && existingID != "" {
+		// Entrée trouvée : vérifier si l'ancien fichier existe encore.
+		if _, statErr := os.Stat(existingPath); statErr == nil {
+			// Ancien fichier existe toujours → SKIP (non-déterministe pendant conversion).
+			slog.Debug("insertMediaFile: stem conflict, ancien fichier toujours présent, SKIP nouveau",
+				"player", playerSlug, "stem", stem, "old_path", existingPath, "new_path", path)
+			return nil
+		}
+
+		// Ancien fichier parti → UPDATE l'entrée existante (conversion complétée).
+		_, err := db.Exec(`
+			UPDATE media_files
+			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?
+			WHERE id = ?
+		`, path, baseName, ext, hash, kind, existingID)
+		slog.Info("insertMediaFile: mise à jour fichier format conversions",
+			"player", playerSlug, "stem", stem, "old_path", existingPath, "new_path", path, "id", existingID)
+		return err
+	}
+
+	// Nouvelle entrée : INSERT avec file_stem + file_ext.
+	// INSERT OR IGNORE évite les doublons par file_path UNIQUE (même contenus uploadé 2×).
+	_, err = db.Exec(`
+		INSERT OR IGNORE INTO media_files (player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind, capture_start_utc)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, playerSlug, path, baseName, stem, ext, hash, kind, captureAt)
 	return err
 }
 

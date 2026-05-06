@@ -227,6 +227,8 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			player_slug VARCHAR NOT NULL,
 			file_path VARCHAR NOT NULL,
 			file_name VARCHAR NOT NULL,
+			file_stem VARCHAR,
+			file_ext VARCHAR,
 			kind VARCHAR NOT NULL,
 			thumbnail_path VARCHAR,
 			capture_end_utc TIMESTAMPTZ,
@@ -253,9 +255,9 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 	}
 	if _, err := db.Exec(ctx, `
 		INSERT INTO media_files (
-			id, player_slug, file_path, file_name, kind, thumbnail_path, capture_end_utc, liked, created_at, updated_at
+			id, player_slug, file_path, file_name, file_stem, file_ext, kind, thumbnail_path, capture_end_utc, liked, created_at, updated_at
 		) VALUES (
-			'media-1', ?, '/clips/shared.mp4', 'shared.mp4', 'video', '/thumbs/shared.jpg',
+			'media-1', ?, '/clips/shared.mp4', 'shared.mp4', 'shared', '.mp4', 'video', '/thumbs/shared.jpg',
 			TIMESTAMPTZ '2025-01-10 15:01:00+00', TRUE, TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
 		)
 	`, pTestGamertag); err != nil {

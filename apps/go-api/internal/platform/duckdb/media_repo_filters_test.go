@@ -82,21 +82,21 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 
 	// 5 médias
 	mediaInserts := []struct {
-		id, owner, path, name, kind, capture string
-		liked                                bool
+		id, owner, path, name, kind, stem, ext, capture string
+		liked                                           bool
 	}{
-		{"med-A1", "Alice", "/A1.mp4", "A1.mp4", "video", "2025-01-10 14:30:00+00", true},
-		{"med-A2", "Alice", "/A2.png", "A2.png", "image", "2025-01-15 18:30:00+00", false},
-		{"med-B1", "Bob", "/B1.mp4", "B1.mp4", "video", "2025-01-20 10:30:00+00", true},
-		{"med-C1", mediaTestPlayerSlug, "/C1.png", "C1.png", "image", "2025-01-10 16:00:00+00", false},
-		{"med-C2", mediaTestPlayerSlug, "/C2.mp4", "C2.mp4", "video", "2025-01-15 19:00:00+00", true},
+		{"med-A1", "Alice", "/A1.mp4", "A1.mp4", "video", "A1", ".mp4", "2025-01-10 14:30:00+00", true},
+		{"med-A2", "Alice", "/A2.png", "A2.png", "image", "A2", ".png", "2025-01-15 18:30:00+00", false},
+		{"med-B1", "Bob", "/B1.mp4", "B1.mp4", "video", "B1", ".mp4", "2025-01-20 10:30:00+00", true},
+		{"med-C1", mediaTestPlayerSlug, "/C1.png", "C1.png", "image", "C1", ".png", "2025-01-10 16:00:00+00", false},
+		{"med-C2", mediaTestPlayerSlug, "/C2.mp4", "C2.mp4", "video", "C2", ".mp4", "2025-01-15 19:00:00+00", true},
 	}
 	for _, m := range mediaInserts {
 		if _, err := social.Exec(ctx,
 			`INSERT INTO media_files
-				(id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
-				VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			m.id, m.owner, m.path, m.name, m.kind, m.capture, m.liked,
+				(id, player_slug, file_path, file_name, file_stem, file_ext, kind, capture_end_utc, liked)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			m.id, m.owner, m.path, m.name, m.stem, m.ext, m.kind, m.capture, m.liked,
 		); err != nil {
 			t.Fatalf("insert media %s: %v", m.id, err)
 		}
