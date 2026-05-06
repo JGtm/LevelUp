@@ -95,7 +95,7 @@ export const tolBrightPalette: Palette = {
   'narrative-remontada':             TOL_BLUE,
   'narrative-remontada-text':        '#FFFFFF',
   'narrative-debacle':               TOL_RED,
-  'narrative-debacle-text':          '#FFFFFF',
+  'narrative-debacle-text':          '#000000', // noir sur Tol Red (6.8) — blanc ne passait pas AA (3.09)
   'narrative-contre-remontada':      TOL_CYAN,   // cyan clair
   'narrative-contre-remontada-text': '#000000',
 

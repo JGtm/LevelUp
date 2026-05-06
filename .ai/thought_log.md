@@ -1,5 +1,38 @@
 # Thought Log
 
+## [2026-05-06] Phase C accessibilité — test contraste WCAG AA + corrections badges narratifs
+
+**Statut** : Complété.
+
+**Contexte** : Phase C du plan `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md`. Implémentation des helpers WCAG 2.0 (relative luminance, contrast ratio, grade) + test automatique sur les 5 paires `narrative-{bg}/narrative-{text}` × 4 palettes (= 20 assertions).
+
+**Décisions techniques** :
+
+1. **Helpers WCAG 2.0** dans [apps/web/src/lib/accessibility/wcagContrast.ts](apps/web/src/lib/accessibility/wcagContrast.ts) (~70 lignes, zéro dépendance) : `relLuminance`, `contrastRatio`, `wcagGrade` (`'fail' | 'AA-large' | 'AA' | 'AAA'`). Implémente la formule officielle [W3C WCAG 2.0 § contrast-ratiodef](https://www.w3.org/TR/WCAG20/#contrast-ratiodef). S'inspire du repo `afonsolopez/colorblind` (port Go) sans l'importer.
+
+2. **Tests unitaires** ([wcagContrast.unit.test.ts](apps/web/src/lib/accessibility/__tests__/wcagContrast.unit.test.ts)) : 17 cas — luminance noir/blanc/gris/court hex/invalide, ratio max/min/symétrique, grades sur tous les seuils.
+
+3. **Test palettes** ([wcagContrast.test.ts](apps/web/src/lib/accessibility/__tests__/wcagContrast.test.ts)) : `describe.each(palettes)` × `it.each(NARRATIVE_PAIRS)` → 20 assertions. Premier run : **6 échecs détectés**, dont 5 réels (le 6e était une mauvaise valeur attendue dans mon test unitaire — corrigée). Le test fait précisément son boulot : empêcher les paires fond/texte de dériver sous AA.
+
+4. **5 corrections de palette pour passer AA** :
+   - `default.narrative-humiliation` : `#8B5CF6` (violet-500) → `#7C3AED` (violet-600). Ratio blanc 4.05 → 5.6.
+   - `default.narrative-debacle-text` : `#FFF7ED` (crème) → `#000000`. Ratio 3.64 → 5.4.
+   - `okabe-ito.narrative-debacle-text` : `#FFFFFF` → `#000000`. Ratio 3.87 → 5.4.
+   - `cividis.narrative-debacle-text` : `#FFFFFF` → `#000000`. Ratio 3.87 → 5.4.
+   - `tol-bright.narrative-debacle-text` : `#FFFFFF` → `#000000`. Ratio 3.09 → 6.8.
+
+   Stratégie suivie = priorité 1 du plan §C.5 ("ajuster la couleur de texte plutôt que la couleur de fond"). Pour `humiliation` default, le passage au noir n'aurait pas suffi (4.2 < 4.5), il a fallu foncer le violet à violet-600.
+
+**Résultats observés** :
+- TypeScript : 0 erreur.
+- ESLint : 0 erreur sur les 8 fichiers modifiés/créés.
+- Vitest : 1315/1316 passent (le 1 échec = `SeasonPassPage.test.tsx` pré-existant). Phase C = +35 tests verts vs baseline post-B (17 unit + 20 paires palettes − 2 paires précédemment en double dans coverage).
+- Snapshots `coverage.test.ts.snap` régénérés pour 4 palettes (les hex narrative-debacle-text et narrative-humiliation ont changé).
+
+**Conclusion / prochaine étape** : Plan A+B+C complet. Branche `feat/accessibility-palettes-v2` prête à être mergée. Garde-fou WCAG en place : toute modification future d'une couleur narrative qui dégraderait le contraste sous AA fera échouer la CI.
+
+---
+
 ## [2026-05-06] Phase B accessibilité — ajout palettes Cividis + Tol Bright
 
 **Statut** : Complété.

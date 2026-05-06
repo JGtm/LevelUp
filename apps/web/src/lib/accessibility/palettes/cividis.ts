@@ -84,7 +84,7 @@ export const cividisPalette: Palette = {
   'narrative-remontada':             CIVIDIS_T25,      // bleu-gris foncé
   'narrative-remontada-text':        '#FFFFFF',
   'narrative-debacle':               SAFE_VERMILLION,  // vermillion (couple binaire)
-  'narrative-debacle-text':          '#FFFFFF',
+  'narrative-debacle-text':          '#000000',        // noir sur vermillion (5.4) — blanc ne passait pas AA
   'narrative-contre-remontada':      CIVIDIS_T75,      // ocre
   'narrative-contre-remontada-text': '#000000',
 
