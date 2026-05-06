@@ -118,25 +118,25 @@ func runSyncDeltaAll(
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 
 	// ─── Création du pool de tokens (si tokenPoolSize != 1) ───
-	var pool auth_platform.Pool
+	var pool auth_pool.Pool
 	if tokenPoolSize == 1 {
 		// Pool désactivé
 		fmt.Println("pool: désactivé (--token-pool-size 1)")
 	} else {
 		// Créer le pool avec Discovery + Resolver
-		discovery := auth_platform.NewDiscovery(cfg, resolver, titlePkg.DefaultSlug)
+		discovery := auth_pool.NewDiscovery(cfg, resolver, titlePkg.DefaultSlug)
 		sources, discoveryErr := discovery.Scan(ctx)
 		if discoveryErr != nil {
 			return fmt.Errorf("pool discovery: %w", discoveryErr)
 		}
 
-		poolResolver := auth_platform.NewResolver(provider, 0) // 0 = default TTL ~3h30
-		poolOpts := auth_platform.PoolOptions{
+		poolResolver := auth_pool.NewResolver(provider, 0) // 0 = default TTL ~3h30
+		poolOpts := auth_pool.PoolOptions{
 			MaxSize:     tokenPoolSize, // 0 = utiliser tous les sources
 			PerTokenRPS: rps,
 		}
 
-		p, poolErr := auth_platform.NewPool(ctx, poolResolver, sources, poolOpts)
+		p, poolErr := auth_pool.NewPool(ctx, poolResolver, sources, poolOpts)
 		if poolErr != nil {
 			return fmt.Errorf("pool creation: %w", poolErr)
 		}
@@ -160,7 +160,6 @@ func runSyncDeltaAll(
 		}
 
 		// ─── Client setup (pool ou standard) ───
-		var tokens *domain.HaloTokens
 		var syncErr error
 
 		if pool != nil {

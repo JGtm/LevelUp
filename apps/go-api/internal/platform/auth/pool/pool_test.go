@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/auth"
 )
 
 // testSlotEnv crée un set de sources pour les tests.
