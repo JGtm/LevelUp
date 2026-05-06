@@ -144,18 +144,28 @@ Justification : un graphe à 2 séries (très commun) tombera sur Blue+Orange (p
 ### A.7. Risque & rollback
 
 - **Risque visuel** : un utilisateur avec vision normale qui avait l'habitude du "win=vert" va voir "win=bleu". Pas un bug — un trade-off documenté en A.2. Rollback = revert du commit.
-- **Risque sémantique** : composants qui utilisent `outcome-win` en supposant qu'il est vert (ex. icône stylée). Vérifier avec :
+- **Risque sémantique** : composants qui utilisent `outcome-win` en supposant qu'il est vert (ex. icône stylée, logique conditionnelle "si rouge alors texte blanc"). Vérification en **2 passes** obligatoires :
+
+  **Passe 1 — usage direct via `tokenCssVar` (JSX) ou références directes** :
   ```
   grep -rn "outcome-win\|divergent-pos\|encounter-ally\|heatmap-hot" apps/web/src/
   ```
-  Aucun composant ne doit avoir une logique conditionnelle qui dépend de la teinte.
+
+  **Passe 2 — usage via `resolveToken()` (Plotly/SVG/ECharts wrappers)** : couvrir les 18 fichiers du dossier `apps/web/src/components/charts/` qui appellent `resolveToken`. Grep dédié :
+  ```
+  grep -rn 'resolveToken.*outcome-win\|resolveToken.*divergent-pos\|resolveToken.*encounter-ally\|resolveToken.*heatmap' apps/web/src/components/charts/ apps/web/src/features/
+  ```
+
+  **Critère de validation** : aucun composant ne doit avoir de logique conditionnelle qui dépend de la **teinte** (ex. `if (color === '#009E73') textColor = 'black'`). Si trouvé : refactor en `useColor(token)` + lookup texte calculé via `wcagContrast` (préfigure Phase C).
 
 ### A.8. Done definition Phase A
 
 - [ ] [okabe-ito.ts](apps/web/src/lib/accessibility/palettes/okabe-ito.ts) modifié + commentaires à jour
 - [ ] Snapshot `coverage.test.ts.snap` régénéré
-- [ ] `npx vitest run` passe (tous tests verts)
-- [ ] `npx tsc --noEmit` passe
+- [ ] Passe 1 + Passe 2 du grep d'A.7 exécutées, aucune logique conditionnelle sur teinte trouvée
+- [ ] `npm run typecheck` passe (depuis `apps/web/`)
+- [ ] `npm run lint` passe (zéro nouvelle erreur eslint)
+- [ ] `npm run test` passe (tous vitest verts)
 - [ ] Vérification visuelle dans Settings → Accessibilité avec palette Okabe-Ito sélectionnée
 - [ ] Entrée `thought_log.md` ajoutée
 - [ ] Commit `feat(accessibility): remap okabe-ito on blue/orange axis`
@@ -272,17 +282,40 @@ paletteTolBrightDesc: 'Categorical 7-colour palette optimised for colour-blindne
 ### B.7. Risque & rollback
 
 - **Risque** : oubli d'un token dans une nouvelle palette → `coverage.test.ts` échoue → bloquer le merge. C'est exactement la garantie que le test apporte.
-- **Rollback** : revert du commit. Les utilisateurs qui auraient sélectionné Cividis/Tol Bright en localStorage retomberont sur `default` (le store gère le fallback via `ColorPalette` typé strict + Zustand persist qui rejette les valeurs invalides → fallback aux defaults).
-  - À vérifier : que `settingsDraftStore` traite bien une valeur inconnue comme un fallback. Si pas le cas, ajouter un `.catch` dans le merge handler de Zustand persist.
+- **Rollback — comportement Zustand vérifié** : le `merge` handler de [settingsDraftStore.ts:152-168](apps/web/src/stores/settingsDraftStore.ts#L152-L168) fait un spread brut `...persisted.localUiPrefs` **sans validation**. Donc si un utilisateur a `colorPalette: 'cividis'` en localStorage et qu'on revert B (ColorPalette retombe à `'default' | 'okabe-ito'`), la valeur invalide **subsisterait** en mémoire.
+
+  **Garde-fou défensif obligatoire** dans [theme-provider.tsx](apps/web/src/app/providers/theme-provider.tsx) : utiliser un `switch` avec **`default:` qui retombe sur `defaultPalette`**, jamais une chaîne ternaire :
+
+  ```ts
+  // ❌ NE PAS faire (planterait silencieusement avec valeur invalide)
+  const palette = colorPalette === 'cividis' ? cividisPalette : ...
+
+  // ✅ Faire
+  function pickPalette(key: ColorPalette): Palette {
+    switch (key) {
+      case 'okabe-ito':  return okabePalette
+      case 'cividis':    return cividisPalette
+      case 'tol-bright': return tolBrightPalette
+      case 'default':    return defaultPalette
+      default:           return defaultPalette  // garde-fou : valeur localStorage corrompue/obsolète
+    }
+  }
+  ```
+
+  Pas besoin de `.catch` dans le merge handler — le `default:` du switch suffit et est plus lisible. À tester explicitement (`themeProvider.test.tsx` : passer `colorPalette: 'unknown' as ColorPalette`, vérifier que `defaultPalette` est appliqué).
 
 ### B.8. Done definition Phase B
 
-- [ ] 2 fichiers palette créés, exhaustifs (44 tokens chacun)
-- [ ] Index, store, provider, tab, i18n mis à jour
+- [ ] 2 fichiers palette créés, exhaustifs (44 tokens chacun) avec en-tête "exception zéro magic hex"
+- [ ] Index, store, provider, tab, i18n (FR + EN) mis à jour
+- [ ] `theme-provider.tsx` refactoré en `switch` avec `default:` defensif (cf. B.7)
 - [ ] `coverage.test.ts` étendu, tests verts (avec nouveaux snapshots)
-- [ ] `AccessibilityTab.test.tsx` étendu
+- [ ] `AccessibilityTab.test.tsx` étendu (2 nouvelles options testées)
+- [ ] `themeProvider.test.tsx` : test explicite "valeur ColorPalette invalide → fallback default"
 - [ ] Vérification visuelle des 4 palettes dans Settings
-- [ ] `npx tsc --noEmit` passe
+- [ ] `npm run typecheck` passe
+- [ ] `npm run lint` passe
+- [ ] `npm run test` passe
 - [ ] Entrée `thought_log.md`
 - [ ] Commit `feat(accessibility): add cividis + tol-bright palettes`
 
@@ -394,9 +427,12 @@ Plan de remédiation **avant** de désactiver le test :
 
 ### C.8. Done definition Phase C
 
-- [ ] `wcagContrast.ts` (production) + tests unitaires (cas connus)
+- [ ] `wcagContrast.ts` (production) + tests unitaires (cas connus : noir/blanc=21, blanc/blanc=1, gris moyen)
 - [ ] `wcagContrast.test.ts` (palettes) — toutes paires AA passent sur les 4 palettes
 - [ ] Helpers exportés depuis `index.ts`
+- [ ] `npm run typecheck` passe
+- [ ] `npm run lint` passe
+- [ ] `npm run test` passe
 - [ ] Entrée `thought_log.md`
 - [ ] Commit `feat(accessibility): add WCAG AA contrast test on narrative pairs`
 

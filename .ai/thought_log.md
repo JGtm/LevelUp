@@ -21,6 +21,12 @@
 
 **Conclusion / prochaine étape** : Plan livré sur la branche `feat/accessibility-palettes-v2`. Attente validation utilisateur avant passage à l'implémentation. Si feu vert, exécution dans l'ordre A → vérif visuelle → B → C, chacune commitée séparément. Si seule A est priorisée, c'est le 80/20 qui fix le ressenti immédiat (les 4 couples binaires les plus visibles).
 
+**Durcissement post-revue (2e commit sur la branche)** : passage du plan à la grille `plan-review` + `delivery-checklist` → 3 points patchés :
+
+1. **Lint manquant dans Done definitions** — ajouté `npm run lint` (en plus de `typecheck` + `test`) aux Phases A.8, B.8, C.8. La delivery-checklist l'exige.
+2. **TODO Zustand persist résolu** — vérification du merge handler de `settingsDraftStore` ([lignes 152-168](apps/web/src/stores/settingsDraftStore.ts#L152-L168)) : il fait un spread brut sans validation, donc une valeur `colorPalette: 'cividis'` persistée en localStorage subsisterait après un revert de Phase B. **Solution dans le plan** : `theme-provider.tsx` doit utiliser un `switch` avec `default: defaultPalette` (garde-fou défensif, 2 lignes) plutôt qu'une chaîne ternaire. Test explicite ajouté dans la Done definition de B (`themeProvider.test.tsx` : valeur invalide → fallback default).
+3. **Vérification consommateurs Phase A trop superficielle** — A.7 ne couvrait que `tokenCssVar` (JSX). Ajout d'une **passe 2** sur les 18 fichiers `apps/web/src/components/charts/*` qui appellent `resolveToken()` (Plotly/SVG/ECharts). Critère explicité : aucune logique conditionnelle ne doit dépendre de la **teinte** (ex. `if (color === '#009E73')`). Si trouvé : refactor en `useColor()` + lookup texte via `wcagContrast` (préfigure Phase C).
+
 ---
 
 ## [2026-05-06] UX Médias — label conditionnel Associer/Réassocier + lien Voir le match
