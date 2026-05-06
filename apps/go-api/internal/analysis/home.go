@@ -12,17 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
 )
-
-// homeStaticTitleSlug est le slug du titre dont relÃ¨vent les helpers d'URL
-// composition de ce fichier (mapPNGNames, conventions HI). Quand un 2e titre
-// aura des assets statiques, ces helpers seront promus Ã  un adapter
-// title-resolved injectÃ©.
-const homeStaticTitleSlug = "halo_infinite"
 
 // ---------------------------------------------------------------------------
 // Constantes outcome (codes numÃ©riques Halo Infinite)
@@ -1040,60 +1033,6 @@ func sliceFavoriteMap(window []legacymatch.HomeMatchRow) *domain.HighlightSlide 
 // BuildRecentMatches â€” timeline rÃ©cente
 // ---------------------------------------------------------------------------
 
-// mapPNGNames contient les noms de maps (EN) dont l'image locale est au format PNG.
-// Tous les autres noms utilisent le format JPEG par dÃ©faut.
-var mapPNGNames = map[string]struct{}{
-	"Aquarius":                 {},
-	"Aquarius - Ranked":        {},
-	"Bazaar":                   {},
-	"Behemoth":                 {},
-	"Breaker":                  {},
-	"Breaker Heavies":          {},
-	"Catalyst":                 {},
-	"Deadlock":                 {},
-	"Deadlock Heavies":         {},
-	"Highpower":                {},
-	"Highpower Heavies":        {},
-	"Highpower Sentry Defense": {},
-	"Launch Site":              {},
-	"Recharge":                 {},
-	"Recharge - Ranked":        {},
-	"Streets":                  {},
-	"Streets - Ranked":         {},
-}
-
-// MapStaticImagePath retourne l'URL relative de l'image de map servie par /static/maps/.
-// Le nom de la map est encodÃ© pour les espaces et caractÃ¨res spÃ©ciaux.
-// Public pour usage cross-package (ex: media match candidates).
-func MapStaticImagePath(mapName string) string { return mapStaticImagePath(mapName) }
-
-// mapStaticImagePath retourne l'URL relative de l'image de map servie par
-// /static/maps/halo_infinite/. Le nom de la map est encodÃ© pour les espaces et
-// caractÃ¨res spÃ©ciaux.
-//
-// Composition dÃ©lÃ©guÃ©e Ã  internal/assets/static â€” ce package reste seule source
-// de vÃ©ritÃ© pour le format /static/{kind}/{titleSlug}/{id}{ext}.
-func mapStaticImagePath(mapName string) string {
-	mapName = strings.TrimSpace(mapName)
-	if mapName == "" || homeUUIDRe.MatchString(mapName) {
-		return ""
-	}
-	ext := ".jpg"
-	if _, ok := mapPNGNames[mapName]; ok {
-		ext = ".png"
-	}
-	// Encoder les espaces manuellement â€” net/url.PathEscape encode aussi "/" ce qu'on ne veut pas.
-	encoded := ""
-	for _, c := range mapName {
-		if c == ' ' {
-			encoded += "%20"
-		} else {
-			encoded += string(c)
-		}
-	}
-	return static.URL(static.KindMap, homeStaticTitleSlug, encoded, ext)
-}
-
 // BuildRecentMatches construit la liste des derniers matchs pour la timeline.
 func BuildRecentMatches(matches []legacymatch.HomeMatchRow, limit int) []domain.RecentMatchItem {
 	return BuildRecentMatchesForLocale(matches, limit, "fr")
@@ -1218,8 +1157,9 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow
 		isWithFriends := m.IsWithFriends
 		iwf := &isWithFriends
 
-		// PrÃ©fÃ©rer l'asset local /static/maps pour les maps connues ; fallback cache-aside sinon.
-		mapImageURL := buildMapImageURL("halo_infinite", m.MapID, m.MapName, m.MapNameFR)
+		// MapImageURL est résolue par HomeRepo via map_images_registry (pattern
+		// asset kinds, lookup par map_id). Empty string → nil pour le frontend.
+		mapImageURL := mapImageURLFromRegistry(m.MapImageURL)
 
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  m.MatchID,
@@ -1267,20 +1207,16 @@ func BuildRecentMatchesWithFavoritesForLocale(matches []legacymatch.HomeMatchRow
 	return items
 }
 
-// buildMapImageURL construit l'URL d'image d'une map.
-// PrioritÃ© au fichier statique local quand le nom de map est connu ; fallback sur le cache-aside UUID sinon.
-func buildMapImageURL(titleID, mapID, mapName, mapNameFR string) *string {
-	if localPath := mapStaticImagePath(mapName); localPath != "" {
-		return &localPath
-	}
-	if localPath := mapStaticImagePath(mapNameFR); localPath != "" {
-		return &localPath
-	}
-	if mapID == "" {
+// mapImageURLFromRegistry retourne *string si la home_repo a résolu une URL
+// depuis map_images_registry, nil sinon. Pas de fallback name-based : un
+// map_id absent du registry signale un asset à indexer via cmd/migrate-static-maps,
+// pas une URL à fabriquer côté analyse (le name peut être un UUID brut ou un
+// label localisé qui ne correspond à aucun fichier sur disque).
+func mapImageURLFromRegistry(localPath string) *string {
+	if strings.TrimSpace(localPath) == "" {
 		return nil
 	}
-	url := fmt.Sprintf("/api/v1/assets/maps/%s/%s/image", titleID, mapID)
-	return &url
+	return &localPath
 }
 
 // mmrDelta calcule team_mmr - enemy_mmr ; retourne nil si l'un ou l'autre est absent.

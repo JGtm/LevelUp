@@ -106,7 +106,7 @@ func BuildCitationSnippets(rows []domain.HomeMatchCitationRaw, limit int) []doma
 
 		var imgURL *string
 		if row.ImagePath != "" {
-			// image_path en DB : "static/commendations/h5g/FILENAME" (sans / initial).
+			// image_path en DB : "static/commendations/halo_5_guardians/FILENAME" (sans / initial).
 			// Les fichiers sur disk ont des noms URL-encodés littéraux (ex: %C3%89).
 			// url.PathEscape encode % → %25, ce qui permet à Go FileServer de retrouver
 			// le fichier par son nom littéral après décodage d'un seul niveau. ✓

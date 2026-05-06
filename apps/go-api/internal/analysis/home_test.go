@@ -220,13 +220,16 @@ func TestBuildRecentMatchesForLocale_UsesRequestedLanguage(t *testing.T) {
 	}
 }
 
-func TestBuildRecentMatches_UsesLocalStaticMapImageAndStripsExperiencePrefix(t *testing.T) {
+func TestBuildRecentMatches_PassesThroughPreResolvedMapImageURL(t *testing.T) {
 	now := time.Now()
+	// MapImageURL est désormais pré-résolu par HomeRepo via map_images_registry
+	// (pattern asset kinds). L'analysis layer fait juste un passe-plat.
 	items := analysis.BuildRecentMatches([]legacymatch.HomeMatchRow{{
 		MatchID:       "m2",
 		StartTime:     now,
 		MapID:         "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702",
 		MapName:       "Bazaar",
+		MapImageURL:   "/static/maps/halo_infinite/Bazaar.png",
 		PairName:      "Quick Play: Slayer on Bazaar",
 		PlaylistName:  "Quick Play",
 		TeamID:        1,
@@ -250,6 +253,26 @@ func TestBuildRecentMatches_UsesLocalStaticMapImageAndStripsExperiencePrefix(t *
 	}
 	if len(items[0].NarrativeBadges) != 1 || items[0].NarrativeBadges[0] != "remontada" {
 		t.Fatalf("NarrativeBadges: want [remontada], got %#v", items[0].NarrativeBadges)
+	}
+}
+
+func TestBuildRecentMatches_NoMapImageURLWhenRegistryEmpty(t *testing.T) {
+	now := time.Now()
+	// Pas de MapImageURL fourni → l'analysis layer émet nil (pas de fallback
+	// name-based). Le frontend dégrade gracieusement.
+	items := analysis.BuildRecentMatches([]legacymatch.HomeMatchRow{{
+		MatchID:   "m-no-registry",
+		StartTime: now,
+		MapID:     "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702",
+		MapName:   "Bazaar",
+		Outcome:   2,
+	}}, 6)
+
+	if len(items) != 1 {
+		t.Fatalf("want 1 item, got %d", len(items))
+	}
+	if items[0].MapImageURL != nil {
+		t.Fatalf("MapImageURL: want nil (registry empty), got %v", *items[0].MapImageURL)
 	}
 }
 

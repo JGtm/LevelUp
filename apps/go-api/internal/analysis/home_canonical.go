@@ -1023,11 +1023,15 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		isWithFriends := r.Enrichment.IsWithFriends
 		iwf := &isWithFriends
 
-		var mapID string
-		if r.Summary.Map != nil {
-			mapID = r.Summary.Map.ID
+		// MapImageURL est résolu par HomeRepo.EnrichCanonicalAssetTranslations
+		// via map_images_registry (pattern asset kinds, lookup par map_id).
+		// Hydraté sur Map.IconURL au moment de l'enrichissement ; ici on fait
+		// juste un passe-plat. Empty string → nil pour omitempty côté JSON.
+		var mapImageURL *string
+		if m := r.Summary.Map; m != nil && strings.TrimSpace(m.IconURL) != "" {
+			u := m.IconURL
+			mapImageURL = &u
 		}
-		mapImageURL := buildMapImageURL("halo_infinite", mapID, mapName, mapNameFR)
 
 		items = append(items, domain.RecentMatchItem{
 			MatchID:                  r.Summary.MatchID,

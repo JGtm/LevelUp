@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"path"
 	"strconv"
@@ -516,6 +517,11 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []le
 	gameVariantNames, _ := r.loadHomeAssetTranslationNames(ctx, "game_variant", collectMissingHomeAssetIDs(matches, "game_variant"))
 	playlistNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", collectMissingHomeAssetIDs(matches, "playlist"))
 
+	// Pattern asset kinds : lookup local_path par (title_id, map_id) dans
+	// map_images_registry (peuplé par cmd/migrate-static-maps). Le name n'est
+	// jamais utilisé comme clé — la stabilité vient du UUID map_id.
+	mapImageURLs, _ := r.loadHomeMapImageURLs(ctx, collectAllMapIDs(matches))
+
 	// mode_name_tr : collecte les modes EN de TOUS les matchs (sans filtre needsTranslation).
 	// Quand pair_name est un UUID brut, fallback sur le nom dans pairNames (asset_translations).
 	modeENSet := make(map[string]struct{})
@@ -541,6 +547,9 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []le
 			if name := strings.TrimSpace(mapNames[matches[i].MapID]); name != "" {
 				matches[i].MapNameFR = name
 			}
+		}
+		if matches[i].MapID != "" {
+			matches[i].MapImageURL = mapImageURLs[matches[i].MapID]
 		}
 		// PrioritÃ© 1 : mode_name_tr appliquÃ© sur tous les matchs (pair_name_fr peut contenir une valeur EN non traduite)
 		modeEN := analysis.NormalizeModeLabel(matches[i].PairName)
@@ -570,6 +579,68 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []le
 			}
 		}
 	}
+}
+
+// collectAllMapIDs retourne la liste des map_id distincts présents dans les
+// matchs. Contrairement à collectMissingHomeAssetIDs qui filtre sur l'absence
+// de traduction, ici on veut TOUTES les maps : la résolution d'URL par map_id
+// (asset kinds pattern) est indépendante des labels FR/EN.
+func collectAllMapIDs(matches []legacymatch.HomeMatchRow) []string {
+	ids := make(map[string]struct{})
+	for _, m := range matches {
+		if id := strings.TrimSpace(m.MapID); id != "" {
+			ids[id] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(ids))
+	for id := range ids {
+		out = append(out, id)
+	}
+	return out
+}
+
+// loadHomeMapImageURLs résout local_path depuis map_images_registry pour les
+// map_ids donnés. Pattern asset kinds (cf. internal/assets/) : lookup par ID
+// dans la table cache, pas par nom. Le registry est peuplé par
+// cmd/migrate-static-maps qui scanne static/maps/{titleSlug}/.
+//
+// Retourne map[map_id]local_path. Les map_ids absents du registry sont
+// simplement absents du résultat — pas d'erreur, pas de fallback name-based.
+// Le caller émet alors nil et le frontend dégrade gracieusement.
+func (r *HomeRepo) loadHomeMapImageURLs(ctx context.Context, mapIDs []string) (map[string]string, error) {
+	if len(mapIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(mapIDs)), ",")
+	query := fmt.Sprintf(`
+		SELECT map_id, local_path
+		FROM map_images_registry
+		WHERE title_id = ?
+		  AND TRIM(local_path) != ''
+		  AND map_id IN (%s)
+	`, placeholders)
+	args := make([]any, 0, len(mapIDs)+1)
+	args = append(args, homeStaticTitleSlug)
+	for _, id := range mapIDs {
+		args = append(args, id)
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]string, len(mapIDs))
+	for rows.Next() {
+		var mapID, localPath string
+		if err := rows.Scan(&mapID, &localPath); err != nil {
+			return nil, err
+		}
+		out[mapID] = localPath
+	}
+	return out, rows.Err()
 }
 
 func collectMissingHomeAssetIDs(matches []legacymatch.HomeMatchRow, assetType string) []string {
@@ -663,6 +734,48 @@ func (r *HomeRepo) loadHomeAssetTranslationNames(ctx context.Context, assetType 
 	return translations, nil
 }
 
+// loadHomeAssetTranslationNamesEN charge les noms en-US (canoniques) pour les
+// assetIDs donnés. Utilisé pour hydrater Labels["en"] sur les canonical rows
+// quand match_registry.{...}_name a été synced en localisé (FR au lieu de EN).
+// Sans ça, locale=en peut leak des labels FR.
+func (r *HomeRepo) loadHomeAssetTranslationNamesEN(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error) {
+	if len(assetIDs) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(assetIDs)), ",")
+	query := fmt.Sprintf(`
+		SELECT asset_id, name
+		FROM asset_translations
+		WHERE asset_type = ?
+		  AND lang = 'en-US'
+		  AND name IS NOT NULL
+		  AND TRIM(name) != ''
+		  AND asset_id IN (%s)
+	`, placeholders)
+	args := make([]any, 0, len(assetIDs)+1)
+	args = append(args, assetType)
+	for _, id := range assetIDs {
+		args = append(args, id)
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]string, len(assetIDs))
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		out[id] = name
+	}
+	return out, rows.Err()
+}
+
 // loadHomeModeNameTranslations rÃ©sout les noms FR des modes depuis mode_name_tr.
 // modeENNames est la liste de noms EN extraits de pair_name via NormalizeModeLabel.
 func (r *HomeRepo) loadHomeModeNameTranslations(ctx context.Context, modeENNames []string) (map[string]string, error) {
@@ -738,6 +851,26 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 	variantNames, _ := r.loadHomeAssetTranslationNames(ctx, "game_variant", variantIDs)
 	pairNames, _ := r.loadHomeAssetTranslationNames(ctx, "pair", pairIDs)
 
+	// Hydrater aussi Labels["en"] pour TOUS les map_ids/playlist_ids/etc. :
+	// match_registry.{*}_name peut avoir été synced en FR-localisé selon le
+	// client de sync. Sans Labels["en"], labelForLocale("en", ...) leak du FR.
+	allMapIDs := collectAllCanonicalMapIDs(rows)
+	allPlaylistIDs := collectAllCanonicalAssetIDs(rows, "playlist")
+	allVariantIDs := collectAllCanonicalAssetIDs(rows, "game_variant")
+	allPairIDs := collectAllCanonicalAssetIDs(rows, "pair")
+
+	mapNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "map", allMapIDs)
+	playlistNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "playlist", allPlaylistIDs)
+	variantNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "game_variant", allVariantIDs)
+	pairNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "pair", allPairIDs)
+
+	// Pattern asset kinds : lookup map_image local_path par map_id dans
+	// map_images_registry. La résolution d'URL est indépendante des labels.
+	mapImageURLs, mapImageURLErr := r.loadHomeMapImageURLs(ctx, allMapIDs)
+	if mapImageURLErr != nil {
+		slog.WarnContext(ctx, "home: loadHomeMapImageURLs failed", "err", mapImageURLErr)
+	}
+
 	modeENSet := map[string]struct{}{}
 	for i := range rows {
 		if pair := rows[i].Summary.PairMode; pair != nil {
@@ -762,6 +895,22 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 		applyCanonicalAssetFR(rows[i].Summary.Playlist, playlistNames)
 		applyCanonicalAssetFR(rows[i].Summary.GameVariant, variantNames)
 
+		// Hydrate Labels["en"] depuis asset_translations[en-US] pour assurer
+		// que locale=en n'utilise pas le DefaultLabel (parfois FR-localisé en
+		// DB selon le path de sync).
+		applyCanonicalAssetEN(rows[i].Summary.Map, mapNamesEN)
+		applyCanonicalAssetEN(rows[i].Summary.Playlist, playlistNamesEN)
+		applyCanonicalAssetEN(rows[i].Summary.GameVariant, variantNamesEN)
+		applyCanonicalAssetEN(rows[i].Summary.PairMode, pairNamesEN)
+
+		// Hydrate Map.IconURL depuis map_images_registry (pattern asset kinds —
+		// lookup par map_id stable, pas par name FR/EN).
+		if m := rows[i].Summary.Map; m != nil && m.ID != "" {
+			if u, ok := mapImageURLs[m.ID]; ok && u != "" {
+				m.IconURL = u
+			}
+		}
+
 		if pair := rows[i].Summary.PairMode; pair != nil {
 			if pair.Labels == nil {
 				pair.Labels = map[string]string{}
@@ -779,6 +928,60 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 		}
 	}
 	return nil
+}
+
+// collectAllCanonicalAssetIDs retourne les asset_ids distincts non-vides pour
+// le kind donné. Sans filtre needsTranslation : utilisé pour les lookups par
+// ID stable (registry, traductions canoniques en-US).
+func collectAllCanonicalAssetIDs(rows []canonical.PlayerMatchRow, kind string) []string {
+	ids := map[string]struct{}{}
+	for i := range rows {
+		var ref *canonical.AssetReference
+		switch kind {
+		case "map":
+			ref = rows[i].Summary.Map
+		case "playlist":
+			ref = rows[i].Summary.Playlist
+		case "game_variant":
+			ref = rows[i].Summary.GameVariant
+		case "pair":
+			ref = rows[i].Summary.PairMode
+		default:
+			return nil
+		}
+		if ref == nil {
+			continue
+		}
+		if id := strings.TrimSpace(ref.ID); id != "" {
+			ids[id] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(ids))
+	for id := range ids {
+		out = append(out, id)
+	}
+	return out
+}
+
+// collectAllCanonicalMapIDs retourne les map_ids distincts non-vides présents
+// dans les rows (toutes maps, sans filtre needsTranslation). Utilisé pour le
+// lookup map_images_registry qui dépend uniquement du map_id stable.
+func collectAllCanonicalMapIDs(rows []canonical.PlayerMatchRow) []string {
+	ids := map[string]struct{}{}
+	for i := range rows {
+		m := rows[i].Summary.Map
+		if m == nil {
+			continue
+		}
+		if id := strings.TrimSpace(m.ID); id != "" {
+			ids[id] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(ids))
+	for id := range ids {
+		out = append(out, id)
+	}
+	return out
 }
 
 func collectCanonicalAssetIDsNeedingFR(rows []canonical.PlayerMatchRow, kind string) []string {
@@ -835,6 +1038,23 @@ func applyCanonicalAssetFR(ref *canonical.AssetReference, translations map[strin
 	if needsHomeAssetTranslation(ref.Labels["fr"], en) {
 		ref.Labels["fr"] = name
 	}
+}
+
+// applyCanonicalAssetEN écrase Labels["en"] avec le nom canonique en-US depuis
+// asset_translations. Sans ça, locale=en peut leak un DefaultLabel FR-localisé
+// (selon le path de sync, match_registry.{*}_name peut contenir le label FR).
+func applyCanonicalAssetEN(ref *canonical.AssetReference, translations map[string]string) {
+	if ref == nil || len(translations) == 0 {
+		return
+	}
+	name := strings.TrimSpace(translations[ref.ID])
+	if name == "" {
+		return
+	}
+	if ref.Labels == nil {
+		ref.Labels = map[string]string{}
+	}
+	ref.Labels["en"] = name
 }
 
 // CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
