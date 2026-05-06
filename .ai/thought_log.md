@@ -141,6 +141,42 @@ Patterns :
 
 **Prochaine étape** : Étape 7 — Backoff global 429/503 (GlobalCooldown dans pool + MarkUnhealthy cascade). Étape 8 — Doc finales.
 
+## [2026-05-06] Indexation media extension-agnostique avec file_stem
+
+**Statut** : Complété — branche `feat/media-stem-dedup` prête à merge.
+
+**Décision technique principale** :
+Stocker le stem (nom de fichier sans extension) séparément dans `media_files` pour permettre la conversion de vidéos (ex. `.mp4` → `.webm`) sans perdre les associations `media_match_associations`. La déduplication applicative utilise `(player_slug, file_stem)` : si un ancien fichier est détecté sur disque → SKIP (coexistence), sinon → UPDATE de l'entrée existante en préservant `id` et ses associations.
+
+**4 phases implémentées** :
+
+1. **Migration DB** : ADD COLUMN `file_stem VARCHAR`, `file_ext VARCHAR` à `media_files` (shared_social + ensureMediaTables). Backfill SQL `regexp_replace(file_name, '\.[^.]+$', '')` pour les existants.
+
+2. **Indexation** (`insertMediaFile`) : avant INSERT, cherche entrée avec `(player_slug, file_stem)`. Si trouvée :
+   - Old path sur disque → SKIP (les deux fichiers coexistent, non-déterministe)
+   - Old path absent → UPDATE `file_path, file_ext, file_hash, kind` (conversion terminée, `id` préservé → associations survivent)
+   - Not found → INSERT normal
+
+3. **Queries & Repo** : Aucun changement (`file_path` reste l'identifiant principal HTTP). `file_stem` purement interne.
+
+4. **Tests** : Fixtures mises à jour + 2 tests CGO (`StemDedup_OldFileGone`, `StemDedup_BothFilesPresent`). Tous les 1600+ tests ops + duckdb passent.
+
+**Résultats observés** :
+- `go test ./internal/ops -run StemDedup` : 2/2 PASS (0.174s)
+- `go test ./internal/ops` : 88/88 PASS (5.761s)
+- `go test -tags=integration ./internal/platform/duckdb -run TestMediaFilters` : 30/30 PASS (1.397s)
+- Commit d3515e07 : gofmt + golangci-lint + pre-commit hooks passés
+
+**Cas d'usage préservés** :
+- Utilisateur convertit `capture.mp4` en `capture.webm` et supprime l'original → re-indexation détecte ancien chemin absent → UPDATE préserve `id` et les associations ✓
+- Utilisateur convertit **pendant** la re-indexation (files coexistent) → SKIP, nouveau fichier n'est pas indexé → utilisateur supprime l'ancien, relance re-indexation ✓
+
+**Limitations acceptées** :
+- Stems non-uniques dans des sous-répertoires différents (ex. `/old/capture.mp4` + `/new/capture.mp4`) → UPDATE incorrect. Mitigation : captures Xbox sont flat + stems contiennent timestamps → non-problématique en pratique.
+- Pas de contrainte UNIQUE DB sur `(player_slug, file_stem)` → évite une migration destructive sur `file_path UNIQUE`, dédup est applicative.
+
+**Prochaine étape** : Merge dans `main`, alors utilisateur peut convertir vidéos sans se soucier de la perte d'indexation.
+
 ---
 
 ## [2026-05-06] PR 7 — Sync engine migration to dblease.AcquireWriterCtx

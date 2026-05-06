@@ -115,4 +115,30 @@ func init() {
 			`)
 		},
 	})
+
+	// Mai 2026 : file_stem + file_ext pour indexation extension-agnostique.
+	// Permet la conversion de vidéos (.mp4 → .webm) sans perdre media_match_associations.
+	// file_stem = filename sans extension ; utilisé comme clé de dédup applicative.
+	Register(Migration{
+		Name:        "add_file_stem_ext_to_media_files",
+		TargetDB:    TargetSharedSocial,
+		Description: "Ajoute file_stem et file_ext à media_files pour dédup extension-agnostique",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_stem VARCHAR;
+				ALTER TABLE media_files ADD COLUMN IF NOT EXISTS file_ext VARCHAR;
+
+				-- Backfill depuis file_name existant
+				UPDATE media_files
+				SET
+					file_stem = regexp_replace(file_name, '\.[^.]+$', ''),
+					file_ext = regexp_extract(file_name, '(\.[^.]+)$', 1)
+				WHERE file_stem IS NULL AND file_name IS NOT NULL;
+
+				-- Index non-unique : évite migration destructive sur file_path UNIQUE
+				CREATE INDEX IF NOT EXISTS idx_mf_player_stem
+					ON media_files(player_slug, file_stem);
+			`)
+		},
+	})
 }
