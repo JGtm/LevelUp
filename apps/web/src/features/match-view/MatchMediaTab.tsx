@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import type { AssociatedMediaItem, MediaItemRow } from '@/lib/api/types'
 import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
 import { useToggleMediaLike } from '@/features/media/queries'
@@ -60,6 +59,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
   )
   const [mediaRows, setMediaRows] = useState<MediaItemRow[]>(initialRows)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+  const [autoChain, setAutoChain] = useState(false)
   const toggleLike = useToggleMediaLike(playerSlug)
 
   function handleToggleLike(item: MediaItemRow) {
@@ -77,21 +77,17 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
 
   if (mediaRows.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex min-h-72 flex-col items-center justify-center gap-5 px-8 py-16 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <CameraOffIcon />
-            </div>
-            <div className="space-y-1.5">
-              <p className="font-semibold text-foreground">{t.mediaNoCaptures}</p>
-              <p className="mx-auto max-w-xs text-sm text-muted-foreground">
-                {t.mediaNoCapturesDesc}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex min-h-48 flex-col items-center justify-center gap-5 px-8 py-12 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+          <CameraOffIcon />
+        </div>
+        <div className="space-y-1.5">
+          <p className="font-semibold text-foreground">{t.mediaNoCaptures}</p>
+          <p className="mx-auto max-w-xs text-sm text-muted-foreground">
+            {t.mediaNoCapturesDesc}
+          </p>
+        </div>
+      </div>
     )
   }
 
@@ -104,6 +100,8 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
           likeDisabled={toggleLike.isPending}
+          autoChain={autoChain}
+          onToggleAutoChain={() => setAutoChain((c) => !c)}
         />
       )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">

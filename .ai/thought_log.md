@@ -217,6 +217,123 @@ Mocks mis à jour : `mockHaloClient`, `weaponTestClient` implémentent désormai
 **Résultats** : La bande de séquence a des caps arrondis aux deux extrémités (matching l'app), et un léger radius interne entre les runs consécutifs. Aucun hex ajouté — couleurs toujours via `outcomeColor()`.
 
 **Prochaine étape** : Test visuel dans le dev server.
+## [2026-05-06] fix/media-player-ux — Hardening : i18n manifest + couverture tests
+
+**Statut** : Complété — branche `fix/media-player-ux`.
+
+**Décision technique principale** :
+Vérification finale avant livraison. Trois manques détectés et corrigés :
+
+1. **i18n manifest** : la string `"Pas de match associé"` ajoutée dans `MediaThumbnailCard` était hardcodée → flagged par le linter `@levelup/no-hardcoded-strings`. Ajout de la clé `media.thumbnail.no_match_associated` (FR/EN) dans `media.toml`, regen via `scripts/build_i18n_manifests.mjs`, exposition via `getMediaText().thumbnail.noMatchAssociated`. Locale récupérée via `useAppShellStore` (cohérent avec `CoverFlowModal`).
+2. **Tests fallback** : 4 tests dans `MediaViewer.test.tsx` couvrent les 4 branches du conditional render (map_name présent, match_id null FR, match_id null EN, match_id présent + map_name null = pas de fallback, cas MatchMediaTab).
+3. **Tests autoChain** : 3 tests dans `CoverFlowModal.test.tsx` lockent le contrat de la prop `onToggleAutoChain` (régression évitée : le bouton n'apparaît QUE si la prop est passée — c'est la cause d'origine du bug sur home + match tab).
+
+**Résultats observés** :
+- `npm run typecheck` : OK
+- `npx eslint` sur fichiers touchés : 0 erreur, warnings restants pré-existants (i18n debt sur autres fichiers)
+- `npx vitest run` : 137 fichiers / 1243 tests verts (+7 nouveaux)
+
+**Prochaine étape** : push + PR.
+
+## [2026-05-06] fix/media-player-ux — Hardening null-safety après crash "Cannot read properties of null (reading 'find')"
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Le backend Go peut sérialiser une slice `nil` en `null` JSON (vs `[]` pour `[]T{}` initialisé). Mes nouveaux composants Combat assumaient `T[]` non-null et faisaient `scoreboard.find(...)` / `nemesis.filter(...)` directement sur les props, ce qui crash avec « Cannot read properties of null (reading 'find') » sur certains matchs. Corrigé en :
+1. Élargissement des signatures helpers (`kdCumulSeries`, `tugOfWarStackedSeries`, `cadenceTeamSeries`) pour accepter `T[] | null | undefined` et early-return `[]` si nul/vide.
+2. Élargissement des props composants (`MatchImpactBadgesBar`, `MatchKDCumulChart`, `MatchTugOfWarChart`, `MatchCadenceChart`, `MatchNemesisCards`) pour accepter null/undefined sur tous les array inputs.
+3. Normalisation `?? []` en haut de `MatchViewPage` sur 9 slices (`scoreboard`, `roster`, `nemesis`, `weaponKills`, `highlightEvents`, `killerVictim`, `impactBadges`, `kdTimeline`, `tugOfWar`) — les call sites consomment ensuite les variables locales garanties non-null.
+4. 3 nouveaux tests unitaires de régression : `kdCumulSeries(null|undefined)`, `tugOfWarStackedSeries(null|undefined)`, `cadenceTeamSeries(cadence, scoreboard=null)`.
+
+**Résultats observés** :
+- `npm run typecheck` : OK.
+- `npm run test -- src/features/match-view` : 58 tests (49 anciens + 9 nouveaux helpers + 3 régressions null-safety).
+- `npm run lint` : aucun nouveau warning.
+- `npx playwright test e2e/match-view-combat.spec.ts` : 1 test passing en 4.9s, screenshot regénéré.
+
+**Prochaine étape** : commit + PR. Si l'utilisateur revoit le crash, capturer URL + console pour cibler précisément (mes 3 helpers + 5 composants sont désormais null-safe, donc le crash devrait venir d'un autre code path le cas échéant).
+
+## [2026-05-06] fix/media-player-ux — Bootstrap retry pour cold-start API
+
+**Statut** : Complété — branche `fix/media-player-ux`.
+
+**Décision technique principale** :
+Le `useQuery('/bootstrap')` dans `__root.tsx` n'avait que la config retry par défaut globale (`failureCount < 2`, delay 1s/2s). Sur VPS ou en `make dev`, le binaire Go peut mettre 5-15 s à démarrer (CGO + DuckDB), ce qui dépassait le budget retry et affichait l'écran « Impossible de contacter l'API » avant que le serveur soit prêt.
+
+Override local sur le useQuery bootstrap :
+- `retry: 6` + `retryDelay: (n) => Math.min(500 * 2 ** n, 4000)` → ~15 s de fenêtre (0.5 + 1 + 2 + 4 + 4 + 4 s)
+- Loading UI lit `failureCount` du query : affiche `Connexion à l'API… (tentative N/7)` dès le 1er échec, sinon `Chargement LevelUp…`
+
+Pas de modif sur `app/queryClient.ts` : la config globale `retry: 2` reste pertinente pour les autres endpoints — seul le bootstrap a besoin d'un budget large pour absorber le cold start.
+
+**Résultats observés** : `npm run typecheck` passe sans erreur.
+
+**Prochaine étape** : tester en `make dev` cold start sur VPS.
+
+## [2026-05-06] fix/media-player-ux — Médias intégrés en bas de l'onglet Résumé (suppression onglet Médias)
+
+**Statut** : Complété
+
+**Décision technique principale** :
+L'onglet Médias est supprimé de la page Match (peu de contenu, redondant). `MatchMediaTab` est intégré en section dédiée en bas de l'onglet Résumé, dans un wrapper carte (border + bg-card) avec titre i18n `sectionMedia`. L'état vide du composant perd son wrapper `Card`/`CardContent` (la section parente fournit déjà le conteneur). `TabId` et `TABS` passent de 4 à 3 entrées (`'summary' | 'combat' | 'team'`).
+
+Trois fichiers touchés :
+- `apps/web/src/features/match-view/MatchViewPage.tsx` — JSDoc mis à jour, `TabId`/`TABS` réduits, section Médias ajoutée en fin de tab Résumé, branche `activeTab === 'media'` retirée.
+- `apps/web/src/features/match-view/MatchMediaTab.tsx` — empty state simplifié (plus de Card wrapper).
+- `apps/web/src/features/match-view/i18n.ts` — clé `sectionMedia` ajoutée (FR `'Médias'`, EN `'Media'`).
+
+**Résultats observés** : `tsc -b` OK sans erreur.
+
+**Prochaine étape** : Test visuel en dev, puis push.
+
+## [2026-05-06] fix/media-player-ux — Onglet Combat : badges + 4 charts en tête (mock match_view)
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Câblage en haut de l'onglet Combat de la page match (`apps/web/src/features/match-view/MatchViewPage.tsx`) du bandeau de badges et des 4 visuels du mock (`.ai/charts_specs/_generated/match_view/mock-echarts.html`) :
+- `MatchImpactBadgesBar` (déjà présent, non utilisé) — bandeau "Faits marquants" reformaté en card à coins arrondis pour s'intégrer dans la séquence des cartes Combat.
+- `MatchKDCumulChart` (nouveau, match_view.09) — TimeseriesLineChart `xAxisType=value`, courbes en escalier Frags vs Morts cumulées, avec point initial (0, 0). Source : `combat_tab.kd_timeline`. Volontairement simplifié vs mock (pas de `markPoint`/`markLine` d'annotations badges — les badges sont au-dessus dans la barre dédiée).
+- `MatchTugOfWarChart` (nouveau, match_view.10) — BarStackedChart vertical alimenté par `combat_tab.tug_of_war`, components `team_kills`/`enemy_kills` libellés "Mon équipe"/"Adversaires" avec couleurs `compare-a` / `outcome-loss`.
+- `MatchCadenceChart` (nouveau, match_view.11) — BarStackedChart vertical alimenté par `combat_tab.cadence` (1 component par xuid côté backend), agrégé en 2 piles (mon équipe vs adverse) via le `team_side` du scoreboard.
+- `MatchNemesisCards` (nouveau, match_view.12) — 2 cartes côte à côte sur fond sombre dégradé, accent gauche `outcome-loss` (Némésis = max killed_me) et `outcome-win` (Souffre-douleur = max i_killed). Filtre les coéquipiers via `team_side` du scoreboard. Source : `team_tab.nemesis`.
+
+Les helpers de séries (`kdCumulSeries`, `tugOfWarStackedSeries`, `cadenceTeamSeries`) sont ajoutés dans `_chartSeries.ts` à côté des helpers existants (mêmes conventions ChartSeries<T>). Couleurs résolues via `tokenCssVar`/`resolveToken` — aucun hex hardcodé. i18n FR/EN ajoutée pour tous les libellés des 4 sections.
+
+**Résultats observés** :
+- `npm run typecheck` : OK sans erreur.
+- `npm run test -- src/features/match-view` : 58 tests passants (49 anciens + 9 nouveaux pour `kdCumulSeries`/`tugOfWarStackedSeries`/`cadenceTeamSeries`).
+- `npm run lint` : aucun nouveau warning sur les fichiers ajoutés (les warnings restants sont préexistants dans la codebase).
+- Aucun nouveau hex ni classe Tailwind couleur introduits dans `features/`.
+- **E2E Playwright** (spec dédiée `apps/web/e2e/match-view-combat.spec.ts`) : 1 test passant en 6.8s sur Chromium contre `make dev` réel. Couvre : récupération joueur via `/api/v1/players` → recherche du 1er match dont `combat_tab.kd_timeline` + `tug_of_war` sont peuplés → navigation `/players/{slug}/matches/{id}` → click onglet Combat → assertions visibilité sur "Faits marquants", "Frags / Morts cumulés", "Dominance par tranche de temps", "Cadence des frags", "Némésis", "Souffre-douleur" → screenshot fullPage `tests/e2e-results/match-view-combat-tab.png`. Sur le screenshot capturé (match "Assassin en équipe sur Bazaar"), bandeau de badges affiche bien le format "label · gamertag · m:ss" pour les 6 badges (Premier sang Duke748biposto 0:44, Boulet Chocoboflor 9:51, Touriste Chocoboflor 2:08, Top Gun JGtm 4:31, Bourreau JGtm) — exactement le format demandé par l'utilisateur.
+
+**Prochaine étape** : commit + PR.
+
+## [2026-05-06] fix/media-player-ux — Médias intégrés dans l'onglet Résumé (suppression onglet Médias)
+
+**Statut** : Complété
+
+**Décision technique principale** :
+L'onglet Médias (peu de contenu, redondant) est supprimé. `MatchMediaTab` est intégré en section dédiée en bas de l'onglet Résumé, enveloppé dans un `div` carte avec titre i18n (`sectionMedia`). L'état vide du composant perd son wrapper `Card`/`CardContent` (géré par la section parente). `TabId` et `TABS` passent de 4 à 3 entrées.
+
+**Résultats observés** : `tsc -b` sans erreur. 3 fichiers modifiés : `MatchViewPage.tsx`, `MatchMediaTab.tsx`, `i18n.ts`.
+
+**Prochaine étape** : Test visuel en dev, puis commit.
+
+## [2026-05-06] fix/media-player-ux — Autoplay, border-radius lecteur, fallback match
+
+**Statut** : Complété — branche `fix/media-player-ux` depuis `feat/token-pool-parallel-sync`.
+
+**Décision technique principale** :
+Trois régressions UI corrigées en 4 fichiers :
+1. `RecentMediaRail` + `MatchMediaTab` n'exposaient pas les props `autoChain`/`onToggleAutoChain` à `<MediaLightbox>` → le bouton enchaînement et l'autoplay n'apparaissaient jamais hors page médias.
+2. L'outer container de `CoverFlowModal` (`relative mx-4 flex …`) n'avait ni `rounded-xl` ni `overflow-hidden` → coins droits sur le header et le fond.
+3. `MediaThumbnailCard` : `{item.map_name && …}` affichait rien si pas de map — désormais affiche « Pas de match associé » en italique atténué quand `match_id === null` (cas médias non associés), et ne touche pas au cas `match_id` présent + `map_name` absent (médias match tab).
+
+**Résultats observés** : TypeScript compilé sans erreur, pas de prop manquante.
+
+**Prochaine étape** : PR vers `feat/token-pool-parallel-sync` ou `main`.
 
 ## [2026-05-06] Token Pool — Étape 3 : Pool layer (round-robin + pinned)
 
