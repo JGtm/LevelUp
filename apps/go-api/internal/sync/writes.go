@@ -36,7 +36,7 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 		endUTC = t
 	}
 	_, err := db.Exec(`
-		INSERT OR IGNORE INTO match_registry (
+		INSERT INTO match_registry (
 			match_id, start_time, end_time, start_time_utc, end_time_utc,
 			playlist_id, playlist_name, playlist_version_id,
 			map_id, map_name, map_version_id,
@@ -45,6 +45,7 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 			mode_category, is_ranked, is_firefight,
 			duration_seconds, playable_duration_seconds,
 			real_start_time, team_0_score, team_1_score,
+			team_0_ps_score, team_1_ps_score,
 			first_sync_by, first_sync_at, last_updated_at,
 			created_at, updated_at
 		) VALUES (
@@ -56,9 +57,14 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 			?, ?, ?,
 			?, ?,
 			?, ?, ?,
+			?, ?,
 			?, ?, ?,
 			?, ?
-		)`,
+		)
+		ON CONFLICT (match_id) DO UPDATE SET
+			team_0_ps_score = COALESCE(EXCLUDED.team_0_ps_score, match_registry.team_0_ps_score),
+			team_1_ps_score = COALESCE(EXCLUDED.team_1_ps_score, match_registry.team_1_ps_score),
+			last_updated_at = EXCLUDED.last_updated_at`,
 		row.MatchID, row.StartTime, row.EndTime, startUTC, endUTC,
 		row.PlaylistID, row.PlaylistName, row.PlaylistVersionID,
 		row.MapID, row.MapName, row.MapVersionID,
@@ -67,6 +73,7 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 		row.ModeCategory, row.IsRanked, row.IsFirefight,
 		row.DurationSeconds, row.PlayableDurationSeconds,
 		row.RealStartTime, row.Team0Score, row.Team1Score,
+		row.Team0PSScore, row.Team1PSScore,
 		row.FirstSyncBy, now, now,
 		now, now,
 	)
@@ -76,8 +83,14 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 	return nil
 }
 
-// InsertParticipants insère les participants d'un match (INSERT OR IGNORE).
+// InsertParticipants UPSERT les participants d'un match.
 // Portage de batch_upsert_rows sur match_participants (Python _shared_writes.py).
+//
+// Sur conflit (match_id, xuid) : COALESCE(EXCLUDED, existing) — les valeurs
+// non-nulles entrantes écrasent l'existant ; les NULL entrants préservent
+// l'existant. Cela permet de re-syncer pour combler des champs vides
+// (typiquement team_mmr/enemy_mmr quand le skill endpoint a échoué la
+// première fois) sans détruire les données déjà persistées.
 func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
 	if len(rows) == 0 {
 		return nil
@@ -85,7 +98,7 @@ func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
 	now := time.Now().UTC()
 	for _, row := range rows {
 		_, err := db.Exec(`
-			INSERT OR IGNORE INTO match_participants (
+			INSERT INTO match_participants (
 				match_id, xuid, gamertag,
 				team_id, outcome, rank, score,
 				kills, deaths, assists,
@@ -93,11 +106,41 @@ func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
 				damage_dealt, damage_taken,
 				kda, accuracy, personal_score,
 				time_played_seconds, avg_life_seconds,
-				kills_expected, deaths_expected, kills_stddev,
+				kills_expected, deaths_expected, kills_stddev, deaths_stddev,
 				team_mmr, enemy_mmr,
 				headshot_kills,
+				max_killing_spree, grenade_kills, melee_kills, power_weapon_kills,
 				created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (match_id, xuid) DO UPDATE SET
+				gamertag            = COALESCE(EXCLUDED.gamertag,            match_participants.gamertag),
+				team_id             = COALESCE(EXCLUDED.team_id,             match_participants.team_id),
+				outcome             = COALESCE(EXCLUDED.outcome,             match_participants.outcome),
+				rank                = COALESCE(EXCLUDED.rank,                match_participants.rank),
+				score               = COALESCE(EXCLUDED.score,               match_participants.score),
+				kills               = COALESCE(EXCLUDED.kills,               match_participants.kills),
+				deaths              = COALESCE(EXCLUDED.deaths,              match_participants.deaths),
+				assists             = COALESCE(EXCLUDED.assists,             match_participants.assists),
+				shots_fired         = COALESCE(EXCLUDED.shots_fired,         match_participants.shots_fired),
+				shots_hit           = COALESCE(EXCLUDED.shots_hit,           match_participants.shots_hit),
+				damage_dealt        = COALESCE(EXCLUDED.damage_dealt,        match_participants.damage_dealt),
+				damage_taken        = COALESCE(EXCLUDED.damage_taken,        match_participants.damage_taken),
+				kda                 = COALESCE(EXCLUDED.kda,                 match_participants.kda),
+				accuracy            = COALESCE(EXCLUDED.accuracy,            match_participants.accuracy),
+				personal_score      = COALESCE(EXCLUDED.personal_score,      match_participants.personal_score),
+				time_played_seconds = COALESCE(EXCLUDED.time_played_seconds, match_participants.time_played_seconds),
+				avg_life_seconds    = COALESCE(EXCLUDED.avg_life_seconds,    match_participants.avg_life_seconds),
+				kills_expected      = COALESCE(EXCLUDED.kills_expected,      match_participants.kills_expected),
+				deaths_expected     = COALESCE(EXCLUDED.deaths_expected,     match_participants.deaths_expected),
+				kills_stddev        = COALESCE(EXCLUDED.kills_stddev,        match_participants.kills_stddev),
+				deaths_stddev       = COALESCE(EXCLUDED.deaths_stddev,       match_participants.deaths_stddev),
+				team_mmr            = COALESCE(EXCLUDED.team_mmr,            match_participants.team_mmr),
+				enemy_mmr           = COALESCE(EXCLUDED.enemy_mmr,           match_participants.enemy_mmr),
+				headshot_kills      = COALESCE(EXCLUDED.headshot_kills,      match_participants.headshot_kills),
+				max_killing_spree   = COALESCE(EXCLUDED.max_killing_spree,   match_participants.max_killing_spree),
+				grenade_kills       = COALESCE(EXCLUDED.grenade_kills,       match_participants.grenade_kills),
+				melee_kills         = COALESCE(EXCLUDED.melee_kills,         match_participants.melee_kills),
+				power_weapon_kills  = COALESCE(EXCLUDED.power_weapon_kills,  match_participants.power_weapon_kills)`,
 			row.MatchID, row.XUID, row.Gamertag,
 			row.TeamID, row.Outcome, row.Rank, row.Score,
 			row.Kills, row.Deaths, row.Assists,
@@ -105,9 +148,10 @@ func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
 			row.DamageDealt, row.DamageTaken,
 			row.KDA, row.Accuracy, row.PersonalScore,
 			row.TimePlayedSeconds, row.AvgLifeSeconds,
-			row.KillsExpected, row.DeathsExpected, row.KillsStddev,
+			row.KillsExpected, row.DeathsExpected, row.KillsStddev, row.DeathsStddev,
 			row.TeamMMR, row.EnemyMMR,
 			row.HeadshotKills,
+			row.MaxKillingSpree, row.GrenadeKills, row.MeleeKills, row.PowerWeaponKills,
 			now,
 		)
 		if err != nil {

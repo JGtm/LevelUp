@@ -181,6 +181,125 @@ func TestInsertParticipants(t *testing.T) {
 	}
 }
 
+// TestInsertParticipants_UpsertFillsNullSkill vérifie qu'un re-sync avec des
+// données skill (team_mmr/enemy_mmr/kills_expected) remplit les colonnes
+// laissées à NULL au premier sync — c'est le mécanisme qui permet de combler
+// les matchs où le skill endpoint avait initialement échoué.
+func TestInsertParticipants_UpsertFillsNullSkill(t *testing.T) {
+	db := testutil.NewInMemoryShared(t)
+
+	// Premier sync : pas de skill data (tous les champs MMR/expected à NULL).
+	teamID, outcome, kills, deaths := 0, 2, 15, 10
+	first := []intsync.ParticipantRow{
+		{
+			MatchID: "m1", XUID: "x1",
+			TeamID:  &teamID,
+			Outcome: &outcome,
+			Kills:   &kills,
+			Deaths:  &deaths,
+		},
+	}
+	if err := intsync.InsertParticipants(db, first); err != nil {
+		t.Fatalf("first insert: %v", err)
+	}
+
+	var teamMMR sql.NullFloat64
+	_ = db.QueryRow("SELECT team_mmr FROM match_participants WHERE xuid = 'x1'").Scan(&teamMMR)
+	if teamMMR.Valid {
+		t.Fatalf("expected team_mmr NULL after first sync, got %v", teamMMR.Float64)
+	}
+
+	// Second sync : skill API a répondu cette fois. Les champs skill doivent
+	// remplir les NULL existants.
+	tm, em, ke := 1500.0, 1450.0, 12.5
+	second := []intsync.ParticipantRow{
+		{
+			MatchID: "m1", XUID: "x1",
+			TeamID:        &teamID,
+			Outcome:       &outcome,
+			Kills:         &kills,
+			Deaths:        &deaths,
+			TeamMMR:       &tm,
+			EnemyMMR:      &em,
+			KillsExpected: &ke,
+		},
+	}
+	if err := intsync.InsertParticipants(db, second); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	var got struct {
+		TeamMMR       sql.NullFloat64
+		EnemyMMR      sql.NullFloat64
+		KillsExpected sql.NullFloat64
+	}
+	row := db.QueryRow("SELECT team_mmr, enemy_mmr, kills_expected FROM match_participants WHERE xuid = 'x1'")
+	if err := row.Scan(&got.TeamMMR, &got.EnemyMMR, &got.KillsExpected); err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if !got.TeamMMR.Valid || got.TeamMMR.Float64 != tm {
+		t.Errorf("team_mmr: want %.0f, got %v", tm, got.TeamMMR)
+	}
+	if !got.EnemyMMR.Valid || got.EnemyMMR.Float64 != em {
+		t.Errorf("enemy_mmr: want %.0f, got %v", em, got.EnemyMMR)
+	}
+	if !got.KillsExpected.Valid || got.KillsExpected.Float64 != ke {
+		t.Errorf("kills_expected: want %.1f, got %v", ke, got.KillsExpected)
+	}
+
+	// Pas de doublons.
+	var count int
+	_ = db.QueryRow("SELECT COUNT(*) FROM match_participants WHERE match_id = 'm1'").Scan(&count)
+	if count != 1 {
+		t.Errorf("expected 1 row after upsert, got %d", count)
+	}
+}
+
+// TestInsertParticipants_UpsertPreservesNonNull vérifie qu'un sync postérieur
+// avec des champs nil ne détruit PAS les valeurs déjà persistées (COALESCE).
+func TestInsertParticipants_UpsertPreservesNonNull(t *testing.T) {
+	db := testutil.NewInMemoryShared(t)
+
+	// Sync avec skill data complète.
+	teamID, outcome, kills, deaths := 0, 2, 15, 10
+	tm, em := 1500.0, 1450.0
+	first := []intsync.ParticipantRow{
+		{
+			MatchID: "m1", XUID: "x1",
+			TeamID: &teamID, Outcome: &outcome,
+			Kills: &kills, Deaths: &deaths,
+			TeamMMR: &tm, EnemyMMR: &em,
+		},
+	}
+	if err := intsync.InsertParticipants(db, first); err != nil {
+		t.Fatalf("first insert: %v", err)
+	}
+
+	// Re-sync sans skill data (skill endpoint en panne) — les MMR doivent
+	// être préservés.
+	second := []intsync.ParticipantRow{
+		{
+			MatchID: "m1", XUID: "x1",
+			TeamID: &teamID, Outcome: &outcome,
+			Kills: &kills, Deaths: &deaths,
+			// TeamMMR / EnemyMMR : nil
+		},
+	}
+	if err := intsync.InsertParticipants(db, second); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	var teamMMR, enemyMMR sql.NullFloat64
+	_ = db.QueryRow("SELECT team_mmr, enemy_mmr FROM match_participants WHERE xuid = 'x1'").
+		Scan(&teamMMR, &enemyMMR)
+	if !teamMMR.Valid || teamMMR.Float64 != tm {
+		t.Errorf("team_mmr should be preserved %.0f, got %v", tm, teamMMR)
+	}
+	if !enemyMMR.Valid || enemyMMR.Float64 != em {
+		t.Errorf("enemy_mmr should be preserved %.0f, got %v", em, enemyMMR)
+	}
+}
+
 func TestUpsertPlayerEnrichment(t *testing.T) {
 	db := testutil.NewInMemoryPlayer(t)
 
