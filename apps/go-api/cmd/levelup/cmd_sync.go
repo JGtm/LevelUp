@@ -63,6 +63,9 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	}
 
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider)
+	if cache := loadLocalFilmCache(); cache != nil {
+		engine.SetLocalFilmCache(cache)
+	}
 	opts := domain.DefaultSyncOptions()
 	opts.MatchType = *matchType
 	opts.MaxMatches = *maxMatches
@@ -166,9 +169,16 @@ func runSyncDeltaAll(
 			// Utiliser le pool : créer un PooledHaloClient pinné à ce joueur
 			// Pas besoin de TokenReader — les tokens sont déjà dans le pool
 			engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider)
+			cache := loadLocalFilmCache()
+			if cache != nil {
+				engine.SetLocalFilmCache(cache)
+			}
 
-			// Créer un client poolé pinné
+			// Créer un client poolé pinné (avec cache film si dispo)
 			pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID)
+			if cache != nil {
+				pooledClient.WithLocalFilmCache(cache)
+			}
 			engine.SetCustomClient(pooledClient)
 
 			syncResult, syncErr := engine.RunDelta(ctx, opts)
@@ -216,6 +226,9 @@ func runSyncDeltaAll(
 		}
 
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider)
+		if cache := loadLocalFilmCache(); cache != nil {
+			engine.SetLocalFilmCache(cache)
+		}
 		syncResult, syncErr := engine.RunDelta(ctx, opts)
 		if syncErr != nil {
 			failed++
@@ -281,4 +294,15 @@ func oauthRefreshEnvKey(gamertag string) string {
 		return r
 	}, key)
 	return "SPNKR_OAUTH_REFRESH_TOKEN_" + key
+}
+
+// loadLocalFilmCache resout LEVELUP_LEGACY_FILM_CACHE_DIR (ex.
+// `C:\...\LevelUp\data\cache`) et instancie un LocalFilmCache si le
+// repertoire existe. Retourne nil sinon (cache desactive).
+func loadLocalFilmCache() *go_sync.LocalFilmCache {
+	dir := strings.TrimSpace(os.Getenv("LEVELUP_LEGACY_FILM_CACHE_DIR"))
+	if dir == "" {
+		return nil
+	}
+	return go_sync.NewLocalFilmCache(dir)
 }
