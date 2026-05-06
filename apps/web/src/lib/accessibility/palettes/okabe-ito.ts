@@ -77,7 +77,7 @@ export const okabePalette: Palette = {
   'narrative-remontada':             '#56B4E9', // Sky Blue (remplace navy #0072B2 risqué)
   'narrative-remontada-text':        '#000000', // noir sur bleu ciel
   'narrative-debacle':               '#D55E00', // Vermillion
-  'narrative-debacle-text':          '#FFFFFF', // blanc sur fond foncé
+  'narrative-debacle-text':          '#000000', // noir sur vermillion (5.4) — blanc ne passait pas AA (3.87)
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
 
