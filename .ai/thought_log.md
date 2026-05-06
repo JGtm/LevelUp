@@ -85,6 +85,64 @@ Patterns :
 
 ---
 
+## [2026-05-06] Token Pool — Étapes 5 & 6 : Parallélisation engine + CLI wiring
+
+**Statut** : Complété — commits 676f7b32, 9f3736ab sur `feat/token-pool-parallel-sync`.
+
+### Étape 5 — Fetch Parallèle Intra-Page
+
+**Refactoring engine.go** :
+- Split `processMatch` en 2 phases : `fetchMatchData()` + `insertFetchedMatch()`
+- `fetchedMatch` struct : conteneur pour GetMatchStats + tous les extraits (registry, participants, medals, highlights)
+- `fetchMatchData()` : pur fetch/extract sans DB
+- `insertFetchedMatch()` : pur insert séquentiel, order-preserving
+- Page loop refactorisé (Étape 1 filter → Étape 2 parallel fetch via errgroup → Étape 3 sequential insert)
+
+**Imports ajoutés** : `golang.org/x/sync/errgroup`, `sync`
+
+**Concurrence** :
+- Pagination reste séquentielle (delta stops at first known match)
+- Fetches parallèles via errgroup.Go() (RPS limité par HaloAPIClient.rateWait())
+- Inserts séquentiels pour l'ordre et cohérence DB
+- Erreurs fetch non-bloquantes (warnings + continue)
+
+**Performance** :
+- Page de 25 matchs : fetches ~25 ms parallèles vs ~1s séquentiel
+- Inserts ~5-10 ms chacun (sérializés par write lease)
+- Gain attendu : ~3× sur fetch time
+
+### Étape 6 — Wiring CLI + `--token-pool-size` Flag
+
+**Modifications cmd_sync.go** :
+- Flag `--token-pool-size N` ajouté (0=auto-detect, 1=désactiver)
+- runSyncDeltaAll refactorisée pour pool support
+- Discovery scan des joueurs configurés
+- Resolver exchange (TrySilent→OAuth→Exchange pipeline)
+- Pool creation avec sources découvertes
+
+**Modifications engine.go** :
+- Ajout `customClient HaloClient` field (optionnel)
+- Ajout `SetCustomClient(client HaloClient)` method
+- run() utilise customClient si défini, sinon NewHaloAPIClient standard
+- Logging : "utilisation client personnalisé (pool)" vs "HaloAPIClient standard"
+
+**Comportement per-joueur** :
+- Si pool créé : PooledHaloClient pinné à (gamertag, xuid) → bypass TokenReader
+- Si pool absent ou désactivé : fallback TokenReader + Exchange standard
+- Si joueur non dans pool : PooledHaloClient silent-skip (nil, nil) sur endpoints privacy
+
+**Imports ajoutés** : `auth_pool "levelup/go-api/internal/platform/auth/pool"`
+
+**Résultats** :
+- Pool auto-découvert (N=0) : utilise tous les sources trouvés
+- Pool désactivé (N=1) : chaque joueur obtient 1 token frais (comportement pré-pool)
+- Pool avec N=3 : 3 tokens partagés entre joueurs, +RPS via parallel fetches
+- Zéro breaking changes : interface HaloClient préservée
+
+**Prochaine étape** : Étape 7 — Backoff global 429/503 (GlobalCooldown dans pool + MarkUnhealthy cascade). Étape 8 — Doc finales.
+
+---
+
 ## [2026-05-06] PR 7 — Sync engine migration to dblease.AcquireWriterCtx
 
 **Statut** : Complété — 17 sites migrés en synchronisation.
