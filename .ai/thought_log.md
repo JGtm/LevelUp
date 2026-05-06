@@ -1,5 +1,17 @@
 # Thought Log
 
+## [2026-05-06] Bugfix : is_ally scan + commendation handler 404
+
+**Statut** : Complété.
+
+**Décision technique** : Deux bugs corrigés suite à analyse logs runtime.
+1. `is_ally` scan (`match_view_repo.go:748`) : workaround `var isAllyInt int` supprimé — DuckDB retourne maintenant `bool` directement, le scan vers `enc.IsAlly` (bool) fonctionne. Symptôme : encounters indisponibles sur toute vue match.
+2. `commendation_handler.go` : remplacement de `http.ServeFile` par `os.Open` + `http.ServeContent`. En Go 1.26, `http.ServeFile` applique des checks sécurité stricts sur `RawPath != Path` (apostrophes `%27`, accents `%C3%89`) qui résultaient en 404 malgré les fichiers présents sur disk.
+
+**Point non corrigé (data)** : `map_images_registry` contient des `local_path` avec noms FR (`Élévation.jpg`, `Nomade.jpg`) alors que les fichiers disk sont EN (`Elevation.jpg`). Fix : relancer `migrate-static-maps`. `Nomade.jpg` est absent du disk — image manquante à ajouter ou laisser nil (frontend dégrade gracieusement).
+
+**Résultats** : Build clean. Encounters rechargés, commendations servies correctement.
+
 ## [2026-05-06] UX Médias — label conditionnel Associer/Réassocier + lien Voir le match
 
 **Statut** : Complété (front uniquement, pas de back-end touché).
