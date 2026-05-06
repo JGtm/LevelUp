@@ -19,6 +19,8 @@ func init() {
 					match_id VARCHAR PRIMARY KEY,
 					start_time TIMESTAMP,
 					end_time TIMESTAMP,
+					start_time_utc TIMESTAMPTZ,
+					end_time_utc TIMESTAMPTZ,
 					playlist_id VARCHAR,
 					playlist_name VARCHAR,
 					playlist_name_fr VARCHAR,
