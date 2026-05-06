@@ -233,3 +233,78 @@ formule et exemple correctement formattés.
 Tant que ces 3 endpoints n'existent pas, les composants frontend correspondants
 restent inutilisables en production (ils sont prêts à être wirés mais sans
 data backend).
+
+---
+
+## Phase recompute coefs long-term — extension du protocole de validation
+
+> Ajout 2026-05-05. Le bug visible "courbes Attendu et Équipe superposées"
+> était causé par `coef_team_share = 1.0` cold-start jamais recomputé. Le fix
+> a 12 phases (cf. plan associé). La validation se fait via 4 cas
+> additionnels.
+
+### Cas A — Coef ≠ 1.0 après backfill
+
+**Setup** :
+1. DuckDB CLI : `SELECT * FROM engagement_coefficients WHERE xuid = ?`
+   → table vide (cold-start) ou pas encore recompute.
+2. Lancer le backfill : `POST /players/MonGT/backfill/start` body `{"engagement_scores":true}`.
+
+**Critère** :
+- Après backfill, `engagement_coefficients` contient 1 row PvP_ranked
+  (et 1 PvP_unranked si historique suffisant) avec `coef_team_share` calculé
+  (typiquement 0.7-1.5, jamais exactement 1.0 sauf hasard statistique extrême).
+- `n_matches >= 10` (sinon cold-start préservé, c'est OK).
+
+### Cas B — Courbes visuellement distinctes
+
+**Setup** : ouvrir Match View onglet Combat sur un match récent du joueur
+ayant désormais un coef ≠ 1.0.
+
+**Critère** :
+- Sur le chart `<EngagementMatchSection granularity="intra">`, les 3 courbes
+  (Équipe alliée, Attendu, Joueur) sont **visuellement distinctes**.
+- En particulier, "Attendu" (gris pointillé) ne se superpose plus à
+  "Équipe alliée" (gris fonce continu).
+
+### Cas C — Endpoint admin recompute force
+
+**Setup** : modifier directement `engagement_coefficients` via DuckDB CLI
+pour mettre `coef_team_share = 1.0` (simulation cold-start). Puis :
+```
+curl -X POST http://localhost:8080/api/v1/players/MonGT/engagement/recompute_coefficients
+```
+
+**Critère** :
+- Réponse 200 avec `{"modes_updated": ["PvP_ranked", ...], "n_coefs_persisted": ≥1}`.
+- DB : `coef_team_share` est de nouveau != 1.0 (recompute a écrasé la valeur).
+
+### Cas D — Métriques expvar exposées
+
+**Setup** : après un sync ou backfill, ouvrir `http://localhost:8080/debug/vars`.
+
+**Critère** : sous la clé `levelup`, on observe les compteurs :
+- `engagement_score_computed_total >= 1`
+- `engagement_coef_recomputed_total >= 1`
+- `engagement_coef_team_bucket_*` (au moins un bucket non nul)
+- `engagement_unavailable_skips_total = 0` (si la migration est à jour)
+
+---
+
+## Hypothèses H1-H5 (Phase 0 du plan original)
+
+> Le plan v7 demandait un rapport `engagement_validation_*.md` avant
+> implémentation. Ce rapport n'a pas été produit avant le pivot long-term.
+> Il sera produit a posteriori sur les données de production une fois la
+> migration `add_engagement_pace_columns_*` rolled out, via :
+
+```bash
+cd apps/go-api
+go run ./cmd/engagement-validate --player MonGT --report-output \
+  ../../.ai/V7/engagement_validation_$(date +%Y-%m-%d).md
+```
+
+Si H1 ou H2 fail, c'est un signal fort que le modèle "attendu = coef × team"
+est trop simple et qu'il faut passer aux baselines conditionnelles
+(cf doc réflexion §13). Le code des coefs reste correct pour autant — c'est
+la **modélisation produit** qui devra évoluer.
