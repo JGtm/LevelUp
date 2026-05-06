@@ -112,6 +112,35 @@ func BackfillWeaponKillsForMatch(
 // Méthode SyncEngine
 // ─────────────────────────────────────────────────────────────────────────────
 
+// processWeaponKillsInline traite une liste de matchs sur des DBs déjà ouvertes
+// (i.e. sans acquérir de lease). Utilisé depuis le PostSync chain où le shared
+// lease est déjà détenu. Coût : 1 download film par match. Films absents
+// (404/410) sont silencieux (matchs trop anciens).
+func processWeaponKillsInline(
+	ctx context.Context,
+	sharedDB *sql.DB,
+	client HaloClient,
+	xuid string,
+	matchIDs []string,
+) (done, noFilm int, err error) {
+	for _, matchID := range matchIDs {
+		if ctx.Err() != nil {
+			return done, noFilm, ctx.Err()
+		}
+		found, procErr := BackfillWeaponKillsForMatch(ctx, client, sharedDB, matchID, xuid)
+		if procErr != nil {
+			slog.WarnContext(ctx, "weapon_kills: erreur match", "match_id", matchID, "err", procErr)
+			continue
+		}
+		if found {
+			done++
+		} else {
+			noFilm++
+		}
+	}
+	return done, noFilm, nil
+}
+
 // BackfillWeaponKillsForMatches traite une liste de matchs (film pipeline).
 // Retourne (done, noFilm, error).
 func (e *SyncEngine) BackfillWeaponKillsForMatches(
@@ -156,19 +185,20 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // getKillsForPlayer récupère les kills d'un joueur dans un match depuis shared DB.
-// Utilise highlight_events (event_type='kill') pour les kills du joueur.
+// Utilise highlight_events (event_type='kill' ou 'melee_kill' ou 'grenade_kill').
+//
+// Note : `killer_victim_pairs` n'a pas de colonne `weapon_type` — la
+// distinction melee/grenade vient de l'event_type lui-même dans le film.
 func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error) {
 	rows, err := db.Query(`
 		SELECT
-			he.time_ms,
-			CASE WHEN kv.weapon_type = 'melee' THEN TRUE ELSE FALSE END AS is_melee,
-			CASE WHEN kv.weapon_type = 'grenade' THEN TRUE ELSE FALSE END AS is_grenade
-		FROM highlight_events he
-		LEFT JOIN killer_victim_pairs kv
-			ON kv.match_id = he.match_id AND kv.killer_xuid = he.xuid
-			AND ABS(COALESCE(kv.time_ms, 0) - COALESCE(he.time_ms, 0)) < 300
-		WHERE he.match_id = ? AND he.xuid = ? AND he.event_type = 'kill'
-		ORDER BY he.time_ms`, matchID, xuid)
+			time_ms,
+			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END AS is_melee,
+			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END AS is_grenade
+		FROM highlight_events
+		WHERE match_id = ? AND xuid = ?
+		  AND LOWER(COALESCE(event_type, '')) LIKE '%kill%'
+		ORDER BY time_ms`, matchID, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("getKillsForPlayer: %w", err)
 	}
