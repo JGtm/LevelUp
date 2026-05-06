@@ -29195,3 +29195,27 @@ Le porting de SessionBriefing est terminé sur les 3 surfaces : `SquadV2Page`, `
 **Documents liés**:
 - [.ai/BACKLOG.md](.ai/BACKLOG.md) — point 1-3 validé
 - [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md) — stratégie exécutée
+
+---
+
+## [2026-05-06] Fix duckdb test fixtures — global.xuid_aliases schema
+
+**Statut** : Complété
+
+**Tâches**:
+- Ajouter global.xuid_aliases aux fixtures repo_test.go (seedShared + seedGamertagRanking)
+- Valider que GamertagRepo, MedalsByXUIDRepo, CompareRepo, WeaponKillsRepo tests héritent du global schema
+
+**Décisions techniques**:
+- seedShared crée maintenant `CREATE SCHEMA IF NOT EXISTS global` + table global.xuid_aliases
+- seedGamertagRanking peuple global.xuid_aliases en parallèle de shared.xuid_aliases
+- Tests utilisant newTestPlayerDB(t) héritent automatiquement du global schema via attachGlobalSchemaToPlayer
+- Seuls tests directs avec openMemDB + seedShared nécessitent les modifications (repos_extra_test.go)
+
+**Résultats**:
+- ✅ Commit `7b2e58bb` : repo_test.go + 12 insertions, fixtures harmonisées
+- Tests qui dépendent du global schema dans leurs queries sont maintenant pourvus de données
+
+**Prochaines étapes**:
+- PR 4 : intégrer check_test_baseline.sh et check_lease_enforcement.sh dans CI GitHub Actions
+- PR 5 : implémenter 15 tests concurrents manquants (TestSyncVsPrestigeConcurrent, etc.)
