@@ -32,3 +32,5 @@ export { hexComplement } from './hexComplement'
 // Palettes brutes (usage : ThemeProvider uniquement)
 export { defaultPalette } from './palettes/default'
 export { okabePalette } from './palettes/okabe-ito'
+export { cividisPalette } from './palettes/cividis'
+export { tolBrightPalette } from './palettes/tol-bright'

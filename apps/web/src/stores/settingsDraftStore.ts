@@ -24,7 +24,7 @@ import type { UpdateSettingsRequest } from '@/lib/api/types'
 // ---------------------------------------------------------------------------
 
 export type UiTheme = 'dark' | 'light'
-export type ColorPalette = 'default' | 'okabe-ito'
+export type ColorPalette = 'default' | 'okabe-ito' | 'cividis' | 'tol-bright'
 
 interface LocalUiPrefs {
   /** Afficher les hints contextuels dans l'UI */

@@ -14,6 +14,10 @@ const T_STUB = {
   paletteDefaultDesc: 'Palette originale.',
   paletteOkabeIto: 'Okabe-Ito',
   paletteOkabeItoDesc: 'Palette daltonisme.',
+  paletteCividis: 'Cividis',
+  paletteCividisDesc: 'Palette séquentielle CVD.',
+  paletteTolBright: 'Tol Bright',
+  paletteTolBrightDesc: 'Palette catégorielle Tol.',
   previewLabel: 'Aperçu',
 } as Parameters<typeof AccessibilityTab>[0]['t']
 
@@ -25,10 +29,12 @@ beforeEach(() => {
 })
 
 describe('AccessibilityTab', () => {
-  it('affiche les deux options de palette', () => {
+  it('affiche les quatre options de palette', () => {
     render(<AccessibilityTab t={T_STUB} />)
     expect(screen.getByText('Standard (défaut)')).toBeTruthy()
     expect(screen.getByText('Okabe-Ito')).toBeTruthy()
+    expect(screen.getByText('Cividis')).toBeTruthy()
+    expect(screen.getByText('Tol Bright')).toBeTruthy()
   })
 
   it('sélectionne la palette default par défaut', () => {
@@ -46,6 +52,22 @@ describe('AccessibilityTab', () => {
     const okabeRadio = radios.find((r) => (r as HTMLInputElement).value === 'okabe-ito')!
     fireEvent.click(okabeRadio)
     expect(useSettingsDraftStore.getState().localUiPrefs.colorPalette).toBe('okabe-ito')
+  })
+
+  it('met à jour le store en cliquant sur Cividis', () => {
+    render(<AccessibilityTab t={T_STUB} />)
+    const radios = screen.getAllByRole('radio')
+    const cividisRadio = radios.find((r) => (r as HTMLInputElement).value === 'cividis')!
+    fireEvent.click(cividisRadio)
+    expect(useSettingsDraftStore.getState().localUiPrefs.colorPalette).toBe('cividis')
+  })
+
+  it('met à jour le store en cliquant sur Tol Bright', () => {
+    render(<AccessibilityTab t={T_STUB} />)
+    const radios = screen.getAllByRole('radio')
+    const tolRadio = radios.find((r) => (r as HTMLInputElement).value === 'tol-bright')!
+    fireEvent.click(tolRadio)
+    expect(useSettingsDraftStore.getState().localUiPrefs.colorPalette).toBe('tol-bright')
   })
 
   it('affiche la section aperçu', () => {
