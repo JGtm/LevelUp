@@ -73,6 +73,10 @@ type HaloClient interface {
 	GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]MatchHistoryEntry, error)
 	// GetMatchStats récupère les stats détaillées d'un match (JSON brut).
 	GetMatchStats(ctx context.Context, matchID string) (map[string]any, error)
+	// GetMatchSkill récupère les données skill (team_mmr, enemy_mmr, kills/deaths
+	// expected) d'un match pour les XUIDs humains. Endpoint séparé du stats.
+	// Retourne map vide (pas d'erreur) si l'endpoint répond 404/410.
+	GetMatchSkill(ctx context.Context, matchID string, xuids []string) (map[string]*MatchSkillData, error)
 	// GetMatchFilm récupère les chunks REPLICATION_DATA du film d'un match.
 	// Retourne (nil, false, nil) si le film est absent (404/410 — normal pour vieux matchs).
 	GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error)

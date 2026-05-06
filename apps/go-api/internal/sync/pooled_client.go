@@ -81,6 +81,24 @@ func (pc *PooledHaloClient) GetMatchStats(ctx context.Context, matchID string) (
 	return result, err
 }
 
+// GetMatchSkill implémente HaloClient.GetMatchSkill() avec PolicyAnyPublic.
+func (pc *PooledHaloClient) GetMatchSkill(
+	ctx context.Context,
+	matchID string,
+	xuids []string,
+) (map[string]*MatchSkillData, error) {
+	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
+	if err != nil {
+		return nil, fmt.Errorf("pooled: Acquire failed: %w", err)
+	}
+	defer lease.Release()
+
+	client := NewHaloAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken, 1)
+	result, err := client.GetMatchSkill(ctx, matchID, xuids)
+	pc.notifyPoolOnHTTPError(err)
+	return result, err
+}
+
 // GetMatchFilm implémente HaloClient.GetMatchFilm() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
 	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
