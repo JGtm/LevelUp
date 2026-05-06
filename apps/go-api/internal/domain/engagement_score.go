@@ -47,6 +47,20 @@ type EngagementScoreResult struct {
 	// percentile. Permet a l'UI de communiquer le contexte (ex. "calcule sur
 	// 47 matchs").
 	NHistoryMatches int `json:"n_history_matches"`
+
+	// MeanPaceJoueur / MeanPaceTeam / MeanPaceLobby sont les means agreges
+	// de la courbe (events/min/joueur). Persistes dans player_match_enrichment
+	// pour alimenter le recompute des coefficients sans avoir a rejouer toute
+	// la courbe sur l'historique. Identiques aux means utilises par
+	// EngagementMatchSummary (Mock 11).
+	MeanPaceJoueur float64 `json:"mean_pace_joueur"`
+	MeanPaceTeam   float64 `json:"mean_pace_team"`
+	MeanPaceLobby  float64 `json:"mean_pace_lobby"`
+
+	// PlayerActivity = kills + assists + deaths du joueur sur le match.
+	// Sert a detecter les quitters/AFK lors du calcul du coefficient
+	// (cf. temporal.PlayerActivityMin).
+	PlayerActivity int `json:"player_activity"`
 }
 
 // EngagementPoint est un echantillon temporel de la courbe d'engagement.

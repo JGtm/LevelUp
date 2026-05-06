@@ -88,6 +88,42 @@ func init() {
 		},
 	})
 
+	// ===== Player DB : colonnes paces engagement (Phase recompute coefs) =====
+	// Sert au calcul de coef_team_share / coef_lobby_share via la mediane
+	// glissante des ratios pace_joueur/pace_team. Persister les paces evite
+	// de devoir recalculer la courbe de chaque match historique a chaque
+	// recompute (ce qui serait O(N×duree) sinon).
+	Register(Migration{
+		Name:        "add_engagement_pace_columns_to_player_match_enrichment",
+		TargetDB:    TargetPlayer,
+		Description: "Ajoute engagement_pace_player, engagement_pace_team, engagement_pace_lobby et engagement_player_activity a player_match_enrichment (Phase recompute coefs)",
+		ApplySchema: func(db *sql.DB) error {
+			exists, err := tableExists(db, "player_match_enrichment")
+			if err != nil {
+				return fmt.Errorf("engagement paces migration: check table: %w", err)
+			}
+			if !exists {
+				return nil
+			}
+			for _, col := range []struct{ name, typ string }{
+				{"engagement_pace_player", "DOUBLE"},
+				{"engagement_pace_team", "DOUBLE"},
+				{"engagement_pace_lobby", "DOUBLE"},
+				{"engagement_player_activity", "INTEGER"},
+			} {
+				if err := addColumnIfMissing(db, "player_match_enrichment", col.name, col.typ); err != nil {
+					return err
+				}
+			}
+			// Index partiel sur les rows ayant des paces non-null. Optimise les
+			// scans de LoadRatioSamples qui filtrent toujours sur cette condition.
+			return createIndexSafe(db, `
+				CREATE INDEX IF NOT EXISTS idx_pme_engagement_paces
+					ON player_match_enrichment(mode_category)
+			`)
+		},
+	})
+
 	// ===== Shared DB : colonne match_intensity sur match_registry =====
 	Register(Migration{
 		Name:        "add_match_intensity_to_match_registry",

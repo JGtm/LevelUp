@@ -44,6 +44,7 @@ const (
 	CapTimeseries         CapabilityKey = "analytics.timeseries"
 	CapScoreboardExtra    CapabilityKey = "match.scoreboard.extra" // champs étendus du scoreboard
 	CapCitationsEngine    CapabilityKey = "citations.engine"       // moteur de citations
+	CapEngagement         CapabilityKey = "engagement.score"       // score + courbe + coefficients d'engagement
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

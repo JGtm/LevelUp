@@ -174,6 +174,47 @@ func splitCSV(s string) []string {
 	return out
 }
 
+// PostRecomputeCoefficients : POST /matches/.../engagement/recompute_coefficients
+//
+// Force le recalcul des coefficients d'engagement (coef_team_share /
+// coef_lobby_share) pour toutes les categories de mode supportees, depuis
+// les paces persistees dans player_match_enrichment. Utile en admin / debug
+// quand un user veut rafraichir ses coefs sans attendre le prochain sync.
+//
+// Reponse JSON :
+//
+//	{
+//	  "modes_updated": ["PvP_ranked", "PvP_unranked"],
+//	  "n_coefs_persisted": 2,
+//	  "modes_skipped": []
+//	}
+//
+// Codes d'erreur :
+//   - 404 player_not_found
+//   - 503 engagement_unavailable (migration Phase 2 ou recompute non appliquee)
+//   - 500 engagement_error (autre)
+func (h *EngagementHandler) PostRecomputeCoefficients(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+
+	report, err := svc.RecomputeCoefficients(r.Context())
+	if err != nil {
+		switch {
+		case errors.Is(err, port.ErrEngagementUnavailable):
+			writeError(w, http.StatusServiceUnavailable, "engagement_unavailable",
+				"migration EngagementScore non appliquee")
+		default:
+			writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
+}
+
 // GetEngagementProfile : GET /engagement_profile
 //
 // Reponse JSON : tableau de coefficients par categorie de mode.

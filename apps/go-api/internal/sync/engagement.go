@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability"
 )
 
 // engagementMatchRow regroupe les inputs necessaires pour calculer le score
@@ -152,8 +153,10 @@ func batchComputeEngagementScores(
 		if err := persistEngagementScore(playerDB, m.MatchID, modeCategory, result, now); err != nil {
 			slog.ErrorContext(ctx, "engagement: persist failed",
 				"match_id", m.MatchID, "err", err)
+			observability.IncCounter("engagement_persist_error_total")
 			continue
 		}
+		observability.IncCounter("engagement_score_computed_total")
 
 		// Persist match_intensity dans shared.match_registry (best-effort).
 		if result.MatchIntensity > 0 {
@@ -389,7 +392,11 @@ func loadExistingEngagementScores(playerDB *sql.DB) map[string]bool {
 	return out
 }
 
-// persistEngagementScore UPSERT le score dans player_match_enrichment.
+// persistEngagementScore UPSERT le score + paces dans player_match_enrichment.
+//
+// Si les colonnes engagement_pace_* sont absentes (migration recompute coefs
+// non appliquee), retombe sur la version 5-col (sans paces) pour rester
+// compatible avec les bases anterieures.
 func persistEngagementScore(
 	playerDB *sql.DB,
 	matchID, modeCategory string,
@@ -400,6 +407,30 @@ func persistEngagementScore(
 	if result.EngagementScore != nil {
 		scoreArg = *result.EngagementScore
 	}
+	if pacesColumnsAvailable(playerDB) {
+		_, err := playerDB.Exec(`
+			INSERT INTO player_match_enrichment (
+				match_id, engagement_score, engagement_score_brut,
+				engagement_score_confidence, mode_category,
+				engagement_pace_player, engagement_pace_team, engagement_pace_lobby,
+				engagement_player_activity, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (match_id) DO UPDATE SET
+				engagement_score = EXCLUDED.engagement_score,
+				engagement_score_brut = EXCLUDED.engagement_score_brut,
+				engagement_score_confidence = EXCLUDED.engagement_score_confidence,
+				mode_category = EXCLUDED.mode_category,
+				engagement_pace_player = EXCLUDED.engagement_pace_player,
+				engagement_pace_team = EXCLUDED.engagement_pace_team,
+				engagement_pace_lobby = EXCLUDED.engagement_pace_lobby,
+				engagement_player_activity = EXCLUDED.engagement_player_activity,
+				updated_at = EXCLUDED.updated_at
+		`, matchID, scoreArg, result.ResidualBrut, result.Confidence, modeCategory,
+			result.MeanPaceJoueur, result.MeanPaceTeam, result.MeanPaceLobby,
+			result.PlayerActivity, now)
+		return err
+	}
+	// Fallback : pre-migration recompute coefs (5 colonnes).
 	_, err := playerDB.Exec(`
 		INSERT INTO player_match_enrichment (
 			match_id, engagement_score, engagement_score_brut,
@@ -413,6 +444,18 @@ func persistEngagementScore(
 			updated_at = EXCLUDED.updated_at
 	`, matchID, scoreArg, result.ResidualBrut, result.Confidence, modeCategory, now)
 	return err
+}
+
+// pacesColumnsAvailable verifie la presence de la colonne engagement_pace_team
+// (et donc du jeu complet de 4 colonnes paces ajoutees ensemble par migration).
+func pacesColumnsAvailable(playerDB *sql.DB) bool {
+	var count int
+	err := playerDB.QueryRow(`
+		SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_name = 'player_match_enrichment'
+		  AND column_name = 'engagement_pace_team'
+	`).Scan(&count)
+	return err == nil && count > 0
 }
 
 // persistMatchIntensity met a jour shared.match_registry.match_intensity.
@@ -432,3 +475,6 @@ func normalizeModeCategoryFromFlags(isRanked bool) string {
 	}
 	return "PvP_unranked"
 }
+
+// (Le recompute des coefficients vit dans engagement_recompute.go pour
+// respecter la limite 500L par fichier — cf. arch-rules § Modularité.)

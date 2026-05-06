@@ -141,6 +141,19 @@ type SyncScope struct {
 	EngagementScores      bool
 	ForceEngagementScores bool
 
+	// ── EngagementCoefficients — Phase recompute coefs ──────────────────
+	// Recompute UNIQUEMENT les coefficients perso (mediane glissante des
+	// paces). Suppose que EngagementScores a deja peuple les colonnes
+	// engagement_pace_* (sinon skip silencieux). Tres rapide (~5ms par
+	// joueur — 2 queries + median). Utile pour rafraichir apres un
+	// ajustement de formule sans re-scanner toute l'historique.
+	EngagementCoefficients bool
+	// ForceEngagementCoefficients : pour le moment le recompute est deja
+	// idempotent (UPSERT), donc le flag force n'a pas d'effet specifique.
+	// Conserve pour symetrie API + extensibilite future (ex. ignorer le
+	// seuil MinMatchesForCoef).
+	ForceEngagementCoefficients bool
+
 	// ── Méta-flag ───────────────────────────────────────────────────────
 	AllData bool
 }

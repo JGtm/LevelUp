@@ -519,11 +519,18 @@ func NewRouter(
 			r.Get("/matches/{match_id}/neighbors", mv.GetMatchNeighbors)
 
 			// Phase 4 plan engagement : score + courbe par match + profil + timeseries + squad
+			// + admin recompute. Toutes les routes sont gated par CapEngagement
+			// (titre doit declarer la capability — halo_infinite=oui, autres=non
+			// par defaut, degradation gracieuse via 404).
 			eng := handlers.NewEngagementHandler(reg.Engagement)
-			r.Get("/matches/{match_id}/engagement", eng.GetMatchEngagement)
-			r.Get("/engagement_profile", eng.GetEngagementProfile)
-			r.Get("/engagement/timeseries", eng.GetEngagementTimeseries)
-			r.Get("/pages/squad/v2/engagement", eng.GetSquadEngagementSession)
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
+				r.Get("/matches/{match_id}/engagement", eng.GetMatchEngagement)
+				r.Get("/engagement_profile", eng.GetEngagementProfile)
+				r.Get("/engagement/timeseries", eng.GetEngagementTimeseries)
+				r.Get("/pages/squad/v2/engagement", eng.GetSquadEngagementSession)
+				r.Post("/engagement/recompute_coefficients", eng.PostRecomputeCoefficients)
+			})
 
 			explorer := handlers.NewExplorerHandler(reg.ExplorerCtx, reg.MatchHistoryCtx)
 			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)

@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 
+	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -125,6 +126,20 @@ type EngagementScoreRepository interface {
 	// LoadAllCoefficients charge tous les coefficients du joueur (toutes
 	// categories de mode confondues). Pour endpoint engagement_profile.
 	LoadAllCoefficients(ctx context.Context, xuid string) ([]domain.EngagementCoefficient, error)
+
+	// LoadRatioSamples charge les paces moyennes des N derniers matchs PvP
+	// du joueur sur une categorie de mode, sous forme de RatioSample
+	// (algo `temporal.ComputeEngagementCoefficient`). Utilise par le pipeline
+	// de recompute des coefficients en post-sync.
+	//
+	// Filtre cote SQL :
+	//   - mode_category = ?
+	//   - engagement_pace_team IS NOT NULL (skip cold-start non encore renseigne)
+	// Le filtrage outliers (PaceTeamMin, PlayerActivityMin) est fait cote algo.
+	//
+	// Retourne une slice vide (non nil) si aucun sample. ErrEngagementUnavailable
+	// si les colonnes paces ne sont pas presentes (migration non appliquee).
+	LoadRatioSamples(ctx context.Context, xuid, modeCategory string, limit int) ([]temporal.RatioSample, error)
 }
 
 // MatchEngagementContext regroupe les metadonnees d'un match necessaires au
@@ -146,47 +161,7 @@ type MatchEngagementContext struct {
 	MapName       *string
 }
 
-// MatchEngagementParams regroupe les inputs pour calculer le score d'un match.
-//
-// Le service amont charge les events (via HighlightEventsRepository), connait
-// le mode et la composition du lobby/equipe, et passe le tout. Le calcul
-// proprement dit est delegue a internal/analysis/temporal.ComputeEngagementScore.
-type MatchEngagementParams struct {
-	XUID         string
-	MatchID      string
-	ModeCategory string
-	IsTeamMode   bool
-	NTeam        int
-	NHumansLobby int
-	MatchStartMS int64
-	MatchEndMS   int64
-
-	// PersonalScore, Kills, Assists permettent de calculer les events
-	// objectif estimes (modes asymetriques). Cf temporal.EventsObjectifEstimes.
-	PersonalScore int
-	Kills         int
-	Assists       int
-}
-
-// EngagementScoreService orchestre les operations metier sur EngagementScore.
-//
-// Implemente par internal/service.EngagementScoreService (Phase 1.6).
-type EngagementScoreService interface {
-	// ComputeAndPersist calcule le score d'engagement pour un match et le
-	// persiste. Appele par le pipeline de sync apres ingestion des events.
-	//
-	// Si force=false et qu'un score existe deja pour (xuid, match_id),
-	// retourne le score existant sans recalcul. Si force=true, recalcule
-	// et ecrase.
-	ComputeAndPersist(ctx context.Context, params MatchEngagementParams, force bool) (*domain.EngagementScoreResult, error)
-
-	// GetMatchEngagement reconstruit le score + la courbe pour un match
-	// (lecture cote handler Match View). La courbe est recalculee a la
-	// volee depuis les events (cf plan §9.4 stockage hybride).
-	GetMatchEngagement(ctx context.Context, params MatchEngagementParams) (*domain.EngagementScoreResult, error)
-
-	// GetEngagementProfile retourne les coefficients perso d'un joueur,
-	// par categorie de mode. Utilise par l'endpoint dedie
-	// /players/{slug}/engagement_profile.
-	GetEngagementProfile(ctx context.Context, xuid string) ([]domain.EngagementCoefficient, error)
-}
+// Note historique : MatchEngagementParams + EngagementScoreService interface
+// ont ete supprimes en Phase 6 du plan engagement long-term — code mort
+// (NewEngagementScoreService jamais appele en production). Les chemins
+// production utilisent service.PlayerEngagementService directement.

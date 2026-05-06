@@ -18,6 +18,10 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// HistoryWindow est le nombre maximal de matchs utilises pour la baseline
+// percentile (cf doc reflexion §6.2 et plan engagement §4.4).
+const HistoryWindow = 200
+
 // PlayerEngagementService est un wrapper avec xuid baked-in destine aux
 // handlers HTTP. Charge metadata + events + history + coefs via le repo, puis
 // appelle l'algo pur. Pas d'acces SQL direct, pas d'appel cross-service.
@@ -120,74 +124,12 @@ func (s *PlayerEngagementService) GetTimeseries(
 	return out, nil
 }
 
-// GetSquadSession charge la session squad (Mock 15 v2). Calcule pour chaque
-// match commun les means team-level + per-player paces.
-//
-// Reference plan : §6.6.1, §8.7.
-func (s *PlayerEngagementService) GetSquadSession(
-	ctx context.Context,
-	matchIDs []string,
-	teammates []domain.EngagementCoefficient,
-) (*domain.SquadEngagementSession, error) {
-	if len(matchIDs) == 0 {
-		return &domain.SquadEngagementSession{
-			Labels:  []string{},
-			Players: []domain.SquadPlayerEngagement{},
-		}, nil
-	}
-	slog.DebugContext(ctx, "PlayerEngagementService.GetSquadSession: computing",
-		"xuid", s.xuid, "n_matches", len(matchIDs), "n_teammates", len(teammates))
-
-	// Le joueur principal est toujours inclus en premier dans la liste.
-	players := make([]domain.SquadPlayerEngagement, 0, 1+len(teammates))
-	players = append(players, domain.SquadPlayerEngagement{
-		XUID:         s.xuid,
-		Gamertag:     s.gamertag,
-		PaceObserved: make([]float64, 0, len(matchIDs)),
-	})
-	for _, t := range teammates {
-		if t.XUID == s.xuid {
-			continue // évite le doublon si l'appelant inclut déjà le joueur principal
-		}
-		players = append(players, domain.SquadPlayerEngagement{
-			XUID:         t.XUID,
-			Gamertag:     t.Gamertag,
-			PaceObserved: make([]float64, 0, len(matchIDs)),
-		})
-	}
-	session := &domain.SquadEngagementSession{
-		Labels:         make([]string, 0, len(matchIDs)),
-		MapNames:       make([]string, 0, len(matchIDs)),
-		LobbyPerPlayer: make([]float64, 0, len(matchIDs)),
-		TeamExpected:   make([]float64, 0, len(matchIDs)),
-		TeamObserved:   make([]float64, 0, len(matchIDs)),
-		Players:        players,
-	}
-
-	for i, mid := range matchIDs {
-		summary, ok := s.computeMatchSummary(ctx, mid, i)
-		if !ok {
-			continue
-		}
-		session.Labels = append(session.Labels, summary.Label)
-		mapName := ""
-		if summary.MapName != nil {
-			mapName = *summary.MapName
-		}
-		session.MapNames = append(session.MapNames, mapName)
-		session.LobbyPerPlayer = append(session.LobbyPerPlayer, summary.PaceLobby)
-		session.TeamExpected = append(session.TeamExpected, summary.PaceAttendu)
-		session.TeamObserved = append(session.TeamObserved, summary.PaceTeam)
-		for j := range session.Players {
-			pace := s.computePlayerPace(ctx, mid, session.Players[j].XUID)
-			session.Players[j].PaceObserved = append(session.Players[j].PaceObserved, pace)
-		}
-	}
-	return session, nil
-}
+// (GetSquadSession + matchBundle + computeTeammateMeanPace : voir
+// engagement_squad_service.go.
+// RecomputeCoefficients + RecomputeReport : voir engagement_admin_service.go.)
 
 // =============================================================================
-// Helpers prives
+// Helpers prives partages
 // =============================================================================
 
 // buildInputForMatch construit l'input temporal a partir d'un MatchEngagementContext
@@ -309,32 +251,11 @@ func (s *PlayerEngagementService) computeMatchSummary(
 	}, true
 }
 
-// computePlayerPace renvoie le pace mean d'un joueur (autre que self) sur un
-// match donne. Pour Mock 15 v2 squad overlay.
-func (s *PlayerEngagementService) computePlayerPace(
-	ctx context.Context,
-	matchID, xuid string,
-) float64 {
-	events, _ := s.repo.LoadEventsForMatch(ctx, matchID)
-	if len(events) == 0 {
-		return 0
-	}
-	mctx, _ := s.repo.LoadMatchEngagementContext(ctx, matchID, xuid)
-	if mctx == nil {
-		return 0
-	}
-	durationMin := float64(mctx.EndTimeMS-mctx.StartTimeMS) / 60_000.0
-	if durationMin <= 0 {
-		return 0
-	}
-	count := 0
-	for _, e := range events {
-		if e.XUID == xuid {
-			count++
-		}
-	}
-	return float64(count) / durationMin
-}
+// (computePlayerPace : supprime en Phase 7 plan engagement long-term — la
+// methode count/duration etait incoherente avec PaceJoueur du main player
+// (curve smoothing 90s) et faisait N×M lookups DB inutiles. Remplace par
+// computeTeammateMeanPace qui reutilise les events deja en memoire et
+// applique la meme methode de calcul que le main player.)
 
 // splitMatchEvents partitionne en player / team / lobby selon teamXUIDs explicites.
 func splitMatchEvents(

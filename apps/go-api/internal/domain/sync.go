@@ -114,4 +114,5 @@ type PostSyncResult struct {
 	AchievementsSynced       bool
 	MatchesPromotedFriends   int64 // §7 hook auto-recompute is_with_friends post-sync
 	EngagementScoresComputed int   // Phase 3 plan engagement
+	EngagementCoefsUpdated   int   // Phase recompute coefs : nb modes recomputes (0..2)
 }

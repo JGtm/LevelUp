@@ -59,6 +59,7 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 		games.CapCareerProgression:  games.CapNotExposed,
 		games.CapPveFirefight:       games.CapNotExposed,
 		games.CapTimeseries:         games.CapNotExposed,
+		games.CapEngagement:         games.CapNotExposed, // pas d'engagement sur ce titre synthetique
 	}
 }
 
