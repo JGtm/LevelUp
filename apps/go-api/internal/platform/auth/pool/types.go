@@ -98,6 +98,11 @@ type Pool interface {
 	// Après un delai GlobalCooldown, l'appel Refresh() remettra le token en circulation (si succès).
 	MarkUnhealthy(gamertag string, reason error)
 
+	// OnHTTPError signale une erreur HTTP (429/503) et déclenche un cooldown global.
+	// Marque tous les tokens comme malsains et suspend le refresher pour GlobalCooldown.
+	// Non-bloquant : ignores les autres codes d'erreur.
+	OnHTTPError(statusCode int)
+
 	// Close stoppe les goroutines background (refresher, etc.) et libère les ressources.
 	Close()
 }

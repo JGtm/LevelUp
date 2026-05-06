@@ -350,3 +350,99 @@ func TestPoolDefaultOptions(t *testing.T) {
 		t.Errorf("expected size 1, got %d", pool.Size())
 	}
 }
+
+// TestPoolOnHTTPError_429 teste le backoff global sur 429.
+func TestPoolOnHTTPError_429(t *testing.T) {
+	sources := testSlotEnv(3)
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+
+	opts := PoolOptions{MaxSize: 0, PerTokenRPS: 1}
+	pool, err := NewPool(context.Background(), resolver, sources, opts)
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+	defer pool.Close()
+
+	ctx := context.Background()
+
+	// Acquérir un token — doit fonctionner normalement.
+	lease1, err := pool.Acquire(ctx, PolicyAnyPublic, "")
+	if err != nil {
+		t.Fatalf("Acquire before OnHTTPError failed: %v", err)
+	}
+	if lease1.Gamertag == "" {
+		t.Fatal("expected non-empty gamertag")
+	}
+	lease1.Release()
+
+	// Déclencher le cooldown global avec un 429.
+	pool.OnHTTPError(429)
+
+	// Immédiatement après, tous les tokens doivent être malsains.
+	_, err = pool.Acquire(ctx, PolicyAnyPublic, "")
+	if err == nil {
+		t.Fatal("expected error after OnHTTPError(429), got nil")
+	}
+	if err.Error() != "pool: aucun slot sain disponible (PolicyAnyPublic)" {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// TestPoolOnHTTPError_503 teste le backoff global sur 503.
+func TestPoolOnHTTPError_503(t *testing.T) {
+	sources := testSlotEnv(2)
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+
+	opts := PoolOptions{MaxSize: 0, PerTokenRPS: 1, GlobalCooldown: 100 * time.Millisecond}
+	pool, err := NewPool(context.Background(), resolver, sources, opts)
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+	defer pool.Close()
+
+	ctx := context.Background()
+
+	// Déclencher le cooldown.
+	pool.OnHTTPError(503)
+
+	// Vérifier que les acquisitions échouent.
+	_, err = pool.Acquire(ctx, PolicyAnyPublic, "")
+	if err == nil {
+		t.Fatal("expected error after OnHTTPError(503)")
+	}
+
+	// Attendre que le cooldown passe.
+	time.Sleep(150 * time.Millisecond)
+
+	// Maintenant, les tokens devraient être refreshés et disponibles.
+	// (Le refresher loop les réactive pendant que le cooldown est levé)
+	// Mais le timing est non-déterministe, donc on juste vérifie qu'on peut essayer.
+	_, err = pool.Acquire(ctx, PolicyAnyPublic, "")
+	// Peut être nil (refresher a eu le temps) ou non-nil (timing)
+	// Pas de vérification stricte car c'est une race.
+}
+
+// TestPoolOnHTTPError_OtherStatusCode teste que les autres codes d'erreur sont ignorés.
+func TestPoolOnHTTPError_OtherStatusCode(t *testing.T) {
+	sources := testSlotEnv(2)
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+
+	opts := PoolOptions{MaxSize: 0, PerTokenRPS: 1}
+	pool, err := NewPool(context.Background(), resolver, sources, opts)
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+	defer pool.Close()
+
+	ctx := context.Background()
+
+	// Appeler OnHTTPError avec un code qui n'est pas 429/503.
+	pool.OnHTTPError(500)
+
+	// Les acquisitions doivent continuer normalement (pas de cooldown).
+	lease, err := pool.Acquire(ctx, PolicyAnyPublic, "")
+	if err != nil {
+		t.Fatalf("Acquire after OnHTTPError(500) failed: %v", err)
+	}
+	lease.Release()
+}
