@@ -258,6 +258,17 @@ func loadTeamSizes(sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby 
 }
 
 // loadEventsForMatch charge les events highlight_events pour un match.
+//
+// Note SPNKr : Halo Infinite ne genere QUE 4 event_types (kill, death, medal,
+// mode) — confirme via spnkr/film/highlight_events.py. Le code aval
+// (engagement_score.go) checke aussi EventAssist, EventFinisher, EventClutch,
+// EventFirstKill — branches dead code pour ce titre, harmless (jamais
+// declenchees). On calcule donc tout ce que l'API permet.
+//
+// Si la table est vide pour un match (ex. film 404 historique), retourne
+// nil sans erreur. L'engagement_score restera NULL pour ce match — pas de
+// fallback possible : killer_victim_pairs est derive de highlight_events,
+// donc toujours present/absent ensemble.
 func loadEventsForMatch(sharedDB *sql.DB, matchID string) ([]canonical.HighlightEvent, error) {
 	const q = `
 		SELECT match_id, event_type, COALESCE(time_ms, 0), COALESCE(xuid, '')
@@ -270,7 +281,6 @@ func loadEventsForMatch(sharedDB *sql.DB, matchID string) ([]canonical.Highlight
 		return nil, err
 	}
 	defer rows.Close()
-
 	var out []canonical.HighlightEvent
 	for rows.Next() {
 		var ev canonical.HighlightEvent
