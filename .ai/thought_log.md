@@ -1,5 +1,28 @@
 # Thought Log
 
+## [2026-05-06] Plan accessibilité — refonte palettes Okabe-Ito + Cividis + Tol Bright + test WCAG
+
+**Statut** : Plan rédigé (pas d'implémentation).
+
+**Contexte** : Retour utilisateur (ami deutéranope) — la palette Okabe-Ito actuelle assigne 4 couples sémantiques critiques (`outcome-win/loss`, `divergent-pos/neg`, `narrative-encounter-ally/enemy`, `heatmap-cold/hot`) sur l'axe **Bluish Green `#009E73` ↔ Vermillion `#D55E00`**. Cet axe est précisément celui qui collapse en deutéranopie : Δluminance ≈ 0.14, distinguable seulement en éclairage parfait. Les 8 hex de base de la palette sont strictement conformes à la référence Okabe-Ito 2008 — le problème vient des **assignations** sur les tokens, pas des couleurs source. L'utilisateur a aussi cité `afonsolopez/colorblind` comme inspiration ; vérification faite, c'est un grader WCAG 2.0 (HextoRGB / ScoreHex / Grading), **pas** une bibliothèque de palettes — l'idée exploitable est le test de contraste automatique.
+
+**Décisions techniques** :
+
+1. **Plan en 3 phases indépendantes** documenté dans `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md` :
+   - **Phase A** (~1h) : remap Okabe-Ito sur l'axe **Blue `#0072B2` ↔ Vermillion `#D55E00`** (Wong 2011, Nature Methods). Couvre outcomes, divergent, encounter, heatmap. Trade-off conscient : "win" devient bleu au lieu de vert sur la palette OI — convention culturelle sacrifiée pour la lisibilité, indices secondaires (icônes ✓/✗, signe +/−) à conserver dans les composants. Réordonne aussi `chart-series-1..8` pour que les 2 premières séries soient Blue+Orange (paire la plus distinguable). Re-mappe `perf-tier-1..5` en ramp divergent bleu→jaune→vermillion monotone en a* (imparfait sur luminance pure — voir Cividis pour ça).
+   - **Phase B** (~3h) : ajout de 2 palettes — **Cividis** (Nuñez et al. 2018, perceptuellement uniforme, monotone en L*, conçue explicitement CVD) pour les ramps ordinaux, et **Tol Bright** (Paul Tol 2018, catégorielle 7 couleurs) plus discriminable qu'Okabe-Ito au-delà de 4 séries en deutan. Skip Viridis (trop similaire à Cividis), IBM Carbon (pas un standard scientifique), Brewer Set2 (pas optimisé CVD au-delà de 3 couleurs). Élargit le `<select>` Settings → Accessibilité de 2 à 4 options.
+   - **Phase C** (~1h) : test automatique WCAG AA (≥ 4.5:1) sur les 5 paires `narrative-{bg}/narrative-{text}` × les 4 palettes. Réimplémentation de la formule WCAG 2.0 en TS (~30 lignes, zéro dépendance) — s'inspire de `afonsolopez/colorblind` sans l'importer. Helpers placés en code de production (`wcagContrast.ts`) car potentiellement réutilisables par un futur composant qui voudrait calculer dynamiquement un texte readable.
+
+2. **Branche dédiée** : `feat/accessibility-palettes-v2` créée depuis `feat/token-pool-parallel-sync` (pas depuis main qui a 1000 commits de retard). 3 commits prévus, un par phase, mergeables indépendamment.
+
+3. **Sciemment hors scope** : icônes/patterns redondants dans charts (déjà couvert par labels existants), mode achromatopsie pure (<1% des cas, refonte trop lourde), extension contraste WCAG hors `narrative-*`, migration des hex en dur restants (`rarity.ts` reste exception tolérée par CLAUDE.md règle 20).
+
+**Résultats observés** : N/A (plan documentaire uniquement, aucun code modifié).
+
+**Conclusion / prochaine étape** : Plan livré sur la branche `feat/accessibility-palettes-v2`. Attente validation utilisateur avant passage à l'implémentation. Si feu vert, exécution dans l'ordre A → vérif visuelle → B → C, chacune commitée séparément. Si seule A est priorisée, c'est le 80/20 qui fix le ressenti immédiat (les 4 couples binaires les plus visibles).
+
+---
+
 ## [2026-05-06] UX Médias — label conditionnel Associer/Réassocier + lien Voir le match
 
 **Statut** : Complété (front uniquement, pas de back-end touché).
