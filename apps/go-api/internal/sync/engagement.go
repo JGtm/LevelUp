@@ -188,6 +188,13 @@ func engagementColumnsAvailable(playerDB *sql.DB) bool {
 }
 
 // loadMatchesForEngagement charge les matchs PvP du joueur avec metadata.
+//
+// Filtre les matchs où `events_loaded=TRUE AND no highlight_events` — c'est
+// l'indicateur "events fetch tenté, aucune donnée disponible" (film 404 CDN
+// ou match jamais joué assez longtemps). Pour ces matchs, engagement_score
+// reste NULL definitivement — pas la peine de re-tenter à chaque sync. Les
+// matchs avec `events_loaded=FALSE/NULL` restent inclus : events_heal peut
+// encore les charger.
 func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchRow, error) {
 	const q = `
 		SELECT
@@ -205,6 +212,10 @@ func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchR
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
 		  AND mr.end_time IS NOT NULL
+		  AND (
+		    COALESCE(mr.events_loaded, FALSE) = FALSE
+		    OR EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id)
+		  )
 		ORDER BY mr.start_time ASC
 	`
 	rows, err := sharedDB.Query(q, xuid)
