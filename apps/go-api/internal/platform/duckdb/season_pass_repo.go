@@ -291,17 +291,37 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 	}
 
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(itemPaths)), ",")
+	// Le COALESCE chaîne les sources de title/description par priorité décroissante :
+	// 1. battlepass_item_translations FR/EN (cache dénormalisé)
+	// 2. raw_payload_json $.CommonData.Title.translations.{fr-FR,en-US} (extraction live)
+	// 3. raw_payload_json $.CommonData.Title.value (fallback non localisé)
+	// La fallback JSON couvre les items dont les translations n'ont jamais été
+	// peuplées dans battlepass_item_translations (cf. items pré-déploiement
+	// translations table).
 	query := fmt.Sprintf(`
 		WITH latest AS (
-			SELECT inventory_item_path, content_hash, quality, item_type, display_path, last_seen_at,
+			SELECT inventory_item_path, content_hash, quality, item_type, display_path,
+			       raw_payload_json, last_seen_at,
 			       ROW_NUMBER() OVER (PARTITION BY inventory_item_path ORDER BY last_seen_at DESC) AS rn
 			FROM battlepass_item_definitions
 			WHERE is_current = TRUE
 		)
 		SELECT d.inventory_item_path,
 		       d.display_path,
-		       COALESCE(t_fr.title, t_en.title)       AS title,
-		       COALESCE(t_fr.description, t_en.description) AS description,
+		       COALESCE(
+		           t_fr.title,
+		           t_en.title,
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.translations.fr-FR'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.translations.en-US'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Title.value')
+		       ) AS title,
+		       COALESCE(
+		           t_fr.description,
+		           t_en.description,
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.translations.fr-FR'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.translations.en-US'),
+		           json_extract_string(d.raw_payload_json, '$.CommonData.Description.value')
+		       ) AS description,
 		       d.quality,
 		       d.item_type
 		FROM latest d
