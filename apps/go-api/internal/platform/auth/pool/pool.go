@@ -254,6 +254,42 @@ func (p *poolImpl) MarkUnhealthy(gamertag string, reason error) {
 	// Déclencher un refresh asynchrone (le refresherLoop s'en chargera dans son prochain cycle).
 }
 
+// OnHTTPError signale une erreur HTTP (429/503) et déclenche un cooldown global.
+// Non-bloquant : tous les tokens sont marqués malsains et le refresher est suspendu.
+func (p *poolImpl) OnHTTPError(statusCode int) {
+	if statusCode != 429 && statusCode != 503 {
+		// Ignorer les autres codes d'erreur.
+		return
+	}
+
+	p.cooldownMu.Lock()
+	defer p.cooldownMu.Unlock()
+
+	// Déjà en cooldown ?
+	if p.coolingDown && time.Now().Before(p.cooldownUntil) {
+		slog.DebugContext(context.Background(), "pool: OnHTTPError appelé pendant cooldown",
+			"status", statusCode)
+		return
+	}
+
+	// Déclencher le cooldown global.
+	p.coolingDown = true
+	p.cooldownUntil = time.Now().Add(p.globalCooldown)
+
+	slog.WarnContext(context.Background(), "pool: cooldown global déclenché",
+		"status", statusCode, "duration_s", p.globalCooldown.Seconds())
+
+	// Marquer tous les tokens comme malsains (non-bloquant).
+	for _, slot := range p.slots {
+		slot.mu.Lock()
+		slot.healthy = false
+		slot.mu.Unlock()
+	}
+
+	slog.InfoContext(context.Background(), "pool: tous les tokens marqués malsains (cooldown)",
+		"count", len(p.slots))
+}
+
 // Close implémente Pool.Close().
 func (p *poolImpl) Close() {
 	p.stopOnce.Do(func() {
