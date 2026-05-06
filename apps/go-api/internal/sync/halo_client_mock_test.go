@@ -26,6 +26,10 @@ type mockHaloClient struct {
 	getHistoryErr error
 	// getStatsErr simule une erreur de GetMatchStats si non nil.
 	getStatsErr error
+	// skillBody est la skill data retournée par GetMatchSkill (indexée par match_id).
+	skillBody map[string]map[string]*MatchSkillData
+	// getSkillErr simule une erreur de GetMatchSkill si non nil.
+	getSkillErr error
 	// careerData est la progression de carrière retournée par GetCareerRank.
 	careerData *CareerRankData
 	// getCareerErr simule une erreur de GetCareerRank si non nil.
@@ -34,6 +38,8 @@ type mockHaloClient struct {
 	callsGetHistory int
 	// callsGetStats compte le nombre d'appels à GetMatchStats.
 	callsGetStats int
+	// callsGetSkill compte le nombre d'appels à GetMatchSkill.
+	callsGetSkill int
 }
 
 // GetMatchHistory retourne la liste de matchs configurée ou une erreur simulée.
@@ -69,6 +75,20 @@ func (m *mockHaloClient) GetMatchStats(_ context.Context, matchID string) (map[s
 		},
 		"Players": []any{},
 	}, nil
+}
+
+// GetMatchSkill retourne la skill data configurée pour le match donné.
+func (m *mockHaloClient) GetMatchSkill(_ context.Context, matchID string, _ []string) (map[string]*MatchSkillData, error) {
+	m.callsGetSkill++
+	if m.getSkillErr != nil {
+		return nil, m.getSkillErr
+	}
+	if m.skillBody != nil {
+		if body, ok := m.skillBody[matchID]; ok {
+			return body, nil
+		}
+	}
+	return map[string]*MatchSkillData{}, nil
 }
 
 // GetMatchFilm retourne toujours (nil, false, nil) : film absent.

@@ -185,6 +185,9 @@ func (w *weaponTestClient) GetMatchHistory(_ context.Context, _, _ string, _, _ 
 func (w *weaponTestClient) GetMatchStats(_ context.Context, _ string) (map[string]any, error) {
 	return nil, nil
 }
+func (w *weaponTestClient) GetMatchSkill(_ context.Context, _ string, _ []string) (map[string]*MatchSkillData, error) {
+	return map[string]*MatchSkillData{}, nil
+}
 func (w *weaponTestClient) GetMatchFilm(_ context.Context, _ string) (map[int]filmChunkData, bool, error) {
 	return w.filmChunks, w.filmPresent, w.filmErr
 }
