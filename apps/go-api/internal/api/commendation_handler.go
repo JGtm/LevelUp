@@ -32,11 +32,11 @@ func (h *commendationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	// Extraire le chemin relatif après /static/
 	rel := strings.TrimPrefix(rawPath, "/static/")
-	// rel = "commendations/h5g/H5G_citation_Can%27t_we_get_along%3F.png"
+	// rel = "commendations/halo_5_guardians/H5G_citation_Can%27t_we_get_along%3F.png"
 
 	// Essai 1 : chemin décodé (fichiers renommés avec accents littéraux)
 	decodedRel := strings.TrimPrefix(r.URL.Path, "/static/")
-	// decodedRel = "commendations/h5g/H5G_citation_Can't_we_get_along?.png"
+	// decodedRel = "commendations/halo_5_guardians/H5G_citation_Can't_we_get_along?.png"
 
 	fullDecoded := filepath.Join(h.dir, filepath.FromSlash(decodedRel))
 	if _, err := os.Stat(fullDecoded); err == nil {

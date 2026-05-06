@@ -16,7 +16,7 @@ Last update: February 21, 2026 — 55 commendations (51 enabled, 4 disabled).
 | Rules registry | `metadata.duckdb` → `citation_mappings` | 1 row = 1 commendation (type, source, status) |
 | Computed results | player `stats.duckdb` → `match_citations` | Value per match × commendation |
 | Raw PvE stats | `shared_pve.duckdb` → `pve_match_stats` | Enemy-type kills per match |
-| Images | `static/commendations/h5g/*.png` | 158 PNG files |
+| Images | `static/commendations/halo_5_guardians/*.png` | 158 PNG files |
 | FR medals | `static/medals/medals_fr.json` | 169 entries `{medal_id: "Nom FR"}` |
 
 ### Populate script
@@ -285,7 +285,7 @@ Goal: remove dependency on `data/wiki/halo5_commendations_fr.json`. The UI shoul
 
 | Column | Type | Meaning |
 |--------|------|---------|
-| `image_path` | `VARCHAR` | Relative PNG path (`static/commendations/h5g/...`) |
+| `image_path` | `VARCHAR` | Relative PNG path (`static/commendations/halo_5_guardians/...`) |
 | `category` | `VARCHAR` | `Game mode`, `Multiplayer`, `Weapon`, `Spartan Companies`, `Enemy` |
 | `description` | `VARCHAR` | French description (for now) |
 | `tier_targets` | `VARCHAR` | CSV targets, e.g. `"10,20,30,50,100"` |
