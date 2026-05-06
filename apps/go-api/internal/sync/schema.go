@@ -157,9 +157,14 @@ CREATE TABLE IF NOT EXISTS match_participants (
     kills_expected       FLOAT,
     deaths_expected      FLOAT,
     kills_stddev         FLOAT,
+    deaths_stddev        FLOAT,
     team_mmr             FLOAT,
     enemy_mmr            FLOAT,
     headshot_kills       SMALLINT DEFAULT 0,
+    max_killing_spree    SMALLINT,
+    grenade_kills        SMALLINT,
+    melee_kills          SMALLINT,
+    power_weapon_kills   SMALLINT,
     created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (match_id, xuid)
 );

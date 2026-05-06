@@ -46,6 +46,8 @@ type MatchRegistryRow struct {
 	RealStartTime           *time.Time
 	Team0Score              *int
 	Team1Score              *int
+	Team0PSScore            *int // somme des PersonalScore équipe 0
+	Team1PSScore            *int // somme des PersonalScore équipe 1
 	FirstSyncBy             string
 }
 
@@ -76,6 +78,11 @@ type ParticipantRow struct {
 	TeamMMR           *float64
 	EnemyMMR          *float64
 	HeadshotKills     *int
+	MaxKillingSpree   *int
+	GrenadeKills      *int
+	MeleeKills        *int
+	PowerWeaponKills  *int
+	DeathsStddev      *float64
 }
 
 // MedalRow représente une ligne dans medals_earned (shared).
@@ -163,12 +170,60 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 		}
 	}
 
-	// Team scores
+	// Team scores (depuis Teams[].Stats.CoreStats.Score)
 	t0, t1 := extractTeamScoresByID(matchJSON)
 	row.Team0Score = t0
 	row.Team1Score = t1
 
+	// Team PersonalScore aggregates (somme par équipe sur Players[].PersonalScore).
+	// L'API ne fournit pas d'agrégat — on le calcule depuis les participants.
+	ps0, ps1 := extractTeamPSScores(matchJSON)
+	row.Team0PSScore = ps0
+	row.Team1PSScore = ps1
+
 	return row, nil
+}
+
+// extractTeamPSScores somme PersonalScore (CoreStats) par team_id sur tous
+// les Players[]. Retourne (team0_total, team1_total) ou (nil, nil) si Players
+// est vide ou si aucun PersonalScore n'a été trouvé.
+func extractTeamPSScores(matchJSON map[string]any) (*int, *int) {
+	players, _ := matchJSON["Players"].([]any)
+	if len(players) == 0 {
+		return nil, nil
+	}
+	var t0, t1 int
+	var has0, has1 bool
+	for _, p := range players {
+		player, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		teamID, _ := player["LastTeamId"].(float64)
+		core := findCoreStats(player)
+		if core == nil {
+			continue
+		}
+		ps := intFrom(core, "PersonalScore")
+		switch int(teamID) {
+		case 0:
+			t0 += ps
+			has0 = true
+		case 1:
+			t1 += ps
+			has1 = true
+		}
+	}
+	var p0, p1 *int
+	if has0 {
+		v := t0
+		p0 = &v
+	}
+	if has1 {
+		v := t1
+		p1 = &v
+	}
+	return p0, p1
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -229,8 +284,21 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.DamageDealt = floatPtrFrom(core, "DamageDealt")
 			row.DamageTaken = floatPtrFrom(core, "DamageTaken")
 			row.PersonalScore = intPtrFrom(core, "PersonalScore")
-			row.AvgLifeSeconds = floatPtrFrom(core, "AverageLifeDuration")
+			// AverageLifeDuration est une string ISO-8601 "PT30S", pas un float.
+			// Bug pré-existant : floatPtrFrom retournait toujours nil.
+			if dur := parsePTDuration(asString(core["AverageLifeDuration"])); dur != nil {
+				v := float64(*dur)
+				row.AvgLifeSeconds = &v
+			}
 			row.HeadshotKills = intPtrFrom(core, "HeadshotKills")
+
+			// MaxKillingSpree : pic de spree, présent dans CoreStats.
+			row.MaxKillingSpree = intPtrFrom(core, "MaxKillingSpree")
+
+			// Kills par type d'arme : grenade/melee/power_weapon (présents dans CoreStats).
+			row.GrenadeKills = intPtrFrom(core, "GrenadeKills")
+			row.MeleeKills = intPtrFrom(core, "MeleeKills")
+			row.PowerWeaponKills = intPtrFrom(core, "PowerWeaponKills")
 
 			// KDA dérivé
 			if row.Kills != nil && row.Deaths != nil && row.Assists != nil {
@@ -258,9 +326,12 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.Gamertag = &gt
 		}
 
-		// time_played_seconds (depuis MatchInfo ou PlayerTeamStats duration)
-		if dur := parsePTDuration(asString(player["ParticipationInfo.TimePlayed"])); dur != nil {
-			row.TimePlayedSeconds = dur
+		// time_played_seconds : ParticipationInfo est un objet imbriqué, pas
+		// une clé "ParticipationInfo.TimePlayed" plate. Bug pré-existant.
+		if pinfo, ok := player["ParticipationInfo"].(map[string]any); ok {
+			if dur := parsePTDuration(asString(pinfo["TimePlayed"])); dur != nil {
+				row.TimePlayedSeconds = dur
+			}
 		}
 
 		rows = append(rows, row)
