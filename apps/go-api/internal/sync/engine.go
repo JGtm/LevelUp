@@ -20,8 +20,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
@@ -478,7 +480,12 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		)
 
 		allKnown := true
-		for _, entry := range entries {
+
+		// ─── Phase 1 : Filtrer et préparer les matchs à fetcher ───
+		var toFetch []string // MatchIDs à fetcher
+		var fetchIndex []int // Index dans entries (pour order preservation)
+
+		for i, entry := range entries {
 			if processed >= opts.MaxMatches {
 				break
 			}
@@ -494,20 +501,66 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 				continue
 			}
 			allKnown = false
+			toFetch = append(toFetch, entry.MatchID)
+			fetchIndex = append(fetchIndex, i)
+		}
 
-			if err := e.processMatch(ctx, client, sharedDB, playerDB, globalDB, &result, entry.MatchID, opts); err != nil {
-				slog.WarnContext(ctx, "sync: processMatch échoué",
-					"gamertag", e.gamertag, "match_id", entry.MatchID, "err", err,
+		if len(toFetch) == 0 {
+			// Tous les matchs sont connus ou on a atteint maxMatches.
+			goto nextPage
+		}
+
+		// ─── Phase 2 : Fetch parallèle ───
+		fetchedMatches := make([]*fetchedMatch, len(toFetch))
+		fetchErrors := make([]error, len(toFetch))
+		var mu sync.Mutex
+
+		eg, egCtx := errgroup.WithContext(ctx)
+		// Pas de SetLimit ici — RPS limité par HaloAPIClient.rateWait()
+		for i, matchID := range toFetch {
+			i, matchID := i, matchID // Capturer pour closure
+			eg.Go(func() error {
+				fm, err := e.fetchMatchData(egCtx, client, matchID, opts)
+				mu.Lock()
+				fetchedMatches[i] = fm
+				fetchErrors[i] = err
+				mu.Unlock()
+				if err != nil {
+					slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
+						"gamertag", e.gamertag, "match_id", matchID, "err", err,
+					)
+					result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
+				}
+				return nil // Non-fatal : continuer même si fetch échoue
+			})
+		}
+		_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
+
+		// ─── Phase 3 : Insert séquentiel (order-preserving) ───
+		for i, fm := range fetchedMatches {
+			if fetchErrors[i] != nil {
+				// Fetch échoué, skip insert
+				continue
+			}
+			if fm == nil {
+				continue
+			}
+
+			if err := e.insertFetchedMatch(ctx, sharedDB, playerDB, globalDB, &result, fm); err != nil {
+				slog.WarnContext(ctx, "sync: insertFetchedMatch échoué",
+					"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 				)
-				result.AddWarning(fmt.Sprintf("processMatch(%s): %v", entry.MatchID, err))
+				result.AddWarning(fmt.Sprintf("insertFetchedMatch(%s): %v", fm.MatchID, err))
 			} else {
 				processed++
-				slog.InfoContext(ctx, "sync: match traité",
-					"gamertag", e.gamertag, "match_id", entry.MatchID,
+				slog.InfoContext(ctx, "sync: match traité (parallèle)",
+					"gamertag", e.gamertag, "match_id", fm.MatchID,
 					"processed", processed, "inserted_total", result.MatchesInserted,
 				)
 			}
 		}
+
+	nextPage:
 
 		if isDelta && allKnown {
 			break
@@ -686,6 +739,198 @@ func (e *SyncEngine) processMatch(
 		"gamertag", e.gamertag, "match_id", matchID,
 		"duration_ms", time.Since(start).Milliseconds(),
 	)
+	return nil
+}
+
+// ─── Fetch phases (parallel fetch + sequential insert) ───
+
+// fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour insertion.
+// Utilisé pour paralléliser les fetches tout en gardant les inserts séquentiels.
+type fetchedMatch struct {
+	MatchID        string
+	Registry       *domain.MatchRegistry
+	Participants   []*domain.MatchParticipant
+	Medals         []*domain.MedalEarned
+	HighlightData  []byte // Raw highlight events chunk (ou nil si absent)
+	FilmMajorVer   int
+	HasHighlights  bool
+	HighlightError error // Non-bloquant si présent
+}
+
+// fetchMatchData exécute le fetch et l'extraction pour un match (pur, sans DB).
+// Retourne les données extraites prêtes pour insertion séquentielle.
+func (e *SyncEngine) fetchMatchData(
+	ctx context.Context,
+	client HaloClient,
+	matchID string,
+	opts domain.SyncOptions,
+) (*fetchedMatch, error) {
+	matchJSON, err := client.GetMatchStats(ctx, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "sync: GetMatchStats échoué",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
+		return nil, fmt.Errorf("GetMatchStats: %w", err)
+	}
+
+	fm := &fetchedMatch{
+		MatchID: matchID,
+	}
+
+	// Extract registry (obligatoire).
+	reg, err := ExtractRegistry(matchJSON, e.gamertag)
+	if err != nil {
+		slog.WarnContext(ctx, "sync: ExtractRegistry échoué",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
+		return nil, fmt.Errorf("ExtractRegistry: %w", err)
+	}
+	fm.Registry = reg
+
+	// Extract optionnels.
+	if opts.WithParticipants {
+		fm.Participants = ExtractParticipants(matchJSON)
+	}
+	if opts.WithMedals {
+		fm.Medals = ExtractMedals(matchJSON)
+	}
+	if opts.WithHighlightEvents {
+		data, filmMajorVer, found, err := client.GetHighlightEventsChunk(ctx, matchID)
+		fm.HasHighlights = found
+		fm.FilmMajorVer = filmMajorVer
+		if err != nil {
+			fm.HighlightError = fmt.Errorf("GetHighlightEventsChunk: %w", err)
+		} else if found {
+			fm.HighlightData = data
+		}
+	}
+
+	return fm, nil
+}
+
+// insertFetchedMatch insère les données fetchées d'un match (séquentiel, order-preserving).
+func (e *SyncEngine) insertFetchedMatch(
+	ctx context.Context,
+	sharedDB, playerDB, globalDB *sql.DB,
+	result *domain.SyncResult,
+	fm *fetchedMatch,
+) error {
+	// Registry (obligatoire).
+	if err := InsertRegistryIfNotExists(sharedDB, *fm.Registry); err != nil {
+		slog.ErrorContext(ctx, "sync: InsertRegistry échoué",
+			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
+		)
+		return fmt.Errorf("InsertRegistry: %w", err)
+	}
+
+	// Participants.
+	if len(fm.Participants) > 0 {
+		if err := InsertParticipants(sharedDB, fm.Participants); err != nil {
+			slog.ErrorContext(ctx, "sync: InsertParticipants échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "count", len(fm.Participants), "err", err,
+			)
+			return fmt.Errorf("InsertParticipants: %w", err)
+		}
+		result.ParticipantsDone += len(fm.Participants)
+
+		// Upsert XUID aliases.
+		aliased := 0
+		for _, p := range fm.Participants {
+			if p.Gamertag != nil && *p.Gamertag != "" {
+				if globalDB != nil {
+					_ = UpsertXUIDAlias(globalDB, p.XUID, *p.Gamertag)
+				}
+				aliased++
+			}
+		}
+		slog.DebugContext(ctx, "sync: participants insérés",
+			"match_id", fm.MatchID, "participants", len(fm.Participants), "aliases_upserted", aliased,
+		)
+	}
+
+	// Medals.
+	if len(fm.Medals) > 0 {
+		if err := InsertMedals(sharedDB, fm.Medals); err != nil {
+			slog.ErrorContext(ctx, "sync: InsertMedals échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "count", len(fm.Medals), "err", err,
+			)
+			return fmt.Errorf("InsertMedals: %w", err)
+		}
+		result.MedalsInserted += len(fm.Medals)
+		slog.DebugContext(ctx, "sync: médailles insérées",
+			"match_id", fm.MatchID, "medals", len(fm.Medals),
+		)
+	}
+
+	// Highlight events.
+	if fm.HasHighlights && fm.HighlightData != nil {
+		if err := insertHighlightEventsFromData(ctx, sharedDB, globalDB, fm.MatchID, fm.HighlightData, fm.FilmMajorVer, result); err != nil {
+			slog.WarnContext(ctx, "sync: highlight_events insertion échouée",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
+			)
+			result.Warnings = append(result.Warnings, fmt.Sprintf("highlight_events %s: %v", fm.MatchID, err))
+		}
+	} else if fm.HighlightError != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("highlight_events %s: %v", fm.MatchID, fm.HighlightError))
+	}
+
+	// Player enrichment.
+	if err := UpsertPlayerEnrichment(playerDB, fm.MatchID, ""); err != nil {
+		slog.ErrorContext(ctx, "sync: UpsertPlayerEnrichment échoué",
+			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
+		)
+		return fmt.Errorf("UpsertPlayerEnrichment: %w", err)
+	}
+
+	result.MatchesInserted++
+	result.InsertedMatchIDs = append(result.InsertedMatchIDs, fm.MatchID)
+	return nil
+}
+
+// insertHighlightEventsFromData parse et insère les highlight events à partir de données déjà fetchées.
+// Helper utilisé par insertFetchedMatch pour injection de dépendance.
+func insertHighlightEventsFromData(
+	ctx context.Context,
+	sharedDB, globalDB *sql.DB,
+	matchID string,
+	data []byte,
+	filmMajorVersion int,
+	result *domain.SyncResult,
+) error {
+	if len(data) == 0 {
+		return nil // Pas de données — OK, pas d'erreur.
+	}
+
+	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
+	if err != nil {
+		return fmt.Errorf("ParseHighlightEvents: %w", err)
+	}
+	if len(events) == 0 {
+		return nil
+	}
+
+	n, err := InsertHighlightEvents(sharedDB, matchID, events)
+	if err != nil {
+		return fmt.Errorf("InsertHighlightEvents: %w", err)
+	}
+
+	// Upsert XUID aliases from events.
+	if globalDB != nil {
+		for _, ev := range events {
+			if ev.XUID != 0 && ev.Gamertag != "" {
+				_ = UpsertXUIDAlias(globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag)
+			}
+		}
+	}
+
+	if n > 0 {
+		result.EventsInserted += n
+		_ = MarkEventsLoaded(sharedDB, matchID)
+	}
+
+	_ = InsertKillerVictimPairsFromEvents(sharedDB, matchID, events)
+	_ = MarkKillerVictimLoaded(sharedDB, matchID)
+
 	return nil
 }
 
