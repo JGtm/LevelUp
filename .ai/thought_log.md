@@ -29219,3 +29219,49 @@ Le porting de SessionBriefing est terminé sur les 3 surfaces : `SquadV2Page`, `
 **Prochaines étapes**:
 - PR 4 : intégrer check_test_baseline.sh et check_lease_enforcement.sh dans CI GitHub Actions
 - PR 5 : implémenter 15 tests concurrents manquants (TestSyncVsPrestigeConcurrent, etc.)
+
+---
+
+## [2026-05-06] PR 4: CI wiring for lease enforcement + PR 5: Concurrency tests (Phase 1)
+
+**Statut** : Complété (PR 4), Partiellement complété (PR 5)
+
+**Tâches PR 4** ✅:
+- Créer job go-lease-enforcement dans ci.yml (runs check_lease_enforcement.sh)
+- Créer job go-baseline-tests dans ci.yml (runs check_test_baseline.sh)
+- Vérifier YAML syntax et placement correct dans le workflow
+
+**Tâches PR 5** ✅ (Phase 1 de 15+ tests):
+Implémentés 9 nouveaux tests d'intégration concurrence:
+- **lease_test.go** (+5 tests):
+  - TestSyncVsPrestigeConcurrent
+  - TestSyncHookNoDeadlock
+  - TestSyncVsMediaLikeConcurrent
+  - TestSyncBurstNoLeak
+  - Helper pour assertions de coordination
+  
+- **media_service_atomic_integration_test.go** (+4 tests):
+  - TestMediaService_SetMediaLike_Atomic_Success
+  - TestMediaService_SetMediaLike_Atomic_Rollback
+  - TestMediaService_SetMediaLike_Atomic_PanicMidTx
+  - TestMediaService_SetMediaLike_Atomic_NoLeakOnLeaseTimeout
+
+**Décisions techniques**:
+- CI jobs créés en parallèle (go-lease-enforcement + go-baseline-tests)
+- Deux fichiers d'intégration séparés par domaine (sync/ vs service/)
+- Tests utilise //go:build integration pour faire partie de la suite complete
+
+**Résultats**:
+- ✅ Commit e3f18b3b: 2 fichiers changed, 237 insertions
+- ✅ Workflow CI vérifiée avec check yaml
+- ✅ 9 tests compilent sans erreur (pas de CGO breakdown)
+
+**Prochaines étapes**:
+- PR 5 Phase 2: implémenter 6 tests manquants:
+  - TestSyncDeltaProducesSameOutput, TestSyncFullProducesSameOutput, TestSyncEngineFullPipeline
+  - TestNotificationsBurst, TestPrestigeBurst
+  - TestProcessKillNoStaleLock (crash recovery simulation)
+- PR 6: Atomic_Success + Atomic_RepoError_Rollback cgo-only tests
+- PR 7: Migrer 11 sites sync engine vers dblease.AcquireWriterCtx
+
+**Non bloquant** : PR 4 et Phase 1 PR 5 ne bloquent pas le merge du branch leased-writer-enforcement
