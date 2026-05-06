@@ -254,8 +254,11 @@ func nullStr(s string) interface{} {
 //
 //nolint:funlen,maintidx // Données de seed — préfère lisibilité linéaire.
 func defaultCitationMappings() []CitationMapping {
-	const wpH5 = "static/commendations/h5g/"
-	const wpHI = "static/commendations/hi/"
+	// Phase 6.5 (2026-04-28, commit a1d25325) a renommé les sous-dossiers vers
+	// les slugs canoniques longs. Tout chemin émis ici doit utiliser ces slugs,
+	// sinon le seed UPSERT écrase image_path avec un chemin 404.
+	const wpH5 = "static/commendations/halo_5_guardians/"
+	const wpHI = "static/commendations/halo_infinite/"
 	return []CitationMapping{
 		// ── PVP — Mode de jeu (11) ────────────────────────────────────
 		{Norm: "charge", Display: "À la charge", MappingType: "award",

@@ -20,11 +20,16 @@ import "time"
 
 // HomeMatchRow est une ligne brute chargée depuis Q26 (matchs du home).
 type HomeMatchRow struct {
-	MatchID            string
-	StartTime          time.Time
-	MapID              string
-	MapName            string
-	MapNameFR          string
+	MatchID   string
+	StartTime time.Time
+	MapID     string
+	MapName   string
+	MapNameFR string
+	// MapImageURL est résolue par HomeRepo depuis map_images_registry
+	// (lookup par map_id, pattern asset kinds). Empty si pas d'entrée
+	// dans le registry — l'analysis layer émet alors nil et le frontend
+	// dégrade gracieusement (placeholder map inconnue).
+	MapImageURL        string
 	PairID             string
 	PairName           string
 	PairNameFR         string
