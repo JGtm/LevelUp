@@ -23,27 +23,30 @@
 import type { Palette } from '../semantic-tokens'
 
 export const okabePalette: Palette = {
-  // ── Perf tiers — ordinal 5 niveaux ─────────────────────────────────────────
-  // Combine teinte ET luminosité pour rester lisible en monochrome
-  'perf-tier-1': '#009E73', // Bluish Green — excellent
+  // ── Perf tiers — ordinal 5 niveaux, ramp divergent bleu→jaune→vermillion ──
+  // Re-mappé v2 : axe blue/orange (Wong 2011, Nature Methods) — l'ancien ramp
+  // green→...→vermillion collapsait sur l'axe de confusion deutan.
+  'perf-tier-1': '#0072B2', // Blue       — excellent
   'perf-tier-2': '#56B4E9', // Sky Blue
-  'perf-tier-3': '#F0E442', // Yellow — milieu neutre
+  'perf-tier-3': '#F0E442', // Yellow     — milieu (point neutre)
   'perf-tier-4': '#E69F00', // Orange
   'perf-tier-5': '#D55E00', // Vermillion — pire
 
-  // ── Outcomes ────────────────────────────────────────────────────────────────
-  'outcome-win':  '#009E73', // Bluish Green
+  // ── Outcomes — axe blue/vermillion daltonisme-safe ─────────────────────────
+  // Trade-off conscient : "win" est bleu (pas vert) sur cette palette ;
+  // les composants conservent des indices secondaires (icônes, signes).
+  'outcome-win':  '#0072B2', // Blue
   'outcome-loss': '#D55E00', // Vermillion
-  'outcome-draw': '#56B4E9', // Sky Blue
+  'outcome-draw': '#F0E442', // Yellow (libère Sky Blue trop proche du Blue)
   'outcome-dnf':  '#CC79A7', // Reddish Purple
 
-  // ── Divergent ───────────────────────────────────────────────────────────────
-  'divergent-pos':     '#009E73', // Bluish Green
-  'divergent-neutral': '#888888', // Gris neutre (pas de connotation directionnelle)
+  // ── Divergent — axe blue/vermillion (Brewer RdBu inversé) ──────────────────
+  'divergent-pos':     '#0072B2', // Blue
+  'divergent-neutral': '#888888', // Gris (pas de connotation directionnelle)
   'divergent-neg':     '#D55E00', // Vermillion
 
   // ── Statuts UI ─────────────────────────────────────────────────────────────
-  'success':     '#009E73', // Bluish Green
+  'success':     '#009E73', // Bluish Green (statut UI conventionnel — non binaire)
   'warning':     '#E69F00', // Orange
   'info':        '#56B4E9', // Sky Blue
   'destructive': '#D55E00', // Vermillion
@@ -52,15 +55,16 @@ export const okabePalette: Palette = {
   'compare-a': '#0072B2', // Blue
   'compare-b': '#CC79A7', // Reddish Purple
 
-  // ── Chart series — 7 couleurs OI (sans Black) + gris clair ─────────────────
-  // Black (#000000) retiré : invisible sur fond sombre (défaut de l'app)
-  // Remplacé par #BBBBBB (gris clair — visible sur fond sombre et clair)
-  'chart-series-1': '#E69F00', // Orange
-  'chart-series-2': '#56B4E9', // Sky Blue
-  'chart-series-3': '#009E73', // Bluish Green
-  'chart-series-4': '#F0E442', // Yellow
-  'chart-series-5': '#0072B2', // Blue
-  'chart-series-6': '#D55E00', // Vermillion
+  // ── Chart series — réordonnées pour distance maximale en deutan ────────────
+  // 2 premières séries = paire la plus discriminable (Blue/Orange).
+  // À 4 séries : Blue/Orange/SkyBlue/Vermillion — toutes paires ≥ 30 ΔE en deutan.
+  // Black retiré (invisible sur fond sombre) → remplacé par gris clair en s8.
+  'chart-series-1': '#0072B2', // Blue
+  'chart-series-2': '#E69F00', // Orange
+  'chart-series-3': '#56B4E9', // Sky Blue
+  'chart-series-4': '#D55E00', // Vermillion
+  'chart-series-5': '#009E73', // Bluish Green
+  'chart-series-6': '#F0E442', // Yellow
   'chart-series-7': '#CC79A7', // Reddish Purple
   'chart-series-8': '#BBBBBB', // Gris clair (substitut de Black)
 
@@ -77,14 +81,14 @@ export const okabePalette: Palette = {
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
 
-  // ── Badges encounter — Okabe-Ito daltonisme-safe ────────────────────────────
-  'narrative-encounter-ally-plus':    '#009E73', // Bluish Green — allié positif
-  'narrative-encounter-tough-enemy':  '#D55E00', // Vermillion   — ennemi dangereux
-  'narrative-encounter-ordinal':      '#56B4E9', // Sky Blue     — compteur rencontres
+  // ── Badges encounter — axe blue/vermillion daltonisme-safe ────────────────
+  'narrative-encounter-ally-plus':    '#0072B2', // Blue       — allié positif
+  'narrative-encounter-tough-enemy':  '#D55E00', // Vermillion — ennemi dangereux
+  'narrative-encounter-ordinal':      '#56B4E9', // Sky Blue   — compteur rencontres
 
-  // ── Heatmaps ────────────────────────────────────────────────────────────────
+  // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais
-  'heatmap-hot':            '#009E73', // Bluish Green — bon
+  'heatmap-hot':            '#0072B2', // Blue       — bon
   'heatmap-divergent-low':  '#D55E00', // K/D bas
-  'heatmap-divergent-high': '#009E73', // K/D haut
+  'heatmap-divergent-high': '#0072B2', // K/D haut
 }

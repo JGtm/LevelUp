@@ -1,5 +1,35 @@
 # Thought Log
 
+## [2026-05-06] Phase A accessibilité — remap Okabe-Ito sur axe blue/orange
+
+**Statut** : Complété.
+
+**Contexte** : Phase A du plan `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md`. Re-mapping de la palette Okabe-Ito existante pour faire basculer les 4 couples sémantiques binaires (`outcome-win/loss`, `divergent-pos/neg`, `narrative-encounter-ally/enemy`, `heatmap-cold/hot`) de l'axe vert/rouge (problématique en deutéranopie) vers l'axe blue/orange (Wong 2011, Nature Methods).
+
+**Décisions techniques** :
+
+1. **Remap des 4 couples binaires** dans [okabe-ito.ts](apps/web/src/lib/accessibility/palettes/okabe-ito.ts) : `#009E73` (Bluish Green) remplacé par `#0072B2` (Blue) sur outcome-win, divergent-pos, narrative-encounter-ally-plus, heatmap-hot, heatmap-divergent-high. Vermillion `#D55E00` conservé du côté négatif.
+
+2. **`outcome-draw` libéré** : passe de Sky Blue (`#56B4E9`, trop proche du nouveau Blue de win) à Yellow (`#F0E442`).
+
+3. **Perf-tier ordinal** : ramp re-construit en divergent bleu→jaune→vermillion (Blue → SkyBlue → Yellow → Orange → Vermillion). Ancien ramp green→...→vermillion collapsait sur l'axe de confusion deutan.
+
+4. **Chart-series réordonnées** : Blue + Orange en s1+s2 (paire la plus discriminable). À 4 séries on a Blue/Orange/SkyBlue/Vermillion — toutes paires ≥ 30 ΔE en deutan-simulation.
+
+5. **`success` UI conservé en vert** (Bluish Green `#009E73`) — c'est un statut UI conventionnel, pas un couple binaire critique. La logique applicative ne s'appuie pas sur le contraste success/destructive en daltonisme.
+
+6. **Vérification consommateurs (passe 1 + passe 2 du plan)** : grep sur `tokenCssVar` (JSX) et `resolveToken` (Plotly/SVG/ECharts wrappers) — aucune logique conditionnelle dépendant de la teinte trouvée. Tous les composants utilisent les helpers de manière agnostique.
+
+**Résultats observés** :
+- Snapshot `coverage.test.ts.snap` régénéré.
+- TypeScript : 0 erreur.
+- ESLint sur okabe-ito.ts : 0 erreur.
+- Vitest : 1265/1266 passent. Seul échec = `SeasonPassPage.test.tsx`, déjà rouge sur baseline pré-changes (régression antérieure non liée).
+
+**Conclusion / prochaine étape** : Phase A livrée. Passage à Phase B (ajout Cividis + Tol Bright) sur la même branche.
+
+---
+
 ## [2026-05-06] Plan accessibilité — refonte palettes Okabe-Ito + Cividis + Tol Bright + test WCAG
 
 **Statut** : Plan rédigé (pas d'implémentation).
