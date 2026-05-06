@@ -587,7 +587,7 @@ done:
 	)
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
-	postResult := e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted)
+	postResult := e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted, result.InsertedMatchIDs)
 	if result.MatchesInserted > 0 || postResult.CareerSynced || postResult.AchievementsSynced {
 		result.PostSync = &postResult
 		slog.InfoContext(ctx, "sync: pipeline post-sync terminé",
@@ -636,17 +636,53 @@ func (e *SyncEngine) runConditionalPostSync(
 	playerDB, sharedDB *sql.DB,
 	client HaloClient,
 	matchesInserted int,
+	insertedIDs []string,
 ) domain.PostSyncResult {
 	if matchesInserted > 0 {
 		slog.InfoContext(ctx, "sync: lancement pipeline post-sync", "gamertag", e.gamertag)
-		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client)
+		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, insertedIDs)
 	}
 
+	// Pas de nouveaux matchs : on tente d'abord un heal skill — si ça remplit
+	// des champs (team_mmr, kills_expected), il faut quand même lancer le
+	// pipeline post-sync complet pour recalculer perf/engagement/LUSR/citations
+	// qui dépendent de ces champs.
+	healed, healErr := healSkillForMissingMatches(ctx, sharedDB, client, e.xuid, 200)
+	if healErr != nil {
+		slog.WarnContext(ctx, "sync: skill heal échoué (no-insert path)", "gamertag", e.gamertag, "err", healErr)
+	}
+	// Détecter aussi les matchs avec scores manquants (engagement/perf NULL).
+	// Si présents, on lance le PostSync complet pour les combler.
+	needsScoreRefresh, _ := hasMatchesNeedingScoreRefresh(ctx, playerDB, sharedDB, e.xuid)
+	if healed > 0 || needsScoreRefresh {
+		slog.InfoContext(ctx, "sync: aucun match inséré — heal/scores → lancement post-sync complet",
+			"gamertag", e.gamertag, "matches_healed", healed, "needs_score_refresh", needsScoreRefresh)
+		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, nil)
+	}
 	slog.DebugContext(ctx, "sync: aucun match inséré — refresh carrière seul", "gamertag", e.gamertag)
 	return domain.PostSyncResult{
 		CareerSynced:       e.runCareerSync(ctx, playerDB, client),
 		AchievementsSynced: e.runAchievementsSync(ctx, playerDB),
 	}
+}
+
+// hasMatchesNeedingScoreRefresh indique si au moins un match a des scores
+// manquants (performance OR engagement IS NULL) parmi les matchs joués par
+// ce joueur. Heuristique pour décider si runPostSyncPipeline doit tourner
+// même quand aucun nouveau match n'a été inséré.
+func hasMatchesNeedingScoreRefresh(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (bool, error) {
+	_ = sharedDB // signature future-proof si on veut joindre shared.match_participants
+	_ = xuid
+	var n int
+	err := playerDB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM player_match_enrichment
+		WHERE engagement_score IS NULL OR performance_score IS NULL
+		LIMIT 1
+	`).Scan(&n)
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
 }
 
 // processMatch récupère, transforme et insère un match dans les deux DBs.
@@ -687,6 +723,27 @@ func (e *SyncEngine) processMatch(
 	// ─── match_participants ────────────────────────────────────────────────────
 	if opts.WithParticipants {
 		participants := ExtractParticipants(matchJSON)
+
+		// Garantir gamertag sur la row du joueur synchronisé.
+		ensureGamertagForSelf(participants, e.xuid, e.gamertag)
+
+		// Skill API (séparé du stats endpoint) : team_mmr, enemy_mmr, kills/deaths_expected.
+		// Non-bloquant : un échec produit un warning mais le sync continue.
+		if xuids := ParticipantXUIDs(participants); len(xuids) > 0 {
+			skillData, skillErr := client.GetMatchSkill(ctx, matchID, xuids)
+			if skillErr != nil {
+				slog.WarnContext(ctx, "processMatch: GetMatchSkill échoué (continuing without skill)",
+					"gamertag", e.gamertag, "match_id", matchID, "err", skillErr,
+				)
+				result.Warnings = append(result.Warnings, fmt.Sprintf("skill %s: %v", matchID, skillErr))
+			} else if len(skillData) > 0 {
+				participants = MergeSkillIntoParticipants(participants, skillData)
+				slog.DebugContext(ctx, "processMatch: skill merged",
+					"match_id", matchID, "players_with_skill", len(skillData),
+				)
+			}
+		}
+
 		if err := InsertParticipants(sharedDB, participants); err != nil {
 			slog.ErrorContext(ctx, "processMatch: InsertParticipants échoué",
 				"gamertag", e.gamertag, "match_id", matchID, "count", len(participants), "err", err,
@@ -766,6 +823,7 @@ type fetchedMatch struct {
 	FilmMajorVer   int
 	HasHighlights  bool
 	HighlightError error // Non-bloquant si présent
+	SkillError     error // Non-bloquant si présent
 }
 
 // fetchMatchData exécute le fetch et l'extraction pour un match (pur, sans DB).
@@ -801,6 +859,21 @@ func (e *SyncEngine) fetchMatchData(
 	// Extract optionnels.
 	if opts.WithParticipants {
 		fm.Participants = ExtractParticipants(matchJSON)
+
+		// Garantir gamertag sur la row du joueur synchronisé : l'API renvoie
+		// parfois Gamertag/PlayerName vide pour le joueur appelant.
+		ensureGamertagForSelf(fm.Participants, e.xuid, e.gamertag)
+
+		// Skill API : team_mmr, enemy_mmr, kills/deaths_expected.
+		// Endpoint séparé du stats — non-bloquant : un échec produit un warning.
+		if xuids := ParticipantXUIDs(fm.Participants); len(xuids) > 0 {
+			skillData, skillErr := client.GetMatchSkill(ctx, matchID, xuids)
+			if skillErr != nil {
+				fm.SkillError = fmt.Errorf("GetMatchSkill: %w", skillErr)
+			} else if len(skillData) > 0 {
+				fm.Participants = MergeSkillIntoParticipants(fm.Participants, skillData)
+			}
+		}
 	}
 	if opts.WithMedals {
 		fm.Medals = ExtractMedals(matchJSON)
@@ -836,6 +909,9 @@ func (e *SyncEngine) insertFetchedMatch(
 
 	// Participants.
 	if len(fm.Participants) > 0 {
+		if fm.SkillError != nil {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("skill %s: %v", fm.MatchID, fm.SkillError))
+		}
 		if err := InsertParticipants(sharedDB, fm.Participants); err != nil {
 			slog.ErrorContext(ctx, "sync: InsertParticipants échoué",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "count", len(fm.Participants), "err", err,
@@ -963,7 +1039,13 @@ func processHighlightEvents(
 		slog.DebugContext(ctx, "processHighlightEvents: film absent ou chunk vide",
 			"match_id", matchID, "found", found, "data_len", len(data),
 		)
-		return nil // Film indisponible ou pas de chunk — pas d'erreur.
+		// Marquer events_loaded=TRUE pour ne pas retenter à chaque sync : le
+		// film 404 est définitif (Halo ne sauve pas le film de tous les matchs).
+		if markErr := MarkEventsLoaded(sharedDB, matchID); markErr != nil {
+			slog.DebugContext(ctx, "MarkEventsLoaded échoué (no-film)",
+				"match_id", matchID, "err", markErr)
+		}
+		return nil
 	}
 
 	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
@@ -1052,8 +1134,83 @@ func (e *SyncEngine) runPostSyncPipeline(
 	ctx context.Context,
 	playerDB, sharedDB *sql.DB,
 	client HaloClient,
+	insertedIDs []string,
 ) domain.PostSyncResult {
 	var r domain.PostSyncResult
+
+	// -1.5 Stats re-extraction heal — comble max_killing_spree, grenade/melee/
+	// power_weapon kills, time_played_seconds, avg_life_seconds, gamertag,
+	// team_X_ps_score pour les matchs synchronisés avec un ancien binaire.
+	// Détection via max_killing_spree IS NULL. Limit 10 pour amortir.
+	if n, err := healStatsForRecentMatches(ctx, sharedDB, client, e.xuid, e.gamertag, 10); err != nil {
+		slog.WarnContext(ctx, "post-sync: stats heal échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: stats self-heal", "gamertag", e.gamertag, "matches_healed", n)
+	}
+
+	// -1. Skill self-heal — comble team_mmr/enemy_mmr/kills_expected/deaths_expected
+	// pour les matchs synchronisés AVANT que GetMatchSkill ne soit câblé dans
+	// processMatch (ou avec un échec transitoire). Idempotent : 0 appel API
+	// si tout est déjà rempli. Doit tourner avant performance/LUSR qui
+	// dépendent de team_mmr et kills_expected.
+	if n, err := healSkillForMissingMatches(ctx, sharedDB, client, e.xuid, 200); err != nil {
+		slog.WarnContext(ctx, "post-sync: skill heal échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: skill self-heal", "gamertag", e.gamertag, "matches_healed", n)
+	}
+
+	// -0.5 Highlight events / killer_victim heal pour les matchs récents où
+	// events_loaded=FALSE (matchs syncés avant que processHighlightEvents ne
+	// soit câblé). Best-effort : films absents → 404 silencieux. globalDB nil
+	// est OK : xuid_aliases déjà résolu pour ces matchs.
+	// Limit 20 pour amortir : processHighlightEvents marque events_loaded=TRUE
+	// même sur 404, donc converge en quelques syncs.
+	if h, nf, err := healEventsForRecentMatches(ctx, sharedDB, nil, client, 20); err != nil {
+		slog.WarnContext(ctx, "post-sync: events heal échoué", "gamertag", e.gamertag, "err", err)
+	} else if h > 0 || nf > 0 {
+		slog.InfoContext(ctx, "post-sync: events self-heal",
+			"gamertag", e.gamertag, "healed", h, "no_film", nf)
+	}
+
+	// -0.4 Weapon kills heal pour les matchs récents où le pipeline n'a jamais
+	// tourné (bit MBitWeaponKills absent dans match_registry). Dépend des
+	// highlight_events ci-dessus (kills attribution lit highlight_events).
+	// Limit 10 : weapon kills marque le bit MBitWeaponKills aussi sur no-film,
+	// donc converge en quelques syncs.
+	if h, nf, err := healWeaponKillsForRecentMatches(ctx, sharedDB, client, e.xuid, 10); err != nil {
+		slog.WarnContext(ctx, "post-sync: weapon heal échoué", "gamertag", e.gamertag, "err", err)
+	} else if h > 0 || nf > 0 {
+		slog.InfoContext(ctx, "post-sync: weapon self-heal",
+			"gamertag", e.gamertag, "healed", h, "no_film", nf)
+	}
+
+	// -0.3 had_bot_teammate — dérivé des participants (cheap SQL, pas d'API).
+	// Idempotent : skip les rows déjà à TRUE.
+	if n, err := computeAndPersistHadBotTeammate(ctx, playerDB, sharedDB, e.xuid); err != nil {
+		slog.WarnContext(ctx, "post-sync: had_bot_teammate échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: had_bot_teammate", "gamertag", e.gamertag, "rows_updated", n)
+	}
+
+	// 0. Session assignments — auto-recalc session_id pour les nouveaux matchs.
+	// Best-effort : un échec ne bloque pas le pipeline. Les amis sont
+	// résolus depuis le friendsLoader (settings.FriendGamertags). Sans loader
+	// (legacy), on retombe en TeamChangeMode=teammates.
+	{
+		var friends []string
+		if e.friendsLoader != nil {
+			if fs, ferr := e.friendsLoader(); ferr == nil {
+				friends = fs
+			}
+		}
+		opts := analysis.DefaultSessionOptions()
+		if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, e.xuid, opts, friends); err != nil {
+			slog.WarnContext(ctx, "post-sync: sessions échoué", "gamertag", e.gamertag, "err", err)
+		} else if n > 0 {
+			r.SessionsAssigned = n
+			slog.DebugContext(ctx, "post-sync: sessions recalculées", "gamertag", e.gamertag, "count", n)
+		}
+	}
 
 	// 1. Performance scores
 	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
@@ -1083,6 +1240,23 @@ func (e *SyncEngine) runPostSyncPipeline(
 	} else if n > 0 {
 		r.EngagementCoefsUpdated = n
 		slog.DebugContext(ctx, "post-sync: engagement coefs mis à jour", "gamertag", e.gamertag, "count", n)
+	}
+
+	// 1.55 Weapon kills — pipeline film pour les matchs nouvellement insérés.
+	// Best-effort : films absents (404/410) sont normaux pour les vieux matchs
+	// et n'échouent pas le sync. Limité aux nouveaux matchs (insertedIDs) pour
+	// éviter de re-traiter l'historique à chaque sync.
+	if len(insertedIDs) > 0 {
+		done, noFilm, werr := processWeaponKillsInline(ctx, sharedDB, client, e.xuid, insertedIDs)
+		if werr != nil {
+			slog.WarnContext(ctx, "post-sync: weapon kills échoué", "gamertag", e.gamertag, "err", werr)
+		}
+		r.WeaponKillsProcessed = done
+		r.WeaponKillsNoFilm = noFilm
+		if done > 0 || noFilm > 0 {
+			slog.InfoContext(ctx, "post-sync: weapon kills",
+				"gamertag", e.gamertag, "done", done, "no_film", noFilm)
+		}
 	}
 
 	// 1.6 Citations (best-effort) — calcul des deltas pour les matchs absents

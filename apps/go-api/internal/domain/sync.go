@@ -115,4 +115,7 @@ type PostSyncResult struct {
 	MatchesPromotedFriends   int64 // §7 hook auto-recompute is_with_friends post-sync
 	EngagementScoresComputed int   // Phase 3 plan engagement
 	EngagementCoefsUpdated   int   // Phase recompute coefs : nb modes recomputes (0..2)
+	SessionsAssigned         int   // recalcul session_id post-sync (auto)
+	WeaponKillsProcessed     int   // nouveaux matchs traités par le pipeline film/weapon kills
+	WeaponKillsNoFilm        int   // matchs sans film (404/410, normal pour vieux matchs)
 }
