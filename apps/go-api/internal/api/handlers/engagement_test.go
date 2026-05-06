@@ -17,6 +17,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
@@ -27,11 +28,15 @@ import (
 // engagementMockRepo : implementation legere de port.EngagementScoreRepository
 // pour ces tests. Les methodes inutilisees sont des stubs.
 type engagementMockRepo struct {
-	matchCtx      *port.MatchEngagementContext
-	matchCtxErr   error
-	allCoefs      []domain.EngagementCoefficient
-	allCoefsErr   error
-	historyResult []domain.HistoricalEngagementBrut
+	matchCtx        *port.MatchEngagementContext
+	matchCtxErr     error
+	allCoefs        []domain.EngagementCoefficient
+	allCoefsErr     error
+	historyResult   []domain.HistoricalEngagementBrut
+	ratioSamples    []temporal.RatioSample
+	ratioSamplesErr error
+	saveCoefCalls   int
+	saveCoefErr     error
 }
 
 func (m *engagementMockRepo) LoadPlayerHistory(_ context.Context, _ port.EngagementHistoryFilter) ([]domain.HistoricalEngagementBrut, error) {
@@ -44,7 +49,8 @@ func (m *engagementMockRepo) SaveEngagementScore(_ context.Context, _, _ string,
 	return nil
 }
 func (m *engagementMockRepo) SaveEngagementCoefficient(_ context.Context, _ domain.EngagementCoefficient) error {
-	return nil
+	m.saveCoefCalls++
+	return m.saveCoefErr
 }
 func (m *engagementMockRepo) SaveMatchIntensity(_ context.Context, _ string, _ float64) error {
 	return port.ErrEngagementUnavailable
@@ -70,6 +76,9 @@ func (m *engagementMockRepo) LoadTeamXUIDs(_ context.Context, _ string, _ int, _
 func (m *engagementMockRepo) LoadAllCoefficients(_ context.Context, _ string) ([]domain.EngagementCoefficient, error) {
 	return m.allCoefs, m.allCoefsErr
 }
+func (m *engagementMockRepo) LoadRatioSamples(_ context.Context, _, _ string, _ int) ([]temporal.RatioSample, error) {
+	return m.ratioSamples, m.ratioSamplesErr
+}
 
 // newEngagementRouter cree un router test avec l'EngagementHandler branche.
 func newEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngagementService]) *chi.Mux {
@@ -78,6 +87,7 @@ func newEngagementRouter(factory handlers.ServiceFactory[*service.PlayerEngageme
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Get("/matches/{match_id}/engagement", h.GetMatchEngagement)
 		r.Get("/engagement_profile", h.GetEngagementProfile)
+		r.Post("/engagement/recompute_coefficients", h.PostRecomputeCoefficients)
 	})
 	return r
 }
@@ -209,5 +219,122 @@ func TestEngagementHandler_GetEngagementProfile_EmptyOnUnavailable(t *testing.T)
 	}
 	if len(coefs) != 0 {
 		t.Errorf("expected empty slice, got %d coefs", len(coefs))
+	}
+}
+
+// =============================================================================
+// POST /engagement/recompute_coefficients
+// =============================================================================
+
+// validRatioSamples genere n samples qui passent les filtres de
+// ComputeEngagementCoefficient (PaceTeam >= 1, PlayerActivity >= 3).
+func validRatioSamples(n int, ratioTeam, ratioLobby float64) []temporal.RatioSample {
+	const baseTeam = 10.0
+	out := make([]temporal.RatioSample, n)
+	for i := range out {
+		out[i] = temporal.RatioSample{
+			MatchID:        "m" + string(rune('0'+i%10)),
+			PaceJoueur:     baseTeam * ratioTeam,
+			PaceTeam:       baseTeam,
+			PaceLobby:      baseTeam,
+			PlayerActivity: 30,
+		}
+		if ratioLobby > 0 {
+			out[i].PaceLobby = out[i].PaceJoueur / ratioLobby
+		}
+	}
+	return out
+}
+
+func TestEngagementHandler_RecomputeCoefficients_OK(t *testing.T) {
+	repo := &engagementMockRepo{
+		ratioSamples: validRatioSamples(15, 1.25, 1.10),
+	}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/test-player/engagement/recompute_coefficients", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var report service.RecomputeReport
+	if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	// Les 2 modes (PvP_ranked + PvP_unranked) doivent être traités —
+	// le mock retourne les mêmes samples pour les 2.
+	if report.NCoefsPersisted != 2 {
+		t.Errorf("NCoefsPersisted want 2, got %d", report.NCoefsPersisted)
+	}
+	if len(report.ModesUpdated) != 2 {
+		t.Errorf("ModesUpdated want 2, got %v", report.ModesUpdated)
+	}
+	// SaveEngagementCoefficient doit avoir été appelé 2 fois.
+	if repo.saveCoefCalls != 2 {
+		t.Errorf("saveCoefCalls want 2, got %d", repo.saveCoefCalls)
+	}
+}
+
+func TestEngagementHandler_RecomputeCoefficients_InsufficientHistory(t *testing.T) {
+	// 5 samples → sous le seuil → modes skipped, no save.
+	repo := &engagementMockRepo{
+		ratioSamples: validRatioSamples(5, 1.0, 1.0),
+	}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/test-player/engagement/recompute_coefficients", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 (skipped, not error), got %d: %s", w.Code, w.Body.String())
+	}
+	var report service.RecomputeReport
+	if err := json.Unmarshal(w.Body.Bytes(), &report); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if report.NCoefsPersisted != 0 {
+		t.Errorf("NCoefsPersisted want 0 (insufficient), got %d", report.NCoefsPersisted)
+	}
+	if len(report.ModesSkipped) != 2 {
+		t.Errorf("ModesSkipped want 2 (both insufficient), got %v", report.ModesSkipped)
+	}
+	if repo.saveCoefCalls != 0 {
+		t.Errorf("saveCoefCalls want 0, got %d", repo.saveCoefCalls)
+	}
+}
+
+func TestEngagementHandler_RecomputeCoefficients_PlayerNotFound(t *testing.T) {
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return nil, errors.New("player_not_found")
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/unknown/engagement/recompute_coefficients", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestEngagementHandler_RecomputeCoefficients_Unavailable(t *testing.T) {
+	repo := &engagementMockRepo{
+		ratioSamplesErr: port.ErrEngagementUnavailable,
+	}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester"), nil
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/test-player/engagement/recompute_coefficients", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503, got %d: %s", w.Code, w.Body.String())
 	}
 }

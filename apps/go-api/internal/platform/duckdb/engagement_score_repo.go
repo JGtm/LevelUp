@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -140,26 +141,60 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 		return port.ErrEngagementUnavailable
 	}
 
-	const q = `
-		UPDATE player_match_enrichment
-		SET
-			engagement_score = ?,
-			engagement_score_brut = ?,
-			engagement_score_confidence = ?
-		WHERE xuid = ? AND match_id = ?
-	`
+	// Update les paces seulement si les colonnes existent (migration Phase
+	// recompute coefs appliquee). Sinon, fallback sur l'ancien UPDATE 3-col.
+	hasPaces := r.pacesColumnsExist(ctx)
+	var (
+		q    string
+		args []any
+	)
 	var scoreArg any
 	if result.EngagementScore != nil {
 		scoreArg = *result.EngagementScore
 	}
+	if hasPaces {
+		q = `
+			UPDATE player_match_enrichment
+			SET
+				engagement_score = ?,
+				engagement_score_brut = ?,
+				engagement_score_confidence = ?,
+				engagement_pace_player = ?,
+				engagement_pace_team = ?,
+				engagement_pace_lobby = ?,
+				engagement_player_activity = ?
+			WHERE xuid = ? AND match_id = ?
+		`
+		args = []any{
+			scoreArg,
+			result.ResidualBrut,
+			result.Confidence,
+			result.MeanPaceJoueur,
+			result.MeanPaceTeam,
+			result.MeanPaceLobby,
+			result.PlayerActivity,
+			xuid,
+			matchID,
+		}
+	} else {
+		q = `
+			UPDATE player_match_enrichment
+			SET
+				engagement_score = ?,
+				engagement_score_brut = ?,
+				engagement_score_confidence = ?
+			WHERE xuid = ? AND match_id = ?
+		`
+		args = []any{
+			scoreArg,
+			result.ResidualBrut,
+			result.Confidence,
+			xuid,
+			matchID,
+		}
+	}
 
-	res, err := r.pdb.Player.Exec(ctx, q,
-		scoreArg,
-		result.ResidualBrut,
-		result.Confidence,
-		xuid,
-		matchID,
-	)
+	res, err := r.pdb.Player.Exec(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("EngagementScoreRepo.SaveEngagementScore: %w", err)
 	}
@@ -310,6 +345,71 @@ func (r *EngagementScoreRepo) HasEngagementScore(
 	return has, nil
 }
 
+// LoadRatioSamples charge les paces moyennes des derniers matchs PvP du
+// joueur sur une categorie de mode, sous forme de RatioSample pour le calcul
+// du coefficient (cf. temporal.ComputeEngagementCoefficient).
+//
+// L'ordre est match_id DESC (les plus recents d'abord). Le filtrage outliers
+// est fait cote algo, ici on retourne tous les samples avec paces non-null.
+func (r *EngagementScoreRepo) LoadRatioSamples(
+	ctx context.Context,
+	xuid, modeCategory string,
+	limit int,
+) ([]temporal.RatioSample, error) {
+	if xuid == "" || modeCategory == "" {
+		return nil, errors.New("EngagementScoreRepo.LoadRatioSamples: xuid and modeCategory required")
+	}
+	if limit <= 0 {
+		limit = temporal.DefaultRatioSampleLimit
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	if !r.pacesColumnsExist(ctx) {
+		return nil, port.ErrEngagementUnavailable
+	}
+
+	const q = `
+		SELECT
+			match_id,
+			COALESCE(engagement_pace_player, 0),
+			COALESCE(engagement_pace_team, 0),
+			COALESCE(engagement_pace_lobby, 0),
+			COALESCE(engagement_player_activity, 0)
+		FROM player_match_enrichment
+		WHERE xuid = ?
+		  AND mode_category = ?
+		  AND engagement_pace_team IS NOT NULL
+		ORDER BY match_id DESC
+		LIMIT ?
+	`
+	rows, err := r.pdb.ReadDB().Query(ctx, q, xuid, modeCategory, limit)
+	if err != nil {
+		return nil, fmt.Errorf("EngagementScoreRepo.LoadRatioSamples: query: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]temporal.RatioSample, 0, limit)
+	for rows.Next() {
+		var s temporal.RatioSample
+		if err := rows.Scan(
+			&s.MatchID,
+			&s.PaceJoueur,
+			&s.PaceTeam,
+			&s.PaceLobby,
+			&s.PlayerActivity,
+		); err != nil {
+			return nil, fmt.Errorf("EngagementScoreRepo.LoadRatioSamples: scan: %w", err)
+		}
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("EngagementScoreRepo.LoadRatioSamples: rows: %w", err)
+	}
+	return out, nil
+}
+
 // =============================================================================
 // Helpers de gating (information_schema)
 // =============================================================================
@@ -325,6 +425,24 @@ func (r *EngagementScoreRepo) engagementColumnsExist(ctx context.Context) bool {
 		SELECT COUNT(*) FROM information_schema.columns
 		WHERE table_name = 'player_match_enrichment'
 		  AND column_name = 'engagement_score'
+	`).Scan(&count)
+	if err != nil {
+		return false
+	}
+	return count > 0
+}
+
+// pacesColumnsExist verifie que les colonnes engagement_pace_* existent dans
+// player_match_enrichment (migration Phase recompute coefs).
+func (r *EngagementScoreRepo) pacesColumnsExist(ctx context.Context) bool {
+	if r.pdb == nil || r.pdb.ReadDB() == nil {
+		return false
+	}
+	var count int
+	err := r.pdb.ReadDB().QueryRow(ctx, `
+		SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_name = 'player_match_enrichment'
+		  AND column_name = 'engagement_pace_team'
 	`).Scan(&count)
 	if err != nil {
 		return false

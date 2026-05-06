@@ -124,6 +124,41 @@ func TestNewBackfillHandler(t *testing.T) {
 	}
 }
 
+func TestBuildSyncScope_EngagementCoefficientsOnly(t *testing.T) {
+	// Coef-only : seul le flag EngagementCoefficients est set, le reste reste off.
+	// AllData ne doit PAS s'activer (sinon le user lance un full backfill par
+	// surprise).
+	req := domain.BackfillStartRequest{EngagementCoefficients: true}
+	scope := buildSyncScope(req)
+	if scope.AllData {
+		t.Fatal("AllData should NOT activate when only EngagementCoefficients is set")
+	}
+	if !scope.EngagementCoefficients {
+		t.Fatal("EngagementCoefficients should be true")
+	}
+	if scope.EngagementScores {
+		t.Fatal("EngagementScores should remain false (coef-only mode)")
+	}
+	if scope.Medals || scope.Events || scope.Skill {
+		t.Fatal("Other flags should remain false in coef-only mode")
+	}
+}
+
+func TestBuildSyncScope_EngagementScoresImpliesCoefRecompute(t *testing.T) {
+	// Quand EngagementScores=true, le recompute coefs est implicite (en queue
+	// de RunBackfillEngagementScores). On verifie que le scope explicit
+	// EngagementCoefficients reste a false dans ce cas pour eviter le
+	// double-passage.
+	req := domain.BackfillStartRequest{EngagementScores: true}
+	scope := buildSyncScope(req)
+	if !scope.EngagementScores {
+		t.Fatal("EngagementScores should be true")
+	}
+	if scope.EngagementCoefficients {
+		t.Fatal("EngagementCoefficients should remain false (recompute is implicit)")
+	}
+}
+
 func TestWarnUnimplemented_NoTypes(t *testing.T) {
 	store := jobs.NewStore(t.TempDir())
 	h := &BackfillHandler{jobStore: store}

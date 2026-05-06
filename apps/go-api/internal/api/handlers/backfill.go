@@ -172,6 +172,28 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 			engagementComputed = n
 		}
 
+		// ── Phase 2.6 : engagement coefficients only (Phase recompute coefs) ─
+		// Recompute juste la mediane glissante des paces deja persistees.
+		// Tres rapide, pas de re-scan. Si EngagementScores=true ci-dessus,
+		// le recompute est deja fait en queue — on skip pour eviter le double
+		// passage et son log. Sinon (option seule), on lance le recompute.
+		engagementCoefsUpdated := 0
+		if scope.EngagementCoefficients && !scope.EngagementScores {
+			ecStep := "Recalcul coefficients d'engagement"
+			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+				j.CurrentStep = &ecStep
+			})
+			n, ecErr := engine.RunBackfillEngagementCoefficients(context.Background())
+			if ecErr != nil {
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.Warnings = append(j.Warnings,
+						fmt.Sprintf("WARN engagement coefficients: %v", ecErr))
+				})
+			}
+			engagementCoefsUpdated = n
+		}
+		_ = engagementCoefsUpdated // exposable dans le résumé final si besoin
+
 		// ── Phase 3 : types non encore implémentés → avertissement ──────
 		h.warnUnimplemented(job.JobID, scope)
 
@@ -201,7 +223,8 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 
 	if req.AllData || (!req.Medals && !req.Events && !req.Skill &&
 		!req.PersonalScores && !req.PerformanceScores &&
-		!req.Aliases && !req.Weapons && !req.LUSR && !req.EngagementScores) {
+		!req.Aliases && !req.Weapons && !req.LUSR && !req.EngagementScores &&
+		!req.EngagementCoefficients) {
 		// Aucun scope explicite → activer tout
 		scope.AllData = true
 		scope.Medals = true
@@ -213,6 +236,8 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.Weapons = true
 		scope.LUSR = true
 		scope.EngagementScores = true
+		// EngagementCoefficients implicite : les coefs sont recomputes en
+		// queue de RunBackfillEngagementScores, pas besoin d'activer le flag.
 	} else {
 		scope.Medals = req.Medals
 		scope.Events = req.Events
@@ -223,6 +248,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.Weapons = req.Weapons
 		scope.LUSR = req.LUSR
 		scope.EngagementScores = req.EngagementScores
+		scope.EngagementCoefficients = req.EngagementCoefficients
 	}
 
 	if req.ForceRescan {
@@ -235,6 +261,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.ForceAliases = req.Aliases || req.AllData
 		scope.ForceLUSR = req.LUSR || req.AllData
 		scope.ForceEngagementScores = req.EngagementScores || req.AllData
+		scope.ForceEngagementCoefficients = req.EngagementCoefficients
 	}
 
 	scope.Resolve()

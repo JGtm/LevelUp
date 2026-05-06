@@ -173,6 +173,93 @@ func TestRegressionB4_JSONTagsSnakeCase(t *testing.T) {
 	}
 }
 
+// ─── B5 : recompute coefficients hook câblé en post-sync + backfill ────
+
+func TestRegressionB5_RecomputeCoefHookWired(t *testing.T) {
+	// Le hook batchRecomputeCoefficients doit être appelé après
+	// batchComputeEngagementScores dans 2 chemins :
+	//  1. post-sync (engine.go runPostSync ou similaire)
+	//  2. RunBackfillEngagementScores
+	// Sans ce hook, coef_team_share reste à 1.0 (cold-start) → courbes
+	// "Attendu" et "Équipe" superposées sur les charts engagement.
+	engineSrc := readEngineSource(t)
+
+	if !strings.Contains(engineSrc, "batchRecomputeCoefficients") {
+		t.Errorf("régression B5 : engine.go n'appelle pas batchRecomputeCoefficients — coef restera à 1.0 cold-start")
+	}
+
+	// Le hook doit être PRÉCÉDÉ d'un batchComputeEngagementScores (le
+	// recompute lit les paces écrites par le compute).
+	idxCompute := strings.Index(engineSrc, "batchComputeEngagementScores")
+	idxRecompute := strings.Index(engineSrc, "batchRecomputeCoefficients")
+	if idxCompute < 0 || idxRecompute < 0 || idxRecompute < idxCompute {
+		t.Errorf("régression B5 : batchRecomputeCoefficients doit être appelé APRÈS batchComputeEngagementScores")
+	}
+}
+
+func TestRegressionB5_PersistScoreWritesPaces(t *testing.T) {
+	// persistEngagementScore doit écrire les 4 colonnes paces
+	// (engagement_pace_player, engagement_pace_team, engagement_pace_lobby,
+	// engagement_player_activity) — sinon LoadRatioSamples remontera des rows
+	// vides et le coef restera bloqué cold-start.
+	src := readSourceFile(t, "engagement.go")
+	expectedCols := []string{
+		"engagement_pace_player",
+		"engagement_pace_team",
+		"engagement_pace_lobby",
+		"engagement_player_activity",
+	}
+	for _, col := range expectedCols {
+		if !strings.Contains(src, col) {
+			t.Errorf("régression B5 : engagement.go ne mentionne pas la colonne `%s` — paces non persistées", col)
+		}
+	}
+	if !strings.Contains(src, "MeanPaceJoueur") {
+		t.Errorf("régression B5 : engagement.go ne lit pas result.MeanPaceJoueur — paces calculées mais non persistées")
+	}
+}
+
+func TestRegressionB5_PaceFieldsSnakeCaseJSON(t *testing.T) {
+	// Les nouveaux champs MeanPace* + PlayerActivity exposés sur
+	// EngagementScoreResult doivent avoir des tags JSON snake_case (pour
+	// rester cohérent avec le contrat front fixé en B4).
+	score := 50.0
+	result := domain.EngagementScoreResult{
+		EngagementScore: &score,
+		MeanPaceJoueur:  10.5,
+		MeanPaceTeam:    9.8,
+		MeanPaceLobby:   11.2,
+		PlayerActivity:  42,
+	}
+	raw, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	encoded := string(raw)
+
+	expectedSnake := []string{
+		`"mean_pace_joueur"`,
+		`"mean_pace_team"`,
+		`"mean_pace_lobby"`,
+		`"player_activity"`,
+	}
+	for _, key := range expectedSnake {
+		if !strings.Contains(encoded, key) {
+			t.Errorf("régression B5 : clé %s absente du JSON — frontend attend snake_case", key)
+		}
+	}
+	pascalLeaks := []string{
+		`"MeanPaceJoueur"`,
+		`"MeanPaceTeam"`,
+		`"PlayerActivity"`,
+	}
+	for _, key := range pascalLeaks {
+		if strings.Contains(encoded, key) {
+			t.Errorf("régression B5 : clé PascalCase %s sérialisée", key)
+		}
+	}
+}
+
 // ─── Helpers source-grep ──────────────────────────────────────────────
 
 // readSourceFile lit un fichier source du package sync. Retourne string.
@@ -199,6 +286,19 @@ func readRepoSource(t *testing.T) string {
 		// Le fichier peut avoir été déplacé — log mais ne crash pas le test.
 		t.Logf("repo queries introuvable %s : %v", path, err)
 		return ""
+	}
+	return string(raw)
+}
+
+// readEngineSource lit engine.go pour vérifier le câblage du hook recompute.
+func readEngineSource(t *testing.T) string {
+	t.Helper()
+	_, thisFile, _, _ := runtime.Caller(0)
+	syncDir := filepath.Dir(thisFile)
+	path := filepath.Join(syncDir, "engine.go")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("lire engine.go : %v", err)
 	}
 	return string(raw)
 }

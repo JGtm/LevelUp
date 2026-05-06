@@ -36,6 +36,7 @@ const (
 	CapCareer       Capability = "career"
 	CapAssetImages  Capability = "asset.images" // Asset Drawer — thumbnails maps & armes
 	CapAchievements Capability = "achievements" // Xbox achievements bilingues (page Achievements)
+	CapEngagement   Capability = "engagement"   // Score d'engagement intra-match + coefficients personnels
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -90,7 +91,7 @@ func NewRegistry() *Registry {
 		Capabilities: []Capability{
 			CapMatchmaking, CapFirefight, CapForge,
 			CapMedia, CapRanked, CapCareer, CapAssetImages,
-			CapAchievements,
+			CapAchievements, CapEngagement,
 		},
 		IsDefault:   true,
 		XboxTitleID: "1144039928",

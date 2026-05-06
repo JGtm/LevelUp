@@ -206,7 +206,45 @@ func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool
 	}
 	defer sharedHandle.Close()
 
-	return batchComputeEngagementScores(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, force)
+	n, err := batchComputeEngagementScores(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, force)
+	if err != nil {
+		return n, err
+	}
+	// Recompute des coefficients en queue : on a possiblement ajoute des
+	// paces en DB, donc la mediane est a rafraichir.
+	if nCoefs, errCoefs := batchRecomputeCoefficients(ctx, playerHandle.SQLDb(), e.xuid); errCoefs != nil {
+		slog.WarnContext(ctx, "RunBackfillEngagementScores: recompute coefs failed",
+			"xuid", e.xuid, "err", errCoefs)
+	} else if nCoefs > 0 {
+		slog.InfoContext(ctx, "RunBackfillEngagementScores: coefs updated",
+			"xuid", e.xuid, "n_modes", nCoefs)
+	}
+	return n, nil
+}
+
+// RunBackfillEngagementCoefficients recompute UNIQUEMENT les coefficients
+// d'engagement du joueur depuis les paces deja persistees (~5ms par joueur,
+// 0 re-scan des matchs). A activer via SyncScope.EngagementCoefficients.
+//
+// Utile pour rafraichir apres un ajustement de formule sans devoir relancer
+// le compute des scores. Skip silencieux si la migration des paces n'est
+// pas appliquee (cf. batchRecomputeCoefficients).
+//
+// Retourne le nombre de modes_category mis a jour (0 a 2).
+func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int, error) {
+	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillEngagementCoefficients lease player: %w", err)
+	}
+	defer relPlayer()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillEngagementCoefficients OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	return batchRecomputeCoefficients(ctx, playerHandle.SQLDb(), e.xuid)
 }
 
 func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll bool) (int, error) {
@@ -777,6 +815,17 @@ func (e *SyncEngine) runPostSyncPipeline(
 	} else if n > 0 {
 		r.EngagementScoresComputed = n
 		slog.DebugContext(ctx, "post-sync: engagement scores calculés", "gamertag", e.gamertag, "count", n)
+	}
+
+	// 1.5.b Recompute des engagement coefficients depuis la mediane glissante
+	// des paces persistees ci-dessus. Sans ce recompute, coef_team_share reste
+	// a 1.0 (cold-start) → pace_attendu = pace_team → courbes superposees a
+	// l'ecran (cf. .ai/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4).
+	if n, err := batchRecomputeCoefficients(ctx, playerDB, e.xuid); err != nil {
+		slog.WarnContext(ctx, "post-sync: engagement coefs échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		r.EngagementCoefsUpdated = n
+		slog.DebugContext(ctx, "post-sync: engagement coefs mis à jour", "gamertag", e.gamertag, "count", n)
 	}
 
 	// 2. LUSR (TrueSkill 2)

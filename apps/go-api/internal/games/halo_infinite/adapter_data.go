@@ -68,6 +68,7 @@ func (a *DataAdapter) Capabilities() games.CapabilityMap {
 		games.CapTimeseries:         games.CapNotExposed, // sortira en Phase C
 		games.CapScoreboardExtra:    games.CapNotExposed, // Phase B+
 		games.CapCitationsEngine:    games.CapNotExposed, // Phase F
+		games.CapEngagement:         games.CapSupported,  // Phase recompute coefs (long-term)
 	}
 }
 

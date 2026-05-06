@@ -158,6 +158,10 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 
 	score, confidence, nHist := scoreFromHistory(residualBrut, input.History)
 
+	// Means agreges de la courbe — persistes dans player_match_enrichment
+	// pour alimenter le recompute des coefficients (cf. engagement_coefficients.go).
+	meanJoueur, meanTeam, meanLobby := meansFromCurve(curve)
+
 	result := domain.EngagementScoreResult{
 		EngagementScore: score,
 		ResidualBrut:    residualBrut,
@@ -165,8 +169,40 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 		MatchIntensity:  matchIntensity,
 		Confidence:      confidence,
 		NHistoryMatches: nHist,
+		MeanPaceJoueur:  meanJoueur,
+		MeanPaceTeam:    meanTeam,
+		MeanPaceLobby:   meanLobby,
+		PlayerActivity:  input.Kills + input.Assists + countDeaths(input.PlayerEvents),
 	}
 	return result, nil
+}
+
+// meansFromCurve calcule en un seul passage les means des 3 paces de la courbe.
+// Renvoie (0,0,0) si la courbe est vide.
+func meansFromCurve(curve []domain.EngagementPoint) (joueur, team, lobby float64) {
+	n := len(curve)
+	if n == 0 {
+		return 0, 0, 0
+	}
+	var sJoueur, sTeam, sLobby float64
+	for _, p := range curve {
+		sJoueur += p.PaceJoueur
+		sTeam += p.PaceTeam
+		sLobby += p.PaceLobby
+	}
+	return sJoueur / float64(n), sTeam / float64(n), sLobby / float64(n)
+}
+
+// countDeaths compte les events death dans une liste d'events deja filtree
+// pour le joueur cible. Sert a calculer PlayerActivity (= K+A+D).
+func countDeaths(playerEvents []canonical.HighlightEvent) int {
+	n := 0
+	for _, e := range playerEvents {
+		if e.EventType == string(canonical.EventDeath) {
+			n++
+		}
+	}
+	return n
 }
 
 // EventsObjectifEstimes derive un nombre estime d'events "objectif" depuis le

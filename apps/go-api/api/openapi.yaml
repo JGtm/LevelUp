@@ -1451,6 +1451,22 @@ paths:
       responses:
         "200": { description: "Timeseries engagement" }
 
+  /players/{player_slug}/engagement/recompute_coefficients:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [career]
+      operationId: postRecomputeEngagementCoefficients
+      summary: "Force le recalcul des coefficients d'engagement (admin)"
+      description: >
+        Recalcule les coefficients perso (coef_team_share / coef_lobby_share)
+        pour toutes les catégories de mode supportées, depuis les paces
+        persistées dans player_match_enrichment. Idempotent.
+      responses:
+        "200": { description: "Rapport de recompute" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { description: "Engagement persistence unavailable" }
+
   /players/{player_slug}/matches/{match_id}/engagement:
     parameters:
       - $ref: "#/components/parameters/PlayerSlug"

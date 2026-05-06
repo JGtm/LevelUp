@@ -51,6 +51,8 @@ func NewBackfillFlagSet() (*flag.FlagSet, *BackfillCLI, *SyncScope) {
 	fs.BoolVar(&scope.ForcePerformanceScores, "force-performance-scores", false, "Force le calcul pour TOUS les matchs")
 	fs.BoolVar(&scope.EngagementScores, "engagement-scores", false, "Calculer le score d'engagement par match (Phase 3 du plan engagement)")
 	fs.BoolVar(&scope.ForceEngagementScores, "force-engagement-scores", false, "Force le recalcul du score d'engagement pour TOUS les matchs")
+	fs.BoolVar(&scope.EngagementCoefficients, "engagement-coefficients", false, "Recalcule UNIQUEMENT les coefficients d'engagement (mediane glissante des paces, ~5ms par joueur)")
+	fs.BoolVar(&scope.ForceEngagementCoefficients, "force-engagement-coefficients", false, "Force le recalcul des coefficients (idempotent en pratique)")
 	fs.BoolVar(&scope.Aliases, "aliases", false, "Mettre à jour les aliases XUID")
 	fs.BoolVar(&scope.AllData, "all-data", false, "Backfill toutes les données")
 
