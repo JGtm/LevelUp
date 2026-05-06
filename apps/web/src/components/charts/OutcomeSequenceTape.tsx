@@ -117,17 +117,27 @@ export function OutcomeSequenceTape({
             const STRIP_H = 14
             const BRACKET_GAP = 10
             const TICK_H = 4
+            const APP_R = 8  // matches --radius: 0.5rem (card/KPI tile radius)
+            const INNER_R = 2
             const yStripTop = yCenter - STRIP_H / 2
             const yStripBot = yCenter + STRIP_H / 2
             const w = Math.max(2, x1 - x0 - 1)
             const stroke = outcomeColor(r.outcome)
             const isTop = r.outcome === 'win' || r.outcome === 'tie'
+            const isFirst = i === 0
+            const isLast = i === runs.length - 1
+            const rectR: [number, number, number, number] = [
+              isFirst ? APP_R : INNER_R,
+              isLast ? APP_R : INNER_R,
+              isLast ? APP_R : INNER_R,
+              isFirst ? APP_R : INNER_R,
+            ]
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const children: any[] = [
               {
                 type: 'rect',
-                shape: { x: x0, y: yStripTop, width: w, height: STRIP_H, r: 0 },
+                shape: { x: x0, y: yStripTop, width: w, height: STRIP_H, r: rectR },
                 style: { fill: stroke },
               },
             ]
