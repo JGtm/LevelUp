@@ -231,3 +231,75 @@ func TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots(t *testing.T) {
 		t.Fatalf("TrackB invalide: %+v", completed)
 	}
 }
+
+// TestSeasonPassRepoLoadSeasonPassTracks_FallbackTitleFromRawPayload couvre le
+// cas où battlepass_item_translations est vide (items pré-déploiement de la
+// table translations) mais raw_payload_json contient bien CommonData.Title.
+// Le COALESCE doit extraire le titre via json_extract_string et éviter le
+// fallback "path brut comme titre".
+func TestSeasonPassRepoLoadSeasonPassTracks_FallbackTitleFromRawPayload(t *testing.T) {
+	ctx := context.Background()
+	meta := openBattlePassTestDB(t, "metadata.duckdb", migration.TargetMetadata)
+	player := openBattlePassTestDB(t, "player.duckdb", migration.TargetPlayer)
+
+	_, err := meta.Exec(ctx, `
+		INSERT INTO battlepass_track_definitions
+			(reward_track_path, content_hash, xp_per_rank, battlepass_image_path, background_image_path,
+			 raw_payload_json, is_current, first_seen_at, last_seen_at)
+		VALUES
+			('RewardTracks/TrackC', 'hash-c', 1000, 'progression/track-c.png', 'progression/bg-c.png',
+			 '{"BattlePassImage":"progression/track-c.png","BackgroundImagePath":"progression/bg-c.png","XpPerRank":1000,"Ranks":[{"Rank":1,"FreeRewards":{"InventoryRewards":[{"InventoryItemPath":"Inventory/HelmetMarkVB.json"}]},"PaidRewards":{"InventoryRewards":[]}}]}',
+			 TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`)
+	if err != nil {
+		t.Fatalf("insert track: %v", err)
+	}
+
+	// Item définition avec raw_payload_json contenant CommonData.Title.translations
+	// MAIS sans entrée correspondante dans battlepass_item_translations.
+	rawItem := `{"CommonData":{"Title":{"value":"EOD GEN1","translations":{"fr-FR":"Casque EOD GEN1 FR","en-US":"EOD GEN1 EN"}},"Description":{"value":"Helmet desc","translations":{"fr-FR":"Description casque FR"}},"Quality":"Epic","DisplayPath":{"Media":{"MediaUrl":{"Path":"progression/Inventory/Armor/Helmets/eod.png"}}}}}`
+	_, err = meta.Exec(ctx, `
+		INSERT INTO battlepass_item_definitions
+			(inventory_item_path, content_hash, quality, item_type, display_path,
+			 raw_payload_json, is_current, first_seen_at, last_seen_at)
+		VALUES
+			('Inventory/HelmetMarkVB.json', 'item-c', 'Epic', '',
+			 'progression/Inventory/Armor/Helmets/eod.png', ?,
+			 TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, rawItem)
+	if err != nil {
+		t.Fatalf("insert item def: %v", err)
+	}
+
+	_, err = player.Exec(ctx, `
+		INSERT INTO battlepass_snapshots
+			(snapshot_at, xuid, reward_track_path, is_active, current_rank, partial_progress,
+			 is_owned, has_reached_max_rank, base_xp, boost_xp, state_hash, raw_payload_json)
+		VALUES
+			(CURRENT_TIMESTAMP, 'xuid-2', 'RewardTracks/TrackC', TRUE, 1, 0, TRUE, FALSE, 0, 0, 'state-c', '{}')`)
+	if err != nil {
+		t.Fatalf("insert snapshot: %v", err)
+	}
+
+	repo := NewSeasonPassRepo(&PlayerDB{Player: player, Metadata: meta, XUID: "xuid-2"})
+	tracks, err := repo.LoadSeasonPassTracks(ctx, "xuid-2", "halo_infinite")
+	if err != nil {
+		t.Fatalf("LoadSeasonPassTracks: %v", err)
+	}
+	if len(tracks) != 1 || len(tracks[0].Tiers) == 0 {
+		t.Fatalf("tracks/tiers manquants: %+v", tracks)
+	}
+
+	tier := tracks[0].Tiers[0]
+	if tier.Title != "Casque EOD GEN1 FR" {
+		t.Errorf("tier.Title = %q, want %q (extraction depuis raw_payload_json fr-FR)", tier.Title, "Casque EOD GEN1 FR")
+	}
+	if tier.Description == nil || *tier.Description != "Description casque FR" {
+		t.Errorf("tier.Description = %v, want %q", tier.Description, "Description casque FR")
+	}
+	if len(tracks[0].Tiers[0].FreeRewards) == 0 {
+		t.Fatalf("free_rewards manquants: %+v", tracks[0].Tiers[0])
+	}
+	freeReward := tracks[0].Tiers[0].FreeRewards[0]
+	if freeReward.Title != "Casque EOD GEN1 FR" {
+		t.Errorf("free_reward.Title = %q, want %q (pas le path brut)", freeReward.Title, "Casque EOD GEN1 FR")
+	}
+}

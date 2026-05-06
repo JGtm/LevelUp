@@ -147,16 +147,23 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
       onClick={() => onSelect(pass)}
       aria-pressed={isSelected}
       className={[
-        'group relative block w-full overflow-hidden rounded-xl border bg-card/95 text-left shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'group relative block w-full min-h-[20rem] overflow-hidden rounded-xl border bg-card/95 text-left shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isSelected ? 'border-primary/70 ring-2 ring-primary/40' : 'border-border/70',
       ].join(' ')}
     >
       {background && (
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-30 transition-opacity group-hover:opacity-40"
-          style={{ backgroundImage: `url(${background})` }}
-          aria-hidden="true"
-        />
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center blur-2xl opacity-30 transition-opacity group-hover:opacity-40"
+            style={{ backgroundImage: `url(${background})` }}
+            aria-hidden="true"
+          />
+          <div
+            className="absolute inset-0 bg-contain bg-center bg-no-repeat opacity-30 transition-opacity group-hover:opacity-40"
+            style={{ backgroundImage: `url(${background})` }}
+            aria-hidden="true"
+          />
+        </>
       )}
       <div className="relative flex h-full flex-col gap-4 p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -168,10 +175,6 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
             <Badge variant={statusVariant(pass.status)}>{statusLabel}</Badge>
           </div>
         </div>
-
-        {pass.description && (
-          <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{pass.description}</p>
-        )}
 
         {pass.content && (
           <PassContentSummary content={pass.content} labels={contentLabels} locale={intlLocale} compact />
@@ -311,10 +314,6 @@ function PassShowcase({
                 <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
               </div>
             </div>
-          )}
-
-          {pass.description && (
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">{pass.description}</p>
           )}
 
           {pass.tiers && pass.tiers.length > 0 && (
