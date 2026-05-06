@@ -627,9 +627,14 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?
 			WHERE id = ?
 		`, path, baseName, ext, hash, kind, existingID)
+		if err != nil {
+			slog.Error("insertMediaFile: UPDATE failed for format conversion",
+				"err", err, "player", playerSlug, "stem", stem, "id", existingID)
+			return err
+		}
 		slog.Info("insertMediaFile: mise à jour fichier format conversions",
 			"player", playerSlug, "stem", stem, "old_path", existingPath, "new_path", path, "id", existingID)
-		return err
+		return nil
 	}
 
 	// Nouvelle entrée : INSERT avec file_stem + file_ext.
