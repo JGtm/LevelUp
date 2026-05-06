@@ -1,5 +1,22 @@
 # Thought Log
 
+## [2026-05-06] fix/media-player-ux — Bootstrap retry pour cold-start API
+
+**Statut** : Complété — branche `fix/media-player-ux`.
+
+**Décision technique principale** :
+Le `useQuery('/bootstrap')` dans `__root.tsx` n'avait que la config retry par défaut globale (`failureCount < 2`, delay 1s/2s). Sur VPS ou en `make dev`, le binaire Go peut mettre 5-15 s à démarrer (CGO + DuckDB), ce qui dépassait le budget retry et affichait l'écran « Impossible de contacter l'API » avant que le serveur soit prêt.
+
+Override local sur le useQuery bootstrap :
+- `retry: 6` + `retryDelay: (n) => Math.min(500 * 2 ** n, 4000)` → ~15 s de fenêtre (0.5 + 1 + 2 + 4 + 4 + 4 s)
+- Loading UI lit `failureCount` du query : affiche `Connexion à l'API… (tentative N/7)` dès le 1er échec, sinon `Chargement LevelUp…`
+
+Pas de modif sur `app/queryClient.ts` : la config globale `retry: 2` reste pertinente pour les autres endpoints — seul le bootstrap a besoin d'un budget large pour absorber le cold start.
+
+**Résultats observés** : `npm run typecheck` passe sans erreur.
+
+**Prochaine étape** : tester en `make dev` cold start sur VPS.
+
 ## [2026-05-06] fix/media-player-ux — Médias intégrés en bas de l'onglet Résumé (suppression onglet Médias)
 
 **Statut** : Complété
