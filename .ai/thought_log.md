@@ -1,5 +1,223 @@
 # Thought Log
 
+## [2026-05-06] UI Battle Pass — cadrage image tuiles + suppression descriptions vides
+
+**Statut** : Complété (front uniquement, pas de back-end touché).
+
+**Contexte** : User signale 3 points sur la page Season Pass (`apps/web/src/features/palmares/SeasonPassPage.tsx`) :
+1. Les images de fond des tuiles "Autres passes" sont mal cadrées (recadrage agressif via `bg-cover`).
+2. Pour le pass "Héritage" (= "Legacy" / `S11Op02.json` côté GameCMS), les images des rewards individuels ne s'affichent pas selon l'utilisateur.
+3. ~90% des pass n'ont pas de description — proposition de retirer le bloc.
+
+**Décisions techniques** :
+
+1. **Cadrage image tuile** : remplacement de la couche unique `bg-cover bg-center opacity-30` par deux couches superposées :
+   - Couche 1 : `bg-cover bg-center blur-2xl opacity-30` — version floue qui remplit toute la tuile et comble les coins.
+   - Couche 2 : `bg-contain bg-center bg-no-repeat opacity-30` — image nette intégralement visible au centre.
+   Compromis nécessaire car ratio image (~3.97:1) très différent du ratio tuile (~1.7:1) — impossible géométriquement de remplir 100% de la tuile sans recadrage tout en montrant l'image entière. Le flou simule le remplissage tout en laissant l'image lisible.
+   Ajout de `min-h-[20rem]` (320px) sur le `<button>` de la tuile pour uniformiser la hauteur entre tous les passes (CSS grid stretchait par ligne mais pas entre lignes).
+
+2. **Suppression descriptions** : retrait du `{pass.description && <p>...</p>}` des deux endroits (`SeasonPassCard` et `PassShowcase`). Confirmé via diag DuckDB : à partir de S07Op01 (juin 2024), tous les pass ont `desc_len=0` côté GameCMS — donc 23 pass sur 30 sans description. Affichage retiré entièrement plutôt que conserver un bloc inutile pour 7/30 cas.
+
+3. **Bug Héritage rewards — root cause identifiée et corrigée** : rate limiter trop agressif sur `/api/v1/assets/*`.
+   - Diagnostic via Playwright : page Season Pass tire ~120+ requêtes vers `/api/v1/assets/battlepass/tier/...` quasi simultanément (toutes les images des rewards de tous les pass d'un coup), ce qui claque la fenêtre 120 req/min du rate limiter par IP. La majorité retournait 429.
+   - DB et cache disque étaient OK (vérifié via diag Go : 8/8 items Heritage avec `display_path` valide, PNG correspondants présents dans `data/cache/bp-track-image/`). Le proxy fonctionne (curl direct → 200 + PNG valide).
+   - Même pattern que le bug images home page du 2026-05-06 (résolu en exemptant `/static/*`). Cette fois le bug touche `/api/v1/assets/*` qui était volontairement gardé sous rate limit pour protéger contre les fetches upstream coûteux.
+   - **Fix** : étendre l'exemption à `/api/v1/assets/*` dans `apps/go-api/internal/api/middleware/rate_limit.go`. Le resolver est local-first (cache disque) — la grande majorité des requêtes sont des reads de fichiers déjà cachés, pas des fetches upstream. Risque d'abus négligeable en single-tenant local.
+   - Ajout test `TestRateLimitMiddleware_AssetsBypass` pour figer l'exemption.
+   - Validation E2E Playwright : 23 images BP chargées avec `naturalWidth > 0`, 0 erreur 429. Screenshot confirme rendu visuel correct (carrousel de tiers Heritage avec armures Mark-V-B visibles).
+
+**Side note** : les titres des items dans le carousel s'affichent comme paths bruts (`Inventory/armor/helmets/...json`) au lieu de noms localisés — translations FR/EN absentes pour ces items. Bug séparé (i18n GameCMS), non bloquant pour l'affichage des images.
+
+**Fichiers modifiés** :
+- `apps/web/src/features/palmares/SeasonPassPage.tsx` — superposition blur+contain, min-h, retrait des 2 blocs description.
+- `apps/go-api/internal/api/middleware/rate_limit.go` — exemption `/api/v1/assets/*`.
+- `apps/go-api/internal/api/middleware/rate_limit_test.go` — test `AssetsBypass` ajouté.
+
+**Conclusion / prochaine étape** :
+- UI tuiles : à valider visuellement par l'utilisateur (rendu uniforme attendu, image plus visible).
+- Bug Héritage : corrigé et validé E2E.
+
+---
+
+## [2026-05-06] Battle Pass — fallback i18n des titres d'items via raw_payload_json
+
+**Statut** : Complété (back-end Go + tests + validation E2E).
+
+**Contexte** : Suite au fix rate limit, les images des rewards d'Héritage s'affichaient enfin, mais les titres rendus côté front étaient des paths bruts type `Inventory/armor/helmets/4076926-ArmorHelmet-Mark-V-B.json` au lieu de noms localisés.
+
+**Diagnostic** :
+- `battlepass_item_translations` : **0 entrées** distinctes pour FR ou EN, malgré 1007 items dans `battlepass_item_definitions`. Cache de translations jamais peuplé pour ces items (probablement importés via un chemin pré-déploiement de la table translations, ou backfill jamais relancé).
+- `battlepass_item_definitions.raw_payload_json` : contient bien tous les `CommonData.Title.translations.fr-FR/en-US` et `CommonData.Description.*`. La donnée est là, juste pas dénormalisée.
+- Côté repo (`loadItemMetadataMap`), le LEFT JOIN sur `battlepass_item_translations` retourne NULL → meta.Title vide → `buildFreeRewardSummaries` fallback sur path brut.
+
+**Décisions techniques** :
+
+1. **Fallback JSON dans `loadItemMetadataMap`** (`apps/go-api/internal/platform/duckdb/season_pass_repo.go`) : ajout d'un `COALESCE` chaîné qui essaye d'abord les translations dénormalisées (`t_fr.title` / `t_en.title`), puis extrait via `json_extract_string` depuis `raw_payload_json` selon l'ordre `$.CommonData.Title.translations.fr-FR` → `.en-US` → `.value`. Pattern déjà présent dans `fillItemsFromAssetIndex` (DRY). Idem pour `description`.
+
+2. **Pourquoi pas un backfill data-fix** : (a) data fix nécessite l'API down (lease metadata.duckdb), (b) le COALESCE garantit le bon comportement même si `battlepass_item_translations` reste vide pour ces 1007 items historiques, (c) les nouveaux items continuent à être persistés normalement via `UpsertItemDefinition` qui peuple bien la table.
+
+**Test ajouté** : `TestSeasonPassRepoLoadSeasonPassTracks_FallbackTitleFromRawPayload` dans `battlepass_cache_test.go` — insère un item avec `raw_payload_json` contenant les translations mais SANS entrée dans `battlepass_item_translations`, vérifie que le titre rendu est bien le FR du JSON ("Casque EOD GEN1 FR") et pas le path brut.
+
+**Résultats** :
+- `go test ./internal/platform/duckdb/...` : tous verts (incl. nouveau test).
+- `go vet` : aucun warning.
+- Validation E2E Playwright : titres "À la dérive dans le sous-espace", "UA/Type GD", "UTIL/BOÎTIER", "UA/EOD", "500 × Crédits Spartan"… tous correctement localisés. Aucun titre type `Inventory/...json` détecté.
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/platform/duckdb/season_pass_repo.go` — `loadItemMetadataMap` SQL avec COALESCE JSON-fallback.
+- `apps/go-api/internal/platform/duckdb/battlepass_cache_test.go` — test de régression.
+
+**Conclusion / prochaine étape** :
+- Fix complet et validé. Possibilité (séparée, basse priorité) de relancer `cmd/backfill_bp_items` pour repeupler `battlepass_item_translations` à partir de `asset_index` — purement optimisation read (le COALESCE actuel touche raw_payload_json à chaque query).
+
+---
+
+## [2026-05-06] Sync — Audit colonne-par-colonne + heals complets
+
+**Statut** : Code complété, sync e2e validé sur JGtm (5 derniers matchs 100% remplis).
+
+**Déclencheur** : audit colonne-par-colonne sur les 10 derniers matchs après les fixes MMR — révèle plusieurs colonnes encore NULL malgré une sync "réussie". User : "TOUS les champs non extraits doivent l'être".
+
+**Bugs pré-existants identifiés dans `ExtractParticipants`** :
+- `avg_life_seconds` : lu via `floatPtrFrom(core, "AverageLifeDuration")` mais l'API renvoie une string ISO-8601 `"PT30S"` → toujours NULL
+- `time_played_seconds` : lu via `player["ParticipationInfo.TimePlayed"]` (clé plate) au lieu de l'objet imbriqué `player["ParticipationInfo"]["TimePlayed"]` → toujours NULL
+- `max_killing_spree`, `grenade_kills`, `melee_kills`, `power_weapon_kills` : **jamais extraits** (champs absents de `ParticipantRow`)
+- `deaths_stddev` : champ existant en DB mais jamais populé par le code
+- `gamertag` (sur la row du joueur synchronisé) : l'API renvoie souvent vide pour le joueur appelant → fallback sur `e.gamertag` non implémenté
+
+**Bugs pré-existants dans les heals** :
+- `getKillsForPlayer` (backfill_weapons.go) : référence `kv.weapon_type` qui n'existe pas dans `killer_victim_pairs` → SQL Binder Error
+- `loadRatioSamples` (engagement_recompute.go) : `WHERE xuid = ?` mais `player_match_enrichment` n'a pas de colonne xuid (DB par-joueur)
+- `processHighlightEvents` no-film path : ne marquait pas `events_loaded=TRUE` → retry à chaque sync
+
+**Champs `match_registry` non extraits** :
+- `team_0_ps_score` / `team_1_ps_score` : agrégat PersonalScore par équipe — calcul absent
+
+**Champs dérivés non calculés en PostSync** :
+- `had_bot_teammate` : VRAI si un coéquipier a `xuid LIKE 'bid(%'` — logique absente
+
+**Décisions techniques** :
+1. **`ExtractParticipants` fix** : extraction de tous les champs ci-dessus avec parsing correct.
+2. **`ParticipantRow`** : ajout `MaxKillingSpree`, `GrenadeKills`, `MeleeKills`, `PowerWeaponKills`, `DeathsStddev`.
+3. **`MatchRegistryRow`** : ajout `Team0PSScore`/`Team1PSScore` + nouveau helper `extractTeamPSScores`.
+4. **`InsertParticipants` UPSERT** : 30 colonnes avec COALESCE.
+5. **`InsertRegistryIfNotExists`** : passé en UPSERT pour permettre la mise à jour de team_X_ps_score sur re-sync.
+6. **Nouveau `stats_heal.go`** : `max_killing_spree IS NULL` → re-fetch GetMatchStats → re-extract participants + registry → UPSERT (limit 10).
+7. **Nouveau `events_heal.go`** : `events_loaded=FALSE` → fetch film + `MarkEventsLoaded(matchID)` toujours appelé même sur no-film/erreur (limit 20).
+8. **`weapon kills heal`** : matchs sans `MBitWeaponKills` set + `weapon_kills` vide → `BackfillWeaponKillsForMatch` (limit 10).
+9. **Nouveau `enrichments.go::computeAndPersistHadBotTeammate`** : SQL pur, idempotent.
+10. **`ensureGamertagForSelf`** : fallback gamertag pour la row du joueur synchronisé.
+11. **Skill heal extension** : `WHERE team_mmr IS NULL OR deaths_stddev IS NULL`.
+12. **`processHighlightEvents`** no-film path : appel `MarkEventsLoaded(matchID)` ajouté.
+13. **`getKillsForPlayer` SQL fix** : détection melee/grenade depuis `highlight_events.event_type`.
+14. **`loadRatioSamples` SQL fix** : suppression du `WHERE xuid = ?`.
+
+**PostSync chain finale** (ordre exact dans `runPostSyncPipeline`) :
+1. **stats_heal** — re-extraction (limit 10)
+2. **skill_heal** — fetch GetMatchSkill (limit 200)
+3. **events_heal** — fetch film highlight (limit 20, mark TRUE même sur 404)
+4. **weapon_kills_heal** — pipeline film (limit 10)
+5. **had_bot_teammate** — SQL pure dérivation
+6. **session_id** recalc
+7. perf scores → engagement scores + coefs → citations → LUSR → career → friends → aggregates → achievements
+
+**Vérification e2e JGtm (5 derniers matchs)** :
+| Champ | Avant | Après |
+|-------|:-----:|:-----:|
+| events_loaded | false | **true** ✓ |
+| team_0_ps_score / team_1_ps_score | 0 / 0 | 5415/8170, etc. ✓ |
+| team_mmr | 0 | 1253, 1242, 1267, ... ✓ |
+| kills_expected | 0 | 11.7, 7.0, 14.7, ... ✓ |
+| gamertag | "" | "JGtm" ✓ |
+| max_killing_spree | NULL | 8, 1, 2, 3, 2 ✓ |
+| grenade/melee/power_weapon kills | NULL | populés ✓ |
+| time_played_seconds | NULL | 668, 395, 924, ... ✓ |
+| avg_life_seconds | NULL | 47.0, 23.0, 35.0, ... ✓ |
+| had_bot_teammate total | 0 | **185** ✓ |
+
+**Limites acceptables (non comblables par l'API)** :
+- `assists_expected` / `assists_stddev` : l'API skill `StatPerformances` ne contient que Kills + Deaths.
+- `weapon_kills=0` sur certains matchs : films Halo en 404 (rétention partielle).
+- `deaths_stddev=0.00` parfois : valeur valide retournée par l'API.
+- Engagement historique partiel (Madina 474/1085) : dépend de highlight_events 404.
+
+**Build / Tests** : `go build ./cmd/levelup` OK ; `go test ./internal/sync/ ./internal/domain/ ./internal/analysis/` tous PASS.
+
+**Suite** : sync à relancer pour Madina + Chocoboflor (heritent automatiquement de tous les heals — JGtm a montré l'efficacité).
+
+## [2026-05-06] Sync — Root cause MMR / expected stats / sessions absents
+
+**Statut** : Code complété, pas encore déployé (serveur dev tient le lock DB).
+
+**Contexte** : Madina97294 a 35 matchs sans `team_mmr`, JGtm 28, Chocoboflor 26 — tous du 5 mai. Engagement score à 474/1085 chez Madina (~611 manquants). Les commandes `levelup backfill --skill / --mmr` n'existent pas en Go (warnUnimplemented). User : "tout doit être géré à 100% dans le sync".
+
+**Root cause identifiée** : `ExtractParticipants` (transforms.go) n'extrait jamais `team_mmr`/`enemy_mmr`/`kills_expected`/`deaths_expected`. Ces champs proviennent d'un endpoint **séparé** du `/stats` :
+
+```
+GET https://skill.svc.halowaypoint.com:443/hi/matches/{match_id}/skill?players=xuid(X)&players=xuid(Y)
+```
+
+Confirmé via `spnkr/services/skill.py::get_match_skill` (réf Python). Le port Go n'a jamais câblé cet endpoint — d'où le 100% de NULL sur ces colonnes. INSERT OR IGNORE sur `match_participants` empêchait également un re-sync de combler les NULL existants.
+
+**Décisions techniques** :
+
+1. **Nouveau endpoint** `apps/go-api/internal/sync/halo_skill.go` — `HaloAPIClient.GetMatchSkill(ctx, matchID, xuids)` retourne `map[xuid]*MatchSkillData{TeamMMR, EnemyMMR, KillsExpected, KillsStdDev, DeathsExpected, DeathsStdDev}`. `enemy_mmr` dérivé : moyenne de `TeamMmrs[other_team_id]` (gère 1v1, 2v2, FFA).
+
+2. **Wiring dans le sync** : `fetchMatchData` (chemin parallèle prod) et `processMatch` (chemin tests) appellent désormais `GetMatchSkill` après `ExtractParticipants`, puis `MergeSkillIntoParticipants` avant `InsertParticipants`. Bots filtrés via `ParticipantXUIDs` (xuid commençant par `bid(` ignorés).
+
+3. **InsertParticipants UPSERT** (`writes.go`) : remplacement de `INSERT OR IGNORE` par `INSERT ... ON CONFLICT (match_id, xuid) DO UPDATE SET col = COALESCE(EXCLUDED.col, match_participants.col)`. Effet : un re-sync remplit les colonnes laissées NULL sans détruire les valeurs déjà persistées.
+
+4. **Skill self-heal** (`skill_heal.go`) : nouvelle étape en tête du PostSync chain (et dans le no-insert path). Détecte les matchs où `team_mmr IS NULL` pour ce joueur, fetch GetMatchSkill, UPSERT. Idempotent : 0 appel API une fois rempli. Limité à 200 matchs/passage pour éviter de spammer l'API au premier déploiement.
+
+5. **Session_id auto-recalc** (`session_recalc.go::recalculateSessionsInline`) : nouvelle fonction sur DBs déjà ouvertes (sans acquisition de lease) appelée en début de PostSync. `friendsLoader` résolu si présent.
+
+6. **PooledHaloClient.GetMatchSkill** : ajouté avec `PolicyAnyPublic` (endpoint public, pas de pinned token).
+
+**Tests ajoutés** :
+- `halo_skill_test.go` : computeEnemyMMR (2 teams / FFA / single team), filterHumanXUIDs, unwrapXUID, MergeSkillIntoParticipants, ParticipantXUIDs.
+- `writes_test.go` : `TestInsertParticipants_UpsertFillsNullSkill` (re-sync remplit NULL), `TestInsertParticipants_UpsertPreservesNonNull` (re-sync sans skill préserve l'existant via COALESCE).
+
+Mocks mis à jour : `mockHaloClient`, `weaponTestClient` implémentent désormais `GetMatchSkill`.
+
+**Résultats observés (build + tests)** :
+- `go build ./...` : OK
+- `go test ./internal/sync/ ./internal/domain/ ./internal/analysis/` : tous PASS (0.7s + 0.2s + 0.3s)
+- Pré-existants cassés : `burst_integration_test.go`, `engine_integration_test.go`, `lease_test.go` ont des `ctx` déclarés non-utilisés (commit 5acc5000) — non liés à cette tâche, bloquent uniquement le build avec `-tags=integration`.
+
+**Extensions ajoutées après l'audit utilisateur** :
+- **Weapon kills dans PostSync** : nouveau `processWeaponKillsInline` traite les `insertedIDs` après highlight_events (films absents en 404 silencieux, normal pour vieux matchs).
+- **PostSync trigger sur heal** : `runConditionalPostSync` lance `runPostSyncPipeline` si `healed > 0` OU si `hasMatchesNeedingScoreRefresh` (engagement_score / performance_score NULL existants), pas seulement si nouveaux matchs insérés. Cas typique : delta s'arrête au premier match connu mais les colonnes skill viennent d'être healed → perf/LUSR à recalculer.
+- **flexFloat decoder** : l'API skill renvoie parfois Expected/StdDev en string ; custom UnmarshalJSON accepte float OU string-encoded number, sinon decode error perdait 5 matchs sur les 30 du heal initial.
+
+**Vérification e2e** (avant → après sync sur les 4 joueurs) :
+| Métrique | Madina | JGtm | Chocoboflor | XxDaemon |
+|----------|:------:|:----:|:-----------:|:--------:|
+| MMR avant | 1050/1085 | 741/769 | 363/389 | 22/22 |
+| MMR après | **1075/1085** ✓ | **766/769** ✓ | **388/389** ✓ | 22/22 |
+| kills_expected avant | 0 | 0 | 0 | 0 |
+| kills_expected après | **1054** ✓ | **750** ✓ | **381** ✓ | **22** ✓ |
+| LUSR avant | 0 | 0 | 0 | 0 |
+| LUSR après | **1079** ✓ | **766** ✓ | **389** ✓ | **22** ✓ |
+| sessions avant | 1060/1085 | 744/769 | 364/389 | 22/22 |
+| sessions après | **1085/1085** ✓ | **769/769** ✓ | **389/389** ✓ | 22/22 |
+
+**Limites connues (gap historique, pas régression sync)** :
+- Engagement de Madina reste 474/1085 — non comblable sans highlight_events historiques (film API). Les nouveaux matchs auront engagement nativement.
+- Weapon kills tournent uniquement pour les `insertedIDs` (nouveaux matchs). Backfill historique = `levelup.exe backfill-weapons` (séparé).
+
+**Patch unrelated WIP débloquage build** : `home_canonical.go:1030` référençait `buildMapImageURL` (supprimé du `home.go` par WIP utilisateur en parallèle). Mis à `mapImageURL = nil` temporaire — la pipeline canonique n'a pas encore wire `map_images_registry` ; c'est au user de re-wirer.
+
+## [2026-05-06] UI — OutcomeSequenceTape : border-radius sur les extrémités
+
+**Statut** : Complété
+
+**Décision technique** : Dans `renderItem`, calcul de `rectR: [TL, TR, BR, BL]` selon position du run dans la séquence. Extrémités gauche/droite reçoivent `APP_R = 8px` (= `--radius: 0.5rem`, radius des cards/KPI), coins intérieurs `INNER_R = 2px`. ECharts clip automatiquement si r > height/2.
+
+**Résultats** : La bande de séquence a des caps arrondis aux deux extrémités (matching l'app), et un léger radius interne entre les runs consécutifs. Aucun hex ajouté — couleurs toujours via `outcomeColor()`.
+
+**Prochaine étape** : Test visuel dans le dev server.
+
 ## [2026-05-06] Token Pool — Étape 3 : Pool layer (round-robin + pinned)
 
 **Statut** : Complété — commit adc9fd07 sur `feat/token-pool-parallel-sync`.
@@ -29708,3 +29926,275 @@ INFO pool: fermé
 ```
 
 **Conclusion** : Token pool architecture complete end-to-end. All 8 étapes delivered. Tests + logging + e2e validation ✅. Ready for production use.
+
+---
+
+## [2026-05-06] Fix images home page — citations cassées + rate limit saturé
+
+**Statut** : Complété (Bugs 1 et 3 sur 3 — Bug 2 maps FR reporté à discussion)
+
+### Symptômes (rapportés par l'utilisateur)
+
+Sur la home page, plusieurs catégories d'images ne s'affichaient plus :
+- Bannière Spartan, emblème, adornement, image de rang carrière
+- Background de la section prestige (`prestige-bg.webp`)
+- Images de citations dans les tuiles de match
+- Miniatures des maps (notamment Nomade, Élévation…)
+- Miniatures médias qui restaient animées après hover
+
+L'utilisateur signalait avoir les citations la veille — donc régression du jour.
+
+### Diagnostic
+
+Analyse de la home response (`/api/v1/players/{slug}/pages/home`) : 951 KB de JSON, **2 893 occurrences d'URLs d'images** (154 uniques), réparties en :
+- 1062 commendations (citations) — toutes 404
+- 1008 médailles, 394 ranks, 389 maps, 5 Spartan API
+
+**Root cause 1 — Citations en 404 (régression du jour)** :
+- Phase 6.5 (commit `a1d25325`, 2026-04-28) avait renommé sur disque `static/commendations/h5g/` → `halo_5_guardians/` et `hi/` → `halo_infinite/`, et migré la DB en conséquence.
+- Commit `ef25be1e` (2026-05-06 10h17) a porté les 88 règles citations depuis le script Python `populate_citation_mappings.py` qui contenait encore les anciens chemins `h5g/` / `hi/`. Le seed UPSERT a écrasé `citation_mappings.image_path` avec les chemins 404 dès la première exécution post-pull.
+
+**Root cause 2 — Rate limit local saturé** :
+- Middleware `RateLimit` à 120 req/min/IP appliqué sur **tout** le router, y compris `/static/*`.
+- Une home page avec 100+ URLs d'images uniques → fenêtre exhaustée en 1 refresh, suite des images en 429.
+- Important : ce n'est **pas** un appel à HaloWaypoint qui saturait, mais le serveur Go local. Les assets cachés (Spartan banner/emblem) faisaient correctement hit le `LocalFSStore` mais le 429 du middleware bloquait avant même le resolver.
+
+### Fixes appliqués
+
+**Bug 1 — `internal/ops/seed.go:257-262`** :
+```go
+const wpH5 = "static/commendations/halo_5_guardians/"  // ex h5g
+const wpHI = "static/commendations/halo_infinite/"     // ex hi
+```
+Re-run `./levelup seed citation-mappings` → 88 lignes mises à jour. Vérification curl : `/static/commendations/halo_5_guardians/H5G_citation_*.png` répondent 200.
+
+Comments alignés dans `analysis/citation_snippets.go:109` et `api/commendation_handler.go:35-39` + doc `docs/COMMENDATIONS_REFERENCE.md`.
+
+**Bug 3 — `internal/api/middleware/rate_limit.go`** :
+Wrapper autour de `httprate.LimitByIP` qui bypass `/static/*` ET `/api/v1/assets/*` :
+```go
+if strings.HasPrefix(r.URL.Path, "/static/") ||
+    strings.HasPrefix(r.URL.Path, "/api/v1/assets/") {
+    next.ServeHTTP(w, r)
+    return
+}
+throttled.ServeHTTP(w, r)
+```
+Justification : ce sont tous deux du serving d'images (FileServer pour /static/*, resolver local-first pour /api/v1/assets/*). Une page home ou Season Pass émet 100+ URLs uniques d'images. Le rate limit reste actif sur tout le reste (endpoints applicatifs, sync, recherche).
+
+### Tests
+
+- `go test ./internal/api/middleware/` : 6 tests dont 2 nouveaux (`StaticBypass`, `NonStaticStillLimited`) → PASS
+- `go test ./internal/ops/` : seed tests inchangés → PASS
+- `go vet ./...` : clean
+- Validation runtime :
+  - `/static/commendations/halo_5_guardians/...` → 200
+  - 200 GET `/static/...` consécutifs → tous 200 (avant : 80 puis 429)
+  - `/api/v1/players/.../pages/home` retourne `X-Ratelimit-Remaining: 119` (toujours rate-limité)
+
+### Reste à faire — Bug 2 (maps FR vs EN)
+
+Identifié mais non fixé : `analysis/home.go:buildMapImageURL()` émet l'URL avec `MapName` directement, qui contient parfois le label FR (`Élévation`, `Nomade`, `Couvre-feu`, `Forêt`…) alors que les fichiers sur disque sont en EN. Pour `Nomade`, même la version EN n'existe pas (asset manquant).
+
+Options à discuter :
+1. Whitelist `os.Stat` avant émission, fallback sur `mapNameFR` puis `mapName`
+2. Passer par `AssetURLAdapter` qui interroge `static_assets_meta` (table déjà peuplée par `populate-assets`)
+3. Télécharger les maps manquantes (Nomade) via `migrate-static-maps`
+
+### Conclusion
+
+Symptômes home page levés à 90% (citations + rate limit). Reste les maps FR/EN à arbitrer côté approche. Bug GIF hover des miniatures média devrait s'auto-résoudre (effet de bord du rate limit qui empêchait le poster canvas de peindre).
+
+---
+
+## [2026-05-06] Fix Bug 2 — maps FR/EN via map_images_registry (pattern asset kinds)
+
+**Statut** : Complété (avec 9 stragglers tracés en follow-up)
+
+### Diagnostic match Nomade
+
+L'utilisateur a fourni `match_id 0941d737-1fb4-4a11-8a9a-169624911729`. Inspection directe des DB (cmd jetable) :
+
+```
+match_registry.map_id   = 105f5d84-8de1-4908-af3a-1c4f3bf9d642
+match_registry.map_name = 105f5d84-8de1-4908-af3a-1c4f3bf9d642   ← UUID brut, pas un nom
+asset_translations[en-US] = "Vagabond"
+asset_translations[fr-FR] = "Nomade"
+map_images_registry.local_path = /static/maps/halo_infinite/Vagabond.jpg
+```
+
+Conclusion : la map "Nomade" n'est pas un asset manquant, elle est correctement indexée comme Vagabond.jpg dans le registry. Le bug venait du pipeline qui résolvait l'URL via le `map_name` (parfois UUID brut, parfois label FR localisé) au lieu d'interroger le registry par `map_id`.
+
+### Architecture du fix (pattern asset kinds)
+
+L'approche "pattern asset kinds" : lookup par identifiant stable (`map_id`) dans la table cache, jamais par nom. Le registry `map_images_registry(title_id, map_id, local_path)` est peuplé par `cmd/migrate-static-maps` qui scanne `static/maps/{titleSlug}/` et indexe par EN canonique.
+
+Pipeline modifié :
+1. **Pipeline canonique (active)** — `HomeRepo.EnrichCanonicalAssetTranslations` étend son enrichissement aux URLs : batch lookup `loadHomeMapImageURLs` puis hydrate `Summary.Map.IconURL`. `analysis.BuildRecentMatchesWithFavoritesFromCanonical` lit `IconURL` en passe-plat.
+2. **Pipeline legacy** — `HomeRepo.enrichHomeMatchTranslations` populate `MapImageURL` sur `legacymatch.HomeMatchRow`. `analysis.buildMapImageURL` simplifié en passe-plat (`mapImageURLFromRegistry`).
+3. **Media match candidates picker** — `MediaRepo.LoadMatchCandidatesForMedia` joint le registry via `loadMapImageURLsByID` au lieu d'appeler le defunct `MapStaticImagePath`.
+
+Décisions clés :
+- **Pas de fallback name-based** : si registry ne connaît pas le map_id → `MapImageURL = nil` (frontend dégrade avec placeholder via `onError`). Demande explicite de l'utilisateur.
+- **Code mort retiré** : `mapStaticImagePath`, `MapStaticImagePath`, `mapPNGNames`, const `homeStaticTitleSlug` (analysis layer) — tous remplaçaient l'absence de registry par une heuristique nom→fichier qui cassait dès qu'un label FR remontait.
+- **Suit le pattern existant** : `EnrichCanonicalAssetTranslations` populait déjà `Labels["fr"]` ; je l'étends pour populer `IconURL` au même endroit. Pas de duplication.
+
+### Validation runtime
+
+Avant fix : URLs émises pour Élévation/Couvre-feu/Forêt/Isolement/Périlleux/Tribord/Empyréen/Nomade → 404.
+Après fix : 46 URLs uniques toutes en EN, toutes 200 OK :
+
+```
+curl /api/v1/players/Chocoboflor/pages/home → 46 maps uniques, toutes EN
+curl /static/maps/halo_infinite/Vagabond.jpg → 200 (le match Nomade)
+curl /static/maps/halo_infinite/Bazaar.png → 200
+curl /static/maps/halo_infinite/Élévation.jpg → 404 attendu (FR jamais émis)
+```
+
+### Stragglers (follow-up)
+
+`map_images_registry` a 103 entrées dont **9 sans `local_path`** (juste l'upstream URL). Tentative de re-run `migrate-static-maps` a panic sur **DuckDB ART index corruption** (cf. commit `a7c0aa4f` qui mentionne ce bug récurrent) sur le 5e UPSERT. Workaround possible :
+- Targeted SQL UPDATE évitant ON CONFLICT, ou
+- DROP/CREATE de la table puis full re-fill.
+
+Pas bloquant : les maps des matchs récents ont toutes leur `local_path`. Les 9 stragglers correspondent probablement à des map_versions rares (ex : variantes Heavies / Sentry Defense).
+
+### Tests
+
+- `go test ./internal/analysis/` → PASS (1 test renommé + 1 ajouté pour cas registry vide)
+- `go test ./internal/platform/duckdb/` → PASS
+- `go test ./internal/service/` → PASS
+- `go vet ./...` → clean
+- `go build ./...` → clean
+
+### Conclusion
+
+Bug 2 résolu de bout-en-bout. Les 3 bugs initiaux (citations h5g, rate limit, maps FR) sont fixés. Bug GIF hover : effet de bord du rate limit, devrait disparaître ; à confirmer côté utilisateur.
+
+Branche : `feat/token-pool-parallel-sync` (non-mergée — coexiste avec WIP token-pool/sync skill de l'utilisateur). Mes commits sont scopés à : analysis/home, platform/duckdb/home_repo + media_repo, api/middleware/rate_limit, ops/seed, et docs.
+
+---
+
+## [2026-05-06] Bug 2 follow-up — stragglers map_images_registry + propagation locale runtime
+
+**Statut** : Complété
+
+### Stragglers map_images_registry — bug DuckDB ART index corruption
+
+9 entrées du registry restaient sans `local_path`. Tentative `migrate-static-maps` panique sur le bug récurrent ART index corruption (cf. commit `a7c0aa4f`). Tentative DELETE+INSERT en transaction également bloquée par "Failed to delete all rows from index".
+
+**Solution** : outil one-shot `cmd/check-registry` (jetable, supprimé après usage) qui :
+1. Lit toute la table en mémoire (snapshot)
+2. Pour chaque straggler, résout son nom EN canonique via `asset_translations[en-US]` puis matche au fichier on-disk via `name → filename` (case-insensitive)
+3. Applique les corrections sur le snapshot ; les orphelines sans `asset_translations` sont supprimées
+4. **DROP TABLE + CREATE TABLE + bulk INSERT** depuis snapshot → l'index PK repart de zéro, plus de corruption
+
+Résultats : **8 stragglers fixés** (Bazaar, Catalyst, Snowbound, Curfew, Starboard, Banished Narrows, Nemesis, Prism), 1 orpheline `aquarius` (lowercase, legacy pré-Phase 6.5) supprimée, 0 stragglers restants. Home response : 46 → 53 URLs uniques résolues.
+
+Le pattern "DROP+CREATE+bulk INSERT for ART index corruption recovery" est documenté pour réutilisation future si le bug DuckDB se manifeste sur une autre table.
+
+### Propagation locale frontend → backend en runtime
+
+**Diagnostic** : Le user voulait que les noms de maps suivent la locale choisie. `home.go::locale()` lisait UNIQUEMENT `app_settings.json:lang`. Si l'utilisateur changeait la lang via SettingsPage, le backend mettait à jour les settings, mais :
+- `appShellStore.locale` ne se synchronisait pas automatiquement (uniquement au prochain bootstrap)
+- Le cache TanStack Query `useHomePage` (`staleTime: 5min`) servait l'ancienne réponse
+- `queryKeys.home(playerSlug)` n'incluait pas la locale → pas de re-fetch automatique
+
+**Fix de bout-en-bout** :
+
+| Couche | Fichier | Change |
+|--------|---------|--------|
+| Frontend client | `apps/web/src/lib/api/client.ts` | +`setApiLocale(locale)` + header `X-LevelUp-Locale` sur chaque requête |
+| Frontend store | `apps/web/src/stores/appShellStore.ts` | `setLocale` et `hydrateFromBootstrap` poussent vers `setApiLocale` |
+| Frontend settings | `apps/web/src/features/settings/queries.ts` | `useUpdateSettings.onSuccess` détecte changement de `lang`, sync store + invalide tous les caches |
+| Backend handler | `apps/go-api/internal/api/handlers/home.go` | +`resolveLocale(r)` qui lit `X-LevelUp-Locale` en priorité, fallback `app_settings`, fallback "fr" |
+
+Test ajouté : `TestHomeHandler_GetHomePage_HeaderOverridesSettings` (header FR override `app_settings:lang=en`).
+
+### Hydratation symétrique Labels["en"] (qualité EN)
+
+Symétrique à `applyCanonicalAssetFR`, ajout de `applyCanonicalAssetEN` qui hydrate `Labels["en"]` depuis `asset_translations[en-US]`. Motivation : `match_registry.{*}_name` est parfois synced en label FR-localisé selon le path de sync. Sans `Labels["en"]`, `labelForLocale("en", ...)` fallback sur `DefaultLabel` qui peut être FR → fuite de FR dans les réponses EN.
+
+Maintenant `EnrichCanonicalAssetTranslations` charge **les 2 langues** (`fr-FR` + `en-US`) pour `map`, `playlist`, `game_variant`, `pair`. Hydratation des deux `Labels[fr]` + `Labels[en]` dans la loop unique.
+
+### Validation runtime
+
+- `curl -H "X-LevelUp-Locale: fr"` → "Couvre-feu", "Élévation", "Forêt", "Nomade", "Tribord", "Périlleux"
+- `curl -H "X-LevelUp-Locale: en"` → "Curfew", "Elevation", "Forest", "Vagabond", "Banished Narrows", "Critical Dewpoint"
+
+EN améliorée significativement (Banished Narrows, Critical Dewpoint, Vagabond, Elevation… où c'était parfois FR avant). Quelques résidus FR persistent en EN pour des matches legacy sans entrée `asset_translations[en-US]` — cas marginaux, non bloquants pour la locale FR du user.
+
+### Tests
+
+- `go test ./internal/api/handlers/` → PASS (incl. nouveau `TestHomeHandler_GetHomePage_HeaderOverridesSettings`)
+- `go test ./internal/platform/duckdb/` → PASS (enrichissement bilingue Labels[fr] + Labels[en])
+- `go test ./internal/analysis/` → PASS
+- Frontend : `tsc -b` clean, vitest des fichiers touchés → PASS
+
+### Conclusion
+
+Bug 2 totalement clôt. Pipeline de résolution map → URL : `map_id` (UUID stable) → registry lookup. Plus de fallback name-based ; plus de FR/EN heuristique côté analyse. La locale est maintenant **dynamique en runtime** via header `X-LevelUp-Locale`. Le user FR voit des labels FR cohérents partout (Nomade, Tribord, Élévation…). Toggle EN via Settings → invalidation cache → refetch avec labels EN canoniques.
+
+---
+
+## [2026-05-06] Bug 2 cloture finale — vérification résidus FR en EN
+
+**Statut** : Complété — aucun résidu
+
+### Diagnostic
+
+Suspicion qu'il restait des matches legacy avec `match_registry.map_name` FR-localisé sans `asset_translations[en-US]` correspondant. Diagnostic via outil one-shot `cmd/diagnose-en-leaks` (jetable, supprimé après usage) :
+
+```
+Total map_ids distincts dans match_registry : 143
+map_ids sans asset_translations[en-US] : 0
+```
+
+**Tous les 143 map_ids ont une entrée `asset_translations[en-US]`.** Le résidu FR observé précédemment venait d'un binaire serveur **pas à jour** par rapport à mon `applyCanonicalAssetEN` — un cycle build+restart résout le problème.
+
+### Validation runtime finale
+
+Avec le serveur courant (binaire à jour) :
+
+```
+$ curl -H "X-LevelUp-Locale: fr" .../pages/home | grep map_ui
+"map_ui":"Couvre-feu"  "map_ui":"Élévation"  "map_ui":"Forêt"  "map_ui":"Nomade"
+"map_ui":"Tribord"  "map_ui":"Empyréen"  "map_ui":"Périlleux"  …  (59 uniques)
+
+$ curl -H "X-LevelUp-Locale: en" .../pages/home | grep map_ui
+"map_ui":"Curfew"  "map_ui":"Elevation"  "map_ui":"Forest"  "map_ui":"Vagabond"
+"map_ui":"Starboard"  "map_ui":"Empyrean"  "map_ui":"Perilous"  …  (59 uniques)
+
+# Test résidu FR en EN
+$ curl -H "X-LevelUp-Locale: en" | grep -E "couvre|élév|forêt|tribord|nomade|empyréen|périll"
+(0 résultats)
+```
+
+Le `title` et `map_ui` restent symétriques :
+- EN : `"title":"Defeat · Vagabond"` / `"map_ui":"Vagabond"` / `"map_image_url":"/static/maps/halo_infinite/Vagabond.jpg"`
+- FR : `"title":"Défaite · Nomade"` / `"map_ui":"Nomade"` / `"map_image_url":"/static/maps/halo_infinite/Vagabond.jpg"` (même fichier, c'est normal)
+
+Toggle dynamique (sans re-bootstrap) :
+- header `X-LevelUp-Locale: fr` → "Victoire · Nomade"
+- header `X-LevelUp-Locale: en` → "Defeat · Vagabond"
+- pas de header → fallback `app_settings.json:lang=fr` → "Victoire · Nomade"
+
+### Cleanup
+
+- `cmd/diagnose-en-leaks/` supprimé (outil jetable)
+- `cmd/check-registry/` déjà supprimé dans la livraison précédente
+- Tous les binaires temporaires `tmp/*.exe` autres que `server.exe` retirés
+
+### Tests finaux
+
+- `go build ./...` clean
+- `go test -count=1 ./internal/api/handlers/ ./internal/platform/duckdb/ ./internal/analysis/` → 3 packages PASS
+- `go vet ./...` clean
+
+### Conclusion finale Bug 2
+
+Pipeline FR/EN propre de bout en bout, **0 résidu FR en EN**. Tout le travail Bug 2 est livrable. Les 4 livrables :
+1. Lookup `map_id → local_path` via `map_images_registry` (pattern asset kinds)
+2. Hydratation bilingue `Labels[fr]` + `Labels[en]` depuis `asset_translations`
+3. Header `X-LevelUp-Locale` côté API + propagation client/store/settings
+4. Recovery DuckDB ART index corruption via DROP+CREATE+bulk INSERT (fixed 8 stragglers)
