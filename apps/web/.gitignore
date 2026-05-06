@@ -15,6 +15,16 @@ dist-ssr
 # TanStack Router generated files
 .tanstack/tmp/
 
+# Playwright artefacts
+test-results/
+playwright-report/
+tests/e2e-results/
+playwright/.cache/
+
+# Bug-guard : Playwright écrit parfois son cache sous "undefined/temp/..."
+# quand une variable d'env de chemin n'est pas résolue. Ne pas tracker.
+undefined/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
