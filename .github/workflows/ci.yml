@@ -125,6 +125,44 @@ jobs:
           working-directory: apps/go-api
           args: --timeout 5m
 
+  go-lease-enforcement:
+    name: Go Lease Enforcement (ADR 0013)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check lease enforcement (no direct DB writes in service/handlers)
+        run: bash scripts/check_lease_enforcement.sh
+
+  go-baseline-tests:
+    name: Go Baseline Tests (non-régression)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: Vérifier GCC (CGO requis pour DuckDB)
+        run: gcc --version
+
+      - name: Vérifier suite baseline de tests pré-migration
+        run: bash ../../scripts/check_test_baseline.sh tests
+        env:
+          CGO_ENABLED: "1"
+          LEVELUP_DEMO_MODE: "true"
+          MULTI_TITLE_API_ENABLED: "true"
+          PRESTIGE_ENABLED: "true"
+
   go-coverage:
     name: Go Coverage (CGO_ENABLED=1 — ./... complet)
     # ubuntu-latest dispose de GCC — CGO_ENABLED=1 fonctionne sans config supplémentaire
