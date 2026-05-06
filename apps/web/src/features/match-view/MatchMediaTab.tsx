@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import type { AssociatedMediaItem, MediaItemRow } from '@/lib/api/types'
 import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
+import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
+import { useMediaPicker } from '@/features/media/useMediaPicker'
 import { useToggleMediaLike } from '@/features/media/queries'
 import type { MatchViewLocale } from './i18n'
 import { MATCH_VIEW_TEXT } from './i18n'
@@ -60,6 +62,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
   const [mediaRows, setMediaRows] = useState<MediaItemRow[]>(initialRows)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const [autoChain, setAutoChain] = useState(false)
+  const picker = useMediaPicker()
   const toggleLike = useToggleMediaLike(playerSlug)
 
   function handleToggleLike(item: MediaItemRow) {
@@ -102,6 +105,17 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
           likeDisabled={toggleLike.isPending}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((c) => !c)}
+          playerSlug={playerSlug}
+          currentMatchId={matchId}
+          onReassociate={picker.openFor}
+        />
+      )}
+      {picker.state && (
+        <MediaMatchPicker
+          playerSlug={playerSlug}
+          filePath={picker.state.filePath}
+          hasCurrentMatch={picker.state.hasCurrentMatch}
+          onClose={picker.close}
         />
       )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -112,6 +126,9 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
             onToggleLike={handleToggleLike}
             onOpen={() => setLightboxIdx(idx)}
             likeDisabled={toggleLike.isPending}
+            playerSlug={playerSlug}
+            currentMatchId={matchId}
+            onAssociate={picker.openFor}
           />
         ))}
       </div>

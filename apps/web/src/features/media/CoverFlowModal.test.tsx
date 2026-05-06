@@ -358,6 +358,92 @@ describe('CoverFlowModal — stabilité de l\'item courant', () => {
     expect(onReassociate).toHaveBeenCalledTimes(1)
     expect(onReassociate).toHaveBeenCalledWith(expect.objectContaining({ file_path: ITEM_B.file_path }))
   })
+
+  it('affiche "Associer" (pas "Réassocier") quand le média n\'a pas de match associé', () => {
+    const ITEM_NO_MATCH = makeItem({ file_path: '/media/orphan.mp4', match_id: null, map_name: null })
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_NO_MATCH]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        onReassociate={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Associer' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Réassocier' })).not.toBeInTheDocument()
+  })
+})
+
+describe('CoverFlowModal — icône "ouvrir le match" header', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  it('affiche l\'icône cliquable vers la page du match quand l\'item a un match_id et playerSlug est fourni', () => {
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        playerSlug="myGT"
+      />,
+    )
+    const link = screen.getByRole('link', { name: /Ouvrir.*match/ })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute('href', `/players/myGT/matches/${ITEM_A.match_id}`)
+  })
+
+  it('masque l\'icône quand currentMatchId === item.match_id', () => {
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        playerSlug="myGT"
+        currentMatchId={ITEM_A.match_id ?? undefined}
+      />,
+    )
+    expect(screen.queryByRole('link', { name: /Ouvrir.*match/ })).not.toBeInTheDocument()
+  })
+
+  it('masque l\'icône quand item n\'a pas de match associé', () => {
+    const ITEM_NO_MATCH = makeItem({ file_path: '/orphan.mp4', match_id: null })
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_NO_MATCH]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        playerSlug="myGT"
+      />,
+    )
+    expect(screen.queryByRole('link', { name: /Ouvrir.*match/ })).not.toBeInTheDocument()
+  })
+
+  it('le href suit la navigation entre items du carrousel', () => {
+    const ITEM_X = makeItem({ file_path: '/x.mp4', match_id: 'match-X' })
+    const ITEM_Y = makeItem({ file_path: '/y.mp4', match_id: 'match-Y' })
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_X, ITEM_Y]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        playerSlug="GT"
+      />,
+    )
+    expect(screen.getByRole('link', { name: /Ouvrir.*match/ })).toHaveAttribute('href', '/players/GT/matches/match-X')
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+
+    expect(screen.getByRole('link', { name: /Ouvrir.*match/ })).toHaveAttribute('href', '/players/GT/matches/match-Y')
+  })
 })
 
 // ─── Bouton autoChain — visible uniquement si onToggleAutoChain fourni ─────

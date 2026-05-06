@@ -159,3 +159,184 @@ describe('MediaThumbnailCard — affichage map / fallback match', () => {
     expect(screen.queryByText(/No associated match/)).not.toBeInTheDocument()
   })
 })
+
+describe('MediaThumbnailCard — icône "ouvrir le match"', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  it('affiche un lien (icône) vers la page du match quand item.match_id existe et playerSlug est fourni', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-42', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        playerSlug="myGT"
+      />,
+    )
+    const link = screen.getByRole('link', { name: /Ouvrir.*match/ })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute('href', '/players/myGT/matches/match-42')
+  })
+
+  it('masque l\'icône quand currentMatchId === item.match_id', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-42', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        playerSlug="myGT"
+        currentMatchId="match-42"
+      />,
+    )
+    expect(screen.queryByRole('link', { name: /Ouvrir.*match/ })).not.toBeInTheDocument()
+  })
+
+  it('masque l\'icône quand playerSlug est absent', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-42', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('link', { name: /Ouvrir.*match/ })).not.toBeInTheDocument()
+  })
+
+  it('le clic sur l\'icône ne déclenche pas onOpen (stopPropagation)', () => {
+    const onOpen = vi.fn()
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-42', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={onOpen}
+        playerSlug="myGT"
+      />,
+    )
+    const link = screen.getByRole('link', { name: /Ouvrir.*match/ })
+    // preventDefault() pour éviter la navigation jsdom, stopPropagation() est appelé par le composant
+    link.addEventListener('click', (e) => e.preventDefault())
+    link.click()
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('en locale=en, l\'aria-label passe à "Open"', () => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'en' })
+    })
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-42', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        playerSlug="myGT"
+      />,
+    )
+    expect(screen.getByRole('link', { name: /Open.*match/ })).toBeInTheDocument()
+  })
+})
+
+describe('MediaThumbnailCard — troncature du nom de map', () => {
+  it('n\'altère pas un nom de 13 caractères ou moins', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-1', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Aquarius')).toBeInTheDocument()
+  })
+
+  it('tronque les noms > 13 chars en gardant les 12 premiers + "..."', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-1', map_name: 'Behemoth Forge Edition' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Behemoth For...')).toBeInTheDocument()
+    expect(screen.queryByText('Behemoth Forge Edition')).not.toBeInTheDocument()
+  })
+
+  it('n\'altère pas un nom de exactement 13 caractères', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-1', map_name: 'Streets-Forge' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    // "Streets-Forge" = 13 chars exactement → pas de troncature
+    expect(screen.getByText('Streets-Forge')).toBeInTheDocument()
+  })
+})
+
+describe('MediaThumbnailCard — lien "+ Associer"', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  it('affiche "+ Associer" quand match_id est null et onAssociate est fourni', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: null, map_name: null })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        onAssociate={vi.fn()}
+      />,
+    )
+    // L'article wrapper a role="button" — on cherche par texte exact pour cibler le bouton "+ Associer"
+    expect(screen.getByText('+ Associer')).toBeInTheDocument()
+    // Le fallback italic doit être remplacé par le bouton actionnable
+    expect(screen.queryByText(/Pas de match associé/)).not.toBeInTheDocument()
+  })
+
+  it('garde le fallback italic "Pas de match associé" si onAssociate non fourni', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: null, map_name: null })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Pas de match associé')).toBeInTheDocument()
+    expect(screen.queryByText('+ Associer')).not.toBeInTheDocument()
+  })
+
+  it('cliquer sur "+ Associer" appelle onAssociate avec l\'item, pas onOpen', () => {
+    const onAssociate = vi.fn()
+    const onOpen = vi.fn()
+    const item = makeItem({ match_id: null, map_name: null, file_path: '/orphan.mp4' })
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={item}
+        onToggleLike={vi.fn()}
+        onOpen={onOpen}
+        onAssociate={onAssociate}
+      />,
+    )
+    const button = screen.getByText('+ Associer')
+    button.click()
+    expect(onAssociate).toHaveBeenCalledTimes(1)
+    expect(onAssociate).toHaveBeenCalledWith(expect.objectContaining({ file_path: '/orphan.mp4' }))
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('n\'affiche pas "+ Associer" quand match_id existe (utiliser le lecteur pour réassocier)', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-1', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        onAssociate={vi.fn()}
+      />,
+    )
+    expect(screen.queryByText('+ Associer')).not.toBeInTheDocument()
+  })
+})

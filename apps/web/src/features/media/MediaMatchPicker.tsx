@@ -25,6 +25,9 @@ interface Props {
   playerSlug: string
   filePath: string
   onClose: () => void
+  /** Si false (média sans match associé), les libellés passent à "Associer"
+   *  / "Confirmer l'association" — sinon (par défaut), "Réassocier". */
+  hasCurrentMatch?: boolean
 }
 
 function formatLocalTime(iso: string | null | undefined): string {
@@ -114,7 +117,7 @@ function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
   )
 }
 
-export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
+export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatch = true }: Props) {
   const [windowMinutes, setWindowMinutes] = useState<number>(15)
   const [pendingMatchID, setPendingMatchID] = useState<string | null>(null)
   const { data, isLoading, isError } = useMediaMatchCandidates(playerSlug, filePath, windowMinutes)
@@ -154,7 +157,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
       >
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <div>
-            <h2 className="text-base font-semibold">Réassocier ce média</h2>
+            <h2 className="text-base font-semibold">{hasCurrentMatch ? 'Réassocier ce média' : 'Associer ce média'}</h2>
             {data?.capture_utc && (
               <p className="text-xs text-muted-foreground">
                 Capture : {formatLocalTime(data.capture_utc)}
@@ -264,7 +267,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
         {pending && (
           <footer className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-3 text-sm">
             <div>
-              <p className="font-medium">Confirmer la réassociation ?</p>
+              <p className="font-medium">{hasCurrentMatch ? 'Confirmer la réassociation ?' : "Confirmer l'association ?"}</p>
               <p className="text-xs text-muted-foreground">
                 <MapModeLabel mapName={pending.map_name} modeName={pending.mode_name} /> · {formatLocalTime(pending.start_time)}
               </p>
@@ -291,7 +294,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose }: Props) {
 
         {associate.isError && (
           <p className="border-t border-border px-5 py-2 text-xs text-destructive">
-            Erreur lors de la réassociation : {associate.error instanceof Error ? associate.error.message : 'inconnue'}
+            {hasCurrentMatch ? 'Erreur lors de la réassociation :' : "Erreur lors de l'association :"} {associate.error instanceof Error ? associate.error.message : 'inconnue'}
           </p>
         )}
       </div>

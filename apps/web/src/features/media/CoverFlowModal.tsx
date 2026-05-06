@@ -24,7 +24,14 @@ interface CoverFlowModalProps {
   onLoadNextPage?: () => void
   globalIndexOffset?: number
   globalTotal?: number
+  /** Callback ouvrant le picker d'(ré)association. Le label affiché passe
+   *  automatiquement de "Associer" à "Réassocier" selon `item.match_id`. */
   onReassociate?: (item: MediaItemRow) => void
+  /** Slug du joueur courant pour construire le lien "Voir le match". */
+  playerSlug?: string
+  /** Si renseigné et égal à `currentItem.match_id`, supprime le lien
+   *  "Voir le match" (on est déjà sur la page de ce match). */
+  currentMatchId?: string | null
   autoChain?: boolean
   onToggleAutoChain?: () => void
 }
@@ -78,8 +85,12 @@ interface ClipPlayerProps {
  */
 function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }: ClipPlayerProps) {
   const [error, setError] = useState<string | null>(null)
+  const [lastFilePath, setLastFilePath] = useState(filePath)
 
-  useEffect(() => { setError(null) }, [filePath])
+  if (filePath !== lastFilePath) {
+    setLastFilePath(filePath)
+    setError(null)
+  }
 
   if (error) {
     return (
@@ -127,6 +138,8 @@ export function CoverFlowModal({
   globalIndexOffset = 0,
   globalTotal,
   onReassociate,
+  playerSlug,
+  currentMatchId,
   autoChain = false,
   onToggleAutoChain,
 }: CoverFlowModalProps) {
@@ -142,30 +155,41 @@ export function CoverFlowModal({
 
   // Garde la dernière position valide pour éviter les sauts visuels si
   // l'item disparaît temporairement (refetch entre 2 vues).
-  const lastValidIdxRef = useRef<number>(startIndex)
+  const [lastValidIdx, setLastValidIdx] = useState<number>(startIndex)
 
-  // L'index courant est calculé dynamiquement depuis le file_path
-  const committedIdx = useMemo(() => {
+  // L'index courant est calculé dynamiquement depuis le file_path. Si l'item
+  // a disparu, on retombe sur la dernière position connue clampée.
+  const { idx: committedIdx, fromFallback } = useMemo(() => {
     if (!currentFilePath) {
-      const fallback = Math.min(startIndex, Math.max(0, items.length - 1))
-      lastValidIdxRef.current = fallback
-      return fallback
+      return { idx: Math.min(startIndex, Math.max(0, items.length - 1)), fromFallback: false }
     }
-    const idx = items.findIndex((item) => item.file_path === currentFilePath)
-    if (idx >= 0) {
-      lastValidIdxRef.current = idx
-      return idx
-    }
-    return Math.min(lastValidIdxRef.current, Math.max(0, items.length - 1))
-  }, [items, currentFilePath, startIndex])
+    const found = items.findIndex((item) => item.file_path === currentFilePath)
+    if (found >= 0) return { idx: found, fromFallback: false }
+    return { idx: Math.min(lastValidIdx, Math.max(0, items.length - 1)), fromFallback: true }
+  }, [items, currentFilePath, startIndex, lastValidIdx])
 
-  // Quand startIndex change (nouvelle ouverture de lightbox), reset le file_path
+  // Render-time state sync (pattern recommandé React quand l'état dépend des
+  // props : https://react.dev/learn/you-might-not-need-an-effect). Évite la
+  // ref-during-render flaggée par react-hooks/refs sans introduire de useEffect.
+  if (!fromFallback && committedIdx !== lastValidIdx) {
+    setLastValidIdx(committedIdx)
+  }
+
+  // Quand startIndex change (nouvelle ouverture de lightbox), reset le file_path.
+  // Reste en useEffect car on doit lire animatingRef (non lisible en render).
+  // Attention : seul `startIndex` est listé en dep — `items` ne doit PAS être
+  // ajouté sinon on perd l'item courant à chaque refetch (cf. tests « reste sur
+  // le même item si l'array est réordonné »).
   useEffect(() => {
     if (animatingRef.current) return
-    const newFilePath = items[startIndex]?.file_path ?? null
-    setCurrentFilePath(newFilePath)
+    setCurrentFilePath(items[startIndex]?.file_path ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- voir commentaire ci-dessus
   }, [startIndex])
 
+  // Pagination async : quand une nouvelle page d'items est livrée alors qu'un
+  // advance est en attente, sauter à l'item 0 de la nouvelle page. Reste en
+  // useEffect car la trigger est l'arrivée async de données externes (refetch
+  // page suivante), pas un changement de prop synchrone.
   useEffect(() => {
     if (pendingPageAdvance && items.length > 0) {
       setCurrentFilePath(items[0]?.file_path ?? null)
@@ -182,6 +206,11 @@ export function CoverFlowModal({
   const total = globalTotal ?? items.length
   const globalIndex = globalIndexOffset + committedIdx
   const heading = currentItem ? formatHeading(currentItem, globalIndex, total) : ''
+  const currentHasMatch = Boolean(currentItem?.match_id)
+  const isOnCurrentMatchPage = currentHasMatch && currentMatchId === currentItem?.match_id
+  const showViewMatchLink = currentHasMatch && !isOnCurrentMatchPage && Boolean(playerSlug) && Boolean(currentItem?.match_id)
+  const reassociateLabel = currentHasMatch ? text.coverFlow.reassociateButton : text.coverFlow.associateButton
+  const reassociateTitle = currentHasMatch ? text.coverFlow.reassociateTitle : text.coverFlow.associateTitle
 
   function navigate(dir: 'next' | 'prev') {
     if (animatingRef.current) return
@@ -283,6 +312,21 @@ export function CoverFlowModal({
         <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-2 text-foreground">
           <div className="flex min-w-0 items-center gap-3">
             <span className="truncate text-sm text-foreground/80">{heading}</span>
+            {showViewMatchLink && playerSlug && currentItem.match_id && (
+              <a
+                href={`/players/${playerSlug}/matches/${currentItem.match_id}`}
+                onClick={(e) => e.stopPropagation()}
+                title={text.coverFlow.viewMatchTitle}
+                aria-label={text.coverFlow.viewMatchTitle}
+                className="shrink-0 text-foreground/70 hover:text-foreground transition-colors"
+              >
+                {/* Icône "ouvrir le match" — alignée sur celle de MatchCard pour cohérence visuelle */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                  <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+                </svg>
+              </a>
+            )}
             {onReassociate && (
               <button
                 type="button"
@@ -291,9 +335,9 @@ export function CoverFlowModal({
                   onReassociate(currentItem)
                 }}
                 className="shrink-0 rounded border border-border px-2 py-0.5 text-xs text-foreground/80 hover:border-foreground/50 hover:text-foreground whitespace-nowrap"
-                title={text.coverFlow.reassociateTitle}
+                title={reassociateTitle}
               >
-                {text.coverFlow.reassociateButton}
+                {reassociateLabel}
               </button>
             )}
           </div>
