@@ -107,6 +107,9 @@ type HaloAPIClient struct {
 	// minInterval est l'intervalle minimum entre deux requêtes (rate limiting).
 	minInterval time.Duration
 	lastRequest time.Time
+	// localFilmCache est consulté avant l'API pour les manifestes et chunks
+	// film. Nil = cache désactivé (comportement standard).
+	localFilmCache *LocalFilmCache
 }
 
 // NewHaloAPIClient crée un client authentifié avec les tokens Halo du joueur.
@@ -125,6 +128,14 @@ func NewHaloAPIClient(spartanToken, clearanceToken string, requestsPerSecond int
 		gameCMSBaseURL: haloGameCMSHost,
 		minInterval:    time.Second / time.Duration(requestsPerSecond),
 	}
+}
+
+// WithLocalFilmCache active le cache disque (manifestes + chunks REPLICATION_DATA)
+// pour les méthodes GetMatchFilm / GetHighlightEventsChunk. Si nil ou si le
+// répertoire n'existe pas, le cache reste désactivé.
+func (c *HaloAPIClient) WithLocalFilmCache(cache *LocalFilmCache) *HaloAPIClient {
+	c.localFilmCache = cache
+	return c
 }
 
 // GetMatchHistory récupère une page de l'historique des matchs d'un joueur.
@@ -250,10 +261,36 @@ func buildChunkURL(blobPrefix, fileRelativePath string) string {
 
 // fetchFilmManifest télécharge et décode le manifest film d'un match.
 // Retourne (manifest, true, nil) si disponible, (nil, false, nil) si absent (404/410).
+//
+// Si un LocalFilmCache est configuré, on lit le manifest local avant l'API —
+// le cache disque survit à l'expiration de l'endpoint manifest API (Halo
+// purge les manifestes après quelques semaines/mois mais le cache local
+// conserve les blob_prefixes valides plus longtemps via le CDN).
 func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (*filmManifest, bool, error) {
 	if !rexUUID.MatchString(matchID) {
 		return nil, false, fmt.Errorf("fetchFilmManifest: matchID invalide %q", matchID)
 	}
+
+	// 1. Cache disque (Python legacy).
+	if cm, err := c.localFilmCache.LoadManifest(matchID); err == nil && cm != nil {
+		manifest := &filmManifest{
+			BlobStoragePathPrefix: cm.BlobPrefix,
+		}
+		manifest.CustomData.FilmMajorVersion = 0 // legacy cache n'a pas la version
+		manifest.CustomData.Chunks = make([]filmChunk, 0, len(cm.Chunks))
+		for _, ch := range cm.Chunks {
+			manifest.CustomData.Chunks = append(manifest.CustomData.Chunks, filmChunk{
+				Index:                            ch.Index,
+				ChunkType:                        ch.ChunkType,
+				ChunkStartTimeOffsetMilliseconds: ch.StartMS,
+				DurationMilliseconds:             ch.DurationMS,
+				FileRelativePath:                 ch.FileRelativePath,
+			})
+		}
+		return manifest, true, nil
+	}
+
+	// 2. API Halo.
 	endpoint := fmt.Sprintf("%s/hi/films/matches/%s/spectate", haloUGCHost, url.PathEscape(matchID))
 	body, err := c.doGet(ctx, endpoint)
 	if err != nil {
@@ -282,6 +319,15 @@ func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[i
 	result := make(map[int]filmChunkData)
 	for _, chunk := range manifest.CustomData.Chunks {
 		if chunk.ChunkType != filmChunkTypeReplicationData {
+			continue
+		}
+		// Cache disque d'abord (Python legacy stocke les REPLICATION_DATA).
+		if cached, cErr := c.localFilmCache.LoadChunk(matchID, chunk.Index); cErr == nil && cached != nil {
+			result[chunk.Index] = filmChunkData{
+				Data:       cached,
+				StartMS:    chunk.ChunkStartTimeOffsetMilliseconds,
+				DurationMS: chunk.DurationMilliseconds,
+			}
 			continue
 		}
 		chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
@@ -314,9 +360,20 @@ func (c *HaloAPIClient) GetHighlightEventsChunk(ctx context.Context, matchID str
 		if chunk.ChunkType != filmChunkTypeHighlightEvents {
 			continue
 		}
+		// Cache disque d'abord (rarement présent — Python ne cache que
+		// REPLICATION_DATA — mais on tente).
+		if cached, cErr := c.localFilmCache.LoadChunk(matchID, chunk.Index); cErr == nil && cached != nil {
+			return cached, manifest.CustomData.FilmMajorVersion, true, nil
+		}
 		chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
 		data, err := c.downloadBlob(ctx, chunkURL)
 		if err != nil {
+			// Fallback gracieux : si le manifest vient du cache local et que
+			// le blob CDN a expiré, on retourne (nil, 0, false, nil) au lieu
+			// d'une erreur — comportement equivalent à "film absent".
+			if isNotFoundErr(err) {
+				return nil, 0, false, nil
+			}
 			return nil, 0, false, fmt.Errorf("GetHighlightEventsChunk(%s): %w", matchID, err)
 		}
 		return data, manifest.CustomData.FilmMajorVersion, true, nil
