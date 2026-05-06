@@ -1,5 +1,66 @@
 # Thought Log
 
+## [2026-05-06] Indexation média — regex OBS + suppression fallback mtime serveur
+
+**Statut** : Complété — modifications locales sur `fix/theme-consistency-tokens`, en attente de validation utilisateur avant commit.
+
+**Problème** : `insertMediaFile` ([internal/ops/media.go](apps/go-api/internal/ops/media.go)) résolvait `capture_start_utc` en 3 priorités (filename Xbox → `file.lastModified` client → mtime serveur). Le fallback mtime serveur produisait des timestamps faux dans le cas le plus fréquent (fichier uploadé/copié sur le serveur où `os.Stat().ModTime()` ≈ heure d'arrivée), entraînant l'association silencieuse du média au match en cours pendant l'upload. De plus, le seul format de filename reconnu était Xbox (`Halo Infinite 2024.11.15 - 21.30.45.01`), or les captures OBS Studio par défaut suivent un format différent (`Replay 2026-04-19 17-10-54`) → toujours en fallback mtime → toujours mal associées.
+
+**Décision** :
+1. **Ajout regex OBS** (`(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})`) dans `parseCaptureTimeFromFilename`, refactorisé en boucle sur un slice `captureTimeRegexes = {obsFilenameRe, xboxFilenameRe}` pour extension future.
+2. **Suppression du fallback mtime serveur** (priorité 3). Si ni filename ni `file.lastModified` ne fournissent de timestamp, `capture_start_utc` reste `NULL` et `slog.Warn("capture_start_utc indéterminé, média non-associable")` est émis. Le `JOIN ... ON mf.capture_start_utc BETWEEN ...` dans `AssociateMediaWithMatches` exclut automatiquement les NULL (NULL en SQL → UNKNOWN → false), donc aucune association erronée.
+
+**Trade-off accepté** : un scan local pur (utilisateur dépose des fichiers OBS via le filesystem sur sa machine, sans passer par l'upload web) perdait le mtime correct. Marginal et désormais couvert par la regex OBS pour le format par défaut.
+
+**Tests** :
+- `media_test.go` (pure) : `TestParseCaptureTimeFromFilename_OBSFormat_CET` + `_CEST` (DST), NoMatch enrichi avec `2024-01-01.mp4` (date sans time).
+- `media_backup_cgo_test.go` (CGO) : `TestInsertMediaFile_NoSource_LeavesNull` (assert `sql.NullTime.Valid == false`) + `TestInsertMediaFile_Priority1_OBSFilename` (assert UTC correct + client ts ignoré). L'ancien `TestInsertMediaFile_Priority3_MtimeFallback` est supprimé (comportement intentionnellement retiré).
+
+**Vérification go test/vet** : non-exécutable localement (Windows sans GCC, package CGO via duckdb-go bindings). À valider par l'utilisateur ou en CI.
+
+**Suivant** : commit après validation utilisateur, puis observation des `slog.Warn` en prod pour estimer le nombre de médias désormais non-associés (= ceux qui auraient été mal-associés silencieusement avant).
+
+---
+
+## [2026-05-06] Citations — wiring complet + parité Python source de vérité
+
+**Statut** : Complété — backfill Go bout-en-bout vérifié sur match réel (8 BR75 kills → `br75_mastery = 8`).
+
+**Problème** :
+1. `meta.citation_mappings` ne disposait que de 9 colonnes (medal_id only) : la requête `loadFullCitationMappings` cherchait `medal_ids/stat_name/award_name/custom_function/composite_children` → Binder Error.
+2. `defaultCitationMappings()` Go ne contenait que 18 entrées factices vs 88 dans `scripts/populate_citation_mappings.py` (branche `main`, source de vérité).
+3. `BackfillMatchCitations` existait mais **jamais appelé** par le sync engine ni par un CLI : 484 matchs sans calculs.
+4. `loadWeaponKills` dans `internal/sync/citations.go` faisait `strings.ToLower(name)` → `stats["weapon_kills:br75"]` ne matchait jamais `stat_name="weapon_kills:BR75"` (case canonique des `weapon_labels.name_en`).
+
+**Décision : struct literals Go, pas TOML** — cohérent avec le pattern existant (`applyWeaponLabels` 42 entrées hardcoded, career ranks). TOML aurait ajouté runtime I/O + déploiement + gestion d'erreur sans bénéfice : les 88 mappings changent ~trimestriellement avec un nouveau weapon Halo, et un edit Go est aussi simple qu'un edit TOML mais compile-time vérifié.
+
+**Livrables (un seul commit cohérent)** :
+
+1. **Migration `add_citation_mappings_v2_fields`** (`internal/migration/steps_metadata.go`) — ALTER TABLE ADD COLUMN IF NOT EXISTS pour `medal_ids/stat_name/award_name/award_category/custom_function/composite_children/subcategory` + index `idx_citation_mappings_type`.
+
+2. **Port des 88 citations** (`internal/ops/seed.go`) — `defaultCitationMappings()` réécrite avec parité 1:1 du Python : 11 Mode de jeu + 4 Vehicle/Grenade + 10 Multijoueur + 15 Spartan Companies + 7 Vehicle destructeurs + 10 PVE Firefight (4 désactivées) + 24 Weapon mastery (UNSC/Paria/Forerunner) + 7 Composites. `CitationMapping` struct enrichi avec tous les champs (medal_ids CSV, composite_children JSON, etc.). `SeedCitationMappings` réécrite en UPSERT `ON CONFLICT (citation_name_norm) DO UPDATE` avec pré-scan des norms existants pour distinguer Inserted vs Skipped.
+
+3. **Wiring sync engine** :
+   - `RunBackfillCitations(ctx, force) (int, error)` dans `internal/sync/citations_backfill.go` — pendant à `RunBackfillEngagementScores`. `force=true` purge d'abord `match_citations` pour les matchs concernés.
+   - `selectMatchesForCitations` — LEFT JOIN sur `match_citations` distinct pour ne traiter que les matchs absents (idempotent).
+   - Hook **post-sync** (`engine.go:runPostSyncPipeline` après engagement scores) — best-effort, skip silencieux si metadata.duckdb absent ou citation_mappings vide. Calcule citations sur les matchs nouvellement insérés à chaque sync delta.
+
+4. **CLI** (`cmd/levelup/cmd_backfill.go`) — option `--citations [--force]` pour `levelup backfill`, supporte `--gamertag X` ou `--all`. Applique migrations metadata avant le backfill (idempotent via schema_migrations).
+
+5. **Auto-migration dans `levelup seed`** — `runSeed` applique `migration.RunForDB(TargetMetadata)` avant tout seed pour garantir la cohérence schéma (sinon Binder Error sur colonnes manquantes).
+
+6. **Fix bug case** (`internal/sync/citations.go:loadWeaponKills`) — suppression du `strings.ToLower(name)` : les `weapon_labels.name_en` sont déjà canoniques (BR75, MA40 AR, Mk51 Sidekick) et le Python source utilise la même casse pour `stat_name` (cf. populate_citation_mappings.py).
+
+**Vérification end-to-end** :
+- `./levelup seed citation-mappings` → migration appliquée + 88 mappings upsertés.
+- `diag_weapon_citations Chocoboflor` → 24 weapon_stat citations configurées, 24/24 cohérence avec `weapon_labels.name_en`, 0 miss.
+- `./levelup backfill --gamertag Chocoboflor --citations --force` → 364 matchs recalculés.
+- Match `ff90953d` (8 BR75 kills) : `br75_mastery=8`, `spartan_killer=8`, `headshot=7`, `avenger=4`, `melee_fighter=1`, `close_combat=1`, `sting_like_a_bee=1` — calcul Go bout-en-bout fonctionnel.
+
+**Suivant** : laisser tourner les sync delta sur les autres joueurs (le hook post-sync calculera désormais les citations à chaque match). Si parité Python avec `spartan_carnage=3` à diagnostiquer, vérifier `medals_earned` du match (peut-être que les medal_ids hardcoded dans le Python ne correspondent plus aux IDs effectifs côté API actuelle — hors scope de ce PR).
+
+---
+
 ## [2026-05-05] Engagement long-term — recompute coefficients + cleanup + observabilité (11 phases)
 
 **Statut** : Complété — tests Go + integration verts.

@@ -828,6 +828,17 @@ func (e *SyncEngine) runPostSyncPipeline(
 		slog.DebugContext(ctx, "post-sync: engagement coefs mis à jour", "gamertag", e.gamertag, "count", n)
 	}
 
+	// 1.6 Citations (best-effort) — calcul des deltas pour les matchs absents
+	// de match_citations. Skip silencieux si metadata.duckdb introuvable ou si
+	// citation_mappings vide. Ne propage jamais d'erreur (le sync ne doit pas
+	// echouer a cause des citations).
+	if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
+		slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: citations calculées",
+			"gamertag", e.gamertag, "match_count", n)
+	}
+
 	// 2. LUSR (TrueSkill 2)
 	slog.DebugContext(ctx, "post-sync: calcul LUSR", "gamertag", e.gamertag)
 	if n, err := batchComputeLUSR(playerDB, sharedDB, e.xuid); err != nil {
