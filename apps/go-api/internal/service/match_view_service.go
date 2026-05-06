@@ -835,7 +835,8 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 		out.HasExpectedData = e.KillsExpected != nil || e.DeathsExpected != nil
 		out.ExpectedKills = e.KillsExpected
 		out.ExpectedDeaths = e.DeathsExpected
-		out.ExpectedAssists = e.AssistsExpected
+		// ExpectedAssists laissé nil : Halo Infinite ne fournit pas d'assists
+		// expected via l'API skill (StatPerformances = Kills + Deaths uniquement).
 	}
 	if len(histRows) == 0 || meta == nil {
 		return out
@@ -1290,10 +1291,8 @@ func buildTeamTabFull(
 			DamagePerDeath:      dpd,
 			ExpectedKills:       s.KillsExpected,
 			ExpectedDeaths:      s.DeathsExpected,
-			ExpectedAssists:     s.AssistsExpected,
 			KillsStdDev:         s.KillsStdDev,
 			DeathsStdDev:        s.DeathsStdDev,
-			AssistsStdDev:       s.AssistsStdDev,
 			Medals:              medalsByXUID[s.XUID],
 			WeaponKills:         weaponsByXUID[s.XUID],
 		}

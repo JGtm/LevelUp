@@ -24,7 +24,7 @@ func TestParticipantBits_NumericIdenticalToPython(t *testing.T) {
 		{"PBitEnemyMMR", PBitEnemyMMR, "0x2", 2},
 		{"PBitKillsExp", PBitKillsExp, "0x4", 4},
 		{"PBitDeathsExp", PBitDeathsExp, "0x8", 8},
-		{"PBitAssistsExp", PBitAssistsExp, "0x10", 16},
+		// bit 4 (0x10) reserve : ancien PBitAssistsExp, retire (Halo Infinite n'a pas d'Assists)
 		{"PBitAccuracy", PBitAccuracy, "0x20", 32},
 		{"PBitShots", PBitShots, "0x40", 64},
 		{"PBitDamage", PBitDamage, "0x80", 128},
@@ -51,7 +51,7 @@ func TestParticipantBits_GroupsConsistent(t *testing.T) {
 	if PBitMMR != PBitTeamMMR|PBitEnemyMMR {
 		t.Errorf("PBitMMR incohérent: %d", PBitMMR)
 	}
-	if PBitExpected != PBitKillsExp|PBitDeathsExp|PBitAssistsExp {
+	if PBitExpected != PBitKillsExp|PBitDeathsExp {
 		t.Errorf("PBitExpected incohérent: %d", PBitExpected)
 	}
 	if PBitSkill != PBitMMR|PBitExpected {

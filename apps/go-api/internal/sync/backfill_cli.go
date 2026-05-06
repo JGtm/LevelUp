@@ -117,14 +117,12 @@ func NewBackfillFlagSet() (*flag.FlagSet, *BackfillCLI, *SyncScope) {
 	fs.BoolVar(&scope.MMR, "mmr", false, "= --team-mmr + --enemy-mmr")
 	fs.BoolVar(&scope.ForceMMR, "force-mmr", false, "= --force-team-mmr + --force-enemy-mmr")
 
-	// ── Granulaire Expected (v5.2) ──
+	// ── Granulaire Expected (v5.2) — Halo Infinite : pas d'Assists ──
 	fs.BoolVar(&scope.KillsExpected, "kills-expected", false, "Backfill kills_expected/stddev")
 	fs.BoolVar(&scope.DeathsExpected, "deaths-expected", false, "Backfill deaths_expected/stddev")
-	fs.BoolVar(&scope.AssistsExpected, "assists-expected", false, "Backfill assists_expected/stddev")
-	fs.BoolVar(&scope.Expected, "expected", false, "= --kills-expected + --deaths-expected + --assists-expected")
+	fs.BoolVar(&scope.Expected, "expected", false, "= --kills-expected + --deaths-expected")
 	fs.BoolVar(&scope.ForceKillsExpected, "force-kills-expected", false, "Force kills_expected")
 	fs.BoolVar(&scope.ForceDeathsExpected, "force-deaths-expected", false, "Force deaths_expected")
-	fs.BoolVar(&scope.ForceAssistsExpected, "force-assists-expected", false, "Force assists_expected")
 	fs.BoolVar(&scope.ForceExpected, "force-expected", false, "Force toutes les expected values")
 
 	// ── Combat granulaire (v5.2) ──

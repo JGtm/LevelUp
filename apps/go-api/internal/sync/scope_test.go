@@ -37,8 +37,8 @@ func TestSyncScope_Resolve_ExpectedGroup(t *testing.T) {
 	s := &SyncScope{Expected: true}
 	s.Resolve()
 
-	if !s.KillsExpected || !s.DeathsExpected || !s.AssistsExpected {
-		t.Error("Expected group should set KillsExpected, DeathsExpected, AssistsExpected")
+	if !s.KillsExpected || !s.DeathsExpected {
+		t.Error("Expected group should set KillsExpected, DeathsExpected")
 	}
 }
 
@@ -188,9 +188,6 @@ func TestSyncScope_Resolve_SkillActivatesMMRAndExpected(t *testing.T) {
 	}
 	if !s.DeathsExpected {
 		t.Error("Skill should set DeathsExpected")
-	}
-	if !s.AssistsExpected {
-		t.Error("Skill should set AssistsExpected")
 	}
 }
 

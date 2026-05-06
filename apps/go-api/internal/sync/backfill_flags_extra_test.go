@@ -58,7 +58,6 @@ func TestComputeParticipantBitsFromData_AllBits(t *testing.T) {
 		"enemy_mmr":           float64(1400),
 		"kills_expected":      float64(10),
 		"deaths_expected":     float64(8),
-		"assists_expected":    float64(5),
 		"accuracy":            float64(45),
 		"shots_fired":         float64(200),
 		"damage_dealt":        float64(3000),
@@ -92,7 +91,7 @@ func TestComputeParticipantBitsFromData_NilValue(t *testing.T) {
 func TestComputeParticipantBitsFromData_PartialExpected(t *testing.T) {
 	data := map[string]interface{}{
 		"kills_expected": float64(10),
-		// deaths_expected and assists_expected missing
+		// deaths_expected missing
 	}
 	got := ComputeParticipantBitsFromData(data)
 	if got&PBitKillsExp == 0 {

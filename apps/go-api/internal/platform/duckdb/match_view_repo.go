@@ -242,10 +242,8 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 			&topWeaponU,
 			&s.KillsExpected,
 			&s.DeathsExpected,
-			&s.AssistsExpected,
 			&s.KillsStdDev,
 			&s.DeathsStdDev,
-			&s.AssistsStdDev,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard scan: %w", err)
 		}
@@ -850,10 +848,8 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 	err := r.pdb.ReadDB().QueryRow(ctx, Q26MatchExpectedStats, matchID, xuid).Scan(
 		&row.KillsExpected,
 		&row.DeathsExpected,
-		&row.AssistsExpected,
 		&row.KillsStddev,
 		&row.DeathsStddev,
-		&row.AssistsStddev,
 	)
 	if err != nil {
 		// Colonnes absentes ou match introuvable → nil sans erreur

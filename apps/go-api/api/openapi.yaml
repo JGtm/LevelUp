@@ -3228,10 +3228,6 @@ components:
           type: number
           format: float
           nullable: true
-        expected_assists:
-          type: number
-          format: float
-          nullable: true
 
     MatchSummaryTab:
       type: object
