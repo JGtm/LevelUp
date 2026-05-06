@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -467,6 +468,12 @@ func (h *PrestigeHandler) RefreshSquadPool(w http.ResponseWriter, r *http.Reques
 // Centralise la traduction pour éviter la duplication dans chaque handler.
 func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, dblease.ErrDBLocked):
+		// Le sync engine ou un autre handler tient le lease — on demande au
+		// client de retry sous 5 s. Cf. plan db-concurrency commit 2.
+		w.Header().Set("Retry-After", "5")
+		writeError(w, http.StatusServiceUnavailable, "db_busy",
+			"database is currently busy, please retry")
 	case errors.Is(err, prestige.ErrChallengeNotFound),
 		errors.Is(err, prestige.ErrArcNotFound),
 		errors.Is(err, prestige.ErrUserNotFound):

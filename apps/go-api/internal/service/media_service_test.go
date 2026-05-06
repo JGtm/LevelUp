@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,18 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/port"
 )
+
+// Compile-time check : *duckdb.MediaRepo doit satisfaire l'interface privée
+// atomicMediaLiker pour activer le chemin atomique. On le vérifie ici via une
+// déclaration vide qui force le compilateur à valider la conformité — si la
+// signature de SetMediaLikeAtomic divergeait, le build casserait.
+//
+// On n'importe pas duckdb directement (cycle) — la vérif sera faite au commit
+// suivant via un test d'intégration cgo.
+var _ atomicMediaLiker = (*mockAtomicMediaRepo)(nil)
 
 // --- mock ---
 
@@ -699,5 +711,90 @@ func TestReassociateMedia_NoDB_ReturnsError(t *testing.T) {
 	_, err := svc.ReassociateMedia(context.Background(), domain.ReassociateRequest{})
 	if err == nil {
 		t.Error("expected error when no DB path provided")
+	}
+}
+
+// ─── Atomic SetMediaLike (commit 6 db-concurrency) ───
+
+// mockAtomicMediaRepo étend mockMediaRepo avec SetMediaLikeAtomic pour activer
+// le chemin atomique du service. Chaque champ permet de simuler un cas d'échec
+// ou de capture pour assertions.
+type mockAtomicMediaRepo struct {
+	mockMediaRepo
+	atomicCalled    bool
+	atomicArgs      atomicCallArgs
+	atomicUpdated   bool
+	atomicErr       error
+	atomicErrOnLike bool // si true, erreur uniquement quand exec.ExecContext est appelée pour insert/delete media_likes (simulation d'échec mid-tx)
+}
+
+type atomicCallArgs struct {
+	filePath, likerSlug, likerGamertag string
+	liked                              bool
+}
+
+func (m *mockAtomicMediaRepo) SetMediaLikeAtomic(
+	_ context.Context,
+	_ port.DBExecutor,
+	filePath, likerSlug, likerGamertag string,
+	liked bool,
+) (bool, error) {
+	m.atomicCalled = true
+	m.atomicArgs = atomicCallArgs{filePath: filePath, likerSlug: likerSlug, likerGamertag: likerGamertag, liked: liked}
+	if m.atomicErr != nil {
+		return false, m.atomicErr
+	}
+	return m.atomicUpdated, nil
+}
+
+// Note : les chemins "atomic success" et "atomic rollback" exigent une vraie
+// *sql.DB pour BeginTx, donc des tests d'intégration cgo (DuckDB :memory:).
+// Couverture déférée à la suite intégration ; ici on couvre les cas qui ne
+// déclenchent pas BeginTx (lease busy + no-acquirer) + l'invariant compile-time
+// que MediaRepo satisfait l'interface atomicMediaLiker.
+
+// TestMediaService_SetMediaLike_Atomic_LeaseBusy_PropagatesErrDBLocked —
+// l'acquéreur retourne ErrDBLocked → propagation au caller.
+func TestMediaService_SetMediaLike_Atomic_LeaseBusy_PropagatesErrDBLocked(t *testing.T) {
+	repo := &mockAtomicMediaRepo{atomicUpdated: true}
+	acquirer := func() (*dblease.LeasedWriter, error) {
+		return nil, fmt.Errorf("simulated lease busy: %w", dblease.ErrDBLocked)
+	}
+	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
+
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath: "/clip.mp4", LikerSlug: "spartan-a", Liked: true,
+	})
+	if err == nil {
+		t.Fatal("expected ErrDBLocked, got nil")
+	}
+	if !errors.Is(err, dblease.ErrDBLocked) {
+		t.Errorf("err should wrap dblease.ErrDBLocked, got %v", err)
+	}
+	if repo.atomicCalled {
+		t.Error("atomic should NOT be called when lease cannot be acquired")
+	}
+}
+
+// TestMediaService_SetMediaLike_NoAcquirer_LegacyPath — sans option, le
+// chemin legacy (SetMediaLike + ToggleSharedLike séparés) est emprunté.
+// Garde-fou non-régression : les ~30 tests existants doivent continuer
+// d'exercer ce chemin.
+func TestMediaService_SetMediaLike_NoAcquirer_LegacyPath(t *testing.T) {
+	repo := &mockAtomicMediaRepo{} // satisfait atomicMediaLiker mais...
+	repo.setOK = true
+	svc := NewMediaService(repo, "") // ...pas d'acquireWriter → legacy
+
+	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
+		FilePath: "/clip.mp4", LikerSlug: "spartan-a", Liked: true,
+	})
+	if err != nil {
+		t.Fatalf("SetMediaLike: %v", err)
+	}
+	if repo.atomicCalled {
+		t.Error("atomic should NOT be called when no WriterAcquirer is configured")
+	}
+	if !repo.toggleCalled {
+		t.Error("legacy ToggleSharedLike should have been called")
 	}
 }

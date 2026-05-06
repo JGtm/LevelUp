@@ -12,6 +12,73 @@
 
 ---
 
+### [db-concurrency] Suite et fin du refactor `leased-writer-enforcement`
+
+**Noté le** : 2026-05-05 | **Priorité** : 🔴 Bloquant merge pour les 3 premiers points, 🟡 follow-up pour le reste
+
+**Contexte** : la branche `refactor/leased-writer-enforcement` (9 commits, `ae03600f`→`5423da2a`) résout P1 (Prestige HTTP), P2 (Notifications), P3 (Media atomicité) en introduisant le type `*dblease.LeasedWriter`, deux patterns de configuration (Wrapper / Option), et 41 nouveaux tests + 3 benchmarks. Le code complet n'a **pas pu être buildé localement** faute de `gcc`/cgo dans l'environnement de la session — vérifié uniquement via `gofmt` et cohérence statique des signatures. Plan complet dans [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md), ADR officielle dans [docs/adr/0013-leased-writer-enforcement.md](docs/adr/0013-leased-writer-enforcement.md).
+
+**🔴 Bloquant merge — à faire sur une machine cgo-enabled** :
+
+1. **Build complet cgo** :
+   ```bash
+   cd apps/go-api && make test 2>&1 | tee /tmp/post_branch_test.log
+   ```
+   Si rouge : la cause est probablement une typo / import / signature dans un de mes commits 2-7. Me remonter les fichiers en échec pour correctif.
+
+2. **Vérifier le baseline test** : relancer `bash scripts/check_test_baseline.sh tests` post-build cgo. Doit confirmer que les 1662 tests de la baseline pré-migration sont toujours présents et verts (contrat de non-régression du commit 0).
+
+3. **Valider les 2 tests d'intégration coordination** (build tag `integration`) :
+   - `TestCoordination_SyncLease_BlocksHTTPWriter` ([sync/lease_test.go](apps/go-api/internal/sync/lease_test.go))
+   - `TestCoordination_HTTPWriter_BlocksSyncLease`
+   
+   Si rouge → la coordination sync↔HTTP est cassée et P1 n'est pas réellement résolu. Faux sentiment de sécurité.
+
+**🟡 Follow-up dans des PRs séparées** :
+
+4. **Câbler les 2 scripts en CI** : `scripts/check_test_baseline.sh` et `apps/go-api/scripts/check_lease_enforcement.sh` doivent tourner en GitHub Actions. PR infra dédiée — pas dans le scope db-concurrency.
+
+5. **Tests intégration concurrentiels manquants** : le plan v3 prévoyait 17 scénarios sous build tag `integration`, seuls 2 ont été ajoutés (commit 7). Manquent (cf. [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md §Tests d'intégration concurrentiels](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md)) :
+   - `TestSyncVsPrestigeConcurrent` — sync long + 10 POST /challenges en parallèle.
+   - `TestSyncHookNoDeadlock` — pipeline sync + RunPostSyncHook avec timeout court (échoue par timeout si deadlock).
+   - `TestSyncVsNotificationsConcurrent`, `TestSyncVsMediaLikeConcurrent`, `TestSyncVsMatchFavoriteConcurrent`.
+   - `TestMediaLikeRollback`, `TestMediaLikeAtomic_PanicMidTx`, `TestPrestigeEmitEventAtomicity`.
+   - `TestSyncDeltaProducesSameOutput`, `TestSyncFullProducesSameOutput`, `TestSyncEngineFullPipeline` (ISO bit-à-bit).
+   - `TestNotificationsBurst`, `TestSyncBurstNoLeak`, `TestPrestigeBurst`.
+   - `TestProcessKillNoStaleLock`, `TestExternalProcessLock` (crash recovery).
+
+6. **Tests `Atomic_Success` + `Atomic_RepoError_Rollback` cgo-only** : documentés comme différés au commit 6 (exigent une vraie *sql.DB DuckDB :memory: pour `BeginTx`). À ajouter dans `internal/service/media_service_test.go` avec build tag `integration`. Couvrent l'invariant central de P3 (rollback observable du `*sql.Tx` mid-transaction).
+
+7. **Migrer sync engine vers `dblease.AcquireWriterCtx`** : 11 sites dans [sync/engine.go](apps/go-api/internal/sync/engine.go), [sync/backfill_weapons.go](apps/go-api/internal/sync/backfill_weapons.go), [sync/friends_recompute.go](apps/go-api/internal/sync/friends_recompute.go). Bénéfice : alimenter les compteurs `dblease_acquire_total{kind}` du commit 1 (visibilité observabilité). Risque : ~63 tests sync à préserver bit-à-bit. Documenté comme dette dans [sync/lease.go](apps/go-api/internal/sync/lease.go). Non bloquant pour la résolution fonctionnelle de P1/P2/P3.
+
+**🟢 Validation manuelle pré-prod** :
+
+8. **Suite de non-régression métier** : à valider en local après merge (cf. [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md §Suite de non-régression métier](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md)).
+   - Sync delta sur joueur réel : durée + nb matchs identiques.
+   - Création/édition/abandon défi via UI : flow inchangé.
+   - Page Prestige `/api/v1/prestige/me` : leaderboard et PP cohérents.
+   - Toggle favori match : visible immédiatement, persisté.
+   - Like/unlike média : état persistant après refresh.
+   - Notifications : émission, mark-read, suppression OK.
+   - **Comportements concurrents observables** : pendant un sync long, un POST /challenges retourne 200 ou 503 (jamais 500), retry après 5s succède.
+
+9. **Vérifier `PRESTIGE_ENABLED` en prod** : la variable est `true` par défaut dans le code ([prestige/sync_hook.go:32](apps/go-api/internal/prestige/sync_hook.go#L32) — false uniquement si la var vaut explicitement `0/false/no/off`). Si l'env de prod ne pose pas la var explicitement, P1 est déjà actif → la résolution apportée par cette branche est immédiatement bénéfique. Si la var est `false`, on peut activer Prestige plus tranquillement après les vérifs cgo (cf. ADR-0005).
+
+**Conditions de déblocage** :
+1. ❌ Build cgo complet vert (point 1).
+2. ❌ Baseline tests préservée (point 2).
+3. ❌ Tests coordination intégration verts (point 3).
+4. Une fois 1-3 OK : merge de la branche vers `fix/theme-consistency-tokens` ou `main` selon la stratégie.
+
+**Documents liés** :
+- [.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md](.ai/V7/PLAN_DB_WRITE_CONCURRENCY.md) — plan v3 complet (~1100 lignes)
+- [docs/adr/0013-leased-writer-enforcement.md](docs/adr/0013-leased-writer-enforcement.md) — ADR officielle EN
+- [docs/FR/adr/0013-leased-writer-enforcement.md](docs/FR/adr/0013-leased-writer-enforcement.md) — version FR
+- [.ai/baselines/tests_pre_migration.jsonl](.ai/baselines/tests_pre_migration.jsonl) — 1662 tests baseline figés
+- [.ai/thought_log.md](.ai/thought_log.md) — 9 entrées commit-par-commit (pivots documentés)
+
+---
+
 ### [feedback-drawer] Activer la sync des labels GitHub après merge sur main
 
 **Noté le** : 2026-05-05 | **Priorité** : Bloquante au merge de `feat/feedback-drawer`
@@ -34,7 +101,7 @@
 **Documents liés** :
 - `.github/labels.yml` — déclaration versionnée des labels
 - `.github/workflows/sync-labels.yml` — workflow d'auto-sync
-- `.ai/FEEDBACK_DRAWER.md` — plan complet
+- `.ai/V7/FEEDBACK_DRAWER.md` — plan complet
 - `.ai/thought_log.md` — entrée 2026-05-05 (drawer feedback)
 
 ---

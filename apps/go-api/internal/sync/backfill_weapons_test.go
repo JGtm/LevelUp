@@ -136,7 +136,7 @@ func TestInsertWeaponKills_WithData(t *testing.T) {
 	}
 }
 
-func TestMarkWeaponKillsDone(t *testing.T) {
+func TestMarkWeaponKillsDone_WithFilm(t *testing.T) {
 	db := openWeaponDB(t)
 	db.Exec("INSERT INTO match_registry (match_id) VALUES ('m1')")
 

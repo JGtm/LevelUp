@@ -290,7 +290,8 @@ func MarkWeaponKillsDone(db *sql.DB, matchID string, noFilm bool) error {
 	_, err := db.Exec(`
 		UPDATE match_registry
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
-		WHERE match_id = ?`, bit, matchID)
+		WHERE match_id = ?
+	`, bit, matchID)
 	if err != nil {
 		return fmt.Errorf("MarkWeaponKillsDone(%s): %w", matchID, err)
 	}

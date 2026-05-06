@@ -1,0 +1,4 @@
+# Artefacts régénérables (gros) — exclus du tracking.
+# Voir .ai/PLAN_DB_WRITE_CONCURRENCY.md §Stratégie de tests.
+*.raw
+*.stdout

@@ -12,6 +12,8 @@ import (
 	"errors"
 	"net/http"
 
+	"levelup/go-api/internal/platform/dblease"
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -84,32 +86,85 @@ func (l *LazyPrestigeService) resolveByUserID(ctx context.Context, userID string
 	return l.bundle.ServiceForPlayer(ctx, slug)
 }
 
+// resolveWithPlayerDB retourne le service ET le *PlayerDB associé — utile pour
+// les méthodes write qui doivent acquérir un *LeasedWriter avant délégation.
+// Les méthodes read continuent d'utiliser resolve() / resolveByUserID().
+func (l *LazyPrestigeService) resolveWithPlayerDB(ctx context.Context) (*platform_duckdb.PlayerDB, prestige.Service, error) {
+	slug := l.extractFn(ctx)
+	if slug == "" {
+		return nil, nil, ErrPlayerNotResolved
+	}
+	return l.bundle.serviceAndPlayerDB(ctx, slug)
+}
+
+// resolveWithPlayerDBByUserID idem, avec fallback userID.
+func (l *LazyPrestigeService) resolveWithPlayerDBByUserID(ctx context.Context, userID string) (*platform_duckdb.PlayerDB, prestige.Service, error) {
+	slug := l.extractFn(ctx)
+	if slug == "" {
+		slug = userID
+	}
+	if slug == "" {
+		return nil, nil, ErrPlayerNotResolved
+	}
+	return l.bundle.serviceAndPlayerDB(ctx, slug)
+}
+
+// acquirePlayerWriter encapsule le pattern d'acquisition pour les méthodes
+// write Prestige côté player DB. Retourne ErrDBLocked si le sync engine ou
+// un autre handler tient déjà le lease — les handlers HTTP mappent en 503.
+func acquirePlayerWriter(pdb *platform_duckdb.PlayerDB) (*dblease.LeasedWriter, error) {
+	return pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)
+}
+
+// acquireSharedSocialWriter encapsule l'acquisition du lease sur
+// shared_social.duckdb (squad challenges, prestige events / user_prestige).
+// La DB étant partagée entre tous les joueurs, le lease sérialise les writes
+// inter-joueurs aussi.
+func acquireSharedSocialWriter(pdb *platform_duckdb.PlayerDB) (*dblease.LeasedWriter, error) {
+	return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
+}
+
 // ─── Compile-time assertion ───
 var _ prestige.Service = (*LazyPrestigeService)(nil)
 
 // ─── Méthodes Service (délégation) ───
 
 func (l *LazyPrestigeService) CreateChallenge(ctx context.Context, req prestige.CreateChallengeRequest) (prestige.Challenge, error) {
-	svc, err := l.resolveByUserID(ctx, req.UserID)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, req.UserID)
 	if err != nil {
 		return prestige.Challenge{}, err
 	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return prestige.Challenge{}, err
+	}
+	defer w.Release()
 	return svc.CreateChallenge(ctx, req)
 }
 
 func (l *LazyPrestigeService) UpdateChallenge(ctx context.Context, id string, patch prestige.UpdateChallengePatch) (prestige.Challenge, error) {
-	svc, err := l.resolve(ctx)
+	pdb, svc, err := l.resolveWithPlayerDB(ctx)
 	if err != nil {
 		return prestige.Challenge{}, err
 	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return prestige.Challenge{}, err
+	}
+	defer w.Release()
 	return svc.UpdateChallenge(ctx, id, patch)
 }
 
 func (l *LazyPrestigeService) AbandonChallenge(ctx context.Context, id string) error {
-	svc, err := l.resolve(ctx)
+	pdb, svc, err := l.resolveWithPlayerDB(ctx)
 	if err != nil {
 		return err
 	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
 	return svc.AbandonChallenge(ctx, id)
 }
 
@@ -162,10 +217,15 @@ func (l *LazyPrestigeService) SuggestNext(ctx context.Context, completedID strin
 }
 
 func (l *LazyPrestigeService) CreateArc(ctx context.Context, req prestige.CreateArcRequest) (prestige.Arc, error) {
-	svc, err := l.resolveByUserID(ctx, req.UserID)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, req.UserID)
 	if err != nil {
 		return prestige.Arc{}, err
 	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return prestige.Arc{}, err
+	}
+	defer w.Release()
 	return svc.CreateArc(ctx, req)
 }
 
@@ -186,18 +246,28 @@ func (l *LazyPrestigeService) GetArc(ctx context.Context, id string) (prestige.A
 }
 
 func (l *LazyPrestigeService) CreateSquadChallenge(ctx context.Context, req prestige.CreateSquadChallengeRequest) (prestige.SquadChallenge, error) {
-	svc, err := l.resolveByUserID(ctx, req.CreatedBy)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, req.CreatedBy)
 	if err != nil {
 		return prestige.SquadChallenge{}, err
 	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return prestige.SquadChallenge{}, err
+	}
+	defer w.Release()
 	return svc.CreateSquadChallenge(ctx, req)
 }
 
 func (l *LazyPrestigeService) JoinSquadChallenge(ctx context.Context, challengeID, userID string, chosenTier prestige.Tier, isPrivate bool) error {
-	svc, err := l.resolveByUserID(ctx, userID)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}
+	w, err := acquireSharedSocialWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
 	return svc.JoinSquadChallenge(ctx, challengeID, userID, chosenTier, isPrivate)
 }
 
@@ -226,18 +296,28 @@ func (l *LazyPrestigeService) RefreshSquadPool(ctx context.Context, squadID, tit
 }
 
 func (l *LazyPrestigeService) EnablePilotMode(ctx context.Context, userID, titleSlug string) (prestige.PilotModeAttribution, error) {
-	svc, err := l.resolveByUserID(ctx, userID)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
 	if err != nil {
 		return prestige.PilotModeAttribution{}, err
 	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return prestige.PilotModeAttribution{}, err
+	}
+	defer w.Release()
 	return svc.EnablePilotMode(ctx, userID, titleSlug)
 }
 
 func (l *LazyPrestigeService) DisablePilotMode(ctx context.Context, userID, titleSlug string) error {
-	svc, err := l.resolveByUserID(ctx, userID)
+	pdb, svc, err := l.resolveWithPlayerDBByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}
+	w, err := acquirePlayerWriter(pdb)
+	if err != nil {
+		return err
+	}
+	defer w.Release()
 	return svc.DisablePilotMode(ctx, userID, titleSlug)
 }
 

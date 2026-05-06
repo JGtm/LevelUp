@@ -7,12 +7,14 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -52,6 +54,12 @@ func (h *MatchFavoriteHandler) PatchMatchFavorite(w http.ResponseWriter, r *http
 	req.MatchID = matchID
 
 	if err := svc.ToggleMatchFavorite(r.Context(), req); err != nil {
+		if errors.Is(err, dblease.ErrDBLocked) {
+			w.Header().Set("Retry-After", "5")
+			writeError(w, http.StatusServiceUnavailable, "db_busy",
+				"database is currently busy, please retry")
+			return
+		}
 		slog.ErrorContext(r.Context(), "match_favorite: erreur bascule",
 			"err", err, "match_id", matchID, "player", slug)
 		writeError(w, http.StatusInternalServerError, "favorite_error", err.Error())

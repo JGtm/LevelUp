@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // fakeNotifRepo : impl Repository en mémoire pour les tests.
@@ -456,4 +458,93 @@ func TestNotificationsHandler_BadJSON(t *testing.T) {
 
 func i64Str(i int64) string {
 	return strconv.FormatInt(i, 10)
+}
+
+// ─── ErrDBLocked → 503 (commit 4 db-concurrency) ───
+
+// dbLockedAcquirer simule un *LeasedWriter saturé en retournant directement
+// une erreur qui wrap ErrDBLocked, comme le ferait dblease.AcquireWriter en
+// situation de timeout réel.
+func dbLockedAcquirer() (*dblease.LeasedWriter, error) {
+	return nil, fmt.Errorf("simulated lease timeout: %w", dblease.ErrDBLocked)
+}
+
+func TestNotificationsHandler_MarkRead_DBLocked_Returns503(t *testing.T) {
+	repo := newFakeNotifRepo()
+	svc := notifications.NewService(repo, notifications.WithWriterAcquirer(dbLockedAcquirer))
+	r := newNotificationsRouter(makeFactory(svc, "p1"))
+
+	body := `{"ids":[1,2,3]}`
+	req := httptest.NewRequest(http.MethodPost, "/players/p1/notifications/mark-read",
+		bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
+	}
+	var body503 map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body503); err != nil {
+		t.Fatalf("response body not JSON: %v", err)
+	}
+	if code, _ := body503["code"].(string); code != "db_busy" {
+		t.Errorf("error code = %v, want db_busy", body503["code"])
+	}
+}
+
+func TestNotificationsHandler_Delete_DBLocked_Returns503(t *testing.T) {
+	repo := newFakeNotifRepo()
+	svc := notifications.NewService(repo, notifications.WithWriterAcquirer(dbLockedAcquirer))
+	r := newNotificationsRouter(makeFactory(svc, "p1"))
+
+	req := httptest.NewRequest(http.MethodDelete, "/players/p1/notifications/42", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Retry-After"); got != "5" {
+		t.Errorf("Retry-After header = %q, want %q", got, "5")
+	}
+}
+
+func TestNotificationsHandler_UpdatePreferences_DBLocked_Returns503(t *testing.T) {
+	repo := newFakeNotifRepo()
+	svc := notifications.NewService(repo, notifications.WithWriterAcquirer(dbLockedAcquirer))
+	r := newNotificationsRouter(makeFactory(svc, "p1"))
+
+	body := `{"items":[{"category":"match_synced","enabled":true,"delivery":"toast"}]}`
+	req := httptest.NewRequest(http.MethodPatch, "/players/p1/notifications/preferences",
+		bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d (body=%s)", w.Code, w.Body.String())
+	}
+}
+
+// TestNotificationsHandler_Emit_BestEffort_NoErrorOnLeaseBusy vérifie que
+// PostTest (qui appelle Emit) retourne 204 même si le lease est saturé —
+// preuve que le contrat best-effort de Emit est préservé même via HTTP.
+func TestNotificationsHandler_Emit_BestEffort_NoErrorOnLeaseBusy(t *testing.T) {
+	repo := newFakeNotifRepo()
+	repo.prefs[notifications.CategoryAppRelease] = notifications.Preference{
+		Category: notifications.CategoryAppRelease, Enabled: true, Delivery: notifications.DeliveryToast,
+	}
+	svc := notifications.NewService(repo, notifications.WithWriterAcquirer(dbLockedAcquirer))
+	r := newNotificationsRouter(makeFactory(svc, "p1"))
+
+	req := httptest.NewRequest(http.MethodPost, "/players/p1/notifications/test", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("PostTest should return 204 even on lease busy (best-effort), got %d (body=%s)",
+			w.Code, w.Body.String())
+	}
 }
