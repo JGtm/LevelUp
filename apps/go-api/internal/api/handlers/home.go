@@ -33,7 +33,21 @@ func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Sto
 	return &HomeHandler{newSvc: newSvc, settingsStore: settingsStore}
 }
 
-func (h *HomeHandler) locale() string {
+// resolveLocale détermine la locale à utiliser pour cette requête.
+// Priorité : header X-LevelUp-Locale (envoyé par le frontend) → settings store
+// (app_settings.json:lang) → "fr" par défaut.
+//
+// Le header permet au frontend de basculer la locale en runtime sans dépendre
+// d'un re-bootstrap après modification de app_settings.json.
+func (h *HomeHandler) resolveLocale(r *http.Request) string {
+	if v := strings.ToLower(strings.TrimSpace(r.Header.Get("X-LevelUp-Locale"))); v != "" {
+		if strings.HasPrefix(v, "en") {
+			return "en"
+		}
+		if strings.HasPrefix(v, "fr") {
+			return "fr"
+		}
+	}
 	if h.settingsStore == nil {
 		return "fr"
 	}
@@ -58,7 +72,7 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := svc.GetHomePage(ctx, gamertag, h.locale())
+	page, err := svc.GetHomePage(ctx, gamertag, h.resolveLocale(r))
 	if err != nil {
 		slog.ErrorContext(ctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
 		writeError(w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
