@@ -202,7 +202,10 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
           <Badge variant={item.kind === 'clip' ? 'default' : 'secondary'} className="text-xs shrink-0">
             {item.kind}
           </Badge>
-          {item.map_name && <span className="truncate text-xs text-muted-foreground min-w-0">{item.map_name}</span>}
+          {item.map_name
+            ? <span className="truncate text-xs text-muted-foreground min-w-0">{item.map_name}</span>
+            : item.match_id === null && <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">Pas de match associé</span>
+          }
           {dateStr && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{dateStr}</span>}
         </div>
         <LikersLine likers={item.likers} totalLikers={item.total_likers} />

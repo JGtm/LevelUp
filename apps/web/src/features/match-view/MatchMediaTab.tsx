@@ -60,6 +60,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
   )
   const [mediaRows, setMediaRows] = useState<MediaItemRow[]>(initialRows)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+  const [autoChain, setAutoChain] = useState(false)
   const toggleLike = useToggleMediaLike(playerSlug)
 
   function handleToggleLike(item: MediaItemRow) {
@@ -104,6 +105,8 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
           likeDisabled={toggleLike.isPending}
+          autoChain={autoChain}
+          onToggleAutoChain={() => setAutoChain((c) => !c)}
         />
       )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
