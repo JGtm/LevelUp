@@ -766,7 +766,7 @@ func TestRunPostSyncPipeline_NoError(t *testing.T) {
 		xuid:     "1234567890123456",
 	}
 
-	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock)
+	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
 
 	// Post-sync should complete without panic.
 	// Results may be 0 if no data to compute, but that's expected.
@@ -839,7 +839,7 @@ func TestRunConditionalPostSync_NoInsertedMatches_StillSyncsCareer(t *testing.T)
 
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
 
-	r := e.runConditionalPostSync(context.Background(), playerDB, sharedDB, mock, 0)
+	r := e.runConditionalPostSync(context.Background(), playerDB, sharedDB, mock, 0, nil)
 
 	if !r.CareerSynced {
 		t.Fatal("CareerSynced devrait être true même sans nouveau match")
@@ -869,7 +869,7 @@ func TestRunPostSyncPipeline_CareerError(t *testing.T) {
 
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
 
-	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock)
+	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
 
 	// Should not panic. Career should not be synced.
 	if r.CareerSynced {
@@ -885,7 +885,7 @@ func TestRunPostSyncPipeline_NilCareerData(t *testing.T) {
 
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
 
-	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock)
+	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
 
 	if r.CareerSynced {
 		t.Error("CareerSynced devrait être false quand careerData=nil")

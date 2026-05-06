@@ -85,6 +85,39 @@ func LookupFriendXUIDs(sharedDB *sql.DB, gamertags []string) []string {
 	return xuids
 }
 
+// recalculateSessionsInline recalcule les sessions sur des DBs déjà ouvertes
+// (i.e. sans acquérir de lease ni ouvrir de handle). Conçue pour être
+// appelée depuis le PostSync chain où les leases sont déjà détenues.
+//
+// Retourne (matchs_mis_à_jour, error). Erreurs non-bloquantes (no-op si pas
+// de matchs ou si shared.match_participants est vide).
+func recalculateSessionsInline(
+	ctx context.Context,
+	playerDB, sharedDB *sql.DB,
+	xuid string,
+	opts domain.SessionComputeOptions,
+	friendGamertags []string,
+) (int, error) {
+	if len(friendGamertags) > 0 {
+		opts.FriendsXUIDs = LookupFriendXUIDs(sharedDB, friendGamertags)
+	}
+	matchRows, err := loadSessionMatchRowsDirect(ctx, sharedDB, xuid)
+	if err != nil {
+		return 0, fmt.Errorf("recalculateSessionsInline load: %w", err)
+	}
+	if len(matchRows) == 0 {
+		return 0, nil
+	}
+	assignments := analysis.ComputeSessionsWithContext(matchRows, opts)
+	groups := analysis.BuildSessionGroups(matchRows, assignments)
+	assignments = analysis.MergeSessionLabels(assignments, groups)
+	n, err := WriteSessionAssignments(playerDB, assignments)
+	if err != nil {
+		return 0, fmt.Errorf("recalculateSessionsInline write: %w", err)
+	}
+	return n, nil
+}
+
 // RecalculatePlayerSessions recalcule les sessions pour un joueur.
 // Acquiert les leases, ouvre les DBs, calcule et écrit dans player_match_enrichment.
 // friendGamertags : gamertags des amis à résoudre en XUIDs (utilisé si TeamChangeMode = "friends").
