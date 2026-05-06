@@ -22,6 +22,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const { data, isLoading, isError } = mediaTab === 'liked' ? likedQuery : recentQuery
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [autoChain, setAutoChain] = useState(false)
   const items = data?.items.items ?? []
   const recentTotal = recentQuery.data?.items.pagination.total
   const likedTotal = likedQuery.data?.items.pagination.total
@@ -35,6 +36,8 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
           startIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           likeDisabled={toggleMediaLike.isPending}
+          autoChain={autoChain}
+          onToggleAutoChain={() => setAutoChain((c) => !c)}
         />
       )}
 

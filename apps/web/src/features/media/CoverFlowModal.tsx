@@ -277,7 +277,7 @@ export function CoverFlowModal({
       onClick={onClose}
     >
       <div
-        className="relative mx-4 flex max-h-[90vh] w-full max-w-5xl flex-col"
+        className="relative mx-4 flex max-h-[90vh] w-full max-w-5xl flex-col rounded-xl overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-2 text-foreground">

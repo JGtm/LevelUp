@@ -359,3 +359,57 @@ describe('CoverFlowModal — stabilité de l\'item courant', () => {
     expect(onReassociate).toHaveBeenCalledWith(expect.objectContaining({ file_path: ITEM_B.file_path }))
   })
 })
+
+// ─── Bouton autoChain — visible uniquement si onToggleAutoChain fourni ─────
+
+describe('CoverFlowModal — bouton autoChain', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  it('ne rend PAS le bouton enchaînement si onToggleAutoChain est absent', () => {
+    // Cas régression : home rail / match tab oubliaient de passer la prop,
+    // l'utilisateur n'avait plus le bouton ni l'autoplay.
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: /Enchaîner|Chain/i })).not.toBeInTheDocument()
+  })
+
+  it('rend le bouton enchaînement quand onToggleAutoChain est fourni', () => {
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        autoChain={false}
+        onToggleAutoChain={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /Enchaîner|Chain/i })).toBeInTheDocument()
+  })
+
+  it('appelle onToggleAutoChain au clic sur le bouton', () => {
+    const onToggleAutoChain = vi.fn()
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_A]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        autoChain={false}
+        onToggleAutoChain={onToggleAutoChain}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Enchaîner|Chain/i }))
+    expect(onToggleAutoChain).toHaveBeenCalledTimes(1)
+  })
+})

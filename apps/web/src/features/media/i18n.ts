@@ -20,6 +20,9 @@ export interface MediaText {
   previousPage: string
   nextPage: string
   pageLabel: (page: number, totalPages: number) => string
+  thumbnail: {
+    noMatchAssociated: string
+  }
   groupSection: {
     sessionOfPrefix: string
     likedSection: string
@@ -91,6 +94,9 @@ export function getMediaText(locale?: string | null): MediaText {
     nextPage: t(loc, 'media.pagination.next'),
     pageLabel: (page, totalPages) =>
       t(loc, 'media.pagination.page_label', { page, totalPages }),
+    thumbnail: {
+      noMatchAssociated: t(loc, 'media.thumbnail.no_match_associated'),
+    },
     groupSection: {
       sessionOfPrefix: t(loc, 'media.group.session_of_prefix'),
       likedSection: t(loc, 'media.group.liked_section'),

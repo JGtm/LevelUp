@@ -27,11 +27,17 @@ function RootLayout() {
   const currentUsername = useAppShellStore((s) => s.currentUsername)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, failureCount } = useQuery({
     queryKey: queryKeys.bootstrap,
     queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
+    // Le serveur Go peut mettre 5–15 s à démarrer (CGO + DuckDB) en dev
+    // (`air`) ou sur VPS (cold start, redéploiement). On retry en backoff
+    // exponentiel pour absorber la fenêtre de démarrage avant d'afficher
+    // l'écran "API injoignable" : 0.5 → 1 → 2 → 4 → 4 → 4 s ≈ 15 s total.
+    retry: 6,
+    retryDelay: (n) => Math.min(500 * 2 ** n, 4000),
   })
 
   useEffect(() => {
@@ -64,7 +70,9 @@ function RootLayout() {
     return (
       <div className="flex h-screen items-center justify-center">
         <span className="text-sm text-muted-foreground animate-pulse">
-          Chargement LevelUp…
+          {failureCount > 0
+            ? `Connexion à l'API… (tentative ${failureCount + 1}/7)`
+            : 'Chargement LevelUp…'}
         </span>
       </div>
     )

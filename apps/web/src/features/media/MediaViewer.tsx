@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { GifHoverThumbnail } from '@/components/ui/gif-hover-thumbnail'
 import { CoverFlowModal } from './CoverFlowModal'
+import { getMediaText } from './i18n'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { MediaItemRow } from '@/lib/api/types'
 
 export { CoverFlowModal as MediaLightbox }
@@ -110,6 +112,8 @@ interface MediaThumbnailCardProps {
 
 export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = false }: MediaThumbnailCardProps) {
   const [isHovering, setIsHovering] = useState(false)
+  const locale = useAppShellStore((s) => s.locale)
+  const text = getMediaText(locale)
   const dateStr = formatMediaDate(item.capture_end_utc ?? item.match_start_time)
 
   return (
@@ -202,7 +206,10 @@ export function MediaThumbnailCard({ item, onToggleLike, onOpen, likeDisabled = 
           <Badge variant={item.kind === 'clip' ? 'default' : 'secondary'} className="text-xs shrink-0">
             {item.kind}
           </Badge>
-          {item.map_name && <span className="truncate text-xs text-muted-foreground min-w-0">{item.map_name}</span>}
+          {item.map_name
+            ? <span className="truncate text-xs text-muted-foreground min-w-0">{item.map_name}</span>
+            : item.match_id === null && <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">{text.thumbnail.noMatchAssociated}</span>
+          }
           {dateStr && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{dateStr}</span>}
         </div>
         <LikersLine likers={item.likers} totalLikers={item.total_likers} />

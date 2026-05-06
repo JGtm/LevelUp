@@ -1,9 +1,9 @@
 /**
- * MatchViewPage — détail d'un match (5 onglets).
+ * MatchViewPage — détail d'un match (3 onglets : Résumé, Combat, Équipe).
  *
  * Refonte 2026-05-02 :
  *  - Onglet Combat : chart match_view.09 (K/D cumulés) avec annotation badges.
- *  - Autres onglets : placeholders en attendant la refonte.
+ *  - Médias : section dédiée en bas de l'onglet Résumé (pas d'onglet séparé).
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
@@ -15,6 +15,11 @@ import { useMatchView } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
+import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
+import { MatchKDCumulChart } from './MatchKDCumulChart'
+import { MatchTugOfWarChart } from './MatchTugOfWarChart'
+import { MatchCadenceChart } from './MatchCadenceChart'
+import { MatchNemesisCards } from './MatchNemesisCards'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchWeaponPieChart } from './MatchWeaponCharts'
@@ -41,13 +46,12 @@ function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText):
   ].filter((w) => w.kill_count > 0)
 }
 
-type TabId = 'summary' | 'combat' | 'team' | 'media'
+type TabId = 'summary' | 'combat' | 'team'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'summary', label: 'Résumé' },
   { id: 'combat', label: 'Combat' },
   { id: 'team', label: 'Équipe' },
-  { id: 'media', label: 'Médias' },
 ]
 
 export function MatchViewPage() {
@@ -87,12 +91,22 @@ export function MatchViewPage() {
   const breadcrumbLabel = header.start_time_label
     ? `${matchLabel} · ${header.start_time_label}`
     : matchLabel
-  const meRow = team_tab.scoreboard.find((r) => r.is_me)
+  // Sécurité : le backend Go peut renvoyer `null` pour les slices non
+  // initialisés (`var x []T` non assigné → JSON null). On normalise une fois.
+  const scoreboard = team_tab.scoreboard ?? []
+  const roster = team_tab.roster ?? []
+  const nemesis = team_tab.nemesis ?? []
+  const weaponKills = combat_tab.weapon_kills ?? []
+  const highlightEvents = combat_tab.highlight_events ?? []
+  const killerVictim = combat_tab.killer_victim ?? []
+  const impactBadges = combat_tab.impact_badges ?? []
+  const kdTimeline = combat_tab.kd_timeline ?? []
+  const tugOfWar = combat_tab.tug_of_war ?? []
+
+  const meRow = scoreboard.find((r) => r.is_me)
   const meXUID = meRow?.xuid ?? null
   const weaponData: MatchWeaponKill[] =
-    combat_tab.weapon_kills.length > 0
-      ? combat_tab.weapon_kills
-      : killTypeFallback(meRow, t)
+    weaponKills.length > 0 ? weaponKills : killTypeFallback(meRow, t)
 
   return (
     <div className="flex flex-col">
@@ -165,14 +179,46 @@ export function MatchViewPage() {
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
               <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
             </div>
+            <div className="rounded-lg border border-border bg-card">
+              <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
+              <div className="p-3">
+                <MatchMediaTab
+                  items={media_tab.media_items}
+                  playerSlug={playerSlug}
+                  matchId={matchId}
+                  locale={locale === 'en' ? 'en' : 'fr'}
+                />
+              </div>
+            </div>
           </div>
         ) : activeTab === 'combat' ? (
           <>
+            <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} />
+
+            <MatchKDCumulChart points={kdTimeline} t={t} />
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <MatchTugOfWarChart bins={tugOfWar} t={t} />
+              <MatchCadenceChart
+                cadence={combat_tab.cadence}
+                scoreboard={scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
+            </div>
+
+            <MatchNemesisCards
+              nemesis={nemesis}
+              scoreboard={scoreboard}
+              meXUID={meXUID}
+              t={t}
+            />
+
             <MatchFragDiffChart
-              events={combat_tab.highlight_events}
-              scoreboard={team_tab.scoreboard}
-              roster={team_tab.roster}
-              pairs={combat_tab.killer_victim}
+              events={highlightEvents}
+              scoreboard={scoreboard}
+              roster={roster}
+              pairs={killerVictim}
               meXUID={meXUID}
               friendGamertags={friendGamertags}
             />
@@ -184,20 +230,13 @@ export function MatchViewPage() {
             />
 
             <MatchAntagonistChart
-              pairs={combat_tab.killer_victim}
-              scoreboard={team_tab.scoreboard}
-              roster={team_tab.roster}
+              pairs={killerVictim}
+              scoreboard={scoreboard}
+              roster={roster}
               meXUID={meXUID}
               friendGamertags={friendGamertags}
             />
           </>
-        ) : activeTab === 'media' ? (
-          <MatchMediaTab
-            items={media_tab.media_items}
-            playerSlug={playerSlug}
-            matchId={matchId}
-            locale={locale === 'en' ? 'en' : 'fr'}
-          />
         ) : (
           <Card>
             <CardContent className="py-12 text-center">

@@ -56,17 +56,17 @@ function buildXUIDIndex(scoreboard: MatchScoreboardRow[]): Map<string, MatchScor
 }
 
 interface Props {
-  badges: MatchImpactBadge[]
-  scoreboard: MatchScoreboardRow[]
+  badges: MatchImpactBadge[] | null | undefined
+  scoreboard: MatchScoreboardRow[] | null | undefined
 }
 
 export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const badgeI18n = getSquadText(locale).impact
 
-  if (badges.length === 0) return null
+  if (!badges || badges.length === 0) return null
 
-  const xuidIndex = buildXUIDIndex(scoreboard)
+  const xuidIndex = buildXUIDIndex(scoreboard ?? [])
 
   const sorted = [...badges].sort((a, b) => {
     const oa = BADGE_META[a.key]?.order ?? 99
@@ -76,7 +76,7 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
   })
 
   return (
-    <div className="border-b bg-background px-6 py-3">
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
           Faits marquants
