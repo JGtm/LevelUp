@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
+	auth_pool "levelup/go-api/internal/platform/auth/pool"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/scheduler"
 	go_sync "levelup/go-api/internal/sync"
@@ -23,6 +24,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	maxMatches := fs.Int("max-matches", 25, "Nombre max de nouveaux matchs à insérer")
 	matchType := fs.String("match-type", "matchmaking", "Type de match: all|matchmaking|custom|local")
 	rps := fs.Int("rps", 1, "Nombre max de requêtes API par seconde")
+	tokenPoolSize := fs.Int("token-pool-size", 0, "Taille du pool de tokens (0=auto-detect, 1=désactiver)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -35,7 +37,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 
 	ctx := context.Background()
 	if *allPlayers {
-		return runSyncDeltaAll(ctx, cfg, *maxMatches, *matchType, *rps)
+		return runSyncDeltaAll(ctx, cfg, *maxMatches, *matchType, *rps, *tokenPoolSize)
 	}
 
 	player, err := loadPlayerSummary(cfg, *gamertag)
@@ -99,6 +101,7 @@ func runSyncDeltaAll(
 	maxMatches int,
 	matchType string,
 	rps int,
+	tokenPoolSize int,
 ) error {
 	players, err := cfg.LoadPlayers()
 	if err != nil {
@@ -114,6 +117,35 @@ func runSyncDeltaAll(
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 
+	// ─── Création du pool de tokens (si tokenPoolSize != 1) ───
+	var pool auth_platform.Pool
+	if tokenPoolSize == 1 {
+		// Pool désactivé
+		fmt.Println("pool: désactivé (--token-pool-size 1)")
+	} else {
+		// Créer le pool avec Discovery + Resolver
+		discovery := auth_platform.NewDiscovery(cfg, resolver, titlePkg.DefaultSlug)
+		sources, discoveryErr := discovery.Scan(ctx)
+		if discoveryErr != nil {
+			return fmt.Errorf("pool discovery: %w", discoveryErr)
+		}
+
+		poolResolver := auth_platform.NewResolver(provider, 0) // 0 = default TTL ~3h30
+		poolOpts := auth_platform.PoolOptions{
+			MaxSize:     tokenPoolSize, // 0 = utiliser tous les sources
+			PerTokenRPS: rps,
+		}
+
+		p, poolErr := auth_platform.NewPool(ctx, poolResolver, sources, poolOpts)
+		if poolErr != nil {
+			return fmt.Errorf("pool creation: %w", poolErr)
+		}
+		pool = p
+		defer pool.Close()
+
+		fmt.Printf("pool: créé avec %d token(s) découverts\n", pool.Size())
+	}
+
 	total := len(players)
 	synced := 0
 	skipped := 0
@@ -127,6 +159,44 @@ func runSyncDeltaAll(
 			continue
 		}
 
+		// ─── Client setup (pool ou standard) ───
+		var tokens *domain.HaloTokens
+		var syncErr error
+
+		if pool != nil {
+			// Utiliser le pool : créer un PooledHaloClient pinné à ce joueur
+			// Pas besoin de TokenReader — les tokens sont déjà dans le pool
+			engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider)
+
+			// Créer un client poolé pinné
+			pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID)
+			engine.SetCustomClient(pooledClient)
+
+			syncResult, syncErr := engine.RunDelta(ctx, opts)
+			if syncErr != nil {
+				failed++
+				fmt.Printf("sync delta FAIL: gamertag=%s stage=run_delta err=%v\n", player.Gamertag, syncErr)
+				continue
+			}
+
+			synced++
+			careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
+			fmt.Printf(
+				"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
+				player.Gamertag,
+				syncResult.MatchesInserted,
+				syncResult.MatchesSkipped,
+				syncResult.Status(),
+				careerSynced,
+				syncResult.DurationSeconds,
+			)
+			if len(syncResult.Warnings) > 0 {
+				fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+			}
+			continue
+		}
+
+		// ─── Fallback standard (sans pool) ───
 		accessToken, tokenErr := autoScheduler.TokenReader(ctx, dbPath, player.Gamertag, provider)
 		if tokenErr != nil {
 			failed++
