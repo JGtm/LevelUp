@@ -30198,3 +30198,33 @@ Pipeline FR/EN propre de bout en bout, **0 résidu FR en EN**. Tout le travail B
 2. Hydratation bilingue `Labels[fr]` + `Labels[en]` depuis `asset_translations`
 3. Header `X-LevelUp-Locale` côté API + propagation client/store/settings
 4. Recovery DuckDB ART index corruption via DROP+CREATE+bulk INSERT (fixed 8 stragglers)
+
+---
+
+## [2026-05-06] Commit batch — HomeRepo refactor + Rate Limit + Web state
+
+**Statut** : Complété.
+
+**Commits créés** (feat/token-pool-parallel-sync) :
+1. `feat(home)` — Migration vers HomeRepo + asset registry
+2. `fix(rate_limit)` — Exemption /static/* et /api/v1/assets/*
+3. `feat(season_pass)` — SeasonPassRepo + cache tests + page
+4. `feat(web)` — Settings queries + client endpoints + app shell state
+5. `docs(commendations)` — Reference + handler updates
+6. `refactor(media_repo)` — Canonical patterns + asset resolution
+7. `refactor(types)` — Canonical match row + seed updates
+8. `chore(tools)` — check-registry utility
+
+**Décisions techniques** :
+- HomeRepo : centralise la construction de RecentMatches (était dans analysis/). MapImageURL résolu via registry, pas URL builder local.
+- Rate limit : exemption `/static/*` + `/api/v1/assets/*` (FileServer + asset resolver local-first). Endpoints applicatifs restent protégés.
+- Media repo : asset registry pour map images + rarity icons. Patterns canoniques pour row types.
+- Season Pass : SeasonPassRepo pour résolutions, cache tests, UI alignée.
+
+**Résultats** :
+- 0 lint errors (gofmt, go vet, golangci-lint)
+- Rate limit exemptions testées (TestRateLimitMiddleware_AssetsBypass)
+- Home page + Season Pass rate limit issues résolus (0 asset 429s)
+
+**Conclusion** :
+Batch cohérent : refactor home page vers repositories + fix rate limit global.
