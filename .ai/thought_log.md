@@ -1,5 +1,21 @@
 # Thought Log
 
+## [2026-05-06] fix/media-player-ux — Médias intégrés en bas de l'onglet Résumé (suppression onglet Médias)
+
+**Statut** : Complété
+
+**Décision technique principale** :
+L'onglet Médias est supprimé de la page Match (peu de contenu, redondant). `MatchMediaTab` est intégré en section dédiée en bas de l'onglet Résumé, dans un wrapper carte (border + bg-card) avec titre i18n `sectionMedia`. L'état vide du composant perd son wrapper `Card`/`CardContent` (la section parente fournit déjà le conteneur). `TabId` et `TABS` passent de 4 à 3 entrées (`'summary' | 'combat' | 'team'`).
+
+Trois fichiers touchés :
+- `apps/web/src/features/match-view/MatchViewPage.tsx` — JSDoc mis à jour, `TabId`/`TABS` réduits, section Médias ajoutée en fin de tab Résumé, branche `activeTab === 'media'` retirée.
+- `apps/web/src/features/match-view/MatchMediaTab.tsx` — empty state simplifié (plus de Card wrapper).
+- `apps/web/src/features/match-view/i18n.ts` — clé `sectionMedia` ajoutée (FR `'Médias'`, EN `'Media'`).
+
+**Résultats observés** : `tsc -b` OK sans erreur.
+
+**Prochaine étape** : Test visuel en dev, puis push.
+
 ## [2026-05-06] fix/media-player-ux — Onglet Combat : badges + 4 charts en tête (mock match_view)
 
 **Statut** : Complété

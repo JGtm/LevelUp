@@ -1,9 +1,9 @@
 /**
- * MatchViewPage — détail d'un match (5 onglets).
+ * MatchViewPage — détail d'un match (3 onglets : Résumé, Combat, Équipe).
  *
  * Refonte 2026-05-02 :
  *  - Onglet Combat : chart match_view.09 (K/D cumulés) avec annotation badges.
- *  - Autres onglets : placeholders en attendant la refonte.
+ *  - Médias : section dédiée en bas de l'onglet Résumé (pas d'onglet séparé).
  */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
@@ -46,13 +46,12 @@ function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText):
   ].filter((w) => w.kill_count > 0)
 }
 
-type TabId = 'summary' | 'combat' | 'team' | 'media'
+type TabId = 'summary' | 'combat' | 'team'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'summary', label: 'Résumé' },
   { id: 'combat', label: 'Combat' },
   { id: 'team', label: 'Équipe' },
-  { id: 'media', label: 'Médias' },
 ]
 
 export function MatchViewPage() {
@@ -170,6 +169,17 @@ export function MatchViewPage() {
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
               <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
             </div>
+            <div className="rounded-lg border border-border bg-card">
+              <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
+              <div className="p-3">
+                <MatchMediaTab
+                  items={media_tab.media_items}
+                  playerSlug={playerSlug}
+                  matchId={matchId}
+                  locale={locale === 'en' ? 'en' : 'fr'}
+                />
+              </div>
+            </div>
           </div>
         ) : activeTab === 'combat' ? (
           <>
@@ -220,13 +230,6 @@ export function MatchViewPage() {
               friendGamertags={friendGamertags}
             />
           </>
-        ) : activeTab === 'media' ? (
-          <MatchMediaTab
-            items={media_tab.media_items}
-            playerSlug={playerSlug}
-            matchId={matchId}
-            locale={locale === 'en' ? 'en' : 'fr'}
-          />
         ) : (
           <Card>
             <CardContent className="py-12 text-center">
