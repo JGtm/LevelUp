@@ -1,0 +1,70 @@
+# Backlog — LevelUp Go Migration
+
+## 🟢 COMPLÉTÉ — Leased-Writer-Enforcement (PR 4-7)
+
+### PR 4-6: Leased-Writer-Enforcement Foundation ✅
+- [x] Base type LeasedWriter + interfaces DBExecutor/DBWriter
+- [x] expvar metrics (dblease_acquire_total{kind,status})
+- [x] 26 integration tests (burst, coordination, atomicity)
+- [x] Fixture corrections (global schema)
+- [x] CI workflow updates (go-lease-enforcement, go-baseline-tests jobs)
+- [x] Baseline test preservation (1662 tests)
+
+### PR 7: Sync Engine Migration to dblease ✅
+- [x] Migrate 17 AcquireLeaseCtx → AcquireWriterCtx sites
+  - [x] engine.go (10 sites)
+  - [x] backfill_weapons.go (1 site)
+  - [x] citations_backfill.go (2 sites)
+  - [x] friends_recompute.go (2 sites)
+  - [x] session_recalc.go (2 sites)
+- [x] Deprecation comment on legacy facade
+- [x] thought_log.md complete
+
+---
+
+## 🟡 POST-V7 — À faire après release v7
+
+### Main Merge (blocking)
+- [ ] Créer PR: `fix/theme-consistency-tokens` → `main`
+- [ ] Attendre approval + CI validation
+- [ ] Merger PR vers main
+
+### Post-Merge Validation
+- [ ] Vérifier baseline tests verts post-merge
+- [ ] Vérifier coverage >= 76%
+- [ ] Vérifier no new warnings (golangci-lint)
+
+### Optional Cleanup
+- [ ] Supprimer branche `refactor/leased-writer-enforcement` (si besoin)
+- [ ] Supprimer branche `fix/theme-consistency-tokens` (si besoin)
+
+### Optional Observability (bonus)
+- [ ] Setup monitoring: `dblease_acquire_total{kind=player|shared_matches,status=success|timeout}`
+- [ ] Setup alerting si timeouts excessifs
+- [ ] Documenter les seuils d'alerte
+
+### Optional Documentation (bonus)
+- [ ] Créer `docs/adr/0013-leased-writer-enforcement.md`
+  - Contexte: P1 Prestige during sync
+  - Décision: DLeasedWriter type + dblease package
+  - Conséquences: Unified observability, deadlock resolution
+
+---
+
+## 📊 Statistiques
+
+| Métrique | Valeur |
+|----------|--------|
+| Commits leased-writer-enforcement | 8 |
+| Commits PR 7 migration | 1 |
+| Nouveaux tests integration | 26 |
+| Sites migrés (PR 7) | 17 |
+| Lignes ajoutées | ~3100 |
+| Baseline tests (preserved) | 1662 |
+| Branches affectées | 2 (refactor/leased-writer-enforcement, fix/theme-consistency-tokens) |
+
+---
+
+## 🎯 Prochaine étape
+
+**Attendre fin v7 → Créer PR main → Merger → Monitoring optionnel**
