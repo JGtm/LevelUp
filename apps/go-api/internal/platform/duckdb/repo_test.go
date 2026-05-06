@@ -39,6 +39,7 @@ func seedShared(t *testing.T, db *DB) {
 
 	ddl := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
+		`CREATE SCHEMA IF NOT EXISTS global`,
 		`CREATE TABLE IF NOT EXISTS match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMPTZ,
@@ -50,6 +51,10 @@ func seedShared(t *testing.T, db *DB) {
 			gamertag VARCHAR
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (
+			xuid VARCHAR,
+			gamertag VARCHAR
+		)`,
+		`CREATE TABLE IF NOT EXISTS global.xuid_aliases (
 			xuid VARCHAR,
 			gamertag VARCHAR
 		)`,
@@ -72,6 +77,10 @@ func seedShared(t *testing.T, db *DB) {
 			('m2', 'xuid003', 'CharlieX'),
 			('m3', 'xuid002', 'BravoGamer')`,
 		`INSERT INTO shared.xuid_aliases VALUES
+			('xuid001', 'AlphaPlayer'),
+			('xuid002', 'BravoGamer'),
+			('xuid003', 'CharlieX')`,
+		`INSERT INTO global.xuid_aliases VALUES
 			('xuid001', 'AlphaPlayer'),
 			('xuid002', 'BravoGamer'),
 			('xuid003', 'CharlieX')`,
@@ -300,6 +309,9 @@ func seedGamertagRanking(t *testing.T, db *DB) {
 	}
 	if _, err := db.Exec(ctx, `INSERT INTO shared.xuid_aliases VALUES `+joinRows(rows)); err != nil {
 		t.Fatalf("seedGamertagRanking aliases: %v", err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO global.xuid_aliases VALUES `+joinRows(rows)); err != nil {
+		t.Fatalf("seedGamertagRanking global aliases: %v", err)
 	}
 }
 

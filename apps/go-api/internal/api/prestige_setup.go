@@ -116,15 +116,23 @@ func (b *PrestigeBundle) Close() {
 // player context (CRUD défis, arcs, EvaluateForUser). Les repos partagés
 // (PrestigeRepo, SquadRepo, SquadChallengeRepo) sont réutilisés.
 func (b *PrestigeBundle) ServiceForPlayer(ctx context.Context, playerSlug string) (prestige.Service, error) {
+	_, svc, err := b.serviceAndPlayerDB(ctx, playerSlug)
+	return svc, err
+}
+
+// serviceAndPlayerDB est la variante interne qui retourne aussi le *PlayerDB
+// résolu — utilisé par LazyPrestigeService pour acquérir un *LeasedWriter
+// avant les méthodes write (commit 2 du refactor leased-writer-enforcement).
+func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug string) (*platform_duckdb.PlayerDB, prestige.Service, error) {
 	if b == nil {
-		return nil, errors.New("prestige: bundle not initialized")
+		return nil, nil, errors.New("prestige: bundle not initialized")
 	}
 	pdb, err := b.resolve(ctx, playerSlug)
 	if err != nil {
-		return nil, errors.New("prestige: cannot resolve player: " + err.Error())
+		return nil, nil, errors.New("prestige: cannot resolve player: " + err.Error())
 	}
 	if pdb == nil || pdb.Player == nil {
-		return nil, errors.New("prestige: player db not available")
+		return nil, nil, errors.New("prestige: player db not available")
 	}
 
 	deps := prestige.Deps{
@@ -141,7 +149,7 @@ func (b *PrestigeBundle) ServiceForPlayer(ctx context.Context, playerSlug string
 		Squads:           b.squadRepo,
 		BaselineProvider: platform_duckdb.NewHaloBaselineProvider(pdb.Shared),
 	}
-	return prestige.NewService(deps), nil
+	return pdb, prestige.NewService(deps), nil
 }
 
 // RunPostSync est le point d'entrée du sync engine pour ré-évaluer
@@ -149,6 +157,15 @@ func (b *PrestigeBundle) ServiceForPlayer(ctx context.Context, playerSlug string
 //
 // No-op si PRESTIGE_ENABLED=false. Best-effort : log les erreurs
 // sans propager (le sync ne doit pas échouer à cause de Prestige).
+//
+// ⚠️ Invariant deadlock-free (commit 7 db-concurrency) : RunPostSync est appelé
+// par le sync engine **alors qu'il tient le lease player et shared_social**
+// (cf. internal/sync/lease.go). Le service retourné par ServiceForPlayer ici
+// est une instance **directe** (pas le wrapper LazyPrestigeService) — il
+// n'acquiert pas de lease, ce qui évite le deadlock. Ne pas wrapper ce service
+// avec un LazyPrestigeService configuré pour acquérir des leases sur
+// EvaluateForUser tant qu'on n'a pas de propagation explicite du writer du
+// sync engine au hook (commit futur).
 func (b *PrestigeBundle) RunPostSync(ctx context.Context, playerSlug, titleSlug string) {
 	if b == nil || !prestige.IsEnabled() {
 		return

@@ -31,9 +31,12 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 	player := openMemDB(t)
 	shared := openMemDB(t)
 	meta := openMemDB(t)
+	global := openMemDB(t)
 	seedPlayerSchema(t, player)
 	seedSharedDBSchema(t, shared)
 	seedMetaDBSchema(t, meta)
+	seedGlobalSchema(t, global)
+	attachGlobalSchemaToPlayer(t, player, global)
 	return &PlayerDB{
 		Player:    player,
 		Shared:    shared,
@@ -380,6 +383,58 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 	for _, ins := range inserts {
 		if _, err := db.Exec(ctx, ins.q, ins.args...); err != nil {
 			t.Fatalf("seedMetaDBSchema INSERT: %v\nSQL: %s", err, ins.q)
+		}
+	}
+}
+
+func seedGlobalSchema(t *testing.T, db *DB) {
+	t.Helper()
+	ctx := context.Background()
+	ddl := []string{
+		`CREATE TABLE xuid_aliases (xuid VARCHAR PRIMARY KEY, gamertag VARCHAR)`,
+	}
+	for _, q := range ddl {
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatalf("seedGlobalSchema DDL: %v\nSQL: %s", err, q)
+		}
+	}
+	inserts := []struct {
+		q    string
+		args []interface{}
+	}{
+		{`INSERT INTO xuid_aliases VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
+	}
+	for _, ins := range inserts {
+		if _, err := db.Exec(ctx, ins.q, ins.args...); err != nil {
+			t.Fatalf("seedGlobalSchema INSERT: %v\nSQL: %s", err, ins.q)
+		}
+	}
+}
+
+func attachGlobalSchemaToPlayer(t *testing.T, playerDB, globalDB *DB) {
+	t.Helper()
+	ctx := context.Background()
+	// Créer un schéma global dans playerDB
+	if _, err := playerDB.Exec(ctx, `CREATE SCHEMA IF NOT EXISTS global`); err != nil {
+		t.Fatalf("create global schema: %v", err)
+	}
+	// Créer la table global.xuid_aliases dans playerDB
+	if _, err := playerDB.Exec(ctx, `CREATE TABLE global.xuid_aliases (xuid VARCHAR PRIMARY KEY, gamertag VARCHAR)`); err != nil {
+		t.Fatalf("create global.xuid_aliases: %v", err)
+	}
+	// Copier les données de globalDB.xuid_aliases vers playerDB.global.xuid_aliases
+	rows, err := globalDB.Query(ctx, "SELECT xuid, gamertag FROM xuid_aliases")
+	if err != nil {
+		t.Fatalf("query global xuid_aliases: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var xuid, gamertag string
+		if err := rows.Scan(&xuid, &gamertag); err != nil {
+			t.Fatalf("scan xuid_aliases: %v", err)
+		}
+		if _, err := playerDB.Exec(ctx, `INSERT INTO global.xuid_aliases VALUES (?,?)`, xuid, gamertag); err != nil {
+			t.Fatalf("insert into global.xuid_aliases: %v", err)
 		}
 	}
 }

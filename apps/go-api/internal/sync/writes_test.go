@@ -4,12 +4,15 @@
 package sync_test
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	intsync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/testutil"
+
+	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 func TestInsertRegistryIfNotExists(t *testing.T) {
@@ -250,10 +253,21 @@ func TestInsertWeaponKills(t *testing.T) {
 }
 
 func TestMarkWeaponKillsDone(t *testing.T) {
-	db := testutil.NewInMemoryShared(t)
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+
+	// Create minimal match_registry schema (same as openPveDB)
+	_, err = db.Exec("CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, backfill_completed INTEGER DEFAULT 0)")
+	if err != nil {
+		t.Fatalf("create table: %v", err)
+	}
 
 	// Seed a match
-	_, _ = db.Exec("INSERT INTO match_registry (match_id, backfill_completed) VALUES ('m1', 0)")
+	_, _ = db.Exec("INSERT INTO match_registry (match_id) VALUES ('m1')")
 
 	if err := intsync.MarkWeaponKillsDone(db, "m1", false); err != nil {
 		t.Fatalf("MarkWeaponKillsDone: %v", err)
@@ -266,7 +280,7 @@ func TestMarkWeaponKillsDone(t *testing.T) {
 	}
 
 	// Mark no-film variant
-	_, _ = db.Exec("INSERT INTO match_registry (match_id, backfill_completed) VALUES ('m2', 0)")
+	_, _ = db.Exec("INSERT INTO match_registry (match_id) VALUES ('m2')")
 	if err := intsync.MarkWeaponKillsDone(db, "m2", true); err != nil {
 		t.Fatalf("MarkWeaponKillsDone noFilm: %v", err)
 	}
