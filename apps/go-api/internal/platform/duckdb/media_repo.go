@@ -250,6 +250,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_utc,
 			COALESCE(r.end_time_utc,   r.end_time   AT TIME ZONE 'UTC') AS end_utc,
 			COALESCE(r.map_name_fr, r.map_name) AS map_name,
+			COALESCE(r.map_id, '') AS map_id,
 			COALESCE(r.pair_name_fr, r.pair_name) AS pair_name,
 			COALESCE(r.playlist_name_fr, r.playlist_name) AS playlist_name,
 			COALESCE(r.playlist_id, '') AS playlist_id,
@@ -270,18 +271,24 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	defer rows.Close()
 
 	matchIDs := []string{}
+	mapIDByMatch := map[string]string{}
+	mapIDSet := map[string]struct{}{}
 	modeEnSet := map[string]struct{}{}
 	playlistIDByMatch := map[string]string{}
 	playlistIDSet := map[string]struct{}{}
 	for rows.Next() {
 		var c domain.MediaMatchCandidate
-		var mapName, pairName, playlistName, playlistID sql.NullString
+		var mapName, mapID, pairName, playlistName, playlistID sql.NullString
 		var outcome sql.NullInt64
 		var deltaS sql.NullInt64
 		var startT, endT sql.NullTime
-		if err := rows.Scan(&c.MatchID, &startT, &endT, &mapName, &pairName, &playlistName,
+		if err := rows.Scan(&c.MatchID, &startT, &endT, &mapName, &mapID, &pairName, &playlistName,
 			&playlistID, &outcome, &deltaS); err != nil {
 			continue
+		}
+		if mapID.Valid && mapID.String != "" {
+			mapIDByMatch[c.MatchID] = mapID.String
+			mapIDSet[mapID.String] = struct{}{}
 		}
 		if playlistID.Valid && playlistID.String != "" {
 			playlistIDByMatch[c.MatchID] = playlistID.String
@@ -299,9 +306,6 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			s := strings.TrimSpace(mapName.String)
 			if s != "" {
 				c.MapName = &s
-				if url := analysis.MapStaticImagePath(s); url != "" {
-					c.MapImageURL = &url
-				}
 			}
 		}
 		if pairName.Valid {
@@ -350,6 +354,26 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			// lookup direct, pas besoin de re-normaliser.
 			if fr, ok := translations[*resp.Candidates[i].ModeName]; ok && fr != "" {
 				resp.Candidates[i].ModeName = &fr
+			}
+		}
+	}
+
+	// Résolution MapImageURL via map_images_registry (pattern asset kinds —
+	// lookup par map_id, pas par name pour éviter les écueils FR/EN/UUID brut).
+	if len(mapIDSet) > 0 {
+		ids := make([]string, 0, len(mapIDSet))
+		for id := range mapIDSet {
+			ids = append(ids, id)
+		}
+		urls := r.loadMapImageURLsByID(ctx, ids)
+		for i := range resp.Candidates {
+			mid := mapIDByMatch[resp.Candidates[i].MatchID]
+			if mid == "" {
+				continue
+			}
+			if u, ok := urls[mid]; ok && u != "" {
+				localCopy := u
+				resp.Candidates[i].MapImageURL = &localCopy
 			}
 		}
 	}
@@ -935,6 +959,47 @@ ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`
 	}
 	return out
 }
+
+// loadMapImageURLsByID lit local_path depuis map_images_registry pour les
+// mapIDs donnés (pattern asset kinds — lookup par ID dans la table cache,
+// peuplée par cmd/migrate-static-maps). Retourne map[map_id]→local_path.
+// map_ids absents du registry sont simplement absents de la map (best-effort).
+func (r *MediaRepo) loadMapImageURLsByID(ctx context.Context, mapIDs []string) map[string]string {
+	out := make(map[string]string)
+	if r.pdb == nil || r.pdb.Metadata == nil || len(mapIDs) == 0 {
+		return out
+	}
+	placeholders := make([]string, len(mapIDs))
+	args := make([]any, 0, len(mapIDs)+1)
+	args = append(args, mediaStaticTitleSlug)
+	for i, id := range mapIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	q := `SELECT map_id, local_path
+FROM map_images_registry
+WHERE title_id = ?
+  AND TRIM(local_path) != ''
+  AND map_id IN (` + joinStrings(placeholders) + `)`
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, localPath string
+		if err := rows.Scan(&id, &localPath); err != nil {
+			continue
+		}
+		out[id] = localPath
+	}
+	return out
+}
+
+// mediaStaticTitleSlug est le slug de titre utilisé pour résoudre les URLs
+// statiques côté media. Halo Infinite uniquement pour le moment ; quand un
+// 2e titre arrivera, ce slug sera dérivé du contexte (cf. PathResolver).
+const mediaStaticTitleSlug = "halo_infinite"
 
 // loadModeNameTranslations lit les traductions FR depuis metadata.mode_name_tr,
 // keyed par mode_en (dÃ©jÃ  normalisÃ© via analysis.NormalizeModeLabel).
