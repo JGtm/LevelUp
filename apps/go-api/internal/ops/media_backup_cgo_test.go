@@ -445,39 +445,62 @@ func TestInsertMediaFile_Priority2_ClientTimestamp(t *testing.T) {
 	}
 }
 
-// TestInsertMediaFile_Priority3_MtimeFallback vérifie le fallback sur mtime
-// quand ni le filename ni le captureTimeUnix ne sont disponibles.
-func TestInsertMediaFile_Priority3_MtimeFallback(t *testing.T) {
+// TestInsertMediaFile_NoSource_LeavesNull vérifie que capture_start_utc reste
+// NULL quand ni le filename ni le captureTimeUnix ne fournissent de timestamp
+// fiable. Le mtime serveur n'est PAS utilisé en fallback car il correspond à
+// l'heure d'arrivée du fichier, pas à l'heure de capture.
+func TestInsertMediaFile_NoSource_LeavesNull(t *testing.T) {
 	db, dir := openInsertTestDB(t)
 
-	name := "OBS-fallback.mp4"
+	name := "OBS-fallback.mp4" // pas de date dans le nom
 	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	beforeWrite := time.Now().UTC().Add(-time.Second)
-	if err := insertMediaFile(db, path, "hash_p3", "spartan", nil, nil); err != nil {
+	if err := insertMediaFile(db, path, "hash_null", "spartan", nil, nil); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
-	afterWrite := time.Now().UTC().Add(time.Second)
 
-	v := readCaptureAt(t, db, "hash_p3")
-	// Vérifier que la date extraite est dans la fenêtre d'écriture.
-	parsed, err := time.Parse("2006-01-02 15:04:05-07:00", v)
-	if err != nil {
-		// DuckDB peut retourner "+00" sans les deux points → essayer d'autres formats
-		parsed, err = time.Parse("2006-01-02 15:04:05+00", v)
+	var captureAt sql.NullTime
+	if err := db.QueryRow(
+		"SELECT capture_start_utc FROM media_files WHERE file_hash = ?", "hash_null",
+	).Scan(&captureAt); err != nil {
+		t.Fatalf("QueryRow capture_start_utc: %v", err)
 	}
-	if err == nil {
-		if parsed.Before(beforeWrite) || parsed.After(afterWrite) {
-			t.Errorf("Priority3: mtime fallback %q hors fenêtre [%v, %v]", v, beforeWrite, afterWrite)
-		}
-	} else {
-		// Vérification minimale : valeur non vide
-		if v == "" {
-			t.Error("Priority3: capture_start_utc ne doit pas être vide (fallback mtime)")
-		}
+	if captureAt.Valid {
+		t.Errorf("capture_start_utc doit être NULL sans source fiable, got %v", captureAt.Time)
+	}
+}
+
+// TestInsertMediaFile_Priority1_OBSFilename vérifie que le datetime OBS Studio
+// est extrait du nom de fichier en priorité 1.
+func TestInsertMediaFile_Priority1_OBSFilename(t *testing.T) {
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	db, dir := openInsertTestDB(t)
+
+	// Format OBS (CEST avril = UTC+2) : 17:10:54 Paris → 15:10:54 UTC
+	name := "Replay 2026-04-19 17-10-54.mp4"
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// captureTimeUnix bidon (doit être ignoré au profit du filename)
+	clientTs := int64(946684800)
+	if err := insertMediaFile(db, path, "hash_obs", "spartan", &clientTs, loc); err != nil {
+		t.Fatalf("insertMediaFile: %v", err)
+	}
+
+	v := readCaptureAt(t, db, "hash_obs")
+	if !strings.Contains(v, "2026-04-19") || !strings.Contains(v, "15:10:54") {
+		t.Errorf("OBS filename: capture_start_utc = %q, want \"2026-04-19 15:10:54\" UTC", v)
+	}
+	if strings.Contains(v, "2000") {
+		t.Errorf("OBS filename: client ts (2000-01-01) ne doit pas être utilisé, got %q", v)
 	}
 }
 
