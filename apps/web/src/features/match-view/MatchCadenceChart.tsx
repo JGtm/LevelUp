@@ -15,7 +15,7 @@ import type { MatchViewText } from './i18n'
 
 interface Props {
   cadence: MatchViewCadence | null | undefined
-  scoreboard: MatchScoreboardRow[]
+  scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
   t: MatchViewText
 }

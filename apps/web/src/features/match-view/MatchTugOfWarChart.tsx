@@ -15,7 +15,7 @@ import { tugOfWarStackedSeries } from './_chartSeries'
 import type { MatchViewText } from './i18n'
 
 interface Props {
-  bins: MatchTugOfWarBin[]
+  bins: MatchTugOfWarBin[] | null | undefined
   t: MatchViewText
 }
 

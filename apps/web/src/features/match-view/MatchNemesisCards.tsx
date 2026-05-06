@@ -15,19 +15,21 @@ import type { MatchNemesisRow, MatchScoreboardRow } from '@/lib/api/types'
 import type { MatchViewText } from './i18n'
 
 interface Props {
-  nemesis: MatchNemesisRow[]
-  scoreboard: MatchScoreboardRow[]
+  nemesis: MatchNemesisRow[] | null | undefined
+  scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
   t: MatchViewText
 }
 
 export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
-  const sbMe = meXUID ? scoreboard.find((r) => r.xuid === meXUID) : undefined
+  const sb = scoreboard ?? []
+  const nem = nemesis ?? []
+  const sbMe = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
   const allyTeam = sbMe?.team_side ?? null
   const teamSideByXUID = new Map<string, string | null>()
-  for (const r of scoreboard) teamSideByXUID.set(r.xuid, r.team_side ?? null)
+  for (const r of sb) teamSideByXUID.set(r.xuid, r.team_side ?? null)
 
-  const enemyDuels = nemesis.filter((n) => {
+  const enemyDuels = nem.filter((n) => {
     if (n.xuid === meXUID) return false
     if (allyTeam == null) return true
     return teamSideByXUID.get(n.xuid) !== allyTeam

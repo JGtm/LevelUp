@@ -153,6 +153,11 @@ describe('kdCumulSeries', () => {
     expect(kdCumulSeries([], labels)).toEqual([])
   })
 
+  it('retourne [] sur null/undefined (Go nil slice → JSON null)', () => {
+    expect(kdCumulSeries(null, labels)).toEqual([])
+    expect(kdCumulSeries(undefined, labels)).toEqual([])
+  })
+
   it('produit 2 séries (frags / morts) avec point initial (0, 0) et tokens couleur', () => {
     const points: MatchKDTimelinePoint[] = [
       { time_seconds: 30, kills: 1, deaths: 0 },
@@ -192,6 +197,11 @@ describe('tugOfWarStackedSeries', () => {
 
   it('retourne [] si aucun bin', () => {
     expect(tugOfWarStackedSeries([], labels)).toEqual([])
+  })
+
+  it('retourne [] sur null/undefined (Go nil slice → JSON null)', () => {
+    expect(tugOfWarStackedSeries(null, labels)).toEqual([])
+    expect(tugOfWarStackedSeries(undefined, labels)).toEqual([])
   })
 
   it('catégorie = mm:ss du milieu, components team/enemy', () => {
@@ -243,6 +253,18 @@ describe('cadenceTeamSeries', () => {
     expect(cadenceTeamSeries(undefined, [], null, labels)).toEqual([])
     const emptyCadence: MatchViewCadence = { key: 'k', datapoints: [] }
     expect(cadenceTeamSeries(emptyCadence, [], null, labels)).toEqual([])
+  })
+
+  it('tolère scoreboard null/undefined (Go nil slice)', () => {
+    const cadence: MatchViewCadence = {
+      key: 'k',
+      datapoints: [{ category: 'phase_00', components: { foo: 1 } }],
+      meta: { phase_seconds: 60 },
+    }
+    expect(() => cadenceTeamSeries(cadence, null, null, labels)).not.toThrow()
+    expect(() =>
+      cadenceTeamSeries(cadence, undefined, null, labels),
+    ).not.toThrow()
   })
 
   it('agrège par équipe (allié vs adverse) avec catégorie au milieu de phase', () => {

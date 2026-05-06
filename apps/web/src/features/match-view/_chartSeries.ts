@@ -151,10 +151,10 @@ export function allPlayersFragDiffSeries(
  * le début du match, Y = total cumulé. Insère un point initial (0, 0).
  */
 export function kdCumulSeries(
-  points: MatchKDTimelinePoint[],
+  points: MatchKDTimelinePoint[] | null | undefined,
   labels: { kills: string; deaths: string },
 ): ChartSeries<ChartPoint2D>[] {
-  if (points.length === 0) return []
+  if (!points || points.length === 0) return []
   const sorted = [...points].sort((a, b) => a.time_seconds - b.time_seconds)
   const killSteps: ChartPoint2D[] = [{ x: 0, y: 0 }]
   const deathSteps: ChartPoint2D[] = [{ x: 0, y: 0 }]
@@ -192,10 +192,10 @@ export function kdCumulSeries(
  * `enemy_kills` (adversaires). Catégorie = mm:ss du milieu de tranche.
  */
 export function tugOfWarStackedSeries(
-  bins: MatchTugOfWarBin[],
+  bins: MatchTugOfWarBin[] | null | undefined,
   labels: { team: string; enemy: string },
 ): ChartSeries<ChartPointStacked>[] {
-  if (bins.length === 0) return []
+  if (!bins || bins.length === 0) return []
   const datapoints: ChartPointStacked[] = bins.map((b) => {
     const mid = Math.floor((b.bin_start + b.bin_end) / 2)
     return {
@@ -221,19 +221,20 @@ export function tugOfWarStackedSeries(
  */
 export function cadenceTeamSeries(
   cadence: MatchViewCadence | null | undefined,
-  scoreboard: MatchScoreboardRow[],
+  scoreboard: MatchScoreboardRow[] | null | undefined,
   meXUID: string | null,
   labels: { team: string; enemy: string },
 ): ChartSeries<ChartPointStacked>[] {
   if (!cadence || cadence.datapoints.length === 0) return []
   const phaseSeconds = (cadence.meta?.phase_seconds as number | undefined) ?? 60
 
-  const sbMe = meXUID ? scoreboard.find((r) => r.xuid === meXUID) : undefined
+  const sb = scoreboard ?? []
+  const sbMe = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
   const allyTeam = sbMe?.team_side ?? null
   const isAlly = (xuid: string): boolean => {
     if (xuid === meXUID) return true
     if (allyTeam == null) return false
-    const r = scoreboard.find((s) => s.xuid === xuid)
+    const r = sb.find((s) => s.xuid === xuid)
     return r?.team_side === allyTeam
   }
 
