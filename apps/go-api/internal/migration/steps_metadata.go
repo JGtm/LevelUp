@@ -263,6 +263,24 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_citation_mappings_v2_fields",
+		TargetDB:    TargetMetadata,
+		Description: "citation_mappings : ajout medal_ids/stat_name/award_name/award_category/custom_function/composite_children/subcategory pour le moteur complet (parité avec scripts/populate_citation_mappings.py main)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS medal_ids          VARCHAR;
+				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS stat_name          VARCHAR;
+				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS award_name         VARCHAR;
+				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS award_category     VARCHAR;
+				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS custom_function    VARCHAR;
+				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS composite_children VARCHAR;
+				ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS subcategory        VARCHAR;
+				CREATE INDEX IF NOT EXISTS idx_citation_mappings_type ON citation_mappings(mapping_type);
+			`)
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_xbox_achievement_definitions",
 		TargetDB:    TargetMetadata,
 		Description: "Table xbox_achievement_definitions : référentiel achievements Halo Infinite (bilingue EN/FR)",

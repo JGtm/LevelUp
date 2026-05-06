@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/ops"
 )
 
@@ -194,6 +195,11 @@ func runSeed(cfg *config.AppConfig, args []string) error {
 	opts := ops.SeedOptions{
 		MetaDBPath: pr.MetadataDBPath(title.DefaultSlug),
 		DataDir:    filepath.Join(cfg.RepoRoot, "data"),
+	}
+	// Garantir que le schéma est à jour avant tout seed (idempotent — DuckDB
+	// passe les migrations déjà appliquées via schema_migrations).
+	if err := applyMigrationsOnDB(opts.MetaDBPath, migration.TargetMetadata); err != nil {
+		return fmt.Errorf("migrations metadata avant seed: %w", err)
 	}
 	var result ops.SeedResult
 	var err error

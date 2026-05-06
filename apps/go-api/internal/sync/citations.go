@@ -302,7 +302,7 @@ GROUP BY effective_weapon_id`
 		if !ok {
 			continue
 		}
-		result[strings.ToLower(name)] += kills
+		result[name] += kills
 	}
 	return result, rows.Err()
 }
