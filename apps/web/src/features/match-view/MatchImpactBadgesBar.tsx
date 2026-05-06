@@ -76,7 +76,7 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
   })
 
   return (
-    <div className="border-b bg-background px-6 py-3">
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
           Faits marquants

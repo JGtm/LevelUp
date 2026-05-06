@@ -15,6 +15,11 @@ import { useMatchView } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
+import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
+import { MatchKDCumulChart } from './MatchKDCumulChart'
+import { MatchTugOfWarChart } from './MatchTugOfWarChart'
+import { MatchCadenceChart } from './MatchCadenceChart'
+import { MatchNemesisCards } from './MatchNemesisCards'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchWeaponPieChart } from './MatchWeaponCharts'
@@ -168,6 +173,30 @@ export function MatchViewPage() {
           </div>
         ) : activeTab === 'combat' ? (
           <>
+            <MatchImpactBadgesBar
+              badges={combat_tab.impact_badges}
+              scoreboard={team_tab.scoreboard}
+            />
+
+            <MatchKDCumulChart points={combat_tab.kd_timeline} t={t} />
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <MatchTugOfWarChart bins={combat_tab.tug_of_war} t={t} />
+              <MatchCadenceChart
+                cadence={combat_tab.cadence}
+                scoreboard={team_tab.scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
+            </div>
+
+            <MatchNemesisCards
+              nemesis={team_tab.nemesis}
+              scoreboard={team_tab.scoreboard}
+              meXUID={meXUID}
+              t={t}
+            />
+
             <MatchFragDiffChart
               events={combat_tab.highlight_events}
               scoreboard={team_tab.scoreboard}
