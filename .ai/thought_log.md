@@ -1,5 +1,48 @@
 # Thought Log
 
+## [2026-05-06] Token Pool — Étape 3 : Pool layer (round-robin + pinned)
+
+**Statut** : Complété — commit adc9fd07 sur `feat/token-pool-parallel-sync`.
+
+**Décision technique principale** :
+Couche C (Pool) gère N tokens en parallèle avec deux politiques d'acquisition :
+- **PolicyAnyPublic** : canal buffered avec round-robin équitable pour endpoints publics (GetMatchHistory, GetMatchStats)
+- **PolicyPinnedPlayer** : lookup par gamertag pour endpoints privacy-gated (GetCareerRank, BattlePass)
+
+Architecture clé : Pool n'instancie PAS HaloAPIClient (évite cycle sync↔auth). PooledHaloClient en sync/ crée les clients à la demande. Pool gère uniquement ResolvedTokens.
+
+**Implémentation** :
+- `poolImpl` : 1 slot par token (gamertag + resolved + healthy flag + lastRefresh timestamp)
+- `anyPublicChan` : buffered channel servant de queue pour round-robin
+- `slotsByGt` : RWMutex-protected map pour lookup pinned
+- `refresherLoop` : goroutine 10s qui réactive les tokens malsains (asynchrone, non-bloquant)
+- `MarkUnhealthy` : 401/403 handler marque slot.healthy=false
+- `GlobalCooldown` : structure pour futur backoff 429/503 (déjà prêt, déclenchage dans Étape 7)
+
+**Tests** (10 test cases) :
+- NewPool avec 3 sources, MaxSize limit, erreur si vide
+- AcquireAnyPublic : round-robin distribue équitablement (3 slots → 3 gamertags différents)
+- AcquirePinnedPlayer : lookup exact + erreur si absent/malsain
+- MarkUnhealthy : marque unhealthy → skip dans AnyPublic → fallback autre token
+- Concurrent 20 goroutines sans race
+- Context timeout handling
+- Distribution statistique (tolère ±2 variance)
+
+**Résultats observés** :
+- Tous les tests passent avec -race (thread-safe)
+- Round-robin ne favoritise aucun slot (rotation équitable)
+- Fallback MarkUnhealthy → AnyPublic essaie les N-1 autres avant erreur
+- À 3 slots : aucune contention visible sur RWMutex (read-heavy, écritures rares)
+
+**Architectural fixes** :
+- Removed auth.HaloAPIClient dependency → avoided sync↔auth cycle
+- Removed unused Discovery parameter → scan happens BEFORE pool creation (not during)
+- Pool = stateless token manager; clients = created by PooledHaloClient
+
+**Prochaine étape** : Étape 4 PooledHaloClient (internal/sync/pooled_client.go) — implémente HaloClient interface, wraps pool, crée 1 HaloAPIClient par Acquire.
+
+---
+
 ## [2026-05-06] PR 7 — Sync engine migration to dblease.AcquireWriterCtx
 
 **Statut** : Complété — 17 sites migrés en synchronisation.
