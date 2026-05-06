@@ -122,6 +122,7 @@ export interface SettingsText {
   backfillEvents: string
   backfillWeapons: string
   backfillEngagementScores: string
+  backfillEngagementCoefficients: string
   backfillPlayerLabel: string
   backfillForceLabel: string
   backfillRunButton: string
@@ -314,6 +315,7 @@ const FR_TEXT: SettingsText = {
   backfillEvents: 'Événements',
   backfillWeapons: 'Armes',
   backfillEngagementScores: "Score d'engagement",
+  backfillEngagementCoefficients: "Coefficients d'engagement (recalcul rapide)",
   backfillPlayerLabel: 'Joueur',
   backfillForceLabel: 'Forcer le recalcul complet pour les options sélectionnées',
   backfillRunButton: 'Lancer le recalcul rétroactif',
@@ -540,6 +542,7 @@ const EN_TEXT: SettingsText = {
   backfillEvents: 'Events',
   backfillWeapons: 'Weapons',
   backfillEngagementScores: 'Engagement score',
+  backfillEngagementCoefficients: 'Engagement coefficients (fast recompute)',
   backfillPlayerLabel: 'Player',
   backfillForceLabel: 'Force full rescan for selected options',
   backfillRunButton: 'Run backfill',

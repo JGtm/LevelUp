@@ -33,6 +33,7 @@ export function BackfillCard({ t }: BackfillCardProps) {
     events: false,
     weapons: false,
     engagement_scores: false,
+    engagement_coefficients: false,
   })
   const [selectedSlug, setSelectedSlug] = useState<string>(firstSlug)
   const [forceRescan, setForceRescan] = useState(false)
@@ -132,6 +133,7 @@ export function BackfillCard({ t }: BackfillCardProps) {
               ['events', t.backfillEvents],
               ['weapons', t.backfillWeapons],
               ['engagement_scores', t.backfillEngagementScores],
+              ['engagement_coefficients', t.backfillEngagementCoefficients],
             ] as const
           ).map(([field, label]) => (
             <ToggleRow
