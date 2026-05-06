@@ -62,6 +62,9 @@ func AcquireLease(path string, timeout time.Duration) (func(), error) {
 
 // AcquireLeaseCtx est une façade sur dblease.AcquireLeaseCtx.
 // L'attente s'arrête si le contexte est annulé.
+//
+// Deprecated: utiliser dblease.AcquireWriterCtx(ctx, nil, path, kind) directement.
+// Gardé pour la compatibilité des tests qui utilisent l'API legacy.
 func AcquireLeaseCtx(ctx context.Context, path string) (func(), error) {
 	return dblease.AcquireLeaseCtx(ctx, path)
 }

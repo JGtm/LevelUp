@@ -17,6 +17,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // FriendsRecomputeResult agrège les résultats du recompute pour une player DB.
@@ -49,17 +51,17 @@ func RecomputeIsWithFriends(
 		return FriendsRecomputeResult{XUID: playerXUID}, nil
 	}
 
-	relPlayer, err := AcquireLeaseCtx(ctx, playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends lease player: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
-	relShared, err := AcquireLeaseCtx(ctx, sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends lease shared: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	playerHandle, err := OpenPlayerDB(playerDBPath)
 	if err != nil {

@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 const (
@@ -134,17 +135,17 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 // RunBackfill détecte les matchs avec données manquantes et retourne la liste.
 // Le scope doit être Resolve() avant appel. Retourne la liste des match_ids manquants.
 func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]string, error) {
-	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfill lease player: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
-	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfill lease shared: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
@@ -182,17 +183,17 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 // information_schema). Aucun appel API requis (calcul purement local depuis
 // highlight_events deja synces).
 func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool) (int, error) {
-	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillEngagementScores lease player: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
-	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillEngagementScores lease shared: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
@@ -232,11 +233,11 @@ func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool
 //
 // Retourne le nombre de modes_category mis a jour (0 a 2).
 func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int, error) {
-	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillEngagementCoefficients lease player: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
@@ -248,17 +249,17 @@ func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int
 }
 
 func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll bool) (int, error) {
-	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillComebackBadges lease player: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
-	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillComebackBadges lease shared: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
@@ -393,20 +394,20 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 	// ─── Write leases ──────────────────────────────────────────────────────────
 	slog.DebugContext(ctx, "sync: acquisition lease player DB", "gamertag", e.gamertag, "db", e.playerDBPath)
-	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: lease player DB échouée", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run: %w", err)
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
 	slog.DebugContext(ctx, "sync: acquisition lease shared DB", "gamertag", e.gamertag, "db", e.sharedDBPath)
-	relShared, err := AcquireLeaseCtx(ctx, e.sharedDBPath)
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: lease shared DB échouée", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run: %w", err)
 	}
-	defer relShared()
+	defer writerShared.Release()
 
 	// ─── Ouverture des DBs ─────────────────────────────────────────────────────
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
@@ -992,13 +993,13 @@ func (e *SyncEngine) RunAchievementsOnly(ctx context.Context) bool {
 		return false
 	}
 
-	relPlayer, err := AcquireLeaseCtx(ctx, e.playerDBPath)
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		slog.ErrorContext(ctx, "achievements: lease player DB échoué",
 			"gamertag", e.gamertag, "err", err)
 		return false
 	}
-	defer relPlayer()
+	defer writerPlayer.Release()
 
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
