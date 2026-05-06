@@ -56,6 +56,9 @@ type SyncEngine struct {
 	provider auth.TokenProvider
 	// resolver est utilisé pour le pré-warming des images d'achievements (optionnel).
 	resolver assets.Resolver
+	// customClient est optionnel — si non-nil, utilisé à la place de NewHaloAPIClient.
+	// Permet l'injection de PooledHaloClient ou autres implémentations HaloClient.
+	customClient HaloClient
 	// prestigeHook est appelé après ingestion (best-effort, no-op si nil).
 	// Reçoit (ctx, gamertag, titleSlug) — le hook se charge lui-même de
 	// la résolution Prestige et du feature flag.
@@ -125,6 +128,12 @@ func (e *SyncEngine) WithFriendsLoader(loader FriendsLoader) *SyncEngine {
 
 // RunDelta synchronise uniquement les matchs nouveaux depuis la dernière sync.
 // S'arrête dès qu'un match connu est rencontré dans l'historique paginé.
+// SetCustomClient injecte un client HaloClient personnalisé (ex: PooledHaloClient).
+// Si défini, ce client sera utilisé à la place de NewHaloAPIClient.
+func (e *SyncEngine) SetCustomClient(client HaloClient) {
+	e.customClient = client
+}
+
 func (e *SyncEngine) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error) {
 	return e.run(ctx, opts, true)
 }
@@ -448,7 +457,14 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	slog.InfoContext(ctx, "sync: match_ids connus chargés", "gamertag", e.gamertag, "known_count", len(known))
 
 	// ─── Client API ────────────────────────────────────────────────────────────
-	client := NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, opts.RequestsPerSecond)
+	var client HaloClient
+	if e.customClient != nil {
+		client = e.customClient
+		slog.DebugContext(ctx, "sync: utilisation client personnalisé (pool)")
+	} else {
+		client = NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, opts.RequestsPerSecond)
+		slog.DebugContext(ctx, "sync: utilisation HaloAPIClient standard")
+	}
 
 	// ─── Pagination de l'historique ────────────────────────────────────────────
 	processed := 0
