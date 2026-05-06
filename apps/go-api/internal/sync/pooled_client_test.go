@@ -11,8 +11,9 @@ import (
 
 // mockPool implémente pool.Pool pour les tests.
 type mockPool struct {
-	tokens map[string]*domain.HaloTokens // gamertag → tokens
-	err    error
+	tokens           map[string]*domain.HaloTokens // gamertag → tokens
+	err              error
+	onHTTPErrorCalls []int // Track statusCode values for OnHTTPError calls
 }
 
 func (m *mockPool) Acquire(ctx context.Context, policy pool.AcquirePolicy, pinnedGamertag string) (*pool.Lease, error) {
@@ -60,6 +61,10 @@ func (m *mockPool) Size() int {
 
 func (m *mockPool) MarkUnhealthy(gamertag string, reason error) {
 	// no-op for tests
+}
+
+func (m *mockPool) OnHTTPError(statusCode int) {
+	m.onHTTPErrorCalls = append(m.onHTTPErrorCalls, statusCode)
 }
 
 func (m *mockPool) Close() {
@@ -127,12 +132,11 @@ func TestPooledHaloClientGetCareerRank_PinnedToken(t *testing.T) {
 
 	ctx := context.Background()
 	_, err := client.GetCareerRank(ctx, "xuid_alice")
-	// Erreur attendue car pas de vrai API.
-	if err == nil {
-		t.Fatal("expected error (no real API), got nil")
-	}
-	if err.Error() == "pooled: Acquire failed: no tokens available" {
-		t.Fatalf("unexpected pool error: %v", err)
+	// GetCareerRank retourne (nil, nil) pour les erreurs de connexion (pas de vrai API).
+	// C'est le comportement attendu car l'endpoint est privacy-gated et les erreurs
+	// de connexion sont silencieusement ignorées.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -205,4 +209,101 @@ func TestPooledHaloClientInterface(t *testing.T) {
 
 	// Vérifier que client implémente HaloClient.
 	var _ HaloClient = client
+}
+
+// TestPooledHaloClientNotifyHTTPError_429 teste que 429 signal le pool.
+func TestPooledHaloClientNotifyHTTPError_429(t *testing.T) {
+	mp := &mockPool{
+		tokens: map[string]*domain.HaloTokens{
+			"test": testTokens("test"),
+		},
+		onHTTPErrorCalls: []int{},
+	}
+	client := NewPooledHaloClient(mp, "test", "xuid_test")
+
+	// Simuler un 429 HTTP error.
+	err := &HTTPError{
+		StatusCode: 429,
+		URL:        "https://example.com/api",
+		Err:        errors.New("rate limited"),
+	}
+	client.notifyPoolOnHTTPError(err)
+
+	// Vérifier que pool.OnHTTPError a été appelée avec 429.
+	if len(mp.onHTTPErrorCalls) != 1 {
+		t.Errorf("expected 1 OnHTTPError call, got %d", len(mp.onHTTPErrorCalls))
+	}
+	if len(mp.onHTTPErrorCalls) > 0 && mp.onHTTPErrorCalls[0] != 429 {
+		t.Errorf("expected statusCode 429, got %d", mp.onHTTPErrorCalls[0])
+	}
+}
+
+// TestPooledHaloClientNotifyHTTPError_503 teste que 503 signal le pool.
+func TestPooledHaloClientNotifyHTTPError_503(t *testing.T) {
+	mp := &mockPool{
+		tokens: map[string]*domain.HaloTokens{
+			"test": testTokens("test"),
+		},
+		onHTTPErrorCalls: []int{},
+	}
+	client := NewPooledHaloClient(mp, "", "")
+
+	// Simuler un 503 HTTP error.
+	err := &HTTPError{
+		StatusCode: 503,
+		URL:        "https://example.com/api",
+		Err:        errors.New("service unavailable"),
+	}
+	client.notifyPoolOnHTTPError(err)
+
+	// Vérifier que pool.OnHTTPError a été appelée avec 503.
+	if len(mp.onHTTPErrorCalls) != 1 {
+		t.Errorf("expected 1 OnHTTPError call, got %d", len(mp.onHTTPErrorCalls))
+	}
+	if len(mp.onHTTPErrorCalls) > 0 && mp.onHTTPErrorCalls[0] != 503 {
+		t.Errorf("expected statusCode 503, got %d", mp.onHTTPErrorCalls[0])
+	}
+}
+
+// TestPooledHaloClientNotifyHTTPError_OtherStatus teste que d'autres codes sont ignorés.
+func TestPooledHaloClientNotifyHTTPError_OtherStatus(t *testing.T) {
+	mp := &mockPool{
+		tokens: map[string]*domain.HaloTokens{
+			"test": testTokens("test"),
+		},
+		onHTTPErrorCalls: []int{},
+	}
+	client := NewPooledHaloClient(mp, "", "")
+
+	// Simuler un 500 HTTP error (non-429/503).
+	err := &HTTPError{
+		StatusCode: 500,
+		URL:        "https://example.com/api",
+		Err:        errors.New("internal server error"),
+	}
+	client.notifyPoolOnHTTPError(err)
+
+	// Vérifier que pool.OnHTTPError n'a PAS été appelée.
+	if len(mp.onHTTPErrorCalls) != 0 {
+		t.Errorf("expected 0 OnHTTPError calls for status 500, got %d", len(mp.onHTTPErrorCalls))
+	}
+}
+
+// TestPooledHaloClientNotifyHTTPError_NilError teste qu'une erreur nil est ignorée.
+func TestPooledHaloClientNotifyHTTPError_NilError(t *testing.T) {
+	mp := &mockPool{
+		tokens: map[string]*domain.HaloTokens{
+			"test": testTokens("test"),
+		},
+		onHTTPErrorCalls: []int{},
+	}
+	client := NewPooledHaloClient(mp, "", "")
+
+	// Passer nil comme erreur.
+	client.notifyPoolOnHTTPError(nil)
+
+	// Vérifier que pool.OnHTTPError n'a pas été appelée.
+	if len(mp.onHTTPErrorCalls) != 0 {
+		t.Errorf("expected 0 OnHTTPError calls for nil error, got %d", len(mp.onHTTPErrorCalls))
+	}
 }

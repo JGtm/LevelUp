@@ -38,8 +38,12 @@ func (pc *PooledHaloClient) notifyPoolOnHTTPError(err error) {
 	var httpErr *HTTPError
 	if errors.As(err, &httpErr) {
 		if httpErr.StatusCode == 429 || httpErr.StatusCode == 503 {
-			slog.WarnContext(context.Background(), "pooled: signaling HTTP error to pool",
-				"statusCode", httpErr.StatusCode, "url", httpErr.URL)
+			msg := "rate_limit_exceeded"
+			if httpErr.StatusCode == 503 {
+				msg = "service_unavailable"
+			}
+			slog.WarnContext(context.Background(), "pooled: pool global cooldown triggered",
+				"statusCode", httpErr.StatusCode, "reason", msg, "gamertag", pc.pinnedGamertag)
 			pc.p.OnHTTPError(httpErr.StatusCode)
 		}
 	}
