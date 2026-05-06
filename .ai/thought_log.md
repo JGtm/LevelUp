@@ -1,5 +1,42 @@
 # Thought Log
 
+## [2026-05-06] fix/media-player-ux — Hardening : i18n manifest + couverture tests
+
+**Statut** : Complété — branche `fix/media-player-ux`.
+
+**Décision technique principale** :
+Vérification finale avant livraison. Trois manques détectés et corrigés :
+
+1. **i18n manifest** : la string `"Pas de match associé"` ajoutée dans `MediaThumbnailCard` était hardcodée → flagged par le linter `@levelup/no-hardcoded-strings`. Ajout de la clé `media.thumbnail.no_match_associated` (FR/EN) dans `media.toml`, regen via `scripts/build_i18n_manifests.mjs`, exposition via `getMediaText().thumbnail.noMatchAssociated`. Locale récupérée via `useAppShellStore` (cohérent avec `CoverFlowModal`).
+2. **Tests fallback** : 4 tests dans `MediaViewer.test.tsx` couvrent les 4 branches du conditional render (map_name présent, match_id null FR, match_id null EN, match_id présent + map_name null = pas de fallback, cas MatchMediaTab).
+3. **Tests autoChain** : 3 tests dans `CoverFlowModal.test.tsx` lockent le contrat de la prop `onToggleAutoChain` (régression évitée : le bouton n'apparaît QUE si la prop est passée — c'est la cause d'origine du bug sur home + match tab).
+
+**Résultats observés** :
+- `npm run typecheck` : OK
+- `npx eslint` sur fichiers touchés : 0 erreur, warnings restants pré-existants (i18n debt sur autres fichiers)
+- `npx vitest run` : 137 fichiers / 1243 tests verts (+7 nouveaux)
+
+**Prochaine étape** : push + PR.
+
+## [2026-05-06] fix/media-player-ux — Hardening null-safety après crash "Cannot read properties of null (reading 'find')"
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Le backend Go peut sérialiser une slice `nil` en `null` JSON (vs `[]` pour `[]T{}` initialisé). Mes nouveaux composants Combat assumaient `T[]` non-null et faisaient `scoreboard.find(...)` / `nemesis.filter(...)` directement sur les props, ce qui crash avec « Cannot read properties of null (reading 'find') » sur certains matchs. Corrigé en :
+1. Élargissement des signatures helpers (`kdCumulSeries`, `tugOfWarStackedSeries`, `cadenceTeamSeries`) pour accepter `T[] | null | undefined` et early-return `[]` si nul/vide.
+2. Élargissement des props composants (`MatchImpactBadgesBar`, `MatchKDCumulChart`, `MatchTugOfWarChart`, `MatchCadenceChart`, `MatchNemesisCards`) pour accepter null/undefined sur tous les array inputs.
+3. Normalisation `?? []` en haut de `MatchViewPage` sur 9 slices (`scoreboard`, `roster`, `nemesis`, `weaponKills`, `highlightEvents`, `killerVictim`, `impactBadges`, `kdTimeline`, `tugOfWar`) — les call sites consomment ensuite les variables locales garanties non-null.
+4. 3 nouveaux tests unitaires de régression : `kdCumulSeries(null|undefined)`, `tugOfWarStackedSeries(null|undefined)`, `cadenceTeamSeries(cadence, scoreboard=null)`.
+
+**Résultats observés** :
+- `npm run typecheck` : OK.
+- `npm run test -- src/features/match-view` : 58 tests (49 anciens + 9 nouveaux helpers + 3 régressions null-safety).
+- `npm run lint` : aucun nouveau warning.
+- `npx playwright test e2e/match-view-combat.spec.ts` : 1 test passing en 4.9s, screenshot regénéré.
+
+**Prochaine étape** : commit + PR. Si l'utilisateur revoit le crash, capturer URL + console pour cibler précisément (mes 3 helpers + 5 composants sont désormais null-safe, donc le crash devrait venir d'un autre code path le cas échéant).
+
 ## [2026-05-06] fix/media-player-ux — Bootstrap retry pour cold-start API
 
 **Statut** : Complété — branche `fix/media-player-ux`.

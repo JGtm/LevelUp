@@ -15,6 +15,7 @@ export const mediaManifest = {
   "media.pagination.next": { fr: "Suivant →", en: "Next →" },
   "media.pagination.page_label": { fr: "Page {page} / {totalPages}", en: "Page {page} / {totalPages}" },
   "media.pagination.previous": { fr: "← Précédent", en: "← Previous" },
+  "media.thumbnail.no_match_associated": { fr: "Pas de match associé", en: "No associated match" },
   "media.toolbar.all_authors": { fr: "Tous les auteurs", en: "All authors" },
   "media.toolbar.all_authors_toggle": { fr: "Tous", en: "All" },
   "media.toolbar.all_in_category": { fr: "Toutes catégories", en: "All {category}" },

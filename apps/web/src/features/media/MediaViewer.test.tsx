@@ -1,8 +1,12 @@
 /**
  * Tests unitaires — LikersLine et MediaThumbnailCard (MediaViewer.tsx).
  */
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { renderWithProviders } from '@/test/render-utils'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { MediaThumbnailCard } from './MediaViewer'
+import type { MediaItemRow } from '@/lib/api/types'
 
 // LikersLine est une fonction locale non exportée, on la teste via son rendu
 // dans MediaThumbnailCard. On crée un wrapper minimal pour les tests isolés.
@@ -74,5 +78,84 @@ describe('LikersLine — rendu React', () => {
     const { container } = render(<LikersLine likers={['Alice']} totalLikers={1} />)
     const p = container.querySelector('p')
     expect(p?.className).toContain('rose-400')
+  })
+})
+
+// ─── MediaThumbnailCard — fallback "Pas de match associé" ───────────────────
+
+function makeItem(overrides: Partial<MediaItemRow>): MediaItemRow {
+  return {
+    basename: 'shot.png',
+    file_path: '/media/shot.png',
+    kind: 'screenshot',
+    thumbnail_path: '/media/shot-thumb.png',
+    match_id: 'match-1',
+    capture_end_utc: '2026-04-26T14:30:00Z',
+    match_start_time: null,
+    section: 'mine',
+    owner_gamertag: 'me',
+    map_name: 'Aquarius',
+    mode_name: 'Slayer',
+    liked: false,
+    like_count: 0,
+    ...overrides,
+  }
+}
+
+describe('MediaThumbnailCard — affichage map / fallback match', () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  it('affiche le map_name quand la map est connue', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ map_name: 'Aquarius', match_id: 'match-1' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Aquarius')).toBeInTheDocument()
+    expect(screen.queryByText(/Pas de match associé/)).not.toBeInTheDocument()
+  })
+
+  it('affiche "Pas de match associé" (FR) quand match_id est null', () => {
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ map_name: null, match_id: null })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Pas de match associé')).toBeInTheDocument()
+  })
+
+  it('affiche "No associated match" (EN) quand match_id est null et locale=en', () => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'en' })
+    })
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ map_name: null, match_id: null })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('No associated match')).toBeInTheDocument()
+  })
+
+  it('n\'affiche ni map_name ni fallback quand match_id existe mais map_name est null', () => {
+    // Cas typique : médias depuis MatchMediaTab (match_id forcé, map_name absent)
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ map_name: null, match_id: 'match-42' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.queryByText(/Pas de match associé/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/No associated match/)).not.toBeInTheDocument()
   })
 })
