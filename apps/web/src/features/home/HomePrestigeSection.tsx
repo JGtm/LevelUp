@@ -113,7 +113,9 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
     page * VISIBLE_OBJECTIVES + VISIBLE_OBJECTIVES,
   )
 
-  const activeArc = arcsQ.data?.arcs.find((a) => a.completed_at == null) ?? null
+  // `arcsQ.data?.arcs` peut être null (Go nil slice → JSON null vs []),
+  // donc `?.` sur `data` ne suffit pas — il faut aussi `?.` sur `arcs`.
+  const activeArc = arcsQ.data?.arcs?.find((a) => a.completed_at == null) ?? null
 
   // Toutes les sources en erreur → feature désactivée → on ne rend rien.
   if (prestige.isError && arcsQ.isError && challengesQ.isError) return null
