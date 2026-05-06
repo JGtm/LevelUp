@@ -11,8 +11,7 @@ import (
 // poolImpl implémente Pool avec round-robin PolicyAnyPublic et pinned PolicyPinnedPlayer.
 // Gère N tokens en parallèle, chacun avec son rate limiter (RPS par token).
 type poolImpl struct {
-	discovery Discover
-	resolver  Resolver
+	resolver Resolver
 
 	// Slots : chaque slot = 1 token réactivé + rate limiter (HaloAPIClient).
 	slots     []*slot
