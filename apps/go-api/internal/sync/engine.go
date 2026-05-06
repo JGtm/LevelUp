@@ -521,62 +521,57 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			fetchIndex = append(fetchIndex, i)
 		}
 
-		if len(toFetch) == 0 {
-			// Tous les matchs sont connus ou on a atteint maxMatches.
-			goto nextPage
-		}
+		if len(toFetch) > 0 {
+			// ─── Phase 2 : Fetch parallèle ───
+			fetchedMatches := make([]*fetchedMatch, len(toFetch))
+			fetchErrors := make([]error, len(toFetch))
+			var mu sync.Mutex
 
-		// ─── Phase 2 : Fetch parallèle ───
-		fetchedMatches := make([]*fetchedMatch, len(toFetch))
-		fetchErrors := make([]error, len(toFetch))
-		var mu sync.Mutex
+			eg, egCtx := errgroup.WithContext(ctx)
+			// Pas de SetLimit ici — RPS limité par HaloAPIClient.rateWait()
+			for i, matchID := range toFetch {
+				i, matchID := i, matchID // Capturer pour closure
+				eg.Go(func() error {
+					fm, err := e.fetchMatchData(egCtx, client, matchID, opts)
+					mu.Lock()
+					fetchedMatches[i] = fm
+					fetchErrors[i] = err
+					mu.Unlock()
+					if err != nil {
+						slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
+							"gamertag", e.gamertag, "match_id", matchID, "err", err,
+						)
+						result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
+					}
+					return nil // Non-fatal : continuer même si fetch échoue
+				})
+			}
+			_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
 
-		eg, egCtx := errgroup.WithContext(ctx)
-		// Pas de SetLimit ici — RPS limité par HaloAPIClient.rateWait()
-		for i, matchID := range toFetch {
-			i, matchID := i, matchID // Capturer pour closure
-			eg.Go(func() error {
-				fm, err := e.fetchMatchData(egCtx, client, matchID, opts)
-				mu.Lock()
-				fetchedMatches[i] = fm
-				fetchErrors[i] = err
-				mu.Unlock()
-				if err != nil {
-					slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
-						"gamertag", e.gamertag, "match_id", matchID, "err", err,
-					)
-					result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
+			// ─── Phase 3 : Insert séquentiel (order-preserving) ───
+			for i, fm := range fetchedMatches {
+				if fetchErrors[i] != nil {
+					// Fetch échoué, skip insert
+					continue
 				}
-				return nil // Non-fatal : continuer même si fetch échoue
-			})
-		}
-		_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
+				if fm == nil {
+					continue
+				}
 
-		// ─── Phase 3 : Insert séquentiel (order-preserving) ───
-		for i, fm := range fetchedMatches {
-			if fetchErrors[i] != nil {
-				// Fetch échoué, skip insert
-				continue
-			}
-			if fm == nil {
-				continue
-			}
-
-			if err := e.insertFetchedMatch(ctx, sharedDB, playerDB, globalDB, &result, fm); err != nil {
-				slog.WarnContext(ctx, "sync: insertFetchedMatch échoué",
-					"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-				)
-				result.AddWarning(fmt.Sprintf("insertFetchedMatch(%s): %v", fm.MatchID, err))
-			} else {
-				processed++
-				slog.InfoContext(ctx, "sync: match traité (parallèle)",
-					"gamertag", e.gamertag, "match_id", fm.MatchID,
-					"processed", processed, "inserted_total", result.MatchesInserted,
-				)
+				if err := e.insertFetchedMatch(ctx, sharedDB, playerDB, globalDB, &result, fm); err != nil {
+					slog.WarnContext(ctx, "sync: insertFetchedMatch échoué",
+						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
+					)
+					result.AddWarning(fmt.Sprintf("insertFetchedMatch(%s): %v", fm.MatchID, err))
+				} else {
+					processed++
+					slog.InfoContext(ctx, "sync: match traité (parallèle)",
+						"gamertag", e.gamertag, "match_id", fm.MatchID,
+						"processed", processed, "inserted_total", result.MatchesInserted,
+					)
+				}
 			}
 		}
-
-	nextPage:
 
 		if isDelta && allKnown {
 			break
@@ -764,9 +759,9 @@ func (e *SyncEngine) processMatch(
 // Utilisé pour paralléliser les fetches tout en gardant les inserts séquentiels.
 type fetchedMatch struct {
 	MatchID        string
-	Registry       *domain.MatchRegistry
-	Participants   []*domain.MatchParticipant
-	Medals         []*domain.MedalEarned
+	Registry       *MatchRegistryRow
+	Participants   []ParticipantRow
+	Medals         []MedalRow
 	HighlightData  []byte // Raw highlight events chunk (ou nil si absent)
 	FilmMajorVer   int
 	HasHighlights  bool

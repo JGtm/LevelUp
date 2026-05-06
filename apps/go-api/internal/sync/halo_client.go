@@ -40,6 +40,21 @@ const (
 	matchCountMax = 25
 )
 
+// HTTPError encapsule une erreur HTTP avec statusCode exposé pour inspection.
+type HTTPError struct {
+	StatusCode int
+	URL        string
+	Err        error
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("HTTP %d: %s", e.StatusCode, e.URL)
+}
+
+func (e *HTTPError) Unwrap() error {
+	return e.Err
+}
+
 // validMatchTypes est l'ensemble des types de match valides.
 var validMatchTypes = map[string]bool{
 	"all":         true,
@@ -380,14 +395,14 @@ func (c *HaloAPIClient) doGet(ctx context.Context, rawURL string) ([]byte, error
 
 		// Erreurs d'auth : inutile de retry.
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-			return nil, fmt.Errorf("doGet %s: HTTP %d (tokens invalides/expirés)", rawURL, resp.StatusCode)
+			return nil, &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("tokens invalides/expirés")}
 		}
 		// Ressource absente : ne pas retry.
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
-			return nil, fmt.Errorf("doGet %s: HTTP %d (ressource absente)", rawURL, resp.StatusCode)
+			return nil, &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("ressource absente")}
 		}
 		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("doGet %s: HTTP %d", rawURL, resp.StatusCode)
+			lastErr = &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: fmt.Errorf("HTTP %d", resp.StatusCode)}
 			c.backoff(ctx, attempt)
 			continue
 		}

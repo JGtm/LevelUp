@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -29,6 +30,21 @@ func NewPooledHaloClient(p pool.Pool, pinnedGamertag, pinnedXUID string) *Pooled
 	}
 }
 
+// notifyPoolOnHTTPError inspecte l'erreur et signale OnHTTPError au pool si 429/503.
+func (pc *PooledHaloClient) notifyPoolOnHTTPError(err error) {
+	if err == nil {
+		return
+	}
+	var httpErr *HTTPError
+	if errors.As(err, &httpErr) {
+		if httpErr.StatusCode == 429 || httpErr.StatusCode == 503 {
+			slog.WarnContext(context.Background(), "pooled: signaling HTTP error to pool",
+				"statusCode", httpErr.StatusCode, "url", httpErr.URL)
+			pc.p.OnHTTPError(httpErr.StatusCode)
+		}
+	}
+}
+
 // GetMatchHistory implémente HaloClient.GetMatchHistory() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetMatchHistory(
 	ctx context.Context,
@@ -42,7 +58,9 @@ func (pc *PooledHaloClient) GetMatchHistory(
 	defer lease.Release()
 
 	client := NewHaloAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken, 1)
-	return client.GetMatchHistory(ctx, gamertag, matchType, start, count)
+	result, err := client.GetMatchHistory(ctx, gamertag, matchType, start, count)
+	pc.notifyPoolOnHTTPError(err)
+	return result, err
 }
 
 // GetMatchStats implémente HaloClient.GetMatchStats() avec PolicyAnyPublic.
@@ -54,7 +72,9 @@ func (pc *PooledHaloClient) GetMatchStats(ctx context.Context, matchID string) (
 	defer lease.Release()
 
 	client := NewHaloAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken, 1)
-	return client.GetMatchStats(ctx, matchID)
+	result, err := client.GetMatchStats(ctx, matchID)
+	pc.notifyPoolOnHTTPError(err)
+	return result, err
 }
 
 // GetMatchFilm implémente HaloClient.GetMatchFilm() avec PolicyAnyPublic.
@@ -66,7 +86,9 @@ func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (m
 	defer lease.Release()
 
 	client := NewHaloAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken, 1)
-	return client.GetMatchFilm(ctx, matchID)
+	result, ok, err := client.GetMatchFilm(ctx, matchID)
+	pc.notifyPoolOnHTTPError(err)
+	return result, ok, err
 }
 
 // GetHighlightEventsChunk implémente HaloClient.GetHighlightEventsChunk() avec PolicyAnyPublic.
@@ -78,7 +100,9 @@ func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID
 	defer lease.Release()
 
 	client := NewHaloAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken, 1)
-	return client.GetHighlightEventsChunk(ctx, matchID)
+	result, ver, ok, err := client.GetHighlightEventsChunk(ctx, matchID)
+	pc.notifyPoolOnHTTPError(err)
+	return result, ver, ok, err
 }
 
 // GetCareerRank implémente HaloClient.GetCareerRank() avec PolicyPinnedPlayer.
