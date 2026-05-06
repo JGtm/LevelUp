@@ -1,5 +1,57 @@
 # Thought Log
 
+## [2026-05-05] Engagement long-term — recompute coefficients + cleanup + observabilité (11 phases)
+
+**Statut** : Complété — tests Go + integration verts.
+
+**Bug racine** : `coef_team_share` restait à `1.0` (cold-start neutre) jamais recomputé en production. Conséquence : `paceAttendu = 1.0 × paceTeam` → courbes "Attendu" et "Équipe" superposées sur les charts engagement (Match View Combat, Squad Contributions). Le module `SaveEngagementCoefficient` existait + était testé mais n'était **jamais appelé** hors tests.
+
+**11 phases livrées** (1 phase = 1 commit atomique propre) :
+
+1. **Phase 1 — Algo pur** : `internal/analysis/temporal/engagement_coefficients.go` (132L) + tests blindés (17 tests, 280L). Médiane glissante des ratios `pace_joueur/pace_team` avec exclusion outliers (PaceTeam < 1.0, PlayerActivity < 3) et clamp [CoefMin=0.1, CoefMax=5.0]. ErrInsufficientCoefHistory si < 10 samples valides.
+
+2. **Phase 2 — Migration additive** : 4 nouvelles colonnes nullable sur `player_match_enrichment` (`engagement_pace_player`, `engagement_pace_team`, `engagement_pace_lobby`, `engagement_player_activity`) + index partiel `idx_pme_engagement_paces`. Idempotent ADD COLUMN IF NOT EXISTS.
+
+3. **Phase 3 — Domain + repo** : `EngagementScoreResult` enrichi avec `MeanPaceJoueur/Team/Lobby` + `PlayerActivity` (calculés depuis la curve). Port `LoadRatioSamples(xuid, mode, limit)` ajouté à `EngagementScoreRepository`. Repo `SaveEngagementScore` étendu pour persister les paces (avec fallback 5-col si migration absente). Tous les mocks de tests étendus.
+
+4. **Phase 4 — Sync hook** : `batchRecomputeCoefficients` dans `internal/sync/engagement.go` (~80L). Hook **post-sync** (`engine.go:780`) + **backfill** (`RunBackfillEngagementScores`). `SyncResult.EngagementCoefsUpdated` ajouté. Tests intégration DuckDB :memory: (9 cas couvrant happy path, insufficient history, paces absentes, table coefs absente, 2 modes indépendants, idempotent, outlier filtering, limit=200, PvE filtré).
+
+5. **Phase 5 — Admin endpoint** : `POST /players/{slug}/engagement/recompute_coefficients` → handler `PostRecomputeCoefficients` + service method `RecomputeCoefficients(ctx)` (utilise repo, pas SQL direct). Réponse `RecomputeReport` avec `modes_updated`, `n_coefs_persisted`, `modes_skipped`. Tests handler (4 cas : OK, insufficient history, player not found, unavailable). OpenAPI mis à jour.
+
+6. **Phase 6 — Cleanup code mort** : `EngagementScoreService` (legacy, jamais wiré) + `MatchEngagementParams` + `partitionEvents` (TODO Phase 3 obsolète) + `eventActorXUID` + `titleSlugFromContext` (service-side) + `engagement_score_service_test.go` supprimés. ~310L de code mort retirés. `HistoryWindow` déplacé dans `engagement_player_service.go`.
+
+7. **Phase 7 — `computePlayerPace` corrigé** : refactor `GetSquadSession` pour utiliser un nouveau `matchBundle` qui réutilise events + mctx + teamXUIDs entre joueurs (8× moins de queries DB : N×M → M). Le main player utilise `summary.PaceJoueur` (mean curve avec smoothing 90s) ; les coéquipiers passent par `computeTeammateMeanPace` qui appelle `temporal.ComputeEngagementScore` avec leur xuid → méthode cohérente entre tous les joueurs.
+
+8. **Phase 8 — Capability `CapEngagement`** : ajoutée dans `games.CapabilityKey` (`engagement.score`) + `domain/title.Capability` (`engagement`). Halo Infinite déclare `CapEngagement` supported, synthetic_title_b ne l'expose pas. Toutes les routes engagement gated par `middleware.RequireCapability(CapEngagement)` → dégradation 404 sur les titres ne supportant pas la feature.
+
+9. **Phase 9 — Observabilité expvar** : 5 compteurs ajoutés via `internal/observability` (ADR-0009 stdlib expvar) :
+   - `engagement_score_computed_total`
+   - `engagement_coef_recomputed_total`
+   - `engagement_coef_skipped_insufficient_history`
+   - `engagement_unavailable_skips_total`
+   - `engagement_coef_save_error_total`
+   - + Buckets de distribution coef (`engagement_coef_team_bucket_<range>`) en 8 tranches sur [<0.5, ≥2.0] pour détecter dérives statistiques sans Prometheus.
+   Tests : 3 cas (counters happy path, unavailable counter, bucketize).
+
+10. **Phase 10 — Doc E2E validation** : `.ai/V7/ENGAGEMENT_E2E_VALIDATION.md` étendu de 4 cas (A. Coef ≠ 1.0 après backfill, B. Courbes visuellement distinctes, C. Endpoint admin recompute, D. Métriques expvar exposées) + section sur les hypothèses H1-H5 du plan original (Phase 0 reportée a posteriori avec instruction CLI).
+
+11. **Phase 11 → Phase 12 — Validation finale** : `go build ./...` OK, `go test ./...` 0 fail, `go vet ./...` 0 warning, `go test -tags=integration ./internal/sync/` 9/9 pass. Tests régression source-grep ajoutés (B5 : recompute hook câblé + paces persistées + JSON snake_case sur les nouveaux champs). Tests handlers admin recompute 4/4 pass.
+
+**Décisions clés** :
+- Stratégie **Option A** (recompute à chaque sync) retenue vs Option C incremental — overhead négligeable à l'échelle (200 rows × 2 modes = ~5ms par sync), code plus simple, debug SQL transparent. Option C documentée comme évolution v1.1 si scaling devient problème.
+- Persistance des **4 paces** plutôt que 2 ratios pré-calculés : autorise le changement de formule sans re-backfill, autorise le diagnostic SQL direct.
+- **Filtrage outliers** : `pace_team < 1.0` (lobby AFK) et `player_activity < 3` (quitter/AFK joueur) — mitigés par la médiane (résiste à 10% d'outliers), mais bornés explicitement pour économiser la médiane.
+- **Bornes du coef** [0.1, 5.0] : large mais évite la propagation d'aberrations en cas de bug partition team/lobby en amont.
+- **Capability gate** : seul Halo Infinite l'expose actuellement → titres futurs sans `highlight_events` peuvent désactiver proprement (404 silencieux côté front, déjà géré par `retry: false`).
+
+**Résultat attendu** : sur un joueur avec ≥30 matchs PvP_ranked (≥10 valides après filtres), après sync ou backfill, `engagement_coefficients.coef_team_share != 1.0`. Sur Match View Combat → courbe "Attendu" diverge visuellement de "Équipe alliée". Sur Squad Contributions Mock 15 v2 → `team_expected != team_observed`.
+
+**Limites assumées** :
+- **Phase 0 (validation H1-H5) reportée a posteriori** sur données réelles. Si H1 fail (engagement corrélé à perf > 0.5) ou H2 fail (R² < 0.3), le code reste correct mais la *modélisation produit* devra évoluer (passer aux baselines conditionnelles cf §13 plan original).
+- **Validation visuelle manuelle** non exécutée par mes soins (besoin app dev + données ≥30 matchs). Procédure documentée dans E2E doc cas A-D.
+
+**Prochaine étape** : tester sur un joueur réel, exécuter le rapport H1-H5 via `cmd/engagement-validate`, capturer screenshots avant/après pour le PR.
+
 ## [2026-05-05] Squad Contributions — Suppression du dual-grid ECharts (tooltips partagés entre charts)
 
 **Statut** : Complété — branche `fix/theme-consistency-tokens`.
@@ -60,6 +112,27 @@
 - 27 / 48 weapons distincts résolus (vs 13 / 48 avant Round 2).
 - **9613 / 9641 kills couverts (99 %)** — les 28 kills non résolus sont longue traîne (1-6 kills chacun, vrais skins absents de la liste hardcodée des 42 weapons base).
 - Hors scope (longue traîne 1 %) : enrichir `applyWeaponLabels` avec plus de variants OU implémenter le mapping skin→base via le job de réconciliation (`reconciled_as` est `NULL` partout → le job n'a jamais run sur les data existantes).
+
+**Round 3 — Match-view + helper standard `UBigint`** : utilisateur signale que match-view doit aussi bénéficier du fix, et demande un helper propre pour ne pas dupliquer le pattern uint64→int64 reinterpret.
+
+**Bug 4 trouvé** dans `match_view_repo.go::lookupWeaponLabels` (3 call sites : top_weapon scoreboard ligne 270, donut weapon_kills ligne 422, bulk weapon stats ligne 983) : exact même pattern de scan `var id int64` sur colonne UBIGINT → silent overflow → labels manquants pour Mutilateur, MK50 Sidekick, Fuel Rod SPNKr, etc.
+
+**Helper `internal/platform/duckdb/ubigint_scanner.go`** créé pour standardiser :
+- Type `UBigint int64` qui implémente `sql.Scanner` — accepte uint64 (UBIGINT natif), int64 (BIGINT en sécurité), nil (NULL → 0).
+- Méthode `.Int64()` retourne la valeur reinterprétée bit-à-bit.
+- Variante `NullableUBigint{Value, Valid}` pour les colonnes nullables (équivalent `sql.NullInt64`).
+- Tests unitaires couvrant zero, max int64, bit63=1 (filmshell hash), max uint64, nil, types invalides, round-trip bit-preserving.
+
+**Refactor des 3 call sites** dans weapon_kills_repo.go (queryWeaponKills, attachWeaponLabels) et match_view_repo.go (lookupWeaponLabels) — passage de `var widU uint64; ... int64(widU)` à `var id UBigint; ... id.Int64()`. Comportement identique, intent explicite.
+
+**Validation E2E** :
+- Squad weapons : 27/48 résolus, 99 % kills (identique avant refactor).
+- Match-view scoreboard : `JGtm top_weapon_id=-7103673244136675425 (bit63=1) → "Fuel Rod SPNKr"` ✓ (avant fix, label vide).
+- `go test ./internal/platform/duckdb/ ./internal/service/` OK.
+
+**Conclusion** :
+- `UBigint` est le pattern à utiliser pour toute future colonne UBIGINT (weapon_id, medal hashes éventuels, etc.). Le commentaire en tête du fichier documente le pourquoi (limite database/sql avec bit63=1).
+- Les 2 sites match_view_repo.go ligne 390 et 953 (`GetMatchWeaponKills` / `GetMatchBulkWeaponKills`) gardent `uint64` natif car ils font un lookup intermédiaire dans `analysis.WeaponFusionMapID[uint64]` — `UBigint` rajouterait des conversions inutiles.
 
 ## [2026-05-05] Match View Combat — Cadence remplacée par EngagementMatchSection (parité avec Contributions)
 
