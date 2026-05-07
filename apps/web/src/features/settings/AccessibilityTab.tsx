@@ -98,7 +98,7 @@ export function AccessibilityTab({ t }: Props) {
 
         <div className="space-y-3">
           <p className="text-sm font-medium text-foreground">{t.paletteLabel}</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <PaletteOption
               value="default"
               label={t.paletteDefault}
@@ -111,6 +111,20 @@ export function AccessibilityTab({ t }: Props) {
               label={t.paletteOkabeIto}
               description={t.paletteOkabeItoDesc}
               selected={colorPalette === 'okabe-ito'}
+              onSelect={setColorPalette}
+            />
+            <PaletteOption
+              value="cividis"
+              label={t.paletteCividis}
+              description={t.paletteCividisDesc}
+              selected={colorPalette === 'cividis'}
+              onSelect={setColorPalette}
+            />
+            <PaletteOption
+              value="tol-bright"
+              label={t.paletteTolBright}
+              description={t.paletteTolBrightDesc}
+              selected={colorPalette === 'tol-bright'}
               onSelect={setColorPalette}
             />
           </div>

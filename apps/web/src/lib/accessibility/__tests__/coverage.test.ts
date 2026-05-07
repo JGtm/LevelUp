@@ -8,10 +8,14 @@ import { describe, it, expect } from 'vitest'
 import { ALL_TOKENS } from '../semantic-tokens'
 import { defaultPalette } from '../palettes/default'
 import { okabePalette } from '../palettes/okabe-ito'
+import { cividisPalette } from '../palettes/cividis'
+import { tolBrightPalette } from '../palettes/tol-bright'
 
 const PALETTES = {
   default: defaultPalette,
   'okabe-ito': okabePalette,
+  cividis: cividisPalette,
+  'tol-bright': tolBrightPalette,
 }
 
 const HEX_RE = /^#[0-9a-fA-F]{3,8}$/
