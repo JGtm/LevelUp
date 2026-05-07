@@ -160,6 +160,58 @@
 
 ---
 
+## [2026-05-06] Plan title-agnostic v2.2 — décisions D1-D6 + Exit Gate strict
+
+**Statut** : Complété (document seul, exécution à venir).
+
+**Contexte** : revue du plan v1 `PLAN_TITLE_AGNOSTIC_REFACTORING.md` (commit 2fb9a558). Le plan v1 avait une bonne ossature mais 3 lacunes structurantes : conflit non résolu avec ADR 0011 (le plan voulait pousser canonical dans le DTO HTTP, l'ADR a tranché l'inverse), périmètre incomplet (DDL non traitée, autres tables shared, types `*Raw` dans `domain/`, sync flags non-FieldKey), 6 décisions techniques laissées en suspens, effort sous-estimé d'un facteur ~1.5.
+
+**Décisions actées (session interactive avec formulaires)** :
+
+1. **D1 — `canonical.Value`** : wrapper typé `Value{Kind, Int, Float, Str, Bool, Time}`. Compromis lisibilité/perf, pattern-match côté service via switch sur Kind, évite le runtime cast de `interface{}`.
+2. **D2 — Field absent vs NULL** : `map[FieldKey]*Value`. Présent dans le map = field supporté, `*Value=nil` = NULL en DB, absent du map = capability non supportée. Sémantique explicite et testable.
+3. **D3 — Schéma DB multi-titre** : DB physique par titre (`data/titles/{slug}/warehouse/...`), cohérent ADR 0008. Le PathResolver retourne déjà la bonne DB. DDL dans `internal/games/{slug}/ddl/`.
+4. **D4 — OpenAPI gen** : **Huma intégré au plan** au lieu de swag/kin-openapi. Coût : rewrite ~80 handlers chi vers le pattern `func(ctx, *Input) (*Output, error)`. Bénéfice : OpenAPI 3.1 généré par construction, validation auto, plus jamais de YAML manuel. Élargit le scope du plan mais évite un refactor handlers ultérieur.
+5. **D5 — Codegen TS canonical** : script `tools/codegen/canonical-ts/` lit `canonical/fields.go` (go/ast) → écrit `apps/web/src/lib/canonical/fields.ts`. Single source Go, CI lint vérifie l'idempotence.
+6. **D6 — Migration progressive** : service par service en PR atomique, ancien path supprimé dans la même PR. Pas de feature flag (évite la dette « deux paths à maintenir »).
+
+**Architecture restructurée v2.2** :
+
+- Phase 0 enrichie : 6 décisions actées + ADRs 0014 (title-agnostic) + 0015 (Huma) à créer.
+- Phase 1 étendue à 5 tables shared (pas seulement `match_participants`) + extraction des magic constants Halo (medal_id 1512363953, mode prefixes) vers `constants.toml`.
+- Phase 1.5 NOUVELLE : DDL par titre (ex-`steps_shared.go` éclaté en `internal/games/{slug}/ddl/`).
+- Phases 3 et 4 fusionnées en Phase 3 = 3a (cleanup DTO, 5-7 j) + 3b (migration Huma 80 handlers, 13-18 j). Un seul passage par handler au lieu de deux.
+- Phase 4 (sync flags) découplée : flags FieldKey-based vs flags « stratégie de sync » (Sessions, Citations, EngagementScores...) qui restent enumérés.
+- Phase 5 (front) : codegen TS Go→TS + client API regen depuis OpenAPI Huma.
+- Phase 6 EAV supprimée définitivement.
+
+**Durcissement v2.2 (exigences strictes)** :
+
+- **§5 Tests refondu** : seuils chiffrés par couche (95% canonical, 90% analysis, 85% adapters/repo/handlers, 80% services, 75% front), tests de non-régression obligatoires par phase (snapshot JSON, snapshot SQL, bench p95, parité multi-titre), datasets `halo_full` (50 matchs hétérogènes) + `synthetic` (10 matchs subset) obligatoires.
+- **§6 Logging refondu** : 6 lints CI bloquants (forbidigo `fmt.Print*`, `log.*`, `panic` ; `slog-context-required` ; `error-must-be-logged-or-returned`), whitelist exhaustive de 14 clés structurées, métriques expvar par phase (durations, counters, validation failures), 4 vérifications shell exécutées à chaque exit phase.
+- **§8 Phase Exit Gate** : refonte complète. Tableau binaire `DONE`/`NOT DONE` daté avec validateur et evidence par item. 12 items transverses obligatoires + items spécifiques par phase. Aucun item optionnel. Tag git `phase-{N}-exit` posé uniquement quand 100% DONE.
+- **§8.11 Validation finale** : PR `validate: synthetic_test_title E2E` doit passer SANS modifier `service/`, `api/`, `apps/web/src/{features,components,routes}/`. Si une de ces zones doit être modifiée → retour à la phase fautive.
+
+**Effort total révisé** : 42-57 j (vs 21-31 j estimé en v1, sous-estimé d'un facteur ~2). Fenêtre minimale viable : Phases 0 → 3a (~18-25 j) — services title-agnostic + DTO propres mais OpenAPI manuel ; Phase 3b (Huma) différable d'un trimestre.
+
+**Conclusion / prochaine étape** : plan figé pour exécution. Premier pas concret : Phase 0 = créer ADR 0014 + ADR 0015, brancher les 6 lints CI bloquants, créer les 2 datasets de tests obligatoires. Aucune ligne de code applicatif modifiée tant que Phase 0 n'est pas close.
+
+---
+
+## [2026-05-06] Bugfix : is_ally scan + commendation handler 404
+
+**Statut** : Complété.
+
+**Décision technique** : Deux bugs corrigés suite à analyse logs runtime.
+1. `is_ally` scan (`match_view_repo.go:748`) : workaround `var isAllyInt int` supprimé — DuckDB retourne maintenant `bool` directement, le scan vers `enc.IsAlly` (bool) fonctionne. Symptôme : encounters indisponibles sur toute vue match.
+2. `commendation_handler.go` : remplacement de `http.ServeFile` par `os.Open` + `http.ServeContent`. En Go 1.26, `http.ServeFile` applique des checks sécurité stricts sur `RawPath != Path` (apostrophes `%27`, accents `%C3%89`) qui résultaient en 404 malgré les fichiers présents sur disk.
+
+**Point non corrigé (data)** : `map_images_registry` contient des `local_path` avec noms FR (`Élévation.jpg`, `Nomade.jpg`) alors que les fichiers disk sont EN (`Elevation.jpg`). Fix : relancer `migrate-static-maps`. `Nomade.jpg` est absent du disk — image manquante à ajouter ou laisser nil (frontend dégrade gracieusement).
+
+**Résultats** : Build clean. Encounters rechargés, commendations servies correctement.
+
+---
+
 ## [2026-05-06] UX Médias — label conditionnel Associer/Réassocier + lien Voir le match
 
 **Statut** : Complété (front uniquement, pas de back-end touché).
