@@ -32,6 +32,10 @@ interface CoverFlowModalProps {
   /** Si renseigné et égal à `currentItem.match_id`, supprime le lien
    *  "Voir le match" (on est déjà sur la page de ce match). */
   currentMatchId?: string | null
+  /** Callback pour naviguer vers la page du match. Si fourni, remplace le
+   *  comportement par défaut (lien `<a>`) pour permettre au consommateur
+   *  d'attacher un MatchNavContext (cf. useNavigateToMatch). */
+  onOpenMatch?: (matchId: string) => void
   autoChain?: boolean
   onToggleAutoChain?: () => void
 }
@@ -140,6 +144,7 @@ export function CoverFlowModal({
   onReassociate,
   playerSlug,
   currentMatchId,
+  onOpenMatch,
   autoChain = false,
   onToggleAutoChain,
 }: CoverFlowModalProps) {
@@ -306,26 +311,45 @@ export function CoverFlowModal({
       onClick={onClose}
     >
       <div
-        className="relative mx-4 flex max-h-[90vh] w-full max-w-5xl flex-col rounded-xl overflow-hidden"
+        className="relative mx-4 flex max-h-[90vh] w-full max-w-5xl flex-col"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-2 text-foreground">
+        <div className="flex items-center justify-between border-b border-border bg-card/95 px-4 py-2 text-foreground rounded-t-xl overflow-hidden">
           <div className="flex min-w-0 items-center gap-3">
             <span className="truncate text-sm text-foreground/80">{heading}</span>
             {showViewMatchLink && playerSlug && currentItem.match_id && (
-              <a
-                href={`/players/${playerSlug}/matches/${currentItem.match_id}`}
-                onClick={(e) => e.stopPropagation()}
-                title={text.coverFlow.viewMatchTitle}
-                aria-label={text.coverFlow.viewMatchTitle}
-                className="shrink-0 text-foreground/70 hover:text-foreground transition-colors"
-              >
-                {/* Icône "ouvrir le match" — alignée sur celle de MatchCard pour cohérence visuelle */}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-                  <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
-                  <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
-                </svg>
-              </a>
+              onOpenMatch ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenMatch(currentItem.match_id as string)
+                  }}
+                  title={text.coverFlow.viewMatchTitle}
+                  aria-label={text.coverFlow.viewMatchTitle}
+                  className="shrink-0 text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  {/* Icône "ouvrir le match" — alignée sur celle de MatchCard pour cohérence visuelle */}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                    <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                    <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+                  </svg>
+                </button>
+              ) : (
+                <a
+                  href={`/players/${playerSlug}/matches/${currentItem.match_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  title={text.coverFlow.viewMatchTitle}
+                  aria-label={text.coverFlow.viewMatchTitle}
+                  className="shrink-0 text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  {/* Icône "ouvrir le match" — alignée sur celle de MatchCard pour cohérence visuelle */}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                    <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                    <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+                  </svg>
+                </a>
+              )
             )}
             {onReassociate && (
               <button
@@ -387,7 +411,7 @@ export function CoverFlowModal({
           </div>
         </div>
 
-        <div className="relative w-full flex-1 overflow-visible bg-card">
+        <div className="relative w-full flex-1 overflow-visible bg-card rounded-b-xl">
           <div className="relative aspect-video w-full overflow-visible mx-auto">
             <button
               onClick={(e) => {

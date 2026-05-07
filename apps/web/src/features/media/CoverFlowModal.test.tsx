@@ -444,6 +444,32 @@ describe('CoverFlowModal — icône "ouvrir le match" header', () => {
 
     expect(screen.getByRole('link', { name: /Ouvrir.*match/ })).toHaveAttribute('href', '/players/GT/matches/match-Y')
   })
+
+  it('si onOpenMatch est fourni, le rendu est un <button> qui appelle le callback avec le match_id courant', () => {
+    const ITEM_X = makeItem({ file_path: '/x.mp4', match_id: 'match-X' })
+    const ITEM_Y = makeItem({ file_path: '/y.mp4', match_id: 'match-Y' })
+    const onOpenMatch = vi.fn()
+    renderWithProviders(
+      <CoverFlowModal
+        items={[ITEM_X, ITEM_Y]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        playerSlug="GT"
+        onOpenMatch={onOpenMatch}
+      />,
+    )
+    // Avec onOpenMatch, plus de <a> mais un <button>.
+    expect(screen.queryByRole('link', { name: /Ouvrir.*match/ })).not.toBeInTheDocument()
+    screen.getByRole('button', { name: /Ouvrir.*match/ }).click()
+    expect(onOpenMatch).toHaveBeenLastCalledWith('match-X')
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+
+    screen.getByRole('button', { name: /Ouvrir.*match/ }).click()
+    expect(onOpenMatch).toHaveBeenLastCalledWith('match-Y')
+    expect(onOpenMatch).toHaveBeenCalledTimes(2)
+  })
 })
 
 // ─── Bouton autoChain — visible uniquement si onToggleAutoChain fourni ─────

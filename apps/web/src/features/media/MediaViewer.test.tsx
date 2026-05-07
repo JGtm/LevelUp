@@ -236,6 +236,41 @@ describe('MediaThumbnailCard — icône "ouvrir le match"', () => {
     )
     expect(screen.getByRole('link', { name: /Open.*match/ })).toBeInTheDocument()
   })
+
+  it('si onOpenMatch est fourni, le rendu est un <button> et le callback reçoit match_id (pas de lien <a>)', () => {
+    const onOpenMatch = vi.fn()
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-42', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        playerSlug="myGT"
+        onOpenMatch={onOpenMatch}
+      />,
+    )
+    // Quand onOpenMatch est fourni, on ne doit plus rendre un <a> mais un <button>.
+    expect(screen.queryByRole('link', { name: /Ouvrir.*match/ })).not.toBeInTheDocument()
+    const btn = screen.getByRole('button', { name: /Ouvrir.*match/ })
+    btn.click()
+    expect(onOpenMatch).toHaveBeenCalledWith('match-42')
+  })
+
+  it('le clic sur le <button> onOpenMatch n\'appelle pas onOpen (stopPropagation)', () => {
+    const onOpen = vi.fn()
+    const onOpenMatch = vi.fn()
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ match_id: 'match-42', map_name: 'Aquarius' })}
+        onToggleLike={vi.fn()}
+        onOpen={onOpen}
+        playerSlug="myGT"
+        onOpenMatch={onOpenMatch}
+      />,
+    )
+    screen.getByRole('button', { name: /Ouvrir.*match/ }).click()
+    expect(onOpen).not.toHaveBeenCalled()
+    expect(onOpenMatch).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('MediaThumbnailCard — troncature du nom de map', () => {

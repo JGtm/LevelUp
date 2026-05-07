@@ -27,6 +27,7 @@ type MediaPageRequest struct {
 	GroupBy        string            `json:"group_by,omitempty"`
 	Sort           string            `json:"sort,omitempty"`
 	LikedOnly      bool              `json:"liked_only,omitempty"`
+	UnassignedOnly bool              `json:"unassigned_only,omitempty"`
 }
 
 // MediaFilters regroupe les paramètres de filtrage/tri pour le repository.
@@ -38,6 +39,7 @@ type MediaFilters struct {
 	MapFilter      string   // filtre par map (map_id ou label canonique)
 	ModeFilter     string   // filtre par CATÉGORIE custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other) — cf. analysis.InferModeCategoryFromPairName
 	LikedOnly      bool     // restreindre aux médias likés
+	UnassignedOnly bool     // restreindre aux médias sans match associé
 	Sort           string   // "date_desc" | "date_asc" | "map_asc" | "mode_asc"
 	GroupBy        string   // "" | "owner" | "map" | "mode" | "session" | "liked"
 }

@@ -2,7 +2,7 @@
  * MediaPage — Galerie de médias (Slice 8).
  * Types ref: MediaItemRow, MediaQueryRequest, MediaPageResponse
  */
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
@@ -16,6 +16,7 @@ import { getMediaText, type MediaText } from './i18n'
 import { useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
 const PAGE_SIZE = 24
 
@@ -168,6 +169,7 @@ export function MediaPage() {
   const [groupBy, setGroupBy] = useState('')
   const [sortKey, setSortKey] = useState('date_desc')
   const [likedOnly, setLikedOnly] = useState(false)
+  const [unassignedOnly, setUnassignedOnly] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const picker = useMediaPicker()
   const [autoChain, setAutoChain] = useState(false)
@@ -185,6 +187,7 @@ export function MediaPage() {
     mode_filter: modeFilter || null,
     group_by: groupBy || null,
     liked_only: likedOnly || null,
+    unassigned_only: unassignedOnly || null,
     pagination: { page, page_size: PAGE_SIZE },
   }
 
@@ -192,7 +195,9 @@ export function MediaPage() {
   const { data: authorsData } = useMediaAuthors(playerSlug)
   const authors = authorsData?.authors ?? []
   const toggleMediaLike = useToggleMediaLike(playerSlug)
-  const mediaItems: MediaItemRow[] = data?.items?.items ?? []
+  // Mémoïsé pour stabiliser les useMemo/useCallback consommateurs (indexByPath,
+  // groups, handleOpenMatch) — sinon `[] ?? data` change de référence à chaque render.
+  const mediaItems = useMemo<MediaItemRow[]>(() => data?.items?.items ?? [], [data])
   const playlistOptions = data?.available_filters.playlists ?? []
   const mapOptions = data?.available_filters.maps?.length
     ? data.available_filters.maps
@@ -224,6 +229,30 @@ export function MediaPage() {
     mediaItems.forEach((item, index) => map.set(item.file_path, index))
     return map
   }, [mediaItems])
+
+  // Navigation contextuelle : quand on ouvre un match depuis la galerie, on
+  // capte la liste des match_ids présents dans la page courante pour que les
+  // boutons prev/next sur la page Match restent dans le scope « médias ».
+  // Limite connue : seuls les ~24 médias de la page courante sont inclus
+  // (PAGE_SIZE) — pas l'ensemble des médias filtrés multi-pages.
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+  const handleOpenMatch = useCallback(
+    (matchId: string) => {
+      const matchIds = Array.from(
+        new Set(
+          mediaItems
+            .map((item) => item.match_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      )
+      navigateToMatch(matchId, {
+        source: 'media',
+        matchIds,
+        filtersLabel: text.navContextLabel,
+      })
+    },
+    [mediaItems, navigateToMatch, text.navContextLabel],
+  )
 
   function handleKindChange(value: string) {
     setKindFilter(value)
@@ -265,6 +294,11 @@ export function MediaPage() {
     setPage(1)
   }
 
+  function handleUnassignedOnlyChange(value: boolean) {
+    setUnassignedOnly(value)
+    setPage(1)
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {lightboxIdx !== null && (
@@ -280,6 +314,7 @@ export function MediaPage() {
           globalTotal={pagination?.total ?? mediaItems.length}
           onReassociate={picker.openFor}
           playerSlug={playerSlug}
+          onOpenMatch={handleOpenMatch}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((prev) => !prev)}
         />
@@ -309,6 +344,8 @@ export function MediaPage() {
           groupBy={groupBy}
           sortKey={sortKey}
           likedOnly={likedOnly}
+          unassignedOnly={unassignedOnly}
+          totalUnassigned={data?.total_unassigned ?? 0}
           playlistOptions={playlistOptions}
           mapOptions={mapOptions}
           modeOptions={modeOptions}
@@ -320,6 +357,7 @@ export function MediaPage() {
           onSortChange={handleSortChange}
           onGroupByChange={handleGroupByChange}
           onLikedOnlyChange={handleLikedOnlyChange}
+          onUnassignedOnlyChange={handleUnassignedOnlyChange}
         />
       </div>
 
@@ -356,6 +394,7 @@ export function MediaPage() {
                         likeDisabled={toggleMediaLike.isPending}
                         playerSlug={playerSlug}
                         onAssociate={picker.openFor}
+                        onOpenMatch={handleOpenMatch}
                       />
                     )
                   })}

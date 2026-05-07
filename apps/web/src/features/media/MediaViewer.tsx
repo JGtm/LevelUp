@@ -143,6 +143,10 @@ interface MediaThumbnailCardProps {
   /** Callback pour ouvrir le picker d'association (Associer ou Réassocier).
    *  Si absent, aucun lien d'(ré)association n'est rendu. */
   onAssociate?: (item: MediaItemRow) => void
+  /** Callback pour naviguer vers la page du match. Si fourni, remplace le
+   *  comportement par défaut (lien `<a>`) pour permettre au consommateur
+   *  d'attacher un MatchNavContext (cf. useNavigateToMatch). */
+  onOpenMatch?: (matchId: string) => void
 }
 
 export function MediaThumbnailCard({
@@ -153,6 +157,7 @@ export function MediaThumbnailCard({
   playerSlug,
   currentMatchId,
   onAssociate,
+  onOpenMatch,
 }: MediaThumbnailCardProps) {
   const [isHovering, setIsHovering] = useState(false)
   const locale = useAppShellStore((s) => s.locale)
@@ -272,15 +277,30 @@ export function MediaThumbnailCard({
             <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">{text.thumbnail.noMatchAssociated}</span>
           ) : null}
           {showViewMatchLink && playerSlug && item.match_id && (
-            <a
-              href={`/players/${playerSlug}/matches/${item.match_id}`}
-              onClick={(e) => e.stopPropagation()}
-              title={modals.coverFlow.viewMatchTitle}
-              aria-label={modals.coverFlow.viewMatchTitle}
-              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <OpenMatchIcon className="h-3 w-3" />
-            </a>
+            onOpenMatch ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenMatch(item.match_id as string)
+                }}
+                title={modals.coverFlow.viewMatchTitle}
+                aria-label={modals.coverFlow.viewMatchTitle}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <OpenMatchIcon className="h-3 w-3" />
+              </button>
+            ) : (
+              <a
+                href={`/players/${playerSlug}/matches/${item.match_id}`}
+                onClick={(e) => e.stopPropagation()}
+                title={modals.coverFlow.viewMatchTitle}
+                aria-label={modals.coverFlow.viewMatchTitle}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <OpenMatchIcon className="h-3 w-3" />
+              </a>
+            )
           )}
           {dateStr && <span className="ml-auto shrink-0 text-xs text-muted-foreground">{dateStr}</span>}
         </div>

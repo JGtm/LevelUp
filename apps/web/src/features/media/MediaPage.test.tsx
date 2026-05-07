@@ -176,4 +176,91 @@ describe('MediaPage', () => {
     // Cliquer ne doit pas lever d'exception
     expect(() => fireEvent.click(screen.getByText('Captures'))).not.toThrow()
   })
+
+  // ─── Navigation contextuelle vers la page Match ────────────────────────────
+  // Vérifie que cliquer sur l'icône "Voir le match" depuis la galerie persiste
+  // un MatchNavContext (source=media) — verrou anti-régression du fix 2026-05-07
+  // qui a rebranché MediaThumbnailCard / CoverFlowModal sur useNavigateToMatch.
+  it('cliquer sur l\'icône "Voir le match" persiste un MatchNavContext (source=media) en sessionStorage', async () => {
+    const ITEMS = [
+      {
+        basename: 'A.mp4',
+        file_path: '/A.mp4',
+        kind: 'clip',
+        thumbnail_path: null,
+        capture_end_utc: null,
+        match_id: 'm-A',
+        match_start_time: '2025-01-01T10:00:00Z',
+        section: 'mine',
+        owner_gamertag: null,
+        map_name: 'Aquarius',
+        mode_name: 'Slayer',
+        liked: false,
+        like_count: 0,
+      },
+      {
+        basename: 'B.png',
+        file_path: '/B.png',
+        kind: 'screenshot',
+        thumbnail_path: null,
+        capture_end_utc: null,
+        match_id: 'm-B',
+        match_start_time: '2025-01-02T10:00:00Z',
+        section: 'mine',
+        owner_gamertag: null,
+        map_name: 'Bazaar',
+        mode_name: 'Slayer',
+        liked: false,
+        like_count: 0,
+      },
+      {
+        basename: 'orphan.mp4',
+        file_path: '/orphan.mp4',
+        kind: 'clip',
+        thumbnail_path: null,
+        capture_end_utc: null,
+        match_id: null,
+        match_start_time: null,
+        section: 'mine',
+        owner_gamertag: null,
+        map_name: null,
+        mode_name: null,
+        liked: false,
+        like_count: 0,
+      },
+    ]
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/media', () => HttpResponse.json({
+        items: {
+          items: ITEMS,
+          pagination: { total: 3, page: 1, page_size: 24, has_next: false, has_prev: false },
+          freshness: null,
+        },
+        total_mine: 3,
+        total_teammates: 0,
+        total_unassigned: 1,
+        available_filters: { maps: [], modes: [] },
+      })),
+    )
+
+    sessionStorage.clear()
+    renderWithProviders(<MediaPage />)
+
+    // Attendre que les vignettes soient rendues — l'icône d'ouverture est
+    // affichée pour les items avec match_id (donc 2 boutons attendus, m-A & m-B).
+    const openBtns = await screen.findAllByRole('button', { name: /Ouvrir.*match/ })
+    expect(openBtns.length).toBe(2)
+
+    openBtns[0].click()
+
+    // Le hook useNavigateToMatch persiste le ctx sous la clé `levelup:matchNav:<matchId>`.
+    const persistedRaw = sessionStorage.getItem('levelup:matchNav:m-A')
+    expect(persistedRaw).not.toBeNull()
+    const persisted = JSON.parse(persistedRaw as string)
+    expect(persisted.ctx.source).toBe('media')
+    // Seuls les items AVEC match_id doivent être inclus (l'orphelin est filtré).
+    expect(persisted.ctx.matchIds).toEqual(expect.arrayContaining(['m-A', 'm-B']))
+    expect(persisted.ctx.matchIds).toHaveLength(2)
+    expect(persisted.ctx.filtersLabel).toBe('Galerie médias')
+  })
 })

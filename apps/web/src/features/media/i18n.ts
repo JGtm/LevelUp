@@ -20,6 +20,7 @@ export interface MediaText {
   previousPage: string
   nextPage: string
   pageLabel: (page: number, totalPages: number) => string
+  navContextLabel: string
   thumbnail: {
     noMatchAssociated: string
   }
@@ -42,6 +43,7 @@ export interface MediaText {
     sortAriaLabel: string
     groupAriaLabel: string
     likedOnlyAriaLabel: string
+    unassignedOnlyAriaLabel: string
     authorsAriaLabel: string
     allAuthorsToggle: string
     noAuthors: string
@@ -94,6 +96,7 @@ export function getMediaText(locale?: string | null): MediaText {
     nextPage: t(loc, 'media.pagination.next'),
     pageLabel: (page, totalPages) =>
       t(loc, 'media.pagination.page_label', { page, totalPages }),
+    navContextLabel: t(loc, 'media.nav_context_label'),
     thumbnail: {
       noMatchAssociated: t(loc, 'media.thumbnail.no_match_associated'),
     },
@@ -116,6 +119,7 @@ export function getMediaText(locale?: string | null): MediaText {
       sortAriaLabel: t(loc, 'media.toolbar.sort_aria'),
       groupAriaLabel: t(loc, 'media.toolbar.group_aria'),
       likedOnlyAriaLabel: t(loc, 'media.toolbar.liked_only_aria'),
+      unassignedOnlyAriaLabel: t(loc, 'media.toolbar.unassigned_only_aria'),
       authorsAriaLabel: t(loc, 'media.toolbar.authors_aria'),
       allAuthorsToggle: t(loc, 'media.toolbar.all_authors_toggle'),
       noAuthors: t(loc, 'media.toolbar.no_authors'),

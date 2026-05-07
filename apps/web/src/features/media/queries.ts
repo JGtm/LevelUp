@@ -190,6 +190,7 @@ export function useMediaPage(
     mod: request.mode_filter,
     g: request.group_by,
     lo: request.liked_only,
+    ua: request.unassigned_only,
   })
 
   return useQuery({
