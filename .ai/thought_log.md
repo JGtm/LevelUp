@@ -1,4 +1,37 @@
 
+## [2026-05-07] Plan title-agnostic v2.3 — Feature Matrix (capability cascading)
+
+**Statut** : Complété (document seul, exécution à venir).
+
+**Contexte** : question d'architecture soulevée le 2026-05-07 — comment exposer la disponibilité de données par titre quand un nouveau titre (ex. futur Halo) ne fournirait pas certaines sources comme `highlight_events` ? La conséquence est en cascade : 6+ features dépendent de cette donnée (cadence intra-match, tug-of-war, impact_roles, killer_victim, engagement_score). Le système actuel (capabilities grossières `CapFirefight`, `CapRanked`) ne capture pas cette granularité.
+
+**Décisions actées (D7 + D8)** :
+
+- **D7 — Granularité du status feature** : 3 états `available` / `degraded` / `unavailable` + `reason` humaine. Permet de modéliser le cas réel : feature qui tourne avec subset (ex. `synthesis.weapon_breakdown` sans medals = OK mais moins riche). Plus nuancé qu'un binaire on/off.
+- **D8 — Source de la disponibilité data** : TOML déclaratif uniquement (`config/titles/{slug}/capabilities.toml`). L'opérateur du titre déclare `[data] match_events = true`. Mitigation de la dérive TOML vs réalité : test CI de cohérence sur fixture `halo_full` qui vérifie que pour chaque `data=true` la table existe + ≥ 1 row. Refusé : runtime introspection (compliqué quand sync en cours, capability bascule entre 2 reboots).
+
+**Architecture** :
+
+- Modèle 2 niveaux : `[data]` (sources DB) + `[feature.<key>]` (features produit) avec arbre de dépendances déclaratif (`requires`, `degraded_without`).
+- Algo de calcul au boot : pour chaque feature, scanner ses `requires` et `degraded_without` contre le `[data]`. Résultat : map figée injectée via DI sous `port.FeatureChecker`.
+- Couches Go : `internal/domain/feature/` (types) + `internal/games/{slug}/feature_matrix.go` (loader TOML) + `internal/port/feature_checker.go` (interface) + `internal/service/feature_matrix_service.go` (orchestration) + handler Huma `GET /api/v1/title/feature_matrix`.
+- Pattern service : `if s.features.Status(ctx, "match_view.cadence").IsUnavailable() { return nil, nil }` → champ omitempty côté DTO. Pour `IsDegraded()` : log warn + calcul partiel.
+- Pattern frontend : `useFeatureStatus(featureKey)` + `<FeatureGate feature="..." [hidden]>` à 3 modes (render / render+badge tooltip / skeleton).
+
+**Phasage** : Phase 1.7 NOUVELLE insérée entre 1.5 (DDL par titre) et 2 (port.MatchFieldRepository), 4-5 j. Phase 5 enrichie de +1 j pour `useFeatureStatus` + `<FeatureGate>`. Effort total révisé : 47-63 j (vs 42-57 j v2.2).
+
+**Tests obligatoires** (ajoutés à l'Exit Gate Phase 1.7) :
+- Algo de calcul : 4 cas (all-available, degraded, unavailable, cascade).
+- Cohérence TOML ↔ DB : pour chaque `data=true`, table existe + ≥ 1 row sur fixture `halo_full`.
+- Snapshot golden de la matrice complète Halo + synthetic_test_title. Diff = breaking change documenté.
+- Lint custom : aucun service ne fait `if titleSlug == ...` pour gater une feature.
+
+**ADR à créer** : 0016 « Feature Matrix — capability cascading multi-titre » documente D7 + D8.
+
+**Conclusion / prochaine étape** : plan v2.3 figé pour exécution. Question opérateur soulevée — comment savoir quoi mettre dans le TOML quand un nouveau titre arrive ? Réponse à formaliser : section diagnostic dans la page Lab (read-only, TOML reste source de vérité Git-versionné).
+
+---
+
 ## [2026-05-07] feat(match-view): onglet Équipe — Engagement + Scoreboard 4b + Encounters 14
 
 **Statut** : Complété.
