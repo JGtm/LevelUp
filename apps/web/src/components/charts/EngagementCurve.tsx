@@ -59,6 +59,13 @@ export interface EngagementCurveProps {
   state?: 'loading' | 'error' | 'empty' | 'ready'
   /** Hauteur en px. Default 280 (chart-tall). */
   height?: number
+  /**
+   * Masque la serie "Attendu" quand le coefficient est au cold-start (1.0) —
+   * c'est-a-dire quand confidence === 'insufficient_history'. Dans ce cas
+   * pace_attendu = 1.0 × pace_team et les deux courbes se superposent, ce
+   * qui est trompeur visuellement.
+   */
+  hideAttendu?: boolean
 }
 
 /**
@@ -74,14 +81,15 @@ export function EngagementCurve(props: EngagementCurveProps) {
     granularity = 'intra',
     state = 'ready',
     height = 280,
+    hideAttendu = false,
   } = props
 
   const buildOption = useCallback(
     (series: ChartSeries<EngagementPoint>[]): EChartsCoreOption => {
       const pts = series[0]?.datapoints ?? points
-      return buildEngagementOption(pts, granularity, xFormatter)
+      return buildEngagementOption(pts, granularity, xFormatter, hideAttendu)
     },
-    [points, granularity, xFormatter],
+    [points, granularity, xFormatter, hideAttendu],
   )
 
   // Series typee pour ChartCard. On la laisse vide quand state='empty' OU
@@ -113,6 +121,7 @@ function buildEngagementOption(
   points: EngagementPoint[],
   granularity: 'intra' | 'session',
   xFormatter?: (x: number) => string,
+  hideAttendu = false,
 ): EChartsCoreOption {
   if (points.length === 0) {
     return {} as EChartsCoreOption
@@ -136,7 +145,29 @@ function buildEngagementOption(
   return {
     backgroundColor: CHART_BG,
     grid: { left: 50, right: 24, top: 18, bottom: 38 },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      // Pace = événements/min, rate continu → arrondi au centième pour la
+      // lisibilité (demande UX 2026-05-07 — éviter les 0.6234567).
+      // Pattern standard du codebase : formatter qui reçoit le tableau de
+      // params axis-trigger (cf. BarStackedChart, OutcomeSequenceTape).
+      formatter: (params: unknown) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+        const items = params as Array<{
+          axisValueLabel?: string
+          seriesName?: string
+          marker?: string
+          value?: number | null
+        }>
+        const head = items[0]?.axisValueLabel ?? ''
+        const lines = items.map((p) => {
+          const v = typeof p.value === 'number' && Number.isFinite(p.value) ? p.value.toFixed(2) : '—'
+          return `${p.marker ?? ''} ${p.seriesName ?? ''}: <b>${v}</b>`
+        })
+        return [head, ...lines].join('<br/>')
+      },
+    },
     legend: { ...getLegendBase(tc), top: 0, bottom: 'auto' },
     xAxis: {
       ...axis,
@@ -157,7 +188,7 @@ function buildEngagementOption(
     series: [
       // Equipe alliee — fine effacee
       {
-        name: 'Equipe alliee',
+        name: 'Equipe alliée',
         type: 'line',
         data: points.map((p) => p.paceTeam),
         smooth,
@@ -167,18 +198,22 @@ function buildEngagementOption(
         itemStyle: { color: teamColor },
         z: 1,
       },
-      // Attendu — pointille fin
-      {
-        name: 'Attendu',
-        type: 'line',
-        data: points.map((p) => p.paceAttendu),
-        smooth,
-        symbol: granularity === 'session' ? 'circle' : 'none',
-        symbolSize: 5,
-        lineStyle: { color: expectedColor, width: 1.5, type: 'dashed' },
-        itemStyle: { color: expectedColor },
-        z: 2,
-      },
+      // Attendu — pointille fin (masque au cold-start : coef=1.0 => superposition avec Equipe alliee)
+      ...(!hideAttendu
+        ? [
+            {
+              name: 'Attendu',
+              type: 'line' as const,
+              data: points.map((p) => p.paceAttendu),
+              smooth,
+              symbol: granularity === 'session' ? 'circle' : 'none',
+              symbolSize: 5,
+              lineStyle: { color: expectedColor, width: 1.5, type: 'dashed' as const },
+              itemStyle: { color: expectedColor },
+              z: 2,
+            },
+          ]
+        : []),
       // Joueur — epais sature (hierarchie visuelle marquee §8.6)
       {
         name: 'Joueur',

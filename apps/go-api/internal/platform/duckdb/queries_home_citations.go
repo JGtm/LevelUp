@@ -647,6 +647,9 @@ func buildQ37MediaWhereClause(
 	if f.LikedOnly {
 		where = append(where, "COALESCE(mf.liked, FALSE) = TRUE")
 	}
+	if f.UnassignedOnly {
+		where = append(where, "mma.match_id IS NULL")
+	}
 	if whereCfg.includePlaylistFilter && f.PlaylistFilter != "" {
 		// Match flexible : playlist_id (UUID stable, value du dropdown) OU label brut.
 		where = append(where, "(mr.playlist_id = ? OR LOWER("+q37MediaPlaylistLabelExpr+") = LOWER(?))")

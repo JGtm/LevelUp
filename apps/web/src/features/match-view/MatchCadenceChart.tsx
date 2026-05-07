@@ -125,7 +125,7 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
         yAxis: {
           ...axis,
           type: 'value',
-          name: 'Kills',
+          name: t.combatKillsLabel,
           nameTextStyle: { color: tc.text },
           min: 0,
           splitLine: { show: true, lineStyle: { color: tc.splitLine } },
