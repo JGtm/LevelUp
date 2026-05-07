@@ -377,6 +377,32 @@ func TestBuildQ37MediaQuery_GroupByMapPrefixesOrderBy(t *testing.T) {
 	}
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Q24MatchMedia (cross-joueur) — verrou contractuel
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Q24 doit retourner les médias de tous les auteurs pour un match donné.
+// Sans ce verrou, un futur "filtre player_slug" ré-introduirait le bug 2026-05-07
+// (page Match → 0 média alors que la galerie en affiche).
+func TestQ24MatchMedia_DoesNotFilterByPlayerSlug(t *testing.T) {
+	if strings.Contains(Q24MatchMedia, "player_slug") {
+		t.Errorf("Q24MatchMedia must not filter by player_slug (cross-joueur) — got:\n%s", Q24MatchMedia)
+	}
+	if !strings.Contains(Q24MatchMedia, "mma.match_id = ?") {
+		t.Errorf("Q24MatchMedia must filter on match_id parameter — got:\n%s", Q24MatchMedia)
+	}
+	if !strings.Contains(Q24MatchMedia, "JOIN media_match_associations mma ON mf.id = mma.media_file_id") {
+		t.Errorf("Q24MatchMedia must join via media_file_id (shared_social schema) — got:\n%s", Q24MatchMedia)
+	}
+	if !strings.Contains(Q24MatchMedia, "ORDER BY mf.capture_end_utc ASC NULLS LAST") {
+		t.Errorf("Q24MatchMedia must order by capture_end_utc ASC NULLS LAST — got:\n%s", Q24MatchMedia)
+	}
+	// Un seul placeholder paramètre attendu (match_id) ; pas de second pour player_slug.
+	if got := strings.Count(Q24MatchMedia, "?"); got != 1 {
+		t.Errorf("Q24MatchMedia must have exactly 1 placeholder (match_id), got %d", got)
+	}
+}
+
 // ModeFilterCandidates a été retiré : le filtre est maintenant au niveau
 // catégorie custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other) qui se
 // reverse-mappe directement vers les préfixes pair_name dans le WHERE.

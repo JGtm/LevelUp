@@ -103,6 +103,10 @@ en = "Media grouping"
 fr = "Afficher seulement les médias aimés"
 en = "Show liked media only"
 
+[media.toolbar.unassigned_only_aria]
+fr = "Afficher seulement les médias sans match associé"
+en = "Show unassigned media only"
+
 [media.toolbar.authors_aria]
 fr = "Filtrer par auteur"
 en = "Filter by author"
@@ -236,3 +240,11 @@ en = "By session"
 [media.thumbnail.no_match_associated]
 fr = "Pas de match associé"
 en = "No associated match"
+
+# ─── Match navigation context ──────────────────────────────────────────────
+# Label affiché sous le compteur prev/next de la page Match quand on y arrive
+# depuis la galerie Médias.
+
+[media.nav_context_label]
+fr = "Galerie médias"
+en = "Media gallery"

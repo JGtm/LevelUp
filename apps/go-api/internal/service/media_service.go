@@ -88,6 +88,7 @@ func (s *MediaService) GetMediaPage(
 		MapFilter:      req.MapFilter,
 		ModeFilter:     req.ModeFilter,
 		LikedOnly:      req.LikedOnly,
+		UnassignedOnly: req.UnassignedOnly,
 		Sort:           req.Sort,
 		GroupBy:        req.GroupBy,
 	}
@@ -122,6 +123,20 @@ func (s *MediaService) GetMediaPage(
 		}
 	}
 
+	totalUnassigned := 0
+	if filters.UnassignedOnly {
+		totalUnassigned = total
+	} else {
+		unassignedFilters := domain.MediaFilters{
+			SectionFilter:  filters.SectionFilter,
+			AuthorSlugs:    filters.AuthorSlugs,
+			UnassignedOnly: true,
+		}
+		if n, err := s.repo.CountMediaFiles(ctx, unassignedFilters); err == nil {
+			totalUnassigned = n
+		}
+	}
+
 	return &domain.MediaPageResponse{
 		Items: domain.MediaItemsPage{
 			Items: items,
@@ -135,7 +150,7 @@ func (s *MediaService) GetMediaPage(
 		},
 		TotalMine:        total,
 		TotalTeammates:   0,
-		TotalUnassigned:  0,
+		TotalUnassigned:  totalUnassigned,
 		AvailableFilters: availableFilters,
 	}, nil
 }

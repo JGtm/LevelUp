@@ -117,7 +117,8 @@ SELECT
     r.game_variant_name,
     r.playlist_id,
     r.team_0_score,
-    r.team_1_score
+    r.team_1_score,
+    r.pair_name_fr
 FROM shared.match_registry r
 WHERE r.match_id = ?`
 
@@ -514,8 +515,15 @@ LEFT JOIN encounter_stats es ON es.xuid = tm.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = tm.xuid
 ORDER BY tm.xuid`
 
-// Q24 : Médias associés à un match pour un joueur (shared_social DB).
-// Paramètres : ?1 = match_id, ?2 = player_slug.
+// Q24 : Médias associés à un match — tous auteurs confondus (shared_social DB).
+// Le feed média est cross-joueur : si un coéquipier a uploadé un clip pour
+// ce match, on l'affiche aussi sur la page match.
+// Paramètre : ? = match_id.
+//
+// Note : pas de filtre sur mf.status — aligné sur le baseWhereClause de la
+// galerie en mode shared_social (cf. queries_home_citations.go) qui n'en
+// applique pas non plus. Les médias existants n'ont pas de status non-NULL
+// par défaut (ALTER ADD COLUMN sans DEFAULT).
 const Q24MatchMedia = `
 SELECT
     mf.id               AS file_id,
@@ -527,7 +535,6 @@ SELECT
 FROM media_files mf
 JOIN media_match_associations mma ON mf.id = mma.media_file_id
 WHERE mma.match_id = ?
-  AND mf.player_slug = ?
 ORDER BY mf.capture_end_utc ASC NULLS LAST`
 
 // Q27 : Médailles de tous les joueurs d'un match (bulk).

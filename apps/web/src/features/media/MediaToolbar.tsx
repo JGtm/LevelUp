@@ -15,6 +15,8 @@ interface MediaToolbarProps {
   groupBy: string
   sortKey: string
   likedOnly: boolean
+  unassignedOnly: boolean
+  totalUnassigned: number
   playlistOptions: LabelValue[]
   mapOptions: LabelValue[]
   modeOptions: LabelValue[]
@@ -26,6 +28,7 @@ interface MediaToolbarProps {
   onSortChange: (value: string) => void
   onGroupByChange: (value: string) => void
   onLikedOnlyChange: (value: boolean) => void
+  onUnassignedOnlyChange: (value: boolean) => void
 }
 
 interface AuthorsMultiSelectProps {
@@ -235,6 +238,8 @@ export function MediaToolbar({
   groupBy,
   sortKey,
   likedOnly,
+  unassignedOnly,
+  totalUnassigned,
   playlistOptions,
   mapOptions,
   modeOptions,
@@ -246,6 +251,7 @@ export function MediaToolbar({
   onSortChange,
   onGroupByChange,
   onLikedOnlyChange,
+  onUnassignedOnlyChange,
 }: MediaToolbarProps) {
   const kindOptions = [
     { value: '', label: text.toolbar.allTypes },
@@ -352,6 +358,25 @@ export function MediaToolbar({
       >
         <span aria-hidden="true">{likedOnly ? '♥' : '♡'}</span>
       </button>
+      {(unassignedOnly || totalUnassigned > 0) && (
+        <button
+          type="button"
+          aria-label={text.toolbar.unassignedOnlyAriaLabel}
+          aria-pressed={unassignedOnly}
+          title={text.toolbar.unassignedOnlyAriaLabel}
+          onClick={() => onUnassignedOnlyChange(!unassignedOnly)}
+          className={`flex h-8 items-center justify-center gap-1 rounded-md border px-2 text-xs leading-none transition-colors ${
+            unassignedOnly
+              ? 'border-amber-500/60 bg-amber-500/10 text-amber-500' // color-allow: amber pour le filtre "sans match" — CLAUDE.md §20 tolère warning/amber dans badges d'état système
+              : 'border-input text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <span aria-hidden="true">⊘</span>
+          {!unassignedOnly && totalUnassigned > 0 && (
+            <span className="tabular-nums">{totalUnassigned}</span>
+          )}
+        </button>
+      )}
 
       <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 

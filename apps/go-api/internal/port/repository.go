@@ -183,7 +183,9 @@ type MatchViewRepository interface {
 	GetMatchEncounterStats(ctx context.Context, matchID, myXUID string) ([]domain.EncounterStatsRaw, error)
 
 	// GetMatchMedia retourne les médias associés au match (Q24).
-	GetMatchMedia(ctx context.Context, matchID, playerSlug string) ([]domain.MediaAssocRaw, error)
+	// Cross-joueur : tous les auteurs sont retournés (un coéquipier peut avoir
+	// uploadé un media pour ce match).
+	GetMatchMedia(ctx context.Context, matchID string) ([]domain.MediaAssocRaw, error)
 
 	// GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).
 	GetMatchExpectedStats(ctx context.Context, matchID, xuid string) (*domain.ExpectedStatsRaw, error)
@@ -322,7 +324,7 @@ func (n *noopMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) (
 func (n *noopMatchViewRepo) GetMatchEncounterStats(_ context.Context, _, _ string) ([]domain.EncounterStatsRaw, error) {
 	return nil, nil
 }
-func (n *noopMatchViewRepo) GetMatchMedia(_ context.Context, _, _ string) ([]domain.MediaAssocRaw, error) {
+func (n *noopMatchViewRepo) GetMatchMedia(_ context.Context, _ string) ([]domain.MediaAssocRaw, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchExpectedStats(_ context.Context, _, _ string) (*domain.ExpectedStatsRaw, error) {
