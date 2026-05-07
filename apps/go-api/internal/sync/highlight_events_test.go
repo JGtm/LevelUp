@@ -34,11 +34,15 @@ func openEventsDB(t *testing.T) *sql.DB {
 			UNIQUE (match_id, xuid, time_ms, event_type)
 		);
 		CREATE TABLE killer_victim_pairs (
-			match_id    VARCHAR,
-			killer_xuid VARCHAR,
-			victim_xuid VARCHAR,
-			created_at  TIMESTAMP,
-			PRIMARY KEY (match_id, killer_xuid, victim_xuid)
+			match_id        VARCHAR NOT NULL,
+			killer_xuid     VARCHAR NOT NULL,
+			killer_gamertag VARCHAR,
+			victim_xuid     VARCHAR NOT NULL,
+			victim_gamertag VARCHAR,
+			kill_count      INTEGER DEFAULT 1,
+			time_ms         INTEGER,
+			is_validated    BOOLEAN DEFAULT FALSE,
+			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE TABLE xuid_aliases (
 			xuid     VARCHAR PRIMARY KEY,

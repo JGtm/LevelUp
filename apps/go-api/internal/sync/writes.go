@@ -376,13 +376,20 @@ func InsertHighlightEvents(db *sql.DB, matchID string, events []analysis.Highlig
 }
 
 // InsertKillerVictimPairsFromEvents calcule et insère les paires killer→victim
-// depuis les highlight events d'un match (INSERT OR IGNORE).
+// depuis les highlight events d'un match.
+//
+// Le schéma `killer_victim_pairs` stocke **un row par kill event** (pas par
+// paire agrégée), avec colonnes (match_id, killer_xuid, killer_gamertag,
+// victim_xuid, victim_gamertag, kill_count DEFAULT 1, time_ms, is_validated,
+// created_at). Les analytics font `SUM(kill_count)` pour totaliser. La table
+// n'a pas de PRIMARY KEY (un même couple (killer, victim) peut s'entretuer
+// plusieurs fois dans un match) — donc `INSERT OR IGNORE` est rejeté par
+// DuckDB. À la place, idempotence via DELETE + INSERT pour ce match.
 func InsertKillerVictimPairsFromEvents(
 	db *sql.DB,
 	matchID string,
 	events []analysis.HighlightEvent,
 ) error {
-	// Convertir HighlightEvent → analysis.RawEvent pour l'algorithme de jointure.
 	raw := make([]analysis.RawEvent, 0, len(events))
 	for _, ev := range events {
 		if ev.EventType != "kill" && ev.EventType != "death" {
@@ -402,10 +409,14 @@ func InsertKillerVictimPairsFromEvents(
 		return nil
 	}
 
+	if _, err := db.Exec(`DELETE FROM killer_victim_pairs WHERE match_id = ?`, matchID); err != nil {
+		return fmt.Errorf("InsertKillerVictimPairs delete(%s): %w", matchID, err)
+	}
+
 	stmt, err := db.Prepare(`
-		INSERT OR IGNORE INTO killer_victim_pairs
-			(match_id, killer_xuid, victim_xuid, created_at)
-		VALUES (?, ?, ?, ?)`)
+		INSERT INTO killer_victim_pairs
+			(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, time_ms, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("InsertKillerVictimPairs prepare(%s): %w", matchID, err)
 	}
@@ -413,7 +424,7 @@ func InsertKillerVictimPairsFromEvents(
 
 	now := time.Now().UTC()
 	for _, p := range pairs {
-		if _, execErr := stmt.Exec(matchID, p.KillerXUID, p.VictimXUID, now); execErr != nil {
+		if _, execErr := stmt.Exec(matchID, p.KillerXUID, p.KillerGT, p.VictimXUID, p.VictimGT, p.TimeMS, now); execErr != nil {
 			return fmt.Errorf("InsertKillerVictimPairs exec(%s): %w", matchID, execErr)
 		}
 	}

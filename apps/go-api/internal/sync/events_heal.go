@@ -64,7 +64,7 @@ func healEventsForRecentMatches(
 		}
 		dummy := &domain.SyncResult{}
 		eventsBefore := dummy.EventsInserted
-		err := processHighlightEvents(ctx, client, sharedDB, globalDB, matchID, dummy)
+		err := ProcessHighlightEvents(ctx, client, sharedDB, globalDB, matchID, dummy)
 		if err != nil {
 			slog.WarnContext(ctx, "healEvents: échec match", "match_id", matchID, "err", err)
 		}
