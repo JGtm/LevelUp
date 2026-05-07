@@ -6,6 +6,7 @@ package migration
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 func init() {
@@ -609,10 +610,7 @@ func init() {
 		TargetDB:    TargetShared,
 		Description: "DROP assists_expected/stddev de match_participants (API Halo Infinite ne fournit pas)",
 		ApplySchema: func(db *sql.DB) error {
-			if err := dropColumnIfExists(db, "match_participants", "assists_expected"); err != nil {
-				return err
-			}
-			return dropColumnIfExists(db, "match_participants", "assists_stddev")
+			return dropAssistsExpectedShared(db)
 		},
 	})
 
@@ -647,6 +645,117 @@ func dropColumnIfExists(db *sql.DB, table, column string) error {
 	}
 	if _, err := db.Exec(fmt.Sprintf(`ALTER TABLE %s DROP COLUMN %s`, table, column)); err != nil {
 		return fmt.Errorf("DROP COLUMN %s.%s: %w", table, column, err)
+	}
+	return nil
+}
+
+// dropAssistsExpectedShared supprime les colonnes assists_expected / assists_stddev
+// de match_participants via la stratégie table-rename (évite ALTER TABLE DROP COLUMN
+// qui échoue sur DuckDB 1.0 quand des vues ou contraintes dépendent de la table).
+//
+// La liste des colonnes conservées est lue dynamiquement depuis PRAGMA table_info
+// pour éviter toute hypothèse sur le schéma exact du catalogue.
+func dropAssistsExpectedShared(db *sql.DB) error {
+	drop := map[string]bool{"assists_expected": true, "assists_stddev": true}
+
+	// Lire la liste réelle des colonnes.
+	rows, err := db.Query(`PRAGMA table_info('match_participants')`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info match_participants: %w", err)
+	}
+	var keep []string
+	hasDrop := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var nn bool
+		var dflt *string
+		var pk bool
+		if err := rows.Scan(&cid, &name, &typ, &nn, &dflt, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		if drop[name] {
+			hasDrop = true
+		} else {
+			keep = append(keep, name)
+		}
+	}
+	rows.Close()
+	if !hasDrop {
+		return nil // colonnes déjà absentes — idempotent
+	}
+
+	colList := strings.Join(keep, ", ")
+	stmts := []string{
+		`DROP TABLE IF EXISTS _mp_backup_assists`,
+		fmt.Sprintf(`CREATE TABLE _mp_backup_assists AS SELECT %s FROM match_participants`, colList),
+		// DROP TABLE supprime aussi les vues dépendantes (cascade interne DuckDB).
+		`DROP TABLE match_participants`,
+		fmt.Sprintf(`CREATE TABLE match_participants AS SELECT %s FROM _mp_backup_assists`, colList),
+		`ALTER TABLE match_participants ADD PRIMARY KEY (match_id, xuid)`,
+		`DROP TABLE _mp_backup_assists`,
+	}
+	for _, s := range stmts {
+		end := 60
+		if end > len(s) {
+			end = len(s)
+		}
+		if _, err := db.Exec(s); err != nil {
+			return fmt.Errorf("dropAssistsExpected (%s...): %w", s[:end], err)
+		}
+	}
+	// Recrée vues et index.
+	if err := applyResolutionViews(db); err != nil {
+		return fmt.Errorf("recreate views: %w", err)
+	}
+	if err := applyMvPlayerMatchesView(db); err != nil {
+		return fmt.Errorf("recreate mv_player_matches: %w", err)
+	}
+	for _, ddl := range []string{
+		"CREATE INDEX IF NOT EXISTS idx_mp_backfill   ON match_participants(xuid, backfill_bits)",
+		"CREATE INDEX IF NOT EXISTS idx_mp_xuid_match ON match_participants(xuid, match_id)",
+		"CREATE INDEX IF NOT EXISTS idx_mp_match_xuid ON match_participants(match_id, xuid)",
+		"CREATE INDEX IF NOT EXISTS idx_mp_xuid_team  ON match_participants(xuid, team_id, match_id)",
+		"CREATE INDEX IF NOT EXISTS idx_mp_xuid       ON match_participants(xuid)",
+		"CREATE INDEX IF NOT EXISTS idx_mp_match_id   ON match_participants(match_id)",
+	} {
+		if _, err := db.Exec(ddl); err != nil {
+			return fmt.Errorf("recreate index: %w", err)
+		}
+	}
+	return nil
+}
+
+// dropColumnCascadeIfExists supprime une colonne avec CASCADE (DuckDB 1.0+).
+// CASCADE supprime automatiquement les vues qui dépendent de la table.
+// No-op si la colonne est déjà absente.
+func dropColumnCascadeIfExists(db *sql.DB, table, column string) error {
+	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info('%s')`, table))
+	if err != nil {
+		return fmt.Errorf("dropColumnCascadeIfExists pragma %s: %w", table, err)
+	}
+	exists := false
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var nn bool
+		var dflt *string
+		var pk bool
+		if err := rows.Scan(&cid, &name, &typ, &nn, &dflt, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		if name == column {
+			exists = true
+		}
+	}
+	rows.Close()
+	if !exists {
+		return nil
+	}
+	if _, err := db.Exec(fmt.Sprintf(`ALTER TABLE %s DROP COLUMN %s CASCADE`, table, column)); err != nil {
+		return fmt.Errorf("DROP COLUMN CASCADE %s.%s: %w", table, column, err)
 	}
 	return nil
 }
