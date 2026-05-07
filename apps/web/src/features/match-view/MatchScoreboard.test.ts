@@ -33,7 +33,7 @@ function row(xuid: string, overrides: Partial<MatchScoreboardRow>): MatchScorebo
     assists: null,
     shots_fired: null,
     shots_hit: null,
-    shots_accuracy: null,
+    accuracy: null,
     damage_dealt: null,
     damage_taken: null,
     average_life: null,

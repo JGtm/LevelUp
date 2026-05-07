@@ -142,6 +142,10 @@ type TitleAssetURLAdapter interface {
 
 	// CSRRankImageURLOnyx retourne l'URL du badge Onyx (sans sub-tier).
 	CSRRankImageURLOnyx() string
+
+	// WeaponImageURL retourne l'URL de l'image d'une arme à partir de son
+	// nom EN officiel (ex. "BR75", "Energy Sword"). Retourne "" si non reconnu.
+	WeaponImageURL(nameEN string) string
 }
 
 // Resolver injecte les adapters d'un titre courant aux services produit.

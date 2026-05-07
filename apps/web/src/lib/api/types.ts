@@ -1888,6 +1888,7 @@ export interface MediaQueryRequest {
   mode_filter?: string | null
   group_by?: string | null
   liked_only?: boolean | null
+  unassigned_only?: boolean | null
   pagination?: PaginationRequest
 }
 
@@ -2113,6 +2114,8 @@ export interface PlayerMedalRow {
   label?: string
   /** URL absolue (ou relative au domaine) de l'icône de la médaille. */
   image_url?: string
+  /** Normal | Heroic | Legendary | Mythic — pour l'effet glow dans le scoreboard. */
+  difficulty?: string | null
 }
 
 export interface MatchHighlightEvent {
@@ -2220,7 +2223,7 @@ export interface MatchScoreboardRow {
   kda?: number | null
   shots_fired: number | null
   shots_hit: number | null
-  shots_accuracy: number | null
+  accuracy: number | null
   damage_dealt: number | null
   damage_taken: number | null
   average_life: string | null
@@ -2238,6 +2241,8 @@ export interface MatchScoreboardRow {
   defensive_resistance?: number | null
   damage_per_kill?: number | null
   damage_per_death?: number | null
+  expected_kills?: number | null
+  expected_deaths?: number | null
   weapon_kills?: PlayerWeaponKillRow[]
   /** Médailles gagnées par CE joueur dans ce match (expander scoreboard). */
   medals?: PlayerMedalRow[]

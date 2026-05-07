@@ -180,7 +180,8 @@ func (s *stubAssetURL) CSRRankImageURL(tier string, subTier int) string {
 	}
 	return s.csrPattern + tier + ":" + itoa(subTier)
 }
-func (s *stubAssetURL) CSRRankImageURLOnyx() string { return s.onyxImg }
+func (s *stubAssetURL) CSRRankImageURLOnyx() string    { return s.onyxImg }
+func (s *stubAssetURL) WeaponImageURL(_ string) string { return "" }
 
 func itoa(n int) string {
 	// minimal helper pour éviter strconv import dans le file de test
@@ -258,6 +259,77 @@ func TestBuildMatchHeader_MapImageURL(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("MapImageURL = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestBuildMatchHeader_MapImageRegistry vérifie que meta.MapImageURL (registry)
+// a la priorité sur l'adapter name-based, et que l'adapter sert de fallback.
+func TestBuildMatchHeader_MapImageRegistry(t *testing.T) {
+	t.Parallel()
+	mapName := "Forbidden"
+	registryURL := "/static/maps/halo_infinite/Forbidden.jpg"
+
+	// Registry résout → priorité sur l'adapter (même si l'adapter renverrait autre chose)
+	meta := &domain.MatchMetaRaw{
+		MapName:     &mapName,
+		MapImageURL: &registryURL,
+	}
+	h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil,
+		&stubAssetURL{mapImg: "/other.jpg"}, false)
+	if h.MapImageURL == nil || *h.MapImageURL != registryURL {
+		t.Errorf("registry priorité: MapImageURL = %v, want %q", h.MapImageURL, registryURL)
+	}
+
+	// Registry nil → fallback adapter
+	metaNoReg := &domain.MatchMetaRaw{MapName: &mapName}
+	adapterURL := "/static/maps/halo_infinite/Forbidden.jpg"
+	h2 := buildMatchHeader(context.Background(), "m1", metaNoReg, nil, nil, nil,
+		&stubAssetURL{mapImg: adapterURL}, false)
+	if h2.MapImageURL == nil || *h2.MapImageURL != adapterURL {
+		t.Errorf("fallback adapter: MapImageURL = %v, want %q", h2.MapImageURL, adapterURL)
+	}
+}
+
+// TestBuildMatchHeader_ModeFallbackNormalized vérifie que le fallback mode
+// utilise le label EN normalisé (pas le pair_name brut avec suffixe map).
+func TestBuildMatchHeader_ModeFallbackNormalized(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name       string
+		pairName   string
+		modeNameFR *string
+		want       string
+	}{
+		{
+			name:     "pair_name avec suffixe map → label normalisé EN",
+			pairName: "Slayer : Forbidden",
+			want:     "Slayer",
+		},
+		{
+			name:     "pair_name technique → label normalisé EN",
+			pairName: "Arena:Slayer",
+			want:     "Slayer",
+		},
+		{
+			name:       "ModeNameFR prioritaire sur pair_name",
+			pairName:   "Slayer : Forbidden",
+			modeNameFR: strPtr("Assassin"),
+			want:       "Assassin",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			meta := &domain.MatchMetaRaw{
+				PairName:   &tc.pairName,
+				ModeNameFR: tc.modeNameFR,
+			}
+			h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, nil, false)
+			if h.ModeUI != tc.want {
+				t.Errorf("ModeUI = %q, want %q", h.ModeUI, tc.want)
 			}
 		})
 	}
@@ -393,18 +465,18 @@ func TestBuildRankBlock_ProgressPct(t *testing.T) {
 		wantPct *float64 // nil = attendu nil
 	}{
 		{
-			name: "Gold 3 — rating 1112 → 12/50 = 0.24",
-			raw:  &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1112)},
+			name:    "Gold 3 — rating 1112 → 12/50 = 0.24",
+			raw:     &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1112)},
 			wantPct: ptr(12.0 / 50.0),
 		},
 		{
-			name: "début de tier exact — rating 1100 → 0/50 = 0.0",
-			raw:  &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1100)},
+			name:    "début de tier exact — rating 1100 → 0/50 = 0.0",
+			raw:     &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1100)},
 			wantPct: ptr(0.0),
 		},
 		{
-			name: "fin de tier — rating 1149 → 49/50 = 0.98",
-			raw:  &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1149)},
+			name:    "fin de tier — rating 1149 → 49/50 = 0.98",
+			raw:     &domain.SkillRankRaw{RatingType: "CSR", Tier: &tierGold, SubTier: &sub3, RatingValue: ptr(1149)},
 			wantPct: ptr(49.0 / 50.0),
 		},
 		{

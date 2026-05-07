@@ -121,6 +121,13 @@ export interface MatchViewText {
   sbDetailPlayerDb: string
   sbDetailSharedOnly: string
   sbDetailExplorePlayerFmt: (player: string) => string
+  // Libellés colonnes scoreboard (utilisés par buildHighlightCols)
+  sbColKda: string
+  sbColMeleeKills: string
+  sbColDamageDealt: string
+  sbColDamageTaken: string
+  sbColShotsHit: string
+  sbColAccuracy: string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -205,7 +212,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatKilledMeFmt: (n) => `T'a victimisé ${n} fois`,
     combatIKilledFmt: (n) => `Tu l'as persécuté ${n} fois`,
     combatNoData: 'Pas de données disponibles',
-    scoreboardTitle: 'Scoreboard',
+    scoreboardTitle: 'Tableau des scores',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamUnknown: 'Équipe inconnue',
     teamNumberedFmt: (n) => `Équipe ${n}`,
@@ -226,9 +233,15 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbDetailCsr: 'CSR',
     sbDetailBotNoteLabel: 'Coéquipier bot',
     sbDetailBotNoteValue: 'Au moins un bot dans ton équipe — stats à relativiser.',
-    sbDetailPlayerDb: 'Joueur tracké (DB locale)',
-    sbDetailSharedOnly: 'Joueur non tracké (DB partagée uniquement)',
+    sbDetailPlayerDb: 'Joueur enregistré (BDD locale)',
+    sbDetailSharedOnly: 'Joueur non enregistré (BDD partagée uniquement)',
     sbDetailExplorePlayerFmt: (player) => `Explorer ${player}`,
+    sbColKda: 'FDA',
+    sbColMeleeKills: 'Corps à corps',
+    sbColDamageDealt: 'Dégâts infligés',
+    sbColDamageTaken: 'Dégâts subis',
+    sbColShotsHit: 'Tirs au but',
+    sbColAccuracy: 'Précision',
   },
   en: {
     prevMatch: 'Previous match',
@@ -335,6 +348,12 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbDetailPlayerDb: 'Tracked player (local DB)',
     sbDetailSharedOnly: 'Untracked player (shared DB only)',
     sbDetailExplorePlayerFmt: (player) => `Explore ${player}`,
+    sbColKda: 'KDA',
+    sbColMeleeKills: 'Melee',
+    sbColDamageDealt: 'Damage dealt',
+    sbColDamageTaken: 'Damage taken',
+    sbColShotsHit: 'Shots hit',
+    sbColAccuracy: 'Accuracy',
   },
 }
 

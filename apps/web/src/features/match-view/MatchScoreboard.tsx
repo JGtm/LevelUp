@@ -1,15 +1,11 @@
 /**
- * MatchScoreboard — tableau de score du match (mock 4b corrigé).
+ * MatchScoreboard — tableau de score du match.
  *
- * Spec visuelle : .ai/mocks/__mockup_tables.html section "4b — MatchScoreboard.tsx corrigé".
- *
- * Différences vs ancienne version :
- *  - Colonnes Rang + Score ajoutées en tête (après Joueur).
- *  - Colonne Outil destruct. (top_weapon_label) ajoutée avant Résultat.
- *  - Vie moy. formattée en mm:ss via formatDurationMMSS().
- *  - MVP/LVP recalculés sur multi-best/worst (≥ 2 best ou ≥ 2 worst), plus
- *    seulement sur kills.
- *  - Construit avec TanStack Table v8 (cohérence avec SquadMatchHistoryTable).
+ * Ordre des colonnes : Joueur · Rang · Score · Frags · Morts · Assist. · FDA
+ *   · Outil de destr. · Folie meurt. · Tirs à la Tête · Frags parfaits
+ *   · Tirs · Tirs au but · Précision · Corps à corps · Armes lourdes
+ *   · Dégâts infligés · Dégâts subis · Vie moy.
+ *   · Rendement · Résist. · Dégâts/Frags
  */
 import { Fragment, useMemo, useState } from 'react'
 import {
@@ -19,7 +15,6 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { Card, CardContent } from '@/components/ui/card'
 import { PlayerDetailPanel } from './PlayerDetailPanel'
 import type {
   MatchCitationSnippet,
@@ -28,7 +23,6 @@ import type {
   MatchViewHeader,
   MatchViewRank,
 } from '@/lib/api/types'
-import { useFieldMappings, type FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchViewText } from './i18n'
@@ -36,8 +30,6 @@ import { parseTeamSideID, resolveTeamName } from './teamNames'
 import {
   cellState,
   cellStyle,
-  formatRank,
-  formatScore,
   getExtremes,
   getMvpLvp,
   type CellState,
@@ -45,29 +37,30 @@ import {
   type Extremes,
 } from './MatchScoreboard.logic'
 
-function buildHighlightCols(fieldMappings?: FieldMappingsResponse): ColDef[] {
-  const labelOf = (key: string): string =>
-    fieldMappings?.fields[key]?.label ?? key
+function buildHighlightCols(t: MatchViewText): ColDef[] {
   return [
-    { key: 'kills', label: labelOf('kills'), inverted: false },
-    { key: 'deaths', label: labelOf('deaths'), inverted: true },
-    { key: 'assists', label: labelOf('assists'), inverted: false },
-    { key: 'headshot_kills', label: labelOf('headshot_kills'), inverted: false },
-    { key: 'max_killing_spree', label: labelOf('max_killing_spree'), inverted: false },
-    { key: 'perfect_kills', label: 'Perf', inverted: false },
-    { key: 'power_weapon_kills', label: labelOf('power_weapon_kills'), inverted: false },
-    { key: 'melee_kills', label: labelOf('melee_kills'), inverted: false },
-    { key: 'shots_fired', label: labelOf('shots_fired'), inverted: false },
-    { key: 'shots_hit', label: labelOf('shots_hit'), inverted: false },
-    { key: 'kda', label: labelOf('kda'), inverted: false, fmt: (v) => v.toFixed(2) },
-    { key: 'damage_dealt', label: labelOf('damage_dealt'), inverted: false, fmt: (v) => v.toFixed(0) },
-    { key: 'damage_taken', label: labelOf('damage_taken'), inverted: true, fmt: (v) => v.toFixed(0) },
+    { key: 'rank', label: 'Rang', inverted: true },
+    { key: 'score', label: 'Score', inverted: false, fmt: (v) => new Intl.NumberFormat('fr-FR').format(v) },
+    { key: 'kills', label: t.combatKillsLabel, inverted: false },
+    { key: 'deaths', label: t.combatDeathsLabel, inverted: true },
+    { key: 'assists', label: 'Assist.', inverted: false },
+    { key: 'kda', label: t.sbColKda, inverted: false, fmt: (v) => v.toFixed(2) },
+    { key: 'max_killing_spree', label: 'Folie meurt.', inverted: false },
+    { key: 'headshot_kills', label: 'Tirs à la Tête', inverted: false },
+    { key: 'perfect_kills', label: 'Frags parfaits', inverted: false },
+    { key: 'shots_fired', label: 'Tirs', inverted: false },
+    { key: 'shots_hit', label: t.sbColShotsHit, inverted: false },
+    { key: 'accuracy', label: t.sbColAccuracy, inverted: false, fmt: (v) => `${v.toFixed(1)}%` },
+    { key: 'melee_kills', label: t.sbColMeleeKills, inverted: false },
+    { key: 'power_weapon_kills', label: 'Armes lourdes', inverted: false },
+    { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
+    { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
+    { key: 'avg_life_seconds', label: 'Vie moy.', inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
     { key: 'offensive_conversion', label: 'Rendement', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-    { key: 'defensive_resistance', label: 'Résistance', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-    { key: 'damage_per_kill', label: 'Dmg/Frags', inverted: true, fmt: (v) => v.toFixed(0) },
+    { key: 'defensive_resistance', label: 'Résist.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
+    { key: 'damage_per_kill', label: 'Dégâts/Frags', inverted: true, fmt: (v) => v.toFixed(0) },
   ]
 }
-
 
 interface ScoreboardRowVM extends MatchScoreboardRow {
   /** Composite cell-state map pour highlight, recalculé par team. */
@@ -92,11 +85,10 @@ interface Props {
 
 export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t }: Props) {
   const [expandedXuid, setExpandedXuid] = useState<string | null>(null)
-  const { data: fieldMappings } = useFieldMappings()
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
 
-  const highlightCols = useMemo(() => buildHighlightCols(fieldMappings), [fieldMappings])
+  const highlightCols = useMemo(() => buildHighlightCols(t), [t])
   const teams = useMemo(
     () => Array.from(new Set(rows.map((r) => r.team_side ?? ''))).sort(),
     [rows],
@@ -132,9 +124,13 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
   }
 
   return (
-    <Card>
-      <CardContent className="py-4">
-        <p className="mb-3 text-sm font-semibold text-foreground">{t.scoreboardTitle}</p>
+    // Wrapper aligné sur ChartCard (Engagement) : carte rounded + barre titre.
+    // Cf. EngagementCurve → ChartCard pour le pattern source.
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="border-b border-border px-3 py-2 text-sm font-medium">
+        {t.scoreboardTitle}
+      </div>
+      <div className="p-3 space-y-4">
         {teams.map((side) => (
           <TeamScoreboard
             key={side || 'unknown'}
@@ -145,7 +141,6 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
             extremesByKey={extremesByKey}
             mvpXuid={mvpXuid}
             lvpXuid={lvpXuid}
-            fieldMappings={fieldMappings}
             expandedXuid={expandedXuid}
             onToggleExpand={(xuid) => setExpandedXuid((cur) => (cur === xuid ? null : xuid))}
             onPlayerClick={(gt, e) => goToExplorer(gt, e)}
@@ -157,8 +152,8 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
             t={t}
           />
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -174,7 +169,6 @@ interface TeamScoreboardProps {
   /** MVP/LVP du LOBBY (un seul de chaque, partagé par tous les TeamScoreboard). */
   mvpXuid: string | null
   lvpXuid: string | null
-  fieldMappings?: FieldMappingsResponse
   expandedXuid: string | null
   onToggleExpand: (xuid: string) => void
   onPlayerClick: (gamertag: string, e: React.MouseEvent) => void
@@ -194,7 +188,6 @@ function TeamScoreboard({
   extremesByKey,
   mvpXuid: mvp,
   lvpXuid: lvp,
-  fieldMappings,
   expandedXuid,
   onToggleExpand,
   onPlayerClick,
@@ -227,7 +220,22 @@ function TeamScoreboard({
   )
 
   const columns = useMemo<ColumnDef<ScoreboardRowVM>[]>(() => {
-    const cols: ColumnDef<ScoreboardRowVM>[] = [
+    const hlMap = new Map(highlightCols.map((c) => [String(c.key), c]))
+
+    function hlDef(key: string): ColumnDef<ScoreboardRowVM> {
+      const c = hlMap.get(key)
+      return {
+        id: key,
+        header: c?.label ?? key,
+        cell: (ctx) => {
+          const val = ctx.row.original[key as keyof MatchScoreboardRow] as number | null
+          const formatted = val == null ? '—' : c?.fmt ? c.fmt(val) : String(val)
+          return <span className="font-mono">{formatted}</span>
+        },
+      }
+    }
+
+    return [
       {
         id: 'gamertag',
         header: 'Joueur',
@@ -281,50 +289,36 @@ function TeamScoreboard({
           )
         },
       },
-      {
-        id: 'rank',
-        header: 'Rang',
-        cell: (ctx) => <span className="font-mono">{formatRank(ctx.row.original.rank)}</span>,
-      },
-      {
-        id: 'score',
-        header: 'Score',
-        cell: (ctx) => <span className="font-mono">{formatScore(ctx.row.original.score)}</span>,
-      },
-      ...highlightCols.map<ColumnDef<ScoreboardRowVM>>((c) => ({
-        id: String(c.key),
-        header: c.label,
-        cell: (ctx) => {
-          const val = ctx.row.original[c.key] as number | null
-          const formatted = val == null ? '—' : c.fmt ? c.fmt(val) : String(val)
-          return <span className="font-mono">{formatted}</span>
-        },
-      })),
-      {
-        id: 'avg_life',
-        header: 'Vie moy.',
-        cell: (ctx) => {
-          const r = ctx.row.original
-          const seconds = r.avg_life_seconds ?? null
-          return <span className="font-mono">{formatDurationMMSS(seconds, '—')}</span>
-        },
-      },
+      hlDef('rank'),
+      hlDef('score'),
+      hlDef('kills'),
+      hlDef('deaths'),
+      hlDef('assists'),
+      hlDef('kda'),
       {
         id: 'top_weapon',
-        header: 'Outil destruct.',
+        header: 'Outil de destr.',
         cell: (ctx) => {
           const lbl = ctx.row.original.top_weapon_label
           return <span className="text-muted-foreground">{lbl ?? '—'}</span>
         },
       },
-      {
-        id: 'outcome',
-        header: fieldMappings?.fields['outcome']?.label ?? 'Résultat',
-        cell: (ctx) => <span className="text-muted-foreground whitespace-nowrap">{ctx.row.original.outcome_label}</span>,
-      },
+      hlDef('max_killing_spree'),
+      hlDef('headshot_kills'),
+      hlDef('perfect_kills'),
+      hlDef('shots_fired'),
+      hlDef('shots_hit'),
+      hlDef('accuracy'),
+      hlDef('melee_kills'),
+      hlDef('power_weapon_kills'),
+      hlDef('damage_dealt'),
+      hlDef('damage_taken'),
+      hlDef('avg_life_seconds'),
+      hlDef('offensive_conversion'),
+      hlDef('defensive_resistance'),
+      hlDef('damage_per_kill'),
     ]
-    return cols
-  }, [highlightCols, expandedXuid, playerSlug, fieldMappings, onPlayerClick])
+  }, [highlightCols, expandedXuid, playerSlug, onPlayerClick])
 
   const table = useReactTable<ScoreboardRowVM>({
     data,
@@ -351,109 +345,114 @@ function TeamScoreboard({
   const teamHeaderBorder = `2px solid color-mix(in oklab, ${teamColorVar} 55%, transparent)`
   const teamHeaderColor = `color-mix(in oklab, ${teamColorVar} 80%, var(--foreground))`
 
-  // Nombre total de colonnes pour le colspan du header d'équipe.
-  // = 1 (Joueur) + 2 (Rang/Score) + N (highlightCols) + 3 (Vie moy./Outil/Résultat).
-  const totalCols = 1 + 2 + highlightCols.length + 3
-
   return (
-    <div className="mb-4">
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr>
-              <th
-                colSpan={totalCols}
-                className="px-3 py-2 text-left text-sm font-bold uppercase tracking-wider"
-                style={{
-                  background: teamHeaderBg,
-                  color: teamHeaderColor,
-                  borderBottom: teamHeaderBorder,
-                }}
-                aria-label={isMyTeam ? t.teamMine : t.teamEnemy}
-              >
-                {teamLabel}
-              </th>
-            </tr>
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-border text-muted-foreground">
-                {hg.headers.map((h, idx) => {
-                  const isPlayerCol = h.column.id === 'gamertag'
-                  const align = isPlayerCol ? 'text-left' : 'text-right'
-                  const px = idx === 0 ? 'pr-2' : 'px-2'
-                  return (
-                    <th key={h.id} className={`pb-1 ${align} ${px} whitespace-nowrap`}>
-                      {flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
-                  )
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => {
-              const r = row.original
-              const isExpanded = expandedXuid === r.xuid
-              // Fond de ligne discret pour me / MVP / LVP (subtle, ne dispute
-              // pas l'attention avec la border outcome de la cellule gamertag).
-              const rowBg = r.is_me ? 'bg-info/10' : ''
-              // Border outcome-win/outcome-loss sur la cellule gamertag du
-              // MVP/LVP du LOBBY. Tinted background léger en plus de la border
-              // pour faire ressortir la cellule sans hurler visuellement.
-              const gamertagCellStyle: React.CSSProperties = r._isMvp
-                ? {
-                    boxShadow: 'inset 3px 0 0 0 var(--ac-outcome-win)',
-                    backgroundColor: 'color-mix(in oklab, var(--ac-outcome-win) 12%, transparent)',
-                  }
-                : r._isLvp
-                  ? {
-                      boxShadow: 'inset 3px 0 0 0 var(--ac-outcome-loss)',
-                      backgroundColor: 'color-mix(in oklab, var(--ac-outcome-loss) 12%, transparent)',
-                    }
-                  : {}
-              return (
-                <Fragment key={r.xuid}>
-                  <tr
-                    className={`cursor-pointer border-b border-border hover:bg-accent transition-colors ${rowBg}`}
-                    onClick={() => onToggleExpand(r.xuid)}
+    <div className="overflow-x-auto">
+      {/*
+        Grille complète : table border 2px (extérieur), cellules border 1px,
+        border-collapse:collapse fait que les bordures partagées prennent la
+        plus large (2px sur le périmètre, 1px entre cellules). Le `<th>` du
+        bandeau d'équipe garde son borderBottom 2px team-color.
+      */}
+      <table className="w-full border-2 border-border border-collapse text-[11px]">
+        <thead>
+          <tr>
+            <th
+              colSpan={columns.length}
+              className="border border-border px-3 py-2 text-left text-sm font-bold uppercase tracking-wider"
+              style={{
+                background: teamHeaderBg,
+                color: teamHeaderColor,
+                borderBottom: teamHeaderBorder,
+              }}
+              aria-label={isMyTeam ? t.teamMine : t.teamEnemy}
+            >
+              {teamLabel}
+            </th>
+          </tr>
+          {table.getHeaderGroups().map((hg) => (
+            <tr key={hg.id} className="text-muted-foreground">
+              {hg.headers.map((h) => {
+                const isPlayerCol = h.column.id === 'gamertag'
+                const align = isPlayerCol ? 'text-left' : 'text-right'
+                return (
+                  <th
+                    key={h.id}
+                    className={`border border-border border-b-2 px-2 pb-1 pt-1 ${align}`}
                   >
-                    {row.getVisibleCells().map((cell, idx) => {
-                      const isPlayerCol = cell.column.id === 'gamertag'
-                      const align = isPlayerCol ? 'text-left' : 'text-right'
-                      const px = idx === 0 ? 'pr-2' : 'px-2'
-                      const highlight = r._cellStates[cell.column.id]
-                      const tone: React.CSSProperties = isPlayerCol
-                        ? gamertagCellStyle
-                        : highlight
-                          ? cellStyle(highlight)
-                          : {}
-                      return (
-                        <td key={cell.id} className={`py-1 ${align} ${px}`} style={tone}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                  {isExpanded && (
-                    <tr>
-                      <td colSpan={columns.length} className="p-0">
-                        <PlayerDetailPanel
-                          row={r}
-                          killerVictim={killerVictim}
-                          citations={r.is_me ? citations : undefined}
-                          header={header}
-                          rank={rank}
-                          playerSlug={playerSlug}
-                          t={t}
-                        />
+                    {flexRender(h.column.columnDef.header, h.getContext())}
+                  </th>
+                )
+              })}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.getRowModel().rows.map((row) => {
+            const r = row.original
+            const isExpanded = expandedXuid === r.xuid
+            // Fond de ligne discret pour me / MVP / LVP (subtle, ne dispute
+            // pas l'attention avec la border outcome de la cellule gamertag).
+            const rowBg = r.is_me ? 'bg-info/10' : ''
+            // Border outcome-win/outcome-loss sur la cellule gamertag du
+            // MVP/LVP du LOBBY. Tinted background léger en plus de la border
+            // pour faire ressortir la cellule sans hurler visuellement.
+            const gamertagCellStyle: React.CSSProperties = r._isMvp
+              ? {
+                  boxShadow: 'inset 3px 0 0 0 var(--ac-outcome-win)',
+                  backgroundColor: 'color-mix(in oklab, var(--ac-outcome-win) 12%, transparent)',
+                }
+              : r._isLvp
+                ? {
+                    boxShadow: 'inset 3px 0 0 0 var(--ac-outcome-loss)',
+                    backgroundColor: 'color-mix(in oklab, var(--ac-outcome-loss) 12%, transparent)',
+                  }
+                : {}
+            return (
+              <Fragment key={r.xuid}>
+                <tr
+                  className={`cursor-pointer hover:bg-accent transition-colors ${rowBg}`}
+                  onClick={() => onToggleExpand(r.xuid)}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const isPlayerCol = cell.column.id === 'gamertag'
+                    const align = isPlayerCol ? 'text-left' : 'text-right'
+                    const highlight = r._cellStates[cell.column.id]
+                    const tone: React.CSSProperties = isPlayerCol
+                      ? gamertagCellStyle
+                      : highlight
+                        ? cellStyle(highlight)
+                        : {}
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`border border-border px-2 py-1 ${align} whitespace-nowrap`}
+                        style={tone}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
-                    </tr>
-                  )}
-                </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    )
+                  })}
+                </tr>
+                {isExpanded && (
+                  <tr>
+                    <td colSpan={columns.length} className="border border-border p-0">
+                      <PlayerDetailPanel
+                        row={r}
+                        killerVictim={killerVictim}
+                        citations={r.is_me ? citations : undefined}
+                        header={header}
+                        rank={rank}
+                        playerSlug={playerSlug}
+                        t={t}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

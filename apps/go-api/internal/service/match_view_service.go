@@ -356,8 +356,9 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	})
 	g.Go(func() error {
 		var e error
-		// playerSlug = xuid (identifiant de stockage dans shared_social)
-		media, e = s.repo.GetMatchMedia(gctx, matchID, s.xuid)
+		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
+		// avoir uploadé un media pour ce match.
+		media, e = s.repo.GetMatchMedia(gctx, matchID)
 		if e != nil {
 			slog.Warn("match_view: media indisponibles", "match_id", matchID, "err", e)
 		}
@@ -455,7 +456,7 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 			friendsExtras = s.friendsExtras(ctx, matchID, xuids)
 		}
 	}
-	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid, s.titleSlug, enrich, skillRank, friendsExtras)
+	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid, s.titleSlug, enrich, skillRank, friendsExtras, s.assetURL)
 	mediaTab := buildMediaTab(media)
 
 	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/
@@ -634,7 +635,13 @@ func buildMatchHeader(
 	if meta.ModeNameFR != nil && *meta.ModeNameFR != "" {
 		h.ModeUI = *meta.ModeNameFR
 	} else if meta.PairName != nil {
-		h.ModeUI = *meta.PairName
+		// Fallback : label EN normalisé (retire "Slayer : Forbidden" → "Slayer")
+		// plutôt que le pair_name brut qui peut contenir la map ou être un UUID.
+		if en := analysis.NormalizeModeLabel(*meta.PairName); en != "" {
+			h.ModeUI = en
+		} else {
+			h.ModeUI = *meta.PairName
+		}
 	}
 	// Playlist : priorité à la traduction FR (asset_translations), fallback
 	// nom brut EN (match_registry.playlist_name).
@@ -643,10 +650,12 @@ func buildMatchHeader(
 	} else if meta.PlaylistName != nil {
 		h.PlaylistLabel = *meta.PlaylistName
 	}
-	// MapImageURL : résolu via TitleAssetURLAdapter à partir du nom EN brut
-	// (l'adapter Halo Infinite mappe nameEN → /static/maps/halo_infinite/{name}.png).
-	// Dégradation gracieuse : nil si adapter absent ou nameEN inconnu.
-	if assetURL != nil && meta.MapName != nil && *meta.MapName != "" {
+	// MapImageURL : priorité à map_images_registry (lookup par map_id stable),
+	// fallback TitleAssetURLAdapter (lookup par nom EN). Le registry est peuplé
+	// par cmd/migrate-static-maps et est immunisé contre les noms UUID ou localisés.
+	if meta.MapImageURL != nil && *meta.MapImageURL != "" {
+		h.MapImageURL = meta.MapImageURL
+	} else if assetURL != nil && meta.MapName != nil && *meta.MapName != "" {
 		if url := assetURL.MapImageURL(*meta.MapName); url != "" {
 			h.MapImageURL = &url
 		} else {
@@ -1252,27 +1261,35 @@ func buildTeamTabFull(
 	myEnrich *domain.MatchEnrichmentRaw,
 	mySkillRank *domain.SkillRankRaw,
 	friendsExtras map[string]port.FriendMatchExtras,
+	assetURL games.TitleAssetURLAdapter, //nolint:PLR0913 — coordinator function
 ) domain.MatchTeamTab {
-	// Index bulk medals et weapons par XUID pour O(1). Les ImageURL sont
-	// composés via static.URL pour permettre au front d'afficher les icônes
-	// dans le panneau d'expander du scoreboard (cf. Python
-	// match_view_scoreboard_detail.py).
+	// Index bulk medals et weapons par XUID pour O(1). ImageURL via adapter
+	// (medals = ID numérique, weapons = name_en → fichier slug).
 	medalsByXUID := make(map[string][]domain.PlayerMedalRow, len(scoreboard))
 	for _, m := range bulkMedals {
+		var imgURL string
+		if assetURL != nil {
+			imgURL = assetURL.MedalImageURL(uint64(m.MedalID)) //nolint:gosec
+		}
 		medalsByXUID[m.XUID] = append(medalsByXUID[m.XUID], domain.PlayerMedalRow{
-			MedalID:  m.MedalID,
-			Count:    m.Count,
-			Label:    m.Label,
-			ImageURL: static.URL(static.KindMedal, titleSlug, strconv.FormatInt(m.MedalID, 10), ".png"),
+			MedalID:    m.MedalID,
+			Count:      m.Count,
+			Label:      m.Label,
+			ImageURL:   imgURL,
+			Difficulty: m.Difficulty,
 		})
 	}
 	weaponsByXUID := make(map[string][]domain.PlayerWeaponKillRow, len(scoreboard))
 	for _, w := range bulkWeapons {
+		var imgURL string
+		if assetURL != nil {
+			imgURL = assetURL.WeaponImageURL(w.NameEN)
+		}
 		weaponsByXUID[w.XUID] = append(weaponsByXUID[w.XUID], domain.PlayerWeaponKillRow{
 			WeaponID: w.WeaponID,
 			Kills:    w.Kills,
 			Label:    w.WeaponLabel,
-			ImageURL: static.URL(static.KindWeapon, titleSlug, strconv.FormatInt(w.WeaponID, 10), ".png"),
+			ImageURL: imgURL,
 		})
 	}
 

@@ -311,7 +311,7 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
         precision={0}
       />
       <MatchVsStatCard
-        label="Durée de vie moy."
+        label="Vie moy."
         primary={kpis.average_life ?? null}
       />
     </div>
