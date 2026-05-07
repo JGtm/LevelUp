@@ -16,6 +16,7 @@ import {
   tolBrightPalette,
   type Palette,
 } from '@/lib/accessibility'
+import { log } from '@/lib/accessibility/_logger'
 import type { ColorPalette } from '@/stores/settingsDraftStore'
 
 export function pickPalette(key: ColorPalette): Palette {
@@ -29,6 +30,12 @@ export function pickPalette(key: ColorPalette): Palette {
     case 'default':
       return defaultPalette
     default:
+      // Trace dédupliquée : valeur localStorage corrompue/obsolète (ex. après
+      // rollback d'une palette). Fallback silencieux côté UX, traçable côté dev.
+      log.warn(
+        `pickPalette:unknown:${String(key)}`,
+        `palette inconnue "${String(key)}" — fallback sur defaultPalette`,
+      )
       return defaultPalette
   }
 }

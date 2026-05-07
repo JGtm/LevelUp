@@ -1,5 +1,41 @@
 # Thought Log
 
+## [2026-05-07] Vérification finale accessibility-palettes-v2 — couverture logging
+
+**Statut** : Complété.
+
+**Contexte** : Vérification finale post-Phase C. Le `pickPalette` faisait un fallback **silencieux** sur `defaultPalette` quand la valeur `colorPalette` était inconnue (cas rollback localStorage). UX correcte (l'app ne plante pas) mais zéro trace pour le développeur si un bug introduit une régression.
+
+**Décisions techniques** :
+
+1. **Ajout d'un `log.warn` dédupliqué** dans le `default:` du switch `pickPalette` ([palette-picker.ts](apps/web/src/app/providers/palette-picker.ts)) — utilise le logger namespacé existant `_logger.ts` qui déduplique par clé. Format : `pickPalette:unknown:<value>` pour qu'une même valeur invalide ne pollue pas la console à chaque render.
+
+2. **2 tests supplémentaires** dans [theme-provider.test.ts](apps/web/src/app/providers/theme-provider.test.ts) :
+   - "logue un warn (dédupliqué) quand la valeur est inconnue" — 3 appels (`unknown` × 2 + `autre` × 1) → 2 logs (déduplication par clé).
+   - "ne logue rien sur les valeurs valides" — 4 appels valides → 0 log.
+
+**Vérifications passées** :
+- TypeScript : 0 erreur.
+- ESLint : 0 erreur sur les fichiers Phase A/B/C (39 errors restants = dette pré-existante ailleurs dans le repo).
+- Vitest : 1317/1318 (+2 vs Phase C). Le seul échec = `SeasonPassPage.test.tsx` pré-existant.
+- Tailles fichiers : tous < 500 L (plus gros = `AccessibilityTab.tsx` à 156 L).
+- Aucun hex `#RRGGBB` hors `palettes/` (CLAUDE.md règle 20).
+- i18n FR + EN synchronisés (4 strings × 2 langues).
+
+**Couverture finale tests Phase A+B+C** :
+| Couche | Fichier | Tests |
+|---|---|---|
+| Palettes | `coverage.test.ts` | 16 (4 palettes × 4 invariants) |
+| Palettes | `wcagContrast.unit.test.ts` | 17 (helpers WCAG) |
+| Palettes | `wcagContrast.test.ts` | 20 (5 paires narratives × 4 palettes) |
+| Provider | `theme-provider.test.ts` | 7 (4 valides + 1 fallback + 2 logging) |
+| UI Settings | `AccessibilityTab.test.tsx` | 6 (4 options + 1 état initial + 1 preview) |
+| **Total nouveaux tests** | | **66** |
+
+**Conclusion / prochaine étape** : Branche `feat/accessibility-palettes-v2` complète et prête au merge. Plan A+B+C livré, plus durcissement logging. Le garde-fou WCAG AA est actif sur les 4 palettes — toute future régression de contraste casse la CI.
+
+---
+
 ## [2026-05-06] Phase C accessibilité — test contraste WCAG AA + corrections badges narratifs
 
 **Statut** : Complété.
