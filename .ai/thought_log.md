@@ -1,5 +1,165 @@
 # Thought Log
 
+## [2026-05-07] Vérification finale accessibility-palettes-v2 — couverture logging
+
+**Statut** : Complété.
+
+**Contexte** : Vérification finale post-Phase C. Le `pickPalette` faisait un fallback **silencieux** sur `defaultPalette` quand la valeur `colorPalette` était inconnue (cas rollback localStorage). UX correcte (l'app ne plante pas) mais zéro trace pour le développeur si un bug introduit une régression.
+
+**Décisions techniques** :
+
+1. **Ajout d'un `log.warn` dédupliqué** dans le `default:` du switch `pickPalette` ([palette-picker.ts](apps/web/src/app/providers/palette-picker.ts)) — utilise le logger namespacé existant `_logger.ts` qui déduplique par clé. Format : `pickPalette:unknown:<value>` pour qu'une même valeur invalide ne pollue pas la console à chaque render.
+
+2. **2 tests supplémentaires** dans [theme-provider.test.ts](apps/web/src/app/providers/theme-provider.test.ts) :
+   - "logue un warn (dédupliqué) quand la valeur est inconnue" — 3 appels (`unknown` × 2 + `autre` × 1) → 2 logs (déduplication par clé).
+   - "ne logue rien sur les valeurs valides" — 4 appels valides → 0 log.
+
+**Vérifications passées** :
+- TypeScript : 0 erreur.
+- ESLint : 0 erreur sur les fichiers Phase A/B/C (39 errors restants = dette pré-existante ailleurs dans le repo).
+- Vitest : 1317/1318 (+2 vs Phase C). Le seul échec = `SeasonPassPage.test.tsx` pré-existant.
+- Tailles fichiers : tous < 500 L (plus gros = `AccessibilityTab.tsx` à 156 L).
+- Aucun hex `#RRGGBB` hors `palettes/` (CLAUDE.md règle 20).
+- i18n FR + EN synchronisés (4 strings × 2 langues).
+
+**Couverture finale tests Phase A+B+C** :
+| Couche | Fichier | Tests |
+|---|---|---|
+| Palettes | `coverage.test.ts` | 16 (4 palettes × 4 invariants) |
+| Palettes | `wcagContrast.unit.test.ts` | 17 (helpers WCAG) |
+| Palettes | `wcagContrast.test.ts` | 20 (5 paires narratives × 4 palettes) |
+| Provider | `theme-provider.test.ts` | 7 (4 valides + 1 fallback + 2 logging) |
+| UI Settings | `AccessibilityTab.test.tsx` | 6 (4 options + 1 état initial + 1 preview) |
+| **Total nouveaux tests** | | **66** |
+
+**Conclusion / prochaine étape** : Branche `feat/accessibility-palettes-v2` complète et prête au merge. Plan A+B+C livré, plus durcissement logging. Le garde-fou WCAG AA est actif sur les 4 palettes — toute future régression de contraste casse la CI.
+
+---
+
+## [2026-05-06] Phase C accessibilité — test contraste WCAG AA + corrections badges narratifs
+
+**Statut** : Complété.
+
+**Contexte** : Phase C du plan `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md`. Implémentation des helpers WCAG 2.0 (relative luminance, contrast ratio, grade) + test automatique sur les 5 paires `narrative-{bg}/narrative-{text}` × 4 palettes (= 20 assertions).
+
+**Décisions techniques** :
+
+1. **Helpers WCAG 2.0** dans [apps/web/src/lib/accessibility/wcagContrast.ts](apps/web/src/lib/accessibility/wcagContrast.ts) (~70 lignes, zéro dépendance) : `relLuminance`, `contrastRatio`, `wcagGrade` (`'fail' | 'AA-large' | 'AA' | 'AAA'`). Implémente la formule officielle [W3C WCAG 2.0 § contrast-ratiodef](https://www.w3.org/TR/WCAG20/#contrast-ratiodef). S'inspire du repo `afonsolopez/colorblind` (port Go) sans l'importer.
+
+2. **Tests unitaires** ([wcagContrast.unit.test.ts](apps/web/src/lib/accessibility/__tests__/wcagContrast.unit.test.ts)) : 17 cas — luminance noir/blanc/gris/court hex/invalide, ratio max/min/symétrique, grades sur tous les seuils.
+
+3. **Test palettes** ([wcagContrast.test.ts](apps/web/src/lib/accessibility/__tests__/wcagContrast.test.ts)) : `describe.each(palettes)` × `it.each(NARRATIVE_PAIRS)` → 20 assertions. Premier run : **6 échecs détectés**, dont 5 réels (le 6e était une mauvaise valeur attendue dans mon test unitaire — corrigée). Le test fait précisément son boulot : empêcher les paires fond/texte de dériver sous AA.
+
+4. **5 corrections de palette pour passer AA** :
+   - `default.narrative-humiliation` : `#8B5CF6` (violet-500) → `#7C3AED` (violet-600). Ratio blanc 4.05 → 5.6.
+   - `default.narrative-debacle-text` : `#FFF7ED` (crème) → `#000000`. Ratio 3.64 → 5.4.
+   - `okabe-ito.narrative-debacle-text` : `#FFFFFF` → `#000000`. Ratio 3.87 → 5.4.
+   - `cividis.narrative-debacle-text` : `#FFFFFF` → `#000000`. Ratio 3.87 → 5.4.
+   - `tol-bright.narrative-debacle-text` : `#FFFFFF` → `#000000`. Ratio 3.09 → 6.8.
+
+   Stratégie suivie = priorité 1 du plan §C.5 ("ajuster la couleur de texte plutôt que la couleur de fond"). Pour `humiliation` default, le passage au noir n'aurait pas suffi (4.2 < 4.5), il a fallu foncer le violet à violet-600.
+
+**Résultats observés** :
+- TypeScript : 0 erreur.
+- ESLint : 0 erreur sur les 8 fichiers modifiés/créés.
+- Vitest : 1315/1316 passent (le 1 échec = `SeasonPassPage.test.tsx` pré-existant). Phase C = +35 tests verts vs baseline post-B (17 unit + 20 paires palettes − 2 paires précédemment en double dans coverage).
+- Snapshots `coverage.test.ts.snap` régénérés pour 4 palettes (les hex narrative-debacle-text et narrative-humiliation ont changé).
+
+**Conclusion / prochaine étape** : Plan A+B+C complet. Branche `feat/accessibility-palettes-v2` prête à être mergée. Garde-fou WCAG en place : toute modification future d'une couleur narrative qui dégraderait le contraste sous AA fera échouer la CI.
+
+---
+
+## [2026-05-06] Phase B accessibilité — ajout palettes Cividis + Tol Bright
+
+**Statut** : Complété.
+
+**Contexte** : Phase B du plan `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md`. Ajout de 2 palettes en plus de `default` + `okabe-ito` : Cividis (séquentielle CVD-safe, Nuñez et al. 2018) et Tol Bright (catégorielle 7 couleurs, Paul Tol 2018).
+
+**Décisions techniques** :
+
+1. **2 nouvelles palettes** créées dans [apps/web/src/lib/accessibility/palettes/](apps/web/src/lib/accessibility/palettes/) :
+   - `cividis.ts` : ramp séquentiel monotone en L* pour `perf-tier-*`. Pour les couples binaires (outcomes, divergent, encounter, heatmap) on emprunte l'axe blue/vermillion d'Okabe-Ito (Cividis ne définit pas de sémantique binaire native).
+   - `tol-bright.ts` : 7 couleurs Tol Bright + black en s8. Pour `perf-tier-*`, on utilise Tol's "Sunset" sequential scheme (5 échantillons, CVD-safe).
+
+2. **Type `ColorPalette` étendu** : `'default' | 'okabe-ito'` → `'default' | 'okabe-ito' | 'cividis' | 'tol-bright'` ([settingsDraftStore.ts](apps/web/src/stores/settingsDraftStore.ts)).
+
+3. **Garde-fou défensif `pickPalette`** dans un fichier dédié [palette-picker.ts](apps/web/src/app/providers/palette-picker.ts), pas dans `theme-provider.tsx`. Raison : `react-refresh/only-export-components` interdit aux fichiers `.tsx` d'exporter autre chose que des composants. Pattern déjà utilisé dans la codebase pour `useMediaPicker`. Le `switch` a un `default: defaultPalette` qui retombe sur la palette standard si la valeur localStorage est obsolète (rollback) — testé explicitement avec `'unknown'` et `''`.
+
+4. **UI Settings** : grille `sm:grid-cols-2` → `sm:grid-cols-2 lg:grid-cols-4`, 2 nouvelles `<PaletteOption>` ajoutées avec strings i18n FR + EN (4 strings × 2 langues).
+
+5. **Tests** :
+   - `coverage.test.ts` étendu : `PALETTES` map passe de 2 à 4 entrées. Snapshots auto-régénérés (8 → 16 tests, 4 par palette : tokens couverts, pas de clé inconnue, hex valides, snapshot stable).
+   - `AccessibilityTab.test.tsx` : +2 tests (clic Cividis, clic Tol Bright).
+   - `theme-provider.test.ts` : 5 tests sur `pickPalette` (4 valeurs valides + 2 valeurs invalides).
+
+**Résultats observés** :
+- TypeScript : 0 erreur.
+- ESLint : 0 erreur sur les 10 fichiers modifiés/créés.
+- Vitest : 1280/1281 passent (le 1 échec = `SeasonPassPage.test.tsx` pré-existant, non lié). Phase B = +15 tests verts vs baseline post-A.
+
+**Conclusion / prochaine étape** : Phase B livrée. Passage à Phase C (test contraste WCAG AA automatique) sur la même branche.
+
+---
+
+## [2026-05-06] Phase A accessibilité — remap Okabe-Ito sur axe blue/orange
+
+**Statut** : Complété.
+
+**Contexte** : Phase A du plan `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md`. Re-mapping de la palette Okabe-Ito existante pour faire basculer les 4 couples sémantiques binaires (`outcome-win/loss`, `divergent-pos/neg`, `narrative-encounter-ally/enemy`, `heatmap-cold/hot`) de l'axe vert/rouge (problématique en deutéranopie) vers l'axe blue/orange (Wong 2011, Nature Methods).
+
+**Décisions techniques** :
+
+1. **Remap des 4 couples binaires** dans [okabe-ito.ts](apps/web/src/lib/accessibility/palettes/okabe-ito.ts) : `#009E73` (Bluish Green) remplacé par `#0072B2` (Blue) sur outcome-win, divergent-pos, narrative-encounter-ally-plus, heatmap-hot, heatmap-divergent-high. Vermillion `#D55E00` conservé du côté négatif.
+
+2. **`outcome-draw` libéré** : passe de Sky Blue (`#56B4E9`, trop proche du nouveau Blue de win) à Yellow (`#F0E442`).
+
+3. **Perf-tier ordinal** : ramp re-construit en divergent bleu→jaune→vermillion (Blue → SkyBlue → Yellow → Orange → Vermillion). Ancien ramp green→...→vermillion collapsait sur l'axe de confusion deutan.
+
+4. **Chart-series réordonnées** : Blue + Orange en s1+s2 (paire la plus discriminable). À 4 séries on a Blue/Orange/SkyBlue/Vermillion — toutes paires ≥ 30 ΔE en deutan-simulation.
+
+5. **`success` UI conservé en vert** (Bluish Green `#009E73`) — c'est un statut UI conventionnel, pas un couple binaire critique. La logique applicative ne s'appuie pas sur le contraste success/destructive en daltonisme.
+
+6. **Vérification consommateurs (passe 1 + passe 2 du plan)** : grep sur `tokenCssVar` (JSX) et `resolveToken` (Plotly/SVG/ECharts wrappers) — aucune logique conditionnelle dépendant de la teinte trouvée. Tous les composants utilisent les helpers de manière agnostique.
+
+**Résultats observés** :
+- Snapshot `coverage.test.ts.snap` régénéré.
+- TypeScript : 0 erreur.
+- ESLint sur okabe-ito.ts : 0 erreur.
+- Vitest : 1265/1266 passent. Seul échec = `SeasonPassPage.test.tsx`, déjà rouge sur baseline pré-changes (régression antérieure non liée).
+
+**Conclusion / prochaine étape** : Phase A livrée. Passage à Phase B (ajout Cividis + Tol Bright) sur la même branche.
+
+---
+
+## [2026-05-06] Plan accessibilité — refonte palettes Okabe-Ito + Cividis + Tol Bright + test WCAG
+
+**Statut** : Plan rédigé (pas d'implémentation).
+
+**Contexte** : Retour utilisateur (ami deutéranope) — la palette Okabe-Ito actuelle assigne 4 couples sémantiques critiques (`outcome-win/loss`, `divergent-pos/neg`, `narrative-encounter-ally/enemy`, `heatmap-cold/hot`) sur l'axe **Bluish Green `#009E73` ↔ Vermillion `#D55E00`**. Cet axe est précisément celui qui collapse en deutéranopie : Δluminance ≈ 0.14, distinguable seulement en éclairage parfait. Les 8 hex de base de la palette sont strictement conformes à la référence Okabe-Ito 2008 — le problème vient des **assignations** sur les tokens, pas des couleurs source. L'utilisateur a aussi cité `afonsolopez/colorblind` comme inspiration ; vérification faite, c'est un grader WCAG 2.0 (HextoRGB / ScoreHex / Grading), **pas** une bibliothèque de palettes — l'idée exploitable est le test de contraste automatique.
+
+**Décisions techniques** :
+
+1. **Plan en 3 phases indépendantes** documenté dans `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md` :
+   - **Phase A** (~1h) : remap Okabe-Ito sur l'axe **Blue `#0072B2` ↔ Vermillion `#D55E00`** (Wong 2011, Nature Methods). Couvre outcomes, divergent, encounter, heatmap. Trade-off conscient : "win" devient bleu au lieu de vert sur la palette OI — convention culturelle sacrifiée pour la lisibilité, indices secondaires (icônes ✓/✗, signe +/−) à conserver dans les composants. Réordonne aussi `chart-series-1..8` pour que les 2 premières séries soient Blue+Orange (paire la plus distinguable). Re-mappe `perf-tier-1..5` en ramp divergent bleu→jaune→vermillion monotone en a* (imparfait sur luminance pure — voir Cividis pour ça).
+   - **Phase B** (~3h) : ajout de 2 palettes — **Cividis** (Nuñez et al. 2018, perceptuellement uniforme, monotone en L*, conçue explicitement CVD) pour les ramps ordinaux, et **Tol Bright** (Paul Tol 2018, catégorielle 7 couleurs) plus discriminable qu'Okabe-Ito au-delà de 4 séries en deutan. Skip Viridis (trop similaire à Cividis), IBM Carbon (pas un standard scientifique), Brewer Set2 (pas optimisé CVD au-delà de 3 couleurs). Élargit le `<select>` Settings → Accessibilité de 2 à 4 options.
+   - **Phase C** (~1h) : test automatique WCAG AA (≥ 4.5:1) sur les 5 paires `narrative-{bg}/narrative-{text}` × les 4 palettes. Réimplémentation de la formule WCAG 2.0 en TS (~30 lignes, zéro dépendance) — s'inspire de `afonsolopez/colorblind` sans l'importer. Helpers placés en code de production (`wcagContrast.ts`) car potentiellement réutilisables par un futur composant qui voudrait calculer dynamiquement un texte readable.
+
+2. **Branche dédiée** : `feat/accessibility-palettes-v2` créée depuis `feat/token-pool-parallel-sync` (pas depuis main qui a 1000 commits de retard). 3 commits prévus, un par phase, mergeables indépendamment.
+
+3. **Sciemment hors scope** : icônes/patterns redondants dans charts (déjà couvert par labels existants), mode achromatopsie pure (<1% des cas, refonte trop lourde), extension contraste WCAG hors `narrative-*`, migration des hex en dur restants (`rarity.ts` reste exception tolérée par CLAUDE.md règle 20).
+
+**Résultats observés** : N/A (plan documentaire uniquement, aucun code modifié).
+
+**Conclusion / prochaine étape** : Plan livré sur la branche `feat/accessibility-palettes-v2`. Attente validation utilisateur avant passage à l'implémentation. Si feu vert, exécution dans l'ordre A → vérif visuelle → B → C, chacune commitée séparément. Si seule A est priorisée, c'est le 80/20 qui fix le ressenti immédiat (les 4 couples binaires les plus visibles).
+
+**Durcissement post-revue (2e commit sur la branche)** : passage du plan à la grille `plan-review` + `delivery-checklist` → 3 points patchés :
+
+1. **Lint manquant dans Done definitions** — ajouté `npm run lint` (en plus de `typecheck` + `test`) aux Phases A.8, B.8, C.8. La delivery-checklist l'exige.
+2. **TODO Zustand persist résolu** — vérification du merge handler de `settingsDraftStore` ([lignes 152-168](apps/web/src/stores/settingsDraftStore.ts#L152-L168)) : il fait un spread brut sans validation, donc une valeur `colorPalette: 'cividis'` persistée en localStorage subsisterait après un revert de Phase B. **Solution dans le plan** : `theme-provider.tsx` doit utiliser un `switch` avec `default: defaultPalette` (garde-fou défensif, 2 lignes) plutôt qu'une chaîne ternaire. Test explicite ajouté dans la Done definition de B (`themeProvider.test.tsx` : valeur invalide → fallback default).
+3. **Vérification consommateurs Phase A trop superficielle** — A.7 ne couvrait que `tokenCssVar` (JSX). Ajout d'une **passe 2** sur les 18 fichiers `apps/web/src/components/charts/*` qui appellent `resolveToken()` (Plotly/SVG/ECharts). Critère explicité : aucune logique conditionnelle ne doit dépendre de la **teinte** (ex. `if (color === '#009E73')`). Si trouvé : refactor en `useColor()` + lookup texte via `wcagContrast` (préfigure Phase C).
+
+---
+
 ## [2026-05-06] UX Médias — label conditionnel Associer/Réassocier + lien Voir le match
 
 **Statut** : Complété (front uniquement, pas de back-end touché).

@@ -29,6 +29,12 @@ export { getSeriesColors } from './plotlyColorscale'
 // Couleur complémentaire (usage : barres négatives des charts, hue +180°)
 export { hexComplement } from './hexComplement'
 
+// Helpers de contraste WCAG 2.0 (usage : tests de palette, sélection texte readable)
+export { relLuminance, contrastRatio, wcagGrade } from './wcagContrast'
+export type { WcagGrade } from './wcagContrast'
+
 // Palettes brutes (usage : ThemeProvider uniquement)
 export { defaultPalette } from './palettes/default'
 export { okabePalette } from './palettes/okabe-ito'
+export { cividisPalette } from './palettes/cividis'
+export { tolBrightPalette } from './palettes/tol-bright'

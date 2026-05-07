@@ -50,14 +50,15 @@ export const defaultPalette: Palette = {
   'chart-series-8': '#EC4899', // pink    — 8e série
 
   // ── Badges narratifs (source : match-card-presentation.ts) ─────────────────
+  // Couleurs ajustées pour atteindre WCAG AA (≥ 4.5:1) — cf. wcagContrast.test.ts
   'narrative-dominant':             '#00DC82',
   'narrative-dominant-text':        '#052E16',
-  'narrative-humiliation':          '#8B5CF6',
+  'narrative-humiliation':          '#7C3AED', // violet-600 (foncé) au lieu de violet-500 — contraste blanc 5.6
   'narrative-humiliation-text':     '#F8FAFC',
   'narrative-remontada':            '#0072B2',
   'narrative-remontada-text':       '#F8FAFC',
   'narrative-debacle':              '#D55E00',
-  'narrative-debacle-text':         '#FFF7ED',
+  'narrative-debacle-text':         '#000000', // noir sur orange (5.4) — crème ne passait pas AA (3.64)
   'narrative-contre-remontada':     '#33D6FF',
   'narrative-contre-remontada-text':'#082F49',
 
