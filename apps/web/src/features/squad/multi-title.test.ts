@@ -31,9 +31,9 @@ const HALO_INFINITE_MAPPINGS: FieldMappingsResponse = {
   schema_version: 1,
   locale: 'fr',
   fields: {
-    kills: fieldDto('Éliminations'),
+    kills: fieldDto('Frags'),
     deaths: fieldDto('Morts'),
-    assists: fieldDto('Assistances'),
+    assists: fieldDto('Assists'),
     accuracy: fieldDto('Précision'),
     kdr: fieldDto('K/D'),
     win_rate: fieldDto('Taux de victoire'),

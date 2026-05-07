@@ -19,10 +19,27 @@ export interface EngagementMatchSectionProps {
   granularity?: 'intra' | 'session'
   title?: string
   subtitle?: string
+  /**
+   * Comportement quand la donnée est absente / insuffisante (503, 422, courbe
+   * vide). Par défaut `'hide'` : la section disparaît (legacy onglet Combat).
+   * `'placeholder'` : rend une carte vide avec un message — utilisé dans
+   * l'onglet Équipe pour que la section reste visible et explicite.
+   */
+  emptyBehavior?: 'hide' | 'placeholder'
+  /** Texte affiché en empty state quand emptyBehavior === 'placeholder'. */
+  emptyMessage?: string
 }
 
 export function EngagementMatchSection(props: EngagementMatchSectionProps) {
-  const { playerSlug, matchId, granularity = 'intra', title, subtitle } = props
+  const {
+    playerSlug,
+    matchId,
+    granularity = 'intra',
+    title,
+    subtitle,
+    emptyBehavior = 'hide',
+    emptyMessage,
+  } = props
   const query = useMatchEngagement(playerSlug, matchId)
 
   const points: EngagementPoint[] = useMemo(
@@ -30,22 +47,34 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
     [query.data],
   )
 
-  // Etats : 503 / 422 -> ne rien afficher (la section est masquee silencieusement).
-  if (query.isError) {
-    return null
-  }
-  // Score absent (insufficient_history ou no curve) -> on n'affiche rien.
-  if (query.data && (!query.data.EngagementCurve || query.data.EngagementCurve.length === 0)) {
-    return null
+  const isEmpty =
+    query.data && (!query.data.engagement_curve || query.data.engagement_curve.length === 0)
+
+  if (emptyBehavior === 'hide') {
+    if (query.isError) return null
+    if (isEmpty) return null
   }
 
   return (
     <EngagementCurve
       title={title ?? 'Engagement'}
-      subtitle={subtitle ?? buildSubtitle(query.data)}
+      subtitle={
+        subtitle ??
+        (isEmpty || query.isError
+          ? (emptyMessage ?? "Données d'engagement indisponibles pour ce match")
+          : buildSubtitle(query.data))
+      }
       points={points}
       granularity={granularity}
-      state={query.isLoading ? 'loading' : query.isError ? 'error' : 'ready'}
+      state={
+        query.isLoading
+          ? 'loading'
+          : query.isError
+            ? 'error'
+            : isEmpty
+              ? 'empty'
+              : 'ready'
+      }
       xFormatter={granularity === 'intra' ? fmtMillisToTimeStamp : undefined}
     />
   )
@@ -56,19 +85,19 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
 // ---------------------------------------------------------------------------
 
 function mapApiPointsToCurve(data: EngagementScoreResultAPI | undefined): EngagementPoint[] {
-  if (!data || !data.EngagementCurve) return []
-  return data.EngagementCurve.map(toEngagementPoint)
+  if (!data || !data.engagement_curve) return []
+  return data.engagement_curve.map(toEngagementPoint)
 }
 
 function toEngagementPoint(p: EngagementPointAPI): EngagementPoint {
   return {
-    x: p.TimeMS,
-    paceTeam: p.PaceTeam,
-    paceAttendu: p.PaceAttendu,
-    paceJoueur: p.PaceJoueur,
-    paceLobby: p.PaceLobby,
-    isPassiveDeath: p.IsPassiveDeath,
-    postDeath: p.PostDeathFlag,
+    x: p.time_ms,
+    paceTeam: p.pace_team,
+    paceAttendu: p.pace_attendu,
+    paceJoueur: p.pace_joueur,
+    paceLobby: p.pace_lobby,
+    isPassiveDeath: p.is_passive_death,
+    postDeath: p.post_death_flag,
   }
 }
 
@@ -81,11 +110,11 @@ function fmtMillisToTimeStamp(ms: number): string {
 
 function buildSubtitle(data: EngagementScoreResultAPI | undefined): string | undefined {
   if (!data) return undefined
-  if (data.Confidence === 'insufficient_history') {
+  if (data.confidence === 'insufficient_history') {
     return 'Historique insuffisant — minimum 10 matchs requis'
   }
-  if (data.EngagementScore === null) return undefined
-  const p = Math.round(data.EngagementScore)
+  if (data.engagement_score == null) return undefined
+  const p = Math.round(data.engagement_score)
   if (p > 60) return `Au-dessus de votre habitude (P${p})`
   if (p < 40) return `Sous votre habitude (P${p})`
   return `Engagement normal (P${p})`

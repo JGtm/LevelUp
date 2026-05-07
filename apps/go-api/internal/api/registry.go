@@ -40,6 +40,7 @@ type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, er
 // ServiceRegistry centralise la construction des services métier.
 // Chaque méthode résout le joueur puis construit le service injecté.
 type ServiceRegistry struct {
+	cfg              *config.AppConfig
 	resolve          PlayerResolver
 	resolveByGT      duckdb.TitlePlayerResolver // résolution (titleSlug, gamertag) → PlayerDB pour Squad V2
 	provider         auth.TokenProvider
@@ -56,6 +57,7 @@ type ServiceRegistry struct {
 // Le titleSlug est lu depuis le contexte (ctxkeys.TitleSlug), fallback "halo_infinite".
 func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *ServiceRegistry {
 	return &ServiceRegistry{
+		cfg: cfg,
 		resolve: func(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
 			titleSlug := ctxkeys.TitleSlug(ctx)
 			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
@@ -312,7 +314,67 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
 		WithTitleSlug(pdb.TitleSlug)
+	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
+		svc = svc.WithFriendsExtras(loader)
+	}
 	return svc, nil
+}
+
+// buildFriendsExtrasResolver construit un loader d'extras per-friend pour le
+// panneau d'expander scoreboard (Match View). Lookup xuid → (titleSlug,
+// gamertag) depuis cfg.LoadPlayers, puis ouverture lazy de la player DB de
+// l'ami via le pool DuckDB (cached). Retourne nil si cfg indisponible (tests).
+func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) port.FriendsExtrasResolver {
+	if r.cfg == nil {
+		return nil
+	}
+	players, err := r.cfg.LoadPlayers(mainPDB.TitleSlug)
+	if err != nil {
+		slog.Warn("friends_extras: load players failed (resolver disabled)",
+			"titleSlug", mainPDB.TitleSlug, "err", err)
+		return nil
+	}
+	if len(players) == 0 {
+		return nil
+	}
+	friendsByXUID := make(map[string]service.FriendProfile, len(players))
+	for _, p := range players {
+		if p.XUID == "" || p.XUID == mainPDB.XUID {
+			continue
+		}
+		friendsByXUID[p.XUID] = service.FriendProfile{
+			XUID:      p.XUID,
+			Gamertag:  p.Gamertag,
+			TitleSlug: mainPDB.TitleSlug,
+		}
+	}
+	if len(friendsByXUID) == 0 {
+		return nil
+	}
+	cfg := r.cfg
+	opener := func(ctx context.Context, titleSlug, gamertag string) (service.FriendMatchExtrasRepo, error) {
+		// Trouve le slug du joueur depuis son gamertag (cfg.LoadPlayers).
+		ps, lerr := cfg.LoadPlayers(titleSlug)
+		if lerr != nil {
+			return nil, lerr
+		}
+		var slug string
+		for i := range ps {
+			if ps[i].Gamertag == gamertag {
+				slug = ps[i].PlayerSlug
+				break
+			}
+		}
+		if slug == "" {
+			return nil, fmt.Errorf("friends_extras: player not found gamertag=%q title=%q", gamertag, titleSlug)
+		}
+		pdb, perr := config.ResolvePlayer(ctx, cfg, slug, titleSlug)
+		if perr != nil {
+			return nil, perr
+		}
+		return duckdb.NewMatchViewRepo(pdb, pdb.XUID), nil
+	}
+	return service.NewFriendsExtrasResolver(friendsByXUID, opener)
 }
 
 // Engagement retourne un PlayerEngagementService pour le joueur.

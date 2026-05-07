@@ -68,6 +68,7 @@ export interface EngagementCurveProps {
 export function EngagementCurve(props: EngagementCurveProps) {
   const {
     title,
+    subtitle,
     points,
     xFormatter,
     granularity = 'intra',
@@ -83,10 +84,13 @@ export function EngagementCurve(props: EngagementCurveProps) {
     [points, granularity, xFormatter],
   )
 
-  // Series typee pour ChartCard (datapoints = nos points).
-  const series: ChartSeries<EngagementPoint>[] = [
-    { key: 'engagement', datapoints: points },
-  ]
+  // Series typee pour ChartCard. On la laisse vide quand state='empty' OU
+  // quand `points` est vide pour que ChartCard rende son emptyMessage au
+  // lieu d'un canvas blanc sans contexte.
+  const series: ChartSeries<EngagementPoint>[] =
+    state === 'empty' || points.length === 0
+      ? []
+      : [{ key: 'engagement', datapoints: points }]
 
   return (
     <ChartCard
@@ -94,6 +98,7 @@ export function EngagementCurve(props: EngagementCurveProps) {
       series={series}
       loading={state === 'loading'}
       error={state === 'error' ? new Error('error') : undefined}
+      emptyMessage={subtitle ?? "Aucune donnée d'engagement pour ce match"}
       height={height}
       buildOption={buildOption}
     />

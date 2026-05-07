@@ -37,7 +37,7 @@ describe('FieldMappingsResponse fallback chains', () => {
     locale: 'fr',
     fields: {
       kills: {
-        label: 'Éliminations',
+        label: 'Frags',
         storage_unit: 'count',
         display_unit: 'count',
         format: 'integer',
@@ -48,7 +48,7 @@ describe('FieldMappingsResponse fallback chains', () => {
   }
 
   it('retourne le label localisé pour une key connue', () => {
-    expect(sample.fields['kills']?.label).toBe('Éliminations')
+    expect(sample.fields['kills']?.label).toBe('Frags')
   })
 
   it('retourne undefined pour une key absente (caller fallback sur key)', () => {

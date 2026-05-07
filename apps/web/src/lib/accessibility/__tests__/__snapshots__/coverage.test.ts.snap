@@ -44,6 +44,8 @@ exports[`palette "cividis" > snapshot stable — toute modification doit être i
   "perf-tier-4": "#B6A855",
   "perf-tier-5": "#FEE838",
   "success": "#0072B2",
+  "team-ally": "#0072B2",
+  "team-enemy": "#D55E00",
   "warning": "#B6A855",
 }
 `;
@@ -92,6 +94,8 @@ exports[`palette "default" > snapshot stable — toute modification doit être i
   "perf-tier-4": "#F97316",
   "perf-tier-5": "#EF4444",
   "success": "#10B981",
+  "team-ally": "#3B82F6",
+  "team-enemy": "#EF4444",
   "warning": "#F59E0B",
 }
 `;
@@ -140,6 +144,8 @@ exports[`palette "okabe-ito" > snapshot stable — toute modification doit être
   "perf-tier-4": "#E69F00",
   "perf-tier-5": "#D55E00",
   "success": "#009E73",
+  "team-ally": "#0072B2",
+  "team-enemy": "#D55E00",
   "warning": "#E69F00",
 }
 `;
@@ -188,6 +194,8 @@ exports[`palette "tol-bright" > snapshot stable — toute modification doit êtr
   "perf-tier-4": "#FAB57F",
   "perf-tier-5": "#DC4A38",
   "success": "#228833",
+  "team-ally": "#4477AA",
+  "team-enemy": "#EE6677",
   "warning": "#CCBB44",
 }
 `;

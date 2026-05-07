@@ -629,9 +629,10 @@ func dropColumnIfExists(db *sql.DB, table, column string) error {
 	for rows.Next() {
 		var cid int
 		var name, typ string
-		var nn int
+		// DuckDB renvoie notnull/pk en bool. Driver récent refuse bool→int.
+		var nn bool
 		var dflt *string
-		var pk int
+		var pk bool
 		if err := rows.Scan(&cid, &name, &typ, &nn, &dflt, &pk); err != nil {
 			rows.Close()
 			return err

@@ -3441,6 +3441,30 @@ components:
           type: integer
         is_ally:
           type: boolean
+        ally_count:
+          type: integer
+          nullable: true
+        enemy_count:
+          type: integer
+          nullable: true
+        winrate_as_ally:
+          type: number
+          format: double
+          nullable: true
+        winrate_vs_enemy:
+          type: number
+          format: double
+          nullable: true
+        kills_dealt:
+          type: integer
+          nullable: true
+        deaths_suffered:
+          type: integer
+          nullable: true
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
 
     MatchTeamTab:
       type: object

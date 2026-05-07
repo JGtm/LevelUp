@@ -122,6 +122,11 @@ type MatchViewService struct {
 	// playerSlug : nécessaire pour les lookups socialRepo (clé de la table
 	// match_favorites). Injecté via WithSocial avec le slug courant.
 	playerSlug string
+	// friendsExtras (optionnel) : loader des extras per-friend pour le panneau
+	// d'expander scoreboard (perf score + skill rank + had_bot_teammate). Si
+	// nil, la section "Local" du panneau ne s'affiche que pour `is_me`.
+	// Cf. port.FriendsExtrasResolver et registry.MatchView.
+	friendsExtras port.FriendsExtrasResolver
 }
 
 // NewMatchViewService crée un MatchViewService.
@@ -159,6 +164,15 @@ func (s *MatchViewService) WithHighlightEventsRepo(r port.HighlightEventsReposit
 // avec ctxkeys.TitleSlug ou un fallback "halo_infinite".
 func (s *MatchViewService) WithTitleSlug(slug string) *MatchViewService {
 	s.titleSlug = slug
+	return s
+}
+
+// WithFriendsExtras injecte le loader d'extras per-friend (perf score +
+// skill rank + had_bot_teammate) pour le panneau d'expander du scoreboard.
+// Dégradation gracieuse si nil : section "Local" du panneau active seulement
+// pour le joueur principal (`is_me`).
+func (s *MatchViewService) WithFriendsExtras(loader port.FriendsExtrasResolver) *MatchViewService {
+	s.friendsExtras = loader
 	return s
 }
 
@@ -426,7 +440,22 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	rank := buildRankBlock(skillRank, s.assetURL)
 	summary := buildSummaryTabFull(stats, medals, expected, histRows, meta, s.titleSlug, richCitations)
 	combat := buildCombatTabFull(matchID, bulkWeapons, events, canonicalEvents, kvPairs, scoreboard, s.xuid, durationMS)
-	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid)
+	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
+	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
+	// → map vide (section "Local" inactive sauf pour `is_me`).
+	var friendsExtras map[string]port.FriendMatchExtras
+	if s.friendsExtras != nil {
+		xuids := make([]string, 0, len(scoreboard))
+		for _, sb := range scoreboard {
+			if sb.XUID != "" && sb.XUID != s.xuid {
+				xuids = append(xuids, sb.XUID)
+			}
+		}
+		if len(xuids) > 0 {
+			friendsExtras = s.friendsExtras(ctx, matchID, xuids)
+		}
+	}
+	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid, s.titleSlug, enrich, skillRank, friendsExtras)
 	mediaTab := buildMediaTab(media)
 
 	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/
@@ -1219,14 +1248,22 @@ func buildTeamTabFull(
 	bulkMedals []domain.BulkMedalRaw,
 	bulkWeapons []domain.BulkWeaponKillRaw,
 	myXUID string,
+	titleSlug string,
+	myEnrich *domain.MatchEnrichmentRaw,
+	mySkillRank *domain.SkillRankRaw,
+	friendsExtras map[string]port.FriendMatchExtras,
 ) domain.MatchTeamTab {
-	// Index bulk medals et weapons par XUID pour O(1).
+	// Index bulk medals et weapons par XUID pour O(1). Les ImageURL sont
+	// composés via static.URL pour permettre au front d'afficher les icônes
+	// dans le panneau d'expander du scoreboard (cf. Python
+	// match_view_scoreboard_detail.py).
 	medalsByXUID := make(map[string][]domain.PlayerMedalRow, len(scoreboard))
 	for _, m := range bulkMedals {
 		medalsByXUID[m.XUID] = append(medalsByXUID[m.XUID], domain.PlayerMedalRow{
-			MedalID: m.MedalID,
-			Count:   m.Count,
-			Label:   m.Label,
+			MedalID:  m.MedalID,
+			Count:    m.Count,
+			Label:    m.Label,
+			ImageURL: static.URL(static.KindMedal, titleSlug, strconv.FormatInt(m.MedalID, 10), ".png"),
 		})
 	}
 	weaponsByXUID := make(map[string][]domain.PlayerWeaponKillRow, len(scoreboard))
@@ -1235,6 +1272,7 @@ func buildTeamTabFull(
 			WeaponID: w.WeaponID,
 			Kills:    w.Kills,
 			Label:    w.WeaponLabel,
+			ImageURL: static.URL(static.KindWeapon, titleSlug, strconv.FormatInt(w.WeaponID, 10), ".png"),
 		})
 	}
 
@@ -1261,6 +1299,7 @@ func buildTeamTabFull(
 		row := domain.MatchScoreboardRow{
 			XUID:                s.XUID,
 			Gamertag:            s.Gamertag,
+			IsBot:               s.IsBot,
 			IsMe:                s.XUID == myXUID,
 			IsMVP:               extremes.MVPXUID != "" && s.XUID == extremes.MVPXUID,
 			IsLVP:               extremes.LVPXUID != "" && s.XUID == extremes.LVPXUID,
@@ -1299,6 +1338,32 @@ func buildTeamTabFull(
 		if s.TeamID != nil {
 			team := fmt.Sprintf("t%d", *s.TeamID)
 			row.TeamSide = &team
+		}
+		// Section "Local" du panneau d'expander : populée différemment selon
+		// que le joueur est `me` (depuis myEnrich + skillRank du contexte) ou
+		// un ami (depuis friendsExtras chargés via loader per-DB).
+		if row.IsMe {
+			if myEnrich != nil {
+				if myEnrich.PerformanceScore != nil {
+					v := *myEnrich.PerformanceScore
+					row.PerformanceScore = &v
+				}
+				// HadBotTeammate du main player : domain.MatchEnrichmentRaw
+				// ne l'expose pas directement (cf. Q18 actuel). Le front lit
+				// header.had_bot_teammate qui est rempli ailleurs (page card).
+			}
+			if mySkillRank != nil {
+				row.SkillRank = &domain.MatchScoreboardSkillRank{
+					RatingType:  mySkillRank.RatingType,
+					TierLabel:   mySkillRank.TierLabel,
+					RatingValue: mySkillRank.RatingValue,
+					RatingDelta: mySkillRank.RatingDelta,
+				}
+			}
+		} else if extras, ok := friendsExtras[s.XUID]; ok {
+			row.PerformanceScore = extras.PerformanceScore
+			row.HadBotTeammate = extras.HadBotTeammate
+			row.SkillRank = extras.SkillRank
 		}
 		rows = append(rows, row)
 	}
@@ -1348,13 +1413,29 @@ func convertEncounters(
 			// MV4.C fallback : seul le badge ordinal attribuable.
 			badges = buildEncounterBadgesFromRaw(e)
 		}
-		result = append(result, domain.MatchEncounterRow{
+		row := domain.MatchEncounterRow{
 			XUID:          e.XUID,
 			Gamertag:      e.Gamertag,
+			IsBot:         e.IsBot,
 			CountTogether: e.CountTogether,
 			IsAlly:        e.IsAlly,
 			Badges:        badges,
-		})
+		}
+		if hasStats {
+			ally, enemy := s.AllyCount, s.EnemyCount
+			kills, deaths := s.KillsDealt, s.DeathsSuffered
+			row.AllyCount = &ally
+			row.EnemyCount = &enemy
+			row.KillsDealt = &kills
+			row.DeathsSuffered = &deaths
+			row.WinrateAsAlly = encounterWinrate(s.WinsAsAlly, s.LossesAsAlly)
+			row.WinrateVsEnemy = encounterWinrate(s.WinsVsEnemy, s.LossesVsEnemy)
+			if !s.LastSeenAt.IsZero() {
+				ts := s.LastSeenAt
+				row.LastSeenAt = &ts
+			}
+		}
+		result = append(result, row)
 	}
 	return result
 }

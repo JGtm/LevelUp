@@ -42,7 +42,15 @@ top_weapons AS (
 )
 SELECT
     p.xuid,
-    COALESCE(vg.gamertag, p.gamertag, p.xuid)  AS gamertag,
+    -- Bots Halo : xuid au format "bid(N.0)" → on génère "343 Bot N" en clair
+    -- (cohérent avec la migration fix_bot_gamertags qui peuple xuid_aliases).
+    -- Sinon fallback gamertag : view (multi-matchs) → MP courant → xa → xuid.
+    CASE
+        WHEN p.xuid LIKE 'bid(%' THEN
+            '343 Bot ' || regexp_extract(p.xuid, 'bid\(([0-9]+)', 1)
+        ELSE COALESCE(vg.gamertag, p.gamertag, p.xuid)
+    END AS gamertag,
+    (p.xuid LIKE 'bid(%') AS is_bot,
     p.team_id,
     p.rank              AS rank_in_team,
     COALESCE(p.outcome, 0)         AS outcome,
@@ -387,10 +395,17 @@ LIMIT 1`
 //	?4 = myXUID (my_team), ?5 = myXUID (me.xuid=?).
 const Q23MatchEncounters = `
 WITH this_match AS (
-    SELECT p.xuid, p.team_id, COALESCE(xa.gamertag, p.xuid) AS gamertag
+    SELECT p.xuid, p.team_id,
+           COALESCE(vg.gamertag, p.gamertag, xa.gamertag, p.xuid) AS gamertag,
+           FALSE AS is_bot
     FROM shared.match_participants p
+    LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
     LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
-    WHERE p.match_id = ? AND p.xuid != ?
+    WHERE p.match_id = ?
+      AND p.xuid != ?
+      -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
+      -- "historique de rencontres" pertinent à afficher.
+      AND p.xuid NOT LIKE 'bid(%'
 ),
 my_team AS (
     SELECT team_id FROM shared.match_participants
@@ -400,13 +415,14 @@ my_team AS (
 SELECT
     tm.xuid,
     tm.gamertag,
+    tm.is_bot,
     COUNT(DISTINCT hist.match_id) AS count_together,
     (tm.team_id = (SELECT team_id FROM my_team)) AS is_ally
 FROM this_match tm
 LEFT JOIN shared.match_participants me ON me.xuid = ?
 LEFT JOIN shared.match_participants hist
     ON hist.match_id = me.match_id AND hist.xuid = tm.xuid
-GROUP BY tm.xuid, tm.gamertag, tm.team_id
+GROUP BY tm.xuid, tm.gamertag, tm.is_bot, tm.team_id
 ORDER BY count_together DESC`
 
 // Q23bMatchEncounterStats : stats riches par encounter (chunk MV4.C').
@@ -425,10 +441,15 @@ ORDER BY count_together DESC`
 //	?8 = myXUID  (kv join condition)
 const Q23bMatchEncounterStats = `
 WITH this_match AS (
-    SELECT p.xuid, p.team_id, COALESCE(xa.gamertag, p.xuid) AS gamertag
+    SELECT p.xuid, p.team_id,
+           COALESCE(vg.gamertag, p.gamertag, xa.gamertag, p.xuid) AS gamertag
     FROM shared.match_participants p
+    LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
     LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
-    WHERE p.match_id = ? AND p.xuid != ?
+    WHERE p.match_id = ?
+      AND p.xuid != ?
+      -- Bots exclus : pas d'historique cross-match pertinent (cf. Q23).
+      AND p.xuid NOT LIKE 'bid(%'
 ),
 my_team AS (
     SELECT team_id FROM shared.match_participants
@@ -445,11 +466,13 @@ encounter_history AS (
         tm.xuid,
         h.match_id,
         h.outcome AS me_outcome,
-        (h.team_id = hist.team_id) AS is_ally_in_hist
+        (h.team_id = hist.team_id) AS is_ally_in_hist,
+        COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS hist_start_time
     FROM this_match tm
     JOIN my_history h ON 1=1
     JOIN shared.match_participants hist
         ON hist.match_id = h.match_id AND hist.xuid = tm.xuid
+    LEFT JOIN shared.match_registry mr ON mr.match_id = h.match_id
 ),
 encounter_stats AS (
     SELECT
@@ -459,7 +482,8 @@ encounter_stats AS (
         COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND eh.me_outcome = 2 THEN eh.match_id END) AS wins_as_ally,
         COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND eh.me_outcome = 3 THEN eh.match_id END) AS losses_as_ally,
         COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND eh.me_outcome = 2 THEN eh.match_id END) AS wins_vs_enemy,
-        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND eh.me_outcome = 3 THEN eh.match_id END) AS losses_vs_enemy
+        COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND eh.me_outcome = 3 THEN eh.match_id END) AS losses_vs_enemy,
+        MAX(eh.hist_start_time) AS last_seen_at
     FROM encounter_history eh
     GROUP BY eh.xuid
 ),
@@ -483,7 +507,8 @@ SELECT
     COALESCE(es.wins_vs_enemy, 0) AS wins_vs_enemy,
     COALESCE(es.losses_vs_enemy, 0) AS losses_vs_enemy,
     COALESCE(kv.kills_dealt, 0) AS kills_dealt,
-    COALESCE(kv.deaths_suffered, 0) AS deaths_suffered
+    COALESCE(kv.deaths_suffered, 0) AS deaths_suffered,
+    es.last_seen_at
 FROM this_match tm
 LEFT JOIN encounter_stats es ON es.xuid = tm.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = tm.xuid
