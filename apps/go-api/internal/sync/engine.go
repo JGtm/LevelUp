@@ -801,7 +801,7 @@ func (e *SyncEngine) processMatch(
 
 	// ─── highlight_events + killer_victim_pairs ──────────────────────────────────────
 	if opts.WithHighlightEvents {
-		if err := processHighlightEvents(ctx, client, sharedDB, globalDB, matchID, result); err != nil {
+		if err := ProcessHighlightEvents(ctx, client, sharedDB, globalDB, matchID, result); err != nil {
 			// Non-bloquant : on logge et on continue (pas de return).
 			slog.WarnContext(ctx, "processMatch: highlight_events non chargés",
 				"gamertag", e.gamertag, "match_id", matchID, "err", err,
@@ -1053,10 +1053,12 @@ func insertHighlightEventsFromData(
 	return nil
 }
 
-// processHighlightEvents télécharge le chunk highlight events, le parse et
+// ProcessHighlightEvents télécharge le chunk highlight events, le parse et
 // insère les events + paires killer/victim dans la shared DB.
 // Retourne une erreur uniquement en cas de défaillance fatale (non-nil = warning dans processMatch).
-func processHighlightEvents(
+//
+// Exposé (majuscule) pour les outils de replay : cmd/replay_highlight_events.
+func ProcessHighlightEvents(
 	ctx context.Context,
 	client HaloClient,
 	sharedDB, globalDB *sql.DB,

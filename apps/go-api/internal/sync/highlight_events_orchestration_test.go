@@ -89,7 +89,7 @@ func TestProcessHighlightEvents_ZeroEventsFromNonEmptyChunk_FlagsAnomaly(t *test
 	// processHighlightEvents marque events_loaded en DB en cas de succès — on
 	// passe nil pour sharedDB et on s'attend à ce que la fonction return AVANT
 	// d'y toucher (puisque events==0).
-	err := processHighlightEvents(context.Background(), mock, nil, nil, "match-test-id", result)
+	err := ProcessHighlightEvents(context.Background(), mock, nil, nil, "match-test-id", result)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

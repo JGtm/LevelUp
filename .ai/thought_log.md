@@ -1,4 +1,52 @@
 
+## [2026-05-08] Highlight events — replay tool + fix InsertKillerVictimPairs (suite parser bit-aligné)
+
+**Statut** : Complété
+
+**Décision technique** : Suite au fix bit-aligné du parser (commit `64f6720b`), il fallait :
+1. **Réparer la dette historique** : 100 matchs récents avaient `events_loaded=TRUE` dans `match_registry` mais 0 row dans `highlight_events` — silencieusement perdus par l'ancien parser byte-aligné. Le `--force-events` annoncé dans le précédent thought_log s'est révélé non implémenté côté API (handler `warnUnimplemented` à `internal/api/handlers/backfill.go:278`), et `sync-delta` n'a pas ce flag. Heal logic gated sur `events_loaded=FALSE` ⇒ ces matchs ne reviennent jamais dans le pipeline.
+2. **Corriger un second bug latent** : `InsertKillerVictimPairsFromEvents` (writes.go) utilisait `INSERT OR IGNORE` que DuckDB rejette sur `killer_victim_pairs` (pas de PRIMARY KEY en prod : un row par kill event, pas par paire agrégée). Le code écrivait aussi seulement 4 colonnes sur 9 (manquait `killer_gamertag`, `victim_gamertag`, `time_ms`). Bug latent invisible avant le fix parser car aucun event n'arrivait jamais à cette fonction.
+
+**Fix en 4 axes** :
+
+1. **`cmd/replay_highlight_events`** (nouveau) : tool one-shot self-contained. Détecte les matchs cassés via deux critères OR :
+   - `events_loaded=TRUE` mais `NOT EXISTS highlight_events`
+   - `EXISTS highlight_events kill` mais `NOT EXISTS killer_victim_pairs` (capture la cassure secondaire kvp)
+   Pour chaque match : DELETE+INSERT idempotent via `clearEventsLoaded` puis `sync.ProcessHighlightEvents` (renommé public). Reporte stats par catégorie + delta du compteur expvar `highlight_events_parse_anomaly_total`.
+
+2. **Fix `writes.go::InsertKillerVictimPairsFromEvents`** : passage à idempotence par DELETE+INSERT (pas de PK donc OR IGNORE impossible), insertion des 7 colonnes pertinentes (`match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, time_ms, created_at`). Le schéma laisse `kill_count` à son DEFAULT 1 et `is_validated` à FALSE — les analytics utilisent déjà `SUM(kill_count)` qui aggrège correctement.
+
+3. **Mise à jour des schémas de tests** + migration `steps_shared.go` : `internal/sync/highlight_events_test.go` aligné sur le schéma prod (9 colonnes, pas de PK). Migration `CREATE TABLE IF NOT EXISTS killer_victim_pairs` aussi corrigée pour fresh installs (avant : 4 colonnes avec PK, qui aurait empêché plusieurs kills par paire). Pas d'impact sur les DBs existantes (prod déjà correctement structurée — la table avait été créée pré-migration).
+
+4. **Renommage `processHighlightEvents` → `ProcessHighlightEvents`** : exposé pour les outils externes (replay). Mise à jour des 3 call-sites internes.
+
+**Exécution sur la prod (DB JGtm)** :
+- Détection : 99 matchs cassés (sur 5000 derniers, limite par défaut)
+- Healed : 27 matchs (6303 events insérés + paires killer/victim correspondantes)
+- No-film (CDN purgé) : 72 matchs (irrécupérables, normal pour matchs > ~6 mois)
+- Parse anomaly : 0 (compteur expvar reste à 0)
+- Errors : 0
+
+Vérification post-replay sur les 10 matchs les plus récents : `highlight_events` entre 348 et 794 par match, `killer_victim_pairs` ≈ 50% du nombre de kill events (cohérent avec `ComputeKillerVictimPairs` qui produit 1 paire par couple kill/death à toleranceMS=5). Stat globale : 0 matchs `kills > 0 ∧ kvp = 0`.
+
+**Fichiers modifiés** :
+- `internal/sync/writes.go` — `InsertKillerVictimPairsFromEvents` réécrit (DELETE+INSERT, 7 colonnes)
+- `internal/sync/engine.go` — renommage `processHighlightEvents` → `ProcessHighlightEvents` + 1 call-site
+- `internal/sync/events_heal.go` — call-site mis à jour
+- `internal/sync/highlight_events_test.go` — schéma `killer_victim_pairs` aligné prod
+- `internal/sync/highlight_events_orchestration_test.go` — call-site mis à jour
+- `internal/migration/steps_shared.go` — `CREATE TABLE killer_victim_pairs` corrigé pour fresh installs
+- `cmd/replay_highlight_events/main.go` — nouveau, ~280L
+
+**Résultats CI** :
+- `go build ./...` OK
+- `go vet ./internal/... ./cmd/replay_highlight_events/` OK
+- `go test ./...` 100% pass
+
+**Cause racine du bug killer_victim_pairs** : `INSERT OR IGNORE` exige une PRIMARY KEY ou UNIQUE INDEX sur la table cible. Le schéma prod en a été dépourvu (table créée en amont des migrations Go). Le code Go a été porté de Python sans valider la PK. Latent jusqu'à ce que le fix parser commence à produire des events à insérer. **Règle qui découle** : pour toute fonction qui écrit dans une table avec OR IGNORE / ON CONFLICT, vérifier au moins une fois en intégration que la contrainte est bien appliquée — un test unitaire avec PK manuelle ne reproduit pas la prod.
+
+**Prochaine étape** : aucune urgence. Les 72 no-film sont définitivement perdus (films CDN Halo purgés). Si jamais le fix doit re-s'appliquer (nouveaux matchs sync ds futur), le pipeline normal `processFetchedMatch` → `insertHighlightEventsFromData` les traitera correctement avec le parser bit-aligné. Le compteur `highlight_events_parse_anomaly_total` reste l'alarme pour détecter une régression ou un nouveau changement de format Halo (v42, v43...).
+
 ## [2026-05-07] Highlight events parser — fix bit-aligné v41 + durcissement orchestration
 
 **Statut** : Complété

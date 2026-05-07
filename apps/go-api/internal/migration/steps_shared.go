@@ -113,12 +113,19 @@ func init() {
 					kills INTEGER DEFAULT 0,
 					PRIMARY KEY (match_id, xuid, weapon_id)
 				);
+				-- killer_victim_pairs : un row par kill event (pas par paire
+				-- agrégée), donc pas de PRIMARY KEY ; les analytics font
+				-- SUM(kill_count). Schéma aligné sur la prod historique.
 				CREATE TABLE IF NOT EXISTS killer_victim_pairs (
-					match_id VARCHAR,
-					killer_xuid VARCHAR,
-					victim_xuid VARCHAR,
-					created_at TIMESTAMP,
-					PRIMARY KEY (match_id, killer_xuid, victim_xuid)
+					match_id        VARCHAR NOT NULL,
+					killer_xuid     VARCHAR NOT NULL,
+					killer_gamertag VARCHAR,
+					victim_xuid     VARCHAR NOT NULL,
+					victim_gamertag VARCHAR,
+					kill_count      INTEGER DEFAULT 1,
+					time_ms         INTEGER,
+					is_validated    BOOLEAN DEFAULT FALSE,
+					created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
 				CREATE TABLE IF NOT EXISTS highlight_events (
 					id INTEGER PRIMARY KEY,
