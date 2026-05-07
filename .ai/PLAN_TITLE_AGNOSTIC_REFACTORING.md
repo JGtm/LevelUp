@@ -6,7 +6,7 @@
 
 **Branche cible** : `refactor/title-agnostic-services` (créée depuis `main` après merge de `feat/token-pool-parallel-sync`).
 
-**Statut** : v2.3 (2026-05-07) — Feature Matrix ajoutée en Phase 1.7 (data capabilities + feature capabilities + 3 états available/degraded/unavailable). Décisions D7+D8 actées. Décisions D1-D6 + Exit Gate strict + couverture/logging bloquants + validation finale `synthetic_test_title` E2E inchangés. Effort total : 47-63 j.
+**Statut** : v2.4 (2026-05-07) — Phase 1.8 ajoutée : outillage diagnostic Lab read-only + CLI + bouton export TOML draft via presse-papier. Décisions D9+D10 actées. Décisions D1-D8 + Phase 1.7 Feature Matrix + Exit Gate strict + couverture/logging bloquants + validation finale `synthetic_test_title` E2E inchangés. Effort total : 50-67 j.
 
 ---
 
@@ -139,12 +139,15 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 | **D6** | Stratégie de migration progressive (Phase 2) | Service par service en PR atomique : ancien path supprimé dans la même PR que la migration | Pas de feature flag (évite la dette « deux paths à maintenir »). Critère de mergeabilité par phase = service migré + tests passent |
 | **D7** | Granularité du status feature (Phase 1.7) | 3 états : `available` / `degraded` / `unavailable` + reason humaine. Une feature `degraded` rend des données partielles avec badge UI explicite | Permet de modéliser le cas réel : feature qui tourne avec subset (ex. `synthesis.weapon_breakdown` sans medals = OK mais moins riche). Plus nuancé qu'un binaire on/off |
 | **D8** | Source de la disponibilité data (Phase 1.7) | TOML déclaratif uniquement : l'opérateur du titre déclare `[data] match_events = true` dans `capabilities.toml`. Test CI de cohérence : pour chaque `data=true`, la table existe + a ≥ 1 row sur fixture `halo_full` | Simple, rapide, pas de query DB au boot. Le risque de dérive (TOML dit true mais table vide) est mitigé par le test de cohérence |
+| **D9** | Phasage de l'outillage diagnostic | Phase 1.8 dédiée (3-4 j) après Phase 1.7. 1.7 = modèle Feature Matrix + service d'application ; 1.8 = outillage diagnostic (port.TableInspector, page Lab, CLI). Permet de geler 1.7 indépendamment et de différer 1.8 si pas urgent | Sépare clairement le runtime (utilisé par les services produit) du tooling opérateur (utilisé une fois par titre ajouté). Exit Gate plus simple par phase |
+| **D10** | Mode d'export TOML draft depuis Lab | Copie presse-papier uniquement. Le bouton génère le bloc `[data]` formaté, l'opérateur colle manuellement dans `capabilities.toml` et fait `git commit` | Préserve le versioning Git (D8). Pas d'écriture serveur, pas de risque de conflits, audit trail = git log standard. L'opérateur reste le seul auteur du TOML |
 
 ### Tâches Phase 0
 
 - [ ] **Réviser ADR 0011** : ajouter section « v2 — confirmation post-plan title-agnostic » qui acte que canonical reste minimal et que le plan title-agnostic ne le contredit pas. Alternative : nouvel **ADR 0014 — title-agnostic services + Huma migration + DDL isolation** qui complète 0011.
 - [ ] **ADR 0015 (à créer)** : « Adoption de Huma pour OpenAPI 3.1 auto-généré ». Documente le choix vs swag/kin-openapi/Fuego, le coût (~80 handlers), les bénéfices long terme (validation auto, plus de YAML manuel).
 - [ ] **ADR 0016 (à créer)** : « Feature Matrix — capability cascading multi-titre ». Documente le modèle data capabilities + feature capabilities + arbre de dépendances + 3 états (available / degraded / unavailable). Décisions D7 et D8 justifiées.
+- [ ] **ADR 0017 (à créer)** : « Title Diagnostic — outillage Lab read-only ». Documente la séparation diagnostic (D9) + le choix copie presse-papier vs écriture serveur (D10). Pattern : TOML reste source de vérité Git, le Lab n'écrit jamais.
 - [ ] Créer la branche `refactor/title-agnostic-services` depuis `main`.
 - [ ] Ajouter ce plan en référence dans `CLAUDE.md` § Décisions architecturales.
 - [ ] Entrée `thought_log.md` documentant les 6 décisions et leur justification.
@@ -331,6 +334,95 @@ const status = useFeatureStatus("match_view.cadence");
 - `port.FeatureChecker` injecté dans tous les services qui ont une feature gated.
 - Route `GET /api/v1/title/feature_matrix` opérationnelle, snapshot stable.
 - Aucun service n'utilise `if titleSlug == "halo_infinite"` pour gater une feature (lint custom).
+
+### Phase 1.8 — Outillage diagnostic Lab (moyen, NOUVELLE)
+
+**Effort** : 3-4 jours
+**Risque** : faible (read-only, pas de mutation)
+**Livrable** : page Lab avec section « Title Capabilities Diagnostic » qui montre la réalité DB (rows count par table), la compare au TOML déclaré, expose les drifts. Bouton « Export TOML draft » qui copie un bloc `[data]` prêt à coller dans le presse-papier. CLI `levelup-titles diagnose` headless équivalent.
+
+#### 1.8.1 Workflow opérateur (ajout d'un titre)
+
+```
+1. Créer internal/games/halo_mcc/{adapter_data,adapter_semantic,ddl}/
+2. Créer config/titles/halo_mcc/capabilities.toml MINIMAL (tout false)
+3. Sync une fois → la DB se peuple
+4. Ouvrir Lab → "Title Capabilities Diagnostic" → titre = halo_mcc
+5. Voir le tableau "Réalité DB" : ce qui peuple vs ce qui est vide
+6. Cliquer "Export TOML draft" → presse-papier contient le bloc [data] correct
+7. Coller dans capabilities.toml, ajuster les commentaires, git commit
+```
+
+#### 1.8.2 Couches Go
+
+- [ ] `internal/domain/diagnostic/` : `DiagnosticReport`, `DataCapabilityStatus` (declared/actual/drift), `FeatureDiscrepancy`.
+- [ ] `internal/port/table_inspector.go` :
+  ```go
+  type TableInspector interface {
+      CountRows(ctx context.Context, slug, table string) (int64, error)
+      ListExpectedTables(slug string) []string  // depuis le mapping fields.toml
+  }
+  ```
+- [ ] `internal/port/title_diagnostic_service.go` :
+  ```go
+  type TitleDiagnosticService interface {
+      RunDiagnostic(ctx context.Context, slug string) (*DiagnosticReport, error)
+      GenerateTOMLDraft(ctx context.Context, slug string) (string, error)
+  }
+  ```
+- [ ] `internal/platform/duckdb/table_inspector.go` : impl. Utilise `PathResolver` pour atteindre la bonne DB par titre. Read-only.
+- [ ] `internal/service/title_diagnostic_service.go` : compose `TableInspector` + `FeatureChecker` (de Phase 1.7) + le mapping `fields.toml`. Calcule le drift et génère le TOML draft.
+- [ ] `internal/api/handlers/lab_diagnostic.go` : handler Huma `GET /api/v1/lab/title/{slug}/diagnostic` + `GET /api/v1/lab/title/{slug}/toml-draft`. Auth admin requise (réutilise middleware existant).
+- [ ] **Aucune écriture côté serveur** (cf. D10). Le bloc TOML est sérialisé en string et renvoyé tel quel.
+
+#### 1.8.3 CLI complémentaire
+
+- [ ] `cmd/levelup-titles/diagnose.go` : sous-commande qui appelle `service.RunDiagnostic` directement (pas via HTTP), output text-table (défaut) ou JSON (`--format=json`).
+
+```bash
+levelup-titles diagnose --slug halo_mcc
+# Output:
+# Data capabilities:
+#   match_events     declared=false  actual=true (1234 rows)  ← DRIFT
+#   match_skill      declared=true   actual=true   (567 rows) OK
+#   weapon_kills     declared=true   actual=false (0 rows)    ← DRIFT
+#
+# Features:
+#   match_view.cadence       calculated=unavailable  actual=available  ← UPGRADE
+#   synthesis.weapon_breakdown calculated=available actual=unavailable ← REGRESSION
+```
+
+#### 1.8.4 Frontend Lab section
+
+- [ ] Composant `apps/web/src/features/lab/TitleDiagnosticSection.tsx` :
+  - Selector titre (current title par défaut, switch possible si admin)
+  - Tableau `<DataCapabilitiesTable>` : key / declared / actual / drift / last sync
+  - Tableau `<FeatureDiscrepanciesTable>` : key / status calculé / status réel / discrepancy
+  - Bouton `<Button onClick={copyTomlDraft}>Export TOML draft →</Button>` qui :
+    - fetch `/api/v1/lab/title/{slug}/toml-draft`
+    - copie dans `navigator.clipboard.writeText(...)`
+    - toast "TOML draft copié — collez dans capabilities.toml"
+  - Aucun bouton qui écrit sur disque côté serveur (D10).
+- [ ] Tests Vitest : rendering correct des 3 états (no drift / drifts / vide), copie presse-papier mockée, hidden si user non admin.
+
+#### 1.8.5 Tests obligatoires
+
+- [ ] `title_diagnostic_service_test.go` : 4 scénarios — no drift, drift data only, drift feature only, cascade (data drift → feature drift propagé).
+- [ ] `table_inspector_test.go` : impl DuckDB sur `:memory:`, 3 cas (table absente / présente vide / présente avec rows).
+- [ ] Test handler Huma `lab_diagnostic_test.go` : auth admin requise (401 sans), réponse JSON conforme schema OpenAPI.
+- [ ] Test CLI `diagnose_test.go` : output stable sur fixtures (golden files).
+- [ ] Test frontend Vitest : `TitleDiagnosticSection.test.tsx` couvre les 3 états + le clipboard.
+
+#### 1.8.6 Logging spécifique
+
+- `slog.InfoContext(ctx, "title_diagnostic: report generated", "title", slug, "data_drifts", n, "feature_drifts", m)` à chaque run.
+- Pas de log Warn par drift individuel (bruit) — le rapport agrégé suffit.
+
+**Critère de complétion** :
+- Lab section opérationnelle, screenshot dans la PR.
+- CLI `levelup-titles diagnose` produit un output stable testable.
+- Aucun endpoint ne mute le TOML côté serveur (lint : pas de `os.WriteFile` dans handlers Lab).
+- Les 3 layers (port + service + impl + handler + frontend) testés indépendamment.
 
 ### Phase 2 — Repository abstrait par FieldKey (moyen)
 
@@ -788,6 +880,26 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 | Métriques expvar `feature_checker.status_count_by_status` exposées | NOT DONE | | | |
 | 12 items de §8.2 | NOT DONE | | | |
 
+### 8.56 Exit Gate Phase 1.8 — Outillage diagnostic Lab
+
+| Item | Statut | Date | Evidence | Validateur |
+|------|:-:|------|----------|:-:|
+| `internal/domain/diagnostic/` créé (DiagnosticReport, DataCapabilityStatus, FeatureDiscrepancy) | NOT DONE | | | |
+| `port.TableInspector` + `port.TitleDiagnosticService` interfaces créées | NOT DONE | | | |
+| Impl DuckDB `table_inspector.go` (read-only, count rows) | NOT DONE | | | |
+| Service `title_diagnostic_service.go` (compose TableInspector + FeatureChecker + fields mapping) | NOT DONE | | | |
+| Handler Huma `GET /api/v1/lab/title/{slug}/diagnostic` (auth admin) | NOT DONE | | | |
+| Handler Huma `GET /api/v1/lab/title/{slug}/toml-draft` (auth admin, retourne string) | NOT DONE | | | |
+| CLI `cmd/levelup-titles/diagnose.go` (output text-table + --format=json) | NOT DONE | | | |
+| Frontend `TitleDiagnosticSection.tsx` créé dans `apps/web/src/features/lab/` | NOT DONE | | | |
+| Bouton Export TOML draft : copie presse-papier OK, toast confirmation | NOT DONE | | | |
+| **Aucune écriture serveur** (lint : pas de `os.WriteFile` dans handlers Lab) | NOT DONE | | | |
+| Tests service : 4 scénarios (no drift / drift data / drift feature / cascade) | NOT DONE | | | |
+| Tests CLI : golden files sur fixture halo_full | NOT DONE | | | |
+| Tests Vitest : 3 états + clipboard mocké + hidden si non-admin | NOT DONE | | | |
+| Couverture `internal/service/title_diagnostic_service.go` ≥ 85% | NOT DONE | | | |
+| 12 items de §8.2 | NOT DONE | | | |
+
 ### 8.6 Exit Gate Phase 2 — `port.MatchFieldRepository` + 7 services migrés
 
 | Item | Statut | Date | Evidence | Validateur |
@@ -936,21 +1048,24 @@ Si une de ces zones doit être modifiée pour faire passer la PR, c'est que le p
 
 ---
 
-## 11. Effort total estimé (révisé v2.3 — Feature Matrix ajoutée)
+## 11. Effort total estimé (révisé v2.4 — Diagnostic Lab ajouté)
 
 - Phase 0 : 2-3 j
 - Phase 1 : 2-3 j
 - Phase 1.5 : 4-5 j
 - Phase 1.7 : 4-5 j (Feature Matrix : data + feature capabilities + 3 états)
+- Phase 1.8 : 3-4 j (Outillage diagnostic Lab + CLI + bouton export TOML)
 - Phase 2 : 5-7 j (incl. 1 j bench)
 - Phase 3a : 5-7 j (cleanup DTO)
 - Phase 3b : 13-18 j (migration Huma sur ~80 handlers, 4 groupes)
 - Phase 4 : 5-6 j
-- Phase 5 : 7-9 j (+1 j vs v2.2 : ajout `useFeatureStatus` + `<FeatureGate>`)
+- Phase 5 : 7-9 j
 
-**Total** : ~47-63 jours-personne, étalable sur 3-4 mois sans blocage du reste du dev.
+**Total** : ~50-67 jours-personne, étalable sur 3-4 mois sans blocage du reste du dev.
 
-**Fenêtre minimale viable** : Phases 0 → 3a = ~22-30 j → état « services title-agnostic + DTO propres + feature matrix opérationnelle, mais OpenAPI manuel ». Phase 3b (Huma) peut être différée d'un trimestre si le ROI n'est pas clair, MAIS dans ce cas le client TS front reste désynchronisé du back.
+**Fenêtre minimale viable** : Phases 0 → 3a = ~25-34 j → état « services title-agnostic + DTO propres + feature matrix opérationnelle + diagnostic Lab pour onboarding nouveau titre, mais OpenAPI manuel ». Phase 3b (Huma) peut être différée d'un trimestre si le ROI n'est pas clair, MAIS dans ce cas le client TS front reste désynchronisé du back.
+
+**Phase 1.8 peut être différée** sans bloquer Phase 2+ : c'est de l'outillage opérateur, pas une dépendance des services. Si l'urgence est de migrer les services, faire 0 → 1.7 → 2 directement et revenir à 1.8 plus tard.
 
 **ROI Huma seul** : validation auto, gen permanente, élimination de la dette OpenAPI manuel (qui se cumule à chaque feature). Décisif si le rythme d'ajout de routes reste soutenu (>10 routes/an).
 
@@ -993,6 +1108,13 @@ git checkout -b refactor/title-agnostic-services
 
 ## 14. Changelog
 
+- **v2.4 (2026-05-07)** :
+  - Décisions D9 + D10 actées (Phase 1.8 dédiée + export presse-papier).
+  - Phase 1.8 NOUVELLE : outillage diagnostic Lab read-only. Couches Go (domain/diagnostic, port.TableInspector, port.TitleDiagnosticService, impl DuckDB, handler Huma admin) + CLI `levelup-titles diagnose` + frontend `TitleDiagnosticSection` avec bouton « Export TOML draft » (copie presse-papier uniquement). Effort 3-4 j.
+  - ADR 0017 (Title Diagnostic) à créer en Phase 0.
+  - Exit Gate Phase 1.8 ajouté avec 15 items dont lint « pas d'`os.WriteFile` dans handlers Lab » (garde-fou D10).
+  - Effort total révisé : 50-67 j (vs 47-63 j v2.3).
+  - Note opérationnelle : Phase 1.8 peut être différée sans bloquer Phase 2+ (outillage opérateur, pas dépendance des services).
 - **v2.3 (2026-05-07)** :
   - Décisions D7 et D8 actées (3 états + TOML déclaratif).
   - Phase 1.7 NOUVELLE : Feature Matrix — modèle 2 niveaux (data capabilities + feature capabilities) + arbre de dépendances déclaratif TOML + 3 états (`available` / `degraded` / `unavailable` + reason). Algorithme de cascade au boot. Effort 4-5 j.

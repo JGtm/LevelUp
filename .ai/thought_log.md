@@ -1,4 +1,56 @@
 
+## [2026-05-07] Filtre médias non associés (toggle UnassignedOnly)
+
+**Statut** : Complété
+
+**Décision technique** : Toggle `unassigned_only` calqué sur le pattern `liked_only` existant. Bouton conditionnel (visible seulement si `total_unassigned > 0` ou filtre actif), avec badge numérique quand inactif. Couleur amber (exception CLAUDE.md §20 : warning/état système). SQL : clause `mma.match_id IS NULL` dans `buildQ37MediaWhereClause`. `TotalUnassigned` calculé via COUNT séparé en service (même section_filter, sans les autres critères actifs) → vrai compteur global indépendant des filtres courants.
+
+**Fichiers modifiés** : `domain/media.go`, `queries_home_citations.go`, `media_service.go`, `types.ts`, `media.toml`, `generated/media.ts`, `i18n.ts`, `MediaToolbar.tsx`, `MediaPage.tsx`.
+
+**Résultats** : `go build ./...` OK. Erreurs TS pre-existantes sur `PlayerDetailPanel.tsx` (expected_kills — commit 748938d), hors périmètre.
+
+**Prochaine étape** : commit sur `feat/token-pool-parallel-sync`.
+
+## [2026-05-07] Plan title-agnostic v2.4 — outillage diagnostic Lab (Phase 1.8)
+
+**Statut** : Complété (document seul, exécution à venir).
+
+**Contexte** : suite à la v2.3 qui a posé le modèle Feature Matrix, question opérateur — quand on ajoute Halo MCC, comment savoir quoi mettre dans `capabilities.toml` ? Aujourd'hui : l'opérateur devrait deviner ou faire des SQL à la main. Solution proposée et acceptée : section dédiée dans la page Lab pour visualiser la réalité DB et générer un TOML draft.
+
+**Décisions actées (D9 + D10)** :
+
+- **D9 — Phasage diagnostic** : Phase 1.8 dédiée (3-4 j) après Phase 1.7. Sépare le runtime (services produit consomment FeatureChecker) du tooling opérateur (utilisé une fois par titre ajouté). Permet de différer 1.8 si pas urgent. Refusé : fusionner dans 1.7 (phase trop dense, 25+ items Exit Gate) ; reporter à Phase 5 (désynchronise back/front).
+- **D10 — Mode d'export TOML draft** : copie presse-papier uniquement. Le bouton fetch `/api/v1/lab/title/{slug}/toml-draft`, copie via `navigator.clipboard.writeText`, l'opérateur colle manuellement dans le fichier et fait `git commit`. Préserve le versioning Git (D8). Refusé : écriture serveur direct (bypasse Git, conflits, audit trail flou) ; download fichier (étape supplémentaire inutile).
+
+**Architecture** :
+
+- Couches Go : `internal/domain/diagnostic/` (DiagnosticReport, DataCapabilityStatus, FeatureDiscrepancy) + `internal/port/table_inspector.go` (CountRows, ListExpectedTables) + `internal/port/title_diagnostic_service.go` (RunDiagnostic, GenerateTOMLDraft) + impl DuckDB read-only via PathResolver + service combinant TableInspector + FeatureChecker (de Phase 1.7) + handler Huma admin-auth `GET /api/v1/lab/title/{slug}/diagnostic` + handler `GET /api/v1/lab/title/{slug}/toml-draft`.
+- CLI complémentaire : `cmd/levelup-titles/diagnose.go` (sous-commande, output text-table ou JSON). Useful en CI / pre-deploy / scripts ops.
+- Frontend : `apps/web/src/features/lab/TitleDiagnosticSection.tsx` avec 2 tableaux (data capabilities + feature discrepancies) + bouton Export TOML draft (clipboard + toast).
+- **Aucune écriture côté serveur** : lint custom dans Exit Gate vérifie qu'il n'y a pas d'`os.WriteFile` dans les handlers Lab.
+
+**Workflow opérateur (concret) pour ajouter Halo MCC** :
+1. Créer dossier `internal/games/halo_mcc/` (adapters + ddl).
+2. Créer `capabilities.toml` minimal (tout `false`).
+3. Sync une fois pour peupler la DB.
+4. Ouvrir Lab → Title Capabilities Diagnostic → titre = halo_mcc.
+5. Voir le tableau : ce qui peuple vs ce qui est vide.
+6. Cliquer « Export TOML draft » → presse-papier contient le bloc `[data]` correct.
+7. Coller dans `capabilities.toml`, ajuster commentaires, `git commit`.
+
+**Bénéfices secondaires** :
+- Détection de régression : si une table devient vide (sync cassé), le diagnostic alerte. Combiné avec le test CI de cohérence TOML ↔ DB de Phase 1.7, double garde-fou.
+- Onboarding self-service : checklist visuelle au lieu de lire 4 README et faire des SQL à la main.
+- Audit : screenshot de la diagnostic page = preuve que la matrice est cohérente avant deploy.
+
+**Phasage** : Phase 1.8 (3-4 j) après Phase 1.7. Effort total révisé : 50-67 j (vs 47-63 j v2.3). Phase 1.8 différable sans bloquer Phase 2+.
+
+**ADR à créer** : 0017 « Title Diagnostic — outillage Lab read-only » documente D9 + D10. Pattern : TOML reste source de vérité Git, le Lab n'écrit jamais.
+
+**Conclusion / prochaine étape** : plan v2.4 figé pour exécution. Prochaine question potentielle : voulons-nous un mode « auto-generate capabilities.toml minimal » au boot quand un nouveau dossier `internal/games/<slug>/` est détecté sans TOML ? À garder en tête mais hors scope v2.4.
+
+---
+
 ## [2026-05-07] Plan title-agnostic v2.3 — Feature Matrix (capability cascading)
 
 **Statut** : Complété (document seul, exécution à venir).
