@@ -55,6 +55,10 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
     if (isEmpty) return null
   }
 
+  // Quand confidence === 'insufficient_history', coef = 1.0 (cold-start) =>
+  // pace_attendu = pace_team => courbes superposées => masquer Attendu.
+  const hideAttendu = query.data?.confidence === 'insufficient_history'
+
   return (
     <EngagementCurve
       title={title ?? 'Engagement'}
@@ -66,6 +70,7 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
       }
       points={points}
       granularity={granularity}
+      hideAttendu={hideAttendu}
       state={
         query.isLoading
           ? 'loading'

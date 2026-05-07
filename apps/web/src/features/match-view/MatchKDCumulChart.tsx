@@ -136,10 +136,7 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       const placedAbove: Placed[] = []
       const placedBelow: Placed[] = []
 
-      // chip text noir : structural, contraste WCAG AA sur fond bright
-      // (success/warning). Aligné sur la convention `narrative-*-text` qui
-      // résout aussi à #000000 sur okabe-ito.
-      const CHIP_TEXT_COLOR = '#000000'
+      const CHIP_TEXT_COLOR = '#000000' // color-allow: structural WCAG AA — chip text on bright chips
 
       type MarkPoint = Record<string, unknown>
       type MarkLineSeg = [Record<string, unknown>, Record<string, unknown>]
@@ -194,7 +191,7 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
           coord: [item.tMs, yAt],
           symbol: 'circle',
           symbolSize: 9,
-          itemStyle: { color: accent, borderColor: '#fff', borderWidth: 1.5 },
+          itemStyle: { color: accent, borderColor: '#fff', borderWidth: 1.5 }, // color-allow: structural SVG border on colored dot markers
           label: { show: false },
         })
         sinkMP.push({

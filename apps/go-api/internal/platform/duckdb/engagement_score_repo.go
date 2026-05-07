@@ -163,7 +163,7 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 				engagement_pace_team = ?,
 				engagement_pace_lobby = ?,
 				engagement_player_activity = ?
-			WHERE xuid = ? AND match_id = ?
+			WHERE match_id = ?
 		`
 		args = []any{
 			scoreArg,
@@ -173,7 +173,6 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 			result.MeanPaceTeam,
 			result.MeanPaceLobby,
 			result.PlayerActivity,
-			xuid,
 			matchID,
 		}
 	} else {
@@ -183,13 +182,12 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 				engagement_score = ?,
 				engagement_score_brut = ?,
 				engagement_score_confidence = ?
-			WHERE xuid = ? AND match_id = ?
+			WHERE match_id = ?
 		`
 		args = []any{
 			scoreArg,
 			result.ResidualBrut,
 			result.Confidence,
-			xuid,
 			matchID,
 		}
 	}
@@ -332,10 +330,10 @@ func (r *EngagementScoreRepo) HasEngagementScore(
 	const q = `
 		SELECT engagement_score IS NOT NULL
 		FROM player_match_enrichment
-		WHERE xuid = ? AND match_id = ?
+		WHERE match_id = ?
 	`
 	var has bool
-	err := r.pdb.ReadDB().QueryRow(ctx, q, xuid, matchID).Scan(&has)
+	err := r.pdb.ReadDB().QueryRow(ctx, q, matchID).Scan(&has)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -378,13 +376,12 @@ func (r *EngagementScoreRepo) LoadRatioSamples(
 			COALESCE(engagement_pace_lobby, 0),
 			COALESCE(engagement_player_activity, 0)
 		FROM player_match_enrichment
-		WHERE xuid = ?
-		  AND mode_category = ?
+		WHERE mode_category = ?
 		  AND engagement_pace_team IS NOT NULL
 		ORDER BY match_id DESC
 		LIMIT ?
 	`
-	rows, err := r.pdb.ReadDB().Query(ctx, q, xuid, modeCategory, limit)
+	rows, err := r.pdb.ReadDB().Query(ctx, q, modeCategory, limit)
 	if err != nil {
 		return nil, fmt.Errorf("EngagementScoreRepo.LoadRatioSamples: query: %w", err)
 	}
@@ -499,11 +496,10 @@ func buildEngagementHistoryQuery(f port.EngagementHistoryFilter) (string, []any)
 	sb.WriteString(`
 SELECT match_id, engagement_score_brut
 FROM player_match_enrichment
-WHERE xuid = ?
-  AND mode_category = ?
+WHERE mode_category = ?
   AND engagement_score_brut IS NOT NULL
 `)
-	args = append(args, f.XUID, f.ModeCategory)
+	args = append(args, f.ModeCategory)
 
 	if f.ExcludeMatchID != "" {
 		sb.WriteString("  AND match_id <> ?\n")
