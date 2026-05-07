@@ -4,7 +4,7 @@
  * Vérifie que les blocs ajoutés par fix/media-player-ux pour aligner sur
  * .ai/charts_specs/_generated/match_view/mock-echarts.html sont rendus :
  *   - Bandeau "Faits marquants" (MatchImpactBadgesBar)
- *   - match_view.09 — Frags / Morts cumulés
+ *   - match_view.09 — Frags cumulés par équipe
  *   - match_view.10 — Dominance par tranche de temps
  *   - match_view.11 — Cadence des frags
  *   - match_view.12 — Némésis et Souffre-douleur (cartes sombres)
@@ -81,7 +81,7 @@ test.describe('Match view — onglet Combat (refonte 2026-05-06)', () => {
       timeout: 10_000,
     })
     await expect(
-      page.getByText('Frags / Morts cumulés', { exact: false }),
+      page.getByText('Frags cumulés par équipe', { exact: false }),
     ).toBeVisible({ timeout: 10_000 })
     await expect(
       page.getByText('Dominance par tranche de temps', { exact: false }),

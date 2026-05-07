@@ -17,6 +17,8 @@ beforeEach(() => {
       theme: 'dark',
       colorPalette: 'default',
       lastPlayerSlugByTitle: {},
+      allyTeamColor: null,
+      enemyTeamColor: null,
     },
   })
 })

@@ -1,54 +1,77 @@
-# Thought Log
 
-## [2026-05-07] Vérification finale accessibility-palettes-v2 — couverture logging
+## [2026-05-07] feat(accessibility): couleurs d'équipe configurables (team-ally / team-enemy)
 
 **Statut** : Complété.
 
-**Contexte** : Vérification finale post-Phase C. Le `pickPalette` faisait un fallback **silencieux** sur `defaultPalette` quand la valeur `colorPalette` était inconnue (cas rollback localStorage). UX correcte (l'app ne plante pas) mais zéro trace pour le développeur si un bug introduit une régression.
+**Contexte** : L'utilisateur veut pouvoir définir dans les settings la couleur d'outline de son équipe et de l'équipe ennemie, calée sur les couleurs disponibles dans Halo Infinite, pour que les graphes agrégés équipe vs équipe respectent ses préférences visuelles.
 
-**Décisions techniques** :
+**Décision technique** : Ajout de 2 nouveaux tokens sémantiques `team-ally` / `team-enemy` dans le système d'accessibilité existant (semantic-tokens.ts + les 4 palettes). Les valeurs par défaut suivent l'axe bleu/rouge de chaque palette. Un store Zustand (settingsDraftStore) stocke les ids de couleur choisis. Le ThemeProvider injecte les CSS vars `--ac-team-ally` / `--ac-team-enemy` après `applyPalette()`, en écrasant les défauts palette par la sélection utilisateur. Quand la sélection est null, la valeur défaut palette est restaurée explicitement.
 
-1. **Ajout d'un `log.warn` dédupliqué** dans le `default:` du switch `pickPalette` ([palette-picker.ts](apps/web/src/app/providers/palette-picker.ts)) — utilise le logger namespacé existant `_logger.ts` qui déduplique par clé. Format : `pickPalette:unknown:<value>` pour qu'une même valeur invalide ne pollue pas la console à chaque render.
+**Fichiers créés/modifiés** :
+- `apps/web/src/lib/halo/outline-colors.ts` (NOUVEAU) — 16 couleurs Halo avec id + EN + FR + hex
+- `apps/web/src/lib/accessibility/semantic-tokens.ts` — +2 tokens
+- `apps/web/src/lib/accessibility/palettes/{default,okabe-ito,cividis,tol-bright}.ts` — +2 entrées chacune
+- `apps/web/src/stores/settingsDraftStore.ts` — +allyTeamColor/enemyTeamColor dans LocalUiPrefs
+- `apps/web/src/app/providers/theme-provider.tsx` — override CSS vars post-palette
+- `apps/web/src/features/settings/i18n.ts` — +5 clés FR+EN
+- `apps/web/src/features/settings/AccessibilityTab.tsx` — OutlineColorPicker avec swatches
 
-2. **2 tests supplémentaires** dans [theme-provider.test.ts](apps/web/src/app/providers/theme-provider.test.ts) :
-   - "logue un warn (dédupliqué) quand la valeur est inconnue" — 3 appels (`unknown` × 2 + `autre` × 1) → 2 logs (déduplication par clé).
-   - "ne logue rien sur les valeurs valides" — 4 appels valides → 0 log.
+**Résultat** : Section "Couleurs de jeu" dans l'onglet Accessibilité ; persistance localStorage ; applicable partout via `tokenCssVar('team-ally')` / `tokenCssVar('team-enemy')`.
 
-**Vérifications passées** :
-- TypeScript : 0 erreur.
-- ESLint : 0 erreur sur les fichiers Phase A/B/C (39 errors restants = dette pré-existante ailleurs dans le repo).
-- Vitest : 1317/1318 (+2 vs Phase C). Le seul échec = `SeasonPassPage.test.tsx` pré-existant.
-- Tailles fichiers : tous < 500 L (plus gros = `AccessibilityTab.tsx` à 156 L).
-- Aucun hex `#RRGGBB` hors `palettes/` (CLAUDE.md règle 20).
-- i18n FR + EN synchronisés (4 strings × 2 langues).
-
-**Couverture finale tests Phase A+B+C** :
-| Couche | Fichier | Tests |
-|---|---|---|
-| Palettes | `coverage.test.ts` | 16 (4 palettes × 4 invariants) |
-| Palettes | `wcagContrast.unit.test.ts` | 17 (helpers WCAG) |
-| Palettes | `wcagContrast.test.ts` | 20 (5 paires narratives × 4 palettes) |
-| Provider | `theme-provider.test.ts` | 7 (4 valides + 1 fallback + 2 logging) |
-| UI Settings | `AccessibilityTab.test.tsx` | 6 (4 options + 1 état initial + 1 preview) |
-| **Total nouveaux tests** | | **66** |
-
-**Conclusion / prochaine étape** : Branche `feat/accessibility-palettes-v2` complète et prête au merge. Plan A+B+C livré, plus durcissement logging. Le garde-fou WCAG AA est actif sur les 4 palettes — toute future régression de contraste casse la CI.
+**Prochaine étape** : Utiliser ces tokens dans les graphes qui distinguent équipe alliée / équipe ennemie (tug-of-war, score timeline…).
 
 ---
 
-## [2026-05-06] Phase C accessibilité — test contraste WCAG AA + corrections badges narratifs
+## [2026-05-07] match_view.10 — fix bars Mon équipe invisibles (delta net → absolus)
 
 **Statut** : Complété.
 
-**Contexte** : Phase C du plan `.ai/PLAN_ACCESSIBILITY_PALETTES_V2.md`. Implémentation des helpers WCAG 2.0 (relative luminance, contrast ratio, grade) + test automatique sur les 5 paires `narrative-{bg}/narrative-{text}` × 4 palettes (= 20 assertions).
+**Contexte** : L'utilisateur signale que les barres "Mon équipe" (bleues) sont invisibles dans le chart Tug-of-War. Seules les barres adversaires (rouges) s'affichent.
 
-**Décisions techniques** :
+**Cause racine** : Le backend `buildTugEvents` / `ComputeTugOfWar` renvoie un delta net (`kills_ally - kills_enemy`) par bin. La conversion en `team_kills` / `enemy_kills` dans la couche service est exclusive : si `Delta > 0` alors `team_kills = Delta, enemy_kills = 0` ; sinon `team_kills = 0, enemy_kills = -Delta`. Résultat : dans chaque bin où l'équipe adverse domine, `team_kills = 0` et aucune barre bleue n'est rendue.
 
-1. **Helpers WCAG 2.0** dans [apps/web/src/lib/accessibility/wcagContrast.ts](apps/web/src/lib/accessibility/wcagContrast.ts) (~70 lignes, zéro dépendance) : `relLuminance`, `contrastRatio`, `wcagGrade` (`'fail' | 'AA-large' | 'AA' | 'AAA'`). Implémente la formule officielle [W3C WCAG 2.0 § contrast-ratiodef](https://www.w3.org/TR/WCAG20/#contrast-ratiodef). S'inspire du repo `afonsolopez/colorblind` (port Go) sans l'importer.
+**Décision technique** : Recomputer `teamCounts` et `enemyCounts` côté frontend depuis `highlight_events` + résolution `team_side` via le scoreboard (logique déjà présente pour le scatter kill-feed). On combine la boucle qui était déjà utilisée pour les dots scatter avec le comptage per-bin. `bins.team_kills` / `enemy_kills` ne sont plus consommés pour les barres.
 
-2. **Tests unitaires** ([wcagContrast.unit.test.ts](apps/web/src/lib/accessibility/__tests__/wcagContrast.unit.test.ts)) : 17 cas — luminance noir/blanc/gris/court hex/invalide, ratio max/min/symétrique, grades sur tous les seuils.
+**Fichiers modifiés** :
+- `apps/web/src/features/match-view/MatchTugOfWarChart.tsx` : fusion boucle kills + comptage per-bin, suppression de la boucle doublon ; `barMax` calculé depuis les counts recomputés.
 
-3. **Test palettes** ([wcagContrast.test.ts](apps/web/src/lib/accessibility/__tests__/wcagContrast.test.ts)) : `describe.each(palettes)` × `it.each(NARRATIVE_PAIRS)` → 20 assertions. Premier run : **6 échecs détectés**, dont 5 réels (le 6e était une mauvaise valeur attendue dans mon test unitaire — corrigée). Le test fait précisément son boulot : empêcher les paires fond/texte de dériver sous AA.
+**Résultat** : `npx tsc --noEmit` → 0 erreur. Les deux équipes ont maintenant des counts absolus indépendants : les barres bleues et rouges sont simultanément visibles par bin.
+
+**Prochaine étape** : Validation visuelle en navigateur.
+
+---
+
+## [2026-05-07] match_view.09/10/11 — refonte fidèle au mock
+
+**Statut** : Complété.
+
+**Contexte** : Le user signale que les 3 charts en tête de l'onglet Combat ([apps/web/src/features/match-view/MatchKDCumulChart.tsx](../apps/web/src/features/match-view/MatchKDCumulChart.tsx), [MatchTugOfWarChart.tsx](../apps/web/src/features/match-view/MatchTugOfWarChart.tsx), [MatchCadenceChart.tsx](../apps/web/src/features/match-view/MatchCadenceChart.tsx)) ne ressemblent pas du tout au mock `.ai/charts_specs/_generated/match_view/mock-echarts.html`. Les commentaires des fichiers reconnaissaient même cette dérive ("volontairement plus simple que le mock"). Le user veut une fidélité 1:1 au mock.
+
+**Décision technique** : Reconstruire les 3 composants avec un `buildOption` ECharts inline via `ChartCard` (au lieu de passer par les wrappers `TimeseriesLineChart` / `BarStackedChart` qui ne supportent ni markPoint/markLine, ni double-grid). Les wrappers existants restent utilisables ailleurs ; ces 3 charts sont des cas spécifiques aux features très visuelles du mock.
+
+**Charts refondus** :
+
+1. **match_view.09 (KD cumulés + badges)** — 2 step-lines K/D (compare-a / outcome-loss) sur axe X temporel ms ; `markPoint` chip-rectangle pour chaque badge event-based de `combat_tab.impact_badges` (first_blood, top_gun, clutch_finisher, last_group_kill, first_group_death, last_casualty) ancré via `markLine` au point correspondant sur la courbe (kill ou death). Ton ally → token `success` (vert), ton enemy → token `warning` (orange). Stagger automatique des badges proches (<30s) pour éviter le chevauchement.
+
+2. **match_view.10 (Tug-of-war + kill feed)** — 2 grilles ECharts :
+    - Grille haute (70 %) : bars normalisées 100 % (mon équipe vs adversaires), `markPoint` counts au-dessus (team) et en dessous (enemy), `markLine` pointillée à 50 %, lane alliée à y=143 avec scatter des kills + streaks (Killing Spree ≥ 5 reconstituées par sliding window sur `highlight_events`).
+    - Grille basse (12 %) : lane ennemie à y=0 avec scatter + streaks ennemis.
+    - Position fractionnaire des dots dans chaque bin : `coord_x = binIdx - 0.5 + frac` (frac = position du kill dans la fenêtre temporelle du bin).
+
+3. **match_view.11 (Cadence + MA + PIC)** — bars empilées (mon équipe / adversaires) + 2 lignes lissées de moyenne mobile (window=3) + `markPoint` "PIC" sur le bin ayant le total max. Logique team_side identique à l'ancien code.
+
+**Cleanup** :
+- Helpers `kdCumulSeries`, `tugOfWarStackedSeries`, `cadenceTeamSeries` supprimés de [_chartSeries.ts](../apps/web/src/features/match-view/_chartSeries.ts) (plus utilisés — logique inline dans chaque chart). Tests correspondants retirés.
+- `formatBinSeconds`, `antagonistStackedSeries`, `allPlayersFragDiffSeries` conservés (toujours consommés par MatchFragDiffChart + MatchAntagonistChart).
+
+**Résultats** :
+- `npx tsc -b` exit 0
+- `npx vitest run src/features/match-view` → 49 tests passés (5 fichiers)
+- `npx eslint` sur les 3 charts + _chartSeries.ts → exit 0
+- `npx vite build` réussi
+
+**Conclusion** : Les 3 charts rendent maintenant la sémantique visuelle du mock (annotations, double-grid, MA, PIC). À tester visuellement en navigateur dans l'onglet Combat sur un match qui a `kd_timeline` + `tug_of_war` + `cadence` + `impact_badges` peuplés. Les couleurs d'accent vert (badge ally) viennent du token `success` (#009E73 sur palette okabe-ito) et non du #3DFFB5 du mock — choix conscient pour respecter la règle "aucun hex en dur dans features/".
+__/wcagContrast.test.ts)) : `describe.each(palettes)` × `it.each(NARRATIVE_PAIRS)` → 20 assertions. Premier run : **6 échecs détectés**, dont 5 réels (le 6e était une mauvaise valeur attendue dans mon test unitaire — corrigée). Le test fait précisément son boulot : empêcher les paires fond/texte de dériver sous AA.
 
 4. **5 corrections de palette pour passer AA** :
    - `default.narrative-humiliation` : `#8B5CF6` (violet-500) → `#7C3AED` (violet-600). Ratio blanc 4.05 → 5.6.

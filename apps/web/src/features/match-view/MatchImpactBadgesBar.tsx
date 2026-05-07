@@ -11,7 +11,6 @@
  * Aligne le rendu sur la branche main (badges + horodatage). La résolution
  * xuid → gamertag se fait via le scoreboard du match.
  */
-import { Badge } from '@/components/ui/badge'
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -82,31 +81,36 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
           Faits marquants
         </span>
         {sorted.map((b) => {
-          const meta = BADGE_META[b.key]
           const player = b.player_xuid ? xuidIndex.get(b.player_xuid) : undefined
           const gamertag = player?.gamertag ?? null
           const isMe = player?.is_me ?? false
           const time = formatTime(b.time_ms)
-          const variant = meta?.variant ?? 'outline'
           const description = badgeI18n.badgeDescriptions[b.key]
+          const hasSubline = gamertag !== null || time !== null
           return (
             <Tooltip
               key={`${b.key}:${b.player_xuid ?? 'anon'}`}
               content={description ? <span>{description}</span> : null}
             >
-              <Badge
-                variant={variant}
-                className={`gap-1 text-xs ${isMe ? 'ring-1 ring-primary/60' : ''}`}
+              <div
+                className={`flex flex-col gap-0.5 rounded-lg border bg-muted/40 px-3 py-2 ${
+                  isMe ? 'border-primary/60' : 'border-border'
+                }`}
               >
-                <BadgeIcon badgeKey={b.key} size={14} />
-                <span className="font-medium">{b.label}</span>
-                {gamertag && (
-                  <span className="text-muted-foreground">· {gamertag}</span>
+                <div className="flex items-center gap-1.5">
+                  <BadgeIcon badgeKey={b.key} size={14} />
+                  <span className="text-sm font-medium text-foreground leading-none">
+                    {b.label}
+                  </span>
+                </div>
+                {hasSubline && (
+                  <p className="text-xs text-muted-foreground leading-none tabular-nums">
+                    {gamertag ?? ''}
+                    {gamertag && time ? ' · ' : ''}
+                    {time ?? ''}
+                  </p>
                 )}
-                {time && (
-                  <span className="text-muted-foreground tabular-nums">· {time}</span>
-                )}
-              </Badge>
+              </div>
             </Tooltip>
           )
         })}

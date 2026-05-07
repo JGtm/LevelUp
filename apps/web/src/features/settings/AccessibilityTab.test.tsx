@@ -19,7 +19,14 @@ const T_STUB = {
   paletteTolBright: 'Tol Bright',
   paletteTolBrightDesc: 'Palette catégorielle Tol.',
   previewLabel: 'Aperçu',
+  teamColorsTitle: 'Couleurs de jeu',
+  teamColorsDescription: 'Couleurs outline Halo.',
+  allyColorLabel: 'Alliés',
+  enemyColorLabel: 'Ennemis',
+  teamColorDefault: 'Défaut',
 } as Parameters<typeof AccessibilityTab>[0]['t']
+
+const LOCALE = 'fr' as const
 
 beforeEach(() => {
   useSettingsDraftStore.setState((s) => ({
@@ -30,7 +37,7 @@ beforeEach(() => {
 
 describe('AccessibilityTab', () => {
   it('affiche les quatre options de palette', () => {
-    render(<AccessibilityTab t={T_STUB} />)
+    render(<AccessibilityTab t={T_STUB} locale={LOCALE} />)
     expect(screen.getByText('Standard (défaut)')).toBeTruthy()
     expect(screen.getByText('Okabe-Ito')).toBeTruthy()
     expect(screen.getByText('Cividis')).toBeTruthy()
@@ -38,7 +45,7 @@ describe('AccessibilityTab', () => {
   })
 
   it('sélectionne la palette default par défaut', () => {
-    render(<AccessibilityTab t={T_STUB} />)
+    render(<AccessibilityTab t={T_STUB} locale={LOCALE} />)
     const radios = screen.getAllByRole('radio')
     const defaultRadio = radios.find((r) => (r as HTMLInputElement).value === 'default')
     const okabeRadio = radios.find((r) => (r as HTMLInputElement).value === 'okabe-ito')
@@ -47,7 +54,7 @@ describe('AccessibilityTab', () => {
   })
 
   it('met à jour le store en cliquant sur Okabe-Ito', () => {
-    render(<AccessibilityTab t={T_STUB} />)
+    render(<AccessibilityTab t={T_STUB} locale={LOCALE} />)
     const radios = screen.getAllByRole('radio')
     const okabeRadio = radios.find((r) => (r as HTMLInputElement).value === 'okabe-ito')!
     fireEvent.click(okabeRadio)
@@ -55,7 +62,7 @@ describe('AccessibilityTab', () => {
   })
 
   it('met à jour le store en cliquant sur Cividis', () => {
-    render(<AccessibilityTab t={T_STUB} />)
+    render(<AccessibilityTab t={T_STUB} locale={LOCALE} />)
     const radios = screen.getAllByRole('radio')
     const cividisRadio = radios.find((r) => (r as HTMLInputElement).value === 'cividis')!
     fireEvent.click(cividisRadio)
@@ -63,7 +70,7 @@ describe('AccessibilityTab', () => {
   })
 
   it('met à jour le store en cliquant sur Tol Bright', () => {
-    render(<AccessibilityTab t={T_STUB} />)
+    render(<AccessibilityTab t={T_STUB} locale={LOCALE} />)
     const radios = screen.getAllByRole('radio')
     const tolRadio = radios.find((r) => (r as HTMLInputElement).value === 'tol-bright')!
     fireEvent.click(tolRadio)
@@ -71,7 +78,7 @@ describe('AccessibilityTab', () => {
   })
 
   it('affiche la section aperçu', () => {
-    render(<AccessibilityTab t={T_STUB} />)
+    render(<AccessibilityTab t={T_STUB} locale={LOCALE} />)
     expect(screen.getByText('Aperçu')).toBeTruthy()
   })
 })

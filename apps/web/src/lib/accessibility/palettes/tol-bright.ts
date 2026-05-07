@@ -109,4 +109,8 @@ export const tolBrightPalette: Palette = {
   'heatmap-hot':            TOL_BLUE,
   'heatmap-divergent-low':  TOL_RED,
   'heatmap-divergent-high': TOL_BLUE,
+
+  // ── Équipes — axe Blue/Red Tol Bright ─────────────────────────────────────
+  'team-ally':  TOL_BLUE, // overridable via settings accessibilité
+  'team-enemy': TOL_RED,  // overridable via settings accessibilité
 }

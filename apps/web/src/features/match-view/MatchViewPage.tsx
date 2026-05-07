@@ -100,7 +100,6 @@ export function MatchViewPage() {
   const highlightEvents = combat_tab.highlight_events ?? []
   const killerVictim = combat_tab.killer_victim ?? []
   const impactBadges = combat_tab.impact_badges ?? []
-  const kdTimeline = combat_tab.kd_timeline ?? []
   const tugOfWar = combat_tab.tug_of_war ?? []
 
   const meRow = scoreboard.find((r) => r.is_me)
@@ -195,20 +194,24 @@ export function MatchViewPage() {
           <>
             <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} />
 
-            <MatchKDCumulChart points={kdTimeline} t={t} />
+            <MatchKDCumulChart
+              events={highlightEvents}
+              badges={impactBadges}
+              scoreboard={scoreboard}
+              meXUID={meXUID}
+              t={t}
+            />
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <MatchTugOfWarChart bins={tugOfWar} t={t} />
-              <MatchCadenceChart
-                cadence={combat_tab.cadence}
-                scoreboard={scoreboard}
-                meXUID={meXUID}
-                t={t}
-              />
-            </div>
+            <MatchTugOfWarChart
+              bins={tugOfWar}
+              events={highlightEvents}
+              scoreboard={scoreboard}
+              meXUID={meXUID}
+              t={t}
+            />
 
-            <MatchNemesisCards
-              nemesis={nemesis}
+            <MatchCadenceChart
+              cadence={combat_tab.cadence}
               scoreboard={scoreboard}
               meXUID={meXUID}
               t={t}
@@ -221,6 +224,13 @@ export function MatchViewPage() {
               pairs={killerVictim}
               meXUID={meXUID}
               friendGamertags={friendGamertags}
+            />
+
+            <MatchNemesisCards
+              nemesis={nemesis}
+              scoreboard={scoreboard}
+              meXUID={meXUID}
+              t={t}
             />
 
             <EngagementMatchSection

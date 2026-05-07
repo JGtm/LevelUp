@@ -98,4 +98,8 @@ export const cividisPalette: Palette = {
   'heatmap-hot':            SAFE_BLUE,
   'heatmap-divergent-low':  SAFE_VERMILLION,
   'heatmap-divergent-high': SAFE_BLUE,
+
+  // ── Équipes — axe blue/vermillion CVD-safe ─────────────────────────────────
+  'team-ally':  SAFE_BLUE,       // overridable via settings accessibilité
+  'team-enemy': SAFE_VERMILLION, // overridable via settings accessibilité
 }
