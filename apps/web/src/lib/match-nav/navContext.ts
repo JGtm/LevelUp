@@ -35,18 +35,21 @@ export interface MatchFilterSpec {
   date_to?: string
   session_id?: string
   outcome?: MatchFilterOutcome
+  /** XUID du joueur (coéquipier) avec qui le match a été joué — Phase 2c. */
+  with_player_xuid?: string
 }
 
 /**
  * Sérialise un MatchFilterSpec en query string (sans le `?` initial).
  *
  * Mapping vers les noms de query params attendus par le handler Go :
- *   playlist_name → playlist
- *   mode_category → mode
- *   date_from     → from
- *   date_to       → to
- *   session_id    → session
- *   outcome       → outcome
+ *   playlist_name    → playlist
+ *   mode_category    → mode
+ *   date_from        → from
+ *   date_to          → to
+ *   session_id       → session
+ *   outcome          → outcome
+ *   with_player_xuid → with_player
  *
  * Retourne une chaîne vide si la spec est vide ou nulle.
  */
@@ -59,6 +62,7 @@ export function filterSpecToQueryString(spec: MatchFilterSpec | null | undefined
   if (spec.date_to) params.set('to', spec.date_to)
   if (spec.session_id) params.set('session', spec.session_id)
   if (spec.outcome) params.set('outcome', spec.outcome)
+  if (spec.with_player_xuid) params.set('with_player', spec.with_player_xuid)
   return params.toString()
 }
 
@@ -93,6 +97,12 @@ export function parseFilterSpecFromSearch(
   if (outcome === 'win' || outcome === 'loss' || outcome === 'draw' || outcome === 'dnf') {
     spec.outcome = outcome
   }
+  // with_player : XUID numérique uniquement (validation backend identique).
+  // Format Halo XUID : entier décimal jusqu'à 32 chars (ex: 2533274791785593).
+  const withPlayer = get('with_player')
+  if (withPlayer && /^\d{1,32}$/.test(withPlayer)) {
+    spec.with_player_xuid = withPlayer
+  }
 
   if (
     !spec.playlist_name &&
@@ -100,7 +110,8 @@ export function parseFilterSpecFromSearch(
     !spec.date_from &&
     !spec.date_to &&
     !spec.session_id &&
-    !spec.outcome
+    !spec.outcome &&
+    !spec.with_player_xuid
   ) {
     return null
   }
@@ -115,11 +126,50 @@ export type MatchNavSource =
   | 'citation'
   | 'media'
 
+/**
+ * `ContextDescriptor` — Phase 2c : description sémantique typée du contexte
+ * de navigation, utilisée pour construire un label compact dans la nav bar
+ * du match (`Matchs <ctx> X/Y`).
+ *
+ * Préféré à `filtersLabel` (chaîne libre) car :
+ *   - typé : aucune variante non couverte par i18n
+ *   - localisable côté target (le label est construit dans la locale du match)
+ *   - sérialisable / réplicable depuis n'importe quelle source (home, squad, …)
+ *
+ * Sources alimentant chaque variante :
+ *   - `recent` / `favorites`   : HomePage tuile match, Synthesis highlights
+ *   - `media`                  : MediaPage galerie + viewers
+ *   - `with_player`            : Squad v2 history table (focus coéquipier)
+ *   - `session`                : SessionDetailPage / Squad session table
+ *   - `period`                 : Explorer / MatchHistory avec filtre date
+ *   - `playlist` / `mode`      : Explorer / MatchHistory avec filtre simple
+ *   - `top_matches`            : Career top matches table
+ */
+export type ContextDescriptor =
+  | { kind: 'recent' }
+  | { kind: 'favorites' }
+  | { kind: 'media' }
+  | { kind: 'with_player'; gamertag: string }
+  | { kind: 'session'; startTimeUtc: string }
+  | { kind: 'period'; from?: string; to?: string }
+  | { kind: 'playlist'; name: string }
+  | { kind: 'mode'; category: string }
+  | { kind: 'top_matches' }
+
 export interface MatchNavContext {
   source: MatchNavSource
   /** Liste ordonnée chronologique DESC (récent en tête) — index 0 = match courant le plus récent. */
   matchIds: string[]
-  /** Texte humain pré-localisé. Affiché tel quel sous le compteur. */
+  /**
+   * Descriptor typé du contexte d'origine — Phase 2c.
+   * Préféré à `filtersLabel` ; le builder `buildDescriptorLabel` côté
+   * `match-view/i18n.ts` produit un label localisé compact.
+   */
+  contextDescriptor?: ContextDescriptor
+  /**
+   * Texte humain pré-localisé (legacy Phase 2a).
+   * Conservé pour compat ; ignoré si `contextDescriptor` est fourni.
+   */
   filtersLabel?: string
   /** Pré-rempli pour Phase 2b — filtres canoniques pour le fallback API. */
   filterSpec?: MatchFilterSpec

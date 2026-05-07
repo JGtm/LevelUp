@@ -25,7 +25,13 @@ import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { clearNavContext } from '@/lib/match-nav/navContext'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import { queryKeys } from '@/lib/query/keys'
-import { MATCH_VIEW_TEXT, buildContextLabel, type MatchViewLocale } from './i18n'
+import {
+  MATCH_VIEW_TEXT,
+  buildContextLabel,
+  buildDescriptorLabel,
+  type MatchViewLocale,
+} from './i18n'
+import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -102,7 +108,7 @@ interface MatchNavigationBarProps {
 export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigationBarProps) {
   const t = MATCH_VIEW_TEXT[locale]
   const navigateToMatch = useNavigateToMatch(playerSlug)
-  const { data: neighbors, source, contextLabel, navContext } =
+  const { data: neighbors, source, contextLabel, contextDescriptor, navContext } =
     useMatchNeighborsResolved(playerSlug, matchId)
 
   const goTo = useCallback(
@@ -121,7 +127,7 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
     // pour que le hook cascade retombe sur l'API globale propre.
     clearNavContext(matchId)
     const url = new URL(window.location.href)
-    for (const k of ['playlist', 'mode', 'from', 'to', 'session', 'outcome']) {
+    for (const k of ['playlist', 'mode', 'from', 'to', 'session', 'outcome', 'with_player']) {
       url.searchParams.delete(k)
     }
     window.history.replaceState({}, '', url.toString())
@@ -140,60 +146,69 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
 
   if (!neighbors) return null
 
-  const counter = t.matchCounter(neighbors.current_index + 1, neighbors.total_matches)
-  // Phase 2b : si source=api avec navContext.filterSpec (cas URL params),
-  // on construit un label localisé depuis filterSpec. Sinon on garde le
-  // contextLabel pré-localisé du source state/session.
+  // Cascade des labels (Phase 2c) :
+  //   1. ContextDescriptor typé (préféré, depuis state/sessionStorage)
+  //   2. filtersLabel pré-localisé legacy (Phase 2a)
+  //   3. buildContextLabel(filterSpec) côté API (Phase 2b, URL params)
+  // Si descriptor → format intégré "Matchs <ctx> X/Y" (matchCounterCtxFmt).
+  // Sinon → "Match X/Y" classique + chip contexte à droite.
+  const descriptorFragment = buildDescriptorLabel(contextDescriptor, locale)
   const apiContextLabel =
     source === 'api' && navContext?.filterSpec
       ? buildContextLabel(navContext.filterSpec, locale)
       : null
-  const effectiveLabel = contextLabel ?? apiContextLabel
-  const showContext = !!effectiveLabel
+  const fallbackLabel = contextLabel ?? apiContextLabel ?? null
+  const counter = descriptorFragment
+    ? t.matchCounterCtxFmt(descriptorFragment, neighbors.current_index + 1, neighbors.total_matches)
+    : t.matchCounter(neighbors.current_index + 1, neighbors.total_matches)
+  const showExit = !!descriptorFragment || !!fallbackLabel
 
   return (
-    <div className="flex flex-col gap-0.5 px-6 py-2">
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!neighbors.previous_match_id}
-          onClick={() => goTo(neighbors.previous_match_id)}
-          title={`${t.prevMatch} (←)`}
-          aria-label={t.prevMatch}
-          className="text-sm"
-        >
-          ← {t.prevMatch}
-        </Button>
-        <span className="text-xs font-medium tabular-nums text-muted-foreground">
-          {counter}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!neighbors.next_match_id}
-          onClick={() => goTo(neighbors.next_match_id)}
-          title={`${t.nextMatch} (→)`}
-          aria-label={t.nextMatch}
-          className="text-sm"
-        >
-          {t.nextMatch} →
-        </Button>
+    <div className="flex items-center justify-between gap-2 px-6 py-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!neighbors.previous_match_id}
+        onClick={() => goTo(neighbors.previous_match_id)}
+        title={`${t.prevMatch} (←)`}
+        aria-label={t.prevMatch}
+        className="text-sm"
+      >
+        ← {t.prevMatch}
+      </Button>
+      <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+        <span className="font-medium tabular-nums truncate">{counter}</span>
+        {!descriptorFragment && fallbackLabel && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="truncate">{fallbackLabel}</span>
+          </>
+        )}
+        {showExit && (
+          <>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              onClick={exitContext}
+              className="underline-offset-2 hover:text-foreground hover:underline"
+              title={t.exitContext}
+            >
+              ↩ {t.exitContext}
+            </button>
+          </>
+        )}
       </div>
-      {showContext && (
-        <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
-          <span>{effectiveLabel}</span>
-          <span aria-hidden="true">·</span>
-          <button
-            type="button"
-            onClick={exitContext}
-            className="underline-offset-2 hover:text-foreground hover:underline"
-            title={t.exitContext}
-          >
-            ↩ {t.exitContext}
-          </button>
-        </div>
-      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!neighbors.next_match_id}
+        onClick={() => goTo(neighbors.next_match_id)}
+        title={`${t.nextMatch} (→)`}
+        aria-label={t.nextMatch}
+        className="text-sm"
+      >
+        {t.nextMatch} →
+      </Button>
     </div>
   )
 }
@@ -461,7 +476,7 @@ export function MatchHeaderCard({
             </div>
           </div>
 
-          {/* Outcome row : Victoire · 87-62 */}
+          {/* Outcome row : Victoire · 87-62 · Domination */}
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="text-2xl font-bold" style={{ color: outcomeColor }}>
               {header.outcome_label}
@@ -477,6 +492,18 @@ export function MatchHeaderCard({
                 >
                   {header.score_label}
                 </span>
+              </>
+            )}
+            {header.dominance_badge && (
+              <>
+                <span className="text-2xl font-bold select-none text-muted-foreground">
+                  ·
+                </span>
+                <DominanceBadgeInline
+                  labelKey={header.dominance_badge.label_key}
+                  colorToken={header.dominance_badge.color_token}
+                  locale={locale}
+                />
               </>
             )}
           </div>
@@ -577,5 +604,30 @@ export function MatchHeaderCard({
         </div>
       </div>
     </div>
+  )
+}
+
+interface DominanceBadgeInlineProps {
+  labelKey: string
+  colorToken: string
+  locale: MatchViewLocale
+}
+
+function DominanceBadgeInline({ labelKey, colorToken, locale }: DominanceBadgeInlineProps) {
+  const entry = matchViewManifest[labelKey as MatchViewManifestKey]
+  const label = entry ? entry[locale] : labelKey
+  const color = tokenCssVar(colorToken as SemanticToken)
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide"
+      style={{
+        backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+        borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
+        color,
+      }}
+      data-testid="match-header-dominance-badge"
+    >
+      {label}
+    </span>
   )
 }

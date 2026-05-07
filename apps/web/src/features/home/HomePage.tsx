@@ -65,6 +65,8 @@ export function HomePage() {
     navigateToMatch(matchId, {
       source,
       matchIds: list.map((m) => m.match_id),
+      contextDescriptor:
+        source === 'home_recent' ? { kind: 'recent' } : { kind: 'favorites' },
     })
   }
 

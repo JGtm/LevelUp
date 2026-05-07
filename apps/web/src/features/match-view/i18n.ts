@@ -128,6 +128,20 @@ export interface MatchViewText {
   sbColDamageTaken: string
   sbColShotsHit: string
   sbColAccuracy: string
+  // Nav contextuelle — Phase 2c (descriptor → label compact)
+  ctxRecent: string
+  ctxFavorites: string
+  ctxMedia: string
+  ctxTopMatches: string
+  ctxWithPlayerFmt: (gamertag: string) => string
+  ctxSessionFmt: (date: string) => string
+  ctxPeriodFromToFmt: (from: string, to: string) => string
+  ctxPeriodFromFmt: (from: string) => string
+  ctxPeriodToFmt: (to: string) => string
+  ctxPlaylistFmt: (name: string) => string
+  ctxModeFmt: (category: string) => string
+  /** Compteur intégré : "Matchs récents 12/47" / "Recent matches 12/47". */
+  matchCounterCtxFmt: (label: string, n: number, total: number) => string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -242,6 +256,18 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColDamageTaken: 'Dégâts subis',
     sbColShotsHit: 'Tirs au but',
     sbColAccuracy: 'Précision',
+    ctxRecent: 'récents',
+    ctxFavorites: 'favoris',
+    ctxMedia: 'avec média',
+    ctxTopMatches: 'top performances',
+    ctxWithPlayerFmt: (gamertag) => `avec ${gamertag}`,
+    ctxSessionFmt: (date) => `de la session du ${date}`,
+    ctxPeriodFromToFmt: (from, to) => `de la période du ${from} au ${to}`,
+    ctxPeriodFromFmt: (from) => `depuis le ${from}`,
+    ctxPeriodToFmt: (to) => `jusqu'au ${to}`,
+    ctxPlaylistFmt: (name) => `en ${name}`,
+    ctxModeFmt: (category) => `en ${category}`,
+    matchCounterCtxFmt: (label, n, total) => `Matchs ${label} ${n}/${total}`,
   },
   en: {
     prevMatch: 'Previous match',
@@ -354,7 +380,24 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColDamageTaken: 'Damage taken',
     sbColShotsHit: 'Shots hit',
     sbColAccuracy: 'Accuracy',
+    ctxRecent: 'recent',
+    ctxFavorites: 'favorites',
+    ctxMedia: 'with media',
+    ctxTopMatches: 'top performances',
+    ctxWithPlayerFmt: (gamertag) => `with ${gamertag}`,
+    ctxSessionFmt: (date) => `from session of ${date}`,
+    ctxPeriodFromToFmt: (from, to) => `from period ${from} to ${to}`,
+    ctxPeriodFromFmt: (from) => `since ${from}`,
+    ctxPeriodToFmt: (to) => `until ${to}`,
+    ctxPlaylistFmt: (name) => `in ${name}`,
+    ctxModeFmt: (category) => `in ${category}`,
+    matchCounterCtxFmt: (label, n, total) => `${capitalize(label)} matches ${n}/${total}`,
   },
+}
+
+/** Capitalise la première lettre — utilisé par le builder EN. */
+function capitalize(s: string): string {
+  return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s
 }
 
 /**
@@ -403,3 +446,10 @@ export function buildContextLabel(
   if (spec.session_id) parts.push(`#${spec.session_id}`)
   return parts.join(' · ')
 }
+
+// Note Phase 2c (2026-05-07) : `buildDescriptorLabel` extrait dans
+// `./descriptorLabel.ts` pour respecter la limite de 500 lignes/fichier
+// (CLAUDE.md §5). `buildContextLabel` (au-dessus, fallback filterSpec)
+// reste ici car il dépend uniquement de MATCH_VIEW_TEXT et n'est pas
+// amené à grossir.
+export { buildDescriptorLabel } from './descriptorLabel'

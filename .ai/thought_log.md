@@ -1,4 +1,53 @@
 
+## [2026-05-07] Match View — Nav contextuelle Phase 2c (descriptor typé + ligne unique + with_player Go)
+
+**Statut** : Complété
+
+**Décision technique** : Le contexte de navigation entre matchs (compteur "Match X/Y") existait depuis Phase 2a/2b mais le label de contexte ("Classée", "Galerie médias") n'était presque jamais affiché : seuls Explorer / MatchHistory renseignaient `filterSpec` ou `filtersLabel`. Tous les autres call sites (Home tuiles, Synthesis highlights, Media galerie, Squad v2, Career top matches) propageaient bien `matchIds` mais sans description du contexte. L'utilisateur ne savait donc jamais pourquoi il avait "12/47" au lieu de "12/total_du_joueur".
+
+Solution en 3 phases :
+
+1. **Frontend lib match-nav** : ajout d'un type `ContextDescriptor` (discriminated union : `recent | favorites | media | with_player | session | period | playlist | mode | top_matches`) sur `MatchNavContext`. Préféré au `filtersLabel` (chaîne libre) : typé, localisable côté target, builder unique `buildDescriptorLabel(descriptor, locale)` dans `match-view/i18n.ts`.
+
+2. **MatchNavigationBar refondu en une seule ligne** : `[← Préc] Matchs <ctx> X/Y · ↩ Quitter [Suiv →]` au lieu du double-line compteur+chip. Le compteur intègre maintenant le descriptor via `matchCounterCtxFmt(label, n, total)` → "Matchs récents 12/47", "Matchs avec CoolMate 1/18", "Matchs de la session du 07/05/26 à 21:30 3/9". Cascade de fallback : descriptor (typé) > filtersLabel (legacy) > buildContextLabel(filterSpec) > compteur simple.
+
+3. **Backend Go — Phase 3 with_player_xuid** : ajout du champ `WithPlayerXuid *string` à `domain.MatchFilterSpec`, clause SQL `EXISTS (SELECT 1 FROM shared.match_participants mp2 WHERE mp2.match_id = mr.match_id AND mp2.xuid = ?)` dans `analysis.BuildNeighborsWhereClause`, parsing du query param `with_player` avec whitelist regex `^\d{1,32}$` côté handler. Permet à la bulle "Matchs avec X" de survivre Ctrl+Click / lien partagé / F5 (au-delà du TTL sessionStorage 1h).
+
+**Call sites branchés** : HomePage (recent/favorites), SynthesisHighlightsSection (recent), MediaPage (media), Squad v2 HistoryTable (with_player = premier coéquipier non-main de squadOrder), CareerTopMatchesTable (top_matches). Les call sites déjà avec `filterSpec` (ExplorerPage, MatchHistoryTable, SquadMatchHistoryTable) restent inchangés — la cascade prend le filterSpec en fallback descriptor absent.
+
+**Fichiers modifiés** :
+- Front : `lib/match-nav/{navContext.ts,useMatchNeighborsResolved.ts}`, `features/match-view/{i18n.ts,MatchHeader.tsx}`, 5 call sites + tests (MediaPage.test, MatchHeader.test, navContext.test, useMatchNeighborsResolved.test)
+- Go : `domain/match_filter.go`, `analysis/match_filter.go` (+test), `api/handlers/match_view.go` (+test)
+
+**Résultats** :
+- `go test ./...` : 100% pass (suite complète)
+- `go vet ./...` : OK
+- `tsc --noEmit` : OK
+- Vitest match-nav + match-view : 114/114 pass
+- Vitest suite complète : 1333/1334 pass (1 fail = `SeasonPassPage.test.tsx` pré-existant, non lié)
+- ESLint : 0 nouvelle erreur sur les fichiers modifiés
+
+**Prochaine étape** : valider visuellement la nouvelle nav bar en navigant depuis Home/Squad/Media ; vérifier que le label "Matchs avec X" est lisible quand le coéquipier a un long gamertag (truncation côté flex container OK). Le manifeste i18n `media.nav_context_label` reste en place (orphan tolérable, à nettoyer en lot lors d'un audit i18n manifests). Dette restante : `MatchHeader.tsx` à 633L (pré-existant, à découper en sous-modules `MatchNav.tsx` + `MatchHeaderCard.tsx` lors d'un refactor dédié).
+
+**Renforts post-audit (delivery-checklist + arch-rules)** :
+- Extraction de `buildDescriptorLabel` + helper `fmtShortDateTime` dans `apps/web/src/features/match-view/descriptorLabel.ts` (77L) pour ramener `i18n.ts` sous la limite 500L (514 → 455L).
+- Test unitaire direct `descriptorLabel.test.ts` : 27 cas couvrant tous les `kind` du discriminated union + dégradation gracieuse (gamertag/startTimeUtc absents) + format Intl FR/EN tolérant à la TZ (regex sur jour/mois/heure).
+- Test d'intégration repo `TestMatchViewRepo_GetMatchNeighborsFiltered_FilterWithPlayer` (build tag `integration`) : seed un coéquipier XUID 99 dans 3 matchs, vérifie le scope DESC restreint + cas combiné `with_player + outcome=loss` + match hors scope. 9/9 tests d'intégration neighbors passent.
+- Logging : `with_player` invalide log via `slog.WarnContext` côté handler, identique au pattern des autres filtres (param + value). Aucun `fmt.Println` introduit.
+- Multi-titres : `EXISTS shared.match_participants` est cross-titre par construction (table partagée), pas de check sur le slug.
+
+## [2026-05-07] Match View — Badge dominance dans le header (outcome · score · dominance)
+
+**Statut** : Complété
+
+**Décision technique** : Le composant `DominanceBadgePill` existait dans `MatchNarrativeSection.tsx` mais cette section n'est branchée nulle part dans `MatchViewPage.tsx` (uniquement importée par son test). Plutôt que de câbler toute la section narrative, ajouté une variante inline `DominanceBadgeInline` directement dans `MatchHeaderCard`, après le score. Ligne devient `Victoire · 87-62 · Domination`. Résolution i18n via `matchViewManifest[label_key][locale]` directement (pas de prop `resolveLabelKey` à threader). Couleur dérivée de `header.dominance_badge.color_token` via `tokenCssVar`.
+
+**Fichiers modifiés** : `apps/web/src/features/match-view/MatchHeader.tsx` (import manifest + JSX `· DominanceBadgeInline` après score + composant en bas de fichier).
+
+**Résultats** : `tsc --noEmit` OK, `MatchHeader.test.tsx` 11/11 OK.
+
+**Prochaine étape** : valider visuellement (alignement baseline du badge avec le texte 2xl outcome/score) ; brancher `MatchNarrativeSection` complet quand la section narrative sera intégrée à la page (radar + cadence + impact).
+
 ## [2026-05-07] Match View — Résolution mode + image map manquants (match 872cdd92)
 
 **Statut** : Complété

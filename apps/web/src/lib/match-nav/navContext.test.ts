@@ -214,4 +214,27 @@ describe('parseFilterSpecFromSearch', () => {
     const parsed = parseFilterSpecFromSearch(new URLSearchParams(qs))
     expect(parsed).toEqual(orig)
   })
+
+  it('with_player : XUID numérique valide est conservé', () => {
+    expect(
+      parseFilterSpecFromSearch({ with_player: '2533274791785593' }),
+    ).toEqual({
+      with_player_xuid: '2533274791785593',
+    })
+  })
+
+  it('with_player : non-numérique est rejeté silencieusement', () => {
+    expect(parseFilterSpecFromSearch({ with_player: 'abc123' })).toBeNull()
+    expect(
+      parseFilterSpecFromSearch({ playlist: 'Ranked', with_player: '<script>' }),
+    ).toEqual({ playlist_name: 'Ranked' })
+  })
+
+  it('round-trip with_player_xuid via toQueryString', () => {
+    const qs = filterSpecToQueryString({ with_player_xuid: '2533274791785593' })
+    expect(qs).toContain('with_player=2533274791785593')
+    expect(parseFilterSpecFromSearch(new URLSearchParams(qs))).toEqual({
+      with_player_xuid: '2533274791785593',
+    })
+  })
 })

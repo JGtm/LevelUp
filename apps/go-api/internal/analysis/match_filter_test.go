@@ -183,6 +183,27 @@ func TestBuildNeighborsWhereClause_SessionID_Ignored(t *testing.T) {
 	}
 }
 
+func TestBuildNeighborsWhereClause_WithPlayerXuid(t *testing.T) {
+	t.Parallel()
+	xuid := "2533274791785593"
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{WithPlayerXuid: &xuid},
+		fakeCategoryPrefixes,
+	)
+	if !strings.Contains(got.SQL, "EXISTS (SELECT 1 FROM shared.match_participants mp2") {
+		t.Errorf("SQL missing EXISTS clause: %q", got.SQL)
+	}
+	if !strings.Contains(got.SQL, "mp2.match_id = mr.match_id") {
+		t.Errorf("SQL missing match_id correlation: %q", got.SQL)
+	}
+	if !strings.Contains(got.SQL, "mp2.xuid = ?") {
+		t.Errorf("SQL missing xuid placeholder: %q", got.SQL)
+	}
+	if len(got.Args) != 1 || got.Args[0] != xuid {
+		t.Errorf("Args want [%s], got %v", xuid, got.Args)
+	}
+}
+
 func TestBuildNeighborsWhereClause_Combined(t *testing.T) {
 	t.Parallel()
 	pl := "Ranked Arena"

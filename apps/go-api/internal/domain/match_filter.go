@@ -20,6 +20,10 @@ type MatchFilterSpec struct {
 	DateTo       *time.Time `json:"date_to,omitempty"`
 	SessionID    *string    `json:"session_id,omitempty"`
 	Outcome      *string    `json:"outcome,omitempty"` // "win" | "loss" | "draw" | "dnf"
+	// WithPlayerXuid : restreint aux matchs où ce XUID était présent dans
+	// match_participants (Phase 2c — contexte "Matchs avec X" depuis Squad).
+	// Format : entier décimal (XUID Halo). Validation regex côté handler.
+	WithPlayerXuid *string `json:"with_player_xuid,omitempty"`
 }
 
 // IsEmpty retourne true si aucun champ n'est rempli.
@@ -34,5 +38,6 @@ func (s *MatchFilterSpec) IsEmpty() bool {
 		s.DateFrom == nil &&
 		s.DateTo == nil &&
 		s.SessionID == nil &&
-		s.Outcome == nil
+		s.Outcome == nil &&
+		s.WithPlayerXuid == nil
 }

@@ -26,6 +26,7 @@ import {
   parseFilterSpecFromSearch,
   readNavContext,
   resolveNeighborsFromContext,
+  type ContextDescriptor,
   type MatchFilterSpec,
   type MatchNavContext,
 } from './navContext'
@@ -70,8 +71,10 @@ export interface ResolvedNeighbors {
   isPending: boolean
   /** Origine du résultat — pour debug et UI conditionnelle. */
   source: ResolvedNeighborsSource
-  /** Label humain du contexte d'origine (si state/session). */
+  /** Label humain du contexte d'origine (legacy `filtersLabel`, si state/session). */
   contextLabel?: string
+  /** Descriptor typé du contexte d'origine — Phase 2c. Préféré à `contextLabel`. */
+  contextDescriptor?: ContextDescriptor
   /** Métadonnée brute du contexte d'origine (utile pour Phase 2b query params). */
   navContext?: MatchNavContext
 }
@@ -130,6 +133,7 @@ export function useMatchNeighborsResolved(
         isPending: false,
         source: stateCtx ? 'router-state' : 'session-storage',
         contextLabel: localCtx.filtersLabel,
+        contextDescriptor: localCtx.contextDescriptor,
         navContext: localCtx,
       }
     }

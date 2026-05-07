@@ -102,4 +102,17 @@ describe('useMatchNeighborsResolved', () => {
     // Le matchId 'inconnu' n'est pas dans matchIds → fallback API
     expect(result.current.source).toBe('api')
   })
+
+  it('expose contextDescriptor depuis le contexte router-state', () => {
+    stateCtxRef.current = {
+      ...histCtx,
+      contextDescriptor: { kind: 'with_player', gamertag: 'CoolMate' },
+    }
+    const { result } = renderHook(() => useMatchNeighborsResolved('me', 'm2'), { wrapper })
+
+    expect(result.current.contextDescriptor).toEqual({
+      kind: 'with_player',
+      gamertag: 'CoolMate',
+    })
+  })
 })

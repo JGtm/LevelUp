@@ -32,15 +32,15 @@ vi.mock('@/lib/match-nav/useNavigateToMatch', () => ({
   useNavigateToMatch: () => navigateToMatchMock,
 }))
 
-const resolvedRef: {
-  current: {
-    data: { previous_match_id: string | null; next_match_id: string | null; current_index: number; total_matches: number } | undefined
-    isPending: boolean
-    source: 'router-state' | 'session-storage' | 'api'
-    contextLabel?: string
-    navContext?: { source: string; matchIds: string[]; filtersLabel?: string }
-  }
-} = {
+type FakeResolved = {
+  data: { previous_match_id: string | null; next_match_id: string | null; current_index: number; total_matches: number } | undefined
+  isPending: boolean
+  source: 'router-state' | 'session-storage' | 'api'
+  contextLabel?: string
+  contextDescriptor?: import('@/lib/match-nav/navContext').ContextDescriptor
+  navContext?: { source: string; matchIds: string[]; filtersLabel?: string }
+}
+const resolvedRef: { current: FakeResolved } = {
   current: {
     data: { previous_match_id: 'prev-id', next_match_id: 'next-id', current_index: 1, total_matches: 4 },
     isPending: false,
@@ -285,5 +285,66 @@ describe('MatchNavigationBar', () => {
     expect(screen.getByText('Match 2/4')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Previous match' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Next match' })).toBeInTheDocument()
+  })
+
+  it('descriptor `recent` : compteur intégré "Matchs récents X/Y"', () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'p', next_match_id: 'n', current_index: 11, total_matches: 47 },
+      isPending: false,
+      source: 'router-state',
+      contextDescriptor: { kind: 'recent' },
+      navContext: { source: 'home_recent', matchIds: ['m1'] },
+    }
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
+    )
+    expect(screen.getByText('Matchs récents 12/47')).toBeInTheDocument()
+    // Pas de fragment "·" suivi du label brut puisque le descriptor est intégré
+    expect(screen.queryByText('Match 12/47')).toBeNull()
+    expect(screen.getByText(/↩ Sortir du contexte/)).toBeInTheDocument()
+  })
+
+  it('descriptor `with_player` : compteur intégré "Matchs avec X"', () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'p', next_match_id: 'n', current_index: 0, total_matches: 18 },
+      isPending: false,
+      source: 'router-state',
+      contextDescriptor: { kind: 'with_player', gamertag: 'CoolMate' },
+      navContext: { source: 'session', matchIds: ['m1'] },
+    }
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
+    )
+    expect(screen.getByText('Matchs avec CoolMate 1/18')).toBeInTheDocument()
+  })
+
+  it('descriptor `session` : intègre la date+heure courte', () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'p', next_match_id: 'n', current_index: 2, total_matches: 9 },
+      isPending: false,
+      source: 'router-state',
+      // 21:30 UTC le 7 mai 2026 — Intl FR rend "07/05/26 à 21:30" (ou heure locale ; le runner Vitest est en TZ stable)
+      contextDescriptor: { kind: 'session', startTimeUtc: '2026-05-07T21:30:00Z' },
+      navContext: { source: 'session', matchIds: ['m1'] },
+    }
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
+    )
+    // On vérifie le préfixe + la date + le total — l'heure dépend de la TZ du runner
+    expect(screen.getByText(/Matchs de la session du \d{2}\/\d{2}\/\d{2} à \d{2}:\d{2} 3\/9/)).toBeInTheDocument()
+  })
+
+  it('descriptor `recent` (EN) : "Recent matches X/Y" capitalisé', () => {
+    resolvedRef.current = {
+      data: { previous_match_id: 'p', next_match_id: 'n', current_index: 0, total_matches: 5 },
+      isPending: false,
+      source: 'router-state',
+      contextDescriptor: { kind: 'recent' },
+      navContext: { source: 'home_recent', matchIds: ['m1'] },
+    }
+    renderWithQueryClient(
+      <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="en" />,
+    )
+    expect(screen.getByText('Recent matches 1/5')).toBeInTheDocument()
   })
 })
