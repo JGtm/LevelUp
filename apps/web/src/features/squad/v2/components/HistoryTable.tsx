@@ -57,11 +57,19 @@ export function HistoryTable({ rows, squadOrder, locale, labels, playerSlug }: H
   // une chaîne vide — la navigation est juste no-op si on n'a pas le slug.
   const navigateToMatch = useNavigateToMatch(playerSlug ?? '')
 
+  // Coéquipiers = squadOrder moins le joueur principal. Le premier non-main
+  // alimente le descriptor `with_player` (label compact "avec X"). Si plusieurs
+  // coéquipiers, on retient le premier — le label reste lisible côté nav bar.
+  const focusTeammate = playerSlug ? squadOrder.find((gt) => gt !== playerSlug) : undefined
+
   function goToMatch(matchId: string) {
     if (!playerSlug) return
     navigateToMatch(matchId, {
       source: 'session',
       matchIds: rows.map((r) => r.match_id),
+      contextDescriptor: focusTeammate
+        ? { kind: 'with_player', gamertag: focusTeammate }
+        : undefined,
     })
   }
 

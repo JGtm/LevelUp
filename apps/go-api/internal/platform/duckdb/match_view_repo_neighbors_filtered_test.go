@@ -289,3 +289,73 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_EmptySpec_DelegatesToGlobal(t *
 	}
 	assertNeighbors(t, got, strPtr("n3"), strPtr("n5"), 4, 8)
 }
+
+// TestMatchViewRepo_GetMatchNeighborsFiltered_FilterWithPlayer
+// (Phase 2c) : restreint aux matchs où un coéquipier (XUID 99) était présent.
+// On insère le coéquipier dans n8, n6, n3 → sous-liste DESC [n8, n6, n3].
+//
+// Vérifie aussi le cas combiné with_player + outcome=loss (n6 seul match
+// perdu où le coéquipier était présent).
+func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterWithPlayer(t *testing.T) {
+	pdb := newTestPlayerDBForNeighborsScenario(t)
+	ctx := context.Background()
+
+	// Seed : insère un coéquipier (XUID "99") dans 3 matchs de pTestXUID.
+	// Le JOIN Q25 ne sélectionne que les rows mp.xuid=pTestXUID, donc ces
+	// participations supplémentaires n'affectent pas les autres tests qui
+	// utilisent la même factory — elles ne sont visibles que via la clause
+	// EXISTS (mp2) ajoutée par WithPlayerXuid.
+	const teammateXUID = "99"
+	const teammateGT = "CoolMate"
+	for _, mid := range []string{"n8", "n6", "n3"} {
+		_, err := pdb.Player.Exec(ctx,
+			`INSERT INTO shared.match_participants
+				(match_id, xuid, gamertag, outcome, team_id)
+				VALUES (?, ?, ?, 0, 0)`,
+			mid, teammateXUID, teammateGT,
+		)
+		if err != nil {
+			t.Fatalf("seed teammate %s: %v", mid, err)
+		}
+	}
+
+	repo := NewMatchViewRepo(pdb, pTestXUID)
+	xuid := teammateXUID
+	spec := &domain.MatchFilterSpec{WithPlayerXuid: &xuid}
+
+	// Sous-liste DESC [n8, n6, n3] :
+	//   n6 idx=1 → prev=n3, next=n8
+	got, err := repo.GetMatchNeighborsFiltered(ctx, pTestXUID, "n6", spec)
+	if err != nil {
+		t.Fatalf("filter with_player n6: %v", err)
+	}
+	assertNeighbors(t, got, strPtr("n3"), strPtr("n8"), 1, 3)
+
+	// n8 en tête → next=nil, prev=n6
+	got2, err := repo.GetMatchNeighborsFiltered(ctx, pTestXUID, "n8", spec)
+	if err != nil {
+		t.Fatalf("filter with_player n8: %v", err)
+	}
+	assertNeighbors(t, got2, strPtr("n6"), nil, 0, 3)
+
+	// Combiné with_player + outcome=loss : n6 = loss avec coéquipier (n7=loss
+	// est exclu car coéquipier absent). Reste 1 seul match dans le scope.
+	specCombined := &domain.MatchFilterSpec{
+		WithPlayerXuid: &xuid,
+		Outcome:        strPtr("loss"),
+	}
+	got3, err := repo.GetMatchNeighborsFiltered(ctx, pTestXUID, "n6", specCombined)
+	if err != nil {
+		t.Fatalf("combined with_player+outcome: %v", err)
+	}
+	assertNeighbors(t, got3, nil, nil, 0, 1)
+
+	// Match hors scope (n4 — coéquipier absent) → MatchNeighbors zero.
+	got4, err := repo.GetMatchNeighborsFiltered(ctx, pTestXUID, "n4", spec)
+	if err != nil {
+		t.Fatalf("with_player out of scope: %v", err)
+	}
+	if got4.TotalMatches != 0 {
+		t.Errorf("hors scope with_player : TotalMatches = %d, want 0", got4.TotalMatches)
+	}
+}

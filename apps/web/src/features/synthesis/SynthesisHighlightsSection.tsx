@@ -32,6 +32,7 @@ function HighlightRow({ item, playerSlug, groupMatchIds }: HighlightRowProps) {
             navigateToMatch(item.match_id, {
               source: 'home_recent',
               matchIds: groupMatchIds,
+              contextDescriptor: { kind: 'recent' },
             })
           }
           className="text-sm font-mono text-muted-foreground hover:text-foreground truncate bg-transparent border-none p-0 cursor-pointer"

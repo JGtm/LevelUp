@@ -47,6 +47,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
     navigateToMatch(matchId, {
       source: 'history',
       matchIds: filtered.map((m) => m.match_id),
+      contextDescriptor: { kind: 'top_matches' },
     })
   }
 

@@ -248,10 +248,10 @@ export function MediaPage() {
       navigateToMatch(matchId, {
         source: 'media',
         matchIds,
-        filtersLabel: text.navContextLabel,
+        contextDescriptor: { kind: 'media' },
       })
     },
-    [mediaItems, navigateToMatch, text.navContextLabel],
+    [mediaItems, navigateToMatch],
   )
 
   function handleKindChange(value: string) {

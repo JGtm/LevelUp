@@ -24,13 +24,14 @@ func buildReq(rawQS string) *http.Request {
 }
 
 func mustParse(t *testing.T, qs string) (out struct {
-	playlist *string
-	mode     *string
-	session  *string
-	outcome  *string
-	from     *time.Time
-	to       *time.Time
-	isEmpty  bool
+	playlist   *string
+	mode       *string
+	session    *string
+	outcome    *string
+	withPlayer *string
+	from       *time.Time
+	to         *time.Time
+	isEmpty    bool
 }) {
 	t.Helper()
 	req := buildReq(qs)
@@ -43,6 +44,7 @@ func mustParse(t *testing.T, qs string) (out struct {
 	out.mode = spec.ModeCategory
 	out.session = spec.SessionID
 	out.outcome = spec.Outcome
+	out.withPlayer = spec.WithPlayerXuid
 	out.from = spec.DateFrom
 	out.to = spec.DateTo
 	return
@@ -198,5 +200,43 @@ func TestParseNeighborsFilterSpec_TrimsWhitespace(t *testing.T) {
 	// strings.TrimSpace appliqué : doit retourner "Ranked"
 	if !ptrEq(r.playlist, "Ranked") {
 		t.Errorf("trim espaces : want 'Ranked' got %v", r.playlist)
+	}
+}
+
+func TestParseNeighborsFilterSpec_WithPlayer_Numeric(t *testing.T) {
+	r := mustParse(t, "with_player=2533274791785593")
+	if !ptrEq(r.withPlayer, "2533274791785593") {
+		t.Errorf("with_player numérique : want 2533274791785593, got %v", r.withPlayer)
+	}
+}
+
+func TestParseNeighborsFilterSpec_WithPlayer_NonNumeric_Rejected(t *testing.T) {
+	cases := []string{
+		"abc123",     // alphanumérique
+		"<script>",   // injection
+		"123-456",    // tiret
+		"123 456",    // espace
+		"1'; DROP--", // SQL injection
+	}
+	for _, raw := range cases {
+		raw := raw
+		t.Run(raw, func(t *testing.T) {
+			r := parseRawValue(t, "with_player", raw)
+			if !r.isEmpty {
+				t.Errorf("with_player=%q (invalid) : doit être ignoré, got playlist=%v", raw, r.playlist)
+			}
+		})
+	}
+}
+
+func TestParseNeighborsFilterSpec_WithPlayer_LengthLimit(t *testing.T) {
+	// XUID > 32 chars → rejeté
+	long := ""
+	for i := 0; i < 33; i++ {
+		long += "1"
+	}
+	r := mustParse(t, "with_player="+long)
+	if !r.isEmpty {
+		t.Errorf("with_player > 32 chars : doit être ignoré, got %v", r.withPlayer)
 	}
 }

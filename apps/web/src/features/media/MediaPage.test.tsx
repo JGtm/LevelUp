@@ -261,6 +261,7 @@ describe('MediaPage', () => {
     // Seuls les items AVEC match_id doivent être inclus (l'orphelin est filtré).
     expect(persisted.ctx.matchIds).toEqual(expect.arrayContaining(['m-A', 'm-B']))
     expect(persisted.ctx.matchIds).toHaveLength(2)
-    expect(persisted.ctx.filtersLabel).toBe('Galerie médias')
+    // Phase 2c : filtersLabel (chaîne libre) remplacé par contextDescriptor typé.
+    expect(persisted.ctx.contextDescriptor).toEqual({ kind: 'media' })
   })
 })

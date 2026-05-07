@@ -21,6 +21,10 @@ import (
 // paramètres préparés. Limite 64 chars (cf. plan Phase 2b §5).
 var playlistOrSessionPattern = regexp.MustCompile(`^[A-Za-z0-9 _:.\-]{1,64}$`)
 
+// xuidPattern : XUID Halo = entier décimal (jusqu'à 32 chars). Phase 2c
+// (with_player). Mêmes contraintes que côté front (parseFilterSpecFromSearch).
+var xuidPattern = regexp.MustCompile(`^\d{1,32}$`)
+
 // parseNeighborsFilterSpec : extrait MatchFilterSpec depuis r.URL.Query().
 // Tout filtre invalide est silencieusement ignoré + log warning. Jamais 400.
 //
@@ -82,6 +86,14 @@ func parseNeighborsFilterSpec(r *http.Request) *domain.MatchFilterSpec {
 		} else {
 			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
 				"param", "to", "value", v, "err", err)
+		}
+	}
+	if v := strings.TrimSpace(q.Get("with_player")); v != "" {
+		if xuidPattern.MatchString(v) {
+			spec.WithPlayerXuid = &v
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", "with_player", "value", v)
 		}
 	}
 	if spec.IsEmpty() {
