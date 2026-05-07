@@ -744,11 +744,9 @@ func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID 
 	var results []domain.EncounterRaw
 	for rows.Next() {
 		var enc domain.EncounterRaw
-		var isAllyInt int // DuckDB BOOLEAN scanné en int dans certains drivers
-		if err := rows.Scan(&enc.XUID, &enc.Gamertag, &enc.CountTogether, &isAllyInt); err != nil {
+		if err := rows.Scan(&enc.XUID, &enc.Gamertag, &enc.CountTogether, &enc.IsAlly); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters scan: %w", err)
 		}
-		enc.IsAlly = isAllyInt != 0
 		results = append(results, enc)
 	}
 	return results, rows.Err()
