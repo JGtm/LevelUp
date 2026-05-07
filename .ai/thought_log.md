@@ -1,4 +1,136 @@
 
+## [2026-05-07] Match View — Résolution mode + image map manquants (match 872cdd92)
+
+**Statut** : Complété
+
+**Décision technique** :
+Deux bugs corrigés côté API Go pour la page de détail match :
+
+1. **Image de map** : Le service utilisait `assetURL.MapImageURL(*meta.MapName)` (lookup par nom EN). Si `map_name` en DB est un UUID ou un label localisé, l'adapter renvoie `""`. Fix : `MatchViewRepo.lookupMapImageURL` interroge `map_images_registry` par `map_id` (UUID stable, même pattern que home_repo). Priorité dans le service : registry → adapter fallback.
+
+2. **Mode non normalisé** : Q13 ne lisait pas `pair_name_fr`. Quand `mode_name_tr` n'avait pas l'entrée EN normalisée, le service retombait sur `*meta.PairName` brut (ex : `"Slayer : Forbidden"`). Fix triple : (a) Q13 lit `r.pair_name_fr`, (b) `GetMatchMeta` utilise `pair_name_fr` comme fallback si `mode_name_tr` échoue, (c) le service utilise `NormalizeModeLabel(*meta.PairName)` plutôt que le label brut en dernier recours.
+
+**Résultats** : build clean, 2 nouveaux tests (`TestBuildMatchHeader_MapImageRegistry`, `TestBuildMatchHeader_ModeFallbackNormalized`), tous tests service passent.
+
+**Fichiers modifiés** : `queries_match.go` (Q13 + pair_name_fr), `domain/match_view.go` (PairNameFR + MapImageURL dans MatchMetaRaw), `match_view_repo.go` (scan + lookupMapImageURL + fallback pair_name_fr), `match_view_service.go` (priorité registry + normalisation mode fallback).
+
+## [2026-05-07] Match View — Scoreboard / Encounters cohérence visuelle + labels
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Wrapping section** : `MatchScoreboard` et `MatchEncountersTable` étaient enveloppés dans `<Card><CardContent>` avec un `<p className="mb-3 text-sm font-semibold">` en guise de titre — visuellement incohérent avec `EngagementMatchSection` qui s'appuie sur `ChartCard` (header bar `border-b border-border px-3 py-2 text-sm font-medium` dans une carte `rounded-lg border border-border bg-card overflow-hidden`). Aligné les deux composants sur ce pattern : suppression de `Card`/`CardContent`, header bar identique au pattern Engagement.
+2. **Bordures de grille** : passage à `border-collapse: collapse` côté `<table>`, avec `border-2 border-border` sur la table (extérieur 2px) et `border border-border` sur chaque `<th>`/`<td>` (1px entre cellules — la collapse fait que la bordure partagée reprend la plus large). En-tête de colonnes : ajout `border-b-2 border-border` sur les `<th>` pour marquer la frontière header/body. Le bandeau d'équipe (`<th colSpan>`) garde son `borderBottom` 2px team-color inline.
+3. **Renommages compactness** (Scoreboard) : "Folie meurtrière" → "Folie meurt.", "Outil de destruction" → "Outil de destr.", "Durée de vie moy." → "Vie moy.", "Résistance" → "Résist.", "Dmg/Frags" → "Dégâts/Frags". Étendu à `MatchStatCards` (carte "Vie moy.") pour cohérence cross-onglet. Hors scope : `i18n.ts` chartSpreeTitle / labelSpree (chart, plus d'espace), `match-card.tsx` "Résistance" (différente surface, pas demandé).
+
+**Fichiers modifiés** : `MatchScoreboard.tsx` (commentaire entête + 5 labels + wrapping + grille), `MatchEncountersTable.tsx` (wrapping + grille), `MatchStatCards.tsx` ("Vie moy.").
+
+**Résultats** : `tsc --noEmit` OK, vitest match-view + media (137 tests) OK, ESLint sans nouveau warning. Imports `Card`/`CardContent` supprimés des 2 composants (plus utilisés).
+
+**Prochaine étape** : valider visuellement en dev server avant merge ; vérifier que le `borderBottom` 2px team-color du bandeau d'équipe reste bien visible avec la table en `border-collapse` (la bordure partagée prend la plus large, donc 2px team color devrait masquer la 1px générique).
+
+---
+
+## [2026-05-07] Expander scoreboard — redesign UI + fix armes + médailles glow
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Weapon images KO** : `buildTeamTabFull` construisait `static.URL(KindWeapon, weaponID)` mais les fichiers sont nommés par `name_en` (ex. `BR75.png`). Fix : ajout `WeaponImageURL(nameEN string) string` à `TitleAssetURLAdapter` → propagé dans halo_infinite adapter (déjà implémenté), synthetic_title_b (noop), stubs test. `lookupWeaponMeta` (nouveau) retourne `label` + `nameEN`. `buildTeamTabFull` utilise désormais `assetURL.WeaponImageURL(w.NameEN)`.
+2. **Médailles difficulty** : `BulkMedalRaw` ne stockait pas `difficulty`. `GetMatchBulkMedals` utilisait `lookupMedalLabels` (citation_mappings only). Remplacé par `lookupMedalMeta` (medal_definitions + traductions + fallback citation_mappings). `BulkMedalRaw` + `PlayerMedalRow` ont maintenant `Difficulty`.
+3. **UI expander** : layout `grid grid-cols-2` → `flex flex-wrap gap-5`. Suppression des pilules par item. Armes : conteneur 64×28 px `object-contain` (harmonise paysage/portrait). Médailles : 32×32 avec `dropShadowForDifficulty`. Citations : `CitationProgressRing size=44`.
+
+**Fichiers modifiés** :
+- Go : `games/adapter.go`, `synthetic_title_b/adapter.go`, `resolver_test.go`, `match_view_dominance_test.go`, `domain/match_view.go`, `platform/duckdb/match_view_repo.go`, `service/match_view_service.go`
+- TS : `lib/api/types.ts`, `features/match-view/PlayerDetailPanel.tsx`
+
+**Prochaine étape** : Vérifier visuellement le rendu des images d'armes en dev.
+
+---
+
+## [2026-05-07] Scoreboard — surlignage best/worst + fix Précision
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Colonnes sans highlight** : `rank`, `score`, `avg_life_seconds` utilisaient des `ColumnDef` custom hors de `buildHighlightCols()` → `_cellStates[column.id]` = `undefined` → pas de style. Fix : ajout des 3 colonnes dans `buildHighlightCols()` + remplacement des custom defs par `hlDef()`. `rank` marqué `inverted: true` (rang 1 = meilleur).
+2. **Précision 4488%** : formatter `(v * 100).toFixed(1)%` doublement incorrect car `match_participants.accuracy` est stockée en 0..100 (pas 0..1). ADR 0006 dit "0..1 dans MatchView" mais c'est la cible (Proposed, pas implémenté). Fix : `v.toFixed(1)%`.
+3. **Frags parfaits** : déjà câblé (`hlDef`). Absence de highlight quand tous les joueurs ont la même valeur = comportement correct (`min === max` → `'neutral'`).
+
+**Fichiers modifiés** :
+- `apps/web/src/features/match-view/MatchScoreboard.tsx`
+
+**Prochaine étape** : ADR 0006 normalisation 0..1 côté Go (hors scope de cette session).
+
+---
+
+## [2026-05-07] Médias — nav contextuelle + fix Q24 cross-joueur
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Issue 2 (bug Q24)** : `match_view_service.GetMatchView` passait `s.xuid` à `GetMatchMedia`, mais Q24 filtrait sur `mf.player_slug` (qui stocke le **gamertag**, pas l'xuid — cf. `domain/media.go:107`, INSERT dans `ops/media.go:643`). Résultat : 0 média sur la page Match dès qu'on n'avait pas la chance que xuid == gamertag. Décision : **supprimer le filtre `player_slug`** dans Q24 puisque le feed média est cross-joueur (un coéquipier peut uploader un media pour ce match — il doit apparaître). Suppression du paramètre `playerSlug` de `port.MatchViewRepository.GetMatchMedia` + propagation aux 3 implémentations (MatchViewRepo, noopMatchViewRepo, mockMatchViewRepo).
+2. **Issue 1 (oubli)** : `MediaThumbnailCard` et `CoverFlowModal` utilisaient un `<a href>` direct → aucun `MatchNavContext` persisté → la barre nav du match retombait sur Q25 global (= 769 matchs). Ajout d'un prop optionnel `onOpenMatch?: (matchId: string) => void` sur les deux composants. Quand il est fourni, on substitue le `<a>` par un `<button>` qui le déclenche. `MediaPage` utilise désormais `useNavigateToMatch(playerSlug)` avec `source: 'media'`, `matchIds: dedup(mediaItems.match_id)`, `filtersLabel: text.navContextLabel`. Limite acceptée : la liste matchIds ne couvre que la page courante (≤ 24 entrées). `MatchMediaTab` ne passe pas le callback (déjà sur la page match — le lien est de toute façon supprimé via `currentMatchId === item.match_id`). Nouveau label i18n `media.nav_context_label` ("Galerie médias" / "Media gallery").
+
+**Fichiers modifiés** :
+- Backend : `queries_match.go` (Q24), `match_view_repo.go`, `match_view_service.go`, `port/repository.go`, `match_view_service_test.go`.
+- Frontend : `MediaViewer.tsx`, `CoverFlowModal.tsx`, `MediaPage.tsx`, `media.toml`, `generated/media.ts`, `i18n.ts`.
+
+**Résultats** : `go build`, `go vet`, `go test ./internal/service/...` et `./internal/platform/duckdb/...` OK. `tsc --noEmit` OK. Vitest media + MatchHeader = 79 tests OK.
+
+**Prochaine étape** : si besoin de couvrir > 24 médias dans la nav contextuelle, prévoir soit un endpoint dédié `media/match-ids` soit l'extension de `MatchFilterSpec` côté Q25 pour le filtre `with_media`.
+
+---
+
+## [2026-05-07] Correctifs onglet Équipe v3 — précision BDD + backfill engagement + fix migration
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Précision BDD** : TypeScript avait `shots_accuracy: number | null` mais Go sérialise `json:"accuracy"`. Le champ était toujours `null` côté frontend. Fix : renommer le champ TS en `accuracy`, l'ajouter à `buildHighlightCols()` avec format `(v * 100).toFixed(1) + '%'` (valeur 0..1 en DB), remplacer la colonne inline calculée par `hlDef('accuracy')`. Ajout de `expected_kills`/`expected_deaths` manquants dans `MatchScoreboardRow` TS (utilisés par `PlayerDetailPanel`).
+2. **Backfill engagement** : `backfill --all --engagement-scores --force` lancé → 1 557 matchs mis à jour (JGtm=715, Madina97294=473, Chocoboflor=348, XxDaemonGamerxX=21). Coefficients recomputed (1 mode chacun).
+3. **Fix migration `drop_assists_expected_halo_infinite`** : DuckDB 1.0 refuse `ALTER TABLE DROP COLUMN` quand des vues ou contraintes dépendent de la table (même avec CASCADE). Stratégie table-rename : `CREATE TABLE _mp_backup AS SELECT <colonnes dynamiques> FROM match_participants` → `DROP TABLE match_participants` (cascade-drop vues) → `CREATE TABLE match_participants AS SELECT ... FROM _mp_backup` → `ADD PRIMARY KEY` → `DROP TABLE _mp_backup` → recréation vues + index. Liste des colonnes conservées lue dynamiquement via `PRAGMA table_info`.
+
+**Fichiers modifiés** :
+- Frontend : `types.ts` (`accuracy`, `expected_kills`, `expected_deaths`), `MatchScoreboard.tsx` (hlDef accuracy), `MatchScoreboard.test.ts` (accuracy).
+- Backend : `steps_shared.go` (migration table-rename + helpers `dropAssistsExpectedShared`, `dropColumnCascadeIfExists`), import `strings`.
+- Binaire : `bin/levelup.exe` reconstruit.
+
+**Résultats** : `tsc --noEmit` OK, Vitest 1322 tests (1 fail SeasonPassPage pre-existant), `go vet ./internal/migration/...` OK. Backfill 1557 matchs OK.
+
+**Prochaine étape** : redémarrer le serveur Go pour que la migration soit appliquée au boot et que les paces soient reflétées dans l'API.
+
+---
+
+## [2026-05-07] Correctifs onglet Équipe v2 — reorder scoreboard + root cause engagement
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Engagement root cause** : `batchRecomputeCoefficients` ne peut calculer un coefficient que si `engagement_pace_team` est présent dans `player_match_enrichment`. Ces paces ne sont backfillées que via `RunBackfillEngagementScores` (flag `--engagement-scores`). Sans ce backfill, coefficient nil → `loadCoefsSafe` → 1.0 → `pace_attendu = pace_team`. **Fix utilisateur** : lancer `backfill --engagement-scores`. Le fix frontend `hideAttendu` est conservé comme garde-fou cold-start.
+2. **Scoreboard refactor** : suppression `useFieldMappings` ; `buildHighlightCols()` sans paramètres ; `columns` construit via helper `hlDef(key)` dans nouvel ordre ; `Précision` calculée client-side (shots_hit/shots_fired) ; `totalCols` → `columns.length` ; `fieldMappings` retiré de `TeamScoreboardProps`.
+
+**Fichiers modifiés** : `MatchScoreboard.tsx` (réécriture).
+
+---
+
+## [2026-05-07] Correctifs onglet Équipe (Match View)
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Engagement cold-start** : quand `confidence === 'insufficient_history'`, le coef reste 1.0 => `pace_attendu = pace_team`. Ajout de `hideAttendu?: boolean` sur `EngagementCurve` + passage depuis `EngagementMatchSection`. La série "Attendu" est omise du tableau `series` ECharts, évitant la superposition trompeuse.
+2. **Scoreboard** : suppression colonne "Résultat" + `totalCols` ajusté (-1) ; renommage `max_killing_spree` en "Folie meurtrière (max)" (override hard, plus fiable que `fieldMappings` qui peut varier) ; `whitespace-nowrap` déplacé des `<th>` vers les `<td>` pour que les headers multi-mots wrappent et que les lignes de données ne wrappent pas.
+3. **EncountersTable** : labels FR corrigés : "WR allié" → "Taux de victoire allié", "WR ennemi" → "Taux de victoire ennemi", "K/D croisé" → "ratio F/D croisé". Même traitement sur les `<th>` (retrait `whitespace-nowrap`).
+
+**Fichiers modifiés** : `EngagementCurve.tsx`, `EngagementMatchSection.tsx`, `MatchScoreboard.tsx`, `MatchEncountersTable.tsx`.
+
+**Résultats** : Pas de régression structurelle attendue. La colonne "Résultat" étant retirée, le `fieldMappings` import reste utilisé pour les autres colonnes.
+
+**Conclusion** : Tous les correctifs frontend. Aucun changement Go nécessaire.
+
+---
+
 ## [2026-05-07] Filtre médias non associés (toggle UnassignedOnly)
 
 **Statut** : Complété
