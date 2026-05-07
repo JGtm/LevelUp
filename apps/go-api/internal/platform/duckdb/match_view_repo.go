@@ -48,16 +48,23 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		&row.PlaylistAssetID,
 		&row.Team0Score,
 		&row.Team1Score,
+		&row.PairNameFR,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
 	}
 	if row.MapAssetID != nil {
 		row.MapNameFR = r.lookupMapNameFR(ctx, *row.MapAssetID)
+		row.MapImageURL = r.lookupMapImageURL(ctx, *row.MapAssetID)
 	}
 	if row.PairName != nil {
 		if modeEN := analysis.NormalizeModeLabel(*row.PairName); modeEN != "" {
 			row.ModeNameFR = r.lookupModeNameFR(ctx, modeEN)
+		}
+		// Fallback : si mode_name_tr ne contient pas ce mode EN, utiliser pair_name_fr
+		// stocké en DB (sync l'a parfois résolu directement côté client Halo).
+		if row.ModeNameFR == nil && row.PairNameFR != nil && strings.TrimSpace(*row.PairNameFR) != "" {
+			row.ModeNameFR = row.PairNameFR
 		}
 	}
 	if row.PlaylistAssetID != nil {
@@ -138,6 +145,32 @@ func (r *MatchViewRepo) lookupPlaylistNameFR(ctx context.Context, playlistAssetI
 		var name string
 		if err := rows.Scan(&name); err == nil && name != "" {
 			return &name
+		}
+	}
+	return nil
+}
+
+// lookupMapImageURL retourne l'URL de l'image de map depuis map_images_registry
+// par map_id (UUID stable). Pattern identique à home_repo.loadHomeMapImageURLs.
+// Nil si map_id absent du registry ou si metadata.duckdb indisponible.
+func (r *MatchViewRepo) lookupMapImageURL(ctx context.Context, mapAssetID string) *string {
+	if r.pdb.Metadata == nil {
+		return nil
+	}
+	const q = `
+		SELECT local_path FROM map_images_registry
+		WHERE title_id = ? AND map_id = ?
+		  AND TRIM(local_path) != ''
+		LIMIT 1`
+	rows, err := r.pdb.Metadata.Query(ctx, q, halo_infinite.TitleSlug, mapAssetID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var path string
+		if err := rows.Scan(&path); err == nil && path != "" {
+			return &path
 		}
 	}
 	return nil
@@ -506,6 +539,46 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) m
 	return result
 }
 
+type weaponMetaEntry struct {
+	label  string
+	nameEN string
+}
+
+// lookupWeaponMeta résout label (FR>EN) + name_en depuis weapon_labels.
+// name_en est nécessaire pour construire l'URL image via AssetURLAdapter.WeaponImageURL.
+func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64) map[int64]weaponMetaEntry {
+	result := map[int64]weaponMetaEntry{}
+	if len(weaponIDs) == 0 || r.pdb.Metadata == nil {
+		return result
+	}
+	unique := uniqueInt64s(weaponIDs)
+	parts := make([]string, len(unique))
+	for i, id := range unique {
+		parts[i] = fmt.Sprintf("%d", uint64(id)) //nolint:gosec
+	}
+	query := fmt.Sprintf( //nolint:gosec
+		`SELECT weapon_id,
+		        COALESCE(name_fr, name_en, CAST(weapon_id AS VARCHAR)) AS label,
+		        COALESCE(name_en, '') AS name_en
+		 FROM weapon_labels
+		 WHERE weapon_id IN (%s)`,
+		strings.Join(parts, ","),
+	)
+	rows, err := r.pdb.Metadata.Query(ctx, query)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id UBigint
+		var label, nameEN string
+		if err := rows.Scan(&id, &label, &nameEN); err == nil && label != "" {
+			result[id.Int64()] = weaponMetaEntry{label: label, nameEN: nameEN}
+		}
+	}
+	return result
+}
+
 // lookupMedalLabels est conservé pour les usages internes (bulk scoreboard).
 func (r *MatchViewRepo) lookupMedalLabels(ctx context.Context, medalIDs []int64) map[int64]string {
 	return lookupLabelsByID(
@@ -806,8 +879,8 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 }
 
 // GetMatchMedia retourne les médias associés au match (Q24).
-// Utilise shared_social DB.
-func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID, playerSlug string) ([]domain.MediaAssocRaw, error) {
+// Utilise shared_social DB. Cross-joueur : tous les auteurs sont retournés.
+func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]domain.MediaAssocRaw, error) {
 	if r.pdb.SharedSocial == nil {
 		return nil, nil
 	}
@@ -815,9 +888,13 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID, playerSlug s
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.SharedSocial.Query(ctx, Q24MatchMedia, matchID, playerSlug)
+	rows, err := r.pdb.SharedSocial.Query(ctx, Q24MatchMedia, matchID)
 	if err != nil {
-		// Absence de la table ou DB non configurée → résultat vide sans erreur bloquante
+		// Absence de la table ou DB non configurée → résultat vide sans erreur
+		// bloquante. On loggue tout de même : un échec récurrent ici masquerait
+		// silencieusement un bug d'index (cf. incident 2026-05-07 Q24).
+		slog.WarnContext(ctx, "match_view: Q24 query échouée — médias indisponibles",
+			"match_id", matchID, "err", err)
 		return nil, nil //nolint:nilerr
 	}
 	defer rows.Close()
@@ -890,10 +967,11 @@ func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) 
 		return nil, err
 	}
 
-	labels := r.lookupMedalLabels(ctx, medalIDs)
+	metas := r.lookupMedalMeta(ctx, medalIDs)
 	for i := range results {
-		if label, ok := labels[results[i].MedalID]; ok {
-			results[i].Label = label
+		if m, ok := metas[results[i].MedalID]; ok {
+			results[i].Label = m.label
+			results[i].Difficulty = m.difficulty
 		} else {
 			results[i].Label = strconv.FormatInt(results[i].MedalID, 10)
 		}
@@ -986,10 +1064,11 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 		weaponIDs = append(weaponIDs, k.wid)
 	}
 
-	labels := r.lookupWeaponLabels(ctx, weaponIDs)
+	weapMeta := r.lookupWeaponMeta(ctx, weaponIDs)
 	for i := range results {
-		if label, ok := labels[results[i].WeaponID]; ok {
-			results[i].WeaponLabel = label
+		if m, ok := weapMeta[results[i].WeaponID]; ok {
+			results[i].WeaponLabel = m.label
+			results[i].NameEN = m.nameEN
 			continue
 		}
 		// Fallback : weapon_id en string pour les variantes absentes de

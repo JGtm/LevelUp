@@ -301,10 +301,11 @@ type MatchCombatTab struct {
 
 // PlayerMedalRow : médaille d'un joueur dans un match (expander scoreboard).
 type PlayerMedalRow struct {
-	MedalID  int64  `json:"medal_id"`
-	Count    int    `json:"count"`
-	Label    string `json:"label,omitempty"`
-	ImageURL string `json:"image_url,omitempty"`
+	MedalID    int64  `json:"medal_id"`
+	Count      int    `json:"count"`
+	Label      string `json:"label,omitempty"`
+	ImageURL   string `json:"image_url,omitempty"`
+	Difficulty string `json:"difficulty,omitempty"`
 }
 
 // PlayerWeaponKillRow : kills par arme d'un joueur dans un match (expander scoreboard).
@@ -328,13 +329,13 @@ type MatchScoreboardSkillRank struct {
 
 // MatchScoreboardRow : ligne du scoreboard.
 type MatchScoreboardRow struct {
-	XUID             string   `json:"xuid"`
-	Gamertag         string   `json:"gamertag"`
-	TeamSide         *string  `json:"team_side,omitempty"`
-	IsMe             bool     `json:"is_me"`
-	IsBot            bool     `json:"is_bot,omitempty"`
-	IsMVP            bool     `json:"is_mvp,omitempty"`
-	IsLVP            bool     `json:"is_lvp,omitempty"`
+	XUID     string  `json:"xuid"`
+	Gamertag string  `json:"gamertag"`
+	TeamSide *string `json:"team_side,omitempty"`
+	IsMe     bool    `json:"is_me"`
+	IsBot    bool    `json:"is_bot,omitempty"`
+	IsMVP    bool    `json:"is_mvp,omitempty"`
+	IsLVP    bool    `json:"is_lvp,omitempty"`
 	// PerformanceScore : score de performance (0..100) calculé sur l'historique
 	// du joueur. Disponible uniquement pour les joueurs trackés (main + amis).
 	// Source : player_match_enrichment.performance_score de la player DB.
@@ -345,26 +346,26 @@ type MatchScoreboardRow struct {
 	HadBotTeammate bool `json:"had_bot_teammate,omitempty"`
 	// SkillRank : rang compétitif (CSR/LUSR) pour ce match. Disponible
 	// uniquement pour les joueurs trackés. Source : match_skill_rank.
-	SkillRank *MatchScoreboardSkillRank `json:"skill_rank,omitempty"`
-	Rank             *int     `json:"rank,omitempty"`
-	Score            *int     `json:"score,omitempty"`
-	Kills            *int     `json:"kills,omitempty"`
-	Deaths           *int     `json:"deaths,omitempty"`
-	Assists          *int     `json:"assists,omitempty"`
-	KDA              *float64 `json:"kda,omitempty"`
-	Accuracy         *float64 `json:"accuracy,omitempty"`
-	DamageDealt      *float64 `json:"damage_dealt,omitempty"`
-	DamageTaken      *float64 `json:"damage_taken,omitempty"`
-	ShotsFired       *int     `json:"shots_fired,omitempty"`
-	ShotsHit         *int     `json:"shots_hit,omitempty"`
-	AvgLifeSeconds   *float64 `json:"avg_life_seconds,omitempty"`
-	HeadshotKills    *int     `json:"headshot_kills,omitempty"`
-	MaxKillingSpree  *int     `json:"max_killing_spree,omitempty"`
-	PerfectKills     *int     `json:"perfect_kills,omitempty"`
-	GrenadeKills     *int     `json:"grenade_kills,omitempty"`
-	MeleeKills       *int     `json:"melee_kills,omitempty"`
-	PowerWeaponKills *int     `json:"power_weapon_kills,omitempty"`
-	OutcomeLabel     string   `json:"outcome_label"`
+	SkillRank        *MatchScoreboardSkillRank `json:"skill_rank,omitempty"`
+	Rank             *int                      `json:"rank,omitempty"`
+	Score            *int                      `json:"score,omitempty"`
+	Kills            *int                      `json:"kills,omitempty"`
+	Deaths           *int                      `json:"deaths,omitempty"`
+	Assists          *int                      `json:"assists,omitempty"`
+	KDA              *float64                  `json:"kda,omitempty"`
+	Accuracy         *float64                  `json:"accuracy,omitempty"`
+	DamageDealt      *float64                  `json:"damage_dealt,omitempty"`
+	DamageTaken      *float64                  `json:"damage_taken,omitempty"`
+	ShotsFired       *int                      `json:"shots_fired,omitempty"`
+	ShotsHit         *int                      `json:"shots_hit,omitempty"`
+	AvgLifeSeconds   *float64                  `json:"avg_life_seconds,omitempty"`
+	HeadshotKills    *int                      `json:"headshot_kills,omitempty"`
+	MaxKillingSpree  *int                      `json:"max_killing_spree,omitempty"`
+	PerfectKills     *int                      `json:"perfect_kills,omitempty"`
+	GrenadeKills     *int                      `json:"grenade_kills,omitempty"`
+	MeleeKills       *int                      `json:"melee_kills,omitempty"`
+	PowerWeaponKills *int                      `json:"power_weapon_kills,omitempty"`
+	OutcomeLabel     string                    `json:"outcome_label"`
 	// Combat yield (V7)
 	TopWeaponID         *int64   `json:"top_weapon_id,omitempty"`
 	TopWeaponLabel      string   `json:"top_weapon_label,omitempty"`
@@ -504,6 +505,12 @@ type MatchMetaRaw struct {
 	MapNameFR      *string
 	ModeNameFR     *string
 	PlaylistNameFR *string
+	// PairNameFR : traduction FR stockée en DB (match_registry.pair_name_fr).
+	// Utilisé comme fallback quand mode_name_tr ne contient pas le mode EN normalisé.
+	PairNameFR *string
+	// MapImageURL : URL résolue depuis map_images_registry par map_id (stable UUID).
+	// Nil si map_id absent du registry — le service retombe sur l'adapter name-based.
+	MapImageURL *string
 	// Team0Score / Team1Score : score de jeu de chaque équipe (match_registry).
 	// Ex: 50/47 pour Slayer, 3/1 pour CTF. Nil si FFA ou custom sans score.
 	Team0Score *int16
@@ -573,10 +580,11 @@ type ScoreboardRaw struct {
 
 // BulkMedalRaw : une ligne de Q27 (médailles de tous les joueurs du match).
 type BulkMedalRaw struct {
-	XUID    string
-	MedalID int64
-	Count   int
-	Label   string
+	XUID       string
+	MedalID    int64
+	Count      int
+	Label      string
+	Difficulty string
 }
 
 // BulkWeaponKillRaw : une ligne de Q28 (kills par arme de tous les joueurs du match).
@@ -585,6 +593,7 @@ type BulkWeaponKillRaw struct {
 	WeaponID    int64
 	Kills       int
 	WeaponLabel string
+	NameEN      string // nom EN officiel → lookup WeaponImageURL dans l'adapter
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.

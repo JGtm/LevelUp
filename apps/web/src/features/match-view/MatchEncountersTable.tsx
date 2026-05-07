@@ -28,7 +28,6 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { Card, CardContent } from '@/components/ui/card'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
@@ -162,9 +161,9 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
             roleAlly: 'allié',
             roleEnemy: 'ennemi',
             encounters: 'Rencontres',
-            wrAlly: 'WR allié',
-            wrEnemy: 'WR ennemi',
-            kdCross: 'K/D croisé',
+            wrAlly: 'Taux de victoire allié',
+            wrEnemy: 'Taux de victoire ennemi',
+            kdCross: 'ratio F/D croisé',
             lastSeen: 'Vu pour la dernière fois',
           },
     [locale],
@@ -295,28 +294,38 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
 
   if (!rows || rows.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-4">
-          <p className="mb-3 text-sm font-semibold text-foreground">{labels.title}</p>
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="border-b border-border px-3 py-2 text-sm font-medium">
+          {labels.title}
+        </div>
+        <div className="p-3">
           <p className="text-xs text-muted-foreground">{labels.empty}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardContent className="py-4">
-        <p className="mb-3 text-sm font-semibold text-foreground">{labels.title}</p>
+    // Wrapper aligné sur ChartCard (Engagement) : carte rounded + barre titre.
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="border-b border-border px-3 py-2 text-sm font-medium">
+        {labels.title}
+      </div>
+      <div className="p-3">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          {/*
+            Grille complète : table border 2px (extérieur), cellules border 1px,
+            header border-b-2 plus marqué. border-collapse fait que la bordure
+            partagée prend la plus large.
+          */}
+          <table className="w-full border-2 border-border border-collapse text-xs">
             <thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-border text-muted-foreground">
+                <tr key={hg.id} className="text-muted-foreground">
                   {hg.headers.map((h, idx) => (
                     <th
                       key={h.id}
-                      className={`pb-1 px-2 whitespace-nowrap ${idx === 0 ? 'text-left' : 'text-right'}`}
+                      className={`border border-border border-b-2 px-2 pb-1 pt-1 ${idx === 0 ? 'text-left' : 'text-right'}`}
                     >
                       {flexRender(h.column.columnDef.header, h.getContext())}
                     </th>
@@ -326,11 +335,11 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
             </thead>
             <tbody>
               {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-b border-border hover:bg-accent/40 transition-colors">
+                <tr key={row.id} className="hover:bg-accent/40 transition-colors">
                   {row.getVisibleCells().map((cell, idx) => (
                     <td
                       key={cell.id}
-                      className={`py-1.5 px-2 ${idx === 0 ? 'text-left' : 'text-right'}`}
+                      className={`border border-border px-2 py-1.5 ${idx === 0 ? 'text-left' : 'text-right'}`}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -340,7 +349,7 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
             </tbody>
           </table>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
