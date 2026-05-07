@@ -301,9 +301,10 @@ type MatchCombatTab struct {
 
 // PlayerMedalRow : médaille d'un joueur dans un match (expander scoreboard).
 type PlayerMedalRow struct {
-	MedalID int64  `json:"medal_id"`
-	Count   int    `json:"count"`
-	Label   string `json:"label,omitempty"`
+	MedalID  int64  `json:"medal_id"`
+	Count    int    `json:"count"`
+	Label    string `json:"label,omitempty"`
+	ImageURL string `json:"image_url,omitempty"`
 }
 
 // PlayerWeaponKillRow : kills par arme d'un joueur dans un match (expander scoreboard).
@@ -311,6 +312,18 @@ type PlayerWeaponKillRow struct {
 	WeaponID int64  `json:"weapon_id"`
 	Kills    int    `json:"kills"`
 	Label    string `json:"label,omitempty"`
+	ImageURL string `json:"image_url,omitempty"`
+}
+
+// MatchScoreboardSkillRank : skill rank d'un joueur pour ce match (extrait
+// allégé de SkillRankRaw, pour le panneau d'expander). Source : match_skill_rank
+// table de la player DB du joueur — donc disponible uniquement pour les joueurs
+// trackés (main + amis avec player DB).
+type MatchScoreboardSkillRank struct {
+	RatingType  string   `json:"rating_type"`            // "CSR" ou "LUSR"
+	TierLabel   *string  `json:"tier_label,omitempty"`   // ex: "Onyx 1500"
+	RatingValue *float64 `json:"rating_value,omitempty"` // valeur numérique
+	RatingDelta *float64 `json:"rating_delta,omitempty"` // ±delta vs match précédent
 }
 
 // MatchScoreboardRow : ligne du scoreboard.
@@ -319,8 +332,20 @@ type MatchScoreboardRow struct {
 	Gamertag         string   `json:"gamertag"`
 	TeamSide         *string  `json:"team_side,omitempty"`
 	IsMe             bool     `json:"is_me"`
+	IsBot            bool     `json:"is_bot,omitempty"`
 	IsMVP            bool     `json:"is_mvp,omitempty"`
 	IsLVP            bool     `json:"is_lvp,omitempty"`
+	// PerformanceScore : score de performance (0..100) calculé sur l'historique
+	// du joueur. Disponible uniquement pour les joueurs trackés (main + amis).
+	// Source : player_match_enrichment.performance_score de la player DB.
+	PerformanceScore *float64 `json:"performance_score,omitempty"`
+	// HadBotTeammate : true si au moins un bot dans l'équipe du joueur (du
+	// point de vue de SA player DB). Disponible uniquement pour les joueurs
+	// trackés. Source : player_match_enrichment.had_bot_teammate.
+	HadBotTeammate bool `json:"had_bot_teammate,omitempty"`
+	// SkillRank : rang compétitif (CSR/LUSR) pour ce match. Disponible
+	// uniquement pour les joueurs trackés. Source : match_skill_rank.
+	SkillRank *MatchScoreboardSkillRank `json:"skill_rank,omitempty"`
 	Rank             *int     `json:"rank,omitempty"`
 	Score            *int     `json:"score,omitempty"`
 	Kills            *int     `json:"kills,omitempty"`
@@ -387,10 +412,23 @@ type MatchEncounterRow struct {
 	Gamertag      string `json:"gamertag"`
 	CountTogether int    `json:"count_together"`
 	IsAlly        bool   `json:"is_ally"`
-	// Badges narratifs typés (chunk MV4.C). Aujourd'hui : seulement le badge
-	// ordinal (count_together). Les badges ally_plus / tough_enemy nécessitent
-	// l'extension Q23 (winrate par ally/enemy + kills/deaths against me) qui
-	// est reportée à MV4.C'.
+	IsBot         bool   `json:"is_bot,omitempty"`
+	// Découpage du CountTogether en allié vs ennemi sur l'historique commun
+	// (mock match_view.14 — affiche "(A:X | E:Y)" sous Rencontres).
+	AllyCount  *int `json:"ally_count,omitempty"`
+	EnemyCount *int `json:"enemy_count,omitempty"`
+	// Winrates calculés sur l'historique commun. nil quand non calculable
+	// (W+L == 0 sur le bucket ally ou enemy).
+	WinrateAsAlly  *float64 `json:"winrate_as_ally,omitempty"`
+	WinrateVsEnemy *float64 `json:"winrate_vs_enemy,omitempty"`
+	// K/D croisé : kills_dealt = kills par moi sur ce joueur (toutes occurrences),
+	// deaths_suffered = morts subies par moi causées par ce joueur. nil quand
+	// killer_victim_pairs est absent du repo.
+	KillsDealt     *int `json:"kills_dealt,omitempty"`
+	DeathsSuffered *int `json:"deaths_suffered,omitempty"`
+	// Date du dernier match commun (toutes occurrences allié + ennemi).
+	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
+	// Badges narratifs typés (chunk MV4.C / MV4.C').
 	Badges []MatchEncounterBadge `json:"badges,omitempty"`
 }
 
@@ -499,6 +537,7 @@ type PlayerMatchStatsRaw struct {
 type ScoreboardRaw struct {
 	XUID             string
 	Gamertag         string
+	IsBot            bool
 	TeamID           *int
 	RankInTeam       *int
 	OutcomeCode      int
@@ -623,6 +662,7 @@ type SkillRankRaw struct {
 type EncounterRaw struct {
 	XUID          string
 	Gamertag      string
+	IsBot         bool
 	CountTogether int
 	IsAlly        bool
 }
@@ -645,6 +685,10 @@ type EncounterStatsRaw struct {
 	LossesVsEnemy  int
 	KillsDealt     int
 	DeathsSuffered int
+	// LastSeenAt : start_time UTC du match commun le plus récent. Zéro time
+	// quand l'historique est vide ou que match_registry n'a pas de start_time
+	// pour les matchs concernés.
+	LastSeenAt time.Time
 }
 
 // MediaAssocRaw : données brutes de Q24 (media_files + media_match_associations).

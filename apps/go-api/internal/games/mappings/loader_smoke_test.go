@@ -42,8 +42,8 @@ func TestLoadHaloInfiniteFieldsTOML(t *testing.T) {
 		t.Fatalf("FieldKills introuvable")
 	}
 	labelFR, fallback := kills.Label("fr")
-	if fallback || labelFR != "Éliminations" {
-		t.Errorf("kills FR = %q (fallback=%v), want Éliminations", labelFR, fallback)
+	if fallback || labelFR != "Frags" {
+		t.Errorf("kills FR = %q (fallback=%v), want Frags", labelFR, fallback)
 	}
 	labelEN, fallback := kills.Label("en")
 	if fallback || labelEN != "Kills" {

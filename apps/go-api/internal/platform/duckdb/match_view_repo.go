@@ -3,6 +3,7 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -216,6 +217,7 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 		if err := rows.Scan(
 			&s.XUID,
 			&s.Gamertag,
+			&s.IsBot,
 			&s.TeamID,
 			&s.RankInTeam,
 			&s.OutcomeCode,
@@ -744,7 +746,7 @@ func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID 
 	var results []domain.EncounterRaw
 	for rows.Next() {
 		var enc domain.EncounterRaw
-		if err := rows.Scan(&enc.XUID, &enc.Gamertag, &enc.CountTogether, &enc.IsAlly); err != nil {
+		if err := rows.Scan(&enc.XUID, &enc.Gamertag, &enc.IsBot, &enc.CountTogether, &enc.IsAlly); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters scan: %w", err)
 		}
 		results = append(results, enc)
@@ -777,7 +779,10 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 
 	var out []domain.EncounterStatsRaw
 	for rows.Next() {
-		var s domain.EncounterStatsRaw
+		var (
+			s          domain.EncounterStatsRaw
+			lastSeenAt sql.NullTime
+		)
 		if err := rows.Scan(
 			&s.XUID,
 			&s.AllyCount,
@@ -788,8 +793,12 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 			&s.LossesVsEnemy,
 			&s.KillsDealt,
 			&s.DeathsSuffered,
+			&lastSeenAt,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats scan: %w", err)
+		}
+		if lastSeenAt.Valid {
+			s.LastSeenAt = lastSeenAt.Time
 		}
 		out = append(out, s)
 	}

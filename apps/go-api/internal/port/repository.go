@@ -109,6 +109,22 @@ type CareerRepository interface {
 	GetEncounters(ctx context.Context) ([]domain.EncounterRawRow, error)
 }
 
+// FriendMatchExtras : enrichissement per-friend pour le panneau d'expander
+// scoreboard (port 1:1 du Python `match_view_scoreboard_detail.py` section
+// "Local"). Chargé depuis la player DB de l'ami (pas du joueur principal),
+// donc disponible uniquement pour les amis configurés dans db_profiles.json
+// avec une player DB existante.
+type FriendMatchExtras struct {
+	PerformanceScore *float64
+	HadBotTeammate   bool
+	SkillRank        *domain.MatchScoreboardSkillRank
+}
+
+// FriendsExtrasResolver charge les FriendMatchExtras pour la liste de xuids
+// fournie. Best-effort : un xuid sans player DB configurée ou sans données
+// ne figure simplement pas dans la map de retour.
+type FriendsExtrasResolver func(ctx context.Context, matchID string, xuids []string) map[string]FriendMatchExtras
+
 // MatchViewRepository fournit toutes les données d'un match pour la vue détail.
 // Implémenté par platform/duckdb.MatchViewRepo.
 type MatchViewRepository interface {

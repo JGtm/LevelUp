@@ -20,6 +20,8 @@ import { MatchKDCumulChart } from './MatchKDCumulChart'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchNemesisCards } from './MatchNemesisCards'
+import { MatchScoreboard } from './MatchScoreboard'
+import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchWeaponPieChart } from './MatchWeaponCharts'
@@ -248,13 +250,28 @@ export function MatchViewPage() {
             />
           </>
         ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                Onglet « {TABS.find((t) => t.id === activeTab)?.label} » — contenu à refaire.
-              </p>
-            </CardContent>
-          </Card>
+          <>
+            <EngagementMatchSection
+              playerSlug={playerSlug}
+              matchId={matchId}
+              granularity="intra"
+              emptyBehavior="placeholder"
+            />
+
+            <MatchScoreboard
+              rows={scoreboard}
+              killerVictim={killerVictim}
+              citations={summary_tab.citations ?? []}
+              header={header}
+              rank={rank}
+              t={t}
+            />
+
+            <MatchEncountersTable
+              rows={team_tab.encounters ?? []}
+              locale={locale === 'en' ? 'en' : 'fr'}
+            />
+          </>
         )}
       </div>
     </div>

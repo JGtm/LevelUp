@@ -95,6 +95,32 @@ export interface MatchViewText {
   combatKilledMeFmt: (n: number) => string
   combatIKilledFmt: (n: number) => string
   combatNoData: string
+  // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
+  scoreboardTitle: string
+  teamLabelFmt: (name: string) => string
+  teamUnknown: string
+  teamNumberedFmt: (n: number) => string
+  teamMine: string
+  teamEnemy: string
+  // Scoreboard expander (port de match_view_scoreboard_detail.py)
+  sbDetailWeapons: string
+  sbDetailMedalsAndCitations: string
+  sbDetailMedalsOnly: string
+  sbDetailExpected: string
+  sbDetailExpectedKills: string
+  sbDetailExpectedDeaths: string
+  sbDetailExpectedAssists: string
+  sbDetailAntagonist: string
+  sbDetailNemesis: string
+  sbDetailBully: string
+  sbDetailLocal: string
+  sbDetailLusr: string
+  sbDetailCsr: string
+  sbDetailBotNoteLabel: string
+  sbDetailBotNoteValue: string
+  sbDetailPlayerDb: string
+  sbDetailSharedOnly: string
+  sbDetailExplorePlayerFmt: (player: string) => string
 }
 
 export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
@@ -179,6 +205,30 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatKilledMeFmt: (n) => `T'a victimisé ${n} fois`,
     combatIKilledFmt: (n) => `Tu l'as persécuté ${n} fois`,
     combatNoData: 'Pas de données disponibles',
+    scoreboardTitle: 'Scoreboard',
+    teamLabelFmt: (name) => `Équipe ${name}`,
+    teamUnknown: 'Équipe inconnue',
+    teamNumberedFmt: (n) => `Équipe ${n}`,
+    teamMine: 'Mon équipe',
+    teamEnemy: 'Équipe adverse',
+    sbDetailWeapons: 'Armes',
+    sbDetailMedalsAndCitations: 'Médailles & citations',
+    sbDetailMedalsOnly: 'Médailles',
+    sbDetailExpected: 'Attendu vs réel',
+    sbDetailExpectedKills: 'Frags',
+    sbDetailExpectedDeaths: 'Morts',
+    sbDetailExpectedAssists: 'Assists',
+    sbDetailAntagonist: 'Antagoniste',
+    sbDetailNemesis: 'Némésis',
+    sbDetailBully: 'Souffre-douleur',
+    sbDetailLocal: 'Données locales',
+    sbDetailLusr: 'LUSR',
+    sbDetailCsr: 'CSR',
+    sbDetailBotNoteLabel: 'Coéquipier bot',
+    sbDetailBotNoteValue: 'Au moins un bot dans ton équipe — stats à relativiser.',
+    sbDetailPlayerDb: 'Joueur tracké (DB locale)',
+    sbDetailSharedOnly: 'Joueur non tracké (DB partagée uniquement)',
+    sbDetailExplorePlayerFmt: (player) => `Explorer ${player}`,
   },
   en: {
     prevMatch: 'Previous match',
@@ -261,6 +311,30 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatKilledMeFmt: (n) => `Killed you ${n} times`,
     combatIKilledFmt: (n) => `You killed them ${n} times`,
     combatNoData: 'No data available',
+    scoreboardTitle: 'Scoreboard',
+    teamLabelFmt: (name) => `Team ${name}`,
+    teamUnknown: 'Unknown team',
+    teamNumberedFmt: (n) => `Team ${n}`,
+    teamMine: 'My team',
+    teamEnemy: 'Enemy team',
+    sbDetailWeapons: 'Weapons',
+    sbDetailMedalsAndCitations: 'Medals & commendations',
+    sbDetailMedalsOnly: 'Medals',
+    sbDetailExpected: 'Expected vs actual',
+    sbDetailExpectedKills: 'Kills',
+    sbDetailExpectedDeaths: 'Deaths',
+    sbDetailExpectedAssists: 'Assists',
+    sbDetailAntagonist: 'Antagonist',
+    sbDetailNemesis: 'Nemesis',
+    sbDetailBully: 'Bully target',
+    sbDetailLocal: 'Local data',
+    sbDetailLusr: 'LUSR',
+    sbDetailCsr: 'CSR',
+    sbDetailBotNoteLabel: 'Bot teammate',
+    sbDetailBotNoteValue: 'At least one bot on your team — stats to be taken with a grain of salt.',
+    sbDetailPlayerDb: 'Tracked player (local DB)',
+    sbDetailSharedOnly: 'Untracked player (shared DB only)',
+    sbDetailExplorePlayerFmt: (player) => `Explore ${player}`,
   },
 }
 

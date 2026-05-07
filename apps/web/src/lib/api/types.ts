@@ -568,23 +568,33 @@ export interface InitialSyncStartRequest {
 // Engagement (Phase 4 plan engagement)
 // ---------------------------------------------------------------------------
 
+/**
+ * IMPORTANT — clés en snake_case : le backend Go sérialise via les json tags
+ * du struct domain.EngagementPoint / EngagementScoreResult (snake_case).
+ * Les anciennes clés PascalCase (TimeMS, EngagementCurve…) étaient la cause
+ * du chart d'engagement vide en Match View — bug pré-existant corrigé ici.
+ */
 export interface EngagementPointAPI {
-  TimeMS: number
-  PaceJoueur: number
-  PaceTeam: number
-  PaceAttendu: number
-  PaceLobby: number
-  PostDeathFlag: boolean
-  IsPassiveDeath: boolean
+  time_ms: number
+  pace_joueur: number
+  pace_team: number
+  pace_attendu: number
+  pace_lobby: number
+  post_death_flag: boolean
+  is_passive_death: boolean
 }
 
 export interface EngagementScoreResultAPI {
-  EngagementScore: number | null
-  ResidualBrut: number
-  EngagementCurve: EngagementPointAPI[] | null
-  MatchIntensity: number
-  Confidence: 'full' | 'partial' | 'insufficient_history'
-  NHistoryMatches: number
+  engagement_score: number | null
+  residual_brut: number
+  engagement_curve: EngagementPointAPI[] | null
+  match_intensity: number
+  confidence: 'full' | 'partial' | 'insufficient_history'
+  n_history_matches: number
+  mean_pace_joueur?: number
+  mean_pace_team?: number
+  mean_pace_lobby?: number
+  player_activity?: number
 }
 
 export interface EngagementMatchSummaryAPI {
@@ -2093,6 +2103,16 @@ export interface PlayerWeaponKillRow {
   weapon_id: number
   kills: number
   label?: string
+  /** URL absolue (ou relative au domaine) de l'icône de l'arme — composée backend via static.URL. */
+  image_url?: string
+}
+
+export interface PlayerMedalRow {
+  medal_id: number
+  count: number
+  label?: string
+  /** URL absolue (ou relative au domaine) de l'icône de la médaille. */
+  image_url?: string
 }
 
 export interface MatchHighlightEvent {
@@ -2190,6 +2210,8 @@ export interface MatchScoreboardRow {
   gamertag: string
   team_side: string | null
   is_me: boolean
+  /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
+  is_bot?: boolean
   rank: number | null
   score: number | null
   kills: number | null
@@ -2217,6 +2239,22 @@ export interface MatchScoreboardRow {
   damage_per_kill?: number | null
   damage_per_death?: number | null
   weapon_kills?: PlayerWeaponKillRow[]
+  /** Médailles gagnées par CE joueur dans ce match (expander scoreboard). */
+  medals?: PlayerMedalRow[]
+  /** Performance score 0..100 — uniquement pour les joueurs trackés (main + amis). */
+  performance_score?: number | null
+  /** True si bot dans l'équipe du joueur — uniquement pour les joueurs trackés. */
+  had_bot_teammate?: boolean
+  /** Skill rank (CSR/LUSR) pour ce match — uniquement pour les joueurs trackés. */
+  skill_rank?: MatchScoreboardSkillRank | null
+}
+
+export interface MatchScoreboardSkillRank {
+  /** "CSR" ou "LUSR" */
+  rating_type: string
+  tier_label?: string | null
+  rating_value?: number | null
+  rating_delta?: number | null
 }
 
 export interface MatchRosterRow {
@@ -2245,13 +2283,21 @@ export interface MatchEncounterRow {
   gamertag: string
   count_together: number
   is_ally: boolean
-  /** Phase 1 MV4.C : badges narratifs typés (ordinal aujourd'hui ; ally_plus + tough_enemy à venir). */
-  badges?: Array<{
-    kind: string
-    label_key: string
-    color_token: string
-    detail?: Record<string, unknown>
-  }>
+  /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
+  is_bot?: boolean
+  /** Découpage de count_together en allié vs ennemi sur l'historique commun. */
+  ally_count?: number | null
+  enemy_count?: number | null
+  /** Winrates ratio 0..1 sur l'historique commun. null si W+L == 0. */
+  winrate_as_ally?: number | null
+  winrate_vs_enemy?: number | null
+  /** K/D croisé : kills par moi sur ce joueur / morts subies par moi causées par lui. */
+  kills_dealt?: number | null
+  deaths_suffered?: number | null
+  /** Date ISO du dernier match commun (toutes occurrences). */
+  last_seen_at?: string | null
+  /** Phase 1 MV4.C / MV4.C' : badges narratifs typés (ordinal / ally_plus / tough_enemy). */
+  badges?: MatchEncounterBadge[]
 }
 
 export interface MatchTeamTab {
