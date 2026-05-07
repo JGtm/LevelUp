@@ -1,4 +1,44 @@
 
+## [2026-05-07] Highlight events parser — fix bit-aligné v41 + durcissement orchestration
+
+**Statut** : Complété
+
+**Décision technique** : Le parser `analysis.ParseHighlightEvents` (port Go de `spnkr/film/highlight_events.py`) scannait le flux décompressé **byte-par-byte** (`for i := range data; data[i] != 0xc0`), alors que le format film Halo est packé **au bit**. Le Python upstream utilise `bitstring.Bits.findall()` qui matche au bit près par défaut, ce qui n'avait pas été porté correctement. Le bug était silencieux sur des chunks anciens et masqué par un sous-comptage (les XUIDs byte-alignés étaient parsés, ceux non-alignés perdus). Sur les matchs récents (FilmMajorVersion=41), 0 event était parsé sur le dernier match de JGtm `b8c1b220-5ef4-4dee-9e92-77d3ff55d6d3` alors que le manifest + chunk 196822 octets téléchargeaient bien (HTTP 200). Diagnostic via sondes ad-hoc : 28 candidats byte-alignés trouvés, 0 avec end-marker dans la fenêtre 2500 octets ; bit-aligné équivalent : **275 candidats trouvés, 275 avec end-marker, 8 XUIDs distincts** (= 4v4).
+
+**Fix en 4 axes** :
+
+1. **Bit-reader Go interne** (zéro dépendance externe) — helpers `readByteAtBit / readBytesAtBit / readUint64LEAtBit / findBitMarker` dans `internal/analysis/highlight_event_parser.go`. Convention MSB-first identique à `bitstring`. ~50 lignes.
+
+2. **Réécriture de `scanEvents` + nouvelle `parseEventAtBit`** : itère `markerStart` sur tous les bits ; valide prefix `0x2d|0x25` au bit `markerStart-8` puis lit XUID 64 bits LE au bit `markerStart-72`. **Robustesse > Python** : `parseEventAtBit` itère sur tous les end-markers de la fenêtre et retourne le premier dont `decodeEventBytes` réussit, au lieu d'aveuglément prendre le premier (Python plante si type_hint inconnu). Cette différence est nécessaire car le end-marker `0x00 00 2e e0` (32 bits) génère des faux positifs bit-shiftés sur des zones de zéros — visible sur les fixtures synthétiques, masqué sur de la vraie data bruyante.
+
+3. **Tests** : `testdata/v41_chunk_he.bin` (197 KB) capturé depuis l'API Halo réelle commité. Nouveau test fixture `TestParseHighlightEvents_RealV41Fixture` (275 events, 8 XUIDs, kills=deaths=101, medals=43, mode=30 — c'est exactement le test qui aurait sauvé l'incident en CI). Ajout d'un test `TestParseHighlightEvents_BitOffset_AllAlignments` (table-driven, shifts 0..7 bits, `shiftBitsRight` helper). Ajout de tests unit du bit-reader (`TestReadByteAtBit_*`, `TestReadUint64LEAtBit_*`, `TestFindBitMarker_*`). Nouveau test de régression `TestParseHighlightEvents_FalsePositiveEndMarker_FallsThrough` verrouille la robustesse multi-end-marker.
+
+4. **Orchestration sync — fix de l'angle mort** : `engine.go::insertHighlightEventsFromData` et `processHighlightEvents` retournaient `nil` (succès) en loggant DEBUG quand `data > 0` mais `events == 0`. Aucune alerte, aucune métrique. Désormais : `slog.Warn` structuré (`match_id`, `film_version`, `data_size`), compteur expvar `highlight_events_parse_anomaly_total`, append à `result.Warnings`. Tests `highlight_events_orchestration_test.go` : 3 cas (data vide → silencieux ; chunk bénin de 200 zéros zlib → 1 warning ; même test côté `processHighlightEvents` via mock). `mockHaloClient` étendu avec `highlightChunkData/Version/Found/Err` configurables.
+
+**Fichiers modifiés** :
+- `internal/analysis/highlight_event_parser.go` — réécriture scan + bit-reader (233L, sous la limite)
+- `internal/analysis/highlight_event_parser_test.go` — +290L tests (régression byte-aligné préservée)
+- `internal/analysis/testdata/v41_chunk_he.bin` — fixture binaire 197 KB
+- `internal/sync/engine.go` — import `observability` + 2 blocs anomalie (parser silent → WARN)
+- `internal/sync/halo_client_mock_test.go` — extension du mock pour highlight chunk configurable
+- `internal/sync/highlight_events_orchestration_test.go` — nouveau, 3 tests
+
+**Résultats** :
+- `go build ./...` : OK
+- `go vet ./internal/...` : OK
+- `go test ./...` : 100% pass (toutes les suites — analysis, sync, api, handlers, etc.)
+- Tests highlight parser : 26 tests, dont fixture v41 réel (275 events / 8 XUIDs parsés, kills=deaths=101 → équilibre 4v4 cohérent)
+- Tests orchestration anomalie : 3/3 pass, log WARN visible dans la sortie test
+- Aucune dépendance Go ajoutée (bit-reader hand-rolled)
+- Échec `go test -tags integration ./internal/sync/` pré-existant (variables non utilisées dans `burst_integration_test.go`, `engine_integration_test.go`, `lease_test.go`) — non lié à mes changements (vérifié via `git diff --stat`)
+
+**Cause racine et leçon** : Le port initial du Python utilisait `bytes.Index` / boucle `for i` byte-par-byte au lieu d'un scan bit-aligné. Le test fixture original construit des chunks byte-alignés avec 30 octets de zéros entre la signature XUID et le bloc event — donc le test validait le comportement byte-aligné du parser, pas le format réel du flux Halo. Aucun test ne consommait de chunk réel issu de l'API. Le bug est resté invisible jusqu'à ce que le ratio aléatoire bit-aligned/byte-aligned dans les nouveaux chunks Halo dépasse le seuil critique. **Règle qui découle de l'incident** : tout parser de format binaire externe doit avoir au moins un test sur un fixture capturé en production, en plus des tests synthétiques.
+
+**Prochaine étape recommandée** : 
+1. Exécuter un `levelup sync-delta --gamertag JGtm --force-events --max-matches 50` pour re-parser les highlight events des matchs récents qui avaient été marqués `events_loaded=TRUE` à zéro event. Le compteur `highlight_events_parse_anomaly_total` sur `/debug/vars` doit rester à 0 après cette exécution.
+2. Investiguer si le sous-comptage historique a affecté des analytics (kill/death heatmaps, killer_victim graph) sur les anciens matchs ; éventuellement programmer un re-sync global à froid.
+3. (Optionnel) Ajouter `highlight_events_parse_anomaly_total` à la dashboard expvar (si elle existe) ou créer une alerte basique.
+
 ## [2026-05-07] Match View — Nav contextuelle Phase 2c (descriptor typé + ligne unique + with_player Go)
 
 **Statut** : Complété

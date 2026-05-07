@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 )
@@ -1009,6 +1010,21 @@ func insertHighlightEventsFromData(
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
+		// Anomalie : on a téléchargé un chunk non-vide mais le parser
+		// n'a rien extrait. Avant le fix bit-aligné (mai 2026), ce cas
+		// était silencieusement loggé en DEBUG et faisait perdre tout
+		// l'historique highlight events. Désormais : WARN + compteur
+		// expvar pour qu'une regression soit immédiatement visible.
+		observability.IncCounter("highlight_events_parse_anomaly_total")
+		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
+			"match_id", matchID,
+			"film_version", filmMajorVersion,
+			"data_size", len(data),
+		)
+		if result != nil {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events", matchID, len(data), filmMajorVersion))
+		}
 		return nil
 	}
 
@@ -1069,9 +1085,18 @@ func processHighlightEvents(
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
-		slog.DebugContext(ctx, "processHighlightEvents: aucun event extrait",
-			"match_id", matchID, "film_version", filmMajorVersion, "data_len", len(data),
+		// Anomalie : chunk téléchargé non-vide mais 0 event parsé.
+		// Voir insertHighlightEventsFromData pour la justification.
+		observability.IncCounter("highlight_events_parse_anomaly_total")
+		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
+			"match_id", matchID,
+			"film_version", filmMajorVersion,
+			"data_size", len(data),
 		)
+		if result != nil {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events", matchID, len(data), filmMajorVersion))
+		}
 		return nil
 	}
 
