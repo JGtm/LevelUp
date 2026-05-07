@@ -74,6 +74,11 @@ export type SemanticToken =
   | 'heatmap-divergent-low'
   | 'heatmap-divergent-high'
 
+  // ── Équipes (2) — couleurs configurables via les settings d'accessibilité ─
+  // Correspondent aux couleurs d'outline choisies par l'utilisateur in-game.
+  | 'team-ally'
+  | 'team-enemy'
+
 /** Nom CSS var pour un token : `--ac-outcome-win`, `--ac-perf-tier-1`, etc. */
 export function tokenVar(token: SemanticToken): string {
   return `--ac-${token}`
@@ -102,4 +107,5 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'narrative-debacle-text', 'narrative-contre-remontada-text',
   'narrative-encounter-ally-plus', 'narrative-encounter-tough-enemy', 'narrative-encounter-ordinal',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
+  'team-ally', 'team-enemy',
 ] as const

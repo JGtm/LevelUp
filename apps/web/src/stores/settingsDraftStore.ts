@@ -35,6 +35,10 @@ interface LocalUiPrefs {
   colorPalette: ColorPalette
   /** Dernier slug joueur sélectionné par titre (restaure le contexte au rechargement) */
   lastPlayerSlugByTitle: Record<string, string | null>
+  /** Id couleur outline équipe alliée (HaloOutlineColor.id ou null = défaut palette) */
+  allyTeamColor: string | null
+  /** Id couleur outline équipe ennemie (HaloOutlineColor.id ou null = défaut palette) */
+  enemyTeamColor: string | null
 }
 
 interface SettingsDraftState {
@@ -61,6 +65,8 @@ interface SettingsDraftState {
   setTheme: (theme: UiTheme) => void
   toggleTheme: () => void
   setColorPalette: (palette: ColorPalette) => void
+  setAllyTeamColor: (id: string | null) => void
+  setEnemyTeamColor: (id: string | null) => void
   /** Définit le dernier slug joueur pour un titre donné */
   setLastPlayerSlugForTitle: (titleSlug: string, slug: string | null) => void
   /** Récupère le dernier slug joueur pour un titre donné */
@@ -76,6 +82,8 @@ const DEFAULT_LOCAL_UI_PREFS: LocalUiPrefs = {
   theme: 'dark',
   colorPalette: 'default',
   lastPlayerSlugByTitle: {},
+  allyTeamColor: null,
+  enemyTeamColor: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +132,16 @@ export const useSettingsDraftStore = create<SettingsDraftState>()(
       setColorPalette: (palette) =>
         set((state) => ({
           localUiPrefs: { ...state.localUiPrefs, colorPalette: palette },
+        })),
+
+      setAllyTeamColor: (id) =>
+        set((state) => ({
+          localUiPrefs: { ...state.localUiPrefs, allyTeamColor: id },
+        })),
+
+      setEnemyTeamColor: (id) =>
+        set((state) => ({
+          localUiPrefs: { ...state.localUiPrefs, enemyTeamColor: id },
         })),
 
       setLastPlayerSlugForTitle: (titleSlug, slug) =>

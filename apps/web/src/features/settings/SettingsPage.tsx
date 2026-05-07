@@ -201,7 +201,7 @@ export function SettingsPage() {
         )}
         {activeTab === 'lab' && <LabTab t={t} />}
         {activeTab === 'users' && <UsersTab merged={merged} handleChange={handleChange} t={t} />}
-        {activeTab === 'accessibility' && <AccessibilityTab t={t} />}
+        {activeTab === 'accessibility' && <AccessibilityTab t={t} locale={locale} />}
         {activeTab === 'notifications' && <NotificationsSettingsTab />}
       </div>
     </div>
