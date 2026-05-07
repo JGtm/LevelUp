@@ -40,6 +40,15 @@ type mockHaloClient struct {
 	callsGetStats int
 	// callsGetSkill compte le nombre d'appels à GetMatchSkill.
 	callsGetSkill int
+	// highlightChunkData est le chunk highlight events retourné par
+	// GetHighlightEventsChunk (nil = chunk absent).
+	highlightChunkData []byte
+	// highlightChunkVersion est le FilmMajorVersion associé au chunk.
+	highlightChunkVersion int
+	// highlightChunkFound indique si le film/chunk est marqué comme présent.
+	highlightChunkFound bool
+	// getHighlightErr simule une erreur de GetHighlightEventsChunk si non nil.
+	getHighlightErr error
 }
 
 // GetMatchHistory retourne la liste de matchs configurée ou une erreur simulée.
@@ -96,9 +105,13 @@ func (m *mockHaloClient) GetMatchFilm(_ context.Context, _ string) (map[int]film
 	return nil, false, nil
 }
 
-// GetHighlightEventsChunk retourne toujours (nil, 0, false, nil) : chunk absent.
+// GetHighlightEventsChunk retourne le chunk configuré (data + version + found)
+// ou (nil, 0, false, nil) si rien n'a été configuré.
 func (m *mockHaloClient) GetHighlightEventsChunk(_ context.Context, _ string) ([]byte, int, bool, error) {
-	return nil, 0, false, nil
+	if m.getHighlightErr != nil {
+		return nil, 0, false, m.getHighlightErr
+	}
+	return m.highlightChunkData, m.highlightChunkVersion, m.highlightChunkFound, nil
 }
 
 // GetCareerRank retourne la progression de carrière configurée.
