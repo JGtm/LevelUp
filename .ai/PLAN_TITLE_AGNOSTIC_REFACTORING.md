@@ -6,7 +6,7 @@
 
 **Branche cible** : `refactor/title-agnostic-services` (créée depuis `main` après merge de `feat/token-pool-parallel-sync`).
 
-**Statut** : v2.2 (2026-05-06) — décisions D1-D6 actées + Exit Gate strict par phase (DONE/NOT DONE daté), seuils de couverture chiffrés et bloquants, lints logging CI bloquants, validation finale via PR E2E `synthetic_test_title`. Effort total : 42-57 j.
+**Statut** : v2.3 (2026-05-07) — Feature Matrix ajoutée en Phase 1.7 (data capabilities + feature capabilities + 3 états available/degraded/unavailable). Décisions D7+D8 actées. Décisions D1-D6 + Exit Gate strict + couverture/logging bloquants + validation finale `synthetic_test_title` E2E inchangés. Effort total : 47-63 j.
 
 ---
 
@@ -137,11 +137,14 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 | **D4** | OpenAPI gen (Phase 3) | **Huma intégré au plan** : migrer ~80 handlers chi vers Huma. OpenAPI 3.1 auto-généré par construction, validation des inputs auto, plus jamais de YAML manuel | Décision ambitieuse : élargit le scope du plan mais évite un refactor handlers ultérieur. Coût total révisé à 50-65 j |
 | **D5** | Codegen TS canonical (Phase 7) | Script `tools/codegen/canonical-ts/` : lit `canonical/fields.go` (go/ast) → écrit `apps/web/src/lib/canonical/fields.ts`. Single source Go, CI lint vérifie l'idempotence | Évite la dérive entre Go et TS. Compatible avec l'output OpenAPI Huma (qui génère son propre client TS pour les DTO) |
 | **D6** | Stratégie de migration progressive (Phase 2) | Service par service en PR atomique : ancien path supprimé dans la même PR que la migration | Pas de feature flag (évite la dette « deux paths à maintenir »). Critère de mergeabilité par phase = service migré + tests passent |
+| **D7** | Granularité du status feature (Phase 1.7) | 3 états : `available` / `degraded` / `unavailable` + reason humaine. Une feature `degraded` rend des données partielles avec badge UI explicite | Permet de modéliser le cas réel : feature qui tourne avec subset (ex. `synthesis.weapon_breakdown` sans medals = OK mais moins riche). Plus nuancé qu'un binaire on/off |
+| **D8** | Source de la disponibilité data (Phase 1.7) | TOML déclaratif uniquement : l'opérateur du titre déclare `[data] match_events = true` dans `capabilities.toml`. Test CI de cohérence : pour chaque `data=true`, la table existe + a ≥ 1 row sur fixture `halo_full` | Simple, rapide, pas de query DB au boot. Le risque de dérive (TOML dit true mais table vide) est mitigé par le test de cohérence |
 
 ### Tâches Phase 0
 
 - [ ] **Réviser ADR 0011** : ajouter section « v2 — confirmation post-plan title-agnostic » qui acte que canonical reste minimal et que le plan title-agnostic ne le contredit pas. Alternative : nouvel **ADR 0014 — title-agnostic services + Huma migration + DDL isolation** qui complète 0011.
 - [ ] **ADR 0015 (à créer)** : « Adoption de Huma pour OpenAPI 3.1 auto-généré ». Documente le choix vs swag/kin-openapi/Fuego, le coût (~80 handlers), les bénéfices long terme (validation auto, plus de YAML manuel).
+- [ ] **ADR 0016 (à créer)** : « Feature Matrix — capability cascading multi-titre ». Documente le modèle data capabilities + feature capabilities + arbre de dépendances + 3 états (available / degraded / unavailable). Décisions D7 et D8 justifiées.
 - [ ] Créer la branche `refactor/title-agnostic-services` depuis `main`.
 - [ ] Ajouter ce plan en référence dans `CLAUDE.md` § Décisions architecturales.
 - [ ] Entrée `thought_log.md` documentant les 6 décisions et leur justification.
@@ -185,6 +188,149 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 - [ ] Test : ajouter un titre fixture `synthetic_test_title` avec un schéma minimal (3 colonnes : kills, deaths, match_id) et vérifier que le `MigrationRunner` crée la DB sans toucher au code partagé.
 
 **Critère de complétion** : `internal/platform/duckdb/migration/` ne contient plus aucune DDL Halo-specific. Ajouter un titre = créer son dossier `ddl/` + l'enregistrer.
+
+### Phase 1.7 — Feature Matrix (capability cascading) (moyen, NOUVELLE)
+
+**Effort** : 4-5 jours
+**Risque** : moyen (touche services + frontend, mais isolé via interface)
+**Livrable** : système 2 niveaux qui modélise « data capability » (donnée brute peuplée) + « feature capability » (feature produit) avec arbre de dépendances déclaratif. Status à 3 états (`available` / `degraded` / `unavailable`). Exposé au frontend via `/api/v1/title/feature_matrix`.
+
+#### 1.7.1 Modèle de données (TOML déclaratif)
+
+`config/titles/{slug}/capabilities.toml` :
+
+```toml
+# Section [data] : disponibilité brute des sources DB par titre.
+# Chaque clé = nom canonique d'une source de données (table ou groupe de tables).
+[data]
+match_events     = true   # highlight_events table peuplée
+match_skill      = true   # kills_expected/deaths_expected dans match_participants
+weapon_kills     = true
+medals           = true
+killer_victim    = true
+csr              = true
+lusr             = true
+pve_firefight    = true
+match_film       = false  # ex: pas de film côté Halo Infinite
+
+# Section [feature.<key>] : features produit + leurs dépendances data.
+# requires        : données obligatoires (absent → unavailable)
+# degraded_without: données optionnelles (absent → degraded avec reason)
+[feature."match_view.cadence"]
+requires = ["match_events"]
+
+[feature."match_view.tug_of_war"]
+requires = ["match_events"]
+
+[feature."match_view.impact_roles"]
+requires = ["match_events"]
+
+[feature."match_view.killer_victim"]
+requires = ["killer_victim", "match_events"]
+
+[feature."match_view.expected_stats"]
+requires = ["match_skill"]
+
+[feature."synthesis.weapon_breakdown"]
+requires = ["weapon_kills"]
+degraded_without = ["medals"]
+
+[feature."engagement_score"]
+requires = ["match_events"]
+
+[feature."career.csr_progression"]
+requires = ["csr"]
+
+[feature."career.lusr_progression"]
+requires = ["lusr"]
+```
+
+#### 1.7.2 Algorithme de calcul
+
+Au boot du serveur, pour chaque titre enregistré :
+
+```
+pour chaque feature F :
+  manquants_requis  = { d ∈ F.requires        | data[d] == false }
+  manquants_optnels = { d ∈ F.degraded_without | data[d] == false }
+
+  si manquants_requis non vide :
+    status = "unavailable"
+    reason = "Requires {join(manquants_requis)} data"
+  sinon si manquants_optnels non vide :
+    status = "degraded"
+    reason = "{join(manquants_optnels)} data not available"
+  sinon :
+    status = "available"
+    reason = ""
+```
+
+Le résultat est un `map[FeatureKey]FeatureStatus` figé au boot, exposé via injection (DI) sous `port.FeatureChecker`.
+
+#### 1.7.3 Couches Go
+
+- [ ] `internal/domain/feature/` : types `FeatureKey`, `FeatureStatus` (`available` / `degraded` / `unavailable`), `FeatureMatrix`.
+- [ ] `internal/games/{slug}/feature_matrix.go` : loader TOML.
+- [ ] `internal/port/feature_checker.go` :
+  ```go
+  type FeatureChecker interface {
+      Status(ctx context.Context, key FeatureKey) FeatureStatus
+      Matrix(ctx context.Context) FeatureMatrix
+  }
+  ```
+- [ ] `internal/service/feature_matrix_service.go` : implémente `port.FeatureMatrixService`, expose la matrice complète (consommée par handler `/api/v1/title/feature_matrix`).
+- [ ] `internal/api/handlers/feature_matrix.go` : handler Huma `GET /api/v1/title/feature_matrix`.
+
+#### 1.7.4 Pattern d'usage côté service
+
+Tout service avec une feature gated :
+
+```go
+func (s *MatchViewService) buildCadence(ctx context.Context, ...) (*ChartSeries, error) {
+    if s.features.Status(ctx, "match_view.cadence").IsUnavailable() {
+        return nil, nil  // omitempty côté DTO
+    }
+    if s.features.Status(ctx, "match_view.cadence").IsDegraded() {
+        slog.WarnContext(ctx, "feature degraded",
+            "feature", "match_view.cadence",
+            "reason", s.features.Status(ctx, "match_view.cadence").Reason)
+        // continue avec calcul partiel
+    }
+    // calcul normal
+}
+```
+
+#### 1.7.5 Pattern d'usage côté frontend (anticipé Phase 5)
+
+```tsx
+// Hook
+const status = useFeatureStatus("match_view.cadence");
+// → { status: "degraded" | "available" | "unavailable", reason: string }
+
+// Composant gate
+<FeatureGate feature="match_view.cadence">
+  <Cadence data={...} />
+</FeatureGate>
+
+// FeatureGate logic :
+//   available   → render children
+//   degraded    → render children + <Badge variant="partial" tooltip={reason} />
+//   unavailable → render <FeatureUnavailable reason={reason} /> ou null selon prop hidden
+```
+
+#### 1.7.6 Tests obligatoires
+
+- [ ] `feature_matrix_test.go` : algorithme de calcul, 4 cas (tous available, 1 degraded, 1 unavailable, cascade).
+- [ ] **Test de cohérence TOML ↔ DB** : pour chaque `data=true` dans `capabilities.toml`, vérifier sur fixture `halo_full` que la table existe + a ≥ 1 row. CI fail si dérive.
+- [ ] **Test snapshot feature_matrix** : pour Halo Infinite et `synthetic_test_title`, golden file de la matrice complète. Diff = breaking change documenté.
+- [ ] Test parité multi-titre : la suite Halo passe avec toutes les features `available`. La suite synthetic passe avec seulement les features compatibles avec son TOML.
+
+**Critère de complétion** :
+- `capabilities.toml` Halo Infinite exhaustif (toutes les data + toutes les features).
+- `capabilities.toml` synthetic_test_title minimal (subset).
+- `port.FeatureChecker` injecté dans tous les services qui ont une feature gated.
+- Route `GET /api/v1/title/feature_matrix` opérationnelle, snapshot stable.
+- Aucun service n'utilise `if titleSlug == "halo_infinite"` pour gater une feature (lint custom).
 
 ### Phase 2 — Repository abstrait par FieldKey (moyen)
 
@@ -289,15 +435,20 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 
 **Critère de complétion** : ajouter un nouveau field stats = 1 ligne dans le TOML + 1 ligne dans le `TitleDataAdapter`. Le CLI le détecte automatiquement. Les opérations restent enumérées (pas de scope creep).
 
-### Phase 5 — Frontend canonical-aware (moyen)
+### Phase 5 — Frontend canonical-aware + FeatureGate (moyen)
 
-**Effort** : 6-8 jours (révisé)
+**Effort** : 7-9 jours (révisé v2.3)
 **Risque** : moyen (ajout d'abstractions front, mais OpenAPI gen capture les changes)
-**Livrable** : composants UI utilisent `useFieldLabel(FieldKey)` / `useCapability(cap)` au lieu d'accéder directement aux propriétés JSON par hardcoded path.
+**Livrable** : composants UI utilisent `useFieldLabel(FieldKey)` / `useCapability(cap)` / `useFeatureStatus(featureKey)` au lieu d'accéder directement aux propriétés JSON par hardcoded path. `<FeatureGate>` masque/dégrade automatiquement les sections selon le `feature_matrix` du titre actif.
 
 - [ ] **Codegen TS depuis canonical Go** (D5) : script `tools/codegen/canonical-ts/` qui lit `canonical/fields.go` et écrit `apps/web/src/lib/canonical/fields.ts`. CI lint vérifie que le fichier généré est à jour.
 - [ ] **Client API TS auto-généré** depuis l'OpenAPI Huma (Phase 3b) via `openapi-typescript`. Remplace le client manuel actuel.
 - [ ] Hook `useFieldLabel(field, locale)` lit le manifest i18n exposé via API `/api/v1/title/manifest` (déjà existant côté back via TitleSemanticAdapter).
+- [ ] Hook `useFeatureStatus(featureKey)` consulte `/api/v1/title/feature_matrix` (cached au boot via TanStack Query infinite stale time). Retourne `{ status, reason }`.
+- [ ] Composant `<FeatureGate feature="..." [hidden]>` à 3 modes :
+  - `available` → render children sans modification
+  - `degraded` → render children + `<PartialDataBadge tooltip={reason} />`
+  - `unavailable` → render `<FeatureUnavailable reason={reason} />` (skeleton avec explication) ou `null` si `hidden` prop fourni
 - [ ] Composants `<StatRow field="kills_expected" value={...} />` qui se masquent automatiquement si value undefined.
 - [ ] Capability gating au routeur : `<Route capability="lusr">` n'affiche pas la route si titre n'expose pas LUSR.
 - [ ] Tests Vitest sur les hooks + tests Playwright sur la dégradation `synthetic_test_title`.
@@ -618,6 +769,25 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 | Couverture `internal/games/{slug}/ddl/` 100% des steps | NOT DONE | | | |
 | 12 items de §8.2 | NOT DONE | | | |
 
+### 8.55 Exit Gate Phase 1.7 — Feature Matrix
+
+| Item | Statut | Date | Evidence | Validateur |
+|------|:-:|------|----------|:-:|
+| `internal/domain/feature/` créé (FeatureKey, FeatureStatus à 3 états, FeatureMatrix) | NOT DONE | | | |
+| `port.FeatureChecker` interface créée | NOT DONE | | | |
+| Loader TOML `internal/games/halo_infinite/feature_matrix.go` créé | NOT DONE | | | |
+| `capabilities.toml` Halo Infinite exhaustif (toutes data + toutes features) | NOT DONE | | | |
+| `capabilities.toml` synthetic_test_title (subset minimal) | NOT DONE | | | |
+| Algo de calcul implémenté + 4 cas testés (all-available, degraded, unavailable, cascade) | NOT DONE | | | |
+| Test cohérence TOML ↔ DB : pour chaque `data=true`, table existe + ≥ 1 row sur fixture halo_full | NOT DONE | | | |
+| Test snapshot feature_matrix Halo + synthetic (golden files) | NOT DONE | | | |
+| Handler Huma `GET /api/v1/title/feature_matrix` opérationnel | NOT DONE | | | |
+| `FeatureChecker` injecté dans les services qui en ont besoin | NOT DONE | | | |
+| Aucun service n'utilise `if titleSlug == ...` pour gater une feature (lint custom) | NOT DONE | | | |
+| Couverture `internal/domain/feature/` ≥ 95%, services impactés ≥ 80% | NOT DONE | | | |
+| Métriques expvar `feature_checker.status_count_by_status` exposées | NOT DONE | | | |
+| 12 items de §8.2 | NOT DONE | | | |
+
 ### 8.6 Exit Gate Phase 2 — `port.MatchFieldRepository` + 7 services migrés
 
 | Item | Statut | Date | Evidence | Validateur |
@@ -702,6 +872,8 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 | Client API TS regen depuis OpenAPI Huma, build front passe | NOT DONE | | | |
 | Hook `useFieldLabel(field, locale)` créé + tests Vitest | NOT DONE | | | |
 | Hook `useCapability(cap)` créé + tests Vitest | NOT DONE | | | |
+| Hook `useFeatureStatus(featureKey)` créé + tests Vitest (3 états) | NOT DONE | | | |
+| Composant `<FeatureGate feature=... [hidden]>` créé + tests (3 modes : available render, degraded render+badge, unavailable masque/skeleton) | NOT DONE | | | |
 | Composant `<StatRow field=... value=... />` créé + tests | NOT DONE | | | |
 | Capability gating au routeur (`<Route capability="...">`) | NOT DONE | | | |
 | Snapshot Playwright Halo : diff visuel ≤ 0.5% sur 4 routes critiques | NOT DONE | | | |
@@ -764,20 +936,21 @@ Si une de ces zones doit être modifiée pour faire passer la PR, c'est que le p
 
 ---
 
-## 11. Effort total estimé (révisé v2.1 — Huma intégré)
+## 11. Effort total estimé (révisé v2.3 — Feature Matrix ajoutée)
 
 - Phase 0 : 2-3 j
 - Phase 1 : 2-3 j
 - Phase 1.5 : 4-5 j
+- Phase 1.7 : 4-5 j (Feature Matrix : data + feature capabilities + 3 états)
 - Phase 2 : 5-7 j (incl. 1 j bench)
 - Phase 3a : 5-7 j (cleanup DTO)
 - Phase 3b : 13-18 j (migration Huma sur ~80 handlers, 4 groupes)
 - Phase 4 : 5-6 j
-- Phase 5 : 6-8 j
+- Phase 5 : 7-9 j (+1 j vs v2.2 : ajout `useFeatureStatus` + `<FeatureGate>`)
 
-**Total** : ~42-57 jours-personne, étalable sur 3-4 mois sans blocage du reste du dev.
+**Total** : ~47-63 jours-personne, étalable sur 3-4 mois sans blocage du reste du dev.
 
-**Fenêtre minimale viable** : Phases 0 → 3a = ~18-25 j → état « services title-agnostic + DTO propres mais OpenAPI manuel ». Phase 3b (Huma) peut être différée d'un trimestre si le ROI n'est pas clair, MAIS dans ce cas le client TS front reste désynchronisé du back.
+**Fenêtre minimale viable** : Phases 0 → 3a = ~22-30 j → état « services title-agnostic + DTO propres + feature matrix opérationnelle, mais OpenAPI manuel ». Phase 3b (Huma) peut être différée d'un trimestre si le ROI n'est pas clair, MAIS dans ce cas le client TS front reste désynchronisé du back.
 
 **ROI Huma seul** : validation auto, gen permanente, élimination de la dette OpenAPI manuel (qui se cumule à chaque feature). Décisif si le rythme d'ajout de routes reste soutenu (>10 routes/an).
 
@@ -820,6 +993,13 @@ git checkout -b refactor/title-agnostic-services
 
 ## 14. Changelog
 
+- **v2.3 (2026-05-07)** :
+  - Décisions D7 et D8 actées (3 états + TOML déclaratif).
+  - Phase 1.7 NOUVELLE : Feature Matrix — modèle 2 niveaux (data capabilities + feature capabilities) + arbre de dépendances déclaratif TOML + 3 états (`available` / `degraded` / `unavailable` + reason). Algorithme de cascade au boot. Effort 4-5 j.
+  - Phase 5 enrichie : `useFeatureStatus` + `<FeatureGate>` (3 modes : render / render+badge / skeleton). +1 j (7-9 j vs 6-8 j v2.2).
+  - ADR 0016 (Feature Matrix) à créer en Phase 0.
+  - Exit Gate Phase 1.7 ajouté avec 14 items (incl. test cohérence TOML ↔ DB).
+  - Effort total révisé : 47-63 j (vs 42-57 j v2.2).
 - **v2.2 (2026-05-06)** :
   - **§5 Tests refondu** : seuils de couverture chiffrés par couche (BLOQUANTS), 5 sous-sections (seuils, non-régression par phase, parité multi-titre, dégradation, datasets obligatoires)
   - **§6 Logging refondu** : 6 lints CI bloquants, standards par opération, whitelist de clés structurées, métriques expvar par phase, 4 vérifications shell de fin de phase
