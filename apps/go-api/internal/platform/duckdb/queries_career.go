@@ -73,6 +73,7 @@ SELECT
     COALESCE(ms.map_name_fr, ms.map_name)                AS map_name_fr,
     ms.pair_name,
     COALESCE(ms.pair_name_fr, ms.pair_name)              AS pair_name_fr,
+    ms.playlist_name                                     AS playlist_name_en,
     COALESCE(ms.playlist_name_fr, ms.playlist_name)      AS playlist_name,
     COALESCE(ms.is_firefight, FALSE)                     AS is_firefight,
     COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,

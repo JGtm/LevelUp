@@ -14,7 +14,8 @@ type MatchHistoryRawRow struct {
 	MapNameFR          *string
 	PairName           *string
 	PairNameFR         *string
-	PlaylistName       *string
+	PlaylistName       *string // FR si dispo (COALESCE), sinon EN
+	PlaylistNameEN     *string // EN brut (pour comparer EN==FR et déclencher translate)
 	IsFirefight        bool
 	IsRanked           bool
 	SessionID          *string
