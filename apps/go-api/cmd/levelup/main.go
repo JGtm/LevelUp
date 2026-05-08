@@ -87,6 +87,8 @@ func main() {
 		exitErr = runBackfill(cfg, args)
 	case "replay-events":
 		exitErr = runReplayEvents(cfg, args)
+	case "reset-bitmasks":
+		exitErr = runResetBitmasks(cfg, args)
 	case "engagement-coefs":
 		exitErr = runEngagementCoefs(cfg, args)
 	case "recompute-friends":
@@ -133,6 +135,7 @@ Commandes:
   sync-achievements Lancer le backfill des achievements Xbox (admin one-shot, --dry-run dispo)
   backfill        Lancer un backfill local (Go-only, pas d'API) — voir --engagement-scores
   replay-events   Re-parse highlight events sur les matchs cassés (parser bit-aligné fix mai 2026)
+  reset-bitmasks  Reset rétroactif skill/participants/PVE bits (Phase 4 PLAN_BITMASKS_AUDIT_FIX)
   engagement-coefs Recompute des coefficients d'engagement (--with-scores pour rejouer aussi les scores) — bypasse les migrations
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   migrate         Migrer les donnees vers le namespace multi-titres
