@@ -6,8 +6,10 @@
  * Médailles : icônes 32×32 avec dropShadow par niveau de difficulté.
  * Citations : CitationProgressRing (bleu normal, jaune si nouvellement maîtrisée).
  */
+import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { tokenCssVar } from '@/lib/accessibility'
+import { formatGamertag } from '@/lib/formatters'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import type {
   MatchCitationSnippet,
@@ -68,6 +70,34 @@ function KvRow({ label, value }: { label: string; value: React.ReactNode }) {
 // 1. Armes
 // ---------------------------------------------------------------------------
 
+function WeaponItem({ w }: { w: PlayerWeaponKillRow }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const showImage = w.image_url && !imgFailed
+  const fallbackText = w.label ?? `#${w.weapon_id}`
+  return (
+    <div className="flex items-center gap-2" title={w.label ?? String(w.weapon_id)}>
+      <div style={{ width: 56, height: 24 }} className="flex items-center justify-center flex-shrink-0">
+        {showImage ? (
+          <img
+            src={w.image_url}
+            alt=""
+            className="max-h-full max-w-full object-contain"
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <span className="text-[10px] text-muted-foreground text-center leading-tight truncate w-full">
+            {fallbackText}
+          </span>
+        )}
+      </div>
+      <span className="font-mono text-[11px] font-semibold" style={{ color: tokenCssVar('perf-tier-2') }}>
+        ×{w.kills}
+      </span>
+    </div>
+  )
+}
+
 function WeaponsSection({ weapons, title }: { weapons: PlayerWeaponKillRow[]; title: string }) {
   const top = [...weapons].sort((a, b) => b.kills - a.kills).slice(0, _LIMIT_WEAPONS)
   if (top.length === 0) return null
@@ -75,27 +105,7 @@ function WeaponsSection({ weapons, title }: { weapons: PlayerWeaponKillRow[]; ti
     <SectionGroup title={title}>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2">
         {top.map((w) => (
-          <div key={w.weapon_id} className="flex items-center gap-2" title={w.label ?? String(w.weapon_id)}>
-            {/* Conteneur fixe : harmonise les armes larges (sniper) et hautes (épée) */}
-            <div style={{ width: 56, height: 24 }} className="flex items-center justify-center flex-shrink-0">
-              {w.image_url ? (
-                <img
-                  src={w.image_url}
-                  alt=""
-                  className="max-h-full max-w-full object-contain"
-                  loading="lazy"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                />
-              ) : (
-                <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                  {w.label ?? `#${w.weapon_id}`}
-                </span>
-              )}
-            </div>
-            <span className="font-mono text-[11px] font-semibold" style={{ color: tokenCssVar('perf-tier-2') }}>
-              ×{w.kills}
-            </span>
-          </div>
+          <WeaponItem key={w.weapon_id} w={w} />
         ))}
       </div>
     </SectionGroup>
@@ -289,11 +299,15 @@ function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
 function Footer({ isTracked, isMe, isBot, gamertag, playerSlug, t }: { isTracked: boolean; isMe: boolean; isBot: boolean; gamertag: string; playerSlug?: string; t: MatchViewText }) {
   const badgeText = isTracked ? t.sbDetailPlayerDb : t.sbDetailSharedOnly
   const showLink = !isMe && !isBot && !!playerSlug
+  // gamertag brut conservé pour le query string Explorer (le slug attend
+  // l'identifiant raw côté API). Pour l'affichage humain on passe par
+  // formatGamertag (defensive : couvre les bots non résolus côté backend).
   const explorerUrl = showLink ? `/players/${playerSlug}/explorer?mode=player&target=${encodeURIComponent(gamertag)}` : null
+  const displayGamertag = formatGamertag(gamertag)
   return (
     <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-[11px]">
       <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">{badgeText}</span>
-      {explorerUrl && <a href={explorerUrl} className="text-info hover:underline">{t.sbDetailExplorePlayerFmt(gamertag)}</a>}
+      {explorerUrl && <a href={explorerUrl} className="text-info hover:underline">{t.sbDetailExplorePlayerFmt(displayGamertag)}</a>}
     </div>
   )
 }

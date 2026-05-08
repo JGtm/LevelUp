@@ -885,6 +885,14 @@ func applyDropHighlightEventsGamertag(db *sql.DB) error {
 }
 
 // applyResolutionViews crée les vues SQL v6 garanties.
+//
+// IMPORTANT : les erreurs de création de v_gamertag_lookup remontent à
+// l'appelant. Une migration silencieuse de cette vue laissait les bots
+// affichés en "bid(N.0)" quand le DDL échouait sans qu'on s'en aperçoive
+// (cf. thought_log 2026-05-08). Les vues optionnelles (v_match_full,
+// v_killer_victim_full, v_weapon_kills) tolèrent toujours les erreurs
+// car elles dépendent de tables qui peuvent être absentes en environnement
+// fraîchement initialisé.
 func applyResolutionViews(db *sql.DB) error {
 	// v_gamertag_lookup — résolveur unifié xuid → gamertag display.
 	//
@@ -899,7 +907,7 @@ func applyResolutionViews(db *sql.DB) error {
 	// Conséquence : les callers peuvent simplifier `COALESCE(vg.gamertag, ...)` en
 	// `vg.gamertag` direct (le LEFT JOIN couvre quand même le cas où xuid n'est
 	// dans aucune source de la vue, mais c'est rare — typiquement un xuid orphelin).
-	_, _ = db.Exec(`
+	if _, err := db.Exec(`
 		CREATE OR REPLACE VIEW v_gamertag_lookup AS
 		SELECT
 			COALESCE(xa.xuid, mp.xuid) AS xuid,
@@ -918,7 +926,9 @@ func applyResolutionViews(db *sql.DB) error {
 			FROM match_participants
 			GROUP BY xuid
 		) mp ON xa.xuid = mp.xuid
-	`)
+	`); err != nil {
+		return fmt.Errorf("create v_gamertag_lookup: %w", err)
+	}
 
 	// v_match_full — requires metadata ATTACHed as 'meta'
 	// Simplified version that works with or without meta

@@ -29,10 +29,12 @@ import {
 } from '@tanstack/react-table'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { Tooltip } from '@/components/ui/tooltip'
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import { formatGamertag } from '@/lib/formatters'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
 
 interface Props {
@@ -48,6 +50,21 @@ function formatPercent(v: number | null | undefined): string {
 
 function isSemanticToken(s: string): s is SemanticToken {
   return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
+}
+
+const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
+  'narrative.encounter.ally_plus': {
+    fr: 'Allié récurrent : bon taux de victoire ensemble',
+    en: 'Recurring ally: good win rate together',
+  },
+  'narrative.encounter.tough_enemy': {
+    fr: 'Adversaire coriace : taux de victoire faible',
+    en: 'Tough opponent: low win rate against him',
+  },
+  'narrative.encounter.ordinal': {
+    fr: 'Total rencontres croisées (allié + ennemi)',
+    en: 'Total cross encounters (ally + enemy)',
+  },
 }
 
 /**
@@ -76,7 +93,15 @@ function EncounterBadgesInline({
         const colorVar = isSemanticToken(badge.color_token)
           ? tokenVar(badge.color_token as SemanticToken)
           : undefined
-        return <NarrativeBadge key={i} label={label} colorVar={colorVar} size="sm" />
+        const tooltip = ENCOUNTER_BADGE_TOOLTIPS[badge.label_key]?.[locale]
+        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} size="sm" />
+        return tooltip ? (
+          <Tooltip key={i} content={tooltip}>
+            {badgeEl}
+          </Tooltip>
+        ) : (
+          <span key={i}>{badgeEl}</span>
+        )
       })}
     </span>
   )
@@ -187,6 +212,9 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
           const r = ctx.row.original
           // Pas de lien Explorer pour les bots (xuid 'bid(...)' sans historique cross-match).
           const linkable = playerSlug && !r.is_bot
+          // Defensive : v_gamertag_lookup côté backend devrait déjà rendre les
+          // bots en "343 Bot N" (cf. thought_log 2026-05-08).
+          const displayGamertag = formatGamertag(r.gamertag)
           return (
             <span className="whitespace-nowrap">
               {linkable ? (
@@ -195,10 +223,10 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
                   className="font-semibold text-info hover:underline"
                   onClick={() => goToExplorer(r.gamertag)}
                 >
-                  {r.gamertag}
+                  {displayGamertag}
                 </button>
               ) : (
-                <span className={`font-semibold ${r.is_bot ? 'text-muted-foreground italic' : 'text-foreground'}`}>{r.gamertag}</span>
+                <span className={`font-semibold ${r.is_bot ? 'text-muted-foreground italic' : 'text-foreground'}`}>{displayGamertag}</span>
               )}
               {r.is_bot && (
                 <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-wide">Bot</span>

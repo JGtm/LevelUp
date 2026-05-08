@@ -1,4 +1,96 @@
 
+## [2026-05-08] Match-view : 3 régressions persistantes (Solo, Super Fiesta → Assassin, bot bid(N.0))
+
+**Statut** : Complété
+
+**Contexte** : trois bugs récurrents (15-25 patches précédents inefficaces) signalés en bloc par l'utilisateur sur la match-view. Investigation par triple agent Explore puis lecture directe du code Go pour valider les hypothèses (les agents ont produit des hypothèses partiellement fausses sur #3, j'ai dû interroger la DB via un cmd Go diag éphémère pour trouver la vraie cause).
+
+**Décisions techniques**
+
+1. **Solo qui revient — bug 3-valeurs SQL** : `player_match_enrichment.is_with_friends` était déclaré `BOOLEAN` sans `DEFAULT`, donc tout INSERT du sync écrivait NULL. Le post-sync recompute (`updateIsWithFriendsBatch`) filtrait `WHERE is_with_friends = FALSE` — en logique 3-valeurs, NULL ≠ FALSE → la ligne était skippée. Le frontend lisait `COALESCE(pme.is_with_friends, FALSE)` → badge "Solo" permanent. Fix : (a) `DEFAULT FALSE` sur le schéma, (b) `WHERE COALESCE(is_with_friends, FALSE) = FALSE` dans le UPDATE, (c) test integration `TestUpdateIsWithFriendsBatch_PromotesNullAndFalse` qui valide les 4 cas (NULL/FALSE/TRUE/hors-batch). Sémantique additive conservée (TRUE → TRUE).
+
+2. **Super Fiesta affiché "Assassin" — préfixe playlist-identity ignoré** : le pair_name `"Super Fiesta:Slayer on Forbidden - Forge"` était traité par `NormalizeModeLabel` qui extrait après `:` → `"Slayer"` → traduit FR → "Assassin" via `mode_name_tr`. Or "Super Fiesta" est une catégorie *promue* (cf. skill halo-modes : distincte de "Fiesta" en Go alors que Python v7 les groupait). Fix : nouvelle map `playlistIdentityPrefixes` (case-insensitive) qui couvre Super Fiesta / Husky Raid / Super Husky Raid → renvoie le préfixe au lieu d'extraire le sous-mode. Conservateur : Arena/Tactical/Assault/Community (containers Assassin) restent extraits au sous-mode, BTB/Fiesta/Ranked/Firefight conservent leur comportement actuel (l'utilisateur n'a pas remonté de bug dessus). Test table-driven `TestNormalizeModeLabel` couvre les non-régressions et les nouveaux cas.
+
+3. **Bot "bid(N.0)" affiché dans le scoreboard — résolveur en best-effort** : la vue SQL `v_gamertag_lookup` (`apps/go-api/internal/migration/steps_shared.go`) résout les bots en "343 Bot N", utilisée par 9+ requêtes dont Q12 scoreboard. Mais le COALESCE `vg.gamertag, p.xuid` retombe sur le xuid raw quand le LEFT JOIN ne trouve pas de match (cas rare mais possible : alias orphelin, vue non créée à cause d'une erreur silencieusement avalée par `_, _ = db.Exec(...)`). Fix : (a) `applyResolutionViews` retourne désormais l'erreur de création de `v_gamertag_lookup` au lieu de l'avaler ; (b) helper frontend défensif `formatGamertag()` (`apps/web/src/lib/formatters/gamertag.ts`) qui détecte le pattern `bid(N.0)` côté JSX comme dernière ligne de défense, appliqué à `MatchScoreboard.tsx`, `MatchEncountersTable.tsx`, `PlayerDetailPanel.tsx`. Tests vitest dédiés (9 cas).
+
+**Résultats observés** :
+- `go test -tags cgo ./internal/sync/... ./internal/analysis/... ./internal/games/... ./internal/platform/...` : tous OK.
+- `go vet -tags cgo ./...` : silencieux.
+- `npm run typecheck` (web) : OK. `npm run test src/lib/formatters/gamertag.test.ts` : 9/9. `npm run test src/features/match-view` : 96/96.
+- Lint web : 0 nouvelle erreur sur les fichiers touchés (52 erreurs préexistantes ailleurs).
+- Les échecs `TestRunForDB_Shared_*` (build integration sync, execScript empty query dans `create_base_shared_schema`) restent préexistants — non touchés par ce patch.
+
+**Prochaine étape** : valider visuellement après prochain sync delta — (a) nouveaux matchs en escouade doivent passer en "Escouade" automatiquement (le post-sync recompute couvrira maintenant les NULL), (b) tuile Super Fiesta doit afficher "Super Fiesta" au lieu de "Assassin", (c) bot dans le scoreboard doit afficher "343 Bot N" même si la résolution backend échoue. Si l'utilisateur signale une régression sur d'autres préfixes (Fiesta, BTB), étendre `playlistIdentityPrefixes` au cas par cas.
+
+---
+
+## [2026-05-08] Citations : fix double-encoding des image_path (16 entrées)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause** : `analysis.BuildCitationSnippets` applique `url.PathEscape` sur chaque segment de `image_path`. Quand le seed contient déjà des `%XX` URL-encodés (ex: `%27` pour `'`, `%C3%A9` pour `é`), le `%` est ré-encodé en `%25`. Le navigateur décode une fois → handler statique cherche `H5G_citation_I%27m_just_perfect.png` mais le fichier disque est `H5G_citation_I'm_just_perfect.png`. Résultat : 404, image vide.
+- **Patch seed.go** (`internal/ops/seed.go`) : remplacement des 16 `image_path` URL-encodés par leurs caractères littéraux. Le `url.PathEscape` se charge tout seul de l'encodage côté API. Citations corrigées : Zéro défaut, À la charge, Annexion forcée, Défenseur du drapeau, Je te tiens !, Écrasement, Grenade à fragmentation, Grenade à plasma, Combat rapproché, Tir à la tête, Œil de lynx, Sors les drapeaux, Destructeur d'apparitions, Tueur d'Élites, Tueur de Marines, Maîtrise de l'Épée à énergie.
+- **Migration** : nouveau fichier `internal/migration/steps_metadata_citation_fix.go` (`fix_citation_image_paths_double_encoded`) — 16 UPDATE par PK `citation_name_norm` pour rectifier les BDD existantes. Idempotente. Pattern aligné sur le split déjà existant (`steps_metadata_prestige.go`, etc.) car `steps_metadata.go` dépasse déjà 500L.
+
+**Résultats observés** :
+- `go build ./...` OK, `go vet` OK.
+- Tests metadata `TestRunForDB_Metadata_*` (3) passent — la migration s'applique sans erreur. Les échecs `TestRunForDB_Shared_*` sont préexistants (issue dans `create_base_shared_schema`, non touchée par ce patch).
+- Cross-référencement seed.go ↔ disque (167 fichiers H5G + 26 HI) confirme que les 16 entrées identifiées sont les SEULES cassées : toutes les autres (~70) ont des chemins corrects.
+
+**Prochaine étape** : Au prochain démarrage de l'API, la migration tourne et corrige les BDD existantes. Validation visuelle ensuite.
+
+---
+
+## [2026-05-08] Match-view : badges Faits marquants en colonne uniforme
+
+**Statut** : Complété
+
+**Décision technique** :
+- `Tooltip` (composant partagé `components/ui/tooltip.tsx`) accepte désormais une prop optionnelle `className` mergée sur le wrapper. Sans valeur, comportement inchangé (`relative inline-flex items-center`). Usage marginal (2 callers).
+- `MatchImpactBadgesBar` : suppression du wrapper `Card` externe (déjà fait précédemment) + chaque badge passe à `w-full` ; le `Tooltip` reçoit `className="w-full"` pour que `inline-flex` ne contraigne plus la largeur intrinsèque. Résultat : tous les badges ont la même largeur (= largeur de la colonne du grid).
+- Grille `MatchViewPage` : `lg:grid-cols-[1fr_5fr]` → `lg:grid-cols-[180px_1fr]`. Colonne badges fixée à 180px, le chart "Frags cumulés" occupe tout l'espace restant.
+
+**Résultats observés** : `tsc --noEmit` sans erreur.
+
+**Prochaine étape** : Validation visuelle.
+
+---
+
+## [2026-05-08] Match-view : fusion onglets + refonte layouts "Détails"
+
+**Statut** : Complété
+
+**Décision technique** :
+- Onglets Combat + Équipe fusionnés en un seul onglet "Détails" ; "Résumé" renommé "Général". `TabId` passe de 3 à 2 valeurs.
+- Layouts côte à côte : Faits marquants | Frags cumulés (`[1fr_2fr]`), Dominance | Cadence (`grid-cols-2`), Antagonistes | Némésis+Souffre-douleur (`[2fr_1fr]`).
+- `MatchNemesisCards` : passage de `grid sm:grid-cols-2` à `flex flex-col` pour empiler les deux cartes.
+- `MatchAntagonistChart` : suppression du wrapper `Card/CardContent`, titre simplifié en "Antagonistes". L'état vide utilise un `div` avec les classes `rounded-lg border bg-card`.
+- Légende `MatchTugOfWarChart` déplacée en bas (`bottom: 4`), grilles ajustées (`top: 8 / height: 68% / top: 78% / height: 10%`).
+- Labels i18n : `combatKdCumulTitle` → "Frags cumulés", `combatTugOfWarTitle` → "Dominance" (FR + EN).
+- Un seul `EngagementMatchSection` conservé (sans `emptyBehavior`).
+
+**Résultats observés** : `tsc --noEmit` sans erreur.
+
+**Prochaine étape** : Validation visuelle en browser.
+
+---
+
+## [2026-05-08] UX match-view : empty state scoreboard + tooltips badges rencontres
+
+**Statut** : Complété
+
+**Décision technique** :
+- `MatchScoreboard.tsx` : guard early-return quand `rows` est vide, affiche une carte avec `t.scoreboardNoData` (pattern identique à `MatchFragDiffChart`).
+- `MatchEncountersTable.tsx` : mapping `ENCOUNTER_BADGE_TOOLTIPS` (3 clés : `ally_plus`, `tough_enemy`, `ordinal`) passé en prop `title` à `NarrativeBadge` — tooltip natif HTML, aucune dépendance externe.
+- `i18n.ts` : nouvelle clé `scoreboardNoData` ajoutée dans l'interface et les deux locales (FR/EN).
+
+**Résultats observés** : TypeScript compile sans erreur (erreur 2741 résolue après ajout des valeurs FR/EN). `NarrativeBadge` supportait déjà `title` — zéro modification du composant partagé.
+
+**Prochaine étape** : Suite du retravaill de la page Match.
+
+---
+
 ## [2026-05-08] UX match-view : refonte bandeau sync partiel
 
 **Statut** : Complété
