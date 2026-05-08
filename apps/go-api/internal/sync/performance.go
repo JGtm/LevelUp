@@ -30,6 +30,7 @@ type historyRow struct {
 	TimePlayedSeconds float64
 	PersonalScore     float64
 	DamageDealt       float64
+	DamageTaken       float64
 	Rank              float64
 	TeamMMR           float64
 	EnemyMMR          float64
@@ -43,22 +44,29 @@ type historyRow struct {
 	DPMDamage        float64
 	KillsVsExpected  float64
 	DeathsVsExpected float64
+	// Métriques combat yield v5 (ADR-0006) — enrichies après chargement SQL
+	OffensiveConversion float64
+	DefensiveResistance float64
+	MedalExploitScore   float64
 }
 
 // matchMetrics contient les métriques per-minute d'un match unique.
 type matchMetrics struct {
-	KPM              float64
-	DPMDeaths        float64
-	APM              float64
-	KDA              float64
-	Accuracy         *float64
-	PSPM             *float64
-	DPMDamage        *float64
-	Rank             *float64
-	TeamMMR          *float64
-	EnemyMMR         *float64
-	KillsVsExpected  *float64
-	DeathsVsExpected *float64
+	KPM                 float64
+	DPMDeaths           float64
+	APM                 float64
+	KDA                 float64
+	Accuracy            *float64
+	PSPM                *float64
+	DPMDamage           *float64
+	Rank                *float64
+	TeamMMR             *float64
+	EnemyMMR            *float64
+	KillsVsExpected     *float64
+	DeathsVsExpected    *float64
+	OffensiveConversion *float64
+	DefensiveResistance *float64
+	MedalExploit        *float64
 }
 
 // ── Extraction des métriques ────────────────────────────────────────────────
@@ -118,6 +126,19 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 		v := row.DeathsExpected / math.Max(1.0, deaths)
 		m.DeathsVsExpected = &v
 	}
+	// Combat yield v5 — précomputé dans historyRow
+	if row.OffensiveConversion > 0 {
+		v := row.OffensiveConversion
+		m.OffensiveConversion = &v
+	}
+	if row.DefensiveResistance > 0 {
+		v := row.DefensiveResistance
+		m.DefensiveResistance = &v
+	}
+	if row.MedalExploitScore > 0 {
+		v := row.MedalExploitScore
+		m.MedalExploit = &v
+	}
 	return m
 }
 
@@ -172,7 +193,11 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 	weightsUsed := make(map[string]float64)
 
 	// Métriques standard (plus = mieux)
-	standardMetrics := []string{"kpm", "apm", "kda", "accuracy", "pspm", "dpm_damage"}
+	standardMetrics := []string{
+		"kpm", "apm", "kda", "accuracy", "pspm", "dpm_damage",
+		"kills_vs_expected", "deaths_vs_expected",
+		"offensive_conversion", "defensive_resistance", "medal_exploit",
+	}
 	for _, key := range standardMetrics {
 		val, ok := getMetricValue(metrics, key)
 		if !ok {
@@ -199,21 +224,6 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 			percentiles["rank_perf"] = *rankPerf
 			weightsUsed["rank_perf"] = RelativeWeights["rank_perf"]
 		}
-	}
-
-	// Métriques vs expected
-	vsExpected := []string{"kills_vs_expected", "deaths_vs_expected"}
-	for _, key := range vsExpected {
-		val, ok := getMetricValue(metrics, key)
-		if !ok {
-			continue
-		}
-		series, ok2 := histMetrics[key]
-		if !ok2 || len(series) == 0 {
-			continue
-		}
-		percentiles[key] = percentileRank(val, series)
-		weightsUsed[key] = RelativeWeights[key]
 	}
 
 	if len(percentiles) == 0 {
@@ -286,6 +296,21 @@ func getMetricValue(m *matchMetrics, key string) (float64, bool) {
 			return *m.DeathsVsExpected, true
 		}
 		return 0, false
+	case "offensive_conversion":
+		if m.OffensiveConversion != nil {
+			return *m.OffensiveConversion, true
+		}
+		return 0, false
+	case "defensive_resistance":
+		if m.DefensiveResistance != nil {
+			return *m.DefensiveResistance, true
+		}
+		return 0, false
+	case "medal_exploit":
+		if m.MedalExploit != nil {
+			return *m.MedalExploit, true
+		}
+		return 0, false
 	}
 	return 0, false
 }
@@ -294,16 +319,19 @@ func getMetricValue(m *matchMetrics, key string) (float64, bool) {
 func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 	n := len(history)
 	result := map[string][]float64{
-		"kpm":                make([]float64, 0, n),
-		"dpm_deaths":         make([]float64, 0, n),
-		"apm":                make([]float64, 0, n),
-		"kda":                make([]float64, 0, n),
-		"accuracy":           make([]float64, 0, n),
-		"pspm":               make([]float64, 0, n),
-		"dpm_damage":         make([]float64, 0, n),
-		"rank_perf_diff":     make([]float64, 0, n),
-		"kills_vs_expected":  make([]float64, 0, n),
-		"deaths_vs_expected": make([]float64, 0, n),
+		"kpm":                  make([]float64, 0, n),
+		"dpm_deaths":           make([]float64, 0, n),
+		"apm":                  make([]float64, 0, n),
+		"kda":                  make([]float64, 0, n),
+		"accuracy":             make([]float64, 0, n),
+		"pspm":                 make([]float64, 0, n),
+		"dpm_damage":           make([]float64, 0, n),
+		"rank_perf_diff":       make([]float64, 0, n),
+		"kills_vs_expected":    make([]float64, 0, n),
+		"deaths_vs_expected":   make([]float64, 0, n),
+		"offensive_conversion": make([]float64, 0, n),
+		"defensive_resistance": make([]float64, 0, n),
+		"medal_exploit":        make([]float64, 0, n),
 	}
 
 	for _, row := range history {
@@ -335,6 +363,15 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		if m.DeathsVsExpected != nil {
 			result["deaths_vs_expected"] = append(result["deaths_vs_expected"], *m.DeathsVsExpected)
 		}
+		if m.OffensiveConversion != nil {
+			result["offensive_conversion"] = append(result["offensive_conversion"], *m.OffensiveConversion)
+		}
+		if m.DefensiveResistance != nil {
+			result["defensive_resistance"] = append(result["defensive_resistance"], *m.DefensiveResistance)
+		}
+		if m.MedalExploit != nil {
+			result["medal_exploit"] = append(result["medal_exploit"], *m.MedalExploit)
+		}
 	}
 
 	// Trier chaque série pour les calculs de percentile.
@@ -348,6 +385,7 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 // ── Batch compute ───────────────────────────────────────────────────────────
 
 // loadHistoryForPerf charge tous les matchs du joueur depuis shared DB pour le batch.
+// Le champ damage_taken est utilisé pour defensive_resistance (combat yield v5).
 func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 	rows, err := sharedDB.Query(`
 		SELECT
@@ -357,6 +395,7 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 			COALESCE(mp.accuracy, 0),
 			COALESCE(mp.time_played_seconds, 600),
 			COALESCE(mp.personal_score, 0), COALESCE(mp.damage_dealt, 0),
+			COALESCE(mp.damage_taken, 0),
 			COALESCE(mp.rank, 0),
 			COALESCE(mp.team_mmr, 0), COALESCE(mp.enemy_mmr, 0),
 			COALESCE(mp.kills_expected, 0), COALESCE(mp.deaths_expected, 0)
@@ -364,6 +403,7 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
+		  AND COALESCE(mp.outcome, 0) != 4
 		ORDER BY mr.start_time ASC`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadHistoryForPerf: %w", err)
@@ -378,20 +418,27 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 			&h.MatchID, &startTime,
 			&h.Kills, &h.Deaths, &h.Assists, &h.KDA,
 			&h.Accuracy, &h.TimePlayedSeconds,
-			&h.PersonalScore, &h.DamageDealt,
+			&h.PersonalScore, &h.DamageDealt, &h.DamageTaken,
 			&h.Rank, &h.TeamMMR, &h.EnemyMMR,
 			&h.KillsExpected, &h.DeathsExpected,
 		); err != nil {
 			continue
 		}
+		// Calcul offline des métriques combat yield (pas de DB supplémentaire requise)
+		h.OffensiveConversion, h.DefensiveResistance = computeCombatYield(lusrMatchData{
+			Kills: h.Kills, Deaths: h.Deaths, Assists: h.Assists,
+			DamageDealt: h.DamageDealt, DamageTaken: h.DamageTaken,
+		})
 		history = append(history, h)
 	}
 	return history, rows.Err()
 }
 
-// batchComputePerformanceScores calcule les performance_score manquants.
+// batchComputePerformanceScores calcule les performance_score manquants ou tous si force=true.
+// medalExploitByMatch : match_id → score médailles (nil = pas de données médailles).
+// force : recalcule même si performance_score est déjà présent.
 // Retourne le nombre de matchs mis à jour.
-func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string) (int, error) {
+func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
 	allMatches, err := loadHistoryForPerf(sharedDB, xuid)
 	if err != nil {
 		return 0, err
@@ -400,16 +447,25 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string) (int
 		return 0, nil
 	}
 
-	// Charger les matchs qui ont déjà un score.
+	// Enrichir avec les scores médailles
+	for i := range allMatches {
+		if score, ok := medalExploitByMatch[allMatches[i].MatchID]; ok {
+			allMatches[i].MedalExploitScore = score
+		}
+	}
+
+	// Charger les matchs qui ont déjà un score (ignoré en mode force).
 	existing := make(map[string]bool)
-	existRows, err := playerDB.Query(
-		"SELECT match_id FROM player_match_enrichment WHERE performance_score IS NOT NULL")
-	if err == nil {
-		defer existRows.Close()
-		for existRows.Next() {
-			var mid string
-			if existRows.Scan(&mid) == nil {
-				existing[mid] = true
+	if !force {
+		existRows, err := playerDB.Query(
+			"SELECT match_id FROM player_match_enrichment WHERE performance_score IS NOT NULL")
+		if err == nil {
+			defer existRows.Close()
+			for existRows.Next() {
+				var mid string
+				if existRows.Scan(&mid) == nil {
+					existing[mid] = true
+				}
 			}
 		}
 	}
@@ -419,7 +475,7 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string) (int
 	now := time.Now().UTC()
 
 	for i, match := range allMatches {
-		if existing[match.MatchID] {
+		if !force && existing[match.MatchID] {
 			continue
 		}
 		if i < MinMatchesForRelative {

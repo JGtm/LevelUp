@@ -64,7 +64,7 @@ func TestApplyInactivityDecay_NeverBelowMinSigma(t *testing.T) {
 
 func TestCompositeScore_AllZeros(t *testing.T) {
 	row := &compositeMatchRow{}
-	got := computeCompositeScore(row, nil, nil, nil)
+	got := computeCompositeScore(row, nil, nil, nil, nil, nil, nil)
 	if got != 0.5 {
 		t.Errorf("all zeros: got %v, want 0.5", got)
 	}
@@ -84,7 +84,7 @@ func TestCompositeScore_ClearWin(t *testing.T) {
 	}
 	avgAcc := 45.0
 	avgDE := 0.5
-	got := computeCompositeScore(row, &avgAcc, nil, &avgDE)
+	got := computeCompositeScore(row, &avgAcc, nil, &avgDE, nil, nil, nil)
 	if got <= 0.5 {
 		t.Errorf("clear win with above-average stats: got %v, want > 0.5", got)
 	}
@@ -104,7 +104,7 @@ func TestCompositeScore_ClearLoss(t *testing.T) {
 	}
 	avgAcc := 45.0
 	avgDE := 0.5
-	got := computeCompositeScore(row, &avgAcc, nil, &avgDE)
+	got := computeCompositeScore(row, &avgAcc, nil, &avgDE, nil, nil, nil)
 	if got >= 0.5 {
 		t.Errorf("clear loss with below-average stats: got %v, want < 0.5", got)
 	}
@@ -117,7 +117,7 @@ func TestCompositeScore_InRange(t *testing.T) {
 		Outcome: &outcome, DamageDealt: 3000, DamageTaken: 3000, Accuracy: 45,
 	}
 	avgAcc := 45.0
-	got := computeCompositeScore(row, &avgAcc, nil, nil)
+	got := computeCompositeScore(row, &avgAcc, nil, nil, nil, nil, nil)
 	if got < 0 || got > 1 {
 		t.Errorf("score out of [0,1]: %v", got)
 	}
@@ -129,7 +129,7 @@ func TestCompositeScore_DNF(t *testing.T) {
 		Kills: 5, Deaths: 5, KillsExpected: 10, DeathsExpected: 10,
 		Outcome: &outcome, DamageDealt: 2000, DamageTaken: 2000,
 	}
-	got := computeCompositeScore(row, nil, nil, nil)
+	got := computeCompositeScore(row, nil, nil, nil, nil, nil, nil)
 	if got < 0 || got > 1 {
 		t.Errorf("DNF score out of range: %v", got)
 	}

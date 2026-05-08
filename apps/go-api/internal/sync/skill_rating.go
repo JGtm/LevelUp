@@ -9,18 +9,23 @@ import (
 	"database/sql"
 	"math"
 	"time"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // ── PlayerState — état TrueSkill 2 entre deux matchs ────────────────────────
 
 // PlayerState contient l'état mu/sigma d'un joueur pour un playlist_group.
 type PlayerState struct {
-	MU               float64
-	Sigma            float64
-	MatchCount       int
-	LastMatchTime    *time.Time
-	AccuracyHistory  []float64
-	DamageEffHistory []float64
+	MU                   float64
+	Sigma                float64
+	MatchCount           int
+	LastMatchTime        *time.Time
+	AccuracyHistory      []float64
+	DamageEffHistory     []float64
+	MedalExploitHistory  []float64
+	OffConversionHistory []float64
+	DefResistanceHistory []float64
 }
 
 // NewPlayerState crée un état initial.
@@ -91,22 +96,30 @@ func applyInactivityDecay(sigma, daysInactive float64) float64 {
 
 // compositeMatchRow contient les champs nécessaires au score composite.
 type compositeMatchRow struct {
-	Kills          float64
-	Deaths         float64
-	KillsExpected  float64
-	DeathsExpected float64
-	Outcome        *int
-	DamageDealt    float64
-	DamageTaken    float64
-	Accuracy       float64
+	Kills               float64
+	Deaths              float64
+	Assists             float64
+	KillsExpected       float64
+	DeathsExpected      float64
+	Outcome             *int
+	DamageDealt         float64
+	DamageTaken         float64
+	Accuracy            float64
+	MedalExploitScore   float64 // score brut ComputeMedalExploitScore, 0 si absent
+	OffensiveConversion float64 // 225*(kills+assists/3)/damage_dealt, 0 si absent
+	DefensiveResistance float64 // damage_taken/(225*deaths), 0 si absent
 }
 
 // computeCompositeScore calcule le score composite [0,1] d'un match.
+// Les composantes manquantes (valeur 0 ou avg nil) sont ignorées et les poids renormalisés.
 func computeCompositeScore( //nolint:unparam // teammateAvgKE réservé pour future formule de synergie
 	row *compositeMatchRow,
 	avgAccuracy *float64,
 	teammateAvgKE *float64,
 	avgDamageEff *float64,
+	avgMedalExploit *float64,
+	avgOffConv *float64,
+	avgDefRes *float64,
 ) float64 {
 	w := CompositeWeights
 	type entry struct {
@@ -166,6 +179,33 @@ func computeCompositeScore( //nolint:unparam // teammateAvgKE réservé pour fut
 	if row.Accuracy > 0 && avgAccuracy != nil && *avgAccuracy > 0 {
 		score := sigmoidRatio(row.Accuracy, *avgAccuracy)
 		valid = append(valid, entry{"accuracy_delta", score, w["accuracy_delta"]})
+	}
+
+	// 6. medal_exploit (optional — 0 si médailles absentes)
+	if row.MedalExploitScore > 0 {
+		ref := 5.0
+		if avgMedalExploit != nil && *avgMedalExploit > 1e-9 {
+			ref = *avgMedalExploit
+		}
+		valid = append(valid, entry{"medal_exploit", sigmoidRatio(row.MedalExploitScore, ref), w["medal_exploit"]})
+	}
+
+	// 7. offensive_conversion (optional — 0 si damage_dealt absent)
+	if row.OffensiveConversion > 0 {
+		ref := analysis.OffensiveConversionP80
+		if avgOffConv != nil && *avgOffConv > 1e-9 {
+			ref = *avgOffConv
+		}
+		valid = append(valid, entry{"offensive_conversion", sigmoidRatio(row.OffensiveConversion, ref), w["offensive_conversion"]})
+	}
+
+	// 8. defensive_resistance (optional — 0 si deaths=0)
+	if row.DefensiveResistance > 0 {
+		ref := analysis.DefensiveResistanceP80
+		if avgDefRes != nil && *avgDefRes > 1e-9 {
+			ref = *avgDefRes
+		}
+		valid = append(valid, entry{"defensive_resistance", sigmoidRatio(row.DefensiveResistance, ref), w["defensive_resistance"]})
 	}
 
 	if len(valid) == 0 {
@@ -228,8 +268,10 @@ func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU f
 // Constante LUSRMaxDelta → skill_config.go.
 
 // batchComputeLUSR calcule le LUSR pour tous les matchs non classés.
+// medalExploitByMatch : match_id → score brut d'exploit médailles (nil = pas de données).
+// force : si true, recalcule même les matchs déjà présents (utile après changement de formule).
 // Retourne le nombre de matchs mis à jour.
-func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string) (int, error) {
+func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
 	// 1. Charger les matchs non classés, non-firefight, triés chronologiquement.
 	matches, err := loadLUSRMatchData(sharedDB, xuid)
 	if err != nil {
@@ -253,27 +295,37 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string) (int, error) {
 	existingCSR := loadExistingRatingIDs(playerDB, "CSR")
 	existingLUSR := loadExistingRatingIDs(playerDB, "LUSR")
 
-	// 4. Charger les états existants (mode incrémental).
-	states := loadExistingLUSRStates(playerDB)
+	// 4. En mode force : recalcul depuis zéro (état vierge, pas de seed).
+	//    En mode incrémental : reprendre depuis le dernier état persisté.
+	var states map[string]*PlayerState
 	seedRatings := make(map[string]float64)
-	for pg, st := range states {
-		seedRatings[pg] = st.MU
+	if force {
+		states = make(map[string]*PlayerState)
+	} else {
+		states = loadExistingLUSRStates(playerDB)
+		for pg, st := range states {
+			seedRatings[pg] = st.MU
+		}
 	}
 
-	// 5. Filtrer les matchs déjà calculés.
-	newMatches := make([]lusrMatchData, 0, len(matches))
-	for _, m := range matches {
-		if existingCSR[m.MatchID] || existingLUSR[m.MatchID] {
-			continue
+	// 5. En mode normal : filtrer les matchs déjà calculés.
+	//    En mode force : tout recalculer (upsertLUSRRatings écrase via ON CONFLICT).
+	toProcess := matches
+	if !force {
+		toProcess = make([]lusrMatchData, 0, len(matches))
+		for _, m := range matches {
+			if existingCSR[m.MatchID] || existingLUSR[m.MatchID] {
+				continue
+			}
+			toProcess = append(toProcess, m)
 		}
-		newMatches = append(newMatches, m)
-	}
-	if len(newMatches) == 0 {
-		return 0, nil
+		if len(toProcess) == 0 {
+			return 0, nil
+		}
 	}
 
 	// 6. Calculer les ratings via TrueSkill 2 séquentiel.
-	results := computeSkillRatingsBatch(newMatches, participantsByMatch, states)
+	results := computeSkillRatingsBatch(toProcess, participantsByMatch, states, medalExploitByMatch)
 	if len(results) == 0 {
 		return 0, nil
 	}
@@ -283,10 +335,12 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string) (int, error) {
 }
 
 // computeSkillRatingsBatch calcule mu/sigma pour chaque match séquentiellement.
+// medalExploitByMatch : map optionnelle match_id → score brut médailles.
 func computeSkillRatingsBatch(
 	matches []lusrMatchData,
 	participantsByMatch map[string][]lusrParticipant,
 	states map[string]*PlayerState,
+	medalExploitByMatch map[string]float64,
 ) []lusrResult {
 	if states == nil {
 		states = make(map[string]*PlayerState)
@@ -324,27 +378,12 @@ func computeSkillRatingsBatch(
 		// Force adversaire (ancrée sur state.MU)
 		muOpp, sigmaOpp := computeEnemyStrength(enemyKEs, matchAvgKE, matchStdKE, state.MU)
 
-		// Précision moyenne historique
-		var avgAcc *float64
-		if len(state.AccuracyHistory) >= MinMatchesForAccuracyDelta {
-			sum := 0.0
-			for _, a := range state.AccuracyHistory {
-				sum += a
-			}
-			avg := sum / float64(len(state.AccuracyHistory))
-			avgAcc = &avg
-		}
-
-		// Efficacité dégâts moyenne historique
-		var avgDmgEff *float64
-		if len(state.DamageEffHistory) >= MinMatchesForAccuracyDelta {
-			sum := 0.0
-			for _, d := range state.DamageEffHistory {
-				sum += d
-			}
-			avg := sum / float64(len(state.DamageEffHistory))
-			avgDmgEff = &avg
-		}
+		// Moyennes historiques (nil = pas assez de données → composante ignorée)
+		avgAcc := rollingAvgPtr(state.AccuracyHistory, MinMatchesForAccuracyDelta)
+		avgDmgEff := rollingAvgPtr(state.DamageEffHistory, MinMatchesForAccuracyDelta)
+		avgMedalExploit := rollingAvgPtr(state.MedalExploitHistory, MinMatchesForAccuracyDelta)
+		avgOffConv := rollingAvgPtr(state.OffConversionHistory, MinMatchesForAccuracyDelta)
+		avgDefRes := rollingAvgPtr(state.DefResistanceHistory, MinMatchesForAccuracyDelta)
 
 		// Teammate avg KE
 		var teammateAvgKE *float64
@@ -371,18 +410,26 @@ func computeSkillRatingsBatch(
 			continue
 		}
 
+		// Calcul des métriques dérivées
+		offConv, defRes := computeCombatYield(match)
+		medalScore := medalExploitByMatch[match.MatchID]
+
 		// Score composite
 		cRow := &compositeMatchRow{
-			Kills:          match.Kills,
-			Deaths:         match.Deaths,
-			KillsExpected:  match.KillsExpected,
-			DeathsExpected: match.DeathsExpected,
-			Outcome:        match.Outcome,
-			DamageDealt:    match.DamageDealt,
-			DamageTaken:    match.DamageTaken,
-			Accuracy:       match.Accuracy,
+			Kills:               match.Kills,
+			Deaths:              match.Deaths,
+			Assists:             match.Assists,
+			KillsExpected:       match.KillsExpected,
+			DeathsExpected:      match.DeathsExpected,
+			Outcome:             match.Outcome,
+			DamageDealt:         match.DamageDealt,
+			DamageTaken:         match.DamageTaken,
+			Accuracy:            match.Accuracy,
+			MedalExploitScore:   medalScore,
+			OffensiveConversion: offConv,
+			DefensiveResistance: defRes,
 		}
-		composite := computeCompositeScore(cRow, avgAcc, teammateAvgKE, avgDmgEff)
+		composite := computeCompositeScore(cRow, avgAcc, teammateAvgKE, avgDmgEff, avgMedalExploit, avgOffConv, avgDefRes)
 
 		// Update TrueSkill
 		newMU, newSigma := trueskillUpdate(state.MU, state.Sigma, muOpp, sigmaOpp, composite, weightFactor)
@@ -392,22 +439,20 @@ func computeSkillRatingsBatch(
 		t := match.StartTime
 		state.LastMatchTime = &t
 
-		// Historique précision
-		if match.Accuracy > 0 {
-			state.AccuracyHistory = append(state.AccuracyHistory, match.Accuracy)
-			if len(state.AccuracyHistory) > AccuracyHistorySize {
-				state.AccuracyHistory = state.AccuracyHistory[len(state.AccuracyHistory)-AccuracyHistorySize:]
-			}
-		}
-
-		// Historique efficacité dégâts
+		// Mise à jour des historiques glissants
+		appendToHistory(&state.AccuracyHistory, match.Accuracy, AccuracyHistorySize)
 		totalDmg := match.DamageDealt + match.DamageTaken
 		if totalDmg > 0 {
-			eff := clampF(match.DamageDealt/totalDmg, 0.0, 1.0)
-			state.DamageEffHistory = append(state.DamageEffHistory, eff)
-			if len(state.DamageEffHistory) > AccuracyHistorySize {
-				state.DamageEffHistory = state.DamageEffHistory[len(state.DamageEffHistory)-AccuracyHistorySize:]
-			}
+			appendToHistory(&state.DamageEffHistory, clampF(match.DamageDealt/totalDmg, 0, 1), AccuracyHistorySize)
+		}
+		if medalScore > 0 {
+			appendToHistory(&state.MedalExploitHistory, medalScore, AccuracyHistorySize)
+		}
+		if offConv > 0 {
+			appendToHistory(&state.OffConversionHistory, offConv, AccuracyHistorySize)
+		}
+		if defRes > 0 {
+			appendToHistory(&state.DefResistanceHistory, defRes, AccuracyHistorySize)
 		}
 
 		results = append(results, lusrResult{
@@ -418,4 +463,36 @@ func computeSkillRatingsBatch(
 		})
 	}
 	return results
+}
+
+// rollingAvgPtr retourne la moyenne d'une slice si elle a au moins minLen éléments, nil sinon.
+func rollingAvgPtr(hist []float64, minLen int) *float64 {
+	if len(hist) < minLen {
+		return nil
+	}
+	sum := 0.0
+	for _, v := range hist {
+		sum += v
+	}
+	avg := sum / float64(len(hist))
+	return &avg
+}
+
+// appendToHistory ajoute v à *hist et tronque à maxLen éléments.
+func appendToHistory(hist *[]float64, v float64, maxLen int) {
+	*hist = append(*hist, v)
+	if len(*hist) > maxLen {
+		*hist = (*hist)[len(*hist)-maxLen:]
+	}
+}
+
+// computeCombatYield calcule offensive_conversion et defensive_resistance depuis un match.
+func computeCombatYield(m lusrMatchData) (offConv, defRes float64) {
+	if m.DamageDealt > 0 {
+		offConv = 225.0 * (m.Kills + m.Assists/3.0) / m.DamageDealt
+	}
+	if m.DamageTaken > 0 && m.Deaths > 0 {
+		defRes = m.DamageTaken / (225.0 * m.Deaths)
+	}
+	return
 }
