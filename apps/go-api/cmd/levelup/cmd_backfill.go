@@ -114,7 +114,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 		return runBackfillPerfForPlayer(ctx, cfg, player, *force)
 	}
 	if *weapons {
-		return runBackfillAllWeapons(ctx, cfg)
+		return runBackfillAllWeapons(ctx, cfg, *force)
 	}
 	return nil
 }
@@ -379,7 +379,7 @@ func runBackfillPerfForPlayer(ctx context.Context, cfg *config.AppConfig, player
 
 // ── Weapon kills backfill (film parsing) ───────────────────────────────────
 
-func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig) error {
+func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig, force bool) error {
 	players, err := cfg.LoadPlayers()
 	if err != nil {
 		return fmt.Errorf("LoadPlayers: %w", err)
@@ -391,11 +391,14 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig) error {
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	total := len(players)
 	processed := 0
+	skipped := 0
+	failed := 0
 
 	for _, player := range players {
 		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
 		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			skipped++
 			continue
 		}
 
@@ -404,6 +407,7 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig) error {
 		if refreshToken == "" {
 			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_refresh_token (%s)\n",
 				player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
+			skipped++
 			continue
 		}
 
@@ -411,24 +415,25 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig) error {
 		accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
 		if err != nil || accessToken == "" {
 			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=oauth_refresh_failed err=%v\n", player.Gamertag, err)
+			skipped++
 			continue
 		}
 
 		result, err := provider.Exchange(ctx, accessToken)
 		if err != nil {
 			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=exchange_failed err=%v\n", player.Gamertag, err)
+			skipped++
 			continue
 		}
 		tokens := result.Tokens
 
-		// Load matchs that need weapon backfill (via SyncEngine which knows how to query)
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
 
-		// Collect matches missing weapons for this player
 		sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
-		matchIDs, err := findMissingWeaponMatches(ctx, sharedDBPath, player.XUID)
+		matchIDs, err := findMissingWeaponMatches(ctx, sharedDBPath, player.XUID, force)
 		if err != nil {
 			fmt.Printf("backfill weapons FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
+			failed++
 			continue
 		}
 
@@ -442,6 +447,7 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig) error {
 		done, noFilm, err := engine.BackfillWeaponKillsForMatches(ctx, matchIDs)
 		if err != nil {
 			fmt.Printf("backfill weapons FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
+			failed++
 			continue
 		}
 
@@ -449,14 +455,14 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig) error {
 		processed++
 	}
 
-	fmt.Printf("backfill weapons batch: total=%d processed=%d\n", total, processed)
-	if processed < total {
-		return fmt.Errorf("backfill weapons: %d joueur(s) en echec", total-processed)
+	fmt.Printf("backfill weapons batch: total=%d processed=%d skipped=%d failed=%d\n", total, processed, skipped, failed)
+	if failed > 0 {
+		return fmt.Errorf("backfill weapons: %d joueur(s) en echec", failed)
 	}
 	return nil
 }
 
-func findMissingWeaponMatches(ctx context.Context, sharedDBPath, xuid string) ([]string, error) {
+func findMissingWeaponMatches(ctx context.Context, sharedDBPath, xuid string, force bool) ([]string, error) {
 	db, err := duckdbpkg.OpenReadOnly(sharedDBPath)
 	if err != nil {
 		return nil, err
@@ -466,17 +472,36 @@ func findMissingWeaponMatches(ctx context.Context, sharedDBPath, xuid string) ([
 	const mBitWeaponKills = 1 << 21
 	const mBitWeaponKillsNoFilm = 1 << 22
 
-	rows, err := db.Query(ctx, `
-		SELECT DISTINCT mp.match_id
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?
-		  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-		  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-		ORDER BY mr.start_time DESC
-		LIMIT 30
-	`, xuid, mBitWeaponKills, mBitWeaponKillsNoFilm)
+	var query string
+	var args []any
+	if force {
+		// Force: retourne tous les matchs non-firefight, indépendamment du bitmask.
+		query = `
+			SELECT DISTINCT mp.match_id
+			FROM match_participants mp
+			JOIN match_registry mr ON mr.match_id = mp.match_id
+			WHERE mp.xuid = ?
+			  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+			ORDER BY mr.start_time DESC
+			LIMIT 30
+		`
+		args = []any{xuid}
+	} else {
+		query = `
+			SELECT DISTINCT mp.match_id
+			FROM match_participants mp
+			JOIN match_registry mr ON mr.match_id = mp.match_id
+			WHERE mp.xuid = ?
+			  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
+			  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
+			  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+			ORDER BY mr.start_time DESC
+			LIMIT 30
+		`
+		args = []any{xuid, mBitWeaponKills, mBitWeaponKillsNoFilm}
+	}
+
+	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -286,11 +286,12 @@ func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error
 	rows, err := db.Query(`
 		SELECT
 			time_ms,
-			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END AS is_melee,
-			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END AS is_grenade
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END) AS is_melee,
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END) AS is_grenade
 		FROM highlight_events
 		WHERE match_id = ? AND xuid = ?
 		  AND LOWER(COALESCE(event_type, '')) LIKE '%kill%'
+		GROUP BY time_ms
 		ORDER BY time_ms`, matchID, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("getKillsForPlayer: %w", err)
@@ -323,12 +324,12 @@ func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error
 }
 
 // getXuidToPI construit le mapping xuid → player_index en se basant sur
-// l'ordre des participants (team_id ASC, rank_in_team ASC).
+// l'ordre des participants (team_id ASC, rank ASC).
 func getXuidToPI(db *sql.DB, matchID string) (map[string]int, error) {
 	rows, err := db.Query(`
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
-		ORDER BY team_id, rank_in_team NULLS LAST`, matchID)
+		ORDER BY team_id, rank NULLS LAST`, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("getXuidToPI: %w", err)
 	}
@@ -354,11 +355,12 @@ func getAllKillsForMatch(db *sql.DB, matchID string) ([]analysis.Kill, error) {
 	rows, err := db.Query(`
 		SELECT
 			xuid, time_ms,
-			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END AS is_melee,
-			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END AS is_grenade
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END) AS is_melee,
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END) AS is_grenade
 		FROM highlight_events
 		WHERE match_id = ?
 		  AND LOWER(COALESCE(event_type, '')) LIKE '%kill%'
+		GROUP BY xuid, time_ms
 		ORDER BY time_ms`, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("getAllKillsForMatch: %w", err)
