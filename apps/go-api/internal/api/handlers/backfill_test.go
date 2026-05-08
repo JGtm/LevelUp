@@ -112,6 +112,77 @@ func TestBuildSyncScope_ForceRescanEventsAndPersonalScores(t *testing.T) {
 	}
 }
 
+// TestWarnUnimplemented_EventsNotListed (Phase 2 du plan
+// PLAN_HIGHLIGHT_EVENTS_BACKFILL.md) : régression — quand on active
+// `scope.Events=true`, le job ne doit PLUS recevoir une warning
+// "events" listant ce type comme non-implémenté.
+func TestWarnUnimplemented_EventsNotListed(t *testing.T) {
+	cfg := &config.AppConfig{}
+	store := jobs.NewStore(t.TempDir())
+	h := NewBackfillHandler(cfg, store)
+
+	job := store.Create(domain.JobTypeBackfill, "player-test")
+	scope := &go_sync.SyncScope{Events: true}
+
+	h.warnUnimplemented(job.JobID, scope)
+
+	got := store.Get(job.JobID)
+	if got == nil {
+		t.Fatalf("Get(%s) returned nil", job.JobID)
+	}
+	for _, w := range got.Warnings {
+		if containsBackfillKeyword(w, "events") {
+			t.Errorf("warning ne doit PAS lister 'events' (Phase 2 livrée) : %q", w)
+		}
+	}
+}
+
+// TestWarnUnimplemented_StillListsOthers : sanity — les autres types
+// non implémentés (medals, skill, etc.) doivent rester listés.
+func TestWarnUnimplemented_StillListsOthers(t *testing.T) {
+	cfg := &config.AppConfig{}
+	store := jobs.NewStore(t.TempDir())
+	h := NewBackfillHandler(cfg, store)
+
+	job := store.Create(domain.JobTypeBackfill, "player-test")
+	scope := &go_sync.SyncScope{Medals: true, Skill: true}
+
+	h.warnUnimplemented(job.JobID, scope)
+
+	got := store.Get(job.JobID)
+	if got == nil {
+		t.Fatalf("Get(%s) returned nil", job.JobID)
+	}
+	if len(got.Warnings) == 0 {
+		t.Fatal("attendu une warning pour medals+skill non-implémentés")
+	}
+	hasMedals := false
+	hasSkill := false
+	for _, w := range got.Warnings {
+		if containsBackfillKeyword(w, "medals") {
+			hasMedals = true
+		}
+		if containsBackfillKeyword(w, "skill") {
+			hasSkill = true
+		}
+	}
+	if !hasMedals {
+		t.Error("warning devrait mentionner medals")
+	}
+	if !hasSkill {
+		t.Error("warning devrait mentionner skill")
+	}
+}
+
+func containsBackfillKeyword(s, kw string) bool {
+	for i := 0; i+len(kw) <= len(s); i++ {
+		if s[i:i+len(kw)] == kw {
+			return true
+		}
+	}
+	return false
+}
+
 func TestNewBackfillHandler(t *testing.T) {
 	cfg := &config.AppConfig{}
 	store := jobs.NewStore(t.TempDir())

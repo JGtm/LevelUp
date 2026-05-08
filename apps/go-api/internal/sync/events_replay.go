@@ -30,6 +30,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // ReplayResult agrège les compteurs d'un cycle de replay highlight events.
@@ -220,4 +221,60 @@ func clearEventsLoaded(db *sql.DB, matchID string) error {
 		return fmt.Errorf("clearEventsLoaded(%s): %w", matchID, err)
 	}
 	return nil
+}
+
+// BackfillEventsForMatches est la méthode `*SyncEngine` qui orchestre le
+// replay highlight events sur une liste de matchs. Acquiert le lease shared,
+// ouvre la DB, construit un HaloAPIClient depuis les tokens du moteur, puis
+// délègue à `ReplayHighlightEventsForMatches`.
+//
+// Si `includeBroken` est true, les matchs détectés par
+// `FindBrokenHighlightEventMatches` (events_loaded=TRUE mais cassés) sont
+// ajoutés à la liste — utile quand l'appelant active `--force-events`.
+//
+// Pendant à `BackfillWeaponKillsForMatches` ; même contrat de lease.
+func (e *SyncEngine) BackfillEventsForMatches(
+	ctx context.Context,
+	matchIDs []string,
+	includeBroken bool,
+	progressFn ReplayProgressFn,
+) (ReplayResult, error) {
+	if e.tokens == nil || e.tokens.SpartanToken == "" {
+		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches: tokens Halo absents")
+	}
+
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+	if err != nil {
+		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches lease shared: %w", err)
+	}
+	defer writerShared.Release()
+
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches OpenSharedDB: %w", err)
+	}
+	defer sharedHandle.Close()
+	sharedDB := sharedHandle.SQLDb()
+
+	ids := matchIDs
+	if includeBroken {
+		broken, findErr := FindBrokenHighlightEventMatches(ctx, sharedDB, 5000)
+		if findErr != nil {
+			slog.WarnContext(ctx, "BackfillEventsForMatches: FindBrokenHighlightEventMatches échoué",
+				"err", findErr)
+		} else {
+			ids = UnionMatchIDs(ids, broken)
+		}
+	}
+	if len(ids) == 0 {
+		return ReplayResult{}, nil
+	}
+
+	client := NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, 3)
+
+	// globalDB optionnel (alias upserts) — best-effort, non bloquant.
+	// On ne l'ouvre pas ici pour rester aligné avec BackfillWeaponKillsForMatches
+	// qui ne touche pas non plus à la global DB. Les xuid_aliases shared sont
+	// peuplés par ProcessHighlightEvents directement.
+	return ReplayHighlightEventsForMatches(ctx, client, sharedDB, nil, ids, progressFn)
 }
