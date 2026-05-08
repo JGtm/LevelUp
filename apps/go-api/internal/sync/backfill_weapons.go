@@ -230,12 +230,12 @@ func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error
 }
 
 // getXuidToPI construit le mapping xuid → player_index en se basant sur
-// l'ordre des participants (team_id ASC, rank_in_team ASC).
+// l'ordre des participants (team_id ASC, rank ASC).
 func getXuidToPI(db *sql.DB, matchID string) (map[string]int, error) {
 	rows, err := db.Query(`
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
-		ORDER BY team_id, rank_in_team NULLS LAST`, matchID)
+		ORDER BY team_id, rank NULLS LAST`, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("getXuidToPI: %w", err)
 	}
