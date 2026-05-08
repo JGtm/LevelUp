@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -544,35 +545,34 @@ func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*Career
 			if appearance.ServiceTag != "" {
 				data.SpartanID = appearance.ServiceTag
 			}
+			// 2026-05-08 — pattern Grunt strict : pas d'invention d'URL en cas
+			// d'échec resolve (ex-`fallbackCustomization*` retiraient la
+			// résolution canonique au profit d'URLs `/Waypoint/file/images/...`
+			// qui n'existent pas sur Microsoft GameCMS → 403). Si le resolve
+			// échoue, on log warn et on laisse vide. Le front affiche un
+			// placeholder "image indisponible".
 			if appearance.BannerImagePath != "" {
 				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BannerImagePath); resolveErr == nil {
 					data.BannerImageURL = resolved
 				} else {
-					data.BannerImageURL = fallbackCustomizationBannerURL(appearance.BannerImagePath)
+					slog.WarnContext(ctx, "spartan_id: banner image resolve failed",
+						"inventory_path", appearance.BannerImagePath, "err", resolveErr)
 				}
-			}
-			if data.BannerImageURL == "" {
-				data.BannerImageURL = fallbackCustomizationBannerFromEmblem(
-					c.gameCMSHost(),
-					appearance.EmblemPath,
-					appearance.EmblemConfigurationID,
-				)
 			}
 			if appearance.EmblemPath != "" {
 				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.EmblemPath); resolveErr == nil {
 					data.EmblemImageURL = resolved
 				} else {
-					data.EmblemImageURL = fallbackCustomizationEmblemURL(
-						appearance.EmblemPath,
-						appearance.EmblemConfigurationID,
-					)
+					slog.WarnContext(ctx, "spartan_id: emblem image resolve failed",
+						"inventory_path", appearance.EmblemPath, "err", resolveErr)
 				}
 			}
 			if appearance.BackdropImagePath != "" {
 				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BackdropImagePath); resolveErr == nil {
 					data.BackdropImageURL = resolved
 				} else {
-					data.BackdropImageURL = fallbackCustomizationBackdropURL(appearance.BackdropImagePath)
+					slog.WarnContext(ctx, "spartan_id: backdrop image resolve failed",
+						"inventory_path", appearance.BackdropImagePath, "err", resolveErr)
 				}
 			}
 		}
@@ -812,69 +812,20 @@ func buildCustomizationImageURL(baseURL, mediaPath string) string {
 	return trimmedBase + "/hi/images/file/" + trimmedPath
 }
 
-func fallbackCustomizationEmblemURL(emblemPath, configurationID string) string {
-	stem := customizationInventoryStem(emblemPath, "/Spartan/Emblems/")
-	if stem == "" || strings.TrimSpace(configurationID) == "" {
-		return ""
-	}
-	return fmt.Sprintf(
-		"%s/hi/Waypoint/file/images/emblems/%s_%s.png",
-		haloGameCMSHost,
-		stem,
-		strings.TrimSpace(configurationID),
-	)
-}
-
-func fallbackCustomizationBackdropURL(backdropPath string) string {
-	stem := customizationInventoryStem(backdropPath, "/Spartan/BackdropImages/")
-	if stem == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s/hi/Waypoint/file/images/backdrops/%s.png", haloGameCMSHost, stem)
-}
-
-func fallbackCustomizationBannerURL(bannerPath string) string {
-	if stem := customizationInventoryStem(bannerPath, "/Spartan/Nameplates/"); stem != "" {
-		return fmt.Sprintf("%s/hi/Waypoint/file/images/nameplates/%s.png", haloGameCMSHost, stem)
-	}
-	if stem := customizationInventoryStem(bannerPath, "/Spartan/Banners/"); stem != "" {
-		return fmt.Sprintf("%s/hi/Waypoint/file/images/banners/%s.png", haloGameCMSHost, stem)
-	}
-	return ""
-}
-
-func fallbackCustomizationBannerFromEmblem(baseURL, emblemPath, configurationID string) string {
-	stem := customizationInventoryStem(emblemPath, "/Spartan/Emblems/")
-	if stem == "" {
-		return ""
-	}
-	config := strings.TrimSpace(configurationID)
-	if config == "" || config == "0" {
-		return ""
-	}
-	host := strings.TrimRight(strings.TrimSpace(baseURL), "/")
-	if host == "" {
-		host = haloGameCMSHost
-	}
-	return fmt.Sprintf(
-		"%s/hi/Waypoint/file/images/nameplates/%s_%s.png",
-		host,
-		stem,
-		config,
-	)
-}
-
-func customizationInventoryStem(rawPath, marker string) string {
-	trimmed := strings.TrimSpace(rawPath)
-	if trimmed == "" {
-		return ""
-	}
-	normalized := strings.ReplaceAll(trimmed, "\\", "/")
-	idx := strings.Index(strings.ToLower(normalized), strings.ToLower(marker))
-	if idx < 0 {
-		return ""
-	}
-	stem := normalized[idx+len(marker):]
-	stem = strings.TrimSuffix(stem, ".json")
-	return strings.TrimSpace(stem)
-}
+// (2026-05-08) Les fonctions `fallbackCustomization{Emblem,Backdrop,Banner}URL`
+// + `fallbackCustomizationBannerFromEmblem` + `customizationInventoryStem` ont
+// été SUPPRIMÉES. Elles inventaient des URLs au format
+// `/hi/Waypoint/file/images/{kind}/{stem}.png` qui n'existent pas côté
+// Microsoft GameCMS — l'API retourne 403 systématiquement. Le seul pattern
+// correct, aligné sur Grunt API
+// (https://github.com/dend/grunt — endpoints `GameCms_GetProgressionFile` +
+// `GameCms_GetProgressionImage`), est :
+//
+//  1. Fetch JSON descriptor : `GET /hi/progression/file/{InventoryPath}` →
+//     champ `CommonData.DisplayPath.Media.MediaUrl.Path` (ou variantes).
+//  2. Fetch image : `GET /hi/images/file/{MediaPath}`.
+//
+// Implémenté par `resolveCustomizationImageURL` ci-dessus (ligne ~733). Quand
+// le resolve échoue (auth absente, JSON malformé, asset Microsoft retiré),
+// on stocke chaîne vide → le frontend affiche un placeholder "image
+// indisponible" au lieu d'une URL inventée qui finirait en 403/502.

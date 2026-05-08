@@ -471,6 +471,54 @@ func init() {
 			return addColumnIfMissing(db, "match_citations", "value", "INTEGER DEFAULT 1")
 		},
 	})
+
+	// 2026-05-08 — Cleanup des URLs de customization Spartan stockées en DB
+	// pointant vers le pattern obsolète `/hi/Waypoint/file/images/...` qui
+	// n'existe pas sur Microsoft GameCMS (retourne 403). Ces URLs ont été
+	// peuplées par les ex-`fallbackCustomization*` (retirées en même temps
+	// que cette migration). Le prochain sync customization repopulera les
+	// URLs propres via le pattern Grunt strict
+	// (resolveCustomizationImageURL → GameCms_GetProgressionImage).
+	//
+	// Tables affectées : `career_progression` (3 colonnes : banner / emblem /
+	// backdrop image_url). Idempotent : ne touche que les lignes contenant
+	// le pattern garbage, laisse intactes celles déjà résolues correctement.
+	Register(Migration{
+		Name:        "cleanup_spartan_customization_garbage_urls",
+		TargetDB:    TargetPlayer,
+		Description: "Vide les *_image_url de career_progression contenant `/Waypoint/file/images/` (URLs inventées qui retournent 403 Microsoft)",
+		ApplySchema: func(db *sql.DB) error {
+			exists, err := tableExists(db, "career_progression")
+			if err != nil || !exists {
+				return err
+			}
+			_, err = db.Exec(`
+				UPDATE career_progression
+				SET banner_image_url = ''
+				WHERE banner_image_url LIKE '%/Waypoint/file/images/%'
+			`)
+			if err != nil {
+				return fmt.Errorf("cleanup banner_image_url: %w", err)
+			}
+			_, err = db.Exec(`
+				UPDATE career_progression
+				SET emblem_image_url = ''
+				WHERE emblem_image_url LIKE '%/Waypoint/file/images/%'
+			`)
+			if err != nil {
+				return fmt.Errorf("cleanup emblem_image_url: %w", err)
+			}
+			_, err = db.Exec(`
+				UPDATE career_progression
+				SET backdrop_image_url = ''
+				WHERE backdrop_image_url LIKE '%/Waypoint/file/images/%'
+			`)
+			if err != nil {
+				return fmt.Errorf("cleanup backdrop_image_url: %w", err)
+			}
+			return nil
+		},
+	})
 }
 
 // applyFixMvSessionStats recrée mv_session_stats avec session_id VARCHAR.
