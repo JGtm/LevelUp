@@ -399,22 +399,27 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig) error {
 			continue
 		}
 
-		// Load Halo API tokens
-		tokenStore := auth.NewTokenStore(cfg.RepoRoot + "/data/auth/watcher_tokens.json")
-		stored, _ := tokenStore.Load()
-
-		var tokens *domain.HaloTokens
-		if stored != nil && stored.IsXSTSValid(0) {
-			result, err := auth.ExchangeXSTSForHaloTokens(ctx, stored.XSTSToken)
-			if err == nil {
-				tokens = result
-			}
-		}
-
-		if tokens == nil {
-			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_tokens\n", player.Gamertag)
+		// Load Halo API tokens via OAuth refresh token (same pattern as cmd_sync.go)
+		refreshToken := oauthRefreshTokenForPlayer(player.Gamertag)
+		if refreshToken == "" {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_refresh_token (%s)\n",
+				player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
 			continue
 		}
+
+		provider := auth.NewMSALProvider()
+		accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
+		if err != nil || accessToken == "" {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=oauth_refresh_failed err=%v\n", player.Gamertag, err)
+			continue
+		}
+
+		result, err := provider.Exchange(ctx, accessToken)
+		if err != nil {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=exchange_failed err=%v\n", player.Gamertag, err)
+			continue
+		}
+		tokens := result.Tokens
 
 		// Load matchs that need weapon backfill (via SyncEngine which knows how to query)
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
