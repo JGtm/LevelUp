@@ -58,9 +58,9 @@ func TestMediaService_SetMediaLike_Atomic_Success(t *testing.T) {
 	// Effectuer un like via SetMediaLike — doit utiliser le chemin atomique
 	filePath := "/test-media.mp4"
 	req := domain.MediaLikeRequest{
-		FilePath: filePath,
+		FilePath:  filePath,
 		LikerSlug: "test-player",
-		Liked: true,
+		Liked:     true,
 	}
 	result, err := svc.SetMediaLike(ctx, req)
 	if err != nil {
@@ -95,9 +95,9 @@ func TestMediaService_SetMediaLike_Atomic_Rollback(t *testing.T) {
 
 	// Tenter un like qui va échouer
 	req := domain.MediaLikeRequest{
-		FilePath: "/test.mp4",
+		FilePath:  "/test.mp4",
 		LikerSlug: "test-player",
-		Liked: true,
+		Liked:     true,
 	}
 	result, err := svc.SetMediaLike(ctx, req)
 	if err == nil {
@@ -138,9 +138,9 @@ func TestMediaService_SetMediaLike_Atomic_PanicMidTx(t *testing.T) {
 	}()
 
 	req := domain.MediaLikeRequest{
-		FilePath: "/test.mp4",
+		FilePath:  "/test.mp4",
 		LikerSlug: "test-player",
-		Liked: true,
+		Liked:     true,
 	}
 
 	// Cette call pourrait paniquer si SetMediaLikeAtomic n'est pas protégée
@@ -183,9 +183,9 @@ func TestMediaService_SetMediaLike_Atomic_NoLeakOnLeaseTimeout(t *testing.T) {
 	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
 
 	req := domain.MediaLikeRequest{
-		FilePath: "/test.mp4",
+		FilePath:  "/test.mp4",
 		LikerSlug: "test-player",
-		Liked: true,
+		Liked:     true,
 	}
 
 	_, err := svc.SetMediaLike(ctx, req)
@@ -227,9 +227,9 @@ func TestMediaService_SetMediaLike_Atomic_Success_RealTx(t *testing.T) {
 	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
 
 	req := domain.MediaLikeRequest{
-		FilePath: "/clip.mp4",
+		FilePath:  "/clip.mp4",
 		LikerSlug: "player-a",
-		Liked: true,
+		Liked:     true,
 	}
 
 	result, err := svc.SetMediaLike(ctx, req)
@@ -272,9 +272,9 @@ func TestMediaService_SetMediaLike_Atomic_RepoError_Rollback(t *testing.T) {
 	svc := NewMediaService(repo, "", WithMediaWriterAcquirer(acquirer))
 
 	req := domain.MediaLikeRequest{
-		FilePath: "/clip.mp4",
+		FilePath:  "/clip.mp4",
 		LikerSlug: "player-a",
-		Liked: true,
+		Liked:     true,
 	}
 
 	// L'appel doit échouer avec l'erreur du repo
