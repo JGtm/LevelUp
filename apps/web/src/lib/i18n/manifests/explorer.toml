@@ -473,7 +473,7 @@ fr = "Égalité"
 en = "Tie"
 
 [explorer.matches.outcome_dnf]
-fr = "DNF"
+fr = "Non terminé"
 en = "DNF"
 
 # ─── Tableau mode joueur ──────────────────────────────────────────────────────

@@ -25,5 +25,5 @@ labels = { en = "Tie", fr = "Égalité" }
 color_token = "outcome.neutral"
 
 [outcomes.dnf]
-labels = { en = "DNF", fr = "Abandon" }
+labels = { en = "DNF", fr = "Non terminé" }
 color_token = "outcome.neutral"

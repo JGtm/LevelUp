@@ -43,7 +43,7 @@ fr = "Égalité"
 en = "Tie"
 
 [common.outcome.dnf]
-fr = "Abandon"
+fr = "Non terminé"
 en = "DNF"
 
 # Pluralisation ICU MessageFormat : {n, plural, one {...} other {...}}

@@ -74,7 +74,7 @@ export const explorerManifest = {
   "explorer.matches.error": { fr: "Impossible de charger les matchs.", en: "Failed to load matches." },
   "explorer.matches.export_csv": { fr: "Exporter CSV", en: "Export CSV" },
   "explorer.matches.loading": { fr: "Chargement des matchs…", en: "Loading matches…" },
-  "explorer.matches.outcome_dnf": { fr: "DNF", en: "DNF" },
+  "explorer.matches.outcome_dnf": { fr: "Non terminé", en: "DNF" },
   "explorer.matches.outcome_draw": { fr: "Égalité", en: "Tie" },
   "explorer.matches.outcome_loss": { fr: "Défaite", en: "Loss" },
   "explorer.matches.outcome_win": { fr: "Victoire", en: "Win" },
