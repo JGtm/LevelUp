@@ -1,4 +1,45 @@
 
+## [2026-05-08] Refonte page de stats perso — calque squad + 5 onglets vides
+
+**Statut** : Complété (scaffolding)
+
+**Contexte** : La page de stats perso aujourd'hui présente une UX incohérente — les onglets `Historique / Séries / Sessions` au-dessus de la page (NavL2) ont un positionnement flou et ne se connectent pas à la page principale `/synthesis`. La page `/squad/{synergies,contributions}` a été retravaillée et validée — son layout sticky filter bar + SessionBriefing + tab nav devient la référence à reproduire pour la page solo.
+
+**Décision technique** :
+1. **Pathless route group TanStack Router** pour faire cohabiter les nouveaux onglets et les vieilles pages sous `/stats/` :
+   - Nouveau layout `routes/players/$playerSlug/stats/_personal.tsx` (préfixe `_` = segment non-URL).
+   - 5 onglets : `_personal.{summary,maps-modes,distributions,progression,advanced}.tsx` → `/stats/{summary,...}`.
+   - `routes/players/$playerSlug/stats/index.tsx` → Navigate replace vers `./summary`.
+   - Vieilles routes `stats/{history,sessions,timeseries}.tsx` non préfixées → restent indépendantes du layout.
+2. **`features/personal-stats/`** clone allégé de `features/squad/SquadLayout.tsx` :
+   - Pas de `selectedGts` / `GamertagCombobox` / `CompareDrawer` / `useTeammates`.
+   - `useSynthesisPage(playerSlug, filterContextHash, { filters, period: 'all' })` alimente la SessionBriefing solo (squad prop omis).
+   - `useFiltersPreview(playerSlug, pending)` direct (pas de `deriveSquadPending`).
+   - localStorage key `personal-stats-sessions-{slug}` distinct de `squad-sessions-{slug}` pour isoler les sélections cross-page.
+3. **NavL2** — suppression des sous-onglets STATS_TABS, NavL2 ne s'affiche plus que sur les vieilles pages (regex `LEGACY_STATS_RE`) où FilterOmnibar reste utile. Sur `/stats/{summary,...}` la PersonalStatsLayout porte sa propre barre.
+4. **NavL1** — `defaultPath` de l'entrée Stats passe de `/stats/history` à `/stats/summary`. Sous-items inchangés (Historique / Séries / Sessions / Synthèse continuent de pointer vers leurs pages existantes).
+5. **Onglets vides** au scaffolding — chacun rend un `EmptyStateCard` "Section en construction". Le contenu sera ajouté progressivement en réutilisant : (a) tuiles match avec `map_ui` / `mode_ui` / `playlist_ui` pré-résolus côté Go (pattern Home), et (b) `gamertag` + `is_bot` pré-résolus via `v_gamertag_lookup` (pattern match-view) — aucune résolution côté front.
+
+**Résultats** :
+- `pnpm tsc --noEmit` : 0 erreur.
+- `pnpm exec eslint src/features/personal-stats` : 0 error, 1 warning (hardcoded `title="Réinitialiser tous les filtres"` aligné avec SquadLayout pattern existant).
+- `pnpm exec vitest run src/components/shell src/features/personal-stats` : 86 tests verts, 0 échec.
+- `pnpm exec vite build` : succès en 699ms, aucun import cassé.
+- `routeTree.gen.ts` régénéré automatiquement par le plugin Vite TanStack — les 6 nouvelles routes (1 layout pathless + 5 enfants + 1 index) sont câblées correctement, le segment `_personal` n'apparaît pas dans les URLs.
+- Test palmares `SeasonPassPage.test.tsx` flaky (timeout `waitFor` "Operation Alpha") — pré-existant sur la branche `feat/backfill-lusr-perf-medal-weights`, aucune dépendance sur NavL1/NavL2 (vérifié par grep).
+
+**Persistance des filtres + snap-on-mount** :
+- `globalFilterStore` (Zustand + `persist` middleware) garde déjà `filterContext` et `lastKnownLatestSessionId` en localStorage cross-session.
+- L'auto-snap après fin de sync est déjà câblé dans `routes/players/$playerSlug.tsx` (ligne 75-95) : transition `activeSyncJobId` string → null déclenche un `filtersResolve.refetch()` puis `autoSnapToLatestSession(latestId, true)` si la dernière session a changé. Couvre le cas "nouvelle session solo arrivée dans la BDD".
+- **Ajouté** : useEffect "snap-on-mount" dans `PersonalStatsLayout` — sur premier mount d'un user vierge (`lastKnownLatestSessionId === null`) sans filtre actif, snap sur la dernière session par défaut. Gardé par `snappedRef` + condition sur `lastKnownLatestSessionId` : ne refire pas après un Réinitialiser ou sur les mounts suivants.
+
+**Pattern navigation match → retour /stats** :
+- Documenté dans la JSDoc du `PersonalStatsLayout` : tout futur clic sur tuile match dans les onglets devra utiliser `useNavigateToMatch(playerSlug)` (`lib/match-nav/useNavigateToMatch.ts`) avec un `MatchNavContext` typé : `source`, `matchIds` (DESC scope-courant), `contextDescriptor`, `filterSpec`. Persiste le contexte en sessionStorage pour que `MatchNavigationBar` reste scoped et que le bouton retour retrouve les filtres (déjà persistés dans `globalFilterStore`).
+
+**Prochaine étape** : commit + remplir les 5 onglets dans des PRs séparés. Pour chaque onglet, choisir les charts depuis `components/charts/` et les hooks data selon les besoins. Les pages `Synthèse / Historique / Sessions` restent en place pour retravail ultérieur indépendant.
+
+---
+
 ## [2026-05-08] Fix UBIGINT weapon_id binding + zlib décompression film chunks
 
 **Statut** : Complété
