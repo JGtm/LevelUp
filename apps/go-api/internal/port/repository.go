@@ -118,12 +118,13 @@ type FriendMatchExtras struct {
 	PerformanceScore *float64
 	HadBotTeammate   bool
 	SkillRank        *domain.MatchScoreboardSkillRank
+	AssistsModel     *domain.PlayerAssistsModel
 }
 
 // FriendsExtrasResolver charge les FriendMatchExtras pour la liste de xuids
 // fournie. Best-effort : un xuid sans player DB configurée ou sans données
 // ne figure simplement pas dans la map de retour.
-type FriendsExtrasResolver func(ctx context.Context, matchID string, xuids []string) map[string]FriendMatchExtras
+type FriendsExtrasResolver func(ctx context.Context, matchID string, gameVariantName string, xuids []string) map[string]FriendMatchExtras
 
 // MatchViewRepository fournit toutes les données d'un match pour la vue détail.
 // Implémenté par platform/duckdb.MatchViewRepo.
@@ -199,6 +200,11 @@ type MatchViewRepository interface {
 	// GetHistoryForAvg retourne les 50 derniers matchs du joueur pour le calcul
 	// des moyennes historiques K/D/A + spree/headshots/perfect (Q29).
 	GetHistoryForAvg(ctx context.Context, xuid string) ([]domain.MatchHistAvgRow, error)
+
+	// GetPlayerAssistsModel retourne les coefs OLS expected_assists pour un mode.
+	// Retourne nil si le modèle n'existe pas (joueur sans DB locale ou < 15 matchs
+	// dans ce mode). Dégradation gracieuse vers le modèle populationnel.
+	GetPlayerAssistsModel(ctx context.Context, gameVariantName string) (*domain.PlayerAssistsModel, error)
 }
 
 // ExplorerRepository fournit les données pour l'explorer.
@@ -337,6 +343,9 @@ func (n *noopMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string)
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
 	return nil, nil
 }
 
@@ -785,6 +794,10 @@ type MetadataRepository interface {
 
 	// GetSnapshot retourne le dernier snapshot d'une ressource.
 	GetSnapshot(ctx context.Context, titleID, resourceKey string) (*domain.WaypointResourceSnapshot, error)
+
+	// GetAssistsCoef retourne les coefs de régression pour expected_assists.
+	// Retourne les coefs du mode si disponible, sinon le fallback '__global__'.
+	GetAssistsCoef(ctx context.Context, gameVariantName string) (slope, intercept float64, err error)
 }
 
 // SeasonProvider fournit le calendrier des saisons depuis une source externe
@@ -848,6 +861,9 @@ func (n *noopMetadataRepo) UpsertSnapshot(_ context.Context, _ domain.WaypointRe
 }
 func (n *noopMetadataRepo) GetSnapshot(_ context.Context, _, _ string) (*domain.WaypointResourceSnapshot, error) {
 	return nil, nil
+}
+func (n *noopMetadataRepo) GetAssistsCoef(_ context.Context, _ string) (float64, float64, error) {
+	return 0, 0, nil
 }
 
 // noopCompareRepo — impl nulle pour le check de compilation uniquement.

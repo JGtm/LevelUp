@@ -1051,6 +1051,34 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	return results, nil
 }
 
+// GetPlayerAssistsModel retourne les coefs OLS expected_assists pour un mode.
+// Retourne nil si la table est absente ou si le mode n'a pas assez de données.
+func (r *MatchViewRepo) GetPlayerAssistsModel(ctx context.Context, gameVariantName string) (*domain.PlayerAssistsModel, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	const q = `
+		SELECT game_variant_name,
+		       coef_intercept, coef_kills, coef_deaths,
+		       coef_damage_dealt, coef_damage_taken, coef_mmr_delta,
+		       r2, n_samples
+		FROM player_assists_model
+		WHERE game_variant_name = ?
+		LIMIT 1
+	`
+	var m domain.PlayerAssistsModel
+	err := r.pdb.ReadDB().QueryRow(ctx, q, gameVariantName).Scan(
+		&m.GameVariantName,
+		&m.Intercept, &m.CoefKills, &m.CoefDeaths,
+		&m.CoefDamageDealt, &m.CoefDamageTaken, &m.CoefMMRDelta,
+		&m.R2, &m.N,
+	)
+	if err != nil {
+		return nil, nil //nolint:nilerr — table absente ou mode inconnu : dégradation gracieuse
+	}
+	return &m, nil
+}
+
 // sanitizeF64 remplace les valeurs NaN/Inf par nil. json.Marshal rejette NaN
 // et +/-Inf (non représentables en JSON), ce qui provoque un corps HTTP vide
 // quand writeJSON ignorait silencieusement l'erreur.

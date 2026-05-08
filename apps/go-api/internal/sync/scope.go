@@ -139,6 +139,13 @@ type SyncScope struct {
 	EngagementScores      bool
 	ForceEngagementScores bool
 
+	// ── AssistsModel — régression OLS per-mode expected_assists ─────────
+	// Calcule, par mode de jeu, un modèle linéaire multi-varié (6 features)
+	// pour prédire les assistances. Stocké dans player_assists_model (stats.duckdb).
+	// Seuil : 15 matchs par mode. Aucun appel API requis.
+	AssistsModel      bool
+	ForceAssistsModel bool
+
 	// ── EngagementCoefficients — Phase recompute coefs ──────────────────
 	// Recompute UNIQUEMENT les coefficients perso (mediane glissante des
 	// paces). Suppose que EngagementScores a deja peuple les colonnes
@@ -206,6 +213,7 @@ var allDataFields = []func(*SyncScope){
 	func(s *SyncScope) { s.ComebackBadges = true },
 	func(s *SyncScope) { s.PlayableDuration = true },
 	func(s *SyncScope) { s.EngagementScores = true },
+	func(s *SyncScope) { s.AssistsModel = true },
 }
 
 // Resolve applique les implications : AllData → champs, groupes → sous-champs,
@@ -330,6 +338,7 @@ func (s *SyncScope) applyForceImplications() {
 	imply(&s.ForceComebackBadges, &s.ComebackBadges)
 	imply(&s.ForcePlayableDuration, &s.PlayableDuration)
 	imply(&s.ForceEngagementScores, &s.EngagementScores)
+	imply(&s.ForceAssistsModel, &s.AssistsModel)
 }
 
 // NewScopeAll crée un scope avec AllData=true pré-résolu.
@@ -352,7 +361,7 @@ func (s *SyncScope) HasAnyOption() bool {
 		s.PowerWeaponKills, s.HeadshotKills, s.MaxSpree, s.KDARecalc,
 		s.TimePlayed, s.MMR, s.Expected, s.Combat, s.KillsDetail, s.CoreStats,
 		s.PVEStats, s.Weapons, s.LUSR, s.CSR, s.SkillRank,
-		s.ComebackBadges, s.PlayableDuration, s.EngagementScores,
+		s.ComebackBadges, s.PlayableDuration, s.EngagementScores, s.AssistsModel,
 	}
 	for _, f := range flags {
 		if f {
@@ -375,7 +384,7 @@ func (s *SyncScope) NeedsAPI() bool {
 // NeedsLocalOnly retourne true si des traitements locaux (sans API) sont demandés.
 func (s *SyncScope) NeedsLocalOnly() bool {
 	return s.KillerVictim || s.EndTime || s.Sessions || s.Citations ||
-		s.LUSR || s.SkillRank || s.EngagementScores
+		s.LUSR || s.SkillRank || s.EngagementScores || s.AssistsModel
 }
 
 // requestedTypeMap maps scope field → bitmask key for backfill_completed tracking.
