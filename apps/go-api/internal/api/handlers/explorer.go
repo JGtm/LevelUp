@@ -105,6 +105,11 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 	// Projection vers ExplorerMatchesQueryResponse (sous-ensemble de match history).
 	rows := make([]domain.ExplorerMatchesRow, 0, len(mhResp.Table.Items))
 	for _, item := range mhResp.Table.Items {
+		var deltaPerf *int
+		if item.PerformanceScoreRelative != nil {
+			v := *item.PerformanceScoreRelative - 50
+			deltaPerf = &v
+		}
 		rows = append(rows, domain.ExplorerMatchesRow{
 			MatchID:             item.MatchID,
 			StartTime:           item.StartTime,
@@ -118,9 +123,14 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			IsWithFriends:       false,
 			ExperienceTypeLabel: "",
 			MatchURL:            item.MatchURL,
+			Kills:          item.Kills,
+			Deaths:         item.Deaths,
+			Assists:        item.Assists,
 			PerfScore:      item.PerformanceScoreRelative,
 			PerfTier:       item.PerfTier,
+			DeltaPerf:      deltaPerf,
 			SkillTierLabel: item.SkillTierLabel,
+			DeltaMMR:       item.DeltaMMR,
 		})
 	}
 

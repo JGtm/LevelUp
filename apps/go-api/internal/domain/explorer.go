@@ -101,12 +101,20 @@ type ExplorerMatchesRow struct {
 	IsWithFriends       bool      `json:"is_with_friends"`
 	ExperienceTypeLabel string    `json:"experience_type_label"`
 	MatchURL            string    `json:"match_url"`
+	// Combat stats
+	Kills   int `json:"kills,omitempty"`
+	Deaths  int `json:"deaths,omitempty"`
+	Assists int `json:"assists,omitempty"`
 	// PerfScore : score de performance 0-100 (nil si non calculé).
 	PerfScore *int `json:"perf_score,omitempty"`
 	// PerfTier : palier de performance 1-5 (0 si score absent).
 	PerfTier int `json:"perf_tier,omitempty"`
+	// DeltaPerf : déviation du score de perf depuis la médiane (perf_score - 50).
+	DeltaPerf *int `json:"delta_perf,omitempty"`
 	// SkillTierLabel : label formaté du tier ranked/LUSR (ex. "Diamant IV"), nil si absent.
 	SkillTierLabel *string `json:"skill_tier_label,omitempty"`
+	// DeltaMMR : variation de MMR/CSR/LUSR pour ce match (nil si non rankée).
+	DeltaMMR *float64 `json:"delta_mmr,omitempty"`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.

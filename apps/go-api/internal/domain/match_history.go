@@ -74,6 +74,8 @@ type MatchHistoryRow struct {
 	PerfTier                 int       `json:"perf_tier,omitempty"` // 1-5 ; 0 si score absent
 	KDA                      *float64  `json:"kda,omitempty"`
 	Kills                    int       `json:"kills,omitempty"`
+	Deaths                   int       `json:"deaths,omitempty"`
+	Assists                  int       `json:"assists,omitempty"`
 	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"` // "Diamant IV" ou nil
 	AverageLifeMMSS          string    `json:"average_life_mmss"`
 	MatchURL                 string    `json:"match_url"`
