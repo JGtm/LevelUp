@@ -41,14 +41,18 @@ const (
 
 // ── Score composite ─────────────────────────────────────────────────────────
 
-// CompositeWeights pondère les 5 composantes du score composite [0,1].
-// Portage de COMPOSITE_WEIGHTS (skill_rating_config.py).
+// CompositeWeights pondère les composantes du score composite [0,1].
+// Portage de compositeWeights v5 (analysis/skill_rating.go).
+// La somme dépasse 1.0 (1.02) : computeCompositeScore renormalise par totalWeight.
 var CompositeWeights = map[string]float64{
-	"kills_vs_expected":  0.31,
-	"deaths_vs_expected": 0.28,
-	"win_factor":         0.05,
-	"damage_efficiency":  0.23,
-	"accuracy_delta":     0.13,
+	"kills_vs_expected":    0.27,
+	"deaths_vs_expected":   0.24,
+	"win_factor":           0.05,
+	"damage_efficiency":    0.10,
+	"accuracy_delta":       0.10,
+	"medal_exploit":        0.04,
+	"offensive_conversion": 0.16,
+	"defensive_resistance": 0.06,
 }
 
 const (
@@ -64,19 +68,23 @@ const (
 
 const MinMatchesForRelative = 10
 
-// RelativeWeights pondère les 10 métriques du score relatif (0-100).
-// Portage de RELATIVE_WEIGHTS (performance_config.py).
+// RelativeWeights pondère les métriques du score relatif (0-100).
+// Portage de relativeWeights v5 (analysis/performance_score.go).
+// Somme = 1.01 → renormalisé automatiquement si des métriques sont absentes.
 var RelativeWeights = map[string]float64{
-	"kpm":                0.17,
-	"dpm_deaths":         0.13,
-	"apm":                0.08,
-	"kda":                0.13,
-	"accuracy":           0.06,
-	"pspm":               0.12,
-	"dpm_damage":         0.09,
-	"rank_perf":          0.04,
-	"kills_vs_expected":  0.10,
-	"deaths_vs_expected": 0.08,
+	"kpm":                  0.14,
+	"dpm_deaths":           0.10,
+	"apm":                  0.06,
+	"kda":                  0.11,
+	"accuracy":             0.04,
+	"pspm":                 0.10,
+	"dpm_damage":           0.06,
+	"rank_perf":            0.04,
+	"kills_vs_expected":    0.09,
+	"deaths_vs_expected":   0.07,
+	"medal_exploit":        0.06,
+	"offensive_conversion": 0.09,
+	"defensive_resistance": 0.05,
 }
 
 // ── Playlist groups ─────────────────────────────────────────────────────────

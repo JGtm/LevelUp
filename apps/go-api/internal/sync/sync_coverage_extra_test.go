@@ -31,7 +31,7 @@ func TestNewPlayerState_Defaults(t *testing.T) {
 
 func TestComputeCompositeScore_AllZeros(t *testing.T) {
 	row := &compositeMatchRow{}
-	got := computeCompositeScore(row, nil, nil, nil)
+	got := computeCompositeScore(row, nil, nil, nil, nil, nil, nil)
 	if got != 0.5 {
 		t.Fatalf("expected 0.5 for empty, got %f", got)
 	}
@@ -50,7 +50,7 @@ func TestComputeCompositeScore_Win(t *testing.T) {
 		Accuracy:       0.5,
 	}
 	avgAcc := 0.4
-	got := computeCompositeScore(row, &avgAcc, nil, nil)
+	got := computeCompositeScore(row, &avgAcc, nil, nil, nil, nil, nil)
 	if got <= 0.5 {
 		t.Fatalf("expected > 0.5 for strong win, got %f", got)
 	}
@@ -72,7 +72,7 @@ func TestComputeCompositeScore_Loss(t *testing.T) {
 		Accuracy:       0.2,
 	}
 	avgAcc := 0.4
-	got := computeCompositeScore(row, &avgAcc, nil, nil)
+	got := computeCompositeScore(row, &avgAcc, nil, nil, nil, nil, nil)
 	if got >= 0.5 {
 		t.Fatalf("expected < 0.5 for clear loss, got %f", got)
 	}
@@ -89,7 +89,7 @@ func TestComputeCompositeScore_DNF(t *testing.T) {
 		DamageDealt:    500,
 		DamageTaken:    500,
 	}
-	got := computeCompositeScore(row, nil, nil, nil)
+	got := computeCompositeScore(row, nil, nil, nil, nil, nil, nil)
 	// DNF gives winScore=0.15, composite should be < 0.5
 	if got >= 0.6 {
 		t.Fatalf("expected < 0.6 for DNF, got %f", got)
@@ -185,7 +185,7 @@ func TestSplitParticipantKEs_WithTeamID(t *testing.T) {
 // ── computeSkillRatingsBatch ─────────────────────────────────────────────────
 
 func TestComputeSkillRatingsBatch_Empty(t *testing.T) {
-	results := computeSkillRatingsBatch(nil, nil, nil)
+	results := computeSkillRatingsBatch(nil, nil, nil, nil)
 	if len(results) != 0 {
 		t.Fatalf("expected 0 results, got %d", len(results))
 	}
@@ -217,7 +217,7 @@ func TestComputeSkillRatingsBatch_SingleMatch(t *testing.T) {
 			{MatchID: "m1", XUID: "x2", TeamID: &team1, KillsExpected: 8},
 		},
 	}
-	results := computeSkillRatingsBatch(matches, participants, nil)
+	results := computeSkillRatingsBatch(matches, participants, nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -240,7 +240,7 @@ func TestComputeSkillRatingsBatch_NilOutcomeGuard(t *testing.T) {
 			Deaths:    5,
 		},
 	}
-	results := computeSkillRatingsBatch(matches, nil, nil)
+	results := computeSkillRatingsBatch(matches, nil, nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}

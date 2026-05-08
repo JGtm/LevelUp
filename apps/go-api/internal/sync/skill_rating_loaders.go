@@ -21,6 +21,7 @@ type lusrMatchData struct {
 	Outcome        *int
 	Kills          float64
 	Deaths         float64
+	Assists        float64
 	KillsExpected  float64
 	DeathsExpected float64
 	DamageDealt    float64
@@ -52,6 +53,7 @@ func loadLUSRMatchData(sharedDB *sql.DB, xuid string) ([]lusrMatchData, error) {
 		SELECT
 			mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name,
 			mp.outcome, COALESCE(mp.kills, 0), COALESCE(mp.deaths, 0),
+			COALESCE(mp.assists, 0),
 			COALESCE(mp.kills_expected, 0), COALESCE(mp.deaths_expected, 0),
 			COALESCE(mp.damage_dealt, 0), COALESCE(mp.damage_taken, 0),
 			COALESCE(mp.accuracy, 0), mp.team_id
@@ -76,7 +78,7 @@ func loadLUSRMatchData(sharedDB *sql.DB, xuid string) ([]lusrMatchData, error) {
 		var plName, pairName sql.NullString
 		if err := rows.Scan(
 			&m.MatchID, &m.StartTime, &plName, &pairName,
-			&outcome, &m.Kills, &m.Deaths,
+			&outcome, &m.Kills, &m.Deaths, &m.Assists,
 			&m.KillsExpected, &m.DeathsExpected,
 			&m.DamageDealt, &m.DamageTaken,
 			&m.Accuracy, &teamID,

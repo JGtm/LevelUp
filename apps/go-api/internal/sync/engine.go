@@ -271,6 +271,96 @@ func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int
 	return batchRecomputeCoefficients(ctx, playerHandle.SQLDb(), e.xuid)
 }
 
+// RunBackfillLUSR recalcule le LUSR TrueSkill 2 pour tous les matchs du joueur.
+// force=true : recalcule depuis zéro même si les matchs ont déjà un rating.
+// Les poids des médailles (medal_exploit) sont chargés depuis la metadata DB (best-effort).
+func (e *SyncEngine) RunBackfillLUSR(ctx context.Context, force bool) (int, error) {
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillLUSR lease player: %w", err)
+	}
+	defer writerPlayer.Release()
+
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillLUSR lease shared: %w", err)
+	}
+	defer writerShared.Release()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillLUSR OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillLUSR OpenSharedDB: %w", err)
+	}
+	defer sharedHandle.Close()
+
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedHandle.SQLDb())
+	return batchComputeLUSR(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, medalMap, force)
+}
+
+// RunBackfillPerf recalcule le performance score relatif pour tous les matchs du joueur.
+// force=true : recalcule même si les matchs ont déjà un score (utile après changement de formule).
+func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, error) {
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillPerf lease player: %w", err)
+	}
+	defer writerPlayer.Release()
+
+	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillPerf lease shared: %w", err)
+	}
+	defer writerShared.Release()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillPerf OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillPerf OpenSharedDB: %w", err)
+	}
+	defer sharedHandle.Close()
+
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedHandle.SQLDb())
+	return batchComputePerformanceScores(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, medalMap, force)
+}
+
+// loadMedalExploitMapBestEffort charge les scores d'exploit médailles depuis la metadata DB.
+// Retourne nil en cas d'erreur (le LUSR/Perf fonctionne sans données médailles).
+func (e *SyncEngine) loadMedalExploitMapBestEffort(ctx context.Context, sharedDB *sql.DB) map[string]float64 {
+	if e.metadataDBPath == "" {
+		return nil
+	}
+	metaDB, err := sql.Open("duckdb", e.metadataDBPath)
+	if err != nil {
+		slog.DebugContext(ctx, "loadMedalExploitMap: ouverture metaDB échouée", "err", err)
+		return nil
+	}
+	defer metaDB.Close() //nolint:errcheck
+	metaDB.SetMaxOpenConns(1)
+
+	diffMap, err := LoadMedalDifficultyFromMeta(metaDB)
+	if err != nil || len(diffMap) == 0 {
+		slog.DebugContext(ctx, "loadMedalExploitMap: difficulty map vide", "err", err)
+		return nil
+	}
+	result, err := ComputeMedalExploitByMatch(sharedDB, diffMap, e.xuid)
+	if err != nil {
+		slog.DebugContext(ctx, "loadMedalExploitMap: compute échoué", "err", err)
+		return nil
+	}
+	return result
+}
+
 func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll bool) (int, error) {
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
@@ -1298,7 +1388,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 
 	// 1. Performance scores
 	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
-	if n, err := batchComputePerformanceScores(playerDB, sharedDB, e.xuid); err != nil {
+	if n, err := batchComputePerformanceScores(playerDB, sharedDB, e.xuid, nil, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: perf scores échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.PerfScoresComputed = n
@@ -1354,9 +1444,10 @@ func (e *SyncEngine) runPostSyncPipeline(
 			"gamertag", e.gamertag, "match_count", n)
 	}
 
-	// 2. LUSR (TrueSkill 2)
+	// 2. LUSR (TrueSkill 2) — best-effort medal data depuis metadata DB
 	slog.DebugContext(ctx, "post-sync: calcul LUSR", "gamertag", e.gamertag)
-	if n, err := batchComputeLUSR(playerDB, sharedDB, e.xuid); err != nil {
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+	if n, err := batchComputeLUSR(playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: LUSR échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.LUSRUpdated = n

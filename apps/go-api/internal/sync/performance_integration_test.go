@@ -83,7 +83,7 @@ func TestLoadHistoryForPerf_WithData(t *testing.T) {
 
 func TestBatchComputePerformanceScores_Empty(t *testing.T) {
 	db := openPerfDB(t)
-	n, err := batchComputePerformanceScores(db, db, "xuid_none")
+	n, err := batchComputePerformanceScores(db, db, "xuid_none", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestBatchComputePerformanceScores_WithData(t *testing.T) {
 	db := openPerfDB(t)
 	// Need >MinMatchesForRelative matches for any scoring
 	seedPerfMatches(t, db, MinMatchesForRelative+10)
-	n, err := batchComputePerformanceScores(db, db, "xuid1")
+	n, err := batchComputePerformanceScores(db, db, "xuid1", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
