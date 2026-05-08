@@ -1,4 +1,22 @@
 
+## [2026-05-08] Explorer — locale FR : enrichissement à la volée map/mode/playlist (pattern filters_repo)
+
+**Statut** : Complété
+
+**Décision technique** : Le tableau Explorer affichait les noms de carte/mode/playlist en EN malgré la locale FR. Cause racine : `match_registry.{map,pair,playlist}_name_fr` est souvent NULL en DB → le `COALESCE` de Q5MatchHistory tombe sur le brut EN. Le `FiltersRepo` corrige ce problème via `applyModeFRTranslations`/`applyMapFRTranslations`/`applyPlaylistFRTranslations` qui enrichissent à la volée depuis `metadata.duckdb` (`mode_name_tr` + `asset_translations`), mais `MatchHistoryRepo.LoadAll` ne le faisait pas.
+
+**Fix** : nouveau fichier `apps/go-api/internal/platform/duckdb/match_history_fr_translations.go` qui adapte les 3 fonctions de filters_repo au type `MatchHistoryRawRow` (mêmes 3 lookups : `mode_name_tr` pour mode, `match_registry.map_id` + `asset_translations.map` pour carte, `match_registry.playlist_id` + `asset_translations.playlist` pour playlist). Best-effort comme l'original (erreurs silencieuses). Appelé depuis `MatchHistoryRepo.LoadAll` après le scan.
+
+**Pour la détection "FR manquant"**, il fallait `PlaylistNameEN` séparé du `PlaylistName` (qui contient le COALESCE-FR). Q5MatchHistory a une nouvelle colonne `ms.playlist_name AS playlist_name_en` exposant le brut EN. `MatchHistoryRawRow.PlaylistNameEN *string` ajouté + scan étendu. Pour MapName/PairName c'est OK déjà : le SELECT retourne `ms.map_name` brut + `COALESCE(map_name_fr, map_name) AS map_name_fr`, donc on peut comparer `MapName == MapNameFR` pour savoir si le FR manque.
+
+**Skill tier** : suppression du helper frontend `localizeSkillTierLabel` que j'avais introduit par erreur. La donnée vient déjà localisée du backend (cf. `sync/skill_config.go:185 FormatTierLabel` qui formate avec `tier.NameFR` pour LUSR). Le user a raison : on traduit déjà partout (home, match-view) sans helper UI car le backend stocke déjà `tier_label` en FR via le sync.
+
+**Résultats** : `go build` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/duckdb/...` tous verts (l'ajout de la colonne `playlist_name_en` dans Q5 et de `MyTeamScore`/`EnemyTeamScore` n'a pas cassé les fixtures). `tsc -b` OK, `vitest run src/features/explorer` 13/13 PASS, `eslint` 0 erreur.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — fix score (hardcodé "-"), colonne Solo/Escouade, locale FR skill_tier_label
 
 **Statut** : Complété
