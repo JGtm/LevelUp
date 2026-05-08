@@ -93,6 +93,20 @@ function fmtKDA(v: number | null | undefined): string {
   return v.toFixed(2)
 }
 
+/** Split sur le 1er espace pour rendre l'en-tête sur 2 lignes (utile quand
+ *  plusieurs mots dans le label, ex: "MMR équipe" → "MMR" + "équipe"). */
+function renderTwoLineHeader(label: string): ReactNode {
+  const idx = label.indexOf(' ')
+  if (idx === -1) return label
+  return (
+    <span className="leading-tight">
+      {label.slice(0, idx)}
+      <br />
+      {label.slice(idx + 1)}
+    </span>
+  )
+}
+
 function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
   switch (outcome) {
     case 2:
@@ -131,8 +145,6 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     })
   }
 
-  const waypointBase = `https://www.halowaypoint.com/halo-infinite/players/${encodeURIComponent(playerSlug)}/matches`
-
   // Labels outcome (pas de Badge, juste texte coloré comme Squad)
   const outcomeLabels: Record<'win' | 'loss' | 'draw' | 'dnf', string> = {
     win: t('explorer.matches.outcome_win'),
@@ -157,21 +169,6 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           >
             {t('explorer.matches.col_open')}
           </button>
-        ),
-      },
-      {
-        id: 'waypoint',
-        header: '',
-        cell: (ctx) => (
-          <a
-            href={ctx.row.original.match_url || `${waypointBase}/${ctx.row.original.match_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary text-xs whitespace-nowrap"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {t('explorer.matches.col_waypoint')}
-          </a>
         ),
       },
       {
@@ -347,7 +344,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         accessorKey: 'team_mmr',
-        header: t('explorer.matches.col_team_mmr'),
+        header: () => renderTwoLineHeader(t('explorer.matches.col_team_mmr')),
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono tabular-nums">
             {fmtMmr(ctx.getValue<number | null | undefined>())}
@@ -356,7 +353,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         accessorKey: 'enemy_mmr',
-        header: t('explorer.matches.col_enemy_mmr'),
+        header: () => renderTwoLineHeader(t('explorer.matches.col_enemy_mmr')),
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono tabular-nums">
             {fmtMmr(ctx.getValue<number | null | undefined>())}
@@ -370,7 +367,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale, playerSlug, waypointBase],
+    [intlLocale, mapAssets, playlistAssets, locale],
   )
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })

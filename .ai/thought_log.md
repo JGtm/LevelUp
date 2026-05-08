@@ -1,4 +1,18 @@
 
+## [2026-05-08] Explorer table — suppression colonne wp + headers MMR sur 2 lignes
+
+**Statut** : Complété
+
+**Décision technique** : 2 tweaks UI sur `ExplorerMatchesTable` (mode Matchs + 2 tableaux ally/enemy mode Joueur, tous trois utilisent le même composant).
+1. **Suppression colonne `↗ wp`** : retrait du `ColumnDef` `id: 'waypoint'` + nettoyage de `waypointBase` (variable + dépendance useMemo) + suppression de la clé i18n `explorer.matches.col_waypoint` du manifest.
+2. **Headers "MMR équipe" / "MMR adv." sur 2 lignes** : nouveau helper `renderTwoLineHeader(label)` qui split sur le 1er espace et rend les 2 mots avec un `<br/>`. Permet de gagner de la largeur horizontale dans les colonnes MMR (au lieu d'une seule ligne `whitespace-nowrap`). Helper appliqué uniquement sur `team_mmr` et `enemy_mmr` (les autres colonnes restent inchangées).
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer mode Joueur — bandeaux "Équipe alliée/ennemie" + cleanup briefing
 
 **Statut** : Complété
