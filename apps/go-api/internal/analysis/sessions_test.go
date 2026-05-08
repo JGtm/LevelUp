@@ -118,6 +118,56 @@ func TestComputeSessionsWithContext_SameAsGapWithNoFriends(t *testing.T) {
 	}
 }
 
+// TestComputeSessionsWithContext_SoloMatchmakingWithoutFriendsKeepsSession
+// reproduit le scénario user 2026-05-08 : matchmaking solo, AUCUN ami
+// configuré dans les settings, coéquipiers différents à chaque match (cas
+// nominal en quick play). Sans le fix sessions.go:isTeammatesBreak, le mode
+// Friends dégradait en mode Group quand friendSet=nil → chaque match
+// = nouvelle session (audit DB : 726/739 sessions à 1 match seul pour JGtm).
+//
+// Avec le fix, le critère "amis tracked" l'emporte : sans amis configurés,
+// les changements de coéquipiers ne cassent pas la session ; seul le gap
+// horaire reste pour les ruptures.
+func TestComputeSessionsWithContext_SoloMatchmakingWithoutFriendsKeepsSession(t *testing.T) {
+	base := t0()
+	// 3 matchs en 30 minutes total, coéquipiers différents à chaque match
+	// (matchmaking solo). Sans amis configurés.
+	rows := []domain.SessionMatchRow{
+		makeMatch("m1", base, 600, "rando_1,rando_2,rando_3", false),
+		makeMatch("m2", tPlus(base, 12), 600, "rando_4,rando_5,rando_6", false),
+		makeMatch("m3", tPlus(base, 24), 600, "rando_7,rando_8,rando_9", false),
+	}
+	opts := DefaultSessionOptions() // TeamChangeModeFriends, FriendsXUIDs vide
+	got := ComputeSessionsWithContext(rows, opts)
+
+	// Tous les matchs doivent avoir le MÊME session_id (gap < 120min, et
+	// pas d'amis trackés → changements de rando ignorés).
+	if len(got) != 3 {
+		t.Fatalf("len(got) = %d, want 3", len(got))
+	}
+	if got[0].SessionID != got[1].SessionID || got[1].SessionID != got[2].SessionID {
+		t.Errorf("matchmaking solo sans amis : tous matchs doivent partager session_id, got %d/%d/%d",
+			got[0].SessionID, got[1].SessionID, got[2].SessionID)
+	}
+}
+
+// TestComputeSessionsWithContext_GroupModeStillBreaksOnAnyChange vérifie que
+// le mode TeamChangeModeGroup explicite continue de rompre à tout changement
+// de coéquipier (sémantique conservée même après le fix isTeammatesBreak).
+func TestComputeSessionsWithContext_GroupModeStillBreaksOnAnyChange(t *testing.T) {
+	base := t0()
+	rows := []domain.SessionMatchRow{
+		makeMatch("m1", base, 600, "alice,bob", false),
+		makeMatch("m2", tPlus(base, 10), 600, "alice,charlie", false),
+	}
+	opts := DefaultSessionOptions()
+	opts.TeamChangeMode = domain.TeamChangeModeGroup
+	got := ComputeSessionsWithContext(rows, opts)
+	if got[0].SessionID == got[1].SessionID {
+		t.Errorf("mode Group : break attendu sur changement coéquipier (alice,bob → alice,charlie), got même session")
+	}
+}
+
 func TestComputeSessionsWithContext_TeammatesBreak(t *testing.T) {
 	base := t0()
 	rows := []domain.SessionMatchRow{

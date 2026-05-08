@@ -76,8 +76,11 @@ func ComputeSessionsWithContext(rows []domain.SessionMatchRow, opts domain.Sessi
 				// rupture uniquement si un ami (FriendsXUIDs) change
 				teammatesBreak = isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, friendSet)
 			case domain.TeamChangeModeGroup:
-				// rupture dès qu'un coéquipier quelconque change (ignorer FriendsXUIDs)
-				teammatesBreak = isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, nil)
+				// rupture dès qu'un coéquipier quelconque change (ignorer
+				// FriendsXUIDs). Comparaison directe — `isTeammatesBreak(nil)`
+				// signifie maintenant "pas d'amis trackés → pas de break"
+				// (sémantique inverse, cf. fix 2026-05-08).
+				teammatesBreak = derefString(prev.TeammatesSig) != derefString(r.TeammatesSig)
 			default:
 				// rétrocompatibilité : comportement historique (group si pas d'amis, friends sinon)
 				teammatesBreak = isTeammatesBreak(prev.TeammatesSig, r.TeammatesSig, friendSet)
@@ -235,8 +238,20 @@ func isTeammatesBreak(prevSig, currSig *string, friendSet map[string]struct{}) b
 		return false
 	}
 	if friendSet == nil {
-		// mode "group" : tout changement de composition = rupture
-		return true
+		// Bug fix 2026-05-08 : avant, friendSet=nil → "tout changement de
+		// composition = rupture". Conséquence : un user sans amis configurés
+		// avait `len(FriendsXUIDs)=0` → buildFriendSet retournait nil → mode
+		// Friends dégradait silencieusement en mode Group → en matchmaking
+		// solo, chaque match = nouvelle session (98% des sessions à 1 match
+		// dans l'audit DB du 2026-05-08).
+		//
+		// Sémantique correcte : mode Friends sans amis trackés = aucun
+		// changement de coéquipier ne doit casser la session (le critère gap
+		// horaire reste seul actif). Pour l'ancien comportement "break sur
+		// tout changement", le caller doit explicitement utiliser
+		// TeamChangeModeGroup (cf. sessions.go:78-80, branche dédiée qui
+		// passe friendSet=nil intentionnellement).
+		return false
 	}
 	// mode "friends" : rupture uniquement si le sous-ensemble d'amis change
 	prevFriends := filterFriends(parseXUIDs(prevStr), friendSet)
