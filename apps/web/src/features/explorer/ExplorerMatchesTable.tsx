@@ -32,7 +32,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { mmrDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { getOutcomeColor } from '@/lib/outcome-color'
-import { formatDate, formatDurationMinSec } from '@/lib/formatters'
+import { formatDate, formatDurationMMSS } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor } from '@/lib/match-nav/navContext'
@@ -297,7 +297,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         header: t('explorer.matches.col_duration'),
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono tabular-nums">
-            {formatDurationMinSec(ctx.getValue<number | null | undefined>() ?? undefined)}
+            {formatDurationMMSS(ctx.getValue<number | null | undefined>() ?? undefined)}
           </span>
         ),
       },

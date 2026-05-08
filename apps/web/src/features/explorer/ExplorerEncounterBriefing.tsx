@@ -15,25 +15,14 @@
  *
  * Conteneur style SessionBriefing : carte avec header + grille de KPIs.
  */
-import type {
-  ExplorerEncounterStats,
-  MatchEncounterBadge,
-} from '@/lib/api/types'
-import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
-import { tokenVar } from '@/lib/accessibility'
-import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import type { ExplorerEncounterStats } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 
 interface Props {
-  gamertag: string
   stats: ExplorerEncounterStats
-  badges?: MatchEncounterBadge[]
   /** Locale UI ('fr' | 'en') — défaut 'fr' si autre valeur. */
   locale: string
-  /** onClick optionnel pour la carte gamertag (face-à-face). */
-  onHeadToHead?: () => void
 }
 
 // ─── Helpers de formatage (copiés à l'identique de MatchEncountersTable.tsx) ─
@@ -96,10 +85,6 @@ function formatRelativeEN(iso: string): string {
   return years <= 1 ? '1 y ago' : `${years} y ago`
 }
 
-function isSemanticToken(s: string): s is SemanticToken {
-  return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
-}
-
 // ─── KpiCard (style SessionBriefing) ─────────────────────────────────────────
 
 interface KpiCardProps {
@@ -124,13 +109,7 @@ function KpiCard({ label, value, detail }: KpiCardProps) {
 
 // ─── Composant principal ─────────────────────────────────────────────────────
 
-export function ExplorerEncounterBriefing({
-  gamertag,
-  stats,
-  badges,
-  locale,
-  onHeadToHead,
-}: Props) {
+export function ExplorerEncounterBriefing({ stats, locale }: Props) {
   const manifestLocale: 'fr' | 'en' = locale === 'en' ? 'en' : 'fr'
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, manifestLocale, values)
@@ -142,48 +121,10 @@ export function ExplorerEncounterBriefing({
   const breakdown =
     ally != null && enemy != null ? `(A:${ally} | E:${enemy})` : ''
 
-  // Badges narratifs (ally_plus / tough_enemy / ordinal) — résolus via squadManifest.
-  const renderBadges = () => {
-    if (!badges || badges.length === 0) return null
-    const sqT = (key: SquadManifestKey, values?: Record<string, string | number>) =>
-      formatMessage(squadManifest, key, manifestLocale, values)
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {badges.map((badge, i) => {
-          const labelKey = badge.label_key as SquadManifestKey
-          const ordinal =
-            badge.detail && typeof badge.detail['ordinal'] === 'number'
-              ? (badge.detail['ordinal'] as number)
-              : undefined
-          const label = ordinal !== undefined ? sqT(labelKey, { ordinal }) : sqT(labelKey)
-          const colorVar = isSemanticToken(badge.color_token)
-            ? tokenVar(badge.color_token as SemanticToken)
-            : undefined
-          return <NarrativeBadge key={i} label={label} colorVar={colorVar} size="sm" />
-        })}
-      </div>
-    )
-  }
-
   return (
     // Wrapper carte rounded — sans barre titre (cf. demande user 2026-05-08).
     <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <div className="p-3 space-y-3">
-        {/* Joueur — gamertag + badges narratifs + bouton Face-à-face poussé à droite */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-base font-semibold text-foreground">{gamertag}</span>
-          {renderBadges()}
-          {onHeadToHead && (
-            <button
-              type="button"
-              onClick={onHeadToHead}
-              className="ml-auto rounded border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
-            >
-              {t('explorer.player.head_to_head')}
-            </button>
-          )}
-        </div>
-
+      <div className="p-3">
         {/* Grille KPI — 5 colonnes (Rencontres, WR allié, WR ennemi, K/D croisé, Vu) */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {/* Rencontres */}
