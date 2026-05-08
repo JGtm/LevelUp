@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -16,6 +17,35 @@ var matchIDs = []string{
 	"20fcbfe4-5a35-4992-a4b8-4bb7d92b62b6",
 	"bc0bdda3-4116-4d08-913d-628285633197",
 }
+
+// Q13 exact (copié de queries_match.go) — 17 colonnes, types Go identiques au service.
+const q13Full = `
+SELECT
+    r.match_id,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    r.duration_seconds,
+    r.map_name,
+    r.pair_name,
+    r.playlist_name,
+    COALESCE(r.is_firefight, FALSE) AS is_firefight,
+    CASE
+        WHEN COALESCE(r.is_ranked, FALSE)
+            OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+            OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+        THEN TRUE
+        ELSE FALSE
+    END AS is_ranked,
+    r.playable_duration_seconds,
+    r.map_id,
+    r.game_variant_name,
+    r.playlist_id,
+    r.team_0_score,
+    r.team_1_score,
+    r.pair_name_fr,
+    r.pair_id,
+    r.game_variant_id
+FROM match_registry r
+WHERE r.match_id = ?`
 
 func main() {
 	db, err := sql.Open("duckdb", sharedDB+"?access_mode=read_only")
@@ -31,134 +61,106 @@ func main() {
 }
 
 func investigateMatch(db *sql.DB, matchID string) {
-	// 1. match_registry row complet
-	rows, err := db.Query(`
-		SELECT
-			match_id,
-			start_time,
-			start_time_utc,
-			duration_seconds,
-			playable_duration_seconds,
-			map_name,
-			pair_name,
-			playlist_name,
-			is_firefight,
-			is_ranked,
-			map_id,
-			game_variant_name,
-			playlist_id,
-			team_0_score,
-			team_1_score,
-			pair_name_fr,
-			pair_id,
-			game_variant_id
-		FROM match_registry
-		WHERE match_id = ?`, matchID)
+	// Test Q13 complet avec les MÊMES types Go que le service de production.
+	var (
+		matchID2           string
+		startTime          *time.Time
+		durationSeconds    *float64
+		mapName            *string
+		pairName           *string
+		playlistName       *string
+		isFirefight        bool
+		isRanked           bool
+		playableDurSec     *int64
+		mapAssetID         *string
+		gameVariantName    *string
+		playlistAssetID    *string
+		team0Score         *int16
+		team1Score         *int16
+		pairNameFR         *string
+		pairAssetID        *string
+		gameVariantAssetID *string
+	)
+
+	err := db.QueryRow(q13Full, matchID).Scan(
+		&matchID2,
+		&startTime,
+		&durationSeconds,
+		&mapName,
+		&pairName,
+		&playlistName,
+		&isFirefight,
+		&isRanked,
+		&playableDurSec,
+		&mapAssetID,
+		&gameVariantName,
+		&playlistAssetID,
+		&team0Score,
+		&team1Score,
+		&pairNameFR,
+		&pairAssetID,
+		&gameVariantAssetID,
+	)
 	if err != nil {
-		fmt.Printf("  [match_registry] ERREUR QUERY: %v\n", err)
+		fmt.Printf("  [Q13 FULL SCAN] ERREUR: %v\n", err)
 		return
 	}
-	defer rows.Close()
-	cols, _ := rows.Columns()
-	found := false
-	for rows.Next() {
-		found = true
-		vals := make([]interface{}, len(cols))
-		ptrs := make([]interface{}, len(cols))
-		for i := range vals {
-			ptrs[i] = &vals[i]
+
+	ptrStr := func(s *string) string {
+		if s == nil {
+			return "<nil>"
 		}
-		if err := rows.Scan(ptrs...); err != nil {
-			fmt.Printf("  [match_registry] ERREUR SCAN: %v\n", err)
-			continue
-		}
-		for i, col := range cols {
-			fmt.Printf("  %-30s = %v  (%T)\n", col, vals[i], vals[i])
-		}
+		return *s
 	}
-	if !found {
-		fmt.Println("  [match_registry] INTROUVABLE dans shared_matches_v2.duckdb")
+	ptrI16 := func(v *int16) string {
+		if v == nil {
+			return "<nil>"
+		}
+		return fmt.Sprintf("%d", *v)
+	}
+	ptrI64 := func(v *int64) string {
+		if v == nil {
+			return "<nil>"
+		}
+		return fmt.Sprintf("%d", *v)
+	}
+	ptrF64 := func(v *float64) string {
+		if v == nil {
+			return "<nil>"
+		}
+		return fmt.Sprintf("%.1f", *v)
+	}
+	ptrTime := func(v *time.Time) string {
+		if v == nil {
+			return "<nil>"
+		}
+		return v.String()
 	}
 
-	// 2. Count dans match_participants
+	fmt.Printf("  match_id             = %s\n", matchID2)
+	fmt.Printf("  start_time           = %s\n", ptrTime(startTime))
+	fmt.Printf("  duration_seconds     = %s\n", ptrF64(durationSeconds))
+	fmt.Printf("  map_name             = %s\n", ptrStr(mapName))
+	fmt.Printf("  pair_name            = %s\n", ptrStr(pairName))
+	fmt.Printf("  playlist_name        = %s\n", ptrStr(playlistName))
+	fmt.Printf("  is_firefight         = %v\n", isFirefight)
+	fmt.Printf("  is_ranked            = %v\n", isRanked)
+	fmt.Printf("  playable_dur_sec     = %s\n", ptrI64(playableDurSec))
+	fmt.Printf("  map_id               = %s\n", ptrStr(mapAssetID))
+	fmt.Printf("  game_variant_name    = %s\n", ptrStr(gameVariantName))
+	fmt.Printf("  playlist_id          = %s\n", ptrStr(playlistAssetID))
+	fmt.Printf("  team_0_score         = %s\n", ptrI16(team0Score))
+	fmt.Printf("  team_1_score         = %s\n", ptrI16(team1Score))
+	fmt.Printf("  pair_name_fr         = %s\n", ptrStr(pairNameFR))
+	fmt.Printf("  pair_id              = %s\n", ptrStr(pairAssetID))
+	fmt.Printf("  game_variant_id      = %s\n", ptrStr(gameVariantAssetID))
+	fmt.Printf("  [Q13 FULL SCAN] OK\n")
+
+	// Count dans match_participants
 	var count int
-	err = db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE match_id = ?`, matchID).Scan(&count)
-	if err != nil {
-		fmt.Printf("  [match_participants] ERREUR: %v\n", err)
+	if e := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE match_id = ?`, matchID).Scan(&count); e != nil {
+		fmt.Printf("  [match_participants] ERREUR: %v\n", e)
 	} else {
 		fmt.Printf("  [match_participants] %d participant(s)\n", count)
-	}
-
-	// 3. Vérifier la Q13 simulée (problème de timezone ?)
-	var id, mapName, pairName sql.NullString
-	var startTime interface{}
-	var durSec sql.NullFloat64
-	var isFF bool
-	err = db.QueryRow(`
-		SELECT
-			match_id,
-			COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time,
-			duration_seconds,
-			map_name,
-			pair_name,
-			is_firefight
-		FROM match_registry WHERE match_id = ?
-	`, matchID).Scan(&id, &startTime, &durSec, &mapName, &pairName, &isFF)
-	if err != nil {
-		fmt.Printf("  [Q13 simulation] ERREUR: %v\n", err)
-	} else {
-		fmt.Printf("  [Q13 simulation] OK — map=%v pair=%v start=%v dur=%v\n",
-			mapName.String, pairName.String, startTime, durSec.Float64)
-	}
-
-	// 4. Tester Q12 scoreboard (la vraie avec COALESCE/WHERE)
-	sbRows, err := db.Query(`
-		WITH me_perfect AS (
-			SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
-			FROM medals_earned
-			WHERE match_id = ? AND medal_name_id = 1512363953
-			GROUP BY xuid
-		),
-		top_weapons AS (
-			SELECT xuid, wid AS top_weapon_id
-			FROM (
-				SELECT xuid, COALESCE(reconciled_as, weapon_id) AS wid, COUNT(*) AS wk,
-					   ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn
-				FROM weapon_kills
-				WHERE match_id = ? AND COALESCE(reconciled_as, weapon_id) NOT IN (0, 1, 2)
-				GROUP BY xuid, COALESCE(reconciled_as, weapon_id)
-			) t WHERE rn = 1
-		)
-		SELECT COUNT(*) FROM match_participants p
-		LEFT JOIN me_perfect m ON p.xuid = m.xuid
-		LEFT JOIN top_weapons w ON p.xuid = w.xuid
-		WHERE p.match_id = ?
-		  AND NOT (
-			COALESCE(p.kills, 0) = 0
-			AND COALESCE(p.deaths, 0) = 0
-			AND COALESCE(p.assists, 0) = 0
-			AND COALESCE(p.personal_score, 0) = 0
-			AND (p.kills IS NOT NULL OR p.deaths IS NOT NULL
-				 OR p.assists IS NOT NULL OR p.personal_score IS NOT NULL)
-		  )
-	`, matchID, matchID, matchID)
-	if err != nil {
-		fmt.Printf("  [Q12 scoreboard] ERREUR: %v\n", err)
-	} else {
-		defer sbRows.Close()
-		if sbRows.Next() {
-			var cnt int
-			_ = sbRows.Scan(&cnt)
-			fmt.Printf("  [Q12 scoreboard] %d ligne(s) retournées\n", cnt)
-		}
-	}
-
-	// 5. Vérifier si le match est dans highlight_events
-	var evCount int
-	err = db.QueryRow(`SELECT COUNT(*) FROM highlight_events WHERE match_id = ?`, matchID).Scan(&evCount)
-	if err != nil {
-		fmt.Printf("  [highlight_events] ERREUR: %v\n", err)
-	} else {
-		fmt.Printf("  [highlight_events] %d event(s)\n", evCount)
 	}
 }
