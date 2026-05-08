@@ -247,6 +247,88 @@ func TestRecomputeIsWithFriendsCore_PromotesLegacyNull(t *testing.T) {
 	}
 }
 
+// TestRecomputeIsWithFriendsCore_PlayerInFriendList vérifie que si le joueur
+// principal est lui-même dans friendGamertags (setup multi-joueurs où tous les
+// membres du groupe sont trackés et listés comme amis), seuls les matchs où un
+// AMI DIFFÉRENT était présent sont promus. Sans le guard `p2.xuid != p1.xuid`,
+// chaque match du joueur satisferait la self-join → tous les matchs seraient
+// faussement promus.
+func TestRecomputeIsWithFriendsCore_PlayerInFriendList(t *testing.T) {
+	playerDB := openPlayerForFriendsRecompute(t)
+	sharedDB := openSharedForFriendsRecompute(t)
+
+	const (
+		playerXUID   = "xuid_player_002"
+		playerGT     = "PlayerGamertag"
+		friendXUID   = "xuid_friend_002"
+		friendGT     = "FriendGamertag2"
+		soloMatchID  = "m_solo_002"
+		squadMatchID = "m_squad_002"
+	)
+
+	// Seed shared : joueur dans xuid_aliases (il est aussi dans friend_gamertags)
+	if _, err := sharedDB.Exec(`INSERT INTO xuid_aliases VALUES (?, ?), (?, ?)`,
+		playerXUID, playerGT, friendXUID, friendGT,
+	); err != nil {
+		t.Fatalf("seed xuid_aliases: %v", err)
+	}
+	// Match solo : joueur seul dans l'équipe.
+	if _, err := sharedDB.Exec(`INSERT INTO match_participants VALUES (?, ?, ?)`,
+		soloMatchID, playerXUID, 1,
+	); err != nil {
+		t.Fatalf("seed solo match: %v", err)
+	}
+	// Match escouade : joueur + ami dans la même équipe.
+	if _, err := sharedDB.Exec(`INSERT INTO match_participants VALUES (?, ?, ?), (?, ?, ?)`,
+		squadMatchID, playerXUID, 1,
+		squadMatchID, friendXUID, 1,
+	); err != nil {
+		t.Fatalf("seed squad match: %v", err)
+	}
+	// Seed player DB : les deux matchs à NULL.
+	if _, err := playerDB.Exec(`
+		INSERT INTO player_match_enrichment (match_id, is_with_friends) VALUES (?, NULL), (?, NULL)`,
+		soloMatchID, squadMatchID,
+	); err != nil {
+		t.Fatalf("seed player_match_enrichment: %v", err)
+	}
+
+	// friend_gamertags inclut le joueur lui-même (setup multi-joueurs complet).
+	res, err := RecomputeIsWithFriendsCore(
+		context.Background(), playerDB, sharedDB, playerXUID,
+		[]string{playerGT, friendGT}, false,
+	)
+	if err != nil {
+		t.Fatalf("RecomputeIsWithFriendsCore: %v", err)
+	}
+	// Seul le match escouade doit être promu (1, pas 2).
+	if res.MatchesPromoted != 1 {
+		t.Errorf("expected 1 promoted (squad only), got %d — self-join guard missing?", res.MatchesPromoted)
+	}
+
+	// Match solo doit rester NULL (pas promu).
+	var soloV sql.NullBool
+	if err := playerDB.QueryRow(
+		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = ?`, soloMatchID,
+	).Scan(&soloV); err != nil {
+		t.Fatalf("SELECT solo: %v", err)
+	}
+	if soloV.Valid {
+		t.Errorf("solo match should stay NULL (not promoted), got Bool=%v", soloV.Bool)
+	}
+
+	// Match escouade doit être TRUE.
+	var squadV sql.NullBool
+	if err := playerDB.QueryRow(
+		`SELECT is_with_friends FROM player_match_enrichment WHERE match_id = ?`, squadMatchID,
+	).Scan(&squadV); err != nil {
+		t.Fatalf("SELECT squad: %v", err)
+	}
+	if !squadV.Valid || !squadV.Bool {
+		t.Errorf("squad match should be TRUE, got Valid=%v Bool=%v", squadV.Valid, squadV.Bool)
+	}
+}
+
 // TestRecomputeIsWithFriendsCore_FriendNotResolved vérifie que si l'ami n'est
 // pas dans xuid_aliases (jamais croisé en match), le recompute ne touche rien
 // et ne retourne pas d'erreur. Ligne reste NULL — comportement safe.
