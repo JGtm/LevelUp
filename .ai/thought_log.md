@@ -1,4 +1,31 @@
 
+## [2026-05-08] i18n — harmonisation traduction DNF sur "Non terminé"
+
+**Statut** : Complété
+
+**Décision technique** : La clé `outcome.dnf` avait 3 traductions FR incohérentes ("DNF", "Abandon", "Non terminé" selon le manifest). Standardisation sur "Non terminé" (plus exact que "Abandon" qui implique un choix volontaire) dans les 5 fichiers : `common.toml`, `explorer.toml`, leurs générés TS, et `outcomes.toml` côté Go.
+
+**Résultats** : 5 fichiers modifiés, traduction uniforme partout.
+
+**Prochaine étape** : —
+
+---
+
+## [2026-05-08] Explorer mode Joueur — badges + bouton face-à-face remontés dans la barre de recherche
+
+**Statut** : Complété
+
+**Décision technique** : Réorganisation UX du mode Joueur pour supprimer la duplication du gamertag (champ de recherche + en-tête briefing). Les badges de rencontre (`NarrativeBadge` : "Coriace", ordinal…) et le bouton "Face à face" sont déplacés à droite du `GamertagSearchInput`. L'en-tête de `ExplorerEncounterBriefing` (gamertag + badges + bouton) est supprimé ; le composant n'affiche plus que la grille de 5 KPI.
+- `GamertagSearchInput` : wrapper `w-[22ch]` (was `w-full max-w-md`) pour libérer de la place à droite.
+- `ExplorerPage` : flex-row `[input][badges][bouton]` avec helper module-level `renderEncounterBadges` + `isEncounterSemanticToken`.
+- `ExplorerEncounterBriefing` : props `gamertag`, `badges`, `onHeadToHead` supprimés, imports `NarrativeBadge`/`tokenVar`/`squadManifest`/`SemanticToken`/`MatchEncounterBadge` retirés.
+
+**Résultats** : 3 fichiers modifiés, 0 duplication gamertag dans l'UI mode Joueur.
+
+**Prochaine étape** : Vérification visuelle puis commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer table — suppression colonne wp + headers MMR sur 2 lignes
 
 **Statut** : Complété
