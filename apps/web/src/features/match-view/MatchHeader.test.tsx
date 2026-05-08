@@ -242,7 +242,7 @@ describe('MatchNavigationBar', () => {
       <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
     )
     expect(screen.getByText('Classée · 7 derniers jours')).toBeInTheDocument()
-    expect(screen.getByText(/↩ Sortir du contexte/)).toBeInTheDocument()
+    expect(screen.getByText(/Sortir du contexte ↩/)).toBeInTheDocument()
   })
 
   it('clic prev/next : propage le navContext courant au helper', () => {
@@ -274,7 +274,7 @@ describe('MatchNavigationBar', () => {
     renderWithQueryClient(
       <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="fr" />,
     )
-    fireEvent.click(screen.getByText(/↩ Sortir du contexte/))
+    fireEvent.click(screen.getByText(/Sortir du contexte ↩/))
     expect(clearNavContextMock).toHaveBeenCalledWith('m1')
   })
 
@@ -301,7 +301,7 @@ describe('MatchNavigationBar', () => {
     expect(screen.getByText('Matchs récents 12/47')).toBeInTheDocument()
     // Pas de fragment "·" suivi du label brut puisque le descriptor est intégré
     expect(screen.queryByText('Match 12/47')).toBeNull()
-    expect(screen.getByText(/↩ Sortir du contexte/)).toBeInTheDocument()
+    expect(screen.getByText(/Sortir du contexte ↩/)).toBeInTheDocument()
   })
 
   it('descriptor `with_player` : compteur intégré "Matchs avec X"', () => {

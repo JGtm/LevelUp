@@ -193,7 +193,7 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
               className="underline-offset-2 hover:text-foreground hover:underline"
               title={t.exitContext}
             >
-              ↩ {t.exitContext}
+              {t.exitContext} ↩
             </button>
           </>
         )}

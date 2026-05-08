@@ -264,6 +264,67 @@ func TestBuildMatchHeader_MapImageURL(t *testing.T) {
 	}
 }
 
+// TestBuildMatchHeader_MapImageURL_PrefersENNameOverRawUUID reproduit
+// exactement le scénario observé en prod 2026-05-08 : `match_registry.map_name`
+// contient l'UUID brut "2890782c-…", mais `asset_translations` en-US a
+// "Shiro". Le registry est vide pour ce map_id (cmd/migrate-static-maps pas
+// re-runnée). L'adapter doit recevoir "Shiro" (nom EN résolu), pas l'UUID,
+// pour pouvoir retrouver l'image dans son index static dir.
+func TestBuildMatchHeader_MapImageURL_PrefersENNameOverRawUUID(t *testing.T) {
+	t.Parallel()
+
+	rawUUID := "2890782c-0a33-4f2c-a468-e3a7d6cd6db4"
+	enName := "Shiro"
+
+	// Stub qui mimique le vrai AssetURLAdapter : rejette les UUIDs (regex
+	// uuidRe), accepte les noms propres.
+	stubRejectUUID := &stubAssetURLNameAware{
+		validNames: map[string]string{enName: "/static/maps/halo_infinite/Shiro.jpg"},
+	}
+
+	// Cas critique : MapName=UUID + MapNameEN="Shiro" → adapter reçoit "Shiro"
+	meta := &domain.MatchMetaRaw{
+		MapName:   &rawUUID,
+		MapNameEN: &enName,
+	}
+	h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, stubRejectUUID, false)
+	if h.MapImageURL == nil || *h.MapImageURL != "/static/maps/halo_infinite/Shiro.jpg" {
+		t.Errorf("MapImageURL = %v, want /static/maps/halo_infinite/Shiro.jpg (l'adapter doit recevoir le nom EN, pas l'UUID)", h.MapImageURL)
+	}
+	if got := stubRejectUUID.lastNameReceived; got != enName {
+		t.Errorf("nom passé à l'adapter = %q, want %q (UUID brut envoyé à la place)", got, enName)
+	}
+
+	// Cas dégradé : MapNameEN absent → fallback sur MapName brut (qui peut
+	// échouer dans l'adapter mais c'est le mieux qu'on puisse faire)
+	meta2 := &domain.MatchMetaRaw{MapName: &enName} // ici MapName = nom propre déjà
+	h2 := buildMatchHeader(context.Background(), "m1", meta2, nil, nil, nil, stubRejectUUID, false)
+	if h2.MapImageURL == nil || *h2.MapImageURL != "/static/maps/halo_infinite/Shiro.jpg" {
+		t.Errorf("fallback MapName brut: MapImageURL = %v, want Shiro URL", h2.MapImageURL)
+	}
+}
+
+// stubAssetURLNameAware mimique le vrai AssetURLAdapter : retourne l'URL
+// uniquement pour les noms présents dans validNames (rejette UUID, etc.).
+// Mémorise lastNameReceived pour vérifier ce qui a été passé en paramètre.
+type stubAssetURLNameAware struct {
+	validNames       map[string]string
+	lastNameReceived string
+}
+
+func (s *stubAssetURLNameAware) TitleSlug() string { return "halo_infinite" }
+func (s *stubAssetURLNameAware) MapImageURL(name string) string {
+	s.lastNameReceived = name
+	if url, ok := s.validNames[name]; ok {
+		return url
+	}
+	return ""
+}
+func (s *stubAssetURLNameAware) MedalImageURL(_ uint64) string          { return "" }
+func (s *stubAssetURLNameAware) CSRRankImageURL(_ string, _ int) string { return "" }
+func (s *stubAssetURLNameAware) CSRRankImageURLOnyx() string            { return "" }
+func (s *stubAssetURLNameAware) WeaponImageURL(_ string) string         { return "" }
+
 // TestBuildMatchHeader_MapImageRegistry vérifie que meta.MapImageURL (registry)
 // a la priorité sur l'adapter name-based, et que l'adapter sert de fallback.
 func TestBuildMatchHeader_MapImageRegistry(t *testing.T) {
@@ -332,6 +393,55 @@ func TestBuildMatchHeader_ModeFallbackNormalized(t *testing.T) {
 				t.Errorf("ModeUI = %q, want %q", h.ModeUI, tc.want)
 			}
 		})
+	}
+}
+
+// TestDetectPartialMatchData_AllReasons vérifie que les 4 codes partial sont
+// émis quand toutes les sources secondaires sont vides (RC6 — match_registry
+// OK mais sync incomplet, le front rend dégradé au lieu d'un écran d'erreur).
+func TestDetectPartialMatchData_AllReasons(t *testing.T) {
+	reasons := detectPartialMatchData(nil, nil, nil, nil)
+	want := map[string]bool{
+		"scoreboard_empty":   false,
+		"events_empty":       false,
+		"player_stats_empty": false,
+		"medals_empty":       false,
+	}
+	for _, r := range reasons {
+		if _, ok := want[r]; !ok {
+			t.Errorf("raison inattendue : %q", r)
+		}
+		want[r] = true
+	}
+	for code, found := range want {
+		if !found {
+			t.Errorf("raison manquante : %q", code)
+		}
+	}
+}
+
+// TestDetectPartialMatchData_FullData : aucune raison quand toutes les sources
+// sont remplies → IsPartial=false côté response.
+func TestDetectPartialMatchData_FullData(t *testing.T) {
+	stats := &domain.PlayerMatchStatsRaw{OutcomeCode: 2}
+	scoreboard := []domain.ScoreboardRaw{{XUID: "x"}}
+	events := []domain.EventRaw{{EventType: "kill"}}
+	medals := []domain.MedalRaw{{MedalID: 1, Count: 1}}
+	reasons := detectPartialMatchData(stats, scoreboard, events, medals)
+	if len(reasons) != 0 {
+		t.Errorf("attendu aucune raison, obtenu %v", reasons)
+	}
+}
+
+// TestDetectPartialMatchData_PartialMix : stats nil mais reste plein → seul
+// code "player_stats_empty" émis.
+func TestDetectPartialMatchData_PartialMix(t *testing.T) {
+	scoreboard := []domain.ScoreboardRaw{{XUID: "x"}}
+	events := []domain.EventRaw{{EventType: "kill"}}
+	medals := []domain.MedalRaw{{MedalID: 1, Count: 1}}
+	reasons := detectPartialMatchData(nil, scoreboard, events, medals)
+	if len(reasons) != 1 || reasons[0] != "player_stats_empty" {
+		t.Errorf("attendu [player_stats_empty], obtenu %v", reasons)
 	}
 }
 
