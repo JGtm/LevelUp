@@ -76,7 +76,7 @@ export function GamertagSearchInput({
   }
 
   return (
-    <div ref={ref} className="relative w-full max-w-md">
+    <div ref={ref} className="relative w-[22ch]">
       <Input
         value={query}
         onChange={(e) => {

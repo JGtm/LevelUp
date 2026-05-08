@@ -20,18 +20,44 @@ import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
+import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
-import type { LabelValue } from '@/lib/api/types'
+import type { LabelValue, MatchEncounterBadge } from '@/lib/api/types'
 import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 type SearchMode = 'matches' | 'player'
+
+// ─── Helpers badges rencontre ────────────────────────────────────────────────
+
+function isEncounterSemanticToken(s: string): s is SemanticToken {
+  return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
+}
+
+function renderEncounterBadges(badges: MatchEncounterBadge[], locale: string) {
+  const manifestLocale: 'fr' | 'en' = locale === 'en' ? 'en' : 'fr'
+  const sqT = (key: SquadManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(squadManifest, key, manifestLocale, values)
+  return badges.map((badge, i) => {
+    const labelKey = badge.label_key as SquadManifestKey
+    const ordinal =
+      badge.detail && typeof badge.detail['ordinal'] === 'number'
+        ? (badge.detail['ordinal'] as number)
+        : undefined
+    const label = ordinal !== undefined ? sqT(labelKey, { ordinal }) : sqT(labelKey)
+    const colorVar = isEncounterSemanticToken(badge.color_token)
+      ? tokenVar(badge.color_token as SemanticToken)
+      : undefined
+    return <NarrativeBadge key={i} label={label} colorVar={colorVar} size="lg" />
+  })
+}
 
 // ─── ExplorerPage ─────────────────────────────────────────────────────────────
 
@@ -350,7 +376,26 @@ export function ExplorerPage() {
         {/* ─── Mode Joueur ─────────────────────────────────────────────────── */}
         {mode === 'player' && (
           <div className="space-y-4">
-            <GamertagSearchInput onSelect={selectTarget} initialValue={targetGamertag} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <GamertagSearchInput onSelect={selectTarget} initialValue={targetGamertag} />
+              {targetGamertag && !!playerQuery.data?.badges?.length && (
+                <div className="flex flex-wrap gap-1.5">
+                  {renderEncounterBadges(playerQuery.data!.badges!, locale)}
+                </div>
+              )}
+              {targetGamertag && playerQuery.data?.encounter_stats && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    prefetchCompare(playerQuery.data?.target_gamertag ?? targetGamertag)
+                    setCompareOpen(true)
+                  }}
+                  className="inline-flex h-9 items-center rounded border border-input bg-background px-3 text-xs font-medium hover:bg-muted transition-colors"
+                >
+                  {t('explorer.player.head_to_head')}
+                </button>
+              )}
+            </div>
 
             {!targetGamertag && (
               <Card>
@@ -398,14 +443,8 @@ export function ExplorerPage() {
               <>
                 {playerQuery.data.encounter_stats ? (
                   <ExplorerEncounterBriefing
-                    gamertag={playerQuery.data.target_gamertag || targetGamertag}
                     stats={playerQuery.data.encounter_stats}
-                    badges={playerQuery.data.badges}
                     locale={locale}
-                    onHeadToHead={() => {
-                      prefetchCompare(playerQuery.data.target_gamertag || targetGamertag)
-                      setCompareOpen(true)
-                    }}
                   />
                 ) : (
                   <Card>
