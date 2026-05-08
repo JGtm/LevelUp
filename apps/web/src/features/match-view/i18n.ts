@@ -95,6 +95,8 @@ export interface MatchViewText {
   combatKilledMeFmt: (n: number) => string
   combatIKilledFmt: (n: number) => string
   combatNoData: string
+  fragDiffNoData: string
+  antagonistNoData: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   teamLabelFmt: (name: string) => string
@@ -223,9 +225,11 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatNemesisTitle: 'Némésis',
     combatBullyTitle: 'Souffre-douleur',
     combatNoNemesis: '—',
-    combatKilledMeFmt: (n) => `T'a victimisé ${n} fois`,
-    combatIKilledFmt: (n) => `Tu l'as persécuté ${n} fois`,
+    combatKilledMeFmt: (n) => `T'a éliminé ${n} fois`,
+    combatIKilledFmt: (n) => `Éliminé ${n} fois`,
     combatNoData: 'Pas de données disponibles',
+    fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
+    antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',
     scoreboardTitle: 'Tableau des scores',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamUnknown: 'Équipe inconnue',
@@ -350,6 +354,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatKilledMeFmt: (n) => `Killed you ${n} times`,
     combatIKilledFmt: (n) => `You killed them ${n} times`,
     combatNoData: 'No data available',
+    fragDiffNoData: 'No combat events recorded for this match.',
+    antagonistNoData: 'No duel data available for this match.',
     scoreboardTitle: 'Scoreboard',
     teamLabelFmt: (name) => `Team ${name}`,
     teamUnknown: 'Unknown team',

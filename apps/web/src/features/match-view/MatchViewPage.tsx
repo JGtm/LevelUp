@@ -34,21 +34,28 @@ import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 /**
- * Traduit un code stable de partial_reason (cf. backend
- * `service.detectPartialMatchData`) en libellé court affiché dans le bandeau
- * "sync incomplet". Codes inconnus → renvoyés tels quels (debug).
+ * Traduit un code stable de partial_reason en impact end-user concret.
+ * Décrit ce que l'utilisateur ne peut PAS voir, pas la raison technique.
  */
 function translatePartialReason(code: string, locale: string): string {
   const isEN = locale === 'en'
   switch (code) {
     case 'scoreboard_empty':
-      return isEN ? 'no scoreboard' : 'aucun scoreboard'
+      return isEN
+        ? 'Scoreboard and individual player stats are unavailable'
+        : "Le tableau des scores et les stats individuelles sont indisponibles"
     case 'events_empty':
-      return isEN ? 'no highlight events' : 'aucun fait marquant'
+      return isEN
+        ? 'Combat charts cannot be displayed — Cadence, Dominance and Frag diff are empty'
+        : "Les graphes de combat sont vides — Cadence, Dominance et Frags différentiel ne peuvent pas être tracés"
     case 'player_stats_empty':
-      return isEN ? 'no player stats' : 'aucune stat joueur'
+      return isEN
+        ? 'Some personal stats are missing — datas may be incomplete'
+        : "Certaines statistiques personnelles sont absentes — les données peuvent être incomplètes"
     case 'medals_empty':
-      return isEN ? 'no medals' : 'aucune médaille'
+      return isEN
+        ? 'Medals and commendations are unavailable'
+        : "Les médailles et citations ne sont pas disponibles"
     default:
       return code
   }
@@ -153,15 +160,35 @@ export function MatchViewPage() {
           Le match reste rendu normalement, on signale juste la dégradation. */}
       {data.is_partial && data.partial_reasons && data.partial_reasons.length > 0 && (
         <div className="px-6 pt-4">
-          <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
-            <p className="font-medium text-warning-foreground">
-              {locale === 'en'
-                ? 'Partial sync — some sections may be unavailable'
-                : 'Synchronisation incomplète — certaines sections peuvent manquer'}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {data.partial_reasons.map((r) => translatePartialReason(r, locale)).join(' · ')}
-            </p>
+          <div className="flex gap-3 rounded-md border border-warning/50 bg-warning/10 px-4 py-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="mt-0.5 h-4 w-4 shrink-0 text-warning"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                {locale === 'en'
+                  ? 'This match could not be fully loaded.'
+                  : 'Ce match n\'a pas pu être chargé en totalité.'}
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {data.partial_reasons.map((r) => (
+                  <li key={r} className="flex gap-2 text-xs text-muted-foreground">
+                    <span className="mt-px shrink-0 text-warning" aria-hidden="true">▸</span>
+                    <span>{translatePartialReason(r, locale)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       )}
@@ -271,6 +298,7 @@ export function MatchViewPage() {
               roster={roster}
               pairs={killerVictim}
               meXUID={meXUID}
+              t={t}
               friendGamertags={friendGamertags}
             />
 
@@ -292,6 +320,7 @@ export function MatchViewPage() {
               scoreboard={scoreboard}
               roster={roster}
               meXUID={meXUID}
+              t={t}
               friendGamertags={friendGamertags}
             />
           </>
