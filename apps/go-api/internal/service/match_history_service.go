@@ -707,13 +707,18 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		kda = r.KDA
 	}
 
+	scoreLabel := "-"
+	if r.MyTeamScore != nil && r.EnemyTeamScore != nil {
+		scoreLabel = fmt.Sprintf("%d - %d", *r.MyTeamScore, *r.EnemyTeamScore)
+	}
+
 	return domain.MatchHistoryRow{
 		MatchID:                  r.MatchID,
 		StartTime:                startTime,
 		StartTimeLabel:           label,
 		OutcomeCode:              r.Outcome,
 		OutcomeLabel:             outcomeLabel(r.Outcome),
-		ScoreLabel:               "-",
+		ScoreLabel:               scoreLabel,
 		MapUI:                    ptrStr(mapU),
 		ModeUI:                   ptrStr(mu),
 		PlaylistLabel:            ptrStr(playlist),

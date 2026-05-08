@@ -95,7 +95,10 @@ SELECT
     NULLIF(TRIM(COALESCE(msr.tier, '')), '')             AS skill_tier,
     NULLIF(TRIM(COALESCE(msr.tier_fr, '')), '')          AS skill_tier_fr,
     NULLIF(TRIM(COALESCE(msr.rating_type, '')), '')      AS skill_rating_type,
-    NULLIF(TRIM(COALESCE(msr.tier_label, '')), '')       AS skill_tier_label
+    NULLIF(TRIM(COALESCE(msr.tier_label, '')), '')       AS skill_tier_label,
+    -- Scores équipe / adverse, dérivés de p.team_id pour orienter "ma" team
+    CASE WHEN p.team_id = 0 THEN ms.team_0_score ELSE ms.team_1_score END AS my_team_score,
+    CASE WHEN p.team_id = 0 THEN ms.team_1_score ELSE ms.team_0_score END AS enemy_team_score
 FROM (
     SELECT r.match_id,
            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
@@ -103,7 +106,9 @@ FROM (
            r.map_name_fr, r.pair_name, r.pair_name_fr,
            r.playlist_name, r.playlist_name_fr,
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
-           COALESCE(r.is_ranked, FALSE)    AS is_ranked
+           COALESCE(r.is_ranked, FALSE)    AS is_ranked,
+           r.team_0_score,
+           r.team_1_score
     FROM shared.v_match_full r
     JOIN shared.match_participants p ON r.match_id = p.match_id
     WHERE p.xuid = ?

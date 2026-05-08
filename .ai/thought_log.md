@@ -1,4 +1,26 @@
 
+## [2026-05-08] Explorer — fix score (hardcodé "-"), colonne Solo/Escouade, locale FR skill_tier_label
+
+**Statut** : Complété
+
+**Décision technique** : Trois fixes ciblés sur le tableau Explorer.
+1. **Score "-" partout** : `enrichRow` retournait `ScoreLabel: "-"` hardcodé. Cause : `MatchHistoryRawRow` n'expose pas les scores team. Fix : Q5MatchHistory étendu avec `r.team_0_score`/`r.team_1_score` dans le subquery + 2 colonnes calculées en CASE WHEN sur `p.team_id` (`my_team_score`/`enemy_team_score`). `MatchHistoryRawRow` reçoit `MyTeamScore *int` + `EnemyTeamScore *int`. Scan étendu dans `match_history_repo.go`. `enrichRow` calcule `ScoreLabel = fmt.Sprintf("%d - %d", *MyTeamScore, *EnemyTeamScore)` si les deux dispos, sinon "-". Pattern aligné avec teammates_service.go ligne 1014.
+2. **Colonne Solo/Escouade** : nouvelle colonne entre Mode et Résultat, basée sur `is_with_friends` (déjà dans ExplorerMatchRow), label "Solo" / "Escouade" (FR) ou "Solo" / "Squad" (EN) via 3 nouvelles clés i18n (`col_squad`, `squad_solo`, `squad_party`).
+3. **Locale FR skill_tier_label** : la DB stocke `tier_label` en EN nativement (pas de `tier_label_fr` en schema). Fix côté frontend via helper `localizeSkillTierLabel(label, locale)` qui mappe le préfixe EN→FR via `SKILL_TIER_FR` (Bronze/Argent/Or/Platine/Diamant/Onyx) et préserve le suffixe ("Diamond IV" → "Diamant IV" en FR, inchangé en EN). Logique côté UI car la donnée n'existe pas en FR côté backend — refactor schema hors scope.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/duckdb/...` tous verts (incluant les tests qui chargent Q5 — la nouvelle colonne du SELECT n'a pas cassé les fixtures `:memory:`). `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Locale FR — autres champs** :
+- `mode_ui` : FR via `coalesce(r.PairNameFR, r.PairName)` côté backend ✓
+- `map_ui` : FR via `coalesce(r.MapNameFR, r.MapName)` côté backend ✓
+- `playlist_label` : FR via `COALESCE(ms.playlist_name_fr, ms.playlist_name)` dans Q5 ✓
+- `outcome_label` : FR via `t('explorer.matches.outcome_*')` côté frontend ✓
+- `skill_tier_label` : maintenant FR via helper `localizeSkillTierLabel` ✓
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — table strictement alignée sur SquadSynergyHistoryTable + colonnes manquantes
 
 **Statut** : Complété
