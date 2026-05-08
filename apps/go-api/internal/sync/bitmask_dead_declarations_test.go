@@ -111,6 +111,125 @@ func extractBitConstants(path string) ([]string, error) {
 	return out, nil
 }
 
+// TestNoDeadBackfillFlagKey est le pendant de TestNoDeadBitDeclaration pour
+// la map `BackfillFlags map[string]int` de backfill_flags.go. Vérifie que
+// chaque key est consommée par `doneGuard("key", ...)` ou
+// `ComputeBackfillMask("key", ...)` quelque part dans le package, ou bien
+// listée dans la whitelist (avec justification écrite).
+//
+// Phase 6 du plan PLAN_BITMASKS_AUDIT_FIX : empêche la dégradation future
+// (ajout d'une key orpheline "au cas où"). Ne casse PAS les keys héritage
+// Python actuelles — elles sont whitelistées avec leur statut documenté.
+func TestNoDeadBackfillFlagKey(t *testing.T) {
+	keys, err := extractBackfillFlagsKeys("backfill_flags.go")
+	if err != nil {
+		t.Fatalf("extractBackfillFlagsKeys: %v", err)
+	}
+	if len(keys) == 0 {
+		t.Fatal("aucune key BackfillFlags extraite — regex cassée ?")
+	}
+
+	others, err := loadOtherSourceFiles([]string{
+		"backfill_flags.go",
+		"bitmask_dead_declarations_test.go",
+	})
+	if err != nil {
+		t.Fatalf("loadOtherSourceFiles: %v", err)
+	}
+
+	// Whitelist : keys héritage Python NON consommées via doneGuard ni
+	// ComputeBackfillMask en code Go. Elles sont conservées pour
+	// rétrocompatibilité de la map (les bits restent positionnés en DB par
+	// l'ancien code Python sur l'historique). Toute nouvelle key doit avoir
+	// un consumer Go ; sinon, soit la consommer, soit l'ajouter ici avec
+	// justification.
+	//
+	// Audit Phase 1ter de PLAN_HIGHLIGHT_EVENTS_BACKFILL.md (commit b6b31062)
+	// + thought_log [2026-05-08] "PLAN_BITMASKS_AUDIT_FIX — Phase 1 sonde".
+	whitelist := map[string]string{
+		"medals":          "héritage Python — detection Go via NOT IN medals_earned (table-based)",
+		"events":          "héritage Python — detection Go via mr.events_loaded boolean",
+		"skill":           "héritage Python — Phase 2 écrit la valeur via const locale backfillFlagSkill (4) ; key map non lue",
+		"personal_scores": "héritage Python — detection Go via playerDoneGuard table-based",
+		"accuracy":        "héritage Python — detection Go via mp.accuracy IS NULL",
+		"shots":           "héritage Python — detection Go via mp.shots_fired IS NULL",
+		"enemy_mmr":       "héritage Python — detection Go via mp.team_mmr IS NULL",
+		"aliases":         "héritage Python — pas de detection automatique côté Go",
+		"weapon_kills":    "héritage Python — OBSOLÈTE, remplacé par MBitWeaponKills (1<<21)",
+	}
+
+	// Chercher pour chaque key un usage `"key"` dans un appel à doneGuard
+	// ou ComputeBackfillMask. On reste sur une regex permissive : si la
+	// chaîne `"key"` apparaît dans un `.go` du package, on suppose qu'elle
+	// est consommée. Faux positifs possibles (chaîne dans un autre contexte)
+	// mais le coût est nul (test ne fail pas faussement).
+	var orphans []string
+	for _, key := range keys {
+		if _, ok := whitelist[key]; ok {
+			continue
+		}
+		needle := `"` + key + `"`
+		used := false
+		for _, body := range others {
+			if strings.Contains(body, needle) {
+				used = true
+				break
+			}
+		}
+		if !used {
+			orphans = append(orphans, key)
+		}
+	}
+
+	if len(orphans) > 0 {
+		t.Errorf("keys de BackfillFlags déclarées mais aucun consumer Go (doneGuard ou ComputeBackfillMask) : %v\n"+
+			"  → soit consommer la key dans backfill.go (doneGuard ou ComputeBackfillMask)\n"+
+			"  → soit retirer de BackfillFlags map\n"+
+			"  → soit whitelister ici avec justification écrite (héritage Python ou autre)",
+			orphans)
+	}
+}
+
+// extractBackfillFlagsKeys lit `backfill_flags.go` et retourne les keys de la
+// map littérale `BackfillFlags = map[string]int{ "k1": ..., "k2": ... }`.
+// Approche regex (block scanning) : cohérent avec extractBitConstants pour la
+// même raison (fichier de convention stable, pas besoin d'AST).
+func extractBackfillFlagsKeys(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	src := string(data)
+	// Localiser le bloc `BackfillFlags = map[string]int{ ... }`.
+	startMarker := "BackfillFlags = map[string]int{"
+	startIdx := strings.Index(src, startMarker)
+	if startIdx < 0 {
+		return nil, nil // map absente — ok, pas d'orphelin par défaut
+	}
+	// Trouver l'accolade fermante associée (simple : on prend la première
+	// `}` après le marker, suffit pour cette map plate).
+	endIdx := strings.Index(src[startIdx:], "}")
+	if endIdx < 0 {
+		return nil, nil
+	}
+	block := src[startIdx : startIdx+endIdx]
+
+	// Extraire les "key" en début de ligne (avant le `:`).
+	re := regexp.MustCompile(`(?m)^\s*"([^"]+)"\s*:`)
+	matches := re.FindAllStringSubmatch(block, -1)
+	out := make([]string, 0, len(matches))
+	seen := map[string]struct{}{}
+	for _, m := range matches {
+		k := m[1]
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, k)
+	}
+	return out, nil
+}
+
 // loadOtherSourceFiles retourne le contenu de tous les .go du package
 // (working dir = `internal/sync/`) sauf ceux listés dans `excludes`.
 func loadOtherSourceFiles(excludes []string) (map[string]string, error) {
