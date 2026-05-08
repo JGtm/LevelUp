@@ -1001,6 +1001,7 @@ export interface ExplorerMatchesQueryRequest {
   pagination?: PaginationRequest
   sort_field?: string
   sort_dir?: string
+  include_export_hint?: boolean
   perf_tiers?: number[]
   skill_tiers?: string[]
   ranked_context?: 'ranked' | 'unranked' | ''
@@ -1057,6 +1058,7 @@ export interface ExplorerPlayerQueryResponse {
 export interface ExplorerMatchesQueryResponse {
   summary: ExplorerMatchesQuerySummary
   table: PaginatedResponse<ExplorerMatchRow>
+  export_hint?: ExportHint
 }
 
 // ---------------------------------------------------------------------------

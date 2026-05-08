@@ -154,7 +154,10 @@ type MatchHistoryQueryRequest struct {
 }
 
 // maxPageSize est la taille de page maximale acceptée.
-const maxPageSize = 200
+// Relevé de 200 à 10000 pour couvrir le cas Explorer qui charge tout l'historique
+// d'un joueur en une requête (pagination client). 10000 = ordre de grandeur de
+// l'historique max plausible d'un joueur très actif (Halo Infinite, plusieurs saisons).
+const maxPageSize = 10000
 
 // Validate vérifie la cohérence des paramètres de la requête historique.
 // Page=0 et PageSize=0 sont acceptés (defaults : 1 et 20 côté service).
