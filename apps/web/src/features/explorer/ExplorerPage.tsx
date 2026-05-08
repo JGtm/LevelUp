@@ -710,15 +710,15 @@ export function ExplorerPage() {
                     disabled={rankedContext === ''}
                     title={rankedContext === '' ? t('explorer.filters.skill_tier_disabled') : undefined}
                   />
-                </div>
-
-                {hasActiveFilter && (
-                  <div className="flex justify-end">
-                    <button className="text-xs text-primary hover:underline" onClick={resetFilters}>
+                  {hasActiveFilter && (
+                    <button
+                      className="ml-auto text-xs text-primary hover:underline"
+                      onClick={resetFilters}
+                    >
                       {t('explorer.filters.reset')}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
 
