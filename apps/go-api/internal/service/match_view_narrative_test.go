@@ -120,7 +120,7 @@ func TestExtractTeamOutcomes_MapsAllCodes(t *testing.T) {
 
 func TestBuildMatchCadenceChart_AggregatesKillsByPhase(t *testing.T) {
 	t.Parallel()
-	// Match 180s, phase 60s -> 3 buckets. p1 fait 3 kills (5s, 65s, 175s).
+	// Match 180s, phase 30s -> 6 buckets. p1 fait 3 kills (5s, 65s, 175s).
 	events := []domain.EventRaw{
 		eventRawKill(5_000, "x_p1"),
 		eventRawKill(65_000, "x_p1"),
@@ -134,8 +134,8 @@ func TestBuildMatchCadenceChart_AggregatesKillsByPhase(t *testing.T) {
 	if chart == nil {
 		t.Fatal("chart nil")
 	}
-	if len(chart.Datapoints) != 3 {
-		t.Fatalf("want 3 buckets, got %d", len(chart.Datapoints))
+	if len(chart.Datapoints) != 6 {
+		t.Fatalf("want 6 buckets, got %d", len(chart.Datapoints))
 	}
 	// Bucket 0 : p1=1, p2=0
 	if chart.Datapoints[0].Components["x_p1"] != 1 {
@@ -144,7 +144,7 @@ func TestBuildMatchCadenceChart_AggregatesKillsByPhase(t *testing.T) {
 	if chart.Datapoints[0].Components["x_p2"] != 0 {
 		t.Errorf("bucket 0 x_p2 want 0, got %f", chart.Datapoints[0].Components["x_p2"])
 	}
-	// Tri stable des catégories : phase_00, phase_01, phase_02
+	// Catégorie du 1er bucket stable à "phase_00"
 	if chart.Datapoints[0].Category != "phase_00" {
 		t.Errorf("Category[0] want phase_00, got %s", chart.Datapoints[0].Category)
 	}

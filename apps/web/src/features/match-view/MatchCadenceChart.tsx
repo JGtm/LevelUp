@@ -16,6 +16,7 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { MatchScoreboardRow, MatchViewCadence } from '@/lib/api/types'
+import { formatBinSeconds } from './_chartSeries'
 import type { MatchViewText } from './i18n'
 
 interface Props {
@@ -58,7 +59,8 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
         return r?.team_side === allyTeam
       }
 
-      const categories = cadence.datapoints.map((dp) => dp.category)
+      const phaseSeconds = (cadence.meta?.phase_seconds as number | undefined) ?? 30
+      const categories = cadence.datapoints.map((_, i) => formatBinSeconds(i * phaseSeconds))
       const teamSeries: number[] = []
       const enemySeries: number[] = []
       for (const dp of cadence.datapoints) {
