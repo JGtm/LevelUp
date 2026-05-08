@@ -1,29 +1,21 @@
 // cmd/replay_highlight_events — Rejoue le parsing des highlight events pour
-// les matchs où l'ancien parser byte-aligné a silencieusement échoué :
-// events_loaded=TRUE dans match_registry mais aucune ligne dans
-// highlight_events. Ces matchs étaient marqués "déjà traités" mais leur
-// historique d'événements (kills/deaths/medals/mode) avait été perdu.
-//
-// Le tool :
-//  1. ouvre la shared DB en read-write (échoue si server LevelUp tourne)
-//  2. liste les matchs cassés (events_loaded=TRUE, 0 row, participants présents)
-//  3. pour chaque match : clear events_loaded, re-télécharge le chunk highlight,
-//     parse, insère, re-set events_loaded
+// les matchs où l'ancien parser byte-aligné a silencieusement échoué OU dont
+// les killer_victim_pairs sont vides à cause de l'ancien INSERT OR IGNORE.
 //
 // Idempotent — peut être ré-exécuté sans dommage.
+//
+// **Note** : ce binaire sera remplacé par la sous-commande
+// `levelup replay-events` (Phase 3 de PLAN_HIGHLIGHT_EVENTS_BACKFILL.md). Il
+// reste ici à titre transitionnel et délègue toute la logique aux helpers
+// `internal/sync/events_replay.go`.
 //
 // Usage :
 //
 //	go run ./cmd/replay_highlight_events --gamertag JGtm [--limit 200] [--dry-run]
-//
-// `--gamertag` sert uniquement à résoudre le refresh token via .env.local
-// (`SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>`). Le token est utilisé pour les appels
-// API ; il n'a pas besoin d'être lié au joueur des matchs en question.
 package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -31,12 +23,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
+
+	"database/sql"
 )
 
 func main() {
@@ -51,7 +44,6 @@ func main() {
 		os.Exit(2)
 	}
 
-	// Réduit le bruit slog du package sync (Warnings restent visibles via le compteur expvar et les warnings dans result).
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})))
 
 	if err := run(*gamertag, *limit, *dryRun, *rps); err != nil {
@@ -93,9 +85,9 @@ func run(gamertag string, limit int, dryRun bool, rps int) error {
 		defer globalCloser()
 	}
 
-	broken, err := selectBrokenMatches(ctx, sharedDB, limit)
+	broken, err := go_sync.FindBrokenHighlightEventMatches(ctx, sharedDB, limit)
 	if err != nil {
-		return fmt.Errorf("select broken matches: %w", err)
+		return fmt.Errorf("FindBrokenHighlightEventMatches: %w", err)
 	}
 	fmt.Printf("Matchs cassés détectés : %d (limit=%d)\n", len(broken), limit)
 	if len(broken) == 0 {
@@ -105,9 +97,9 @@ func run(gamertag string, limit int, dryRun bool, rps int) error {
 
 	if dryRun {
 		fmt.Println("--- dry-run, liste seulement ---")
-		for i, m := range broken {
+		for i, id := range broken {
 			if i < 20 {
-				fmt.Printf("  %s  start=%s\n", m.MatchID, m.StartTime)
+				fmt.Printf("  %s\n", id)
 			}
 		}
 		if len(broken) > 20 {
@@ -130,123 +122,28 @@ func run(gamertag string, limit int, dryRun bool, rps int) error {
 
 	beforeAnomaly := observability.LoadCounter("highlight_events_parse_anomaly_total")
 
-	stats := replayStats{}
-	for i, m := range broken {
-		if ctx.Err() != nil {
-			break
-		}
-		fmt.Printf("[%d/%d] %s ", i+1, len(broken), m.MatchID)
+	progress := func(done, total int, matchID, status string) {
+		fmt.Printf("[%d/%d] %s %s\n", done, total, matchID, status)
+	}
 
-		if err := clearEventsLoaded(sharedDB, m.MatchID); err != nil {
-			fmt.Printf("FAIL clear: %v\n", err)
-			stats.errors++
-			continue
-		}
-
-		result := &domain.SyncResult{}
-		err := go_sync.ProcessHighlightEvents(ctx, client, sharedDB, globalDB, m.MatchID, result)
-		switch {
-		case err != nil:
-			fmt.Printf("FAIL: %v\n", err)
-			stats.errors++
-		case result.EventsInserted > 0:
-			fmt.Printf("OK +%d events\n", result.EventsInserted)
-			stats.healed++
-			stats.eventsTotal += result.EventsInserted
-		case len(result.Warnings) > 0:
-			fmt.Printf("ANOMALY (chunk présent mais 0 events parsés)\n")
-			stats.anomaly++
-		default:
-			fmt.Printf("no-film\n")
-			stats.noFilm++
-		}
+	res, err := go_sync.ReplayHighlightEventsForMatches(ctx, client, sharedDB, globalDB, broken, progress)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "replay interrompu: %v\n", err)
 	}
 
 	afterAnomaly := observability.LoadCounter("highlight_events_parse_anomaly_total")
 	fmt.Println("\n=== Rapport replay highlight events ===")
-	fmt.Printf("  total processed   : %d\n", len(broken))
-	fmt.Printf("  healed (events>0) : %d  (events insérés : %d)\n", stats.healed, stats.eventsTotal)
-	fmt.Printf("  no_film (404)     : %d\n", stats.noFilm)
+	fmt.Printf("  total processed   : %d\n", res.Total)
+	fmt.Printf("  healed (events>0) : %d  (events insérés : %d)\n", res.Healed, res.EventsInserted)
+	fmt.Printf("  no_film (404)     : %d\n", res.NoFilm)
 	fmt.Printf("  parse_anomaly     : %d  (compteur expvar : %d → %d, delta=%d)\n",
-		stats.anomaly, beforeAnomaly, afterAnomaly, afterAnomaly-beforeAnomaly)
-	fmt.Printf("  errors            : %d\n", stats.errors)
+		res.ParseAnomaly, beforeAnomaly, afterAnomaly, afterAnomaly-beforeAnomaly)
+	fmt.Printf("  errors            : %d\n", res.Errors)
 
-	if stats.errors > 0 {
-		return fmt.Errorf("%d erreur(s) lors du replay", stats.errors)
+	if res.Errors > 0 {
+		return fmt.Errorf("%d erreur(s) lors du replay", res.Errors)
 	}
 	return nil
-}
-
-type brokenMatch struct {
-	MatchID   string
-	StartTime string
-}
-
-type replayStats struct {
-	healed      int
-	noFilm      int
-	anomaly     int
-	errors      int
-	eventsTotal int
-}
-
-// selectBrokenMatches retourne les matchs où le pipeline highlight events a
-// échoué silencieusement, dans l'un des deux cas :
-//
-//  1. events_loaded=TRUE mais aucune ligne dans highlight_events (cassure
-//     primaire = ancien parser byte-aligné) ;
-//  2. highlight_events présents (kill events détectés) mais killer_victim_pairs
-//     vides (cassure secondaire = ancien InsertKillerVictimPairs avec OR IGNORE).
-//
-// Filtré sur les matchs réels (présence de match_participants). Triés par
-// start_time décroissant — les plus récents d'abord, dont le film est le plus
-// susceptible d'être encore disponible côté CDN Halo.
-func selectBrokenMatches(ctx context.Context, db *sql.DB, limit int) ([]brokenMatch, error) {
-	if limit <= 0 {
-		limit = 200
-	}
-	rows, err := db.QueryContext(ctx, `
-		SELECT mr.match_id,
-		       COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')::VARCHAR
-		FROM match_registry mr
-		WHERE COALESCE(mr.events_loaded, FALSE) = TRUE
-		  AND EXISTS (SELECT 1 FROM match_participants mp WHERE mp.match_id = mr.match_id)
-		  AND (
-		    NOT EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id)
-		    OR (
-		      EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id AND he.event_type = 'kill')
-		      AND NOT EXISTS (SELECT 1 FROM killer_victim_pairs kvp WHERE kvp.match_id = mr.match_id)
-		    )
-		  )
-		ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC NULLS LAST
-		LIMIT ?
-	`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []brokenMatch
-	for rows.Next() {
-		var m brokenMatch
-		if err := rows.Scan(&m.MatchID, &m.StartTime); err != nil {
-			return nil, err
-		}
-		out = append(out, m)
-	}
-	return out, rows.Err()
-}
-
-// clearEventsLoaded remet events_loaded=FALSE et clear le bit MBitEvents dans
-// match_registry.backfill_completed afin que le pipeline de re-parse traite
-// le match comme "à faire".
-func clearEventsLoaded(db *sql.DB, matchID string) error {
-	_, err := db.Exec(`
-		UPDATE match_registry
-		SET events_loaded      = FALSE,
-		    backfill_completed = COALESCE(backfill_completed, 0) & ~?
-		WHERE match_id = ?`, go_sync.MBitEvents, matchID)
-	return err
 }
 
 // openGlobalDBOptional ouvre data/global/xbox_aliases.duckdb en RW si la DB
