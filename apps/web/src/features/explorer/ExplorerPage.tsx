@@ -20,6 +20,8 @@ import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { SaisonPill } from '@/components/shell/FilterOmnibar'
+import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -98,6 +100,7 @@ export function ExplorerPage() {
 
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [saisonOpen, setSaisonOpen] = useState(false)
   const [squadScope, setSquadScope] = useState<'' | 'solo' | 'squad'>('')
   const [expTypes, setExpTypes] = useState<Set<string>>(new Set())
   const [playlists, setPlaylists] = useState<Set<string>>(new Set())
@@ -118,6 +121,15 @@ export function ExplorerPage() {
     setStartDate(v)
     if (endDate && v && endDate < v) setEndDate('')
   }
+
+  // Saisons : dérivées du catalog du titre courant. activeSeason est calculée
+  // depuis les inputs date locaux (Du/Au), pas du filterContext shell — Explorer
+  // override ce dernier (vue tout-historique) donc la saison agit comme un
+  // raccourci sur les dates locales.
+  const { seasons, activeSeason } = useActiveSeason({
+    start_date: startDate || null,
+    end_date: endDate || null,
+  })
 
   function handleRankedContext(v: 'ranked' | 'unranked' | '') {
     setRankedContext(v)
@@ -580,6 +592,25 @@ export function ExplorerPage() {
                       className="rounded border border-input px-2 py-1 text-sm bg-background w-36"
                     />
                   </div>
+                  {seasons.length > 0 && (
+                    <SaisonPill
+                      open={saisonOpen}
+                      onToggle={() => setSaisonOpen((o) => !o)}
+                      onClose={() => setSaisonOpen(false)}
+                      seasons={seasons}
+                      activeSeason={activeSeason}
+                      onSelectSeason={(s) => {
+                        const p = seasonToPeriod(s)
+                        setStartDate(p.start_date ?? '')
+                        setEndDate(p.end_date ?? '')
+                        setSaisonOpen(false)
+                      }}
+                      onClear={() => {
+                        setStartDate('')
+                        setEndDate('')
+                      }}
+                    />
+                  )}
                   <input
                     type="text"
                     value={matchIDSearch}

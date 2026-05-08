@@ -1,4 +1,18 @@
 
+## [2026-05-08] Explorer — SaisonPill + i18n FR tri (FDA/Frags)
+
+**Statut** : Complété
+
+**Décision technique** : Deux ajustements UX.
+1. **SaisonPill** : réutilisation du composant shell `SaisonPill` (déjà exporté depuis `FilterOmnibar`) + `useActiveSeason` + `seasonToPeriod` (depuis `features/squad/useActiveSeason.ts`). Pattern aligné sur SquadLayout. La saison agit comme un raccourci sur les **inputs date locaux** (Du/Au) plutôt que sur le filterContext shell (qui est override par Explorer en `period: null`). `activeSeason` est dérivé de `(startDate, endDate)` locaux. `onSelectSeason` applique `seasonToPeriod(s)` aux setters locaux ; `onClear` vide les dates. Pas de `seasonCounts` passé : SaisonPill gère gracieusement (pas de folding count=0). State `saisonOpen` local pour le toggle de la pill.
+2. **i18n tri** : labels FR de l'option de tri rectifiés. `explorer.sort.kda_desc` : "KDA (meilleur)" → "FDA (meilleur)". `explorer.sort.kills_desc` : "Kills (plus)" → "Frags (plus)". Versions EN inchangées.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — fix réel locale FR : ResolveAssetNamesBulk via UUIDs (pattern home)
 
 **Statut** : Complété

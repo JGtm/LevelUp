@@ -303,11 +303,11 @@ fr = "Perf (moins bonne)"
 en = "Perf (worst)"
 
 [explorer.sort.kda_desc]
-fr = "KDA (meilleur)"
+fr = "FDA (meilleur)"
 en = "KDA (best)"
 
 [explorer.sort.kills_desc]
-fr = "Kills (plus)"
+fr = "Frags (plus)"
 en = "Kills (most)"
 
 [explorer.sort.delta_mmr_desc]
