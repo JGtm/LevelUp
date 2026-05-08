@@ -90,7 +90,12 @@ SELECT
     p.accuracy,
     p.personal_score,
     p.avg_life_seconds                                   AS average_life_seconds,
-    p.time_played_seconds
+    p.time_played_seconds,
+    pme.performance_score,
+    NULLIF(TRIM(COALESCE(msr.tier, '')), '')             AS skill_tier,
+    NULLIF(TRIM(COALESCE(msr.tier_fr, '')), '')          AS skill_tier_fr,
+    NULLIF(TRIM(COALESCE(msr.rating_type, '')), '')      AS skill_rating_type,
+    NULLIF(TRIM(COALESCE(msr.tier_label, '')), '')       AS skill_tier_label
 FROM (
     SELECT r.match_id,
            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
@@ -107,6 +112,8 @@ LEFT JOIN shared.match_participants p
     ON ms.match_id = p.match_id AND p.xuid = ?
 LEFT JOIN player_match_enrichment pme
     ON ms.match_id = pme.match_id
+LEFT JOIN match_skill_rank msr
+    ON ms.match_id = msr.match_id
 ORDER BY ms.start_time DESC`
 
 // Q6 : Career — progression de rang (dernière entrée).

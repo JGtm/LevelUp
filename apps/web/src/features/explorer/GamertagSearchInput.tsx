@@ -6,7 +6,7 @@
  *   2. Coéquipiers fréquents (si fournis)
  *   3. Recherche serveur xuid_aliases (fuzzy, debounce 250 ms, ≥ 2 chars)
  */
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { useGamertagSuggestions } from '@/components/ui/useGamertagSuggestions'
 import type { TeammateOption } from '@/lib/api/types'
@@ -63,6 +63,18 @@ export function GamertagSearchInput({
     setOpen(false)
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const first =
+        configured[0]?.gamertag ?? frequent[0]?.gamertag ?? remote[0]?.gamertag
+      const target = first ?? trimmed
+      if (target) pick(target)
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+    }
+  }
+
   return (
     <div ref={ref} className="relative w-full max-w-md">
       <Input
@@ -72,6 +84,7 @@ export function GamertagSearchInput({
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
       />
 

@@ -1,4 +1,52 @@
 
+## [2026-05-08] Explorer — UX padding CardContent + Enter-to-confirm GamertagSearchInput
+
+**Statut** : Complété
+
+**Décision technique** : Deux correctifs UX sur l'Explorer. (1) Padding CardContent : `CardContent` a un style par défaut `p-6 pt-0` (conçu pour s'utiliser sous un `CardHeader`). Quand utilisé seul, `pt-0` écrase toujours `py-4` car Tailwind génère les utilitaires directionnels (`pt-*`) après les raccourcis bidirectionnels (`py-*`) dans le CSS. Fix : passer `pt-4` explicitement en plus de `py-4` — Tailwind trie par échelle numérique donc `pt-4 > pt-0` gagne. Appliqué sur 4 instances dans `ExplorerPage.tsx`. (2) GamertagSearch : ajout de `handleKeyDown` sur `<Input>` — `Enter` sélectionne la première suggestion disponible ou, en dernier recours, confirme le texte brut tapé. `Escape` ferme le dropdown. Permet de chercher même quand la recherche distante échoue (503 shared DB inaccessible en dev).
+
+**Résultats** : `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — filtres match-level (date, exp type, playlist, map, mode, squad, match ID) + available options
+
+**Statut** : Complété
+
+**Décision technique** : Ajout de 8 filtres Explorer additionnels dans la chaîne `GetPage` du `MatchHistoryService`, appliqués APRÈS les filtres existants (ranked/outcome/skill/perf). Les options disponibles (valeurs distinctes triées) sont calculées sur les rows AVANT les filtres Explorer pour permettre au frontend de construire ses dropdowns multi-sélect dynamiquement. Architecture : les 8 champs sont ajoutés à `MatchHistoryQueryRequest` (domain) et `ExplorerMatchesQueryRequest` (domain), propagés dans `ExplorerHandler.QueryMatches`, et exécutés via `applyExplorerMatchFilters` (helper ≤80L) qui chaîne 7 fonctions atomiques. Les 4 `Available*` remontent dans `MatchHistoryQuerySummary` et sont projetés dans `ExplorerMatchesSummary`.
+
+**Résultats** : `go build ./...` exit 0, `go vet ./internal/...` exit 0.
+
+**Prochaine étape (frontend)** : Câblage terminé. Grille 6-colonnes avec labels + inputs texte remplacée par ligne compacte (date range + match ID + squad scope select) + sections de chips dynamiques peuplées depuis `summary.available_*`. Helper `toggleSet<T>` générique remplace les fonctions toggle redondantes. `ExplorerMatchFilters` supprimé — champs directement dans `ExplorerMatchesQueryRequest`. `go test ./internal/...` OK, `npm run typecheck` OK, 797 clés i18n.
+
+---
+
+## [2026-05-08] Explorer — filtres ranked/outcome/tier + tri étendu + colonne tier
+
+**Statut** : Complété
+
+**Décision technique** : Extension de l'Explorer avec 4 blocs de filtres supplémentaires et un tri enrichi. Go : `filterByRankedContext` (3-way : tous / ranked=CSR / unranked=LUSR), `filterByOutcome` (codes 1/2/3), `filterBySkillTier` (Bronze→Onyx, désactivé sans contexte ranked pour éviter le mélange CSR/LUSR), sorts KDA et kills ajoutés à `availableSortFields`. Q5MatchHistory étendu avec LEFT JOIN `match_skill_rank` + 4 colonnes (skill_tier, skill_tier_fr, skill_rating_type, skill_tier_label). Frontend : ranked toggle 3-way, chips outcome colorées par token sémantique, chips tier grises/disabled quand pas de contexte ranked, `<select>` centralisé pour 8 options de tri, colonne Tier dans la table, reset étendu à tous les nouveaux états.
+
+**Résultats** : `go vet ./internal/...` OK, `go test ./internal/...` OK, `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — filtre par palier de performance + tri + colonne perf
+
+**Statut** : Complété
+
+**Décision technique** : Réutilisation du système `PerfTier` canonique (ADR 0006, seuils 80/65/50/35) comme filtres multi-sélectifs dans l'Explorer mode Matchs. Côté Go : ajout de `pme.performance_score` dans Q5MatchHistory, propagation dans `MatchHistoryRawRow` → `enrichRow` → `MatchHistoryRow.PerfTier`, filtre `filterByPerfTiers` dans le service, champ `PerfTiers []int` dans `ExplorerMatchesQueryRequest` et `MatchHistoryQueryRequest`. Côté front : chips colorées via `tokenVar(perf-tier-N)`, sort par `performance_score_relative` avec toggle asc/desc sur les en-têtes de colonnes, colonne Perf avec score coloré par tier.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/platform/duckdb/... ./internal/domain/... ./internal/api/...` tous verts, `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] UX match-view : refonte bandeau sync partiel
 
 **Statut** : Complété

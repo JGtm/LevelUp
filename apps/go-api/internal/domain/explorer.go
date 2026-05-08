@@ -67,6 +67,24 @@ type ExplorerMatchesQueryRequest struct {
 	Pagination PaginationRequest  `json:"pagination"`
 	SortField  string             `json:"sort_field"`
 	SortDir    string             `json:"sort_dir"`
+	// PerfTiers filtre par palier de performance (1=Excellent … 5=Mauvais).
+	// Liste vide = pas de filtre.
+	PerfTiers []int `json:"perf_tiers,omitempty"`
+	// SkillTiers filtre par tier skill ("Bronze"…"Onyx"). Requiert RankedContext.
+	SkillTiers []string `json:"skill_tiers,omitempty"`
+	// RankedContext : "ranked" | "unranked" | "" (tous). Requiert pour activer SkillTiers.
+	RankedContext string `json:"ranked_context,omitempty"`
+	// OutcomeFilter : codes résultat acceptés (1=Égalité,2=Victoire,3=Défaite,4=Abandon).
+	OutcomeFilter []int `json:"outcome_filter,omitempty"`
+	// Filtres Explorer additionnels (date, type d'expérience, playlist, carte, mode, squad, match ID).
+	MatchStartDate  *time.Time `json:"match_start_date,omitempty"`
+	MatchEndDate    *time.Time `json:"match_end_date,omitempty"`
+	ExperienceTypes []string   `json:"experience_types,omitempty"`
+	Playlists       []string   `json:"playlists,omitempty"`
+	MapNames        []string   `json:"map_names,omitempty"`
+	ModeNames       []string   `json:"mode_names,omitempty"`
+	SquadScope      string     `json:"squad_scope,omitempty"`
+	MatchIDSearch   string     `json:"match_id_search,omitempty"`
 }
 
 // ExplorerMatchesRow : une ligne dans la liste des matchs filtrés (Explorer).
@@ -83,11 +101,22 @@ type ExplorerMatchesRow struct {
 	IsWithFriends       bool      `json:"is_with_friends"`
 	ExperienceTypeLabel string    `json:"experience_type_label"`
 	MatchURL            string    `json:"match_url"`
+	// PerfScore : score de performance 0-100 (nil si non calculé).
+	PerfScore *int `json:"perf_score,omitempty"`
+	// PerfTier : palier de performance 1-5 (0 si score absent).
+	PerfTier int `json:"perf_tier,omitempty"`
+	// SkillTierLabel : label formaté du tier ranked/LUSR (ex. "Diamant IV"), nil si absent.
+	SkillTierLabel *string `json:"skill_tier_label,omitempty"`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.
 type ExplorerMatchesSummary struct {
 	TotalMatches int `json:"total_matches"`
+	// Options disponibles pour les filtres Explorer (valeurs distinctes triées).
+	AvailableExperienceTypes []string `json:"available_experience_types,omitempty"`
+	AvailablePlaylists       []string `json:"available_playlists,omitempty"`
+	AvailableMaps            []string `json:"available_maps,omitempty"`
+	AvailableModes           []string `json:"available_modes,omitempty"`
 }
 
 // ExplorerMatchesTable : table paginée de l'Explorer.

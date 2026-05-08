@@ -32,6 +32,11 @@ type MatchHistoryRawRow struct {
 	AverageLifeSeconds *float64
 	TimePlayedSeconds  *int
 	IsExcluded         bool
+	PerformanceScore   *float64
+	SkillTier          *string // e.g. "Diamond" (EN, clé de filtre)
+	SkillTierFR        *string // e.g. "Diamant" (affichage FR)
+	SkillRatingType    *string // "LUSR" | "CSR"
+	SkillTierLabel     *string // e.g. "Diamant IV" (label formaté DB)
 }
 
 // PaginationRequest représente les paramètres de pagination d'une requête.
@@ -66,6 +71,10 @@ type MatchHistoryRow struct {
 	WinRateHist              *float64  `json:"win_rate_hist"`
 	WinRateHistTotal         *int      `json:"win_rate_hist_total"`
 	PerformanceScoreRelative *int      `json:"performance_score_relative"`
+	PerfTier                 int       `json:"perf_tier,omitempty"` // 1-5 ; 0 si score absent
+	KDA                      *float64  `json:"kda,omitempty"`
+	Kills                    int       `json:"kills,omitempty"`
+	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"` // "Diamant IV" ou nil
 	AverageLifeMMSS          string    `json:"average_life_mmss"`
 	MatchURL                 string    `json:"match_url"`
 	IsExcluded               bool      `json:"is_excluded"`
@@ -77,6 +86,11 @@ type MatchHistoryQuerySummary struct {
 	TotalMatchesUnfiltered int     `json:"total_matches_unfiltered"`
 	PeriodLabel            *string `json:"period_label"`
 	ActiveFilterMode       string  `json:"active_filter_mode"`
+	// Options disponibles pour les filtres Explorer (valeurs distinctes triées).
+	AvailableExperienceTypes []string `json:"available_experience_types,omitempty"`
+	AvailablePlaylists       []string `json:"available_playlists,omitempty"`
+	AvailableMaps            []string `json:"available_maps,omitempty"`
+	AvailableModes           []string `json:"available_modes,omitempty"`
 }
 
 // MatchHistoryTable est la table paginée de l'historique.
@@ -99,6 +113,27 @@ type MatchHistoryQueryRequest struct {
 	// §5 plan Squad/Sessions : filtre multi-sessions solo. Liste vide = pas
 	// de filtre. Filtré côté service (post-LoadAll, avant pagination).
 	PickedSoloSessionLabels []string `json:"picked_solo_session_labels,omitempty"`
+	// PerfTiers filtre par palier de performance (1=Excellent … 5=Mauvais).
+	// Liste vide = pas de filtre. Valeurs hors [1-5] ignorées.
+	PerfTiers []int `json:"perf_tiers,omitempty"`
+	// SkillTiers filtre par tier ranked/LUSR ("Bronze","Silver","Gold","Platinum","Diamond","Onyx").
+	// Nécessite RankedContext non vide pour éviter le mélange CSR/LUSR.
+	SkillTiers []string `json:"skill_tiers,omitempty"`
+	// RankedContext restreint aux matchs ranked ("ranked") ou non-ranked ("unranked").
+	// Valeur vide = pas de filtre. Requis pour activer SkillTiers.
+	RankedContext string `json:"ranked_context,omitempty"`
+	// OutcomeFilter liste les codes de résultats acceptés (1=Égalité, 2=Victoire, 3=Défaite, 4=Abandon).
+	// Liste vide = pas de filtre.
+	OutcomeFilter []int `json:"outcome_filter,omitempty"`
+	// Filtres Explorer additionnels (no-op pour match-history classique si non renseignés).
+	MatchStartDate  *time.Time `json:"match_start_date,omitempty"`
+	MatchEndDate    *time.Time `json:"match_end_date,omitempty"`
+	ExperienceTypes []string   `json:"experience_types,omitempty"`
+	Playlists       []string   `json:"playlists,omitempty"`
+	MapNames        []string   `json:"map_names,omitempty"`
+	ModeNames       []string   `json:"mode_names,omitempty"`
+	SquadScope      string     `json:"squad_scope,omitempty"`
+	MatchIDSearch   string     `json:"match_id_search,omitempty"`
 }
 
 // maxPageSize est la taille de page maximale acceptée.

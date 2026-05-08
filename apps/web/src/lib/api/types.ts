@@ -936,9 +936,13 @@ export interface ExplorerMatchRow {
   mode_ui: string
   playlist_label: string
   outcome_label: string
+  outcome_code: number
   score_label: string
   is_with_friends: boolean
   experience_type_label: string
+  perf_score?: number | null
+  perf_tier?: number
+  skill_tier_label?: string | null
 }
 
 export interface ExplorerEncounterRow {
@@ -954,6 +958,10 @@ export interface ExplorerEncounterRow {
 export interface ExplorerMatchesQuerySummary {
   total_matches: number
   selected_match_id: string | null
+  available_experience_types?: string[]
+  available_playlists?: string[]
+  available_maps?: string[]
+  available_modes?: string[]
 }
 
 export interface ExplorerPlayerTarget {
@@ -968,21 +976,24 @@ export interface ExplorerPlayerSummary {
   last_seen_at: string | null
 }
 
-export interface ExplorerMatchFilters {
-  selected_date?: string | null
-  squad_scope?: 'all' | 'solo' | 'squad'
-  experience_type?: string | null
-  playlist?: string | null
-  mode?: string | null
-  map?: string | null
-  selected_match_id?: string | null
-}
-
 export interface ExplorerMatchesQueryRequest {
   filters?: FilterContextInput
-  match_filters?: ExplorerMatchFilters
   pagination?: PaginationRequest
-  favorites_only?: boolean
+  sort_field?: string
+  sort_dir?: string
+  perf_tiers?: number[]
+  skill_tiers?: string[]
+  ranked_context?: 'ranked' | 'unranked' | ''
+  outcome_filter?: number[]
+  // Explorer-specific match filters
+  match_start_date?: string | null
+  match_end_date?: string | null
+  experience_types?: string[]
+  playlists?: string[]
+  map_names?: string[]
+  mode_names?: string[]
+  squad_scope?: 'solo' | 'squad' | ''
+  match_id_search?: string
 }
 
 export interface ExplorerPlayerQueryRequest {

@@ -100,9 +100,17 @@ en = "Enemies"
 
 # ─── Mode Matchs - Filtres ─────────────────────────────────────────────────
 
-[explorer.filters.date]
-fr = "Date"
-en = "Date"
+[explorer.filters.date_from]
+fr = "Depuis"
+en = "From"
+
+[explorer.filters.date_to]
+fr = "Jusqu'à"
+en = "To"
+
+[explorer.filters.match_id]
+fr = "ID match…"
+en = "Match ID…"
 
 [explorer.filters.context]
 fr = "Contexte"
@@ -124,33 +132,17 @@ en = "Squad"
 fr = "Type d'expérience"
 en = "Experience type"
 
-[explorer.filters.experience_placeholder]
-fr = "PvP, PvE…"
-en = "PvP, PvE…"
-
 [explorer.filters.playlist]
 fr = "Playlist"
 en = "Playlist"
-
-[explorer.filters.playlist_placeholder]
-fr = "Filtrer playlist…"
-en = "Filter playlist…"
 
 [explorer.filters.mode]
 fr = "Mode"
 en = "Mode"
 
-[explorer.filters.mode_placeholder]
-fr = "Filtrer mode…"
-en = "Filter mode…"
-
 [explorer.filters.map]
 fr = "Carte"
 en = "Map"
-
-[explorer.filters.map_placeholder]
-fr = "Filtrer carte…"
-en = "Filter map…"
 
 [explorer.filters.reset]
 fr = "Réinitialiser les filtres"
@@ -205,3 +197,153 @@ en = "Results unavailable"
 [explorer.matches.empty_description]
 fr = "La requête n'a renvoyé aucun tableau de matchs exploitable pour ce scope."
 en = "Query returned no exploitable match table for this scope."
+
+# ─── Filtre ranked context ────────────────────────────────────────────────────
+
+[explorer.filters.ranked_label]
+fr = "Classé"
+en = "Ranked"
+
+[explorer.filters.ranked_all]
+fr = "Tous"
+en = "All"
+
+[explorer.filters.ranked_ranked]
+fr = "Ranked (CSR)"
+en = "Ranked (CSR)"
+
+[explorer.filters.ranked_unranked]
+fr = "Non-ranked (LUSR)"
+en = "Unranked (LUSR)"
+
+# ─── Filtre outcome ───────────────────────────────────────────────────────────
+
+[explorer.filters.outcome_label]
+fr = "Résultat"
+en = "Outcome"
+
+[explorer.filters.outcome_win]
+fr = "Victoire"
+en = "Win"
+
+[explorer.filters.outcome_loss]
+fr = "Défaite"
+en = "Loss"
+
+[explorer.filters.outcome_tie]
+fr = "Égalité"
+en = "Tie"
+
+# ─── Filtre skill tier ────────────────────────────────────────────────────────
+
+[explorer.filters.skill_tier_label]
+fr = "Tier"
+en = "Tier"
+
+[explorer.filters.skill_tier_disabled]
+fr = "Sélectionne Ranked ou Non-ranked d'abord"
+en = "Select Ranked or Unranked first"
+
+[explorer.filters.skill_tier_bronze]
+fr = "Bronze"
+en = "Bronze"
+
+[explorer.filters.skill_tier_silver]
+fr = "Argent"
+en = "Silver"
+
+[explorer.filters.skill_tier_gold]
+fr = "Or"
+en = "Gold"
+
+[explorer.filters.skill_tier_platinum]
+fr = "Platine"
+en = "Platinum"
+
+[explorer.filters.skill_tier_diamond]
+fr = "Diamant"
+en = "Diamond"
+
+[explorer.filters.skill_tier_onyx]
+fr = "Onyx"
+en = "Onyx"
+
+# ─── Tri ──────────────────────────────────────────────────────────────────────
+
+[explorer.sort.label]
+fr = "Trier par"
+en = "Sort by"
+
+[explorer.sort.start_time_desc]
+fr = "Date (récent)"
+en = "Date (recent)"
+
+[explorer.sort.start_time_asc]
+fr = "Date (ancien)"
+en = "Date (oldest)"
+
+[explorer.sort.perf_desc]
+fr = "Perf (meilleure)"
+en = "Perf (best)"
+
+[explorer.sort.perf_asc]
+fr = "Perf (moins bonne)"
+en = "Perf (worst)"
+
+[explorer.sort.kda_desc]
+fr = "KDA (meilleur)"
+en = "KDA (best)"
+
+[explorer.sort.kills_desc]
+fr = "Kills (plus)"
+en = "Kills (most)"
+
+[explorer.sort.delta_mmr_desc]
+fr = "Delta MMR (plus haut)"
+en = "MMR delta (highest)"
+
+[explorer.sort.outcome]
+fr = "Résultat"
+en = "Outcome"
+
+# ─── Colonne tier ─────────────────────────────────────────────────────────────
+
+[explorer.matches.col_tier]
+fr = "Tier"
+en = "Tier"
+
+# ─── Filtre perf-tier ─────────────────────────────────────────────────────────
+
+[explorer.filters.perf_tier_label]
+fr = "Performance"
+en = "Performance"
+
+[explorer.filters.perf_tier_excellent]
+fr = "Excellent"
+en = "Excellent"
+
+[explorer.filters.perf_tier_bon]
+fr = "Bon"
+en = "Good"
+
+[explorer.filters.perf_tier_correct]
+fr = "Correct"
+en = "Fair"
+
+[explorer.filters.perf_tier_faible]
+fr = "Faible"
+en = "Poor"
+
+[explorer.filters.perf_tier_mauvais]
+fr = "Mauvais"
+en = "Bad"
+
+# ─── Colonne perf ─────────────────────────────────────────────────────────────
+
+[explorer.matches.col_perf]
+fr = "Perf"
+en = "Perf"
+
+[explorer.matches.perf_no_score]
+fr = "—"
+en = "—"

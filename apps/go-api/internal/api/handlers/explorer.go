@@ -78,10 +78,22 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 
 	// Délégation au service match-history avec les mêmes filtres/tri/pagination.
 	mhReq := domain.MatchHistoryQueryRequest{
-		Filters:    req.Filters,
-		Pagination: req.Pagination,
-		SortField:  req.SortField,
-		SortDir:    req.SortDir,
+		Filters:         req.Filters,
+		Pagination:      req.Pagination,
+		SortField:       req.SortField,
+		SortDir:         req.SortDir,
+		PerfTiers:       req.PerfTiers,
+		SkillTiers:      req.SkillTiers,
+		RankedContext:   req.RankedContext,
+		OutcomeFilter:   req.OutcomeFilter,
+		MatchStartDate:  req.MatchStartDate,
+		MatchEndDate:    req.MatchEndDate,
+		ExperienceTypes: req.ExperienceTypes,
+		Playlists:       req.Playlists,
+		MapNames:        req.MapNames,
+		ModeNames:       req.ModeNames,
+		SquadScope:      req.SquadScope,
+		MatchIDSearch:   req.MatchIDSearch,
 	}
 
 	mhResp, err := mhSvc.GetPage(r.Context(), mhReq)
@@ -106,12 +118,19 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			IsWithFriends:       false,
 			ExperienceTypeLabel: "",
 			MatchURL:            item.MatchURL,
+			PerfScore:      item.PerformanceScoreRelative,
+			PerfTier:       item.PerfTier,
+			SkillTierLabel: item.SkillTierLabel,
 		})
 	}
 
 	resp := domain.ExplorerMatchesQueryResponse{
 		Summary: domain.ExplorerMatchesSummary{
-			TotalMatches: mhResp.Summary.TotalMatchesScoped,
+			TotalMatches:             mhResp.Summary.TotalMatchesScoped,
+			AvailableExperienceTypes: mhResp.Summary.AvailableExperienceTypes,
+			AvailablePlaylists:       mhResp.Summary.AvailablePlaylists,
+			AvailableMaps:            mhResp.Summary.AvailableMaps,
+			AvailableModes:           mhResp.Summary.AvailableModes,
 		},
 		Table: domain.ExplorerMatchesTable{
 			Items:      rows,

@@ -58,6 +58,11 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 			&m.PersonalScore,
 			&m.AverageLifeSeconds,
 			&m.TimePlayedSeconds,
+			&m.PerformanceScore,
+			&m.SkillTier,
+			&m.SkillTierFR,
+			&m.SkillRatingType,
+			&m.SkillTierLabel,
 		); err != nil {
 			return nil, fmt.Errorf("MatchHistoryRepo.LoadAll scan: %w", err)
 		}
