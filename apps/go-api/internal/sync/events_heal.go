@@ -68,17 +68,29 @@ func healEventsForRecentMatches(
 		if err != nil {
 			slog.WarnContext(ctx, "healEvents: échec match", "match_id", matchID, "err", err)
 		}
-		// Marquer events_loaded=TRUE même en erreur ou en no-film : sinon le
-		// match revient à chaque sync. processHighlightEvents le fait déjà sur
-		// no-film mais pas sur erreur réseau ; le faire ici garantit la
-		// convergence (au pire on retentera lors d'un --force-events explicite).
-		if markErr := MarkEventsLoaded(sharedDB, matchID); markErr != nil {
-			slog.DebugContext(ctx, "healEvents: MarkEventsLoaded échoué",
-				"match_id", matchID, "err", markErr)
+
+		// Fix Phase 1bis (mai 2026) : ne marquer events_loaded=TRUE que sur un
+		// résultat HONNÊTE — soit le parse a inséré des events, soit le film
+		// est définitivement absent (no_film, ProcessHighlightEvents l'a déjà
+		// marqué). En cas d'erreur réseau OU de parse_anomaly (chunk présent
+		// mais 0 event extrait, signe d'un format API qui a évolué), on laisse
+		// events_loaded=FALSE pour retry sur le prochain sync.
+		eventsInserted := dummy.EventsInserted > eventsBefore
+		hasAnomaly := len(dummy.Warnings) > 0
+		if err == nil && !hasAnomaly {
+			if markErr := MarkEventsLoaded(sharedDB, matchID); markErr != nil {
+				slog.DebugContext(ctx, "healEvents: MarkEventsLoaded échoué",
+					"match_id", matchID, "err", markErr)
+			}
 		}
-		if dummy.EventsInserted > eventsBefore {
+
+		switch {
+		case eventsInserted:
 			healed++
-		} else {
+		case hasAnomaly:
+			// parse_anomaly déjà loggé en WARN par ProcessHighlightEvents.
+			// On ne compte ni healed ni noFilm — c'est une catégorie distincte.
+		default:
 			noFilm++
 		}
 	}
