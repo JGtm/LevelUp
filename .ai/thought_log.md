@@ -1,4 +1,22 @@
 
+## [2026-05-08] MatchEncountersTable — enrichissement visuel
+
+**Statut** : Complété
+
+**Décision technique principale** : Ajout de barres de ratio allié/ennemi et frags/morts via un composant `SplitBar` générique paramétré par tokens couleur (`team-ally`/`team-enemy` pour les rencontres, `outcome-win`/`outcome-loss` pour le K/D), plus une colonne "Ratio" avec tooltip sur l'en-tête.
+
+**Résultats observés** :
+- `SplitBar` : composant générique réutilisable, `leftColor`/`rightColor` via `tokenCssVar()`, tooltips FR/EN, barre proportionnelle `h-2 w-12` flat hard-edge
+- `AllyEnemySplitBar` : tokens `team-ally`/`team-enemy`
+- `KDSplitBar` : tokens `outcome-win`/`outcome-loss`, "frags" en FR
+- Colonne "Ratio" : `kills/deaths` formaté 2 décimales, `∞` si deaths=0, coloré via `outcome-win`/`outcome-loss`/`outcome-draw`, header avec tooltip pointillé
+- Correction bug : `tokenVar` retourne le nom de la var CSS (`--ac-*`), pas la valeur — remplacé par `tokenCssVar` (`var(--ac-*)`) pour tous les `style={{}}`
+- `typecheck` propre
+
+**Prochaine étape** : câbler `last_seen_outcome` côté Go si on veut afficher le résultat du dernier match commun
+
+---
+
 ## [2026-05-08] Guards et tests complets pour la régression Solo/Escouade
 
 **Statut** : Complété (sauf recompute-friends : bloqué par friend_gamertags=null — voir ci-dessous)
