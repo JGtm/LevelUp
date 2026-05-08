@@ -521,127 +521,10 @@ func TestGetHighlightEventsChunk_FilmAbsent(t *testing.T) {
 	}
 }
 
-// ─── TestFallbackCustomization ──────────────────────────────────────────────
-
-func TestFallbackCustomizationEmblemURL_Valid(t *testing.T) {
-	got := fallbackCustomizationEmblemURL(
-		"Inventory/Spartan/Emblems/343other_propaganda_emblem.json",
-		"987654",
-	)
-	want := haloGameCMSHost + "/hi/Waypoint/file/images/emblems/343other_propaganda_emblem_987654.png"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
-}
-
-func TestFallbackCustomizationEmblemURL_EmptyConfig(t *testing.T) {
-	got := fallbackCustomizationEmblemURL("Inventory/Spartan/Emblems/test.json", "")
-	if got != "" {
-		t.Fatalf("expected empty for empty configurationID, got %q", got)
-	}
-}
-
-func TestFallbackCustomizationEmblemURL_BadPath(t *testing.T) {
-	got := fallbackCustomizationEmblemURL("Inventory/Spartan/Backdrops/other.json", "123")
-	if got != "" {
-		t.Fatalf("expected empty when marker not found, got %q", got)
-	}
-}
-
-func TestFallbackCustomizationBackdropURL_Valid(t *testing.T) {
-	got := fallbackCustomizationBackdropURL("Inventory/Spartan/BackdropImages/test-backdrop.json")
-	want := haloGameCMSHost + "/hi/Waypoint/file/images/backdrops/test-backdrop.png"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
-}
-
-func TestFallbackCustomizationBackdropURL_EmptyPath(t *testing.T) {
-	got := fallbackCustomizationBackdropURL("")
-	if got != "" {
-		t.Fatalf("expected empty, got %q", got)
-	}
-}
-
-func TestFallbackCustomizationBannerURL_Nameplate(t *testing.T) {
-	got := fallbackCustomizationBannerURL("Inventory/Spartan/Nameplates/104-001-prop-abcdef.json")
-	want := haloGameCMSHost + "/hi/Waypoint/file/images/nameplates/104-001-prop-abcdef.png"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
-}
-
-func TestFallbackCustomizationBannerURL_Banner(t *testing.T) {
-	got := fallbackCustomizationBannerURL("Inventory/Spartan/Banners/banner-test.json")
-	want := haloGameCMSHost + "/hi/Waypoint/file/images/banners/banner-test.png"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
-}
-
-func TestFallbackCustomizationBannerURL_EmptyPath(t *testing.T) {
-	got := fallbackCustomizationBannerURL("")
-	if got != "" {
-		t.Fatalf("expected empty, got %q", got)
-	}
-}
-
-func TestFallbackCustomizationBannerFromEmblem_Valid(t *testing.T) {
-	got := fallbackCustomizationBannerFromEmblem(
-		"https://custom.host.test",
-		"Inventory/Spartan/Emblems/343other_propaganda_emblem.json",
-		"987654",
-	)
-	want := "https://custom.host.test/hi/Waypoint/file/images/nameplates/343other_propaganda_emblem_987654.png"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
-}
-
-func TestFallbackCustomizationBannerFromEmblem_EmptyBaseURLFallsBackToGameCMS(t *testing.T) {
-	got := fallbackCustomizationBannerFromEmblem(
-		"",
-		"Inventory/Spartan/Emblems/test_emblem.json",
-		"111",
-	)
-	want := haloGameCMSHost + "/hi/Waypoint/file/images/nameplates/test_emblem_111.png"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
-}
-
-func TestFallbackCustomizationBannerFromEmblem_ZeroConfig(t *testing.T) {
-	got := fallbackCustomizationBannerFromEmblem(
-		"https://host.test",
-		"Inventory/Spartan/Emblems/test_emblem.json",
-		"0",
-	)
-	if got != "" {
-		t.Fatalf("expected empty for configurationID=0, got %q", got)
-	}
-}
-
-func TestFallbackCustomizationBannerFromEmblem_BadPath(t *testing.T) {
-	got := fallbackCustomizationBannerFromEmblem(
-		"https://host.test",
-		"Inventory/Spartan/Nameplates/test.json",
-		"123",
-	)
-	if got != "" {
-		t.Fatalf("expected empty when Emblems marker missing, got %q", got)
-	}
-}
-
-// TestCustomizationInventoryStem_WindowsPath vérifie la normalisation des séparateurs Windows.
-func TestCustomizationInventoryStem_WindowsPath(t *testing.T) {
-	got := customizationInventoryStem(
-		`Inventory\Spartan\Emblems\test_emblem.json`,
-		"/Spartan/Emblems/",
-	)
-	if got != "test_emblem" {
-		t.Fatalf("got %q, want %q", got, "test_emblem")
-	}
-}
+// Les ex-tests `TestFallbackCustomization*` et `TestCustomizationInventoryStem*`
+// ont été retirés en même temps que les fonctions qu'ils couvraient — voir
+// commentaire dans halo_client.go au-dessus de `resolveCustomizationImageURL`
+// pour le pattern Grunt strict (descriptor JSON + GameCms_GetProgressionImage).
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -762,7 +645,14 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 	}
 }
 
-func TestGetCareerRank_DerivesBannerFromEmblemWhenNameplateMissing(t *testing.T) {
+// TestGetCareerRank_BannerEmptyWhenNoNameplate vérifie le nouveau
+// comportement post-2026-05-08 : quand l'API ne retourne pas de
+// BannerImagePath, BannerImageURL reste **vide** (le front dégrade en
+// placeholder). Avant, on dérivait une URL inventée depuis l'EmblemPath
+// (`fallbackCustomizationBannerFromEmblem`) — qui retournait 403 upstream.
+// L'EmblemImageURL reste résolu via le pattern Grunt strict (descriptor
+// JSON → GameCms_GetProgressionImage).
+func TestGetCareerRank_BannerEmptyWhenNoNameplate(t *testing.T) {
 	var customizationCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -818,13 +708,13 @@ func TestGetCareerRank_DerivesBannerFromEmblemWhenNameplateMissing(t *testing.T)
 	if data == nil {
 		t.Fatal("GetCareerRank returned nil")
 	}
-	if data.BannerImageURL != srv.URL+"/hi/Waypoint/file/images/nameplates/104-001-343other-prop-79c5fbd5_372285867.png" {
-		t.Fatalf("BannerImageURL = %q", data.BannerImageURL)
+	if data.BannerImageURL != "" {
+		t.Errorf("BannerImageURL = %q, want \"\" (pas de nameplate dans l'API → pas d'invention)", data.BannerImageURL)
 	}
 	if data.EmblemImageURL != srv.URL+"/hi/images/file/progression/Inventory/Emblems/343other_propaganda_emblem.png" {
-		t.Fatalf("EmblemImageURL = %q", data.EmblemImageURL)
+		t.Errorf("EmblemImageURL = %q (Grunt strict pattern attendu)", data.EmblemImageURL)
 	}
 	if customizationCalls != 1 {
-		t.Fatalf("customizationCalls=%d", customizationCalls)
+		t.Errorf("customizationCalls=%d, want 1", customizationCalls)
 	}
 }
