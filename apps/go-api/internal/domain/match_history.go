@@ -16,6 +16,9 @@ type MatchHistoryRawRow struct {
 	PairNameFR         *string
 	PlaylistName       *string // FR si dispo (COALESCE), sinon EN
 	PlaylistNameEN     *string // EN brut (pour comparer EN==FR et déclencher translate)
+	MapID              *string // UUID asset, clé de lookup asset_translations
+	PairID             *string // UUID asset
+	PlaylistID         *string // UUID asset
 	IsFirefight        bool
 	IsRanked           bool
 	SessionID          *string
