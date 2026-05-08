@@ -236,12 +236,46 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
-		// ── Phase 3 : types non encore implémentés → avertissement ──────
+		// ── Phase 3 : LUSR (TrueSkill 2 + poids médailles v5) ────────────
+		lusrUpdated := 0
+		if scope.LUSR {
+			lusrStep := "Backfill LUSR"
+			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+				j.CurrentStep = &lusrStep
+			})
+			n, lusrErr := engine.RunBackfillLUSR(context.Background(), scope.ForceLUSR)
+			if lusrErr != nil {
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.Warnings = append(j.Warnings,
+						fmt.Sprintf("WARN lusr: %v", lusrErr))
+				})
+			}
+			lusrUpdated = n
+		}
+
+		// ── Phase 4 : Performance score relatif v5 ───────────────────────
+		perfUpdated := 0
+		if scope.PerformanceScores {
+			perfStep := "Backfill performance score"
+			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+				j.CurrentStep = &perfStep
+			})
+			n, perfErr := engine.RunBackfillPerf(context.Background(), scope.ForcePerformanceScores)
+			if perfErr != nil {
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.Warnings = append(j.Warnings,
+						fmt.Sprintf("WARN perf: %v", perfErr))
+				})
+			}
+			perfUpdated = n
+		}
+
+		// ── Phase 5 : types non encore implémentés → avertissement ──────
 		h.warnUnimplemented(job.JobID, scope)
 
 		done := fmt.Sprintf(
-			"Backfill terminé — matchs: %d, weapon kills insérés: %d, engagement: %d, events healed: %d (%d events insérés)",
-			total, weaponsInserted, engagementComputed, eventsHealed, eventsTotal,
+			"Backfill terminé — matchs: %d, weapon kills insérés: %d, engagement: %d, events healed: %d (%d events insérés), lusr: %d, perf: %d",
+			total, weaponsInserted, engagementComputed, eventsHealed, eventsTotal, lusrUpdated, perfUpdated,
 		)
 		pct100 := 100
 		matchesDone := total
@@ -325,14 +359,8 @@ func (h *BackfillHandler) warnUnimplemented(jobID string, scope *go_sync.SyncSco
 	if scope.PersonalScores {
 		types = append(types, "personal_scores")
 	}
-	if scope.PerformanceScores {
-		types = append(types, "performance_scores")
-	}
 	if scope.Aliases {
 		types = append(types, "aliases")
-	}
-	if scope.LUSR {
-		types = append(types, "lusr")
 	}
 	if len(types) == 0 {
 		return
