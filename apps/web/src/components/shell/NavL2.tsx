@@ -17,7 +17,6 @@ import { PeriodSessionRail } from './PeriodSessionRail'
 // ─── Sous-onglets de la section Stats ─────────────────────────────────────────
 
 const STATS_TABS = [
-  { label: 'Historique', path: '/players/$playerSlug/stats/history' },
   { label: 'Séries', path: '/players/$playerSlug/stats/timeseries' },
   { label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
 ] as const

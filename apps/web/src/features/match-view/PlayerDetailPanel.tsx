@@ -185,7 +185,7 @@ function CitationsSection({ citations, t }: { citations: MatchCitationSnippet[];
 // 4. Attendu vs réel
 // ---------------------------------------------------------------------------
 
-interface ExpectedItem { label: string; actual: number; expected: number; higherIsBetter: boolean }
+interface ExpectedItem { label: string; actual: number; expected: number; higherIsBetter: boolean; expectedDecimals?: number }
 
 function buildExpectedItems(row: MatchScoreboardRow, t: MatchViewText): ExpectedItem[] {
   const items: ExpectedItem[] = []
@@ -193,6 +193,8 @@ function buildExpectedItems(row: MatchScoreboardRow, t: MatchViewText): Expected
     items.push({ label: t.sbDetailExpectedKills, actual: row.kills, expected: row.expected_kills, higherIsBetter: true })
   if (row.deaths != null && row.expected_deaths != null)
     items.push({ label: t.sbDetailExpectedDeaths, actual: row.deaths, expected: row.expected_deaths, higherIsBetter: false })
+  if (row.assists != null && row.expected_assists != null)
+    items.push({ label: t.sbDetailExpectedAssists, actual: row.assists, expected: row.expected_assists, higherIsBetter: true, expectedDecimals: 2 })
   return items
 }
 
@@ -213,7 +215,7 @@ function ExpectedSection({ items, title }: { items: ExpectedItem[]; title: strin
               label={it.label}
               value={
                 <>
-                  <span className="text-muted-foreground">{it.expected.toFixed(1)} vs </span>
+                  <span className="text-muted-foreground">{it.expected.toFixed(it.expectedDecimals ?? 1)} vs </span>
                   {it.actual.toFixed(0)}{' '}
                   <span className={deltaCls}>{symbol} {sign}{delta.toFixed(1)}</span>
                 </>

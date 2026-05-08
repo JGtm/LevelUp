@@ -30,12 +30,6 @@ export const PLAYER_PRIMARY_NAV_ITEMS: ShellNavItem[] = [
     description: 'Rang, stabilité et lecture globale du niveau.',
   },
   {
-    to: '/players/$playerSlug/stats/history',
-    label: 'Historique',
-    eyebrow: 'Matches',
-    description: 'Flux de parties, filtres et points d’entrée match.',
-  },
-  {
     to: '/players/$playerSlug/squad',
     label: 'Escouade',
     eyebrow: 'Relations',

@@ -244,7 +244,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbDetailExpected: 'Attendu vs réel',
     sbDetailExpectedKills: 'Frags',
     sbDetailExpectedDeaths: 'Morts',
-    sbDetailExpectedAssists: 'Assists',
+    sbDetailExpectedAssists: 'Assistances',
     sbDetailAntagonist: 'Antagoniste',
     sbDetailNemesis: 'Némésis',
     sbDetailBully: 'Souffre-douleur',
