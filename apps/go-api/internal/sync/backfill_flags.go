@@ -68,9 +68,11 @@ const (
 // ─────────────────────────────────────────────────────────────────────────────
 
 const (
-	MBitEvents            = 1 << 16 // 65536   — highlight_events chargés
-	MBitAssets            = 1 << 17 // 131072  — map_name, playlist_name résolus
-	MBitAliases           = 1 << 18 // 262144  — xuid_aliases extraits
+	MBitEvents = 1 << 16 // 65536   — highlight_events chargés
+	// bits 17 (assets) et 18 (aliases) RETIRÉS le 2026-05-08 — Phase 3 du
+	// plan PLAN_BITMASKS_AUDIT_FIX : aucune utilisation READ ou WRITE en
+	// prod. La detection assets se rabat sur des column guards
+	// (`mr.playlist_name IS NULL OR mr.map_name IS NULL ...`).
 	MBitKillerVictim      = 1 << 19 // 524288  — killer_victim_pairs chargés (global)
 	MBitPVEStats          = 1 << 20 // 1048576 — stats PvE tentées pour ce match
 	MBitWeaponKills       = 1 << 21 // 2097152 — weapon_kills chargés
