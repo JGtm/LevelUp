@@ -215,7 +215,7 @@ func TestSyncVsPrestigeConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			// Tenter d'acquérir avec timeout court — doit échouer ou attendre
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			_, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 			_, err := dblease.AcquireWriter(nil, path, dblease.KindPlayer, 100*time.Millisecond)
 			if err != nil {
@@ -263,7 +263,7 @@ func TestSyncHookNoDeadlock(t *testing.T) {
 		defer hookDone.Done()
 		// Le hook tente d'acquérir un writer (doit attendre que le sync libère)
 		// Avec un timeout court pour détecter le deadlock
-		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		_, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 		_, hookErr = dblease.AcquireWriter(nil, path, dblease.KindPlayer, 500*time.Millisecond)
 	}()

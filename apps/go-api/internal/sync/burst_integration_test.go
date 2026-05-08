@@ -8,7 +8,6 @@ package sync
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -33,7 +32,7 @@ func TestNotificationsBurst(t *testing.T) {
 			defer wg.Done()
 
 			// Tenter d'acquérir le writer pour marquer une notif comme lue
-			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			_, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
 
 			_, err := dblease.AcquireWriter(nil, path, dblease.KindPlayer, 500*time.Millisecond)
@@ -83,7 +82,7 @@ func TestPrestigeBurst(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+			_, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 			defer cancel()
 
 			_, err := dblease.AcquireWriter(nil, path, dblease.KindPlayer, 300*time.Millisecond)
@@ -147,7 +146,7 @@ func TestSyncBurstNoRegression(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			_, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			defer cancel()
 
 			_, _ = dblease.AcquireWriter(nil, path, dblease.KindPlayer, 200*time.Millisecond)
@@ -177,7 +176,7 @@ func TestProcessKillNoStaleLock(t *testing.T) {
 	path := t.TempDir() + "/kill-no-stale-lock.duckdb"
 
 	// Goroutine 1 : acquiert le lease et "crash" (simulate by not releasing)
-	crashGo := func() {
+	func() {
 		rel, err := AcquireLease(path, 500*time.Millisecond)
 		if err != nil {
 			t.Fatalf("crash goroutine acquire: %v", err)
@@ -303,7 +302,7 @@ func TestConcurrentReaderWriterPattern(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+			_, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 			defer cancel()
 
 			_, _ = dblease.AcquireWriter(nil, path, dblease.KindPlayer, 100*time.Millisecond)
