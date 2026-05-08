@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"bytes"
+	"compress/zlib"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -9,6 +11,20 @@ import (
 	"testing"
 	"time"
 )
+
+// zlibCompress wraps test fixtures to mimic the Halo CDN's zlib-compressed blobs.
+func zlibCompress(t *testing.T, data []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	w := zlib.NewWriter(&buf)
+	if _, err := w.Write(data); err != nil {
+		t.Fatalf("zlib write: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("zlib close: %v", err)
+	}
+	return buf.Bytes()
+}
 
 func TestDoGet_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -346,6 +362,7 @@ func filmChunkEntry(index, chunkType int, path string) map[string]any {
 }
 
 func TestGetMatchFilm_BasicPrefix(t *testing.T) {
+	blob := zlibCompress(t, []byte("DATA"))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
@@ -354,7 +371,7 @@ func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 			))
 			return
 		}
-		_, _ = w.Write([]byte("DATA"))
+		_, _ = w.Write(blob)
 	}))
 	defer srv.Close()
 
@@ -375,6 +392,7 @@ func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 }
 
 func TestGetMatchFilm_MultiChunk(t *testing.T) {
+	blob := zlibCompress(t, []byte("CHUNK"))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
@@ -387,7 +405,7 @@ func TestGetMatchFilm_MultiChunk(t *testing.T) {
 			))
 			return
 		}
-		_, _ = w.Write([]byte("CHUNK"))
+		_, _ = w.Write(blob)
 	}))
 	defer srv.Close()
 
@@ -448,6 +466,7 @@ func TestGetMatchFilm_DownloadFails(t *testing.T) {
 
 func TestGetHighlightEventsChunk_Found(t *testing.T) {
 	const payload = "HEV_BYTES"
+	blob := zlibCompress(t, []byte(payload))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			manifest := filmManifestJSON("http://blobs.test/", []map[string]any{
@@ -458,7 +477,7 @@ func TestGetHighlightEventsChunk_Found(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(manifest)
 			return
 		}
-		_, _ = w.Write([]byte(payload))
+		_, _ = w.Write(blob)
 	}))
 	defer srv.Close()
 
@@ -479,6 +498,7 @@ func TestGetHighlightEventsChunk_Found(t *testing.T) {
 }
 
 func TestGetHighlightEventsChunk_NoChunk(t *testing.T) {
+	blob := zlibCompress(t, []byte("DATA"))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			// Manifest sans ChunkType=3.
@@ -488,7 +508,7 @@ func TestGetHighlightEventsChunk_NoChunk(t *testing.T) {
 			))
 			return
 		}
-		_, _ = w.Write([]byte("DATA"))
+		_, _ = w.Write(blob)
 	}))
 	defer srv.Close()
 
