@@ -1,4 +1,39 @@
 
+## [2026-05-08] Audit lecture seule des bitmasks de sync (Phase 1ter)
+
+**Statut** : Complété — audit seul, aucune modification de code.
+
+**Méthode** : grep des call-sites de chaque `Mark*Loaded` function dans `internal/sync/`, classification en `OK` (conditional sur insert success), `MENTEUR` (inconditionnel post-erreur), `INTENTIONNEL` (cap-de-retry assumé), `DEAD CODE` (déclaré mais jamais positionné en prod).
+
+**Résultat** :
+
+| Bit | Source | Mark function | Call-sites | Verdict |
+|---|---|---|---|---|
+| `MBitEvents` (1<<16) | `match_registry.backfill_completed` | `MarkEventsLoaded` | engine.go: 3 call-sites tous conditionnels (`if n > 0`, no_film path, success path). events_heal.go: maintenant conditional après Phase 1bis (success ou no_film uniquement, pas anomaly). | OK après Phase 1bis |
+| `MBitKillerVictim` (1<<19) | idem | `MarkKillerVictimLoaded` | engine.go: 2 call-sites maintenant tous conditionnels après Phase 1bis (insertHighlightEventsFromData fix). | OK après Phase 1bis |
+| `MBitWeaponKills` (1<<21) | idem | `MarkWeaponKillsDone(noFilm=false)` | backfill_weapons.go:75 marque sur 0-kills (légitime — "tentative effectuée pour ce joueur"). L.104 marque après InsertWeaponKills success. Edge case mineur : `_ =` non utilisé, l'erreur DB du Mark est juste loggée WARN. | OK INTENTIONNEL |
+| `MBitWeaponKillsNoFilm` (1<<22) | idem | `MarkWeaponKillsDone(noFilm=true)` | backfill_weapons.go:44 marque sur film 404 — état définitif. | OK INTENTIONNEL |
+| `MBitAssets` (1<<17) | idem | (aucune fonction `MarkAssetsDone`) | Constante définie + `backfill_flags_test.go` qui vérifie sa valeur. **Aucune écriture en prod ni en test d'orchestration**. | DEAD CODE |
+| `MBitAliases` (1<<18) | idem | (aucune fonction) | Idem `MBitAssets`. | DEAD CODE |
+| `MBitPVEStats` (1<<20) | idem | `MarkPveStatsDone` | Fonction définie dans `pve.go:287`. **Aucun caller en prod** (seulement `pve_integration_test.go::TestMarkPveStatsDone`). Le pipeline PvE ne marque jamais cet état. | DEAD CODE — fonction orpheline |
+| `PBitTeamMMR` (1<<0) | `match_participants.backfill_bits` | (aucune fonction `MarkParticipant*`) | Bit défini + utilisé en READ par `findMatchesInSharedAll` (filtre `(COALESCE(mp.backfill_bits, 0) & 1) = 0`). **Aucun UPDATE en prod** ni dans le sync ni dans aucun backfill. Le filtre matche donc toujours TRUE → backfill skill rejoue inutilement. | DEAD WRITE — bug de coût API |
+| `PBitEnemyMMR` (1<<1) à `PBitKillerVictim` (1<<18) — 14 bits | idem | (aucune) | Idem `PBitTeamMMR`. Tous les bits PBit\* sont déclarés, certains référencés en READ dans `findMatchesInSharedAll` (skill, accuracy, etc.), **aucun n'est jamais positionné en WRITE par le sync ou un backfill**. | DEAD WRITE 14× |
+
+**Findings clés** :
+
+1. **3 bits MBit orphelins** (`MBitAssets`, `MBitAliases`, `MBitPVEStats`) : déclarés comme constantes, leur fonction `Mark*` n'existe pas (Assets, Aliases) ou existe mais n'est jamais appelée (PVE). Risque : un backfill qui filtre sur ces bits matchera systématiquement → sur-traitement.
+
+2. **14 bits PBit\* jamais positionnés en prod** : la table `match_participants.backfill_bits` n'est jamais modifiée par le code de sync. Conséquence : les filtres `WHERE (mp.backfill_bits & PBitX) = 0` dans `findMatchesInSharedAll` matchent TOUS les participants → si un user lance `levelup backfill --skill`, **chaque match est re-traité**, indépendamment du fait que team_mmr est déjà rempli ou pas. Le filtre est purement décoratif. La detection se rabat probablement de facto sur les colonnes elles-mêmes (`(mp.team_mmr IS NULL)`) — à confirmer par un audit ciblé futur.
+
+3. **Aucun bit menteur actif détecté hors events/kvp** : les fixes Phase 1bis suffisent pour le scope de ce plan.
+
+**Action** : ne rien modifier ici. Ouvrir un plan dédié `PLAN_BITMASKS_AUDIT_FIX.md` (futur) qui :
+- supprime les constantes orphelines `MBitAssets`, `MBitAliases` ou ajoute leurs `Mark*` + écritures
+- supprime `MarkPveStatsDone` ou l'appelle effectivement depuis `processFetchedMatch` (PvE branch)
+- soit remplit les bits PBit\* dans `engine.go` au moment des inserts, soit retire complètement le mécanisme PBit et bascule la detection sur des guards par colonne (`mp.team_mmr IS NULL`, etc.).
+
+**Périmètre du plan en cours** : Phase 1ter terminée, on continue Phase 2 sans toucher à ces dettes (hors-scope explicite section 6 du plan).
+
 ## [2026-05-08] Highlight events — replay tool + fix InsertKillerVictimPairs (suite parser bit-aligné)
 
 **Statut** : Complété
