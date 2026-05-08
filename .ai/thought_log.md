@@ -1,4 +1,18 @@
 
+## [2026-05-08] Explorer — bouton Réinitialiser ligne 2 droite + pastille Solo/Escouade match-card
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Bouton Réinitialiser** déplacé de sa propre ligne (sous les 2 lignes de filtres) vers la 2ème ligne (multi-selects) avec `ml-auto` pour le pousser à droite. Reste conditionnel sur `hasActiveFilter`.
+2. **Pastille Solo/Escouade** dans la cellule du tableau : reprise stricte du style `components/ui/match-card.tsx:240-258` (tuiles match home). Classes : `rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none`. Couleurs hex maintenues pour cohérence visuelle 1:1 avec l'existant : Escouade = `bg rgba(56,189,248,0.15) / fg #38bdf8` (bleu sky), Solo = `bg rgba(168,85,247,0.15) / fg #a855f7` (violet). Justification `color-allow` (commentaire inline) : ce sont des identifiants UX génériques de catégorie, pas une palette accessibility métier. La taille interne `text-[10px]` ne change pas la taille de police de la cellule (la pastille est un span inline avec sa propre taille).
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`. La question TanStack (sort/filter/visibility/pinning natifs) est laissée en réponse au user pour décision avant implémentation.
+
+---
+
 ## [2026-05-08] Explorer — SaisonPill + i18n FR tri (FDA/Frags)
 
 **Statut** : Complété
