@@ -403,47 +403,20 @@ func uniqueXUIDs(xs []string) []string {
 }
 
 // LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.
-// Calqué sur homeRepo.loadHomeAssetTranslationNames — même table, même requête.
+// Wrapper mince autour du résolveur unifié `MetadataRepo.ResolveAssetNamesBulk`
+// (cf. metadata_repo_assets.go). Cohérent avec home_repo.resolveAssetNames.
 // assetType : "map" | "playlist" | "game_variant" | "pair".
 func (r *SquadRepo) LoadAssetTranslationsFR(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error) {
 	if len(assetIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, nil
 	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(assetIDs)), ",")
-	q := fmt.Sprintf(`
-		SELECT asset_id, name, lang
-		FROM asset_translations
-		WHERE asset_type = ?
-		  AND lang IN ('fr-FR', 'fr')
-		  AND name IS NOT NULL
-		  AND TRIM(name) != ''
-		  AND asset_id IN (%s)
-		ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
-	`, placeholders)
-	args := make([]any, 0, len(assetIDs)+1)
-	args = append(args, assetType)
-	for _, id := range assetIDs {
-		args = append(args, id)
+	out, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(
+		ctx, assetType, assetIDs, PreferredLangsForLocale("fr"),
+	)
+	if err != nil && isTableNotFoundErr(err) {
+		return nil, nil
 	}
-	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
-	if err != nil {
-		if isTableNotFoundErr(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("LoadAssetTranslationsFR(%s): %w", assetType, err)
-	}
-	defer rows.Close()
-	result := make(map[string]string, len(assetIDs))
-	for rows.Next() {
-		var assetID, name, lang string
-		if err := rows.Scan(&assetID, &name, &lang); err != nil {
-			continue
-		}
-		if _, exists := result[assetID]; !exists {
-			result[assetID] = name
-		}
-	}
-	return result, rows.Err()
+	return out, err
 }
 
 // LoadModeTranslationsFR retourne les traductions FR depuis metadata.mode_name_tr.

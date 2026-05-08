@@ -26,13 +26,40 @@ const homeStaticTitleSlug = "halo_infinite"
 const homeIdentityAssetBasePath = "/api/v1/assets/spartan"
 
 // HomeRepo fournit les donnÃ©es de la page d'accueil depuis DuckDB.
+//
+// Optionnellement, un `TitleAssetURLAdapter` peut être injecté via
+// `WithAssetURL` pour permettre la résolution d'URL d'image map quand le
+// `map_images_registry` (DB cache peuplée par cmd/migrate-static-maps) est
+// vide pour une map donnée. Dans ce cas, l'adapter scanne `static/maps/...`
+// au boot et résout l'URL à partir du **nom EN** (résolu via
+// asset_translations en-US). Évite la dépendance manuelle à la CLI à chaque
+// ajout de fichier static.
 type HomeRepo struct {
-	pdb *PlayerDB
+	pdb      *PlayerDB
+	assetURL homeAssetURLAdapter
+}
+
+// homeAssetURLAdapter expose l'unique méthode dont HomeRepo a besoin de
+// l'AssetURLAdapter — évite l'import du package `internal/games` (cycle
+// potentiel platform/duckdb → games qui dépend de domain → ...). Le caller
+// (server.go) injecte directement l'instance halo_infinite.AssetURLAdapter
+// qui satisfait cette interface implicite (Go duck-typing).
+type homeAssetURLAdapter interface {
+	MapImageURL(mapName string) string
 }
 
 // NewHomeRepo crÃ©e un HomeRepo pour un joueur.
 func NewHomeRepo(pdb *PlayerDB) *HomeRepo {
 	return &HomeRepo{pdb: pdb}
+}
+
+// WithAssetURL injecte l'AssetURLAdapter pour le fallback name-based d'image
+// map (cf. doc HomeRepo). Optionnel : sans adapter câblé, la résolution
+// reste exclusivement via map_images_registry (registry vide → pas d'image,
+// dépend de cmd/migrate-static-maps).
+func (r *HomeRepo) WithAssetURL(a homeAssetURLAdapter) *HomeRepo {
+	r.assetURL = a
+	return r
 }
 
 // LoadHomeMatches charge tous les matchs du joueur (Q26).
@@ -312,7 +339,7 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 			playlistIDs = append(playlistIDs, raw.playlistID)
 		}
 	}
-	assetNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", playlistIDs)
+	assetNames := r.resolveAssetNames(ctx, "playlist", playlistIDs, "fr")
 
 	result := make([]domain.HomePlaylistRank, 0, len(raws))
 	for _, raw := range raws {
@@ -512,10 +539,10 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []le
 		return
 	}
 
-	mapNames, _ := r.loadHomeAssetTranslationNames(ctx, "map", collectMissingHomeAssetIDs(matches, "map"))
-	pairNames, _ := r.loadHomeAssetTranslationNames(ctx, "pair", collectMissingHomeAssetIDs(matches, "pair"))
-	gameVariantNames, _ := r.loadHomeAssetTranslationNames(ctx, "game_variant", collectMissingHomeAssetIDs(matches, "game_variant"))
-	playlistNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", collectMissingHomeAssetIDs(matches, "playlist"))
+	mapNames := r.resolveAssetNames(ctx, "map", collectMissingHomeAssetIDs(matches, "map"), "fr")
+	pairNames := r.resolveAssetNames(ctx, "pair", collectMissingHomeAssetIDs(matches, "pair"), "fr")
+	gameVariantNames := r.resolveAssetNames(ctx, "game_variant", collectMissingHomeAssetIDs(matches, "game_variant"), "fr")
+	playlistNames := r.resolveAssetNames(ctx, "playlist", collectMissingHomeAssetIDs(matches, "playlist"), "fr")
 
 	// Pattern asset kinds : lookup local_path par (title_id, map_id) dans
 	// map_images_registry (peuplé par cmd/migrate-static-maps). Le name n'est
@@ -684,96 +711,30 @@ func collectMissingHomeAssetIDs(matches []legacymatch.HomeMatchRow, assetType st
 	return result
 }
 
-func (r *HomeRepo) loadHomeAssetTranslationNames(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error) {
-	if len(assetIDs) == 0 {
-		return nil, nil
+// resolveAssetNames résout les noms d'asset (map / pair / playlist / game_variant)
+// pour la locale donnée ("fr" ou "en"), via le résolveur unifié
+// `MetadataRepo.ResolveAssetNamesBulk` (cf. metadata_repo_assets.go).
+//
+// Source unique pour la home tile (canonical + legacy). La cascade locale →
+// l'autre langue → langue alphabétique assure qu'un asset retourne toujours
+// quelque chose si une traduction existe. `isTableNotFoundErr` traité comme
+// "pas de table → pas de résultat" pour les setups frais (pre-migration).
+//
+// Remplace les ex-`loadHomeAssetTranslationNames` (FR) et
+// `loadHomeAssetTranslationNamesEN` (EN) — un seul helper paramétré au lieu
+// de deux wrappers spécialisés (refactor 2026-05-08).
+func (r *HomeRepo) resolveAssetNames(ctx context.Context, assetType string, assetIDs []string, locale string) map[string]string {
+	if len(assetIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil
 	}
-
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(assetIDs)), ",")
-	query := fmt.Sprintf(`
-		SELECT asset_id, name, lang
-		FROM asset_translations
-		WHERE asset_type = ?
-		  AND lang IN ('fr-FR', 'fr')
-		  AND name IS NOT NULL
-		  AND TRIM(name) != ''
-		  AND asset_id IN (%s)
-		ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
-	`, placeholders)
-
-	args := make([]any, 0, len(assetIDs)+1)
-	args = append(args, assetType)
-	for _, assetID := range assetIDs {
-		args = append(args, assetID)
+	out, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(
+		ctx, assetType, assetIDs, PreferredLangsForLocale(locale),
+	)
+	if err != nil && !isTableNotFoundErr(err) {
+		slog.WarnContext(ctx, "home: resolveAssetNames failed",
+			"asset_type", assetType, "locale", locale, "err", err)
 	}
-
-	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
-	if err != nil {
-		if isTableNotFoundErr(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	defer rows.Close()
-
-	translations := make(map[string]string)
-	for rows.Next() {
-		var assetID string
-		var name string
-		var lang string
-		if err := rows.Scan(&assetID, &name, &lang); err != nil {
-			return nil, err
-		}
-		if _, exists := translations[assetID]; !exists {
-			translations[assetID] = name
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return translations, nil
-}
-
-// loadHomeAssetTranslationNamesEN charge les noms en-US (canoniques) pour les
-// assetIDs donnés. Utilisé pour hydrater Labels["en"] sur les canonical rows
-// quand match_registry.{...}_name a été synced en localisé (FR au lieu de EN).
-// Sans ça, locale=en peut leak des labels FR.
-func (r *HomeRepo) loadHomeAssetTranslationNamesEN(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error) {
-	if len(assetIDs) == 0 {
-		return nil, nil
-	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(assetIDs)), ",")
-	query := fmt.Sprintf(`
-		SELECT asset_id, name
-		FROM asset_translations
-		WHERE asset_type = ?
-		  AND lang = 'en-US'
-		  AND name IS NOT NULL
-		  AND TRIM(name) != ''
-		  AND asset_id IN (%s)
-	`, placeholders)
-	args := make([]any, 0, len(assetIDs)+1)
-	args = append(args, assetType)
-	for _, id := range assetIDs {
-		args = append(args, id)
-	}
-	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
-	if err != nil {
-		if isTableNotFoundErr(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	defer rows.Close()
-	out := make(map[string]string, len(assetIDs))
-	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
-			return nil, err
-		}
-		out[id] = name
-	}
-	return out, rows.Err()
+	return out
 }
 
 // loadHomeModeNameTranslations rÃ©sout les noms FR des modes depuis mode_name_tr.
@@ -846,10 +807,10 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 	variantIDs := collectCanonicalAssetIDsNeedingFR(rows, "game_variant")
 	pairIDs := collectCanonicalAssetIDsNeedingFR(rows, "pair")
 
-	mapNames, _ := r.loadHomeAssetTranslationNames(ctx, "map", mapIDs)
-	playlistNames, _ := r.loadHomeAssetTranslationNames(ctx, "playlist", playlistIDs)
-	variantNames, _ := r.loadHomeAssetTranslationNames(ctx, "game_variant", variantIDs)
-	pairNames, _ := r.loadHomeAssetTranslationNames(ctx, "pair", pairIDs)
+	mapNames := r.resolveAssetNames(ctx, "map", mapIDs, "fr")
+	playlistNames := r.resolveAssetNames(ctx, "playlist", playlistIDs, "fr")
+	variantNames := r.resolveAssetNames(ctx, "game_variant", variantIDs, "fr")
+	pairNames := r.resolveAssetNames(ctx, "pair", pairIDs, "fr")
 
 	// Hydrater aussi Labels["en"] pour TOUS les map_ids/playlist_ids/etc. :
 	// match_registry.{*}_name peut avoir été synced en FR-localisé selon le
@@ -859,10 +820,10 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 	allVariantIDs := collectAllCanonicalAssetIDs(rows, "game_variant")
 	allPairIDs := collectAllCanonicalAssetIDs(rows, "pair")
 
-	mapNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "map", allMapIDs)
-	playlistNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "playlist", allPlaylistIDs)
-	variantNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "game_variant", allVariantIDs)
-	pairNamesEN, _ := r.loadHomeAssetTranslationNamesEN(ctx, "pair", allPairIDs)
+	mapNamesEN := r.resolveAssetNames(ctx, "map", allMapIDs, "en")
+	playlistNamesEN := r.resolveAssetNames(ctx, "playlist", allPlaylistIDs, "en")
+	variantNamesEN := r.resolveAssetNames(ctx, "game_variant", allVariantIDs, "en")
+	pairNamesEN := r.resolveAssetNames(ctx, "pair", allPairIDs, "en")
 
 	// Pattern asset kinds : lookup map_image local_path par map_id dans
 	// map_images_registry. La résolution d'URL est indépendante des labels.
@@ -903,11 +864,23 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 		applyCanonicalAssetEN(rows[i].Summary.GameVariant, variantNamesEN)
 		applyCanonicalAssetEN(rows[i].Summary.PairMode, pairNamesEN)
 
-		// Hydrate Map.IconURL depuis map_images_registry (pattern asset kinds —
-		// lookup par map_id stable, pas par name FR/EN).
+		// Hydrate Map.IconURL — cascade :
+		//   1. map_images_registry (DB cache, pattern asset kinds, lookup par
+		//      map_id stable). Peuplé par cmd/migrate-static-maps.
+		//   2. AssetURLAdapter avec **nom EN résolu** depuis asset_translations
+		//      en-US (uniquement si l'adapter est câblé via WithAssetURL).
+		//      L'adapter scanne `static/maps/halo_infinite/` au boot et indexe
+		//      les fichiers par nom EN. Évite la dépendance à la CLI quand de
+		//      nouveaux fichiers static sont ajoutés.
 		if m := rows[i].Summary.Map; m != nil && m.ID != "" {
 			if u, ok := mapImageURLs[m.ID]; ok && u != "" {
 				m.IconURL = u
+			} else if r.assetURL != nil {
+				if enName := strings.TrimSpace(mapNamesEN[m.ID]); enName != "" {
+					if u := r.assetURL.MapImageURL(enName); u != "" {
+						m.IconURL = u
+					}
+				}
 			}
 		}
 

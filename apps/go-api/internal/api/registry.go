@@ -290,7 +290,12 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 	}
 	svc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
 	if r.seasonsCatalog != nil {
-		svc = svc.WithSeasonsCatalog(slug, r.seasonsCatalog)
+		// Bug fix 2026-05-08 : passer pdb.TitleSlug (le titre du joueur, ex
+		// "halo_infinite") et NON le `slug` paramètre qui est le **player
+		// slug** URL (ex "JGtm"). Avant, seasons_catalog recevait "JGtm"
+		// comme titleID → fetch live échouait toujours sur fallback TOML
+		// (logs : `seasons_catalog: fetch live échec titleSlug=JGtm`).
+		svc = svc.WithSeasonsCatalog(pdb.TitleSlug, r.seasonsCatalog)
 	}
 	return svc, nil
 }
@@ -562,13 +567,31 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 	if err != nil {
 		return nil, "", "", err
 	}
-	svc := service.NewHomeService(duckdb.NewHomeRepo(pdb)).
+	svc := service.NewHomeService(r.newHomeRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
 	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// newHomeRepo construit un HomeRepo avec l'AssetURLAdapter du titre câblé
+// quand disponible (fallback static FS pour les images map non encore
+// peuplées dans map_images_registry — évite la dépendance à
+// cmd/migrate-static-maps à chaque ajout de fichier static). Dégradation
+// gracieuse : sans titleResolver ou sans adapter, le HomeRepo reste nu et
+// ne fait que le lookup registry.
+func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
+	repo := duckdb.NewHomeRepo(pdb)
+	if r.titleResolver == nil {
+		return repo
+	}
+	adapter, err := r.titleResolver.AssetURL(pdb.TitleSlug)
+	if err != nil || adapter == nil {
+		return repo
+	}
+	return repo.WithAssetURL(adapter)
 }
 
 // HomeCtxWithAuth retourne un HomeService + contexte enrichi avec les HaloTokens du joueur.
@@ -582,7 +605,7 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		return nil, ctx, "", "", err
 	}
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
-	homeRepo := duckdb.NewHomeRepo(pdb)
+	homeRepo := r.newHomeRepo(pdb)
 	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink).WithItemDefPersister(sink)
 	svc := service.NewHomeService(homeRepo).
 		WithPersistSink(sink).
@@ -606,7 +629,7 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	if err != nil {
 		return nil, ctx, err
 	}
-	homeRepo := duckdb.NewHomeRepo(pdb)
+	homeRepo := r.newHomeRepo(pdb)
 	sink := duckdb.NewPersistSink(pdb.Metadata.Path(), pdb.Player.Path(), pdb.XUID)
 	haloProvider := r.buildHaloProvider(pdb).WithTrackDefPersister(sink).WithItemDefPersister(sink)
 	homeSvc := service.NewHomeService(homeRepo).

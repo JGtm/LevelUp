@@ -3,10 +3,14 @@ package duckdb
 
 // Q10 : Career — encounters (adversaires et coéquipiers fréquents).
 // Paramètre : ? = xuid du joueur.
+//
+// Résolveur canonique : v_gamertag_lookup gère bots + cascade
+// xuid_aliases / match_participants / fallback xuid raw. Caller fait juste
+// `COALESCE(vg.gamertag, p2.xuid)` pour couvrir les xuids orphelins (jamais en DB).
 const Q10Encounters = `
 SELECT
     p2.xuid,
-    COALESCE(xa.gamertag, p2.xuid) AS gamertag,
+    COALESCE(vg.gamertag, p2.xuid) AS gamertag,
     COUNT(*) AS match_count,
     SUM(CASE WHEN p2.team_id = p1.team_id THEN 1 ELSE 0 END) AS as_teammate,
     SUM(CASE WHEN p2.team_id != p1.team_id THEN 1 ELSE 0 END) AS as_enemy,
@@ -14,9 +18,9 @@ SELECT
 FROM match_participants p1
 JOIN match_participants p2
     ON p1.match_id = p2.match_id AND p2.xuid != p1.xuid
-LEFT JOIN xuid_aliases xa ON p2.xuid = xa.xuid
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.xuid = ?
-GROUP BY p2.xuid, COALESCE(xa.gamertag, p2.xuid)
+GROUP BY p2.xuid, vg.gamertag
 HAVING COUNT(*) >= 2
 ORDER BY match_count DESC
 LIMIT 50`
@@ -42,14 +46,10 @@ top_weapons AS (
 )
 SELECT
     p.xuid,
-    -- Bots Halo : xuid au format "bid(N.0)" → on génère "343 Bot N" en clair
-    -- (cohérent avec la migration fix_bot_gamertags qui peuple xuid_aliases).
-    -- Sinon fallback gamertag : view (multi-matchs) → MP courant → xa → xuid.
-    CASE
-        WHEN p.xuid LIKE 'bid(%' THEN
-            '343 Bot ' || regexp_extract(p.xuid, 'bid\(([0-9]+)', 1)
-        ELSE COALESCE(vg.gamertag, p.gamertag, p.xuid)
-    END AS gamertag,
+    -- Résolveur canonique : v_gamertag_lookup gère bots ('bid(N.0)' → '343 Bot N')
+    -- + cascade xuid_aliases / match_participants. Caller fait juste fallback
+    -- xuid raw pour les xuids orphelins. Plus de CASE WHEN bot ad-hoc ici.
+    COALESCE(vg.gamertag, p.xuid) AS gamertag,
     (p.xuid LIKE 'bid(%') AS is_bot,
     p.team_id,
     p.rank              AS rank_in_team,
@@ -118,7 +118,9 @@ SELECT
     r.playlist_id,
     r.team_0_score,
     r.team_1_score,
-    r.pair_name_fr
+    r.pair_name_fr,
+    r.pair_id,
+    r.game_variant_id
 FROM shared.match_registry r
 WHERE r.match_id = ?`
 
@@ -293,15 +295,21 @@ FROM shared.v_killer_victim_full kvf
 WHERE kvf.match_id = ?
 ORDER BY kvf.time_ms ASC`
 
-// Q21 : Événements highlight avec xuid pour un match complet.
+// Q21 : Événements highlight avec xuid + gamertag résolu pour un match complet.
 // Paramètre : ? = match_id.
-// Utilise time_ms (colonne réelle) — pas tick_count.
+//
+// JOIN sur shared.v_gamertag_lookup : la vue gère bots (`bid(N.0)` → "343 Bot N")
+// + fallback xuid raw, donc gamertag retourné est toujours non vide quand le
+// xuid est présent en DB. Pour un xuid orphelin (jamais vu en match_participants
+// ni xuid_aliases), vg.gamertag est NULL → caller fallback sur xuid brut.
 const Q21MatchEventsWithXUID = `
 SELECT
     he.event_type,
     he.time_ms,
-    he.xuid
+    he.xuid,
+    vg.gamertag AS gamertag
 FROM shared.highlight_events he
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC NULLS LAST`
 
@@ -397,7 +405,7 @@ LIMIT 1`
 const Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, p.gamertag, xa.gamertag, p.xuid) AS gamertag,
+           COALESCE(vg.gamertag, xa.gamertag, p.xuid) AS gamertag,
            FALSE AS is_bot
     FROM shared.match_participants p
     LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid

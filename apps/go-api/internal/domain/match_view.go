@@ -24,6 +24,13 @@ type MatchViewResponse struct {
 	Radar []any `json:"radar,omitempty"`
 	// Sprint 54 B : avertissement de privacy.
 	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
+	// IsPartial / PartialReasons (RC6 — 2026-05-08) : true quand le match a son
+	// match_registry peuplé mais qu'au moins une source secondaire critique est
+	// vide (scoreboard, events, player stats). Le front peut afficher un bandeau
+	// "Sync incomplet — certaines sections sont indisponibles" au lieu d'un
+	// crash full-page. Strict 404 reste pour les match_id totalement absents.
+	IsPartial      bool     `json:"is_partial,omitempty"`
+	PartialReasons []string `json:"partial_reasons,omitempty"`
 }
 
 // MatchViewHeader : en-tête du match.
@@ -203,10 +210,16 @@ type MatchWeaponKill struct {
 }
 
 // MatchHighlightEvent : événement filmé horodaté.
+//
+// ActorGamertag est le nom à afficher (résolu via v_gamertag_lookup côté repo :
+// gère bots `bid(N.0)` → "343 Bot N" et fallback xuid raw). Le front l'affiche
+// directement, sans logique de résolution. ActorXUID reste exposé pour les
+// callers qui ont besoin de l'ID stable (deep-linking, etc.).
 type MatchHighlightEvent struct {
-	EventType   string  `json:"event_type"`
-	EventTimeMS *int64  `json:"event_time_ms,omitempty"`
-	ActorXUID   *string `json:"actor_xuid,omitempty"`
+	EventType     string  `json:"event_type"`
+	EventTimeMS   *int64  `json:"event_time_ms,omitempty"`
+	ActorXUID     *string `json:"actor_xuid,omitempty"`
+	ActorGamertag *string `json:"actor_gamertag,omitempty"`
 }
 
 // MatchTugOfWarBin : tranche temporelle de la timeline tug-of-war.
@@ -505,9 +518,20 @@ type MatchMetaRaw struct {
 	MapNameFR      *string
 	ModeNameFR     *string
 	PlaylistNameFR *string
+	// MapNameEN : nom canonique EN résolu via asset_translations en-US.
+	// Utilisé pour les lookups d'asset image (l'adapter AssetURLAdapter
+	// indexe `static/maps/halo_infinite/{name}.{ext}` par nom EN). Sans ça,
+	// le fallback adapter recevrait l'UUID brut de match_registry.map_name
+	// et échouerait silencieusement (warn "map image missing for known map").
+	MapNameEN *string
 	// PairNameFR : traduction FR stockée en DB (match_registry.pair_name_fr).
 	// Utilisé comme fallback quand mode_name_tr ne contient pas le mode EN normalisé.
 	PairNameFR *string
+	// PairAssetID : identifiant stable du pair_name (match_registry.pair_id).
+	// Permet la résolution via asset_translations quand pair_name est un UUID brut.
+	PairAssetID *string
+	// GameVariantAssetID : identifiant stable du game variant (match_registry.game_variant_id).
+	GameVariantAssetID *string
 	// MapImageURL : URL résolue depuis map_images_registry par map_id (stable UUID).
 	// Nil si map_id absent du registry — le service retombe sur l'adapter name-based.
 	MapImageURL *string
@@ -621,6 +645,11 @@ type EventRaw struct {
 	EventType string
 	TimeMS    *int64
 	XUID      *string
+	// Gamertag : résolu côté repo via v_gamertag_lookup (bots gérés, fallback
+	// xuid raw). Nil uniquement si le xuid est orphelin (jamais en
+	// match_participants ni xuid_aliases) ; dans ce cas le service affichera
+	// le XUID brut.
+	Gamertag *string
 }
 
 // WeaponKillRaw : données brutes de Q16.

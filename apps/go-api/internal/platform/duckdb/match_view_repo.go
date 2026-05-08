@@ -49,58 +49,107 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		&row.Team0Score,
 		&row.Team1Score,
 		&row.PairNameFR,
+		&row.PairAssetID,
+		&row.GameVariantAssetID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
 	}
+	// Résolution unifiée des noms d'asset via MetadataRepo.ResolveAssetName.
+	// Cascade FR-FR → fr → en-US → en (PreferredLangsForLocale("fr")), une seule
+	// requête SQL par asset, source unique de vérité (asset_translations).
 	if row.MapAssetID != nil {
-		row.MapNameFR = r.lookupMapNameFR(ctx, *row.MapAssetID)
+		row.MapNameFR = r.resolveAssetName(ctx, "map", *row.MapAssetID)
+		row.MapNameEN = r.resolveAssetNameEN(ctx, "map", *row.MapAssetID)
 		row.MapImageURL = r.lookupMapImageURL(ctx, *row.MapAssetID)
 	}
-	if row.PairName != nil {
-		if modeEN := analysis.NormalizeModeLabel(*row.PairName); modeEN != "" {
-			row.ModeNameFR = r.lookupModeNameFR(ctx, modeEN)
-		}
-		// Fallback : si mode_name_tr ne contient pas ce mode EN, utiliser pair_name_fr
-		// stocké en DB (sync l'a parfois résolu directement côté client Halo).
-		if row.ModeNameFR == nil && row.PairNameFR != nil && strings.TrimSpace(*row.PairNameFR) != "" {
-			row.ModeNameFR = row.PairNameFR
-		}
-	}
 	if row.PlaylistAssetID != nil {
-		row.PlaylistNameFR = r.lookupPlaylistNameFR(ctx, *row.PlaylistAssetID)
+		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
 	}
+	row.ModeNameFR = r.resolveModeNameFR(ctx, &row)
 	return &row, nil
 }
 
-// lookupMapNameFR retourne le nom FR d'une map via asset_translations, ou nil.
-func (r *MatchViewRepo) lookupMapNameFR(ctx context.Context, mapAssetID string) *string {
+// resolveAssetName est un helper qui appelle MetadataRepo.ResolveAssetName avec
+// les préférences locale=FR par défaut. Retourne nil si la métadonnée DB n'est
+// pas disponible ou si l'asset n'a aucune traduction.
+func (r *MatchViewRepo) resolveAssetName(ctx context.Context, assetType, assetID string) *string {
 	if r.pdb.Metadata == nil {
 		return nil
 	}
-	const q = `
-		SELECT name FROM asset_translations
-		WHERE asset_type = 'map' AND asset_id = ?
-		  AND lang IN ('fr-FR', 'fr')
-		  AND name IS NOT NULL AND TRIM(name) != ''
-		ORDER BY CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
-		LIMIT 1`
-	rows, err := r.pdb.Metadata.Query(ctx, q, mapAssetID)
-	if err != nil {
+	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
+	name, _, ok, err := meta.ResolveAssetName(ctx, assetType, assetID, PreferredLangsForLocale("fr"))
+	if err != nil || !ok || strings.TrimSpace(name) == "" {
 		return nil
 	}
-	defer rows.Close()
-	if rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err == nil && name != "" {
-			return &name
+	return &name
+}
+
+// resolveAssetNameEN retourne le nom EN canonique d'un asset (sans cascade
+// FR) — utilisé pour les lookups d'image qui dépendent du nom EN canonique
+// (l'adapter `AssetURLAdapter` indexe `static/maps/{titleSlug}/{name}.{ext}`
+// par nom EN, pas par nom localisé).
+func (r *MatchViewRepo) resolveAssetNameEN(ctx context.Context, assetType, assetID string) *string {
+	if r.pdb.Metadata == nil {
+		return nil
+	}
+	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
+	name, _, ok, err := meta.ResolveAssetName(ctx, assetType, assetID, PreferredLangsForLocale("en"))
+	if err != nil || !ok || strings.TrimSpace(name) == "" {
+		return nil
+	}
+	return &name
+}
+
+// resolveModeNameFR applique la cascade de résolution du nom de mode pour le
+// header match-view. Le mode est dérivé de pair_name (qui peut être un UUID
+// brut, une chaîne formatée "Arena:Slayer", ou un libellé déjà localisé).
+//
+// Cascade :
+//  1. NormalizeModeLabel(pair_name) → mode_name_tr (cas nominal "Arena:Slayer" → "Slayer" → "Assassin")
+//  2. asset_translations[pair_id, locale FR] → NormalizeModeLabel → mode_name_tr
+//     (cas où pair_name est un UUID brut, mais asset_translations a la FR brute)
+//  3. asset_translations[pair_id, locale FR] direct (pair name complet en FR)
+//  4. match_registry.pair_name_fr (sync legacy qui l'a écrit lui-même)
+//
+// Retourne nil si toutes les pistes échouent — le service tombera alors sur le
+// raw pair_name avec normalisation de dernier recours.
+func (r *MatchViewRepo) resolveModeNameFR(ctx context.Context, row *domain.MatchMetaRaw) *string {
+	if r.pdb.Metadata == nil {
+		return nil
+	}
+	// Étape 1 : pair_name → normalize → mode_name_tr
+	if row.PairName != nil {
+		if modeEN := analysis.NormalizeModeLabel(*row.PairName); modeEN != "" {
+			if fr := r.lookupModeNameFR(ctx, modeEN); fr != nil {
+				return fr
+			}
 		}
+	}
+	// Étape 2+3 : asset_translations[pair_id, FR] (le pair_name complet en FR)
+	if row.PairAssetID != nil && *row.PairAssetID != "" {
+		if pairFR := r.resolveAssetName(ctx, "pair", *row.PairAssetID); pairFR != nil && *pairFR != "" {
+			// Tenter de normaliser le pair_name FR pour mapper vers un nom de mode court
+			if modeEN := analysis.NormalizeModeLabel(*pairFR); modeEN != "" {
+				if fr := r.lookupModeNameFR(ctx, modeEN); fr != nil {
+					return fr
+				}
+			}
+			// Sinon utiliser directement le pair_name FR (label complet)
+			return pairFR
+		}
+	}
+	// Étape 4 : pair_name_fr stocké directement en DB (legacy)
+	if row.PairNameFR != nil && strings.TrimSpace(*row.PairNameFR) != "" {
+		return row.PairNameFR
 	}
 	return nil
 }
 
 // lookupModeNameFR retourne le nom FR d'un mode via mode_name_tr, ou nil.
 // modeEN doit être le label normalisé (via analysis.NormalizeModeLabel).
+// Conservé séparément du resolver générique car mode_name_tr est une table
+// dédiée (mapping mode-en → mode-fr court) et non asset_translations.
 func (r *MatchViewRepo) lookupModeNameFR(ctx context.Context, modeEN string) *string {
 	if r.pdb.Metadata == nil {
 		return nil
@@ -110,33 +159,6 @@ func (r *MatchViewRepo) lookupModeNameFR(ctx context.Context, modeEN string) *st
 		WHERE lang = 'fr' AND mode_en = ?
 		LIMIT 1`
 	rows, err := r.pdb.Metadata.Query(ctx, q, modeEN)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	if rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err == nil && name != "" {
-			return &name
-		}
-	}
-	return nil
-}
-
-// lookupPlaylistNameFR retourne le nom FR d'une playlist via asset_translations, ou nil.
-// Pattern identique à lookupMapNameFR (asset_type = 'playlist').
-func (r *MatchViewRepo) lookupPlaylistNameFR(ctx context.Context, playlistAssetID string) *string {
-	if r.pdb.Metadata == nil {
-		return nil
-	}
-	const q = `
-		SELECT name FROM asset_translations
-		WHERE asset_type = 'playlist' AND asset_id = ?
-		  AND lang IN ('fr-FR', 'fr')
-		  AND name IS NOT NULL AND TRIM(name) != ''
-		ORDER BY CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
-		LIMIT 1`
-	rows, err := r.pdb.Metadata.Query(ctx, q, playlistAssetID)
 	if err != nil {
 		return nil
 	}
@@ -394,7 +416,7 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	var results []domain.EventRaw
 	for rows.Next() {
 		var e domain.EventRaw
-		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID); err != nil {
+		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID, &e.Gamertag); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents scan: %w", err)
 		}
 		results = append(results, e)
