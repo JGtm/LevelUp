@@ -456,3 +456,62 @@ func MarkKillerVictimLoaded(db *sql.DB, matchID string) error {
 	}
 	return nil
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Phase 2 du plan PLAN_BITMASKS_AUDIT_FIX (mai 2026) — Mark* manquantes pour
+// que les filtres detection backfill (skill/participants/PVE) reflètent l'état
+// réel sur les nouveaux matchs synchronisés via le code Go.
+// ──────────────────────────────────────────────────────────────────────────────
+
+// skillBitsCombined regroupe les 4 PBit* positionnés ensemble quand l'API
+// GetMatchSkill renvoie des données : team_mmr, enemy_mmr, kills_expected,
+// deaths_expected. Ils sont obtenus en bloc, on les marque en bloc.
+const skillBitsCombined = PBitTeamMMR | PBitEnemyMMR | PBitKillsExp | PBitDeathsExp
+
+// backfillFlagSkill est la valeur legacy de BackfillFlags["skill"] = 1<<2.
+// Stocké dans match_registry.backfill_completed (et non dans
+// match_participants.backfill_bits comme les PBit*).
+const backfillFlagSkill = 4
+
+// backfillFlagParticipants est la valeur legacy de BackfillFlags["participants"]
+// = 1<<9. Stocké dans match_registry.backfill_completed.
+const backfillFlagParticipants = 512
+
+// MarkSkillLoaded positionne les bits skill sur le registry et tous les
+// participants du match dont le team_mmr est non-NULL. Idempotent (|=).
+//
+// À appeler depuis insertFetchedMatch APRÈS un InsertParticipants réussi
+// quand fm.SkillError est nil ET que MergeSkillIntoParticipants a été appelé
+// (= skillData non vide).
+func MarkSkillLoaded(db *sql.DB, matchID string) error {
+	// PBit* sur match_participants — uniquement les rows ayant team_mmr
+	// effectivement rempli (sinon mensonge sur un participant skipped).
+	if _, err := db.Exec(`
+		UPDATE match_participants
+		SET backfill_bits = COALESCE(backfill_bits, 0) | ?
+		WHERE match_id = ? AND team_mmr IS NOT NULL`, skillBitsCombined, matchID); err != nil {
+		return fmt.Errorf("MarkSkillLoaded participants(%s): %w", matchID, err)
+	}
+	// BackfillFlags["skill"] sur match_registry.
+	if _, err := db.Exec(`
+		UPDATE match_registry
+		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
+		WHERE match_id = ?`, backfillFlagSkill, matchID); err != nil {
+		return fmt.Errorf("MarkSkillLoaded registry(%s): %w", matchID, err)
+	}
+	return nil
+}
+
+// MarkParticipantsDone positionne le bit BackfillFlags["participants"] sur
+// match_registry.backfill_completed. À appeler APRÈS un InsertParticipants
+// réussi.
+func MarkParticipantsDone(db *sql.DB, matchID string) error {
+	_, err := db.Exec(`
+		UPDATE match_registry
+		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
+		WHERE match_id = ?`, backfillFlagParticipants, matchID)
+	if err != nil {
+		return fmt.Errorf("MarkParticipantsDone(%s): %w", matchID, err)
+	}
+	return nil
+}

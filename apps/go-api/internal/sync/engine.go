@@ -937,6 +937,24 @@ func (e *SyncEngine) insertFetchedMatch(
 		}
 		result.ParticipantsDone += len(fm.Participants)
 
+		// Phase 2 du plan PLAN_BITMASKS_AUDIT_FIX : marquer le bit
+		// participants pour que `levelup backfill --participants` ne re-traite
+		// pas indéfiniment ce match.
+		if markErr := MarkParticipantsDone(sharedDB, fm.MatchID); markErr != nil {
+			slog.WarnContext(ctx, "sync: MarkParticipantsDone échoué",
+				"match_id", fm.MatchID, "err", markErr)
+		}
+
+		// Phase 2 — skill bits : on ne marque que si l'API skill a renvoyé des
+		// données (fm.SkillError nil ET team_mmr présent sur ≥1 participant).
+		// MarkSkillLoaded filtre lui-même sur team_mmr IS NOT NULL côté SQL.
+		if fm.SkillError == nil && hasAnyTeamMMR(fm.Participants) {
+			if markErr := MarkSkillLoaded(sharedDB, fm.MatchID); markErr != nil {
+				slog.WarnContext(ctx, "sync: MarkSkillLoaded échoué",
+					"match_id", fm.MatchID, "err", markErr)
+			}
+		}
+
 		// Upsert XUID aliases.
 		aliased := 0
 		for _, p := range fm.Participants {
@@ -1157,6 +1175,18 @@ func ProcessHighlightEvents(
 		"killer_victim_err", pairsErr,
 	)
 	return nil
+}
+
+// hasAnyTeamMMR retourne true si au moins un participant a team_mmr renseigné.
+// Utilisé pour décider si MarkSkillLoaded doit être appelé après
+// MergeSkillIntoParticipants (Phase 2 plan PLAN_BITMASKS_AUDIT_FIX).
+func hasAnyTeamMMR(parts []ParticipantRow) bool {
+	for _, p := range parts {
+		if p.TeamMMR != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // loadKnownMatchIDs retourne l'ensemble des match_ids déjà présents dans
