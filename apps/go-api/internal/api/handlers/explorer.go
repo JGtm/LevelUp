@@ -131,6 +131,7 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			DeltaPerf:      deltaPerf,
 			SkillTierLabel: item.SkillTierLabel,
 			DeltaMMR:       item.DeltaMMR,
+			TeamMMR:        item.TeamMMR,
 		})
 	}
 

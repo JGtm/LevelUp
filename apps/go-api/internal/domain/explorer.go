@@ -115,6 +115,8 @@ type ExplorerMatchesRow struct {
 	SkillTierLabel *string `json:"skill_tier_label,omitempty"`
 	// DeltaMMR : variation de MMR/CSR/LUSR pour ce match (nil si non rankée).
 	DeltaMMR *float64 `json:"delta_mmr,omitempty"`
+	// TeamMMR : MMR moyen de l'équipe du joueur sur ce match (nil si non rankée).
+	TeamMMR *float64 `json:"team_mmr,omitempty"`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.

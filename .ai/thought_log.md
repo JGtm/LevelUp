@@ -1,4 +1,28 @@
 
+## [2026-05-08] Explorer — fix recherche par gamertag : "Recherche indisponible" sur joueurs présents dans shared
+
+**Statut** : Complété
+
+**Décision technique** : Le user a signalé que la recherche par gamertag dans Explorer (mode Joueur) renvoyait systématiquement "Recherche indisponible — Le backend n'a pas pu renvoyer les informations de ce joueur" pour des joueurs effectivement présents dans `shared.match_participants` (ex: `Nilton410`, xuid `2535427927026623`). Diagnostic : `ExplorerRepo.ResolveXUIDByGamertag` interrogeait `global.xuid_aliases` (DB globale `data/global/xbox_aliases.duckdb`, ATTACHée comme alias `global` sur la connexion player). Mesure : `data/global/xbox_aliases.duckdb` contenait **0 ligne**, alors que `shared_matches_v2.duckdb`.`xuid_aliases` (la même table dans la DB partagée par-titre) contenait 15 370 entrées dont `Nilton410`. La migration one-shot `cmd/migrate-xuid-aliases-global` qui peuple la DB globale depuis chaque `shared.xuid_aliases` n'avait jamais été exécutée. Fix : route toutes les queries `global.xuid_aliases` vers `shared.xuid_aliases` (la source canonique pour ce titre, peuplée par le sync engine). Les schémas sont compatibles (`xuid VARCHAR PRIMARY KEY`, `gamertag VARCHAR`, `last_seen TIMESTAMP`). Bonus : `SquadRepo.LookupXUIDByGamertag` référençait `last_seen_at` (colonne inexistante) — corrigé en `last_seen` au passage. Repos modifiés : `explorer_repo.go` (Q ResolveXUIDByGamertag), `compare_repo.go` (GetLocalStats + ResolveXUID), `weapon_kills_repo.go` (gamertag→xuid filter), `squad_repo.go` (LookupXUIDByGamertag + fix last_seen_at), `media_repo.go` (lobby gamertags), `queries_match.go` (Q23 + Q23b match encounters). La DB globale reste ATTACHée par `pool.go` mais n'est plus interrogée par le code applicatif — décision conservatrice (pas de risque de régression sur d'autres call sites).
+
+**Résultats** : `go build -tags cgo ./...` OK, `go test -tags cgo ./internal/platform/duckdb/...` OK (7.7s), tests integration : seuls les échecs pré-existants (TestMatchViewRepo_GetMatchMedals_WithMetadataLabels, TestWeaponKillsRepo_* "capability not supported") subsistent, vérifiés par `git stash` → mêmes échecs sans mes changements.
+
+**Prochaine étape** : User redémarre le serveur Go (`tmp/server.exe` PID 10656 actuellement) pour activer le fix. Commit séparé sur `feat/explorer-perf-rank-filters` (tâche distincte de la refonte de table déjà sur la branche).
+
+---
+
+## [2026-05-08] Explorer — fix : ExplorerMatchesTable visuellement identique au SquadMatchHistoryTable
+
+**Statut** : Complété
+
+**Décision technique** : La précédente version d'`ExplorerMatchesTable` divergeait du `SquadMatchHistoryTable` (Badge pour outcome, OUTCOME_ROW_BG row tinting, hover brightness, font-medium muted on th, bg-card extra). Refonte stricte pour matcher le squad : (1) outcome rendu en **texte coloré** via `getOutcomeColor` (`fontWeight: 600`), pas de Badge ; (2) **pas de row tinting** par outcome ; (3) hover `bg-primary/10` ; (4) thead `bg-muted border-b` plain text, th `px-3 py-2 text-left whitespace-nowrap` ; (5) wrapper `rounded-md border border-border` (sans bg-card) ; (6) date via `formatDate` + `HISTORY_DATE_OPTS` (jj/mm/aa hh:mm) ; (7) labelOfMap/labelOfPlaylist via `useFieldMappings`. Colonnes finales : Date | Carte | Playlist | Mode | Résultat | FDA | Perf (color tier) | ΔPerf | Rang | ΔRang | MMR équipe — les 4 nouvelles insérées **après FDA** comme demandé. Ajout du champ `team_mmr` dans `ExplorerMatchesRow` (Go) et `ExplorerMatchRow` (TS), mappé depuis `MatchHistoryRow.TeamMMR` dans le handler. Ajout 5 clés i18n FR/EN (col_team_mmr, outcome_win/loss/draw/dnf).
+
+**Résultats** : `tsc -b` OK, `eslint src/features/explorer` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché), `vitest run src/features/explorer` 7/7 PASS, `go test ./internal/api/... ./internal/service/... ./internal/domain/...` tous verts.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — refonte filtres/table : suppression de tous les pills, table reprise du Squad
 
 **Statut** : Complété
