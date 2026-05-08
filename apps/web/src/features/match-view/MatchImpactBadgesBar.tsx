@@ -54,6 +54,23 @@ function buildXUIDIndex(scoreboard: MatchScoreboardRow[]): Map<string, MatchScor
   return idx
 }
 
+/**
+ * Détecte si le `gamertag` retourné par l'API est en réalité un xuid brut
+ * (cas où aucun alias n'existe en DB pour ce joueur — le resolver
+ * `v_gamertag_lookup` côté backend retombe sur le xuid en dernier recours).
+ * On évite alors d'afficher la chaîne illisible et on dégrade vers
+ * "Joueur inconnu" / pas de nom.
+ *
+ * Heuristique : xuid Halo = numérique pur ≥ 15 chars OU format bot `bid(N.0)`.
+ * Le bot prefix devrait être déjà rendu "343 Bot N" par la vue, donc en
+ * pratique on attrape surtout les numériques purs.
+ */
+function isRawXUID(s: string | null | undefined): boolean {
+  if (!s) return false
+  if (/^bid\(/.test(s)) return true
+  return /^\d{15,}$/.test(s)
+}
+
 interface Props {
   badges: MatchImpactBadge[] | null | undefined
   scoreboard: MatchScoreboardRow[] | null | undefined
@@ -82,7 +99,11 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
         </span>
         {sorted.map((b) => {
           const player = b.player_xuid ? xuidIndex.get(b.player_xuid) : undefined
-          const gamertag = player?.gamertag ?? null
+          const rawGamertag = player?.gamertag ?? null
+          // Si le gamertag est en fait un xuid brut (alias absent de toute la
+          // chaîne de résolution backend), on ne l'affiche pas — préférable à
+          // un "Premier sang 2535472884034919".
+          const gamertag = isRawXUID(rawGamertag) ? null : rawGamertag
           const isMe = player?.is_me ?? false
           const time = formatTime(b.time_ms)
           const description = badgeI18n.badgeDescriptions[b.key]

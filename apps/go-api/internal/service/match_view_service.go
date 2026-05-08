@@ -471,16 +471,66 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		radar = append(radar, s)
 	}
 
+	// RC6 — détection sync incomplet : le match_registry est OK (sinon on aurait
+	// court-circuité plus haut), mais une ou plusieurs sources secondaires sont
+	// vides. Le front peut afficher un bandeau dégradé au lieu de l'écran
+	// "Match introuvable ou erreur de chargement" full-page.
+	partialReasons := detectPartialMatchData(stats, scoreboard, events, medals)
+
 	return domain.MatchViewResponse{
-		Header:       header,
-		Rank:         rank,
-		SummaryTab:   summary,
-		CombatTab:    combat,
-		TeamTab:      team,
-		MediaTab:     mediaTab,
-		CitationsTab: buildCitationsTab(matchCitations, medals, s.titleSlug),
-		Radar:        radar,
+		Header:         header,
+		Rank:           rank,
+		SummaryTab:     summary,
+		CombatTab:      combat,
+		TeamTab:        team,
+		MediaTab:       mediaTab,
+		CitationsTab:   buildCitationsTab(matchCitations, medals, s.titleSlug),
+		Radar:          radar,
+		IsPartial:      len(partialReasons) > 0,
+		PartialReasons: partialReasons,
 	}, nil
+}
+
+// strDeref retourne la valeur d'un *string ou "<nil>" pour les logs structurés.
+// Évite les faux-positifs "<nil>" dans slog quand on veut juste tracer le contenu.
+func strDeref(s *string) string {
+	if s == nil {
+		return "<nil>"
+	}
+	return *s
+}
+
+// detectPartialMatchData inspecte les sources secondaires d'un match et
+// retourne la liste des raisons (codes stables) pour lesquelles la vue est
+// considérée partielle. Vide si tout est plein.
+//
+// Codes utilisés (stables — front les mappe à des messages i18n) :
+//   - "scoreboard_empty"     → Q12 a renvoyé 0 lignes
+//   - "events_empty"         → Q21 a renvoyé 0 highlight events
+//   - "player_stats_empty"   → Q17 stats joueur courant absentes (outcome = 0)
+//   - "medals_empty"         → Q14 a renvoyé 0 médailles (rare ; certains modes
+//     n'attribuent pas de médailles, donc pas critique pour la sync mais utile
+//     pour le front)
+func detectPartialMatchData(
+	stats *domain.PlayerMatchStatsRaw,
+	scoreboard []domain.ScoreboardRaw,
+	events []domain.EventRaw,
+	medals []domain.MedalRaw,
+) []string {
+	var reasons []string
+	if len(scoreboard) == 0 {
+		reasons = append(reasons, "scoreboard_empty")
+	}
+	if len(events) == 0 {
+		reasons = append(reasons, "events_empty")
+	}
+	if stats == nil || stats.OutcomeCode == 0 {
+		reasons = append(reasons, "player_stats_empty")
+	}
+	if len(medals) == 0 {
+		reasons = append(reasons, "medals_empty")
+	}
+	return reasons
 }
 
 // loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard
@@ -650,17 +700,34 @@ func buildMatchHeader(
 	} else if meta.PlaylistName != nil {
 		h.PlaylistLabel = *meta.PlaylistName
 	}
-	// MapImageURL : priorité à map_images_registry (lookup par map_id stable),
-	// fallback TitleAssetURLAdapter (lookup par nom EN). Le registry est peuplé
-	// par cmd/migrate-static-maps et est immunisé contre les noms UUID ou localisés.
+	// MapImageURL : cascade de résolution
+	//   1. map_images_registry (lookup par map_id stable, peuplé par
+	//      cmd/migrate-static-maps).
+	//   2. AssetURLAdapter avec **nom EN résolu** (asset_translations en-US) —
+	//      l'adapter indexe les fichiers `static/maps/halo_infinite/{name}.{ext}`
+	//      par nom EN. Sans le nom EN, on aurait l'UUID brut de
+	//      match_registry.map_name → l'adapter rejette via uuidRe.
+	//   3. AssetURLAdapter avec map_name brut (legacy fallback — utile si
+	//      asset_translations EN absent et map_name est déjà un nom propre).
 	if meta.MapImageURL != nil && *meta.MapImageURL != "" {
 		h.MapImageURL = meta.MapImageURL
-	} else if assetURL != nil && meta.MapName != nil && *meta.MapName != "" {
-		if url := assetURL.MapImageURL(*meta.MapName); url != "" {
-			h.MapImageURL = &url
-		} else {
-			slog.WarnContext(ctx, "match_header: map image missing for known map",
-				"match_id", matchID, "map_name", *meta.MapName)
+	} else if assetURL != nil {
+		nameForAdapter := ""
+		if meta.MapNameEN != nil && *meta.MapNameEN != "" {
+			nameForAdapter = *meta.MapNameEN
+		} else if meta.MapName != nil && *meta.MapName != "" {
+			nameForAdapter = *meta.MapName
+		}
+		if nameForAdapter != "" {
+			if url := assetURL.MapImageURL(nameForAdapter); url != "" {
+				h.MapImageURL = &url
+			} else {
+				slog.WarnContext(ctx, "match_header: map image missing",
+					"match_id", matchID,
+					"map_name_used", nameForAdapter,
+					"map_name_raw", strDeref(meta.MapName),
+					"map_name_en", strDeref(meta.MapNameEN))
+			}
 		}
 	}
 	h.PlayableDurationSeconds = meta.PlayableDurationSeconds
@@ -1005,9 +1072,10 @@ func buildCombatTabFull(
 	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
 	for _, e := range events {
 		evtList = append(evtList, domain.MatchHighlightEvent{
-			EventType:   e.EventType,
-			EventTimeMS: e.TimeMS,
-			ActorXUID:   e.XUID,
+			EventType:     e.EventType,
+			EventTimeMS:   e.TimeMS,
+			ActorXUID:     e.XUID,
+			ActorGamertag: e.Gamertag,
 		})
 	}
 

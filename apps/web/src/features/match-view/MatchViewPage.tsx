@@ -33,6 +33,27 @@ import type { MatchWeaponKill, MatchScoreboardRow } from '@/lib/api/types'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+/**
+ * Traduit un code stable de partial_reason (cf. backend
+ * `service.detectPartialMatchData`) en libellé court affiché dans le bandeau
+ * "sync incomplet". Codes inconnus → renvoyés tels quels (debug).
+ */
+function translatePartialReason(code: string, locale: string): string {
+  const isEN = locale === 'en'
+  switch (code) {
+    case 'scoreboard_empty':
+      return isEN ? 'no scoreboard' : 'aucun scoreboard'
+    case 'events_empty':
+      return isEN ? 'no highlight events' : 'aucun fait marquant'
+    case 'player_stats_empty':
+      return isEN ? 'no player stats' : 'aucune stat joueur'
+    case 'medals_empty':
+      return isEN ? 'no medals' : 'aucune médaille'
+    default:
+      return code
+  }
+}
+
 function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText): MatchWeaponKill[] {
   const total = me?.kills ?? 0
   if (!total) return []
@@ -70,14 +91,21 @@ export function MatchViewPage() {
   if (isPending) return null
 
   if (isError || !data) {
+    // 404 strict ou erreur réseau : match totalement absent en DB. Le backend
+    // a déjà séparé ce cas du cas "match présent mais sync partiel" (voir
+    // is_partial ci-dessous). Ici on reste sur l'écran d'erreur full-page.
     return (
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">Match introuvable ou erreur de chargement.</p>
+            <p className="font-medium text-destructive">
+              {locale === 'en'
+                ? 'Match not found or load error.'
+                : 'Match introuvable ou erreur de chargement.'}
+            </p>
             <div className="mt-4">
               <Button variant="outline" size="sm" onClick={() => refetch()}>
-                Réessayer
+                {locale === 'en' ? 'Retry' : 'Réessayer'}
               </Button>
             </div>
           </CardContent>
@@ -117,6 +145,24 @@ export function MatchViewPage() {
       {data.privacy_warning && (
         <div className="px-6 pt-4">
           <PrivacyBanner warning={data.privacy_warning} />
+        </div>
+      )}
+
+      {/* RC6 — bandeau "sync incomplet" : le match existe mais des sections
+          critiques sont vides (parser highlight expirée, sync partiel, etc.).
+          Le match reste rendu normalement, on signale juste la dégradation. */}
+      {data.is_partial && data.partial_reasons && data.partial_reasons.length > 0 && (
+        <div className="px-6 pt-4">
+          <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+            <p className="font-medium text-warning-foreground">
+              {locale === 'en'
+                ? 'Partial sync — some sections may be unavailable'
+                : 'Synchronisation incomplète — certaines sections peuvent manquer'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {data.partial_reasons.map((r) => translatePartialReason(r, locale)).join(' · ')}
+            </p>
+          </div>
         </div>
       )}
 

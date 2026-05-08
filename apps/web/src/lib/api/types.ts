@@ -2122,6 +2122,14 @@ export interface MatchHighlightEvent {
   event_time_ms: number | null
   event_type: string
   actor_xuid: string | null
+  /**
+   * Gamertag déjà résolu côté backend via `v_gamertag_lookup`
+   * (bots → "343 Bot N", cascade alias/participants/raw fallback).
+   * Préférer ce champ sur `actor_xuid` pour l'affichage. Optionnel : absent
+   * du JSON quand le backend tourne sur une version pré-RC6, ou null si
+   * l'xuid est totalement orphelin (jamais en DB).
+   */
+  actor_gamertag?: string | null
   target_xuid: string | null
   weapon_id: number | null
 }
@@ -2343,6 +2351,20 @@ export interface MatchViewResponse {
   radar?: MatchViewRadarSeries[]
   /** Sprint 54-B : avertissement privacy */
   privacy_warning?: MatchPrivacyWarning | null
+  /**
+   * RC6 — true quand le match a son `match_registry` peuplé mais qu'au moins
+   * une source secondaire critique est vide (scoreboard / events / stats /
+   * medals). Le 404 strict reste pour les match_id totalement absents en DB.
+   * Le front affiche un bandeau dégradé au lieu de l'écran d'erreur.
+   */
+  is_partial?: boolean
+  /**
+   * Codes stables des raisons de la partialité. Utilisés pour traduire en
+   * messages i18n côté front (« sync incomplet », « film expiré », etc.).
+   * Codes possibles : "scoreboard_empty", "events_empty",
+   * "player_stats_empty", "medals_empty".
+   */
+  partial_reasons?: string[]
 }
 
 /** Navigation prev/next entre matchs adjacents d'un joueur (ordre chronologique). */
