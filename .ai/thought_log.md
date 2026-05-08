@@ -1,4 +1,30 @@
 
+## [2026-05-08] Explorer mode Joueur — refonte en briefing reprenant les 7 KPIs de MatchEncountersTable
+
+**Statut** : Complété
+
+**Décision technique** : Le user voulait reprendre les colonnes du tableau `MatchEncountersTable` de la page match-view (calculs + représentation) et les afficher dans Explorer mode Joueur sous forme de briefing (1 conteneur, pas un tableau — 1 cible = 1 ligne logique). Le bloc actuel "3 KPI cards + tableau historique commun" est entièrement remplacé.
+
+**6 KPIs repris** (la colonne "Rôle" allié/ennemi du tableau original ne s'applique pas hors d'un match courant) :
+1. Joueur — gamertag + badges narratifs (NarrativeBadge via squadManifest)
+2. Rencontres — `count_together` + breakdown "(A:X | E:Y)" en detail
+3. WR allié — `winrate_as_ally` (formatPercent + percentClass : ≥50% vert, sinon orange)
+4. WR ennemi — `winrate_vs_enemy` (idem)
+5. K/D croisé — `kills_dealt`/`deaths_suffered` (formatKDCross)
+6. Vu pour la dernière fois — `last_seen_at` (formatRelativeFR/EN, ex "il y a 3 j")
+
+**Backend** : `narrative.EncounterStats` était déjà calculé dans `buildEncounterStats` mais jamais exposé dans la réponse Explorer. Nouveau type `domain.ExplorerEncounterStats` (mirror partiel de `MatchEncounterRow`), helper `convertEncounterStatsToExplorer` qui projette les champs (ally/enemy counts, winrates, K/D croisé, last_seen). Ajout dans `ExplorerPlayerQueryResponse.EncounterStats`. Aucune nouvelle requête SQL — les données existaient déjà.
+
+**Frontend** : nouveau composant `apps/web/src/features/explorer/ExplorerEncounterBriefing.tsx` (~250L). Helpers `formatPercent`/`percentClass`/`formatRelativeFR/EN`/`formatKDCross` copiés à l'identique de `MatchEncountersTable.tsx` (cohérence de représentation 100%). Wrapper carte rounded + barre titre (style aligné `MatchEncountersTable`). `KpiCard` interne style SessionBriefing : label uppercase muted + valeur xl bold + detail muted. Grille responsive 2/3/5 colonnes selon viewport. Bouton "Face-à-face" intégré dans le header de la carte. 6 nouvelles clés i18n FR/EN (`explorer.encounter.{title, empty, encounters, wr_ally, wr_enemy, kd_cross, last_seen}`).
+
+**Cleanup ExplorerPage** : suppression des imports/vars/fonctions désormais inutilisés — `Badge`, `NarrativeBadge`, `EncounterBadges`, `tokenVar`, `MatchEncounterBadge`/`SquadManifestKey`/`SemanticToken`/`squadManifest`, `numberLocale`, `playerPage`/`setPlayerPage`, `totalPages`, `useNavigateToMatch`/`filterContextToMatchFilterSpec` (tout ce qui supportait l'ancien tableau historique commun + sa pagination).
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/...` tous verts. `tsc -b` OK, `eslint src/features/explorer` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché), `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — export CSV + maxPageSize 200→10000 (limite "200 matchs" résolue)
 
 **Statut** : Complété

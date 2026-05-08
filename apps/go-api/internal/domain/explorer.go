@@ -36,18 +36,42 @@ type CommonMatchRow struct {
 	KDA           float64   `json:"kda"`
 }
 
+// ExplorerEncounterStats : stats agrégées du couple (player_courant, target),
+// mirror partiel de MatchEncounterRow (mêmes 7 colonnes que le tableau
+// MatchEncountersTable de la page match-view, sans `is_ally` car pas de match
+// courant en Explorer).
+type ExplorerEncounterStats struct {
+	// CountTogether = nombre de matchs joués ensemble (alliés + ennemis).
+	CountTogether int `json:"count_together"`
+	// AllyCount = matchs en tant qu'alliés. Nil si calcul indisponible.
+	AllyCount *int `json:"ally_count,omitempty"`
+	// EnemyCount = matchs en tant qu'ennemis. Nil si calcul indisponible.
+	EnemyCount *int `json:"enemy_count,omitempty"`
+	// WinrateAsAlly = ratio victoires en tant qu'allié (0..1). Nil si AllyCount=0.
+	WinrateAsAlly *float64 `json:"winrate_as_ally,omitempty"`
+	// WinrateVsEnemy = ratio victoires en tant qu'ennemi (0..1). Nil si EnemyCount=0.
+	WinrateVsEnemy *float64 `json:"winrate_vs_enemy,omitempty"`
+	// KillsDealt = kills par moi sur la cible (toutes occurrences).
+	KillsDealt *int `json:"kills_dealt,omitempty"`
+	// DeathsSuffered = morts subies par moi causées par la cible.
+	DeathsSuffered *int `json:"deaths_suffered,omitempty"`
+	// LastSeenAt = date du dernier match commun (toutes occurrences).
+	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
+}
+
 // ExplorerPlayerQueryResponse : réponse de la requête player-query.
 type ExplorerPlayerQueryResponse struct {
-	TargetGamertag string                `json:"target_gamertag"`
-	TargetXUID     string                `json:"target_xuid"`
-	CommonMatches  []CommonMatchRow      `json:"common_matches"`
-	Badges         []MatchEncounterBadge `json:"badges,omitempty"`
-	Total          int                   `json:"total"`       // items sur la page courante
-	TotalCount     int                   `json:"total_count"` // total tous matchs confondus
-	WinsTogether   int                   `json:"wins_together"`
-	LossesTogether int                   `json:"losses_together"`
-	Page           int                   `json:"page"`
-	PageSize       int                   `json:"page_size"`
+	TargetGamertag string                  `json:"target_gamertag"`
+	TargetXUID     string                  `json:"target_xuid"`
+	CommonMatches  []CommonMatchRow        `json:"common_matches"`
+	Badges         []MatchEncounterBadge   `json:"badges,omitempty"`
+	EncounterStats *ExplorerEncounterStats `json:"encounter_stats,omitempty"`
+	Total          int                     `json:"total"`       // items sur la page courante
+	TotalCount     int                     `json:"total_count"` // total tous matchs confondus
+	WinsTogether   int                     `json:"wins_together"`
+	LossesTogether int                     `json:"losses_together"`
+	Page           int                     `json:"page"`
+	PageSize       int                     `json:"page_size"`
 }
 
 // KillerVictimAggregate : kills croisés agrégés entre deux joueurs.

@@ -2,6 +2,13 @@
 // Source : apps/web/src/lib/i18n/manifests/explorer.toml
 
 export const explorerManifest = {
+  "explorer.encounter.empty": { fr: "Aucune rencontre antérieure avec ce joueur.", en: "No prior encounters with this player." },
+  "explorer.encounter.encounters": { fr: "Rencontres", en: "Encounters" },
+  "explorer.encounter.kd_cross": { fr: "ratio F/D croisé", en: "Cross K/D" },
+  "explorer.encounter.last_seen": { fr: "Vu pour la dernière fois", en: "Last seen" },
+  "explorer.encounter.title": { fr: "Historique des rencontres", en: "Encounter history" },
+  "explorer.encounter.wr_ally": { fr: "Taux de victoire allié", en: "WR as ally" },
+  "explorer.encounter.wr_enemy": { fr: "Taux de victoire ennemi", en: "WR as enemy" },
   "explorer.filters.context": { fr: "Contexte", en: "Context" },
   "explorer.filters.context_all": { fr: "Tous", en: "All" },
   "explorer.filters.context_solo": { fr: "Solo", en: "Solo" },

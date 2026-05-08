@@ -1042,11 +1042,26 @@ export interface MatchEncounterBadge {
   detail?: Record<string, unknown>
 }
 
+/** Stats agrégées du couple (player_courant, target). Mirror partiel de
+ *  MatchEncounterRow — les 7 colonnes du tableau MatchEncountersTable
+ *  (sans is_ally car pas de match courant en Explorer). */
+export interface ExplorerEncounterStats {
+  count_together: number
+  ally_count?: number | null
+  enemy_count?: number | null
+  winrate_as_ally?: number | null
+  winrate_vs_enemy?: number | null
+  kills_dealt?: number | null
+  deaths_suffered?: number | null
+  last_seen_at?: string | null
+}
+
 export interface ExplorerPlayerQueryResponse {
   target_gamertag: string
   target_xuid: string
   common_matches: ExplorerCommonMatchRow[]
   badges?: MatchEncounterBadge[]
+  encounter_stats?: ExplorerEncounterStats
   total: number
   total_count: number
   wins_together: number

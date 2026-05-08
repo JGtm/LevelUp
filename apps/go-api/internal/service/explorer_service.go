@@ -109,6 +109,7 @@ func (s *ExplorerService) GetCommonMatches(
 	stats := buildEncounterStats(otherXUID, otherGamertag, rawMatches, kv)
 	badges := narrative.ComputeEncounterBadges(stats, totalCount)
 	wins, losses := countWinsLosses(rawMatches)
+	encounterStats := convertEncounterStatsToExplorer(stats, totalCount)
 
 	slog.DebugContext(ctx, "explorer_common_matches",
 		"xuid", s.xuid, "other_xuid", otherXUID,
@@ -119,6 +120,7 @@ func (s *ExplorerService) GetCommonMatches(
 		TargetXUID:     otherXUID,
 		CommonMatches:  rows,
 		Badges:         convertEncounterBadges(badges),
+		EncounterStats: encounterStats,
 		Total:          len(rows),
 		TotalCount:     totalCount,
 		WinsTogether:   wins,
@@ -126,6 +128,28 @@ func (s *ExplorerService) GetCommonMatches(
 		Page:           page,
 		PageSize:       pageSize,
 	}, nil
+}
+
+// convertEncounterStatsToExplorer projette narrative.EncounterStats → domain.ExplorerEncounterStats.
+// Les compteurs ally/enemy et K/D croisés sont retournés en pointeurs pour
+// distinguer "absent" de "zéro" (cohérent avec MatchEncounterRow JSON).
+func convertEncounterStatsToExplorer(s narrative.EncounterStats, totalCount int) *domain.ExplorerEncounterStats {
+	if totalCount == 0 {
+		return nil
+	}
+	ally, enemy := s.AllyCount, s.EnemyCount
+	kills, deaths := s.KillsDealt, s.DeathsSuffered
+	out := &domain.ExplorerEncounterStats{
+		CountTogether:  totalCount,
+		AllyCount:      &ally,
+		EnemyCount:     &enemy,
+		KillsDealt:     &kills,
+		DeathsSuffered: &deaths,
+		WinrateAsAlly:  s.WinrateAsAlly,
+		WinrateVsEnemy: s.WinrateVsEnemy,
+		LastSeenAt:     s.LastSeen,
+	}
+	return out
 }
 
 // convertCommonMatches convertit les lignes brutes en CommonMatchRow avec
