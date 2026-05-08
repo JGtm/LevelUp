@@ -58,7 +58,6 @@ function buildHighlightCols(t: MatchViewText): ColDef[] {
     { key: 'avg_life_seconds', label: 'Vie moy.', inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
     { key: 'offensive_conversion', label: 'Rendement', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
     { key: 'defensive_resistance', label: 'Résist.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-    { key: 'damage_per_kill', label: 'Dégâts/Frags', inverted: true, fmt: (v) => v.toFixed(0) },
   ]
 }
 
@@ -316,7 +315,6 @@ function TeamScoreboard({
       hlDef('avg_life_seconds'),
       hlDef('offensive_conversion'),
       hlDef('defensive_resistance'),
-      hlDef('damage_per_kill'),
     ]
   }, [highlightCols, expandedXuid, playerSlug, onPlayerClick])
 

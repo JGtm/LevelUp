@@ -74,11 +74,9 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
       state={
         query.isLoading
           ? 'loading'
-          : query.isError
-            ? 'error'
-            : isEmpty
-              ? 'empty'
-              : 'ready'
+          : (query.isError || isEmpty)
+            ? 'empty'
+            : 'ready'
       }
       xFormatter={granularity === 'intra' ? fmtMillisToTimeStamp : undefined}
     />

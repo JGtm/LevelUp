@@ -23,6 +23,7 @@ import type {
 } from '@/lib/api/types'
 import { allPlayersFragDiffSeries, formatBinSeconds } from './_chartSeries'
 import { buildMatchPlayerColors, buildXUIDToGamertagMap } from './colors'
+import type { MatchViewText } from './i18n'
 
 interface Props {
   events: MatchHighlightEvent[]
@@ -30,6 +31,7 @@ interface Props {
   roster?: MatchRosterRow[]
   pairs?: MatchKillerVictimPair[]
   meXUID: string | null
+  t: MatchViewText
   /** Gamertags amis (page Squad) — bonus visuel : couleurs squad pour les amis alliés. */
   friendGamertags?: readonly string[]
 }
@@ -40,6 +42,7 @@ export function MatchFragDiffChart({
   roster,
   pairs,
   meXUID,
+  t,
   friendGamertags,
 }: Props) {
   const xuidToGamertag = buildXUIDToGamertagMap(scoreboard, pairs, roster)
@@ -48,8 +51,8 @@ export function MatchFragDiffChart({
   if (series.length === 0) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          Pas d'events kill/death disponibles pour tracer le différentiel cumulé.
+        <CardContent className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
+          {t.fragDiffNoData}
         </CardContent>
       </Card>
     )
