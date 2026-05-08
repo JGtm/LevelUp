@@ -1047,8 +1047,19 @@ func insertHighlightEventsFromData(
 		_ = MarkEventsLoaded(sharedDB, matchID)
 	}
 
-	_ = InsertKillerVictimPairsFromEvents(sharedDB, matchID, events)
-	_ = MarkKillerVictimLoaded(sharedDB, matchID)
+	// Fix Phase 1bis (mai 2026) : ne marquer MBitKillerVictim que si l'insert
+	// a réellement réussi. Avant, l'insert + le mark étaient appelés
+	// inconditionnellement avec `_ =` qui swallowait l'erreur — bit menteur
+	// dormant, masqué tant que les events n'arrivaient pas (parser cassé).
+	if pairsErr := InsertKillerVictimPairsFromEvents(sharedDB, matchID, events); pairsErr != nil {
+		slog.WarnContext(ctx, "InsertKillerVictimPairs échoué", "match_id", matchID, "err", pairsErr)
+		if result != nil {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("killer_victim_pairs %s: %v", matchID, pairsErr))
+		}
+	} else {
+		_ = MarkKillerVictimLoaded(sharedDB, matchID)
+	}
 
 	return nil
 }
