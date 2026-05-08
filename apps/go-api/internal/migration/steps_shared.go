@@ -621,6 +621,18 @@ func init() {
 		},
 	})
 
+	// 2026-05-08 : v_gamertag_lookup upgrade pour gérer (a) les bots Halo
+	// `bid(N.0)` → "343 Bot N", (b) un fallback xuid raw quand aucun alias
+	// n'est trouvé. La vue retourne désormais une `gamertag` jamais NULL pour
+	// tout xuid présent dans xuid_aliases ou match_participants. Permet aux
+	// callers (Q12, Q21, Q23, Q29, Q32...) de simplifier leurs COALESCE chains.
+	Register(Migration{
+		Name:        "upgrade_v_gamertag_lookup_bots_and_raw_fallback",
+		TargetDB:    TargetShared,
+		Description: "v_gamertag_lookup : ajout du rendu '343 Bot N' + fallback xuid raw (résolveur unifié)",
+		ApplySchema: applyResolutionViews,
+	})
+
 }
 
 // dropColumnIfExists supprime une colonne d'une table si elle existe.
@@ -874,17 +886,36 @@ func applyDropHighlightEventsGamertag(db *sql.DB) error {
 
 // applyResolutionViews crée les vues SQL v6 garanties.
 func applyResolutionViews(db *sql.DB) error {
-	// v_gamertag_lookup
+	// v_gamertag_lookup — résolveur unifié xuid → gamertag display.
+	//
+	// Source unique de vérité utilisée par TOUTES les requêtes qui affichent un
+	// gamertag (scoreboard Q12, encounters Q23, squad Q29/Q32, highlights Q21,
+	// média Q24, compare, etc.). Comportement :
+	//  1. Si xuid est un bot Halo (`bid(N.0)`), retourne "343 Bot N".
+	//  2. Sinon, prend xuid_aliases.gamertag si non vide.
+	//  3. Sinon, fallback sur match_participants.gamertag (max si plusieurs).
+	//  4. Sinon, retourne le xuid brut — gamertag JAMAIS NULL.
+	//
+	// Conséquence : les callers peuvent simplifier `COALESCE(vg.gamertag, ...)` en
+	// `vg.gamertag` direct (le LEFT JOIN couvre quand même le cas où xuid n'est
+	// dans aucune source de la vue, mais c'est rare — typiquement un xuid orphelin).
 	_, _ = db.Exec(`
 		CREATE OR REPLACE VIEW v_gamertag_lookup AS
 		SELECT
 			COALESCE(xa.xuid, mp.xuid) AS xuid,
-			COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+			CASE
+				WHEN COALESCE(xa.xuid, mp.xuid) LIKE 'bid(%'
+					THEN '343 Bot ' || regexp_extract(COALESCE(xa.xuid, mp.xuid), 'bid\(([0-9]+)', 1)
+				WHEN xa.gamertag IS NOT NULL AND xa.gamertag != ''
+					THEN xa.gamertag
+				WHEN mp.gamertag IS NOT NULL AND mp.gamertag != ''
+					THEN mp.gamertag
+				ELSE COALESCE(xa.xuid, mp.xuid)
+			END AS gamertag
 		FROM xuid_aliases xa
 		FULL OUTER JOIN (
 			SELECT xuid, MAX(gamertag) AS gamertag
 			FROM match_participants
-			WHERE gamertag IS NOT NULL AND gamertag != ''
 			GROUP BY xuid
 		) mp ON xa.xuid = mp.xuid
 	`)

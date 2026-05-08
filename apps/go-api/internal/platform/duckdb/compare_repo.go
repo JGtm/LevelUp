@@ -27,10 +27,13 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
+	// Résolveur canonique : v_gamertag_lookup (bots + xuid_aliases shared +
+	// match_participants) en priorité, fallback global.xuid_aliases pour la
+	// couverture cross-titres, puis '' si vraiment inconnu (sémantique compare).
 	const q = `
 		SELECT
 			mp.xuid,
-			COALESCE(xa.gamertag, mp.gamertag, '') AS gamertag,
+			COALESCE(vg.gamertag, xa.gamertag, '') AS gamertag,
 			COUNT(*)                               AS matches,
 			AVG(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) AS win_rate,
 			AVG(COALESCE(mp.kills, 0) + 0.33 * COALESCE(mp.assists, 0)) /
@@ -43,6 +46,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			AVG(COALESCE(mp.accuracy, 0.0))                      AS accuracy,
 			AVG(COALESCE(mp.damage_dealt, 0.0))                  AS damage_per_game
 		FROM shared.match_participants mp
+		LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = mp.xuid
 		LEFT JOIN global.xuid_aliases xa ON xa.xuid = mp.xuid
 		WHERE mp.xuid = ?
 		GROUP BY mp.xuid, gamertag`
