@@ -1,4 +1,27 @@
 
+## [2026-05-08] Explorer — export CSV + maxPageSize 200→10000 (limite "200 matchs" résolue)
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Limite "200 matchs" levée** : `maxPageSize` Go relevée de 200 → 10000 (`domain/match_history.go:158`). Cause de la limite que voyait le user : le `Validate()` rejetait les requêtes avec `pageSize > 200`, et j'avais demandé `page_size: 200` pour Explorer (cap conservatif). Avec >700 matchs, le user était bloqué à 200. Nouveau cap 10000 = ordre de grandeur plausible historique max d'un joueur très actif. Test `pageSize_trop_grand` ajusté (201 → 10001).
+2. **Export CSV** : tout le mécanisme existait déjà côté backend (`match-history/export?token=...` avec token base64url contenant la requête). Réutilisation directe :
+   - `ExplorerMatchesQueryRequest` étendu avec `IncludeExportHint bool`
+   - `ExplorerMatchesQueryResponse` étendu avec `ExportHint *ExportHint`
+   - Handler Explorer propage `IncludeExportHint` au service match-history et appelle `encodeExportToken(mhReq)` quand demandé (même pattern que `MatchHistoryHandler.Query`)
+   - Response inclut `mhResp.ExportHint` (avec token)
+   - TS types miroir : `include_export_hint?` + `export_hint?: ExportHint`
+   - Frontend : envoie `include_export_hint: true`, bouton `<a download href="${API_BASE}/players/${slug}/pages/match-history/export?token=...">` rendu seulement quand `export_hint?.token` dispo
+3. **Endpoint d'export réutilisé** : pas besoin de nouvelle route Explorer-spécifique. Le token contient toute la `MatchHistoryQueryRequest` (filtres+tri+pagination), donc le même `Export` handler match-history fonctionne pour l'Explorer (qui délègue déjà au même service).
+4. **i18n** : nouvelle clé `explorer.matches.export_csv` FR+EN.
+5. **Bouton stylé** : `<a>` direct (pas de `Button asChild` car le composant Button local ne supporte pas asChild) avec classes alignées `inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted`.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts. `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — bouton Réinitialiser ligne 2 droite + pastille Solo/Escouade match-card
 
 **Statut** : Complété

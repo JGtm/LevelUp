@@ -190,7 +190,8 @@ export function ExplorerPage() {
     playerSlug,
     {
       filters: explorerFilterContext,
-      pagination: { page: 1, page_size: 200 },
+      pagination: { page: 1, page_size: 10000 },
+      include_export_hint: true,
       perf_tiers: perfTiers.size > 0 ? [...perfTiers].map(Number) : undefined,
       skill_tiers: skillTiers.size > 0 ? [...skillTiers] : undefined,
       ranked_context: rankedContext || undefined,
@@ -740,31 +741,43 @@ export function ExplorerPage() {
                 </div>
               ) : matchesQuery.data ? (
                 <>
-                  {/* Barre résultats + tri */}
+                  {/* Barre résultats + tri + export */}
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm text-muted-foreground">
                       {t('explorer.matches.count_label', {
                         n: matchesQuery.data.summary?.total_matches ?? 0,
                       })}
                     </p>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <label className="text-xs text-muted-foreground whitespace-nowrap">
-                        {t('explorer.sort.label')} :
-                      </label>
-                      <select
-                        value={sortKey}
-                        onChange={(e) => setSortKey(e.target.value)}
-                        className="rounded border border-input px-2 py-1 text-xs bg-background"
-                      >
-                        <option value="start_time:desc">{t('explorer.sort.start_time_desc')}</option>
-                        <option value="start_time:asc">{t('explorer.sort.start_time_asc')}</option>
-                        <option value="performance_score_relative:desc">{t('explorer.sort.perf_desc')}</option>
-                        <option value="performance_score_relative:asc">{t('explorer.sort.perf_asc')}</option>
-                        <option value="kda:desc">{t('explorer.sort.kda_desc')}</option>
-                        <option value="kills:desc">{t('explorer.sort.kills_desc')}</option>
-                        <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
-                        <option value="outcome:desc">{t('explorer.sort.outcome')}</option>
-                      </select>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground whitespace-nowrap">
+                          {t('explorer.sort.label')} :
+                        </label>
+                        <select
+                          value={sortKey}
+                          onChange={(e) => setSortKey(e.target.value)}
+                          className="rounded border border-input px-2 py-1 text-xs bg-background"
+                        >
+                          <option value="start_time:desc">{t('explorer.sort.start_time_desc')}</option>
+                          <option value="start_time:asc">{t('explorer.sort.start_time_asc')}</option>
+                          <option value="performance_score_relative:desc">{t('explorer.sort.perf_desc')}</option>
+                          <option value="performance_score_relative:asc">{t('explorer.sort.perf_asc')}</option>
+                          <option value="kda:desc">{t('explorer.sort.kda_desc')}</option>
+                          <option value="kills:desc">{t('explorer.sort.kills_desc')}</option>
+                          <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
+                          <option value="outcome:desc">{t('explorer.sort.outcome')}</option>
+                        </select>
+                      </div>
+                      {matchesQuery.data.export_hint?.token && (
+                        <a
+                          href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
+                          download
+                          title={t('explorer.matches.export_csv')}
+                          className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                        >
+                          {t('explorer.matches.export_csv')}
+                        </a>
+                      )}
                     </div>
                   </div>
 

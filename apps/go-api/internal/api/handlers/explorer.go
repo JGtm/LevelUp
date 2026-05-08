@@ -78,28 +78,36 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 
 	// Délégation au service match-history avec les mêmes filtres/tri/pagination.
 	mhReq := domain.MatchHistoryQueryRequest{
-		Filters:         req.Filters,
-		Pagination:      req.Pagination,
-		SortField:       req.SortField,
-		SortDir:         req.SortDir,
-		PerfTiers:       req.PerfTiers,
-		SkillTiers:      req.SkillTiers,
-		RankedContext:   req.RankedContext,
-		OutcomeFilter:   req.OutcomeFilter,
-		MatchStartDate:  req.MatchStartDate,
-		MatchEndDate:    req.MatchEndDate,
-		ExperienceTypes: req.ExperienceTypes,
-		Playlists:       req.Playlists,
-		MapNames:        req.MapNames,
-		ModeNames:       req.ModeNames,
-		SquadScope:      req.SquadScope,
-		MatchIDSearch:   req.MatchIDSearch,
+		Filters:           req.Filters,
+		Pagination:        req.Pagination,
+		SortField:         req.SortField,
+		SortDir:           req.SortDir,
+		IncludeExportHint: req.IncludeExportHint,
+		PerfTiers:         req.PerfTiers,
+		SkillTiers:        req.SkillTiers,
+		RankedContext:     req.RankedContext,
+		OutcomeFilter:     req.OutcomeFilter,
+		MatchStartDate:    req.MatchStartDate,
+		MatchEndDate:      req.MatchEndDate,
+		ExperienceTypes:   req.ExperienceTypes,
+		Playlists:         req.Playlists,
+		MapNames:          req.MapNames,
+		ModeNames:         req.ModeNames,
+		SquadScope:        req.SquadScope,
+		MatchIDSearch:     req.MatchIDSearch,
 	}
 
 	mhResp, err := mhSvc.GetPage(r.Context(), mhReq)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "explorer_matches_error", err.Error())
 		return
+	}
+
+	// Génération du token d'export si demandé (même mécanisme que MatchHistoryHandler.Query).
+	if req.IncludeExportHint && mhResp.ExportHint != nil {
+		if token, terr := encodeExportToken(mhReq); terr == nil {
+			mhResp.ExportHint.Token = &token
+		}
 	}
 
 	// Projection vers ExplorerMatchesQueryResponse (sous-ensemble de match history).
@@ -151,6 +159,7 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			AvailableRankedContexts:  mhResp.Summary.AvailableRankedContexts,
 			AvailableSquadScopes:     mhResp.Summary.AvailableSquadScopes,
 		},
+		ExportHint: mhResp.ExportHint,
 		Table: domain.ExplorerMatchesTable{
 			Items:      rows,
 			Pagination: mhResp.Table.Pagination,

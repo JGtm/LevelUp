@@ -141,14 +141,14 @@ func TestMatchHistoryQueryRequest_Validate(t *testing.T) {
 		{
 			name: "pageSize trop grand (invalide)",
 			req: domain.MatchHistoryQueryRequest{
-				Pagination: domain.PaginationRequest{Page: 1, PageSize: 201},
+				Pagination: domain.PaginationRequest{Page: 1, PageSize: 10001},
 			},
 			wantErr: true,
 		},
 		{
-			name: "pageSize=200 (limite max valide)",
+			name: "pageSize=10000 (limite max valide)",
 			req: domain.MatchHistoryQueryRequest{
-				Pagination: domain.PaginationRequest{Page: 1, PageSize: 200},
+				Pagination: domain.PaginationRequest{Page: 1, PageSize: 10000},
 			},
 			wantErr: false,
 		},

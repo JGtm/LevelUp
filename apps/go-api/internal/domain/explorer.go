@@ -63,10 +63,11 @@ type KillerVictimAggregate struct {
 // ExplorerMatchesQueryRequest : corps de POST matches-query.
 // Accepte les mêmes filtres que MatchHistoryQueryRequest.
 type ExplorerMatchesQueryRequest struct {
-	Filters    FilterContextInput `json:"filters"`
-	Pagination PaginationRequest  `json:"pagination"`
-	SortField  string             `json:"sort_field"`
-	SortDir    string             `json:"sort_dir"`
+	Filters           FilterContextInput `json:"filters"`
+	Pagination        PaginationRequest  `json:"pagination"`
+	SortField         string             `json:"sort_field"`
+	SortDir           string             `json:"sort_dir"`
+	IncludeExportHint bool               `json:"include_export_hint,omitempty"`
 	// PerfTiers filtre par palier de performance (1=Excellent … 5=Mauvais).
 	// Liste vide = pas de filtre.
 	PerfTiers []int `json:"perf_tiers,omitempty"`
@@ -150,8 +151,9 @@ type ExplorerMatchesTable struct {
 
 // ExplorerMatchesQueryResponse : réponse de POST matches-query.
 type ExplorerMatchesQueryResponse struct {
-	Summary ExplorerMatchesSummary `json:"summary"`
-	Table   ExplorerMatchesTable   `json:"table"`
+	Summary    ExplorerMatchesSummary `json:"summary"`
+	Table      ExplorerMatchesTable   `json:"table"`
+	ExportHint *ExportHint            `json:"export_hint,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

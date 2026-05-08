@@ -418,6 +418,10 @@ en = "KDA"
 fr = "Durée"
 en = "Duration"
 
+[explorer.matches.export_csv]
+fr = "Exporter CSV"
+en = "Export CSV"
+
 [explorer.matches.col_squad]
 fr = "Contexte"
 en = "Context"
