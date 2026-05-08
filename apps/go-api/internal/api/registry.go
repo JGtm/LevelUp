@@ -318,7 +318,8 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
-		WithTitleSlug(pdb.TitleSlug)
+		WithTitleSlug(pdb.TitleSlug).
+		WithMetadataRepo(duckdb.NewMetadataRepo(pdb))
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}

@@ -2251,6 +2251,7 @@ export interface MatchScoreboardRow {
   damage_per_death?: number | null
   expected_kills?: number | null
   expected_deaths?: number | null
+  expected_assists?: number | null
   weapon_kills?: PlayerWeaponKillRow[]
   /** Médailles gagnées par CE joueur dans ce match (expander scoreboard). */
   medals?: PlayerMedalRow[]

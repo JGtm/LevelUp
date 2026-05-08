@@ -62,6 +62,9 @@ func (f *fakeMetadataRepo) UpsertSnapshot(_ context.Context, _ domain.WaypointRe
 func (f *fakeMetadataRepo) GetSnapshot(_ context.Context, _, _ string) (*domain.WaypointResourceSnapshot, error) {
 	return nil, nil
 }
+func (f *fakeMetadataRepo) GetAssistsCoef(_ context.Context, _ string) (float64, float64, error) {
+	return 0, 0, nil
+}
 
 type fakeSeasonProvider struct {
 	fetchCalls   int
