@@ -37,9 +37,11 @@ La formule LUSR/Perf avait été mise à jour dans `analysis/` le 2026-04-20 (co
 
 **Stratégie best-effort** : le chargement des médailles depuis `metaDB` est wrappé dans `loadMedalExploitMapBestEffort` — retourne nil si la DB est inaccessible. LUSR/Perf calcule sans medal_exploit plutôt que de bloquer.
 
-**Résultat** : `go build ./...`, `go vet ./...`, `go test ./...` tous verts. Prêt pour `levelup backfill --all --lusr --perf --force`.
+**Résultat** : `go build ./...`, `go vet ./...`, `go test ./...` tous verts. Backfill exécuté : LUSR 2256 matchs, Perf 2124 matchs, achievements 700 pour 3/4 joueurs.
 
-**Prochaine étape** : lancer le backfill effectif sur les données réelles.
+**Bug détecté post-exécution** : `upsertLUSRRatings` skippait les matchs `existingLUSR` même en mode `force=true` (flag contrôlait le calcul mais pas l'écriture). Fix : passer `existingLUSRForUpsert = make(map[string]bool)` en mode force — CSR protégés, LUSR écrasés via `ON CONFLICT DO UPDATE`.
+
+**Prochaine étape** : vérifier visuellement la page carrière côté frontend.
 
 ---
 

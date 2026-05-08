@@ -99,6 +99,7 @@ export interface MatchViewText {
   antagonistNoData: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
+  scoreboardNoData: string
   teamLabelFmt: (name: string) => string
   teamUnknown: string
   teamNumberedFmt: (n: number) => string
@@ -231,6 +232,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
     antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',
     scoreboardTitle: 'Tableau des scores',
+    scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamUnknown: 'Équipe inconnue',
     teamNumberedFmt: (n) => `Équipe ${n}`,
@@ -357,6 +359,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     fragDiffNoData: 'No combat events recorded for this match.',
     antagonistNoData: 'No duel data available for this match.',
     scoreboardTitle: 'Scoreboard',
+    scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,
     teamUnknown: 'Unknown team',
     teamNumberedFmt: (n) => `Team ${n}`,
