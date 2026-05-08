@@ -28,6 +28,28 @@
 
 **État du backfill** : Code prêt et tests OK (`go test ./internal/sync/... ./internal/api/handlers/...`). Le batch rétroactif n'a pas pu tourner cette session car les tokens Halo sur disque (`watcher_tokens.json`) sont morts (XSTS révoqué côté 343, OAuth refresh expiré 2026-04-21). Prochaine étape : relogger via UI puis lancer soit `/api/v1/backfill/start` soit `go run ./cmd/backfill_all/`.
 
+---
+
+## [2026-05-08] Backfill rétroactif PSA+weapons complété + fixes mode label
+
+**Statut** : Complété
+
+**Backfill exécuté** :
+- `.env.local` contient `SPNKR_OAUTH_REFRESH_TOKEN_*` pour les 3 players → tokens OK via `loadTokensFromPlayerDB`.
+- `cmd/backfill_all -data=../../data -env-file=../../.env.local` lancé sans serveur (DuckDB locks).
+- Résultats : Chocoboflor 85 rows PSA / 25 weapon matches ; JGtm 89 rows PSA ; Madina97294 84 rows PSA.
+
+**Bug découvert pendant le run** : `getXuidToPI` référençait `rank_in_team` dans `match_participants` (renommé `rank`). Tous les player_index étaient 0 → attribution armes potentiellement fausse. Fix : renommer en `rank` + flag `-force-weapons` dans `cmd/backfill_all` (efface weapon_kills + bit 21 → re-run propre). Chocoboflor retraité une 2e fois, proprement.
+
+**Audit post-backfill** :
+- weapon_kills : 62.7% — 0 actionable (<28j sans wk) ✓
+- PSA : Chocoboflor 99.0%, JGtm 97.8%, Madina 98.2% — résidus = matchs DNF/stats privées (normal)
+- match_participants, citations, enrichment : 100% ✓
+
+**Unification mode label** : `analysis.ResolveModeUI(pairName, pairNameFR)` = source unique de vérité pour home tile + match-view header + match history. Supprime `resolveModeNameFR`/`lookupModeNameFR` ad hoc dans match_view_repo. Corrige divergence "Slayer on Streets" visible sur la vue détail.
+
+**Prochaine étape** : Redémarrer le serveur API — toutes les corrections (NaN/Inf, PSA, weapons) sont actives.
+
 **Conclusion** : Plus de whack-a-mole. L'audit donne une vue binaire tout-vert / liste-de-trous. PSA va se peupler tout seul sur les futurs syncs. Le backfill rétroactif est une commande à lancer une fois les tokens frais.
 
 ---
