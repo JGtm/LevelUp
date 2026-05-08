@@ -208,6 +208,33 @@ WHERE is_firefight = TRUE
 
 ---
 
+### Phase 6 — Étendre le garde-fou pour la map `BackfillFlags`
+
+**Effort** : ~30 min (ajouté après livraison Phase 5 sur question utilisateur)
+**Livrable indépendant** : oui
+
+**Contexte** : Le test `TestNoDeadBitDeclaration` (Phase 3) parse les **constantes** `MBit*`/`PBit*`/`PveBit*` mais ignore la map `BackfillFlags map[string]int`. Une key orpheline ajoutée demain ne déclencherait pas le garde-fou.
+
+Trois catégories de keys découvertes :
+- **9 keys héritage Python non consommées en Go** (`medals`, `events`, `skill`, `personal_scores`, `accuracy`, `shots`, `enemy_mmr`, `aliases`, `weapon_kills`) — la detection Go utilise des column/table guards directs, pas la map. Ces bits sont quand même positionnés en DB par l'ancien code Python sur l'historique.
+- **7 keys consommées via `doneGuard()`** (`assets`, `participants`, `participants_scores`, `participants_kda`, `participants_shots`, `participants_damage`, `participants_avg_life`) — le filtre column principal fait le job, le bit est un fast-skip cosmétique tant qu'il n'est pas écrit.
+- **1 key écrite par Phase 2** (`participants` via `MarkParticipantsDone`).
+
+**Fichier modifié** : `internal/sync/bitmask_dead_declarations_test.go`
+
+Ajout de :
+- `TestNoDeadBackfillFlagKey` : extrait les keys via regex sur le bloc `BackfillFlags = map[string]int{...}`, vérifie pour chacune une occurrence de `"key"` dans un `.go` du package (couvre `doneGuard("key", ...)`, `ComputeBackfillMask("key", ...)`, et toute autre référence textuelle). Whitelist explicite des 9 keys héritage avec justification écrite.
+- `extractBackfillFlagsKeys(path)` helper.
+
+**Sanity check** : ajout temporaire d'une key bidon `"this_should_fail_test"` → test fail comme attendu → key retirée → test repasse vert.
+
+**Critère de complétion** :
+- `TestNoDeadBackfillFlagKey` vert
+- `TestNoDeadBitDeclaration` continue de passer (régression)
+- Whitelist documente la raison de chaque exception
+
+---
+
 ### Phase 5 — Vérifs finales + thought_log
 
 **Effort** : ~15 min
