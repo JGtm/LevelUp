@@ -31546,3 +31546,36 @@ Pipeline FR/EN propre de bout en bout, **0 résidu FR en EN**. Tout le travail B
 
 **Conclusion** :
 Batch cohérent : refactor home page vers repositories + fix rate limit global.
+
+---
+
+## [2026-05-08] Fix noms officiels des bots Halo dans v_gamertag_lookup
+
+**Statut** : Complété
+
+**Contexte** : La session précédente avait mis en place `formatGamertag()` côté frontend avec le pattern synthétique "343 Bot N" (ex: `bid(3.0)` → "343 Bot 3"). L'utilisateur a rejeté cette approche : les bots Halo ont des noms officiels (ex: "343 Meowlnir", "343 Ellis") et la solution correcte est côté backend.
+
+**Décision technique** :
+
+1. **Source de vérité** : `src/config.py:BOT_MAP` (branche main Python) — 60 entrées `bid(N.0)` → nom officiel. Porté intégralement en Go dans `analysis/identity.go`.
+
+2. **`analysis/identity.go`** :
+   - Suppression du regex `botDisplayRE` et de la synthèse "343 Bot N".
+   - Ajout de `var botNames map[string]string` avec les 60 noms officiels.
+   - `BotDisplayName(xuid)` : lookup dans la map + tolérance paren manquante (historique API) + fallback xuid brut si inconnu.
+   - Nouveau `BotSQLCase(xuidExpr string) string` : génère une expression SQL `CASE xuidExpr WHEN 'bid(0.0)' THEN '343 Ritzy' ...` triée de façon déterministe. Source unique de vérité partagée entre Go et SQL.
+
+3. **`migration/steps_shared.go`** :
+   - Import `levelup/go-api/internal/analysis`.
+   - `applyResolutionViews` : le CASE bot dans `v_gamertag_lookup` est généré via `analysis.BotSQLCase(xuidExpr)` au lieu du regex dynamique `'343 Bot ' || regexp_extract(...)`. Description migration mise à jour.
+
+4. **Tests** :
+   - `identity_test.go::TestBotDisplayName` : 5 cas mis à jour vers les vrais noms ("343 Ellis", "343 Cream Corn", "343 BF Scrub", "343 Ritzy").
+   - `match_view_repo_meta_test.go::TestGetMatchEvents_ResolvesGamertagViaView` : vue v_gamertag_lookup reconstituée via `analysis.BotSQLCase`, assertion `bid(7.0)` → "343 PardonMy" (plus "343 Bot 7").
+
+**Résultats observés** :
+- `go build ./...` OK
+- `go test ./...` 100% pass
+- `go vet ./...` clean
+
+**Prochaine étape** : au prochain démarrage du serveur, la migration `upgrade_v_gamertag_lookup_bots_and_raw_fallback` recréera la vue avec les noms officiels. Validation visuelle : ouvrir un match avec un bot et vérifier l'affichage dans le scoreboard.

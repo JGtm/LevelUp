@@ -10,8 +10,10 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
+	"levelup/go-api/internal/analysis"
 	titlepkg "levelup/go-api/internal/domain/title"
 )
 
@@ -208,39 +210,43 @@ func TestGetMatchMeta_NoTranslation_ReturnsNil(t *testing.T) {
 // "Premier sang 2535472884034919 · 0:43" au lieu de "Premier sang JGtm · 0:43".
 //
 // Q21 JOIN désormais sur v_gamertag_lookup. Le test crée la vue avec son
-// rendu réel (regexp_extract pour bots + COALESCE alias/participants) et
+// rendu réel (noms officiels bots + COALESCE alias/participants) et
 // vérifie 3 cas :
 //  1. xuid réel dans xuid_aliases → gamertag = "JGtm"
-//  2. bot bid(7.0) → gamertag = "343 Bot 7"
+//  2. bot bid(7.0) → gamertag = "343 PardonMy" (nom officiel)
 //  3. xuid orphelin (pas dans la vue) → gamertag = nil (caller fallback xuid)
 func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
 
 	// Seed shared : tables nécessaires + vue v_gamertag_lookup avec la même
-	// logique que la migration prod (bots + cascade aliases/participants).
+	// logique que la migration prod (noms officiels bots + cascade aliases/participants).
+	xuidExpr := "COALESCE(xa.xuid, mp.xuid)"
+	viewSQL := fmt.Sprintf(`CREATE OR REPLACE VIEW shared.v_gamertag_lookup AS
+			SELECT
+				%s AS xuid,
+				CASE
+					WHEN %s LIKE 'bid(%%'
+						THEN %s
+					WHEN xa.gamertag IS NOT NULL AND xa.gamertag != ''
+						THEN xa.gamertag
+					WHEN mp.gamertag IS NOT NULL AND mp.gamertag != ''
+						THEN mp.gamertag
+					ELSE %s
+				END AS gamertag
+			FROM shared.xuid_aliases xa
+			FULL OUTER JOIN (
+				SELECT xuid, MAX(gamertag) AS gamertag FROM shared.match_participants GROUP BY xuid
+			) mp ON xa.xuid = mp.xuid`,
+		xuidExpr, xuidExpr, analysis.BotSQLCase(xuidExpr), xuidExpr,
+	)
 	for _, q := range []string{
 		`CREATE TABLE shared.highlight_events (
 			match_id VARCHAR, event_type VARCHAR, time_ms BIGINT, xuid VARCHAR, type_hint VARCHAR)`,
 		`CREATE TABLE shared.match_participants (
 			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR)`,
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-		`CREATE OR REPLACE VIEW shared.v_gamertag_lookup AS
-			SELECT
-				COALESCE(xa.xuid, mp.xuid) AS xuid,
-				CASE
-					WHEN COALESCE(xa.xuid, mp.xuid) LIKE 'bid(%'
-						THEN '343 Bot ' || regexp_extract(COALESCE(xa.xuid, mp.xuid), 'bid\(([0-9]+)', 1)
-					WHEN xa.gamertag IS NOT NULL AND xa.gamertag != ''
-						THEN xa.gamertag
-					WHEN mp.gamertag IS NOT NULL AND mp.gamertag != ''
-						THEN mp.gamertag
-					ELSE COALESCE(xa.xuid, mp.xuid)
-				END AS gamertag
-			FROM shared.xuid_aliases xa
-			FULL OUTER JOIN (
-				SELECT xuid, MAX(gamertag) AS gamertag FROM shared.match_participants GROUP BY xuid
-			) mp ON xa.xuid = mp.xuid`,
+		viewSQL,
 	} {
 		if _, err := pdb.Player.Exec(ctx, q); err != nil {
 			t.Fatalf("seed shared: %v\nSQL: %s", err, q)
@@ -270,8 +276,8 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	if events[0].Gamertag == nil || *events[0].Gamertag != "JGtm" {
 		t.Errorf("events[0].Gamertag = %v, want JGtm (xuid_aliases)", events[0].Gamertag)
 	}
-	if events[1].Gamertag == nil || *events[1].Gamertag != "343 Bot 7" {
-		t.Errorf("events[1].Gamertag = %v, want '343 Bot 7' (bot rewriting)", events[1].Gamertag)
+	if events[1].Gamertag == nil || *events[1].Gamertag != "343 PardonMy" {
+		t.Errorf("events[1].Gamertag = %v, want '343 PardonMy' (bid(7.0) → nom officiel)", events[1].Gamertag)
 	}
 	// Orphelin : LEFT JOIN renvoie NULL — le service décidera du fallback (xuid brut)
 	if events[2].Gamertag != nil {

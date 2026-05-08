@@ -33,12 +33,12 @@ func TestBotDisplayName(t *testing.T) {
 		xuid string
 		want string
 	}{
-		{"bid(3.0)", "343 Bot 3"},
-		{"bid(18.0)", "343 Bot 18"},
-		{"bid(35.0)", "343 Bot 35"},
-		{"bid(0.0)", "343 Bot 0"},
-		{"bid(3.0", "343 Bot 3"},                   // paren manquante (API bug)
-		{"bid(WallE-1)", "bid(WallE-1)"},           // pas de numéro → retourne le xuid brut
+		{"bid(3.0)", "343 Ellis"},
+		{"bid(18.0)", "343 Cream Corn"},
+		{"bid(35.0)", "343 BF Scrub"},
+		{"bid(0.0)", "343 Ritzy"},
+		{"bid(3.0", "343 Ellis"},                   // paren manquante (API bug)
+		{"bid(WallE-1)", "bid(WallE-1)"},           // hors map → retourne le xuid brut
 		{"12345678901234567", "12345678901234567"}, // humain → inchangé
 	}
 	for _, tc := range cases {
