@@ -5,18 +5,28 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 )
 
 // writeJSON sérialise v en JSON et l'écrit dans w avec le code HTTP donné.
+// Utilise json.Marshal (buffer complet) avant d'écrire les headers : si la
+// sérialisation échoue (ex. float64 NaN/Inf), renvoie 500 avec un corps JSON
+// valide au lieu d'un 200 avec corps vide (ancien comportement silencieux).
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
+	body, err := json.Marshal(v)
+	if err != nil {
+		slog.Error("writeJSON: marshal failed", "err", err)
+		// Réponse d'erreur inline — pas via writeError pour éviter la récursion.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"code":"encode_error","message":"erreur de sérialisation","retryable":true}` + "\n"))
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		// Le header est déjà envoyé, on ne peut pas changer le status.
-		// On log silencieusement — la connexion est peut-être déjà fermée.
-		_ = err
-	}
+	_, _ = w.Write(body)
+	_, _ = w.Write([]byte("\n"))
 }
 
 // writeJSONCached sérialise v, pose un ETag SHA-256 et retourne 304 si le client est à jour.

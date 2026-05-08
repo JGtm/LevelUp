@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -308,6 +309,21 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 			v := int64(*topWeaponU) //nolint:gosec
 			s.TopWeaponID = &v
 		}
+		// Sanitize : NaN/Inf venant de la DB (ex. 0/0 dans l'API Halo) cause un
+		// échec silencieux de json.Encode → corps HTTP vide. On remplace par nil.
+		s.PersonalScore = sanitizeF64(s.PersonalScore)
+		s.KDA = sanitizeF64(s.KDA)
+		s.Accuracy = sanitizeF64(s.Accuracy)
+		s.TimePlayed = sanitizeF64(s.TimePlayed)
+		s.TeamMMR = sanitizeF64(s.TeamMMR)
+		s.EnemyMMR = sanitizeF64(s.EnemyMMR)
+		s.DamageDealt = sanitizeF64(s.DamageDealt)
+		s.DamageTaken = sanitizeF64(s.DamageTaken)
+		s.AvgLifeSeconds = sanitizeF64(s.AvgLifeSeconds)
+		s.KillsExpected = sanitizeF64(s.KillsExpected)
+		s.DeathsExpected = sanitizeF64(s.DeathsExpected)
+		s.KillsStdDev = sanitizeF64(s.KillsStdDev)
+		s.DeathsStdDev = sanitizeF64(s.DeathsStdDev)
 		results = append(results, s)
 	}
 	if err := rows.Err(); err != nil {
@@ -1100,4 +1116,14 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 		results[i].WeaponLabel = strconv.FormatInt(results[i].WeaponID, 10)
 	}
 	return results, nil
+}
+
+// sanitizeF64 remplace les valeurs NaN/Inf par nil. json.Marshal rejette NaN
+// et +/-Inf (non représentables en JSON), ce qui provoque un corps HTTP vide
+// quand writeJSON ignorait silencieusement l'erreur.
+func sanitizeF64(f *float64) *float64 {
+	if f == nil || math.IsNaN(*f) || math.IsInf(*f, 0) {
+		return nil
+	}
+	return f
 }

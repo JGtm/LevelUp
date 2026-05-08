@@ -1,4 +1,27 @@
 
+## [2026-05-08] Diagnostic matchs plantés + fix navigation bloquée + fix corps HTTP vide
+
+**Statut** : Complété
+
+**Décision technique principale** : Investigation directe DuckDB + trace du code path Go pour deux matchs signalés (`20fcbfe4`, `bc0bdda3`). Deux bugs distincts identifiés et corrigés.
+
+**Bug 1 — UX : navigation bloquée en cas d'erreur**
+- L'état d'erreur de `MatchViewPage` n'incluait ni breadcrumb ni nav bar → l'utilisateur se retrouvait bloqué sur n'importe quelle erreur
+- Fix : `MatchViewPage` inclut maintenant `MatchNavigationBar` + `MatchBreadcrumb` même en cas d'erreur (déjà commité)
+
+**Bug 2 — API : corps HTTP vide (NaN/Inf float64)**
+- Erreur observée côté client : `"JSON.parse: unexpected end of data at line 1 column 1"` → réponse 200 avec corps vide
+- Cause racine : `writeJSON` dans `helpers.go` utilisait `json.NewEncoder(w).Encode(v)` qui streamait directement vers `w`. Si un float64 NaN/Inf est présent dans la réponse, `json.Encode` échoue **après** avoir envoyé les headers HTTP (impossible de changer le status) → corps vide. L'erreur était ignorée silencieusement (`_ = err`).
+- Source des NaN : `match_participants.kda`, `.accuracy`, `.damage_dealt`, etc. peuvent contenir NaN si l'API Halo renvoie 0/0 pour certains participants
+- Fix A — `helpers.go` : `writeJSON` utilise maintenant `json.Marshal` (buffer complet) avant d'écrire les headers. Échec de marshal → 500 avec corps JSON valide au lieu d'un corps vide
+- Fix B — `match_view_repo.go` : sanitisation de tous les champs `*float64` de `ScoreboardRaw` après le scan DuckDB via `sanitizeF64` (remplace NaN/Inf par nil)
+
+**Résultats** : `go build ./...` et `go test ./internal/api/handlers/... ./internal/platform/duckdb/...` passent sans erreur.
+
+**Conclusion** : Les deux matchs retourneront désormais une réponse JSON valide même si des participants ont des stats NaN. La navigation entre matchs reste fonctionnelle en toutes circonstances.
+
+---
+
 ## [2026-05-08] MatchEncountersTable — enrichissement visuel
 
 **Statut** : Complété
