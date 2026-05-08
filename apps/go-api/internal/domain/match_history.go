@@ -151,6 +151,10 @@ type MatchHistoryQueryRequest struct {
 	ModeNames       []string   `json:"mode_names,omitempty"`
 	SquadScope      string     `json:"squad_scope,omitempty"`
 	MatchIDSearch   string     `json:"match_id_search,omitempty"`
+	// MatchIDs : whitelist de match_id à conserver. Si non vide, seules les
+	// rows dont match_id ∈ MatchIDs sont gardées (filtre exact). Utilisé par
+	// l'Explorer mode Joueur pour scoper aux matchs en commun avec une cible.
+	MatchIDs []string `json:"match_ids,omitempty"`
 }
 
 // maxPageSize est la taille de page maximale acceptée.

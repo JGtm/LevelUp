@@ -1015,6 +1015,8 @@ export interface ExplorerMatchesQueryRequest {
   mode_names?: string[]
   squad_scope?: 'solo' | 'squad' | ''
   match_id_search?: string
+  /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
+  match_ids?: string[]
 }
 
 export interface ExplorerPlayerQueryRequest {

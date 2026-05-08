@@ -167,6 +167,45 @@ export function ExplorerPage() {
     target_gamertag: targetGamertag,
   })
 
+  // Mode Joueur : extraction des match_ids communs séparés par rôle
+  // (ally vs enemy) depuis la réponse player-query, pour piloter les 2
+  // tableaux scopés ci-dessous.
+  const allyMatchIds = (playerQuery.data?.common_matches ?? [])
+    .filter((m) => m.were_teammates)
+    .map((m) => m.match_id)
+  const enemyMatchIds = (playerQuery.data?.common_matches ?? [])
+    .filter((m) => !m.were_teammates)
+    .map((m) => m.match_id)
+
+  // Requête tableau "matchs en allié" — réutilise le pipeline matches-query
+  // avec un filtre match_ids (whitelist). Activée uniquement quand on a des
+  // match_ids ET qu'on est en mode Joueur.
+  const allyMatchesQuery = useExplorerMatches(
+    playerSlug,
+    {
+      filters: explorerFilterContext,
+      pagination: { page: 1, page_size: 10000 },
+      sort_field: 'start_time',
+      sort_dir: 'desc',
+      match_ids: allyMatchIds,
+    },
+    filterContextHash,
+    mode === 'player' && allyMatchIds.length > 0,
+  )
+
+  const enemyMatchesQuery = useExplorerMatches(
+    playerSlug,
+    {
+      filters: explorerFilterContext,
+      pagination: { page: 1, page_size: 10000 },
+      sort_field: 'start_time',
+      sort_dir: 'desc',
+      match_ids: enemyMatchIds,
+    },
+    filterContextHash,
+    mode === 'player' && enemyMatchIds.length > 0,
+  )
+
   const summary = matchesQuery.data?.summary
 
   // ─── Options pour les MultiSelectFilter ───────────────────────────────────
@@ -336,27 +375,59 @@ export function ExplorerPage() {
               )}
 
             {targetGamertag && playerQuery.data && (
-              playerQuery.data.encounter_stats ? (
-                <ExplorerEncounterBriefing
-                  gamertag={playerQuery.data.target_gamertag || targetGamertag}
-                  stats={playerQuery.data.encounter_stats}
-                  badges={playerQuery.data.badges}
-                  locale={locale}
-                  onHeadToHead={() => {
-                    prefetchCompare(playerQuery.data.target_gamertag || targetGamertag)
-                    setCompareOpen(true)
-                  }}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="py-4 pt-4">
-                    <EmptyStateNotice
-                      title={t('explorer.player.no_common_matches_title')}
-                      description={t('explorer.player.no_common_matches_description')}
-                    />
-                  </CardContent>
-                </Card>
-              )
+              <>
+                {playerQuery.data.encounter_stats ? (
+                  <ExplorerEncounterBriefing
+                    gamertag={playerQuery.data.target_gamertag || targetGamertag}
+                    stats={playerQuery.data.encounter_stats}
+                    badges={playerQuery.data.badges}
+                    locale={locale}
+                    onHeadToHead={() => {
+                      prefetchCompare(playerQuery.data.target_gamertag || targetGamertag)
+                      setCompareOpen(true)
+                    }}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="py-4 pt-4">
+                      <EmptyStateNotice
+                        title={t('explorer.player.no_common_matches_title')}
+                        description={t('explorer.player.no_common_matches_description')}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Tableau "matchs en allié" — affiché uniquement si on a au moins
+                    un match commun en tant qu'alliés. Pattern team-banner aligné
+                    sur MatchScoreboard (token team-ally). */}
+                {allyMatchIds.length > 0 && allyMatchesQuery.data && (
+                  <ExplorerMatchesTable
+                    rows={allyMatchesQuery.data.table.items}
+                    playerSlug={playerSlug}
+                    teamBanner={{
+                      variant: 'ally',
+                      label: t('explorer.player.table_as_ally', {
+                        gamertag: playerQuery.data.target_gamertag || targetGamertag,
+                      }),
+                    }}
+                  />
+                )}
+
+                {/* Tableau "matchs en ennemi" — token team-enemy. */}
+                {enemyMatchIds.length > 0 && enemyMatchesQuery.data && (
+                  <ExplorerMatchesTable
+                    rows={enemyMatchesQuery.data.table.items}
+                    playerSlug={playerSlug}
+                    teamBanner={{
+                      variant: 'enemy',
+                      label: t('explorer.player.table_as_enemy', {
+                        gamertag: playerQuery.data.target_gamertag || targetGamertag,
+                      }),
+                    }}
+                  />
+                )}
+              </>
             )}
           </div>
         )}

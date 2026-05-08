@@ -110,6 +110,8 @@ type ExplorerMatchesQueryRequest struct {
 	ModeNames       []string   `json:"mode_names,omitempty"`
 	SquadScope      string     `json:"squad_scope,omitempty"`
 	MatchIDSearch   string     `json:"match_id_search,omitempty"`
+	// MatchIDs : whitelist exacte de match_id à conserver (Explorer mode Joueur).
+	MatchIDs []string `json:"match_ids,omitempty"`
 }
 
 // ExplorerMatchesRow : une ligne dans la liste des matchs filtrés (Explorer).

@@ -48,9 +48,20 @@ const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
   minute: '2-digit',
 }
 
+/** Bannière d'équipe affichée en 1ère ligne du thead (variant ally/enemy).
+ *  Reproduit le pattern visuel de MatchScoreboard.tsx (gradient horizontal
+ *  color-mix sur token team-ally / team-enemy, configurable par les réglages
+ *  d'accessibilité du joueur). Utilisé en mode Joueur pour distinguer les
+ *  tableaux "matchs où le cible était allié" vs "ennemi". */
+export interface TeamBanner {
+  variant: 'ally' | 'enemy'
+  label: string
+}
+
 interface Props {
   rows: ExplorerMatchRow[]
   playerSlug: string
+  teamBanner?: TeamBanner
 }
 
 function fmtMmr(v: number | null | undefined): string {
@@ -90,7 +101,7 @@ function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
   }
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -379,11 +390,38 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
   const pageCount = table.getPageCount()
   const showPagination = rows.length > PAGE_SIZE
 
+  // Bannière d'équipe (variant ally/enemy) : pattern aligné sur
+  // features/match-view/MatchScoreboard.tsx — gradient horizontal color-mix
+  // sur token team-ally/team-enemy, configurable via réglages accessibilité.
+  const bannerColCount = table.getAllLeafColumns().length
+  const bannerStyle = teamBanner
+    ? (() => {
+        const teamColor = tokenCssVar(teamBanner.variant === 'ally' ? 'team-ally' : 'team-enemy')
+        return {
+          background: `linear-gradient(90deg, color-mix(in oklab, ${teamColor} 35%, transparent), transparent 88%)`,
+          borderBottom: `2px solid color-mix(in oklab, ${teamColor} 55%, transparent)`,
+          color: `color-mix(in oklab, ${teamColor} 80%, var(--foreground))`,
+        }
+      })()
+    : null
+
   return (
     <div className="space-y-2" data-testid="explorer-matches-table">
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-xs">
           <thead className="bg-muted border-b">
+            {teamBanner && (
+              <tr>
+                <th
+                  colSpan={bannerColCount}
+                  className="px-3 py-2 text-left text-sm font-bold uppercase tracking-wider"
+                  style={bannerStyle ?? undefined}
+                  aria-label={teamBanner.label}
+                >
+                  {teamBanner.label}
+                </th>
+              </tr>
+            )}
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (

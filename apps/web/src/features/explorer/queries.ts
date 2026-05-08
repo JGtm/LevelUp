@@ -15,6 +15,7 @@ export function useExplorerMatches(
   playerSlug: string,
   request: ExplorerMatchesQueryRequest,
   filterHash: string,
+  enabled: boolean = true,
 ) {
   const perfTiers = request.perf_tiers ?? []
   const skillTiers = request.skill_tiers ?? []
@@ -31,6 +32,7 @@ export function useExplorerMatches(
     [...(request.mode_names ?? [])].sort().join(','),
     request.squad_scope ?? '',
     request.match_id_search ?? '',
+    [...(request.match_ids ?? [])].sort().join(','),
   ].join('|')
   return useQuery({
     queryKey: queryKeys.explorer(playerSlug, filterHash, perfTiers, skillTiers, rankedContext, outcomeFilter, sortField, sortDir, matchFiltersKey),
@@ -39,7 +41,7 @@ export function useExplorerMatches(
         `/players/${playerSlug}/pages/explorer/matches-query`,
         request,
       ),
-    enabled: !!playerSlug,
+    enabled: !!playerSlug && enabled,
     staleTime: 2 * 60 * 1000,
     placeholderData: keepPreviousData,
   })
