@@ -330,10 +330,17 @@ func TestIsTeammatesBreak_BothNil(t *testing.T) {
 	}
 }
 
+// TestIsTeammatesBreak_DifferentNoFriendSet : sémantique post-2026-05-08.
+// friendSet=nil signifie maintenant "aucun ami tracké" (mode Friends sans
+// amis configurés). Dans ce cas, les changements de coéquipiers ne doivent
+// PAS casser la session — sinon en matchmaking solo chaque match devient
+// une nouvelle session (bug observé : 98% sessions à 1 match seul). Pour le
+// mode Group explicite (break sur tout changement), le caller utilise une
+// comparaison directe via derefString, sans passer par isTeammatesBreak.
 func TestIsTeammatesBreak_DifferentNoFriendSet(t *testing.T) {
 	a, b := "x1", "x2"
-	if !isTeammatesBreak(&a, &b, nil) {
-		t.Error("different sigs with no friends should break")
+	if isTeammatesBreak(&a, &b, nil) {
+		t.Error("different sigs with no friends tracked should NOT break (cf. fix 2026-05-08)")
 	}
 }
 
