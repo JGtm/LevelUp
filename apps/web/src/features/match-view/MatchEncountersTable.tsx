@@ -32,7 +32,7 @@ import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { Tooltip } from '@/components/ui/tooltip'
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
-import { tokenVar } from '@/lib/accessibility'
+import { tokenVar, tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
 
@@ -116,11 +116,53 @@ function formatKDCross(kills: number | null | undefined, deaths: number | null |
   return `${kills ?? 0}/${deaths ?? 0}`
 }
 
-function kdCrossColor(kills: number | null | undefined, deaths: number | null | undefined): string {
-  if (kills == null || deaths == null) return ''
-  if (kills > deaths) return 'text-success font-bold'
-  if (kills < deaths) return 'text-warning font-bold'
-  return ''
+function formatKDRatio(kills: number | null | undefined, deaths: number | null | undefined): string {
+  if (kills == null || deaths == null) return '—'
+  if (deaths === 0) return kills > 0 ? '∞' : '—'
+  return (kills / deaths).toFixed(2)
+}
+
+function kdRatioColor(kills: number | null | undefined, deaths: number | null | undefined): string | undefined {
+  if (kills == null || deaths == null) return undefined
+  if (deaths === 0) return kills > 0 ? tokenCssVar('outcome-win') : undefined
+  const ratio = kills / deaths
+  if (ratio > 1) return tokenCssVar('outcome-win')
+  if (ratio < 1) return tokenCssVar('outcome-loss')
+  return tokenCssVar('outcome-draw')
+}
+
+function SplitBar({
+  leftCount,
+  rightCount,
+  leftColor,
+  rightColor,
+  leftTooltip,
+  rightTooltip,
+}: {
+  leftCount: number
+  rightCount: number
+  leftColor: string
+  rightColor: string
+  leftTooltip: string
+  rightTooltip: string
+}) {
+  const total = leftCount + rightCount
+  if (total === 0) return <span className="font-mono">—</span>
+  const leftPct = Math.round((leftCount / total) * 100)
+  return (
+    <span className="inline-flex items-center gap-1 font-mono tabular-nums">
+      <Tooltip content={leftTooltip}>
+        <span style={{ color: leftColor }}>{leftCount}</span>
+      </Tooltip>
+      <span className="inline-flex h-2 w-12 border border-border overflow-hidden">
+        <span style={{ width: `${leftPct}%`, backgroundColor: leftColor, opacity: 0.7 }} />
+        <span style={{ flex: 1, backgroundColor: rightColor, opacity: 0.5 }} />
+      </span>
+      <Tooltip content={rightTooltip}>
+        <span style={{ color: rightColor }}>{rightCount}</span>
+      </Tooltip>
+    </span>
+  )
 }
 
 function AllyEnemySplitBar({
@@ -132,24 +174,40 @@ function AllyEnemySplitBar({
   enemyCount: number
   locale: 'fr' | 'en'
 }) {
-  const total = allyCount + enemyCount
-  if (total === 0) return <span className="font-mono">—</span>
-  const allyPct = Math.round((allyCount / total) * 100)
   const ttAlly = locale === 'en' ? `${allyCount} matches as ally` : `${allyCount} matchs en allié`
   const ttEnemy = locale === 'en' ? `${enemyCount} matches as enemy` : `${enemyCount} matchs en ennemi`
   return (
-    <span className="inline-flex items-center gap-1 font-mono tabular-nums">
-      <Tooltip content={ttAlly}>
-        <span className="text-success">{allyCount}</span>
-      </Tooltip>
-      <span className="inline-flex h-2 w-12 border border-border overflow-hidden">
-        <span className="bg-success/60" style={{ width: `${allyPct}%` }} />
-        <span className="bg-destructive/40 flex-1" />
-      </span>
-      <Tooltip content={ttEnemy}>
-        <span className="text-destructive">{enemyCount}</span>
-      </Tooltip>
-    </span>
+    <SplitBar
+      leftCount={allyCount}
+      rightCount={enemyCount}
+      leftColor={tokenCssVar('team-ally')}
+      rightColor={tokenCssVar('team-enemy')}
+      leftTooltip={ttAlly}
+      rightTooltip={ttEnemy}
+    />
+  )
+}
+
+function KDSplitBar({
+  kills,
+  deaths,
+  locale,
+}: {
+  kills: number
+  deaths: number
+  locale: 'fr' | 'en'
+}) {
+  const ttKills = locale === 'en' ? `${kills} kills dealt` : `${kills} frags infligés`
+  const ttDeaths = locale === 'en' ? `${deaths} deaths suffered` : `${deaths} morts subies`
+  return (
+    <SplitBar
+      leftCount={kills}
+      rightCount={deaths}
+      leftColor={tokenCssVar('outcome-win')}
+      rightColor={tokenCssVar('outcome-loss')}
+      leftTooltip={ttKills}
+      rightTooltip={ttDeaths}
+    />
   )
 }
 
@@ -212,6 +270,8 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
             wrAlly: 'WR as ally',
             wrEnemy: 'WR as enemy',
             kdCross: 'Cross K/D',
+            ratio: 'Ratio',
+            ratioTooltip: 'Kill/Death ratio: kills dealt ÷ deaths suffered across all shared matches',
             lastSeen: 'Last seen',
           }
         : {
@@ -225,6 +285,8 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
             wrAlly: 'Taux de victoire allié',
             wrEnemy: 'Taux de victoire ennemi',
             kdCross: 'ratio F/D croisé',
+            ratio: 'Ratio',
+            ratioTooltip: 'Ratio frags/morts : frags infligés ÷ morts subies sur l’ensemble des matchs communs',
             lastSeen: 'Vu pour la dernière fois',
           },
     [locale],
@@ -318,9 +380,25 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
         header: labels.kdCross,
         cell: (ctx) => {
           const r = ctx.row.original
+          if (r.kills_dealt != null && r.deaths_suffered != null) {
+            return <KDSplitBar kills={r.kills_dealt} deaths={r.deaths_suffered} locale={locale} />
+          }
+          return <span className="font-mono">{formatKDCross(r.kills_dealt, r.deaths_suffered)}</span>
+        },
+      },
+      {
+        id: 'ratio',
+        header: () => (
+          <Tooltip content={labels.ratioTooltip}>
+            <span className="cursor-help border-b border-dashed border-current">{labels.ratio}</span>
+          </Tooltip>
+        ),
+        cell: (ctx) => {
+          const r = ctx.row.original
+          const color = kdRatioColor(r.kills_dealt, r.deaths_suffered)
           return (
-            <span className={`font-mono ${kdCrossColor(r.kills_dealt, r.deaths_suffered)}`}>
-              {formatKDCross(r.kills_dealt, r.deaths_suffered)}
+            <span className="font-mono font-bold" style={color ? { color } : undefined}>
+              {formatKDRatio(r.kills_dealt, r.deaths_suffered)}
             </span>
           )
         },
