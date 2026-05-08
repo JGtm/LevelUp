@@ -378,6 +378,26 @@ en = "Rank"
 fr = "ΔRang"
 en = "ΔRank"
 
+[explorer.matches.col_team_mmr]
+fr = "MMR équipe"
+en = "Team MMR"
+
+[explorer.matches.outcome_win]
+fr = "Victoire"
+en = "Win"
+
+[explorer.matches.outcome_loss]
+fr = "Défaite"
+en = "Loss"
+
+[explorer.matches.outcome_draw]
+fr = "Égalité"
+en = "Tie"
+
+[explorer.matches.outcome_dnf]
+fr = "DNF"
+en = "DNF"
+
 # ─── Tableau mode joueur ──────────────────────────────────────────────────────
 
 [explorer.player.col_role]

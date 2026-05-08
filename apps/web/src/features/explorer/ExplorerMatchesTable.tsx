@@ -1,12 +1,16 @@
 /**
- * ExplorerMatchesTable — tableau historique mode "Matchs" de l'Explorer.
+ * ExplorerMatchesTable — tableau historique du mode "Matchs" de l'Explorer.
  *
- * Repris depuis features/squad/SquadMatchHistoryTable.tsx (même TanStack Table v8,
- * même style visuel, même pattern de pagination 20/page). Adapté à ExplorerMatchRow :
- *  - Colonnes : Date | Carte | Playlist | Mode | Résultat | FDA | Perf (color) | ΔPerf | Rang | ΔRang
- *  - Pas de win_rate_hist
- *  - Lignes colorées par outcome (OUTCOME_ROW_BG)
- *  - Clic ligne → /players/$slug/matches/$id avec contexte filterSpec
+ * COPIE STRICTE du pattern visuel de features/squad/SquadMatchHistoryTable.tsx :
+ *  - Mêmes classes Tailwind (rounded-md border, bg-muted thead, hover:bg-primary/10)
+ *  - Outcome rendu en texte coloré via getOutcomeColor (pas de Badge, pas de tinting de ligne)
+ *  - TanStack Table v8, pagination client 20/page, formatDate, useFieldMappings
+ *
+ * Différence vs squad : 4 colonnes additionnelles insérées APRÈS FDA :
+ *  - Perf (color-graded par perf_tier)
+ *  - ΔPerf (signe coloré)
+ *  - Rang (skill_tier_label)
+ *  - ΔRang (delta_mmr coloré via mmrDeltaScale)
  */
 import { useMemo, useState } from 'react'
 import {
@@ -20,10 +24,11 @@ import {
 import type { ExplorerMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { Badge } from '@/components/ui/badge'
 import { tokenVar, tokenCssVar } from '@/lib/accessibility'
 import { mmrDeltaScale } from '@/lib/accessibility/scales'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import { getOutcomeColor } from '@/lib/outcome-color'
+import { formatDate } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -31,24 +36,35 @@ import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 
 const PAGE_SIZE = 20
-
-const OUTCOME_ROW_BG: Record<number, string> = {
-  1: 'bg-info/20',
-  2: 'bg-success/20',
-  3: 'bg-destructive/20',
-  4: 'bg-muted/20',
-}
-
-const OUTCOME_BADGE: Record<number, 'success' | 'destructive' | 'secondary' | 'outline'> = {
-  1: 'secondary',
-  2: 'success',
-  3: 'destructive',
-  4: 'outline',
+const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  month: '2-digit',
+  year: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
 }
 
 interface Props {
   rows: ExplorerMatchRow[]
   playerSlug: string
+}
+
+function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
+  switch (outcome) {
+    case 2:
+      return 'win'
+    case 3:
+      return 'loss'
+    case 1:
+      return 'draw'
+    default:
+      return 'dnf'
+  }
+}
+
+function fmtNumber(v: number | undefined | null, decimals = 1): string {
+  if (v === undefined || v === null || !Number.isFinite(v)) return '-'
+  return v.toFixed(decimals)
 }
 
 export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
@@ -61,7 +77,7 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
   const mapAssets = mappings?.assets?.['map']
   const playlistAssets = mappings?.assets?.['playlist']
   const labelOfMap = (mapUI: string) => mapAssets?.[mapUI]?.label ?? mapUI
-  const labelOfPlaylist = (p?: string) => (p ? (playlistAssets?.[p]?.label ?? p) : '—')
+  const labelOfPlaylist = (p?: string | null) => (p ? (playlistAssets?.[p]?.label ?? p) : '-')
 
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
@@ -75,66 +91,75 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
     })
   }
 
+  // Labels colonnes (i18n)
+  const lblDate = t('explorer.matches.col_date')
+  const lblMap = t('explorer.filters.map')
+  const lblPlaylist = t('explorer.filters.playlist')
+  const lblMode = t('explorer.filters.mode')
+  const lblOutcome = t('explorer.matches.col_outcome')
+  const lblFda = t('explorer.matches.col_fda')
+  const lblPerf = t('explorer.matches.col_perf')
+  const lblDeltaPerf = t('explorer.matches.col_delta_perf')
+  const lblRank = t('explorer.matches.col_rank')
+  const lblDeltaRank = t('explorer.matches.col_delta_rank')
+  const lblTeamMmr = t('explorer.matches.col_team_mmr')
+  const outcomeLabels: Record<'win' | 'loss' | 'draw' | 'dnf', string> = {
+    win: t('explorer.matches.outcome_win'),
+    loss: t('explorer.matches.outcome_loss'),
+    draw: t('explorer.matches.outcome_draw'),
+    dnf: t('explorer.matches.outcome_dnf'),
+  }
+
   const columns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
     () => [
       {
         accessorKey: 'start_time',
-        header: t('explorer.matches.col_date'),
-        cell: (ctx) => {
-          const r = ctx.row.original
-          return (
-            <span className="text-muted-foreground whitespace-nowrap">
-              {r.start_time_label ?? new Date(r.start_time).toLocaleDateString(intlLocale)}
-            </span>
-          )
-        },
+        header: lblDate,
+        cell: (ctx) => formatDate(ctx.getValue<string>(), intlLocale, HISTORY_DATE_OPTS),
       },
       {
         accessorKey: 'map_ui',
-        header: t('explorer.filters.map'),
+        header: lblMap,
         cell: (ctx) => labelOfMap(ctx.getValue<string>()),
       },
       {
         accessorKey: 'playlist_label',
-        header: t('explorer.filters.playlist'),
-        cell: (ctx) => labelOfPlaylist(ctx.getValue<string | undefined>()),
+        header: lblPlaylist,
+        cell: (ctx) => labelOfPlaylist(ctx.getValue<string | null | undefined>()),
       },
       {
         accessorKey: 'mode_ui',
-        header: t('explorer.filters.mode'),
-        cell: (ctx) => ctx.getValue<string | undefined>() ?? '—',
+        header: lblMode,
+        cell: (ctx) => ctx.getValue<string | undefined>() ?? '-',
       },
       {
         accessorKey: 'outcome_code',
-        header: t('explorer.matches.col_outcome'),
+        header: lblOutcome,
         cell: (ctx) => {
-          const r = ctx.row.original
+          const o = ctx.getValue<number>()
+          const key = outcomeKey(o)
           return (
-            <Badge variant={OUTCOME_BADGE[r.outcome_code] ?? 'secondary'}>{r.outcome_label}</Badge>
+            <span style={{ color: getOutcomeColor(o), fontWeight: 600 }}>
+              {outcomeLabels[key]}
+            </span>
           )
         },
       },
       {
         id: 'fda',
-        header: t('explorer.matches.col_fda'),
+        header: lblFda,
         cell: (ctx) => {
           const r = ctx.row.original
-          if (r.kills == null) return <span className="text-muted-foreground">—</span>
-          return (
-            <span className="font-mono text-xs text-muted-foreground">
-              {r.kills}/{r.deaths ?? '?'}/{r.assists ?? '?'}
-            </span>
-          )
+          if (r.kills == null) return '-'
+          return `${r.kills}/${r.deaths ?? 0}/${r.assists ?? 0}`
         },
       },
       {
         accessorKey: 'perf_score',
-        header: t('explorer.matches.col_perf'),
+        header: lblPerf,
         cell: (ctx) => {
           const r = ctx.row.original
-          if (r.perf_score == null || !r.perf_tier) {
-            return <span className="text-muted-foreground text-xs">—</span>
-          }
+          if (r.perf_score == null || !r.perf_tier) return '-'
           return (
             <span
               className="font-semibold tabular-nums"
@@ -147,10 +172,10 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
       },
       {
         accessorKey: 'delta_perf',
-        header: t('explorer.matches.col_delta_perf'),
+        header: lblDeltaPerf,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
-          if (v == null) return <span className="text-muted-foreground">—</span>
+          if (v == null) return '-'
           const color =
             v > 0
               ? tokenVar('perf-tier-1' as SemanticToken)
@@ -158,7 +183,7 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
                 ? tokenVar('perf-tier-5' as SemanticToken)
                 : undefined
           return (
-            <span className="font-mono text-xs" style={{ color }}>
+            <span style={{ color }}>
               {v >= 0 ? '+' : ''}
               {v}
             </span>
@@ -167,28 +192,27 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
       },
       {
         accessorKey: 'skill_tier_label',
-        header: t('explorer.matches.col_rank'),
-        cell: (ctx) => {
-          const v = ctx.getValue<string | null | undefined>()
-          return v ?? <span className="text-muted-foreground">—</span>
-        },
+        header: lblRank,
+        cell: (ctx) => ctx.getValue<string | null | undefined>() ?? '-',
       },
       {
         accessorKey: 'delta_mmr',
-        header: t('explorer.matches.col_delta_rank'),
+        header: lblDeltaRank,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
-          if (v == null) return <span className="text-muted-foreground">—</span>
+          if (v == null) return '-'
           return (
-            <span
-              className="font-mono text-sm"
-              style={{ color: tokenCssVar(mmrDeltaScale(v)) }}
-            >
+            <span style={{ color: tokenCssVar(mmrDeltaScale(v)) }}>
               {v >= 0 ? '+' : ''}
               {v.toFixed(0)}
             </span>
           )
         },
+      },
+      {
+        accessorKey: 'team_mmr',
+        header: lblTeamMmr,
+        cell: (ctx) => fmtNumber(ctx.getValue<number | null | undefined>(), 0),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -219,17 +243,14 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
   const showPagination = rows.length > PAGE_SIZE
 
   return (
-    <div className="space-y-2">
-      <div className="overflow-x-auto rounded-md border border-border bg-card">
+    <div className="space-y-2" data-testid="explorer-matches-table">
+      <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-sm">
           <thead className="bg-muted border-b">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
-                  <th
-                    key={h.id}
-                    className="px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground"
-                  >
+                  <th key={h.id} className="px-3 py-2 text-left whitespace-nowrap">
                     {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                   </th>
                 ))}
@@ -237,36 +258,31 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
             ))}
           </thead>
           <tbody className="divide-y divide-border">
-            {table.getRowModel().rows.map((row) => {
-              const bg = OUTCOME_ROW_BG[row.original.outcome_code] ?? ''
-              return (
-                <tr
-                  key={row.id}
-                  className={`cursor-pointer transition-colors hover:brightness-125 ${bg}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => goToMatch(row.original.match_id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') goToMatch(row.original.match_id)
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              )
-            })}
+            {table.getRowModel().rows.map((row) => (
+              <tr
+                key={row.id}
+                className="cursor-pointer transition-colors hover:bg-primary/10"
+                role="button"
+                tabIndex={0}
+                onClick={() => goToMatch(row.original.match_id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') goToMatch(row.original.match_id)
+                }}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       {showPagination && (
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>
-            {t('explorer.matches.count_label', { n: rows.length })}
-          </span>
+          <span>{t('explorer.matches.count_label', { n: rows.length })}</span>
           <div className="flex items-center gap-2">
             <button
               type="button"
