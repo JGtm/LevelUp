@@ -1,4 +1,24 @@
 
+## [2026-05-08] Explorer — fix tableau : pagination 12→tout, couleurs cassées tokenVar, FDA color, police réduite
+
+**Statut** : Complété
+
+**4 fixes ciblés** :
+
+1. **Pagination 12 matchs** : le filterContext global hérité du shell (FilterOmnibar) restreignait à la session active (souvent 12 matchs). Explorer = vue historique complète, donc on **override** : `filter_mode: 'period'` + `period: { null, null }` + `sessions: { picked: [] }`. On envoie aussi `pagination: { page: 1, page_size: 200 }` (max accepté par `maxPageSize` backend) pour avoir tout en une réponse — la pagination client 20/page d'`ExplorerMatchesTable` gère ensuite l'affichage. Les filtres date/exp/playlist/etc. de l'Explorer (`match_start_date`, `experience_types`...) restent intacts pour piloter le scope.
+
+2. **Couleurs cassées** (bug majeur) : j'utilisais `tokenVar()` au lieu de `tokenCssVar()` pour les `style={{ color: ... }}`. `tokenVar('perf-tier-1')` retourne `'--ac-perf-tier-1'` (le NOM de la var), pas `'var(--ac-perf-tier-1)'`. CSS recevait une string invalide → aucune couleur. Fix : remplacement systématique dans `ExplorerMatchesTable.tsx` (Perf, ΔPerf) et `ExplorerPage.tsx` (swatches MultiSelectFilter pour perf-tier et outcome).
+
+3. **Coloration FDA** : ajout via `kdScale(kda)` (pattern utilisé dans `home/HomeHeroKPIGrid.tsx`, `home/HomeSessionCarousel.tsx`, `match-view/MatchStatCards.tsx`). 3 tiers : ≥1.0 perf-tier-1 (vert), [0,1[ perf-tier-3 (jaune), <0 perf-tier-5 (rouge). Cellule passée en `font-semibold tabular-nums`.
+
+4. **Taille police réduite** : `text-sm` → `text-xs` pour la table, th passé à `text-[11px]`, padding cellules de `px-3 py-2` → `px-2 py-1.5`. Densifie l'affichage qui débordait avec 20 colonnes.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — locale FR : enrichissement à la volée map/mode/playlist (pattern filters_repo)
 
 **Statut** : Complété

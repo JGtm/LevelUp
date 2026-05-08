@@ -28,8 +28,8 @@ import {
 import type { ExplorerMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { tokenVar, tokenCssVar } from '@/lib/accessibility'
-import { mmrDeltaScale } from '@/lib/accessibility/scales'
+import { tokenCssVar } from '@/lib/accessibility'
+import { mmrDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { getOutcomeColor } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
@@ -243,11 +243,18 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
       {
         accessorKey: 'kda',
         header: t('explorer.matches.col_kda'),
-        cell: (ctx) => (
-          <span className="font-mono tabular-nums">
-            {fmtKDA(ctx.getValue<number | null | undefined>())}
-          </span>
-        ),
+        cell: (ctx) => {
+          const v = ctx.getValue<number | null | undefined>()
+          if (v == null) return '-'
+          return (
+            <span
+              className="font-mono tabular-nums font-semibold"
+              style={{ color: tokenCssVar(kdScale(v)) }}
+            >
+              {fmtKDA(v)}
+            </span>
+          )
+        },
       },
       {
         accessorKey: 'score_label',
@@ -276,7 +283,7 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
           return (
             <span
               className="font-semibold tabular-nums"
-              style={{ color: tokenVar(`perf-tier-${r.perf_tier}` as SemanticToken) }}
+              style={{ color: tokenCssVar(`perf-tier-${r.perf_tier}` as SemanticToken) }}
             >
               {r.perf_score}
             </span>
@@ -291,9 +298,9 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
           if (v == null) return '-'
           const color =
             v > 0
-              ? tokenVar('perf-tier-1' as SemanticToken)
+              ? tokenCssVar('perf-tier-1' as SemanticToken)
               : v < 0
-                ? tokenVar('perf-tier-5' as SemanticToken)
+                ? tokenCssVar('perf-tier-5' as SemanticToken)
                 : undefined
           return (
             <span className="font-mono tabular-nums" style={{ color }}>
@@ -362,14 +369,14 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
   return (
     <div className="space-y-2" data-testid="explorer-matches-table">
       <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead className="bg-muted border-b">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
-                    className="px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0"
+                    className="px-2 py-1.5 text-left whitespace-nowrap text-[11px] font-medium text-muted-foreground border-r border-border last:border-r-0"
                   >
                     {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                   </th>
@@ -392,7 +399,7 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className="px-3 py-2 whitespace-nowrap border-r border-border last:border-r-0"
+                    className="px-2 py-1.5 whitespace-nowrap border-r border-border last:border-r-0"
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>

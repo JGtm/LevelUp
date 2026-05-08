@@ -29,7 +29,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { tokenVar } from '@/lib/accessibility'
+import { tokenVar, tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 type SearchMode = 'matches' | 'player'
@@ -162,10 +162,23 @@ export function ExplorerPage() {
   }
 
   // ─── Queries ───────────────────────────────────────────────────────────────
+  // Explorer = vue historique complète. On force period/sessions à vide pour
+  // ignorer la période ou la session active du shell (qui peuvent restreindre
+  // à 12-25 matchs). Les filtres date/exp/playlist/etc. de l'Explorer pilotent
+  // déjà le scope via les inputs natifs ci-dessus.
+  // pageSize=200 = max accepté par maxPageSize backend ; pagination client gère
+  // le découpage 20/page côté UI.
+  const explorerFilterContext = {
+    ...filterContext,
+    filter_mode: 'period' as const,
+    period: { start_date: null, end_date: null },
+    sessions: { picked_sessions: [], gap_minutes: filterContext.sessions?.gap_minutes ?? 120 },
+  }
   const matchesQuery = useExplorerMatches(
     playerSlug,
     {
-      filters: filterContext,
+      filters: explorerFilterContext,
+      pagination: { page: 1, page_size: 200 },
       perf_tiers: perfTiers.size > 0 ? [...perfTiers].map(Number) : undefined,
       skill_tiers: skillTiers.size > 0 ? [...skillTiers] : undefined,
       ranked_context: rankedContext || undefined,
@@ -223,20 +236,20 @@ export function ExplorerPage() {
 
   const perfTierOptions: MultiSelectOption[] = withCounts(
     [
-      { value: '1', label: t('explorer.filters.perf_tier_excellent'), swatch: tokenVar('perf-tier-1' as SemanticToken) },
-      { value: '2', label: t('explorer.filters.perf_tier_bon'), swatch: tokenVar('perf-tier-2' as SemanticToken) },
-      { value: '3', label: t('explorer.filters.perf_tier_correct'), swatch: tokenVar('perf-tier-3' as SemanticToken) },
-      { value: '4', label: t('explorer.filters.perf_tier_faible'), swatch: tokenVar('perf-tier-4' as SemanticToken) },
-      { value: '5', label: t('explorer.filters.perf_tier_mauvais'), swatch: tokenVar('perf-tier-5' as SemanticToken) },
+      { value: '1', label: t('explorer.filters.perf_tier_excellent'), swatch: tokenCssVar('perf-tier-1' as SemanticToken) },
+      { value: '2', label: t('explorer.filters.perf_tier_bon'), swatch: tokenCssVar('perf-tier-2' as SemanticToken) },
+      { value: '3', label: t('explorer.filters.perf_tier_correct'), swatch: tokenCssVar('perf-tier-3' as SemanticToken) },
+      { value: '4', label: t('explorer.filters.perf_tier_faible'), swatch: tokenCssVar('perf-tier-4' as SemanticToken) },
+      { value: '5', label: t('explorer.filters.perf_tier_mauvais'), swatch: tokenCssVar('perf-tier-5' as SemanticToken) },
     ],
     summary?.available_perf_tiers,
   )
 
   const outcomeOptions: MultiSelectOption[] = withCounts(
     [
-      { value: '2', label: t('explorer.filters.outcome_win'), swatch: tokenVar('outcome-win' as SemanticToken) },
-      { value: '3', label: t('explorer.filters.outcome_loss'), swatch: tokenVar('outcome-loss' as SemanticToken) },
-      { value: '1', label: t('explorer.filters.outcome_tie'), swatch: tokenVar('outcome-draw' as SemanticToken) },
+      { value: '2', label: t('explorer.filters.outcome_win'), swatch: tokenCssVar('outcome-win' as SemanticToken) },
+      { value: '3', label: t('explorer.filters.outcome_loss'), swatch: tokenCssVar('outcome-loss' as SemanticToken) },
+      { value: '1', label: t('explorer.filters.outcome_tie'), swatch: tokenCssVar('outcome-draw' as SemanticToken) },
     ],
     summary?.available_outcomes,
   )
