@@ -35,6 +35,7 @@ import { getOutcomeColor } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
+import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -62,6 +63,10 @@ interface Props {
   rows: ExplorerMatchRow[]
   playerSlug: string
   teamBanner?: TeamBanner
+  /** Descriptor typé propagé dans le matchNavContext (Phase 2c) — détermine
+   *  le label compact "Matchs <ctx> X/Y" affiché dans la nav bar de la page
+   *  match-view. Si undefined, pas de label spécifique (fallback Q25 global). */
+  contextDescriptor?: ContextDescriptor
 }
 
 function fmtMmr(v: number | null | undefined): string {
@@ -101,7 +106,7 @@ function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
   }
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -119,9 +124,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner }: Props) {
   const goToMatch = (matchId: string) => {
     const filterSpec = filterContextToMatchFilterSpec(filterContext)
     navigateToMatch(matchId, {
-      source: 'history',
+      source: 'explorer',
       matchIds: allMatchIds,
       filterSpec: filterSpec ?? undefined,
+      contextDescriptor,
     })
   }
 
