@@ -1,4 +1,80 @@
 
+## [2026-05-08] Repair de cohérence DB post-régression bascule Go (orphelins, UUIDs résiduels, sessions)
+
+**Statut** : Complété — 5 anomalies résolues, 12 orphelins documentés comme limite Xbox API.
+
+**Décision technique** :
+
+Audit complet via nouvel outil `cmd/diag_db_health` (read-only, tolère locks
+serveur). 7 anomalies remontées, traitées en chaîne :
+
+1. **Sessions à 1 match seul (98% chez JGtm)** : bug
+   `analysis/sessions.go:isTeammatesBreak` — `friendSet=nil` dégradait
+   silencieusement le mode Friends en mode Group → matchmaking solo sans amis
+   trackés cassait à chaque match. Fix : nil = "no friends to track" =
+   pas de break. Mode Group fait sa propre comparaison directe. 2 nouveaux
+   tests + 1 test legacy mis à jour. Post-fix : 12-18% sessions à 1 match
+   (cas légitimes : matchs isolés temporellement).
+
+2. **34 map_name + 87 pair_name UUID bruts en match_registry** : sync n'a pas
+   résolu certains assets. Cleanup migration (UPDATE … SET = NULL) + le
+   resolveAssetName cascade côté MatchViewRepo et home_repo prend le relais
+   à l'affichage via asset_translations. Post-fix : 0/0 UUID bruts.
+
+3. **Banner Spartan ID garbage URLs** chez Chocoboflor + Madina (7 chacun) :
+   migration `cleanup_spartan_customization_garbage_urls` ne tournait qu'à
+   l'ouverture du pool (fonction `ensurePlayerDBMigrations`) → DBs jamais
+   ouvertes depuis le reboot Air n'avaient pas reçu la migration. Fix :
+   `cmd/repair_data_consistency` chantier 1 force l'application sur toutes
+   les player DBs. Post-fix : 0 garbage partout.
+
+4. **84 XUIDs orphelins** (sans alias en xuid_aliases) : 70/84 (83%) datent
+   de la régression bascule Go (post-23 avril 2026). Source de résolution
+   trouvée : `killer_victim_pairs` stocke explicitement `killer_gamertag` et
+   `victim_gamertag` (le parser highlight events les écrit). Cross-match
+   répare 72/84 (86%). Restent 12 vraiment orphelins (jamais kill/death dans
+   les matchs avec events parsés) — nécessitent Microsoft Xbox profile API.
+
+5. **Spartan-banner 502** (cf. session précédente) : confirmé via Grunt API
+   (https://github.com/dend/grunt) que les 4 fonctions
+   `fallbackCustomization*` inventaient des URLs `/hi/Waypoint/file/images/...`
+   inexistantes. Pattern correct : `GET /hi/progression/file/{InventoryPath}`
+   → JSON descriptor → `GET /hi/images/file/{MediaPath}`. Code retiré, log
+   warn ajouté.
+
+6. **`titleSlug=JGtm`** dans seasons_catalog : `Filters()` passait le player
+   slug URL au catalog au lieu de `pdb.TitleSlug`. Fix 1 ligne.
+
+7. **404 commendations halo_5_guardians** : handler ne décodait pas
+   explicitement les `%27` (apostrophe ASCII, "unreserved" RFC 3986).
+   Ajout d'un essai `url.PathUnescape(rawPath)` entre les 2 essais existants.
+
+**Outils nouveaux** :
+- `cmd/diag_db_health` — audit complet multi-DB read-only
+- `cmd/diag_orphan_xuids` — analyse temporelle des orphelins
+- `cmd/repair_data_consistency` — 3 chantiers (player migrations + UUID
+  cleanup + xuid_aliases backfill cross-match) avec mode `--dry-run`
+
+**Résultats observés** : `go build ./...` clean ; `go vet ./...` clean ;
+`go test ./...` zéro échec. Audit final :
+- match_registry UUIDs bruts : 121 → 0
+- Banner garbage : 14 (Choco+Madina) → 0
+- Sessions à 1 match : 98% → 12-18% (normal)
+- xuid_aliases : 15370 → 15442 (+72 résolus via killer_victim_pairs)
+- xuids vraiment orphelins : 84 → 12 (limite Xbox API)
+
+**Restant hors scope** : (a) 12 xuids orphelins → demande implémentation
+Microsoft Xbox profile API ; (b) banner empty pour JGtm/Choco/Madina →
+nécessite re-sync customization avec auth Halo (déclenché depuis l'UI lors
+du prochain sync delta) ; (c) bits menteurs MBitEvents/WeaponKills →
+chantier user (parser fix + replay). Ces 3 limites sont documentées via le
+diag CLI qui les compte à chaque audit.
+
+**Conclusion / prochaine étape** : la base de données est cohérente côté
+résolution noms d'asset, gamertag, sessions, et URLs Spartan ID. Les 12
+orphelins résiduels et les banner empty se résoudront au prochain sync
+delta avec auth (banner) ou via implémentation Xbox API future (orphelins).
+
 ## [2026-05-08] Refonte unifiée résolveurs noms d'asset + xuid→gamertag (match-view, home, scoreboard, highlights)
 
 **Statut** : Complété — code-side livrable, migration s'applique au reboot serveur.
