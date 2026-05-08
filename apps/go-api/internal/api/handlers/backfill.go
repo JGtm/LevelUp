@@ -194,12 +194,54 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 		}
 		_ = engagementCoefsUpdated // exposable dans le résumé final si besoin
 
+		// ── Phase 2.7 : highlight events (Phase 2 plan PLAN_HIGHLIGHT_EVENTS_BACKFILL) ─
+		// Replay du parsing highlight events pour les matchs où :
+		//   - events_loaded=FALSE (= jamais traités, présents dans `missing`)
+		//   - OU si `force_events=true` : events_loaded=TRUE mais cassé
+		//     silencieusement (par l'ancien parser byte-aligné ou le bug
+		//     InsertKVP). Détection via FindBrokenHighlightEventMatches.
+		//
+		// Avant mai 2026, ce type était listé dans warnUnimplemented (no-op).
+		eventsHealed := 0
+		eventsTotal := 0
+		if scope.Events {
+			if tokens == nil {
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.Warnings = append(j.Warnings,
+						"WARN: highlight events ignorés — tokens Halo absents")
+				})
+			} else {
+				evStep := "Backfill highlight events"
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.CurrentStep = &evStep
+				})
+				res, evErr := engine.BackfillEventsForMatches(
+					context.Background(), missing, scope.ForceEvents, nil,
+				)
+				if evErr != nil {
+					h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+						j.Warnings = append(j.Warnings,
+							fmt.Sprintf("WARN events: %v", evErr))
+					})
+				}
+				if res.ParseAnomaly > 0 {
+					h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+						j.Warnings = append(j.Warnings,
+							fmt.Sprintf("events parse_anomaly: %d match(s) avec chunk présent mais 0 events parsés (voir compteur expvar highlight_events_parse_anomaly_total)",
+								res.ParseAnomaly))
+					})
+				}
+				eventsHealed = res.Healed
+				eventsTotal = res.EventsInserted
+			}
+		}
+
 		// ── Phase 3 : types non encore implémentés → avertissement ──────
 		h.warnUnimplemented(job.JobID, scope)
 
 		done := fmt.Sprintf(
-			"Backfill terminé — matchs: %d, weapon kills insérés: %d, engagement: %d",
-			total, weaponsInserted, engagementComputed,
+			"Backfill terminé — matchs: %d, weapon kills insérés: %d, engagement: %d, events healed: %d (%d events insérés)",
+			total, weaponsInserted, engagementComputed, eventsHealed, eventsTotal,
 		)
 		pct100 := 100
 		matchesDone := total
@@ -275,9 +317,8 @@ func (h *BackfillHandler) warnUnimplemented(jobID string, scope *go_sync.SyncSco
 	if scope.Medals {
 		types = append(types, "medals")
 	}
-	if scope.Events {
-		types = append(types, "events")
-	}
+	// `events` retiré ici (mai 2026) — désormais implémenté via Phase 2.7
+	// ci-dessus (engine.BackfillEventsForMatches + ReplayHighlightEvents).
 	if scope.Skill {
 		types = append(types, "skill")
 	}
