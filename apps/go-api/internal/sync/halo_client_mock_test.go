@@ -49,6 +49,20 @@ type mockHaloClient struct {
 	highlightChunkFound bool
 	// getHighlightErr simule une erreur de GetHighlightEventsChunk si non nil.
 	getHighlightErr error
+	// highlightChunkByMatch permet de différencier la réponse par match_id
+	// (prioritaire sur les champs scalaires ci-dessus). Utilisé pour les tests
+	// qui rejouent plusieurs matchs avec des comportements distincts (healed,
+	// no_film, parse_anomaly).
+	highlightChunkByMatch map[string]highlightChunkResponse
+}
+
+// highlightChunkResponse encapsule la réponse complète à GetHighlightEventsChunk
+// pour un match donné — utilisé via highlightChunkByMatch.
+type highlightChunkResponse struct {
+	data    []byte
+	version int
+	found   bool
+	err     error
 }
 
 // GetMatchHistory retourne la liste de matchs configurée ou une erreur simulée.
@@ -105,9 +119,12 @@ func (m *mockHaloClient) GetMatchFilm(_ context.Context, _ string) (map[int]film
 	return nil, false, nil
 }
 
-// GetHighlightEventsChunk retourne le chunk configuré (data + version + found)
-// ou (nil, 0, false, nil) si rien n'a été configuré.
-func (m *mockHaloClient) GetHighlightEventsChunk(_ context.Context, _ string) ([]byte, int, bool, error) {
+// GetHighlightEventsChunk retourne le chunk configuré pour le match.
+// Priorité : highlightChunkByMatch[matchID] > scalaires globaux.
+func (m *mockHaloClient) GetHighlightEventsChunk(_ context.Context, matchID string) ([]byte, int, bool, error) {
+	if r, ok := m.highlightChunkByMatch[matchID]; ok {
+		return r.data, r.version, r.found, r.err
+	}
 	if m.getHighlightErr != nil {
 		return nil, 0, false, m.getHighlightErr
 	}
