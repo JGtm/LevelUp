@@ -40,6 +40,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	citations := fs.Bool("citations", false, "Backfill des citations (match_citations) depuis citation_mappings + medals + stats + awards")
 	lusr := fs.Bool("lusr", false, "Backfill LUSR TrueSkill 2 avec poids medailles v5")
 	perf := fs.Bool("perf", false, "Backfill performance score relatif v5 (off_conv + def_res + medal_exploit)")
+	assistsModel := fs.Bool("assists-model", false, "Calcule le modèle OLS expected_assists par mode (player_assists_model dans stats.duckdb)")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -51,8 +52,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
-	if !*engagementScores && !*citations && !*lusr && !*perf {
-		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr ou --perf)")
+	if !*engagementScores && !*citations && !*lusr && !*perf && !*assistsModel {
+		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --perf ou --assists-model)")
 	}
 
 	ctx := context.Background()
@@ -110,6 +111,16 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 			return err
 		}
 		return runBackfillPerfForPlayer(ctx, cfg, player, *force)
+	}
+	if *assistsModel {
+		if *allPlayers {
+			return runBackfillAllAssistsModel(ctx, cfg, *force)
+		}
+		player, err := loadPlayerSummary(cfg, *gamertag)
+		if err != nil {
+			return err
+		}
+		return runBackfillAssistsModelForPlayer(ctx, cfg, player.Gamertag, player.XUID, *force)
 	}
 	return nil
 }
@@ -370,4 +381,62 @@ func runBackfillPerfForPlayer(ctx context.Context, cfg *config.AppConfig, player
 	}
 	fmt.Printf("backfill perf OK: gamertag=%s updated=%d force=%t\n", player.Gamertag, updated, force)
 	return nil
+}
+
+// ── Assists model backfill ─────────────────────────────────────────────────────
+
+func runBackfillAllAssistsModel(ctx context.Context, cfg *config.AppConfig, force bool) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	total, processed, skipped, failed, totalUpdated := len(players), 0, 0, 0, 0
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+			skipped++
+			fmt.Printf("backfill assists-model SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			continue
+		}
+		updated, runErr := runBackfillAssistsModelOne(ctx, cfg, player.Gamertag, player.XUID, force)
+		if runErr != nil {
+			failed++
+			fmt.Printf("backfill assists-model FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
+			continue
+		}
+		processed++
+		totalUpdated += updated
+		fmt.Printf("backfill assists-model OK: gamertag=%s n_modes=%d\n", player.Gamertag, updated)
+	}
+	fmt.Printf("backfill assists-model batch: total=%d processed=%d skipped=%d failed=%d total_modes=%d\n",
+		total, processed, skipped, failed, totalUpdated)
+	if failed > 0 {
+		return fmt.Errorf("backfill assists-model: %d joueur(s) en echec", failed)
+	}
+	return nil
+}
+
+func runBackfillAssistsModelForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) error {
+	n, err := runBackfillAssistsModelOne(ctx, cfg, gamertag, xuid, force)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("backfill assists-model OK: gamertag=%s n_modes=%d force=%t\n", gamertag, n, force)
+	return nil
+}
+
+func runBackfillAssistsModelOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) (int, error) {
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
+
+	if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
+		return 0, fmt.Errorf("migrations player %s: %w", gamertag, err)
+	}
+
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
+	return engine.RunBackfillAssistsModel(ctx, force)
 }

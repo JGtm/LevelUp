@@ -283,6 +283,12 @@ func WriteSessionAssignments(db *sql.DB, assignments []domain.SessionAssignment)
 
 // InsertWeaponKills remplace les entrées weapon_kills existantes pour (matchID, xuid)
 // par les nouvelles attributions. Opération atomique : DELETE + INSERT batch.
+//
+// weapon_id et reconciled_as sont des UBIGINT (uint64) et sont injectés sous forme
+// de string décimale puis castés dans le SQL : le driver duckdb-go rejette
+// `database/sql` les uint64 dont le bit 63 est set ("values with high bit set are
+// not supported"), or de nombreux IDs filmshell Halo (ex `f408190f42c9679f`)
+// dépassent 2^63. Le cast côté DuckDB préserve la valeur unsigned exacte.
 func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -300,8 +306,8 @@ func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) 
 				match_id, xuid, time_ms, weapon_id, reconciled_as,
 				delta_ms, confidence, attribution_path,
 				swap_detected, delayed_damage, player_index
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			matchID, xuid, r.TimeMS, r.WeaponID, r.ReconciledAs,
+			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?)`,
+			matchID, xuid, r.TimeMS, ubigintArg(r.WeaponID), ubigintArg(r.ReconciledAs),
 			r.DeltaMS, r.Confidence, r.AttributionPath,
 			r.SwapDetected, r.DelayedDamage, r.PlayerIndex,
 		); err != nil {
@@ -309,6 +315,15 @@ func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) 
 		}
 	}
 	return tx.Commit()
+}
+
+// ubigintArg sérialise un *uint64 en string décimale pour CAST(? AS UBIGINT) côté
+// DuckDB, ou nil pour un NULL. Workaround driver duckdb-go (cf. InsertWeaponKills).
+func ubigintArg(p *uint64) any {
+	if p == nil {
+		return nil
+	}
+	return strconv.FormatUint(*p, 10)
 }
 
 // WeaponKillRow est la représentation d'une ligne weapon_kills.

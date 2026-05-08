@@ -1,9 +1,6 @@
 //go:build cgo
 
-// diag_expected_assists — exploration statistique pour approximer expected_assists.
-//
-// L'API officielle fournit kills_expected et deaths_expected mais pas assists_expected.
-// Ce diag analyse les corrélations et régression pour identifier une formule.
+// diag_expected_assists — corrélation exhaustive assists ~ toutes les variables disponibles.
 //
 // Usage : go run -tags cgo ./cmd/diag_expected_assists
 package main
@@ -17,15 +14,7 @@ import (
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
-// validKE = filtre propre excluant NaN/Inf sur kills_expected et deaths_expected
-const validKE = `kills_expected > 0
-		  AND kills_expected < 1e9
-		  AND NOT isnan(kills_expected)
-		  AND deaths_expected > 0
-		  AND deaths_expected < 1e9
-		  AND NOT isnan(deaths_expected)`
-
-func main() {
+func main() { //nolint:funlen
 	const dbPath = "../../data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 
 	connector, err := duckdb.NewConnector(dbPath+"?access_mode=READ_ONLY", nil)
@@ -37,245 +26,195 @@ func main() {
 
 	ctx := context.Background()
 
-	printSection("STATISTIQUES DE BASE (sans NaN)")
+	printSection("CORRÉLATIONS — assists ~ variables combat")
 	runQuery(ctx, db, `
 		SELECT
-			COUNT(*) AS n_rows,
-			ROUND(AVG(assists), 3)          AS avg_assists,
-			ROUND(STDDEV(assists), 3)        AS std_assists,
-			ROUND(AVG(kills_expected), 3)   AS avg_kills_exp,
-			ROUND(AVG(deaths_expected), 3)  AS avg_deaths_exp,
-			ROUND(AVG(kills_stddev), 3)     AS avg_kills_stddev,
-			ROUND(AVG(deaths_stddev), 3)    AS avg_deaths_stddev,
-			ROUND(AVG(team_mmr), 3)         AS avg_team_mmr,
-			ROUND(AVG(enemy_mmr), 3)        AS avg_enemy_mmr
-		FROM match_participants
-		WHERE `+validKE)
-
-	printSection("CORRÉLATIONS avec assists (sans NaN)")
-	runQuery(ctx, db, `
-		SELECT
-			ROUND(corr(assists, kills_expected),  4) AS r_kills_exp,
-			ROUND(corr(assists, deaths_expected), 4) AS r_deaths_exp,
-			ROUND(corr(assists, kills_stddev),    4) AS r_kills_stddev,
-			ROUND(corr(assists, deaths_stddev),   4) AS r_deaths_stddev,
-			ROUND(corr(assists, team_mmr),        4) AS r_team_mmr,
-			ROUND(corr(assists, enemy_mmr),       4) AS r_enemy_mmr,
-			ROUND(corr(assists, kills),           4) AS r_actual_kills,
-			ROUND(corr(assists, deaths),          4) AS r_actual_deaths,
-			ROUND(corr(assists, damage_dealt),    4) AS r_damage_dealt,
-			ROUND(corr(assists, shots_fired),     4) AS r_shots_fired,
+			COUNT(*) AS n,
+			ROUND(corr(assists, kills),               4) AS r_kills,
+			ROUND(corr(assists, deaths),              4) AS r_deaths,
+			ROUND(corr(assists, damage_dealt),        4) AS r_damage_dealt,
+			ROUND(corr(assists, damage_taken),        4) AS r_damage_taken,
 			ROUND(corr(assists, time_played_seconds), 4) AS r_time_played,
-			ROUND(corr(assists, ln(kills_expected)), 4) AS r_ln_kills_exp
+			ROUND(corr(assists, avg_life_seconds),    4) AS r_avg_life,
+			ROUND(corr(assists, personal_score),      4) AS r_personal_score
 		FROM match_participants
-		WHERE `+validKE)
-
-	printSection("RÉGRESSION LINÉAIRE : assists ~ kills_expected")
-	runQuery(ctx, db, `
-		SELECT
-			ROUND(regr_slope(assists, kills_expected),     4) AS slope,
-			ROUND(regr_intercept(assists, kills_expected), 4) AS intercept,
-			ROUND(regr_r2(assists, kills_expected),        4) AS r2
-		FROM match_participants
-		WHERE `+validKE)
-
-	printSection("RÉGRESSION LOG : assists ~ ln(kills_expected)")
-	runQuery(ctx, db, `
-		SELECT
-			ROUND(regr_slope(assists, ln(kills_expected)),     4) AS slope,
-			ROUND(regr_intercept(assists, ln(kills_expected)), 4) AS intercept,
-			ROUND(regr_r2(assists, ln(kills_expected)),        4) AS r2
-		FROM match_participants
-		WHERE `+validKE)
-
-	printSection("RÉGRESSION : assists ~ deaths_expected")
-	runQuery(ctx, db, `
-		SELECT
-			ROUND(regr_slope(assists, deaths_expected),     4) AS slope,
-			ROUND(regr_intercept(assists, deaths_expected), 4) AS intercept,
-			ROUND(regr_r2(assists, deaths_expected),        4) AS r2
-		FROM match_participants
-		WHERE `+validKE)
-
-	printSection("RÉGRESSION : assists ~ kills_stddev")
-	runQuery(ctx, db, `
-		SELECT
-			ROUND(regr_slope(assists, kills_stddev),     4) AS slope,
-			ROUND(regr_intercept(assists, kills_stddev), 4) AS intercept,
-			ROUND(regr_r2(assists, kills_stddev),        4) AS r2
-		FROM match_participants
-		WHERE kills_stddev > 0
-		  AND NOT isnan(kills_stddev)
+		WHERE kills >= 0 AND time_played_seconds > 0
+		  AND damage_dealt >= 0 AND NOT isnan(damage_dealt)
+		  AND damage_taken >= 0 AND NOT isnan(damage_taken)
 	`)
 
-	printSection("RATIO assists/kills_expected par bucket kills_expected")
+	printSection("CORRÉLATIONS — assists ~ tir et kills spécialisés")
 	runQuery(ctx, db, `
-		WITH bucketed AS (
+		SELECT
+			COUNT(*) AS n,
+			ROUND(corr(assists, shots_fired),        4) AS r_shots_fired,
+			ROUND(corr(assists, shots_hit),          4) AS r_shots_hit,
+			ROUND(corr(assists, headshot_kills),     4) AS r_headshot_kills,
+			ROUND(corr(assists, grenade_kills),      4) AS r_grenade_kills,
+			ROUND(corr(assists, melee_kills),        4) AS r_melee_kills,
+			ROUND(corr(assists, power_weapon_kills), 4) AS r_pw_kills,
+			ROUND(corr(assists, max_killing_spree),  4) AS r_spree
+		FROM match_participants
+		WHERE kills >= 0
+		  AND shots_fired > 0 AND NOT isnan(shots_fired)
+		  AND shots_hit  >= 0 AND NOT isnan(shots_hit)
+	`)
+
+	printSection("R² individuels — top variables")
+	runQuery(ctx, db, `
+		SELECT
+			ROUND(regr_r2(assists, kills),               4) AS r2_kills,
+			ROUND(regr_r2(assists, damage_dealt),        4) AS r2_damage,
+			ROUND(regr_r2(assists, personal_score),      4) AS r2_score,
+			ROUND(regr_r2(assists, time_played_seconds), 4) AS r2_time,
+			ROUND(regr_r2(assists, deaths_stddev),       4) AS r2_deaths_std,
+			ROUND(regr_r2(assists, kills_stddev),        4) AS r2_kills_std,
+			ROUND(regr_r2(assists, kills_expected),      4) AS r2_kills_exp
+		FROM match_participants
+		WHERE kills >= 0 AND time_played_seconds > 0
+		  AND damage_dealt >= 0 AND NOT isnan(damage_dealt)
+	`)
+
+	printSection("CORRÉLATIONS ~ match_registry (durée, nb joueurs)")
+	runQuery(ctx, db, `
+		SELECT
+			COUNT(*) AS n,
+			ROUND(corr(p.assists, r.duration_seconds), 4) AS r_duration,
+			ROUND(corr(p.assists, r.player_count),     4) AS r_player_count
+		FROM match_participants p
+		JOIN match_registry r ON r.match_id = p.match_id
+		WHERE p.kills >= 0 AND p.time_played_seconds > 0
+	`)
+
+	printSection("VARIABLES DÉRIVÉES — ratios")
+	runQuery(ctx, db, `
+		SELECT
+			ROUND(corr(assists, kills::FLOAT / NULLIF(time_played_seconds, 0)),           4) AS r_kill_rate,
+			ROUND(corr(assists, assists::FLOAT / NULLIF(kills + assists, 0)),             4) AS r_assist_ratio,
+			ROUND(corr(assists, damage_dealt::FLOAT / NULLIF(time_played_seconds, 0)),    4) AS r_dmg_rate,
+			ROUND(corr(assists, time_played_seconds::FLOAT / NULLIF(avg_life_seconds,0)), 4) AS r_respawns
+		FROM match_participants
+		WHERE kills >= 0 AND time_played_seconds > 0
+		  AND damage_dealt >= 0 AND NOT isnan(damage_dealt)
+		  AND kills + assists > 0
+	`)
+
+	printSection("HISTORIQUE JOUEUR — avg assists prédit match actuel")
+	runQuery(ctx, db, `
+		WITH player_hist AS (
 			SELECT
-				ROUND(kills_expected, 0)::INT AS ke_bucket,
-				assists,
-				kills_expected
+				xuid,
+				AVG(assists)    AS hist_avg_assists,
+				AVG(kills)      AS hist_avg_kills,
+				STDDEV(assists) AS hist_std_assists,
+				COUNT(*)        AS n_matches
 			FROM match_participants
-			WHERE kills_expected BETWEEN 1 AND 30
-			  AND `+validKE+`
+			GROUP BY xuid
 		)
 		SELECT
-			ke_bucket,
 			COUNT(*) AS n,
-			ROUND(AVG(assists), 3)                             AS avg_assists,
-			ROUND(AVG(assists / kills_expected), 4)            AS avg_ratio,
-			ROUND(regr_slope(assists, kills_expected), 4)      AS slope_lin,
-			ROUND(regr_slope(assists, ln(kills_expected)), 4)  AS slope_log
-		FROM bucketed
-		GROUP BY ke_bucket
-		ORDER BY ke_bucket
-		LIMIT 30
+			ROUND(corr(p.assists, h.hist_avg_assists),    4) AS r_hist_avg_assists,
+			ROUND(corr(p.assists, h.hist_avg_kills),      4) AS r_hist_avg_kills,
+			ROUND(corr(p.assists, h.hist_std_assists),    4) AS r_hist_std_assists,
+			ROUND(regr_r2(p.assists, h.hist_avg_assists), 4) AS r2_hist_avg_assists,
+			ROUND(regr_r2(p.assists, h.hist_avg_kills),   4) AS r2_hist_avg_kills
+		FROM match_participants p
+		JOIN player_hist h ON h.xuid = p.xuid
+		WHERE p.kills >= 0 AND h.n_matches >= 10
 	`)
 
-	printSection("STRATIFICATION PAR TAILLE D'ÉQUIPE")
+	printSection("BASELINE CONTEXTUELLE — hist assists par joueur × mode")
 	runQuery(ctx, db, `
-		WITH teams AS (
+		WITH mode_hist AS (
 			SELECT
-				p.match_id,
-				p.team_id,
-				COUNT(*) AS team_size
+				p.xuid,
+				r.game_variant_name AS mode,
+				AVG(p.assists) AS hist_mode_avg,
+				COUNT(*)       AS n_matches
 			FROM match_participants p
-			GROUP BY p.match_id, p.team_id
+			JOIN match_registry r ON r.match_id = p.match_id
+			GROUP BY p.xuid, r.game_variant_name
+		)
+		SELECT
+			COUNT(*) AS n,
+			ROUND(corr(p.assists, h.hist_mode_avg),    4) AS r_hist_mode,
+			ROUND(regr_r2(p.assists, h.hist_mode_avg), 4) AS r2_hist_mode,
+			ROUND(regr_slope(p.assists,     h.hist_mode_avg), 4) AS slope,
+			ROUND(regr_intercept(p.assists, h.hist_mode_avg), 4) AS intercept,
+			ROUND(AVG(ABS(p.assists - h.hist_mode_avg)), 3) AS mae_naive
+		FROM match_participants p
+		JOIN match_registry r ON r.match_id = p.match_id
+		JOIN mode_hist h ON h.xuid = p.xuid AND h.mode = r.game_variant_name
+		WHERE p.kills >= 0 AND h.n_matches >= 5
+	`)
+
+	printSection("MULTIVAR POST-MATCH — combinaisons des meilleurs prédicteurs")
+	runQuery(ctx, db, `
+		SELECT
+			COUNT(*) AS n,
+			-- Paires
+			ROUND(regr_r2(assists, personal_score + shots_hit),          4) AS r2_score_shotshit,
+			ROUND(regr_r2(assists, personal_score + damage_dealt),       4) AS r2_score_dmg,
+			ROUND(regr_r2(assists, personal_score + kills),              4) AS r2_score_kills,
+			ROUND(regr_r2(assists, shots_hit + damage_dealt),            4) AS r2_shotshit_dmg,
+			ROUND(regr_r2(assists, shots_hit + kills),                   4) AS r2_shotshit_kills,
+			-- Triplets
+			ROUND(regr_r2(assists, personal_score + shots_hit + kills),  4) AS r2_score_sh_kills,
+			ROUND(regr_r2(assists, personal_score + shots_hit + damage_dealt), 4) AS r2_score_sh_dmg,
+			ROUND(regr_r2(assists, shots_hit + damage_dealt + kills),    4) AS r2_sh_dmg_kills
+		FROM match_participants
+		WHERE kills >= 0 AND time_played_seconds > 0
+		  AND damage_dealt >= 0 AND NOT isnan(damage_dealt)
+		  AND shots_hit >= 0    AND NOT isnan(shots_hit)
+	`)
+
+	printSection("FORMULE FINALE — personal_score + shots_hit : slope + MAE")
+	runQuery(ctx, db, `
+		WITH coefs AS (
+			SELECT
+				regr_slope(assists,     personal_score + shots_hit) AS s,
+				regr_intercept(assists, personal_score + shots_hit) AS b,
+				regr_r2(assists,        personal_score + shots_hit) AS rr
+			FROM match_participants
+			WHERE kills >= 0
+			  AND shots_hit >= 0 AND NOT isnan(shots_hit)
 		),
-		joined AS (
+		with_pred AS (
 			SELECT
 				p.assists,
-				p.kills_expected,
-				p.deaths_expected,
-				t.team_size
-			FROM match_participants p
-			JOIN teams t ON t.match_id = p.match_id AND t.team_id = p.team_id
-			WHERE `+validKE+`
+				c.s * (p.personal_score + p.shots_hit) + c.b AS pred,
+				c.s AS slope, c.b AS intercept, c.rr AS r2
+			FROM match_participants p, coefs c
+			WHERE p.kills >= 0
+			  AND p.shots_hit >= 0 AND NOT isnan(p.shots_hit)
 		)
 		SELECT
-			team_size,
+			ROUND(ANY_VALUE(slope),     6) AS slope,
+			ROUND(ANY_VALUE(intercept), 4) AS intercept,
+			ROUND(ANY_VALUE(r2),        4) AS r2,
+			ROUND(AVG(ABS(assists - pred)), 3) AS mae,
+			ROUND(AVG(assists), 3)            AS avg_assists,
+			ROUND(STDDEV(assists), 3)         AS std_assists
+		FROM with_pred
+	`)
+
+	printSection("FORMULE PAR MODE (game_variant_name) — personal_score + shots_hit")
+	runQuery(ctx, db, `
+		SELECT
+			r.game_variant_name AS mode,
 			COUNT(*) AS n,
-			ROUND(AVG(assists), 3)                              AS avg_assists,
-			ROUND(AVG(kills_expected), 3)                       AS avg_ke,
-			ROUND(corr(assists, kills_expected), 4)             AS r_ke,
-			ROUND(corr(assists, ln(kills_expected)), 4)         AS r_ln_ke,
-			ROUND(regr_slope(assists, ln(kills_expected)), 4)   AS slope_log,
-			ROUND(regr_r2(assists, ln(kills_expected)), 4)      AS r2_log
-		FROM joined
-		GROUP BY team_size
-		ORDER BY team_size
-	`)
-
-	printSection("RÉSIDU log ~ deaths_expected + kills_stddev")
-	runQuery(ctx, db, `
-		WITH reg AS (
-			SELECT
-				regr_slope(assists, ln(kills_expected))     AS s,
-				regr_intercept(assists, ln(kills_expected)) AS b
-			FROM match_participants
-			WHERE `+validKE+`
-		),
-		residuals AS (
-			SELECT
-				p.assists - (r.s * ln(p.kills_expected) + r.b) AS resid,
-				p.deaths_expected,
-				p.kills_stddev,
-				p.deaths_stddev,
-				p.team_mmr,
-				p.enemy_mmr,
-				p.time_played_seconds
-			FROM match_participants p, reg r
-			WHERE `+validKE+`
-		)
-		SELECT
-			ROUND(corr(resid, deaths_expected),    4) AS r_deaths_exp,
-			ROUND(corr(resid, kills_stddev),       4) AS r_kills_std,
-			ROUND(corr(resid, deaths_stddev),      4) AS r_deaths_std,
-			ROUND(corr(resid, team_mmr),           4) AS r_team_mmr,
-			ROUND(corr(resid, enemy_mmr),          4) AS r_enemy_mmr,
-			ROUND(corr(resid, time_played_seconds),4) AS r_time_played
-		FROM residuals
-	`)
-
-	printSection("FORMULA CANDIDATES : comparaison R² sur données valides")
-	runQuery(ctx, db, `
-		WITH base AS (
-			SELECT
-				assists,
-				kills_expected,
-				deaths_expected,
-				kills_stddev,
-				deaths_stddev,
-				-- Formule 1 : linéaire kills_expected
-				0.218 * kills_expected + 1.4728                                   AS f1,
-				-- Formule 2 : log kills_expected
-				1.7996 * ln(kills_expected) - 0.2745                              AS f2,
-				-- Formule 3 : kills_stddev seul
-				1.03 * kills_stddev - 1.0912                                      AS f3,
-				-- Formule 4 : kills_stddev + deaths_stddev (à coefficients égaux)
-				0.6 * kills_stddev + 0.5 * deaths_stddev - 1.5                   AS f4
-			FROM match_participants
-			WHERE `+validKE+`
-			  AND kills_stddev > 0
-			  AND NOT isnan(kills_stddev)
-		)
-		SELECT
-			ROUND(corr(assists, f1), 4)  AS r_f1_lin_ke,
-			ROUND(corr(assists, f2), 4)  AS r_f2_log_ke,
-			ROUND(corr(assists, f3), 4)  AS r_f3_kstd,
-			ROUND(corr(assists, f4), 4)  AS r_f4_kstd_dstd,
-			ROUND(regr_r2(assists, f1), 4) AS r2_f1,
-			ROUND(regr_r2(assists, f2), 4) AS r2_f2,
-			ROUND(regr_r2(assists, f3), 4) AS r2_f3,
-			ROUND(regr_r2(assists, f4), 4) AS r2_f4
-		FROM base
-	`)
-
-	printSection("RÉGRESSION : assists ~ kills_stddev + deaths_stddev (multivar approx)")
-	runQuery(ctx, db, `
-		SELECT
-			ROUND(regr_slope(assists, kills_stddev + deaths_stddev),     4) AS slope_sum,
-			ROUND(regr_intercept(assists, kills_stddev + deaths_stddev), 4) AS intercept_sum,
-			ROUND(regr_r2(assists, kills_stddev + deaths_stddev),        4) AS r2_sum,
-			ROUND(regr_slope(assists, kills_stddev),                     4) AS slope_ks,
-			ROUND(regr_slope(assists, deaths_stddev),                    4) AS slope_ds
-		FROM match_participants
-		WHERE kills_stddev > 0
-		  AND NOT isnan(kills_stddev)
-		  AND NOT isnan(deaths_stddev)
-	`)
-
-	printSection("STRATIFICATION BUCKET MODE (par team_size)")
-	runQuery(ctx, db, `
-		WITH teams AS (
-			SELECT match_id, team_id, COUNT(*) AS team_size
-			FROM match_participants
-			GROUP BY match_id, team_id
-		),
-		bucketed AS (
-			SELECT
-				p.assists, p.kills_expected, p.kills_stddev, p.deaths_stddev,
-				CASE
-					WHEN t.team_size <= 4  THEN 'arena'
-					WHEN t.team_size <= 8  THEN 'mid'
-					ELSE                        'btb'
-				END AS mode_bucket
-			FROM match_participants p
-			JOIN teams t ON t.match_id = p.match_id AND t.team_id = p.team_id
-			WHERE `+validKE+`
-			  AND kills_stddev > 0 AND NOT isnan(kills_stddev)
-		)
-		SELECT
-			mode_bucket,
-			COUNT(*) AS n,
-			ROUND(AVG(assists), 3)                                           AS avg_assists,
-			ROUND(regr_slope(assists, kills_stddev + deaths_stddev), 4)      AS slope_std_sum,
-			ROUND(regr_intercept(assists, kills_stddev + deaths_stddev), 4)  AS intcpt_std_sum,
-			ROUND(regr_r2(assists, kills_stddev + deaths_stddev), 4)         AS r2_std_sum,
-			ROUND(regr_r2(assists, kills_expected), 4)                       AS r2_ke_lin
-		FROM bucketed
-		GROUP BY mode_bucket
-		ORDER BY mode_bucket
+			ROUND(AVG(p.assists), 3) AS avg_assists,
+			ROUND(regr_slope(p.assists,     p.personal_score + p.shots_hit), 6) AS slope,
+			ROUND(regr_intercept(p.assists, p.personal_score + p.shots_hit), 4) AS intercept,
+			ROUND(regr_r2(p.assists,        p.personal_score + p.shots_hit), 4) AS r2
+		FROM match_participants p
+		JOIN match_registry r ON r.match_id = p.match_id
+		WHERE p.kills >= 0
+		  AND p.shots_hit >= 0 AND NOT isnan(p.shots_hit)
+		GROUP BY r.game_variant_name
+		HAVING COUNT(*) >= 30
+		ORDER BY COUNT(*) DESC
+		LIMIT 20
 	`)
 }
 
@@ -293,11 +232,11 @@ func runQuery(ctx context.Context, db *sql.DB, query string) {
 
 	cols, _ := rows.Columns()
 	for _, c := range cols {
-		fmt.Printf("%-22s", c)
+		fmt.Printf("%-26s", c)
 	}
 	fmt.Println()
 	for range cols {
-		fmt.Printf("%-22s", "----------------------")
+		fmt.Printf("%-26s", "--------------------------")
 	}
 	fmt.Println()
 
@@ -312,7 +251,7 @@ func runQuery(ctx context.Context, db *sql.DB, query string) {
 			continue
 		}
 		for _, v := range vals {
-			fmt.Printf("%-22v", v)
+			fmt.Printf("%-26v", v)
 		}
 		fmt.Println()
 	}

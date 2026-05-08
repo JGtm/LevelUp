@@ -295,6 +295,25 @@ func (r *MetadataRepo) GetSnapshot(ctx context.Context, titleID, resourceKey str
 	return &snap, nil
 }
 
+// GetAssistsCoef retourne slope et intercept pour expected_assists.
+// Priorité au mode exact ; fallback sur '__global__' si absent ou table vide.
+func (r *MetadataRepo) GetAssistsCoef(ctx context.Context, gameVariantName string) (slope, intercept float64, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	const q = `
+		SELECT COALESCE(m.slope, g.slope), COALESCE(m.intercept, g.intercept)
+		FROM assists_model_coefs g
+		LEFT JOIN assists_model_coefs m ON m.game_variant_name = ?
+		WHERE g.game_variant_name = '__global__'`
+
+	row := r.meta.QueryRow(ctx, q, gameVariantName)
+	if scanErr := row.Scan(&slope, &intercept); scanErr != nil {
+		return 0, 0, fmt.Errorf("GetAssistsCoef: %w", scanErr)
+	}
+	return slope, intercept, nil
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 func scanSeasonCalendar(row *sql.Row) (*domain.SeasonCalendar, error) {
