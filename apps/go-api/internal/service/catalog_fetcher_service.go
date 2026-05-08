@@ -41,12 +41,12 @@ func NewCatalogFetcherService(metadataDB *sql.DB, resolver games.Resolver, maxRe
 
 // DrainResult agrège les compteurs après un drain.
 type DrainResult struct {
-	Playlists     int
-	Pairs         int
-	Maps          int
-	GameVariants  int
-	Errors        int
-	Skipped       int // attempts >= maxRetries
+	Playlists    int
+	Pairs        int
+	Maps         int
+	GameVariants int
+	Errors       int
+	Skipped      int // attempts >= maxRetries
 }
 
 // Drain retire les entrées de catalog_fetch_queue, les hydrate via les adapters,

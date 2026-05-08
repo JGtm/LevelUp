@@ -77,7 +77,7 @@ func (r *stubResolver) Data(_ string) (games.TitleDataAdapter, error)         { 
 func (r *stubResolver) Semantic(_ string) (games.TitleSemanticAdapter, error) { return nil, nil }
 func (r *stubResolver) AssetURL(_ string) (games.TitleAssetURLAdapter, error) { return nil, nil }
 func (r *stubResolver) Catalog(_ string) (games.TitleCatalogAdapter, error)   { return r.adapter, nil }
-func (r *stubResolver) DefaultSlug() string                                    { return "halo_infinite" }
+func (r *stubResolver) DefaultSlug() string                                   { return "halo_infinite" }
 
 func setupCatalogTestDB(t *testing.T) *sql.DB {
 	t.Helper()
