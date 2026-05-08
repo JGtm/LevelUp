@@ -86,7 +86,9 @@ func openHonestyShared(t *testing.T, withBrokenKVP bool) *sql.DB {
 			backfill_completed INTEGER DEFAULT 0
 		);
 		CREATE TABLE match_participants (
-			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR
+			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
+			team_mmr DOUBLE,
+			backfill_bits INTEGER DEFAULT 0
 		);
 		CREATE TABLE xuid_aliases (
 			xuid VARCHAR PRIMARY KEY,
@@ -309,6 +311,92 @@ func TestHealEventsForRecentMatches_DoesNotMarkOnParseAnomaly(t *testing.T) {
 		t.Error("events_loaded est TRUE après parse_anomaly — bit menteur réintroduit")
 	}
 }
+
+// ─── Phase 2 PLAN_BITMASKS_AUDIT_FIX — MarkSkillLoaded / MarkParticipantsDone ─
+
+// TestMarkSkillLoaded_FiltersByTeamMMR : MarkSkillLoaded ne positionne
+// PBitTeamMMR que sur les rows où team_mmr IS NOT NULL (pas un mensonge sur
+// un participant skipped par l'API skill).
+func TestMarkSkillLoaded_FiltersByTeamMMR(t *testing.T) {
+	db := openHonestyShared(t, false)
+	if _, err := db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m-skill')`); err != nil {
+		t.Fatal(err)
+	}
+	// 3 participants : 2 avec team_mmr, 1 sans.
+	_, _ = db.Exec(`INSERT INTO match_participants (match_id, xuid, team_mmr) VALUES ('m-skill', 'a', 1500.0)`)
+	_, _ = db.Exec(`INSERT INTO match_participants (match_id, xuid, team_mmr) VALUES ('m-skill', 'b', 1600.0)`)
+	_, _ = db.Exec(`INSERT INTO match_participants (match_id, xuid, team_mmr) VALUES ('m-skill', 'c', NULL)`)
+
+	if err := MarkSkillLoaded(db, "m-skill"); err != nil {
+		t.Fatalf("MarkSkillLoaded: %v", err)
+	}
+
+	// Bits PBit sur les 2 premiers, 0 sur le 3ème.
+	rows, err := db.Query(`SELECT xuid, COALESCE(backfill_bits, 0) FROM match_participants WHERE match_id = 'm-skill' ORDER BY xuid`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	results := map[string]int64{}
+	for rows.Next() {
+		var xuid string
+		var bits int64
+		_ = rows.Scan(&xuid, &bits)
+		results[xuid] = bits
+	}
+	expected := skillBitsCombined
+	if results["a"] != int64(expected) {
+		t.Errorf("a : got bits=%d want %d", results["a"], expected)
+	}
+	if results["b"] != int64(expected) {
+		t.Errorf("b : got bits=%d want %d", results["b"], expected)
+	}
+	if results["c"] != 0 {
+		t.Errorf("c (team_mmr NULL) : devrait rester à 0, got %d", results["c"])
+	}
+
+	// Bit BackfillFlags["skill"]=4 sur match_registry
+	var bf int64
+	_ = db.QueryRow(`SELECT backfill_completed FROM match_registry WHERE match_id = 'm-skill'`).Scan(&bf)
+	if bf&backfillFlagSkill == 0 {
+		t.Errorf("BackfillFlags[skill] non positionné (bf=%d)", bf)
+	}
+}
+
+// TestMarkSkillLoaded_Idempotent : ré-exécution ne change rien (|=).
+func TestMarkSkillLoaded_Idempotent(t *testing.T) {
+	db := openHonestyShared(t, false)
+	if _, err := db.Exec(`INSERT INTO match_registry (match_id, backfill_completed) VALUES ('m-idemp', 4)`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := MarkSkillLoaded(db, "m-idemp"); err != nil {
+		t.Fatalf("MarkSkillLoaded: %v", err)
+	}
+	var bf int64
+	_ = db.QueryRow(`SELECT backfill_completed FROM match_registry WHERE match_id = 'm-idemp'`).Scan(&bf)
+	if bf&backfillFlagSkill == 0 {
+		t.Error("BackfillFlags[skill] perdu après MarkSkillLoaded idempotent")
+	}
+}
+
+// TestMarkParticipantsDone_SetsBit : positionnement standard du bit 1<<9.
+func TestMarkParticipantsDone_SetsBit(t *testing.T) {
+	db := openHonestyShared(t, false)
+	if _, err := db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m-parts')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := MarkParticipantsDone(db, "m-parts"); err != nil {
+		t.Fatalf("MarkParticipantsDone: %v", err)
+	}
+	var bf int64
+	_ = db.QueryRow(`SELECT backfill_completed FROM match_registry WHERE match_id = 'm-parts'`).Scan(&bf)
+	if bf&backfillFlagParticipants == 0 {
+		t.Errorf("BackfillFlags[participants] non positionné (bf=%d)", bf)
+	}
+}
+
+// ─── Phase 1bis (existing) — heal honesty ───
 
 func TestHealEventsForRecentMatches_DoesMarkOnNoFilm(t *testing.T) {
 	db := openHonestyShared(t, false)
