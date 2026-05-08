@@ -45,6 +45,8 @@ var notificationDefaultCategories = []struct {
 	// §6 Squad/Sessions overhaul : flow ami.
 	{"friend_added", true, "inapp"},          // notif sobre, pas de toast
 	{"friend_sync_completed", true, "inapp"}, // récap silencieux post-recompute
+	// 2026-05-08 : audit santé DB périodique → warnings admin.
+	{"data_health_warning", true, "inapp"},
 }
 
 func init() {
