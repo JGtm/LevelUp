@@ -28,8 +28,8 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	defer cancel()
 
 	// Résolveur canonique : v_gamertag_lookup (bots + xuid_aliases shared +
-	// match_participants) en priorité, fallback global.xuid_aliases pour la
-	// couverture cross-titres, puis '' si vraiment inconnu (sémantique compare).
+	// match_participants) en priorité, fallback shared.xuid_aliases pour les
+	// xuid jamais croisés directement, puis '' si vraiment inconnu.
 	const q = `
 		SELECT
 			mp.xuid,
@@ -47,7 +47,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			AVG(COALESCE(mp.damage_dealt, 0.0))                  AS damage_per_game
 		FROM shared.match_participants mp
 		LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = mp.xuid
-		LEFT JOIN global.xuid_aliases xa ON xa.xuid = mp.xuid
+		LEFT JOIN shared.xuid_aliases xa ON xa.xuid = mp.xuid
 		WHERE mp.xuid = ?
 		GROUP BY mp.xuid, gamertag`
 
@@ -84,7 +84,7 @@ func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string,
 	defer cancel()
 
 	const q = `
-		SELECT xuid FROM global.xuid_aliases
+		SELECT xuid FROM shared.xuid_aliases
 		WHERE lower(gamertag) = lower(?)
 		LIMIT 1`
 

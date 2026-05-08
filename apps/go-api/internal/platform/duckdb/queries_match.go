@@ -409,7 +409,7 @@ WITH this_match AS (
            FALSE AS is_bot
     FROM shared.match_participants p
     LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
-    LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
+    LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
@@ -454,7 +454,7 @@ WITH this_match AS (
            COALESCE(vg.gamertag, p.gamertag, xa.gamertag, p.xuid) AS gamertag
     FROM shared.match_participants p
     LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
-    LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
+    LEFT JOIN shared.xuid_aliases xa ON p.xuid = xa.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : pas d'historique cross-match pertinent (cf. Q23).

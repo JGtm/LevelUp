@@ -421,8 +421,8 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 		args = append(args, id)
 	}
 	// Résolveur canonique : v_gamertag_lookup gère bots + cascade
-	// xuid_aliases / match_participants. global.xuid_aliases ajoute la
-	// couverture cross-titres Microsoft (profils Xbox global).
+	// xuid_aliases / match_participants. shared.xuid_aliases couvre les
+	// participants jamais croisés directement par le joueur courant.
 	q := `
 		SELECT mp.match_id,
 			COALESCE(vg.gamertag, va.gamertag, mp.xuid) AS gamertag,
@@ -430,7 +430,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 			(mp.xuid = ?) AS is_self
 		FROM shared.match_participants mp
 		LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = mp.xuid
-		LEFT JOIN global.xuid_aliases va ON va.xuid = mp.xuid
+		LEFT JOIN shared.xuid_aliases va ON va.xuid = mp.xuid
 		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)
 		ORDER BY mp.match_id, mp.team_id, mp.gamertag
 	`
