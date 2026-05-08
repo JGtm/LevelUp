@@ -104,6 +104,8 @@ export const explorerManifest = {
   "explorer.player.prev_page": { fr: "Précédent", en: "Previous" },
   "explorer.player.recent_common_matches": { fr: "Matchs communs récents", en: "Recent shared matches" },
   "explorer.player.searching": { fr: "Recherche en cours…", en: "Searching…" },
+  "explorer.player.table_as_ally": { fr: "{gamertag} en allié", en: "{gamertag} as ally" },
+  "explorer.player.table_as_enemy": { fr: "{gamertag} en ennemi", en: "{gamertag} as enemy" },
   "explorer.player.were_enemies": { fr: "Adversaires", en: "Enemies" },
   "explorer.player.were_teammates": { fr: "Coéquipiers", en: "Teammates" },
   "explorer.player.wins_together": { fr: "Victoires", en: "Wins" },

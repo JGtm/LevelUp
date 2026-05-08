@@ -489,3 +489,11 @@ en = "Role"
 [explorer.player.col_kd]
 fr = "K/D"
 en = "K/D"
+
+[explorer.player.table_as_ally]
+fr = "{gamertag} en allié"
+en = "{gamertag} as ally"
+
+[explorer.player.table_as_enemy]
+fr = "{gamertag} en ennemi"
+en = "{gamertag} as enemy"

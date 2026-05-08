@@ -468,8 +468,28 @@ func filterByExplorerMatchIDSearch(rows []domain.MatchHistoryRawRow, query strin
 	return out
 }
 
+// filterByMatchIDsWhitelist garde uniquement les rows dont MatchID ∈ ids.
+// Liste vide = pas de filtre. Comparaison exacte (case-sensitive).
+func filterByMatchIDsWhitelist(rows []domain.MatchHistoryRawRow, ids []string) []domain.MatchHistoryRawRow {
+	if len(ids) == 0 {
+		return rows
+	}
+	set := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		set[id] = struct{}{}
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if _, ok := set[r.MatchID]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // applyExplorerMatchFilters applique tous les filtres Explorer additionnels en séquence.
 func applyExplorerMatchFilters(rows []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.MatchHistoryRawRow {
+	rows = filterByMatchIDsWhitelist(rows, req.MatchIDs)
 	rows = filterByExplorerDateRange(rows, req.MatchStartDate, req.MatchEndDate)
 	rows = filterByExplorerExperienceTypes(rows, req.ExperienceTypes)
 	rows = filterByExplorerPlaylists(rows, req.Playlists)

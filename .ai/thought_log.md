@@ -1,4 +1,28 @@
 
+## [2026-05-08] Explorer mode Joueur — 2 tableaux ally/enemy sous le briefing avec bandeau team-color
+
+**Statut** : Complété
+
+**Décision technique** : Ajouter sous le `ExplorerEncounterBriefing` deux tableaux empilés (allié au-dessus, ennemi en-dessous) reproduisant **exactement** le même rendu que `ExplorerMatchesTable` du mode Matchs, scopés respectivement aux matchs où le joueur cherché était dans la même équipe / équipe adverse. Distinction visuelle façon scoreboard (`MatchScoreboard.tsx:341-344`) : bandeau `<th colSpan>` en 1ère ligne du thead avec gradient horizontal `color-mix(in oklab, var(--ac-team-ally|enemy) 35%, transparent)`, configurable via réglages accessibilité.
+
+**Backend** : nouveau filtre `MatchIDs []string` (whitelist exacte) dans `MatchHistoryQueryRequest` et `ExplorerMatchesQueryRequest`. Helper `filterByMatchIDsWhitelist` ajouté en tête de `applyExplorerMatchFilters` (~12 lignes). Réutilise tout le pipeline existant — pas de nouvelle requête SQL, pas de duplication de service. Handler Explorer propage le champ `MatchIDs`.
+
+**Frontend** : (1) `useExplorerMatches` reçoit un 4ème argument `enabled?: boolean = true` pour permettre de skipper les requêtes des 2 nouveaux tableaux quand on n'est pas en mode Joueur ou que la liste de match_ids est vide. `match_ids` ajouté dans le `matchFiltersKey` pour différencier les 3 instances de la query côté TanStack. (2) `ExplorerMatchesTable` reçoit un nouveau prop `teamBanner?: { variant: 'ally' | 'enemy', label: string }` qui rend une `<tr>` colspan en 1ère ligne du thead avec le gradient/bordure/couleur du pattern scoreboard. (3) `ExplorerPage` mode Joueur : extraction des match_ids ally/enemy depuis `playerQuery.data.common_matches.were_teammates`, 2 `useExplorerMatches` conditionnels (skip via `enabled` flag), 2 `<ExplorerMatchesTable teamBanner={...} />` insérés en `<>...</>` après le briefing.
+
+**Layout final mode Joueur** :
+1. GamertagSearchInput
+2. EncounterBriefing (6 KPIs MatchEncountersTable)
+3. Tableau "{gamertag} en allié" (bandeau team-ally) — si matchs alliés > 0
+4. Tableau "{gamertag} en ennemi" (bandeau team-enemy) — si matchs ennemis > 0
+
+**i18n** : 2 nouvelles clés FR/EN `explorer.player.table_as_ally` (`{gamertag} en allié` / `{gamertag} as ally`) et `table_as_enemy`.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts. `tsc -b` OK, `eslint src/features/explorer` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer mode Joueur — refonte en briefing reprenant les 7 KPIs de MatchEncountersTable
 
 **Statut** : Complété

@@ -95,6 +95,7 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 		ModeNames:         req.ModeNames,
 		SquadScope:        req.SquadScope,
 		MatchIDSearch:     req.MatchIDSearch,
+		MatchIDs:          req.MatchIDs,
 	}
 
 	mhResp, err := mhSvc.GetPage(r.Context(), mhReq)
