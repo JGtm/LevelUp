@@ -43,7 +43,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
   const bullyRow = pickMax(enemyDuels, (n) => n.i_killed)
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <NemesisCard
         title={t.combatNemesisTitle}
         accentToken="outcome-loss"

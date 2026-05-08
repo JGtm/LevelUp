@@ -405,11 +405,10 @@ LIMIT 1`
 const Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, xa.gamertag, p.xuid) AS gamertag,
+           COALESCE(vg.gamertag, p.xuid) AS gamertag,
            FALSE AS is_bot
     FROM shared.match_participants p
     LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
-    LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
@@ -451,10 +450,9 @@ ORDER BY count_together DESC`
 const Q23bMatchEncounterStats = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, p.gamertag, xa.gamertag, p.xuid) AS gamertag
+           COALESCE(vg.gamertag, p.gamertag, p.xuid) AS gamertag
     FROM shared.match_participants p
     LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
-    LEFT JOIN global.xuid_aliases xa ON p.xuid = xa.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : pas d'historique cross-match pertinent (cf. Q23).

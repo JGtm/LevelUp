@@ -92,50 +92,46 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
   })
 
   return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
-          Faits marquants
-        </span>
-        {sorted.map((b) => {
-          const player = b.player_xuid ? xuidIndex.get(b.player_xuid) : undefined
-          const rawGamertag = player?.gamertag ?? null
-          // Si le gamertag est en fait un xuid brut (alias absent de toute la
-          // chaîne de résolution backend), on ne l'affiche pas — préférable à
-          // un "Premier sang 2535472884034919".
-          const gamertag = isRawXUID(rawGamertag) ? null : rawGamertag
-          const isMe = player?.is_me ?? false
-          const time = formatTime(b.time_ms)
-          const description = badgeI18n.badgeDescriptions[b.key]
-          const hasSubline = gamertag !== null || time !== null
-          return (
-            <Tooltip
-              key={`${b.key}:${b.player_xuid ?? 'anon'}`}
-              content={description ? <span>{description}</span> : null}
+    <div className="flex h-full flex-col gap-2">
+      {sorted.map((b) => {
+        const player = b.player_xuid ? xuidIndex.get(b.player_xuid) : undefined
+        const rawGamertag = player?.gamertag ?? null
+        // Si le gamertag est en fait un xuid brut (alias absent de toute la
+        // chaîne de résolution backend), on ne l'affiche pas — préférable à
+        // un "Premier sang 2535472884034919".
+        const gamertag = isRawXUID(rawGamertag) ? null : rawGamertag
+        const isMe = player?.is_me ?? false
+        const time = formatTime(b.time_ms)
+        const description = badgeI18n.badgeDescriptions[b.key]
+        const hasSubline = gamertag !== null || time !== null
+        return (
+          <Tooltip
+            key={`${b.key}:${b.player_xuid ?? 'anon'}`}
+            content={description ? <span>{description}</span> : null}
+            className="w-full flex-1"
+          >
+            <div
+              className={`flex h-full w-full flex-col justify-center gap-0.5 rounded-lg border bg-card px-3 py-2 ${
+                isMe ? 'border-primary/60' : 'border-border'
+              }`}
             >
-              <div
-                className={`flex flex-col gap-0.5 rounded-lg border bg-muted/40 px-3 py-2 ${
-                  isMe ? 'border-primary/60' : 'border-border'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <BadgeIcon badgeKey={b.key} size={14} />
-                  <span className="text-sm font-medium text-foreground leading-none">
-                    {b.label}
-                  </span>
-                </div>
-                {hasSubline && (
-                  <p className="text-xs text-muted-foreground leading-none tabular-nums">
-                    {gamertag ?? ''}
-                    {gamertag && time ? ' · ' : ''}
-                    {time ?? ''}
-                  </p>
-                )}
+              <div className="flex items-center gap-1.5">
+                <BadgeIcon badgeKey={b.key} size={14} />
+                <span className="text-sm font-medium text-foreground leading-none">
+                  {b.label}
+                </span>
               </div>
-            </Tooltip>
-          )
-        })}
-      </div>
+              {hasSubline && (
+                <p className="text-xs text-muted-foreground leading-none tabular-nums">
+                  {gamertag ?? ''}
+                  {gamertag && time ? ' · ' : ''}
+                  {time ?? ''}
+                </p>
+              )}
+            </div>
+          </Tooltip>
+        )
+      })}
     </div>
   )
 }

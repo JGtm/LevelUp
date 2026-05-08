@@ -1,10 +1,4 @@
-/**
- * MatchViewPage — détail d'un match (3 onglets : Résumé, Combat, Équipe).
- *
- * Refonte 2026-05-02 :
- *  - Onglet Combat : chart match_view.09 (K/D cumulés) avec annotation badges.
- *  - Médias : section dédiée en bas de l'onglet Résumé (pas d'onglet séparé).
- */
+/** MatchViewPage — détail d'un match (2 onglets : Général, Détails). */
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
@@ -76,12 +70,11 @@ function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText):
   ].filter((w) => w.kill_count > 0)
 }
 
-type TabId = 'summary' | 'combat' | 'team'
+type TabId = 'summary' | 'details'
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'summary', label: 'Résumé' },
-  { id: 'combat', label: 'Combat' },
-  { id: 'team', label: 'Équipe' },
+  { id: 'summary', label: 'Général' },
+  { id: 'details', label: 'Détails' },
 ]
 
 export function MatchViewPage() {
@@ -90,39 +83,47 @@ export function MatchViewPage() {
     matchId: string
   }
   const [activeTab, setActiveTab] = useState<TabId>('summary')
-  const { data, isPending, isError, refetch } = useMatchView(playerSlug, matchId)
+  const { data, isPending, isError, error, refetch } = useMatchView(playerSlug, matchId)
   const { data: settings } = useSettings()
   const friendGamertags = settings?.friend_gamertags ?? []
   const locale = useAppShellStore((s) => s.locale)
+  const t = MATCH_VIEW_TEXT[locale === 'en' ? 'en' : 'fr']
 
   if (isPending) return null
 
   if (isError || !data) {
-    // 404 strict ou erreur réseau : match totalement absent en DB. Le backend
-    // a déjà séparé ce cas du cas "match présent mais sync partiel" (voir
-    // is_partial ci-dessous). Ici on reste sur l'écran d'erreur full-page.
+    // 404 strict ou erreur réseau. On garde la barre de navigation pour
+    // permettre à l'utilisateur de continuer à naviguer entre les matchs.
     return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">
-              {locale === 'en'
-                ? 'Match not found or load error.'
-                : 'Match introuvable ou erreur de chargement.'}
-            </p>
-            <div className="mt-4">
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                {locale === 'en' ? 'Retry' : 'Réessayer'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col">
+        <MatchBreadcrumb playerSlug={playerSlug} matchLabel={t.mapUnknown} />
+        <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale === 'en' ? 'en' : 'fr'} />
+        <div className="p-6">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="font-medium text-destructive">
+                {locale === 'en'
+                  ? 'Match not found or load error.'
+                  : 'Match introuvable ou erreur de chargement.'}
+              </p>
+              {error && (error as { message?: string }).message && (
+                <p className="mt-1 text-xs text-muted-foreground font-mono">
+                  {(error as { message: string }).message}
+                </p>
+              )}
+              <div className="mt-4">
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  {locale === 'en' ? 'Retry' : 'Réessayer'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   const { header, rank, summary_tab, combat_tab, team_tab, media_tab } = data
-  const t = MATCH_VIEW_TEXT[locale === 'en' ? 'en' : 'fr']
   const matchLabel = buildMatchHeadingStr(header.map_ui, header.mode_ui, locale)
   // Le breadcrumb ajoute la date pour distinguer plusieurs matchs sur la même map/mode
   const breadcrumbLabel = header.start_time_label
@@ -265,32 +266,36 @@ export function MatchViewPage() {
               </div>
             </div>
           </div>
-        ) : activeTab === 'combat' ? (
+        ) : (
           <>
-            <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} />
+            {/* Faits marquants | Frags cumulés */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_1fr]">
+              <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} />
+              <MatchKDCumulChart
+                events={highlightEvents}
+                badges={impactBadges}
+                scoreboard={scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
+            </div>
 
-            <MatchKDCumulChart
-              events={highlightEvents}
-              badges={impactBadges}
-              scoreboard={scoreboard}
-              meXUID={meXUID}
-              t={t}
-            />
-
-            <MatchTugOfWarChart
-              bins={tugOfWar}
-              events={highlightEvents}
-              scoreboard={scoreboard}
-              meXUID={meXUID}
-              t={t}
-            />
-
-            <MatchCadenceChart
-              cadence={combat_tab.cadence}
-              scoreboard={scoreboard}
-              meXUID={meXUID}
-              t={t}
-            />
+            {/* Dominance | Cadence des frags */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <MatchTugOfWarChart
+                bins={tugOfWar}
+                events={highlightEvents}
+                scoreboard={scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
+              <MatchCadenceChart
+                cadence={combat_tab.cadence}
+                scoreboard={scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
+            </div>
 
             <MatchFragDiffChart
               events={highlightEvents}
@@ -302,35 +307,28 @@ export function MatchViewPage() {
               friendGamertags={friendGamertags}
             />
 
-            <MatchNemesisCards
-              nemesis={nemesis}
-              scoreboard={scoreboard}
-              meXUID={meXUID}
-              t={t}
-            />
+            {/* Antagonistes | Némésis + Souffre-douleur */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr] items-start">
+              <MatchAntagonistChart
+                pairs={killerVictim}
+                scoreboard={scoreboard}
+                roster={roster}
+                meXUID={meXUID}
+                t={t}
+                friendGamertags={friendGamertags}
+              />
+              <MatchNemesisCards
+                nemesis={nemesis}
+                scoreboard={scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
+            </div>
 
             <EngagementMatchSection
               playerSlug={playerSlug}
               matchId={matchId}
               granularity="intra"
-            />
-
-            <MatchAntagonistChart
-              pairs={killerVictim}
-              scoreboard={scoreboard}
-              roster={roster}
-              meXUID={meXUID}
-              t={t}
-              friendGamertags={friendGamertags}
-            />
-          </>
-        ) : (
-          <>
-            <EngagementMatchSection
-              playerSlug={playerSlug}
-              matchId={matchId}
-              granularity="intra"
-              emptyBehavior="placeholder"
             />
 
             <MatchScoreboard

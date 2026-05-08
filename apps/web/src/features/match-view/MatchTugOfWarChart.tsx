@@ -299,14 +299,14 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
       return {
         backgroundColor: CHART_BG,
         grid: [
-          { left: 14, right: 14, top: 30, height: '70%', containLabel: false },
-          { left: 14, right: 14, top: '83%', height: '12%', containLabel: false },
+          { left: 14, right: 14, top: 8, height: '68%', containLabel: false },
+          { left: 14, right: 14, top: '78%', height: '10%', containLabel: false },
         ],
         tooltip: {
           ...getTooltipBase(tc),
           trigger: 'item',
         },
-        legend: { ...getLegendBase(tc), top: 4, data: [t.combatTeamLabel, t.combatEnemyLabel] },
+        legend: { ...getLegendBase(tc), bottom: 4, data: [t.combatTeamLabel, t.combatEnemyLabel] },
         xAxis: [
           {
             gridIndex: 0,
