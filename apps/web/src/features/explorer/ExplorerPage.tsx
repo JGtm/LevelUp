@@ -10,61 +10,27 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { GamertagSearchInput } from './GamertagSearchInput'
 import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
+import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
-import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
-import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import type { MatchEncounterBadge, LabelValue } from '@/lib/api/types'
+import type { LabelValue } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { tokenVar, tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 type SearchMode = 'matches' | 'player'
-
-function isSemanticToken(s: string): s is SemanticToken {
-  return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
-}
-
-// ─── EncounterBadges ──────────────────────────────────────────────────────────
-
-function EncounterBadges({ badges, locale }: { badges: MatchEncounterBadge[]; locale: string }) {
-  if (!badges.length) return null
-  const manifestLocale: 'fr' | 'en' = locale === 'en' ? 'en' : 'fr'
-  const t = (key: SquadManifestKey, values?: Record<string, string | number>) =>
-    formatMessage(squadManifest, key, manifestLocale, values)
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {badges.map((badge, i) => {
-        const labelKey = badge.label_key as SquadManifestKey
-        const ordinal =
-          badge.detail && typeof badge.detail['ordinal'] === 'number'
-            ? (badge.detail['ordinal'] as number)
-            : undefined
-        const label = ordinal !== undefined ? t(labelKey, { ordinal }) : t(labelKey)
-        const colorVar = isSemanticToken(badge.color_token)
-          ? tokenVar(badge.color_token as SemanticToken)
-          : undefined
-        return <NarrativeBadge key={i} label={label} colorVar={colorVar} size="sm" />
-      })}
-    </div>
-  )
-}
 
 // ─── ExplorerPage ─────────────────────────────────────────────────────────────
 
@@ -82,11 +48,9 @@ export function ExplorerPage() {
 
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
 
   const [mode, setMode] = useState<SearchMode>(search.mode ?? 'matches')
   const [targetGamertag, setTargetGamertag] = useState(search.target ?? '')
-  const [playerPage, setPlayerPage] = useState(1)
   const [compareOpen, setCompareOpen] = useState(false)
   const prefetchCompare = useComparePrefetch(playerSlug)
 
@@ -155,21 +119,10 @@ export function ExplorerPage() {
 
   function selectTarget(gamertag: string) {
     setTargetGamertag(gamertag)
-    setPlayerPage(1)
     void navigate({
       to: '/players/$playerSlug/explorer',
       params: { playerSlug },
       search: (prev) => ({ ...prev, mode: 'player', target: gamertag }),
-    })
-  }
-
-  const navigateToMatch = useNavigateToMatch(playerSlug)
-  function goToPlayerMatch(matchId: string, matchIds: string[]) {
-    const filterSpec = filterContextToMatchFilterSpec(filterContext)
-    navigateToMatch(matchId, {
-      source: 'history',
-      matchIds,
-      filterSpec: filterSpec ?? undefined,
     })
   }
 
@@ -212,12 +165,7 @@ export function ExplorerPage() {
 
   const playerQuery = useExplorerPlayer(playerSlug, {
     target_gamertag: targetGamertag,
-    page: playerPage,
   })
-
-  const totalPages = playerQuery.data
-    ? Math.ceil(playerQuery.data.total_count / (playerQuery.data.page_size || 20))
-    : 0
 
   const summary = matchesQuery.data?.summary
 
@@ -388,176 +336,27 @@ export function ExplorerPage() {
               )}
 
             {targetGamertag && playerQuery.data && (
-              <Card>
-                <CardContent className="py-4 pt-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-foreground">
-                      {playerQuery.data.target_gamertag || targetGamertag}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onMouseEnter={() =>
-                        prefetchCompare(playerQuery.data.target_gamertag || targetGamertag)
-                      }
-                      onClick={() => setCompareOpen(true)}
-                    >
-                      {t('explorer.player.head_to_head')}
-                    </Button>
-                  </div>
-
-                  {playerQuery.data.badges && playerQuery.data.badges.length > 0 && (
-                    <EncounterBadges badges={playerQuery.data.badges} locale={locale} />
-                  )}
-
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('explorer.player.matches_together')}
-                      </p>
-                      <p className="font-bold text-foreground">{playerQuery.data.total_count}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('explorer.player.wins_together')}
-                      </p>
-                      <p className="font-bold" style={{ color: 'var(--ac-outcome-win)' }}>
-                        {playerQuery.data.wins_together}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('explorer.player.losses_together')}
-                      </p>
-                      <p className="font-bold" style={{ color: 'var(--ac-outcome-loss)' }}>
-                        {playerQuery.data.losses_together}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {t('explorer.player.history_title')}
-                    </p>
-
-                    {playerQuery.data.common_matches.length > 0 ? (
-                      <>
-                        <div className="overflow-x-auto rounded-lg border border-border bg-background">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-border bg-muted text-xs font-medium text-muted-foreground">
-                                <th className="px-3 py-2 text-left">
-                                  {t('explorer.matches.col_date')}
-                                </th>
-                                <th className="px-3 py-2 text-left">
-                                  {t('explorer.matches.col_map_mode')}
-                                </th>
-                                <th className="px-3 py-2 text-left">
-                                  {t('explorer.player.col_role')}
-                                </th>
-                                <th className="px-3 py-2 text-left">
-                                  {t('explorer.matches.col_outcome')}
-                                </th>
-                                <th className="px-3 py-2 text-right">
-                                  {t('explorer.player.col_kd')}
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                              {playerQuery.data.common_matches.map((m) => (
-                                <tr
-                                  key={m.match_id}
-                                  className="hover:bg-primary/10 transition-colors cursor-pointer"
-                                  onClick={() =>
-                                    goToPlayerMatch(
-                                      m.match_id,
-                                      playerQuery.data.common_matches.map((x) => x.match_id),
-                                    )
-                                  }
-                                  role="button"
-                                  tabIndex={0}
-                                  onKeyDown={(e) =>
-                                    e.key === 'Enter' &&
-                                    goToPlayerMatch(
-                                      m.match_id,
-                                      playerQuery.data.common_matches.map((x) => x.match_id),
-                                    )
-                                  }
-                                >
-                                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                                    {new Date(m.start_time).toLocaleDateString(numberLocale)}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <span className="font-medium text-foreground">{m.map_ui}</span>
-                                    <span className="ml-1 text-xs text-muted-foreground">
-                                      · {m.mode_ui}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <Badge variant="secondary" className="text-xs">
-                                      {m.were_teammates
-                                        ? t('explorer.player.were_teammates')
-                                        : t('explorer.player.were_enemies')}
-                                    </Badge>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <Badge
-                                      variant={
-                                        m.player_outcome === 2
-                                          ? 'success'
-                                          : m.player_outcome === 3
-                                            ? 'destructive'
-                                            : 'secondary'
-                                      }
-                                    >
-                                      {m.outcome_label}
-                                    </Badge>
-                                  </td>
-                                  <td className="px-3 py-2 text-right text-muted-foreground">
-                                    {m.kills}/{m.deaths}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {totalPages > 1 && (
-                          <div className="mt-3 flex items-center justify-between text-sm">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={playerPage <= 1}
-                              onClick={() => setPlayerPage((p) => p - 1)}
-                            >
-                              {t('explorer.player.prev_page')}
-                            </Button>
-                            <span className="text-muted-foreground">
-                              {t('explorer.player.page_info', {
-                                page: playerPage,
-                                total: totalPages,
-                              })}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={playerPage >= totalPages}
-                              onClick={() => setPlayerPage((p) => p + 1)}
-                            >
-                              {t('explorer.player.next_page')}
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <EmptyStateNotice
-                        title={t('explorer.player.no_common_matches_title')}
-                        description={t('explorer.player.no_common_matches_description')}
-                      />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              playerQuery.data.encounter_stats ? (
+                <ExplorerEncounterBriefing
+                  gamertag={playerQuery.data.target_gamertag || targetGamertag}
+                  stats={playerQuery.data.encounter_stats}
+                  badges={playerQuery.data.badges}
+                  locale={locale}
+                  onHeadToHead={() => {
+                    prefetchCompare(playerQuery.data.target_gamertag || targetGamertag)
+                    setCompareOpen(true)
+                  }}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="py-4 pt-4">
+                    <EmptyStateNotice
+                      title={t('explorer.player.no_common_matches_title')}
+                      description={t('explorer.player.no_common_matches_description')}
+                    />
+                  </CardContent>
+                </Card>
+              )
             )}
           </div>
         )}

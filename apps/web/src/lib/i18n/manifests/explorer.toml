@@ -422,6 +422,36 @@ en = "Duration"
 fr = "Exporter CSV"
 en = "Export CSV"
 
+# ─── Encounter briefing (mode Joueur — KPIs MatchEncountersTable) ─────────────
+
+[explorer.encounter.title]
+fr = "Historique des rencontres"
+en = "Encounter history"
+
+[explorer.encounter.empty]
+fr = "Aucune rencontre antérieure avec ce joueur."
+en = "No prior encounters with this player."
+
+[explorer.encounter.encounters]
+fr = "Rencontres"
+en = "Encounters"
+
+[explorer.encounter.wr_ally]
+fr = "Taux de victoire allié"
+en = "WR as ally"
+
+[explorer.encounter.wr_enemy]
+fr = "Taux de victoire ennemi"
+en = "WR as enemy"
+
+[explorer.encounter.kd_cross]
+fr = "ratio F/D croisé"
+en = "Cross K/D"
+
+[explorer.encounter.last_seen]
+fr = "Vu pour la dernière fois"
+en = "Last seen"
+
 [explorer.matches.col_squad]
 fr = "Contexte"
 en = "Context"
