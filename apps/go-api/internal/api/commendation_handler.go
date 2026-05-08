@@ -5,6 +5,7 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +13,9 @@ import (
 
 // commendationHandler sert les fichiers sous /static/commendations/ avec fallback :
 //  1. Nom décodé (cas nominal : apostrophes, accents littéraux sur disk)
-//  2. Nom URL-encodé littéral sur disk (fichiers avec ? → %3F, Windows interdit ?)
+//  2. RawPath URL-décodé explicitement via url.PathUnescape (cas où net/http
+//     a laissé `%27` non décodé car `'` est "unreserved" RFC 3986)
+//  3. Nom URL-encodé littéral sur disk (fichiers avec ? → %3F, Windows interdit ?)
 type commendationHandler struct {
 	dir string // répertoire static/ absolu
 }
@@ -31,8 +34,22 @@ func (h *commendationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Essai 2 : nom URL-encodé littéral sur disk (? interdit Windows → %3F stocké tel quel)
+	// Essai 2 : si RawPath présent, décoder explicitement (couvre les cas où
+	// net/http a laissé certains caractères "unreserved" RFC 3986 encodés
+	// dans Path — ex `%27` apostrophe, `%21` !, `%24` $).
 	rawPath := r.URL.RawPath
+	if rawPath != "" {
+		if unescaped, err := url.PathUnescape(strings.TrimPrefix(rawPath, "/static/")); err == nil && unescaped != decodedRel {
+			fullForcedDecoded := filepath.Join(h.dir, filepath.FromSlash(unescaped))
+			if f, fi, ok := openFile(fullForcedDecoded); ok {
+				defer f.Close()
+				http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
+				return
+			}
+		}
+	}
+
+	// Essai 3 : nom URL-encodé littéral sur disk (? interdit Windows → %3F stocké tel quel)
 	if rawPath == "" {
 		rawPath = r.URL.Path
 	}
