@@ -270,12 +270,42 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 			perfUpdated = n
 		}
 
+		// ── Phase 4.5 : Personal score awards (PSA) — par joueur ─────────
+		// Pipeline parallèle à weapons : fetch GetMatchStats + extract PSA +
+		// insert dans player DB. Idempotent (DELETE + INSERT batch).
+		psaMatchesUpdated := 0
+		psaRowsInserted := 0
+		if scope.PersonalScores {
+			if tokens == nil {
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.Warnings = append(j.Warnings,
+						"WARN: personal scores ignorés — tokens Halo absents")
+				})
+			} else {
+				psaStep := "Backfill personal scores"
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.CurrentStep = &psaStep
+				})
+				m, n, psaErr := engine.BackfillPersonalScoreAwardsForMatches(
+					context.Background(), missing,
+				)
+				if psaErr != nil {
+					h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+						j.Warnings = append(j.Warnings,
+							fmt.Sprintf("WARN personal scores: %v", psaErr))
+					})
+				}
+				psaMatchesUpdated = m
+				psaRowsInserted = n
+			}
+		}
+
 		// ── Phase 5 : types non encore implémentés → avertissement ──────
 		h.warnUnimplemented(job.JobID, scope)
 
 		done := fmt.Sprintf(
-			"Backfill terminé — matchs: %d, weapon kills insérés: %d, engagement: %d, events healed: %d (%d events insérés), lusr: %d, perf: %d",
-			total, weaponsInserted, engagementComputed, eventsHealed, eventsTotal, lusrUpdated, perfUpdated,
+			"Backfill terminé — matchs: %d, weapon kills insérés: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, perf: %d",
+			total, weaponsInserted, psaMatchesUpdated, psaRowsInserted, engagementComputed, eventsHealed, eventsTotal, lusrUpdated, perfUpdated,
 		)
 		pct100 := 100
 		matchesDone := total
@@ -356,9 +386,7 @@ func (h *BackfillHandler) warnUnimplemented(jobID string, scope *go_sync.SyncSco
 	if scope.Skill {
 		types = append(types, "skill")
 	}
-	if scope.PersonalScores {
-		types = append(types, "personal_scores")
-	}
+	// personal_scores désormais implémenté (mai 2026, cf. Phase 4.5).
 	if scope.Aliases {
 		types = append(types, "aliases")
 	}

@@ -343,6 +343,39 @@ func MarkWeaponKillsDone(db *sql.DB, matchID string, noFilm bool) error {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Personal score awards writes
+// ──────────────────────────────────────────────────────────────────────────────
+
+// InsertPersonalScoreAwards remplace atomiquement les awards existants pour
+// (matchID, xuid) dans player.personal_score_awards. Pattern identique à
+// InsertWeaponKills : DELETE puis INSERT batch dans une transaction.
+//
+// Idempotent : ré-exécuter pour le même (matchID, xuid) écrase les rows
+// précédentes, ce qui est attendu pour réparer une extraction défaillante.
+func InsertPersonalScoreAwards(db *sql.DB, matchID, xuid string, rows []PersonalScoreAwardRow) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("InsertPersonalScoreAwards begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.Exec(`DELETE FROM personal_score_awards WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
+		return fmt.Errorf("InsertPersonalScoreAwards delete(%s,%s): %w", matchID, xuid, err)
+	}
+	for _, r := range rows {
+		if _, err := tx.Exec(`
+			INSERT INTO personal_score_awards
+				(match_id, xuid, award_name, award_category, award_count, award_score)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			r.MatchID, r.XUID, r.AwardName, r.AwardCategory, r.AwardCount, r.AwardScore,
+		); err != nil {
+			return fmt.Errorf("InsertPersonalScoreAwards insert(%s,%s): %w", matchID, xuid, err)
+		}
+	}
+	return tx.Commit()
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Highlight events writes
 // ──────────────────────────────────────────────────────────────────────────────
 
