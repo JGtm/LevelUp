@@ -67,7 +67,11 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	if row.PlaylistAssetID != nil {
 		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
 	}
-	row.ModeNameFR = r.resolveModeNameFR(ctx, &row)
+	// Résolution du libellé de mode : même formule unifiée que la home
+	// (cf. analysis.ResolveModeUI). Source unique de vérité — toute logique
+	// ad hoc dans la match-view a été retirée pour fixer la divergence
+	// "Slayer on Streets" affichée sur les matchs avec pair_name_fr legacy.
+	row.ModeNameFR = analysis.ResolveModeUI(row.PairName, row.PairNameFR)
 	return &row, nil
 }
 
@@ -100,77 +104,6 @@ func (r *MatchViewRepo) resolveAssetNameEN(ctx context.Context, assetType, asset
 		return nil
 	}
 	return &name
-}
-
-// resolveModeNameFR applique la cascade de résolution du nom de mode pour le
-// header match-view. Le mode est dérivé de pair_name (qui peut être un UUID
-// brut, une chaîne formatée "Arena:Slayer", ou un libellé déjà localisé).
-//
-// Cascade :
-//  1. NormalizeModeLabel(pair_name) → mode_name_tr (cas nominal "Arena:Slayer" → "Slayer" → "Assassin")
-//  2. asset_translations[pair_id, locale FR] → NormalizeModeLabel → mode_name_tr
-//     (cas où pair_name est un UUID brut, mais asset_translations a la FR brute)
-//  3. asset_translations[pair_id, locale FR] direct (pair name complet en FR)
-//  4. match_registry.pair_name_fr (sync legacy qui l'a écrit lui-même)
-//
-// Retourne nil si toutes les pistes échouent — le service tombera alors sur le
-// raw pair_name avec normalisation de dernier recours.
-func (r *MatchViewRepo) resolveModeNameFR(ctx context.Context, row *domain.MatchMetaRaw) *string {
-	if r.pdb.Metadata == nil {
-		return nil
-	}
-	// Étape 1 : pair_name → normalize → mode_name_tr
-	if row.PairName != nil {
-		if modeEN := analysis.NormalizeModeLabel(*row.PairName); modeEN != "" {
-			if fr := r.lookupModeNameFR(ctx, modeEN); fr != nil {
-				return fr
-			}
-		}
-	}
-	// Étape 2+3 : asset_translations[pair_id, FR] (le pair_name complet en FR)
-	if row.PairAssetID != nil && *row.PairAssetID != "" {
-		if pairFR := r.resolveAssetName(ctx, "pair", *row.PairAssetID); pairFR != nil && *pairFR != "" {
-			// Tenter de normaliser le pair_name FR pour mapper vers un nom de mode court
-			if modeEN := analysis.NormalizeModeLabel(*pairFR); modeEN != "" {
-				if fr := r.lookupModeNameFR(ctx, modeEN); fr != nil {
-					return fr
-				}
-			}
-			// Sinon utiliser directement le pair_name FR (label complet)
-			return pairFR
-		}
-	}
-	// Étape 4 : pair_name_fr stocké directement en DB (legacy)
-	if row.PairNameFR != nil && strings.TrimSpace(*row.PairNameFR) != "" {
-		return row.PairNameFR
-	}
-	return nil
-}
-
-// lookupModeNameFR retourne le nom FR d'un mode via mode_name_tr, ou nil.
-// modeEN doit être le label normalisé (via analysis.NormalizeModeLabel).
-// Conservé séparément du resolver générique car mode_name_tr est une table
-// dédiée (mapping mode-en → mode-fr court) et non asset_translations.
-func (r *MatchViewRepo) lookupModeNameFR(ctx context.Context, modeEN string) *string {
-	if r.pdb.Metadata == nil {
-		return nil
-	}
-	const q = `
-		SELECT name FROM mode_name_tr
-		WHERE lang = 'fr' AND mode_en = ?
-		LIMIT 1`
-	rows, err := r.pdb.Metadata.Query(ctx, q, modeEN)
-	if err != nil {
-		return nil
-	}
-	defer rows.Close()
-	if rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err == nil && name != "" {
-			return &name
-		}
-	}
-	return nil
 }
 
 // lookupMapImageURL retourne l'URL de l'image de map depuis map_images_registry

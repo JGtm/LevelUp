@@ -155,8 +155,8 @@ function SplitBar({
         <span style={{ color: leftColor }}>{leftCount}</span>
       </Tooltip>
       <span className="inline-flex h-2 w-12 border border-border overflow-hidden">
-        <span style={{ width: `${leftPct}%`, backgroundColor: leftColor, opacity: 0.7 }} />
-        <span style={{ flex: 1, backgroundColor: rightColor, opacity: 0.5 }} />
+        <span style={{ width: `${leftPct}%`, backgroundColor: leftColor }} />
+        <span style={{ flex: 1, backgroundColor: rightColor }} />
       </span>
       <Tooltip content={rightTooltip}>
         <span style={{ color: rightColor }}>{rightCount}</span>
@@ -340,8 +340,8 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
         cell: (ctx) => {
           const r = ctx.row.original
           const cls = r.is_ally
-            ? 'bg-success/30 text-success'
-            : 'bg-destructive/30 text-destructive'
+            ? 'bg-success/30 text-success border border-success/50'
+            : 'bg-destructive/30 text-destructive border border-destructive/50'
           const txt = r.is_ally ? labels.roleAlly : labels.roleEnemy
           return (
             <span className={`inline-block rounded-full px-2 py-0.5 text-[0.75em] ${cls}`}>{txt}</span>

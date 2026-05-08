@@ -83,22 +83,12 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 	}
 }
 
-// TestGetMatchMeta_ResolvesUUIDPairAndMapViaAssetTranslations reproduit
-// EXACTEMENT le scénario de la capture d'écran 2026-05-08 :
-//
-//	match_registry :
-//	  map_id    = "shiro-uuid"  map_name    = "shiro-uuid"  (UUID brut)
-//	  pair_id   = "qp-slayer"   pair_name   = "qp-slayer"   (UUID brut)
-//	  *_name_fr = NULL
-//
-//	asset_translations :
-//	  ("shiro-uuid", "map", "fr-FR", "Shiro")
-//	  ("qp-slayer", "pair", "fr-FR", "Partie rapide : Assassin")
-//
-// Attendu : MapNameFR="Shiro", ModeNameFR contient le nom FR du mode (et NON
-// l'UUID brut). Le bug pré-fix aurait laissé ModeNameFR=nil → service
-// affichait "qp-slayer" comme on le voyait à l'écran.
-func TestGetMatchMeta_ResolvesUUIDPairAndMapViaAssetTranslations(t *testing.T) {
+// TestGetMatchMeta_ResolvesUUIDMapAndPlaylistViaAssetTranslations couvre la
+// résolution map+playlist via asset_translations quand match_registry stocke
+// des UUIDs bruts. La résolution du mode passe désormais par
+// analysis.ResolveModeUI (formule unifiée avec la home), ce test ne porte
+// donc que sur map et playlist.
+func TestGetMatchMeta_ResolvesUUIDMapAndPlaylistViaAssetTranslations(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
 
@@ -114,7 +104,6 @@ func TestGetMatchMeta_ResolvesUUIDPairAndMapViaAssetTranslations(t *testing.T) {
 	}
 	for _, q := range []string{
 		`INSERT INTO asset_translations VALUES ('shiro-uuid','map','fr-FR','Shiro','',now())`,
-		`INSERT INTO asset_translations VALUES ('qp-slayer','pair','fr-FR','Partie rapide : Assassin','',now())`,
 		`INSERT INTO asset_translations VALUES ('pl-quickplay','playlist','fr-FR','Partie rapide','',now())`,
 	} {
 		if _, err := pdb.Metadata.Exec(ctx, q); err != nil {
@@ -132,17 +121,6 @@ func TestGetMatchMeta_ResolvesUUIDPairAndMapViaAssetTranslations(t *testing.T) {
 	}
 	if meta.PlaylistNameFR == nil || *meta.PlaylistNameFR != "Partie rapide" {
 		t.Errorf("PlaylistNameFR = %v, want Partie rapide", meta.PlaylistNameFR)
-	}
-	// Pour le mode, le pair_name FR est "Partie rapide : Assassin". La cascade
-	// resolveModeNameFR essaie d'abord NormalizeModeLabel(pair_name brut="qp-slayer")
-	// → fail, puis asset_translations[pair_id, FR] → "Partie rapide : Assassin"
-	// → NormalizeModeLabel → "Partie rapide" → mode_name_tr (vide) → fallback
-	// retour direct = "Partie rapide : Assassin".
-	if meta.ModeNameFR == nil {
-		t.Fatal("ModeNameFR = nil, want non-nil (cascade asset_translations[pair])")
-	}
-	if *meta.ModeNameFR == "qp-slayer" {
-		t.Errorf("ModeNameFR = UUID brut %q : la résolution n'a PAS marché", *meta.ModeNameFR)
 	}
 }
 
@@ -177,10 +155,12 @@ func TestGetMatchMeta_FallsBackToENWhenNoFR(t *testing.T) {
 	}
 }
 
-// TestGetMatchMeta_NoTranslation_ReturnsNil vérifie que sans entrée
-// asset_translations, le resolver renvoie nil sans erreur (le service décidera
-// du fallback final côté UI).
-func TestGetMatchMeta_NoTranslation_ReturnsNil(t *testing.T) {
+// TestGetMatchMeta_NoTranslation : sans entrée asset_translations, MapNameFR
+// reste nil (la cascade map est conservée). Pour le mode, le contrat est
+// désormais le même que la home : ResolveModeUI applique NormalizeModeLabel
+// sur pair_name brut — un UUID inconnu remonte tel quel jusqu'à l'UI, ce qui
+// est le comportement attendu (cohérent home/match-view).
+func TestGetMatchMeta_NoTranslation(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
 
@@ -200,8 +180,8 @@ func TestGetMatchMeta_NoTranslation_ReturnsNil(t *testing.T) {
 	if meta.MapNameFR != nil {
 		t.Errorf("MapNameFR = %v, want nil (asset inconnu)", meta.MapNameFR)
 	}
-	if meta.ModeNameFR != nil {
-		t.Errorf("ModeNameFR = %v, want nil (asset inconnu)", meta.ModeNameFR)
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "unknown-pair-uuid" {
+		t.Errorf("ModeNameFR = %v, want \"unknown-pair-uuid\" (NormalizeModeLabel sur brut)", meta.ModeNameFR)
 	}
 }
 
@@ -285,11 +265,11 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	}
 }
 
-// TestGetMatchMeta_NormalizedPairName_ResolvesViaModeNameTr couvre le cas
-// nominal pré-régression : pair_name est une chaîne formatée "Arena:Slayer"
-// (pas un UUID), NormalizeModeLabel extrait "Slayer", mode_name_tr le mappe
-// vers "Assassin" en FR.
-func TestGetMatchMeta_NormalizedPairName_ResolvesViaModeNameTr(t *testing.T) {
+// TestGetMatchMeta_NormalizedPairName_ExtractsSubmode couvre le cas nominal :
+// pair_name = "Arena:Slayer" → ResolveModeUI extrait le sous-mode → "Slayer".
+// Aligné sur le comportement de la home (NormalizeModeLabel pur, sans lookup
+// mode_name_tr).
+func TestGetMatchMeta_NormalizedPairName_ExtractsSubmode(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
 
@@ -299,18 +279,41 @@ func TestGetMatchMeta_NormalizedPairName_ResolvesViaModeNameTr(t *testing.T) {
 		VALUES ('m4', '2026-04-01 22:00:00', '2026-04-01 22:00:00+00', 'Arena:Slayer')`); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	if _, err := pdb.Metadata.Exec(ctx,
-		`INSERT INTO mode_name_tr VALUES ('fr','Slayer','Assassin')`,
-	); err != nil {
-		t.Fatalf("seed mode_name_tr: %v", err)
-	}
 
 	repo := NewMatchViewRepo(pdb, "test-xuid")
 	meta, err := repo.GetMatchMeta(ctx, "m4")
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Assassin" {
-		t.Errorf("ModeNameFR = %v, want Assassin (cascade nominal)", meta.ModeNameFR)
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer" {
+		t.Errorf("ModeNameFR = %v, want Slayer", meta.ModeNameFR)
+	}
+}
+
+// TestGetMatchMeta_StripsMapSuffixFromPairNameFR : régression du bug
+// 0d6f6eaa-08cd-4d4a-bca6-3bffb06e8b4e. Pour les matchs d'avant le
+// 23 mars 2026, pair_name_fr contenait des libellés legacy avec suffixe
+// " on <map>" (ex. "Slayer on Streets"). La match-view affichait ce
+// suffixe brut, alors que la home le strippait via NormalizeModeLabel.
+// Désormais les deux flux passent par ResolveModeUI → "Slayer".
+func TestGetMatchMeta_StripsMapSuffixFromPairNameFR(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, pair_name, pair_name_fr)
+		VALUES ('m5', '2026-03-01 18:00:00', '2026-03-01 18:00:00+00',
+		        'Arena:Slayer', 'Slayer on Streets')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, "test-xuid")
+	meta, err := repo.GetMatchMeta(ctx, "m5")
+	if err != nil {
+		t.Fatalf("GetMatchMeta: %v", err)
+	}
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer" {
+		t.Errorf("ModeNameFR = %v, want Slayer (suffixe ' on Streets' strippé)", meta.ModeNameFR)
 	}
 }
