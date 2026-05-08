@@ -103,3 +103,27 @@ func NormalizeModeLabel(raw string, mapLabels ...string) string {
 
 	return strings.TrimSpace(normalized)
 }
+
+// ResolveModeUI applique la formule canonique de résolution du libellé de mode
+// affiché côté UI (home tiles, match-view header, historique).
+//
+// Source unique de vérité : COALESCE(pair_name_fr, pair_name) → NormalizeModeLabel.
+// Tout caller qui a besoin d'un libellé de mode propre (sans suffixe map, sans
+// préfixe technique "Arena:") doit appeler ce helper plutôt que d'inventer
+// sa propre cascade — la divergence home/match-view qui produisait
+// "Slayer on Streets" sur la vue détail est née d'une cascade ad hoc.
+//
+// Retourne nil si les deux sources sont vides après normalisation.
+func ResolveModeUI(pairName, pairNameFR *string) *string {
+	src := ""
+	if pairNameFR != nil && *pairNameFR != "" {
+		src = *pairNameFR
+	} else if pairName != nil {
+		src = *pairName
+	}
+	out := NormalizeModeLabel(src)
+	if out == "" {
+		return nil
+	}
+	return &out
+}

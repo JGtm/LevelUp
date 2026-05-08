@@ -682,16 +682,15 @@ func buildMatchHeader(
 	if meta.MapAssetID != nil {
 		h.MapID = *meta.MapAssetID
 	}
-	if meta.ModeNameFR != nil && *meta.ModeNameFR != "" {
-		h.ModeUI = *meta.ModeNameFR
-	} else if meta.PairName != nil {
-		// Fallback : label EN normalisé (retire "Slayer : Forbidden" → "Slayer")
-		// plutôt que le pair_name brut qui peut contenir la map ou être un UUID.
-		if en := analysis.NormalizeModeLabel(*meta.PairName); en != "" {
-			h.ModeUI = en
-		} else {
-			h.ModeUI = *meta.PairName
-		}
+	// ModeNameFR est normalement déjà le résultat de analysis.ResolveModeUI
+	// côté repo. Fallback défense-en-profondeur via le même helper si jamais
+	// un caller externe construit un MatchMetaRaw sans pré-résoudre.
+	modeUI := meta.ModeNameFR
+	if modeUI == nil || *modeUI == "" {
+		modeUI = analysis.ResolveModeUI(meta.PairName, meta.PairNameFR)
+	}
+	if modeUI != nil {
+		h.ModeUI = *modeUI
 	}
 	// Playlist : priorité à la traduction FR (asset_translations), fallback
 	// nom brut EN (match_registry.playlist_name).

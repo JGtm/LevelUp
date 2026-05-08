@@ -356,7 +356,7 @@ func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, waypo
 }
 
 func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint string) domain.MatchHistoryRow {
-	mu := analysis.NormalizeModeLabel(coalesce(r.PairNameFR, r.PairName))
+	modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
 	mapU := coalesce(r.MapNameFR, r.MapName)
 	playlist := coalesce(r.PlaylistName, nil)
 
@@ -392,7 +392,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		OutcomeLabel:             outcomeLabel(r.Outcome),
 		ScoreLabel:               "-",
 		MapUI:                    ptrStr(mapU),
-		ModeUI:                   ptrStr(mu),
+		ModeUI:                   modeUI,
 		PlaylistLabel:            ptrStr(playlist),
 		TeamMMR:                  r.TeamMMR,
 		EnemyMMR:                 r.EnemyMMR,
