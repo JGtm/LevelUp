@@ -1,4 +1,60 @@
 
+## [2026-05-08] Audit couverture exhaustive + pipeline PSA en Go + sanitisation NaN/Inf défensive
+
+**Statut** : Complété (code) — backfill rétroactif en attente de tokens Halo frais
+
+**Contexte** : Cycle whack-a-mole. Le user faisait des backfills successifs et à chaque fois je trouvais un nouveau trou (weapons, citations, armes manquantes dans le scoreboard, encode_error sur certains matchs, etc.). Décision : sortir de la spirale en construisant un audit **exhaustif** qui révèle **tous** les trous d'un coup, puis combler les pipelines manquants.
+
+**Décisions techniques** :
+
+1. **`cmd/audit_coverage`** — outil read-only qui croise pour chaque match dans `match_registry` la présence dans 5 tables shared (`match_participants`, `weapon_kills`, `highlight_events`, `medals_earned`, `killer_victim_pairs`) ET pour chaque player les 4 tables player-side (`match_skill_rank`, `match_citations`, `personal_score_awards`, `player_match_enrichment`). Sortie : couverture % globale + détail des N derniers + liste actionnable des match_ids à backfill par type.
+2. **PSA backfill en Go** — était le plus gros trou (jamais implémenté en Go, juste un WARN silencieux dans `/backfill/start`). Porté depuis le pipeline Python (cf. `LevelUp/src/data/sync/transformers/_personal_scores.py`) :
+   - `internal/sync/refdata_personal_scores.go` : 60 NameId Halo + maps technical_id, points, category (`kill`/`assist`/`objective`/`vehicle`/`penalty`/`other`).
+   - `internal/sync/transforms_personal_scores.go` : `ExtractPersonalScoreAwards(matchJSON, matchID, xuid)` parcourt `Players[].PlayerTeamStats[].Stats.CoreStats.PersonalScores[]`.
+   - `internal/sync/writes.go` : `InsertPersonalScoreAwards(playerDB, ...)` idempotent (DELETE+INSERT batch).
+   - `internal/sync/engine.go` : extraction+insert PSA câblés dans `fetchMatchData` + `insertFetchedMatch` ET `processMatch` legacy → futurs syncs auto-populent PSA.
+   - `internal/sync/backfill_personal_scores.go` : orchestrateur rétroactif `BackfillPersonalScoreAwardsForMatches`.
+   - `internal/api/handlers/backfill.go` : Phase 4.5 ajoutée dans `/backfill/start` (si `scope.PersonalScores`) + `personal_scores` retiré de `warnUnimplemented`.
+3. **Sanitisation NaN/Inf défensive globale** dans `helpers.go` : `sanitizeFloatsForJSON` parcourt récursivement la response (struct/pointer/slice/map) via `reflect` avant `json.Marshal`. Élimine la classe entière de bug "encode_error 500" sans devoir patcher chaque scan SQL. Appliqué à `writeJSON` ET `writeJSONCached`.
+4. **`cmd/backfill_all`** — CLI qui pour chaque player charge ses tokens (watcher_tokens.json + MSAL fallback), liste les match_ids manquants pour weapons (<28j) et PSA (tous), et lance les pipelines en série. Exécute hors session HTTP (= utilisable via cron ou one-shot).
+
+**Résultats observés** (audit pré-backfill) :
+- weapon_kills : 61.1% (1569 matchs) — 25 matchs frais (<28j) actionnables, le reste = films expirés Halo.
+- highlight_events : 63.2% — pareil, films expirés.
+- medals_earned : 98.2% — 28 matchs sans (legacy).
+- match_participants : 100%.
+- PSA par player : 92-96% — 25-44 matchs récents sans PSA pour chaque player → bug structurel (pipeline non câblé).
+- match_skill_rank, match_citations, player_match_enrichment : 99-100% ✓.
+
+**État du backfill** : Code prêt et tests OK (`go test ./internal/sync/... ./internal/api/handlers/...`). Le batch rétroactif n'a pas pu tourner cette session car les tokens Halo sur disque (`watcher_tokens.json`) sont morts (XSTS révoqué côté 343, OAuth refresh expiré 2026-04-21). Prochaine étape : relogger via UI puis lancer soit `/api/v1/backfill/start` soit `go run ./cmd/backfill_all/`.
+
+**Conclusion** : Plus de whack-a-mole. L'audit donne une vue binaire tout-vert / liste-de-trous. PSA va se peupler tout seul sur les futurs syncs. Le backfill rétroactif est une commande à lancer une fois les tokens frais.
+
+---
+
+## [2026-05-08] Match-view — unification du libellé de mode avec la home (fix "Slayer on Streets")
+
+**Statut** : Complété
+
+**Contexte** : Pour le match `0d6f6eaa-08cd-4d4a-bca6-3bffb06e8b4e` (et beaucoup de matchs antérieurs au 23 mars 2026), la vue détail Match affichait `"Slayer on Streets"` (suffixe map collé) alors que les tuiles de la home affichaient le bon libellé `"Slayer"`. Divergence non expliquée par un bug de données : deux résolveurs distincts existaient pour la même information.
+
+**Décision technique principale** :
+- Création d'un helper unique `analysis.ResolveModeUI(pairName, pairNameFR *string) *string` = `NormalizeModeLabel(COALESCE(pair_name_fr, pair_name))`. Source unique de vérité, exactement la formule que la home utilisait déjà.
+- `MatchHistoryService.enrichRow` et `MatchViewRepo.GetMatchMeta` appellent désormais ce même helper. `MatchViewService.buildMatchHeader` conserve un fallback défense-en-profondeur via le même helper.
+- Suppression de `MatchViewRepo.resolveModeNameFR` (cascade `mode_name_tr` + `asset_translations[pair]` + fallback brut `pair_name_fr` non normalisé) et de `lookupModeNameFR` (devenu inutilisé). C'est cette cascade ad hoc, et plus précisément son étape 4 qui retournait `*pairNameFR` brut sans normalisation, qui faisait survivre le suffixe `" on Streets"`.
+- Tests : adaptation de `TestGetMatchMeta_ResolvesUUIDPairAndMapViaAssetTranslations` (devenu `_ResolvesUUIDMapAndPlaylistViaAssetTranslations` — la cascade `asset_translations` reste pour map et playlist), `TestGetMatchMeta_NormalizedPairName_ResolvesViaModeNameTr` → `_ExtractsSubmode` (plus de lookup `mode_name_tr`), `TestGetMatchMeta_NoTranslation_ReturnsNil` → `_NoTranslation` (mode renvoie le brut normalisé, pas nil). Ajout d'un test de régression `TestGetMatchMeta_StripsMapSuffixFromPairNameFR` qui exerce explicitement `pair_name_fr = "Slayer on Streets"` → `"Slayer"`.
+
+**Résultats observés** :
+- `go vet ./...` clean.
+- `go test ./...` clean (suite complète, ~50 packages).
+- Bug fixé : la match-view affichera désormais "Slayer" comme la home pour `0d6f6eaa` et tous les matchs avec `pair_name_fr` legacy ayant un suffixe `" on/sur <map>"`.
+
+**Conclusion / prochaine étape** : Bug spécifique à la match-view fermé. La home et la match-view partagent désormais une seule formule. Note de dette résiduelle : un cas latent existe encore où `pair_name` est un UUID brut et `pair_name_fr` est NULL — la formule unifiée renvoie alors l'UUID brut (la cascade `asset_translations[pair]` qui gérait ce cas a été supprimée). Si ce cas remonte en prod, l'enrichir au niveau du sync (peuplement de `pair_name_fr` à l'écriture) plutôt que de réintroduire une cascade côté lecture.
+
+**Branche** : `fix/match-view-mode-ui-unify`.
+
+---
+
 ## [2026-05-08] Diagnostic matchs plantés + fix navigation bloquée + fix corps HTTP vide
 
 **Statut** : Complété

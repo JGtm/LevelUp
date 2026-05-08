@@ -908,6 +908,17 @@ func (e *SyncEngine) processMatch(
 		return fmt.Errorf("UpsertPlayerEnrichment: %w", err)
 	}
 
+	// ─── personal_score_awards (player DB) ─────────────────────────────────────
+	psaRows := ExtractPersonalScoreAwards(matchJSON, matchID, e.xuid)
+	if len(psaRows) > 0 {
+		if err := InsertPersonalScoreAwards(playerDB, matchID, e.xuid, psaRows); err != nil {
+			slog.WarnContext(ctx, "processMatch: InsertPersonalScoreAwards échoué",
+				"gamertag", e.gamertag, "match_id", matchID, "err", err,
+			)
+			result.Warnings = append(result.Warnings, fmt.Sprintf("psa %s: %v", matchID, err))
+		}
+	}
+
 	result.MatchesInserted++
 	result.InsertedMatchIDs = append(result.InsertedMatchIDs, matchID)
 	slog.DebugContext(ctx, "processMatch: terminé",
@@ -926,7 +937,8 @@ type fetchedMatch struct {
 	Registry       *MatchRegistryRow
 	Participants   []ParticipantRow
 	Medals         []MedalRow
-	HighlightData  []byte // Raw highlight events chunk (ou nil si absent)
+	PSA            []PersonalScoreAwardRow // PersonalScores du joueur courant (player DB)
+	HighlightData  []byte                  // Raw highlight events chunk (ou nil si absent)
 	FilmMajorVer   int
 	HasHighlights  bool
 	HighlightError error // Non-bloquant si présent
@@ -985,6 +997,10 @@ func (e *SyncEngine) fetchMatchData(
 	if opts.WithMedals {
 		fm.Medals = ExtractMedals(matchJSON)
 	}
+	// PersonalScores du joueur courant — toujours extraits (pas de flag dédié,
+	// même cycle de vie que les participants). La table n'est pas dans shared :
+	// l'insertion se fera côté playerDB dans insertFetchedMatch.
+	fm.PSA = ExtractPersonalScoreAwards(matchJSON, matchID, e.xuid)
 	if opts.WithHighlightEvents {
 		data, filmMajorVer, found, err := client.GetHighlightEventsChunk(ctx, matchID)
 		fm.HasHighlights = found
@@ -1092,6 +1108,17 @@ func (e *SyncEngine) insertFetchedMatch(
 			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 		)
 		return fmt.Errorf("UpsertPlayerEnrichment: %w", err)
+	}
+
+	// PersonalScoreAwards (player DB, par joueur synchronisé). Non-bloquant :
+	// un échec produit un warning, le sync continue.
+	if len(fm.PSA) > 0 {
+		if err := InsertPersonalScoreAwards(playerDB, fm.MatchID, e.xuid, fm.PSA); err != nil {
+			slog.WarnContext(ctx, "sync: InsertPersonalScoreAwards échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
+			)
+			result.Warnings = append(result.Warnings, fmt.Sprintf("psa %s: %v", fm.MatchID, err))
+		}
 	}
 
 	result.MatchesInserted++
