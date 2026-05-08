@@ -1,4 +1,72 @@
 
+## [2026-05-08] UX match-view : refonte bandeau sync partiel
+
+**Statut** : Complété
+
+**Décision technique** : Refonte du bandeau "sync incomplet" (`MatchViewPage.tsx`). Contenu : `translatePartialReason()` décrit maintenant l'impact utilisateur concret (section affectée + onglet concerné) au lieu du code technique abrégé. Visuel : `flex gap-3` avec icône SVG triangle warning + titre `font-semibold` + liste à puces `▸` par raison — remplace le bloc monolithique plat sans hiérarchie.
+
+---
+
+## [2026-05-08] Backfill LUSR/Perf v5 — intégration poids médailles dans le pipeline sync
+
+**Statut** : Complété
+
+**Décision technique** :
+
+La formule LUSR/Perf avait été mise à jour dans `analysis/` le 2026-04-20 (commit `3e5ff4aa`) mais jamais portée dans `sync/` (le pipeline qui écrit en DuckDB). Ce travail porte l'intégralité de la nouvelle formule dans le pipeline et lance le backfill.
+
+**Changements apportés** :
+
+1. **`sync/skill_config.go`** — `CompositeWeights` passé de 5 à 8 composantes (ajout `medal_exploit 0.04`, `offensive_conversion 0.16`, `defensive_resistance 0.06`). `RelativeWeights` v5 : 13 métriques.
+
+2. **`sync/skill_rating_loaders.go`** — Ajout de `Assists` dans `lusrMatchData` et le SQL de chargement.
+
+3. **`sync/skill_rating.go`** — `PlayerState` étendu avec 3 historiques glissants. `compositeMatchRow` étendu. `computeCompositeScore` : signature 7 params, 3 nouvelles composantes (medal_exploit, off_conv, def_res) via `sigmoidRatio` + moyennes glissantes. Helpers `rollingAvgPtr`, `appendToHistory`, `computeCombatYield`.
+
+4. **`sync/medal_exploit_loader.go`** (nouveau) — `LoadMedalDifficultyFromMeta` (metaDB → `map[medal_name_id]difficulty_index`) + `ComputeMedalExploitByMatch` (sharedDB → score par match_id).
+
+5. **`sync/performance.go`** — `historyRow` et `matchMetrics` étendus. `loadHistoryForPerf` charge `damage_taken`, calcule `OffensiveConversion/DefensiveResistance`. `batchComputePerformanceScores` : nouveau param `medalExploitByMatch + force` — enrichit les matchs avant calcul, skip si déjà calculé sauf si `force=true`.
+
+6. **`sync/engine.go`** — Call sites post-sync mis à jour. Nouvelles méthodes `RunBackfillLUSR` et `RunBackfillPerf` (dblease + medal loading best-effort). Helper `loadMedalExploitMapBestEffort`.
+
+7. **`cmd/levelup/cmd_backfill.go`** — Flags `--lusr` et `--perf` + fonctions `runBackfillAllLUSR/runBackfillAllPerf`.
+
+8. **`internal/api/handlers/backfill.go`** — LUSR et Perf implémentés en phases 3-4 (retiré de `warnUnimplemented`).
+
+9. **Tests** — 6 appels `computeCompositeScore`, 3 appels `computeSkillRatingsBatch`, 2 appels `batchComputePerformanceScores` mis à jour pour les nouvelles signatures.
+
+**Stratégie best-effort** : le chargement des médailles depuis `metaDB` est wrappé dans `loadMedalExploitMapBestEffort` — retourne nil si la DB est inaccessible. LUSR/Perf calcule sans medal_exploit plutôt que de bloquer.
+
+**Résultat** : `go build ./...`, `go vet ./...`, `go test ./...` tous verts. Prêt pour `levelup backfill --all --lusr --perf --force`.
+
+**Prochaine étape** : lancer le backfill effectif sur les données réelles.
+
+---
+
+## [2026-05-08] UX match-view : empty states, terminologie FR, score perf DNF
+
+**Statut** : Complété
+
+**Décision technique** :
+
+Quatre corrections indépendantes sur la vue détail d'un match :
+
+1. **Layout empty states** — `MatchFragDiffChart` et `MatchAntagonistChart` utilisaient `py-8 text-center` sans min-height. Remplacé par `flex min-h-[200px] items-center justify-center` pour un centrage vertical cohérent avec `ChartCard`.
+
+2. **Terminologie FR** — Suppression des anglicismes hardcodés ("kill/death", "killer→victim") en faveur de libellés i18n via prop `t: MatchViewText`. Ajout de `fragDiffNoData` et `antagonistNoData` dans `i18n.ts`. Correction de `combatKilledMeFmt` ("victimisé" → "éliminé") et `combatIKilledFmt` ("persécuté" → "Éliminé").
+
+3. **Engagement "error"** — L'onglet Équipe passait `emptyBehavior='placeholder'` : en cas d'erreur API, `EngagementMatchSection` rendait `state='error'` → `ChartCardError` affichait le message brut "error". Corrigé en traitant `isError` comme `isEmpty` (state='empty'), ce qui affiche le message "Données d'engagement indisponibles pour ce match" via le sous-titre.
+
+4. **Score perf DNF** — Deux couches :
+   - Backend `loadHistoryForPerf` : ajout de `AND COALESCE(mp.outcome, 0) != 4` pour exclure les matchs annulés de la fenêtre de calcul (évite la contamination future).
+   - Service `buildMatchHeader` : `PerfDisplay` non alimenté si `OutcomeCode == 4` (masque les scores déjà stockés pour les matchs DNF).
+
+**Résultat** : les matchs sans données (sync partiel) affichent des messages centrés et en français correct ; les matchs DNF (rage quit avant spawn) n'affichent plus de note de performance.
+
+**Prochaine étape** : un backfill optionnel pourrait effacer les `performance_score` déjà stockés en DB pour les matchs DNF — non urgent, car le service masque déjà l'affichage.
+
+---
+
 ## [2026-05-08] Repair de cohérence DB post-régression bascule Go (orphelins, UUIDs résiduels, sessions)
 
 **Statut** : Complété — 5 anomalies résolues, 12 orphelins documentés comme limite Xbox API.
