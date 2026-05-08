@@ -23,7 +23,7 @@ import type {
   MatchViewHeader,
   MatchViewRank,
 } from '@/lib/api/types'
-import { formatDurationMMSS, formatGamertag } from '@/lib/formatters'
+import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchViewText } from './i18n'
 import { parseTeamSideID, resolveTeamName } from './teamNames'
@@ -257,10 +257,7 @@ function TeamScoreboard({
           // Pas de lien vers Explorer pour les bots : ils n'existent pas hors
           // de ce match (leur xuid 'bid(N.0)' n'a aucun historique cross-match).
           const linkable = !r.is_me && !r.is_bot && playerSlug
-          // Defensive : v_gamertag_lookup côté backend devrait déjà rendre les
-          // bots en "343 Bot N", mais on tombe ici sur "bid(N.0)" si la JOIN
-          // retombe sur le xuid raw (cf. thought_log 2026-05-08).
-          const displayGamertag = formatGamertag(r.gamertag)
+          const displayGamertag = r.gamertag
           return (
             <span className="whitespace-nowrap">
               <span className="mr-1 text-muted-foreground">{isExpanded ? '▾' : '▸'}</span>

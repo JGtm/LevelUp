@@ -34,7 +34,6 @@ import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
-import { formatGamertag } from '@/lib/formatters'
 import type { MatchEncounterBadge, MatchEncounterRow } from '@/lib/api/types'
 
 interface Props {
@@ -115,6 +114,43 @@ function percentClass(v: number | null | undefined): string {
 function formatKDCross(kills: number | null | undefined, deaths: number | null | undefined): string {
   if (kills == null && deaths == null) return '—'
   return `${kills ?? 0}/${deaths ?? 0}`
+}
+
+function kdCrossColor(kills: number | null | undefined, deaths: number | null | undefined): string {
+  if (kills == null || deaths == null) return ''
+  if (kills > deaths) return 'text-success font-bold'
+  if (kills < deaths) return 'text-warning font-bold'
+  return ''
+}
+
+function AllyEnemySplitBar({
+  allyCount,
+  enemyCount,
+  locale,
+}: {
+  allyCount: number
+  enemyCount: number
+  locale: 'fr' | 'en'
+}) {
+  const total = allyCount + enemyCount
+  if (total === 0) return <span className="font-mono">—</span>
+  const allyPct = Math.round((allyCount / total) * 100)
+  const ttAlly = locale === 'en' ? `${allyCount} matches as ally` : `${allyCount} matchs en allié`
+  const ttEnemy = locale === 'en' ? `${enemyCount} matches as enemy` : `${enemyCount} matchs en ennemi`
+  return (
+    <span className="inline-flex items-center gap-1 font-mono tabular-nums">
+      <Tooltip content={ttAlly}>
+        <span className="text-success">{allyCount}</span>
+      </Tooltip>
+      <span className="inline-flex h-2 w-12 border border-border overflow-hidden">
+        <span className="bg-success/60" style={{ width: `${allyPct}%` }} />
+        <span className="bg-destructive/40 flex-1" />
+      </span>
+      <Tooltip content={ttEnemy}>
+        <span className="text-destructive">{enemyCount}</span>
+      </Tooltip>
+    </span>
+  )
 }
 
 function formatRelativeFR(iso: string): string {
@@ -212,9 +248,7 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
           const r = ctx.row.original
           // Pas de lien Explorer pour les bots (xuid 'bid(...)' sans historique cross-match).
           const linkable = playerSlug && !r.is_bot
-          // Defensive : v_gamertag_lookup côté backend devrait déjà rendre les
-          // bots en "343 Bot N" (cf. thought_log 2026-05-08).
-          const displayGamertag = formatGamertag(r.gamertag)
+          const displayGamertag = r.gamertag
           return (
             <span className="whitespace-nowrap">
               {linkable ? (
@@ -257,20 +291,10 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
         header: labels.encounters,
         cell: (ctx) => {
           const r = ctx.row.original
-          const ally = r.ally_count
-          const enemy = r.enemy_count
-          const breakdown =
-            ally != null && enemy != null
-              ? ` (A:${ally} | E:${enemy})`
-              : ''
-          return (
-            <span className="font-mono">
-              {r.count_together}
-              {breakdown && (
-                <span className="ml-1 text-[0.8em] text-muted-foreground">{breakdown}</span>
-              )}
-            </span>
-          )
+          if (r.ally_count != null && r.enemy_count != null) {
+            return <AllyEnemySplitBar allyCount={r.ally_count} enemyCount={r.enemy_count} locale={locale} />
+          }
+          return <span className="font-mono">{r.count_together}</span>
         },
       },
       {
@@ -294,7 +318,11 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
         header: labels.kdCross,
         cell: (ctx) => {
           const r = ctx.row.original
-          return <span className="font-mono">{formatKDCross(r.kills_dealt, r.deaths_suffered)}</span>
+          return (
+            <span className={`font-mono ${kdCrossColor(r.kills_dealt, r.deaths_suffered)}`}>
+              {formatKDCross(r.kills_dealt, r.deaths_suffered)}
+            </span>
+          )
         },
       },
       {

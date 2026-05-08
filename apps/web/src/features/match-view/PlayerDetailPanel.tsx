@@ -9,7 +9,6 @@
 import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { tokenCssVar } from '@/lib/accessibility'
-import { formatGamertag } from '@/lib/formatters'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import type {
   MatchCitationSnippet,
@@ -299,11 +298,8 @@ function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
 function Footer({ isTracked, isMe, isBot, gamertag, playerSlug, t }: { isTracked: boolean; isMe: boolean; isBot: boolean; gamertag: string; playerSlug?: string; t: MatchViewText }) {
   const badgeText = isTracked ? t.sbDetailPlayerDb : t.sbDetailSharedOnly
   const showLink = !isMe && !isBot && !!playerSlug
-  // gamertag brut conservé pour le query string Explorer (le slug attend
-  // l'identifiant raw côté API). Pour l'affichage humain on passe par
-  // formatGamertag (defensive : couvre les bots non résolus côté backend).
   const explorerUrl = showLink ? `/players/${playerSlug}/explorer?mode=player&target=${encodeURIComponent(gamertag)}` : null
-  const displayGamertag = formatGamertag(gamertag)
+  const displayGamertag = gamertag
   return (
     <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-[11px]">
       <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">{badgeText}</span>
