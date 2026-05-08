@@ -394,10 +394,6 @@ en = "ΔMMR"
 fr = "Ouvrir"
 en = "Open"
 
-[explorer.matches.col_waypoint]
-fr = "↗ wp"
-en = "↗ wp"
-
 [explorer.matches.col_kills]
 fr = "Frags"
 en = "Kills"
