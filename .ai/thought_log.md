@@ -1,4 +1,42 @@
 
+## [2026-05-08] PLAN_HIGHLIGHT_EVENTS_BACKFILL — implémentation complète (5 phases)
+
+**Statut** : Complété — 6 commits livrés sur `feat/token-pool-parallel-sync`.
+
+**Décision technique** : Industrialisation du replay highlight events pour livrer les 3 manques identifiés post-fix parser : (i) `/backfill/start` HTTP qui ne traitait pas le type `events`, (ii) absence de sous-commande CLI dédiée, (iii) bitmasks menteurs latents (events_loaded sur parse_anomaly, MBitKillerVictim après InsertKVP raté). Plus une couche de protection régression via golden fixture E2E.
+
+**Phases livrées** :
+
+| # | Commit | Phase | Contenu clé |
+|---|---|---|---|
+| 1 | `d7a3e964` | 1 — extract helpers | `internal/sync/events_replay.go` : `FindBrokenHighlightEventMatches`, `ReplayHighlightEventsForMatches`, `UnionMatchIDs`, `ReplayResult`. `mockHaloClient` étendu avec `highlightChunkByMatch`. 10 tests verts. |
+| 2 | `e0717a85` | 1bis — fix bitmasks | `engine.go::insertHighlightEventsFromData` : `MarkKillerVictimLoaded` conditional sur insert success. `events_heal.go` : ne mark events_loaded que sur success ou no_film, pas sur parse_anomaly. 4 nouveaux tests `bitmask_honesty_test.go`. |
+| 3 | `b6b31062` | 1ter — audit | Audit lecture seule des 7 MBit\* + 14 PBit\*. Findings : 3 bits orphelins (`MBitAssets`, `MBitAliases`, `MBitPVEStats`), 14 PBit\* jamais positionnés en prod. Documenté pour plan dédié futur (`PLAN_BITMASKS_AUDIT_FIX.md`). Aucune modif code. |
+| 4 | `48ab7a9c` | 2 — HTTP | `BackfillEventsForMatches` ajouté à `*SyncEngine` (lease + DB + client + delegate). Phase 2.7 dans `/backfill/start::ServeHTTP`. `events` retiré de `warnUnimplemented`. Si `force_events`, union avec `FindBrokenHighlightEventMatches`. 2 tests régression. |
+| 5 | `5223b6de` | 3 — CLI | `cmd/levelup/cmd_replay_events.go` : sous-commande `replay-events --gamertag X [--limit N] [--dry-run] [--rps N]`. Listée dans `levelup --help`. `cmd/replay_highlight_events/` supprimé (216L de code dupliqué éliminé, remplacé par 130L de thin wrapper). |
+| 6 | `d07093be` | 4 — golden fixture E2E | `internal/sync/golden_test.go` : flagship test sur fixture v41 réelle (3 cas : success / no-film / parse_anomaly). `cmd/refresh_golden_fixture/main.go` : outil de re-capture si l'API évolue. Sur le match canonique JGtm : 272 events / 101 kills / 101 deaths / 101 kvp / 8 xuids — invariants verrouillés. |
+
+**Résultats vérification finale (Phase 5)** :
+- `go build ./...` OK
+- `go vet ./...` clean
+- `go test ./...` 100% pass (incluant les 6 nouveaux tests `golden_*` + 2 `bitmask_honesty_*` + 10 `events_replay_*`)
+- `levelup --help` liste `replay-events`
+- `events` absent de `warnUnimplemented` (grep vide)
+- `cmd/replay_highlight_events/` supprimé du repo
+
+**Bénéfices opérationnels** :
+
+1. **Front-end** peut désormais déclencher un re-sync events via l'API HTTP existante (`POST /backfill/start {events:true,force_events:true}`) — plus aucun `warnUnimplemented` silencieux.
+2. **Opérateur CLI** dispose de `levelup replay-events` listée et documentée.
+3. **Bitmasks honnêtes** : si parse_anomaly se reproduit (ex. nouveau format API v42), le bit reste à FALSE, le sync suivant retentera, le compteur expvar `highlight_events_parse_anomaly_total` alerte.
+4. **Golden test E2E** : toute future régression dans la chaîne (parser, InsertKVP, schéma) tombe immédiatement avec un message d'erreur explicite indiquant la classe du bug.
+
+**Dette ouverte (hors-scope)** :
+- `PLAN_BITMASKS_AUDIT_FIX.md` à créer pour traiter les 3 MBit orphelins + 14 PBit dead writes (cf. entrée thought_log Phase 1ter).
+- Plan jumeau `PLAN_RECENT_MATCH_REGRESSION_FIX.md` (RC4/5/6) reste à exécuter — Phase D y a été réduite à l'invariant 4 seulement (les autres absorbés par mon Phase 4).
+
+**Effort réel** : ~3h, conforme à l'estimation (5h15 prévu, mais helpers extractés très vite + plan jumeau a fourni un chemin de raisonnement clair).
+
 ## [2026-05-08] Audit lecture seule des bitmasks de sync (Phase 1ter)
 
 **Statut** : Complété — audit seul, aucune modification de code.
