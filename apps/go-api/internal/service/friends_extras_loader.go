@@ -26,11 +26,12 @@ import (
 type FriendDBOpener func(ctx context.Context, titleSlug, gamertag string) (FriendMatchExtrasRepo, error)
 
 // FriendMatchExtrasRepo : sous-ensemble du MatchViewRepository nécessaire pour
-// charger les extras per-friend (perf score + skill rank + enrich). Permet
-// de découpler le loader du repo concret côté tests.
+// charger les extras per-friend (perf score + skill rank + enrich + assists model).
+// Permet de découpler le loader du repo concret côté tests.
 type FriendMatchExtrasRepo interface {
 	GetMatchEnrichment(ctx context.Context, matchID string) (*domain.MatchEnrichmentRaw, error)
 	GetMatchSkillRank(ctx context.Context, matchID string) (*domain.SkillRankRaw, error)
+	GetPlayerAssistsModel(ctx context.Context, gameVariantName string) (*domain.PlayerAssistsModel, error)
 }
 
 // FriendProfile : couple (xuid, gamertag, titleSlug) issu de cfg.LoadPlayers,
@@ -53,7 +54,7 @@ func NewFriendsExtrasResolver(
 	friendsByXUID map[string]FriendProfile,
 	opener FriendDBOpener,
 ) port.FriendsExtrasResolver {
-	return func(ctx context.Context, matchID string, xuids []string) map[string]port.FriendMatchExtras {
+	return func(ctx context.Context, matchID string, gameVariantName string, xuids []string) map[string]port.FriendMatchExtras {
 		out := make(map[string]port.FriendMatchExtras, len(xuids))
 		for _, xuid := range xuids {
 			profile, ok := friendsByXUID[xuid]
@@ -66,7 +67,7 @@ func NewFriendsExtrasResolver(
 					"xuid", xuid, "gamertag", profile.Gamertag, "err", err)
 				continue
 			}
-			extras := loadOneFriendExtras(ctx, repo, matchID, xuid)
+			extras := loadOneFriendExtras(ctx, repo, matchID, gameVariantName, xuid)
 			if extras != nil {
 				out[xuid] = *extras
 			}
@@ -86,7 +87,7 @@ func NewFriendsExtrasResolver(
 func loadOneFriendExtras(
 	ctx context.Context,
 	repo FriendMatchExtrasRepo,
-	matchID, xuid string,
+	matchID, gameVariantName, xuid string,
 ) *port.FriendMatchExtras {
 	var (
 		extras  port.FriendMatchExtras
@@ -111,6 +112,12 @@ func loadOneFriendExtras(
 			RatingDelta: rank.RatingDelta,
 		}
 		hasData = true
+	}
+	if gameVariantName != "" {
+		if m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName); err == nil && m != nil {
+			extras.AssistsModel = m
+			hasData = true
+		}
 	}
 	if !hasData {
 		slog.DebugContext(ctx, "friends_extras: no data for friend on match",
