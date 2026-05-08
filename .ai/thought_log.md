@@ -1,4 +1,29 @@
 
+## [2026-05-08] Explorer — couverture tests des 5 fonctions computeAvailable* + MultiSelectFilter
+
+**Statut** : Complété
+
+**Décision technique** : Ajout de la couverture tests manquante après audit final delivery-checklist. (1) **`match_history_explorer_options_test.go` (~210L)** : 11 tests unitaires couvrant les 5 fonctions `computeAvailableOutcomes/PerfTiers/SkillTiers/RankedContexts/SquadScopes`. Fixture commune `fixtureExplorerRows` (8 rows variés) + helper `findCount`. Cas testés : counts sans filtre (sanity), sémantique OR au sein de la dimension (selected ∪ {X} doit augmenter le count), skill_tier conditionnel à ranked_context (counts à 0 sans contexte ranked, non-zéro avec), interaction avec autres filtres (filtres "Win" affecte counts ranked_context et squad_scope), cardinalités attendues. (2) **`MultiSelectFilter.test.tsx` (~125L)** : 6 tests vitest sur le composant étendu : rien rendu si options vide + alwaysShow=false, count affiché à droite, grayout (disabled checkbox + opacity-40) sur option à count=0 non cochée, option count=0 reste cliquable si déjà cochée (pour la décocher), toggle appelé avec la bonne value, compat sans count (pas de chiffre rendu). **Logging** : non ajouté car les 5 fonctions sont pures (slices in/out, pas d'I/O, pas de retour d'erreur) — pas de surface où loguer ferait sens.
+
+**Audit conformité** :
+- Tailles : `match_history_explorer_options.go` 225L, test 211L, `MultiSelectFilter.tsx` 127L, test 125L — tous < 500L ✓
+- Fonctions : toutes < 80L ✓
+- Architecture : fonctions pures dans `service/`, données déjà filtrées injectées en paramètre — couches respectées
+- Multi-titres : valeurs outcome (1..4) et perf tier (1..5) codées en dur, cohérent avec le reste du service (halo_infinite-spécifiques mais c'est l'existant)
+- i18n FR + EN : ✓ (8 nouvelles clés dans explorer.toml)
+- Couleurs : tokenVar uniquement, pas de hex
+- `fmt.Println`, `log.Printf` : aucun introduit
+
+**Résultats** : `go test ./internal/service -run TestComputeAvailable` → 11/11 PASS. `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` → tous verts. `go vet ./...` clean. `tsc -b` OK. `vitest run src/features/explorer` → 13/13 PASS (incluant 6 nouveaux tests MultiSelectFilter). `eslint` sur mes fichiers : 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché).
+
+**Pré-existants non liés** :
+- `TestPooledHaloClientGetCareerRank_PinnedToken` (internal/sync) — appelle un endpoint Halo réel, timeout réseau, pas dans mon scope
+- `SeasonPassPage.test.tsx` (features/palmares) — texte "Escalade principale" introuvable, pas dans mon scope
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — counts cascade-aware sur 5 dimensions Explorer-spécifiques
 
 **Statut** : Complété
