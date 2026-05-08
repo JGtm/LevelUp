@@ -70,8 +70,8 @@ func TestMatchBits_NumericIdenticalToPython(t *testing.T) {
 		wantDec int
 	}{
 		{"MBitEvents", MBitEvents, 65536},
-		{"MBitAssets", MBitAssets, 131072},
-		{"MBitAliases", MBitAliases, 262144},
+		// MBitAssets (1<<17) et MBitAliases (1<<18) RETIRÉS le 2026-05-08
+		// Phase 3 du plan PLAN_BITMASKS_AUDIT_FIX (orphelins purs).
 		{"MBitKillerVictim", MBitKillerVictim, 524288},
 		{"MBitPVEStats", MBitPVEStats, 1048576},
 		{"MBitWeaponKills", MBitWeaponKills, 2097152},
