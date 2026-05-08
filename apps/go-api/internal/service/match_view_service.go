@@ -127,6 +127,9 @@ type MatchViewService struct {
 	// nil, la section "Local" du panneau ne s'affiche que pour `is_me`.
 	// Cf. port.FriendsExtrasResolver et registry.MatchView.
 	friendsExtras port.FriendsExtrasResolver
+	// metadataRepo (optionnel) : lookup des coefs assists_model_coefs pour
+	// calculer expected_assists à la volée. Dégradation gracieuse si nil.
+	metadataRepo port.MetadataRepository
 }
 
 // NewMatchViewService crée un MatchViewService.
@@ -173,6 +176,13 @@ func (s *MatchViewService) WithTitleSlug(slug string) *MatchViewService {
 // pour le joueur principal (`is_me`).
 func (s *MatchViewService) WithFriendsExtras(loader port.FriendsExtrasResolver) *MatchViewService {
 	s.friendsExtras = loader
+	return s
+}
+
+// WithMetadataRepo injecte le MetadataRepository pour le lookup des coefs
+// assists_model_coefs (expected_assists à la volée). Dégradation gracieuse si nil.
+func (s *MatchViewService) WithMetadataRepo(r port.MetadataRepository) *MatchViewService {
+	s.metadataRepo = r
 	return s
 }
 
@@ -437,6 +447,28 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		}
 	}
 
+	// expected_assists — uniquement pour le joueur suivi (is_me), jamais pour
+	// les autres lignes du scoreboard.
+	// Chaîne de résolution :
+	//   1. Modèle personnel OLS (player_assists_model dans stats.duckdb)
+	//   2. Fallback modèle populationnel (assists_model_coefs dans metadata.duckdb)
+	if stats != nil && meta != nil && meta.GameVariantName != nil {
+		v := computeExpectedAssists(ctx, s.repo, s.metadataRepo, *meta.GameVariantName, stats)
+		if v != nil {
+			if expected == nil {
+				expected = &domain.ExpectedStatsRaw{}
+			}
+			expected.AssistsExpected = v
+			// Propager aussi sur la ligne is_me du scoreboard (expander PlayerDetailPanel).
+			for i := range scoreboard {
+				if scoreboard[i].XUID == s.xuid {
+					scoreboard[i].AssistsExpected = v
+					break
+				}
+			}
+		}
+	}
+
 	header := buildMatchHeader(ctx, matchID, meta, stats, enrich, scoreboard, s.assetURL, isFavorite)
 	rank := buildRankBlock(skillRank, s.assetURL)
 	summary := buildSummaryTabFull(stats, medals, expected, histRows, meta, s.titleSlug, richCitations)
@@ -453,7 +485,11 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 			}
 		}
 		if len(xuids) > 0 {
-			friendsExtras = s.friendsExtras(ctx, matchID, xuids)
+			gvn := ""
+			if meta != nil && meta.GameVariantName != nil {
+				gvn = *meta.GameVariantName
+			}
+			friendsExtras = s.friendsExtras(ctx, matchID, gvn, xuids)
 		}
 	}
 	team := buildTeamTabFull(scoreboard, kvPairs, encounters, encounterStats, bulkMedals, bulkWeapons, s.xuid, s.titleSlug, enrich, skillRank, friendsExtras, s.assetURL)
@@ -933,15 +969,70 @@ func buildSummaryTabFull(
 	return tab
 }
 
+// computeExpectedAssists calcule expected_assists pour le joueur suivi (is_me).
+// Résolution : modèle personnel OLS → fallback modèle populationnel → nil.
+func computeExpectedAssists(
+	ctx context.Context,
+	repo port.MatchViewRepository,
+	metaRepo port.MetadataRepository,
+	gameVariantName string,
+	stats *domain.PlayerMatchStatsRaw,
+) *float64 {
+	kills := float64(stats.Kills)
+	deaths := float64(stats.Deaths)
+	dd := 0.0
+	if stats.DamageDealt != nil {
+		dd = *stats.DamageDealt
+	}
+	dt := 0.0
+	if stats.DamageTaken != nil {
+		dt = *stats.DamageTaken
+	}
+	mmrDelta := 0.0
+	if stats.TeamMMR != nil && stats.EnemyMMR != nil {
+		mmrDelta = *stats.TeamMMR - *stats.EnemyMMR
+	}
+
+	// 1. Modèle personnel
+	if m, err := repo.GetPlayerAssistsModel(ctx, gameVariantName); err == nil && m != nil {
+		raw := m.Intercept +
+			m.CoefKills*kills +
+			m.CoefDeaths*deaths +
+			m.CoefDamageDealt*dd +
+			m.CoefDamageTaken*dt +
+			m.CoefMMRDelta*mmrDelta
+		v := math.Round(raw*100) / 100
+		return &v
+	}
+
+	// 2. Fallback modèle populationnel (slope × (personal_score + shots_hit) + intercept)
+	if metaRepo == nil {
+		return nil
+	}
+	slope, intercept, err := metaRepo.GetAssistsCoef(ctx, gameVariantName)
+	if err != nil {
+		return nil
+	}
+	ps := 0.0
+	if stats.PersonalScore != nil {
+		ps = *stats.PersonalScore
+	}
+	sh := 0.0
+	if stats.ShotsHit != nil {
+		sh = float64(*stats.ShotsHit)
+	}
+	v := math.Round((slope*(ps+sh)+intercept)*100) / 100
+	return &v
+}
+
 // buildExpectedStats construit le bloc de stats attendues + moyennes historiques.
 func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistAvgRow, meta *domain.MatchMetaRaw) domain.MatchExpectedStats {
 	out := domain.MatchExpectedStats{}
 	if e != nil {
-		out.HasExpectedData = e.KillsExpected != nil || e.DeathsExpected != nil
 		out.ExpectedKills = e.KillsExpected
 		out.ExpectedDeaths = e.DeathsExpected
-		// ExpectedAssists laissé nil : Halo Infinite ne fournit pas d'assists
-		// expected via l'API skill (StatPerformances = Kills + Deaths uniquement).
+		out.ExpectedAssists = e.AssistsExpected
+		out.HasExpectedData = out.ExpectedKills != nil || out.ExpectedDeaths != nil || out.ExpectedAssists != nil
 	}
 	if len(histRows) == 0 || meta == nil {
 		return out
@@ -1415,6 +1506,7 @@ func buildTeamTabFull(
 			DamagePerDeath:      dpd,
 			ExpectedKills:       s.KillsExpected,
 			ExpectedDeaths:      s.DeathsExpected,
+			ExpectedAssists:     s.AssistsExpected,
 			KillsStdDev:         s.KillsStdDev,
 			DeathsStdDev:        s.DeathsStdDev,
 			Medals:              medalsByXUID[s.XUID],
@@ -1449,6 +1541,29 @@ func buildTeamTabFull(
 			row.PerformanceScore = extras.PerformanceScore
 			row.HadBotTeammate = extras.HadBotTeammate
 			row.SkillRank = extras.SkillRank
+			if extras.AssistsModel != nil {
+				dd := 0.0
+				if s.DamageDealt != nil {
+					dd = *s.DamageDealt
+				}
+				dt := 0.0
+				if s.DamageTaken != nil {
+					dt = *s.DamageTaken
+				}
+				mmrDelta := 0.0
+				if s.TeamMMR != nil && s.EnemyMMR != nil {
+					mmrDelta = *s.TeamMMR - *s.EnemyMMR
+				}
+				m := extras.AssistsModel
+				raw := m.Intercept +
+					m.CoefKills*float64(s.Kills) +
+					m.CoefDeaths*float64(s.Deaths) +
+					m.CoefDamageDealt*dd +
+					m.CoefDamageTaken*dt +
+					m.CoefMMRDelta*mmrDelta
+				v := math.Round(raw*100) / 100
+				row.ExpectedAssists = &v
+			}
 		}
 		rows = append(rows, row)
 	}

@@ -183,5 +183,9 @@ func NewBackfillFlagSet() (*flag.FlagSet, *BackfillCLI, *SyncScope) {
 	fs.BoolVar(&scope.PlayableDuration, "playable-duration", false, "Backfill playable_duration_seconds")
 	fs.BoolVar(&scope.ForcePlayableDuration, "force-playable-duration", false, "Re-traiter même si déjà rempli")
 
+	// ── Assists model — OLS per-mode expected_assists ──
+	fs.BoolVar(&scope.AssistsModel, "assists-model", false, "Calculer le modèle OLS expected_assists par mode (stats.duckdb)")
+	fs.BoolVar(&scope.ForceAssistsModel, "force-assists-model", false, "Recalculer le modèle même si déjà présent")
+
 	return fs, cli, scope
 }

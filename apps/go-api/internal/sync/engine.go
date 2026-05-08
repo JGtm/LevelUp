@@ -1443,6 +1443,15 @@ func (e *SyncEngine) runPostSyncPipeline(
 		slog.DebugContext(ctx, "post-sync: engagement coefs mis à jour", "gamertag", e.gamertag, "count", n)
 	}
 
+	// 1.52 Assists model — OLS per-mode, skip silencieux si migration absente.
+	// force=false : ne recalcule que si player_assists_model est vide (cold-start).
+	// Un nouveau sync peut amener des données → on recalcule si table vide.
+	if n, err := batchComputePlayerAssistsModel(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
+		slog.WarnContext(ctx, "post-sync: assists model échoué", "gamertag", e.gamertag, "err", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: assists model calculé", "gamertag", e.gamertag, "n_modes", n)
+	}
+
 	// 1.55 Weapon kills — pipeline film pour les matchs nouvellement insérés.
 	// Best-effort : films absents (404/410) sont normaux pour les vieux matchs
 	// et n'échouent pas le sync. Limité aux nouveaux matchs (insertedIDs) pour
