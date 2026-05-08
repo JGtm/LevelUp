@@ -748,7 +748,8 @@ func buildMatchHeader(
 	}
 
 	if enrich != nil {
-		if enrich.PerformanceScore != nil {
+		isDNF := stats != nil && stats.OutcomeCode == 4
+		if enrich.PerformanceScore != nil && !isDNF {
 			perf := *enrich.PerformanceScore
 			display := fmt.Sprintf("%.0f", perf)
 			h.PerfDisplay = display
