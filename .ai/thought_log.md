@@ -1,4 +1,30 @@
 
+## [2026-05-08] Guards et tests complets pour la régression Solo/Escouade
+
+**Statut** : Complété (sauf recompute-friends : bloqué par friend_gamertags=null — voir ci-dessous)
+
+**Contexte** : suite à la session précédente (fix COALESCE + DEFAULT FALSE), l'utilisateur a demandé (a) tous les guards et tests possibles, (b) utiliser la commande `recompute-friends` pour corriger les données existantes immédiatement sans attendre un sync.
+
+**Décisions techniques**
+
+1. **Tests ajoutés** (`friends_recompute_integration_test.go`) :
+   - `TestPlayerMatchEnrichment_DefaultFalse` : utilise `EnsurePlayerSchema` (DDL de production), vérifie qu'un INSERT sans `is_with_friends` donne `FALSE` et jamais `NULL`. Guard DDL de premier niveau.
+   - `TestRecomputeIsWithFriendsCore_PromotesLegacyNull` : flux e2e complet avec shared DB `:memory:` (xuid_aliases + match_participants), seed NULL hérité, vérifie promotion NULL→TRUE via `RecomputeIsWithFriendsCore`. Couvre le chemin complet gamertag→xuid→match→update.
+   - `TestRecomputeIsWithFriendsCore_FriendNotResolved` : ami absent de `xuid_aliases` → 0 promotion, pas d'erreur, ligne reste NULL. Documente le comportement safe sur le cas limite.
+
+2. **Corrections bugs pré-existants** : `burst_integration_test.go`, `engine_integration_test.go`, `lease_test.go` ne compilaient pas avec `-tags integration` (9 erreurs : `ctx` unused, `fmt` unused, IIFE void assigné à `crashGo`). Corrigés pour permettre l'exécution des nouveaux tests.
+
+3. **Recompute-friends bloqué** : `app_settings.json` a `friend_gamertags: null`. La commande `levelup recompute-friends` retourne `promoted=0` car `RecomputeIsWithFriendsCore` sort en `return res, nil` immédiatement si `friendGamertags` est vide. Pour corriger les données existantes, il faut d'abord configurer `friend_gamertags` via l'UI (PATCH /settings) puis relancer.
+
+**Résultats observés** :
+- 6 nouveaux tests intégration PASS (dont 3 nouveaux + 3 existants qui ne pouvaient pas compiler).
+- `go test ./...` tout vert, `go vet ./...` silencieux.
+- `go run ./cmd/levelup/ recompute-friends --dry-run` : players=4, friends=0 → confirmé que la config est vide.
+
+**Prochaine étape** : l'utilisateur doit configurer `friend_gamertags` dans les settings (qui sont ses amis parmi les 4 joueurs trackés : Madina97294, XxDaemonGamerxX, Chocoboflor, JGtm ?), puis relancer `go run ./apps/go-api/cmd/levelup/ recompute-friends`.
+
+---
+
 ## [2026-05-08] Match-view : 3 régressions persistantes (Solo, Super Fiesta → Assassin, bot bid(N.0))
 
 **Statut** : Complété
