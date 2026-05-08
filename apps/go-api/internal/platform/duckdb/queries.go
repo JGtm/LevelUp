@@ -37,6 +37,9 @@ const Q3ResolveXUID = `SELECT value FROM sync_meta WHERE key = 'xuid'`
 // Perf : mesuré ~5-15ms sur 15k rows en DuckDB columnar (avril 2026).
 // Pas d'index nécessaire jusqu'à ~100k rows ; au-delà, ajouter une colonne
 // gamertag_lower générée + index ART dessus.
+//
+// Note schéma : GamertagRepo ouvre shared_matches_v2.duckdb directement (pas via
+// pool player). Les tables sont dans main — pas de préfixe global./shared. ici.
 const Q11GamertagSearch = `
 WITH params AS (SELECT lower(?) AS q),
 matched AS (
@@ -47,7 +50,7 @@ matched AS (
       + CASE WHEN lower(xa.gamertag) LIKE p.q || '%' THEN 200 ELSE 0 END
       + CASE WHEN lower(xa.gamertag) LIKE '%' || p.q || '%' THEN 50 ELSE 0 END
       + CAST(jaro_winkler_similarity(lower(xa.gamertag), p.q) * 100 AS INTEGER) AS score
-    FROM global.xuid_aliases xa
+    FROM xuid_aliases xa
     CROSS JOIN params p
     WHERE xa.xuid NOT LIKE 'bid(%'
       AND (   lower(xa.gamertag) LIKE '%' || p.q || '%'
@@ -58,7 +61,7 @@ SELECT
     m.xuid,
     COUNT(DISTINCT mp.match_id) AS match_count
 FROM matched m
-LEFT JOIN shared.match_participants mp ON m.xuid = mp.xuid
+LEFT JOIN match_participants mp ON m.xuid = mp.xuid
 GROUP BY m.gamertag, m.xuid, m.score
 ORDER BY m.score DESC, match_count DESC, m.gamertag ASC
 LIMIT 20`

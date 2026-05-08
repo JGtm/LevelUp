@@ -1,4 +1,16 @@
 
+## [2026-05-08] Fix — Q11GamertagSearch : schema mismatch global./shared. → main
+
+**Statut** : Complété
+
+**Décision technique** : `Q11GamertagSearch` référençait `global.xuid_aliases` et `shared.match_participants` — des alias de schema qui n'existent que dans le pool player (après ATTACH de `xbox_aliases.duckdb` as `global` et `shared_matches_v2.duckdb` as `shared`). `GamertagRepo.Search` ouvre `shared_matches_v2.duckdb` directement via `OpenReadOnly` : dans ce contexte, toutes les tables sont dans `main`, sans préfixe. Le fix supprime les préfixes `global.` et `shared.` de la requête. `xuid_aliases` est confirmé dans `main` de `shared_matches_v2.duckdb` (créé dans `steps_shared.go` ligne 102).
+
+**Résultats** : `go test ./internal/platform/duckdb/...` OK (6.364s), `go test ./internal/api/handlers/... -run Gamertag` → 3 tests PASS (Search_OK, EmptyQuery, ServiceError).
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — table FDA/Perf/ΔPerf/Rang/ΔRang + multi-select dropdowns
 
 **Statut** : Complété
