@@ -24,6 +24,7 @@ import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeaso
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
 import type { LabelValue } from '@/lib/api/types'
+import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -207,6 +208,25 @@ export function ExplorerPage() {
   )
 
   const summary = matchesQuery.data?.summary
+
+  // Descriptor du contexte de navigation pour les matchs ouverts depuis le
+  // tableau mode Matchs. Priorité au filtre le plus spécifique : 1 playlist >
+  // 1 mode > période active > undefined (Q25 fallback générique côté match-view).
+  const matchesContextDescriptor: ContextDescriptor | undefined = (() => {
+    if (playlists.size === 1) {
+      const [name] = [...playlists]
+      return name ? { kind: 'playlist', name } : undefined
+    }
+    if (modeNames.size === 1) {
+      const [category] = [...modeNames]
+      return category ? { kind: 'mode', category } : undefined
+    }
+    if (startDate || endDate) {
+      const toIso = (d: string) => (d ? new Date(d).toISOString() : undefined)
+      return { kind: 'period', from: toIso(startDate), to: toIso(endDate) }
+    }
+    return undefined
+  })()
 
   // ─── Options pour les MultiSelectFilter ───────────────────────────────────
   const expTypeOptions: MultiSelectOption[] = (summary?.available_experience_types ?? []).map(
@@ -411,6 +431,10 @@ export function ExplorerPage() {
                         gamertag: playerQuery.data.target_gamertag || targetGamertag,
                       }),
                     }}
+                    contextDescriptor={{
+                      kind: 'with_player',
+                      gamertag: playerQuery.data.target_gamertag || targetGamertag,
+                    }}
                   />
                 )}
 
@@ -424,6 +448,10 @@ export function ExplorerPage() {
                       label: t('explorer.player.table_as_enemy', {
                         gamertag: playerQuery.data.target_gamertag || targetGamertag,
                       }),
+                    }}
+                    contextDescriptor={{
+                      kind: 'with_player',
+                      gamertag: playerQuery.data.target_gamertag || targetGamertag,
                     }}
                   />
                 )}
@@ -655,6 +683,7 @@ export function ExplorerPage() {
                   <ExplorerMatchesTable
                     rows={matchesQuery.data.table.items}
                     playerSlug={playerSlug}
+                    contextDescriptor={matchesContextDescriptor}
                   />
                 </>
               ) : (

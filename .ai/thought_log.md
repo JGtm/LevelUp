@@ -1,4 +1,24 @@
 
+## [2026-05-08] Explorer — propagation contextDescriptor dans le matchNavContext (mode Matchs + Joueur)
+
+**Statut** : Complété
+
+**Décision technique** : Quand on ouvre un match depuis l'Explorer, le contexte de navigation chaînée préservait déjà la liste de match_ids (prev/next via persistNavContext / sessionStorage), mais le **rappel de contexte** dans la nav bar match-view (ex: "Matchs avec X 4/12") n'était pas alimenté. Réutilisation du mécanisme existant `ContextDescriptor` (Phase 2c, déjà implémenté pour Squad/Career via `with_player` / `playlist` / `mode` / `period` / `top_matches` / etc.). Pas de nouveau type ni nouvel endpoint — juste branchement.
+
+**Modifications** :
+1. **`MatchNavSource`** : ajout de `'explorer'` (à côté de history/session/etc.) — distinction analytique pour la source.
+2. **`ExplorerMatchesTable`** : nouveau prop `contextDescriptor?: ContextDescriptor`. Propagé dans le `navContext` lors du clic ligne (en plus du `filterSpec` déjà présent). `source` passe de `'history'` à `'explorer'`.
+3. **`ExplorerPage` mode Matchs** : calcul `matchesContextDescriptor` selon le filtre dominant — priorité 1 playlist sélectionnée → `{kind:'playlist', name}` ; sinon 1 mode → `{kind:'mode', category}` ; sinon dates → `{kind:'period', from, to}` ; sinon undefined (Q25 fallback générique). Le tableau du mode Matchs reçoit ce descriptor.
+4. **`ExplorerPage` mode Joueur** : les 2 tableaux ally/enemy reçoivent `{kind:'with_player', gamertag: targetGamertag}`. Le label compact "Matchs avec X 4/12" est construit côté `match-view/descriptorLabel.ts:58` via `t.ctxWithPlayerFmt(gamertag)` — qui existe déjà.
+
+**Pourquoi ça marche sans backend ni i18n nouveau** : `descriptorLabel.ts` couvre déjà les 9 kinds définis dans `navContext.ts`. Les libellés FR/EN existent déjà dans `match-view/i18n.ts` (`ctxWithPlayerFmt`, `ctxPlaylistFmt`, `ctxModeFmt`, `ctxPeriodFromToFmt`, etc.). Aucune extension de manifest nécessaire.
+
+**Résultats** : `tsc -b` OK, `eslint src/features/explorer src/lib/match-nav` 0 erreur, `vitest run src/features/explorer src/lib/match-nav` 58/58 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer mode Joueur — 2 tableaux ally/enemy sous le briefing avec bandeau team-color
 
 **Statut** : Complété
