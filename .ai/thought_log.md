@@ -1,4 +1,24 @@
 
+## [2026-05-08] Fix UBIGINT weapon_id binding + zlib décompression film chunks
+
+**Statut** : Complété
+
+**Contexte** : Backfill weapon_kills échouait systématiquement avec `"sql: converting argument $4 type: uint64 values with high bit set are not supported"`. Après investigation, deux causes racines :
+
+1. **Zlib compression** : Le CDN Azure Halo envoie les chunks film compressés en zlib (header `78 5e ...`), mais `downloadBlob()` faisait un simple `io.ReadAll()` sans décompression. Python (`api_client.py:495`) appelait `zlib.decompress(raw)`. Le scanner armes (`ScanFireEventsB5`, `ScanFormulaA`, etc.) tournait sur des bytes compressés → 0 fire events détectés.
+2. **UBIGINT binding** : Weapon IDs Halo (filmshell, ex `f408190f42c9679f` = 17584332298403800991) dépassent 2^63. Le driver DuckDB-Go rejette les uint64 avec bit 63 set dans le binding `database/sql`.
+
+**Décision technique** :
+- `internal/sync/halo_client.go` : ajout `compress/zlib` + `bytes` imports ; `downloadBlob()` wrap le body avec `zlib.NewReader(bytes.NewReader(raw))` et `io.ReadAll(zr)`.
+- `internal/sync/halo_client_extra_test.go` : helper `zlibCompress()` ; mise à jour des 4 test fixtures (`TestGetMatchFilm_BasicPrefix`, `MultiChunk`, `TestGetHighlightEventsChunk_Found`, `NoChunk`) pour compresser les payloads.
+- `internal/sync/writes.go` : helper `ubigintArg()` pour convertir `*uint64` en string décimale (ou nil) ; `InsertWeaponKills()` utilise `CAST(? AS UBIGINT)` au lieu de binding direct ; le cast côté serveur DuckDB préserve exactement la valeur unsigned.
+
+**Résultats** : Après fix zlib, scanner produit 2602 fire events válides (avant : 0). Après fix UBIGINT, backfill_all run 2 complète sans erreur : 1488 weapon_kills insérés, 962 avec weapon_id non-NULL (64.7%), sample IDs = `13121756802780325791`, `17584332298403800991`, `5242644258955552671` — tous typés UBIGINT. Suite `go test ./internal/sync/...` verte (8.5s).
+
+**Prochaine étape** : (1) commit ; (2) refactor `BackfillWeaponKillsForMatches` pour traiter tous les xuids d'un match en une passe (inefficacité : 4 joueurs × 25 matchs = 100 appels, mais ~50 matchs uniques avec chevauchements).
+
+---
+
 ## [2026-05-08] Diagnostic matchs plantés + fix navigation bloquée + fix corps HTTP vide
 
 **Statut** : Complété

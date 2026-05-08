@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"bytes"
+	"compress/zlib"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -9,6 +11,19 @@ import (
 	"testing"
 	"time"
 )
+
+// zlibCompress compresse des données avec zlib (simule le CDN Azure Halo).
+func zlibCompress(t *testing.T, data []byte) []byte {
+	var buf bytes.Buffer
+	w := zlib.NewWriter(&buf)
+	if _, err := w.Write(data); err != nil {
+		t.Fatalf("zlib compress: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("zlib close: %v", err)
+	}
+	return buf.Bytes()
+}
 
 func TestDoGet_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -354,7 +369,7 @@ func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 			))
 			return
 		}
-		_, _ = w.Write([]byte("DATA"))
+		_, _ = w.Write(zlibCompress(t, []byte("DATA")))
 	}))
 	defer srv.Close()
 
@@ -387,7 +402,7 @@ func TestGetMatchFilm_MultiChunk(t *testing.T) {
 			))
 			return
 		}
-		_, _ = w.Write([]byte("CHUNK"))
+		_, _ = w.Write(zlibCompress(t, []byte("CHUNK")))
 	}))
 	defer srv.Close()
 
@@ -458,7 +473,7 @@ func TestGetHighlightEventsChunk_Found(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(manifest)
 			return
 		}
-		_, _ = w.Write([]byte(payload))
+		_, _ = w.Write(zlibCompress(t, []byte(payload)))
 	}))
 	defer srv.Close()
 
@@ -488,7 +503,7 @@ func TestGetHighlightEventsChunk_NoChunk(t *testing.T) {
 			))
 			return
 		}
-		_, _ = w.Write([]byte("DATA"))
+		_, _ = w.Write(zlibCompress(t, []byte("DATA")))
 	}))
 	defer srv.Close()
 
