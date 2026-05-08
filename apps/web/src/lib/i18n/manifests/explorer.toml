@@ -491,9 +491,9 @@ fr = "K/D"
 en = "K/D"
 
 [explorer.player.table_as_ally]
-fr = "{gamertag} en allié"
-en = "{gamertag} as ally"
+fr = "Équipe alliée"
+en = "Ally team"
 
 [explorer.player.table_as_enemy]
-fr = "{gamertag} en ennemi"
-en = "{gamertag} as enemy"
+fr = "Équipe ennemie"
+en = "Enemy team"

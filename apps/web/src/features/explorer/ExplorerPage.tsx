@@ -427,9 +427,7 @@ export function ExplorerPage() {
                     playerSlug={playerSlug}
                     teamBanner={{
                       variant: 'ally',
-                      label: t('explorer.player.table_as_ally', {
-                        gamertag: playerQuery.data.target_gamertag || targetGamertag,
-                      }),
+                      label: t('explorer.player.table_as_ally'),
                     }}
                     contextDescriptor={{
                       kind: 'with_player',
@@ -445,9 +443,7 @@ export function ExplorerPage() {
                     playerSlug={playerSlug}
                     teamBanner={{
                       variant: 'enemy',
-                      label: t('explorer.player.table_as_enemy', {
-                        gamertag: playerQuery.data.target_gamertag || targetGamertag,
-                      }),
+                      label: t('explorer.player.table_as_enemy'),
                     }}
                     contextDescriptor={{
                       kind: 'with_player',
