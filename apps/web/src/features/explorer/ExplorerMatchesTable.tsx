@@ -77,6 +77,28 @@ function fmtKDA(v: number | null | undefined): string {
   return v.toFixed(2)
 }
 
+/** Traduit le préfixe EN du skill tier label vers FR ("Diamond IV" → "Diamant IV").
+ *  La DB stocke `tier_label` en EN nativement (pas de tier_label_fr column),
+ *  donc on remappe côté UI pour respecter la locale.
+ */
+const SKILL_TIER_FR: Record<string, string> = {
+  Bronze: 'Bronze',
+  Silver: 'Argent',
+  Gold: 'Or',
+  Platinum: 'Platine',
+  Diamond: 'Diamant',
+  Onyx: 'Onyx',
+}
+function localizeSkillTierLabel(label: string | null | undefined, locale: string): string {
+  if (!label) return '-'
+  if (locale !== 'fr') return label
+  // Le label est typiquement "<Tier> <Sub>" (ex: "Diamond IV"). On split sur le 1er espace.
+  const idx = label.indexOf(' ')
+  const head = idx === -1 ? label : label.slice(0, idx)
+  const tail = idx === -1 ? '' : label.slice(idx)
+  return (SKILL_TIER_FR[head] ?? head) + tail
+}
+
 function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
   switch (outcome) {
     case 2:
@@ -190,6 +212,17 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
         ),
       },
       {
+        accessorKey: 'is_with_friends',
+        header: t('explorer.matches.col_squad'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground text-xs">
+            {ctx.getValue<boolean>()
+              ? t('explorer.matches.squad_party')
+              : t('explorer.matches.squad_solo')}
+          </span>
+        ),
+      },
+      {
         accessorKey: 'outcome_code',
         header: t('explorer.matches.col_outcome'),
         cell: (ctx) => {
@@ -295,7 +328,7 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
       {
         accessorKey: 'skill_tier_label',
         header: t('explorer.matches.col_rank'),
-        cell: (ctx) => ctx.getValue<string | null | undefined>() ?? '-',
+        cell: (ctx) => localizeSkillTierLabel(ctx.getValue<string | null | undefined>(), locale),
       },
       {
         accessorKey: 'team_mmr',

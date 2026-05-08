@@ -37,6 +37,8 @@ type MatchHistoryRawRow struct {
 	SkillTierFR        *string // e.g. "Diamant" (affichage FR)
 	SkillRatingType    *string // "LUSR" | "CSR"
 	SkillTierLabel     *string // e.g. "Diamant IV" (label formaté DB)
+	MyTeamScore        *int    // score de l'équipe du joueur (depuis team_id)
+	EnemyTeamScore     *int    // score de l'équipe adverse
 }
 
 // PaginationRequest représente les paramètres de pagination d'une requête.

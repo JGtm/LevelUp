@@ -418,6 +418,18 @@ en = "KDA"
 fr = "Durée"
 en = "Duration"
 
+[explorer.matches.col_squad]
+fr = "Contexte"
+en = "Context"
+
+[explorer.matches.squad_solo]
+fr = "Solo"
+en = "Solo"
+
+[explorer.matches.squad_party]
+fr = "Escouade"
+en = "Squad"
+
 [explorer.matches.outcome_win]
 fr = "Victoire"
 en = "Win"
