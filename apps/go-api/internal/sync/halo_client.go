@@ -16,6 +16,8 @@
 package sync
 
 import (
+	"bytes"
+	"compress/zlib"
 	"context"
 	"encoding/json"
 	"errors"
@@ -411,7 +413,9 @@ func containsStr(s, sub string) bool {
 	return false
 }
 
-// downloadBlob télécharge un blob Halo sans header d'auth (pre-signed URL).
+// downloadBlob télécharge un blob Halo sans header d'auth (pre-signed URL)
+// et le décompresse zlib (le CDN Azure des films Halo Infinite renvoie du zlib brut).
+// Portage de download_film_chunk() (Python api_client.py:485-498).
 func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
 	c.rateWait(ctx)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, blobURL, nil)
@@ -426,7 +430,16 @@ func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byt
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("downloadBlob HTTP %d", resp.StatusCode)
 	}
-	return io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("downloadBlob read: %w", err)
+	}
+	zr, err := zlib.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		return nil, fmt.Errorf("downloadBlob zlib header: %w", err)
+	}
+	defer zr.Close()
+	return io.ReadAll(zr)
 }
 
 // doGet exécute un GET authentifié avec retry + backoff exponentiel.
