@@ -45,6 +45,7 @@ var (
 	authFile     = flag.String("auth-file", "data/auth/watcher_tokens.json", "Chemin tokens.json")
 	playerFilter = flag.String("player", "", "Limiter à un player (vide = tous)")
 	onlyType     = flag.String("only", "", "weapons | psa | both (par défaut)")
+	forceWeapons = flag.Bool("force-weapons", false, "Effacer et re-backfiller weapon_kills même si déjà présents")
 )
 
 func main() {
@@ -104,8 +105,9 @@ func processPlayer(ctx context.Context, gamertag string) {
 
 	fmt.Printf("\n=== %s (xuid=%s) ===\n", gamertag, xuid)
 
-	// Match list pour weapons : <28j sans wk et sans noFilm bit
-	weaponMatches, err := loadMissingWeaponMatches(sharedDBPath, xuid)
+	// Match list pour weapons : <28j sans wk et sans noFilm bit.
+	// En mode -force-weapons : efface d'abord les rows existantes puis recharge.
+	weaponMatches, err := loadMissingWeaponMatches(sharedDBPath, xuid, *forceWeapons)
 	if err != nil {
 		slog.Error("loadMissingWeaponMatches", "player", gamertag, "err", err)
 	}
@@ -138,19 +140,64 @@ func processPlayer(ctx context.Context, gamertag string) {
 	}
 }
 
-func loadMissingWeaponMatches(sharedDBPath, xuid string) ([]string, error) {
-	db, err := sql.Open("duckdb", sharedDBPath+"?access_mode=read_only")
+func loadMissingWeaponMatches(sharedDBPath, xuid string, force bool) ([]string, error) {
+	accessMode := "?access_mode=read_only"
+	if force {
+		accessMode = ""
+	}
+	db, err := sql.Open("duckdb", sharedDBPath+accessMode)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
 	cutoff := time.Now().Add(-time.Duration(filmExpiryDays*24) * time.Hour)
+
+	if force {
+		// Supprimer les weapon_kills existants pour ce joueur dans la fenêtre 28j
+		// afin de permettre une re-attribution correcte (player_index).
+		_, err := db.Exec(`
+			DELETE FROM weapon_kills
+			WHERE match_id IN (
+				SELECT DISTINCT mp.match_id
+				FROM match_participants mp
+				JOIN match_registry mr ON mr.match_id = mp.match_id
+				WHERE mp.xuid = ?
+				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+				  AND COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') >= ?
+				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
+			)
+			AND xuid = ?`,
+			xuid, cutoff, mBitWeaponKillsNoFilm, xuid)
+		if err != nil {
+			return nil, fmt.Errorf("force-weapons delete: %w", err)
+		}
+		// Effacer aussi le bit MBitWeaponKills (bit 21) pour que BackfillWeaponKillsForMatch
+		// ne skipe pas les matchs déjà marqués done.
+		const mBitWeaponKills = 1 << 21
+		_, err = db.Exec(`
+			UPDATE match_registry
+			SET backfill_completed = backfill_completed & ~?
+			WHERE match_id IN (
+				SELECT DISTINCT mp.match_id
+				FROM match_participants mp
+				JOIN match_registry mr ON mr.match_id = mp.match_id
+				WHERE mp.xuid = ?
+				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+				  AND COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') >= ?
+				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
+			)`,
+			mBitWeaponKills, xuid, cutoff, mBitWeaponKillsNoFilm)
+		if err != nil {
+			return nil, fmt.Errorf("force-weapons clear bit: %w", err)
+		}
+	}
+
 	rows, err := db.Query(`
 		SELECT DISTINCT mp.match_id
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
-		LEFT JOIN weapon_kills wk ON wk.match_id = mp.match_id
+		LEFT JOIN weapon_kills wk ON wk.match_id = mp.match_id AND wk.xuid = mp.xuid
 		WHERE mp.xuid = ?
 		  AND wk.match_id IS NULL
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE

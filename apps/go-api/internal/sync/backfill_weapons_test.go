@@ -32,7 +32,7 @@ func openWeaponDB(t *testing.T) *sql.DB {
 		);
 		CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR,
-			team_id INTEGER, rank_in_team INTEGER
+			team_id INTEGER, rank INTEGER
 		);
 		CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
