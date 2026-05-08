@@ -707,6 +707,8 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		PerfTier:                 perfTier,
 		KDA:                      kda,
 		Kills:                    r.Kills,
+		Deaths:                   r.Deaths,
+		Assists:                  r.Assists,
 		SkillTierLabel:           r.SkillTierLabel,
 		AverageLifeMMSS:          formatLifeSeconds(r.AverageLifeSeconds),
 		MatchURL:                 matchURL,

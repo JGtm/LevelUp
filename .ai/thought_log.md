@@ -1,4 +1,16 @@
 
+## [2026-05-08] Explorer — table FDA/Perf/ΔPerf/Rang/ΔRang + multi-select dropdowns
+
+**Statut** : Complété
+
+**Décision technique** : Refonte du tableau Explorer mode Matchs et des filtres dynamiques. (1) Table : remplacement de la table simplifiée (7 colonnes) par une table style `MatchHistoryTable` avec lignes colorées par outcome et 9 colonnes — Date, Carte/Mode, Résultat, Score, FDA (kills/deaths/assists), Perf (coloré par tier), ΔPerf (perf_score - 50, vert/rouge), Rang (skill_tier_label LUSR/CSR), ΔRang (delta_mmr). (2) Filtres : les 4 sections de chips dynamiques (exp type, playlist, mode, map) remplacées par des `MultiSelectFilter` (dropdown bouton + checkboxes) intégrés dans la ligne compacte principale. (3) Go : `Deaths`/`Assists` ajoutés à `MatchHistoryRow` et `enrichRow`. `ExplorerMatchesRow` étendu avec Kills/Deaths/Assists/DeltaMMR/DeltaPerf. `DeltaPerf` = `perf_score - 50` calculé côté handler.
+
+**Résultats** : `go build ./...` OK, `go vet ./internal/...` OK, `go test ./internal/service/... ./internal/api/... ./internal/domain/...` tous verts, `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — UX padding CardContent + Enter-to-confirm GamertagSearchInput
 
 **Statut** : Complété

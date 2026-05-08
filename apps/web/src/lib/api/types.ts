@@ -940,9 +940,14 @@ export interface ExplorerMatchRow {
   score_label: string
   is_with_friends: boolean
   experience_type_label: string
+  kills?: number | null
+  deaths?: number | null
+  assists?: number | null
   perf_score?: number | null
   perf_tier?: number
+  delta_perf?: number | null
   skill_tier_label?: string | null
+  delta_mmr?: number | null
 }
 
 export interface ExplorerEncounterRow {
