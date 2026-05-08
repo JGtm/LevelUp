@@ -117,6 +117,12 @@ type ExplorerMatchesRow struct {
 	DeltaMMR *float64 `json:"delta_mmr,omitempty"`
 	// TeamMMR : MMR moyen de l'équipe du joueur sur ce match (nil si non rankée).
 	TeamMMR *float64 `json:"team_mmr,omitempty"`
+	// EnemyMMR : MMR moyen de l'équipe adverse sur ce match (nil si non rankée).
+	EnemyMMR *float64 `json:"enemy_mmr,omitempty"`
+	// KDA : ratio (Kills + Assists/3) / Deaths — calculé côté backend.
+	KDA *float64 `json:"kda,omitempty"`
+	// DurationSeconds : durée du match en secondes (nil si manquante).
+	DurationSeconds *int `json:"duration_seconds,omitempty"`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.

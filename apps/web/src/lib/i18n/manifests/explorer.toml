@@ -382,6 +382,42 @@ en = "ΔRank"
 fr = "MMR équipe"
 en = "Team MMR"
 
+[explorer.matches.col_enemy_mmr]
+fr = "MMR adv."
+en = "Enemy MMR"
+
+[explorer.matches.col_delta_mmr]
+fr = "ΔMMR"
+en = "ΔMMR"
+
+[explorer.matches.col_open]
+fr = "Ouvrir"
+en = "Open"
+
+[explorer.matches.col_waypoint]
+fr = "↗ wp"
+en = "↗ wp"
+
+[explorer.matches.col_kills]
+fr = "Frags"
+en = "Kills"
+
+[explorer.matches.col_deaths]
+fr = "Morts"
+en = "Deaths"
+
+[explorer.matches.col_assists]
+fr = "Assists"
+en = "Assists"
+
+[explorer.matches.col_kda]
+fr = "FDA"
+en = "KDA"
+
+[explorer.matches.col_duration]
+fr = "Durée"
+en = "Duration"
+
 [explorer.matches.outcome_win]
 fr = "Victoire"
 en = "Win"
