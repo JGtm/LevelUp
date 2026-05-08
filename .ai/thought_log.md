@@ -1,4 +1,21 @@
 
+## [2026-05-08] Explorer — counts cascade-aware sur 5 dimensions Explorer-spécifiques
+
+**Statut** : Complété
+
+**Décision technique** : Étendre les options "available_*" cascade-aware (sémantique OR au sein, AND entre) aux 5 dimensions Explorer-spécifiques : `outcome`, `perf_tier`, `skill_tier`, `ranked_context`, `squad_scope`. **Option B retenue** (calcul localisé dans `MatchHistoryService.GetPage` plutôt qu'extension du shell global `FiltersService.Resolve`) car ces dimensions sont Explorer-only et le calcul est "gratuit" sur le resultset déjà chargé. Implémentation : (1) nouveau fichier `apps/go-api/internal/service/match_history_explorer_options.go` (~210L) avec 5 fonctions `computeAvailable{Outcomes,PerfTiers,SkillTiers,RankedContexts,SquadScopes}` + helpers `intSliceToSet`/`unionWithInt` ; (2) `MatchHistoryQuerySummary` étendu avec 5 nouveaux champs `[]LabelValue` ; (3) capture `baseForExplorerOptions` juste avant les filtres Explorer-spécifiques, applique tous-les-filtres-sauf-D pour calculer count(X) en simulant `selected ∪ {X}` ; (4) propagation dans `ExplorerMatchesSummary` Go + handler + TS types `ExplorerMatchesQuerySummary` ; (5) `MultiSelectFilter` étendu avec `count?: number` par option (affiché à droite tabular-nums) et grayout auto si `count=0` (sauf si déjà cochée — pour permettre de la décocher) ; (6) `<select>` ranked/squad enrichis avec `(count)` dans le label et `disabled` sur les valeurs à 0.
+
+**Sémantique précise** :
+- Multi-select (outcome, perf_tier, skill_tier) : count(X) = `filters tous appliqués` mais `D = selected ∪ {X}` → "ce que je gagnerais si je cochais X"
+- Single-select (ranked_context, squad_scope) : count(X) = `filters tous appliqués` mais `D = X` → "ce que je verrais si je forçais X"
+- skill_tier : counts à 0 si `ranked_context` vide (skill_tier nécessite un contexte ranked/unranked)
+
+**Résultats** : `go build ./...` OK, `go vet` clean, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts. `tsc -b` OK, `eslint src/features/explorer` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touchés), `vitest run src/features/explorer` 7/7 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`. Si plus tard une autre page (Career, match-history) veut le même grayout, refactor mécanique = remonter ces 5 dimensions vers `AvailableFilterOptions` du shell.
+
+---
+
 ## [2026-05-08] Explorer — fix recherche par gamertag : "Recherche indisponible" sur joueurs présents dans shared
 
 **Statut** : Complété

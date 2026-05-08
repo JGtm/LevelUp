@@ -127,6 +127,13 @@ type ExplorerMatchesSummary struct {
 	AvailablePlaylists       []string `json:"available_playlists,omitempty"`
 	AvailableMaps            []string `json:"available_maps,omitempty"`
 	AvailableModes           []string `json:"available_modes,omitempty"`
+	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR).
+	// Permettent au front d'afficher "Win (42)" et de griser les options à 0.
+	AvailableOutcomes       []LabelValue `json:"available_outcomes,omitempty"`
+	AvailablePerfTiers      []LabelValue `json:"available_perf_tiers,omitempty"`
+	AvailableSkillTiers     []LabelValue `json:"available_skill_tiers,omitempty"`
+	AvailableRankedContexts []LabelValue `json:"available_ranked_contexts,omitempty"`
+	AvailableSquadScopes    []LabelValue `json:"available_squad_scopes,omitempty"`
 }
 
 // ExplorerMatchesTable : table paginée de l'Explorer.

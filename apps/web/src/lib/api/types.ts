@@ -968,6 +968,16 @@ export interface ExplorerMatchesQuerySummary {
   available_playlists?: string[]
   available_maps?: string[]
   available_modes?: string[]
+  /** Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
+   *  d'une dimension, AND entre dimensions). Les options à count=0 sont à griser.
+   *  Le `value` est : code outcome (1..4) ou tier (1..5) en string, ou clé EN
+   *  (Bronze..Onyx) pour skill_tier, ou "" / "ranked" / "unranked" pour ranked,
+   *  ou "" / "solo" / "squad" pour squad_scope. */
+  available_outcomes?: LabelValue[]
+  available_perf_tiers?: LabelValue[]
+  available_skill_tiers?: LabelValue[]
+  available_ranked_contexts?: LabelValue[]
+  available_squad_scopes?: LabelValue[]
 }
 
 export interface ExplorerPlayerTarget {
