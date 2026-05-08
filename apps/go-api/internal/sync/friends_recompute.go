@@ -172,6 +172,9 @@ func loadMatchesWithFriends(
 		args = append(args, x)
 	}
 	args = append(args, playerXUID)
+	// p2.xuid != p1.xuid : exclut la self-join quand le joueur est aussi dans
+	// friendXUIDs (setup multi-joueurs où tous les membres du groupe sont trackés).
+	// Sans ce guard, chaque match du joueur satisferait le JOIN via sa propre ligne.
 	q := fmt.Sprintf(`
 		SELECT DISTINCT p1.match_id
 		FROM match_participants p1
@@ -179,6 +182,7 @@ func loadMatchesWithFriends(
 		    ON p2.match_id = p1.match_id
 		    AND p2.team_id = p1.team_id
 		    AND p2.xuid IN (%s)
+		    AND p2.xuid != p1.xuid
 		WHERE p1.xuid = ?
 	`, strings.Join(placeholders, ","))
 
