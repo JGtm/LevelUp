@@ -1,4 +1,88 @@
 
+## [2026-05-08] expected_assists pour tous les joueurs trackés dans le scoreboard
+
+**Statut** : Complété
+
+**Contexte** : L'implémentation initiale ne calculait `expected_assists` que pour `is_me` dans l'expander du scoreboard (PlayerDetailPanel). Le user avait demandé que tous les joueurs ayant une DB locale (joueurs trackés / amis configurés) bénéficient du modèle OLS personal dans cette section.
+
+**Décision technique** :
+- `port/repository.go` — ajout de `AssistsModel *domain.PlayerAssistsModel` dans `FriendMatchExtras` ; signature `FriendsExtrasResolver` étendue avec `gameVariantName string`.
+- `service/friends_extras_loader.go` — ajout de `GetPlayerAssistsModel(ctx, gameVariantName)` à `FriendMatchExtrasRepo` ; `loadOneFriendExtras` accepte désormais `gameVariantName` et appelle `GetPlayerAssistsModel` (dégradation gracieuse si absent) ; `NewFriendsExtrasResolver` propage le paramètre.
+- `service/match_view_service.go` — extrait `gvn` depuis `meta.GameVariantName` avant d'appeler `s.friendsExtras` ; dans `buildTeamTabFull`, calcul inline de `row.ExpectedAssists` depuis `extras.AssistsModel` + stats brutes du scoreboard (`Kills`, `Deaths`, `DamageDealt`, `DamageTaken`, `TeamMMR-EnemyMMR`), arrondi au centième.
+- `service/friends_extras_loader_test.go` — stub `GetPlayerAssistsModel` ajouté, appels resolver et `loadOneFriendExtras` mis à jour.
+
+**Résultats** : `go build ./...` + `go test ./...` verts (0 erreur, 0 warning).
+
+**Prochaine étape** : Valider visuellement dans l'expander du scoreboard que Chocoboflor / JGtm / Madina97294 affichent une valeur `expected_assists` (XxDaemonGamerxX restera vide — pas assez de matchs pour le modèle OLS).
+
+---
+
+## [2026-05-08] Fix critique scanner armes — décompression zlib des chunks film
+
+**Statut** : Complété
+
+**Contexte** : Aucun match récent n'avait de weapon_kills réels (`weapon_id IS NULL` partout dans le scoreboard et l'expander). Diag initial supposait un changement de format binaire chez 343i (suffixe `42c9679f` absent, `[A0 7B 42]` introuvable, `ScanFireEventsB5` retournait 0 pour les 35 chunks d'un match May 5, 2026). User a flagué la piste : "le parser Go a été mal porté depuis Python".
+
+**Cause racine** : `download_film_chunk()` (Python `src/data/sync/api_client.py:485-498`) appelle `zlib.decompress(raw)` sur le blob téléchargé depuis le CDN Azure de Halo. Le portage Go (`internal/sync/halo_client.go:downloadBlob`) faisait un simple `io.ReadAll(resp.Body)` sans décompression. Tout le scanner armes (`ScanFormulaA`, `ScanFireEventsB5`, `FindFramePositions`) tournait donc sur des bytes zlib compressés (header `78 5e ...` bien visible dans les hex dumps de `cmd/diag_film`).
+
+**Décision technique** :
+
+- `internal/sync/halo_client.go:downloadBlob` — ajout `compress/zlib` + `bytes`, wrap du body avec `zlib.NewReader(bytes.NewReader(raw))` et `io.ReadAll(zr)`. Commentaire pointe vers la ref Python.
+- `internal/sync/halo_client_extra_test.go` — helper `zlibCompress(t, data)` qui wrap les fixtures, et tous les tests blob (`TestGetMatchFilm_BasicPrefix`, `MultiChunk`, `TestGetHighlightEventsChunk_Found`, `NoChunk`) écrivent maintenant le payload via `w.Write(zlibCompress(...))` pour mimer le CDN réel.
+- `cmd/diag_film/main.go` — outil créé pour ce diag (téléchargement + dump hex + scan stats par chunk) ; nettoyé après identification de la cause.
+
+**Résultats** : sur le match `b8c1b220-...` avant fix : 0 frame markers, 0 fire events, 0 weapon suffixes sur 35 chunks. Après fix : `Frame markers [A0 7B 42]: 1158`, `ScanFireEventsB5 events: 121`, `CommonWeaponSuffix: 17`, weapon IDs reconnus (`MA40 AR 48c19d2d42c9679f`, `BR75 2b1824d542c9679f`, `Mk51 Sidekick f408190f42c9679f`). Suite `go test ./internal/sync/...` verte (8.2s).
+
+**Prochaine étape** : (1) lancer `cmd/backfill_all -force-weapons` (besoin tokens Halo frais) pour repasser sur les ~28j de matchs déjà force-wipés et reconstituer les vraies attributions ; (2) corriger `loadMissingWeaponMatches` pour aussi détecter les matchs avec `WK_DONE` set mais 0 row, sinon le bit 21 fait skip définitif ; (3) blinder `-force-weapons` pour préserver les rows avec un vrai weapon_id (ne supprimer que NULL/sentinel).
+
+---
+
+## [2026-05-08] Décâblage page Historique (route morte, code conservé)
+
+**Statut** : Complété
+
+**Contexte** : La page `match-history` (route `/players/$slug/stats/history`) fait doublon fonctionnel avec Explorer mode `matches`, dont la recherche/filtres sont en cours d'enrichissement. Décision user : décâbler History de toute la nav sans supprimer le code, pour confirmer que le manque ne se fera pas sentir avant suppression définitive.
+
+**Décisions techniques** :
+
+1. **NavL1** (`apps/web/src/components/shell/NavL1.tsx`) — section `stats` : retrait de l'onglet `history` du dropdown, `defaultPath` rebasculé vers `/stats/timeseries`. La regex `matchPathname` n'est pas modifiée (la page reste atteignable par URL directe).
+2. **NavL2** (`apps/web/src/components/shell/NavL2.tsx`) — `STATS_TABS` réduit à `Séries` + `Sessions`.
+3. **PLAYER_PRIMARY_NAV_ITEMS** (`shellNavigation.ts`) — entrée "Historique" supprimée. Test `shellNavigation.test.ts` mis à jour pour utiliser `/stats/timeseries` comme chemin de référence dans `buildPlayerDestination`.
+4. **Notifications** (`features/notifications/navigation.ts`) — `match_synced` redirigé de `/stats/history` vers `/explorer`. Whitelist symétrique mise à jour côté front (`navigation.test.ts`) et côté Go (`post_sync_deltas_test.go`) : `/stats/history` retiré, `/explorer` ajouté.
+5. **Code conservé** : route file (`routes/players/$playerSlug/stats/history.tsx`), `MatchHistoryPage.tsx`, `MatchHistoryTable.tsx`, `queries.ts` — laissés intacts pour suppression future si confirmation que la fonctionnalité ne manque pas.
+
+**Résultats** : vitest OK (51/51 sur les 3 fichiers impactés : shellNavigation, notifications/navigation, classifyFeedback), Go test `TestEmitPostSyncDeltas` OK, `npm run typecheck` OK.
+
+**Prochaine étape** : surveiller l'usage Explorer mode `matches` ; si la dev recherche/filtres atteint la parité fonctionnelle (briefing, OutcomeSequenceTape, multi-sessions, export, tri colonnes), supprimer définitivement `features/match-history/` + route file + fichiers de queries associés.
+
+---
+
+## [2026-05-08] Modèle OLS per-joueur expected_assists + backfill câblé au sync
+
+**Statut** : Complété
+
+**Contexte** : La Phase précédente utilisait un modèle populationnel global (`assists_model_coefs` dans metadata.duckdb, régression univariée slope×(ps+shots_hit)+intercept) pour toutes les lignes du scoreboard. Le user a corrigé : expected_assists doit reposer sur l'historique personnel du joueur (multi-varié) et s'afficher uniquement pour les joueurs suivis (`is_me`).
+
+**Décisions techniques** :
+
+1. **Migration `add_player_assists_model`** (`internal/migration/steps_player_assists_model.go`) — table `player_assists_model` dans stats.duckdb (TargetPlayer). PK = `game_variant_name`. 8 colonnes : intercept + 5 coefs + r2 + n_samples.
+
+2. **OLS Gaussian elimination** (`internal/sync/assists_model.go`) — régression multi-variée 6 paramètres [1, kills, deaths, damage_dealt, damage_taken, mmr_delta] sur l'historique du joueur par mode. Implémentée en Go pur (élimination gaussienne avec pivot partiel sur matrice 6×6 normale), zéro dépendance gonum. Seuil minimum : 15 matchs par mode. `batchComputePlayerAssistsModel` charge depuis shared, calcule, upsert dans player DB.
+
+3. **Câblage sync** — `runPostSyncPipeline` (engine.go) appelle `batchComputePlayerAssistsModel(force=false)` à l'étape 1.52 (entre engagement coefs et weapon kills). Ne recalcule que si la table est vide (cold-start) — comportement standard post-sync.
+
+4. **Backfill explicite** — `SyncEngine.RunBackfillAssistsModel(ctx, force bool)` + `scope.AssistsModel`/`ForceAssistsModel` dans SyncScope + flags CLI `--assists-model`/`--force-assists-model` dans `backfill_cli.go`. Commande `levelup backfill --assists-model --all` pour batch initial.
+
+5. **Service mis à jour** (`match_view_service.go`) — bloc expected_assists remplacé par `computeExpectedAssists()` : chaîne de résolution modèle personnel OLS → fallback modèle populationnel → nil. Le loop scoreboard (qui peuplait tous les joueurs) est **supprimé** — expected_assists uniquement pour `is_me`.
+
+6. **Port/repo** — `GetPlayerAssistsModel(ctx, gameVariantName string) (*domain.PlayerAssistsModel, error)` ajouté à `MatchViewRepository` + noop + implémentation DuckDB dans `match_view_repo.go`. `PlayerAssistsModel` struct dans `domain/match_view.go`.
+
+**Résultats** : `go test -tags cgo ./internal/...` OK (tous verts), `go vet ./...` propre, `go build ./...` propre.
+
+**Prochaine étape** : Lancer `levelup backfill --assists-model --gamertag Chocoboflor --force` après relogin tokens Halo pour remplir `player_assists_model`.
+
+---
+
 ## [2026-05-08] Audit couverture exhaustive + pipeline PSA en Go + sanitisation NaN/Inf défensive
 
 **Statut** : Complété (code) — backfill rétroactif en attente de tokens Halo frais
@@ -51,6 +135,28 @@
 **Prochaine étape** : Redémarrer le serveur API — toutes les corrections (NaN/Inf, PSA, weapons) sont actives.
 
 **Conclusion** : Plus de whack-a-mole. L'audit donne une vue binaire tout-vert / liste-de-trous. PSA va se peupler tout seul sur les futurs syncs. Le backfill rétroactif est une commande à lancer une fois les tokens frais.
+
+---
+
+## [2026-05-08] expected_assists à la volée — régression par mode de jeu
+
+**Statut** : Complété
+
+**Contexte** : L'API Halo Infinite fournit `kills_expected` et `deaths_expected` mais pas `assists_expected`. Objectif : dériver `expected_assists` depuis les données historiques.
+
+**Décisions techniques** :
+
+1. **Diagnostic** (`cmd/diag_expected_assists`) : corrélations exhaustives sur `shared_matches_v2.duckdb`. Meilleur prédicteur post-match : `personal_score + shots_hit` → R²=0.376 global, jusqu'à R²=0.61 pour les modes objectifs (CTF, Strongholds).
+
+2. **Table `assists_model_coefs`** dans `metadata.duckdb` : migration `add_assists_model_coefs` (`internal/migration/steps_metadata_assists_model.go`). Stocke slope, intercept, r2, n_samples par `game_variant_name` + ligne `__global__` comme fallback.
+
+3. **Seeder** (`cmd/seed-assists-model`) : lit `shared_matches_v2.duckdb` en READ_ONLY, calcule les régressions via `regr_slope/intercept` DuckDB, écrit 51 lignes (50 modes + global). Idempotent via `INSERT OR REPLACE`. Formule : `expected_assists = slope × (personal_score + shots_hit) + intercept`. Coefficients globaux : slope=0.002047, intercept=1.007, R²=0.373, MAE≈1.82.
+
+4. **Exposition à la volée** : `MetadataRepo.GetAssistsCoef(ctx, gameVariantName)` — query COALESCE avec LEFT JOIN (mode exact OU `__global__`). Calcul dans `MatchViewService.GetMatchView` après l'errgroup, avant `buildSummaryTabFull`. Résultat dans `MatchExpectedStats.ExpectedAssists` (JSON: `expected_assists`). Dégradation gracieuse si `metadataRepo` nil ou table non seedée.
+
+**Résultats** : Build clean, `go test ./internal/service/...` OK. Le champ `expected_assists` apparaît dans la réponse `/match-view/{matchID}` si `seed-assists-model` a été lancé.
+
+**Prochaine étape** : Lancer `make run-seed-assists-model` au démarrage ou en cron pour maintenir les coefs à jour. Exposer la stat côté front dans l'onglet Résumé (comparaison réel vs attendu).
 
 ---
 
