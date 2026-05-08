@@ -217,11 +217,15 @@ func updateIsWithFriendsBatch(ctx context.Context, playerDB *sql.DB, matchIDs []
 			placeholders[i] = "?"
 			args[i] = id
 		}
+		// COALESCE pour couvrir les lignes héritées où is_with_friends est NULL :
+		// sans DEFAULT au schéma initial, les inserts du sync écrivaient NULL et
+		// `WHERE is_with_friends = FALSE` ne matchait pas (logique 3-valeurs SQL),
+		// donc le badge "Solo" persistait après ajout d'un ami. Cf. thought_log 2026-05-08.
 		q := fmt.Sprintf(`
 			UPDATE player_match_enrichment
 			SET    is_with_friends = TRUE,
 			       updated_at      = CURRENT_TIMESTAMP
-			WHERE  is_with_friends = FALSE
+			WHERE  COALESCE(is_with_friends, FALSE) = FALSE
 			  AND  match_id IN (%s)
 		`, strings.Join(placeholders, ","))
 		result, err := playerDB.ExecContext(ctx, q, args...)

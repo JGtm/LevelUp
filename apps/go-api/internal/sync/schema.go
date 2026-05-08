@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     performance_score      FLOAT,
     session_id             VARCHAR,
     session_label          VARCHAR,
-    is_with_friends        BOOLEAN,
+    is_with_friends        BOOLEAN   DEFAULT FALSE,
     teammates_signature    VARCHAR,
     known_teammates_count  SMALLINT,
     friends_xuids          VARCHAR,

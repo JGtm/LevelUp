@@ -24,6 +24,25 @@ var (
 	modeLabelRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b`)
 )
 
+// playlistIdentityPrefixes : préfixes pair_name qui SONT le label utilisateur,
+// donc à conserver tels quels au lieu d'extraire le sous-mode après ":".
+//
+// Exemple : "Super Fiesta:Slayer on Forbidden - Forge" doit afficher
+// "Super Fiesta" (et non "Slayer", qui serait traduit FR en "Assassin" via
+// mode_name_tr et noierait l'identité de la playlist).
+//
+// Liste alignée sur les catégories promues côté `halo_infinite/mode_category.go`
+// (ModeCategorySuperFiesta, ModeCategoryHuskyRaid). Les "containers"
+// (Arena/Tactical/Assault/Community) restent extraits au sous-mode.
+//
+// Comparaison case-insensitive — les pair_name peuvent arriver avec une casse
+// inconsistante depuis l'API Halo.
+var playlistIdentityPrefixes = map[string]string{
+	"super fiesta":     "Super Fiesta",
+	"husky raid":       "Husky Raid",
+	"super husky raid": "Super Husky Raid",
+}
+
 // NormalizeModeLabel normalise un label brut de mode de jeu Halo Infinite.
 //
 // Logique (alignée sur Python resolve_display_mode + translate_pair_name) :
@@ -63,7 +82,16 @@ func NormalizeModeLabel(raw string, mapLabels ...string) string {
 		normalized = strings.TrimSpace(normalized[:idx])
 	} else if idx := strings.LastIndex(normalized, ":"); idx >= 0 && idx < len(normalized)-1 {
 		// Format technique "Arena:Slayer" ou "BTB:CTF" → prend après ":"
-		normalized = strings.TrimSpace(normalized[idx+1:])
+		// SAUF si le préfixe gauche est lui-même l'identité de la playlist
+		// (Super Fiesta, Husky Raid, Super Husky Raid) — auquel cas on garde
+		// le préfixe pour ne pas afficher "Slayer/Assassin" sur une tuile
+		// Super Fiesta. Cf. thought_log 2026-05-08.
+		left := strings.TrimSpace(normalized[:idx])
+		if canonical, ok := playlistIdentityPrefixes[strings.ToLower(left)]; ok {
+			normalized = canonical
+		} else {
+			normalized = strings.TrimSpace(normalized[idx+1:])
+		}
 	}
 
 	// Étape 3 — strip générique " sur/on <carte>" résiduel

@@ -23,7 +23,7 @@ import type {
   MatchViewHeader,
   MatchViewRank,
 } from '@/lib/api/types'
-import { formatDurationMMSS } from '@/lib/formatters'
+import { formatDurationMMSS, formatGamertag } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchViewText } from './i18n'
 import { parseTeamSideID, resolveTeamName } from './teamNames'
@@ -120,6 +120,19 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
       params: { playerSlug },
       search: { mode: 'player', target: gamertag },
     })
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="border-b border-border px-3 py-2 text-sm font-medium">
+          {t.scoreboardTitle}
+        </div>
+        <div className="flex min-h-[200px] items-center justify-center p-3 text-sm text-muted-foreground">
+          {t.scoreboardNoData}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -244,6 +257,10 @@ function TeamScoreboard({
           // Pas de lien vers Explorer pour les bots : ils n'existent pas hors
           // de ce match (leur xuid 'bid(N.0)' n'a aucun historique cross-match).
           const linkable = !r.is_me && !r.is_bot && playerSlug
+          // Defensive : v_gamertag_lookup côté backend devrait déjà rendre les
+          // bots en "343 Bot N", mais on tombe ici sur "bid(N.0)" si la JOIN
+          // retombe sur le xuid raw (cf. thought_log 2026-05-08).
+          const displayGamertag = formatGamertag(r.gamertag)
           return (
             <span className="whitespace-nowrap">
               <span className="mr-1 text-muted-foreground">{isExpanded ? '▾' : '▸'}</span>
@@ -252,12 +269,12 @@ function TeamScoreboard({
                   type="button"
                   className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
                   onClick={(e) => onPlayerClick(r.gamertag, e)}
-                  title={`Voir l'historique avec ${r.gamertag}`}
+                  title={`Voir l'historique avec ${displayGamertag}`}
                 >
-                  {r.gamertag}
+                  {displayGamertag}
                 </button>
               ) : (
-                <span className={`font-medium ${r.is_bot ? 'text-muted-foreground italic' : 'text-foreground'}`}>{r.gamertag}</span>
+                <span className={`font-medium ${r.is_bot ? 'text-muted-foreground italic' : 'text-foreground'}`}>{displayGamertag}</span>
               )}
               {r.is_bot && (
                 <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-wide">Bot</span>
