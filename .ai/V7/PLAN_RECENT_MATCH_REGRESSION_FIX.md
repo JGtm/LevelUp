@@ -29,10 +29,20 @@ d'action pour la partie indépendante du parser.
   re-syncés). Voir [`PLAN_HIGHLIGHT_EVENTS_BACKFILL.md`](PLAN_HIGHLIGHT_EVENTS_BACKFILL.md)
   pour la suite (industrialisation HTTP + CLI + golden fixture E2E).
 
-- **Causes secondaires indépendantes** (objet de ce plan) : asymétrie de
-  résolution noms entre home tile et page match (RC4), gamertags absents de
-  `match_participants` même quand `xuid_aliases` les contient (RC5), handler
-  match qui retourne 404 au lieu de dégrader sur données partielles (RC6).
+- **Causes secondaires indépendantes** (objet de ce plan) :
+  - **RC4** — `asset_translations` n'est plus alimentée pour les UUID
+    récents : le `catalog_fetcher_service` upsert ses résolutions dans
+    `playlists_catalog`/`maps_catalog`/etc. **mais ne propage pas** les
+    `Names` multilingues vers `asset_translations`. Conséquence : home et
+    match-view échouent toutes les deux à résoudre — sauf que le home a un
+    fallback `lang='en-US'` qui parfois trouve une vieille entrée résiduelle.
+    **C'est un bug architectural, pas une asymétrie de fallback à équilibrer**.
+    La Phase A est une refonte : propager `Names` au catalog upsert, puis
+    introduire un resolver unifié `ResolveAssetName`.
+  - **RC5** — gamertags absents de `match_participants` même quand
+    `xuid_aliases` les contient (pas de backfill cross-match).
+  - **RC6** — handler match retourne 404 au lieu de dégrader sur données
+    partielles.
   Ces bugs pré-existaient et resteront après le fix parser. Phases A/B/C
   ci-dessous.
 
@@ -117,18 +127,60 @@ Sous-cas de RC2 : `getKillsForPlayer` lit depuis `killer_victim_pairs` ; si
 events n'a rien inséré, les kills sont vides, `MarkWeaponKillsDone(false)` est
 appelé quand même. Disparaît quand RC1 est résolu.
 
-### RC4 (asymétrie home/match-view UUID→nom) — INDÉPENDANT, à fixer
-Le home tile cascade FR→EN→raw via deux requêtes asset_translations
-([home_repo.go:515-518](apps/go-api/internal/platform/duckdb/home_repo.go#L515-L518),
-[home_repo.go:737-777](apps/go-api/internal/platform/duckdb/home_repo.go#L737-L777),
-[home.go:81-89](apps/go-api/internal/analysis/home.go#L81-L89)). La
-match-view ne fait que FR
-([match_view_repo.go:69-93](apps/go-api/internal/platform/duckdb/match_view_repo.go#L69-L93))
-puis fallback sur le brut
-([match_view_service.go:627-639](apps/go-api/internal/service/match_view_service.go#L627-L639)),
-qui peut être un UUID. Si `asset_translations` n'a que `lang='en-US'` pour un
-asset_id récent (typique du `catalog_fetch_queue` qui peuple EN avant FR), le
-home affiche le nom propre, la match-view affiche l'UUID.
+### RC4 (résolution noms d'asset cassée — racine architecturale) — INDÉPENDANT, à fixer
+
+**Diagnostic révisé après investigation approfondie** : ce n'était pas une
+asymétrie acceptable home/match-view, c'est un design défaillant qui touche
+les deux pipelines.
+
+Les `map_id`, `pair_id`, `playlist_id`, `game_variant_id` sont **invariants**.
+Une fois résolus, leurs noms canoniques (multilingues) devraient vivre dans
+`asset_translations` et être servis par un resolver unifié. Or :
+
+1. **Au sync** ([transforms.go:100-144](apps/go-api/internal/sync/transforms.go#L100-L144)) :
+   `MapVariant.PublicName` (qui peut être un UUID Discovery UGC) est écrit brut
+   dans `match_registry.map_name`. **Aucun JOIN avec `asset_translations` à
+   l'INSERT**. Fallback : `coalesceStrPtr(row.MapName, row.MapID)` — si
+   `PublicName` est vide, on stocke l'UUID directement.
+
+2. **Le `catalog_fetch_queue`**
+   ([catalog_enqueue.go:27-77](apps/go-api/internal/sync/catalog_enqueue.go#L27-L77))
+   enqueue bien les 4 types (`playlist`, `pair`, `map`, `game_variant`).
+
+3. **Le consumer**
+   ([catalog_fetcher_service.go:119-149](apps/go-api/internal/service/catalog_fetcher_service.go#L119-L149))
+   appelle `TitleCatalogAdapter.FetchPlaylist/FetchMap/FetchPair/FetchGameVariant`
+   et obtient un `CanonicalPlaylist/Map/Pair/GameVariant` qui contient
+   `Names map[string]string` (multilingue, voir
+   [canonical/catalog.go:67-76](apps/go-api/internal/games/canonical/catalog.go#L67-L76)).
+
+4. **Le bug racine** : le consumer upsert dans `playlists_catalog`,
+   `maps_catalog`, etc. avec **uniquement `name_canonical` (EN)**. Il
+   **n'appelle jamais** `UpsertAssetTranslation`
+   ([metadata_repo_assets.go:97-119](apps/go-api/internal/platform/duckdb/metadata_repo_assets.go#L97-L119))
+   pour persister les `Names` dans `asset_translations`. Donc la table de
+   lookup multilingue reste vide pour tous les UUID nouvellement résolus.
+
+5. **Conséquence côté lecture** :
+   - Home tile : a un fallback EN
+     ([home_repo.go:737-777](apps/go-api/internal/platform/duckdb/home_repo.go#L737-L777))
+     qui parfois récupère une vieille entrée `lang='en-US'` venant d'un sync
+     antérieur — d'où l'apparence de fonctionner.
+   - Match-view : ne fait que FR, échoue silencieusement, affiche l'UUID.
+   - **Les deux sont buguées** : aucune ne va lire `playlists_catalog.name_canonical`
+     ou ne demande au catalog de remplir `asset_translations`.
+
+6. **Le "asset kinds" pattern**
+   ([internal/assets/](apps/go-api/internal/assets/)) couvre les binaires
+   (medals, weapons, ranks, images). Il n'a **aucun Kind** pour les noms
+   d'assets et `Resolver` n'a pas de méthode pour ça —
+   [resolver.go:8-29](apps/go-api/internal/assets/resolver.go#L8-L29) traite
+   uniquement images + métadonnées JSON.
+
+**Conclusion** : il manque un resolver unifié pour les noms d'asset, ET le
+catalog_fetcher ne propage pas ses résolutions vers `asset_translations`.
+Toute cascade FR→EN côté lecture est un patch sur un trou architectural plus
+profond.
 
 Concerne : `map_name`, `pair_name`, `playlist_name`, `game_variant_name`.
 
@@ -171,28 +223,96 @@ l'utilisateur et le commit log : ne pas dupliquer.
 
 ## 4. Plan d'action
 
-### Phase A — RC4 : alignement match-view sur cascade home
+### Phase A — RC4 : résolution unifiée des noms d'asset (refonte)
+
+Cette phase est divisée en 4 sous-tâches qui s'enchaînent. Objectif : éliminer
+les SQL `lang IN (...)` dispersés et garantir qu'`asset_translations` est
+peuplée par le `catalog_fetcher` pour tous les UUID résolus.
+
+#### A.1 — Catalog fetcher : propager `Names` dans `asset_translations`
+
+**Fichier** :
+[apps/go-api/internal/service/catalog_fetcher_service.go](apps/go-api/internal/service/catalog_fetcher_service.go)
+— `processEntry()` (lignes 119-149).
+
+**Changement** : après chaque `upsertPlaylist/upsertMap/upsertPair/upsertGameVariant`,
+itérer sur `canonical.Names` et appeler
+`UpsertAssetTranslation(assetID, assetType, lang, name)`. Le consumer connaît
+les langs disponibles (cf.
+[canonical/catalog.go:67-76](apps/go-api/internal/games/canonical/catalog.go#L67-L76))
+— il faut les pousser vers la table de lookup mutualisée.
+
+**Test** : `catalog_fetcher_service_test.go` — mock `TitleCatalogAdapter`
+qui retourne `CanonicalPlaylist{Names: {"en-US":"Quick Play","fr-FR":"Partie rapide"}}`.
+Après `Drain`, assertion sur `asset_translations` : 2 lignes (en-US, fr-FR)
+avec les bons noms.
+
+#### A.2 — Resolver canonical unifié
+
+**Fichier** :
+[apps/go-api/internal/platform/duckdb/metadata_repo_assets.go](apps/go-api/internal/platform/duckdb/metadata_repo_assets.go)
+
+**Nouvelle fonction** :
+```go
+// ResolveAssetName retourne le meilleur nom disponible pour (assetType, assetID).
+// preferredLangs : liste ordonnée des langs souhaitées (ex. ["fr-FR","fr","en-US","en"]).
+// Renvoie name = "" si aucun match.
+func (r *MetadataRepo) ResolveAssetName(ctx context.Context, assetType, assetID string, preferredLangs []string) (name, lang string, err error)
+```
+
+Implémentation : une seule requête `SELECT name, lang FROM asset_translations
+WHERE asset_type = ? AND asset_id = ?` puis tri en mémoire selon
+`preferredLangs`, fallback sur n'importe quelle lang trouvée si rien dans la
+préférence.
+
+**Test** : table-driven sur DuckDB :memory: — assets avec différentes combos
+de langs présentes/absentes ; vérifier la priorité et le fallback.
+
+#### A.3 — Migration des callers (home + match-view + canonical)
 
 **Fichiers** :
-- [match_view_repo.go](apps/go-api/internal/platform/duckdb/match_view_repo.go)
-  — ajouter `lookupAssetNameEN(ctx, assetType, assetID)` générique, et utiliser
-  pour map / pair / playlist / game_variant.
-- [domain/match_view.go](apps/go-api/internal/domain/match_view.go) —
-  ajouter `MapNameEN`, `PairNameEN`, `PlaylistNameEN`, `GameVariantNameEN` à
-  `MatchMetaRaw` (ou un champ `Names map[lang]string` pour rester DRY).
-- [service/match_view_service.go:buildMatchHeader](apps/go-api/internal/service/match_view_service.go)
-  — cascade FR→EN→raw cohérente avec [home.go:labelForLocale](apps/go-api/internal/analysis/home.go#L81-L89).
-  Détecter explicitement les UUID via le regex existant
-  [halo_infinite/adapter_asset_urls.go:uuidRe](apps/go-api/internal/games/halo_infinite/adapter_asset_urls.go#L19)
-  pour ne jamais afficher d'UUID brut.
+- [home_repo.go](apps/go-api/internal/platform/duckdb/home_repo.go) :
+  supprimer `loadHomeAssetTranslationNames` + `loadHomeAssetTranslationNamesEN`
+  ; remplacer par un appel unique à `ResolveAssetName` pour chaque asset.
+  Ajuster `applyCanonicalAssetFR/EN` en conséquence (peut devenir un seul
+  `applyCanonicalAssetLabel`).
+- [match_view_repo.go](apps/go-api/internal/platform/duckdb/match_view_repo.go) :
+  supprimer `lookupMapNameFR`, `lookupModeNameFR`, `lookupPlaylistNameFR` ;
+  remplacer par appel à `ResolveAssetName` avec `preferredLangs` selon locale
+  utilisateur. Le service décide juste « locale = fr » → préférences
+  `["fr-FR","fr","en-US","en"]`.
+- [match_view_service.go:buildMatchHeader](apps/go-api/internal/service/match_view_service.go)
+  : éliminer la cascade `MapNameFR → MapName brut`. Si `ResolveAssetName`
+  retourne vide, dernier recours = `match_registry.map_name` brut, mais ne
+  l'afficher que si **pas un UUID** (regex
+  [halo_infinite/adapter_asset_urls.go:uuidRe](apps/go-api/internal/games/halo_infinite/adapter_asset_urls.go#L19)).
+  Si UUID → afficher placeholder neutre (ex. "Carte inconnue") plutôt que
+  l'UUID brut.
 
-**Test** : nouveau cas dans `match_view_dominance_test.go` —
-`MatchMetaRaw{MapName: "uuid-...", MapNameEN: "Forbidden", MapNameFR: nil}`
-→ assertion `h.MapUI == "Forbidden"`.
+**Test** : nouveau test bout-en-bout dans `match_view_dominance_test.go` —
+asset_translations contient seulement `lang='en-US'` ; locale FR ; le service
+retourne le nom EN (pas l'UUID).
 
-**Critère de fin** : pour un match dont `match_registry.map_name = UUID` et
-`asset_translations` lang='en-US' = "Forbidden", la page match-view affiche
-"Forbidden" (et non l'UUID).
+#### A.4 — Backfill one-shot pour réparer l'historique
+
+**Fichier nouveau** :
+[apps/go-api/cmd/repair_asset_translations/main.go](apps/go-api/cmd/repair_asset_translations/main.go)
+
+Itère sur `playlists_catalog`, `maps_catalog`, `map_mode_pair_definitions`,
+`game_variants_catalog` ; pour chaque ligne, lit `Names` (ou
+`name_canonical` si `Names` absent en DB legacy) et upsert dans
+`asset_translations`. Idempotent. Ne fait aucun appel API — juste un
+re-routage des données déjà résolues vers la table de lookup unifiée.
+
+**Test** : DuckDB :memory:, seed catalogs avec quelques entrées Names
+multilingues, run main → asset_translations a toutes les entrées attendues.
+
+**Critère de fin Phase A** :
+- Le diag CLI sur les 5 matchs récents montre des `map_name` / `pair_name`
+  affichés en clair (pas d'UUID) côté match-view ET côté home tile.
+- Test unitaire qui aurait failli avant le fix : passe.
+- `go vet ./...` clean. `loadHomeAssetTranslationNames*` et `lookupMapNameFR`
+  supprimés (grep -r vide).
 
 ### Phase B — RC5 : xuid_aliases backfill cross-match
 
@@ -326,9 +446,21 @@ Si un autre agent travaille sur :
   à 5 du jumeau industrialisent le replay (HTTP + CLI + golden fixture E2E) et
   fixent les bitmasks menteurs events+kvp. Ce plan-ci ne touche plus à ces
   sujets.
-- **Le catalog_fetch_queue / asset_translations FR** → la cascade EN de la
-  Phase A est une mitigation côté lecture. Si l'agent peuple FR à la sync,
-  notre fallback EN reste utile pour les très récents non encore catalogués.
+- **Le catalog_fetch_queue / asset_translations** → **scope partagé avec ce
+  plan**. La Phase A.1 modifie
+  [catalog_fetcher_service.go:processEntry](apps/go-api/internal/service/catalog_fetcher_service.go#L119-L149)
+  pour propager `CanonicalPlaylist.Names` (et équivalents map/pair/variant)
+  dans `asset_translations` via `UpsertAssetTranslation`. Si un autre agent
+  veut aussi toucher `processEntry`, coordonner pour ne pas dupliquer ; sinon
+  contournement via la phase A.4 (backfill one-shot lit les catalogs et écrit
+  asset_translations sans toucher au sync).
+- **Le pattern asset/Kind dans `internal/assets/`** → ne pas confondre avec
+  ce plan. `Kind` couvre les binaires (medals, ranks, weapons, images). Les
+  noms d'assets (map/pair/playlist) ne sont **pas** un Kind dans la version
+  actuelle ; le resolver `internal/assets/resolver.go:Resolver` n'a pas
+  d'API pour ça. La Phase A.2 introduit `MetadataRepo.ResolveAssetName` au
+  niveau platform/duckdb, pas au niveau assets/Kind. Si un agent juge
+  pertinent d'élever ça à un Kind à terme, c'est un plan séparé.
 - **La pipeline de sync parallel** → ne pas modifier les bits `MBit***` dans le
   cadre de ce plan. Les fixes events+kvp sont dans le jumeau (Phase 1bis).
   L'audit lecture seule des autres bits (`MBitAssets`, `MBitAliases`,
