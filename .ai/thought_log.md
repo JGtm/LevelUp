@@ -64,6 +64,54 @@ serveur. Le front peut ensuite consommer `ActorGamertag` directement et afficher
 bandeau "sync incomplet" sur `IsPartial=true`. Hors scope : parser highlight events
 (utilisateur) ; suppression cosmétique des wrappers `loadHomeAssetTranslationNames*`.
 
+## [2026-05-08] PLAN_BITMASKS_AUDIT_FIX — implémentation complète (4 phases livrées + apply différé)
+
+**Statut** : Complété (Phases 1-4 livrées, apply Phase 4 différé à l'opérateur).
+
+**Commits livrés sur `feat/token-pool-parallel-sync`** :
+
+| # | Commit | Phase |
+|---|---|---|
+| 1 | `6962941c` | docs : ouverture du plan |
+| 2 | `f3437477` | **Phase 1** sonde diag + findings prod |
+| 3 | `e9462b91` | **Phase 2** fix par cas (skill + participants ; PVE moot car non wiré côté Go) |
+| 4 | `9a84b352` | **Phase 3** cleanup (MBitAssets/MBitAliases supprimés) + test anti-dead-write |
+| 5 | `0b2f0b20` | **Phase 4** CLI `levelup reset-bitmasks --dry-run|--apply` |
+| 6 | (ce commit) | **Phase 5** clôture thought_log |
+
+**Décisions techniques** :
+
+1. **Phase 2 skill** : `MarkSkillLoaded(db, matchID)` filtre côté SQL sur `team_mmr IS NOT NULL` pour ne pas mentir sur les participants skipped par l'API skill. Bits PBitTeamMMR/EnemyMMR/KillsExp/DeathsExp positionnés en bloc (groupe `skillBitsCombined`). Bit `BackfillFlags["skill"]=4` sur registry.
+
+2. **Phase 2 participants** : `MarkParticipantsDone(db, matchID)` positionne `BackfillFlags["participants"]=512`. Appelé après `InsertParticipants` succès dans `engine.go::insertFetchedMatch`.
+
+3. **Phase 2.c PVE skipped** : `ExtractPveStats` n'est jamais appelée depuis `engine.go` — le sync Go ne wire pas encore le pipeline PVE. Les 343/1569 matchs avec `MBitPVEStats` set en prod viennent de l'ère Python. Sera traité quand le port Go incorporera PVE.
+
+4. **Phase 3 suppressions** : `MBitAssets` (1<<17) et `MBitAliases` (1<<18) retirés. Leur fonction `Mark*Loaded` n'existait pas, leur valeur n'était jamais lue. Les filtres detection assets utilisent déjà des column guards (`mr.playlist_name IS NULL OR ...`).
+
+5. **Phase 3 garde-fou** : `TestNoDeadBitDeclaration` scanne tous les `.go` du package `internal/sync/` et fail si une constante `MBit*`/`PBit*`/`PveBit*` n'apparaît dans aucun autre fichier que sa déclaration. Whitelist explicite pour les 9 groupes pré-calculés (`PBitMMR`, `PBitSkill`, etc.).
+
+6. **Phase 4 reset** : `levelup reset-bitmasks --dry-run|--apply`, idempotent. Dry-run sur prod montre 25 registry / 1099 participants / 0 PVE à rétro-fixer. Apply non exécuté en CI — laissé à l'opérateur quand opportun (DB doit être déverrouillée).
+
+**Résultats vérification** :
+- `go build ./...` OK
+- `go vet ./...` clean
+- `go test ./...` 100% pass (hors `TestDiscoveryScan_MixedTokenSources` env-dépendant, pré-existant)
+- 4 nouveaux tests dans `bitmask_honesty_test.go` (Mark*Loaded conditional + idempotent + filtré team_mmr)
+- 1 nouveau garde-fou `TestNoDeadBitDeclaration`
+- Commande `levelup reset-bitmasks` listée dans `--help`
+
+**Bénéfices opérationnels** :
+1. **Backfills `--skill`/`--participants`** ciblent désormais correctement les matchs qui en ont besoin (au lieu de re-traiter tout l'historique)
+2. **Garde-fou anti-régression** : un dev qui ajoute un nouveau bit sans usage sera signalé en CI
+3. **Reset rétroactif** disponible mais non urgent (impact prod limité à ~25 matchs)
+
+**Dette restante (hors-scope)** :
+- PVE pipeline Go (Phase 2.c moot) : à traiter quand le sync Go incorporera l'extraction PVE
+- Bits `BackfillFlags` legacy non utilisés en READ (`participants_scores`, `participants_kda`, `participants_shots`, `participants_damage`, `participants_avg_life`, `aliases`, `weapon_kills`) : dette cosmétique, peuvent être retirés dans un cleanup futur car le test garde-fou ne couvre pas la map `BackfillFlags` (juste les const `MBit*`/`PBit*`)
+
+**Effort réel** : ~2h (estimation 3h, plus simple que prévu grâce au socle Phase 1bis du plan parent).
+
 ## [2026-05-08] PLAN_BITMASKS_AUDIT_FIX — Phase 1 sonde audit terrain
 
 **Statut** : Complété (Phase 1 du plan)
