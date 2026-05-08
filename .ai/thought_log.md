@@ -1,4 +1,97 @@
 
+## [2026-05-08] Refonte unifiée résolveurs noms d'asset + xuid→gamertag (match-view, home, scoreboard, highlights)
+
+**Statut** : Complété — code-side livrable, migration s'applique au reboot serveur.
+
+**Décision technique** :
+
+Diagnostic empirique (via `cmd/diag_recent_match_sync`) : tous les matchs récents
+(post-23/04/2026) ont `match_registry.map_name = UUID`, `pair_name = UUID`, et 0
+events / weapons / kv_pairs (cause primaire = parser highlight events bytes-vs-bits,
+fix par l'utilisateur). Causes secondaires architecturales indépendantes du parser :
+
+1. **Résolution noms d'asset défaillante** : 5 fonctions ad-hoc dispersées
+   (lookupMapNameFR, lookupPlaylistNameFR, lookupModeNameFR, loadHomeAssetTranslationNames,
+   loadHomeAssetTranslationNamesEN). La match-view ne faisait que FR ; le home
+   faisait FR+EN avec cascade → asymétrie + duplication.
+
+2. **Résolution xuid→gamertag défaillante** : 10 sites avec 6 patterns COALESCE
+   différents. Q21 (highlights) ne faisait aucune résolution → "Premier sang
+   2535472884034919 · 0:43" à l'écran. Bots gérés à 1 seul endroit (Q12).
+
+**Refonte livrée** :
+
+- **Resolver asset names unifié** : `MetadataRepo.ResolveAssetName` /
+  `ResolveAssetNamesBulk` + helper `PreferredLangsForLocale`. Une seule requête SQL,
+  cascade FR→EN→raw. 8 tests unitaires.
+
+- **v_gamertag_lookup upgradée** (migration
+  `upgrade_v_gamertag_lookup_bots_and_raw_fallback`) : gère bots `bid(N.0)` →
+  "343 Bot N", cascade alias→participants→raw. `gamertag` jamais NULL pour un xuid
+  en DB.
+
+- **Match-view migrée** : Q13 lit `pair_id` + `game_variant_id`. `resolveModeNameFR`
+  applique cascade `pair_name → mode_name_tr` puis `asset_translations[pair_id]` puis
+  `pair_name_fr` legacy. 4 tests d'intégration.
+
+- **Home pipeline migré** : `loadHomeAssetTranslationNames*` deviennent des wrappers
+  minces de 18 lignes autour de `ResolveAssetNamesBulk`.
+
+- **Q21 highlights migré** : JOIN `v_gamertag_lookup`, expose
+  `MatchHighlightEvent.ActorGamertag`. 1 test d'intégration reproduisant exactement
+  le bug screenshot.
+
+- **Tournée simplification** : Q10/Q12/Q23/Q23b/media_repo/compare_repo passent au
+  pattern canonique `COALESCE(vg.gamertag, X.xuid)`. Q12 perd son CASE bot ad-hoc.
+
+- **RC6 graceful partial** : `MatchViewResponse.IsPartial` + `PartialReasons`
+  (`scoreboard_empty` / `events_empty` / `player_stats_empty` / `medals_empty`).
+  Le 404 strict reste pour `match_registry` totalement absent. 3 tests unitaires.
+
+- **RC5 skippé** (justifié) : redondant avec la cascade view-level. Aucun caller ne
+  lit `match_participants.gamertag` direct pour l'affichage.
+
+**Résultats observés** : `go build ./...` clean ; `go test ./...` zéro échec
+(16 tests ajoutés) ; `go vet ./...` clean. ~80 lignes SQL inline éliminées.
+
+**Fichiers modifiés** : `metadata_repo_assets.go`, `match_view_repo.go`,
+`queries_match.go`, `home_repo.go`, `media_repo.go`, `compare_repo.go`,
+`migration/steps_shared.go`, `domain/match_view.go`, `service/match_view_service.go`,
+nouveau `cmd/diag_recent_match_sync/`, plus 4 fichiers de tests neufs.
+
+**Conclusion / prochaine étape** : la migration s'applique au prochain reboot
+serveur. Le front peut ensuite consommer `ActorGamertag` directement et afficher un
+bandeau "sync incomplet" sur `IsPartial=true`. Hors scope : parser highlight events
+(utilisateur) ; suppression cosmétique des wrappers `loadHomeAssetTranslationNames*`.
+
+## [2026-05-08] PLAN_BITMASKS_AUDIT_FIX — Phase 1 sonde audit terrain
+
+**Statut** : Complété (Phase 1 du plan)
+
+**Décision technique** : Le plan PLAN_BITMASKS_AUDIT_FIX présumait que 17/21 bits étaient du folklore total. La sonde `cmd/diag_bitmask_coverage` sur la prod JGtm révèle que **l'ancien code Python écrivait déjà ces bits** — ils ne sont pas dead historiquement, juste non re-écrits par le port Go.
+
+**Chiffres prod (1569 matchs / 5 firefights / 24617 participants)** :
+
+| Bit | Matchs avec bit positionné | Données présentes mais bit manquant |
+|---|---:|---:|
+| `MBitEvents` (1<<16) | 99 | (Phase 1bis HE a réparé) |
+| `MBitKillerVictim` (1<<19) | 27 | (idem) |
+| `MBitWeaponKills` (1<<21) | 1569/1569 | 0 |
+| `MBitWeaponKillsNoFilm` (1<<22) | 4 | 0 |
+| `BackfillFlags[skill]=4` | **1544/1569** | **25** (nouveaux matchs Go-syncés) |
+| `BackfillFlags[participants]=512` | **1544/1569** | **25** |
+| `MBitPVEStats=1048576` | 343/1569 | **0/5** firefights |
+| `PBitTeamMMR=1` | 3713/24617 | **1005** participants |
+
+**Ce que ça change pour le plan** :
+- L'urgence baisse drastiquement : ~25 matchs Go-syncés post-migration n'ont pas leurs bits, pas tout l'historique
+- Le mécanisme bitmask est opérationnel via l'héritage Python ; le port Go a juste omis les écritures équivalentes
+- Phase 2 reste pertinente : sans le fix, les 25 matchs deviennent 250 puis 2500 au fur et à mesure que la prod sync de nouveaux matchs
+- Phase 3 (cleanup orphelin pur) reste pertinente : `MBitAssets`/`MBitAliases` sont 0/1569 → vraiment orphelins
+- Phase 4 reset : trivial, ~25 matchs à rétro-fixer
+
+**Conclusion** : on continue le plan, en notant que c'est une **dette préventive** (empêcher la divergence d'augmenter avec le temps), pas une **dette critique** (peu d'impact actuel).
+
 ## [2026-05-08] PLAN_HIGHLIGHT_EVENTS_BACKFILL — implémentation complète (5 phases)
 
 **Statut** : Complété — 6 commits livrés sur `feat/token-pool-parallel-sync`.
