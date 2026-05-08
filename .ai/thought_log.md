@@ -1,4 +1,18 @@
 
+## [2026-05-08] Explorer mode Joueur — bandeaux "Équipe alliée/ennemie" + cleanup briefing
+
+**Statut** : Complété
+
+**Décision technique** : 2 ajustements UX sur le mode Joueur.
+1. **Bandeaux des 2 tableaux** : remplacement de "{gamertag} en allié" / "{gamertag} en ennemi" par "Équipe alliée" / "Équipe ennemie" (FR) et "Ally team" / "Enemy team" (EN). i18n `explorer.player.table_as_{ally,enemy}` simplifié (plus de variable `{gamertag}`). ExplorerPage simplifié — `t(key)` sans args. Le contextDescriptor passé au navContext garde le gamertag (pour la nav bar match-view qui affiche "Matchs avec {gamertag}").
+2. **Briefing simplifié** : suppression de la barre titre "Historique des rencontres" + le bouton Face-à-face passe sur la même ligne que le gamertag + badges, poussé à droite via `ml-auto`. Wrapper de carte conservé (border + rounded + bg) mais sans header séparé.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — propagation contextDescriptor dans le matchNavContext (mode Matchs + Joueur)
 
 **Statut** : Complété

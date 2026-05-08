@@ -166,26 +166,22 @@ export function ExplorerEncounterBriefing({
   }
 
   return (
-    // Wrapper style ChartCard (aligné avec MatchEncountersTable) — carte rounded + barre titre
+    // Wrapper carte rounded — sans barre titre (cf. demande user 2026-05-08).
     <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <div className="border-b border-border px-3 py-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">{t('explorer.encounter.title')}</span>
-        {onHeadToHead && (
-          <button
-            type="button"
-            onClick={onHeadToHead}
-            className="rounded border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
-          >
-            {t('explorer.player.head_to_head')}
-          </button>
-        )}
-      </div>
-
       <div className="p-3 space-y-3">
-        {/* Joueur — gamertag + badges narratifs */}
+        {/* Joueur — gamertag + badges narratifs + bouton Face-à-face poussé à droite */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-base font-semibold text-foreground">{gamertag}</span>
           {renderBadges()}
+          {onHeadToHead && (
+            <button
+              type="button"
+              onClick={onHeadToHead}
+              className="ml-auto rounded border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
+            >
+              {t('explorer.player.head_to_head')}
+            </button>
+          )}
         </div>
 
         {/* Grille KPI — 5 colonnes (Rencontres, WR allié, WR ennemi, K/D croisé, Vu) */}
