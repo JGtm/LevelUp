@@ -65,6 +65,13 @@ func main() {
 		return
 	}
 
+	// Mode "asset <type> <uuid>" : interroge metadata.duckdb pour voir l'état
+	// d'un asset (lookups asset_translations + catalogs).
+	if len(flag.Args()) == 3 && flag.Arg(0) == "asset" {
+		runAssetInspect(flag.Arg(1), flag.Arg(2))
+		return
+	}
+
 	var matchIDs []string
 	if *recent > 0 {
 		matchIDs = loadRecentMatches(shared, *recent)
@@ -72,7 +79,7 @@ func main() {
 		matchIDs = flag.Args()
 	}
 	if len(matchIDs) == 0 {
-		log.Fatalf("usage: diag_recent_match_sync [--recent N | --summary N | <match_id>...]")
+		log.Fatalf("usage: diag_recent_match_sync [--recent N | --summary N | asset <type> <uuid> | <match_id>...]")
 	}
 
 	for _, mid := range matchIDs {
@@ -123,6 +130,102 @@ func trunc(s string, n int) string {
 		return s
 	}
 	return s[:n-1] + "…"
+}
+
+func runAssetInspect(assetType, assetID string) {
+	metaPath := "../../data/titles/halo_infinite/warehouse/metadata.duckdb"
+	meta, err := openROOptional(metaPath)
+	if err != nil {
+		fmt.Printf("[ERR] metadata DB lockée ou inaccessible : %v\n", err)
+		fmt.Printf("Astuce : arrêter le serveur Air avant de relancer.\n")
+		return
+	}
+	defer meta.Close()
+
+	fmt.Printf("=== asset_type=%s asset_id=%s ===\n\n", assetType, assetID)
+
+	// 1. asset_translations — toutes les langs présentes pour cet asset_id
+	fmt.Println("--- asset_translations ---")
+	rows, err := meta.Query(`
+		SELECT lang, name, COALESCE(description, ''), fetched_at
+		FROM asset_translations
+		WHERE asset_id = ? AND asset_type = ?
+		ORDER BY lang`, assetID, assetType)
+	if err != nil {
+		fmt.Printf("  ERR: %v\n", err)
+	} else {
+		defer rows.Close()
+		count := 0
+		for rows.Next() {
+			var lang, name, desc string
+			var fetched sql.NullString
+			_ = rows.Scan(&lang, &name, &desc, &fetched)
+			fmt.Printf("  lang=%-8s name=%-30s fetched_at=%s\n", lang, name, nstr(fetched))
+			count++
+		}
+		if count == 0 {
+			fmt.Println("  (aucune entrée)")
+		}
+	}
+
+	// 2. Catalog correspondant
+	fmt.Println()
+	catalogTable := assetTypeToCatalogTable(assetType)
+	if catalogTable == "" {
+		fmt.Printf("--- catalog : (asset_type %s sans table catalog connue) ---\n", assetType)
+		return
+	}
+	fmt.Printf("--- %s ---\n", catalogTable)
+	idCol := assetTypeToCatalogIDColumn(assetType)
+	q := fmt.Sprintf(`SELECT * FROM %s WHERE %s = ?`, catalogTable, idCol)
+	rows2, err := meta.Query(q, assetID)
+	if err != nil {
+		fmt.Printf("  ERR: %v\n", err)
+		return
+	}
+	defer rows2.Close()
+	cols, _ := rows2.Columns()
+	if rows2.Next() {
+		vals := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
+		for i := range vals {
+			ptrs[i] = &vals[i]
+		}
+		_ = rows2.Scan(ptrs...)
+		for i, c := range cols {
+			fmt.Printf("  %-25s: %v\n", c, vals[i])
+		}
+	} else {
+		fmt.Println("  (asset absent du catalog)")
+	}
+}
+
+func assetTypeToCatalogTable(t string) string {
+	switch t {
+	case "map":
+		return "maps_catalog"
+	case "playlist":
+		return "playlists_catalog"
+	case "pair":
+		return "map_mode_pair_definitions"
+	case "game_variant":
+		return "game_variants_catalog"
+	}
+	return ""
+}
+
+func assetTypeToCatalogIDColumn(t string) string {
+	switch t {
+	case "map":
+		return "map_id"
+	case "playlist":
+		return "playlist_id"
+	case "pair":
+		return "pair_id"
+	case "game_variant":
+		return "variant_id"
+	}
+	return "id"
 }
 
 func openRO(path string) *sql.DB {
