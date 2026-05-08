@@ -1,18 +1,22 @@
 /**
- * ExplorerMatchesTable — tableau historique du mode "Matchs" de l'Explorer.
+ * ExplorerMatchesTable — tableau historique mode "Matchs" de l'Explorer.
  *
- * COPIE STRICTE du pattern visuel de features/squad/SquadMatchHistoryTable.tsx :
- *  - Mêmes classes Tailwind (rounded-md border, bg-muted thead, hover:bg-primary/10)
- *  - Outcome rendu en texte coloré via getOutcomeColor (pas de Badge, pas de tinting de ligne)
- *  - TanStack Table v8, pagination client 20/page, formatDate, useFieldMappings
+ * Pattern visuel STRICTEMENT aligné sur features/squad/SquadSynergyHistoryTable.tsx :
+ *  - thead : `bg-muted border-b`, th `px-3 py-2 text-left whitespace-nowrap
+ *    text-xs font-medium text-muted-foreground border-r border-border last:border-r-0`
+ *  - tbody : row `cursor-pointer transition-colors hover:bg-primary/10`
+ *  - td : `px-3 py-2 whitespace-nowrap border-r border-border last:border-r-0`
+ *  - outcome rendu en texte coloré via getOutcomeColor (pas de Badge, pas de tinting)
+ *  - boutons "Ouvrir" + "↗ wp" en début de ligne (stop propagation)
+ *  - formatDate + formatDurationMinSec pour les colonnes formatées
+ *  - useFieldMappings pour libellés map/playlist
  *
- * Différence vs squad : 4 colonnes additionnelles insérées APRÈS FDA :
- *  - Perf (color-graded par perf_tier)
- *  - ΔPerf (signe coloré)
- *  - Rang (skill_tier_label)
- *  - ΔRang (delta_mmr coloré via mmrDeltaScale)
+ * Colonnes : Ouvrir | wp | Date | Carte | Playlist | Mode | Résultat |
+ *            Frags | Morts | Assists | FDA | Score | Durée |
+ *            Perf (color) | ΔPerf | Rang | ΔRang |
+ *            MMR équipe | MMR adv. | ΔMMR
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -28,7 +32,7 @@ import { tokenVar, tokenCssVar } from '@/lib/accessibility'
 import { mmrDeltaScale } from '@/lib/accessibility/scales'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { getOutcomeColor } from '@/lib/outcome-color'
-import { formatDate } from '@/lib/formatters'
+import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
@@ -49,6 +53,30 @@ interface Props {
   playerSlug: string
 }
 
+function fmtMmr(v: number | null | undefined): string {
+  if (v === undefined || v === null) return '-'
+  return Math.round(v).toLocaleString()
+}
+
+function fmtDeltaMMR(v: number | null | undefined): ReactNode {
+  if (v === undefined || v === null) return '-'
+  const sign = v >= 0 ? '+' : ''
+  return (
+    <span
+      className="font-mono tabular-nums"
+      style={{ color: tokenCssVar(mmrDeltaScale(v)) }}
+    >
+      {sign}
+      {Math.round(v)}
+    </span>
+  )
+}
+
+function fmtKDA(v: number | null | undefined): string {
+  if (v === undefined || v === null) return '-'
+  return v.toFixed(2)
+}
+
 function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
   switch (outcome) {
     case 2:
@@ -60,11 +88,6 @@ function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
     default:
       return 'dnf'
   }
-}
-
-function fmtNumber(v: number | undefined | null, decimals = 1): string {
-  if (v === undefined || v === null || !Number.isFinite(v)) return '-'
-  return v.toFixed(decimals)
 }
 
 export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
@@ -91,18 +114,9 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
     })
   }
 
-  // Labels colonnes (i18n)
-  const lblDate = t('explorer.matches.col_date')
-  const lblMap = t('explorer.filters.map')
-  const lblPlaylist = t('explorer.filters.playlist')
-  const lblMode = t('explorer.filters.mode')
-  const lblOutcome = t('explorer.matches.col_outcome')
-  const lblFda = t('explorer.matches.col_fda')
-  const lblPerf = t('explorer.matches.col_perf')
-  const lblDeltaPerf = t('explorer.matches.col_delta_perf')
-  const lblRank = t('explorer.matches.col_rank')
-  const lblDeltaRank = t('explorer.matches.col_delta_rank')
-  const lblTeamMmr = t('explorer.matches.col_team_mmr')
+  const waypointBase = `https://www.halowaypoint.com/halo-infinite/players/${encodeURIComponent(playerSlug)}/matches`
+
+  // Labels outcome (pas de Badge, juste texte coloré comme Squad)
   const outcomeLabels: Record<'win' | 'loss' | 'draw' | 'dnf', string> = {
     win: t('explorer.matches.outcome_win'),
     loss: t('explorer.matches.outcome_loss'),
@@ -113,28 +127,71 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
   const columns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
     () => [
       {
+        id: 'open',
+        header: '',
+        cell: (ctx) => (
+          <button
+            type="button"
+            className="text-primary underline text-xs whitespace-nowrap"
+            onClick={(e) => {
+              e.stopPropagation()
+              goToMatch(ctx.row.original.match_id)
+            }}
+          >
+            {t('explorer.matches.col_open')}
+          </button>
+        ),
+      },
+      {
+        id: 'waypoint',
+        header: '',
+        cell: (ctx) => (
+          <a
+            href={ctx.row.original.match_url || `${waypointBase}/${ctx.row.original.match_id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary text-xs whitespace-nowrap"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {t('explorer.matches.col_waypoint')}
+          </a>
+        ),
+      },
+      {
         accessorKey: 'start_time',
-        header: lblDate,
-        cell: (ctx) => formatDate(ctx.getValue<string>(), intlLocale, HISTORY_DATE_OPTS),
+        header: t('explorer.matches.col_date'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground">
+            {formatDate(ctx.getValue<string>(), intlLocale, HISTORY_DATE_OPTS)}
+          </span>
+        ),
       },
       {
         accessorKey: 'map_ui',
-        header: lblMap,
+        header: t('explorer.filters.map'),
         cell: (ctx) => labelOfMap(ctx.getValue<string>()),
       },
       {
         accessorKey: 'playlist_label',
-        header: lblPlaylist,
-        cell: (ctx) => labelOfPlaylist(ctx.getValue<string | null | undefined>()),
+        header: t('explorer.filters.playlist'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground">
+            {labelOfPlaylist(ctx.getValue<string | null | undefined>())}
+          </span>
+        ),
       },
       {
         accessorKey: 'mode_ui',
-        header: lblMode,
-        cell: (ctx) => ctx.getValue<string | undefined>() ?? '-',
+        header: t('explorer.filters.mode'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground">
+            {ctx.getValue<string | null | undefined>() ?? '-'}
+          </span>
+        ),
       },
       {
         accessorKey: 'outcome_code',
-        header: lblOutcome,
+        header: t('explorer.matches.col_outcome'),
         cell: (ctx) => {
           const o = ctx.getValue<number>()
           const key = outcomeKey(o)
@@ -146,17 +203,62 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
         },
       },
       {
-        id: 'fda',
-        header: lblFda,
-        cell: (ctx) => {
-          const r = ctx.row.original
-          if (r.kills == null) return '-'
-          return `${r.kills}/${r.deaths ?? 0}/${r.assists ?? 0}`
-        },
+        accessorKey: 'kills',
+        header: t('explorer.matches.col_kills'),
+        cell: (ctx) => (
+          <span className="font-mono tabular-nums">
+            {ctx.getValue<number | null | undefined>() ?? '-'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'deaths',
+        header: t('explorer.matches.col_deaths'),
+        cell: (ctx) => (
+          <span className="font-mono tabular-nums">
+            {ctx.getValue<number | null | undefined>() ?? '-'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'assists',
+        header: t('explorer.matches.col_assists'),
+        cell: (ctx) => (
+          <span className="font-mono tabular-nums">
+            {ctx.getValue<number | null | undefined>() ?? '-'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'kda',
+        header: t('explorer.matches.col_kda'),
+        cell: (ctx) => (
+          <span className="font-mono tabular-nums">
+            {fmtKDA(ctx.getValue<number | null | undefined>())}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'score_label',
+        header: t('explorer.matches.col_score'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground font-mono">
+            {ctx.getValue<string | undefined>() || '-'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'duration_seconds',
+        header: t('explorer.matches.col_duration'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground font-mono tabular-nums">
+            {formatDurationMinSec(ctx.getValue<number | null | undefined>() ?? undefined)}
+          </span>
+        ),
       },
       {
         accessorKey: 'perf_score',
-        header: lblPerf,
+        header: t('explorer.matches.col_perf'),
         cell: (ctx) => {
           const r = ctx.row.original
           if (r.perf_score == null || !r.perf_tier) return '-'
@@ -172,7 +274,7 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
       },
       {
         accessorKey: 'delta_perf',
-        header: lblDeltaPerf,
+        header: t('explorer.matches.col_delta_perf'),
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
           if (v == null) return '-'
@@ -183,7 +285,7 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
                 ? tokenVar('perf-tier-5' as SemanticToken)
                 : undefined
           return (
-            <span style={{ color }}>
+            <span className="font-mono tabular-nums" style={{ color }}>
               {v >= 0 ? '+' : ''}
               {v}
             </span>
@@ -192,31 +294,35 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
       },
       {
         accessorKey: 'skill_tier_label',
-        header: lblRank,
+        header: t('explorer.matches.col_rank'),
         cell: (ctx) => ctx.getValue<string | null | undefined>() ?? '-',
       },
       {
-        accessorKey: 'delta_mmr',
-        header: lblDeltaRank,
-        cell: (ctx) => {
-          const v = ctx.getValue<number | null | undefined>()
-          if (v == null) return '-'
-          return (
-            <span style={{ color: tokenCssVar(mmrDeltaScale(v)) }}>
-              {v >= 0 ? '+' : ''}
-              {v.toFixed(0)}
-            </span>
-          )
-        },
+        accessorKey: 'team_mmr',
+        header: t('explorer.matches.col_team_mmr'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground font-mono tabular-nums">
+            {fmtMmr(ctx.getValue<number | null | undefined>())}
+          </span>
+        ),
       },
       {
-        accessorKey: 'team_mmr',
-        header: lblTeamMmr,
-        cell: (ctx) => fmtNumber(ctx.getValue<number | null | undefined>(), 0),
+        accessorKey: 'enemy_mmr',
+        header: t('explorer.matches.col_enemy_mmr'),
+        cell: (ctx) => (
+          <span className="text-muted-foreground font-mono tabular-nums">
+            {fmtMmr(ctx.getValue<number | null | undefined>())}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'delta_mmr',
+        header: t('explorer.matches.col_delta_mmr'),
+        cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | null | undefined>()),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale],
+    [intlLocale, mapAssets, playlistAssets, locale, playerSlug, waypointBase],
   )
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
@@ -250,7 +356,10 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
-                  <th key={h.id} className="px-3 py-2 text-left whitespace-nowrap">
+                  <th
+                    key={h.id}
+                    className="px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0"
+                  >
                     {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                   </th>
                 ))}
@@ -270,7 +379,10 @@ export function ExplorerMatchesTable({ rows, playerSlug }: Props) {
                 }}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
+                  <td
+                    key={cell.id}
+                    className="px-3 py-2 whitespace-nowrap border-r border-border last:border-r-0"
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

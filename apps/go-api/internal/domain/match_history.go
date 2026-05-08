@@ -78,6 +78,7 @@ type MatchHistoryRow struct {
 	Assists                  int       `json:"assists,omitempty"`
 	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"` // "Diamant IV" ou nil
 	AverageLifeMMSS          string    `json:"average_life_mmss"`
+	DurationSeconds          *int      `json:"duration_seconds,omitempty"`
 	MatchURL                 string    `json:"match_url"`
 	IsExcluded               bool      `json:"is_excluded"`
 }

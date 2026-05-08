@@ -1,4 +1,23 @@
 
+## [2026-05-08] Explorer — table strictement alignée sur SquadSynergyHistoryTable + colonnes manquantes
+
+**Statut** : Complété
+
+**Décision technique** : Refonte complète d'`ExplorerMatchesTable` pour matcher visuellement le `SquadSynergyHistoryTable` (template plus complet que `SquadMatchHistoryTable`). Ajout des colonnes manquantes : boutons `Ouvrir`/`↗ wp`, Frags/Morts/Assists/FDA séparés (FDA = `kda` calculé côté backend, pas une concat string), Score, Durée, MMR adverse, ΔMMR. Pattern visuel exact : thead `bg-muted border-b`, th `px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0`, td `px-3 py-2 whitespace-nowrap border-r border-border last:border-r-0`, hover `bg-primary/10`. **Bordures verticales** entre colonnes (`border-r last:border-r-0`) — c'est le détail clé que j'avais loupé jusqu'ici.
+
+**Backend** : `MatchHistoryRow` étendu avec `DurationSeconds *int` (mappé depuis `r.TimePlayedSeconds` dans `enrichRow`). `ExplorerMatchesRow` étendu avec `EnemyMMR *float64`, `KDA *float64`, `DurationSeconds *int`. Handler explorer mappe les 3 nouveaux champs. **Frontend** : `ExplorerMatchRow` (TS) reçoit `enemy_mmr`, `kda`, `duration_seconds`, `match_url`. 10 nouvelles clés i18n FR+EN (col_open, col_waypoint, col_kills, col_deaths, col_assists, col_kda, col_duration, col_enemy_mmr, col_delta_mmr, +regen explorer.ts).
+
+**Colonnes finales** (20 colonnes alignées Squad) :
+Ouvrir | ↗ wp | Date | Carte | Playlist | Mode | Résultat | Frags | Morts | Assists | FDA | Score | Durée | Perf | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
+
+**Helpers locaux** : `fmtMmr` (Math.round + toLocaleString), `fmtDeltaMMR` (signe + couleur via mmrDeltaScale), `fmtKDA` (.toFixed(2)), `outcomeKey`. Bouton "Ouvrir" (lien interne goToMatch) et "↗ wp" (lien externe halowaypoint.com avec `match_url` du backend en priorité, fallback construction URL). Tous deux `e.stopPropagation()` pour ne pas trigger le row click.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché), `vitest run src/features/explorer` 13/13 PASS, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — couverture tests des 5 fonctions computeAvailable* + MultiSelectFilter
 
 **Statut** : Complété

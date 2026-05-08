@@ -949,6 +949,10 @@ export interface ExplorerMatchRow {
   skill_tier_label?: string | null
   delta_mmr?: number | null
   team_mmr?: number | null
+  enemy_mmr?: number | null
+  kda?: number | null
+  duration_seconds?: number | null
+  match_url?: string
 }
 
 export interface ExplorerEncounterRow {

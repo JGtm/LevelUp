@@ -129,9 +129,12 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			PerfScore:      item.PerformanceScoreRelative,
 			PerfTier:       item.PerfTier,
 			DeltaPerf:      deltaPerf,
-			SkillTierLabel: item.SkillTierLabel,
-			DeltaMMR:       item.DeltaMMR,
-			TeamMMR:        item.TeamMMR,
+			SkillTierLabel:  item.SkillTierLabel,
+			DeltaMMR:        item.DeltaMMR,
+			TeamMMR:         item.TeamMMR,
+			EnemyMMR:        item.EnemyMMR,
+			KDA:             item.KDA,
+			DurationSeconds: item.DurationSeconds,
 		})
 	}
 
