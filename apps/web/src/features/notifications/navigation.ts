@@ -33,7 +33,7 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
         search: notif.params?.match_id ? { matchId: String(notif.params.match_id) } : undefined,
       }
     case 'match_synced':
-      return { to: `/players/${playerSlug}/stats/history` }
+      return { to: `/players/${playerSlug}/explorer` }
     case 'objective_assigned':
     case 'objective_completed':
       return {

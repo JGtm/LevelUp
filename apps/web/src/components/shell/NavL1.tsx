@@ -138,10 +138,9 @@ const L1_SECTIONS: L1Section[] = [
   {
     key: 'stats',
     label: 'Stats',
-    defaultPath: '/players/$playerSlug/stats/history',
+    defaultPath: '/players/$playerSlug/stats/timeseries',
     matchPathname: (p) => /\/players\/[^/]+\/(stats\/|synthesis)/.test(p),
     tabs: [
-      { key: 'history', label: 'Historique', path: '/players/$playerSlug/stats/history' },
       { key: 'timeseries', label: 'Séries', path: '/players/$playerSlug/stats/timeseries' },
       { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
       { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/synthesis' },

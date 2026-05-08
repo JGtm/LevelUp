@@ -10,11 +10,11 @@ describe('buildPlayerDestination', () => {
   it('préserve la section active quand le path est dans le scope joueur', () => {
     expect(
       buildPlayerDestination(
-        '/players/old-player/stats/history',
+        '/players/old-player/stats/timeseries',
         'old-player',
         'new-player',
       ),
-    ).toBe('/players/new-player/stats/history')
+    ).toBe('/players/new-player/stats/timeseries')
   })
 
   it('retombe sur home si le path actuel n’est pas un path joueur', () => {
