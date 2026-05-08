@@ -245,7 +245,6 @@ func TestSyncEngineReleaseOnCtxCancel(t *testing.T) {
 // writer ne reste verrouillé.
 func TestSyncBurstStress(t *testing.T) {
 	sharedDB := openIntegrationSharedDB(t)
-	ctx := context.Background()
 
 	successCount := 0
 	for i := 0; i < 20; i++ {
