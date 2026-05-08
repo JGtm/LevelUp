@@ -24,7 +24,7 @@ import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import type { MatchEncounterBadge } from '@/lib/api/types'
+import type { MatchEncounterBadge, LabelValue } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
@@ -212,28 +212,55 @@ export function ExplorerPage() {
     label: v,
   }))
 
-  const perfTierOptions: MultiSelectOption[] = [
-    { value: '1', label: t('explorer.filters.perf_tier_excellent'), swatch: tokenVar('perf-tier-1' as SemanticToken) },
-    { value: '2', label: t('explorer.filters.perf_tier_bon'), swatch: tokenVar('perf-tier-2' as SemanticToken) },
-    { value: '3', label: t('explorer.filters.perf_tier_correct'), swatch: tokenVar('perf-tier-3' as SemanticToken) },
-    { value: '4', label: t('explorer.filters.perf_tier_faible'), swatch: tokenVar('perf-tier-4' as SemanticToken) },
-    { value: '5', label: t('explorer.filters.perf_tier_mauvais'), swatch: tokenVar('perf-tier-5' as SemanticToken) },
-  ]
+  // Mappe les counts backend (LabelValue[]) sur les options frontend (qui portent
+  // labels i18n + swatch). Si pas de backend data, count reste undefined (pas de
+  // grayout). Match par `value` exact.
+  function withCounts(opts: MultiSelectOption[], backend?: LabelValue[]): MultiSelectOption[] {
+    if (!backend) return opts
+    const map = new Map(backend.map((b) => [b.value, b.count]))
+    return opts.map((o) => ({ ...o, count: map.get(o.value) ?? 0 }))
+  }
 
-  const outcomeOptions: MultiSelectOption[] = [
-    { value: '2', label: t('explorer.filters.outcome_win'), swatch: tokenVar('outcome-win' as SemanticToken) },
-    { value: '3', label: t('explorer.filters.outcome_loss'), swatch: tokenVar('outcome-loss' as SemanticToken) },
-    { value: '1', label: t('explorer.filters.outcome_tie'), swatch: tokenVar('outcome-draw' as SemanticToken) },
-  ]
+  const perfTierOptions: MultiSelectOption[] = withCounts(
+    [
+      { value: '1', label: t('explorer.filters.perf_tier_excellent'), swatch: tokenVar('perf-tier-1' as SemanticToken) },
+      { value: '2', label: t('explorer.filters.perf_tier_bon'), swatch: tokenVar('perf-tier-2' as SemanticToken) },
+      { value: '3', label: t('explorer.filters.perf_tier_correct'), swatch: tokenVar('perf-tier-3' as SemanticToken) },
+      { value: '4', label: t('explorer.filters.perf_tier_faible'), swatch: tokenVar('perf-tier-4' as SemanticToken) },
+      { value: '5', label: t('explorer.filters.perf_tier_mauvais'), swatch: tokenVar('perf-tier-5' as SemanticToken) },
+    ],
+    summary?.available_perf_tiers,
+  )
 
-  const skillTierOptions: MultiSelectOption[] = [
-    { value: 'Bronze', label: t('explorer.filters.skill_tier_bronze') },
-    { value: 'Silver', label: t('explorer.filters.skill_tier_silver') },
-    { value: 'Gold', label: t('explorer.filters.skill_tier_gold') },
-    { value: 'Platinum', label: t('explorer.filters.skill_tier_platinum') },
-    { value: 'Diamond', label: t('explorer.filters.skill_tier_diamond') },
-    { value: 'Onyx', label: t('explorer.filters.skill_tier_onyx') },
-  ]
+  const outcomeOptions: MultiSelectOption[] = withCounts(
+    [
+      { value: '2', label: t('explorer.filters.outcome_win'), swatch: tokenVar('outcome-win' as SemanticToken) },
+      { value: '3', label: t('explorer.filters.outcome_loss'), swatch: tokenVar('outcome-loss' as SemanticToken) },
+      { value: '1', label: t('explorer.filters.outcome_tie'), swatch: tokenVar('outcome-draw' as SemanticToken) },
+    ],
+    summary?.available_outcomes,
+  )
+
+  const skillTierOptions: MultiSelectOption[] = withCounts(
+    [
+      { value: 'Bronze', label: t('explorer.filters.skill_tier_bronze') },
+      { value: 'Silver', label: t('explorer.filters.skill_tier_silver') },
+      { value: 'Gold', label: t('explorer.filters.skill_tier_gold') },
+      { value: 'Platinum', label: t('explorer.filters.skill_tier_platinum') },
+      { value: 'Diamond', label: t('explorer.filters.skill_tier_diamond') },
+      { value: 'Onyx', label: t('explorer.filters.skill_tier_onyx') },
+    ],
+    summary?.available_skill_tiers,
+  )
+
+  // Counts pour les single-selects (ranked context, squad scope) — on les
+  // interpole dans les <option> labels, et on désactive celles à count=0.
+  const rankedCountByValue = new Map(
+    (summary?.available_ranked_contexts ?? []).map((b) => [b.value, b.count]),
+  )
+  const squadCountByValue = new Map(
+    (summary?.available_squad_scopes ?? []).map((b) => [b.value, b.count]),
+  )
 
   const hasActiveFilter =
     !!startDate ||
@@ -552,9 +579,19 @@ export function ExplorerPage() {
                     onChange={(e) => setSquadScope(e.target.value as '' | 'solo' | 'squad')}
                     className="rounded border border-input px-2 py-1 text-sm bg-background"
                   >
-                    <option value="">{t('explorer.filters.context_all')}</option>
-                    <option value="solo">{t('explorer.filters.context_solo')}</option>
-                    <option value="squad">{t('explorer.filters.context_squad')}</option>
+                    {(['', 'solo', 'squad'] as const).map((v) => {
+                      const labelKey =
+                        v === '' ? 'explorer.filters.context_all'
+                        : v === 'solo' ? 'explorer.filters.context_solo'
+                        : 'explorer.filters.context_squad'
+                      const c = squadCountByValue.get(v)
+                      const isCurrent = v === squadScope
+                      return (
+                        <option key={v} value={v} disabled={c === 0 && !isCurrent}>
+                          {t(labelKey)}{c !== undefined ? ` (${c})` : ''}
+                        </option>
+                      )
+                    })}
                   </select>
                 </div>
 
@@ -605,9 +642,20 @@ export function ExplorerPage() {
                     }
                     className="rounded border border-input px-2 py-1 text-sm bg-background"
                   >
-                    <option value="">{t('explorer.filters.ranked_label')} : {t('explorer.filters.ranked_all')}</option>
-                    <option value="ranked">{t('explorer.filters.ranked_ranked')}</option>
-                    <option value="unranked">{t('explorer.filters.ranked_unranked')}</option>
+                    {(['', 'ranked', 'unranked'] as const).map((v) => {
+                      const labelKey =
+                        v === '' ? 'explorer.filters.ranked_all'
+                        : v === 'ranked' ? 'explorer.filters.ranked_ranked'
+                        : 'explorer.filters.ranked_unranked'
+                      const c = rankedCountByValue.get(v)
+                      const isCurrent = v === rankedContext
+                      const prefix = v === '' ? `${t('explorer.filters.ranked_label')} : ` : ''
+                      return (
+                        <option key={v || 'all'} value={v} disabled={c === 0 && !isCurrent}>
+                          {prefix}{t(labelKey)}{c !== undefined ? ` (${c})` : ''}
+                        </option>
+                      )
+                    })}
                   </select>
                   <MultiSelectFilter
                     options={skillTierOptions}

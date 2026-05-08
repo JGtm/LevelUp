@@ -106,6 +106,11 @@ func (s *MatchHistoryService) GetPage(
 		filtered = filterMatchHistoryRowsBySoloSessions(filtered, req.PickedSoloSessionLabels)
 	}
 
+	// Capture des rows post-cascade post-PickedSoloSessions, avant tout filtre
+	// Explorer (ranked/outcome/skill/perf + Explorer-cascade). C'est la base pour
+	// le calcul des "available_*" cascade-aware avec sémantique OR.
+	baseForExplorerOptions := filtered
+
 	// Filtres supplémentaires (ranked context, outcome, skill tier, perf tier).
 	filtered = filterByRankedContext(filtered, req.RankedContext)
 	filtered = filterByOutcome(filtered, req.OutcomeFilter)
@@ -114,6 +119,15 @@ func (s *MatchHistoryService) GetPage(
 
 	// Options Explorer disponibles calculées AVANT les filtres Explorer additionnels.
 	availExpTypes, availPlaylists, availMaps, availModes := computeExplorerAvailableOptions(filtered)
+
+	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
+	// d'une dimension, AND entre dimensions). Calculées sur baseForExplorerOptions
+	// pour que chaque dimension reflète "ce qu'on aurait si on cochait X".
+	availOutcomes := computeAvailableOutcomes(baseForExplorerOptions, req)
+	availPerfTiers := computeAvailablePerfTiers(baseForExplorerOptions, req)
+	availSkillTiers := computeAvailableSkillTiers(baseForExplorerOptions, req)
+	availRankedCtxs := computeAvailableRankedContexts(baseForExplorerOptions, req)
+	availSquadScopes := computeAvailableSquadScopes(baseForExplorerOptions, req)
 
 	// Filtres Explorer additionnels (date, experience, playlist, carte, mode, squad, match ID).
 	filtered = applyExplorerMatchFilters(filtered, req)
@@ -184,6 +198,11 @@ func (s *MatchHistoryService) GetPage(
 			AvailablePlaylists:       availPlaylists,
 			AvailableMaps:            availMaps,
 			AvailableModes:           availModes,
+			AvailableOutcomes:        availOutcomes,
+			AvailablePerfTiers:       availPerfTiers,
+			AvailableSkillTiers:      availSkillTiers,
+			AvailableRankedContexts:  availRankedCtxs,
+			AvailableSquadScopes:     availSquadScopes,
 		},
 		Table: domain.MatchHistoryTable{
 			Items:      pageItems,

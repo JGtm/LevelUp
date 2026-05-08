@@ -93,6 +93,14 @@ type MatchHistoryQuerySummary struct {
 	AvailablePlaylists       []string `json:"available_playlists,omitempty"`
 	AvailableMaps            []string `json:"available_maps,omitempty"`
 	AvailableModes           []string `json:"available_modes,omitempty"`
+	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
+	// d'une dimension, AND entre dimensions). Permettent au front de griser les
+	// valeurs à count=0 et d'afficher le compte par option.
+	AvailableOutcomes        []LabelValue `json:"available_outcomes,omitempty"`
+	AvailablePerfTiers       []LabelValue `json:"available_perf_tiers,omitempty"`
+	AvailableSkillTiers      []LabelValue `json:"available_skill_tiers,omitempty"`
+	AvailableRankedContexts  []LabelValue `json:"available_ranked_contexts,omitempty"`
+	AvailableSquadScopes     []LabelValue `json:"available_squad_scopes,omitempty"`
 }
 
 // MatchHistoryTable est la table paginée de l'historique.

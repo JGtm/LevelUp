@@ -16,6 +16,10 @@ export interface MultiSelectOption {
   swatch?: string
   /** Si true, l'option est désactivée (ex: skill tier sans contexte ranked). */
   disabled?: boolean
+  /** Nombre de matchs si on coche cette option (sémantique OR). 0 = grisée
+   *  car aucun match — le checkbox est désactivé sauf si déjà coché (pour
+   *  permettre de la décocher). */
+  count?: number
 }
 
 interface Props {
@@ -78,32 +82,44 @@ export function MultiSelectFilter({
       </button>
       {open && !disabled && (
         <div className="absolute z-50 mt-1 w-max min-w-full rounded-md border border-border bg-background shadow-lg max-h-60 overflow-y-auto">
-          {options.map((opt) => (
-            <label
-              key={opt.value}
-              className={`flex items-center gap-2 px-3 py-1.5 text-sm ${
-                opt.disabled
-                  ? 'cursor-not-allowed opacity-40'
-                  : 'cursor-pointer hover:bg-primary/10'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={selected.has(opt.value)}
-                onChange={() => !opt.disabled && toggle(opt.value)}
-                disabled={opt.disabled}
-                className="rounded accent-primary"
-              />
-              {opt.swatch && (
-                <span
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ backgroundColor: opt.swatch }}
-                  aria-hidden
+          {options.map((opt) => {
+            // Option grisée si explicitement disabled OU count=0 et pas déjà cochée
+            // (on garde cliquable pour décocher si actuellement sélectionnée).
+            const isChecked = selected.has(opt.value)
+            const isZero = opt.count === 0
+            const isInteractDisabled = !!opt.disabled || (isZero && !isChecked)
+            return (
+              <label
+                key={opt.value}
+                className={`flex items-center gap-2 px-3 py-1.5 text-sm ${
+                  isInteractDisabled
+                    ? 'cursor-not-allowed opacity-40'
+                    : 'cursor-pointer hover:bg-primary/10'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => !isInteractDisabled && toggle(opt.value)}
+                  disabled={isInteractDisabled}
+                  className="rounded accent-primary"
                 />
-              )}
-              <span>{opt.label}</span>
-            </label>
-          ))}
+                {opt.swatch && (
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: opt.swatch }}
+                    aria-hidden
+                  />
+                )}
+                <span className="flex-1">{opt.label}</span>
+                {opt.count !== undefined && (
+                  <span className="ml-2 text-xs text-muted-foreground tabular-nums">
+                    {opt.count}
+                  </span>
+                )}
+              </label>
+            )
+          })}
         </div>
       )}
     </div>

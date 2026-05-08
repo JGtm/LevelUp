@@ -142,6 +142,11 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			AvailablePlaylists:       mhResp.Summary.AvailablePlaylists,
 			AvailableMaps:            mhResp.Summary.AvailableMaps,
 			AvailableModes:           mhResp.Summary.AvailableModes,
+			AvailableOutcomes:        mhResp.Summary.AvailableOutcomes,
+			AvailablePerfTiers:       mhResp.Summary.AvailablePerfTiers,
+			AvailableSkillTiers:      mhResp.Summary.AvailableSkillTiers,
+			AvailableRankedContexts:  mhResp.Summary.AvailableRankedContexts,
+			AvailableSquadScopes:     mhResp.Summary.AvailableSquadScopes,
 		},
 		Table: domain.ExplorerMatchesTable{
 			Items:      rows,
