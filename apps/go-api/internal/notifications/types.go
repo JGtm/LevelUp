@@ -28,6 +28,8 @@ const (
 	// §6 Squad/Sessions overhaul : flow ami.
 	CategoryFriendAdded         Category = "friend_added"
 	CategoryFriendSyncCompleted Category = "friend_sync_completed"
+	// 2026-05-08 : audit santé DB périodique (warnings remontés à l'admin).
+	CategoryDataHealthWarning Category = "data_health_warning"
 )
 
 // AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).

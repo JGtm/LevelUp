@@ -289,6 +289,18 @@ func main() {
 		autoScheduler.Run(schedulerCtx)
 	}()
 
+	// 2026-05-08 — Data health scheduler : audit périodique multi-DB
+	// (UUIDs résiduels, bits menteurs, orphelins, garbage URLs). Émet une
+	// notification admin via `data_health_warning` quand des warnings sont
+	// détectés. L'emitter est wiré après NewRouter (cf. plus bas) car le
+	// notifications.Service est par-joueur et créé via le ServiceRegistry.
+	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot, nil)
+	schedulerWG.Add(1)
+	go func() {
+		defer schedulerWG.Done()
+		healthScheduler.Run(schedulerCtx)
+	}()
+
 	// Convertir en interface (nil safe : un *Daemon nil ne doit pas devenir une interface non-nil)
 	var watcherCtrl watcher.DaemonController
 	if watcherDaemon != nil {
@@ -303,6 +315,21 @@ func main() {
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
 	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
+
+	// data_health : wirer l'emitter sur le 1er joueur configuré (cible admin
+	// par défaut en setup mono-utilisateur). Si aucun joueur en
+	// db_profiles.json, le scheduler tourne sans émission de notif (les
+	// warnings sont uniquement dans les logs).
+	if reg != nil {
+		if players, err := cfg.LoadPlayers(title.DefaultSlug); err == nil && len(players) > 0 {
+			if emitter, err := reg.NotificationsEmitter(ctx, players[0].PlayerSlug); err == nil {
+				healthScheduler.SetEmitter(emitter)
+				slog.Info("data_health: emitter wiré", "admin_player", players[0].PlayerSlug)
+			} else {
+				slog.Warn("data_health: emitter non câblé", "err", err)
+			}
+		}
+	}
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
