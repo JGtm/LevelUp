@@ -18,8 +18,10 @@ import (
 )
 
 // MatchCadencePhaseSeconds est la phase par défaut de la cadence MatchView.
+// Aligné sur TugOfWarBinSize (30 000 ms = 30s) pour que les tranches des deux
+// graphes "Cadence des frags" et "Dominance par tranche" soient identiques.
 // 60 secondes pour aligner avec le réglage UX Squad V2 (chunk S6).
-const MatchCadencePhaseSeconds = 60
+const MatchCadencePhaseSeconds = 30
 
 // convertEventsRawToCanonical convertit les events bruts (Q21) en
 // canonical.HighlightEvent pour pouvoir les passer aux fonctions narrative.
