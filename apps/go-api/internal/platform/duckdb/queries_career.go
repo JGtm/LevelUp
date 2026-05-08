@@ -75,6 +75,9 @@ SELECT
     COALESCE(ms.pair_name_fr, ms.pair_name)              AS pair_name_fr,
     ms.playlist_name                                     AS playlist_name_en,
     COALESCE(ms.playlist_name_fr, ms.playlist_name)      AS playlist_name,
+    ms.map_id,
+    ms.pair_id,
+    ms.playlist_id,
     COALESCE(ms.is_firefight, FALSE)                     AS is_firefight,
     COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,
     pme.session_id,
@@ -109,7 +112,10 @@ FROM (
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
            COALESCE(r.is_ranked, FALSE)    AS is_ranked,
            r.team_0_score,
-           r.team_1_score
+           r.team_1_score,
+           r.map_id,
+           r.pair_id,
+           r.playlist_id
     FROM shared.v_match_full r
     JOIN shared.match_participants p ON r.match_id = p.match_id
     WHERE p.xuid = ?

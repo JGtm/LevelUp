@@ -1,4 +1,25 @@
 
+## [2026-05-08] Explorer — fix réel locale FR : ResolveAssetNamesBulk via UUIDs (pattern home)
+
+**Statut** : Complété
+
+**Décision technique** : Mon précédent fix (`applyXxxFRTranslations` dupliqué de filters_repo) ne fonctionnait pas. Cause : ce mécanisme passe par les **noms EN** comme clé de lookup, ce qui échoue dès que le nom EN ne match pas exactement entre `match_registry.{map,playlist}_name` et la valeur stockée. La home page et les tuiles de match utilisent un pattern différent et fonctionnel : résolution **directe par UUID** (`map_id`, `pair_id`, `playlist_id`) via `MetadataRepo.ResolveAssetNamesBulk`.
+
+**Fix** :
+1. **Q5MatchHistory** étendue avec `r.map_id`, `r.pair_id`, `r.playlist_id` (depuis `v_match_full` → `match_registry`).
+2. `MatchHistoryRawRow` reçoit `MapID *string`, `PairID *string`, `PlaylistID *string`. Scan étendu.
+3. `match_history_fr_translations.go` réécrit complètement pour reproduire **strictement** le pattern `home_repo.go` lignes 542-608 : (a) `MetadataRepo.ResolveAssetNamesBulk(ctx, "map", mapIDs, PreferredLangsForLocale("fr"))` pour chaque kind, (b) `loadModeFRBatch` pour `mode_name_tr` (FR) couvrant les sous-modes normalisés (Slayer→Assassin), (c) application : priorité 1 mode_name_tr, fallback asset_translations.
+4. Helpers `collectDistinctIDs` (extraction stable des IDs) + `loadModeFRBatch` (lookup mode_name_tr en bulk avec timeout 3s, best-effort silencieux).
+5. Réutilise `needsHomeAssetTranslation` (déjà exporté du package) pour la condition "FR manquant ou égal à EN".
+
+**Pourquoi ça marche maintenant** : on ne dépend plus du nom EN comme jointure (fragile aux variations de casse/espaces). Les UUIDs sont stables et identiques entre `match_registry` et `asset_translations`.
+
+**Résultats** : `go build` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/duckdb/...` tous verts.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Explorer — fix tableau : pagination 12→tout, couleurs cassées tokenVar, FDA color, police réduite
 
 **Statut** : Complété
