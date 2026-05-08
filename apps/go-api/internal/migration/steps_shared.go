@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	"levelup/go-api/internal/analysis"
 )
 
 func init() {
@@ -621,15 +623,15 @@ func init() {
 		},
 	})
 
-	// 2026-05-08 : v_gamertag_lookup upgrade pour gérer (a) les bots Halo
-	// `bid(N.0)` → "343 Bot N", (b) un fallback xuid raw quand aucun alias
-	// n'est trouvé. La vue retourne désormais une `gamertag` jamais NULL pour
-	// tout xuid présent dans xuid_aliases ou match_participants. Permet aux
-	// callers (Q12, Q21, Q23, Q29, Q32...) de simplifier leurs COALESCE chains.
+	// 2026-05-08 : v_gamertag_lookup upgrade pour gérer (a) les bots Halo avec
+	// leurs noms officiels (ex: "343 Meowlnir"), (b) un fallback xuid raw quand
+	// aucun alias n'est trouvé. La vue retourne désormais une `gamertag` jamais
+	// NULL pour tout xuid présent dans xuid_aliases ou match_participants. Permet
+	// aux callers (Q12, Q21, Q23, Q29, Q32...) de simplifier leurs COALESCE chains.
 	Register(Migration{
 		Name:        "upgrade_v_gamertag_lookup_bots_and_raw_fallback",
 		TargetDB:    TargetShared,
-		Description: "v_gamertag_lookup : ajout du rendu '343 Bot N' + fallback xuid raw (résolveur unifié)",
+		Description: "v_gamertag_lookup : noms officiels bots (343 Meowlnir…) + fallback xuid raw (résolveur unifié)",
 		ApplySchema: applyResolutionViews,
 	})
 
@@ -899,7 +901,8 @@ func applyResolutionViews(db *sql.DB) error {
 	// Source unique de vérité utilisée par TOUTES les requêtes qui affichent un
 	// gamertag (scoreboard Q12, encounters Q23, squad Q29/Q32, highlights Q21,
 	// média Q24, compare, etc.). Comportement :
-	//  1. Si xuid est un bot Halo (`bid(N.0)`), retourne "343 Bot N".
+	//  1. Si xuid est un bot Halo connu, retourne son nom officiel (ex: "343 Meowlnir").
+	//     Source : analysis.botNames — même map que BotDisplayName.
 	//  2. Sinon, prend xuid_aliases.gamertag si non vide.
 	//  3. Sinon, fallback sur match_participants.gamertag (max si plusieurs).
 	//  4. Sinon, retourne le xuid brut — gamertag JAMAIS NULL.
@@ -907,18 +910,21 @@ func applyResolutionViews(db *sql.DB) error {
 	// Conséquence : les callers peuvent simplifier `COALESCE(vg.gamertag, ...)` en
 	// `vg.gamertag` direct (le LEFT JOIN couvre quand même le cas où xuid n'est
 	// dans aucune source de la vue, mais c'est rare — typiquement un xuid orphelin).
-	if _, err := db.Exec(`
+	xuidExpr := "COALESCE(xa.xuid, mp.xuid)"
+	// Le CASE bot est généré depuis analysis.botNames — même source que BotDisplayName.
+	// Pour un xuid inconnu (bot futur), BotSQLCase retourne le xuid brut.
+	viewSQL := fmt.Sprintf(`
 		CREATE OR REPLACE VIEW v_gamertag_lookup AS
 		SELECT
-			COALESCE(xa.xuid, mp.xuid) AS xuid,
+			%s AS xuid,
 			CASE
-				WHEN COALESCE(xa.xuid, mp.xuid) LIKE 'bid(%'
-					THEN '343 Bot ' || regexp_extract(COALESCE(xa.xuid, mp.xuid), 'bid\(([0-9]+)', 1)
+				WHEN %s LIKE 'bid(%%'
+					THEN %s
 				WHEN xa.gamertag IS NOT NULL AND xa.gamertag != ''
 					THEN xa.gamertag
 				WHEN mp.gamertag IS NOT NULL AND mp.gamertag != ''
 					THEN mp.gamertag
-				ELSE COALESCE(xa.xuid, mp.xuid)
+				ELSE %s
 			END AS gamertag
 		FROM xuid_aliases xa
 		FULL OUTER JOIN (
@@ -926,7 +932,13 @@ func applyResolutionViews(db *sql.DB) error {
 			FROM match_participants
 			GROUP BY xuid
 		) mp ON xa.xuid = mp.xuid
-	`); err != nil {
+	`,
+		xuidExpr,
+		xuidExpr,
+		analysis.BotSQLCase(xuidExpr),
+		xuidExpr,
+	)
+	if _, err := db.Exec(viewSQL); err != nil {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}
 

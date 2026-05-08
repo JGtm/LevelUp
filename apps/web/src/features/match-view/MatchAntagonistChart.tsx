@@ -8,7 +8,6 @@
  *
  * Source : `combat_tab.killer_victim` (paires agrégées par le backend Go).
  */
-import { Card, CardContent } from '@/components/ui/card'
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
 import type {
   MatchKillerVictimPair,
@@ -33,11 +32,9 @@ export function MatchAntagonistChart({ pairs, scoreboard, roster, meXUID, t, fri
   const series = antagonistStackedSeries(pairs ?? [])
   if (series.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
-          {t.antagonistNoData}
-        </CardContent>
-      </Card>
+      <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground">
+        {t.antagonistNoData}
+      </div>
     )
   }
   // Map gamertag → hex pré-résolu (allié vs ennemi, bonus squad pour amis
@@ -54,17 +51,13 @@ export function MatchAntagonistChart({ pairs, scoreboard, roster, meXUID, t, fri
   const killerCount = series[0].datapoints.length
   const height = Math.max(240, 80 + 24 * killerCount)
   return (
-    <Card>
-      <CardContent className="py-4">
-        <BarStackedChart
-          title="Antagonistes — qui a tué qui"
-          height={height}
-          orientation="horizontal"
-          series={series}
-          componentHexColors={componentHexColors}
-          tooltipHideZero
-        />
-      </CardContent>
-    </Card>
+    <BarStackedChart
+      title="Antagonistes"
+      height={height}
+      orientation="horizontal"
+      series={series}
+      componentHexColors={componentHexColors}
+      tooltipHideZero
+    />
   )
 }
