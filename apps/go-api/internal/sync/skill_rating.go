@@ -291,9 +291,14 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 		return 0, err
 	}
 
-	// 3. Charger les matchs déjà classés CSR (protéger).
+	// 3. Charger les matchs déjà classés CSR (protéger) et LUSR (pour mode incrémental).
 	existingCSR := loadExistingRatingIDs(playerDB, "CSR")
 	existingLUSR := loadExistingRatingIDs(playerDB, "LUSR")
+	// En mode force, on ne filtre pas les LUSR existants à l'upsert — ON CONFLICT DO UPDATE écrase.
+	existingLUSRForUpsert := existingLUSR
+	if force {
+		existingLUSRForUpsert = make(map[string]bool)
+	}
 
 	// 4. En mode force : recalcul depuis zéro (état vierge, pas de seed).
 	//    En mode incrémental : reprendre depuis le dernier état persisté.
@@ -331,7 +336,7 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 	}
 
 	// 7. Écrire les résultats.
-	return upsertLUSRRatings(playerDB, results, existingCSR, existingLUSR, seedRatings)
+	return upsertLUSRRatings(playerDB, results, existingCSR, existingLUSRForUpsert, seedRatings)
 }
 
 // computeSkillRatingsBatch calcule mu/sigma pour chaque match séquentiellement.
