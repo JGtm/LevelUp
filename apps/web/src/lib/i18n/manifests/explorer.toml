@@ -108,6 +108,18 @@ en = "From"
 fr = "Jusqu'à"
 en = "To"
 
+[explorer.filters.date_from_label]
+fr = "Du"
+en = "From"
+
+[explorer.filters.date_to_label]
+fr = "Au"
+en = "To"
+
+[explorer.filters.selected_count]
+fr = "{n} sél."
+en = "{n} sel."
+
 [explorer.filters.match_id]
 fr = "ID match…"
 en = "Match ID…"
@@ -347,3 +359,31 @@ en = "Perf"
 [explorer.matches.perf_no_score]
 fr = "—"
 en = "—"
+
+# ─── Colonnes additionnelles tableau matchs ───────────────────────────────────
+
+[explorer.matches.col_fda]
+fr = "FDA"
+en = "KDA"
+
+[explorer.matches.col_delta_perf]
+fr = "ΔPerf"
+en = "ΔPerf"
+
+[explorer.matches.col_rank]
+fr = "Rang"
+en = "Rank"
+
+[explorer.matches.col_delta_rank]
+fr = "ΔRang"
+en = "ΔRank"
+
+# ─── Tableau mode joueur ──────────────────────────────────────────────────────
+
+[explorer.player.col_role]
+fr = "Rôle"
+en = "Role"
+
+[explorer.player.col_kd]
+fr = "K/D"
+en = "K/D"

@@ -1,4 +1,16 @@
 
+## [2026-05-08] Explorer — refonte filtres/table : suppression de tous les pills, table reprise du Squad
+
+**Statut** : Complété
+
+**Décision technique** : Trois corrections demandées par le user. (1) **Plus aucun pill** : les 4 sections de chips inline (perf-tier, ranked, outcome, skill-tier) sont remplacées par des `MultiSelectFilter` (perf-tier, outcome, skill-tier en multi avec pastille de couleur ; ranked en `<select>` simple car single-select). Le composant `MultiSelectFilter` est extrait dans `apps/web/src/features/explorer/MultiSelectFilter.tsx` (props : `options: MultiSelectOption[]`, `selected: Set<string>`, `toggle`, `placeholder`, `alwaysShow`, `disabled`, `title` — chaque option peut avoir un `swatch` (CSS color) et un flag `disabled`). Les states `perfTiers`/`outcomeFilter` passent de `Set<number>` à `Set<string>` ; conversion en `number[]` au moment de l'appel API. (2) **Tableau Matchs repris du SquadMatchHistoryTable** : nouveau composant `apps/web/src/features/explorer/ExplorerMatchesTable.tsx` basé sur TanStack Table v8, mêmes classes/style que `SquadMatchHistoryTable`, mais colonnes adaptées Date | Carte | Playlist | Mode | Résultat | FDA | Perf (color tier) | ΔPerf | Rang | ΔRang. Pas de win_rate_hist. Pagination client 20/page. Lignes colorées par outcome. (3) **Date filters** : labels visibles `Du`/`Au` (i18n `explorer.filters.date_from_label`/`date_to_label`), input `endDate` reçoit `min={startDate}` pour empêcher fin < début, et si `startDate` change vers une date postérieure à `endDate` actuel, `endDate` est réinitialisé. (4) **i18n** : ajout de 6 nouvelles clés (date labels, FDA, ΔPerf, Rang, ΔRang, Rôle, K/D, selected_count avec `{n} sél.` / `{n} sel.`), manifeste TS regénéré.
+
+**Résultats** : `npm run typecheck` OK, `eslint` 0 errors 0 warnings sur les 3 fichiers modifiés/créés, `vitest run src/features/explorer` 7 tests PASS.
+
+**Prochaine étape** : Commit sur `feat/token-pool-parallel-sync`.
+
+---
+
 ## [2026-05-08] Fix — Q11GamertagSearch : schema mismatch global./shared. → main
 
 **Statut** : Complété
