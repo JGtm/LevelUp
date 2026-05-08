@@ -10,7 +10,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-const sharedDB = `../../data/warehouse/shared_matches_v2.duckdb`
+const sharedDB = `../../data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb`
 
 var matchIDs = []string{
 	"20fcbfe4-5a35-4992-a4b8-4bb7d92b62b6",
