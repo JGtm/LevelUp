@@ -24,6 +24,8 @@ type mockFriendRepo struct {
 	enrichErr    error
 	rankResult   *domain.SkillRankRaw
 	rankErr      error
+	modelResult  *domain.PlayerAssistsModel
+	modelErr     error
 	enrichCalls  int
 	rankCalls    int
 }
@@ -38,6 +40,10 @@ func (m *mockFriendRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain
 	return m.rankResult, m.rankErr
 }
 
+func (m *mockFriendRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
+	return m.modelResult, m.modelErr
+}
+
 // ---------------------------------------------------------------------------
 // Tests loadOneFriendExtras
 // ---------------------------------------------------------------------------
@@ -48,7 +54,7 @@ func TestLoadOneFriendExtras_PopulatesPerformanceScore(t *testing.T) {
 	repo := &mockFriendRepo{
 		enrichResult: &domain.MatchEnrichmentRaw{PerformanceScore: &score},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
 	if res == nil {
 		t.Fatal("expected non-nil extras when enrichment present")
 	}
@@ -73,7 +79,7 @@ func TestLoadOneFriendExtras_PopulatesSkillRank(t *testing.T) {
 			RatingDelta: &delta,
 		},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
 	if res == nil {
 		t.Fatal("expected non-nil extras when skill_rank present")
 	}
@@ -96,7 +102,7 @@ func TestLoadOneFriendExtras_BothSourcesEmpty_ReturnsNil(t *testing.T) {
 		enrichResult: &domain.MatchEnrichmentRaw{}, // PerformanceScore nil
 		rankResult:   nil,
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
 	if res != nil {
 		t.Errorf("expected nil when no usable data, got %+v", res)
 	}
@@ -111,7 +117,7 @@ func TestLoadOneFriendExtras_EnrichErrorDoesntBlockRank(t *testing.T) {
 		enrichErr:  errors.New("db locked"),
 		rankResult: &domain.SkillRankRaw{RatingType: "CSR", TierLabel: &tier},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
 	if res == nil {
 		t.Fatal("expected non-nil extras (skill rank present)")
 	}
@@ -129,7 +135,7 @@ func TestLoadOneFriendExtras_BothErrors_ReturnsNil(t *testing.T) {
 		enrichErr: errors.New("enrich db locked"),
 		rankErr:   errors.New("rank db locked"),
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
 	if res != nil {
 		t.Errorf("expected nil when both sources error, got %+v", res)
 	}
@@ -161,7 +167,7 @@ func TestNewFriendsExtrasResolver_LookupsFriendByXUID(t *testing.T) {
 	}
 	resolver := NewFriendsExtrasResolver(friends, opener)
 
-	out := resolver(context.Background(), "match-1", []string{"friend-xuid-1"})
+	out := resolver(context.Background(), "match-1", "", []string{"friend-xuid-1"})
 
 	if openerCalls != 1 {
 		t.Errorf("opener calls want 1, got %d", openerCalls)
@@ -188,7 +194,7 @@ func TestNewFriendsExtrasResolver_SkipsUnknownXUIDs(t *testing.T) {
 	resolver := NewFriendsExtrasResolver(friends, opener)
 
 	// Demande un xuid non configuré dans friends → opener jamais appelé.
-	out := resolver(context.Background(), "match-1", []string{"unknown-xuid", "another-unknown"})
+	out := resolver(context.Background(), "match-1", "", []string{"unknown-xuid", "another-unknown"})
 
 	if openerCalls != 0 {
 		t.Errorf("opener should not be called for unknown xuids, got %d calls", openerCalls)
@@ -208,7 +214,7 @@ func TestNewFriendsExtrasResolver_OpenerErrorIsSilenced(t *testing.T) {
 	}
 	resolver := NewFriendsExtrasResolver(friends, opener)
 
-	out := resolver(context.Background(), "match-1", []string{"friend-1"})
+	out := resolver(context.Background(), "match-1", "", []string{"friend-1"})
 
 	if _, ok := out["friend-1"]; ok {
 		t.Errorf("friend-1 should not appear in result when opener errors")
@@ -234,7 +240,7 @@ func TestNewFriendsExtrasResolver_PartialResults(t *testing.T) {
 	}
 	resolver := NewFriendsExtrasResolver(friends, opener)
 
-	out := resolver(context.Background(), "match-1", []string{"xuid-1", "xuid-2"})
+	out := resolver(context.Background(), "match-1", "", []string{"xuid-1", "xuid-2"})
 
 	if len(out) != 1 {
 		t.Errorf("want 1 result (Friend1 only), got %d", len(out))
