@@ -392,6 +392,13 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "seed_playlist_fr_translations",
+		TargetDB:    TargetMetadata,
+		Description: "asset_translations : seed FR canoniques pour playlists Halo Infinite dont l'API a renvoyé l'EN raw en lang fr-FR (cf. thought_log 2026-05-09)",
+		ApplySchema: applyPlaylistFRSeeds,
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.

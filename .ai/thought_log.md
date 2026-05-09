@@ -47,6 +47,45 @@
 
 ---
 
+## [2026-05-09] Fix Explorer — fusion filtre Expérience + anti-régression playlists
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills` (suite des commits P4/P1/P3/P2).
+
+**Décisions techniques** :
+
+1. **Fusion des deux filtres "Expérience"** (Option A) — le single-select "Expérience" (ranked_context : ranked/unranked) faisait doublon avec le multi-select "Type d'expérience" (PVP classé/PVP non classé/PVE) sans être câblé pareil :
+   - Multi : combine `IsRanked + IsFirefight`, gère 3 valeurs, multi-sélection
+   - Single : ne gère que `IsRanked`, mono-valeur, mais sert de pré-condition pour activer le filtre Skill tier (sinon CSR/LUSR mélangés ambigus)
+   - Solution : suppression du single-select, dérivation client-side de `ranked_context` depuis `expTypes` (single "PVP classé" → ranked, single "PVP non classé" → unranked, sinon ""). Le gating skill_tier reste actif via la valeur dérivée. Tooltip skill_tier_disabled mis à jour.
+   - Backend `available_ranked_contexts` reste exposé mais inutilisé côté front.
+   - i18n keys supprimées : `ranked_label`, `ranked_all`, `ranked_ranked`, `ranked_unranked`.
+
+2. **Playlist anti-régression — 3 couches** :
+   - **Sync-time defense** : nouveau `EnrichRegistryFromMetadata` (`internal/sync/enrich_registry.go`) appelé dans `processMatch` avant `InsertRegistryIfNotExists`. Si le nom retourné par l'API Halo est vide ou égal à l'asset_id (cas du fallback `coalesceStrPtr` historique), résout via `metadata.asset_translations[lang='en-US']` avant l'INSERT. metaDB ouvert au début de `run()`, partagé sur tous les processMatch du run.
+   - **Migration corrective** : `seed_playlist_fr_translations` (`steps_metadata_playlist_fr.go`) UPDATE `asset_translations` pour 27 playlists Halo Infinite officielles dont l'API a renvoyé l'EN raw en lang fr-FR (Quick Play→Partie rapide, Big Team Battle→Grand combat en équipe, Ranked Arena→Arène classée, etc.). Garde-fou strict `WHERE name = EN` : ne JAMAIS écraser une trad FR déjà correcte. INSERT OR IGNORE pour les fr-FR manquants.
+   - **Backfill cmd** : `cmd/backfill_registry_names` répare les 4 colonnes `*_name == *_id` dans match_registry via lookup `asset_translations[en-US]`. Idempotent. Mode `--dry-run` pour scanner avant d'agir. Le serveur Go DOIT être stoppé (write lock).
+
+**Tests** :
+- `internal/analysis/pair_name_resolution_test.go` : 9 cas helper P2 + identity prefixes (déjà existant).
+- `internal/sync/enrich_registry_test.go` (nouveau, integration) : 4 tests — UUID fallback override, nil DB no-op, table missing no-op, override case insensitive.
+- `internal/migration/steps_metadata_playlist_fr_test.go` (nouveau, integration) : 5 tests — fix corrupted FR row, preserve already translated, insert missing FR row, idempotence, table missing.
+- `internal/sync/backfill_registry_names_test.go` (nouveau, integration) : 4 tests — fixes UUID fallback, no translation keep UUID, idempotence, nil metadata no-op.
+
+**Résultats** :
+- `go test ./...` PASS sur tous les packages touchés.
+- `go test -tags integration ./internal/{sync,migration,platform/duckdb}/...` PASS sur tous mes nouveaux tests. Les FAIL pré-existants sur `TestMatchViewRepo_GetMatchMedals_*` et `TestMedalsByXUIDRepo_*` sont indépendants (medal label resolution, branche parente).
+- `go vet ./...` clean.
+- `tsc -b` clean ; lint frontend clean sur fichiers modifiés.
+
+**Prochaine étape** :
+- Restart serveur → vérifier que `available_ranked_contexts` n'est plus consommé côté front (UI plus simple : un seul filtre "Type d'expérience").
+- Lancer `cmd/backfill_registry_names --shared <path> --metadata <path>` après merge pour réparer les ~351 matchs avec UUID brut (5 distincts : `bdceefb3-...` 56 matchs, `dc4929de-...` 250, `1b1691dc-...` 25, `edfef3ac-...` 19, etc.).
+- Rétention : surveiller dans le temps si de nouveaux UUIDs apparaissent post-correction (la sync-time defense devrait l'éviter, mais maintenir la liste `playlistFRSeeds` à chaque saison Halo).
+
+---
+
 ## [2026-05-09] Fix Explorer P2 — root cause des doublons EN/FR dans available_modes
 
 **Statut** : Complété.
