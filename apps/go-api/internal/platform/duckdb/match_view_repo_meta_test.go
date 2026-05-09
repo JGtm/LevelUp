@@ -267,8 +267,7 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 
 // TestGetMatchMeta_NormalizedPairName_ExtractsSubmode couvre le cas nominal :
 // pair_name = "Arena:Slayer" → ResolveModeUI extrait le sous-mode → "Slayer".
-// Aligné sur le comportement de la home (NormalizeModeLabel pur, sans lookup
-// mode_name_tr).
+// Sans entrée dans mode_name_tr, ModeNameFR reste "Slayer" (pas de traduction).
 func TestGetMatchMeta_NormalizedPairName_ExtractsSubmode(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
@@ -315,5 +314,74 @@ func TestGetMatchMeta_StripsMapSuffixFromPairNameFR(t *testing.T) {
 	}
 	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer" {
 		t.Errorf("ModeNameFR = %v, want Slayer (suffixe ' on Streets' strippé)", meta.ModeNameFR)
+	}
+}
+
+// TestGetMatchMeta_TranslatesModeFRViaModeNameTr : pair_name_fr est NULL en DB
+// (jamais écrit par le sync), mais mode_name_tr contient la traduction.
+// GetMatchMeta doit produire "Capture du drapeau" et non "CTF" (EN).
+// C'est le chemin qui permet le titre "Capture du drapeau sur Forbidden"
+// dans le frontend (buildMatchHeadingStr(map_ui, mode_ui, "fr")).
+func TestGetMatchMeta_TranslatesModeFRViaModeNameTr(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, map_id, map_name, pair_name)
+		VALUES ('m6', '2026-05-01 20:00:00', '2026-05-01 20:00:00+00',
+		        'forbidden-uuid', 'Forbidden', 'Arena:CTF on Forbidden')`); err != nil {
+		t.Fatalf("insert match: %v", err)
+	}
+	if _, err := pdb.Metadata.Exec(ctx,
+		`INSERT INTO mode_name_tr (lang, mode_en, name) VALUES ('fr', 'CTF', 'Capture du drapeau')`); err != nil {
+		t.Fatalf("seed mode_name_tr: %v", err)
+	}
+	if _, err := pdb.Metadata.Exec(ctx,
+		`INSERT INTO asset_translations VALUES ('forbidden-uuid', 'map', 'fr-FR', 'Forbidden', '', now())`); err != nil {
+		t.Fatalf("seed map: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, "test-xuid")
+	meta, err := repo.GetMatchMeta(ctx, "m6")
+	if err != nil {
+		t.Fatalf("GetMatchMeta: %v", err)
+	}
+	// Mode : doit être traduit FR via mode_name_tr, pas l'EN normalisé.
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Capture du drapeau" {
+		t.Errorf("ModeNameFR = %v, want %q (mode_name_tr lookup)", meta.ModeNameFR, "Capture du drapeau")
+	}
+	// Map : toujours résolue via asset_translations.
+	if meta.MapNameFR == nil || *meta.MapNameFR != "Forbidden" {
+		t.Errorf("MapNameFR = %v, want Forbidden", meta.MapNameFR)
+	}
+	// Titre attendu côté frontend : "Capture du drapeau sur Forbidden"
+	// (buildMatchHeadingStr(MapNameFR, ModeNameFR, "fr")).
+}
+
+// TestGetMatchMeta_ModeNameFRFallbackToEN : mode_name_tr absent → ModeNameFR
+// reste l'EN normalisé. Titre frontend = "Slayer sur Live Fire" (EN leak
+// toléré si aucune traduction disponible).
+func TestGetMatchMeta_ModeNameFRFallbackToEN(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, pair_name)
+		VALUES ('m7', '2026-05-01 21:00:00', '2026-05-01 21:00:00+00',
+		        'Arena:Slayer on Live Fire')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	// mode_name_tr vide — pas de traduction pour "Slayer".
+
+	repo := NewMatchViewRepo(pdb, "test-xuid")
+	meta, err := repo.GetMatchMeta(ctx, "m7")
+	if err != nil {
+		t.Fatalf("GetMatchMeta: %v", err)
+	}
+	// "Slayer" extrait de pair_name, aucune entrée FR → reste EN.
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer" {
+		t.Errorf("ModeNameFR = %v, want Slayer (fallback EN faute de traduction)", meta.ModeNameFR)
 	}
 }
