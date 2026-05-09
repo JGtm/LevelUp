@@ -86,6 +86,8 @@ export interface CareerChartsSectionProps {
   heroProgress: HeroProgress | null
   projections: CareerProjections | null
   friendsXpHistory?: FriendXPHistory[]
+  /** Colonne droite optionnelle affichée à côté des charts XP + LUSR (sidebar achievements). */
+  rightSlot?: React.ReactNode
 }
 
 // ── Composant ──────────────────────────────────────────────────────────────
@@ -97,10 +99,12 @@ export function CareerChartsSection({
   heroProgress,
   projections,
   friendsXpHistory,
+  rightSlot,
 }: CareerChartsSectionProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   return (
     <div className="space-y-4" data-testid="career-charts-section">
+      {/* career.01 + career.02 — jauges rang + héros */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <ChartCard<GaugePoint>
           title={careerManifest['career.charts.rank_gauge_title'][locale]}
@@ -117,20 +121,26 @@ export function CareerChartsSection({
           emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
         />
       </div>
-      <ChartCard<[string, number]>
-        title={careerManifest['career.charts.xp_history_title'][locale]}
-        series={buildXpSeries(xpHistory, projections, friendsXpHistory ?? [])}
-        height={340}
-        buildOption={(series) => buildXpHistoryOption(series, locale)}
-        emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
-      />
-      <ChartCard<[string, number]>
-        title={careerManifest['career.charts.lusr_evolution_title'][locale]}
-        series={buildLusrSeries(lusrCheckpoints)}
-        height={320}
-        buildOption={(series) => buildLusrEvolutionOption(series, locale)}
-        emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
-      />
+      {/* career.03 + career.04 — timeseries XP + LUSR, avec colonne droite optionnelle */}
+      <div className={rightSlot ? 'grid grid-cols-1 gap-4 xl:grid-cols-[1fr_288px]' : 'space-y-4'}>
+        <div className="min-w-0 space-y-4">
+          <ChartCard<[string, number]>
+            title={careerManifest['career.charts.xp_history_title'][locale]}
+            series={buildXpSeries(xpHistory, projections, friendsXpHistory ?? [])}
+            height={340}
+            buildOption={(series) => buildXpHistoryOption(series, locale)}
+            emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
+          />
+          <ChartCard<[string, number]>
+            title={careerManifest['career.charts.lusr_evolution_title'][locale]}
+            series={buildLusrSeries(lusrCheckpoints)}
+            height={320}
+            buildOption={(series) => buildLusrEvolutionOption(series, locale)}
+            emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
+          />
+        </div>
+        {rightSlot}
+      </div>
     </div>
   )
 }

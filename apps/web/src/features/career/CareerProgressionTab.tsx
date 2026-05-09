@@ -8,6 +8,7 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { CareerChartsSection } from './CareerChartsSection'
 import { CareerLusrCards } from './CareerLusrCards'
+import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
 import { useCareerPage } from './queries'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
@@ -57,7 +58,7 @@ export function CareerProgressionTab() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Graphiques carrière (career.01–04) */}
+      {/* Graphiques carrière (career.01–04) + succès Xbox en colonne droite */}
       <CareerChartsSection
         xpHistory={data.xp_history ?? []}
         lusrCheckpoints={data.lusr?.checkpoints ?? []}
@@ -65,6 +66,7 @@ export function CareerProgressionTab() {
         heroProgress={data.hero_progress}
         projections={data.projections ?? null}
         friendsXpHistory={data.friends_xp_history}
+        rightSlot={<AchievementsCareerSection playerSlug={playerSlug} layout="sidebar" filterXboxTitleId="1144039928" />}
       />
 
       {/* career.11 — grille LUSR par playlist */}
