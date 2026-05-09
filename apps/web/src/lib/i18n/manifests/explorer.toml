@@ -377,16 +377,32 @@ fr = "Ouvrir"
 en = "Open"
 
 [explorer.matches.col_kills]
+fr = "F"
+en = "K"
+
+[explorer.matches.col_kills_long]
 fr = "Frags"
 en = "Kills"
 
 [explorer.matches.col_deaths]
+fr = "D"
+en = "D"
+
+[explorer.matches.col_deaths_long]
 fr = "Morts"
 en = "Deaths"
 
 [explorer.matches.col_assists]
+fr = "A"
+en = "A"
+
+[explorer.matches.col_assists_long]
 fr = "Assists"
 en = "Assists"
+
+[explorer.matches.col_dominance]
+fr = "Dominance"
+en = "Dominance"
 
 [explorer.matches.col_kda]
 fr = "FDA"

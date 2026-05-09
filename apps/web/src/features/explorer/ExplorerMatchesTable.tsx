@@ -4,17 +4,20 @@
  * Pattern visuel STRICTEMENT aligné sur features/squad/SquadSynergyHistoryTable.tsx :
  *  - thead : `bg-muted border-b`, th `px-3 py-2 text-left whitespace-nowrap
  *    text-xs font-medium text-muted-foreground border-r border-border last:border-r-0`
- *  - tbody : row `cursor-pointer transition-colors hover:bg-primary/10`
+ *  - tbody : row `transition-colors hover:bg-primary/10` (pas d'onClick ni
+ *    role="button" : ouverture du match exclusivement via l'icône de la
+ *    1re colonne pour éviter les ouvertures accidentelles).
  *  - td : `px-3 py-2 whitespace-nowrap border-r border-border last:border-r-0`
  *  - outcome rendu en texte coloré via getOutcomeColor (pas de Badge, pas de tinting)
- *  - boutons "Ouvrir" + "↗ wp" en début de ligne (stop propagation)
+ *  - bouton "Ouvrir" en début de ligne — seul déclencheur de navigation
  *  - formatDate + formatDurationMinSec pour les colonnes formatées
  *  - useFieldMappings pour libellés map/playlist
+ *  - Playlist + Mode tronqués à 12 chars (truncateName) avec tooltip natif
+ *    sur le label complet via attribut HTML `title`.
  *
- * Colonnes : Ouvrir | wp | Date | Carte | Playlist | Mode | Résultat |
- *            Frags | Morts | Assists | FDA | Score | Durée |
- *            Perf (color) | ΔPerf | Rang | ΔRang |
- *            MMR équipe | MMR adv. | ΔMMR
+ * Colonnes : Ouvrir | Date | Carte | Playlist | Mode | Contexte | Résultat |
+ *            Dominance | K | D | A | FDA | Score | Durée |
+ *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  */
 import { useMemo, useState, type ReactNode } from 'react'
 import {
@@ -39,6 +42,7 @@ import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -120,10 +124,32 @@ function outcomeKey(outcome: number): 'win' | 'loss' | 'draw' | 'dnf' {
   }
 }
 
+// Mapping flag DominanceFlag (Go canonical.DominanceFlag) → clé i18n
+// match_view manifest. 0/undefined = pas de badge → "-" en cellule.
+const DOMINANCE_LABEL_KEYS: Record<number, MatchViewManifestKey> = {
+  1: 'narrative.dominance.domination',
+  2: 'narrative.dominance.humiliation',
+  3: 'narrative.dominance.remontada',
+  4: 'narrative.dominance.debandade',
+  5: 'narrative.dominance.contre_remontada',
+}
+
+const NAME_TRUNCATE_MAX = 12
+
+// Tronque un libellé à NAME_TRUNCATE_MAX caractères en remplaçant le dernier
+// par "..." (3 points). Si le libellé est plus court ou vide, retourne tel quel.
+function truncateName(s: string | null | undefined): string {
+  if (!s) return '-'
+  if (s.length <= NAME_TRUNCATE_MAX) return s
+  return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
+}
+
 export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
+  const tMV = (key: MatchViewManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(matchViewManifest, key, locale, values)
   const intlLocale = locale === 'en' ? 'en-US' : 'fr-FR'
 
   const { data: mappings } = useFieldMappings()
@@ -161,13 +187,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         cell: (ctx) => (
           <button
             type="button"
-            className="text-primary underline text-xs whitespace-nowrap"
-            onClick={(e) => {
-              e.stopPropagation()
-              goToMatch(ctx.row.original.match_id)
-            }}
+            className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => goToMatch(ctx.row.original.match_id)}
+            aria-label={t('explorer.matches.col_open')}
           >
-            {t('explorer.matches.col_open')}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition-opacity" aria-hidden="true">
+              <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+              <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+            </svg>
           </button>
         ),
       },
@@ -188,20 +215,26 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'playlist_label',
         header: t('explorer.filters.playlist'),
-        cell: (ctx) => (
-          <span className="text-muted-foreground">
-            {labelOfPlaylist(ctx.getValue<string | null | undefined>())}
-          </span>
-        ),
+        cell: (ctx) => {
+          const full = labelOfPlaylist(ctx.getValue<string | null | undefined>())
+          return (
+            <span className="text-muted-foreground" title={full}>
+              {truncateName(full)}
+            </span>
+          )
+        },
       },
       {
         accessorKey: 'mode_ui',
         header: t('explorer.filters.mode'),
-        cell: (ctx) => (
-          <span className="text-muted-foreground">
-            {ctx.getValue<string | null | undefined>() ?? '-'}
-          </span>
-        ),
+        cell: (ctx) => {
+          const full = ctx.getValue<string | null | undefined>() ?? '-'
+          return (
+            <span className="text-muted-foreground" title={full}>
+              {truncateName(full)}
+            </span>
+          )
+        },
       },
       {
         accessorKey: 'is_with_friends',
@@ -241,8 +274,22 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
+        accessorKey: 'dominance_flag',
+        header: t('explorer.matches.col_dominance'),
+        cell: (ctx) => {
+          const flag = ctx.getValue<number | null | undefined>() ?? 0
+          const labelKey = DOMINANCE_LABEL_KEYS[flag]
+          if (!labelKey) return <span className="text-muted-foreground">-</span>
+          return <span>{tMV(labelKey)}</span>
+        },
+      },
+      {
         accessorKey: 'kills',
-        header: t('explorer.matches.col_kills'),
+        header: () => (
+          <span title={t('explorer.matches.col_kills_long')}>
+            {t('explorer.matches.col_kills')}
+          </span>
+        ),
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
             {ctx.getValue<number | null | undefined>() ?? '-'}
@@ -251,7 +298,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         accessorKey: 'deaths',
-        header: t('explorer.matches.col_deaths'),
+        header: () => (
+          <span title={t('explorer.matches.col_deaths_long')}>
+            {t('explorer.matches.col_deaths')}
+          </span>
+        ),
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
             {ctx.getValue<number | null | undefined>() ?? '-'}
@@ -260,7 +311,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         accessorKey: 'assists',
-        header: t('explorer.matches.col_assists'),
+        header: () => (
+          <span title={t('explorer.matches.col_assists_long')}>
+            {t('explorer.matches.col_assists')}
+          </span>
+        ),
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
             {ctx.getValue<number | null | undefined>() ?? '-'}
@@ -440,16 +495,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           </thead>
           <tbody className="divide-y divide-border">
             {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="cursor-pointer transition-colors hover:bg-primary/10"
-                role="button"
-                tabIndex={0}
-                onClick={() => goToMatch(row.original.match_id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') goToMatch(row.original.match_id)
-                }}
-              >
+              <tr key={row.id} className="transition-colors hover:bg-primary/10">
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}

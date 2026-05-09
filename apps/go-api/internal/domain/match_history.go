@@ -43,6 +43,10 @@ type MatchHistoryRawRow struct {
 	SkillTierLabel     *string // e.g. "Diamant IV" (label formaté DB)
 	MyTeamScore        *int    // score de l'équipe du joueur (depuis team_id)
 	EnemyTeamScore     *int    // score de l'équipe adverse
+	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
+	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag).
+	// Peuplé par sync.BackfillDominanceFlags via engine.RunBackfillComebackBadges.
+	DominanceFlag int
 }
 
 // PaginationRequest représente les paramètres de pagination d'une requête.
@@ -89,6 +93,10 @@ type MatchHistoryRow struct {
 	IsExcluded               bool      `json:"is_excluded"`
 	IsWithFriends            bool      `json:"is_with_friends"`
 	ExperienceTypeLabel      string    `json:"experience_type_label,omitempty"`
+	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
+	// 4=débandade, 5=contre-remontada. Le front résout le label via
+	// narrative.dominance.* (manifest match_view) et affiche "-" pour 0.
+	DominanceFlag int `json:"dominance_flag,omitempty"`
 }
 
 // MatchHistoryQuerySummary est le résumé de la requête historique.

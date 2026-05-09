@@ -105,7 +105,8 @@ SELECT
     NULLIF(TRIM(COALESCE(msr.tier_label, '')), '')       AS skill_tier_label,
     -- Scores équipe / adverse, dérivés de p.team_id pour orienter "ma" team
     CASE WHEN p.team_id = 0 THEN ms.team_0_score ELSE ms.team_1_score END AS my_team_score,
-    CASE WHEN p.team_id = 0 THEN ms.team_1_score ELSE ms.team_0_score END AS enemy_team_score
+    CASE WHEN p.team_id = 0 THEN ms.team_1_score ELSE ms.team_0_score END AS enemy_team_score,
+    COALESCE(pme.dominance_flag, 0)                      AS dominance_flag
 FROM (
     SELECT r.match_id,
            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,

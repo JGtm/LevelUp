@@ -144,6 +144,7 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			EnemyMMR:            item.EnemyMMR,
 			KDA:                 item.KDA,
 			DurationSeconds:     item.DurationSeconds,
+			DominanceFlag:       item.DominanceFlag,
 		})
 	}
 

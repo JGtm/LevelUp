@@ -1,4 +1,41 @@
 
+## [2026-05-09] Explorer — icône open SVG + F/D/A FR avec tooltips
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Demande** : (1) retrait définitif du clic-rangée, (2) remplacer le bouton texte « Ouvrir » par l'icône SVG carré+flèche de `match-card.tsx`, (3) corriger le label FR Frags de K → F, (4) ajouter un tooltip `title` sur les en-têtes F/D/A affichant le nom complet (Frags / Morts / Assists).
+
+**Décisions techniques** :
+- Réutilisation du SVG inline de `match-card.tsx` (Heroicons `arrow-up-right-from-square` 16px) — pas de dépendance lucide-react (non installée sur ce projet). L'icône est rendue dans un `<button>` avec `aria-label` de la clé i18n `explorer.matches.col_open`.
+- Ajout de 3 clés `_long` dans `explorer.toml` (col_kills_long / col_deaths_long / col_assists_long) pour les tooltips ; col_kills FR corrigé de "K" → "F". Régen i18n : 832 clés.
+- En-têtes F/D/A rendus via `header: () => <span title={...} className="cursor-help">` — attribut HTML natif `title`, cohérent avec le pattern `truncateName`.
+
+**Résultats** : `npm run typecheck` ⇒ OK (0 erreur).
+
+## [2026-05-09] Explorer — colonne Dominance + truncation modes/playlist + UX click
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Demande** : (1) ajouter une colonne « flag dominance » juste après « Résultat » dans le tableau Explorer (« - » si vide), (2) renommer les en-têtes Frags/Morts/Assists en K/D/A, (3) supprimer l'ouverture du match au clic-rangée (bouton « Ouvrir » seul déclencheur), (4) tronquer les libellés mode/playlist à 12 caractères avec `...` final + tooltip natif sur le label complet.
+
+**Décisions techniques** :
+- **Plomberie `dominance_flag`** : déjà persisté dans `player_match_enrichment.dominance_flag` (peuplé par `engine.RunBackfillComebackBadges`). Ajout d'une colonne `COALESCE(pme.dominance_flag, 0) AS dominance_flag` en queue de [Q5MatchHistory](apps/go-api/internal/platform/duckdb/queries_career.go), nouveau champ `DominanceFlag int` ajouté aux 3 types successifs : [`MatchHistoryRawRow`](apps/go-api/internal/domain/match_history.go), [`MatchHistoryRow`](apps/go-api/internal/domain/match_history.go) et [`ExplorerMatchesRow`](apps/go-api/internal/domain/explorer.go). Scan position ajoutée dans [match_history_repo.go:LoadAll](apps/go-api/internal/platform/duckdb/match_history_repo.go), propagation dans [enrichRow](apps/go-api/internal/service/match_history_service.go) et projection dans [handlers/explorer.go:QueryMatches](apps/go-api/internal/api/handlers/explorer.go).
+- **Front résout le label via `narrative.dominance.*`** (manifest `match_view`, déjà existant — 5 clés FR/EN). Pas de duplication dans `explorer.toml` ; mapping flag→clé i18n centralisé dans `DOMINANCE_LABEL_KEYS` côté table. Flag 0 ou inconnu → « - ».
+- **i18n explorer** : renommé `col_kills/deaths/assists` (Frags/Morts/Assists → K/D/A en FR et EN), ajouté `col_dominance` = « Dominance ». Régen via `node apps/web/scripts/build_i18n_manifests.mjs` (829 clés totales).
+- **UX clic-rangée** : suppression de `onClick`, `onKeyDown`, `role="button"`, `tabIndex={0}` et `cursor-pointer` du `<tr>`. Le bouton « Ouvrir » conserve son `e.stopPropagation()` (no-op dorénavant mais sans coût).
+- **Truncation modes/playlist** : helper `truncateName(s, 12)` qui retourne `s.slice(0, 11) + '...'` si `s.length > 12`. Tooltip natif via attribut HTML `title={fullLabel}`. Choix du `title` plutôt qu'un Radix Tooltip pour éviter de remonter le pattern accessibilité dans une cellule de tableau dense.
+
+**Résultats observés** :
+- `go vet ./... && go build ./... && go test ./internal/{service,api/handlers,platform/duckdb}/...` ⇒ tous OK.
+- `npm run typecheck` ⇒ OK. `npm run lint` ⇒ aucun nouveau warning sur les fichiers Explorer touchés.
+- Vitest : 1 échec préexistant (`SeasonPassPage.test.tsx`) sans rapport avec ces changements (pas de fichier de test côté Explorer).
+
+**Prochaine étape** : commit + push si validé par utilisateur.
+
 ## [2026-05-09] Fix critique — `InsertWeaponKills` vidait silencieusement la DB
 
 **Statut** : Complété — patch appliqué, tests adaptés + test de non-régression ajouté.
@@ -83,6 +120,10 @@
 - Restart serveur → vérifier que `available_ranked_contexts` n'est plus consommé côté front (UI plus simple : un seul filtre "Type d'expérience").
 - Lancer `cmd/backfill_registry_names --shared <path> --metadata <path>` après merge pour réparer les ~351 matchs avec UUID brut (5 distincts : `bdceefb3-...` 56 matchs, `dc4929de-...` 250, `1b1691dc-...` 25, `edfef3ac-...` 19, etc.).
 - Rétention : surveiller dans le temps si de nouveaux UUIDs apparaissent post-correction (la sync-time defense devrait l'éviter, mais maintenir la liste `playlistFRSeeds` à chaque saison Halo).
+
+**Backfill appliqué** (2026-05-09, serveur stoppé) :
+- Dry-run : 7 playlists + 5 game_variants détectés (maps/pairs propres).
+- Apply : 3/7 playlists résolues (Big Team Battle 250 matchs, Quick Play 25, Ranked Arena 19) ; 4 absentes de `asset_translations` resteront UUID jusqu'au prochain sync (`EnrichRegistryFromMetadata` les résoudra à la volée). 5/5 game_variants corrigés (Strongholds:Arena, CTF:Arena, CTF:Arena Neutral Flag, Slayer:Arena, Team Slayer:Arena). Total : 8 assets backfillés.
 
 ---
 

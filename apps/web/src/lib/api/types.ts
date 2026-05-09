@@ -953,6 +953,8 @@ export interface ExplorerMatchRow {
   kda?: number | null
   duration_seconds?: number | null
   match_url?: string
+  /** 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada. */
+  dominance_flag?: number
 }
 
 export interface ExplorerEncounterRow {
