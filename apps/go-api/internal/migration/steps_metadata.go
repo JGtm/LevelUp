@@ -376,6 +376,22 @@ func init() {
 			`)
 		},
 	})
+
+	Register(Migration{
+		Name:        "fix_super_fiesta_fr_label",
+		TargetDB:    TargetMetadata,
+		Description: "asset_translations : retire le point parasite de 'Méga fiesta.' (playlist Super Fiesta, lang fr/fr-FR)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `
+				UPDATE asset_translations
+				SET name = 'Méga fiesta'
+				WHERE asset_type = 'playlist'
+				  AND asset_id = '4829f027-a9af-4b2f-86dd-7b290d6bb0a4'
+				  AND lang IN ('fr', 'fr-FR')
+				  AND name = 'Méga fiesta.';
+			`)
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
