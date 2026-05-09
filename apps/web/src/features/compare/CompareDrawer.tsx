@@ -15,10 +15,11 @@ interface CompareDrawerProps {
   playerSlug: string
   open: boolean
   onClose: () => void
+  initialTarget?: string
 }
 
 /** Tiroir principal de comparaison. */
-export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps) {
+export function CompareDrawer({ playerSlug, open, onClose, initialTarget }: CompareDrawerProps) {
   const locale = normalizeCompareLocale(useAppShellStore((state) => state.locale))
   const { data: fieldMappings } = useFieldMappings()
   const text = getCompareText(locale, fieldMappings)
@@ -46,7 +47,7 @@ export function CompareDrawer({ playerSlug, open, onClose }: CompareDrawerProps)
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <CompareSurface playerSlug={playerSlug} />
+          <CompareSurface playerSlug={playerSlug} initialTarget={initialTarget} />
         </div>
       </aside>
     </>

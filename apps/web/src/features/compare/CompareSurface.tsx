@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -80,12 +80,19 @@ function MetricRowComp({ row, text }: { row: CompareMetricRow; text: CompareText
   )
 }
 
-export function CompareSurface({ playerSlug }: { playerSlug: string }) {
+export function CompareSurface({ playerSlug, initialTarget }: { playerSlug: string; initialTarget?: string }) {
   const locale = normalizeCompareLocale(useAppShellStore((state) => state.locale))
   const { data: fieldMappings } = useFieldMappings()
   const text = getCompareText(locale, fieldMappings)
-  const [targetGamertag, setTargetGamertag] = useState('')
+  const [targetGamertag, setTargetGamertag] = useState(initialTarget ?? '')
   const { mutate, data, isPending, isError, error, reset } = useCompare(playerSlug)
+
+  useEffect(() => {
+    if (initialTarget?.trim()) {
+      mutate({ target_gamertag: initialTarget.trim() })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -98,25 +105,27 @@ export function CompareSurface({ playerSlug }: { playerSlug: string }) {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="space-y-2 border-b pb-4">
-        <label className="block text-sm font-medium text-foreground">{text.formLabel}</label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={targetGamertag}
-            onChange={(event) => setTargetGamertag(event.target.value)}
-            placeholder={text.placeholder}
-            className="flex-1 rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <button
-            type="submit"
-            disabled={isPending || !targetGamertag.trim()}
-            className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            {isPending ? '…' : text.submit}
-          </button>
-        </div>
-      </form>
+      {!initialTarget && (
+        <form onSubmit={handleSubmit} className="space-y-2 border-b pb-4">
+          <label className="block text-sm font-medium text-foreground">{text.formLabel}</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={targetGamertag}
+              onChange={(event) => setTargetGamertag(event.target.value)}
+              placeholder={text.placeholder}
+              className="flex-1 rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <button
+              type="submit"
+              disabled={isPending || !targetGamertag.trim()}
+              className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isPending ? '…' : text.submit}
+            </button>
+          </div>
+        </form>
+      )}
 
       {isPending && (
         <div className="flex justify-center py-8">

@@ -728,6 +728,7 @@ export function ExplorerPage() {
         playerSlug={playerSlug}
         open={compareOpen}
         onClose={() => setCompareOpen(false)}
+        initialTarget={playerQuery.data?.target_gamertag ?? targetGamertag}
       />
     </div>
   )

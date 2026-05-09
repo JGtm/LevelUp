@@ -2,15 +2,15 @@
  * ExplorerEncounterBriefing — affiche les stats de rencontre d'un couple
  * (player_courant, target) en mode briefing (carte + grille KPI).
  *
- * Reproduit exactement les **calculs et représentations** des 6 KPI colonnes
+ * Reproduit exactement les **calculs et représentations** des colonnes
  * du tableau `MatchEncountersTable` de la page match-view (la colonne "Rôle"
  * est omise car ne s'applique pas hors d'un match courant) :
  *
- *   1. Joueur (gamertag + badges narratifs)
- *   2. Rencontres : count_together + breakdown "(A:X | E:Y)"
- *   3. WR allié : winrate_as_ally — ≥50% vert, sinon orange
- *   4. WR ennemi : winrate_vs_enemy — ≥50% vert, sinon orange
- *   5. K/D croisé : kills_dealt / deaths_suffered
+ *   1. Rencontres : AllyEnemySplitBar (A/E) ou count_together
+ *   2. WR allié : winrate_as_ally — ≥50% vert, sinon orange
+ *   3. WR ennemi : winrate_vs_enemy — ≥50% vert, sinon orange
+ *   4. F/D croisé : KDSplitBar ou kills_dealt/deaths_suffered
+ *   5. Ratio : kills_dealt ÷ deaths_suffered, coloré outcome-win/loss/draw
  *   6. Vu pour la dernière fois : last_seen_at (relative time)
  *
  * Conteneur style SessionBriefing : carte avec header + grille de KPIs.
@@ -18,6 +18,8 @@
 import type { ExplorerEncounterStats } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { tokenCssVar } from '@/lib/accessibility'
+import { Tooltip } from '@/components/ui/tooltip'
 
 interface Props {
   stats: ExplorerEncounterStats
@@ -43,6 +45,21 @@ function formatKDCross(
 ): string {
   if (kills == null && deaths == null) return '—'
   return `${kills ?? 0}/${deaths ?? 0}`
+}
+
+function formatKDRatio(kills: number | null | undefined, deaths: number | null | undefined): string {
+  if (kills == null || deaths == null) return '—'
+  if (deaths === 0) return kills > 0 ? '∞' : '—'
+  return (kills / deaths).toFixed(2)
+}
+
+function kdRatioColor(kills: number | null | undefined, deaths: number | null | undefined): string | undefined {
+  if (kills == null || deaths == null) return undefined
+  if (deaths === 0) return kills > 0 ? tokenCssVar('outcome-win') : undefined
+  const ratio = kills / deaths
+  if (ratio > 1) return tokenCssVar('outcome-win')
+  if (ratio < 1) return tokenCssVar('outcome-loss')
+  return tokenCssVar('outcome-draw')
 }
 
 function formatRelativeFR(iso: string): string {
@@ -85,10 +102,92 @@ function formatRelativeEN(iso: string): string {
   return years <= 1 ? '1 y ago' : `${years} y ago`
 }
 
+// ─── SplitBar (copié depuis MatchEncountersTable.tsx) ─────────────────────────
+
+function SplitBar({
+  leftCount,
+  rightCount,
+  leftColor,
+  rightColor,
+  leftTooltip,
+  rightTooltip,
+}: {
+  leftCount: number
+  rightCount: number
+  leftColor: string
+  rightColor: string
+  leftTooltip: string
+  rightTooltip: string
+}) {
+  const total = leftCount + rightCount
+  if (total === 0) return <span className="font-mono">—</span>
+  const leftPct = Math.round((leftCount / total) * 100)
+  return (
+    <span className="inline-flex items-center gap-1 font-mono tabular-nums">
+      <Tooltip content={leftTooltip}>
+        <span style={{ color: leftColor }}>{leftCount}</span>
+      </Tooltip>
+      <span className="inline-flex h-2 w-12 border border-border overflow-hidden">
+        <span style={{ width: `${leftPct}%`, backgroundColor: leftColor }} />
+        <span style={{ flex: 1, backgroundColor: rightColor }} />
+      </span>
+      <Tooltip content={rightTooltip}>
+        <span style={{ color: rightColor }}>{rightCount}</span>
+      </Tooltip>
+    </span>
+  )
+}
+
+function AllyEnemySplitBar({
+  allyCount,
+  enemyCount,
+  locale,
+}: {
+  allyCount: number
+  enemyCount: number
+  locale: 'fr' | 'en'
+}) {
+  const ttAlly = locale === 'en' ? `${allyCount} matches as ally` : `${allyCount} matchs en allié`
+  const ttEnemy = locale === 'en' ? `${enemyCount} matches as enemy` : `${enemyCount} matchs en ennemi`
+  return (
+    <SplitBar
+      leftCount={allyCount}
+      rightCount={enemyCount}
+      leftColor={tokenCssVar('team-ally')}
+      rightColor={tokenCssVar('team-enemy')}
+      leftTooltip={ttAlly}
+      rightTooltip={ttEnemy}
+    />
+  )
+}
+
+function KDSplitBar({
+  kills,
+  deaths,
+  locale,
+}: {
+  kills: number
+  deaths: number
+  locale: 'fr' | 'en'
+}) {
+  const ttKills = locale === 'en' ? `${kills} kills dealt` : `${kills} frags infligés`
+  const ttDeaths = locale === 'en' ? `${deaths} deaths suffered` : `${deaths} morts subies`
+  return (
+    <SplitBar
+      leftCount={kills}
+      rightCount={deaths}
+      leftColor={tokenCssVar('outcome-win')}
+      rightColor={tokenCssVar('outcome-loss')}
+      leftTooltip={ttKills}
+      rightTooltip={ttDeaths}
+    />
+  )
+}
+
 // ─── KpiCard (style SessionBriefing) ─────────────────────────────────────────
 
 interface KpiCardProps {
-  label: string
+  label: React.ReactNode
   value: React.ReactNode
   detail?: React.ReactNode
 }
@@ -115,23 +214,25 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
     formatMessage(explorerManifest, key, manifestLocale, values)
   const formatRelative = manifestLocale === 'en' ? formatRelativeEN : formatRelativeFR
 
-  // Encounters : count_together + breakdown "(A:X | E:Y)"
   const ally = stats.ally_count ?? null
   const enemy = stats.enemy_count ?? null
-  const breakdown =
-    ally != null && enemy != null ? `(A:${ally} | E:${enemy})` : ''
+
+  const ratioColor = kdRatioColor(stats.kills_dealt, stats.deaths_suffered)
 
   return (
     // Wrapper carte rounded — sans barre titre (cf. demande user 2026-05-08).
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       <div className="p-3">
-        {/* Grille KPI — 5 colonnes (Rencontres, WR allié, WR ennemi, K/D croisé, Vu) */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {/* Grille KPI — 6 colonnes (Rencontres, WR allié, WR ennemi, F/D croisé, Ratio, Vu) */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {/* Rencontres */}
           <KpiCard
             label={t('explorer.encounter.encounters')}
-            value={stats.count_together}
-            detail={breakdown || undefined}
+            value={
+              ally != null && enemy != null
+                ? <AllyEnemySplitBar allyCount={ally} enemyCount={enemy} locale={manifestLocale} />
+                : stats.count_together
+            }
           />
           {/* WR allié */}
           <KpiCard
@@ -161,12 +262,27 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
                 : undefined
             }
           />
-          {/* K/D croisé */}
+          {/* F/D croisé */}
           <KpiCard
             label={t('explorer.encounter.kd_cross')}
             value={
-              <span className="font-mono">
-                {formatKDCross(stats.kills_dealt, stats.deaths_suffered)}
+              stats.kills_dealt != null && stats.deaths_suffered != null
+                ? <KDSplitBar kills={stats.kills_dealt} deaths={stats.deaths_suffered} locale={manifestLocale} />
+                : <span className="font-mono">{formatKDCross(stats.kills_dealt, stats.deaths_suffered)}</span>
+            }
+          />
+          {/* Ratio */}
+          <KpiCard
+            label={
+              <Tooltip content={t('explorer.encounter.ratio_tooltip')}>
+                <span className="cursor-help border-b border-dashed border-current">
+                  {t('explorer.encounter.ratio')}
+                </span>
+              </Tooltip>
+            }
+            value={
+              <span className="font-mono font-bold" style={ratioColor ? { color: ratioColor } : undefined}>
+                {formatKDRatio(stats.kills_dealt, stats.deaths_suffered)}
               </span>
             }
           />

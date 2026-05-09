@@ -439,8 +439,16 @@ fr = "Taux de victoire ennemi"
 en = "WR as enemy"
 
 [explorer.encounter.kd_cross]
-fr = "ratio F/D croisé"
-en = "Cross K/D"
+fr = "F/D"
+en = "K/D"
+
+[explorer.encounter.ratio]
+fr = "Ratio"
+en = "Ratio"
+
+[explorer.encounter.ratio_tooltip]
+fr = "Ratio frags/morts : frags infligés ÷ morts subies sur l'ensemble des matchs communs"
+en = "Kill/Death ratio: kills dealt ÷ deaths suffered across all shared matches"
 
 [explorer.encounter.last_seen]
 fr = "Vu pour la dernière fois"

@@ -4,8 +4,10 @@
 export const explorerManifest = {
   "explorer.encounter.empty": { fr: "Aucune rencontre antérieure avec ce joueur.", en: "No prior encounters with this player." },
   "explorer.encounter.encounters": { fr: "Rencontres", en: "Encounters" },
-  "explorer.encounter.kd_cross": { fr: "ratio F/D croisé", en: "Cross K/D" },
+  "explorer.encounter.kd_cross": { fr: "F/D", en: "K/D" },
   "explorer.encounter.last_seen": { fr: "Vu pour la dernière fois", en: "Last seen" },
+  "explorer.encounter.ratio": { fr: "Ratio", en: "Ratio" },
+  "explorer.encounter.ratio_tooltip": { fr: "Ratio frags/morts : frags infligés ÷ morts subies sur l'ensemble des matchs communs", en: "Kill/Death ratio: kills dealt ÷ deaths suffered across all shared matches" },
   "explorer.encounter.title": { fr: "Historique des rencontres", en: "Encounter history" },
   "explorer.encounter.wr_ally": { fr: "Taux de victoire allié", en: "WR as ally" },
   "explorer.encounter.wr_enemy": { fr: "Taux de victoire ennemi", en: "WR as enemy" },
