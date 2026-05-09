@@ -19,6 +19,9 @@ export interface CompareText {
   favoriteWeapon: string
   killsWith: (n: number) => string
   noWeaponData: string
+  catCombat: string
+  catPrecision: string
+  catBilan: string
   metrics: Record<string, string>
 }
 
@@ -41,6 +44,9 @@ const FR_TEXT: CompareText = {
   favoriteWeapon: 'Arme favorite',
   killsWith: (n) => `${n} frag${n > 1 ? 's' : ''}`,
   noWeaponData: '—',
+  catCombat: 'Combat',
+  catPrecision: 'Précision & Survie',
+  catBilan: 'Bilan & Rang',
   metrics: {
     win_rate: 'Taux de victoire',
     kda: 'KDA',
@@ -84,6 +90,9 @@ const EN_TEXT: CompareText = {
   favoriteWeapon: 'Favorite weapon',
   killsWith: (n) => `${n} kill${n > 1 ? 's' : ''}`,
   noWeaponData: '—',
+  catCombat: 'Combat',
+  catPrecision: 'Precision & Survival',
+  catBilan: 'Stats & Rank',
   metrics: {
     win_rate: 'Win rate',
     kda: 'KDA',

@@ -59,6 +59,12 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		if wErr != nil {
 			slog.DebugContext(gctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
 		}
+		// CSR depuis Waypoint — plus fiable que match_skill_rank (best-effort).
+		if remote, err := s.provider.FetchRemoteStats(gctx, statsA.Gamertag, s.titleSlug); err == nil {
+			statsA.CSRCurrent = remote.CSRCurrent
+			statsA.CSRBest = remote.CSRBest
+			slog.DebugContext(gctx, "CompareService: CSR joueur A depuis Waypoint", "gamertag", statsA.Gamertag, "csr_current", statsA.CSRCurrent)
+		}
 		return nil
 	})
 
