@@ -18,14 +18,14 @@ const ITEM_RE = /^-\s+(.+)$/
 const TOP_HEADING_RE = /^##\s+/
 
 const SECTION_TOKENS: SemanticToken[] = [
-  'success',
-  'info',
-  'warning',
-  'narrative-humiliation',
-  'narrative-contre-remontada',
+  'chart-series-1',
+  'chart-series-2',
+  'chart-series-3',
+  'chart-series-4',
+  'chart-series-5',
+  'chart-series-6',
+  'chart-series-7',
   'chart-series-8',
-  'compare-a',
-  'destructive',
 ]
 
 export function getSectionToken(index: number): SemanticToken {
