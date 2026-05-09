@@ -82,6 +82,8 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
               label={label}
               valueA={valA}
               valueB={valB}
+              rawA={row.value_a}
+              rawB={row.value_b}
               winner={row.winner}
               ariaLabel={ariaLabel}
               sampleNote={sampleNote}

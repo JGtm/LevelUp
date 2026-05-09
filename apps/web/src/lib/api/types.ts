@@ -2748,8 +2748,8 @@ export interface NormalizedPlayerStats {
 export interface CompareMetricRow {
   metric: string
   label_fr: string
-  value_a: string | number
-  value_b: string | number
+  value_a: number
+  value_b: number
   delta: number | null
   winner: 'a' | 'b' | 'tie' | null
   sample_size_b?: number
@@ -2945,6 +2945,8 @@ export interface AchievementEntry {
   unlocked_at?: string
   current_progress?: number
   target_progress?: number
+  /** Identifiant Xbox numérique du titre source (ex: "1144039928" pour Halo Infinite). Vide pour l'ancien data. */
+  xbox_title_id?: string
 }
 
 export interface AchievementsPageResponse {

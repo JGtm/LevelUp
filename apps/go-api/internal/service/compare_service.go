@@ -38,6 +38,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 
 	var statsA, statsB *domain.NormalizedPlayerStats
 	var ath *domain.PlayerATH
+	var waypointCSRCurrent, waypointCSRBest int
 	g, gctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -59,11 +60,12 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		if wErr != nil {
 			slog.DebugContext(gctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
 		}
-		// CSR depuis Waypoint — plus fiable que match_skill_rank (best-effort).
+		// CSR depuis Waypoint — plus fiable que match_skill_rank.
+		// Stocké séparément pour ne pas être écrasé par le merge ATH.
 		if remote, err := s.provider.FetchRemoteStats(gctx, statsA.Gamertag, s.titleSlug); err == nil {
-			statsA.CSRCurrent = remote.CSRCurrent
-			statsA.CSRBest = remote.CSRBest
-			slog.DebugContext(gctx, "CompareService: CSR joueur A depuis Waypoint", "gamertag", statsA.Gamertag, "csr_current", statsA.CSRCurrent)
+			waypointCSRCurrent = remote.CSRCurrent
+			waypointCSRBest = remote.CSRBest
+			slog.DebugContext(gctx, "CompareService: CSR joueur A depuis Waypoint", "gamertag", statsA.Gamertag, "csr_current", waypointCSRCurrent)
 		}
 		return nil
 	})
@@ -94,13 +96,18 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		return domain.CompareResponse{}, err
 	}
 
-	// Merge ATH dans statsA (CSR, CareerRank, PerfATH, LusrATH).
+	// Merge ATH dans statsA — Waypoint a priorité sur local pour le CSR.
 	if ath != nil {
-		statsA.CSRCurrent = ath.CSRCurrent
-		statsA.CSRBest = ath.CSRBest
 		statsA.CareerRank = ath.CareerRank
 		statsA.PerfATH = ath.PerfATH
 		statsA.LusrATH = ath.LusrATH
+	}
+	if waypointCSRCurrent > 0 {
+		statsA.CSRCurrent = waypointCSRCurrent
+		statsA.CSRBest = waypointCSRBest
+	} else if ath != nil {
+		statsA.CSRCurrent = ath.CSRCurrent
+		statsA.CSRBest = ath.CSRBest
 	}
 
 	metrics := buildMetrics(*statsA, *statsB)
