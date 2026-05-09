@@ -213,19 +213,19 @@ en = "Query returned no exploitable match table for this scope."
 # ─── Filtre ranked context ────────────────────────────────────────────────────
 
 [explorer.filters.ranked_label]
-fr = "Classé"
-en = "Ranked"
+fr = "Expérience"
+en = "Experience"
 
 [explorer.filters.ranked_all]
 fr = "Tous"
 en = "All"
 
 [explorer.filters.ranked_ranked]
-fr = "Ranked (CSR)"
+fr = "Classé (CSR)"
 en = "Ranked (CSR)"
 
 [explorer.filters.ranked_unranked]
-fr = "Non-ranked (LUSR)"
+fr = "Non classé (LUSR)"
 en = "Unranked (LUSR)"
 
 # ─── Filtre outcome ───────────────────────────────────────────────────────────
