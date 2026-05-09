@@ -58,10 +58,10 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
   if (rows.length === 0) return null
   return (
     <div className="space-y-2">
-      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1 mb-3">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1.5 mb-3">
         {title}
       </h2>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {rows.map((row) => {
           const label = text.metrics[row.metric] ?? row.label_fr
           const valA = formatMetricValue(row.metric, row.value_a, text)

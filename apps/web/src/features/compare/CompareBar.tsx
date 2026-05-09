@@ -16,17 +16,17 @@ export function CompareBar({ label, valueA, valueB, winner, ariaLabel, sampleNot
   const w = winner ?? 'tie'
 
   return (
-    <div className="space-y-0.5" role="group" aria-label={ariaLabel}>
-      <p className="text-center text-[11px] text-muted-foreground">{label}</p>
+    <div className="space-y-1" role="group" aria-label={ariaLabel}>
+      <p className="text-center text-xs text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2">
         <span
-          className="w-16 shrink-0 text-right text-sm tabular-nums"
+          className="w-20 shrink-0 text-right text-sm tabular-nums"
           style={w === 'a' ? { color: colorA, fontWeight: 600 } : undefined}
         >
           {valueA}
         </span>
 
-        <div className="relative flex-1 h-2.5 rounded-sm bg-muted overflow-hidden">
+        <div className="relative flex-1 h-3 rounded-sm bg-muted overflow-hidden">
           <div className="absolute inset-y-0 left-1/2 w-px bg-border/60 z-10" />
           {w === 'a' && (
             <div
@@ -45,7 +45,7 @@ export function CompareBar({ label, valueA, valueB, winner, ariaLabel, sampleNot
           )}
         </div>
 
-        <div className="w-16 shrink-0">
+        <div className="w-20 shrink-0">
           <span
             className="text-sm tabular-nums"
             style={w === 'b' ? { color: colorB, fontWeight: 600 } : undefined}
