@@ -55,6 +55,42 @@ func TestMatchHistoryService_GetPage_OK(t *testing.T) {
 	}
 }
 
+func TestMatchHistoryService_GetPage_PropagatesIsWithFriendsAndExperience(t *testing.T) {
+	now := time.Now()
+	mapName := aquariusMap
+	pairName := slayerMode
+	repo := &mockMatchHistoryRepo{
+		rows: []domain.MatchHistoryRawRow{
+			{MatchID: "solo", StartTime: &now, MapName: &mapName, PairName: &pairName, IsWithFriends: false, IsRanked: false, Outcome: 2},
+			{MatchID: "squad", StartTime: &now, MapName: &mapName, PairName: &pairName, IsWithFriends: true, IsRanked: true, Outcome: 2},
+			{MatchID: "pve", StartTime: &now, MapName: &mapName, PairName: &pairName, IsWithFriends: false, IsFirefight: true, Outcome: 2},
+		},
+	}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	resp, err := svc.GetPage(context.Background(), domain.MatchHistoryQueryRequest{
+		Pagination: domain.PaginationRequest{Page: 1, PageSize: 20},
+		SortField:  "match_id",
+		SortDir:    "asc",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	byID := map[string]domain.MatchHistoryRow{}
+	for _, it := range resp.Table.Items {
+		byID[it.MatchID] = it
+	}
+	if got := byID["solo"]; got.IsWithFriends || got.ExperienceTypeLabel != "PVP non classé" {
+		t.Errorf("solo: IsWithFriends=%v ExperienceTypeLabel=%q", got.IsWithFriends, got.ExperienceTypeLabel)
+	}
+	if got := byID["squad"]; !got.IsWithFriends || got.ExperienceTypeLabel != "PVP classé" {
+		t.Errorf("squad: IsWithFriends=%v ExperienceTypeLabel=%q", got.IsWithFriends, got.ExperienceTypeLabel)
+	}
+	if got := byID["pve"]; got.IsWithFriends || got.ExperienceTypeLabel != "PVE" {
+		t.Errorf("pve: IsWithFriends=%v ExperienceTypeLabel=%q", got.IsWithFriends, got.ExperienceTypeLabel)
+	}
+}
+
 func TestMatchHistoryService_GetPage_Empty(t *testing.T) {
 	repo := &mockMatchHistoryRepo{rows: []domain.MatchHistoryRawRow{}}
 	svc := NewMatchHistoryService(repo, "Player")
