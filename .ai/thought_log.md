@@ -1,4 +1,46 @@
 
+## [2026-05-09] Fixture pipeline sync complet — 20 tests d'intégration
+
+**Statut** : Complété
+
+**Contexte** : La suite de tests `internal/sync` ne couvrait que des étapes isolées (weapon_kills, LUSR, citations). Aucun test ne vérifiait l'enchaînement complet des calculs locaux : weapon_kills → performance_score → LUSR → sessions → citations → engagement_score. Risque de régression silencieuse sur chaque étape sans couverture de bout en bout.
+
+**Décision technique** :
+Création de `apps/go-api/internal/sync/sync_pipeline_fixture_test.go` (build tag `integration`) avec :
+- 3 bases in-memory DuckDB distinctes (`shared`, `player`, `metadata`) construites avec DDL complet (toutes les colonnes attendues par chaque algorithme)
+- 3 matchs fixture : `m1` (ranked, film présent, 10 kills + 2 médailles), `m2` (social, sans film, +40min = même session que m1), `m3` (social, sans film, +7 jours = nouvelle session)
+- 12 matchs seed pour atteindre `MinMatchesForRelative=10` (performance_score) et `HistoryMinPartial=10` (engagement_score)
+- 4 joueurs en m1/m2 : `fixXUID + fixFriendXUID` (équipe 0) vs `fixEnemy1/2XUID` (équipe 1)
+- Corrections DDL découvertes pendant le développement : colonnes `score`, `headshot_kills`, `melee_kills`, `power_weapon_kills`, `max_killing_spree`, `avg_life_seconds` dans `match_participants` ; `game_variant_name` dans `match_registry` ; `created_at`/`updated_at` dans `match_skill_rank` ; `medal_ids`, `stat_name`, `award_name`, `custom_function`, `composite_children` dans `citation_mappings` ; `name_en` (pas `label_en`) dans `weapon_labels` ; vue `v_weapon_kills` créée dans shared DDL
+
+**20 tests couverts** :
+1. `TestPipelineFixture_SharedDataInserted` — vérification de la fixture
+2. `TestPipelineFixture_PlayerDataInserted` — enrichissements présents
+3. `TestPipelineFixture_MetadataInserted` — citation_mappings disponibles
+4. `TestPipelineFixture_WeaponKills_NoFilm` — MBitWeaponKillsNoFilm posé
+5. `TestPipelineFixture_WeaponKills_WithFilm` — MBitWeaponKills posé, rows insérées
+6. `TestPipelineFixture_WeaponKills_Idempotent` — second run : 0 reinsertions
+7. `TestPipelineFixture_PerformanceScore_WithHistory` — score non-NULL après ≥10 matchs seed
+8. `TestPipelineFixture_PerformanceScore_Idempotent` — second pass : 0 updates
+9. `TestPipelineFixture_LUSR_SocialOnly` — m1 ranked exclu, m2/m3 mis à jour
+10. `TestPipelineFixture_LUSR_Idempotent`
+11. `TestPipelineFixture_Sessions_TwoMatches_SameSession` — m1+m2 dans même session (gap < 2h)
+12. `TestPipelineFixture_Sessions_ThreeMatches_TwoSessions` — m3 isolé (+7j = session distincte)
+13. `TestPipelineFixture_Citations_WithMedals` — bulltrue + triple_kill attribués à fixXUID
+14. `TestPipelineFixture_Citations_Idempotent`
+15. `TestPipelineFixture_Citations_NoMedals` — aucune citation insérée si pas de médailles
+16. `TestPipelineFixture_Engagement_WithHistory` — score non-NULL avec ≥10 historique seed
+17. `TestPipelineFixture_Engagement_Idempotent`
+18. `TestPipelineFixture_KillerVictimPairs` — 10 paires présentes en shared
+19. `TestPipelineFixture_XuidResolution` — 5 aliases dans xuid_aliases
+20. `TestPipelineFixture_FullSequence` — enchaînement complet de toutes les étapes, aucune erreur
+
+**Résultats** : `go test -tags integration ./internal/sync/... -run "TestPipelineFixture" -timeout 60s` → `ok  levelup/go-api/internal/sync  1.876s` — 20/20 verts.
+
+**Prochaine étape** : Refactor `BackfillWeaponKillsForMatchAll` (plan existant dans `.claude/plans/`) pour traiter tous les participants en une seule passe film.
+
+---
+
 ## [2026-05-08] Refonte page de stats perso — calque squad + 5 onglets vides
 
 **Statut** : Complété (scaffolding)
