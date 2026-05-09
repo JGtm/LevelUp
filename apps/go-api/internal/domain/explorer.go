@@ -150,6 +150,11 @@ type ExplorerMatchesRow struct {
 	KDA *float64 `json:"kda,omitempty"`
 	// DurationSeconds : durée du match en secondes (nil si manquante).
 	DurationSeconds *int `json:"duration_seconds,omitempty"`
+	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
+	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag). Le
+	// front résout le label via narrative.dominance.* (manifest match_view)
+	// et affiche "-" pour 0.
+	DominanceFlag int `json:"dominance_flag,omitempty"`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.

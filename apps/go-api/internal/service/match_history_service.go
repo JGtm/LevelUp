@@ -760,6 +760,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		IsExcluded:               r.IsExcluded,
 		IsWithFriends:            r.IsWithFriends,
 		ExperienceTypeLabel:      explorerExperienceType(r),
+		DominanceFlag:            r.DominanceFlag,
 	}
 }
 
