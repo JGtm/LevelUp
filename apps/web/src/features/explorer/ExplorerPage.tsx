@@ -482,6 +482,7 @@ export function ExplorerPage() {
                       kind: 'with_player',
                       gamertag: playerQuery.data.target_gamertag || targetGamertag,
                     }}
+                    alwaysShowPagination
                   />
                 )}
 
@@ -498,6 +499,7 @@ export function ExplorerPage() {
                       kind: 'with_player',
                       gamertag: playerQuery.data.target_gamertag || targetGamertag,
                     }}
+                    alwaysShowPagination
                   />
                 )}
               </>

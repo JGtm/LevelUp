@@ -738,13 +738,23 @@ export interface CareerProjections {
 export interface CareerHistoryPoint {
   recorded_at: string
   rank: number
+  current_xp: number
   xp_total: number
 }
 
+export interface FriendXPHistory {
+  gamertag: string
+  history: CareerHistoryPoint[]
+}
+
 export interface CareerLusrCheckpoint {
-  recorded_at: string
+  recorded_at: string | null
+  rating_type: string
   rating_value: number
-  playlist_group: string
+  tier_label: string | null
+  playlist_group: string | null
+  playlist_name: string
+  badge_image_url?: string | null
 }
 
 export interface CareerLusrSection {
@@ -787,6 +797,7 @@ export interface CareerPageResponse {
   projections: CareerProjections | null
   xp_history: CareerHistoryPoint[]
   lusr: CareerLusrSection | null
+  friends_xp_history?: FriendXPHistory[]
   top_matches_preview: CareerTopMatch[]
   encounters_preview: CareerEncounter[]
 }
@@ -2432,29 +2443,26 @@ export interface MatchNeighbors {
 // Citations (Slice 2B)
 // ---------------------------------------------------------------------------
 
-export interface CommendationSummary {
-  key: string
-  label: string
-  category: string | null
-  current_value: number
-  color: string | null
-  icon_path: string | null
-  tier_label: string | null
-  mastery_pct: number | null
+/** Une citation enrichie avec sa progression par paliers. */
+export interface CitationItem {
+  name_norm: string
+  name_display: string
+  category: string
+  total: number
+  tier_count: number
+  earned_tiers: number
+  next_tier_target: number  // 0 si maîtrisé
+  mastery_pct: number       // 0..100
+  image_url?: string
+  description?: string
 }
 
-export interface MedalSummary {
-  medal_name_id: number
-  name: string
-  count_filtered: number
-  count_total: number
-  description: string | null
-}
-
-export interface CitationsDeltas {
-  filtered_total: number
-  unfiltered_total: number
-  delta_count: number
+/** Groupe de citations par catégorie. */
+export interface CitationCategoryGroup {
+  category: string
+  items: CitationItem[]
+  total: number
+  completed: number
 }
 
 export interface CitationsQueryRequest {
@@ -2462,9 +2470,10 @@ export interface CitationsQueryRequest {
 }
 
 export interface CitationsPageResponse {
-  commendations: CommendationSummary[]
-  medals_summary: MedalSummary[]
-  deltas: CitationsDeltas
+  citations: CitationItem[]
+  citations_by_category: CitationCategoryGroup[]
+  categories: string[]
+  total_count: number
 }
 
 // ---------------------------------------------------------------------------

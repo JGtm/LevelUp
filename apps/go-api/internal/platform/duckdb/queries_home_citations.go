@@ -342,6 +342,7 @@ SELECT
     citation_name_norm,
     SUM(value) AS total
 FROM match_citations
+WHERE citation_name_norm NOT LIKE '\_%%' ESCAPE '\'
 GROUP BY citation_name_norm
 ORDER BY total DESC`
 
