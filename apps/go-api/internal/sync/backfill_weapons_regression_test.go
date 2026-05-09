@@ -400,6 +400,39 @@ func TestInsertWeaponKills_Idempotent(t *testing.T) {
 	}
 }
 
+// TestInsertWeaponKills_EmptyPreservesExisting vérifie le garde-fou
+// anti-perte de données : un appel avec attrs=[] doit être un no-op total et
+// NE PAS supprimer les rows existantes pour (match_id, xuid).
+//
+// Régression historique (cf. thought_log 2026-05-09) : DELETE+INSERT avec
+// attrs=[] avait silencieusement vidé ~1010 matchs en mai 2026 quand un
+// --weapons --force retombait sur des films expirés (extraction = 0 attrib).
+// La sémantique correcte d'un Insert vide est "rien à faire", pas "tout
+// remplacer par rien".
+func TestInsertWeaponKills_EmptyPreservesExisting(t *testing.T) {
+	db := openWeaponDB(t)
+	rows := []WeaponKillRow{
+		{TimeMS: 5000, WeaponID: ptrU64(123), Confidence: "high", AttributionPath: "fire_event"},
+	}
+	if err := InsertWeaponKills(db, "m1", "xuid1", rows); err != nil {
+		t.Fatal(err)
+	}
+
+	// Appel avec attrs=[] — ne doit PAS effacer la ligne précédente.
+	if err := InsertWeaponKills(db, "m1", "xuid1", nil); err != nil {
+		t.Fatalf("unexpected error on empty insert: %v", err)
+	}
+	if err := InsertWeaponKills(db, "m1", "xuid1", []WeaponKillRow{}); err != nil {
+		t.Fatalf("unexpected error on empty slice insert: %v", err)
+	}
+
+	var count int
+	db.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id='m1' AND xuid='xuid1'").Scan(&count)
+	if count != 1 {
+		t.Fatalf("empty Insert must preserve existing rows, expected 1, got %d", count)
+	}
+}
+
 // TestInsertWeaponKills_DoesNotDeleteOtherXuid vérifie que le DELETE ciblé
 // (match+xuid) ne touche pas les lignes d'autres joueurs du même match.
 func TestInsertWeaponKills_DoesNotDeleteOtherXuid(t *testing.T) {

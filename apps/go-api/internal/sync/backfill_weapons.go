@@ -72,7 +72,12 @@ func BackfillWeaponKillsForMatch(
 		return true, fmt.Errorf("BackfillWeaponKillsForMatch kills(%s): %w", matchID, err)
 	}
 	if len(kills) == 0 {
-		_ = MarkWeaponKillsDone(sharedDB, matchID, false)
+		// Pas de kills à corréler côté film → on ne MARQUE PAS bit21 (= "weapon_kills
+		// chargés"). Marquer ce bit alors qu'aucune ligne n'a été insérée a vidé
+		// silencieusement la table pour ~1010 matchs en mai 2026 (cf. thought_log
+		// 2026-05-09). Le match peut être retraité plus tard si highlight_events
+		// arrivent. Pas de bit22 non plus : le film EST disponible, c'est juste
+		// que la corrélation côté DB n'est pas prête.
 		return true, nil
 	}
 
@@ -101,8 +106,13 @@ func BackfillWeaponKillsForMatch(
 	if err := InsertWeaponKills(sharedDB, matchID, xuid, rows); err != nil {
 		return true, fmt.Errorf("BackfillWeaponKillsForMatch insert(%s): %w", matchID, err)
 	}
-	if err := MarkWeaponKillsDone(sharedDB, matchID, false); err != nil {
-		slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
+	// On ne pose bit21 QUE si quelque chose a effectivement été inséré.
+	// Garde-fou anti-faux-positif : un MarkWeaponKillsDone systématique a
+	// causé la perte de ~1010 matchs en mai 2026 (cf. thought_log 2026-05-09).
+	if len(rows) > 0 {
+		if err := MarkWeaponKillsDone(sharedDB, matchID, false); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
+		}
 	}
 
 	return true, nil
@@ -154,7 +164,7 @@ func BackfillWeaponKillsForMatchAll(
 		return true, fmt.Errorf("BackfillWeaponKillsForMatchAll getAllKills(%s): %w", matchID, err)
 	}
 	if len(allKills) == 0 {
-		_ = MarkWeaponKillsDone(sharedDB, matchID, false)
+		// Pas de kills à corréler → ne PAS poser bit21 (cf. thought_log 2026-05-09).
 		return true, nil
 	}
 
@@ -184,17 +194,29 @@ func BackfillWeaponKillsForMatchAll(
 		return true, fmt.Errorf("BackfillWeaponKillsForMatchAll getParticipants(%s): %w", matchID, err)
 	}
 
+	totalInserted := 0
 	for _, xuid := range xuids {
 		rows := attributionsToRows(attrs, xuid)
 		if err := InsertWeaponKills(sharedDB, matchID, xuid, rows); err != nil {
 			slog.WarnContext(ctx, "backfill_weapons_all: insert failed", "match_id", matchID, "xuid", xuid, "err", err)
 			continue
 		}
+		totalInserted += len(rows)
 	}
 
-	// 9. Marquer le match comme done (une seule fois, pas par xuid).
-	if err := MarkWeaponKillsDone(sharedDB, matchID, false); err != nil {
-		slog.WarnContext(ctx, "backfill_weapons_all: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
+	// 9. Marquer le match comme done UNIQUEMENT si au moins une ligne a été insérée.
+	// Garde-fou anti-faux-positif : marquer bit21 alors que totalInserted == 0
+	// laisse croire au sweep --weapons que le match est traité, alors que les
+	// données existantes ont peut-être été préservées (par InsertWeaponKills
+	// no-op) sans qu'on sache si elles couvrent tout. Si rien n'a été inséré,
+	// on laisse le bit non-set pour permettre un retry.
+	if totalInserted > 0 {
+		if err := MarkWeaponKillsDone(sharedDB, matchID, false); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons_all: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
+		}
+	} else {
+		slog.InfoContext(ctx, "backfill_weapons_all: 0 lignes insérées, bit21 non posé",
+			"match_id", matchID, "kills", len(allKills))
 	}
 
 	return true, nil

@@ -1,4 +1,141 @@
 
+## [2026-05-09] Fix critique — `InsertWeaponKills` vidait silencieusement la DB
+
+**Statut** : Complété — patch appliqué, tests adaptés + test de non-régression ajouté.
+
+**Branche** : `feat/integration-merge`.
+
+**Symptôme rapporté** : sur la branche Go, `weapon_kills` ne contenait plus que 30 matchs sur 1564 (1,9 %) en local. Une copie VPS de la même DB (téléchargée ce jour) prouve qu'il y avait **1040 matchs** avec armes (64 %). Pour le match `8faf5c41-0af2-4102-b687-60b297afc1c7` (31 mars 2026) : VPS = 90 lignes, local = 0. Sur ces 988 matchs `bit21=1` localement, **958 ont la table vide** (faux positifs).
+
+**Cause racine identifiée** :
+- `InsertWeaponKills` ([writes.go:292-318](apps/go-api/internal/sync/writes.go#L292-L318)) faisait inconditionnellement `DELETE FROM weapon_kills WHERE match_id=? AND xuid=?` puis itérait sur `attrs`. Avec `attrs=[]`, le résultat était : DELETE des lignes existantes + 0 INSERT + COMMIT. Données effacées sans erreur signalée.
+- Le pipeline `BackfillWeaponKillsForMatch` / `BackfillWeaponKillsForMatchAll` posait ensuite `MarkWeaponKillsDone(noFilm=false)` (bit21) systématiquement, même quand 0 ligne avait été insérée. → Le sweep `findMissingWeaponMatches` filtre `(backfill_completed & bit21)=0`, donc tous ces matchs étaient marqués "déjà traités" et **plus jamais retentés**.
+- Déclencheur probable : un `--weapons --force` lancé sur la fenêtre des films expirés (>28 jours) en mai 2026. Films absents → extraction = 0 attribution → DELETE+INSERT vide → bit21 set sur table vide. Effet de masse sur ~1010 matchs.
+
+**Décisions techniques** :
+- **`InsertWeaponKills` no-op si attrs vide** : `if len(attrs) == 0 { return nil }` en tête de fonction. Sémantique correcte d'un Insert vide = "rien à faire", pas "tout remplacer par rien". La décision de `DELETE` doit désormais être explicite (caller).
+- **Bit21 ne se pose plus que si rows insérées > 0**. Dans `BackfillWeaponKillsForMatch` et `BackfillWeaponKillsForMatchAll` :
+  - Early-exit `len(kills)==0` ou `len(allKills)==0` : on retourne `(true, nil)` mais sans `MarkWeaponKillsDone`. Le match restera retentable au prochain run (ce qui est le bon comportement quand `highlight_events` est juste pas encore arrivé).
+  - Fin de pipeline `BackfillWeaponKillsForMatchAll` : nouvelle var locale `totalInserted`, somme des `len(rows)` retournées par `attributionsToRows(attrs, xuid)` pour chaque participant. `MarkWeaponKillsDone` n'est appelé que si `totalInserted > 0`. Sinon on logge `slog.InfoContext` avec `match_id` + `kills` pour traçabilité.
+- **Tests adaptés** : 2 tests integration (`TestBackfillWeaponKillsForMatchAll_FilmPresent_NoKills`, `TestBackfillWeaponKillsForMatch_EmptyHighlightEvents`) assertaient l'ancien comportement bugué (bit21 set sur table vide) → flippés pour asserter le nouveau contrat (`MBitWeaponKills NOT set`). Commentaire explicite renvoyant à cette entrée thought_log.
+- **Test de non-régression ajouté** : `TestInsertWeaponKills_EmptyPreservesExisting` — garantit qu'un appel avec `attrs=[]` ou `nil` ne supprime AUCUNE ligne existante pour `(match_id, xuid)`.
+
+**Résultats** : `go test ./...` PASS (suite complète + integration sync). `go vet ./...` et `go vet -tags integration ./internal/sync/...` clean.
+
+**Récupération des données effectuée** (2026-05-09, après le patch) :
+
+1. **Backup préalable** de la DB locale → `shared_matches_v2.duckdb.bak.2026-05-09` (303MB, copie identique). Filet de retour arrière garanti.
+2. **Outil `cmd/merge_weapon_kills`** créé (idempotent + non-destructif) :
+   - ATTACH READ_ONLY sur la DB VPS téléchargée (`C:/Users/Guillaume/Downloads/shared_matches_v2.duckdb`, 291MB, snapshot 6 mai 2026).
+   - `INSERT INTO weapon_kills SELECT v.* FROM vps.weapon_kills v WHERE NOT EXISTS (l.match_id=v.match_id AND l.xuid=v.xuid AND l.time_ms=v.time_ms)` en transaction unique.
+   - Mode `--dry-run` par défaut, garde-fou MISMATCH delta vs RowsAffected → ROLLBACK auto.
+   - Résultat APPLY : **104 903 lignes insérées** sur 1010 matchs auparavant vides. Local passe de 30 → 1040 matchs avec armes. COMMIT 74ms. Aucune ligne existante touchée (NOT EXISTS prouvé par delta = RowsAffected).
+   - Match canari `8faf5c41` : 0 → **90 lignes** (= état VPS).
+3. **Outil `cmd/fix_weapon_bitmask`** créé (idempotent) :
+   - Retire bit21 sur les matchs avec `bit21=1 AND weapon_kills vide` (faux positifs résiduels post-merge).
+   - Pose bit21 sur les matchs avec `bit21=0 AND weapon_kills peuplée` (cohérence post-merge).
+   - Résultat APPLY : 5 faux positifs nettoyés (matchs dont VPS n'avait pas non plus d'armes — films jamais récupérés des deux côtés). 0 à poser. État final : `bit21 set` ⇔ rows présentes.
+
+**Schéma protégé pour l'avenir** : la combinaison `InsertWeaponKills` no-op-on-empty + `bit21` conditionnel à l'insertion garantit qu'un futur `--weapons --force` sur des films expirés ne pourra plus vider la DB.
+
+**Backup** à conserver jusqu'à validation utilisateur post-restart serveur : `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb.bak.2026-05-09`. À supprimer après confirmation que la page match `8faf5c41` (et autres) affiche les armes correctement.
+
+**Prochaine étape** :
+1. Redémarrer le serveur Go, vérifier visuellement la page `/players/Chocoboflor/matches/8faf5c41-...` — colonne "Outil de destr." du scoreboard + expander + donut "Frags par arme" doivent montrer les vraies armes.
+2. À envisager — étendre le garde-fou anti-DELETE-puis-INSERT-vide aux autres `Insert*` du même pattern dans `writes.go` (medals, killer_victim_pairs, etc.) si le risque est analogue.
+3. Supprimer le backup `.bak.2026-05-09` après validation.
+
+---
+
+## [2026-05-09] Fix Explorer P2 — root cause des doublons EN/FR dans available_modes
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills` (commits séquentiels P4 → P1 → P3 → P2).
+
+**Investigation** : reproduction isolée du pipeline Explorer (`MatchHistoryRepo.LoadAll` + `applyMatchHistoryFRTranslations` + `computeExplorerAvailableOptions`) sur les vraies DBs de Chocoboflor (389 matchs). Constat : sur les 15 valeurs de `available_modes` retournées par l'API live, 5 sont des doublons EN parasites (CTF, Strongholds, Slayer, Team Slayer, Neutral Flag CTF) qui cohabitent avec leur traduction FR.
+
+**Root cause à 2 niveaux** :
+1. **Donnée DB** : pour ~18 matchs, `match_registry.pair_name` est NULL/vide alors que `pair_id` est renseigné. Et `metadata.asset_translations` retourne l'EN brut (`"Arena:CTF on Shiro"`) pour TOUTES les langues (de-DE, fr-FR, ja-JP… identiques) — vraisemblable corruption à l'ingestion sur les paires Forge/Community sans locale.
+2. **Logique Go** : `applyMatchHistoryFRTranslations` et `FiltersRepo.applyModeFRTranslations` ne re-normalisaient pas le résultat d'`asset_translations` pour re-tenter `mode_name_tr` quand `pair_name` brut est vide. Seul `home_repo.enrichHomeMatchTranslations` faisait ce 2e lookup correctement (cf. `homeNamesFR[NormalizeModeLabel(assetName)]` ligne 587). Match-history et filters héritaient d'une logique simplifiée.
+
+**Décision technique** :
+- Extraction du pattern Home dans une fonction pure `analysis.ResolvePairNameFR(rawPairName, currentFR, pairAssetName, modeNamesFR) string` (`pair_name_resolution.go`) — cascade documentée mode_name_tr → re-lookup asset_translations → raw asset → préservation. Tests unitaires (9 cas + identity prefixes).
+- Refactor des 3 callers pour utiliser le helper :
+  - `home_repo.enrichHomeMatchTranslations` (legacy + canonical) — pas de changement de comportement.
+  - `applyMatchHistoryFRTranslations` — bug fix.
+  - `FiltersRepo.applyModeFRTranslations` — bug fix + ajout du lookup `asset_translations[pair]` (qui n'existait pas avant côté filters).
+- Helpers DB partagés (`loadModeNamesFRForKeys`, `loadPairAssetNamesFR`) extraits dans `match_history_fr_translations.go`, utilisés par les 2 callers (filters + match-history).
+- Ajout `pair_id` à `domain.FilterMatchRow` + Q4 (v_match_full) + Q4MV (vue `mv_player_matches` recréée via nouvelle migration `add_mv_player_matches_pair_id`).
+- Tests d'intégration (`match_history_fr_translations_test.go`) reproduisant le bug exact avec asset_translations corrompu : `applyMatchHistoryFRTranslations` ET `FiltersRepo.applyModeFRTranslations` retournent maintenant la traduction FR canonique au lieu de l'EN raw.
+
+**Résultats** :
+- `go test ./...` : tous packages PASS, aucune régression.
+- `go test -tags integration ./internal/platform/duckdb/ -run "ApplyMatchHistory|FiltersRepo_applyMode"` : 2 nouveaux tests d'intégration PASS.
+- `go test -tags integration ./internal/migration/...` : PASS (nouvelle migration idempotente via `CREATE OR REPLACE VIEW`).
+- `go vet ./...` clean.
+
+**Prochaine étape** :
+- Restart serveur pour appliquer la migration MV. Vérifier curl `POST /pages/explorer/matches-query` : `available_modes` n'a plus de doublons EN/FR.
+- Idem `match-history/query` qui était impacté par le même bug (et la page squad/filters dont l'utilisateur pensait qu'elles étaient OK).
+- **P2 playlists** (cohabitation `Quick Play` + `Partie rapide`, UUID brut `bdceefb3-1c52-4848-a6b7-d49acd13109d`) → ticket séparé. Pas de table `playlist_name_tr` analogue à `mode_name_tr`, donc fix passera par migration corrective ciblée d'`asset_translations` + backfill UUID brut.
+
+---
+
+## [2026-05-09] Fix Explorer — pills Solo, label "Méga fiesta.", filtre "Classé"
+
+**Statut** : Complété (P4 + P1 + P3) — P2 (doublons EN/FR modes/playlists/maps) à traiter dans une session séparée.
+
+**Branche** : `fix/explorer-modes-context-pills` (depuis `feat/integration-merge`).
+
+**Diagnostic préalable** : 4 bugs identifiés sur la page Explorer, vérifiés via curl sur l'API live :
+- (1) Playlist Super Fiesta a `name='Méga fiesta.'` (avec point parasite) dans `metadata.asset_translations` lang fr/fr-FR.
+- (2) `available_modes` mélange EN+FR (CTF+Capture du drapeau, Strongholds+Bases, etc.). Bug existe aussi sur match-history. Cause = `mode_name_tr` partiellement peuplée OU `asset_translations` retourne EN pour certaines playlists. À investiguer en profondeur (P2 séparé).
+- (3) Filtre "Classé" : "Classé" servait de préfixe à la première option `<option>` du `<select>` ET de traduction de l'option ranked → confusion. Options `"Ranked (CSR)"` / `"Non-ranked (LUSR)"` étaient en EN dans la version FR.
+- (4) Tous les matchs avaient pill "Solo" : `IsWithFriends: false` hardcodé dans `explorer.go:132`. `MatchHistoryRow` n'exposait pas le champ.
+
+**Décisions techniques** :
+
+- **P4** (pill Solo) : ajout `IsWithFriends bool` + `ExperienceTypeLabel string` à `domain.MatchHistoryRow`. Setter dans `enrichRow()` via le champ déjà chargé en `MatchHistoryRawRow` + `explorerExperienceType(r)`. Suppression du hardcode dans le handler. Pattern aligné sur `legacymatch.HomeMatchRow` qui propage déjà `IsWithFriends` de bout en bout depuis Q26. Nouveau test `TestMatchHistoryService_GetPage_PropagatesIsWithFriendsAndExperience` couvrant solo/squad/PVE.
+- **P1** (Méga fiesta.) : nouvelle migration corrective `fix_super_fiesta_fr_label` sur `metadata.asset_translations` qui UPDATE le name vers "Méga fiesta" (sans point) pour `asset_id='4829f027-a9af-4b2f-86dd-7b290d6bb0a4'` et lang IN ('fr','fr-FR'). Idempotente (UPDATE conditionné par `name='Méga fiesta.'`).
+- **P3a** (filtre titre) : changement i18n `explorer.filters.ranked_label` `fr = "Expérience"` (auparavant "Classé"). Le pattern UI existant (préfixe sur la première `<option>`) est conservé — pas besoin de restructurer le `<select>` puisque "Expérience" ne conflit plus avec les options.
+- **P3b** (options FR) : `explorer.filters.ranked_ranked` `fr = "Classé (CSR)"`, `ranked_unranked` `fr = "Non classé (LUSR)"`. Régen des manifests via `node scripts/build_i18n_manifests.mjs`.
+
+**Résultats** : `go test ./...` PASS, `go vet ./...` clean, `tsc -b` clean. Lint frontend : pré-existants seulement (319 problèmes hors fichiers touchés). Migration P1 ne s'applique qu'au prochain démarrage du serveur. P4 nécessite aussi rebuild + restart pour être visible côté UI.
+
+**Prochaine étape** : Restart serveur, vérifier curl `POST /pages/explorer/matches-query` :
+- `is_with_friends` cohérent avec le mix solo/squad (104+285=389 attendus)
+- `available_playlists` n'a plus "Méga fiesta." (avec point)
+Puis lancer P2 dans une session dédiée : interroger `mode_name_tr` directement (besoin du serveur arrêté ou d'une commande qui partage le pool DB) pour confirmer si la table est complète, puis backfill UUID brut `bdceefb3...` (56 matchs avec `playlist_name = playlist_id`).
+
+---
+
+## [2026-05-09] Notes de version — timeline éditorial (Help page)
+
+**Statut** : Complété
+
+**Décision technique** :
+La page visée par l'utilisateur n'était pas `/changelog` mais l'onglet "Notes de version" de `/help` (`ReleaseNotesTab.tsx`), qui consomme `release_notes_service.go` (extraction depuis `docs/FR/README.md` § "Dernières nouveautés"). Format markdown différent : versions en `**v7.0 — Titre**`, sous-sections en `**Titre**`, items en `- **Label** — desc`. Nouveau parser `parseReleaseNotes.ts` distinct du parser CHANGELOG.md. `ReleaseNotesTab.tsx` réécrit avec timeline (dot/badge/sections), version-anchor en `info`, sections cyclant sur `chart-series-1..8` (pour garantir N couleurs distinctes sur toutes les palettes accessibilité — okabe-ito CVD-safe, cividis, tol-bright). Premier essai avec mix de tokens UI a été abandonné car collapse sur okabe-ito/cividis. Dot centré sur la border-l via `calc(-2rem - 6px)`. Fallback Markdown brut si parsing → 0 entrée.
+
+**Résultats** : Lint couleurs et frontières passent. Commits `6cffcbdf` (init), `5427cea8` (couleurs+dot), `3ec56d42` (switch chart-series pour accessibilité) sur `feat/integration-merge`.
+
+**Prochaine étape** : Vérification visuelle sur `/help?tab=release-notes`, FR et EN, et tester les 4 palettes via paramètres d'accessibilité.
+
+---
+
+## [2026-05-09] Changelog — timeline éditorial côté client
+
+**Statut** : Complété
+
+**Décision technique** :
+Remplacement du rendu `react-markdown` brut dans une Card par une timeline structurée, inspirée du projet csstat. Nouveau fichier `parseChangelog.ts` : parser markdown client-side (entrées `## [...]`, sections `### ...`, items `- ...`). `ChangelogPage.tsx` réécrit avec `<ol border-l>` timeline, dots, badges de version et section headers colorés via `tokenCssVar()` (tokens `success/info/warning/destructive/divergent-pos`). Aucun changement côté API Go.
+
+**Résultats** : Lint couleurs (no-hardcoded-colors) et lint frontières passent. Commit `ceab25e8` sur `feat/integration-merge`.
+
+**Prochaine étape** : Vérification visuelle en dev.
+
+---
+
 ## [2026-05-09] Mise à jour palette couleurs outline Halo Infinite
 
 **Statut** : Complété
