@@ -35,10 +35,13 @@ type PlayerAchievement struct {
 	UnlockedAt      time.Time
 	CurrentProgress int
 	TargetProgress  int
+	XboxTitleID     string
 }
 
-// SyncAchievements récupère les achievements Halo Infinite du joueur en EN et FR,
+// SyncAchievements récupère les achievements du joueur en EN et FR,
 // fusionne les données bilingues, puis les écrit dans les deux DBs.
+// titleID est le slug LevelUp du titre (ex: "halo_infinite") — stocké dans
+// xbox_achievement_definitions pour permettre le filtrage multi-titres.
 // resolver peut être nil (le pré-warming des images est alors ignoré).
 func SyncAchievements(
 	ctx context.Context,
@@ -47,6 +50,7 @@ func SyncAchievements(
 	metadataDB *sql.DB,
 	playerDB *sql.DB,
 	xuid string,
+	titleID string,
 ) error {
 	// Étape 1 : deux appels API (EN + FR).
 	slog.DebugContext(ctx, "achievements: récupération EN", "xuid", xuid)
@@ -65,7 +69,7 @@ func SyncAchievements(
 	slog.InfoContext(ctx, "achievements: fusion terminée", "xuid", xuid, "count", len(merged))
 
 	// Étape 3 : upserts.
-	if err := upsertAchievementDefinitions(ctx, metadataDB, merged); err != nil {
+	if err := upsertAchievementDefinitions(ctx, metadataDB, merged, titleID); err != nil {
 		return fmt.Errorf("achievements: upsert definitions: %w", err)
 	}
 	if err := upsertPlayerAchievements(ctx, playerDB, merged); err != nil {
@@ -81,7 +85,7 @@ func SyncAchievements(
 }
 
 // mergeAchievements fusionne deux slices (EN + FR) en un slice bilingue.
-// Les doublons sont ignorés (EN fait foi pour les champs partagés).
+// Les doublons sont ignorés (EN fait foi pour les champs partagés, dont XboxTitleID).
 func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 	frMap := make(map[string]PlayerAchievementRaw, len(fr))
 	for _, a := range fr {
@@ -104,6 +108,7 @@ func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 			UnlockedAt:      a.UnlockedAt,
 			CurrentProgress: a.CurrentProgress,
 			TargetProgress:  a.TargetProgress,
+			XboxTitleID:     a.XboxTitleID,
 		}
 		if f, ok := frMap[a.ID]; ok {
 			pa.NameFR = f.Name
@@ -116,7 +121,8 @@ func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 }
 
 // upsertAchievementDefinitions écrit les définitions dans metadata.xbox_achievement_definitions.
-func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements []PlayerAchievement) error {
+// titleID (ex: "halo_infinite") est stocké pour permettre le filtrage multi-titres côté query.
+func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements []PlayerAchievement, titleID string) error {
 	if len(achievements) == 0 {
 		return nil
 	}
@@ -131,8 +137,8 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 		INSERT INTO xbox_achievement_definitions
 			(achievement_id, name_en, name_fr, description_en, description_fr,
 			 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
-			 rarity_category, rarity_percent, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			 rarity_category, rarity_percent, title_id, xbox_title_id, fetched_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT (achievement_id) DO UPDATE SET
 			name_en         = excluded.name_en,
 			name_fr         = excluded.name_fr,
@@ -145,6 +151,8 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 			is_secret       = excluded.is_secret,  -- pragma: allowlist secret
 			rarity_category = excluded.rarity_category,
 			rarity_percent  = excluded.rarity_percent,
+			title_id        = excluded.title_id,
+			xbox_title_id   = excluded.xbox_title_id,
 			fetched_at      = excluded.fetched_at
 	`
 
@@ -165,7 +173,7 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 			a.DescriptionEN, a.DescriptionFR,
 			a.LockedDescEN, a.LockedDescFR,
 			a.Gamerscore, a.ImageURL, a.IsSecret,
-			a.RarityCategory, rarityPercent,
+			a.RarityCategory, rarityPercent, titleID, a.XboxTitleID,
 		); err != nil {
 			return fmt.Errorf("upsert definition %s: %w", a.AchievementID, err)
 		}

@@ -31,4 +31,7 @@ type AchievementDefinitionRow struct {
 	IsSecret       bool
 	RarityCategory string
 	RarityPercent  float64
+	// XboxTitleID est l'identifiant Xbox numérique du titre source (ex: "1144039928"
+	// pour Halo Infinite). Vide pour les rows antérieures au champ (rétrocompat).
+	XboxTitleID string
 }

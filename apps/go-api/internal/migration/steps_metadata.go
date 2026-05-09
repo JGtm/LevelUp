@@ -399,6 +399,36 @@ func init() {
 		Description: "asset_translations : seed FR canoniques pour playlists Halo Infinite dont l'API a renvoyé l'EN raw en lang fr-FR (cf. thought_log 2026-05-09)",
 		ApplySchema: applyPlaylistFRSeeds,
 	})
+
+	Register(Migration{
+		Name:        "add_title_id_to_xbox_achievement_definitions",
+		TargetDB:    TargetMetadata,
+		Description: "Colonne title_id sur xbox_achievement_definitions (filtre par jeu — halo_infinite) pour exclure les succès d'autres titres Xbox stockés avant l'introduction du filtre titleId.",
+		ApplySchema: func(db *sql.DB) error {
+			_, err := db.Exec(`ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS title_id VARCHAR DEFAULT ''`)
+			return err
+		},
+	})
+
+	Register(Migration{
+		Name:        "cleanup_xbox_achievement_definitions_unknown_title",
+		TargetDB:    TargetMetadata,
+		Description: "Supprime les succès Xbox sans title_id connu (insertés avant le filtre halo_infinite). L'utilisateur doit relancer sync-achievements après cette migration.",
+		ApplySchema: func(db *sql.DB) error {
+			_, err := db.Exec(`DELETE FROM xbox_achievement_definitions WHERE title_id = '' OR title_id IS NULL`)
+			return err
+		},
+	})
+
+	Register(Migration{
+		Name:        "add_xbox_title_id_to_xbox_achievement_definitions",
+		TargetDB:    TargetMetadata,
+		Description: "Colonne xbox_title_id sur xbox_achievement_definitions : identifiant Xbox numérique du titre source (ex: '1144039928' pour Halo Infinite). Peuplée lors du prochain sync-achievements. Permet au frontend de filtrer les succès cross-titres sans DELETE.",
+		ApplySchema: func(db *sql.DB) error {
+			_, err := db.Exec(`ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS xbox_title_id VARCHAR DEFAULT ''`)
+			return err
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.

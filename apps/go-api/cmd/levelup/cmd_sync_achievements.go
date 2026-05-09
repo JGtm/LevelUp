@@ -11,7 +11,9 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/migration"
 	auth_platform "levelup/go-api/internal/platform/auth"
+	duckdbPlatform "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -58,6 +60,12 @@ func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, pl
 		return nil
 	}
 
+	// Appliquer les migrations metadata avant le sync (title_id colonne, cleanup stale rows).
+	metadataPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
+	if err := applyAchievementsMigrations(metadataPath); err != nil {
+		return fmt.Errorf("migrations metadata: %w", err)
+	}
+
 	provider := auth_platform.NewMSALProvider()
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, provider)
 
@@ -74,6 +82,19 @@ func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, pl
 	return nil
 }
 
+// applyAchievementsMigrations applique les migrations metadata en attente.
+// Ouvre une connexion temporaire (fermée immédiatement après) pour ne pas
+// interférer avec la connexion interne du SyncEngine.
+func applyAchievementsMigrations(metadataPath string) error {
+	db, err := duckdbPlatform.OpenReadWrite(metadataPath)
+	if err != nil {
+		return fmt.Errorf("ouverture metadata DB: %w", err)
+	}
+	defer db.Close() //nolint:errcheck
+	_ = migration.All()
+	return migration.RunForDB(db.SQLDb(), migration.TargetMetadata)
+}
+
 func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, dryRun bool) error {
 	players, err := cfg.LoadPlayers()
 	if err != nil {
@@ -84,6 +105,15 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, dryRun b
 	}
 
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+
+	// Migrations metadata une seule fois pour tout le batch.
+	if !dryRun {
+		metadataPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
+		if err := applyAchievementsMigrations(metadataPath); err != nil {
+			return fmt.Errorf("migrations metadata: %w", err)
+		}
+		fmt.Println("migrations metadata: OK")
+	}
 
 	if dryRun {
 		for _, p := range players {

@@ -77,6 +77,17 @@ type Registry struct {
 // DefaultSlug est le slug du titre par défaut (Halo Infinite).
 const DefaultSlug = "halo_infinite"
 
+// XboxTitleIDFor retourne l'identifiant Xbox numérique (en string) pour un slug LevelUp.
+// Utilisé lors du sync achievements pour filtrer l'API Xbox par titre.
+// Retourne "" si le slug n'est pas reconnu — l'appelant doit gérer ce cas.
+func XboxTitleIDFor(slug string) string {
+	switch slug {
+	case DefaultSlug:
+		return "1144039928"
+	}
+	return ""
+}
+
 // NewRegistry crée un registre avec les titres par défaut.
 func NewRegistry() *Registry {
 	r := &Registry{

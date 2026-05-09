@@ -24,8 +24,9 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context) ([]domain.
 	rows, err := r.meta.Query(ctx, `
 		SELECT achievement_id, name_en, name_fr, description_en, description_fr,
 		       locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
-		       rarity_category, rarity_percent
+		       rarity_category, rarity_percent, xbox_title_id
 		FROM xbox_achievement_definitions
+		WHERE title_id = 'halo_infinite'
 		ORDER BY achievement_id`)
 	if err != nil {
 		return nil, fmt.Errorf("GetAchievementDefinitions query: %w", err)
@@ -41,6 +42,7 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context) ([]domain.
 			imageURL       sql.NullString
 			rarityCat      sql.NullString
 			rarityPct      sql.NullFloat64
+			xboxTitleID    sql.NullString
 		)
 		if err := rows.Scan(
 			&row.AchievementID,
@@ -52,6 +54,7 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context) ([]domain.
 			&row.IsSecret,
 			&rarityCat,
 			&rarityPct,
+			&xboxTitleID,
 		); err != nil {
 			return nil, fmt.Errorf("GetAchievementDefinitions scan: %w", err)
 		}
@@ -64,6 +67,7 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context) ([]domain.
 		if rarityPct.Valid {
 			row.RarityPercent = rarityPct.Float64
 		}
+		row.XboxTitleID = xboxTitleID.String
 		out = append(out, row)
 	}
 	if err := rows.Err(); err != nil {
