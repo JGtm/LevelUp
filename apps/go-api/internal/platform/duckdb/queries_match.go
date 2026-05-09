@@ -118,7 +118,7 @@ SELECT
     r.playlist_id,
     r.team_0_score,
     r.team_1_score,
-    r.pair_name_fr,
+    COALESCE(r.pair_name_fr, r.pair_name) AS pair_name_fr,
     r.pair_id,
     r.game_variant_id
 FROM shared.match_registry r
