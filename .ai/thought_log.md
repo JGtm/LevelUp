@@ -1,4 +1,17 @@
 
+## [2026-05-09] Mise à jour palette couleurs outline Halo Infinite
+
+**Statut** : Complété
+
+**Décision technique** :
+Remplacement complet des 16 couleurs dans `apps/web/src/lib/halo/outline-colors.ts` par les codes hex officiels Halo Infinite fournis par l'utilisateur. Nouvelle palette (dans l'ordre in-game) : Herbe, Citron, Jade, Menthe, Bleu ciel, Céruléen, Soleil, Ananas, Carotte, Tangelo, Saumon, Vermillon, Barbe à papa, Cerise, Lavande, Aubergine. Les anciens IDs (`red`, `lime`, `blue`, etc.) ne sont pas référencés en dur dans le reste du code — `findOutlineColor` retourne `null` pour un ID inconnu, les valeurs localStorage obsolètes repasseront silencieusement à "aucune couleur".
+
+**Résultats** : Aucune régression TypeScript attendue — seul `outline-colors.ts` est modifié.
+
+**Prochaine étape** : Vérification visuelle dans l'onglet Accessibilité (color picker).
+
+---
+
 ## [2026-05-09] Integration merge — fix/match-view-mode-ui-unify + feat/backfill-lusr-perf-medal-weights + feat/explorer-perf-rank-filters
 
 **Statut** : Complété
