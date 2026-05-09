@@ -578,22 +578,16 @@ func (r *HomeRepo) enrichHomeMatchTranslations(ctx context.Context, matches []le
 		if matches[i].MapID != "" {
 			matches[i].MapImageURL = mapImageURLs[matches[i].MapID]
 		}
-		// PrioritÃ© 1 : mode_name_tr appliquÃ© sur tous les matchs (pair_name_fr peut contenir une valeur EN non traduite)
-		modeEN := analysis.NormalizeModeLabel(matches[i].PairName)
-		modeFR := modeNamesFR[modeEN]
-		// Si PairName est un UUID (non normalisable), tenter via le nom dans asset_translations
-		if modeFR == "" {
-			if assetName := strings.TrimSpace(pairNames[matches[i].PairID]); assetName != "" {
-				modeFR = modeNamesFR[analysis.NormalizeModeLabel(assetName)]
-			}
-		}
-		if modeFR != "" {
-			matches[i].PairNameFR = modeFR
-		} else if needsHomeAssetTranslation(matches[i].PairNameFR, matches[i].PairName) {
-			// PrioritÃ© 2 : asset_translations (nom complet de paire, fallback)
-			if name := strings.TrimSpace(pairNames[matches[i].PairID]); name != "" {
-				matches[i].PairNameFR = name
-			}
+		// Pair / Mode : cascade unifiée via analysis.ResolvePairNameFR (mode_name_tr
+		// puis re-lookup via asset_translations puis raw fallback). Source unique de
+		// vérité partagée avec match_history et filters (cf. thought_log 2026-05-09).
+		if fr := analysis.ResolvePairNameFR(
+			matches[i].PairName,
+			matches[i].PairNameFR,
+			pairNames[matches[i].PairID],
+			modeNamesFR,
+		); fr != "" {
+			matches[i].PairNameFR = fr
 		}
 		if needsHomeAssetTranslation(matches[i].GameVariantNameFR, matches[i].GameVariantName) {
 			if name := strings.TrimSpace(gameVariantNames[matches[i].GameVariantID]); name != "" {
@@ -888,15 +882,13 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 			if pair.Labels == nil {
 				pair.Labels = map[string]string{}
 			}
-			modeEN := analysis.NormalizeModeLabel(pair.DefaultLabel)
-			if fr, ok := modeNamesFR[modeEN]; ok && fr != "" {
+			if fr := analysis.ResolvePairNameFR(
+				pair.DefaultLabel,
+				pair.Labels["fr"],
+				pairNames[pair.ID],
+				modeNamesFR,
+			); fr != "" {
 				pair.Labels["fr"] = fr
-			} else if name := strings.TrimSpace(pairNames[pair.ID]); name != "" {
-				if fr := modeNamesFR[analysis.NormalizeModeLabel(name)]; fr != "" {
-					pair.Labels["fr"] = fr
-				} else if needsHomeAssetTranslation(pair.Labels["fr"], pair.DefaultLabel) {
-					pair.Labels["fr"] = name
-				}
 			}
 		}
 	}

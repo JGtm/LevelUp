@@ -397,6 +397,13 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_mv_player_matches_pair_id",
+		TargetDB:    TargetShared,
+		Description: "Recréation mv_player_matches avec pair_id (clé asset_translations) pour le helper analysis.ResolvePairNameFR (cf. thought_log 2026-05-09)",
+		ApplySchema: applyMvPlayerMatchesView,
+	})
+
+	Register(Migration{
 		Name:        "migrate_weapon_kills_to_ubigint",
 		TargetDB:    TargetShared,
 		Description: "Conversion weapon_kills schema → UBIGINT natif",
@@ -994,6 +1001,7 @@ func applyMvPlayerMatchesView(db *sql.DB) error {
 			mr.map_name_fr,
 			mr.pair_name,
 			mr.pair_name_fr,
+			mr.pair_id,
 			mr.game_variant_id,
 			mr.game_variant_name,
 			mr.mode_category,
