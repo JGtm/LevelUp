@@ -57,6 +57,13 @@ func TestBackfillWeaponKillsForMatchAll_NoFilm(t *testing.T) {
 
 // TestBackfillWeaponKillsForMatchAll_FilmPresent_NoKills vérifie l'early-exit
 // quand le film est présent mais highlight_events est vide.
+//
+// Garde-fou anti-perte de données (cf. thought_log 2026-05-09) : on NE
+// MARQUE PAS bit21 quand 0 ligne weapon_kills n'a été insérée. Marquer ce
+// bit alors que la table est vide a fait croire au scan --weapons que
+// ~1010 matchs étaient "déjà traités" et a empêché toute relance, alors que
+// les rows existantes avaient été simultanément vidées par DELETE+INSERT
+// avec attrs=[]. Le contrat est désormais : bit21 set ⇔ rows présentes.
 func TestBackfillWeaponKillsForMatchAll_FilmPresent_NoKills(t *testing.T) {
 	db := openWeaponDB(t)
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
@@ -72,8 +79,8 @@ func TestBackfillWeaponKillsForMatchAll_FilmPresent_NoKills(t *testing.T) {
 
 	var bits int
 	db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id='m1'").Scan(&bits)
-	if bits&int(MBitWeaponKills) == 0 {
-		t.Errorf("expected MBitWeaponKills set (early-exit path), got bits=%d", bits)
+	if bits&int(MBitWeaponKills) != 0 {
+		t.Errorf("expected MBitWeaponKills NOT set (no rows inserted = no done), got bits=%d", bits)
 	}
 
 	var killCount int

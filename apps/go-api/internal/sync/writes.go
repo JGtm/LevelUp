@@ -290,6 +290,16 @@ func WriteSessionAssignments(db *sql.DB, assignments []domain.SessionAssignment)
 // not supported"), or de nombreux IDs filmshell Halo (ex `f408190f42c9679f`)
 // dépassent 2^63. Le cast côté DuckDB préserve la valeur unsigned exacte.
 func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) error {
+	// Garde-fou anti-perte de données : un appel avec attrs=[] doit être un
+	// no-op total. Le DELETE+INSERT-batch a vidé silencieusement les rows
+	// existantes pour ~1010 matchs en mai 2026 quand un --weapons --force
+	// retombait sur des films expirés (extraction = 0 kills) (cf. thought_log
+	// 2026-05-09). On préserve désormais l'existant si l'extraction n'a rien
+	// produit — la décision "remplacer" doit être explicite.
+	if len(attrs) == 0 {
+		return nil
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("InsertWeaponKills begin: %w", err)

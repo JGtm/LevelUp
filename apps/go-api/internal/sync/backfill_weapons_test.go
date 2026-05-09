@@ -254,6 +254,11 @@ func TestBackfillWeaponKillsForMatch_WithHighlightEvents(t *testing.T) {
 
 // TestBackfillWeaponKillsForMatch_EmptyHighlightEvents vérifie que le pipeline
 // se termine sans erreur quand highlight_events ne contient pas de kills pour le joueur.
+//
+// Garde-fou anti-perte de données (cf. thought_log 2026-05-09) : on NE MARQUE
+// PAS bit21 quand 0 ligne weapon_kills n'a été insérée. Marquer ce bit alors
+// que la table est vide faisait croire au sweep --weapons que ~1010 matchs
+// étaient "déjà traités" et empêchait toute relance. Le contrat : bit21 ⇔ rows.
 func TestBackfillWeaponKillsForMatch_EmptyHighlightEvents(t *testing.T) {
 	db := openWeaponDB(t)
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m_empty')`)
@@ -274,8 +279,8 @@ func TestBackfillWeaponKillsForMatch_EmptyHighlightEvents(t *testing.T) {
 
 	var bits int
 	db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id='m_empty'").Scan(&bits)
-	if bits&int(MBitWeaponKills) == 0 {
-		t.Fatal("expected MBitWeaponKills bit set (early exit path)")
+	if bits&int(MBitWeaponKills) != 0 {
+		t.Fatalf("expected MBitWeaponKills NOT set (no rows inserted = no done), got bits=%d", bits)
 	}
 
 	var killCount int
