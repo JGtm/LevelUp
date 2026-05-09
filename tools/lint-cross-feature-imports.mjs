@@ -86,6 +86,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'squad=>filters',
   'squad=>friends',
   'squad=>compare',
+  // PersonalStatsLayout réutilise les primitives filters/synthesis/squad (cf. SquadLayout pattern)
+  'personal-stats=>filters',
+  'personal-stats=>synthesis',
+  'personal-stats=>squad',
   // Synthesis embarque squad sub-views
   'synthesis=>squad',
   // TimeseriesPage embarque la section engagement
