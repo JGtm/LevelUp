@@ -32,7 +32,7 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			match_id VARCHAR,
 			xuid VARCHAR,
 			outcome INTEGER,
-			kills INTEGER, deaths INTEGER,
+			kills INTEGER, deaths INTEGER, assists INTEGER,
 			kills_expected DOUBLE, deaths_expected DOUBLE,
 			damage_dealt DOUBLE, damage_taken DOUBLE,
 			accuracy DOUBLE,
@@ -68,8 +68,8 @@ func TestLoadLUSRMatchData_WithData(t *testing.T) {
 	db := openLUSRDB(t)
 	db.Exec(`INSERT INTO match_registry VALUES
 		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, 'Ranked Arena', 'Slayer', FALSE, FALSE, 600)`)
-	db.Exec(`INSERT INTO match_participants VALUES
-		('m1', 'xuid1', 2, 15, 5, 12.0, 6.0, 3000.0, 1500.0, 0.55, 0)`)
+	db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kills_expected, deaths_expected, damage_dealt, damage_taken, accuracy, team_id) VALUES
+		('m1', 'xuid1', 2, 15, 5, 3, 12.0, 6.0, 3000.0, 1500.0, 0.55, 0)`)
 
 	data, err := loadLUSRMatchData(db, "xuid1")
 	if err != nil {
@@ -87,8 +87,8 @@ func TestLoadLUSRMatchData_FiltersRanked(t *testing.T) {
 	db := openLUSRDB(t)
 	db.Exec(`INSERT INTO match_registry VALUES
 		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, 'Ranked', 'Slayer', TRUE, FALSE, 600)`)
-	db.Exec(`INSERT INTO match_participants VALUES
-		('m1', 'xuid1', 2, 10, 5, 10.0, 5.0, 2000.0, 1000.0, 0.5, 0)`)
+	db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kills_expected, deaths_expected, damage_dealt, damage_taken, accuracy, team_id) VALUES
+		('m1', 'xuid1', 2, 10, 5, 2, 10.0, 5.0, 2000.0, 1000.0, 0.5, 0)`)
 
 	data, err := loadLUSRMatchData(db, "xuid1")
 	if err != nil {
@@ -112,9 +112,9 @@ func TestLoadLUSRParticipants_Empty(t *testing.T) {
 
 func TestLoadLUSRParticipants_WithData(t *testing.T) {
 	db := openLUSRDB(t)
-	db.Exec(`INSERT INTO match_participants VALUES
-		('m1', 'xuid1', 2, 10, 5, 10.0, 5.0, 2000.0, 1000.0, 0.5, 0),
-		('m1', 'xuid2', 3, 8, 7, 9.0, 6.0, 1800.0, 1200.0, 0.4, 1)`)
+	db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kills_expected, deaths_expected, damage_dealt, damage_taken, accuracy, team_id) VALUES
+		('m1', 'xuid1', 2, 10, 5, 2, 10.0, 5.0, 2000.0, 1000.0, 0.5, 0),
+		('m1', 'xuid2', 3, 8, 7, 1, 9.0, 6.0, 1800.0, 1200.0, 0.4, 1)`)
 
 	result, err := loadLUSRParticipants(db, []string{"m1"})
 	if err != nil {

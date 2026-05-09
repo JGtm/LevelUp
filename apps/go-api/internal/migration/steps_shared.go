@@ -116,8 +116,8 @@ func init() {
 					PRIMARY KEY (match_id, xuid, weapon_id)
 				);
 				-- killer_victim_pairs : un row par kill event (pas par paire
-				-- agrégée), donc pas de PRIMARY KEY ; les analytics font
-				-- SUM(kill_count). Schéma aligné sur la prod historique.
+				-- agrégée), donc pas de PRIMARY KEY (les analytics font
+				-- SUM(kill_count)). Schéma aligné sur la prod historique.
 				CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 					match_id        VARCHAR NOT NULL,
 					killer_xuid     VARCHAR NOT NULL,

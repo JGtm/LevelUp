@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -41,6 +42,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	lusr := fs.Bool("lusr", false, "Backfill LUSR TrueSkill 2 avec poids medailles v5")
 	perf := fs.Bool("perf", false, "Backfill performance score relatif v5 (off_conv + def_res + medal_exploit)")
 	assistsModel := fs.Bool("assists-model", false, "Calcule le modèle OLS expected_assists par mode (player_assists_model dans stats.duckdb)")
+	weapons := fs.Bool("weapons", false, "Backfill weapon_kills depuis film CDN (tous les participants par match)")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -52,8 +54,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
-	if !*engagementScores && !*citations && !*lusr && !*perf && !*assistsModel {
-		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --perf ou --assists-model)")
+	if !*engagementScores && !*citations && !*lusr && !*perf && !*assistsModel && !*weapons {
+		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --perf, --assists-model ou --weapons)")
 	}
 
 	ctx := context.Background()
@@ -121,6 +123,9 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 			return err
 		}
 		return runBackfillAssistsModelForPlayer(ctx, cfg, player.Gamertag, player.XUID, *force)
+	}
+	if *weapons {
+		return runBackfillAllWeapons(ctx, cfg, *force)
 	}
 	return nil
 }
@@ -439,4 +444,145 @@ func runBackfillAssistsModelOne(ctx context.Context, cfg *config.AppConfig, game
 
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
 	return engine.RunBackfillAssistsModel(ctx, force)
+}
+
+// ── Weapon kills backfill (film parsing) ───────────────────────────────────
+
+func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig, force bool) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("LoadPlayers: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	total := len(players)
+	processed := 0
+	skipped := 0
+	failed := 0
+
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			skipped++
+			continue
+		}
+
+		// Load Halo API tokens via OAuth refresh token (same pattern as cmd_sync.go)
+		refreshToken := oauthRefreshTokenForPlayer(player.Gamertag)
+		if refreshToken == "" {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=no_refresh_token (%s)\n",
+				player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
+			skipped++
+			continue
+		}
+
+		provider := auth.NewMSALProvider()
+		accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
+		if err != nil || accessToken == "" {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=oauth_refresh_failed err=%v\n", player.Gamertag, err)
+			skipped++
+			continue
+		}
+
+		result, err := provider.Exchange(ctx, accessToken)
+		if err != nil {
+			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=exchange_failed err=%v\n", player.Gamertag, err)
+			skipped++
+			continue
+		}
+		tokens := result.Tokens
+
+		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+
+		sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
+		matchIDs, err := findMissingWeaponMatches(ctx, sharedDBPath, player.XUID, force)
+		if err != nil {
+			fmt.Printf("backfill weapons FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
+			failed++
+			continue
+		}
+
+		if len(matchIDs) == 0 {
+			fmt.Printf("backfill weapons OK: gamertag=%s matches=0\n", player.Gamertag)
+			processed++
+			continue
+		}
+
+		fmt.Printf("backfill weapons: gamertag=%s matches=%d\n", player.Gamertag, len(matchIDs))
+		done, noFilm, err := engine.BackfillWeaponKillsForMatches(ctx, matchIDs)
+		if err != nil {
+			fmt.Printf("backfill weapons FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
+			failed++
+			continue
+		}
+
+		fmt.Printf("backfill weapons OK: gamertag=%s done=%d nofilm=%d\n", player.Gamertag, done, noFilm)
+		processed++
+	}
+
+	fmt.Printf("backfill weapons batch: total=%d processed=%d skipped=%d failed=%d\n", total, processed, skipped, failed)
+	if failed > 0 {
+		return fmt.Errorf("backfill weapons: %d joueur(s) en echec", failed)
+	}
+	return nil
+}
+
+func findMissingWeaponMatches(ctx context.Context, sharedDBPath, xuid string, force bool) ([]string, error) {
+	db, err := duckdbpkg.OpenReadOnly(sharedDBPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	const mBitWeaponKills = 1 << 21
+	const mBitWeaponKillsNoFilm = 1 << 22
+
+	var query string
+	var args []any
+	if force {
+		// Force: retourne tous les matchs non-firefight, indépendamment du bitmask.
+		query = `
+			SELECT DISTINCT mp.match_id
+			FROM match_participants mp
+			JOIN match_registry mr ON mr.match_id = mp.match_id
+			WHERE mp.xuid = ?
+			  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+			ORDER BY mr.start_time DESC
+			LIMIT 30
+		`
+		args = []any{xuid}
+	} else {
+		query = `
+			SELECT DISTINCT mp.match_id
+			FROM match_participants mp
+			JOIN match_registry mr ON mr.match_id = mp.match_id
+			WHERE mp.xuid = ?
+			  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
+			  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
+			  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+			ORDER BY mr.start_time DESC
+			LIMIT 30
+		`
+		args = []any{xuid, mBitWeaponKills, mBitWeaponKillsNoFilm}
+	}
+
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var matchIDs []string
+	for rows.Next() {
+		var mid string
+		if err := rows.Scan(&mid); err != nil {
+			continue
+		}
+		matchIDs = append(matchIDs, mid)
+	}
+	return matchIDs, rows.Err()
 }

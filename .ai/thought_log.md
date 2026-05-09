@@ -183,6 +183,109 @@
 
 ---
 
+## [2026-05-09] Fixture pipeline sync complet — 20 tests d'intégration
+
+**Statut** : Complété
+
+**Contexte** : La suite de tests `internal/sync` ne couvrait que des étapes isolées (weapon_kills, LUSR, citations). Aucun test ne vérifiait l'enchaînement complet des calculs locaux : weapon_kills → performance_score → LUSR → sessions → citations → engagement_score. Risque de régression silencieuse sur chaque étape sans couverture de bout en bout.
+
+**Décision technique** :
+Création de `apps/go-api/internal/sync/sync_pipeline_fixture_test.go` (build tag `integration`) avec :
+- 3 bases in-memory DuckDB distinctes (`shared`, `player`, `metadata`) construites avec DDL complet (toutes les colonnes attendues par chaque algorithme)
+- 3 matchs fixture : `m1` (ranked, film présent, 10 kills + 2 médailles), `m2` (social, sans film, +40min = même session que m1), `m3` (social, sans film, +7 jours = nouvelle session)
+- 12 matchs seed pour atteindre `MinMatchesForRelative=10` (performance_score) et `HistoryMinPartial=10` (engagement_score)
+- 4 joueurs en m1/m2 : `fixXUID + fixFriendXUID` (équipe 0) vs `fixEnemy1/2XUID` (équipe 1)
+- Corrections DDL découvertes pendant le développement : colonnes `score`, `headshot_kills`, `melee_kills`, `power_weapon_kills`, `max_killing_spree`, `avg_life_seconds` dans `match_participants` ; `game_variant_name` dans `match_registry` ; `created_at`/`updated_at` dans `match_skill_rank` ; `medal_ids`, `stat_name`, `award_name`, `custom_function`, `composite_children` dans `citation_mappings` ; `name_en` (pas `label_en`) dans `weapon_labels` ; vue `v_weapon_kills` créée dans shared DDL
+
+**20 tests couverts** :
+1. `TestPipelineFixture_SharedDataInserted` — vérification de la fixture
+2. `TestPipelineFixture_PlayerDataInserted` — enrichissements présents
+3. `TestPipelineFixture_MetadataInserted` — citation_mappings disponibles
+4. `TestPipelineFixture_WeaponKills_NoFilm` — MBitWeaponKillsNoFilm posé
+5. `TestPipelineFixture_WeaponKills_WithFilm` — MBitWeaponKills posé, rows insérées
+6. `TestPipelineFixture_WeaponKills_Idempotent` — second run : 0 reinsertions
+7. `TestPipelineFixture_PerformanceScore_WithHistory` — score non-NULL après ≥10 matchs seed
+8. `TestPipelineFixture_PerformanceScore_Idempotent` — second pass : 0 updates
+9. `TestPipelineFixture_LUSR_SocialOnly` — m1 ranked exclu, m2/m3 mis à jour
+10. `TestPipelineFixture_LUSR_Idempotent`
+11. `TestPipelineFixture_Sessions_TwoMatches_SameSession` — m1+m2 dans même session (gap < 2h)
+12. `TestPipelineFixture_Sessions_ThreeMatches_TwoSessions` — m3 isolé (+7j = session distincte)
+13. `TestPipelineFixture_Citations_WithMedals` — bulltrue + triple_kill attribués à fixXUID
+14. `TestPipelineFixture_Citations_Idempotent`
+15. `TestPipelineFixture_Citations_NoMedals` — aucune citation insérée si pas de médailles
+16. `TestPipelineFixture_Engagement_WithHistory` — score non-NULL avec ≥10 historique seed
+17. `TestPipelineFixture_Engagement_Idempotent`
+18. `TestPipelineFixture_KillerVictimPairs` — 10 paires présentes en shared
+19. `TestPipelineFixture_XuidResolution` — 5 aliases dans xuid_aliases
+20. `TestPipelineFixture_FullSequence` — enchaînement complet de toutes les étapes, aucune erreur
+
+**Résultats** : `go test -tags integration ./internal/sync/... -run "TestPipelineFixture" -timeout 60s` → `ok  levelup/go-api/internal/sync  1.876s` — 20/20 verts.
+
+**Prochaine étape** : Refactor `BackfillWeaponKillsForMatchAll` (plan existant dans `.claude/plans/`) pour traiter tous les participants en une seule passe film.
+
+---
+
+## [2026-05-08] Refonte page de stats perso — calque squad + 5 onglets vides
+
+**Statut** : Complété (scaffolding)
+
+**Contexte** : La page de stats perso aujourd'hui présente une UX incohérente — les onglets `Historique / Séries / Sessions` au-dessus de la page (NavL2) ont un positionnement flou et ne se connectent pas à la page principale `/synthesis`. La page `/squad/{synergies,contributions}` a été retravaillée et validée — son layout sticky filter bar + SessionBriefing + tab nav devient la référence à reproduire pour la page solo.
+
+**Décision technique** :
+1. **Pathless route group TanStack Router** pour faire cohabiter les nouveaux onglets et les vieilles pages sous `/stats/` :
+   - Nouveau layout `routes/players/$playerSlug/stats/_personal.tsx` (préfixe `_` = segment non-URL).
+   - 5 onglets : `_personal.{summary,maps-modes,distributions,progression,advanced}.tsx` → `/stats/{summary,...}`.
+   - `routes/players/$playerSlug/stats/index.tsx` → Navigate replace vers `./summary`.
+   - Vieilles routes `stats/{history,sessions,timeseries}.tsx` non préfixées → restent indépendantes du layout.
+2. **`features/personal-stats/`** clone allégé de `features/squad/SquadLayout.tsx` :
+   - Pas de `selectedGts` / `GamertagCombobox` / `CompareDrawer` / `useTeammates`.
+   - `useSynthesisPage(playerSlug, filterContextHash, { filters, period: 'all' })` alimente la SessionBriefing solo (squad prop omis).
+   - `useFiltersPreview(playerSlug, pending)` direct (pas de `deriveSquadPending`).
+   - localStorage key `personal-stats-sessions-{slug}` distinct de `squad-sessions-{slug}` pour isoler les sélections cross-page.
+3. **NavL2** — suppression des sous-onglets STATS_TABS, NavL2 ne s'affiche plus que sur les vieilles pages (regex `LEGACY_STATS_RE`) où FilterOmnibar reste utile. Sur `/stats/{summary,...}` la PersonalStatsLayout porte sa propre barre.
+4. **NavL1** — `defaultPath` de l'entrée Stats passe de `/stats/history` à `/stats/summary`. Sous-items inchangés (Historique / Séries / Sessions / Synthèse continuent de pointer vers leurs pages existantes).
+5. **Onglets vides** au scaffolding — chacun rend un `EmptyStateCard` "Section en construction". Le contenu sera ajouté progressivement en réutilisant : (a) tuiles match avec `map_ui` / `mode_ui` / `playlist_ui` pré-résolus côté Go (pattern Home), et (b) `gamertag` + `is_bot` pré-résolus via `v_gamertag_lookup` (pattern match-view) — aucune résolution côté front.
+
+**Résultats** :
+- `pnpm tsc --noEmit` : 0 erreur.
+- `pnpm exec eslint src/features/personal-stats` : 0 error, 1 warning (hardcoded `title="Réinitialiser tous les filtres"` aligné avec SquadLayout pattern existant).
+- `pnpm exec vitest run src/components/shell src/features/personal-stats` : 86 tests verts, 0 échec.
+- `pnpm exec vite build` : succès en 699ms, aucun import cassé.
+- `routeTree.gen.ts` régénéré automatiquement par le plugin Vite TanStack — les 6 nouvelles routes (1 layout pathless + 5 enfants + 1 index) sont câblées correctement, le segment `_personal` n'apparaît pas dans les URLs.
+- Test palmares `SeasonPassPage.test.tsx` flaky (timeout `waitFor` "Operation Alpha") — pré-existant sur la branche `feat/backfill-lusr-perf-medal-weights`, aucune dépendance sur NavL1/NavL2 (vérifié par grep).
+
+**Persistance des filtres + snap-on-mount** :
+- `globalFilterStore` (Zustand + `persist` middleware) garde déjà `filterContext` et `lastKnownLatestSessionId` en localStorage cross-session.
+- L'auto-snap après fin de sync est déjà câblé dans `routes/players/$playerSlug.tsx` (ligne 75-95) : transition `activeSyncJobId` string → null déclenche un `filtersResolve.refetch()` puis `autoSnapToLatestSession(latestId, true)` si la dernière session a changé. Couvre le cas "nouvelle session solo arrivée dans la BDD".
+- **Ajouté** : useEffect "snap-on-mount" dans `PersonalStatsLayout` — sur premier mount d'un user vierge (`lastKnownLatestSessionId === null`) sans filtre actif, snap sur la dernière session par défaut. Gardé par `snappedRef` + condition sur `lastKnownLatestSessionId` : ne refire pas après un Réinitialiser ou sur les mounts suivants.
+
+**Pattern navigation match → retour /stats** :
+- Documenté dans la JSDoc du `PersonalStatsLayout` : tout futur clic sur tuile match dans les onglets devra utiliser `useNavigateToMatch(playerSlug)` (`lib/match-nav/useNavigateToMatch.ts`) avec un `MatchNavContext` typé : `source`, `matchIds` (DESC scope-courant), `contextDescriptor`, `filterSpec`. Persiste le contexte en sessionStorage pour que `MatchNavigationBar` reste scoped et que le bouton retour retrouve les filtres (déjà persistés dans `globalFilterStore`).
+
+**Prochaine étape** : commit + remplir les 5 onglets dans des PRs séparés. Pour chaque onglet, choisir les charts depuis `components/charts/` et les hooks data selon les besoins. Les pages `Synthèse / Historique / Sessions` restent en place pour retravail ultérieur indépendant.
+
+---
+
+## [2026-05-08] Fix UBIGINT weapon_id binding + zlib décompression film chunks
+
+**Statut** : Complété
+
+**Contexte** : Backfill weapon_kills échouait systématiquement avec `"sql: converting argument $4 type: uint64 values with high bit set are not supported"`. Après investigation, deux causes racines :
+
+1. **Zlib compression** : Le CDN Azure Halo envoie les chunks film compressés en zlib (header `78 5e ...`), mais `downloadBlob()` faisait un simple `io.ReadAll()` sans décompression. Python (`api_client.py:495`) appelait `zlib.decompress(raw)`. Le scanner armes (`ScanFireEventsB5`, `ScanFormulaA`, etc.) tournait sur des bytes compressés → 0 fire events détectés.
+2. **UBIGINT binding** : Weapon IDs Halo (filmshell, ex `f408190f42c9679f` = 17584332298403800991) dépassent 2^63. Le driver DuckDB-Go rejette les uint64 avec bit 63 set dans le binding `database/sql`.
+
+**Décision technique** :
+- `internal/sync/halo_client.go` : ajout `compress/zlib` + `bytes` imports ; `downloadBlob()` wrap le body avec `zlib.NewReader(bytes.NewReader(raw))` et `io.ReadAll(zr)`.
+- `internal/sync/halo_client_extra_test.go` : helper `zlibCompress()` ; mise à jour des 4 test fixtures (`TestGetMatchFilm_BasicPrefix`, `MultiChunk`, `TestGetHighlightEventsChunk_Found`, `NoChunk`) pour compresser les payloads.
+- `internal/sync/writes.go` : helper `ubigintArg()` pour convertir `*uint64` en string décimale (ou nil) ; `InsertWeaponKills()` utilise `CAST(? AS UBIGINT)` au lieu de binding direct ; le cast côté serveur DuckDB préserve exactement la valeur unsigned.
+
+**Résultats** : Après fix zlib, scanner produit 2602 fire events válides (avant : 0). Après fix UBIGINT, backfill_all run 2 complète sans erreur : 1488 weapon_kills insérés, 962 avec weapon_id non-NULL (64.7%), sample IDs = `13121756802780325791`, `17584332298403800991`, `5242644258955552671` — tous typés UBIGINT. Suite `go test ./internal/sync/...` verte (8.5s).
+
+**Prochaine étape** : (1) commit ; (2) refactor `BackfillWeaponKillsForMatches` pour traiter tous les xuids d'un match en une passe (inefficacité : 4 joueurs × 25 matchs = 100 appels, mais ~50 matchs uniques avec chevauchements).
+
+---
+
 ## [2026-05-08] Diagnostic matchs plantés + fix navigation bloquée + fix corps HTTP vide
 
 **Statut** : Complété
