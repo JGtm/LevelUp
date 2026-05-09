@@ -110,7 +110,7 @@ export function ComparePage() {
   const { mutate, data, isPending, isError, error, reset } = useCompare(playerSlug)
 
   useEffect(() => {
-    document.title = `${text.pageTitle} — LevelUp`
+    document.title = `LevelUp - ${text.pageTitle}`
     return () => { document.title = 'LevelUp' }
   }, [text.pageTitle])
 
