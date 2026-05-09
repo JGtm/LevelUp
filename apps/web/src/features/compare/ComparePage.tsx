@@ -133,7 +133,7 @@ export function ComparePage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-6 space-y-6 w-full max-w-5xl mx-auto">
       {/* Navigation + titre + combobox sur la même ligne */}
       <div className="space-y-2">
         {fromExplorer && (

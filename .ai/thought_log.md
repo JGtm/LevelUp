@@ -1,22 +1,69 @@
 
-## [2026-05-09] Backfill citations composites — mode composite-only
+## [2026-05-10] CompareBar — barres composites gradient + tests Playwright
+
+**Statut** : Complété.
+
+**Décision** :
+Remplacement du tableau plat de la page Compare par des barres composites `linear-gradient`. Problème principal : le container `max-w-5xl mx-auto` à l'intérieur d'un `flex flex-col` (PlayerLayout) se réduisait à la largeur de son contenu (~656px) au lieu de 1024px. Cause : `mx-auto` dans un flex item remplace `align-self: stretch`, l'élément se redimensionne à son contenu min. Fix : ajout de `w-full` avant `max-w-5xl mx-auto`.
+
+Corrections apportées :
+1. `CompareBar.tsx` : gradient `linear-gradient(to right, colorA pct%, colorB pct%)` sur div unique, ratio proportionnel [5%-95%], guard NaN, `data-testid="compare-bar-track"`, `w-full` sur le container
+2. `ComparePage.tsx` : `w-full` ajouté au div racine pour corriger le layout dans flex column
+3. `i18n.ts` : optional chaining `fieldMappings.fields?.[fieldKey]?.label` pour éviter crash quand `fields` est absent
+4. `CompareBar.test.tsx` : 11 tests unitaires (ratio, gradient, clamp, NaN, sampleNote)
+5. `e2e/compare-bars.spec.ts` : test Playwright E2E avec mocks API complets
+
+**Résultats** : 11 tests unitaires ✓, 1 test Playwright ✓, typecheck ✓. Barres visibles (122px de large dans la colonne lg de 299px).
+
+**Prochaine étape** : Phase 2 — métriques enrichies backend Go.
+
+## [2026-05-10] Fix sync achievements — title ID MCC vs HI + filtre SCID
+
+**Statut** : Complété.
+
+**Décision** :
+Le title ID `1144039928` dans le système Achievement API Xbox correspond à "Halo: The Master Chief Collection" (700 achievements), non à Halo Infinite. Le bon title ID pour HI standalone est `2043073184` (identifié par inspection des TitleAssociations en supprimant le filtre titleId). La présence Xbox RTA utilisait `1144039928` pour HI, ce qui a causé la confusion initiale.
+
+Corrections apportées :
+1. `registry.go` : `XboxTitleIDFor("halo_infinite")` → `"2043073184"` + `TitleDescriptor.XboxTitleID` mis à jour
+2. `registry.go` : `ServiceConfigIDFor` retourne `""` (SCID non nécessaire quand le bon titleId est utilisé)
+3. `sync/achievements.go` : filtre `filterBySCID` désactivé (SCID vide = pas de filtre), `purgeStaleAchievementDefinitions` garde les 144 HI et supprime les 682 MCC résiduels
+4. `migration/steps_metadata.go` : migration `service_config_id` ajoutée pour stocker le SCID lors des futurs syncs
+5. `platform/duckdb/metadata_achievements_repo.go` : `service_config_id` lu et filtré dans la requête SQL
+6. Debug code intégralement retiré de `xbox_client.go`
+
+**Résultats** : sync `--all` → 144 achievements (Chocoboflor, JGtm, Madina97294), 682 achievements MCC supprimés.
+
+**Multi-titre** : `XboxTitleIDFor` est un switch sur slug — ajouter un jeu = ajouter un `case`.
+
+## [2026-05-09] Backfill citations composites — mode composite-only + fix affichage page Citations
 
 **Statut** : Complété.
 
 **Décision** :
 Mode `composite-only` ajouté dans le backfill citations. Ne lit pas `shared_matches_v2`, ne supprime rien : charge toutes les valeurs non-composites de `match_citations`, calcule les composites en mémoire via `ApplyCompositeCitationsPerMatch`, insère via `ON CONFLICT DO NOTHING`.
 
-Deux erreurs corrigées en cours de route :
+Trois erreurs corrigées dans le backfill :
 1. **Tier check per-match incorrect** : `computeCompositeCitations` vérifie `val >= max(tier_targets)` (conçu pour les totaux cumulatifs de l'UI Python). Per-match, `br75_mastery=5` n'atteint jamais `500` → composites toujours à 0. Fix : `ApplyCompositeCitationsPerMatch` utilise `val > 0` (a-t-on utilisé cette arme dans ce match ?).
 2. **Composites imbriqués mal ordonnés** : `all_weapons_mastery` a pour enfants `human_weapons_mastery` etc. (aussi des composites) — alphabétiquement `a < h` donc les enfants n'étaient pas encore calculés. Fix : passes répétées jusqu'à stabilisation (max 5).
 3. **Filtre SQL cassé** : `NOT LIKE '_%'` — le `_` est un wildcard SQL, excluait tout. Retiré.
 
-Implémentation finale :
-- `analysis/citations_composite.go` : `ApplyCompositeCitationsPerMatch` (exportée, multi-pass, val>0) + `applyCompositesPass` (privée).
-- `sync/citations_backfill.go` : `RunBackfillCompositeOnlyCitations` charge toutes les valeurs non-composites via `loadNonCompositeCitationsByMatch` (filtre les noms composites existants pour repartir des feuilles). `buildCompositeNameSet` construit le set de noms composites.
-- `cmd/levelup/cmd_backfill.go` : flag `--composite-only`, wiring `runBackfillCompositeOnlyOne` (migrations player + metadata uniquement, pas de shared).
+Quatre bugs supplémentaires sur l'affichage de la page Citations (toutes composites impactées) :
+4. **Q35 retourne une somme sans sens** : `SUM(value)` pour les composites donne le cumul des valeurs per-match (ex. 2100) au lieu du nb d'enfants globalement masterisés (ex. 7). Fix : `analysis.OverrideCompositeTotals(totals, mappings)` (appelé dans le service avant `MergeCitationTotals`) recalcule les totaux composites depuis les totaux cumulatifs des enfants feuilles avec tier check + multi-pass (identique au calcul Python à l'affichage).
+5. **Paliers non affichés** : `TierTargets = NULL` pour les composites → `tier_count = 0` → frontend n'affiche aucune barre. Fix : dans `MergeCitationTotals`, branche spéciale pour `mapping_type = composite` → `TierCount = len(children)`, `EarnedTiers = total`, `MasteryPct = total/len*100`, `NextTierTarget = len(children)`.
+6. **`CompositeChildren` absent du Q34** : Le champ `composite_children` n'était pas sélectionné par Q34 ni scanné dans `LoadCitationMappings`. Ajout dans la requête + le scan + `CitationMappingRow`.
 
-**Résultats** : 4/4 joueurs, 1612 matchs mis à jour (Chocoboflor=345, JGtm=713, Madina=532, XxDaemonGamerxX=22).
+Implémentation finale :
+- `analysis/citations_composite.go` : `ApplyCompositeCitationsPerMatch` (multi-pass, val>0) + `applyCompositesPass`.
+- `analysis/citations.go` : `OverrideCompositeTotals` (multi-pass, tier check sur totaux cumulatifs) + branche composite dans `MergeCitationTotals`.
+- `domain/citations.go` : `CompositeChildren *string` dans `CitationMappingRow`.
+- `platform/duckdb/queries_home_citations.go` : Q34 inclut `composite_children`.
+- `platform/duckdb/citations_repo.go` : scan `LoadCitationMappings` lit le 8e champ.
+- `service/citations_service.go` : appel `analysis.OverrideCompositeTotals` avant `MergeCitationTotals`.
+- `sync/citations_backfill.go` : `RunBackfillCompositeOnlyCitations` + helpers.
+- `cmd/levelup/cmd_backfill.go` : flag `--composite-only`, wiring.
+
+**Résultats** : 4/4 joueurs, 1612 matchs mis à jour. Build + vet propres.
 
 **Prochaine étape** : Redémarrer le serveur pour que l'UI reflète les nouveaux composites.
 
