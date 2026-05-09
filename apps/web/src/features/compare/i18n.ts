@@ -145,7 +145,7 @@ export function getCompareText(
     metrics: { ...base.metrics },
   }
   for (const [metricKey, fieldKey] of Object.entries(METRIC_TO_FIELD_KEY)) {
-    const canonical = fieldMappings.fields[fieldKey]?.label
+    const canonical = fieldMappings.fields?.[fieldKey]?.label
     if (canonical) merged.metrics[metricKey] = canonical
   }
   return merged

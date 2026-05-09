@@ -32,7 +32,7 @@ export function CompareBar({ label, valueA, valueB, rawA, rawB, winner, ariaLabe
   }
 
   return (
-    <div className="space-y-1" role="group" aria-label={ariaLabel}>
+    <div className="space-y-1 w-full" role="group" aria-label={ariaLabel}>
       <p className="text-center text-xs text-muted-foreground leading-tight">{label}</p>
       <div className="flex items-center gap-2">
 
@@ -45,7 +45,7 @@ export function CompareBar({ label, valueA, valueB, rawA, rawB, winner, ariaLabe
           </span>
         </div>
 
-        <div className="flex-1 h-3 rounded-sm" style={barStyle} />
+        <div className="flex-1 h-3 rounded-sm" style={barStyle} data-testid="compare-bar-track" />
 
         <div className="w-20 shrink-0 flex flex-col items-start">
           <span
