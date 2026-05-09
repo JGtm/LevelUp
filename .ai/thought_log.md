@@ -1,4 +1,160 @@
 
+## [2026-05-09] CompareRepo : accuracy × 100 — normalisation manquante
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Symptôme** : "5 102,5 %" affiché dans le face-à-face. `mp.accuracy` est stockée en % (0-100) dans `match_participants`. Tout le reste de la chaîne (`buildMetrics × 100`, `PlayerStatsCard × 100`) attend du 0..1. La division par 100 manquait dans la requête SQL.
+
+**Fix** : `AVG(COALESCE(mp.accuracy, 0.0))` → `/ 100.0` dans `compare_repo.go`.
+
+**Test mis à jour** : `TestCompareRepo_GetLocalStats` assert `Accuracy == 0.5` (seed 55.0 + 45.0 → avg 50.0 / 100 = 0.5).
+
+**Résultats** : `go test ./...` + `go vet ./...` verts.
+
+**Prochaine étape** : Aucune.
+
+---
+
+## [2026-05-09] CompareRepo : GROUP BY gamertag ambigu — fix + test
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Erreur** : `Binder Error: Ambiguous reference to column name "gamertag"` — `mp.gamertag` et `vg.gamertag` rendaient la clause `GROUP BY mp.xuid, gamertag` ambiguë.
+
+**Fix** : `GROUP BY mp.xuid, gamertag` → `GROUP BY mp.xuid, COALESCE(vg.gamertag, xa.gamertag, '')` pour répéter l'expression exacte du SELECT.
+
+**Tests** : `repos_extra_test.go` — `TestCompareRepo_GetLocalStats` complété (ajout vue `v_gamertag_lookup` manquante, assertions sur `Matches`, `WinRate`, `KillsPerGame`) + `TestCompareRepo_GetLocalStats_NotFound` ajouté. `go test ./...` + `go vet ./...` : tous verts.
+
+**Prochaine étape** : Aucune.
+
+---
+
+## [2026-05-09] CompareRepo : shared.match_participants — fix connexion pdb.Player
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Erreur** : `Catalog Error: Table with name "shared.match_participants" does not exist because schema "shared" does not exist`
+
+**Cause racine** : `compare_repo.go` utilisait `r.pdb.Shared.QueryRow` — connexion directe à `shared_matches_v2.duckdb` où les tables s'appellent `match_participants` (pas `shared.match_participants`). Le préfixe `shared.` n'est valide que depuis `pdb.Player` qui a la shared DB ATTACHée.
+
+**Fix** : 2 occurrences `r.pdb.Shared.QueryRow` → `r.pdb.Player.QueryRow` dans `compare_repo.go`. La requête SQL reste inchangée.
+
+**Résultats observés** : `go build ./...` propre, `go test ./internal/platform/duckdb/...` vert.
+
+**Prochaine étape** : Aucune.
+
+---
+
+## [2026-05-09] Compare : tokens absents du contexte — fix enrichWithHaloTokens
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Demande** : Erreur `CompareService.GetPage: stats joueur B introuvables: FetchRemoteStats: tokens absents du contexte` lors de l'utilisation du Face à face.
+
+**Cause racine** : `registry.Compare` n'appelait pas `enrichWithHaloTokens`, contrairement à `HomeCtxWithAuth` et `SeasonPassCtxWithAuth`. Quand la session HTTP ne porte pas de tokens Halo en cookie, le contexte restait vide et `FetchRemoteStats` échouait.
+
+**Décisions techniques** :
+- Introduit `CompareAuthFactory` (analogue à `HomeAuthFactory`) : retourne `(svc, enrichedCtx, xuid, gamertag, error)`.
+- `registry.Compare` retourne maintenant le contexte enrichi via MSAL cache / OAuth refresh si nécessaire.
+- `CompareHandler.PostComparePage` passe `enrichedCtx` à `svc.GetPage` au lieu de `r.Context()`.
+- 4 fichiers modifiés : `handlers/compare.go`, `registry.go`, `registry_test.go`, `handlers/multititle_test.go`.
+
+**Résultats observés** : `go build ./...` propre, tests `./internal/api/... ./internal/service/...` tous verts.
+
+**Prochaine étape** : Aucune.
+
+---
+
+## [2026-05-09] Match-view : fix localisation FR mode_ui + tests anti-régression
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Problème** : Le titre de la vue match affichait "Forbidden" au lieu de "Capture du drapeau sur Forbidden" en locale FR. `mode_ui` était null/vide car `GetMatchMeta` ne faisait pas de lookup `mode_name_tr`.
+
+**Décisions techniques** :
+- `Q13` : `COALESCE(r.pair_name_fr, r.pair_name)` aligné sur toutes les autres queries (sans COALESCE, `currentFR = ""` → `ResolvePairNameFR` retournait vide).
+- `GetMatchMeta` : remplace l'ancien `lookupModeNameFR` (inventé) par le pattern exact de `applyMatchHistoryFRTranslations` : `ResolveAssetNamesBulk` + `loadModeFRBatch` + `ResolvePairNameFR`.
+- Pas de fallback supplémentaire ni de normalisation supplémentaire côté Go — le frontend normalise via `normalizeModeLabel` (aligné home/match-history).
+
+**Tests ajoutés** :
+- `match_view_repo_meta_test.go` : 7 cas dont `TestGetMatchMeta_TranslatesModeFRViaModeNameTr` (CTF → Capture du drapeau).
+- `match_view_service_test.go` : 4 tests anti-régression (`LocalisationFR_*`) vérifiant ModeUI / MapUI / PlaylistLabel.
+- `match_view_test.go` (handler) : `TestMatchViewHandler_LocalisationFR_ChampsJSON` vérifie JSON tags `map_ui`/`mode_ui`/`playlist_label`.
+- `home_repo_fr_translations_test.go` : 7 tests intégration `enrichHomeMatchTranslations` + `EnrichCanonicalAssetTranslations`.
+- `format.test.ts` : 16 tests `normalizeModeLabel` + `buildMatchHeadingStr` (frontend).
+
+**Résultat** : Tous les tests passent. `mode_ui = "Capture du drapeau"` + `map_ui = "Forbidden"` → frontend assemble "Capture du drapeau sur Forbidden".
+
+## [2026-05-09] Explorer — Face à face : auto-lancement au clic
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Demande** : Le bouton "Face à face" dans l'Explorer (visible quand un gamertag est sélectionné) ouvrait un drawer avec un formulaire vide demandant de saisir un gamertag — UX redondante puisque le gamertag est déjà connu.
+
+**Décisions techniques** :
+- Ajout de `initialTarget?: string` sur `CompareDrawer` et `CompareSurface`.
+- `CompareSurface` initialise son état local `targetGamertag` avec `initialTarget` et déclenche `mutate` via `useEffect([], [])` au premier rendu si `initialTarget` est renseigné.
+- `ExplorerPage` passe `playerQuery.data?.target_gamertag ?? targetGamertag` comme `initialTarget` au drawer.
+- Le formulaire reste visible et pré-rempli pour permettre un changement de cible sans quitter le drawer.
+
+**Résultats observés** : Aucune erreur TypeScript attendue — 3 fichiers modifiés, ajout d'un prop optionnel à chaque niveau.
+
+**Prochaine étape** : Aucune.
+
+---
+
+## [2026-05-09] Explorer — pill dominance dans ExplorerMatchesTable
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Demande** : La colonne "Dominance" du tableau Explorer affichait le texte brut. Aligner sur la pill colorée de la home (MatchHeader/MatchNarrativeSection).
+
+**Décisions techniques** :
+- Ajout de `DOMINANCE_COLOR_TOKENS` (miroir de `narrative.ResolveDominanceBadge` Go) : flag 1-5 → token sémantique `narrative.dominance.*`.
+- Rendu pill : `rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide` avec `color-mix(in oklab, <color> 18%, transparent)` bg et `55%` border — même recette que `DominanceBadgeInline` dans MatchHeader, adapté taille `text-xs` pour table.
+- `tokenCssVar` déjà importé dans le fichier.
+
+**Résultats observés** : `npm run typecheck` — 0 erreur.
+
+**Prochaine étape** : Aucune.
+
+---
+
+## [2026-05-09] Explorer — SplitBars Rencontre/F-D + case Ratio dans ExplorerEncounterBriefing
+
+**Statut** : Complété.
+
+**Branche** : `fix/explorer-modes-context-pills`.
+
+**Demande** : Dans la grille KPI de recherche gamertag (ExplorerEncounterBriefing) — (1) case "Rencontre" : remplacer le texte count+breakdown par l'AllyEnemySplitBar (identique à MatchEncountersTable), (2) case "ratio F/D croisé" : remplacer le texte kills/deaths par le KDSplitBar, (3) ajouter une case "Ratio" (kills÷deaths coloré outcome-win/loss/draw) après F/D croisé.
+
+**Décisions techniques** :
+- Copie locale de `SplitBar`/`AllyEnemySplitBar`/`KDSplitBar` depuis `MatchEncountersTable.tsx` (pattern déjà établi dans ce fichier pour les helpers formatage).
+- Ajout de `formatKDRatio` + `kdRatioColor` (même logique que MatchEncountersTable).
+- `KpiCardProps.label` étendu de `string` → `React.ReactNode` pour accueillir le `<Tooltip>` sur le label "Ratio".
+- Grille passée de `lg:grid-cols-5` → `lg:grid-cols-6`.
+- Deux nouvelles clés i18n `explorer.encounter.ratio` + `explorer.encounter.ratio_tooltip` ajoutées dans le TOML et régénérées via `build_i18n_manifests.mjs` (117 clés total).
+
+**Résultats observés** : `npm run typecheck` — 0 erreur.
+
+**Prochaine étape** : Aucune. Fonctionnalité livrée.
+
+---
+
 ## [2026-05-09] Explorer — icône open SVG + F/D/A FR avec tooltips
 
 **Statut** : Complété.
