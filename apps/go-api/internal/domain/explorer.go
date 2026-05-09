@@ -36,18 +36,42 @@ type CommonMatchRow struct {
 	KDA           float64   `json:"kda"`
 }
 
+// ExplorerEncounterStats : stats agrégées du couple (player_courant, target),
+// mirror partiel de MatchEncounterRow (mêmes 7 colonnes que le tableau
+// MatchEncountersTable de la page match-view, sans `is_ally` car pas de match
+// courant en Explorer).
+type ExplorerEncounterStats struct {
+	// CountTogether = nombre de matchs joués ensemble (alliés + ennemis).
+	CountTogether int `json:"count_together"`
+	// AllyCount = matchs en tant qu'alliés. Nil si calcul indisponible.
+	AllyCount *int `json:"ally_count,omitempty"`
+	// EnemyCount = matchs en tant qu'ennemis. Nil si calcul indisponible.
+	EnemyCount *int `json:"enemy_count,omitempty"`
+	// WinrateAsAlly = ratio victoires en tant qu'allié (0..1). Nil si AllyCount=0.
+	WinrateAsAlly *float64 `json:"winrate_as_ally,omitempty"`
+	// WinrateVsEnemy = ratio victoires en tant qu'ennemi (0..1). Nil si EnemyCount=0.
+	WinrateVsEnemy *float64 `json:"winrate_vs_enemy,omitempty"`
+	// KillsDealt = kills par moi sur la cible (toutes occurrences).
+	KillsDealt *int `json:"kills_dealt,omitempty"`
+	// DeathsSuffered = morts subies par moi causées par la cible.
+	DeathsSuffered *int `json:"deaths_suffered,omitempty"`
+	// LastSeenAt = date du dernier match commun (toutes occurrences).
+	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
+}
+
 // ExplorerPlayerQueryResponse : réponse de la requête player-query.
 type ExplorerPlayerQueryResponse struct {
-	TargetGamertag string                `json:"target_gamertag"`
-	TargetXUID     string                `json:"target_xuid"`
-	CommonMatches  []CommonMatchRow      `json:"common_matches"`
-	Badges         []MatchEncounterBadge `json:"badges,omitempty"`
-	Total          int                   `json:"total"`       // items sur la page courante
-	TotalCount     int                   `json:"total_count"` // total tous matchs confondus
-	WinsTogether   int                   `json:"wins_together"`
-	LossesTogether int                   `json:"losses_together"`
-	Page           int                   `json:"page"`
-	PageSize       int                   `json:"page_size"`
+	TargetGamertag string                  `json:"target_gamertag"`
+	TargetXUID     string                  `json:"target_xuid"`
+	CommonMatches  []CommonMatchRow        `json:"common_matches"`
+	Badges         []MatchEncounterBadge   `json:"badges,omitempty"`
+	EncounterStats *ExplorerEncounterStats `json:"encounter_stats,omitempty"`
+	Total          int                     `json:"total"`       // items sur la page courante
+	TotalCount     int                     `json:"total_count"` // total tous matchs confondus
+	WinsTogether   int                     `json:"wins_together"`
+	LossesTogether int                     `json:"losses_together"`
+	Page           int                     `json:"page"`
+	PageSize       int                     `json:"page_size"`
 }
 
 // KillerVictimAggregate : kills croisés agrégés entre deux joueurs.
@@ -63,10 +87,31 @@ type KillerVictimAggregate struct {
 // ExplorerMatchesQueryRequest : corps de POST matches-query.
 // Accepte les mêmes filtres que MatchHistoryQueryRequest.
 type ExplorerMatchesQueryRequest struct {
-	Filters    FilterContextInput `json:"filters"`
-	Pagination PaginationRequest  `json:"pagination"`
-	SortField  string             `json:"sort_field"`
-	SortDir    string             `json:"sort_dir"`
+	Filters           FilterContextInput `json:"filters"`
+	Pagination        PaginationRequest  `json:"pagination"`
+	SortField         string             `json:"sort_field"`
+	SortDir           string             `json:"sort_dir"`
+	IncludeExportHint bool               `json:"include_export_hint,omitempty"`
+	// PerfTiers filtre par palier de performance (1=Excellent … 5=Mauvais).
+	// Liste vide = pas de filtre.
+	PerfTiers []int `json:"perf_tiers,omitempty"`
+	// SkillTiers filtre par tier skill ("Bronze"…"Onyx"). Requiert RankedContext.
+	SkillTiers []string `json:"skill_tiers,omitempty"`
+	// RankedContext : "ranked" | "unranked" | "" (tous). Requiert pour activer SkillTiers.
+	RankedContext string `json:"ranked_context,omitempty"`
+	// OutcomeFilter : codes résultat acceptés (1=Égalité,2=Victoire,3=Défaite,4=Abandon).
+	OutcomeFilter []int `json:"outcome_filter,omitempty"`
+	// Filtres Explorer additionnels (date, type d'expérience, playlist, carte, mode, squad, match ID).
+	MatchStartDate  *time.Time `json:"match_start_date,omitempty"`
+	MatchEndDate    *time.Time `json:"match_end_date,omitempty"`
+	ExperienceTypes []string   `json:"experience_types,omitempty"`
+	Playlists       []string   `json:"playlists,omitempty"`
+	MapNames        []string   `json:"map_names,omitempty"`
+	ModeNames       []string   `json:"mode_names,omitempty"`
+	SquadScope      string     `json:"squad_scope,omitempty"`
+	MatchIDSearch   string     `json:"match_id_search,omitempty"`
+	// MatchIDs : whitelist exacte de match_id à conserver (Explorer mode Joueur).
+	MatchIDs []string `json:"match_ids,omitempty"`
 }
 
 // ExplorerMatchesRow : une ligne dans la liste des matchs filtrés (Explorer).
@@ -83,11 +128,45 @@ type ExplorerMatchesRow struct {
 	IsWithFriends       bool      `json:"is_with_friends"`
 	ExperienceTypeLabel string    `json:"experience_type_label"`
 	MatchURL            string    `json:"match_url"`
+	// Combat stats
+	Kills   int `json:"kills,omitempty"`
+	Deaths  int `json:"deaths,omitempty"`
+	Assists int `json:"assists,omitempty"`
+	// PerfScore : score de performance 0-100 (nil si non calculé).
+	PerfScore *int `json:"perf_score,omitempty"`
+	// PerfTier : palier de performance 1-5 (0 si score absent).
+	PerfTier int `json:"perf_tier,omitempty"`
+	// DeltaPerf : déviation du score de perf depuis la médiane (perf_score - 50).
+	DeltaPerf *int `json:"delta_perf,omitempty"`
+	// SkillTierLabel : label formaté du tier ranked/LUSR (ex. "Diamant IV"), nil si absent.
+	SkillTierLabel *string `json:"skill_tier_label,omitempty"`
+	// DeltaMMR : variation de MMR/CSR/LUSR pour ce match (nil si non rankée).
+	DeltaMMR *float64 `json:"delta_mmr,omitempty"`
+	// TeamMMR : MMR moyen de l'équipe du joueur sur ce match (nil si non rankée).
+	TeamMMR *float64 `json:"team_mmr,omitempty"`
+	// EnemyMMR : MMR moyen de l'équipe adverse sur ce match (nil si non rankée).
+	EnemyMMR *float64 `json:"enemy_mmr,omitempty"`
+	// KDA : ratio (Kills + Assists/3) / Deaths — calculé côté backend.
+	KDA *float64 `json:"kda,omitempty"`
+	// DurationSeconds : durée du match en secondes (nil si manquante).
+	DurationSeconds *int `json:"duration_seconds,omitempty"`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.
 type ExplorerMatchesSummary struct {
 	TotalMatches int `json:"total_matches"`
+	// Options disponibles pour les filtres Explorer (valeurs distinctes triées).
+	AvailableExperienceTypes []string `json:"available_experience_types,omitempty"`
+	AvailablePlaylists       []string `json:"available_playlists,omitempty"`
+	AvailableMaps            []string `json:"available_maps,omitempty"`
+	AvailableModes           []string `json:"available_modes,omitempty"`
+	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR).
+	// Permettent au front d'afficher "Win (42)" et de griser les options à 0.
+	AvailableOutcomes       []LabelValue `json:"available_outcomes,omitempty"`
+	AvailablePerfTiers      []LabelValue `json:"available_perf_tiers,omitempty"`
+	AvailableSkillTiers     []LabelValue `json:"available_skill_tiers,omitempty"`
+	AvailableRankedContexts []LabelValue `json:"available_ranked_contexts,omitempty"`
+	AvailableSquadScopes    []LabelValue `json:"available_squad_scopes,omitempty"`
 }
 
 // ExplorerMatchesTable : table paginée de l'Explorer.
@@ -98,8 +177,9 @@ type ExplorerMatchesTable struct {
 
 // ExplorerMatchesQueryResponse : réponse de POST matches-query.
 type ExplorerMatchesQueryResponse struct {
-	Summary ExplorerMatchesSummary `json:"summary"`
-	Table   ExplorerMatchesTable   `json:"table"`
+	Summary    ExplorerMatchesSummary `json:"summary"`
+	Table      ExplorerMatchesTable   `json:"table"`
+	ExportHint *ExportHint            `json:"export_hint,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

@@ -24,7 +24,7 @@
  */
 import { useEffect } from 'react'
 
-import { useGlobalFilterStore, type SessionKind } from '@/stores/globalFilterStore'
+import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import {
   DEFAULT_CASCADE,
   DEFAULT_PERIOD,
@@ -40,20 +40,13 @@ export interface UseSessionSnapParams {
    * Le caller pré-filtre par `is_squad === false` (solo) ou `=== true` (squad).
    */
   sessions: SessionOption[]
-  /** Détermine quel tracker store mettre à jour. */
-  kind: SessionKind
 }
 
-export function useSessionSnap({ sessions, kind }: UseSessionSnapParams): void {
+export function useSessionSnap({ sessions }: UseSessionSnapParams): void {
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const setFilterContext = useGlobalFilterStore((s) => s.setFilterContext)
-  const lastKnownSolo = useGlobalFilterStore((s) => s.lastKnownLatestSoloSessionId)
-  const lastKnownSquad = useGlobalFilterStore((s) => s.lastKnownLatestSquadSessionId)
-  const setLastKnownSolo = useGlobalFilterStore((s) => s.setLastKnownLatestSoloSessionId)
-  const setLastKnownSquad = useGlobalFilterStore((s) => s.setLastKnownLatestSquadSessionId)
-
-  const lastKnown = kind === 'solo' ? lastKnownSolo : lastKnownSquad
-  const setLastKnown = kind === 'solo' ? setLastKnownSolo : setLastKnownSquad
+  const lastKnown = useGlobalFilterStore((s) => s.lastKnownLatestSessionId)
+  const setLastKnown = useGlobalFilterStore((s) => s.setLastKnownLatestSessionId)
 
   useEffect(() => {
     const latest = sessions[0]
@@ -73,7 +66,7 @@ export function useSessionSnap({ sessions, kind }: UseSessionSnapParams): void {
         },
       })
       setLastKnown(latest.session_id)
-      log.debug(`session_snap:fresh kind=${kind} session=${latest.session_id}`)
+      log.debug(`session_snap:fresh session=${latest.session_id}`)
       return
     }
 
@@ -101,6 +94,6 @@ export function useSessionSnap({ sessions, kind }: UseSessionSnapParams): void {
       },
     })
     setLastKnown(latest.session_id)
-    log.debug(`session_snap:fallback kind=${kind} session=${latest.session_id}`)
-  }, [sessions, filterContext, setFilterContext, lastKnown, setLastKnown, kind])
+    log.debug(`session_snap:fallback session=${latest.session_id}`)
+  }, [sessions, filterContext, setFilterContext, lastKnown, setLastKnown])
 }

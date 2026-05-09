@@ -49,8 +49,7 @@ const NON_DEFAULT_CASCADE: CascadeInput = {
 
 function resetStore() {
   useGlobalFilterStore.getState().resetFilters()
-  useGlobalFilterStore.getState().setLastKnownLatestSoloSessionId(null)
-  useGlobalFilterStore.getState().setLastKnownLatestSquadSessionId(null)
+  useGlobalFilterStore.getState().setLastKnownLatestSessionId(null)
 }
 
 describe('useSessionSnap', () => {
@@ -60,35 +59,35 @@ describe('useSessionSnap', () => {
 
   it('sessions vide → no-op (ne snap pas, ne touche pas le store)', () => {
     const before = useGlobalFilterStore.getState().filterContext
-    renderHook(() => useSessionSnap({ sessions: [], kind: 'solo' }))
+    renderHook(() => useSessionSnap({ sessions: [] }))
     const after = useGlobalFilterStore.getState().filterContext
     expect(after).toEqual(before)
   })
 
-  it('jamais hydraté + pas de filtre → snap fallback sur latest solo, cascade DEFAULT préservée', () => {
-    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD], kind: 'solo' }))
+  it('jamais hydraté + pas de filtre → snap fallback sur latest, cascade DEFAULT préservée', () => {
+    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD] }))
     const state = useGlobalFilterStore.getState()
     expect(state.filterContext.filter_mode).toBe('sessions')
     expect(state.filterContext.sessions!.picked_sessions).toEqual([SOLO_LATEST.label])
-    expect(state.lastKnownLatestSoloSessionId).toBe(SOLO_LATEST.session_id)
+    expect(state.lastKnownLatestSessionId).toBe(SOLO_LATEST.session_id)
   })
 
   it('jamais hydraté + cascade user posée → snap fallback préserve la cascade', () => {
     useGlobalFilterStore.getState().setCascade(NON_DEFAULT_CASCADE)
-    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST], kind: 'solo' }))
+    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST] }))
     const state = useGlobalFilterStore.getState()
     expect(state.filterContext.sessions!.picked_sessions).toEqual([SOLO_LATEST.label])
     expect(state.filterContext.cascade!.playlists).toEqual(['ranked'])
     expect(state.filterContext.cascade!.experience_types).toEqual(['pvp'])
   })
 
-  it('nouvelle session solo détectée → reset TOTAL : cascade + période + sessions wipées', () => {
+  it('nouvelle session détectée → reset TOTAL : cascade + période + sessions wipées', () => {
     // Setup : tracker hydraté sur ancienne session, cascade et période posées
-    useGlobalFilterStore.getState().setLastKnownLatestSoloSessionId(SOLO_OLD.session_id)
+    useGlobalFilterStore.getState().setLastKnownLatestSessionId(SOLO_OLD.session_id)
     useGlobalFilterStore.getState().setCascade(NON_DEFAULT_CASCADE)
     useGlobalFilterStore.getState().setPeriod({ start_date: '2026-04-01', end_date: '2026-04-30' })
 
-    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD], kind: 'solo' }))
+    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD] }))
 
     const state = useGlobalFilterStore.getState()
     expect(state.filterContext.sessions!.picked_sessions).toEqual([SOLO_LATEST.label])
@@ -96,23 +95,23 @@ describe('useSessionSnap', () => {
     expect(state.filterContext.cascade!.experience_types).toEqual([]) // wipé
     expect(state.filterContext.period!.start_date).toBeNull() // wipé
     expect(state.filterContext.period!.end_date).toBeNull() // wipé
-    expect(state.lastKnownLatestSoloSessionId).toBe(SOLO_LATEST.session_id)
+    expect(state.lastKnownLatestSessionId).toBe(SOLO_LATEST.session_id)
   })
 
   it('pas de nouvelle session + période custom posée → no-op (cascade + période préservées)', () => {
-    useGlobalFilterStore.getState().setLastKnownLatestSoloSessionId(SOLO_LATEST.session_id)
+    useGlobalFilterStore.getState().setLastKnownLatestSessionId(SOLO_LATEST.session_id)
     useGlobalFilterStore.getState().setCascade(NON_DEFAULT_CASCADE)
     useGlobalFilterStore.getState().setPeriod({ start_date: '2026-04-01', end_date: '2026-04-30' })
 
     const beforeCtx = useGlobalFilterStore.getState().filterContext
-    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD], kind: 'solo' }))
+    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD] }))
     const afterCtx = useGlobalFilterStore.getState().filterContext
 
     expect(afterCtx).toEqual(beforeCtx) // strictly no change
   })
 
-  it('pas de nouvelle session + sélection solo courante valide → no-op (cascade préservée)', () => {
-    useGlobalFilterStore.getState().setLastKnownLatestSoloSessionId(SOLO_LATEST.session_id)
+  it('pas de nouvelle session + sélection courante valide → no-op (cascade préservée)', () => {
+    useGlobalFilterStore.getState().setLastKnownLatestSessionId(SOLO_LATEST.session_id)
     useGlobalFilterStore.getState().setCascade(NON_DEFAULT_CASCADE)
     useGlobalFilterStore.getState().setSessions({
       picked_sessions: [SOLO_OLD.label],
@@ -120,55 +119,27 @@ describe('useSessionSnap', () => {
     })
 
     const beforeCtx = useGlobalFilterStore.getState().filterContext
-    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD], kind: 'solo' }))
+    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD] }))
     const afterCtx = useGlobalFilterStore.getState().filterContext
 
-    // Sélection solo "old" valide → on respecte. Cascade préservée.
     expect(afterCtx.sessions!.picked_sessions).toEqual([SOLO_OLD.label])
     expect(afterCtx.cascade!.playlists).toEqual(['ranked'])
     expect(afterCtx).toEqual(beforeCtx)
   })
 
-  it('sélection courante d\'un autre kind (squad sur /stats) → snap fallback préserve cascade', () => {
-    useGlobalFilterStore.getState().setLastKnownLatestSoloSessionId(SOLO_LATEST.session_id)
+  it('sélection courante invalide (hors liste) → snap fallback préserve cascade', () => {
+    useGlobalFilterStore.getState().setLastKnownLatestSessionId(SOLO_LATEST.session_id)
     useGlobalFilterStore.getState().setCascade(NON_DEFAULT_CASCADE)
-    // Sélection sur la session squad — pas dans la liste solo passée au hook.
+    // Sélection sur une session absente de la liste passée au hook.
     useGlobalFilterStore.getState().setSessions({
       picked_sessions: [SQUAD_LATEST.label],
       gap_minutes: DEFAULT_GAP_MINUTES,
     })
 
-    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD], kind: 'solo' }))
+    renderHook(() => useSessionSnap({ sessions: [SOLO_LATEST, SOLO_OLD] }))
 
     const state = useGlobalFilterStore.getState()
     expect(state.filterContext.sessions!.picked_sessions).toEqual([SOLO_LATEST.label])
-    // Fallback préserve la cascade (pas de nouvelle session, juste fix de cohérence)
     expect(state.filterContext.cascade!.playlists).toEqual(['ranked'])
-  })
-
-  it('kind=squad : snap met à jour le tracker squad uniquement', () => {
-    useGlobalFilterStore.getState().setLastKnownLatestSoloSessionId('solo-X')
-
-    renderHook(() => useSessionSnap({ sessions: [SQUAD_LATEST], kind: 'squad' }))
-
-    const state = useGlobalFilterStore.getState()
-    expect(state.filterContext.sessions!.picked_sessions).toEqual([SQUAD_LATEST.label])
-    expect(state.lastKnownLatestSquadSessionId).toBe(SQUAD_LATEST.session_id)
-    // Tracker solo intact (n'a pas été touché par un snap squad)
-    expect(state.lastKnownLatestSoloSessionId).toBe('solo-X')
-  })
-
-  it('nouvelle session squad détectée → reset TOTAL pour le kind squad', () => {
-    useGlobalFilterStore.getState().setLastKnownLatestSquadSessionId('squad-prev')
-    useGlobalFilterStore.getState().setCascade(NON_DEFAULT_CASCADE)
-    useGlobalFilterStore.getState().setPeriod({ start_date: '2026-04-01', end_date: '2026-04-30' })
-
-    renderHook(() => useSessionSnap({ sessions: [SQUAD_LATEST], kind: 'squad' }))
-
-    const state = useGlobalFilterStore.getState()
-    expect(state.filterContext.sessions!.picked_sessions).toEqual([SQUAD_LATEST.label])
-    expect(state.filterContext.cascade!.playlists).toEqual([])
-    expect(state.filterContext.period!.start_date).toBeNull()
-    expect(state.lastKnownLatestSquadSessionId).toBe(SQUAD_LATEST.session_id)
   })
 })

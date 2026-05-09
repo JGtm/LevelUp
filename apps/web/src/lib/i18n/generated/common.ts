@@ -11,7 +11,7 @@ export const commonManifest = {
   "common.kpi.kda": { fr: "K/D/A", en: "K/D/A" },
   "common.kpi.kills": { fr: "Frags", en: "Kills" },
   "common.kpi.matches_count": { fr: "{n, plural, one {# match} other {# matchs}}", en: "{n, plural, one {# match} other {# matches}}" },
-  "common.outcome.dnf": { fr: "Abandon", en: "DNF" },
+  "common.outcome.dnf": { fr: "Non terminé", en: "DNF" },
   "common.outcome.loss": { fr: "Défaite", en: "Loss" },
   "common.outcome.tie": { fr: "Égalité", en: "Tie" },
   "common.outcome.win": { fr: "Victoire", en: "Win" },

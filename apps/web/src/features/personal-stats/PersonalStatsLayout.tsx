@@ -59,10 +59,9 @@ import { useSynthesisPage } from '@/features/synthesis/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
-import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { getPersonalStatsText } from './i18n'
 import { PersonalStatsContext } from './PersonalStatsContext'
-import type { FilterContextInput, LabelValue, SynthesisQueryRequest } from '@/lib/api/types'
+import type { FilterContextInput, LabelValue, SessionLabelEntry, SynthesisQueryRequest } from '@/lib/api/types'
 
 import {
   FiltresPill,
@@ -253,7 +252,14 @@ export function PersonalStatsLayout() {
         ?? []).filter((s) => !s.is_squad),
     [previewResolve, resolvedContext],
   )
-  const sessionLabels = useMemo(() => sessionOptions.map((s) => s.label), [sessionOptions])
+  const sessionLabels = useMemo<SessionLabelEntry[]>(
+    () => sessionOptions.map((s) => ({
+      label: s.label,
+      started_at: s.started_at_utc ?? '',
+      ended_at: s.ended_at_utc ?? '',
+    })),
+    [sessionOptions],
+  )
   const sessionCounts = useMemo(() => {
     const map = new Map<string, number>()
     for (const s of sessionOptions) {
@@ -264,7 +270,7 @@ export function PersonalStatsLayout() {
 
   // Snap sur la dernière session solo — politique partagée avec /squad
   // (cf. features/filters/useSessionSnap.ts pour la sémantique complète).
-  useSessionSnap({ sessions: sessionOptions, kind: 'solo' })
+  useSessionSnap({ sessions: sessionOptions })
   const getSessionCount = useMemo(
     () => (label: string) => sessionCounts.get(label),
     [sessionCounts],
@@ -426,11 +432,6 @@ export function PersonalStatsLayout() {
 
       {!isLoading && !isError && synthesisData && (
         <div className="flex flex-col gap-6 p-6">
-          {/* SessionBriefing — solo only (pas de prop squad). */}
-          {synthesisData.solo_kpis && (
-            <SessionBriefing kpis={synthesisData.solo_kpis} />
-          )}
-
           {/* Navigation onglets */}
           <div className="border-b">
             <nav className="flex gap-0">

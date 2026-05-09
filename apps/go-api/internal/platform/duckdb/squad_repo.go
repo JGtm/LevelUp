@@ -54,7 +54,7 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 }
 
 // LookupXUIDByGamertag rÃ©sout un gamertag (ILIKE, case-insensitive) vers son
-// XUID via global.xuid_aliases. Sert de fallback pour les coÃ©quipiers sÃ©lectionnÃ©s
+// XUID via shared.xuid_aliases. Sert de fallback pour les coÃ©quipiers sÃ©lectionnÃ©s
 // qui sortent du top 50 LoadTopTeammates (saisie libre dans la combobox).
 //
 // Si plusieurs aliases correspondent au mÃªme gamertag (changement de pseudo
@@ -67,12 +67,14 @@ func (r *SquadRepo) LookupXUIDByGamertag(ctx context.Context, gamertag string) (
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// global.xuid_aliases : (xuid, gamertag, last_seen_at)
+	// shared.xuid_aliases : (xuid PK, gamertag, last_seen, source, updated_at)
+	// Source canonique pour ce titre — peuplée par le sync engine. La DB globale
+	// est obsolète (migration one-shot souvent vide).
 	const q = `
 SELECT xuid
-FROM global.xuid_aliases
+FROM shared.xuid_aliases
 WHERE gamertag ILIKE ?
-ORDER BY last_seen_at DESC NULLS LAST
+ORDER BY last_seen DESC NULLS LAST
 LIMIT 1`
 
 	rows, err := r.pdb.ReadDB().Query(ctx, q, gamertag)

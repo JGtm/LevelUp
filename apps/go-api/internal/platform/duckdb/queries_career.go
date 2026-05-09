@@ -73,7 +73,11 @@ SELECT
     COALESCE(ms.map_name_fr, ms.map_name)                AS map_name_fr,
     ms.pair_name,
     COALESCE(ms.pair_name_fr, ms.pair_name)              AS pair_name_fr,
+    ms.playlist_name                                     AS playlist_name_en,
     COALESCE(ms.playlist_name_fr, ms.playlist_name)      AS playlist_name,
+    ms.map_id,
+    ms.pair_id,
+    ms.playlist_id,
     COALESCE(ms.is_firefight, FALSE)                     AS is_firefight,
     COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,
     pme.session_id,
@@ -90,7 +94,15 @@ SELECT
     p.accuracy,
     p.personal_score,
     p.avg_life_seconds                                   AS average_life_seconds,
-    p.time_played_seconds
+    p.time_played_seconds,
+    pme.performance_score,
+    NULLIF(TRIM(COALESCE(msr.tier, '')), '')             AS skill_tier,
+    NULLIF(TRIM(COALESCE(msr.tier_fr, '')), '')          AS skill_tier_fr,
+    NULLIF(TRIM(COALESCE(msr.rating_type, '')), '')      AS skill_rating_type,
+    NULLIF(TRIM(COALESCE(msr.tier_label, '')), '')       AS skill_tier_label,
+    -- Scores équipe / adverse, dérivés de p.team_id pour orienter "ma" team
+    CASE WHEN p.team_id = 0 THEN ms.team_0_score ELSE ms.team_1_score END AS my_team_score,
+    CASE WHEN p.team_id = 0 THEN ms.team_1_score ELSE ms.team_0_score END AS enemy_team_score
 FROM (
     SELECT r.match_id,
            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
@@ -98,7 +110,12 @@ FROM (
            r.map_name_fr, r.pair_name, r.pair_name_fr,
            r.playlist_name, r.playlist_name_fr,
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
-           COALESCE(r.is_ranked, FALSE)    AS is_ranked
+           COALESCE(r.is_ranked, FALSE)    AS is_ranked,
+           r.team_0_score,
+           r.team_1_score,
+           r.map_id,
+           r.pair_id,
+           r.playlist_id
     FROM shared.v_match_full r
     JOIN shared.match_participants p ON r.match_id = p.match_id
     WHERE p.xuid = ?
@@ -107,6 +124,8 @@ LEFT JOIN shared.match_participants p
     ON ms.match_id = p.match_id AND p.xuid = ?
 LEFT JOIN player_match_enrichment pme
     ON ms.match_id = pme.match_id
+LEFT JOIN match_skill_rank msr
+    ON ms.match_id = msr.match_id
 ORDER BY ms.start_time DESC`
 
 // Q6 : Career — progression de rang (dernière entrée).

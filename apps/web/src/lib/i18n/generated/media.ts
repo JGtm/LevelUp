@@ -35,7 +35,6 @@ export const mediaManifest = {
   "media.toolbar.group_aria": { fr: "Groupement de la galerie", en: "Media grouping" },
   "media.toolbar.kind_aria": { fr: "Type de média", en: "Media type" },
   "media.toolbar.liked_only_aria": { fr: "Afficher seulement les médias aimés", en: "Show liked media only" },
-  "media.toolbar.unassigned_only_aria": { fr: "Afficher seulement les médias sans match associé", en: "Show unassigned media only" },
   "media.toolbar.map_aria": { fr: "Carte de la galerie", en: "Media map" },
   "media.toolbar.mine": { fr: "Mes captures", en: "My captures" },
   "media.toolbar.mode_aria": { fr: "Mode de la galerie", en: "Media mode" },
@@ -56,6 +55,7 @@ export const mediaManifest = {
   "media.toolbar.sort.mode_asc": { fr: "Mode A→Z", en: "Mode A→Z" },
   "media.toolbar.sort_aria": { fr: "Tri de la galerie", en: "Media sorting" },
   "media.toolbar.sort_label": { fr: "Tri :", en: "Sort:" },
+  "media.toolbar.unassigned_only_aria": { fr: "Afficher seulement les médias sans match associé", en: "Show unassigned media only" },
 } as const
 
 export type MediaManifestKey = keyof typeof mediaManifest

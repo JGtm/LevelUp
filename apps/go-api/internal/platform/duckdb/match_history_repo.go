@@ -40,7 +40,11 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 			&m.MapNameFR,
 			&m.PairName,
 			&m.PairNameFR,
+			&m.PlaylistNameEN,
 			&m.PlaylistName,
+			&m.MapID,
+			&m.PairID,
+			&m.PlaylistID,
 			&m.IsFirefight,
 			&m.IsRanked,
 			&m.SessionID,
@@ -58,12 +62,28 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 			&m.PersonalScore,
 			&m.AverageLifeSeconds,
 			&m.TimePlayedSeconds,
+			&m.PerformanceScore,
+			&m.SkillTier,
+			&m.SkillTierFR,
+			&m.SkillRatingType,
+			&m.SkillTierLabel,
+			&m.MyTeamScore,
+			&m.EnemyTeamScore,
 		); err != nil {
 			return nil, fmt.Errorf("MatchHistoryRepo.LoadAll scan: %w", err)
 		}
 		results = append(results, m)
 	}
-	return results, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Enrichissement FR best-effort (mode/map/playlist) — même mécanisme que
+	// FiltersRepo (filters_repo.go applyXxxFRTranslations), nécessaire car
+	// match_registry.{map,pair,playlist}_name_fr peut être NULL.
+	applyMatchHistoryFRTranslations(ctx, r.pdb, results)
+
+	return results, nil
 }
 
 // LoadMapWinRates calcule le win_rate historique par carte (sur tous les matchs).

@@ -133,7 +133,7 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 // Filtres :
 //   - MatchIDs (requis) -> wk.match_id IN (?,...)
 //   - Gamertag XOR XUIDs -> filtre sur wk.xuid (resolution gamertag->xuid via
-//     global.xuid_aliases si Gamertag fourni)
+//     shared.xuid_aliases si Gamertag fourni)
 //
 // Note : effective_weapon_id NOT IN (0,1,2) exclu pour rester aligne avec Q16
 // (sentinel des armes "no weapon"). Quand IncludeGrenadeMelee=true on injecte
@@ -241,7 +241,7 @@ func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.Wea
   AND `)
 	sb.WriteString(alias)
 	sb.WriteString(`.xuid IN (
-      SELECT xuid FROM global.xuid_aliases WHERE gamertag = ?
+      SELECT xuid FROM shared.xuid_aliases WHERE gamertag = ?
   )`)
 	*args = append(*args, f.Gamertag)
 }
