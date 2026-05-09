@@ -108,6 +108,98 @@ func BackfillWeaponKillsForMatch(
 	return true, nil
 }
 
+// BackfillWeaponKillsForMatchAll exécute le pipeline complet pour un match,
+// traitant TOUS les participants en une seule passe (film téléchargé une fois).
+// Retourne (filmFound, error) : filmFound=false si film absent (404/410).
+func BackfillWeaponKillsForMatchAll(
+	ctx context.Context,
+	client HaloClient,
+	sharedDB *sql.DB,
+	matchID string,
+) (bool, error) {
+	// 1. Télécharger les chunks film.
+	rawChunks, found, err := client.GetMatchFilm(ctx, matchID)
+	if err != nil {
+		return false, fmt.Errorf("BackfillWeaponKillsForMatchAll film(%s): %w", matchID, err)
+	}
+	if !found {
+		_ = MarkWeaponKillsDone(sharedDB, matchID, true)
+		return false, nil
+	}
+
+	// 2. Convertir filmChunkData → analysis.ChunkData.
+	chunks := make(map[int]analysis.ChunkData, len(rawChunks))
+	for idx, fc := range rawChunks {
+		chunks[idx] = analysis.ChunkData{
+			Data:       fc.Data,
+			StartMS:    fc.StartMS,
+			DurationMS: fc.DurationMS,
+		}
+	}
+
+	// 3. Construire les timelines armes.
+	timelines, chunksSorted := analysis.BuildWeaponTimelines(chunks)
+
+	// 4. Scanner tous les fire events depuis les chunks.
+	var allFireEvents []analysis.FireEvent
+	for _, idx := range chunksSorted {
+		cd := chunks[idx]
+		evs := analysis.ScanFireEventsAll(cd.Data, cd.StartMS, cd.DurationMS)
+		allFireEvents = append(allFireEvents, evs...)
+	}
+
+	// 5. Récupérer les kills de TOUS les participants.
+	allKills, err := getAllKillsForMatch(sharedDB, matchID)
+	if err != nil {
+		return true, fmt.Errorf("BackfillWeaponKillsForMatchAll getAllKills(%s): %w", matchID, err)
+	}
+	if len(allKills) == 0 {
+		_ = MarkWeaponKillsDone(sharedDB, matchID, false)
+		return true, nil
+	}
+
+	// 6. Récupérer le mapping xuid → player_index (covers tous les participants).
+	xuidToPI, err := getXuidToPI(sharedDB, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "backfill_weapons_all: xuidToPI non disponible", "match_id", matchID, "err", err)
+		xuidToPI = map[string]int{}
+	}
+
+	// 7. Corréler kills → attributions (une seule fois, tous les kills).
+	attrs := analysis.CorrelateKillsGlobal(
+		allKills,
+		allFireEvents,
+		xuidToPI,
+		timelines.Timeline,
+		timelines.SwapPIs,
+		timelines.Timing,
+		chunksSorted,
+		matchID,
+		timelines.TimelineNS,
+	)
+
+	// 8. Récupérer les participants et insérer par xuid.
+	xuids, err := getMatchParticipantXuids(sharedDB, matchID)
+	if err != nil {
+		return true, fmt.Errorf("BackfillWeaponKillsForMatchAll getParticipants(%s): %w", matchID, err)
+	}
+
+	for _, xuid := range xuids {
+		rows := attributionsToRows(attrs, xuid)
+		if err := InsertWeaponKills(sharedDB, matchID, xuid, rows); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons_all: insert failed", "match_id", matchID, "xuid", xuid, "err", err)
+			continue
+		}
+	}
+
+	// 9. Marquer le match comme done (une seule fois, pas par xuid).
+	if err := MarkWeaponKillsDone(sharedDB, matchID, false); err != nil {
+		slog.WarnContext(ctx, "backfill_weapons_all: MarkWeaponKillsDone failed", "match_id", matchID, "err", err)
+	}
+
+	return true, nil
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Méthode SyncEngine
 // ─────────────────────────────────────────────────────────────────────────────
@@ -166,7 +258,8 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 		if ctx.Err() != nil {
 			break
 		}
-		found, procErr := BackfillWeaponKillsForMatch(ctx, client, sharedDB, matchID, e.xuid)
+		// Traiter TOUS les participants du match en une seule passe.
+		found, procErr := BackfillWeaponKillsForMatchAll(ctx, client, sharedDB, matchID)
 		if procErr != nil {
 			slog.WarnContext(ctx, "backfill_weapons: erreur match", "match_id", matchID, "err", procErr)
 			continue
@@ -193,11 +286,12 @@ func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error
 	rows, err := db.Query(`
 		SELECT
 			time_ms,
-			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END AS is_melee,
-			CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END AS is_grenade
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END) AS is_melee,
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END) AS is_grenade
 		FROM highlight_events
 		WHERE match_id = ? AND xuid = ?
 		  AND LOWER(COALESCE(event_type, '')) LIKE '%kill%'
+		GROUP BY time_ms
 		ORDER BY time_ms`, matchID, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("getKillsForPlayer: %w", err)
@@ -252,6 +346,72 @@ func getXuidToPI(db *sql.DB, matchID string) (map[string]int, error) {
 		idx++
 	}
 	return result, rows.Err()
+}
+
+// getAllKillsForMatch récupère les kills de TOUS les participants d'un match.
+// Utile pour le backfill multi-joueurs : au lieu d'appeler getKillsForPlayer
+// par xuid, on récupère une seule fois tous les kills et on itère sur les xuids.
+func getAllKillsForMatch(db *sql.DB, matchID string) ([]analysis.Kill, error) {
+	rows, err := db.Query(`
+		SELECT
+			xuid, time_ms,
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END) AS is_melee,
+			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%grenade%' THEN TRUE ELSE FALSE END) AS is_grenade
+		FROM highlight_events
+		WHERE match_id = ?
+		  AND LOWER(COALESCE(event_type, '')) LIKE '%kill%'
+		GROUP BY xuid, time_ms
+		ORDER BY time_ms`, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("getAllKillsForMatch: %w", err)
+	}
+	defer rows.Close()
+
+	var kills []analysis.Kill
+	for rows.Next() {
+		var (
+			xuid      string
+			timeMS    *int
+			isMelee   bool
+			isGrenade bool
+		)
+		if err := rows.Scan(&xuid, &timeMS, &isMelee, &isGrenade); err != nil {
+			continue
+		}
+		tms := 0
+		if timeMS != nil {
+			tms = *timeMS
+		}
+		kills = append(kills, analysis.Kill{
+			MatchID:   matchID,
+			XUID:      xuid,
+			TimeMS:    tms,
+			IsMelee:   isMelee,
+			IsGrenade: isGrenade,
+		})
+	}
+	return kills, rows.Err()
+}
+
+// getMatchParticipantXuids retourne la liste des xuids participants à un match.
+func getMatchParticipantXuids(db *sql.DB, matchID string) ([]string, error) {
+	rows, err := db.Query(`
+		SELECT DISTINCT xuid FROM match_participants WHERE match_id = ?
+		ORDER BY xuid`, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("getMatchParticipantXuids: %w", err)
+	}
+	defer rows.Close()
+
+	var xuids []string
+	for rows.Next() {
+		var xuid string
+		if err := rows.Scan(&xuid); err != nil {
+			continue
+		}
+		xuids = append(xuids, xuid)
+	}
+	return xuids, rows.Err()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

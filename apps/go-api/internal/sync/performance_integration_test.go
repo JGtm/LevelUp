@@ -27,10 +27,11 @@ func openPerfDB(t *testing.T) *sql.DB {
 		CREATE TABLE match_participants (
 			match_id VARCHAR,
 			xuid VARCHAR,
+			outcome INTEGER,
 			kills INTEGER, deaths INTEGER, assists INTEGER,
 			kda DOUBLE, accuracy DOUBLE,
 			time_played_seconds INTEGER,
-			personal_score INTEGER, damage_dealt DOUBLE,
+			personal_score INTEGER, damage_dealt DOUBLE, damage_taken DOUBLE,
 			rank INTEGER,
 			team_mmr DOUBLE, enemy_mmr DOUBLE,
 			kills_expected DOUBLE, deaths_expected DOUBLE
@@ -53,8 +54,8 @@ func seedPerfMatches(t *testing.T, db *sql.DB, n int) {
 		mid := fmt.Sprintf("m%04d", i)
 		ts := fmt.Sprintf("2025-01-%02dT%02d:00:00Z", (i/24)+1, i%24)
 		db.Exec("INSERT INTO match_registry VALUES (?, ?::TIMESTAMPTZ)", mid, ts)
-		db.Exec(`INSERT INTO match_participants VALUES (?, 'xuid1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			mid, 10+i, 5, 3, 1.5, 0.5, 600, 1000+i, 2000.0, 1, 1500.0, 1500.0, 10.0, 5.0)
+		db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kda, accuracy, time_played_seconds, personal_score, damage_dealt, damage_taken, rank, team_mmr, enemy_mmr, kills_expected, deaths_expected) VALUES (?, 'xuid1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			mid, 2, 10+i, 5, 3, 1.5, 0.5, 600, 1000+i, 2000.0, 500.0, 1, 1500.0, 1500.0, 10.0, 5.0)
 	}
 }
 
