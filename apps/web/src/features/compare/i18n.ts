@@ -2,114 +2,109 @@ export type CompareLocale = 'fr' | 'en'
 
 export interface CompareText {
   intlLocale: string
-  drawerTitle: string
-  formLabel: string
-  placeholder: string
-  submit: string
+  pageTitle: string
+  backToExplorer: string
+  searchPlaceholder: string
   emptyPrompt: string
   loading: string
-  metricColumn: string
+  vs: string
   notFoundTitle: string
   notFoundDescription: string
   errorTitle: string
   errorDescription: string
-  detailsTitle: string
   partialWarning: (gamertag: string) => string
-  close: string
-  localBadge: string
-  stats: {
-    matches: string
-    winRate: string
-    kda: string
-    kdr: string
-    accuracy: string
-    killsPerGame: string
-    currentCsr: string
-  }
+  ariaWinner: (name: string) => string
+  ariaEqual: string
+  sampleSize: (n: number) => string
+  favoriteWeapon: string
+  killsWith: (n: number) => string
+  noWeaponData: string
   metrics: Record<string, string>
 }
 
 const FR_TEXT: CompareText = {
   intlLocale: 'fr-FR',
-  drawerTitle: 'Face-à-face avec un joueur',
-  formLabel: 'Gamertag du joueur à affronter',
-  placeholder: 'Ex : HaloPlayer123',
-  submit: 'Face-à-face',
-  emptyPrompt: 'Entrez un gamertag pour lancer le face-à-face.',
+  pageTitle: 'Face-à-face',
+  backToExplorer: 'Retour à l\'Explorer',
+  searchPlaceholder: 'Rechercher un joueur…',
+  emptyPrompt: 'Recherchez un joueur pour lancer le face-à-face.',
   loading: 'Chargement de la comparaison…',
-  metricColumn: 'Métrique',
+  vs: 'vs',
   notFoundTitle: 'Joueur introuvable',
   notFoundDescription: 'Ce joueur n\'existe pas ou n\'a aucune donnée accessible.',
   errorTitle: 'Erreur',
   errorDescription: 'Impossible de récupérer la comparaison.',
-  detailsTitle: 'Face-à-face détaillé',
   partialWarning: (gamertag) => `Les données de ${gamertag} sont partielles — certaines métriques peuvent être absentes.`,
-  close: 'Fermer',
-  localBadge: 'Local',
-  stats: {
-    matches: 'Matchs',
-    winRate: 'Victoires',
-    kda: 'KDA',
-    kdr: 'K/D',
-    accuracy: 'Précision',
-    killsPerGame: 'Kills / partie',
-    currentCsr: 'CSR actuel',
-  },
+  ariaWinner: (name) => `${name} domine cette métrique`,
+  ariaEqual: 'Égalité',
+  sampleSize: (n) => `(sur ${n} parties)`,
+  favoriteWeapon: 'Arme favorite',
+  killsWith: (n) => `${n} frag${n > 1 ? 's' : ''}`,
+  noWeaponData: '—',
   metrics: {
     win_rate: 'Taux de victoire',
     kda: 'KDA',
     kdr: 'K/D',
-    kills_per_game: 'Kills / partie',
-    deaths_per_game: 'Morts / partie',
-    assists_per_game: 'Assists / partie',
+    kills_per_game: 'Frags/partie',
+    deaths_per_game: 'Morts/partie',
+    assists_per_game: 'Assistances/partie',
     accuracy: 'Précision',
-    damage_per_game: 'Dégâts / partie',
-    matches: 'Matchs joués',
+    damage_per_game: 'Dégâts/partie',
+    matches: 'Parties jouées',
     csr_current: 'CSR actuel',
     csr_best: 'Meilleur CSR',
     career_rank: 'Rang carrière',
+    rendement: 'Rendement',
+    resistance: 'Résistance',
+    perfect_kills_per_game: 'Tirs parfaits/partie',
+    max_killing_spree: 'Folie meurtrière max',
+    avg_life_secs: 'Survie moy./partie',
+    headshot_kills_per_game: 'Headshots/partie',
+    perf_ath: 'Perf. record',
+    lusr_ath: 'LUSR record',
   },
 }
 
 const EN_TEXT: CompareText = {
   intlLocale: 'en-GB',
-  drawerTitle: 'Head-to-head with a player',
-  formLabel: 'Player gamertag to face',
-  placeholder: 'E.g. HaloPlayer123',
-  submit: 'Head-to-head',
-  emptyPrompt: 'Enter a gamertag to start the head-to-head.',
+  pageTitle: 'Head-to-head',
+  backToExplorer: 'Back to Explorer',
+  searchPlaceholder: 'Search a player…',
+  emptyPrompt: 'Search a player to start the head-to-head.',
   loading: 'Loading comparison…',
-  metricColumn: 'Metric',
+  vs: 'vs',
   notFoundTitle: 'Player not found',
   notFoundDescription: 'This player does not exist or no accessible data was found.',
   errorTitle: 'Error',
   errorDescription: 'Unable to load the comparison.',
-  detailsTitle: 'Head-to-head breakdown',
   partialWarning: (gamertag) => `${gamertag} has partial data — some metrics may be missing.`,
-  close: 'Close',
-  localBadge: 'Local',
-  stats: {
-    matches: 'Matches',
-    winRate: 'Win rate',
-    kda: 'KDA',
-    kdr: 'K/D',
-    accuracy: 'Accuracy',
-    killsPerGame: 'Kills / match',
-    currentCsr: 'Current CSR',
-  },
+  ariaWinner: (name) => `${name} leads`,
+  ariaEqual: 'Tied',
+  sampleSize: (n) => `(${n} matches)`,
+  favoriteWeapon: 'Favorite weapon',
+  killsWith: (n) => `${n} kill${n > 1 ? 's' : ''}`,
+  noWeaponData: '—',
   metrics: {
     win_rate: 'Win rate',
     kda: 'KDA',
     kdr: 'K/D',
-    kills_per_game: 'Kills / match',
-    deaths_per_game: 'Deaths / match',
-    assists_per_game: 'Assists / match',
+    kills_per_game: 'Kills/game',
+    deaths_per_game: 'Deaths/game',
+    assists_per_game: 'Assists/game',
     accuracy: 'Accuracy',
-    damage_per_game: 'Damage / match',
+    damage_per_game: 'Damage/game',
     matches: 'Matches played',
     csr_current: 'Current CSR',
     csr_best: 'Best CSR',
     career_rank: 'Career rank',
+    rendement: 'Efficiency',
+    resistance: 'Toughness',
+    perfect_kills_per_game: 'Perfect kills/game',
+    max_killing_spree: 'Max killing spree',
+    avg_life_secs: 'Avg. life/game',
+    headshot_kills_per_game: 'Headshots/game',
+    perf_ath: 'Perf. all-time',
+    lusr_ath: 'LUSR all-time',
   },
 }
 
@@ -122,10 +117,6 @@ export function normalizeCompareLocale(locale?: string | null): CompareLocale {
   return locale === 'en' ? 'en' : 'fr'
 }
 
-/**
- * Mapping des clés `metrics` du dict local vers les FieldKey canoniques
- * (Phase D plan multi-titres). Une clé absente reste résolue via le dict local.
- */
 const METRIC_TO_FIELD_KEY: Record<string, string> = {
   win_rate: 'win_rate',
   kda: 'kda',
@@ -134,23 +125,6 @@ const METRIC_TO_FIELD_KEY: Record<string, string> = {
   matches: 'total_matches_played',
 }
 
-// Mapping des clés stats (résumé) → FieldKey. Phase D-bis.
-const STAT_TO_FIELD_KEY: Record<keyof CompareText['stats'], string> = {
-  matches: 'total_matches_played',
-  winRate: 'win_rate',
-  kda: 'kda',
-  kdr: 'kdr',
-  accuracy: 'accuracy',
-  killsPerGame: '',
-  currentCsr: '',
-}
-
-/**
- * Retourne le bloc CompareText pour une locale, avec override optionnel des
- * `metrics` et du résumé `stats` par les FieldMappings backend (TOML versionnés
- * Git, Phase D). Les clés sans FieldKey équivalent (killsPerGame, currentCsr)
- * conservent leur libellé local.
- */
 export function getCompareText(
   locale?: string | null,
   fieldMappings?: { fields: Record<string, { label: string }> },
@@ -160,16 +134,10 @@ export function getCompareText(
   const merged: CompareText = {
     ...base,
     metrics: { ...base.metrics },
-    stats: { ...base.stats },
   }
   for (const [metricKey, fieldKey] of Object.entries(METRIC_TO_FIELD_KEY)) {
     const canonical = fieldMappings.fields[fieldKey]?.label
     if (canonical) merged.metrics[metricKey] = canonical
-  }
-  for (const [statKey, fieldKey] of Object.entries(STAT_TO_FIELD_KEY) as [keyof typeof STAT_TO_FIELD_KEY, string][]) {
-    if (!fieldKey) continue
-    const canonical = fieldMappings.fields[fieldKey]?.label
-    if (canonical) merged.stats[statKey] = canonical
   }
   return merged
 }

@@ -1,4 +1,64 @@
 
+## [2026-05-09] Face-à-face — Vérification finale : logging + couverture tests
+
+**Statut** : Complété.
+
+**Décision** : Ajout `slog.DebugContext` dans `compare_service.go` (ATH best-effort, weapon best-effort, joueur B local vs Waypoint fallback) et `compare_repo.go` (GetFavoriteWeapon erreur non-ErrNoRows). Ajout `TestCompareRepo_GetFavoriteWeapon` (seed `shared.v_weapon_kills` + `weapon_labels`, assertions kills/labelFR/labelEN) et `TestCompareRepo_GetFavoriteWeapon_NoData` (table absente → nil sans erreur).
+
+**Résultats** : `go vet ./internal/service/... ./internal/platform/duckdb/...` propre. 8/8 TestCompareRepo verts, 11/11 TestCompare* service verts.
+
+**Prochaine étape** : Commit et PR.
+
+---
+
+## [2026-05-09] Face-à-face Phase 3 — Arme favorite + fix win_rate/accuracy
+
+**Statut** : Complété.
+
+**Branche** : `feat/compare-page-spartan-bars`.
+
+**Décision** : `GetFavoriteWeapon` en best-effort (nil si pas de données) — suit le pattern `UBigint` + lookup labels 2 étapes (shared pour top weapon, metadata pour labels). Correction bug double-multiply : `win_rate`/`accuracy` envoyés en fraction 0..1 depuis le service (le frontend * 100 à l'affichage). `sampleNote` branché sur `sample_size_b > 0 && < 10`. Section "Arme favorite" conditionnelle (affichée si au moins un des deux joueurs a des données weapon).
+
+**Fichiers** : `domain/compare.go` (+WeaponHighlight + FavoriteWeapon sur NormalizedPlayerStats), `port/repository.go` (GetFavoriteWeapon), `compare_repo.go` (impl + lookupWeaponLabelCompare), `compare_service.go` (appel + fix win_rate/accuracy), `types.ts` (WeaponHighlight + sample_size_b + champs Phase 2), `i18n.ts` (favoriteWeapon/killsWith/noWeaponData FR+EN), `ComparePage.tsx` (sampleNote + section arme).
+
+**Résultats** : `go build/vet ./...` propre, `tsc -b` propre, tests duckdb+service+domain+port verts.
+
+**Prochaine étape** : Plan complet (Phase 1+2+3) terminé — envisager commit et PR.
+
+---
+
+## [2026-05-09] Face-à-face Phase 2 — Métriques enrichies Go backend
+
+**Statut** : Complété.
+
+**Branche** : `feat/compare-page-spartan-bars`.
+
+**Décision** : 9 nouvelles métriques ajoutées dans `buildMetrics` (rendement, résistance, dégâts subis, tirs parfaits, folie meurtrière max, survie moy., headshots, perf ATH, LUSR ATH). Architecture `GetPlayerATH` séparée : lit depuis `pdb.Player` (stats.duckdb du joueur A uniquement) pour éviter la contamination cross-player. `SampleSizeB` propagé globalement depuis `b.Matches` quand `b.IsLocal = true`. CSR/CareerRank du joueur A fixés via merge post-ATH dans le service.
+
+**Fichiers** : `domain/compare.go` (NormalizedPlayerStats + PlayerATH + SampleSizeB), `port/repository.go` (GetPlayerATH), `compare_repo.go` (nouvelles colonnes + medals JOIN + GetPlayerATH), `compare_provider.go` (TotalDamageTaken), `compare_service.go` (ATH merge + buildMetrics 21 métriques + lessIsBetter), `repos_extra_test.go` (tests Phase 2), `compare_service_test.go` (mock GetPlayerATH).
+
+**Résultats** : `go build ./...`, `go vet ./...`, `go test ./internal/platform/duckdb/... ./internal/service/...` — tous verts. Échec flaky `internal/api/handlers` sur FS Windows (tempdir) non lié aux changements.
+
+**Prochaine étape** : Phase 3 — arme favorite (`GetFavoriteWeapon`, `WeaponHighlight`, section frontend).
+
+---
+
+## [2026-05-09] Face-à-face Phase 1 — Page dédiée + barres SpartanRecord
+
+**Statut** : Complété.
+
+**Branche** : `feat/compare-page-spartan-bars` (depuis `fix/explorer-modes-context-pills`).
+
+**Décision** : Remplacement du drawer par une page dédiée `/players/$playerSlug/compare?target=X`. `GamertagCombobox` (max=1) remplace le formulaire custom — même UX que l'Explorer. `CompareBar` à barre 50/50 avec tokens `compare-a`/`compare-b`. Deux modes : avec `?target` (auto-launch + breadcrumb Explorer) et sans (formulaire vide, menu L1 Communauté).
+
+**Fichiers** : `CompareBar.tsx` (nouveau), `ComparePage.tsx` (ex-CompareSurface), `i18n.ts` (terminologie FR correcte — frags/taux de victoire/etc.), route `compare.tsx`, suppression `CompareDrawer.tsx` + `CompareSurface.tsx`. `CareerPage`, `SquadLayout`, `PalmaresComparePage` nettoyés.
+
+**Résultats** : `tsc -b` propre, lint 0 erreur sur nos fichiers.
+
+**Prochaine étape** : Phase 2 Go — métriques enrichies (rendement, résistance, tirs parfaits, folie meurtrière, survie, headshots, perf ATH, LUSR ATH) + fix CSR local.
+
+---
+
 ## [2026-05-09] CompareRepo : accuracy × 100 — normalisation manquante
 
 **Statut** : Complété.

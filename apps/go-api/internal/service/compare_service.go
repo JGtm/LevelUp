@@ -1,13 +1,14 @@
 // Package service — compare_service.go : comparaison joueur vs joueur.
 //
 // Sprint 54 C : CompareService avec chargement parallèle via errgroup.
-// Joueur A : données DuckDB (CompareRepository).
+// Joueur A : données DuckDB (CompareRepository) + ATH depuis stats.duckdb.
 // Joueur B : Waypoint (PlayerStatsProvider) + fallback DuckDB si connu localement.
 package service
 
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 
 	"levelup/go-api/internal/domain"
@@ -36,26 +37,44 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	}
 
 	var statsA, statsB *domain.NormalizedPlayerStats
+	var ath *domain.PlayerATH
 	g, gctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		var err error
 		statsA, err = s.repo.GetLocalStats(gctx, s.xuidA, s.titleSlug)
-		return err
+		if err != nil {
+			return err
+		}
+		statsA.IsLocal = true
+		// ATH depuis stats.duckdb — best-effort (non-fatal si absent).
+		var athErr error
+		ath, athErr = s.repo.GetPlayerATH(gctx)
+		if athErr != nil {
+			slog.DebugContext(gctx, "CompareService: ATH non disponible (best-effort)", "xuid", s.xuidA, "err", athErr)
+		}
+		// Arme favorite depuis shared.weapon_kills — best-effort.
+		var wErr error
+		statsA.FavoriteWeapon, wErr = s.repo.GetFavoriteWeapon(gctx, s.xuidA)
+		if wErr != nil {
+			slog.DebugContext(gctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
+		}
+		return nil
 	})
 
 	g.Go(func() error {
-		// Tenter d'abord un resolve local du gamertag B.
 		xuidB, _ := s.repo.ResolveXUID(gctx, req.TargetGamertag)
 		if xuidB != "" {
-			// Joueur B connu localement → DuckDB.
 			local, err := s.repo.GetLocalStats(gctx, xuidB, s.titleSlug)
 			if err == nil && local != nil {
+				local.IsLocal = true
 				statsB = local
+				slog.DebugContext(gctx, "CompareService: joueur B résolu localement", "gamertag", req.TargetGamertag, "xuid", xuidB)
 				return nil
 			}
 		}
 		// Fallback : Waypoint.
+		slog.DebugContext(gctx, "CompareService: joueur B non local, fallback Waypoint", "gamertag", req.TargetGamertag)
 		remote, err := s.provider.FetchRemoteStats(gctx, req.TargetGamertag, s.titleSlug)
 		if err != nil {
 			return fmt.Errorf("CompareService.GetPage: stats joueur B introuvables: %w", err)
@@ -68,6 +87,14 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		return domain.CompareResponse{}, err
 	}
 
+	// Merge ATH dans statsA (CSR, CareerRank, PerfATH, LusrATH).
+	if ath != nil {
+		statsA.CSRCurrent = ath.CSRCurrent
+		statsA.CareerRank = ath.CareerRank
+		statsA.PerfATH = ath.PerfATH
+		statsA.LusrATH = ath.LusrATH
+	}
+
 	metrics := buildMetrics(*statsA, *statsB)
 	return domain.CompareResponse{
 		PlayerA:   *statsA,
@@ -77,57 +104,98 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	}, nil
 }
 
-// buildMetrics construit les 12 CompareMetricRows à partir des deux stats.
+// buildMetrics construit les CompareMetricRows à partir des deux stats normalisées.
 func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
+	// Rendement = dégâts / frag / 225 — moins = plus efficace.
+	rendementA, rendementB := computeRendement(a), computeRendement(b)
+	// Résistance = dégâts subis / mort / 225 — plus = plus résistant.
+	resistanceA, resistanceB := computeResistance(a), computeResistance(b)
+
 	type metricDef struct {
-		key   string
-		label string
-		va    float64
-		vb    float64
+		key          string
+		label        string
+		va           float64
+		vb           float64
+		lessIsBetter bool
 	}
 	defs := []metricDef{
-		{"win_rate", "Taux de victoire", a.WinRate * 100, b.WinRate * 100},
-		{"kda", "KDA", a.KDA, b.KDA},
-		{"kdr", "K/D", a.KDR, b.KDR},
-		{"kills_per_game", "Kills / partie", a.KillsPerGame, b.KillsPerGame},
-		{"deaths_per_game", "Morts / partie", a.DeathsPerGame, b.DeathsPerGame},
-		{"assists_per_game", "Assists / partie", a.AssistsPerGame, b.AssistsPerGame},
-		{"accuracy", "Précision", a.Accuracy * 100, b.Accuracy * 100},
-		{"damage_per_game", "Dégâts / partie", a.DamagePerGame, b.DamagePerGame},
-		{"matches", "Matchs joués", float64(a.Matches), float64(b.Matches)},
-		{"csr_current", "CSR actuel", float64(a.CSRCurrent), float64(b.CSRCurrent)},
-		{"csr_best", "CSR meilleur", float64(a.CSRBest), float64(b.CSRBest)},
-		{"career_rank", "Rang Carrière", float64(a.CareerRank), float64(b.CareerRank)},
+		// win_rate et accuracy envoyés en fraction 0..1 — le frontend multiplie par 100 à l'affichage.
+		{"win_rate", "Taux de victoire", a.WinRate, b.WinRate, false},
+		{"kda", "KDA", a.KDA, b.KDA, false},
+		{"kdr", "K/D", a.KDR, b.KDR, false},
+		{"kills_per_game", "Frags / partie", a.KillsPerGame, b.KillsPerGame, false},
+		{"deaths_per_game", "Morts / partie", a.DeathsPerGame, b.DeathsPerGame, true},
+		{"assists_per_game", "Assistances / partie", a.AssistsPerGame, b.AssistsPerGame, false},
+		{"accuracy", "Précision", a.Accuracy, b.Accuracy, false},
+		{"damage_per_game", "Dégâts / partie", a.DamagePerGame, b.DamagePerGame, false},
+		{"rendement", "Rendement", rendementA, rendementB, true},
+		{"damage_taken_per_game", "Dégâts subis / partie", a.DamageTakenPerGame, b.DamageTakenPerGame, true},
+		{"resistance", "Résistance", resistanceA, resistanceB, false},
+		{"perfect_kills_per_game", "Tirs parfaits / partie", a.PerfectKillsPerGame, b.PerfectKillsPerGame, false},
+		{"max_killing_spree", "Folie meurtrière max", float64(a.MaxKillingSpree), float64(b.MaxKillingSpree), false},
+		{"avg_life_secs", "Survie moy. / partie", a.AvgLifeSecs, b.AvgLifeSecs, false},
+		{"headshot_kills_per_game", "Headshots / partie", a.HeadshotKillsPerGame, b.HeadshotKillsPerGame, false},
+		{"matches", "Parties", float64(a.Matches), float64(b.Matches), false},
+		{"csr_current", "CSR actuel", float64(a.CSRCurrent), float64(b.CSRCurrent), false},
+		{"csr_best", "CSR meilleur", float64(a.CSRBest), float64(b.CSRBest), false},
+		{"career_rank", "Rang Carrière", float64(a.CareerRank), float64(b.CareerRank), false},
+		{"perf_ath", "Perf. record", a.PerfATH, b.PerfATH, false},
+		{"lusr_ath", "LUSR record", a.LusrATH, b.LusrATH, false},
+	}
+
+	// SampleSizeB non nul uniquement si B est un joueur local croisé.
+	sampleSizeB := 0
+	if b.IsLocal {
+		sampleSizeB = b.Matches
 	}
 
 	rows := make([]domain.CompareMetricRow, 0, len(defs))
 	for _, d := range defs {
 		delta := d.vb - d.va
-		winner := "tie"
-		// Pour deaths_per_game : moins = mieux.
-		if d.key == "deaths_per_game" {
-			if d.va < d.vb {
-				winner = "a"
-			} else if d.vb < d.va {
-				winner = "b"
-			}
-		} else {
-			if math.Abs(delta) > 0.001 {
-				if d.va > d.vb {
-					winner = "a"
-				} else {
-					winner = "b"
-				}
-			}
-		}
+		winner := computeWinner(d.va, d.vb, d.lessIsBetter)
 		rows = append(rows, domain.CompareMetricRow{
-			Metric:  d.key,
-			LabelFR: d.label,
-			ValueA:  d.va,
-			ValueB:  d.vb,
-			Delta:   delta,
-			Winner:  winner,
+			Metric:      d.key,
+			LabelFR:     d.label,
+			ValueA:      d.va,
+			ValueB:      d.vb,
+			Delta:       delta,
+			Winner:      winner,
+			SampleSizeB: sampleSizeB,
 		})
 	}
 	return rows
+}
+
+func computeWinner(va, vb float64, lessIsBetter bool) string {
+	const eps = 0.001
+	if lessIsBetter {
+		if va < vb-eps {
+			return "a"
+		}
+		if vb < va-eps {
+			return "b"
+		}
+		return "tie"
+	}
+	if math.Abs(va-vb) <= eps {
+		return "tie"
+	}
+	if va > vb {
+		return "a"
+	}
+	return "b"
+}
+
+func computeRendement(s domain.NormalizedPlayerStats) float64 {
+	if s.KillsPerGame <= 0 {
+		return 0
+	}
+	return s.DamagePerGame / s.KillsPerGame / 225.0
+}
+
+func computeResistance(s domain.NormalizedPlayerStats) float64 {
+	if s.DeathsPerGame <= 0 {
+		return 0
+	}
+	return s.DamageTakenPerGame / s.DeathsPerGame / 225.0
 }

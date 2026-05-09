@@ -6,25 +6,56 @@ package domain
 import "fmt"
 
 // NormalizedPlayerStats est une projection normalisée des stats d'un joueur,
-// utilisée pour la comparaison multi-titre. Les champs extended permettent
-// des stats titre-spécifiques sans modifier la structure de base.
+// utilisée pour la comparaison multi-titre.
 type NormalizedPlayerStats struct {
-	TitleSlug      string         `json:"title_slug"`
-	XUID           string         `json:"xuid"`
-	Gamertag       string         `json:"gamertag"`
-	Matches        int            `json:"matches"`
-	WinRate        float64        `json:"win_rate"`
-	KDA            float64        `json:"kda"`
-	KDR            float64        `json:"kdr"`
-	KillsPerGame   float64        `json:"kills_per_game"`
-	DeathsPerGame  float64        `json:"deaths_per_game"`
-	AssistsPerGame float64        `json:"assists_per_game"`
-	Accuracy       float64        `json:"accuracy"`
-	DamagePerGame  float64        `json:"damage_per_game"`
-	CareerRank     int            `json:"career_rank"`
-	CSRCurrent     int            `json:"csr_current"`
-	CSRBest        int            `json:"csr_best"`
-	Extended       map[string]any `json:"extended,omitempty"`
+	TitleSlug      string  `json:"title_slug"`
+	XUID           string  `json:"xuid"`
+	Gamertag       string  `json:"gamertag"`
+	IsLocal        bool    `json:"is_local"`
+	Matches        int     `json:"matches"`
+	WinRate        float64 `json:"win_rate"`
+	KDA            float64 `json:"kda"`
+	KDR            float64 `json:"kdr"`
+	KillsPerGame   float64 `json:"kills_per_game"`
+	DeathsPerGame  float64 `json:"deaths_per_game"`
+	AssistsPerGame float64 `json:"assists_per_game"`
+	Accuracy       float64 `json:"accuracy"`
+	DamagePerGame  float64 `json:"damage_per_game"`
+
+	// Phase 2 — métriques enrichies.
+	DamageTakenPerGame   float64 `json:"damage_taken_per_game"`
+	PerfectKillsPerGame  float64 `json:"perfect_kills_per_game"`
+	MaxKillingSpree      int     `json:"max_killing_spree"`
+	AvgLifeSecs          float64 `json:"avg_life_secs"`
+	HeadshotKillsPerGame float64 `json:"headshot_kills_per_game"`
+
+	// ATH — disponibles uniquement pour le joueur A (local).
+	PerfATH float64 `json:"perf_ath"`
+	LusrATH float64 `json:"lusr_ath"`
+
+	// Phase 3 — arme favorite (nil pour joueur B remote).
+	FavoriteWeapon *WeaponHighlight `json:"favorite_weapon,omitempty"`
+
+	CareerRank int            `json:"career_rank"`
+	CSRCurrent int            `json:"csr_current"`
+	CSRBest    int            `json:"csr_best"`
+	Extended   map[string]any `json:"extended,omitempty"`
+}
+
+// WeaponHighlight représente l'arme favorite d'un joueur (la plus utilisée).
+type WeaponHighlight struct {
+	WeaponID int64  `json:"weapon_id"`
+	LabelFR  string `json:"label_fr"`
+	LabelEN  string `json:"label_en"`
+	Kills    int    `json:"kills"`
+}
+
+// PlayerATH regroupe les métriques all-time lues depuis stats.duckdb du joueur A.
+type PlayerATH struct {
+	CSRCurrent int
+	CareerRank int
+	PerfATH    float64
+	LusrATH    float64
 }
 
 // CompareRequest est le body de POST .../pages/compare.
@@ -43,12 +74,13 @@ func (r CompareRequest) Validate() error {
 
 // CompareMetricRow est une ligne de la table de comparaison.
 type CompareMetricRow struct {
-	Metric  string  `json:"metric"`
-	LabelFR string  `json:"label_fr"`
-	ValueA  float64 `json:"value_a"`
-	ValueB  float64 `json:"value_b"`
-	Delta   float64 `json:"delta"`  // value_b - value_a
-	Winner  string  `json:"winner"` // "a" | "b" | "tie"
+	Metric      string  `json:"metric"`
+	LabelFR     string  `json:"label_fr"`
+	ValueA      float64 `json:"value_a"`
+	ValueB      float64 `json:"value_b"`
+	Delta       float64 `json:"delta"`                   // value_b - value_a
+	Winner      string  `json:"winner"`                  // "a" | "b" | "tie"
+	SampleSizeB int     `json:"sample_size_b,omitempty"` // nb matchs B si joueur local croisé
 }
 
 // CompareResponse est la réponse de POST .../pages/compare.

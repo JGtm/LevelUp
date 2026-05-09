@@ -1,20 +1,18 @@
-import { useParams } from '@tanstack/react-router'
-
-import { Card, CardContent } from '@/components/ui/card'
-import { CompareSurface } from '@/features/compare/CompareSurface'
-
-import { PalmaresShell } from './PalmaresShell'
+import { useEffect } from 'react'
+import { useParams, useNavigate } from '@tanstack/react-router'
 
 export function PalmaresComparePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  const navigate = useNavigate()
 
-  return (
-    <PalmaresShell playerSlug={playerSlug} activeTab="compare">
-      <Card>
-        <CardContent className="pt-6">
-          <CompareSurface playerSlug={playerSlug} />
-        </CardContent>
-      </Card>
-    </PalmaresShell>
-  )
+  useEffect(() => {
+    void navigate({
+      to: '/players/$playerSlug/compare',
+      params: { playerSlug },
+      replace: true,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return null
 }
