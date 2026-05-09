@@ -1,4 +1,25 @@
 
+## [2026-05-09] Integration merge — fix/match-view-mode-ui-unify + feat/backfill-lusr-perf-medal-weights + feat/explorer-perf-rank-filters
+
+**Statut** : Complété
+
+**Décision technique** :
+- Branche `feat/integration-merge` créée depuis `fix/match-view-mode-ui-unify` (base commune à toutes branches).
+- `feat/backfill-lusr-perf-medal-weights` (8 commits) mergé en premier : base commune récente, conflits mineurs (flag `--assists-model` HEAD + flag `--weapons` backfill → les deux conservés dans `cmd_backfill.go`).
+- `feat/explorer-perf-rank-filters` (23 commits) mergé ensuite : divergence plus ancienne. Conflits résolus :
+  - `queries_match.go` (Q23/Q23b) : `LEFT JOIN shared.xuid_aliases` de l'explorer supprimé — redondant avec `v_gamertag_lookup`.
+  - `cmd_backfill.go` : flags `--assists-model` et `--weapons` fusionnés, erreur `aucun backfill sélectionné` mise à jour.
+  - `halo_client_extra_test.go` : version HEAD conservée (meilleure pratique `t.Helper()` + `blob` pré-calculé).
+  - `writes.go` : commentaire dupliqué `InsertWeaponKills` supprimé.
+  - `thought_log.md` : 3 zones de conflit (headers/bodies entrelacés des deux branches) désimbriquées manuellement.
+- Fix post-merge : `useSessionSnap.ts` (scaffolding `feat/backfill-lusr`) référençait `SessionKind` et `lastKnownLatestSoloSessionId`/`lastKnownLatestSquadSessionId` jamais implémentés dans le store → adapté au store unifié `lastKnownLatestSessionId`. Tests mis à jour en conséquence. `PersonalStatsLayout.tsx` : `sessionLabels` migré de `string[]` vers `SessionLabelEntry[]`, `SessionBriefing` avec type incompatible (`SynthesisKPIs` ≠ `KPIStats`) retiré.
+
+**Résultats** : `go test ./...` : tous verts. `tsc -b` : 0 erreur. Aucun marqueur de conflit résiduel.
+
+**Prochaine étape** : Commit du merge.
+
+---
+
 ## [2026-05-08] expected_assists pour tous les joueurs trackés dans le scoreboard
 
 **Statut** : Complété
@@ -183,7 +204,7 @@
 
 ---
 
-## [2026-05-09] Fixture pipeline sync complet — 20 tests d'intégration
+## [2026-05-08] i18n — harmonisation traduction DNF sur "Non terminé" — 20 tests d'intégration
 
 **Statut** : Complété
 
@@ -396,6 +417,154 @@ Création de `apps/go-api/internal/sync/sync_pipeline_fixture_test.go` (build ta
 
 ---
 
+## [2026-05-08] i18n — harmonisation traduction DNF sur "Non terminé"
+
+**Statut** : Complété
+
+**Décision technique** : La clé `outcome.dnf` avait 3 traductions FR incohérentes ("DNF", "Abandon", "Non terminé" selon le manifest). Standardisation sur "Non terminé" (plus exact que "Abandon" qui implique un choix volontaire) dans les 5 fichiers : `common.toml`, `explorer.toml`, leurs générés TS, et `outcomes.toml` côté Go.
+
+**Résultats** : 5 fichiers modifiés, traduction uniforme partout.
+
+**Prochaine étape** : —
+
+---
+
+## [2026-05-08] Explorer mode Joueur — badges + bouton face-à-face remontés dans la barre de recherche
+
+**Statut** : Complété
+
+**Décision technique** : Réorganisation UX du mode Joueur pour supprimer la duplication du gamertag (champ de recherche + en-tête briefing). Les badges de rencontre (`NarrativeBadge` : "Coriace", ordinal…) et le bouton "Face à face" sont déplacés à droite du `GamertagSearchInput`. L'en-tête de `ExplorerEncounterBriefing` (gamertag + badges + bouton) est supprimé ; le composant n'affiche plus que la grille de 5 KPI.
+- `GamertagSearchInput` : wrapper `w-[22ch]` (was `w-full max-w-md`) pour libérer de la place à droite.
+- `ExplorerPage` : flex-row `[input][badges][bouton]` avec helper module-level `renderEncounterBadges` + `isEncounterSemanticToken`.
+- `ExplorerEncounterBriefing` : props `gamertag`, `badges`, `onHeadToHead` supprimés, imports `NarrativeBadge`/`tokenVar`/`squadManifest`/`SemanticToken`/`MatchEncounterBadge` retirés.
+
+**Résultats** : 3 fichiers modifiés, 0 duplication gamertag dans l'UI mode Joueur.
+
+**Prochaine étape** : Vérification visuelle puis commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer table — suppression colonne wp + headers MMR sur 2 lignes
+
+**Statut** : Complété
+
+**Décision technique** : 2 tweaks UI sur `ExplorerMatchesTable` (mode Matchs + 2 tableaux ally/enemy mode Joueur, tous trois utilisent le même composant).
+1. **Suppression colonne `↗ wp`** : retrait du `ColumnDef` `id: 'waypoint'` + nettoyage de `waypointBase` (variable + dépendance useMemo) + suppression de la clé i18n `explorer.matches.col_waypoint` du manifest.
+2. **Headers "MMR équipe" / "MMR adv." sur 2 lignes** : nouveau helper `renderTwoLineHeader(label)` qui split sur le 1er espace et rend les 2 mots avec un `<br/>`. Permet de gagner de la largeur horizontale dans les colonnes MMR (au lieu d'une seule ligne `whitespace-nowrap`). Helper appliqué uniquement sur `team_mmr` et `enemy_mmr` (les autres colonnes restent inchangées).
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer mode Joueur — bandeaux "Équipe alliée/ennemie" + cleanup briefing
+
+**Statut** : Complété
+
+**Décision technique** : 2 ajustements UX sur le mode Joueur.
+1. **Bandeaux des 2 tableaux** : remplacement de "{gamertag} en allié" / "{gamertag} en ennemi" par "Équipe alliée" / "Équipe ennemie" (FR) et "Ally team" / "Enemy team" (EN). i18n `explorer.player.table_as_{ally,enemy}` simplifié (plus de variable `{gamertag}`). ExplorerPage simplifié — `t(key)` sans args. Le contextDescriptor passé au navContext garde le gamertag (pour la nav bar match-view qui affiche "Matchs avec {gamertag}").
+2. **Briefing simplifié** : suppression de la barre titre "Historique des rencontres" + le bouton Face-à-face passe sur la même ligne que le gamertag + badges, poussé à droite via `ml-auto`. Wrapper de carte conservé (border + rounded + bg) mais sans header séparé.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — propagation contextDescriptor dans le matchNavContext (mode Matchs + Joueur)
+
+**Statut** : Complété
+
+**Décision technique** : Quand on ouvre un match depuis l'Explorer, le contexte de navigation chaînée préservait déjà la liste de match_ids (prev/next via persistNavContext / sessionStorage), mais le **rappel de contexte** dans la nav bar match-view (ex: "Matchs avec X 4/12") n'était pas alimenté. Réutilisation du mécanisme existant `ContextDescriptor` (Phase 2c, déjà implémenté pour Squad/Career via `with_player` / `playlist` / `mode` / `period` / `top_matches` / etc.). Pas de nouveau type ni nouvel endpoint — juste branchement.
+
+**Modifications** :
+1. **`MatchNavSource`** : ajout de `'explorer'` (à côté de history/session/etc.) — distinction analytique pour la source.
+2. **`ExplorerMatchesTable`** : nouveau prop `contextDescriptor?: ContextDescriptor`. Propagé dans le `navContext` lors du clic ligne (en plus du `filterSpec` déjà présent). `source` passe de `'history'` à `'explorer'`.
+3. **`ExplorerPage` mode Matchs** : calcul `matchesContextDescriptor` selon le filtre dominant — priorité 1 playlist sélectionnée → `{kind:'playlist', name}` ; sinon 1 mode → `{kind:'mode', category}` ; sinon dates → `{kind:'period', from, to}` ; sinon undefined (Q25 fallback générique). Le tableau du mode Matchs reçoit ce descriptor.
+4. **`ExplorerPage` mode Joueur** : les 2 tableaux ally/enemy reçoivent `{kind:'with_player', gamertag: targetGamertag}`. Le label compact "Matchs avec X 4/12" est construit côté `match-view/descriptorLabel.ts:58` via `t.ctxWithPlayerFmt(gamertag)` — qui existe déjà.
+
+**Pourquoi ça marche sans backend ni i18n nouveau** : `descriptorLabel.ts` couvre déjà les 9 kinds définis dans `navContext.ts`. Les libellés FR/EN existent déjà dans `match-view/i18n.ts` (`ctxWithPlayerFmt`, `ctxPlaylistFmt`, `ctxModeFmt`, `ctxPeriodFromToFmt`, etc.). Aucune extension de manifest nécessaire.
+
+**Résultats** : `tsc -b` OK, `eslint src/features/explorer src/lib/match-nav` 0 erreur, `vitest run src/features/explorer src/lib/match-nav` 58/58 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer mode Joueur — 2 tableaux ally/enemy sous le briefing avec bandeau team-color
+
+**Statut** : Complété
+
+**Décision technique** : Ajouter sous le `ExplorerEncounterBriefing` deux tableaux empilés (allié au-dessus, ennemi en-dessous) reproduisant **exactement** le même rendu que `ExplorerMatchesTable` du mode Matchs, scopés respectivement aux matchs où le joueur cherché était dans la même équipe / équipe adverse. Distinction visuelle façon scoreboard (`MatchScoreboard.tsx:341-344`) : bandeau `<th colSpan>` en 1ère ligne du thead avec gradient horizontal `color-mix(in oklab, var(--ac-team-ally|enemy) 35%, transparent)`, configurable via réglages accessibilité.
+
+**Backend** : nouveau filtre `MatchIDs []string` (whitelist exacte) dans `MatchHistoryQueryRequest` et `ExplorerMatchesQueryRequest`. Helper `filterByMatchIDsWhitelist` ajouté en tête de `applyExplorerMatchFilters` (~12 lignes). Réutilise tout le pipeline existant — pas de nouvelle requête SQL, pas de duplication de service. Handler Explorer propage le champ `MatchIDs`.
+
+**Frontend** : (1) `useExplorerMatches` reçoit un 4ème argument `enabled?: boolean = true` pour permettre de skipper les requêtes des 2 nouveaux tableaux quand on n'est pas en mode Joueur ou que la liste de match_ids est vide. `match_ids` ajouté dans le `matchFiltersKey` pour différencier les 3 instances de la query côté TanStack. (2) `ExplorerMatchesTable` reçoit un nouveau prop `teamBanner?: { variant: 'ally' | 'enemy', label: string }` qui rend une `<tr>` colspan en 1ère ligne du thead avec le gradient/bordure/couleur du pattern scoreboard. (3) `ExplorerPage` mode Joueur : extraction des match_ids ally/enemy depuis `playerQuery.data.common_matches.were_teammates`, 2 `useExplorerMatches` conditionnels (skip via `enabled` flag), 2 `<ExplorerMatchesTable teamBanner={...} />` insérés en `<>...</>` après le briefing.
+
+**Layout final mode Joueur** :
+1. GamertagSearchInput
+2. EncounterBriefing (6 KPIs MatchEncountersTable)
+3. Tableau "{gamertag} en allié" (bandeau team-ally) — si matchs alliés > 0
+4. Tableau "{gamertag} en ennemi" (bandeau team-enemy) — si matchs ennemis > 0
+
+**i18n** : 2 nouvelles clés FR/EN `explorer.player.table_as_ally` (`{gamertag} en allié` / `{gamertag} as ally`) et `table_as_enemy`.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts. `tsc -b` OK, `eslint src/features/explorer` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer mode Joueur — refonte en briefing reprenant les 7 KPIs de MatchEncountersTable
+
+**Statut** : Complété
+
+**Décision technique** : Le user voulait reprendre les colonnes du tableau `MatchEncountersTable` de la page match-view (calculs + représentation) et les afficher dans Explorer mode Joueur sous forme de briefing (1 conteneur, pas un tableau — 1 cible = 1 ligne logique). Le bloc actuel "3 KPI cards + tableau historique commun" est entièrement remplacé.
+
+**6 KPIs repris** (la colonne "Rôle" allié/ennemi du tableau original ne s'applique pas hors d'un match courant) :
+1. Joueur — gamertag + badges narratifs (NarrativeBadge via squadManifest)
+2. Rencontres — `count_together` + breakdown "(A:X | E:Y)" en detail
+3. WR allié — `winrate_as_ally` (formatPercent + percentClass : ≥50% vert, sinon orange)
+4. WR ennemi — `winrate_vs_enemy` (idem)
+5. K/D croisé — `kills_dealt`/`deaths_suffered` (formatKDCross)
+6. Vu pour la dernière fois — `last_seen_at` (formatRelativeFR/EN, ex "il y a 3 j")
+
+**Backend** : `narrative.EncounterStats` était déjà calculé dans `buildEncounterStats` mais jamais exposé dans la réponse Explorer. Nouveau type `domain.ExplorerEncounterStats` (mirror partiel de `MatchEncounterRow`), helper `convertEncounterStatsToExplorer` qui projette les champs (ally/enemy counts, winrates, K/D croisé, last_seen). Ajout dans `ExplorerPlayerQueryResponse.EncounterStats`. Aucune nouvelle requête SQL — les données existaient déjà.
+
+**Frontend** : nouveau composant `apps/web/src/features/explorer/ExplorerEncounterBriefing.tsx` (~250L). Helpers `formatPercent`/`percentClass`/`formatRelativeFR/EN`/`formatKDCross` copiés à l'identique de `MatchEncountersTable.tsx` (cohérence de représentation 100%). Wrapper carte rounded + barre titre (style aligné `MatchEncountersTable`). `KpiCard` interne style SessionBriefing : label uppercase muted + valeur xl bold + detail muted. Grille responsive 2/3/5 colonnes selon viewport. Bouton "Face-à-face" intégré dans le header de la carte. 6 nouvelles clés i18n FR/EN (`explorer.encounter.{title, empty, encounters, wr_ally, wr_enemy, kd_cross, last_seen}`).
+
+**Cleanup ExplorerPage** : suppression des imports/vars/fonctions désormais inutilisés — `Badge`, `NarrativeBadge`, `EncounterBadges`, `tokenVar`, `MatchEncounterBadge`/`SquadManifestKey`/`SemanticToken`/`squadManifest`, `numberLocale`, `playerPage`/`setPlayerPage`, `totalPages`, `useNavigateToMatch`/`filterContextToMatchFilterSpec` (tout ce qui supportait l'ancien tableau historique commun + sa pagination).
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/...` tous verts. `tsc -b` OK, `eslint src/features/explorer` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché), `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — export CSV + maxPageSize 200→10000 (limite "200 matchs" résolue)
+
+**Statut** : Complété
+
+**Décision technique** :
+1. **Limite "200 matchs" levée** : `maxPageSize` Go relevée de 200 → 10000 (`domain/match_history.go:158`). Cause de la limite que voyait le user : le `Validate()` rejetait les requêtes avec `pageSize > 200`, et j'avais demandé `page_size: 200` pour Explorer (cap conservatif). Avec >700 matchs, le user était bloqué à 200. Nouveau cap 10000 = ordre de grandeur plausible historique max d'un joueur très actif. Test `pageSize_trop_grand` ajusté (201 → 10001).
+2. **Export CSV** : tout le mécanisme existait déjà côté backend (`match-history/export?token=...` avec token base64url contenant la requête). Réutilisation directe :
+   - `ExplorerMatchesQueryRequest` étendu avec `IncludeExportHint bool`
+   - `ExplorerMatchesQueryResponse` étendu avec `ExportHint *ExportHint`
+   - Handler Explorer propage `IncludeExportHint` au service match-history et appelle `encodeExportToken(mhReq)` quand demandé (même pattern que `MatchHistoryHandler.Query`)
+   - Response inclut `mhResp.ExportHint` (avec token)
+   - TS types miroir : `include_export_hint?` + `export_hint?: ExportHint`
+   - Frontend : envoie `include_export_hint: true`, bouton `<a download href="${API_BASE}/players/${slug}/pages/match-history/export?token=...">` rendu seulement quand `export_hint?.token` dispo
+3. **Endpoint d'export réutilisé** : pas besoin de nouvelle route Explorer-spécifique. Le token contient toute la `MatchHistoryQueryRequest` (filtres+tri+pagination), donc le même `Export` handler match-history fonctionne pour l'Explorer (qui délègue déjà au même service).
+4. **i18n** : nouvelle clé `explorer.matches.export_csv` FR+EN.
+5. **Bouton stylé** : `<a>` direct (pas de `Button asChild` car le composant Button local ne supporte pas asChild) avec classes alignées `inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted`.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts. `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
 ## [2026-05-08] Match-view : badges Faits marquants en colonne uniforme
 
 **Statut** : Complété
@@ -442,6 +611,279 @@ Création de `apps/go-api/internal/sync/sync_pipeline_fixture_test.go` (build ta
 **Résultats observés** : TypeScript compile sans erreur (erreur 2741 résolue après ajout des valeurs FR/EN). `NarrativeBadge` supportait déjà `title` — zéro modification du composant partagé.
 
 **Prochaine étape** : Suite du retravaill de la page Match.
+
+---
+
+1. **Bouton Réinitialiser** déplacé de sa propre ligne (sous les 2 lignes de filtres) vers la 2ème ligne (multi-selects) avec `ml-auto` pour le pousser à droite. Reste conditionnel sur `hasActiveFilter`.
+2. **Pastille Solo/Escouade** dans la cellule du tableau : reprise stricte du style `components/ui/match-card.tsx:240-258` (tuiles match home). Classes : `rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none`. Couleurs hex maintenues pour cohérence visuelle 1:1 avec l'existant : Escouade = `bg rgba(56,189,248,0.15) / fg #38bdf8` (bleu sky), Solo = `bg rgba(168,85,247,0.15) / fg #a855f7` (violet). Justification `color-allow` (commentaire inline) : ce sont des identifiants UX génériques de catégorie, pas une palette accessibility métier. La taille interne `text-[10px]` ne change pas la taille de police de la cellule (la pastille est un span inline avec sa propre taille).
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`. La question TanStack (sort/filter/visibility/pinning natifs) est laissée en réponse au user pour décision avant implémentation.
+
+---
+
+## [2026-05-08] Explorer — SaisonPill + i18n FR tri (FDA/Frags)
+
+**Statut** : Complété
+
+**Décision technique** : Deux ajustements UX.
+1. **SaisonPill** : réutilisation du composant shell `SaisonPill` (déjà exporté depuis `FilterOmnibar`) + `useActiveSeason` + `seasonToPeriod` (depuis `features/squad/useActiveSeason.ts`). Pattern aligné sur SquadLayout. La saison agit comme un raccourci sur les **inputs date locaux** (Du/Au) plutôt que sur le filterContext shell (qui est override par Explorer en `period: null`). `activeSeason` est dérivé de `(startDate, endDate)` locaux. `onSelectSeason` applique `seasonToPeriod(s)` aux setters locaux ; `onClear` vide les dates. Pas de `seasonCounts` passé : SaisonPill gère gracieusement (pas de folding count=0). State `saisonOpen` local pour le toggle de la pill.
+2. **i18n tri** : labels FR de l'option de tri rectifiés. `explorer.sort.kda_desc` : "KDA (meilleur)" → "FDA (meilleur)". `explorer.sort.kills_desc` : "Kills (plus)" → "Frags (plus)". Versions EN inchangées.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — fix réel locale FR : ResolveAssetNamesBulk via UUIDs (pattern home)
+
+**Statut** : Complété
+
+**Décision technique** : Mon précédent fix (`applyXxxFRTranslations` dupliqué de filters_repo) ne fonctionnait pas. Cause : ce mécanisme passe par les **noms EN** comme clé de lookup, ce qui échoue dès que le nom EN ne match pas exactement entre `match_registry.{map,playlist}_name` et la valeur stockée. La home page et les tuiles de match utilisent un pattern différent et fonctionnel : résolution **directe par UUID** (`map_id`, `pair_id`, `playlist_id`) via `MetadataRepo.ResolveAssetNamesBulk`.
+
+**Fix** :
+1. **Q5MatchHistory** étendue avec `r.map_id`, `r.pair_id`, `r.playlist_id` (depuis `v_match_full` → `match_registry`).
+2. `MatchHistoryRawRow` reçoit `MapID *string`, `PairID *string`, `PlaylistID *string`. Scan étendu.
+3. `match_history_fr_translations.go` réécrit complètement pour reproduire **strictement** le pattern `home_repo.go` lignes 542-608 : (a) `MetadataRepo.ResolveAssetNamesBulk(ctx, "map", mapIDs, PreferredLangsForLocale("fr"))` pour chaque kind, (b) `loadModeFRBatch` pour `mode_name_tr` (FR) couvrant les sous-modes normalisés (Slayer→Assassin), (c) application : priorité 1 mode_name_tr, fallback asset_translations.
+4. Helpers `collectDistinctIDs` (extraction stable des IDs) + `loadModeFRBatch` (lookup mode_name_tr en bulk avec timeout 3s, best-effort silencieux).
+5. Réutilise `needsHomeAssetTranslation` (déjà exporté du package) pour la condition "FR manquant ou égal à EN".
+
+**Pourquoi ça marche maintenant** : on ne dépend plus du nom EN comme jointure (fragile aux variations de casse/espaces). Les UUIDs sont stables et identiques entre `match_registry` et `asset_translations`.
+
+**Résultats** : `go build` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/duckdb/...` tous verts.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — fix tableau : pagination 12→tout, couleurs cassées tokenVar, FDA color, police réduite
+
+**Statut** : Complété
+
+**4 fixes ciblés** :
+
+1. **Pagination 12 matchs** : le filterContext global hérité du shell (FilterOmnibar) restreignait à la session active (souvent 12 matchs). Explorer = vue historique complète, donc on **override** : `filter_mode: 'period'` + `period: { null, null }` + `sessions: { picked: [] }`. On envoie aussi `pagination: { page: 1, page_size: 200 }` (max accepté par `maxPageSize` backend) pour avoir tout en une réponse — la pagination client 20/page d'`ExplorerMatchesTable` gère ensuite l'affichage. Les filtres date/exp/playlist/etc. de l'Explorer (`match_start_date`, `experience_types`...) restent intacts pour piloter le scope.
+
+2. **Couleurs cassées** (bug majeur) : j'utilisais `tokenVar()` au lieu de `tokenCssVar()` pour les `style={{ color: ... }}`. `tokenVar('perf-tier-1')` retourne `'--ac-perf-tier-1'` (le NOM de la var), pas `'var(--ac-perf-tier-1)'`. CSS recevait une string invalide → aucune couleur. Fix : remplacement systématique dans `ExplorerMatchesTable.tsx` (Perf, ΔPerf) et `ExplorerPage.tsx` (swatches MultiSelectFilter pour perf-tier et outcome).
+
+3. **Coloration FDA** : ajout via `kdScale(kda)` (pattern utilisé dans `home/HomeHeroKPIGrid.tsx`, `home/HomeSessionCarousel.tsx`, `match-view/MatchStatCards.tsx`). 3 tiers : ≥1.0 perf-tier-1 (vert), [0,1[ perf-tier-3 (jaune), <0 perf-tier-5 (rouge). Cellule passée en `font-semibold tabular-nums`.
+
+4. **Taille police réduite** : `text-sm` → `text-xs` pour la table, th passé à `text-[11px]`, padding cellules de `px-3 py-2` → `px-2 py-1.5`. Densifie l'affichage qui débordait avec 20 colonnes.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — locale FR : enrichissement à la volée map/mode/playlist (pattern filters_repo)
+
+**Statut** : Complété
+
+**Décision technique** : Le tableau Explorer affichait les noms de carte/mode/playlist en EN malgré la locale FR. Cause racine : `match_registry.{map,pair,playlist}_name_fr` est souvent NULL en DB → le `COALESCE` de Q5MatchHistory tombe sur le brut EN. Le `FiltersRepo` corrige ce problème via `applyModeFRTranslations`/`applyMapFRTranslations`/`applyPlaylistFRTranslations` qui enrichissent à la volée depuis `metadata.duckdb` (`mode_name_tr` + `asset_translations`), mais `MatchHistoryRepo.LoadAll` ne le faisait pas.
+
+**Fix** : nouveau fichier `apps/go-api/internal/platform/duckdb/match_history_fr_translations.go` qui adapte les 3 fonctions de filters_repo au type `MatchHistoryRawRow` (mêmes 3 lookups : `mode_name_tr` pour mode, `match_registry.map_id` + `asset_translations.map` pour carte, `match_registry.playlist_id` + `asset_translations.playlist` pour playlist). Best-effort comme l'original (erreurs silencieuses). Appelé depuis `MatchHistoryRepo.LoadAll` après le scan.
+
+**Pour la détection "FR manquant"**, il fallait `PlaylistNameEN` séparé du `PlaylistName` (qui contient le COALESCE-FR). Q5MatchHistory a une nouvelle colonne `ms.playlist_name AS playlist_name_en` exposant le brut EN. `MatchHistoryRawRow.PlaylistNameEN *string` ajouté + scan étendu. Pour MapName/PairName c'est OK déjà : le SELECT retourne `ms.map_name` brut + `COALESCE(map_name_fr, map_name) AS map_name_fr`, donc on peut comparer `MapName == MapNameFR` pour savoir si le FR manque.
+
+**Skill tier** : suppression du helper frontend `localizeSkillTierLabel` que j'avais introduit par erreur. La donnée vient déjà localisée du backend (cf. `sync/skill_config.go:185 FormatTierLabel` qui formate avec `tier.NameFR` pour LUSR). Le user a raison : on traduit déjà partout (home, match-view) sans helper UI car le backend stocke déjà `tier_label` en FR via le sync.
+
+**Résultats** : `go build` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/duckdb/...` tous verts (l'ajout de la colonne `playlist_name_en` dans Q5 et de `MyTeamScore`/`EnemyTeamScore` n'a pas cassé les fixtures). `tsc -b` OK, `vitest run src/features/explorer` 13/13 PASS, `eslint` 0 erreur.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — fix score (hardcodé "-"), colonne Solo/Escouade, locale FR skill_tier_label
+
+**Statut** : Complété
+
+**Décision technique** : Trois fixes ciblés sur le tableau Explorer.
+1. **Score "-" partout** : `enrichRow` retournait `ScoreLabel: "-"` hardcodé. Cause : `MatchHistoryRawRow` n'expose pas les scores team. Fix : Q5MatchHistory étendu avec `r.team_0_score`/`r.team_1_score` dans le subquery + 2 colonnes calculées en CASE WHEN sur `p.team_id` (`my_team_score`/`enemy_team_score`). `MatchHistoryRawRow` reçoit `MyTeamScore *int` + `EnemyTeamScore *int`. Scan étendu dans `match_history_repo.go`. `enrichRow` calcule `ScoreLabel = fmt.Sprintf("%d - %d", *MyTeamScore, *EnemyTeamScore)` si les deux dispos, sinon "-". Pattern aligné avec teammates_service.go ligne 1014.
+2. **Colonne Solo/Escouade** : nouvelle colonne entre Mode et Résultat, basée sur `is_with_friends` (déjà dans ExplorerMatchRow), label "Solo" / "Escouade" (FR) ou "Solo" / "Squad" (EN) via 3 nouvelles clés i18n (`col_squad`, `squad_solo`, `squad_party`).
+3. **Locale FR skill_tier_label** : la DB stocke `tier_label` en EN nativement (pas de `tier_label_fr` en schema). Fix côté frontend via helper `localizeSkillTierLabel(label, locale)` qui mappe le préfixe EN→FR via `SKILL_TIER_FR` (Bronze/Argent/Or/Platine/Diamant/Onyx) et préserve le suffixe ("Diamond IV" → "Diamant IV" en FR, inchangé en EN). Logique côté UI car la donnée n'existe pas en FR côté backend — refactor schema hors scope.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/api/handlers/... ./internal/platform/duckdb/...` tous verts (incluant les tests qui chargent Q5 — la nouvelle colonne du SELECT n'a pas cassé les fixtures `:memory:`). `tsc -b` OK, `eslint` 0 erreur, `vitest run src/features/explorer` 13/13 PASS.
+
+**Locale FR — autres champs** :
+- `mode_ui` : FR via `coalesce(r.PairNameFR, r.PairName)` côté backend ✓
+- `map_ui` : FR via `coalesce(r.MapNameFR, r.MapName)` côté backend ✓
+- `playlist_label` : FR via `COALESCE(ms.playlist_name_fr, ms.playlist_name)` dans Q5 ✓
+- `outcome_label` : FR via `t('explorer.matches.outcome_*')` côté frontend ✓
+- `skill_tier_label` : maintenant FR via helper `localizeSkillTierLabel` ✓
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — table strictement alignée sur SquadSynergyHistoryTable + colonnes manquantes
+
+**Statut** : Complété
+
+**Décision technique** : Refonte complète d'`ExplorerMatchesTable` pour matcher visuellement le `SquadSynergyHistoryTable` (template plus complet que `SquadMatchHistoryTable`). Ajout des colonnes manquantes : boutons `Ouvrir`/`↗ wp`, Frags/Morts/Assists/FDA séparés (FDA = `kda` calculé côté backend, pas une concat string), Score, Durée, MMR adverse, ΔMMR. Pattern visuel exact : thead `bg-muted border-b`, th `px-3 py-2 text-left whitespace-nowrap text-xs font-medium text-muted-foreground border-r border-border last:border-r-0`, td `px-3 py-2 whitespace-nowrap border-r border-border last:border-r-0`, hover `bg-primary/10`. **Bordures verticales** entre colonnes (`border-r last:border-r-0`) — c'est le détail clé que j'avais loupé jusqu'ici.
+
+**Backend** : `MatchHistoryRow` étendu avec `DurationSeconds *int` (mappé depuis `r.TimePlayedSeconds` dans `enrichRow`). `ExplorerMatchesRow` étendu avec `EnemyMMR *float64`, `KDA *float64`, `DurationSeconds *int`. Handler explorer mappe les 3 nouveaux champs. **Frontend** : `ExplorerMatchRow` (TS) reçoit `enemy_mmr`, `kda`, `duration_seconds`, `match_url`. 10 nouvelles clés i18n FR+EN (col_open, col_waypoint, col_kills, col_deaths, col_assists, col_kda, col_duration, col_enemy_mmr, col_delta_mmr, +regen explorer.ts).
+
+**Colonnes finales** (20 colonnes alignées Squad) :
+Ouvrir | ↗ wp | Date | Carte | Playlist | Mode | Résultat | Frags | Morts | Assists | FDA | Score | Durée | Perf | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
+
+**Helpers locaux** : `fmtMmr` (Math.round + toLocaleString), `fmtDeltaMMR` (signe + couleur via mmrDeltaScale), `fmtKDA` (.toFixed(2)), `outcomeKey`. Bouton "Ouvrir" (lien interne goToMatch) et "↗ wp" (lien externe halowaypoint.com avec `match_url` du backend en priorité, fallback construction URL). Tous deux `e.stopPropagation()` pour ne pas trigger le row click.
+
+**Résultats** : `tsc -b` OK, `eslint` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché), `vitest run src/features/explorer` 13/13 PASS, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — couverture tests des 5 fonctions computeAvailable* + MultiSelectFilter
+
+**Statut** : Complété
+
+**Décision technique** : Ajout de la couverture tests manquante après audit final delivery-checklist. (1) **`match_history_explorer_options_test.go` (~210L)** : 11 tests unitaires couvrant les 5 fonctions `computeAvailableOutcomes/PerfTiers/SkillTiers/RankedContexts/SquadScopes`. Fixture commune `fixtureExplorerRows` (8 rows variés) + helper `findCount`. Cas testés : counts sans filtre (sanity), sémantique OR au sein de la dimension (selected ∪ {X} doit augmenter le count), skill_tier conditionnel à ranked_context (counts à 0 sans contexte ranked, non-zéro avec), interaction avec autres filtres (filtres "Win" affecte counts ranked_context et squad_scope), cardinalités attendues. (2) **`MultiSelectFilter.test.tsx` (~125L)** : 6 tests vitest sur le composant étendu : rien rendu si options vide + alwaysShow=false, count affiché à droite, grayout (disabled checkbox + opacity-40) sur option à count=0 non cochée, option count=0 reste cliquable si déjà cochée (pour la décocher), toggle appelé avec la bonne value, compat sans count (pas de chiffre rendu). **Logging** : non ajouté car les 5 fonctions sont pures (slices in/out, pas d'I/O, pas de retour d'erreur) — pas de surface où loguer ferait sens.
+
+**Audit conformité** :
+- Tailles : `match_history_explorer_options.go` 225L, test 211L, `MultiSelectFilter.tsx` 127L, test 125L — tous < 500L ✓
+- Fonctions : toutes < 80L ✓
+- Architecture : fonctions pures dans `service/`, données déjà filtrées injectées en paramètre — couches respectées
+- Multi-titres : valeurs outcome (1..4) et perf tier (1..5) codées en dur, cohérent avec le reste du service (halo_infinite-spécifiques mais c'est l'existant)
+- i18n FR + EN : ✓ (8 nouvelles clés dans explorer.toml)
+- Couleurs : tokenVar uniquement, pas de hex
+- `fmt.Println`, `log.Printf` : aucun introduit
+
+**Résultats** : `go test ./internal/service -run TestComputeAvailable` → 11/11 PASS. `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` → tous verts. `go vet ./...` clean. `tsc -b` OK. `vitest run src/features/explorer` → 13/13 PASS (incluant 6 nouveaux tests MultiSelectFilter). `eslint` sur mes fichiers : 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché).
+
+**Pré-existants non liés** :
+- `TestPooledHaloClientGetCareerRank_PinnedToken` (internal/sync) — appelle un endpoint Halo réel, timeout réseau, pas dans mon scope
+- `SeasonPassPage.test.tsx` (features/palmares) — texte "Escalade principale" introuvable, pas dans mon scope
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — counts cascade-aware sur 5 dimensions Explorer-spécifiques
+
+**Statut** : Complété
+
+**Décision technique** : Étendre les options "available_*" cascade-aware (sémantique OR au sein, AND entre) aux 5 dimensions Explorer-spécifiques : `outcome`, `perf_tier`, `skill_tier`, `ranked_context`, `squad_scope`. **Option B retenue** (calcul localisé dans `MatchHistoryService.GetPage` plutôt qu'extension du shell global `FiltersService.Resolve`) car ces dimensions sont Explorer-only et le calcul est "gratuit" sur le resultset déjà chargé. Implémentation : (1) nouveau fichier `apps/go-api/internal/service/match_history_explorer_options.go` (~210L) avec 5 fonctions `computeAvailable{Outcomes,PerfTiers,SkillTiers,RankedContexts,SquadScopes}` + helpers `intSliceToSet`/`unionWithInt` ; (2) `MatchHistoryQuerySummary` étendu avec 5 nouveaux champs `[]LabelValue` ; (3) capture `baseForExplorerOptions` juste avant les filtres Explorer-spécifiques, applique tous-les-filtres-sauf-D pour calculer count(X) en simulant `selected ∪ {X}` ; (4) propagation dans `ExplorerMatchesSummary` Go + handler + TS types `ExplorerMatchesQuerySummary` ; (5) `MultiSelectFilter` étendu avec `count?: number` par option (affiché à droite tabular-nums) et grayout auto si `count=0` (sauf si déjà cochée — pour permettre de la décocher) ; (6) `<select>` ranked/squad enrichis avec `(count)` dans le label et `disabled` sur les valeurs à 0.
+
+**Sémantique précise** :
+- Multi-select (outcome, perf_tier, skill_tier) : count(X) = `filters tous appliqués` mais `D = selected ∪ {X}` → "ce que je gagnerais si je cochais X"
+- Single-select (ranked_context, squad_scope) : count(X) = `filters tous appliqués` mais `D = X` → "ce que je verrais si je forçais X"
+- skill_tier : counts à 0 si `ranked_context` vide (skill_tier nécessite un contexte ranked/unranked)
+
+**Résultats** : `go build ./...` OK, `go vet` clean, `go test ./internal/service/... ./internal/api/handlers/... ./internal/domain/...` tous verts. `tsc -b` OK, `eslint src/features/explorer` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touchés), `vitest run src/features/explorer` 7/7 PASS.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`. Si plus tard une autre page (Career, match-history) veut le même grayout, refactor mécanique = remonter ces 5 dimensions vers `AvailableFilterOptions` du shell.
+
+---
+
+## [2026-05-08] Explorer — fix recherche par gamertag : "Recherche indisponible" sur joueurs présents dans shared
+
+**Statut** : Complété
+
+**Décision technique** : Le user a signalé que la recherche par gamertag dans Explorer (mode Joueur) renvoyait systématiquement "Recherche indisponible — Le backend n'a pas pu renvoyer les informations de ce joueur" pour des joueurs effectivement présents dans `shared.match_participants` (ex: `Nilton410`, xuid `2535427927026623`). Diagnostic : `ExplorerRepo.ResolveXUIDByGamertag` interrogeait `global.xuid_aliases` (DB globale `data/global/xbox_aliases.duckdb`, ATTACHée comme alias `global` sur la connexion player). Mesure : `data/global/xbox_aliases.duckdb` contenait **0 ligne**, alors que `shared_matches_v2.duckdb`.`xuid_aliases` (la même table dans la DB partagée par-titre) contenait 15 370 entrées dont `Nilton410`. La migration one-shot `cmd/migrate-xuid-aliases-global` qui peuple la DB globale depuis chaque `shared.xuid_aliases` n'avait jamais été exécutée. Fix : route toutes les queries `global.xuid_aliases` vers `shared.xuid_aliases` (la source canonique pour ce titre, peuplée par le sync engine). Les schémas sont compatibles (`xuid VARCHAR PRIMARY KEY`, `gamertag VARCHAR`, `last_seen TIMESTAMP`). Bonus : `SquadRepo.LookupXUIDByGamertag` référençait `last_seen_at` (colonne inexistante) — corrigé en `last_seen` au passage. Repos modifiés : `explorer_repo.go` (Q ResolveXUIDByGamertag), `compare_repo.go` (GetLocalStats + ResolveXUID), `weapon_kills_repo.go` (gamertag→xuid filter), `squad_repo.go` (LookupXUIDByGamertag + fix last_seen_at), `media_repo.go` (lobby gamertags), `queries_match.go` (Q23 + Q23b match encounters). La DB globale reste ATTACHée par `pool.go` mais n'est plus interrogée par le code applicatif — décision conservatrice (pas de risque de régression sur d'autres call sites).
+
+**Résultats** : `go build -tags cgo ./...` OK, `go test -tags cgo ./internal/platform/duckdb/...` OK (7.7s), tests integration : seuls les échecs pré-existants (TestMatchViewRepo_GetMatchMedals_WithMetadataLabels, TestWeaponKillsRepo_* "capability not supported") subsistent, vérifiés par `git stash` → mêmes échecs sans mes changements.
+
+**Prochaine étape** : User redémarre le serveur Go (`tmp/server.exe` PID 10656 actuellement) pour activer le fix. Commit séparé sur `feat/explorer-perf-rank-filters` (tâche distincte de la refonte de table déjà sur la branche).
+
+---
+
+## [2026-05-08] Explorer — fix : ExplorerMatchesTable visuellement identique au SquadMatchHistoryTable
+
+**Statut** : Complété
+
+**Décision technique** : La précédente version d'`ExplorerMatchesTable` divergeait du `SquadMatchHistoryTable` (Badge pour outcome, OUTCOME_ROW_BG row tinting, hover brightness, font-medium muted on th, bg-card extra). Refonte stricte pour matcher le squad : (1) outcome rendu en **texte coloré** via `getOutcomeColor` (`fontWeight: 600`), pas de Badge ; (2) **pas de row tinting** par outcome ; (3) hover `bg-primary/10` ; (4) thead `bg-muted border-b` plain text, th `px-3 py-2 text-left whitespace-nowrap` ; (5) wrapper `rounded-md border border-border` (sans bg-card) ; (6) date via `formatDate` + `HISTORY_DATE_OPTS` (jj/mm/aa hh:mm) ; (7) labelOfMap/labelOfPlaylist via `useFieldMappings`. Colonnes finales : Date | Carte | Playlist | Mode | Résultat | FDA | Perf (color tier) | ΔPerf | Rang | ΔRang | MMR équipe — les 4 nouvelles insérées **après FDA** comme demandé. Ajout du champ `team_mmr` dans `ExplorerMatchesRow` (Go) et `ExplorerMatchRow` (TS), mappé depuis `MatchHistoryRow.TeamMMR` dans le handler. Ajout 5 clés i18n FR/EN (col_team_mmr, outcome_win/loss/draw/dnf).
+
+**Résultats** : `tsc -b` OK, `eslint src/features/explorer` 0 erreur (3 warnings pré-existants dans GamertagSearchInput non touché), `vitest run src/features/explorer` 7/7 PASS, `go test ./internal/api/... ./internal/service/... ./internal/domain/...` tous verts.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — refonte filtres/table : suppression de tous les pills, table reprise du Squad
+
+**Statut** : Complété
+
+**Décision technique** : Trois corrections demandées par le user. (1) **Plus aucun pill** : les 4 sections de chips inline (perf-tier, ranked, outcome, skill-tier) sont remplacées par des `MultiSelectFilter` (perf-tier, outcome, skill-tier en multi avec pastille de couleur ; ranked en `<select>` simple car single-select). Le composant `MultiSelectFilter` est extrait dans `apps/web/src/features/explorer/MultiSelectFilter.tsx` (props : `options: MultiSelectOption[]`, `selected: Set<string>`, `toggle`, `placeholder`, `alwaysShow`, `disabled`, `title` — chaque option peut avoir un `swatch` (CSS color) et un flag `disabled`). Les states `perfTiers`/`outcomeFilter` passent de `Set<number>` à `Set<string>` ; conversion en `number[]` au moment de l'appel API. (2) **Tableau Matchs repris du SquadMatchHistoryTable** : nouveau composant `apps/web/src/features/explorer/ExplorerMatchesTable.tsx` basé sur TanStack Table v8, mêmes classes/style que `SquadMatchHistoryTable`, mais colonnes adaptées Date | Carte | Playlist | Mode | Résultat | FDA | Perf (color tier) | ΔPerf | Rang | ΔRang. Pas de win_rate_hist. Pagination client 20/page. Lignes colorées par outcome. (3) **Date filters** : labels visibles `Du`/`Au` (i18n `explorer.filters.date_from_label`/`date_to_label`), input `endDate` reçoit `min={startDate}` pour empêcher fin < début, et si `startDate` change vers une date postérieure à `endDate` actuel, `endDate` est réinitialisé. (4) **i18n** : ajout de 6 nouvelles clés (date labels, FDA, ΔPerf, Rang, ΔRang, Rôle, K/D, selected_count avec `{n} sél.` / `{n} sel.`), manifeste TS regénéré.
+
+**Résultats** : `npm run typecheck` OK, `eslint` 0 errors 0 warnings sur les 3 fichiers modifiés/créés, `vitest run src/features/explorer` 7 tests PASS.
+
+**Prochaine étape** : Commit sur `feat/token-pool-parallel-sync`.
+
+---
+
+## [2026-05-08] Fix — Q11GamertagSearch : schema mismatch global./shared. → main
+
+**Statut** : Complété
+
+**Décision technique** : `Q11GamertagSearch` référençait `global.xuid_aliases` et `shared.match_participants` — des alias de schema qui n'existent que dans le pool player (après ATTACH de `xbox_aliases.duckdb` as `global` et `shared_matches_v2.duckdb` as `shared`). `GamertagRepo.Search` ouvre `shared_matches_v2.duckdb` directement via `OpenReadOnly` : dans ce contexte, toutes les tables sont dans `main`, sans préfixe. Le fix supprime les préfixes `global.` et `shared.` de la requête. `xuid_aliases` est confirmé dans `main` de `shared_matches_v2.duckdb` (créé dans `steps_shared.go` ligne 102).
+
+**Résultats** : `go test ./internal/platform/duckdb/...` OK (6.364s), `go test ./internal/api/handlers/... -run Gamertag` → 3 tests PASS (Search_OK, EmptyQuery, ServiceError).
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — table FDA/Perf/ΔPerf/Rang/ΔRang + multi-select dropdowns
+
+**Statut** : Complété
+
+**Décision technique** : Refonte du tableau Explorer mode Matchs et des filtres dynamiques. (1) Table : remplacement de la table simplifiée (7 colonnes) par une table style `MatchHistoryTable` avec lignes colorées par outcome et 9 colonnes — Date, Carte/Mode, Résultat, Score, FDA (kills/deaths/assists), Perf (coloré par tier), ΔPerf (perf_score - 50, vert/rouge), Rang (skill_tier_label LUSR/CSR), ΔRang (delta_mmr). (2) Filtres : les 4 sections de chips dynamiques (exp type, playlist, mode, map) remplacées par des `MultiSelectFilter` (dropdown bouton + checkboxes) intégrés dans la ligne compacte principale. (3) Go : `Deaths`/`Assists` ajoutés à `MatchHistoryRow` et `enrichRow`. `ExplorerMatchesRow` étendu avec Kills/Deaths/Assists/DeltaMMR/DeltaPerf. `DeltaPerf` = `perf_score - 50` calculé côté handler.
+
+**Résultats** : `go build ./...` OK, `go vet ./internal/...` OK, `go test ./internal/service/... ./internal/api/... ./internal/domain/...` tous verts, `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — UX padding CardContent + Enter-to-confirm GamertagSearchInput
+
+**Statut** : Complété
+
+**Décision technique** : Deux correctifs UX sur l'Explorer. (1) Padding CardContent : `CardContent` a un style par défaut `p-6 pt-0` (conçu pour s'utiliser sous un `CardHeader`). Quand utilisé seul, `pt-0` écrase toujours `py-4` car Tailwind génère les utilitaires directionnels (`pt-*`) après les raccourcis bidirectionnels (`py-*`) dans le CSS. Fix : passer `pt-4` explicitement en plus de `py-4` — Tailwind trie par échelle numérique donc `pt-4 > pt-0` gagne. Appliqué sur 4 instances dans `ExplorerPage.tsx`. (2) GamertagSearch : ajout de `handleKeyDown` sur `<Input>` — `Enter` sélectionne la première suggestion disponible ou, en dernier recours, confirme le texte brut tapé. `Escape` ferme le dropdown. Permet de chercher même quand la recherche distante échoue (503 shared DB inaccessible en dev).
+
+**Résultats** : `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — filtres match-level (date, exp type, playlist, map, mode, squad, match ID) + available options
+
+**Statut** : Complété
+
+**Décision technique** : Ajout de 8 filtres Explorer additionnels dans la chaîne `GetPage` du `MatchHistoryService`, appliqués APRÈS les filtres existants (ranked/outcome/skill/perf). Les options disponibles (valeurs distinctes triées) sont calculées sur les rows AVANT les filtres Explorer pour permettre au frontend de construire ses dropdowns multi-sélect dynamiquement. Architecture : les 8 champs sont ajoutés à `MatchHistoryQueryRequest` (domain) et `ExplorerMatchesQueryRequest` (domain), propagés dans `ExplorerHandler.QueryMatches`, et exécutés via `applyExplorerMatchFilters` (helper ≤80L) qui chaîne 7 fonctions atomiques. Les 4 `Available*` remontent dans `MatchHistoryQuerySummary` et sont projetés dans `ExplorerMatchesSummary`.
+
+**Résultats** : `go build ./...` exit 0, `go vet ./internal/...` exit 0.
+
+**Prochaine étape (frontend)** : Câblage terminé. Grille 6-colonnes avec labels + inputs texte remplacée par ligne compacte (date range + match ID + squad scope select) + sections de chips dynamiques peuplées depuis `summary.available_*`. Helper `toggleSet<T>` générique remplace les fonctions toggle redondantes. `ExplorerMatchFilters` supprimé — champs directement dans `ExplorerMatchesQueryRequest`. `go test ./internal/...` OK, `npm run typecheck` OK, 797 clés i18n.
+
+---
+
+## [2026-05-08] Explorer — filtres ranked/outcome/tier + tri étendu + colonne tier
+
+**Statut** : Complété
+
+**Décision technique** : Extension de l'Explorer avec 4 blocs de filtres supplémentaires et un tri enrichi. Go : `filterByRankedContext` (3-way : tous / ranked=CSR / unranked=LUSR), `filterByOutcome` (codes 1/2/3), `filterBySkillTier` (Bronze→Onyx, désactivé sans contexte ranked pour éviter le mélange CSR/LUSR), sorts KDA et kills ajoutés à `availableSortFields`. Q5MatchHistory étendu avec LEFT JOIN `match_skill_rank` + 4 colonnes (skill_tier, skill_tier_fr, skill_rating_type, skill_tier_label). Frontend : ranked toggle 3-way, chips outcome colorées par token sémantique, chips tier grises/disabled quand pas de contexte ranked, `<select>` centralisé pour 8 options de tri, colonne Tier dans la table, reset étendu à tous les nouveaux états.
+
+**Résultats** : `go vet ./internal/...` OK, `go test ./internal/...` OK, `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
+
+---
+
+## [2026-05-08] Explorer — filtre par palier de performance + tri + colonne perf
+
+**Statut** : Complété
+
+**Décision technique** : Réutilisation du système `PerfTier` canonique (ADR 0006, seuils 80/65/50/35) comme filtres multi-sélectifs dans l'Explorer mode Matchs. Côté Go : ajout de `pme.performance_score` dans Q5MatchHistory, propagation dans `MatchHistoryRawRow` → `enrichRow` → `MatchHistoryRow.PerfTier`, filtre `filterByPerfTiers` dans le service, champ `PerfTiers []int` dans `ExplorerMatchesQueryRequest` et `MatchHistoryQueryRequest`. Côté front : chips colorées via `tokenVar(perf-tier-N)`, sort par `performance_score_relative` avec toggle asc/desc sur les en-têtes de colonnes, colonne Perf avec score coloré par tier.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/... ./internal/platform/duckdb/... ./internal/domain/... ./internal/api/...` tous verts, `npm run typecheck` OK.
+
+**Prochaine étape** : Commit sur `feat/explorer-perf-rank-filters`.
 
 ---
 

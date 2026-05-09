@@ -100,9 +100,29 @@ en = "Enemies"
 
 # ─── Mode Matchs - Filtres ─────────────────────────────────────────────────
 
-[explorer.filters.date]
-fr = "Date"
-en = "Date"
+[explorer.filters.date_from]
+fr = "Depuis"
+en = "From"
+
+[explorer.filters.date_to]
+fr = "Jusqu'à"
+en = "To"
+
+[explorer.filters.date_from_label]
+fr = "Du"
+en = "From"
+
+[explorer.filters.date_to_label]
+fr = "Au"
+en = "To"
+
+[explorer.filters.selected_count]
+fr = "{n} sél."
+en = "{n} sel."
+
+[explorer.filters.match_id]
+fr = "ID match…"
+en = "Match ID…"
 
 [explorer.filters.context]
 fr = "Contexte"
@@ -124,33 +144,17 @@ en = "Squad"
 fr = "Type d'expérience"
 en = "Experience type"
 
-[explorer.filters.experience_placeholder]
-fr = "PvP, PvE…"
-en = "PvP, PvE…"
-
 [explorer.filters.playlist]
 fr = "Playlist"
 en = "Playlist"
-
-[explorer.filters.playlist_placeholder]
-fr = "Filtrer playlist…"
-en = "Filter playlist…"
 
 [explorer.filters.mode]
 fr = "Mode"
 en = "Mode"
 
-[explorer.filters.mode_placeholder]
-fr = "Filtrer mode…"
-en = "Filter mode…"
-
 [explorer.filters.map]
 fr = "Carte"
 en = "Map"
-
-[explorer.filters.map_placeholder]
-fr = "Filtrer carte…"
-en = "Filter map…"
 
 [explorer.filters.reset]
 fr = "Réinitialiser les filtres"
@@ -205,3 +209,287 @@ en = "Results unavailable"
 [explorer.matches.empty_description]
 fr = "La requête n'a renvoyé aucun tableau de matchs exploitable pour ce scope."
 en = "Query returned no exploitable match table for this scope."
+
+# ─── Filtre ranked context ────────────────────────────────────────────────────
+
+[explorer.filters.ranked_label]
+fr = "Classé"
+en = "Ranked"
+
+[explorer.filters.ranked_all]
+fr = "Tous"
+en = "All"
+
+[explorer.filters.ranked_ranked]
+fr = "Ranked (CSR)"
+en = "Ranked (CSR)"
+
+[explorer.filters.ranked_unranked]
+fr = "Non-ranked (LUSR)"
+en = "Unranked (LUSR)"
+
+# ─── Filtre outcome ───────────────────────────────────────────────────────────
+
+[explorer.filters.outcome_label]
+fr = "Résultat"
+en = "Outcome"
+
+[explorer.filters.outcome_win]
+fr = "Victoire"
+en = "Win"
+
+[explorer.filters.outcome_loss]
+fr = "Défaite"
+en = "Loss"
+
+[explorer.filters.outcome_tie]
+fr = "Égalité"
+en = "Tie"
+
+# ─── Filtre skill tier ────────────────────────────────────────────────────────
+
+[explorer.filters.skill_tier_label]
+fr = "Tier"
+en = "Tier"
+
+[explorer.filters.skill_tier_disabled]
+fr = "Sélectionne Ranked ou Non-ranked d'abord"
+en = "Select Ranked or Unranked first"
+
+[explorer.filters.skill_tier_bronze]
+fr = "Bronze"
+en = "Bronze"
+
+[explorer.filters.skill_tier_silver]
+fr = "Argent"
+en = "Silver"
+
+[explorer.filters.skill_tier_gold]
+fr = "Or"
+en = "Gold"
+
+[explorer.filters.skill_tier_platinum]
+fr = "Platine"
+en = "Platinum"
+
+[explorer.filters.skill_tier_diamond]
+fr = "Diamant"
+en = "Diamond"
+
+[explorer.filters.skill_tier_onyx]
+fr = "Onyx"
+en = "Onyx"
+
+# ─── Tri ──────────────────────────────────────────────────────────────────────
+
+[explorer.sort.label]
+fr = "Trier par"
+en = "Sort by"
+
+[explorer.sort.start_time_desc]
+fr = "Date (récent)"
+en = "Date (recent)"
+
+[explorer.sort.start_time_asc]
+fr = "Date (ancien)"
+en = "Date (oldest)"
+
+[explorer.sort.perf_desc]
+fr = "Perf (meilleure)"
+en = "Perf (best)"
+
+[explorer.sort.perf_asc]
+fr = "Perf (moins bonne)"
+en = "Perf (worst)"
+
+[explorer.sort.kda_desc]
+fr = "FDA (meilleur)"
+en = "KDA (best)"
+
+[explorer.sort.kills_desc]
+fr = "Frags (plus)"
+en = "Kills (most)"
+
+[explorer.sort.delta_mmr_desc]
+fr = "Delta MMR (plus haut)"
+en = "MMR delta (highest)"
+
+[explorer.sort.outcome]
+fr = "Résultat"
+en = "Outcome"
+
+# ─── Colonne tier ─────────────────────────────────────────────────────────────
+
+[explorer.matches.col_tier]
+fr = "Tier"
+en = "Tier"
+
+# ─── Filtre perf-tier ─────────────────────────────────────────────────────────
+
+[explorer.filters.perf_tier_label]
+fr = "Performance"
+en = "Performance"
+
+[explorer.filters.perf_tier_excellent]
+fr = "Excellent"
+en = "Excellent"
+
+[explorer.filters.perf_tier_bon]
+fr = "Bon"
+en = "Good"
+
+[explorer.filters.perf_tier_correct]
+fr = "Correct"
+en = "Fair"
+
+[explorer.filters.perf_tier_faible]
+fr = "Faible"
+en = "Poor"
+
+[explorer.filters.perf_tier_mauvais]
+fr = "Mauvais"
+en = "Bad"
+
+# ─── Colonne perf ─────────────────────────────────────────────────────────────
+
+[explorer.matches.col_perf]
+fr = "Perf"
+en = "Perf"
+
+[explorer.matches.perf_no_score]
+fr = "—"
+en = "—"
+
+# ─── Colonnes additionnelles tableau matchs ───────────────────────────────────
+
+[explorer.matches.col_fda]
+fr = "FDA"
+en = "KDA"
+
+[explorer.matches.col_delta_perf]
+fr = "ΔPerf"
+en = "ΔPerf"
+
+[explorer.matches.col_rank]
+fr = "Rang"
+en = "Rank"
+
+[explorer.matches.col_delta_rank]
+fr = "ΔRang"
+en = "ΔRank"
+
+[explorer.matches.col_team_mmr]
+fr = "MMR équipe"
+en = "Team MMR"
+
+[explorer.matches.col_enemy_mmr]
+fr = "MMR adv."
+en = "Enemy MMR"
+
+[explorer.matches.col_delta_mmr]
+fr = "ΔMMR"
+en = "ΔMMR"
+
+[explorer.matches.col_open]
+fr = "Ouvrir"
+en = "Open"
+
+[explorer.matches.col_kills]
+fr = "Frags"
+en = "Kills"
+
+[explorer.matches.col_deaths]
+fr = "Morts"
+en = "Deaths"
+
+[explorer.matches.col_assists]
+fr = "Assists"
+en = "Assists"
+
+[explorer.matches.col_kda]
+fr = "FDA"
+en = "KDA"
+
+[explorer.matches.col_duration]
+fr = "Durée"
+en = "Duration"
+
+[explorer.matches.export_csv]
+fr = "Exporter CSV"
+en = "Export CSV"
+
+# ─── Encounter briefing (mode Joueur — KPIs MatchEncountersTable) ─────────────
+
+[explorer.encounter.title]
+fr = "Historique des rencontres"
+en = "Encounter history"
+
+[explorer.encounter.empty]
+fr = "Aucune rencontre antérieure avec ce joueur."
+en = "No prior encounters with this player."
+
+[explorer.encounter.encounters]
+fr = "Rencontres"
+en = "Encounters"
+
+[explorer.encounter.wr_ally]
+fr = "Taux de victoire allié"
+en = "WR as ally"
+
+[explorer.encounter.wr_enemy]
+fr = "Taux de victoire ennemi"
+en = "WR as enemy"
+
+[explorer.encounter.kd_cross]
+fr = "ratio F/D croisé"
+en = "Cross K/D"
+
+[explorer.encounter.last_seen]
+fr = "Vu pour la dernière fois"
+en = "Last seen"
+
+[explorer.matches.col_squad]
+fr = "Contexte"
+en = "Context"
+
+[explorer.matches.squad_solo]
+fr = "Solo"
+en = "Solo"
+
+[explorer.matches.squad_party]
+fr = "Escouade"
+en = "Squad"
+
+[explorer.matches.outcome_win]
+fr = "Victoire"
+en = "Win"
+
+[explorer.matches.outcome_loss]
+fr = "Défaite"
+en = "Loss"
+
+[explorer.matches.outcome_draw]
+fr = "Égalité"
+en = "Tie"
+
+[explorer.matches.outcome_dnf]
+fr = "Non terminé"
+en = "DNF"
+
+# ─── Tableau mode joueur ──────────────────────────────────────────────────────
+
+[explorer.player.col_role]
+fr = "Rôle"
+en = "Role"
+
+[explorer.player.col_kd]
+fr = "K/D"
+en = "K/D"
+
+[explorer.player.table_as_ally]
+fr = "Équipe alliée"
+en = "Ally team"
+
+[explorer.player.table_as_enemy]
+fr = "Équipe ennemie"
+en = "Enemy team"

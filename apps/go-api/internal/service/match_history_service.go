@@ -31,6 +31,7 @@ var outcomeLabels = map[int]string{
 var availableSortFields = []string{
 	"start_time", "outcome_code", "performance_score_relative",
 	"team_mmr", "delta_mmr", "win_rate_hist",
+	"kda", "kills",
 }
 
 // availableColumns expose les colonnes disponibles dans MatchHistoryRow.
@@ -101,12 +102,35 @@ func (s *MatchHistoryService) GetPage(
 	filtered := filterMatchHistoryRows(rawRows, req.Filters)
 
 	// §5 plan Squad/Sessions : filtre multi-sessions solo (post-FilterContext).
-	// Garde uniquement les rows dont SessionLabel matche un label fourni.
-	// (les rows squad — IsWithFriends=TRUE — sont déjà filtrées par défaut par
-	// le filterContext si l'utilisateur a sélectionné un mode "solo".)
 	if len(req.PickedSoloSessionLabels) > 0 {
 		filtered = filterMatchHistoryRowsBySoloSessions(filtered, req.PickedSoloSessionLabels)
 	}
+
+	// Capture des rows post-cascade post-PickedSoloSessions, avant tout filtre
+	// Explorer (ranked/outcome/skill/perf + Explorer-cascade). C'est la base pour
+	// le calcul des "available_*" cascade-aware avec sémantique OR.
+	baseForExplorerOptions := filtered
+
+	// Filtres supplémentaires (ranked context, outcome, skill tier, perf tier).
+	filtered = filterByRankedContext(filtered, req.RankedContext)
+	filtered = filterByOutcome(filtered, req.OutcomeFilter)
+	filtered = filterBySkillTier(filtered, req.SkillTiers, req.RankedContext)
+	filtered = filterByPerfTiers(filtered, req.PerfTiers)
+
+	// Options Explorer disponibles calculées AVANT les filtres Explorer additionnels.
+	availExpTypes, availPlaylists, availMaps, availModes := computeExplorerAvailableOptions(filtered)
+
+	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
+	// d'une dimension, AND entre dimensions). Calculées sur baseForExplorerOptions
+	// pour que chaque dimension reflète "ce qu'on aurait si on cochait X".
+	availOutcomes := computeAvailableOutcomes(baseForExplorerOptions, req)
+	availPerfTiers := computeAvailablePerfTiers(baseForExplorerOptions, req)
+	availSkillTiers := computeAvailableSkillTiers(baseForExplorerOptions, req)
+	availRankedCtxs := computeAvailableRankedContexts(baseForExplorerOptions, req)
+	availSquadScopes := computeAvailableSquadScopes(baseForExplorerOptions, req)
+
+	// Filtres Explorer additionnels (date, experience, playlist, carte, mode, squad, match ID).
+	filtered = applyExplorerMatchFilters(filtered, req)
 
 	totalScoped := len(filtered)
 
@@ -166,10 +190,19 @@ func (s *MatchHistoryService) GetPage(
 
 	return domain.MatchHistoryPageResponse{
 		Summary: domain.MatchHistoryQuerySummary{
-			TotalMatchesScoped:     totalScoped,
-			TotalMatchesUnfiltered: totalUnfiltered,
-			PeriodLabel:            buildPeriodLabel(req.Filters),
-			ActiveFilterMode:       req.Filters.FilterMode,
+			TotalMatchesScoped:       totalScoped,
+			TotalMatchesUnfiltered:   totalUnfiltered,
+			PeriodLabel:              buildPeriodLabel(req.Filters),
+			ActiveFilterMode:         req.Filters.FilterMode,
+			AvailableExperienceTypes: availExpTypes,
+			AvailablePlaylists:       availPlaylists,
+			AvailableMaps:            availMaps,
+			AvailableModes:           availModes,
+			AvailableOutcomes:        availOutcomes,
+			AvailablePerfTiers:       availPerfTiers,
+			AvailableSkillTiers:      availSkillTiers,
+			AvailableRankedContexts:  availRankedCtxs,
+			AvailableSquadScopes:     availSquadScopes,
 		},
 		Table: domain.MatchHistoryTable{
 			Items:      pageItems,
@@ -210,6 +243,299 @@ func filterMatchHistoryRowsBySoloSessions(
 	return out
 }
 
+// filterByRankedContext restreint aux matchs ranked ("ranked") ou non-ranked ("unranked").
+// Valeur vide ou "all" = pas de filtre.
+func filterByRankedContext(rows []domain.MatchHistoryRawRow, ctx string) []domain.MatchHistoryRawRow {
+	if ctx == "" || ctx == "all" {
+		return rows
+	}
+	want := ctx == "ranked"
+	out := rows[:0:0]
+	for _, r := range rows {
+		if r.IsRanked == want {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterByOutcome garde les rows dont l'outcome figure dans la liste.
+// Liste vide = pas de filtre.
+func filterByOutcome(rows []domain.MatchHistoryRawRow, outcomes []int) []domain.MatchHistoryRawRow {
+	if len(outcomes) == 0 {
+		return rows
+	}
+	set := make(map[int]struct{}, len(outcomes))
+	for _, o := range outcomes {
+		set[o] = struct{}{}
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if _, ok := set[r.Outcome]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterBySkillTier filtre par tier ranked (CSR) ou LUSR selon rankedContext.
+// Ignoré si SkillTiers est vide ou si rankedContext est vide (évite le mélange CSR/LUSR).
+// Les tiers sont comparés case-insensitive sur le champ EN ("Diamond", "Onyx"…).
+func filterBySkillTier(rows []domain.MatchHistoryRawRow, tiers []string, rankedContext string) []domain.MatchHistoryRawRow {
+	if len(tiers) == 0 || rankedContext == "" || rankedContext == "all" {
+		return rows
+	}
+	tierSet := make(map[string]struct{}, len(tiers))
+	for _, t := range tiers {
+		tierSet[strings.ToLower(t)] = struct{}{}
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if r.SkillTier == nil {
+			continue
+		}
+		if _, ok := tierSet[strings.ToLower(*r.SkillTier)]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterByPerfTiers garde uniquement les rows dont le palier de performance
+// (calculé depuis PerformanceScore via analysis.PerfTier) figure dans tiers.
+// Liste vide = pas de filtre. Rows sans score toujours exclues quand un filtre est actif.
+func filterByPerfTiers(rows []domain.MatchHistoryRawRow, tiers []int) []domain.MatchHistoryRawRow {
+	if len(tiers) == 0 {
+		return rows
+	}
+	tierSet := make(map[int]struct{}, len(tiers))
+	for _, t := range tiers {
+		tierSet[t] = struct{}{}
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if r.PerformanceScore == nil {
+			continue
+		}
+		t := int(analysis.PerfTier(*r.PerformanceScore))
+		if _, ok := tierSet[t]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// ---------------------------------------------------------------------------
+// Filtres Explorer additionnels (date, experience, playlist, map, mode, squad, match ID)
+// ---------------------------------------------------------------------------
+
+// explorerExperienceType dérive le type d'expérience d'un MatchHistoryRawRow.
+func explorerExperienceType(r domain.MatchHistoryRawRow) string {
+	if r.IsFirefight {
+		return "PVE"
+	}
+	if r.IsRanked {
+		return "PVP classé"
+	}
+	return "PVP non classé"
+}
+
+// filterByExplorerDateRange garde les rows dont StartTime est dans [start, end].
+// nil = pas de borne. Plage inclusive.
+func filterByExplorerDateRange(rows []domain.MatchHistoryRawRow, start, end *time.Time) []domain.MatchHistoryRawRow {
+	if start == nil && end == nil {
+		return rows
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if r.StartTime == nil {
+			continue
+		}
+		t := *r.StartTime
+		if start != nil && t.Before(*start) {
+			continue
+		}
+		if end != nil && t.After(*end) {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// filterByExplorerExperienceTypes garde les rows dont le type d'expérience figure dans types.
+// Liste vide = pas de filtre.
+func filterByExplorerExperienceTypes(rows []domain.MatchHistoryRawRow, types []string) []domain.MatchHistoryRawRow {
+	if len(types) == 0 {
+		return rows
+	}
+	set := stringSliceToSet(types)
+	out := rows[:0:0]
+	for _, r := range rows {
+		if _, ok := set[explorerExperienceType(r)]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterByExplorerPlaylists garde les rows dont PlaylistName figure dans playlists.
+// Liste vide = pas de filtre.
+func filterByExplorerPlaylists(rows []domain.MatchHistoryRawRow, playlists []string) []domain.MatchHistoryRawRow {
+	if len(playlists) == 0 {
+		return rows
+	}
+	set := stringSliceToSet(playlists)
+	out := rows[:0:0]
+	for _, r := range rows {
+		if _, ok := set[derefStr(r.PlaylistName)]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterByExplorerMapNames garde les rows dont le label carte (FR > EN) figure dans maps.
+// Liste vide = pas de filtre.
+func filterByExplorerMapNames(rows []domain.MatchHistoryRawRow, maps []string) []domain.MatchHistoryRawRow {
+	if len(maps) == 0 {
+		return rows
+	}
+	set := stringSliceToSet(maps)
+	out := rows[:0:0]
+	for _, r := range rows {
+		if _, ok := set[coalesce(r.MapNameFR, r.MapName)]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterByExplorerModeNames garde les rows dont le label mode normalisé (FR > EN) figure dans modes.
+// Liste vide = pas de filtre.
+func filterByExplorerModeNames(rows []domain.MatchHistoryRawRow, modes []string) []domain.MatchHistoryRawRow {
+	if len(modes) == 0 {
+		return rows
+	}
+	set := stringSliceToSet(modes)
+	out := rows[:0:0]
+	for _, r := range rows {
+		label := analysis.NormalizeModeLabel(coalesce(r.PairNameFR, r.PairName))
+		if _, ok := set[label]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterByExplorerSquadScope filtre selon le contexte squad :
+// "solo" = !IsWithFriends, "squad" = IsWithFriends, sinon noop.
+func filterByExplorerSquadScope(rows []domain.MatchHistoryRawRow, scope string) []domain.MatchHistoryRawRow {
+	switch scope {
+	case "solo":
+		out := rows[:0:0]
+		for _, r := range rows {
+			if !r.IsWithFriends {
+				out = append(out, r)
+			}
+		}
+		return out
+	case "squad":
+		out := rows[:0:0]
+		for _, r := range rows {
+			if r.IsWithFriends {
+				out = append(out, r)
+			}
+		}
+		return out
+	}
+	return rows
+}
+
+// filterByExplorerMatchIDSearch garde les rows dont MatchID contient query (insensible à la casse).
+// query vide = pas de filtre.
+func filterByExplorerMatchIDSearch(rows []domain.MatchHistoryRawRow, query string) []domain.MatchHistoryRawRow {
+	if query == "" {
+		return rows
+	}
+	q := strings.ToLower(query)
+	out := rows[:0:0]
+	for _, r := range rows {
+		if strings.Contains(strings.ToLower(r.MatchID), q) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// filterByMatchIDsWhitelist garde uniquement les rows dont MatchID ∈ ids.
+// Liste vide = pas de filtre. Comparaison exacte (case-sensitive).
+func filterByMatchIDsWhitelist(rows []domain.MatchHistoryRawRow, ids []string) []domain.MatchHistoryRawRow {
+	if len(ids) == 0 {
+		return rows
+	}
+	set := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		set[id] = struct{}{}
+	}
+	out := rows[:0:0]
+	for _, r := range rows {
+		if _, ok := set[r.MatchID]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// applyExplorerMatchFilters applique tous les filtres Explorer additionnels en séquence.
+func applyExplorerMatchFilters(rows []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.MatchHistoryRawRow {
+	rows = filterByMatchIDsWhitelist(rows, req.MatchIDs)
+	rows = filterByExplorerDateRange(rows, req.MatchStartDate, req.MatchEndDate)
+	rows = filterByExplorerExperienceTypes(rows, req.ExperienceTypes)
+	rows = filterByExplorerPlaylists(rows, req.Playlists)
+	rows = filterByExplorerMapNames(rows, req.MapNames)
+	rows = filterByExplorerModeNames(rows, req.ModeNames)
+	rows = filterByExplorerSquadScope(rows, req.SquadScope)
+	rows = filterByExplorerMatchIDSearch(rows, req.MatchIDSearch)
+	return rows
+}
+
+// computeExplorerAvailableOptions calcule les valeurs distinctes triées pour les 4 dimensions
+// Explorer (experience, playlist, carte, mode) depuis les rows AVANT les filtres Explorer.
+func computeExplorerAvailableOptions(rows []domain.MatchHistoryRawRow) (expTypes, playlists, maps, modes []string) {
+	expSet := make(map[string]struct{})
+	plSet := make(map[string]struct{})
+	mapSet := make(map[string]struct{})
+	modeSet := make(map[string]struct{})
+	for _, r := range rows {
+		expSet[explorerExperienceType(r)] = struct{}{}
+		if pl := derefStr(r.PlaylistName); pl != "" {
+			plSet[pl] = struct{}{}
+		}
+		if m := coalesce(r.MapNameFR, r.MapName); m != "" {
+			mapSet[m] = struct{}{}
+		}
+		if mo := analysis.NormalizeModeLabel(coalesce(r.PairNameFR, r.PairName)); mo != "" {
+			modeSet[mo] = struct{}{}
+		}
+	}
+	expTypes = sortedKeys(expSet)
+	playlists = sortedKeys(plSet)
+	maps = sortedKeys(mapSet)
+	modes = sortedKeys(modeSet)
+	return
+}
+
+// sortedKeys retourne les clés d'un map[string]struct{} triées alphabétiquement.
+func sortedKeys(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // buildMatchHistorySessionLabels convertit les MatchHistoryRawRow en
 // SessionLabelInput puis délègue à BuildSessionLabelsList. Skip les rows
 // sans StartTime (ne devrait jamais arriver en prod, mais protège).
@@ -241,6 +567,10 @@ func (s *MatchHistoryService) ExportCSV(
 
 	rawRows = filterExcludedRows(rawRows)
 	filtered := filterMatchHistoryRows(rawRows, req.Filters)
+	filtered = filterByRankedContext(filtered, req.RankedContext)
+	filtered = filterByOutcome(filtered, req.OutcomeFilter)
+	filtered = filterBySkillTier(filtered, req.SkillTiers, req.RankedContext)
+	filtered = filterByPerfTiers(filtered, req.PerfTiers)
 	mapWinRates := computeMapWinRates(rawRows)
 	items := enrichRows(filtered, mapWinRates, s.waypointPlayer)
 	sortItems(items, req.SortField, req.SortDir)
@@ -384,13 +714,31 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 
 	matchURL := buildMatchURL(waypoint, r.MatchID)
 
+	var perfScore *int
+	var perfTier int
+	if r.PerformanceScore != nil {
+		v := int(math.Round(*r.PerformanceScore))
+		perfScore = &v
+		perfTier = int(analysis.PerfTier(*r.PerformanceScore))
+	}
+
+	var kda *float64
+	if r.KDA != nil {
+		kda = r.KDA
+	}
+
+	scoreLabel := "-"
+	if r.MyTeamScore != nil && r.EnemyTeamScore != nil {
+		scoreLabel = fmt.Sprintf("%d - %d", *r.MyTeamScore, *r.EnemyTeamScore)
+	}
+
 	return domain.MatchHistoryRow{
 		MatchID:                  r.MatchID,
 		StartTime:                startTime,
 		StartTimeLabel:           label,
 		OutcomeCode:              r.Outcome,
 		OutcomeLabel:             outcomeLabel(r.Outcome),
-		ScoreLabel:               "-",
+		ScoreLabel:               scoreLabel,
 		MapUI:                    ptrStr(mapU),
 		ModeUI:                   modeUI,
 		PlaylistLabel:            ptrStr(playlist),
@@ -399,8 +747,15 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		DeltaMMR:                 deltaMMR,
 		WinRateHist:              winRate,
 		WinRateHistTotal:         winRateTotal,
-		PerformanceScoreRelative: nil,
+		PerformanceScoreRelative: perfScore,
+		PerfTier:                 perfTier,
+		KDA:                      kda,
+		Kills:                    r.Kills,
+		Deaths:                   r.Deaths,
+		Assists:                  r.Assists,
+		SkillTierLabel:           r.SkillTierLabel,
 		AverageLifeMMSS:          formatLifeSeconds(r.AverageLifeSeconds),
+		DurationSeconds:          r.TimePlayedSeconds,
 		MatchURL:                 matchURL,
 		IsExcluded:               r.IsExcluded,
 	}
@@ -440,6 +795,10 @@ func compareMatchHistoryRows(a, b domain.MatchHistoryRow, field string) bool {
 		return cmpNullFloat(a.WinRateHist, b.WinRateHist)
 	case "performance_score_relative":
 		return cmpNullInt(a.PerformanceScoreRelative, b.PerformanceScoreRelative)
+	case "kda":
+		return cmpNullFloat(a.KDA, b.KDA)
+	case "kills":
+		return a.Kills < b.Kills
 	default: // start_time
 		return a.StartTime.Before(b.StartTime)
 	}

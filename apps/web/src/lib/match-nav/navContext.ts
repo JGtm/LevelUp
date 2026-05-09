@@ -125,6 +125,7 @@ export type MatchNavSource =
   | 'session'
   | 'citation'
   | 'media'
+  | 'explorer'
 
 /**
  * `ContextDescriptor` — Phase 2c : description sémantique typée du contexte

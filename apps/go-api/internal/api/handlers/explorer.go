@@ -78,10 +78,24 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 
 	// Délégation au service match-history avec les mêmes filtres/tri/pagination.
 	mhReq := domain.MatchHistoryQueryRequest{
-		Filters:    req.Filters,
-		Pagination: req.Pagination,
-		SortField:  req.SortField,
-		SortDir:    req.SortDir,
+		Filters:           req.Filters,
+		Pagination:        req.Pagination,
+		SortField:         req.SortField,
+		SortDir:           req.SortDir,
+		IncludeExportHint: req.IncludeExportHint,
+		PerfTiers:         req.PerfTiers,
+		SkillTiers:        req.SkillTiers,
+		RankedContext:     req.RankedContext,
+		OutcomeFilter:     req.OutcomeFilter,
+		MatchStartDate:    req.MatchStartDate,
+		MatchEndDate:      req.MatchEndDate,
+		ExperienceTypes:   req.ExperienceTypes,
+		Playlists:         req.Playlists,
+		MapNames:          req.MapNames,
+		ModeNames:         req.ModeNames,
+		SquadScope:        req.SquadScope,
+		MatchIDSearch:     req.MatchIDSearch,
+		MatchIDs:          req.MatchIDs,
 	}
 
 	mhResp, err := mhSvc.GetPage(r.Context(), mhReq)
@@ -90,9 +104,21 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Génération du token d'export si demandé (même mécanisme que MatchHistoryHandler.Query).
+	if req.IncludeExportHint && mhResp.ExportHint != nil {
+		if token, terr := encodeExportToken(mhReq); terr == nil {
+			mhResp.ExportHint.Token = &token
+		}
+	}
+
 	// Projection vers ExplorerMatchesQueryResponse (sous-ensemble de match history).
 	rows := make([]domain.ExplorerMatchesRow, 0, len(mhResp.Table.Items))
 	for _, item := range mhResp.Table.Items {
+		var deltaPerf *int
+		if item.PerformanceScoreRelative != nil {
+			v := *item.PerformanceScoreRelative - 50
+			deltaPerf = &v
+		}
 		rows = append(rows, domain.ExplorerMatchesRow{
 			MatchID:             item.MatchID,
 			StartTime:           item.StartTime,
@@ -106,13 +132,35 @@ func (h *ExplorerHandler) QueryMatches(w http.ResponseWriter, r *http.Request) {
 			IsWithFriends:       false,
 			ExperienceTypeLabel: "",
 			MatchURL:            item.MatchURL,
+			Kills:          item.Kills,
+			Deaths:         item.Deaths,
+			Assists:        item.Assists,
+			PerfScore:      item.PerformanceScoreRelative,
+			PerfTier:       item.PerfTier,
+			DeltaPerf:      deltaPerf,
+			SkillTierLabel:  item.SkillTierLabel,
+			DeltaMMR:        item.DeltaMMR,
+			TeamMMR:         item.TeamMMR,
+			EnemyMMR:        item.EnemyMMR,
+			KDA:             item.KDA,
+			DurationSeconds: item.DurationSeconds,
 		})
 	}
 
 	resp := domain.ExplorerMatchesQueryResponse{
 		Summary: domain.ExplorerMatchesSummary{
-			TotalMatches: mhResp.Summary.TotalMatchesScoped,
+			TotalMatches:             mhResp.Summary.TotalMatchesScoped,
+			AvailableExperienceTypes: mhResp.Summary.AvailableExperienceTypes,
+			AvailablePlaylists:       mhResp.Summary.AvailablePlaylists,
+			AvailableMaps:            mhResp.Summary.AvailableMaps,
+			AvailableModes:           mhResp.Summary.AvailableModes,
+			AvailableOutcomes:        mhResp.Summary.AvailableOutcomes,
+			AvailablePerfTiers:       mhResp.Summary.AvailablePerfTiers,
+			AvailableSkillTiers:      mhResp.Summary.AvailableSkillTiers,
+			AvailableRankedContexts:  mhResp.Summary.AvailableRankedContexts,
+			AvailableSquadScopes:     mhResp.Summary.AvailableSquadScopes,
 		},
+		ExportHint: mhResp.ExportHint,
 		Table: domain.ExplorerMatchesTable{
 			Items:      rows,
 			Pagination: mhResp.Table.Pagination,

@@ -41,8 +41,26 @@ export const queryKeys = {
     ['match-history', playerSlug, filterHash, page, [...soloSessions].sort().join(',')] as const,
 
   // Explorer (Slice 4)
-  explorer: (playerSlug: string, filterHash: string) =>
-    ['explorer', playerSlug, filterHash] as const,
+  explorer: (
+    playerSlug: string,
+    filterHash: string,
+    perfTiers: number[] = [],
+    skillTiers: string[] = [],
+    rankedContext = '',
+    outcomeFilter: number[] = [],
+    sortField = '',
+    sortDir = '',
+    matchFiltersKey = '',
+  ) =>
+    [
+      'explorer', playerSlug, filterHash,
+      [...perfTiers].sort().join(','),
+      [...skillTiers].sort().join(','),
+      rankedContext,
+      [...outcomeFilter].sort().join(','),
+      sortField, sortDir,
+      matchFiltersKey,
+    ] as const,
   explorerPlayer: (playerSlug: string, targetGamertag: string, page: number) =>
     ['explorer-player', playerSlug, targetGamertag, page] as const,
   gamertagSearch: (q: string) => ['gamertag-search', q] as const,

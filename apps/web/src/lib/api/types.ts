@@ -936,9 +936,23 @@ export interface ExplorerMatchRow {
   mode_ui: string
   playlist_label: string
   outcome_label: string
+  outcome_code: number
   score_label: string
   is_with_friends: boolean
   experience_type_label: string
+  kills?: number | null
+  deaths?: number | null
+  assists?: number | null
+  perf_score?: number | null
+  perf_tier?: number
+  delta_perf?: number | null
+  skill_tier_label?: string | null
+  delta_mmr?: number | null
+  team_mmr?: number | null
+  enemy_mmr?: number | null
+  kda?: number | null
+  duration_seconds?: number | null
+  match_url?: string
 }
 
 export interface ExplorerEncounterRow {
@@ -954,6 +968,20 @@ export interface ExplorerEncounterRow {
 export interface ExplorerMatchesQuerySummary {
   total_matches: number
   selected_match_id: string | null
+  available_experience_types?: string[]
+  available_playlists?: string[]
+  available_maps?: string[]
+  available_modes?: string[]
+  /** Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
+   *  d'une dimension, AND entre dimensions). Les options à count=0 sont à griser.
+   *  Le `value` est : code outcome (1..4) ou tier (1..5) en string, ou clé EN
+   *  (Bronze..Onyx) pour skill_tier, ou "" / "ranked" / "unranked" pour ranked,
+   *  ou "" / "solo" / "squad" pour squad_scope. */
+  available_outcomes?: LabelValue[]
+  available_perf_tiers?: LabelValue[]
+  available_skill_tiers?: LabelValue[]
+  available_ranked_contexts?: LabelValue[]
+  available_squad_scopes?: LabelValue[]
 }
 
 export interface ExplorerPlayerTarget {
@@ -968,21 +996,27 @@ export interface ExplorerPlayerSummary {
   last_seen_at: string | null
 }
 
-export interface ExplorerMatchFilters {
-  selected_date?: string | null
-  squad_scope?: 'all' | 'solo' | 'squad'
-  experience_type?: string | null
-  playlist?: string | null
-  mode?: string | null
-  map?: string | null
-  selected_match_id?: string | null
-}
-
 export interface ExplorerMatchesQueryRequest {
   filters?: FilterContextInput
-  match_filters?: ExplorerMatchFilters
   pagination?: PaginationRequest
-  favorites_only?: boolean
+  sort_field?: string
+  sort_dir?: string
+  include_export_hint?: boolean
+  perf_tiers?: number[]
+  skill_tiers?: string[]
+  ranked_context?: 'ranked' | 'unranked' | ''
+  outcome_filter?: number[]
+  // Explorer-specific match filters
+  match_start_date?: string | null
+  match_end_date?: string | null
+  experience_types?: string[]
+  playlists?: string[]
+  map_names?: string[]
+  mode_names?: string[]
+  squad_scope?: 'solo' | 'squad' | ''
+  match_id_search?: string
+  /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
+  match_ids?: string[]
 }
 
 export interface ExplorerPlayerQueryRequest {
@@ -1010,11 +1044,26 @@ export interface MatchEncounterBadge {
   detail?: Record<string, unknown>
 }
 
+/** Stats agrégées du couple (player_courant, target). Mirror partiel de
+ *  MatchEncounterRow — les 7 colonnes du tableau MatchEncountersTable
+ *  (sans is_ally car pas de match courant en Explorer). */
+export interface ExplorerEncounterStats {
+  count_together: number
+  ally_count?: number | null
+  enemy_count?: number | null
+  winrate_as_ally?: number | null
+  winrate_vs_enemy?: number | null
+  kills_dealt?: number | null
+  deaths_suffered?: number | null
+  last_seen_at?: string | null
+}
+
 export interface ExplorerPlayerQueryResponse {
   target_gamertag: string
   target_xuid: string
   common_matches: ExplorerCommonMatchRow[]
   badges?: MatchEncounterBadge[]
+  encounter_stats?: ExplorerEncounterStats
   total: number
   total_count: number
   wins_together: number
@@ -1026,6 +1075,7 @@ export interface ExplorerPlayerQueryResponse {
 export interface ExplorerMatchesQueryResponse {
   summary: ExplorerMatchesQuerySummary
   table: PaginatedResponse<ExplorerMatchRow>
+  export_hint?: ExportHint
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 /**
  * ExplorerPage — page Explorer (recherche + filtres).
  *
- * Mode Matchs : filtres cascade + tableau paginé.
+ * Mode Matchs : filtres (dropdowns + date range) + tableau paginé
+ *               (ExplorerMatchesTable, repris du SquadMatchHistoryTable).
  * Mode Joueur : historique commun paginé (20/page) + badges encounter.
  *
  * URL params : ?mode=player&target=<gamertag> — auto-switch au chargement.
@@ -9,63 +10,57 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { GamertagSearchInput } from './GamertagSearchInput'
+import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
+import { ExplorerMatchesTable } from './ExplorerMatchesTable'
+import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { SaisonPill } from '@/components/shell/FilterOmnibar'
+import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { useComparePrefetch } from '@/features/compare/queries'
-import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
-import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import type { ExplorerMatchFilters, MatchEncounterBadge } from '@/lib/api/types'
+import type { LabelValue, MatchEncounterBadge } from '@/lib/api/types'
+import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
+import { SKILL_TIER_VALUES } from '@/lib/skillTiers'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { tokenVar } from '@/lib/accessibility'
+import { tokenCssVar, tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 type SearchMode = 'matches' | 'player'
 
-function isSemanticToken(s: string): s is SemanticToken {
+// ─── Helpers badges rencontre ────────────────────────────────────────────────
+
+function isEncounterSemanticToken(s: string): s is SemanticToken {
   return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
 }
 
-function EncounterBadges({ badges, locale }: { badges: MatchEncounterBadge[]; locale: string }) {
-  if (!badges.length) return null
+function renderEncounterBadges(badges: MatchEncounterBadge[], locale: string) {
   const manifestLocale: 'fr' | 'en' = locale === 'en' ? 'en' : 'fr'
-  const t = (key: SquadManifestKey, values?: Record<string, string | number>) =>
+  const sqT = (key: SquadManifestKey, values?: Record<string, string | number>) =>
     formatMessage(squadManifest, key, manifestLocale, values)
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {badges.map((badge, i) => {
-        const labelKey = badge.label_key as SquadManifestKey
-        const ordinal = badge.detail && typeof badge.detail['ordinal'] === 'number'
-          ? (badge.detail['ordinal'] as number)
-          : undefined
-        const label = ordinal !== undefined
-          ? t(labelKey, { ordinal })
-          : t(labelKey)
-        const colorVar = isSemanticToken(badge.color_token)
-          ? tokenVar(badge.color_token as SemanticToken)
-          : undefined
-        return (
-          <NarrativeBadge
-            key={i}
-            label={label}
-            colorVar={colorVar}
-            size="sm"
-          />
-        )
-      })}
-    </div>
-  )
+  return badges.map((badge, i) => {
+    const labelKey = badge.label_key as SquadManifestKey
+    const ordinal =
+      badge.detail && typeof badge.detail['ordinal'] === 'number'
+        ? (badge.detail['ordinal'] as number)
+        : undefined
+    const label = ordinal !== undefined ? sqT(labelKey, { ordinal }) : sqT(labelKey)
+    const colorVar = isEncounterSemanticToken(badge.color_token)
+      ? tokenVar(badge.color_token as SemanticToken)
+      : undefined
+    return <NarrativeBadge key={i} label={label} colorVar={colorVar} size="lg" />
+  })
 }
+
+// ─── ExplorerPage ─────────────────────────────────────────────────────────────
 
 export function ExplorerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -81,19 +76,65 @@ export function ExplorerPage() {
 
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
 
   const [mode, setMode] = useState<SearchMode>(search.mode ?? 'matches')
   const [targetGamertag, setTargetGamertag] = useState(search.target ?? '')
-  const [playerPage, setPlayerPage] = useState(1)
   const [compareOpen, setCompareOpen] = useState(false)
   const prefetchCompare = useComparePrefetch(playerSlug)
 
-  // Sync URL → state once on initial load (not on every URL change)
+  // ─── Filtres ───────────────────────────────────────────────────────────────
+  const [perfTiers, setPerfTiers] = useState<Set<string>>(new Set())
+  const [skillTiers, setSkillTiers] = useState<Set<string>>(new Set())
+  const [rankedContext, setRankedContext] = useState<'ranked' | 'unranked' | ''>('')
+  const [outcomeFilter, setOutcomeFilter] = useState<Set<string>>(new Set())
+  const [sortKey, setSortKey] = useState('start_time:desc')
+  const [sortField, sortDir] = sortKey.split(':') as [string, string]
+
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [saisonOpen, setSaisonOpen] = useState(false)
+  const [squadScope, setSquadScope] = useState<'' | 'solo' | 'squad'>('')
+  const [expTypes, setExpTypes] = useState<Set<string>>(new Set())
+  const [playlists, setPlaylists] = useState<Set<string>>(new Set())
+  const [mapNames, setMapNames] = useState<Set<string>>(new Set())
+  const [modeNames, setModeNames] = useState<Set<string>>(new Set())
+  const [matchIDSearch, setMatchIDSearch] = useState('')
+
+  function toggleSet(setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) {
+    setter((prev) => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
+      return next
+    })
+  }
+
+  function handleStartDate(v: string) {
+    setStartDate(v)
+    if (endDate && v && endDate < v) setEndDate('')
+  }
+
+  // Saisons : dérivées du catalog du titre courant. activeSeason est calculée
+  // depuis les inputs date locaux (Du/Au), pas du filterContext shell — Explorer
+  // override ce dernier (vue tout-historique) donc la saison agit comme un
+  // raccourci sur les dates locales.
+  const { seasons, activeSeason } = useActiveSeason({
+    start_date: startDate || null,
+    end_date: endDate || null,
+  })
+
+  function handleRankedContext(v: 'ranked' | 'unranked' | '') {
+    setRankedContext(v)
+    if (v !== rankedContext) setSkillTiers(new Set())
+  }
+
+  // ─── URL sync ──────────────────────────────────────────────────────────────
+  // Init unique depuis l'URL au mount — légitime pour hydrater l'état initial.
   useEffect(() => {
     if (search.mode) setMode(search.mode)
     if (search.target) setTargetGamertag(search.target)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function setModeAndUrl(m: SearchMode) {
     setMode(m)
@@ -106,7 +147,6 @@ export function ExplorerPage() {
 
   function selectTarget(gamertag: string) {
     setTargetGamertag(gamertag)
-    setPlayerPage(1)
     void navigate({
       to: '/players/$playerSlug/explorer',
       params: { playerSlug },
@@ -114,49 +154,204 @@ export function ExplorerPage() {
     })
   }
 
-  const navigateToMatch = useNavigateToMatch(playerSlug)
-
-  function goToMatch(matchId: string, matchIds: string[]) {
-    // Phase 2c : capture le filterContext courant pour la nav contextuelle.
-    const filterSpec = filterContextToMatchFilterSpec(filterContext)
-    navigateToMatch(matchId, {
-      source: 'history',
-      matchIds,
-      filterSpec: filterSpec ?? undefined,
-    })
+  // ─── Queries ───────────────────────────────────────────────────────────────
+  // Explorer = vue historique complète. On force period/sessions à vide pour
+  // ignorer la période ou la session active du shell (qui peuvent restreindre
+  // à 12-25 matchs). Les filtres date/exp/playlist/etc. de l'Explorer pilotent
+  // déjà le scope via les inputs natifs ci-dessus.
+  // pageSize=200 = max accepté par maxPageSize backend ; pagination client gère
+  // le découpage 20/page côté UI.
+  const explorerFilterContext = {
+    ...filterContext,
+    filter_mode: 'period' as const,
+    period: { start_date: null, end_date: null },
+    sessions: { picked_sessions: [], gap_minutes: filterContext.sessions?.gap_minutes ?? 120 },
   }
-
-  // Filtres cascade mode Matchs
-  const [dateFilter, setDateFilter] = useState('')
-  const [squadScope, setSquadScope] = useState<'' | 'all' | 'solo' | 'squad'>('')
-  const [expType, setExpType] = useState('')
-  const [playlistFilter, setPlaylistFilter] = useState('')
-  const [modeFilter, setModeFilter] = useState('')
-  const [mapFilter, setMapFilter] = useState('')
-
-  const matchFilters: ExplorerMatchFilters = {
-    selected_date: dateFilter || null,
-    squad_scope: squadScope || undefined,
-    experience_type: expType || null,
-    playlist: playlistFilter || null,
-    mode: modeFilter || null,
-    map: mapFilter || null,
-  }
-
   const matchesQuery = useExplorerMatches(
     playerSlug,
-    { filters: filterContext, match_filters: matchFilters },
+    {
+      filters: explorerFilterContext,
+      pagination: { page: 1, page_size: 10000 },
+      include_export_hint: true,
+      perf_tiers: perfTiers.size > 0 ? [...perfTiers].map(Number) : undefined,
+      skill_tiers: skillTiers.size > 0 ? [...skillTiers] : undefined,
+      ranked_context: rankedContext || undefined,
+      outcome_filter: outcomeFilter.size > 0 ? [...outcomeFilter].map(Number) : undefined,
+      sort_field: sortField,
+      sort_dir: sortDir,
+      match_start_date: startDate || null,
+      match_end_date: endDate || null,
+      experience_types: expTypes.size > 0 ? [...expTypes] : undefined,
+      playlists: playlists.size > 0 ? [...playlists] : undefined,
+      map_names: mapNames.size > 0 ? [...mapNames] : undefined,
+      mode_names: modeNames.size > 0 ? [...modeNames] : undefined,
+      squad_scope: squadScope || undefined,
+      match_id_search: matchIDSearch || undefined,
+    },
     filterContextHash,
   )
 
   const playerQuery = useExplorerPlayer(playerSlug, {
     target_gamertag: targetGamertag,
-    page: playerPage,
   })
 
-  const totalPages = playerQuery.data
-    ? Math.ceil(playerQuery.data.total_count / (playerQuery.data.page_size || 20))
-    : 0
+  // Mode Joueur : extraction des match_ids communs séparés par rôle
+  // (ally vs enemy) depuis la réponse player-query, pour piloter les 2
+  // tableaux scopés ci-dessous.
+  const allyMatchIds = (playerQuery.data?.common_matches ?? [])
+    .filter((m) => m.were_teammates)
+    .map((m) => m.match_id)
+  const enemyMatchIds = (playerQuery.data?.common_matches ?? [])
+    .filter((m) => !m.were_teammates)
+    .map((m) => m.match_id)
+
+  // Requête tableau "matchs en allié" — réutilise le pipeline matches-query
+  // avec un filtre match_ids (whitelist). Activée uniquement quand on a des
+  // match_ids ET qu'on est en mode Joueur.
+  const allyMatchesQuery = useExplorerMatches(
+    playerSlug,
+    {
+      filters: explorerFilterContext,
+      pagination: { page: 1, page_size: 10000 },
+      sort_field: 'start_time',
+      sort_dir: 'desc',
+      match_ids: allyMatchIds,
+    },
+    filterContextHash,
+    mode === 'player' && allyMatchIds.length > 0,
+  )
+
+  const enemyMatchesQuery = useExplorerMatches(
+    playerSlug,
+    {
+      filters: explorerFilterContext,
+      pagination: { page: 1, page_size: 10000 },
+      sort_field: 'start_time',
+      sort_dir: 'desc',
+      match_ids: enemyMatchIds,
+    },
+    filterContextHash,
+    mode === 'player' && enemyMatchIds.length > 0,
+  )
+
+  const summary = matchesQuery.data?.summary
+
+  // Descriptor du contexte de navigation pour les matchs ouverts depuis le
+  // tableau mode Matchs. Priorité au filtre le plus spécifique : 1 playlist >
+  // 1 mode > période active > undefined (Q25 fallback générique côté match-view).
+  const matchesContextDescriptor: ContextDescriptor | undefined = (() => {
+    if (playlists.size === 1) {
+      const [name] = [...playlists]
+      return name ? { kind: 'playlist', name } : undefined
+    }
+    if (modeNames.size === 1) {
+      const [category] = [...modeNames]
+      return category ? { kind: 'mode', category } : undefined
+    }
+    if (startDate || endDate) {
+      const toIso = (d: string) => (d ? new Date(d).toISOString() : undefined)
+      return { kind: 'period', from: toIso(startDate), to: toIso(endDate) }
+    }
+    return undefined
+  })()
+
+  // ─── Options pour les MultiSelectFilter ───────────────────────────────────
+  const expTypeOptions: MultiSelectOption[] = (summary?.available_experience_types ?? []).map(
+    (v) => ({ value: v, label: v }),
+  )
+  const playlistOptions: MultiSelectOption[] = (summary?.available_playlists ?? []).map((v) => ({
+    value: v,
+    label: v,
+  }))
+  const modeOptions: MultiSelectOption[] = (summary?.available_modes ?? []).map((v) => ({
+    value: v,
+    label: v,
+  }))
+  const mapOptions: MultiSelectOption[] = (summary?.available_maps ?? []).map((v) => ({
+    value: v,
+    label: v,
+  }))
+
+  // Mappe les counts backend (LabelValue[]) sur les options frontend (qui portent
+  // labels i18n + swatch). Si pas de backend data, count reste undefined (pas de
+  // grayout). Match par `value` exact.
+  function withCounts(opts: MultiSelectOption[], backend?: LabelValue[]): MultiSelectOption[] {
+    if (!backend) return opts
+    const map = new Map(backend.map((b) => [b.value, b.count]))
+    return opts.map((o) => ({ ...o, count: map.get(o.value) ?? 0 }))
+  }
+
+  const perfTierOptions: MultiSelectOption[] = withCounts(
+    [
+      { value: '1', label: t('explorer.filters.perf_tier_excellent'), swatch: tokenCssVar('perf-tier-1' as SemanticToken) },
+      { value: '2', label: t('explorer.filters.perf_tier_bon'), swatch: tokenCssVar('perf-tier-2' as SemanticToken) },
+      { value: '3', label: t('explorer.filters.perf_tier_correct'), swatch: tokenCssVar('perf-tier-3' as SemanticToken) },
+      { value: '4', label: t('explorer.filters.perf_tier_faible'), swatch: tokenCssVar('perf-tier-4' as SemanticToken) },
+      { value: '5', label: t('explorer.filters.perf_tier_mauvais'), swatch: tokenCssVar('perf-tier-5' as SemanticToken) },
+    ],
+    summary?.available_perf_tiers,
+  )
+
+  const outcomeOptions: MultiSelectOption[] = withCounts(
+    [
+      { value: '2', label: t('explorer.filters.outcome_win'), swatch: tokenCssVar('outcome-win' as SemanticToken) },
+      { value: '3', label: t('explorer.filters.outcome_loss'), swatch: tokenCssVar('outcome-loss' as SemanticToken) },
+      { value: '1', label: t('explorer.filters.outcome_tie'), swatch: tokenCssVar('outcome-draw' as SemanticToken) },
+    ],
+    summary?.available_outcomes,
+  )
+
+  const skillTierOptions: MultiSelectOption[] = withCounts(
+    [
+      { value: SKILL_TIER_VALUES[0], label: t('explorer.filters.skill_tier_bronze') },
+      { value: SKILL_TIER_VALUES[1], label: t('explorer.filters.skill_tier_silver') },
+      { value: SKILL_TIER_VALUES[2], label: t('explorer.filters.skill_tier_gold') },
+      { value: SKILL_TIER_VALUES[3], label: t('explorer.filters.skill_tier_platinum') },
+      { value: SKILL_TIER_VALUES[4], label: t('explorer.filters.skill_tier_diamond') },
+      { value: SKILL_TIER_VALUES[5], label: t('explorer.filters.skill_tier_onyx') },
+    ],
+    summary?.available_skill_tiers,
+  )
+
+  // Counts pour les single-selects (ranked context, squad scope) — on les
+  // interpole dans les <option> labels, et on désactive celles à count=0.
+  const rankedCountByValue = new Map(
+    (summary?.available_ranked_contexts ?? []).map((b) => [b.value, b.count]),
+  )
+  const squadCountByValue = new Map(
+    (summary?.available_squad_scopes ?? []).map((b) => [b.value, b.count]),
+  )
+
+  const hasActiveFilter =
+    !!startDate ||
+    !!endDate ||
+    !!squadScope ||
+    !!matchIDSearch ||
+    expTypes.size > 0 ||
+    playlists.size > 0 ||
+    mapNames.size > 0 ||
+    modeNames.size > 0 ||
+    perfTiers.size > 0 ||
+    skillTiers.size > 0 ||
+    rankedContext !== '' ||
+    outcomeFilter.size > 0 ||
+    sortKey !== 'start_time:desc'
+
+  function resetFilters() {
+    setStartDate('')
+    setEndDate('')
+    setSquadScope('')
+    setMatchIDSearch('')
+    setExpTypes(new Set())
+    setPlaylists(new Set())
+    setMapNames(new Set())
+    setModeNames(new Set())
+    setPerfTiers(new Set())
+    setSkillTiers(new Set())
+    setRankedContext('')
+    setOutcomeFilter(new Set())
+    setSortKey('start_time:desc')
+  }
 
   return (
     <div className="flex flex-col">
@@ -179,17 +374,33 @@ export function ExplorerPage() {
           </Button>
         </div>
 
-        {/* Mode Joueur */}
+        {/* ─── Mode Joueur ─────────────────────────────────────────────────── */}
         {mode === 'player' && (
           <div className="space-y-4">
-            <GamertagSearchInput
-              onSelect={selectTarget}
-              initialValue={targetGamertag}
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <GamertagSearchInput onSelect={selectTarget} initialValue={targetGamertag} />
+              {targetGamertag && !!playerQuery.data?.badges?.length && (
+                <div className="flex flex-wrap gap-1.5">
+                  {renderEncounterBadges(playerQuery.data!.badges!, locale)}
+                </div>
+              )}
+              {targetGamertag && playerQuery.data?.encounter_stats && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    prefetchCompare(playerQuery.data?.target_gamertag ?? targetGamertag)
+                    setCompareOpen(true)
+                  }}
+                  className="inline-flex h-9 items-center rounded border border-input bg-background px-3 text-xs font-medium hover:bg-muted transition-colors"
+                >
+                  {t('explorer.player.head_to_head')}
+                </button>
+              )}
+            </div>
 
             {!targetGamertag && (
               <Card>
-                <CardContent className="py-4">
+                <CardContent className="py-4 pt-4">
                   <EmptyStateNotice
                     title={t('explorer.player.no_selection_title')}
                     description={t('explorer.player.no_selection_description')}
@@ -206,7 +417,7 @@ export function ExplorerPage() {
 
             {targetGamertag && playerQuery.isError && (
               <Card>
-                <CardContent className="py-4">
+                <CardContent className="py-4 pt-4">
                   <EmptyStateNotice
                     title={t('explorer.player.error_title')}
                     description={t('explorer.player.error_description')}
@@ -215,285 +426,234 @@ export function ExplorerPage() {
               </Card>
             )}
 
-            {targetGamertag && !playerQuery.isLoading && !playerQuery.isError && !playerQuery.data && (
-              <Card>
-                <CardContent className="py-4">
-                  <EmptyStateNotice
-                    title={t('explorer.player.empty_title')}
-                    description={t('explorer.player.empty_description')}
-                  />
-                </CardContent>
-              </Card>
-            )}
+            {targetGamertag &&
+              !playerQuery.isLoading &&
+              !playerQuery.isError &&
+              !playerQuery.data && (
+                <Card>
+                  <CardContent className="py-4 pt-4">
+                    <EmptyStateNotice
+                      title={t('explorer.player.empty_title')}
+                      description={t('explorer.player.empty_description')}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
             {targetGamertag && playerQuery.data && (
-              <Card>
-                <CardContent className="py-4 space-y-4">
-                  {/* En-tête joueur + bouton face-à-face */}
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-foreground">
-                      {playerQuery.data.target_gamertag || targetGamertag}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onMouseEnter={() =>
-                        prefetchCompare(playerQuery.data.target_gamertag || targetGamertag)
-                      }
-                      onClick={() => setCompareOpen(true)}
-                    >
-                      {t('explorer.player.head_to_head')}
-                    </Button>
-                  </div>
-
-                  {/* Badges encounter */}
-                  {playerQuery.data.badges && playerQuery.data.badges.length > 0 && (
-                    <EncounterBadges badges={playerQuery.data.badges} locale={locale} />
-                  )}
-
-                  {/* Compteurs */}
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('explorer.player.matches_together')}
-                      </p>
-                      <p className="font-bold text-foreground">{playerQuery.data.total_count}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('explorer.player.wins_together')}
-                      </p>
-                      <p className="font-bold" style={{ color: 'var(--ac-outcome-win)' }}>
-                        {playerQuery.data.wins_together}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t('explorer.player.losses_together')}
-                      </p>
-                      <p className="font-bold" style={{ color: 'var(--ac-outcome-loss)' }}>
-                        {playerQuery.data.losses_together}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Historique complet paginé */}
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {t('explorer.player.history_title')}
-                    </p>
-
-                    {playerQuery.data.common_matches.length > 0 ? (
-                      <>
-                        <div className="overflow-x-auto rounded-lg border border-border bg-background">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-border bg-muted text-xs font-medium text-muted-foreground">
-                                <th className="px-3 py-2 text-left">
-                                  {t('explorer.matches.col_date')}
-                                </th>
-                                <th className="px-3 py-2 text-left">
-                                  {t('explorer.matches.col_map_mode')}
-                                </th>
-                                <th className="px-3 py-2 text-left">Rôle</th>
-                                <th className="px-3 py-2 text-left">
-                                  {t('explorer.matches.col_outcome')}
-                                </th>
-                                <th className="px-3 py-2 text-right">K/D</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                              {playerQuery.data.common_matches.map((m) => (
-                                <tr
-                                  key={m.match_id}
-                                  className="hover:bg-primary/10 transition-colors cursor-pointer"
-                                  onClick={() => goToMatch(m.match_id, playerQuery.data.common_matches.map((x) => x.match_id))}
-                                  role="button"
-                                  tabIndex={0}
-                                  onKeyDown={(e) =>
-                                    e.key === 'Enter' &&
-                                    goToMatch(m.match_id, playerQuery.data.common_matches.map((x) => x.match_id))
-                                  }
-                                >
-                                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                                    {new Date(m.start_time).toLocaleDateString(numberLocale)}
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <span className="font-medium text-foreground">{m.map_ui}</span>
-                                    <span className="ml-1 text-xs text-muted-foreground">
-                                      · {m.mode_ui}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <Badge variant="secondary" className="text-xs">
-                                      {m.were_teammates
-                                        ? t('explorer.player.were_teammates')
-                                        : t('explorer.player.were_enemies')}
-                                    </Badge>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <Badge
-                                      variant={
-                                        m.player_outcome === 2
-                                          ? 'success'
-                                          : m.player_outcome === 3
-                                          ? 'destructive'
-                                          : 'secondary'
-                                      }
-                                    >
-                                      {m.outcome_label}
-                                    </Badge>
-                                  </td>
-                                  <td className="px-3 py-2 text-right text-muted-foreground">
-                                    {m.kills}/{m.deaths}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                          <div className="mt-3 flex items-center justify-between text-sm">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={playerPage <= 1}
-                              onClick={() => setPlayerPage((p) => p - 1)}
-                            >
-                              {t('explorer.player.prev_page')}
-                            </Button>
-                            <span className="text-muted-foreground">
-                              {t('explorer.player.page_info', {
-                                page: playerPage,
-                                total: totalPages,
-                              })}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={playerPage >= totalPages}
-                              onClick={() => setPlayerPage((p) => p + 1)}
-                            >
-                              {t('explorer.player.next_page')}
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
+              <>
+                {playerQuery.data.encounter_stats ? (
+                  <ExplorerEncounterBriefing
+                    stats={playerQuery.data.encounter_stats}
+                    locale={locale}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="py-4 pt-4">
                       <EmptyStateNotice
                         title={t('explorer.player.no_common_matches_title')}
                         description={t('explorer.player.no_common_matches_description')}
                       />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Tableau "matchs en allié" — affiché uniquement si on a au moins
+                    un match commun en tant qu'alliés. Pattern team-banner aligné
+                    sur MatchScoreboard (token team-ally). */}
+                {allyMatchIds.length > 0 && allyMatchesQuery.data && (
+                  <ExplorerMatchesTable
+                    rows={allyMatchesQuery.data.table.items}
+                    playerSlug={playerSlug}
+                    teamBanner={{
+                      variant: 'ally',
+                      label: t('explorer.player.table_as_ally'),
+                    }}
+                    contextDescriptor={{
+                      kind: 'with_player',
+                      gamertag: playerQuery.data.target_gamertag || targetGamertag,
+                    }}
+                  />
+                )}
+
+                {/* Tableau "matchs en ennemi" — token team-enemy. */}
+                {enemyMatchIds.length > 0 && enemyMatchesQuery.data && (
+                  <ExplorerMatchesTable
+                    rows={enemyMatchesQuery.data.table.items}
+                    playerSlug={playerSlug}
+                    teamBanner={{
+                      variant: 'enemy',
+                      label: t('explorer.player.table_as_enemy'),
+                    }}
+                    contextDescriptor={{
+                      kind: 'with_player',
+                      gamertag: playerQuery.data.target_gamertag || targetGamertag,
+                    }}
+                  />
+                )}
+              </>
             )}
           </div>
         )}
 
-        {/* Mode Matchs */}
+        {/* ─── Mode Matchs ─────────────────────────────────────────────────── */}
         {mode === 'matches' && (
           <div className="space-y-4">
-            {/* Filtres cascade */}
+            {/* Filtres */}
             <Card>
-              <CardContent className="py-3">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      {t('explorer.filters.date')}
+              <CardContent className="py-3 pt-3 space-y-3">
+                {/* Ligne 1 : période + ID + escouade */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs text-muted-foreground whitespace-nowrap">
+                      {t('explorer.filters.date_from_label')}
                     </label>
                     <input
                       type="date"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full rounded border border-input px-2 py-1 text-sm"
+                      value={startDate}
+                      onChange={(e) => handleStartDate(e.target.value)}
+                      className="rounded border border-input px-2 py-1 text-sm bg-background w-36"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      {t('explorer.filters.context')}
-                    </label>
-                    <select
-                      value={squadScope}
-                      onChange={(e) =>
-                        setSquadScope(e.target.value as '' | 'all' | 'solo' | 'squad')
-                      }
-                      className="w-full rounded border border-input px-2 py-1 text-sm"
-                    >
-                      <option value="">{t('explorer.filters.context_all')}</option>
-                      <option value="solo">{t('explorer.filters.context_solo')}</option>
-                      <option value="squad">{t('explorer.filters.context_squad')}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      {t('explorer.filters.experience_type')}
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs text-muted-foreground whitespace-nowrap">
+                      {t('explorer.filters.date_to_label')}
                     </label>
                     <input
-                      type="text"
-                      placeholder={t('explorer.filters.experience_placeholder')}
-                      value={expType}
-                      onChange={(e) => setExpType(e.target.value)}
-                      className="w-full rounded border border-input px-2 py-1 text-sm"
+                      type="date"
+                      value={endDate}
+                      min={startDate || undefined}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="rounded border border-input px-2 py-1 text-sm bg-background w-36"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      {t('explorer.filters.playlist')}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={t('explorer.filters.playlist_placeholder')}
-                      value={playlistFilter}
-                      onChange={(e) => setPlaylistFilter(e.target.value)}
-                      className="w-full rounded border border-input px-2 py-1 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      {t('explorer.filters.mode')}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={t('explorer.filters.mode_placeholder')}
-                      value={modeFilter}
-                      onChange={(e) => setModeFilter(e.target.value)}
-                      className="w-full rounded border border-input px-2 py-1 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      {t('explorer.filters.map')}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={t('explorer.filters.map_placeholder')}
-                      value={mapFilter}
-                      onChange={(e) => setMapFilter(e.target.value)}
-                      className="w-full rounded border border-input px-2 py-1 text-sm"
-                    />
-                  </div>
-                </div>
-                {(dateFilter || squadScope || expType || playlistFilter || modeFilter || mapFilter) && (
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      className="text-xs text-primary hover:underline"
-                      onClick={() => {
-                        setDateFilter('')
-                        setSquadScope('')
-                        setExpType('')
-                        setPlaylistFilter('')
-                        setModeFilter('')
-                        setMapFilter('')
+                  {seasons.length > 0 && (
+                    <SaisonPill
+                      open={saisonOpen}
+                      onToggle={() => setSaisonOpen((o) => !o)}
+                      onClose={() => setSaisonOpen(false)}
+                      seasons={seasons}
+                      activeSeason={activeSeason}
+                      onSelectSeason={(s) => {
+                        const p = seasonToPeriod(s)
+                        setStartDate(p.start_date ?? '')
+                        setEndDate(p.end_date ?? '')
+                        setSaisonOpen(false)
                       }}
+                      onClear={() => {
+                        setStartDate('')
+                        setEndDate('')
+                      }}
+                    />
+                  )}
+                  <input
+                    type="text"
+                    value={matchIDSearch}
+                    onChange={(e) => setMatchIDSearch(e.target.value)}
+                    placeholder={t('explorer.filters.match_id')}
+                    className="rounded border border-input px-2 py-1 text-sm bg-background w-52"
+                  />
+                  <select
+                    value={squadScope}
+                    onChange={(e) => setSquadScope(e.target.value as '' | 'solo' | 'squad')}
+                    className="rounded border border-input px-2 py-1 text-sm bg-background"
+                  >
+                    {(['', 'solo', 'squad'] as const).map((v) => {
+                      const labelKey =
+                        v === '' ? 'explorer.filters.context_all'
+                        : v === 'solo' ? 'explorer.filters.context_solo'
+                        : 'explorer.filters.context_squad'
+                      const c = squadCountByValue.get(v)
+                      const isCurrent = v === squadScope
+                      return (
+                        <option key={v} value={v} disabled={c === 0 && !isCurrent}>
+                          {t(labelKey)}{c !== undefined ? ` (${c})` : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+
+                {/* Ligne 2 : tous les multi-selects */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <MultiSelectFilter
+                    options={expTypeOptions}
+                    selected={expTypes}
+                    toggle={(v) => toggleSet(setExpTypes, v)}
+                    placeholder={t('explorer.filters.experience_type')}
+                  />
+                  <MultiSelectFilter
+                    options={playlistOptions}
+                    selected={playlists}
+                    toggle={(v) => toggleSet(setPlaylists, v)}
+                    placeholder={t('explorer.filters.playlist')}
+                  />
+                  <MultiSelectFilter
+                    options={modeOptions}
+                    selected={modeNames}
+                    toggle={(v) => toggleSet(setModeNames, v)}
+                    placeholder={t('explorer.filters.mode')}
+                  />
+                  <MultiSelectFilter
+                    options={mapOptions}
+                    selected={mapNames}
+                    toggle={(v) => toggleSet(setMapNames, v)}
+                    placeholder={t('explorer.filters.map')}
+                  />
+                  <MultiSelectFilter
+                    options={outcomeOptions}
+                    selected={outcomeFilter}
+                    toggle={(v) => toggleSet(setOutcomeFilter, v)}
+                    placeholder={t('explorer.filters.outcome_label')}
+                    alwaysShow
+                  />
+                  <MultiSelectFilter
+                    options={perfTierOptions}
+                    selected={perfTiers}
+                    toggle={(v) => toggleSet(setPerfTiers, v)}
+                    placeholder={t('explorer.filters.perf_tier_label')}
+                    alwaysShow
+                  />
+                  <select
+                    value={rankedContext}
+                    onChange={(e) =>
+                      handleRankedContext(e.target.value as 'ranked' | 'unranked' | '')
+                    }
+                    className="rounded border border-input px-2 py-1 text-sm bg-background"
+                  >
+                    {(['', 'ranked', 'unranked'] as const).map((v) => {
+                      const labelKey =
+                        v === '' ? 'explorer.filters.ranked_all'
+                        : v === 'ranked' ? 'explorer.filters.ranked_ranked'
+                        : 'explorer.filters.ranked_unranked'
+                      const c = rankedCountByValue.get(v)
+                      const isCurrent = v === rankedContext
+                      const prefix = v === '' ? `${t('explorer.filters.ranked_label')} : ` : ''
+                      return (
+                        <option key={v || 'all'} value={v} disabled={c === 0 && !isCurrent}>
+                          {prefix}{t(labelKey)}{c !== undefined ? ` (${c})` : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <MultiSelectFilter
+                    options={skillTierOptions}
+                    selected={skillTiers}
+                    toggle={(v) => toggleSet(setSkillTiers, v)}
+                    placeholder={t('explorer.filters.skill_tier_label')}
+                    alwaysShow
+                    disabled={rankedContext === ''}
+                    title={rankedContext === '' ? t('explorer.filters.skill_tier_disabled') : undefined}
+                  />
+                  {hasActiveFilter && (
+                    <button
+                      className="ml-auto text-xs text-primary hover:underline"
+                      onClick={resetFilters}
                     >
                       {t('explorer.filters.reset')}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -515,89 +675,56 @@ export function ExplorerPage() {
                 </div>
               ) : matchesQuery.data ? (
                 <>
-                  <p className="text-sm text-muted-foreground">
-                    {t('explorer.matches.count_label', {
-                      n: matchesQuery.data.summary?.total_matches ?? 0,
-                    })}
-                  </p>
-                  <div className="overflow-x-auto rounded-lg border border-border bg-background">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-muted text-xs font-medium text-muted-foreground">
-                          <th className="px-4 py-2.5 text-left">
-                            {t('explorer.matches.col_date')}
-                          </th>
-                          <th className="px-4 py-2.5 text-left">
-                            {t('explorer.matches.col_map_mode')}
-                          </th>
-                          <th className="px-4 py-2.5 text-left">
-                            {t('explorer.matches.col_outcome')}
-                          </th>
-                          <th className="px-4 py-2.5 text-left">
-                            {t('explorer.matches.col_score')}
-                          </th>
-                          <th className="px-4 py-2.5 text-left">
-                            {t('explorer.matches.col_type')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {matchesQuery.data.table.items.map((row) => (
-                          <tr
-                            key={row.match_id}
-                            className="hover:bg-primary/10 transition-colors cursor-pointer"
-                            onClick={() =>
-                              goToMatch(
-                                row.match_id,
-                                matchesQuery.data!.table.items.map((r) => r.match_id),
-                              )
-                            }
-                          >
-                            <td className="px-4 py-2 text-muted-foreground">
-                              {new Date(row.start_time).toLocaleDateString(numberLocale)}
-                            </td>
-                            <td className="px-4 py-2">
-                              <span className="font-medium text-foreground">{row.map_ui}</span>
-                              <span className="ml-1 text-xs text-muted-foreground">
-                                · {row.mode_ui}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2">
-                              <Badge
-                                variant={
-                                  row.outcome_label.toLowerCase().includes('victoire')
-                                    ? 'success'
-                                    : row.outcome_label.toLowerCase().includes('défaite')
-                                    ? 'destructive'
-                                    : 'secondary'
-                                }
-                              >
-                                {row.outcome_label}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-2 text-foreground">{row.score_label}</td>
-                            <td className="px-4 py-2 text-muted-foreground">
-                              {row.experience_type_label}
-                            </td>
-                          </tr>
-                        ))}
-                        {matchesQuery.data.table.items.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={5}
-                              className="px-4 py-8 text-center text-muted-foreground"
-                            >
-                              {t('explorer.matches.empty_row')}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                  {/* Barre résultats + tri + export */}
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {t('explorer.matches.count_label', {
+                        n: matchesQuery.data.summary?.total_matches ?? 0,
+                      })}
+                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground whitespace-nowrap">
+                          {t('explorer.sort.label')} :
+                        </label>
+                        <select
+                          value={sortKey}
+                          onChange={(e) => setSortKey(e.target.value)}
+                          className="rounded border border-input px-2 py-1 text-xs bg-background"
+                        >
+                          <option value="start_time:desc">{t('explorer.sort.start_time_desc')}</option>
+                          <option value="start_time:asc">{t('explorer.sort.start_time_asc')}</option>
+                          <option value="performance_score_relative:desc">{t('explorer.sort.perf_desc')}</option>
+                          <option value="performance_score_relative:asc">{t('explorer.sort.perf_asc')}</option>
+                          <option value="kda:desc">{t('explorer.sort.kda_desc')}</option>
+                          <option value="kills:desc">{t('explorer.sort.kills_desc')}</option>
+                          <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
+                          <option value="outcome:desc">{t('explorer.sort.outcome')}</option>
+                        </select>
+                      </div>
+                      {matchesQuery.data.export_hint?.token && (
+                        <a
+                          href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
+                          download
+                          title={t('explorer.matches.export_csv')}
+                          className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                        >
+                          {t('explorer.matches.export_csv')}
+                        </a>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Tableau résultats — composant repris depuis Squad */}
+                  <ExplorerMatchesTable
+                    rows={matchesQuery.data.table.items}
+                    playerSlug={playerSlug}
+                    contextDescriptor={matchesContextDescriptor}
+                  />
                 </>
               ) : (
                 <Card>
-                  <CardContent className="py-4">
+                  <CardContent className="py-4 pt-4">
                     <EmptyStateNotice
                       title={t('explorer.matches.empty_title')}
                       description={t('explorer.matches.empty_description')}
