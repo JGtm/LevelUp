@@ -1,4 +1,59 @@
 
+## [2026-05-09] Backfill citations composites — mode composite-only
+
+**Statut** : Complété.
+
+**Décision** :
+Mode `composite-only` ajouté dans le backfill citations. Ne lit pas `shared_matches_v2`, ne supprime rien : charge toutes les valeurs non-composites de `match_citations`, calcule les composites en mémoire via `ApplyCompositeCitationsPerMatch`, insère via `ON CONFLICT DO NOTHING`.
+
+Deux erreurs corrigées en cours de route :
+1. **Tier check per-match incorrect** : `computeCompositeCitations` vérifie `val >= max(tier_targets)` (conçu pour les totaux cumulatifs de l'UI Python). Per-match, `br75_mastery=5` n'atteint jamais `500` → composites toujours à 0. Fix : `ApplyCompositeCitationsPerMatch` utilise `val > 0` (a-t-on utilisé cette arme dans ce match ?).
+2. **Composites imbriqués mal ordonnés** : `all_weapons_mastery` a pour enfants `human_weapons_mastery` etc. (aussi des composites) — alphabétiquement `a < h` donc les enfants n'étaient pas encore calculés. Fix : passes répétées jusqu'à stabilisation (max 5).
+3. **Filtre SQL cassé** : `NOT LIKE '_%'` — le `_` est un wildcard SQL, excluait tout. Retiré.
+
+Implémentation finale :
+- `analysis/citations_composite.go` : `ApplyCompositeCitationsPerMatch` (exportée, multi-pass, val>0) + `applyCompositesPass` (privée).
+- `sync/citations_backfill.go` : `RunBackfillCompositeOnlyCitations` charge toutes les valeurs non-composites via `loadNonCompositeCitationsByMatch` (filtre les noms composites existants pour repartir des feuilles). `buildCompositeNameSet` construit le set de noms composites.
+- `cmd/levelup/cmd_backfill.go` : flag `--composite-only`, wiring `runBackfillCompositeOnlyOne` (migrations player + metadata uniquement, pas de shared).
+
+**Résultats** : 4/4 joueurs, 1612 matchs mis à jour (Chocoboflor=345, JGtm=713, Madina=532, XxDaemonGamerxX=22).
+
+**Prochaine étape** : Redémarrer le serveur pour que l'UI reflète les nouveaux composites.
+
+## [2026-05-09] Achievements : filtre xbox_title_id frontend + layout overflow fix
+
+**Statut** : Complété.
+
+**Décision** :
+1. `xbox_title_id` : L'API Xbox retourne des achievements cross-titres (MCC/Reach) même avec `titleId=1144039928`. Ajout colonne `xbox_title_id VARCHAR DEFAULT ''` (migration, sans DELETE). Le sync peuple la colonne depuis `TitleAssociations[0].ID` de la réponse API. L'API expose `xbox_title_id` dans `AchievementEntry`. Le frontend filtre `!a.xbox_title_id || a.xbox_title_id === '1144039928'` quand `filterXboxTitleId` est passé. Le fix s'active après re-run `sync-achievements`.
+2. Layout overflow fix : `min-w-0` ajouté sur le wrapper charts dans `CareerChartsSection` pour que la colonne gauche se réduise correctement dans le CSS grid.
+
+**Résultats** : `go build ./internal/...` propre, `tsc -b` propre.
+
+**Prochaine étape** : Relancer `sync-achievements --all` pour peupler `xbox_title_id` dans la DB.
+
+## [2026-05-09] Achievements : filtre Halo Infinite + layout sidebar
+
+**Statut** : Complété.
+
+**Décision** :
+1. Filtrage title_id : l'ancien sync sans filtre avait pollué `xbox_achievement_definitions` avec des succès Halo Reach/MCC. Ajout colonne `title_id` + 2 migrations (ALTER TABLE + DELETE stale rows). `SyncAchievements` reçoit `titleID string` et le stocke. `GetAchievementDefinitions` filtre `WHERE title_id = 'halo_infinite'`. Après redémarrage du serveur, re-lancer `sync-achievements` pour repeupler.
+2. Layout sidebar : `CareerChartsSection` reçoit `rightSlot?: React.ReactNode`. Les charts XP+LUSR sont wrappés dans `xl:grid-cols-[1fr_288px]` quand `rightSlot` est présent. `AchievementsCareerSection` a un nouveau mode `layout="sidebar"` (colonne verticale, `overflow-y-auto max-h-[680px]`, cartes pleine largeur). Câblé depuis `CareerProgressionTab.rightSlot`.
+
+**Résultats** : `go test ./internal/sync/... ./internal/service/... ./internal/platform/duckdb/...` vert. `tsc -b` propre.
+
+**Prochaine étape** : Redémarrer le serveur Go (migrations auto-play), puis re-lancer `sync-achievements` pour repeupler avec uniquement HI.
+
+## [2026-05-09] Fix achievements invisibles sur page Carrière
+
+**Statut** : Complété.
+
+**Décision** : La route `/players/$playerSlug/career` monte `CareerHubPage` → `CareerProgressionTab`, non pas `CareerPage` (qui est orphelin). L'import de `AchievementsCareerSection` était dans `CareerPage.tsx` uniquement — jamais rendu. Ajout direct dans `CareerProgressionTab.tsx` entre les graphes et les cartes LUSR. L'API retourne bien les données (700 achievements, 162 débloqués, sync déjà fait).
+
+**Résultats** : TypeScript compile proprement, section visible à http://localhost:5173/players/JGtm/career.
+
+**Prochaine étape** : Nettoyage de `CareerPage.tsx` (orphelin) si nécessaire.
+
 ## [2026-05-09] Face-à-face — Vérification finale : logging + couverture tests
 
 **Statut** : Complété.
