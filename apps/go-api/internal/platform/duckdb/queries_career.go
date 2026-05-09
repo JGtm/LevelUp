@@ -161,13 +161,19 @@ ORDER BY cp.recorded_at ASC`
 const Q8LUSRHistory = `
 SELECT
     msr.match_id,
+    msr.rating_type,
     msr.rating_value,
     msr.tier_label,
     msr.playlist_group,
     COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS recorded_at,
     msr.rating_value - LAG(msr.rating_value) OVER (
-        PARTITION BY msr.playlist_group ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
-    ) AS rating_delta
+        PARTITION BY msr.rating_type, msr.playlist_group
+        ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
+    ) AS rating_delta,
+    COALESCE(r.playlist_name, '')                          AS playlist_name,
+    COALESCE(r.playlist_id, '')                            AS playlist_id,
+    NULLIF(TRIM(COALESCE(msr.tier, '')), '')               AS tier,
+    COALESCE(msr.sub_tier, 0)                              AS sub_tier
 FROM match_skill_rank msr
 LEFT JOIN shared.match_registry r ON msr.match_id = r.match_id
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`

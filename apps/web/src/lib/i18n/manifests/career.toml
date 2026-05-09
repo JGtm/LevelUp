@@ -165,3 +165,45 @@ en = "Failed to load career data"
 [career.errors.retry]
 fr = "Réessayer"
 en = "Retry"
+
+[career.errors.loading_progression]
+fr = "Chargement de la progression…"
+en = "Loading progression…"
+
+[career.errors.load_progression_failed]
+fr = "Erreur lors du chargement de la progression."
+en = "Error loading progression."
+
+# ─── Gauges (titres des charts career.01–04) ──────────────────────────────
+
+[career.charts.rank_gauge_title]
+fr = "Progression vers le prochain rang"
+en = "Progress to next rank"
+
+[career.charts.hero_gauge_title]
+fr = "Progression vers le rang Héros"
+en = "Progress to Hero rank"
+
+[career.charts.lusr_evolution_title]
+fr = "Évolution LUSR / CSR"
+en = "LUSR / CSR evolution"
+
+# ─── LUSR empty state ─────────────────────────────────────────────────────
+
+[career.lusr.no_data_title]
+fr = "Aucun rating LUSR disponible"
+en = "No LUSR rating available"
+
+[career.lusr.no_data_description]
+fr = "Aucun checkpoint LUSR n'a été enregistré pour ce joueur."
+en = "No LUSR checkpoint recorded for this player."
+
+# ─── Progression tab ──────────────────────────────────────────────────────
+
+[career.empty.progression_unavailable]
+fr = "Données de progression indisponibles"
+en = "Progression data unavailable"
+
+[career.empty.no_response_description]
+fr = "Aucune réponse exploitable n'a été renvoyée pour cette page."
+en = "No exploitable response returned for this page."

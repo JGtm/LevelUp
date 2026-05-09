@@ -84,21 +84,31 @@ type CareerProjections struct {
 // XPHistoryPoint représente un point dans l'historique XP.
 // Champs alignés avec les colonnes de Q7CareerXPHistory.
 type XPHistoryPoint struct {
-	RecordedAt   time.Time `json:"recorded_at"`
-	RankNumber   int       `json:"rank_number"`
-	CurrentXP    int       `json:"current_xp"`
-	XPTotalCumul int       `json:"xp_total_cumul"`
+	RecordedAt time.Time `json:"recorded_at"`
+	Rank       int       `json:"rank"`
+	CurrentXP  int       `json:"current_xp"`
+	XPTotal    int       `json:"xp_total"`
+}
+
+// FriendXPHistory contient l'historique XP d'un ami (joueur ayant une DB locale).
+type FriendXPHistory struct {
+	Gamertag string           `json:"gamertag"`
+	History  []XPHistoryPoint `json:"history"`
 }
 
 // LUSRCheckpointDTO représente un checkpoint LUSR pour l'API.
 // Champs alignés avec les colonnes de Q8LUSRHistory.
 type LUSRCheckpointDTO struct {
 	MatchID       string     `json:"-"`
+	RatingType    string     `json:"rating_type"`
 	RatingValue   float64    `json:"rating_value"`
 	TierLabel     *string    `json:"tier_label"`
 	PlaylistGroup *string    `json:"playlist_group"`
+	PlaylistName  string     `json:"playlist_name"`
+	PlaylistID    string     `json:"-"`
 	RecordedAt    *time.Time `json:"recorded_at"`
 	RatingDelta   *float64   `json:"rating_delta,omitempty"`
+	BadgeImageURL *string    `json:"badge_image_url,omitempty"`
 }
 
 // LUSRSummary résume le rating LUSR actuel.
@@ -112,12 +122,13 @@ type LUSRSummary struct {
 
 // CareerPageResponse est la réponse de GET /pages/career.
 type CareerPageResponse struct {
-	Summary       CareerRankSummary    `json:"summary"`
-	HeroProgress  HeroProgress         `json:"hero_progress"`
-	Projections   CareerProjections    `json:"projections"`
-	XPHistory     []XPHistoryPoint     `json:"xp_history"`
-	LUSR          LUSRSummary          `json:"lusr"`
-	CurrentSeason *CurrentSeasonResult `json:"current_season,omitempty"` // Sprint 54-A7
+	Summary          CareerRankSummary    `json:"summary"`
+	HeroProgress     HeroProgress         `json:"hero_progress"`
+	Projections      CareerProjections    `json:"projections"`
+	XPHistory        []XPHistoryPoint     `json:"xp_history"`
+	LUSR             LUSRSummary          `json:"lusr"`
+	FriendsXPHistory []FriendXPHistory    `json:"friends_xp_history,omitempty"`
+	CurrentSeason    *CurrentSeasonResult `json:"current_season,omitempty"` // Sprint 54-A7
 }
 
 // TopMatchDTO représente un match dans le top/pire performance.

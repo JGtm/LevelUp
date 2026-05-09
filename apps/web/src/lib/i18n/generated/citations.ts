@@ -2,6 +2,7 @@
 // Source : apps/web/src/lib/i18n/manifests/citations.toml
 
 export const citationsManifest = {
+  "citations.category.completed_suffix": { fr: "complètes", en: "completed" },
   "citations.commendations.col_name": { fr: "Nom", en: "Name" },
   "citations.commendations.col_progress": { fr: "Progression", en: "Progress" },
   "citations.commendations.col_tier": { fr: "Palier", en: "Tier" },
@@ -15,13 +16,19 @@ export const citationsManifest = {
   "citations.distribution.unavailable_title": { fr: "Distribution indisponible", en: "Distribution unavailable" },
   "citations.empty.no_data": { fr: "Citations indisponibles", en: "Citations unavailable" },
   "citations.empty.no_data_description": { fr: "Aucune réponse exploitable n'a été renvoyée pour cette page.", en: "No exploitable response returned for this page." },
+  "citations.empty.no_items": { fr: "Aucune citation disponible", en: "No citations available" },
+  "citations.empty.no_items_description": { fr: "Aucune citation n'a encore été enregistrée pour ce joueur.", en: "No citation has been recorded yet for this player." },
   "citations.errors.load_failed": { fr: "Erreur lors du chargement des citations", en: "Failed to load citations" },
   "citations.errors.retry": { fr: "Réessayer", en: "Retry" },
+  "citations.kpi.categories": { fr: "Catégories", en: "Categories" },
+  "citations.kpi.complete": { fr: "Citations complètes", en: "Completed citations" },
+  "citations.kpi.total": { fr: "Total cumulé", en: "Cumulative total" },
   "citations.medals.col_count_filtered": { fr: "Filtré", en: "Filtered" },
   "citations.medals.col_count_total": { fr: "Total", en: "Total" },
   "citations.medals.col_name": { fr: "Médaille", en: "Medal" },
   "citations.section.commendations": { fr: "Commendations", en: "Commendations" },
   "citations.section.distribution": { fr: "Distribution", en: "Distribution" },
+  "citations.section.mastery_title": { fr: "Citations — Maîtrise {completed}/{total}", en: "Commendations — Mastery {completed}/{total}" },
   "citations.section.medals_summary": { fr: "Médailles", en: "Medals" },
 } as const
 

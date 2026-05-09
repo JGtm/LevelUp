@@ -100,3 +100,39 @@ en = "Failed to load citations"
 [citations.errors.retry]
 fr = "Réessayer"
 en = "Retry"
+
+# ─── Titre section Citations ────────────────────────────────────────────────
+
+[citations.section.mastery_title]
+fr = "Citations — Maîtrise {completed}/{total}"
+en = "Commendations — Mastery {completed}/{total}"
+
+# ─── KPIs Citations ────────────────────────────────────────────────────────
+
+[citations.kpi.complete]
+fr = "Citations complètes"
+en = "Completed citations"
+
+[citations.kpi.total]
+fr = "Total cumulé"
+en = "Cumulative total"
+
+[citations.kpi.categories]
+fr = "Catégories"
+en = "Categories"
+
+# ─── Catégories ────────────────────────────────────────────────────────────
+
+[citations.category.completed_suffix]
+fr = "complètes"
+en = "completed"
+
+# ─── États vides (données présentes mais liste vide) ──────────────────────
+
+[citations.empty.no_items]
+fr = "Aucune citation disponible"
+en = "No citations available"
+
+[citations.empty.no_items_description]
+fr = "Aucune citation n'a encore été enregistrée pour ce joueur."
+en = "No citation has been recorded yet for this player."
