@@ -85,7 +85,6 @@ export function ExplorerPage() {
   // ─── Filtres ───────────────────────────────────────────────────────────────
   const [perfTiers, setPerfTiers] = useState<Set<string>>(new Set())
   const [skillTiers, setSkillTiers] = useState<Set<string>>(new Set())
-  const [rankedContext, setRankedContext] = useState<'ranked' | 'unranked' | ''>('')
   const [outcomeFilter, setOutcomeFilter] = useState<Set<string>>(new Set())
   const [sortKey, setSortKey] = useState('start_time:desc')
   const [sortField, sortDir] = sortKey.split(':') as [string, string]
@@ -123,10 +122,25 @@ export function ExplorerPage() {
     end_date: endDate || null,
   })
 
-  function handleRankedContext(v: 'ranked' | 'unranked' | '') {
-    setRankedContext(v)
-    if (v !== rankedContext) setSkillTiers(new Set())
-  }
+  // ranked_context auto-déduit du multi-select Type d'expérience.
+  // Sélection mono-valeur "PVP classé" → "ranked" (gate skill_tier sur CSR).
+  // Sélection mono-valeur "PVP non classé" → "unranked" (gate skill_tier sur LUSR).
+  // Toute autre combinaison (multi-valeurs, PVE seul, vide) → "" : skill_tier
+  // resté désactivé pour éviter le mélange CSR/LUSR ambigu.
+  // Cf. thought_log 2026-05-09 P3 — fusion du single-select "Expérience" dans
+  // le multi-select "Type d'expérience" (Option A).
+  const rankedContext: 'ranked' | 'unranked' | '' = (() => {
+    if (expTypes.size !== 1) return ''
+    if (expTypes.has('PVP classé')) return 'ranked'
+    if (expTypes.has('PVP non classé')) return 'unranked'
+    return ''
+  })()
+
+  // Quand la dérivation change, le skill_tier doit être réinitialisé pour
+  // éviter de garder un tier CSR sélectionné après bascule en non-classé.
+  useEffect(() => {
+    if (rankedContext === '') setSkillTiers(new Set())
+  }, [rankedContext])
 
   // ─── URL sync ──────────────────────────────────────────────────────────────
   // Init unique depuis l'URL au mount — légitime pour hydrater l'état initial.
@@ -313,11 +327,8 @@ export function ExplorerPage() {
     summary?.available_skill_tiers,
   )
 
-  // Counts pour les single-selects (ranked context, squad scope) — on les
-  // interpole dans les <option> labels, et on désactive celles à count=0.
-  const rankedCountByValue = new Map(
-    (summary?.available_ranked_contexts ?? []).map((b) => [b.value, b.count]),
-  )
+  // Count pour le single-select squad scope — interpolé dans les <option>
+  // labels et désactive celles à count=0.
   const squadCountByValue = new Map(
     (summary?.available_squad_scopes ?? []).map((b) => [b.value, b.count]),
   )
@@ -333,7 +344,6 @@ export function ExplorerPage() {
     modeNames.size > 0 ||
     perfTiers.size > 0 ||
     skillTiers.size > 0 ||
-    rankedContext !== '' ||
     outcomeFilter.size > 0 ||
     sortKey !== 'start_time:desc'
 
@@ -348,7 +358,6 @@ export function ExplorerPage() {
     setModeNames(new Set())
     setPerfTiers(new Set())
     setSkillTiers(new Set())
-    setRankedContext('')
     setOutcomeFilter(new Set())
     setSortKey('start_time:desc')
   }
@@ -614,28 +623,6 @@ export function ExplorerPage() {
                     placeholder={t('explorer.filters.perf_tier_label')}
                     alwaysShow
                   />
-                  <select
-                    value={rankedContext}
-                    onChange={(e) =>
-                      handleRankedContext(e.target.value as 'ranked' | 'unranked' | '')
-                    }
-                    className="rounded border border-input px-2 py-1 text-sm bg-background"
-                  >
-                    {(['', 'ranked', 'unranked'] as const).map((v) => {
-                      const labelKey =
-                        v === '' ? 'explorer.filters.ranked_all'
-                        : v === 'ranked' ? 'explorer.filters.ranked_ranked'
-                        : 'explorer.filters.ranked_unranked'
-                      const c = rankedCountByValue.get(v)
-                      const isCurrent = v === rankedContext
-                      const prefix = v === '' ? `${t('explorer.filters.ranked_label')} : ` : ''
-                      return (
-                        <option key={v || 'all'} value={v} disabled={c === 0 && !isCurrent}>
-                          {prefix}{t(labelKey)}{c !== undefined ? ` (${c})` : ''}
-                        </option>
-                      )
-                    })}
-                  </select>
                   <MultiSelectFilter
                     options={skillTierOptions}
                     selected={skillTiers}
