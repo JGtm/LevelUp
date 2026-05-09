@@ -74,6 +74,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 			local, err := s.repo.GetLocalStats(gctx, xuidB, s.titleSlug)
 			if err == nil && local != nil {
 				local.IsLocal = true
+				local.FavoriteWeapon, _ = s.repo.GetFavoriteWeapon(gctx, xuidB)
 				statsB = local
 				slog.DebugContext(gctx, "CompareService: joueur B résolu localement", "gamertag", req.TargetGamertag, "xuid", xuidB)
 				return nil
