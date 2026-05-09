@@ -12,6 +12,7 @@ SELECT
     COALESCE(ms.map_name_fr, ms.map_name)                AS map_name_fr,
     ms.pair_name,
     COALESCE(ms.pair_name_fr, ms.pair_name)              AS pair_name_fr,
+    ms.pair_id,
     COALESCE(ms.playlist_name_fr, ms.playlist_name)      AS playlist_name,
     COALESCE(ms.is_firefight, FALSE)                     AS is_firefight,
     COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,
@@ -23,7 +24,7 @@ FROM (
     SELECT r.match_id,
            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
            r.map_name,
-           r.map_name_fr, r.pair_name, r.pair_name_fr,
+           r.map_name_fr, r.pair_name, r.pair_name_fr, r.pair_id,
            r.playlist_name, r.playlist_name_fr,
            COALESCE(r.is_firefight, FALSE) AS is_firefight,
            COALESCE(r.is_ranked, FALSE)    AS is_ranked
@@ -44,6 +45,7 @@ SELECT
     COALESCE(ms.map_name_fr, ms.map_name)                AS map_name_fr,
     ms.pair_name,
     COALESCE(ms.pair_name_fr, ms.pair_name)              AS pair_name_fr,
+    ms.pair_id,
     COALESCE(ms.playlist_name_fr, ms.playlist_name)      AS playlist_name,
     COALESCE(ms.is_firefight, FALSE)                     AS is_firefight,
     COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,
@@ -55,7 +57,8 @@ FROM (
     SELECT match_id,
            COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time,
            map_id, map_name, map_name_fr,
-           pair_name, pair_name_fr, playlist_name, playlist_name_fr,
+           pair_name, pair_name_fr, pair_id,
+           playlist_name, playlist_name_fr,
            is_firefight, is_ranked
     FROM shared.mv_player_matches
     WHERE xuid = ?

@@ -51,6 +51,7 @@ func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.Filte
 			&m.MapNameFR,
 			&m.PairName,
 			&m.PairNameFR,
+			&m.PairID,
 			&m.PlaylistName,
 			&m.IsFirefight,
 			&m.IsRanked,
@@ -103,18 +104,42 @@ func (r *FiltersRepo) hasMVPlayerMatches(ctx context.Context) bool {
 	return true
 }
 
-// applyModeFRTranslations enrichit PairNameFR dans les rows en interrogeant
-// mode_name_tr depuis metadata.duckdb (même logique que home_repo).
-// Opération best-effort : les erreurs sont silencieuses pour ne pas bloquer
-// la résolution des filtres.
+// applyModeFRTranslations enrichit PairNameFR dans les rows via la cascade
+// unifiée analysis.ResolvePairNameFR (mode_name_tr puis re-lookup via
+// asset_translations puis raw fallback).
+//
+// Source unique de vérité partagée avec home_repo et match_history. Sans le
+// re-lookup asset_translations, certains pair_id corrompus (asset_translations
+// retournant l'EN raw "Arena:CTF on X" pour toutes les langues) feraient
+// cohabiter "CTF" + "Capture du drapeau" dans available_modes (cf. thought_log
+// 2026-05-09 root cause P2).
+//
+// Best-effort : les erreurs sont silencieuses pour ne pas bloquer la
+// résolution des filtres.
 func (r *FiltersRepo) applyModeFRTranslations(ctx context.Context, rows []domain.FilterMatchRow) {
+	if r.pdb.Metadata == nil || len(rows) == 0 {
+		return
+	}
+
+	// Étape 1 : collecter les pair_id distincts ET les mode_en normalisés
+	// (depuis pair_name brut ET depuis l'asset name si déjà connu).
+	pairIDs := collectDistinctPairIDsForFilters(rows)
+	pairAssetNames := loadPairAssetNamesFR(ctx, r.pdb.Metadata, pairIDs)
+
 	uniqueEN := make(map[string]struct{}, 32)
 	for _, row := range rows {
 		if en := analysis.NormalizeModeLabel(derefString(row.PairName)); en != "" {
 			uniqueEN[en] = struct{}{}
 		}
+		if row.PairID != nil {
+			if assetName := strings.TrimSpace(pairAssetNames[*row.PairID]); assetName != "" {
+				if en := analysis.NormalizeModeLabel(assetName); en != "" {
+					uniqueEN[en] = struct{}{}
+				}
+			}
+		}
 	}
-	if len(uniqueEN) == 0 || r.pdb.Metadata == nil {
+	if len(uniqueEN) == 0 {
 		return
 	}
 
@@ -122,38 +147,47 @@ func (r *FiltersRepo) applyModeFRTranslations(ctx context.Context, rows []domain
 	for en := range uniqueEN {
 		enNames = append(enNames, en)
 	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(enNames)), ",")
-	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, placeholders)
-	args := make([]any, len(enNames))
-	for i, n := range enNames {
-		args[i] = n
-	}
-
-	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	metaRows, err := r.pdb.Metadata.Query(ctx2, q, args...)
-	if err != nil {
-		return
-	}
-	defer metaRows.Close()
-
-	tr := make(map[string]string, len(enNames))
-	for metaRows.Next() {
-		var modeEN, nameFR string
-		if metaRows.Scan(&modeEN, &nameFR) == nil {
-			tr[modeEN] = nameFR
-		}
-	}
-	if len(tr) == 0 {
+	modeFR := loadModeNamesFRForKeys(ctx, r.pdb.Metadata, enNames)
+	if len(modeFR) == 0 && len(pairAssetNames) == 0 {
 		return
 	}
 
+	// Étape 2 : appliquer le helper canonique sur chaque row.
 	for i := range rows {
-		en := analysis.NormalizeModeLabel(derefString(rows[i].PairName))
-		if fr, ok := tr[en]; ok {
+		var assetName string
+		if rows[i].PairID != nil {
+			assetName = pairAssetNames[*rows[i].PairID]
+		}
+		if fr := analysis.ResolvePairNameFR(
+			derefString(rows[i].PairName),
+			derefString(rows[i].PairNameFR),
+			assetName,
+			modeFR,
+		); fr != "" {
 			rows[i].PairNameFR = &fr
 		}
 	}
+}
+
+// collectDistinctPairIDsForFilters extrait les pair_id uniques non-vides.
+func collectDistinctPairIDsForFilters(rows []domain.FilterMatchRow) []string {
+	seen := make(map[string]struct{}, len(rows))
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if r.PairID == nil {
+			continue
+		}
+		id := strings.TrimSpace(*r.PairID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 // applyMapFRTranslations enrichit MapNameFR quand map_name_fr est absent de match_registry

@@ -33,6 +33,7 @@ type FilterMatchRow struct {
 	MapNameFR      *string // COALESCE(map_name_fr, map_name), enrichi par applyMapFRTranslations
 	PairName       *string // nom EN brut
 	PairNameFR     *string // COALESCE, enrichi par applyModeFRTranslations
+	PairID         *string // UUID asset, clé de lookup asset_translations (fallback enrichissement FR)
 	PlaylistName   *string // COALESCE(playlist_name_fr, playlist_name), enrichi par applyPlaylistFRTranslations
 	PlaylistNameEN *string // playlist_name EN brut — clé de migration cascade
 	IsFirefight    bool

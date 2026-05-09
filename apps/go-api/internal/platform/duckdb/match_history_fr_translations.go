@@ -59,7 +59,10 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 	}
 	modeFR := loadModeFRBatch(ctx, pdb, modeENSet)
 
-	// Application : priorité à mode_name_tr (sous-mode FR), fallback asset_translations.
+	// Application : helper unifié analysis.ResolvePairNameFR pour les paires
+	// (mode_name_tr puis re-lookup via asset_translations puis raw fallback).
+	// Map / Playlist : pas de table de traduction sub-name → fallback raw direct
+	// si COALESCE SQL a renvoyé l'EN.
 	for i := range rows {
 		// Map : si MapNameFR == MapName (= COALESCE fallback), enrichir.
 		if rows[i].MapID != nil {
@@ -71,18 +74,18 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 			}
 		}
 
-		// Pair / Mode : priorité 1 = mode_name_tr (sous-mode normalisé en FR).
-		modeEN := analysis.NormalizeModeLabel(derefString(rows[i].PairName))
-		if fr := modeFR[modeEN]; fr != "" {
+		// Pair / Mode : cascade unifiée (mode_name_tr → asset re-lookup → raw).
+		var assetName string
+		if rows[i].PairID != nil {
+			assetName = pairNames[*rows[i].PairID]
+		}
+		if fr := analysis.ResolvePairNameFR(
+			derefString(rows[i].PairName),
+			derefString(rows[i].PairNameFR),
+			assetName,
+			modeFR,
+		); fr != "" {
 			rows[i].PairNameFR = &fr
-		} else if rows[i].PairID != nil {
-			id := *rows[i].PairID
-			// Priorité 2 : asset_translations (nom complet de paire).
-			if needsHomeAssetTranslation(derefString(rows[i].PairNameFR), derefString(rows[i].PairName)) {
-				if name := strings.TrimSpace(pairNames[id]); name != "" {
-					rows[i].PairNameFR = &name
-				}
-			}
 		}
 
 		// Playlist : si PlaylistName == PlaylistNameEN (FR manquant), enrichir.
@@ -122,35 +125,87 @@ func collectDistinctIDs(rows []domain.MatchHistoryRawRow, get func(domain.MatchH
 
 // loadModeFRBatch charge mode_name_tr (FR) pour la liste de modes EN normalisés.
 // Best-effort : retourne un map vide si erreur ou table absente.
+//
+// Wrapper map[string]struct{} → loadModeNamesFRForKeys, conservé pour préserver
+// la signature historique du caller match_history.
 func loadModeFRBatch(ctx context.Context, pdb *PlayerDB, modeENSet map[string]struct{}) map[string]string {
-	if len(modeENSet) == 0 || pdb.Metadata == nil {
+	if len(modeENSet) == 0 || pdb == nil || pdb.Metadata == nil {
 		return nil
 	}
 	enList := make([]string, 0, len(modeENSet))
 	for k := range modeENSet {
 		enList = append(enList, k)
 	}
-	placeholders := strings.TrimRight(strings.Repeat("?,", len(enList)), ",")
-	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, placeholders)
-	args := make([]any, len(enList))
-	for i, n := range enList {
+	return loadModeNamesFRForKeys(ctx, pdb.Metadata, enList)
+}
+
+// loadModeNamesFRForKeys charge mode_name_tr[lang='fr'] pour les mode_en
+// normalisés donnés. Helper partagé entre match_history et filters.
+// Best-effort : retourne nil/map vide en cas d'erreur (loggée pour les
+// erreurs autres que table absente).
+func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[string]string {
+	if meta == nil || len(enKeys) == 0 {
+		return nil
+	}
+	ph := strings.TrimRight(strings.Repeat("?,", len(enKeys)), ",")
+	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, ph)
+	args := make([]any, len(enKeys))
+	for i, n := range enKeys {
 		args[i] = n
 	}
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	rows, err := pdb.Metadata.Query(ctx2, q, args...)
+	rows, err := meta.Query(ctx2, q, args...)
 	if err != nil {
 		if !isTableNotFoundErr(err) {
-			slog.WarnContext(ctx, "match_history: loadModeFRBatch failed", "err", err)
+			slog.WarnContext(ctx, "fr_translations: loadModeNamesFRForKeys failed", "err", err)
 		}
 		return nil
 	}
 	defer rows.Close()
-	out := make(map[string]string, len(enList))
+	out := make(map[string]string, len(enKeys))
 	for rows.Next() {
 		var en, fr string
 		if rows.Scan(&en, &fr) == nil && strings.TrimSpace(fr) != "" {
 			out[en] = fr
+		}
+	}
+	return out
+}
+
+// loadPairAssetNamesFR charge asset_translations[asset_type='pair', lang='fr'|'fr-FR']
+// pour les pair_id donnés. Helper partagé entre match_history et filters pour
+// le fallback de re-lookup mode_name_tr (cf. analysis.ResolvePairNameFR).
+// Best-effort : retourne nil en cas d'erreur.
+func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[string]string {
+	if meta == nil || len(pairIDs) == 0 {
+		return nil
+	}
+	ph := strings.TrimRight(strings.Repeat("?,", len(pairIDs)), ",")
+	q := fmt.Sprintf(`SELECT asset_id, name FROM asset_translations
+		WHERE asset_type = 'pair' AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s)
+		ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`, ph)
+	args := make([]any, len(pairIDs))
+	for i, id := range pairIDs {
+		args[i] = id
+	}
+	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	rows, err := meta.Query(ctx2, q, args...)
+	if err != nil {
+		if !isTableNotFoundErr(err) {
+			slog.WarnContext(ctx, "fr_translations: loadPairAssetNamesFR failed", "err", err)
+		}
+		return nil
+	}
+	defer rows.Close()
+	out := make(map[string]string, len(pairIDs))
+	for rows.Next() {
+		var id, name string
+		if rows.Scan(&id, &name) == nil {
+			if _, exists := out[id]; !exists {
+				out[id] = strings.TrimSpace(name)
+			}
 		}
 	}
 	return out
