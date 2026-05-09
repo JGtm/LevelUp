@@ -3,8 +3,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { tokenCssVar } from '@/lib/accessibility'
 import { type HelpLocale } from './i18n'
 import { useReleaseNotes } from './queries'
+import type { SemanticToken } from '@/lib/accessibility'
 import {
   parseReleaseNotes,
+  getSectionToken,
   renderItemMarkdown,
   renderInlineMarkdown,
   type ReleaseEntry,
@@ -53,8 +55,8 @@ function ReleaseItem({ entry }: { entry: ReleaseEntry }) {
   return (
     <li className="relative">
       <span
-        className="absolute -left-[2.1rem] top-1.5 w-3 h-3 rounded-full border-2 bg-background"
-        style={{ borderColor: tokenCssVar('info') }}
+        className="absolute top-1.5 w-3 h-3 rounded-full border-2 bg-background"
+        style={{ left: 'calc(-2rem - 6px)', borderColor: tokenCssVar('info') }}
       />
 
       <div className="flex items-baseline gap-3 mb-3 flex-wrap">
@@ -81,20 +83,30 @@ function ReleaseItem({ entry }: { entry: ReleaseEntry }) {
 
       <div className="space-y-5">
         {entry.sections.map((section, i) => (
-          <SectionBlock key={`${section.title}-${i}`} section={section} />
+          <SectionBlock
+            key={`${section.title}-${i}`}
+            section={section}
+            accentToken={getSectionToken(i)}
+          />
         ))}
       </div>
     </li>
   )
 }
 
-function SectionBlock({ section }: { section: ReleaseSection }) {
+function SectionBlock({
+  section,
+  accentToken,
+}: {
+  section: ReleaseSection
+  accentToken: SemanticToken
+}) {
   return (
     <div>
       {section.title && (
         <h3
           className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5"
-          style={{ color: tokenCssVar('info') }}
+          style={{ color: tokenCssVar(accentToken) }}
         >
           <span aria-hidden="true">◈</span>
           {section.title}
@@ -104,7 +116,7 @@ function SectionBlock({ section }: { section: ReleaseSection }) {
         {section.items.map((item, i) => (
           <li key={i} className="text-sm text-foreground flex gap-2">
             <span className="text-muted-foreground select-none mt-0.5 shrink-0">—</span>
-            <span dangerouslySetInnerHTML={{ __html: renderItemMarkdown(item) }} />
+            <span dangerouslySetInnerHTML={{ __html: renderItemMarkdown(item, accentToken) }} />
           </li>
         ))}
       </ul>

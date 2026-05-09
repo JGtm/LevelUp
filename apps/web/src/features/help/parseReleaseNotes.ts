@@ -1,3 +1,5 @@
+import type { SemanticToken } from '@/lib/accessibility'
+
 export interface ReleaseSection {
   title: string
   items: string[]
@@ -14,6 +16,21 @@ const VERSION_RE = /^\*\*(v[\d.]+)\s*[—\-]\s*(.+?)\*\*$/
 const SECTION_RE = /^\*\*(.+?)\*\*$/
 const ITEM_RE = /^-\s+(.+)$/
 const TOP_HEADING_RE = /^##\s+/
+
+const SECTION_TOKENS: SemanticToken[] = [
+  'success',
+  'info',
+  'warning',
+  'narrative-humiliation',
+  'narrative-contre-remontada',
+  'chart-series-8',
+  'compare-a',
+  'destructive',
+]
+
+export function getSectionToken(index: number): SemanticToken {
+  return SECTION_TOKENS[index % SECTION_TOKENS.length]
+}
 
 export function parseReleaseNotes(markdown: string): ReleaseEntry[] {
   const entries: ReleaseEntry[] = []
@@ -72,12 +89,13 @@ export function parseReleaseNotes(markdown: string): ReleaseEntry[] {
   return entries
 }
 
-export function renderItemMarkdown(text: string): string {
+export function renderItemMarkdown(text: string, accentToken: SemanticToken): string {
+  const accentVar = `var(--ac-${accentToken})`
   return text
     .replace(/`([^`]+)`/g, '<code class="font-mono text-xs bg-muted px-1 py-0.5 rounded">$1</code>')
     .replace(
       /\*\*(.+?)\*\*/g,
-      '<strong class="font-semibold" style="color: var(--ac-info)">$1</strong>',
+      `<strong class="font-semibold" style="color: ${accentVar}">$1</strong>`,
     )
 }
 
