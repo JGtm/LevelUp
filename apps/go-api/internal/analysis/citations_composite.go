@@ -17,6 +17,50 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// ApplyCompositeCitations est la version exportée de computeCompositeCitations.
+// Utilisée par le moteur principal (per-match, avec vérification des tiers).
+func ApplyCompositeCitations(totals map[string]int, mappings []domain.CitationFullMapping) {
+	computeCompositeCitations(totals, mappings)
+}
+
+// ApplyCompositeCitationsPerMatch calcule les composites per-match en mode backfill.
+// Différence avec computeCompositeCitations : un enfant est "actif dans ce match"
+// dès que val > 0 — les tier_targets sont des seuils cumulatifs, pas per-match.
+// Gère les composites imbriqués via passes répétées jusqu'à stabilisation.
+func ApplyCompositeCitationsPerMatch(totals map[string]int, mappings []domain.CitationFullMapping) {
+	for range 5 {
+		if !applyCompositesPass(totals, mappings) {
+			break
+		}
+	}
+}
+
+// applyCompositesPass effectue une passe sur les composites.
+// Retourne true si au moins une valeur a changé (indique qu'une autre passe est utile).
+func applyCompositesPass(totals map[string]int, mappings []domain.CitationFullMapping) bool {
+	changed := false
+	for _, m := range mappings {
+		if m.MappingType != "composite" || m.CompositeChildren == nil || *m.CompositeChildren == "" {
+			continue
+		}
+		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
+		if err != nil || len(children) == 0 {
+			continue
+		}
+		count := 0
+		for _, child := range children {
+			if totals[child] > 0 {
+				count++
+			}
+		}
+		if count > 0 && totals[m.NameNorm] != count {
+			totals[m.NameNorm] = count
+			changed = true
+		}
+	}
+	return changed
+}
+
 // computeCompositeCitations enrichit totals avec les valeurs des citations composite.
 // Doit être appelée après le dispatch principal (tous les autres mapping_types calculés).
 // Les composites utilisent les valeurs déjà dans totals pour déterminer combien

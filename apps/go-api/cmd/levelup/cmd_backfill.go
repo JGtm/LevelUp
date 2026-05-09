@@ -43,6 +43,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	perf := fs.Bool("perf", false, "Backfill performance score relatif v5 (off_conv + def_res + medal_exploit)")
 	assistsModel := fs.Bool("assists-model", false, "Calcule le modèle OLS expected_assists par mode (player_assists_model dans stats.duckdb)")
 	weapons := fs.Bool("weapons", false, "Backfill weapon_kills depuis film CDN (tous les participants par match)")
+	compositeOnly := fs.Bool("composite-only", false, "Backfill citations composites uniquement (additive, sans recalcul depuis shared_matches)")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -54,8 +55,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
-	if !*engagementScores && !*citations && !*lusr && !*perf && !*assistsModel && !*weapons {
-		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --perf, --assists-model ou --weapons)")
+	if !*engagementScores && !*citations && !*lusr && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
+		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --perf, --assists-model, --weapons ou --composite-only)")
 	}
 
 	ctx := context.Background()
@@ -126,6 +127,16 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	}
 	if *weapons {
 		return runBackfillAllWeapons(ctx, cfg, *force)
+	}
+	if *compositeOnly {
+		if *allPlayers {
+			return runBackfillAllCompositeOnly(ctx, cfg)
+		}
+		player, err := loadPlayerSummary(cfg, *gamertag)
+		if err != nil {
+			return err
+		}
+		return runBackfillCompositeOnlyForPlayer(ctx, cfg, player.Gamertag, player.XUID)
 	}
 	return nil
 }
@@ -585,4 +596,69 @@ func findMissingWeaponMatches(ctx context.Context, sharedDBPath, xuid string, fo
 		matchIDs = append(matchIDs, mid)
 	}
 	return matchIDs, rows.Err()
+}
+
+// ── Composite-only citations backfill ──────────────────────────────────────────
+
+func runBackfillAllCompositeOnly(ctx context.Context, cfg *config.AppConfig) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	total, processed, skipped, failed, totalUpdated := len(players), 0, 0, 0, 0
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+			skipped++
+			fmt.Printf("backfill composite-only SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			continue
+		}
+		updated, runErr := runBackfillCompositeOnlyOne(ctx, cfg, player.Gamertag, player.XUID)
+		if runErr != nil {
+			failed++
+			fmt.Printf("backfill composite-only FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
+			continue
+		}
+		processed++
+		totalUpdated += updated
+		fmt.Printf("backfill composite-only OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
+	}
+	fmt.Printf("backfill composite-only batch: total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
+		total, processed, skipped, failed, totalUpdated)
+	if failed > 0 {
+		return fmt.Errorf("backfill composite-only: %d joueur(s) en echec", failed)
+	}
+	return nil
+}
+
+func runBackfillCompositeOnlyForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) error {
+	updated, err := runBackfillCompositeOnlyOne(ctx, cfg, gamertag, xuid)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("backfill composite-only OK: gamertag=%s updated=%d\n", gamertag, updated)
+	return nil
+}
+
+// runBackfillCompositeOnlyOne applique les migrations puis appelle
+// SyncEngine.RunBackfillCompositeOnlyCitations. Aucun appel API requis.
+func runBackfillCompositeOnlyOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) (int, error) {
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
+	metaDBPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
+
+	if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
+		return 0, fmt.Errorf("migrations player %s: %w", gamertag, err)
+	}
+	if err := applyMigrationsOnDB(metaDBPath, migration.TargetMetadata); err != nil {
+		return 0, fmt.Errorf("migrations metadata: %w", err)
+	}
+
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
+	return engine.RunBackfillCompositeOnlyCitations(ctx)
 }

@@ -17,6 +17,8 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 )
 
@@ -131,6 +133,125 @@ func deleteCitationsForMatches(ctx context.Context, playerDB *sql.DB, matchIDs [
 		}
 	}
 	return nil
+}
+
+// RunBackfillCompositeOnlyCitations recalcule les citations composites en s'appuyant
+// uniquement sur les valeurs déjà présentes dans match_citations (pas de lecture shared).
+// Toujours non-destructif : INSERT ... ON CONFLICT DO NOTHING.
+//
+// Logique per-match : un enfant "contribue" dès que val > 0 (les tier_targets sont des
+// seuils cumulatifs affichage, pas des filtres per-match). Gère les composites imbriqués
+// via passes répétées (ex: all_weapons_mastery → human_weapons_mastery → br75_mastery).
+func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int, error) {
+	writer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations lease: %w", err)
+	}
+	defer writer.Release()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	metaDB, err := sql.Open("duckdb", e.metadataDBPath+"?access_mode=READ_ONLY")
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations open metadata: %w", err)
+	}
+	defer metaDB.Close()
+	metaDB.SetMaxOpenConns(1)
+
+	mappings, err := loadFullCitationMappings(ctx, metaDB)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations mappings: %w", err)
+	}
+	if len(mappings) == 0 {
+		slog.InfoContext(ctx, "composite-only: aucun mapping — skip", "player", e.gamertag)
+		return 0, nil
+	}
+
+	compositeNames := buildCompositeNameSet(mappings)
+
+	// Charge toutes les valeurs non-composites de match_citations (leaf citations).
+	// Les composites existants sont exclus pour éviter d'utiliser des données obsolètes.
+	nonCompositesPerMatch, err := loadNonCompositeCitationsByMatch(ctx, playerHandle.SQLDb(), compositeNames)
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations load data: %w", err)
+	}
+	if len(nonCompositesPerMatch) == 0 {
+		slog.InfoContext(ctx, "composite-only: aucune donnée dans match_citations", "player", e.gamertag)
+		return 0, nil
+	}
+
+	written := 0
+	for matchID, totals := range nonCompositesPerMatch {
+		// Multi-pass : gère composites imbriqués (all_weapons → human_weapons → br75).
+		analysis.ApplyCompositeCitationsPerMatch(totals, mappings)
+		var deltas []domain.CitationMatchDelta
+		for _, m := range mappings {
+			if m.MappingType != "composite" {
+				continue
+			}
+			if v := totals[m.NameNorm]; v > 0 {
+				deltas = append(deltas, domain.CitationMatchDelta{NameNorm: m.NameNorm, Value: v})
+			}
+		}
+		if len(deltas) == 0 {
+			continue
+		}
+		if err := writeCitations(ctx, playerHandle.SQLDb(), matchID, deltas); err != nil {
+			return written, fmt.Errorf("composite-only write %s: %w", matchID, err)
+		}
+		written++
+	}
+
+	slog.InfoContext(ctx, "composite-only: terminé",
+		"player", e.gamertag, "matches_updated", written)
+	return written, nil
+}
+
+// buildCompositeNameSet retourne l'ensemble des citation_name_norm de type composite.
+func buildCompositeNameSet(mappings []domain.CitationFullMapping) map[string]struct{} {
+	s := make(map[string]struct{})
+	for _, m := range mappings {
+		if m.MappingType == "composite" {
+			s[m.NameNorm] = struct{}{}
+		}
+	}
+	return s
+}
+
+// loadNonCompositeCitationsByMatch charge toutes les valeurs non-composites (val > 0)
+// depuis match_citations. Les composites existants sont exclus afin de repartir des
+// données feuilles pour le recalcul.
+// Retourne map[match_id]map[citation_name_norm]value.
+func loadNonCompositeCitationsByMatch(ctx context.Context, db *sql.DB, compositeNames map[string]struct{}) (map[string]map[string]int, error) {
+	rows, err := db.QueryContext(ctx, `
+SELECT match_id, citation_name_norm, value
+FROM match_citations
+WHERE value > 0`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]map[string]int)
+	for rows.Next() {
+		var matchID, nameNorm string
+		var value int
+		if err := rows.Scan(&matchID, &nameNorm, &value); err != nil {
+			return nil, err
+		}
+		if _, isComposite := compositeNames[nameNorm]; isComposite {
+			continue // recalculé depuis les feuilles
+		}
+		if result[matchID] == nil {
+			result[matchID] = make(map[string]int)
+		}
+		result[matchID][nameNorm] = value
+	}
+	return result, rows.Err()
 }
 
 // runPostSyncCitations branche les citations dans le pipeline post-sync.
