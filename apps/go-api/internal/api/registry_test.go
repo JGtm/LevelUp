@@ -144,7 +144,7 @@ func TestServiceRegistry_TeammatesCtx_ResolveError(t *testing.T) {
 
 func TestServiceRegistry_Compare_ResolveError(t *testing.T) {
 	reg := &ServiceRegistry{resolve: failResolver}
-	_, _, _, err := reg.Compare(context.Background(), "x")
+	_, _, _, _, err := reg.Compare(context.Background(), "x")
 	if !errors.Is(err, errResolve) {
 		t.Fatalf("expected resolve error, got %v", err)
 	}

@@ -43,15 +43,15 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			AVG(COALESCE(mp.kills, 0))                            AS kills_per_game,
 			AVG(COALESCE(mp.deaths, 0))                          AS deaths_per_game,
 			AVG(COALESCE(mp.assists, 0))                         AS assists_per_game,
-			AVG(COALESCE(mp.accuracy, 0.0))                      AS accuracy,
+			AVG(COALESCE(mp.accuracy, 0.0)) / 100.0              AS accuracy,
 			AVG(COALESCE(mp.damage_dealt, 0.0))                  AS damage_per_game
 		FROM shared.match_participants mp
 		LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = mp.xuid
 		LEFT JOIN shared.xuid_aliases xa ON xa.xuid = mp.xuid
 		WHERE mp.xuid = ?
-		GROUP BY mp.xuid, gamertag`
+		GROUP BY mp.xuid, COALESCE(vg.gamertag, xa.gamertag, '')`
 
-	row := r.pdb.Shared.QueryRow(ctx, q, xuid)
+	row := r.pdb.Player.QueryRow(ctx, q, xuid)
 
 	var s domain.NormalizedPlayerStats
 	var kda, kdr sql.NullFloat64
@@ -89,7 +89,7 @@ func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string,
 		LIMIT 1`
 
 	var xuid string
-	err := r.pdb.Shared.QueryRow(ctx, q, gamertag).Scan(&xuid)
+	err := r.pdb.Player.QueryRow(ctx, q, gamertag).Scan(&xuid)
 	if err == sql.ErrNoRows {
 		return "", nil // non trouvé localement — pas une erreur fatale
 	}

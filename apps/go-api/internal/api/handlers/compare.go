@@ -8,6 +8,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -17,13 +18,17 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// CompareAuthFactory retourne un CompareService + contexte enrichi avec les HaloTokens.
+// Même pattern que HomeAuthFactory.
+type CompareAuthFactory func(ctx context.Context, slug string) (svc port.CompareService, enrichedCtx context.Context, xuid, gamertag string, err error)
+
 // CompareHandler gère l'endpoint de comparaison joueur vs joueur.
 type CompareHandler struct {
-	newSvc ContextFactory[port.CompareService]
+	newSvc CompareAuthFactory
 }
 
 // NewCompareHandler crée un CompareHandler.
-func NewCompareHandler(newSvc ContextFactory[port.CompareService]) *CompareHandler {
+func NewCompareHandler(newSvc CompareAuthFactory) *CompareHandler {
 	return &CompareHandler{newSvc: newSvc}
 }
 
@@ -31,7 +36,7 @@ func NewCompareHandler(newSvc ContextFactory[port.CompareService]) *CompareHandl
 // POST /api/v1/players/{player_slug}/pages/compare
 func (h *CompareHandler) PostComparePage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	svc, _, _, err := h.newSvc(r.Context(), slug)
+	svc, enrichedCtx, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -47,7 +52,7 @@ func (h *CompareHandler) PostComparePage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp, err := svc.GetPage(r.Context(), req)
+	resp, err := svc.GetPage(enrichedCtx, req)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "compare_error", err.Error())
 		return

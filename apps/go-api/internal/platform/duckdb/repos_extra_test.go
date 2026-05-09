@@ -61,8 +61,6 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 	db := openMemDB(t)
 	ctx := context.Background()
 
-	// Create schema — use different column name in xuid_aliases to avoid ambiguity
-	// (production uses ATTACH'd DBs where aliasing resolves naturally)
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
 		`CREATE TABLE IF NOT EXISTS shared.match_participants (
@@ -71,6 +69,7 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 			outcome INTEGER, accuracy DOUBLE, damage_dealt DOUBLE
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 	}
 	for _, q := range ddls {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -93,11 +92,55 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 	pdb := &PlayerDB{Player: db, Shared: db, XUID: "x1"}
 	repo := NewCompareRepo(pdb)
 
-	// Note: GetLocalStats has an ambiguous GROUP BY in in-memory mode
-	// (works in production with ATTACH'd databases). Just verify the call path.
-	_, err := repo.GetLocalStats(ctx, "x1", "halo_infinite")
+	stats, err := repo.GetLocalStats(ctx, "x1", "halo_infinite")
 	if err != nil {
-		t.Logf("GetLocalStats error (expected in in-memory mode): %v", err)
+		t.Fatalf("GetLocalStats: %v", err)
+	}
+	if stats.Matches != 2 {
+		t.Errorf("Matches: got %d, want 2", stats.Matches)
+	}
+	if stats.Gamertag != "Player1" {
+		t.Errorf("Gamertag: got %q, want Player1", stats.Gamertag)
+	}
+	// 1 win sur 2 → 50 %
+	if stats.WinRate != 0.5 {
+		t.Errorf("WinRate: got %f, want 0.5", stats.WinRate)
+	}
+	if stats.KillsPerGame != 15.0 {
+		t.Errorf("KillsPerGame: got %f, want 15.0", stats.KillsPerGame)
+	}
+	// accuracy stockée en % dans match_participants → normalisée /100 → 0..1
+	if stats.Accuracy != 0.5 {
+		t.Errorf("Accuracy: got %f, want 0.5 (normalized from 50%%)", stats.Accuracy)
+	}
+}
+
+func TestCompareRepo_GetLocalStats_NotFound(t *testing.T) {
+	db := openMemDB(t)
+	ctx := context.Background()
+
+	ddls := []string{
+		`CREATE SCHEMA IF NOT EXISTS shared`,
+		`CREATE TABLE IF NOT EXISTS shared.match_participants (
+			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
+			kills INTEGER, deaths INTEGER, assists INTEGER,
+			outcome INTEGER, accuracy DOUBLE, damage_dealt DOUBLE
+		)`,
+		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
+	}
+	for _, q := range ddls {
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pdb := &PlayerDB{Player: db, Shared: db}
+	repo := NewCompareRepo(pdb)
+
+	_, err := repo.GetLocalStats(ctx, "xuid_unknown", "halo_infinite")
+	if err == nil {
+		t.Fatal("expected error for unknown XUID, got nil")
 	}
 }
 

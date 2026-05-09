@@ -45,8 +45,8 @@ func newCompareMultiTitleRouter(svc *captureCompareService) *chi.Mux {
 		Status:   titlePkg.StatusComingSoon,
 	})
 
-	factory := func(_ context.Context, slug string) (port.CompareService, string, string, error) {
-		return svc, testXUID1, testGamertag, nil
+	factory := func(ctx context.Context, slug string) (port.CompareService, context.Context, string, string, error) {
+		return svc, ctx, testXUID1, testGamertag, nil
 	}
 
 	r := chi.NewRouter()
