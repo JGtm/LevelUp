@@ -70,6 +70,10 @@ interface Props {
    *  le label compact "Matchs <ctx> X/Y" affiché dans la nav bar de la page
    *  match-view. Si undefined, pas de label spécifique (fallback Q25 global). */
   contextDescriptor?: ContextDescriptor
+  /** Forcer l'affichage du bloc pagination même si rows.length ≤ PAGE_SIZE.
+   *  Utile en mode Joueur (tableaux ally/enemy) pour rendre la pagination
+   *  toujours visible indépendamment du volume de données. */
+  alwaysShowPagination?: boolean
 }
 
 function fmtMmr(v: number | null | undefined): string {
@@ -152,7 +156,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, alwaysShowPagination }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -467,7 +471,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
 
   const pageIndex = table.getState().pagination.pageIndex
   const pageCount = table.getPageCount()
-  const showPagination = rows.length > PAGE_SIZE
+  const showPagination = (alwaysShowPagination && rows.length > 0) || rows.length > PAGE_SIZE
 
   // Bannière d'équipe (variant ally/enemy) : pattern aligné sur
   // features/match-view/MatchScoreboard.tsx — gradient horizontal color-mix

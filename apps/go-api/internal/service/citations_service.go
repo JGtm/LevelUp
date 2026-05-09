@@ -34,10 +34,18 @@ func (s *CitationsService) GetCitationsPage(ctx context.Context) (*domain.Citati
 
 	items := analysis.MergeCitationTotals(totals, mappings)
 	categories := analysis.ExtractCategories(items)
+	byCategory := analysis.BuildCitationsByCategory(items)
+
+	total := 0
+	for _, item := range items {
+		total += item.Total
+	}
 
 	return &domain.CitationsPageResponse{
-		Citations:  items,
-		Categories: categories,
+		Citations:           items,
+		CitationsByCategory: byCategory,
+		Categories:          categories,
+		TotalCount:          total,
 	}, nil
 }
 

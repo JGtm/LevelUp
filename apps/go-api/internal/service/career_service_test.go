@@ -53,7 +53,7 @@ func TestCareerService_GetCareerPage_OK(t *testing.T) {
 			CurrentXP:  1000,
 			RecordedAt: time.Now(),
 		},
-		xpHist:   []domain.XPHistoryPoint{{RankNumber: 50, CurrentXP: 1000}},
+		xpHist:   []domain.XPHistoryPoint{{Rank: 50, CurrentXP: 1000}},
 		lusrHist: []domain.LUSRCheckpointDTO{{RatingValue: 1500.0}},
 	}
 	svc := NewCareerService(repo)

@@ -164,8 +164,8 @@ func TestBuildHeroProgress_MaxCap(t *testing.T) {
 func TestComputeActiveXPPerDay_Simple(t *testing.T) {
 	now := time.Now()
 	history := []domain.XPHistoryPoint{
-		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotalCumul: 0},
-		{RecordedAt: now, XPTotalCumul: 10000},
+		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotal: 0},
+		{RecordedAt: now, XPTotal: 10000},
 	}
 	rate := computeActiveXPPerDay(history)
 	// 10000 XP / 10 jours = 1000
@@ -175,7 +175,7 @@ func TestComputeActiveXPPerDay_Simple(t *testing.T) {
 }
 
 func TestComputeActiveXPPerDay_InsufficientHistory(t *testing.T) {
-	history := []domain.XPHistoryPoint{{RecordedAt: time.Now(), XPTotalCumul: 5000}}
+	history := []domain.XPHistoryPoint{{RecordedAt: time.Now(), XPTotal: 5000}}
 	rate := computeActiveXPPerDay(history)
 	if rate != 0.0 {
 		t.Errorf("expected 0 for single point, got %v", rate)
