@@ -818,10 +818,12 @@ func (r *ServiceRegistry) friendGamertagsResolver() service.FriendGamertagsResol
 
 // Compare retourne un CompareService pour le joueur (slug = joueur A).
 // Le PlayerStatsProvider (Waypoint) est injecté via DefaultHaloProvider.
-func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.CompareService, string, string, error) {
+// Le contexte est enrichi avec les HaloTokens pour que FetchRemoteStats puisse
+// s'authentifier auprès de Waypoint même si la session HTTP ne porte pas de tokens.
+func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.CompareService, context.Context, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
-		return nil, "", "", err
+		return nil, ctx, "", "", err
 	}
 	svc := service.NewCompareService(
 		duckdb.NewCompareRepo(pdb),
@@ -829,7 +831,8 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 		pdb.XUID,
 		pdb.TitleSlug,
 	)
-	return svc, pdb.XUID, pdb.Gamertag, nil
+	enriched := r.enrichWithHaloTokens(ctx, pdb)
+	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
 
 // Leaderboard retourne un LeaderboardService pour le joueur.

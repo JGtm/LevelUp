@@ -91,6 +91,100 @@ func (m *mockMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (
 	return nil, nil
 }
 
+// --- tests localisation FR ---
+
+// TestMatchViewService_LocalisationFR_ModeMapPlaylistTraduits : cas nominal complet.
+// Le repo a résolu ModeNameFR / MapNameFR / PlaylistNameFR via mode_name_tr +
+// asset_translations. Le service doit les retransmettre tels quels dans
+// header.ModeUI / MapUI / PlaylistLabel sans les tronquer ni les remplacer.
+// C'est le test de non-régression principal pour le bug "titre = Forbidden uniquement"
+// (2026-05-09) où mode_ui était nil faute de lookup mode_name_tr.
+func TestMatchViewService_LocalisationFR_ModeMapPlaylistTraduits(t *testing.T) {
+	modeFR, mapFR, plFR := "Capture du drapeau", "Forbidden", "Partie rapide"
+	repo := &mockMatchViewRepo{
+		meta: &domain.MatchMetaRaw{
+			MatchID:        "m-fr",
+			ModeNameFR:     &modeFR,
+			MapNameFR:      &mapFR,
+			PlaylistNameFR: &plFR,
+		},
+	}
+	resp, err := NewMatchViewService(repo, "x").GetMatchView(context.Background(), "m-fr")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Header.ModeUI != "Capture du drapeau" {
+		t.Errorf("ModeUI = %q, want 'Capture du drapeau' (mode_name_tr lookup)", resp.Header.ModeUI)
+	}
+	if resp.Header.MapUI != "Forbidden" {
+		t.Errorf("MapUI = %q, want 'Forbidden' (asset_translations)", resp.Header.MapUI)
+	}
+	if resp.Header.PlaylistLabel != "Partie rapide" {
+		t.Errorf("PlaylistLabel = %q, want 'Partie rapide' (asset_translations)", resp.Header.PlaylistLabel)
+	}
+}
+
+// TestMatchViewService_LocalisationFR_ModeNilFallbackNonVide : défense en profondeur.
+// Quand ModeNameFR est nil (repo n'a pas pu résoudre), le service ne doit pas
+// produire un ModeUI vide — ce qui causerait un titre frontend = "Forbidden" seul.
+// Le fallback ResolveModeUI extrait au moins le sous-mode EN du pair_name brut.
+func TestMatchViewService_LocalisationFR_ModeNilFallbackNonVide(t *testing.T) {
+	pairN := "Arena:CTF on Forbidden"
+	repo := &mockMatchViewRepo{
+		meta: &domain.MatchMetaRaw{
+			MatchID:    "m-fallback",
+			PairName:   &pairN,
+			ModeNameFR: nil,
+		},
+	}
+	resp, err := NewMatchViewService(repo, "x").GetMatchView(context.Background(), "m-fallback")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Header.ModeUI == "" {
+		t.Errorf("ModeUI vide alors que PairName=%q — frontend afficherait titre = carte seule", pairN)
+	}
+}
+
+// TestMatchViewService_LocalisationFR_ENFallbackSiPasDeFR : MapNameFR absent →
+// MapUI repris depuis MapName (EN) plutôt que chaîne vide.
+func TestMatchViewService_LocalisationFR_ENFallbackSiPasDeFR(t *testing.T) {
+	mapEN := "Aquarius"
+	repo := &mockMatchViewRepo{
+		meta: &domain.MatchMetaRaw{
+			MatchID: "m-en-fb",
+			MapName: &mapEN,
+		},
+	}
+	resp, err := NewMatchViewService(repo, "x").GetMatchView(context.Background(), "m-en-fb")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Header.MapUI != "Aquarius" {
+		t.Errorf("MapUI = %q, want 'Aquarius' (fallback EN quand MapNameFR absent)", resp.Header.MapUI)
+	}
+}
+
+// TestMatchViewService_LocalisationFR_FRPrioritaireSurEN : quand MapNameFR et
+// MapName sont tous les deux renseignés, la version FR est utilisée.
+func TestMatchViewService_LocalisationFR_FRPrioritaireSurEN(t *testing.T) {
+	mapEN, mapFR := "Aquarius", "Verseau"
+	repo := &mockMatchViewRepo{
+		meta: &domain.MatchMetaRaw{
+			MatchID:   "m-fr-pref",
+			MapName:   &mapEN,
+			MapNameFR: &mapFR,
+		},
+	}
+	resp, err := NewMatchViewService(repo, "x").GetMatchView(context.Background(), "m-fr-pref")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Header.MapUI != "Verseau" {
+		t.Errorf("MapUI = %q, want 'Verseau' (FR prioritaire sur EN)", resp.Header.MapUI)
+	}
+}
+
 // --- tests ---
 
 func TestMatchViewService_GetMatchView_OK(t *testing.T) {
