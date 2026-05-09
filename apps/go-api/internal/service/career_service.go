@@ -31,11 +31,16 @@ const (
 	inactivityGapDays = 14.0
 )
 
+// FriendsXPLoader charge l'historique XP de tous les amis d'un joueur.
+// Retourne une liste vide (sans erreur) si aucun ami n'a de données.
+type FriendsXPLoader func(ctx context.Context, titleSlug string) ([]domain.FriendXPHistory, error)
+
 // CareerService construit les réponses pour la page Carrière.
 type CareerService struct {
-	repo      port.CareerRepository
-	metaRepo  port.MetadataRepository // optionnel — nil = fallback synthétique
-	titleSlug string                  // titre courant, ex: "halo_infinite"
+	repo             port.CareerRepository
+	metaRepo         port.MetadataRepository // optionnel — nil = fallback synthétique
+	titleSlug        string                  // titre courant, ex: "halo_infinite"
+	friendsXPLoader  FriendsXPLoader         // optionnel — nil = pas de courbes amis
 	// dataAdapter (optionnel) — Phase C+ multi-titres. Quand fourni, GetEncounters
 	// passe par games.TitleDataAdapter.LoadEncounters au lieu d'appeler le repo
 	// directement. Préserve une parité comportementale stricte : projection
@@ -72,6 +77,13 @@ func (s *CareerService) WithDataAdapter(a games.TitleDataAdapter) *CareerService
 	return s
 }
 
+// WithFriendsXPLoader injecte un loader d'historique XP des amis.
+// Quand nil, aucune courbe ami n'est incluse dans GetCareerPage.
+func (s *CareerService) WithFriendsXPLoader(loader FriendsXPLoader) *CareerService {
+	s.friendsXPLoader = loader
+	return s
+}
+
 // GetCareerPage retourne la réponse complète de la page Carrière.
 //
 // Phase C+ multi-titres : GetLatestRank passe par DataAdapter.LoadCareerSnapshot
@@ -103,14 +115,25 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 
 	currentSeason := s.resolveCurrentSeason(ctx)
 
-	return domain.CareerPageResponse{
+	resp := domain.CareerPageResponse{
 		Summary:       summary,
 		HeroProgress:  hero,
 		Projections:   projs,
 		XPHistory:     xpHistory,
 		LUSR:          lusr,
 		CurrentSeason: currentSeason,
-	}, nil
+	}
+
+	if s.friendsXPLoader != nil {
+		friends, err := s.friendsXPLoader(ctx, s.titleSlug)
+		if err != nil {
+			slog.WarnContext(ctx, "career_friends_xp_load_failed", "err", err)
+		} else if len(friends) > 0 {
+			resp.FriendsXPHistory = friends
+		}
+	}
+
+	return resp, nil
 }
 
 // GetTopMatches retourne les 10 meilleurs et 10 moins bons matchs.
@@ -399,8 +422,8 @@ func computeActiveXPPerDay(history []domain.XPHistoryPoint) float64 {
 	if len(history) < 2 {
 		return 0.0
 	}
-	firstXP := history[0].XPTotalCumul
-	lastXP := history[len(history)-1].XPTotalCumul
+	firstXP := history[0].XPTotal
+	lastXP := history[len(history)-1].XPTotal
 	xpDelta := lastXP - firstXP
 	if xpDelta <= 0 {
 		return 0.0

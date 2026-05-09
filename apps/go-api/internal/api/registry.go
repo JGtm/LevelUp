@@ -231,7 +231,64 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
+	if loader := r.buildFriendsXPLoader(pdb); loader != nil {
+		svc = svc.WithFriendsXPLoader(loader)
+	}
 	return svc, nil
+}
+
+// buildFriendsXPLoader construit un loader d'historique XP pour tous les amis
+// du joueur courant (joueurs référencés dans db_profiles.json, hors joueur
+// courant). Retourne nil si cfg est indisponible ou s'il n'y a aucun autre joueur.
+func (r *ServiceRegistry) buildFriendsXPLoader(mainPDB *duckdb.PlayerDB) service.FriendsXPLoader {
+	if r.cfg == nil {
+		return nil
+	}
+	players, err := r.cfg.LoadPlayers(mainPDB.TitleSlug)
+	if err != nil {
+		slog.Warn("friends_xp: load players failed (loader disabled)",
+			"titleSlug", mainPDB.TitleSlug, "err", err)
+		return nil
+	}
+	// Filtrer pour ne garder que les amis (≠ joueur courant, avec XUID renseigné).
+	type friendEntry struct{ gamertag, playerSlug string }
+	var friends []friendEntry
+	for _, p := range players {
+		if p.XUID == "" || p.XUID == mainPDB.XUID {
+			continue
+		}
+		friends = append(friends, friendEntry{gamertag: p.Gamertag, playerSlug: p.PlayerSlug})
+	}
+	if len(friends) == 0 {
+		return nil
+	}
+	cfg := r.cfg
+	titleSlug := mainPDB.TitleSlug
+	return func(ctx context.Context, _ string) ([]domain.FriendXPHistory, error) {
+		var results []domain.FriendXPHistory
+		for _, f := range friends {
+			pdb, perr := config.ResolvePlayer(ctx, cfg, f.playerSlug, titleSlug)
+			if perr != nil {
+				slog.WarnContext(ctx, "friends_xp: resolve failed",
+					"gamertag", f.gamertag, "err", perr)
+				continue
+			}
+			history, herr := duckdb.NewCareerRepo(pdb).GetXPHistory(ctx)
+			if herr != nil {
+				slog.WarnContext(ctx, "friends_xp: get history failed",
+					"gamertag", f.gamertag, "err", herr)
+				continue
+			}
+			if len(history) == 0 {
+				continue
+			}
+			results = append(results, domain.FriendXPHistory{
+				Gamertag: f.gamertag,
+				History:  history,
+			})
+		}
+		return results, nil
+	}
 }
 
 // Achievements retourne un AchievementsService pour le joueur identifié par slug.

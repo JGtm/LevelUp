@@ -9,6 +9,7 @@
 package analysis
 
 import (
+	"net/url"
 	"sort"
 	"strings"
 
@@ -25,7 +26,6 @@ func MergeCitationTotals(
 	totalRows []domain.CitationTotalRow,
 	mappings []domain.CitationMappingRow,
 ) []domain.CitationItem {
-	// Construire un index par name_norm.
 	byNorm := make(map[string]domain.CitationMappingRow, len(mappings))
 	for _, m := range mappings {
 		byNorm[m.NameNorm] = m
@@ -38,7 +38,6 @@ func MergeCitationTotals(
 		}
 		m, ok := byNorm[t.NameNorm]
 		if !ok {
-			// Citation sans mapping connu — inclure quand même avec catégorie "misc".
 			items = append(items, domain.CitationItem{
 				NameNorm:    t.NameNorm,
 				NameDisplay: t.NameNorm,
@@ -47,17 +46,50 @@ func MergeCitationTotals(
 			})
 			continue
 		}
-		items = append(items, domain.CitationItem{
+		var imgURL *string
+		if m.ImagePath != nil && *m.ImagePath != "" {
+			parts := strings.Split(*m.ImagePath, "/")
+			encoded := make([]string, len(parts))
+			for i, seg := range parts {
+				encoded[i] = url.PathEscape(seg)
+			}
+			p := "/" + strings.Join(encoded, "/")
+			imgURL = &p
+		}
+		item := domain.CitationItem{
 			NameNorm:    t.NameNorm,
 			NameDisplay: m.NameDisplay,
 			Category:    m.Category,
 			Total:       t.Total,
-			ImagePath:   m.ImagePath,
+			ImageURL:    imgURL,
 			Description: m.Description,
-		})
+		}
+		if m.TierTargets != nil && *m.TierTargets != "" {
+			tiers := parseTierTargets(*m.TierTargets)
+			item.TierCount = len(tiers)
+			for _, tier := range tiers {
+				if t.Total >= tier {
+					item.EarnedTiers++
+				}
+			}
+			if len(tiers) > 0 {
+				lastTier := tiers[len(tiers)-1]
+				if t.Total >= lastTier {
+					item.MasteryPct = 100.0
+				} else {
+					item.MasteryPct, _ = computeTierProgress(t.Total, tiers)
+					for _, tier := range tiers {
+						if t.Total < tier {
+							item.NextTierTarget = tier
+							break
+						}
+					}
+				}
+			}
+		}
+		items = append(items, item)
 	}
 
-	// Trier par catégorie puis total décroissant.
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].Category != items[j].Category {
 			return items[i].Category < items[j].Category
@@ -65,6 +97,39 @@ func MergeCitationTotals(
 		return items[i].Total > items[j].Total
 	})
 	return items
+}
+
+// BuildCitationsByCategory regroupe les citations par catégorie en préservant l'ordre
+// de tri de items (catégorie alphabétique, puis total décroissant).
+func BuildCitationsByCategory(items []domain.CitationItem) []domain.CitationCategoryGroup {
+	if len(items) == 0 {
+		return nil
+	}
+	var catOrder []string
+	seen := make(map[string]bool)
+	for _, item := range items {
+		if !seen[item.Category] {
+			seen[item.Category] = true
+			catOrder = append(catOrder, item.Category)
+		}
+	}
+	byCat := make(map[string]*domain.CitationCategoryGroup, len(catOrder))
+	for _, cat := range catOrder {
+		byCat[cat] = &domain.CitationCategoryGroup{Category: cat}
+	}
+	for _, item := range items {
+		g := byCat[item.Category]
+		g.Items = append(g.Items, item)
+		g.Total += item.Total
+		if item.MasteryPct >= 100.0 {
+			g.Completed++
+		}
+	}
+	result := make([]domain.CitationCategoryGroup, 0, len(catOrder))
+	for _, cat := range catOrder {
+		result = append(result, *byCat[cat])
+	}
+	return result
 }
 
 // ExtractCategories retourne la liste dédupliquée et triée des catégories.

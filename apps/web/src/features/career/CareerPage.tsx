@@ -15,15 +15,12 @@ import { CareerEncountersSection } from './CareerEncountersSection'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
 import { useCareerPage, useCareerTopMatches } from './queries'
 import { CompareDrawer } from '@/features/compare/CompareDrawer'
-import { LeaderboardBlock } from '@/features/leaderboard/LeaderboardBlock'
-import { useComparePrefetch } from '@/features/compare/queries'
 
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [showAllTopMatches, setShowAllTopMatches] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
-  const prefetchCompare = useComparePrefetch(playerSlug)
   const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
     playerSlug,
     showAllTopMatches,
@@ -88,16 +85,8 @@ export function CareerPage() {
           lusrCheckpoints={data.lusr?.checkpoints ?? []}
           summary={data.summary}
           heroProgress={data.hero_progress}
-          labels={{
-            rankProgressTitle: 'Progression du rang',
-            heroProgressTitle: 'Progression Héros',
-            xpHistoryTitle: 'Historique XP',
-            xpHistoryAxisY: 'XP cumulé',
-            lusrRatingTitle: 'Rating LUSR',
-            lusrRatingAxisY: 'Rating',
-            placeholderUnavailable: 'Graphique indisponible',
-            placeholderDescription: 'Aucune donnée exploitable.',
-          }}
+          projections={data.projections ?? null}
+          friendsXpHistory={data.friends_xp_history}
         />
 
         {/* Succès Xbox — section horizontale (KPI inline + scroll de cartes) */}
@@ -183,12 +172,6 @@ export function CareerPage() {
             description="Aucun match distinctif n'a été calculé pour cette page de carrière."
           />
         )}
-
-        {/* E2.6 : Leaderboard CSR — bloc secondaire sous les KPIs */}
-        <LeaderboardBlock
-          playerSlug={playerSlug}
-          onHoverEntry={prefetchCompare}
-        />
 
         {/* Rencontres fréquentes */}
         <CareerEncountersSection

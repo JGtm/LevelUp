@@ -1,4 +1,177 @@
 
+## [2026-05-09] Carrière — Badge image sur les cards LUSR/CSR
+
+**Statut** : Complété
+
+**Décision technique** :
+- Q8 (`Q8LUSRHistory`) enrichi avec `tier` et `sub_tier` depuis `match_skill_rank`.
+- `LUSRCheckpointDTO` : ajout du champ `BadgeImageURL *string json:"badge_image_url,omitempty"`.
+- `career_repo.go` : scan des 2 nouvelles colonnes + appel à `buildHomeSkillPeakBadgeURL` (déjà présente dans `home_repo.go`, même package).
+- TypeScript `CareerLusrCheckpoint` : ajout `badge_image_url?: string | null`.
+- `CareerLusrCards.tsx` : layout `LusrRankCard` passé de `flex-col items-center` à `flex items-center gap-3` (image à gauche 48×48, texte à droite). Même pattern que `HomeRecentPlaylistsCard`.
+
+**Résultats** : `go build ./internal/...` ✓, `npm run typecheck` ✓
+
+**Prochaine étape** : Tester visuellement la page Carrière → section LUSR/CSR.
+
+## [2026-05-09] Citations — Remplacement barre de progression par CitationProgressRing
+
+**Statut** : Complété
+
+**Décision technique** :
+- `CitationItem.ImagePath` renommé `ImageURL` (Go) avec encodage URL identique à `citation_snippets.go` (url.PathEscape segment par segment, préfixe `/`).
+- TypeScript : `image_path` → `image_url` dans `CitationItem`.
+- `CitationRow` (barre horizontale) remplacé par `CitationCard` (`CitationProgressRing` size=56) dans `CareerCitationsTab.tsx` et `CitationsPage.tsx`. Layout `flex flex-wrap gap-x-5 gap-y-4` identique à `MatchSummaryMedalsAndCitations`. Pas de delta affiché (données non disponibles dans la vue cumulative).
+- `isNewlyMastered` mapped sur `mastery_pct >= 100` (arc doré + badge pour items maîtrisés).
+
+**Résultats** : `go build ./...` ✓, `npm run typecheck` ✓
+
+**Prochaine étape** : Tester visuellement la page Carrière → onglet Citations.
+
+## [2026-05-09] Carrière — Libellés LUSR depuis playlist_name DB (3ème tentative)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Problème** : les libellés des groupes LUSR (`arena`, `social`, `fun`, `btb`, `ranked`) ont été successivement réinventés : d'abord dans `career.toml` (traductions incorrectes), puis dans `media.toolbar.mode_categories.*` (mauvaise catégorie — ce sont des playlist_group internes LevelUp, pas des catégories Halo).
+- **Solution correcte** : utiliser directement `playlist_name` de `match_registry` via le JOIN déjà présent dans `Q8LUSRHistory`. La chaîne SQL ajoute `COALESCE(r.playlist_name_fr, r.playlist_name, '')`. `LUSRCheckpointDTO` + scan + type TS `CareerLusrCheckpoint` enrichis. `CareerChartsSection.tsx` et `CareerLusrCards.tsx` utilisent `cp.playlist_name` directement — zéro inventaire de traductions côté app.
+- **Nettoyage** : `lusrGroupLabel()` supprimé des deux composants frontend. `media.toolbar.mode_categories.{arena,social,fun}` retirés de `media.toml` (n'étaient pas des catégories Halo). Manifestes régénérés (media: 57 → 54 clés).
+
+**Résultats** : `npm run typecheck` ✓ · `go build ./...` ✓ · `go test ./internal/...` ✓ (seul `TestPooledHaloClientGetCareerRank_PinnedToken` échoue — test réseau réel vers Halo Waypoint, pré-existant, hors scope).
+
+**Prochaine étape** : /
+
+---
+
+## [2026-05-09] Carrière — Citations par catégorie + LUSR i18n + nettoyage Leaderboard
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Go domain** : `CitationItem` enrichi (`tier_count`, `earned_tiers`, `next_tier_target`, `mastery_pct`). Nouveau type `CitationCategoryGroup`. `CitationsPageResponse` expose `citations_by_category`.
+- **Go analysis** : `MergeCitationTotals` calcule les champs de paliers via `parseTierTargets`/`computeTierProgress` (même package `analysis`). `BuildCitationsByCategory` regroupe par catégorie avec compteur `Completed`.
+- **Go query** : `Q8LUSRHistory` ajoute `rating_type` dans SELECT et PARTITION BY pour distinguer LUSR vs CSR.
+- **TS types** : `CitationsPageResponse` réécrit (suppression `CommendationSummary`, `MedalSummary`, `CitationsDeltas`). `CareerLusrCheckpoint` ajoute `rating_type`.
+- **CareerCitationsTab** : refonte complète — citations par catégorie, barre X/Y — ZZZ%, badge earned_tiers/tier_count, couleurs via `tokenCssVar`.
+- **CitationsPage** : refonte pour utiliser les nouveaux types — même structure que CareerCitationsTab, suppression de la section médailles et distribution.
+- **CareerPage** : suppression de `LeaderboardBlock` (bloc "Classement CSR" retiré sur demande).
+- **LUSR chart** : i18n des labels de playlists via TOML manifest (`career.lusr.group.*`), `rating_type` pour distinguer LUSR/CSR, agrégation par date, `legend.data` explicite pour masquer les ghost series.
+- **distributionChart.ts** : supprimé (dépendait de `MedalSummary` supprimé).
+
+**Résultats** : `npm run typecheck` ✓ · `go test ./internal/...` ✓ (seul échec pré-existant : `TestDiscoveryScan_MixedTokenSources` sur auth pool, hors scope).
+
+**Prochaine étape** : Vérification visuelle de l'onglet Citations dans le hub Carrière.
+
+---
+
+## [2026-05-09] Carrière — courbes amis XP + alignement json tags Go
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Fix json tags** : `XPHistoryPoint` Go avait `json:"rank_number"` et `json:"xp_total_cumul"` au lieu de `json:"rank"` / `json:"xp_total"` (OpenAPI spec). Renommés + `Rank`/`XPTotal` en Go.
+- **Scan DuckDB** : mise à jour `career_repo.go` pour `&p.Rank` / `&p.XPTotal`.
+- **Service** : `computeActiveXPPerDay` mis à jour, + `FriendsXPLoader` type + `WithFriendsXPLoader` + appel dans `GetCareerPage`.
+- **Registry** : `buildFriendsXPLoader` utilise `cfg.LoadPlayers(titleSlug)` pour trouver tous les joueurs avec DB hors joueur courant (filtrage par XUID). Chaque ami : `config.ResolvePlayer` + `duckdb.NewCareerRepo(pdb).GetXPHistory`. Erreurs individuelles : warn + continue (dégradation gracieuse).
+- **TypeScript** : `CareerHistoryPoint` revenu à `rank` / `xp_total`. `FriendXPHistory` interface ajoutée. `CareerPageResponse` enrichi de `friends_xp_history?`.
+- **CareerChartsSection** : courbes amis (solid réel + dotted estimé) cachées dans la légende par défaut, colorIdx 5+2i. `buildHeroMarkLine` déparamétrisé (paramètre `tc` inutilisé).
+- **CareerPage.tsx** : ancien prop `labels` retiré (était un vestige).
+
+**Résultats** : `go build ./...` OK, `go vet ./...` OK, `go test ./internal/service/...` OK, `tsc --noEmit` OK.
+
+**Prochaine étape** : Vérification visuelle avec un second joueur en DB.
+
+## [2026-05-09] Carrière — fix chart XP vide (type mismatch)
+
+**Statut** : Complété
+
+**Décision technique** :
+Le chart historique XP affichait vide car le type TypeScript `CareerHistoryPoint` déclarait `xp_total: number` et `rank: number`, alors que le domaine Go sérialise `xp_total_cumul` et `rank_number` (struct `domain.XPHistoryPoint`). Les champs étaient donc `undefined` au runtime → `[date, undefined]` → ECharts n'affiche rien.
+Fix : alignement du type TS sur la struct Go réelle : `xp_total_cumul`, `rank_number`, `current_xp`. `CareerChartsSection.tsx` mis à jour en conséquence (6 occurrences `xp_total` → `xp_total_cumul`).
+Note : l'OpenAPI spec et `generated.ts` sont out-of-sync avec le domaine Go — dette à corriger côté Go (renommage des json tags pour correspondre au contrat de l'API).
+
+**Résultats** : `tsc --noEmit` sans erreur. 2 fichiers modifiés.
+
+**Prochaine étape** : Vérification visuelle en dev.
+
+## [2026-05-09] Carrière — fix gauge Héros + chart XP 4 séries
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Bug gauge Héros** : `hero.percentage` vient de l'API Go déjà en 0..100 (formule Go : `pct := float64(xpTotal) / float64(xpHeroTotal) * 100.0`). Mon code faisait `hero.percentage * 100` → cap à 100% systématique. Fix : `Math.min(100, hero.percentage)` sans multiplication.
+- **Chart XP 4 séries** : `buildXpSeries` produit maintenant 4 séries au lieu de 2 :
+  1. XP réel (solid, index 0)
+  2. XP estimé (dotted, index 4) — ligne de `2023-06-20` (CU32, lancement Career Ranks) au 1er snapshot, affichée uniquement si le 1er snapshot est postérieur à cette date
+  3. Projection Héros normale (dashed, index 2) — points hebdomadaires via `xp_per_day_active` + `estimated_hero_date` de l'API
+  4. Projection optimiste (dashed, index 1) — taux `(active + 950/7 + 500) × 2` (défis hebdo + quotidien + boost XP), cachée par défaut dans la légende
+  - Les projections sont cachées par défaut dans la légende ECharts (`legend.selected`), toggleables au clic.
+  - Constantes issues de `career_logic.py` (main) : `CAREER_XP_LAUNCH_DATE`, `WEEKLY_CHALLENGE_XP`, `DAILY_CHALLENGE_XP`, `XP_BOOST_MULTIPLIER`.
+
+**Résultats** : `tsc --noEmit` sans erreur. 1 fichier modifié.
+
+**Prochaine étape** : Courbes amis (nécessitent changement API Go, pas de données actuellement).
+
+## [2026-05-09] Carrière — 5 charts ECharts (career.01–04 + career.11)
+
+**Statut** : Complété
+
+**Décision technique** :
+Réécriture complète de `CareerChartsSection.tsx` avec 4 vrais charts ECharts (abandons des placeholders texte) :
+- career.01/02 : jauge ECharts native (`type: 'gauge'`, startAngle 215, endAngle -35) avec piste track multi-couleurs via tokens `perf-tier-*` + 40 hex alpha, couleur progression via `resolveToken`.
+- career.03 : XP history + série projection dashed (dernier point → `estimated_hero_date` à `HERO_XP_TOTAL=9_319_350`) + `markLine` seuil Héros doté.
+- career.04 : timeseries LUSR groupé par `playlist_group` + `markArea` 5 paliers perf-tier avec alpha `14` hex.
+Création de `CareerLusrCards.tsx` (career.11) : grille de cards avec rating actuel, tier_label calculé localement (0-800 Silver, …, 2000+ Onyx), delta vs checkpoint précédent coloré via `tokenCssVar('outcome-win'/'outcome-loss')`, bordure top colorée par tier.
+`CareerProgressionTab.tsx` allégé : suppression de `CareerSummaryCard`, `InfoTooltip`, `useAppShellStore`, `formatMessage`, `careerManifest`, card LUSR inline — remplacé par `CareerLusrCards`. Prop `projections` câblé.
+
+**Résultats** : `tsc --noEmit` sans erreur. 3 fichiers modifiés, 1 créé.
+
+**Prochaine étape** : Tests visuels en dev, vérifier les tokens couleurs au thème dark/light.
+
+## [2026-05-09] Carrière — bug crash + nettoyage NavL1
+
+**Statut** : Complété
+
+**Décision technique** :
+Deux correctifs post-fusion des onglets : (1) crash `Cannot read properties of undefined (reading 'filter')` dans `CareerCitationsTab` — `commendations` et `medals_summary` pouvaient être `undefined` si l'API ne retourne pas ces champs ; fix : défauts `= []` dans la déstructuration. (2) `NavL1` avait encore une entrée `citations` pointant sur `?tab=citations` (param supprimé) — entrée retirée, l'onglet "Progression" renommé "Carrière" pour refléter la page unifiée.
+
+**Résultats** : `tsc --noEmit` sans erreur.
+
+**Prochaine étape** : Continuer UX page Carrière.
+
+## [2026-05-09] Carrière — fusion onglets en scroll continu
+
+**Statut** : Complété
+
+**Décision technique** :
+Suppression du système d'onglets Progression/Citations — les deux sections sont maintenant empilées verticalement dans `CareerHubPage` (séparateur `border-t`). Le search param `tab` retiré du schema Zod dans la route et de `CareerHubPage`. Les deux composants gardent leur nom et gèrent leur propre chargement indépendamment. Justification : contenu pas assez volumineux pour justifier les onglets, flux naturel progression → citations.
+
+**Résultats** : `tsc --noEmit` sans erreur. 2 fichiers modifiés.
+
+**Prochaine étape** : Continuer le travail UX sur la page Carrière.
+
+## [2026-05-09] Suppression bouton Comparer de CareerProgressionTab
+
+**Statut** : Complété
+
+**Décision technique** :
+Bouton "Comparer" retiré de `CareerProgressionTab` — la fonctionnalité existe déjà dans l'Explorer qui est le bon point d'entrée (contexte joueur déjà présent). Supprimés : import `Button`, `CompareDrawer`, `useComparePrefetch`, `useState`, le JSX du bouton et du drawer, et le prop `onHoverEntry` sur `LeaderboardBlock`. `tsc --noEmit` sans erreur.
+
+**Résultats** : 0 régression TypeScript.
+
+**Prochaine étape** : Continuer le travail sur la page Carrière.
+
+## [2026-05-09] Filtres Carrière — revert après analyse API
+
+**Statut** : Complété (revert)
+
+**Décision technique** :
+Barre de filtres période/saison/playlist ajoutée puis retirée après analyse du handler Go `/pages/career`. Conclusion : l'endpoint ne prend aucun query parameter — rang, XP, hero progress, projections, LUSR, citations (mastery) sont tous cumulatifs et non filtrables. Afficher une barre "Analyser" sans effet sur la progression aurait été trompeur. `CareerCitationsTab` remis sur `DEFAULT_FILTER_CONTEXT` + clé `'hub-all'`. Si filtrage carrière souhaité à l'avenir, il faudra un chantier côté API Go (paramétrer les endpoints ou créer un endpoint filtré dédié).
+
+**Résultats** : `tsc --noEmit` sans erreur. État des fichiers identique à avant la session filtres.
+
+**Prochaine étape** : Travailler le contenu de la page Carrière (layout, UX des onglets).
+
 ## [2026-05-09] Mise à jour palette couleurs outline Halo Infinite
 
 **Statut** : Complété

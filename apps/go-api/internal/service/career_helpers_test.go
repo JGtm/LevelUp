@@ -322,8 +322,8 @@ func TestBuildProjections_TooFewPoints(t *testing.T) {
 func TestBuildProjections_Normal(t *testing.T) {
 	now := time.Now()
 	history := []domain.XPHistoryPoint{
-		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotalCumul: 1000},
-		{RecordedAt: now, XPTotalCumul: 2000},
+		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotal: 1000},
+		{RecordedAt: now, XPTotal: 2000},
 	}
 	p := buildProjections(history, 2000)
 	if p.XPPerDayActive <= 0 {

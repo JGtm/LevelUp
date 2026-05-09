@@ -45,21 +45,34 @@ type MedalCitationRow struct {
 // Types de réponse — Citations
 // ---------------------------------------------------------------------------
 
-// CitationItem est une citation enrichie avec son total et sa métadonnée.
+// CitationItem est une citation enrichie avec son total, ses paliers et sa progression.
 type CitationItem struct {
-	NameNorm    string  `json:"name_norm"`
-	NameDisplay string  `json:"name_display"`
-	Category    string  `json:"category"`
-	Total       int     `json:"total"`
-	ImagePath   *string `json:"image_path,omitempty"`
-	Description *string `json:"description,omitempty"`
+	NameNorm       string  `json:"name_norm"`
+	NameDisplay    string  `json:"name_display"`
+	Category       string  `json:"category"`
+	Total          int     `json:"total"`
+	TierCount      int     `json:"tier_count"`
+	EarnedTiers    int     `json:"earned_tiers"`
+	NextTierTarget int     `json:"next_tier_target"` // 0 si maîtrisé
+	MasteryPct     float64 `json:"mastery_pct"`       // 0..100
+	ImageURL       *string `json:"image_url,omitempty"`
+	Description    *string `json:"description,omitempty"`
+}
+
+// CitationCategoryGroup regroupe les citations d'une catégorie.
+type CitationCategoryGroup struct {
+	Category  string         `json:"category"`
+	Items     []CitationItem `json:"items"`
+	Total     int            `json:"total"`
+	Completed int            `json:"completed"` // items avec MasteryPct == 100
 }
 
 // CitationsPageResponse est la réponse de la page Citations.
 type CitationsPageResponse struct {
-	Citations  []CitationItem `json:"citations"`
-	Categories []string       `json:"categories"`
-	TotalCount int            `json:"total_count"`
+	Citations           []CitationItem          `json:"citations"`
+	CitationsByCategory []CitationCategoryGroup `json:"citations_by_category"`
+	Categories          []string                `json:"categories"`
+	TotalCount          int                     `json:"total_count"`
 }
 
 // ---------------------------------------------------------------------------

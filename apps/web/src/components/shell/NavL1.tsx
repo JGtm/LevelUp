@@ -150,10 +150,10 @@ const L1_SECTIONS: L1Section[] = [
     key: 'career',
     label: 'Carrière',
     defaultPath: '/players/$playerSlug/career',
-    matchPathname: (p) => /\/players\/[^/]+\/(career|profile|palmares\/season-pass)/.test(p),
+    matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile|palmares\/season-pass)/.test(p),
     tabs: [
-      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career?tab=citations' },
+      { key: 'progression', label: 'Carrière', path: '/players/$playerSlug/career' },
+      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/citations' },
       { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/palmares/season-pass' },
     ],
   },

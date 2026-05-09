@@ -3,7 +3,9 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -56,7 +58,7 @@ func (r *CareerRepo) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint,
 	var results []domain.XPHistoryPoint
 	for rows.Next() {
 		var p domain.XPHistoryPoint
-		if err := rows.Scan(&p.RecordedAt, &p.RankNumber, &p.CurrentXP, &p.XPTotalCumul); err != nil {
+		if err := rows.Scan(&p.RecordedAt, &p.Rank, &p.CurrentXP, &p.XPTotal); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetXPHistory scan: %w", err)
 		}
 		results = append(results, p)
@@ -78,15 +80,70 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 	var results []domain.LUSRCheckpointDTO
 	for rows.Next() {
 		var cp domain.LUSRCheckpointDTO
+		var tier sql.NullString
+		var subTier sql.NullInt16
 		if err := rows.Scan(
-			&cp.MatchID, &cp.RatingValue, &cp.TierLabel, &cp.PlaylistGroup, &cp.RecordedAt,
-			&cp.RatingDelta,
+			&cp.MatchID, &cp.RatingType, &cp.RatingValue, &cp.TierLabel, &cp.PlaylistGroup, &cp.RecordedAt,
+			&cp.RatingDelta, &cp.PlaylistName, &cp.PlaylistID, &tier, &subTier,
 		); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan: %w", err)
 		}
+		tierLabel := ""
+		if cp.TierLabel != nil {
+			tierLabel = *cp.TierLabel
+		}
+		cp.BadgeImageURL = buildHomeSkillPeakBadgeURL(
+			optionalNullStringValue(tier),
+			tierLabel,
+			optionalNullInt16Value(subTier),
+			homeStaticTitleSlug,
+		)
 		results = append(results, cp)
 	}
-	return results, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	r.enrichLUSRPlaylistNames(ctx, results)
+	return results, nil
+}
+
+// enrichLUSRPlaylistNames résout les noms de playlists FR via asset_translations.
+// Même pattern que applyMatchHistoryFRTranslations : lookup par playlist_id (UUID).
+// Best-effort : silencieux si Metadata absent ou résolution échoue.
+func (r *CareerRepo) enrichLUSRPlaylistNames(ctx context.Context, cps []domain.LUSRCheckpointDTO) {
+	if r.pdb.Metadata == nil || len(cps) == 0 {
+		return
+	}
+	seen := make(map[string]struct{}, len(cps))
+	var ids []string
+	for _, cp := range cps {
+		id := strings.TrimSpace(cp.PlaylistID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return
+	}
+	metaRepo := NewMetadataRepoFromDB(r.pdb.Metadata)
+	names, err := metaRepo.ResolveAssetNamesBulk(ctx, "playlist", ids, PreferredLangsForLocale("fr"))
+	if err != nil || len(names) == 0 {
+		return
+	}
+	for i := range cps {
+		id := strings.TrimSpace(cps[i].PlaylistID)
+		if id == "" {
+			continue
+		}
+		if name := strings.TrimSpace(names[id]); name != "" {
+			cps[i].PlaylistName = name
+		}
+	}
 }
 
 // GetTopMatches retourne les N meilleurs matchs par performance_score.
