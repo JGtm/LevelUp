@@ -73,6 +73,13 @@ type SyncEngine struct {
 	// (les nouveaux matchs resteront is_with_friends=FALSE jusqu'au prochain
 	// recompute manuel via PATCH /settings ou CLI levelup recompute-friends).
 	friendsLoader FriendsLoader
+	// metaDB (optionnel) — connexion ouverte par run() au démarrage de la sync
+	// pour permettre l'enrichissement post-Extract des MatchRegistryRow via
+	// asset_translations (cf. EnrichRegistryFromMetadata, anti-régression UUIDs
+	// bruts dans match_registry.playlist_name). Nil dans les tests unitaires
+	// qui appellent processMatch directement → l'enrichissement devient no-op
+	// et la sync reste fonctionnelle (UUID préservé comme avant).
+	metaDB *sql.DB
 }
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -548,6 +555,24 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	} else {
 		defer globalCleanup()
 	}
+
+	// metaDB best-effort : utilisé par EnrichRegistryFromMetadata pour résoudre
+	// les UUIDs bruts en noms canoniques EN avant l'INSERT match_registry.
+	// Échec d'ouverture → enrichissement désactivé pour ce run, sync continue.
+	if e.metadataDBPath != "" {
+		metaDB, metaErr := sql.Open("duckdb", e.metadataDBPath+"?access_mode=read_only")
+		if metaErr != nil {
+			slog.WarnContext(ctx, "sync: ouverture metadata DB échouée — enrich registry désactivé",
+				"db", e.metadataDBPath, "err", metaErr)
+		} else {
+			metaDB.SetMaxOpenConns(1)
+			e.metaDB = metaDB
+			defer func() {
+				_ = metaDB.Close()
+				e.metaDB = nil
+			}()
+		}
+	}
 	slog.DebugContext(ctx, "sync: DBs ouvertes", "gamertag", e.gamertag)
 
 	// ─── Match IDs déjà connus (player DB) ───────────────────────────────────
@@ -819,6 +844,16 @@ func (e *SyncEngine) processMatch(
 			"gamertag", e.gamertag, "match_id", matchID, "err", err,
 		)
 		return fmt.Errorf("ExtractRegistry: %w", err)
+	}
+	// Enrichissement post-Extract : résout les UUIDs bruts en noms canoniques
+	// via metadata.asset_translations[en-US] AVANT l'INSERT, pour ne pas
+	// stocker `playlist_name = playlist_id` quand l'API Halo n'a pas retourné
+	// de PublicName. Best-effort : nil metaDB → no-op (préserve le fallback
+	// historique). Cf. thought_log 2026-05-09.
+	if err := EnrichRegistryFromMetadata(ctx, e.metaDB, reg); err != nil {
+		slog.WarnContext(ctx, "processMatch: EnrichRegistryFromMetadata non-bloquant",
+			"gamertag", e.gamertag, "match_id", matchID, "err", err,
+		)
 	}
 	if err := InsertRegistryIfNotExists(sharedDB, *reg); err != nil {
 		slog.ErrorContext(ctx, "processMatch: InsertRegistry échoué",
