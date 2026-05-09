@@ -90,6 +90,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	// Merge ATH dans statsA (CSR, CareerRank, PerfATH, LusrATH).
 	if ath != nil {
 		statsA.CSRCurrent = ath.CSRCurrent
+		statsA.CSRBest = ath.CSRBest
 		statsA.CareerRank = ath.CareerRank
 		statsA.PerfATH = ath.PerfATH
 		statsA.LusrATH = ath.LusrATH

@@ -53,6 +53,7 @@ type WeaponHighlight struct {
 // PlayerATH regroupe les métriques all-time lues depuis stats.duckdb du joueur A.
 type PlayerATH struct {
 	CSRCurrent int
+	CSRBest    int
 	CareerRank int
 	PerfATH    float64
 	LusrATH    float64
