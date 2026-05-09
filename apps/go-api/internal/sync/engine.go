@@ -1645,8 +1645,8 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	defer metadataDB.Close() //nolint:errcheck
 	metadataDB.SetMaxOpenConns(1)
 
-	client := NewXboxHTTPClient(xstsResult)
-	if err := SyncAchievements(ctx, client, e.resolver, metadataDB, playerDB, e.xuid); err != nil {
+	client := NewXboxHTTPClient(xstsResult, titlePkg.XboxTitleIDFor(e.titleSlug))
+	if err := SyncAchievements(ctx, client, e.resolver, metadataDB, playerDB, e.xuid, e.titleSlug); err != nil {
 		slog.WarnContext(ctx, "achievements: sync échouée",
 			"gamertag", e.gamertag, "err", err)
 		return false

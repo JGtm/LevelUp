@@ -38,6 +38,7 @@ func openMemForAchievements(t *testing.T) (metadataDB *sql.DB, playerDB *sql.DB)
 			is_secret        BOOLEAN NOT NULL DEFAULT FALSE,
 			rarity_category  VARCHAR,
 			rarity_percent   FLOAT,
+			title_id         VARCHAR DEFAULT '',
 			fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
@@ -75,7 +76,7 @@ func TestSyncAchievements_Integration_UpsertInsertsRows(t *testing.T) {
 	client.responses["en-US"] = fixtureAchievementsEN
 	client.responses["fr-FR"] = fixtureAchievementsFR
 
-	if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test"); err != nil {
+	if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test", "halo_infinite"); err != nil {
 		t.Fatalf("SyncAchievements: %v", err)
 	}
 
@@ -131,7 +132,7 @@ func TestSyncAchievements_Integration_UpsertIdempotent(t *testing.T) {
 
 	// Deux syncs consécutives → toujours 3 lignes (pas de doublons)
 	for i := 0; i < 2; i++ {
-		if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test"); err != nil {
+		if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test", "halo_infinite"); err != nil {
 			t.Fatalf("SyncAchievements (appel %d): %v", i+1, err)
 		}
 	}
@@ -152,7 +153,7 @@ func TestSyncAchievements_Integration_APICallsEN_FR(t *testing.T) {
 	client.responses["en-US"] = fixtureAchievementsEN
 	client.responses["fr-FR"] = fixtureAchievementsFR
 
-	if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test"); err != nil {
+	if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test", "halo_infinite"); err != nil {
 		t.Fatalf("SyncAchievements: %v", err)
 	}
 
@@ -171,7 +172,7 @@ func TestSyncAchievements_Integration_APIError_ReturnError(t *testing.T) {
 	client := newMockXboxClient()
 	client.err = context.DeadlineExceeded
 
-	err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test")
+	err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test", "halo_infinite")
 	if err == nil {
 		t.Fatal("attendu une erreur, obtenu nil")
 	}
@@ -191,7 +192,7 @@ func TestSyncAchievements_Integration_LockedDescBilingual(t *testing.T) {
 	client.responses["en-US"] = enData
 	client.responses["fr-FR"] = frData
 
-	if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test"); err != nil {
+	if err := SyncAchievements(context.Background(), client, nil, metadataDB, playerDB, "xuid-test", "halo_infinite"); err != nil {
 		t.Fatalf("SyncAchievements: %v", err)
 	}
 

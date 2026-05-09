@@ -126,6 +126,7 @@ func buildAchievementEntry(d domain.AchievementDefinitionRow, p domain.PlayerAch
 		UnlockedAt:      p.UnlockedAt,
 		CurrentProgress: p.CurrentProgress,
 		TargetProgress:  p.TargetProgress,
+		XboxTitleID:     d.XboxTitleID,
 	}
 }
 

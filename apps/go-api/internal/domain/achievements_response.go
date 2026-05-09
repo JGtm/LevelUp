@@ -42,4 +42,7 @@ type AchievementEntry struct {
 	UnlockedAt      *time.Time `json:"unlocked_at,omitempty"`
 	CurrentProgress *int       `json:"current_progress,omitempty"`
 	TargetProgress  *int       `json:"target_progress,omitempty"`
+	// XboxTitleID est l'identifiant Xbox numérique du titre source (ex: "1144039928"
+	// pour Halo Infinite). Vide pour les rows antérieures au champ.
+	XboxTitleID string `json:"xbox_title_id,omitempty"`
 }

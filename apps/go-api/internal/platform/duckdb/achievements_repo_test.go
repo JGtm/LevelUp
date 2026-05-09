@@ -137,15 +137,15 @@ func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 	insert := `INSERT INTO xbox_achievement_definitions
 		(achievement_id, name_en, name_fr, description_en, description_fr,
 		 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
-		 rarity_category, rarity_percent, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+		 rarity_category, rarity_percent, title_id, fetched_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
 	if _, err := db.Exec(ctx, insert,
 		"ach_full", "Full Name EN", "Nom Complet FR",
 		"Description EN", "Description FR",
 		"Locked EN", "Verrouillé FR",
 		50, "https://example.com/full.png", false,
-		"Rare", 12.5,
+		"Rare", 12.5, "halo_infinite",
 	); err != nil {
 		t.Fatalf("insert ach_full: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestMetadataRepo_GetAchievementDefinitions_Populated(t *testing.T) {
 		"ach_min", "Min EN", "",
 		nil, nil, nil, nil,
 		10, nil, true,
-		nil, nil,
+		nil, nil, "halo_infinite",
 	); err != nil {
 		t.Fatalf("insert ach_min: %v", err)
 	}

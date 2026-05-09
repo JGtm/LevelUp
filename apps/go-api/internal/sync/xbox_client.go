@@ -22,6 +22,7 @@ import (
 const (
 	xboxAchievementsBaseURL = "https://achievements.xboxlive.com"
 	haloInfiniteTitleID     = "1144039928"
+	haloInfiniteTitleIDNum  = 1144039928
 )
 
 // XboxAchievementsClient abstrait les appels à l'API Xbox Achievements.
@@ -46,19 +47,26 @@ type PlayerAchievementRaw struct {
 	// Progression (base game achievements)
 	CurrentProgress int
 	TargetProgress  int
+	// XboxTitleID est le premier TitleAssociation.ID renvoyé par l'API (numérique → string).
+	// Permet de distinguer Halo Infinite ("1144039928") des autres titres Xbox (ex: MCC).
+	XboxTitleID string
 }
 
 // xboxHTTPClient implémente XboxAchievementsClient via l'API Xbox Live.
 type xboxHTTPClient struct {
-	authHeader string
-	httpClient *http.Client
+	authHeader  string
+	httpClient  *http.Client
+	xboxTitleID string // ex: "1144039928" pour Halo Infinite
 }
 
-// NewXboxHTTPClient crée un xboxHTTPClient à partir d'un XSTSResult.
-func NewXboxHTTPClient(xstsResult *auth.XSTSResult) XboxAchievementsClient {
+// NewXboxHTTPClient crée un xboxHTTPClient pour un titre Xbox donné.
+// xboxTitleID est l'identifiant numérique Xbox du titre (ex: "1144039928" pour Halo Infinite) —
+// utiliser titlePkg.XboxTitleIDFor(slug) pour le résoudre depuis un slug LevelUp.
+func NewXboxHTTPClient(xstsResult *auth.XSTSResult, xboxTitleID string) XboxAchievementsClient {
 	return &xboxHTTPClient{
-		authHeader: xstsResult.AuthHeader(),
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		authHeader:  xstsResult.AuthHeader(),
+		httpClient:  &http.Client{Timeout: 30 * time.Second},
+		xboxTitleID: xboxTitleID,
 	}
 }
 
@@ -156,7 +164,9 @@ func (c *xboxHTTPClient) fetchPage(ctx context.Context, xuid, lang string, skipI
 		return nil, "", fmt.Errorf("xbox_client: parse URL: %w", err)
 	}
 	q := u.Query()
-	q.Set("titleId", haloInfiniteTitleID)
+	if c.xboxTitleID != "" {
+		q.Set("titleId", c.xboxTitleID)
+	}
 	if skipItems > 0 {
 		q.Set("skipItems", strconv.Itoa(skipItems))
 	}
@@ -228,6 +238,11 @@ func parseAchievementItem(a xboxAchievementItem) PlayerAchievementRaw {
 			raw.ImageURL = m.URL
 			break
 		}
+	}
+
+	// Xbox title ID depuis le premier TitleAssociation
+	if len(a.TitleAssociations) > 0 {
+		raw.XboxTitleID = strconv.Itoa(a.TitleAssociations[0].ID)
 	}
 
 	// Date de déverrouillage
