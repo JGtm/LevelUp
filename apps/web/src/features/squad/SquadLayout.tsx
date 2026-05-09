@@ -34,7 +34,6 @@ import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { getSquadTeammateColors } from './colors'
 import type { LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
-import { CompareDrawer } from '@/features/compare/CompareDrawer'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { deriveSquadPending } from './squadPending'
 
@@ -101,7 +100,6 @@ export function SquadLayout() {
     })
   }
   const confirmedGts = selectedGts
-  const [compareTarget, setCompareTarget] = useState<string | null>(null)
   const [addFriendGamertag, setAddFriendGamertag] = useState<string | null>(null)
 
   const matchRoute = useMatchRoute()
@@ -498,14 +496,6 @@ export function SquadLayout() {
 
           <Outlet />
         </div>
-      )}
-
-      {compareTarget && (
-        <CompareDrawer
-          playerSlug={playerSlug}
-          open={!!compareTarget}
-          onClose={() => setCompareTarget(null)}
-        />
       )}
 
       {addFriendGamertag && (

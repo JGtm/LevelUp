@@ -819,6 +819,14 @@ type CompareRepository interface {
 
 	// ResolveXUID retourne le XUID pour un gamertag dans le registre local.
 	ResolveXUID(ctx context.Context, gamertag string) (string, error)
+
+	// GetPlayerATH retourne les métriques all-time depuis la player DB (stats.duckdb).
+	// N'appeler que pour le joueur A — lit depuis pdb.Player (connexion du joueur principal).
+	GetPlayerATH(ctx context.Context) (*domain.PlayerATH, error)
+
+	// GetFavoriteWeapon retourne l'arme avec le plus de kills depuis shared.weapon_kills.
+	// Retourne nil si aucune donnée n'est disponible (best-effort).
+	GetFavoriteWeapon(ctx context.Context, xuid string) (*domain.WeaponHighlight, error)
 }
 
 // LeaderboardRepository fournit les données pour le classement CSR local.
@@ -874,6 +882,12 @@ func (n *noopCompareRepo) GetLocalStats(_ context.Context, _, _ string) (*domain
 }
 func (n *noopCompareRepo) ResolveXUID(_ context.Context, _ string) (string, error) {
 	return "", nil
+}
+func (n *noopCompareRepo) GetPlayerATH(_ context.Context) (*domain.PlayerATH, error) {
+	return nil, nil
+}
+func (n *noopCompareRepo) GetFavoriteWeapon(_ context.Context, _ string) (*domain.WeaponHighlight, error) {
+	return nil, nil
 }
 
 // noopLeaderboardRepo — impl nulle pour le check de compilation uniquement.

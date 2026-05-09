@@ -22,8 +22,6 @@ import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
-import { CompareDrawer } from '@/features/compare/CompareDrawer'
-import { useComparePrefetch } from '@/features/compare/queries'
 import type { LabelValue, MatchEncounterBadge } from '@/lib/api/types'
 import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
@@ -79,8 +77,6 @@ export function ExplorerPage() {
 
   const [mode, setMode] = useState<SearchMode>(search.mode ?? 'matches')
   const [targetGamertag, setTargetGamertag] = useState(search.target ?? '')
-  const [compareOpen, setCompareOpen] = useState(false)
-  const prefetchCompare = useComparePrefetch(playerSlug)
 
   // ─── Filtres ───────────────────────────────────────────────────────────────
   const [perfTiers, setPerfTiers] = useState<Set<string>>(new Set())
@@ -396,10 +392,11 @@ export function ExplorerPage() {
               {targetGamertag && playerQuery.data?.encounter_stats && (
                 <button
                   type="button"
-                  onClick={() => {
-                    prefetchCompare(playerQuery.data?.target_gamertag ?? targetGamertag)
-                    setCompareOpen(true)
-                  }}
+                  onClick={() => void navigate({
+                    to: '/players/$playerSlug/compare',
+                    params: { playerSlug },
+                    search: { target: playerQuery.data?.target_gamertag ?? targetGamertag, from: 'explorer' },
+                  })}
                   className="inline-flex h-9 items-center rounded border border-input bg-background px-3 text-xs font-medium hover:bg-muted transition-colors"
                 >
                   {t('explorer.player.head_to_head')}
@@ -726,12 +723,6 @@ export function ExplorerPage() {
         )}
       </div>
 
-      <CompareDrawer
-        playerSlug={playerSlug}
-        open={compareOpen}
-        onClose={() => setCompareOpen(false)}
-        initialTarget={playerQuery.data?.target_gamertag ?? targetGamertag}
-      />
     </div>
   )
 }

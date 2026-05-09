@@ -2708,10 +2708,18 @@ export interface SessionPageResponse {
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
+export interface WeaponHighlight {
+  weapon_id: number
+  label_fr: string
+  label_en: string
+  kills: number
+}
+
 export interface NormalizedPlayerStats {
   xuid: string
   gamertag: string
   title_slug: string
+  is_local: boolean
   matches: number
   win_rate: number
   kda: number
@@ -2721,11 +2729,20 @@ export interface NormalizedPlayerStats {
   assists_per_game: number
   accuracy: number
   damage_per_game: number
+  // Phase 2 — métriques enrichies
+  damage_taken_per_game: number
+  perfect_kills_per_game: number
+  max_killing_spree: number
+  avg_life_secs: number
+  headshot_kills_per_game: number
+  perf_ath: number
+  lusr_ath: number
   career_rank: number
   csr_current: number
   csr_best: number
+  // Phase 3 — arme favorite (null pour joueur B remote)
+  favorite_weapon?: WeaponHighlight | null
   extended?: Record<string, unknown>
-  is_local: boolean
 }
 
 export interface CompareMetricRow {
@@ -2735,6 +2752,7 @@ export interface CompareMetricRow {
   value_b: string | number
   delta: number | null
   winner: 'a' | 'b' | 'tie' | null
+  sample_size_b?: number
 }
 
 export interface CompareRequest {

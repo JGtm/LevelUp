@@ -130,6 +130,14 @@ func (m *mockCompareRepoAB) ResolveXUID(_ context.Context, _ string) (string, er
 	return "xuid-b", nil
 }
 
+func (m *mockCompareRepoAB) GetPlayerATH(_ context.Context) (*domain.PlayerATH, error) {
+	return &domain.PlayerATH{}, nil
+}
+
+func (m *mockCompareRepoAB) GetFavoriteWeapon(_ context.Context, _ string) (*domain.WeaponHighlight, error) {
+	return nil, nil
+}
+
 // ─── F5 : Test de latence Compare P95 < 5s ───────────────────────────────────
 
 // slowProvider simule une latence Waypoint configurable.

@@ -26,6 +26,7 @@ type compareStatsResponse struct {
 	ShotsFired         float64 `json:"ShotsFired"`
 	ShotsHit           float64 `json:"ShotsHit"`
 	TotalDamageDealt   float64 `json:"TotalDamageDealt"`
+	TotalDamageTaken   float64 `json:"TotalDamageTaken"`
 }
 
 // FetchRemoteStats retourne les stats normalisées d'un joueur Waypoint.
@@ -66,6 +67,7 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 		stats.DeathsPerGame = float64(resp.TotalDeaths) / n
 		stats.AssistsPerGame = float64(resp.TotalAssists) / n
 		stats.DamagePerGame = resp.TotalDamageDealt / n
+		stats.DamageTakenPerGame = resp.TotalDamageTaken / n
 		if resp.TotalDeaths > 0 {
 			stats.KDR = float64(resp.TotalKills) / float64(resp.TotalDeaths)
 			stats.KDA = (float64(resp.TotalKills) + 0.33*float64(resp.TotalAssists)) / float64(resp.TotalDeaths)

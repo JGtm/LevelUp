@@ -2,7 +2,7 @@
  * CareerPage — page principale de la carrière du joueur.
  */
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -14,13 +14,12 @@ import { CareerTopMatchesTable } from './CareerTopMatchesTable'
 import { CareerEncountersSection } from './CareerEncountersSection'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
 import { useCareerPage, useCareerTopMatches } from './queries'
-import { CompareDrawer } from '@/features/compare/CompareDrawer'
 
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
+  const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [showAllTopMatches, setShowAllTopMatches] = useState(false)
-  const [compareOpen, setCompareOpen] = useState(false)
   const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
     playerSlug,
     showAllTopMatches,
@@ -68,7 +67,11 @@ export function CareerPage() {
     <div className="flex flex-col">
       <div className="space-y-6 p-6">
         <div className="flex justify-end">
-          <Button size="sm" variant="outline" onClick={() => setCompareOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void navigate({ to: '/players/$playerSlug/compare', params: { playerSlug } })}
+          >
             Comparer
           </Button>
         </div>
@@ -180,12 +183,6 @@ export function CareerPage() {
         />
       </div>
 
-      {/* C4.3 : CompareDrawer ouvert depuis l'en-tête Carrière */}
-      <CompareDrawer
-        playerSlug={playerSlug}
-        open={compareOpen}
-        onClose={() => setCompareOpen(false)}
-      />
     </div>
   )
 }
