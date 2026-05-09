@@ -67,12 +67,25 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	if row.PlaylistAssetID != nil {
 		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
 	}
-	// Résolution du libellé de mode : même formule unifiée que la home
-	// (cf. analysis.ResolveModeUI). Source unique de vérité — toute logique
-	// ad hoc dans la match-view a été retirée pour fixer la divergence
-	// "Slayer on Streets" affichée sur les matchs avec pair_name_fr legacy.
+	// Résolution du libellé de mode.
+	// Étape 1 : normalisation pair_name / pair_name_fr (strip "Arena:", suffixes map).
+	// Étape 2 : lookup mode_name_tr pour obtenir la traduction FR canonique.
+	// Sans l'étape 2, pair_name_fr étant toujours NULL en DB (non écrit par le sync),
+	// le résultat serait toujours l'EN normalisé ("CTF" au lieu de "Capture du drapeau").
 	row.ModeNameFR = analysis.ResolveModeUI(row.PairName, row.PairNameFR)
+	if r.pdb.Metadata != nil && row.ModeNameFR != nil && *row.ModeNameFR != "" {
+		if fr := r.lookupModeNameFR(ctx, *row.ModeNameFR); fr != "" {
+			row.ModeNameFR = &fr
+		}
+	}
 	return &row, nil
+}
+
+// lookupModeNameFR cherche la traduction FR d'un mode EN dans mode_name_tr.
+// Retourne "" si la table est absente ou si aucune entrée ne correspond.
+func (r *MatchViewRepo) lookupModeNameFR(ctx context.Context, modeEN string) string {
+	tr := loadModeNamesFRForKeys(ctx, r.pdb.Metadata, []string{modeEN})
+	return tr[modeEN]
 }
 
 // resolveAssetName est un helper qui appelle MetadataRepo.ResolveAssetName avec
