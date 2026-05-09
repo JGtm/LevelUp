@@ -210,24 +210,6 @@ en = "Results unavailable"
 fr = "La requête n'a renvoyé aucun tableau de matchs exploitable pour ce scope."
 en = "Query returned no exploitable match table for this scope."
 
-# ─── Filtre ranked context ────────────────────────────────────────────────────
-
-[explorer.filters.ranked_label]
-fr = "Expérience"
-en = "Experience"
-
-[explorer.filters.ranked_all]
-fr = "Tous"
-en = "All"
-
-[explorer.filters.ranked_ranked]
-fr = "Classé (CSR)"
-en = "Ranked (CSR)"
-
-[explorer.filters.ranked_unranked]
-fr = "Non classé (LUSR)"
-en = "Unranked (LUSR)"
-
 # ─── Filtre outcome ───────────────────────────────────────────────────────────
 
 [explorer.filters.outcome_label]
@@ -253,8 +235,8 @@ fr = "Tier"
 en = "Tier"
 
 [explorer.filters.skill_tier_disabled]
-fr = "Sélectionne Ranked ou Non-ranked d'abord"
-en = "Select Ranked or Unranked first"
+fr = "Sélectionne uniquement 'PVP classé' ou 'PVP non classé' dans Type d'expérience pour activer ce filtre"
+en = "Select only 'PVP classé' or 'PVP non classé' in Experience type to enable this filter"
 
 [explorer.filters.skill_tier_bronze]
 fr = "Bronze"
