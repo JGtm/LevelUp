@@ -60,6 +60,8 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'palmares=>leaderboard',
   // Citations consommé par carrière (onglet)
   'career=>citations',
+  // Achievements consommé par carrière (section progression)
+  'career=>achievements',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
