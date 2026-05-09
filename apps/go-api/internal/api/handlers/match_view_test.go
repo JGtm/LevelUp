@@ -82,6 +82,48 @@ func TestMatchViewHandler_PlayerNotFound(t *testing.T) {
 	}
 }
 
+// TestMatchViewHandler_LocalisationFR_ChampsJSON vérifie que map_ui, mode_ui et
+// playlist_label sont correctement sérialisés dans la réponse JSON. Régression :
+// un changement de JSON tag ou un oubli d'assignation dans buildMatchHeader
+// rendrait ces champs vides — le frontend afficherait "Forbidden" seul.
+func TestMatchViewHandler_LocalisationFR_ChampsJSON(t *testing.T) {
+	expected := domain.MatchViewResponse{
+		Header: domain.MatchViewHeader{
+			MatchID:       "fr-match",
+			MapUI:         "Forbidden",
+			ModeUI:        "Capture du drapeau",
+			PlaylistLabel: "Partie rapide",
+		},
+	}
+	factory := func(_ context.Context, slug string) (port.MatchViewService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return &mockMatchViewService{resp: expected}, nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/fr-match", nil)
+	w := httptest.NewRecorder()
+	newMatchViewRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.MatchViewResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.Header.MapUI != "Forbidden" {
+		t.Errorf("map_ui = %q, want 'Forbidden'", resp.Header.MapUI)
+	}
+	if resp.Header.ModeUI != "Capture du drapeau" {
+		t.Errorf("mode_ui = %q, want 'Capture du drapeau'", resp.Header.ModeUI)
+	}
+	if resp.Header.PlaylistLabel != "Partie rapide" {
+		t.Errorf("playlist_label = %q, want 'Partie rapide'", resp.Header.PlaylistLabel)
+	}
+}
+
 func TestMatchViewHandler_ServiceError(t *testing.T) {
 	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
 		return &mockMatchViewService{err: errors.New("db error")}, nil

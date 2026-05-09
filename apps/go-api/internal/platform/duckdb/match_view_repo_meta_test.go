@@ -265,9 +265,10 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 	}
 }
 
-// TestGetMatchMeta_NormalizedPairName_ExtractsSubmode couvre le cas nominal :
-// pair_name = "Arena:Slayer" → ResolveModeUI extrait le sous-mode → "Slayer".
-// Sans entrée dans mode_name_tr, ModeNameFR reste "Slayer" (pas de traduction).
+// TestGetMatchMeta_NormalizedPairName_ExtractsSubmode : sans traduction dans
+// mode_name_tr, ModeNameFR est le pair_name brut (COALESCE pair_name_fr →
+// pair_name). Le frontend normalise via normalizeModeLabel("Arena:Slayer") →
+// "Slayer", cohérent avec le chemin home/match-history.
 func TestGetMatchMeta_NormalizedPairName_ExtractsSubmode(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
@@ -284,18 +285,17 @@ func TestGetMatchMeta_NormalizedPairName_ExtractsSubmode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer" {
-		t.Errorf("ModeNameFR = %v, want Slayer", meta.ModeNameFR)
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Arena:Slayer" {
+		t.Errorf("ModeNameFR = %v, want Arena:Slayer (frontend normalise via normalizeModeLabel)", meta.ModeNameFR)
 	}
 }
 
-// TestGetMatchMeta_StripsMapSuffixFromPairNameFR : régression du bug
-// 0d6f6eaa-08cd-4d4a-bca6-3bffb06e8b4e. Pour les matchs d'avant le
+// TestGetMatchMeta_LegacyPairNameFRPassedThrough : pour les matchs d'avant le
 // 23 mars 2026, pair_name_fr contenait des libellés legacy avec suffixe
-// " on <map>" (ex. "Slayer on Streets"). La match-view affichait ce
-// suffixe brut, alors que la home le strippait via NormalizeModeLabel.
-// Désormais les deux flux passent par ResolveModeUI → "Slayer".
-func TestGetMatchMeta_StripsMapSuffixFromPairNameFR(t *testing.T) {
+// " on <map>" (ex. "Slayer on Streets"). Le backend retransmet la valeur telle
+// quelle (aligné sur home/match-history) ; le frontend normalise via
+// normalizeModeLabel("Slayer on Streets") → "Slayer".
+func TestGetMatchMeta_LegacyPairNameFRPassedThrough(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
 
@@ -312,8 +312,8 @@ func TestGetMatchMeta_StripsMapSuffixFromPairNameFR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer" {
-		t.Errorf("ModeNameFR = %v, want Slayer (suffixe ' on Streets' strippé)", meta.ModeNameFR)
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer on Streets" {
+		t.Errorf("ModeNameFR = %v, want 'Slayer on Streets' (frontend normalise, cf. normalizeModeLabel)", meta.ModeNameFR)
 	}
 }
 
@@ -360,8 +360,9 @@ func TestGetMatchMeta_TranslatesModeFRViaModeNameTr(t *testing.T) {
 }
 
 // TestGetMatchMeta_ModeNameFRFallbackToEN : mode_name_tr absent → ModeNameFR
-// reste l'EN normalisé. Titre frontend = "Slayer sur Live Fire" (EN leak
-// toléré si aucune traduction disponible).
+// est le pair_name brut (COALESCE). Aligné sur home/match-history qui retournent
+// aussi le pair_name brut. Frontend normalise via normalizeModeLabel →
+// "Slayer" ; titre "Slayer sur Live Fire" (EN leak toléré).
 func TestGetMatchMeta_ModeNameFRFallbackToEN(t *testing.T) {
 	pdb := newMetaResolveTestPDB(t)
 	ctx := context.Background()
@@ -373,15 +374,13 @@ func TestGetMatchMeta_ModeNameFRFallbackToEN(t *testing.T) {
 		        'Arena:Slayer on Live Fire')`); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	// mode_name_tr vide — pas de traduction pour "Slayer".
 
 	repo := NewMatchViewRepo(pdb, "test-xuid")
 	meta, err := repo.GetMatchMeta(ctx, "m7")
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	// "Slayer" extrait de pair_name, aucune entrée FR → reste EN.
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer" {
-		t.Errorf("ModeNameFR = %v, want Slayer (fallback EN faute de traduction)", meta.ModeNameFR)
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Arena:Slayer on Live Fire" {
+		t.Errorf("ModeNameFR = %v, want 'Arena:Slayer on Live Fire' (frontend normalise, EN leak toléré)", meta.ModeNameFR)
 	}
 }

@@ -67,25 +67,34 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	if row.PlaylistAssetID != nil {
 		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
 	}
-	// Résolution du libellé de mode.
-	// Étape 1 : normalisation pair_name / pair_name_fr (strip "Arena:", suffixes map).
-	// Étape 2 : lookup mode_name_tr pour obtenir la traduction FR canonique.
-	// Sans l'étape 2, pair_name_fr étant toujours NULL en DB (non écrit par le sync),
-	// le résultat serait toujours l'EN normalisé ("CTF" au lieu de "Capture du drapeau").
-	row.ModeNameFR = analysis.ResolveModeUI(row.PairName, row.PairNameFR)
-	if r.pdb.Metadata != nil && row.ModeNameFR != nil && *row.ModeNameFR != "" {
-		if fr := r.lookupModeNameFR(ctx, *row.ModeNameFR); fr != "" {
+	// Résolution du libellé de mode — même cascade que applyMatchHistoryFRTranslations :
+	// ResolveAssetNamesBulk(pair) → loadModeFRBatch(mode_name_tr) → ResolvePairNameFR.
+	// pair_name_fr est toujours NULL en DB (non écrit par sync) : seul ce chemin
+	// produit "Capture du drapeau" au lieu de l'EN normalisé.
+	{
+		var pairAssetName string
+		if r.pdb.Metadata != nil && row.PairAssetID != nil {
+			metaRepo := NewMetadataRepoFromDB(r.pdb.Metadata)
+			langs := PreferredLangsForLocale("fr")
+			pairNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "pair", []string{*row.PairAssetID}, langs)
+			pairAssetName = strings.TrimSpace(pairNames[*row.PairAssetID])
+		}
+
+		rawPairName := derefString(row.PairName)
+		modeENSet := make(map[string]struct{})
+		if en := analysis.NormalizeModeLabel(rawPairName); en != "" {
+			modeENSet[en] = struct{}{}
+		}
+		if en := analysis.NormalizeModeLabel(pairAssetName); en != "" {
+			modeENSet[en] = struct{}{}
+		}
+		modeFR := loadModeFRBatch(ctx, r.pdb, modeENSet)
+
+		if fr := analysis.ResolvePairNameFR(rawPairName, derefString(row.PairNameFR), pairAssetName, modeFR); fr != "" {
 			row.ModeNameFR = &fr
 		}
 	}
 	return &row, nil
-}
-
-// lookupModeNameFR cherche la traduction FR d'un mode EN dans mode_name_tr.
-// Retourne "" si la table est absente ou si aucune entrée ne correspond.
-func (r *MatchViewRepo) lookupModeNameFR(ctx context.Context, modeEN string) string {
-	tr := loadModeNamesFRForKeys(ctx, r.pdb.Metadata, []string{modeEN})
-	return tr[modeEN]
 }
 
 // resolveAssetName est un helper qui appelle MetadataRepo.ResolveAssetName avec
