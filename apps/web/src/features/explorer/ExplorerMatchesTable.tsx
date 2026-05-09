@@ -31,9 +31,8 @@ import {
 import type { ExplorerMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { tokenCssVar } from '@/lib/accessibility'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { mmrDeltaScale, kdScale } from '@/lib/accessibility/scales'
-import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { getOutcomeColor } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -132,6 +131,15 @@ const DOMINANCE_LABEL_KEYS: Record<number, MatchViewManifestKey> = {
   3: 'narrative.dominance.remontada',
   4: 'narrative.dominance.debandade',
   5: 'narrative.dominance.contre_remontada',
+}
+
+// Mapping flag → SemanticToken frontend (cf. semantic-tokens.ts).
+const DOMINANCE_COLOR_TOKENS: Record<number, SemanticToken> = {
+  1: 'narrative-dominant',
+  2: 'narrative-humiliation',
+  3: 'narrative-remontada',
+  4: 'narrative-debacle',
+  5: 'narrative-contre-remontada',
 }
 
 const NAME_TRUNCATE_MAX = 12
@@ -279,8 +287,21 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         cell: (ctx) => {
           const flag = ctx.getValue<number | null | undefined>() ?? 0
           const labelKey = DOMINANCE_LABEL_KEYS[flag]
-          if (!labelKey) return <span className="text-muted-foreground">-</span>
-          return <span>{tMV(labelKey)}</span>
+          const colorToken = DOMINANCE_COLOR_TOKENS[flag]
+          if (!labelKey || !colorToken) return <span className="text-muted-foreground">-</span>
+          const color = tokenCssVar(colorToken)
+          return (
+            <span
+              className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none whitespace-nowrap"
+              style={{
+                backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+                borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
+                color,
+              }}
+            >
+              {tMV(labelKey)}
+            </span>
+          )
         },
       },
       {
