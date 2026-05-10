@@ -196,6 +196,7 @@ WHERE UPPER(
 			WHEN COALESCE(mr.is_ranked, FALSE)
 				OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
 				OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0
+				OR UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR'
 			THEN 'CSR'
 			ELSE 'LUSR'
 		END
@@ -243,6 +244,7 @@ last_skill AS (
 			WHEN COALESCE(r.is_ranked, FALSE)
 				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
 				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+				OR UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR'
 			THEN 'CSR'
 			ELSE 'LUSR'
 		END AS rating_type,

@@ -1516,6 +1516,14 @@ func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, 
 		if r.Summary.IsRanked != nil {
 			isRanked = *r.Summary.IsRanked
 		}
+		// Fallback 1: match_skill_rank a un rating CSR -> c'est un match classé.
+		if !isRanked && r.Enrichment.SkillSnapshot != nil {
+			isRanked = r.Enrichment.SkillSnapshot.RatingType == canonical.RatingTypeCSR
+		}
+		// Fallback 2: playlist_name contient "ranked" (données anciennes où is_ranked=false).
+		if !isRanked && r.Summary.Playlist != nil {
+			isRanked = strings.Contains(strings.ToLower(r.Summary.Playlist.DefaultLabel), "ranked")
+		}
 		if isRanked {
 			hasRanked = true
 		} else {
