@@ -227,10 +227,10 @@ type LeaderboardService interface {
 // Implémenté par platform/halo.CompareProvider.
 type PlayerStatsProvider interface {
 	FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error)
-	// FetchCSR retourne le CSR actuel et le meilleur CSR historique depuis
-	// skill.svc.halowaypoint.com pour un XUID donné dans une playlist rankée.
-	// Retourne (0, 0, nil) si le joueur est en placement (Current.Value == -1).
-	FetchCSR(ctx context.Context, xuid, playlistID string) (current, best int, err error)
+	// FetchCSRFromMatch retourne le CSR actuel (PostMatchCsr) depuis le match skill endpoint
+	// skill.svc.halowaypoint.com/hi/matches/{matchID}/skill pour un XUID donné.
+	// Retourne (0, nil) si le joueur n'a pas de CSR dans ce match (placement ou non rankédé).
+	FetchCSRFromMatch(ctx context.Context, matchID, xuid string) (current int, err error)
 }
 
 // PrivacyProvider interroge la privacy d'un compte Halo via Waypoint.

@@ -859,9 +859,9 @@ type CompareRepository interface {
 	// Retourne nil si aucun match commun ou en cas d'erreur (best-effort).
 	GetEncounterStats(ctx context.Context, xuidA, xuidB string) (*domain.CompareEncounterStats, error)
 
-	// GetRecentRankedPlaylistID retourne le playlist_id du match rankédé le plus récent du joueur.
+	// GetRecentRankedMatchID retourne le match_id du match rankédé le plus récent du joueur.
 	// Retourne "" si aucun match rankédé n'est disponible (best-effort).
-	GetRecentRankedPlaylistID(ctx context.Context, xuid string) (string, error)
+	GetRecentRankedMatchID(ctx context.Context, xuid string) (string, error)
 }
 
 // LeaderboardRepository fournit les données pour le classement CSR local.
@@ -930,7 +930,7 @@ func (n *noopCompareRepo) GetFavoriteWeapon(_ context.Context, _ string) (*domai
 func (n *noopCompareRepo) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
 	return nil, nil
 }
-func (n *noopCompareRepo) GetRecentRankedPlaylistID(_ context.Context, _ string) (string, error) {
+func (n *noopCompareRepo) GetRecentRankedMatchID(_ context.Context, _ string) (string, error) {
 	return "", nil
 }
 
