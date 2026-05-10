@@ -2,13 +2,14 @@
 //
 // Sprint 54 C : PlayerStatsProvider pour la comparaison joueur vs joueur.
 // FetchRemoteStats : stats agrégées depuis l'endpoint career-stats.
-// FetchCSR : CSR actuel + meilleur depuis skill.svc.halowaypoint.com.
+// FetchCSRDirect : CSR actuel + meilleur via découverte dynamique des playlist IDs.
 package halo
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -107,30 +108,30 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 	return &stats, nil
 }
 
-// FetchCSRDirect retourne le CSR actuel et le meilleur CSR depuis Waypoint en essayant
-// les playlists ranked connues (hardcodées) dans l'ordre — aucun lookup BDD requis.
-// Endpoint : GET skill.svc.halowaypoint.com/hi/playlist/{id}/csrs?players=xuid({xuid})
+// FetchCSRDirect retourne le CSR actuel et le meilleur CSR depuis Waypoint.
+// Découverte dynamique des playlist IDs depuis l'historique des matchs pour
+// ne pas dépendre d'IDs hardcodés qui changent à chaque saison Halo.
 func (p *HaloProvider) FetchCSRDirect(ctx context.Context, xuid string) (current, best int, err error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	if tokens == nil {
 		return 0, 0, fmt.Errorf("FetchCSRDirect: tokens absents du contexte")
 	}
 
-	for _, playlistID := range rankedPlaylistIDs {
-		url := fmt.Sprintf(
-			"%s/hi/playlist/%s/csrs?players=xuid(%s)",
-			defaultSkillHost,
-			playlistID,
-			xuid,
-		)
-		body, fetchErr := p.doGet(ctx, url, tokens)
-		if fetchErr != nil {
-			if strings.Contains(fetchErr.Error(), "HTTP 404") || strings.Contains(fetchErr.Error(), "HTTP 410") {
-				continue // playlist inconnue pour ce joueur — essayer la suivante
-			}
-			return 0, 0, fmt.Errorf("FetchCSRDirect(%s): %w", xuid, fetchErr)
-		}
+	playlistIDs := p.discoverPlaylistIDs(ctx, xuid, tokens)
 
+	for _, playlistID := range playlistIDs {
+		csrURL := fmt.Sprintf("%s/hi/playlist/%s/csrs?players=xuid(%s)",
+			defaultSkillHost, playlistID, xuid)
+		body, fetchErr := p.doGet(ctx, csrURL, tokens)
+		if fetchErr != nil {
+			isGone := strings.Contains(fetchErr.Error(), "HTTP 404") ||
+				strings.Contains(fetchErr.Error(), "HTTP 410")
+			if !isGone {
+				slog.WarnContext(ctx, "FetchCSRDirect: erreur CSR playlist",
+					"playlist", playlistID, "xuid", xuid, "err", fetchErr)
+			}
+			continue
+		}
 		var resp csrResponse
 		if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
 			continue
@@ -138,7 +139,6 @@ func (p *HaloProvider) FetchCSRDirect(ctx context.Context, xuid string) (current
 		if len(resp.Value) == 0 || resp.Value[0].ResultCode != 0 {
 			continue // joueur non classé dans cette playlist
 		}
-
 		entry := resp.Value[0]
 		if entry.Result.Current.Value > 0 {
 			current = entry.Result.Current.Value
@@ -150,5 +150,55 @@ func (p *HaloProvider) FetchCSRDirect(ctx context.Context, xuid string) (current
 			return current, best, nil
 		}
 	}
+	slog.DebugContext(ctx, "FetchCSRDirect: aucun CSR trouvé",
+		"xuid", xuid, "playlists_essayées", len(playlistIDs))
 	return 0, 0, nil
+}
+
+// discoverPlaylistIDs récupère les playlist IDs depuis l'historique des matchs
+// du joueur (dynamique) et complète avec les IDs ranked connus (fallback).
+func (p *HaloProvider) discoverPlaylistIDs(ctx context.Context, xuid string, tokens *domain.HaloTokens) []string {
+	histURL := fmt.Sprintf(
+		"%s/hi/players/xuid(%s)/matches?type=matchmaking&count=25&start=0",
+		defaultStatsHost, xuid)
+	histBody, histErr := p.doGet(ctx, histURL, tokens)
+	if histErr != nil {
+		slog.WarnContext(ctx, "FetchCSRDirect: historique matchmaking indisponible — IDs hardcodés",
+			"xuid", xuid, "err", histErr)
+		return rankedPlaylistIDs
+	}
+
+	var history struct {
+		Results []struct {
+			MatchInfo struct {
+				Playlist *struct {
+					AssetId string `json:"AssetId"`
+				} `json:"Playlist"`
+			} `json:"MatchInfo"`
+		} `json:"Results"`
+	}
+	if json.Unmarshal(histBody, &history) != nil {
+		return rankedPlaylistIDs
+	}
+
+	seen := make(map[string]bool)
+	ids := make([]string, 0, 8)
+	for _, r := range history.Results {
+		if r.MatchInfo.Playlist == nil {
+			continue
+		}
+		if pid := r.MatchInfo.Playlist.AssetId; pid != "" && !seen[pid] {
+			seen[pid] = true
+			ids = append(ids, pid)
+		}
+	}
+	// Ajouter les IDs hardcodés non déjà présents comme fallback.
+	for _, pid := range rankedPlaylistIDs {
+		if !seen[pid] {
+			ids = append(ids, pid)
+		}
+	}
+	slog.DebugContext(ctx, "FetchCSRDirect: playlists découvertes",
+		"xuid", xuid, "depuis_historique", len(ids)-len(rankedPlaylistIDs), "total", len(ids))
+	return ids
 }
