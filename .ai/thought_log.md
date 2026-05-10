@@ -1,4 +1,24 @@
 
+## [2026-05-10] Compare — diagnostic CSR + fix ATH joueur B
+
+**Statut** : Complété (fix partial — CSR toujours 0 si sync CSR Go manquant).
+
+**Décision** : Deux bugs identifiés. (1) Bug confirmé : `compare_service.go` ignorait délibérément le CSR de l'ATH pool pour le joueur B (`// CSR non récupéré depuis ATH — Waypoint uniquement`). Corrigé : CSRCurrent/CSRBest copiés depuis `GetPlayerATHFor` quand l'entrée existe dans le pool. (2) Endpoint Waypoint cassé : `/hi/players/{gamertag}/career-stats` utilise le gamertag au lieu du format `xuid({xuid})` standard — retourne probablement 404 silencieusement (best-effort ignoré). La source de vérité pour le CSR est `match_skill_rank` dans stats.duckdb, populé soit par le sync Python historique, soit par un `--csr` backfill Go (scope.CSR existe mais l'implémentation Go CSR sync est absente).
+
+**Résultats** : Fix joueur B : si JGtm/Nilton410 sont dans le pool DuckDB avec des données CSR historiques (Python sync), le CSR s'affichera. Si hors pool ou sans données Python → CSR = 0. Logs debug ajoutés pour diagnostiquer : "Waypoint joueur A/B indisponible", "ATH joueur B depuis pool", "joueur B absent du pool".
+
+**Prochaine étape** : Implémenter le sync CSR Go (scope.CSR existe, implémentation manquante) ou corriger l'URL Waypoint vers le bon endpoint ranked CSR.
+
+## [2026-05-10] Rivalités — vue butterfly back-to-back bar chart
+
+**Statut** : Complété.
+
+**Décision** : Ajout d'un `RivalsButterflyChart` sous les deux tableaux existants dans `CareerRivalsSection`. Layout back-to-back : barre gauche (rouge, `outcome-loss`) = deaths côté némésis, barre droite (verte, `outcome-win`) = frags côté souffre-douleur. Pairing par rang uniquement (les deux listes restent indépendantes). Barres normalisées séparément (max de chaque côté = 100%). Ratio coloré par `ratioColor()`, match count + metric primary en sous-texte `×N · K↓/↑`. Deux composants extraits : `ButterflyRow` + `RivalsButterflyChart` pour respecter la limite 80 lignes. Aucune nouvelle clé i18n — réutilise `nemesis_title` / `victims_title`.
+
+**Résultats** : Fichier 257 lignes (< 500). TypeScript clean (2 erreurs pré-existantes sur palettes, non liées). Tableaux originaux conservés en attendant validation.
+
+**Prochaine étape** : Supprimer les tableaux originaux une fois le butterfly validé visuellement.
+
 ## [2026-05-10] Barres de progression — couleur sémantique + hero overlay
 
 **Statut** : Complété.
