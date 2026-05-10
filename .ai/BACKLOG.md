@@ -12,6 +12,28 @@
 
 ---
 
+### [frontend/nav] Nettoyage code de navigation mort — `PlayerScopeNav` + constantes `shellNavigation`
+
+**Noté le** : 2026-05-10 | **Priorité** : Basse — cosmétique, 0 impact fonctionnel
+
+**Contexte** : Audit pages orphelines du 2026-05-10. Après suppression des pages mortes, il reste du code de navigation inutilisé :
+
+1. **`apps/web/src/components/shell/PlayerScopeNav.tsx`** — composant de nav défini mais jamais importé dans aucun layout ni page. Superseded par `NavL1.tsx`. À supprimer entièrement avec son test `shellNavigation.test.ts` si les cas testés couvrent uniquement ce composant.
+
+2. **`shellNavigation.ts` — `PLAYER_PRIMARY_NAV_ITEMS` + `PLAYER_SECONDARY_NAV_ITEMS`** — deux constantes uniquement consommées par `PlayerScopeNav` (lui-même mort). `buildPlayerDestination` reste actif (utilisé par `NavL1.tsx`) → garder le fichier, supprimer uniquement ces deux exports.
+
+3. **`apps/web/src/lib/pageTitle.ts` lignes ~59-60`** — consomme encore `PLAYER_PRIMARY_NAV_ITEMS` et `PLAYER_SECONDARY_NAV_ITEMS` via `.map()` pour construire `ROUTE_TITLE_RULES`. Après suppression des constantes, remplacer par une liste statique inline ou vider.
+
+**Ce qu'il faut faire** :
+1. Vérifier que `shellNavigation.test.ts` ne teste que `PlayerScopeNav`/les constantes mortes — si oui, supprimer le fichier de test aussi
+2. Supprimer `PlayerScopeNav.tsx`
+3. Retirer `PLAYER_PRIMARY_NAV_ITEMS` + `PLAYER_SECONDARY_NAV_ITEMS` de `shellNavigation.ts`
+4. Mettre à jour `pageTitle.ts` pour ne plus les consommer
+
+**Effort** : ~30 minutes
+
+---
+
 ### [db-concurrency] Suite et fin du refactor `leased-writer-enforcement`
 
 **Noté le** : 2026-05-05 | **Priorité** : 🔴 Bloquant merge pour les 3 premiers points, 🟡 follow-up pour le reste

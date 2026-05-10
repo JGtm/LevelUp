@@ -226,21 +226,22 @@ type TopWeekEntry struct {
 
 // SynthesisKPIs contient les métriques agrégées solo ou escouade (Sprint 43).
 type SynthesisKPIs struct {
-	MatchCount          int      `json:"match_count"`
-	Wins                int      `json:"wins"`
-	KDRatio             *float64 `json:"kd_ratio"`
-	WinRate             float64  `json:"win_rate"`
-	Accuracy            *float64 `json:"accuracy"`
-	KillsPerMin         *float64 `json:"kills_per_min"`
-	AvgLifeSeconds      *float64 `json:"avg_life_seconds"`
-	PerformanceScore    *float64 `json:"performance_score"`
-	HeadshotsPerMatch   *float64 `json:"headshots_per_match"`
-	DeathsPerMin        *float64 `json:"deaths_per_min"`
-	AssistsPerMin       *float64 `json:"assists_per_min"`
-	AvgMaxKillingSpree  *float64 `json:"avg_max_killing_spree"`
-	AvgDamageDealt      *float64 `json:"avg_damage_dealt"`
-	AvgDamageTaken      *float64 `json:"avg_damage_taken"`
-	PerfectKillsPerMatch *float64 `json:"perfect_kills_per_match"`
+	MatchCount             int      `json:"match_count"`
+	Wins                   int      `json:"wins"`
+	TotalTimePlayedSeconds int      `json:"total_time_played_seconds"`
+	KDRatio                *float64 `json:"kd_ratio"`
+	WinRate                float64  `json:"win_rate"`
+	Accuracy               *float64 `json:"accuracy"`
+	KillsPerMin            *float64 `json:"kills_per_min"`
+	AvgLifeSeconds         *float64 `json:"avg_life_seconds"`
+	PerformanceScore       *float64 `json:"performance_score"`
+	HeadshotsPerMatch      *float64 `json:"headshots_per_match"`
+	DeathsPerMin           *float64 `json:"deaths_per_min"`
+	AssistsPerMin          *float64 `json:"assists_per_min"`
+	AvgMaxKillingSpree     *float64 `json:"avg_max_killing_spree"`
+	AvgDamageDealt         *float64 `json:"avg_damage_dealt"`
+	AvgDamageTaken         *float64 `json:"avg_damage_taken"`
+	PerfectKillsPerMatch   *float64 `json:"perfect_kills_per_match"`
 }
 
 // ComparisonMetricItem est une métrique bipolaire solo / escouade.

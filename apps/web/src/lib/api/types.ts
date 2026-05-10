@@ -1882,6 +1882,7 @@ export interface SynthesisDetailedStats {
   total_melee_kills: number
   total_power_weapon_kills: number
   max_killing_spree: number
+  total_time_played_seconds?: number
   total_shots_fired: number
   total_shots_hit: number
   total_damage_dealt: number

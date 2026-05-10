@@ -10,17 +10,10 @@ interface RouteTitleRule {
 }
 
 const PLAYER_ROUTE_OVERRIDES: RouteTitleRule[] = [
-  // Stats — séries temporelles et historique
-  { pattern: '/players/$playerSlug/stats/timeseries', title: 'Séries' },
+  // Solo
+  { pattern: '/players/$playerSlug/stats/timeseries', title: 'Séries temporelles' },
   { pattern: '/players/$playerSlug/stats/sessions', title: 'Sessions' },
-  { pattern: '/players/$playerSlug/stats/history', title: 'Historique' },
-  // Stats — pages personnelles (_personal layout)
-  { pattern: '/players/$playerSlug/stats/summary', title: 'Résumé' },
-  { pattern: '/players/$playerSlug/stats/maps-modes', title: 'Cartes & Modes' },
-  { pattern: '/players/$playerSlug/stats/distributions', title: 'Distributions' },
-  { pattern: '/players/$playerSlug/stats/progression', title: 'Progression' },
-  { pattern: '/players/$playerSlug/stats/advanced', title: 'Avancé' },
-  { pattern: '/players/$playerSlug/stats', title: 'Stats' },
+  { pattern: '/players/$playerSlug/stats', title: 'Solo' },
   // Carrière
   { pattern: '/players/$playerSlug/career/season-pass', title: 'Pass saisonnier' },
   { pattern: '/players/$playerSlug/career', title: 'Carrière' },
@@ -29,8 +22,6 @@ const PLAYER_ROUTE_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/players/$playerSlug/compare', title: 'Face-à-face' },
   { pattern: '/players/$playerSlug/palmares/relations', title: 'Relations' },
   { pattern: '/players/$playerSlug/palmares/prestige', title: 'Leaderboard PP' },
-  { pattern: '/players/$playerSlug/palmares/compare', title: 'Face-à-face' },
-  { pattern: '/players/$playerSlug/palmares/season-pass', title: 'Pass saisonnier' },
   // Objectifs
   { pattern: '/players/$playerSlug/objectifs', title: 'Objectifs' },
   // Escouade

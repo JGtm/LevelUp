@@ -1,4 +1,113 @@
 
+## [2026-05-10] cleanup — Suppression pages orphelines + redirects legacy + refactoring nav
+
+**Statut** : Complété.
+
+**Contexte** : Audit complet des routes React → 7 pages inaccessibles depuis la nav identifiées + 3 redirects legacy inutiles (pas encore en prod).
+
+**Supprimé** :
+- `features/personal-stats/` (9 fichiers) — PersonalStatsLayout + 5 onglets (summary, maps-modes, distributions, progression, advanced) : section entière construite mais jamais branchée à la nav
+- `features/match-history/` (4 fichiers) — MatchHistoryPage redondante avec Explorer + table bas de Timeseries
+- Routes : `stats/history.tsx`, `stats/_personal.*.tsx` (6 fichiers), `palmares/compare.tsx`, `palmares/season-pass.tsx`, `profile/citations.tsx`
+
+**Mis à jour** :
+- `stats/index.tsx` — redirect `/stats/summary` → `/stats/timeseries`
+- `pageTitle.ts` — entrées supprimées pour les routes mortes, titre "Stats" → "Solo"
+- `classifyFeedback.ts` — type `match_history` retiré + patterns morts supprimés
+
+**BACKLOG — code navigation mort à traiter ultérieurement** :
+- `PlayerScopeNav.tsx` — composant de nav jamais importé dans aucun layout
+- `shellNavigation.ts` — `PLAYER_PRIMARY_NAV_ITEMS` + `PLAYER_SECONDARY_NAV_ITEMS` uniquement consommées par `PlayerScopeNav` (mort). `buildPlayerDestination` reste actif (NavL1).
+- `pageTitle.ts` lignes 59-60 — consomme encore les deux constantes mortes via `PLAYER_PRIMARY/SECONDARY_NAV_ITEMS.map()`
+
+**Résultats** : ~200 lignes de code mort supprimées, 0 import cassé.
+
+**Prochaine étape** : Nettoyer `PlayerScopeNav` + constantes orphelines quand l'utilisateur reprend ce backlog.
+
+## [2026-05-10] fix(timeseries) — EWMA K/D : zone de stabilité + source FDA
+
+**Statut** : Complété.
+
+**Décisions** :
+1. **Zone de stabilité manquante** : ajout d'un `markArea` ECharts [0.85, 1.15] sur la série scatter dans `TimeseriesEwmaKd.tsx`. Couleur `tc.axisLine` opacity 0.08 (neutre, non-sémantique). Rattaché à la série scatter (z=1) pour rester sous les autres séries.
+2. **Source K/D scatter** : `kdValues` utilise `r.kda ?? r.kd_ratio` — priorité à la FDA stockée en DB (calcul API Halo officiel), fallback sur le K/D recompute. L'ancien code `r.kd_ratio` seul ignorait la colonne `kda`.
+3. **Cohérence EWMA backend** : `buildTimeseriesFormTab` (timeseries_service.go) utilise désormais `m.KDA` si non-nil, fallback `kills/deaths`. L'ancien code avait aussi une incohérence deaths=0 (retournait 0.0) vs `analysis.KDR` côté frontend (retournait kills/1).
+
+**Résultats** : Go build OK, erreurs TS préexistantes (match-history/queries) non liées.
+
+**Prochaine étape** : valider visuellement le chart sur des matchs réels.
+
+---
+
+## [2026-05-10] feat(synthesis) — Temps de jeu + butterfly + weapons top 20
+
+**Statut** : Complété.
+
+**Décisions** :
+1. **Case "Temps de jeu"** : ajout dans `SynthesisDetailedStats` (Go + TS) + agrégation de `TimePlayed` dans `buildSynthesisDetailedStatsFromCanonical`. Rendu via `AccentCard` dans la grille Tir, à côté de "Précision brute". Helper `formatTimePlayed` (4j 14h 17m) localisé dans SynthesisPage.
+2. **Butterfly "Temps de jeu"** : exposition de `TotalTimePlayedSeconds` dans `SynthesisKPIs` (domain/squad.go), affectation depuis `sumTimePlayed` dans `ComputeSynthesisKPIsFromCanonical`, ajout de l'item `time_played_seconds` dans `ComputeComparisonMetrics`, entrée TOML `[fields.time_played_seconds]` (label FR "Temps de jeu"), case dans `formatMetricValue` du bipolaire.
+3. **Frags par arme** : limite 15 → 20 dans l'appel `buildTopWeaponKills` et le commentaire domain.
+
+**Résultat** : `go build ./...` propre, `npm run typecheck` propre (erreur pré-existante dans PersonalStatsLayout.tsx non liée).
+
+**Prochaine étape** : Aucune.
+
+## [2026-05-10] NavL1 Stats — restauration onglets "Séries temporelles" et "Sessions"
+
+**Statut** : Complété.
+
+**Contexte** : Le dropdown L1 "Stats" n'exposait qu'un seul onglet ("Synthèse"). Les routes `/stats/timeseries` et `/stats/sessions` existaient et étaient fonctionnelles mais inaccessibles depuis la navigation principale.
+
+**Décision** : Ajouter les deux onglets manquants dans `L1_SECTIONS[stats].tabs` de `NavL1.tsx`. Pas de nouvelle route, pas de nouveau composant — simple correction de la config de nav.
+
+**Résultats** : Les trois onglets Stats sont maintenant accessibles via le dropdown L1 : Synthèse / Séries temporelles / Sessions.
+
+**Prochaine étape** : Vérifier si `history.tsx` (Historique des parties) mérite aussi un onglet L1 ou est intentionnellement hors menu.
+
+## [2026-05-10] bugfix — Synthesis : TotalAssists toujours à 0
+
+**Statut** : Complété.
+
+**Problème** : Sur la page Synthesis, `total_assists` affichait 0 malgré des assists en DB.
+
+**Cause** : `buildSynthesisOverviewCanonical()` dans `synthesis_service.go` n'itérait pas sur `r.Self.Assists` et ne remplissait pas `TotalAssists` dans le struct `domain.SynthesisOverview`. Le champ canonical existait déjà (projeté dans `player_matches_repo.go`).
+
+**Décision** : Ajout de `totalAssists` dans la boucle d'agrégation + remplissage `TotalAssists: totalAssists` dans le struct de retour. Aucune modification DB ni frontend nécessaire.
+
+**Résultat** : `go build ./...` propre.
+
+**Prochaine étape** : Aucune.
+
+## [2026-05-10] bugfix — Synthesis : tirs effectués/tirs au but affichés à 0
+
+**Statut** : Complété.
+
+**Problème** : Sur la page Synthesis, `total_shots_fired` et `total_shots_hit` étaient systématiquement à 0 malgré des données présentes en DB.
+
+**Cause** : `player_matches_repo.go` omettait `p.shots_fired` et `p.shots_hit` du SELECT, des variables de scan, du struct `playerMatchScanResult` et de la projection canonical. Le service synthesis lisait bien ces champs (`buildSynthesisDetailedStatsFromCanonical`), mais recevait des pointeurs `nil`.
+
+**Décision** : Correction en 6 points dans `player_matches_repo.go` : SELECT, variables, Scan, passage struct, struct, projection. Aucune modification des autres couches nécessaire.
+
+**Résultat** : `go build ./...` propre. Les valeurs agrégées seront maintenant correctes dès le prochain chargement de la page Synthesis.
+
+**Prochaine étape** : Aucune, bug ponctuel résolu.
+
+## [2026-05-10] timeseries.25 — EWMA K/D : composant React + intégration page
+
+**Statut** : Complété.
+
+**Contexte** : Le mock spec `timeseries.25` (EWMA K/D) était identifié mais non rendu. Le backend Go produisait déjà `form_tab.ewma_kd_points` (alpha=0.20) et `form_tab.regression_stats` (slope, r², trend) depuis `buildTimeseriesFormTab`. Les types TS et les clés i18n (`timeseries.form.ewma_*`) étaient aussi déjà en place. Seul le composant React manquait.
+
+**Décision** : Créer `TimeseriesEwmaKd.tsx` séparé (pas dans `TimeseriesFormCharts.tsx` déjà à 711L — déjà en dette de taille). Helper pur `buildRegressionLine` extrait hors composant (SRP). L'intercept de la droite de régression est recalculé côté client (le DTO Go n'expose pas l'intercept dans `TimeseriesRegressionStats`).
+
+**Implémentation** :
+- `apps/web/src/features/timeseries/TimeseriesEwmaKd.tsx` — 3 séries ECharts : scatter K/D bruts, ligne EWMA épaisse (chart-series-1), droite de régression optionnelle (tiretée, couleur par trend si r²≥0.3). markLine y=1.0.
+- `TimeseriesPage.tsx` — bloc conditionnel dans l'onglet `progression`, en pleine largeur, entre la grid SkillRank/Perf et `TimeseriesEfficiency`.
+
+**Résultats** : typecheck propre, pas de nouveau lint error.
+
+**Prochaine étape** : Si on veut la note textuelle "tendance non significative" (quand r²<0.3), ajouter un `<p>` sous le `<ChartFrame>` dans la page — non bloquant.
+
 ## [2026-05-10] Branch hygiene — fix tests cassés par les refactos préalables
 
 **Statut** : Complété.

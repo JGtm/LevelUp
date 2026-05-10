@@ -31,6 +31,17 @@ import type {
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
 
+function formatTimePlayed(seconds: number): string {
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const parts: string[] = []
+  if (d > 0) parts.push(`${d}j`)
+  if (h > 0 || d > 0) parts.push(`${h}h`)
+  parts.push(`${m}m`)
+  return parts.join(' ')
+}
+
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
 
 function AccentCard({ label, value, accent }: { label: string; value: string; accent: SemanticToken }) {
@@ -140,7 +151,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
 
               {/* Tir / Dégâts / Fun à gauche, Frags par arme à droite */}
               <div className="flex gap-4 mt-4 items-stretch">
-                <div className="flex flex-col gap-4 w-[21rem] shrink-0">
+                <div className="flex flex-col justify-between gap-4 w-[21rem] shrink-0">
                   {(overview.longest_win_streak ?? 0) > 1 && (
                     <AccentCard label="Victoires consécutives (max)" value={String(overview.longest_win_streak)} accent="outcome-win" />
                   )}
@@ -164,6 +175,13 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
                         <AccentCard
                           label="Précision brute"
                           value={`${((detailedStats.total_shots_hit / detailedStats.total_shots_fired) * 100).toFixed(1)}%`}
+                          accent="info"
+                        />
+                      )}
+                      {(detailedStats.total_time_played_seconds ?? 0) > 0 && (
+                        <AccentCard
+                          label={labelOf('time_played_seconds')}
+                          value={formatTimePlayed(detailedStats.total_time_played_seconds!)}
                           accent="info"
                         />
                       )}
