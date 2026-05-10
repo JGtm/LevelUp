@@ -40,6 +40,18 @@ interface Props {
   rows: MatchEncounterRow[]
   /** Locale pour formatRelative (défaut fr). */
   locale?: 'fr' | 'en'
+  /**
+   * Override de la navigation au clic sur un gamertag. Si fourni, remplace la
+   * navigation par défaut (Explorer mode joueur scoped sur le playerSlug courant).
+   * Permet à la page Carrière de réutiliser ce tableau hors contexte match-view.
+   */
+  onPlayerClick?: (gamertag: string) => void
+  /**
+   * Désactive le wrapper carte (border + title bar). Utile quand le composant
+   * est embarqué dans une section qui fournit déjà son propre header h2 (ex.
+   * page Carrière, où le user a explicitement demandé "pas de bloc").
+   */
+  hideCardWrapper?: boolean
 }
 
 function formatPercent(v: number | null | undefined): string {
@@ -57,7 +69,11 @@ const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
     en: 'Recurring ally: good win rate together',
   },
   'narrative.encounter.tough_enemy': {
-    fr: 'Adversaire coriace : taux de victoire faible',
+    fr: 'Dur à cuire : ratio frags/morts contre lui défavorable',
+    en: 'Tough nut: unfavorable frags/deaths ratio against him',
+  },
+  'narrative.encounter.coriace': {
+    fr: 'Coriace : faible taux de victoire face à ce joueur',
     en: 'Tough opponent: low win rate against him',
   },
   'narrative.encounter.ordinal': {
@@ -251,7 +267,7 @@ function formatRelativeEN(iso: string): string {
   return years <= 1 ? '1 y ago' : `${years} y ago`
 }
 
-export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
+export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideCardWrapper = false }: Props) {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
   const formatRelative = locale === 'en' ? formatRelativeEN : formatRelativeFR
@@ -293,6 +309,10 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
   )
 
   function goToExplorer(gamertag: string) {
+    if (onPlayerClick) {
+      onPlayerClick(gamertag)
+      return
+    }
     if (!playerSlug) return
     void navigate({
       to: '/players/$playerSlug/explorer',
@@ -309,7 +329,7 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
         cell: (ctx) => {
           const r = ctx.row.original
           // Pas de lien Explorer pour les bots (xuid 'bid(...)' sans historique cross-match).
-          const linkable = playerSlug && !r.is_bot
+          const linkable = !r.is_bot && (Boolean(playerSlug) || Boolean(onPlayerClick))
           const displayGamertag = r.gamertag
           return (
             <span className="whitespace-nowrap">
@@ -417,7 +437,7 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, playerSlug, formatRelative],
+    [labels, playerSlug, formatRelative, onPlayerClick],
   )
 
   const table = useReactTable<MatchEncounterRow>({
@@ -427,6 +447,9 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
   })
 
   if (!rows || rows.length === 0) {
+    if (hideCardWrapper) {
+      return <p className="text-xs text-muted-foreground">{labels.empty}</p>
+    }
     return (
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="border-b border-border px-3 py-2 text-sm font-medium">
@@ -435,6 +458,45 @@ export function MatchEncountersTable({ rows, locale = 'fr' }: Props) {
         <div className="p-3">
           <p className="text-xs text-muted-foreground">{labels.empty}</p>
         </div>
+      </div>
+    )
+  }
+
+  // Mode hideCardWrapper : juste la table dans un overflow-x-auto, sans
+  // la barre de titre (utile quand le composant parent fournit déjà un h2).
+  if (hideCardWrapper) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-2 border-border border-collapse text-xs">
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="text-muted-foreground">
+                {hg.headers.map((h, idx) => (
+                  <th
+                    key={h.id}
+                    className={`border border-border border-b-2 px-2 pb-1 pt-1 ${idx === 0 ? 'text-left' : 'text-right'}`}
+                  >
+                    {flexRender(h.column.columnDef.header, h.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id} className="hover:bg-accent/40 transition-colors">
+                {row.getVisibleCells().map((cell, idx) => (
+                  <td
+                    key={cell.id}
+                    className={`border border-border px-2 py-1.5 ${idx === 0 ? 'text-left' : 'text-right'}`}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     )
   }

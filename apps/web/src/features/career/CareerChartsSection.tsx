@@ -34,6 +34,7 @@ import type {
   CareerProjections,
   FriendXPHistory,
 } from '@/lib/api/types'
+import { buildLusrSeries } from './lusrSeries'
 
 // ── Constantes métier ──────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ export function CareerChartsSection({
   friendsXpHistory,
 }: CareerChartsSectionProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
+  const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
   return (
     <div className="space-y-4" data-testid="career-charts-section">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -108,14 +110,22 @@ export function CareerChartsSection({
           height={280}
           buildOption={buildRankGaugeOption}
           emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
-        />
+        >
+          {summary && !summary.is_max_rank && (
+            <RankGaugeFooter summary={summary} locale={locale} intlLocale={intlLocale} />
+          )}
+        </ChartCard>
         <ChartCard<GaugePoint>
           title={careerManifest['career.charts.hero_gauge_title'][locale]}
           series={heroProgress ? [heroGaugeSeries(heroProgress)] : []}
           height={280}
           buildOption={buildHeroGaugeOption}
           emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
-        />
+        >
+          {heroProgress && (
+            <HeroGaugeFooter hero={heroProgress} locale={locale} intlLocale={intlLocale} />
+          )}
+        </ChartCard>
       </div>
       <ChartCard<[string, number]>
         title={careerManifest['career.charts.xp_history_title'][locale]}
@@ -126,11 +136,109 @@ export function CareerChartsSection({
       />
       <ChartCard<[string, number]>
         title={careerManifest['career.charts.lusr_evolution_title'][locale]}
-        series={buildLusrSeries(lusrCheckpoints)}
+        series={buildLusrSeries(lusrCheckpoints, locale)}
         height={320}
         buildOption={(series) => buildLusrEvolutionOption(series, locale)}
         emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
       />
+    </div>
+  )
+}
+
+// ── Footer enrichi sous chaque jauge ──────────────────────────────────────
+
+const HERO_RANK_TOTAL_FALLBACK = 272
+
+function RankGaugeFooter({
+  summary,
+  locale,
+  intlLocale,
+}: {
+  summary: CareerSummary
+  locale: ManifestLocale
+  intlLocale: string
+}) {
+  const nextRankName =
+    locale === 'fr' ? summary.next_rank_name_fr : summary.next_rank_name_en
+  return (
+    <div className="flex flex-col items-center gap-2 border-t border-border px-3 py-3">
+      <div className="text-center">
+        <div className="text-xs text-muted-foreground">
+          {careerManifest['career.summary.xp_next_rank'][locale]}
+        </div>
+        <div className="text-base font-semibold">
+          {summary.xp_for_next_rank.toLocaleString(intlLocale)}
+        </div>
+      </div>
+      {(summary.rank_image_url || nextRankName || summary.next_rank_image_url) && (
+        <div className="flex items-center gap-3 text-xs">
+          {summary.rank_image_url && (
+            <img
+              src={summary.rank_image_url}
+              alt={summary.rank_label}
+              className="h-12 w-12 object-contain"
+              loading="lazy"
+              decoding="async"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          )}
+          <span className="text-muted-foreground">{summary.rank_label}</span>
+          {(nextRankName || summary.next_rank_image_url) && (
+            <>
+              <span className="text-muted-foreground" aria-hidden="true">→</span>
+              {summary.next_rank_image_url && (
+                <img
+                  src={summary.next_rank_image_url}
+                  alt={nextRankName ?? ''}
+                  className="h-12 w-12 object-contain"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              )}
+              {nextRankName && (
+                <span className="text-muted-foreground">{nextRankName}</span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function HeroGaugeFooter({
+  hero,
+  locale,
+  intlLocale,
+}: {
+  hero: HeroProgress
+  locale: ManifestLocale
+  intlLocale: string
+}) {
+  const totalRanks = hero.total_ranks ?? HERO_RANK_TOTAL_FALLBACK
+  return (
+    <div className="grid grid-cols-2 gap-4 border-t border-border px-3 py-3 text-center">
+      <div>
+        <div className="text-xs text-muted-foreground">
+          {careerManifest['career.summary.xp_remaining'][locale]}
+        </div>
+        <div className="text-base font-semibold">
+          {hero.xp_remaining.toLocaleString(intlLocale)}
+        </div>
+      </div>
+      <div>
+        <div className="text-xs text-muted-foreground">
+          {careerManifest['career.summary.rank_position'][locale]}
+        </div>
+        <div className="text-base font-semibold">
+          {hero.current_rank}/{totalRanks}
+        </div>
+      </div>
     </div>
   )
 }
@@ -495,38 +603,6 @@ const LUSR_GROUP_TOKENS: Record<string, SemanticToken> = {
 function lusrGroupColor(group: string): string {
   const token: SemanticToken = LUSR_GROUP_TOKENS[group] ?? 'chart-series-1'
   return resolveToken(token)
-}
-
-function buildLusrSeries(checkpoints: CareerLusrCheckpoint[]): ChartSeries<[string, number]>[] {
-  // Clé de groupage : (rating_type, playlist_group) → une série par combinaison.
-  const byKey = new Map<string, { group: string; ratingType: string; playlistName: string; pts: Map<string, number> }>()
-
-  for (const cp of checkpoints) {
-    if (!cp.recorded_at) continue
-    const group = cp.playlist_group ?? 'arena'
-    const ratingType = cp.rating_type ?? 'LUSR'
-    const seriesKey = `${ratingType}:${group}`
-    const date = cp.recorded_at.slice(0, 10)
-
-    if (!byKey.has(seriesKey)) {
-      byKey.set(seriesKey, { group, ratingType, playlistName: cp.playlist_name || group, pts: new Map() })
-    } else {
-      // Mise à jour au dernier nom connu (tri ASC côté Go → le plus récent écrase)
-      byKey.get(seriesKey)!.playlistName = cp.playlist_name || group
-    }
-    byKey.get(seriesKey)!.pts.set(date, cp.rating_value)
-  }
-
-  return Array.from(byKey.entries()).map(([seriesKey, { group, ratingType, playlistName, pts }]) => {
-    const label = `${playlistName} (${ratingType})`
-    return {
-      key: `career.lusr.${seriesKey}`,
-      meta: { label, groupKey: group, ratingType },
-      datapoints: Array.from(pts.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, val]) => [date, val] as [string, number]),
-    }
-  })
 }
 
 function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], locale: ManifestLocale): EChartsCoreOption {
