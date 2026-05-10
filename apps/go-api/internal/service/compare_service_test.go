@@ -36,10 +36,6 @@ func (m *mockStatsProvider) FetchRemoteStats(_ context.Context, _, _ string) (*d
 	return m.stats, m.statsErr
 }
 
-func (m *mockStatsProvider) FetchCSRDirect(_ context.Context, _ string) (int, int, error) {
-	return 0, 0, nil
-}
-
 // --- tests ---
 
 func TestCompareService_BothLocal(t *testing.T) {
@@ -162,10 +158,6 @@ type slowProvider struct {
 func (s *slowProvider) FetchRemoteStats(_ context.Context, _, _ string) (*domain.NormalizedPlayerStats, error) {
 	time.Sleep(s.delay)
 	return s.stats, s.statsErr
-}
-
-func (s *slowProvider) FetchCSRDirect(_ context.Context, _ string) (int, int, error) {
-	return 0, 0, nil
 }
 
 // TestCompareService_Latency_P95 vérifie que GetPage s'exécute en < 5s

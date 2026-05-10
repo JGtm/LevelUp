@@ -227,11 +227,6 @@ type LeaderboardService interface {
 // Implémenté par platform/halo.CompareProvider.
 type PlayerStatsProvider interface {
 	FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error)
-	// FetchCSRDirect retourne le CSR actuel et le meilleur CSR depuis Waypoint
-	// en essayant les playlists rankées connues (hardcodées) dans l'ordre.
-	// Aucun lookup BDD — le XUID est le seul paramètre requis.
-	// Retourne (0, 0, nil) si le joueur n'a aucun CSR (non classé ou en placement).
-	FetchCSRDirect(ctx context.Context, xuid string) (current, best int, err error)
 }
 
 // PrivacyProvider interroge la privacy d'un compte Halo via Waypoint.

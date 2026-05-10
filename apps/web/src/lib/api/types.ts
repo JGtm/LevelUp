@@ -2659,6 +2659,7 @@ export interface KPIStats {
   /** Delta de rang (CSR ou LUSR) sur le scope. Absent si aucun match
    *  classé/non-classé dans le scope. Couleur par signe (pos/neg/neutral). */
   rank_delta?: RankDelta
+  performance_score?: number | null
   outcomes: { wins: number; losses: number; ties: number; dnf: number }
 }
 
@@ -2790,8 +2791,6 @@ export interface NormalizedPlayerStats {
   perf_ath: number
   lusr_ath: number
   career_rank: number
-  csr_current: number
-  csr_best: number
   // Phase 3 — arme favorite (null pour joueur B remote)
   favorite_weapon?: WeaponHighlight | null
   extended?: Record<string, unknown>

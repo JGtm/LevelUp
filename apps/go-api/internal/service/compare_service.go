@@ -39,7 +39,6 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 
 	var statsA, statsB *domain.NormalizedPlayerStats
 	var ath *domain.PlayerATH
-	var csrCurrentA, csrBestA int
 	var xuidBResolved string
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -62,14 +61,6 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		if wErr != nil {
 			slog.DebugContext(gctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
 		}
-		// CSR depuis Waypoint (playlists ranked hardcodées) — aucun lookup BDD.
-		var csrErr error
-		csrCurrentA, csrBestA, csrErr = s.provider.FetchCSRDirect(gctx, s.xuidA)
-		if csrErr != nil {
-			slog.DebugContext(gctx, "CompareService: CSR joueur A indisponible (best-effort)", "xuid", s.xuidA, "err", csrErr)
-		} else {
-			slog.DebugContext(gctx, "CompareService: CSR joueur A", "xuid", s.xuidA, "csr_current", csrCurrentA, "csr_best", csrBestA)
-		}
 		return nil
 	})
 
@@ -89,16 +80,6 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 					local.CareerRank = athB.CareerRank
 					local.PerfATH = athB.PerfATH
 					local.LusrATH = athB.LusrATH
-					slog.DebugContext(gctx, "CompareService: ATH joueur B depuis pool (hors CSR)", "gamertag", local.Gamertag)
-				}
-
-				// CSR joueur B depuis Waypoint (playlists ranked hardcodées) — aucun lookup BDD.
-				if csrCurrent, csrBest, csrErr := s.provider.FetchCSRDirect(gctx, xuidB); csrErr != nil {
-					slog.DebugContext(gctx, "CompareService: CSR joueur B indisponible (best-effort)", "gamertag", local.Gamertag, "err", csrErr)
-				} else {
-					local.CSRCurrent = csrCurrent
-					local.CSRBest = csrBest
-					slog.DebugContext(gctx, "CompareService: CSR joueur B", "gamertag", local.Gamertag, "csr_current", csrCurrent)
 				}
 
 				statsB = local
@@ -120,16 +101,12 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		return domain.CompareResponse{}, err
 	}
 
-	// Merge ATH dans statsA (hors CSR — CSR depuis Waypoint uniquement).
+	// Merge ATH dans statsA.
 	if ath != nil {
 		statsA.CareerRank = ath.CareerRank
 		statsA.PerfATH = ath.PerfATH
 		statsA.LusrATH = ath.LusrATH
 	}
-	statsA.CSRCurrent = csrCurrentA
-	statsA.CSRBest = csrBestA
-	slog.DebugContext(ctx, "CompareService: CSR final joueur A", "gamertag", statsA.Gamertag,
-		"csr_current", statsA.CSRCurrent, "csr_best", statsA.CSRBest)
 
 	metrics := buildMetrics(*statsA, *statsB)
 	resp := domain.CompareResponse{
@@ -210,8 +187,6 @@ func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
 		{"avg_life_secs", "Survie moy. / partie", a.AvgLifeSecs, b.AvgLifeSecs, false},
 		{"headshot_kills_per_game", "Headshots / partie", a.HeadshotKillsPerGame, b.HeadshotKillsPerGame, false},
 		{"matches", "Parties", float64(a.Matches), float64(b.Matches), false},
-		{"csr_current", "CSR actuel", float64(a.CSRCurrent), float64(b.CSRCurrent), false},
-		{"csr_best", "CSR meilleur", float64(a.CSRBest), float64(b.CSRBest), false},
 		{"career_rank", "Rang Carrière", float64(a.CareerRank), float64(b.CareerRank), false},
 		{"perf_ath", "Perf. record", a.PerfATH, b.PerfATH, false},
 		{"lusr_ath", "LUSR record", a.LusrATH, b.LusrATH, false},
