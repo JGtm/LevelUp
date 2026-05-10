@@ -56,9 +56,10 @@ export type SemanticToken =
   | 'narrative-debacle'
   | 'narrative-contre-remontada'
 
-  // ── Badges encounter (3) ───────────────────────────────────────────────────
+  // ── Badges encounter (4) ───────────────────────────────────────────────────
   | 'narrative-encounter-ally-plus'
   | 'narrative-encounter-tough-enemy'
+  | 'narrative-encounter-coriace'
   | 'narrative-encounter-ordinal'
 
   // ── Badges narratifs — texte (5) ───────────────────────────────────────────
@@ -106,7 +107,8 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'narrative-debacle', 'narrative-contre-remontada',
   'narrative-dominant-text', 'narrative-humiliation-text', 'narrative-remontada-text',
   'narrative-debacle-text', 'narrative-contre-remontada-text',
-  'narrative-encounter-ally-plus', 'narrative-encounter-tough-enemy', 'narrative-encounter-ordinal',
+  'narrative-encounter-ally-plus', 'narrative-encounter-tough-enemy',
+  'narrative-encounter-coriace', 'narrative-encounter-ordinal',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'team-ally', 'team-enemy',
 ] as const

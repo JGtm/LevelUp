@@ -1,6 +1,10 @@
 /**
  * CareerLusrCards — career.11 : grille de cards LUSR par playlist_group.
  * Affiche rating actuel + delta vs checkpoint précédent + tier_label.
+ *
+ * 1 card par groupe canonique (arena/btb/fun/ranked). `social` (legacy) est
+ * fusionné dans `arena`. Les checkpoints dont playlist_name est un UUID brut
+ * (résolution metadata absente) sont écartés — cohérence avec le chart LUSR.
  */
 import { tokenCssVar } from '@/lib/accessibility'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -18,6 +22,8 @@ interface LusrCardData {
   delta: number | null
   badgeImageUrl: string | null
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function CareerLusrCards({ checkpoints }: { checkpoints: CareerLusrCheckpoint[] }) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
@@ -94,6 +100,7 @@ function deriveLatestPerGroup(checkpoints: CareerLusrCheckpoint[], locale: Manif
   const byGroup = new Map<string, CareerLusrCheckpoint[]>()
   for (const cp of checkpoints) {
     if (!cp.recorded_at) continue
+    if (UUID_RE.test((cp.playlist_name ?? '').trim())) continue
     const group = cp.playlist_group ?? 'arena_slayer'
     const list = byGroup.get(group) ?? []
     list.push(cp)

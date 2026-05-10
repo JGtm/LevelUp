@@ -21,6 +21,16 @@ type CareerService interface {
 	GetCareerPage(ctx context.Context) (domain.CareerPageResponse, error)
 	GetTopMatches(ctx context.Context) (domain.CareerTopMatchesResponse, error)
 	GetEncounters(ctx context.Context) (domain.CareerEncountersResponse, error)
+	// GetHighlightMatchIDs : 15 best + 15 worst match_ids (split par section)
+	// + cascade counts (available_experience, available_seasons) pour les
+	// dropdowns. L'enrichissement Explorer-format des rows est fait par le
+	// handler via MatchHistoryService.
+	GetHighlightMatchIDs(ctx context.Context, input domain.HighlightFilterInput) (domain.HighlightMatchesData, error)
+	// GetTopEncounters : 10 joueurs les plus croisés au niveau carrière,
+	// hors amis configurés (FriendGamertags), avec badges narratifs.
+	GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error)
+	// GetRivals : top 10 némésis + top 10 souffre-douleur via killer_victim_pairs.
+	GetRivals(ctx context.Context) (domain.CareerRivalsResponse, error)
 }
 
 // CitationsService construit les réponses Citations et Commendations.

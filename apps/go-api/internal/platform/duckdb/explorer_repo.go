@@ -66,14 +66,18 @@ func (r *ExplorerRepo) GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 
 	return agg, nil
 }
 
-// ResolveXUIDByGamertag résout un gamertag en xuid via shared.xuid_aliases (ILIKE).
+// ResolveXUIDByGamertag résout un gamertag en xuid via shared.v_gamertag_lookup (ILIKE).
 //
-// Source : shared_matches_v2.duckdb.xuid_aliases — peuplée par le sync engine et
-// canonique pour ce titre. La DB globale data/global/xbox_aliases.duckdb (alias
-// `global` sur la connexion player) est obsolète : elle dépend d'une migration
-// one-shot souvent non exécutée et donc fréquemment vide.
+// Source : la vue v_gamertag_lookup (cascade xuid_aliases ∪ match_participants
+// avec fallback bots officiels). Plus robuste que la table xuid_aliases seule
+// car elle capture aussi les joueurs qui sont apparus dans match_participants
+// avant d'être synchronisés dans xuid_aliases. Bots filtrés (xuid 'bid(...)').
 func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error) {
-	const q = `SELECT xuid FROM shared.xuid_aliases WHERE gamertag ILIKE ? LIMIT 1`
+	const q = `
+		SELECT xuid FROM shared.v_gamertag_lookup
+		WHERE gamertag ILIKE ? AND xuid NOT LIKE 'bid(%'
+		LIMIT 1
+	`
 	row := r.pdb.ReadDB().QueryRow(ctx, q, gamertag)
 	var xuid string
 	if err := row.Scan(&xuid); err != nil {

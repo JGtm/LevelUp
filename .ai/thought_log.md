@@ -319,6 +319,263 @@ Implémentation finale :
 
 ---
 
+## [BACKLOG] Support de nouveaux playlist_group LUSR — étapes documentées
+
+**Statut** : À faire (user assigné).
+
+**Contexte** : Si un nouveau mode LUSR arrive (hypothétiquement, pour Halo Infinite ça n'arrivera pas car les 4 groupes sont figés dans l'algorithme TrueSkill2), le système doit afficher les labels FR/EN corrects au lieu de fallback ou UUID bruts.
+
+**Étapes pour ajouter un nouveau groupe** :
+
+1. **`career.toml`** — ajouter les clés de traduction :
+   ```toml
+   [career.lusr.group.nouveau_groupe]
+   fr = "Libellé français"
+   en = "English label"
+   ```
+
+2. **Régénérer le manifest** :
+   ```bash
+   cd apps/web
+   node scripts/build_i18n_manifests.mjs
+   ```
+   → Vérifie que les clés apparaissent dans `src/lib/i18n/generated/career.ts`
+
+3. **`lusrSeries.ts`** — ajouter le mapping dans `lusrGroupLabel()` :
+   ```typescript
+   const keyMap: Record<CanonicalGroup, string> = {
+     arena: 'career.lusr.group.arena',
+     btb: 'career.lusr.group.btb',
+     fun: 'career.lusr.group.fun',
+     ranked: 'career.lusr.group.ranked',
+     nouveau_groupe: 'career.lusr.group.nouveau_groupe',  // ← nouveau
+   }
+   ```
+
+4. **Vérifier que `CanonicalGroup` type union inclut le nouveau groupe** :
+   - TypeScript forcera une erreur de compilation si le `keyMap` est incomplet
+   - Si le type est défini ailleurs, ajouter le nouveau groupe là aussi
+
+5. **Tests** :
+   ```bash
+   cd apps/web
+   npm run typecheck    # Doit compiler sans erreur
+   npx vitest run lusrSeries.test.ts  # Ajouter 1+ cas de test pour le nouveau groupe
+   ```
+
+6. **Vérification visuelle** :
+   - `make dev` et naviguer vers `/players/JGtm/career` (ou un joueur avec le nouveau groupe)
+   - Vérifier que le chart affiche 5 courbes (au lieu de 4)
+   - Vérifier que la légende montre le libellé FR correct (ex: "Nouveau groupe (LUSR/CSR)")
+   - Vérifier que les cards en dessous aussi affichent le libellé FR correct
+
+**Note architecture** : Le système est déjà **dynamique** pour le groupage (`buildLusrSeries()` boucle sur tous les (rating_type, playlist_group) uniques). Seules les traductions i18n sont figées au build time.
+
+**Note backend** : Aucun changement backend nécessaire — le Go continue à classer les modes via `GetPlaylistGroup()` dans `skill_config.go`. Si un nouveau mode arrive, il faut que `GetPlaylistGroup()` le reconnaisse et le classe dans un groupe LUSR canonique.
+
+st_name_fr, r.playlist_name, '')` — aligné sur les autres pages, gain net.
+
+**Résultats** :
+- `npm run typecheck` : OK sur les fichiers carrière (les 2 erreurs `palettes/*` sont préexistantes et hors scope)
+- `npx eslint` sur les 4 fichiers édités : clean
+- `vitest run lusrSeries.test.ts` : 9/9 verts
+- `go build ./...` : OK
+- `go test ./internal/platform/duckdb/... ./internal/service/...` : OK (12s)
+- `go vet ./...` : clean
+- E2E Playwright `career-lusr-legend.spec.ts` ébauché — à exécuter au prochain `make dev`
+
+**Backlog ouvert** : voir entrée `[BACKLOG] playlist_group recompute post-résolution` ci-dessous.
+
+---
+
+## [BACKLOG] playlist_group recompute post-résolution noms — Fiesta mal classé
+
+**Statut** : Ouvert (à investiguer hors scope du fix actuel).
+
+**Symptôme** : `match_skill_rank.playlist_group` est figé au moment de la sync via `GetPlaylistGroup(playlist_name, pair_name)` ([skill_config.go:115](apps/go-api/internal/sync/skill_config.go#L115)). Quand le `playlist_name` du registry est un UUID brut au moment du calcul (résolution `asset_translations` non encore appliquée), le keyword match échoue → fallback default `arena`.
+
+**Cas observé chez JGtm** :
+- 6 checkpoints "Super Fiesta" classés `playlist_group=arena` (devraient être `fun` — keyword "fiesta" présent dans le nom résolu)
+- 8 checkpoints "Ranked Slayer/Arena" classés `playlist_group=ranked` (correct, déjà classés)
+- Ratio `fun = 0` alors que JGtm joue beaucoup de Fiesta → preuve que le bottleneck est la classification, pas la fréquence de jeu
+
+**Conséquence métier** : le rating LUSR `arena` est **pollué par les matchs fun** (Fiesta, SWAT, etc.), contre l'esprit de la pondération TrueSkill 2 : les modes funs ont `WeightFactor = 0.25` (skill_config.go:111) précisément pour ne PAS influencer le rating compétitif. Citation user : *"normalement les modes funs ne doivent pas influencer les modes qui demandent plus de skill"*.
+
+**Pistes** :
+1. **Recompute runtime** dans `enrichLUSRPlaylistNames` ([career_repo.go:120](apps/go-api/internal/platform/duckdb/career_repo.go#L120)) — après la résolution FR du nom, rappeler `GetPlaylistGroup(nomRésolu, "")` et override le `playlist_group` retourné. Pas de migration, fix immédiat à la lecture.
+2. **Backfill DB one-shot** — script qui recompute `playlist_group` dans `match_skill_rank` à partir du `playlist_name` actuel post-backfill registry.
+3. **Recompute des ratings** avec les nouvelles assignations (le plus correct mais le plus invasif — change rétroactivement les valeurs LUSR historiques).
+
+**Pré-requis** : décider si on touche aux ratings persistés (option 3) ou juste à la classification d'affichage (options 1/2).
+
+---
+
+## [2026-05-09] Page Carrière — 3 nouvelles sections : Matchs marquants + Top encounters + Rivalités
+
+**Statut** : Complété.
+
+**Branche** : `feat/career-rank-images-stats` (poursuite, sans switch — WIP rank-images-stats préservé).
+
+**Demande** : ajouter 3 sections à la suite de la page Carrière, sans wrapper "bloc" comme la section Citations :
+1. **Matchs marquants** : toggle Best/Worst, tableau Explorer-format limité à 15 résultats par variante.
+2. **Joueurs les plus croisés (hors amis)** : tableau Match-View "Historique de rencontre" limité à 10, exclure les `FriendGamertags` configurés.
+3. **Top némésis + Top souffre-douleur** côte à côte (#, joueur clickable→Explorer, frags, morts, ratio, nb matchs), tri par nombre absolu, pas de seuil min.
+
+**Décision technique principale** :
+- **Réutilisation maximale** plutôt que duplication. ExplorerMatchesTable et MatchEncountersTable sont importés tels quels — un seul nouveau composant tableau (`CareerRivalsSection`) car aucun équivalent existant n'a ces 6 colonnes.
+- **Q9 inchangée**, nouvelle Q9b ajoutée dans `queries_career.go` qui ne renvoie que les match_ids triés (best/worst). L'enrichissement Explorer-complet est délégué à `MatchHistoryService.GetPage(MatchIDs=whitelist)` côté handler — préserve l'endpoint legacy `/top-matches` et évite de redupliquer la projection map_ui/perf_tier/skill_tier_label/dominance/etc.
+- **Q26 (top encounters carrière)** : agrégat global inspiré de Q23b mais sans contrainte match_id, avec exclusion friends via XUIDs résolus depuis FriendGamertags settings. Réutilise `narrative.ComputeEncounterBadges` pour les badges ally_plus/tough_enemy/ordinal.
+- **Q27 (rivals)** : SUM(kill_count) global sur `shared.killer_victim_pairs` (1 ligne = 1 kill), 2 exécutions (ORDER BY deaths/frags). Ratio calculé en Go avec garde div-par-zéro (`Frags/Deaths` sinon `float64(Frags)`).
+- **Helper partagé `BuildExplorerRowFromMatchHistory`** extrait dans `apps/go-api/internal/api/handlers/projections.go` — refactor de l'inline qui existait dans ExplorerHandler.QueryMatches, désormais consommé par les deux handlers (Explorer + Career).
+- **Découplage navigation** : prop optionnel `onPlayerClick` ajouté à `MatchEncountersTable` (rétro-compat, fallback sur navigation interne match-view), plus prop `hideCardWrapper` pour le contexte Career où le `h2` de section suffit (le user a explicitement demandé "pas de bloc").
+- **Friends resolver** branché dans `registry.Career()` via le `friendGamertagsResolver()` existant (réutilisation Sprint Squad) + `ExplorerRepo.ResolveXUIDByGamertag` pour la traduction gamertag→XUID. Dégradation gracieuse silencieuse si le settings store est absent ou un gamertag non résolvable.
+
+**Résultats observés** :
+- Backend : `go vet ./internal/...` clean ; `go test ./internal/service/ ./internal/api/handlers/ ./internal/domain/ ./internal/port/` PASS, dont 6 nouveaux tests unitaires service couvrant : GetHighlightMatchIDs (passthrough + erreur), GetRivals (ratio incl. division par zéro Frags=fallback), GetTopEncounters (exclusion friends via resolver, dégradation gracieuse sans resolver, application des badges narratifs, erreur repo).
+- Frontend : TypeScript `tsc --noEmit` clean, manifest i18n régénéré (career.toml → 17 nouvelles clés FR/EN), zéro hex direct dans les nouveaux composants (vérifié via grep `#[0-9a-fA-F]{3,6}`).
+- 1 test web pré-existant en échec (`CareerHubPage.test.tsx` cherche un onglet "Citations" qui n'existe plus depuis le commit 04d3aef3) — **non causé par ces changements**, à corriger séparément côté équipe Citations.
+
+**Limites connues** :
+- Q26 exécute le filtre friends en clause WHERE finale (les amis sont agrégés puis exclus) — un filtre upstream dans la CTE `encounters` serait micro-optimal mais complique le SQL ; trade-off lisibilité/perf accepté car limit 10 final.
+- L'endpoint legacy `/pages/career/top-matches` (10+10, format léger TopMatchDTO) est conservé — toujours consommé par `CareerPage.tsx` (page legacy qui n'est plus dans la route active mais dont le test n'a pas été migré).
+- Highlight-matches 503 propre si `MatchHistoryService` factory non câblée (cas test ; en prod toujours wired).
+
+**Conclusion / prochaine étape** :
+- Vérification visuelle navigateur à faire en `vite dev` sur `/players/{slug}/career` quand l'env de dev sera relancé.
+- Suite logique : harmoniser `CareerHubPage.test.tsx` avec la nouvelle structure (sans onglets), indépendamment de ce sprint.
+
+**Hot-fix post-livraison** : runtime-error en navigateur sur `/top-encounters` + `/rivals` (sections affichaient "Erreur lors du chargement"). **Cause** : mes queries Q26 + Q27 référençaient `shared.match_participants` (préfixe schéma) mais s'exécutaient sur `r.pdb.Shared.Query()` — la connexion Shared directe ne connaît pas l'alias `shared` (l'ATTACH se fait uniquement sur la connexion Player, cf. `pool.go attachShared`). **Fix** : bascule vers `r.pdb.ReadDB().Query()` (Player DB avec shared ATTACHé) pour les méthodes `GetTopEncountersGlobal` et `queryRivals`. Les tests service unit inchangés (mocks, pas de DB réelle). À noter : l'endpoint legacy `/encounters` (Q10) a le même pattern et pourrait être silencieusement cassé — hors scope ici.
+
+**Hot-fix #2 — exclusion friends silencieusement défaillante** : tableau "Joueurs les plus croisés (hors amis)" affichait des amis configurés. **Investigation** : `ExplorerRepo.ResolveXUIDByGamertag` ne lit que `shared.xuid_aliases`, donc échoue silencieusement quand un ami n'a pas encore d'alias synchronisé (mais existe dans `match_participants`). **Fix** :
+1. Nouvelle méthode `CareerRepo.ResolveXUIDByGamertagFromLookup` qui interroge `shared.v_gamertag_lookup` (cascade xuid_aliases + match_participants) — résout les amis présents dans n'importe quelle des deux sources.
+2. Wiring de la résolution friend basculé du `ExplorerRepo.ResolveXUIDByGamertag` vers cette nouvelle méthode (registry.go:Career()).
+3. Logs Info ajoutés dans `CareerService.resolveFriendXUIDs` (no_friend_resolver / no_friends_configured / friends_resolved avec count + unresolved list) + log SQL côté repo (`career.top_encounters.query` avec exclude_xuids) — facilite le diagnostic en prod.
+4. Documentation OpenAPI ajoutée pour les 3 nouveaux endpoints (`api/openapi.yaml`) — exigée par `TestContractRoutesDocumented` (plafond 0). Sinon `go test ./internal/api/` échoue. Tests Go full suite OK (seul `TestDiscoveryScan_MixedTokenSources` échoue, hors scope auth/pool).
+
+**Hot-fix #3 — refactor demandé par user (pas réinventer la roue)** : le user a fait remarquer que j'avais ajouté `CareerRepo.ResolveXUIDByGamertagFromLookup` alors qu'`ExplorerRepo.ResolveXUIDByGamertag` faisait déjà le job — j'aurais dû améliorer l'existant. Refactor :
+- Migration de `ExplorerRepo.ResolveXUIDByGamertag` vers `shared.v_gamertag_lookup` (au lieu de `xuid_aliases` seul) — bénéficie aussi à la page Explorer + Career consomme la même source.
+- Suppression de `CareerRepo.ResolveXUIDByGamertagFromLookup` (dupliquait le pattern).
+- Wiring registry.Career() bascule de `careerRepo.ResolveXUIDByGamertagFromLookup` → `explorerRepo.ResolveXUIDByGamertag` (nouvelle implémentation unifiée).
+
+**Hot-fix #4 — alignement Python complet des badges encounter** : le user signalait que "Nilton410 a le badge Dur à cuire en Python mais pas dans le nouveau Go". Comparaison Python (main, `src/ui/pages/match_view_encounters_logic.py:compute_encounter_badges`) vs Go (`narrative/encounter.go`) → 4 divergences :
+
+| Critère | Python (main) | Go avant | Go après |
+|---|---|---|---|
+| `ally_plus` winrate | `>= 0.65` | `> 0.7` | `>= 0.65` ✓ |
+| `ally_plus` min ally count | `>= 2` | `>= 3` | `>= 2` ✓ |
+| `tough_enemy` K/D | `> 2.0` | `> 1.5` | `> 2.0` ✓ |
+| `tough_enemy` enemy count check | absent | `>= 3` obligatoire | retiré ✓ |
+| `tough_enemy` deaths min | `>= 3` | `> 0` (puis split) | `>= 3` ✓ |
+| Badge `coriace` (winrate vs lui ≤ 0.35 ET enemy ≥ 3) | présent | absent | ajouté ✓ |
+
+Implémentation :
+- `narrative/encounter.go` : split `MinEncountersForBadge` (3 partagé) en `MinAllyCountForBadge=2` + `MinEnemyCountForCoriace=3` + `MinDeathsForToughEnemy=3`. Renommé `ToughEnemyKDThreshold` 1.5 → 2.0. Renommé `AllyPlusWinrateThreshold` 0.7 → 0.65 + opérateur `>` → `>=`. Ajouté constante `CoriaceWinrateThreshold = 0.35` + nouveau kind `EncounterCoriace`.
+- Refactor de `ComputeEncounterBadges` en sous-fonctions explicites (`allyPlusBadge`, `toughEnemyBadge`, `coriaceBadge`) pour lisibilité — chaque fonction gère sa garde et retourne nil si pas qualifié.
+- Tests narrative entièrement réécrits (nouveaux seuils + cas coriace + boundary tests `>=`/`<=` `>`).
+- i18n correction : `narrative.encounter.tough_enemy` FR "Coriace" → "Dur à cuire" (alignement sémantique Python `tough_nut`). EN "Tough enemy" → "Tough nut". Ajout `narrative.encounter.coriace` FR "Coriace", EN "Tough opponent".
+- Color tokens : ajout `narrative-encounter-coriace` (amber `#F59E0B` en default, `CIVIDIS_T75` en cividis).
+- Tooltip MatchEncountersTable mis à jour avec nouvelle phrase pour tough_enemy + tooltip coriace.
+
+**Impact côté Match View** : la page Match View partage `narrative.ComputeEncounterBadges`. Le portage Python étant l'objectif, Match View bénéficie également de l'alignement (badges plus permissifs sur ally_plus, plus stricts sur tough_enemy KD, et nouveau badge coriace). Pas de régression dans les tests existants après mise à jour.
+
+**Cleanup** : logs Info verbeux (`career.top_encounters.no_friend_resolver`, `friends_resolved`, `query`) retirés ou rabaissés à `Warn` ciblé sur cas suspects (`friends_unresolved`) — moins de bruit en prod.
+
+---
+
+## [2026-05-10] Filtres Expérience + Saisons cascadés sur "Matchs marquants"
+
+**Statut** : Complété.
+
+**Branche** : `feat/career-rank-images-stats` (poursuite).
+
+**Demande** : ajouter à gauche du toggle Best/Worst de la section "Matchs marquants" deux dropdowns cascadés inspirés de la page Squad : Expérience (Tous/Classé/Non classé, single-select) et Saisons (multi-select).
+
+**Décisions clés** (validées par user) :
+- Expérience : single-select 3 options exclusives.
+- Saisons : multi-select.
+- Filtrage côté backend (correct) avec cascade counts dans la réponse.
+- État local à la section (pas synchronisé avec le `globalFilterStore`).
+
+**Implémentation** :
+
+*Backend Go* :
+- `Q9bHighlightMatchIDs` rebaptisé en template `Q9bHighlightMatchIDsTpl` (2 occurrences `%s` — sections best + worst). Helper interne `buildHighlightFilterClause` traduit `domain.CareerHighlightFilters {Experience, SeasonRanges}` en clause SQL (`AND r.is_ranked = ?` + `AND ((r.start_time_utc >= ? AND ... < ?) OR ...)`) + args bindables.
+- Nouvelle query `Q9bHighlightPool` (light : match_id + is_ranked + start_time, sans LIMIT) — sert au calcul des cascade counts en respectant le pool d'éligibilité (perf NOT NULL, no bot, time≥180s, no firefight, outcome ∈ {2,3}).
+- Domain : `HighlightFilterInput` (input handler : Experience+SeasonIDs), `HighlightMatchesData` (output service : Rows + AvailableExperience + AvailableSeasons), `CareerHighlightFilters` (params repo : Experience+SeasonRanges), `SeasonTimeRange`, `HighlightExperienceCount`, `HighlightSeasonCount`. Découplage propre handler→service→repo via 3 niveaux de types.
+- Service `WithSeasonsCatalog(*SeasonsCatalog)` réutilise le résolveur unifié TOML+DB+lazy-fetch (même source que SaisonPill côté Squad/Explorer). `resolveSeasonRanges` mappe SeasonIDs → fenêtres ; `computeHighlightAvailableExperience` et `computeHighlightAvailableSeasons` calculent les counts en pure Go (filtre par l'AUTRE dimension uniquement, pour cascade-aware).
+- Handler parse `?experience=&season_ids=csv` via `parseHighlightFilterInput`.
+- Wiring dans `registry.Career()` consomme `r.seasonsCatalog` déjà attaché au registry.
+
+*Frontend React* :
+- `useCareerHighlightMatches(playerSlug, filters?)` accepte `CareerHighlightFilters {experience?, season_ids?[]}`. Helper `buildHighlightFilterParams` produit query string canonique (tri des `season_ids` pour stabilité de la query key + cache TanStack).
+- Query key étendue : `careerHighlightMatches(slug, filtersKey)` — re-fetch automatique au changement.
+- Section local state : `experience` + `selectedSeasons: Set<string>`. Pas de synchronisation avec le store global.
+- Composant `MultiSelectFilter` réutilisé pour Saisons (zéro dup). Composant inline `ExperienceDropdown` (~70L) pour le single-select 3 options — pattern similaire à MultiSelectFilter (popover + outside click) sans réinventer.
+- Source des saisons côté front : `useSeasons()` (catalog title-scoped déjà existant). Options Saisons filtrées : seules celles avec `count > 0` sont affichées (sauf si déjà cochées, pour permettre de décocher).
+- 7 nouvelles clés i18n FR/EN (`filter_experience`, `filter_seasons`, `experience_all/ranked/unranked`).
+
+*Documentation* : OpenAPI mis à jour (query params + champs `available_experience` + `available_seasons`). `TestContractRoutesDocumented` passe.
+
+**Vérifications** : `go vet ./internal/...` clean. Tests Go (`service`, `api/handlers`, `api`, `platform/duckdb`, `analysis/narrative`) passent. `tsc --noEmit` clean. Aucun hex direct dans la nouvelle section. Manifest i18n régénéré (882 clés totales, +9 vs précédent).
+
+**Limites connues** :
+- Si l'utilisateur sélectionne des saisons très restrictives, le LIMIT 15 SQL peut renvoyer moins de 15 matchs. Comportement attendu et documenté.
+- Le pool query (`Q9bHighlightPool`) charge tous les matchs éligibles (sans LIMIT) à chaque appel. Pour des carrières >5000 matchs, considérer une cache TTL côté service ou une option de seuil.
+- Les cascade counts sont calculés côté Go (pas SQL) — privilégie la lisibilité et facilite les futurs ajustements de seuils.
+
+**Conclusion / prochaine étape** : tester visuellement via `vite dev` + Go server redémarré. Vérifier que les counts s'updatent correctement au changement de filtre, qu'aucun match d'une saison décochée n'apparaît, et que le toggle Best/Worst reste fonctionnel sous filtre actif.
+
+---
+
+## [2026-05-09] CareerSummaryCard — image rang actuel/prochain + XP prochain rang + rang X/272 vers Héros
+
+**Statut** : Complété.
+
+**Branche** : `feat/career-rank-images-stats` (créée depuis `fix/explorer-modes-context-pills`).
+
+**Demande** : Sur la page carrière, enrichir les jauges « progression vers le prochain rang » et « progression vers Héros » avec : XP prochain rang (12 500), image+nom rang actuel, image+nom prochain rang, XP restante (8 369 780), rang X/272.
+
+**Décision technique principale** :
+- **Backend** : extension du DTO `CareerRankSummary` (4 champs : `rank_image_url`, `next_rank_name_fr/en`, `next_rank_image_url`) + fix `HeroProgress.CurrentRank` (toujours à 0 avant) et nouveau champ `total_ranks` (272). Images chargées depuis `metadata.duckdb.career_ranks` via nouvelle fonction `LoadCareerRankImageURLs` (pattern symétrique à `LoadRankCatalog`). Catalog + map images injectés au démarrage du serveur dans `ServiceRegistry` (one-shot, pas de query par requête) puis transmis au `CareerService` via `WithRankCatalog` / `WithRankImageURLs`. Buildurl identique à la home (`buildHomeIdentityAssetURL("career-rank", titleSlug, path)`).
+- **Frontend** : étension `CareerSummary` + `HeroProgress` côté types, refonte de `CareerSummaryCard.tsx` pour afficher sous chaque jauge les stats demandées (XP prochain rang, image→image, XP restante, rang X/272). Ajout 5 clés i18n FR/EN dans `career.toml`.
+
+**Résultats observés** :
+- `go test ./...` : tous les packages verts (service 7.7s, api 10.6s, duckdb 12.7s).
+- `go vet ./...` : aucune sortie (propre).
+- `npm run typecheck` : vert.
+- `npm run lint` : pas de nouvelle erreur sur les fichiers modifiés (302 warnings préexistants ignorés).
+
+**Prochaine étape** : Tester visuellement en lançant l'app, puis commit + PR.
+
+---
+
+## [2026-05-09] Career LUSR/CSR chart — fusion par playlist_name (1 playlist = 1 courbe)
+
+**Statut** : Complété (front). Investigation Go en suspens (DB lockée par serveur en cours).
+
+**Branche** : `feat/career-rank-images-stats`.
+
+**Demande user** : Le graphe doit être STRICTEMENT par playlist — 1 courbe = 1 playlist, point. Pas de groupes, pas de fallbacks i18n bidon.
+
+**Cause racine du doublon initial** : `buildLusrSeries` groupait par `(rating_type, playlist_group)` alors que `GetPlaylistGroup()` côté Go (skill_config.go) splitte une même playlist en plusieurs groupes selon `pair_name` (ex. Quickplay → arena pour Slayer, fun pour Fiesta). Promesse visuelle "1 playlist = 1 courbe" cassée.
+
+**Fix front (livré)** :
+- Extrait `buildLusrSeries` dans `apps/web/src/features/career/lusrSeries.ts` (Fast Refresh impose qu'un .tsx n'exporte que des composants).
+- Clé de groupage : `(rating_type, playlist_name)` au lieu de `(rating_type, playlist_group)`. Aucun fallback, aucune normalisation : ce que l'API retourne comme `playlist_name` est ce qui s'affiche.
+- Test colocalisé `lusrSeries.test.ts` : 3 cas (fusion arena+fun même playlist_name, courbes distinctes, recorded_at null).
+
+**Régression évitée** : un premier essai avait introduit un fallback i18n `career.lusr.group.{arena,btb,fun,ranked}` quand `playlist_name` était vide ou un UUID — reverté entièrement à la demande du user (mauvaise idée : mergeait des playlists distinctes sous un même libellé).
+
+**Note d'arbitrage** : LUSR continue d'être *calculé* par `playlist_group` côté algo (pondération TrueSkill propre à chaque sous-mode), c'est uniquement la présentation qui fusionne par playlist.
+
+**Investigation pendante** : Certains `playlist_name` arrivent au front comme UUIDs bruts (ex. `a446725e-…`) — les checkpoints LUSR pour ces playlists ne sont pas résolus par `enrichLUSRPlaylistNames` (career_repo.go:117) → `metaRepo.ResolveAssetNamesBulk` retourne vide pour ces `playlist_id`. À investiguer une fois le serveur arrêté : query directe `asset_translations WHERE asset_type='playlist' AND asset_id IN (…)` pour confirmer si les entrées manquent en DB ou si la résolution a un bug. Pas un bug du chart.
+
+**Résultats** : 3/3 tests verts. Front rendu strictement "1 courbe par playlist_name", pas de fallback synthétique.
+
+**Prochaine étape** : Si le user le demande, débrancher serveur et investiguer pourquoi certains playlist_id ne se résolvent pas dans `asset_translations`.
+
+---
+
 ## [2026-05-09] CompareRepo : accuracy × 100 — normalisation manquante
 
 **Statut** : Complété.

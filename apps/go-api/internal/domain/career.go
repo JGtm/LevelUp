@@ -53,16 +53,20 @@ type EncounterRawRow struct {
 
 // CareerRankSummary représente le rang actuel du joueur.
 type CareerRankSummary struct {
-	RankNumber    int        `json:"rank_number"`
-	RankLabel     string     `json:"rank_label"`
-	RankNameRaw   string     `json:"rank_name_raw"`
-	RankTier      string     `json:"rank_tier"`
-	CurrentXP     int        `json:"current_xp"`
-	XPForNextRank int        `json:"xp_for_next_rank"`
-	XPTotal       int        `json:"xp_total"`
-	ProgressPct   float64    `json:"progress_pct"`
-	IsMaxRank     bool       `json:"is_max_rank"`
-	RecordedAt    *time.Time `json:"recorded_at"`
+	RankNumber       int        `json:"rank_number"`
+	RankLabel        string     `json:"rank_label"`
+	RankNameRaw      string     `json:"rank_name_raw"`
+	RankTier         string     `json:"rank_tier"`
+	CurrentXP        int        `json:"current_xp"`
+	XPForNextRank    int        `json:"xp_for_next_rank"`
+	XPTotal          int        `json:"xp_total"`
+	ProgressPct      float64    `json:"progress_pct"`
+	IsMaxRank        bool       `json:"is_max_rank"`
+	RecordedAt       *time.Time `json:"recorded_at"`
+	RankImageURL     *string    `json:"rank_image_url,omitempty"`
+	NextRankNameFR   string     `json:"next_rank_name_fr,omitempty"`
+	NextRankNameEN   string     `json:"next_rank_name_en,omitempty"`
+	NextRankImageURL *string    `json:"next_rank_image_url,omitempty"`
 }
 
 // HeroProgress représente la progression vers le rang maximum.
@@ -71,6 +75,7 @@ type HeroProgress struct {
 	XPRemaining     int     `json:"xp_remaining"`
 	Percentage      float64 `json:"percentage"`
 	CurrentRank     int     `json:"current_rank"`
+	TotalRanks      int     `json:"total_ranks"`
 }
 
 // CareerProjections représente les projections de date d'atteinte du rang max.
@@ -165,6 +170,122 @@ type CareerEncountersResponse struct {
 	Teammates []EncounterDTO `json:"teammates"`
 	Enemies   []EncounterDTO `json:"enemies"`
 	Total     int            `json:"total"`
+}
+
+// HighlightMatchIDRow est le type brut renvoyé par Q9bHighlightMatchIDs :
+// match_id + outcome + section (1=best, 2=worst). Le service délègue ensuite
+// l'enrichissement à MatchHistoryService via la whitelist MatchIDs.
+type HighlightMatchIDRow struct {
+	MatchID string
+	Outcome int
+	Section int // 1 = best, 2 = worst
+}
+
+// HighlightMatchPoolRow : ligne légère du pool éligible (mêmes filtres
+// d'éligibilité que Q9b mais sans contrainte d'outcome ni LIMIT). Utilisée
+// pour calculer les cascade counts (available_experience, available_seasons).
+type HighlightMatchPoolRow struct {
+	MatchID   string
+	IsRanked  bool
+	StartTime *time.Time
+}
+
+// CareerHighlightFilters : filtres optionnels appliqués sur la section
+// "Matchs marquants" (page Carrière). Champs zéro = pas de filtre.
+type CareerHighlightFilters struct {
+	// Experience : "all" / "ranked" / "unranked". Vide ou "all" = pas de filtre.
+	Experience string
+	// SeasonRanges : list de fenêtres temporelles pré-résolues par le service
+	// depuis la sélection de saisons + le SeasonsCatalog. Vide = pas de filtre.
+	SeasonRanges []SeasonTimeRange
+}
+
+// SeasonTimeRange : fenêtre [Start, End) résolue depuis le SeasonsCatalog.
+// End nil = saison ouverte (pas de borne supérieure).
+type SeasonTimeRange struct {
+	Start time.Time
+	End   *time.Time
+}
+
+// HighlightFilterInput : filtres bruts venant du handler (query params) pour
+// la section "Matchs marquants". Le service les résout en CareerHighlightFilters
+// via SeasonsCatalog (mapping SeasonIDs → date-ranges concrètes).
+type HighlightFilterInput struct {
+	Experience string   // "all" | "ranked" | "unranked"
+	SeasonIDs  []string // ex. ["season6", "season10_op1"]
+}
+
+// HighlightMatchesData : résultat agrégé de service.GetHighlightMatchIDs
+// incluant les rows brutes (best+worst, à enrichir par le handler) et les
+// cascade counts pour les dropdowns Expérience / Saisons.
+type HighlightMatchesData struct {
+	Rows                []HighlightMatchIDRow
+	AvailableExperience []HighlightExperienceCount
+	AvailableSeasons    []HighlightSeasonCount
+}
+
+// HighlightExperienceCount : count par option pour la dropdown Expérience.
+// Value : "all" / "ranked" / "unranked".
+type HighlightExperienceCount struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
+// HighlightSeasonCount : count par saison pour la dropdown Saisons.
+// Value est l'ID de saison (ex. "season6"). Count est le nombre de matchs
+// éligibles dans la fenêtre saison + filtre Expérience courant.
+type HighlightSeasonCount struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
+// CareerHighlightMatchesResponse est la réponse de
+// GET /pages/career/highlight-matches : tableau Explorer-format pour les
+// 15 meilleurs et 15 pires matchs (toggle Best/Worst côté front).
+//
+// AvailableExperience et AvailableSeasons cascade-aware (counts respectent
+// l'autre filtre actif) — alimentent les dropdowns à gauche du toggle.
+type CareerHighlightMatchesResponse struct {
+	BestMatches         []ExplorerMatchesRow       `json:"best_matches"`
+	WorstMatches        []ExplorerMatchesRow       `json:"worst_matches"`
+	AvailableExperience []HighlightExperienceCount `json:"available_experience"`
+	AvailableSeasons    []HighlightSeasonCount     `json:"available_seasons"`
+}
+
+// CareerTopEncountersResponse est la réponse de
+// GET /pages/career/top-encounters : 10 joueurs les plus croisés au niveau
+// global, hors amis configurés. Réutilise MatchEncounterRow (même format que
+// Match View > "Historique de rencontre").
+type CareerTopEncountersResponse struct {
+	Items []MatchEncounterRow `json:"items"`
+}
+
+// CareerRivalRawRow est le type brut renvoyé par Q27CareerRivals*.
+type CareerRivalRawRow struct {
+	XUID       string
+	Gamertag   string
+	Frags      int
+	Deaths     int
+	MatchCount int
+}
+
+// CareerRival représente une rivalité (top némésis ou top souffre-douleur)
+// au niveau carrière globale du joueur.
+type CareerRival struct {
+	Gamertag   string  `json:"gamertag"`
+	Frags      int     `json:"frags"`
+	Deaths     int     `json:"deaths"`
+	Ratio      float64 `json:"ratio"`
+	MatchCount int     `json:"match_count"`
+}
+
+// CareerRivalsResponse est la réponse de GET /pages/career/rivals.
+//
+//	Nemeses = top 10 par deaths DESC (joueurs qui m'ont le plus tué).
+//	Victims = top 10 par frags DESC  (joueurs que j'ai le plus tué).
+type CareerRivalsResponse struct {
+	Nemeses []CareerRival `json:"nemeses"`
+	Victims []CareerRival `json:"victims"`
 }
 
 // GamertagSearchResult est un résultat de la recherche gamertag.
