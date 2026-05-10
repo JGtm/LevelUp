@@ -150,11 +150,11 @@ const L1_SECTIONS: L1Section[] = [
     key: 'career',
     label: 'Carrière',
     defaultPath: '/players/$playerSlug/career',
-    matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile|palmares\/season-pass)/.test(p),
+    matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile)/.test(p),
     tabs: [
-      { key: 'progression', label: 'Carrière', path: '/players/$playerSlug/career' },
+      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
       { key: 'citations', label: 'Citations', path: '/players/$playerSlug/citations' },
-      { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/palmares/season-pass' },
+      { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
     ],
   },
   {
@@ -181,12 +181,13 @@ const L1_SECTIONS: L1Section[] = [
     key: 'community',
     label: 'Communauté',
     defaultPath: '/players/$playerSlug/palmares',
-    matchPathname: (p) => /\/players\/[^/]+\/palmares(?:\/|$)/.test(p) &&
-      !/\/palmares\/season-pass/.test(p),
+    matchPathname: (p) =>
+      (/\/players\/[^/]+\/palmares(?:\/|$)/.test(p) && !/\/palmares\/season-pass/.test(p)) ||
+      /\/players\/[^/]+\/compare/.test(p),
     tabs: [
       { key: 'leaderboard', label: 'Classements', path: '/players/$playerSlug/palmares' },
       { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
-      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/palmares/compare' },
+      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/compare' },
       { key: 'prestige-leaderboard', label: 'Leaderboard PP', path: '/players/$playerSlug/palmares/prestige' },
     ],
   },

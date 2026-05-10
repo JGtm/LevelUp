@@ -10,13 +10,21 @@ interface RouteTitleRule {
 }
 
 const PLAYER_ROUTE_OVERRIDES: RouteTitleRule[] = [
-  { pattern: '/players/$playerSlug/palmares/compare', title: 'Face-a-face' },
+  // Carrière
+  { pattern: '/players/$playerSlug/career/season-pass', title: 'Pass saisonnier' },
+  { pattern: '/players/$playerSlug/career', title: 'Carrière' },
+  { pattern: '/players/$playerSlug/citations', title: 'Citations' },
+  // Communauté
+  { pattern: '/players/$playerSlug/compare', title: 'Face-à-face' },
   { pattern: '/players/$playerSlug/palmares/relations', title: 'Relations' },
-  { pattern: '/players/$playerSlug/palmares/season-pass', title: 'Pass saisonnier' },
+  { pattern: '/players/$playerSlug/palmares/prestige', title: 'Leaderboard PP' },
+  // Objectifs
+  { pattern: '/players/$playerSlug/objectifs', title: 'Objectifs' },
+  // Escouade
   { pattern: '/players/$playerSlug/squad/contributions', title: 'Contributions' },
   { pattern: '/players/$playerSlug/squad/synergies', title: 'Synergies' },
+  // Autres
   { pattern: '/players/$playerSlug/matches/$matchId', title: 'Match' },
-  { pattern: '/players/$playerSlug/profile/citations', title: 'Citations' },
   { pattern: '/players/$playerSlug', title: 'Accueil' },
 ]
 
