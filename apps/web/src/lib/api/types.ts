@@ -2765,6 +2765,8 @@ export interface CompareResponse {
   player_b: NormalizedPlayerStats
   metrics: CompareMetricRow[]
   title_slug: string
+  /** Badges narratifs ally_plus / tough_enemy / ordinal pour joueur B (best-effort). */
+  encounter_badges?: MatchEncounterBadge[]
   /** C3.6 : avertissement si joueur B est privé ou introuvable. */
   privacy_warning?: MatchPrivacyWarning | null
   /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
