@@ -34,4 +34,7 @@ type AchievementDefinitionRow struct {
 	// XboxTitleID est l'identifiant Xbox numérique du titre source (ex: "1144039928"
 	// pour Halo Infinite). Vide pour les rows antérieures au champ (rétrocompat).
 	XboxTitleID string
+	// ServiceConfigID (SCID) est le discriminateur Xbox unique par jeu.
+	// Peuplé après sync-achievements v2. Vide pour les anciennes lignes.
+	ServiceConfigID string
 }

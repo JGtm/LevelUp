@@ -40,7 +40,7 @@ func (m *mockMetadataAchievementsRepo) GetAchievementDefinitions(_ context.Conte
 func timePtr(t time.Time) *time.Time { return &t }
 
 // TestAchievementsService_NominalCase : 5 définitions + 2 unlocked → summary correct,
-// tri correct (unlocked d'abord, puis locked par gamerscore DESC).
+// tri correct (locked d'abord par gamerscore DESC, puis unlocked par UnlockedAt ASC).
 func TestAchievementsService_NominalCase(t *testing.T) {
 	t1 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 4, 15, 14, 0, 0, 0, time.UTC)
@@ -79,9 +79,9 @@ func TestAchievementsService_NominalCase(t *testing.T) {
 	if len(resp.Achievements) != 5 {
 		t.Fatalf("achievements: attendu 5, obtenu %d", len(resp.Achievements))
 	}
-	// Tri : unlocked en premier (par UnlockedAt DESC) → c (15 avril), a (1 avril)
-	// Puis locked par gamerscore DESC : e (100), b (50), d (20)
-	expected := []string{"c", "a", "e", "b", "d"}
+	// Tri : locked en premier (gamerscore DESC) → e (100), b (50), d (20)
+	// Puis unlocked (UnlockedAt ASC, le plus ancien en haut) → a (1 avril), c (15 avril)
+	expected := []string{"e", "b", "d", "a", "c"}
 	for i, want := range expected {
 		if resp.Achievements[i].AchievementID != want {
 			t.Errorf("position %d: attendu %s, obtenu %s",

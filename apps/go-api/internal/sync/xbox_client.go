@@ -19,11 +19,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 )
 
-const (
-	xboxAchievementsBaseURL = "https://achievements.xboxlive.com"
-	haloInfiniteTitleID     = "1144039928"
-	haloInfiniteTitleIDNum  = 1144039928
-)
+const xboxAchievementsBaseURL = "https://achievements.xboxlive.com"
 
 // XboxAchievementsClient abstrait les appels à l'API Xbox Achievements.
 // L'interface permet l'injection de mock dans les tests.
@@ -48,8 +44,9 @@ type PlayerAchievementRaw struct {
 	CurrentProgress int
 	TargetProgress  int
 	// XboxTitleID est le premier TitleAssociation.ID renvoyé par l'API (numérique → string).
-	// Permet de distinguer Halo Infinite ("1144039928") des autres titres Xbox (ex: MCC).
 	XboxTitleID string
+	// ServiceConfigID identifie le jeu de manière unique (SCID Xbox — plus fiable que TitleID).
+	ServiceConfigID string
 }
 
 // xboxHTTPClient implémente XboxAchievementsClient via l'API Xbox Live.
@@ -212,14 +209,15 @@ func (c *xboxHTTPClient) fetchPage(ctx context.Context, xuid, lang string, skipI
 // parseAchievementItem convertit un item API en PlayerAchievementRaw.
 func parseAchievementItem(a xboxAchievementItem) PlayerAchievementRaw {
 	raw := PlayerAchievementRaw{
-		ID:             a.ID,
-		Name:           a.Name,
-		Description:    a.Description,
-		LockedDesc:     a.LockedDescription,
-		IsSecret:       a.IsSecret,
-		RarityCategory: a.Rarity.CurrentCategory,
-		RarityPercent:  a.Rarity.CurrentPercentage,
-		Unlocked:       a.ProgressState == "Achieved",
+		ID:              a.ID,
+		Name:            a.Name,
+		Description:     a.Description,
+		LockedDesc:      a.LockedDescription,
+		IsSecret:        a.IsSecret,
+		RarityCategory:  a.Rarity.CurrentCategory,
+		RarityPercent:   a.Rarity.CurrentPercentage,
+		Unlocked:        a.ProgressState == "Achieved",
+		ServiceConfigID: a.ServiceConfigID,
 	}
 
 	// Gamerscore depuis Rewards
