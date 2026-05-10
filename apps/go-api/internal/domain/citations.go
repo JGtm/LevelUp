@@ -12,13 +12,14 @@ package domain
 
 // CitationMappingRow est une ligne brute chargée depuis Q34 (metadata.duckdb).
 type CitationMappingRow struct {
-	NameNorm    string
-	NameDisplay string
-	MappingType string
-	Category    string
-	ImagePath   *string
-	Description *string
-	TierTargets *string
+	NameNorm          string
+	NameDisplay       string
+	MappingType       string
+	Category          string
+	ImagePath         *string
+	Description       *string
+	TierTargets       *string
+	CompositeChildren *string // JSON list — nil pour les non-composites
 }
 
 // CitationTotalRow est une ligne brute depuis match_citations (Q35).
@@ -54,7 +55,7 @@ type CitationItem struct {
 	TierCount      int     `json:"tier_count"`
 	EarnedTiers    int     `json:"earned_tiers"`
 	NextTierTarget int     `json:"next_tier_target"` // 0 si maîtrisé
-	MasteryPct     float64 `json:"mastery_pct"`       // 0..100
+	MasteryPct     float64 `json:"mastery_pct"`      // 0..100
 	ImageURL       *string `json:"image_url,omitempty"`
 	Description    *string `json:"description,omitempty"`
 }

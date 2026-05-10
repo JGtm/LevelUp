@@ -101,6 +101,12 @@ en = "Failed to load citations"
 fr = "Réessayer"
 en = "Retry"
 
+# ─── Titre page (browser tab) ─────────────────────────────────────────────
+
+[citations.page_title]
+fr = "Citations"
+en = "Citations"
+
 # ─── Titre section Citations ────────────────────────────────────────────────
 
 [citations.section.mastery_title]

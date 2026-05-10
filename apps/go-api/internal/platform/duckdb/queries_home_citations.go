@@ -330,7 +330,8 @@ SELECT
     COALESCE(category, 'misc')    AS category,
     image_path,
     description,
-    tier_targets
+    tier_targets,
+    composite_children
 FROM citation_mappings
 WHERE enabled IS NOT FALSE
 ORDER BY category, citation_name_display`
