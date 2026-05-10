@@ -75,6 +75,7 @@ type SynthesisOverview struct {
 
 // SynthesisPageV2Response est la nouvelle réponse de POST /pages/synthesis.
 // Sprint 55 D3/D4 : ajoute scope explicite et overview en tête.
+// P9 : ajoute DetailedStats pour le KPI Grid par catégories.
 // Conserve solo_kpis/squad_kpis/comparison_metrics/heatmap/top_weeks pour compatibilité.
 type SynthesisPageV2Response struct {
 	// Bloc 0 — scope (D3)
@@ -94,6 +95,9 @@ type SynthesisPageV2Response struct {
 	HighlightsPreview SynthesisHighlightsPreview `json:"highlights_preview"`
 	RivalriesPreview  SynthesisRivalriesPreview  `json:"rivalries_preview"`
 	Breakdowns        SynthesisBreakdowns        `json:"breakdowns"`
+
+	// Bloc détails (P9)
+	DetailedStats SynthesisDetailedStats `json:"detailed_stats"`
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +166,35 @@ type SynthesisModeEntry struct {
 type SynthesisBreakdowns struct {
 	TopMaps  []SynthesisMapEntry  `json:"top_maps"`
 	TopModes []SynthesisModeEntry `json:"top_modes"`
+}
+
+// ---------------------------------------------------------------------------
+// Bloc détails — SynthesisDetailedStats (P9 KPI Grid)
+// ---------------------------------------------------------------------------
+
+// SynthesisDetailedStats contient les métriques détaillées par catégories.
+// Combat, Tir, Dégâts, Fun stats extraits du scope filtré.
+type SynthesisDetailedStats struct {
+	// Combat
+	TotalHeadshotKills    int `json:"total_headshot_kills"`
+	TotalGrenadeKills     int `json:"total_grenade_kills"`
+	TotalMeleeKills       int `json:"total_melee_kills"`
+	TotalPowerWeaponKills int `json:"total_power_weapon_kills"`
+	MaxKillingSpree       int `json:"max_killing_spree"` // MAX sur le scope
+
+	// Tir
+	TotalShotsFired int `json:"total_shots_fired"`
+	TotalShotsHit   int `json:"total_shots_hit"`
+
+	// Dégâts
+	TotalDamageDealt float64 `json:"total_damage_dealt"`
+	TotalDamageTaken float64 `json:"total_damage_taken"`
+
+	// Fun (via personal_score_awards)
+	TotalBetrayals         int `json:"total_betrayals"`
+	TotalSuicides          int `json:"total_suicides"`
+	TotalVehiclesDestroyed int `json:"total_vehicles_destroyed"`
+	TotalHijacks           int `json:"total_hijacks"`
 }
 
 // ---------------------------------------------------------------------------

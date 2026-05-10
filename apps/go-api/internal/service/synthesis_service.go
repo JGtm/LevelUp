@@ -125,6 +125,9 @@ func (s *SynthesisService) GetSynthesisPage(
 	heatmapRows, _ := s.repo.LoadSynthesisHeatmap(ctx, playerXUID) // erreur non fatale
 	breakdowns := buildBreakdowns(heatmapRows)
 
+	// P9 : stats détaillées (combat, tir, dégâts, fun)
+	detailedStats := buildSynthesisDetailedStatsFromCanonical(filteredCanon)
+
 	scope := domain.SynthesisScope{
 		Period:         period,
 		MatchCount:     matchCount,
@@ -145,6 +148,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		HighlightsPreview: highlights,
 		RivalriesPreview:  rivalries,
 		Breakdowns:        breakdowns,
+		DetailedStats:     detailedStats,
 	}, nil
 }
 
@@ -689,4 +693,42 @@ func topNByFuncCanonical(rows []canonical.PlayerMatchRow, n int, less func(a, b 
 		n = len(cp)
 	}
 	return cp[:n]
+}
+
+// buildSynthesisDetailedStatsFromCanonical agrège les métriques détaillées depuis les rows canoniques.
+// Combat : headshot/grenade/melee/power kills, max killing spree.
+// Tir : shots fired/hit.
+// Dégâts : damage dealt/taken.
+func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisDetailedStats {
+	stats := domain.SynthesisDetailedStats{}
+	for _, r := range rows {
+		if r.Self.HeadshotKills != nil {
+			stats.TotalHeadshotKills += *r.Self.HeadshotKills
+		}
+		if r.Self.GrenadeKills != nil {
+			stats.TotalGrenadeKills += *r.Self.GrenadeKills
+		}
+		if r.Self.MeleeKills != nil {
+			stats.TotalMeleeKills += *r.Self.MeleeKills
+		}
+		if r.Self.PowerWeaponKills != nil {
+			stats.TotalPowerWeaponKills += *r.Self.PowerWeaponKills
+		}
+		if r.Self.MaxKillingSpree != nil && *r.Self.MaxKillingSpree > stats.MaxKillingSpree {
+			stats.MaxKillingSpree = *r.Self.MaxKillingSpree
+		}
+		if r.Self.ShotsFired != nil {
+			stats.TotalShotsFired += *r.Self.ShotsFired
+		}
+		if r.Self.ShotsHit != nil {
+			stats.TotalShotsHit += *r.Self.ShotsHit
+		}
+		if r.Self.DamageDealt != nil {
+			stats.TotalDamageDealt += float64(*r.Self.DamageDealt)
+		}
+		if r.Self.DamageTaken != nil {
+			stats.TotalDamageTaken += float64(*r.Self.DamageTaken)
+		}
+	}
+	return stats
 }
