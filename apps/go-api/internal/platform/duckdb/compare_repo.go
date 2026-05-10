@@ -256,6 +256,56 @@ func (r *CompareRepo) lookupWeaponLabelCompare(ctx context.Context, weaponID int
 	return
 }
 
+// GetEncounterStats retourne les stats de rencontres historiques entre xuidA et xuidB.
+// Deux requêtes sur shared : match_participants (ally/enemy split + winrate) +
+// killer_victim_pairs (kills croisés). Best-effort — retourne nil si aucun match commun.
+func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string) (*domain.CompareEncounterStats, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	const qMatches = `
+		SELECT
+			COUNT(*) AS total,
+			COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END) AS ally_count,
+			COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id THEN 1 END) AS enemy_count,
+			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id AND a.outcome = 2 THEN 1.0 ELSE 0.0 END) /
+				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END), 0) AS winrate_as_ally
+		FROM shared.match_participants a
+		JOIN shared.match_participants b ON b.match_id = a.match_id AND b.xuid = ?
+		WHERE a.xuid = ?`
+
+	var total, allyCount, enemyCount int
+	var winrateAsAlly sql.NullFloat64
+	if err := r.pdb.Player.QueryRow(ctx, qMatches, xuidB, xuidA).Scan(&total, &allyCount, &enemyCount, &winrateAsAlly); err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetEncounterStats matches: %w", err)
+	}
+	if total == 0 {
+		return nil, nil
+	}
+
+	const qKV = `
+		SELECT
+			COALESCE((SELECT SUM(kill_count) FROM shared.killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0),
+			COALESCE((SELECT SUM(kill_count) FROM shared.killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0)`
+
+	var killsDealt, deathsSuffered int
+	if err := r.pdb.Player.QueryRow(ctx, qKV, xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
+		slog.DebugContext(ctx, "CompareRepo.GetEncounterStats: killer_victim non disponible (best-effort)", "err", err)
+	}
+
+	enc := &domain.CompareEncounterStats{
+		TotalEncounters: total,
+		AllyCount:       allyCount,
+		EnemyCount:      enemyCount,
+		KillsDealt:      killsDealt,
+		DeathsSuffered:  deathsSuffered,
+	}
+	if winrateAsAlly.Valid {
+		enc.WinrateAsAlly = &winrateAsAlly.Float64
+	}
+	return enc, nil
+}
+
 // ResolveXUID retourne le XUID correspondant à un gamertag dans le registre partagé.
 func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

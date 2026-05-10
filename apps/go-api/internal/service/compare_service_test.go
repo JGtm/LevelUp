@@ -142,6 +142,10 @@ func (m *mockCompareRepoAB) GetFavoriteWeapon(_ context.Context, _ string) (*dom
 	return nil, nil
 }
 
+func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
+	return nil, nil
+}
+
 // ─── F5 : Test de latence Compare P95 < 5s ───────────────────────────────────
 
 // slowProvider simule une latence Waypoint configurable.

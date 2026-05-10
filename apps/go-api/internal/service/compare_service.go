@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"math"
 
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 
@@ -39,6 +40,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	var statsA, statsB *domain.NormalizedPlayerStats
 	var ath *domain.PlayerATH
 	var waypointCSRCurrent, waypointCSRBest int
+	var xuidBResolved string
 	g, gctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -72,6 +74,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 
 	g.Go(func() error {
 		xuidB, _ := s.repo.ResolveXUID(gctx, req.TargetGamertag)
+		xuidBResolved = xuidB
 		if xuidB != "" {
 			local, err := s.repo.GetLocalStats(gctx, xuidB, s.titleSlug)
 			if err == nil && local != nil {
@@ -131,12 +134,49 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	}
 
 	metrics := buildMetrics(*statsA, *statsB)
-	return domain.CompareResponse{
+	resp := domain.CompareResponse{
 		PlayerA:   *statsA,
 		PlayerB:   *statsB,
 		Metrics:   metrics,
 		TitleSlug: s.titleSlug,
-	}, nil
+	}
+
+	// Badges de rencontres historiques — best-effort, ne bloque pas la réponse.
+	if xuidBResolved != "" {
+		if enc, err := s.repo.GetEncounterStats(ctx, s.xuidA, xuidBResolved); err == nil && enc != nil && enc.TotalEncounters > 0 {
+			stats := narrative.EncounterStats{
+				XUID:            xuidBResolved,
+				Gamertag:        statsB.Gamertag,
+				TotalEncounters: enc.TotalEncounters,
+				AllyCount:       enc.AllyCount,
+				EnemyCount:      enc.EnemyCount,
+				WinrateAsAlly:   enc.WinrateAsAlly,
+				KillsDealt:      enc.KillsDealt,
+				DeathsSuffered:  enc.DeathsSuffered,
+			}
+			resp.EncounterBadges = convertNarrativeBadgesCompare(narrative.ComputeEncounterBadges(stats, enc.TotalEncounters))
+			slog.DebugContext(ctx, "CompareService: encounter badges calculés",
+				"gamertag_b", statsB.Gamertag, "total", enc.TotalEncounters, "badges", len(resp.EncounterBadges))
+		}
+	}
+
+	return resp, nil
+}
+
+func convertNarrativeBadgesCompare(badges []narrative.EncounterBadge) []domain.MatchEncounterBadge {
+	if len(badges) == 0 {
+		return nil
+	}
+	result := make([]domain.MatchEncounterBadge, 0, len(badges))
+	for _, b := range badges {
+		result = append(result, domain.MatchEncounterBadge{
+			Kind:       string(b.Kind),
+			LabelKey:   b.LabelKey,
+			ColorToken: b.ColorToken,
+			Detail:     b.Detail,
+		})
+	}
+	return result
 }
 
 // buildMetrics construit les CompareMetricRows à partir des deux stats normalisées.

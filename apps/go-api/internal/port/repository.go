@@ -831,6 +831,10 @@ type CompareRepository interface {
 	// GetFavoriteWeapon retourne l'arme avec le plus de kills depuis shared.weapon_kills.
 	// Retourne nil si aucune donnée n'est disponible (best-effort).
 	GetFavoriteWeapon(ctx context.Context, xuid string) (*domain.WeaponHighlight, error)
+
+	// GetEncounterStats retourne les stats de rencontres historiques entre xuidA et xuidB.
+	// Retourne nil si aucun match commun ou en cas d'erreur (best-effort).
+	GetEncounterStats(ctx context.Context, xuidA, xuidB string) (*domain.CompareEncounterStats, error)
 }
 
 // LeaderboardRepository fournit les données pour le classement CSR local.
@@ -894,6 +898,9 @@ func (n *noopCompareRepo) GetPlayerATHFor(_ context.Context, _, _ string) (*doma
 	return nil, nil
 }
 func (n *noopCompareRepo) GetFavoriteWeapon(_ context.Context, _ string) (*domain.WeaponHighlight, error) {
+	return nil, nil
+}
+func (n *noopCompareRepo) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
 	return nil, nil
 }
 
