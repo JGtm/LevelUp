@@ -221,7 +221,18 @@ SELECT
     msr.rating_delta                                  AS skill_delta,
     msr.playlist_group                                AS skill_playlist_group,
     p.max_killing_spree,
-    p.personal_score
+    p.personal_score,
+    p.rank                                               AS rank_in_match,
+    p.grenade_kills,
+    p.melee_kills,
+    p.power_weapon_kills,
+    COALESCE((
+        SELECT SUM(me.count)
+        FROM shared.medals_earned me
+        WHERE me.match_id = p.match_id
+          AND me.xuid = p.xuid
+          AND me.medal_name_id = 1512363953
+    ), 0)::INTEGER                                       AS perfect_kills
 FROM shared.match_participants p
 JOIN shared.v_match_full r ON r.match_id = p.match_id
 LEFT JOIN player_match_enrichment pme ON pme.match_id = p.match_id
@@ -253,7 +264,9 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		skillRatingType, skillTier, skillTierFR, skillPlaylistGroup sql.NullString
 		skillRatingValue, skillDelta                                sql.NullFloat64
 		skillSubTier                                                sql.NullInt64
-		maxKillingSpree, personalScore                              sql.NullInt64
+		maxKillingSpree, personalScore, rankInMatch               sql.NullInt64
+		grenadeKills, meleeKills, powerWeaponKills                sql.NullInt64
+		perfectKills                                              sql.NullInt64
 	)
 	if err := rows.Scan(
 		&matchID, &startTime, &durationSeconds,
@@ -272,7 +285,9 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		&team0Score, &team1Score,
 		&skillRatingType, &skillRatingValue,
 		&skillTier, &skillTierFR, &skillSubTier, &skillDelta, &skillPlaylistGroup,
-		&maxKillingSpree, &personalScore,
+		&maxKillingSpree, &personalScore, &rankInMatch,
+		&grenadeKills, &meleeKills, &powerWeaponKills,
+		&perfectKills,
 	); err != nil {
 		return canonical.PlayerMatchRow{}, err
 	}
@@ -324,6 +339,11 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		skillPlaylistGroup: skillPlaylistGroup,
 		maxKillingSpree:    maxKillingSpree,
 		personalScore:      personalScore,
+		rankInMatch:        rankInMatch,
+		grenadeKills:       grenadeKills,
+		meleeKills:         meleeKills,
+		powerWeaponKills:   powerWeaponKills,
+		perfectKills:       perfectKills,
 		xuid:               xuid,
 		gamertag:           gamertag,
 	}), nil
@@ -357,7 +377,9 @@ type playerMatchScanResult struct {
 	skillSubTier                             sql.NullInt64
 	skillDelta                               sql.NullFloat64
 	skillPlaylistGroup                       sql.NullString
-	maxKillingSpree, personalScore           sql.NullInt64
+	maxKillingSpree, personalScore, rankInMatch sql.NullInt64
+	grenadeKills, meleeKills, powerWeaponKills  sql.NullInt64
+	perfectKills                                sql.NullInt64
 }
 
 // projectPlayerMatchRow construit la row canonique depuis les valeurs scannees.
@@ -449,8 +471,13 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			TimePlayed:      &timePlayedPtr,
 			DamageDealt:     dmgDealt,
 			DamageTaken:     dmgTaken,
-			MaxKillingSpree: nullInt64ToIntPtr(s.maxKillingSpree),
-			PersonalScore:   nullInt64ToIntPtr(s.personalScore),
+			MaxKillingSpree:  nullInt64ToIntPtr(s.maxKillingSpree),
+			PersonalScore:    nullInt64ToIntPtr(s.personalScore),
+			RankInMatch:      nullInt64ToIntPtr(s.rankInMatch),
+			GrenadeKills:     nullInt64ToIntPtr(s.grenadeKills),
+			MeleeKills:       nullInt64ToIntPtr(s.meleeKills),
+			PowerWeaponKills: nullInt64ToIntPtr(s.powerWeaponKills),
+			PerfectKills:     nullInt64ToIntPtr(s.perfectKills),
 		},
 		Enrichment: canonical.PlayerMatchEnrichment{
 			SessionID:        nullInt64ToStringPtr(s.sessionID),

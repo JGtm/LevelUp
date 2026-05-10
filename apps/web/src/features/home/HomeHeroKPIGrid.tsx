@@ -9,7 +9,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import type { getKPIText } from './kpi.i18n'
 import { HomeKPICard } from './HomeKPICard'
-import { HomeOutcomeBar } from './HomeOutcomeBar'
+import { OutcomeBar } from '@/components/ui/outcome-bar'
 
 interface HomeHeroKPIGridProps {
   kpis: HeroKPIs
@@ -87,7 +87,7 @@ export function HomeHeroKPIGrid({
         <p className="text-xs text-muted-foreground">{labelOf('win_rate')}</p>
         <p className="text-xl font-bold text-primary">{`${(kpis.win_rate * 100).toFixed(0)}%`}</p>
         <div className="mt-2 w-full">
-          <HomeOutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
+          <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
         </div>
         <div className="mt-1.5 flex justify-center gap-3 text-xs font-semibold tabular-nums">
           <span style={{ color: tokenCssVar('outcome-win') }}>{wins}</span>
