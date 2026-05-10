@@ -40,10 +40,24 @@ func (m *mockCareerService) GetEncounters(_ context.Context) (domain.CareerEncou
 	return m.encounters, m.encounterErr
 }
 
+func (m *mockCareerService) GetHighlightMatchIDs(_ context.Context, _ domain.HighlightFilterInput) (domain.HighlightMatchesData, error) {
+	return domain.HighlightMatchesData{}, nil
+}
+
+func (m *mockCareerService) GetTopEncounters(_ context.Context) (domain.CareerTopEncountersResponse, error) {
+	return domain.CareerTopEncountersResponse{}, nil
+}
+
+func (m *mockCareerService) GetRivals(_ context.Context) (domain.CareerRivalsResponse, error) {
+	return domain.CareerRivalsResponse{}, nil
+}
+
 // newTestRouter construit un routeur chi avec le handler career câblé.
 func newTestRouter(factory handlers.ServiceFactory[port.CareerService]) *chi.Mux {
 	r := chi.NewRouter()
-	h := handlers.NewCareerHandler(factory)
+	// Tests existants ne couvrent pas highlight-matches → MatchHistoryService
+	// factory passée à nil (comportement 503 testé séparément si besoin).
+	h := handlers.NewCareerHandler(factory, nil)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		r.Get("/pages/career", h.GetCareer)
 		r.Get("/pages/career/top-matches", h.GetTopMatches)
