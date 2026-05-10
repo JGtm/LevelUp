@@ -4,7 +4,12 @@
 // Centralise tous les paramètres numériques de l'algorithme LUSR.
 package sync
 
-import "math"
+import (
+	"math"
+
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/halo_infinite"
+)
 
 // ── TrueSkill 2 paramètres ─────────────────────────────────────────────────
 
@@ -87,55 +92,89 @@ var RelativeWeights = map[string]float64{
 	"defensive_resistance": 0.05,
 }
 
-// ── Playlist groups ─────────────────────────────────────────────────────────
+// ── Chaînes LUSR ─────────────────────────────────────────────────────────────
 
-// PlaylistGroupConfig définit un groupe de playlists LUSR.
-type PlaylistGroupConfig struct {
-	WeightFactor float64
+// LUSRChainConfig associe une chaîne TrueSkill à ses labels UI (FR + EN).
+// Remplace PlaylistGroupConfig : le WeightFactor est supprimé — chaque chaîne
+// est homogène par construction, tous les matchs pèsent 1.0.
+type LUSRChainConfig struct {
+	LabelFR string
+	LabelEN string
 }
 
-// Identifiants des groupes LUSR utilisés dans PlaylistGroups et GetPlaylistGroup.
+// Clés canoniques des chaînes LUSR (valeur stockée dans match_skill_rank.playlist_group).
 const (
-	playlistGroupRanked = "ranked"
-	playlistGroupArena  = "arena"
-	playlistGroupBTB    = "btb"
-	playlistGroupFun    = "fun"
+	LUSRChainArenaSlayer   = "arena_slayer"
+	LUSRChainArenaObjectif = "arena_objectif"
+	LUSRChainBTB           = "btb"
+	LUSRChainChaos         = "chaos"
 )
 
-// PlaylistGroups mappe le nom de groupe → config.
-// Portage de src/analysis/playlist_groups.py.
-var PlaylistGroups = map[string]PlaylistGroupConfig{
-	playlistGroupRanked: {WeightFactor: 1.0},
-	playlistGroupArena:  {WeightFactor: 0.8},
-	playlistGroupBTB:    {WeightFactor: 0.7},
-	playlistGroupFun:    {WeightFactor: 0.25},
+// LUSRChains mappe clé interne → labels UI FR/EN.
+var LUSRChains = map[string]LUSRChainConfig{
+	LUSRChainArenaSlayer:   {LabelFR: "Social · Slayer", LabelEN: "Social · Slayer"},
+	LUSRChainArenaObjectif: {LabelFR: "Social · Objectif", LabelEN: "Social · Objective"},
+	LUSRChainBTB:           {LabelFR: "Grande Équipe", LabelEN: "Big Team Battle"},
+	LUSRChainChaos:         {LabelFR: "Chaos", LabelEN: "Chaos"},
 }
 
-// GetPlaylistGroup détermine le groupe LUSR d'une playlist.
-func GetPlaylistGroup(playlistName, pairName *string) string {
-	pn := ""
-	if playlistName != nil {
-		pn = *playlistName
-	}
-	pp := ""
-	if pairName != nil {
-		pp = *pairName
-	}
-	// Détection simplifiée basée sur des keywords.
-	for _, s := range []string{pn, pp} {
-		if containsI(s, "ranked") || containsI(s, "classé") {
-			return playlistGroupRanked
+// GetLUSRChain détermine la chaîne TrueSkill LUSR depuis le pair_name d'un match.
+// Retourne "" si le match est exclu du LUSR (Ranked → CSR, Firefight → PvE).
+//
+// Classification :
+//   - Ranked, Firefight                          → exclu ("")
+//   - BTB, BTB Heavies                           → btb
+//   - Fiesta, Super Fiesta, Husky Raid           → chaos
+//   - Other : Infection/Griffball/Rocket Hog/Action Sack/Event → chaos
+//     Rumble Pit + préfixes inconnus     → arena_slayer (fallback)
+//   - Assassin (Arena/Tactical/Assault/Community) :
+//     sous-mode objectif (CTF, Strongholds…)  → arena_objectif
+//     tout le reste                            → arena_slayer
+func GetLUSRChain(pairName string) string {
+	category := halo_infinite.InferModeCategoryFromPairName(pairName)
+	switch category {
+	case halo_infinite.ModeCategoryRanked, halo_infinite.ModeCategoryFirefight:
+		return ""
+	case halo_infinite.ModeCategoryBTB:
+		if containsI(pairName, "rocket hog") {
+			return LUSRChainChaos
 		}
-		if containsI(s, "btb") || containsI(s, "big team") {
-			return playlistGroupBTB
-		}
-		if containsI(s, "fiesta") || containsI(s, "rumble") ||
-			containsI(s, "action sack") || containsI(s, "swat") ||
-			containsI(s, "griffball") || containsI(s, "infection") {
-			return playlistGroupFun
-		}
+		return LUSRChainBTB
+	case halo_infinite.ModeCategoryFiesta, halo_infinite.ModeCategorySuperFiesta, halo_infinite.ModeCategoryHuskyRaid:
+		return LUSRChainChaos
+	case halo_infinite.ModeCategoryOther:
+		return lusrChainForOther(pairName)
+	default: // ModeCategoryAssassin
+		return lusrChainForAssassin(pairName)
 	}
-	return playlistGroupArena // default social
+}
+
+// lusrChainForOther classe les modes de catégorie Other.
+// Chaos : Infection, Griffball, Rocket Hog Race, Action Sack, Event.
+// Fallback arena_slayer : Rumble Pit et tout préfixe inconnu.
+func lusrChainForOther(pairName string) string {
+	if containsI(pairName, "infection") || containsI(pairName, "griffball") ||
+		containsI(pairName, "rocket hog") || containsI(pairName, "action sack") ||
+		containsI(pairName, "event") {
+		return LUSRChainChaos
+	}
+	return LUSRChainArenaSlayer
+}
+
+// lusrChainForAssassin classe les sous-modes Arena/Tactical/Assault/Community.
+// Objectif reconnus : CTF, Oddball, Strongholds, KotH, Total Control,
+// Land Grab, Extraction, Stockpile, One Flag CTF, Covert One Flag.
+// Tout le reste (Slayer, Attrition, Elimination, inconnu) → arena_slayer.
+func lusrChainForAssassin(pairName string) string {
+	subMode := toLowerASCII(analysis.NormalizeModeLabel(pairName))
+	switch subMode {
+	case "ctf", "capture the flag", "neutral flag ctf", "one flag ctf", "covert one flag",
+		"strongholds", "oddball", "king of the hill",
+		"total control", "land grab", "extraction", "stockpile":
+		return LUSRChainArenaObjectif
+	default:
+		return LUSRChainArenaSlayer
+	}
 }
 
 // ── Tiers LUSR ──────────────────────────────────────────────────────────────

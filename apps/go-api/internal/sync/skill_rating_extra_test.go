@@ -1,7 +1,7 @@
 // Package sync — skill_rating_extra_test.go : tests unitaires des fonctions LUSR pures.
 //
 // Couvre applyInactivityDecay, computeCompositeScore, estimateIndividualMU,
-// computeEnemyStrength, GetPlaylistGroup, GetTierForRating, FormatTierLabel,
+// computeEnemyStrength, GetLUSRChain, GetTierForRating, FormatTierLabel,
 // clampF, sigmoidRatio, containsI.
 package sync
 
@@ -194,47 +194,66 @@ func TestComputeEnemyStrength_MultipleKEs(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GetPlaylistGroup
+// GetLUSRChain
 // ─────────────────────────────────────────────────────────────────────────────
 
-func TestGetPlaylistGroup_Ranked(t *testing.T) {
-	name := "Ranked Arena"
-	if got := GetPlaylistGroup(&name, nil); got != "ranked" {
-		t.Errorf("got %q, want ranked", got)
+func TestGetLUSRChain(t *testing.T) {
+	cases := []struct {
+		pairName string
+		want     string
+	}{
+		// Exclus
+		{"Ranked:Slayer on Aquarius", ""},
+		{"Ranked:CTF on Recharge", ""},
+		{"Firefight:King of the Hill on Argyle", ""},
+		{"Gruntpocalypse:Slayer on Deadlock", ""},
+		// BTB
+		{"BTB:Slayer on Fragmentation", LUSRChainBTB},
+		{"BTB Heavies:CTF on Highpower", LUSRChainBTB},
+		// Chaos — catégorie Fiesta/SuperFiesta/HuskyRaid
+		{"Fiesta:Slayer on Bazaar", LUSRChainChaos},
+		{"Super Fiesta:Slayer on Catalyst", LUSRChainChaos},
+		{"Husky Raid:CTF on Pharaoh", LUSRChainChaos},
+		{"Super Husky Raid:CTF on Pharaoh", LUSRChainChaos},
+		{"Castle Wars", LUSRChainChaos},
+		// Chaos — Other avec keywords
+		{"Infection:Slayer on Bazaar", LUSRChainChaos},
+		{"Griffball", LUSRChainChaos},
+		{"Rocket Hog Race:BTB on Highpower", LUSRChainChaos},
+		{"Action Sack:Slayer on Recharge", LUSRChainChaos},
+		{"Event:Last Spartan Standing on Fragmentation", LUSRChainChaos},
+		// arena_slayer — Other fallback
+		{"Rumble Pit:Slayer on Bazaar", LUSRChainArenaSlayer},
+		{"Custom:Unknown on MapX", LUSRChainArenaSlayer},
+		// arena_slayer — Assassin
+		{"Arena:Slayer on Bazaar", LUSRChainArenaSlayer},
+		{"Arena:Team Slayer on Bazaar", LUSRChainArenaSlayer},
+		{"Arena:Attrition on Live Fire", LUSRChainArenaSlayer},
+		{"Arena:Elimination on Bazaar", LUSRChainArenaSlayer},
+		{"Tactical:Slayer on Recharge", LUSRChainArenaSlayer},
+		{"Community:Team Slayer on Solution", LUSRChainArenaSlayer},
+		// arena_objectif — Assassin
+		{"Arena:CTF on Recharge", LUSRChainArenaObjectif},
+		{"Arena:Neutral Flag CTF on Live Fire", LUSRChainArenaObjectif},
+		{"Arena:One Flag CTF on Highpower", LUSRChainArenaObjectif},
+		{"Arena:Strongholds on Streets", LUSRChainArenaObjectif},
+		{"Arena:Oddball on Aquarius", LUSRChainArenaObjectif},
+		{"Arena:King of the Hill on Catalyst", LUSRChainArenaObjectif},
+		{"Arena:Total Control on Fragmentation", LUSRChainArenaObjectif},
+		{"Arena:Land Grab on Recharge", LUSRChainArenaObjectif},
+		{"Arena:Extraction on Live Fire", LUSRChainArenaObjectif},
+		{"Arena:Stockpile on Deadlock", LUSRChainArenaObjectif},
+		{"BTB:CTF on Highpower", LUSRChainBTB}, // CTF dans BTB → btb (pas arena_objectif)
+		// pair_name vide → arena_slayer (fallback safe)
+		{"", LUSRChainArenaSlayer},
 	}
-}
-
-func TestGetPlaylistGroup_BTB(t *testing.T) {
-	name := "BTB Heavies"
-	if got := GetPlaylistGroup(&name, nil); got != "btb" {
-		t.Errorf("got %q, want btb", got)
-	}
-}
-
-func TestGetPlaylistGroup_Fun(t *testing.T) {
-	name := "Fiesta Slayer"
-	if got := GetPlaylistGroup(&name, nil); got != "fun" {
-		t.Errorf("got %q, want fun", got)
-	}
-}
-
-func TestGetPlaylistGroup_Default(t *testing.T) {
-	name := "Quick Play"
-	if got := GetPlaylistGroup(&name, nil); got != "arena" {
-		t.Errorf("got %q, want arena", got)
-	}
-}
-
-func TestGetPlaylistGroup_Nil(t *testing.T) {
-	if got := GetPlaylistGroup(nil, nil); got != "arena" {
-		t.Errorf("nil input: got %q, want arena", got)
-	}
-}
-
-func TestGetPlaylistGroup_PairNameFallback(t *testing.T) {
-	pair := "Ranked: Slayer on Recharge"
-	if got := GetPlaylistGroup(nil, &pair); got != "ranked" {
-		t.Errorf("got %q from pairName, want ranked", got)
+	for _, tc := range cases {
+		t.Run(tc.pairName, func(t *testing.T) {
+			got := GetLUSRChain(tc.pairName)
+			if got != tc.want {
+				t.Errorf("GetLUSRChain(%q) = %q, want %q", tc.pairName, got, tc.want)
+			}
+		})
 	}
 }
 
