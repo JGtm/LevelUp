@@ -9,6 +9,41 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
+// LoadCareerRankImageURLs charge les URLs d'images pour tous les rangs depuis
+// career_ranks (metadata.duckdb). Retourne une map rank_id → imageURL.
+// Silencieux si metaDB est nil.
+func LoadCareerRankImageURLs(ctx context.Context, metaDB *DB, titleSlug string) (map[int]*string, error) {
+	if metaDB == nil {
+		return nil, nil
+	}
+	rows, err := metaDB.Query(ctx, `
+		SELECT rank_id,
+		       COALESCE(NULLIF(TRIM(large_icon_path), ''), NULLIF(TRIM(icon_path), '')) AS image_path
+		FROM career_ranks
+		WHERE COALESCE(NULLIF(TRIM(large_icon_path), ''), NULLIF(TRIM(icon_path), '')) IS NOT NULL
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("LoadCareerRankImageURLs: query: %w", err)
+	}
+	defer rows.Close()
+
+	urls := make(map[int]*string)
+	for rows.Next() {
+		var rankID int
+		var imagePath sql.NullString
+		if err := rows.Scan(&rankID, &imagePath); err != nil {
+			return nil, fmt.Errorf("LoadCareerRankImageURLs: scan: %w", err)
+		}
+		if imagePath.Valid {
+			urls[rankID] = buildHomeIdentityAssetURL("career-rank", titleSlug, imagePath.String)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("LoadCareerRankImageURLs: iter: %w", err)
+	}
+	return urls, nil
+}
+
 // LoadRankCatalog construit un mappings.RankCatalog en interrogeant la table
 // career_rank_translations de metadata.duckdb.
 //
