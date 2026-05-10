@@ -17,6 +17,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { truncateMap } from '@/lib/charts/matchLabels'
 
 export interface EfficiencyTrackOpts {
   /** Couleur hex résolue depuis semantic tokens via getSquadPlayerColors. */
@@ -38,6 +39,7 @@ export function buildSquadEfficiencyTrackOption(
   const n = pts.reduce((max, p) => Math.max(max, p.match_order), 0) + 1
   const rendData = new Array<number | null>(n).fill(null)
   const resistData = new Array<number | null>(n).fill(null)
+  const mapByOrder = new Array<string | undefined>(n).fill(undefined)
 
   for (const p of pts) {
     const idx = p.match_order
@@ -47,9 +49,17 @@ export function buildSquadEfficiencyTrackOption(
     if (p.resistance_defensive !== undefined) {
       resistData[idx] = Number(p.resistance_defensive.toFixed(2))
     }
+    if (p.map_name) {
+      mapByOrder[idx] = p.map_name
+    }
   }
 
-  const xLabels = Array.from({ length: n }, (_, i) => `#${i + 1}`)
+  // Étiquettes X au format `#N\nMap` (aligné sur les autres charts par match
+  // — cf. features/timeseries/matchLabels.ts). Fallback `#N` si pas de map.
+  const xLabels = Array.from({ length: n }, (_, i) => {
+    const m = mapByOrder[i]
+    return m ? `#${i + 1}\n${truncateMap(m)}` : `#${i + 1}`
+  })
   // color-allow: hex résolu depuis semantic tokens via getSquadPlayerColors
   const color = opts.color
   const tc = getEChartsThemeColors()

@@ -64,12 +64,9 @@ export const timeseriesManifest = {
   "timeseries.summary.kda_timeline_title": { fr: "Timeline K/D par match", en: "K/D timeline per match" },
   "timeseries.summary.kda_y_axis_left": { fr: "Kills / Morts", en: "Kills / Deaths" },
   "timeseries.summary.kda_y_axis_right": { fr: "K/D", en: "K/D" },
-  "timeseries.tabs.combat": { fr: "Combat", en: "Combat" },
-  "timeseries.tabs.cumul": { fr: "Cumul", en: "Cumulative" },
   "timeseries.tabs.distributions": { fr: "Distributions", en: "Distributions" },
-  "timeseries.tabs.form": { fr: "Forme", en: "Form" },
-  "timeseries.tabs.intensity": { fr: "Intensité", en: "Intensity" },
-  "timeseries.tabs.summary": { fr: "KPIs", en: "KPIs" },
+  "timeseries.tabs.progression": { fr: "Progression", en: "Progression" },
+  "timeseries.tabs.summary": { fr: "Synthèse", en: "Summary" },
 } as const
 
 export type TimeseriesManifestKey = keyof typeof timeseriesManifest

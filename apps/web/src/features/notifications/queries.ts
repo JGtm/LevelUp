@@ -17,7 +17,7 @@ import type {
   UnreadCount,
 } from './types'
 
-export interface NotificationsListResponse extends NotificationListResult {}
+export type NotificationsListResponse = NotificationListResult
 
 /** Liste paginée (le composant fournit son scope via filter). */
 export function useNotificationsList(

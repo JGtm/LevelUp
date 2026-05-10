@@ -83,9 +83,10 @@ export const okabePalette: Palette = {
   'narrative-contre-remontada-text': '#000000', // noir sur orange
 
   // ── Badges encounter — axe blue/vermillion daltonisme-safe ────────────────
-  'narrative-encounter-ally-plus':    '#0072B2', // Blue       — allié positif
-  'narrative-encounter-tough-enemy':  '#D55E00', // Vermillion — ennemi dangereux
-  'narrative-encounter-ordinal':      '#56B4E9', // Sky Blue   — compteur rencontres
+  'narrative-encounter-ally-plus':    '#0072B2', // Blue           — allié positif
+  'narrative-encounter-tough-enemy':  '#D55E00', // Vermillion     — ennemi dangereux (K/D contre nous mauvais)
+  'narrative-encounter-coriace':      '#CC79A7', // Reddish Purple — winrate vs lui mauvais (Coriace)
+  'narrative-encounter-ordinal':      '#56B4E9', // Sky Blue       — compteur rencontres
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais

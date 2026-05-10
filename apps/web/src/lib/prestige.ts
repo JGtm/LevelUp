@@ -46,13 +46,13 @@ export type SquadMode = 'collective' | 'competitive'
  * de plan PLAN_challenges_xp_system.md.
  */
 export const TIER_COLORS: Record<Tier, string> = {
-  // eslint-disable-next-line no-restricted-syntax -- couleurs identitaires Prestige
+
   normal: '#9CA3AF',
-  // eslint-disable-next-line no-restricted-syntax
+
   heroic: '#3B82F6',
-  // eslint-disable-next-line no-restricted-syntax
+
   legendary: '#8B5CF6',
-  // eslint-disable-next-line no-restricted-syntax
+
   mythic: '#F59E0B',
 }
 

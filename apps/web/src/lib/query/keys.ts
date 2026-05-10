@@ -110,9 +110,9 @@ export const queryKeys = {
   citations: (playerSlug: string, filterHash: string) =>
     ['citations', playerSlug, filterHash] as const,
 
-  // Timeseries (Slice 3B)
+  // Timeseries (Slice 3B) — 'solo' dans la clé pour invalider tout cache pré-fix
   timeseries: (playerSlug: string, filterHash: string) =>
-    ['timeseries', playerSlug, filterHash] as const,
+    ['timeseries', 'solo', playerSlug, filterHash] as const,
 
   // Session Compare (Slice 3C)
   sessionCompare: (playerSlug: string, filterHash: string, sessionA: string, sessionB: string) =>

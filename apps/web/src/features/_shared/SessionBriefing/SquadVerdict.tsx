@@ -25,13 +25,14 @@ import { trendSymbol, type TrendState } from './trends'
 import type { BriefingTexts } from './i18n'
 
 interface SquadVerdictProps {
-  squadScore: SquadScoreCard
-  players: PlayerScoreCard[]
+  /** Absent en mode solo : team card et player cards masquées. */
+  squadScore?: SquadScoreCard
+  players?: PlayerScoreCard[]
   /** xuid du joueur principal (main) — affichage badge "(moi)" sur sa card. */
-  activeXuid: string
+  activeXuid?: string
   /** xuid actuellement affiché dans la KpiGrid (drill-down). */
-  viewedXuid: string
-  onSelectXuid: (xuid: string) => void
+  viewedXuid?: string
+  onSelectXuid?: (xuid: string) => void
   /** KPIs du joueur viewé — utilisé pour la Results bar à droite. */
   kpis: KPIStats
   texts: BriefingTexts
@@ -60,25 +61,26 @@ interface OutcomeSeg {
 export function SquadVerdict({
   squadScore,
   players,
-  activeXuid,
-  viewedXuid,
+  activeXuid = '',
+  viewedXuid = '',
   onSelectXuid,
   kpis,
   texts,
 }: SquadVerdictProps) {
-  const teamTier = getScoreTier(squadScore.score)
-  const teamLabel = TIER_LABEL_FALLBACK[teamTier.key]
+  const hasTeamCard = squadScore != null && players != null
+  const hasPlayerCards = players != null && players.length > 0
 
-  // delta = bonus de cohésion (winrate >60%, min KDA >1, faible variance kills).
-  // Quand le bonus vaut 0, on n'affiche RIEN — pas la peine d'encombrer la card
-  // avec « base only » : l'absence de label = score brut sans bonus.
-  const delta = Math.round(squadScore.score - squadScore.base_avg)
-  const deltaText =
-    delta > 0
+  const teamTier = hasTeamCard ? getScoreTier(squadScore!.score) : null
+  const teamLabel = teamTier ? TIER_LABEL_FALLBACK[teamTier.key] : null
+
+  const delta = hasTeamCard ? Math.round(squadScore!.score - squadScore!.base_avg) : 0
+  const deltaText = hasTeamCard
+    ? delta > 0
       ? texts.verdict.deltaBonusPositive(delta)
       : delta < 0
         ? texts.verdict.deltaBonusNegative(delta)
         : null
+    : null
   const deltaToken: SemanticToken =
     delta > 0 ? 'divergent-pos' : delta < 0 ? 'divergent-neg' : 'divergent-neutral'
 
@@ -98,33 +100,36 @@ export function SquadVerdict({
 
   return (
     <div className="flex flex-wrap items-stretch gap-4 rounded border border-border bg-background px-4 py-3">
-      {/* LEFT : team card — non cliquable */}
-      <div className="min-w-[180px] rounded border border-border bg-card px-3 py-2">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-          {texts.verdict.teamScore}
-        </p>
-        <div className="mt-1 flex items-baseline gap-2">
-          <span
-            className="text-2xl font-bold"
-            style={{ color: tokenCssVar(teamTier.token) }}
-          >
-            {Math.round(squadScore.score)}
-          </span>
-          <span className="text-xs text-muted-foreground">{teamLabel}</span>
-        </div>
-        {deltaText !== null && (
-          <p
-            className="mt-0.5 text-[10px]"
-            style={{ color: tokenCssVar(deltaToken) }}
-          >
-            {deltaText}
+      {/* LEFT : team card — squad mode only */}
+      {hasTeamCard && teamTier && (
+        <div className="min-w-[180px] rounded border border-border bg-card px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {texts.verdict.teamScore}
           </p>
-        )}
-      </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span
+              className="text-2xl font-bold"
+              style={{ color: tokenCssVar(teamTier.token) }}
+            >
+              {Math.round(squadScore!.score)}
+            </span>
+            <span className="text-xs text-muted-foreground">{teamLabel}</span>
+          </div>
+          {deltaText !== null && (
+            <p
+              className="mt-0.5 text-[10px]"
+              style={{ color: tokenCssVar(deltaToken) }}
+            >
+              {deltaText}
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* CENTER : player cards — cliquables */}
+      {/* CENTER : player cards — squad mode ou solo avec performance_score */}
+      {hasPlayerCards && (
       <div className="flex flex-wrap items-stretch gap-2">
-        {players.map((p) => {
+        {players!.map((p) => {
           const tier = getScoreTier(p.score)
           const isActive = p.xuid === activeXuid
           const isViewed = p.xuid === viewedXuid
@@ -136,11 +141,10 @@ export function SquadVerdict({
             <button
               key={p.xuid || p.gamertag}
               type="button"
-              onClick={() => p.xuid && onSelectXuid(p.xuid)}
-              disabled={!p.xuid}
+              onClick={() => p.xuid ? onSelectXuid?.(p.xuid) : undefined}
               className={[
-                'rounded border px-3 py-2 text-left transition cursor-pointer',
-                'hover:border-foreground/40 disabled:cursor-default disabled:opacity-60',
+                'rounded border px-3 py-2 text-left transition',
+                p.xuid ? 'cursor-pointer hover:border-foreground/40' : 'cursor-default',
                 isViewed
                   ? 'border-foreground/60 bg-secondary'
                   : 'border-border bg-card',
@@ -183,6 +187,7 @@ export function SquadVerdict({
           )
         })}
       </div>
+      )}
 
       {/* RIGHT : Results bar + mini-cards Matchs/Durée alignées à droite. */}
       <div className="ml-auto flex items-stretch gap-3">

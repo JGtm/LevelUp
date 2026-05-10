@@ -600,6 +600,7 @@ export interface EngagementScoreResultAPI {
 export interface EngagementMatchSummaryAPI {
   match_id: string
   label: string
+  map_name?: string | null
   started_at: string
   pace_joueur: number
   pace_team: number
@@ -2584,6 +2585,20 @@ export interface TimeseriesMatchRow {
   rank: number | null
   playlist_name: string
   time_played_seconds: number | null
+  /** Métriques timeseries.16 (Spree + Headshots + Perfect kills). */
+  max_killing_spree?: number | null
+  headshot_kills?: number | null
+  perfect_kills?: number | null
+  /** Nom de carte pour étiquettes X compactes (timeseries.14 "Stats par minute"). */
+  map_name?: string | null
+  map_name_fr?: string | null
+  /** Skill rank (CSR/LUSR) — rating brut + type, depuis match_skill_rank. */
+  skill_rating_value?: number | null
+  skill_rating_type?: string | null
+  /** Session de rattachement (label sync). */
+  session_label?: string | null
+  /** MMR équipe — pour l'agrégat MMR moyen par session. */
+  team_mmr?: number | null
 }
 
 export interface TimeseriesKpiCard {
@@ -2627,6 +2642,10 @@ export interface TimeseriesDistributionsTab {
   accuracy_buckets: DistributionBucket[]
   score_per_min_buckets: DistributionBucket[]
   rolling_wr_buckets: DistributionBucket[]
+  life_buckets: DistributionBucket[]
+  perf_score_buckets: DistributionBucket[]
+  personal_score_buckets: DistributionBucket[]
+  max_killing_spree_buckets: DistributionBucket[]
   correlation_points: CorrelationDataPair[]
 }
 
@@ -2663,6 +2682,59 @@ export interface KPIStats {
   outcomes: { wins: number; losses: number; ties: number; dnf: number }
 }
 
+export interface TimeseriesWeaponKill {
+  weapon_id: number
+  label: string
+  kills: number
+}
+
+export interface OutcomesPeriodPoint {
+  period_label: string
+  start_date: string
+  wins: number
+  losses: number
+  ties: number
+  dnf: number
+}
+
+export interface FirstEventBucket {
+  lower_seconds: number
+  upper_seconds: number
+  first_kills: number
+  first_deaths: number
+}
+
+export interface FirstEventDistribution {
+  buckets: FirstEventBucket[]
+  mean_first_kill_seconds?: number | null
+  mean_first_death_seconds?: number | null
+}
+
+/** Ligne du heatmap d'intensité solo (1 match × 10 phases normalisées). */
+export interface IntensityMatchRow {
+  match_id: string
+  label: string
+  phases: number[]
+}
+
+/** Agrégat par session/semaine/mois (chart "Performance solo par session"). */
+export interface SoloSessionPerfPoint {
+  session_label: string
+  started_at_utc: string
+  match_count: number
+  wins: number
+  win_rate: number
+  perf_avg?: number | null
+  team_mmr_avg?: number | null
+}
+
+/** Bloc avec granularité auto-adaptative + points. */
+export interface SoloSessionPerfBlock {
+  /** "session" | "week" | "month" — choisie côté serveur selon densité. */
+  granularity: 'session' | 'week' | 'month'
+  points: SoloSessionPerfPoint[]
+}
+
 export interface TimeseriesPageResponse {
   total_matches: number
   match_rows: TimeseriesMatchRow[]
@@ -2671,6 +2743,12 @@ export interface TimeseriesPageResponse {
   form_tab: TimeseriesFormTab
   intensity_tab: TimeseriesIntensityTab
   distributions_tab: TimeseriesDistributionsTab
+  top_weapons: TimeseriesWeaponKill[]
+  outcomes_over_time: OutcomesPeriodPoint[]
+  map_breakdown: MapBreakdownRow[]
+  first_events?: FirstEventDistribution | null
+  intensity_rows?: IntensityMatchRow[] | null
+  solo_session_perf?: SoloSessionPerfBlock | null
   /** Alimente <SessionBriefing> en haut de la page (mode solo). Nil si aucun match. */
   briefing_kpis?: KPIStats
 }

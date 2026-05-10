@@ -64,6 +64,6 @@ export function useJobToasts(
     }
     // Intentionnel : on écoute uniquement le changement de status.
     // Les autres données (warnings, error…) sont lues via refs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [jobStatus?.status])
 }

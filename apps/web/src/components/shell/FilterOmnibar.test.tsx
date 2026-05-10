@@ -35,8 +35,9 @@ function buildResolved(): FilterContextResolved {
     },
     session_options: {
       all_sessions: [
-        { session_id: 's1', label: '01/04/2026 21:00', match_count: 5, match_count_filtered: 5, is_squad: true },
-        { session_id: 's2', label: '15/03/2026 18:00', match_count: 3, match_count_filtered: 3, is_squad: false },
+        // FilterOmnibar filtre is_squad=true (la pill ne montre que solo).
+        { session_id: 's1', label: '01/04/2026 21:00', match_count: 5, match_count_filtered: 5, is_squad: false, started_at_utc: '2026-04-01T21:00:00Z', ended_at_utc: '2026-04-01T22:30:00Z' },
+        { session_id: 's2', label: '15/03/2026 18:00', match_count: 3, match_count_filtered: 3, is_squad: false, started_at_utc: '2026-03-15T18:00:00Z', ended_at_utc: '2026-03-15T19:30:00Z' },
       ],
       solo_labels: [],
       squad_labels: [],
@@ -75,28 +76,34 @@ describe('FilterOmnibar', () => {
   it('click sur pill Session ouvre le popover avec recherche', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /toutes les sessions/i }))
-    expect(screen.getByPlaceholderText(/rechercher une session/i)).toBeInTheDocument()
+    // SessionMultiSelect (refacto 2026-05) : placeholder "Rechercher…" + checkbox
+    // par session + bouton "Valider" différé.
+    expect(screen.getByPlaceholderText(/rechercher/i)).toBeInTheDocument()
     expect(screen.getByText('01/04/2026 21:00')).toBeInTheDocument()
     expect(screen.getByText('15/03/2026 18:00')).toBeInTheDocument()
   })
 
-  it('sélection d\'une session + Analyser déclenche setFilterContext + auto-derive', () => {
+  it('sélection d\'une session + Valider + Analyser déclenche setFilterContext + auto-derive', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /toutes les sessions/i }))
+    // Click sur le label de la session → toggle la checkbox associée.
     fireEvent.click(screen.getByText('15/03/2026 18:00'))
     // Pending uniquement — store pas encore mis à jour
     expect(useGlobalFilterStore.getState().filterContext.sessions!.picked_sessions).toEqual([])
-    // Commit via Analyser
+    // Confirm sélection via "Valider" (validation différée du multi-select)
+    fireEvent.click(screen.getByRole('button', { name: /^valider$/i }))
+    // Commit via Analyser (commit pending → store global)
     fireEvent.click(screen.getByRole('button', { name: /analyser/i }))
     const ctx = useGlobalFilterStore.getState().filterContext
-    expect(ctx.sessions!.picked_sessions).toEqual(['s2'])
+    // Le nouveau composant utilise des labels de session, pas des IDs.
+    expect(ctx.sessions!.picked_sessions).toEqual(['15/03/2026 18:00'])
     expect(ctx.filter_mode).toBe('sessions')
   })
 
   it('recherche filtre les sessions affichées', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /toutes les sessions/i }))
-    const search = screen.getByPlaceholderText(/rechercher une session/i)
+    const search = screen.getByPlaceholderText(/rechercher/i)
     fireEvent.change(search, { target: { value: '01/04' } })
     expect(screen.getByText('01/04/2026 21:00')).toBeInTheDocument()
     expect(screen.queryByText('15/03/2026 18:00')).not.toBeInTheDocument()
@@ -219,8 +226,8 @@ describe('FilterOmnibar', () => {
   it('Escape ferme le popover ouvert', () => {
     renderWithProviders(<FilterOmnibar />)
     fireEvent.click(screen.getByRole('button', { name: /toutes les sessions/i }))
-    expect(screen.getByPlaceholderText(/rechercher une session/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/rechercher/i)).toBeInTheDocument()
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByPlaceholderText(/rechercher une session/i)).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/rechercher/i)).not.toBeInTheDocument()
   })
 })

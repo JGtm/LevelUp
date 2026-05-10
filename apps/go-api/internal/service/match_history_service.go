@@ -626,13 +626,38 @@ func filterMatchHistoryRows(rows []domain.MatchHistoryRawRow, f domain.FilterCon
 
 func applyAllFilters(rows []domain.FilterMatchRow, f domain.FilterContextInput) []domain.FilterMatchRow {
 	f = normalizeInput(f)
+	// match_context appliqué tôt — symétrie avec ResolveFiltersFromRowsAt pour
+	// que /pages/timeseries et /filters/resolve restent cohérents (même
+	// dataset post-context avant scope temporel).
+	rows = applyMatchContextFilter(rows, f.MatchContext)
+	// Scope temporel : sessions OU période. On filtre par session dès que
+	// picked_sessions n'est pas vide (peu importe filter_mode) — défense en
+	// profondeur contre un client qui aurait oublié de propager filter_mode.
 	var temporal []domain.FilterMatchRow
-	if f.FilterMode == "sessions" {
+	if hasPickedSessions(f.Sessions) {
 		temporal = applySessionFilter(rows, f.Sessions)
 	} else {
 		temporal = applyPeriodFilter(rows, f.Period)
 	}
 	return applyCascadeFilter(temporal, f.Cascade)
+}
+
+// hasPickedSessions retourne true si au moins une session est sélectionnée
+// dans n'importe quel champ supporté (legacy single-pick ou multi-select).
+func hasPickedSessions(s domain.SessionsFilter) bool {
+	if len(s.PickedSessions) > 0 {
+		return true
+	}
+	if s.PickedSessionLabel != nil && *s.PickedSessionLabel != "" {
+		return true
+	}
+	if s.PickedSoloSessionLabel != nil && *s.PickedSoloSessionLabel != "" {
+		return true
+	}
+	if s.PickedSquadSessionLabel != nil && *s.PickedSquadSessionLabel != "" {
+		return true
+	}
+	return false
 }
 
 func toFilterMatchRow(r domain.MatchHistoryRawRow) domain.FilterMatchRow {

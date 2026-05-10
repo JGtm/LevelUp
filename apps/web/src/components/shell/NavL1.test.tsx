@@ -31,9 +31,11 @@ vi.mock('./ThemeToggle', () => ({
 describe('NavL1', () => {
   beforeEach(() => {
     mockPathname = '/players/test-player/home'
+    // Casts vers `unknown` puis le type cible : évite `as any` (lint strict).
+    // Les fixtures volontairement minimales ne représentent pas le full PlayerProfile.
     useAppShellStore.setState({
-      currentPlayer: { player_slug: 'test-player', gamertag: 'TestPlayer' } as any,
-      availablePlayers: [{ player_slug: 'test-player', gamertag: 'TestPlayer' }] as any,
+      currentPlayer: { player_slug: 'test-player', gamertag: 'TestPlayer' } as unknown as ReturnType<typeof useAppShellStore.getState>['currentPlayer'],
+      availablePlayers: [{ player_slug: 'test-player', gamertag: 'TestPlayer' }] as unknown as ReturnType<typeof useAppShellStore.getState>['availablePlayers'],
       locale: 'fr',
       authMode: 'none',
       isAdmin: false,

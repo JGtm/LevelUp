@@ -136,7 +136,10 @@ type KPIStats struct {
 	// scope cohérent (une session est soit classee soit non, par construction
 	// metier). Nil si aucun match avec rating dans le scope.
 	RankDelta *RankDelta `json:"rank_delta,omitempty"`
-	Outcomes  struct {
+	// PerformanceScore : score 0-100 du joueur sur le scope filtre.
+	// Moyenne des performance_score par match (sync). Nil si aucun match enrichi.
+	PerformanceScore *float64 `json:"performance_score,omitempty"`
+	Outcomes         struct {
 		Wins   int `json:"wins"`
 		Losses int `json:"losses"`
 		Ties   int `json:"ties"`

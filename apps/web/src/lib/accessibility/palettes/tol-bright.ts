@@ -102,7 +102,8 @@ export const tolBrightPalette: Palette = {
 
   // ── Badges encounter ───────────────────────────────────────────────────────
   'narrative-encounter-ally-plus':    TOL_BLUE,
-  'narrative-encounter-tough-enemy':  TOL_RED,
+  'narrative-encounter-tough-enemy':  TOL_RED,    // K/D contre nous mauvais
+  'narrative-encounter-coriace':      TOL_PURPLE, // winrate vs lui mauvais (Coriace)
   'narrative-encounter-ordinal':      TOL_CYAN,
 
   // ── Heatmaps ────────────────────────────────────────────────────────────────

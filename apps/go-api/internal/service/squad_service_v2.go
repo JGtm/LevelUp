@@ -194,7 +194,7 @@ func (s *SquadServiceV2) GetSquadPage(
 	squadOrder := buildSquadOrder(mainGT, teammateGTs)
 	squadXUIDs := extractSquadXUIDs(squadOrder, perPlayer)
 
-	resp.Header = buildSquadHeader(ctx, mainGT, perPlayer, squadXUIDs, resp.SharedMatches)
+	resp.Header = buildSquadHeader(ctx, mainGT, squadXUIDs, resp.SharedMatches)
 
 	// Si pas de matchs partages, retourner sans charger les sections lourdes.
 	if len(resp.SharedMatches) == 0 {
@@ -446,9 +446,12 @@ func xuidsOf(squadXUIDs map[string]string) []string {
 // cartes joueurs + KPIs per-xuid pour drill-down SessionBriefing) depuis les
 // rows par joueur et l'intersection des matchs partages.
 //
-// SoloKPIs : agreges depuis les rows complets du joueur principal (scope
-// courant filtre par period). AllTimeKPIs nil pour S2 (a remplir dans un
-// chunk dedie quand on cablera la tendance ▲▼).
+// SoloKPIs : agreges depuis les rows du joueur principal sur les matchs
+// PARTAGES (intersection escouade). Le briefing en haut de page Escouade
+// reflete les stats du joueur sur les matchs joues avec l'escouade definie,
+// pas sur tout son historique. Si aucun match partage -> SoloKPIs nil.
+// AllTimeKPIs nil pour S2 (a remplir dans un chunk dedie quand on cablera la
+// tendance ▲▼).
 //
 // PlayerCards : 1 carte par joueur sur les matchs PARTAGES (intersection),
 // pas sur l'historique solo. C'est aligne avec Python qui calcule le score
@@ -460,21 +463,15 @@ func xuidsOf(squadXUIDs map[string]string) []string {
 // PlayerScoreCard.XUID cote front.
 //
 // Capability gating : si LoadFor a retourne ErrCapabilityNotSupported pour le
-// joueur principal, perPlayer[mainGT] est absent et le caller GetSquadPage a
-// deja court-circuite. Pas besoin de gate explicite ici.
+// joueur principal, le caller GetSquadPage a deja court-circuite. Pas besoin
+// de gate explicite ici.
 func buildSquadHeader(
 	ctx context.Context,
 	mainGT string,
-	perPlayer map[string][]canonical.PlayerMatchRow,
 	gtToXUID map[string]string,
 	shared []domain.SquadSharedMatch,
 ) *domain.SquadHeader {
 	header := &domain.SquadHeader{}
-
-	if mainRows, ok := perPlayer[mainGT]; ok && len(mainRows) > 0 {
-		soloKPIs := analysis.ComputeKPIStats(mainRows)
-		header.SoloKPIs = &soloKPIs
-	}
 
 	if len(shared) == 0 {
 		return header
@@ -482,6 +479,14 @@ func buildSquadHeader(
 
 	// Carte par joueur : agreger les rows partages depuis SharedMatches.
 	rowsByPlayer := projectSharedRows(shared)
+
+	// SoloKPIs : KPIs du joueur principal sur les matchs partages uniquement.
+	// Le briefing reflete ainsi le scope escouade, pas l'historique solo.
+	if mainRows, ok := rowsByPlayer[mainGT]; ok && len(mainRows) > 0 {
+		soloKPIs := analysis.ComputeKPIStats(mainRows)
+		header.SoloKPIs = &soloKPIs
+	}
+
 	cards := buildPlayerScoreCards(rowsByPlayer, gtToXUID)
 	header.PlayerCards = cards
 

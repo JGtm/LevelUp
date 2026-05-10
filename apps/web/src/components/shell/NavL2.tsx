@@ -3,7 +3,8 @@
  *
  * Visible dans les sections Stats, Escouade et Carrière.
  *
- * Stats    : sous-onglets (Séries · Sessions) + FilterOmnibar + PeriodSessionRail.
+ * Stats legacy (timeseries, history) : FilterOmnibar + PeriodSessionRail.
+ * Stats perso (_personal.*) : NavL2 absent — PersonalStatsLayout gère sa propre barre.
  * Escouade : FilterOmnibar uniquement (SquadLayout gère sa propre barre).
  * Carrière : sous-onglets (Progression · Citations · Pass saisonnier) uniquement.
  *
@@ -13,13 +14,6 @@
 import { Link, useRouterState, useParams } from '@tanstack/react-router'
 import { FilterOmnibar } from './FilterOmnibar'
 import { PeriodSessionRail } from './PeriodSessionRail'
-
-// ─── Sous-onglets de la section Stats ─────────────────────────────────────────
-
-const STATS_TABS = [
-  { label: 'Séries', path: '/players/$playerSlug/stats/timeseries' },
-  { label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
-] as const
 
 // ─── Sous-onglets de la section Carrière ──────────────────────────────────────
 
@@ -33,7 +27,11 @@ const CAREER_TABS = [
 
 type ActiveSection = 'stats' | 'squad' | 'career' | null
 
+// Routes _personal : PersonalStatsLayout gère sa propre barre de filtres.
+const PERSONAL_STATS_RE = /\/players\/[^/]+\/stats\/(summary|maps-modes|distributions|progression|advanced)/
+
 function detectSection(pathname: string): ActiveSection {
+  if (PERSONAL_STATS_RE.test(pathname)) return null
   if (/\/players\/[^/]+\/stats\//.test(pathname)) return 'stats'
   if (/\/players\/[^/]+\/squad/.test(pathname)) return 'squad'
   if (/\/players\/[^/]+\/(career|citations)/.test(pathname)) return 'career'
@@ -90,37 +88,15 @@ export function NavL2() {
     )
   }
 
+  // Stats : FilterOmnibar + PeriodSessionRail, sans onglets (virés).
+  // match_context='solo' : la page timeseries/history ne concerne que les matchs solo.
   return (
     <div
       className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
       role="navigation"
       aria-label="Navigation analytique"
     >
-      {section === 'stats' && (
-        <div className="flex items-center gap-0 border-b border-border px-4">
-          {STATS_TABS.map((tab) => {
-            const resolved = resolvePath(tab.path)
-            const isActive = pathname === resolved
-            return (
-              <Link
-                key={tab.label}
-                to={resolved}
-                className={[
-                  'border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-                ].join(' ')}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {tab.label}
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      <FilterOmnibar />
+      <FilterOmnibar matchContext="solo" />
       <PeriodSessionRail />
     </div>
   )

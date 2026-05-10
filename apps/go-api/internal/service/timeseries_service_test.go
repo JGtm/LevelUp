@@ -135,11 +135,14 @@ func TestBuildDistributionsTab_Empty(t *testing.T) {
 }
 
 func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
+	// KDA fourni en pointeur — buildKDABuckets lit m.KDA (colonne BDD) et
+	// non plus kills/deaths (cf. ADR 0006 + revue 2026-05-10).
+	kda1, kda2, kda3, kda4 := 2.0, 1.0, 3.0, 0.0
 	matches := []legacymatch.StatsMatchRow{
-		{Kills: 10, Deaths: 5, StartTime: time.Now()}, // KD = 2.0
-		{Kills: 5, Deaths: 5, StartTime: time.Now()},  // KD = 1.0
-		{Kills: 15, Deaths: 5, StartTime: time.Now()}, // KD = 3.0
-		{Kills: 0, Deaths: 10, StartTime: time.Now()}, // KD = 0.0
+		{Kills: 10, Deaths: 5, KDA: &kda1, StartTime: time.Now()},
+		{Kills: 5, Deaths: 5, KDA: &kda2, StartTime: time.Now()},
+		{Kills: 15, Deaths: 5, KDA: &kda3, StartTime: time.Now()},
+		{Kills: 0, Deaths: 10, KDA: &kda4, StartTime: time.Now()},
 	}
 	tab := buildDistributionsTab(matches)
 	if len(tab.KDABuckets) == 0 {
@@ -426,6 +429,40 @@ func TestFilterStatsMatchRows_NoFilter(t *testing.T) {
 	out := filterStatsMatchRows(rows, domain.FilterContextInput{})
 	if len(out) != 2 {
 		t.Errorf("expected 2 rows without filter, got %d", len(out))
+	}
+}
+
+// TestFilterStatsMatchRows_MatchContextSolo verifie que le filtre
+// match_context='solo' est bien applique par la pipeline applyAllFilters
+// (page Stats : exclure les matchs en escouade IsWithFriends=true).
+func TestFilterStatsMatchRows_MatchContextSolo(t *testing.T) {
+	now := time.Now()
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "solo1", StartTime: now, IsWithFriends: false},
+		{MatchID: "squad1", StartTime: now, IsWithFriends: true},
+		{MatchID: "solo2", StartTime: now, IsWithFriends: false},
+	}
+	out := filterStatsMatchRows(rows, domain.FilterContextInput{MatchContext: domain.MatchContextSolo})
+	if len(out) != 2 {
+		t.Fatalf("solo filter: expected 2 rows, got %d", len(out))
+	}
+	for _, r := range out {
+		if r.IsWithFriends {
+			t.Errorf("solo filter leaked squad match: %s", r.MatchID)
+		}
+	}
+}
+
+// TestFilterStatsMatchRows_MatchContextSquad verifie le pendant squad.
+func TestFilterStatsMatchRows_MatchContextSquad(t *testing.T) {
+	now := time.Now()
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "solo1", StartTime: now, IsWithFriends: false},
+		{MatchID: "squad1", StartTime: now, IsWithFriends: true},
+	}
+	out := filterStatsMatchRows(rows, domain.FilterContextInput{MatchContext: domain.MatchContextSquad})
+	if len(out) != 1 || out[0].MatchID != "squad1" {
+		t.Errorf("squad filter: expected only squad1, got %+v", out)
 	}
 }
 

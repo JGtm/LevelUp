@@ -98,8 +98,22 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'personal-stats=>squad',
   // Synthesis embarque squad sub-views
   'synthesis=>squad',
-  // TimeseriesPage embarque la section engagement
+  // TimeseriesPage embarque la section engagement, réutilise les wrappers
+  // Squad (WinRate vs History, Map perf vs History, intensity heatmap, builder
+  // efficiency) et le tableau Explorer pour l'historique des matchs.
   'timeseries=>engagement',
+  'timeseries=>squad',
+  'timeseries=>explorer',
+  // Explorer mode "Joueur" réutilise des composants Squad (synergy table,
+  // visualisations partagées) — feature durable.
+  'explorer=>squad',
+  // Home embarque le SyncIndicator + auto-sync triggers de settings.
+  'home=>settings',
+  // Match-view réutilise des wrappers Squad (colors hash joueur, impact badges)
+  // ainsi que la galerie Media. Settings : réglages accessibility/preferences.
+  'match-view=>squad',
+  'match-view=>media',
+  'match-view=>settings',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).

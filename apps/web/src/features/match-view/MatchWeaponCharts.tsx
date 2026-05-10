@@ -65,7 +65,7 @@ export function MatchWeaponPieChart({ weaponKills, t }: WeaponChartsProps) {
   const hasData = weaponKills.length > 0
 
   const buildOption = useCallback(
-    (_s: ChartSeries<unknown>[]): EChartsCoreOption => {
+    (): EChartsCoreOption => {
       const tc = getEChartsThemeColors()
       const data = aggregateWeaponKills(weaponKills, t).map((s, i) => ({
         name: s.name,

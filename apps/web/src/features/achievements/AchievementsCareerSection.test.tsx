@@ -118,8 +118,10 @@ describe('AchievementsCareerSection', () => {
     expect(screen.getByText('Tireur d\'élite')).toBeInTheDocument()
   })
 
-  it('limite le nombre de cartes affichées à VISIBLE_LIMIT', () => {
-    // Génère 50 entrées — doit n'en rendre que 30 visibles.
+  it('rend toutes les cartes (pas de cap : refacto 2026-05 → scroll vertical)', () => {
+    // Refacto 2026-05 : la sidebar utilise overflow-y-auto + maxHeight 640px
+    // au lieu d'un cap VISIBLE_LIMIT. Toutes les cartes sont rendues, le DOM
+    // gère la visibilité via le scroll natif.
     const items = Array.from({ length: 50 }, (_, i) => ({
       achievement_id: `a${i}`,
       name_en: `Ach ${i}`,
@@ -144,6 +146,6 @@ describe('AchievementsCareerSection', () => {
     })
     const { container } = render(<AchievementsCareerSection playerSlug="jgtm" />, { wrapper })
     const cards = container.querySelectorAll('[role="listitem"]')
-    expect(cards.length).toBe(30)
+    expect(cards.length).toBe(50)
   })
 })

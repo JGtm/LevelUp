@@ -510,7 +510,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     </span>
                     {cit.is_newly_mastered && (
                       <span className="text-[8px] font-bold text-warning leading-none">
-                        Maîtrisé !
+                        Maîtrisé !
                       </span>
                     )}
                   </div>

@@ -9,28 +9,16 @@
 # ─── Tabs ──────────────────────────────────────────────────────────────────
 
 [timeseries.tabs.summary]
-fr = "KPIs"
-en = "KPIs"
-
-[timeseries.tabs.cumul]
-fr = "Cumul"
-en = "Cumulative"
-
-[timeseries.tabs.form]
-fr = "Forme"
-en = "Form"
-
-[timeseries.tabs.intensity]
-fr = "Intensité"
-en = "Intensity"
+fr = "Synthèse"
+en = "Summary"
 
 [timeseries.tabs.distributions]
 fr = "Distributions"
 en = "Distributions"
 
-[timeseries.tabs.combat]
-fr = "Combat"
-en = "Combat"
+[timeseries.tabs.progression]
+fr = "Progression"
+en = "Progression"
 
 # ─── Onglet KPIs ───────────────────────────────────────────────────────────
 

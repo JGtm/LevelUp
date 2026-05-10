@@ -84,15 +84,23 @@ export function SessionMultiSelect({
   // dans l'event handler évite les cascading renders flaggés par
   // react-hooks/set-state-in-effect (équivalent React Compiler).
 
-  // Fermeture click-outside.
+  // Fermeture click-outside + Escape (alignement UX avec les autres pills
+  // de la FilterOmnibar — Escape ferme le popover ouvert).
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false)
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
     document.addEventListener('mousedown', handleMouseDown)
-    return () => document.removeEventListener('mousedown', handleMouseDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   // Sessions filtrées par recherche + plage de dates (filtre la liste uniquement).
@@ -213,6 +221,11 @@ export function SessionMultiSelect({
               const isChecked = pending.includes(s.label)
               const dateLabel = new Date(s.started_at).toLocaleDateString(intlLocale)
               const count = getMatchCount?.(s.label)
+              // Le label backend embarque un suffix " (N)" figé au sync (count
+              // brut sans contexte solo/squad ni cascade). Si le caller fournit
+              // un count dynamique on retire ce suffix pour éviter "(13) 6".
+              const displayLabel =
+                count !== undefined ? s.label.replace(/\s*\(\d+\)\s*$/, '') : s.label
               return (
                 <label
                   key={s.label}
@@ -225,7 +238,7 @@ export function SessionMultiSelect({
                     className="mt-0.5 shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm truncate">{s.label}</div>
+                    <div className="text-sm truncate">{displayLabel}</div>
                     <div className="text-xs text-muted-foreground">{dateLabel}</div>
                   </div>
                   {count !== undefined && (

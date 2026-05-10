@@ -17,7 +17,7 @@
  *
  * Multi-titres : libellés outcomes via useOutcomeLabel() (outcomes.toml).
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import type { KPIStats } from '@/lib/api/types'
 import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
@@ -26,6 +26,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { KpiGrid } from './KpiGrid'
 import { SquadVerdict } from './SquadVerdict'
 import { getBriefingTexts, type BriefingLocale } from './i18n'
+import { getScoreTier } from './tier'
 
 export interface SessionBriefingSquadProps {
   score: SquadScoreCard
@@ -51,7 +52,26 @@ function normalizeLocale(input: string | undefined): BriefingLocale {
 
 export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const gamertag = useAppShellStore((s) => s.currentPlayer?.gamertag ?? '')
   const texts = getBriefingTexts(normalizeLocale(locale))
+
+  // Mode solo avec performance_score : construit une carte joueur unique (moi).
+  const soloPlayers = useMemo<PlayerScoreCard[] | undefined>(() => {
+    if (squad != null || kpis.performance_score == null) return undefined
+    const score = kpis.performance_score
+    const total = kpis.outcomes.wins + kpis.outcomes.losses + kpis.outcomes.ties + kpis.outcomes.dnf
+    return [{
+      xuid: '',
+      gamertag,
+      score,
+      label: getScoreTier(score).key,
+      comparison: 'near' as const,
+      kd_ratio: kpis.deaths_per_game > 0 ? kpis.kills_per_game / kpis.deaths_per_game : kpis.kills_per_game,
+      win_rate: total > 0 ? kpis.outcomes.wins / total : 0,
+      accuracy: kpis.avg_accuracy,
+      kills: Math.round(kpis.kills_per_game * kpis.matches_count),
+    }]
+  }, [squad, kpis, gamertag])
 
   const [viewedXuid, setViewedXuid] = useState<string>(squad?.activeXuid ?? '')
 
@@ -81,17 +101,15 @@ export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      {squad && (
-        <SquadVerdict
-          squadScore={squad.score}
-          players={squad.players}
-          activeXuid={activeXuid}
-          viewedXuid={viewedXuid}
-          onSelectXuid={setViewedXuid}
-          kpis={viewedKpis}
-          texts={texts}
-        />
-      )}
+      <SquadVerdict
+        squadScore={squad?.score}
+        players={squad?.players ?? soloPlayers}
+        activeXuid={activeXuid}
+        viewedXuid={viewedXuid}
+        onSelectXuid={setViewedXuid}
+        kpis={viewedKpis}
+        texts={texts}
+      />
 
       {isDrilledIn && (
         <div className="flex items-center gap-2 px-1">
@@ -114,7 +132,7 @@ export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
         texts={texts}
         title={gridTitle}
         hint={texts.grid.trendHint}
-        omitSummaryCards={squad != null}
+        omitSummaryCards={true}
       />
     </div>
   )

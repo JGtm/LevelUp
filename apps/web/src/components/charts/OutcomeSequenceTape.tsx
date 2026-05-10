@@ -79,7 +79,7 @@ export function OutcomeSequenceTape({
   const xMax = runs.reduce((s, r) => s + r.count, 0)
   const themeVersion = useThemeVersion()
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   const option = useMemo((): EChartsCoreOption => {
     if (xMax === 0) return {}
     const tc = getEChartsThemeColors()

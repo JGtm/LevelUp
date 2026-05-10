@@ -106,6 +106,7 @@ type StatsMatchRow struct {
 	Rank                *int
 	IsRanked            bool
 	IsFirefight         bool
+	IsWithFriends       bool
 	PlaylistName        string
 	PairName            string
 	PairNameFR          string
@@ -118,6 +119,13 @@ type StatsMatchRow struct {
 	MedalExploitScore   *float64
 	OffensiveConversion *float64
 	DefensiveResistance *float64
+	MaxKillingSpree     *int
+	HeadshotKills       *int
+	PerfectKills        *int
+	// SkillRatingValue : rating CSR ou LUSR du match (depuis match_skill_rank).
+	// Nil si le titre/match n'a pas de skill snapshot.
+	SkillRatingValue *float64
+	SkillRatingType  string // "csr" | "lusr" | ""
 }
 
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.

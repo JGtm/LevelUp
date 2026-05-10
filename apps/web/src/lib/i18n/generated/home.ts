@@ -43,6 +43,7 @@ export const homeManifest = {
   "home.highlights.title.skill_delta_csr": { fr: "CSR", en: "CSR" },
   "home.highlights.title.skill_delta_lusr": { fr: "LUSR", en: "LUSR" },
   "home.highlights.title.volume": { fr: "Volume", en: "Volume" },
+  "home.highlights.unit.matches": { fr: "matchs", en: "matches" },
   "home.identity.unavailable": { fr: "Identité Spartan indisponible", en: "Spartan identity unavailable" },
   "home.kpi.favorite_playlist": { fr: "Playlist favorite", en: "Favorite playlist" },
   "home.kpi.favorite_weapon": { fr: "Arme favorite", en: "Fav. weapon" },

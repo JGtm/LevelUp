@@ -474,10 +474,11 @@ func TestSquadServiceV2_GetSquadPage_HeaderNilWhenNoShared(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSquadPage: %v", err)
 	}
-	// Pas de match commun -> SoloKPIs presents (rows main existent), mais
-	// PlayerCards et SquadScore restent vides (aucune row partagee).
-	if resp.Header.SoloKPIs == nil {
-		t.Error("SoloKPIs should still be filled (main has rows)")
+	// Pas de match commun -> SoloKPIs nil : sur la page Escouade, SoloKPIs
+	// reflete le scope escouade (matchs partages). Sans intersection, le
+	// briefing reste vide pour rester aligne avec le scope demande.
+	if resp.Header.SoloKPIs != nil {
+		t.Errorf("no shared matches -> SoloKPIs should be nil, got %+v", resp.Header.SoloKPIs)
 	}
 	if len(resp.Header.PlayerCards) != 0 {
 		t.Errorf("no shared matches -> no player cards, got %d", len(resp.Header.PlayerCards))
