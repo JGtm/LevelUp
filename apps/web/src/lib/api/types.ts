@@ -719,6 +719,10 @@ export interface CareerSummary {
   progress_pct: number
   is_max_rank: boolean
   recorded_at: string | null
+  rank_image_url?: string | null
+  next_rank_name_fr?: string
+  next_rank_name_en?: string
+  next_rank_image_url?: string | null
 }
 
 export interface HeroProgress {
@@ -726,6 +730,7 @@ export interface HeroProgress {
   xp_remaining: number
   percentage: number
   current_rank: number
+  total_ranks?: number
 }
 
 export interface CareerProjections {
@@ -808,6 +813,53 @@ export interface CareerTopMatchesResponse {
 
 export interface CareerEncountersResponse {
   items: CareerEncounter[]
+}
+
+// Section "Matchs marquants" (page Carrière) : 15 best + 15 worst au format
+// ExplorerMatchRow (mêmes 21 colonnes que la page Explorer) + cascade counts
+// pour les filtres Expérience / Saisons.
+export interface CareerHighlightMatchesResponse {
+  best_matches: ExplorerMatchRow[]
+  worst_matches: ExplorerMatchRow[]
+  available_experience: HighlightExperienceCount[]
+  available_seasons: HighlightSeasonCount[]
+}
+
+export interface HighlightExperienceCount {
+  value: 'all' | 'ranked' | 'unranked'
+  count: number
+}
+
+export interface HighlightSeasonCount {
+  value: string // season ID, ex. "season6"
+  count: number
+}
+
+// Filtres optionnels passés en query params à GET /pages/career/highlight-matches.
+export interface CareerHighlightFilters {
+  experience?: 'all' | 'ranked' | 'unranked'
+  season_ids?: string[] // multi-select
+}
+
+// Section "Joueurs les plus croisés (hors amis)" : 10 lignes au format
+// MatchEncounterRow (réutilise le tableau Match View > Historique de rencontre).
+export interface CareerTopEncountersResponse {
+  items: MatchEncounterRow[]
+}
+
+// Section "Top némésis" / "Top souffre-douleur" : top 10 chacun, ratio
+// frags/deaths calculé côté backend.
+export interface CareerRival {
+  gamertag: string
+  frags: number
+  deaths: number
+  ratio: number
+  match_count: number
+}
+
+export interface CareerRivalsResponse {
+  nemeses: CareerRival[]
+  victims: CareerRival[]
 }
 
 // ---------------------------------------------------------------------------

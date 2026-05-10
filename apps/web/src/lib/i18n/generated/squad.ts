@@ -3,8 +3,9 @@
 
 export const squadManifest = {
   "narrative.encounter.ally_plus": { fr: "Allié+", en: "Ally+" },
+  "narrative.encounter.coriace": { fr: "Coriace", en: "Tough opponent" },
   "narrative.encounter.ordinal": { fr: "×{ordinal}", en: "×{ordinal}" },
-  "narrative.encounter.tough_enemy": { fr: "Coriace", en: "Tough enemy" },
+  "narrative.encounter.tough_enemy": { fr: "Dur à cuire", en: "Tough nut" },
   "narrative.role.clutch_finisher": { fr: "Finisher clutch", en: "Clutch finisher" },
   "narrative.role.false_brother": { fr: "Faux-frère", en: "False brother" },
   "narrative.role.first_blood": { fr: "Premier sang", en: "First blood" },
