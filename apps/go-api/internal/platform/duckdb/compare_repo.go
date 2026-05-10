@@ -269,14 +269,16 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 			COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END) AS ally_count,
 			COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id THEN 1 END) AS enemy_count,
 			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id AND a.outcome = 2 THEN 1.0 ELSE 0.0 END) /
-				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END), 0) AS winrate_as_ally
+				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END), 0) AS winrate_as_ally,
+			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id AND a.outcome = 2 THEN 1.0 ELSE 0.0 END) /
+				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id THEN 1 END), 0) AS winrate_vs_enemy
 		FROM shared.match_participants a
 		JOIN shared.match_participants b ON b.match_id = a.match_id AND b.xuid = ?
 		WHERE a.xuid = ?`
 
 	var total, allyCount, enemyCount int
-	var winrateAsAlly sql.NullFloat64
-	if err := r.pdb.Player.QueryRow(ctx, qMatches, xuidB, xuidA).Scan(&total, &allyCount, &enemyCount, &winrateAsAlly); err != nil {
+	var winrateAsAlly, winrateVsEnemy sql.NullFloat64
+	if err := r.pdb.Player.QueryRow(ctx, qMatches, xuidB, xuidA).Scan(&total, &allyCount, &enemyCount, &winrateAsAlly, &winrateVsEnemy); err != nil {
 		return nil, fmt.Errorf("CompareRepo.GetEncounterStats matches: %w", err)
 	}
 	if total == 0 {
@@ -302,6 +304,9 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	}
 	if winrateAsAlly.Valid {
 		enc.WinrateAsAlly = &winrateAsAlly.Float64
+	}
+	if winrateVsEnemy.Valid {
+		enc.WinrateVsEnemy = &winrateVsEnemy.Float64
 	}
 	return enc, nil
 }
