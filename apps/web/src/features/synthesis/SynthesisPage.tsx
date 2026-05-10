@@ -2,346 +2,252 @@
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
-import { useState, useCallback, useMemo } from 'react'
+import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import type { EChartsCoreOption } from 'echarts/core'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
-import { useFieldMappings, useFieldLabel } from '@/lib/i18n/fieldMappings'
-import { StatCard } from '@/components/cards/StatCard'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { SynthesisHighlightsSection } from './SynthesisHighlightsSection'
+import { EmptyStateCard } from '@/components/ui/empty-state'
+import { OutcomeBar } from '@/components/ui/outcome-bar'
+import { ProportionalBar } from '@/components/ui/proportional-bar'
 import { SynthesisRelationsPreview } from './SynthesisRelationsPreview'
-import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
-import { resolveToken } from '@/lib/accessibility'
-import {
-  CHART_BG,
-  getAxisBase,
-  getEChartsThemeColors,
-  getLegendBase,
-  getTooltipBase,
-} from '@/components/charts/_utils'
+import { SynthesisKillTypesDonut } from './SynthesisKillTypesDonut'
+import { SynthesisWeaponKillsChart } from './SynthesisWeaponKillsChart'
+import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
+import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
+import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
+import { SynthesisBipolaireChart } from './SynthesisBipolaireChart'
+import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
+import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import type {
-  ComparisonMetricItem,
-  SynthesisBreakdowns,
-  SynthesisKPIs,
+  PeriodInput,
+  SynthesisDetailedStats,
   SynthesisOverview,
-  SynthesisScope,
   SynthesisQueryRequest,
-  TopWeekItem,
+  SynthesisWeaponKillEntry,
 } from '@/lib/api/types'
-
-const PERIOD_OPTIONS = [
-  { value: 'all', label: 'Tout' },
-  { value: '2y', label: '2 ans' },
-  { value: '1y', label: '1 an' },
-  { value: '1m', label: '1 mois' },
-  { value: '1w', label: '1 semaine' },
-] as const
-type Period = typeof PERIOD_OPTIONS[number]['value']
-
-const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-
-/**
- * P7.1 (revue 2026-04-29) — formatage côté front d'une valeur de
- * ComparisonMetricItem (DTO sans solo_text/squad_text). Le format dépend de
- * la clé canonique (cf. fields.toml). Les valeurs brutes sont des `number`.
- */
-function formatComparisonMetric(metricKey: string | undefined, value: number | undefined): string {
-  if (value == null) return ''
-  switch (metricKey) {
-    case 'win_rate':
-    case 'accuracy':
-      return `${(value * 100).toFixed(1)}%`
-    case 'performance_score':
-      return value.toFixed(0)
-    default:
-      return value.toFixed(2)
-  }
-}
-
-// ─── Graphique bipolaire Solo ← / → Escouade ─────────────────────────────────
-
-export function buildBipolaireOption(metrics: ComparisonMetricItem[]): EChartsCoreOption {
-  if (metrics.length === 0) return { backgroundColor: CHART_BG }
-  const dps = [...metrics].reverse()
-  const labels = dps.map((m) => m.label)
-  const soloVals = dps.map((m) => -Math.abs(m.solo_value))
-  const squadVals = dps.map((m) => Math.abs(m.squad_value))
-  const tc = getEChartsThemeColors()
-  const axis = getAxisBase(tc)
-  return {
-    backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 40, left: 120, right: 80 },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { ...getLegendBase(tc), data: ['Solo', 'Escouade'] },
-    xAxis: { ...axis, type: 'value', axisLabel: { show: false }, splitLine: { show: false } },
-    yAxis: { ...axis, type: 'category', data: labels },
-    series: [
-      {
-        name: 'Solo',
-        type: 'bar',
-        data: soloVals,
-        itemStyle: { color: resolveToken('perf-tier-2') },
-        label: {
-          show: true, position: 'left',
-          color: tc.axisLabel, fontSize: 10,
-          // P7.1 (revue 2026-04-29) : formatage côté front à partir des
-          // valeurs brutes (solo_text/squad_text retirés du DTO).
-          formatter: (p: { dataIndex: number }) =>
-            formatComparisonMetric(dps[p.dataIndex]?.label, dps[p.dataIndex]?.solo_value),
-        },
-        markLine: {
-          symbol: 'none', silent: true,
-          lineStyle: { color: tc.splitLine, width: 2 },
-          label: { show: false },
-          data: [{ xAxis: 0 }],
-        },
-      },
-      {
-        name: 'Escouade',
-        type: 'bar',
-        data: squadVals,
-        itemStyle: { color: resolveToken('divergent-pos') },
-        label: {
-          show: true, position: 'right',
-          color: tc.axisLabel, fontSize: 10,
-          formatter: (p: { dataIndex: number }) =>
-            formatComparisonMetric(dps[p.dataIndex]?.label, dps[p.dataIndex]?.squad_value),
-        },
-      },
-    ],
-  }
-}
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
 
-// ─── Bloc 0 — Scope bar ───────────────────────────────────────────────────────
-
-interface ScopeBarProps { scope: SynthesisScope }
-function ScopeBar({ scope }: ScopeBarProps) {
-  const periodLabel = PERIOD_OPTIONS.find((o) => o.value === scope.period)?.label ?? scope.period
-  const appliedFilters = scope.filters_applied ?? []
-  const ignoredFilters = scope.filters_ignored ?? []
-  return (
-    <Card>
-      <CardContent className="py-4">
-        <div className="flex flex-wrap gap-6 items-center text-sm" data-testid="scope-bar">
-          <span className="text-muted-foreground">Période : <strong className="text-foreground">{periodLabel}</strong></span>
-          <span className="text-muted-foreground">Matchs : <strong className="text-foreground">{scope.match_count}</strong></span>
-          {appliedFilters.length > 0 && (
-            <span className="text-muted-foreground">Filtres : <strong className="text-foreground">{appliedFilters.join(', ')}</strong></span>
-          )}
-          {ignoredFilters.length > 0 && (
-            <span className="text-xs text-warning">⚠ Ignorés : {ignoredFilters.join(', ')}</span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
 
-// P8.13 (revue 2026-04-29) : StatCell consolidé dans `components/cards/StatCard`
-// (variant 'default'). Wrapper conservé pour la rétrocompat des call sites.
-function StatCell({ label, value }: { label: string; value: string }) {
-  return <StatCard label={label} value={value} />
-}
-
-interface SynthesisOverviewSectionProps { overview: SynthesisOverview }
-function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
-  const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string): string =>
-    fieldMappings?.fields[key]?.label ?? key
-  // P4.4 (revue 2026-04-29 B3) : utilise overview.total_kdr expose par l'API
-  // (P2.5) au lieu de sum/sum cote front (mathematiquement faux car
-  // sum(K)/sum(D) != avg(K/D)). Fallback sur l'ancien recompute si total_kdr
-  // manquant (vieux DTO).
-  const kd = overview.total_kdr != null
-    ? overview.total_kdr.toFixed(2)
-    : overview.total_deaths > 0
-    ? (overview.total_kills / overview.total_deaths).toFixed(2)
-    : String(overview.total_kills)
+function AccentCard({ label, value, accent }: { label: string; value: string; accent: SemanticToken }) {
   return (
-    <Card>
-      <CardHeader><CardTitle>Vue d'ensemble</CardTitle></CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCell label="Victoires" value={String(overview.total_wins)} />
-          <StatCell label="Défaites" value={String(overview.total_losses)} />
-          <StatCell label={labelOf('kills')} value={String(overview.total_kills)} />
-          <StatCell label="K/D moyen" value={kd} />
-          <StatCell label={labelOf('win_rate')} value={`${(overview.win_rate * 100).toFixed(1)}%`} />
-          {overview.best_kills_match != null && (
-            <StatCell label="Meilleur match" value={`${overview.best_kills_match}K`} />
-          )}
-          {(overview.longest_win_streak ?? 0) > 1 && (
-            <StatCell label="Série max" value={`${overview.longest_win_streak}V`} />
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-interface MetricRowProps { item: ComparisonMetricItem }
-function MetricRow({ item }: MetricRowProps) {
-  // P7.1 : item.label est une clé canonique (win_rate, kd_ratio…),
-  // résolue en libellé via useFieldLabel (TOML fields.toml).
-  const displayLabel = useFieldLabel(item.label)
-  return (
-    <tr className="border-b last:border-0">
-      <td className="px-4 py-3 text-sm font-medium text-foreground">{displayLabel}</td>
-      <td className="px-4 py-3 text-center text-sm text-info">
-        {formatComparisonMetric(item.label, item.solo_value)}
-      </td>
-      <td className="px-4 py-3 text-center text-sm text-success">
-        {formatComparisonMetric(item.label, item.squad_value)}
-      </td>
-    </tr>
-  )
-}
-
-interface KPISectionProps { title: string; kpis: SynthesisKPIs }
-function KPISection({ title, kpis }: KPISectionProps) {
-  return (
-    <div>
-      {title && <h3 className="text-sm font-semibold text-muted-foreground mb-2">{title}</h3>}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Win Rate</span><span className="text-xl font-bold">{(kpis.win_rate * 100).toFixed(1)}%</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">K/D</span><span className="text-xl font-bold">{kpis.kd_ratio?.toFixed(2) ?? '-'}</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Matchs</span><span className="text-xl font-bold">{kpis.match_count}</span></div>
-        <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Perf. <InfoTooltip content="Le Performance Score est un indice composite calculé par LevelUp à partir des kills, assists, objectifs et dégâts. Plus il est élevé, meilleure est la contribution globale au match." /></span><span className="text-xl font-bold">{kpis.performance_score?.toFixed(0) ?? '-'}</span></div>
+    <div className="rounded-lg overflow-hidden border">
+      <div className="h-[3px]" style={{ backgroundColor: tokenCssVar(accent) }} />
+      <div className="p-3">
+        <span className="text-xs text-muted-foreground block">{label}</span>
+        <span className="text-xl font-bold">{value}</span>
       </div>
     </div>
   )
 }
 
-interface TopWeekRowProps { item: TopWeekItem; rank: number }
-function TopWeekRow({ item, rank }: TopWeekRowProps) {
+interface SynthesisOverviewSectionProps {
+  overview: SynthesisOverview
+  detailedStats?: SynthesisDetailedStats
+  topWeaponKills?: SynthesisWeaponKillEntry[]
+}
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: SynthesisOverviewSectionProps) {
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string): string =>
+    fieldMappings?.fields[key]?.label ?? key
+  // P4.4 (revue 2026-04-29 B3) : K/D agrégé canonique sum/sum depuis l'API.
+  const kd = overview.total_kdr != null
+    ? overview.total_kdr.toFixed(2)
+    : overview.total_deaths > 0
+    ? (overview.total_kills / overview.total_deaths).toFixed(2)
+    : String(overview.total_kills)
+
+  const hasIncidents = detailedStats != null &&
+    (detailedStats.total_betrayals > 0 || detailedStats.total_suicides > 0)
+
   return (
-    <tr className="border-b last:border-0">
-      <td className="px-4 py-2 text-sm text-muted-foreground">{rank}</td>
-      <td className="px-4 py-2 text-sm font-mono font-medium">{item.week_label}</td>
-      <td className="px-4 py-2 text-center text-sm font-bold">{item.match_count}</td>
-      <td className="px-4 py-2 text-center text-sm">{(item.win_rate * 100).toFixed(0)}%</td>
-      <td className="px-4 py-2 text-center text-sm">{item.kd_ratio?.toFixed(2) ?? '-'}</td>
-    </tr>
+    <Card>
+      <CardHeader><CardTitle>Vue d'ensemble</CardTitle></CardHeader>
+      <CardContent>
+
+        {/* Statistiques détaillées intégrées */}
+        {detailedStats && (
+          <div className="space-y-5">
+
+            <div>
+              {/* Donut + 3 cartes côte à côte */}
+              <div className="flex gap-4 items-stretch">
+                <div className="flex-1 min-w-0">
+                  <SynthesisKillTypesDonut stats={detailedStats} height={260} />
+                </div>
+                <div className="flex flex-col gap-3 w-[22rem] shrink-0">
+
+                  {/* Taux de victoire */}
+                  <div className="flex-1 flex flex-col items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-center">
+                    <p className="text-xs text-muted-foreground">{labelOf('win_rate')}</p>
+                    <p className="text-xl font-bold text-primary">{`${(overview.win_rate * 100).toFixed(0)}%`}</p>
+                    <div className="mt-1.5 w-full">
+                      <OutcomeBar wins={overview.total_wins} draws={overview.total_ties} dnfs={overview.total_dnf} losses={overview.total_losses} />
+                    </div>
+                    <div className="mt-1 flex justify-center gap-2 text-xs font-semibold tabular-nums">
+                      <span style={{ color: tokenCssVar('outcome-win') }}>{overview.total_wins}</span>
+                      {overview.total_ties > 0 && <span style={{ color: tokenCssVar('outcome-draw') }}>{overview.total_ties}</span>}
+                      {overview.total_dnf > 0 && <span style={{ color: tokenCssVar('outcome-dnf') }}>{overview.total_dnf}</span>}
+                      <span style={{ color: tokenCssVar('outcome-loss') }}>{overview.total_losses}</span>
+                    </div>
+                  </div>
+
+                  {/* FDA */}
+                  <div className="flex-1 flex flex-col items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-center">
+                    <p className="text-xs text-muted-foreground">{labelOf('kd_ratio')}</p>
+                    <p className="text-xl font-bold text-primary">{kd}</p>
+                    <div className="mt-1.5 w-full">
+                      <ProportionalBar segments={[
+                        { value: overview.total_kills,   color: 'outcome-win' },
+                        { value: overview.total_assists,  color: 'outcome-draw' },
+                        { value: overview.total_deaths,   color: 'outcome-loss' },
+                      ]} />
+                    </div>
+                    <div className="mt-1 flex justify-center gap-2 text-xs font-semibold tabular-nums">
+                      <span style={{ color: tokenCssVar('outcome-win') }}>{overview.total_kills}</span>
+                      <span style={{ color: tokenCssVar('outcome-draw') }}>{overview.total_assists}</span>
+                      <span style={{ color: tokenCssVar('outcome-loss') }}>{overview.total_deaths}</span>
+                    </div>
+                  </div>
+
+                  {/* Incidents */}
+                  {hasIncidents && (
+                    <div className="flex-1 flex flex-col items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-center">
+                      <p className="text-xs text-muted-foreground">Incidents</p>
+                      <div className="mt-1.5 w-full">
+                        <ProportionalBar segments={[
+                          { value: detailedStats.total_betrayals, color: 'warning' },
+                          { value: detailedStats.total_suicides,  color: 'outcome-dnf' },
+                        ]} />
+                      </div>
+                      <div className="mt-1 flex justify-center gap-2 text-xs font-semibold tabular-nums">
+                        {detailedStats.total_betrayals > 0 && (
+                          <span style={{ color: tokenCssVar('warning') }}>{detailedStats.total_betrayals} trahisons</span>
+                        )}
+                        {detailedStats.total_suicides > 0 && (
+                          <span style={{ color: tokenCssVar('outcome-dnf') }}>{detailedStats.total_suicides} suicides</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+
+              {/* Tir / Dégâts / Fun à gauche, Frags par arme à droite */}
+              <div className="flex gap-4 mt-4 items-stretch">
+                <div className="flex flex-col gap-4 w-[21rem] shrink-0">
+                  {(overview.longest_win_streak ?? 0) > 1 && (
+                    <AccentCard label="Victoires consécutives (max)" value={String(overview.longest_win_streak)} accent="outcome-win" />
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {overview.best_kills_match != null && (
+                      <AccentCard label={`Meilleur match · ${labelOf('kills').toLowerCase()}`} value={String(overview.best_kills_match)} accent="outcome-win" />
+                    )}
+                    <AccentCard label="Folie meurtrière (max)" value={detailedStats.max_killing_spree.toLocaleString('fr-FR')} accent="outcome-win" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <AccentCard label="Frags parfaits" value={detailedStats.total_perfect_kills.toLocaleString('fr-FR')} accent="perf-tier-3" />
+                    <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'} value={detailedStats.total_headshot_kills.toLocaleString('fr-FR')} accent="perf-tier-2" />
+                  </div>
+
+                  <div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <AccentCard label={fieldMappings?.fields['shots_fired']?.label ?? 'Tirs effectués'} value={detailedStats.total_shots_fired.toLocaleString('fr-FR')} accent="info" />
+                      <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? 'Tirs au but'}      value={detailedStats.total_shots_hit.toLocaleString('fr-FR')}   accent="info" />
+                      {detailedStats.total_shots_fired > 0 && (
+                        <AccentCard
+                          label="Précision brute"
+                          value={`${((detailedStats.total_shots_hit / detailedStats.total_shots_fired) * 100).toFixed(1)}%`}
+                          accent="info"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? 'Dégâts infligés'} value={Math.round(detailedStats.total_damage_dealt).toLocaleString('fr-FR')} accent="outcome-win" />
+                      <AccentCard label="Dégâts reçus"    value={Math.round(detailedStats.total_damage_taken).toLocaleString('fr-FR')} accent="outcome-loss" />
+                    </div>
+                  </div>
+
+                  {(detailedStats.total_vehicles_destroyed > 0 || detailedStats.total_hijacks > 0) && (
+                    <div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {detailedStats.total_vehicles_destroyed > 0 && (
+                          <AccentCard label="Véhicules détruits" value={detailedStats.total_vehicles_destroyed.toLocaleString('fr-FR')} accent="warning" />
+                        )}
+                        {detailedStats.total_hijacks > 0 && (
+                          <AccentCard label="Hijacks" value={detailedStats.total_hijacks.toLocaleString('fr-FR')} accent="chart-series-4" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {topWeaponKills && topWeaponKills.length > 0 && (
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <SynthesisWeaponKillsChart weapons={topWeaponKills} fillHeight />
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </CardContent>
+    </Card>
   )
 }
 
-// ─── Breakdowns D7 ────────────────────────────────────────────────────────────
 
-interface SynthesisBreakdownsSectionProps { breakdowns: SynthesisBreakdowns }
-function SynthesisBreakdownsSection({ breakdowns }: SynthesisBreakdownsSectionProps) {
-  const hasMaps = breakdowns.top_maps.length > 0
-  const hasModes = breakdowns.top_modes.length > 0
-  if (!hasMaps && !hasModes) return null
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {hasMaps && (
-        <Card>
-          <CardHeader><CardTitle>Par carte</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted border-b">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Carte</th>
-                    <th className="px-4 py-2 text-center">Matchs</th>
-                    <th className="px-4 py-2 text-center">Win%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {breakdowns.top_maps.map((m) => (
-                    <tr key={m.map_name} className="border-b last:border-0">
-                      <td className="px-4 py-2 text-sm font-medium">{m.map_name}</td>
-                      <td className="px-4 py-2 text-center text-sm">{m.match_count}</td>
-                      <td className="px-4 py-2 text-center text-sm">{(m.win_rate * 100).toFixed(0)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {hasModes && (
-        <Card>
-          <CardHeader><CardTitle>Par mode</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted border-b">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Mode</th>
-                    <th className="px-4 py-2 text-center">Matchs</th>
-                    <th className="px-4 py-2 text-center">Win%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {breakdowns.top_modes.map((m) => (
-                    <tr key={m.mode_name} className="border-b last:border-0">
-                      <td className="px-4 py-2 text-sm font-medium">{m.mode_name}</td>
-                      <td className="px-4 py-2 text-center text-sm">{m.match_count}</td>
-                      <td className="px-4 py-2 text-center text-sm">{(m.win_rate * 100).toFixed(0)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  )
-}
 
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 export function SynthesisPage() {
   const { playerSlug } = useParams({ from: '/players/$playerSlug/synthesis' })
   const { filterContext } = useGlobalFilterStore()
-  const [period, setPeriod] = useState<Period>('all')
-  const request: SynthesisQueryRequest = { filters: filterContext, period }
-  const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, period, request)
+
+  // ── Filtres période / saison (pending → committed) ──────────────────────────
+  const [pendingPeriod, setPendingPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
+  const [committedPeriod, setCommittedPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
+  const [activePopover, setActivePopover] = useState<'periode' | 'saison' | null>(null)
+
+  const togglePopover = (which: 'periode' | 'saison') =>
+    setActivePopover((cur) => (cur === which ? null : which))
+  const closeAll = () => setActivePopover(null)
+
+  const { seasons, activeSeason } = useActiveSeason(pendingPeriod)
+
+  const isDirty =
+    pendingPeriod.start_date !== committedPeriod.start_date ||
+    pendingPeriod.end_date !== committedPeriod.end_date
+
+  function handleAnalyser() {
+    setCommittedPeriod(pendingPeriod)
+    closeAll()
+  }
+
+  const hasPeriod = !!(committedPeriod.start_date || committedPeriod.end_date)
+  const request: SynthesisQueryRequest = {
+    filters: filterContext,
+    period: 'all',
+    start_date: hasPeriod ? committedPeriod.start_date : undefined,
+    end_date: hasPeriod ? committedPeriod.end_date : undefined,
+  }
+  const { data, isLoading, isError, error } = useSynthesisPage(playerSlug, committedPeriod, request)
 
   const comparisonMetrics = data?.comparison_metrics ?? []
-  const heatmapData = data?.heatmap_data ?? []
   const topWeeks = data?.top_weeks ?? []
-
-  const bipolaireSeries = useMemo<ChartSeries<ComparisonMetricItem>[]>(
-    () => comparisonMetrics.length > 0
-      ? [{ key: 'bipolaire', datapoints: comparisonMetrics }]
-      : [],
-    [comparisonMetrics],
-  )
-  const bipolaireHeight = Math.max(320, 70 * comparisonMetrics.length)
-  const buildBipolaireOptCb = useCallback(
-    (s: ChartSeries<ComparisonMetricItem>[]) => buildBipolaireOption(s[0]?.datapoints ?? []),
-    [],
-  )
-
-  const heatmapSeries = useMemo<ChartSeries<ChartPointHeatmap>[]>(() => {
-    if (heatmapData.length === 0) return []
-    const countMap = new Map<string, number>()
-    for (const c of heatmapData) {
-      if (c.dow >= 0 && c.dow < 7 && c.hour >= 0 && c.hour < 24) {
-        countMap.set(`${c.dow}-${c.hour}`, c.count)
-      }
-    }
-    const datapoints: ChartPointHeatmap[] = []
-    for (let d = 0; d < 7; d++) {
-      for (let h = 0; h < 24; h++) {
-        datapoints.push({ x: `${h}h`, y: DOW_LABELS[d], value: countMap.get(`${d}-${h}`) ?? 0 })
-      }
-    }
-    return [{ key: 'activity', datapoints }]
-  }, [heatmapData])
+  const { data: fieldMappings } = useFieldMappings()
+  const labelOf = (key: string): string => fieldMappings?.fields[key]?.label ?? key
 
   if (isLoading) return null
   if (isError) return <div className="p-8 text-center text-destructive">Erreur : {String(error)}</div>
@@ -358,139 +264,76 @@ export function SynthesisPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end px-6 pt-6">
-        <div className="flex gap-1 rounded-lg border p-1">
-          {PERIOD_OPTIONS.map((opt) => (
+      {/* ─── Barre période / saison ─────────────────────────────────────────── */}
+      <div className="sticky top-0 z-20 border-b border-border" style={{ background: 'var(--background)' }}>
+        <div className="flex min-h-10 items-center gap-1.5 px-4 py-1.5">
+          {seasons.length > 0 && (
+            <SaisonPill
+              open={activePopover === 'saison'}
+              onToggle={() => togglePopover('saison')}
+              onClose={closeAll}
+              seasons={seasons}
+              activeSeason={activeSeason}
+              onSelectSeason={(s) => setPendingPeriod(seasonToPeriod(s))}
+              onClear={() => setPendingPeriod(DEFAULT_PERIOD)}
+            />
+          )}
+          <PeriodePill
+            open={activePopover === 'periode'}
+            onToggle={() => togglePopover('periode')}
+            onClose={closeAll}
+            period={pendingPeriod}
+            onSetPeriod={setPendingPeriod}
+          />
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={handleAnalyser}
+            className={[
+              'shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+              isDirty
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'border border-input bg-background text-muted-foreground hover:bg-muted',
+            ].join(' ')}
+          >
+            Analyser
+          </button>
+          {hasPeriod && (
             <button
-              key={opt.value}
-              onClick={() => setPeriod(opt.value)}
-              className={`rounded px-3 py-1 text-sm transition-colors ${period === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              type="button"
+              onClick={() => { setPendingPeriod(DEFAULT_PERIOD); setCommittedPeriod(DEFAULT_PERIOD) }}
+              className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
+              title="Réinitialiser la période"
             >
-              {opt.label}
+              ↺
             </button>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Bloc 0 — Scope */}
-      {data.scope && <ScopeBar scope={data.scope} />}
-
       {/* Bloc 1 — Vue d'ensemble D4 */}
-      {data.overview && <SynthesisOverviewSection overview={data.overview} />}
-
-      {/* KPIs Solo / Escouade */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><CardTitle>Solo ({data.solo_kpis.match_count} matchs)</CardTitle></CardHeader>
-          <CardContent><KPISection title="" kpis={data.solo_kpis} /></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Escouade ({data.squad_kpis.match_count} matchs)</CardTitle></CardHeader>
-          <CardContent><KPISection title="" kpis={data.squad_kpis} /></CardContent>
-        </Card>
-      </div>
-
-      {/* Graphique bipolaire */}
-      {bipolaireSeries.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Solo <span className="mx-2 text-info">←</span> vs <span className="mx-2 text-success">→</span> Escouade
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartCard
-              series={bipolaireSeries}
-              buildOption={buildBipolaireOptCb}
-              height={bipolaireHeight}
-            />
-            <p className="mt-2 text-xs text-muted-foreground text-center">
-              Solo : {data.solo_kpis.match_count} matchs · Escouade : {data.squad_kpis.match_count} matchs
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">
-            Pas assez de données des deux contextes pour afficher la comparaison.
-          </CardContent>
-        </Card>
+      {data.overview && (
+        <SynthesisOverviewSection
+          overview={data.overview}
+          detailedStats={data.detailed_stats}
+          topWeaponKills={data.top_weapon_kills}
+        />
       )}
 
-      {/* Comparaison détaillée */}
-      <Card>
-        <CardHeader><CardTitle>Comparaison détaillée</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          {comparisonMetrics.length === 0 ? (
-            <p className="p-6 text-center text-muted-foreground">Pas assez de données pour cette période.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Métrique</th>
-                    <th className="px-4 py-3 text-center text-info">Solo</th>
-                    <th className="px-4 py-3 text-center text-success">Escouade</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonMetrics.map((item, idx) => <MetricRow key={idx} item={item} />)}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* synthesis.05 — Bipolaire Solo vs Escouade */}
+      <SynthesisBipolaireChart
+        title="Comparaison Solo / Escouade"
+        metrics={comparisonMetrics}
+        fieldLabels={comparisonMetrics.map((m) => labelOf(m.label))}
+      />
 
-      {/* Performances marquantes D5 */}
-      {data.highlights_preview && (
-        <SynthesisHighlightsSection highlights={data.highlights_preview} playerSlug={playerSlug} />
+      {/* synthesis.03 — Heatmap activité jour × heure */}
+      <SynthesisHeatmapChart title="Activité par jour et heure" cells={data.heatmap_data ?? []} />
+
+      {/* synthesis.04 — Top semaines */}
+      {topWeeks.length > 0 && (
+        <SynthesisTopWeeksChart title="Matchs Top vs Total par semaine" weeks={topWeeks} />
       )}
-
-      {/* Heatmap temporelle */}
-      <Card>
-        <CardHeader><CardTitle>Activité par jour et heure</CardTitle></CardHeader>
-        <CardContent>
-          {heatmapSeries.length > 0 ? (
-            <Heatmap2DChart series={heatmapSeries} height={220} />
-          ) : (
-            <EmptyStateNotice
-              title="Activité indisponible"
-              description="La heatmap temporelle ne peut pas être affichée sans répartition horaire exploitable."
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Top semaines */}
-      <Card>
-        <CardHeader><CardTitle>Top semaines</CardTitle></CardHeader>
-        <CardContent className={topWeeks.length > 0 ? 'p-0' : undefined}>
-          {topWeeks.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted border-b">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-muted-foreground">#</th>
-                    <th className="px-4 py-2 text-left">Semaine</th>
-                    <th className="px-4 py-2 text-center">Matchs</th>
-                    <th className="px-4 py-2 text-center">Win%</th>
-                    <th className="px-4 py-2 text-center">K/D</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topWeeks.map((w, i) => <TopWeekRow key={w.week_label} item={w} rank={i + 1} />)}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <EmptyStateNotice
-              title="Aucune semaine remarquable"
-              description="Le classement hebdomadaire est vide pour la période et les filtres sélectionnés."
-            />
-          )}
-        </CardContent>
-      </Card>
 
       {/* Relations / Rivalités D6 */}
       {data.rivalries_preview &&
@@ -498,8 +341,37 @@ export function SynthesisPage() {
           <SynthesisRelationsPreview playerSlug={playerSlug} preview={data.rivalries_preview} />
         )}
 
-      {/* Répartition carte / mode D7 */}
-      {data.breakdowns && <SynthesisBreakdownsSection breakdowns={data.breakdowns} />}
+      {/* synthesis.01 + synthesis.02 — Répartition carte / mode D7 */}
+      {data.breakdowns && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data.breakdowns.top_maps.length > 0 && (
+            <SynthesisOutcomesByGroupChart
+              title="Par carte"
+              entries={data.breakdowns.top_maps.map((m) => ({
+                name: m.map_name,
+                wins: m.wins,
+                losses: m.losses,
+                ties: m.ties,
+                unfinished: m.unfinished,
+              }))}
+              height={360}
+            />
+          )}
+          {data.breakdowns.top_modes.length > 0 && (
+            <SynthesisOutcomesByGroupChart
+              title="Par mode"
+              entries={data.breakdowns.top_modes.map((m) => ({
+                name: m.mode_name,
+                wins: m.wins,
+                losses: m.losses,
+                ties: m.ties,
+                unfinished: m.unfinished,
+              }))}
+              height={360}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

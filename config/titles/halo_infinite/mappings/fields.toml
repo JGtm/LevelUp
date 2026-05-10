@@ -385,3 +385,104 @@ display_unit  = "count"
 format        = "integer"
 display_order = 70
 group         = "pve"
+
+# =============================================================================
+# Derived KPIs (group = "derived") — métriques synthétisées sur une période
+# =============================================================================
+
+[fields.match_count]
+labels        = { en = "Matches", fr = "Matchs" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 10
+group         = "derived"
+
+[fields.headshots_per_match]
+labels        = { en = "Headshots / match", fr = "Tirs à la tête / match" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 20
+group         = "derived"
+
+[fields.deaths_per_min]
+labels        = { en = "Deaths / min", fr = "Morts / min" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 30
+group         = "derived"
+
+[fields.assists_per_min]
+labels        = { en = "Assists / min", fr = "Assists / min" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 40
+group         = "derived"
+
+[fields.perfect_kills_per_match]
+labels        = { en = "Perfect kills / match", fr = "Frags parfaits / match" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 45
+group         = "derived"
+
+[fields.avg_max_killing_spree]
+labels        = { en = "Best Spree (avg)", fr = "Folie meurtrière max" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 50
+group         = "derived"
+
+[fields.avg_damage_dealt]
+labels        = { en = "Damage Dealt / match", fr = "Dégâts infligés / match" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 60
+group         = "derived"
+
+[fields.avg_damage_taken]
+labels        = { en = "Damage Taken / match", fr = "Dégâts subis / match" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 70
+group         = "derived"
+
+[fields.avg_life_seconds]
+labels        = { en = "Avg. Lifespan", fr = "Durée de vie moyenne" }
+storage_unit  = "seconds"
+display_unit  = "seconds"
+format        = "seconds"
+display_order = 80
+group         = "derived"
+
+[fields.kd_ratio]
+labels        = { en = "KDA", fr = "FDA" }
+description   = { en = "Kill/Death/Assist ratio average.", fr = "Ratio Éliminations/Morts/Assistances moyen." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 85
+group         = "derived"
+
+[fields.kills_per_min]
+labels        = { en = "Kills / min", fr = "Frags / min" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 90
+group         = "derived"
+
+[fields.performance_score]
+labels        = { en = "Performance score", fr = "Score de performance" }
+storage_unit  = ""
+display_unit  = ""
+format        = "integer"
+display_order = 95
+group         = "derived"

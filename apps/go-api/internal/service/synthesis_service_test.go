@@ -72,6 +72,8 @@ func (m *mockSynthesisPlayerMatches) LoadPlayerMatches(_ context.Context, _ stri
 				MatchID:      r.MatchID,
 				StartedAtUTC: r.StartTime,
 				Outcome:      outcome,
+				Map:          &canonical.AssetReference{DefaultLabel: "TestMap"},
+				PairMode:     &canonical.AssetReference{DefaultLabel: "Slayer"},
 			},
 			Self: canonical.MatchParticipant{
 				Kills: &k, Deaths: &d, KDA: r.KDA, Outcome: outcome,

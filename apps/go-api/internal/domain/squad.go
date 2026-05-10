@@ -217,6 +217,7 @@ type HeatmapCell struct {
 type TopWeekEntry struct {
 	WeekLabel  string  `json:"week_label"`
 	WinRate    float64 `json:"win_rate"`
+	Wins       int     `json:"wins"`
 	AvgKills   float64 `json:"avg_kills"`
 	AvgDeaths  float64 `json:"avg_deaths"`
 	AvgKDA     float64 `json:"avg_kda"`
@@ -225,14 +226,21 @@ type TopWeekEntry struct {
 
 // SynthesisKPIs contient les métriques agrégées solo ou escouade (Sprint 43).
 type SynthesisKPIs struct {
-	MatchCount       int      `json:"match_count"`
-	Wins             int      `json:"wins"`
-	KDRatio          *float64 `json:"kd_ratio"`
-	WinRate          float64  `json:"win_rate"`
-	Accuracy         *float64 `json:"accuracy"`
-	KillsPerMin      *float64 `json:"kills_per_min"`
-	AvgLifeSeconds   *float64 `json:"avg_life_seconds"`
-	PerformanceScore *float64 `json:"performance_score"`
+	MatchCount          int      `json:"match_count"`
+	Wins                int      `json:"wins"`
+	KDRatio             *float64 `json:"kd_ratio"`
+	WinRate             float64  `json:"win_rate"`
+	Accuracy            *float64 `json:"accuracy"`
+	KillsPerMin         *float64 `json:"kills_per_min"`
+	AvgLifeSeconds      *float64 `json:"avg_life_seconds"`
+	PerformanceScore    *float64 `json:"performance_score"`
+	HeadshotsPerMatch   *float64 `json:"headshots_per_match"`
+	DeathsPerMin        *float64 `json:"deaths_per_min"`
+	AssistsPerMin       *float64 `json:"assists_per_min"`
+	AvgMaxKillingSpree  *float64 `json:"avg_max_killing_spree"`
+	AvgDamageDealt      *float64 `json:"avg_damage_dealt"`
+	AvgDamageTaken      *float64 `json:"avg_damage_taken"`
+	PerfectKillsPerMatch *float64 `json:"perfect_kills_per_match"`
 }
 
 // ComparisonMetricItem est une métrique bipolaire solo / escouade.
@@ -248,11 +256,14 @@ type ComparisonMetricItem struct {
 	SquadValue float64 `json:"squad_value"`
 }
 
-// TemporalHeatmapCell est une cellule de la heatmap jour × heure (Sprint 43).
+// TemporalHeatmapCell est une cellule de la heatmap jour × heure (Sprint 43, enrichie P9).
+// Contient le count d'activité + wins et win_rate pour la spec originale (heatmap colorée par WR, count overlay).
 type TemporalHeatmapCell struct {
-	DOW   int `json:"dow"`  // 0 = lundi … 6 = dimanche
-	Hour  int `json:"hour"` // 0–23
-	Count int `json:"count"`
+	DOW     int     `json:"dow"`      // 0 = lundi … 6 = dimanche
+	Hour    int     `json:"hour"`     // 0–23
+	Count   int     `json:"count"`    // activité
+	Wins    int     `json:"wins"`     // victoires dans cette cellule
+	WinRate float64 `json:"win_rate"` // wins / count
 }
 
 // SynthesisPageResponse est la réponse de la page Synthèse.

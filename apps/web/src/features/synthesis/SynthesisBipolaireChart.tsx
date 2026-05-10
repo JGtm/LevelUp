@@ -1,0 +1,182 @@
+/**
+ * SynthesisBipolaireChart — synthesis.05.
+ * Diverging bar horizontal : Solo (gauche, info/cyan) vs Escouade (droite, outcome-win/vert).
+ * Normalisation : Escouade = +100, Solo = -(|solo|/|squad|)×100, borné [−200, 0].
+ * Les labels affichent toujours les valeurs brutes signées (vérité absolue).
+ * barGap: "-100%" pour overlap. clip: false pour labels hors bornes.
+ */
+import { useCallback, type ReactNode } from 'react'
+import type { EChartsCoreOption } from 'echarts/core'
+import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getLegendBase,
+  getTooltipBase,
+} from '@/components/charts/_utils'
+import { resolveToken } from '@/lib/accessibility'
+import type { ComparisonMetricItem } from '@/lib/api/types'
+
+interface Props {
+  metrics: ComparisonMetricItem[]
+  /** Labels résolus pour l'axe Y (même ordre que metrics). */
+  fieldLabels?: string[]
+  title?: ReactNode
+  children?: ReactNode
+  height?: number
+}
+
+function formatMetricValue(key: string, value: number): string {
+  switch (key) {
+    case 'win_rate':
+      // 0-1 côté API (ADR 0006) → multiplier par 100 pour afficher %
+      return `${(value * 100).toFixed(1)}%`
+    case 'accuracy':
+      // 0-100 nativement dans canonical.PlayerSelf (échelle API Halo) → pas de ×100
+      return `${value.toFixed(1)}%`
+    case 'performance_score':
+    case 'match_count':
+    case 'avg_damage_dealt':
+    case 'avg_damage_taken':
+      return value.toFixed(0)
+    case 'avg_life_seconds': {
+      const m = Math.floor(value / 60)
+      const s = Math.round(value % 60)
+      return m > 0 ? `${m}m${String(s).padStart(2, '0')}s` : `${s}s`
+    }
+    default:
+      return value.toFixed(2)
+  }
+}
+
+/**
+ * Normalise la barre Solo sur [−100, 0].
+ *
+ * Cas nominal (deux positifs) : -(solo/squad)×100, plafonné à −100.
+ * Deux négatifs : même ratio puis ÷2 → max −50, signalant visuellement
+ *   le territoire négatif (performance médiocre des deux).
+ * Croisé solo<0 / squad>0 : solo nettement pire → −50 (petite barre).
+ * Croisé solo>0 / squad<0 : solo nettement meilleur → −100 (barre pleine).
+ * Le plafond à −100 garantit que la barre solo reste dans les bornes de l'axe.
+ */
+function soloBarValue(solo: number, squad: number): number {
+  if (Math.abs(squad) < 1e-9) return 0
+
+  if (solo < 0 && squad > 0) return -50            // solo négatif, squad positif : mauvais
+  if (solo >= 0 && squad < 0) return -100           // solo positif, squad négatif : excellent
+
+  const raw = Math.max(-100, -(Math.abs(solo) / Math.abs(squad)) * 100)
+  if (solo < 0 && squad < 0) return raw / 2        // deux négatifs : comprimer à 50 %
+  return raw                                        // deux positifs : formule standard
+}
+
+function buildBipolaireOption(
+  metrics: ComparisonMetricItem[],
+  fieldLabels: string[],
+): EChartsCoreOption {
+  if (metrics.length === 0) return { backgroundColor: CHART_BG }
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
+  const dps = [...metrics].reverse()
+  const labels = dps.map((m, i) => fieldLabels[metrics.length - 1 - i] ?? m.label)
+
+  const soloVals = dps.map((m) => soloBarValue(m.solo_value, m.squad_value))
+  const squadVals = dps.map(() => 100)
+
+  const soloTexts = dps.map((m) => formatMetricValue(m.label, m.solo_value))
+  const squadTexts = dps.map((m) => formatMetricValue(m.label, m.squad_value))
+
+  return {
+    backgroundColor: CHART_BG,
+    grid: { left: 24, right: 24, top: 16, bottom: 40, containLabel: true },
+    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { ...getLegendBase(tc), orient: 'horizontal', bottom: 5, left: 'center', top: undefined },
+    xAxis: {
+      ...axis,
+      type: 'value',
+      min: -130,
+      max: 130,
+      axisLabel: { show: false },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      ...axis,
+      type: 'category',
+      data: labels,
+      axisTick: { alignWithLabel: true },
+      splitLine: { show: true, lineStyle: { color: tc.splitLine } },
+    },
+    barCategoryGap: '30%',
+    series: [
+      {
+        name: 'Solo',
+        type: 'bar',
+        data: soloVals.map((v, i) => ({
+          value: v,
+          itemStyle: { color: dps[i].solo_value < 0 ? resolveToken('outcome-loss') : resolveToken('info') },
+        })),
+        clip: false,
+        barWidth: '50%',
+        barGap: '-100%',
+        itemStyle: { color: resolveToken('info') },
+        label: {
+          show: true,
+          position: 'left',
+          color: tc.axisLabel,
+          fontSize: 10,
+          formatter: (p: { dataIndex: number }) => soloTexts[p.dataIndex] ?? '',
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: [{ xAxis: 0, lineStyle: { color: tc.splitLine, width: 1, type: 'solid' as const }, label: { show: false } }],
+        },
+      },
+      {
+        name: 'Escouade',
+        type: 'bar',
+        data: squadVals.map((v, i) => ({
+          value: v,
+          itemStyle: { color: dps[i].squad_value < 0 ? resolveToken('outcome-loss') : resolveToken('outcome-win') },
+        })),
+        clip: false,
+        barWidth: '50%',
+        barGap: '-100%',
+        itemStyle: { color: resolveToken('outcome-win') },
+        label: {
+          show: true,
+          position: 'right',
+          color: tc.axisLabel,
+          fontSize: 10,
+          formatter: (p: { dataIndex: number }) => squadTexts[p.dataIndex] ?? '',
+        },
+      },
+    ],
+  }
+}
+
+export function SynthesisBipolaireChart({ metrics, fieldLabels, title, children, height }: Props) {
+  const resolvedLabels = fieldLabels ?? metrics.map((m) => m.label)
+  const series: ChartSeries<ComparisonMetricItem>[] = metrics.length > 0
+    ? [{ key: 'bipolaire', datapoints: metrics }]
+    : []
+
+  const buildOption = useCallback(
+    () => buildBipolaireOption(metrics, resolvedLabels),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(metrics), JSON.stringify(resolvedLabels)],
+  )
+
+  return (
+    <ChartCard
+      title={title}
+      series={series}
+      buildOption={buildOption as (s: ChartSeries<ComparisonMetricItem>[]) => EChartsCoreOption}
+      height={height ?? Math.max(240, 36 * metrics.length)}
+    >
+      {children}
+    </ChartCard>
+  )
+}

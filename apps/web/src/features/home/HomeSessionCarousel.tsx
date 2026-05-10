@@ -10,7 +10,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { kdScale } from '@/lib/accessibility/scales'
 import { getPerfColor } from '@/lib/perf-color'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { HomeOutcomeBar } from './HomeOutcomeBar'
+import { OutcomeBar } from '@/components/ui/outcome-bar'
 
 function ChevronUpIcon() {
   return (
@@ -195,7 +195,7 @@ export function HomeSessionCarousel({
             </div>
 
             {/* Barre d'outcomes */}
-            <HomeOutcomeBar
+            <OutcomeBar
               wins={session.wins}
               draws={session.draws}
               losses={session.losses}

@@ -12,7 +12,7 @@ import (
 // dérive non documentée (ajout/suppression sans mise à jour du plan).
 func TestAllFieldKeysCount(t *testing.T) {
 	t.Parallel()
-	const expected = 43 // 15 combat + 9 match + 6 career + 6 skill + 7 PvE — bumper si annexe §17 modifiée
+	const expected = 55 // bumped pour synthesis-kpi-grid (+ perfect_kills) — voir golden fields.golden.txt
 	if got := len(AllFieldKeys()); got != expected {
 		t.Fatalf("AllFieldKeys count = %d, want %d (mettre à jour fields.golden.txt + annexe §17 si intentionnel)", got, expected)
 	}
