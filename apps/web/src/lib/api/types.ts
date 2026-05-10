@@ -1835,6 +1835,12 @@ export interface SynthesisKPIs {
   kills_per_min: number | null
   avg_life_seconds: number | null
   performance_score: number | null
+  headshots_per_match: number | null
+  deaths_per_min: number | null
+  assists_per_min: number | null
+  avg_max_killing_spree: number | null
+  avg_damage_dealt: number | null
+  avg_damage_taken: number | null
 }
 
 export interface ComparisonMetricItem {
@@ -1845,6 +1851,8 @@ export interface ComparisonMetricItem {
 
 export interface SynthesisQueryRequest {
   period?: string
+  start_date?: string | null
+  end_date?: string | null
   filters?: FilterContextInput | null
 }
 
@@ -1859,6 +1867,7 @@ export interface HeatmapCell {
 export interface TopWeekItem {
   week_label: string
   match_count: number
+  wins: number
   win_rate: number
   kd_ratio: number | null
   avg_kills?: number
@@ -1867,6 +1876,7 @@ export interface TopWeekItem {
 
 export interface SynthesisDetailedStats {
   total_headshot_kills: number
+  total_perfect_kills: number
   total_grenade_kills: number
   total_melee_kills: number
   total_power_weapon_kills: number
@@ -1898,6 +1908,13 @@ export interface SynthesisPageResponse {
   overview?: SynthesisOverview
   // P9 — detailed stats par catégories
   detailed_stats?: SynthesisDetailedStats
+  // Top frags par arme (label résolu, weapon ID non-résolu exclus)
+  top_weapon_kills?: SynthesisWeaponKillEntry[]
+}
+
+export interface SynthesisWeaponKillEntry {
+  label: string
+  kills: number
 }
 
 // Sprint 55 D9 — Scope
@@ -1915,6 +1932,8 @@ export interface SynthesisOverview {
   total_matches: number
   total_wins: number
   total_losses: number
+  total_ties: number
+  total_dnf: number
   total_kills: number
   total_deaths: number
   total_assists: number
@@ -1968,6 +1987,9 @@ export interface SynthesisMapEntry {
   map_name: string
   match_count: number
   wins: number
+  losses: number
+  ties: number
+  unfinished: number
   win_rate: number
 }
 
@@ -1975,6 +1997,9 @@ export interface SynthesisModeEntry {
   mode_name: string
   match_count: number
   wins: number
+  losses: number
+  ties: number
+  unfinished: number
   win_rate: number
 }
 

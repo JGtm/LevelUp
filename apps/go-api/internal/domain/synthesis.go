@@ -15,8 +15,10 @@ import "time"
 // SynthesisRequest : corps de POST /pages/synthesis.
 // Sprint 55 D2 : period et filters réellement appliqués par le service.
 type SynthesisRequest struct {
-	Period  string             `json:"period,omitempty"`  // "all" | "1w" | "1m" | "1y" | "2y"
-	Filters FilterContextInput `json:"filters,omitempty"` // filtres réellement appliqués en D2
+	Period    string             `json:"period,omitempty"`     // "all" | "1w" | "1m" | "1y" | "2y"
+	StartDate string             `json:"start_date,omitempty"` // ISO date "YYYY-MM-DD" (plage explicite)
+	EndDate   string             `json:"end_date,omitempty"`   // ISO date "YYYY-MM-DD"
+	Filters   FilterContextInput `json:"filters,omitempty"`    // filtres réellement appliqués en D2
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +47,8 @@ type SynthesisOverview struct {
 	TotalMatches int `json:"total_matches"`
 	TotalWins    int `json:"total_wins"`
 	TotalLosses  int `json:"total_losses"`
+	TotalTies    int `json:"total_ties"`
+	TotalDNF     int `json:"total_dnf"`
 	TotalKills   int `json:"total_kills"`
 	TotalDeaths  int `json:"total_deaths"`
 	TotalAssists int `json:"total_assists"`
@@ -98,6 +102,15 @@ type SynthesisPageV2Response struct {
 
 	// Bloc détails (P9)
 	DetailedStats SynthesisDetailedStats `json:"detailed_stats"`
+
+	// Bloc frags par arme (top 15, label résolu, weapon ID non-résolu exclus)
+	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
+}
+
+// SynthesisWeaponKillEntry est une ligne du classement frags par arme.
+type SynthesisWeaponKillEntry struct {
+	Label string `json:"label"`
+	Kills int    `json:"kills"`
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +164,9 @@ type SynthesisMapEntry struct {
 	MapName    string  `json:"map_name"`
 	MatchCount int     `json:"match_count"`
 	Wins       int     `json:"wins"`
+	Losses     int     `json:"losses"`
+	Ties       int     `json:"ties"`
+	Unfinished int     `json:"unfinished"`
 	WinRate    float64 `json:"win_rate"`
 }
 
@@ -159,6 +175,9 @@ type SynthesisModeEntry struct {
 	ModeName   string  `json:"mode_name"`
 	MatchCount int     `json:"match_count"`
 	Wins       int     `json:"wins"`
+	Losses     int     `json:"losses"`
+	Ties       int     `json:"ties"`
+	Unfinished int     `json:"unfinished"`
 	WinRate    float64 `json:"win_rate"`
 }
 
@@ -177,6 +196,7 @@ type SynthesisBreakdowns struct {
 type SynthesisDetailedStats struct {
 	// Combat
 	TotalHeadshotKills    int `json:"total_headshot_kills"`
+	TotalPerfectKills     int `json:"total_perfect_kills"`
 	TotalGrenadeKills     int `json:"total_grenade_kills"`
 	TotalMeleeKills       int `json:"total_melee_kills"`
 	TotalPowerWeaponKills int `json:"total_power_weapon_kills"`
