@@ -272,7 +272,7 @@ function PassShowcase({
             alt={pass.name}
             className="aspect-[986/248] w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" /> {/* color-allow: gradient sombre fixe pour lisibilité du titre hero (overlay sur image map) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" /> {/* color-allow: gradient sombre fixe pour lisibilité du titre hero (overlay sur image map) */}
           <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
             <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl"> {/* color-allow: blanc sur gradient sombre fixe (hero overlay) */}
               {pass.name}
