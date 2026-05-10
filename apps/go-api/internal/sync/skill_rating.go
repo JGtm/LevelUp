@@ -353,17 +353,19 @@ func computeSkillRatingsBatch(
 	results := make([]lusrResult, 0, len(matches))
 
 	for _, match := range matches {
-		group := GetPlaylistGroup(match.PlaylistName, match.PairName)
-		pgCfg, ok := PlaylistGroups[group]
-		weightFactor := 1.0
-		if ok {
-			weightFactor = pgCfg.WeightFactor
+		pairName := ""
+		if match.PairName != nil {
+			pairName = *match.PairName
+		}
+		chain := GetLUSRChain(pairName)
+		if chain == "" {
+			continue // exclu : Ranked (→ CSR) ou Firefight (→ PvE)
 		}
 
-		state, exists := states[group]
+		state, exists := states[chain]
 		if !exists {
 			state = NewPlayerState()
-			states[group] = state
+			states[chain] = state
 		}
 
 		// Inactivité decay
@@ -410,7 +412,7 @@ func computeSkillRatingsBatch(
 				MatchID:         match.MatchID,
 				RatingValue:     math.Round(state.MU*10) / 10,
 				RatingDeviation: math.Round(state.Sigma*10) / 10,
-				PlaylistGroup:   group,
+				PlaylistGroup:   chain,
 			})
 			continue
 		}
@@ -437,7 +439,7 @@ func computeSkillRatingsBatch(
 		composite := computeCompositeScore(cRow, avgAcc, teammateAvgKE, avgDmgEff, avgMedalExploit, avgOffConv, avgDefRes)
 
 		// Update TrueSkill
-		newMU, newSigma := trueskillUpdate(state.MU, state.Sigma, muOpp, sigmaOpp, composite, weightFactor)
+		newMU, newSigma := trueskillUpdate(state.MU, state.Sigma, muOpp, sigmaOpp, composite, 1.0)
 		state.MU = newMU
 		state.Sigma = newSigma
 		state.MatchCount++
@@ -464,7 +466,7 @@ func computeSkillRatingsBatch(
 			MatchID:         match.MatchID,
 			RatingValue:     math.Round(state.MU*10) / 10,
 			RatingDeviation: math.Round(state.Sigma*10) / 10,
-			PlaylistGroup:   group,
+			PlaylistGroup:   chain,
 		})
 	}
 	return results

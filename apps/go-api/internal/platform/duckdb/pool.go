@@ -94,6 +94,17 @@ func GetOrOpen(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) {
 	return result.(*PlayerDB), nil
 }
 
+// LookupFromPool retourne le PlayerDB existant pour une clé de pool donnée.
+// Format de la clé : "{title_slug}:{gamertag}" (ou "{gamertag}" pour legacy).
+// Retourne nil, false si le joueur n'est pas ouvert dans le pool.
+func LookupFromPool(key string) (*PlayerDB, bool) {
+	v, ok := globalPool.Load(key)
+	if !ok {
+		return nil, false
+	}
+	return v.(*PlayerDB), true
+}
+
 // IteratePool parcourt tous les PlayerDB ouverts dans le pool.
 // La fonction f reçoit chaque PlayerDB ; retourner false arrête l'itération.
 func IteratePool(f func(*PlayerDB) bool) {

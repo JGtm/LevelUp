@@ -5,7 +5,7 @@ import "testing"
 func TestRegistry_MatchByXboxTitleID(t *testing.T) {
 	r := NewRegistry()
 
-	got := r.MatchByXboxTitleID("1144039928")
+	got := r.MatchByXboxTitleID("2043073184")
 	if got == nil {
 		t.Fatal("expected match for Halo Infinite Xbox Title ID")
 	}
@@ -43,7 +43,7 @@ func TestRegistry_MatchBySteamAppID_Unknown(t *testing.T) {
 func TestRegistry_MatchPresence(t *testing.T) {
 	r := NewRegistry()
 
-	got := r.MatchPresence("1144039928")
+	got := r.MatchPresence("2043073184")
 	if got == nil || got.Slug != DefaultSlug {
 		t.Errorf("MatchPresence = %v", got)
 	}
@@ -62,7 +62,7 @@ func TestRegistry_MatchByXboxTitleID_MultiTitle(t *testing.T) {
 		XboxTitleID: "1144234394",
 	})
 
-	hi := r.MatchByXboxTitleID("1144039928")
+	hi := r.MatchByXboxTitleID("2043073184")
 	mcc := r.MatchByXboxTitleID("1144234394")
 
 	if hi == nil || hi.Slug != "halo_infinite" {

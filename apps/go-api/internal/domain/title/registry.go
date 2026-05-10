@@ -80,12 +80,20 @@ const DefaultSlug = "halo_infinite"
 // XboxTitleIDFor retourne l'identifiant Xbox numérique (en string) pour un slug LevelUp.
 // Utilisé lors du sync achievements pour filtrer l'API Xbox par titre.
 // Retourne "" si le slug n'est pas reconnu — l'appelant doit gérer ce cas.
+// Note: 2043073184 = Halo Infinite standalone (distinct de 1144039928 = MCC).
 func XboxTitleIDFor(slug string) string {
 	switch slug {
 	case DefaultSlug:
-		return "1144039928"
+		return "2043073184"
 	}
 	return ""
+}
+
+// ServiceConfigIDFor retourne le ServiceConfigID (SCID) Xbox pour un slug LevelUp.
+// Retourne "" si le slug n'est pas reconnu ou si le SCID n'est pas encore connu.
+// Le SCID HI sera confirmé lors du premier sync avec le bon title ID.
+func ServiceConfigIDFor(slug string) string {
+	return "" // SCID HI non encore confirmé — le filtre titleId est suffisant
 }
 
 // NewRegistry crée un registre avec les titres par défaut.
@@ -105,7 +113,7 @@ func NewRegistry() *Registry {
 			CapAchievements, CapEngagement,
 		},
 		IsDefault:   true,
-		XboxTitleID: "1144039928",
+		XboxTitleID: "2043073184",
 		SteamAppID:  "1336960",
 	})
 	return r

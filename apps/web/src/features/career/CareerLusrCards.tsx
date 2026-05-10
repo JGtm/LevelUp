@@ -8,6 +8,7 @@ import type { CareerLusrCheckpoint } from '@/lib/api/types'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { lusrChainLabel } from './lusr-chains'
 
 interface LusrCardData {
   playlistGroup: string
@@ -20,7 +21,7 @@ interface LusrCardData {
 
 export function CareerLusrCards({ checkpoints }: { checkpoints: CareerLusrCheckpoint[] }) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
-  const cards = deriveLatestPerGroup(checkpoints)
+  const cards = deriveLatestPerGroup(checkpoints, locale)
 
   if (cards.length === 0) {
     return (
@@ -89,11 +90,11 @@ function DeltaBadge({ delta }: { delta: number }) {
   )
 }
 
-function deriveLatestPerGroup(checkpoints: CareerLusrCheckpoint[]): LusrCardData[] {
+function deriveLatestPerGroup(checkpoints: CareerLusrCheckpoint[], locale: ManifestLocale): LusrCardData[] {
   const byGroup = new Map<string, CareerLusrCheckpoint[]>()
   for (const cp of checkpoints) {
     if (!cp.recorded_at) continue
-    const group = cp.playlist_group ?? 'arena'
+    const group = cp.playlist_group ?? 'arena_slayer'
     const list = byGroup.get(group) ?? []
     list.push(cp)
     byGroup.set(group, list)
@@ -107,7 +108,7 @@ function deriveLatestPerGroup(checkpoints: CareerLusrCheckpoint[]): LusrCardData
     const delta = prev !== null ? Math.round(last.rating_value - prev.rating_value) : null
     result.push({
       playlistGroup: group,
-      playlistLabel: last.playlist_name || group,
+      playlistLabel: lusrChainLabel(group, locale),
       ratingValue: Math.round(last.rating_value),
       tierLabel: last.tier_label ?? '',
       delta,

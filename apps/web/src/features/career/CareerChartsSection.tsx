@@ -25,6 +25,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { LUSR_TIERS } from '@/lib/skillTiers'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
+import { LUSR_GROUP_TOKENS, lusrChainLabel } from './lusr-chains'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   CareerHistoryPoint,
@@ -133,7 +134,7 @@ export function CareerChartsSection({
           />
           <ChartCard<[string, number]>
             title={careerManifest['career.charts.lusr_evolution_title'][locale]}
-            series={buildLusrSeries(lusrCheckpoints)}
+            series={buildLusrSeries(lusrCheckpoints, locale)}
             height={320}
             buildOption={(series) => buildLusrEvolutionOption(series, locale)}
             emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
@@ -492,43 +493,29 @@ function buildHeroMarkLine() {
 
 // ── career.04 — évolution LUSR ─────────────────────────────────────────────
 
-// Labels via manifest i18n (career.toml → generated/career.ts).
-// Tokens sémantiques clairement distincts par catégorie.
-const LUSR_GROUP_TOKENS: Record<string, SemanticToken> = {
-  ranked: 'compare-b',
-  arena:  'compare-a',
-  btb:    'divergent-pos',
-  fun:    'narrative-humiliation',
-  social: 'narrative-dominant',
-}
-
 function lusrGroupColor(group: string): string {
-  const token: SemanticToken = LUSR_GROUP_TOKENS[group] ?? 'chart-series-1'
-  return resolveToken(token)
+  return resolveToken(LUSR_GROUP_TOKENS[group] ?? 'chart-series-1')
 }
 
-function buildLusrSeries(checkpoints: CareerLusrCheckpoint[]): ChartSeries<[string, number]>[] {
+function buildLusrSeries(checkpoints: CareerLusrCheckpoint[], locale: ManifestLocale): ChartSeries<[string, number]>[] {
   // Clé de groupage : (rating_type, playlist_group) → une série par combinaison.
-  const byKey = new Map<string, { group: string; ratingType: string; playlistName: string; pts: Map<string, number> }>()
+  const byKey = new Map<string, { group: string; ratingType: string; pts: Map<string, number> }>()
 
   for (const cp of checkpoints) {
     if (!cp.recorded_at) continue
-    const group = cp.playlist_group ?? 'arena'
+    const group = cp.playlist_group ?? 'arena_slayer'
     const ratingType = cp.rating_type ?? 'LUSR'
     const seriesKey = `${ratingType}:${group}`
     const date = cp.recorded_at.slice(0, 10)
 
     if (!byKey.has(seriesKey)) {
-      byKey.set(seriesKey, { group, ratingType, playlistName: cp.playlist_name || group, pts: new Map() })
-    } else {
-      // Mise à jour au dernier nom connu (tri ASC côté Go → le plus récent écrase)
-      byKey.get(seriesKey)!.playlistName = cp.playlist_name || group
+      byKey.set(seriesKey, { group, ratingType, pts: new Map() })
     }
     byKey.get(seriesKey)!.pts.set(date, cp.rating_value)
   }
 
-  return Array.from(byKey.entries()).map(([seriesKey, { group, ratingType, playlistName, pts }]) => {
-    const label = `${playlistName} (${ratingType})`
+  return Array.from(byKey.entries()).map(([seriesKey, { group, ratingType, pts }]) => {
+    const label = `${lusrChainLabel(group, locale)} (${ratingType})`
     return {
       key: `career.lusr.${seriesKey}`,
       meta: { label, groupKey: group, ratingType },
