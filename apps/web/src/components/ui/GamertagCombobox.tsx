@@ -152,7 +152,7 @@ export function GamertagCombobox({
       <div
         className={compact
           ? 'flex flex-wrap items-center gap-1.5'
-          : 'flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 cursor-text focus-within:ring-1 focus-within:ring-ring'
+          : 'relative flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 cursor-text focus-within:ring-1 focus-within:ring-ring'
         }
         onClick={() => { inputRef.current?.focus(); setIsOpen(true) }}
       >
@@ -208,11 +208,11 @@ export function GamertagCombobox({
           onKeyDown={handleKeyDown}
           placeholder={selected.length === 0 ? placeholder : ''}
           disabled={isAtMax}
-          className={`flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${compact ? 'min-w-[80px]' : 'min-w-[120px]'}`}
+          className={`flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${compact ? 'min-w-[80px]' : 'min-w-[120px]'} ${max != null && !compact ? 'pr-8' : ''}`}
         />
 
         {max != null && !compact && (
-          <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
             {selected.length}/{max}
           </span>
         )}

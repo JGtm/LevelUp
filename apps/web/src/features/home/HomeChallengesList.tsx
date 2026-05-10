@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { ChallengeItem } from '@/lib/api/types'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { CADENCE_DAILY_FALLBACK_FR, CADENCE_WEEKLY_FALLBACK_FR } from './fallback.i18n'
@@ -220,8 +221,8 @@ function ChallengeSection({ section }: { section: ChallengeSection }) {
                         <div className="h-2 w-full">
                           <div
                             data-testid="home-challenge-progress-fill"
-                            className="h-full rounded-full bg-primary transition-all duration-300"
-                            style={{ width: `${progressPercent}%` }}
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{ width: `${progressPercent}%`, backgroundColor: progressPercent >= 100 ? tokenCssVar('success') : tokenCssVar('info') }}
                           />
                         </div>
                       </div>

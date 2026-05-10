@@ -86,7 +86,7 @@ export function CitationsPage() {
               </span>
             </div>
             <div className="p-3">
-              <div className="flex flex-wrap gap-x-5 gap-y-4">
+              <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
                 {group.items.map((c) => (
                   <CitationCard key={c.name_norm} citation={c} />
                 ))}

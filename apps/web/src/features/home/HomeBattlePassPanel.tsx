@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
@@ -160,8 +161,8 @@ export function HomeBattlePassPanel({
                   <div className="h-2 w-full">
                     <div
                       data-testid="home-battle-pass-active-tier-progress-fill"
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${clampCompositeProgress(tierProgress)}%` }}
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: `${clampCompositeProgress(tierProgress)}%`, backgroundColor: clampCompositeProgress(tierProgress) >= 100 ? tokenCssVar('success') : tokenCssVar('info') }}
                     />
                   </div>
                 </div>

@@ -4,6 +4,7 @@
  * Format : icône + nom (1 ligne) + gamerscore + (description optionnelle ou
  * progression). Largeur fixe pour s'aligner dans une rangée horizontale.
  */
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { AchievementEntry } from '@/lib/api/types'
 import { Tooltip } from '@/components/ui/tooltip'
 import {
@@ -86,8 +87,7 @@ export function AchievementCard({ achievement, locale, fixedWidth = true }: Prop
         <div className="mt-2 flex items-center gap-2">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-primary"
-              style={{ width: `${Math.min(100, (progress.current / progress.target) * 100)}%` }}
+              style={{ width: `${Math.min(100, (progress.current / progress.target) * 100)}%`, backgroundColor: (progress.current / progress.target) >= 1 ? tokenCssVar('success') : tokenCssVar('info') }}
             />
           </div>
           <span className="text-[10px] tabular-nums text-muted-foreground">
