@@ -1,20 +1,27 @@
 
-## [2026-05-10] Page Synthèse — corrections + heatmap win_rate
+## [2026-05-10] Page Synthèse — plan complet phases 1-4 (SynthesisKPIGrid)
 
-**Statut** : Complété (phases 1-2 du plan).
+**Statut** : Complété.
 
 **Décision** :
-1. **Bug rivalités (P7.2)** — `buildRivalriesPreview` cassait prématurément sa boucle dès que teammates ≥ 5 ET enemies ≥ 5, tronquant les listes asymétriques. Fix : compteurs séparés `teamCount`, `enemyCount`, conditions spécifiques par branche.
-2. **Heatmap activité → win_rate** — Spécification originale : heatmap jour×heure colorée par **win_rate** (divergent rouge→vert), count en overlay texte. Implémentation :
-   - Backend Go : `TemporalHeatmapCell` + champs `Wins`, `WinRate` ; `ComputeTemporalHeatmapFromCanonical` accumule wins par cellule (dow,hour).
-   - Frontend : `Heatmap2DChart` reçoit win_rate en `value` (couleur), count dans `detail` (label). Props `paletteMode="divergent"` + `valueRange=[0,1]`.
-3. **Champs non rendus — Overview** : ajout deaths, assists, avg_kills, avg_deaths.
-4. **Champs non rendus — KPISection** : ajout accuracy, kills_per_min, avg_life_seconds (grille étendue à 3 colonnes).
-5. **TopWeeks table enrichie** : colonnes avg_kills, avg_deaths ajoutées (type TS + header + rows).
 
-**Résultats** : 6 fichiers modifiés. TypeScript compile (`npm run typecheck`). Tests Go du service passent.
+**Phases 1-2 : Corrections** (bug + heatmap + fields non rendus)
+1. **Bug rivalités** — `buildRivalriesPreview` compteurs séparés `teamCount`, `enemyCount`.
+2. **Heatmap win_rate** — `TemporalHeatmapCell` + `Wins`, `WinRate` ; `ComputeTemporalHeatmapFromCanonical` accumule ; `Heatmap2DChart` affiche WR en couleur divergent, count en label.
+3. **Overview** : +deaths, +assists, +avg_kills, +avg_deaths.
+4. **KPISection** : +accuracy, +kills_per_min, +avg_life_seconds (grille 3 cols).
+5. **TopWeeks** : +avg_kills, +avg_deaths colonnes.
 
-**Prochaine étape** : Phases 3-4 — SynthesisDetailedStats + KPIGrid (métriques étendues par catégories).
+**Phases 3-4 : Détails + Grid** (nouvelles métriques par catégories)
+6. **Backend Domain** : nouveau type `SynthesisDetailedStats` (combat/tir/dégâts/fun).
+7. **Backend Service** : `buildSynthesisDetailedStatsFromCanonical()` agrège headshot/grenade/melee/power kills, max spree, shots fired/hit, damage dealt/taken.
+8. **Frontend Types** : `SynthesisDetailedStats` interface (13 champs).
+9. **Frontend Component** : nouveau `SynthesisKPIGrid.tsx` — 4 sections (Combat/Tir/Dégâts/Fun), cartes avec labels + valeurs formatées.
+10. **Frontend Integration** : montage dans `SynthesisPage` après "Performances marquantes", wrapped dans un `Card`.
+
+**Résultats** : 10 fichiers modifiés + 1 nouveau. Deux commits (phases 1-2 + phases 3-4). TypeScript compile, Go build clean, tests pass.
+
+**Prochaine étape** : RAS, plan finalisé.
 
 ## [2026-05-10] Barres de progression — couleur sémantique + hero overlay
 
