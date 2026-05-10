@@ -5,6 +5,7 @@
  * progression). Largeur fixe pour s'aligner dans une rangée horizontale.
  */
 import type { AchievementEntry } from '@/lib/api/types'
+import { Tooltip } from '@/components/ui/tooltip'
 import {
   ACHIEVEMENTS_TEXT,
   formatUnlockedDate,
@@ -72,9 +73,11 @@ export function AchievementCard({ achievement, locale, fixedWidth = true }: Prop
             </span>
           </div>
           {description && (
-            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-              {description}
-            </p>
+            <Tooltip content={description} className="w-full">
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                {description}
+              </p>
+            </Tooltip>
           )}
         </div>
       </div>
