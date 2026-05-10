@@ -151,6 +151,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 				AllyCount:       enc.AllyCount,
 				EnemyCount:      enc.EnemyCount,
 				WinrateAsAlly:   enc.WinrateAsAlly,
+				WinrateVsEnemy:  enc.WinrateVsEnemy,
 				KillsDealt:      enc.KillsDealt,
 				DeathsSuffered:  enc.DeathsSuffered,
 			}

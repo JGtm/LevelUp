@@ -172,7 +172,8 @@ function isSemanticToken(s: string): s is SemanticToken {
 
 const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
   'narrative.encounter.ally_plus': { fr: 'Allié récurrent : bon taux de victoire ensemble', en: 'Recurring ally: good win rate together' },
-  'narrative.encounter.tough_enemy': { fr: 'Adversaire coriace : taux de victoire faible', en: 'Tough opponent: low win rate against him' },
+  'narrative.encounter.tough_enemy': { fr: 'Dur à cuire : ratio morts/frags > 2 en ennemi', en: 'Tough nut: death/kill ratio > 2 as enemy' },
+  'narrative.encounter.coriace': { fr: 'Coriace : taux de victoire en ennemi ≤ 35 %', en: 'Tough opponent: win rate vs enemy ≤ 35 %' },
   'narrative.encounter.ordinal': { fr: 'Total rencontres croisées (allié + ennemi)', en: 'Total cross encounters (ally + enemy)' },
 }
 
@@ -186,7 +187,7 @@ function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadg
         const label = ordinal !== undefined ? formatMessage(squadManifest, labelKey, locale, { ordinal }) : formatMessage(squadManifest, labelKey, locale)
         const colorVar = isSemanticToken(badge.color_token) ? tokenVar(badge.color_token as SemanticToken) : undefined
         const tooltip = ENCOUNTER_BADGE_TOOLTIPS[badge.label_key]?.[locale]
-        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} size="sm" />
+        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} size="md" />
         return tooltip ? (
           <Tooltip key={i} content={tooltip}>{badgeEl}</Tooltip>
         ) : (

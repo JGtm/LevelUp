@@ -91,6 +91,7 @@ type CompareEncounterStats struct {
 	AllyCount       int
 	EnemyCount      int
 	WinrateAsAlly   *float64
+	WinrateVsEnemy  *float64
 	KillsDealt      int // frags de A sur B (toutes occurrences)
 	DeathsSuffered  int // frags de B sur A (toutes occurrences)
 }
