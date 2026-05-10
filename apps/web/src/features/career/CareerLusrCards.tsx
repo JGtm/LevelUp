@@ -1,6 +1,10 @@
 /**
  * CareerLusrCards — career.11 : grille de cards LUSR par playlist_group.
  * Affiche rating actuel + delta vs checkpoint précédent + tier_label.
+ *
+ * 1 card par groupe canonique (arena/btb/fun/ranked). `social` (legacy) est
+ * fusionné dans `arena`. Les checkpoints dont playlist_name est un UUID brut
+ * (résolution metadata absente) sont écartés — cohérence avec le chart LUSR.
  */
 import { tokenCssVar } from '@/lib/accessibility'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -8,6 +12,7 @@ import type { CareerLusrCheckpoint } from '@/lib/api/types'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { type CanonicalGroup, lusrGroupLabel, normalizeGroup } from './lusrSeries'
 
 interface LusrCardData {
   playlistGroup: string
@@ -18,9 +23,11 @@ interface LusrCardData {
   badgeImageUrl: string | null
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export function CareerLusrCards({ checkpoints }: { checkpoints: CareerLusrCheckpoint[] }) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
-  const cards = deriveLatestPerGroup(checkpoints)
+  const cards = deriveLatestPerGroup(checkpoints, locale)
 
   if (cards.length === 0) {
     return (
@@ -89,11 +96,15 @@ function DeltaBadge({ delta }: { delta: number }) {
   )
 }
 
-function deriveLatestPerGroup(checkpoints: CareerLusrCheckpoint[]): LusrCardData[] {
-  const byGroup = new Map<string, CareerLusrCheckpoint[]>()
+function deriveLatestPerGroup(
+  checkpoints: CareerLusrCheckpoint[],
+  locale: ManifestLocale,
+): LusrCardData[] {
+  const byGroup = new Map<CanonicalGroup, CareerLusrCheckpoint[]>()
   for (const cp of checkpoints) {
     if (!cp.recorded_at) continue
-    const group = cp.playlist_group ?? 'arena'
+    if (UUID_RE.test((cp.playlist_name ?? '').trim())) continue
+    const group = normalizeGroup(cp.playlist_group)
     const list = byGroup.get(group) ?? []
     list.push(cp)
     byGroup.set(group, list)
@@ -107,7 +118,7 @@ function deriveLatestPerGroup(checkpoints: CareerLusrCheckpoint[]): LusrCardData
     const delta = prev !== null ? Math.round(last.rating_value - prev.rating_value) : null
     result.push({
       playlistGroup: group,
-      playlistLabel: last.playlist_name || group,
+      playlistLabel: lusrGroupLabel(group, locale),
       ratingValue: Math.round(last.rating_value),
       tierLabel: last.tier_label ?? '',
       delta,
