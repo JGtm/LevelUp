@@ -1,4 +1,28 @@
 
+## [2026-05-10] fix(match-history) — Création queries.ts manquant (useSetMatchExclusion + useSetMatchFavorite)
+
+**Statut** : Complété.
+
+**Cause** : le module `@/features/match-history/queries` était importé par `HomePage.tsx` et `MatchHeader.tsx` mais le dossier `features/match-history/` n'existait pas → crash Vite au runtime.
+
+**Créé** : `apps/web/src/features/match-history/queries.ts` avec `useSetMatchExclusion` (PATCH `.../exclusion`, invalide matchHistory) et `useSetMatchFavorite` (PATCH `.../favorite`, invalide home + matchHistory).
+
+**Résultats** : `npm run typecheck` OK sans erreur.
+
+---
+
+## [2026-05-10] chore(timeseries) — Suppression complète du chart EWMA K/D
+
+**Statut** : Complété.
+
+**Décision** : chart EWMA K/D (timeseries.25) retiré — complexité élevée, illisible pour les utilisateurs.
+
+**Supprimé** : `TimeseriesEwmaKd.tsx`, bloc dans `TimeseriesPage.tsx`, `buildTimeseriesFormTab` + `computeRegressionStats` (Go), `TimeseriesFormTab` + `TimeseriesRegressionStats` (domain Go + types.ts), champ `form_tab` dans la réponse, 11 clés i18n `timeseries.form.*`, tests `TestBuildTimeseriesFormTab_EWMA` + `TestComputeRegressionStats_*`, assertion e2e `form_tab`.
+
+**Résultats** : `go test ./internal/service/...` OK. TS : erreurs préexistantes uniquement.
+
+---
+
 ## [2026-05-10] cleanup — Suppression pages orphelines + redirects legacy + refactoring nav
 
 **Statut** : Complété.

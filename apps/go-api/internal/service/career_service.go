@@ -41,10 +41,10 @@ type FriendsXPLoader func(ctx context.Context, titleSlug string) ([]domain.Frien
 
 // CareerService construit les réponses pour la page Carrière.
 type CareerService struct {
-	repo             port.CareerRepository
-	metaRepo         port.MetadataRepository // optionnel — nil = fallback synthétique
-	titleSlug        string                  // titre courant, ex: "halo_infinite"
-	friendsXPLoader  FriendsXPLoader         // optionnel — nil = pas de courbes amis
+	repo            port.CareerRepository
+	metaRepo        port.MetadataRepository // optionnel — nil = fallback synthétique
+	titleSlug       string                  // titre courant, ex: "halo_infinite"
+	friendsXPLoader FriendsXPLoader         // optionnel — nil = pas de courbes amis
 	// dataAdapter (optionnel) — Phase C+ multi-titres. Quand fourni, GetEncounters
 	// passe par games.TitleDataAdapter.LoadEncounters au lieu d'appeler le repo
 	// directement. Préserve une parité comportementale stricte : projection

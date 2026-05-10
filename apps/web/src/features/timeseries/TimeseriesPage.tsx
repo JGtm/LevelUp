@@ -41,7 +41,7 @@ import {
   TimeseriesIntensityHeatmap,
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
-import { TimeseriesEwmaKd } from './TimeseriesEwmaKd'
+
 import { ChartFrame } from './ChartFrame'
 import { WinRateVsHistoryBulletChart } from '@/features/squad/WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from '@/features/squad/MapPerfVsHistoryChart'
@@ -639,25 +639,6 @@ export function TimeseriesPage() {
                 />
               </ChartFrame>
             </div>
-
-            {/* EWMA K/D — pleine largeur (timeseries.25). */}
-            {(data.form_tab?.ewma_kd_points ?? []).length > 0 && (
-              <ChartFrame
-                title={
-                  locale === 'en' ? 'EWMA K/D (α = 0.20)' : 'EWMA K/D (α = 0.20)'
-                }
-              >
-                <TimeseriesEwmaKd
-                  ewmaPoints={data.form_tab.ewma_kd_points}
-                  regressionStats={data.form_tab.regression_stats}
-                  matchRows={data.match_rows ?? []}
-                  ewmaLabel={t('timeseries.form.ewma_series_label')}
-                  perMatchLabel={locale === 'en' ? 'K/D per match' : 'K/D par match'}
-                  refLineLabel={locale === 'en' ? 'Ref. 1.0' : 'Réf. 1.0'}
-                  trendLabel={locale === 'en' ? 'Trend' : 'Tendance'}
-                />
-              </ChartFrame>
-            )}
 
             {/* Rendement & Résistance — pleine largeur. */}
             <ChartFrame

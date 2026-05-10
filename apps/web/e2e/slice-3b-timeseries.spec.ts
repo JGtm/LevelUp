@@ -45,7 +45,7 @@ test.describe('Slice 3B — Page Séries temporelles (DEMO_MODE)', () => {
     const data = await resp.json()
     expect(data.summary_tab).toBeDefined()
     expect(data.cumul_tab).toBeDefined()
-    expect(data.form_tab).toBeDefined()
+
     expect(data.intensity_tab).toBeDefined()
     expect(data.distributions_tab).toBeDefined()
   })
