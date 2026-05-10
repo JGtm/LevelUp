@@ -226,6 +226,8 @@ SELECT
     p.grenade_kills,
     p.melee_kills,
     p.power_weapon_kills,
+    p.shots_fired,
+    p.shots_hit,
     COALESCE((
         SELECT SUM(me.count)
         FROM shared.medals_earned me
@@ -266,6 +268,7 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		skillSubTier                                                sql.NullInt64
 		maxKillingSpree, personalScore, rankInMatch                 sql.NullInt64
 		grenadeKills, meleeKills, powerWeaponKills                  sql.NullInt64
+		shotsFired, shotsHit                                        sql.NullInt64
 		perfectKills                                                sql.NullInt64
 	)
 	if err := rows.Scan(
@@ -287,6 +290,7 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		&skillTier, &skillTierFR, &skillSubTier, &skillDelta, &skillPlaylistGroup,
 		&maxKillingSpree, &personalScore, &rankInMatch,
 		&grenadeKills, &meleeKills, &powerWeaponKills,
+		&shotsFired, &shotsHit,
 		&perfectKills,
 	); err != nil {
 		return canonical.PlayerMatchRow{}, err
@@ -343,6 +347,8 @@ func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.Player
 		grenadeKills:       grenadeKills,
 		meleeKills:         meleeKills,
 		powerWeaponKills:   powerWeaponKills,
+		shotsFired:         shotsFired,
+		shotsHit:           shotsHit,
 		perfectKills:       perfectKills,
 		xuid:               xuid,
 		gamertag:           gamertag,
@@ -379,6 +385,7 @@ type playerMatchScanResult struct {
 	skillPlaylistGroup                          sql.NullString
 	maxKillingSpree, personalScore, rankInMatch sql.NullInt64
 	grenadeKills, meleeKills, powerWeaponKills  sql.NullInt64
+	shotsFired, shotsHit                        sql.NullInt64
 	perfectKills                                sql.NullInt64
 }
 
@@ -477,6 +484,8 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			GrenadeKills:     nullInt64ToIntPtr(s.grenadeKills),
 			MeleeKills:       nullInt64ToIntPtr(s.meleeKills),
 			PowerWeaponKills: nullInt64ToIntPtr(s.powerWeaponKills),
+			ShotsFired:       nullInt64ToIntPtr(s.shotsFired),
+			ShotsHit:         nullInt64ToIntPtr(s.shotsHit),
 			PerfectKills:     nullInt64ToIntPtr(s.perfectKills),
 		},
 		Enrichment: canonical.PlayerMatchEnrichment{

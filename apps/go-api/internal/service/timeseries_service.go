@@ -132,11 +132,11 @@ func (s *TimeseriesService) GetPage(
 	historicalSolo := filterStatsMatchRowsByContext(allMatches, req.Filters.MatchContext)
 
 	resp := domain.TimeseriesPageResponse{
-		TotalMatches:     len(matches),
-		MatchRows:        buildMatchRows(matches),
-		SummaryTab:       buildTimeseriesSummaryTab(matches),
-		CumulTab:         buildCumulTab(matches),
-		FormTab:          buildTimeseriesFormTab(matches),
+		TotalMatches: len(matches),
+		MatchRows:    buildMatchRows(matches),
+		SummaryTab:   buildTimeseriesSummaryTab(matches),
+		CumulTab:     buildCumulTab(matches),
+
 		IntensityTab:     buildIntensityTab(matches),
 		DistributionsTab: buildDistributionsTab(matches),
 		OutcomesOverTime: buildOutcomesOverTime(matches),
@@ -897,120 +897,6 @@ func buildCumulTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesCumulTa
 		CumulativeKD:  cumulKD,
 		CumulativeNet: cumulNet,
 		RollingKD:     rollingKD,
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Onglet Form
-// ---------------------------------------------------------------------------
-
-func buildTimeseriesFormTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesFormTab {
-	regStats := computeRegressionStats(matches)
-
-	// EWMA K/D (exponentially weighted moving average).
-	// alpha = 0.20 â€” aligneÌ sur Python plot_ewma_kd (alpha=0.20).
-	const alpha = 0.20
-	ewmaPoints := make([]domain.CumulativePoint, 0, len(matches))
-	var ewma float64
-	for i, m := range matches {
-		kd := 0.0
-		if m.Deaths > 0 {
-			kd = float64(m.Kills) / float64(m.Deaths)
-		}
-		if i == 0 {
-			ewma = kd
-		} else {
-			ewma = alpha*kd + (1-alpha)*ewma
-		}
-		ewmaPoints = append(ewmaPoints, domain.CumulativePoint{
-			Index: i, StartTime: m.StartTime,
-			Value: math.Round(ewma*100) / 100,
-		})
-	}
-
-	return domain.TimeseriesFormTab{
-		RegressionStats: regStats,
-		EWMAKDPoints:    ewmaPoints,
-	}
-}
-
-// computeRegressionStats calcule les statistiques de rÃ©gression.
-func computeRegressionStats(matches []legacymatch.StatsMatchRow) domain.TimeseriesRegressionStats {
-	const minForTrend = 20
-
-	n := len(matches)
-	if n < minForTrend {
-		return domain.TimeseriesRegressionStats{HasEnoughForTrend: false}
-	}
-
-	// RÃ©gression linÃ©aire simple sur le K/D.
-	sumX, sumY, sumXY, sumX2 := 0.0, 0.0, 0.0, 0.0
-	count := 0
-	for i, m := range matches {
-		kd := 0.0
-		if m.Deaths > 0 {
-			kd = float64(m.Kills) / float64(m.Deaths)
-		}
-		x := float64(i)
-		sumX += x
-		sumY += kd
-		sumXY += x * kd
-		sumX2 += x * x
-		count++
-	}
-
-	if count < minForTrend {
-		return domain.TimeseriesRegressionStats{HasEnoughForTrend: false}
-	}
-
-	fn := float64(count)
-	denom := fn*sumX2 - sumX*sumX
-	if denom == 0 {
-		return domain.TimeseriesRegressionStats{HasEnoughForTrend: false}
-	}
-
-	slope := (fn*sumXY - sumX*sumY) / denom
-	meanY := sumY / fn
-
-	// RÂ² approximation.
-	ssTot, ssRes := 0.0, 0.0
-	intercept := (sumY - slope*sumX) / fn
-	for i, m := range matches {
-		kd := 0.0
-		if m.Deaths > 0 {
-			kd = float64(m.Kills) / float64(m.Deaths)
-		}
-		predicted := intercept + slope*float64(i)
-		ssRes += (kd - predicted) * (kd - predicted)
-		ssTot += (kd - meanY) * (kd - meanY)
-	}
-
-	var r2 *float64
-	if ssTot > 0 {
-		v := math.Max(0, 1-ssRes/ssTot)
-		r2 = &v
-	}
-
-	kdSlope := math.Round(slope*1000) / 1000
-
-	// Trend detection.
-	var trend *string
-	if math.Abs(slope) < 0.001 {
-		t := trendLabelStable
-		trend = &t
-	} else if slope > 0 {
-		t := "improving"
-		trend = &t
-	} else {
-		t := "declining"
-		trend = &t
-	}
-
-	return domain.TimeseriesRegressionStats{
-		KDSlope:           &kdSlope,
-		RSquared:          r2,
-		HasEnoughForTrend: true,
-		Trend:             trend,
 	}
 }
 

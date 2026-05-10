@@ -43,8 +43,8 @@ type SynthesisService struct {
 	weaponKillsRepo port.WeaponKillsRepository
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
-	titleSlug string
-	gamertag  string
+	titleSlug  string
+	gamertag   string
 	playerXUID string
 }
 
@@ -178,7 +178,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		}
 		wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
 		if rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, wf); err == nil {
-			topWeaponKills = buildTopWeaponKills(rows, 15)
+			topWeaponKills = buildTopWeaponKills(rows, 20)
 		} else {
 			slog.DebugContext(ctx, "synthesis: weapon kills non disponibles (best-effort)", "err", err)
 		}
@@ -734,7 +734,7 @@ func filterSynthesisByPeriodCanonical(
 // buildSynthesisOverview. Lit Self.Kills/Deaths/Outcome/KDA depuis
 // canonical au lieu de SynthesisMatchRow.{Kills,Deaths,Outcome,KDA}.
 func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs domain.SynthesisKPIs) domain.SynthesisOverview {
-	var totalKills, totalDeaths, totalWins, totalLosses, totalTies, totalDNF int
+	var totalKills, totalDeaths, totalAssists, totalWins, totalLosses, totalTies, totalDNF int
 	var bestKills int
 	var bestKDA float64
 	var winStreak, maxStreak int
@@ -747,6 +747,9 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 		d := 0
 		if r.Self.Deaths != nil {
 			d = *r.Self.Deaths
+		}
+		if r.Self.Assists != nil {
+			totalAssists += *r.Self.Assists
 		}
 		totalKills += k
 		totalDeaths += d
@@ -784,6 +787,7 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 		TotalDNF:         totalDNF,
 		TotalKills:       totalKills,
 		TotalDeaths:      totalDeaths,
+		TotalAssists:     totalAssists,
 		WinRate:          soloKPIs.WinRate,
 		LongestWinStreak: maxStreak,
 	}
@@ -952,6 +956,9 @@ func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow) d
 		}
 		if r.Self.DamageTaken != nil {
 			stats.TotalDamageTaken += float64(*r.Self.DamageTaken)
+		}
+		if r.Self.TimePlayed != nil {
+			stats.TotalTimePlayedSeconds += *r.Self.TimePlayed
 		}
 	}
 	return stats

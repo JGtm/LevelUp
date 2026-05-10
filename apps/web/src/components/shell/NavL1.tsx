@@ -137,11 +137,23 @@ const L1_SECTIONS: L1Section[] = [
   },
   {
     key: 'stats',
-    label: 'Stats',
+    label: 'Solo',
     defaultPath: '/players/$playerSlug/stats/timeseries',
     matchPathname: (p) => /\/players\/[^/]+\/(stats\/|synthesis)/.test(p),
     tabs: [
       { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/synthesis' },
+      { key: 'timeseries', label: 'Séries temporelles', path: '/players/$playerSlug/stats/timeseries' },
+      { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
+    ],
+  },
+  {
+    key: 'squad',
+    label: 'Escouade',
+    defaultPath: '/players/$playerSlug/squad/synergies',
+    matchPathname: (p) => /\/players\/[^/]+\/squad/.test(p),
+    tabs: [
+      { key: 'synergies', label: 'Synergies', path: '/players/$playerSlug/squad/synergies' },
+      { key: 'contributions', label: 'Contributions', path: '/players/$playerSlug/squad/contributions' },
     ],
   },
   {
@@ -153,16 +165,6 @@ const L1_SECTIONS: L1Section[] = [
       { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
       { key: 'citations', label: 'Citations', path: '/players/$playerSlug/citations' },
       { key: 'season-pass', label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
-    ],
-  },
-  {
-    key: 'squad',
-    label: 'Escouade',
-    defaultPath: '/players/$playerSlug/squad/synergies',
-    matchPathname: (p) => /\/players\/[^/]+\/squad/.test(p),
-    tabs: [
-      { key: 'synergies', label: 'Synergies', path: '/players/$playerSlug/squad/synergies' },
-      { key: 'contributions', label: 'Contributions', path: '/players/$playerSlug/squad/contributions' },
     ],
   },
   {

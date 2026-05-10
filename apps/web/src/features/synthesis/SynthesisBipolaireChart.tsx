@@ -45,6 +45,16 @@ function formatMetricValue(key: string, value: number): string {
       const s = Math.round(value % 60)
       return m > 0 ? `${m}m${String(s).padStart(2, '0')}s` : `${s}s`
     }
+    case 'time_played_seconds': {
+      const d = Math.floor(value / 86400)
+      const h = Math.floor((value % 86400) / 3600)
+      const m = Math.floor((value % 3600) / 60)
+      const parts: string[] = []
+      if (d > 0) parts.push(`${d}j`)
+      if (h > 0 || d > 0) parts.push(`${h}h`)
+      parts.push(`${m}m`)
+      return parts.join(' ')
+    }
     default:
       return value.toFixed(2)
   }

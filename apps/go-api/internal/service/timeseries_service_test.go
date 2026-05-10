@@ -58,26 +58,6 @@ func TestBuildCumulTab_RollingKD(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// buildTimeseriesFormTab
-// ---------------------------------------------------------------------------
-
-func TestBuildTimeseriesFormTab_EWMA(t *testing.T) {
-	matches := []legacymatch.StatsMatchRow{
-		{Kills: 10, Deaths: 5, StartTime: time.Now()},
-		{Kills: 20, Deaths: 10, StartTime: time.Now().Add(time.Hour)},
-		{Kills: 5, Deaths: 10, StartTime: time.Now().Add(2 * time.Hour)},
-	}
-	tab := buildTimeseriesFormTab(matches)
-	if len(tab.EWMAKDPoints) != 3 {
-		t.Fatalf("expected 3 EWMA points, got %d", len(tab.EWMAKDPoints))
-	}
-	// First EWMA point = raw KD = 2.0
-	if tab.EWMAKDPoints[0].Value != 2.0 {
-		t.Errorf("expected first EWMA 2.0, got %v", tab.EWMAKDPoints[0].Value)
-	}
-}
-
-// ---------------------------------------------------------------------------
 // buildIntensityTab
 // ---------------------------------------------------------------------------
 

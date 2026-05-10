@@ -103,7 +103,7 @@ type SynthesisPageV2Response struct {
 	// Bloc détails (P9)
 	DetailedStats SynthesisDetailedStats `json:"detailed_stats"`
 
-	// Bloc frags par arme (top 15, label résolu, weapon ID non-résolu exclus)
+	// Bloc frags par arme (top 20, label résolu, weapon ID non-résolu exclus)
 	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
 }
 
@@ -201,6 +201,9 @@ type SynthesisDetailedStats struct {
 	TotalMeleeKills       int `json:"total_melee_kills"`
 	TotalPowerWeaponKills int `json:"total_power_weapon_kills"`
 	MaxKillingSpree       int `json:"max_killing_spree"` // MAX sur le scope
+
+	// Temps de jeu
+	TotalTimePlayedSeconds int `json:"total_time_played_seconds"`
 
 	// Tir
 	TotalShotsFired int `json:"total_shots_fired"`

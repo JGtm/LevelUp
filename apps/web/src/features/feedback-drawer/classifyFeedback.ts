@@ -18,7 +18,6 @@ export type FeedbackArea =
   | 'squad'
   | 'sessions'
   | 'timeseries'
-  | 'match_history'
   | 'match_view'
   | 'palmares'
   | 'player_home'
@@ -104,7 +103,6 @@ const AREA_PATTERNS: Array<[RegExp, FeedbackArea]> = [
   [/\/players\/[^/]+\/squad(\/|$|\?)/, 'squad'],
   [/\/players\/[^/]+\/stats\/sessions(\/|$|\?)/, 'sessions'],
   [/\/players\/[^/]+\/stats\/timeseries(\/|$|\?)/, 'timeseries'],
-  [/\/players\/[^/]+\/stats\/history(\/|$|\?)/, 'match_history'],
   [/\/players\/[^/]+\/matches\/[^/]+/, 'match_view'],
   [/\/players\/[^/]+\/palmares/, 'palmares'],
   [/\/players\/[^/]+\/home(\/|$|\?)/, 'player_home'],
@@ -112,7 +110,6 @@ const AREA_PATTERNS: Array<[RegExp, FeedbackArea]> = [
   [/\/players\/[^/]+\/career(\/|$|\?)/, 'career'],
   [/\/players\/[^/]+\/notifications(\/|$|\?)/, 'notifications'],
   [/\/players\/[^/]+\/objectifs(\/|$|\?)/, 'objectifs'],
-  [/\/players\/[^/]+\/profile\/citations/, 'citations'],
   [/^\/(setup|settings)(\/|$|\?)/, 'settings'],
   [/^\/(changelog|help)(\/|$|\?)/, 'meta'],
 ]

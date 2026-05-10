@@ -1,4 +1,4 @@
-﻿// Package analysis â€” squad_breakdown.go : breakdown solo/escouade + synthÃ¨se + top weeks.
+// Package analysis â€” squad_breakdown.go : breakdown solo/escouade + synthÃ¨se + top weeks.
 package analysis
 
 import (
@@ -398,9 +398,9 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 // tous les callers seront sur canonical.
 // extKPIAcc accumule les compteurs des KPIs etendus du bipolaire Solo/Escouade.
 type extKPIAcc struct {
-	sumDeaths, sumAssists, sumHeadshots    float64
-	sumMaxSpree, sumDmgDealt, sumDmgTaken  float64
-	sumPerfectKills                        float64
+	sumDeaths, sumAssists, sumHeadshots   float64
+	sumMaxSpree, sumDmgDealt, sumDmgTaken float64
+	sumPerfectKills                       float64
 	nSpree, nDmgDealt, nDmgTaken          int
 }
 
@@ -524,6 +524,7 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 			kpis.KillsPerMin = &kpm
 		}
 	}
+	kpis.TotalTimePlayedSeconds = int(sumTimePlayed)
 	ext.applyTo(&kpis, kpis.MatchCount, sumTimePlayed)
 	return kpis
 }
@@ -712,9 +713,12 @@ func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []doma
 
 // ComputeComparisonMetrics construit les mÃ©triques bipolaires solo/escouade.
 func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.ComparisonMetricItem {
-	items := make([]domain.ComparisonMetricItem, 0, 14)
+	items := make([]domain.ComparisonMetricItem, 0, 15)
 	items = append(items, domain.ComparisonMetricItem{
 		Label: "match_count", SoloValue: float64(solo.MatchCount), SquadValue: float64(squad.MatchCount),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "time_played_seconds", SoloValue: float64(solo.TotalTimePlayedSeconds), SquadValue: float64(squad.TotalTimePlayedSeconds),
 	})
 	items = append(items, domain.ComparisonMetricItem{
 		Label: "win_rate", SoloValue: solo.WinRate, SquadValue: squad.WinRate,
