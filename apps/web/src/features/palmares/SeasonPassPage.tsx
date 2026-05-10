@@ -14,7 +14,6 @@ import { BattlePassRewardCarousel, buildTierGroups, type RewardCard } from './Ba
 import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassRewardLightbox'
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PassContentSummary, type ContentLabels } from './PassContentSummary'
-import { PalmaresShell } from './PalmaresShell'
 import { useSeasonPassPage } from './queries'
 import { isArmorItemType, rarityLabel, rarityStyle, type RarityTier } from './rarity'
 
@@ -147,22 +146,19 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
       onClick={() => onSelect(pass)}
       aria-pressed={isSelected}
       className={[
-        'group relative block w-full min-h-[20rem] overflow-hidden rounded-xl border bg-card/95 text-left shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'group relative block w-full min-h-[15rem] overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isSelected ? 'border-primary/70 ring-2 ring-primary/40' : 'border-border/70',
       ].join(' ')}
     >
       {background && (
         <>
           <div
-            className="absolute inset-0 bg-cover bg-center blur-2xl opacity-30 transition-opacity group-hover:opacity-40"
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
             style={{ backgroundImage: `url(${background})` }}
             aria-hidden="true"
           />
-          <div
-            className="absolute inset-0 bg-contain bg-center bg-no-repeat opacity-30 transition-opacity group-hover:opacity-40"
-            style={{ backgroundImage: `url(${background})` }}
-            aria-hidden="true"
-          />
+          {/* color-allow: gradient sombre fixe pour lisibilité du contenu sur image plein-cadre */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/50" aria-hidden="true" />
         </>
       )}
       <div className="relative flex h-full flex-col gap-4 p-6">
@@ -181,19 +177,13 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
         )}
 
         <div className="mt-auto space-y-3">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="text-xs text-muted-foreground">{labels.rank}</p>
-              <p className="mt-1 text-xl font-semibold text-foreground">{rankValue}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{labels.progress}</p>
-              <p className="mt-1 text-xl font-semibold text-foreground">
-                {pass.completion_percent == null
-                  ? '—'
-                  : `${pass.completion_percent.toLocaleString(intlLocale, { maximumFractionDigits: 0 })} %`}
-              </p>
-            </div>
+          <div className="flex items-baseline justify-between">
+            <p className="text-xl font-semibold text-foreground">{rankValue}</p>
+            <p className="text-xl font-semibold text-foreground">
+              {pass.completion_percent == null
+                ? '—'
+                : `${pass.completion_percent.toLocaleString(intlLocale, { maximumFractionDigits: 0 })} %`}
+            </p>
           </div>
           <ProgressBar value={pass.completion_percent} />
         </div>
@@ -368,24 +358,22 @@ export function SeasonPassPage() {
 
   if (isLoading) {
     return (
-      <PalmaresShell playerSlug={playerSlug} activeTab="season-pass">
-        <div className="flex items-center justify-center py-24">
-          <Spinner size="lg" />
-        </div>
-      </PalmaresShell>
+      <div className="flex items-center justify-center py-24">
+        <Spinner size="lg" />
+      </div>
     )
   }
 
   if (isError || !data) {
     return (
-      <PalmaresShell playerSlug={playerSlug} activeTab="season-pass">
+      <div className="p-6">
         <EmptyStateCard
           title={text.seasonPass.unavailableTitle}
           description={error?.message ?? text.seasonPass.unavailableDescription}
           actionLabel={text.seasonPass.retry}
           onAction={() => refetch()}
         />
-      </PalmaresShell>
+      </div>
     )
   }
 
@@ -413,7 +401,7 @@ export function SeasonPassPage() {
   }
 
   return (
-    <PalmaresShell playerSlug={playerSlug} activeTab="season-pass">
+    <div className="flex flex-col gap-6 p-6">
       <div className="grid gap-4 xl:grid-cols-3">
         <StatCard label={text.seasonPass.activeCard} value={activePass?.name ?? '—'} />
         <StatCard label={text.seasonPass.completedCard} value={completedCount.toLocaleString(text.intlLocale)} />
@@ -458,6 +446,6 @@ export function SeasonPassPage() {
           </div>
         </div>
       )}
-    </PalmaresShell>
+    </div>
   )
 }

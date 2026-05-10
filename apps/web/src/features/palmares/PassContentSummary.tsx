@@ -95,12 +95,13 @@ function StatChip({ value, label }: { value: string | number; label: string }) {
   )
 }
 
-function ChipRow({ chips }: { chips: Chip[] }) {
+function ChipRow({ chips, compact = false }: { chips: Chip[]; compact?: boolean }) {
   if (chips.length === 0) return null
+  const gap = compact ? 'gap-x-3' : 'gap-x-5'
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+    <div className={`flex flex-wrap items-center ${gap} gap-y-1.5`}>
       {chips.map((chip, i) => (
-        <span key={chip.key} className="flex items-center gap-x-5">
+        <span key={chip.key} className={`flex items-center ${gap}`}>
           <StatChip value={chip.value} label={chip.label} />
           {i < chips.length - 1 && <span className="h-3 w-px bg-border/60" aria-hidden="true" />}
         </span>
@@ -176,6 +177,17 @@ export function PassContentSummary({
   const hasTypes = !compact && content.type_breakdown && Object.keys(content.type_breakdown).length > 0
 
   if (currencyChips.length === 0 && itemChips.length === 0 && !hasRarity) return null
+
+  if (compact) {
+    const allChips = [...currencyChips, ...itemChips]
+    if (allChips.length === 0 && !hasRarity) return null
+    return (
+      <div className="space-y-2">
+        {allChips.length > 0 && <ChipRow chips={allChips} compact />}
+        {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} locale={locale} />}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3">
