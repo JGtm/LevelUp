@@ -4,12 +4,16 @@ import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { Spinner } from '@/components/ui/spinner'
+import { Tooltip } from '@/components/ui/tooltip'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
-import { tokenCssVar } from '@/lib/accessibility'
+import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { tokenCssVar, tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import { formatMessage } from '@/lib/i18n/format'
+import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
-import type { CompareMetricRow, CompareResponse } from '@/lib/api/types'
+import type { CompareMetricRow, CompareResponse, MatchEncounterBadge } from '@/lib/api/types'
 
 import { CompareBar } from './CompareBar'
 import { CompareMirrorRow } from './CompareMirrorRow'
@@ -160,31 +164,80 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
   )
 }
 
+// ─── Badges d'encounter ──────────────────────────────────────────────────────
+
+function isSemanticToken(s: string): s is SemanticToken {
+  return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
+}
+
+const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
+  'narrative.encounter.ally_plus': { fr: 'Allié récurrent : bon taux de victoire ensemble', en: 'Recurring ally: good win rate together' },
+  'narrative.encounter.tough_enemy': { fr: 'Adversaire coriace : taux de victoire faible', en: 'Tough opponent: low win rate against him' },
+  'narrative.encounter.ordinal': { fr: 'Total rencontres croisées (allié + ennemi)', en: 'Total cross encounters (ally + enemy)' },
+}
+
+function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadge[]; locale: 'fr' | 'en' }) {
+  if (!badges?.length) return null
+  return (
+    <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
+      {badges.map((badge, i) => {
+        const labelKey = badge.label_key as SquadManifestKey
+        const ordinal = badge.detail && typeof badge.detail['ordinal'] === 'number' ? (badge.detail['ordinal'] as number) : undefined
+        const label = ordinal !== undefined ? formatMessage(squadManifest, labelKey, locale, { ordinal }) : formatMessage(squadManifest, labelKey, locale)
+        const colorVar = isSemanticToken(badge.color_token) ? tokenVar(badge.color_token as SemanticToken) : undefined
+        const tooltip = ENCOUNTER_BADGE_TOOLTIPS[badge.label_key]?.[locale]
+        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} size="sm" />
+        return tooltip ? (
+          <Tooltip key={i} content={tooltip}>{badgeEl}</Tooltip>
+        ) : (
+          <span key={i}>{badgeEl}</span>
+        )
+      })}
+    </span>
+  )
+}
+
 // ─── Header joueurs ──────────────────────────────────────────────────────────
 
-function PlayerHeader({ data, text }: { data: CompareResponse; text: CompareText }) {
+function PlayerHeader({ data, text, locale }: { data: CompareResponse; text: CompareText; locale: 'fr' | 'en' }) {
   const colorA = tokenCssVar('compare-a' as SemanticToken)
   const colorB = tokenCssVar('compare-b' as SemanticToken)
   return (
     <div className="flex items-center justify-between pb-3 border-b border-border/50">
       <span className="text-base font-bold" style={{ color: colorA }}>{data.player_a.gamertag}</span>
       <span className="text-xs text-muted-foreground font-medium px-4">{text.vs}</span>
-      <span className="text-base font-bold" style={{ color: colorB }}>{data.player_b.gamertag}</span>
+      <span className="inline-flex items-center text-base font-bold" style={{ color: colorB }}>
+        {data.player_b.gamertag}
+        <EncounterBadgesInline badges={data.encounter_badges} locale={locale} />
+      </span>
     </div>
   )
 }
 
 function MirrorHeader({
-  gamertagA, gamertagB, gamertagC,
-}: { gamertagA: string; gamertagB: string; gamertagC: string }) {
+  gamertagA, gamertagB, gamertagC, badgesB, badgesC, locale,
+}: {
+  gamertagA: string
+  gamertagB: string
+  gamertagC: string
+  badgesB?: MatchEncounterBadge[]
+  badgesC?: MatchEncounterBadge[]
+  locale: 'fr' | 'en'
+}) {
   const colorA = tokenCssVar('compare-a' as SemanticToken)
   const colorB = tokenCssVar('compare-b' as SemanticToken)
   const colorC = tokenCssVar('compare-c' as SemanticToken)
   return (
     <div className="grid pb-3 border-b border-border/50" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
-      <span className="text-base font-bold" style={{ color: colorB }}>{gamertagB}</span>
+      <span className="inline-flex items-center text-base font-bold" style={{ color: colorB }}>
+        {gamertagB}
+        <EncounterBadgesInline badges={badgesB} locale={locale} />
+      </span>
       <span className="text-base font-bold px-6 text-center" style={{ color: colorA }}>{gamertagA}</span>
-      <span className="text-base font-bold text-right" style={{ color: colorC }}>{gamertagC}</span>
+      <span className="inline-flex items-center justify-end text-base font-bold" style={{ color: colorC }}>
+        {gamertagC}
+        <EncounterBadgesInline badges={badgesC} locale={locale} />
+      </span>
     </div>
   )
 }
@@ -267,6 +320,10 @@ export function ComparePage() {
               max={2}
               placeholder={text.searchPlaceholder}
               allowFreeInput
+              colors={[
+                tokenCssVar('compare-b' as SemanticToken),
+                tokenCssVar('compare-c' as SemanticToken),
+              ]}
             />
           </div>
         </div>
@@ -299,6 +356,9 @@ export function ComparePage() {
             gamertagA={leftData.player_a.gamertag}
             gamertagB={leftData.player_b.gamertag}
             gamertagC={rightData.player_b.gamertag}
+            badgesB={leftData.encounter_badges}
+            badgesC={rightData.encounter_badges}
+            locale={locale}
           />
 
           <div className="space-y-8">
@@ -337,7 +397,7 @@ export function ComparePage() {
             </p>
           )}
 
-          <PlayerHeader data={leftData} text={text} />
+          <PlayerHeader data={leftData} text={text} locale={locale} />
 
           {leftData.metrics.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-8">
