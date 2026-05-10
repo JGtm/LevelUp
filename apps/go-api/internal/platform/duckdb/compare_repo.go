@@ -139,6 +139,58 @@ func (r *CompareRepo) GetPlayerATH(ctx context.Context) (*domain.PlayerATH, erro
 	}, nil
 }
 
+// GetPlayerATHFor retourne les métriques all-time pour n'importe quel joueur local
+// en le cherchant dans le pool global par la clé "{titleSlug}:{gamertag}".
+// Retourne nil, nil si le joueur n'est pas dans le pool (best-effort).
+func (r *CompareRepo) GetPlayerATHFor(ctx context.Context, gamertag, titleSlug string) (*domain.PlayerATH, error) {
+	key := titleSlug + ":" + gamertag
+	pdb, ok := LookupFromPool(key)
+	if !ok {
+		slog.DebugContext(ctx, "CompareRepo.GetPlayerATHFor: joueur non dans le pool", "gamertag", gamertag)
+		return nil, nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	const q = `
+		SELECT
+			COALESCE(
+				(SELECT msr.rating_value FROM match_skill_rank msr
+				 WHERE msr.rating_type != 'LUSR'
+				 ORDER BY msr.start_time DESC LIMIT 1),
+				0.0) AS csr_current,
+			COALESCE(
+				(SELECT MAX(msr.rating_value) FROM match_skill_rank msr
+				 WHERE msr.rating_type != 'LUSR'),
+				0.0) AS csr_best,
+			COALESCE(
+				(SELECT cp.rank FROM career_progression cp
+				 ORDER BY cp.recorded_at DESC LIMIT 1),
+				0) AS career_rank,
+			COALESCE(
+				(SELECT MAX(pme.performance_score) FROM player_match_enrichment pme),
+				0.0) AS perf_ath,
+			COALESCE(
+				(SELECT MAX(msr.rating_value) FROM match_skill_rank msr
+				 WHERE msr.rating_type = 'LUSR'),
+				0.0) AS lusr_ath`
+
+	var csrCurrent, csrBest, perfATH, lusrATH float64
+	var careerRank int64
+	err := pdb.Player.QueryRow(ctx, q).Scan(&csrCurrent, &csrBest, &careerRank, &perfATH, &lusrATH)
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, err)
+	}
+	return &domain.PlayerATH{
+		CSRCurrent: int(csrCurrent),
+		CSRBest:    int(csrBest),
+		CareerRank: int(careerRank),
+		PerfATH:    perfATH,
+		LusrATH:    lusrATH,
+	}, nil
+}
+
 // GetFavoriteWeapon retourne l'arme avec le plus de kills depuis shared.v_weapon_kills.
 // Lecture depuis pdb.Player (shared attaché) + labels depuis pdb.Metadata.
 // Retourne nil si aucune donnée disponible — best-effort, jamais d'erreur fatale.

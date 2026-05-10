@@ -134,6 +134,10 @@ func (m *mockCompareRepoAB) GetPlayerATH(_ context.Context) (*domain.PlayerATH, 
 	return &domain.PlayerATH{}, nil
 }
 
+func (m *mockCompareRepoAB) GetPlayerATHFor(_ context.Context, _, _ string) (*domain.PlayerATH, error) {
+	return &domain.PlayerATH{}, nil
+}
+
 func (m *mockCompareRepoAB) GetFavoriteWeapon(_ context.Context, _ string) (*domain.WeaponHighlight, error) {
 	return nil, nil
 }
