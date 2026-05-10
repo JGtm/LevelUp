@@ -1,4 +1,66 @@
 
+## [2026-05-10] Compare CSR + CSR ATH — feature retirée, reportée v8
+
+**Statut** : Complété.
+
+**Décision** : Suppression complète du code CSR (current + ATH) de la page Face-à-face. L'enquête sur l'archi SpartanRecord a montré qu'ils utilisent un cron Firebase Cloud Functions (1×/jour à 2h heure Chicago) qui appelle un autocode privé (`loganjahnke.autocode.dev`) pour pré-calculer les CSR dans Firestore. Les < 2s observés sont du cache, pas un appel live. Notre tentative d'appel live `skill.svc.halowaypoint.com/hi/playlist/{id}/csrs` ne marchait pas pour les joueurs autres que celui logué (scope du token Waypoint). Pas de solution low-cost sans un agrégateur tiers (HaloDotAPI dead, Grunt dead, Autocode dead).
+
+**Fichiers nettoyés** :
+- `port/services.go` : retrait `FetchCSRDirect` de `PlayerStatsProvider`
+- `platform/halo/compare_provider.go` : retrait `FetchCSRDirect`, `csrResponse`, `rankedPlaylistIDs`, `defaultSkillHost`
+- `domain/compare.go` : retrait `CSRCurrent`/`CSRBest` de `NormalizedPlayerStats` et `PlayerATH`
+- `platform/duckdb/compare_repo.go` : retrait sous-requêtes CSR de `GetPlayerATH`/`GetPlayerATHFor`
+- `service/compare_service.go` : retrait goroutine CSR + entrées `csr_current`/`csr_best` dans `buildMetrics`
+- tests : mocks `FetchCSRDirect` et asserts CSR retirés
+- `web/features/compare/i18n.ts`, `ComparePage.tsx`, `lib/api/types.ts` : retrait labels et entrées de catégorie
+
+**Backlog** : ajouté section "🔵 V8" dans `.ai/backlog` avec le plan de re-implémentation (cron Go background → écriture `match_skill_rank` type='CSR' → lecture DuckDB locale).
+
+**Résultats** : `go build ./...` clean, `go test ./internal/service/... ./internal/platform/halo/... ./internal/platform/duckdb/...` OK. Test `TestDiscoveryScan_MixedTokenSources` (pool auth) échoue mais indépendant — dépend de l'état réel du pool joueurs, pas de mes changements.
+
+**Prochaine étape** : page Compare propre sans CSR. Reprendre la feature en v8 selon le plan du backlog.
+
+---
+
+## [2026-05-10] Briefing scope — fix Stats (match_context ignoré) + Escouade (SoloKPIs sur tous les matchs)
+
+**Statut** : Complété.
+
+**Problème** : Le `SessionBriefing` agrégeait les mauvaises rows sur deux pages, donnant l'impression d'inclure tous les matchs (solo + escouade confondus) :
+- Page **Stats** : le frontend injectait bien `match_context: 'solo'` ([TimeseriesPage.tsx:73](apps/web/src/features/timeseries/TimeseriesPage.tsx#L73)) mais `applyAllFilters` ([match_history_service.go:627](apps/go-api/internal/service/match_history_service.go#L627)) n'appelait pas `applyMatchContextFilter`. Le filtre était silencieusement ignoré.
+- Page **Escouade** : `buildSquadHeader.SoloKPIs` ([squad_service_v2.go:474](apps/go-api/internal/service/squad_service_v2.go#L474)) était calculé sur `perPlayer[mainGT]` (toutes les rows du joueur principal après filtres period/cascade) au lieu de `rowsByPlayer[mainGT]` (uniquement les matchs partagés avec l'escouade définie).
+
+**Décision** :
+1. **Stats** : ajouter `applyMatchContextFilter(temporal, f.MatchContext)` dans la chaîne `applyAllFilters` entre temporal et cascade. Fix transversal qui couvre toute la pipeline stats (timeseries, sessions, etc.) et pas seulement le briefing.
+2. **Escouade** : recalculer `SoloKPIs` depuis les rows partagées du joueur principal. Si aucun match partagé → `SoloKPIs=nil` → le briefing se masque automatiquement côté frontend (`header?.solo_kpis &&`). Suppression du paramètre `perPlayer` de `buildSquadHeader` (devenu inutile). Fallback ajouté dans `teammates_service.buildBriefingHeaderForTeammatesPage` pour préserver le comportement "mode dégradé" (briefing solo si pas de matchs partagés en mode squad).
+
+**Architecture** :
+- Pas de fonction modulaire commune : les deux fixes adressent des problèmes différents (filtre boolean `IsWithFriends` vs intersection par xuid). Le code modulaire existait déjà (`applyMatchContextFilter` + `projectSharedRows`), il fallait juste le brancher correctement.
+- Test inversé : `TestSquadServiceV2_GetSquadPage_HeaderNilWhenNoShared` valide maintenant que `SoloKPIs=nil` sans matchs partagés (sémantique cohérente "scope escouade").
+- Tests ajoutés : `TestFilterStatsMatchRows_MatchContextSolo` + `TestFilterStatsMatchRows_MatchContextSquad` pour verrouiller le branchement.
+
+**Résultats** : `go build ./...` clean, `go test ./internal/service/...` OK (2 nouveaux tests passent, test inversé passe). Le test `TestDiscoveryScan_MixedTokenSources` du package `auth/pool` échoue mais n'a aucun lien avec les changements (auth tokens, pas filtering).
+
+**Prochaine étape** : Vérifier visuellement en prod sur les pages Stats et Escouade :
+- Stats : briefing doit montrer uniquement les matchs solo
+- Escouade : briefing doit montrer uniquement les matchs partagés avec l'escouade définie (et disparaître si aucun match partagé)
+
+---
+
+## [2026-05-10] Compare CSR — découverte dynamique playlist IDs
+
+**Statut** : Complété.
+
+**Décision** : Remplacement des 3 playlist IDs hardcodés (obsolètes à chaque saison) par une découverte dynamique depuis l'historique matchmaking du joueur (`/hi/players/xuid({xuid})/matches?type=matchmaking&count=25`). Les playlist IDs trouvés dans cet historique correspondent aux playlists actives de la saison courante. Les 3 IDs connus (`edfef3ac`, `f7f30787`, `f7eb8c71`) restent en fallback. Logging warn ajouté pour les erreurs non-404/410 (plus invisible en debug).
+
+**Architecture** : `FetchCSRDirect` → `discoverPlaylistIDs` (extrait les IDs depuis historique) → boucle sur playlist IDs → `/hi/playlist/{id}/csrs?players=xuid({xuid})`.
+
+**Résultats** : `go build ./...` clean, `go test ./internal/service/... ./internal/platform/halo/...` OK.
+
+**Prochaine étape** : Vérifier en prod que le CSR s'affiche pour Chocoboflor/JGtm/Nilton410.
+
+---
+
 ## [2026-05-10] Compare CSR — match skill endpoint au lieu de playlist CSR
 
 **Statut** : Complété.
@@ -40,6 +102,30 @@
 **Résultats** : Fix joueur B : si JGtm/Nilton410 sont dans le pool DuckDB avec des données CSR historiques (Python sync), le CSR s'affichera. Si hors pool ou sans données Python → CSR = 0. Logs debug ajoutés pour diagnostiquer : "Waypoint joueur A/B indisponible", "ATH joueur B depuis pool", "joueur B absent du pool".
 
 **Prochaine étape** : Implémenter le sync CSR Go (scope.CSR existe, implémentation manquante) ou corriger l'URL Waypoint vers le bon endpoint ranked CSR.
+
+## [2026-05-10] Timeseries — filtres solo + match_context fix
+
+**Statut** : Complété.
+
+**Décision** : Triple fix pour que les filtres timeseries s'appliquent uniquement aux matchs solo. (1) Go : `IsWithFriends` ajouté à `legacymatch.StatsMatchRow`, copié dans `StatsMatchRowFromCanonical`, puis propagé dans `FilterMatchRow` via `stats_filters.go` — `applyMatchContextFilter` peut désormais filtrer correctement. (2) Frontend `FilterOmnibar` : nouveau prop `matchContext` ; preview injecte `match_context` pour scoper les counts et session_options à la population réelle de la page. (3) Frontend `NavL2` : `<FilterOmnibar matchContext="solo" />` pour la section stats. (4) `TimeseriesPage` : construit `soloFilterContext = { ...filterContext, match_context: 'solo' }` avant d'envoyer les deux requêtes API (timeseries + combatYield).
+
+**Résultats** : `go build ./...` clean, `go test ./internal/service/... ./internal/analysis/...` OK.
+
+**Prochaine étape** : Valider visuellement que sélectionner une session ou une période filtre bien le contenu de la page.
+
+---
+
+## [2026-05-10] Stats page rework — SessionBriefing solo + nettoyage nav
+
+**Statut** : Complété.
+
+**Décision** : Branche `feat/stats-page-rework`. (1) `PerformanceScore *float64` ajouté à `domain.KPIStats` + calcul dans `ComputeKPIStats` (moyenne `Enrichment.PerformanceScore` avec fallback KD-based). (2) `SessionBriefing` : construction d'une `soloPlayers` card quand `performance_score` est présent en mode solo — la barre composite Victoire/Défaite s'affiche ainsi en solo. (3) `SquadVerdict` refactorisé : remplacement de `isSquadMode` par `hasTeamCard` / `hasPlayerCards`, player cards sans `disabled` pour éviter la transparence. (4) `FilterOmnibar` : remplacement `SessionPill` → `SessionMultiSelect` filtré sur sessions solo uniquement. (5) Suppression des onglets "Séries" et "Sessions" de `NavL1.tsx` (tabs Stats réduits à "Synthèse" seul). (6) Marge `pb-6` ajoutée sous le SessionBriefing dans `TimeseriesPage`.
+
+**Résultats** : Page timeseries affiche correctement le SessionBriefing avec barre composite. Nav L1 ne liste plus "Séries" / "Sessions". Margin entre briefing et onglets alignée avec la page escouade.
+
+**Prochaine étape** : Valider visuellement la page `/stats/timeseries`.
+
+---
 
 ## [2026-05-10] Rivalités — vue butterfly back-to-back bar chart
 
