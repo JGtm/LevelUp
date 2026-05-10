@@ -2666,19 +2666,6 @@ export interface TimeseriesCumulTab {
   rolling_kd: CumulativePoint[]
 }
 
-export interface TimeseriesRegressionStats {
-  kd_slope: number | null
-  winrate_slope: number | null
-  r_squared: number | null
-  has_enough_for_trend: boolean
-  trend: 'improving' | 'declining' | 'stable' | null
-}
-
-export interface TimeseriesFormTab {
-  regression_stats: TimeseriesRegressionStats
-  ewma_kd_points: CumulativePoint[]
-}
-
 export interface TimeseriesIntensityTab {
   heatmap_data: IntensityHeatmapPoint[]
   score_per_min_data: CumulativePoint[]
@@ -2788,7 +2775,6 @@ export interface TimeseriesPageResponse {
   match_rows: TimeseriesMatchRow[]
   summary_tab: TimeseriesSummaryTab
   cumul_tab: TimeseriesCumulTab
-  form_tab: TimeseriesFormTab
   intensity_tab: TimeseriesIntensityTab
   distributions_tab: TimeseriesDistributionsTab
   top_weapons: TimeseriesWeaponKill[]

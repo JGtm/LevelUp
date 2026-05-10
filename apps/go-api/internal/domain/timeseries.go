@@ -126,21 +126,6 @@ type TimeseriesCumulTab struct {
 	RollingKD     []CumulativePoint `json:"rolling_kd"`
 }
 
-// TimeseriesRegressionStats contient les stats de régression.
-type TimeseriesRegressionStats struct {
-	KDSlope           *float64 `json:"kd_slope"`
-	WinrateSlope      *float64 `json:"winrate_slope"`
-	RSquared          *float64 `json:"r_squared"`
-	HasEnoughForTrend bool     `json:"has_enough_for_trend"`
-	Trend             *string  `json:"trend"` // "improving" | "declining" | "stable"
-}
-
-// TimeseriesFormTab est l'onglet Forme (EWMA, régression).
-type TimeseriesFormTab struct {
-	RegressionStats TimeseriesRegressionStats `json:"regression_stats"`
-	EWMAKDPoints    []CumulativePoint         `json:"ewma_kd_points"`
-}
-
 // TimeseriesIntensityTab est l'onglet Intensité.
 type TimeseriesIntensityTab struct {
 	HeatmapData     []IntensityHeatmapPoint `json:"heatmap_data"`
@@ -257,11 +242,11 @@ type TimeseriesMatchRow struct {
 
 // TimeseriesPageResponse est la réponse de POST /pages/timeseries.
 type TimeseriesPageResponse struct {
-	TotalMatches     int                        `json:"total_matches"`
-	MatchRows        []TimeseriesMatchRow       `json:"match_rows"`
-	SummaryTab       TimeseriesSummaryTab       `json:"summary_tab"`
-	CumulTab         TimeseriesCumulTab         `json:"cumul_tab"`
-	FormTab          TimeseriesFormTab          `json:"form_tab"`
+	TotalMatches int                  `json:"total_matches"`
+	MatchRows    []TimeseriesMatchRow `json:"match_rows"`
+	SummaryTab   TimeseriesSummaryTab `json:"summary_tab"`
+	CumulTab     TimeseriesCumulTab   `json:"cumul_tab"`
+
 	IntensityTab     TimeseriesIntensityTab     `json:"intensity_tab"`
 	DistributionsTab TimeseriesDistributionsTab `json:"distributions_tab"`
 	// TopWeapons : top 10 armes par kills sur le scope filtré (chart .04).
