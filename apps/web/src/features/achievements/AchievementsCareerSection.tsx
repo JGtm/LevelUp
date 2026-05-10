@@ -6,14 +6,11 @@
  *                              cartes pleine largeur — pour un slot droit
  *                              aux côtés des charts XP/LUSR.
  */
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useAchievementsPage } from './queries'
 import { AchievementCard } from './AchievementCard'
 import { ACHIEVEMENTS_TEXT, type AchievementsLocale, type AchievementsText } from './i18n'
-
-const VISIBLE_LIMIT = 30
 
 interface Props {
   playerSlug: string
@@ -50,30 +47,27 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
     )
   }
 
-  const filtered = filterXboxTitleId
+  const visible = filterXboxTitleId
     ? data.achievements.filter((a) => !a.xbox_title_id || a.xbox_title_id === filterXboxTitleId)
     : data.achievements
-  const visible = filtered.slice(0, VISIBLE_LIMIT)
   const summary = data.summary
 
   if (layout === 'sidebar') {
     return (
-      <Card className="flex flex-col">
-        <CardHeader className="pb-2 pt-3">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold text-foreground">{t.sectionTitle}</h2>
-            <span className="text-xs text-muted-foreground">
-              {summary.unlocked_count}/{summary.total_count} · {summary.completion_pct.toFixed(0)} %
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {summary.earned_gamerscore} / {summary.total_gamerscore} G
-          </p>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-hidden p-2">
+      <div className="relative flex flex-col rounded-lg border border-border bg-card">
+        <div className="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2">
+          <span className="text-sm font-medium">{t.sectionTitle}</span>
+          <span className="text-xs text-muted-foreground">
+            {summary.unlocked_count}/{summary.total_count} · {summary.completion_pct.toFixed(0)} %
+          </span>
+        </div>
+        <p className="px-3 pb-1 pt-1 text-xs text-muted-foreground">
+          {summary.earned_gamerscore} / {summary.total_gamerscore} G
+        </p>
+        <div className="p-3 pt-1">
           <div
             className="flex flex-col gap-2 overflow-y-auto"
-            style={{ maxHeight: '680px' }}
+            style={{ maxHeight: '640px' }}
             role="list"
             aria-label={t.sectionTitle}
           >
@@ -83,18 +77,18 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-2 pb-3 md:flex-row md:items-center md:justify-between">
-        <h2 className="text-base font-semibold text-foreground">{t.sectionTitle}</h2>
+    <div className="relative rounded-lg border border-border bg-card">
+      <div className="flex flex-col gap-2 border-b border-border px-3 py-2 md:flex-row md:items-center md:justify-between">
+        <span className="text-sm font-medium">{t.sectionTitle}</span>
         <SummaryInline summary={summary} t={t} />
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-3">
         <div
           className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2"
           role="list"
@@ -106,29 +100,25 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
             </div>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 function renderShellWith(t: AchievementsText, layout: 'carousel' | 'sidebar', body: React.ReactNode) {
   if (layout === 'sidebar') {
     return (
-      <Card className="flex flex-col">
-        <CardHeader className="pb-2 pt-3">
-          <h2 className="text-sm font-semibold text-foreground">{t.sectionTitle}</h2>
-        </CardHeader>
-        <CardContent>{body}</CardContent>
-      </Card>
+      <div className="relative rounded-lg border border-border bg-card">
+        <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionTitle}</div>
+        <div className="p-3">{body}</div>
+      </div>
     )
   }
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <h2 className="text-base font-semibold text-foreground">{t.sectionTitle}</h2>
-      </CardHeader>
-      <CardContent>{body}</CardContent>
-    </Card>
+    <div className="relative rounded-lg border border-border bg-card">
+      <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionTitle}</div>
+      <div className="p-3">{body}</div>
+    </div>
   )
 }
 

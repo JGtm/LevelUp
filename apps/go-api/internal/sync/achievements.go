@@ -12,6 +12,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/assets"
@@ -36,6 +37,7 @@ type PlayerAchievement struct {
 	CurrentProgress int
 	TargetProgress  int
 	XboxTitleID     string
+	ServiceConfigID string
 }
 
 // SyncAchievements récupère les achievements du joueur en EN et FR,
@@ -65,18 +67,23 @@ func SyncAchievements(
 	}
 
 	// Étape 2 : fusion par achievement_id.
+
+	// Étape 3 : fusion par achievement_id.
 	merged := mergeAchievements(enRaw, frRaw)
 	slog.InfoContext(ctx, "achievements: fusion terminée", "xuid", xuid, "count", len(merged))
 
-	// Étape 3 : upserts.
+	// Étape 4 : upserts + purge des périmés.
 	if err := upsertAchievementDefinitions(ctx, metadataDB, merged, titleID); err != nil {
 		return fmt.Errorf("achievements: upsert definitions: %w", err)
+	}
+	if err := purgeStaleAchievementDefinitions(ctx, metadataDB, merged, titleID); err != nil {
+		return fmt.Errorf("achievements: purge stale definitions: %w", err)
 	}
 	if err := upsertPlayerAchievements(ctx, playerDB, merged); err != nil {
 		return fmt.Errorf("achievements: upsert player progress: %w", err)
 	}
 
-	// Étape 4 : pré-warming des images (fire-and-forget).
+	// Étape 5 : pré-warming des images (fire-and-forget).
 	if resolver != nil {
 		warmAchievementImages(ctx, resolver, merged)
 	}
@@ -109,6 +116,7 @@ func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 			CurrentProgress: a.CurrentProgress,
 			TargetProgress:  a.TargetProgress,
 			XboxTitleID:     a.XboxTitleID,
+			ServiceConfigID: a.ServiceConfigID,
 		}
 		if f, ok := frMap[a.ID]; ok {
 			pa.NameFR = f.Name
@@ -118,6 +126,45 @@ func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 		result = append(result, pa)
 	}
 	return result
+}
+
+// filterBySCID retient uniquement les achievements dont le ServiceConfigID correspond.
+func filterBySCID(achievements []PlayerAchievementRaw, scid string) []PlayerAchievementRaw {
+	out := make([]PlayerAchievementRaw, 0, len(achievements))
+	for _, a := range achievements {
+		if a.ServiceConfigID == scid {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// purgeStaleAchievementDefinitions supprime de metadata les achievements du titre
+// qui ne font plus partie de la liste synchronisée (ex: achievements d'autres jeux
+// Halo qui auraient été insérés avant l'introduction du filtre SCID).
+func purgeStaleAchievementDefinitions(ctx context.Context, db *sql.DB, achievements []PlayerAchievement, titleID string) error {
+	if len(achievements) == 0 {
+		return nil
+	}
+	placeholders := make([]string, len(achievements))
+	args := make([]any, len(achievements)+1)
+	args[0] = titleID
+	for i, a := range achievements {
+		placeholders[i] = "?"
+		args[i+1] = a.AchievementID
+	}
+	q := fmt.Sprintf(
+		"DELETE FROM xbox_achievement_definitions WHERE title_id = ? AND achievement_id NOT IN (%s)",
+		strings.Join(placeholders, ","),
+	)
+	res, err := db.ExecContext(ctx, q, args...)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		slog.InfoContext(ctx, "achievements: périmés supprimés", "title_id", titleID, "deleted", n)
+	}
+	return nil
 }
 
 // upsertAchievementDefinitions écrit les définitions dans metadata.xbox_achievement_definitions.
@@ -137,23 +184,24 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 		INSERT INTO xbox_achievement_definitions
 			(achievement_id, name_en, name_fr, description_en, description_fr,
 			 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
-			 rarity_category, rarity_percent, title_id, xbox_title_id, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			 rarity_category, rarity_percent, title_id, xbox_title_id, service_config_id, fetched_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT (achievement_id) DO UPDATE SET
-			name_en         = excluded.name_en,
-			name_fr         = excluded.name_fr,
-			description_en  = excluded.description_en,
-			description_fr  = excluded.description_fr,
-			locked_desc_en  = excluded.locked_desc_en,
-			locked_desc_fr  = excluded.locked_desc_fr,
-			gamerscore      = excluded.gamerscore,
-			image_url       = excluded.image_url,
-			is_secret       = excluded.is_secret,  -- pragma: allowlist secret
-			rarity_category = excluded.rarity_category,
-			rarity_percent  = excluded.rarity_percent,
-			title_id        = excluded.title_id,
-			xbox_title_id   = excluded.xbox_title_id,
-			fetched_at      = excluded.fetched_at
+			name_en           = excluded.name_en,
+			name_fr           = excluded.name_fr,
+			description_en    = excluded.description_en,
+			description_fr    = excluded.description_fr,
+			locked_desc_en    = excluded.locked_desc_en,
+			locked_desc_fr    = excluded.locked_desc_fr,
+			gamerscore        = excluded.gamerscore,
+			image_url         = excluded.image_url,
+			is_secret         = excluded.is_secret,  -- pragma: allowlist secret
+			rarity_category   = excluded.rarity_category,
+			rarity_percent    = excluded.rarity_percent,
+			title_id          = excluded.title_id,
+			xbox_title_id     = excluded.xbox_title_id,
+			service_config_id = excluded.service_config_id,
+			fetched_at        = excluded.fetched_at
 	`
 
 	stmt, err := tx.PrepareContext(ctx, q)
@@ -173,7 +221,7 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 			a.DescriptionEN, a.DescriptionFR,
 			a.LockedDescEN, a.LockedDescFR,
 			a.Gamerscore, a.ImageURL, a.IsSecret,
-			a.RarityCategory, rarityPercent, titleID, a.XboxTitleID,
+			a.RarityCategory, rarityPercent, titleID, a.XboxTitleID, a.ServiceConfigID,
 		); err != nil {
 			return fmt.Errorf("upsert definition %s: %w", a.AchievementID, err)
 		}

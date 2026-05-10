@@ -139,29 +139,31 @@ func computeCompletionPct(unlocked, total int) float64 {
 	return float64(int(pct*10+0.5)) / 10
 }
 
-// sortAchievementEntries applique le tri métier : unlocked en premier (par
-// UnlockedAt DESC, dates les plus récentes en haut), puis locked par
-// gamerscore DESC. Tri secondaire stable par achievement_id ASC.
+// sortAchievementEntries applique le tri métier : locked en premier (par
+// gamerscore DESC, priorité aux plus rémunérateurs), puis unlocked (par
+// UnlockedAt DESC, les plus récents en bas). Tri stable par achievement_id ASC.
 func sortAchievementEntries(entries []domain.AchievementEntry) {
 	sort.SliceStable(entries, func(i, j int) bool {
 		a, b := entries[i], entries[j]
 		if a.Unlocked != b.Unlocked {
-			return a.Unlocked
+			return !a.Unlocked // locked avant unlocked
 		}
-		if a.Unlocked {
-			ai := a.UnlockedAt
-			bi := b.UnlockedAt
-			switch {
-			case ai != nil && bi != nil && !ai.Equal(*bi):
-				return ai.After(*bi)
-			case ai != nil && bi == nil:
-				return true
-			case ai == nil && bi != nil:
-				return false
+		if !a.Unlocked {
+			if a.Gamerscore != b.Gamerscore {
+				return a.Gamerscore > b.Gamerscore
 			}
+			return a.AchievementID < b.AchievementID
 		}
-		if a.Gamerscore != b.Gamerscore {
-			return a.Gamerscore > b.Gamerscore
+		// les deux sont unlocked : plus récent en dernier (date ASC)
+		ai := a.UnlockedAt
+		bi := b.UnlockedAt
+		switch {
+		case ai != nil && bi != nil && !ai.Equal(*bi):
+			return ai.Before(*bi)
+		case ai == nil && bi != nil:
+			return true
+		case ai != nil && bi == nil:
+			return false
 		}
 		return a.AchievementID < b.AchievementID
 	})
