@@ -1,4 +1,16 @@
 
+## [2026-05-10] Compare CSR — match skill endpoint au lieu de playlist CSR
+
+**Statut** : Complété.
+
+**Décision** : Remplacement de l'approche `playlist_id → /hi/playlist/{id}/csrs` par `match_id → /hi/matches/{id}/skill`. La méthode playlist était fragile (playlist_id souvent vide ou invalide dans le registre local). Le match skill endpoint (`RankRecap.PostMatchCsr.Value`) est plus fiable car tout match rankédé a un match_id dans `shared.match_registry`. `FetchCSR` → `FetchCSRFromMatch`, `GetRecentRankedPlaylistID` → `GetRecentRankedMatchID`. `csr_best` supprimé (non disponible via cet endpoint). Tests passent.
+
+**Résultats** : `go build ./...` clean, `go test ./internal/service/...` OK.
+
+**Prochaine étape** : Vérifier en prod que le CSR s'affiche pour Chocoboflor/JGtm/Nilton410.
+
+---
+
 ## [2026-05-10] Rivalités — suppression tableaux, butterfly seul
 
 **Statut** : Complété.

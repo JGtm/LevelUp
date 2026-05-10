@@ -36,8 +36,8 @@ func (m *mockStatsProvider) FetchRemoteStats(_ context.Context, _, _ string) (*d
 	return m.stats, m.statsErr
 }
 
-func (m *mockStatsProvider) FetchCSR(_ context.Context, _, _ string) (int, int, error) {
-	return 0, 0, nil
+func (m *mockStatsProvider) FetchCSRFromMatch(_ context.Context, _, _ string) (int, error) {
+	return 0, nil
 }
 
 // --- tests ---
@@ -150,7 +150,7 @@ func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*
 	return nil, nil
 }
 
-func (m *mockCompareRepoAB) GetRecentRankedPlaylistID(_ context.Context, _ string) (string, error) {
+func (m *mockCompareRepoAB) GetRecentRankedMatchID(_ context.Context, _ string) (string, error) {
 	return "", nil
 }
 
@@ -168,8 +168,8 @@ func (s *slowProvider) FetchRemoteStats(_ context.Context, _, _ string) (*domain
 	return s.stats, s.statsErr
 }
 
-func (s *slowProvider) FetchCSR(_ context.Context, _, _ string) (int, int, error) {
-	return 0, 0, nil
+func (s *slowProvider) FetchCSRFromMatch(_ context.Context, _, _ string) (int, error) {
+	return 0, nil
 }
 
 // TestCompareService_Latency_P95 vérifie que GetPage s'exécute en < 5s

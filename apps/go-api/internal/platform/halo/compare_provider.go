@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -30,22 +31,26 @@ type compareStatsResponse struct {
 	TotalDamageTaken   float64 `json:"TotalDamageTaken"`
 }
 
-// csrResponse est la réponse brute de skill.svc.halowaypoint.com/hi/playlist/{id}/csrs.
-type csrResponse struct {
-	Value []csrEntry `json:"Value"`
+// matchSkillResponse est la réponse brute de skill.svc.halowaypoint.com/hi/matches/{id}/skill.
+type matchSkillResponse struct {
+	Value []matchSkillEntry `json:"Value"`
 }
 
-type csrEntry struct {
-	Id     string    `json:"Id"`
-	Result csrResult `json:"Result"`
+type matchSkillEntry struct {
+	Id         string           `json:"Id"`
+	ResultCode int              `json:"ResultCode"`
+	Result     matchSkillResult `json:"Result"`
 }
 
-type csrResult struct {
-	Current    csrRating `json:"Current"`
-	AllTimeMax csrRating `json:"AllTimeMax"`
+type matchSkillResult struct {
+	RankRecap matchSkillRankRecap `json:"RankRecap"`
 }
 
-type csrRating struct {
+type matchSkillRankRecap struct {
+	PostMatchCsr matchSkillCsrValue `json:"PostMatchCsr"`
+}
+
+type matchSkillCsrValue struct {
 	Value int `json:"Value"`
 }
 
@@ -97,44 +102,49 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 	return &stats, nil
 }
 
-// FetchCSR retourne le CSR actuel et le meilleur CSR historique depuis Waypoint.
-// Endpoint : GET skill.svc.halowaypoint.com/hi/playlist/{playlistID}/csrs?players=xuid({xuid})
-// Si Current.Value == -1 (placement), current est retourné comme 0.
-func (p *HaloProvider) FetchCSR(ctx context.Context, xuid, playlistID string) (current, best int, err error) {
+// FetchCSRFromMatch retourne le CSR actuel (PostMatchCsr) depuis l'endpoint match skill Waypoint.
+// Endpoint : GET skill.svc.halowaypoint.com/hi/matches/{matchID}/skill?players=xuid({xuid})
+// Retourne (0, nil) si le joueur n'a pas de données CSR pour ce match (placement ou non rankédé).
+func (p *HaloProvider) FetchCSRFromMatch(ctx context.Context, matchID, xuid string) (current int, err error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	if tokens == nil {
-		return 0, 0, fmt.Errorf("FetchCSR: tokens absents du contexte")
+		return 0, fmt.Errorf("FetchCSRFromMatch: tokens absents du contexte")
 	}
-	if playlistID == "" {
-		return 0, 0, fmt.Errorf("FetchCSR: playlistID vide")
+	if matchID == "" {
+		return 0, fmt.Errorf("FetchCSRFromMatch: matchID vide")
 	}
 
 	url := fmt.Sprintf(
-		"%s/hi/playlist/%s/csrs?players=xuid(%s)",
+		"%s/hi/matches/%s/skill?players=xuid(%s)",
 		defaultSkillHost,
-		playlistID,
+		matchID,
 		xuid,
 	)
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
-		return 0, 0, fmt.Errorf("FetchCSR(%s): %w", xuid, err)
+		if strings.Contains(err.Error(), "HTTP 404") || strings.Contains(err.Error(), "HTTP 410") {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("FetchCSRFromMatch(%s): %w", xuid, err)
 	}
 
-	var resp csrResponse
+	var resp matchSkillResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return 0, 0, fmt.Errorf("FetchCSR(%s) parse: %w", xuid, err)
+		return 0, fmt.Errorf("FetchCSRFromMatch(%s) parse: %w", xuid, err)
 	}
 	if len(resp.Value) == 0 {
-		return 0, 0, fmt.Errorf("FetchCSR(%s): réponse vide", xuid)
+		return 0, nil
 	}
 
-	result := resp.Value[0].Result
-	// Value == -1 signifie que le joueur est en matchs de placement.
-	if result.Current.Value > 0 {
-		current = result.Current.Value
+	entry := resp.Value[0]
+	// ResultCode != 0 = joueur sans rang compétitif pour ce match.
+	if entry.ResultCode != 0 {
+		return 0, nil
 	}
-	if result.AllTimeMax.Value > 0 {
-		best = result.AllTimeMax.Value
+
+	// Value <= 0 = en placement (non encore classé).
+	if entry.Result.RankRecap.PostMatchCsr.Value > 0 {
+		current = entry.Result.RankRecap.PostMatchCsr.Value
 	}
-	return current, best, nil
+	return current, nil
 }
