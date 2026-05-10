@@ -1,20 +1,4 @@
 
-## [2026-05-10] fix(home) — Meilleur CSR : fallbacks is_ranked pour données historiques
-
-**Statut** : Complété.
-
-**Cause racine** : `Q26eHomeSkillPeakByType` (peak CSR) et `InferHomeSkillHistoryFromCanonical` (hasRankedHistory) ne regardaient que `match_registry.is_ranked` + playlist/pair names pour classifier "classé". Pour des matchs anciens où `is_ranked = FALSE` (migration Python) mais `match_skill_rank.rating_type = 'CSR'` ou `playlist_name` contient "ranked" → état 'absent' affiché au lieu de 'value'.
-
-**Corrigé** :
-- `Q26eHomeSkillPeakByType` : ajout de `UPPER(msr.rating_type) = 'CSR'` dans le CASE même quand `mr.match_id IS NOT NULL`
-- `Q26g last_skill CTE` : même fallback ajouté
-- `InferHomeSkillHistoryFromCanonical` : 2 fallbacks → SkillSnapshot.RatingType == CSR, puis playlist_name contenant "ranked"
-- Test `TestInferHomeSkillHistoryFromCanonical_Fallbacks` ajouté (2 cas : SkillSnapshot fallback + playlist_name fallback)
-
-**Résultats** : `go test ./internal/analysis/...` passe (4 packages, PASS).
-
----
-
 ## [2026-05-10] fix(match-history) — Création queries.ts manquant (useSetMatchExclusion + useSetMatchFavorite)
 
 **Statut** : Complété.
