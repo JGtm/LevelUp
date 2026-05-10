@@ -1,14 +1,11 @@
 /**
- * CareerRivalsSection — Top némésis + Top souffre-douleur côte à côte.
+ * CareerRivalsSection — Top némésis + Top souffre-douleur.
  *
- * Format : tableau custom 6 colonnes (#, Joueur, Frags, Morts, Ratio, Matchs).
- * Données issues de shared.killer_victim_pairs au niveau global :
- *  - Némésis  : tri par deaths DESC (joueurs qui m'ont le plus tué)
- *  - Souffre-douleur : tri par frags DESC (joueurs que j'ai le plus tué)
- *
- * Pas de seuil min — TOP 10 brut. Clic sur le gamertag → Explorer mode joueur.
- * Style aligné sur le pattern table de MatchEncountersTable (border-collapse,
- * border-2 + cells border, header text-xs muted).
+ * Vue butterfly (back-to-back bar chart) :
+ *  - Gauche (rouge) : joueurs qui m'ont le plus tué, triés par deaths DESC
+ *  - Droite (vert)  : joueurs que j'ai le plus tués, triés par frags DESC
+ * Pairing par rang uniquement — les deux listes restent indépendantes.
+ * Clic gamertag → Explorer mode joueur.
  */
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Spinner } from '@/components/ui/spinner'
@@ -31,76 +28,185 @@ function ratioColor(deaths: number, ratio: number): string | undefined {
   return tokenCssVar('outcome-draw')
 }
 
-interface RivalsTableProps {
-  title: string
-  rows: CareerRival[]
-  emptyLabel: string
-  labels: {
-    rank: string
-    player: string
-    frags: string
-    deaths: string
-    ratio: string
-    matches: string
-  }
+// ─── Butterfly chart ─────────────────────────────────────────────────────────
+
+interface ButterflyRowProps {
+  rank: number
+  nemesis: CareerRival | undefined
+  victim: CareerRival | undefined
+  maxDeaths: number
+  maxFrags: number
   onPlayerClick: (gamertag: string) => void
 }
 
-function RivalsTable({ title, rows, emptyLabel, labels, onPlayerClick }: RivalsTableProps) {
+function ButterflyRow({ rank, nemesis, victim, maxDeaths, maxFrags, onPlayerClick }: ButterflyRowProps) {
+  const leftPct = nemesis ? (nemesis.deaths / maxDeaths) * 100 : 0
+  const rightPct = victim ? (victim.frags / maxFrags) * 100 : 0
+
   return (
-    <div className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
-      {rows.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{emptyLabel}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-2 border-border border-collapse text-xs">
-            <thead>
-              <tr className="text-muted-foreground">
-                <th className="border border-border border-b-2 px-2 py-1 text-right">{labels.rank}</th>
-                <th className="border border-border border-b-2 px-2 py-1 text-left">{labels.player}</th>
-                <th className="border border-border border-b-2 px-2 py-1 text-right">{labels.frags}</th>
-                <th className="border border-border border-b-2 px-2 py-1 text-right">{labels.deaths}</th>
-                <th className="border border-border border-b-2 px-2 py-1 text-right">{labels.ratio}</th>
-                <th className="border border-border border-b-2 px-2 py-1 text-right">{labels.matches}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((rival, idx) => {
-                const color = ratioColor(rival.deaths, rival.ratio)
-                return (
-                  <tr key={`${rival.gamertag}-${idx}`} className="hover:bg-accent/40 transition-colors">
-                    <td className="border border-border px-2 py-1.5 text-right font-mono text-muted-foreground">
-                      {idx + 1}
-                    </td>
-                    <td className="border border-border px-2 py-1.5 text-left">
-                      <button
-                        type="button"
-                        className="font-semibold text-info hover:underline whitespace-nowrap"
-                        onClick={() => onPlayerClick(rival.gamertag)}
-                      >
-                        {rival.gamertag}
-                      </button>
-                    </td>
-                    <td className="border border-border px-2 py-1.5 text-right font-mono tabular-nums">{rival.frags}</td>
-                    <td className="border border-border px-2 py-1.5 text-right font-mono tabular-nums">{rival.deaths}</td>
-                    <td
-                      className="border border-border px-2 py-1.5 text-right font-mono font-bold tabular-nums"
-                      style={color ? { color } : undefined}
-                    >
-                      {formatRatio(rival.ratio)}
-                    </td>
-                    <td className="border border-border px-2 py-1.5 text-right font-mono tabular-nums">{rival.match_count}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+    <div className="flex items-center h-8">
+      {/* LEFT: ratio · deaths · matches  gamertag  [bar→centre] */}
+      <div className="flex-1 flex items-center gap-2 min-w-0 h-full">
+        {nemesis ? (
+          <>
+            <span
+              className="font-mono font-bold tabular-nums text-xs shrink-0 leading-none"
+              style={{ color: ratioColor(nemesis.deaths, nemesis.ratio) }}
+            >
+              {formatRatio(nemesis.ratio)}
+            </span>
+            <span className="text-muted-foreground text-xs leading-none shrink-0">·</span>
+            <span className="font-mono shrink-0 leading-none whitespace-nowrap text-xs">
+              <span style={{ color: tokenCssVar('outcome-loss') }}>{nemesis.deaths}</span>
+              <span className="text-muted-foreground"> · {nemesis.match_count}</span>
+            </span>
+            <button
+              type="button"
+              className="font-semibold text-info hover:underline text-xs leading-none shrink-0 whitespace-nowrap"
+              onClick={() => onPlayerClick(nemesis.gamertag)}
+            >
+              {nemesis.gamertag}
+            </button>
+            <div className="flex-1 min-w-8 h-3 flex items-center justify-end">
+              <div
+                style={{
+                  width: `${leftPct}%`,
+                  height: '100%',
+                  backgroundColor: tokenCssVar('outcome-loss'),
+                  minWidth: leftPct > 0 ? '3px' : '0',
+                }}
+              />
+            </div>
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground leading-none">—</span>
+        )}
+      </div>
+
+      {/* CENTRE: rang centré sur la ligne d'axe */}
+      <div className="w-8 shrink-0 self-stretch relative flex items-center justify-center">
+        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border/60" />
+        <span className="relative z-10 text-xs font-mono text-muted-foreground leading-none bg-background px-px">
+          {rank}
+        </span>
+      </div>
+
+      {/* RIGHT: [bar←centre]  gamertag  matches · frags · ratio */}
+      <div className="flex-1 flex items-center gap-2 min-w-0 h-full">
+        {victim ? (
+          <>
+            <div className="flex-1 min-w-8 h-3 flex items-center justify-start">
+              <div
+                style={{
+                  width: `${rightPct}%`,
+                  height: '100%',
+                  backgroundColor: tokenCssVar('outcome-win'),
+                  minWidth: rightPct > 0 ? '3px' : '0',
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="font-semibold text-info hover:underline text-xs leading-none shrink-0 whitespace-nowrap"
+              onClick={() => onPlayerClick(victim.gamertag)}
+            >
+              {victim.gamertag}
+            </button>
+            <span className="font-mono shrink-0 leading-none whitespace-nowrap text-xs">
+              <span className="text-muted-foreground">{victim.match_count} · </span>
+              <span style={{ color: tokenCssVar('outcome-win') }}>{victim.frags}</span>
+            </span>
+            <span className="text-muted-foreground text-xs leading-none shrink-0">·</span>
+            <span
+              className="font-mono font-bold tabular-nums text-xs shrink-0 leading-none"
+              style={{ color: ratioColor(victim.deaths, victim.ratio) }}
+            >
+              {formatRatio(victim.ratio)}
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground leading-none">—</span>
+        )}
+      </div>
     </div>
   )
 }
+
+interface ColLabels {
+  rank: string
+  frags: string
+  deaths: string
+  ratio: string
+  matches: string
+}
+
+interface RivalsButterflyChartProps {
+  nemeses: CareerRival[]
+  victims: CareerRival[]
+  nemesisLabel: string
+  victimLabel: string
+  colLabels: ColLabels
+  onPlayerClick: (gamertag: string) => void
+}
+
+function ButterflyColHeader({ colLabels }: { colLabels: ColLabels }) {
+  const th = 'text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none shrink-0 whitespace-nowrap'
+  return (
+    <div className="flex items-center h-6 border-b border-border">
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        <span className={th}>{colLabels.ratio}</span>
+        <span className={th}>{colLabels.deaths} · {colLabels.matches}</span>
+        <div className="flex-1" />
+      </div>
+      <div className="w-8 shrink-0 flex items-center justify-center">
+        <span className={th}>{colLabels.rank}</span>
+      </div>
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        <div className="flex-1" />
+        <span className={th}>{colLabels.matches} · {colLabels.frags}</span>
+        <span className={th}>{colLabels.ratio}</span>
+      </div>
+    </div>
+  )
+}
+
+function RivalsButterflyChart({ nemeses, victims, nemesisLabel, victimLabel, colLabels, onPlayerClick }: RivalsButterflyChartProps) {
+  const maxDeaths = Math.max(...nemeses.map((n) => n.deaths), 1)
+  const maxFrags = Math.max(...victims.map((v) => v.frags), 1)
+  const rowCount = Math.max(nemeses.length, victims.length)
+
+  if (rowCount === 0) return null
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center text-xs uppercase tracking-wide font-semibold select-none mb-2">
+        <div className="flex-1 text-right pr-10">
+          <span style={{ color: tokenCssVar('outcome-loss') }}>← {nemesisLabel}</span>
+        </div>
+        <div className="w-8 shrink-0" />
+        <div className="flex-1 pl-10">
+          <span style={{ color: tokenCssVar('outcome-win') }}>{victimLabel} →</span>
+        </div>
+      </div>
+      <ButterflyColHeader colLabels={colLabels} />
+      <div className="divide-y divide-border/30">
+        {Array.from({ length: rowCount }, (_, i) => (
+          <ButterflyRow
+            key={i}
+            rank={i + 1}
+            nemesis={nemeses[i]}
+            victim={victims[i]}
+            maxDeaths={maxDeaths}
+            maxFrags={maxFrags}
+            onPlayerClick={onPlayerClick}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Section principale ───────────────────────────────────────────────────────
 
 export function CareerRivalsSection() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -118,9 +224,8 @@ export function CareerRivalsSection() {
     })
   }
 
-  const labels = {
+  const colLabels: ColLabels = {
     rank: t('career.rivals.col_rank'),
-    player: t('career.rivals.col_player'),
     frags: t('career.rivals.col_frags'),
     deaths: t('career.rivals.col_deaths'),
     ratio: t('career.rivals.col_ratio'),
@@ -138,22 +243,14 @@ export function CareerRivalsSection() {
       )}
       {isError && <p className="text-sm text-destructive">{t('career.errors.load_progression_failed')}</p>}
       {!isLoading && !isError && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <RivalsTable
-            title={t('career.rivals.nemesis_title')}
-            rows={data?.nemeses ?? []}
-            emptyLabel={t('career.rivals.empty')}
-            labels={labels}
-            onPlayerClick={onPlayerClick}
-          />
-          <RivalsTable
-            title={t('career.rivals.victims_title')}
-            rows={data?.victims ?? []}
-            emptyLabel={t('career.rivals.empty')}
-            labels={labels}
-            onPlayerClick={onPlayerClick}
-          />
-        </div>
+        <RivalsButterflyChart
+          nemeses={data?.nemeses ?? []}
+          victims={data?.victims ?? []}
+          nemesisLabel={t('career.rivals.nemesis_title')}
+          victimLabel={t('career.rivals.victims_title')}
+          colLabels={colLabels}
+          onPlayerClick={onPlayerClick}
+        />
       )}
     </section>
   )
