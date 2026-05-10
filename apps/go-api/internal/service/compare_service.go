@@ -77,6 +77,26 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 			if err == nil && local != nil {
 				local.IsLocal = true
 				local.FavoriteWeapon, _ = s.repo.GetFavoriteWeapon(gctx, xuidB)
+
+				// ATH depuis sa propre stats.duckdb — best-effort.
+				if athB, athErr := s.repo.GetPlayerATHFor(gctx, local.Gamertag, s.titleSlug); athErr != nil {
+					slog.DebugContext(gctx, "CompareService: ATH joueur B non disponible (best-effort)", "gamertag", local.Gamertag, "err", athErr)
+				} else if athB != nil {
+					local.CareerRank = athB.CareerRank
+					local.PerfATH = athB.PerfATH
+					local.LusrATH = athB.LusrATH
+					// CSR non récupéré depuis ATH — Waypoint uniquement (ci-dessous).
+				}
+
+				// CSR depuis Waypoint — priorité sur stats.duckdb.
+				if remote, wErr := s.provider.FetchRemoteStats(gctx, local.Gamertag, s.titleSlug); wErr == nil {
+					if remote.CSRCurrent > 0 {
+						local.CSRCurrent = remote.CSRCurrent
+						local.CSRBest = remote.CSRBest
+					}
+					slog.DebugContext(gctx, "CompareService: CSR joueur B depuis Waypoint", "gamertag", local.Gamertag, "csr_current", local.CSRCurrent)
+				}
+
 				statsB = local
 				slog.DebugContext(gctx, "CompareService: joueur B résolu localement", "gamertag", req.TargetGamertag, "xuid", xuidB)
 				return nil
