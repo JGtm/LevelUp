@@ -1,4 +1,102 @@
 
+## [2026-05-10] LUSR — refactoring chaînes + fix frontend
+
+**Statut** : Complété.
+
+**Décision** :
+Remplacement du système `GetPlaylistGroup()` (basé sur playlist_name, 4 groupes avec WeightFactor) par `GetLUSRChain()` (basé sur `pair_name`, 4 chaînes homogènes, WeightFactor=1.0 partout). Nouvelles clés `match_skill_rank.playlist_group` : `arena_slayer`, `arena_objectif`, `btb`, `chaos`. Migration `lusr_chain_rework_v1` wipe les anciens LUSR. Backfill `--all --lusr` : 2206 matchs recompilés sur 4 joueurs. Frontend corrigé : `LUSR_GROUP_TOKENS` + labels i18n via `lusr-chains.ts` partagé (career.toml + 3 composants mis à jour).
+
+**Résultats** : TypeScript propre, `go vet ./internal/sync/... ./internal/migration/... ./cmd/levelup/...` propre, tests `internal/sync` OK.
+
+**Prochaine étape** : Valider visuellement les cards LUSR et le graphe d'évolution avec les nouvelles couleurs et labels FR/EN.
+
+## [2026-05-10] Citations — titre page navigateur
+
+**Statut** : Complété.
+
+**Décision** :
+Ajout de `document.title = \`LevelUp - Citations\`` via `useEffect` dans `CitationsPage.tsx`, cohérent avec le pattern `ComparePage`. Clé `citations.page_title` ajoutée dans le TOML manifest et le `.ts` généré.
+
+**Résultats** : 3 fichiers modifiés — manifest TOML, generated TS, CitationsPage.tsx.
+
+**Prochaine étape** : Redémarrer le serveur.
+
+---
+
+## [2026-05-10] Citations composites — correctifs affichage (suite)
+
+**Statut** : Complété.
+
+**Décision** :
+Trois corrections supplémentaires après comparaison complète du code Python `main` :
+
+1. **Enfants désactivés dans le dénominateur** : `TierCount` utilisait `len(children)` incluant `brute_slayer`/`skimmer_slayer` (disabled) dans `covenant_destroyer`. Fix : compter seulement les enfants présents dans `byNorm`. `OverrideCompositeTotals` utilise aussi `enabledNorms` pour ignorer les disabled dans le numérateur.
+
+2. **Composites manquants à Total=0** : `covenant_destroyer`, `vehicle_mastery`, `paria_weapons_mastery` absents si aucun enfant masterisé. Fix : `OverrideCompositeTotals` inclut TOUS les composites dans le résultat (même count=0) ; `MergeCitationTotals` ne filtre `Total <= 0` que pour les non-composites.
+
+3. **Sémantique méta-composite** : `all_weapons_mastery` comptait un sous-composite dès `val > 0`. Fix : un enfant composite ne compte que s'il est terminé à 100% (`aggMap[child] >= enabledChildCount[child]`). `enabledChildCount` pré-calculé pour chaque composite.
+
+4. **Ordre d'affichage** : méta-composite (rang 0) > composite (rang 1) > normal (rang 2) via `citationRank()`.
+
+**Résultats** : `go build ./internal/analysis/... ./internal/service/...` propre.
+
+**Prochaine étape** : Redémarrer le serveur.
+
+## [2026-05-10] Compare — Fix CSR/ATH nuls pour joueur B local
+
+**Statut** : Complété.
+
+**Décision** :
+Correction du bug où CSR actuel, CSR meilleur, Rang Carrière, Perf. record et LUSR record
+affichaient 0 pour le joueur B même quand il est un joueur local avec une stats.duckdb complète.
+
+Deux causes racines corrigées :
+1. **ATH joueur B manquant** — le goroutine B appelait `GetLocalStats` puis renvoyait immédiatement sans lire la stats.duckdb de B. Ajout de `GetPlayerATHFor(ctx, gamertag, titleSlug)` dans `CompareRepository` : lookup dans le `globalPool` par la clé `"{titleSlug}:{gamertag}"` (déjà ouverte si joueur connu), puis exécution de la même requête ATH que pour le joueur A.
+2. **CSR joueur B manquant** — même cause : Waypoint n'était appelé que pour le joueur A. Ajout d'un appel best-effort `FetchRemoteStats` pour B après le chargement local, avec priorité sur les valeurs ATH (même pattern que A).
+
+Ordre de priorité pour le CSR de B : Waypoint > stats.duckdb ATH.
+
+**Fichiers modifiés** :
+- `internal/platform/duckdb/pool.go` — `LookupFromPool(key string)` (lookup non-mutant dans globalPool)
+- `internal/port/repository.go` — `GetPlayerATHFor` dans l'interface + noop
+- `internal/platform/duckdb/compare_repo.go` — `GetPlayerATHFor` implémentation
+- `internal/service/compare_service.go` — goroutine B : ATH + Waypoint CSR best-effort
+
+**Résultats** : `go build levelup/go-api/internal/platform/duckdb levelup/go-api/internal/port levelup/go-api/internal/service` propre.
+
+**Prochaine étape** : Test en conditions réelles (JGtm vs Chocoboflor).
+
+---
+
+## [2026-05-10] LUSR — Refonte des chaînes TrueSkill (arena_slayer/arena_objectif/btb/chaos)
+
+**Statut** : Complété.
+
+**Décision** :
+Remplacement du système `PlaylistGroups`/`GetPlaylistGroup` (basé sur le nom de playlist, 4 groupes avec WeightFactor variables) par un système de chaînes homogènes basé sur `pair_name` via `InferModeCategoryFromPairName` + `NormalizeModeLabel`.
+
+Nouvelle classification LUSR (non classé uniquement, CSR gère le Ranked) :
+- `arena_slayer` — Arena/Tactical/Community × Slayer, Attrition, Elimination, inconnu
+- `arena_objectif` — Arena/Tactical/Community × CTF, Oddball, Strongholds, KotH, Total Control, Land Grab, Extraction, Stockpile
+- `btb` — BTB/BTB Heavies tous modes (sauf Rocket Hog Race → chaos)
+- `chaos` — Fiesta, Super Fiesta, Husky Raid, Infection, Griffball, Action Sack, Event, Rocket Hog Race
+
+WeightFactor supprimé : chaque chaîne est homogène, tous les matchs pèsent 1.0.
+
+Labels UI (FR/EN séparés des clés internes) : "Social · Slayer", "Social · Objectif", "Grande Équipe", "Chaos".
+
+Migration `lusr_chain_rework_v1` : wipe de tous les ratings LUSR existants dans `match_skill_rank` pour recompute complet au prochain sync.
+
+**Fichiers modifiés** :
+- `internal/sync/skill_config.go` — nouveaux types LUSRChainConfig, constantes, GetLUSRChain + helpers
+- `internal/sync/skill_rating.go` — boucle computeSkillRatingsBatch : GetLUSRChain, suppression WeightFactor
+- `internal/sync/skill_rating_extra_test.go` — TestGetLUSRChain remplace TestGetPlaylistGroup (42 cas)
+- `internal/migration/steps_player_lusr_chain_rework.go` — migration wipe LUSR
+
+**Résultats** : `go test ./internal/sync/...` vert, `go build ./...` propre. Échec `TestDaemon_MakePresenceHandler` pré-existant (watcher, non lié).
+
+**Prochaine étape** : Lancer un sync joueur pour valider le recompute effectif des nouvelles chaînes.
+
 ## [2026-05-10] CompareBar — barres composites gradient + tests Playwright
 
 **Statut** : Complété.
@@ -17,6 +115,17 @@ Corrections apportées :
 
 **Prochaine étape** : Phase 2 — métriques enrichies backend Go.
 
+## [2026-05-10] Achievements sidebar — tous affichés, bloqués en premier
+
+**Statut** : Complété.
+
+**Décision** :
+1. `filterXboxTitleId="1144039928"` dans `CareerProgressionTab` filtrait tous les achievements car le nouveau sync stocke `xbox_title_id="2043073184"`. Suppression du prop — le filtre DB `WHERE title_id='halo_infinite'` est suffisant.
+2. `VISIBLE_LIMIT=30` tronquait avant les bloqués (85 unlocked > 30). Limite retirée.
+3. Tri inversé dans `sortAchievementEntries` : bloqués en premier (gamerscore DESC), puis débloqués (UnlockedAt ASC). Test mis à jour.
+
+**Résultats** : `go test ./internal/service/...` ✓, `npm run typecheck` ✓.
+
 ## [2026-05-10] Fix sync achievements — title ID MCC vs HI + filtre SCID
 
 **Statut** : Complété.
@@ -33,6 +142,8 @@ Corrections apportées :
 6. Debug code intégralement retiré de `xbox_client.go`
 
 **Résultats** : sync `--all` → 144 achievements (Chocoboflor, JGtm, Madina97294), 682 achievements MCC supprimés.
+
+**Fix complémentaire** : le filtre SQL `AND (service_config_id = '976d7e7-...' OR service_config_id = '')` dans `metadata_achievements_repo.go` retournait 0 résultats car le vrai SCID HI ne correspondait pas. Suppression du filtre SCID → `WHERE title_id = 'halo_infinite'` seul suffit (le sync + purge garantit l'intégrité). Champ `XboxTitleName` (debug) retiré de `PlayerAchievementRaw`.
 
 **Multi-titre** : `XboxTitleIDFor` est un switch sur slug — ajouter un jeu = ajouter un `case`.
 
