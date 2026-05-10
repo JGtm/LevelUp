@@ -166,6 +166,9 @@ func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
 
 	rows := make([]domain.CompareMetricRow, 0, len(defs))
 	for _, d := range defs {
+		if d.va == 0 && d.vb == 0 {
+			continue // pas de données pour les deux joueurs — masquer plutôt qu'afficher "0 vs 0"
+		}
 		delta := d.vb - d.va
 		winner := computeWinner(d.va, d.vb, d.lessIsBetter)
 		rows = append(rows, domain.CompareMetricRow{
