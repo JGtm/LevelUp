@@ -1865,6 +1865,22 @@ export interface TopWeekItem {
   avg_deaths?: number
 }
 
+export interface SynthesisDetailedStats {
+  total_headshot_kills: number
+  total_grenade_kills: number
+  total_melee_kills: number
+  total_power_weapon_kills: number
+  max_killing_spree: number
+  total_shots_fired: number
+  total_shots_hit: number
+  total_damage_dealt: number
+  total_damage_taken: number
+  total_betrayals: number
+  total_suicides: number
+  total_vehicles_destroyed: number
+  total_hijacks: number
+}
+
 export interface SynthesisPageResponse {
   period: string
   total_matches: number
@@ -1880,6 +1896,8 @@ export interface SynthesisPageResponse {
   // Sprint 55 D9 — scope + overview
   scope?: SynthesisScope
   overview?: SynthesisOverview
+  // P9 — detailed stats par catégories
+  detailed_stats?: SynthesisDetailedStats
 }
 
 // Sprint 55 D9 — Scope

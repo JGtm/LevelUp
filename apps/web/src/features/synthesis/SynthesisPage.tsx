@@ -14,6 +14,7 @@ import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { SynthesisHighlightsSection } from './SynthesisHighlightsSection'
 import { SynthesisRelationsPreview } from './SynthesisRelationsPreview'
+import { SynthesisKPIGrid } from './SynthesisKPIGrid'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import { resolveToken } from '@/lib/accessibility'
@@ -478,6 +479,16 @@ export function SynthesisPage() {
       {/* Performances marquantes D5 */}
       {data.highlights_preview && (
         <SynthesisHighlightsSection highlights={data.highlights_preview} playerSlug={playerSlug} />
+      )}
+
+      {/* Stats détaillées par catégories P9 */}
+      {data.detailed_stats && (
+        <Card>
+          <CardHeader><CardTitle>Statistiques détaillées</CardTitle></CardHeader>
+          <CardContent>
+            <SynthesisKPIGrid stats={data.detailed_stats} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Heatmap temporelle */}
