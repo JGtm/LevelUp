@@ -107,6 +107,17 @@ type CareerRepository interface {
 	GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error)
 	GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error)
 	GetEncounters(ctx context.Context) ([]domain.EncounterRawRow, error)
+	// GetHighlightMatchIDs : 15 best + 15 worst match_ids triés par perf+dominance.
+	// `filters` applique les filtres Expérience + Saisons (côté SQL).
+	GetHighlightMatchIDs(ctx context.Context, filters domain.CareerHighlightFilters) ([]domain.HighlightMatchIDRow, error)
+	// GetHighlightPool : pool complet des matchs éligibles "marquants"
+	// (light : match_id + is_ranked + start_time). Pour cascade counts.
+	GetHighlightPool(ctx context.Context) ([]domain.HighlightMatchPoolRow, error)
+	// GetTopEncountersGlobal : 10 joueurs les plus croisés au niveau carrière,
+	// hors XUIDs présents dans excludeXUIDs (typiquement les amis).
+	GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error)
+	// GetRivals : 10 némésis (deaths DESC) + 10 souffre-douleur (frags DESC).
+	GetRivals(ctx context.Context) (nemeses, victims []domain.CareerRivalRawRow, err error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander
@@ -276,6 +287,18 @@ func (n *noopCareerRepo) GetTopMatches(_ context.Context) ([]domain.TopMatchRawR
 }
 func (n *noopCareerRepo) GetEncounters(_ context.Context) ([]domain.EncounterRawRow, error) {
 	return nil, nil
+}
+func (n *noopCareerRepo) GetHighlightMatchIDs(_ context.Context, _ domain.CareerHighlightFilters) ([]domain.HighlightMatchIDRow, error) {
+	return nil, nil
+}
+func (n *noopCareerRepo) GetHighlightPool(_ context.Context) ([]domain.HighlightMatchPoolRow, error) {
+	return nil, nil
+}
+func (n *noopCareerRepo) GetTopEncountersGlobal(_ context.Context, _ []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error) {
+	return nil, nil, nil
+}
+func (n *noopCareerRepo) GetRivals(_ context.Context) ([]domain.CareerRivalRawRow, []domain.CareerRivalRawRow, error) {
+	return nil, nil, nil
 }
 
 // noopGamertagRepo — impl nulle pour le check de compilation uniquement.

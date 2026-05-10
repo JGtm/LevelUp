@@ -174,7 +174,7 @@ SELECT
         PARTITION BY msr.rating_type, msr.playlist_group
         ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
     ) AS rating_delta,
-    COALESCE(r.playlist_name, '')                          AS playlist_name,
+    COALESCE(r.playlist_name_fr, r.playlist_name, '')      AS playlist_name,
     COALESCE(r.playlist_id, '')                            AS playlist_id,
     NULLIF(TRIM(COALESCE(msr.tier, '')), '')               AS tier,
     COALESCE(msr.sub_tier, 0)                              AS sub_tier
@@ -259,6 +259,212 @@ FROM (
     )
 )
 ORDER BY _s ASC`
+
+// Q9bHighlightMatchIDsTpl : variante template de Q9b acceptant des clauses
+// dynamiques pour les filtres Expérience (is_ranked) et Saisons (date range).
+//
+// Format string : 2 occurrences de %s — clause additionnelle injectée dans la
+// section best (outcome=2) ET dans la section worst (outcome=3). Vide si
+// aucun filtre. Sinon ex. " AND r.is_ranked = TRUE AND ((r.start_time_utc >=
+// ? AND r.start_time_utc < ?) OR ...)".
+//
+// Ordre des args : ?xuid_best, [args dyn best], ?xuid_worst, [args dyn worst].
+// L'appelant duplique les args dyn (mêmes filtres pour les 2 sections).
+const Q9bHighlightMatchIDsTpl = `
+SELECT match_id, outcome, _s
+FROM (
+    (
+        SELECT
+            pme.match_id,
+            COALESCE(p.outcome, 0) AS outcome,
+            1                       AS _s
+        FROM player_match_enrichment pme
+        JOIN shared.match_registry r ON pme.match_id = r.match_id
+        LEFT JOIN shared.match_participants p
+            ON pme.match_id = p.match_id AND p.xuid = ?
+        WHERE pme.performance_score IS NOT NULL
+          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
+          AND COALESCE(p.time_played_seconds, 0) >= 180
+          AND COALESCE(r.is_firefight, FALSE) = FALSE
+          AND COALESCE(p.outcome, 0) = 2
+          %s
+        ORDER BY
+            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (5, 3, 1)
+                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
+            pme.performance_score DESC
+        LIMIT 15
+    )
+    UNION ALL
+    (
+        SELECT
+            pme.match_id,
+            COALESCE(p.outcome, 0) AS outcome,
+            2                       AS _s
+        FROM player_match_enrichment pme
+        JOIN shared.match_registry r ON pme.match_id = r.match_id
+        LEFT JOIN shared.match_participants p
+            ON pme.match_id = p.match_id AND p.xuid = ?
+        WHERE pme.performance_score IS NOT NULL
+          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
+          AND COALESCE(p.time_played_seconds, 0) >= 180
+          AND COALESCE(r.is_firefight, FALSE) = FALSE
+          AND COALESCE(p.outcome, 0) = 3
+          %s
+        ORDER BY
+            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (4, 2)
+                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
+            pme.performance_score ASC
+        LIMIT 15
+    )
+)
+ORDER BY _s ASC`
+
+// Q9bHighlightPool : Career — pool complet des matchs éligibles "marquants"
+// (mêmes critères d'éligibilité que Q9b mais sans contrainte d'outcome ni
+// LIMIT). Sert à calculer les cascade counts (available_experience,
+// available_seasons) sans LIMIT pour rester précis quel que soit le filtre
+// actif côté frontend.
+//
+// Paramètre : ?1 = xuid joueur.
+const Q9bHighlightPool = `
+SELECT
+    pme.match_id,
+    COALESCE(r.is_ranked, FALSE) AS is_ranked,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+FROM player_match_enrichment pme
+JOIN shared.match_registry r ON pme.match_id = r.match_id
+LEFT JOIN shared.match_participants p
+    ON pme.match_id = p.match_id AND p.xuid = ?
+WHERE pme.performance_score IS NOT NULL
+  AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
+  AND COALESCE(p.time_played_seconds, 0) >= 180
+  AND COALESCE(r.is_firefight, FALSE) = FALSE
+  AND COALESCE(p.outcome, 0) IN (2, 3)`
+
+// Q26CareerTopEncountersTpl : Career — joueurs les plus croisés au niveau global,
+// hors amis configurés (FriendGamertags).
+//
+// Format string : %s à remplacer par la clause d'exclusion friends (vide si
+// aucun ami) — ex. "AND es.xuid NOT IN (?, ?, ?)".
+//
+// Paramètres :
+//
+//	?1..?5 = xuid joueur (cf. positions ci-dessous)
+//	?6..?N = xuids des amis à exclure (substitués via la clause %s)
+//
+// Inspiré de Q23bMatchEncounterStats mais scope global (sans contrainte sur un
+// match_id particulier). Calcule count_together, ally/enemy counts, winrates,
+// kills_dealt, deaths_suffered (via killer_victim_pairs), last_seen_at.
+// Tri par count_together DESC, limite 10.
+const Q26CareerTopEncountersTpl = `
+WITH my_history AS (
+    SELECT match_id, team_id, outcome
+    FROM shared.match_participants
+    WHERE xuid = ?
+),
+encounters AS (
+    SELECT
+        p.xuid,
+        p.match_id,
+        p.team_id  AS opp_team_id,
+        h.team_id  AS my_team_id,
+        h.outcome  AS my_outcome,
+        COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+    FROM my_history h
+    JOIN shared.match_participants p
+        ON p.match_id = h.match_id
+       AND p.xuid <> ?
+       AND p.xuid NOT LIKE 'bid(%%'
+    LEFT JOIN shared.match_registry r ON r.match_id = p.match_id
+),
+encounter_stats AS (
+    SELECT
+        e.xuid,
+        COUNT(DISTINCT e.match_id) AS count_together,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id THEN e.match_id END) AS ally_count,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id THEN e.match_id END) AS enemy_count,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND e.my_outcome = 2 THEN e.match_id END) AS wins_as_ally,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND e.my_outcome = 3 THEN e.match_id END) AS losses_as_ally,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND e.my_outcome = 2 THEN e.match_id END) AS wins_vs_enemy,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND e.my_outcome = 3 THEN e.match_id END) AS losses_vs_enemy,
+        MAX(e.start_time) AS last_seen_at
+    FROM encounters e
+    GROUP BY e.xuid
+),
+kv_stats AS (
+    SELECT
+        opp_xuid AS xuid,
+        SUM(kills_by_me)   AS kills_dealt,
+        SUM(kills_by_them) AS deaths_suffered
+    FROM (
+        SELECT
+            CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
+            CASE WHEN kv.killer_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_me,
+            CASE WHEN kv.victim_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_them
+        FROM shared.killer_victim_pairs kv
+        WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
+    ) t
+    GROUP BY opp_xuid
+)
+SELECT
+    es.xuid,
+    COALESCE(vg.gamertag, es.xuid) AS gamertag,
+    es.count_together,
+    es.ally_count,
+    es.enemy_count,
+    es.wins_as_ally,
+    es.losses_as_ally,
+    es.wins_vs_enemy,
+    es.losses_vs_enemy,
+    COALESCE(kv.kills_dealt, 0)    AS kills_dealt,
+    COALESCE(kv.deaths_suffered,0) AS deaths_suffered,
+    es.last_seen_at
+FROM encounter_stats es
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = es.xuid
+LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
+WHERE 1=1 %s
+ORDER BY es.count_together DESC, es.xuid ASC
+LIMIT 10`
+
+// Q27CareerRivalsTpl : Career — top frags (souffre-douleur) ou top morts (némésis).
+//
+// Format string : %s à remplacer par "frags" ou "deaths" pour ORDER BY.
+//
+// Paramètres :
+//
+//	?1 = xuid joueur (CASE killer→victim)
+//	?2 = xuid joueur (SUM frags : kills par moi)
+//	?3 = xuid joueur (SUM deaths : kills par lui)
+//	?4 = xuid joueur (filtre WHERE killer_xuid)
+//	?5 = xuid joueur (filtre WHERE victim_xuid)
+//	?6 = xuid joueur (exclusion self dans final WHERE)
+//
+// Source : SUM(kill_count) sur shared.killer_victim_pairs (1 row par kill,
+// cf. comment migration steps_shared.go:118-120). COUNT(DISTINCT match_id)
+// pour le nombre de matchs partagés. Bots exclus via xuid NOT LIKE 'bid(%%'.
+const Q27CareerRivalsTpl = `
+WITH pairs AS (
+    SELECT
+        CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
+        SUM(CASE WHEN kv.killer_xuid = ? THEN kv.kill_count ELSE 0 END) AS frags,
+        SUM(CASE WHEN kv.victim_xuid = ? THEN kv.kill_count ELSE 0 END) AS deaths,
+        COUNT(DISTINCT kv.match_id) AS match_count
+    FROM shared.killer_victim_pairs kv
+    WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
+    GROUP BY opp_xuid
+)
+SELECT
+    p.opp_xuid AS xuid,
+    COALESCE(vg.gamertag, p.opp_xuid) AS gamertag,
+    p.frags,
+    p.deaths,
+    p.match_count
+FROM pairs p
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.opp_xuid
+WHERE p.opp_xuid <> ?
+  AND p.opp_xuid NOT LIKE 'bid(%%'
+ORDER BY %s DESC, p.match_count DESC, p.opp_xuid ASC
+LIMIT 10`
 
 // Q22 : Sessions — chargement des matchs pour le calcul des sessions.
 // Parametre : ?1 = xuid du joueur.

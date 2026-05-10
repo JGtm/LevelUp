@@ -111,22 +111,28 @@ func TestSummaryXPTotal_WithValue(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildHeroProgress_Zero(t *testing.T) {
-	hp := buildHeroProgress(0)
+	hp := buildHeroProgress(0, 0)
 	if hp.Percentage != 0 {
 		t.Errorf("expected 0%%, got %f", hp.Percentage)
 	}
 	if hp.XPRemaining != xpHeroTotal {
 		t.Errorf("expected XPRemaining=%d", xpHeroTotal)
 	}
+	if hp.TotalRanks != rankMax {
+		t.Errorf("expected TotalRanks=%d, got %d", rankMax, hp.TotalRanks)
+	}
 }
 
 func TestBuildHeroProgress_Complete(t *testing.T) {
-	hp := buildHeroProgress(xpHeroTotal + 1000)
+	hp := buildHeroProgress(xpHeroTotal+1000, rankMax)
 	if hp.Percentage != 100.0 {
 		t.Errorf("expected 100%%, got %f", hp.Percentage)
 	}
 	if hp.XPRemaining != 0 {
 		t.Errorf("expected 0 remaining, got %d", hp.XPRemaining)
+	}
+	if hp.CurrentRank != rankMax {
+		t.Errorf("expected CurrentRank=%d, got %d", rankMax, hp.CurrentRank)
 	}
 }
 
