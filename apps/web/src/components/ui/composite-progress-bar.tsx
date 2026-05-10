@@ -1,3 +1,5 @@
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+
 export function clampCompositeProgress(value?: number | null) {
   if (value == null) {
     return 0
@@ -46,8 +48,8 @@ export function CompositeProgressBar({
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/25">
       <div
         data-testid={fillTestId}
-        className="h-full rounded-full bg-primary transition-all duration-300"
-        style={{ width: `${width}%` }}
+        className="h-full rounded-full transition-all duration-300"
+        style={{ width: `${width}%`, backgroundColor: width >= 100 ? tokenCssVar('success') : tokenCssVar('info') }}
       />
     </div>
   )
