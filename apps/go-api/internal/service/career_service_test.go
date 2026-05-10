@@ -26,6 +26,17 @@ type mockCareerRepo struct {
 	topErr   error
 	encRows  []domain.EncounterRawRow
 	encErr   error
+	// Sprint Carrière+ : extensions injectables pour les tests des 3 nouvelles
+	// méthodes (highlight-matches / top-encounters / rivals).
+	highlightRows           []domain.HighlightMatchIDRow
+	highlightErr            error
+	topEncountersRows       []domain.MatchEncounterRow
+	topEncountersStats      []domain.EncounterStatsRaw
+	topEncountersErr        error
+	topEncountersExcludeArg []string // capture l'argument reçu (pour vérifier l'exclusion friends)
+	rivalsNemeses           []domain.CareerRivalRawRow
+	rivalsVictims           []domain.CareerRivalRawRow
+	rivalsErr               error
 }
 
 func (m *mockCareerRepo) GetLatestRank(_ context.Context) (*domain.CareerRankData, error) {
@@ -42,6 +53,19 @@ func (m *mockCareerRepo) GetTopMatches(_ context.Context) ([]domain.TopMatchRawR
 }
 func (m *mockCareerRepo) GetEncounters(_ context.Context) ([]domain.EncounterRawRow, error) {
 	return m.encRows, m.encErr
+}
+func (m *mockCareerRepo) GetHighlightMatchIDs(_ context.Context, _ domain.CareerHighlightFilters) ([]domain.HighlightMatchIDRow, error) {
+	return m.highlightRows, m.highlightErr
+}
+func (m *mockCareerRepo) GetHighlightPool(_ context.Context) ([]domain.HighlightMatchPoolRow, error) {
+	return nil, nil
+}
+func (m *mockCareerRepo) GetTopEncountersGlobal(_ context.Context, exclude []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error) {
+	m.topEncountersExcludeArg = append([]string{}, exclude...)
+	return m.topEncountersRows, m.topEncountersStats, m.topEncountersErr
+}
+func (m *mockCareerRepo) GetRivals(_ context.Context) ([]domain.CareerRivalRawRow, []domain.CareerRivalRawRow, error) {
+	return m.rivalsNemeses, m.rivalsVictims, m.rivalsErr
 }
 
 // --- tests ---
@@ -305,5 +329,188 @@ func TestCareerService_GetEncounters_AdapterFallbackOnUnsupported(t *testing.T) 
 	}
 	if resp.Total != 1 || len(resp.Teammates) != 1 {
 		t.Errorf("payload via fallback repo incorrect : %+v", resp)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests Sprint Carrière+ : highlight-matches, top-encounters, rivals
+// ---------------------------------------------------------------------------
+
+func TestCareerService_GetHighlightMatchIDs_PassesThroughFromRepo(t *testing.T) {
+	rows := []domain.HighlightMatchIDRow{
+		{MatchID: "m1", Outcome: 2, Section: 1},
+		{MatchID: "m2", Outcome: 3, Section: 2},
+	}
+	repo := &mockCareerRepo{highlightRows: rows}
+	svc := NewCareerService(repo)
+
+	got, err := svc.GetHighlightMatchIDs(context.Background(), domain.HighlightFilterInput{})
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(got.Rows) != 2 || got.Rows[0].MatchID != "m1" || got.Rows[1].Section != 2 {
+		t.Errorf("rows mal projetées : %+v", got.Rows)
+	}
+}
+
+func TestCareerService_GetHighlightMatchIDs_RepoError(t *testing.T) {
+	repo := &mockCareerRepo{highlightErr: errors.New("db down")}
+	svc := NewCareerService(repo)
+	if _, err := svc.GetHighlightMatchIDs(context.Background(), domain.HighlightFilterInput{}); err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestCareerService_GetRivals_RatioComputation(t *testing.T) {
+	repo := &mockCareerRepo{
+		rivalsNemeses: []domain.CareerRivalRawRow{
+			{Gamertag: "Killer1", Frags: 5, Deaths: 10, MatchCount: 3}, // ratio = 0.5
+			{Gamertag: "Killer2", Frags: 0, Deaths: 4, MatchCount: 2},  // ratio = 0
+		},
+		rivalsVictims: []domain.CareerRivalRawRow{
+			{Gamertag: "Victim1", Frags: 8, Deaths: 0, MatchCount: 2},  // div par zéro → ratio = Frags
+			{Gamertag: "Victim2", Frags: 12, Deaths: 4, MatchCount: 5}, // ratio = 3
+		},
+	}
+	svc := NewCareerService(repo)
+
+	resp, err := svc.GetRivals(context.Background())
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(resp.Nemeses) != 2 || len(resp.Victims) != 2 {
+		t.Fatalf("wrong counts : %+v", resp)
+	}
+	if resp.Nemeses[0].Ratio != 0.5 {
+		t.Errorf("Killer1 ratio = %v, want 0.5", resp.Nemeses[0].Ratio)
+	}
+	if resp.Nemeses[1].Ratio != 0 {
+		t.Errorf("Killer2 (frags=0) ratio = %v, want 0", resp.Nemeses[1].Ratio)
+	}
+	// Victim1 a 0 deaths → ratio = float64(Frags) (sentinelle "infini" approximé).
+	if resp.Victims[0].Ratio != 8 {
+		t.Errorf("Victim1 (deaths=0) ratio = %v, want 8 (frags fallback)", resp.Victims[0].Ratio)
+	}
+	if resp.Victims[1].Ratio != 3 {
+		t.Errorf("Victim2 ratio = %v, want 3", resp.Victims[1].Ratio)
+	}
+	if resp.Victims[1].MatchCount != 5 {
+		t.Errorf("MatchCount projection cassée : %+v", resp.Victims[1])
+	}
+}
+
+func TestCareerService_GetRivals_RepoError(t *testing.T) {
+	repo := &mockCareerRepo{rivalsErr: errors.New("kvp scan failed")}
+	svc := NewCareerService(repo)
+	if _, err := svc.GetRivals(context.Background()); err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestCareerService_GetTopEncounters_AppliesFriendExclusion(t *testing.T) {
+	repo := &mockCareerRepo{
+		topEncountersRows: []domain.MatchEncounterRow{
+			{XUID: "x42", Gamertag: "Stranger", CountTogether: 5},
+		},
+		topEncountersStats: []domain.EncounterStatsRaw{
+			{XUID: "x42", AllyCount: 0, EnemyCount: 5},
+		},
+	}
+	svc := NewCareerService(repo).
+		WithFriendGamertagsResolver(func(_ context.Context) []string { return []string{"BestFriend", "OtherFriend"} }).
+		WithFriendXUIDResolver(func(_ context.Context, gt string) (string, error) {
+			switch gt {
+			case "BestFriend":
+				return "xuid-friend-1", nil
+			case "OtherFriend":
+				return "xuid-friend-2", nil
+			}
+			return "", errors.New("not found")
+		})
+
+	_, err := svc.GetTopEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(repo.topEncountersExcludeArg) != 2 {
+		t.Fatalf("exclude xuid count = %d, want 2 (xuid-friend-1, xuid-friend-2)", len(repo.topEncountersExcludeArg))
+	}
+	want := map[string]bool{"xuid-friend-1": true, "xuid-friend-2": true}
+	for _, x := range repo.topEncountersExcludeArg {
+		if !want[x] {
+			t.Errorf("XUID inattendu dans exclude : %q", x)
+		}
+	}
+}
+
+func TestCareerService_GetTopEncounters_NoFriendsResolverGracefulDegradation(t *testing.T) {
+	repo := &mockCareerRepo{
+		topEncountersRows:  []domain.MatchEncounterRow{{XUID: "x1", Gamertag: "Player", CountTogether: 3}},
+		topEncountersStats: []domain.EncounterStatsRaw{{XUID: "x1", AllyCount: 1, EnemyCount: 2}},
+	}
+	// Pas de WithFriendGamertagsResolver → exclusion silencieusement désactivée.
+	svc := NewCareerService(repo)
+
+	resp, err := svc.GetTopEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(resp.Items) != 1 {
+		t.Errorf("Items = %d, want 1 (pas d'exclusion sans resolver)", len(resp.Items))
+	}
+	// L'argument exclude doit avoir été vide (resolveFriendXUIDs retourne nil).
+	if len(repo.topEncountersExcludeArg) != 0 {
+		t.Errorf("exclude arg = %v, want empty", repo.topEncountersExcludeArg)
+	}
+}
+
+func TestCareerService_GetTopEncounters_AppliesNarrativeBadges(t *testing.T) {
+	// Encounter avec 5 enemy_count + 10 deaths_suffered + 0 kills_dealt
+	// → tough_enemy badge (KillsDealt=0 + DeathsSuffered>=3).
+	// Plus ordinal badge automatique car CountTogether>0.
+	repo := &mockCareerRepo{
+		topEncountersRows: []domain.MatchEncounterRow{
+			{XUID: "x1", Gamertag: "ToughOne", CountTogether: 5},
+		},
+		topEncountersStats: []domain.EncounterStatsRaw{
+			{XUID: "x1", AllyCount: 0, EnemyCount: 5, KillsDealt: 0, DeathsSuffered: 10},
+		},
+	}
+	svc := NewCareerService(repo)
+
+	resp, err := svc.GetTopEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(resp.Items) != 1 {
+		t.Fatalf("Items = %d, want 1", len(resp.Items))
+	}
+	got := resp.Items[0]
+	if len(got.Badges) == 0 {
+		t.Fatalf("expected at least 1 badge (ordinal + tough_enemy), got 0")
+	}
+	hasOrdinal := false
+	hasTough := false
+	for _, b := range got.Badges {
+		if b.Kind == "ordinal" {
+			hasOrdinal = true
+		}
+		if b.Kind == "tough_enemy" {
+			hasTough = true
+		}
+	}
+	if !hasOrdinal {
+		t.Error("missing ordinal badge")
+	}
+	if !hasTough {
+		t.Error("missing tough_enemy badge (KillsDealt=0 + DeathsSuffered>=3 doit déclencher)")
+	}
+}
+
+func TestCareerService_GetTopEncounters_RepoError(t *testing.T) {
+	repo := &mockCareerRepo{topEncountersErr: errors.New("query timeout")}
+	svc := NewCareerService(repo)
+	if _, err := svc.GetTopEncounters(context.Background()); err == nil {
+		t.Error("expected error")
 	}
 }

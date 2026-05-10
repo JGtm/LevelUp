@@ -62,6 +62,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'career=>citations',
   // Achievements consommé par carrière (section progression)
   'career=>achievements',
+  // Career réutilise ExplorerMatchesTable pour les "Matchs marquants"
+  'career=>explorer',
+  // Career réutilise MatchEncountersTable pour les "Joueurs les plus croisés"
+  'career=>match-view',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history

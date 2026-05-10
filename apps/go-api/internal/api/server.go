@@ -107,6 +107,8 @@ func NewRouter(
 	// Le resolver est exposé aux services produit qui veulent consommer la
 	// couche canonique.
 	titleResolver := games.NewStaticResolver(titlePkg.DefaultSlug)
+	var hiRanks *mappings.RankCatalog
+	var hiRankImageURLs map[int]*string
 	if hiFields, ok := fieldMappingsRegistry.Get(titlePkg.DefaultSlug); ok {
 		// Charger le catalog des rangs HI depuis metadata.duckdb (career_rank_translations).
 		// OpenReadWriteShared est cached par path → réutilise le pool existant ouvert dans
@@ -114,7 +116,6 @@ func NewRouter(
 		// reste ouvert au shutdown (le metaDB.Close() de cmd/server décrémente seulement
 		// d'un cran), ce qui retient le HANDLE Windows et provoque le verrou
 		// "metadata verrouillée" au prochain hot-reload Air.
-		var hiRanks *mappings.RankCatalog
 		hiMetaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
 		if metaDB, err := platform_duckdb.OpenReadWriteShared(hiMetaPath); err == nil {
 			if catalog, err := platform_duckdb.LoadRankCatalog(context.Background(), metaDB); err == nil {
@@ -122,6 +123,12 @@ func NewRouter(
 				slog.Info("rank_catalog_loaded", "title_slug", titlePkg.DefaultSlug, "ranks", catalog.Len())
 			} else {
 				slog.Warn("rank_catalog_load_failed", "err", err.Error())
+			}
+			if imgs, err := platform_duckdb.LoadCareerRankImageURLs(context.Background(), metaDB, titlePkg.DefaultSlug); err == nil {
+				hiRankImageURLs = imgs
+				slog.Info("rank_image_urls_loaded", "title_slug", titlePkg.DefaultSlug, "images", len(imgs))
+			} else {
+				slog.Warn("rank_image_urls_load_failed", "err", err.Error())
 			}
 			if closeErr := metaDB.Close(); closeErr != nil {
 				slog.Warn("rank_catalog_meta_db_close_failed", "err", closeErr.Error())
@@ -186,7 +193,9 @@ func NewRouter(
 	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
 	reg := NewServiceRegistry(cfg, tokenProvider).
 		WithTitleResolver(titleResolver).
-		WithSettingsStore(settingsStore)
+		WithSettingsStore(settingsStore).
+		WithRankCatalog(hiRanks).
+		WithRankImageURLs(hiRankImageURLs)
 
 	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
 	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
@@ -498,12 +507,15 @@ func NewRouter(
 			r.Post("/pages/match-history/query", mh.Query)
 
 			// P6.3 : guard de capability — career routes nécessitent CapCareer.
-			career := handlers.NewCareerHandler(reg.Career)
+			career := handlers.NewCareerHandler(reg.Career, reg.MatchHistoryCtx)
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapCareer))
 				r.Get("/pages/career", career.GetCareer)
 				r.Get("/pages/career/top-matches", career.GetTopMatches)
 				r.Get("/pages/career/encounters", career.GetEncounters)
+				r.Get("/pages/career/highlight-matches", career.GetHighlightMatches)
+				r.Get("/pages/career/top-encounters", career.GetTopEncountersRich)
+				r.Get("/pages/career/rivals", career.GetRivals)
 			})
 
 			// Achievements (Xbox bilingues) : guard CapAchievements.

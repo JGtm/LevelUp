@@ -92,6 +92,7 @@ export const cividisPalette: Palette = {
   // ── Badges encounter — axe blue/vermillion ────────────────────────────────
   'narrative-encounter-ally-plus':    SAFE_BLUE,
   'narrative-encounter-tough-enemy':  SAFE_VERMILLION,
+  'narrative-encounter-coriace':      CIVIDIS_T75, // ocre — winrate vs lui mauvais
   'narrative-encounter-ordinal':      CIVIDIS_T40,
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────

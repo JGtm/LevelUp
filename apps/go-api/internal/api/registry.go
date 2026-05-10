@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
@@ -51,6 +52,8 @@ type ServiceRegistry struct {
 	homeMatchesCache *service.HomeMatchesCache // cache TTL process-level matches+sessions
 	settingsStore    *settings_platform.Store  // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
 	seasonsCatalog   *service.SeasonsCatalog   // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
+	rankCatalog      *mappings.RankCatalog     // nil → CareerService.next_rank_name reste vide
+	rankImageURLs    map[int]*string           // nil → CareerService.rank_image_url et next_rank_image_url restent absents
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
@@ -124,6 +127,22 @@ func (r *ServiceRegistry) WithSettingsStore(store *settings_platform.Store) *Ser
 // "saisons sans counts" sans folding, dégradation gracieuse).
 func (r *ServiceRegistry) WithSeasonsCatalog(catalog *service.SeasonsCatalog) *ServiceRegistry {
 	r.seasonsCatalog = catalog
+	return r
+}
+
+// WithRankCatalog attache le catalog des rangs carrière (libellés FR/EN/etc.).
+// Consommé par CareerService pour résoudre next_rank_name. Si nil, ce champ
+// reste vide dans la réponse API (dégradation gracieuse).
+func (r *ServiceRegistry) WithRankCatalog(catalog *mappings.RankCatalog) *ServiceRegistry {
+	r.rankCatalog = catalog
+	return r
+}
+
+// WithRankImageURLs attache la map rank_id → imageURL chargée au démarrage
+// depuis career_ranks (metadata.duckdb). Consommée par CareerService pour
+// rank_image_url et next_rank_image_url. Si nil, ces champs sont absents.
+func (r *ServiceRegistry) WithRankImageURLs(imgs map[int]*string) *ServiceRegistry {
+	r.rankImageURLs = imgs
 	return r
 }
 
@@ -233,6 +252,31 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	}
 	if loader := r.buildFriendsXPLoader(pdb); loader != nil {
 		svc = svc.WithFriendsXPLoader(loader)
+	}
+	if r.rankCatalog != nil {
+		svc = svc.WithRankCatalog(r.rankCatalog)
+	}
+	if r.rankImageURLs != nil {
+		svc = svc.WithRankImageURLs(r.rankImageURLs)
+	}
+	// Wiring des amis — utilisé par GetTopEncounters pour le tableau "joueurs
+	// les plus croisés (hors amis)". Si le settingsStore n'est pas attaché ou
+	// que la liste est vide, GetTopEncounters n'exclut personne (dégradation
+	// gracieuse).
+	if resolver := r.friendGamertagsResolver(); resolver != nil {
+		svc = svc.WithFriendGamertagsResolver(resolver)
+	}
+	// Résolveur gamertag → xuid : ExplorerRepo.ResolveXUIDByGamertag interroge
+	// shared.v_gamertag_lookup (cascade xuid_aliases ∪ match_participants),
+	// donc capture les amis qui ne sont pas encore dans xuid_aliases mais
+	// déjà apparus en match. Source unique de vérité partagée avec Explorer.
+	explorerRepo := duckdb.NewExplorerRepo(pdb, pdb.XUID)
+	svc = svc.WithFriendXUIDResolver(explorerRepo.ResolveXUIDByGamertag)
+	// SeasonsCatalog (TOML + DB + lazy-fetch) — alimente le filtre Saisons
+	// + cascade counts dans la section "Matchs marquants". Mêmes seasons
+	// que la SaisonPill côté Squad/Explorer.
+	if r.seasonsCatalog != nil {
+		svc = svc.WithSeasonsCatalog(r.seasonsCatalog)
 	}
 	return svc, nil
 }

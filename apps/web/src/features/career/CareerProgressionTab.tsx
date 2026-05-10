@@ -9,6 +9,9 @@ import { Spinner } from '@/components/ui/spinner'
 import { CareerChartsSection } from './CareerChartsSection'
 import { CareerLusrCards } from './CareerLusrCards'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
+import { CareerHighlightMatchesSection } from './CareerHighlightMatchesSection'
+import { CareerTopEncountersSection } from './CareerTopEncountersSection'
+import { CareerRivalsSection } from './CareerRivalsSection'
 import { useCareerPage } from './queries'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
@@ -71,6 +74,15 @@ export function CareerProgressionTab() {
 
       {/* career.11 — grille LUSR par playlist */}
       <CareerLusrCards checkpoints={data.lusr?.checkpoints ?? []} />
+
+      {/* Matchs marquants — toggle Best/Worst (15 chacun, format Explorer) */}
+      <CareerHighlightMatchesSection />
+
+      {/* Joueurs les plus croisés (hors amis) — top 10 (format Match View encounter) */}
+      <CareerTopEncountersSection />
+
+      {/* Top némésis + Top souffre-douleur côte à côte (10 + 10) */}
+      <CareerRivalsSection />
 
     </div>
   )

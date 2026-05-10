@@ -138,17 +138,20 @@ func TestPaginate_LastPage(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildHeroProgress_Half(t *testing.T) {
-	p := buildHeroProgress(xpHeroTotal / 2)
+	p := buildHeroProgress(xpHeroTotal/2, 100)
 	if p.Percentage != 50.0 {
 		t.Errorf("expected 50%%, got %v", p.Percentage)
 	}
 	if p.XPRemaining != xpHeroTotal/2 {
 		t.Errorf("expected remaining=%d, got %d", xpHeroTotal/2, p.XPRemaining)
 	}
+	if p.CurrentRank != 100 {
+		t.Errorf("expected CurrentRank=100, got %d", p.CurrentRank)
+	}
 }
 
 func TestBuildHeroProgress_MaxCap(t *testing.T) {
-	p := buildHeroProgress(xpHeroTotal + 1000)
+	p := buildHeroProgress(xpHeroTotal+1000, rankMax)
 	if p.Percentage != 100.0 {
 		t.Errorf("expected 100%% cap, got %v", p.Percentage)
 	}
