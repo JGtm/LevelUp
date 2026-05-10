@@ -1,4 +1,14 @@
 
+## [2026-05-10] Rivalités — suppression tableaux, butterfly seul
+
+**Statut** : Complété.
+
+**Décision** : Suppression de `RivalsTableProps` + `RivalsTable` (dead code validé). `ColLabels` allégé (retrait de `player`). Fragment `<>` simplifié. Fichier réduit de 357 à 215 lignes. TypeScript clean.
+
+**Résultats** : Seul le butterfly chart subsiste, validé par l'utilisateur.
+
+**Prochaine étape** : RAS.
+
 ## [2026-05-10] Compare — CSR réel depuis skill.svc.halowaypoint.com
 
 **Statut** : Complété.
