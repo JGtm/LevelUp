@@ -311,33 +311,6 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	return enc, nil
 }
 
-// GetRecentRankedMatchID retourne le match_id du match rankédé le plus récent du joueur.
-// Retourne "" si aucun match rankédé n'est disponible — best-effort, jamais d'erreur fatale.
-func (r *CompareRepo) GetRecentRankedMatchID(ctx context.Context, xuid string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	const q = `
-		SELECT mr.match_id
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?
-		  AND mr.is_ranked = TRUE
-		ORDER BY COALESCE(mr.start_time_utc, mr.start_time) DESC
-		LIMIT 1`
-
-	var matchID string
-	err := r.pdb.Player.QueryRow(ctx, q, xuid).Scan(&matchID)
-	if err == sql.ErrNoRows {
-		return "", nil
-	}
-	if err != nil {
-		slog.DebugContext(ctx, "CompareRepo.GetRecentRankedMatchID: erreur (best-effort)", "xuid", xuid, "err", err)
-		return "", nil
-	}
-	return matchID, nil
-}
-
 // ResolveXUID retourne le XUID correspondant à un gamertag dans le registre partagé.
 func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

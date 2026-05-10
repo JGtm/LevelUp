@@ -39,7 +39,7 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 
 	var statsA, statsB *domain.NormalizedPlayerStats
 	var ath *domain.PlayerATH
-	var csrCurrentA int
+	var csrCurrentA, csrBestA int
 	var xuidBResolved string
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -62,15 +62,13 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		if wErr != nil {
 			slog.DebugContext(gctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
 		}
-		// CSR depuis match skill Waypoint — best-effort.
-		if matchID, _ := s.repo.GetRecentRankedMatchID(gctx, s.xuidA); matchID != "" {
-			var csrErr error
-			csrCurrentA, csrErr = s.provider.FetchCSRFromMatch(gctx, matchID, s.xuidA)
-			if csrErr != nil {
-				slog.DebugContext(gctx, "CompareService: CSR joueur A indisponible (best-effort)", "xuid", s.xuidA, "match_id", matchID, "err", csrErr)
-			} else {
-				slog.DebugContext(gctx, "CompareService: CSR joueur A depuis match skill", "xuid", s.xuidA, "csr_current", csrCurrentA)
-			}
+		// CSR depuis Waypoint (playlists ranked hardcodées) — aucun lookup BDD.
+		var csrErr error
+		csrCurrentA, csrBestA, csrErr = s.provider.FetchCSRDirect(gctx, s.xuidA)
+		if csrErr != nil {
+			slog.DebugContext(gctx, "CompareService: CSR joueur A indisponible (best-effort)", "xuid", s.xuidA, "err", csrErr)
+		} else {
+			slog.DebugContext(gctx, "CompareService: CSR joueur A", "xuid", s.xuidA, "csr_current", csrCurrentA, "csr_best", csrBestA)
 		}
 		return nil
 	})
@@ -94,14 +92,13 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 					slog.DebugContext(gctx, "CompareService: ATH joueur B depuis pool (hors CSR)", "gamertag", local.Gamertag)
 				}
 
-				// CSR joueur B depuis match skill Waypoint — best-effort.
-				if matchID, _ := s.repo.GetRecentRankedMatchID(gctx, xuidB); matchID != "" {
-					if csrCurrent, csrErr := s.provider.FetchCSRFromMatch(gctx, matchID, xuidB); csrErr != nil {
-						slog.DebugContext(gctx, "CompareService: CSR joueur B indisponible (best-effort)", "gamertag", local.Gamertag, "err", csrErr)
-					} else {
-						local.CSRCurrent = csrCurrent
-						slog.DebugContext(gctx, "CompareService: CSR joueur B depuis match skill", "gamertag", local.Gamertag, "csr_current", csrCurrent)
-					}
+				// CSR joueur B depuis Waypoint (playlists ranked hardcodées) — aucun lookup BDD.
+				if csrCurrent, csrBest, csrErr := s.provider.FetchCSRDirect(gctx, xuidB); csrErr != nil {
+					slog.DebugContext(gctx, "CompareService: CSR joueur B indisponible (best-effort)", "gamertag", local.Gamertag, "err", csrErr)
+				} else {
+					local.CSRCurrent = csrCurrent
+					local.CSRBest = csrBest
+					slog.DebugContext(gctx, "CompareService: CSR joueur B", "gamertag", local.Gamertag, "csr_current", csrCurrent)
 				}
 
 				statsB = local
@@ -130,8 +127,9 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		statsA.LusrATH = ath.LusrATH
 	}
 	statsA.CSRCurrent = csrCurrentA
+	statsA.CSRBest = csrBestA
 	slog.DebugContext(ctx, "CompareService: CSR final joueur A", "gamertag", statsA.Gamertag,
-		"csr_current", statsA.CSRCurrent)
+		"csr_current", statsA.CSRCurrent, "csr_best", statsA.CSRBest)
 
 	metrics := buildMetrics(*statsA, *statsB)
 	resp := domain.CompareResponse{

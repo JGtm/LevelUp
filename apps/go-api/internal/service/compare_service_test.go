@@ -36,8 +36,8 @@ func (m *mockStatsProvider) FetchRemoteStats(_ context.Context, _, _ string) (*d
 	return m.stats, m.statsErr
 }
 
-func (m *mockStatsProvider) FetchCSRFromMatch(_ context.Context, _, _ string) (int, error) {
-	return 0, nil
+func (m *mockStatsProvider) FetchCSRDirect(_ context.Context, _ string) (int, int, error) {
+	return 0, 0, nil
 }
 
 // --- tests ---
@@ -150,10 +150,6 @@ func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*
 	return nil, nil
 }
 
-func (m *mockCompareRepoAB) GetRecentRankedMatchID(_ context.Context, _ string) (string, error) {
-	return "", nil
-}
-
 // ─── F5 : Test de latence Compare P95 < 5s ───────────────────────────────────
 
 // slowProvider simule une latence Waypoint configurable.
@@ -168,8 +164,8 @@ func (s *slowProvider) FetchRemoteStats(_ context.Context, _, _ string) (*domain
 	return s.stats, s.statsErr
 }
 
-func (s *slowProvider) FetchCSRFromMatch(_ context.Context, _, _ string) (int, error) {
-	return 0, nil
+func (s *slowProvider) FetchCSRDirect(_ context.Context, _ string) (int, int, error) {
+	return 0, 0, nil
 }
 
 // TestCompareService_Latency_P95 vérifie que GetPage s'exécute en < 5s

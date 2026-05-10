@@ -31,26 +31,31 @@ type compareStatsResponse struct {
 	TotalDamageTaken   float64 `json:"TotalDamageTaken"`
 }
 
-// matchSkillResponse est la réponse brute de skill.svc.halowaypoint.com/hi/matches/{id}/skill.
-type matchSkillResponse struct {
-	Value []matchSkillEntry `json:"Value"`
+// rankedPlaylistIDs liste les playlists ranked connues d'Halo Infinite (hardcodé comme SpartanRecord).
+// Essayées dans l'ordre pour récupérer le CSR d'un joueur sans lookup BDD.
+var rankedPlaylistIDs = []string{
+	"edfef3ac-9cbe-4fa2-b949-8f29deafd483", // Ranked Arena (Open Crossplay)
+	"f7f30787-f607-436b-bdec-44c65bc2ecef", // Ranked Arena (Solo-Duo Controller)
+	"f7eb8c71-fedb-4696-8c0f-96025e285ffd", // Ranked Arena (Solo-Duo MnK)
 }
 
-type matchSkillEntry struct {
-	Id         string           `json:"Id"`
-	ResultCode int              `json:"ResultCode"`
-	Result     matchSkillResult `json:"Result"`
+// csrResponse est la réponse brute de skill.svc.halowaypoint.com/hi/playlist/{id}/csrs.
+type csrResponse struct {
+	Value []csrEntry `json:"Value"`
 }
 
-type matchSkillResult struct {
-	RankRecap matchSkillRankRecap `json:"RankRecap"`
+type csrEntry struct {
+	Id         string    `json:"Id"`
+	ResultCode int       `json:"ResultCode"`
+	Result     csrResult `json:"Result"`
 }
 
-type matchSkillRankRecap struct {
-	PostMatchCsr matchSkillCsrValue `json:"PostMatchCsr"`
+type csrResult struct {
+	Current    csrRating `json:"Current"`
+	AllTimeMax csrRating `json:"AllTimeMax"`
 }
 
-type matchSkillCsrValue struct {
+type csrRating struct {
 	Value int `json:"Value"`
 }
 
@@ -102,49 +107,48 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 	return &stats, nil
 }
 
-// FetchCSRFromMatch retourne le CSR actuel (PostMatchCsr) depuis l'endpoint match skill Waypoint.
-// Endpoint : GET skill.svc.halowaypoint.com/hi/matches/{matchID}/skill?players=xuid({xuid})
-// Retourne (0, nil) si le joueur n'a pas de données CSR pour ce match (placement ou non rankédé).
-func (p *HaloProvider) FetchCSRFromMatch(ctx context.Context, matchID, xuid string) (current int, err error) {
+// FetchCSRDirect retourne le CSR actuel et le meilleur CSR depuis Waypoint en essayant
+// les playlists ranked connues (hardcodées) dans l'ordre — aucun lookup BDD requis.
+// Endpoint : GET skill.svc.halowaypoint.com/hi/playlist/{id}/csrs?players=xuid({xuid})
+func (p *HaloProvider) FetchCSRDirect(ctx context.Context, xuid string) (current, best int, err error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	if tokens == nil {
-		return 0, fmt.Errorf("FetchCSRFromMatch: tokens absents du contexte")
-	}
-	if matchID == "" {
-		return 0, fmt.Errorf("FetchCSRFromMatch: matchID vide")
+		return 0, 0, fmt.Errorf("FetchCSRDirect: tokens absents du contexte")
 	}
 
-	url := fmt.Sprintf(
-		"%s/hi/matches/%s/skill?players=xuid(%s)",
-		defaultSkillHost,
-		matchID,
-		xuid,
-	)
-	body, err := p.doGet(ctx, url, tokens)
-	if err != nil {
-		if strings.Contains(err.Error(), "HTTP 404") || strings.Contains(err.Error(), "HTTP 410") {
-			return 0, nil
+	for _, playlistID := range rankedPlaylistIDs {
+		url := fmt.Sprintf(
+			"%s/hi/playlist/%s/csrs?players=xuid(%s)",
+			defaultSkillHost,
+			playlistID,
+			xuid,
+		)
+		body, fetchErr := p.doGet(ctx, url, tokens)
+		if fetchErr != nil {
+			if strings.Contains(fetchErr.Error(), "HTTP 404") || strings.Contains(fetchErr.Error(), "HTTP 410") {
+				continue // playlist inconnue pour ce joueur — essayer la suivante
+			}
+			return 0, 0, fmt.Errorf("FetchCSRDirect(%s): %w", xuid, fetchErr)
 		}
-		return 0, fmt.Errorf("FetchCSRFromMatch(%s): %w", xuid, err)
-	}
 
-	var resp matchSkillResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return 0, fmt.Errorf("FetchCSRFromMatch(%s) parse: %w", xuid, err)
-	}
-	if len(resp.Value) == 0 {
-		return 0, nil
-	}
+		var resp csrResponse
+		if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+			continue
+		}
+		if len(resp.Value) == 0 || resp.Value[0].ResultCode != 0 {
+			continue // joueur non classé dans cette playlist
+		}
 
-	entry := resp.Value[0]
-	// ResultCode != 0 = joueur sans rang compétitif pour ce match.
-	if entry.ResultCode != 0 {
-		return 0, nil
+		entry := resp.Value[0]
+		if entry.Result.Current.Value > 0 {
+			current = entry.Result.Current.Value
+		}
+		if entry.Result.AllTimeMax.Value > 0 {
+			best = entry.Result.AllTimeMax.Value
+		}
+		if current > 0 || best > 0 {
+			return current, best, nil
+		}
 	}
-
-	// Value <= 0 = en placement (non encore classé).
-	if entry.Result.RankRecap.PostMatchCsr.Value > 0 {
-		current = entry.Result.RankRecap.PostMatchCsr.Value
-	}
-	return current, nil
+	return 0, 0, nil
 }
