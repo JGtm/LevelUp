@@ -1,33 +1,61 @@
 
-## [2026-05-10] Chart LUSR + cards : grouping par playlist_group canonique + UUIDs filtrés
+---
 
-**Statut** : Complété (front + i18n). Aucune touche backend.
+## [BACKLOG] Support de nouveaux playlist_group LUSR — étapes documentées
 
-**Branche** : `feat/career-rank-images-stats`.
+**Statut** : À faire (user assigné).
 
-**Demande user** : Sur le chart "Évolution LUSR / CSR" et la grille `CareerLusrCards`, afficher 1 entrée par `playlist_group` (4 max : Arène/Grand combat/Social/Classé) avec libellés FR/EN selon la locale. Filtrer les checkpoints dont `playlist_name` est un UUID brut. Pas d'amalgame "(autres)" synthétique.
+**Contexte** : Si un nouveau mode LUSR arrive (hypothétiquement, pour Halo Infinite ça n'arrivera pas car les 4 groupes sont figés dans l'algorithme TrueSkill2), le système doit afficher les labels FR/EN corrects au lieu de fallback ou UUID bruts.
 
-**Décision technique** :
-- **Grouping** : `(rating_type, playlist_group)` après normalisation. La normalisation fold le legacy `social` sur `arena` (cf. exploration : `social` n'est pas un groupe officiel — `skill_config.go` n'a que 4 valeurs ; les checkpoints `social` viennent d'historique de sync).
-- **Filtre UUID** : regex `/^[0-9a-f]{8}-…{12}$/i` sur `playlist_name`. Les 2 UUIDs réellement non-résolus chez JGtm (`bdceefb3`, `a446725e` — 9 checkpoints au total, soit 1.2% du dataset) sont exclus de l'affichage. Donnée conservée en DB.
-- **i18n** : 4 clés `career.lusr.group.{arena,btb,fun,ranked}` ajoutées dans `career.toml` (FR + EN). Manifest regen via `node apps/web/scripts/build_i18n_manifests.mjs` → 70 clés au total.
-- **Helpers exportés** depuis `lusrSeries.ts` : `normalizeGroup`, `lusrGroupLabel`, `CanonicalGroup` — réutilisés par `CareerLusrCards.tsx` pour cohérence stricte.
+**Étapes pour ajouter un nouveau groupe** :
 
-**Fichiers touchés** :
-- `apps/web/src/features/career/lusrSeries.ts` (refonte complète)
-- `apps/web/src/features/career/lusrSeries.test.ts` (9 cas)
-- `apps/web/src/features/career/CareerChartsSection.tsx` (`buildLusrSeries(checkpoints, locale)`)
-- `apps/web/src/features/career/CareerLusrCards.tsx` (label par groupe, filtre UUIDs)
-- `apps/web/src/lib/i18n/manifests/career.toml` + `generated/career.ts` (regen)
-- `apps/web/e2e/career-lusr-legend.spec.ts` (assertions sur libellés FR canoniques)
+1. **`career.toml`** — ajouter les clés de traduction :
+   ```toml
+   [career.lusr.group.nouveau_groupe]
+   fr = "Libellé français"
+   en = "English label"
+   ```
 
-**Reverts** dans cette session (ajouts antérieurs annulés) :
-- `apps/go-api/internal/domain/career.go` : `PlaylistID json:"playlist_id"` → `json:"-"` (le front n'utilise plus playlist_id).
-- `apps/web/src/lib/api/types.ts` : `playlist_id: string` retiré du type `CareerLusrCheckpoint`.
-- `apps/go-api/cmd/lusr_inventory/` : binaire debug supprimé.
+2. **Régénérer le manifest** :
+   ```bash
+   cd apps/web
+   node scripts/build_i18n_manifests.mjs
+   ```
+   → Vérifie que les clés apparaissent dans `src/lib/i18n/generated/career.ts`
 
-**Conservé du chemin précédent** :
-- `apps/go-api/internal/platform/duckdb/queries_career.go` Q8 garde `COALESCE(r.playlist_name_fr, r.playlist_name, '')` — aligné sur les autres pages, gain net.
+3. **`lusrSeries.ts`** — ajouter le mapping dans `lusrGroupLabel()` :
+   ```typescript
+   const keyMap: Record<CanonicalGroup, string> = {
+     arena: 'career.lusr.group.arena',
+     btb: 'career.lusr.group.btb',
+     fun: 'career.lusr.group.fun',
+     ranked: 'career.lusr.group.ranked',
+     nouveau_groupe: 'career.lusr.group.nouveau_groupe',  // ← nouveau
+   }
+   ```
+
+4. **Vérifier que `CanonicalGroup` type union inclut le nouveau groupe** :
+   - TypeScript forcera une erreur de compilation si le `keyMap` est incomplet
+   - Si le type est défini ailleurs, ajouter le nouveau groupe là aussi
+
+5. **Tests** :
+   ```bash
+   cd apps/web
+   npm run typecheck    # Doit compiler sans erreur
+   npx vitest run lusrSeries.test.ts  # Ajouter 1+ cas de test pour le nouveau groupe
+   ```
+
+6. **Vérification visuelle** :
+   - `make dev` et naviguer vers `/players/JGtm/career` (ou un joueur avec le nouveau groupe)
+   - Vérifier que le chart affiche 5 courbes (au lieu de 4)
+   - Vérifier que la légende montre le libellé FR correct (ex: "Nouveau groupe (LUSR/CSR)")
+   - Vérifier que les cards en dessous aussi affichent le libellé FR correct
+
+**Note architecture** : Le système est déjà **dynamique** pour le groupage (`buildLusrSeries()` boucle sur tous les (rating_type, playlist_group) uniques). Seules les traductions i18n sont figées au build time.
+
+**Note backend** : Aucun changement backend nécessaire — le Go continue à classer les modes via `GetPlaylistGroup()` dans `skill_config.go`. Si un nouveau mode arrive, il faut que `GetPlaylistGroup()` le reconnaisse et le classe dans un groupe LUSR canonique.
+
+st_name_fr, r.playlist_name, '')` — aligné sur les autres pages, gain net.
 
 **Résultats** :
 - `npm run typecheck` : OK sur les fichiers carrière (les 2 erreurs `palettes/*` sont préexistantes et hors scope)
