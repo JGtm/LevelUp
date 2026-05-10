@@ -429,6 +429,16 @@ func init() {
 			return err
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_service_config_id_to_xbox_achievement_definitions",
+		TargetDB:    TargetMetadata,
+		Description: "Colonne service_config_id (SCID Xbox) sur xbox_achievement_definitions. Le SCID est le seul discriminateur fiable par jeu : l'API Xbox retourne tous les achievements de la franchise quand on filtre par titleId. Peuplée lors du prochain sync-achievements.",
+		ApplySchema: func(db *sql.DB) error {
+			_, err := db.Exec(`ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS service_config_id VARCHAR DEFAULT ''`)
+			return err
+		},
+	})
 }
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.

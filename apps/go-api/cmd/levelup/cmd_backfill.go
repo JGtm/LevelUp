@@ -322,6 +322,11 @@ func runBackfillAllLUSR(ctx context.Context, cfg *config.AppConfig, force bool) 
 			fmt.Printf("backfill lusr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
 			continue
 		}
+		if err := applyMigrationsOnDB(dbPath, migration.TargetPlayer); err != nil {
+			failed++
+			fmt.Printf("backfill lusr FAIL: gamertag=%s err=migrations: %v\n", player.Gamertag, err)
+			continue
+		}
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
 		updated, runErr := engine.RunBackfillLUSR(ctx, force)
 		if runErr != nil {

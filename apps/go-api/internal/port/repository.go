@@ -824,6 +824,10 @@ type CompareRepository interface {
 	// N'appeler que pour le joueur A — lit depuis pdb.Player (connexion du joueur principal).
 	GetPlayerATH(ctx context.Context) (*domain.PlayerATH, error)
 
+	// GetPlayerATHFor retourne les métriques all-time pour n'importe quel joueur local.
+	// Lookup dans le pool global par {titleSlug}:{gamertag} — best-effort (nil si non ouvert).
+	GetPlayerATHFor(ctx context.Context, gamertag, titleSlug string) (*domain.PlayerATH, error)
+
 	// GetFavoriteWeapon retourne l'arme avec le plus de kills depuis shared.weapon_kills.
 	// Retourne nil si aucune donnée n'est disponible (best-effort).
 	GetFavoriteWeapon(ctx context.Context, xuid string) (*domain.WeaponHighlight, error)
@@ -884,6 +888,9 @@ func (n *noopCompareRepo) ResolveXUID(_ context.Context, _ string) (string, erro
 	return "", nil
 }
 func (n *noopCompareRepo) GetPlayerATH(_ context.Context) (*domain.PlayerATH, error) {
+	return nil, nil
+}
+func (n *noopCompareRepo) GetPlayerATHFor(_ context.Context, _, _ string) (*domain.PlayerATH, error) {
 	return nil, nil
 }
 func (n *noopCompareRepo) GetFavoriteWeapon(_ context.Context, _ string) (*domain.WeaponHighlight, error) {

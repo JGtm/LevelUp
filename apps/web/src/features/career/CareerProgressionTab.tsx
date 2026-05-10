@@ -66,7 +66,7 @@ export function CareerProgressionTab() {
         heroProgress={data.hero_progress}
         projections={data.projections ?? null}
         friendsXpHistory={data.friends_xp_history}
-        rightSlot={<AchievementsCareerSection playerSlug={playerSlug} layout="sidebar" filterXboxTitleId="1144039928" />}
+        rightSlot={<AchievementsCareerSection playerSlug={playerSlug} layout="sidebar" />}
       />
 
       {/* career.11 — grille LUSR par playlist */}

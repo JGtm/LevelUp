@@ -198,6 +198,24 @@ en = "No LUSR rating available"
 fr = "Aucun checkpoint LUSR n'a été enregistré pour ce joueur."
 en = "No LUSR checkpoint recorded for this player."
 
+# ─── LUSR chain labels (clés = valeurs de playlist_group en DB) ───────────
+
+[career.lusr.chain.arena_slayer]
+fr = "Social · Slayer"
+en = "Social · Slayer"
+
+[career.lusr.chain.arena_objectif]
+fr = "Social · Objectif"
+en = "Social · Objective"
+
+[career.lusr.chain.btb]
+fr = "Grande Équipe"
+en = "Big Team Battle"
+
+[career.lusr.chain.chaos]
+fr = "Chaos"
+en = "Chaos"
+
 # ─── Progression tab ──────────────────────────────────────────────────────
 
 [career.empty.progression_unavailable]

@@ -144,7 +144,7 @@ func TestDaemon_MakePresenceHandler(t *testing.T) {
 		XUID:          "X1",
 		PresenceState: "Online",
 		PresenceDetail: &presence.PresenceDetail{
-			TitleID:   "1144039928",
+			TitleID:   "2043073184",
 			TitleName: "Halo Infinite",
 			IsGame:    true,
 			IsPrimary: true,
