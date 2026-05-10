@@ -6,11 +6,15 @@
  *                              cartes pleine largeur — pour un slot droit
  *                              aux côtés des charts XP/LUSR.
  */
+import { useState } from 'react'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useAchievementsPage } from './queries'
 import { AchievementCard } from './AchievementCard'
 import { ACHIEVEMENTS_TEXT, type AchievementsLocale, type AchievementsText } from './i18n'
+
+type StatusFilter = 'all' | 'unlocked' | 'in-progress' | 'not-started'
+type DateSort = 'default' | 'asc' | 'desc'
 
 interface Props {
   playerSlug: string
@@ -23,6 +27,8 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
   const locale = useAppShellStore((s) => s.locale) as AchievementsLocale
   const t = ACHIEVEMENTS_TEXT[locale]
   const { data, isLoading, isError, refetch } = useAchievementsPage(playerSlug)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [dateSort, setDateSort] = useState<DateSort>('default')
 
   if (isLoading || isError || !data) {
     return renderShellWith(
@@ -47,9 +53,29 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
     )
   }
 
-  const visible = filterXboxTitleId
+  const baseList = filterXboxTitleId
     ? data.achievements.filter((a) => !a.xbox_title_id || a.xbox_title_id === filterXboxTitleId)
     : data.achievements
+
+  const statusFiltered =
+    statusFilter === 'all' ? baseList
+    : statusFilter === 'unlocked' ? baseList.filter((a) => a.unlocked)
+    : statusFilter === 'in-progress'
+      ? baseList.filter((a) => !a.unlocked && (a.current_progress ?? 0) > 0)
+      : baseList.filter((a) => !a.unlocked && (a.current_progress ?? 0) === 0)
+
+  const visible =
+    dateSort === 'default'
+      ? statusFiltered
+      : [...statusFiltered].sort((a, b) => {
+          const at = a.unlocked_at ? new Date(a.unlocked_at).getTime() : null
+          const bt = b.unlocked_at ? new Date(b.unlocked_at).getTime() : null
+          if (at === null && bt === null) return 0
+          if (at === null) return 1
+          if (bt === null) return -1
+          return dateSort === 'asc' ? at - bt : bt - at
+        })
+
   const summary = data.summary
 
   if (layout === 'sidebar') {
@@ -61,9 +87,32 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
             {summary.unlocked_count}/{summary.total_count} · {summary.completion_pct.toFixed(0)} %
           </span>
         </div>
-        <p className="px-3 pb-1 pt-1 text-xs text-muted-foreground">
-          {summary.earned_gamerscore} / {summary.total_gamerscore} G
-        </p>
+        <div className="flex items-center justify-between px-3 pb-1 pt-1">
+          <span className="text-xs text-muted-foreground">
+            {summary.earned_gamerscore} / {summary.total_gamerscore} G
+          </span>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="cursor-pointer border-0 bg-transparent text-[10px] text-muted-foreground outline-none"
+            >
+              <option value="all">{t.filterAll}</option>
+              <option value="unlocked">{t.filterUnlocked}</option>
+              <option value="in-progress">{t.filterInProgress}</option>
+              <option value="not-started">{t.filterNotStarted}</option>
+            </select>
+            <select
+              value={dateSort}
+              onChange={(e) => setDateSort(e.target.value as DateSort)}
+              className="cursor-pointer border-0 bg-transparent text-[10px] text-muted-foreground outline-none"
+            >
+              <option value="default">{t.sortDefault}</option>
+              <option value="asc">{t.sortDateAsc}</option>
+              <option value="desc">{t.sortDateDesc}</option>
+            </select>
+          </div>
+        </div>
         <div className="p-3 pt-1">
           <div
             className="flex flex-col gap-2 overflow-y-auto"
