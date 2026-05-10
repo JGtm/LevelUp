@@ -14,10 +14,14 @@ import { CareerTopMatchesTable } from './CareerTopMatchesTable'
 import { CareerEncountersSection } from './CareerEncountersSection'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
 import { useCareerPage, useCareerTopMatches } from './queries'
+import { useAppShellStore } from '@/stores/appShellStore'
+import type { ManifestLocale } from '@/lib/i18n/format'
+import { lusrChainLabel } from './lusr-chains'
 
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
+  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [showAllTopMatches, setShowAllTopMatches] = useState(false)
   const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
@@ -113,7 +117,7 @@ export function CareerPage() {
                   )}
                   {data.lusr.current_playlist_group && (
                     <span className="ml-2 text-xs text-muted-foreground">
-                      ({data.lusr.current_playlist_group})
+                      ({lusrChainLabel(data.lusr.current_playlist_group, locale)})
                     </span>
                   )}
                 </p>
