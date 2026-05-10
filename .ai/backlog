@@ -22,6 +22,24 @@
 
 ---
 
+## 🔵 V8 — Features reportées
+
+### Compare : CSR + CSR ATH (re-implémentation)
+**Contexte** : retiré de la page Face-à-face le 2026-05-10 (commit `revert(compare): supprime CSR + CSR ATH`).
+
+**Pourquoi retiré** : appel live à `skill.svc.halowaypoint.com/hi/playlist/{id}/csrs` ne fonctionne pas pour les joueurs autres que celui logué (l'endpoint Waypoint scope la lecture du CSR au token courant). SpartanRecord contourne ça via un cron Firebase + un autocode privé qui pré-cache via un compte de service ; on n'a pas l'équivalent.
+
+**Stratégie v8** : reproduire le modèle SpartanRecord côté Go.
+- Cron background (1×/jour) qui appelle Waypoint pour la liste fermée des gamertags trackés (pool joueurs LevelUp).
+- Écriture dans `stats.duckdb` table `match_skill_rank` avec `rating_type='CSR'` (la colonne existe déjà, juste personne ne la remplit côté sync).
+- À l'affichage de Compare : lecture DuckDB locale (< 50ms, jamais d'appel live).
+- Restaurer les champs `CSRCurrent`, `CSRBest` côté domaine + sous-requêtes dans `compare_repo.go::GetPlayerATH/GetPlayerATHFor` + métriques `csr_current`/`csr_best` dans `compare_service.go::buildMetrics`.
+- Côté frontend : restaurer `csr_current`/`csr_best` dans `i18n.ts` et `ComparePage.tsx::CATEGORY_KEYS.bilan`.
+
+**À investiguer** : l'endpoint Waypoint accepte-t-il une lecture en service-account (compte 343i partner) ou faut-il rester sur le scope user ? Si scope user uniquement → cron tourne avec les tokens du joueur logué pour récupérer les CSR de ses coéquipiers.
+
+---
+
 ## 🟡 POST-V7 — À faire après release v7
 
 ### Main Merge (blocking)
