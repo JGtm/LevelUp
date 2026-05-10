@@ -12,23 +12,6 @@
 
 ---
 
-### [citations] Backfill composite-only (sans recalcul des citations existantes)
-
-**Noté le** : 2026-05-09 | **Priorité** : 🟡 Moyen
-
-**Contexte** : quand des citations composites sont ajoutées manuellement à `citation_mappings` après que les matchs ont déjà été traités, le backfill actuel ne peut pas les calculer sans `force=true` (qui supprime tout et recalcule depuis les données brutes). Or les composites n'ont besoin que des valeurs des enfants déjà présentes dans `match_citations`.
-
-**Solution** : ajouter un troisième mode `composite-only` dans `citations_backfill.go` :
-1. Charger uniquement les composites depuis `citation_mappings` (Q40, filtre `mapping_type='composite'`)
-2. Une requête `SELECT match_id, citation_name_norm, value FROM match_citations WHERE citation_name_norm IN (tous les enfants des composites)` — pas de lecture de `shared_matches_v2`
-3. Group by `match_id` en mémoire Go
-4. Exécuter `computeCompositeCitations` sur chaque groupe
-5. `INSERT ... ON CONFLICT DO NOTHING` — ne touche pas les citations existantes
-
-**Perf** : lecture player DB locale uniquement, calcul trivial O(n_matchs × n_composites × n_enfants), quelques ms pour 1000 matchs.
-
----
-
 ### [db-concurrency] Suite et fin du refactor `leased-writer-enforcement`
 
 **Noté le** : 2026-05-05 | **Priorité** : 🔴 Bloquant merge pour les 3 premiers points, 🟡 follow-up pour le reste
