@@ -31,15 +31,16 @@ describe('buildHeatmap2DOption', () => {
     expect(opt.yAxis.data).toEqual(['main', 'f1'])
   })
 
-  it('génère data au format [xIdx, yIdx, value]', () => {
+  it('génère data au format [xIdx, yIdx, value, detail?]', () => {
     const opt = buildHeatmap2DOption(series) as {
-      series: { data: number[][] }[]
+      series: { data: unknown[][] }[]
     }
     expect(opt.series[0].data).toHaveLength(3)
-    // Aquarius/main = [0, 0, 75]
-    expect(opt.series[0].data[0]).toEqual([0, 0, 75])
-    // Recharge/main = [1, 0, 80]
-    expect(opt.series[0].data[2]).toEqual([1, 0, 80])
+    // Aquarius/main = [0, 0, 75, undefined] — 4e élément `detail` ajouté par
+    // synthesis-kpi-grid (refonte chart : payload optionnel pour tooltip riche).
+    expect(opt.series[0].data[0].slice(0, 3)).toEqual([0, 0, 75])
+    // Recharge/main = [1, 0, 80, undefined]
+    expect(opt.series[0].data[2].slice(0, 3)).toEqual([1, 0, 80])
   })
 
   it('palette sequential par défaut', () => {

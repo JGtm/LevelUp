@@ -247,7 +247,7 @@ export function TimeseriesPage() {
 
             {/* Durée de vie moyenne (gauche) | Assistances (droite) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <ChartFrame title={locale === 'en' ? 'Average life' : 'Durée de vie moyenne'}>
+              <ChartFrame title={fieldMappings?.fields['avg_life_seconds']?.label ?? 'Durée de vie moyenne'}>
                 <TimeseriesAvgLifeTrend
                   rows={data.match_rows ?? []}
                   lifeLabel={locale === 'en' ? 'Average life (s)' : 'Durée de vie (s)'}
@@ -421,8 +421,7 @@ export function TimeseriesPage() {
                     fieldMappings?.fields['performance_score']?.label ??
                     (locale === 'en' ? 'Performance' : 'Performance'),
                   colorToken: 'perf-tier-3' as const,
-                  xAxisLabel:
-                    locale === 'en' ? 'Performance score' : 'Score de performance',
+                  xAxisLabel: fieldMappings?.fields['performance_score']?.label ?? 'Score de performance',
                   // Grading color : perf-tier-1..5 selon le bucket midpoint sur [0,100].
                   colorTokenByBucket: ((b: { bucket_lower: number; bucket_upper: number }) => {
                     const mid = (b.bucket_lower + b.bucket_upper) / 2
@@ -575,9 +574,9 @@ export function TimeseriesPage() {
               >
                 <TimeseriesPerMinuteTrend
                   rows={data.match_rows ?? []}
-                  killsLabel={locale === 'en' ? 'Kills / min' : 'Frags / min'}
-                  deathsLabel={locale === 'en' ? 'Deaths / min' : 'Morts / min'}
-                  assistsLabel={locale === 'en' ? 'Assists / min' : 'Assistances / min'}
+                  killsLabel={fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'}
+                  deathsLabel={fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'}
+                  assistsLabel={fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'}
                   perMinuteSuffix={locale === 'en' ? ' /min' : ' /min'}
                 />
               </ChartFrame>

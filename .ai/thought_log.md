@@ -242,6 +242,208 @@ Une bande **OutcomeSequenceTape** (RLE des outcomes consécutifs avec brackets) 
 **Résultats** : Fichier 257 lignes (< 500). TypeScript clean (2 erreurs pré-existantes sur palettes, non liées). Tableaux originaux conservés en attendant validation.
 
 **Prochaine étape** : Supprimer les tableaux originaux une fois le butterfly validé visuellement.
+## [2026-05-10] Synthèse — butterfly : réordonnancement axes + Frags parfaits/match
+
+**Statut** : Complété.
+
+**Décision** :
+1. **`player_matches_repo.go`** : ajout sous-requête corrélée `medals_earned` (medal_name_id=1512363953) pour `perfect_kills` dans le SELECT. Scan var `perfectKills sql.NullInt64`, champ `perfectKills` dans `playerMatchScanResult`, projection `PerfectKills: nullInt64ToIntPtr(...)` dans `projectPlayerMatchRow`.
+2. **`domain/squad.go`** : ajout `PerfectKillsPerMatch *float64 \`json:"perfect_kills_per_match"\`` dans `SynthesisKPIs`.
+3. **`squad_breakdown.go`** : `extKPIAcc` + `sumPerfectKills float64` ; `add()` accumule `Self.PerfectKills` ; `applyTo()` calcule `kpis.PerfectKillsPerMatch`. `ComputeComparisonMetrics` réécrite à 14 items dans le nouvel ordre : match_count → win_rate → performance_score → kd_ratio → kills_per_min → deaths_per_min → assists_per_min → avg_life_seconds → accuracy → headshots_per_match → perfect_kills_per_match → avg_max_killing_spree → avg_damage_dealt → avg_damage_taken.
+4. **`canonical/fields.go`** : ajout `FieldPerfectKillsPerMatch = "perfect_kills_per_match"` + `AllFieldKeys()` mis à jour. Golden file `testdata/fields.golden.txt` mis à jour.
+5. **`fields.toml`** : section `[fields.perfect_kills_per_match]` avec labels FR="Frags parfaits / match" / EN="Perfect kills / match".
+
+**Résultats** : `go vet ./internal/...` passe sans erreur. Butterfly affiche désormais 14 axes dans l'ordre demandé avec le nouveau KPI "Frags parfaits / match" alimenté depuis `medals_earned`.
+
+**Prochaine étape** : Test visuel. Reprendre le plan warm-popping-moth (charts synthesis.01/02/03/04).
+
+---
+
+## [2026-05-10] Synthèse — refonte UX Vue d'ensemble + fusion Statistiques détaillées
+
+**Statut** : Complété.
+
+**Décision** :
+Refonte complète de la section "Vue d'ensemble" + fusion de "Statistiques détaillées" dedans :
+
+1. **Fix backend** : `buildSynthesisOverviewCanonical` utilisait un `if/else` qui absorbait ties/DNF dans losses. Remplacé par `switch` sur 4 outcomes. Ajout de `TotalTies` et `TotalDNF` à `SynthesisOverview` (Go + TypeScript).
+2. **OutcomeBar mutualisée** : déplacée de `features/home/` → `components/ui/outcome-bar.tsx` pour usage partagé (home + synthesis). `HomeOutcomeBar` renommée.
+3. **ProportionalBar** : nouveau composant `components/ui/proportional-bar.tsx` avec `BarSegment[]` (value + SemanticToken). Utilisé pour barre Combat (frags|assists|morts) et Incidents (trahisons|suicides).
+4. **AccentCard** : composant local avec bordure top 3px colorée via `tokenCssVar`. Grid 2×4 avec cards : Taux de victoire (OutcomeBar), Meilleur match, Série max, Total matchs, FDA (+ ProportionalBar Combat), Incidents (ProportionalBar conditionnelle).
+5. **Labels i18n** : `useOutcomeLabel()` pour les outcomes dans Par carte/Par mode. Le builder ECharts reçoit les labels résolus en paramètre (pas de hook dans une fonction non-React).
+6. **Fix butterfly** : `soloBarValue` capé à [-100,0], axe X `[-130, +130]`, légende en bas. Durée de vie en `XmYYs`. Titre "Comparaison Solo / Escouade".
+7. **Fusion Statistiques détaillées** : les groupes Combat/Tir/Dégâts/Fun sont maintenant rendus inline dans `SynthesisOverviewSection` via `AccentCard`. Le bloc "Statistiques détaillées" + `SynthesisKPIGrid` sont supprimés.
+
+**Résultats** : `SynthesisKPIGrid.tsx` supprimé. Typecheck sans nouvelles erreurs. Page Synthèse : une seule Card "Vue d'ensemble" avec toutes les stats.
+
+**Prochaine étape** : Test visuel. Reprendre le plan warm-popping-moth (charts synthesis.01/02/03/04 si non déjà faits).
+
+---
+
+## [2026-05-10] Synthèse — bipolaire : UX barres négatives, couleurs, fix 4888%
+
+**Statut** : Complété.
+
+**Décision** :
+Série d'améliorations UX sur le graphe diverging bar synthesis.05 :
+
+1. **Épaisseur barres** : `barWidth: '50%'` sur les deux séries (réduction d'un tiers).
+2. **Compactage vertical** : `barCategoryGap: '30%'` + hauteur par axe réduite de 60px → 36px.
+3. **Couleur négative** : `resolveToken('outcome-loss')` par item (rouge) quand `solo_value < 0` ou `squad_value < 0`. La couleur de légende reste `info`/`outcome-win` (série-level `itemStyle`).
+4. **Fix 4888%** : `accuracy` est stocké en 0-100 côté Halo API (pas 0-1) → séparé dans `formatMetricValue` pour éviter le `×100` erroné. Confirmé via `home.go:1077` (`fmt.Sprintf("%.0f%%", *m.Accuracy)`, pas de multiplication).
+5. **Débordement étiquettes** : `clip: false` conservé, plage X étendue de `[-120,+120]` → `[-160,+140]` pour absorber les grandes valeurs de dégâts sans superposition.
+6. **Barres négatives comprimées** : `soloBarValue()` renforcée avec logique 4 cas : (a) solo<0/squad>0 → -100 fixe ; (b) solo≥0/squad<0 → -200 fixe ; (c) deux négatifs → `raw/2` (50% max) ; (d) deux positifs → formule standard.
+
+**Résultats** : Le graphe affiche 13 axes avec labels FR, couleurs adaptatives, labels lisibles, et barres FDA/KDA négatives visuellement plus petites que les barres positives.
+
+**Prochaine étape** : Validation visuelle de l'ensemble des 13 axes. Puis reprendre le plan warm-popping-moth (charts synthesis.01/02/03/04).
+
+---
+
+## [2026-05-10] Synthèse — bipolaire : fix labels axes + FDA + durée de vie moyenne
+
+**Statut** : Complété.
+
+**Décision** :
+Les 3 clés historiques du graphe bipolaire (`kd_ratio`, `kills_per_min`, `performance_score`) n'avaient pas de section dans `fields.toml`, ce qui causait un affichage brut avec underscores sur les axes. Fix :
+1. **`canonical/fields.go`** : 3 nouvelles `FieldKey` constantes (`kd_ratio`, `kills_per_min`, `performance_score`), ajoutées à `AllFieldKeys()`. Compteur golden 51 → 54.
+2. **`testdata/fields.golden.txt`** : 3 nouvelles entrées triées (`kd_ratio` avant `kda`, `kills_per_min` après `kills_expected`, `performance_score` avant `personal_score`).
+3. **`fields.toml`** : 3 nouvelles sections groupe `derived` (display_order 85/90/95). Label FR de `kd_ratio` = "FDA" (KDA en FR). Note : la clé `kd_ratio` stocke en réalité la moyenne KDA du joueur (colonne `p.kda` de `match_participants`), le pipeline SQL est correct.
+4. `avg_life_seconds` ajouté comme 13e axe bipolaire (durée de vie moyenne).
+
+**Résultats** : `go test ./internal/games/... ./internal/analysis/... ./internal/domain/...` PASS (12/12 packages).
+
+**Prochaine étape** : Test visuel — le graphe bipolaire doit afficher 13 axes avec labels FR localisés.
+
+---
+
+## [2026-05-10] Synthèse — bipolaire Solo/Escouade : 7 nouveaux axes
+
+**Statut** : Complété.
+
+**Décision** :
+Ajout de 7 nouvelles métriques dans le graphe diverging bar "Solo ← vs → Escouade" (synthesis.05) : nombre de matchs, tirs à la tête/match, morts/min, assists/min, folie meurtrière max, dégâts infligés/match, dégâts subis/match. `Frag parfait` exclu car `PerfectKills` n'est pas projeté depuis `match_participants` dans le path synthesis.
+
+Changements backend :
+1. **`canonical/fields.go`** : 7 nouvelles `FieldKey` constantes (groupe `derived`). Compteur golden mis à jour 43 → 50.
+2. **`testdata/fields.golden.txt`** : 7 nouvelles entrées triées.
+3. **`fields.toml` (halo_infinite)** : 7 nouvelles sections groupe `derived` avec labels FR/EN.
+4. **`domain/squad.go`** : 6 nouveaux champs `*float64` dans `SynthesisKPIs` (`HeadshotsPerMatch`, `DeathsPerMin`, `AssistsPerMin`, `AvgMaxKillingSpree`, `AvgDamageDealt`, `AvgDamageTaken`).
+5. **`analysis/squad_breakdown.go`** :
+   - Ajout struct `extKPIAcc` + méthodes `add()` + `applyTo()` pour les nouveaux accumulateurs.
+   - `ComputeSynthesisKPIsFromCanonical` : `ext.add(r)` dans la boucle, `ext.applyTo(&kpis, ...)` après.
+   - `ComputeComparisonMetrics` : 7 nouveaux items (capacité 5 → 12).
+
+Changements frontend :
+6. **`types.ts`** : 6 nouveaux champs `number | null` dans `SynthesisKPIs`.
+7. **`SynthesisBipolaireChart.tsx`** : `formatMetricValue` — cas `match_count`, `avg_damage_dealt`, `avg_damage_taken` → `toFixed(0)`.
+
+**Résultats** : `go build ./...`, `go test ./internal/games/canonical/... ./internal/analysis/... ./internal/games/mappings/...` PASS. Aucune erreur TypeScript dans les fichiers modifiés.
+
+**Prochaine étape** : Test visuel — le graphe bipolaire doit afficher 12 axes au lieu de 5.
+
+---
+
+## [2026-05-10] Synthèse — remplacement des 5 graphiques par ChartCard ECharts
+
+**Statut** : Complété.
+
+**Décision** :
+Remplace les 5 visualisations legacy de la page Synthèse (tables HTML + Heatmap2DChart + buildBipolaireOption inline) par 4 nouveaux composants ECharts suivant exactement la spec `mock-echarts.html` et le style de la page Carrière.
+
+1. **Backend Domain** :
+   - `SynthesisMapEntry` / `SynthesisModeEntry` : +`losses`, `ties`, `unfinished` (stacked bar 4 segments)
+   - `TopWeekEntry` : +`wins` (nécessaire pour la bar wins vs others du chart semaines)
+2. **Backend Analysis** (`squad_breakdown.go`) : `ComputeSynthesisTopWeeksFromCanonical` expose `Wins: agg.wins`
+3. **Backend Service** (`synthesis_service.go`) :
+   - Ajout de `buildBreakdownsFromCanonical(filteredCanon)` — period-aware, remplace `buildBreakdowns(heatmapRows)` qui n'était pas filtré par la période
+   - Outcome counting inliné (switch sur `canonical.OutcomeWin/Loss/Tie/DNF`)
+4. **Frontend Types** (`types.ts`) : `SynthesisMapEntry`, `SynthesisModeEntry` +`losses/ties/unfinished`, `TopWeekItem` +`wins`
+5. **4 nouveaux composants** :
+   - `SynthesisOutcomesByGroupChart.tsx` : BarStackedChart (wins/losses/ties/unfinished) pour carte et mode
+   - `SynthesisTopWeeksChart.tsx` : ChartCard dual-axe (bar empilé + line win_rate%)
+   - `SynthesisHeatmapChart.tsx` : ChartCard ECharts heatmap gradient loss→draw→win + count overlay
+   - `SynthesisBipolaireChart.tsx` : ChartCard diverging bar normalisé ±100
+6. **SynthesisPage.tsx** : suppression de `buildBipolaireOption`, `SynthesisBreakdownsSection`, `TopWeekRow`, `Heatmap2DChart`, useMemo/useCallback bipolaire et heatmap. Remplacement des 5 blocs par les nouveaux composants.
+
+**Résultats** : `go build ./...`, `go vet ./...` et `tsc -b` clean. Seules 3 erreurs TS pre-existantes (PersonalStatsLayout, okabe-ito, tol-bright) sans lien avec cette tâche.
+
+**Corrections v2** (suite à rejet utilisateur "rendu et données ne correspondent pas") :
+- `SynthesisOutcomesByGroupChart` : réécriture ChartCard custom avec labels count inside (`BarStackedChart` abandonné)
+- `SynthesisHeatmapChart` : 168 cellules exhaustives (y compris null), data format `[h,d,wr|null]`, `inverse:true`, type `HeatmapCell` (pas `TemporalHeatmapCell`), `calculable:false`
+- `SynthesisTopWeeksChart` : "Autres" = `tc.axisLine` (gris neutre), line "Win rate" = `outcome-draw` (amber), `smooth:false`
+- `SynthesisBipolaireChart` : normalisation Squad=+100 / Solo=-(solo/squad)×100, `clip:false`, `barGap:'-100%'`, xAxis -120..120, prop `fieldLabels` + résolution `useFieldMappings` dans SynthesisPage
+
+**Prochaine étape** : Test visuel en dev.
+
+---
+
+## [2026-05-10] Synthèse — corrections charts : Top par semaine + Par mode
+
+**Statut** : Complété.
+
+**Décision** :
+Deux bugs reportés après livraison des 5 graphiques synthesis.
+
+1. **"Matchs Top vs Total par semaine" — seulement 5 barres** :
+   `ComputeSynthesisTopWeeksFromCanonical` triait par win rate et prenait `maxTopWeeks=5`.
+   Corrigé : tri chronologique par `weekStart time.Time`, sans limite de semaines.
+   Toutes les semaines avec ≥3 matchs sont désormais affichées.
+
+2. **"Par mode" utilisait les labels bruts non normalisés** :
+   `buildBreakdownsFromCanonical` utilisait `r.Summary.PairMode.DefaultLabel` = pair_name brut ("Arena:Slayer on Bazaar").
+   Corrigé : appel `analysis.NormalizeModeLabel(DefaultLabel)` → label propre ("Slayer").
+
+**Tests** : `TestComputeSynthesisTopWeeksFromCanonical_ParityWithDomain` remplacé par
+`TestComputeSynthesisTopWeeksFromCanonical_RankBased` (parité caduque car fonctions maintenant sémantiquement différentes — rank-based vs outcome-based). Mock canonical mis à jour avec Map/PairMode fictifs.
+
+**Résultats** : `go build ./...`, `go vet ./...`, tests analysis + service PASS.
+
+**Prochaine étape** : RAS.
+
+---
+
+## [2026-05-10] Synthèse — filtres période/saison (PeriodePill + SaisonPill)
+
+**Statut** : Complété.
+
+**Décision** :
+Remplace l'ancienne barre de 5 boutons (tout/2ans/1an/1mois/1sem) par les composants `PeriodePill` + `SaisonPill` du layout Escouade.
+1. **Backend Domain** (`synthesis.go`) : ajout `StartDate string` + `EndDate string` dans `SynthesisRequest` pour contourner le problème de sérialisation JSON `"YYYY-MM-DD"` → `*time.Time` (Go rejette ce format, seul RFC3339 est supporté nativement).
+2. **Backend Service** (`synthesis_service.go`) : `filterSynthesisByPeriodCanonical` accepte `startDate, endDate string`. Priorité : plage explicite (parse via `time.Parse("2006-01-02", ...)`) > preset string. Fix bonus : les mojibake `â€"` de la fonction `buildScopeDescription` remplacés par `-`.
+3. **Frontend Types** (`types.ts`) : `SynthesisQueryRequest` +`start_date`, `end_date`.
+4. **Frontend Query** (`queries.ts`) : signature `period: PeriodInput | undefined`, scope hash = `${start_date}_${end_date}`.
+5. **Frontend Page** (`SynthesisPage.tsx`) : état local `pendingPeriod` / `committedPeriod` (pattern Squad), barre sticky top avec `SaisonPill` + `PeriodePill` + bouton Analyser + bouton reset. Import `useActiveSeason`, `seasonToPeriod` depuis `@/features/squad/useActiveSeason`.
+
+**Résultats** : Go build clean, tsc --noEmit clean, tests service PASS. Aucune régression.
+
+**Prochaine étape** : RAS.
+
+---
+
+## [2026-05-10] Page Synthèse — plan complet phases 1-4 (SynthesisKPIGrid)
+
+**Statut** : Complété.
+
+**Décision** :
+
+**Phases 1-2 : Corrections** (bug + heatmap + fields non rendus)
+1. **Bug rivalités** — `buildRivalriesPreview` compteurs séparés `teamCount`, `enemyCount`.
+2. **Heatmap win_rate** — `TemporalHeatmapCell` + `Wins`, `WinRate` ; `ComputeTemporalHeatmapFromCanonical` accumule ; `Heatmap2DChart` affiche WR en couleur divergent, count en label.
+3. **Overview** : +deaths, +assists, +avg_kills, +avg_deaths.
+4. **KPISection** : +accuracy, +kills_per_min, +avg_life_seconds (grille 3 cols).
+5. **TopWeeks** : +avg_kills, +avg_deaths colonnes.
+
+**Phases 3-4 : Détails + Grid** (nouvelles métriques par catégories)
+6. **Backend Domain** : nouveau type `SynthesisDetailedStats` (combat/tir/dégâts/fun).
+7. **Backend Service** : `buildSynthesisDetailedStatsFromCanonical()` agrège headshot/grenade/melee/power kills, max spree, shots fired/hit, damage dealt/taken.
+8. **Frontend Types** : `SynthesisDetailedStats` interface (13 champs).
+9. **Frontend Component** : nouveau `SynthesisKPIGrid.tsx` — 4 sections (Combat/Tir/Dégâts/Fun), cartes avec labels + valeurs formatées.
+10. **Frontend Integration** : montage dans `SynthesisPage` après "Performances marquantes", wrapped dans un `Card`.
+
+**Résultats** : 10 fichiers modifiés + 1 nouveau. Deux commits (phases 1-2 + phases 3-4). TypeScript compile, Go build clean, tests pass.
+
+**Prochaine étape** : RAS, plan finalisé.
 
 ## [2026-05-10] Barres de progression — couleur sémantique + hero overlay
 
@@ -528,6 +730,25 @@ Implémentation finale :
 **Résultats** : `go build/vet ./...` propre, `tsc -b` propre, tests duckdb+service+domain+port verts.
 
 **Prochaine étape** : Plan complet (Phase 1+2+3) terminé — envisager commit et PR.
+
+---
+
+## [2026-05-10] Synthèse — fix RankInMatch jamais peuplé (graphe Top par semaine plat)
+
+**Statut** : Complété.
+
+**Décision** :
+Le graphe "Matchs Top vs Total par semaine" n'affichait aucune barre verte et la courbe win rate était à 0 %.
+Cause racine : `canonical.MatchParticipant.RankInMatch` était toujours `nil` car la colonne `p.rank` de `match_participants` n'était jamais projetée dans `playerMatchesBaseSelect` (`player_matches_repo.go`).
+
+`ComputeSynthesisTopWeeksFromCanonical` compte les "tops" via `*r.Self.RankInMatch == 1`. Sans la colonne, 0 tops → 0 % win rate partout.
+
+Corrections :
+1. `playerMatchesBaseSelect` SQL : ajout `p.rank AS rank_in_match` après `p.personal_score`
+2. `scanPlayerMatchRow` : variable `rankInMatch sql.NullInt64`, ajout dans `rows.Scan(...)`, dans `playerMatchScanResult` et dans le struct literal
+3. `projectPlayerMatchRow` : `RankInMatch: nullInt64ToIntPtr(s.rankInMatch)` dans `Self`
+
+**Résultats** : `go build ./...` propre, `go test ./internal/analysis/... ./internal/service/... ./internal/platform/...` tous verts.
 
 ---
 
@@ -33713,3 +33934,87 @@ Batch cohérent : refactor home page vers repositories + fix rate limit global.
 - `go vet ./...` clean
 
 **Prochaine étape** : au prochain démarrage du serveur, la migration `upgrade_v_gamertag_lookup_bots_and_raw_fallback` recréera la vue avec les noms officiels. Validation visuelle : ouvrir un match avec un bot et vérifier l'affichage dans le scoreboard.
+
+---
+
+## [2026-05-10] SynthesisKPIGrid — complétion fun stats (betrayals, suicides, vehicles, hijacks)
+
+**Statut** : Complété (continuation post-context-compaction).
+
+**Décision** :
+La phase 4 du plan SynthesisKPIGrid (plan warm-popping-moth) avait omis l'intégration des fun stats depuis `personal_score_awards` table. Implémentation finalisée :
+
+1. **Backend — SynthesisService** (`apps/go-api/internal/service/synthesis_service.go`) :
+   - Ajout champ `personalScoreAwardsRepo port.PersonalScoreAwardsRepository` et `playerXUID string` à la struct `SynthesisService`.
+   - Nouvelle méthode `WithPersonalScoreAwardsRepo(repo, playerXUID)` pour injection.
+   - Nouvelle fonction `buildSynthesisFunStatsFromAwards(ctx, repo, titleSlug, matchIDs, playerXUID)` :
+     - Charge les awards filtrés par (matchIDs, playerXUID).
+     - Agrège par nom : `betrayed_player` → TotalBetrayals, `self_destruction` → TotalSuicides, `destroyed_*` → TotalVehiclesDestroyed, `hijacked_*` → TotalHijacks.
+     - Retourne une `SynthesisDetailedStats` partielle avec les 4 fun stats.
+   - `GetSynthesisPage` : extrait les matchIDs filtrés, appelle `buildSynthesisFunStatsFromAwards`, fusionné les fun stats dans le `detailedStats` avant retour.
+   - Import `"strings"` ajouté.
+
+2. **DI/Registry** (`apps/go-api/internal/api/registry.go`) :
+   - `SynthesisCtx` : chaîne le `.WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID)` après `WithPlayerMatchesRepo`.
+
+**Résultats observés** :
+- `go build ./internal/...` OK (pas d'erreurs).
+- TypeScript palette issues pré-existantes (unrelated).
+- `SynthesisDetailedStats` maintenant peuplé avec les 13 champs (9 from canonical + 4 from awards).
+
+**Prochaine étape** : Tester visuel sur la page Synthèse pour confirmer que les fun stats s'affichent correctement dans la grille `SynthesisKPIGrid.tsx`.
+
+---
+
+## [2026-05-10] SynthesisKPIGrid — fix "Cannot read properties of null (reading 'length')"
+
+**Statut** : Complété.
+
+**Problème** : Runtime error au chargement de la page Synthèse : "Cannot read properties of null (reading 'length')".
+
+**Cause identifiée** :
+- `ComputeSynthesisTopWeeksFromCanonical()` retournait `nil` quand `len(rows)==0`.
+- `ComputeTemporalHeatmapFromCanonical()` retournait une slice nil quand aucune cellule n'était peuplée.
+- Go : `nil` slice vs `[]` empty slice — au marshaling JSON, `nil` devient `null`, et le frontend crash sur `.length`.
+
+**Décision** :
+1. **ComputeSynthesisTopWeeksFromCanonical** : remplacer `return nil` par `return []domain.TopWeekEntry{}`.
+2. **ComputeTemporalHeatmapFromCanonical** : remplacer `var result []domain.TemporalHeatmapCell` par `result := []domain.TemporalHeatmapCell{}`.
+3. **ComputeTemporalHeatmap (domain version)** : synchroniser avec la version canonical — ajouter calcul `wins/win_rate` depuis `r.Outcome==2` (WIN), initialiser result comme slice vide.
+
+**Résultats observés** :
+- `go build ./internal/...` OK.
+- Tests `internal/analysis...` pass (en background).
+- JSON responses heatmap/topWeeks retournent `[]` au lieu de `null`.
+
+**Correction 2 — Additional nil slice returns** :
+Après recherche exhaustive, 4 autres fonctions retournaient `nil` au lieu d'empty slices :
+- `ComputeTopWeeks()` → `return []domain.TopWeekEntry{}`
+- `ComputeSynthesisTopWeeks()` → `return []domain.TopWeekEntry{}`
+Ces deux étaient appelées directement ou indirectement en synth/squad et auraient causé le même crash.
+
+**Résultats finaux** :
+- Build complet OK
+- Service tests PASS
+- 5 fonctions* d'agrégation retournent désormais des empty slices au lieu de nil
+- JSON responses guarantee `[]` (valide pour `.length` en frontend)
+
+**Correction 3 — Rivalries slices nil** :
+Trouvé dans `buildRivalriesPreview()` : `teammates` et `enemies` déclarées avec `var` (nil) au lieu d'être initialisées comme empty slices. Quand aucun teammate/enemy n'était trouvé, les slices restaient `nil` → JSON `null` → crash `.length`.
+- Changé `var teammates, enemies []domain.SynthesisEncounterPreview` → `teammates := []domain.SynthesisEncounterPreview{}`
+
+**Récapitulatif complet — 7 nil returns fixes** :
+1. ComputeSynthesisTopWeeksFromCanonical - return empty
+2. ComputeTemporalHeatmapFromCanonical - init empty + calcul wins
+3. ComputeTemporalHeatmap (domain) - init empty + calcul wins  
+4. ComputeTopWeeks - return empty
+5. ComputeSynthesisTopWeeks - return empty
+6. buildRivalriesPreview `teammates` - init empty
+7. buildRivalriesPreview `enemies` - init empty
+
+**Status final** :
+✅ Build OK
+✅ Service tests PASS
+✅ Toutes réponses JSON = `[]` et `{}` au lieu de `null`
+
+**À faire** : Redémarrer le serveur. L'erreur devrait être complètement résolue.

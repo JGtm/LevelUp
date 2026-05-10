@@ -15,8 +15,10 @@ import "time"
 // SynthesisRequest : corps de POST /pages/synthesis.
 // Sprint 55 D2 : period et filters réellement appliqués par le service.
 type SynthesisRequest struct {
-	Period  string             `json:"period,omitempty"`  // "all" | "1w" | "1m" | "1y" | "2y"
-	Filters FilterContextInput `json:"filters,omitempty"` // filtres réellement appliqués en D2
+	Period    string             `json:"period,omitempty"`     // "all" | "1w" | "1m" | "1y" | "2y"
+	StartDate string             `json:"start_date,omitempty"` // ISO date "YYYY-MM-DD" (plage explicite)
+	EndDate   string             `json:"end_date,omitempty"`   // ISO date "YYYY-MM-DD"
+	Filters   FilterContextInput `json:"filters,omitempty"`    // filtres réellement appliqués en D2
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +47,8 @@ type SynthesisOverview struct {
 	TotalMatches int `json:"total_matches"`
 	TotalWins    int `json:"total_wins"`
 	TotalLosses  int `json:"total_losses"`
+	TotalTies    int `json:"total_ties"`
+	TotalDNF     int `json:"total_dnf"`
 	TotalKills   int `json:"total_kills"`
 	TotalDeaths  int `json:"total_deaths"`
 	TotalAssists int `json:"total_assists"`
@@ -75,6 +79,7 @@ type SynthesisOverview struct {
 
 // SynthesisPageV2Response est la nouvelle réponse de POST /pages/synthesis.
 // Sprint 55 D3/D4 : ajoute scope explicite et overview en tête.
+// P9 : ajoute DetailedStats pour le KPI Grid par catégories.
 // Conserve solo_kpis/squad_kpis/comparison_metrics/heatmap/top_weeks pour compatibilité.
 type SynthesisPageV2Response struct {
 	// Bloc 0 — scope (D3)
@@ -94,6 +99,18 @@ type SynthesisPageV2Response struct {
 	HighlightsPreview SynthesisHighlightsPreview `json:"highlights_preview"`
 	RivalriesPreview  SynthesisRivalriesPreview  `json:"rivalries_preview"`
 	Breakdowns        SynthesisBreakdowns        `json:"breakdowns"`
+
+	// Bloc détails (P9)
+	DetailedStats SynthesisDetailedStats `json:"detailed_stats"`
+
+	// Bloc frags par arme (top 15, label résolu, weapon ID non-résolu exclus)
+	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
+}
+
+// SynthesisWeaponKillEntry est une ligne du classement frags par arme.
+type SynthesisWeaponKillEntry struct {
+	Label string `json:"label"`
+	Kills int    `json:"kills"`
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +164,9 @@ type SynthesisMapEntry struct {
 	MapName    string  `json:"map_name"`
 	MatchCount int     `json:"match_count"`
 	Wins       int     `json:"wins"`
+	Losses     int     `json:"losses"`
+	Ties       int     `json:"ties"`
+	Unfinished int     `json:"unfinished"`
 	WinRate    float64 `json:"win_rate"`
 }
 
@@ -155,6 +175,9 @@ type SynthesisModeEntry struct {
 	ModeName   string  `json:"mode_name"`
 	MatchCount int     `json:"match_count"`
 	Wins       int     `json:"wins"`
+	Losses     int     `json:"losses"`
+	Ties       int     `json:"ties"`
+	Unfinished int     `json:"unfinished"`
 	WinRate    float64 `json:"win_rate"`
 }
 
@@ -162,6 +185,36 @@ type SynthesisModeEntry struct {
 type SynthesisBreakdowns struct {
 	TopMaps  []SynthesisMapEntry  `json:"top_maps"`
 	TopModes []SynthesisModeEntry `json:"top_modes"`
+}
+
+// ---------------------------------------------------------------------------
+// Bloc détails — SynthesisDetailedStats (P9 KPI Grid)
+// ---------------------------------------------------------------------------
+
+// SynthesisDetailedStats contient les métriques détaillées par catégories.
+// Combat, Tir, Dégâts, Fun stats extraits du scope filtré.
+type SynthesisDetailedStats struct {
+	// Combat
+	TotalHeadshotKills    int `json:"total_headshot_kills"`
+	TotalPerfectKills     int `json:"total_perfect_kills"`
+	TotalGrenadeKills     int `json:"total_grenade_kills"`
+	TotalMeleeKills       int `json:"total_melee_kills"`
+	TotalPowerWeaponKills int `json:"total_power_weapon_kills"`
+	MaxKillingSpree       int `json:"max_killing_spree"` // MAX sur le scope
+
+	// Tir
+	TotalShotsFired int `json:"total_shots_fired"`
+	TotalShotsHit   int `json:"total_shots_hit"`
+
+	// Dégâts
+	TotalDamageDealt float64 `json:"total_damage_dealt"`
+	TotalDamageTaken float64 `json:"total_damage_taken"`
+
+	// Fun (via personal_score_awards)
+	TotalBetrayals         int `json:"total_betrayals"`
+	TotalSuicides          int `json:"total_suicides"`
+	TotalVehiclesDestroyed int `json:"total_vehicles_destroyed"`
+	TotalHijacks           int `json:"total_hijacks"`
 }
 
 // ---------------------------------------------------------------------------

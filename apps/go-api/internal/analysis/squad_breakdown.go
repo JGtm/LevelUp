@@ -1,4 +1,4 @@
-// Package analysis â€” squad_breakdown.go : breakdown solo/escouade + synthÃ¨se + top weeks.
+﻿// Package analysis â€” squad_breakdown.go : breakdown solo/escouade + synthÃ¨se + top weeks.
 package analysis
 
 import (
@@ -88,7 +88,7 @@ func ComputeSynthesisHeatmap(rows []domain.SynthesisHeatmapRow) []domain.Heatmap
 }
 
 // ComputeTopWeeks calcule les 5 meilleures semaines depuis les lignes squad.
-// Une semaine valide a â‰¥ 3 matchs. Tri par win_rate dÃ©croissant.
+// Une semaine valide a >= 3 matchs. Tri par win_rate decroissant.
 func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 	if len(rows) == 0 {
 		return nil
@@ -180,7 +180,7 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 }
 
 // ComputeSynthesisTopWeeks calcule les 5 meilleures semaines depuis les lignes SynthesisMatchRow.
-// MÃªme logique que ComputeTopWeeks mais depuis un dataset allÃ©gÃ© (LoadSynthesisMatches).
+// Meme logique que ComputeTopWeeks mais depuis un dataset allege (LoadSynthesisMatches).
 func ComputeSynthesisTopWeeks(rows []legacymatch.SynthesisMatchRow) []domain.TopWeekEntry {
 	if len(rows) == 0 {
 		return nil
@@ -396,13 +396,71 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 // Migration progressive : ComputeSynthesisKPIs reste pour les autres callers
 // (Squad, Teammates) qui n'ont pas encore migrÃ©. Sera supprimÃ© en P4.3 quand
 // tous les callers seront sur canonical.
+// extKPIAcc accumule les compteurs des KPIs etendus du bipolaire Solo/Escouade.
+type extKPIAcc struct {
+	sumDeaths, sumAssists, sumHeadshots    float64
+	sumMaxSpree, sumDmgDealt, sumDmgTaken  float64
+	sumPerfectKills                        float64
+	nSpree, nDmgDealt, nDmgTaken          int
+}
+
+func (a *extKPIAcc) add(r canonical.PlayerMatchRow) {
+	if r.Self.Deaths != nil {
+		a.sumDeaths += float64(*r.Self.Deaths)
+	}
+	if r.Self.Assists != nil {
+		a.sumAssists += float64(*r.Self.Assists)
+	}
+	if r.Self.HeadshotKills != nil {
+		a.sumHeadshots += float64(*r.Self.HeadshotKills)
+	}
+	if r.Self.PerfectKills != nil {
+		a.sumPerfectKills += float64(*r.Self.PerfectKills)
+	}
+	if r.Self.MaxKillingSpree != nil {
+		a.sumMaxSpree += float64(*r.Self.MaxKillingSpree)
+		a.nSpree++
+	}
+	if r.Self.DamageDealt != nil {
+		a.sumDmgDealt += float64(*r.Self.DamageDealt)
+		a.nDmgDealt++
+	}
+	if r.Self.DamageTaken != nil {
+		a.sumDmgTaken += float64(*r.Self.DamageTaken)
+		a.nDmgTaken++
+	}
+}
+
+func (a *extKPIAcc) applyTo(kpis *domain.SynthesisKPIs, nMatches int, sumTimeSecs float64) {
+	hpm := math.Round(a.sumHeadshots/float64(nMatches)*100) / 100
+	kpis.HeadshotsPerMatch = &hpm
+	pkpm := math.Round(a.sumPerfectKills/float64(nMatches)*100) / 100
+	kpis.PerfectKillsPerMatch = &pkpm
+	if tot := sumTimeSecs / 60.0; tot > 0 {
+		dpm := math.Round(a.sumDeaths/tot*100) / 100
+		kpis.DeathsPerMin = &dpm
+		apm := math.Round(a.sumAssists/tot*100) / 100
+		kpis.AssistsPerMin = &apm
+	}
+	if a.nSpree > 0 {
+		v := math.Round(a.sumMaxSpree/float64(a.nSpree)*100) / 100
+		kpis.AvgMaxKillingSpree = &v
+	}
+	if a.nDmgDealt > 0 {
+		v := math.Round(a.sumDmgDealt / float64(a.nDmgDealt))
+		kpis.AvgDamageDealt = &v
+	}
+	if a.nDmgTaken > 0 {
+		v := math.Round(a.sumDmgTaken / float64(a.nDmgTaken))
+		kpis.AvgDamageTaken = &v
+	}
+}
+
 func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad bool) domain.SynthesisKPIs {
 	var kpis domain.SynthesisKPIs
-	var totalWL, wins int
-	var sumKDA, sumAcc, sumPerf float64
-	var nKDA, nAcc, nPerf int
-	var sumKills, sumTimePlayed float64
-	var nTime int
+	var totalWL, wins, nKDA, nAcc, nPerf, nTime int
+	var sumKDA, sumAcc, sumPerf, sumKills, sumTimePlayed float64
+	var ext extKPIAcc
 
 	for _, r := range rows {
 		if r.Enrichment.IsWithFriends != isSquad {
@@ -434,6 +492,7 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 			sumTimePlayed += float64(*r.Self.TimePlayed)
 			nTime++
 		}
+		ext.add(r)
 	}
 
 	if kpis.MatchCount == 0 {
@@ -460,12 +519,12 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 	if nTime > 0 {
 		avgLife := math.Round(sumTimePlayed/float64(nTime)*10) / 10
 		kpis.AvgLifeSeconds = &avgLife
-		totalMinutes := sumTimePlayed / 60.0
-		if totalMinutes > 0 {
-			kpm := math.Round(sumKills/totalMinutes*100) / 100
+		if tot := sumTimePlayed / 60.0; tot > 0 {
+			kpm := math.Round(sumKills/tot*100) / 100
 			kpis.KillsPerMin = &kpm
 		}
 	}
+	ext.applyTo(&kpis, kpis.MatchCount, sumTimePlayed)
 	return kpis
 }
 
@@ -478,7 +537,7 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 // des champs change (Self.Outcome/Kills/Deaths/KDA + Summary.StartedAtUTC).
 func ComputeSynthesisTopWeeksFromCanonical(rows []canonical.PlayerMatchRow) []domain.TopWeekEntry {
 	if len(rows) == 0 {
-		return nil
+		return []domain.TopWeekEntry{}
 	}
 
 	type weekAgg struct {
@@ -505,9 +564,10 @@ func ComputeSynthesisTopWeeksFromCanonical(rows []canonical.PlayerMatchRow) []do
 			agg = &weekAgg{label: weekStart.Format("02/01")}
 			byWeek[weekStart] = agg
 		}
-		if r.Self.Outcome == canonical.OutcomeWin || r.Self.Outcome == canonical.OutcomeLoss {
+		// Classement individuel dans le match : rank=1 = premier.
+		if r.Self.RankInMatch != nil {
 			agg.total++
-			if r.Self.Outcome == canonical.OutcomeWin {
+			if *r.Self.RankInMatch == 1 {
 				agg.wins++
 			}
 		}
@@ -525,11 +585,11 @@ func ComputeSynthesisTopWeeksFromCanonical(rows []canonical.PlayerMatchRow) []do
 	}
 
 	type weekScore struct {
-		entry domain.TopWeekEntry
-		wr    float64
+		entry     domain.TopWeekEntry
+		weekStart time.Time
 	}
 	var candidates []weekScore //nolint:prealloc
-	for _, agg := range byWeek {
+	for ws, agg := range byWeek {
 		if agg.count < 3 {
 			continue
 		}
@@ -545,10 +605,11 @@ func ComputeSynthesisTopWeeksFromCanonical(rows []canonical.PlayerMatchRow) []do
 			avgKDA = math.Round(agg.sumKDA/float64(agg.nKDA)*100) / 100
 		}
 		candidates = append(candidates, weekScore{
-			wr: wr,
+			weekStart: ws,
 			entry: domain.TopWeekEntry{
 				WeekLabel:  agg.label,
 				WinRate:    wr,
+				Wins:       agg.wins,
 				AvgKills:   avgKills,
 				AvgDeaths:  avgDeaths,
 				AvgKDA:     avgKDA,
@@ -556,14 +617,10 @@ func ComputeSynthesisTopWeeksFromCanonical(rows []canonical.PlayerMatchRow) []do
 			},
 		})
 	}
-	sort.Slice(candidates, func(i, j int) bool { return candidates[i].wr > candidates[j].wr })
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].weekStart.Before(candidates[j].weekStart) })
 
-	const maxTopWeeks = 5
-	result := make([]domain.TopWeekEntry, 0, min(len(candidates), maxTopWeeks))
-	for i, c := range candidates {
-		if i >= maxTopWeeks {
-			break
-		}
+	result := make([]domain.TopWeekEntry, 0, len(candidates))
+	for _, c := range candidates {
 		result = append(result, c.entry)
 	}
 	return result
@@ -617,71 +674,127 @@ func ComputeSynthesisBreakdownFromCanonical(rows []canonical.PlayerMatchRow, isS
 // ComputeTemporalHeatmap. Pas de logique mÃ©tier â€” seulement l'extraction
 // du jour/heure depuis Summary.StartedAtUTC.
 func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []domain.TemporalHeatmapCell {
-	counts := [7][24]int{}
+	type heatmapAgg struct {
+		count int
+		wins  int
+	}
+	cells := [7][24]heatmapAgg{}
 	for _, r := range rows {
 		st := r.Summary.StartedAtUTC
 		goDow := int(st.Weekday())
 		dow := (goDow + 6) % 7 // convertir: lundi=0
 		hour := st.Hour()
-		counts[dow][hour]++
+		agg := cells[dow][hour]
+		agg.count++
+		if r.Self.Outcome == canonical.OutcomeWin {
+			agg.wins++
+		}
+		cells[dow][hour] = agg
 	}
-	var cells []domain.TemporalHeatmapCell
+	result := []domain.TemporalHeatmapCell{}
 	for d := 0; d < 7; d++ {
 		for h := 0; h < 24; h++ {
-			if counts[d][h] > 0 {
-				cells = append(cells, domain.TemporalHeatmapCell{DOW: d, Hour: h, Count: counts[d][h]})
+			agg := cells[d][h]
+			if agg.count > 0 {
+				wr := float64(agg.wins) / float64(agg.count)
+				result = append(result, domain.TemporalHeatmapCell{
+					DOW:     d,
+					Hour:    h,
+					Count:   agg.count,
+					Wins:    agg.wins,
+					WinRate: wr,
+				})
 			}
 		}
 	}
-	return cells
+	return result
 }
 
 // ComputeComparisonMetrics construit les mÃ©triques bipolaires solo/escouade.
 func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.ComparisonMetricItem {
-	items := make([]domain.ComparisonMetricItem, 0, 5)
-
-	// P7.1 (revue 2026-04-29) : SoloText/SquadText retirés ; Label porte
-	// désormais une clé canonique (cf. fields.toml) que le front résout via
-	// useFieldLabel + format via switch sur la clé canonique. Évite la
-	// dépendance au libellé FR pour le formatage.
+	items := make([]domain.ComparisonMetricItem, 0, 14)
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "match_count", SoloValue: float64(solo.MatchCount), SquadValue: float64(squad.MatchCount),
+	})
 	items = append(items, domain.ComparisonMetricItem{
 		Label: "win_rate", SoloValue: solo.WinRate, SquadValue: squad.WinRate,
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "performance_score", SoloValue: deref(solo.PerformanceScore), SquadValue: deref(squad.PerformanceScore),
 	})
 	items = append(items, domain.ComparisonMetricItem{
 		Label: "kd_ratio", SoloValue: deref(solo.KDRatio), SquadValue: deref(squad.KDRatio),
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "accuracy", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
-	})
-	items = append(items, domain.ComparisonMetricItem{
 		Label: "kills_per_min", SoloValue: deref(solo.KillsPerMin), SquadValue: deref(squad.KillsPerMin),
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "performance_score", SoloValue: deref(solo.PerformanceScore), SquadValue: deref(squad.PerformanceScore),
+		Label: "deaths_per_min", SoloValue: deref(solo.DeathsPerMin), SquadValue: deref(squad.DeathsPerMin),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "assists_per_min", SoloValue: deref(solo.AssistsPerMin), SquadValue: deref(squad.AssistsPerMin),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "avg_life_seconds", SoloValue: deref(solo.AvgLifeSeconds), SquadValue: deref(squad.AvgLifeSeconds),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "accuracy", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "headshots_per_match", SoloValue: deref(solo.HeadshotsPerMatch), SquadValue: deref(squad.HeadshotsPerMatch),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "perfect_kills_per_match", SoloValue: deref(solo.PerfectKillsPerMatch), SquadValue: deref(squad.PerfectKillsPerMatch),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "avg_max_killing_spree", SoloValue: deref(solo.AvgMaxKillingSpree), SquadValue: deref(squad.AvgMaxKillingSpree),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "avg_damage_dealt", SoloValue: deref(solo.AvgDamageDealt), SquadValue: deref(squad.AvgDamageDealt),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "avg_damage_taken", SoloValue: deref(solo.AvgDamageTaken), SquadValue: deref(squad.AvgDamageTaken),
 	})
 	return items
 }
 
 // ComputeTemporalHeatmap construit la heatmap jour Ã— heure depuis les matchs.
 func ComputeTemporalHeatmap(rows []legacymatch.SynthesisMatchRow) []domain.TemporalHeatmapCell {
-	counts := [7][24]int{}
+	type heatmapAgg struct {
+		count int
+		wins  int
+	}
+	cells := [7][24]heatmapAgg{}
 	for _, r := range rows {
-		// Go Weekday: Sunday=0, Monday=1 â€¦ Saturday=6
-		// Frontend: lundi=0 â€¦ dimanche=6
+		// Go Weekday: Sunday=0, Monday=1 ... Saturday=6
+		// Frontend: lundi=0 ... dimanche=6
 		goDow := int(r.StartTime.Weekday())
 		dow := (goDow + 6) % 7 // convertir: lundi=0
 		hour := r.StartTime.Hour()
-		counts[dow][hour]++
+		agg := cells[dow][hour]
+		agg.count++
+		if r.Outcome == 2 { // legacy domain: outcome=2 is WIN
+			agg.wins++
+		}
+		cells[dow][hour] = agg
 	}
-	var cells []domain.TemporalHeatmapCell
+	result := []domain.TemporalHeatmapCell{}
 	for d := 0; d < 7; d++ {
 		for h := 0; h < 24; h++ {
-			if counts[d][h] > 0 {
-				cells = append(cells, domain.TemporalHeatmapCell{DOW: d, Hour: h, Count: counts[d][h]})
+			agg := cells[d][h]
+			if agg.count > 0 {
+				wr := float64(agg.wins) / float64(agg.count)
+				result = append(result, domain.TemporalHeatmapCell{
+					DOW:     d,
+					Hour:    h,
+					Count:   agg.count,
+					Wins:    agg.wins,
+					WinRate: wr,
+				})
 			}
 		}
 	}
-	return cells
+	return result
 }
 
 func deref(p *float64) float64 {

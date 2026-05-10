@@ -37,7 +37,7 @@ export interface HistogramChartProps {
   colorToken?: SemanticToken
   /** Libellé de l'axe X (ex. "K/D", "Kills / match"). */
   xAxisLabel?: string
-  /** Libellé de l'axe Y (default "Matchs"). */
+  /** Libellé de l'axe Y (default = nb de matchs en FR). */
   yAxisLabel?: string
   /**
    * Format des bornes de bucket. Default : "binStart–binEnd" arrondi à 2
@@ -97,7 +97,8 @@ export function buildHistogramOption(
   series: ChartSeries<ChartPointHistogram>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { colorToken, xAxisLabel, yAxisLabel = 'Matchs', formatBin = defaultFormatBin } = opts
+  const { colorToken, xAxisLabel, yAxisLabel: yLabelOpt, formatBin = defaultFormatBin } = opts
+  const yAxisLabel = yLabelOpt ?? 'Matchs'
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }

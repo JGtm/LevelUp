@@ -232,17 +232,34 @@ func fmtMatchID(i int) string {
 	return "m-" + string(rune('0'+i))
 }
 
-func TestComputeSynthesisTopWeeksFromCanonical_ParityWithDomain(t *testing.T) {
-	domainRows, canonicalRows := fixtureMixedSynthesisDataset()
-	want := ComputeSynthesisTopWeeks(domainRows)
-	got := ComputeSynthesisTopWeeksFromCanonical(canonicalRows)
-	if len(want) != len(got) {
-		t.Fatalf("len: domain=%d, canonical=%d", len(want), len(got))
+// TestComputeSynthesisTopWeeksFromCanonical_RankBased vérifie le comportement
+// rank-based de la variante canonique (rank=1 = "Top 1", pas win/loss outcome).
+// La parité avec ComputeSynthesisTopWeeks n'est plus attendue : la version
+// canonique compte les tops par RankInMatch=1 et trie chronologiquement.
+func TestComputeSynthesisTopWeeksFromCanonical_RankBased(t *testing.T) {
+	base := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC) // mercredi → semaine du 30/03
+	rank1 := 1
+	rank2 := 2
+	rows := []canonical.PlayerMatchRow{
+		{Summary: canonical.MatchSummary{StartedAtUTC: base}, Self: canonical.MatchParticipant{RankInMatch: &rank1}},
+		{Summary: canonical.MatchSummary{StartedAtUTC: base.Add(time.Hour)}, Self: canonical.MatchParticipant{RankInMatch: &rank2}},
+		{Summary: canonical.MatchSummary{StartedAtUTC: base.Add(2 * time.Hour)}, Self: canonical.MatchParticipant{RankInMatch: &rank1}},
+		{Summary: canonical.MatchSummary{StartedAtUTC: base.Add(3 * time.Hour)}, Self: canonical.MatchParticipant{RankInMatch: &rank2}},
 	}
-	for i := range want {
-		if want[i] != got[i] {
-			t.Errorf("entry %d: domain=%+v, canonical=%+v", i, want[i], got[i])
-		}
+	got := ComputeSynthesisTopWeeksFromCanonical(rows)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 week, got %d", len(got))
+	}
+	w := got[0]
+	if w.MatchCount != 4 {
+		t.Errorf("MatchCount = %d, want 4", w.MatchCount)
+	}
+	if w.Wins != 2 {
+		t.Errorf("Wins = %d, want 2 (rank=1 rows)", w.Wins)
+	}
+	// WinRate = 2/4 * 100 = 50%
+	if w.WinRate != 50 {
+		t.Errorf("WinRate = %v, want 50", w.WinRate)
 	}
 }
 
