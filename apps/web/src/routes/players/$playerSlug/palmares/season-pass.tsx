@@ -1,7 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router'
-
-import { SeasonPassPage } from '@/features/palmares/SeasonPassPage'
+/**
+ * Route /players/$playerSlug/palmares/season-pass — redirect legacy.
+ * Pass saisonnier appartient désormais à la section Carrière.
+ */
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/players/$playerSlug/palmares/season-pass')({
-  component: SeasonPassPage,
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: '/players/$playerSlug/career/season-pass',
+      params: { playerSlug: params.playerSlug },
+      replace: true,
+    })
+  },
+  component: () => null,
 })

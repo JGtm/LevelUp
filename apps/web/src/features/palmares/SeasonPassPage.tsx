@@ -15,6 +15,7 @@ import { BattlePassRewardLightbox, type RewardLightboxData } from './BattlePassR
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
 import { PassContentSummary, type ContentLabels } from './PassContentSummary'
 import { useSeasonPassPage } from './queries'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { isArmorItemType, rarityLabel, rarityStyle, type RarityTier } from './rarity'
 
 function statusVariant(status: SeasonPassStatus) {
@@ -119,7 +120,7 @@ function ProgressBar({ value }: { value?: number | null }) {
   const width = value == null ? 0 : Math.max(0, Math.min(100, value))
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-      <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${width}%` }} />
+      <div className="h-full rounded-full transition-[width]" style={{ width: `${width}%`, backgroundColor: width >= 100 ? tokenCssVar('success') : tokenCssVar('info') }} />
     </div>
   )
 }
@@ -250,100 +251,97 @@ function PassShowcase({
   })
 
   return (
-    <div ref={showcaseRef}>
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-sm">
-        <CardContent className="space-y-6 p-6 lg:p-8">
+    <div ref={showcaseRef} className="space-y-6">
 
-          {!isViewingActive && (
-            <button
-              type="button"
-              onClick={onBackToActive}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded"
-            >
-              <span aria-hidden="true">←</span>
-              <span>{text.seasonPass.backToActive}</span>
-            </button>
-          )}
+      {!isViewingActive && (
+        <button
+          type="button"
+          onClick={onBackToActive}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded"
+        >
+          <span aria-hidden="true">←</span>
+          <span>{text.seasonPass.backToActive}</span>
+        </button>
+      )}
 
-          {/* Hero : image du pass avec infos en overlay */}
-          {pass.background_image_url ? (
-            <div className="relative overflow-hidden rounded-2xl">
-              <img
-                src={pass.background_image_url}
-                alt={pass.name}
-                className="aspect-[986/248] w-full object-cover"
+      {/* Hero : image du pass avec infos en overlay */}
+      {pass.background_image_url ? (
+        <div className="relative overflow-hidden rounded-2xl">
+          <img
+            src={pass.background_image_url}
+            alt={pass.name}
+            className="aspect-[986/248] w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" /> {/* color-allow: gradient sombre fixe pour lisibilité du titre hero (overlay sur image map) */}
+          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+            <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl"> {/* color-allow: blanc sur gradient sombre fixe (hero overlay) */}
+              {pass.name}
+            </h2>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              <Badge variant={statusVariant(pass.status)}>
+                {text.seasonPass.status[pass.status] ?? pass.status}
+              </Badge>
+              {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
+              {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
+            </div>
+            {pass.content && (
+              <OverlayContentRows
+                content={pass.content}
+                labels={text.seasonPass.content}
+                locale={text.intlLocale}
+                palmaresLocale={locale}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" /> {/* color-allow: gradient sombre fixe pour lisibilité du titre hero (overlay sur image map) */}
-              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl"> {/* color-allow: blanc sur gradient sombre fixe (hero overlay) */}
-                  {pass.name}
-                </h2>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  <Badge variant={statusVariant(pass.status)}>
-                    {text.seasonPass.status[pass.status] ?? pass.status}
-                  </Badge>
-                  {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
-                  {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
-                </div>
-                {pass.content && (
-                  <OverlayContentRows
-                    content={pass.content}
-                    labels={text.seasonPass.content}
-                    locale={text.intlLocale}
-                    palmaresLocale={locale}
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{pass.name}</h2>
+          <div className="flex flex-wrap gap-2">
+            {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
+            {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
+            <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
+          </div>
+        </div>
+      )}
+
+      {pass.tiers && pass.tiers.length > 0 && (
+        <div className="space-y-5">
+          <BattlePassRewardCarousel
+            tiers={pass.tiers}
+            activeTierRank={pass.active_tier_rank}
+            onOpenCard={handleOpenCard}
+            freeLabel={text.seasonPass.freeLabel}
+          />
+
+          <div className="flex justify-center">
+            <div className="grid w-2/3 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-[11px] text-muted-foreground">
+              <span data-testid="season-pass-active-tier-progress-current" className="shrink-0 whitespace-nowrap">
+                {progressLabels.current}
+              </span>
+              <div className="min-w-0 overflow-hidden rounded-full bg-muted-foreground/25">
+                <div className="h-2 w-full">
+                  <div
+                    data-testid="season-pass-active-tier-progress-fill"
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${barPercent}%`, backgroundColor: barPercent >= 100 ? tokenCssVar('success') : tokenCssVar('info') }}
                   />
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{pass.name}</h2>
-              <div className="flex flex-wrap gap-2">
-                {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
-                {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
-                <Badge variant={statusVariant(pass.status)}>{text.seasonPass.status[pass.status] ?? pass.status}</Badge>
-              </div>
-            </div>
-          )}
-
-          {pass.tiers && pass.tiers.length > 0 && (
-            <div className="space-y-5">
-              <BattlePassRewardCarousel
-                tiers={pass.tiers}
-                activeTierRank={pass.active_tier_rank}
-                onOpenCard={handleOpenCard}
-                freeLabel={text.seasonPass.freeLabel}
-              />
-
-              <div className="flex justify-center">
-                <div className="grid w-2/3 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-[11px] text-muted-foreground">
-                  <span data-testid="season-pass-active-tier-progress-current" className="shrink-0 whitespace-nowrap">
-                    {progressLabels.current}
-                  </span>
-                  <div className="min-w-0 overflow-hidden rounded-full bg-muted-foreground/25">
-                    <div className="h-2 w-full">
-                      <div
-                        data-testid="season-pass-active-tier-progress-fill"
-                        className="h-full rounded-full bg-primary transition-all duration-300"
-                        style={{ width: `${barPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span data-testid="season-pass-active-tier-progress-target" className="shrink-0 whitespace-nowrap text-right">
-                    {progressLabels.target}
-                  </span>
                 </div>
               </div>
+              <span data-testid="season-pass-active-tier-progress-target" className="shrink-0 whitespace-nowrap text-right">
+                {progressLabels.target}
+              </span>
             </div>
-          )}
-        </CardContent>
-        <BattlePassRewardLightbox
-          reward={selectedReward}
-          onClose={() => setSelectedIndex(null)}
-          onPrev={selectedIndex != null && selectedIndex > 0 ? handlePrev : undefined}
-          onNext={selectedIndex != null && selectedIndex < allCards.length - 1 ? handleNext : undefined}
-        />
-      </Card>
+          </div>
+        </div>
+      )}
+
+      <BattlePassRewardLightbox
+        reward={selectedReward}
+        onClose={() => setSelectedIndex(null)}
+        onPrev={selectedIndex != null && selectedIndex > 0 ? handlePrev : undefined}
+        onNext={selectedIndex != null && selectedIndex < allCards.length - 1 ? handleNext : undefined}
+      />
     </div>
   )
 }
