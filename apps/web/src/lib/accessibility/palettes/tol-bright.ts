@@ -74,6 +74,7 @@ export const tolBrightPalette: Palette = {
   // ── Comparaisons ───────────────────────────────────────────────────────────
   'compare-a': TOL_BLUE,
   'compare-b': TOL_PURPLE,
+  'compare-c': TOL_GREEN,
 
   // ── Chart series — Tol Bright 7 + black en s8 ─────────────────────────────
   // Ordre Tol officiel : Blue, Red, Green, Yellow, Cyan, Purple, Grey + extension

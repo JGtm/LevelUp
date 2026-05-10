@@ -24,6 +24,7 @@ export function CompareMirrorRow({
 }: CompareMirrorRowProps) {
   const colorA = tokenCssVar('compare-a' as SemanticToken)
   const colorB = tokenCssVar('compare-b' as SemanticToken)
+  const colorC = tokenCssVar('compare-c' as SemanticToken)
 
   // Barre gauche : B | A (B en couleur compare-b à gauche, A en compare-a à droite)
   const a1 = Number.isFinite(rawA) ? rawA : 0
@@ -31,7 +32,7 @@ export function CompareMirrorRow({
   const totalLeft = a1 + b1
   const bRatio = totalLeft > 0 ? Math.max(0.05, Math.min(0.95, b1 / totalLeft)) : 0.5
 
-  // Barre droite : A | C (A en compare-a à gauche, C en compare-b à droite)
+  // Barre droite : A | C (A en compare-a à gauche, C en compare-c à droite)
   const a2 = Number.isFinite(rawA) ? rawA : 0
   const c2 = Number.isFinite(rawC) ? rawC : 0
   const totalRight = a2 + c2
@@ -43,7 +44,7 @@ export function CompareMirrorRow({
   }
 
   const rightBarStyle: CSSProperties = {
-    background: `linear-gradient(to right, ${colorA} ${(aRatio * 100).toFixed(1)}%, ${colorB} ${(aRatio * 100).toFixed(1)}%)`,
+    background: `linear-gradient(to right, ${colorA} ${(aRatio * 100).toFixed(1)}%, ${colorC} ${(aRatio * 100).toFixed(1)}%)`,
     opacity: winnerAC === 'tie' ? 0.75 : 1,
   }
 
@@ -91,7 +92,7 @@ export function CompareMirrorRow({
         <div className="flex flex-col items-start">
           <span
             className="text-sm tabular-nums leading-tight"
-            style={winnerAC === 'b' ? { color: colorB, fontWeight: 600 } : undefined}
+            style={winnerAC === 'b' ? { color: colorC, fontWeight: 600 } : undefined}
           >
             {valueC}
           </span>

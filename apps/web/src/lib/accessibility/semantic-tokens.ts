@@ -34,9 +34,10 @@ export type SemanticToken =
   | 'info'
   | 'destructive'
 
-  // ── Comparaisons (2) ───────────────────────────────────────────────────────
+  // ── Comparaisons (3) ───────────────────────────────────────────────────────
   | 'compare-a'
   | 'compare-b'
+  | 'compare-c'
 
   // ── Séries de charts (8 max — pile sur Okabe-Ito) ─────────────────────────
   | 'chart-series-1'
@@ -98,7 +99,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'perf-tier-1', 'perf-tier-2', 'perf-tier-3', 'perf-tier-4', 'perf-tier-5',
   'divergent-pos', 'divergent-neutral', 'divergent-neg',
   'success', 'warning', 'info', 'destructive',
-  'compare-a', 'compare-b',
+  'compare-a', 'compare-b', 'compare-c',
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
   'narrative-dominant', 'narrative-humiliation', 'narrative-remontada',
