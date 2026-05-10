@@ -2,7 +2,7 @@
 //
 // Sprint 54 C : PlayerStatsProvider pour la comparaison joueur vs joueur.
 // FetchRemoteStats : stats agrégées depuis l'endpoint career-stats.
-// FetchCSRDirect : CSR actuel + meilleur via découverte dynamique des playlist IDs.
+// FetchCSRDirect : CSR actuel + meilleur via skill.svc.halowaypoint.com.
 package halo
 
 import (
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -120,7 +121,10 @@ func (p *HaloProvider) FetchCSRDirect(ctx context.Context, xuid string) (current
 	for _, playlistID := range rankedPlaylistIDs {
 		csrURL := fmt.Sprintf("%s/hi/playlist/%s/csrs?players=xuid(%s)",
 			defaultSkillHost, playlistID, xuid)
-		body, fetchErr := p.doGet(ctx, csrURL, tokens)
+		// Timeout court pour éviter le backoff exponentiel de doGet (3×800ms+…=5s/playlist).
+		callCtx, cancel := context.WithTimeout(ctx, time.Second)
+		body, fetchErr := p.doGet(callCtx, csrURL, tokens)
+		cancel()
 		if fetchErr != nil {
 			isGone := strings.Contains(fetchErr.Error(), "HTTP 404") ||
 				strings.Contains(fetchErr.Error(), "HTTP 410")
