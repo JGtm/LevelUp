@@ -369,21 +369,18 @@ func buildRivalriesPreview(rows []domain.EncounterRawRow) domain.SynthesisRivalr
 	}
 
 	var teammates, enemies []domain.SynthesisEncounterPreview
+	teamCount, enemyCount := 0, 0
 	for _, r := range rows {
-		if r.AsTeammate > r.AsEnemy {
+		if r.AsTeammate > r.AsEnemy && teamCount < 5 {
 			teammates = append(teammates, toPreview(r))
-		} else {
+			teamCount++
+		} else if r.AsEnemy >= r.AsTeammate && enemyCount < 5 {
 			enemies = append(enemies, toPreview(r))
+			enemyCount++
 		}
-		if len(teammates) >= 5 && len(enemies) >= 5 {
+		if teamCount >= 5 && enemyCount >= 5 {
 			break
 		}
-	}
-	if len(teammates) > 5 {
-		teammates = teammates[:5]
-	}
-	if len(enemies) > 5 {
-		enemies = enemies[:5]
 	}
 	return domain.SynthesisRivalriesPreview{
 		TopTeammates: teammates,

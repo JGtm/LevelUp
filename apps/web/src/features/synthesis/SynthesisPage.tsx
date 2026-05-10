@@ -174,8 +174,16 @@ function SynthesisOverviewSection({ overview }: SynthesisOverviewSectionProps) {
           <StatCell label="Victoires" value={String(overview.total_wins)} />
           <StatCell label="Défaites" value={String(overview.total_losses)} />
           <StatCell label={labelOf('kills')} value={String(overview.total_kills)} />
+          <StatCell label={labelOf('deaths')} value={String(overview.total_deaths)} />
+          <StatCell label={labelOf('assists')} value={String(overview.total_assists)} />
           <StatCell label="K/D moyen" value={kd} />
           <StatCell label={labelOf('win_rate')} value={`${(overview.win_rate * 100).toFixed(1)}%`} />
+          {overview.avg_kills != null && (
+            <StatCell label="Moy. kills" value={overview.avg_kills.toFixed(1)} />
+          )}
+          {overview.avg_deaths != null && (
+            <StatCell label="Moy. deaths" value={overview.avg_deaths.toFixed(1)} />
+          )}
           {overview.best_kills_match != null && (
             <StatCell label="Meilleur match" value={`${overview.best_kills_match}K`} />
           )}
@@ -211,11 +219,20 @@ function KPISection({ title, kpis }: KPISectionProps) {
   return (
     <div>
       {title && <h3 className="text-sm font-semibold text-muted-foreground mb-2">{title}</h3>}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Win Rate</span><span className="text-xl font-bold">{(kpis.win_rate * 100).toFixed(1)}%</span></div>
         <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">K/D</span><span className="text-xl font-bold">{kpis.kd_ratio?.toFixed(2) ?? '-'}</span></div>
         <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Matchs</span><span className="text-xl font-bold">{kpis.match_count}</span></div>
         <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Perf. <InfoTooltip content="Le Performance Score est un indice composite calculé par LevelUp à partir des kills, assists, objectifs et dégâts. Plus il est élevé, meilleure est la contribution globale au match." /></span><span className="text-xl font-bold">{kpis.performance_score?.toFixed(0) ?? '-'}</span></div>
+        {kpis.accuracy != null && (
+          <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Précision</span><span className="text-xl font-bold">{kpis.accuracy.toFixed(1)}%</span></div>
+        )}
+        {kpis.kills_per_min != null && (
+          <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">K/min</span><span className="text-xl font-bold">{kpis.kills_per_min.toFixed(2)}</span></div>
+        )}
+        {kpis.avg_life_seconds != null && (
+          <div className="rounded-lg border p-3"><span className="text-xs text-muted-foreground block">Durée moy.</span><span className="text-xl font-bold">{Math.floor(kpis.avg_life_seconds / 60)}:{(kpis.avg_life_seconds % 60).toString().padStart(2, '0')}</span></div>
+        )}
       </div>
     </div>
   )
@@ -230,6 +247,12 @@ function TopWeekRow({ item, rank }: TopWeekRowProps) {
       <td className="px-4 py-2 text-center text-sm font-bold">{item.match_count}</td>
       <td className="px-4 py-2 text-center text-sm">{(item.win_rate * 100).toFixed(0)}%</td>
       <td className="px-4 py-2 text-center text-sm">{item.kd_ratio?.toFixed(2) ?? '-'}</td>
+      {item.avg_kills != null && (
+        <td className="px-4 py-2 text-center text-sm">{item.avg_kills.toFixed(1)}</td>
+      )}
+      {item.avg_deaths != null && (
+        <td className="px-4 py-2 text-center text-sm">{item.avg_deaths.toFixed(1)}</td>
+      )}
     </tr>
   )
 }
@@ -328,19 +351,29 @@ export function SynthesisPage() {
 
   const heatmapSeries = useMemo<ChartSeries<ChartPointHeatmap>[]>(() => {
     if (heatmapData.length === 0) return []
-    const countMap = new Map<string, number>()
+    type HeatmapCell = { win_rate: number; count: number }
+    const cellMap = new Map<string, HeatmapCell>()
     for (const c of heatmapData) {
-      if (c.dow >= 0 && c.dow < 7 && c.hour >= 0 && c.hour < 24) {
-        countMap.set(`${c.dow}-${c.hour}`, c.count)
+      if (c.dow >= 0 && c.dow < 7 && c.hour >= 0 && c.hour < 24 && c.win_rate != null) {
+        cellMap.set(`${c.dow}-${c.hour}`, { win_rate: c.win_rate, count: c.count })
       }
     }
     const datapoints: ChartPointHeatmap[] = []
     for (let d = 0; d < 7; d++) {
       for (let h = 0; h < 24; h++) {
-        datapoints.push({ x: `${h}h`, y: DOW_LABELS[d], value: countMap.get(`${d}-${h}`) ?? 0 })
+        const key = `${d}-${h}`
+        const cell = cellMap.get(key)
+        if (cell) {
+          datapoints.push({
+            x: `${h}h`,
+            y: DOW_LABELS[d],
+            value: cell.win_rate,
+            detail: { count: cell.count }
+          })
+        }
       }
     }
-    return [{ key: 'activity', datapoints }]
+    return [{ key: 'win_rate', datapoints }]
   }, [heatmapData])
 
   if (isLoading) return null
@@ -452,7 +485,12 @@ export function SynthesisPage() {
         <CardHeader><CardTitle>Activité par jour et heure</CardTitle></CardHeader>
         <CardContent>
           {heatmapSeries.length > 0 ? (
-            <Heatmap2DChart series={heatmapSeries} height={220} />
+            <Heatmap2DChart
+              series={heatmapSeries}
+              height={220}
+              paletteMode="divergent"
+              valueRange={[0, 1]}
+            />
           ) : (
             <EmptyStateNotice
               title="Activité indisponible"
@@ -476,6 +514,8 @@ export function SynthesisPage() {
                     <th className="px-4 py-2 text-center">Matchs</th>
                     <th className="px-4 py-2 text-center">Win%</th>
                     <th className="px-4 py-2 text-center">K/D</th>
+                    <th className="px-4 py-2 text-center">Moy K</th>
+                    <th className="px-4 py-2 text-center">Moy D</th>
                   </tr>
                 </thead>
                 <tbody>

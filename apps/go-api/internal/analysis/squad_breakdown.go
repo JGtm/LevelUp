@@ -617,23 +617,40 @@ func ComputeSynthesisBreakdownFromCanonical(rows []canonical.PlayerMatchRow, isS
 // ComputeTemporalHeatmap. Pas de logique mÃ©tier â€” seulement l'extraction
 // du jour/heure depuis Summary.StartedAtUTC.
 func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []domain.TemporalHeatmapCell {
-	counts := [7][24]int{}
+	type heatmapAgg struct {
+		count int
+		wins  int
+	}
+	cells := [7][24]heatmapAgg{}
 	for _, r := range rows {
 		st := r.Summary.StartedAtUTC
 		goDow := int(st.Weekday())
 		dow := (goDow + 6) % 7 // convertir: lundi=0
 		hour := st.Hour()
-		counts[dow][hour]++
+		agg := cells[dow][hour]
+		agg.count++
+		if r.Self.Outcome == canonical.OutcomeWin {
+			agg.wins++
+		}
+		cells[dow][hour] = agg
 	}
-	var cells []domain.TemporalHeatmapCell
+	var result []domain.TemporalHeatmapCell
 	for d := 0; d < 7; d++ {
 		for h := 0; h < 24; h++ {
-			if counts[d][h] > 0 {
-				cells = append(cells, domain.TemporalHeatmapCell{DOW: d, Hour: h, Count: counts[d][h]})
+			agg := cells[d][h]
+			if agg.count > 0 {
+				wr := float64(agg.wins) / float64(agg.count)
+				result = append(result, domain.TemporalHeatmapCell{
+					DOW:     d,
+					Hour:    h,
+					Count:   agg.count,
+					Wins:    agg.wins,
+					WinRate: wr,
+				})
 			}
 		}
 	}
-	return cells
+	return result
 }
 
 // ComputeComparisonMetrics construit les mÃ©triques bipolaires solo/escouade.
