@@ -32,6 +32,7 @@ func (s *CitationsService) GetCitationsPage(ctx context.Context) (*domain.Citati
 		mappings = nil
 	}
 
+	totals = analysis.OverrideCompositeTotals(totals, mappings)
 	items := analysis.MergeCitationTotals(totals, mappings)
 	categories := analysis.ExtractCategories(items)
 	byCategory := analysis.BuildCitationsByCategory(items)

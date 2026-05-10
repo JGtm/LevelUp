@@ -43,6 +43,7 @@ func (r *CitationsRepo) LoadCitationMappings(ctx context.Context) ([]domain.Cita
 			&row.ImagePath,
 			&row.Description,
 			&row.TierTargets,
+			&row.CompositeChildren,
 		); err != nil {
 			return nil, fmt.Errorf("LoadCitationMappings scan: %w", err)
 		}

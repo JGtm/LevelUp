@@ -16,12 +16,132 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// OverrideCompositeTotals remplace les totaux des citations composites par le nombre
+// d'enfants globalement masterisés (comme Python le fait au moment de l'affichage).
+//
+// Q35 retourne la somme brute des valeurs per-match pour les composites, ce qui est
+// sans signification (ex. 2100 pour human_weapons_mastery). Cette fonction calcule
+// le vrai total : "combien d'enfants ont atteint leur seuil max en cumulatif ?".
+// Gère les composites imbriqués (ex: all_weapons → human_weapons → br75) via multi-pass.
+func OverrideCompositeTotals(
+	totals []domain.CitationTotalRow,
+	mappings []domain.CitationMappingRow,
+) []domain.CitationTotalRow {
+	// Totaux cumulatifs (Q35) : base de calcul pour les enfants feuilles.
+	aggMap := make(map[string]int, len(totals))
+	for _, t := range totals {
+		aggMap[t.NameNorm] = t.Total
+	}
+
+	// Index tier_targets pour le check de masterisation des enfants.
+	// enabledNorms : citations activées seulement (Q34 filtre enabled IS NOT FALSE).
+	// Utilisé pour ignorer les enfants désactivés (ex: brute_slayer, skimmer_slayer)
+	// — identique au `if child not in mappings: continue` de Python.
+	tierMap := make(map[string]*string, len(mappings))
+	enabledNorms := make(map[string]struct{}, len(mappings))
+	for _, m := range mappings {
+		tierMap[m.NameNorm] = m.TierTargets
+		enabledNorms[m.NameNorm] = struct{}{}
+	}
+
+	// Extraire les composites avec leurs enfants.
+	type compositeEntry struct {
+		norm     string
+		children []string
+	}
+	var composites []compositeEntry
+	compositeNorms := make(map[string]struct{})
+	for _, m := range mappings {
+		if m.MappingType != "composite" || m.CompositeChildren == nil || *m.CompositeChildren == "" {
+			continue
+		}
+		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
+		if err != nil || len(children) == 0 {
+			continue
+		}
+		composites = append(composites, compositeEntry{norm: m.NameNorm, children: children})
+		compositeNorms[m.NameNorm] = struct{}{}
+	}
+	if len(composites) == 0 {
+		return totals
+	}
+
+	// enabledChildCount[norm] = nb d'enfants activés pour chaque composite.
+	// Utilisé pour détecter si un enfant composite est TERMINÉ (count == total).
+	enabledChildCount := make(map[string]int, len(composites))
+	for _, comp := range composites {
+		n := 0
+		for _, child := range comp.children {
+			if _, ok := enabledNorms[child]; ok {
+				n++
+			}
+		}
+		enabledChildCount[comp.norm] = n
+	}
+
+	// Multi-pass : gère les composites imbriqués.
+	// Règle de masterisation :
+	//   - Enfant feuille : val >= max(tier_targets)
+	//   - Enfant composite : count == enabledChildCount[child] (terminé à 100%)
+	//     → un composite enfant entamé mais non terminé ne compte pas.
+	for range 5 {
+		changed := false
+		for _, comp := range composites {
+			count := 0
+			for _, child := range comp.children {
+				if _, ok := enabledNorms[child]; !ok {
+					continue // désactivé → ignorer
+				}
+				if _, isCompositeChild := compositeNorms[child]; isCompositeChild {
+					// Enfant composite : masterisé seulement s'il est entièrement terminé.
+					total := enabledChildCount[child]
+					if total > 0 && aggMap[child] >= total {
+						count++
+					}
+				} else {
+					// Enfant feuille : masterisé si val >= max(tier_targets).
+					if compositeChildMasterised(aggMap[child], tierMap[child]) {
+						count++
+					}
+				}
+			}
+			if aggMap[comp.norm] != count {
+				aggMap[comp.norm] = count
+				changed = true
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+
+	// Reconstruire la slice : remplacer les valeurs composites, conserver les autres.
+	// Tous les composites sont inclus (même count=0) pour afficher la progression 0/N.
+	result := make([]domain.CitationTotalRow, 0, len(totals)+len(composites))
+	seen := make(map[string]bool, len(totals))
+	for _, t := range totals {
+		if _, isComp := compositeNorms[t.NameNorm]; isComp {
+			result = append(result, domain.CitationTotalRow{NameNorm: t.NameNorm, Total: aggMap[t.NameNorm]})
+		} else {
+			result = append(result, t)
+		}
+		seen[t.NameNorm] = true
+	}
+	// Ajouter les composites absents de Q35 (même non masterisés) pour affichage 0/N.
+	for _, c := range composites {
+		if !seen[c.norm] {
+			result = append(result, domain.CitationTotalRow{NameNorm: c.norm, Total: aggMap[c.norm]})
+		}
+	}
+	return result
+}
+
 // MergeCitationTotals fusionne les totaux agrégés avec les métadonnées de citation
 // pour produire la liste enrichie affichée dans la page Citations.
 //
-// totalRows : résultat de Q35 (name_norm → total).
-// mappings  : résultat de Q34 (metadata citation_mappings).
-// Seules les citations dont le total > 0 ET qui ont un mapping sont retournées.
+// totalRows : résultat de Q35 après OverrideCompositeTotals (composites corrigés).
+// mappings  : résultat de Q34 (metadata citation_mappings, incl. composite_children).
+// Les composites sont toujours inclus (même à 0/N) ; les citations normales à 0 sont filtrées.
 func MergeCitationTotals(
 	totalRows []domain.CitationTotalRow,
 	mappings []domain.CitationMappingRow,
@@ -33,10 +153,11 @@ func MergeCitationTotals(
 
 	items := make([]domain.CitationItem, 0, len(totalRows))
 	for _, t := range totalRows {
-		if t.Total <= 0 {
-			continue
-		}
 		m, ok := byNorm[t.NameNorm]
+		isComposite := ok && m.MappingType == "composite"
+		if t.Total <= 0 && !isComposite {
+			continue // citations normales sans données → masquées ; composites toujours affichés
+		}
 		if !ok {
 			items = append(items, domain.CitationItem{
 				NameNorm:    t.NameNorm,
@@ -64,7 +185,31 @@ func MergeCitationTotals(
 			ImageURL:    imgURL,
 			Description: m.Description,
 		}
-		if m.TierTargets != nil && *m.TierTargets != "" {
+
+		if m.MappingType == "composite" && m.CompositeChildren != nil && *m.CompositeChildren != "" {
+			// Composite : Total = nb d'enfants masterisés (après OverrideCompositeTotals).
+			// TierCount = nb d'enfants ACTIVÉS (présents dans byNorm) → même dénominateur que Python
+			// (les enfants disabled comme brute_slayer/skimmer_slayer sont exclus du total).
+			if children, err := parseCompositeChildrenJSON(*m.CompositeChildren); err == nil && len(children) > 0 {
+				n := 0
+				for _, child := range children {
+					if _, ok := byNorm[child]; ok {
+						n++
+					}
+				}
+				if n == 0 {
+					n = len(children) // fallback si byNorm vide (ne devrait pas arriver)
+				}
+				item.TierCount = n
+				item.EarnedTiers = t.Total
+				if t.Total >= n {
+					item.MasteryPct = 100.0
+				} else {
+					item.MasteryPct = float64(t.Total) / float64(n) * 100.0
+					item.NextTierTarget = n // objectif : tous les enfants activés
+				}
+			}
+		} else if m.TierTargets != nil && *m.TierTargets != "" {
 			tiers := parseTierTargets(*m.TierTargets)
 			item.TierCount = len(tiers)
 			for _, tier := range tiers {
@@ -90,9 +235,32 @@ func MergeCitationTotals(
 		items = append(items, item)
 	}
 
+	// Rang d'affichage : 0 = méta-composite, 1 = composite, 2 = citation normale.
+	// Méta-composite : composite dont au moins un enfant est lui-même un composite.
+	citationRank := func(norm string) int {
+		m, ok := byNorm[norm]
+		if !ok || m.MappingType != "composite" {
+			return 2
+		}
+		if m.CompositeChildren != nil && *m.CompositeChildren != "" {
+			if children, err := parseCompositeChildrenJSON(*m.CompositeChildren); err == nil {
+				for _, child := range children {
+					if cm, ok := byNorm[child]; ok && cm.MappingType == "composite" {
+						return 0
+					}
+				}
+			}
+		}
+		return 1
+	}
+
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].Category != items[j].Category {
 			return items[i].Category < items[j].Category
+		}
+		ri, rj := citationRank(items[i].NameNorm), citationRank(items[j].NameNorm)
+		if ri != rj {
+			return ri < rj
 		}
 		return items[i].Total > items[j].Total
 	})

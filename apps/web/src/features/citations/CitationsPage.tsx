@@ -2,6 +2,7 @@
  * CitationsPage — page Citations standalone.
  * Affiche les citations groupées par catégorie avec barres de progression.
  */
+import { useEffect } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
@@ -19,6 +20,11 @@ export function CitationsPage() {
   const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CitationsManifestKey) => formatMessage(citationsManifest, key, locale)
+
+  useEffect(() => {
+    document.title = `LevelUp - ${t('citations.page_title')}`
+    return () => { document.title = 'LevelUp' }
+  }, [locale])
 
   const { data, isLoading, isError, refetch } = useCitationsPage(
     playerSlug,
