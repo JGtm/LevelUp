@@ -1,4 +1,16 @@
 
+## [2026-05-10] Barres de progression — couleur sémantique + hero overlay
+
+**Statut** : Complété.
+
+**Décision** :
+1. **Progress bars** — toutes les barres horizontales (`CompositeProgressBar`, `ProgressBar`, barres inline SeasonPass/BattlePass/Challenges/Achievements) passent de `bg-primary` à `tokenCssVar('info')` (bleu) quand < 100 % et `tokenCssVar('success')` (vert) quand = 100 %. Import `tokenCssVar` ajouté dans les 5 fichiers concernés.
+2. **Hero overlay showcase** — gradient `from-black/90 via-black/50` → `from-black/60 via-black/5 to-transparent` : image visible à 95 % en haut, légère couche basse pour lisibilité du texte.
+
+**Résultats** : 6 fichiers progress bars + 1 fichier overlay. Aucun hex introduit, tokens sémantiques uniquement.
+
+**Prochaine étape** : RAS.
+
 ## [2026-05-10] SeasonPassCard — UI cards secondaires
 
 **Statut** : Complété.
