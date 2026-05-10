@@ -283,6 +283,159 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /players/{player_slug}/pages/career/highlight-matches:
+    get:
+      tags: [career]
+      operationId: getCareerHighlightMatches
+      summary: "Matchs marquants — 15 best + 15 worst (format Explorer)"
+      description: |
+        Retourne les 15 meilleurs et 15 pires matchs du joueur au format
+        ExplorerMatchesRow (mêmes colonnes que la page Explorer). Tri par
+        priorité dominance puis performance_score (DESC pour best, ASC pour worst).
+        Filtres d'éligibilité : performance_score NOT NULL, pas de bot coéquipier,
+        time_played≥180s, is_firefight=FALSE.
+
+        Query params optionnels filtrent côté SQL :
+          - `experience` : "all" / "ranked" / "unranked"
+          - `season_ids` : CSV des saisons (ex. "season6,season7")
+
+        La réponse inclut les cascade counts (`available_experience`,
+        `available_seasons`) qui respectent l'autre filtre actif (cascade-aware).
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+        - in: query
+          name: experience
+          schema: { type: string, enum: [all, ranked, unranked] }
+          required: false
+        - in: query
+          name: season_ids
+          schema: { type: string }
+          description: CSV des IDs de saison à filtrer (ex. "season6,season7")
+          required: false
+      responses:
+        "200":
+          description: Highlight matches
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [best_matches, worst_matches, available_experience, available_seasons]
+                properties:
+                  best_matches:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  worst_matches:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  available_experience:
+                    type: array
+                    items:
+                      type: object
+                      required: [value, count]
+                      properties:
+                        value: { type: string, enum: [all, ranked, unranked] }
+                        count: { type: integer }
+                  available_seasons:
+                    type: array
+                    items:
+                      type: object
+                      required: [value, count]
+                      properties:
+                        value: { type: string }
+                        count: { type: integer }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          description: MatchHistoryService factory indisponible (cas test)
+
+  /players/{player_slug}/pages/career/top-encounters:
+    get:
+      tags: [career]
+      operationId: getCareerTopEncounters
+      summary: "Joueurs les plus croisés (hors amis)"
+      description: |
+        Retourne les 10 joueurs les plus fréquemment croisés au niveau
+        carrière, hors amis configurés (`FriendGamertags` settings résolus
+        en XUIDs via `v_gamertag_lookup`). Format MatchEncounterRow (mêmes
+        8 colonnes que Match View > "Historique de rencontre"). Inclut les
+        badges narratifs ally_plus / tough_enemy / ordinal.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Top encounters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /players/{player_slug}/pages/career/rivals:
+    get:
+      tags: [career]
+      operationId: getCareerRivals
+      summary: "Top némésis + Top souffre-douleur"
+      description: |
+        Retourne le top 10 némésis (joueurs qui ont le plus tué le joueur
+        principal, tri par deaths DESC) et le top 10 souffre-douleur (joueurs
+        que le principal a le plus tué, tri par frags DESC). Source :
+        `shared.killer_victim_pairs`. Pas de seuil minimum d'interactions.
+        Bots exclus. Le ratio frags/deaths est calculé côté backend
+        (avec garde div-par-zéro : 0 morts → ratio = float64(frags)).
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Rivals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [nemeses, victims]
+                properties:
+                  nemeses:
+                    type: array
+                    items:
+                      type: object
+                      required: [gamertag, frags, deaths, ratio, match_count]
+                      properties:
+                        gamertag: { type: string }
+                        frags: { type: integer }
+                        deaths: { type: integer }
+                        ratio: { type: number }
+                        match_count: { type: integer }
+                  victims:
+                    type: array
+                    items:
+                      type: object
+                      required: [gamertag, frags, deaths, ratio, match_count]
+                      properties:
+                        gamertag: { type: string }
+                        frags: { type: integer }
+                        deaths: { type: integer }
+                        ratio: { type: number }
+                        match_count: { type: integer }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # -------------------------------------------------------------------------
   # Achievements Xbox (bilingues EN/FR)
   # -------------------------------------------------------------------------
