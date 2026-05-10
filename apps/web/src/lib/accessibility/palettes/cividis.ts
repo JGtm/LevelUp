@@ -64,6 +64,7 @@ export const cividisPalette: Palette = {
   // ── Comparaisons ───────────────────────────────────────────────────────────
   'compare-a': CIVIDIS_DARKEST,
   'compare-b': CIVIDIS_LIGHTEST,
+  'compare-c': CIVIDIS_MID,     // t=0.50 — gris-brun neutre (troisième joueur)
 
   // ── Chart series — alterne extrémités Cividis pour distinguer 2 séries voisines
   'chart-series-1': CIVIDIS_DARKEST,  // t=0.00

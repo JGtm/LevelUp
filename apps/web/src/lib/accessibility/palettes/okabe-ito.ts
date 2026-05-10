@@ -54,6 +54,7 @@ export const okabePalette: Palette = {
   // ── Comparaisons ───────────────────────────────────────────────────────────
   'compare-a': '#0072B2', // Blue
   'compare-b': '#CC79A7', // Reddish Purple
+  'compare-c': '#009E73', // Bluish Green
 
   // ── Chart series — réordonnées pour distance maximale en deutan ────────────
   // 2 premières séries = paire la plus discriminable (Blue/Orange).

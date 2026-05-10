@@ -179,11 +179,12 @@ function MirrorHeader({
 }: { gamertagA: string; gamertagB: string; gamertagC: string }) {
   const colorA = tokenCssVar('compare-a' as SemanticToken)
   const colorB = tokenCssVar('compare-b' as SemanticToken)
+  const colorC = tokenCssVar('compare-c' as SemanticToken)
   return (
     <div className="grid pb-3 border-b border-border/50" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
       <span className="text-base font-bold" style={{ color: colorB }}>{gamertagB}</span>
       <span className="text-base font-bold px-6 text-center" style={{ color: colorA }}>{gamertagA}</span>
-      <span className="text-base font-bold text-right" style={{ color: colorB }}>{gamertagC}</span>
+      <span className="text-base font-bold text-right" style={{ color: colorC }}>{gamertagC}</span>
     </div>
   )
 }
