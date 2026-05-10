@@ -84,10 +84,22 @@ type CompareMetricRow struct {
 	SampleSizeB int     `json:"sample_size_b,omitempty"` // nb matchs B si joueur local croisé
 }
 
+// CompareEncounterStats : stats de rencontres historiques entre joueur A et joueur B.
+// Alimenté depuis shared.match_participants + shared.killer_victim_pairs — best-effort.
+type CompareEncounterStats struct {
+	TotalEncounters int
+	AllyCount       int
+	EnemyCount      int
+	WinrateAsAlly   *float64
+	KillsDealt      int // frags de A sur B (toutes occurrences)
+	DeathsSuffered  int // frags de B sur A (toutes occurrences)
+}
+
 // CompareResponse est la réponse de POST .../pages/compare.
 type CompareResponse struct {
-	PlayerA   NormalizedPlayerStats `json:"player_a"`
-	PlayerB   NormalizedPlayerStats `json:"player_b"`
-	Metrics   []CompareMetricRow    `json:"metrics"`
-	TitleSlug string                `json:"title_slug"`
+	PlayerA         NormalizedPlayerStats `json:"player_a"`
+	PlayerB         NormalizedPlayerStats `json:"player_b"`
+	Metrics         []CompareMetricRow    `json:"metrics"`
+	TitleSlug       string                `json:"title_slug"`
+	EncounterBadges []MatchEncounterBadge `json:"encounter_badges,omitempty"`
 }
