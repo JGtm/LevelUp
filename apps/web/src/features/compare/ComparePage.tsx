@@ -59,11 +59,11 @@ interface CategoryColumnProps {
 function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryColumnProps) {
   if (rows.length === 0) return null
   return (
-    <div className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1.5 mb-3">
-        {title}
-      </h2>
-      <div className="space-y-3">
+    <div className="rounded-lg border border-border bg-card">
+      <div className="border-b border-border px-3 py-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+      </div>
+      <div className="p-3 space-y-3">
         {rows.map((row) => {
           const label = text.metrics[row.metric] ?? row.label_fr
           const valA = formatMetricValue(row.metric, row.value_a, text)
@@ -120,11 +120,11 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
 
   if (rows.length === 0) return null
   return (
-    <div className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1.5 mb-3">
-        {title}
-      </h2>
-      <div className="space-y-3">
+    <div className="rounded-lg border border-border bg-card">
+      <div className="border-b border-border px-3 py-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
+      </div>
+      <div className="p-3 space-y-3">
         {rows.map(({ left, right }) => {
           const label = text.metrics[left.metric] ?? left.label_fr
           const valA = formatMetricValue(left.metric, left.value_a, text)
