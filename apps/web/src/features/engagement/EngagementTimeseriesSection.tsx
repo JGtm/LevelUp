@@ -8,6 +8,7 @@ import { useMemo } from 'react'
 
 import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
 import { useEngagementTimeseries } from '@/features/engagement/queries'
+import { truncateMap } from '@/lib/charts/matchLabels'
 
 export interface EngagementTimeseriesSectionProps {
   playerSlug: string
@@ -34,12 +35,18 @@ export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionPr
   if (query.isError) return null
   if (query.data && query.data.length === 0) return null
 
-  const labels = query.data?.map((m) => m.label) ?? []
-  const xFormatter = (i: number) => labels[i] ?? `M${i + 1}`
+  // Étiquettes X au format `#N\nMap` (aligné sur les autres charts timeseries
+  // — cf. matchLabels.ts). Fallback `#N` si pas de map_name.
+  const xLabels =
+    query.data?.map((m, i) => {
+      const map = m.map_name
+      return map ? `#${i + 1}\n${truncateMap(map)}` : `#${i + 1}`
+    }) ?? []
+  const xFormatter = (i: number) => xLabels[i] ?? `#${i + 1}`
 
   return (
     <EngagementCurve
-      title={title ?? 'Engagement par match'}
+      title={title ?? 'Engagement'}
       subtitle={subtitle ?? "Joueur vs équipe vs attendu sur les derniers matchs"}
       points={points}
       granularity="session"

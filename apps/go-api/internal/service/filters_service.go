@@ -139,8 +139,12 @@ func ResolveFiltersFromRowsAt(
 	periodPresetCounts := buildPeriodPresetCounts(rows, effective.Cascade, now)
 
 	// 1. Filtre temporel
+	// Symétrie avec applyAllFilters (match_history_service.go) : on déclenche
+	// applySessionFilter dès qu'il y a au moins une session sélectionnée, peu
+	// importe filter_mode. Évite les divergences quand un client ne propage
+	// pas correctement filter_mode mais coche des sessions.
 	var temporal []domain.FilterMatchRow
-	if effective.FilterMode == "sessions" {
+	if hasPickedSessions(effective.Sessions) {
 		temporal = applySessionFilter(rows, effective.Sessions)
 	} else {
 		temporal = applyPeriodFilter(rows, effective.Period)

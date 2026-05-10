@@ -10,21 +10,36 @@ interface RouteTitleRule {
 }
 
 const PLAYER_ROUTE_OVERRIDES: RouteTitleRule[] = [
+  // Stats — séries temporelles et historique
+  { pattern: '/players/$playerSlug/stats/timeseries', title: 'Séries' },
+  { pattern: '/players/$playerSlug/stats/sessions', title: 'Sessions' },
+  { pattern: '/players/$playerSlug/stats/history', title: 'Historique' },
+  // Stats — pages personnelles (_personal layout)
+  { pattern: '/players/$playerSlug/stats/summary', title: 'Résumé' },
+  { pattern: '/players/$playerSlug/stats/maps-modes', title: 'Cartes & Modes' },
+  { pattern: '/players/$playerSlug/stats/distributions', title: 'Distributions' },
+  { pattern: '/players/$playerSlug/stats/progression', title: 'Progression' },
+  { pattern: '/players/$playerSlug/stats/advanced', title: 'Avancé' },
+  { pattern: '/players/$playerSlug/stats', title: 'Stats' },
   // Carrière
   { pattern: '/players/$playerSlug/career/season-pass', title: 'Pass saisonnier' },
   { pattern: '/players/$playerSlug/career', title: 'Carrière' },
   { pattern: '/players/$playerSlug/citations', title: 'Citations' },
-  // Communauté
+  // Communauté / Palmarès
   { pattern: '/players/$playerSlug/compare', title: 'Face-à-face' },
   { pattern: '/players/$playerSlug/palmares/relations', title: 'Relations' },
   { pattern: '/players/$playerSlug/palmares/prestige', title: 'Leaderboard PP' },
+  { pattern: '/players/$playerSlug/palmares/compare', title: 'Face-à-face' },
+  { pattern: '/players/$playerSlug/palmares/season-pass', title: 'Pass saisonnier' },
   // Objectifs
   { pattern: '/players/$playerSlug/objectifs', title: 'Objectifs' },
   // Escouade
   { pattern: '/players/$playerSlug/squad/contributions', title: 'Contributions' },
   { pattern: '/players/$playerSlug/squad/synergies', title: 'Synergies' },
-  // Autres
+  // Divers
+  { pattern: '/players/$playerSlug/matches/$matchId/replay', title: 'Replay' },
   { pattern: '/players/$playerSlug/matches/$matchId', title: 'Match' },
+  { pattern: '/players/$playerSlug/notifications', title: 'Notifications' },
   { pattern: '/players/$playerSlug', title: 'Accueil' },
 ]
 

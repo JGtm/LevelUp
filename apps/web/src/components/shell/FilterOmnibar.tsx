@@ -13,10 +13,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGlobalFilterStore } from '@/stores/globalFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFiltersPreview } from '@/features/filters/queries'
-import type { CascadeInput, FilterContextInput, LabelValue, PeriodInput } from '@/lib/api/types'
+import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
+import type { CascadeInput, FilterContextInput, LabelValue, PeriodInput, SessionLabelEntry } from '@/lib/api/types'
 import { FiltresPill } from './_filter_pills/FiltresPill'
 import { PeriodePill } from './_filter_pills/PeriodePill'
-import { SessionPill } from './_filter_pills/SessionPill'
+import { SaisonPill } from './_filter_pills/SaisonPill'
+import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import {
   DEFAULT_CASCADE,
   DEFAULT_PERIOD,
@@ -47,21 +49,34 @@ export type { PresetId } from './_filter_pills/_hooks'
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
-type ActivePopover = 'session' | 'periode' | 'filtres' | null
+type ActivePopover = 'session' | 'periode' | 'saison' | 'filtres' | null
 
-export function FilterOmnibar() {
+interface FilterOmnibarProps {
+  /** Restreint la population de matchs au contexte de la page (solo/squad/all).
+   *  Injecté sur le preview et sur le filterContext commité, mais PAS persisté
+   *  dans le store global (contexte page, pas contexte utilisateur). */
+  matchContext?: 'solo' | 'squad' | 'all'
+}
+
+export function FilterOmnibar({ matchContext }: FilterOmnibarProps = {}) {
   const filterContext = useGlobalFilterStore((s) => s.filterContext)
   const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
   const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
   const setFilterContext = useGlobalFilterStore((s) => s.setFilterContext)
   const resetFilters = useGlobalFilterStore((s) => s.resetFilters)
   const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
+  const locale = useAppShellStore((s) => s.locale)
 
   // État local (pending) — commité vers le store uniquement sur "Analyser".
   const [pending, setPending] = useState<FilterContextInput>(() => filterContext)
   // Preview live : résout les options disponibles pour le pending courant,
-  // sans attendre "Analyser". Permet la détection zombie en temps réel.
-  const { data: previewData, isFetching: isPreviewFetching } = useFiltersPreview(playerSlug, pending)
+  // sans attendre "Analyser". Le matchContext de la page est injecté ici pour
+  // que les counts et session_options soient scoped correctement.
+  const previewPending = useMemo<FilterContextInput>(
+    () => matchContext ? { ...pending, match_context: matchContext } : pending,
+    [pending, matchContext],
+  )
+  const { data: previewData, isFetching: isPreviewFetching } = useFiltersPreview(playerSlug, previewPending)
 
   // Feedback visuel après clic sur Analyser.
   const [justAnalysed, setJustAnalysed] = useState(false)
@@ -84,20 +99,39 @@ export function FilterOmnibar() {
     previewData?.session_options?.all_sessions ??
     resolvedContext?.session_options?.all_sessions ??
     []
+  const sessionLabels = useMemo<SessionLabelEntry[]>(
+    () => allSessions
+      .filter((s) => !s.is_squad)
+      .map((s) => ({ label: s.label, started_at: s.started_at_utc ?? '', ended_at: s.ended_at_utc ?? '' })),
+    [allSessions],
+  )
+  const sessionMatchCount = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const s of allSessions) {
+      if (!s.is_squad) map.set(s.label, s.match_count_filtered)
+    }
+    return map
+  }, [allSessions])
+  const getSessionCount = useMemo(
+    () => (label: string) => sessionMatchCount.get(label),
+    [sessionMatchCount],
+  )
   const presetCounts = previewData?.period_presets ?? resolvedContext?.period_presets
   const pendingCascade = (pending.cascade ?? DEFAULT_CASCADE) as CascadeInput
   const pendingPeriod = pending.period
-  const pendingPickedId = pending.sessions?.picked_sessions?.[0] ?? null
-  const pendingSession = pendingPickedId
-    ? allSessions.find((s) => s.session_id === pendingPickedId)
-    : null
+  const pendingPickedLabels = pending.sessions?.picked_sessions ?? []
+
+  // Saisons (catalog TOML kind="season") — détection saison active + counts
+  // cascade-aware. Symétrie avec SquadLayout.
+  const { seasons, activeSeason } = useActiveSeason(pendingPeriod)
+  const seasonCounts = previewData?.season_counts ?? resolvedContext?.season_counts
 
   const isDirty = filterContextHash !== computePendingHash(pending)
 
   const cascadeCount = (['playlists', 'modes', 'maps', 'experience_types'] as const)
     .reduce((n, k) => n + ((pendingCascade[k] as string[] | undefined)?.length ?? 0), 0)
   const hasPeriod = !!(pendingPeriod?.start_date || pendingPeriod?.end_date)
-  const hasActiveFilters = !!pendingPickedId || hasPeriod || cascadeCount > 0
+  const hasActiveFilters = pendingPickedLabels.length > 0 || hasPeriod || cascadeCount > 0
   // Priorité au preview (live) pour que le compteur reflète le pending —
   // sinon il reste figé sur le dernier commit jusqu'au clic Analyser.
   const totalAfter =
@@ -128,14 +162,13 @@ export function FilterOmnibar() {
     }))
   }
 
-  function setPendingSession(id: string | null) {
+  function setPendingSessionLabels(labels: string[]) {
     setPending((prev) => ({
       ...prev,
-      sessions: { ...(prev.sessions ?? DEFAULT_SESSIONS), picked_sessions: id ? [id] : [] },
-      filter_mode: id ? 'sessions' : 'period',
-      period: id ? DEFAULT_PERIOD : prev.period,
+      sessions: { ...(prev.sessions ?? DEFAULT_SESSIONS), picked_sessions: labels },
+      filter_mode: labels.length > 0 ? 'sessions' : 'period',
+      period: labels.length > 0 ? DEFAULT_PERIOD : prev.period,
     }))
-    closeAll()
   }
 
   function setPendingCascade(c: CascadeInput) {
@@ -194,6 +227,19 @@ export function FilterOmnibar() {
       {/* Séparateur données / scope temporel */}
       <div className="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden />
 
+      {seasons.length > 0 && (
+        <SaisonPill
+          open={active === 'saison'}
+          onToggle={() => togglePopover('saison')}
+          onClose={closeAll}
+          seasons={seasons}
+          activeSeason={activeSeason}
+          seasonCounts={seasonCounts}
+          onSelectSeason={(s) => setPendingPeriod(seasonToPeriod(s))}
+          onClear={() => setPendingPeriod(DEFAULT_PERIOD)}
+        />
+      )}
+
       <PeriodePill
         open={active === 'periode'}
         onToggle={() => togglePopover('periode')}
@@ -203,15 +249,14 @@ export function FilterOmnibar() {
         presetCounts={presetCounts}
       />
 
-      {allSessions.length > 0 && (
-        <SessionPill
-          open={active === 'session'}
-          onToggle={() => togglePopover('session')}
-          onClose={closeAll}
-          currentLabel={pendingSession?.label ?? null}
-          allSessions={allSessions}
-          pickedId={pendingPickedId}
-          onPick={setPendingSession}
+      {sessionLabels.length > 0 && (
+        <SessionMultiSelect
+          sessions={sessionLabels}
+          selected={pendingPickedLabels}
+          onChange={setPendingSessionLabels}
+          locale={locale}
+          triggerClassName="flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted whitespace-nowrap transition-colors"
+          getMatchCount={getSessionCount}
         />
       )}
 

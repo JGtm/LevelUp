@@ -12,7 +12,7 @@ export interface ReleaseEntry {
   sections: ReleaseSection[]
 }
 
-const VERSION_RE = /^\*\*(v[\d.]+)\s*[—\-]\s*(.+?)\*\*$/
+const VERSION_RE = /^\*\*(v[\d.]+)\s*[—-]\s*(.+?)\*\*$/
 const SECTION_RE = /^\*\*(.+?)\*\*$/
 const ITEM_RE = /^-\s+(.+)$/
 const TOP_HEADING_RE = /^##\s+/

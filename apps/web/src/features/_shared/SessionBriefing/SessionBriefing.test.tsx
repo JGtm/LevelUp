@@ -93,23 +93,22 @@ afterEach(() => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SessionBriefing — mode solo', () => {
-  it('rend KpiGrid 8 cards sans verdict band ni trends', () => {
+  it('rend KpiGrid sans team card ni player cards ni trends', () => {
     const kpis = makeKPIs()
     renderWithProviders(<SessionBriefing kpis={kpis} />)
 
-    // KPI grid : labels descriptifs visibles (cards Matchs / Durée totale)
+    // Verdict band : la Results bar + mini-cards Matchs/Durée sont toujours
+    // rendues (refacto 2026-05 : SquadVerdict toujours monté, sections team
+    // card / player cards conditionnelles).
     expect(screen.getByText('Matchs joués')).toBeInTheDocument()
     expect(screen.getByText('Durée totale')).toBeInTheDocument()
     // La durée moyenne/match est désormais inline-sub de la card Matchs (10:54)
-    // → vérifie sa présence sans dépendre du label retiré.
     expect(screen.getByText(/10min54\/match/)).toBeInTheDocument()
-    // Pas de bande verdict en solo (le score d'équipe et la Results bar n'y sont
-    // que dans la bande verdict, qui n'apparaît pas en solo)
+    // Pas de team card en solo (squadScore absent)
     expect(screen.queryByText(/Score d'équipe/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Résultats/)).not.toBeInTheDocument()
-    // Pas de trend hint en solo
+    // Pas de trend hint en solo (kpisByXuid absent → pas de comparaison équipe)
     expect(screen.queryByText(/vs moyenne d'équipe/)).not.toBeInTheDocument()
-    // KPI évaluatifs affichés
+    // KPI évaluatifs affichés (KpiGrid)
     expect(screen.getByText('Frags par partie')).toBeInTheDocument()
     expect(screen.getByText('8.70')).toBeInTheDocument()
   })

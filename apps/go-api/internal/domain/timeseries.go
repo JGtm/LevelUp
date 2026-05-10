@@ -44,6 +44,81 @@ type TimeseriesSummaryTab struct {
 	KpiCards []TimeseriesKpiCard `json:"kpi_cards"`
 }
 
+// TimeseriesWeaponKill agrège les kills d'une arme sur le scope filtré.
+// Alimente le chart timeseries.04 (Top weapons by kills).
+type TimeseriesWeaponKill struct {
+	WeaponID int64  `json:"weapon_id"`
+	Label    string `json:"label"`
+	Kills    int    `json:"kills"`
+}
+
+// OutcomesPeriodPoint agrège les outcomes (V/D/N/X) sur une période (jour/semaine/mois).
+// Alimente le chart timeseries.05 (Outcomes over time).
+type OutcomesPeriodPoint struct {
+	PeriodLabel string `json:"period_label"` // ex. "2025-W42" ou "2025-10"
+	StartDate   string `json:"start_date"`   // ISO date début de la période
+	Wins        int    `json:"wins"`
+	Losses      int    `json:"losses"`
+	Ties        int    `json:"ties"`
+	DNF         int    `json:"dnf"`
+}
+
+// FirstEventBucket agrège la distribution superposée du premier kill et de la
+// première mort par bin de N secondes depuis le début du match. Alimente le
+// chart timeseries.11 (Premier événement).
+type FirstEventBucket struct {
+	LowerSeconds float64 `json:"lower_seconds"`
+	UpperSeconds float64 `json:"upper_seconds"`
+	FirstKills   int     `json:"first_kills"`
+	FirstDeaths  int     `json:"first_deaths"`
+}
+
+// FirstEventDistribution est la distribution complète + les moyennes pour les
+// markLines (Moy. 38s sur le mock).
+type FirstEventDistribution struct {
+	Buckets               []FirstEventBucket `json:"buckets"`
+	MeanFirstKillSeconds  *float64           `json:"mean_first_kill_seconds,omitempty"`
+	MeanFirstDeathSeconds *float64           `json:"mean_first_death_seconds,omitempty"`
+}
+
+// IntensityMatchRow est une ligne du heatmap d'intensité solo (chart
+// "Intensité — frags par phase de match"). 1 match × 10 phases normalisées
+// (0..1) + label affichable (carte + date).
+//
+// Format aligné avec domain.SquadIntensityMatchRow pour réutiliser le
+// composant SquadIntensityHeatmapChart côté front. Pas de toggle joueur :
+// solo n'a qu'un seul "joueur".
+type IntensityMatchRow struct {
+	MatchID string      `json:"match_id"`
+	Label   string      `json:"label"`
+	Phases  [10]float64 `json:"phases"`
+}
+
+// SoloSessionPerfPoint est l'agrégat par session/semaine/mois pour le chart
+// "Performance solo par session" (Synthèse).
+//
+// Calculé sur la population solo complète (post match_context), indépendant
+// des filtres period/sessions/cascade — sinon picker une session ne ramène
+// qu'un seul point, ce qui défait l'intérêt du chart.
+type SoloSessionPerfPoint struct {
+	SessionLabel string   `json:"session_label"`
+	StartedAtUTC string   `json:"started_at_utc"` // ISO date pour tri chronologique
+	MatchCount   int      `json:"match_count"`
+	Wins         int      `json:"wins"`
+	WinRate      float64  `json:"win_rate"`               // 0..1
+	PerfAvg      *float64 `json:"perf_avg,omitempty"`     // moyenne PerfScoreComputed
+	TeamMMRAvg   *float64 `json:"team_mmr_avg,omitempty"` // moyenne TeamMMR
+}
+
+// SoloSessionPerfBlock contient les points + leur granularité (session, week,
+// month) pour permettre au frontend de labelliser correctement.
+type SoloSessionPerfBlock struct {
+	// Granularity : "session" | "week" | "month" — choisie automatiquement
+	// selon la densité (≤30 points → session, sinon week, sinon month).
+	Granularity string                 `json:"granularity"`
+	Points      []SoloSessionPerfPoint `json:"points"`
+}
+
 // TimeseriesCumulTab est l'onglet Cumul.
 type TimeseriesCumulTab struct {
 	CumulativeKD  []CumulativePoint `json:"cumulative_kd"`
@@ -82,12 +157,26 @@ type IntensityHeatmapPoint struct {
 
 // TimeseriesDistributionsTab est l'onglet Distributions.
 type TimeseriesDistributionsTab struct {
-	KDABuckets         []DistributionBucket  `json:"kda_buckets"`
-	KillsBuckets       []DistributionBucket  `json:"kills_buckets"`
-	AccuracyBuckets    []DistributionBucket  `json:"accuracy_buckets"`
-	ScorePerMinBuckets []DistributionBucket  `json:"score_per_min_buckets"`
-	RollingWRBuckets   []DistributionBucket  `json:"rolling_wr_buckets"`
-	CorrelationPoints  []CorrelationDataPair `json:"correlation_points"`
+	KDABuckets         []DistributionBucket `json:"kda_buckets"`
+	KillsBuckets       []DistributionBucket `json:"kills_buckets"`
+	AccuracyBuckets    []DistributionBucket `json:"accuracy_buckets"`
+	ScorePerMinBuckets []DistributionBucket `json:"score_per_min_buckets"`
+	RollingWRBuckets   []DistributionBucket `json:"rolling_wr_buckets"`
+	// LifeBuckets : distribution de la durée de vie moyenne par match
+	// (time_played_seconds / (deaths + 1) — même formule que buildCorrelationPoints).
+	// Bins de 5 secondes. Alimente l'histogramme "Average life" timeseries.09.
+	LifeBuckets []DistributionBucket `json:"life_buckets"`
+	// PerfScoreBuckets : distribution du performance_score par match
+	// (PerfScoreComputed du sync). Bins de 5 points sur [0, 100].
+	// Alimente l'histogramme "Performance" timeseries.09.
+	PerfScoreBuckets []DistributionBucket `json:"perf_score_buckets"`
+	// PersonalScoreBuckets : distribution du score personnel par match
+	// (PersonalScore — synced depuis match_participants). Bins de 250 points.
+	PersonalScoreBuckets []DistributionBucket `json:"personal_score_buckets"`
+	// MaxKillingSpreeBuckets : distribution du max killing spree par match
+	// (MaxKillingSpree — synced depuis match_participants). Bin = 1 (entiers).
+	MaxKillingSpreeBuckets []DistributionBucket  `json:"max_killing_spree_buckets"`
+	CorrelationPoints      []CorrelationDataPair `json:"correlation_points"`
 }
 
 // DistributionBucket est un bucket pour un histogramme de distribution.
@@ -143,6 +232,23 @@ type TimeseriesMatchRow struct {
 	Rank              *int     `json:"rank"`
 	PlaylistName      string   `json:"playlist_name"`
 	TimePlayedSeconds *int     `json:"time_played_seconds"`
+	// Métriques alimentant les charts Forme (timeseries.16) — sync depuis
+	// match_participants (max_killing_spree, headshot_kills, perfect_kills).
+	MaxKillingSpree *int `json:"max_killing_spree,omitempty"`
+	HeadshotKills   *int `json:"headshot_kills,omitempty"`
+	PerfectKills    *int `json:"perfect_kills,omitempty"`
+	// Nom de carte pour les étiquettes X compactes (timeseries.14 "Stats par minute"
+	// reprend le format `#N\nMap` de la page Contributions Squad).
+	MapName   string `json:"map_name,omitempty"`
+	MapNameFR string `json:"map_name_fr,omitempty"`
+	// Skill rank (CSR ou LUSR) — rating brut + type — alimente le chart Forme
+	// "Skill rank + Performance".
+	SkillRatingValue *float64 `json:"skill_rating_value,omitempty"`
+	SkillRatingType  string   `json:"skill_rating_type,omitempty"`
+	// Session de rattachement — alimente l'agrégat "Performance solo par session".
+	SessionLabel *string `json:"session_label,omitempty"`
+	// MMR équipe — alimente le chart "Performance par session" (axe MMR moyen).
+	TeamMMR *float64 `json:"team_mmr,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +264,30 @@ type TimeseriesPageResponse struct {
 	FormTab          TimeseriesFormTab          `json:"form_tab"`
 	IntensityTab     TimeseriesIntensityTab     `json:"intensity_tab"`
 	DistributionsTab TimeseriesDistributionsTab `json:"distributions_tab"`
+	// TopWeapons : top 10 armes par kills sur le scope filtré (chart .04).
+	// Vide si WeaponKillsRepository non câblé ou aucun kill enregistré.
+	TopWeapons []TimeseriesWeaponKill `json:"top_weapons"`
+	// OutcomesOverTime : V/D/N/X agrégés par période (chart .05).
+	// La granularité (jour/semaine/mois) est choisie automatiquement selon
+	// la durée du scope : <=14j → jour, <=120j → semaine, sinon mois.
+	OutcomesOverTime []OutcomesPeriodPoint `json:"outcomes_over_time"`
+	// MapBreakdown : stats par carte — session courante (filtrée) avec leurs
+	// pendants historiques (tous matchs solo). Alimente teammates.02 (bullet
+	// winrate) et teammates.13 (grouped-bar perf) sur la page Stats. Vide si
+	// aucun match dans le scope.
+	MapBreakdown []MapBreakdownRow `json:"map_breakdown"`
+	// FirstEvents : distribution superposée du premier kill et de la première
+	// mort, alimentée via highlight_events. Nil si HighlightEventsRepo absent
+	// ou aucun event dans le scope.
+	FirstEvents *FirstEventDistribution `json:"first_events,omitempty"`
+	// IntensityRows : 1 ligne par match × 10 phases normalisées (0..1) — frags
+	// du joueur sur la timeline du match, source highlight_events.
+	IntensityRows []IntensityMatchRow `json:"intensity_rows,omitempty"`
+	// SoloSessionPerf : agrégat par session/semaine/mois sur la population
+	// solo complète (ignore filtres period/sessions/cascade). Alimente
+	// "Performance solo par session" sur l'onglet Synthèse. Granularité
+	// auto-adaptative selon la densité.
+	SoloSessionPerf *SoloSessionPerfBlock `json:"solo_session_perf,omitempty"`
 	// BriefingKPIs alimente le composant <SessionBriefing> en haut de la page
 	// (mode solo : pas de squad verdict). Calcule sur les memes match_ids que
 	// les autres onglets (apres filtres). Nil si aucun match.

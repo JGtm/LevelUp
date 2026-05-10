@@ -83,7 +83,7 @@ export function parseChangelog(markdown: string): ChangelogEntry[] {
       continue
     }
 
-    const itemMatch = line.match(/^(?:  )?- (.+)/)
+    const itemMatch = line.match(/^(?: {2})?- (.+)/)
     if (itemMatch && currentSection) {
       currentSection.items.push(itemMatch[1])
     }

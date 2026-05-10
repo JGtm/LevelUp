@@ -385,6 +385,10 @@ en = "{count, plural, one {# win} other {# wins}} in a row"
 fr = "{wins}V/{losses}D · {wr}% victoires"
 en = "{wins}W/{losses}L · {wr}% win rate"
 
+[home.highlights.unit.matches]
+fr = "matchs"
+en = "matches"
+
 [home.highlights.detail.volume_wr]
 fr = "Taux de victoire {wr}%"
 en = "Win rate {wr}%"

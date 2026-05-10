@@ -7,6 +7,8 @@
 package analysis
 
 import (
+	"math"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -35,6 +37,8 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	var lifeSamples int
 	var totalAccuracy float64
 	var accuracySamples int
+	var perfSum float64
+	var perfCount int
 	// Buckets par RatingType pour le delta de rang. On accumule les deltas
 	// pour chaque type rencontre puis on retient le type majoritaire en
 	// sortie (cf. RankDelta.Kind — exclusivite metier au sein d'un scope coherent).
@@ -64,6 +68,10 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		if r.Self.Accuracy != nil {
 			totalAccuracy += *r.Self.Accuracy
 			accuracySamples++
+		}
+		if r.Enrichment.PerformanceScore != nil {
+			perfSum += *r.Enrichment.PerformanceScore
+			perfCount++
 		}
 		if snap := r.Enrichment.SkillSnapshot; snap != nil && snap.Delta != nil && snap.RatingType != "" {
 			b, ok := rankBuckets[snap.RatingType]
@@ -103,6 +111,18 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	}
 	if lifeSamples > 0 {
 		stats.AvgLifeSeconds = totalLifeSeconds / float64(lifeSamples)
+	}
+	if perfCount > 0 {
+		avg := math.Round(perfSum/float64(perfCount)*10) / 10
+		stats.PerformanceScore = &avg
+	} else {
+		// Fallback KD : clamp(50 + 10*(KD-1), 0, 100) — miroir computeOneCard Go.
+		kd := float64(totalKills)
+		if totalDeaths > 0 {
+			kd = float64(totalKills) / float64(totalDeaths)
+		}
+		fallback := math.Round(math.Min(math.Max(50+10*(kd-1), 0), 100)*10) / 10
+		stats.PerformanceScore = &fallback
 	}
 	if len(rankBuckets) > 0 {
 		// Type majoritaire : le bucket avec le plus de matchs.

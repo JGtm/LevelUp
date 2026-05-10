@@ -347,7 +347,14 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	gtToXUID := extractSquadXUIDs(squadOrder, perPlayer)
 	sharedMatches := intersectByMatchID(perPlayer)
 
-	return buildSquadHeader(ctx, s.gamertag, perPlayer, gtToXUID, sharedMatches)
+	header := buildSquadHeader(ctx, s.gamertag, gtToXUID, sharedMatches)
+	// Mode degrade : si aucun match partage, le briefing repasse en mode solo
+	// pour rester utile (sinon SoloKPIs serait nil et la section disparaitrait).
+	if header.SoloKPIs == nil && len(mainFiltered) > 0 {
+		kpis := analysis.ComputeKPIStats(mainFiltered)
+		header.SoloKPIs = &kpis
+	}
+	return header
 }
 
 // loadTeammatesCanonicalParallel charge les canonical PlayerMatchRow pour

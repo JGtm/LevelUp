@@ -5,12 +5,16 @@
  * navigation pour éliminer le flicker initial sur cette page lourde.
  */
 import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type { MatchViewResponse, MatchNeighbors } from '@/lib/api/types'
 import { MatchViewPage } from '@/features/match-view/MatchViewPage'
 
 export const Route = createFileRoute('/players/$playerSlug/matches/$matchId')({
+  validateSearch: z.object({
+    tab: z.enum(['summary', 'details']).optional().catch('summary'),
+  }),
   loader: ({ params, context }) => {
     // Prefetch parallèle : la vue + les voisins (prev/next).
     void context.queryClient.prefetchQuery({

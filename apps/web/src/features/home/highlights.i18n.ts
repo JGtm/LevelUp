@@ -136,6 +136,17 @@ export function resolveColSpan(titleKey: string | undefined): number {
   return COL_SPANS[titleKey] ?? 1
 }
 
+const UNIT_KEY_MAP: Record<string, HomeManifestKey> = {
+  'highlight.title.volume': 'home.highlights.unit.matches',
+}
+
+export function resolveUnit(locale: string | null | undefined, titleKey: string | undefined): string {
+  if (!titleKey) return ''
+  const mapped = UNIT_KEY_MAP[titleKey]
+  if (!mapped) return ''
+  return t(normalizeHighlightLocale(locale), mapped)
+}
+
 export function resolveDetail(
   locale: string | null | undefined,
   key: string | undefined,

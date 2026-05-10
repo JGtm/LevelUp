@@ -1,6 +1,5 @@
 /** MatchViewPage — détail d'un match (2 onglets : Général, Détails). */
-import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useSearch, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/features/settings/queries'
@@ -82,7 +81,14 @@ export function MatchViewPage() {
     playerSlug: string
     matchId: string
   }
-  const [activeTab, setActiveTab] = useState<TabId>('summary')
+  const { tab } = useSearch({
+    from: '/players/$playerSlug/matches/$matchId',
+  })
+  const activeTab: TabId = tab ?? 'summary'
+  const navigate = useNavigate({ from: '/players/$playerSlug/matches/$matchId' })
+  const setActiveTab = (next: TabId) => {
+    navigate({ search: (prev) => ({ ...prev, tab: next }), replace: true }).catch(() => {})
+  }
   const { data, isPending, isError, error, refetch } = useMatchView(playerSlug, matchId)
   const { data: settings } = useSettings()
   const friendGamertags = settings?.friend_gamertags ?? []

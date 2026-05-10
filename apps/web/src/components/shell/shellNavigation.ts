@@ -51,18 +51,6 @@ export const PLAYER_SECONDARY_NAV_ITEMS: ShellNavItem[] = [
     description: 'Signatures de jeu, médailles et profils.',
   },
   {
-    to: '/players/$playerSlug/stats/timeseries',
-    label: 'Séries',
-    eyebrow: 'Tendance',
-    description: 'Lecture temporelle des performances.',
-  },
-  {
-    to: '/players/$playerSlug/stats/sessions',
-    label: 'Sessions',
-    eyebrow: 'Runs',
-    description: 'Séquences de jeu et variations de rythme.',
-  },
-  {
     to: '/players/$playerSlug/explorer',
     label: 'Explorer',
     eyebrow: 'Drilldown',

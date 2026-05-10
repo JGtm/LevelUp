@@ -8,7 +8,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import type { HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
-import { resolveTitle, resolveLabel, resolveDetail, resolveColSpan } from './highlights.i18n'
+import { resolveTitle, resolveLabel, resolveDetail, resolveColSpan, resolveUnit } from './highlights.i18n'
 
 // Grille fine de 20 sous-unités sur lg+. Tailwind v4 arbitrary values.
 const HIGHLIGHT_SPAN_CLASS: Record<number, string> = {
@@ -102,11 +102,13 @@ export function HomeHighlightTile({ h, locale }: HomeHighlightTileProps) {
   const detail = h.detail_key
     ? resolveDetail(locale, h.detail_key, h.detail_params)
     : (h.detail ?? '')
+  const unit = resolveUnit(locale, h.title_key)
   return (
     <div className={`rounded-md border border-border p-3 ${spanClass}`}>
       <p className="text-xs font-medium text-muted-foreground">{title}</p>
       <p className="text-base font-bold" style={highlightColorStyle(h.value_color)}>
         {h.value}
+        {unit ? <span className="ml-1 text-xs font-medium text-muted-foreground">{unit}</span> : null}
       </p>
       {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
     </div>

@@ -371,7 +371,7 @@ const FR_TEXT: SettingsText = {
     items: [
       '« Ignorer la composition » : les changements de groupe n\'ont aucun effet sur le découpage.',
       '« Changement de groupe » : toute arrivée ou départ d\'un joueur (y compris des inconnus) démarre une nouvelle session.',
-      '« Amis seulement » : seules les arrivées\/départs des joueurs de votre liste « Mon escouade » sont observés. Idéal si vous jouez souvent avec des inconnus, mais que votre noyau d\'amis reste stable toute la soirée (défaut).',
+      '« Amis seulement » : seules les arrivées/départs des joueurs de votre liste « Mon escouade » sont observés. Idéal si vous jouez souvent avec des inconnus, mais que votre noyau d\'amis reste stable toute la soirée (défaut).',
     ],
   },
   sessionSplitRankedLabel: 'Dissocier si passage classé ↔ social',

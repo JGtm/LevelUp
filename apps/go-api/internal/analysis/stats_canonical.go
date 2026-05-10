@@ -55,6 +55,9 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 		PersonalScore:     r.Self.PersonalScore,
 		Rank:              r.Self.RankInMatch,
 		TeamID:            r.Self.TeamID,
+		MaxKillingSpree:   r.Self.MaxKillingSpree,
+		HeadshotKills:     r.Self.HeadshotKills,
+		PerfectKills:      r.Self.PerfectKills,
 	}
 	if r.Self.Kills != nil {
 		out.Kills = *r.Self.Kills
@@ -111,7 +114,10 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 	if r.Enrichment.SkillSnapshot != nil {
 		out.KillsExpected = r.Enrichment.SkillSnapshot.KillsExpected
 		out.DeathsExpected = r.Enrichment.SkillSnapshot.DeathsExpected
+		out.SkillRatingValue = r.Enrichment.SkillSnapshot.RatingValue
+		out.SkillRatingType = string(r.Enrichment.SkillSnapshot.RatingType)
 	}
+	out.IsWithFriends = r.Enrichment.IsWithFriends
 	return out
 }
 

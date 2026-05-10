@@ -124,7 +124,7 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
   const hasHist = expectedStats.has_hist_avg ?? false
 
   const buildOption = useCallback(
-    (_s: ChartSeries<unknown>[]): EChartsCoreOption => {
+    (): EChartsCoreOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelKills, t.labelDeaths, t.labelAssists]
       // color-allow: hex en commentaires de documentation token→couleur
@@ -194,7 +194,7 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
         series: seriesList as EChartsCoreOption['series'],
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [kpis, expectedStats, t, hasExpected, hasHist],
   )
 
@@ -224,7 +224,7 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
   const hasHist = expectedStats.has_hist_avg ?? false
 
   const buildOption = useCallback(
-    (_s: ChartSeries<unknown>[]): EChartsCoreOption => {
+    (): EChartsCoreOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelSpree, t.labelHeadshots, t.labelPerfectKills]
       // color-allow: hex en commentaires de documentation token→couleur
@@ -281,7 +281,7 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
         series: seriesList as EChartsCoreOption['series'],
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [kpis, expectedStats, t, hasHist],
   )
 
