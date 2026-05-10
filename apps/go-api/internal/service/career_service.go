@@ -10,12 +10,16 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
@@ -46,7 +50,21 @@ type CareerService struct {
 	// directement. Préserve une parité comportementale stricte : projection
 	// canonical.EncounterRow → domain.EncounterDTO identique à la version repo.
 	// Activé via WithDataAdapter.
-	dataAdapter games.TitleDataAdapter
+	dataAdapter   games.TitleDataAdapter
+	rankCatalog   *mappings.RankCatalog // optionnel — nil = pas de nom prochain rang
+	rankImageURLs map[int]*string       // optionnel — nil = pas d'images de rang
+	// friendGamertags : resolver des gamertags amis (cf. settings.FriendGamertags).
+	// Utilisé par GetTopEncounters pour exclure les amis du tableau "joueurs les
+	// plus croisés (hors amis)". Si nil, aucune exclusion (équivalent à 0 ami).
+	friendGamertags FriendGamertagsResolver
+	// friendXUIDResolver : optionnel — résout un gamertag en XUID via xuid_aliases.
+	// Si nil, GetTopEncounters dégrade gracieusement (pas d'exclusion d'amis).
+	friendXUIDResolver func(ctx context.Context, gamertag string) (string, error)
+	// seasonsCatalog : optionnel — résolveur saisons (TOML + DB + lazy fetch).
+	// Utilisé par GetHighlightMatchIDs pour traduire les SeasonIDs sélectionnés
+	// en fenêtres temporelles SQL et pour calculer les cascade counts. Quand
+	// nil, le filtre saisons est inopérant et available_seasons reste vide.
+	seasonsCatalog *SeasonsCatalog
 }
 
 // NewCareerService crée un CareerService.
@@ -84,6 +102,44 @@ func (s *CareerService) WithFriendsXPLoader(loader FriendsXPLoader) *CareerServi
 	return s
 }
 
+// WithRankCatalog injecte le catalog des rangs (noms localisés).
+// Quand nil, next_rank_name_fr/en restent vides.
+func (s *CareerService) WithRankCatalog(c *mappings.RankCatalog) *CareerService {
+	s.rankCatalog = c
+	return s
+}
+
+// WithRankImageURLs injecte la map rank_id → imageURL (chargée au démarrage).
+// Quand nil, rank_image_url et next_rank_image_url restent absents.
+func (s *CareerService) WithRankImageURLs(imgs map[int]*string) *CareerService {
+	s.rankImageURLs = imgs
+	return s
+}
+
+// WithFriendGamertagsResolver injecte le resolver d'amis configurés (lit
+// app_settings.friend_gamertags). Quand nil, GetTopEncounters n'exclut aucun
+// joueur (le tableau "hors amis" affichera tous les plus croisés).
+func (s *CareerService) WithFriendGamertagsResolver(r FriendGamertagsResolver) *CareerService {
+	s.friendGamertags = r
+	return s
+}
+
+// WithFriendXUIDResolver injecte un résolveur gamertag → XUID (typiquement
+// délégué à ExplorerRepo.ResolveXUIDByGamertag). Requis pour exclure les amis
+// dans GetTopEncounters (la query travaille en XUIDs).
+func (s *CareerService) WithFriendXUIDResolver(fn func(ctx context.Context, gamertag string) (string, error)) *CareerService {
+	s.friendXUIDResolver = fn
+	return s
+}
+
+// WithSeasonsCatalog injecte le résolveur unifié des saisons (mêmes pattern
+// que FiltersService). Sert au filtre Saisons + cascade counts dans la
+// section "Matchs marquants". Quand nil, le filtre saisons est inopérant.
+func (s *CareerService) WithSeasonsCatalog(catalog *SeasonsCatalog) *CareerService {
+	s.seasonsCatalog = catalog
+	return s
+}
+
 // GetCareerPage retourne la réponse complète de la page Carrière.
 //
 // Phase C+ multi-titres : GetLatestRank passe par DataAdapter.LoadCareerSnapshot
@@ -107,9 +163,9 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)
 	}
 
-	summary := buildCareerSummary(rank)
+	summary := s.buildCareerSummaryEnriched(rank)
 	xpTotal := summaryXPTotal(rank)
-	hero := buildHeroProgress(xpTotal)
+	hero := buildHeroProgress(xpTotal, rankIDFromData(rank))
 	projs := buildProjections(xpHistory, xpTotal)
 	lusr := buildLUSRSummary(lusrHistory)
 
@@ -183,6 +239,320 @@ func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncount
 		Enemies:   enemies,
 		Total:     len(rows),
 	}, nil
+}
+
+// GetHighlightMatchIDs retourne les match_ids triés (best d'abord, worst
+// ensuite) des matchs marquants — 15 + 15 — avec les cascade counts pour
+// les dropdowns Expérience / Saisons. Le handler enrichit ensuite les IDs
+// via MatchHistoryService pour produire des ExplorerMatchesRow complets.
+func (s *CareerService) GetHighlightMatchIDs(ctx context.Context, input domain.HighlightFilterInput) (domain.HighlightMatchesData, error) {
+	// Résout les SeasonIDs sélectionnés en fenêtres temporelles via le catalog.
+	catalog := s.loadSeasonCatalog(ctx)
+	selectedRanges, _ := resolveSeasonRanges(catalog, input.SeasonIDs)
+
+	filters := domain.CareerHighlightFilters{
+		Experience:   normalizeExperience(input.Experience),
+		SeasonRanges: selectedRanges,
+	}
+
+	rows, err := s.repo.GetHighlightMatchIDs(ctx, filters)
+	if err != nil {
+		return domain.HighlightMatchesData{}, fmt.Errorf("CareerService.GetHighlightMatchIDs: %w", err)
+	}
+
+	// Pool complet pour cascade counts (silently dégradé si erreur).
+	pool, perr := s.repo.GetHighlightPool(ctx)
+	if perr != nil {
+		slog.WarnContext(ctx, "career.highlight.pool_load_failed", "err", perr)
+	}
+
+	return domain.HighlightMatchesData{
+		Rows:                rows,
+		AvailableExperience: computeHighlightAvailableExperience(pool, selectedRanges),
+		AvailableSeasons:    computeHighlightAvailableSeasons(pool, filters.Experience, catalog),
+	}, nil
+}
+
+// loadSeasonCatalog charge le catalog via SeasonsCatalog injecté. Retourne nil
+// si non câblé (dégradation gracieuse — pas de cascade saisons).
+func (s *CareerService) loadSeasonCatalog(ctx context.Context) []SeasonCatalogEntry {
+	if s.seasonsCatalog == nil || s.titleSlug == "" {
+		return nil
+	}
+	return s.seasonsCatalog.Load(ctx, s.titleSlug)
+}
+
+// normalizeExperience clamp la valeur d'entrée sur les 3 valeurs autorisées.
+// Toute autre valeur (vide, "tous", etc.) → "all" (= pas de filtre).
+func normalizeExperience(v string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "ranked":
+		return "ranked"
+	case "unranked":
+		return "unranked"
+	default:
+		return "all"
+	}
+}
+
+// resolveSeasonRanges projette les seasonIDs sélectionnés en SeasonTimeRange
+// via le catalog. Retourne aussi la liste des IDs qui ont matché (pour debug).
+// IDs inconnus du catalog silencieusement ignorés.
+func resolveSeasonRanges(catalog []SeasonCatalogEntry, seasonIDs []string) ([]domain.SeasonTimeRange, []string) {
+	if len(seasonIDs) == 0 || len(catalog) == 0 {
+		return nil, nil
+	}
+	wanted := make(map[string]struct{}, len(seasonIDs))
+	for _, id := range seasonIDs {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			wanted[id] = struct{}{}
+		}
+	}
+	ranges := make([]domain.SeasonTimeRange, 0, len(wanted))
+	matched := make([]string, 0, len(wanted))
+	for _, e := range catalog {
+		if _, ok := wanted[e.ID]; !ok {
+			continue
+		}
+		ranges = append(ranges, domain.SeasonTimeRange{Start: e.Start, End: e.End})
+		matched = append(matched, e.ID)
+	}
+	return ranges, matched
+}
+
+// computeHighlightAvailableExperience calcule les counts cascade-aware pour
+// la dropdown Expérience : on respecte le filtre Saisons mais on ignore le
+// filtre Expérience courant (sinon on aurait juste le count de l'option active).
+func computeHighlightAvailableExperience(pool []domain.HighlightMatchPoolRow, seasonRanges []domain.SeasonTimeRange) []domain.HighlightExperienceCount {
+	counts := struct {
+		all, ranked, unranked int
+	}{}
+	for _, m := range pool {
+		if !matchInSeasonRanges(m.StartTime, seasonRanges) {
+			continue
+		}
+		counts.all++
+		if m.IsRanked {
+			counts.ranked++
+		} else {
+			counts.unranked++
+		}
+	}
+	return []domain.HighlightExperienceCount{
+		{Value: "all", Count: counts.all},
+		{Value: "ranked", Count: counts.ranked},
+		{Value: "unranked", Count: counts.unranked},
+	}
+}
+
+// computeHighlightAvailableSeasons calcule les counts par saison du catalog
+// en respectant le filtre Expérience courant mais pas le filtre Saisons
+// (la dropdown affiche le count par saison si on coche cette saison).
+func computeHighlightAvailableSeasons(pool []domain.HighlightMatchPoolRow, experience string, catalog []SeasonCatalogEntry) []domain.HighlightSeasonCount {
+	if len(catalog) == 0 {
+		return nil
+	}
+	out := make([]domain.HighlightSeasonCount, 0, len(catalog))
+	for _, season := range catalog {
+		count := 0
+		for _, m := range pool {
+			if !matchPassesExperience(m.IsRanked, experience) {
+				continue
+			}
+			if m.StartTime == nil {
+				continue
+			}
+			if m.StartTime.Before(season.Start) {
+				continue
+			}
+			if season.End != nil && !m.StartTime.Before(*season.End) {
+				continue
+			}
+			count++
+		}
+		out = append(out, domain.HighlightSeasonCount{Value: season.ID, Count: count})
+	}
+	return out
+}
+
+// matchPassesExperience : true si le match passe le filtre Expérience.
+func matchPassesExperience(isRanked bool, experience string) bool {
+	switch experience {
+	case "ranked":
+		return isRanked
+	case "unranked":
+		return !isRanked
+	default: // "all" ou inconnu
+		return true
+	}
+}
+
+// matchInSeasonRanges : true si startTime tombe dans au moins une fenêtre
+// de seasonRanges. Si seasonRanges est vide → true (pas de filtre).
+func matchInSeasonRanges(startTime *time.Time, seasonRanges []domain.SeasonTimeRange) bool {
+	if len(seasonRanges) == 0 {
+		return true
+	}
+	if startTime == nil {
+		return false
+	}
+	for _, w := range seasonRanges {
+		if startTime.Before(w.Start) {
+			continue
+		}
+		if w.End != nil && !startTime.Before(*w.End) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// GetTopEncounters retourne les 10 joueurs les plus croisés au niveau carrière
+// globale, hors amis configurés (FriendGamertags). Enrichit chaque encounter
+// avec les badges narratifs (ally_plus / tough_enemy / ordinal) via le même
+// algorithme que MatchView.
+func (s *CareerService) GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error) {
+	excludeXUIDs := s.resolveFriendXUIDs(ctx)
+	encounters, stats, err := s.repo.GetTopEncountersGlobal(ctx, excludeXUIDs)
+	if err != nil {
+		return domain.CareerTopEncountersResponse{}, fmt.Errorf("CareerService.GetTopEncounters: %w", err)
+	}
+	// Index stats par xuid pour O(1) lookup lors de l'application des badges.
+	statsByXUID := make(map[string]domain.EncounterStatsRaw, len(stats))
+	for _, st := range stats {
+		statsByXUID[st.XUID] = st
+	}
+	out := make([]domain.MatchEncounterRow, 0, len(encounters))
+	for _, e := range encounters {
+		st, ok := statsByXUID[e.XUID]
+		if !ok {
+			out = append(out, e)
+			continue
+		}
+		e.Badges = computeCareerEncounterBadges(e, st)
+		out = append(out, e)
+	}
+	return domain.CareerTopEncountersResponse{Items: out}, nil
+}
+
+// GetRivals retourne le top 10 des némésis (deaths DESC) et top 10 des
+// souffre-douleur (frags DESC). Le ratio est calculé côté service (frags/deaths
+// avec garde div-par-zéro : 0 morts → ratio = float64(Frags)).
+func (s *CareerService) GetRivals(ctx context.Context) (domain.CareerRivalsResponse, error) {
+	nemesesRaw, victimsRaw, err := s.repo.GetRivals(ctx)
+	if err != nil {
+		return domain.CareerRivalsResponse{}, fmt.Errorf("CareerService.GetRivals: %w", err)
+	}
+	return domain.CareerRivalsResponse{
+		Nemeses: convertRivals(nemesesRaw),
+		Victims: convertRivals(victimsRaw),
+	}, nil
+}
+
+// resolveFriendXUIDs résout la liste des amis configurés (gamertags) en XUIDs.
+// Dégrade gracieusement : skip silencieux pour chaque gamertag non résolvable.
+// En cas d'amis non résolus, log Warn pour signaler une dérive de config (un
+// gamertag dans settings n'existe ni dans xuid_aliases ni dans match_participants).
+func (s *CareerService) resolveFriendXUIDs(ctx context.Context) []string {
+	if s.friendGamertags == nil || s.friendXUIDResolver == nil {
+		return nil
+	}
+	gts := s.friendGamertags(ctx)
+	if len(gts) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(gts))
+	var unresolved []string
+	for _, gt := range gts {
+		gt = strings.TrimSpace(gt)
+		if gt == "" {
+			continue
+		}
+		xuid, err := s.friendXUIDResolver(ctx, gt)
+		if err != nil || xuid == "" {
+			unresolved = append(unresolved, gt)
+			continue
+		}
+		out = append(out, xuid)
+	}
+	if len(unresolved) > 0 {
+		slog.WarnContext(ctx, "career.top_encounters.friends_unresolved",
+			"unresolved", unresolved,
+			"resolved", len(out),
+		)
+	}
+	return out
+}
+
+// computeCareerEncounterBadges applique narrative.ComputeEncounterBadges
+// (ordinal + ally_plus + tough_enemy) avec le même protocole que MatchView.
+func computeCareerEncounterBadges(e domain.MatchEncounterRow, st domain.EncounterStatsRaw) []domain.MatchEncounterBadge {
+	winrateAsAlly := encounterBadgeWinrate(st.WinsAsAlly, st.LossesAsAlly)
+	winrateVsEnemy := encounterBadgeWinrate(st.WinsVsEnemy, st.LossesVsEnemy)
+	stats := narrative.EncounterStats{
+		XUID:            e.XUID,
+		Gamertag:        e.Gamertag,
+		TotalEncounters: e.CountTogether,
+		AllyCount:       st.AllyCount,
+		EnemyCount:      st.EnemyCount,
+		WinrateAsAlly:   winrateAsAlly,
+		WinrateVsEnemy:  winrateVsEnemy,
+		KillsDealt:      st.KillsDealt,
+		DeathsSuffered:  st.DeathsSuffered,
+	}
+	ordinal := e.CountTogether - 1
+	if ordinal < 0 {
+		ordinal = 0
+	}
+	raw := narrative.ComputeEncounterBadges(stats, ordinal)
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]domain.MatchEncounterBadge, 0, len(raw))
+	for _, b := range raw {
+		out = append(out, domain.MatchEncounterBadge{
+			Kind:       string(b.Kind),
+			LabelKey:   b.LabelKey,
+			ColorToken: b.ColorToken,
+			Detail:     b.Detail,
+		})
+	}
+	return out
+}
+
+// encounterBadgeWinrate : retourne nil si W+L == 0, sinon le ratio (0..1).
+// Mirror de service.encounterWinrate (match_view_service.go) — duplication
+// volontaire pour éviter le couplage entre les deux services.
+func encounterBadgeWinrate(wins, losses int) *float64 {
+	total := wins + losses
+	if total == 0 {
+		return nil
+	}
+	rate := analysis.WinRate(wins, total)
+	return &rate
+}
+
+// convertRivals projette CareerRivalRawRow → CareerRival (calcule le ratio).
+func convertRivals(raw []domain.CareerRivalRawRow) []domain.CareerRival {
+	out := make([]domain.CareerRival, 0, len(raw))
+	for _, r := range raw {
+		var ratio float64
+		if r.Deaths > 0 {
+			ratio = float64(r.Frags) / float64(r.Deaths)
+		} else {
+			ratio = float64(r.Frags) // 0 morts → ratio = nb de frags (semantically "infini" approximé)
+		}
+		out = append(out, domain.CareerRival{
+			Gamertag:   r.Gamertag,
+			Frags:      r.Frags,
+			Deaths:     r.Deaths,
+			Ratio:      ratio,
+			MatchCount: r.MatchCount,
+		})
+	}
+	return out
 }
 
 // loadLatestRank centralise la résolution repo/adapter pour GetLatestRank.
@@ -332,6 +702,38 @@ func buildCareerSummary(rank *domain.CareerRankData) domain.CareerRankSummary {
 	}
 }
 
+// buildCareerSummaryEnriched enrichit le résumé avec les images et noms de rang
+// depuis rankCatalog et rankImageURLs injectés dans le service.
+func (s *CareerService) buildCareerSummaryEnriched(rank *domain.CareerRankData) domain.CareerRankSummary {
+	summary := buildCareerSummary(rank)
+	if rank == nil {
+		return summary
+	}
+	if img, ok := s.rankImageURLs[rank.RankNumber]; ok {
+		summary.RankImageURL = img
+	}
+	if !rank.IsMaxRank && s.rankCatalog != nil {
+		if next, ok := s.rankCatalog.Next(rank.RankNumber); ok {
+			fr, _ := next.FullLabel("fr")
+			en, _ := next.FullLabel("en")
+			summary.NextRankNameFR = strings.TrimSpace(fr)
+			summary.NextRankNameEN = strings.TrimSpace(en)
+		}
+		if img, ok := s.rankImageURLs[rank.RankNumber+1]; ok {
+			summary.NextRankImageURL = img
+		}
+	}
+	return summary
+}
+
+// rankIDFromData retourne RankNumber depuis CareerRankData, ou 0 si nil.
+func rankIDFromData(rank *domain.CareerRankData) int {
+	if rank == nil {
+		return 0
+	}
+	return rank.RankNumber
+}
+
 func formatRankLabel(rank *domain.CareerRankData) string {
 	if rank.RankLabel != nil && *rank.RankLabel != "" {
 		return *rank.RankLabel
@@ -374,7 +776,7 @@ func summaryXPTotal(rank *domain.CareerRankData) int {
 	return *rank.XPTotal
 }
 
-func buildHeroProgress(xpTotal int) domain.HeroProgress {
+func buildHeroProgress(xpTotal, currentRank int) domain.HeroProgress {
 	remaining := xpHeroTotal - xpTotal
 	if remaining < 0 {
 		remaining = 0
@@ -388,7 +790,8 @@ func buildHeroProgress(xpTotal int) domain.HeroProgress {
 		XPTotalRequired: xpHeroTotal,
 		XPRemaining:     remaining,
 		Percentage:      pct,
-		CurrentRank:     0, // sera rempli par l'appelant si nécessaire
+		CurrentRank:     currentRank,
+		TotalRanks:      rankMax,
 	}
 }
 
