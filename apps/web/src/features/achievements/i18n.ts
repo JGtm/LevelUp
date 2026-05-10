@@ -16,7 +16,11 @@ export interface AchievementsText {
   summaryCompletion: string
   filterAll: string
   filterUnlocked: string
-  filterLocked: string
+  filterInProgress: string
+  filterNotStarted: string
+  sortDefault: string
+  sortDateAsc: string
+  sortDateDesc: string
   empty: string
   emptyHint: string
   loadError: string
@@ -35,7 +39,11 @@ export const ACHIEVEMENTS_TEXT: Record<AchievementsLocale, AchievementsText> = {
     summaryCompletion: 'Complétion',
     filterAll: 'Tous',
     filterUnlocked: 'Débloqués',
-    filterLocked: 'Verrouillés',
+    filterInProgress: 'En cours',
+    filterNotStarted: 'Non commencé',
+    sortDefault: 'Défaut',
+    sortDateAsc: 'Date ↑',
+    sortDateDesc: 'Date ↓',
     empty: 'Aucun succès en base.',
     emptyHint: 'Lance le backfill : levelup sync-achievements --gamertag <gt>',
     loadError: 'Erreur lors du chargement des succès.',
@@ -52,7 +60,11 @@ export const ACHIEVEMENTS_TEXT: Record<AchievementsLocale, AchievementsText> = {
     summaryCompletion: 'Completion',
     filterAll: 'All',
     filterUnlocked: 'Unlocked',
-    filterLocked: 'Locked',
+    filterInProgress: 'In progress',
+    filterNotStarted: 'Not started',
+    sortDefault: 'Default',
+    sortDateAsc: 'Date ↑',
+    sortDateDesc: 'Date ↓',
     empty: 'No achievements in the database.',
     emptyHint: 'Run the backfill: levelup sync-achievements --gamertag <gt>',
     loadError: 'Failed to load achievements.',
