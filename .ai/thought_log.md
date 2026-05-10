@@ -1,4 +1,14 @@
 
+## [2026-05-10] Compare — CSR réel depuis skill.svc.halowaypoint.com
+
+**Statut** : Complété.
+
+**Décision** : Remplacement complet de la chaîne CSR. L'endpoint `career-stats` était cassé (gamertag au lieu de `xuid({xuid})`). Nouvel endpoint : `GET skill.svc.halowaypoint.com/hi/playlist/{playlistID}/csrs?players=xuid({xuid})`. Ajout de `FetchCSR(ctx, xuid, playlistID)` dans `PlayerStatsProvider` + `GetRecentRankedPlaylistID(ctx, xuid)` dans `CompareRepository` (requête sur `shared.match_registry WHERE is_ranked = TRUE`). Suppression de tous les fallbacks CSR locaux (ATH pool, match_skill_rank) : CSR = 0 si Waypoint indisponible, pas de fausse donnée. `FetchRemoteStats` conservé mais ne fournit plus le CSR.
+
+**Résultats** : `go test ./internal/...` passe. Mocks de test mis à jour (`FetchCSR` + `GetRecentRankedPlaylistID`). Pour joueur B remote-only (sans XUID local), CSR reste 0 — acceptable car pas d'identifiant pour appeler l'endpoint.
+
+**Prochaine étape** : Valider visuellement que CSR s'affiche pour Chocoboflor/JGtm/Nilton410.
+
 ## [2026-05-10] Compare — diagnostic CSR + fix ATH joueur B
 
 **Statut** : Complété (fix partial — CSR toujours 0 si sync CSR Go manquant).
