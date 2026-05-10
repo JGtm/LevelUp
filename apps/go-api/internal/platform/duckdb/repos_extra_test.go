@@ -224,14 +224,6 @@ func TestCompareRepo_GetPlayerATH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPlayerATH: %v", err)
 	}
-	// CSR le plus récent = m1 → 1650
-	if ath.CSRCurrent != 1650 {
-		t.Errorf("CSRCurrent: got %d, want 1650", ath.CSRCurrent)
-	}
-	// CSRBest = MAX(non-LUSR) = 1650
-	if ath.CSRBest != 1650 {
-		t.Errorf("CSRBest: got %d, want 1650", ath.CSRBest)
-	}
 	// CareerRank le plus récent = 55 (enregistrement le plus récent)
 	if ath.CareerRank != 55 {
 		t.Errorf("CareerRank: got %d, want 55", ath.CareerRank)

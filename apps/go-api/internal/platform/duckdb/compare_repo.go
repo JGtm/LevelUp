@@ -104,15 +104,6 @@ func (r *CompareRepo) GetPlayerATH(ctx context.Context) (*domain.PlayerATH, erro
 	const q = `
 		SELECT
 			COALESCE(
-				(SELECT msr.rating_value FROM match_skill_rank msr
-				 WHERE msr.rating_type != 'LUSR'
-				 ORDER BY msr.start_time DESC LIMIT 1),
-				0.0) AS csr_current,
-			COALESCE(
-				(SELECT MAX(msr.rating_value) FROM match_skill_rank msr
-				 WHERE msr.rating_type != 'LUSR'),
-				0.0) AS csr_best,
-			COALESCE(
 				(SELECT cp.rank FROM career_progression cp
 				 ORDER BY cp.recorded_at DESC LIMIT 1),
 				0) AS career_rank,
@@ -124,15 +115,13 @@ func (r *CompareRepo) GetPlayerATH(ctx context.Context) (*domain.PlayerATH, erro
 				 WHERE msr.rating_type = 'LUSR'),
 				0.0) AS lusr_ath`
 
-	var csrCurrent, csrBest, perfATH, lusrATH float64
+	var perfATH, lusrATH float64
 	var careerRank int64
-	err := r.pdb.Player.QueryRow(ctx, q).Scan(&csrCurrent, &csrBest, &careerRank, &perfATH, &lusrATH)
+	err := r.pdb.Player.QueryRow(ctx, q).Scan(&careerRank, &perfATH, &lusrATH)
 	if err != nil {
 		return nil, fmt.Errorf("CompareRepo.GetPlayerATH: %w", err)
 	}
 	return &domain.PlayerATH{
-		CSRCurrent: int(csrCurrent),
-		CSRBest:    int(csrBest),
 		CareerRank: int(careerRank),
 		PerfATH:    perfATH,
 		LusrATH:    lusrATH,
@@ -156,15 +145,6 @@ func (r *CompareRepo) GetPlayerATHFor(ctx context.Context, gamertag, titleSlug s
 	const q = `
 		SELECT
 			COALESCE(
-				(SELECT msr.rating_value FROM match_skill_rank msr
-				 WHERE msr.rating_type != 'LUSR'
-				 ORDER BY msr.start_time DESC LIMIT 1),
-				0.0) AS csr_current,
-			COALESCE(
-				(SELECT MAX(msr.rating_value) FROM match_skill_rank msr
-				 WHERE msr.rating_type != 'LUSR'),
-				0.0) AS csr_best,
-			COALESCE(
 				(SELECT cp.rank FROM career_progression cp
 				 ORDER BY cp.recorded_at DESC LIMIT 1),
 				0) AS career_rank,
@@ -176,15 +156,13 @@ func (r *CompareRepo) GetPlayerATHFor(ctx context.Context, gamertag, titleSlug s
 				 WHERE msr.rating_type = 'LUSR'),
 				0.0) AS lusr_ath`
 
-	var csrCurrent, csrBest, perfATH, lusrATH float64
+	var perfATH, lusrATH float64
 	var careerRank int64
-	err := pdb.Player.QueryRow(ctx, q).Scan(&csrCurrent, &csrBest, &careerRank, &perfATH, &lusrATH)
+	err := pdb.Player.QueryRow(ctx, q).Scan(&careerRank, &perfATH, &lusrATH)
 	if err != nil {
 		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, err)
 	}
 	return &domain.PlayerATH{
-		CSRCurrent: int(csrCurrent),
-		CSRBest:    int(csrBest),
 		CareerRank: int(careerRank),
 		PerfATH:    perfATH,
 		LusrATH:    lusrATH,

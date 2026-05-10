@@ -37,8 +37,6 @@ type NormalizedPlayerStats struct {
 	FavoriteWeapon *WeaponHighlight `json:"favorite_weapon,omitempty"`
 
 	CareerRank int            `json:"career_rank"`
-	CSRCurrent int            `json:"csr_current"`
-	CSRBest    int            `json:"csr_best"`
 	Extended   map[string]any `json:"extended,omitempty"`
 }
 
@@ -52,8 +50,6 @@ type WeaponHighlight struct {
 
 // PlayerATH regroupe les métriques all-time lues depuis stats.duckdb du joueur A.
 type PlayerATH struct {
-	CSRCurrent int
-	CSRBest    int
 	CareerRank int
 	PerfATH    float64
 	LusrATH    float64

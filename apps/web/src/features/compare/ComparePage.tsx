@@ -23,7 +23,7 @@ import { useCompare } from './queries'
 const CATEGORY_KEYS = {
   combat: ['win_rate', 'kda', 'kdr', 'kills_per_game', 'deaths_per_game', 'assists_per_game', 'damage_per_game', 'rendement'],
   precision: ['accuracy', 'headshot_kills_per_game', 'perfect_kills_per_game', 'max_killing_spree', 'avg_life_secs', 'resistance', 'damage_taken_per_game'],
-  bilan: ['matches', 'csr_current', 'csr_best', 'career_rank', 'perf_ath', 'lusr_ath'],
+  bilan: ['matches', 'career_rank', 'perf_ath', 'lusr_ath'],
 } as const
 
 function formatMetricValue(metric: string, value: number | string, text: CompareText) {
@@ -31,7 +31,7 @@ function formatMetricValue(metric: string, value: number | string, text: Compare
   if (metric === 'win_rate' || metric === 'accuracy' || metric === 'rendement' || metric === 'resistance') {
     return `${(value * 100).toLocaleString(text.intlLocale, { maximumFractionDigits: 1 })} %`
   }
-  if (metric === 'matches' || metric === 'csr_current' || metric === 'csr_best' || metric === 'career_rank' || metric === 'max_killing_spree' || metric === 'perf_ath' || metric === 'lusr_ath') {
+  if (metric === 'matches' || metric === 'career_rank' || metric === 'max_killing_spree' || metric === 'perf_ath' || metric === 'lusr_ath') {
     return value.toLocaleString(text.intlLocale, { maximumFractionDigits: 0 })
   }
   if (metric === 'avg_life_secs') {
