@@ -1,7 +1,8 @@
 // Package halo — compare_provider.go : stats d'un joueur distant via Waypoint.
 //
 // Sprint 54 C : PlayerStatsProvider pour la comparaison joueur vs joueur.
-// Les stats sont récupérées depuis l'endpoint Halo Waypoint match-stats.
+// FetchRemoteStats : stats agrégées depuis l'endpoint career-stats.
+// FetchCSR : CSR actuel + meilleur depuis skill.svc.halowaypoint.com.
 package halo
 
 import (
@@ -13,6 +14,8 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+const defaultSkillHost = "https://skill.svc.halowaypoint.com"
+
 // compareStatsResponse est la réponse brute de l'endpoint career stats Waypoint.
 type compareStatsResponse struct {
 	Gamertag           string  `json:"Gamertag"`
@@ -21,12 +24,29 @@ type compareStatsResponse struct {
 	TotalKills         int     `json:"TotalKills"`
 	TotalDeaths        int     `json:"TotalDeaths"`
 	TotalAssists       int     `json:"TotalAssists"`
-	HighestCSR         int     `json:"HighestCSR"`
-	CurrentCSR         int     `json:"CurrentCSR"`
 	ShotsFired         float64 `json:"ShotsFired"`
 	ShotsHit           float64 `json:"ShotsHit"`
 	TotalDamageDealt   float64 `json:"TotalDamageDealt"`
 	TotalDamageTaken   float64 `json:"TotalDamageTaken"`
+}
+
+// csrResponse est la réponse brute de skill.svc.halowaypoint.com/hi/playlist/{id}/csrs.
+type csrResponse struct {
+	Value []csrEntry `json:"Value"`
+}
+
+type csrEntry struct {
+	Id     string    `json:"Id"`
+	Result csrResult `json:"Result"`
+}
+
+type csrResult struct {
+	Current    csrRating `json:"Current"`
+	AllTimeMax csrRating `json:"AllTimeMax"`
+}
+
+type csrRating struct {
+	Value int `json:"Value"`
 }
 
 // FetchRemoteStats retourne les stats normalisées d'un joueur Waypoint.
@@ -54,11 +74,9 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 	}
 
 	stats := domain.NormalizedPlayerStats{
-		TitleSlug:  titleSlug,
-		Gamertag:   gamertag,
-		Matches:    resp.TotalMatchesPlayed,
-		CSRCurrent: resp.CurrentCSR,
-		CSRBest:    resp.HighestCSR,
+		TitleSlug: titleSlug,
+		Gamertag:  gamertag,
+		Matches:   resp.TotalMatchesPlayed,
 	}
 	if resp.TotalMatchesPlayed > 0 {
 		n := float64(resp.TotalMatchesPlayed)
@@ -77,4 +95,46 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 		}
 	}
 	return &stats, nil
+}
+
+// FetchCSR retourne le CSR actuel et le meilleur CSR historique depuis Waypoint.
+// Endpoint : GET skill.svc.halowaypoint.com/hi/playlist/{playlistID}/csrs?players=xuid({xuid})
+// Si Current.Value == -1 (placement), current est retourné comme 0.
+func (p *HaloProvider) FetchCSR(ctx context.Context, xuid, playlistID string) (current, best int, err error) {
+	tokens := ctxkeys.HaloTokens(ctx)
+	if tokens == nil {
+		return 0, 0, fmt.Errorf("FetchCSR: tokens absents du contexte")
+	}
+	if playlistID == "" {
+		return 0, 0, fmt.Errorf("FetchCSR: playlistID vide")
+	}
+
+	url := fmt.Sprintf(
+		"%s/hi/playlist/%s/csrs?players=xuid(%s)",
+		defaultSkillHost,
+		playlistID,
+		xuid,
+	)
+	body, err := p.doGet(ctx, url, tokens)
+	if err != nil {
+		return 0, 0, fmt.Errorf("FetchCSR(%s): %w", xuid, err)
+	}
+
+	var resp csrResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return 0, 0, fmt.Errorf("FetchCSR(%s) parse: %w", xuid, err)
+	}
+	if len(resp.Value) == 0 {
+		return 0, 0, fmt.Errorf("FetchCSR(%s): réponse vide", xuid)
+	}
+
+	result := resp.Value[0].Result
+	// Value == -1 signifie que le joueur est en matchs de placement.
+	if result.Current.Value > 0 {
+		current = result.Current.Value
+	}
+	if result.AllTimeMax.Value > 0 {
+		best = result.AllTimeMax.Value
+	}
+	return current, best, nil
 }

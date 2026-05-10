@@ -311,6 +311,34 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	return enc, nil
 }
 
+// GetRecentRankedPlaylistID retourne le playlist_id du dernier match rankédé du joueur.
+// Retourne "" si aucun match rankédé disponible — best-effort, jamais d'erreur fatale.
+func (r *CompareRepo) GetRecentRankedPlaylistID(ctx context.Context, xuid string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	const q = `
+		SELECT mr.playlist_id
+		FROM shared.match_participants mp
+		JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+		WHERE mp.xuid = ?
+		  AND mr.is_ranked = TRUE
+		  AND mr.playlist_id IS NOT NULL
+		  AND mr.playlist_id != ''
+		ORDER BY COALESCE(mr.start_time_utc, mr.start_time) DESC
+		LIMIT 1`
+
+	var playlistID string
+	err := r.pdb.Player.QueryRow(ctx, q, xuid).Scan(&playlistID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("CompareRepo.GetRecentRankedPlaylistID: %w", err)
+	}
+	return playlistID, nil
+}
+
 // ResolveXUID retourne le XUID correspondant à un gamertag dans le registre partagé.
 func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

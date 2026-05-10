@@ -36,6 +36,10 @@ func (m *mockStatsProvider) FetchRemoteStats(_ context.Context, _, _ string) (*d
 	return m.stats, m.statsErr
 }
 
+func (m *mockStatsProvider) FetchCSR(_ context.Context, _, _ string) (int, int, error) {
+	return 0, 0, nil
+}
+
 // --- tests ---
 
 func TestCompareService_BothLocal(t *testing.T) {
@@ -146,6 +150,10 @@ func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*
 	return nil, nil
 }
 
+func (m *mockCompareRepoAB) GetRecentRankedPlaylistID(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
+
 // ─── F5 : Test de latence Compare P95 < 5s ───────────────────────────────────
 
 // slowProvider simule une latence Waypoint configurable.
@@ -158,6 +166,10 @@ type slowProvider struct {
 func (s *slowProvider) FetchRemoteStats(_ context.Context, _, _ string) (*domain.NormalizedPlayerStats, error) {
 	time.Sleep(s.delay)
 	return s.stats, s.statsErr
+}
+
+func (s *slowProvider) FetchCSR(_ context.Context, _, _ string) (int, int, error) {
+	return 0, 0, nil
 }
 
 // TestCompareService_Latency_P95 vérifie que GetPage s'exécute en < 5s
