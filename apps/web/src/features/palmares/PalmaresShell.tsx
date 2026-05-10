@@ -6,7 +6,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getPalmaresText, normalizePalmaresLocale, type PalmaresTab } from './i18n'
 
-const TAB_ORDER: PalmaresTab[] = ['leaderboard', 'relations', 'compare', 'season-pass']
+const TAB_ORDER: PalmaresTab[] = ['leaderboard', 'relations', 'compare']
 
 export function PalmaresShell({
   playerSlug,

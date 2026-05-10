@@ -1,7 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
-
-import { PalmaresComparePage } from '@/features/palmares/PalmaresComparePage'
+/**
+ * Route /players/$playerSlug/palmares/compare — redirect legacy.
+ * Compare est désormais canoniquement sous /players/$playerSlug/compare.
+ */
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/players/$playerSlug/palmares/compare')({
-  component: PalmaresComparePage,
+  beforeLoad: ({ params, search }) => {
+    throw redirect({
+      to: '/players/$playerSlug/compare',
+      params: { playerSlug: params.playerSlug },
+      search,
+      replace: true,
+    })
+  },
+  component: () => null,
 })
