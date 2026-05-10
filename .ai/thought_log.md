@@ -1,4 +1,39 @@
 
+## [2026-05-10] SeasonPassCard — UI cards secondaires
+
+**Statut** : Complété.
+
+**Décision** :
+Quatre retouches visuelles sur les petites cards "Autres passes" de `SeasonPassPage` :
+1. **Stats sur une ligne** — `PassContentSummary` en mode `compact` fusionne `currencyChips` + `itemChips` en un seul `ChipRow` (gap réduit `gap-x-3`). La rangée raretés est conservée en dessous.
+2. **Suppression labels Rang/Progression** — remplacés par un `flex justify-between` rangée valeurs seules (rang à gauche, % à droite).
+3. **Transparence** — `bg-card/70` (anciennement `bg-card/95`).
+4. **Image plein cadre** — les deux divs semi-transparentes (blur + contain) remplacées par un `bg-cover bg-center` plein + gradient overlay `from-black/80 via-black/40 to-black/50` pour lisibilité. Zoom hover `group-hover:scale-105`.
+
+**Résultats** : Visuel plus compact, image immersive, aucun test cassé.
+
+**Prochaine étape** : RAS.
+
+## [2026-05-10] Navigation L1/L2 — refonte Carrière, Compare, Pass saisonnier
+
+**Statut** : Complété.
+
+**Décision** :
+Trois corrections navigation en une passe :
+1. **NavL2 Carrière** — ajout d'une barre d'onglets L2 (Progression / Citations / Pass saisonnier) dans `NavL2.tsx`, parallèle à celle de Stats. Onglet "Carrière" renommé "Progression" dans L1 et L2 pour éviter la redondance avec le label L1.
+2. **Compare orphelin** — la route `/compare` (`ComparePage`) n'était couverte par aucun `matchPathname`. Corrigé : regex Communauté étendue (`/compare` inclus), tab L1 pointe directement sur `/compare`. `/palmares/compare` converti en `beforeLoad redirect` (suppression de `PalmaresComparePage.tsx`, code mort).
+3. **Pass saisonnier** — URL alignée sur la section L1 : nouvelle route `/career/season-pass` (même composant `SeasonPassPage`), `/palmares/season-pass` converti en `beforeLoad redirect`. Regex `matchPathname` career simplifiée (le préfixe `career` couvre automatiquement `/career/season-pass`).
+
+**Résultats** : 5 fichiers modifiés, 1 créé, 1 supprimé. Aucun test cassé attendu (pure navigation).
+
+**Correctif 1** : La route `career/season-pass.tsx` créait un conflit de layout TanStack Router (`career.tsx` devient `RouteWithChildren` → `SeasonPassPage` s'imbriquait sans `<Outlet />`). Solution définitive : renommer `career.tsx` → `career_.tsx` (trailing underscore = non-layout en TanStack Router v1). `career/season-pass.tsx` recrée. `/palmares/season-pass` → `beforeLoad redirect` vers `/career/season-pass`.
+
+**Correctif 2** : `SeasonPassPage` wrappait tout son contenu dans `PalmaresShell` (tab bar Classements/Relations/Face-à-face/Pass saisonnier). Wrapper retiré, `PalmaresShell.TAB_ORDER` nettoyé (ne contient plus `season-pass`).
+
+**Correctif 3** : `pageTitle.ts` mis à jour — routes manquantes ajoutées (`/citations`, `/compare`, `/career/season-pass`, `/palmares/prestige`, `/objectifs`). Routes obsolètes supprimées (`/palmares/compare`, `/profile/citations`, `/palmares/season-pass`).
+
+**Prochaine étape** : `npm run typecheck`.
+
 ## [2026-05-10] LUSR — refactoring chaînes + fix frontend
 
 **Statut** : Complété.
