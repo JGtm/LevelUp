@@ -248,11 +248,14 @@ type ComparisonMetricItem struct {
 	SquadValue float64 `json:"squad_value"`
 }
 
-// TemporalHeatmapCell est une cellule de la heatmap jour × heure (Sprint 43).
+// TemporalHeatmapCell est une cellule de la heatmap jour × heure (Sprint 43, enrichie P9).
+// Contient le count d'activité + wins et win_rate pour la spec originale (heatmap colorée par WR, count overlay).
 type TemporalHeatmapCell struct {
-	DOW   int `json:"dow"`  // 0 = lundi … 6 = dimanche
-	Hour  int `json:"hour"` // 0–23
-	Count int `json:"count"`
+	DOW     int     `json:"dow"`      // 0 = lundi … 6 = dimanche
+	Hour    int     `json:"hour"`     // 0–23
+	Count   int     `json:"count"`    // activité
+	Wins    int     `json:"wins"`     // victoires dans cette cellule
+	WinRate float64 `json:"win_rate"` // wins / count
 }
 
 // SynthesisPageResponse est la réponse de la page Synthèse.

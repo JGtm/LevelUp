@@ -1849,9 +1849,11 @@ export interface SynthesisQueryRequest {
 }
 
 export interface HeatmapCell {
-  dow: number   // 0 = lundi … 6 = dimanche
+  dow: number    // 0 = lundi … 6 = dimanche
   hour: number
   count: number
+  wins?: number
+  win_rate?: number
 }
 
 export interface TopWeekItem {
@@ -1859,6 +1861,8 @@ export interface TopWeekItem {
   match_count: number
   win_rate: number
   kd_ratio: number | null
+  avg_kills?: number
+  avg_deaths?: number
 }
 
 export interface SynthesisPageResponse {

@@ -106,8 +106,8 @@ export function buildHeatmap2DOption(
     }
   }
 
-  // ECharts heatmap data : [xIndex, yIndex, value]
-  const data = dps.map((d) => [xs.indexOf(d.x), ys.indexOf(d.y), d.value])
+  // ECharts heatmap data : [xIndex, yIndex, value, detail]
+  const data = dps.map((d) => [xs.indexOf(d.x), ys.indexOf(d.y), d.value, d.detail])
 
   const minV = valueRange?.[0] ?? Math.min(...dps.map((d) => d.value))
   const maxV = valueRange?.[1] ?? Math.max(...dps.map((d) => d.value))
@@ -130,9 +130,10 @@ export function buildHeatmap2DOption(
     tooltip: {
       ...getTooltipBase(tc),
       position: 'top',
-      formatter: (params: { data: [number, number, number] }) => {
-        const [xi, yi, v] = params.data
-        return `${ys[yi]} × ${xs[xi]}<br/>Valeur: <b>${v.toFixed(2)}</b>`
+      formatter: (params: { data: [number, number, number, Record<string, unknown>?] }) => {
+        const [xi, yi, v, detail] = params.data
+        const count = detail?.count ?? 0
+        return `${ys[yi]} × ${xs[xi]}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
       },
     },
     xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true } },
@@ -152,7 +153,13 @@ export function buildHeatmap2DOption(
         name: main.key,
         type: 'heatmap',
         data,
-        label: { show: false },
+        label: {
+          show: true,
+          formatter: (params: { data: [number, number, number, Record<string, unknown>?] }) => {
+            const [, , , detail] = params.data
+            return String(detail?.count ?? 0)
+          },
+        },
         emphasis: {
           itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.5)' },
         },
