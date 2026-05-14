@@ -1,4 +1,82 @@
 
+## [2026-05-14] fix(sync) — Auto-sync planifiée silencieuse : 5 bugs cumulés (DuckDB shared, RT rotation, observabilité)
+
+**Statut** : Complété (4 patches livrés ; Madina97294 nécessite régénération manuelle du refresh_token côté utilisateur).
+
+**Contexte** : utilisateur signale que la sync planifiée (toutes les 45 min) tourne depuis des heures mais ne rapporte aucun match récent. Le diagnostic révèle 5 bugs en cascade qui ont tous été masqués par le manque d'observabilité du scheduler.
+
+**Décisions techniques** :
+
+1. **Endpoints diagnostic** (`/api/v1/_diag/auto-sync/*`, loopback only, sans auth) :
+   - `GET /snapshot` : retourne le dernier cycle avec détail par joueur (outcome, raison, compteurs, erreurs)
+   - `POST /run` : force un cycle synchrone et retourne le résultat
+   - `GET /probe?gamertag=X` : teste chaque source de refresh_token (env var, sync_meta) et rapporte present/absent + résultat de l'exchange Microsoft
+   - Le `AutoSyncScheduler` mémorise maintenant un `playerOutcomes map[gamertag]PlayerOutcomeDetail` thread-safe ; `syncPlayer` defer-record systématiquement.
+   - Nouveau middleware `LoopbackOnly` qui retourne 403 hors 127.0.0.1/::1 (utilisé pour ces endpoints diagnostic).
+
+2. **Bug shared DB conflict** : `SyncEngine.OpenSharedDB` ouvrait `shared_matches_v2.duckdb` en `OpenReadWrite` (clé cache `rw:path`) alors que le pool joueur, le boot serveur, gamertagSvc et `loadParticipantXUIDs` l'ouvraient en `OpenReadOnly` (clé `ro:path`). DuckDB refuse 2 configs sur le même fichier → tous les `RunDelta` échouaient avec "Can't open a connection to same database file with a different configuration". 4 sites alignés sur `OpenReadWriteShared` pour partager la clé `rw:path`.
+
+3. **Bug OAuth refresh_token rotation** : Microsoft rotate le refresh_token à chaque usage. `ExchangeRefreshToken` ignorait le `RefreshToken` retourné (commentaire "token tourné — ignoré pour l'instant"). Conséquence : 1er sync OK puis tous les suivants échouaient avec `invalid_grant AADSTS70000` car l'ancien RT était révoqué.
+   - Nouvelle fonction `ExchangeRefreshTokenWithRotation(ctx, rt) (accessToken, rotatedRT, err)`.
+   - Nouvelle fonction `duckdb.WriteOAuthRefreshToken(ctx, db, rt)` (UPSERT sur `sync_meta.oauth_refresh_token`).
+   - `defaultTokenReader` essaie `env_var` PUIS `sync_meta` (dans cet ordre) et persiste le RT rotaté à chaque succès. Système auto-réparant : une fois qu'un RT valide est entré (env var ou via device-flow), les rotations successives sont persistées et le scheduler continue indéfiniment.
+   - Le `Probe` endpoint persiste aussi le rotated RT pour ne pas brûler les RT du caller.
+
+4. **Bug data_health/auto_sync DuckDB lock** : `openSharedRO` (data_health_check.go) et `defaultTokenReader` (auto_sync.go) faisaient `sql.Open("duckdb", "...?access_mode=READ_ONLY")` ou `OpenReadOnly` direct, bypassant le cache de connexions. Aligné sur `OpenReadWriteShared` partout (déjà fait dans 2 sessions précédentes ; ce diag a juste exposé la chaîne complète).
+
+**Résultats observés** :
+- Probe JGtm : `env_var_exchange_ok: true` → confirmé valide
+- Probe Chocoboflor : OK (env var + sync_meta tous deux valides — Chocoboflor était le seul joueur qui sync)
+- Probe Madina97294 : `invalid_grant AADSTS70000` → RT révoqué côté Microsoft, à regénérer manuellement
+- Probe XxDaemonGamerxX : `env_var_present: false` → pas d'env var configurée, joueur non-sync attendu
+
+**Fichiers ajoutés** :
+- `apps/go-api/internal/api/middleware/loopback.go`
+- `apps/go-api/internal/api/handlers/admin_auto_sync.go`
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/scheduler/auto_sync.go` (snapshot machinery + tokenReader env_var priority + rotation persistée)
+- `apps/go-api/internal/platform/auth/oauth_refresh.go` (`ExchangeRefreshTokenWithRotation`)
+- `apps/go-api/internal/platform/duckdb/queries_auth.go` (`WriteOAuthRefreshToken`)
+- `apps/go-api/internal/platform/duckdb/pool.go`, `apps/go-api/cmd/server/main.go`, `apps/go-api/internal/api/server.go`, `apps/go-api/internal/api/registry_notifications.go` (alignement shared DB sur `OpenReadWriteShared`)
+
+**À faire côté utilisateur** :
+- Madina97294 : régénérer le refresh_token via device-code-flow et remettre dans `.env.local`. Une fois un RT valide injecté, le système le maintient via rotation persistée.
+- XxDaemonGamerxX : décider si ce joueur doit être synced (sinon, retirer de `db_profiles.json`).
+
+## [2026-05-14] feat(career/highlight) — Filtre cascadé Modes + Playlists + bouton reset sur la section Matchs marquants
+
+**Statut** : Complété.
+
+**Décision technique** : Extension du système de cascade existant (experience ↔ seasons) pour y ajouter deux nouvelles dimensions (modes et playlists). La cascade est symétrique : chaque dimension est comptée en appliquant tous les autres filtres actifs, mais pas le sien propre.
+
+**Normalisation modes** : alignée sur le standard de l'app (Explorer) — la pool sélectionne `COALESCE(NULLIF(pair_name_fr, ''), pair_name)` comme source, puis `analysis.NormalizeModeLabel(source)` est appliqué à la lecture pour produire le label affiché ("Slayer", "CTF", etc.). Les deux valeurs (`ModeUI` normalisé + `ModeUISource` brut) sont conservées sur `HighlightMatchPoolRow` :
+- `ModeUI` sert aux cascade counts et au label dropdown (côté front)
+- `ModeUISource` sert à l'expansion service → repo pour le filtre SQL
+
+**Architecture cascade ↔ SQL** :
+- L'input utilisateur (`HighlightFilterInput.ModeUIs`) contient les labels normalisés
+- Le service charge le pool d'abord (sert au double usage : counts + expansion)
+- `expandModeUIsToRawSources(pool, selected)` mappe les labels normalisés vers le set de raw sources correspondant
+- Le repo reçoit `CareerHighlightFilters.ModeRawSources` (raw sources) et émet `WHERE COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name) IN (?, ...)`
+- Les fonctions `compute*` cascade utilisent `input.ModeUIs` (normalisés) pour filtrer le pool sur `m.ModeUI`
+
+**Pourquoi pas `InferModeCategoryFromPairName`** : le standard de l'app pour les filtres mode est le sous-mode (`NormalizeModeLabel`), pas la catégorie parente. La page Explorer utilise déjà ce pattern (`computeExplorerAvailableOptions` → `analysis.NormalizeModeLabel(coalesce(PairNameFR, PairName))`).
+
+**Bouton reset** : ajouté à droite des filtres, conditionnel (visible uniquement si au moins un filtre est actif). Reset = experience à 'all' + clear des 3 multi-selects.
+
+**UI stable** : ordre des filtres Experience → Saisons → **Playlists → Modes** (Playlist avant Mode pour suivre le flux logique parent→enfant). Les filtres Modes et Playlists sont **toujours affichés** (plus de masquage conditionnel qui causait du jump UI) — `disabled` quand 0 option disponible ET 0 sélection active, ce qui les grise visiblement sans changer la largeur de la barre.
+
+**Labels FR** (itération suivante) : alignement complet sur le pattern home_repo.enrichHomeMatchTranslations.
+- Pool SQL : `COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name)` (était : EN seul) ; expose `playlist_id` pour le lookup asset_translations.
+- Pool row : ajout `PlaylistID` + `PlaylistNameRaw` (source COALESCE pour expansion SQL) ; `PlaylistName` devient le label final FR après override metadata.
+- Service `applyHighlightPoolFRTranslations` : (a) lookup `mode_name_tr` (lang='fr') pour mapper le `ModeUI` normalisé EN → FR ("Slayer" → "Assassin") ; (b) lookup `asset_translations[playlist, fr]` par playlist_id pour override `PlaylistName`.
+- Nouvelles méthodes port `CareerRepository.LoadModeTranslationsFR` + `LoadPlaylistAssetTranslationsFR` (calquées sur SquadRepo + enrichLUSRPlaylistNames existant).
+- Expansion symétrique côté playlists (`expandPlaylistNamesToRaw`) pour produire la clause SQL `COALESCE(NULLIF(playlist_name_fr, ''), playlist_name) IN (...)`, ce qui matche la source utilisée côté pool.
+- Filtre struct : renommage `PlaylistNames` → `PlaylistNamesRaw` pour cohérence avec `ModeRawSources`.
+
+**Résultat** : Cascade complète à 4 dimensions avec labels propres ("Slayer" et non "Arena:Slayer on Bazaar"). Reset 1-clic disponible.
+
 ## [2026-05-13] fix(config) — Admin player déterministe via champ "admin" dans db_profiles.json
 
 **Statut** : Complété.
@@ -179,7 +257,9 @@ Suite à un retour utilisateur (la V2 perd le lien explicite entre points faible
 
 **V1 augmentée** : 10 commits au lieu de 8 (+commit 5 ImprovementCampaign service + commit 7 UI CampaignTracker). Effort total +2-3j sur V1. V2 intègre les campagnes en lecture seule (Coach priorise alertes sur axe de campagne active, déclenche alerte auto-clôture R5).
 
-**Prochaine étape** : Valider le plan V1 enrichi avec la Campagne, puis démarrer commit 1 (tagging templates).
+**Principe d'opt-in confirmé** : Le système Profil + Campagne (V1) et le système Progression Tracking (V2) sont **additionnels, jamais imposés**. Le mode `libre` de `CreateChallengeForm` reste 100% disponible et inchangé — le joueur peut toujours créer un défi "juste pour le fun" sans déclencher de campagne ni passer par le profil. Les défis libres ont `campaign_id = NULL` et coexistent sans hiérarchie de valeur. La mini-modale de démarrage de campagne inclut une option "Skip — créer juste un défi libre". V2 (Streaks/Records/Coach) reste actif par défaut mais discret et non bloquant.
+
+**Prochaine étape** : Démarrer commit 1 (tagging templates) une fois la branche prête (working tree à finaliser par l'utilisateur).
 
 ## [2026-05-13] feat(ui) — Résistance défensive recentrée à 0 (±%)
 

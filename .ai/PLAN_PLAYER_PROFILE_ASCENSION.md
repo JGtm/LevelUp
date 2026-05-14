@@ -35,6 +35,7 @@ En parallèle, la nav L1 `Objectifs` est renommée **`Ascension`**.
 | Défis conditionnels (`X wins avec stat Y`) | Reportés en **V1.5** (plan séparé) — pas inclus dans cette V1 |
 | Mécanique V2 (pousser progression sur durée) | **Streaks + Records & Milestones + Coach positif** — plan dédié [PLAN_PROGRESSION_TRACKING_ASCENSION.md](PLAN_PROGRESSION_TRACKING_ASCENSION.md). Saisons écartées (cf. [PLAN_SEASONS_ASCENSION.md](PLAN_SEASONS_ASCENSION.md) DEPRECATED) |
 | **Campagne d'amélioration** (boucle profil → objectif → suivi) | **Inclus en V1** §4.5. Mini-objectif personnel volontaire sur 1 axe, snapshot + delta lissé LOWESS, sans deadline ni pénalité. Reboucle la demande d'origine ("à partir du profil, se mettre des objectifs et suivre"). +2-3j d'effort sur V1 |
+| **Le nouveau système n'est jamais imposé** | Le mode `libre` de `CreateChallengeForm` reste 100% disponible et inchangé. Le joueur peut toujours créer un défi "juste pour le fun" sans passer par le profil ni par une campagne. Profil joueur + Campagne = **couche additionnelle opt-in**, jamais bloquante |
 
 ---
 
@@ -176,6 +177,12 @@ Le rang LUSR est l'**horizon visible**, pas un objectif de campagne. Raisons : (
 **Concept** : un mini-objectif personnel volontairement activé par le joueur sur **1 axe identifié comme amélioration prioritaire**. Pas de deadline, pas de pénalité, pas de reward externe — la progression visible **est** sa propre récompense.
 
 C'est la pièce qui rebouclera le parcours initial : *à partir du profil joueur → identifier un point faible → se mettre un objectif → suivre dans le temps*.
+
+**Principe clé — la campagne n'est jamais obligatoire** :
+- Le joueur peut toujours créer un défi **libre** depuis l'onglet `challenges` (flow Prestige existant, mode `libre`) sans déclencher de campagne ni passer par le profil
+- La campagne est une **opt-in** : on la propose en CTA depuis Section C, jamais imposée
+- Un défi créé en mode libre n'a pas de `campaign_id` (NULL) — il existe à part, juste pour le fun
+- L'UX doit clairement signaler que les défis "fun" et les défis "campagne" coexistent sans hiérarchie de valeur
 
 #### 4.5.1 Modèle
 
@@ -504,12 +511,22 @@ Intégration : insérer en **tête** de l'onglet `parcours` dans `apps/web/src/f
 
 #### Réutilisation flow CreateChallenge
 
-Bouton "Lancer ce défi" appelle `CreateChallenge` en mode automatique avec `template_id` pré-rempli **et** `campaign_id` si une campagne active correspond à l'axe ciblé par le défi. Le composant `CreateChallengeForm` doit accepter une prop `prefilledTemplateId` + `attachToCampaignId`.
+**Le flow existant `CreateChallengeForm` n'est pas modifié dans son comportement par défaut** :
+- Mode `libre` (joueur définit tout) : inchangé, `campaign_id` = NULL
+- Mode `hybride` (suggestion template + ajustement) : inchangé, `campaign_id` = NULL
+- Mode `automatique` (3 templates au choix) : inchangé, `campaign_id` = NULL
+
+**Nouveauté non bloquante** : `CreateChallengeForm` accepte deux props optionnelles :
+- `prefilledTemplateId` (déjà éventuellement présent) — pré-sélection du template depuis Section C
+- `attachToCampaignId` — pré-link à une campagne active
+
+Ces props sont utilisées **uniquement** quand le défi est lancé depuis le profil (Section C). Tout autre point d'entrée (onglet `challenges`, autres CTAs Prestige existants) ne les passe pas → comportement identique à aujourd'hui.
 
 CTA "Démarrer une campagne sur cet axe" dans Section C ouvre une mini-modale :
 - Choix du `playlist_group` (par défaut "all", recommandé : le playlist_group dominant du joueur sur la fenêtre)
 - Récap du snapshot prévu
 - Phrase pédagogique R2 : *"On t'aide à voir ta trajectoire, pas à la garantir."*
+- **Option "Skip — créer juste un défi libre"** : permet de ressortir vers le flow `CreateChallengeForm` sans démarrer de campagne
 
 ### 5.3 Tagging du catalogue
 
