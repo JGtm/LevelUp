@@ -383,11 +383,11 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 </div>
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-foreground leading-none">{offConv.toFixed(2)}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{(offConv * 100).toFixed(0)}%</span>
                     <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>Rendement</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-foreground leading-none">{defRes.toFixed(2)}</span>
+                    <span className="text-sm font-bold text-foreground leading-none">{((defRes - 1) * 100).toFixed(0)}%</span>
                     <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>Résistance</span>
                   </div>
                 </div>
