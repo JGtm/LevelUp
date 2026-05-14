@@ -22,6 +22,22 @@ export interface FieldError {
   code?: string
 }
 
+/**
+ * Extrait un message lisible d'une erreur catchée par TanStack Query ou un
+ * onError. `ApiError` est un objet plain (pas `instanceof Error`), donc le
+ * pattern usuel `err instanceof Error ? err.message : undefined` perd toujours
+ * le message backend. Cette helper accepte `ApiError`, `Error` et `unknown`.
+ */
+export function apiErrorMessage(err: unknown): string | undefined {
+  if (!err) return undefined
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const m = (err as { message?: unknown }).message
+    if (typeof m === 'string' && m.length > 0) return m
+  }
+  if (err instanceof Error) return err.message
+  return undefined
+}
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
 /**

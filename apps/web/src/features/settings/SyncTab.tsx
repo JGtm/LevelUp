@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
+import { apiErrorMessage } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
 import { useJobToasts } from '@/features/settings/useJobToasts'
@@ -56,7 +57,7 @@ export function SyncTab({ merged, handleChange, t }: TabProps) {
       },
       onError: (err) => {
         toast.error(t.syncToastStartFailed, {
-          description: err instanceof Error ? err.message : undefined,
+          description: apiErrorMessage(err),
         })
       },
     })
