@@ -95,7 +95,7 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="cursor-pointer border-0 bg-transparent text-[10px] text-muted-foreground outline-none"
+              className="cursor-pointer border-0 bg-card text-[10px] text-muted-foreground outline-none"
             >
               <option value="all">{t.filterAll}</option>
               <option value="unlocked">{t.filterUnlocked}</option>
@@ -105,7 +105,7 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
             <select
               value={dateSort}
               onChange={(e) => setDateSort(e.target.value as DateSort)}
-              className="cursor-pointer border-0 bg-transparent text-[10px] text-muted-foreground outline-none"
+              className="cursor-pointer border-0 bg-card text-[10px] text-muted-foreground outline-none"
             >
               <option value="default">{t.sortDefault}</option>
               <option value="asc">{t.sortDateAsc}</option>

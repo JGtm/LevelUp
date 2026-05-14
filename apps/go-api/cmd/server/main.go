@@ -193,7 +193,13 @@ func main() {
 		slog.Debug("migrations appliquées")
 	}
 
-	sharedDB, err := duckdb.OpenReadOnly(sharedPath)
+	// IMPORTANT : OpenReadWriteShared (et non OpenReadOnly) pour partager la
+	// même instance DuckDB que le pool joueur et le sync engine. Sinon DuckDB
+	// rejette toute seconde connexion sur le même fichier avec
+	// "Can't open a connection to same database file with a different configuration"
+	// dès que le sync engine essaye OpenSharedDB → OpenReadWrite. Le code ici ne
+	// fait que des SELECT, le mode RW n'a aucun effet sur les écritures.
+	sharedDB, err := duckdb.OpenReadWriteShared(sharedPath)
 	if err != nil {
 		slog.Error("ouverture shared_matches_v2 échouée", "err", err)
 		os.Exit(1)
@@ -310,7 +316,7 @@ func main() {
 	// Routeur HTTP — le daemon peut être nil si le watcher est désactivé.
 	// reg est assigné ici : la closure notifierGetter y accède de manière lazy (joueur actif après démarrage).
 	var router http.Handler
-	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider)
+	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler)
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.

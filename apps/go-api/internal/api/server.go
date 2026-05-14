@@ -41,6 +41,7 @@ import (
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/prestige"
+	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
 )
@@ -56,6 +57,7 @@ func NewRouter(
 	bootSvc *service.BootstrapService,
 	daemon watcher.DaemonController,
 	tokenProvider auth_platform.TokenProvider,
+	autoSyncScheduler *scheduler.AutoSyncScheduler,
 ) (http.Handler, *ServiceRegistry) {
 	if tokenProvider == nil {
 		tokenProvider = auth_platform.NewMSALProvider()
@@ -210,7 +212,9 @@ func NewRouter(
 	}
 
 	var gamertagSvc port.GamertagSearchService
-	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
+	// OpenReadWriteShared pour partager la clé cache "rw:path" avec le pool
+	// joueur et le sync engine — voir commentaire dans cmd/server/main.go.
+	if sharedDB, err := platform_duckdb.OpenReadWriteShared(config.SharedDBPath(cfg, "")); err != nil {
 		slog.Warn("shared DB unavailable for gamertag search", "err", err)
 	} else {
 		gamertagSvc = platform_duckdb.NewGamertagRepo(sharedDB)
@@ -428,6 +432,20 @@ func NewRouter(
 			r.Post("/invites", adminHandler.GenerateInvite)
 			r.Delete("/invites/{code}", adminHandler.RevokeInvite)
 		})
+
+		// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.
+		// Permet de comprendre pourquoi le scheduler ne sync pas un joueur sans
+		// avoir à fouiller dans les logs serveur (raison du skip/failure par joueur).
+		// Bloqué en non-loopback : retourne 403.
+		if autoSyncScheduler != nil {
+			autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg)
+			r.Route("/_diag/auto-sync", func(r chi.Router) {
+				r.Use(middleware.LoopbackOnly)
+				r.Get("/snapshot", autoSyncH.GetSnapshot)
+				r.Post("/run", autoSyncH.RunOnce)
+				r.Get("/probe", autoSyncH.ProbeTokens)
+			})
+		}
 
 		// Sprint 16 : Settings + Setup joueur
 		// §4 plan Squad/Sessions : orchestrator recompute is_with_friends, déclenché
