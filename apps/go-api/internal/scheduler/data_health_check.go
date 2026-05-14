@@ -244,14 +244,13 @@ func (s *HealthScheduler) emitWarningNotification(ctx context.Context, res *Data
 }
 
 // openDBShared ouvre une DuckDB via le cache de connexions partagé du package
-// duckdb (clé "rw:path"). Crucial pour éviter le conflit DuckDB
-// "Can't open a connection to same database file with a different configuration"
-// quand le serveur principal a déjà ouvert la même DB en read-write via le pool
-// joueur ou les migrations. Un sql.Open direct créerait une 2e config DuckDB
-// sur le même fichier, ce que le moteur refuse.
+// duckdb (clé "ro:path"). Le data_health ne fait que des SELECT, donc RO suffit.
+// Aligné sur OpenReadOnly comme main.go::sharedDB et openPlayerDB::sharedDB
+// pour partager la même instance et éviter le conflit "different configuration".
+// Voir commentaire dans cmd/server/main.go pour le trade-off RO vs RW.
 //
 // La connexion retournée est ref-comptée : Close() décrémente le compteur
 // sans fermer la DB si d'autres handles sont en cours d'utilisation.
 func openDBShared(path string) (*duckdb.DB, error) {
-	return duckdb.OpenReadWriteShared(path)
+	return duckdb.OpenReadOnly(path)
 }

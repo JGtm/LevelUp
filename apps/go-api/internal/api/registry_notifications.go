@@ -147,9 +147,10 @@ func loadParticipantXUIDs(ctx context.Context, sharedMatchesDBPath string, match
 	if len(matchIDs) == 0 {
 		return nil, nil
 	}
-	// OpenReadWriteShared (clé cache "rw:path") pour partager l'instance avec
-	// le pool joueur et le sync engine — sinon DuckDB rejette la 2e config.
-	db, err := duckdb.OpenReadWriteShared(sharedMatchesDBPath)
+	// OpenReadOnly partagé avec main.go::sharedDB et openPlayerDB — voir
+	// commentaire dans cmd/server/main.go. Le mode RW exclusif cassait
+	// l'ATTACH des player DBs.
+	db, err := duckdb.OpenReadOnly(sharedMatchesDBPath)
 	if err != nil {
 		return nil, err
 	}

@@ -193,13 +193,19 @@ func main() {
 		slog.Debug("migrations appliquées")
 	}
 
-	// IMPORTANT : OpenReadWriteShared (et non OpenReadOnly) pour partager la
-	// même instance DuckDB que le pool joueur et le sync engine. Sinon DuckDB
-	// rejette toute seconde connexion sur le même fichier avec
-	// "Can't open a connection to same database file with a different configuration"
-	// dès que le sync engine essaye OpenSharedDB → OpenReadWrite. Le code ici ne
-	// fait que des SELECT, le mode RW n'a aucun effet sur les écritures.
-	sharedDB, err := duckdb.OpenReadWriteShared(sharedPath)
+	// IMPORTANT — DuckDB single-process file lock :
+	//   - OpenReadOnly autorise plusieurs handles RO simultanés du même fichier
+	//     dans le process (ATTACH RO sur les player DBs du pool fonctionne).
+	//   - OpenReadWriteShared prend un lock exclusif → tout ATTACH ultérieur
+	//     (même RO) sur ce fichier depuis une autre connexion DuckDB est refusé
+	//     avec "Unique file handle conflict".
+	//
+	// On garde donc shared_matches_v2 en RO au boot. Le sync engine ouvre
+	// shared en RW via OpenSharedDB lors de RunDelta, ce qui peut entrer en
+	// conflit "different configuration" pendant qu'une lecture HTTP utilise
+	// l'instance RO de ce sharedDB. C'est un trade-off : on accepte un échec
+	// transitoire du sync engine plutôt que tous les handlers HTTP bloqués.
+	sharedDB, err := duckdb.OpenReadOnly(sharedPath)
 	if err != nil {
 		slog.Error("ouverture shared_matches_v2 échouée", "err", err)
 		os.Exit(1)
