@@ -730,13 +730,12 @@ done:
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
 	postResult := e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted, result.InsertedMatchIDs)
-	if result.MatchesInserted > 0 || postResult.CareerSynced || postResult.AchievementsSynced {
+	if result.MatchesInserted > 0 || postResult.AchievementsSynced {
 		result.PostSync = &postResult
 		slog.InfoContext(ctx, "sync: pipeline post-sync terminé",
 			"gamertag", e.gamertag,
 			"perf_scores", postResult.PerfScoresComputed,
 			"lusr_updated", postResult.LUSRUpdated,
-			"career_synced", postResult.CareerSynced,
 			"views_refreshed", postResult.ViewsRefreshed,
 			"achievements_synced", postResult.AchievementsSynced,
 		)
@@ -801,11 +800,11 @@ func (e *SyncEngine) runConditionalPostSync(
 			"gamertag", e.gamertag, "matches_healed", healed, "needs_score_refresh", needsScoreRefresh)
 		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, nil)
 	}
-	slog.DebugContext(ctx, "sync: aucun match inséré — refresh carrière seul", "gamertag", e.gamertag)
-	careerSynced := e.runCareerSync(ctx, playerDB, client)
+	slog.DebugContext(ctx, "sync: aucun match inséré — refresh CSR + achievements seul (carrière live découplé)", "gamertag", e.gamertag)
+	// Carrière (XP + Spartan ID) retirée du post-sync : service.CareerLiveService
+	// la rafraîchit live à chaque chargement de /pages/home.
 	e.runCSRSnapshotSync(ctx, playerDB, client)
 	return domain.PostSyncResult{
-		CareerSynced:       careerSynced,
 		AchievementsSynced: e.runAchievementsSync(ctx, playerDB),
 	}
 }
@@ -1537,10 +1536,16 @@ func (e *SyncEngine) runPostSyncPipeline(
 		slog.DebugContext(ctx, "post-sync: LUSR mis à jour", "gamertag", e.gamertag, "count", n)
 	}
 
-	// 3. Career rank
-	r.CareerSynced = e.runCareerSync(ctx, playerDB, client)
+	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
+	// Le flow XP + Spartan ID est désormais géré par service.CareerLiveService
+	// (throttle 5 min / 6 h + fallback DB per-field), appelé depuis HomeService
+	// à chaque chargement de /pages/home. Voir .ai/thought_log.md.
+	// domain.PostSyncResult.CareerSynced reste dans le struct (compat e2e tests)
+	// mais n'est plus jamais positionné à true ici.
 
-	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide)
+	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide).
+	// Maintenu dans le post-sync : le CSR ne bouge que sur fin de match ranked,
+	// donc le déclencheur "nouveau match" reste pertinent.
 	e.runCSRSnapshotSync(ctx, playerDB, client)
 
 	// 3.5 Friends recompute is_with_friends (best-effort).
@@ -1583,41 +1588,6 @@ func (e *SyncEngine) runPostSyncPipeline(
 	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
 
 	return r
-}
-
-func (e *SyncEngine) runCareerSync(
-	ctx context.Context,
-	playerDB *sql.DB,
-	client HaloClient,
-) bool {
-	slog.DebugContext(ctx, "post-sync: sync career rank", "gamertag", e.gamertag, "xuid", e.xuid)
-	data, err := syncCareerRank(ctx, client, e.xuid)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: career rank échoué", "gamertag", e.gamertag, "err", err)
-		return false
-	}
-	if data == nil {
-		return false
-	}
-	if strings.TrimSpace(e.metadataDBPath) != "" {
-		metaDB, err := openCareerMetadataDB(e.metadataDBPath)
-		if err != nil {
-			slog.WarnContext(ctx, "post-sync: ouverture metadata échouée", "gamertag", e.gamertag, "err", err)
-		} else {
-			defer metaDB.Close()
-			if err := enrichCareerRankFromMetadata(metaDB.SQLDb(), data); err != nil {
-				slog.WarnContext(ctx, "post-sync: enrichissement carrière metadata échoué", "gamertag", e.gamertag, "err", err)
-			}
-		}
-	}
-	if err := saveCareerRank(playerDB, data); err != nil {
-		slog.WarnContext(ctx, "post-sync: sauvegarde career échouée", "gamertag", e.gamertag, "err", err)
-		return false
-	}
-	slog.DebugContext(ctx, "post-sync: career rank sauvegardé",
-		"gamertag", e.gamertag, "rank", data.CurrentRank, "rank_name", data.CurrentRankName,
-	)
-	return true
 }
 
 // runCSRSnapshotSync récupère les classements CSR du joueur pour la saison courante
