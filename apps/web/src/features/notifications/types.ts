@@ -23,6 +23,7 @@ export type NotificationCategory =
   | 'threshold_crossed'
   | 'friend_added'           // §6 Squad/Sessions overhaul
   | 'friend_sync_completed'  // §6 Squad/Sessions overhaul
+  | 'data_health_warning'    // émis par le scheduler data_health (audit DB périodique)
 
 export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
@@ -39,6 +40,7 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'threshold_crossed',
   'friend_added',
   'friend_sync_completed',
+  'data_health_warning',
 ]
 
 export type NotificationSeverity = 'info' | 'success' | 'warn' | 'error'

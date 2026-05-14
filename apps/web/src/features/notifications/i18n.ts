@@ -155,6 +155,7 @@ const FR: NotificationsText = {
     threshold_crossed: 'Palier franchi',
     friend_added: 'Ami ajouté',
     friend_sync_completed: 'Sessions amis mises à jour',
+    data_health_warning: 'Audit base de données',
   },
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
@@ -171,6 +172,7 @@ const FR: NotificationsText = {
     threshold_crossed: 'Un palier de ratio FDA ou de taux de victoire a été franchi.',
     friend_added: 'Un gamertag a été ajouté à ta liste d\'amis.',
     friend_sync_completed: 'Des matchs ont été reclassés en escouade après ajout d\'ami.',
+    data_health_warning: 'Anomalies détectées dans la base par l\'audit périodique (XUIDs orphelins, bits incohérents, URLs résiduelles).',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
@@ -213,6 +215,8 @@ const FR: NotificationsText = {
     'notif.friend_sync_completed.body': '{promoted} match(s) reclassé(s) en escouade-amis.',
     'notif.test.title': 'Notification de test',
     'notif.test.body': 'Le pipeline de notifications fonctionne correctement.',
+    'notif.data_health_warning.title': 'Audit base : {warnings_total} anomalie(s) détectée(s)',
+    'notif.data_health_warning.body': '{orphan_xuids} XUID(s) orphelin(s), {uuids_raw} UUID(s) brut(s), {lying_bits_events} bit(s) menteur(s). {hint}',
   },
 
   relJustNow: 'à l’instant',
@@ -290,6 +294,7 @@ const EN: NotificationsText = {
     threshold_crossed: 'Threshold crossed',
     friend_added: 'Friend added',
     friend_sync_completed: 'Friend sessions updated',
+    data_health_warning: 'Database audit',
   },
   categoryDescription: {
     app_release: 'A new LevelUp version is available.',
@@ -306,6 +311,7 @@ const EN: NotificationsText = {
     threshold_crossed: 'A K/D or winrate threshold was crossed.',
     friend_added: 'A gamertag was added to your friends list.',
     friend_sync_completed: 'Matches were reclassified as squad after a friend addition.',
+    data_health_warning: 'Anomalies detected by the periodic DB audit (orphan XUIDs, lying bits, stale URLs).',
   },
 
   metricLabel: {
@@ -345,6 +351,8 @@ const EN: NotificationsText = {
     'notif.friend_sync_completed.body': '{promoted} match(es) reclassified as squad-friends.',
     'notif.test.title': 'Test notification',
     'notif.test.body': 'The notifications pipeline is working correctly.',
+    'notif.data_health_warning.title': 'Database audit: {warnings_total} anomaly(ies) found',
+    'notif.data_health_warning.body': '{orphan_xuids} orphan XUID(s), {uuids_raw} raw UUID(s), {lying_bits_events} lying bit(s). {hint}',
   },
 
   relJustNow: 'just now',
