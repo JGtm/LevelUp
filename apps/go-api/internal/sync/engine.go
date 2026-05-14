@@ -80,6 +80,9 @@ type SyncEngine struct {
 	// qui appellent processMatch directement → l'enrichissement devient no-op
 	// et la sync reste fonctionnelle (UUID préservé comme avant).
 	metaDB *sql.DB
+	// csrSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
+	// Vide → runCSRSnapshotSync est skippé silencieusement.
+	csrSeasonID string
 }
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -135,6 +138,13 @@ func (e *SyncEngine) WithResolver(r assets.Resolver) *SyncEngine {
 // n'arrête pas le sync (best-effort).
 func (e *SyncEngine) WithFriendsLoader(loader FriendsLoader) *SyncEngine {
 	e.friendsLoader = loader
+	return e
+}
+
+// WithCSRSeasonID configure l'identifiant de saison CSR (ex: "CsrSeason8").
+// Requis pour que runCSRSnapshotSync appelle l'API — skip silencieux si absent.
+func (e *SyncEngine) WithCSRSeasonID(id string) *SyncEngine {
+	e.csrSeasonID = id
 	return e
 }
 
@@ -792,8 +802,10 @@ func (e *SyncEngine) runConditionalPostSync(
 		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, nil)
 	}
 	slog.DebugContext(ctx, "sync: aucun match inséré — refresh carrière seul", "gamertag", e.gamertag)
+	careerSynced := e.runCareerSync(ctx, playerDB, client)
+	e.runCSRSnapshotSync(ctx, playerDB, client)
 	return domain.PostSyncResult{
-		CareerSynced:       e.runCareerSync(ctx, playerDB, client),
+		CareerSynced:       careerSynced,
 		AchievementsSynced: e.runAchievementsSync(ctx, playerDB),
 	}
 }
@@ -1528,6 +1540,9 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 3. Career rank
 	r.CareerSynced = e.runCareerSync(ctx, playerDB, client)
 
+	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide)
+	e.runCSRSnapshotSync(ctx, playerDB, client)
+
 	// 3.5 Friends recompute is_with_friends (best-effort).
 	// Avant l'étape 4 (aggregates) pour éviter un double-refresh : on passe
 	// refreshAggregates=false, le refresh natif de l'engine couvre les UPDATEs.
@@ -1603,6 +1618,21 @@ func (e *SyncEngine) runCareerSync(
 		"gamertag", e.gamertag, "rank", data.CurrentRank, "rank_name", data.CurrentRankName,
 	)
 	return true
+}
+
+// runCSRSnapshotSync récupère les classements CSR du joueur pour la saison courante
+// et les persiste dans player_csr_snapshots. Best-effort : skippé si csrSeasonID vide.
+func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) {
+	if strings.TrimSpace(e.csrSeasonID) == "" {
+		return
+	}
+	slog.DebugContext(ctx, "post-sync: sync CSR snapshots", "gamertag", e.gamertag, "season", e.csrSeasonID)
+	n, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: CSR snapshots échoué", "gamertag", e.gamertag, "err", err)
+		return
+	}
+	slog.DebugContext(ctx, "post-sync: CSR snapshots sauvegardés", "gamertag", e.gamertag, "count", n)
 }
 
 // runAchievementsSync récupère les achievements Xbox pour le joueur et les persiste.

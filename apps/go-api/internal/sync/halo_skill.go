@@ -295,3 +295,108 @@ func ParticipantXUIDs(rows []ParticipantRow) []string {
 // ErrSkillStatsUnavailable est retournée par GetMatchSkill quand le token n'a
 // pas accès au skill endpoint. Non-bloquant : le sync continue sans skill data.
 var ErrSkillStatsUnavailable = errors.New("skill stats unavailable")
+
+// ---------------------------------------------------------------------------
+// Player CSR (classement compétitif par playlist)
+// ---------------------------------------------------------------------------
+
+// CSRRankSnapshot est un instantané de classement (current/season/alltime).
+type CSRRankSnapshot struct {
+	Value                       float64
+	Tier                        string
+	SubTier                     int
+	MeasurementMatchesRemaining int
+}
+
+// PlayerPlaylistCSR regroupe les classements d'un joueur pour une playlist ranked.
+type PlayerPlaylistCSR struct {
+	PlaylistID   string
+	PlaylistName string
+	Queue        string // "SoloAndDuo" | "Open" | ""
+	Input        string // "Crossplay" | "Keyboard" | "Controller" | ""
+	Current      CSRRankSnapshot
+	Season       CSRRankSnapshot
+	AllTime      CSRRankSnapshot
+}
+
+// playerCSRResponse est la désérialisation brute du JSON Waypoint
+// GET https://skill.svc.halowaypoint.com/hi/players/xuid({xuid})/csrs?Season={id}
+type playerCSRResponse struct {
+	Value []struct {
+		ID         string `json:"Id"`
+		ResultCode int    `json:"ResultCode"`
+		Result     struct {
+			Current    csrRankRaw `json:"Current"`
+			SeasonMax  csrRankRaw `json:"SeasonMax"`
+			AllTimeMax csrRankRaw `json:"AllTimeMax"`
+			PlaylistID   string `json:"PlaylistId"`
+			PlaylistName string `json:"PlaylistName"`
+			Queue        string `json:"Queue"`
+			Input        string `json:"Input"`
+		} `json:"Result"`
+	} `json:"Value"`
+}
+
+type csrRankRaw struct {
+	Value                       float64 `json:"Value"`
+	MeasurementMatchesRemaining int     `json:"MeasurementMatchesRemaining"`
+	Tier                        string  `json:"Tier"`
+	SubTier                     int     `json:"SubTier"`
+}
+
+func rawToCSRSnapshot(r csrRankRaw) CSRRankSnapshot {
+	return CSRRankSnapshot{
+		Value:                       r.Value,
+		Tier:                        r.Tier,
+		SubTier:                     r.SubTier,
+		MeasurementMatchesRemaining: r.MeasurementMatchesRemaining,
+	}
+}
+
+// GetPlayerCSRs récupère les classements CSR du joueur pour toutes les playlists
+// ranked d'une saison donnée. Utilise le service token (endpoint public).
+func (c *HaloAPIClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID string) ([]PlayerPlaylistCSR, error) {
+	if strings.TrimSpace(xuid) == "" {
+		return nil, fmt.Errorf("GetPlayerCSRs: xuid vide")
+	}
+	if strings.TrimSpace(seasonID) == "" {
+		return nil, fmt.Errorf("GetPlayerCSRs: seasonID vide")
+	}
+
+	endpoint := fmt.Sprintf(
+		"%s/hi/players/xuid(%s)/csrs?Season=%s",
+		haloSkillHost,
+		url.PathEscape(xuid),
+		url.QueryEscape(seasonID),
+	)
+
+	body, err := c.doGet(ctx, endpoint)
+	if err != nil {
+		if isNotFoundErr(err) {
+			return []PlayerPlaylistCSR{}, nil
+		}
+		return nil, fmt.Errorf("GetPlayerCSRs(%s): %w", xuid, err)
+	}
+
+	var resp playerCSRResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("GetPlayerCSRs decode(%s): %w", xuid, err)
+	}
+
+	out := make([]PlayerPlaylistCSR, 0, len(resp.Value))
+	for _, v := range resp.Value {
+		if v.ResultCode != 0 {
+			continue
+		}
+		out = append(out, PlayerPlaylistCSR{
+			PlaylistID:   v.Result.PlaylistID,
+			PlaylistName: v.Result.PlaylistName,
+			Queue:        v.Result.Queue,
+			Input:        v.Result.Input,
+			Current:      rawToCSRSnapshot(v.Result.Current),
+			Season:       rawToCSRSnapshot(v.Result.SeasonMax),
+			AllTime:      rawToCSRSnapshot(v.Result.AllTimeMax),
+		})
+	}
+	return out, nil
+}

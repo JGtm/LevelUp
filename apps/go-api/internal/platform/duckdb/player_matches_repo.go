@@ -111,7 +111,11 @@ func (r *PlayerMatchesRepo) buildQuery(f port.PlayerMatchFilters) (string, []any
 		args = append(args, *f.IsFirefight)
 	}
 	if f.IsRanked != nil {
-		sb.WriteString(" AND COALESCE(r.is_ranked, FALSE) = ?")
+		sb.WriteString(` AND (CASE
+			WHEN COALESCE(r.is_ranked, FALSE)
+				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+			THEN TRUE ELSE FALSE END) = ?`)
 		args = append(args, *f.IsRanked)
 	}
 	if f.MinTimePlayedSeconds != nil {
@@ -189,7 +193,12 @@ SELECT
     COALESCE(r.pair_id, '')                           AS pair_id,
     COALESCE(r.pair_name, '')                         AS pair_name,
     COALESCE(r.pair_name_fr, '')                      AS pair_name_fr,
-    COALESCE(r.is_ranked, FALSE)                      AS is_ranked,
+    CASE
+        WHEN COALESCE(r.is_ranked, FALSE)
+            OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+            OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+        THEN TRUE ELSE FALSE
+    END                                                  AS is_ranked,
     COALESCE(r.is_firefight, FALSE)                   AS is_firefight,
     COALESCE(p.team_id, 0)                            AS team_id,
     p.outcome                                         AS outcome_code,

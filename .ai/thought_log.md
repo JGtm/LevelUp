@@ -1,4 +1,45 @@
 
+## [2026-05-10] fix(home) — Regression CSR card "Aucune partie classée" (is_ranked brut vs heuristique)
+
+**Statut** : Complété.
+
+**Cause racine** : Migration canonical du 29 avril (`40d14a2f`) a substitué le `playerMatchesBaseSelect` au `Q26HomeMatches` legacy. La colonne `is_ranked` dans la requête legacy utilisait une heuristique enrichie (pair_name/playlist_name STRPOS 'ranked'). Le canonical utilisait uniquement `COALESCE(r.is_ranked, FALSE)` — la valeur brute de la DB. Or `match_registry.is_ranked = FALSE` pour les 8 matchs rankés de JGtm (bug sync UUID playlist → `isRankedPlaylist()` = false). Le backfill du 9 mai a corrigé les noms mais pas le flag.
+
+**Résultats observés** (via debug tool sur DB réelle) :
+- JGtm : 769 matchs total, 758 dans match_skill_rank (tous LUSR, 0 CSR)
+- 8 matchs rankés : is_ranked=FALSE en DB, playlist_name="Ranked Slayer/Arena", pair_name="Ranked:..." (corrects après backfill 9 mai)
+- raw is_ranked=TRUE : 0 matchs — le flag n'a jamais été écrit correctement pour JGtm
+
+**Fix** : `playerMatchesBaseSelect.is_ranked` passe de `COALESCE(r.is_ranked, FALSE)` à la même CASE heuristique que `Q26HomeMatches` (pair_name/playlist_name STRPOS). Idem pour le filtre `f.IsRanked` dans `buildQuery`. Restaure le comportement original perdu lors de la migration canonical — pas un fallback, une régression corrigée.
+
+**Etat de la carte CSR après fix** : 'placement' ("En placement") au lieu de 'absent' ("Aucune partie classée"). Le `highest_csr` reste null (0 CSR dans match_skill_rank — données jamais synchées, question séparée).
+
+**Tests** : go test ./internal/platform/duckdb/ ./internal/analysis/... ./internal/service/ — tous verts.
+
+**Prochaine étape** : Vérifier visuellement sur la home JGtm que la carte passe bien à "En placement".
+
+## [2026-05-10] fix(home) — Régressions Spartan ID : rang FR vide + bannière manquante + "Progression vers" sans label
+
+**Statut** : Complété.
+
+**Cause racine** :
+1. `career_rank_translations` vide → `RankCatalog.Len()=0` → `lookupRankLabel` retourne "" → fallback sur `rank_name` anglais en DB ("General Platinum 1")
+2. Même cause pour `NextRankTitle` : `ranks.Next()` échoue si catalog vide
+3. Bannière : migration `applyCareerProgressionIdentityAssets` a effacé les anciennes URLs `/Waypoint/file/images/` et le code post-2026-05-08 a supprimé `fallbackCustomizationBannerFromEmblem` → `banner_image_url = ''` pour tous les matchs
+
+**Aucun DROP/DELETE** trouvé sur `career_rank_translations` — la table était simplement jamais repeuplée (nécessite tokens API + serveur arrêté pour le lock).
+
+**Fix implémenté** : `cmd/seed-rank-translations/main.go` — seed offline de 272 rangs × 2 langues (FR+EN) avec algorithme grade/tier tiré du CSV `Halo_Ranks_FR`. Pas de tokens requis. Idempotent (INSERT OR REPLACE).
+
+**Algorithme** : rang i (1-270) → `tierIdx=(i-1)/45`, `gradeIdx=posInTier/3`, `level=posInTier%3+1`. Validé sur rang 178 = "Général 1 [Platine]" contre CSV.
+
+**Bannière** : non réparée (403 GameCMS pour Chocoboflor, hors scope sans re-sync valide).
+
+**Prochaine étape** : `$(CGO_ENV) go run ./cmd/seed-rank-translations/ 2>&1` (serveur arrêté).
+
+---
+
+
 ## [2026-05-10] fix(match-history) — Création queries.ts manquant (useSetMatchExclusion + useSetMatchFavorite)
 
 **Statut** : Complété.

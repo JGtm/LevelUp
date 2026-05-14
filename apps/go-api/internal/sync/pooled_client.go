@@ -170,5 +170,21 @@ func (pc *PooledHaloClient) GetCareerRank(ctx context.Context, xuid string) (*Ca
 	return client.GetCareerRank(ctx, xuid)
 }
 
+// GetPlayerCSRs implémente HaloClient.GetPlayerCSRs() avec PolicyAnyPublic.
+// Endpoint public (service token) — pas besoin du token pinned joueur.
+func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID string) ([]PlayerPlaylistCSR, error) {
+	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
+	if err != nil {
+		slog.DebugContext(ctx, "pooled: GetPlayerCSRs skipped (token unavailable)", "xuid", xuid, "err", err)
+		return nil, nil
+	}
+	defer lease.Release()
+
+	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	result, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
+	pc.notifyPoolOnHTTPError(err)
+	return result, err
+}
+
 // Vérifier que PooledHaloClient implémente l'interface HaloClient.
 var _ HaloClient = (*PooledHaloClient)(nil)
