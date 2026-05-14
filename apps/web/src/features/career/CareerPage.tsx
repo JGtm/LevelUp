@@ -3,25 +3,22 @@
  */
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { EmptyStateCard } from '@/components/ui/empty-state'
 import { CareerSummaryCard } from './CareerSummaryCard'
 import { CareerChartsSection } from './CareerChartsSection'
 import { CareerTopMatchesTable } from './CareerTopMatchesTable'
 import { CareerEncountersSection } from './CareerEncountersSection'
+import { CareerRankingBlock } from './CareerRankingBlock'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
 import { useCareerPage, useCareerTopMatches } from './queries'
-import { useAppShellStore } from '@/stores/appShellStore'
-import type { ManifestLocale } from '@/lib/i18n/format'
-import { lusrChainLabel } from './lusr-chains'
+
 
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
-  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [showAllTopMatches, setShowAllTopMatches] = useState(false)
   const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
@@ -99,40 +96,8 @@ export function CareerPage() {
         {/* Succès Xbox — section horizontale (KPI inline + scroll de cartes) */}
         <AchievementsCareerSection playerSlug={playerSlug} />
 
-        {/* Section LUSR */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Rating LUSR <InfoTooltip content="Le LUSR (LevelUp Skill Rating) est un rating calculé localement à partir de vos résultats récents. Il reflète votre niveau indépendamment du CSR officiel, en pondérant victoires, KDA et régularité." /></CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {data.lusr ? (
-              <>
-                <p className="text-sm font-medium text-foreground">
-                  Actuel :{' '}
-                  <span className="text-primary font-bold">
-                    {data.lusr.current_rating ?? '—'}
-                  </span>
-                  {data.lusr.current_tier_label && (
-                    <> · <span className="text-muted-foreground">{data.lusr.current_tier_label}</span></>
-                  )}
-                  {data.lusr.current_playlist_group && (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      ({lusrChainLabel(data.lusr.current_playlist_group, locale)})
-                    </span>
-                  )}
-                </p>
-                {data.lusr.trend_label && (
-                  <p className="text-xs text-muted-foreground">{data.lusr.trend_label}</p>
-                )}
-              </>
-            ) : (
-              <EmptyStateNotice
-                title="Rating indisponible"
-                description="Aucun checkpoint LUSR n'est disponible pour ce joueur ou cette période."
-              />
-            )}
-          </CardContent>
-        </Card>
+        {/* Section CSR + LUSR unifiée */}
+        <CareerRankingBlock playerSlug={playerSlug} lusrData={data.lusr} />
 
         {/* Top matchs */}
         {(topMatchesItems?.length ?? 0) > 0 ? (
