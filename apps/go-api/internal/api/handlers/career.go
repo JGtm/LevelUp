@@ -210,6 +210,23 @@ func (h *CareerHandler) GetRivals(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// GetCareerCSRs retourne les classements CSR par playlist.
+// GET /players/{player_slug}/pages/career/csrs
+func (h *CareerHandler) GetCareerCSRs(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "player_slug")
+	svc, err := h.newSvc(r.Context(), slug)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+	resp, err := svc.GetCareerCSRs(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "csrs_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // enrichHighlightMatches enrichit une liste de match_ids via
 // MatchHistoryService.GetPage(MatchIDs=...) puis projette en ExplorerMatchesRow.
 // Préserve l'ordre d'entrée (Q9b trie par dominance prio + perf, ordre que le

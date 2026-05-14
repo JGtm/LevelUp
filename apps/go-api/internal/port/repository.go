@@ -118,6 +118,9 @@ type CareerRepository interface {
 	GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error)
 	// GetRivals : 10 némésis (deaths DESC) + 10 souffre-douleur (frags DESC).
 	GetRivals(ctx context.Context) (nemeses, victims []domain.CareerRivalRawRow, err error)
+	// GetCSRSnapshots : classements CSR par playlist depuis player_csr_snapshots.
+	// Retourne slice vide (pas d'erreur) si aucun snapshot disponible.
+	GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlaylistCSR, error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander
@@ -299,6 +302,9 @@ func (n *noopCareerRepo) GetTopEncountersGlobal(_ context.Context, _ []string) (
 }
 func (n *noopCareerRepo) GetRivals(_ context.Context) ([]domain.CareerRivalRawRow, []domain.CareerRivalRawRow, error) {
 	return nil, nil, nil
+}
+func (n *noopCareerRepo) GetCSRSnapshots(_ context.Context) ([]domain.CareerPlaylistCSR, error) {
+	return nil, nil
 }
 
 // noopGamertagRepo — impl nulle pour le check de compilation uniquement.

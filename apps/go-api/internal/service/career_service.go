@@ -65,6 +65,9 @@ type CareerService struct {
 	// en fenêtres temporelles SQL et pour calculer les cascade counts. Quand
 	// nil, le filtre saisons est inopérant et available_seasons reste vide.
 	seasonsCatalog *SeasonsCatalog
+	// csrSeasonID : identifiant de la saison CSR courante (ex. "CsrSeason8").
+	// Utilisé comme metadata dans GetCareerCSRs. Vide = non configuré.
+	csrSeasonID string
 }
 
 // NewCareerService crée un CareerService.
@@ -138,6 +141,28 @@ func (s *CareerService) WithFriendXUIDResolver(fn func(ctx context.Context, game
 func (s *CareerService) WithSeasonsCatalog(catalog *SeasonsCatalog) *CareerService {
 	s.seasonsCatalog = catalog
 	return s
+}
+
+// WithCSRSeasonID injecte l'identifiant de la saison CSR courante (ex. "CsrSeason8").
+func (s *CareerService) WithCSRSeasonID(id string) *CareerService {
+	s.csrSeasonID = id
+	return s
+}
+
+// GetCareerCSRs retourne les classements CSR du joueur par playlist.
+// Retourne une réponse vide (pas d'erreur) si aucun snapshot disponible.
+func (s *CareerService) GetCareerCSRs(ctx context.Context) (domain.CareerCSRResponse, error) {
+	playlists, err := s.repo.GetCSRSnapshots(ctx)
+	if err != nil {
+		return domain.CareerCSRResponse{}, fmt.Errorf("GetCareerCSRs: %w", err)
+	}
+	if playlists == nil {
+		playlists = []domain.CareerPlaylistCSR{}
+	}
+	return domain.CareerCSRResponse{
+		Playlists: playlists,
+		SeasonID:  s.csrSeasonID,
+	}, nil
 }
 
 // GetCareerPage retourne la réponse complète de la page Carrière.

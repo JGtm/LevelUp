@@ -136,6 +136,36 @@ type CareerPageResponse struct {
 	CurrentSeason    *CurrentSeasonResult `json:"current_season,omitempty"` // Sprint 54-A7
 }
 
+// ---------------------------------------------------------------------------
+// CSR — classements compétitifs par playlist
+// ---------------------------------------------------------------------------
+
+// CareerCSRRank est un instantané de classement CSR (current/season/alltime).
+type CareerCSRRank struct {
+	Value                       float64 `json:"value"`
+	Tier                        string  `json:"tier"`
+	SubTier                     int     `json:"sub_tier"`
+	MeasurementMatchesRemaining int     `json:"measurement_matches_remaining"`
+	BadgeImageURL               *string `json:"badge_image_url,omitempty"`
+}
+
+// CareerPlaylistCSR regroupe les classements d'un joueur pour une playlist ranked.
+type CareerPlaylistCSR struct {
+	PlaylistID   string        `json:"playlist_id"`
+	PlaylistName string        `json:"playlist_name"`
+	Queue        string        `json:"queue"`
+	Input        string        `json:"input"`
+	Current      CareerCSRRank `json:"current"`
+	Season       CareerCSRRank `json:"season"`
+	AllTime      CareerCSRRank `json:"all_time"`
+}
+
+// CareerCSRResponse est la réponse de GET /pages/career/csrs.
+type CareerCSRResponse struct {
+	Playlists []CareerPlaylistCSR `json:"playlists"`
+	SeasonID  string              `json:"season_id"`
+}
+
 // TopMatchDTO représente un match dans le top/pire performance.
 type TopMatchDTO struct {
 	MatchID          string   `json:"match_id"`
