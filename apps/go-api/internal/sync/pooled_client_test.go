@@ -126,7 +126,12 @@ func TestPooledHaloClientGetMatchStats(t *testing.T) {
 	}
 }
 
-// TestPooledHaloClientGetCareerRank_PinnedToken teste GetCareerRank avec pinned token.
+// TestPooledHaloClientGetCareerRank_PinnedToken vérifie que la branche pinned
+// est bien empruntée (Acquire avec PolicyPinnedPlayer + gamertag) sans faire
+// d'I/O réelle vers economy.svc.halowaypoint.com. On utilise un context déjà
+// annulé pour court-circuiter doGet : l'erreur attendue est une erreur réseau
+// (context canceled) — surtout PAS une erreur du pool, ce qui confirme que
+// Acquire a réussi et que la requête HTTP a été tentée.
 func TestPooledHaloClientGetCareerRank_PinnedToken(t *testing.T) {
 	mp := &mockPool{
 		tokens: map[string]*domain.HaloTokens{
@@ -135,13 +140,14 @@ func TestPooledHaloClientGetCareerRank_PinnedToken(t *testing.T) {
 	}
 	client := NewPooledHaloClient(mp, "Alice", "xuid_alice")
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 	_, err := client.GetCareerRank(ctx, "xuid_alice")
-	// GetCareerRank retourne (nil, nil) pour les erreurs de connexion (pas de vrai API).
-	// C'est le comportement attendu car l'endpoint est privacy-gated et les erreurs
-	// de connexion sont silencieusement ignorées.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if err == nil {
+		t.Fatal("expected network error (context canceled), got nil")
+	}
+	if err.Error() == "pooled: Acquire failed: no tokens available" {
+		t.Fatalf("unexpected pool error (Acquire devait réussir): %v", err)
 	}
 }
 

@@ -436,6 +436,51 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /players/{player_slug}/pages/career/csrs:
+    get:
+      tags: [career]
+      operationId: getCareerCSRs
+      summary: "Classements CSR par playlist (snapshots current / season / all-time)"
+      description: |
+        Retourne pour chaque playlist ranked jouée par le joueur les snapshots
+        CSR `current`, `season` (saison configurée), `all_time`, agrégés depuis
+        `player_csr_snapshots` (Q26). Si la table est absente, dégradation
+        silencieuse (200 avec liste vide). Le `season_id` correspond à la saison
+        active configurée via `CareerService.WithCSRSeasonID`.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: Classements CSR par playlist
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [playlists, season_id]
+                properties:
+                  season_id:
+                    type: string
+                  playlists:
+                    type: array
+                    items:
+                      type: object
+                      required: [playlist_id, playlist_name, queue, input, current, season, all_time]
+                      properties:
+                        playlist_id: { type: string }
+                        playlist_name: { type: string }
+                        queue: { type: string }
+                        input: { type: string }
+                        current:
+                          $ref: "#/components/schemas/CareerCSRRank"
+                        season:
+                          $ref: "#/components/schemas/CareerCSRRank"
+                        all_time:
+                          $ref: "#/components/schemas/CareerCSRRank"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # -------------------------------------------------------------------------
   # Achievements Xbox (bilingues EN/FR)
   # -------------------------------------------------------------------------
@@ -1993,6 +2038,28 @@ components:
   # Schemas
   # -------------------------------------------------------------------------
   schemas:
+
+    # --- Career CSR ---
+    CareerCSRRank:
+      type: object
+      required: [value, tier, sub_tier, measurement_matches_remaining]
+      properties:
+        value:
+          type: number
+          description: CSR numérique (peut être négatif en mesure)
+        tier:
+          type: string
+          description: Tier Halo (Bronze / Silver / ... / Onyx)
+        sub_tier:
+          type: integer
+          description: Sous-tier 1..6 (0 pour Onyx)
+        measurement_matches_remaining:
+          type: integer
+          description: Nombre de matchs restants avant placement final
+        badge_image_url:
+          type: string
+          nullable: true
+          description: URL de l'image du badge (optionnel)
 
     # --- Erreurs ---
     FieldErrorSchema:

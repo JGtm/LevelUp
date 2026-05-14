@@ -1,3 +1,27 @@
+## [2026-05-15] test(suite-complete) — Suite Go entièrement verte : fix mocks endpoints + doc OpenAPI manquante
+
+**Statut** : Complété.
+
+**Contexte** : après la restauration de la migration AutoSyncScheduler ([b27ed65e](apps/go-api/internal/scheduler/auto_sync.go)), `go test ./...` exposait 4 échecs qui n'étaient pas liés au scheduler :
+- 3 dans `internal/sync` causés par [63199072](apps/go-api/internal/sync/halo_client.go) (URLs economy mises à jour Grunt API sans MAJ des mocks)
+- 1 dans `internal/api` causé par [6319a023](apps/go-api/internal/api/handlers/career.go) (route `GET /pages/career/csrs` ajoutée sans doc OpenAPI)
+
+**Corrections** :
+
+1. **`halo_client_extra_test.go`** : 2 tests `TestGetCareerRank_*` — mocks httptest mis à jour :
+   - `/rewardtracks/careerranks/careerrank1` (HasSuffix racine) → `/hi/careerranks/careerRank1` (HasPrefix)
+   - `/customization?view=public` (avec query check) → `/customization/appearance` (sans query)
+   - Payload career : passage de `CurrentProgress` racine → `RewardTracks[].Result.CurrentProgress` (forme RewardTrackResultContainer, le parser gère déjà les deux formes via `parseCareerProgressPayload`)
+
+2. **`pooled_client_test.go::TestPooledHaloClientGetCareerRank_PinnedToken`** : le test attendait `(nil, nil)` sur erreur réseau, mais le code propage maintenant (seuls 401/403 sont silent-skipped). Sans mock HTTP injectable, le test faisait un vrai appel vers `economy.svc.halowaypoint.com` → 92s de timeout via 4 retries. Fix : utiliser `context.WithCancel` + cancel() immédiat pour court-circuiter `doGet`. L'assertion vérifie qu'on a bien une erreur réseau (donc Acquire a réussi et la requête HTTP a été tentée) et que ce n'est PAS une erreur du pool.
+
+3. **`api/openapi.yaml`** : ajout du path `/players/{player_slug}/pages/career/csrs` (operationId `getCareerCSRs`) + schéma component `CareerCSRRank` (value, tier, sub_tier, measurement_matches_remaining, badge_image_url). Le response schema réutilise `$ref: CareerCSRRank` pour les 3 niveaux (current / season / all_time).
+
+**Résultats** :
+- `go test ./...` : **toutes les suites OK**, aucun FAIL
+- Tests les plus impactés (durée non-cached) : `internal/sync` 192.7s, `internal/api` 8.8s, `internal/api/handlers` cached
+
+**Conclusion** : la branche `feat/career-decouple-from-match-sync` est désormais à 100% verte côté Go. Reste à valider en runtime live les 3 modes de synchro (planifiée / manuelle / watcher) côté utilisateur.
 
 ## [2026-05-14] feat(career-live) — Découplage XP/Spartan ID du post-sync matchs : flow live throttle 5 min / 6 h + fallback DB per-field
 
