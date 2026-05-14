@@ -1,13 +1,18 @@
-// Package scheduler_test — auto_sync_test.go : tests unitaires du scheduler de sync automatique.
+// Package scheduler_test — auto_sync_test.go : tests unitaires du scheduler.
 //
-// Tous les tests utilisent des mocks injectés (tokenReader + engineFactory) pour éviter
-// toute dépendance DuckDB, réseau ou MSAL. Les mocks sont déclarés dans ce fichier.
+// Suite à la migration AutoSyncScheduler→Pool, les tests qui injectaient un
+// TokenReader/EngineFactory custom (mock provider → mock RunDelta) ont été
+// supprimés : ils dépendaient d'une couche d'abstraction qui n'existe plus.
+// Le scheduler délègue maintenant entièrement au Pool, et les tests
+// d'intégration du pipeline complet vivent dans cmd/levelup/cmd_sync.go
+// (tests live) et internal/sync/pooled_client_test.go.
 //
-// Stratégie des tests :
-//   - Les champs AutoSyncScheduler.tokenReader et .engineFactory sont injectables
-//     directement après New() → tests totalement déterministes.
-//   - Les tests de compteurs (Synced/Skipped/Failed) vérifient la logique de RunOnce.
-//   - TestRun_CancelCtxStops vérifie que Run() se termine sans deadlock à l'annulation.
+// Ce qui reste testable unitairement et qui est couvert ici :
+//   - Helpers d'intervalle (resolveInterval / intervalFromHours).
+//   - syncPlayer chemins de skip (pool nil, pool.HasPlayer=false, watcher actif,
+//     DB joueur absente).
+//   - Snapshot — récupération thread-safe du dernier cycle.
+//   - Run() — arrêt propre sur ctx.Done().
 package scheduler_test
 
 import (
@@ -21,6 +26,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/pool"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/scheduler"
 )
@@ -29,73 +35,69 @@ import (
 // Mocks
 // ---------------------------------------------------------------------------
 
-// mockProvider implémente auth.TokenProvider de façon configurable.
-type mockProvider struct {
-	silentToken string
-	silentErr   error
-	oauthToken  string
-	oauthErr    error
-	exchangeRes *auth.ExchangeResult
-	exchangeErr error
+// fakePool implémente pool.Pool minimalement pour tester les chemins skip
+// du scheduler. Acquire n'est pas appelé dans les tests skip (le scheduler
+// court-circuite via HasPlayer avant) — on retourne nil pour éviter de
+// faux positifs si jamais le test passe quand même par là.
+type fakePool struct {
+	hasPlayerMap map[string]bool
+	size         int
 }
 
-// Vérification compile-time : mockProvider satisfait l'interface.
-var _ auth.TokenProvider = (*mockProvider)(nil)
+func (m *fakePool) Acquire(_ context.Context, _ pool.AcquirePolicy, _ string) (*pool.Lease, error) {
+	return nil, nil
+}
+func (m *fakePool) Size() int                                    { return m.size }
+func (m *fakePool) HasPlayer(gt string) bool                     { return m.hasPlayerMap[gt] }
+func (m *fakePool) MarkUnhealthy(_ string, _ error)              {}
+func (m *fakePool) OnHTTPError(_ int)                            {}
+func (m *fakePool) Close()                                       {}
 
-func (m *mockProvider) InitDeviceFlow(_ context.Context) (auth.DeviceFlow, error) {
+// fakeActivityChecker implémente PlayerActivityChecker pour les tests.
+type fakeActivityChecker struct {
+	activeGamertags map[string]bool
+}
+
+func (f *fakeActivityChecker) IsPlayerActive(gt string) bool {
+	return f.activeGamertags[gt]
+}
+
+// fakeProvider est utilisé uniquement comme placeholder pour scheduler.New.
+// Le scheduler ne l'appelle jamais directement — c'est le SyncEngine
+// (non-mockable ici) qui pourrait l'utiliser pour les achievements.
+type fakeProvider struct{}
+
+var _ auth.TokenProvider = (*fakeProvider)(nil)
+
+func (f *fakeProvider) InitDeviceFlow(_ context.Context) (auth.DeviceFlow, error) {
+	return nil, nil
+}
+func (f *fakeProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
+func (f *fakeProvider) TryOAuthRefresh(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
+func (f *fakeProvider) TryOAuthRefreshWithRotation(_ context.Context, _ string) (string, string, error) {
+	return "", "", nil
+}
+func (f *fakeProvider) Exchange(_ context.Context, _ string) (*auth.ExchangeResult, error) {
 	return nil, nil
 }
 
-func (m *mockProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	return m.silentToken, m.silentErr
-}
-
-func (m *mockProvider) TryOAuthRefresh(_ context.Context, _ string) (string, error) {
-	return m.oauthToken, m.oauthErr
-}
-
-func (m *mockProvider) AcquireAccessToken(_ context.Context, _, _ string) (string, error) {
-	if m.silentToken != "" && m.silentErr == nil {
-		return m.silentToken, nil
-	}
-	return m.oauthToken, m.oauthErr
-}
-
-func (m *mockProvider) Exchange(_ context.Context, _ string) (*auth.ExchangeResult, error) {
-	return m.exchangeRes, m.exchangeErr
-}
-
-// mockRunner implémente DeltaRunner de façon configurable.
-type mockRunner struct {
-	result domain.SyncResult
-	err    error
-	called bool
-}
-
-func (m *mockRunner) RunDelta(_ context.Context, _ domain.SyncOptions) (domain.SyncResult, error) {
-	m.called = true
-	return m.result, m.err
-}
-
 // ---------------------------------------------------------------------------
-// Helpers de construction
+// Helpers
 // ---------------------------------------------------------------------------
 
-// newTestScheduler crée un AutoSyncScheduler avec :
-//   - un tokenReader injectable (peut être nil → remplacé par le défaut)
-//   - un engineFactory injectable (peut être nil → remplacé par le défaut)
-//   - un AppConfig pointant sur repoRoot (temp dir fourni par le test)
-//   - un Store de settings pointant sur un fichier de settings minimal
-func newTestScheduler(
+// newSchedulerForTest construit un AutoSyncScheduler isolé : repoRoot temp,
+// settings minimaux, pool optionnel, provider stub.
+func newSchedulerForTest(
 	t *testing.T,
 	repoRoot string,
-	provider auth.TokenProvider,
-	tokenReader scheduler.TokenReader,
-	factory scheduler.EngineFactory,
+	tokenPool pool.Pool,
 ) *scheduler.AutoSyncScheduler {
 	t.Helper()
 
-	// Créer un fichier app_settings.json minimal dans repoRoot
 	settingsPath := filepath.Join(repoRoot, "app_settings.json")
 	settingsJSON := `{
 		"spnkr_auto_sync_enabled": true,
@@ -105,472 +107,402 @@ func newTestScheduler(
 		t.Fatalf("écriture settings: %v", err)
 	}
 
-	// Créer un fichier db_profiles.json vide (aucun joueur par défaut)
-	profilesPath := filepath.Join(repoRoot, "db_profiles.json")
-	if err := os.WriteFile(profilesPath, []byte(`{"version":"2.1","profiles":{}}`), 0o644); err != nil {
+	dbProfilesPath := filepath.Join(repoRoot, "db_profiles.json")
+	if err := os.WriteFile(dbProfilesPath, []byte(`{
+		"version":"3.0",
+		"admin":"Player1",
+		"profiles":{"halo_infinite":{"Player1":{"db_path":"data/titles/halo_infinite/players/Player1/stats.duckdb","xuid":"xuid-1","waypoint_player":"Player1"}}}
+	}`), 0o644); err != nil {
 		t.Fatalf("écriture db_profiles: %v", err)
 	}
 
+	store := settings_platform.NewStore(settingsPath)
 	cfg := &config.AppConfig{
 		RepoRoot:        repoRoot,
-		DBProfilesPath:  profilesPath,
+		DBProfilesPath:  dbProfilesPath,
 		AppSettingsPath: settingsPath,
 	}
-	store := settings_platform.NewStore(settingsPath)
-
-	s := scheduler.New(cfg, store, provider)
-	if tokenReader != nil {
-		s.TokenReader = tokenReader
-	}
-	if factory != nil {
-		s.EngineFactory = factory
-	}
-	return s
-}
-
-// addPlayer crée la structure data/titles/halo_infinite/players/{gamertag}/ dans repoRoot et enregistre
-// le joueur dans db_profiles.json (format v2.1).
-func addPlayer(t *testing.T, repoRoot, gamertag string, withDB bool) {
-	t.Helper()
-
-	playerDir := filepath.Join(repoRoot, "data", "titles", "halo_infinite", "players", gamertag)
-	if err := os.MkdirAll(playerDir, 0o755); err != nil {
-		t.Fatalf("MkdirAll %s: %v", playerDir, err)
-	}
-	if withDB {
-		dbPath := filepath.Join(playerDir, "stats.duckdb")
-		if err := os.WriteFile(dbPath, []byte(""), 0o644); err != nil {
-			t.Fatalf("création stats.duckdb: %v", err)
-		}
-	}
-
-	// Mettre à jour db_profiles.json avec le joueur
-	profilesPath := filepath.Join(repoRoot, "db_profiles.json")
-	content := `{"version":"2.1","profiles":{"` + gamertag + `":{"xuid":"xuid_` + gamertag + `"}}}`
-	if err := os.WriteFile(profilesPath, []byte(content), 0o644); err != nil {
-		t.Fatalf("WriteFile db_profiles: %v", err)
-	}
+	return scheduler.New(cfg, store, &fakeProvider{}, tokenPool)
 }
 
 // ---------------------------------------------------------------------------
-// Tests : intervalFromHours (fonction non exportée, testée indirectement)
+// Tests
 // ---------------------------------------------------------------------------
 
-func TestIntervalFromHours_Zero_ReturnsDefault(t *testing.T) {
-	// L'intervalle par défaut est 6h. settings avec 0 → doit utiliser le défaut.
-	dir := t.TempDir()
-	provider := &mockProvider{}
-	s := newTestScheduler(t, dir, provider, nil, nil)
-
-	// Écrire settings avec interval = 0
-	settingsPath := filepath.Join(dir, "app_settings.json")
-	if err := os.WriteFile(settingsPath, []byte(`{"spnkr_auto_sync_enabled":true,"spnkr_auto_sync_interval_hours":0}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Vérification indirecte via CurrentInterval()
-	d := s.CurrentInterval()
-	if d != 6*time.Hour {
-		t.Errorf("intervalle attendu 6h, obtenu %v", d)
-	}
-}
-
-func TestIntervalFromHours_Custom(t *testing.T) {
-	dir := t.TempDir()
-	provider := &mockProvider{}
-	s := newTestScheduler(t, dir, provider, nil, nil)
-
-	settingsPath := filepath.Join(dir, "app_settings.json")
-	if err := os.WriteFile(settingsPath, []byte(`{"spnkr_auto_sync_enabled":true,"spnkr_auto_sync_interval_hours":12}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	d := s.CurrentInterval()
-	if d != 12*time.Hour {
-		t.Errorf("intervalle attendu 12h, obtenu %v", d)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Tests : RunOnce
-// ---------------------------------------------------------------------------
-
-func TestRunOnce_EmptyPlayerList(t *testing.T) {
-	dir := t.TempDir()
-	provider := &mockProvider{}
-	s := newTestScheduler(t, dir, provider, nil, nil)
-	// db_profiles.json est vide ({}) → aucun joueur
-
-	res := s.RunOnce(context.Background())
-	if res.Total != 0 {
-		t.Errorf("Total: attendu 0, obtenu %d", res.Total)
-	}
-	if res.Synced != 0 || res.Skipped != 0 || res.Failed != 0 {
-		t.Errorf("compteurs non nuls sur liste vide: %+v", res)
-	}
-}
-
-func TestRunOnce_PlayerDBAbsent(t *testing.T) {
-	// Le joueur est dans db_profiles mais stats.duckdb n'existe pas → Skipped
-	dir := t.TempDir()
-	provider := &mockProvider{}
-	s := newTestScheduler(t, dir, provider, nil, nil)
-	addPlayer(t, dir, "TestGT", false /* sans DB */)
-
+func TestRunOnce_PoolNil_AllSkipped(t *testing.T) {
+	s := newSchedulerForTest(t, t.TempDir(), nil)
 	res := s.RunOnce(context.Background())
 	if res.Total != 1 {
-		t.Errorf("Total: attendu 1, obtenu %d", res.Total)
+		t.Errorf("Total = %d, want 1", res.Total)
 	}
 	if res.Skipped != 1 {
-		t.Errorf("Skipped: attendu 1, obtenu %d", res.Skipped)
+		t.Errorf("Skipped = %d, want 1 (pool nil → tous skipped)", res.Skipped)
 	}
-	if res.Failed != 0 || res.Synced != 0 {
-		t.Errorf("compteurs inattendus: %+v", res)
+	if res.Synced != 0 || res.Failed != 0 {
+		t.Errorf("Synced=%d Failed=%d, want 0/0", res.Synced, res.Failed)
+	}
+
+	snap := s.Snapshot()
+	if len(snap.Players) != 1 {
+		t.Fatalf("snapshot.Players len = %d, want 1", len(snap.Players))
+	}
+	if snap.Players[0].Outcome != "skipped" {
+		t.Errorf("Outcome = %q, want skipped", snap.Players[0].Outcome)
+	}
+	if snap.Players[0].Reason == "" {
+		t.Error("Reason vide — devrait expliquer pourquoi skipped")
+	}
+	if snap.PoolSize != 0 {
+		t.Errorf("PoolSize = %d, want 0 (pool nil)", snap.PoolSize)
 	}
 }
 
-func TestRunOnce_NoToken(t *testing.T) {
-	// tokenReader retourne ("", nil) → aucun token → Skipped
-	dir := t.TempDir()
-	provider := &mockProvider{}
-
-	noToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "", nil
+func TestRunOnce_PlayerNotInPool_Skipped(t *testing.T) {
+	p := &fakePool{hasPlayerMap: map[string]bool{}, size: 0}
+	s := newSchedulerForTest(t, t.TempDir(), p)
+	res := s.RunOnce(context.Background())
+	if res.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1 (joueur absent du pool)", res.Skipped)
 	}
-	s := newTestScheduler(t, dir, provider, noToken, nil)
-	addPlayer(t, dir, "TestGT", true)
+
+	snap := s.Snapshot()
+	if snap.Players[0].Outcome != "skipped" || snap.Players[0].Reason == "" {
+		t.Errorf("snapshot player = %+v, want skipped+reason non vide", snap.Players[0])
+	}
+}
+
+func TestRunOnce_PlayerDBAbsent_Skipped(t *testing.T) {
+	// Player1 est dans le pool mais sa DB n'existe pas → skip.
+	repoRoot := t.TempDir()
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, repoRoot, p)
+	res := s.RunOnce(context.Background())
+	if res.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1 (DB absente)", res.Skipped)
+	}
+
+	snap := s.Snapshot()
+	if snap.Players[0].Reason == "" {
+		t.Error("Reason vide")
+	}
+}
+
+func TestRunOnce_ActivityChecker_SkipsActivePlayer(t *testing.T) {
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, t.TempDir(), p)
+	s.ActivityChecker = &fakeActivityChecker{activeGamertags: map[string]bool{"Player1": true}}
 
 	res := s.RunOnce(context.Background())
 	if res.Skipped != 1 {
-		t.Errorf("Skipped: attendu 1, obtenu %d", res.Skipped)
+		t.Errorf("Skipped = %d, want 1 (watcher actif)", res.Skipped)
 	}
-	if res.Failed != 0 {
-		t.Errorf("Failed inattendu: %+v", res)
+
+	snap := s.Snapshot()
+	if snap.Players[0].Reason == "" || snap.Players[0].Outcome != "skipped" {
+		t.Errorf("snapshot player = %+v", snap.Players[0])
 	}
 }
 
-func TestRunOnce_TokenReadError(t *testing.T) {
-	// tokenReader retourne une erreur → Failed
-	dir := t.TempDir()
-	provider := &mockProvider{}
-
-	tokenErr := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "", errors.New("DuckDB: base corrompue")
+func TestSnapshot_EmptyBeforeRun(t *testing.T) {
+	s := newSchedulerForTest(t, t.TempDir(), nil)
+	snap := s.Snapshot()
+	if snap.LastCycleResult != nil {
+		t.Error("LastCycleResult devrait être nil avant tout RunOnce")
 	}
-	s := newTestScheduler(t, dir, provider, tokenErr, nil)
-	addPlayer(t, dir, "TestGT", true)
-
-	res := s.RunOnce(context.Background())
-	if res.Failed != 1 {
-		t.Errorf("Failed: attendu 1, obtenu %d", res.Failed)
-	}
-	if res.Skipped != 0 || res.Synced != 0 {
-		t.Errorf("compteurs inattendus: %+v", res)
+	if len(snap.Players) != 0 {
+		t.Errorf("Players len = %d, want 0", len(snap.Players))
 	}
 }
-
-func TestRunOnce_ExchangeError(t *testing.T) {
-	// tokenReader retourne un token valide, mais Exchange échoue → Failed
-	dir := t.TempDir()
-	provider := &mockProvider{
-		exchangeErr: errors.New("XSTS: token expiré"),
-	}
-
-	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "access_token_valide", nil
-	}
-	s := newTestScheduler(t, dir, provider, validToken, nil)
-	addPlayer(t, dir, "TestGT", true)
-
-	res := s.RunOnce(context.Background())
-	if res.Failed != 1 {
-		t.Errorf("Failed: attendu 1, obtenu %d", res.Failed)
-	}
-}
-
-func TestRunOnce_DeltaError(t *testing.T) {
-	// Exchange OK, RunDelta retourne une erreur → Failed
-	dir := t.TempDir()
-	runner := &mockRunner{err: errors.New("API Halo: rate limit")}
-	provider := &mockProvider{
-		exchangeRes: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{SpartanToken: "spartan_tok", ClearanceToken: "clearance_tok"},
-		},
-	}
-
-	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "access_token_valide", nil
-	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
-		return runner
-	}
-	s := newTestScheduler(t, dir, provider, validToken, factory)
-	addPlayer(t, dir, "TestGT", true)
-
-	res := s.RunOnce(context.Background())
-	if res.Failed != 1 {
-		t.Errorf("Failed: attendu 1, obtenu %d", res.Failed)
-	}
-	if !runner.called {
-		t.Error("RunDelta aurait dû être appelé")
-	}
-}
-
-func TestRunOnce_DeltaPartialSuccess(t *testing.T) {
-	// RunDelta réussit mais retourne des erreurs partielles → compté comme Synced
-	dir := t.TempDir()
-	runner := &mockRunner{
-		result: domain.SyncResult{
-			MatchesInserted: 3,
-			Errors:          []string{"timeout sur 1 match"},
-		},
-	}
-	provider := &mockProvider{
-		exchangeRes: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{SpartanToken: "s", ClearanceToken: "c"},
-		},
-	}
-
-	validToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "tok", nil
-	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
-		return runner
-	}
-	s := newTestScheduler(t, dir, provider, validToken, factory)
-	addPlayer(t, dir, "TestGT", true)
-
-	res := s.RunOnce(context.Background())
-	if res.Synced != 1 {
-		t.Errorf("Synced: attendu 1 (succès partiel compte quand même), obtenu %d", res.Synced)
-	}
-	if res.Failed != 0 {
-		t.Errorf("Failed inattendu sur succès partiel: %+v", res)
-	}
-}
-
-func TestRunOnce_FullSuccess(t *testing.T) {
-	// Scénario nominal : token MSAL valide + Exchange OK + RunDelta OK → Synced=1
-	dir := t.TempDir()
-	runner := &mockRunner{
-		result: domain.SyncResult{MatchesInserted: 10, MatchesSkipped: 2},
-	}
-	provider := &mockProvider{
-		exchangeRes: &auth.ExchangeResult{
-			Tokens:   &domain.HaloTokens{SpartanToken: "spartan", ClearanceToken: "clearance"},
-			Gamertag: "TestGT",
-			XUID:     "xuid_TestGT",
-		},
-	}
-
-	msalToken := func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "msal_access_token", nil
-	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
-		return runner
-	}
-	s := newTestScheduler(t, dir, provider, msalToken, factory)
-	addPlayer(t, dir, "TestGT", true)
-
-	res := s.RunOnce(context.Background())
-	if res.Total != 1 {
-		t.Errorf("Total: attendu 1, obtenu %d", res.Total)
-	}
-	if res.Synced != 1 {
-		t.Errorf("Synced: attendu 1, obtenu %d", res.Synced)
-	}
-	if res.Skipped != 0 || res.Failed != 0 {
-		t.Errorf("compteurs inattendus: %+v", res)
-	}
-	if res.Duration == 0 {
-		t.Error("Duration devrait être > 0")
-	}
-}
-
-func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
-	// 3 joueurs : 1 DB absente (Skipped), 1 token absent (Skipped), 1 succès (Synced)
-	dir := t.TempDir()
-
-	runner := &mockRunner{result: domain.SyncResult{MatchesInserted: 5}}
-	provider := &mockProvider{
-		exchangeRes: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{SpartanToken: "s", ClearanceToken: "c"},
-		},
-	}
-
-	tokenReader := func(_ context.Context, dbPath string, _ string, _ auth.TokenProvider) (string, error) {
-		if filepath.Base(filepath.Dir(dbPath)) == "PlayerNoToken" {
-			return "", nil // pas de token
-		}
-		return "access_token", nil
-	}
-	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
-		return runner
-	}
-	// Créer le scheduler d'abord (écrit db_profiles.json vide)
-	s := newTestScheduler(t, dir, provider, tokenReader, factory)
-
-	// Joueur 1 : DB absente → Skipped par le scheduler (avant même le tokenReader)
-	playerDir1 := filepath.Join(dir, "data", "titles", "halo_infinite", "players", "PlayerNoDb")
-	if err := os.MkdirAll(playerDir1, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Joueur 2 : DB présente mais tokenReader retourne ""
-	playerDir2 := filepath.Join(dir, "data", "titles", "halo_infinite", "players", "PlayerNoToken")
-	if err := os.MkdirAll(playerDir2, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(playerDir2, "stats.duckdb"), []byte(""), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Joueur 3 : DB présente, token OK, sync réussie
-	playerDir3 := filepath.Join(dir, "data", "titles", "halo_infinite", "players", "PlayerOK")
-	if err := os.MkdirAll(playerDir3, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(playerDir3, "stats.duckdb"), []byte(""), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Écrire db_profiles.json avec les 3 joueurs (écrase le {} créé par newTestScheduler)
-	profiles := `{"version":"2.1","profiles":{
-		"PlayerNoDb":    {"xuid": "xuid1"},
-		"PlayerNoToken": {"xuid": "xuid2"},
-		"PlayerOK":      {"xuid": "xuid3"}
-	}}`
-	profilesPath := filepath.Join(dir, "db_profiles.json")
-	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	res := s.RunOnce(context.Background())
-	if res.Total != 3 {
-		t.Errorf("Total: attendu 3, obtenu %d", res.Total)
-	}
-	if res.Synced != 1 {
-		t.Errorf("Synced: attendu 1, obtenu %d", res.Synced)
-	}
-	if res.Skipped != 2 {
-		t.Errorf("Skipped: attendu 2, obtenu %d", res.Skipped)
-	}
-	if res.Failed != 0 {
-		t.Errorf("Failed inattendu: %+v", res)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Test : Run() s'arrête proprement à l'annulation du contexte
-// ---------------------------------------------------------------------------
 
 func TestRun_CancelCtxStops(t *testing.T) {
-	dir := t.TempDir()
-	provider := &mockProvider{}
-	s := newTestScheduler(t, dir, provider, nil, nil)
-
-	// Forcer un intervalle très long pour que le ticker ne fire pas
-	// → on teste uniquement que le case <-ctx.Done() fonctionne.
-	settingsPath := filepath.Join(dir, "app_settings.json")
-	if err := os.WriteFile(settingsPath, []byte(`{"spnkr_auto_sync_enabled":true,"spnkr_auto_sync_interval_hours":99}`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
+	s := newSchedulerForTest(t, t.TempDir(), nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
 		s.Run(ctx)
 		close(done)
 	}()
-
-	// Annuler après un court délai
-	time.Sleep(50 * time.Millisecond)
 	cancel()
-
 	select {
 	case <-done:
-		// Run() s'est terminé correctement
+		// OK : Run s'est terminé proprement
 	case <-time.After(2 * time.Second):
-		t.Error("Run() ne s'est pas terminé dans les 2 secondes après annulation du contexte")
+		t.Error("Run n'a pas retourné dans le délai")
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Test : ActivityChecker — le scheduler saute un joueur actif
-// ---------------------------------------------------------------------------
+func TestIntervalDefaults_AppliedFromSettings(t *testing.T) {
+	repoRoot := t.TempDir()
+	settingsPath := filepath.Join(repoRoot, "app_settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"spnkr_auto_sync_interval_minutes":15}`), 0o644); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+	store := settings_platform.NewStore(settingsPath)
+	cfg := &config.AppConfig{RepoRoot: repoRoot, AppSettingsPath: settingsPath}
+	s := scheduler.New(cfg, store, &fakeProvider{}, nil)
 
-// mockActivityChecker implémente PlayerActivityChecker.
-type mockActivityChecker struct {
-	activePlayers map[string]bool
+	got := s.CurrentInterval()
+	want := 15 * time.Minute
+	if got != want {
+		t.Errorf("CurrentInterval = %v, want %v", got, want)
+	}
 }
 
-func (m *mockActivityChecker) IsPlayerActive(gamertag string) bool {
-	return m.activePlayers[gamertag]
+// =============================================================================
+// Tests outcome=ok/failed/mixed via RunnerFactory mockable
+//
+// Pour tester les chemins après les préconditions (skip), on injecte un
+// RunnerFactory qui retourne un mockRunner avec un SyncResult / err configurés.
+// On crée aussi un fichier stats.duckdb vide pour que la précondition
+// "DB joueur présente" passe (le mock court-circuite tout accès DuckDB réel).
+// =============================================================================
+
+// mockRunner satisfait scheduler.DeltaRunner pour les tests.
+type mockRunner struct {
+	result domain.SyncResult
+	err    error
 }
 
-func TestRunOnce_ActivityChecker_SkipsActivePlayer(t *testing.T) {
-	dir := t.TempDir()
-	provider := &mockProvider{}
-	syncCalled := false
-	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
-		syncCalled = true
-		return &mockRunner{}
-	}
-	s := newTestScheduler(t, dir, provider, nil, factory)
+func (m *mockRunner) RunDelta(_ context.Context, _ domain.SyncOptions) (domain.SyncResult, error) {
+	return m.result, m.err
+}
 
-	// Configurer un joueur avec DB + token valide
-	addPlayer(t, dir, "ActivePlayer", true)
-	provider.exchangeRes = &auth.ExchangeResult{}
-	s.TokenReader = func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "token123", nil
+// touchPlayerDB crée un fichier stats.duckdb vide pour le gamertag indiqué
+// (uniquement pour passer la précondition os.Stat dans syncPlayer ; le mock
+// RunnerFactory n'utilise pas du tout le fichier).
+func touchPlayerDB(t *testing.T, repoRoot, gamertag string) {
+	t.Helper()
+	dir := filepath.Join(repoRoot, "data", "titles", "halo_infinite", "players", gamertag)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", dir, err)
 	}
+	dbPath := filepath.Join(dir, "stats.duckdb")
+	if err := os.WriteFile(dbPath, []byte{}, 0o644); err != nil {
+		t.Fatalf("write %s: %v", dbPath, err)
+	}
+}
 
-	// ActivityChecker dit que le joueur est actif
-	s.ActivityChecker = &mockActivityChecker{activePlayers: map[string]bool{"ActivePlayer": true}}
+func TestRunOnce_RunnerOK_Synced(t *testing.T) {
+	repoRoot := t.TempDir()
+	touchPlayerDB(t, repoRoot, "Player1")
+
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, repoRoot, p)
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return &mockRunner{result: domain.SyncResult{MatchesInserted: 3, MatchesSkipped: 2, MedalsInserted: 12}}
+	}
 
 	res := s.RunOnce(context.Background())
+	if res.Synced != 1 || res.Failed != 0 || res.Skipped != 0 {
+		t.Errorf("counters = (Synced=%d Failed=%d Skipped=%d), want (1, 0, 0)", res.Synced, res.Failed, res.Skipped)
+	}
 
+	snap := s.Snapshot()
+	if len(snap.Players) != 1 {
+		t.Fatalf("snapshot Players len = %d", len(snap.Players))
+	}
+	d := snap.Players[0]
+	if d.Outcome != "ok" {
+		t.Errorf("Outcome = %q, want ok", d.Outcome)
+	}
+	if d.MatchesInserted != 3 || d.MatchesSkipped != 2 || d.MedalsInserted != 12 {
+		t.Errorf("compteurs propagés incorrects: %+v", d)
+	}
+}
+
+func TestRunOnce_RunnerFailed_Counted(t *testing.T) {
+	repoRoot := t.TempDir()
+	touchPlayerDB(t, repoRoot, "Player1")
+
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, repoRoot, p)
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return &mockRunner{err: errors.New("API Halo 500 — service unavailable")}
+	}
+
+	res := s.RunOnce(context.Background())
+	if res.Failed != 1 || res.Synced != 0 || res.Skipped != 0 {
+		t.Errorf("counters = (Synced=%d Failed=%d Skipped=%d), want (0, 1, 0)", res.Synced, res.Failed, res.Skipped)
+	}
+
+	snap := s.Snapshot()
+	d := snap.Players[0]
+	if d.Outcome != "failed" {
+		t.Errorf("Outcome = %q, want failed", d.Outcome)
+	}
+	if d.FirstError == "" {
+		t.Error("FirstError vide alors que RunDelta a renvoyé une erreur")
+	}
+	if d.Reason == "" {
+		t.Error("Reason vide")
+	}
+}
+
+func TestRunOnce_RunnerPartialWarnings_OkWithErrors(t *testing.T) {
+	repoRoot := t.TempDir()
+	touchPlayerDB(t, repoRoot, "Player1")
+
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, repoRoot, p)
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return &mockRunner{result: domain.SyncResult{
+			MatchesInserted: 1,
+			Errors:          []string{"fetchMatchData(x): timeout", "fetchMatchData(y): 500"},
+		}}
+	}
+
+	res := s.RunOnce(context.Background())
+	if res.Synced != 1 {
+		t.Errorf("Synced = %d, want 1 (partial succès reste outcome=ok)", res.Synced)
+	}
+
+	snap := s.Snapshot()
+	d := snap.Players[0]
+	if d.ErrorCount != 2 {
+		t.Errorf("ErrorCount = %d, want 2", d.ErrorCount)
+	}
+	if d.FirstError == "" {
+		t.Error("FirstError vide alors qu'il y a 2 erreurs partielles")
+	}
+}
+
+func TestRunOnce_RunnerOK_ZeroInserted_OkWithDifferentReason(t *testing.T) {
+	repoRoot := t.TempDir()
+	touchPlayerDB(t, repoRoot, "Player1")
+
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, repoRoot, p)
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return &mockRunner{result: domain.SyncResult{MatchesInserted: 0, MatchesSkipped: 25}}
+	}
+
+	res := s.RunOnce(context.Background())
+	if res.Synced != 1 {
+		t.Errorf("Synced = %d, want 1", res.Synced)
+	}
+
+	snap := s.Snapshot()
+	d := snap.Players[0]
+	if d.Outcome != "ok" {
+		t.Errorf("Outcome = %q, want ok", d.Outcome)
+	}
+	// La raison doit différencier le cas "0 nouveau match" du cas "N insérés".
+	if d.Reason == "" {
+		t.Error("Reason vide")
+	}
+}
+
+func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
+	repoRoot := t.TempDir()
+
+	// db_profiles.json avec 3 joueurs : Alice, Bob, Carol.
+	settingsPath := filepath.Join(repoRoot, "app_settings.json")
+	_ = os.WriteFile(settingsPath, []byte(`{"spnkr_auto_sync_enabled":true,"spnkr_auto_sync_interval_hours":1}`), 0o644)
+
+	dbProfilesPath := filepath.Join(repoRoot, "db_profiles.json")
+	_ = os.WriteFile(dbProfilesPath, []byte(`{
+		"version":"3.0","admin":"Alice","profiles":{"halo_infinite":{
+			"Alice":{"db_path":"data/titles/halo_infinite/players/Alice/stats.duckdb","xuid":"xa","waypoint_player":"Alice"},
+			"Bob":{"db_path":"data/titles/halo_infinite/players/Bob/stats.duckdb","xuid":"xb","waypoint_player":"Bob"},
+			"Carol":{"db_path":"data/titles/halo_infinite/players/Carol/stats.duckdb","xuid":"xc","waypoint_player":"Carol"}
+		}}}`), 0o644)
+
+	touchPlayerDB(t, repoRoot, "Alice")
+	touchPlayerDB(t, repoRoot, "Bob")
+	// Carol n'a pas de DB → skip
+
+	p := &fakePool{
+		hasPlayerMap: map[string]bool{"Alice": true, "Bob": true}, // Carol absente du pool
+		size:         2,
+	}
+
+	store := settings_platform.NewStore(settingsPath)
+	cfg := &config.AppConfig{RepoRoot: repoRoot, DBProfilesPath: dbProfilesPath, AppSettingsPath: settingsPath}
+	s := scheduler.New(cfg, store, &fakeProvider{}, p)
+
+	// Alice → OK, Bob → fail. Carol → skip (pas dans le pool).
+	s.RunnerFactory = func(_ context.Context, gt, _ string) scheduler.DeltaRunner {
+		if gt == "Alice" {
+			return &mockRunner{result: domain.SyncResult{MatchesInserted: 5}}
+		}
+		return &mockRunner{err: errors.New("Bob API 500")}
+	}
+
+	res := s.RunOnce(context.Background())
+	if res.Total != 3 {
+		t.Errorf("Total = %d, want 3", res.Total)
+	}
+	if res.Synced != 1 {
+		t.Errorf("Synced = %d, want 1 (Alice)", res.Synced)
+	}
+	if res.Failed != 1 {
+		t.Errorf("Failed = %d, want 1 (Bob)", res.Failed)
+	}
 	if res.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1", res.Skipped)
+		t.Errorf("Skipped = %d, want 1 (Carol pas dans le pool)", res.Skipped)
 	}
-	if res.Synced != 0 {
-		t.Errorf("Synced = %d, want 0 (joueur actif ne doit pas être syncé)", res.Synced)
+
+	snap := s.Snapshot()
+	if len(snap.Players) != 3 {
+		t.Fatalf("snapshot Players len = %d, want 3", len(snap.Players))
 	}
-	if syncCalled {
-		t.Error("RunDelta ne doit pas être appelé quand le watcher est actif sur ce joueur")
+
+	byGT := map[string]scheduler.PlayerOutcomeDetail{}
+	for _, d := range snap.Players {
+		byGT[d.Gamertag] = d
+	}
+	if byGT["Alice"].Outcome != "ok" {
+		t.Errorf("Alice outcome = %q, want ok", byGT["Alice"].Outcome)
+	}
+	if byGT["Bob"].Outcome != "failed" {
+		t.Errorf("Bob outcome = %q, want failed", byGT["Bob"].Outcome)
+	}
+	if byGT["Carol"].Outcome != "skipped" {
+		t.Errorf("Carol outcome = %q, want skipped", byGT["Carol"].Outcome)
 	}
 }
 
 func TestRunOnce_ActivityChecker_SyncsIdlePlayer(t *testing.T) {
-	dir := t.TempDir()
-	provider := &mockProvider{
-		exchangeRes: &auth.ExchangeResult{
-			Tokens:   &domain.HaloTokens{SpartanToken: "s", ClearanceToken: "c"},
-			Gamertag: "IdlePlayer",
-			XUID:     "xuid_IdlePlayer",
-		},
-	}
-	syncCalled := false
-	factory := func(_, _, _ string, _ *domain.HaloTokens, _ auth.TokenProvider) scheduler.DeltaRunner {
-		syncCalled = true
-		return &mockRunner{}
-	}
-	s := newTestScheduler(t, dir, provider, nil, factory)
+	repoRoot := t.TempDir()
+	touchPlayerDB(t, repoRoot, "Player1")
 
-	addPlayer(t, dir, "IdlePlayer", true)
-	s.TokenReader = func(_ context.Context, _ string, _ string, _ auth.TokenProvider) (string, error) {
-		return "token123", nil
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, repoRoot, p)
+	s.ActivityChecker = &fakeActivityChecker{activeGamertags: map[string]bool{}} // aucun actif
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return &mockRunner{result: domain.SyncResult{MatchesInserted: 1}}
 	}
-
-	// ActivityChecker dit que le joueur est Idle (non actif)
-	s.ActivityChecker = &mockActivityChecker{activePlayers: map[string]bool{"IdlePlayer": false}}
 
 	res := s.RunOnce(context.Background())
-
 	if res.Synced != 1 {
-		t.Errorf("Synced = %d, want 1 (joueur idle doit être syncé normalement)", res.Synced)
-	}
-	if !syncCalled {
-		t.Error("RunDelta doit être appelé pour un joueur Idle")
+		t.Errorf("Synced = %d, want 1 (Player1 idle → sync OK)", res.Synced)
 	}
 }
+
+func TestRunOnce_RunnerFactoryNil_Failed(t *testing.T) {
+	repoRoot := t.TempDir()
+	touchPlayerDB(t, repoRoot, "Player1")
+
+	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
+	s := newSchedulerForTest(t, repoRoot, p)
+	// Forcer la factory à retourner nil pour exercer le cas dégénéré.
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return nil
+	}
+
+	res := s.RunOnce(context.Background())
+	if res.Failed != 1 {
+		t.Errorf("Failed = %d, want 1 (factory retourne nil)", res.Failed)
+	}
+
+	snap := s.Snapshot()
+	d := snap.Players[0]
+	if d.Outcome != "failed" {
+		t.Errorf("Outcome = %q, want failed", d.Outcome)
+	}
+}
+
+// Vérifier que les types domain.PlayerSummary + SyncResult restent compatibles
+// (compile-time check qui assure que le scheduler peut être lié au reste).
+var _ = domain.PlayerSummary{}
+var _ = domain.SyncResult{}

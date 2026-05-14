@@ -439,7 +439,7 @@ func NewRouter(
 		// avoir à fouiller dans les logs serveur (raison du skip/failure par joueur).
 		// Bloqué en non-loopback : retourne 403.
 		if autoSyncScheduler != nil {
-			autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg)
+			autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg, tokenProvider)
 			r.Route("/_diag/auto-sync", func(r chi.Router) {
 				r.Use(middleware.LoopbackOnly)
 				r.Get("/snapshot", autoSyncH.GetSnapshot)
