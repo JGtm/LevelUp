@@ -1,4 +1,58 @@
 
+## [2026-05-14] refactor(scheduler) — Migration AutoSyncScheduler vers le pool de tokens (suppression de la chaîne d'auth dupliquée)
+
+**Statut** : Complété.
+
+**Contexte** : la session précédente avait empilé des patches dans `defaultTokenReader` du scheduler (lecture env_var → sync_meta, rotation manuelle, persistance) qui dupliquaient ce que l'architecture `internal/platform/auth/pool/` faisait déjà : `Discovery` encapsule la lecture des sources de credentials, `Resolver` gère le pipeline OAuth + cache, `Pool` maintient les tokens vivants et expose Acquire round-robin/pinned, et `PooledHaloClient` est le client adapté pour le sync engine. L'utilisateur a interrompu : "arrête de te lancer tête baissée alors que l'archi est pas claire pour toi".
+
+**Découverte architecturale** : avant la migration, `cmd levelup sync-delta --all` utilisait correctement le pool, mais `AutoSyncScheduler` (le scheduler 45 min) ré-implémentait sa propre chaîne d'auth via `TokenReader`/`EngineFactory` → c'est l'écart à corriger. Le scheduler n'utilisait jamais le pool malgré son existence.
+
+**Décisions techniques** :
+
+1. **Interface TokenProvider étendue** : nouvelle méthode `TryOAuthRefreshWithRotation(ctx, rt) (accessToken, rotatedRT, err)` qui expose le refresh_token tourné par Microsoft. `TryOAuthRefresh` (legacy) délègue à la nouvelle. Impl dans MSALProvider + SISUProvider. 3 mocks de tests adaptés (stubProvider, mockProvider, mockTokenProvider).
+
+2. **Resolver gère la rotation** : `NewResolver(provider, ttl, onRotated TokenRotationCallback)` accepte un callback. `Resolve()` appelle `TryOAuthRefreshWithRotation`, met à jour `r.sources[gamertag].RefreshToken` en mémoire, et invoque `onRotated` pour la persistance externe. Le callback est typé `func(ctx, gamertag, newRT) error` et best-effort (log warn sur erreur, n'interrompt pas le Resolve).
+
+3. **AutoSyncScheduler entièrement réécrit** :
+   - Suppression complète de `TokenReader` (interface + impl `defaultTokenReader`), `EngineFactory` (interface + impl `defaultEngineFactory`), `DeltaRunner` interface, helpers `safePrefix`/`itoa`.
+   - Nouveau constructor `New(cfg, settings, provider, pool)` — le pool est paramètre obligatoire (peut être nil → tous les joueurs skipped silencieusement).
+   - `syncPlayer` simplifié : 4 préconditions (pool nil, !pool.HasPlayer, watcher actif, DB joueur absente) puis création directe d'un `PooledHaloClient` + `engine.SetCustomClient`. Le scheduler n'accède plus jamais à `os.Getenv` ni à `sync_meta.oauth_refresh_token` — c'est entièrement encapsulé dans Discovery+Resolver+Pool.
+   - `SchedulerSnapshot` expose maintenant `PoolSize`.
+   - Tests `auto_sync_test.go` réécrits : suppression des 14 tests qui dépendaient de mock TokenReader/EngineFactory ; remplacés par 6 tests focalisés sur les chemins skip (mock pool) + mécanique snapshot + arrêt propre Run.
+
+4. **Pool : nouvelle méthode `HasPlayer(gamertag) bool`** — permet au scheduler de skip silencieusement les joueurs non discoverables sans déclencher un Acquire qui retournerait juste une erreur. Mocks pool de tests adaptés (mockPool, fakePool).
+
+5. **main.go : `buildAutoSyncPool(ctx, cfg, tokenProvider)` au boot** : assemble Discovery → Resolver (avec callback onRotated qui ouvre la player DB via `OpenReadWriteShared` et appelle `WriteOAuthRefreshToken`) → Pool. Retourne nil si Discovery ne trouve aucun credential. Le pool est `defer pool.Close()` au shutdown. Le scheduler reçoit le pool via `scheduler.New(cfg, settings, tokenProvider, pool)`.
+
+6. **`admin_auto_sync.go::ProbeTokens` réécrit** pour passer par Discovery + Resolver au lieu de `os.Getenv` direct + DuckDB direct. Expose `discovered_in_pool`, `source`, `resolve_ok`, `refresh_token_was_rotated`, fingerprint (sha256 + head/tail tronqués). Le RT rotaté est persisté via le même callback qu'en production — le probe ne brûle plus les RT du caller.
+
+7. **Bug `$$` dans `.env.local`** (découvert dans la même session) : Microsoft inclut parfois `$$` à la fin des refresh_tokens (Madina97294). Quand `make dev` source `.env.local` via bash, `$$` est expandé en PID du shell, polluant la valeur transmise au serveur Go. Fix : guillemets simples autour des 3 RT dans `.env.local` (single quotes désactivent l'expansion bash, et `loadEnvLocal` Go les retire à la lecture). Nécessite Ctrl+C + relance de `make dev` pour effacer l'env du shell parent.
+
+**Résultats observés (probe live des 4 joueurs après tous les patches)** :
+- JGtm : `discovered_in_pool=true source=duckdb_oauth resolve_ok=true rotated=true spartan_len=1147`
+- Chocoboflor : idem (RT tail `ljdg$$` préservé)
+- Madina97294 : idem (RT tail `f3AQ$$` préservé — fix `$$` validé)
+- XxDaemonGamerxX : `discovered_in_pool=false` (pas d'env var configurée — skip silencieux attendu)
+- Pool boot : `size=3` tokens vivants
+- Snapshot exposé via `GET /api/v1/_diag/auto-sync/{snapshot,run,probe}` (loopback only, sans auth)
+
+**Fichiers ajoutés** :
+- (réécrits) `internal/scheduler/auto_sync.go`, `internal/scheduler/auto_sync_test.go`, `internal/api/handlers/admin_auto_sync.go`
+
+**Fichiers modifiés** :
+- `internal/platform/auth/provider.go`, `sisu_provider.go`, `oauth_refresh.go` (TryOAuthRefreshWithRotation)
+- `internal/platform/auth/pool/types.go`, `resolver.go`, `pool.go` (callback onRotated, HasPlayer)
+- `internal/platform/auth/pool/resolver_test.go` (mock adapté)
+- `internal/platform/auth/watcher_refresh_test.go`, `internal/api/handlers/stub_provider_test.go` (mocks)
+- `internal/sync/pooled_client_test.go` (mockPool + HasPlayer)
+- `internal/api/server.go` (NewRouter signature : +scheduler, NewAdminAutoSyncHandler : +provider)
+- `internal/api/contract_helpers_test.go` (signature)
+- `cmd/server/main.go` (buildAutoSyncPool, passage au scheduler)
+- `cmd/levelup/cmd_sync.go` (suppression fallback "sans pool", utilise toujours le pool)
+- `.env.local` (guillemets simples autour des 3 SPNKR_OAUTH_REFRESH_TOKEN_*)
+
+**Principe directeur post-migration** : aucun code applicatif (scheduler, handlers, services) ne lit `os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_*")` ni `sync_meta.oauth_refresh_token` directement. Seuls `pool.Discovery` (lecture sources) et le callback `onRotated` (écriture rotation) ont accès à ces backing stores. Le reste du code consomme `pool.Pool.Acquire()` ou `pool.Resolver.Resolve()`.
+
 ## [2026-05-14] fix(sync) — Auto-sync planifiée silencieuse : 5 bugs cumulés (DuckDB shared, RT rotation, observabilité)
 
 **Statut** : Complété (4 patches livrés ; Madina97294 nécessite régénération manuelle du refresh_token côté utilisateur).

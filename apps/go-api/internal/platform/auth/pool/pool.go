@@ -224,6 +224,13 @@ func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*L
 }
 
 // Size implémente Pool.Size().
+func (p *poolImpl) HasPlayer(gamertag string) bool {
+	p.slotMu.RLock()
+	defer p.slotMu.RUnlock()
+	_, ok := p.slotsByGt[gamertag]
+	return ok
+}
+
 func (p *poolImpl) Size() int {
 	return len(p.slots)
 }
