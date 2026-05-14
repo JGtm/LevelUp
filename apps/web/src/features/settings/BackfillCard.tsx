@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { apiErrorMessage } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useStartBackfill } from '@/features/settings/queries'
 import { useJobStatus } from '@/features/setup/queries'
@@ -93,7 +94,7 @@ export function BackfillCard({ t }: BackfillCardProps) {
         },
         onError: (err) => {
           toast.error(t.backfillToastStartFailed, {
-            description: err instanceof Error ? err.message : undefined,
+            description: apiErrorMessage(err),
           })
         },
       },
