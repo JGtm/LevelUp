@@ -1,4 +1,52 @@
 
+## [2026-05-14] feat(career-live) — Découplage XP/Spartan ID du post-sync matchs : flow live throttle 5 min / 6 h + fallback DB per-field
+
+**Statut** : Complété (9 commits sur `feat/career-decouple-from-match-sync`, build + vet propres, 19 tests unitaires passent).
+
+**Contexte** : utilisateur signale que la sync XP/rang/Spartan ID dépend des nouveaux matchs détectés par le watcher. Si le joueur ne joue pas (XP gagnée via défis, customisation modifiée hors-match), la home affiche des données stagnantes jusqu'au prochain match. Ref attendue : le pattern Battle Pass / Challenges qui fait du "live à chaque chargement de la home", peut-être avec une cadence différente.
+
+**Décisions techniques** :
+
+1. **Cadences distinctes** : XP/rang = live throttle 5 min, Spartan customisation (ServiceTag + emblem + banner + backdrop) = live throttle 6 h. Aligne le coût HTTP sur la vélocité réelle des données (XP bouge à chaque match, customisation change rarement).
+
+2. **Split du provider** (`internal/sync/halo_client.go`) : `GetCareerRank` (1 wrapper qui faisait 2 appels en série) éclaté en `GetCareerProgress` (rewardtracks/careerrank1) + `GetSpartanCustomization` (customization?view=public + 3 resolves d'inventory paths). Le wrapper deprecated reste pour PooledHaloClient + tests legacy.
+
+3. **CareerLiveCache** (`internal/service/career_live_cache.go`) : 2 sous-caches TTL indépendants + singleflight par xuid, horloge injectable. Cache process-level partagé entre tous les joueurs via ServiceRegistry (pattern identique à `homeMatchesCache`).
+
+4. **CareerLiveRepo** (`internal/platform/duckdb/career_live_repo.go`) :
+   - `LoadLastCareerRank` : projection ARG_MAX + FILTER per-field-merged sur `career_progression` (chaque colonne retourne la dernière valeur non-vide, pas la dernière row complète) — généralisation du pattern déjà présent dans `Q26cHomeSpartanIdentity`.
+   - `InsertCareerProgressionIfChanged` : INSERT uniquement si au moins un champ d'identité (rank, current_xp, is_max_rank, spartan_id, banner/emblem/backdrop) diffère de la dernière row. Évite la saturation de la table à 288 rows/jour (cadence 5 min) tout en gardant le graphe XP de la page Carrière propre.
+   - `EnrichFromMetadata` : pendant de `sync.enrichCareerRankFromMetadata` opérant sur `CareerRankRow` (rank_name, rank_tier, xp_for_next_rank, xp_total via SUM(xp_required WHERE rank_id < ?)).
+
+5. **CareerLiveService** (`internal/service/career_live_service.go`) — fallback matrix à 4 niveaux :
+   1. live OK, champs complets → utilise les valeurs live
+   2. live OK + champs vides → per-field merge depuis la dernière row connue en DB (carry-forward)
+   3. live KO complet → fallback total sur la dernière row DB
+   4. live KO + DB vide → nil (front affiche placeholder)
+   - **Garde-fou critique** : un `current_xp=0` live (palier juste franchi) ne doit JAMAIS être écrasé par le DB carry-forward — sinon régression d'affichage au moment exact du passage de palier. Testé explicitement.
+   - **Métriques expvar** (`internal/service/career_live_metrics.go`) : 13 compteurs `career_live.*` exposés sous `/debug/vars` (cache_hit / live / fetch_error par kind, snapshot.inserted / skipped_no_delta, fallback.db_row / per_field / empty, identity.served / missing).
+
+6. **Per-field fallback préservé** : la requête `Q26cHomeSpartanIdentity` (qui faisait déjà ce merge per-field via ARG_MAX + FILTER) reste exposée via `LoadSpartanIdentity` pour les bootstraps sans `CareerLiveService` (HomeCtx no-auth, tests). Le nouveau `LoadLastCareerRank` reprend le même pattern, étendu à toutes les colonnes utiles.
+
+7. **Découplage post-sync** (`internal/sync/engine.go`) : `runCareerSync` retiré des 2 sites d'appel (`runPostSyncPipeline` étape 3, `runConditionalPostSync` no-match path). La méthode `runCareerSync` est supprimée (0 caller). Helpers `syncCareerRank`, `saveCareerRank`, `enrichCareerRankFromMetadata`, `buildCareerRankName` conservés (encore testés sous build tag `integration`, potentiellement utiles pour un CLI manuel futur). Le champ `domain.PostSyncResult.CareerSynced` reste dans le struct (compat tests e2e) mais n'est plus jamais positionné à true.
+
+8. **CSR snapshots préservé dans le post-sync** : le CSR ne bouge que sur fin de match ranked, donc le déclencheur "nouveau match" reste pertinent. `runCSRSnapshotSync` n'est pas touché.
+
+9. **Câblage serveur** (`internal/api/registry.go`) : 3 ctors HomeService câblent `WithCareerLive(...)` via un helper `newCareerLiveService(pdb, homeRepo)`. Le cache est ajouté comme champ `careerLiveCache` du `ServiceRegistry`, initialisé une fois au boot. Sans tokens en contexte (HomeCtx legacy), le service tombe automatiquement sur le fallback DB — pas besoin de skip explicite.
+
+10. **Test mock unblocking** : ajout de stubs `GetCSRSnapshots`, `LoadModeTranslationsFR`, `LoadPlaylistAssetTranslationsFR` sur `mockCareerRepo`, `GetCareerCSRs` sur `mockCareerService`, `GetPlayerCSRs` sur `weaponTestClient`, et argument scheduler nil dans `api.NewRouter` du contract test. Pré-existant — débloque la compilation des tests des packages service / handlers / api / sync, indépendamment du chantier carrière.
+
+**Résultats observés** :
+- 9 commits granulaires : test mocks → split provider → repo → service → wiring home → engine decoupling → registry → tests → thought_log.
+- `go build ./...` et `go vet ./...` propres sur la branche.
+- 19 tests unitaires CareerLive passent (8 cache + 6 fallback matrix + 5 service-level).
+- Métriques expvar prêtes pour dashboard prod : taux cache_hit, taux fallback DB, taux per-field merge → permettent de monitorer la santé du flow live sans tooling supplémentaire.
+- 1 test pré-existant flaky dans `internal/sync/` (`TestHaloClient_GetMatchHistory_ParamsValides`) qui fait un vrai appel HTTP vers `halostats.svc.halowaypoint.com` — non lié à ce chantier, ne bloque pas le build.
+
+**Conclusion** : la home affiche maintenant l'XP fraîche dès qu'on la charge (cadence 5 min max), la customisation Spartan se rafraîchit toutes les 6 h, et le bloc Spartan ID est garanti non-vide tant qu'une row historique existe en DB (per-field fallback robuste). Le sync engine ne touche plus à `career_progression` — c'est le service.CareerLiveService qui écrit (avec INSERT-if-changed pour préserver le graphe XP).
+
+**Prochaine étape** : monitorer en prod les métriques `career_live.fallback.*` pendant 1 semaine pour valider que le ratio fallback_db / total reste faible (idéalement < 10 %). Si > 30 % en moyenne, signe que les tokens sont souvent absents → investiguer le middleware session.
+
 ## [2026-05-14] fix(sync) — Auto-sync planifiée silencieuse : 5 bugs cumulés (DuckDB shared, RT rotation, observabilité)
 
 **Statut** : Complété (4 patches livrés ; Madina97294 nécessite régénération manuelle du refresh_token côté utilisateur).
