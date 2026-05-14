@@ -47,6 +47,49 @@
 
 **Prochaine étape** : monitorer en prod les métriques `career_live.fallback.*` pendant 1 semaine pour valider que le ratio fallback_db / total reste faible (idéalement < 10 %). Si > 30 % en moyenne, signe que les tokens sont souvent absents → investiguer le middleware session.
 
+## [2026-05-14 follow-up] fix(career-live) — Home hangait à 60s : refacto stale-while-revalidate
+
+**Statut** : Complété, validé runtime.
+
+**Symptôme** : après le wiring initial du CareerLiveService dans HomeService, la home `/api/v1/players/{slug}/pages/home` hangait 60s+ côté curl. Pourtant la page Carrière (endpoint séparé) répondait en 240ms. User : "ma page home se charge pas. Faut que tu testes davantage et que tu me proposes quelque chose de plus solide".
+
+**Diagnostic** :
+
+1. **Cause racine** : `CareerLiveService.GetSpartanIdentity` faisait des appels HTTP live SYNCHRONES dans le chemin critique de la home. `GetSpartanCustomization` peut faire jusqu'à 4 HTTP calls en série (1 customization + 3 image resolves GameCMS), chacun avec timeout 20s = worst case 80s.
+
+2. **Halo Waypoint inaccessible côté user** : `curl https://economy.svc.halowaypoint.com/` retourne exit 60 (SSL cert problem). Avec `-k` (skip verify), retourne 404 en 555ms → service répond, mais le Go HTTP client refuse le cert. Diagnostic suggère un proxy corporate/MITM ou un root CA manquant. Confirmé : `halo_provider: battle_pass fetch failed`, `halo_provider: challenges fetch failed` aussi dans les logs → c'est un problème global Halo, pas spécifique au career_live.
+
+3. **Tokens OK** : le diag endpoint `/api/v1/_diag/auto-sync/probe?gamertag=JGtm` retourne `env_var_exchange_ok: true` et `db_exchange_ok: true`. Les 2 sources de refresh_token sont valides. L'hypothèse user "ça a besoin du refresh_token" n'est PAS la cause — la chaîne OAuth marche, c'est la couche en aval (XSTS → SpartanToken → Halo endpoint) qui timeout.
+
+**Décisions techniques** :
+
+1. **Première tentative (insuffisante)** : hard budget 2.5s sur le live + parallélisation progress/customization via errgroup + kickoff background refresh sur dépassement. Home tombait de 60s à 4.6s. Mieux mais chaque chargement payait toujours 2.5s de budget.
+
+2. **Refacto finale — stale-while-revalidate** : suppression complète du fetch HTTP synchrone dans le chemin de la home. `fetchAndMerge` ne fait plus QUE :
+   - Lecture DB (toujours <50ms)
+   - Lookup cache mémoire (instant)
+   - Merge per-field cache + DB
+   - Kickoff goroutine background si cache miss
+
+   Le user voit toujours la dernière donnée locale (cache OU DB carry-forward), et le bg refresh remplit le cache pour la requête suivante quand Halo répond. La home retourne en quelques ms, peu importe ce que Halo fait.
+
+3. **Tests refactorisés** :
+   - `TestCareerLive_MergeCareerRow_Matrix` (5 cas) : valide le merge per-field comme fonction pure (indépendant de l'async).
+   - `TestCareerLive_GetIdentity_SwRBehavior` (4 sous-cas) : cache miss, cache hit, no-tokens, DB empty.
+   - `TestCareerLive_SlowFetcher_DoesNotBlockHome` : régression directe — fetcher qui bloque 30s, GetSpartanIdentity doit retourner en <500ms.
+
+**Résultats observés** (server PID 7352, runtime test JGtm) :
+- Call 1 (cold) : 2.98s — c'est le cost normal de la home (matches + sessions + media + playlists), pas le career_live.
+- Call 2 : 226ms ⚡
+- Call 3 : 231ms ⚡
+- Payload `spartan_identity` complet : SR-OKLM, rank 179, emblem, backdrop, current_xp=640.
+- Metrics expvar : `identity.served=3`, `budget.exceeded=0`, `bg.refresh_kicked=3`, `fallback.per_field=3`, `snapshot.skipped_no_delta=3` (insert-if-changed valide).
+- `progress.cache_hit=0` : le bg refresh n'arrive jamais à populer la cache parce que Halo timeout côté user. Quand le user résout le souci réseau/SSL, les cache_hit incrémenteront et les données seront live à la requête suivante.
+
+**Conclusion** : le pattern SwR est strictement meilleur que le fetch synchrone pour ce use case. Le bug a révélé l'erreur architecturale initiale (mettre du HTTP live sur le critical path d'une page complexe). La home est désormais robuste : peu importe Halo, elle charge en quelques ms avec les meilleures données dispo localement.
+
+**À noter pour l'utilisateur** : le souci de connectivité Halo (curl exit 60 SSL) reste à investiguer côté environnement (proxy corporate ? root CA ? Halo cert change ?). Mais ce n'est plus bloquant pour la home — c'est seulement que les données ne se rafraîchissent pas live tant que la connectivité ne revient pas.
+
 ## [2026-05-14] fix(sync) — Auto-sync planifiée silencieuse : 5 bugs cumulés (DuckDB shared, RT rotation, observabilité)
 
 **Statut** : Complété (4 patches livrés ; Madina97294 nécessite régénération manuelle du refresh_token côté utilisateur).
