@@ -197,6 +197,9 @@ func (w *weaponTestClient) GetHighlightEventsChunk(_ context.Context, _ string) 
 func (w *weaponTestClient) GetCareerRank(_ context.Context, _ string) (*CareerRankData, error) {
 	return nil, nil
 }
+func (w *weaponTestClient) GetPlayerCSRs(_ context.Context, _, _ string) ([]PlayerPlaylistCSR, error) {
+	return nil, nil
+}
 
 // ─── TestBackfillWeaponKillsForMatch ─────────────────────────────────────────
 
