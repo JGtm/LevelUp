@@ -54,6 +54,12 @@ type HomeService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// careerLive (optionnel) : service live carrière découplé du post-sync
+	// matchs. Quand câblé, remplace l'appel DB-only LoadSpartanIdentity par
+	// un flow live throttle 5 min / 6 h + fallback DB per-field garanti.
+	// Si nil, le service retombe sur l'ancien chemin (repo.LoadSpartanIdentity)
+	// — utilisé par les tests et les bootstraps minimaux sans auth.
+	careerLive *CareerLiveService
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
@@ -125,6 +131,15 @@ func (s *HomeService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, t
 func (s *HomeService) WithMatchesCache(cache *HomeMatchesCache, xuid string) *HomeService {
 	s.matchesCache = cache
 	s.xuid = xuid
+	return s
+}
+
+// WithCareerLive câble le service live carrière (XP/rang + Spartan ID
+// découplés du post-sync matchs). Quand fourni, GetHomePage remplace
+// l'appel repo.LoadSpartanIdentity (DB-only) par un flow live throttle
+// 5 min / 6 h + fallback DB per-field garanti.
+func (s *HomeService) WithCareerLive(svc *CareerLiveService) *HomeService {
+	s.careerLive = svc
 	return s
 }
 
@@ -210,6 +225,18 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 		return err
 	})
 	g.Go(func() error {
+		// Path live (CareerLiveService câblé) : flow découplé du post-sync
+		// matchs avec throttle 5 min (XP) / 6 h (customisation) + fallback DB
+		// per-field garanti. Fallback : repo.LoadSpartanIdentity (DB-only)
+		// pour les bootstraps sans careerLive (tests, instances minimales).
+		if s.careerLive != nil {
+			row, err := s.careerLive.GetSpartanIdentity(gctx)
+			if err != nil {
+				slog.WarnContext(gctx, "home: CareerLive.GetSpartanIdentity failed", "err", err)
+			}
+			d.spartanIdent = row
+			return nil
+		}
 		var err error
 		d.spartanIdent, err = s.repo.LoadSpartanIdentity(gctx)
 		if err != nil {
