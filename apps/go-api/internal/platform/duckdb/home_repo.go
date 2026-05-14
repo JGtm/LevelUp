@@ -1,4 +1,4 @@
-// Package duckdb â€” home_repo.go : accÃ¨s DB pour la page d'accueil Mission Control.
+// Package duckdb â€" home_repo.go : accÃ¨s DB pour la page d'accueil Mission Control.
 package duckdb
 
 import (
@@ -131,7 +131,7 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatch
 		if row.SkillTierLabel != nil {
 			tierLabel = *row.SkillTierLabel
 		}
-		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier, homeStaticTitleSlug)
+		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier, homeStaticTitleSlug, 0)
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -213,7 +213,7 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 // enrichSpartanIdentity hydrate les paths d'assets visuels du rang carriÃ¨re
 // (image rang + adornment) depuis metadata.duckdb. Les libellÃ©s (rang courant,
 // rang suivant) sont rÃ©solus en aval par le service via le SemanticAdapter
-// (cf. mappings.RankCatalog) â€” ils ne passent plus par le repo storage.
+// (cf. mappings.RankCatalog) â€" ils ne passent plus par le repo storage.
 func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSpartanIdentityRow) {
 	if row == nil || row.RankNumber <= 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return
@@ -236,6 +236,14 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 		return nil
 	}
 
+	// Pour CSR, lire depuis player_csr_snapshots (alltime officiel Waypoint).
+	// Fallback sur match_skill_rank si la table est vide ou absente.
+	if ratingType == "CSR" {
+		if peak := r.loadCSRAlltimePeak(ctx); peak != nil {
+			return peak
+		}
+	}
+
 	var ratingValue sql.NullFloat64
 	var tierLabel sql.NullString
 	var tier sql.NullString
@@ -254,14 +262,36 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 	if tierLabel.Valid {
 		peak.TierLabel = stringPtr(tierLabel.String)
 	}
-	// Bug #1 : LUSR utilise les mêmes assets que CSR — fichiers stockés sous
+	// Bug #1 : LUSR utilise les memes assets que CSR - fichiers stockes sous
 	// /static/ranks/halo_infinite/. Sans le slug, l'URL pointait sur 404.
 	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(
 		optionalNullStringValue(tier),
 		optionalNullStringValue(tierLabel),
 		optionalNullInt16Value(subTier),
 		homeStaticTitleSlug,
+		0,
 	)
+	return peak
+}
+
+// loadCSRAlltimePeak lit le meilleur CSR alltime depuis player_csr_snapshots.
+func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeakRow {
+	var value sql.NullFloat64
+	var tier sql.NullString
+	var subTier sql.NullInt16
+	if err := r.pdb.ReadDB().QueryRow(ctx, Q26csrAlltimePeak).Scan(&value, &tier, &subTier); err != nil {
+		return nil
+	}
+	if !value.Valid {
+		return nil
+	}
+	peak := &domain.HomeSkillPeakRow{RatingValue: value.Float64}
+	tierStr := optionalNullStringValue(tier)
+	subTierInt := optionalNullInt16Value(subTier)
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(tierStr, "", subTierInt, homeStaticTitleSlug, 0)
+	if tierStr != "" {
+		peak.TierLabel = stringPtr(tierStr)
+	}
 	return peak
 }
 
@@ -320,6 +350,7 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 				optionalNullStringValue(tierLabel),
 				optionalNullInt16Value(subTier),
 				homeStaticTitleSlug,
+				0,
 			)
 		}
 		raws = append(raws, rawItem{
@@ -433,12 +464,35 @@ func optionalNullInt16Value(value sql.NullInt16) int {
 	return int(value.Int16)
 }
 
+// unrankedBadgeURL retourne l'URL du badge unranked_N.png.
+// N = placementsCompleted (0-9) — total de 10 parties de placement pour CSR et LUSR.
+func unrankedBadgeURL(placementsCompleted int, titleSlug string) *string {
+	n := placementsCompleted
+	if n < 0 {
+		n = 0
+	}
+	if n > 9 {
+		n = 9
+	}
+	slug := titleSlug
+	if slug == "" {
+		slug = homeStaticTitleSlug
+	}
+	url := static.URL(static.KindCSRRank, slug, fmt.Sprintf("unranked_%d", n), ".png")
+	return &url
+}
+
 // buildHomeSkillPeakBadgeURL construit l'URL du badge de rang.
 // titleSlug : slug de titre (ex "halo_infinite") pour les ratings game-specific (CSR).
-// Passer "" pour les ratings cross-titre (LUSR) â€” l'URL n'inclut pas de slug.
-func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titleSlug string) *string {
+// Passer "" pour les ratings cross-titre (LUSR) - l'URL n'inclut pas de slug.
+// measurementMatchesRemaining > 0 → badge unranked_N.png (N = 10 - remaining, capped 0-9).
+func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titleSlug string, measurementMatchesRemaining int) *string {
 	normalizedTier, normalizedSubTier := normalizeHomeSkillPeakBadgeParts(tier, tierLabel, subTier)
 	if normalizedTier == "" {
+		if measurementMatchesRemaining > 0 {
+			completed := 10 - measurementMatchesRemaining
+			return unrankedBadgeURL(completed, titleSlug)
+		}
 		return nil
 	}
 	// P5.4 (gap #9, ADR 0012) : déléguer à halo_infinite.AssetURLAdapter pour
@@ -1059,7 +1113,7 @@ func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSess
 func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error) {
 	rows, err := r.pdb.ReadDB().Query(ctx, Q28RecentMedia, limit)
 	if err != nil {
-		// La table media_files peut ne pas exister â€” dÃ©gradation silencieuse.
+		// La table media_files peut ne pas exister â€" dÃ©gradation silencieuse.
 		if isTableNotFoundErr(err) {
 			return nil, nil
 		}
