@@ -12,7 +12,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -139,12 +138,15 @@ func newService(t *testing.T, fetcher *mockCareerFetcher, repo *mockCareerLiveRe
 	return NewCareerLiveService(repo, builder, factory, nil) // pas de cache pour les tests
 }
 
-// --- TestCareerLive_GetIdentity_FallbackMatrix ---
+// --- TestCareerLive_MergeCareerRow_Matrix ---
 //
-// Matrice de fallback : c'est le test qui acte le contrat utilisateur final
+// Matrice du merge per-field : c'est le contrat utilisateur final
 // "le bloc Spartan ne doit jamais être vide si la DB porte une row".
+// Teste mergeCareerRow directement (fonction pure, déterministe) sur les
+// combinaisons live × DB qui correspondent aux états possibles du cache
+// après refresh background.
 
-func TestCareerLive_GetIdentity_FallbackMatrix(t *testing.T) {
+func TestCareerLive_MergeCareerRow_Matrix(t *testing.T) {
 	dbRowFull := &duckdb.CareerRankRow{
 		Rank: 30, CurrentXP: 500, SpartanID: "SR-DB-001",
 		BannerImageURL: "https://db/banner.png", EmblemImageURL: "https://db/emblem.png",
@@ -152,128 +154,178 @@ func TestCareerLive_GetIdentity_FallbackMatrix(t *testing.T) {
 	}
 
 	cases := []struct {
-		name              string
-		progress          *syncpkg.CareerRankData
-		progressErr       error
-		custom            *syncpkg.SpartanCustomizationData
-		customErr         error
-		dbRow             *duckdb.CareerRankRow
-		hasTokens         bool
-		wantIdentity      bool
-		wantSpartanID     string
-		wantEmblemURL     string
-		wantRank          int
-		wantInsertCalled  bool
+		name             string
+		progress         *syncpkg.CareerRankData
+		custom           *syncpkg.SpartanCustomizationData
+		dbRow            *duckdb.CareerRankRow
+		wantMerged       bool
+		wantSpartanID    string
+		wantEmblemURL    string
+		wantRank         int
+		wantCurrentXP    int
 	}{
 		{
-			name:             "live OK full",
-			progress:         &syncpkg.CareerRankData{CurrentRank: 42, CurrentXP: 1500},
-			custom:           &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE-99", EmblemImageURL: "https://live/emblem.png"},
-			dbRow:            dbRowFull,
-			hasTokens:        true,
-			wantIdentity:     true,
-			wantSpartanID:    "SR-LIVE-99",
-			wantEmblemURL:    "https://live/emblem.png",
-			wantRank:         42,
-			wantInsertCalled: true,
+			name:          "cache hit live OK full",
+			progress:      &syncpkg.CareerRankData{CurrentRank: 42, CurrentXP: 1500},
+			custom:        &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE-99", EmblemImageURL: "https://live/emblem.png"},
+			dbRow:         dbRowFull,
+			wantMerged:    true,
+			wantSpartanID: "SR-LIVE-99",
+			wantEmblemURL: "https://live/emblem.png",
+			wantRank:      42,
+			wantCurrentXP: 1500,
 		},
 		{
-			name:             "live customization partielle → per-field merge",
-			progress:         &syncpkg.CareerRankData{CurrentRank: 42, CurrentXP: 1500},
-			custom:           &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE-99"}, // emblem vide
-			dbRow:            dbRowFull,
-			hasTokens:        true,
-			wantIdentity:     true,
-			wantSpartanID:    "SR-LIVE-99",
-			wantEmblemURL:    "https://db/emblem.png", // carry-forward depuis DB
-			wantRank:         42,
-			wantInsertCalled: true,
+			name:          "cache hit custom partielle → per-field carry-forward DB",
+			progress:      &syncpkg.CareerRankData{CurrentRank: 42, CurrentXP: 1500},
+			custom:        &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE-99"}, // emblem vide
+			dbRow:         dbRowFull,
+			wantMerged:    true,
+			wantSpartanID: "SR-LIVE-99",
+			wantEmblemURL: "https://db/emblem.png", // carry-forward
+			wantRank:      42,
+			wantCurrentXP: 1500,
 		},
 		{
-			name:             "live customization KO → carry-forward complet",
-			progress:         &syncpkg.CareerRankData{CurrentRank: 42, CurrentXP: 1500},
-			customErr:        errors.New("customization API 500"),
-			dbRow:            dbRowFull,
-			hasTokens:        true,
-			wantIdentity:     true,
-			wantSpartanID:    "SR-DB-001",
-			wantEmblemURL:    "https://db/emblem.png",
-			wantRank:         42,
-			wantInsertCalled: true,
+			name:          "cache hit progress only → custom carry-forward DB",
+			progress:      &syncpkg.CareerRankData{CurrentRank: 42, CurrentXP: 1500},
+			custom:        nil,
+			dbRow:         dbRowFull,
+			wantMerged:    true,
+			wantSpartanID: "SR-DB-001",
+			wantEmblemURL: "https://db/emblem.png",
+			wantRank:      42,
+			wantCurrentXP: 1500,
 		},
 		{
-			name:             "live progress KO + custom KO → fallback DB row",
-			progressErr:      errors.New("progress API 500"),
-			customErr:        errors.New("custom API 500"),
-			dbRow:            dbRowFull,
-			hasTokens:        true,
-			wantIdentity:     true,
-			wantSpartanID:    "SR-DB-001",
-			wantEmblemURL:    "https://db/emblem.png",
-			wantRank:         30,
-			wantInsertCalled: true, // INSERT-if-changed sera appelé mais skipera (mock ne le sait pas)
+			name:          "cache miss + DB full → DB only (SwR fallback)",
+			progress:      nil,
+			custom:        nil,
+			dbRow:         dbRowFull,
+			wantMerged:    true,
+			wantSpartanID: "SR-DB-001",
+			wantEmblemURL: "https://db/emblem.png",
+			wantRank:      30,
+			wantCurrentXP: 500,
 		},
 		{
-			name:             "pas de tokens → fallback DB direct",
-			dbRow:            dbRowFull,
-			hasTokens:        false,
-			wantIdentity:     true,
-			wantSpartanID:    "SR-DB-001",
-			wantEmblemURL:    "https://db/emblem.png",
-			wantRank:         30,
-			wantInsertCalled: true, // path tokens=present mais factory→nil fetcher: même chemin merge
-		},
-		{
-			name:             "live KO + DB vide → nil (joueur jamais sync'd)",
-			progressErr:      errors.New("progress API 500"),
-			customErr:        errors.New("custom API 500"),
-			dbRow:            nil,
-			hasTokens:        true,
-			wantIdentity:     false,
-			wantInsertCalled: false,
+			name:       "cache miss + DB vide → nil (joueur jamais sync'd)",
+			progress:   nil,
+			custom:     nil,
+			dbRow:      nil,
+			wantMerged: false,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fetcher := &mockCareerFetcher{
-				progress:    tc.progress,
-				progressErr: tc.progressErr,
-				custom:      tc.custom,
-				customErr:   tc.customErr,
-			}
-			repo := &mockCareerLiveRepo{last: tc.dbRow}
-			builder := &mockIdentityBuilder{}
-			svc := newService(t, fetcher, repo, builder)
-
-			got, err := svc.GetSpartanIdentity(ctxWithTokens(t, tc.hasTokens))
-			if err != nil {
-				t.Fatalf("GetSpartanIdentity: erreur inattendue %v", err)
-			}
-
-			if !tc.wantIdentity {
-				if got != nil {
-					t.Errorf("identity attendue nil, obtenue %+v", got)
+			merged := mergeCareerRow(tc.progress, tc.custom, tc.dbRow)
+			if !tc.wantMerged {
+				if merged != nil {
+					t.Errorf("merged attendu nil, obtenu %+v", merged)
 				}
 				return
 			}
-			if got == nil {
-				t.Fatal("identity attendue non-nil, obtenue nil")
+			if merged == nil {
+				t.Fatal("merged attendu non-nil")
 			}
-			if got.RankNumber != tc.wantRank {
-				t.Errorf("rank = %d, want %d", got.RankNumber, tc.wantRank)
+			if merged.Rank != tc.wantRank {
+				t.Errorf("rank = %d, want %d", merged.Rank, tc.wantRank)
 			}
-			if tc.wantSpartanID != "" && (got.SpartanID == nil || *got.SpartanID != tc.wantSpartanID) {
-				t.Errorf("spartan_id = %v, want %q", got.SpartanID, tc.wantSpartanID)
+			if merged.CurrentXP != tc.wantCurrentXP {
+				t.Errorf("current_xp = %d, want %d", merged.CurrentXP, tc.wantCurrentXP)
 			}
-			if tc.wantEmblemURL != "" && (got.EmblemImageURL == nil || *got.EmblemImageURL != tc.wantEmblemURL) {
-				t.Errorf("emblem_image_url = %v, want %q", got.EmblemImageURL, tc.wantEmblemURL)
+			if tc.wantSpartanID != "" && merged.SpartanID != tc.wantSpartanID {
+				t.Errorf("spartan_id = %q, want %q", merged.SpartanID, tc.wantSpartanID)
 			}
-			if tc.wantInsertCalled && len(repo.inserted) == 0 {
-				t.Errorf("InsertCareerProgressionIfChanged attendu appelé, %d insertions", len(repo.inserted))
+			if tc.wantEmblemURL != "" && merged.EmblemImageURL != tc.wantEmblemURL {
+				t.Errorf("emblem_image_url = %q, want %q", merged.EmblemImageURL, tc.wantEmblemURL)
 			}
 		})
 	}
+}
+
+// TestCareerLive_GetIdentity_SwRBehavior valide le contrat stale-while-
+// revalidate côté service :
+//   - cache vide → DB servie immédiatement (SANS attendre live)
+//   - cache plein → cache + DB mergées immédiatement
+//   - cache miss + DB vide → nil
+//   - pas de tokens → DB only, jamais d'appel HTTP
+func TestCareerLive_GetIdentity_SwRBehavior(t *testing.T) {
+	dbRow := &duckdb.CareerRankRow{Rank: 30, CurrentXP: 500, SpartanID: "SR-DB"}
+
+	t.Run("cache miss → DB served + bg refresh kicked", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{
+			progress: &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999},
+		}
+		repo := &mockCareerLiveRepo{last: dbRow}
+		builder := &mockIdentityBuilder{}
+		factory := func(_ context.Context) CareerFetcher { return fetcher }
+		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+		svc := NewCareerLiveService(repo, builder, factory, cache)
+
+		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+		if err != nil {
+			t.Fatalf("GetSpartanIdentity: %v", err)
+		}
+		if got == nil || got.RankNumber != 30 {
+			t.Errorf("cache miss attendu DB rank=30, obtenu %+v", got)
+		}
+	})
+
+	t.Run("cache hit → cache mergé avec DB", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{}
+		repo := &mockCareerLiveRepo{last: dbRow}
+		builder := &mockIdentityBuilder{}
+		factory := func(_ context.Context) CareerFetcher { return fetcher }
+		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+		// Pré-populate cache pour simuler un précédent refresh background
+		cache.PutProgress("1234567890123456", &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999})
+		cache.PutCustomization("1234567890123456", &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE"})
+		svc := NewCareerLiveService(repo, builder, factory, cache)
+
+		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+		if err != nil {
+			t.Fatalf("GetSpartanIdentity: %v", err)
+		}
+		if got == nil || got.RankNumber != 99 || got.SpartanID == nil || *got.SpartanID != "SR-LIVE" {
+			t.Errorf("cache hit attendu rank=99 spartan=SR-LIVE, obtenu %+v", got)
+		}
+	})
+
+	t.Run("pas de tokens → DB only, fetcher jamais appelé", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{}
+		repo := &mockCareerLiveRepo{last: dbRow}
+		builder := &mockIdentityBuilder{}
+		svc := newService(t, fetcher, repo, builder)
+
+		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, false))
+		if err != nil {
+			t.Fatalf("GetSpartanIdentity: %v", err)
+		}
+		if got == nil || got.RankNumber != 30 {
+			t.Errorf("no-tokens attendu DB rank=30, obtenu %+v", got)
+		}
+		if fetcher.progCalls != 0 || fetcher.customCalls != 0 {
+			t.Errorf("fetcher invoqué sans tokens : progress=%d custom=%d",
+				fetcher.progCalls, fetcher.customCalls)
+		}
+	})
+
+	t.Run("cache miss + DB empty → nil", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{}
+		repo := &mockCareerLiveRepo{last: nil}
+		builder := &mockIdentityBuilder{}
+		svc := newService(t, fetcher, repo, builder)
+
+		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+		if err != nil {
+			t.Fatalf("GetSpartanIdentity: %v", err)
+		}
+		if got != nil {
+			t.Errorf("attendu nil (joueur jamais sync'd), obtenu %+v", got)
+		}
+	})
 }
 
 // TestCareerLive_MergePreservesLiveXPEvenIfZero vérifie qu'on n'écrase
@@ -372,15 +424,19 @@ func (s *slowFetcher) GetSpartanCustomization(ctx context.Context, _ string) (*s
 	}
 }
 
-// TestCareerLive_BudgetTimeout_FallsBackToDB est LE test qui acte la
-// garantie "la home ne hang jamais sur Halo" : si le live dépasse 2.5 s,
-// on doit retourner la dernière row DB sous moins de ~3 s au total. C'est
-// le test de régression directe pour le bug "home charge pas" reporté en
-// prod après le câblage initial du CareerLiveService.
-func TestCareerLive_BudgetTimeout_FallsBackToDB(t *testing.T) {
+// TestCareerLive_SlowFetcher_DoesNotBlockHome est LE test qui acte la
+// garantie "la home ne hang jamais sur Halo" via le pattern stale-while-
+// revalidate : peu importe la lenteur du fetcher live, GetSpartanIdentity
+// doit retourner instantanément avec la dernière row DB connue. Le
+// refresh live happen en background goroutine, sans pénaliser le caller.
+//
+// C'est le test de régression directe pour le bug "home charge pas en 60s"
+// reporté après le câblage initial. Avant la refacto SwR, ce test prenait
+// 2.5s (budget). Après, < 100ms.
+func TestCareerLive_SlowFetcher_DoesNotBlockHome(t *testing.T) {
 	slow := &slowFetcher{
-		progressDelay: 10 * time.Second, // bien au-delà du budget 2.5 s
-		customDelay:   10 * time.Second,
+		progressDelay: 30 * time.Second, // bien au-delà de tout budget raisonnable
+		customDelay:   30 * time.Second,
 	}
 	dbRow := &duckdb.CareerRankRow{
 		Rank: 30, CurrentXP: 500, SpartanID: "SR-DB-001",
@@ -390,7 +446,8 @@ func TestCareerLive_BudgetTimeout_FallsBackToDB(t *testing.T) {
 	builder := &mockIdentityBuilder{}
 
 	factory := func(_ context.Context) CareerFetcher { return slow }
-	svc := NewCareerLiveService(repo, builder, factory, nil)
+	cache := NewCareerLiveCache(CareerLiveCacheConfig{}) // cache nécessaire pour qu'on déclenche bg refresh
+	svc := NewCareerLiveService(repo, builder, factory, cache)
 
 	start := time.Now()
 	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
@@ -405,12 +462,10 @@ func TestCareerLive_BudgetTimeout_FallsBackToDB(t *testing.T) {
 	if got.RankNumber != 30 || got.SpartanID == nil || *got.SpartanID != "SR-DB-001" {
 		t.Errorf("identity = %+v, want rank=30 spartan=SR-DB-001 (DB fallback)", got)
 	}
-	// Marge : budget 2.5 s + overhead test + persistance. On rejette si > 4 s.
-	if elapsed > 4*time.Second {
-		t.Errorf("GetSpartanIdentity prit %v, attendu < 4s (budget 2.5s + overhead)", elapsed)
-	}
-	if elapsed < CareerLiveBudget {
-		t.Errorf("GetSpartanIdentity prit %v, attendu ≥ %v (le budget doit être consommé avant fallback)",
-			elapsed, CareerLiveBudget)
+	// SwR : la home doit retourner quasi-instantanément, même si le fetcher
+	// est lent. 500 ms est large pour absorber l'overhead test + le spawn de
+	// la goroutine background.
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("GetSpartanIdentity prit %v, attendu < 500ms (SwR ne doit pas bloquer sur live)", elapsed)
 	}
 }

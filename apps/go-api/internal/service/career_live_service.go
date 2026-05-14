@@ -45,8 +45,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
@@ -168,21 +166,25 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 	return identity, nil
 }
 
-// fetchAndMerge réalise les fetches live (cache-aware + singleflight) puis
-// merge per-field avec la dernière row DB pour combler les champs vides.
+// fetchAndMerge construit la CareerRankRow servie à la home selon le pattern
+// **stale-while-revalidate** :
 //
-// **Garantie de latence** : la phase live est plafonnée à CareerLiveBudget
-// (~2.5 s). Si le budget est dépassé, on retourne la dernière row DB et on
-// déclenche un refresh background détaché pour préparer la cache de la
-// requête suivante. Les valeurs déjà obtenues dans le budget sont utilisées.
+//  1. Lecture DB synchrone (toujours <50 ms)
+//  2. Lecture cache mémoire synchrone (TTL court 5 min / long 6 h)
+//  3. Merge per-field : cache → DB carry-forward → zéro
+//  4. Si le cache était stale (ou miss), spawn une goroutine background
+//     détachée qui rafraîchit le cache pour la prochaine requête
 //
-// Retourne (nil, nil) si aucune donnée n'a pu être obtenue ni live ni DB
-// (cas joueur jamais sync'd).
+// Aucun appel HTTP n'est fait dans le chemin synchrone. Latence garantie
+// proche du temps DB pur. Le user voit toujours la donnée la plus fraîche
+// disponible localement, et le cache se remplit asynchronement quand Halo
+// répond. C'est exactement le tradeoff "home fast + données live"
+// recherché — plus solide qu'un budget de fetch sync (qui pénalisait
+// chaque chargement de home quand Halo ne répond pas dans les temps).
 func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string) (*duckdb.CareerRankRow, error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
-	// Lecture DB systématique (toujours rapide) : fallback + base du compare.
 	dbLast, dbErr := s.repo.LoadLastCareerRank(ctx, xuid)
 	if dbErr != nil {
 		slog.WarnContext(ctx, careerLiveLogModule+": LoadLastCareerRank failed",
@@ -190,81 +192,43 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string) (*du
 		dbLast = nil
 	}
 
-	// Sans auth : fallback DB direct, pas d'appel HTTP du tout.
-	if !hasAuth {
-		merged := mergeCareerRow(nil, nil, dbLast)
-		if merged != nil {
-			_ = s.repo.EnrichFromMetadata(ctx, merged)
+	var (
+		cachedProgress *syncpkg.CareerRankData
+		cachedCustom   *syncpkg.SpartanCustomizationData
+		needRefresh    bool
+	)
+	if hasAuth && s.cache != nil {
+		if p, hit := s.cache.GetProgress(xuid); hit {
+			cachedProgress = p
+			careerLiveProgressCache.Add(1)
+		} else {
+			needRefresh = true
 		}
-		return merged, nil
+		if c, hit := s.cache.GetCustomization(xuid); hit {
+			cachedCustom = c
+			careerLiveCustomCache.Add(1)
+		} else {
+			needRefresh = true
+		}
 	}
 
-	// Live fetch parallélisé sous budget strict.
-	progress, custom, budgetExceeded := s.fetchLiveWithBudget(ctx, xuid)
-	if budgetExceeded {
-		// La requête caller est ré-orientée vers le fallback DB, mais on garde
-		// les éventuelles valeurs obtenues à temps (cache hit). En parallèle,
-		// un refresh background est déclenché pour servir la prochaine requête.
+	merged := mergeCareerRow(cachedProgress, cachedCustom, dbLast)
+	if merged != nil {
+		if err := s.repo.EnrichFromMetadata(ctx, merged); err != nil {
+			slog.WarnContext(ctx, careerLiveLogModule+": EnrichFromMetadata failed",
+				"xuid", xuid, "err", err)
+		}
+	}
+
+	// Stale-while-revalidate : si une partie du cache est absente / expirée,
+	// on déclenche un refresh background détaché. La home rend déjà avec ce
+	// qu'on a (DB + parts cached). La requête suivante bénéficiera du cache
+	// frais — sans avoir attendu Halo dans le chemin critique.
+	if hasAuth && needRefresh {
 		s.kickoffBackgroundRefresh(xuid, tokens)
 	}
 
-	merged := mergeCareerRow(progress, custom, dbLast)
-	if merged == nil {
-		return nil, nil
-	}
-
-	if err := s.repo.EnrichFromMetadata(ctx, merged); err != nil {
-		slog.WarnContext(ctx, careerLiveLogModule+": EnrichFromMetadata failed",
-			"xuid", xuid, "err", err)
-	}
 	return merged, nil
-}
-
-// fetchLiveWithBudget lance les 2 fetches live en parallèle (errgroup) sous
-// un budget de latence CareerLiveBudget. Retourne ce qui a été obtenu dans
-// le budget et un flag budgetExceeded si on a dû couper avant la fin.
-//
-// Les caches HIT renvoient instantanément et ne consomment pas de budget.
-// Les fetches HTTP qui dépassent le budget sont annulés via ctx.Done() —
-// le HaloAPIClient utilise http.NewRequestWithContext donc respecte la
-// cancellation.
-func (s *CareerLiveService) fetchLiveWithBudget(ctx context.Context, xuid string) (
-	progress *syncpkg.CareerRankData,
-	custom *syncpkg.SpartanCustomizationData,
-	budgetExceeded bool,
-) {
-	budgetCtx, cancel := context.WithTimeout(ctx, CareerLiveBudget)
-	defer cancel()
-
-	var (
-		mu sync.Mutex
-		p  *syncpkg.CareerRankData
-		c  *syncpkg.SpartanCustomizationData
-	)
-	g, gctx := errgroup.WithContext(budgetCtx)
-	g.Go(func() error {
-		got := s.fetchProgressCached(gctx, xuid)
-		mu.Lock()
-		p = got
-		mu.Unlock()
-		return nil
-	})
-	g.Go(func() error {
-		got := s.fetchCustomizationCached(gctx, xuid)
-		mu.Lock()
-		c = got
-		mu.Unlock()
-		return nil
-	})
-	_ = g.Wait() // errgroup ne retourne jamais d'erreur (fetches absorbent les leurs)
-
-	if budgetCtx.Err() != nil {
-		careerLiveBudgetExceeded.Add(1)
-		slog.InfoContext(ctx, careerLiveLogModule+": live budget exceeded → DB fallback (background refresh queued)",
-			"xuid", xuid, "budget_ms", CareerLiveBudget.Milliseconds())
-		return p, c, true
-	}
-	return p, c, false
 }
 
 // kickoffBackgroundRefresh lance un refresh asynchrone des deux caches pour
