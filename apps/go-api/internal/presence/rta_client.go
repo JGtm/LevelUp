@@ -395,7 +395,19 @@ func (c *RTAClient) handleSubscribeResponse(ctx context.Context, msg []json.RawM
 		return
 	}
 
-	if status != 0 {
+	// Status acceptés comme une souscription valide.
+	//
+	//   0  → succès standard documenté.
+	//   2  → également un succès. Microsoft ne publie pas la sémantique exacte
+	//        des codes RTA, mais on observe empiriquement que Xbox Live renvoie
+	//        status=2 sur les subscribes à userpresence.xboxlive.com/users/xuid(X)/titles/Y
+	//        pour signaler une souscription enregistrée côté serveur (probablement
+	//        "AlreadySubscribed" / "ResubscribeOK"). Avant ce changement, status=2
+	//        était traité comme un refus, la sub n'était pas stockée dans c.subs,
+	//        et tous les events de présence qui arrivaient ensuite étaient jetés
+	//        silencieusement avec un log DEBUG "event pour sub_id inconnu".
+	//        Cf. rta_subscribe_status_test.go pour la régression.
+	if status != 0 && status != 2 {
 		slog.WarnContext(ctx, "rta: subscribe refusé",
 			"xuid", ps.xuid,
 			"status", status,
@@ -472,11 +484,25 @@ func (c *RTAClient) dispatchPayload(ctx context.Context, subID int, raw json.Raw
 		return
 	}
 
-	slog.InfoContext(ctx, "rta: event de présence",
-		"xuid", event.XUID,
-		"state", event.PresenceState,
-		"title", titleFromEvent(event),
-	)
+	// Si le parser n'a extrait aucun PresenceDetail (event "vide"), inclure le
+	// payload brut dans le log pour permettre le diagnostic : Xbox envoie
+	// parfois des notifications sans presenceDetails actionnables (keep-alive,
+	// user pas dans le titre, format inattendu sur /titles/<TID>). Sans le raw
+	// on ne peut pas distinguer ces cas et la FSM tombe en Offline par défaut.
+	if event.PresenceDetail == nil {
+		slog.InfoContext(ctx, "rta: event de présence (payload sans titre actif)",
+			"xuid", event.XUID,
+			"state", event.PresenceState,
+			"title", titleFromEvent(event),
+			"raw", string(raw),
+		)
+	} else {
+		slog.InfoContext(ctx, "rta: event de présence",
+			"xuid", event.XUID,
+			"state", event.PresenceState,
+			"title", titleFromEvent(event),
+		)
+	}
 
 	sub.Handler(event)
 }
