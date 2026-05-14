@@ -560,20 +560,29 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 	var careerCalls, customizationCalls, progressionCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case strings.HasSuffix(r.URL.Path, "/rewardtracks/careerranks/careerrank1"):
+		// 2026-05-14 : nouveau path `/hi/careerranks/careerRank1?players=xuid(X)`
+		// renvoie un RewardTrackResultContainer (parser gère les deux formes).
+		case strings.HasPrefix(r.URL.Path, "/hi/careerranks/careerRank1"):
 			careerCalls++
+			if got := r.URL.Query().Get("players"); got == "" {
+				t.Fatalf("missing players query param")
+			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"CurrentProgress": map[string]any{
-					"Rank":              174,
-					"PartialProgress":   21840,
-					"HasReachedMaxRank": false,
+				"RewardTracks": []map[string]any{
+					{
+						"Result": map[string]any{
+							"CurrentProgress": map[string]any{
+								"Rank":              174,
+								"PartialProgress":   21840,
+								"HasReachedMaxRank": false,
+							},
+						},
+					},
 				},
 			})
-		case strings.HasSuffix(r.URL.Path, "/customization"):
+		// 2026-05-14 : nouveau path `/customization/appearance` (sans query).
+		case strings.HasSuffix(r.URL.Path, "/customization/appearance"):
 			customizationCalls++
-			if got := r.URL.Query().Get("view"); got != "public" {
-				t.Fatalf("view = %q, want public", got)
-			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"Appearance": map[string]any{
 					"ServiceTag":         "JGTM",
@@ -676,15 +685,22 @@ func TestGetCareerRank_BannerEmptyWhenNoNameplate(t *testing.T) {
 	var customizationCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case strings.HasSuffix(r.URL.Path, "/rewardtracks/careerranks/careerrank1"):
+		// 2026-05-14 : nouveaux endpoints Halo Waypoint (cf. parent test).
+		case strings.HasPrefix(r.URL.Path, "/hi/careerranks/careerRank1"):
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"CurrentProgress": map[string]any{
-					"Rank":              177,
-					"PartialProgress":   10100,
-					"HasReachedMaxRank": false,
+				"RewardTracks": []map[string]any{
+					{
+						"Result": map[string]any{
+							"CurrentProgress": map[string]any{
+								"Rank":              177,
+								"PartialProgress":   10100,
+								"HasReachedMaxRank": false,
+							},
+						},
+					},
 				},
 			})
-		case strings.HasSuffix(r.URL.Path, "/customization"):
+		case strings.HasSuffix(r.URL.Path, "/customization/appearance"):
 			customizationCalls++
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"Appearance": map[string]any{
