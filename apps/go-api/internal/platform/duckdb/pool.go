@@ -140,7 +140,11 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
 
-	sharedDB, err := OpenReadOnly(cfg.SharedDBPath, cfg.UserTimezone)
+	// OpenReadWriteShared (clé cache "rw:path") pour partager l'instance avec
+	// le sync engine qui ouvre shared en RW via OpenSharedDB. Sinon DuckDB
+	// rejette toute seconde config sur le même fichier. Le pool ne fait que
+	// des SELECT, le mode RW n'a aucun effet sur les écritures.
+	sharedDB, err := OpenReadWriteShared(cfg.SharedDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
 		return nil, fmt.Errorf("pool: open shared db: %w", err)
