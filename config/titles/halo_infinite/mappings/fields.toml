@@ -490,7 +490,7 @@ group         = "derived"
 [fields.time_played_seconds]
 labels        = { en = "Time played", fr = "Temps de jeu" }
 storage_unit  = "seconds"
-display_unit  = "duration"
-format        = "duration"
+display_unit  = "seconds"
+format        = "duration_hms"
 display_order = 100
 group         = "derived"
