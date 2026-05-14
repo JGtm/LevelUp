@@ -50,6 +50,7 @@ type ServiceRegistry struct {
 	notifiers        sync.Map                  // xuid → port.SessionNotifier (HomeService par joueur)
 	titleResolver    games.Resolver            // nil → services tournent sans semantic adapter (libellés via fallbacks)
 	homeMatchesCache *service.HomeMatchesCache // cache TTL process-level matches+sessions
+	careerLiveCache  *service.CareerLiveCache  // cache TTL process-level XP (5 min) + customisation (6 h)
 	settingsStore    *settings_platform.Store  // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
 	seasonsCatalog   *service.SeasonsCatalog   // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
 	rankCatalog      *mappings.RankCatalog     // nil → CareerService.next_rank_name reste vide
@@ -69,6 +70,7 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 		provider:         provider,
 		timezone:         cfg.UserTimezone,
 		homeMatchesCache: service.NewHomeMatchesCache(),
+		careerLiveCache:  service.NewCareerLiveCache(service.CareerLiveCacheConfig{}),
 	}
 }
 
@@ -674,13 +676,28 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 	if err != nil {
 		return nil, "", "", err
 	}
-	svc := service.NewHomeService(r.newHomeRepo(pdb)).
+	homeRepo := r.newHomeRepo(pdb)
+	svc := service.NewHomeService(homeRepo).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		WithCareerLive(r.newCareerLiveService(pdb, homeRepo))
 	return svc, pdb.XUID, pdb.Gamertag, nil
+}
+
+// newCareerLiveService construit le service live carrière (XP + Spartan ID)
+// pour ce joueur. Le cache est process-level (partagé entre joueurs) ; les
+// dépendances DB sont scopées à la PlayerDB de ce joueur.
+//
+// Sans tokens dans le contexte (HomeCtx legacy), le service retombe
+// silencieusement sur le fallback DB (LoadLastCareerRank), garantissant que
+// la home reste fonctionnelle même sans auth.
+func (r *ServiceRegistry) newCareerLiveService(pdb *duckdb.PlayerDB, homeRepo *duckdb.HomeRepo) *service.CareerLiveService {
+	repo := duckdb.NewCareerLiveRepo(pdb)
+	factory := service.CareerFetcherFactoryFromTokens(10)
+	return service.NewCareerLiveService(repo, homeRepo, factory, r.careerLiveCache)
 }
 
 // newHomeRepo construit un HomeRepo avec l'AssetURLAdapter du titre câblé
@@ -722,7 +739,8 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		WithCareerLive(r.newCareerLiveService(pdb, homeRepo))
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
@@ -746,7 +764,8 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		WithCareerLive(r.newCareerLiveService(pdb, homeRepo))
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
