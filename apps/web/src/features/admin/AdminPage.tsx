@@ -28,18 +28,16 @@ export function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-4xl space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Administration</h1>
-          <Button variant="outline" onClick={() => navigate({ to: '/' })}>
-            Retour
-          </Button>
-        </div>
-
-        <UsersSection currentUsername={currentUsername} />
-        <InvitesSection />
+    <div className="p-6 space-y-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">Administration</h1>
+        <Button variant="outline" onClick={() => navigate({ to: '/' })}>
+          Retour
+        </Button>
       </div>
+
+      <UsersSection currentUsername={currentUsername} />
+      <InvitesSection />
     </div>
   )
 }

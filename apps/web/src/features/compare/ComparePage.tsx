@@ -299,7 +299,7 @@ export function ComparePage() {
   const rightData = rightCompare.data
 
   return (
-    <div className="p-6 space-y-6 w-full max-w-5xl mx-auto">
+    <div className="p-6 space-y-6 w-full">
       {/* Navigation + titre + combobox */}
       <div className="space-y-2">
         {fromExplorer && (

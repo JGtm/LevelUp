@@ -80,7 +80,7 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
 
   if (layout === 'sidebar') {
     return (
-      <div className="relative flex flex-col rounded-lg border border-border bg-card">
+      <div className="relative flex h-full flex-col rounded-lg border border-border bg-card">
         <div className="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2">
           <span className="text-sm font-medium">{t.sectionTitle}</span>
           <span className="text-xs text-muted-foreground">
@@ -113,10 +113,9 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
             </select>
           </div>
         </div>
-        <div className="p-3 pt-1">
+        <div className="flex min-h-0 flex-1 flex-col p-3 pt-1">
           <div
-            className="flex flex-col gap-2 overflow-y-auto"
-            style={{ maxHeight: '640px' }}
+            className="flex h-full flex-col gap-2 overflow-y-auto"
             role="list"
             aria-label={t.sectionTitle}
           >
