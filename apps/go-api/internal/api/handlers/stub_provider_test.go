@@ -39,10 +39,6 @@ func (s *stubTokenProvider) TryOAuthRefresh(_ context.Context, _ string) (string
 	return "", nil
 }
 
-func (s *stubTokenProvider) TryOAuthRefreshWithRotation(_ context.Context, _ string) (string, string, error) {
-	return "", "", nil
-}
-
 func (s *stubTokenProvider) Exchange(_ context.Context, _ string) (*auth_platform.ExchangeResult, error) {
 	if s.exchangeErr != nil {
 		return nil, s.exchangeErr

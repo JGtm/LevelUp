@@ -59,11 +59,6 @@ func (m *mockPool) Size() int {
 	return len(m.tokens)
 }
 
-func (m *mockPool) HasPlayer(gamertag string) bool {
-	_, ok := m.tokens[gamertag]
-	return ok
-}
-
 func (m *mockPool) MarkUnhealthy(gamertag string, reason error) {
 	// no-op for tests
 }

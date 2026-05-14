@@ -52,10 +52,6 @@ func (m *mockCareerService) GetRivals(_ context.Context) (domain.CareerRivalsRes
 	return domain.CareerRivalsResponse{}, nil
 }
 
-func (m *mockCareerService) GetCareerCSRs(_ context.Context) (domain.CareerCSRResponse, error) {
-	return domain.CareerCSRResponse{}, nil
-}
-
 // newTestRouter construit un routeur chi avec le handler career câblé.
 func newTestRouter(factory handlers.ServiceFactory[port.CareerService]) *chi.Mux {
 	r := chi.NewRouter()

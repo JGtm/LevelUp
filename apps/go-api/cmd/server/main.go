@@ -36,8 +36,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
-"levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/settings"
@@ -255,29 +254,7 @@ func main() {
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
 	settingsStore := settings.NewStore(cfg.AppSettingsPath)
 	tokenProvider := buildTokenProvider(settingsStore)
-
-	// Discovery + Resolver + Pool : tous les appels API Halo passent par là.
-	// - Discovery scanne env + sync_meta pour découvrir les credentials joueur.
-	// - Resolver échange CredentialSource → ResolvedTokens (Spartan+Clearance)
-	//   avec cache TTL ~3h30.
-	// - Pool maintient les tokens vivants, gère 429/503 cooldown, et permet
-	//   le round-robin (PolicyAnyPublic) ou pinned (PolicyPinnedPlayer).
-	//
-	// Le callback onRotated persiste le refresh_token rotaté par Microsoft
-	// dans sync_meta.oauth_refresh_token de la player DB — sans ça, le
-	// prochain refresh échouerait avec invalid_grant (Microsoft rotate
-	// systématiquement le RT à chaque usage).
-	autoSyncPool := buildAutoSyncPool(ctx, cfg, tokenProvider)
-	if autoSyncPool != nil {
-		defer autoSyncPool.Close()
-		slog.Info("auto_sync: pool initialisé", "size", autoSyncPool.Size())
-	} else {
-		slog.Warn("auto_sync: pool non initialisé — aucun credential découvert",
-			"hint", "vérifier SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local",
-		)
-	}
-
-	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool)
+	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
 	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le scheduler pour câbler
@@ -510,62 +487,6 @@ func RunPlayerMigrations(playerDBPath string) error {
 	}
 	defer db.Close()
 	return migration.RunForDB(db.SQLDb(), migration.TargetPlayer)
-}
-
-// buildAutoSyncPool construit le pool de tokens utilisé par l'AutoSyncScheduler.
-// Pipeline :
-//  1. Discovery scanne env + sync_meta DuckDB → []CredentialSource
-//  2. Resolver échange ces sources en tokens Halo (cache TTL ~3h30) + callback
-//     onRotated qui persiste le RT rotaté par Microsoft dans sync_meta de la
-//     player DB. Sans cette persistance, le prochain refresh OAuth échouerait
-//     avec invalid_grant (Microsoft rotate systématiquement le RT à chaque
-//     usage pour des raisons de sécurité).
-//  3. NewPool maintient les tokens vivants, gère cooldown 429/503, et expose
-//     un Acquire round-robin + pinned.
-//
-// Retourne nil (et un log Warn) si aucun credential n'est trouvé — le
-// scheduler tournera quand même mais tous les joueurs seront skipped avec
-// raison explicite.
-func buildAutoSyncPool(
-	ctx context.Context,
-	cfg *config.AppConfig,
-	tokenProvider auth.TokenProvider,
-) pool.Pool {
-	pr := title.NewPathResolver(cfg.RepoRoot)
-	discovery := pool.NewDiscovery(cfg, pr, title.DefaultSlug)
-	sources, err := discovery.Scan(ctx)
-	if err != nil {
-		slog.Error("auto_sync: pool discovery échoué", "err", err)
-		return nil
-	}
-	if len(sources) == 0 {
-		return nil // log Warn fait par le caller
-	}
-
-	// Callback de persistance du RT rotaté : ouvre la player DB en
-	// OpenReadWriteShared (partage l'instance du pool joueur) et UPSERT le
-	// nouveau RT dans sync_meta. Best-effort : une erreur est loguée mais
-	// n'interrompt pas le Resolve.
-	onRotated := func(ctx context.Context, gamertag, newRT string) error {
-		dbPath := pr.PlayerDBPath(title.DefaultSlug, gamertag)
-		db, err := duckdb.OpenReadWriteShared(dbPath)
-		if err != nil {
-			return fmt.Errorf("open player db: %w", err)
-		}
-		defer db.Close() //nolint:errcheck // ref-count : best-effort
-		return duckdb.WriteOAuthRefreshToken(ctx, db, newRT)
-	}
-
-	resolver := pool.NewResolver(tokenProvider, 0, onRotated) // 0 = default TTL ~3h30
-	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
-		MaxSize:     0, // 0 = tous les sources découverts
-		PerTokenRPS: 1,
-	})
-	if err != nil {
-		slog.Error("auto_sync: pool creation échouée", "err", err)
-		return nil
-	}
-	return p
 }
 
 // startWatcherDaemon tente de démarrer le daemon de présence.
