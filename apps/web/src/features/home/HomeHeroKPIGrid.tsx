@@ -122,8 +122,8 @@ export function HomeHeroKPIGrid({
               {def > 0 && <div className="h-full" style={{ width: total > 0 ? `${(def / total) * 100}%` : '50%', backgroundColor: tokenCssVar('divergent-neutral') }} />}
             </div>
             <div className="flex justify-center gap-3 mt-2">
-              <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-pos') }}>{off.toFixed(2)}</span>
-              <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-neutral') }}>{def.toFixed(2)}</span>
+              <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-pos') }}>{(off * 100).toFixed(0)}%</span>
+              <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-neutral') }}>{((def - 1) * 100).toFixed(0)}%</span>
             </div>
           </div>
         ) : (

@@ -57,7 +57,7 @@ function buildHighlightCols(t: MatchViewText): ColDef[] {
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
     { key: 'avg_life_seconds', label: 'Vie moy.', inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
     { key: 'offensive_conversion', label: 'Rendement', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-    { key: 'defensive_resistance', label: 'Résist.', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
+    { key: 'defensive_resistance', label: 'Résist.', inverted: false, fmt: (v) => `${((v - 1) * 100).toFixed(0)}%` },
   ]
 }
 
