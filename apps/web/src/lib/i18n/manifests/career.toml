@@ -333,7 +333,7 @@ en = "No LUSR checkpoint recorded for this player."
 # ─── LUSR chain labels (clés = valeurs de playlist_group en DB) ───────────
 
 [career.lusr.chain.arena_slayer]
-fr = "Social · Slayer"
+fr = "Social · Assassin"
 en = "Social · Slayer"
 
 [career.lusr.chain.arena_objectif]
@@ -357,3 +357,45 @@ en = "Progression data unavailable"
 [career.empty.no_response_description]
 fr = "Aucune réponse exploitable n'a été renvoyée pour cette page."
 en = "No exploitable response returned for this page."
+
+# ─── Ranking block (CareerRankingBlock) ──────────────────────────────────
+
+[career.ranking.title]
+fr = "Classements"
+en = "Rankings"
+
+[career.ranking.tooltip]
+fr = "CSR : classement officiel Halo Waypoint par playlist ranked. LUSR : rating local calculé depuis vos matchs synchés."
+en = "CSR: official Halo Waypoint ranking per ranked playlist. LUSR: local rating calculated from your synced matches."
+
+[career.ranking.csr_section]
+fr = "CSR"
+en = "CSR"
+
+[career.ranking.lusr_section]
+fr = "LUSR"
+en = "LUSR"
+
+[career.ranking.lusr_tooltip]
+fr = "Le LUSR (LevelUp Skill Rating) est calculé localement depuis vos résultats récents. Indépendant du CSR officiel."
+en = "LUSR (LevelUp Skill Rating) is calculated locally from your recent results. Independent from the official CSR."
+
+[career.ranking.csr_no_data_title]
+fr = "Pas de données CSR"
+en = "No CSR data"
+
+[career.ranking.csr_no_data_description]
+fr = "Lancez une synchronisation pour récupérer vos classements ranked."
+en = "Run a sync to retrieve your ranked standings."
+
+[career.ranking.lusr_no_data_title]
+fr = "Pas de données LUSR"
+en = "No LUSR data"
+
+[career.ranking.lusr_no_data_description]
+fr = "Aucun checkpoint LUSR disponible pour ce joueur."
+en = "No LUSR checkpoint available for this player."
+
+[career.ranking.placement]
+fr = "Placement"
+en = "Placement"

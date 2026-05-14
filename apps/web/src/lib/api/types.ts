@@ -863,6 +863,29 @@ export interface CareerRivalsResponse {
   victims: CareerRival[]
 }
 
+export interface CareerCSRRank {
+  value: number
+  tier: string
+  sub_tier: number
+  measurement_matches_remaining: number
+  badge_image_url?: string | null
+}
+
+export interface CareerPlaylistCSR {
+  playlist_id: string
+  playlist_name: string
+  queue: string
+  input: string
+  current: CareerCSRRank
+  season: CareerCSRRank
+  all_time: CareerCSRRank
+}
+
+export interface CareerCSRResponse {
+  playlists: CareerPlaylistCSR[]
+  season_id: string
+}
+
 // ---------------------------------------------------------------------------
 // Pagination — commun (Slices 3+)
 // ---------------------------------------------------------------------------

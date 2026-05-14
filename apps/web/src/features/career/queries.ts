@@ -12,6 +12,7 @@ import type {
   CareerHighlightFilters,
   CareerTopEncountersResponse,
   CareerRivalsResponse,
+  CareerCSRResponse,
 } from '@/lib/api/types'
 
 export function useCareerPage(playerSlug: string) {
@@ -93,5 +94,14 @@ export function useCareerRivals(playerSlug: string) {
     queryFn: () => api.get<CareerRivalsResponse>(`/players/${playerSlug}/pages/career/rivals`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useCareerCSRs(playerSlug: string) {
+  return useQuery({
+    queryKey: queryKeys.careerCSRs(playerSlug),
+    queryFn: () => api.get<CareerCSRResponse>(`/players/${playerSlug}/pages/career/csrs`),
+    enabled: !!playerSlug,
+    staleTime: 10 * 60 * 1000,
   })
 }

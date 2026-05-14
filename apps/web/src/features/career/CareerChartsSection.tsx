@@ -88,8 +88,10 @@ export interface CareerChartsSectionProps {
   heroProgress: HeroProgress | null
   projections: CareerProjections | null
   friendsXpHistory?: FriendXPHistory[]
-  /** Colonne droite optionnelle affichée à côté des charts XP + LUSR (sidebar achievements). */
+  /** Colonne droite optionnelle affichée à côté des charts XP (sidebar achievements). */
   rightSlot?: React.ReactNode
+  /** Colonne gauche optionnelle affichée à côté du chart Évolution LUSR / CSR. */
+  lusrLeftSlot?: React.ReactNode
 }
 
 // ── Composant ──────────────────────────────────────────────────────────────
@@ -102,39 +104,39 @@ export function CareerChartsSection({
   projections,
   friendsXpHistory,
   rightSlot,
+  lusrLeftSlot,
 }: CareerChartsSectionProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
   return (
     <div className="space-y-4" data-testid="career-charts-section">
-      {/* career.01 + career.02 — jauges rang + héros */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <ChartCard<GaugePoint>
-          title={careerManifest['career.charts.rank_gauge_title'][locale]}
-          series={summary ? [rankGaugeSeries(summary)] : []}
-          height={280}
-          buildOption={buildRankGaugeOption}
-          emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
-        >
-          {summary && !summary.is_max_rank && (
-            <RankGaugeFooter summary={summary} locale={locale} intlLocale={intlLocale} />
-          )}
-        </ChartCard>
-        <ChartCard<GaugePoint>
-          title={careerManifest['career.charts.hero_gauge_title'][locale]}
-          series={heroProgress ? [heroGaugeSeries(heroProgress)] : []}
-          height={280}
-          buildOption={buildHeroGaugeOption}
-          emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
-        >
-          {heroProgress && (
-            <HeroGaugeFooter hero={heroProgress} locale={locale} intlLocale={intlLocale} />
-          )}
-        </ChartCard>
-      </div>
-      {/* career.03 + career.04 — timeseries XP + LUSR, avec colonne droite optionnelle */}
-      <div className={rightSlot ? 'grid grid-cols-1 gap-4 xl:grid-cols-[1fr_288px]' : 'space-y-4'}>
+      {/* career.01 + career.02 + career.03 à gauche | sidebar Succès Xbox à droite */}
+      <div className={rightSlot ? 'grid grid-cols-1 gap-4 xl:grid-cols-[1fr_288px]' : undefined}>
         <div className="min-w-0 space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <ChartCard<GaugePoint>
+              title={careerManifest['career.charts.rank_gauge_title'][locale]}
+              series={summary ? [rankGaugeSeries(summary)] : []}
+              height={280}
+              buildOption={buildRankGaugeOption}
+              emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
+            >
+              {summary && !summary.is_max_rank && (
+                <RankGaugeFooter summary={summary} locale={locale} intlLocale={intlLocale} />
+              )}
+            </ChartCard>
+            <ChartCard<GaugePoint>
+              title={careerManifest['career.charts.hero_gauge_title'][locale]}
+              series={heroProgress ? [heroGaugeSeries(heroProgress)] : []}
+              height={280}
+              buildOption={buildHeroGaugeOption}
+              emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
+            >
+              {heroProgress && (
+                <HeroGaugeFooter hero={heroProgress} locale={locale} intlLocale={intlLocale} />
+              )}
+            </ChartCard>
+          </div>
           <ChartCard<[string, number]>
             title={careerManifest['career.charts.xp_history_title'][locale]}
             series={buildXpSeries(xpHistory, projections, friendsXpHistory ?? [])}
@@ -142,16 +144,39 @@ export function CareerChartsSection({
             buildOption={(series) => buildXpHistoryOption(series, locale)}
             emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
           />
-          <ChartCard<[string, number]>
-            title={careerManifest['career.charts.lusr_evolution_title'][locale]}
-            series={buildLusrSeries(lusrCheckpoints, locale)}
-            height={320}
-            buildOption={(series) => buildLusrEvolutionOption(series, locale)}
-            emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
-          />
         </div>
-        {rightSlot}
+        {rightSlot && (
+          <div className="relative">
+            <div className="xl:absolute xl:inset-0">
+              {rightSlot}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* career.04 — Évolution LUSR / CSR, optionnellement avec Classements à gauche */}
+      {lusrLeftSlot ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_2fr]">
+          <div className="min-w-0 h-full">{lusrLeftSlot}</div>
+          <div className="min-w-0">
+            <ChartCard<[string, number]>
+              title={careerManifest['career.charts.lusr_evolution_title'][locale]}
+              series={buildLusrSeries(lusrCheckpoints, locale)}
+              height={320}
+              buildOption={(series) => buildLusrEvolutionOption(series, locale)}
+              emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
+            />
+          </div>
+        </div>
+      ) : (
+        <ChartCard<[string, number]>
+          title={careerManifest['career.charts.lusr_evolution_title'][locale]}
+          series={buildLusrSeries(lusrCheckpoints, locale)}
+          height={320}
+          buildOption={(series) => buildLusrEvolutionOption(series, locale)}
+          emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
+        />
+      )}
     </div>
   )
 }

@@ -36,6 +36,7 @@ export const queryKeys = {
     ['career', playerSlug, 'highlight-matches', filtersKey] as const,
   careerTopEncounters: (playerSlug: string) => ['career', playerSlug, 'top-encounters'] as const,
   careerRivals: (playerSlug: string) => ['career', playerSlug, 'rivals'] as const,
+  careerCSRs: (playerSlug: string) => ['career', playerSlug, 'csrs'] as const,
 
   // Achievements Xbox (bilingues EN/FR, statiques après backfill)
   achievements: (playerSlug: string) => ['achievements', playerSlug] as const,

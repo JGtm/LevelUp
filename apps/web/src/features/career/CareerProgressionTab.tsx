@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { CareerChartsSection } from './CareerChartsSection'
-import { CareerLusrCards } from './CareerLusrCards'
+import { CareerRankingBlock } from './CareerRankingBlock'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
 import { CareerHighlightMatchesSection } from './CareerHighlightMatchesSection'
 import { CareerTopEncountersSection } from './CareerTopEncountersSection'
@@ -61,7 +61,7 @@ export function CareerProgressionTab() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Graphiques carrière (career.01–04) + succès Xbox en colonne droite */}
+      {/* Graphiques carrière (career.01–04) + succès Xbox en colonne droite + Classements à gauche de l'évolution LUSR */}
       <CareerChartsSection
         xpHistory={data.xp_history ?? []}
         lusrCheckpoints={data.lusr?.checkpoints ?? []}
@@ -70,10 +70,8 @@ export function CareerProgressionTab() {
         projections={data.projections ?? null}
         friendsXpHistory={data.friends_xp_history}
         rightSlot={<AchievementsCareerSection playerSlug={playerSlug} layout="sidebar" />}
+        lusrLeftSlot={<CareerRankingBlock playerSlug={playerSlug} lusrData={data.lusr} />}
       />
-
-      {/* career.11 — grille LUSR par playlist */}
-      <CareerLusrCards checkpoints={data.lusr?.checkpoints ?? []} />
 
       {/* Matchs marquants — toggle Best/Worst (15 chacun, format Explorer) */}
       <CareerHighlightMatchesSection />
