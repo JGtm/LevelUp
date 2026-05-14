@@ -523,11 +523,24 @@ func (c *HaloAPIClient) backoff(ctx context.Context, attempt int) {
 	}
 }
 
-// GetCareerRank récupère la progression du rang carrière via l'API Economy player-gated.
-// Retourne (nil, nil) si le token est absent ou insuffisant (401/403).
-func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
+// SpartanCustomizationData contient les données d'identité visuelle Spartan
+// résolues depuis l'endpoint /customization?view=public (ServiceTag + images
+// banner/emblem/backdrop). Les URLs sont vides si le resolve GameCMS a échoué
+// (le front affiche un placeholder).
+type SpartanCustomizationData struct {
+	SpartanID        string
+	BannerImageURL   string
+	EmblemImageURL   string
+	BackdropImageURL string
+}
+
+// GetCareerProgress récupère uniquement la progression de rang carrière
+// (rang, XP courante, IsMaxRank) via l'API Economy player-gated.
+// Retourne (nil, nil) si le token est absent/insuffisant (401/403) ou si la
+// réponse ne contient pas de CurrentProgress.
+func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*CareerRankData, error) {
 	if strings.TrimSpace(xuid) == "" {
-		return nil, errors.New("GetCareerRank: xuid vide")
+		return nil, errors.New("GetCareerProgress: xuid vide")
 	}
 	progressURL := fmt.Sprintf(
 		"%s/hi/players/xuid(%s)/rewardtracks/careerranks/careerrank1",
@@ -536,65 +549,99 @@ func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*Career
 	)
 	progressBody, ok, err := c.doPlayerGatedGet(ctx, progressURL)
 	if err != nil {
-		return nil, fmt.Errorf("GetCareerRank progression: %w", err)
+		return nil, fmt.Errorf("GetCareerProgress: %w", err)
 	}
 	if !ok {
 		return nil, nil
 	}
-
 	data, err := parseCareerProgressPayload(progressBody, xuid)
 	if err != nil {
-		return nil, fmt.Errorf("GetCareerRank progression decode: %w", err)
+		return nil, fmt.Errorf("GetCareerProgress decode: %w", err)
 	}
-	if data == nil {
-		return nil, nil
-	}
+	return data, nil
+}
 
+// GetSpartanCustomization récupère uniquement la customisation Spartan
+// (ServiceTag, banner, emblem, backdrop) via l'API Economy player-gated.
+// Retourne (nil, nil) si le token est absent/insuffisant (401/403) ou si la
+// réponse est vide.
+//
+// 2026-05-08 — pattern Grunt strict : pas d'invention d'URL en cas d'échec
+// resolve (ex-fallbackCustomization* retiraient la résolution canonique au
+// profit d'URLs /Waypoint/file/images/... qui n'existent pas sur Microsoft
+// GameCMS → 403). Si le resolve échoue, on log warn et on laisse vide.
+func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string) (*SpartanCustomizationData, error) {
+	if strings.TrimSpace(xuid) == "" {
+		return nil, errors.New("GetSpartanCustomization: xuid vide")
+	}
 	customizationURL := fmt.Sprintf(
 		"%s/hi/players/xuid(%s)/customization?view=public",
 		c.economyHost(),
 		url.PathEscape(xuid),
 	)
 	customizationBody, ok, err := c.doPlayerGatedGet(ctx, customizationURL)
-	if err == nil && ok {
-		appearance, parseErr := parseCustomizationAppearance(customizationBody)
-		if parseErr == nil && appearance != nil {
-			if appearance.ServiceTag != "" {
-				data.SpartanID = appearance.ServiceTag
-			}
-			// 2026-05-08 — pattern Grunt strict : pas d'invention d'URL en cas
-			// d'échec resolve (ex-`fallbackCustomization*` retiraient la
-			// résolution canonique au profit d'URLs `/Waypoint/file/images/...`
-			// qui n'existent pas sur Microsoft GameCMS → 403). Si le resolve
-			// échoue, on log warn et on laisse vide. Le front affiche un
-			// placeholder "image indisponible".
-			if appearance.BannerImagePath != "" {
-				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BannerImagePath); resolveErr == nil {
-					data.BannerImageURL = resolved
-				} else {
-					slog.WarnContext(ctx, "spartan_id: banner image resolve failed",
-						"inventory_path", appearance.BannerImagePath, "err", resolveErr)
-				}
-			}
-			if appearance.EmblemPath != "" {
-				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.EmblemPath); resolveErr == nil {
-					data.EmblemImageURL = resolved
-				} else {
-					slog.WarnContext(ctx, "spartan_id: emblem image resolve failed",
-						"inventory_path", appearance.EmblemPath, "err", resolveErr)
-				}
-			}
-			if appearance.BackdropImagePath != "" {
-				if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BackdropImagePath); resolveErr == nil {
-					data.BackdropImageURL = resolved
-				} else {
-					slog.WarnContext(ctx, "spartan_id: backdrop image resolve failed",
-						"inventory_path", appearance.BackdropImagePath, "err", resolveErr)
-				}
-			}
-		}
+	if err != nil {
+		return nil, fmt.Errorf("GetSpartanCustomization: %w", err)
+	}
+	if !ok {
+		return nil, nil
+	}
+	appearance, err := parseCustomizationAppearance(customizationBody)
+	if err != nil {
+		return nil, fmt.Errorf("GetSpartanCustomization decode: %w", err)
+	}
+	if appearance == nil {
+		return nil, nil
 	}
 
+	out := &SpartanCustomizationData{SpartanID: appearance.ServiceTag}
+	if appearance.BannerImagePath != "" {
+		if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BannerImagePath); resolveErr == nil {
+			out.BannerImageURL = resolved
+		} else {
+			slog.WarnContext(ctx, "spartan_id: banner image resolve failed",
+				"inventory_path", appearance.BannerImagePath, "err", resolveErr)
+		}
+	}
+	if appearance.EmblemPath != "" {
+		if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.EmblemPath); resolveErr == nil {
+			out.EmblemImageURL = resolved
+		} else {
+			slog.WarnContext(ctx, "spartan_id: emblem image resolve failed",
+				"inventory_path", appearance.EmblemPath, "err", resolveErr)
+		}
+	}
+	if appearance.BackdropImagePath != "" {
+		if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.BackdropImagePath); resolveErr == nil {
+			out.BackdropImageURL = resolved
+		} else {
+			slog.WarnContext(ctx, "spartan_id: backdrop image resolve failed",
+				"inventory_path", appearance.BackdropImagePath, "err", resolveErr)
+		}
+	}
+	return out, nil
+}
+
+// GetCareerRank récupère la progression du rang carrière combinée à la
+// customisation Spartan (1 appel d'orchestration = 2 endpoints en série).
+//
+// Deprecated: appeler GetCareerProgress et GetSpartanCustomization séparément
+// pour découpler les cadences de refresh (XP live throttled vs customization
+// 6h TTL). Conservé pour compat avec PooledHaloClient et tests legacy.
+func (c *HaloAPIClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
+	data, err := c.GetCareerProgress(ctx, xuid)
+	if err != nil || data == nil {
+		return data, err
+	}
+	// Customization: échec silencieux (préserve la sémantique antérieure).
+	if custom, cerr := c.GetSpartanCustomization(ctx, xuid); cerr == nil && custom != nil {
+		if custom.SpartanID != "" {
+			data.SpartanID = custom.SpartanID
+		}
+		data.BannerImageURL = custom.BannerImageURL
+		data.EmblemImageURL = custom.EmblemImageURL
+		data.BackdropImageURL = custom.BackdropImageURL
+	}
 	return data, nil
 }
 
