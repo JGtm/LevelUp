@@ -212,9 +212,10 @@ func NewRouter(
 	}
 
 	var gamertagSvc port.GamertagSearchService
-	// OpenReadWriteShared pour partager la clé cache "rw:path" avec le pool
-	// joueur et le sync engine — voir commentaire dans cmd/server/main.go.
-	if sharedDB, err := platform_duckdb.OpenReadWriteShared(config.SharedDBPath(cfg, "")); err != nil {
+	// OpenReadOnly partagé avec main.go::sharedDB et openPlayerDB::sharedDB —
+	// voir commentaire détaillé dans cmd/server/main.go. Le mode RW exclusif
+	// (OpenReadWriteShared) cassait l'ATTACH dans openPlayerDB.
+	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
 		slog.Warn("shared DB unavailable for gamertag search", "err", err)
 	} else {
 		gamertagSvc = platform_duckdb.NewGamertagRepo(sharedDB)

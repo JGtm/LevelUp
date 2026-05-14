@@ -140,11 +140,16 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
 
-	// OpenReadWriteShared (clé cache "rw:path") pour partager l'instance avec
-	// le sync engine qui ouvre shared en RW via OpenSharedDB. Sinon DuckDB
-	// rejette toute seconde config sur le même fichier. Le pool ne fait que
-	// des SELECT, le mode RW n'a aucun effet sur les écritures.
-	sharedDB, err := OpenReadWriteShared(cfg.SharedDBPath, cfg.UserTimezone)
+	// OpenReadOnly pour partager l'instance RO avec main.go::sharedDB et permettre
+	// l'ATTACH RO de shared sur les connexions player DB. Le mode RW exclusif
+	// (OpenReadWriteShared) verrouille le fichier au niveau process et bloque
+	// tout ATTACH ultérieur avec "Unique file handle conflict", cassant les
+	// pages HTTP qui font des JOINs `shared.match_registry`.
+	//
+	// Trade-off : le sync engine ouvre shared en RW via OpenSharedDB lors de
+	// RunDelta, ce qui peut entrer en conflit "different configuration" avec
+	// l'instance RO ouverte ici. C'est documenté dans main.go.
+	sharedDB, err := OpenReadOnly(cfg.SharedDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
 		return nil, fmt.Errorf("pool: open shared db: %w", err)
@@ -232,20 +237,80 @@ func ensurePlayerDBMigrations(path string) error {
 	return nil
 }
 
-// attachShared attache shared_matches_v2.duckdb sur une connexion player.
-// Idempotent : ignore l'erreur si déjà attachée.
+// attachShared attache shared_matches_v2.duckdb sur une connexion player sous
+// l'alias `shared`. Le code SQL applicatif référence partout `shared.X` pour
+// les tables match_registry, match_participants, etc.
+//
+// Cas spécial DuckDB-Go : quand main.go ouvre déjà `sharedDB` séparément via
+// OpenReadWriteShared, le fichier `shared_matches_v2.duckdb` est auto-attaché
+// dans chaque nouvelle connexion DuckDB du process sous l'alias auto-nommé
+// `shared_matches_v2` (filename sans .duckdb). Tenter `ATTACH ... AS shared`
+// échoue alors avec "Unique file handle conflict".
+//
+// Workaround : si on détecte cette situation, créer un schéma `shared` peuplé
+// de VIEWs qui redirigent vers les tables de `shared_matches_v2`. Le code SQL
+// applicatif fonctionne alors transparentement.
 func attachShared(ctx context.Context, db *DB, sharedPath string) error {
 	_, err := db.Exec(ctx,
 		fmt.Sprintf("ATTACH '%s' AS shared (READ_ONLY)", sharedPath),
 	)
-	if err != nil {
-		// Déjà attachée ou autre erreur transitoire — vérifier si la vue est accessible.
-		var count int
-		pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM shared.match_registry").Scan(&count)
-		if pingErr != nil {
-			return fmt.Errorf("attach shared: %w (attach err: %v)", pingErr, err)
+	if err == nil {
+		return nil
+	}
+
+	// L'ATTACH a échoué. Vérifier si shared est déjà accessible (idempotence
+	// classique : autre goroutine a déjà attaché).
+	var count int
+	if pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM shared.match_registry").Scan(&count); pingErr == nil {
+		return nil
+	}
+
+	// Pas accessible via `shared.*`. Si DuckDB-Go a auto-attaché shared_matches_v2
+	// (cas du conflict "Unique file handle"), créer des VIEWs alias.
+	if pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM shared_matches_v2.match_registry").Scan(&count); pingErr == nil {
+		if aliasErr := createSharedAliasViews(ctx, db); aliasErr != nil {
+			return fmt.Errorf("attach shared: alias views creation failed: %w (attach err: %v)", aliasErr, err)
 		}
-		// Accessible malgré l'erreur d'ATTACH → déjà attachée, OK.
+		return nil
+	}
+
+	// Ni `shared` ni `shared_matches_v2` accessibles → vraie erreur.
+	return fmt.Errorf("attach shared: %w", err)
+}
+
+// sharedAliasTables liste les tables de `shared_matches_v2.duckdb` qui doivent
+// être exposées sous le schéma `shared` quand l'ATTACH direct n'est pas possible
+// (cf. attachShared).
+//
+// Cette liste DOIT rester en sync avec sharedSchemaSQL (sync/schema.go) :
+// toute table ajoutée dans le schéma shared doit être ajoutée ici sinon le
+// code applicatif qui interroge `shared.X` plantera quand le workaround est
+// actif.
+var sharedAliasTables = []string{
+	"match_registry",
+	"match_participants",
+	"highlight_events",
+	"medals_earned",
+	"killer_victim_pairs",
+	"xuid_aliases",
+	"weapon_kills",
+}
+
+// createSharedAliasViews crée le schéma `shared` (s'il n'existe pas) puis
+// expose chaque table de sharedAliasTables comme une VIEW pointant vers
+// `shared_matches_v2.<table>`. Idempotent (CREATE OR REPLACE).
+func createSharedAliasViews(ctx context.Context, db *DB) error {
+	if _, err := db.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS shared"); err != nil {
+		return fmt.Errorf("create schema shared: %w", err)
+	}
+	for _, table := range sharedAliasTables {
+		stmt := fmt.Sprintf(
+			"CREATE OR REPLACE VIEW shared.%s AS SELECT * FROM shared_matches_v2.%s",
+			table, table,
+		)
+		if _, err := db.Exec(ctx, stmt); err != nil {
+			return fmt.Errorf("create view shared.%s: %w", table, err)
+		}
 	}
 	return nil
 }
