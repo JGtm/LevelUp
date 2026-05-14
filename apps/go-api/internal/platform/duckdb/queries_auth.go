@@ -1,7 +1,25 @@
-// Package duckdb — queries_auth.go : lecture du cache auth depuis sync_meta.
+// Package duckdb — queries_auth.go : lecture/écriture du cache auth depuis sync_meta.
 package duckdb
 
 import "context"
+
+// WriteOAuthRefreshToken persiste le refresh_token OAuth v2 dans sync_meta
+// (UPSERT sur key='oauth_refresh_token'). À appeler après chaque OAuth refresh
+// réussi pour rotater le token (Microsoft tourne le refresh_token à chaque
+// usage : sans persistance, le tick suivant utilise un RT révoqué et échoue).
+//
+// Le db doit être ouvert en mode read-write (sinon l'INSERT échoue).
+func WriteOAuthRefreshToken(ctx context.Context, db *DB, token string) error {
+	if token == "" {
+		return nil
+	}
+	_, err := db.Exec(ctx,
+		`INSERT INTO sync_meta(key, value) VALUES ('oauth_refresh_token', ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		token,
+	)
+	return err
+}
 
 // ReadMSALCacheJSON lit le cache MSAL sérialisé depuis sync_meta du joueur.
 // Retourne ("", nil) si la clé est absente (joueur sans token persisté).
