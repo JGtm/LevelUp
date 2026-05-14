@@ -357,8 +357,14 @@ func defaultEngineFactory(repoRoot, gamertag, xuid string, tokens *domain.HaloTo
 //
 // Tente TrySilentRefresh (MSAL) d'abord, puis TryOAuthRefresh sur le refresh_token trouvé.
 // La connexion DB est fermée avant de retourner.
+//
+// Note : on ouvre en OpenReadWriteShared (clé cache "rw:path") plutôt que OpenReadOnly
+// pour partager l'instance DuckDB avec le pool joueur déjà ouvert par les handlers HTTP.
+// DuckDB interdit deux handles avec des access_mode différents sur le même fichier ;
+// OpenReadOnly créerait une seconde config et échouerait dès que l'UI a ouvert la
+// player DB. On ne fait que des SELECT, donc le mode RW n'a aucun effet d'écriture.
 func defaultTokenReader(ctx context.Context, dbPath string, gamertag string, provider auth.TokenProvider) (string, error) {
-	db, err := duckdb.OpenReadOnly(dbPath)
+	db, err := duckdb.OpenReadWriteShared(dbPath)
 	if err != nil {
 		return "", err
 	}

@@ -21,7 +21,6 @@ package scheduler
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -30,6 +29,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // DataHealthCheckResult agrège les compteurs d'un cycle d'audit.
@@ -135,36 +135,36 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		return res
 	}
 
-	db, err := openSharedRO(sharedPath)
+	db, err := openDBShared(sharedPath)
 	if err != nil {
 		slog.WarnContext(ctx, "data_health: ouverture shared DB échouée", "err", err)
 		return res
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck // ref-count : best-effort
 
 	// 1. UUIDs bruts résiduels (map_name + pair_name)
 	const uuidPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
 	var mapUUIDs, pairUUIDs int
-	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, uuidPattern).Scan(&mapUUIDs)
-	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, uuidPattern).Scan(&pairUUIDs)
+	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, uuidPattern).Scan(&mapUUIDs)
+	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, uuidPattern).Scan(&pairUUIDs)
 	res.UUIDsRawCount = mapUUIDs + pairUUIDs
 
 	// 2. Bits menteurs
 	const mbitEvents = 1 << 16
 	const mbitWeaponKills = 1 << 21
-	_ = db.QueryRowContext(ctx, fmt.Sprintf(`
+	_ = db.QueryRow(ctx, fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
 		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
 	`, mbitEvents)).Scan(&res.LyingBitsEvents)
-	_ = db.QueryRowContext(ctx, fmt.Sprintf(`
+	_ = db.QueryRow(ctx, fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
 		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
 	`, mbitWeaponKills)).Scan(&res.LyingBitsWeaponKills)
 
 	// 3. xuids orphelins (alias absent shared)
-	_ = db.QueryRowContext(ctx, `
+	_ = db.QueryRow(ctx, `
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
@@ -183,19 +183,19 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			if _, err := os.Stat(playerPath); err != nil {
 				continue
 			}
-			pdb, err := openSharedRO(playerPath)
+			pdb, err := openDBShared(playerPath)
 			if err != nil {
 				continue
 			}
 			var n int
-			_ = pdb.QueryRowContext(ctx, `
+			_ = pdb.QueryRow(ctx, `
 				SELECT COUNT(*) FROM career_progression
 				WHERE banner_image_url LIKE '%/Waypoint/file/images/%'
 				   OR emblem_image_url LIKE '%/Waypoint/file/images/%'
 				   OR backdrop_image_url LIKE '%/Waypoint/file/images/%'
 			`).Scan(&n)
 			res.GarbageBannerURLs += n
-			pdb.Close()
+			_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
 		}
 	}
 
@@ -243,7 +243,15 @@ func (s *HealthScheduler) emitWarningNotification(ctx context.Context, res *Data
 	}
 }
 
-// openSharedRO ouvre une DuckDB en read-only via le package duckdb.
-func openSharedRO(path string) (*sql.DB, error) {
-	return sql.Open("duckdb", path+"?access_mode=READ_ONLY")
+// openDBShared ouvre une DuckDB via le cache de connexions partagé du package
+// duckdb (clé "rw:path"). Crucial pour éviter le conflit DuckDB
+// "Can't open a connection to same database file with a different configuration"
+// quand le serveur principal a déjà ouvert la même DB en read-write via le pool
+// joueur ou les migrations. Un sql.Open direct créerait une 2e config DuckDB
+// sur le même fichier, ce que le moteur refuse.
+//
+// La connexion retournée est ref-comptée : Close() décrémente le compteur
+// sans fermer la DB si d'autres handles sont en cours d'utilisation.
+func openDBShared(path string) (*duckdb.DB, error) {
+	return duckdb.OpenReadWriteShared(path)
 }
