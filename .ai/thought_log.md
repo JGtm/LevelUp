@@ -1,4 +1,196 @@
 
+## [2026-05-13] fix(config) — Admin player déterministe via champ "admin" dans db_profiles.json
+
+**Statut** : Complété.
+
+**Décision technique** : `LoadPlayers` itère une map Go → ordre non-déterministe → `players[0]` pouvait être n'importe quel joueur. Ajout du champ `admin` (string gamertag) au niveau racine de `db_profiles.json` v3. Nouvelle méthode `AppConfig.AdminPlayer()` le lit. `main.go` cherche le joueur correspondant dans la liste, avec fallback sur `players[0]` si le champ est absent.
+
+**Résultat** : `admin_player=JGtm` dans les logs, stable au redémarrage.
+
+## [2026-05-13] feat(career,sync) — CSR live depuis API Waypoint + section Classements CSR+LUSR + badges unranked_N
+
+**Statut** : Complété.
+
+**Contexte** : le CSR affiché en home page était issu de `match_skill_rank` (historique local), peu fiable (seulement les matchs synchés). Objectif : stocker les classements CSR officiels pendant le sync et les afficher sur la page Carrière dans un bloc unifié CSR+LUSR.
+
+**Décisions techniques** :
+
+1. **Fetch CSR pendant le sync** : nouvelle méthode `GetPlayerCSRs` dans `HaloClient` (endpoint `skill.svc.halowaypoint.com/hi/players/xuid({xuid})/csrs?Season={seasonID}`). Même host que `GetMatchSkill`, même auth Spartan token. `PooledHaloClient` utilise `PolicyAnyPublic` (données publiques). `SyncEngine.runCSRSnapshotSync` appelée dans `runPostSyncPipeline` (step 3.1).
+
+2. **Table `player_csr_snapshots`** : DDL ajouté dans `schema.go` (PK = playlist_id + season_id). UPSERT par `saveCSRSnapshots`. Season ID configurable via `AppConfig.CurrentCSRSeasonID` (source : `app_settings.json` champ `csr_season_id` ou `LEVELUP_CSR_SEASON_ID`).
+
+3. **Home page** : `loadCSRAlltimePeak` interroge `player_csr_snapshots` via `Q26csrAlltimePeak` en priorité. Fallback sur `Q26eHomeSkillPeakByType` si table vide/absente.
+
+4. **Badges unranked_N** : `buildHomeSkillPeakBadgeURL` reçoit `measurementMatchesRemaining int`. Si tier vide ET remaining > 0 → `unranked_{10-remaining}.png`. Helper `unrankedBadgeURL` centralisé. Tous les call sites passent 0 (conserve le comportement nil pour l'existant).
+
+5. **API `GET /players/{slug}/pages/career/csrs`** : `CareerCSRResponse` (playlists + season_id). Route protégée par `CapCareer`. `CareerService.GetCareerCSRs` → `repo.GetCSRSnapshots`. `CareerRepo.GetCSRSnapshots` enrichit les `BadgeImageURL` via `buildHomeSkillPeakBadgeURL`.
+
+6. **Frontend** : `CareerRankingBlock` remplace l'ancienne card LUSR inline — bloc unique (Card shadcn) avec deux colonnes (`grid-cols-2`) : CSR à gauche (playlists ranked + badge + tier), LUSR à droite (dernier checkpoint par groupe). Hook `useCareerCSRs` + types TS ajoutés.
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/sync/halo_skill.go` (GetPlayerCSRs + types PlayerPlaylistCSR)
+- `apps/go-api/internal/sync/halo_client.go` (interface GetPlayerCSRs)
+- `apps/go-api/internal/sync/pooled_client.go` (GetPlayerCSRs PolicyAnyPublic)
+- `apps/go-api/internal/sync/schema.go` (DDL player_csr_snapshots)
+- `apps/go-api/internal/sync/career.go` (syncPlayerCSRs + saveCSRSnapshots)
+- `apps/go-api/internal/sync/engine.go` (WithCSRSeasonID + runCSRSnapshotSync)
+- `apps/go-api/internal/config/config.go` (CurrentCSRSeasonID)
+- `apps/go-api/internal/domain/career.go` (CareerCSRResponse, CareerPlaylistCSR, CareerCSRRank)
+- `apps/go-api/internal/port/repository.go` (CareerRepository.GetCSRSnapshots)
+- `apps/go-api/internal/port/services.go` (CareerService.GetCareerCSRs)
+- `apps/go-api/internal/platform/duckdb/career_repo.go` (GetCSRSnapshots + badge enrichment)
+- `apps/go-api/internal/platform/duckdb/queries_career.go` (Q26csrSnapshots, Q26csrAlltimePeak)
+- `apps/go-api/internal/platform/duckdb/home_repo.go` (loadCSRAlltimePeak + unrankedBadgeURL + signature buildHomeSkillPeakBadgeURL)
+- `apps/go-api/internal/service/career_service.go` (WithCSRSeasonID + GetCareerCSRs)
+- `apps/go-api/internal/api/registry.go` (wiring WithCSRSeasonID)
+- `apps/go-api/internal/api/handlers/career.go` (GetCareerCSRs handler)
+- `apps/go-api/internal/api/server.go` (route /pages/career/csrs)
+- `apps/go-api/internal/api/handlers/sync_handler.go` (WithCSRSeasonID dans newEngineFor)
+- `apps/go-api/cmd/levelup/cmd_sync.go` (WithCSRSeasonID sur les 3 engines)
+- `apps/go-api/internal/sync/halo_client_mock_test.go` (GetPlayerCSRs sur mock)
+- `apps/web/src/lib/api/types.ts` (CareerCSRRank, CareerPlaylistCSR, CareerCSRResponse)
+- `apps/web/src/lib/query/keys.ts` (careerCSRs)
+- `apps/web/src/features/career/queries.ts` (useCareerCSRs)
+- `apps/web/src/features/career/CareerRankingBlock.tsx` (nouveau)
+- `apps/web/src/features/career/CareerPage.tsx` (section LUSR → CareerRankingBlock)
+
+**Résultats** : `go build ./...` propre, `npx tsc --noEmit` propre.
+
+**Prochaine étape** : sync manuelle avec `--csrSeasonID=CsrSeason8` pour vérifier que `player_csr_snapshots` se remplit correctement, puis valider le rendu de la section Classements.
+
+---
+
+## [2026-05-13] feat(career) — Remontée sidebar Succès Xbox en colonne droite de toute la section CareerChartsSection
+
+**Statut** : Complété.
+
+**Contexte** : le `rightSlot` (Succès Xbox) n'était positionné qu'à côté des timeseries XP + LUSR, pas des jauges. L'utilisateur souhaitait que la sidebar couvre toute la hauteur (jauges + XP + LUSR).
+
+**Décision technique** : restructuration du JSX de `CareerChartsSection` — un seul wrapper `grid xl:grid-cols-[1fr_288px]` englobe désormais la totalité des charts (jauges + XP history + LUSR evolution) dans la colonne gauche et le `rightSlot` dans la colonne droite. La logique des charts est inchangée.
+
+**Fichiers modifiés** :
+- `apps/web/src/features/career/CareerChartsSection.tsx` (layout JSX, lignes ~108-160)
+- `apps/web/src/features/career/CareerProgressionTab.tsx` (corrigé : utilisait toujours CareerLusrCards, remplacé par CareerRankingBlock)
+
+**Résultats** : `npx tsc --noEmit` propre (0 erreur).
+
+**Prochaine étape** : validation visuelle dans le browser.
+
+---
+
+## [2026-05-13] fix(sync,watcher,ui) — Diagnostic et correction de 3 bugs concurrents : auto_sync DuckDB lock, toast UX, RTA status=2 jeté
+
+**Statut** : Complété.
+
+**Contexte** : utilisateur rapporte trois pannes simultanées : (1) auto-sync planifiée échoue avec ERROR "auto_sync: lecture token échouée", (2) sync manuelle ne marche pas avec un message d'erreur générique, (3) watcher RTA silencieux (aucun log de présence pendant qu'il joue).
+
+**Décisions techniques** :
+
+1. **Bug auto_sync (sync planifiée)** : `defaultTokenReader` ouvrait `stats.duckdb` via `duckdb.OpenReadOnly()` (clé cache `ro:path`), entrant en conflit avec le pool joueur global déjà ouvert par les handlers HTTP en `OpenReadWrite()` (clé cache `rw:path`). DuckDB refuse deux configs (RO + RW) sur le même fichier. Fix : passage à `OpenReadWriteShared()` qui partage la clé cache `rw:path` et réutilise l'instance du pool via ref-counting. Pattern déjà appliqué dans `server.go:114` et `lab/provider.go:57-58`, `auto_sync.go` avait été oublié.
+
+2. **Bug toast UX (sync manuelle)** : `ApiError` retourné par le client HTTP est un objet plain (pas `instanceof Error`), donc le pattern `err instanceof Error ? err.message : undefined` produisait toujours `undefined` → toast affichait uniquement "Impossible de démarrer la synchronisation" sans le vrai message backend (ex: `auth_required · Tokens Halo absents. · HTTP 401`). Fix : ajout d'un helper exporté `apiErrorMessage(err)` dans `lib/api/client.ts`, appliqué dans `SyncTab.tsx` et `BackfillCard.tsx`.
+
+3. **Bug watcher (status=2 jeté)** : à `rta_client.go:398`, le code traitait tout `status != 0` comme un refus dans `handleSubscribeResponse`. Or l'utilisateur a observé empiriquement que Xbox Live RTA renvoie `status=2` sur `userpresence.xboxlive.com/users/xuid(X)/titles/Y` pour signaler une souscription valide (sémantique non documentée publiquement par Microsoft). Conséquence : la sub n'était pas stockée dans `c.subs`, et tous les events de présence qui arrivaient ensuite tombaient dans `slog.DebugContext("rta: event pour sub_id inconnu")` — log DEBUG donc invisible au niveau INFO par défaut. Fix : élargir la condition d'acceptation à `status ∈ {0, 2}`.
+
+**TDD discipliné pour le bug watcher** : avant patch, écriture de 4 tests dans `internal/presence/rta_subscribe_status_test.go` (3 unitaires + 1 end-to-end via vrai `httptest` WebSocket mock parlant le protocole RTA — réutilisable pour de futurs tests RTA). Confirmation que 4/5 tests échouent sur le code initial (`WARN rta: subscribe refusé` au lieu de dispatch event), puis patch, puis 5/5 verts.
+
+**Résultats observés** :
+- Patches Go : `go test ./internal/presence/... ./internal/watcher/... ./internal/scheduler/...` tout vert.
+- Patches web : `npx tsc --noEmit` propre.
+- Documentation Microsoft consultée pour confirmer l'URI subscribe RTA : `/richpresence` (form standard) vs `/titles/<TITLE_ID>` (form XSAPI utilisé par LevelUp). Le code utilise la variante XSAPI ; cette piste reste ouverte pour investigation future si le fix status=2 ne suffit pas.
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/scheduler/auto_sync.go` (OpenReadOnly → OpenReadWriteShared)
+- `apps/go-api/internal/scheduler/data_health_check.go` (`openSharedRO` faisait un `sql.Open("duckdb", ...?access_mode=READ_ONLY")` qui bypassait complètement le cache de connexions → même conflit DuckDB que auto_sync, sur shared_matches_v2.duckdb cette fois. Renommée `openDBShared`, retour `*duckdb.DB`, utilise `duckdb.OpenReadWriteShared` qui partage la clé cache `rw:path`. Adapté les call sites pour `db.QueryRow(ctx,...)` au lieu de `db.QueryRowContext(...)`. Le ref-counting du cache garantit que `defer Close()` ne casse pas les autres consumers.)
+- `apps/go-api/internal/presence/rta_client.go` (accepte status=2 ; ajoute aussi raw payload au log INFO quand `PresenceDetail == nil` pour diagnostic des events vides observés en prod : "rta: event de présence (payload sans titre actif)")
+- `apps/go-api/internal/presence/rta_subscribe_status_test.go` (nouveau, 5 tests + mock WebSocket)
+- `apps/web/src/lib/api/client.ts` (helper apiErrorMessage)
+- `apps/web/src/features/settings/SyncTab.tsx` (toast utilise helper)
+- `apps/web/src/features/settings/BackfillCard.tsx` (toast utilise helper)
+
+**Prochaines étapes** : au prochain redémarrage du serveur, valider en live que le watcher reçoit bien les events de présence Halo Infinite (vérifier l'apparition des logs `rta: subscribe confirmé` et `fsm: transition` quand l'utilisateur lance le jeu). Si le watcher reste silencieux, creuser la piste secondaire : URI `/titles/<TITLE_ID>` non standard vs `/richpresence` documentée publiquement.
+
+**Suite (échange 2026-05-13 fin) — pérennité watcher** : utilisateur observe que ses refresh_tokens OAuth v2 sont dans `.env.local` (`SPNKR_OAUTH_REFRESH_TOKEN_JGTM/CHOCOBOFLOR/MADINA97294`) et s'attend à ce que le provider fasse le pont. Audit confirme un **décalage architectural** : `refreshTokensFromDB` (`internal/api/registry.go`) et `defaultTokenReader` (auto_sync) consomment bien ces env vars, mais le watcher RTA dépend exclusivement de `data/auth/watcher_tokens.json` (TokenStore) et de `RefreshRTAAuth` qui exige un `access_token` non vide dans ce fichier — sans jamais regarder l'env. Conséquence : XSTS RTA à régénérer manuellement à chaque expiration (~16 h).
+
+**Fix** : nouveau helper `auth.EnsureWatcherAccessToken(ctx, store, provider, gamertag)` dans `internal/platform/auth/watcher_refresh.go` :
+1. Réutilise l'access_token courant s'il est valide (marge 5 min).
+2. Sinon, cherche un refresh_token dans `tokens.RefreshToken` puis dans `SPNKR_OAUTH_REFRESH_TOKEN_<XSTSGamertag>` (.env.local).
+3. Exécute `provider.TryOAuthRefresh` → nouvel access_token (TTL conservateur 50 min).
+4. Persiste l'access_token et le refresh_token dans `watcher_tokens.json` via `store.UpdateOAuth`.
+
+Centralise aussi `RefreshTokenFromEnv(gamertag)` (export commun pour 3 sites dispersés qui dupliquaient cette logique). Couvert par 8 tests `TestEnsureWatcherAccessToken_*` + 5 cas `TestRefreshTokenFromEnv_NormalizationCases` (stub provider + `t.Setenv` + tempDir TokenStore).
+
+**Câblage** dans `cmd/server/main.go` :
+- `startWatcherDaemon` reçoit maintenant `tokenProvider auth.TokenProvider`. Avant le check `IsXSTSValid(0)`, appelle `EnsureWatcherAccessToken` puis refait `AcquireXSTSForRTA` proactivement et persiste. Le check `IsXSTSValid` devient un garde-fou (log WARN avec hint sur le nom d'env var attendu) au lieu d'un kill silencieux INFO.
+- `RefreshRTAAuth` (closure on-demand quand RTA status=3) appelle d'abord `EnsureWatcherAccessToken` pour un access_token frais avant `AcquireXSTSForRTA`.
+- Suppression du second bloc de refresh XSTS proactif redondant (était en double avec le nouveau).
+
+**Résultats observés** : `go test ./internal/platform/auth/... ./internal/presence/... ./internal/watcher/... ./internal/scheduler/...` tout vert sur 5 packages.
+
+**Fichiers ajoutés** :
+- `apps/go-api/internal/platform/auth/watcher_refresh.go`
+- `apps/go-api/internal/platform/auth/watcher_refresh_test.go`
+
+**Fichiers modifiés** :
+- `apps/go-api/cmd/server/main.go` (signature `startWatcherDaemon` + `RefreshRTAAuth` + suppression refresh proactif redondant)
+
+Au prochain redémarrage, le watcher devrait continuer à tourner indéfiniment tant que `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` reste valide. Si Microsoft révoque le refresh_token : log `WARN watcher_refresh: TryOAuthRefresh erreur` puis `WARN watcher: tokens XSTS expirés et refresh impossible, daemon désactivé` avec hint sur le nom d'env var à mettre à jour.
+
+## [2026-05-13] feat(profile) — Cadrage Profil Joueur dans Ascension (ex Objectifs)
+
+**Statut** : En cours (cadrage validé, implémentation à démarrer).
+
+**Décision technique** : Pour la page Objectifs (à renommer "Ascension" en nav L1), enrichir l'onglet "Mon Parcours" avec un profil joueur en 3 sections : (A) identité narrative (rôles + radar 6 axes existant), (B) performance LUSR (tier + 8 composantes vs self-benchmark top 20% perso), (C) coaching progression (leviers prioritaires par `(1-score)×poids LUSR` + matching templates Prestige).
+
+Choix structurants :
+- **Self-benchmark** (top 20% perso) + **inversion math LUSR** plutôt que benchmark inter-joueurs (pool insuffisant). L'inversion permet de calculer le composite_score moyen requis pour stabiliser μ au tier suivant.
+- **Templates `rolling_days`/`last_n_matches threshold`** privilégiés pour le coaching (habitude > exploit ponctuel). UX éducative sur la répétition (compteur de séries 90j, pas juste "coche").
+- **Tagging du catalogue** : ajouter `lusr_components` + `is_long_term` à `ChallengeTemplate`.
+- Vocabulaire : "Axes d'amélioration" plutôt que "Faiblesses".
+
+**Résultats observés (audit catalogue templates.toml)** :
+- 27 templates : 9 daily (ponctuels), 9 weekly, 9 monthly.
+- Couverture LUSR déséquilibrée : Deaths vs Expected (24% du poids) → 0 template direct ; Defensive Resistance (6%) → 0 template ; Medal Exploit (4%) → 7 templates (surreprésentation).
+- Aucun template `rolling_days threshold` pour Accuracy ni KvE.
+- 4 arcs preset : aucun ciblé Accuracy ou Survival.
+
+**Plan complet rédigé** dans `.ai/PLAN_PLAYER_PROFILE_ASCENSION.md` : 8 commits séquentiels sur branche `feat/player-profile-ascension` (tagging templates → enrichissement catalogue + nouveaux arcs → inversion LUSR → service + endpoint Go → composant React → rename nav → i18n → ADR).
+
+**Élargissement V1 (échange 2026-05-13 suite)** :
+- V1 enrichie : Section A scindée en A1 (radar narrative) + A2 (Style FK/FD + Engagement). Les deux datasources existent déjà (`narrative/first_events.go`, `analysis/temporal/engagement_score.go`) — coût additionnel marginal.
+- Défis conditionnels (`eval_type=conditional_count`) reportés en **V1.5** (plan à cadrer plus tard).
+
+**Pivot V2 (échange 2026-05-13 final)** :
+- Saisons (snapshot LUSR + consistency_mult + arcs thématiques) **écartées** après revue : redondance avec saisons Halo natives, LUSR fait déjà l'anti-régression, deadline pousse l'atteinte de score pas la répétition, pénalité régression = culpabilisation contre-productive. Plan `.ai/PLAN_SEASONS_ASCENSION.md` marqué DEPRECATED (conservé pour mémoire du raisonnement).
+- V2 retenue : **Progression Tracking** = combo Streaks + Records & Milestones + Coach proactif positif. Plan dans `.ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md`. Streaks créent la fidélisation (sunk cost positif + multiplicateur PP + streak shields), Records créent la fierté (PB 30j/90j/all-time + timeline), Coach apporte l'intelligence adaptative (alertes positives uniquement — approche tier/record/milestone, jamais sur régression). ~10-12j vs ~15j Saisons.
+- Principe directeur V2 : **feedbacks positifs uniquement**. Le système ne pointe jamais une régression.
+
+**Ajout Campagne d'amélioration en V1 (boucle profil → objectif → suivi)** :
+Suite à un retour utilisateur (la V2 perd le lien explicite entre points faibles et objectifs personnels), ajout en §4.5 du plan V1 du concept de **Campagne d'amélioration** : mini-objectif personnel volontaire sur 1 axe, snapshot + delta lissé, sans deadline ni pénalité. Différences fondamentales avec Saisons écartées : activation volontaire, durée libre, 1 axe ciblé, aucune pénalité, pas de reward externe.
+
+**Cinq raffinements algorithmiques requis pour fiabilité** :
+1. **Delta LOWESS** (pas delta brut) — robuste au bruit ±0.05 naturel ; affichage seulement après min 20 matchs post-snapshot sur playlist cible
+2. **No causalité revendiquée** — copy stricte *"pendant ta campagne"* / *"depuis"*, jamais *"grâce à"*
+3. **Filtre playlist optionnel** — évite faux signaux liés aux changements de mode
+4. **Mann-Whitney U** pour milestone "progression confirmée" — toast déclenché uniquement quand p < 0.05
+5. **Auto-suggestion clôture** (pas auto-fermeture) — après plateau 60j ou sortie bottom 3 axes, joueur seul décide
+
+**Deux gardes-fous UX** : ne pas surpromettre (G1, *"on aide à voir, pas à garantir"*) ; pas de fausse précision (G2, 2 décimales + sample size affiché).
+
+**V1 augmentée** : 10 commits au lieu de 8 (+commit 5 ImprovementCampaign service + commit 7 UI CampaignTracker). Effort total +2-3j sur V1. V2 intègre les campagnes en lecture seule (Coach priorise alertes sur axe de campagne active, déclenche alerte auto-clôture R5).
+
+**Prochaine étape** : Valider le plan V1 enrichi avec la Campagne, puis démarrer commit 1 (tagging templates).
+
+## [2026-05-13] feat(ui) — Résistance défensive recentrée à 0 (±%)
+
+**Statut** : Complété.
+
+**Décision technique** : La `defensive_resistance` vaut `damage_taken / (225 × deaths)` et dépasse souvent 1.0 (ex. 1.59). L'afficher en `×100 %` donnait "159%" ce qui est contre-intuitif. Recentrage à 0 : affichage `((v-1)*100)%` avec signe `+/-`. La valeur neutre (base 225 HP) devient `±0%`.
+
+**Résultats** : 3 points d'affichage mis à jour — scoreboard match, tuiles match, KPI grid home. Les barres visuelles (proportions brutes) sont inchangées.
+
+**Prochaine étape** : Vérifier visuellement en dev.
+
 ## [2026-05-10] fix(home) — Regression CSR card "Aucune partie classée" (is_ranked brut vs heuristique)
 
 **Statut** : Complété.
