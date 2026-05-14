@@ -62,7 +62,8 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("exchange Halo: %w", err)
 	}
 
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider)
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider).
+		WithCSRSeasonID(cfg.CurrentCSRSeasonID)
 	if cache := loadLocalFilmCache(); cache != nil {
 		engine.SetLocalFilmCache(cache)
 	}
@@ -168,7 +169,8 @@ func runSyncDeltaAll(
 		if pool != nil {
 			// Utiliser le pool : créer un PooledHaloClient pinné à ce joueur
 			// Pas besoin de TokenReader — les tokens sont déjà dans le pool
-			engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider)
+			engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
+				WithCSRSeasonID(cfg.CurrentCSRSeasonID)
 			cache := loadLocalFilmCache()
 			if cache != nil {
 				engine.SetLocalFilmCache(cache)
@@ -225,7 +227,8 @@ func runSyncDeltaAll(
 			continue
 		}
 
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider)
+		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider).
+			WithCSRSeasonID(cfg.CurrentCSRSeasonID)
 		if cache := loadLocalFilmCache(); cache != nil {
 			engine.SetLocalFilmCache(cache)
 		}

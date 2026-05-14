@@ -42,6 +42,10 @@ type AppConfig struct {
 	AuthMode string
 	// RegistrationMode : "invite" (défaut), "open" ou "closed".
 	RegistrationMode string
+	// CurrentCSRSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
+	// Lit LEVELUP_CSR_SEASON_ID ou le champ csr_season_id dans app_settings.json.
+	// Vide → le sync CSR est skippé silencieusement.
+	CurrentCSRSeasonID string
 }
 
 // loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
@@ -99,7 +103,28 @@ func Load() (*AppConfig, error) {
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.FeatureFlags = LoadFeatureFlags(appSettingsPath)
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
+	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	return cfg, nil
+}
+
+// loadCSRSeasonID lit l'identifiant de saison CSR depuis LEVELUP_CSR_SEASON_ID
+// ou le champ csr_season_id dans app_settings.json.
+func loadCSRSeasonID(settingsPath string) string {
+	if id := os.Getenv("LEVELUP_CSR_SEASON_ID"); id != "" {
+		return id
+	}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return ""
+	}
+	if s, ok := m["csr_season_id"].(string); ok {
+		return s
+	}
+	return ""
 }
 
 // loadUserTimezone lit user_timezone depuis app_settings.json.
@@ -127,9 +152,10 @@ type dbProfilesFile struct {
 }
 
 // dbProfilesFileV3 représente le format v3 title-aware de db_profiles.json.
-// Structure : { "version": "3.0", "profiles": { "<title_slug>": { "<gamertag>": {...} } } }
+// Structure : { "version": "3.0", "admin": "<gamertag>", "profiles": { "<title_slug>": { "<gamertag>": {...} } } }
 type dbProfilesFileV3 struct {
 	Version  string                               `json:"version"`
+	Admin    string                               `json:"admin"`
 	Profiles map[string]map[string]dbProfileEntry `json:"profiles"`
 }
 
@@ -179,6 +205,20 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 		return c.loadPlayersV3(data, titleFilter...)
 	}
 	return c.loadPlayersV2(data, titleFilter...)
+}
+
+// AdminPlayer retourne le gamertag désigné comme admin dans db_profiles.json (champ "admin").
+// Retourne "" si le fichier est absent, illisible ou si le champ n'est pas défini (format v2).
+func (c *AppConfig) AdminPlayer() string {
+	data, err := os.ReadFile(c.DBProfilesPath)
+	if err != nil {
+		return ""
+	}
+	var f dbProfilesFileV3
+	if err := json.Unmarshal(data, &f); err != nil {
+		return ""
+	}
+	return f.Admin
 }
 
 // loadPlayersV2 parse le format v2.1 (flat map gamertag → entry).

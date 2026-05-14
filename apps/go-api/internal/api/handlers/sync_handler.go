@@ -96,7 +96,8 @@ func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTok
 		return s.FriendGamertags, nil
 	}
 	return go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider).
-		WithFriendsLoader(loader)
+		WithFriendsLoader(loader).
+		WithCSRSeasonID(h.cfg.CurrentCSRSeasonID)
 }
 
 func (h *SyncHandler) WithPrestigeHook(_ PrestigeHook) *SyncHandler {
