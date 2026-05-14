@@ -538,12 +538,21 @@ type SpartanCustomizationData struct {
 // (rang, XP courante, IsMaxRank) via l'API Economy player-gated.
 // Retourne (nil, nil) si le token est absent/insuffisant (401/403) ou si la
 // réponse ne contient pas de CurrentProgress.
+//
+// 2026-05-14 — endpoint mis à jour vers la nouvelle forme Halo Waypoint :
+// `/hi/careerranks/careerRank1?players=xuid(X)` retourne un
+// RewardTrackResultContainer avec RewardTracks[].Result.CurrentProgress.
+// L'ancien path `/hi/players/xuid(X)/rewardtracks/careerranks/careerrank1`
+// timeout depuis quelques jours (probablement déprécié). Source : projet
+// Grunt API (github.com/dend/grunt — EconomyModule.GetPlayerCareerRank).
+// Le parser parseCareerProgressPayload gère déjà cette forme (path alterne
+// RewardTracks[].Result.CurrentProgress).
 func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*CareerRankData, error) {
 	if strings.TrimSpace(xuid) == "" {
 		return nil, errors.New("GetCareerProgress: xuid vide")
 	}
 	progressURL := fmt.Sprintf(
-		"%s/hi/players/xuid(%s)/rewardtracks/careerranks/careerrank1",
+		"%s/hi/careerranks/careerRank1?players=xuid(%s)",
 		c.economyHost(),
 		url.PathEscape(xuid),
 	)
@@ -566,6 +575,14 @@ func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*Ca
 // Retourne (nil, nil) si le token est absent/insuffisant (401/403) ou si la
 // réponse est vide.
 //
+// 2026-05-14 — endpoint mis à jour vers `/customization/appearance` (l'ancien
+// `/customization?view=public` timeout depuis quelques jours, probablement
+// déprécié). Source : projet Grunt API (github.com/dend/grunt —
+// EconomyModule.PlayerAppearanceCustomization). La réponse est de la forme
+// {Status, Appearance:{ServiceTag, BackdropImagePath, Emblem:{EmblemPath},
+// PlayerTitlePath, ...}} — exactement ce que parseCustomizationAppearance
+// sait déjà décoder.
+//
 // 2026-05-08 — pattern Grunt strict : pas d'invention d'URL en cas d'échec
 // resolve (ex-fallbackCustomization* retiraient la résolution canonique au
 // profit d'URLs /Waypoint/file/images/... qui n'existent pas sur Microsoft
@@ -575,7 +592,7 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 		return nil, errors.New("GetSpartanCustomization: xuid vide")
 	}
 	customizationURL := fmt.Sprintf(
-		"%s/hi/players/xuid(%s)/customization?view=public",
+		"%s/hi/players/xuid(%s)/customization/appearance",
 		c.economyHost(),
 		url.PathEscape(xuid),
 	)
