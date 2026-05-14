@@ -24,7 +24,7 @@ export function ChangelogPage() {
   const entries = parseChangelog(data.content)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
+    <div className="p-6 space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Changelog</h1>
         <p className="text-sm text-muted-foreground mt-1">Journal des modifications du projet.</p>
