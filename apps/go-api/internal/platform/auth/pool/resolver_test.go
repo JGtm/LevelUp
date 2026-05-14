@@ -17,16 +17,14 @@ type mockTokenProvider struct {
 	silentRefreshResult string // accessToken retourné par TrySilentRefresh
 	silentRefreshErr    error
 
-	oauthRefreshResult string // accessToken retourné par TryOAuthRefresh / TryOAuthRefreshWithRotation
+	oauthRefreshResult string // accessToken retourné par TryOAuthRefresh
 	oauthRefreshErr    error
-	rotatedRefresh     string // RT rotaté retourné par TryOAuthRefreshWithRotation (vide = pas de rotation)
 
 	exchangeResult *auth.ExchangeResult // résultat Exchange
 	exchangeErr    error
 
-	mu              sync.Mutex
-	callLog         []string // log des appels pour vérifier le pipeline (thread-safe)
-	lastOauthRTArg  string   // dernière valeur de refreshToken reçue par TryOAuthRefresh*
+	mu      sync.Mutex
+	callLog []string // log des appels pour vérifier le pipeline (thread-safe)
 }
 
 func (m *mockTokenProvider) InitDeviceFlow(ctx context.Context) (auth.DeviceFlow, error) {
@@ -45,14 +43,6 @@ func (m *mockTokenProvider) TryOAuthRefresh(ctx context.Context, refreshToken st
 	m.callLog = append(m.callLog, "TryOAuthRefresh")
 	m.mu.Unlock()
 	return m.oauthRefreshResult, m.oauthRefreshErr
-}
-
-func (m *mockTokenProvider) TryOAuthRefreshWithRotation(ctx context.Context, refreshToken string) (string, string, error) {
-	m.mu.Lock()
-	m.callLog = append(m.callLog, "TryOAuthRefreshWithRotation")
-	m.lastOauthRTArg = refreshToken
-	m.mu.Unlock()
-	return m.oauthRefreshResult, m.rotatedRefresh, m.oauthRefreshErr
 }
 
 func (m *mockTokenProvider) Exchange(ctx context.Context, accessToken string) (*auth.ExchangeResult, error) {
@@ -74,7 +64,7 @@ func TestResolverResolve_PipelineSilentRefresh(t *testing.T) {
 		},
 	}
 
-	resolver := NewResolver(provider, 1*time.Hour, nil)
+	resolver := NewResolver(provider, 1*time.Hour)
 	ctx := context.Background()
 
 	src := CredentialSource{
@@ -125,7 +115,7 @@ func TestResolverResolve_PipelineOAuthFallback(t *testing.T) {
 		},
 	}
 
-	resolver := NewResolver(provider, 1*time.Hour, nil)
+	resolver := NewResolver(provider, 1*time.Hour)
 	ctx := context.Background()
 
 	src := CredentialSource{
@@ -145,11 +135,11 @@ func TestResolverResolve_PipelineOAuthFallback(t *testing.T) {
 		t.Errorf("expected spartan_oauth, got %s", resolved.Tokens.SpartanToken)
 	}
 
-	// Pipeline : TrySilentRefresh → TryOAuthRefreshWithRotation → Exchange.
+	// Pipeline : TrySilentRefresh → TryOAuthRefresh → Exchange.
 	provider.mu.Lock()
 	callLog := provider.callLog
 	provider.mu.Unlock()
-	expectedCalls := []string{"TrySilentRefresh", "TryOAuthRefreshWithRotation", "Exchange"}
+	expectedCalls := []string{"TrySilentRefresh", "TryOAuthRefresh", "Exchange"}
 	if len(callLog) != len(expectedCalls) {
 		t.Fatalf("expected %d calls, got %d: %v", len(expectedCalls), len(callLog), callLog)
 	}
@@ -168,7 +158,7 @@ func TestResolverResolve_CacheTTL(t *testing.T) {
 		},
 	}
 
-	resolver := NewResolver(provider, 100*time.Millisecond, nil)
+	resolver := NewResolver(provider, 100*time.Millisecond)
 	ctx := context.Background()
 
 	src := CredentialSource{
@@ -226,7 +216,7 @@ func TestResolverRefresh(t *testing.T) {
 		},
 	}
 
-	resolver := NewResolver(provider, 10*time.Hour, nil) // long TTL, ne devrait pas expirer
+	resolver := NewResolver(provider, 10*time.Hour) // long TTL, ne devrait pas expirer
 	ctx := context.Background()
 
 	src := CredentialSource{
@@ -284,7 +274,7 @@ func TestResolverRefresh_UnknownGamertag(t *testing.T) {
 		},
 	}
 
-	resolver := NewResolver(provider, 1*time.Hour, nil)
+	resolver := NewResolver(provider, 1*time.Hour)
 	ctx := context.Background()
 
 	_, err := resolver.Refresh(ctx, "UnknownPlayer")
@@ -320,7 +310,7 @@ func TestResolverResolve_NoTokenSources(t *testing.T) {
 		},
 	}
 
-	resolver := NewResolver(provider, 1*time.Hour, nil)
+	resolver := NewResolver(provider, 1*time.Hour)
 	ctx := context.Background()
 
 	src := CredentialSource{
@@ -342,164 +332,6 @@ func TestResolverResolve_NoTokenSources(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// Tests de la rotation OAuth + callback onRotated (Phase 1b)
-// =============================================================================
-
-// TestResolverRotation_CallbackInvokedWithRotatedRT vérifie que quand Microsoft
-// rotate le refresh_token (rotatedRT != "" et != source.RefreshToken), le
-// callback onRotated est invoqué avec (gamertag, rotatedRT).
-func TestResolverRotation_CallbackInvokedWithRotatedRT(t *testing.T) {
-	provider := &mockTokenProvider{
-		oauthRefreshResult: "access_token_after_refresh",
-		rotatedRefresh:     "rt_v2_rotated_by_microsoft",
-		exchangeResult: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{SpartanToken: "spartan_v2"},
-		},
-	}
-
-	var capturedGT, capturedRT string
-	var callbackCalls int
-	onRotated := func(_ context.Context, gt, newRT string) error {
-		callbackCalls++
-		capturedGT = gt
-		capturedRT = newRT
-		return nil
-	}
-
-	resolver := NewResolver(provider, 1*time.Hour, onRotated)
-	src := CredentialSource{
-		Gamertag:     "Alice",
-		XUID:         "xuid-alice",
-		RefreshToken: "rt_v1_original",
-		Source:       "duckdb_oauth",
-	}
-	resolved, err := resolver.Resolve(context.Background(), src)
-	if err != nil {
-		t.Fatalf("Resolve failed: %v", err)
-	}
-	if resolved.Tokens.SpartanToken != "spartan_v2" {
-		t.Errorf("SpartanToken = %q, want spartan_v2", resolved.Tokens.SpartanToken)
-	}
-
-	if callbackCalls != 1 {
-		t.Errorf("callback invoqué %d fois, attendu 1", callbackCalls)
-	}
-	if capturedGT != "Alice" {
-		t.Errorf("callback gamertag = %q, want Alice", capturedGT)
-	}
-	if capturedRT != "rt_v2_rotated_by_microsoft" {
-		t.Errorf("callback newRT = %q, want rt_v2_rotated_by_microsoft", capturedRT)
-	}
-}
-
-// TestResolverRotation_SourceUpdatedInMemoryForRefresh vérifie qu'après une
-// rotation, le RT mémorisé dans r.sources[gamertag] est bien le rotatedRT
-// (et non plus le RT initial). Concrètement : un appel ultérieur à Refresh()
-// utilisera le nouveau RT.
-func TestResolverRotation_SourceUpdatedInMemoryForRefresh(t *testing.T) {
-	provider := &mockTokenProvider{
-		oauthRefreshResult: "access_v1",
-		rotatedRefresh:     "rt_v2",
-		exchangeResult: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{SpartanToken: "spartan_v1"},
-		},
-	}
-
-	resolver := NewResolver(provider, 1*time.Hour, nil) // pas de callback : on teste juste l'update interne
-	src := CredentialSource{
-		Gamertag:     "Bob",
-		RefreshToken: "rt_v1",
-		Source:       "duckdb_oauth",
-	}
-	if _, err := resolver.Resolve(context.Background(), src); err != nil {
-		t.Fatalf("first Resolve: %v", err)
-	}
-
-	// Configurer le mock pour vérifier que Refresh utilise rt_v2 (pas rt_v1).
-	provider.mu.Lock()
-	provider.lastOauthRTArg = ""
-	provider.mu.Unlock()
-
-	if _, err := resolver.Refresh(context.Background(), "Bob"); err != nil {
-		t.Fatalf("Refresh: %v", err)
-	}
-
-	provider.mu.Lock()
-	got := provider.lastOauthRTArg
-	provider.mu.Unlock()
-	if got != "rt_v2" {
-		t.Errorf("Refresh a utilisé RT = %q, want rt_v2 (le rotatedRT du 1er Resolve)", got)
-	}
-}
-
-// TestResolverRotation_CallbackErrorDoesNotFailResolve vérifie que si le
-// callback de persistance retourne une erreur (ex: DB en panne), le Resolve
-// continue quand même et retourne les tokens. La rotation est "best-effort"
-// — perdre la rotation n'invalide pas la session courante.
-func TestResolverRotation_CallbackErrorDoesNotFailResolve(t *testing.T) {
-	provider := &mockTokenProvider{
-		oauthRefreshResult: "access_v1",
-		rotatedRefresh:     "rt_v2",
-		exchangeResult: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{SpartanToken: "spartan_v1"},
-		},
-	}
-	onRotated := func(_ context.Context, _, _ string) error {
-		return errors.New("DB en panne")
-	}
-
-	resolver := NewResolver(provider, 1*time.Hour, onRotated)
-	src := CredentialSource{
-		Gamertag:     "Carol",
-		RefreshToken: "rt_v1",
-		Source:       "duckdb_oauth",
-	}
-	resolved, err := resolver.Resolve(context.Background(), src)
-	if err != nil {
-		t.Fatalf("Resolve a échoué alors que la rotation devrait être best-effort: %v", err)
-	}
-	if resolved == nil || resolved.Tokens == nil || resolved.Tokens.SpartanToken != "spartan_v1" {
-		t.Errorf("tokens incorrects: %+v", resolved)
-	}
-}
-
-// TestResolverRotation_NoRotationDoesNotInvokeCallback vérifie que si
-// Microsoft ne retourne PAS de rotation (rotatedRT == ""), le callback n'est
-// pas invoqué inutilement.
-func TestResolverRotation_NoRotationDoesNotInvokeCallback(t *testing.T) {
-	provider := &mockTokenProvider{
-		oauthRefreshResult: "access_v1",
-		rotatedRefresh:     "", // pas de rotation
-		exchangeResult: &auth.ExchangeResult{
-			Tokens: &domain.HaloTokens{SpartanToken: "spartan_v1"},
-		},
-	}
-
-	var callbackCalls int
-	onRotated := func(_ context.Context, _, _ string) error {
-		callbackCalls++
-		return nil
-	}
-
-	resolver := NewResolver(provider, 1*time.Hour, onRotated)
-	src := CredentialSource{
-		Gamertag:     "Dave",
-		RefreshToken: "rt_v1",
-		Source:       "duckdb_oauth",
-	}
-	if _, err := resolver.Resolve(context.Background(), src); err != nil {
-		t.Fatalf("Resolve: %v", err)
-	}
-	if callbackCalls != 0 {
-		t.Errorf("callback invoqué %d fois alors qu'il n'y a pas eu de rotation", callbackCalls)
-	}
-}
-
-// =============================================================================
-// Tests divers (cache, concurrence)
-// =============================================================================
-
 // TestResolverResolve_ConcurrentResolve teste la thread-safety du cache.
 func TestResolverResolve_ConcurrentResolve(t *testing.T) {
 	provider := &mockTokenProvider{
@@ -509,7 +341,7 @@ func TestResolverResolve_ConcurrentResolve(t *testing.T) {
 		},
 	}
 
-	resolver := NewResolver(provider, 1*time.Hour, nil)
+	resolver := NewResolver(provider, 1*time.Hour)
 	ctx := context.Background()
 
 	src := CredentialSource{

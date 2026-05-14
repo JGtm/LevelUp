@@ -22,15 +22,8 @@ type resolverImpl struct {
 	// TTL avant rafraîchissement (défaut ~3h30, Spartan ~4h)
 	cacheTTL time.Duration
 
-	// sources = map gamertag → CredentialSource (sauvegardées pour Refresh()).
-	// La valeur RefreshToken peut être mise à jour quand Microsoft rotate le RT
-	// (cf. resolveOAuthWithRotation).
+	// sources = map gamertag → CredentialSource (sauvegardées pour Refresh())
 	sources map[string]CredentialSource
-
-	// onRotated est invoqué à chaque rotation OAuth réussie pour permettre au
-	// caller de persister le nouveau RT (sinon le prochain refresh échouera).
-	// Nullable : si nil, la rotation est seulement mise à jour en mémoire.
-	onRotated TokenRotationCallback
 }
 
 // cachedToken encapsule un token échangé + sa date d'expiration estimée.
@@ -41,17 +34,15 @@ type cachedToken struct {
 
 // NewResolver crée un Resolver avec cache TTL.
 // cacheTTL : durée avant expiration (défaut ~3h30 pour Spartan ~4h).
-// onRotated : callback optionnel invoqué quand Microsoft rotate un RT.
-func NewResolver(provider auth.TokenProvider, cacheTTL time.Duration, onRotated TokenRotationCallback) Resolver {
+func NewResolver(provider auth.TokenProvider, cacheTTL time.Duration) Resolver {
 	if cacheTTL == 0 {
 		cacheTTL = 3*time.Hour + 30*time.Minute
 	}
 	return &resolverImpl{
-		provider:  provider,
-		cache:     make(map[string]*cachedToken),
-		cacheTTL:  cacheTTL,
-		sources:   make(map[string]CredentialSource),
-		onRotated: onRotated,
+		provider: provider,
+		cache:    make(map[string]*cachedToken),
+		cacheTTL: cacheTTL,
+		sources:  make(map[string]CredentialSource),
 	}
 }
 
@@ -97,11 +88,9 @@ func (r *resolverImpl) Resolve(ctx context.Context, src CredentialSource) (*Reso
 			"gamertag", src.Gamertag)
 	}
 
-	// Étape 2 : TryOAuthRefreshWithRotation (si pas d'access_token et refresh_token présent).
-	// Capture le RT rotaté par Microsoft pour le persister via onRotated +
-	// mettre à jour r.sources (sinon le prochain Refresh utilisera le RT révoqué).
+	// Étape 2 : TryOAuthRefresh (si pas d'access_token et refresh_token présent).
 	if accessToken == "" && src.RefreshToken != "" {
-		token, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, src.RefreshToken)
+		token, err := r.provider.TryOAuthRefresh(ctx, src.RefreshToken)
 		if err != nil {
 			slog.WarnContext(ctx, "pool/resolver: TryOAuthRefresh erreur",
 				"gamertag", src.Gamertag, "err", err)
@@ -111,20 +100,7 @@ func (r *resolverImpl) Resolve(ctx context.Context, src CredentialSource) (*Reso
 		if token != "" {
 			accessToken = token
 			slog.InfoContext(ctx, "pool/resolver: OAuth v2 fallback OK",
-				"gamertag", src.Gamertag,
-				"rotated_rt_received", rotatedRT != "",
-			)
-			// Si Microsoft a rotaté le RT, propager : mettre à jour src en
-			// mémoire (pour Refresh()) + invoquer onRotated pour persistance.
-			if rotatedRT != "" && rotatedRT != src.RefreshToken {
-				src.RefreshToken = rotatedRT // utilisé plus bas dans r.sources[]
-				if r.onRotated != nil {
-					if cbErr := r.onRotated(ctx, src.Gamertag, rotatedRT); cbErr != nil {
-						slog.WarnContext(ctx, "pool/resolver: persistance RT rotaté échouée",
-							"gamertag", src.Gamertag, "err", cbErr)
-					}
-				}
-			}
+				"gamertag", src.Gamertag)
 		} else {
 			slog.WarnContext(ctx, "pool/resolver: TryOAuthRefresh retourné vide",
 				"gamertag", src.Gamertag)

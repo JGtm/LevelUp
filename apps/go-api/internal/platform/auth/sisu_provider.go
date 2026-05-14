@@ -221,25 +221,16 @@ func (p *SISUProvider) TrySilentRefresh(ctx context.Context, _ string) (string, 
 
 // TryOAuthRefresh tente d'obtenir un access_token via OAuth v2 refresh_token.
 // Identique à MSALProvider — même endpoint login.live.com.
-//
-// DEPRECATED : préférer TryOAuthRefreshWithRotation.
 func (p *SISUProvider) TryOAuthRefresh(ctx context.Context, refreshToken string) (string, error) {
-	token, _, err := p.TryOAuthRefreshWithRotation(ctx, refreshToken)
-	return token, err
-}
-
-// TryOAuthRefreshWithRotation : voir interface TokenProvider.
-// SISUProvider délègue au même endpoint login.microsoftonline.com.
-func (p *SISUProvider) TryOAuthRefreshWithRotation(ctx context.Context, refreshToken string) (string, string, error) {
 	if refreshToken == "" {
-		slog.DebugContext(ctx, "sisu_provider: TryOAuthRefreshWithRotation ignoré (refresh_token vide)")
-		return "", "", nil
+		slog.DebugContext(ctx, "sisu_provider: TryOAuthRefresh ignoré (refresh_token vide)")
+		return "", nil
 	}
-	slog.DebugContext(ctx, "sisu_provider: tentative OAuth v2 refresh + rotation")
-	accessToken, rotatedRT, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
+	slog.DebugContext(ctx, "sisu_provider: tentative OAuth v2 refresh")
+	token, err := ExchangeRefreshToken(ctx, refreshToken)
 	if err != nil {
-		slog.WarnContext(ctx, "sisu_provider: TryOAuthRefreshWithRotation erreur", "err", err)
-		return "", "", err
+		slog.WarnContext(ctx, "sisu_provider: TryOAuthRefresh erreur", "err", err)
+		return "", err
 	}
-	return accessToken, rotatedRT, nil
+	return token, nil
 }

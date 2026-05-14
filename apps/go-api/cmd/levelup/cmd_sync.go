@@ -12,6 +12,8 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	auth_pool "levelup/go-api/internal/platform/auth/pool"
+	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/scheduler"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -114,32 +116,39 @@ func runSyncDeltaAll(
 	}
 
 	provider := auth_platform.NewMSALProvider()
+	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
+	autoScheduler := scheduler.New(cfg, settingsStore, provider)
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 
-	// ─── Création du pool de tokens (Discovery + Resolver + Pool) ───
-	// Note : depuis la migration AutoSyncScheduler→Pool, le mode "sans pool"
-	// n'est plus supporté. tokenPoolSize devient simplement le MaxSize du pool
-	// (0 = tous les sources découverts).
-	discovery := auth_pool.NewDiscovery(cfg, resolver, titlePkg.DefaultSlug)
-	sources, discoveryErr := discovery.Scan(ctx)
-	if discoveryErr != nil {
-		return fmt.Errorf("pool discovery: %w", discoveryErr)
-	}
+	// ─── Création du pool de tokens (si tokenPoolSize != 1) ───
+	var pool auth_pool.Pool
+	if tokenPoolSize == 1 {
+		// Pool désactivé
+		fmt.Println("pool: désactivé (--token-pool-size 1)")
+	} else {
+		// Créer le pool avec Discovery + Resolver
+		discovery := auth_pool.NewDiscovery(cfg, resolver, titlePkg.DefaultSlug)
+		sources, discoveryErr := discovery.Scan(ctx)
+		if discoveryErr != nil {
+			return fmt.Errorf("pool discovery: %w", discoveryErr)
+		}
 
-	poolResolver := auth_pool.NewResolver(provider, 0, nil) // 0 = default TTL ~3h30 ; pas de persistance RT en mode CLI
-	poolOpts := auth_pool.PoolOptions{
-		MaxSize:     tokenPoolSize, // 0 = utiliser tous les sources
-		PerTokenRPS: rps,
-	}
+		poolResolver := auth_pool.NewResolver(provider, 0) // 0 = default TTL ~3h30
+		poolOpts := auth_pool.PoolOptions{
+			MaxSize:     tokenPoolSize, // 0 = utiliser tous les sources
+			PerTokenRPS: rps,
+		}
 
-	pool, poolErr := auth_pool.NewPool(ctx, poolResolver, sources, poolOpts)
-	if poolErr != nil {
-		return fmt.Errorf("pool creation: %w", poolErr)
-	}
-	defer pool.Close()
+		p, poolErr := auth_pool.NewPool(ctx, poolResolver, sources, poolOpts)
+		if poolErr != nil {
+			return fmt.Errorf("pool creation: %w", poolErr)
+		}
+		pool = p
+		defer pool.Close()
 
-	fmt.Printf("pool: créé avec %d token(s) découverts\n", pool.Size())
+		fmt.Printf("pool: créé avec %d token(s) découverts\n", pool.Size())
+	}
 
 	total := len(players)
 	synced := 0
@@ -154,28 +163,75 @@ func runSyncDeltaAll(
 			continue
 		}
 
-		// ─── Client setup (toujours via le pool) ───
-		// Skip si ce joueur n'a pas de token dans le pool (cas où Discovery
-		// n'a rien trouvé pour lui : pas d'env var, pas de sync_meta).
-		if !pool.HasPlayer(player.Gamertag) {
-			skipped++
-			fmt.Printf("sync delta SKIP: gamertag=%s reason=not_in_pool\n", player.Gamertag)
+		// ─── Client setup (pool ou standard) ───
+		var syncErr error
+
+		if pool != nil {
+			// Utiliser le pool : créer un PooledHaloClient pinné à ce joueur
+			// Pas besoin de TokenReader — les tokens sont déjà dans le pool
+			engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
+				WithCSRSeasonID(cfg.CurrentCSRSeasonID)
+			cache := loadLocalFilmCache()
+			if cache != nil {
+				engine.SetLocalFilmCache(cache)
+			}
+
+			// Créer un client poolé pinné (avec cache film si dispo)
+			pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID)
+			if cache != nil {
+				pooledClient.WithLocalFilmCache(cache)
+			}
+			engine.SetCustomClient(pooledClient)
+
+			syncResult, syncErr := engine.RunDelta(ctx, opts)
+			if syncErr != nil {
+				failed++
+				fmt.Printf("sync delta FAIL: gamertag=%s stage=run_delta err=%v\n", player.Gamertag, syncErr)
+				continue
+			}
+
+			synced++
+			careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
+			fmt.Printf(
+				"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
+				player.Gamertag,
+				syncResult.MatchesInserted,
+				syncResult.MatchesSkipped,
+				syncResult.Status(),
+				careerSynced,
+				syncResult.DurationSeconds,
+			)
+			if len(syncResult.Warnings) > 0 {
+				fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+			}
 			continue
 		}
 
-		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
+		// ─── Fallback standard (sans pool) ───
+		accessToken, tokenErr := autoScheduler.TokenReader(ctx, dbPath, player.Gamertag, provider)
+		if tokenErr != nil {
+			failed++
+			fmt.Printf("sync delta FAIL: gamertag=%s stage=token_read err=%v\n", player.Gamertag, tokenErr)
+			continue
+		}
+		if strings.TrimSpace(accessToken) == "" {
+			skipped++
+			fmt.Printf("sync delta SKIP: gamertag=%s reason=no_token\n", player.Gamertag)
+			continue
+		}
+
+		result, exchangeErr := provider.Exchange(ctx, accessToken)
+		if exchangeErr != nil {
+			failed++
+			fmt.Printf("sync delta FAIL: gamertag=%s stage=exchange err=%v\n", player.Gamertag, exchangeErr)
+			continue
+		}
+
+		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, result.Tokens, provider).
 			WithCSRSeasonID(cfg.CurrentCSRSeasonID)
-		cache := loadLocalFilmCache()
-		if cache != nil {
+		if cache := loadLocalFilmCache(); cache != nil {
 			engine.SetLocalFilmCache(cache)
 		}
-
-		pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID)
-		if cache != nil {
-			pooledClient.WithLocalFilmCache(cache)
-		}
-		engine.SetCustomClient(pooledClient)
-
 		syncResult, syncErr := engine.RunDelta(ctx, opts)
 		if syncErr != nil {
 			failed++
@@ -186,7 +242,7 @@ func runSyncDeltaAll(
 		synced++
 		careerSynced := syncResult.PostSync != nil && syncResult.PostSync.CareerSynced
 		fmt.Printf(
-			"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs (pool)\n",
+			"sync delta OK: gamertag=%s inserted=%d skipped=%d status=%s career_synced=%t duration=%.2fs\n",
 			player.Gamertag,
 			syncResult.MatchesInserted,
 			syncResult.MatchesSkipped,
@@ -195,7 +251,7 @@ func runSyncDeltaAll(
 			syncResult.DurationSeconds,
 		)
 		if len(syncResult.Warnings) > 0 {
-			fmt.Printf("  warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
+			fmt.Printf("warnings=%d first=%s\n", len(syncResult.Warnings), syncResult.Warnings[0])
 		}
 	}
 
