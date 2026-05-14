@@ -48,6 +48,7 @@ shots_hit
 started_at_utc
 team_mmr
 team_score
+time_played_seconds
 total_kills_career
 total_matches_played
 waves_completed

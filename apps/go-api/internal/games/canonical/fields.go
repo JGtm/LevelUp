@@ -97,10 +97,11 @@ const (
 	FieldAvgDamageDealt     FieldKey = "avg_damage_dealt"
 	FieldAvgDamageTaken     FieldKey = "avg_damage_taken"
 	FieldAvgLifeSeconds     FieldKey = "avg_life_seconds"
-	FieldKDRatio             FieldKey = "kd_ratio"
-	FieldKillsPerMin         FieldKey = "kills_per_min"
-	FieldPerformanceScore    FieldKey = "performance_score"
+	FieldKDRatio              FieldKey = "kd_ratio"
+	FieldKillsPerMin          FieldKey = "kills_per_min"
+	FieldPerformanceScore     FieldKey = "performance_score"
 	FieldPerfectKillsPerMatch FieldKey = "perfect_kills_per_match"
+	FieldTimePlayedSeconds    FieldKey = "time_played_seconds"
 )
 
 // AllFieldKeys retourne la liste exhaustive des FieldKey supportés par le
@@ -139,7 +140,7 @@ func AllFieldKeys() []FieldKey {
 		FieldAssistsPerMin, FieldAvgMaxKillingSpree,
 		FieldAvgDamageDealt, FieldAvgDamageTaken, FieldAvgLifeSeconds,
 		FieldKDRatio, FieldKillsPerMin, FieldPerformanceScore,
-		FieldPerfectKillsPerMatch,
+		FieldPerfectKillsPerMatch, FieldTimePlayedSeconds,
 	}
 }
 
