@@ -210,6 +210,59 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	return &row, nil
 }
 
+// BuildSpartanIdentityFromCareerRow assemble un HomeSpartanIdentityRow à
+// partir d'une CareerRankRow déjà mergée (live + per-field DB fallback) plus
+// les skill peaks CSR/LUSR lus depuis match_skill_rank.
+//
+// Utilisé par CareerLiveService pour servir l'identité Spartan sans
+// dépendre de la query Q26c (qui reste exposée via LoadSpartanIdentity pour
+// les chemins de fallback / compatibilité ascendante).
+//
+// Retourne nil si tous les champs visibles sont vides (joueur jamais sync'd).
+func (r *HomeRepo) BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *CareerRankRow) *domain.HomeSpartanIdentityRow {
+	if r == nil {
+		return nil
+	}
+	row := &domain.HomeSpartanIdentityRow{}
+	if careerRow != nil {
+		row.RankNumber = careerRow.Rank
+		row.CurrentXP = careerRow.CurrentXP
+		row.XPForNextRank = careerRow.XPForNextRank
+		row.IsMaxRank = careerRow.IsMaxRank
+		if careerRow.SpartanID != "" {
+			row.SpartanID = stringPtr(careerRow.SpartanID)
+		}
+		if careerRow.RankName != "" {
+			row.RankName = stringPtr(careerRow.RankName)
+		}
+		if careerRow.RankTier != "" {
+			row.RankTier = stringPtr(careerRow.RankTier)
+		}
+		if careerRow.BannerImageURL != "" {
+			row.BannerImageURL = buildHomeIdentityAssetURL("banner", r.titleSlug(), careerRow.BannerImageURL)
+		}
+		if careerRow.EmblemImageURL != "" {
+			row.EmblemImageURL = buildHomeIdentityAssetURL("emblem", r.titleSlug(), careerRow.EmblemImageURL)
+		}
+		if careerRow.BackdropImageURL != "" {
+			row.BackdropImageURL = buildHomeIdentityAssetURL("backdrop", r.titleSlug(), careerRow.BackdropImageURL)
+		}
+		if careerRow.AdornmentPath != "" {
+			row.AdornmentImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), careerRow.AdornmentPath)
+		}
+		r.enrichSpartanIdentity(ctx, row)
+	}
+	row.HighestCSR = r.loadHomeSkillPeak(ctx, "CSR")
+	row.HighestLUSR = r.loadHomeSkillPeak(ctx, "LUSR")
+
+	if row.SpartanID == nil && row.RankNumber <= 0 &&
+		row.BannerImageURL == nil && row.EmblemImageURL == nil && row.BackdropImageURL == nil &&
+		row.HighestCSR == nil && row.HighestLUSR == nil {
+		return nil
+	}
+	return row
+}
+
 // enrichSpartanIdentity hydrate les paths d'assets visuels du rang carriÃ¨re
 // (image rang + adornment) depuis metadata.duckdb. Les libellÃ©s (rang courant,
 // rang suivant) sont rÃ©solus en aval par le service via le SemanticAdapter
