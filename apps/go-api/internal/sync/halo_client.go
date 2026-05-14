@@ -90,6 +90,10 @@ type HaloClient interface {
 	// GetCareerRank récupère la progression du rang carrière via l'API Economy.
 	// Retourne (nil, nil) si le token est absent ou insuffisant.
 	GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error)
+	// GetPlayerCSRs récupère les classements CSR du joueur pour toutes les playlists
+	// ranked d'une saison donnée (ex: "CsrSeason8"). Endpoint public (service token).
+	// Retourne slice vide (pas d'erreur) si le joueur n'a aucun classement.
+	GetPlayerCSRs(ctx context.Context, xuid, seasonID string) ([]PlayerPlaylistCSR, error)
 }
 
 // MatchHistoryEntry est un élément de l'historique des matchs.

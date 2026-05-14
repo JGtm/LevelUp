@@ -139,6 +139,11 @@ func (m *mockHaloClient) GetCareerRank(_ context.Context, _ string) (*CareerRank
 	return m.careerData, nil
 }
 
+// GetPlayerCSRs retourne une liste vide (pas d'erreur) — le mock ne simule pas de CSR.
+func (m *mockHaloClient) GetPlayerCSRs(_ context.Context, _, _ string) ([]PlayerPlaylistCSR, error) {
+	return nil, nil
+}
+
 // compile-time : mockHaloClient implémente HaloClient.
 var _ HaloClient = (*mockHaloClient)(nil)
 

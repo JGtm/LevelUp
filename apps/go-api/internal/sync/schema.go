@@ -89,6 +89,26 @@ CREATE TABLE IF NOT EXISTS career_progression (
     recorded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
+
+CREATE TABLE IF NOT EXISTS player_csr_snapshots (
+    playlist_id                      VARCHAR NOT NULL,
+    playlist_name                    VARCHAR,
+    queue                            VARCHAR,
+    input                            VARCHAR,
+    season_id                        VARCHAR NOT NULL,
+    current_value                    FLOAT,
+    current_tier                     VARCHAR,
+    current_sub_tier                 SMALLINT,
+    current_measurement_remaining    INTEGER,
+    season_value                     FLOAT,
+    season_tier                      VARCHAR,
+    season_sub_tier                  SMALLINT,
+    alltime_value                    FLOAT,
+    alltime_tier                     VARCHAR,
+    alltime_sub_tier                 SMALLINT,
+    fetched_at                       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (playlist_id, season_id)
+);
 `
 
 // sharedSchemaSQL crée les tables minimales dans shared_matches_v2.duckdb.

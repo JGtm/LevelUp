@@ -178,6 +178,57 @@ func enrichCareerRankFromMetadata(db *sql.DB, data *CareerRankData) error {
 	return nil
 }
 
+// syncPlayerCSRs récupère les classements CSR du joueur via l'API et les persiste.
+// Retourne (0, nil) si la saison est vide ou si l'API ne renvoie rien.
+func syncPlayerCSRs(
+	ctx context.Context,
+	client HaloClient,
+	db *sql.DB,
+	xuid, seasonID string,
+) (int, error) {
+	if strings.TrimSpace(seasonID) == "" {
+		return 0, nil
+	}
+	csrs, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
+	if err != nil {
+		return 0, fmt.Errorf("syncPlayerCSRs fetch: %w", err)
+	}
+	if len(csrs) == 0 {
+		return 0, nil
+	}
+	return saveCSRSnapshots(db, csrs, seasonID)
+}
+
+// saveCSRSnapshots insère ou remplace les snapshots CSR dans player_csr_snapshots.
+func saveCSRSnapshots(db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (int, error) {
+	now := time.Now().UTC()
+	var inserted int
+	for _, c := range csrs {
+		if strings.TrimSpace(c.PlaylistID) == "" {
+			continue
+		}
+		_, err := db.Exec(`
+			INSERT OR REPLACE INTO player_csr_snapshots (
+				playlist_id, playlist_name, queue, input, season_id,
+				current_value, current_tier, current_sub_tier, current_measurement_remaining,
+				season_value, season_tier, season_sub_tier,
+				alltime_value, alltime_tier, alltime_sub_tier,
+				fetched_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			c.PlaylistID, c.PlaylistName, c.Queue, c.Input, seasonID,
+			c.Current.Value, c.Current.Tier, c.Current.SubTier, c.Current.MeasurementMatchesRemaining,
+			c.Season.Value, c.Season.Tier, c.Season.SubTier,
+			c.AllTime.Value, c.AllTime.Tier, c.AllTime.SubTier,
+			now,
+		)
+		if err != nil {
+			return inserted, fmt.Errorf("saveCSRSnapshots upsert %s: %w", c.PlaylistID, err)
+		}
+		inserted++
+	}
+	return inserted, nil
+}
+
 func openCareerMetadataDB(path string) (*duckdbpkg.DB, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("openCareerMetadataDB: path vide")
