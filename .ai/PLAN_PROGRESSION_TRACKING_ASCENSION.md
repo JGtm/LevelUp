@@ -18,6 +18,8 @@ Objectifs explicites :
 
 **Principe directeur** : feedback **positifs uniquement**. Le système ne pointe jamais du doigt une régression ; il met en avant les opportunités, les records, et les paliers proches.
 
+**Principe complémentaire — jamais imposé** : le joueur peut continuer à créer des défis libres "juste pour le fun" sans interagir avec Streaks, Records ou Coach. Les 3 couches V2 sont actives par défaut **mais discrètes** : compteurs de streaks visibles sans être intrusifs, records auto-détectés sans toast obligatoire (configurable), centre de notifs accessible mais jamais bloquant. Aucune feature de V1 ou V2 ne peut empêcher le flow Prestige libre existant.
+
 ---
 
 ## 2. Pourquoi pas Saisons
