@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -342,5 +343,74 @@ func TestCareerLive_NoXUID_TriggersFallbackPath(t *testing.T) {
 	}
 	if got != nil {
 		t.Errorf("identity attendue nil sans xuid + DB vide, obtenu %+v", got)
+	}
+}
+
+// slowFetcher simule un fetcher qui bloque plus longtemps que le budget,
+// jusqu'à la cancellation du ctx. Utilisé pour valider le découplage
+// home / live (budget timeout → fallback DB sans bloquer la home).
+type slowFetcher struct {
+	progressDelay time.Duration
+	customDelay   time.Duration
+}
+
+func (s *slowFetcher) GetCareerProgress(ctx context.Context, _ string) (*syncpkg.CareerRankData, error) {
+	select {
+	case <-time.After(s.progressDelay):
+		return &syncpkg.CareerRankData{CurrentRank: 99}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (s *slowFetcher) GetSpartanCustomization(ctx context.Context, _ string) (*syncpkg.SpartanCustomizationData, error) {
+	select {
+	case <-time.After(s.customDelay):
+		return &syncpkg.SpartanCustomizationData{SpartanID: "SR-SLOW"}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// TestCareerLive_BudgetTimeout_FallsBackToDB est LE test qui acte la
+// garantie "la home ne hang jamais sur Halo" : si le live dépasse 2.5 s,
+// on doit retourner la dernière row DB sous moins de ~3 s au total. C'est
+// le test de régression directe pour le bug "home charge pas" reporté en
+// prod après le câblage initial du CareerLiveService.
+func TestCareerLive_BudgetTimeout_FallsBackToDB(t *testing.T) {
+	slow := &slowFetcher{
+		progressDelay: 10 * time.Second, // bien au-delà du budget 2.5 s
+		customDelay:   10 * time.Second,
+	}
+	dbRow := &duckdb.CareerRankRow{
+		Rank: 30, CurrentXP: 500, SpartanID: "SR-DB-001",
+		EmblemImageURL: "https://db/emblem.png",
+	}
+	repo := &mockCareerLiveRepo{last: dbRow}
+	builder := &mockIdentityBuilder{}
+
+	factory := func(_ context.Context) CareerFetcher { return slow }
+	svc := NewCareerLiveService(repo, builder, factory, nil)
+
+	start := time.Now()
+	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("GetSpartanIdentity: %v", err)
+	}
+	if got == nil {
+		t.Fatal("identity attendue non-nil (fallback DB)")
+	}
+	if got.RankNumber != 30 || got.SpartanID == nil || *got.SpartanID != "SR-DB-001" {
+		t.Errorf("identity = %+v, want rank=30 spartan=SR-DB-001 (DB fallback)", got)
+	}
+	// Marge : budget 2.5 s + overhead test + persistance. On rejette si > 4 s.
+	if elapsed > 4*time.Second {
+		t.Errorf("GetSpartanIdentity prit %v, attendu < 4s (budget 2.5s + overhead)", elapsed)
+	}
+	if elapsed < CareerLiveBudget {
+		t.Errorf("GetSpartanIdentity prit %v, attendu ≥ %v (le budget doit être consommé avant fallback)",
+			elapsed, CareerLiveBudget)
 	}
 }

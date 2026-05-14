@@ -25,4 +25,11 @@ var (
 	careerLiveEmptyResult     = expvar.NewInt("career_live.fallback.empty")
 	careerLiveIdentityServed  = expvar.NewInt("career_live.identity.served")
 	careerLiveIdentityMissing = expvar.NewInt("career_live.identity.missing")
+	// Budget de latence : combien de requêtes home ont vu le live tronqué
+	// par CareerLiveBudget (~2.5 s). Si élevé, signe que l'API Halo est
+	// lente — la home reste rapide mais sert des données un peu moins
+	// fraîches que prévu.
+	careerLiveBudgetExceeded = expvar.NewInt("career_live.budget.exceeded")
+	// Background refresh déclenchés après un budget exceeded.
+	careerLiveBgRefresh = expvar.NewInt("career_live.bg.refresh_kicked")
 )
