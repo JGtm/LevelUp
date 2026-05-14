@@ -73,7 +73,24 @@ type TokenProvider interface {
 	// TryOAuthRefresh tente d'obtenir un access_token via OAuth v2 refresh_token.
 	// refreshToken : valeur brute du refresh token (env var ou sync_meta DuckDB).
 	// Retourne ("", nil) si le token est vide ou si le refresh échoue proprement.
+	//
+	// DEPRECATED : préférer TryOAuthRefreshWithRotation qui expose le RT
+	// rotaté par Microsoft (sans rotation persistée, le RT initial devient
+	// invalide après le 1er usage). Conservé pour compat sur les call sites
+	// qui n'ont pas besoin de la rotation.
 	TryOAuthRefresh(ctx context.Context, refreshToken string) (string, error)
+
+	// TryOAuthRefreshWithRotation tente d'obtenir un access_token et retourne
+	// AUSSI le nouveau refresh_token retourné par Microsoft. Microsoft rotate
+	// systématiquement le refresh_token à chaque usage pour des raisons de
+	// sécurité. Sans persister le rotatedRT, le prochain refresh échouera
+	// avec invalid_grant.
+	//
+	// Retourne ("", "", nil) si refreshToken est vide.
+	// Retourne ("", "", err) si l'appel HTTP / Microsoft retourne une erreur.
+	// Retourne (accessToken, rotatedRT, nil) en cas de succès ; rotatedRT peut
+	// être "" dans de rares cas où Microsoft ne renvoie pas de rotation.
+	TryOAuthRefreshWithRotation(ctx context.Context, refreshToken string) (accessToken, rotatedRefreshToken string, err error)
 
 	// Exchange convertit un access_token Microsoft en tokens Halo Infinite.
 	Exchange(ctx context.Context, accessToken string) (*ExchangeResult, error)
@@ -140,21 +157,33 @@ func (p *MSALProvider) Exchange(ctx context.Context, accessToken string) (*Excha
 }
 
 // TryOAuthRefresh tente d'obtenir un access_token via OAuth v2 refresh_token.
+//
+// DEPRECATED : préférer TryOAuthRefreshWithRotation qui expose le RT rotaté.
+// Conservé pour compat sur les call sites qui n'ont pas besoin du rotated RT.
 func (p *MSALProvider) TryOAuthRefresh(ctx context.Context, refreshToken string) (string, error) {
+	token, _, err := p.TryOAuthRefreshWithRotation(ctx, refreshToken)
+	return token, err
+}
+
+// TryOAuthRefreshWithRotation : voir docstring sur l'interface TokenProvider.
+// MSALProvider délègue à ExchangeRefreshTokenWithRotation (login.microsoftonline.com).
+func (p *MSALProvider) TryOAuthRefreshWithRotation(ctx context.Context, refreshToken string) (string, string, error) {
 	if refreshToken == "" {
-		slog.DebugContext(ctx, "provider: TryOAuthRefresh ignoré (refresh_token vide)")
-		return "", nil
+		slog.DebugContext(ctx, "provider: TryOAuthRefreshWithRotation ignoré (refresh_token vide)")
+		return "", "", nil
 	}
-	slog.DebugContext(ctx, "provider: tentative OAuth v2 refresh")
-	token, err := ExchangeRefreshToken(ctx, refreshToken)
+	slog.DebugContext(ctx, "provider: tentative OAuth v2 refresh + rotation")
+	accessToken, rotatedRT, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
 	if err != nil {
-		slog.WarnContext(ctx, "provider: TryOAuthRefresh erreur", "err", err)
-		return "", err
+		slog.WarnContext(ctx, "provider: TryOAuthRefreshWithRotation erreur", "err", err)
+		return "", "", err
 	}
-	if token == "" {
+	if accessToken == "" {
 		slog.DebugContext(ctx, "provider: OAuth v2 refresh impossible (token révoqué ou expiré)")
 	} else {
-		slog.DebugContext(ctx, "provider: OAuth v2 refresh OK")
+		slog.DebugContext(ctx, "provider: OAuth v2 refresh OK",
+			"rotated_rt_received", rotatedRT != "",
+		)
 	}
-	return token, nil
+	return accessToken, rotatedRT, nil
 }

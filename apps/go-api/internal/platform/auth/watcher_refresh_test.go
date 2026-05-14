@@ -29,6 +29,11 @@ func (s *stubProvider) TryOAuthRefresh(_ context.Context, refreshToken string) (
 	return s.oauthResp, s.oauthErr
 }
 
+func (s *stubProvider) TryOAuthRefreshWithRotation(_ context.Context, refreshToken string) (string, string, error) {
+	s.lastCall = refreshToken
+	return s.oauthResp, "", s.oauthErr
+}
+
 func (s *stubProvider) Exchange(_ context.Context, _ string) (*ExchangeResult, error) {
 	return nil, errors.New("not implemented")
 }

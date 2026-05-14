@@ -294,6 +294,45 @@ func TestPoolSize(t *testing.T) {
 	}
 }
 
+// TestPoolHasPlayer_True vérifie que HasPlayer retourne true pour un gamertag
+// présent parmi les slots, indépendamment de son état healthy.
+// testSlotEnv(3) crée des gamertags "A", "B", "C".
+func TestPoolHasPlayer_True(t *testing.T) {
+	sources := testSlotEnv(3)
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+
+	pool, err := NewPool(context.Background(), resolver, sources, PoolOptions{MaxSize: 0, PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+	defer pool.Close()
+
+	for _, gt := range []string{"A", "B", "C"} {
+		if !pool.HasPlayer(gt) {
+			t.Errorf("HasPlayer(%q) = false, want true", gt)
+		}
+	}
+}
+
+// TestPoolHasPlayer_False vérifie que HasPlayer retourne false pour un gamertag
+// absent du pool (jamais découvert par Discovery).
+func TestPoolHasPlayer_False(t *testing.T) {
+	sources := testSlotEnv(2) // A, B
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+
+	pool, err := NewPool(context.Background(), resolver, sources, PoolOptions{MaxSize: 0, PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+	defer pool.Close()
+
+	for _, gt := range []string{"GhostPlayer", "Z", ""} {
+		if pool.HasPlayer(gt) {
+			t.Errorf("HasPlayer(%q) = true, want false", gt)
+		}
+	}
+}
+
 // TestPoolRoundRobinDistribution teste la distribution équitable du round-robin.
 func TestPoolRoundRobinDistribution(t *testing.T) {
 	sources := testSlotEnv(3)
