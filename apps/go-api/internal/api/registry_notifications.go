@@ -147,11 +147,13 @@ func loadParticipantXUIDs(ctx context.Context, sharedMatchesDBPath string, match
 	if len(matchIDs) == 0 {
 		return nil, nil
 	}
-	db, err := duckdb.OpenReadOnly(sharedMatchesDBPath)
+	// OpenReadWriteShared (clé cache "rw:path") pour partager l'instance avec
+	// le pool joueur et le sync engine — sinon DuckDB rejette la 2e config.
+	db, err := duckdb.OpenReadWriteShared(sharedMatchesDBPath)
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer db.Close() //nolint:errcheck // ref-count : best-effort
 	placeholders := make([]string, len(matchIDs))
 	args := make([]any, len(matchIDs))
 	for i, id := range matchIDs {
