@@ -563,3 +563,37 @@ WHERE mp.match_id IN (
     WHERE mp2.xuid = ?
 )
 ORDER BY mp.match_id, mp.xuid`
+
+// Q26csrSnapshots : récupère tous les snapshots CSR du joueur.
+// Triés par alltime_value DESC pour avoir les meilleures playlists en premier.
+const Q26csrSnapshots = `
+SELECT
+    playlist_id,
+    COALESCE(playlist_name, ''),
+    COALESCE(queue, ''),
+    COALESCE(input, ''),
+    COALESCE(season_id, ''),
+    COALESCE(current_value, 0),
+    COALESCE(current_tier, ''),
+    COALESCE(current_sub_tier, 0),
+    COALESCE(current_measurement_remaining, 0),
+    COALESCE(season_value, 0),
+    COALESCE(season_tier, ''),
+    COALESCE(season_sub_tier, 0),
+    COALESCE(alltime_value, 0),
+    COALESCE(alltime_tier, ''),
+    COALESCE(alltime_sub_tier, 0)
+FROM player_csr_snapshots
+ORDER BY alltime_value DESC, current_value DESC`
+
+// Q26csrAlltimePeak : récupère le meilleur CSR alltime toutes playlists confondues.
+// Utilisé par la home page pour remplacer la lecture depuis match_skill_rank.
+const Q26csrAlltimePeak = `
+SELECT
+    alltime_value,
+    alltime_tier,
+    alltime_sub_tier
+FROM player_csr_snapshots
+WHERE alltime_value IS NOT NULL AND alltime_value > 0
+ORDER BY alltime_value DESC
+LIMIT 1`

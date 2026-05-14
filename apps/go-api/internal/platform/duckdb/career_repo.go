@@ -104,6 +104,7 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 			tierLabel,
 			optionalNullInt16Value(subTier),
 			homeStaticTitleSlug,
+			0,
 		)
 		results = append(results, cp)
 	}
@@ -447,4 +448,47 @@ func (r *CareerRepo) GetEncounters(ctx context.Context) ([]domain.EncounterRawRo
 		results = append(results, e)
 	}
 	return results, rows.Err()
+}
+
+// GetCSRSnapshots retourne les classements CSR du joueur depuis player_csr_snapshots.
+// Retourne slice vide (pas d'erreur) si la table n'existe pas ou est vide.
+func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlaylistCSR, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.ReadDB().Query(ctx, Q26csrSnapshots)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("CareerRepo.GetCSRSnapshots: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.CareerPlaylistCSR
+	for rows.Next() {
+		var p domain.CareerPlaylistCSR
+		var seasonID string // col 5 — stored in DB but not exposed in the DTO
+		if err := rows.Scan(
+			&p.PlaylistID, &p.PlaylistName, &p.Queue, &p.Input,
+			&seasonID,
+			&p.Current.Value, &p.Current.Tier, &p.Current.SubTier, &p.Current.MeasurementMatchesRemaining,
+			&p.Season.Value, &p.Season.Tier, &p.Season.SubTier,
+			&p.AllTime.Value, &p.AllTime.Tier, &p.AllTime.SubTier,
+		); err != nil {
+			return nil, fmt.Errorf("CareerRepo.GetCSRSnapshots scan: %w", err)
+		}
+		p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURL(
+			p.Current.Tier, "", p.Current.SubTier, homeStaticTitleSlug,
+			p.Current.MeasurementMatchesRemaining,
+		)
+		p.Season.BadgeImageURL = buildHomeSkillPeakBadgeURL(
+			p.Season.Tier, "", p.Season.SubTier, homeStaticTitleSlug, 0,
+		)
+		p.AllTime.BadgeImageURL = buildHomeSkillPeakBadgeURL(
+			p.AllTime.Tier, "", p.AllTime.SubTier, homeStaticTitleSlug, 0,
+		)
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }

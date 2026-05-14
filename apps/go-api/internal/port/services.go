@@ -31,6 +31,8 @@ type CareerService interface {
 	GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error)
 	// GetRivals : top 10 némésis + top 10 souffre-douleur via killer_victim_pairs.
 	GetRivals(ctx context.Context) (domain.CareerRivalsResponse, error)
+	// GetCareerCSRs : classements CSR par playlist depuis player_csr_snapshots.
+	GetCareerCSRs(ctx context.Context) (domain.CareerCSRResponse, error)
 }
 
 // CitationsService construit les réponses Citations et Commendations.

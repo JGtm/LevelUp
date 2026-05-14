@@ -278,6 +278,9 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	if r.seasonsCatalog != nil {
 		svc = svc.WithSeasonsCatalog(r.seasonsCatalog)
 	}
+	if r.cfg != nil && r.cfg.CurrentCSRSeasonID != "" {
+		svc = svc.WithCSRSeasonID(r.cfg.CurrentCSRSeasonID)
+	}
 	return svc, nil
 }
 

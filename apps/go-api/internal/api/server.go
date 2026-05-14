@@ -516,6 +516,7 @@ func NewRouter(
 				r.Get("/pages/career/highlight-matches", career.GetHighlightMatches)
 				r.Get("/pages/career/top-encounters", career.GetTopEncountersRich)
 				r.Get("/pages/career/rivals", career.GetRivals)
+				r.Get("/pages/career/csrs", career.GetCareerCSRs)
 			})
 
 			// Achievements (Xbox bilingues) : guard CapAchievements.
