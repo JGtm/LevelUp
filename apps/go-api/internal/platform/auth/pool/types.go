@@ -54,6 +54,17 @@ type Resolver interface {
 	Refresh(ctx context.Context, gamertag string) (*ResolvedTokens, error)
 }
 
+// TokenRotationCallback est invoqué par le Resolver chaque fois qu'un refresh
+// OAuth v2 retourne un refresh_token rotaté par Microsoft. Le caller doit
+// persister ce nouveau RT pour qu'il soit utilisé au prochain refresh
+// (sinon Microsoft refusera avec invalid_grant).
+//
+// Le callback est exécuté en best-effort : une erreur n'interrompt pas le
+// Resolve (les tokens Halo sont déjà obtenus), mais elle est loguée par le
+// Resolver. Le caller doit éviter les opérations bloquantes longues —
+// idéalement < 1 s.
+type TokenRotationCallback func(ctx context.Context, gamertag, newRefreshToken string) error
+
 // AcquirePolicy détermine comment le pool sélectionne un token.
 type AcquirePolicy int
 
@@ -92,6 +103,12 @@ type Pool interface {
 
 	// Size retourne le nombre de tokens actifs dans le pool.
 	Size() int
+
+	// HasPlayer retourne true si un slot est disponible (peu importe son état
+	// healthy actuel) pour ce gamertag. Permet aux callers de skip
+	// silencieusement les joueurs qui n'ont pas de token dans le pool, sans
+	// passer par un Acquire/Release qui retournerait juste une erreur.
+	HasPlayer(gamertag string) bool
 
 	// MarkUnhealthy invalide un token (sur 401/403) et déclenche un Resolver.Refresh asynchrone.
 	// Logs informatif (pas d'erreur — les appels concurrents tolèrent l'exclusion temporaire).
