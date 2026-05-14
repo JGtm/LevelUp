@@ -274,7 +274,7 @@ func main() {
 		return nil, fmt.Errorf("registry non initialisé")
 	}
 	var watcherDaemon *watcher.Daemon
-	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore, notifierGetter, tokenRefresher)
+	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher)
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 	}
@@ -322,9 +322,17 @@ func main() {
 	// warnings sont uniquement dans les logs).
 	if reg != nil {
 		if players, err := cfg.LoadPlayers(title.DefaultSlug); err == nil && len(players) > 0 {
-			if emitter, err := reg.NotificationsEmitter(ctx, players[0].PlayerSlug); err == nil {
+			adminSlug := cfg.AdminPlayer()
+			target := players[0]
+			for _, p := range players {
+				if p.PlayerSlug == adminSlug {
+					target = p
+					break
+				}
+			}
+			if emitter, err := reg.NotificationsEmitter(ctx, target.PlayerSlug); err == nil {
 				healthScheduler.SetEmitter(emitter)
-				slog.Info("data_health: emitter wiré", "admin_player", players[0].PlayerSlug)
+				slog.Info("data_health: emitter wiré", "admin_player", target.PlayerSlug)
 			} else {
 				slog.Warn("data_health: emitter non câblé", "err", err)
 			}
@@ -478,10 +486,15 @@ func RunPlayerMigrations(playerDBPath string) error {
 // startWatcherDaemon tente de démarrer le daemon de présence.
 // Retourne nil si watcher_presence_enabled est false ou si les prérequis ne sont pas remplis.
 // getNotifier est un getter lazy (xuid → SessionNotifier) injecté par main ; peut être nil.
+// tokenProvider sert à régénérer l'access_token Microsoft via OAuth v2 refresh
+// (depuis watcher_tokens.json ou SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>), pour
+// que le watcher puisse aussi rafraîchir son XSTS RTA tout seul sans avoir
+// besoin que l'utilisateur regénère manuellement les tokens.
 func startWatcherDaemon(
 	ctx context.Context,
 	cfg *config.AppConfig,
 	settingsStore *settings.Store,
+	tokenProvider auth.TokenProvider,
 	getNotifier func(xuid string) port.SessionNotifier,
 	tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error),
 ) *watcher.Daemon {
@@ -505,8 +518,47 @@ func startWatcherDaemon(
 		return nil
 	}
 
+	// 1) S'assurer qu'on a un access_token Microsoft frais.
+	//    EnsureWatcherAccessToken réutilise l'access_token courant s'il est
+	//    valide, sinon tente un OAuth v2 refresh depuis (a) tokens.RefreshToken
+	//    ou (b) SPNKR_OAUTH_REFRESH_TOKEN_<XSTSGamertag> (.env.local).
+	//    Persiste le nouveau access_token dans watcher_tokens.json.
+	freshAccessToken, err := auth.EnsureWatcherAccessToken(ctx, store, tokenProvider, tokens.XSTSGamertag)
+	if err != nil {
+		slog.Warn("watcher: EnsureWatcherAccessToken erreur structurelle", "err", err)
+	}
+	if freshAccessToken == "" {
+		freshAccessToken = tokens.AccessToken // mode dégradé
+	}
+
+	// 2) Si on a un access_token frais, on tente un refresh XSTS RTA proactif
+	//    AVANT le check IsXSTSValid : ça permet de récupérer un watcher sain
+	//    même si watcher_tokens.json contient un XSTS périmé tant qu'on a
+	//    encore un refresh_token utilisable côté env var.
+	if freshAccessToken != "" {
+		slog.Info("watcher: refresh XSTS proactif avant démarrage…")
+		if freshResult, xerr := auth.AcquireXSTSForRTA(ctx, freshAccessToken); xerr == nil {
+			if storeErr := store.UpdateXSTS(freshResult, 55*time.Minute); storeErr == nil {
+				slog.Info("watcher: XSTS frais obtenu",
+					"gamertag", freshResult.Gamertag,
+					"not_after", freshResult.NotAfter,
+				)
+				// Recharger pour la suite (IsXSTSValid et xstsResult plus bas).
+				if reloaded, lerr := store.Load(); lerr == nil {
+					tokens = reloaded
+				}
+			} else {
+				slog.Warn("watcher: persistance XSTS frais échouée", "err", storeErr)
+			}
+		} else {
+			slog.Warn("watcher: refresh XSTS proactif échoué, utilisation du token stocké", "err", xerr)
+		}
+	}
+
 	if !tokens.IsXSTSValid(0) {
-		slog.Info("watcher: tokens XSTS expirés, daemon désactivé")
+		slog.Warn("watcher: tokens XSTS expirés et refresh impossible, daemon désactivé",
+			"hint", "vérifier SPNKR_OAUTH_REFRESH_TOKEN_"+strings.ToUpper(tokens.XSTSGamertag)+" dans .env.local",
+		)
 		return nil
 	}
 
@@ -560,16 +612,25 @@ func startWatcherDaemon(
 			return refresher
 		},
 		// RefreshRTAAuth est appelé on-demand par RunWithReconnect quand status=3 est reçu.
-		// Il acquiert un XSTS frais et pousse le nouveau header dans le daemon.
+		// Tente d'abord d'obtenir un access_token frais via OAuth v2 refresh (env
+		// var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> ou tokens.RefreshToken), puis
+		// acquiert un XSTS RTA frais. Pousse le nouveau header dans le daemon.
 		RefreshRTAAuth: func(ctx context.Context) error {
 			currentTokens, err := store.Load()
 			if err != nil {
 				return fmt.Errorf("refresh RTA auth: lecture token store: %w", err)
 			}
-			if currentTokens.AccessToken == "" {
-				return fmt.Errorf("refresh RTA auth: access_token absent")
+			accessToken, eatErr := auth.EnsureWatcherAccessToken(ctx, store, tokenProvider, currentTokens.XSTSGamertag)
+			if eatErr != nil {
+				slog.WarnContext(ctx, "refresh RTA auth: EnsureWatcherAccessToken erreur structurelle", "err", eatErr)
 			}
-			result, err := auth.AcquireXSTSForRTA(ctx, currentTokens.AccessToken)
+			if accessToken == "" {
+				accessToken = currentTokens.AccessToken
+			}
+			if accessToken == "" {
+				return fmt.Errorf("refresh RTA auth: aucun access_token disponible (refresh_token absent ou révoqué)")
+			}
+			result, err := auth.AcquireXSTSForRTA(ctx, accessToken)
 			if err != nil {
 				return fmt.Errorf("refresh RTA auth: AcquireXSTSForRTA: %w", err)
 			}
@@ -585,27 +646,13 @@ func startWatcherDaemon(
 		},
 	}, titleReg, syncTrigger)
 
+	// Le refresh XSTS proactif a déjà été fait plus haut dans la fonction (avant
+	// le check IsXSTSValid). `tokens` reflète ici le state à jour : si un refresh
+	// a réussi, tokens.XSTSToken / XSTSUserHash sont déjà les valeurs fraîches
+	// persistées dans watcher_tokens.json.
 	xstsResult := &auth.XSTSResult{
 		Token:    tokens.XSTSToken,
 		UserHash: tokens.XSTSUserHash,
-	}
-
-	// Refresh XSTS proactif : si un access_token est disponible, on acquiert un XSTS frais
-	// avant de démarrer le daemon. Évite le scénario où le token stocké a été sauvegardé
-	// avec une TTL erronée (ancien code 90min) et est déjà expiré côté Xbox.
-	if tokens.AccessToken != "" {
-		slog.Info("watcher: refresh XSTS proactif avant démarrage...")
-		if freshResult, err := auth.AcquireXSTSForRTA(ctx, tokens.AccessToken); err == nil {
-			if storeErr := store.UpdateXSTS(freshResult, 55*time.Minute); storeErr == nil {
-				xstsResult = freshResult
-				slog.Info("watcher: XSTS frais obtenu",
-					"gamertag", freshResult.Gamertag,
-					"not_after", freshResult.NotAfter,
-				)
-			}
-		} else {
-			slog.Warn("watcher: refresh XSTS proactif échoué, utilisation du token stocké", "err", err)
-		}
 	}
 
 	daemon.Start(ctx, xstsResult.AuthHeader(), playerSummaries)
