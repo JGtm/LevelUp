@@ -329,8 +329,11 @@ ORDER BY _s ASC`
 const Q9bHighlightPool = `
 SELECT
     pme.match_id,
-    COALESCE(r.is_ranked, FALSE) AS is_ranked,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+    COALESCE(r.is_ranked, FALSE)                                       AS is_ranked,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')        AS start_time,
+    COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')              AS pair_name_source,
+    COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name, '')      AS playlist_name_source,
+    COALESCE(r.playlist_id, '')                                         AS playlist_id
 FROM player_match_enrichment pme
 JOIN shared.match_registry r ON pme.match_id = r.match_id
 LEFT JOIN shared.match_participants p

@@ -151,20 +151,32 @@ func (h *CareerHandler) GetHighlightMatches(w http.ResponseWriter, r *http.Reque
 		WorstMatches:        worstMatches,
 		AvailableExperience: data.AvailableExperience,
 		AvailableSeasons:    data.AvailableSeasons,
+		AvailableModes:      data.AvailableModes,
+		AvailablePlaylists:  data.AvailablePlaylists,
 	})
 }
 
 // parseHighlightFilterInput extrait les query params en domain.HighlightFilterInput.
 // Tolère les valeurs absentes ou vides — le service applique les normalisations.
+// Params CSV : season_ids, mode_uis, playlist_names.
 func parseHighlightFilterInput(q url.Values) domain.HighlightFilterInput {
 	in := domain.HighlightFilterInput{
 		Experience: q.Get("experience"),
 	}
-	if raw := q.Get("season_ids"); raw != "" {
-		for _, id := range strings.Split(raw, ",") {
-			id = strings.TrimSpace(id)
-			if id != "" {
-				in.SeasonIDs = append(in.SeasonIDs, id)
+	for _, raw := range []struct {
+		param string
+		dest  *[]string
+	}{
+		{"season_ids", &in.SeasonIDs},
+		{"mode_uis", &in.ModeUIs},
+		{"playlist_names", &in.PlaylistNames},
+	} {
+		if v := q.Get(raw.param); v != "" {
+			for _, s := range strings.Split(v, ",") {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					*raw.dest = append(*raw.dest, s)
+				}
 			}
 		}
 	}

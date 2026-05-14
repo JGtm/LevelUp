@@ -41,13 +41,17 @@ export function CareerHighlightMatchesSection() {
   const [variant, setVariant] = useState<Variant>('best')
   const [experience, setExperience] = useState<Experience>('all')
   const [selectedSeasons, setSelectedSeasons] = useState<Set<string>>(() => new Set())
+  const [selectedModes, setSelectedModes] = useState<Set<string>>(() => new Set())
+  const [selectedPlaylists, setSelectedPlaylists] = useState<Set<string>>(() => new Set())
 
   const filters: CareerHighlightFilters = useMemo(
     () => ({
       experience,
       season_ids: Array.from(selectedSeasons),
+      mode_uis: Array.from(selectedModes),
+      playlist_names: Array.from(selectedPlaylists),
     }),
-    [experience, selectedSeasons],
+    [experience, selectedSeasons, selectedModes, selectedPlaylists],
   )
 
   const { data, isLoading, isError } = useCareerHighlightMatches(playerSlug, filters)
@@ -71,6 +75,31 @@ export function CareerHighlightMatchesSection() {
       }))
       .filter((o) => o.count > 0 || selectedSeasons.has(o.value))
   }, [seasons, seasonCountsMap, selectedSeasons])
+
+  const modeOptions: MultiSelectOption[] = useMemo(() => {
+    return (data?.available_modes ?? [])
+      .map((m) => ({ value: m.value, label: m.value, count: m.count }))
+      .filter((o) => o.count > 0 || selectedModes.has(o.value))
+  }, [data?.available_modes, selectedModes])
+
+  const playlistOptions: MultiSelectOption[] = useMemo(() => {
+    return (data?.available_playlists ?? [])
+      .map((p) => ({ value: p.value, label: p.value, count: p.count }))
+      .filter((o) => o.count > 0 || selectedPlaylists.has(o.value))
+  }, [data?.available_playlists, selectedPlaylists])
+
+  const hasActiveFilters =
+    experience !== 'all' ||
+    selectedSeasons.size > 0 ||
+    selectedModes.size > 0 ||
+    selectedPlaylists.size > 0
+
+  const resetFilters = () => {
+    setExperience('all')
+    setSelectedSeasons(new Set())
+    setSelectedModes(new Set())
+    setSelectedPlaylists(new Set())
+  }
 
   return (
     <section className="space-y-3">
@@ -102,6 +131,51 @@ export function CareerHighlightMatchesSection() {
             placeholder={t('career.highlight_matches.filter_seasons')}
             alwaysShow
           />
+          <MultiSelectFilter
+            options={playlistOptions}
+            selected={selectedPlaylists}
+            toggle={(v) => {
+              setSelectedPlaylists((prev) => {
+                const next = new Set(prev)
+                if (next.has(v)) next.delete(v)
+                else next.add(v)
+                return next
+              })
+            }}
+            placeholder={t('career.highlight_matches.filter_playlists')}
+            alwaysShow
+            disabled={playlistOptions.length === 0 && selectedPlaylists.size === 0}
+          />
+          <MultiSelectFilter
+            options={modeOptions}
+            selected={selectedModes}
+            toggle={(v) => {
+              setSelectedModes((prev) => {
+                const next = new Set(prev)
+                if (next.has(v)) next.delete(v)
+                else next.add(v)
+                return next
+              })
+            }}
+            placeholder={t('career.highlight_matches.filter_modes')}
+            alwaysShow
+            disabled={modeOptions.length === 0 && selectedModes.size === 0}
+          />
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              aria-label={t('career.highlight_matches.reset_filters')}
+              title={t('career.highlight_matches.reset_filters')}
+              className="rounded border border-input px-2 py-1 text-xs text-muted-foreground hover:border-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M2 8a6 6 0 1 1 1.76 4.24" strokeLinecap="round" />
+                <path d="M2 13.5V9.5h4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {t('career.highlight_matches.reset_filters')}
+            </button>
+          )}
           <div role="tablist" aria-label={t('career.highlight_matches.section_title')} className="inline-flex border border-border rounded-md overflow-hidden text-xs">
             <button
               type="button"

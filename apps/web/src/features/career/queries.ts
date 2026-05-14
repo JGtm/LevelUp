@@ -70,8 +70,13 @@ function buildHighlightFilterParams(filters: CareerHighlightFilters): string {
     params.set('experience', filters.experience)
   }
   if (filters.season_ids && filters.season_ids.length > 0) {
-    const sorted = [...filters.season_ids].sort()
-    params.set('season_ids', sorted.join(','))
+    params.set('season_ids', [...filters.season_ids].sort().join(','))
+  }
+  if (filters.mode_uis && filters.mode_uis.length > 0) {
+    params.set('mode_uis', [...filters.mode_uis].sort().join(','))
+  }
+  if (filters.playlist_names && filters.playlist_names.length > 0) {
+    params.set('playlist_names', [...filters.playlist_names].sort().join(','))
   }
   return params.toString()
 }
