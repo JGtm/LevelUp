@@ -213,21 +213,42 @@ type HighlightMatchIDRow struct {
 
 // HighlightMatchPoolRow : ligne légère du pool éligible (mêmes filtres
 // d'éligibilité que Q9b mais sans contrainte d'outcome ni LIMIT). Utilisée
-// pour calculer les cascade counts (available_experience, available_seasons).
+// pour calculer les cascade counts (available_experience, available_seasons,
+// available_modes, available_playlists).
+//
+// ModeUISource     = COALESCE(pair_name_fr, pair_name) brut (sert au filtre SQL).
+// ModeUI           = label normalisé final affiché côté front
+//                    (analysis.NormalizeModeLabel + override mode_name_tr FR).
+// PlaylistNameRaw  = COALESCE(playlist_name_fr, playlist_name) brut (filtre SQL).
+// PlaylistName     = label final affiché côté front (override asset_translations FR
+//                    si PlaylistNameRaw est encore EN après COALESCE).
+// PlaylistID       = playlist_id (UUID) pour le lookup asset_translations.
 type HighlightMatchPoolRow struct {
-	MatchID   string
-	IsRanked  bool
-	StartTime *time.Time
+	MatchID         string
+	IsRanked        bool
+	StartTime       *time.Time
+	ModeUI          string
+	ModeUISource    string
+	PlaylistName    string
+	PlaylistNameRaw string
+	PlaylistID      string
 }
 
-// CareerHighlightFilters : filtres optionnels appliqués sur la section
-// "Matchs marquants" (page Carrière). Champs zéro = pas de filtre.
+// CareerHighlightFilters : filtres résolus passés au repo. Champs zéro = pas de filtre.
 type CareerHighlightFilters struct {
 	// Experience : "all" / "ranked" / "unranked". Vide ou "all" = pas de filtre.
 	Experience string
 	// SeasonRanges : list de fenêtres temporelles pré-résolues par le service
 	// depuis la sélection de saisons + le SeasonsCatalog. Vide = pas de filtre.
 	SeasonRanges []SeasonTimeRange
+	// ModeRawSources : valeurs brutes COALESCE(pair_name_fr, pair_name) expandées
+	// par le service depuis la sélection utilisateur (labels normalisés) via le
+	// pool. Utilisées tel quel dans la clause SQL `COALESCE IN (...)`.
+	ModeRawSources []string
+	// PlaylistNamesRaw : valeurs brutes COALESCE(playlist_name_fr, playlist_name)
+	// expandées par le service depuis la sélection utilisateur (labels FR via
+	// asset_translations) via le pool. Utilisées tel quel dans la clause SQL.
+	PlaylistNamesRaw []string
 }
 
 // SeasonTimeRange : fenêtre [Start, End) résolue depuis le SeasonsCatalog.
@@ -241,17 +262,21 @@ type SeasonTimeRange struct {
 // la section "Matchs marquants". Le service les résout en CareerHighlightFilters
 // via SeasonsCatalog (mapping SeasonIDs → date-ranges concrètes).
 type HighlightFilterInput struct {
-	Experience string   // "all" | "ranked" | "unranked"
-	SeasonIDs  []string // ex. ["season6", "season10_op1"]
+	Experience    string   // "all" | "ranked" | "unranked"
+	SeasonIDs     []string // ex. ["season6", "season10_op1"]
+	ModeUIs       []string // valeurs pair_name (= mode_ui) sélectionnées
+	PlaylistNames []string // valeurs playlist_name sélectionnées
 }
 
 // HighlightMatchesData : résultat agrégé de service.GetHighlightMatchIDs
 // incluant les rows brutes (best+worst, à enrichir par le handler) et les
-// cascade counts pour les dropdowns Expérience / Saisons.
+// cascade counts pour les dropdowns Expérience / Saisons / Modes / Playlists.
 type HighlightMatchesData struct {
 	Rows                []HighlightMatchIDRow
 	AvailableExperience []HighlightExperienceCount
 	AvailableSeasons    []HighlightSeasonCount
+	AvailableModes      []HighlightModeCount
+	AvailablePlaylists  []HighlightPlaylistCount
 }
 
 // HighlightExperienceCount : count par option pour la dropdown Expérience.
@@ -269,17 +294,33 @@ type HighlightSeasonCount struct {
 	Count int    `json:"count"`
 }
 
+// HighlightModeCount : count par mode (pair_name) pour la dropdown Modes.
+// Value = pair_name (= mode_ui dans ExplorerMatchRow).
+type HighlightModeCount struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
+// HighlightPlaylistCount : count par playlist pour la dropdown Playlists.
+// Value = playlist_name (= playlist_label dans ExplorerMatchRow).
+type HighlightPlaylistCount struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
 // CareerHighlightMatchesResponse est la réponse de
 // GET /pages/career/highlight-matches : tableau Explorer-format pour les
 // 15 meilleurs et 15 pires matchs (toggle Best/Worst côté front).
 //
-// AvailableExperience et AvailableSeasons cascade-aware (counts respectent
-// l'autre filtre actif) — alimentent les dropdowns à gauche du toggle.
+// Tous les champs Available* sont cascade-aware : les counts respectent
+// tous les autres filtres actifs — alimentent les dropdowns à gauche du toggle.
 type CareerHighlightMatchesResponse struct {
-	BestMatches         []ExplorerMatchesRow       `json:"best_matches"`
-	WorstMatches        []ExplorerMatchesRow       `json:"worst_matches"`
-	AvailableExperience []HighlightExperienceCount `json:"available_experience"`
-	AvailableSeasons    []HighlightSeasonCount     `json:"available_seasons"`
+	BestMatches         []ExplorerMatchesRow        `json:"best_matches"`
+	WorstMatches        []ExplorerMatchesRow        `json:"worst_matches"`
+	AvailableExperience []HighlightExperienceCount  `json:"available_experience"`
+	AvailableSeasons    []HighlightSeasonCount      `json:"available_seasons"`
+	AvailableModes      []HighlightModeCount        `json:"available_modes"`
+	AvailablePlaylists  []HighlightPlaylistCount    `json:"available_playlists"`
 }
 
 // CareerTopEncountersResponse est la réponse de

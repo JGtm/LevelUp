@@ -258,6 +258,18 @@ en = "Experience"
 fr = "Saisons"
 en = "Seasons"
 
+[career.highlight_matches.filter_modes]
+fr = "Modes"
+en = "Modes"
+
+[career.highlight_matches.filter_playlists]
+fr = "Playlists"
+en = "Playlists"
+
+[career.highlight_matches.reset_filters]
+fr = "Réinitialiser"
+en = "Reset"
+
 [career.highlight_matches.experience_all]
 fr = "Toutes"
 en = "All"

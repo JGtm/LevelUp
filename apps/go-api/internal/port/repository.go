@@ -113,6 +113,12 @@ type CareerRepository interface {
 	// GetHighlightPool : pool complet des matchs éligibles "marquants"
 	// (light : match_id + is_ranked + start_time). Pour cascade counts.
 	GetHighlightPool(ctx context.Context) ([]domain.HighlightMatchPoolRow, error)
+	// LoadModeTranslationsFR : map EN→FR depuis metadata.mode_name_tr (lang='fr').
+	// Best-effort : nil silencieux si table absente.
+	LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error)
+	// LoadPlaylistAssetTranslationsFR : map playlist_id→nom FR depuis
+	// metadata.asset_translations. Best-effort : nil silencieux si absent.
+	LoadPlaylistAssetTranslationsFR(ctx context.Context, playlistIDs []string) (map[string]string, error)
 	// GetTopEncountersGlobal : 10 joueurs les plus croisés au niveau carrière,
 	// hors XUIDs présents dans excludeXUIDs (typiquement les amis).
 	GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error)
@@ -295,6 +301,12 @@ func (n *noopCareerRepo) GetHighlightMatchIDs(_ context.Context, _ domain.Career
 	return nil, nil
 }
 func (n *noopCareerRepo) GetHighlightPool(_ context.Context) ([]domain.HighlightMatchPoolRow, error) {
+	return nil, nil
+}
+func (n *noopCareerRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+	return nil, nil
+}
+func (n *noopCareerRepo) LoadPlaylistAssetTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
 	return nil, nil
 }
 func (n *noopCareerRepo) GetTopEncountersGlobal(_ context.Context, _ []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error) {

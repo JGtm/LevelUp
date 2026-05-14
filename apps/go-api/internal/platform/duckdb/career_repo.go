@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -186,12 +187,11 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 // clause SQL additionnelle (à injecter via Sprintf dans Q9bHighlightMatchIDsTpl)
 // + les valeurs liées correspondantes. Retourne ("", nil) si aucun filtre actif.
 //
-// Forme produite, ex. avec ranked + 2 saisons :
-//
-//	" AND r.is_ranked = TRUE AND ((r.start_time_utc >= ? AND r.start_time_utc < ?) OR (r.start_time_utc >= ?))"
+// Dimensions gérées : Experience (is_ranked), Seasons (start_time), Modes
+// (pair_name IN ...), Playlists (playlist_name IN ...).
 func buildHighlightFilterClause(filters domain.CareerHighlightFilters) (string, []any) {
-	parts := make([]string, 0, 2)
-	args := make([]any, 0, 4)
+	parts := make([]string, 0, 4)
+	args := make([]any, 0, 8)
 
 	switch strings.ToLower(strings.TrimSpace(filters.Experience)) {
 	case "ranked":
@@ -213,6 +213,28 @@ func buildHighlightFilterClause(filters domain.CareerHighlightFilters) (string, 
 			}
 		}
 		parts = append(parts, "("+strings.Join(seasonExprs, " OR ")+")")
+	}
+
+	if len(filters.ModeRawSources) > 0 {
+		ph := make([]string, len(filters.ModeRawSources))
+		for i, m := range filters.ModeRawSources {
+			ph[i] = "?"
+			args = append(args, m)
+		}
+		// Comparaison sur la même expression que celle utilisée pour normaliser
+		// côté pool (analysis.NormalizeModeLabel(coalesce(pair_name_fr, pair_name))).
+		parts = append(parts, "COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '') IN ("+strings.Join(ph, ", ")+")")
+	}
+
+	if len(filters.PlaylistNamesRaw) > 0 {
+		ph := make([]string, len(filters.PlaylistNamesRaw))
+		for i, p := range filters.PlaylistNamesRaw {
+			ph[i] = "?"
+			args = append(args, p)
+		}
+		// Comparaison sur la même expression que celle utilisée pour normaliser
+		// côté pool (COALESCE(playlist_name_fr, playlist_name)).
+		parts = append(parts, "COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name, '') IN ("+strings.Join(ph, ", ")+")")
 	}
 
 	if len(parts) == 0 {
@@ -274,16 +296,73 @@ func (r *CareerRepo) GetHighlightPool(ctx context.Context) ([]domain.HighlightMa
 	for rows.Next() {
 		var row domain.HighlightMatchPoolRow
 		var startTime sql.NullTime
-		if err := rows.Scan(&row.MatchID, &row.IsRanked, &startTime); err != nil {
+		if err := rows.Scan(
+			&row.MatchID, &row.IsRanked, &startTime,
+			&row.ModeUISource, &row.PlaylistNameRaw, &row.PlaylistID,
+		); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetHighlightPool scan: %w", err)
 		}
 		if startTime.Valid {
 			t := startTime.Time
 			row.StartTime = &t
 		}
+		row.ModeUI = analysis.NormalizeModeLabel(row.ModeUISource)
+		// PlaylistName initialisé avec la valeur brute COALESCE — sera
+		// override par le service via asset_translations[playlist_id, fr] si dispo.
+		row.PlaylistName = row.PlaylistNameRaw
 		results = append(results, row)
 	}
 	return results, rows.Err()
+}
+
+// LoadModeTranslationsFR retourne le mapping EN→FR depuis metadata.mode_name_tr
+// (lang='fr'). Best-effort : silencieusement vide si Metadata absent ou table
+// non trouvée. Calqué sur SquadRepo.LoadModeTranslationsFR.
+func (r *CareerRepo) LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error) {
+	if len(modeENs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(modeENs)), ",")
+	q := fmt.Sprintf(`SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`, placeholders)
+	args := make([]any, len(modeENs))
+	for i, n := range modeENs {
+		args[i] = n
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("CareerRepo.LoadModeTranslationsFR: %w", err)
+	}
+	defer rows.Close()
+	result := make(map[string]string, len(modeENs))
+	for rows.Next() {
+		var en, fr string
+		if err := rows.Scan(&en, &fr); err != nil {
+			continue
+		}
+		if strings.TrimSpace(fr) != "" {
+			result[en] = fr
+		}
+	}
+	return result, rows.Err()
+}
+
+// LoadPlaylistAssetTranslationsFR retourne le mapping playlist_id→nom FR via
+// metadata.asset_translations. Best-effort : nil silencieux si absent.
+// Calqué sur enrichLUSRPlaylistNames + SquadRepo.LoadAssetTranslationsFR.
+func (r *CareerRepo) LoadPlaylistAssetTranslationsFR(ctx context.Context, playlistIDs []string) (map[string]string, error) {
+	if len(playlistIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	out, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(
+		ctx, "playlist", playlistIDs, PreferredLangsForLocale("fr"),
+	)
+	if err != nil && isTableNotFoundErr(err) {
+		return nil, nil
+	}
+	return out, err
 }
 
 // GetTopEncountersGlobal retourne les 10 joueurs les plus croisés au niveau

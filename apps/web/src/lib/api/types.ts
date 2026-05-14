@@ -824,6 +824,8 @@ export interface CareerHighlightMatchesResponse {
   worst_matches: ExplorerMatchRow[]
   available_experience: HighlightExperienceCount[]
   available_seasons: HighlightSeasonCount[]
+  available_modes: HighlightModeCount[]
+  available_playlists: HighlightPlaylistCount[]
 }
 
 export interface HighlightExperienceCount {
@@ -836,10 +838,22 @@ export interface HighlightSeasonCount {
   count: number
 }
 
+export interface HighlightModeCount {
+  value: string // pair_name = mode_ui
+  count: number
+}
+
+export interface HighlightPlaylistCount {
+  value: string // playlist_name
+  count: number
+}
+
 // Filtres optionnels passés en query params à GET /pages/career/highlight-matches.
 export interface CareerHighlightFilters {
   experience?: 'all' | 'ranked' | 'unranked'
-  season_ids?: string[] // multi-select
+  season_ids?: string[]      // multi-select
+  mode_uis?: string[]        // multi-select (= pair_name / mode_ui)
+  playlist_names?: string[]  // multi-select
 }
 
 // Section "Joueurs les plus croisés (hors amis)" : 10 lignes au format
