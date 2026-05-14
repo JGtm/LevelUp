@@ -769,17 +769,19 @@ func TestRunPostSyncPipeline_NoError(t *testing.T) {
 	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
 
 	// Post-sync should complete without panic.
-	// Results may be 0 if no data to compute, but that's expected.
+	// Carrière (XP + Spartan ID) découplée du post-sync depuis 2026-05-14 :
+	// CareerSynced reste à false et career_progression n'est plus écrite ici
+	// (service.CareerLiveService prend le relais côté home).
 	if r.CareerSynced {
-		// Career was returned by mock — check that it was saved
-		var count int
-		err := playerDB.QueryRow("SELECT COUNT(*) FROM career_progression").Scan(&count)
-		if err != nil {
-			t.Fatalf("QueryRow career_progression: %v", err)
-		}
-		if count == 0 {
-			t.Error("career_progression: attendu ≥ 1 après CareerSynced=true")
-		}
+		t.Error("CareerSynced doit rester false : carrière découplée du post-sync")
+	}
+	var count int
+	err := playerDB.QueryRow("SELECT COUNT(*) FROM career_progression").Scan(&count)
+	if err != nil {
+		t.Fatalf("QueryRow career_progression: %v", err)
+	}
+	if count > 0 {
+		t.Errorf("career_progression: attendu 0 row depuis le découplage, obtenu %d", count)
 	}
 }
 
@@ -824,7 +826,11 @@ func TestEnrichCareerRankFromMetadata(t *testing.T) {
 	}
 }
 
-func TestRunConditionalPostSync_NoInsertedMatches_StillSyncsCareer(t *testing.T) {
+// TestRunConditionalPostSync_NoInsertedMatches_DoesNotSyncCareer vérifie le
+// découplage : sans nouveau match, le post-sync ne déclenche plus de fetch
+// carrière (ni de write career_progression). Le rafraîchissement XP+Spartan
+// ID est désormais géré live par service.CareerLiveService.
+func TestRunConditionalPostSync_NoInsertedMatches_DoesNotSyncCareer(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 
 	mock := &mockHaloClient{
@@ -841,25 +847,26 @@ func TestRunConditionalPostSync_NoInsertedMatches_StillSyncsCareer(t *testing.T)
 
 	r := e.runConditionalPostSync(context.Background(), playerDB, sharedDB, mock, 0, nil)
 
-	if !r.CareerSynced {
-		t.Fatal("CareerSynced devrait être true même sans nouveau match")
+	if r.CareerSynced {
+		t.Fatal("CareerSynced doit rester false : carrière découplée du post-sync")
 	}
 	if r.PerfScoresComputed != 0 || r.LUSRUpdated != 0 || r.ViewsRefreshed != 0 {
 		t.Fatalf("pipeline sans matchs ne doit pas recalculer les agrégats: %+v", r)
 	}
 
-	var spartanID string
-	err := playerDB.QueryRow(
-		"SELECT spartan_id FROM career_progression ORDER BY recorded_at DESC LIMIT 1",
-	).Scan(&spartanID)
+	var count int
+	err := playerDB.QueryRow("SELECT COUNT(*) FROM career_progression").Scan(&count)
 	if err != nil {
-		t.Fatalf("QueryRow career_progression.spartan_id: %v", err)
+		t.Fatalf("QueryRow career_progression: %v", err)
 	}
-	if spartanID != "SR-TEST-4242" {
-		t.Fatalf("spartan_id: attendu %q, obtenu %q", "SR-TEST-4242", spartanID)
+	if count > 0 {
+		t.Errorf("career_progression: attendu 0 row depuis le découplage, obtenu %d", count)
 	}
 }
 
+// TestRunPostSyncPipeline_CareerError vérifie que les erreurs API carrière
+// (lecture désormais hors post-sync) n'impactent plus le résultat — la mock
+// errCareer reste configurée mais inutilisée.
 func TestRunPostSyncPipeline_CareerError(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 
@@ -871,16 +878,15 @@ func TestRunPostSyncPipeline_CareerError(t *testing.T) {
 
 	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
 
-	// Should not panic. Career should not be synced.
 	if r.CareerSynced {
-		t.Error("CareerSynced devrait être false après erreur API")
+		t.Error("CareerSynced doit rester false : carrière découplée du post-sync")
 	}
 }
 
+// TestRunPostSyncPipeline_NilCareerData : pendant régression du découplage.
 func TestRunPostSyncPipeline_NilCareerData(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 
-	// Mock returns nil career (e.g., token expired, player not found)
 	mock := &mockHaloClient{careerData: nil}
 
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
@@ -888,6 +894,6 @@ func TestRunPostSyncPipeline_NilCareerData(t *testing.T) {
 	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
 
 	if r.CareerSynced {
-		t.Error("CareerSynced devrait être false quand careerData=nil")
+		t.Error("CareerSynced doit rester false : carrière découplée du post-sync")
 	}
 }
