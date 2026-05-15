@@ -54,6 +54,9 @@ type SeasonPassContentSummary struct {
 
 // SeasonPassTrackSummary résume un Battle Pass / Operation Reward Track.
 // Les champs sont un mirror exact des types TypeScript côté frontend.
+//
+// SnapshotAt (RFC3339) horodate le `battlepass_snapshots` le plus récent du
+// joueur pour ce track. nil si aucun snapshot n'a jamais été persisté.
 type SeasonPassTrackSummary struct {
 	RewardTrackPath           string                    `json:"reward_track_path"`
 	Name                      string                    `json:"name"`
@@ -73,6 +76,7 @@ type SeasonPassTrackSummary struct {
 	BackgroundImageURL        *string                   `json:"background_image_url,omitempty"`
 	Tiers                     []SeasonPassTierSummary   `json:"tiers,omitempty"`
 	Content                   *SeasonPassContentSummary `json:"content,omitempty"`
+	SnapshotAt                *string                   `json:"snapshot_at,omitempty"`
 }
 
 // SeasonPassPageResponse est la réponse de l'endpoint /pages/palmares/season-pass.

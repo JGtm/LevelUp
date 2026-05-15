@@ -1508,7 +1508,7 @@ func isTableNotFoundErr(err error) bool {
 func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) (*domain.BattlePassResponse, bool, error) {
 	secs := int64(ttl.Seconds())
 	query := fmt.Sprintf(`
-		SELECT reward_track_path, current_rank, partial_progress
+		SELECT reward_track_path, current_rank, partial_progress, snapshot_at
 		FROM battlepass_snapshots
 		WHERE xuid = ?
 		  AND snapshot_at > CURRENT_TIMESTAMP - INTERVAL '%d' SECOND
@@ -1517,7 +1517,8 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 
 	var trackPath string
 	var rank, progress int
-	err := r.pdb.ReadDB().QueryRow(ctx, query, r.pdb.XUID).Scan(&trackPath, &rank, &progress)
+	var snapshotAt time.Time
+	err := r.pdb.ReadDB().QueryRow(ctx, query, r.pdb.XUID).Scan(&trackPath, &rank, &progress, &snapshotAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, false, nil
@@ -1528,21 +1529,24 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 		return nil, false, fmt.Errorf("home_repo: cache BP query: %w", err)
 	}
 
+	snapshotAtRFC := snapshotAt.UTC().Format(time.RFC3339)
 	resp := &domain.BattlePassResponse{
 		Available:   true,
 		Rank:        &rank,
 		Progress:    &progress,
 		RewardTrack: &trackPath,
 		FromCache:   true,
+		SnapshotAt:  &snapshotAtRFC,
 	}
 	return resp, true, nil
 }
 
 // challengeSnapshotRow est une ligne agrÃ©gÃ©e pour la reconstruction ChallengesResponse.
 type challengeSnapshotRow struct {
-	status    string
-	xpReward  int
-	expiresAt sql.NullTime
+	status     string
+	xpReward   int
+	expiresAt  sql.NullTime
+	snapshotAt time.Time
 }
 
 // LoadCachedChallenges retourne un rÃ©sumÃ© des snapshots rÃ©cents depuis challenge_snapshots
@@ -1551,9 +1555,9 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 	secs := int64(ttl.Seconds())
 	// SÃ©lectionne la snapshot la plus rÃ©cente par challenge_path dans la fenÃªtre TTL.
 	query := fmt.Sprintf(`
-		SELECT status, xp_reward, expires_at
+		SELECT status, xp_reward, expires_at, snapshot_at
 		FROM (
-			SELECT status, xp_reward, expires_at,
+			SELECT status, xp_reward, expires_at, snapshot_at,
 			       ROW_NUMBER() OVER (PARTITION BY challenge_path ORDER BY snapshot_at DESC) AS rn
 			FROM challenge_snapshots
 			WHERE xuid = ?
@@ -1573,7 +1577,7 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 	var snapshots []challengeSnapshotRow
 	for rows.Next() {
 		var s challengeSnapshotRow
-		if err := rows.Scan(&s.status, &s.xpReward, &s.expiresAt); err != nil {
+		if err := rows.Scan(&s.status, &s.xpReward, &s.expiresAt, &s.snapshotAt); err != nil {
 			return nil, false, fmt.Errorf("home_repo: cache challenges scan: %w", err)
 		}
 		snapshots = append(snapshots, s)
@@ -1589,6 +1593,7 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 	completed := 0
 	xpAvailable := 0
 	var earliestExpiry *time.Time
+	var latestSnapshot time.Time
 
 	for _, s := range snapshots {
 		if strings.EqualFold(s.status, "Completed") {
@@ -1601,6 +1606,9 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 			if earliestExpiry == nil || t.Before(*earliestExpiry) {
 				earliestExpiry = &t
 			}
+		}
+		if s.snapshotAt.After(latestSnapshot) {
+			latestSnapshot = s.snapshotAt
 		}
 	}
 
@@ -1616,6 +1624,10 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 	if earliestExpiry != nil {
 		s := earliestExpiry.Format(time.RFC3339)
 		resp.NextExpiry = &s
+	}
+	if !latestSnapshot.IsZero() {
+		s := latestSnapshot.UTC().Format(time.RFC3339)
+		resp.SnapshotAt = &s
 	}
 	return resp, true, nil
 }

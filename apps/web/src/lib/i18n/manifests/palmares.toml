@@ -283,6 +283,10 @@ en = "free"
 fr = "Aucune description disponible pour ce pass."
 en = "No description is available for this pass."
 
+[palmares.season_pass.freshness_last_sync]
+fr = "Dernière synchronisation réussie le {date}"
+en = "Last successful synchronization on {date}"
+
 # ─── Season pass - Contenu du pass ───────────────────────────────────────────
 
 [palmares.season_pass.content.armor_label]

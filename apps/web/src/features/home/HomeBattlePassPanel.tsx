@@ -1,13 +1,17 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
+import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SeasonPassPageResponse, SeasonPassTrackSummary } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest } from '@/lib/i18n/generated/home'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { BattlePassRewardLightbox, type RewardLightboxData } from '@/features/palmares/BattlePassRewardLightbox'
-import { BattlePassRewardCarousel, type RewardCard } from '@/features/palmares/BattlePassRewardCarousel'
+import { BattlePassRewardCarousel, buildTierGroups, type RewardCard } from '@/features/palmares/BattlePassRewardCarousel'
 
 function pickFeaturedPass(passes: SeasonPassTrackSummary[]) {
   return passes.find((pass) => pass.is_active)
@@ -25,25 +29,45 @@ export function HomeBattlePassPanel({
   data?: SeasonPassPageResponse
   errorHint?: string | null
 }) {
+  const locale = useAppShellStore((state) => state.locale)
+  const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
+  const buildFreshnessLabel = useCallback(
+    (date: string) =>
+      formatMessage(homeManifest, 'home.freshness.last_sync', locale, { date }),
+    [locale],
+  )
   const featuredPass = pickFeaturedPass(data?.passes ?? [])
-  const [activeReward, setActiveReward] = useState<RewardLightboxData | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+
+  const allCards = useMemo<RewardCard[]>(
+    () => (featuredPass?.tiers ? buildTierGroups(featuredPass.tiers).flatMap((g) => g.cards) : []),
+    [featuredPass],
+  )
+
+  const allRewards = useMemo<RewardLightboxData[]>(
+    () => allCards.map((card) => {
+      const badges: RewardLightboxData['badges'] = []
+      if (card.is_current) badges.push({ label: 'Palier actuel', tone: 'current' })
+      if (card.is_obtained) badges.push({ label: 'Obtenu', tone: 'obtained' })
+      if (card.is_free) badges.push({ label: 'Gratuit', tone: 'free' })
+      else badges.push({ label: 'Premium', tone: 'premium' })
+      return {
+        title: card.title,
+        rank: card.rank,
+        imageUrl: card.image_url ?? null,
+        description: card.description ?? null,
+        quality: card.quality ?? null,
+        itemType: card.item_type ?? null,
+        badges,
+      }
+    }),
+    [allCards],
+  )
 
   const handleOpenCard = useCallback((card: RewardCard) => {
-    const badges: RewardLightboxData['badges'] = []
-    if (card.is_current) badges.push({ label: 'Palier actuel', tone: 'current' })
-    if (card.is_obtained) badges.push({ label: 'Obtenu', tone: 'obtained' })
-    if (card.is_free) badges.push({ label: 'Gratuit', tone: 'free' })
-    else badges.push({ label: 'Premium', tone: 'premium' })
-    setActiveReward({
-      title: card.title,
-      rank: card.rank,
-      imageUrl: card.image_url ?? null,
-      description: card.description ?? null,
-      quality: card.quality ?? null,
-      itemType: card.item_type ?? null,
-      badges,
-    })
-  }, [])
+    const idx = allCards.findIndex((c) => c.key === card.key)
+    setSelectedIndex(idx >= 0 ? idx : null)
+  }, [allCards])
 
   if (loading) {
     return (
@@ -105,7 +129,14 @@ export function HomeBattlePassPanel({
       <CardHeader className="relative space-y-4 pb-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Pass de combat</CardTitle>
+            <div className="flex items-center gap-1.5">
+              <CardTitle className="text-base">Pass de combat</CardTitle>
+              <DataFreshnessIndicator
+                snapshotAt={featuredPass.snapshot_at}
+                buildLabel={buildFreshnessLabel}
+                locale={intlLocale}
+              />
+            </div>
             <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               {featuredPass.name}
             </h3>
@@ -178,7 +209,13 @@ export function HomeBattlePassPanel({
           </div>
         )}
       </CardContent>
-      <BattlePassRewardLightbox reward={activeReward} onClose={() => setActiveReward(null)} />
+      {selectedIndex !== null && (
+        <BattlePassRewardLightbox
+          rewards={allRewards}
+          startIndex={selectedIndex}
+          onClose={() => setSelectedIndex(null)}
+        />
+      )}
     </Card>
   )
 }

@@ -50,6 +50,7 @@ type trackSnapshotState struct {
 	IsOwned           bool
 	HasReachedMaxRank bool
 	IsActive          bool
+	SnapshotAt        time.Time // dernier `snapshot_at` connu pour ce track ; zéro si aucun.
 }
 
 // trackProgressMap mappe reward_track_path → progression joueur récente.
@@ -98,6 +99,7 @@ func (r *SeasonPassRepo) loadTrackSnapshots(ctx context.Context) (trackProgressM
 		); err != nil {
 			return nil, "", fmt.Errorf("season_pass_repo: track snapshots scan: %w", err)
 		}
+		state.SnapshotAt = snapshotAt
 		progressMap[path] = state
 		if state.IsActive && (activeSeenAt == nil || snapshotAt.After(*activeSeenAt)) {
 			t := snapshotAt
@@ -270,7 +272,7 @@ func buildMinimalTrackSummary(path string, state trackSnapshotState) domain.Seas
 	}
 	status := computeSeasonPassStatus(state)
 	isOwned := state.IsOwned || state.Rank > 0 || state.IsActive
-	return domain.SeasonPassTrackSummary{
+	s := domain.SeasonPassTrackSummary{
 		RewardTrackPath:   path,
 		Name:              name,
 		Status:            status,
@@ -280,6 +282,11 @@ func buildMinimalTrackSummary(path string, state trackSnapshotState) domain.Seas
 		CurrentRank:       state.Rank,
 		PartialProgress:   state.Partial,
 	}
+	if !state.SnapshotAt.IsZero() {
+		ts := state.SnapshotAt.UTC().Format(time.RFC3339)
+		s.SnapshotAt = &ts
+	}
+	return s
 }
 
 func (r *SeasonPassRepo) loadItemMetadataMap(
@@ -511,6 +518,10 @@ func buildTrackSummary(
 	}
 	if backgroundURL := resolveTrackBackgroundURL(row, payload); backgroundURL != nil {
 		s.BackgroundImageURL = backgroundURL
+	}
+	if !state.SnapshotAt.IsZero() {
+		ts := state.SnapshotAt.UTC().Format(time.RFC3339)
+		s.SnapshotAt = &ts
 	}
 	return s
 }

@@ -56,6 +56,7 @@ export const palmaresManifest = {
   "palmares.season_pass.content.type_title": { fr: "Catégories", en: "Item types" },
   "palmares.season_pass.content.xp_boosts_label": { fr: "Boosts XP", en: "XP Boosts" },
   "palmares.season_pass.free_label": { fr: "gratuit", en: "free" },
+  "palmares.season_pass.freshness_last_sync": { fr: "Dernière synchronisation réussie le {date}", en: "Last successful synchronization on {date}" },
   "palmares.season_pass.in_progress_card": { fr: "En cours", en: "In progress" },
   "palmares.season_pass.next_expiry": { fr: "Prochaine expiration", en: "Next expiry" },
   "palmares.season_pass.no_description": { fr: "Aucune description disponible pour ce pass.", en: "No description is available for this pass." },

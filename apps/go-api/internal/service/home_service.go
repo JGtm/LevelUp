@@ -494,17 +494,47 @@ func (s *HomeService) GetBattlePass(ctx context.Context) domain.BattlePassRespon
 				slog.WarnContext(ctx, "home: BattlePass persist failed", "err", err)
 			}
 		}
+		if resp.SnapshotAt == nil {
+			now := time.Now().UTC().Format(time.RFC3339)
+			resp.SnapshotAt = &now
+		}
 		return resp
 	}
 	// Live indisponible (pas de tokens, erreur rÃ©seau) â†’ fallback cache DB.
 	if s.cacheRepo != nil {
 		if cached, hit, err := s.cacheRepo.LoadCachedBattlePass(ctx, battlePassCacheTTLFallback); err == nil && hit {
-			slog.DebugContext(ctx, "home: BattlePass live indisponible â€” fallback cache DB")
+			slog.DebugContext(ctx, "home: BattlePass live indisponible - fallback cache DB",
+				"snapshot_at", snapshotAtValue(cached.SnapshotAt),
+				"age_hours", snapshotAgeHours(cached.SnapshotAt),
+			)
 			return *cached
 		}
 	}
 	slog.DebugContext(ctx, "home: BattlePass live indisponible, aucun cache disponible")
 	return resp
+}
+
+// snapshotAtValue retourne la valeur du pointeur ou "" si nil.
+// Utilisé pour les logs structurés sans déréférencement risqué.
+func snapshotAtValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// snapshotAgeHours retourne l'âge en heures (arrondi) d'un snapshot RFC3339.
+// Retourne -1 si le pointeur est nil ou si le parsing échoue — signe que le
+// snapshot_at est manquant côté DB plutôt que d'inventer une valeur.
+func snapshotAgeHours(s *string) int {
+	if s == nil {
+		return -1
+	}
+	t, err := time.Parse(time.RFC3339, *s)
+	if err != nil {
+		return -1
+	}
+	return int(time.Since(t).Hours())
 }
 
 // RefreshTrack hydrate (synchroneement) une définition de reward track et toutes
@@ -531,13 +561,20 @@ func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesRespon
 		if s.sink != nil {
 			s.sink.PersistChallenges(raw)
 		}
+		if resp.SnapshotAt == nil {
+			now := time.Now().UTC().Format(time.RFC3339)
+			resp.SnapshotAt = &now
+		}
 		return resp
 	}
 	// Live indisponible â†’ fallback cache DB.
 	if s.cacheRepo != nil {
 		if cached, hit, err := s.cacheRepo.LoadCachedChallenges(ctx, battlePassCacheTTLFallback); err == nil && hit {
 			if cacheChallengesAreRenderable(cached) {
-				slog.DebugContext(ctx, "home: Challenges live indisponibles â€” fallback cache DB")
+				slog.DebugContext(ctx, "home: Challenges live indisponibles - fallback cache DB",
+					"snapshot_at", snapshotAtValue(cached.SnapshotAt),
+					"age_hours", snapshotAgeHours(cached.SnapshotAt),
+				)
 				return *cached
 			}
 		}

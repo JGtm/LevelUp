@@ -75,6 +75,7 @@ export interface PalmaresText {
     activeTierTitle: string
     activeTierProgress: string
     activeTierFallback: string
+    freshnessLastSync: (date: string) => string
     obtained: string
     upcoming: string
     otherPassesTitle: string
@@ -177,6 +178,8 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       activeTierTitle: t(loc, 'palmares.season_pass.active_tier_title'),
       activeTierProgress: t(loc, 'palmares.season_pass.active_tier_progress'),
       activeTierFallback: t(loc, 'palmares.season_pass.active_tier_fallback'),
+      freshnessLastSync: (date: string) =>
+        formatMessage(palmaresManifest, 'palmares.season_pass.freshness_last_sync', loc, { date }),
       obtained: t(loc, 'palmares.season_pass.obtained'),
       upcoming: t(loc, 'palmares.season_pass.upcoming'),
       otherPassesTitle: t(loc, 'palmares.season_pass.other_passes_title'),

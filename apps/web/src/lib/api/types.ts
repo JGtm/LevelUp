@@ -1416,6 +1416,9 @@ export interface BattlePassResponse {
   rank: number | null
   reward_track: string | null
   progress: number | null
+  from_cache?: boolean
+  /** RFC3339 — date du snapshot affiché (now en live, MAX(snapshot_at) en fallback cache). */
+  snapshot_at?: string | null
   error_hint: string | null
 }
 
@@ -1439,6 +1442,9 @@ export interface ChallengesResponse {
   xp_available: number | null
   next_expiry: string | null
   items?: ChallengeItem[]
+  from_cache?: boolean
+  /** RFC3339 — date du snapshot affiché (now en live, MAX(snapshot_at) en fallback cache). */
+  snapshot_at?: string | null
   error_hint: string | null
 }
 
@@ -1497,6 +1503,8 @@ export interface SeasonPassTrackSummary {
   background_image_url?: string | null
   tiers?: SeasonPassTierSummary[]
   content?: SeasonPassContentSummary | null
+  /** RFC3339 — date du dernier `battlepass_snapshots` connu pour ce track. */
+  snapshot_at?: string | null
 }
 
 export interface SeasonPassPageResponse {
