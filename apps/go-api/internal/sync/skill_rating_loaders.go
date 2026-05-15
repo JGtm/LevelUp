@@ -6,6 +6,7 @@ package sync
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 )
@@ -143,20 +144,27 @@ func loadLUSRParticipants(sharedDB *sql.DB, matchIDs []string) (map[string][]lus
 	return result, rows.Err()
 }
 
-func loadExistingRatingIDs(playerDB *sql.DB, ratingType string) map[string]bool {
+// loadExistingRatingIDs renvoie l'ensemble des match_id ayant le rating_type donné.
+// Toute erreur SQL/scan est propagée — un map vide silencieux désactiverait la garde
+// en profondeur Go qui protège les CSR contre l'écrasement par LUSR.
+func loadExistingRatingIDs(playerDB *sql.DB, ratingType string) (map[string]bool, error) {
 	result := make(map[string]bool)
 	rows, err := playerDB.Query("SELECT match_id FROM match_skill_rank WHERE rating_type = ?", ratingType)
 	if err != nil {
-		return result
+		return nil, fmt.Errorf("loadExistingRatingIDs(%s): %w", ratingType, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var mid string
-		if rows.Scan(&mid) == nil {
-			result[mid] = true
+		if err := rows.Scan(&mid); err != nil {
+			return nil, fmt.Errorf("loadExistingRatingIDs(%s) scan: %w", ratingType, err)
 		}
+		result[mid] = true
 	}
-	return result
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("loadExistingRatingIDs(%s) rows: %w", ratingType, err)
+	}
+	return result, nil
 }
 
 func loadExistingLUSRStates(playerDB *sql.DB) map[string]*PlayerState {
@@ -206,9 +214,15 @@ func upsertLUSRRatings(
 		prevRating[pg] = r
 	}
 
-	updated := 0
+	var (
+		updated      int
+		skippedByCSR int // matchs CSR pré-existants skippés par la garde Go
+		blockedBySQL int // matchs CSR sauvés par le garde-fou SQL (garde Go a sauté)
+		execErrors   int // erreurs Exec (logguées, on continue)
+	)
 	for _, r := range results {
 		if existingCSR[r.MatchID] {
+			skippedByCSR++
 			continue
 		}
 		if existingLUSR[r.MatchID] {
@@ -240,7 +254,9 @@ func upsertLUSRRatings(
 			tierLabel = &label
 		}
 
-		_, err := playerDB.Exec(`
+		// Garde-fou SQL : la clause WHERE empêche toute écriture LUSR de remplacer
+		// un CSR pré-existant (données API irrécupérables si écrasées).
+		res, err := playerDB.Exec(`
 			INSERT INTO match_skill_rank
 				(match_id, rating_type, rating_value, rating_deviation,
 				 tier, tier_fr, sub_tier, tier_label,
@@ -256,14 +272,37 @@ func upsertLUSRRatings(
 				tier_label       = EXCLUDED.tier_label,
 				rating_delta     = EXCLUDED.rating_delta,
 				playlist_group   = EXCLUDED.playlist_group,
-				updated_at       = EXCLUDED.updated_at`,
+				updated_at       = EXCLUDED.updated_at
+			WHERE match_skill_rank.rating_type <> 'CSR'`,
 			r.MatchID, ratingValue, r.RatingDeviation,
 			tierName, tierFR, sub, tierLabel,
 			delta, r.PlaylistGroup, now, now)
 		if err != nil {
+			execErrors++
+			slog.Warn("upsertLUSRRatings: exec LUSR upsert failed",
+				"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "err", err)
+			continue
+		}
+		// RowsAffected = 0 signifie : conflit (match_id existe) mais la garde SQL
+		// `WHERE rating_type <> 'CSR'` a rejeté l'UPDATE. C'est le signal qu'un
+		// CSR a été protégé alors que la garde Go aurait dû le filtrer en amont
+		// (loadExistingRatingIDs a vraisemblablement renvoyé un map incomplet).
+		n, raErr := res.RowsAffected()
+		if raErr != nil || n == 0 {
+			blockedBySQL++
+			slog.Warn("upsertLUSRRatings: SQL guard blocked LUSR overwrite of existing CSR — Go filter may be incomplete",
+				"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "rows_affected_err", raErr)
 			continue
 		}
 		updated++
+	}
+	if updated > 0 || skippedByCSR > 0 || blockedBySQL > 0 || execErrors > 0 {
+		slog.Info("upsertLUSRRatings: batch terminé",
+			"updated", updated,
+			"skipped_by_csr_filter", skippedByCSR,
+			"blocked_by_sql_guard", blockedBySQL,
+			"exec_errors", execErrors,
+			"total_candidates", len(results))
 	}
 	return updated, nil
 }
