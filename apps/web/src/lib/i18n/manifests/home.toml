@@ -79,6 +79,12 @@ en = "Active challenges could not be loaded right now."
 fr = "Aucune donnée de défis n'est disponible pour le moment."
 en = "No challenge data is available right now."
 
+# ─── Indicateur de fraîcheur (snapshot date) ──────────────────────────────
+
+[home.freshness.last_sync]
+fr = "Dernière synchronisation réussie le {date}"
+en = "Last successful synchronization on {date}"
+
 # ─── Section Sessions récentes ────────────────────────────────────────────
 
 [home.sessions.title]

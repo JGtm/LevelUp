@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { MatchCard } from '@/components/ui/match-card'
@@ -194,7 +195,14 @@ export function HomePage() {
 
           <Card data-testid="home-challenges-card" className="flex min-h-[14rem] self-start flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-              <CardTitle className="text-base">{t('home.challenges.title')}</CardTitle>
+              <div className="flex items-center gap-1.5">
+                <CardTitle className="text-base">{t('home.challenges.title')}</CardTitle>
+                <DataFreshnessIndicator
+                  snapshotAt={challenges?.snapshot_at}
+                  buildLabel={(date) => t('home.freshness.last_sync', { date })}
+                  locale={numberLocale}
+                />
+              </div>
               {challengesCompletedLabel && (
                 <p data-testid="home-challenges-completed" className="shrink-0 text-sm text-foreground">
                   <strong className="text-primary">{challengesCompleted}</strong> / {challengesTotal}{' '}

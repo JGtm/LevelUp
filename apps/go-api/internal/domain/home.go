@@ -311,12 +311,15 @@ type HomePageResponse struct {
 
 // BattlePassResponse contient les informations Battle Pass live ou depuis le cache DB.
 // available=false avec error_hint="auth_required" tant que l'auth n'est pas portée (Sprint 15).
+// SnapshotAt (RFC3339) horodate la donnée affichée — `now` en cas d'appel live réussi,
+// `MAX(snapshot_at)` du dernier snapshot persisté en fallback cache.
 type BattlePassResponse struct {
 	Available   bool    `json:"available"`
 	Rank        *int    `json:"rank,omitempty"`
 	RewardTrack *string `json:"reward_track,omitempty"`
 	Progress    *int    `json:"progress,omitempty"`
 	FromCache   bool    `json:"from_cache,omitempty"`
+	SnapshotAt  *string `json:"snapshot_at,omitempty"`
 	ErrorHint   *string `json:"error_hint,omitempty"`
 }
 
@@ -338,6 +341,8 @@ type ChallengeItem struct {
 
 // ChallengesResponse contient le résumé des défis actifs ou depuis le cache DB.
 // available=false avec error_hint="auth_required" tant que l'auth n'est pas portée (Sprint 15).
+// SnapshotAt (RFC3339) horodate la donnée affichée — `now` en cas d'appel live réussi,
+// `MAX(snapshot_at)` agrégé sur les snapshots du joueur en fallback cache.
 type ChallengesResponse struct {
 	Available   bool            `json:"available"`
 	Total       *int            `json:"total,omitempty"`
@@ -346,5 +351,6 @@ type ChallengesResponse struct {
 	NextExpiry  *string         `json:"next_expiry,omitempty"`
 	Items       []ChallengeItem `json:"items,omitempty"`
 	FromCache   bool            `json:"from_cache,omitempty"`
+	SnapshotAt  *string         `json:"snapshot_at,omitempty"`
 	ErrorHint   *string         `json:"error_hint,omitempty"`
 }

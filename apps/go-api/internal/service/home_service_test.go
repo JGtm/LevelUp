@@ -639,6 +639,90 @@ func TestHomeService_GetBattlePass_NoCacheRepo(t *testing.T) {
 	}
 }
 
+// TestHomeService_GetBattlePass_CacheHitPreservesSnapshotAt vérifie que le
+// SnapshotAt RFC3339 fourni par le cache repo n'est pas écrasé par le service
+// (utilisé côté front pour l'indicateur de fraîcheur).
+func TestHomeService_GetBattlePass_CacheHitPreservesSnapshotAt(t *testing.T) {
+	rank := 7
+	track := "RewardTracks/Operations/Old"
+	progress := 50
+	cachedSnap := "2026-05-10T08:15:00Z"
+	cacheRepo := &mockBattlePassCacheRepo{
+		bpResp: &domain.BattlePassResponse{
+			Available:   true,
+			Rank:        &rank,
+			RewardTrack: &track,
+			Progress:    &progress,
+			FromCache:   true,
+			SnapshotAt:  &cachedSnap,
+		},
+		bpHit: true,
+	}
+
+	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	resp := svc.GetBattlePass(context.Background())
+
+	if !resp.FromCache {
+		t.Fatal("expected FromCache=true from cache")
+	}
+	if resp.SnapshotAt == nil || *resp.SnapshotAt != cachedSnap {
+		t.Fatalf("SnapshotAt = %v, want %q (preserve la valeur du cache)", resp.SnapshotAt, cachedSnap)
+	}
+}
+
+// TestHomeService_GetChallenges_CacheHitPreservesSnapshotAt : pendant Challenges
+// du test ci-dessus. Le SnapshotAt cache (MAX agrégé) doit traverser le service.
+func TestHomeService_GetChallenges_CacheHitPreservesSnapshotAt(t *testing.T) {
+	total := 4
+	completed := 1
+	xp := 250
+	current, target := 1, 5
+	cachedSnap := "2026-05-08T20:00:00Z"
+	cacheRepo := &mockBattlePassCacheRepo{
+		chResp: &domain.ChallengesResponse{
+			Available:   true,
+			Total:       &total,
+			Completed:   &completed,
+			XPAvailable: &xp,
+			Items: []domain.ChallengeItem{{
+				ChallengePath:   "Challenges/test",
+				Title:           "Test",
+				ProgressCurrent: &current,
+				ProgressTarget:  &target,
+			}},
+			FromCache:  true,
+			SnapshotAt: &cachedSnap,
+		},
+		chHit: true,
+	}
+
+	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	resp := svc.GetChallenges(context.Background())
+
+	if !resp.FromCache {
+		t.Fatal("expected FromCache=true from cache")
+	}
+	if resp.SnapshotAt == nil || *resp.SnapshotAt != cachedSnap {
+		t.Fatalf("SnapshotAt = %v, want %q (preserve la valeur du cache)", resp.SnapshotAt, cachedSnap)
+	}
+}
+
+// TestSnapshotAgeHours_HandlesNilAndMalformed vérifie le helper de logging :
+// nil et string non parsable retournent -1 (pas de panique, log signale "inconnu").
+func TestSnapshotAgeHours_HandlesNilAndMalformed(t *testing.T) {
+	if got := snapshotAgeHours(nil); got != -1 {
+		t.Errorf("snapshotAgeHours(nil) = %d, want -1", got)
+	}
+	bad := "not-a-date"
+	if got := snapshotAgeHours(&bad); got != -1 {
+		t.Errorf("snapshotAgeHours(bad) = %d, want -1", got)
+	}
+	twoHoursAgo := time.Now().UTC().Add(-2 * time.Hour).Format(time.RFC3339)
+	if got := snapshotAgeHours(&twoHoursAgo); got < 1 || got > 3 {
+		t.Errorf("snapshotAgeHours(-2h) = %d, want ~2", got)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tests comportement live-first / cache-fallback
 // ---------------------------------------------------------------------------

@@ -126,8 +126,8 @@ describe('SeasonPassPage', () => {
       expect(screen.getAllByText('Operation Alpha').length).toBeGreaterThan(0)
       // Refacto 2026-05 (commit 83295929 "hero overlay allégé") : la description
       // textuelle du pass ("Escalade principale") n'est plus rendue sur le hero.
-      // Elle reste exposée dans le lightbox d'une récompense (cf. card.description
-      // dans selectedReward), pas sur la vue d'accueil.
+      // Elle reste exposée dans la lightbox d'une récompense (cf. card.description
+      // mappé dans allRewards), pas sur la vue d'accueil.
       expect(screen.getAllByText('Récompense 13').length).toBeGreaterThan(0)
     })
 

@@ -5,6 +5,7 @@ import { useParams } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
+import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { SeasonPassStatus, SeasonPassTrackSummary } from '@/lib/api/types'
@@ -214,29 +215,30 @@ function PassShowcase({
   )
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
-  const selectedReward = useMemo<RewardLightboxData | null>(() => {
-    if (selectedIndex == null) return null
-    const card = allCards[selectedIndex]
-    if (!card) return null
-    const badges: RewardLightboxData['badges'] = []
-    if (card.is_current) badges.push({ label: text.seasonPass.active, tone: 'current' })
-    if (card.is_obtained) badges.push({ label: text.seasonPass.obtained, tone: 'obtained' })
-    if (card.is_free) badges.push({ label: text.seasonPass.freeLabel, tone: 'free' })
-    else badges.push({ label: text.seasonPass.premium, tone: 'premium' })
-    return {
-      title: card.title, rank: card.rank,
-      imageUrl: card.image_url ?? null, description: card.description ?? null,
-      quality: card.quality ?? null, itemType: card.item_type ?? null, badges,
-    }
-  }, [selectedIndex, allCards, text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.freeLabel, text.seasonPass.premium])
+  const allRewards = useMemo<RewardLightboxData[]>(
+    () => allCards.map((card) => {
+      const badges: RewardLightboxData['badges'] = []
+      if (card.is_current) badges.push({ label: text.seasonPass.active, tone: 'current' })
+      if (card.is_obtained) badges.push({ label: text.seasonPass.obtained, tone: 'obtained' })
+      if (card.is_free) badges.push({ label: text.seasonPass.freeLabel, tone: 'free' })
+      else badges.push({ label: text.seasonPass.premium, tone: 'premium' })
+      return {
+        title: card.title,
+        rank: card.rank,
+        imageUrl: card.image_url ?? null,
+        description: card.description ?? null,
+        quality: card.quality ?? null,
+        itemType: card.item_type ?? null,
+        badges,
+      }
+    }),
+    [allCards, text.seasonPass.active, text.seasonPass.obtained, text.seasonPass.freeLabel, text.seasonPass.premium],
+  )
 
   const handleOpenCard = useCallback((card: RewardCard) => {
     const idx = allCards.findIndex((c) => c.key === card.key)
     setSelectedIndex(idx >= 0 ? idx : null)
   }, [allCards])
-
-  const handlePrev = useCallback(() => setSelectedIndex((i) => (i != null && i > 0 ? i - 1 : i)), [])
-  const handleNext = useCallback(() => setSelectedIndex((i) => (i != null && i < allCards.length - 1 ? i + 1 : i)), [allCards.length])
 
   const tierProgress = pass.active_tier_progress_percent ?? 0
   // Pour les passes sans palier actif (complété, non commencé), rabat sur completion_percent.
@@ -274,9 +276,17 @@ function PassShowcase({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" /> {/* color-allow: gradient sombre fixe pour lisibilité du titre hero (overlay sur image map) */}
           <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-            <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl"> {/* color-allow: blanc sur gradient sombre fixe (hero overlay) */}
-              {pass.name}
-            </h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl"> {/* color-allow: blanc sur gradient sombre fixe (hero overlay) */}
+                {pass.name}
+              </h2>
+              <DataFreshnessIndicator
+                snapshotAt={pass.snapshot_at}
+                buildLabel={text.seasonPass.freshnessLastSync}
+                locale={text.intlLocale}
+                className="text-white/50 hover:text-white/80"
+              />
+            </div>
             <div className="mt-1 flex flex-wrap gap-1.5">
               <Badge variant={statusVariant(pass.status)}>
                 {text.seasonPass.status[pass.status] ?? pass.status}
@@ -296,7 +306,14 @@ function PassShowcase({
         </div>
       ) : (
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{pass.name}</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{pass.name}</h2>
+            <DataFreshnessIndicator
+              snapshotAt={pass.snapshot_at}
+              buildLabel={text.seasonPass.freshnessLastSync}
+              locale={text.intlLocale}
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
             {pass.is_owned && <Badge variant="outline">{text.seasonPass.premium}</Badge>}
             {pass.is_active && <Badge variant="default">{text.seasonPass.active}</Badge>}
@@ -336,12 +353,13 @@ function PassShowcase({
         </div>
       )}
 
-      <BattlePassRewardLightbox
-        reward={selectedReward}
-        onClose={() => setSelectedIndex(null)}
-        onPrev={selectedIndex != null && selectedIndex > 0 ? handlePrev : undefined}
-        onNext={selectedIndex != null && selectedIndex < allCards.length - 1 ? handleNext : undefined}
-      />
+      {selectedIndex !== null && (
+        <BattlePassRewardLightbox
+          rewards={allRewards}
+          startIndex={selectedIndex}
+          onClose={() => setSelectedIndex(null)}
+        />
+      )}
     </div>
   )
 }
