@@ -82,6 +82,13 @@ export const sessionManifest = {
   "session.empty.no_sessions_description": { fr: "Aucune session n'est disponible dans le scope courant. Vérifie le découpage de sessions ou élargis les filtres.", en: "No session is available in the current scope. Check session bucketing or broaden filters." },
   "session.empty.no_sessions_title": { fr: "Aucune session disponible", en: "No session available" },
   "session.errors.retry": { fr: "Réessayer", en: "Retry" },
+  "session.filters.experience": { fr: "Expérience", en: "Experience" },
+  "session.filters.experience_all": { fr: "Toutes", en: "All" },
+  "session.filters.experience_ranked": { fr: "Classé", en: "Ranked" },
+  "session.filters.experience_unranked": { fr: "Non classé", en: "Unranked" },
+  "session.filters.modes": { fr: "Modes", en: "Modes" },
+  "session.filters.playlists": { fr: "Playlists", en: "Playlists" },
+  "session.filters.reset": { fr: "Réinitialiser", en: "Reset" },
 } as const
 
 export type SessionManifestKey = keyof typeof sessionManifest

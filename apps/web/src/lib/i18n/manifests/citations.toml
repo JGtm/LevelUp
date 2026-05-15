@@ -101,6 +101,36 @@ en = "Failed to load citations"
 fr = "Réessayer"
 en = "Retry"
 
+# ─── Filtres locaux (barre sticky) ────────────────────────────────────────
+
+[citations.filters.experience]
+fr = "Expérience"
+en = "Experience"
+
+[citations.filters.experience_all]
+fr = "Toutes"
+en = "All"
+
+[citations.filters.experience_ranked]
+fr = "Classé"
+en = "Ranked"
+
+[citations.filters.experience_unranked]
+fr = "Non classé"
+en = "Unranked"
+
+[citations.filters.playlists]
+fr = "Playlists"
+en = "Playlists"
+
+[citations.filters.modes]
+fr = "Modes"
+en = "Modes"
+
+[citations.filters.reset]
+fr = "Réinitialiser"
+en = "Reset"
+
 # ─── Titre page (browser tab) ─────────────────────────────────────────────
 
 [citations.page_title]

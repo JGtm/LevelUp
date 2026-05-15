@@ -18,7 +18,7 @@ import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
@@ -68,8 +68,6 @@ export function ExplorerPage() {
     target?: string
   }
 
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
-  const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
   const locale = useAppShellStore((s) => s.locale)
 
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
@@ -165,18 +163,14 @@ export function ExplorerPage() {
   }
 
   // ─── Queries ───────────────────────────────────────────────────────────────
-  // Explorer = vue historique complète. On force period/sessions à vide pour
-  // ignorer la période ou la session active du shell (qui peuvent restreindre
-  // à 12-25 matchs). Les filtres date/exp/playlist/etc. de l'Explorer pilotent
-  // déjà le scope via les inputs natifs ci-dessus.
-  // pageSize=200 = max accepté par maxPageSize backend ; pagination client gère
-  // le découpage 20/page côté UI.
-  const explorerFilterContext = {
-    ...filterContext,
-    filter_mode: 'period' as const,
-    period: { start_date: null, end_date: null },
-    sessions: { picked_sessions: [], gap_minutes: filterContext.sessions?.gap_minutes ?? 120 },
-  }
+  // Explorer = vue historique complète, 100% locale. On part de DEFAULT_FILTER_CONTEXT
+  // (aucun héritage du store global solo/squad) et on pilote le scope via les
+  // filtres locaux date/exp/playlist/etc. ci-dessus. pageSize=200 = max accepté
+  // par maxPageSize backend ; pagination client gère le découpage 20/page.
+  const explorerFilterContext = DEFAULT_FILTER_CONTEXT
+  // Hash constant : le scope global n'influence plus la query. Les variations
+  // locales (perfTiers/skillTiers/dates/etc.) sont déjà dans la queryKey.
+  const filterContextHash = 'explorer-local'
   const matchesQuery = useExplorerMatches(
     playerSlug,
     {

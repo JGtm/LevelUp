@@ -15,20 +15,24 @@ import { useEffect } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import type { FilterStore } from '@/stores/createFilterStore'
 import type { FilterContextInput, FilterContextResolved } from '@/lib/api/types'
 
 /**
  * Résout le filterContext courant côté backend (sessions disponibles + options
- * cascade) et synchronise le résultat dans le globalFilterStore.
+ * cascade) et synchronise le résultat dans le store contextuel passé en arg.
  *
- * À monter une fois par page joueur (typiquement dans le layout `$playerSlug`).
- * Le hook re-fetch automatiquement quand `filterContextHash` change.
+ * À monter une fois par page joueur ; le PlayerLayout l'appelle pour le store
+ * solo, SquadLayout pour le store squad. Le hook re-fetch automatiquement
+ * quand `filterContextHash` change.
+ *
+ * Défaut : `useSoloFilterStore` (rétrocompat avec PlayerLayout).
  */
-export function useFiltersResolve(playerSlug: string) {
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
-  const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
-  const setResolvedContext = useGlobalFilterStore((s) => s.setResolvedContext)
+export function useFiltersResolve(playerSlug: string, filterStore: FilterStore = useSoloFilterStore) {
+  const filterContext = filterStore((s) => s.filterContext)
+  const filterContextHash = filterStore((s) => s.filterContextHash)
+  const setResolvedContext = filterStore((s) => s.setResolvedContext)
 
   const query = useQuery<FilterContextResolved>({
     queryKey: queryKeys.filtersResolve(playerSlug, filterContextHash),
@@ -43,14 +47,11 @@ export function useFiltersResolve(playerSlug: string) {
 
   // Synchronise la réponse dans le store + track le latest session_id pour
   // permettre la détection "nouvelles sessions arrivées" (auto-snap dans
-  // PlayerLayout sur fin de sync).
+  // PlayerLayout sur fin de sync). Note : avec 2 stores contextuels, le snap
+  // est désormais centralisé dans PlayerLayout qui détecte la nature solo/squad.
   useEffect(() => {
     if (!query.data) return
     setResolvedContext(query.data)
-    const latestId = query.data.session_options?.all_sessions?.[0]?.session_id
-    if (latestId) {
-      useGlobalFilterStore.getState().setLastKnownLatestSessionId(latestId)
-    }
   }, [query.data, setResolvedContext])
 
   return query

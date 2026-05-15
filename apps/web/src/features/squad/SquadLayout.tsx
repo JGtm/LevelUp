@@ -19,11 +19,11 @@
  */
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTeammates } from './queries'
 import { useSettings } from '@/features/settings/queries'
-import { useFiltersPreview } from '@/features/filters/queries'
+import { useFiltersPreview, useFiltersResolve } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
@@ -80,7 +80,10 @@ export function SquadLayout() {
     setFilterContext,
     setSessions,
     resetFilters,
-  } = useGlobalFilterStore()
+  } = useSquadFilterStore()
+  // Résout le filterContext squad côté backend → alimente `resolvedContext`
+  // (session_options, available_options, period_presets) pour les pills et le rail.
+  useFiltersResolve(playerSlug, useSquadFilterStore)
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const storageKey = `squad-teammates-${playerSlug}`
@@ -427,7 +430,7 @@ export function SquadLayout() {
         </div>
         {/* Rail de navigation période/session — placé DANS la barre sticky pour
             apparaître toujours juste sous les filtres Squad au scroll. */}
-        <PeriodSessionRail />
+        <PeriodSessionRail filterStore={useSquadFilterStore} />
       </div>
 
       {/* ─── Contenu ─────────────────────────────────────────────────────────── */}

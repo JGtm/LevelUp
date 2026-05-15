@@ -6,7 +6,8 @@
  */
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useEffect, useRef } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
 import { useFiltersResolve } from '@/features/filters/queries'
@@ -62,35 +63,48 @@ function PlayerLayout() {
     if (player) setCurrentPlayer(player)
   }, [playerSlug, availablePlayers, currentPlayer, setCurrentPlayer])
 
-  // Résolution du filterContext côté backend → alimente
-  // resolvedContext.session_options et resolvedContext.available_options
-  // dans le globalFilterStore, consommés par PeriodSessionRail/FilterOmnibar/SquadLayout.
-  const filtersResolve = useFiltersResolve(playerSlug)
+  // Résolution du filterContext SOLO côté backend → alimente le store solo
+  // (consommé par NavL2/FilterOmnibar/PeriodSessionRail). Le store squad est
+  // résolu séparément depuis SquadLayout (qui appelle aussi useFiltersResolve).
+  const filtersResolve = useFiltersResolve(playerSlug, useSoloFilterStore)
 
-  // Auto-snap-to-latest : sur la transition activeSyncJobId string → null
-  // (sync vient de terminer), si une nouvelle session a été ingérée, on
-  // bascule automatiquement le filtre sur la session la plus récente.
-  // Le user reste libre de changer ensuite (manuel reset isAutoSnappingToLatest).
+  // Auto-snap-to-latest contextuel : sur la transition activeSyncJobId string
+  // → null (sync vient de terminer), on scanne `all_sessions` et on snap chaque
+  // store sur la dernière session de son `is_squad`. Permet à la page Stats
+  // Solo d'auto-snap aux nouvelles sessions solo et à la page Escouade aux
+  // nouvelles sessions squad — sans pollution croisée.
   const prevSyncJobId = useRef<string | null>(activeSyncJobId)
   useEffect(() => {
     const prev = prevSyncJobId.current
     prevSyncJobId.current = activeSyncJobId
-    // Transition "était actif" → "idle"
     if (prev === null || activeSyncJobId !== null) return
     filtersLog.debug(`auto_snap:sync_complete prev_job=${prev}`)
-    // Force un re-fetch immédiat pour récupérer les nouvelles sessions
     filtersResolve.refetch().then((r) => {
-      const latestId = r.data?.session_options?.all_sessions?.[0]?.session_id
-      if (!latestId) {
-        filtersLog.debug('auto_snap:skipped reason=no_session')
-        return
+      const sessions = r.data?.session_options?.all_sessions ?? []
+      const latestSolo = sessions.find((s) => !s.is_squad)
+      const latestSquad = sessions.find((s) => s.is_squad)
+
+      if (latestSolo) {
+        const soloStore = useSoloFilterStore.getState()
+        if (latestSolo.session_id !== soloStore.lastKnownLatestSessionId) {
+          soloStore.autoSnapToLatestSession(latestSolo.session_id, true)
+        } else {
+          filtersLog.debug(`auto_snap:skipped scope=solo reason=unchanged session=${latestSolo.session_id}`)
+        }
+      } else {
+        filtersLog.debug('auto_snap:skipped scope=solo reason=no_session')
       }
-      const store = useGlobalFilterStore.getState()
-      if (latestId === store.lastKnownLatestSessionId) {
-        filtersLog.debug(`auto_snap:skipped reason=unchanged session=${latestId}`)
-        return
+
+      if (latestSquad) {
+        const squadStore = useSquadFilterStore.getState()
+        if (latestSquad.session_id !== squadStore.lastKnownLatestSessionId) {
+          squadStore.autoSnapToLatestSession(latestSquad.session_id, true)
+        } else {
+          filtersLog.debug(`auto_snap:skipped scope=squad reason=unchanged session=${latestSquad.session_id}`)
+        }
+      } else {
+        filtersLog.debug('auto_snap:skipped scope=squad reason=no_session')
       }
-      store.autoSnapToLatestSession(latestId, true)
     })
   }, [activeSyncJobId, filtersResolve])
 

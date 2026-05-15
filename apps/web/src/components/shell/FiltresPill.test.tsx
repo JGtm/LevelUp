@@ -18,7 +18,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
-import { useGlobalFilterStore, DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
+import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
+import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { FilterContextResolved } from '@/lib/api/types'
 

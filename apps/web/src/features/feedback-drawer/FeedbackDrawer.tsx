@@ -16,7 +16,8 @@ import { useDeferredValue } from 'react'
 import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { feedbackDrawerManifest } from '@/lib/i18n/generated/feedback_drawer'
 import {
@@ -45,7 +46,11 @@ export function FeedbackDrawer() {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
+  // Capture les deux stores ; le contexte effectif inclus dans le ticket est
+  // choisi selon la route au moment du build de l'URL (squad pathname →
+  // useSquadFilterStore, sinon useSoloFilterStore).
+  const soloFilterContext = useSoloFilterStore((s) => s.filterContext)
+  const squadFilterContext = useSquadFilterStore((s) => s.filterContext)
   const { isOpen, close, toggle } = useFeedbackDrawerStore()
 
   const [pickedType, setPickedType] = useState<UserPickedType>('bug')
@@ -100,6 +105,11 @@ export function FeedbackDrawer() {
       timestampIso: new Date().toISOString(),
       focusedElement: describeFocusedElement(),
     }
+    // Sélectionne le store contextuel selon la route active (squad vs solo).
+    // Couvre le cas où l'utilisateur déclenche un feedback depuis SquadLayout :
+    // on capture les filtres squad effectifs, pas le contexte solo orphelin.
+    const isSquadRoute = /\/players\/[^/]+\/squad/.test(browser.pathname)
+    const activeFilterContext = isSquadRoute ? squadFilterContext : soloFilterContext
     const ctx = collectContext({
       browser,
       shell: {
@@ -107,7 +117,7 @@ export function FeedbackDrawer() {
         playerSlug: currentPlayer?.gamertag ?? null,
         appVersion: null,
       },
-      filters: filterContext,
+      filters: activeFilterContext,
       console: getRecentConsoleEntries(),
       failedRequests: getRecentFailedRequests(),
     })
@@ -127,7 +137,8 @@ export function FeedbackDrawer() {
     theme,
     titleSlug,
     currentPlayer,
-    filterContext,
+    soloFilterContext,
+    squadFilterContext,
     pickedType,
     deferredDescription,
     title,

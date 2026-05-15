@@ -13,7 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { useTimeseriesPage } from './queries'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import {
   OutcomeSequenceTape,
   type OutcomePoint,
@@ -73,8 +73,8 @@ const TAB_KEYS: { id: TabId; key: TimeseriesManifestKey }[] = [
 
 export function TimeseriesPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
-  const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
+  const filterContext = useSoloFilterStore((s) => s.filterContext)
+  const filterContextHash = useSoloFilterStore((s) => s.filterContextHash)
   const { tab } = useSearch({
     from: '/players/$playerSlug/stats/timeseries',
   })
