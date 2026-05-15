@@ -95,6 +95,8 @@ func main() {
 		exitErr = runRecomputeFriends(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
+	case "restore-csr":
+		exitErr = runRestoreCSR(cfg, args)
 	case "add-title":
 		exitErr = runAddTitle(cfg, args)
 	case "help", "--help", "-h":
@@ -139,6 +141,7 @@ Commandes:
   engagement-coefs Recompute des coefficients d'engagement (--with-scores pour rejouer aussi les scores) — bypasse les migrations
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   migrate         Migrer les donnees vers le namespace multi-titres
+  restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
 
 Options globales:

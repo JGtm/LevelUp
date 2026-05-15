@@ -7,6 +7,7 @@ package sync
 
 import (
 	"database/sql"
+	"fmt"
 	"math"
 	"time"
 
@@ -292,8 +293,14 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 	}
 
 	// 3. Charger les matchs déjà classés CSR (protéger) et LUSR (pour mode incrémental).
-	existingCSR := loadExistingRatingIDs(playerDB, "CSR")
-	existingLUSR := loadExistingRatingIDs(playerDB, "LUSR")
+	existingCSR, err := loadExistingRatingIDs(playerDB, "CSR")
+	if err != nil {
+		return 0, fmt.Errorf("batchComputeLUSR: %w", err)
+	}
+	existingLUSR, err := loadExistingRatingIDs(playerDB, "LUSR")
+	if err != nil {
+		return 0, fmt.Errorf("batchComputeLUSR: %w", err)
+	}
 	// En mode force, on ne filtre pas les LUSR existants à l'upsert — ON CONFLICT DO UPDATE écrase.
 	existingLUSRForUpsert := existingLUSR
 	if force {
