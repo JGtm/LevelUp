@@ -1,3 +1,256 @@
+## [2026-05-15] fix(home/playlists) — Badge unranked_N.png pour les playlists classées en placement
+
+**Statut** : Complété.
+
+**Contexte** : Sur la home, dans la section "Playlists récentes", une playlist classée en placement (ex. "Assassin classé · En placement") n'affichait aucun badge — le frontend pointait vers `Unranked.png` (badge générique) au lieu de `unranked_0.png`…`unranked_9.png` (badges de placement avec progression 0/10→9/10). La requête Q26g ne récupérait pas la progression de placement.
+
+**Décision technique** : Backend + frontend (option propre). Étendre `Q26gHomePlaylistRanks` pour joindre `player_csr_snapshots` (snapshot officiel Waypoint) et récupérer `current_measurement_remaining` par playlist ; le backend émet désormais `unranked_N.png` (N = 10 − remaining, clamp 0..9) dans `badge_image_url` pour les playlists classées en placement, et expose `measurement_matches_remaining` dans `HomePlaylistRank` pour permettre au frontend d'afficher "En placement N/10". Si aucun snapshot n'existe → fallback `unranked_0.png` (jamais "rien").
+
+**Actions** :
+1. **SQL** ([queries_home_citations.go:219-282](apps/go-api/internal/platform/duckdb/queries_home_citations.go#L219-L282)) — CTE `csr_snapshot` qui prend le snapshot le plus récent par playlist (ORDER BY fetched_at DESC, season_id DESC) + LEFT JOIN dans le SELECT final.
+2. **Domain** ([home.go:106-118](apps/go-api/internal/domain/home.go#L106-L118)) — ajout `MeasurementMatchesRemaining *int` dans `HomePlaylistRank`.
+3. **Repo Go** ([home_repo.go:378-435](apps/go-api/internal/platform/duckdb/home_repo.go#L378-L435)) — scan de la nouvelle colonne, calcul du badge `unranked_N.png` via le helper existant `unrankedBadgeURL(completed, titleSlug)` quand `ratingValue` est null mais `IsRanked` true.
+4. **Frontend** ([HomeRecentPlaylistsCard.tsx](apps/web/src/features/home/HomeRecentPlaylistsCard.tsx)) — simplification : on lit toujours `badge_image_url` (backend garantit qu'il est rempli pour les playlists classées). Affiche "En placement N/10" quand `measurement_matches_remaining` présent, "En placement" sinon. Suppression du fallback `Unranked.png` (le `unrankedBadgeURL()` n'est plus importé).
+5. **Tests** — 2 nouveaux tests Go (placement avec snapshot 6 restants → `unranked_4.png` ; sans snapshot → `unranked_0.png`) + test Vitest réécrit avec 2 scénarios (avec/sans progression).
+
+**Résultats** :
+- Go : 3 tests `TestHomeRepo_LoadRecentPlaylistRanks_*` passent (intégration).
+- Vitest : 2/2 tests `HomeRecentPlaylistsCard` passent.
+- Seed schema Go enrichi avec `player_csr_snapshots` (sinon la LEFT JOIN ferait échouer les tests existants via `isTableNotFoundErr`).
+
+**Conclusion** : Le badge de placement reflète maintenant la progression réelle (snapshot Waypoint). Plus jamais d'image manquante pour une playlist classée — fallback `unranked_0.png` garanti même sans snapshot.
+
+---
+
+## [2026-05-15] cleanup(filters) — Résolution de la dette résiduelle post split solo/squad
+
+**Statut** : Complété.
+
+**Contexte** : 3 points de dette résiduelle identifiés lors de la vérification finale du split solo/squad : (1) un hook mort `useSessionSnap`, (2) `FeedbackDrawer` qui capture le filterContext solo via shim sans regarder la route, (3) le shim `globalFilterStore.ts` qui restait par sécurité.
+
+**Actions** :
+
+1. **Suppression de `useSessionSnap.ts` + son test** ([apps/web/src/features/filters/](apps/web/src/features/filters/)) — hook confirmé inutilisé par grep (seul son propre test l'importait). 1 fichier de hook + 1 fichier de test supprimés.
+
+2. **FeedbackDrawer route-aware** ([FeedbackDrawer.tsx:99-105](apps/web/src/features/feedback-drawer/FeedbackDrawer.tsx#L99-L105)) — capture désormais les deux stores (solo + squad) et sélectionne le contexte selon `pathname` : route `/players/X/squad/*` → `useSquadFilterStore`, sinon `useSoloFilterStore`. Le ticket Github capture le contexte effectif de la page d'origine du feedback (et non un contexte solo orphelin).
+
+3. **Suppression du shim `globalFilterStore.ts`** — les 5 consommateurs restants ont été migrés vers imports directs :
+   - 4 tests (`FilterOmnibar.test.tsx`, `FiltresPill.test.tsx`, `PeriodSessionRail.test.tsx`, ex-`globalFilterStore.test.ts`) → `import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'`. Alias local pour éviter de renommer ~100 occurrences `useGlobalFilterStore.getState()` dans les assertions.
+   - [CareerCitationsTab.tsx](apps/web/src/features/career/CareerCitationsTab.tsx#L11) → `import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'`.
+   - `globalFilterStore.test.ts` renommé en `soloFilterStore.test.ts`.
+
+**Résultats** :
+- `tsc -b` : clean (seule erreur préexistante orthogonale `notifications/icons.tsx::data_health_warning`).
+- `vitest run` : **1371 passed | 14 skipped | 0 failed** (1385 total, -7 tests vs précédent : suppression du hook mort = -7 tests qui le couvraient).
+- `playwright test filter-stores-split.spec.ts` : **6/6 ✓**.
+
+Le shim `globalFilterStore.ts` n'existe plus. Le nom `useGlobalFilterStore` ne survit que comme alias d'import local dans 4 tests (cosmétique, évite refactor massif des assertions). Tous les imports d'application visent directement `useSoloFilterStore`, `useSquadFilterStore`, ou `createFilterStore`.
+
+**Bilan dette résiduelle** : 0. Le refactor split est désormais propre.
+
+---
+
+## [2026-05-15] verify(filters) — Vérification finale split solo/squad : tests + E2E + couverture
+
+**Statut** : Complété.
+
+**Contexte** : audit final de la refactor split solo/squad pour s'assurer (1) zéro régression, (2) couverture de tests adéquate, (3) logging cohérent.
+
+**Couverture tests créée** :
+1. **`stores/createFilterStore.test.ts`** (6 tests) — valide l'invariant clé de la factory : deux stores instanciés sont isolés (clés localStorage distinctes, mutations indépendantes, autoSnap ne pollue que le store visé, resetFilters local). C'est l'invariant qui rend toute l'architecture saine. 6/6 ✓
+2. **`features/_shared/useLocalFilterBar.test.tsx`** (5 tests) — valide le hook réutilisable (init à DEFAULT, rendu de la barre, dropdown Expérience ouvert au clic, hash FNV-1a, hasActiveFilters initial). Pattern partagé Citations/SessionDetail/SessionCompare. 5/5 ✓
+3. **`e2e/filter-stores-split.spec.ts`** (6 tests) — couvre les 3 scénarios produit : architecture stores distincts en localStorage, isolation Squad↔Stats (interception réseau pour vérifier que la cascade ne fuit pas), scope local pages annexes (Citations/Explorer envoient cascade vide même quand le store solo est pollué). 6/6 ✓
+
+**Fixes de tests préexistants (corrigés au passage)** :
+- [NavL1.test.tsx](apps/web/src/components/shell/NavL1.test.tsx#L79-L91) — cherchait label `'Stats'` mais NavL1.tsx:140 affiche `'Solo'` depuis un renommage antérieur.
+- [classifyFeedback.test.ts](apps/web/src/features/feedback-drawer/classifyFeedback.test.ts) — testait des routes obsolètes (`/stats/history`, `/profile/citations`). Le pattern `/citations` a été ajouté côté source ([classifyFeedback.ts:111](apps/web/src/features/feedback-drawer/classifyFeedback.ts#L111)) car la route `/players/X/citations` existe vraiment.
+- [CareerPage.test.tsx](apps/web/src/features/career/CareerPage.test.tsx) — assertion `Rating indisponible` retirée (texte plus présent dans le composant depuis un refacto antérieur).
+
+**Logging** : déjà bien couvert via `features/filters/_logger.ts`, chaque action critique loggée :
+- `createFilterStore.ts` : `auto_snap:fired store=<name> session=<id>`, `rail_nav:fired/noop store=<name>`, `hydrate:source=url/localStorage store=<name>`
+- `routes/players/$playerSlug.tsx` : `auto_snap:sync_complete`, `auto_snap:skipped scope=solo/squad reason=...`
+
+Chaque log inclut le nom du store pour traçabilité multi-contexte.
+
+**Dette mineure documentée (non bloquante)** :
+- [useSessionSnap.ts](apps/web/src/features/filters/useSessionSnap.ts) — hook non appelé par aucun layout (vérifié via grep) : pointe vers le shim solo, mais c'est du code mort. À supprimer à l'occasion d'un cleanup.
+- [FeedbackDrawer.tsx:48](apps/web/src/features/feedback-drawer/FeedbackDrawer.tsx#L48) — capture le `filterContext` du shim (= solo) dans le ticket Github. Idéalement capturerait les deux contextes (`{ solo, squad }`). Cosmétique, à améliorer si besoin debug squad apparait.
+
+**Résultats finaux** :
+- `tsc -b` : seule l'erreur préexistante orthogonale `notifications/icons.tsx::data_health_warning` subsiste (hors scope).
+- `vitest run` (suite complète) : **1378 passed | 14 skipped | 0 failed** (1392 total, vs 1381 avant refactor → +11 tests nets après corrections préexistantes et ajouts unitaires).
+- `playwright test filter-stores-split.spec.ts` : **6/6 ✓** (3 scénarios produit validés).
+- Aucune régression introduite, ni dans le code, ni dans les tests.
+
+**Récapitulatif fichiers** : 14 fichiers modifiés + 6 nouveaux (factory + 2 stores + hook + ExperienceDropdown + spec E2E + 2 tests unit). Total ~1000 lignes touchées dont ~600 d'extraction/factory non-comptables comme net change.
+
+---
+
+## [2026-05-15] refactor(filters) — Split du store global filtres en 2 stores contextuels solo/squad
+
+**Statut** : Complété.
+
+**Contexte** : suite au patch Synthesis (décollement du store global), audit complet de `useGlobalFilterStore` révèle que 26 fichiers consomment un store unique partagé entre Stats Solo, Escouade, Citations, Explorer, Session-Detail/Compare, Home. Conséquences :
+1. **Pollution cross-page** — cocher des modes en Squad les applique à Stats Solo.
+2. **Auto-snap aveugle** — sur fin de sync, `all_sessions[0]` est posé dans le store sans regarder `is_squad`. Une session squad fraîchement ingérée pouvait atterrir comme filtre Stats Solo (qui injecte `match_context='solo'` → 0 matchs).
+3. **Pages au scope propre forcées de subir le filtre global** — Citations, Session-Detail/Compare reçoivent un filtre qu'elles n'ont aucune raison d'avoir.
+
+Décisions utilisateur via AskUserQuestion :
+- **2 stores distincts** (Option A) plutôt que 1 store avec sub-states.
+- **Filtres locaux complets** pour Citations/Session-Detail/Session-Compare (pattern Synthesis : barre période/cascade locale).
+- **Explorer retire entièrement le store** (a déjà ses filtres locaux complets).
+
+**Décision technique** :
+
+1. **Factory `createFilterStore`** ([apps/web/src/stores/createFilterStore.ts](apps/web/src/stores/createFilterStore.ts)) — extraite de l'ancien `globalFilterStore.ts`. Paramètres : `{ name, urlEnabled, urlParam }`. Encapsule encodeUrl, computeHash, persist, partialize, autoSnap, navigation rail.
+
+2. **Deux instances** :
+   - [apps/web/src/stores/soloFilterStore.ts](apps/web/src/stores/soloFilterStore.ts) — clé `levelup-solo-filter-v1`, `?f=` activé.
+   - [apps/web/src/stores/squadFilterStore.ts](apps/web/src/stores/squadFilterStore.ts) — clé `levelup-squad-filter-v1`, pas d'URL share.
+
+3. **Shim de transition** ([apps/web/src/stores/globalFilterStore.ts](apps/web/src/stores/globalFilterStore.ts)) — réduit à `export { useSoloFilterStore as useGlobalFilterStore }`. Permet aux consommateurs non encore migrés (FeedbackDrawer, useSessionSnap, tests Shell) de continuer à fonctionner sur le store solo. À supprimer ultérieurement.
+
+4. **Paramétrisation `FilterOmnibar` / `PeriodSessionRail` / `useFiltersResolve`** — prop optionnelle `filterStore` qui défaut à `useSoloFilterStore`. SquadLayout passe explicitement `useSquadFilterStore`.
+
+5. **Auto-snap contextuel** ([routes/players/$playerSlug.tsx](apps/web/src/routes/players/$playerSlug.tsx#L65-L115)) — scanne `all_sessions` post-resolve, trouve `latestSolo = find(!is_squad)` et `latestSquad = find(is_squad)`, snap chaque store sur sa session correspondante. Ne pollue plus le contexte solo avec une session squad et inversement. Champs backend déjà existants (`SessionOption.is_squad` dans [filters_options.go:49](apps/go-api/internal/service/filters_options.go#L49)), pas de modif côté Go.
+
+6. **Hook réutilisable `useLocalFilterBar`** ([apps/web/src/features/_shared/useLocalFilterBar.tsx](apps/web/src/features/_shared/useLocalFilterBar.tsx)) — factorise le pattern Synthesis (state pending/committed, sticky bar, useFiltersPreview, ExperienceDropdown + MultiSelectFilter pour playlists/modes). Consommé par CitationsPage, SessionDetailPage, SessionComparePage. Évite ~200 lignes de duplication.
+
+7. **Pages migrées** :
+   - [features/timeseries/TimeseriesPage.tsx](apps/web/src/features/timeseries/TimeseriesPage.tsx) → `useSoloFilterStore`
+   - [features/squad/SquadLayout.tsx](apps/web/src/features/squad/SquadLayout.tsx) + [SquadV2RouteHost](apps/web/src/features/squad/v2/SquadV2RouteHost.tsx) + [SquadMatchHistoryTable](apps/web/src/features/squad/SquadMatchHistoryTable.tsx) → `useSquadFilterStore`. SquadLayout appelle aussi `useFiltersResolve(playerSlug, useSquadFilterStore)` pour alimenter son `resolvedContext`.
+   - [features/explorer/ExplorerMatchesTable.tsx](apps/web/src/features/explorer/ExplorerMatchesTable.tsx) → `useSoloFilterStore` (nav match preserve solo context).
+   - [features/citations/CitationsPage.tsx](apps/web/src/features/citations/CitationsPage.tsx) + [features/session-detail/SessionDetailPage.tsx](apps/web/src/features/session-detail/SessionDetailPage.tsx) + [features/session-compare/SessionComparePage.tsx](apps/web/src/features/session-compare/SessionComparePage.tsx) → `useLocalFilterBar` (filtres 100% locaux).
+   - [features/explorer/ExplorerPage.tsx](apps/web/src/features/explorer/ExplorerPage.tsx) → `DEFAULT_FILTER_CONTEXT` constant (zéro lecture du store).
+
+8. **i18n** — clés `citations.filters.*` et `session.filters.*` ajoutées aux manifests respectifs, regénérées via `node scripts/build_i18n_manifests.mjs` (919 clés totales).
+
+**Résultats observés** :
+- `tsc -b` : 0 nouvelle erreur (seule l'erreur préexistante `notifications/icons.tsx::data_health_warning` subsiste).
+- `vitest run` sur 10 répertoires touchés : **444/460 passent**, 14 skipped. Les 2 échecs restants sont `NavL1 > Stats parent de Synthèse` et `NavL1 > marque Stats actif sur /synthesis` — **préexistants** (vérifié via `git stash` avant mes modifs).
+- Tests de store : 41/41 pass après adaptation de la clé localStorage `levelup-filter-store-v1` → `levelup-solo-filter-v1`.
+
+**Conclusion / prochaine étape** : architecture découplée prête. Le shim `globalFilterStore.ts` garantit la rétrocompat des consommateurs résiduels (FeedbackDrawer, useSessionSnap, tests Shell qui pointent vers solo). Suppression du shim quand on aura migré ces consommateurs en fonction des besoins futurs. Tests manuels à valider en navigateur : (1) auto-snap solo ne pollue plus squad, (2) filtres Citations/Sessions ne leak pas vers Stats, (3) FilterOmnibar Stats reste fonctionnel.
+
+---
+
+## [2026-05-15] fix(notifications) — Bug DuckDB ART/NULL sur idx_pn_xuid_unread invalidait shared_social
+
+**Statut** : Complété.
+
+**Contexte** : log de prod observé le 2026-05-15 :
+```
+NotificationsRepo.List: query: FATAL Error: Failed: database has been
+invalidated because of a previous fatal error.
+Original error: Invalid Input Error: Failed to delete all rows from index.
+Only deleted 0 out of 1 rows.
+```
+Le chunk dans l'erreur identifiait une notif `data_health_warning` (id=7285886276755456, xuid=2533274823110022, read_at=NULL, créée le 2026-05-14 17:47:09) — émise par `HealthScheduler.emitWarningNotification`. Toutes les opérations notifications/médias/likes cassaient ensuite jusqu'au restart serveur.
+
+**Diagnostic** : bug DuckDB connu sur les index ART secondaires avec valeurs NULL. L'index `idx_pn_xuid_unread (xuid, read_at)` (créé par la migration `create_notifications_in_shared_social`) n'enregistre pas les entrées NULL dans l'ART, mais l'engine essaie quand même de les retirer lors d'un UPDATE (DELETE+INSERT en interne). Il rate la suppression (« 0 out of 1 ») et marque la connexion fatale. Trigger probable : un clic UI « marquer comme lu » sur la notif data_health_warning (chemin `MarkRead` → UPDATE `read_at = now() WHERE read_at IS NULL`).
+
+**Décision technique** : supprimer l'index plutôt que reformuler les UPDATE ou bumper duckdb-go. Justification :
+1. L'index n'apporte rien à l'échelle : la PK `(xuid, id)` sélectionne déjà toutes les notifs d'un joueur, et le cap de rétention (`DefaultRetentionCap`) borne le volume par joueur à quelques centaines de lignes max. Le filtre `read_at IS NULL` se fait en < 1 ms par scan colonnaire.
+2. Les 2 autres index secondaires (`idx_pn_xuid_created_desc`, `idx_pn_xuid_category`) restent en place : ils indexent des colonnes NOT NULL, donc pas concernés par le bug.
+3. Reformuler les UPDATE laisserait la classe de bug ouverte pour toute future modif de l'index.
+4. Bumper duckdb-go risque de régresser ailleurs (la version actuelle est en place depuis plusieurs sprints).
+
+**Implémentation** :
+- Nouvelle migration `drop_idx_pn_xuid_unread` (TargetSharedSocial) dans [steps_player_notifications.go](apps/go-api/internal/migration/steps_player_notifications.go). `DROP INDEX IF EXISTS` → idempotente et silencieuse si l'index n'existe pas.
+- Refactor [notifications_repo_test.go](apps/go-api/internal/platform/duckdb/notifications_repo_test.go) : `newNotifTestDB` utilise désormais `migration.RunForDB(TargetSharedSocial)` au lieu d'un DDL inline → les tests collent au schéma de prod et toute future migration TargetSharedSocial sera attrapée par les tests notifications.
+- Hélper additionnel `newNotifTestDBWithLegacyIndex` pour les scénarios qui veulent reproduire l'état d'une DB legacy (utilisé par les tests de migration).
+
+**Blindage tests** (sans le fix, ces tests auraient pu déclencher le bug DuckDB ; avec le fix, ils valident que la classe d'opérations problématique est sûre) :
+- 8 tests de régression dans [notifications_repo_index_regression_test.go](apps/go-api/internal/platform/duckdb/notifications_repo_index_regression_test.go) : `MarkRead` bulk sur 100 lignes non-lues, `MarkAllRead` sur `data_health_warning` (scénario exact du log de prod), `MarkAllRead` sans filtre catégorie sur 50 lignes mixtes, `Delete` sur ligne `read_at NULL`, `CapAndSweep` bulk sur lignes non-lues, `MarkUnread` (UPDATE inverse `now()` → NULL), concurrence 8 goroutines × 25 Insert/MarkRead/Delete, pipeline E2E HealthScheduler (3 cycles → List → UnreadCount → MarkRead → MarkAllRead → Delete).
+- 5 tests d'intégration migration dans [steps_player_notifications_test.go](apps/go-api/internal/migration/steps_player_notifications_test.go) (tag `integration`) : présence des 3 tables après migration, suppression effective de `idx_pn_xuid_unread`, conservation des 2 autres index, idempotence sur 3 passes, drop sur DB legacy (table+index préalables), drop sur DB fresh (silencieux).
+
+**Résultats observés** :
+- `go test ./internal/platform/duckdb` : 12 tests notifications existants + 8 nouveaux de régression → PASS.
+- `go test -tags=integration ./internal/migration` : 5 nouveaux tests migration → PASS.
+- `go test ./...` : toute la suite Go-API verte sauf flake pré-existant dans `internal/api/handlers` (`TestSettingsHandler_PostMediaReset_OK`, `TestSettingsHandler_PostRecalculateSessions_Accepted`) — confirmé indépendant du fix en stashant les changements et relançant : flake présent à l'identique sur la branche sans le fix.
+
+**Action de récupération côté prod** : pour les serveurs déjà en état « database invalidated », il faut restart le serveur Go-API **ou** attendre le prochain appel qui passe par `WithReopenOnInvalidated` (cf. ci-dessous), qui rouvrira la connexion à chaud. La migration `drop_idx_pn_xuid_unread` s'appliquera automatiquement au prochain boot (via `RunForDB(TargetSharedSocial)` dans `openPlayerDB`).
+
+**Extension du scope (post-question utilisateur « on a toute la pipeline ? »)** : l'utilisateur a demandé d'étendre le blindage au-delà du repo. 4 ajouts :
+
+1. **Test HealthScheduler E2E** ([scheduler/data_health_check_e2e_test.go](apps/go-api/internal/scheduler/data_health_check_e2e_test.go)) — 4 tests qui montent un repoRoot tmp + shared_matches_v2 + shared_social via `migration.RunForDB`, injectent une anomalie UUID brut dans `match_registry.map_name`, et valident le cycle complet `HealthScheduler.RunOnce → emitWarningNotification → notif.Emit → repo.Insert → DuckDB` + comportement avec emitter nil + drop silencieux quand la catégorie est désactivée. Reproduit le call-site réel de `data_health_warning`.
+
+2. **Test Service.Emit avec vrai NotificationsRepo** ([platform/duckdb/notifications_service_e2e_test.go](apps/go-api/internal/platform/duckdb/notifications_service_e2e_test.go)) — 5 tests qui couvrent la frontière Service↔Repo end-to-end (Emit + persistence params JSON / actor / target_search / severity / pref OFF drop silencieux, MarkRead/MarkAllRead/Delete via service). Les tests `internal/notifications/service_test.go` utilisent un fakeRepo qui ne reproduisait pas les contraintes DuckDB (PK, index, NULL handling) — ces nouveaux tests comblent ce trou.
+
+3. **Tests HTTP handlers notifications avec vrai repo DuckDB** ([api/handlers/notifications_duckdb_e2e_test.go](apps/go-api/internal/api/handlers/notifications_duckdb_e2e_test.go)) — 5 tests httptest sur GET `/notifications`, POST `/mark-read`, POST `/mark-all-read`, DELETE `/{id}`, PATCH `/{id}/unread`, et un test E2E full HTTP cycle (séquence exacte du log de prod : GET → POST mark-all-read → GET → DELETE → GET). C'est l'exact chemin où le log d'erreur 2026-05-14 s'est manifesté (`handler.List` → `service.List` → `repo.List`).
+
+4. **Refacto auto-récupération connexion DuckDB invalidée** ([platform/duckdb/db.go](apps/go-api/internal/platform/duckdb/db.go) + [platform/duckdb/notifications_repo.go](apps/go-api/internal/platform/duckdb/notifications_repo.go)) — refacto défensif pour couvrir la classe d'incidents « connexion invalidée », pas seulement le bug ART/NULL spécifique :
+   - `IsInvalidatedError(err)` : reconnaît les 3 signatures DuckDB observées (« database has been invalidated », « Failed to delete all rows from index », « database must be restarted prior »).
+   - `(*DB).Reopen()` : ferme + rouvre la connexion sous-jacente avec exactement les mêmes paramètres (DSN, max conns, timezone) en réutilisant les helpers extraits `openSQLDBFor` + `applyConnLimits`. Préserve le cache process-level pour que d'autres callers récupèrent la connexion ré-ouverte.
+   - `(*DB).WithReopenOnInvalidated(fn)` : pattern wrapper qui exécute `fn`, détecte une erreur d'invalidation et fait Reopen + retry une fois. Borné à 1 retry (pas de boucle infinie sur corruption durable). Câblé dans `NotificationsRepo` sur tous les chemins write (Insert, MarkRead, MarkUnread, MarkAllRead, Delete, CapAndSweep) + les chemins read sensibles (List, UnreadCount).
+   - Pour persister les paramètres d'ouverture nécessaires au Reopen, ajout de 5 champs dans `DB` (dsn, maxOpenConns, maxIdleConns, timezone, op) renseignés par `openCachedDB`. L'inline d'ouverture sql a été extrait en 2 helpers (`openSQLDBFor`, `applyConnLimits`) pour éviter la duplication.
+   - 8 tests dans [platform/duckdb/db_recovery_test.go](apps/go-api/internal/platform/duckdb/db_recovery_test.go) : IsInvalidatedError sur 7 signatures incluant le log de prod complet, Reopen restore la DB usable + préserve cacheKey + préserve timezone, WithReopenOnInvalidated passe-through sur succès / erreur non-invalidée / retry sur invalidation / pas de boucle sur invalidation persistante.
+
+**Résultats observés (extension)** :
+- `go test ./...` : toute la suite Go-API verte (sauf flake intermittent pré-existant `internal/api/handlers` Settings, confirmé indépendant du fix via `git stash` + retest sur état pré-fix).
+- Nouveau total tests notifications : **35 tests** (12 existants + 8 régression ART/NULL + 5 service E2E + 5 HTTP handler E2E + 5 migration intégration + 8 recovery — répartis sur 6 fichiers).
+- Couverture pipeline : repo DuckDB → service → HTTP handler → scheduler → migration → auto-récupération. La seule couche non-couverte côté Go est le sync engine qui n'émet pas `data_health_warning`.
+
+**Trade-off auto-récupération** : si DuckDB invalide la connexion pour une autre cause future (autre bug, OOM partiel, fichier corrompu), le repo notifications retentera automatiquement après Reopen. Coût : ~150 LoC + 5 champs sur `DB`. Gain : un futur bug de la même classe n'oblige plus à restarter le serveur (latence p99 sur la 1ère requête post-incident, transparent pour le user).
+
+**Limites connues** : `WithReopenOnInvalidated` n'est câblé que sur `NotificationsRepo`. Les autres repos shared_social (media_repo, social_repo, prestige_social_repo) restent vulnérables à la même classe d'incident — à étendre dans un sprint suivant si besoin (le pattern est isolé dans `db.go`, l'ajout est trivial : wrapper les `Exec`/`Query` dans `WithReopenOnInvalidated`).
+
+**Conclusion / prochaine étape** : commit + PR sur la branche `feat/career-decouple-from-match-sync`. Surveiller les logs Go-API après déploiement pour s'assurer qu'aucun nouvel « Only deleted 0 out of 1 rows » ne réapparaît, ET vérifier dans les logs si « duckdb: connexion ré-ouverte après invalidation » apparaît (signal d'une auto-récup qui s'est déclenchée silencieusement).
+
+---
+
+## [2026-05-15] fix(synthesis) — Filtres locaux Synthèse : sanitisation du filterContext + correction du count "Toutes"
+
+**Statut** : Complété.
+
+**Contexte** : après l'ajout des filtres cascade locaux à Synthesis, l'utilisateur a remarqué que la dropdown Expérience affichait **0 partout** alors que les dropdowns Playlist et Mode avaient leurs counts cascade-aware corrects.
+
+**Diagnostic** : deux bugs cumulés.
+
+1. **Pollution par le store global** : mon `pendingFilterContext` (utilisé pour le preview `/filters/resolve`) ET le `request` final héritaient de `filterContext` (filter_mode, sessions, period) via spread. Si une page précédente avait auto-snappé une session via `autoSnapToLatestSession` (PlayerLayout, [routes/players/$playerSlug.tsx:75-95](apps/web/src/routes/players/$playerSlug.tsx#L75-L95)), Synthesis héritait de ce scope restrictif. Pour une session 100% Firefight par exemple, le backend `buildExperienceOptions` ([filters_options.go:301](apps/go-api/internal/service/filters_options.go#L301)) ne trouvait que `PVE` dans `existing` — donc les counts `"PVP classé"` / `"PVP non classé"` étaient absents.
+
+2. **Mauvais calcul de "Toutes"** : mon premier mapping côté front comptait `totalPvp = ranked + unranked` (ignorait PVE car `cascadeToExperience("PVE") → 'all'`). Conséquence : pour un joueur 100% Firefight, "Toutes" affichait 0 même si des matchs existaient. Corrigé en sommant **tous** les `o.count` (les 3 catégories sont mutuellement exclusives côté backend).
+
+**Correctifs** ([SynthesisPage.tsx](apps/web/src/features/synthesis/SynthesisPage.tsx)) :
+
+1. **Suppression de la dépendance à `useGlobalFilterStore`** : la page Synthesis maintient désormais un FilterContext 100% local (pattern strict de `CareerHighlightMatchesSection`). `pendingFilterContext` est construit à partir des seuls states locaux (`pendingPeriod`, `pendingCascade`), et `request.filters` aussi.
+2. **`total` agrège tous les counts retournés** (ranked + unranked + PVE). Les 3 labels canoniques étant disjoints côté backend, la somme = nombre total de matchs visibles dans la cascade post-filtres autres.
+
+**Résultats observés** :
+- `tsc -b` : 0 nouvelle erreur (seule l'erreur préexistante `data_health_warning` subsiste).
+- `vitest run src/features/synthesis` : 17/17 tests passent.
+- Trade-off accepté : Synthesis ne se synchronise plus avec le store global. Cohérent avec le pattern Career et l'intention "filtres locaux à la page" exprimée par l'utilisateur. Si à terme on veut harmoniser avec FilterOmnibar global, c'est une décision produit séparée.
+
+**Conclusion / prochaine étape** : prêt à re-tester en navigateur. Si "Toutes" affiche maintenant le total réel et que ranked/unranked > 0 quand applicable, la cascade locale est complète. Si toujours 0, c'est probablement que le store global avait pollué le cache TanStack Query — un hard refresh devrait suffire.
+
+---
+
+## [2026-05-15] feat(synthesis) — Filtres cascade locaux (Expérience / Playlist / Mode) sur la page Synthèse
+
+**Statut** : Complété.
+
+**Contexte** : la page Synthesis n'avait jusqu'ici qu'une barre Période/Saison locale (sticky top) ; les filtres Cascade (Playlists / Modes / Expérience) ne pouvaient être réglés que via le `globalFilterStore` (sans UI locale) car NavL2 n'instancie pas FilterOmnibar pour `/synthesis`. L'utilisateur voulait ajouter une UI locale alignée sur celle des « Matchs marquants » de la page Carrière (filtres locaux + counts cascade-aware), dans l'ordre : Expérience · Saison · Période · Playlist · Mode.
+
+**Décision technique** :
+1. **Réutilisation maximale**, pas de nouvel endpoint backend : le service `SynthesisService.GetSynthesisPage` consomme déjà `req.Filters.Cascade.{ExperienceTypes, Playlists, Modes, Maps}` via `filterRowsByCascade` (apps/go-api/internal/service/synthesis_service.go:135-136). L'endpoint `/players/{slug}/filters/resolve` fournit déjà les `available_options` cascade-aware → réutilisé via `useFiltersPreview` (apps/web/src/features/filters/queries.ts).
+2. **Extraction du composant `ExperienceDropdown`** auparavant inline dans `CareerHighlightMatchesSection.tsx` → nouveau fichier partagé `apps/web/src/features/_shared/ExperienceDropdown.tsx`. Career et Synthesis le consomment désormais avec leurs propres manifests i18n. Composant déjà i18n-agnostique (labels en props), aucune adaptation du composant nécessaire.
+3. **State local pending/committed** sur SynthesisPage (pattern identique à `CareerHighlightMatchesSection`) : `pendingExperience`, `pendingPlaylists`, `pendingModes` + leurs `committed*`. Commit atomique au clic « Analyser ». Reset global ↺ qui purge période **et** cascade.
+4. **Override de la cascade du store global** : le `request.filters` envoyé à `useSynthesisPage` est `{ ...filterContext, cascade: committedCascade }` — la page ne touche pas au store global mais override son cascade pour son propre fetch. Ainsi navigation vers d'autres pages ne hérite pas des filtres Synthèse.
+5. **Mapping experience ↔ cascade.experience_types** côté front : `ranked → ['PVP classé']`, `unranked → ['PVP non classé']`, `all → []`. Labels canoniques alignés sur `service/filters_service.go::experienceLabels`. La détection inverse (counts cascade-aware) tolère les variantes accentuées/non accentuées et EN (`ranked`/`unranked`) — symétrie avec `applyExperienceFilter`.
+6. **queryKey Synthesis enrichie** : `scopeHash` inclut désormais cascade (experience + playlists + modes + maps) pour invalider correctement à la commit. Sans cela, React Query servait la même réponse pour cascades différentes.
+7. **i18n** : 7 nouvelles clés ajoutées à `synthesis.toml` (placeholder Expérience + 3 valeurs + Playlists + Modes + Réinitialiser) puis manifest TS regénéré via `node apps/web/scripts/build_i18n_manifests.mjs`.
+
+**Résultats observés** :
+- `tsc -b` : 0 nouvelle erreur. La seule erreur préexistante (`notifications/icons.tsx` data_health_warning) est orthogonale.
+- `vitest run src/features/synthesis` : 17/17 tests passent (14 skipped historiques).
+- `vitest run src/features/career` : régression unique sur `CareerPage > Rating indisponible` confirmée préexistante (présente sur HEAD avant mes modifs — vérifié via `git stash`).
+- `eslint` sur les 4 fichiers modifiés : 0 errors, 8 warnings tous préexistants (strings hardcodées dans la `SynthesisOverviewSection`, hors scope).
+- Pas de modif backend : `req.Filters.Cascade` déjà consommé.
+
+**Conclusion / prochaine étape** : prêt à tester en navigateur. Pas de modif backend nécessaire. Si à terme on veut harmoniser Synthesis avec les autres pages "Stats" qui utilisent FilterOmnibar global, il faudra étendre NavL2 (regex de section `stats`) et retirer la barre locale — mais c'est un changement de produit, pas de tech.
+
+---
+
 ## [2026-05-15] test(suite-complete) — Suite Go entièrement verte : fix mocks endpoints + doc OpenAPI manquante
 
 **Statut** : Complété.
