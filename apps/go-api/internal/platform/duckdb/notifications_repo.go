@@ -65,6 +65,10 @@ var errNoSocial = fmt.Errorf("notifications: shared_social DB not attached")
 
 // Insert persiste une notification. Vérifie la pref via xuid+catégorie.
 // Si OFF, retourne notifications.ErrCategoryDisabled (no-op pour le service).
+//
+// L'écriture est protégée par WithReopenOnInvalidated : si la connexion
+// shared_social a été invalidée par un bug DuckDB transitoire, on tente un
+// reopen automatique avant de remonter l'erreur au caller.
 func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notification) error {
 	if r.sharedSocialPath() == "" {
 		return errNoSocial
@@ -92,21 +96,24 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 		actorName = n.Actor.Name
 	}
 
-	_, err = rwDB.Exec(ctx, `
-		INSERT INTO player_notifications
-			(xuid, id, category, severity, title_key, body_key, params,
-			 target_route, target_search, actor_xuid, actor_name,
-			 source, created_at, read_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
-	`,
-		r.xuid, n.ID, string(n.Category), string(n.Severity), n.TitleKey,
-		nullableString(n.BodyKey),
-		nullableJSON(n.Params),
-		nullableString(n.TargetRoute),
-		nullableJSON(n.TargetSearch),
-		actorXUID, actorName,
-		n.Source, n.CreatedAt.UTC(),
-	)
+	err = rwDB.WithReopenOnInvalidated(func() error {
+		_, execErr := rwDB.Exec(ctx, `
+			INSERT INTO player_notifications
+				(xuid, id, category, severity, title_key, body_key, params,
+				 target_route, target_search, actor_xuid, actor_name,
+				 source, created_at, read_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+		`,
+			r.xuid, n.ID, string(n.Category), string(n.Severity), n.TitleKey,
+			nullableString(n.BodyKey),
+			nullableJSON(n.Params),
+			nullableString(n.TargetRoute),
+			nullableJSON(n.TargetSearch),
+			actorXUID, actorName,
+			n.Source, n.CreatedAt.UTC(),
+		)
+		return execErr
+	})
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Insert: exec: %w", err)
 	}
@@ -114,6 +121,10 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 }
 
 // List paginé scopé par xuid.
+//
+// Lecture sensible à l'invalidation : si la connexion partagée est dans
+// l'état fatal observé en prod (log 2026-05-14), on tente un reopen
+// automatique avant d'échouer.
 func (r *NotificationsRepo) List(ctx context.Context, f notifications.ListFilter) (notifications.ListResult, error) {
 	if r.readDB() == nil {
 		return notifications.ListResult{Items: []notifications.Notification{}}, nil
@@ -122,7 +133,12 @@ func (r *NotificationsRepo) List(ctx context.Context, f notifications.ListFilter
 	defer cancel()
 
 	q, args := buildListQuery(r.xuid, f)
-	rows, err := r.readDB().Query(ctx, q, args...)
+	var rows *sql.Rows
+	err := r.readDB().WithReopenOnInvalidated(func() error {
+		var qerr error
+		rows, qerr = r.readDB().Query(ctx, q, args...)
+		return qerr
+	})
 	if err != nil {
 		return notifications.ListResult{}, fmt.Errorf("NotificationsRepo.List: query: %w", err)
 	}
@@ -148,12 +164,17 @@ func (r *NotificationsRepo) UnreadCount(ctx context.Context) (notifications.Unre
 	ctx, cancel := context.WithTimeout(ctx, notifReadTimeout)
 	defer cancel()
 
-	rows, err := r.readDB().Query(ctx, `
-		SELECT category, COUNT(*) AS n
-		FROM player_notifications
-		WHERE xuid = ? AND read_at IS NULL
-		GROUP BY category
-	`, r.xuid)
+	var rows *sql.Rows
+	err := r.readDB().WithReopenOnInvalidated(func() error {
+		var qerr error
+		rows, qerr = r.readDB().Query(ctx, `
+			SELECT category, COUNT(*) AS n
+			FROM player_notifications
+			WHERE xuid = ? AND read_at IS NULL
+			GROUP BY category
+		`, r.xuid)
+		return qerr
+	})
 	if err != nil {
 		return notifications.UnreadCount{}, fmt.Errorf("NotificationsRepo.UnreadCount: %w", err)
 	}
@@ -187,7 +208,12 @@ func (r *NotificationsRepo) MarkRead(ctx context.Context, ids []int64) (int, err
 	defer rwDB.Close()
 
 	q, args := buildMarkReadQuery(r.xuid, ids)
-	res, err := rwDB.Exec(ctx, q, args...)
+	var res sql.Result
+	err = rwDB.WithReopenOnInvalidated(func() error {
+		var execErr error
+		res, execErr = rwDB.Exec(ctx, q, args...)
+		return execErr
+	})
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkRead: exec: %w", err)
 	}
@@ -209,10 +235,15 @@ func (r *NotificationsRepo) MarkUnread(ctx context.Context, id int64) error {
 	}
 	defer rwDB.Close()
 
-	res, err := rwDB.Exec(ctx,
-		`UPDATE player_notifications SET read_at = NULL WHERE xuid = ? AND id = ?`,
-		r.xuid, id,
-	)
+	var res sql.Result
+	err = rwDB.WithReopenOnInvalidated(func() error {
+		var execErr error
+		res, execErr = rwDB.Exec(ctx,
+			`UPDATE player_notifications SET read_at = NULL WHERE xuid = ? AND id = ?`,
+			r.xuid, id,
+		)
+		return execErr
+	})
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.MarkUnread: exec: %w", err)
 	}
@@ -238,15 +269,19 @@ func (r *NotificationsRepo) MarkAllRead(ctx context.Context, category notificati
 
 	now := time.Now().UTC()
 	var res sql.Result
-	if category == "" {
-		res, err = rwDB.Exec(ctx,
-			`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL`,
-			now, r.xuid)
-	} else {
-		res, err = rwDB.Exec(ctx,
-			`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND category = ?`,
-			now, r.xuid, string(category))
-	}
+	err = rwDB.WithReopenOnInvalidated(func() error {
+		var execErr error
+		if category == "" {
+			res, execErr = rwDB.Exec(ctx,
+				`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL`,
+				now, r.xuid)
+		} else {
+			res, execErr = rwDB.Exec(ctx,
+				`UPDATE player_notifications SET read_at = ? WHERE xuid = ? AND read_at IS NULL AND category = ?`,
+				now, r.xuid, string(category))
+		}
+		return execErr
+	})
 	if err != nil {
 		return 0, fmt.Errorf("NotificationsRepo.MarkAllRead: exec: %w", err)
 	}
@@ -268,10 +303,15 @@ func (r *NotificationsRepo) Delete(ctx context.Context, id int64) error {
 	}
 	defer rwDB.Close()
 
-	res, err := rwDB.Exec(ctx,
-		`DELETE FROM player_notifications WHERE xuid = ? AND id = ?`,
-		r.xuid, id,
-	)
+	var res sql.Result
+	err = rwDB.WithReopenOnInvalidated(func() error {
+		var execErr error
+		res, execErr = rwDB.Exec(ctx,
+			`DELETE FROM player_notifications WHERE xuid = ? AND id = ?`,
+			r.xuid, id,
+		)
+		return execErr
+	})
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Delete: exec: %w", err)
 	}
@@ -296,15 +336,18 @@ func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
 	}
 	defer rwDB.Close()
 
-	_, err = rwDB.Exec(ctx, `
-		DELETE FROM player_notifications
-		WHERE xuid = ? AND id NOT IN (
-			SELECT id FROM player_notifications
-			WHERE xuid = ?
-			ORDER BY created_at DESC
-			LIMIT ?
-		)
-	`, r.xuid, r.xuid, max)
+	err = rwDB.WithReopenOnInvalidated(func() error {
+		_, execErr := rwDB.Exec(ctx, `
+			DELETE FROM player_notifications
+			WHERE xuid = ? AND id NOT IN (
+				SELECT id FROM player_notifications
+				WHERE xuid = ?
+				ORDER BY created_at DESC
+				LIMIT ?
+			)
+		`, r.xuid, r.xuid, max)
+		return execErr
+	})
 	if err != nil {
 		slog.Warn("NotificationsRepo.CapAndSweep: exec", "err", err)
 	}
@@ -319,10 +362,15 @@ func (r *NotificationsRepo) GetPreferences(ctx context.Context) ([]notifications
 	ctx, cancel := context.WithTimeout(ctx, notifReadTimeout)
 	defer cancel()
 
-	rows, err := r.readDB().Query(ctx,
-		`SELECT category, enabled, delivery FROM notification_preferences WHERE xuid = ? ORDER BY category`,
-		r.xuid,
-	)
+	var rows *sql.Rows
+	err := r.readDB().WithReopenOnInvalidated(func() error {
+		var qerr error
+		rows, qerr = r.readDB().Query(ctx,
+			`SELECT category, enabled, delivery FROM notification_preferences WHERE xuid = ? ORDER BY category`,
+			r.xuid,
+		)
+		return qerr
+	})
 	if err != nil {
 		return nil, fmt.Errorf("NotificationsRepo.GetPreferences: %w", err)
 	}
@@ -361,16 +409,20 @@ func (r *NotificationsRepo) UpsertPreferences(ctx context.Context, prefs []notif
 
 	now := time.Now().UTC()
 	for _, p := range prefs {
-		_, err := rwDB.Exec(ctx, `
-			INSERT INTO notification_preferences (xuid, category, enabled, delivery, updated_at)
-			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (xuid, category) DO UPDATE SET
-				enabled    = EXCLUDED.enabled,
-				delivery   = EXCLUDED.delivery,
-				updated_at = EXCLUDED.updated_at
-		`, r.xuid, string(p.Category), p.Enabled, string(p.Delivery), now)
+		pref := p // capture pour la closure
+		err := rwDB.WithReopenOnInvalidated(func() error {
+			_, execErr := rwDB.Exec(ctx, `
+				INSERT INTO notification_preferences (xuid, category, enabled, delivery, updated_at)
+				VALUES (?, ?, ?, ?, ?)
+				ON CONFLICT (xuid, category) DO UPDATE SET
+					enabled    = EXCLUDED.enabled,
+					delivery   = EXCLUDED.delivery,
+					updated_at = EXCLUDED.updated_at
+			`, r.xuid, string(pref.Category), pref.Enabled, string(pref.Delivery), now)
+			return execErr
+		})
 		if err != nil {
-			return fmt.Errorf("NotificationsRepo.UpsertPreferences (%s): %w", p.Category, err)
+			return fmt.Errorf("NotificationsRepo.UpsertPreferences (%s): %w", pref.Category, err)
 		}
 	}
 	return nil

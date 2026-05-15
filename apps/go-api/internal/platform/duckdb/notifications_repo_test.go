@@ -10,13 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// newNotifTestDB crée shared_social.duckdb temporaire avec les 3 tables
-// notifications (xuid PK). Reflète exactement la migration
-// `create_notifications_in_shared_social`.
+// newNotifTestDB crée shared_social.duckdb temporaire et applique la suite
+// complète des migrations TargetSharedSocial (création + drop_idx_pn_xuid_unread).
+// Le test reflète ainsi exactement le schéma de prod, ce qui garantit que tout
+// changement de migration est attrapé sans dérive de DDL inline.
 func newNotifTestDB(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -28,6 +30,29 @@ func newNotifTestDB(t *testing.T) string {
 	}
 	defer rw.Close()
 
+	if err := migration.RunForDB(rw.SQLDb(), migration.TargetSharedSocial); err != nil {
+		t.Fatalf("newNotifTestDB RunForDB(TargetSharedSocial): %v", err)
+	}
+	return dbPath
+}
+
+// newNotifTestDBWithLegacyIndex crée shared_social.duckdb en s'arrêtant AVANT
+// la migration drop_idx_pn_xuid_unread : la base contient encore l'index ART
+// problématique. Utilisé pour reproduire le bug DuckDB et valider que la
+// migration le supprime correctement.
+func newNotifTestDBWithLegacyIndex(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "shared_social.duckdb")
+
+	rw, err := duckdb.OpenReadWrite(dbPath)
+	if err != nil {
+		t.Fatalf("newNotifTestDBWithLegacyIndex OpenReadWrite: %v", err)
+	}
+	defer rw.Close()
+
+	// Reproduit uniquement la migration create_notifications_in_shared_social
+	// + ses 3 index (l'état legacy d'une DB de prod avant ce patch).
 	ddl := `
 		CREATE TABLE player_notifications (
 			xuid          VARCHAR NOT NULL,
@@ -69,7 +94,7 @@ func newNotifTestDB(t *testing.T) string {
 	`
 	for _, stmt := range splitStmts(ddl) {
 		if _, err := rw.Exec(context.Background(), stmt); err != nil {
-			t.Fatalf("newNotifTestDB DDL %q: %v", stmt, err)
+			t.Fatalf("newNotifTestDBWithLegacyIndex DDL %q: %v", stmt, err)
 		}
 	}
 	return dbPath

@@ -115,6 +115,30 @@ func init() {
 			`)
 		},
 	})
+
+	// 2026-05-15 : drop idx_pn_xuid_unread.
+	//
+	// L'index ART secondaire sur (xuid, read_at) déclenche un bug DuckDB
+	// connu lorsque read_at est NULL : tout UPDATE/DELETE sur une notif
+	// non-lue lève « Failed to delete all rows from index. Only deleted 0
+	// out of 1 rows. » et invalide définitivement la connexion (la base
+	// reste inutilisable jusqu'au restart du process).
+	//
+	// L'index n'apporte aucun gain mesurable : la PK (xuid, id) sélectionne
+	// déjà toutes les notifs d'un joueur (≤ DefaultRetentionCap), et le
+	// filtrage `read_at IS NULL` se fait en moins d'une ms sur ce volume.
+	//
+	// Les 2 autres index restent en place (idx_pn_xuid_created_desc et
+	// idx_pn_xuid_category) : ils indexent des colonnes NOT NULL, donc pas
+	// concernés par le bug.
+	Register(Migration{
+		Name:        "drop_idx_pn_xuid_unread",
+		TargetDB:    TargetSharedSocial,
+		Description: "Supprime idx_pn_xuid_unread (bug DuckDB ART/NULL sur UPDATE read_at).",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, `DROP INDEX IF EXISTS idx_pn_xuid_unread;`)
+		},
+	})
 }
 
 // seedNotificationPreferencesForXUID insère les catégories par défaut pour un
