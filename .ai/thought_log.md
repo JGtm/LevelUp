@@ -1,3 +1,166 @@
+## [2026-05-15] fix(sync/skill-rank) — Garde-fou SQL CSR contre l'écrasement par LUSR + CLI `restore-csr`
+
+**Statut** : Complété.
+
+**Contexte** : `match_skill_rank` (PK=`match_id`, `rating_type` ∈ {CSR, LUSR}) est une table exclusive — une seule ligne par match. L'UPSERT LUSR ([upsertLUSRRatings](apps/go-api/internal/sync/skill_rating_loaders.go) ligne 243-262) exécutait un `INSERT … ON CONFLICT (match_id) DO UPDATE SET rating_type='LUSR', …` **sans clause WHERE** : toute ligne CSR pré-existante pouvait être silencieusement écrasée si la garde Go sautait (mode `force`, query loader en erreur swallow-ée, refactor futur). L'utilisateur soupçonnait que cette faille avait déjà coûté des CSR irrécupérables.
+
+**Décision technique** : défense en profondeur sur 2 couches + tests d'intégration.
+1. **Garde-fou SQL** dans l'UPSERT : ajout `WHERE match_skill_rank.rating_type <> 'CSR'` à la fin du `DO UPDATE`. DuckDB suit la syntaxe PostgreSQL `ON CONFLICT … WHERE` — testé et accepté.
+2. **Fail-hard `loadExistingRatingIDs`** ([skill_rating_loaders.go:146](apps/go-api/internal/sync/skill_rating_loaders.go#L146)) : signature passée de `map[string]bool` à `(map[string]bool, error)`, toute erreur SQL/scan/rows propagée. Les 2 appelants dans [skill_rating.go:294-303](apps/go-api/internal/sync/skill_rating.go#L294-L303) propagent.
+3. **CLI one-shot `levelup restore-csr`** ([cmd_restore_csr.go](apps/go-api/cmd/levelup/cmd_restore_csr.go)) pour ré-importer des CSR depuis un backup DuckDB (legacy ou autre). Mode `overwrite` (par défaut) supprime d'abord les LUSR fautifs avant insert, mode `preserve` skip. Phase d'inspection intégrée via `--dry-run` qui liste les tables et scanne les colonnes `csr*`/`rank*`/`skill*`/`rating*`/`tier*`.
+
+**Actions** :
+1. [skill_rating_loaders.go](apps/go-api/internal/sync/skill_rating_loaders.go) — clause `WHERE` ajoutée à l'`ON CONFLICT DO UPDATE` (commentaire 1 ligne d'invariant) + `loadExistingRatingIDs` retourne `(map, error)` + GoDoc explicite.
+2. [skill_rating.go](apps/go-api/internal/sync/skill_rating.go) — adapter les 2 appels, import `fmt` ajouté.
+3. [skill_rating_loaders_test.go](apps/go-api/internal/sync/skill_rating_loaders_test.go) — helper `openLUSRDB` enrichi (schéma `match_skill_rank` complet, 13 colonnes) + 4 nouveaux tests d'intégration :
+   - `TestUpsertLUSR_DoesNotOverwriteExistingCSR_NormalMode` : garde Go active, skip propre.
+   - `TestUpsertLUSR_SQLGuardWhenGoFilterBypassed` : map `existingCSR` vide → seul le garde-fou SQL doit tenir. **Test critique.**
+   - `TestBatchComputeLUSR_ForceMode_PreservesCSR` : pipeline complet en mode `force=true`.
+   - `TestLoadExistingRatingIDs_ErrorPropagation` : table absente → erreur remontée.
+4. [cmd_restore_csr.go](apps/go-api/cmd/levelup/cmd_restore_csr.go) (nouveau) — sous-commande CLI avec `--gamertag`, `--backup`, `--dry-run`, `--mode`, inspection automatique du schéma legacy, ATTACH read-only, INSERT idempotent. Wiré dans [main.go](apps/go-api/cmd/levelup/main.go).
+
+**Résultats observés** :
+- Tests d'intégration ciblés CSR/LUSR : 7/7 verts (4 nouveaux + 2 adaptés + 1 inchangé sur les loaders).
+- Suite `internal/sync` complète (skip du `TestPooledHaloClient*` flaky pré-existant qui dépend de l'API live) : verte en 133s.
+- Build `levelup.exe` OK avec la sous-commande `restore-csr` opérationnelle.
+- Suite frontend complète (vitest) : **147 fichiers, 1372 tests verts, 0 fail, 14 skip** en 51s — pas de régression sur les consumers de `rating_type` (Career charts, MatchHeader, HomeRecentPlaylistsCard, MatchScoreboard, etc.).
+- **Audit backups** : aucun CSR par-match restaurable trouvé. Ni `shared_matches_v2.duckdb` (backup partagé, contient seulement registry/participants/medals/weapons — pas de `match_skill_rank`) ni l'ancienne player DB Python `LevelUp/data/.../Chocoboflor/stats.duckdb` (table `match_skill_rank` présente mais 0 ligne). Seule trace CSR : `skill_history` (1 snapshot global de saison, pas par-match). La player DB Go actuelle a 381 lignes `match_skill_rank` toutes en LUSR — aucun CSR encore présent.
+
+**Conclusion / prochaine étape** :
+- Le fix est **préventif** : il n'y avait apparemment pas de CSR par-match à protéger dans les backups disponibles (le legacy Python ne semble pas avoir persisté les CSR par-match non plus). Mais la garde reste essentielle dès qu'un futur sync persistera des CSR par-match (par exemple via l'endpoint Halo `GetMatchSkill` qui retourne CSR pre/post par match).
+- **Validation E2E force-LUSR sur DB live partiellement bloquée** : injection d'un CSR factice sur `match_id=ec938fb4-…` puis cleanup OK, mais le `levelup backfill --lusr --force` n'a pas pu ouvrir `shared_matches_v2.duckdb` car le serveur LevelUp (PID 30060) la tenait en lock. Les tests d'intégration Go valident déjà ce scénario `force=true` en mémoire (`TestBatchComputeLUSR_ForceMode_PreservesCSR`). L'utilisateur peut rejouer la séquence inject/force/verify manuellement après avoir arrêté le serveur (scripts `tmp/restore_csr/e2e_lusr_force.go`).
+- **Scripts ad-hoc** déposés dans `apps/go-api/tmp/restore_csr/` (gitignored) : `inspect.go` (dump tables d'une duckdb), `e2e_lusr_force.go` (inject/verify/cleanup CSR factice).
+- User indique avoir un autre backup à chercher : le CLI `levelup restore-csr --dry-run --backup PATH` listera ses tables + scannera colonnes CSR sans risque.
+
+**Risques frontend pré-existants** (hors scope de ce fix, à tracker) :
+1. [CareerChartsSection.tsx:756-770](apps/web/src/features/career/CareerChartsSection.tsx#L756-L770) — `buildLusrTierMarkArea` n'utilise que `LUSR_TIERS` (1200-9999) ; les CSR Halo (0-2500) seraient affichés sur des bandes mal calibrées.
+2. [MatchStatCards.tsx:62](apps/web/src/features/match-view/MatchStatCards.tsx#L62) — message hardcodé "pas de données CSR" risque d'apparaître hors contexte CSR.
+3. [squadPerformanceLineCharts.ts:420](apps/web/src/features/squad/charts/squadPerformanceLineCharts.ts#L420) — comparaison `=== 'csr'` (minuscule) alors que le backend retourne `'CSR'` → branche jamais prise.
+
+**Vérification finale (audit logging + tests + bugs latents)** :
+- **Bug compteur identifié et corrigé** : `upsertLUSRRatings` incrémentait `updated++` indépendamment de `RowsAffected`. Si le garde-fou SQL refusait l'UPDATE (CSR existant, garde Go bypassée), le compteur restait surcoté → métriques fausses + invisibilité du blocage. Test isolé `tmp/restore_csr/check_rows_affected.go` confirme que DuckDB retourne `RowsAffected=0` quand le `WHERE` du `DO UPDATE` filtre. Patch : utiliser `res.RowsAffected()`, ne compter que si ≥1 ligne réellement écrite. Compteurs séparés : `skipped_by_csr_filter` (Go), `blocked_by_sql_guard` (SQL), `exec_errors`.
+- **Observabilité** : ajout de `slog.Warn` (1) à chaque blocage par garde SQL — signal d'alerte indiquant un bug du loader Go (`loadExistingRatingIDs` a renvoyé un map incomplet), (2) à chaque erreur d'Exec ; et `slog.Info` final avec le bilan `updated / skipped_by_csr_filter / blocked_by_sql_guard / exec_errors / total_candidates`. Import `log/slog` ajouté à [skill_rating_loaders.go](apps/go-api/internal/sync/skill_rating_loaders.go). Patterns cohérents avec [backfill.go](apps/go-api/internal/sync/backfill.go), [backfill_weapons.go](apps/go-api/internal/sync/backfill_weapons.go).
+- **Test renforcé** : `TestUpsertLUSR_SQLGuardWhenGoFilterBypassed` vérifie maintenant `updated == 0` quand seul le garde SQL bloque (auparavant seulement le contenu post-SQL).
+- **Nouveau test multi-match** : `TestUpsertLUSR_CounterReflectsOnlyRealWrites` exerce le pipeline avec 5 candidats hétérogènes (CSR filtré Go, LUSR existant filtré Go, CSR bypassé Go mais bloqué SQL, 2 nouveaux). Asserte `updated == 2` exactement + état final de chaque ligne. Couvre 100% des branches de comptage.
+- **Run verbose des tests** : output `slog` confirmé visuellement (INFO + WARN avec les bons attrs).
+- **Smoke CLI** : `levelup restore-csr --help` montre tous les flags, `--dry-run` sur le backup `shared_matches_v2.duckdb` liste les 9 tables + scanne 9 colonnes suspectes et retourne une erreur claire « aucune table CSR trouvée ». Bon UX pour l'utilisateur.
+- **Suites complètes re-validées** : Go (skip flaky HTTP test) + frontend vitest 147 fichiers / 1372 tests passent (run #2).
+
+---
+
+## [2026-05-15] feat(data_health) — Baseline configurable pour la notif `data_health_warning`
+
+**Statut** : Complété.
+
+**Contexte** : L'utilisateur reçoit en permanence une notification admin « Audit base : 12 anomalie(s) détectée(s) » émise par [HealthScheduler.runCycle](apps/go-api/internal/scheduler/data_health_check.go) à chaque cycle (toutes les 24 h). Ces 12 anomalies sont un socle historique (UUIDs résiduels d'anciens syncs, etc.) non corrigeable depuis des années. L'émission inconditionnelle `WarningsTotal > 0` transforme la notif en bruit permanent → perte de valeur pour détecter une vraie régression.
+
+**Décision technique** : Introduire un seuil baseline configurable plutôt que désactiver le scheduler (option B) ou filtrer côté préférences (option C). Avantage : on garde la détection de régression (warnings > baseline ⇒ notif) tout en silenciant le socle accepté. La baseline est lue depuis `app_settings.json:data_health_baseline_warnings` (zero-value = 0 = comportement legacy).
+
+**Actions** :
+1. [store.go](apps/go-api/internal/platform/settings/store.go) — ajout `DataHealthBaselineWarnings int` au struct `AppSettings`. Zero-value = 0 ⇒ rétrocompatibilité : les fichiers sans la clé conservent le comportement actuel.
+2. [data_health_check.go](apps/go-api/internal/scheduler/data_health_check.go) — champ `baselineWarnings` + setter chainable `WithBaselineWarnings(n int)`. Condition d'émission passée de `WarningsTotal > 0` à `WarningsTotal > s.baselineWarnings`. Le log `data_health: cycle terminé` inclut désormais la baseline pour la transparence.
+3. [main.go](apps/go-api/cmd/server/main.go) — lecture du setting via `settingsStore.Load()` et appel `healthScheduler.WithBaselineWarnings(...)` quand la baseline > 0. Log dédié `data_health: baseline appliquée` pour confirmer le wiring au boot.
+4. `app_settings.json` (non tracké) — clé `"data_health_baseline_warnings": 12` ajoutée pour le setup local de l'utilisateur.
+5. Test E2E ajouté : `TestHealthScheduler_E2E_BaselineAccepted_NoEmission` dans [data_health_check_e2e_test.go](apps/go-api/internal/scheduler/data_health_check_e2e_test.go) — vérifie que `baseline=1, warnings=1 ⇒ 0 notif` et que `baseline=0, warnings=1 ⇒ 1 notif` (legacy preservé).
+
+**Résultats observés** :
+- `go build ./...` OK.
+- `go test ./internal/scheduler/... -run TestHealthScheduler` : 5/5 tests verts (4 anciens + 1 nouveau).
+- Logs cycle : `warnings_total=1 baseline=1` ⇒ pas d'émission ; `warnings_total=1 baseline=0` ⇒ émission. Comportement attendu confirmé.
+
+**Conclusion / prochaine étape** : Au prochain démarrage du serveur, la notif disparaîtra tant que `WarningsTotal ≤ 12`. Si une 13e anomalie apparaît (régression sync), une notif sera de nouveau émise. Si l'utilisateur souhaite à terme exposer la baseline dans l'UI (PATCH `/settings`), il faudra ajouter `DataHealthBaselineWarnings` à `domain.UpdateSettingsRequest`, `settings.Apply` et `settings.ToResponse` — hors scope ici (le setting reste éditable manuellement dans `app_settings.json` pour l'instant).
+
+---
+
+## [2026-05-15] feat(home/season-pass) — Indicateur discret de fraîcheur des données BP/Défis
+
+**Statut** : Complété.
+
+**Contexte** : L'utilisateur, derrière un proxy Zscaler qui bloque les endpoints Halo Waypoint, ne voit ni Battle Pass ni défis sur la Home et sur la page Pass saisonniers — alors qu'un fallback DB est censé servir les dernières valeurs connues. Investigation : pour le BP, `LoadSeasonPassTracks` lit `battlepass_track_definitions` + `battlepass_snapshots` **sans TTL** — donc le rien-affiché signale juste une DB vide (aucun sync live jamais réussi). Pour les défis, fallback DB avec TTL 24h dur (`battlePassCacheTTLFallback`). Discussion : décliner un TTL souple côté BP (proposition utilisateur 72h) ou exposer un indicateur de fraîcheur ? Décision : **pas de TTL sur BP** (donnée durable, contrairement aux défis périssables), à la place exposer la date du dernier snapshot via un indicateur discret (i) avec tooltip.
+
+**Décision technique** :
+- Backend (Go) : ajout `SnapshotAt *string` (RFC3339, UTC) sur `BattlePassResponse`, `ChallengesResponse` et `SeasonPassTrackSummary`. Repos retournent la date du snapshot le plus récent (BP : ligne unique ; Challenges : `MAX(snapshot_at)` agrégé ; SeasonPassTrack : `snapshot_at` par track). Services HomeService set `time.Now().UTC()` en cas de succès live (résolution UI cohérente : tooltip toujours daté).
+- Frontend : nouveau composant `<DataFreshnessIndicator>` ([apps/web/src/components/ui/data-freshness-indicator.tsx](apps/web/src/components/ui/data-freshness-indicator.tsx)) — icône (i) en SVG inline, couleur très discrète (`text-muted-foreground/35` → `/80` au hover), wrappé dans le `<Tooltip>` existant. Le tooltip affiche une phrase complète localisée : "Dernière synchronisation réussie le {date}" / "Last successful synchronization on {date}".
+- i18n : clés `home.freshness.last_sync` (home.toml) + `palmares.season_pass.freshness_last_sync` (palmares.toml), exposée dans l'adapter `getPalmaresText` via `freshnessLastSync(date)`.
+
+**Actions** :
+1. Domain Go : [home.go](apps/go-api/internal/domain/home.go) + [season_pass.go](apps/go-api/internal/domain/season_pass.go) — ajout `SnapshotAt *string`.
+2. Repos : [home_repo.go](apps/go-api/internal/platform/duckdb/home_repo.go) — `LoadCachedBattlePass` retourne `snapshot_at`, `LoadCachedChallenges` agrège `MAX(snapshot_at)`. [season_pass_repo.go](apps/go-api/internal/platform/duckdb/season_pass_repo.go) — `trackSnapshotState.SnapshotAt`, propagé dans `buildTrackSummary` et `buildMinimalTrackSummary`.
+3. Service : [home_service.go](apps/go-api/internal/service/home_service.go) — `GetBattlePass` et `GetChallenges` set `SnapshotAt = time.Now().UTC()` sur succès live (si non déjà set par le provider).
+4. Front types : [types.ts](apps/web/src/lib/api/types.ts) — `snapshot_at?: string | null` sur `BattlePassResponse`, `ChallengesResponse`, `SeasonPassTrackSummary` ; `from_cache?: boolean` sur BP+Challenges.
+5. Composant : [data-freshness-indicator.tsx](apps/web/src/components/ui/data-freshness-indicator.tsx) — formate la date via `toLocaleString(locale, { day, month, year, hour, minute })`, accepte `buildLabel` (i18n) + `locale` + `className` override.
+6. i18n manifests : [home.toml](apps/web/src/lib/i18n/manifests/home.toml) + [palmares.toml](apps/web/src/lib/i18n/manifests/palmares.toml), régénération via `node apps/web/scripts/build_i18n_manifests.mjs`. Adapter [palmares/i18n.ts](apps/web/src/features/palmares/i18n.ts) — `freshnessLastSync: (date) => string`.
+7. Wiring : [HomeBattlePassPanel.tsx](apps/web/src/features/home/HomeBattlePassPanel.tsx) (à côté du titre "Pass de combat"), [SeasonPassPage.tsx](apps/web/src/features/palmares/SeasonPassPage.tsx) (à côté du nom du pass dans le hero — variante `text-white/50` pour lisibilité sur overlay sombre), [HomePage.tsx](apps/web/src/features/home/HomePage.tsx) (à côté du titre "Défis actifs").
+
+**Tests ajoutés (couche par couche)** :
+- Repo Go ([battlepass_cache_test.go](apps/go-api/internal/platform/duckdb/battlepass_cache_test.go)) — assertions `SnapshotAt` parsable RFC3339 sur `LoadCachedBattlePass` ; nouveau test `TestHomeRepoLoadCachedChallenges_ReturnsAggregateSnapshot` qui insère 4 snapshots (dont un -2h écrasé par ROW_NUMBER) et compare le `SnapshotAt` retourné au `MAX(snapshot_at)` calculé en DB pour garantir l'agrégat ; assertion `SnapshotAt` par track dans `TestSeasonPassRepoLoadSeasonPassTracks_UsesPlayerSnapshots`.
+- Service Go ([home_service_test.go](apps/go-api/internal/service/home_service_test.go)) — `TestHomeService_GetBattlePass_CacheHitPreservesSnapshotAt` et `TestHomeService_GetChallenges_CacheHitPreservesSnapshotAt` (le service ne doit pas écraser le `SnapshotAt` fourni par le cache) + `TestSnapshotAgeHours_HandlesNilAndMalformed` pour les helpers de logging (nil, string invalide → -1 sans panique).
+- Composant front ([data-freshness-indicator.test.tsx](apps/web/src/components/ui/data-freshness-indicator.test.tsx), 6 tests) — null/undefined → null render, date non parsable → null, snapshot valide → icône + `aria-label` localisé FR (10/05/2026), variante locale EN, override `className` (couleur custom appliquée + défaut absent).
+
+**Logging structuré** : les debug logs du fallback cache ([home_service.go:506,547](apps/go-api/internal/service/home_service.go)) émettent désormais `snapshot_at` (RFC3339) + `age_hours` (int, -1 si absent/invalide). Permet à l'ops de diagnostiquer un blocage Zscaler prolongé : `snapshot_at=2026-05-10T08:15Z age_hours=120` = donnée vieille de 5 jours servie depuis cache. Helpers `snapshotAtValue` et `snapshotAgeHours` extraits pour réutilisation et testabilité.
+
+**Résultats** :
+- Go : `go build` OK sur les packages touchés, `go test ./internal/{platform/duckdb,service,domain}/...` → tous verts (29 tests dans `duckdb`, 60+ dans `service`), 6 nouveaux tests passent.
+- Front : `tsc -b` propre (1 erreur `data_health_warning` préexistante dans le WIP notifications, hors scope — confirmé via stash/unstash).
+- Vitest : 29/29 tests passent sur `features/home` + `features/palmares` + `components/ui/data-freshness-indicator` (était 23/23 avant l'ajout des 6 nouveaux).
+- Lint couleurs : `node tools/lint-no-hardcoded-colors.mjs` clean (`text-white/50` non capturé par le pattern car `white` n'est pas dans `TW_COLOR_NAMES`).
+- **Non testé** : rendu visuel runtime (l'utilisateur va valider dans le navigateur), interaction tooltip hover en E2E. Le composant est volontairement trivial et `Tooltip` est déjà couvert ailleurs.
+
+**Conclusion** : Le fallback BP reste sans TTL (cohérent avec la nature durable de la donnée — un rang historique reste juste). L'utilisateur peut maintenant identifier d'un coup d'œil qu'une donnée est ancienne sans la masquer, et les ops voient l'âge du snapshot dans les logs structurés. Étape suivante côté utilisateur : un sync hors Zscaler reste indispensable pour amorcer la table `battlepass_snapshots` la première fois — l'indicateur n'invente pas de données.
+
+---
+
+## [2026-05-15] feat(palmares/battle-pass) — Coverflow dans la lightbox de récompenses Battle Pass
+
+**Statut** : Complété (validation visuelle utilisateur requise).
+
+**Contexte** : Après le fix précédent (ajout flèches/clavier sur la Home), l'utilisateur a précisé que la régression évoquée était plus large : il attendait dans la lightbox BP l'effet visuel du lecteur médias (`CoverFlowModal`) — c'est-à-dire un aperçu réduit des récompenses précédente et suivante à gauche et à droite de la carte centrale, façon coverflow Apple. La lightbox BP ne montrait que la carte centrale.
+
+**Décision technique** : Refactor de `BattlePassRewardLightbox` calqué sur `CoverFlowModal.tsx:44-50,280-289,434-477` — mêmes constantes `POSITIONS` (5 slots à ±115%/±55%/0% avec scale 0.55/0.7/1 et opacity 0/0.45/1), même `ANIM_MS=500ms`, même `ANIM_EASE` cubic-bezier. Changement d'API breaking (2 consommateurs seulement, aucun test ne référence l'ancienne API) :
+
+- Avant : `{ reward: RewardLightboxData | null, onClose, onPrev?, onNext? }` — navigation pilotée par le parent
+- Après : `{ rewards: RewardLightboxData[], startIndex: number, onClose }` — navigation pilotée en interne (state `currentIndex`, animatingRef, keyboard ←/→, slots cliquables)
+
+Le header (titre/sous-titre/×) et le footer (badges/description/rareté) restent fixes et reflètent toujours la carte centrale. Chaque slot porte son propre fond de rareté (`rarityStyle(slot.quality).bg`) — l'effet visuel donne une transition colorée entre cartes adjacentes. Container body en `overflow-visible`, card outer en `overflow-hidden rounded-2xl` → les slots latéraux dépassent du body mais sont clippés par les coins arrondis de la modale.
+
+**Actions** :
+1. [BattlePassRewardLightbox.tsx](apps/web/src/features/palmares/BattlePassRewardLightbox.tsx) — réécriture complète. Ajout `POSITIONS`, `ANIM_MS`, `ANIM_EASE`, `WINDOW_RADIUS`, `clampIndex`, state `currentIndex`, `animatingRef`, `slots` via useMemo, `navigate('next'/'prev')`, useEffect keyboard, conteneur aspect-[4/3] avec 5 slots absolute inset-0.
+2. [HomeBattlePassPanel.tsx](apps/web/src/features/home/HomeBattlePassPanel.tsx) — pré-calcule `allRewards: RewardLightboxData[]` (useMemo sur `allCards`), monte la lightbox conditionnellement avec `startIndex={selectedIndex}`. Suppression de `selectedReward`, `handlePrev`, `handleNext` (gérés en interne).
+3. [SeasonPassPage.tsx](apps/web/src/features/palmares/SeasonPassPage.tsx) — même pattern, avec les labels i18n locale-dépendants (`text.seasonPass.active/obtained/freeLabel/premium`).
+
+**Résultats** :
+- TypeScript : `tsc --noEmit` sans erreur sur les 3 fichiers.
+- Vitest : 18/18 tests passent (`HomePage.test.tsx` + tous tests dans `features/palmares/`).
+- ESLint : 0 erreur, 10 warnings restants tous préexistants (i18n hardcoded strings — hors scope).
+- **Non testé** : effet visuel runtime (animation 500ms, slots adjacents cliquables, transition rareté). À valider visuellement par l'utilisateur dans le navigateur sur la Home **et** sur `/palmares/season-pass`.
+
+**Conclusion** : La lightbox BP partage désormais le pattern visuel du lecteur médias (5 slots, ±55% translate, 0.7 scale, 0.45 opacity). Code factorisable plus tard (si une 3e surface l'utilise) dans un `CoverFlowContainer` générique — pour l'instant le coupling est explicite avec POSITIONS dupliquées dans 2 fichiers (lightbox BP et CoverFlowModal médias) ; règle "≤ 2 copies" du diagnostic respectée.
+
+---
+
+## [2026-05-15] fix(home/battle-pass) — Restaurer la navigation prev/next dans la lightbox de récompenses sur la Home
+
+**Statut** : Complété.
+
+**Contexte** : Régression visible côté utilisateur : en ouvrant une récompense de Battle Pass depuis le panneau "Pass de combat" de la Home (`HomeBattlePassPanel`), la lightbox s'ouvrait sans flèches précédent/suivant — ni boutons UI, ni navigation clavier ←/→. Le même lightbox sur la page Season Pass (`/palmares/season-pass`) fonctionnait correctement.
+
+**Décision technique** : Aligner `HomeBattlePassPanel.tsx` sur le pattern déjà en place dans `SeasonPassPage.tsx` (lignes 211-239 et 339-344). Le composant `BattlePassRewardLightbox` expose déjà `onPrev?` / `onNext?` (ajoutés par le commit `af39779d`) et n'affiche les flèches que si on les fournit — la Home n'avait simplement jamais câblé les callbacks. Solution : remplacer l'état `activeReward: RewardLightboxData | null` par `selectedIndex: number | null`, dériver via `useMemo` la liste plate `allCards` (`buildTierGroups(tiers).flatMap(g => g.cards)`) et la récompense courante, et passer `handlePrev`/`handleNext` à la lightbox.
+
+**Actions** :
+1. [HomeBattlePassPanel.tsx](apps/web/src/features/home/HomeBattlePassPanel.tsx) — import de `useMemo` + `buildTierGroups`.
+2. Remplacement de `activeReward` par `selectedIndex` ; ajout de `allCards` (useMemo) et `selectedReward` (useMemo) ; `handleOpenCard` cherche désormais l'index par `card.key`.
+3. Ajout de `handlePrev` / `handleNext` avec bornes (`i > 0`, `i < allCards.length - 1`).
+4. Passage conditionnel des callbacks à `<BattlePassRewardLightbox onPrev={...} onNext={...} />` (undefined aux extrémités → les flèches disparaissent en début/fin de liste, comme sur SeasonPassPage).
+
+**Résultats** :
+- TypeScript : aucune nouvelle erreur sur le fichier modifié (l'erreur préexistante sur `notifications/icons.tsx` reste hors scope).
+- Vitest : 15/15 tests `HomePage.test.tsx` passent.
+- UX : ouverture d'une carte sur la Home → flèches gauche/droite + raccourcis clavier ←/→ fonctionnent comme sur la page Season Pass. Les flèches se masquent automatiquement aux extrémités de la liste aplatie de toutes les cartes (gratuites + premium, tous tiers confondus).
+
+**Conclusion** : Régression UX résolue. La Home et la page Season Pass partagent désormais exactement le même pattern de navigation lightbox. Aucun changement d'API publique ni de tests à mettre à jour. Prochaine étape : si une 3e surface devait ouvrir cette lightbox, factoriser `buildAllCardsFromTiers + selectedIndex + handlers` dans un hook `useBattlePassLightboxNav(tiers)` (pas nécessaire aujourd'hui — règle "≤ 2 copies" du diagnostic respectée).
+
+---
+
 ## [2026-05-15] fix(home/playlists) — Badge unranked_N.png pour les playlists classées en placement
 
 **Statut** : Complété.
