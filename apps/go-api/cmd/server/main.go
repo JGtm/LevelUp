@@ -330,6 +330,11 @@ func main() {
 	// détectés. L'emitter est wiré après NewRouter (cf. plus bas) car le
 	// notifications.Service est par-joueur et créé via le ServiceRegistry.
 	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot, nil)
+	if appSettings, err := settingsStore.Load(); err == nil && appSettings.DataHealthBaselineWarnings > 0 {
+		healthScheduler.WithBaselineWarnings(appSettings.DataHealthBaselineWarnings)
+		slog.Info("data_health: baseline appliquée",
+			"baseline_warnings", appSettings.DataHealthBaselineWarnings)
+	}
 	schedulerWG.Add(1)
 	go func() {
 		defer schedulerWG.Done()

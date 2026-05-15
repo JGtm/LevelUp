@@ -48,13 +48,15 @@ type DataHealthCheckResult struct {
 // Notifier peut être nil → la santé est calculée et loggée mais aucune notif
 // n'est émise (mode test ou setup où le service notif n'est pas câblé).
 type HealthScheduler struct {
-	repoRoot      string
-	notif         notifications.Emitter
-	intervalHours int
-	enabled       bool
+	repoRoot         string
+	notif            notifications.Emitter
+	intervalHours    int
+	enabled          bool
+	baselineWarnings int
 }
 
-// NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled).
+// NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled,
+// baseline 0).
 func NewDataHealthScheduler(repoRoot string, notif notifications.Emitter) *HealthScheduler {
 	return &HealthScheduler{
 		repoRoot:      repoRoot,
@@ -75,6 +77,18 @@ func (s *HealthScheduler) WithInterval(hours int) *HealthScheduler {
 // SetEnabled permet de désactiver le scheduler (par config).
 func (s *HealthScheduler) SetEnabled(enabled bool) *HealthScheduler {
 	s.enabled = enabled
+	return s
+}
+
+// WithBaselineWarnings configure un seuil d'anomalies "acceptées" (socle
+// historique non corrigeable). Le scheduler n'émet de notif que si
+// WarningsTotal dépasse strictement ce seuil. baseline <= 0 désactive le
+// filtre (comportement par défaut : toute anomalie déclenche une notif).
+func (s *HealthScheduler) WithBaselineWarnings(baseline int) *HealthScheduler {
+	if baseline < 0 {
+		baseline = 0
+	}
+	s.baselineWarnings = baseline
 	return s
 }
 
@@ -204,6 +218,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 
 	slog.InfoContext(ctx, "data_health: cycle terminé",
 		"warnings_total", res.WarningsTotal,
+		"baseline", s.baselineWarnings,
 		"uuids_raw", res.UUIDsRawCount,
 		"lying_bits_events", res.LyingBitsEvents,
 		"lying_bits_weapons", res.LyingBitsWeaponKills,
@@ -212,7 +227,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		"duration", res.Duration.Round(time.Millisecond),
 	)
 
-	if res.WarningsTotal > 0 && s.notif != nil {
+	if res.WarningsTotal > s.baselineWarnings && s.notif != nil {
 		s.emitWarningNotification(ctx, res)
 	}
 	return res
