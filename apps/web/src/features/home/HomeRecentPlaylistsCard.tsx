@@ -1,9 +1,18 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { HomePlaylistRank } from '@/lib/api/types'
-import { unrankedBadgeURL } from '@/lib/staticAssets'
 
-function RankBadge({ imageUrl, label }: { imageUrl: string; label: string }) {
+function RankBadge({
+  imageUrl,
+  label,
+  testId,
+  opacity,
+}: {
+  imageUrl: string
+  label: string
+  testId?: string
+  opacity?: 'full' | 'dim'
+}) {
   const [failed, setFailed] = useState(false)
 
   if (failed) {
@@ -21,7 +30,8 @@ function RankBadge({ imageUrl, label }: { imageUrl: string; label: string }) {
     <img
       src={imageUrl}
       alt={label}
-      className="h-12 w-12 object-contain"
+      data-testid={testId}
+      className={`h-12 w-12 object-contain ${opacity === 'dim' ? 'opacity-70' : ''}`}
       onError={() => setFailed(true)}
       loading="lazy"
       decoding="async"
@@ -58,76 +68,79 @@ export function HomeRecentPlaylistsCard({
         {items.length > 0 ? (
           <ul className="space-y-4" data-testid="home-recent-playlists-list">
             {items.map((item) => {
-              const showPlacement = item.is_ranked && !item.badge_image_url && item.rating_value == null && !item.tier_label
+              const isPlacement =
+                item.is_ranked && item.rating_value == null && !item.tier_label
+              const placementCompleted =
+                item.measurement_matches_remaining != null
+                  ? Math.min(9, Math.max(0, 10 - item.measurement_matches_remaining))
+                  : null
 
               return (
-              <li
-                key={item.playlist_name}
-                className="flex items-center gap-3"
-                data-testid="home-recent-playlist-item"
-              >
-                {/* Badge rang ou indicateur visuel */}
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center">
-                  {item.badge_image_url ? (
-                    <RankBadge
-                      imageUrl={item.badge_image_url}
-                      label={item.tier_label ?? 'Rang'}
-                    />
-                  ) : showPlacement ? (
-                    <img
-                      src={unrankedBadgeURL()}
-                      alt="En placement"
-                      data-testid="home-rank-unranked-image"
-                      className="h-12 w-12 object-contain opacity-70"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <NeutralRankPlaceholder />
-                  )}
-                </div>
+                <li
+                  key={item.playlist_name}
+                  className="flex items-center gap-3"
+                  data-testid="home-recent-playlist-item"
+                >
+                  {/* Badge rang ou indicateur visuel — badge_image_url est toujours fourni
+                      par le backend pour les playlists classées (rang CSR ou unranked_N.png
+                      en placement). Fallback NeutralRankPlaceholder uniquement pour les
+                      playlists non classées sans rating calculé. */}
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center">
+                    {item.badge_image_url ? (
+                      <RankBadge
+                        imageUrl={item.badge_image_url}
+                        label={item.tier_label ?? (isPlacement ? 'En placement' : 'Rang')}
+                        testId={isPlacement ? 'home-rank-unranked-image' : undefined}
+                        opacity={isPlacement ? 'dim' : 'full'}
+                      />
+                    ) : (
+                      <NeutralRankPlaceholder />
+                    )}
+                  </div>
 
-                {/* Infos playlist + rang */}
-                <div className="min-w-0 flex-1">
-                  <p
-                    data-testid="home-recent-playlist-name"
-                    className="truncate text-sm font-medium text-foreground"
-                  >
-                    {item.playlist_name || 'Playlist inconnue'}
-                  </p>
+                  {/* Infos playlist + rang */}
+                  <div className="min-w-0 flex-1">
+                    <p
+                      data-testid="home-recent-playlist-name"
+                      className="truncate text-sm font-medium text-foreground"
+                    >
+                      {item.playlist_name || 'Playlist inconnue'}
+                    </p>
 
-                  {item.rating_value != null && (
-                    <p className="text-xs font-semibold tabular-nums text-foreground">
-                      {item.rating_type === 'LUSR'
-                        ? `${Math.round(item.rating_value)} pts`
-                        : `${Math.round(item.rating_value)} CSR`}
-                    </p>
-                  )}
+                    {item.rating_value != null && (
+                      <p className="text-xs font-semibold tabular-nums text-foreground">
+                        {item.rating_type === 'LUSR'
+                          ? `${Math.round(item.rating_value)} pts`
+                          : `${Math.round(item.rating_value)} CSR`}
+                      </p>
+                    )}
 
-                  {item.tier_label ? (
-                    <p
-                      data-testid="home-rank-tier-label"
-                      className="truncate text-xs text-muted-foreground"
-                    >
-                      {item.tier_label}
-                    </p>
-                  ) : showPlacement ? (
-                    <p
-                      data-testid="home-rank-unranked-label"
-                      className="text-xs text-muted-foreground"
-                    >
-                      En placement
-                    </p>
-                  ) : item.rating_value == null && (
-                    <p
-                      data-testid="home-rank-neutral-label"
-                      className="text-xs text-muted-foreground"
-                    >
-                      Sans classement
-                    </p>
-                  )}
-                </div>
-              </li>
+                    {item.tier_label ? (
+                      <p
+                        data-testid="home-rank-tier-label"
+                        className="truncate text-xs text-muted-foreground"
+                      >
+                        {item.tier_label}
+                      </p>
+                    ) : isPlacement ? (
+                      <p
+                        data-testid="home-rank-unranked-label"
+                        className="text-xs text-muted-foreground"
+                      >
+                        {placementCompleted != null
+                          ? `En placement ${placementCompleted}/10`
+                          : 'En placement'}
+                      </p>
+                    ) : item.rating_value == null && (
+                      <p
+                        data-testid="home-rank-neutral-label"
+                        className="text-xs text-muted-foreground"
+                      >
+                        Sans classement
+                      </p>
+                    )}
+                  </div>
+                </li>
               )
             })}
           </ul>

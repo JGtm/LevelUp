@@ -382,8 +382,9 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 		var tierFR sql.NullString
 		var subTier sql.NullInt16
 		var tierLabel sql.NullString
+		var measurementRemaining sql.NullInt32
 
-		if err := rows.Scan(&playlistID, &playlistName, &isRanked, &ratingType, &ratingValue, &tier, &tierFR, &subTier, &tierLabel); err != nil {
+		if err := rows.Scan(&playlistID, &playlistName, &isRanked, &ratingType, &ratingValue, &tier, &tierFR, &subTier, &tierLabel, &measurementRemaining); err != nil {
 			return nil, err
 		}
 
@@ -405,6 +406,24 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 				homeStaticTitleSlug,
 				0,
 			)
+		} else if isRanked.Bool {
+			// Placement (CSR ranked sans rating calculé) : émettre unranked_N.png.
+			// N = 10 - matchs restants (clamp 0..9). Si pas de snapshot → unranked_0.
+			completed := 0
+			if measurementRemaining.Valid && measurementRemaining.Int32 > 0 {
+				completed = 10 - int(measurementRemaining.Int32)
+			}
+			if completed < 0 {
+				completed = 0
+			}
+			if completed > 9 {
+				completed = 9
+			}
+			item.BadgeImageURL = unrankedBadgeURL(completed, homeStaticTitleSlug)
+			if measurementRemaining.Valid {
+				remaining := int(measurementRemaining.Int32)
+				item.MeasurementMatchesRemaining = &remaining
+			}
 		}
 		raws = append(raws, rawItem{
 			playlistID:   playlistID.String,

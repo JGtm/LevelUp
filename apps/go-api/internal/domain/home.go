@@ -103,13 +103,17 @@ type HomeSkillPeakSummary struct {
 }
 
 // HomePlaylistRank associe une playlist récente à son dernier rang compétitif connu.
+// MeasurementMatchesRemaining est renseigné quand le joueur est en phase de placement
+// (CSR ranked, 10→0 matchs restants) pour permettre au front de différencier les états
+// de placement (badge unranked_N.png déjà composé côté backend dans BadgeImageURL).
 type HomePlaylistRank struct {
-	PlaylistName  string   `json:"playlist_name"`
-	IsRanked      bool     `json:"is_ranked"`
-	RatingType    *string  `json:"rating_type,omitempty"` // "CSR" | "LUSR" — nil si aucun rang calculé
-	RatingValue   *float64 `json:"rating_value,omitempty"`
-	TierLabel     *string  `json:"tier_label,omitempty"`
-	BadgeImageURL *string  `json:"badge_image_url,omitempty"`
+	PlaylistName                string   `json:"playlist_name"`
+	IsRanked                    bool     `json:"is_ranked"`
+	RatingType                  *string  `json:"rating_type,omitempty"` // "CSR" | "LUSR" — nil si aucun rang calculé
+	RatingValue                 *float64 `json:"rating_value,omitempty"`
+	TierLabel                   *string  `json:"tier_label,omitempty"`
+	BadgeImageURL               *string  `json:"badge_image_url,omitempty"`
+	MeasurementMatchesRemaining *int     `json:"measurement_matches_remaining,omitempty"`
 }
 
 // HomeSpartanIdentity représente le bloc identitaire compact de la home.
