@@ -41,7 +41,7 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 	defer cancel()
 
 	q, args := buildQ37MediaQuery(filters, limit, offset, r.queryConfig())
-	rows, err := r.socialDB().Query(ctx, q, args...)
+	rows, err := r.socialDB().QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMediaFiles: %w", err)
 	}
@@ -509,10 +509,10 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 	// risque de race minimal pour une opÃ©ration manuelle utilisateur.
 	// is_manual = TRUE : marque la correction utilisateur pour qu'un reassociate
 	// global ultÃ©rieur ne l'Ã©crase pas.
-	if _, err := r.socialDB().Exec(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
+	if _, err := r.socialDB().ExecRecovered(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
 		return nil, nil, fmt.Errorf("delete old assoc: %w", err)
 	}
-	if _, err := r.socialDB().Exec(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`, mediaID, matchID); err != nil {
+	if _, err := r.socialDB().ExecRecovered(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`, mediaID, matchID); err != nil {
 		return nil, nil, fmt.Errorf("insert new assoc: %w", err)
 	}
 
@@ -549,7 +549,7 @@ func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked boo
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	result, err := r.socialDB().Exec(ctx, `
+	result, err := r.socialDB().ExecRecovered(ctx, `
 		UPDATE media_files
 		SET liked = ?,
 			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
@@ -639,7 +639,7 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 		// Note : `liked_at = CURRENT_TIMESTAMP` dans le ON CONFLICT casse le binder
 		// DuckDB qui interprÃ¨te CURRENT_TIMESTAMP comme un nom de colonne.
 		// On utilise EXCLUDED.liked_at qui prend la valeur du VALUES (= CURRENT_TIMESTAMP).
-		_, err := r.socialDB().Exec(ctx, `
+		_, err := r.socialDB().ExecRecovered(ctx, `
 			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)
 			VALUES (?, ?, ?, CURRENT_TIMESTAMP)
 			ON CONFLICT (media_path, liker_slug) DO UPDATE SET
@@ -648,7 +648,7 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 		`, mediaPath, likerSlug, likerGamertag)
 		return err
 	}
-	_, err := r.socialDB().Exec(ctx, `
+	_, err := r.socialDB().ExecRecovered(ctx, `
 		DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
 	`, mediaPath, likerSlug)
 	return err
@@ -676,7 +676,7 @@ func (r *MediaRepo) GetMediaLikers(ctx context.Context, mediaPaths []string) (ma
 	WHERE media_path IN (` + joinStrings(placeholders) + `)
 	ORDER BY media_path, liked_at`
 
-	rows, err := r.socialDB().Query(ctx, q, args...)
+	rows, err := r.socialDB().QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetMediaLikers: %w", err)
 	}
@@ -777,7 +777,7 @@ type mediaFilterOptionPair struct {
 }
 
 func (r *MediaRepo) loadMediaIDLabelPairs(ctx context.Context, query string, args []any) ([]mediaFilterOptionPair, error) {
-	rows, err := r.socialDB().Query(ctx, query, args...)
+	rows, err := r.socialDB().QueryRecovered(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

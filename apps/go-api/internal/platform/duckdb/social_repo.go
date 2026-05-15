@@ -36,7 +36,7 @@ func (r *SocialRepo) ToggleMatchFavorite(ctx context.Context, playerSlug, matchI
 	}
 
 	if favorited {
-		_, err := db.Exec(ctx, `
+		_, err := db.ExecRecovered(ctx, `
 			INSERT INTO match_favorites (player_slug, match_id, favorited_at)
 			VALUES (?, ?, CURRENT_TIMESTAMP)
 			ON CONFLICT (player_slug, match_id) DO NOTHING
@@ -46,7 +46,7 @@ func (r *SocialRepo) ToggleMatchFavorite(ctx context.Context, playerSlug, matchI
 		}
 		return nil
 	}
-	_, err := db.Exec(ctx, `
+	_, err := db.ExecRecovered(ctx, `
 		DELETE FROM match_favorites WHERE player_slug = ? AND match_id = ?
 	`, playerSlug, matchID)
 	if err != nil {
@@ -83,7 +83,7 @@ func (r *SocialRepo) GetFavoriteMatchIDs(ctx context.Context, playerSlug string)
 		return nil, nil
 	}
 
-	rows, err := db.Query(ctx, `SELECT match_id FROM match_favorites WHERE player_slug = ?`, playerSlug)
+	rows, err := db.QueryRecovered(ctx, `SELECT match_id FROM match_favorites WHERE player_slug = ?`, playerSlug)
 	if err != nil {
 		return nil, fmt.Errorf("GetFavoriteMatchIDs: %w", err)
 	}

@@ -13,19 +13,31 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
 // DB encapsule une connexion DuckDB ouverte.
+//
+// Les champs après cacheKey sont persistés pour permettre Reopen() de
+// reconstruire la connexion avec exactement la même configuration suite à
+// une invalidation fatale (cf. bug DuckDB ART/NULL, 2026-05-14).
 type DB struct {
 	sqlDB    *sql.DB
 	path     string
 	cacheKey string
 	closed   bool
+	// Paramètres d'ouverture conservés pour Reopen().
+	dsn          string
+	maxOpenConns int
+	maxIdleConns int
+	timezone     string
+	op           string
 }
 
 type cachedDB struct {
@@ -127,6 +139,139 @@ func openCachedDB(
 		delete(openDBs, key)
 	}
 
+	sqlDB, err := openSQLDBFor(dsn, timezone, op, path)
+	if err != nil {
+		return nil, err
+	}
+	if timezone != "" {
+		slog.Debug("duckdb: timezone appliquée", "timezone", timezone, "path", path)
+	}
+	applyConnLimits(sqlDB, maxOpenConns, maxIdleConns)
+
+	db := &DB{
+		sqlDB:        sqlDB,
+		path:         path,
+		cacheKey:     key,
+		dsn:          dsn,
+		maxOpenConns: maxOpenConns,
+		maxIdleConns: maxIdleConns,
+		timezone:     timezone,
+		op:           op,
+	}
+	openDBs[key] = &cachedDB{db: db, refCount: 1}
+	return db, nil
+}
+
+// IsInvalidatedError détecte les erreurs DuckDB qui marquent une connexion
+// comme fatale (ne peut plus être utilisée jusqu'au reopen ou restart).
+//
+// Pattern observé en prod (log 2026-05-14) :
+//
+//	"database has been invalidated because of a previous fatal error.
+//	 The database must be restarted prior to being used again."
+//
+// Cause racine connue : « Failed to delete all rows from index. Only deleted
+// N out of M rows. » sur un index ART avec valeurs NULL (cf. duckdb#9277).
+//
+// Exporté pour que les callers (repo, scheduler) puissent décider de :
+//   - logger un incident métier (corruption d'index)
+//   - tenter un Reopen() via WithReopenOnInvalidated
+//   - propager au handler HTTP qui choisira la stratégie (503 + retry, etc.)
+func IsInvalidatedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "database has been invalidated") ||
+		strings.Contains(s, "Failed to delete all rows from index") ||
+		strings.Contains(s, "database must be restarted prior")
+}
+
+// Reopen ferme la connexion actuelle et en ouvre une nouvelle avec les
+// mêmes paramètres (DSN, max conns, timezone). Permet de récupérer d'une
+// invalidation fatale sans redémarrer le serveur.
+//
+// Thread-safe via le mutex du cache. Tout autre *DB existant qui pointait
+// sur la MÊME instance partagée sera également mis à jour (le pointeur
+// sqlDB est remplacé in-place et la cache entry pointe sur le même *DB).
+//
+// Limitations :
+//   - Les requêtes/transactions en cours sur l'ancien sqlDB échoueront
+//     (comportement attendu : l'invalidation a déjà cassé ces requêtes).
+//   - Si le ping de la nouvelle connexion échoue (fichier corrompu côté
+//     OS), retourne l'erreur sans toucher au sqlDB existant.
+func (db *DB) Reopen() error {
+	if db == nil {
+		return errors.New("duckdb.Reopen: nil DB")
+	}
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+
+	// Construit le nouveau sqlDB avec la même config qu'à l'ouverture initiale.
+	newSQLDB, err := openSQLDBFor(db.dsn, db.timezone, db.op, db.path)
+	if err != nil {
+		slog.Error("duckdb: Reopen a échoué (fichier inaccessible ?)",
+			"path", db.path, "op", db.op, "err", err)
+		return err
+	}
+	applyConnLimits(newSQLDB, db.maxOpenConns, db.maxIdleConns)
+
+	// Ferme l'ancien sqlDB en best-effort (déjà invalidé côté DuckDB).
+	if db.sqlDB != nil {
+		_ = db.sqlDB.Close()
+	}
+	db.sqlDB = newSQLDB
+	db.closed = false
+
+	// Restaure l'entrée cache pointant sur cette même *DB (refCount préservé
+	// si déjà présent, sinon refCount=1).
+	if db.cacheKey != "" {
+		if cached, ok := openDBs[db.cacheKey]; ok {
+			cached.db = db
+		} else {
+			openDBs[db.cacheKey] = &cachedDB{db: db, refCount: 1}
+		}
+	}
+
+	slog.Info("duckdb: connexion ré-ouverte après invalidation",
+		"path", db.path, "op", db.op)
+	return nil
+}
+
+// WithReopenOnInvalidated exécute fn ; si fn renvoie une erreur
+// d'invalidation détectée par IsInvalidatedError, fait un Reopen() et
+// retry fn une fois. Sinon retourne l'erreur originale.
+//
+// Pattern à utiliser dans les repos qui font des opérations write sensibles
+// (UPDATE/DELETE) sur des DB partagées process-level — ainsi un bug DuckDB
+// transitoire n'invalide pas la DB pour toute la durée de vie du process.
+//
+// Le retry est borné à 1 : si la 2e tentative échoue aussi avec une
+// invalidation, on remonte l'erreur (probablement une corruption durable
+// du fichier qui nécessite intervention).
+func (db *DB) WithReopenOnInvalidated(fn func() error) error {
+	err := fn()
+	if !IsInvalidatedError(err) {
+		return err
+	}
+	slog.Warn("duckdb: connexion invalidée, tentative de reopen",
+		"path", db.path, "err", err)
+	if reopenErr := db.Reopen(); reopenErr != nil {
+		return fmt.Errorf("reopen after invalidation: %w (original: %v)", reopenErr, err)
+	}
+	retryErr := fn()
+	if retryErr != nil {
+		// Retry échoué : incident à traiter par les ops (corruption persistante ?).
+		slog.Error("duckdb: retry post-reopen a échoué",
+			"path", db.path, "err", retryErr,
+			"persistent_invalidation", IsInvalidatedError(retryErr))
+	}
+	return retryErr
+}
+
+// openSQLDBFor construit un *sql.DB depuis un DSN + timezone, avec ping.
+// Extrait de openCachedDB pour réutilisation par Reopen.
+func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
 	var sqlDB *sql.DB
 	if timezone != "" {
 		tz := timezone
@@ -137,7 +282,6 @@ func openCachedDB(
 		if err != nil {
 			return nil, fmt.Errorf("duckdb.%s connector(%s): %w", op, path, err)
 		}
-		slog.Debug("duckdb: timezone appliquée", "timezone", timezone, "path", path)
 		sqlDB = sql.OpenDB(connector)
 	} else {
 		var err error
@@ -150,6 +294,12 @@ func openCachedDB(
 		sqlDB.Close()
 		return nil, fmt.Errorf("duckdb.%s ping(%s): %w", op, path, err)
 	}
+	return sqlDB, nil
+}
+
+// applyConnLimits applique maxOpen/maxIdle avec la logique d'openCachedDB
+// (defaults à 1, écrasés si > 1).
+func applyConnLimits(sqlDB *sql.DB, maxOpenConns, maxIdleConns int) {
 	sqlDB.SetMaxOpenConns(1)
 	sqlDB.SetMaxIdleConns(1)
 	if maxOpenConns > 1 {
@@ -158,10 +308,6 @@ func openCachedDB(
 	if maxIdleConns > 1 {
 		sqlDB.SetMaxIdleConns(maxIdleConns)
 	}
-
-	db := &DB{sqlDB: sqlDB, path: path, cacheKey: key}
-	openDBs[key] = &cachedDB{db: db, refCount: 1}
-	return db, nil
 }
 
 // Close ferme la connexion DuckDB. À appeler au shutdown.
@@ -202,6 +348,38 @@ func (db *DB) Query(ctx context.Context, query string, args ...interface{}) (*sq
 // Exec exécute une instruction sans valeur de retour.
 func (db *DB) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	return db.sqlDB.ExecContext(ctx, query, args...)
+}
+
+// ExecRecovered exécute un Exec sous WithReopenOnInvalidated : si la connexion
+// est invalidée par un bug DuckDB transitoire, fait un Reopen + retry une fois.
+//
+// À utiliser par défaut dans les repos qui écrivent sur des bases partagées
+// process-level (shared_social.duckdb, notamment) — un seul incident de
+// connexion ne doit pas casser l'API jusqu'au prochain restart.
+func (db *DB) ExecRecovered(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	var res sql.Result
+	err := db.WithReopenOnInvalidated(func() error {
+		var execErr error
+		res, execErr = db.sqlDB.ExecContext(ctx, query, args...)
+		return execErr
+	})
+	return res, err
+}
+
+// QueryRecovered exécute une Query sous WithReopenOnInvalidated. Cf. ExecRecovered.
+//
+// ATTENTION : si l'invalidation se produit pendant l'itération des rows (donc
+// après QueryRecovered a retourné), le wrapper ne peut plus reagir. Seule la
+// requête initiale est protégée. Les rows.Next()/rows.Scan() restent
+// vulnérables et doivent être audités dans les chemins critiques (rare).
+func (db *DB) QueryRecovered(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	var rows *sql.Rows
+	err := db.WithReopenOnInvalidated(func() error {
+		var qerr error
+		rows, qerr = db.sqlDB.QueryContext(ctx, query, args...)
+		return qerr
+	})
+	return rows, err
 }
 
 // SQLDb retourne le *sql.DB sous-jacent (pour interop avec d'autres packages).
