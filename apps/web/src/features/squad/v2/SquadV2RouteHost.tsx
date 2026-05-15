@@ -6,12 +6,12 @@
  * GamertagCombobox) et les passe à `<SquadV2Page>` comme `teammates`. Garde
  * SquadV2Page découplé du store / context pour rester testable seul.
  *
- * Cascade (experienceTypes/playlists/modes) et période sont lus depuis le global
- * filter store (filterContext commité par le bouton Analyser de SquadLayout).
+ * Cascade (experienceTypes/playlists/modes) et période sont lus depuis le store
+ * squad (filterContext commité par le bouton Analyser de SquadLayout).
  */
 import { useParams } from '@tanstack/react-router'
 
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { detectActivePreset } from '@/components/shell/FilterOmnibar'
 import { useSquadContext } from '../SquadContext'
 
@@ -32,7 +32,7 @@ function presetToSquadPeriod(presetId: ReturnType<typeof detectActivePreset>): S
 export function SquadV2RouteHost() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { confirmedGamertags } = useSquadContext()
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
+  const filterContext = useSquadFilterStore((s) => s.filterContext)
 
   const period = presetToSquadPeriod(detectActivePreset(filterContext.period))
   const experienceTypes = filterContext.cascade?.experience_types ?? []

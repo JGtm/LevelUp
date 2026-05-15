@@ -9,7 +9,7 @@ import { DeltaCard } from '@/components/ui/delta-card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import type { SessionCompareEntry, SessionCompareMetricRow, SessionDetailMatchRow } from '@/lib/api/types'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 
 import { outcomeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -202,23 +202,36 @@ function SessionCompareMetrics({ metrics }: { metrics: SessionCompareMetricRow[]
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const { session: initialSession } = useSearch({ strict: false }) as { session?: string }
-  const filterContext = useGlobalFilterStore((state) => state.filterContext)
-  const filterContextHash = useGlobalFilterStore((state) => state.filterContextHash)
   const t = useSessionT()
 
   const [sessionLabel, setSessionLabel] = useState(initialSession ?? '')
   const [compareSessionLabel, setCompareSessionLabel] = useState('')
   const [enableCompare, setEnableCompare] = useState(false)
 
+  // Barre filtres locale — scope strict à la page Session-Detail. Pas de
+  // dépendance au store global.
+  const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
+    playerSlug,
+    labels: {
+      experience: t('session.filters.experience'),
+      experienceAll: t('session.filters.experience_all'),
+      experienceRanked: t('session.filters.experience_ranked'),
+      experienceUnranked: t('session.filters.experience_unranked'),
+      playlists: t('session.filters.playlists'),
+      modes: t('session.filters.modes'),
+      reset: t('session.filters.reset'),
+    },
+  })
+
   const { data, isLoading, isError, refetch } = useSessionDetailPage(
     playerSlug,
     {
-      filters: filterContext,
+      filters: committedFilterContext,
       session_label: sessionLabel || undefined,
       compare_session_label: compareSessionLabel || undefined,
       enable_compare: enableCompare,
     },
-    filterContextHash,
+    committedHash,
     sessionLabel,
     compareSessionLabel,
     enableCompare,
@@ -226,36 +239,45 @@ export function SessionDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label={t('session.detail.loading')} />
+      <div className="flex flex-col">
+        {bar}
+        <div className="flex h-full items-center justify-center p-6">
+          <Spinner size="lg" label={t('session.detail.loading')} />
+        </div>
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">{t('session.detail.load_error')}</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-              {t('session.errors.retry')}
-            </button>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col">
+        {bar}
+        <div className="p-6">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="font-medium text-destructive">{t('session.detail.load_error')}</p>
+              <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
+                {t('session.errors.retry')}
+              </button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="p-6">
-        <EmptyStateCard
-          title={t('session.detail.empty_title')}
-          description={t('session.detail.empty_description')}
-          actionLabel={t('session.errors.retry')}
-          onAction={() => refetch()}
-        />
+      <div className="flex flex-col">
+        {bar}
+        <div className="p-6">
+          <EmptyStateCard
+            title={t('session.detail.empty_title')}
+            description={t('session.detail.empty_description')}
+            actionLabel={t('session.errors.retry')}
+            onAction={() => refetch()}
+          />
+        </div>
       </div>
     )
   }
@@ -268,6 +290,7 @@ export function SessionDetailPage() {
 
   return (
     <div className="flex flex-col">
+      {bar}
       <div className="space-y-6 p-6">
         {suggestionAvailable && !enableCompare && (
           <div className="flex justify-end">

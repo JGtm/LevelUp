@@ -52,8 +52,12 @@ describe('CareerPage', () => {
   it('affiche des placeholders explicites pour les sections vides', async () => {
     renderWithProviders(<CareerPage />)
     await waitFor(() => {
+      // Placeholders "Graphique indisponible" et "Top matchs indisponibles"
+      // restent rendus dans le DOM pour les sections vides. Le placeholder
+      // "Rating indisponible" a été retiré du composant lors d'un refacto
+      // ultérieur (post-test) — son assertion a été supprimée pour aligner
+      // le test sur l'état actuel du composant.
       expect(screen.getAllByText(/Graphique indisponible/i).length).toBeGreaterThan(0)
-      expect(screen.getByText(/Rating indisponible/i)).toBeInTheDocument()
       expect(screen.getByText(/Top matchs indisponibles/i)).toBeInTheDocument()
     })
   })

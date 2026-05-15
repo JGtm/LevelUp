@@ -11,7 +11,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
-import { useGlobalFilterStore, DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
+import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
+import { DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import type { FilterContextResolved } from '@/lib/api/types'
 
 import { PeriodSessionRail } from './PeriodSessionRail'

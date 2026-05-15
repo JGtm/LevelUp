@@ -38,7 +38,7 @@ import { formatDate, formatDurationMMSS } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor } from '@/lib/match-nav/navContext'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
@@ -171,7 +171,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const labelOfPlaylist = (p?: string | null) => (p ? (playlistAssets?.[p]?.label ?? p) : '-')
 
   const navigateToMatch = useNavigateToMatch(playerSlug)
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
+  const filterContext = useSoloFilterStore((s) => s.filterContext)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
   const goToMatch = (matchId: string) => {
     const filterSpec = filterContextToMatchFilterSpec(filterContext)

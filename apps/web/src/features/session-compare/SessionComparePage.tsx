@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { useSessionComparePage } from './queries'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 import { DeltaCard } from '@/components/ui/delta-card'
 import type { SessionCompareEntry, SessionCompareMetricRow } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
@@ -102,57 +102,78 @@ function MetricRow({ row }: { row: SessionCompareMetricRow }) {
 
 export function SessionComparePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
-  const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
   const t = useSessionT()
 
   const [sessionA, setSessionA] = useState('')
   const [sessionB, setSessionB] = useState('')
 
+  // Barre filtres locale — scope strict à la page Session-Compare.
+  const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
+    playerSlug,
+    labels: {
+      experience: t('session.filters.experience'),
+      experienceAll: t('session.filters.experience_all'),
+      experienceRanked: t('session.filters.experience_ranked'),
+      experienceUnranked: t('session.filters.experience_unranked'),
+      playlists: t('session.filters.playlists'),
+      modes: t('session.filters.modes'),
+      reset: t('session.filters.reset'),
+    },
+  })
+
   const { data, isLoading, isError, refetch } = useSessionComparePage(
     playerSlug,
     {
-      filters: filterContext,
+      filters: committedFilterContext,
       session_a: sessionA || null,
       session_b: sessionB || null,
     },
-    filterContextHash,
+    committedHash,
     sessionA,
     sessionB,
   )
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" label={t('session.compare.loading')} />
+      <div className="flex flex-col">
+        {bar}
+        <div className="flex h-full items-center justify-center p-6">
+          <Spinner size="lg" label={t('session.compare.loading')} />
+        </div>
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">{t('session.compare.load_error')}</p>
-            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-              {t('session.errors.retry')}
-            </button>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col">
+        {bar}
+        <div className="p-6">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="font-medium text-destructive">{t('session.compare.load_error')}</p>
+              <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
+                {t('session.errors.retry')}
+              </button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="p-6">
-        <EmptyStateCard
-          title={t('session.compare.empty_title')}
-          description={t('session.compare.empty_description')}
-          actionLabel={t('session.errors.retry')}
-          onAction={() => refetch()}
-        />
+      <div className="flex flex-col">
+        {bar}
+        <div className="p-6">
+          <EmptyStateCard
+            title={t('session.compare.empty_title')}
+            description={t('session.compare.empty_description')}
+            actionLabel={t('session.errors.retry')}
+            onAction={() => refetch()}
+          />
+        </div>
       </div>
     )
   }
@@ -162,6 +183,7 @@ export function SessionComparePage() {
 
   return (
     <div className="flex flex-col">
+      {bar}
       <div className="space-y-6 p-6">
         {hasAvailableSessions ? (
           <>

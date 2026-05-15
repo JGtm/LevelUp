@@ -10,7 +10,8 @@
  * Les changements externes (auto-snap, reset) resynchronisent l'état local.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import type { FilterStore } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFiltersPreview } from '@/features/filters/queries'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
@@ -56,14 +57,18 @@ interface FilterOmnibarProps {
    *  Injecté sur le preview et sur le filterContext commité, mais PAS persisté
    *  dans le store global (contexte page, pas contexte utilisateur). */
   matchContext?: 'solo' | 'squad' | 'all'
+  /** Store de filtres à utiliser. Défaut : `useSoloFilterStore` (compat
+   *  rétroactive avec NavL2/Stats Solo). SquadLayout injecte
+   *  `useSquadFilterStore` quand il consomme ce composant. */
+  filterStore?: FilterStore
 }
 
-export function FilterOmnibar({ matchContext }: FilterOmnibarProps = {}) {
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
-  const filterContextHash = useGlobalFilterStore((s) => s.filterContextHash)
-  const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
-  const setFilterContext = useGlobalFilterStore((s) => s.setFilterContext)
-  const resetFilters = useGlobalFilterStore((s) => s.resetFilters)
+export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }: FilterOmnibarProps = {}) {
+  const filterContext = filterStore((s) => s.filterContext)
+  const filterContextHash = filterStore((s) => s.filterContextHash)
+  const resolvedContext = filterStore((s) => s.resolvedContext)
+  const setFilterContext = filterStore((s) => s.setFilterContext)
+  const resetFilters = filterStore((s) => s.resetFilters)
   const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
   const locale = useAppShellStore((s) => s.locale)
 

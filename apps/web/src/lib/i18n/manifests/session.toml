@@ -21,6 +21,36 @@ en = "No session is available in the current scope. Check session bucketing or b
 fr = "Réessayer"
 en = "Retry"
 
+# ─── Filtres locaux (barre sticky) ────────────────────────────────────────
+
+[session.filters.experience]
+fr = "Expérience"
+en = "Experience"
+
+[session.filters.experience_all]
+fr = "Toutes"
+en = "All"
+
+[session.filters.experience_ranked]
+fr = "Classé"
+en = "Ranked"
+
+[session.filters.experience_unranked]
+fr = "Non classé"
+en = "Unranked"
+
+[session.filters.playlists]
+fr = "Playlists"
+en = "Playlists"
+
+[session.filters.modes]
+fr = "Modes"
+en = "Modes"
+
+[session.filters.reset]
+fr = "Réinitialiser"
+en = "Reset"
+
 # ─── Détail (SessionDetailPage) ────────────────────────────────────────────
 
 [session.detail.loading]

@@ -30,7 +30,7 @@ import { formatDate } from '@/lib/formatters'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -70,7 +70,7 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
   const intlLocale = t.intlLocale
   const { data: mappings } = useFieldMappings()
   const navigateToMatch = useNavigateToMatch(playerSlug)
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
+  const filterContext = useSquadFilterStore((s) => s.filterContext)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
   const goToSquadMatch = (matchId: string) => {
     const filterSpec = filterContextToMatchFilterSpec(filterContext)

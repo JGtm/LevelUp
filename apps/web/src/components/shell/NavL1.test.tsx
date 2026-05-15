@@ -76,18 +76,18 @@ describe('NavL1', () => {
     ).toBeTruthy()
   })
 
-  it('affiche Stats (parent de Synthèse) dans la navigation principale', () => {
+  it('affiche Solo (parent de Synthèse) dans la navigation principale', () => {
     renderWithProviders(<NavL1 />)
 
-    expect(screen.getByRole('link', { name: 'Stats' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Solo' })).toBeInTheDocument()
   })
 
-  it('marque Stats actif sur la route /synthesis (Synthèse est sous-onglet de Stats)', () => {
+  it('marque Solo actif sur la route /synthesis (Synthèse est sous-onglet de Solo)', () => {
     mockPathname = '/players/test-player/synthesis'
 
     renderWithProviders(<NavL1 />)
 
-    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Solo' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('place Objectifs entre Escouade et Communauté', () => {

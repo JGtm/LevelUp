@@ -5,7 +5,8 @@
  * sessions, cascade, reset) et que le hash change quand le contexte change.
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useGlobalFilterStore, DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/globalFilterStore'
+import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
+import { DEFAULT_GAP_MINUTES, DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import type { FilterContextResolved } from '@/lib/api/types'
 
 describe('GlobalFilterStore', () => {
@@ -188,7 +189,7 @@ describe('GlobalFilterStore', () => {
       modes: [],
       maps: [],
     })
-    const stored = localStorage.getItem('levelup-filter-store-v1')
+    const stored = localStorage.getItem('levelup-solo-filter-v1')
     expect(stored).not.toBeNull()
     const parsed = JSON.parse(stored!)
     expect(parsed.state.filterContext.cascade.experience_types).toContain('pvp')
@@ -196,7 +197,7 @@ describe('GlobalFilterStore', () => {
 
   it('persiste lastKnownLatestSessionId dans localStorage', () => {
     useGlobalFilterStore.getState().setLastKnownLatestSessionId('persisted-id')
-    const stored = localStorage.getItem('levelup-filter-store-v1')
+    const stored = localStorage.getItem('levelup-solo-filter-v1')
     expect(stored).not.toBeNull()
     const parsed = JSON.parse(stored!)
     expect(parsed.state.lastKnownLatestSessionId).toBe('persisted-id')
@@ -211,7 +212,7 @@ describe('GlobalFilterStore', () => {
       period_presets: [],
     }
     useGlobalFilterStore.getState().setResolvedContext(resolved)
-    const stored = localStorage.getItem('levelup-filter-store-v1')
+    const stored = localStorage.getItem('levelup-solo-filter-v1')
     expect(stored).not.toBeNull()
     const parsed = JSON.parse(stored!)
     expect(parsed.state.resolvedContext).toBeUndefined()
@@ -219,7 +220,7 @@ describe('GlobalFilterStore', () => {
 
   it('ne persiste pas isAutoSnappingToLatest (éphémère)', () => {
     useGlobalFilterStore.getState().autoSnapToLatestSession('sess-id', true)
-    const stored = localStorage.getItem('levelup-filter-store-v1')
+    const stored = localStorage.getItem('levelup-solo-filter-v1')
     const parsed = JSON.parse(stored!)
     expect(parsed.state.isAutoSnappingToLatest).toBeUndefined()
   })

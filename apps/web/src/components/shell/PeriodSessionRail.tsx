@@ -13,7 +13,8 @@
  * Remplace l'ancien `SessionNavBar` (Stats-only) par une nav universelle visible
  * sur toutes les pages joueur (Stats, Squad, Home, Synthèse).
  */
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import type { FilterStore } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { computeNextWindow, computePrevWindow, getRailMode } from '@/features/filters/periodSessionNav'
 import { useSeasons, type SeasonEntry } from '@/lib/i18n/fieldMappings'
@@ -186,10 +187,15 @@ const ZONE_RIGHT_CLASS = 'flex shrink-0 items-center gap-1.5'
 const NAV_BTN_CLASS =
   'rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30'
 
+interface PeriodSessionRailProps {
+  /** Store à utiliser. Défaut : useSoloFilterStore (rétrocompat NavL2). */
+  filterStore?: FilterStore
+}
+
 /** Composant principal — dispatcher selon le mode (session / multi-session / period / season). */
-export function PeriodSessionRail() {
-  const filterContext = useGlobalFilterStore((s) => s.filterContext)
-  const resolvedContext = useGlobalFilterStore((s) => s.resolvedContext)
+export function PeriodSessionRail({ filterStore = useSoloFilterStore }: PeriodSessionRailProps = {}) {
+  const filterContext = filterStore((s) => s.filterContext)
+  const resolvedContext = filterStore((s) => s.resolvedContext)
   const seasons = useSeasons()
 
   const locale = (useAppShellStore((s) => s.locale) as Locale) ?? 'fr'
@@ -209,6 +215,7 @@ export function PeriodSessionRail() {
         total={mode.total}
         locale={locale}
         t={t}
+        filterStore={filterStore}
       />
     )
   }
@@ -216,7 +223,7 @@ export function PeriodSessionRail() {
   // pile une saison du catalog (priorité à l'affichage saison).
   const activeSeason = findActiveSeason(seasons, mode.period.start_date, mode.period.end_date)
   if (activeSeason) {
-    return <SeasonRail season={activeSeason} seasons={seasons} locale={locale} t={t} />
+    return <SeasonRail season={activeSeason} seasons={seasons} locale={locale} t={t} filterStore={filterStore} />
   }
   return (
     <PeriodRail
@@ -227,6 +234,7 @@ export function PeriodSessionRail() {
       durationDays={mode.durationDays}
       locale={locale}
       t={t}
+      filterStore={filterStore}
     />
   )
 }
@@ -343,18 +351,19 @@ interface SessionRailProps {
   total: number
   locale: Locale
   t: RailText
+  filterStore: FilterStore
 }
 
-function SessionRail({ session, index, total, locale, t }: SessionRailProps) {
+function SessionRail({ session, index, total, locale, t, filterStore }: SessionRailProps) {
   const formattedLabel = formatSessionLabel(
     session.label,
     session.started_at_utc,
     session.ended_at_utc,
     locale,
   )
-  const isAutoSnapping = useGlobalFilterStore((s) => s.isAutoSnappingToLatest)
-  const goToPrevSession = useGlobalFilterStore((s) => s.goToPrevSession)
-  const goToNextSession = useGlobalFilterStore((s) => s.goToNextSession)
+  const isAutoSnapping = filterStore((s) => s.isAutoSnappingToLatest)
+  const goToPrevSession = filterStore((s) => s.goToPrevSession)
+  const goToNextSession = filterStore((s) => s.goToNextSession)
 
   const canGoPrev = index < total - 1
   const canGoNext = index > 0
@@ -409,11 +418,12 @@ interface PeriodRailProps {
   durationDays: number
   locale: Locale
   t: RailText
+  filterStore: FilterStore
 }
 
-function PeriodRail({ period, durationDays, locale, t }: PeriodRailProps) {
-  const goToPrevPeriod = useGlobalFilterStore((s) => s.goToPrevPeriod)
-  const goToNextPeriod = useGlobalFilterStore((s) => s.goToNextPeriod)
+function PeriodRail({ period, durationDays, locale, t, filterStore }: PeriodRailProps) {
+  const goToPrevPeriod = filterStore((s) => s.goToPrevPeriod)
+  const goToNextPeriod = filterStore((s) => s.goToNextPeriod)
 
   const startLabel = period.start_date ? formatDateShort(period.start_date, locale) : '?'
   const endLabel = period.end_date ? formatDateShort(period.end_date, locale) : '?'
@@ -461,13 +471,14 @@ interface SeasonRailProps {
   seasons: SeasonEntry[]
   locale: Locale
   t: RailText
+  filterStore: FilterStore
 }
 
 /** Mode "season" : prend le relais du mode period quand la fenêtre courante
  *  matche pile une saison du catalog. Boutons prev/next sautent saison-à-
  *  saison via setPeriod (au lieu du sliding-window classique). */
-function SeasonRail({ season, seasons, locale, t }: SeasonRailProps) {
-  const setPeriod = useGlobalFilterStore((s) => s.setPeriod)
+function SeasonRail({ season, seasons, locale, t, filterStore }: SeasonRailProps) {
+  const setPeriod = filterStore((s) => s.setPeriod)
 
   const prev = prevSeason(seasons, season)
   const next = nextSeason(seasons, season)
