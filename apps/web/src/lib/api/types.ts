@@ -1379,6 +1379,8 @@ export interface HomePlaylistRank {
   rating_value?: number | null
   tier_label?: string | null
   badge_image_url?: string | null
+  /** Matchs de placement restants (10→0). Présent uniquement pour CSR ranked en placement. */
+  measurement_matches_remaining?: number | null
 }
 
 export interface HomeSpartanIdentity {

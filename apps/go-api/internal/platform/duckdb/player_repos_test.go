@@ -156,6 +156,15 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
 			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
 			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
+		`CREATE TABLE player_csr_snapshots (
+			playlist_id VARCHAR NOT NULL, playlist_name VARCHAR, queue VARCHAR, input VARCHAR,
+			season_id VARCHAR NOT NULL,
+			current_value FLOAT, current_tier VARCHAR, current_sub_tier SMALLINT,
+			current_measurement_remaining INTEGER,
+			season_value FLOAT, season_tier VARCHAR, season_sub_tier SMALLINT,
+			alltime_value FLOAT, alltime_tier VARCHAR, alltime_sub_tier SMALLINT,
+			fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (playlist_id, season_id))`,
 		`CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`,
 		`CREATE TABLE media_files (
 			file_path VARCHAR PRIMARY KEY, file_name VARCHAR, kind VARCHAR,
@@ -308,6 +317,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			rank INTEGER, is_ranked BOOLEAN DEFAULT FALSE, team_id INTEGER DEFAULT 0,
 			avg_life_seconds DOUBLE)`,
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		// shared.v_gamertag_lookup utilisée par Q10Encounters
+		// (LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid).
+		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 		// Vues root-level → Q10Encounters et Q1MatchCount sans préfixe
 		`CREATE VIEW match_registry AS SELECT * FROM shared.match_registry`,
 		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
@@ -341,11 +353,18 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
 	ddl := []string{
+		// Colonnes v1 + colonnes v2 ajoutées par la migration
+		// `add_citation_mappings_v2_fields` ([steps_metadata.go:265-282]).
+		// Garder en sync avec la migration : les queries du repo référencent
+		// composite_children, medal_ids, stat_name, award_name, custom_function.
 		`CREATE TABLE citation_mappings (
 			citation_name_norm VARCHAR, citation_name_display VARCHAR,
 			mapping_type VARCHAR, category VARCHAR,
 			image_path VARCHAR, description VARCHAR, tier_targets VARCHAR,
-			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE)`,
+			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE,
+			medal_ids VARCHAR, stat_name VARCHAR, award_name VARCHAR,
+			award_category VARCHAR, custom_function VARCHAR,
+			composite_children VARCHAR, subcategory VARCHAR)`,
 		`CREATE TABLE asset_translations (
 			asset_id VARCHAR,
 			asset_type VARCHAR,
@@ -355,6 +374,24 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			fetched_at TIMESTAMPTZ,
 			PRIMARY KEY (asset_id, asset_type, lang))`,
 		`CREATE TABLE weapon_labels (weapon_id UBIGINT, name_en VARCHAR, name_fr VARCHAR)`,
+		// medal_definitions + medal_translations utilisées par
+		// MatchViewRepo.lookupMedalMeta (chaîne BCP-47 prioritaire sur le
+		// fallback citation_mappings). Cf. migrations `add_medal_translations`
+		// et `add_medal_definitions` dans steps_metadata.go.
+		`CREATE TABLE medal_definitions (
+			medal_name_id  BIGINT PRIMARY KEY,
+			name_fr        VARCHAR NOT NULL,
+			name_en        VARCHAR NOT NULL,
+			description_fr VARCHAR DEFAULT '',
+			description_en VARCHAR DEFAULT '',
+			difficulty     VARCHAR DEFAULT 'Normal',
+			is_custom      BOOLEAN DEFAULT FALSE)`,
+		`CREATE TABLE medal_translations (
+			medal_name_id BIGINT NOT NULL,
+			lang          VARCHAR NOT NULL,
+			name          VARCHAR NOT NULL,
+			description   VARCHAR,
+			PRIMARY KEY (medal_name_id, lang))`,
 		`CREATE TABLE career_ranks (
 			rank_id INTEGER,
 			rank_name VARCHAR,
@@ -377,6 +414,8 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 	inserts := []row{
 		{`INSERT INTO citation_mappings (citation_name_norm,citation_name_display,mapping_type,category,enabled,medal_id) VALUES (?,?,?,?,?,?)`,
 			[]interface{}{"killing_spree", "Killing Spree", "medal", "combat", true, uint64(1001)}},
+		{`INSERT INTO medal_definitions (medal_name_id,name_fr,name_en,description_fr,description_en,difficulty) VALUES (?,?,?,?,?,?)`,
+			[]interface{}{int64(1001), "Killing Spree", "Killing Spree", "Série de kills", "Killing spree", "Normal"}},
 		{`INSERT INTO weapon_labels (weapon_id,name_en,name_fr) VALUES (?,?,?)`,
 			[]interface{}{uint64(42), "Battle Rifle", "BR75"}},
 		{`INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?)`, []interface{}{1, "Recruit", "Recruit", "Recrue", nil, nil, nil}},
@@ -716,6 +755,81 @@ func TestHomeRepo_LoadSpartanIdentity_InfersCSRFromRankedPlaylistName(t *testing
 	}
 	if identity.HighestCSR.RatingValue != 1250.5 {
 		t.Fatalf("HighestCSR.RatingValue = %v, want 1250.5", identity.HighestCSR.RatingValue)
+	}
+}
+
+func TestHomeRepo_LoadRecentPlaylistRanks_EmitsUnrankedBadgeDuringPlacement(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// Le joueur a joué une playlist classée (Ranked Slayer, m1) mais le snapshot
+	// CSR officiel indique qu'il reste 6 matchs de placement (4 matchs joués sur 10).
+	// On supprime le rating m1 pour simuler l'état placement et on insère le snapshot.
+	if _, err := pdb.Player.Exec(ctx, `DELETE FROM match_skill_rank WHERE match_id = ?`, "m1"); err != nil {
+		t.Fatalf("DELETE match_skill_rank: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO player_csr_snapshots
+			(playlist_id, season_id, current_measurement_remaining, fetched_at)
+		VALUES (?, ?, ?, ?)
+	`, "playlist-ranked-slayer", "s1", 6, "2025-01-10 14:30:00"); err != nil {
+		t.Fatalf("INSERT player_csr_snapshots: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	ranks, err := repo.LoadRecentPlaylistRanks(ctx, "fr")
+	if err != nil {
+		t.Fatalf("LoadRecentPlaylistRanks: %v", err)
+	}
+	if len(ranks) != 1 {
+		t.Fatalf("len(ranks) = %d, want 1", len(ranks))
+	}
+	r := ranks[0]
+	if !r.IsRanked {
+		t.Fatal("expected IsRanked=true")
+	}
+	if r.RatingValue != nil {
+		t.Fatalf("RatingValue = %v, want nil (placement)", r.RatingValue)
+	}
+	if r.MeasurementMatchesRemaining == nil || *r.MeasurementMatchesRemaining != 6 {
+		t.Fatalf("MeasurementMatchesRemaining = %v, want 6", r.MeasurementMatchesRemaining)
+	}
+	// 10 - 6 = 4 → unranked_4.png
+	wantBadge := "/static/ranks/halo_infinite/unranked_4.png"
+	if r.BadgeImageURL == nil || *r.BadgeImageURL != wantBadge {
+		t.Fatalf("BadgeImageURL = %v, want %s", r.BadgeImageURL, wantBadge)
+	}
+}
+
+func TestHomeRepo_LoadRecentPlaylistRanks_DefaultsToUnranked0WhenNoSnapshot(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// Playlist classée, mais sans rating ni snapshot CSR : on doit quand même
+	// émettre un badge unranked_0.png (jamais "rien" à l'écran).
+	if _, err := pdb.Player.Exec(ctx, `DELETE FROM match_skill_rank WHERE match_id = ?`, "m1"); err != nil {
+		t.Fatalf("DELETE match_skill_rank: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	ranks, err := repo.LoadRecentPlaylistRanks(ctx, "fr")
+	if err != nil {
+		t.Fatalf("LoadRecentPlaylistRanks: %v", err)
+	}
+	if len(ranks) != 1 {
+		t.Fatalf("len(ranks) = %d, want 1", len(ranks))
+	}
+	r := ranks[0]
+	if !r.IsRanked {
+		t.Fatal("expected IsRanked=true")
+	}
+	if r.RatingValue != nil {
+		t.Fatalf("RatingValue = %v, want nil", r.RatingValue)
+	}
+	if r.MeasurementMatchesRemaining != nil {
+		t.Fatalf("MeasurementMatchesRemaining = %v, want nil (no snapshot)", r.MeasurementMatchesRemaining)
+	}
+	wantBadge := "/static/ranks/halo_infinite/unranked_0.png"
+	if r.BadgeImageURL == nil || *r.BadgeImageURL != wantBadge {
+		t.Fatalf("BadgeImageURL = %v, want %s", r.BadgeImageURL, wantBadge)
 	}
 }
 

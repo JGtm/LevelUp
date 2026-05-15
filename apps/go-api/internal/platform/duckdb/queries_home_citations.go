@@ -213,9 +213,12 @@ LIMIT 1`
 
 // Q26g : Home â€” 3 derniÃ¨res playlists distinctes jouÃ©es avec leur dernier rang compÃ©titif.
 // ParamÃ¨tre : ?1 = xuid du joueur.
-// Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr, sub_tier, tier_label).
+// Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr,
+//          sub_tier, tier_label, measurement_matches_remaining).
 // playlist_name_fr est rÃ©solu en Go depuis asset_translations (mÃªme source que les tuiles de matchs).
 // rating_* sont NULL pour les playlists sans rang calculÃ©.
+// measurement_matches_remaining vient de player_csr_snapshots (snapshot le plus rÃ©cent par playlist)
+// pour permettre d'Ã©mettre `unranked_N.png` pendant la phase de placement (10 â†’ 0 matchs restants).
 const Q26gHomePlaylistRanks = `
 WITH recent_playlists AS (
 	SELECT
@@ -258,6 +261,16 @@ last_skill AS (
 	FROM match_skill_rank msr
 	JOIN shared.match_registry r ON r.match_id = msr.match_id
 	WHERE msr.rating_value IS NOT NULL
+),
+csr_snapshot AS (
+	SELECT
+		playlist_id,
+		current_measurement_remaining,
+		ROW_NUMBER() OVER (
+			PARTITION BY playlist_id
+			ORDER BY fetched_at DESC, season_id DESC
+		) AS rn
+	FROM player_csr_snapshots
 )
 SELECT
 	rp.playlist_id,
@@ -268,9 +281,11 @@ SELECT
 	ls.tier,
 	ls.tier_fr,
 	ls.sub_tier,
-	ls.tier_label
+	ls.tier_label,
+	cs.current_measurement_remaining
 FROM recent_playlists rp
 LEFT JOIN last_skill ls ON ls.playlist_id = rp.playlist_id AND ls.rn = 1
+LEFT JOIN csr_snapshot cs ON cs.playlist_id = rp.playlist_id AND cs.rn = 1
 ORDER BY rp.last_played DESC`
 
 // Q27 : Home â€” sessions depuis player_match_enrichment.
