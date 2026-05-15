@@ -2,12 +2,13 @@
  * SynthesisPage --- Vue synthese / bilan periodique (Slice 7).
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { useGlobalFilterStore } from '@/stores/globalFilterStore'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
+import { useFiltersPreview } from '@/features/filters/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
@@ -21,13 +22,34 @@ import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
 import { SynthesisBipolaireChart } from './SynthesisBipolaireChart'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
+import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
+import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
+import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import type { ManifestLocale } from '@/lib/i18n/format'
 import type {
+  CascadeInput,
+  FilterContextInput,
   PeriodInput,
   SynthesisDetailedStats,
   SynthesisOverview,
   SynthesisQueryRequest,
   SynthesisWeaponKillEntry,
 } from '@/lib/api/types'
+
+// ─── Mapping experience → cascade.experience_types ──────────────────────────
+// Backend cascade utilise les labels canoniques "PVP classé" / "PVP non classé"
+// (service/filters_service.go::experienceLabels). 'all' → tableau vide = pas de filtre.
+const EXPERIENCE_TO_CASCADE: Record<Experience, string[]> = {
+  all: [],
+  ranked: ['PVP classé'],
+  unranked: ['PVP non classé'],
+}
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false
+  for (const v of a) if (!b.has(v)) return false
+  return true
+}
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
 
@@ -231,11 +253,23 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
 
 export function SynthesisPage() {
   const { playerSlug } = useParams({ from: '/players/$playerSlug/synthesis' })
-  const { filterContext } = useGlobalFilterStore()
+  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
+  const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
 
-  // ── Filtres période / saison (pending → committed) ──────────────────────────
+  // ── Filtres locaux (pending → committed) ────────────────────────────────────
+  // Pattern aligné sur CareerHighlightMatchesSection : state local non synchronisé
+  // avec le globalFilterStore (les filtres restent locaux à la page Synthesis).
+  // Cascade côté backend : counts cascade-aware via /filters/resolve (useFiltersPreview).
   const [pendingPeriod, setPendingPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
+  const [pendingExperience, setPendingExperience] = useState<Experience>('all')
+  const [pendingPlaylists, setPendingPlaylists] = useState<Set<string>>(() => new Set())
+  const [pendingModes, setPendingModes] = useState<Set<string>>(() => new Set())
+
   const [committedPeriod, setCommittedPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
+  const [committedExperience, setCommittedExperience] = useState<Experience>('all')
+  const [committedPlaylists, setCommittedPlaylists] = useState<Set<string>>(() => new Set())
+  const [committedModes, setCommittedModes] = useState<Set<string>>(() => new Set())
+
   const [activePopover, setActivePopover] = useState<'periode' | 'saison' | null>(null)
 
   const togglePopover = (which: 'periode' | 'saison') =>
@@ -244,18 +278,133 @@ export function SynthesisPage() {
 
   const { seasons, activeSeason } = useActiveSeason(pendingPeriod)
 
+  // ── Cascade locale envoyée au backend (override de la cascade du store global) ──
+  const pendingCascade: CascadeInput = useMemo(() => ({
+    experience_types: EXPERIENCE_TO_CASCADE[pendingExperience],
+    playlists: Array.from(pendingPlaylists),
+    modes: Array.from(pendingModes),
+    maps: [],
+  }), [pendingExperience, pendingPlaylists, pendingModes])
+
+  const committedCascade: CascadeInput = useMemo(() => ({
+    experience_types: EXPERIENCE_TO_CASCADE[committedExperience],
+    playlists: Array.from(committedPlaylists),
+    modes: Array.from(committedModes),
+    maps: [],
+  }), [committedExperience, committedPlaylists, committedModes])
+
+  // ── Preview cascade-aware via /filters/resolve ──────────────────────────────
+  // La page Synthesis maintient ses propres filtres locaux et ignore les filtres
+  // globaux (sessions/period auto-snap d'autres pages). Le pendingFilterContext
+  // est construit UNIQUEMENT à partir des states pending locaux, sinon on hérite
+  // de scopes restrictifs (ex. une session auto-snap avec uniquement des matchs
+  // PVE) qui faussent les counts cascade affichés.
+  const pendingFilterContext: FilterContextInput = useMemo(() => ({
+    filter_mode: 'period',
+    period: pendingPeriod,
+    sessions: { picked_sessions: [], gap_minutes: 120 },
+    cascade: pendingCascade,
+  }), [pendingPeriod, pendingCascade])
+
+  const { data: previewData } = useFiltersPreview(playerSlug, pendingFilterContext)
+  const available = previewData?.available_options
+
+  // DEBUG temporaire — investigation counts Experience à 0. À retirer une fois confirmé.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // eslint-disable-next-line no-console
+    console.log('[Synthesis debug]', {
+      pendingFilterContext,
+      previewData_counts: previewData?.counts,
+      experience_types: previewData?.available_options?.experience_types,
+      playlists_count: previewData?.available_options?.playlists?.length,
+      modes_count: previewData?.available_options?.modes?.length,
+    })
+  }, [previewData, pendingFilterContext])
+
+  const experienceCounts = useMemo(() => {
+    const opts = available?.experience_types ?? []
+    // Mappe les counts "PVP classé"/"PVP non classé"/"PVE" du backend vers le
+    // format {value: 'all'|'ranked'|'unranked', count} du dropdown.
+    //
+    // 'Toutes' agrège TOUS les counts (ranked + unranked + PVE) — sinon un
+    // joueur 100% Firefight verrait 'Toutes' à 0 alors qu'il a bien des matchs.
+    // 'Classé' / 'Non classé' restent stricts (PVP uniquement).
+    let ranked = 0
+    let unranked = 0
+    let total = 0
+    for (const o of opts) {
+      const v = o.value.toLowerCase()
+      if (v.includes('non classé') || v.includes('non-classé') || v.includes('unranked')) {
+        unranked += o.count
+      } else if (v.includes('classé') || v.includes('ranked')) {
+        ranked += o.count
+      }
+      total += o.count
+    }
+    return [
+      { value: 'all' as const, count: total },
+      { value: 'ranked' as const, count: ranked },
+      { value: 'unranked' as const, count: unranked },
+    ]
+  }, [available?.experience_types])
+
+  const playlistOptions: MultiSelectOption[] = useMemo(() => {
+    return (available?.playlists ?? [])
+      .map((p) => ({ value: p.value, label: p.label, count: p.count }))
+      .filter((o) => o.count > 0 || pendingPlaylists.has(o.value))
+  }, [available?.playlists, pendingPlaylists])
+
+  const modeOptions: MultiSelectOption[] = useMemo(() => {
+    return (available?.modes ?? [])
+      .map((m) => ({ value: m.value, label: m.label, count: m.count }))
+      .filter((o) => o.count > 0 || pendingModes.has(o.value))
+  }, [available?.modes, pendingModes])
+
+  const hasActiveFilters =
+    !!(committedPeriod.start_date || committedPeriod.end_date) ||
+    committedExperience !== 'all' ||
+    committedPlaylists.size > 0 ||
+    committedModes.size > 0
+
   const isDirty =
     pendingPeriod.start_date !== committedPeriod.start_date ||
-    pendingPeriod.end_date !== committedPeriod.end_date
+    pendingPeriod.end_date !== committedPeriod.end_date ||
+    pendingExperience !== committedExperience ||
+    !setsEqual(pendingPlaylists, committedPlaylists) ||
+    !setsEqual(pendingModes, committedModes)
 
   function handleAnalyser() {
     setCommittedPeriod(pendingPeriod)
+    setCommittedExperience(pendingExperience)
+    setCommittedPlaylists(new Set(pendingPlaylists))
+    setCommittedModes(new Set(pendingModes))
     closeAll()
   }
 
+  function handleResetAll() {
+    setPendingPeriod(DEFAULT_PERIOD)
+    setCommittedPeriod(DEFAULT_PERIOD)
+    setPendingExperience('all')
+    setCommittedExperience('all')
+    setPendingPlaylists(new Set())
+    setCommittedPlaylists(new Set())
+    setPendingModes(new Set())
+    setCommittedModes(new Set())
+  }
+
   const hasPeriod = !!(committedPeriod.start_date || committedPeriod.end_date)
+  // Filtres 100% locaux : on n'hérite pas du store global (pattern identique à
+  // CareerHighlightMatchesSection). Sinon une session auto-snappée d'une autre
+  // page peut pré-filtrer les matchs (ex. session 100% PVE → counts Experience
+  // PVP tous à 0).
   const request: SynthesisQueryRequest = {
-    filters: filterContext,
+    filters: {
+      filter_mode: 'period',
+      period: hasPeriod ? committedPeriod : DEFAULT_PERIOD,
+      sessions: { picked_sessions: [], gap_minutes: 120 },
+      cascade: committedCascade,
+    },
     period: 'all',
     start_date: hasPeriod ? committedPeriod.start_date : undefined,
     end_date: hasPeriod ? committedPeriod.end_date : undefined,
@@ -282,9 +431,22 @@ export function SynthesisPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ─── Barre période / saison ─────────────────────────────────────────── */}
+      {/* ─── Barre filtres (cascade locale) ─────────────────────────────────── */}
+      {/* Ordre : Expérience → Saison → Période → Playlist → Mode. Counts cascade-aware
+          calculés via /filters/resolve (useFiltersPreview). Commit atomique au clic Analyser. */}
       <div className="sticky top-0 z-20 border-b border-border" style={{ background: 'var(--background)' }}>
-        <div className="flex min-h-10 items-center gap-1.5 px-4 py-1.5">
+        <div className="flex min-h-10 items-center gap-1.5 px-4 py-1.5 flex-wrap">
+          <ExperienceDropdown
+            value={pendingExperience}
+            onChange={setPendingExperience}
+            counts={experienceCounts}
+            labels={{
+              placeholder: t('synthesis.filters.experience'),
+              all: t('synthesis.filters.experience_all'),
+              ranked: t('synthesis.filters.experience_ranked'),
+              unranked: t('synthesis.filters.experience_unranked'),
+            }}
+          />
           {seasons.length > 0 && (
             <SaisonPill
               open={activePopover === 'saison'}
@@ -303,6 +465,36 @@ export function SynthesisPage() {
             period={pendingPeriod}
             onSetPeriod={setPendingPeriod}
           />
+          <MultiSelectFilter
+            options={playlistOptions}
+            selected={pendingPlaylists}
+            toggle={(v) => {
+              setPendingPlaylists((prev) => {
+                const next = new Set(prev)
+                if (next.has(v)) next.delete(v)
+                else next.add(v)
+                return next
+              })
+            }}
+            placeholder={t('synthesis.filters.playlists')}
+            alwaysShow
+            disabled={playlistOptions.length === 0 && pendingPlaylists.size === 0}
+          />
+          <MultiSelectFilter
+            options={modeOptions}
+            selected={pendingModes}
+            toggle={(v) => {
+              setPendingModes((prev) => {
+                const next = new Set(prev)
+                if (next.has(v)) next.delete(v)
+                else next.add(v)
+                return next
+              })
+            }}
+            placeholder={t('synthesis.filters.modes')}
+            alwaysShow
+            disabled={modeOptions.length === 0 && pendingModes.size === 0}
+          />
           <div className="flex-1" />
           <button
             type="button"
@@ -316,12 +508,12 @@ export function SynthesisPage() {
           >
             Analyser
           </button>
-          {hasPeriod && (
+          {hasActiveFilters && (
             <button
               type="button"
-              onClick={() => { setPendingPeriod(DEFAULT_PERIOD); setCommittedPeriod(DEFAULT_PERIOD) }}
+              onClick={handleResetAll}
               className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
-              title="Réinitialiser la période"
+              title={t('synthesis.filters.reset')}
             >
               ↺
             </button>

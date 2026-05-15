@@ -78,6 +78,34 @@ en = "Period"
 fr = "Tout"
 en = "All"
 
+[synthesis.filters.experience]
+fr = "Expérience"
+en = "Experience"
+
+[synthesis.filters.experience_all]
+fr = "Toutes"
+en = "All"
+
+[synthesis.filters.experience_ranked]
+fr = "Classé"
+en = "Ranked"
+
+[synthesis.filters.experience_unranked]
+fr = "Non classé"
+en = "Unranked"
+
+[synthesis.filters.playlists]
+fr = "Playlists"
+en = "Playlists"
+
+[synthesis.filters.modes]
+fr = "Modes"
+en = "Modes"
+
+[synthesis.filters.reset]
+fr = "Réinitialiser"
+en = "Reset"
+
 # ─── États transverses ─────────────────────────────────────────────────────
 
 [synthesis.empty.no_data]
