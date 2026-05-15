@@ -27,7 +27,7 @@ var _ prestige.PrestigeRepo = (*PrestigeSocialRepo)(nil)
 func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.PrestigeEvent) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO prestige_events (id, user_id, title_slug, source_type, source_id, pp_amount, tier, created_at)
 		VALUES (?,?,?,?,?,?,?,?)
 	`, ev.ID, ev.UserID, ev.TitleSlug, ev.SourceType, nullableStr(ev.SourceID),
@@ -48,7 +48,7 @@ func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.Prestige
 // juste la valeur reçue. L'appelant doit avoir pré-calculé current_level, ou
 // laisser à 0 si non disponible (cas par défaut).
 func (r *PrestigeSocialRepo) bumpUserPrestige(ctx context.Context, userID, titleSlug string, delta int, at time.Time) error {
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
 		VALUES (?, ?, ?, 0, ?)
 		ON CONFLICT (user_id, title_slug) DO UPDATE SET
@@ -87,7 +87,7 @@ func (r *PrestigeSocialRepo) GetUserPrestigeCrossTitle(ctx context.Context, user
 func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige.UserPrestige) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO user_prestige (user_id, title_slug, total_pp, current_level, updated_at)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT (user_id, title_slug) DO UPDATE SET
@@ -101,7 +101,7 @@ func (r *PrestigeSocialRepo) UpsertUserPrestige(ctx context.Context, up prestige
 func (r *PrestigeSocialRepo) ListEvents(ctx context.Context, userID, titleSlug string, since time.Time) ([]prestige.PrestigeEvent, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT id, user_id, title_slug, source_type, COALESCE(source_id, ''),
 		       pp_amount, COALESCE(tier, ''), created_at
 		FROM prestige_events
@@ -166,7 +166,7 @@ func (r *PrestigeSocialRepo) GetLeaderboard(
 		`, placeholders)
 	}
 
-	rows, err := r.db.Query(ctx, q, args...)
+	rows, err := r.db.QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetLeaderboard: %w", err)
 	}
@@ -194,7 +194,7 @@ var _ prestige.SquadRepo = (*PrestigeSquadRepo)(nil)
 func (r *PrestigeSquadRepo) Create(ctx context.Context, s prestige.Squad) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx,
+	_, err := r.db.ExecRecovered(ctx,
 		`INSERT INTO squad (id, name, created_by, created_at) VALUES (?, ?, ?, ?)`,
 		s.ID, s.Name, s.CreatedBy, s.CreatedAt)
 	return err
@@ -213,7 +213,7 @@ func (r *PrestigeSquadRepo) Get(ctx context.Context, id string) (prestige.Squad,
 func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMember) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx,
+	_, err := r.db.ExecRecovered(ctx,
 		`INSERT INTO squad_member (squad_id, user_id, joined_at) VALUES (?, ?, ?)
 		 ON CONFLICT (squad_id, user_id) DO NOTHING`,
 		m.SquadID, m.UserID, m.JoinedAt)
@@ -223,7 +223,7 @@ func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMembe
 func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, userID string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx,
+	_, err := r.db.ExecRecovered(ctx,
 		`DELETE FROM squad_member WHERE squad_id = ? AND user_id = ?`, squadID, userID)
 	return err
 }
@@ -231,7 +231,7 @@ func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, userID st
 func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]prestige.SquadMember, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx,
+	rows, err := r.db.QueryRecovered(ctx,
 		`SELECT squad_id, user_id, joined_at FROM squad_member WHERE squad_id = ?`, squadID)
 	if err != nil {
 		return nil, err
@@ -251,7 +251,7 @@ func (r *PrestigeSquadRepo) ListMembers(ctx context.Context, squadID string) ([]
 func (r *PrestigeSquadRepo) ListSquadsForUser(ctx context.Context, userID string) ([]prestige.Squad, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT s.id, s.name, s.created_by, s.created_at
 		FROM squad s JOIN squad_member sm ON sm.squad_id = s.id
 		WHERE sm.user_id = ?
@@ -286,7 +286,7 @@ var _ prestige.SquadChallengeRepo = (*PrestigeSquadChallengeRepo)(nil)
 func (r *PrestigeSquadChallengeRepo) Create(ctx context.Context, sc prestige.SquadChallenge) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO squad_challenge (
 			id, squad_id, template_id, title_slug, mode, eval_type,
 			window_type, window_value, target_per_member, expires_at, created_by, created_at
@@ -323,7 +323,7 @@ func (r *PrestigeSquadChallengeRepo) Get(ctx context.Context, id string) (presti
 func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID string) ([]prestige.SquadChallenge, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT id, squad_id, COALESCE(template_id, ''), title_slug, mode, eval_type,
 		       window_type, COALESCE(window_value, ''), COALESCE(target_per_member, 0),
 		       expires_at, created_by, created_at
@@ -353,7 +353,7 @@ func (r *PrestigeSquadChallengeRepo) ListBySquad(ctx context.Context, squadID st
 func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prestige.SquadChallengeParticipant) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO squad_challenge_participant (
 			squad_challenge_id, user_id, chosen_tier, data_tier,
 			current_value, completed_at, is_private, joined_at
@@ -372,7 +372,7 @@ func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
 ) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		UPDATE squad_challenge_participant
 		SET current_value = ?, completed_at = ?
 		WHERE squad_challenge_id = ? AND user_id = ?
@@ -383,7 +383,7 @@ func (r *PrestigeSquadChallengeRepo) UpdateParticipantProgress(
 func (r *PrestigeSquadChallengeRepo) ListParticipants(ctx context.Context, challengeID string) ([]prestige.SquadChallengeParticipant, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT squad_challenge_id, user_id, COALESCE(chosen_tier, ''), data_tier,
 		       current_value, completed_at, is_private, joined_at
 		FROM squad_challenge_participant WHERE squad_challenge_id = ?

@@ -318,6 +318,10 @@ func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.We
 // shared.v_weapon_kills) est presente. Capability check minimal pour la
 // Phase 1 — la presence des donnees est consideree equivalente au support
 // de la capability "match.detail.weapon_kills".
+//
+// Accepte 2 configurations (cf. MedalsByXUIDRepo.medalsEarnedTableExists) :
+//   - Prod : shared_matches_v2.duckdb attaché sous catalog 'shared' (ATTACH).
+//   - Tests : tables exposées sous schema 'shared' (CREATE SCHEMA shared).
 func (r *WeaponKillsRepo) weaponKillsTableExists(ctx context.Context) bool {
 	if r.pdb == nil || r.pdb.ReadDB() == nil {
 		return false
@@ -326,8 +330,8 @@ func (r *WeaponKillsRepo) weaponKillsTableExists(ctx context.Context) bool {
 	err := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT COUNT(*)
 		FROM information_schema.tables
-		WHERE table_catalog = 'shared'
-		  AND table_name IN ('weapon_kills', 'v_weapon_kills')
+		WHERE table_name IN ('weapon_kills', 'v_weapon_kills')
+		  AND (table_catalog = 'shared' OR table_schema = 'shared')
 	`).Scan(&count)
 	if err != nil {
 		// Si la requete d'introspection echoue, on considere absent (defensive).
