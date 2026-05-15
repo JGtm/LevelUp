@@ -73,18 +73,20 @@ func TestAchievementsIntegration_FullFlow(t *testing.T) {
 		{"def09", "Onyx", "Onyx", 100},
 		{"def10", "Champion", "Champion", 200},
 	}
+	// title_id 'halo_infinite' obligatoire — la query GetAchievementDefinitions
+	// filtre dessus depuis la migration `add_title_id_to_xbox_achievement_definitions`.
 	insertDef := `INSERT INTO xbox_achievement_definitions
 		(achievement_id, name_en, name_fr, description_en, description_fr,
 		 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
-		 rarity_category, rarity_percent, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+		 rarity_category, rarity_percent, title_id, fetched_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 	for _, d := range defs {
 		if _, err := metaDB.Exec(ctx, insertDef,
 			d.id, d.nameEN, d.nameFR,
 			"Desc EN", "Desc FR",
 			"Locked EN", "Verrouillé FR",
 			d.score, "https://example.com/img.png", false,
-			"Common", 25.0,
+			"Common", 25.0, "halo_infinite",
 		); err != nil {
 			t.Fatalf("insert def %s: %v", d.id, err)
 		}
@@ -145,13 +147,14 @@ func TestAchievementsIntegration_FullFlow(t *testing.T) {
 		t.Errorf("CompletionPct: attendu 40.0, obtenu %v", resp.Summary.CompletionPct)
 	}
 
-	// Tri : unlocked en premier (par UnlockedAt DESC) → def10 (10 avril), def07 (20 mars),
-	// def03 (15 février), def01 (1 janvier). Puis locked par gamerscore DESC :
-	// def09 (100), def08 (75), def06 (30), def05 (25), def04 (20), def02 (10).
+	// Tri (cf. sortAchievementEntries dans achievements_service.go) : locked
+	// en premier (gamerscore DESC, tie-break id ASC) — def09(100), def08(75),
+	// def06(30), def05(25), def04(20), def02(10) — puis unlocked (UnlockedAt
+	// ASC, plus récent en bas) — def01(janv), def03(févr), def07(mars), def10(avril).
 	if len(resp.Achievements) != 10 {
 		t.Fatalf("attendu 10 entrées, obtenu %d", len(resp.Achievements))
 	}
-	expected := []string{"def10", "def07", "def03", "def01", "def09", "def08", "def06", "def05", "def04", "def02"}
+	expected := []string{"def09", "def08", "def06", "def05", "def04", "def02", "def01", "def03", "def07", "def10"}
 	for i, want := range expected {
 		if resp.Achievements[i].AchievementID != want {
 			t.Errorf("position %d: attendu %s, obtenu %s",
@@ -188,8 +191,8 @@ func TestAchievementsIntegration_OrphanPlayerRow(t *testing.T) {
 		`INSERT INTO xbox_achievement_definitions
 		 (achievement_id, name_en, name_fr, description_en, description_fr,
 		  locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
-		  rarity_category, rarity_percent, fetched_at)
-		 VALUES ('alive', 'Alive', 'Vivant', '', '', '', '', 10, '', false, '', 0, CURRENT_TIMESTAMP)`,
+		  rarity_category, rarity_percent, title_id, fetched_at)
+		 VALUES ('alive', 'Alive', 'Vivant', '', '', '', '', 10, '', false, '', 0, 'halo_infinite', CURRENT_TIMESTAMP)`,
 	); err != nil {
 		t.Fatalf("insert def alive: %v", err)
 	}

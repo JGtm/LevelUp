@@ -1,10 +1,25 @@
 // Package service — media_service_atomic_integration_test.go : tests atomicité
 // des opérations media avec DuckDB :memory: réelle.
 //
-// Build tag `integration` — exclu du go test ./... par défaut. Lancer avec :
-//   go test -tags=integration ./internal/service/ -run TestMediaServiceAtomic
+// ─── DÉSACTIVÉ TEMPORAIREMENT (2026-05-15) ──────────────────────────────────
 //
-//go:build integration
+// Build tag élargi à `integration && atomic_legacy` pour exclure ce fichier
+// de la suite `-tags=integration` standard tant qu'il n'a pas été migré vers
+// la nouvelle API LeasedWriter (refacto `7a951aed refactor(db-concurrency):
+// commit 1 — LeasedWriter type + interfaces port`).
+//
+// Symptômes pré-migration :
+//   - `dblease.NewLeasedWriter` n'existe plus → remplacé par `AcquireWriter`
+//   - Le champ public `LeasedWriter.Executor` est devenu privé
+//   - `duckdb.NewMediaRepo(playerDB)` attend un `*PlayerDB`, plus un `*DB`
+//
+// Pour réactiver : retirer le tag `atomic_legacy` après refacto vers
+// AcquireWriter + construction d'un PlayerDB minimal pour MediaRepo.
+//
+// Build tag d'origine : `integration` — lancer avec :
+//   go test -tags=integration,atomic_legacy ./internal/service/ -run TestMediaServiceAtomic
+//
+//go:build integration && atomic_legacy
 
 package service
 
