@@ -162,6 +162,8 @@ func seedLegacyPlayerDB(t *testing.T, path string) {
 			session_id VARCHAR,
 			session_label VARCHAR,
 			is_with_friends BOOLEAN DEFAULT FALSE,
+			performance_score DOUBLE,
+			dominance_flag TINYINT DEFAULT 0,
 			updated_at TIMESTAMP
 		)`,
 		`CREATE TABLE media_files (
@@ -253,6 +255,8 @@ func seedSharedDBForPoolTest(t *testing.T, path string) {
 			start_time TIMESTAMP,
 			start_time_utc TIMESTAMPTZ,
 			map_id VARCHAR,
+			pair_id VARCHAR,
+			playlist_id VARCHAR,
 			map_name VARCHAR,
 			map_name_fr VARCHAR,
 			pair_name VARCHAR,
@@ -260,7 +264,11 @@ func seedSharedDBForPoolTest(t *testing.T, path string) {
 			playlist_name VARCHAR,
 			playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE,
-			is_ranked BOOLEAN DEFAULT FALSE
+			is_ranked BOOLEAN DEFAULT FALSE,
+			team_0_score INTEGER,
+			team_1_score INTEGER,
+			duration_seconds INTEGER,
+			playable_duration_seconds INTEGER
 		)`,
 		`CREATE TABLE match_participants (
 			match_id VARCHAR,
@@ -276,6 +284,7 @@ func seedSharedDBForPoolTest(t *testing.T, path string) {
 			time_played_seconds INTEGER,
 			team_mmr DOUBLE,
 			enemy_mmr DOUBLE,
+			team_id INTEGER DEFAULT 0,
 			avg_life_seconds DOUBLE
 		)`,
 		`CREATE VIEW v_match_full AS SELECT * FROM match_registry`,

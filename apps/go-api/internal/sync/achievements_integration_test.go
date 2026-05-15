@@ -12,38 +12,26 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 // openMemForAchievements ouvre deux DuckDB in-memory avec les tables achievements.
+// Utilise les migrations TargetMetadata/TargetPlayer pour rester en sync avec la
+// prod — un DDL inline divergerait silencieusement à chaque nouvelle migration
+// (ex: ajout xbox_title_id, service_config_id) et casserait les tests
+// d'intégration.
 func openMemForAchievements(t *testing.T) (metadataDB *sql.DB, playerDB *sql.DB) {
 	t.Helper()
+	_ = migration.All()
 
 	metadataDB, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
 		t.Fatalf("open metadataDB: %v", err)
 	}
 	t.Cleanup(func() { metadataDB.Close() })
-
-	_, err = metadataDB.Exec(`
-		CREATE TABLE IF NOT EXISTS xbox_achievement_definitions (
-			achievement_id   VARCHAR PRIMARY KEY,
-			name_en          VARCHAR NOT NULL DEFAULT '',
-			name_fr          VARCHAR NOT NULL DEFAULT '',
-			description_en   VARCHAR,
-			description_fr   VARCHAR,
-			locked_desc_en   VARCHAR,
-			locked_desc_fr   VARCHAR,
-			gamerscore       INTEGER NOT NULL DEFAULT 0,
-			image_url        VARCHAR,
-			is_secret        BOOLEAN NOT NULL DEFAULT FALSE,
-			rarity_category  VARCHAR,
-			rarity_percent   FLOAT,
-			title_id         VARCHAR DEFAULT '',
-			fetched_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	if err != nil {
-		t.Fatalf("CREATE xbox_achievement_definitions: %v", err)
+	if err := migration.RunForDB(metadataDB, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForDB(TargetMetadata): %v", err)
 	}
 
 	playerDB, err = sql.Open("duckdb", ":memory:")
@@ -51,19 +39,8 @@ func openMemForAchievements(t *testing.T) (metadataDB *sql.DB, playerDB *sql.DB)
 		t.Fatalf("open playerDB: %v", err)
 	}
 	t.Cleanup(func() { playerDB.Close() })
-
-	_, err = playerDB.Exec(`
-		CREATE TABLE IF NOT EXISTS player_achievements (
-			achievement_id    VARCHAR PRIMARY KEY,
-			unlocked          BOOLEAN NOT NULL DEFAULT FALSE,
-			unlocked_at       TIMESTAMP,
-			current_progress  INTEGER,
-			target_progress   INTEGER,
-			fetched_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	if err != nil {
-		t.Fatalf("CREATE player_achievements: %v", err)
+	if err := migration.RunForDB(playerDB, migration.TargetPlayer); err != nil {
+		t.Fatalf("RunForDB(TargetPlayer): %v", err)
 	}
 
 	return metadataDB, playerDB

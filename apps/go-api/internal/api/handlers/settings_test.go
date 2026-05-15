@@ -17,7 +17,13 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 )
 
-func newSettingsRouter(t *testing.T, demoMode bool) *chi.Mux {
+// newSettingsRouter retourne le routeur + le jobStore. Le jobStore est exposé
+// pour permettre aux tests qui lancent des jobs background (PostMediaResetIndex,
+// PostRecalculateSessions) d'attendre la fin du job via pollJobSucceeded —
+// sinon la goroutine background continue à écrire `jobs.json` après que
+// t.TempDir() a tenté de cleanup le dossier, ce qui faisait fail intermittent
+// les tests (« RemoveAll cleanup: directory not empty »).
+func newSettingsRouter(t *testing.T, demoMode bool) (*chi.Mux, *jobs.Store) {
 	t.Helper()
 	dir := t.TempDir()
 	cfg := &config.AppConfig{
@@ -26,18 +32,21 @@ func newSettingsRouter(t *testing.T, demoMode bool) *chi.Mux {
 	}
 	settingsStore := settings_platform.NewStore(filepath.Join(dir, "app_settings.json"))
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
-	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore)
+	// Mock indexer pour éviter que la goroutine background de PostMediaResetIndex
+	// scanne le disque réel (DirMediaIndexer par défaut) et produise des effets
+	// de bord sur les tests suivants.
+	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 
 	r := chi.NewRouter()
 	r.Get("/settings", h.GetSettings)
 	r.Patch("/settings", h.PatchSettings)
 	r.Post("/settings/media/reset-index", h.PostMediaResetIndex)
 	r.Post("/settings/sessions/recalculate", h.PostRecalculateSessions)
-	return r
+	return r, jobStore
 }
 
 func TestSettingsHandler_GetSettings_OK(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -48,7 +57,7 @@ func TestSettingsHandler_GetSettings_OK(t *testing.T) {
 }
 
 func TestSettingsHandler_GetSettings_DemoMode(t *testing.T) {
-	r := newSettingsRouter(t, true)
+	r, _ := newSettingsRouter(t, true)
 	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -59,7 +68,7 @@ func TestSettingsHandler_GetSettings_DemoMode(t *testing.T) {
 }
 
 func TestSettingsHandler_PatchSettings_DemoMode_422(t *testing.T) {
-	r := newSettingsRouter(t, true)
+	r, _ := newSettingsRouter(t, true)
 	body := `{"lang": "en"}`
 	req := httptest.NewRequest(http.MethodPatch, "/settings", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
@@ -72,7 +81,7 @@ func TestSettingsHandler_PatchSettings_DemoMode_422(t *testing.T) {
 }
 
 func TestSettingsHandler_PatchSettings_InvalidBody(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	req := httptest.NewRequest(http.MethodPatch, "/settings", bytes.NewReader([]byte("{bad")))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -84,7 +93,7 @@ func TestSettingsHandler_PatchSettings_InvalidBody(t *testing.T) {
 }
 
 func TestSettingsHandler_PatchSettings_OK(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	body, _ := json.Marshal(map[string]string{"lang": "en"})
 	req := httptest.NewRequest(http.MethodPatch, "/settings", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -97,7 +106,7 @@ func TestSettingsHandler_PatchSettings_OK(t *testing.T) {
 }
 
 func TestSettingsHandler_PostMediaReset_NoConfirm(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	body := `{"confirm_destructive": false}`
 	req := httptest.NewRequest(http.MethodPost, "/settings/media/reset-index", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
@@ -110,7 +119,7 @@ func TestSettingsHandler_PostMediaReset_NoConfirm(t *testing.T) {
 }
 
 func TestSettingsHandler_PostMediaReset_InvalidBody(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	req := httptest.NewRequest(http.MethodPost, "/settings/media/reset-index", bytes.NewReader([]byte("{bad")))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -122,7 +131,7 @@ func TestSettingsHandler_PostMediaReset_InvalidBody(t *testing.T) {
 }
 
 func TestSettingsHandler_PostMediaReset_OK(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, jobStore := newSettingsRouter(t, false)
 	body := `{"confirm_destructive": true}`
 	req := httptest.NewRequest(http.MethodPost, "/settings/media/reset-index", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
@@ -131,6 +140,15 @@ func TestSettingsHandler_PostMediaReset_OK(t *testing.T) {
 
 	if w.Code != http.StatusAccepted {
 		t.Fatalf("expected 202, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Attendre la fin de la goroutine background avant que t.TempDir() ne
+	// tente de cleanup le dossier (sinon RemoveAll échoue intermittemment
+	// car jobs.json est encore en cours d'écriture).
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	if id, ok := resp["job_id"].(string); ok && id != "" {
+		pollJobSucceeded(t, jobStore, id)
 	}
 }
 
@@ -146,7 +164,7 @@ func patch(t *testing.T, r *chi.Mux, body string) *httptest.ResponseRecorder {
 }
 
 func TestSettingsHandler_Patch_SessionGapNegative_400(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	w := patch(t, r, `{"session_gap_minutes": -1}`)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for negative gap, got %d", w.Code)
@@ -154,7 +172,7 @@ func TestSettingsHandler_Patch_SessionGapNegative_400(t *testing.T) {
 }
 
 func TestSettingsHandler_Patch_SessionGapZero_OK(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	w := patch(t, r, `{"session_gap_minutes": 0}`)
 	if w.Code != http.StatusOK {
 		t.Errorf("expected 200 for gap=0, got %d: %s", w.Code, w.Body.String())
@@ -162,7 +180,7 @@ func TestSettingsHandler_Patch_SessionGapZero_OK(t *testing.T) {
 }
 
 func TestSettingsHandler_Patch_InvalidBadgeSensitivity_400(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	w := patch(t, r, `{"outcome_badge_sensitivity": "invalid"}`)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for invalid sensitivity, got %d", w.Code)
@@ -170,7 +188,7 @@ func TestSettingsHandler_Patch_InvalidBadgeSensitivity_400(t *testing.T) {
 }
 
 func TestSettingsHandler_Patch_ValidBadgeSensitivityStrict_200(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	w := patch(t, r, `{"outcome_badge_sensitivity": "strict"}`)
 	if w.Code != http.StatusOK {
 		t.Errorf("expected 200 for sensitivity=strict, got %d: %s", w.Code, w.Body.String())
@@ -178,7 +196,7 @@ func TestSettingsHandler_Patch_ValidBadgeSensitivityStrict_200(t *testing.T) {
 }
 
 func TestSettingsHandler_Patch_ValidTeamChangeModeFriends_200(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	w := patch(t, r, `{"session_team_change_mode": "friends"}`)
 	if w.Code != http.StatusOK {
 		t.Errorf("expected 200 for team_change_mode=friends, got %d: %s", w.Code, w.Body.String())
@@ -186,7 +204,7 @@ func TestSettingsHandler_Patch_ValidTeamChangeModeFriends_200(t *testing.T) {
 }
 
 func TestSettingsHandler_Patch_InvalidTeamChangeMode_400(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 	w := patch(t, r, `{"session_team_change_mode": "random"}`)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for invalid team_change_mode, got %d", w.Code)
@@ -194,7 +212,7 @@ func TestSettingsHandler_Patch_InvalidTeamChangeMode_400(t *testing.T) {
 }
 
 func TestSettingsHandler_Patch_AnalyseRoundTrip(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, _ := newSettingsRouter(t, false)
 
 	// PATCH
 	patchBody := `{
@@ -234,7 +252,7 @@ func TestSettingsHandler_Patch_AnalyseRoundTrip(t *testing.T) {
 }
 
 func TestSettingsHandler_PostRecalculateSessions_Accepted(t *testing.T) {
-	r := newSettingsRouter(t, false)
+	r, jobStore := newSettingsRouter(t, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/settings/sessions/recalculate", nil)
 	w := httptest.NewRecorder()
@@ -256,5 +274,10 @@ func TestSettingsHandler_PostRecalculateSessions_Accepted(t *testing.T) {
 	}
 	if body["job_type"] != "sessions_recalculate" {
 		t.Errorf("expected job_type=sessions_recalculate, got %v", body["job_type"])
+	}
+
+	// Attendre la fin du job background avant que t.TempDir() cleanup le dossier.
+	if id, ok := body["job_id"].(string); ok && id != "" {
+		pollJobSucceeded(t, jobStore, id)
 	}
 }

@@ -37,6 +37,10 @@ func seedShared(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
 
+	// GamertagRepo et BootstrapRepo ouvrent shared_matches_v2.duckdb directement
+	// (sans pool player) — les tables sont top-level (match_registry,
+	// match_participants, xuid_aliases). Les versions sous schéma `shared.` sont
+	// pour les repos qui passent par le pool player avec ATTACH 'shared'.
 	ddl := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
 		`CREATE SCHEMA IF NOT EXISTS global`,
@@ -44,6 +48,15 @@ func seedShared(t *testing.T, db *DB) {
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMPTZ,
 			last_updated_at TIMESTAMPTZ
+		)`,
+		`CREATE TABLE IF NOT EXISTS match_participants (
+			match_id VARCHAR,
+			xuid VARCHAR,
+			gamertag VARCHAR
+		)`,
+		`CREATE TABLE IF NOT EXISTS xuid_aliases (
+			xuid VARCHAR,
+			gamertag VARCHAR
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.match_participants (
 			match_id VARCHAR,
@@ -70,6 +83,16 @@ func seedShared(t *testing.T, db *DB) {
 			('m1', TIMESTAMPTZ '2025-01-10 14:00:00+00', TIMESTAMPTZ '2025-01-10 14:30:00+00'),
 			('m2', TIMESTAMPTZ '2025-01-11 18:00:00+00', TIMESTAMPTZ '2025-01-11 18:45:00+00'),
 			('m3', TIMESTAMPTZ '2025-01-12 20:00:00+00', TIMESTAMPTZ '2025-01-12 20:15:00+00')`,
+		`INSERT INTO match_participants VALUES
+			('m1', 'xuid001', 'AlphaPlayer'),
+			('m1', 'xuid002', 'BravoGamer'),
+			('m2', 'xuid001', 'AlphaPlayer'),
+			('m2', 'xuid003', 'CharlieX'),
+			('m3', 'xuid002', 'BravoGamer')`,
+		`INSERT INTO xuid_aliases VALUES
+			('xuid001', 'AlphaPlayer'),
+			('xuid002', 'BravoGamer'),
+			('xuid003', 'CharlieX')`,
 		`INSERT INTO shared.match_participants VALUES
 			('m1', 'xuid001', 'AlphaPlayer'),
 			('m1', 'xuid002', 'BravoGamer'),
@@ -306,6 +329,12 @@ func seedGamertagRanking(t *testing.T, db *DB) {
 		`('xr3', 'GrandMaster')`, // substring match candidate
 		`('xr4', 'Mst3rch1f')`,   // typo candidate (jaro_winkler)
 		`('xr5', 'TotallyUnrelated')`,
+	}
+	// Inserts dans les 3 variantes (top-level pour GamertagRepo.Search,
+	// shared.* pour les repos via pool, global.* pour la résolution
+	// xuid→gamertag globale).
+	if _, err := db.Exec(ctx, `INSERT INTO xuid_aliases VALUES `+joinRows(rows)); err != nil {
+		t.Fatalf("seedGamertagRanking top-level aliases: %v", err)
 	}
 	if _, err := db.Exec(ctx, `INSERT INTO shared.xuid_aliases VALUES `+joinRows(rows)); err != nil {
 		t.Fatalf("seedGamertagRanking aliases: %v", err)

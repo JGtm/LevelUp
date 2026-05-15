@@ -126,6 +126,13 @@ LIMIT ?`)
 }
 
 // medalsEarnedTableExists verifie la presence de shared.medals_earned.
+//
+// Accepte 2 configurations selon le mode d'attachement :
+//   - Prod : shared_matches_v2.duckdb attaché sous catalog 'shared' (ATTACH).
+//   - Tests/Workaround : tables exposées sous schema 'shared' dans le même
+//     catalog (CREATE SCHEMA shared + CREATE TABLE shared.medals_earned).
+//
+// La query teste les 2 colonnes pour éviter les faux négatifs cross-config.
 func (r *MedalsByXUIDRepo) medalsEarnedTableExists(ctx context.Context) bool {
 	if r.pdb == nil || r.pdb.ReadDB() == nil {
 		return false
@@ -134,8 +141,8 @@ func (r *MedalsByXUIDRepo) medalsEarnedTableExists(ctx context.Context) bool {
 	err := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT COUNT(*)
 		FROM information_schema.tables
-		WHERE table_catalog = 'shared'
-		  AND table_name = 'medals_earned'
+		WHERE table_name = 'medals_earned'
+		  AND (table_catalog = 'shared' OR table_schema = 'shared')
 	`).Scan(&count)
 	if err != nil {
 		return false
