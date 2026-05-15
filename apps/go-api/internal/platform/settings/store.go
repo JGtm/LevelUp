@@ -71,6 +71,13 @@ type AppSettings struct {
 	// Valeurs : "msal" (défaut, Azure app) | "sisu" (Xbox natif, sans Azure app).
 	AuthProvider string `json:"auth_provider"`
 
+	// DataHealthBaselineWarnings : seuil en dessous duquel le HealthScheduler
+	// considère l'état comme "stable" et n'émet pas de notification
+	// `data_health_warning`. Permet d'accepter un socle d'anomalies historiques
+	// non corrigeables (UUIDs résiduels d'anciens syncs, etc.) et de n'alerter
+	// que sur les régressions au-dessus de ce seuil.
+	DataHealthBaselineWarnings int `json:"data_health_baseline_warnings"`
+
 	// raw conserve tous les autres champs pour ne pas les perdre au Save
 	raw map[string]json.RawMessage
 }

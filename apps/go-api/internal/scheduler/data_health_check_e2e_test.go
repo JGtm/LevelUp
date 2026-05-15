@@ -263,3 +263,41 @@ func TestHealthScheduler_E2E_CategoryDisabled_DropsSilently(t *testing.T) {
 		t.Errorf("attendu 0 notif (pref OFF), obtenu %d", len(list.Items))
 	}
 }
+
+// ─── 5. Baseline acceptée : warnings <= baseline → pas d'émission ───────────
+
+func TestHealthScheduler_E2E_BaselineAccepted_NoEmission(t *testing.T) {
+	repoRoot, sharedSocialPath := healthE2ESetup(t)
+	sharedPath := filepath.Join(repoRoot, "data", "titles", "halo_infinite",
+		"warehouse", "shared_matches_v2.duckdb")
+	seedRawUUIDMapName(t, sharedPath) // 1 anomalie
+
+	svc, pdb := buildNotifService(t, sharedSocialPath, "xuid-baseline")
+
+	// Baseline = 1 : l'anomalie est au seuil exact → pas d'émission.
+	sched := scheduler.NewDataHealthScheduler(repoRoot, svc).WithBaselineWarnings(1)
+	res := sched.RunOnce(context.Background())
+	if res.WarningsTotal != 1 {
+		t.Fatalf("WarningsTotal: attendu 1, obtenu %d", res.WarningsTotal)
+	}
+
+	repo := duckdb.NewNotificationsRepo(pdb)
+	list, err := repo.List(context.Background(), notifications.ListFilter{Limit: 10})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list.Items) != 0 {
+		t.Errorf("baseline=1, warnings=1 → attendu 0 notif, obtenu %d", len(list.Items))
+	}
+
+	// Baseline = 0 sur le même setup → notif émise (comportement legacy).
+	sched2 := scheduler.NewDataHealthScheduler(repoRoot, svc) // baseline=0 default
+	_ = sched2.RunOnce(context.Background())
+	list2, err := repo.List(context.Background(), notifications.ListFilter{Limit: 10})
+	if err != nil {
+		t.Fatalf("List 2: %v", err)
+	}
+	if len(list2.Items) != 1 {
+		t.Errorf("baseline=0, warnings=1 → attendu 1 notif, obtenu %d", len(list2.Items))
+	}
+}
